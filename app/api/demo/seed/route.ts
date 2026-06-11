@@ -9,14 +9,16 @@ export const runtime = "nodejs";
 // expose: it only ever touches the single shared demo user (whose password is
 // intentionally public), is idempotent, and skips the work once seeded so it
 // can't be used to generate load. The seed is fully deterministic (no AI calls).
-export async function POST() {
+// Pass ?force=1 to refresh the demo's reports/tradelines back to the clean set.
+async function handle(req: Request) {
+  const force = new URL(req.url).searchParams.get("force");
   try {
     const existing = await prisma.user.findUnique({
       where: { email: DEMO_EMAIL },
       include: { _count: { select: { tradelines: true } } },
     });
 
-    if (existing && existing._count.tradelines > 0) {
+    if (!force && existing && existing._count.tradelines > 0) {
       return NextResponse.json({
         ok: true,
         alreadySeeded: true,
@@ -39,7 +41,9 @@ export async function POST() {
   }
 }
 
-// Allow a simple GET too, so it can be triggered from a browser if needed.
-export async function GET() {
-  return POST();
+export async function POST(req: Request) {
+  return handle(req);
+}
+export async function GET(req: Request) {
+  return handle(req);
 }
