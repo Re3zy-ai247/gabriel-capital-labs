@@ -35,10 +35,7 @@ export async function POST() {
     });
   } catch (e) {
     console.error("demo seed error", e);
-    return NextResponse.json(
-      { error: "Demo seed failed.", detail: e instanceof Error ? e.message : String(e) },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Demo seed failed. Check server logs." }, { status: 500 });
   }
 }
 
