@@ -1,4 +1,5 @@
-'use client';
+27
+  'use client';
 
 import { useState } from 'react';
 import Link from 'next/link';
@@ -23,7 +24,7 @@ const steps = [
   },
   {
     number: 3,
-    title: 'Review Your Inaccuracies',
+    title: 'Review Your Inaccuracie"',
     description: 'We'll analyze your reports and show you everything that can be disputed.',
     action: 'View Tradelines',
     href: '/tradelines',
