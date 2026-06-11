@@ -21,6 +21,24 @@ export default function UploadPage() {
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<{ tradelines: number; usedAI: boolean } | null>(null);
+  const [dragging, setDragging] = useState(false);
+
+  function acceptFile(f: File | null | undefined) {
+    if (!f) return;
+    if (f.type && f.type !== "application/pdf" && !f.name.toLowerCase().endsWith(".pdf")) {
+      setError("Please choose a PDF file (or use Paste text).");
+      return;
+    }
+    setError(null);
+    setFile(f);
+    setMode("pdf");
+  }
+
+  function onDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setDragging(false);
+    acceptFile(e.dataTransfer.files?.[0]);
+  }
 
   function toggleBureau(id: string) {
     setBureaus((prev) => (prev.includes(id) ? prev.filter((b) => b !== id) : [...prev, id]));
@@ -120,13 +138,20 @@ export default function UploadPage() {
                 className="w-full resize-y rounded-lg border border-ink-700 bg-ink-900 p-3 font-mono text-xs text-slate-200 placeholder:text-slate-600 focus:border-brand-500 focus:outline-none"
               />
             ) : (
-              <label className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-ink-600 bg-ink-900/50 p-10 text-center hover:border-brand-500">
-                <UploadCloud className="h-10 w-10 text-brand-400" />
+              <label
+                onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+                onDragLeave={() => setDragging(false)}
+                onDrop={onDrop}
+                className={`flex cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border border-dashed p-10 text-center transition ${
+                  dragging ? "border-brand-400 bg-brand-500/10" : "border-ink-600 bg-ink-900/50 hover:border-brand-500"
+                }`}
+              >
+                <UploadCloud className={`h-10 w-10 ${dragging ? "text-brand-300" : "text-brand-400"}`} />
                 {file ? (
                   <span className="text-sm text-slate-200">{file.name}</span>
                 ) : (
                   <>
-                    <span className="text-sm text-slate-300">Click to choose a PDF report</span>
+                    <span className="text-sm text-slate-300">{dragging ? "Drop your PDF here" : "Drag & drop a PDF, or click to choose"}</span>
                     <span className="text-xs text-slate-500">Text-based PDFs work best. Scanned images won&apos;t extract — paste text instead.</span>
                   </>
                 )}
@@ -134,7 +159,7 @@ export default function UploadPage() {
                   type="file"
                   accept="application/pdf"
                   className="hidden"
-                  onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                  onChange={(e) => acceptFile(e.target.files?.[0])}
                 />
               </label>
             )}

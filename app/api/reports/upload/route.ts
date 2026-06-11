@@ -7,6 +7,8 @@ import { extractPdfText } from "@/lib/pdf";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+// Give the analysis pipeline (PDF extraction + AI) headroom beyond the 10s default.
+export const maxDuration = 60;
 
 const VALID_BUREAUS: Bureau[] = ["EQUIFAX", "EXPERIAN", "TRANSUNION"];
 
@@ -107,6 +109,12 @@ export async function POST(req: Request) {
     });
   } catch (e) {
     console.error("upload analyze error", e);
-    return NextResponse.json({ error: "Upload failed during analysis. Please try again." }, { status: 500 });
+    return NextResponse.json(
+      {
+        error: "Upload failed during analysis. Please try again.",
+        detail: e instanceof Error ? e.message : String(e),
+      },
+      { status: 500 }
+    );
   }
 }
