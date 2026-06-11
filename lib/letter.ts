@@ -155,27 +155,68 @@ export function renderTemplateLetter(t: LetterTradeline, ctx: LetterContext, con
 
 export function buildSystemPrompt(): string {
   return [
-    "You are a paralegal assistant that drafts consumer credit dispute letters that are factually grounded and legally accurate.",
-    "STRICT RULES:",
-    "1. Never guarantee any outcome. Never claim an item 'must' or 'will' be deleted. Request deletion only of information that cannot be verified.",
-    "2. Only state facts that are present in the provided structured data. Never invent balances, dates, or account details.",
-    "3. CROSS-BUREAU RULE: Only reference what other credit bureaus report if crossBureauKnowledge is true. If it is false, do NOT claim or imply anything about bureaus other than the target — absence of data is not evidence.",
-    "4. Cite only the statutes provided. Do not perpetuate the myth that FCRA §609 compels deletion; §611 governs reinvestigation.",
-    "5. Keep a firm, professional, non-threatening tone. No all-caps demands.",
+    "ROLE",
+    "You are an expert consumer-protection paralegal who drafts credit dispute letters that are factually grounded, legally precise, and persuasive. You write for ordinary consumers exercising their own federal rights — not as an attorney providing legal advice.",
+    "",
+    "GOVERNING LAW (use accurately; never misstate a citation):",
+    "• FCRA §611 / 15 U.S.C. §1681i — a consumer reporting agency must conduct a reasonable REINVESTIGATION of disputed information within 30 days and delete or correct anything that cannot be verified as accurate and complete.",
+    "• FCRA §607(b) / 15 U.S.C. §1681e(b) — agencies must follow reasonable procedures to assure MAXIMUM POSSIBLE ACCURACY of the information they report.",
+    "• FCRA §609 / 15 U.S.C. §1681g — a DISCLOSURE right (the consumer's right to see their file). It is NOT a deletion mechanism. Never imply that a '609 letter' compels removal.",
+    "• FCRA §605 / 15 U.S.C. §1681c — obsolete adverse information generally may not be reported after 7 years (10 for certain bankruptcies).",
+    "• FCRA §623 / 15 U.S.C. §1681s-2(b) — once notified of a dispute, a FURNISHER must conduct its own reasonable investigation, review all relevant information, and report results back to the agencies.",
+    "• FDCPA §809(b) / 15 U.S.C. §1692g — on a timely request, a debt collector must VALIDATE the debt and cease collection until validation is mailed.",
+    "• FDCPA §805(c) / 15 U.S.C. §1692c(c) — a consumer may direct a collector to cease further communication.",
+    "",
+    "STANDARD-OF-CARE CASE LAW (reference the PRINCIPLE in plain language; you may cite the case, but never imply it guarantees an outcome for this consumer):",
+    "• Cushman v. Trans Union Corp., 115 F.3d 220 (3d Cir. 1997) — when a consumer supplies specific information, a reasonable reinvestigation may require more than re-confirming the data with the same furnisher that supplied it.",
+    "• Hinkle v. Midland Credit Mgmt., 827 F.3d 1295 (11th Cir. 2016) — a reinvestigation can require reviewing actual account-level documentation, not merely matching the consumer's name and balance to the furnisher's record.",
+    "• Saunders v. Branch Banking & Trust Co., 526 F.3d 142 (4th Cir. 2008) — information that is technically accurate but materially misleading can still violate the FCRA's accuracy requirement.",
+    "• Johnson v. MBNA Am. Bank, NA, 357 F.3d 426 (4th Cir. 2004) — a furnisher's §1681s-2(b) investigation must be a reasonable, good-faith review, not a cursory rubber stamp.",
+    "",
+    "STRICT COMPLIANCE RULES (these override everything above):",
+    "1. NEVER guarantee or predict an outcome. Do not say an item 'must', 'will', or 'has to' be deleted. Request deletion ONLY of information that cannot be verified as accurate and complete.",
+    "2. State ONLY facts present in the provided structured data. Never invent balances, dates, account numbers, or events. If a fact is unknown, do not assert it.",
+    "3. CROSS-BUREAU RULE: reference what other bureaus report ONLY if crossBureauKnowledge is true. If false, make NO claim or implication about any bureau other than the target. Absence of data is never evidence.",
+    "4. Cite only the statutes and cases listed above, and only where they genuinely apply to the chosen strategy. Do not perpetuate the §609-forces-deletion myth.",
+    "5. No threats, no all-caps demands, no fabricated legal consequences. A firm, professional, literate tone. This is consumer education, not legal advice — do not claim to be the consumer's attorney.",
+    "6. Output ONLY the finished letter text (sender block, date, recipient block, RE line, body, signature). No preamble, no commentary, no markdown.",
   ].join("\n");
 }
 
+// Picks the case-law principle most relevant to the strategy's recipient so the
+// model invokes the correct standard of care for a bureau vs. furnisher vs. collector.
+function applicableStandards(ctx: LetterContext): string {
+  switch (ctx.strategy.recipient) {
+    case "bureau":
+      return "Reinvestigation standard (§611 + §607(b)); Cushman and Hinkle on what a *reasonable* reinvestigation requires.";
+    case "furnisher":
+      return "Furnisher investigation duty (§623 / §1681s-2(b)); Johnson v. MBNA on the good-faith standard.";
+    case "collector":
+      return "Debt validation (FDCPA §809(b)); accuracy duties under §607(b) and Saunders if the item is materially misleading.";
+    default:
+      return "FCRA accuracy and reinvestigation standards.";
+  }
+}
+
 export function buildUserPrompt(t: LetterTradeline, ctx: LetterContext, draft: string): string {
+  const statutes = ctx.strategy.statutes
+    .map((k) => `${STATUTES[k].short} (${STATUTES[k].usc}) — ${STATUTES[k].desc}`)
+    .join("\n  ");
+
   return [
+    "TASK: Refine the grounded draft below into a polished, persuasive dispute letter. Preserve every factual claim and statute citation exactly as grounded; improve only clarity, structure, tone, and legal framing. You may articulate the applicable legal STANDARD in plain language (and optionally cite a governing case from the system prompt) — but add NO new facts about this account.",
+    "",
     `Strategy: ${ctx.strategy.label}`,
-    `Target: ${ctx.recipientName}`,
+    `Recipient type: ${ctx.strategy.recipient}`,
+    `Target recipient: ${ctx.recipientName}`,
+    `Applicable legal standards for this strategy:\n  ${applicableStandards(ctx)}`,
+    `Statutes in play:\n  ${statutes || "(none — this is a goodwill/non-statutory request; do not cite statutes as leverage)"}`,
     `crossBureauKnowledge: ${ctx.crossBureau}`,
     `Bureaus with data: ${ctx.presentBureaus.join(", ") || "single-bureau / unknown"}`,
-    `Verified cross-bureau conflicts: ${ctx.conflicts.length ? ctx.conflicts.join("; ") : "NONE — do not assert any"}`,
-    `Account: ${t.creditorName}, balance ${formatCents(t.balance)}`,
+    `Verified cross-bureau conflicts: ${ctx.conflicts.length ? ctx.conflicts.join("; ") : "NONE — do not assert any cross-bureau conflict"}`,
+    `Account: ${t.creditorName}${t.originalCreditor ? ` (original creditor: ${t.originalCreditor})` : ""}, balance ${formatCents(t.balance)}`,
     "",
-    "Refine the following grounded draft into a polished letter. Keep all factual claims and statute citations exactly as grounded; improve only clarity and flow. Do not add new factual claims.",
-    "----- DRAFT -----",
+    "----- GROUNDED DRAFT -----",
     draft,
   ].join("\n");
 }

@@ -1,10 +1,37 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
+import { useState } from 'react';
 
 export default function PricingPage() {
   const { data: session } = useSession();
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function upgrade() {
+    setError(null);
+    if (!session) {
+      router.push('/register?next=/pricing');
+      return;
+    }
+    setBusy(true);
+    try {
+      const res = await fetch('/api/stripe/checkout', { method: 'POST' });
+      const data = await res.json();
+      if (res.ok && data.url) {
+        window.location.href = data.url;
+      } else {
+        setError(data.error || 'Could not start checkout. Please try again.');
+        setBusy(false);
+      }
+    } catch {
+      setError('Network error. Please try again.');
+      setBusy(false);
+    }
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-950 to-slate-900 text-white">
@@ -97,9 +124,17 @@ export default function PricingPage() {
               </li>
             </ul>
 
-            <button className="w-full bg-emerald-500 hover:bg-emerald-600 text-white py-3 rounded-lg font-semibold transition">
-              Upgrade to Premium
+            <button
+              onClick={upgrade}
+              disabled={busy}
+              className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:opacity-60 text-white py-3 rounded-lg font-semibold transition"
+            >
+              {busy ? 'Redirecting to checkout…' : session ? 'Upgrade to Premium' : 'Get Premium'}
             </button>
+            {error && <p className="mt-3 text-sm text-red-400">{error}</p>}
+            <p className="mt-3 text-center text-xs text-slate-400">
+              Secure checkout by Stripe · 30-day money-back guarantee
+            </p>
           </div>
         </div>
       </div>

@@ -59,6 +59,12 @@ model User {
   passwordHash  String?
   // Admin & subscription
   role          UserRole   @default(USER)
+  // Billing — Stripe subscription state. plan is the source of truth for entitlements.
+  plan                 String    @default("free") // "free" | "premium"
+  stripeCustomerId     String?   @unique
+  stripeSubscriptionId String?
+  subscriptionStatus   String?   // active | trialing | past_due | canceled | incomplete | ...
+  currentPeriodEnd     DateTime?
   // Consumer info required before a letter can be finalized/printed
   fullName      String?
   addressLine1  String?
