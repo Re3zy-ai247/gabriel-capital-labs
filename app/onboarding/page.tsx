@@ -1,5 +1,4 @@
-27
-  'use client';
+'use client';
 
 import { useState } from 'react';
 import Link from 'next/link';
@@ -24,8 +23,8 @@ const steps = [
   },
   {
     number: 3,
-    title: 'Review Your Inaccuracie"',
-    description: 'We'll analyze your reports and show you everything that can be disputed.',
+    title: 'Review Your Inaccuracies',
+    description: "We'll analyze your reports and show you everything that can be disputed.",
     action: 'View Tradelines',
     href: '/tradelines',
     color: 'from-purple-500 to-purple-600',
@@ -41,7 +40,7 @@ const steps = [
   {
     number: 5,
     title: 'Track Your Progress',
-    description: 'Monitor what's being fixed across your 90-day journey.',
+    description: "Monitor what's being fixed across your 90-day journey.",
     action: 'View Journey',
     href: '/journey',
     color: 'from-pink-500 to-pink-600',
