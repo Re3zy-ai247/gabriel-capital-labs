@@ -36,21 +36,22 @@ export async function POST(req: Request) {
 
   const adminEmail = process.env.ADMIN_EMAIL || "admin@gabrielcapitallabs.com";
   const adminPassword = process.env.ADMIN_PASSWORD;
-  if (!adminPassword) {
-    return NextResponse.json(
-      { error: "Set ADMIN_PASSWORD in the environment before running bootstrap." },
-      { status: 400 }
-    );
-  }
-
   try {
-    await seedAdminUser(prisma, adminEmail, adminPassword);
+    // Always seed the demo account. Seed admin only if a password is provided,
+    // so missing ADMIN_PASSWORD never blocks getting the demo working.
     const tradelines = await seedDemoUser(prisma);
+    let admin: { email: string; role: string } | null = null;
+    if (adminPassword) {
+      await seedAdminUser(prisma, adminEmail, adminPassword);
+      admin = { email: adminEmail, role: "ADMIN" };
+    }
     return NextResponse.json({
       ok: true,
-      admin: { email: adminEmail, role: "ADMIN" },
+      admin,
       demo: { email: DEMO_EMAIL, tradelines },
-      message: "Admin and demo accounts are ready. Delete SETUP_SECRET when finished.",
+      message: admin
+        ? "Admin and demo accounts are ready. Delete SETUP_SECRET when finished."
+        : "Demo account is ready. Set ADMIN_PASSWORD and re-run to create the admin login.",
     });
   } catch (e) {
     console.error("bootstrap error", e);
