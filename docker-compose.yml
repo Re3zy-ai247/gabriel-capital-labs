@@ -1,0 +1,20 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_PASSWORD: gcl
+      POSTGRES_USER: gcl
+      POSTGRES_DB: gcl
+    ports: ["5432:5432"]
+    volumes: ["gcl_pg:/var/lib/postgresql/data"]
+  web:
+    build: .
+    depends_on: [db]
+    ports: ["3000:3000"]
+    environment:
+      DATABASE_URL: "postgresql://gcl:gcl@db:5432/gcl"
+      NEXTAUTH_SECRET: "change-me-in-production"
+      NEXTAUTH_URL: "http://localhost:3000"
+      ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY}"
+volumes:
+  gcl_pg:

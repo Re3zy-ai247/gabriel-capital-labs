@@ -1,0 +1,5 @@
+Environment variables to set in Vercel (Project Settings -> Environment Variables):
+  DATABASE_URL        (auto-filled when you add Vercel Postgres storage)
+  NEXTAUTH_SECRET     HYG3eKWkta/DPwWG7TulZnv53lIL8S0RgyAGsQ5ZBEc=
+  NEXTAUTH_URL        your live URL, e.g. https://your-project.vercel.app
+  ANTHROPIC_API_KEY   sk-ant-...  (optional)

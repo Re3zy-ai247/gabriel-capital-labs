@@ -1,0 +1,151 @@
+// Gabriel Capital Labs — data model
+// Note the per-bureau presence model (PRESENT / ABSENT / UNKNOWN) which prevents
+// the app from ever asserting what a bureau reports when that bureau's data was
+// never uploaded. This is the core accuracy guarantee of the platform.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Bureau {
+  EQUIFAX
+  EXPERIAN
+  TRANSUNION
+}
+
+// Whether a given bureau's data exists for a tradeline.
+enum Presence {
+  PRESENT // parsed from an uploaded report for this bureau
+  ABSENT // the uploaded report covered this bureau and the account was NOT listed
+  UNKNOWN // this bureau's report was never uploaded — we cannot make claims about it
+}
+
+enum AccountType {
+  REVOLVING // credit cards (original creditor)
+  INSTALLMENT // auto / personal loans (original creditor)
+  MORTGAGE
+  COLLECTION // third-party / debt-buyer collection
+  CHARGE_OFF
+  STUDENT_LOAN
+  PUBLIC_RECORD
+  INQUIRY
+  GOVERNMENT // child support, tax, benefit overpayment — generally NON-disputable
+  OTHER
+}
+
+enum Probability {
+  HIGH
+  MEDIUM
+  LOW
+  NOT_RECOMMENDED // government / non-strategic items
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum LetterStatus {
+  DRAFT
+  GENERATED
+  PRINTED
+  MAILED
+  RESPONSE_RECEIVED
+  RESOLVED
+}
+
+model User {
+  id            String     @id @default(cuid())
+  email         String     @unique
+  name          String?
+  passwordHash  String?
+  // Admin & subscription
+  role          UserRole   @default(USER)
+  // Consumer info required before a letter can be finalized/printed
+  fullName      String?
+  addressLine1  String?
+  addressLine2  String?
+  city          String?
+  state         String?
+  zip           String?
+  createdAt     DateTime   @default(now())
+  reports       Report[]
+  tradelines    Tradeline[]
+  letters       Letter[]
+}
+
+model Report {
+  id          String      @id @default(cuid())
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String
+  fileName    String
+  // Which bureaus this uploaded report actually covered.
+  bureaus     Bureau[]
+  rawText     String?     @db.Text // stored so a report can be re-analyzed
+  uploadedAt  DateTime    @default(now())
+  analyzedAt  DateTime?
+  tradelines  Tradeline[]
+}
+
+model Tradeline {
+  id              String       @id @default(cuid())
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId          String
+  report          Report       @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  reportId        String
+
+  creditorName    String
+  originalCreditor String?
+  accountNumberMask String?
+  accountType     AccountType  @default(OTHER)
+  isDebtBuyer     Boolean      @default(false)
+  balance         Int          @default(0) // cents
+
+  dateOpened      DateTime?
+  dateReported    DateTime?
+  dateOfFirstDelinquency DateTime?
+
+  // Per-bureau presence + per-bureau values, stored as JSON keyed by bureau.
+  // e.g. { "EQUIFAX": { "presence": "PRESENT", "status": "Open Collection", "balance": 101300 } }
+  bureauData      Json         @default("{}")
+
+  // Computed scoring
+  score           Int          @default(0)   // 0-100
+  probability     Probability  @default(LOW)
+  reasons         String[]     @default([])
+  disputeAngles   String[]     @default([])
+
+  // Duplicate grouping — tradelines representing the same underlying debt share a key
+  duplicateGroup  String?
+
+  resolved        Boolean      @default(false)
+  letters         Letter[]
+  createdAt       DateTime     @default(now())
+}
+
+model Letter {
+  id            String       @id @default(cuid())
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId        String
+  tradeline     Tradeline?   @relation(fields: [tradelineId], references: [id], onDelete: SetNull)
+  tradelineId   String?
+
+  strategy      String       // e.g. "fcra_611", "validation"
+  recipientType String       // "bureau" | "furnisher" | "collector"
+  recipientName String
+  targetBureau  Bureau?
+  round         Int          @default(1)
+
+  body          String       @db.Text
+  status        LetterStatus @default(GENERATED)
+  complianceFlags String[]   @default([])
+
+  createdAt     DateTime     @default(now())
+  mailedAt      DateTime?
+}
+
