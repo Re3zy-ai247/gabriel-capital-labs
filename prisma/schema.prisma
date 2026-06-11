@@ -18,13 +18,6 @@ enum Bureau {
   TRANSUNION
 }
 
-// Whether a given bureau's data exists for a tradeline.
-enum Presence {
-  PRESENT // parsed from an uploaded report for this bureau
-  ABSENT // the uploaded report covered this bureau and the account was NOT listed
-  UNKNOWN // this bureau's report was never uploaded — we cannot make claims about it
-}
-
 enum AccountType {
   REVOLVING // credit cards (original creditor)
   INSTALLMENT // auto / personal loans (original creditor)
