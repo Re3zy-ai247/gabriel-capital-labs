@@ -3,15 +3,17 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
-  LayoutDashboard, Upload, ListTree, Mails, Target, CalendarRange, Gauge, Settings, CreditCard,
+  LayoutDashboard, Upload, ListTree, Mails, Target, CalendarRange, Gauge, Settings, CreditCard, ScanSearch, LineChart,
 } from "lucide-react";
 
 const NAV = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
   { href: "/upload", label: "Upload Report", icon: Upload },
   { href: "/tradelines", label: "Tradelines", icon: ListTree },
+  { href: "/identity", label: "Identity Check", icon: ScanSearch },
   { href: "/letters", label: "Dispute Letters", icon: Mails },
   { href: "/strategist", label: "AI Strategist", icon: Target },
+  { href: "/scores", label: "Score Tracker", icon: LineChart },
   { href: "/journey", label: "90-Day Journey", icon: CalendarRange },
 ];
 

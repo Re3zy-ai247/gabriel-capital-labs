@@ -95,7 +95,8 @@ export async function aiExtractTradelines(
   const client = new Anthropic({ apiKey: key });
 
   const msg = await client.messages.create({
-    model: process.env.LLM_MODEL || "claude-opus-4-8",
+    // Extraction is mechanical — use a faster model by default for speed.
+    model: process.env.LLM_PARSE_MODEL || "claude-sonnet-4-6",
     max_tokens: 8000,
     system: systemPrompt(coveredBureaus),
     messages: [

@@ -76,6 +76,20 @@ model User {
   reports       Report[]
   tradelines    Tradeline[]
   letters       Letter[]
+  scoreEntries  ScoreEntry[]
+}
+
+// User-logged credit scores over time (manual entry — we don't pull live scores).
+model ScoreEntry {
+  id         String   @id @default(cuid())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId     String
+  bureau     Bureau
+  score      Int
+  recordedAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
 }
 
 model Report {

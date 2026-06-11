@@ -15,6 +15,15 @@ const STATEMENTS = [
   `ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "subscriptionStatus" TEXT`,
   `ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "currentPeriodEnd" TIMESTAMP(3)`,
   `CREATE UNIQUE INDEX IF NOT EXISTS "User_stripeCustomerId_key" ON "User"("stripeCustomerId")`,
+  `CREATE TABLE IF NOT EXISTS "ScoreEntry" (
+     "id" TEXT NOT NULL PRIMARY KEY,
+     "userId" TEXT NOT NULL REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE,
+     "bureau" "Bureau" NOT NULL,
+     "score" INTEGER NOT NULL,
+     "recordedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+   )`,
+  `CREATE INDEX IF NOT EXISTS "ScoreEntry_userId_idx" ON "ScoreEntry"("userId")`,
 ];
 
 async function run() {
