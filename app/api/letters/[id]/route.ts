@@ -1,0 +1,62 @@
+import { NextResponse } from "next/server";
+import type { LetterStatus } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
+import { currentUserOrDemo } from "@/lib/session";
+
+export const dynamic = "force-dynamic";
+
+const VALID_STATUSES: LetterStatus[] = [
+  "DRAFT",
+  "GENERATED",
+  "PRINTED",
+  "MAILED",
+  "RESPONSE_RECEIVED",
+  "RESOLVED",
+];
+
+// Fetch a single letter (used by the print view).
+export async function GET(_req: Request, { params }: { params: { id: string } }) {
+  const user = await currentUserOrDemo();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const letter = await prisma.letter.findFirst({
+    where: { id: params.id, userId: user.id },
+  });
+  if (!letter) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  return NextResponse.json({ letter });
+}
+
+// Update a letter's status (e.g. mark MAILED / RESPONSE_RECEIVED / RESOLVED).
+// Advancing to MAILED stamps mailedAt and, if the dispute resolved, flips the
+// related tradeline to resolved so dashboards reconcile.
+export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+  const user = await currentUserOrDemo();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const body = await req.json().catch(() => ({}));
+  const status = body?.status as LetterStatus | undefined;
+  if (!status || !VALID_STATUSES.includes(status)) {
+    return NextResponse.json({ error: "Invalid status" }, { status: 400 });
+  }
+
+  const existing = await prisma.letter.findFirst({ where: { id: params.id, userId: user.id } });
+  if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  const letter = await prisma.letter.update({
+    where: { id: existing.id },
+    data: {
+      status,
+      ...(status === "MAILED" && !existing.mailedAt ? { mailedAt: new Date() } : {}),
+    },
+  });
+
+  // When a dispute is marked RESOLVED, reflect that on the tradeline.
+  if (status === "RESOLVED" && existing.tradelineId) {
+    await prisma.tradeline.update({
+      where: { id: existing.tradelineId },
+      data: { resolved: true },
+    });
+  }
+
+  return NextResponse.json({ ok: true, letter });
+}

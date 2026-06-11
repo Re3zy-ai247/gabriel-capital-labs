@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { Disclaimer, EduBanner } from "@/components/Disclaimer";
 import { StatCard } from "@/components/ui/StatCard";
@@ -39,6 +40,18 @@ export default async function DashboardPage() {
     <AppShell title="/ Dashboard">
       <EduBanner />
       <h2 className="mb-4 text-xl font-semibold">Your Credit Dashboard</h2>
+
+      {reports.length === 0 && (
+        <div className="card mb-4 flex flex-col items-start gap-3 border-brand-500/30 bg-brand-500/5 p-6 md:flex-row md:items-center md:justify-between">
+          <div>
+            <div className="text-base font-semibold">Let&apos;s get started 👋</div>
+            <p className="mt-1 text-sm text-slate-400">
+              Upload your credit report and we&apos;ll analyze every account, flag what can be disputed, and draft your letters.
+            </p>
+          </div>
+          <Link href="/upload" className="btn-primary shrink-0">Upload your report</Link>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <StatCard label="Negative Items" value={negative} accent="rose" />

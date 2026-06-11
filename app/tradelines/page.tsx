@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { Disclaimer, EduBanner } from "@/components/Disclaimer";
 import { ProbabilityBadge, BureauBadges } from "@/components/ui/Badge";
@@ -44,7 +45,8 @@ export default async function TradelinesPage() {
           <div className="col-span-2">Type</div>
           <div className="col-span-2">Balance</div>
           <div className="col-span-2">Bureaus</div>
-          <div className="col-span-2">Priority</div>
+          <div className="col-span-1">Priority</div>
+          <div className="col-span-1"></div>
         </div>
         {tradelines.map((t) => {
           const data = getBureauData(t.bureauData);
@@ -55,7 +57,14 @@ export default async function TradelinesPage() {
               <div className="col-span-2 text-xs text-slate-400">{TYPE_LABEL[t.accountType]}</div>
               <div className="col-span-2 text-slate-300">{formatCents(t.balance)}</div>
               <div className="col-span-2"><BureauBadges bureaus={present} /></div>
-              <div className="col-span-2"><ProbabilityBadge p={t.probability} /></div>
+              <div className="col-span-1"><ProbabilityBadge p={t.probability} /></div>
+              <div className="col-span-1 text-right">
+                {t.probability !== "NOT_RECOMMENDED" && (
+                  <Link href={`/letters?tradeline=${t.id}`} className="text-xs font-semibold text-brand-400 hover:text-brand-300">
+                    Dispute →
+                  </Link>
+                )}
+              </div>
             </div>
           );
         })}

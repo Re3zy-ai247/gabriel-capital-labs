@@ -1,6 +1,8 @@
+import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { Disclaimer, EduBanner } from "@/components/Disclaimer";
 import { ProbabilityBadge } from "@/components/ui/Badge";
+import { AiPlan } from "./AiPlan";
 import { prisma } from "@/lib/prisma";
 import { currentUserOrDemo } from "@/lib/session";
 import { estimatedPointImpact } from "@/lib/scoring";
@@ -26,6 +28,8 @@ export default async function StrategistPage() {
       <h2 className="mb-1 text-xl font-semibold">AI Dispute Strategist</h2>
       <p className="mb-4 text-sm text-slate-400">Attack priority ranked by account type, age, debt-buyer status, and verifiable inconsistencies.</p>
 
+      <AiPlan />
+
       <div className="mb-5 grid grid-cols-4 gap-3">
         <div className="card p-4 text-center"><div className="text-xl font-bold text-brand-400">{counts.HIGH}</div><div className="text-[11px] uppercase text-slate-400">High</div></div>
         <div className="card p-4 text-center"><div className="text-xl font-bold text-gold-400">{counts.MEDIUM}</div><div className="text-[11px] uppercase text-slate-400">Medium</div></div>
@@ -46,6 +50,7 @@ export default async function StrategistPage() {
               <div className="text-sm font-semibold text-brand-400">+{estimatedPointImpact(t.accountType, t.probability)} pts</div>
               <div className="text-[10px] text-slate-500">est. impact</div>
             </div>
+            <Link href={`/letters?tradeline=${t.id}`} className="btn-ghost shrink-0 text-xs">Dispute →</Link>
           </div>
         ))}
       </div>
