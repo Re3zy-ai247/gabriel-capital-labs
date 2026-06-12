@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
 import { EduBanner } from "@/components/Disclaimer";
-import { Mails, Loader2, AlertTriangle, Copy, Check, Printer, Sparkles, Send } from "lucide-react";
+import { Mails, Loader2, AlertTriangle, Copy, Check, Printer, Sparkles, Send, Trash2 } from "lucide-react";
 
 interface Tradeline { id: string; creditorName: string; balance: number; accountType: string; }
 interface Strategy { id: string; label: string; blurb: string; riskNote?: string; recipient: string; }
@@ -39,6 +39,7 @@ function LettersInner() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
   const loadSaved = useCallback(() => {
     fetch("/api/letters").then((r) => r.json()).then((d) => setSaved(d.letters || []));
@@ -87,6 +88,15 @@ function LettersInner() {
       body: JSON.stringify({ status }),
     });
     loadSaved();
+  }
+
+  async function deleteLetter(id: string) {
+    const res = await fetch(`/api/letters/${id}`, { method: "DELETE" });
+    if (res.ok) {
+      setConfirmDelete(null);
+      if (letter?.id === id) setLetter(null);
+      loadSaved();
+    }
   }
 
   async function copyLetter() {
@@ -197,14 +207,35 @@ function LettersInner() {
                 <span className={`pill ${STATUS_COLOR[l.status] || "bg-slate-500/15 text-slate-300"}`}>
                   {STATUS_LABEL[l.status] || l.status}
                 </span>
-                <Link href={`/letters/print/${l.id}`} target="_blank" className="btn-ghost text-xs">
-                  <Printer className="h-3.5 w-3.5" />
-                </Link>
-                {l.status !== "MAILED" && l.status !== "RESOLVED" && (
-                  <button onClick={() => setStatus(l.id, "MAILED")} className="btn-ghost text-xs">Mark mailed</button>
-                )}
-                {l.status === "MAILED" && (
-                  <button onClick={() => setStatus(l.id, "RESOLVED")} className="btn-ghost text-xs">Mark resolved</button>
+                {confirmDelete === l.id ? (
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="text-slate-400">Delete?</span>
+                    <button onClick={() => deleteLetter(l.id)} className="rounded-md bg-rose-600 px-2 py-1 font-medium text-white hover:bg-rose-700">
+                      Delete
+                    </button>
+                    <button onClick={() => setConfirmDelete(null)} className="rounded-md border border-ink-600 px-2 py-1 text-slate-300">
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <Link href={`/letters/print/${l.id}`} target="_blank" className="btn-ghost text-xs">
+                      <Printer className="h-3.5 w-3.5" />
+                    </Link>
+                    {l.status !== "MAILED" && l.status !== "RESOLVED" && (
+                      <button onClick={() => setStatus(l.id, "MAILED")} className="btn-ghost text-xs">Mark mailed</button>
+                    )}
+                    {l.status === "MAILED" && (
+                      <button onClick={() => setStatus(l.id, "RESOLVED")} className="btn-ghost text-xs">Mark resolved</button>
+                    )}
+                    <button
+                      onClick={() => setConfirmDelete(l.id)}
+                      className="btn-ghost text-xs text-slate-400 hover:text-rose-400"
+                      title="Delete letter"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </>
                 )}
               </div>
             ))}

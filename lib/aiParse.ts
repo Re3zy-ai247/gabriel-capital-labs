@@ -77,9 +77,10 @@ function systemPrompt(covered: Bureau[]): string {
     "1. Extract ONLY information explicitly present in the text. Never infer, estimate, or invent a balance, date, status, or account number. If a value is not stated, return an empty string (or 0 for balanceCents).",
     "2. The covered bureaus for THIS report are: " + covered.join(", ") + ". For each account, reportedByBureaus must be a subset of these — it lists which covered bureaus actually show the account. For a single-bureau report, every account is reported by that one bureau. NEVER list a bureau that was not provided.",
     "3. Extract every distinct account/tradeline, including collections, charge-offs, and duplicates (report duplicates separately — do not merge them).",
-    "4. balanceCents is integer cents: $1,477 -> 147700; $0 or unknown -> 0.",
-    "5. Do not include soft inquiries, promotional text, score summaries, or personal-information sections as accounts.",
-    "6. Return strictly the structured JSON. No commentary.",
+    "4. balanceCents is integer cents: $1,477 -> 147700; $0 or unknown -> 0. The balance is the dollar amount labeled as the balance — NEVER use a list/section number (e.g. '2.6', '11.') as a balance.",
+    "5. creditorName must be the clean creditor/collector name ONLY. Strip any leading list/section/outline number (e.g. '2.6 Mdg Us Inc' -> 'Mdg Us Inc', '11. Collections' is a header, not an account) and any trailing status parenthetical like '(CLOSED)' — put open/closed in the status field instead.",
+    "6. NEVER output a record for non-account content. Exclude: educational/explanatory blurbs (e.g. 'Collections are accounts with outstanding debt...'), debt-to-credit ratio descriptions, payment-history tables or headers, 'Comments'/'Contact'/'Remarks' labels, bureau-name strings (e.g. 'EquifaxExperianTransUnion'), bare section headers (e.g. 'Collections', 'Public Records'), score summaries, soft inquiries, and personal-information sections. If a line reads like a sentence or a heading rather than a creditor name, it is NOT an account.",
+    "7. Return strictly the structured JSON. No commentary.",
   ].join("\n");
 }
 

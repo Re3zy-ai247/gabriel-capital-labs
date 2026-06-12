@@ -1,9 +1,17 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
 import { EduBanner } from "@/components/Disclaimer";
-import { UploadCloud, Loader2, FileText, ClipboardPaste, CheckCircle2 } from "lucide-react";
+import { UploadCloud, Loader2, FileText, ClipboardPaste, CheckCircle2, Trash2 } from "lucide-react";
+
+interface StoredReport {
+  id: string;
+  fileName: string;
+  bureaus: string[];
+  uploadedAt: string;
+  tradelines: number;
+}
 
 const BUREAUS = [
   { id: "EQUIFAX", label: "Equifax" },
@@ -22,6 +30,29 @@ export default function UploadPage() {
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<{ tradelines: number; usedAI: boolean } | null>(null);
   const [dragging, setDragging] = useState(false);
+  const [reports, setReports] = useState<StoredReport[]>([]);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+
+  async function loadReports() {
+    try {
+      const res = await fetch("/api/reports");
+      if (res.ok) setReports((await res.json()).reports || []);
+    } catch {
+      /* ignore */
+    }
+  }
+  useEffect(() => {
+    loadReports();
+  }, []);
+
+  async function deleteReport(id: string) {
+    const res = await fetch(`/api/reports/${id}`, { method: "DELETE" });
+    if (res.ok) {
+      setConfirmDelete(null);
+      await loadReports();
+      router.refresh();
+    }
+  }
 
   function acceptFile(f: File | null | undefined) {
     if (!f) return;
@@ -193,29 +224,68 @@ export default function UploadPage() {
         </div>
       )}
 
-      {/* Re-analyze existing */}
+      {/* Manage uploaded reports */}
       <div className="card mt-6 p-5">
-        <div className="text-sm font-semibold">Already uploaded reports?</div>
-        <p className="mt-1 text-xs text-slate-400">
-          Re-run the latest analysis pipeline on your stored reports to apply improved classification, bureau attribution,
-          duplicate detection, and scoring.
+        <div className="flex items-center justify-between">
+          <div className="text-sm font-semibold">Your uploaded reports</div>
+          <button
+            onClick={async () => {
+              setBusy(true);
+              setStatus("Re-analyzing stored reports…");
+              const res = await fetch("/api/reports/analyze", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+              const j = await res.json();
+              setBusy(false);
+              setStatus(res.ok ? `Done — ${j.tradelines} tradelines across ${j.reportsAnalyzed} report(s).` : j.error || "Failed");
+              await loadReports();
+              router.refresh();
+            }}
+            disabled={busy || reports.length === 0}
+            className="btn-ghost text-xs"
+          >
+            {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+            Re-analyze all
+          </button>
+        </div>
+
+        {reports.length === 0 ? (
+          <p className="mt-2 text-xs text-slate-500">No reports uploaded yet. Analyze one above to get started.</p>
+        ) : (
+          <div className="mt-3 divide-y divide-ink-700/50">
+            {reports.map((r) => (
+              <div key={r.id} className="flex items-center justify-between gap-3 py-3">
+                <div className="min-w-0">
+                  <div className="truncate text-sm text-slate-200">{r.fileName}</div>
+                  <div className="text-xs text-slate-500">
+                    {r.tradelines} account{r.tradelines === 1 ? "" : "s"} · {r.bureaus.join(", ") || "—"} ·{" "}
+                    {new Date(r.uploadedAt).toLocaleDateString()}
+                  </div>
+                </div>
+                {confirmDelete === r.id ? (
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="text-slate-400">Delete this report &amp; its accounts?</span>
+                    <button onClick={() => deleteReport(r.id)} className="rounded-md bg-rose-600 px-2 py-1 font-medium text-white hover:bg-rose-700">
+                      Delete
+                    </button>
+                    <button onClick={() => setConfirmDelete(null)} className="rounded-md border border-ink-600 px-2 py-1 text-slate-300">
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setConfirmDelete(r.id)}
+                    className="flex shrink-0 items-center gap-1 rounded-md border border-ink-600 px-2 py-1 text-xs text-slate-400 hover:border-rose-500 hover:text-rose-400"
+                    title="Delete report"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" /> Delete
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+        <p className="mt-3 text-xs text-slate-500">
+          Deleting a report removes its analyzed accounts. Letters you already generated are kept.
         </p>
-        <button
-          onClick={async () => {
-            setBusy(true);
-            setStatus("Re-analyzing stored reports…");
-            const res = await fetch("/api/reports/analyze", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
-            const j = await res.json();
-            setBusy(false);
-            setStatus(res.ok ? `Done — ${j.tradelines} tradelines across ${j.reportsAnalyzed} report(s).` : j.error || "Failed");
-            router.refresh();
-          }}
-          disabled={busy}
-          className="btn-ghost mt-3"
-        >
-          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-          Re-analyze stored reports
-        </button>
       </div>
     </AppShell>
   );

@@ -1,10 +1,13 @@
 import type { Bureau } from "@prisma/client";
 import type { BureauData, BureauFields } from "./bureauData";
 
-// Pragmatic heuristic extractor. In production, replace `extractRawTradelines`
-// with a real PDF/Metro-2/HTML parser (e.g. pdf-parse + a bureau-specific reader).
-// The IMPORTANT contract: the parser must record per-bureau presence honestly —
-// only mark a bureau PRESENT when its data was actually found.
+// Deterministic heuristic extractor — the fallback used when AI extraction is
+// unavailable (no ANTHROPIC_API_KEY) or fails. Real credit-report PDFs flatten
+// into messy text full of boilerplate (educational blurbs, ratio explanations,
+// payment-history headers, bureau-name strings), so this parser is tuned for
+// PRECISION over recall: it would rather emit fewer, clean tradelines than turn
+// prose into fake accounts. For full-fidelity extraction of arbitrary reports,
+// the AI parser (lib/aiParse.ts) is strongly preferred.
 
 export interface ExtractedTradeline {
   creditorName: string;
@@ -18,38 +21,155 @@ export interface ExtractedTradeline {
   perBureau: Partial<Record<Bureau, Omit<BureauFields, "presence">>>;
 }
 
-const MONEY = /\$?\s?([\d,]+)(?:\.\d{2})?/;
+// Hard cap so a pathological parse can never flood the account list.
+const MAX_TRADELINES = 150;
+
+// Phrases that mark a line as report boilerplate, NOT an account name.
+const BOILERPLATE = [
+  /payment history/i,
+  /\bcomments?\b/i,
+  /\bcontact\b/i,
+  /debt[-\s]?to[-\s]?credit/i,
+  /equifax\s*experian\s*trans\s*union/i,
+  /personal information/i,
+  /\binquir/i,
+  /detailed information/i,
+  /outstanding debt/i,
+  /\bsold by\b/i,
+  /\brepresents\b/i,
+  /amount of credit/i,
+  /show up to/i,
+  /monthly payment/i,
+  /account details/i,
+  /credit score/i,
+  /\bsummary\b/i,
+  /\bremarks?\b/i,
+  /this (table|account|section|report)/i,
+  /view the/i,
+  /\bdispute\b/i,
+  /date of birth/i,
+  /\bemployers?\b/i,
+  /\baka\b|also known as/i,
+  /years? of/i,
+  /\btotal\b/i,
+  /\boverview\b/i,
+];
+
+// Function words that, in quantity, mark a string as a sentence rather than a name.
+const SENTENCE_WORDS =
+  /\b(are|the|this|that|your|you're|have|has|been|with|which|when|from|about|includes?|will|can|may|should|these|those|their|its)\b/gi;
+
+// Tokens that strongly indicate a real creditor/collector — lets us keep an
+// account even when it lacks an explicit $ amount.
+const CREDITOR_TOKENS = [
+  "bank", "card", "capital one", "discover", "amex", "american express", "synchrony",
+  "comenity", "fingerhut", "credit one", "chase", "citi", "wells fargo", "us bank",
+  "onemain", "one main", "upgrade", "best egg", "lendingclub", "sofi", "marcus", "avant",
+  "navient", "nelnet", "great lakes", "mohela", "sallie mae", "dept of ed", "aidvantage",
+  "mortgage", "auto", "acceptance", "santander", "ally", "carmax", "credit acceptance",
+  "lvnv", "portfolio recov", "midland", "jefferson capital", "cavalry", "resurgent",
+  "encore", "convergent", "enhanced recovery", "iq data", "national credit", "receivables",
+  "mdg", "1st crd", "first credit", "credit collection", "transworld", "i.c. system",
+];
+
+function stripIndex(s: string): string {
+  // Remove leading outline numbers like "2.6 ", "4.10 ", "11. ".
+  return s.replace(/^\s*\d+(?:\.\d+)*\.?\s+/, "").trim();
+}
+
+function cleanName(s: string): string {
+  // Drop trailing status parentheticals so they don't pollute the name.
+  return stripIndex(s)
+    .replace(/\s*\((?:closed|open|paid|transferred|current|derogatory)\)\s*$/i, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
+// Bare section headers that are not real account names.
+const GENERIC_HEADERS = new Set([
+  "collection", "collections", "account", "accounts", "public record", "public records",
+  "real estate", "revolving accounts", "installment accounts", "open accounts",
+  "closed accounts", "credit cards", "loans", "other accounts", "negative", "positive",
+  "derogatory", "tradelines", "creditor", "balance", "status", "type",
+]);
+
+function looksLikeBoilerplate(name: string): boolean {
+  if (!name) return true;
+  if (GENERIC_HEADERS.has(name.toLowerCase())) return true;
+  if (BOILERPLATE.some((p) => p.test(name))) return true;
+  if (name.length > 48) return true; // creditor names are short
+  if (/[.…]$/.test(name) || name.endsWith("...")) return true; // truncated prose
+  const words = name.split(/\s+/);
+  if (words.length >= 4) {
+    const fnCount = (name.match(SENTENCE_WORDS) || []).length;
+    if (fnCount >= 2) return true; // reads like a sentence
+  }
+  if (!/[a-z]/i.test(name)) return true; // no letters at all
+  return false;
+}
+
+function toCents(s: string): number {
+  const n = parseFloat(s.replace(/,/g, ""));
+  return Number.isFinite(n) ? Math.round(n * 100) : 0;
+}
+
+// Balance ONLY from a labeled "Balance: $X" or an explicit $-amount. We never
+// fall back to bare numbers (that's what turned outline indices into balances).
+function extractBalanceCents(block: string): number {
+  const labeled = block.match(/balance[:\s]*\$\s?([\d,]+(?:\.\d{2})?)/i);
+  if (labeled) return toCents(labeled[1]);
+  const dollarAmts = [...block.matchAll(/\$\s?([\d,]+(?:\.\d{2})?)/g)].map((m) => toCents(m[1]));
+  if (dollarAmts.length) return Math.max(...dollarAmts);
+  return 0;
+}
+
+function hasAccountSignal(block: string, name: string): boolean {
+  if (/\$\s?[\d,]/.test(block)) return true;
+  if (
+    /\b(balance|status|account\s*#|acct\s*#|date opened|date reported|past due|high credit|credit limit|charge[-\s]?off|collection|dofd|first delinquency|original creditor)\b/i.test(
+      block
+    )
+  )
+    return true;
+  const lower = name.toLowerCase();
+  return CREDITOR_TOKENS.some((t) => lower.includes(t));
+}
 
 export function extractRawTradelines(rawText: string, coveredBureaus: Bureau[]): ExtractedTradeline[] {
-  // Each tradeline block is separated by a blank line; first line is the creditor.
-  const blocks = rawText.split(/\n\s*\n/).map((b) => b.trim()).filter(Boolean);
+  const blocks = rawText
+    .split(/\n\s*\n/)
+    .map((b) => b.trim())
+    .filter(Boolean);
   const out: ExtractedTradeline[] = [];
 
   for (const block of blocks) {
-    const lines = block.split("\n").map((l) => l.trim());
-    const creditorName = lines[0]?.replace(/\s{2,}/g, " ").trim();
-    if (!creditorName || creditorName.length < 2) continue;
+    if (out.length >= MAX_TRADELINES) break;
 
-    const balMatch = block.match(/balance[:\s]*\$?\s?([\d,]+)/i) || block.match(MONEY);
-    const balanceCents = balMatch ? Math.round(parseFloat(balMatch[1].replace(/,/g, "")) * 100) : 0;
+    const lines = block.split("\n").map((l) => l.trim()).filter(Boolean);
+    const rawFirst = lines[0] || "";
+    const creditorName = cleanName(rawFirst);
+
+    // Reject empty, too-short, boilerplate, or sentence-like "names".
+    if (!creditorName || creditorName.length < 2) continue;
+    if (looksLikeBoilerplate(creditorName)) continue;
+    // Require an actual account signal so prose blocks are dropped.
+    if (!hasAccountSignal(block, creditorName)) continue;
+
+    const balanceCents = extractBalanceCents(block);
     const dofdMatch = block.match(/(?:dofd|first delinquency)[:\s]*([0-9/\-]+)/i);
     const ocMatch = block.match(/original creditor[:\s]*(.+)/i);
     const typeMatch = block.match(/type[:\s]*(.+)/i);
     const acctMatch = block.match(/account[#:\s]*([xX\d\-\*]{4,})/);
+    const status = (block.match(/status[:\s]*(.+)/i)?.[1] || "").trim() || undefined;
 
-    // Build per-bureau values only for bureaus this report covered.
     const perBureau: ExtractedTradeline["perBureau"] = {};
     for (const b of coveredBureaus) {
-      perBureau[b] = {
-        status: (block.match(/status[:\s]*(.+)/i)?.[1] || "").trim() || undefined,
-        balanceCents,
-        dofd: dofdMatch?.[1],
-      };
+      perBureau[b] = { status, balanceCents, dofd: dofdMatch?.[1] };
     }
 
     out.push({
       creditorName,
-      originalCreditor: ocMatch?.[1]?.trim(),
+      originalCreditor: ocMatch?.[1] ? cleanName(ocMatch[1]) : undefined,
       accountNumberMask: acctMatch?.[1],
       balanceCents,
       dofd: dofdMatch?.[1],
@@ -72,10 +192,8 @@ export function toBureauData(
     if (ex.perBureau[b]) {
       data[b] = { presence: "PRESENT", ...ex.perBureau[b] };
     } else if (coveredBureaus.includes(b)) {
-      // report covered this bureau but the account wasn't listed
       data[b] = { presence: "ABSENT" };
     } else {
-      // this bureau's report was never uploaded — we know nothing
       data[b] = { presence: "UNKNOWN" };
     }
   }
