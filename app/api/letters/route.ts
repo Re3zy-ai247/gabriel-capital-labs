@@ -29,6 +29,10 @@ export async function GET() {
       createdAt: l.createdAt,
       mailedAt: l.mailedAt,
       preview: l.body.slice(0, 240),
+      hasResponse: Boolean(l.responseText),
+      responseOutcome: l.responseOutcome,
+      responseAnalysis: l.responseAnalysis,
+      parentLetterId: l.parentLetterId,
     })),
   });
 }

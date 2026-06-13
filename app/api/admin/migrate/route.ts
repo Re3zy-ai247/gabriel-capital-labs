@@ -24,6 +24,12 @@ const STATEMENTS = [
      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
    )`,
   `CREATE INDEX IF NOT EXISTS "ScoreEntry_userId_idx" ON "ScoreEntry"("userId")`,
+  // Round 2 / bureau-response flow.
+  `ALTER TABLE "Letter" ADD COLUMN IF NOT EXISTS "responseText" TEXT`,
+  `ALTER TABLE "Letter" ADD COLUMN IF NOT EXISTS "responseOutcome" TEXT`,
+  `ALTER TABLE "Letter" ADD COLUMN IF NOT EXISTS "responseAnalysis" TEXT`,
+  `ALTER TABLE "Letter" ADD COLUMN IF NOT EXISTS "responseAt" TIMESTAMP(3)`,
+  `ALTER TABLE "Letter" ADD COLUMN IF NOT EXISTS "parentLetterId" TEXT`,
 ];
 
 async function run() {

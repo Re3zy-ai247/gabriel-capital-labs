@@ -133,6 +133,18 @@ export function renderTemplateLetter(t: LetterTradeline, ctx: LetterContext, con
     );
   }
 
+  // Statutory authority — quote the actual operative law, not just the code, so
+  // the recipient sees the precise obligation they are under.
+  if (ctx.strategy.statutes.length) {
+    lines.push("STATUTORY AUTHORITY");
+    for (const k of ctx.strategy.statutes) {
+      const s = STATUTES[k];
+      lines.push(`  ${s.short} (${s.usc}):`);
+      lines.push(`    ${s.text}`);
+    }
+    lines.push("");
+  }
+
   lines.push("REQUESTED ACTION");
   lines.push("  1. Conduct a reasonable reinvestigation of the disputed information.");
   lines.push("  2. Verify each disputed data element with the original source documentation.");
@@ -200,11 +212,11 @@ function applicableStandards(ctx: LetterContext): string {
 
 export function buildUserPrompt(t: LetterTradeline, ctx: LetterContext, draft: string): string {
   const statutes = ctx.strategy.statutes
-    .map((k) => `${STATUTES[k].short} (${STATUTES[k].usc}) — ${STATUTES[k].desc}`)
+    .map((k) => `${STATUTES[k].short} (${STATUTES[k].usc}) — ${STATUTES[k].desc}\n    Operative text: ${STATUTES[k].text}`)
     .join("\n  ");
 
   return [
-    "TASK: Refine the grounded draft below into a polished, persuasive dispute letter. Preserve every factual claim and statute citation exactly as grounded; improve only clarity, structure, tone, and legal framing. You may articulate the applicable legal STANDARD in plain language (and optionally cite a governing case from the system prompt) — but add NO new facts about this account.",
+    "TASK: Refine the grounded draft below into a polished, persuasive dispute letter. Preserve every factual claim and statute citation exactly as grounded; improve only clarity, structure, tone, and legal framing. KEEP the STATUTORY AUTHORITY section and quote the operative statutory language provided below verbatim (in quotation marks) so the recipient sees the exact obligation — do not paraphrase the quoted text. You may articulate the applicable legal STANDARD in plain language (and optionally cite a governing case from the system prompt) — but add NO new facts about this account.",
     "",
     `Strategy: ${ctx.strategy.label}`,
     `Recipient type: ${ctx.strategy.recipient}`,

@@ -158,6 +158,14 @@ model Letter {
   status        LetterStatus @default(GENERATED)
   complianceFlags String[]   @default([])
 
+  // Bureau response + AI analysis (drives the Round 2 escalation flow).
+  responseText     String?    @db.Text  // pasted/extracted text of the bureau's response
+  responseOutcome  String?              // verified | deleted | updated | no_response | unknown
+  responseAnalysis String?    @db.Text  // AI summary of the response + escalation angle
+  responseAt       DateTime?
+  // Links a Round 2 (escalation) letter back to the round it follows up on.
+  parentLetterId   String?
+
   createdAt     DateTime     @default(now())
   mailedAt      DateTime?
 }

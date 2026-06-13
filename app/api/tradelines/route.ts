@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { currentUserOrDemo } from "@/lib/session";
+import { presentBureaus, getBureauData } from "@/lib/bureauData";
+import { recommendStrategy } from "@/lib/recommend";
 
 export async function GET() {
   const user = await currentUserOrDemo();
@@ -9,5 +11,24 @@ export async function GET() {
     where: { userId: user.id },
     orderBy: [{ score: "desc" }],
   });
-  return NextResponse.json({ tradelines });
+
+  // Enrich each tradeline with which bureaus report it and the recommended
+  // opening strategy, so the letter builder can auto-target + auto-suggest.
+  const enriched = tradelines.map((t) => {
+    const rec = recommendStrategy({
+      accountType: t.accountType,
+      isDebtBuyer: t.isDebtBuyer,
+      probability: t.probability,
+      dateOfFirstDelinquency: t.dateOfFirstDelinquency,
+      bureauData: t.bureauData,
+    });
+    return {
+      ...t,
+      bureaus: presentBureaus(getBureauData(t.bureauData)),
+      recommendedStrategy: rec.strategyId,
+      recommendedReason: rec.reason,
+    };
+  });
+
+  return NextResponse.json({ tradelines: enriched });
 }
