@@ -39,7 +39,7 @@ async function generateOne(
         model: process.env.LLM_MODEL || "claude-opus-4-8",
         max_tokens: 6000,
         thinking: { type: "adaptive" },
-        system: buildSystemPrompt(),
+        system: buildSystemPrompt(ctx.round),
         messages: [{ role: "user", content: buildUserPrompt(tradeline, ctx, body) }],
       } as any);
       const text = msg.content.find((c: any) => c.type === "text");

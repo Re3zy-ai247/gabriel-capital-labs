@@ -3,6 +3,7 @@
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { Suspense, useEffect, useState } from 'react';
+import { AppShell } from '@/components/AppShell';
 
 interface Status {
   plan: 'free' | 'premium';
@@ -116,9 +117,9 @@ function BillingInner() {
   const premium = status?.plan === 'premium';
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white">
-      <div className="max-w-4xl mx-auto px-6 py-16">
-        <h1 className="text-4xl font-bold mb-2">Billing &amp; Subscription</h1>
+    <AppShell title="/ Billing">
+      <div className="max-w-4xl">
+        <h1 className="text-3xl font-bold mb-2">Billing &amp; Subscription</h1>
         <p className="text-slate-400 mb-8">Manage your plan and payment settings</p>
 
         {justCheckedOut && (
@@ -245,6 +246,6 @@ function BillingInner() {
           </>
         )}
       </div>
-    </div>
+    </AppShell>
   );
 }

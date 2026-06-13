@@ -32,13 +32,17 @@ export interface LetterContext {
   presentBureaus: Bureau[];
   conflicts: string[];
   data: BureauData;
+  // Dispute round (1 = first dispute). Drives the tone ladder: neutral
+  // investigation in R1, method-of-verification in R2, regulatory framing by R4/5.
+  round: number;
 }
 
 export function buildContext(
   strategyId: string,
   t: LetterTradeline,
   consumer: LetterConsumer,
-  targetBureau?: Bureau
+  targetBureau?: Bureau,
+  round: number = 1
 ): LetterContext {
   const strategy = STRATEGY_BY_ID[strategyId] ?? STRATEGY_BY_ID["fcra_611"];
   const data = getBureauData(t.bureauData);
@@ -68,7 +72,105 @@ export function buildContext(
     presentBureaus: present,
     conflicts: crossBureauConflicts(data),
     data,
+    round: Math.max(1, round),
   };
+}
+
+// One investigator-style finding: the fact, and the one sentence that explains
+// why the fact prevents the information from being verified as accurate and
+// complete. This is the FACT → WHY IT MATTERS spine — the investigation request
+// itself lives in the REQUESTED ACTION section, never inside a finding.
+interface Finding {
+  element: string;
+  fact: string;
+  why: string;
+}
+
+// Builds at most five findings, grounded STRICTLY in available data. Cross-bureau
+// facts are emitted only when ctx.crossBureau is true and the values actually
+// differ — absence of data is never treated as a discrepancy.
+function buildFindings(t: LetterTradeline, ctx: LetterContext): Finding[] {
+  const data = ctx.data;
+  const present = ctx.presentBureaus;
+  const lbl = (b: Bureau) => BUREAU_LABEL[b];
+  const findings: Finding[] = [];
+
+  const collect = <V>(pick: (f: BureauData[Bureau]) => V | undefined | null) =>
+    present
+      .map((b) => ({ b, v: pick(data[b]) }))
+      .filter((x) => x.v != null && String(x.v).length > 0) as { b: Bureau; v: V }[];
+
+  // Account status
+  const statuses = collect((f) => f?.status);
+  if (ctx.crossBureau && new Set(statuses.map((s) => String(s.v).toLowerCase())).size > 1) {
+    findings.push({
+      element: "Account Status",
+      fact: statuses.map((s) => `${lbl(s.b)} reports "${s.v}"`).join("; ") + ".",
+      why: "These reported statuses cannot all describe the current state of the same account, and the discrepancy warrants verification.",
+    });
+  } else if (statuses.length) {
+    findings.push({
+      element: "Account Status",
+      fact: `Reported as "${statuses[0].v}"${ctx.targetBureau ? ` on the ${lbl(ctx.targetBureau)} file` : ""}.`,
+      why: "The reported status must be verifiable against the original account records; if it cannot be substantiated as accurate and complete, it cannot be reported as such.",
+    });
+  } else {
+    findings.push({
+      element: "Account Status",
+      fact: "The account status as currently reported.",
+      why: "I am unable to reconcile the reported status with my records and request that its accuracy be verified.",
+    });
+  }
+
+  // Reported balance
+  const balances = collect((f) => f?.balanceCents);
+  if (ctx.crossBureau && new Set(balances.map((s) => s.v)).size > 1) {
+    findings.push({
+      element: "Reported Balance",
+      fact: balances.map((s) => `${lbl(s.b)} reports ${formatCents(s.v)}`).join("; ") + ".",
+      why: "A single account cannot simultaneously carry materially different balances; this inconsistency warrants verification of the correct figure, if any.",
+    });
+  } else {
+    findings.push({
+      element: "Reported Balance",
+      fact: `Reported balance of ${formatCents(t.balance)}.`,
+      why: "The reported balance must reconcile with the account's payment and transaction history; a balance that cannot be substantiated to the penny cannot be reported as accurate.",
+    });
+  }
+
+  // Date of first delinquency
+  const dofds = collect((f) => f?.dofd);
+  if (ctx.crossBureau && new Set(dofds.map((s) => String(s.v))).size > 1) {
+    findings.push({
+      element: "Date of First Delinquency",
+      fact: dofds.map((s) => `${lbl(s.b)} reports ${formatDate(s.v)}`).join("; ") + ".",
+      why: "The date of first delinquency governs the seven-year reporting window under FCRA §605; inconsistent dates raise a concern that the reporting period may be misstated and warrant verification.",
+    });
+  } else if (t.dateOfFirstDelinquency) {
+    findings.push({
+      element: "Date of First Delinquency",
+      fact: `Reported as ${formatDate(t.dateOfFirstDelinquency)}.`,
+      why: "The date of first delinquency controls when this item must cease to be reported under FCRA §605 and must be accurate and verifiable to the original delinquency.",
+    });
+  }
+
+  // Original creditor (collections) — completeness concern
+  if (t.originalCreditor) {
+    findings.push({
+      element: "Original Creditor",
+      fact: `Reported original creditor: ${t.originalCreditor}.`,
+      why: "The chain from the original creditor to the current reporting party must be documented; if it cannot be substantiated, the reporting is incomplete.",
+    });
+  }
+
+  // Payment history — always a completeness concern
+  findings.push({
+    element: "Payment History",
+    fact: "The payment history associated with this account as reported.",
+    why: "The payment history must be complete and accurate in every field; entries the furnisher cannot substantiate render the reporting incomplete.",
+  });
+
+  return findings.slice(0, 5);
 }
 
 // Deterministic, compliance-safe letter. Used as the LLM's grounding draft and as
@@ -85,39 +187,43 @@ export function renderTemplateLetter(t: LetterTradeline, ctx: LetterContext, con
 
   const lines: string[] = [];
   lines.push(name, addr1, cityLine, "", today, "", ctx.recipientName, ...ctx.recipientLines, "");
-  lines.push(`RE: Dispute of ${t.creditorName} account ${acct}`, "");
+  lines.push(`RE: ${ctx.round >= 2 ? "Continued dispute" : "Dispute"} of ${t.creditorName} account ${acct}`, "");
   lines.push(`To Whom It May Concern,`, "");
 
-  lines.push(
-    `I am writing to dispute information associated with the above account that appears on ${
-      ctx.targetBureau ? `my ${bureauName} consumer file` : "my consumer credit file"
-    }. I am exercising my rights under ${statutes}.`,
-    ""
-  );
-
-  // Factual basis — grounded strictly in what we actually know.
-  lines.push("FACTUAL BASIS");
-  if (ctx.crossBureau && ctx.conflicts.length) {
+  // Round-aware opening. R1 frames a neutral investigation; R2+ reference the
+  // unresolved prior dispute. The investigation request always follows the facts.
+  if (ctx.round >= 2) {
     lines.push(
-      `Based on the data reported across the bureaus for which information is available (${ctx.presentBureaus
-        .map((b) => BUREAU_LABEL[b])
-        .join(", ")}), I have identified the following inconsistencies:`
+      `I am writing to follow up on a prior dispute concerning the above account, which remains unresolved. Having reviewed the information that appears on ${
+        ctx.targetBureau ? `my ${bureauName} consumer file` : "my consumer credit file"
+      }, I have set out below the specific factual concerns that I am unable to reconcile, and I ask that they be addressed through a reasonable reinvestigation under ${statutes}.`,
+      ""
     );
-    ctx.conflicts.forEach((c, i) => lines.push(`  ${i + 1}. ${c}`));
   } else {
     lines.push(
-      `I dispute the accuracy and completeness of this account as reported on my ${bureauName} file. I am not making any representation about how, or whether, other consumer reporting agencies report this account, because I have not reviewed those files. I request that ${bureauName} verify the accuracy and completeness of every data element below.`
+      `I am writing to bring to your attention specific information associated with the above account that appears on ${
+        ctx.targetBureau ? `my ${bureauName} consumer file` : "my consumer credit file"
+      } and that, based on the information currently available to me, I am unable to reconcile. I set out each concern below and respectfully request a reasonable reinvestigation under ${statutes}.`,
+      ""
+    );
+  }
+
+  // INVESTIGATOR SUMMARY — Data Element / Fact / Why It Matters. Grounded strictly
+  // in available data; cross-bureau facts only when ctx.crossBureau is true.
+  const findings = buildFindings(t, ctx);
+  lines.push("SUMMARY OF FACTUAL CONCERNS");
+  if (!ctx.crossBureau) {
+    lines.push(
+      `(The following concerns relate solely to how this account is reported on my ${bureauName} file. I make no representation about any other consumer reporting agency, as I have not reviewed those files.)`
     );
   }
   lines.push("");
-
-  lines.push("DISPUTED DATA ELEMENTS");
-  lines.push(`  • Account status`);
-  lines.push(`  • Balance reported (${formatCents(t.balance)})`);
-  lines.push(`  • Date of first delinquency${t.dateOfFirstDelinquency ? ` (${formatDate(t.dateOfFirstDelinquency)})` : ""}`);
-  lines.push(`  • Payment history`);
-  if (t.originalCreditor) lines.push(`  • Original creditor (${t.originalCreditor})`);
-  lines.push("");
+  findings.forEach((f, i) => {
+    lines.push(`${i + 1}. ${f.element}`);
+    lines.push(`   Fact: ${f.fact}`);
+    lines.push(`   Why it matters: ${f.why}`);
+    lines.push("");
+  });
 
   // Strategy-specific demand
   if (ctx.strategy.id === "validation" || ctx.strategy.id === "fdcpa") {
@@ -156,19 +262,55 @@ export function renderTemplateLetter(t: LetterTradeline, ctx: LetterContext, con
     `Under ${STATUTES.fcra_611.short} (${STATUTES.fcra_611.usc}), please complete this reinvestigation within 30 days. If any disputed information cannot be verified as complete and accurate, it should be deleted or corrected.`,
     ""
   );
-  lines.push(
-    "Please preserve all records related to this dispute. If this matter is not resolved, I reserve all rights available under federal and state law, including filing complaints with the Consumer Financial Protection Bureau and my state Attorney General.",
-    ""
-  );
+
+  // Closing escalates with the round. R1-2 reserve the CFPB as a single sentence;
+  // R3 presses for the method of verification; R4-5 frame the letter as the
+  // record supporting a regulatory complaint.
+  if (ctx.round >= 4) {
+    lines.push(
+      "This letter, together with my prior correspondence on this matter, constitutes a complete record of the disputes I have raised and the responses received. If the disputed information is not corrected or deleted, I am prepared to submit this record to the Consumer Financial Protection Bureau and my state Attorney General for review. Please preserve all records, investigation notes, verification documentation, and audit trails relating to this dispute.",
+      ""
+    );
+  } else if (ctx.round === 3) {
+    lines.push(
+      "Because a prior response did not disclose how the disputed information was verified, I again request the method of verification and the specific source documentation relied upon. Please preserve all records related to this dispute. If the information cannot be substantiated, I reserve the right to seek review through the Consumer Financial Protection Bureau and other appropriate channels.",
+      ""
+    );
+  } else {
+    lines.push(
+      "Please preserve all records related to this dispute. If the disputed information cannot be adequately verified or addressed through the reinvestigation process, I reserve the right to seek review through the Consumer Financial Protection Bureau and other appropriate regulatory channels.",
+      ""
+    );
+  }
   lines.push("Respectfully,", "", name);
 
   return lines.join("\n");
 }
 
-export function buildSystemPrompt(): string {
+export function buildSystemPrompt(round: number = 1): string {
+  const r = Math.max(1, round);
   return [
     "ROLE",
-    "You are an expert consumer-protection paralegal who drafts credit dispute letters that are factually grounded, legally precise, and persuasive. You write for ordinary consumers exercising their own federal rights — not as an attorney providing legal advice.",
+    "You are an expert consumer-protection paralegal who drafts credit dispute letters that are factually grounded, legally precise, and persuasive. You write for ordinary consumers exercising their own federal rights — not as an attorney providing legal advice. Your register is that of a compliance analyst documenting concerns, not a credit-repair template threatening litigation.",
+    "",
+    "INVESTIGATOR-FIRST METHOD (how to argue — this governs structure):",
+    "Every disputed point follows the order FACT → WHY IT MATTERS → INVESTIGATION REQUEST. Never lead with a statute, an accusation, or a demand. State the factual concern first; explain in one sentence why it prevents the information from being verified as accurate and complete; only then invoke the law that entitles the consumer to a reinvestigation. The objective is deletion of UNVERIFIABLE information — and the lawful, higher-yield path to deletion is to compel a real reinvestigation the furnisher cannot satisfy, after which §1681i requires deletion automatically. A letter an agency can pattern-match to a credit-repair template may be deemed frivolous under FCRA §1681i(a)(3) and never investigated; an investigator-style letter compels the reinvestigation. Never demand deletion as a substitute for requesting verification first.",
+    "",
+    "PREFERRED FRAMING — state concerns, not verdicts. Prefer phrasing such as: 'raises concerns regarding', 'appears inconsistent with', 'cannot be readily reconciled', 'warrants verification', 'appears incomplete', 'if it cannot be substantiated', 'based on the information currently available', 'I am unable to reconcile'. Present facts that warrant investigation; do not pronounce conclusions only an adjudicator can reach.",
+    "",
+    "NEVER STATE AS ESTABLISHED FACT (reframe each as a concern warranting investigation):",
+    "• that a law has been violated — no 'this violates the FCRA', 'you are in violation', 'this is illegal', 'this is fraud', 'you are liable';",
+    "• that the agency or furnisher 'failed to investigate' — instead, a prior response 'does not appear to reflect a reasonable reinvestigation', and request the method of verification;",
+    "• that an account 'is re-aged' — instead, the date of first delinquency 'appears inconsistent and warrants verification';",
+    "• that a hard inquiry 'was unauthorized' — UNLESS the consumer has confirmed it; otherwise the consumer 'does not recognize any application or transaction that would authorize' it;",
+    "• the §609 and Metro 2 deletion myths — §609 is a disclosure right only; Metro 2 is a formatting standard, never a deletion mandate.",
+    "",
+    `ROUND-BASED TONE — this letter is ROUND ${r}. Match the tone to the round and never exceed it:`,
+    "• Round 1 — neutral, professional, investigation-focused; the goal is a documented reinvestigation request. The CFPB appears at most as a single reserved sentence in the closing.",
+    "• Round 2 — reference the prior dispute and the response received; demand the METHOD OF VERIFICATION under FCRA §611(a)(7) (the source contacted and the procedure used); challenge the adequacy of the prior reinvestigation in plain language (Cushman; Hinkle).",
+    "• Round 3 — verification-focused; press for the specific source documentation relied upon and challenge any 'verified' result that was not substantiated.",
+    "• Round 4 — regulatory-review tone; summarize the chronology of unresolved disputes and frame the letter as the record supporting a CFPB / state-Attorney-General complaint.",
+    "• Round 5 — comprehensive final escalation; summarize the full dispute history and preserve all rights.",
     "",
     "GOVERNING LAW (use accurately; never misstate a citation):",
     "• FCRA §611 / 15 U.S.C. §1681i — a consumer reporting agency must conduct a reasonable REINVESTIGATION of disputed information within 30 days and delete or correct anything that cannot be verified as accurate and complete.",
@@ -217,7 +359,9 @@ export function buildUserPrompt(t: LetterTradeline, ctx: LetterContext, draft: s
 
   return [
     "TASK: Refine the grounded draft below into a polished, persuasive dispute letter. Preserve every factual claim and statute citation exactly as grounded; improve only clarity, structure, tone, and legal framing. KEEP the STATUTORY AUTHORITY section and quote the operative statutory language provided below verbatim (in quotation marks) so the recipient sees the exact obligation — do not paraphrase the quoted text. You may articulate the applicable legal STANDARD in plain language (and optionally cite a governing case from the system prompt) — but add NO new facts about this account.",
+    "PRESERVE THE INVESTIGATOR STRUCTURE: each concern in the 'SUMMARY OF FACTUAL CONCERNS' section must keep the FACT → WHY IT MATTERS shape — the fact first, then one sentence on why it prevents verification. Do not collapse these into a bare list and do not convert any 'Why it matters' sentence into an accusation that a violation occurred. Honor the round-based tone for the round indicated below.",
     "",
+    `Dispute round: ${ctx.round}`,
     `Strategy: ${ctx.strategy.label}`,
     `Recipient type: ${ctx.strategy.recipient}`,
     `Target recipient: ${ctx.recipientName}`,

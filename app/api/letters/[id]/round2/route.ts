@@ -54,8 +54,16 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     zip: user.zip,
   };
 
-  // Escalation strategy, aimed at the same bureau as the original.
-  const ctx = buildContext("escalation", parent.tradeline as any, consumer, (parent.targetBureau as Bureau) ?? undefined);
+  // Escalation strategy, aimed at the same bureau as the original. The round
+  // increments from the parent so the tone ladder advances (R2 demands method of
+  // verification; R4+ adopt the regulatory-review framing).
+  const ctx = buildContext(
+    "escalation",
+    parent.tradeline as any,
+    consumer,
+    (parent.targetBureau as Bureau) ?? undefined,
+    parent.round + 1
+  );
   let body = renderTemplateLetter(parent.tradeline as any, ctx, consumer);
   let aiRefined = false;
 
@@ -78,7 +86,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         model: process.env.LLM_MODEL || "claude-opus-4-8",
         max_tokens: 6000,
         thinking: { type: "adaptive" },
-        system: buildSystemPrompt(),
+        system: buildSystemPrompt(ctx.round),
         messages: [
           {
             role: "user",

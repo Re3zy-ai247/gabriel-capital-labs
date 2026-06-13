@@ -1,6 +1,7 @@
 // Compliance Mode: scrub guarantees and illegal/over-promising language from any
 // generated letter. Runs on the FINAL letter text before it is saved or shown.
 const PROHIBITED: { pattern: RegExp; replacement: string }[] = [
+  // — Outcome guarantees / over-promising —
   { pattern: /\bthis account must be deleted\b/gi, replacement: "I request deletion of this account if it cannot be verified" },
   { pattern: /\byou are (liable|required by law to delete)\b/gi, replacement: "you may have obligations under the FCRA" },
   { pattern: /\bi guarantee\b/gi, replacement: "I expect" },
@@ -8,6 +9,26 @@ const PROHIBITED: { pattern: RegExp; replacement: string }[] = [
   { pattern: /\bwill be deleted\b/gi, replacement: "should be deleted if it cannot be verified" },
   { pattern: /\b100% removal\b/gi, replacement: "removal of unverifiable items" },
   { pattern: /\bforce (you|the bureau) to delete\b/gi, replacement: "request deletion of unverifiable information" },
+
+  // — Legal-conclusion assertions (only an adjudicator can declare a violation) —
+  { pattern: /\bthis (is|constitutes) fraud\b/gi, replacement: "this raises concerns that warrant investigation" },
+  { pattern: /\bthis is illegal\b/gi, replacement: "this raises concerns that warrant investigation" },
+  { pattern: /\b(you are|this is) in violation of (the )?(FCRA|FDCPA|the law)\b/gi, replacement: "this raises concerns under the $3" },
+  { pattern: /\bviolat(es|ed|ing) the (FCRA|FDCPA|law)\b/gi, replacement: "raises concerns under the $2" },
+
+  // — "Failure to investigate" stated as fact → lawful adequacy challenge —
+  { pattern: /\byou (failed|did not bother) to (investigate|reinvestigate)\b/gi, replacement: "the response does not appear to reflect a reasonable reinvestigation" },
+  { pattern: /\b(the )?(bureau|furnisher) failed to investigate\b/gi, replacement: "the response does not appear to reflect a reasonable reinvestigation" },
+
+  // — Re-aging stated as fact → DOFD-inconsistency concern —
+  { pattern: /\bthis account (is|has been) re-?aged\b/gi, replacement: "the date of first delinquency on this account appears inconsistent and warrants verification" },
+
+  // — Unauthorized-inquiry stated as fact → non-recognition framing —
+  { pattern: /\b(the|this) inquiry was unauthorized\b/gi, replacement: "I do not recognize any application or transaction that would authorize this inquiry" },
+
+  // — Credit-repair deletion myths (§609 / Metro 2) —
+  { pattern: /\b(§\s?609|section 609|fcra 609)\b([^.]*?)\b(requires?|compels?|mandates?|forces?) (deletion|removal)\b/gi, replacement: "§609 entitles me to disclosure of my file; I separately dispute the item's accuracy under §611" },
+  { pattern: /\bmetro\s?2\b([^.]*?)\b(requires?|compels?|mandates?) (deletion|removal)\b/gi, replacement: "the reported data appears internally inconsistent and warrants verification" },
 ];
 
 export interface ComplianceResult {
