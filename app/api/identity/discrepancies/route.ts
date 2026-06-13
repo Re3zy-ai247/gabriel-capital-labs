@@ -11,13 +11,44 @@ export const maxDuration = 60;
 // Information section of their most recent credit report to surface inaccurate
 // names, addresses, and employers they can dispute first. Grounded — never
 // invents data. Available to all signed-in users (the correction LETTER is premium).
+// Each reported item / discrepancy carries the bureau(s) actually reporting it,
+// so the UI can show attribution and a correction letter can target one bureau.
+const BUREAUS = { type: "array", items: { type: "string", enum: ["EQUIFAX", "EXPERIAN", "TRANSUNION"] } } as const;
 const SCHEMA = {
   type: "object",
   additionalProperties: false,
   properties: {
-    reportedNames: { type: "array", items: { type: "string" } },
-    reportedAddresses: { type: "array", items: { type: "string" } },
-    reportedEmployers: { type: "array", items: { type: "string" } },
+    reportedNames: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        properties: { value: { type: "string" }, bureaus: BUREAUS },
+        required: ["value", "bureaus"],
+      },
+    },
+    reportedAddresses: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          value: { type: "string" },
+          bureaus: BUREAUS,
+          status: { type: "string", description: "Current, Former, or empty string if not shown" },
+        },
+        required: ["value", "bureaus", "status"],
+      },
+    },
+    reportedEmployers: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        properties: { value: { type: "string" }, bureaus: BUREAUS },
+        required: ["value", "bureaus"],
+      },
+    },
     discrepancies: {
       type: "array",
       items: {
@@ -29,8 +60,9 @@ const SCHEMA = {
           yourValue: { type: "string" },
           severity: { type: "string", enum: ["high", "medium", "low"] },
           explanation: { type: "string" },
+          bureaus: BUREAUS,
         },
-        required: ["category", "reportValue", "yourValue", "severity", "explanation"],
+        required: ["category", "reportValue", "yourValue", "severity", "explanation", "bureaus"],
       },
     },
   },
@@ -100,6 +132,9 @@ export async function POST() {
     "3. Severity: 'high' = clearly wrong/unrecognized (e.g., a misspelled name, an address the consumer never lived at); 'medium' = plausibly outdated (an old address/employer); 'low' = minor formatting.",
     "4. Be precise and conservative — do not invent discrepancies. An old address the consumer genuinely had is medium severity, not high.",
     "5. In each explanation, note the FCRA basis briefly (inaccurate personal information undermines maximum-possible-accuracy under §1681e(b) and is disputable under §611).",
+    "6. BUREAU ATTRIBUTION IS CRITICAL. This is a THREE-BUREAU report with separate columns/sections for Equifax, Experian, and TransUnion. For every reported name, address, and employer, populate its `bureaus` array with ONLY the bureau column(s) that actually show that value. Never attribute a value to a bureau whose cell shows 'N/A', 'No', or is blank.",
+    "7. For each discrepancy, set `bureaus` to the bureau(s) reporting that INACCURATE value — this decides which bureau the dispute goes to. If two bureaus report the same wrong value, list both. If different bureaus report different wrong values, emit SEPARATE discrepancies so each is tied to the bureau actually reporting it. Do NOT lump another bureau's data under a bureau that does not report it.",
+    "8. For addresses, set `status` to 'Current' or 'Former' exactly as that bureau's Status row shows (empty string if not shown). An address marked 'Current' by one bureau but conflicting with the verified ID is high severity for THAT bureau only.",
   ]
     .filter(Boolean)
     .join("\n");

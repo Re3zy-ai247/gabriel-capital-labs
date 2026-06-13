@@ -12,11 +12,17 @@ interface Discrepancy {
   yourValue: string;
   severity: "high" | "medium" | "low";
   explanation: string;
+  bureaus?: string[];
+}
+interface ReportedItem {
+  value: string;
+  bureaus?: string[];
+  status?: string;
 }
 interface Result {
-  reportedNames: string[];
-  reportedAddresses: string[];
-  reportedEmployers: string[];
+  reportedNames: ReportedItem[];
+  reportedAddresses: ReportedItem[];
+  reportedEmployers: ReportedItem[];
   discrepancies: Discrepancy[];
   usedId?: boolean;
 }
@@ -26,6 +32,26 @@ const SEV_COLOR: Record<string, string> = {
   medium: "border-gold-500/40 bg-gold-500/10 text-gold-300",
   low: "border-slate-600 bg-slate-500/10 text-slate-300",
 };
+
+const BUREAU_SHORT: Record<string, string> = {
+  EQUIFAX: "Equifax",
+  EXPERIAN: "Experian",
+  TRANSUNION: "TransUnion",
+};
+
+// Small bureau chips shown on findings and reported items.
+function BureauTags({ bureaus }: { bureaus?: string[] }) {
+  if (!bureaus?.length) return null;
+  return (
+    <span className="inline-flex flex-wrap gap-1">
+      {bureaus.map((b) => (
+        <span key={b} className="pill bg-ink-800 text-[10px] uppercase tracking-wide text-slate-300">
+          {BUREAU_SHORT[b] || b}
+        </span>
+      ))}
+    </span>
+  );
+}
 
 export default function IdentityPage() {
   const [result, setResult] = useState<Result | null>(null);
@@ -68,6 +94,12 @@ export default function IdentityPage() {
       setLetterMsg("Network error.");
     } finally { setLetterBusy(false); }
   }
+
+  // How many detected items the currently selected bureau actually reports —
+  // mirrors the server-side filter so the count matches what the letter contains.
+  const forBureauCount = result
+    ? result.discrepancies.filter((d) => !d.bureaus?.length || d.bureaus.includes(bureau)).length
+    : 0;
 
   return (
     <AppShell title="/ Identity Check">
@@ -133,9 +165,14 @@ export default function IdentityPage() {
               </div>
               {result.discrepancies.map((d, i) => (
                 <div key={i} className={`card border p-4 ${SEV_COLOR[d.severity] || ""}`}>
-                  <div className="mb-1 flex items-center gap-2">
+                  <div className="mb-1 flex flex-wrap items-center gap-2">
                     <span className="pill bg-ink-800 text-[10px] uppercase">{d.category}</span>
                     <span className="text-[10px] uppercase tracking-wide opacity-80">{d.severity} severity</span>
+                    {d.bureaus?.length ? (
+                      <span className="ml-auto flex items-center gap-1 text-[10px] text-slate-400">
+                        reported by <BureauTags bureaus={d.bureaus} />
+                      </span>
+                    ) : null}
                   </div>
                   <div className="text-sm">
                     <span className="text-slate-400">Report shows:</span> <span className="font-medium">{d.reportValue || "—"}</span>
@@ -148,19 +185,27 @@ export default function IdentityPage() {
 
               {/* Generate correction letter (premium) */}
               <div className="card mt-4 p-5">
-                <div className="mb-3 flex items-center gap-2 text-sm font-semibold">
+                <div className="mb-1 flex items-center gap-2 text-sm font-semibold">
                   <Sparkles className="h-4 w-4 text-emerald-400" /> Generate a Personal Information correction letter
                 </div>
+                <p className="mb-3 text-xs text-slate-400">
+                  Pick a bureau — the letter will include <span className="font-medium text-slate-300">only the items that bureau reports</span>, never another bureau&apos;s data.
+                </p>
                 <div className="flex flex-wrap items-center gap-3">
                   <select value={bureau} onChange={(e) => setBureau(e.target.value)} className="input max-w-[200px]">
                     <option value="EQUIFAX">Equifax</option>
                     <option value="EXPERIAN">Experian</option>
                     <option value="TRANSUNION">TransUnion</option>
                   </select>
-                  <button onClick={makeLetter} disabled={letterBusy} className="btn-primary">
+                  <button onClick={makeLetter} disabled={letterBusy || forBureauCount === 0} className="btn-primary">
                     {letterBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
                     {letterBusy ? "Drafting…" : "Draft correction letter"}
                   </button>
+                  <span className={`text-xs ${forBureauCount > 0 ? "text-slate-400" : "text-slate-500"}`}>
+                    {forBureauCount > 0
+                      ? `${forBureauCount} item${forBureauCount === 1 ? "" : "s"} reported by ${BUREAU_SHORT[bureau]}`
+                      : `No items reported by ${BUREAU_SHORT[bureau]}`}
+                  </span>
                   {letterMsg && (
                     <span className="text-xs text-rose-400">
                       {letterMsg}{" "}
@@ -184,21 +229,39 @@ export default function IdentityPage() {
             </div>
           )}
 
-          {/* What the bureau has on file */}
+          {/* What the bureau has on file — each value tagged with the bureau(s) reporting it */}
           <div className="card mt-5 p-5 text-sm">
             <div className="mb-3 font-semibold">What the report lists on your file</div>
             <div className="grid gap-4 md:grid-cols-3">
               <div>
                 <div className="mb-1 text-xs uppercase text-slate-500">Names</div>
-                {(result.reportedNames || []).map((n, i) => <div key={i} className="text-slate-300">{n}</div>)}
+                {(result.reportedNames || []).map((n, i) => (
+                  <div key={i} className="mb-1 flex flex-wrap items-center gap-2 text-slate-300">
+                    <span>{n.value}</span>
+                    <BureauTags bureaus={n.bureaus} />
+                  </div>
+                ))}
               </div>
               <div>
                 <div className="mb-1 text-xs uppercase text-slate-500">Addresses</div>
-                {(result.reportedAddresses || []).map((n, i) => <div key={i} className="text-slate-300">{n}</div>)}
+                {(result.reportedAddresses || []).map((n, i) => (
+                  <div key={i} className="mb-1 flex flex-wrap items-center gap-2 text-slate-300">
+                    <span>
+                      {n.value}
+                      {n.status ? <span className="text-slate-500"> ({n.status})</span> : null}
+                    </span>
+                    <BureauTags bureaus={n.bureaus} />
+                  </div>
+                ))}
               </div>
               <div>
                 <div className="mb-1 text-xs uppercase text-slate-500">Employers</div>
-                {(result.reportedEmployers || []).map((n, i) => <div key={i} className="text-slate-300">{n}</div>)}
+                {(result.reportedEmployers || []).map((n, i) => (
+                  <div key={i} className="mb-1 flex flex-wrap items-center gap-2 text-slate-300">
+                    <span>{n.value}</span>
+                    <BureauTags bureaus={n.bureaus} />
+                  </div>
+                ))}
               </div>
             </div>
           </div>

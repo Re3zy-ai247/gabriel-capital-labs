@@ -16,6 +16,7 @@ interface Discrepancy {
   yourValue: string;
   severity: string;
   explanation: string;
+  bureaus?: string[];
 }
 
 // Premium: drafts a Personal Information correction letter to a bureau from the
@@ -43,6 +44,21 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "No discrepancies to dispute." }, { status: 400 });
   }
 
+  // Only dispute items the TARGET bureau actually reports — a letter to Equifax
+  // must never contain Experian's or TransUnion's data. Items without bureau
+  // attribution (legacy/unknown) are kept so nothing is silently dropped.
+  const relevant = discrepancies.filter(
+    (d) => !Array.isArray(d.bureaus) || d.bureaus.length === 0 || d.bureaus.includes(bureau)
+  );
+  if (!relevant.length) {
+    return NextResponse.json(
+      {
+        error: `None of the detected items are reported by ${BUREAU_LABEL[bureau]}. Select the bureau that is actually reporting the inaccurate information.`,
+      },
+      { status: 400 }
+    );
+  }
+
   const consumerComplete = Boolean(user.fullName && user.addressLine1 && user.city && user.state && user.zip);
   const addr = BUREAU_ADDRESS[bureau];
 
@@ -53,6 +69,7 @@ export async function POST(req: Request) {
     "2. Ground in the listed discrepancies; do not invent new ones. Cite FCRA §611 (15 U.S.C. §1681i) reinvestigation and §607(b) (15 U.S.C. §1681e(b)) maximum-possible-accuracy.",
     "3. Professional, firm, non-threatening. No all-caps, no threats.",
     "4. Output ONLY the finished letter (sender block, date, recipient block, RE line, body listing each item, signature). No commentary.",
+    "5. EVERY item listed below is reported by the SINGLE target bureau named in the prompt. Dispute only these items, address only that bureau, and do NOT mention, compare to, or include any other credit bureau or another bureau's data anywhere in the letter.",
   ].join("\n");
 
   const today = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
@@ -60,10 +77,10 @@ export async function POST(req: Request) {
     `Consumer: ${user.fullName || "[YOUR FULL NAME]"}`,
     `Consumer address: ${user.addressLine1 || "[YOUR ADDRESS]"}, ${user.city || "[CITY]"}, ${user.state || "[ST]"} ${user.zip || "[ZIP]"}`,
     `Date: ${today}`,
-    `Bureau: ${BUREAU_LABEL[bureau]} — ${addr.name}, ${addr.lines.join(", ")}`,
+    `Bureau (the ONLY bureau this letter addresses): ${BUREAU_LABEL[bureau]} — ${addr.name}, ${addr.lines.join(", ")}`,
     "",
-    "Inaccurate personal information to dispute (report value vs. correct value):",
-    ...discrepancies.map((d, i) => `${i + 1}. [${d.category}] report shows "${d.reportValue}"; correct is "${d.yourValue}" — ${d.explanation}`),
+    `Inaccurate personal information reported by ${BUREAU_LABEL[bureau]} to dispute (report value vs. correct value):`,
+    ...relevant.map((d, i) => `${i + 1}. [${d.category}] report shows "${d.reportValue}"; correct is "${d.yourValue}" — ${d.explanation}`),
     "",
     "Draft the personal-information correction letter.",
   ].join("\n");
