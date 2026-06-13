@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { currentUserOrDemo } from "@/lib/session";
+import { decryptDocument, docCryptoReady } from "@/lib/docCrypto";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -61,23 +62,68 @@ export async function POST() {
     `Address: ${user.addressLine1}${user.addressLine2 ? ", " + user.addressLine2 : ""}, ${user.city}, ${user.state} ${user.zip}`,
   ].join("\n");
 
+  // Pull in the consumer's uploaded government ID (front/back images) so the AI
+  // can read the ID directly and compare it against the report — not just the
+  // typed Settings identity. Images are decrypted in-memory and never persisted.
+  const idImages: { media_type: string; data: string }[] = [];
+  if (docCryptoReady()) {
+    const idDocs = await prisma.document.findMany({
+      where: { userId: user.id, type: { in: ["GOV_ID_FRONT", "GOV_ID_BACK"] } },
+    });
+    for (const d of idDocs) {
+      if (!["image/jpeg", "image/png", "image/webp"].includes(d.mimeType)) continue;
+      try {
+        const buf = decryptDocument({
+          ciphertext: Buffer.from(d.ciphertext),
+          iv: Buffer.from(d.iv),
+          authTag: Buffer.from(d.authTag),
+        });
+        idImages.push({ media_type: d.mimeType, data: buf.toString("base64") });
+      } catch {
+        /* skip an unreadable image */
+      }
+    }
+  }
+  const usedId = idImages.length > 0;
+
   const system = [
     "You compare a consumer's VERIFIED identity against the Personal Information section of their credit report to surface inaccuracies they may dispute.",
+    usedId
+      ? "You are given one or more GOVERNMENT ID images. Read the legal name, address, and date of birth printed on the ID and treat the ID as the most authoritative source of the consumer's verified identity (corroborated by the typed identity below)."
+      : "",
     "RULES:",
     "1. Extract reported names/AKAs, addresses, and employers strictly from the report text. Never invent anything not present.",
     "2. Flag a discrepancy only when the report shows something that conflicts with or is absent from the verified identity: misspelled or variant names, addresses other than the verified current address, unknown/outdated employers.",
+    usedId
+      ? "2a. When the report's name or address conflicts with what is printed on the government ID, treat it as HIGH severity and note in the explanation that it differs from the consumer's government-issued identification."
+      : "",
     "3. Severity: 'high' = clearly wrong/unrecognized (e.g., a misspelled name, an address the consumer never lived at); 'medium' = plausibly outdated (an old address/employer); 'low' = minor formatting.",
     "4. Be precise and conservative — do not invent discrepancies. An old address the consumer genuinely had is medium severity, not high.",
     "5. In each explanation, note the FCRA basis briefly (inaccurate personal information undermines maximum-possible-accuracy under §1681e(b) and is disputable under §611).",
-  ].join("\n");
+  ]
+    .filter(Boolean)
+    .join("\n");
 
   const userPrompt = [
-    "VERIFIED IDENTITY:",
+    "VERIFIED IDENTITY (typed by the consumer):",
     identity,
     "",
     "CREDIT REPORT TEXT (find the Personal Information / consumer identification section):",
     report.rawText.slice(0, 120_000),
   ].join("\n");
+
+  // Multimodal content: ID image(s) first (when present), then the text prompt.
+  const content: any[] = [];
+  if (usedId) {
+    content.push({
+      type: "text",
+      text: "GOVERNMENT ID IMAGE(S) — read the name, address, and date of birth shown and use them as the authoritative verified identity:",
+    });
+    for (const img of idImages) {
+      content.push({ type: "image", source: { type: "base64", media_type: img.media_type, data: img.data } });
+    }
+  }
+  content.push({ type: "text", text: userPrompt });
 
   try {
     const { default: Anthropic } = await import("@anthropic-ai/sdk");
@@ -86,7 +132,7 @@ export async function POST() {
       model: process.env.LLM_MODEL || "claude-opus-4-8",
       max_tokens: 4000,
       system,
-      messages: [{ role: "user", content: userPrompt }],
+      messages: [{ role: "user", content }],
       output_config: { format: { type: "json_schema", schema: SCHEMA } },
     } as any);
     const textBlock = (msg.content as any[]).find((c) => c.type === "text");
@@ -94,7 +140,7 @@ export async function POST() {
       return NextResponse.json({ error: "Could not analyze. Try again." }, { status: 500 });
     }
     const parsed = JSON.parse(textBlock.text);
-    return NextResponse.json({ ok: true, ...parsed });
+    return NextResponse.json({ ok: true, usedId, ...parsed });
   } catch (e) {
     console.error("discrepancy detection error", e);
     return NextResponse.json({ error: "Identity analysis failed. Please try again." }, { status: 500 });

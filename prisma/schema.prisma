@@ -77,6 +77,40 @@ model User {
   tradelines    Tradeline[]
   letters       Letter[]
   scoreEntries  ScoreEntry[]
+  documents     Document[]
+}
+
+enum DocType {
+  GOV_ID_FRONT
+  GOV_ID_BACK
+  SSN_CARD
+  PROOF_OF_ADDRESS
+  UTILITY_BILL
+}
+
+// Identity/verification documents the consumer uploads (government ID, proof of
+// address, etc.). File bytes are encrypted at rest with AES-256-GCM (lib/docCrypto.ts)
+// and are NEVER served from a public URL — only streamed back through an
+// authenticated route that verifies ownership. includeInLetters controls whether
+// the document is referenced/attached in generated dispute packets. SSN cards
+// default to excluded; only enable when a bureau specifically requires it.
+model Document {
+  id               String   @id @default(cuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type             DocType
+  filename         String
+  mimeType         String
+  // AES-256-GCM ciphertext plus per-record IV and authentication tag (raw bytes).
+  ciphertext       Bytes
+  iv               Bytes
+  authTag          Bytes
+  byteSize         Int      // size of the original plaintext, for display
+  includeInLetters Boolean  @default(false)
+  createdAt        DateTime @default(now())
+
+  @@unique([userId, type])
+  @@index([userId])
 }
 
 // User-logged credit scores over time (manual entry — we don't pull live scores).

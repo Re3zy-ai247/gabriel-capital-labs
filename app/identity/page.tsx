@@ -2,6 +2,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
+import { DocumentsManager } from "@/components/DocumentsManager";
 import { Disclaimer, EduBanner } from "@/components/Disclaimer";
 import { ScanSearch, Loader2, AlertTriangle, Printer, Sparkles, ShieldAlert } from "lucide-react";
 
@@ -17,6 +18,7 @@ interface Result {
   reportedAddresses: string[];
   reportedEmployers: string[];
   discrepancies: Discrepancy[];
+  usedId?: boolean;
 }
 
 const SEV_COLOR: Record<string, string> = {
@@ -77,6 +79,10 @@ export default function IdentityPage() {
         items to dispute first. This compares that section against your verified identity.
       </p>
 
+      <div className="mb-5">
+        <DocumentsManager />
+      </div>
+
       <div className="card mb-5 flex items-center justify-between gap-4 p-5">
         <div className="flex items-center gap-2 text-sm">
           <ScanSearch className="h-5 w-5 text-brand-400" />
@@ -111,6 +117,11 @@ export default function IdentityPage() {
 
       {result && (
         <>
+          {result.usedId && (
+            <div className="mb-3 inline-flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs text-emerald-300">
+              <ScanSearch className="h-3.5 w-3.5" /> Compared against your uploaded government ID.
+            </div>
+          )}
           {result.discrepancies.length === 0 ? (
             <div className="card p-6 text-sm text-slate-300">
               No clear personal-information discrepancies found against your verified identity. ✅
