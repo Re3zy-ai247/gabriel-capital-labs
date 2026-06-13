@@ -160,7 +160,7 @@ function BillingInner() {
                     <button
                       onClick={startCheckout}
                       disabled={busy}
-                      className="bg-emerald-500 hover:bg-emerald-600 disabled:opacity-60 text-white px-6 py-2 rounded-lg font-semibold transition"
+                      className="bg-emerald-500 hover:bg-emerald-600 disabled:opacity-60 text-white keep-white px-6 py-2 rounded-lg font-semibold transition"
                     >
                       {busy ? 'Redirecting…' : 'Upgrade to Premium — $99/mo'}
                     </button>

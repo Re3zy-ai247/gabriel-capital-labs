@@ -1,4 +1,5 @@
 import { Sidebar, MobileNav } from "./Sidebar";
+import { ThemeToggle } from "./ThemeToggle";
 import Link from "next/link";
 
 export function AppShell({ title, children }: { title: string; children: React.ReactNode }) {
@@ -9,6 +10,7 @@ export function AppShell({ title, children }: { title: string; children: React.R
         <header className="sticky top-0 z-20 flex items-center justify-between border-b border-ink-700/70 bg-ink-900/70 px-5 py-3 backdrop-blur">
           <h1 className="text-sm font-medium text-slate-300">{title}</h1>
           <div className="flex items-center gap-3 text-xs text-slate-400">
+            <ThemeToggle />
             <Link href="/upload" className="btn-primary !py-1.5">+ New Dispute</Link>
             <span className="hidden sm:inline">Demo User</span>
           </div>

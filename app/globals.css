@@ -2,14 +2,80 @@
 @tailwind components;
 @tailwind utilities;
 
-:root { color-scheme: dark; }
+/* ============================================================
+   THEME TOKENS — values are space-separated RGB triplets so they
+   compose with Tailwind alpha modifiers (e.g. bg-ink-800/60).
+   :root = dark (default, identical to the original palette).
+   html.light = light theme.
+   ============================================================ */
+:root {
+  color-scheme: dark;
+  /* surfaces */
+  --ink-950: 10 12 16;
+  --ink-900: 14 17 23;
+  --ink-800: 21 26 34;
+  --ink-700: 29 36 47;
+  --ink-600: 42 51 64;
+  /* slate (Tailwind defaults — unchanged in dark) */
+  --slate-50: 248 250 252;
+  --slate-200: 226 232 240;
+  --slate-300: 203 213 225;
+  --slate-400: 148 163 184;
+  --slate-500: 100 116 139;
+  --slate-600: 71 85 105;
+  --slate-700: 51 65 85;
+  --slate-800: 30 41 59;
+  --slate-900: 15 23 42;
+  --slate-950: 2 6 23;
+  /* page background + foreground text */
+  --fg: 231 237 243;
+  --page-1: rgba(43, 208, 127, 0.08);
+  --page-2: rgba(242, 193, 78, 0.05);
+  --page-base: #0a0c10;
+}
+
+html.light {
+  color-scheme: light;
+  /* surfaces become light (page = soft gray, cards/header = white) */
+  --ink-950: 243 244 246;
+  --ink-900: 255 255 255;
+  --ink-800: 255 255 255;
+  --ink-700: 226 232 240;
+  --ink-600: 203 213 225;
+  /* slate: bright shades become dark text; dark shades become light surfaces */
+  --slate-50: 248 250 252;
+  --slate-200: 30 41 59;   /* bright text -> dark */
+  --slate-300: 51 65 85;   /* secondary text -> dark */
+  --slate-400: 100 116 139;/* muted text, darkened for contrast on white */
+  --slate-500: 100 116 139;/* muted text / mid surface — fine either way */
+  --slate-600: 71 85 105;  /* muted text / surface */
+  --slate-700: 226 232 240;/* surface */
+  --slate-800: 241 245 249;/* surface */
+  --slate-900: 248 250 252;/* surface */
+  --slate-950: 243 244 246;/* page surface */
+  --fg: 15 23 42;
+  --page-1: rgba(43, 208, 127, 0.10);
+  --page-2: rgba(242, 193, 78, 0.10);
+  --page-base: #f3f4f6;
+}
 
 body {
   background:
-    radial-gradient(1200px 600px at 80% -10%, rgba(43,208,127,0.08), transparent 60%),
-    radial-gradient(900px 500px at -10% 10%, rgba(242,193,78,0.05), transparent 55%),
-    #0a0c10;
-  color: #e7edf3;
+    radial-gradient(1200px 600px at 80% -10%, var(--page-1), transparent 60%),
+    radial-gradient(900px 500px at -10% 10%, var(--page-2), transparent 55%),
+    var(--page-base);
+  color: rgb(var(--fg));
+  min-height: 100vh;
+}
+
+/* In light mode, content text-white must flip to the dark foreground so it stays
+   readable; buttons that need white-on-color opt out with .keep-white. */
+html.light .text-white:not(.keep-white) {
+  color: rgb(var(--fg));
+}
+.keep-white,
+html.light .keep-white {
+  color: #ffffff;
 }
 
 @layer components {
@@ -33,8 +99,16 @@ body {
   }
   .btn-primary { @apply btn bg-brand-500 text-ink-950 hover:bg-brand-400; }
   .btn-ghost { @apply btn border border-ink-600 text-slate-200 hover:bg-ink-700; }
+  .btn-danger { @apply btn bg-rose-600 text-white hover:bg-rose-700; }
   .input {
     @apply w-full rounded-lg border border-ink-600 bg-ink-900/80 px-3 py-2 text-sm text-white outline-none focus:border-brand-500;
   }
   .label { @apply mb-1 block text-xs font-medium uppercase tracking-wide text-slate-400; }
 }
+
+/* btn-primary keeps white text in light mode (sits on the green brand color). */
+html.light .btn-primary { color: #ffffff; }
+/* Inputs sit on white surfaces in light mode — keep their text dark. */
+html.light .input { color: rgb(var(--fg)); }
+/* Card shadow is too heavy for light mode. */
+html.light .card { box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06), 0 4px 16px rgba(15, 23, 42, 0.08); }

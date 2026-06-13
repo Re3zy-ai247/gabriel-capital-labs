@@ -87,7 +87,7 @@ export default function HelpPage() {
           <p className="text-slate-400 mb-6 max-w-2xl mx-auto">
             Our support team is here to help. Premium members get priority email support within 24 hours.
           </p>
-          <button className="bg-emerald-500 hover:bg-emerald-600 text-white px-8 py-3 rounded-lg font-semibold transition">
+          <button className="bg-emerald-500 hover:bg-emerald-600 text-white keep-white px-8 py-3 rounded-lg font-semibold transition">
             Contact Support
           </button>
         </div>

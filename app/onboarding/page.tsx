@@ -120,7 +120,7 @@ export default function OnboardingPage() {
           </p>
           <Link
             href="/pricing"
-            className="inline-block bg-emerald-500 hover:bg-emerald-600 text-white px-8 py-3 rounded-lg font-semibold transition"
+            className="inline-block bg-emerald-500 hover:bg-emerald-600 text-white keep-white px-8 py-3 rounded-lg font-semibold transition"
           >
             View Pricing
           </Link>

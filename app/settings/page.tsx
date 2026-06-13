@@ -151,7 +151,7 @@ export default function SettingsPage() {
               <button
                 type="submit"
                 disabled={busy}
-                className="inline-flex items-center gap-2 rounded-lg bg-emerald-500 px-6 py-2 font-semibold text-white transition hover:bg-emerald-600 disabled:opacity-50"
+                className="inline-flex items-center gap-2 rounded-lg bg-emerald-500 px-6 py-2 font-semibold text-white keep-white transition hover:bg-emerald-600 disabled:opacity-50"
               >
                 {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                 Save Profile

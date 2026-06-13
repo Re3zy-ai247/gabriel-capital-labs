@@ -74,7 +74,7 @@ export default async function Home() {
           </Link>
           <Link
             href="/register"
-            className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg font-semibold transition"
+            className="bg-emerald-500 hover:bg-emerald-600 text-white keep-white px-4 py-2 rounded-lg font-semibold transition"
           >
             Get Started Free
           </Link>
@@ -99,7 +99,7 @@ export default async function Home() {
         <div className="flex items-center justify-center gap-4">
           <Link
             href="/register"
-            className="bg-emerald-500 hover:bg-emerald-600 text-white px-8 py-3 rounded-lg font-semibold text-lg transition"
+            className="bg-emerald-500 hover:bg-emerald-600 text-white keep-white px-8 py-3 rounded-lg font-semibold text-lg transition"
           >
             Start Free — No Card Required
           </Link>
@@ -170,7 +170,7 @@ export default async function Home() {
           </p>
           <Link
             href="/register"
-            className="inline-block bg-emerald-500 hover:bg-emerald-600 text-white px-8 py-3 rounded-lg font-semibold text-lg transition"
+            className="inline-block bg-emerald-500 hover:bg-emerald-600 text-white keep-white px-8 py-3 rounded-lg font-semibold text-lg transition"
           >
             Create Your Free Account
           </Link>

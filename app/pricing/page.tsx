@@ -127,7 +127,7 @@ export default function PricingPage() {
             <button
               onClick={upgrade}
               disabled={busy}
-              className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:opacity-60 text-white py-3 rounded-lg font-semibold transition"
+              className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:opacity-60 text-white keep-white py-3 rounded-lg font-semibold transition"
             >
               {busy ? 'Redirecting to checkout…' : session ? 'Upgrade to Premium' : 'Get Premium'}
             </button>

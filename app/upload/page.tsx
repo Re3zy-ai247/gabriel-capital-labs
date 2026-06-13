@@ -263,7 +263,7 @@ export default function UploadPage() {
                 {confirmDelete === r.id ? (
                   <div className="flex items-center gap-2 text-xs">
                     <span className="text-slate-400">Delete this report &amp; its accounts?</span>
-                    <button onClick={() => deleteReport(r.id)} className="rounded-md bg-rose-600 px-2 py-1 font-medium text-white hover:bg-rose-700">
+                    <button onClick={() => deleteReport(r.id)} className="rounded-md bg-rose-600 px-2 py-1 font-medium text-white keep-white hover:bg-rose-700">
                       Delete
                     </button>
                     <button onClick={() => setConfirmDelete(null)} className="rounded-md border border-ink-600 px-2 py-1 text-slate-300">
