@@ -3,7 +3,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
-  LayoutDashboard, Upload, ListTree, Mails, Target, CalendarRange, Gauge, Settings, CreditCard, ScanSearch, LineChart,
+  LayoutDashboard, Upload, ListTree, Mails, Target, CalendarRange, Gauge, Settings, CreditCard, ScanSearch, LineChart, Building2,
 } from "lucide-react";
 
 const NAV = [
@@ -18,6 +18,7 @@ const NAV = [
 ];
 
 const ACCOUNT_NAV = [
+  { href: "/agency", label: "Agency", icon: Building2 },
   { href: "/settings", label: "Settings", icon: Settings },
   { href: "/billing", label: "Billing", icon: CreditCard },
 ];

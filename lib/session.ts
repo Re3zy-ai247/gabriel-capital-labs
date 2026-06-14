@@ -1,12 +1,39 @@
+import { cookies } from "next/headers";
 import { getServerSession } from "next-auth";
 import { authOptions } from "./auth";
 import { prisma } from "./prisma";
 
-export async function currentUser() {
+// Cookie holding the client an agency currently has "open". Read by currentUser()
+// so every existing page/route operates inside that client's workspace.
+export const WORKSPACE_COOKIE = "gcl_client";
+
+// The actual signed-in account — NEVER the workspace client. Use this for
+// agency management and billing, where the agency (the payer) is the subject.
+export async function currentAccount() {
   const session = await getServerSession(authOptions);
   const id = (session?.user as { id?: string } | undefined)?.id;
   if (!id) return null;
   return prisma.user.findUnique({ where: { id } });
+}
+
+// The effective user for data operations. For an ordinary user this is just
+// themselves. For an AGENCY that has opened a client, it resolves to that client
+// — but only after verifying the client is actually managed by this agency, so
+// an agency can never act as someone else's client.
+export async function currentUser() {
+  const account = await currentAccount();
+  if (!account) return null;
+
+  if (account.isAgency) {
+    const clientId = cookies().get(WORKSPACE_COOKIE)?.value;
+    if (clientId) {
+      const client = await prisma.user.findFirst({
+        where: { id: clientId, managedByAgencyId: account.id },
+      });
+      if (client) return client;
+    }
+  }
+  return account;
 }
 
 // Dev convenience: fall back to the seeded demo user so the app is explorable
@@ -16,4 +43,18 @@ export async function currentUserOrDemo() {
   if (u) return u;
   if (process.env.NODE_ENV === "production") return null;
   return prisma.user.findUnique({ where: { email: "demo@gabrielcapitallabs.com" } });
+}
+
+// Convenience for UI: who is signed in, and which client (if any) they're acting
+// as right now. Used by the app shell to show the "acting as" banner.
+export async function currentWorkspace() {
+  const account = await currentAccount();
+  if (!account) return { account: null, client: null };
+  if (!account.isAgency) return { account, client: null };
+  const clientId = cookies().get(WORKSPACE_COOKIE)?.value;
+  if (!clientId) return { account, client: null };
+  const client = await prisma.user.findFirst({
+    where: { id: clientId, managedByAgencyId: account.id },
+  });
+  return { account, client: client ?? null };
 }

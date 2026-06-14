@@ -1,5 +1,6 @@
 import { Sidebar, MobileNav } from "./Sidebar";
 import { ThemeToggle } from "./ThemeToggle";
+import { AgencyBar } from "./AgencyBar";
 import Link from "next/link";
 
 export function AppShell({ title, children }: { title: string; children: React.ReactNode }) {
@@ -15,6 +16,7 @@ export function AppShell({ title, children }: { title: string; children: React.R
             <span className="hidden sm:inline">Demo User</span>
           </div>
         </header>
+        <AgencyBar />
         <main className="flex-1 px-5 py-6 pb-24 md:pb-6">{children}</main>
         <MobileNav />
       </div>

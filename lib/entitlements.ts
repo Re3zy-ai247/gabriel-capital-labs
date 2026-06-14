@@ -19,7 +19,10 @@ const ACTIVE_STATES = new Set(["active", "trialing", "past_due"]);
 export function isPremium(user: {
   plan?: string | null;
   subscriptionStatus?: string | null;
+  isAgency?: boolean | null;
 }): boolean {
+  // An agency account always has full features (its $399 plan covers its clients).
+  if (user.isAgency) return true;
   if (user.plan === "premium") return true;
   return Boolean(user.subscriptionStatus && ACTIVE_STATES.has(user.subscriptionStatus));
 }
@@ -35,8 +38,18 @@ export async function getEntitlement(user: {
   id: string;
   plan?: string | null;
   subscriptionStatus?: string | null;
+  isAgency?: boolean | null;
+  managedByAgencyId?: string | null;
 }): Promise<Entitlement> {
-  const premium = isPremium(user);
+  let premium = isPremium(user);
+  // A managed client inherits its agency's entitlement (the agency is the payer).
+  if (!premium && user.managedByAgencyId) {
+    const agency = await prisma.user.findUnique({
+      where: { id: user.managedByAgencyId },
+      select: { plan: true, subscriptionStatus: true, isAgency: true },
+    });
+    if (agency && isPremium(agency)) premium = true;
+  }
   const lettersUsedThisMonth = await prisma.letter.count({
     where: { userId: user.id, createdAt: { gte: startOfMonthUTC() } },
   });

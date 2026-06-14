@@ -78,6 +78,16 @@ model User {
   letters       Letter[]
   scoreEntries  ScoreEntry[]
   documents     Document[]
+
+  // ---- Agency tier ($399/mo): an agency manages many "clients" on their behalf.
+  // A managed client is itself a User row with managedByAgencyId set and no
+  // password (cannot log in directly); the agency works inside the client's
+  // workspace. isAgency marks an account as an agency; agencyName is its brand.
+  isAgency          Boolean @default(false)
+  agencyName        String?
+  managedByAgencyId String?
+  managedByAgency   User?   @relation("AgencyClients", fields: [managedByAgencyId], references: [id], onDelete: Cascade)
+  managedClients    User[]  @relation("AgencyClients")
 }
 
 enum DocType {
