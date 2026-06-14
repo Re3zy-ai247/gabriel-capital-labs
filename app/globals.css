@@ -125,8 +125,45 @@ html.light .card { box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06), 0 4px 16px rgba
 .btn { transition: transform 0.12s ease, background-color 0.15s ease, opacity 0.15s ease; }
 .btn:active { transform: translateY(1px) scale(0.99); }
 
+/* ---- Marketing / landing-page motion ---- */
+/* Aurora background blobs that drift slowly behind the hero. */
+@keyframes drift {
+  0%   { transform: translate3d(0,0,0) scale(1); }
+  33%  { transform: translate3d(4%, -3%, 0) scale(1.08); }
+  66%  { transform: translate3d(-3%, 4%, 0) scale(0.96); }
+  100% { transform: translate3d(0,0,0) scale(1); }
+}
+.aurora { position: absolute; border-radius: 9999px; filter: blur(70px); opacity: 0.5; animation: drift 18s ease-in-out infinite; will-change: transform; }
+
+/* Scroll-reveal: hidden until .is-visible is added by the Reveal observer. */
+.reveal { opacity: 0; transform: translateY(20px); transition: opacity 0.6s cubic-bezier(0.16,1,0.3,1), transform 0.6s cubic-bezier(0.16,1,0.3,1); }
+.reveal.is-visible { opacity: 1; transform: none; }
+
+/* Gentle float for the hero visual card. */
+@keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+.animate-float { animation: float 6s ease-in-out infinite; }
+
+/* Self-drawing SVG line (set stroke-dasharray/offset to the path length inline). */
+@keyframes draw { to { stroke-dashoffset: 0; } }
+.animate-draw { animation: draw 1.8s cubic-bezier(0.16,1,0.3,1) 0.3s forwards; }
+
+/* Sheen sweep across primary CTAs on hover. */
+.shine { position: relative; overflow: hidden; }
+.shine::after {
+  content: ""; position: absolute; top: 0; left: -75%; width: 50%; height: 100%;
+  background: linear-gradient(120deg, transparent, rgba(255,255,255,0.35), transparent);
+  transform: skewX(-20deg); transition: left 0.6s ease;
+}
+.shine:hover::after { left: 125%; }
+
+/* Staggered entrance — apply with inline animation-delay. */
+.animate-rise-stagger { animation: rise 0.5s cubic-bezier(0.16,1,0.3,1) both; }
+
 /* Respect users who prefer less motion. */
 @media (prefers-reduced-motion: reduce) {
-  .animate-rise, .animate-fadein { animation: none; }
+  .animate-rise, .animate-fadein, .animate-float, .animate-draw, .animate-rise-stagger, .aurora { animation: none; }
   .card:hover, .btn:active { transform: none; }
+  .reveal { opacity: 1; transform: none; transition: none; }
+  .animate-draw { stroke-dashoffset: 0 !important; }
+  .shine::after { display: none; }
 }
