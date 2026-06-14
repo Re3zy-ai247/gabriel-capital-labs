@@ -60,6 +60,8 @@ export default function AgencyPage() {
   const [busy, setBusy] = useState(false);
   const [search, setSearch] = useState("");
   const [secret, setSecret] = useState("");
+  const [showOwnerPreview, setShowOwnerPreview] = useState(false);
+  const [justCheckedOut, setJustCheckedOut] = useState(false);
   const [kpi, setKpi] = useState<Kpi | null>(null);
 
   // Add-client form
@@ -78,13 +80,31 @@ export default function AgencyPage() {
     if (res.ok) setKpi(await res.json());
   }
 
+  async function loadContext() {
+    const res = await fetch("/api/agency/context");
+    const c = await res.json();
+    setCtx(c);
+    if (c.isAgency) await Promise.all([loadClients(), loadKpi()]);
+    return c as Ctx;
+  }
+
   useEffect(() => {
+    const checkedOut =
+      typeof window !== "undefined" && new URLSearchParams(window.location.search).get("checkout") === "success";
+    setJustCheckedOut(checkedOut);
     (async () => {
       try {
-        const res = await fetch("/api/agency/context");
-        const c = await res.json();
-        setCtx(c);
-        if (c.isAgency) await Promise.all([loadClients(), loadKpi()]);
+        const c = await loadContext();
+        // Returning from Stripe checkout: the webhook that flips on agency mode may
+        // land a beat later — poll briefly until it does.
+        if (checkedOut && !c.isAgency) {
+          let tries = 0;
+          const t = setInterval(async () => {
+            tries++;
+            const next = await loadContext();
+            if (next.isAgency || tries >= 6) clearInterval(t);
+          }, 2500);
+        }
       } catch {
         setError("Could not load agency workspace.");
       } finally {
@@ -92,6 +112,28 @@ export default function AgencyPage() {
       }
     })();
   }, []);
+
+  async function subscribe() {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/stripe/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plan: "agency" }),
+      });
+      const d = await res.json();
+      if (res.ok && d.url) {
+        window.location.href = d.url;
+        return;
+      }
+      setError(d.error || "Could not start checkout. Please try again.");
+    } catch {
+      setError("Network error. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function enableAgency() {
     setBusy(true);
@@ -183,33 +225,69 @@ export default function AgencyPage() {
       ) : !ctx?.isAgency ? (
         // Not an agency yet — show the gate.
         <div className="card max-w-2xl p-6">
+          {justCheckedOut && (
+            <div className="mb-4 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
+              🎉 Payment received — activating your Agency workspace. This will unlock momentarily…
+            </div>
+          )}
           <div className="text-base font-semibold">Run your own credit-repair business on our platform</div>
           <p className="mt-2 text-sm text-slate-400">
             The Agency tier lets you manage unlimited clients in their own workspaces, run the full analysis and
-            letter engine for each, and generate disputes at scale — for <span className="font-semibold text-slate-200">$399/mo</span>.
+            letter engine for each, and generate disputes at scale.
           </p>
-          <div className="mt-4 flex flex-wrap items-end gap-2">
-            {!ctx?.isAdmin && (
-              <div>
-                <label className="mb-1 block text-[11px] uppercase tracking-wide text-slate-500">Setup secret</label>
-                <input
-                  type="password"
-                  className="input w-56"
-                  placeholder="Enter setup secret"
-                  value={secret}
-                  onChange={(e) => setSecret(e.target.value)}
-                />
-              </div>
-            )}
-            <button onClick={enableAgency} disabled={busy} className="btn-primary">
+          <ul className="mt-4 space-y-1.5 text-sm text-slate-300">
+            <li className="flex items-center gap-2"><span className="text-brand-400">✓</span> Unlimited managed clients — no per-seat logins</li>
+            <li className="flex items-center gap-2"><span className="text-brand-400">✓</span> Full AI analysis &amp; letter engine for every client</li>
+            <li className="flex items-center gap-2"><span className="text-brand-400">✓</span> Follow-up clock &amp; KPI reporting across your roster</li>
+          </ul>
+          <div className="mt-5 flex items-baseline gap-2">
+            <span className="text-3xl font-bold text-white keep-white">$399</span>
+            <span className="text-sm text-slate-400">/month · cancel anytime</span>
+          </div>
+          <div className="mt-4">
+            <button onClick={subscribe} disabled={busy} className="btn-primary">
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Building2 className="h-4 w-4" />}
-              Enable agency mode
+              Subscribe to Agency — $399/mo
             </button>
           </div>
-          <p className="mt-3 flex items-start gap-2 text-[11px] text-slate-500">
-            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-gold-400" />
-            Preview access for the owner. In production this unlocks automatically with an active $399/mo Agency subscription.
-          </p>
+          <p className="mt-3 text-[11px] text-slate-500">Secure checkout by Stripe · your card never touches our servers.</p>
+
+          {/* Owner preview — enable without billing via ADMIN role or the setup secret. */}
+          <div className="mt-5 border-t border-slate-800 pt-4">
+            {!showOwnerPreview ? (
+              <button
+                onClick={() => setShowOwnerPreview(true)}
+                className="text-[11px] text-slate-500 underline-offset-2 hover:text-slate-300 hover:underline"
+              >
+                Owner / preview access (no billing) →
+              </button>
+            ) : (
+              <div>
+                <div className="flex flex-wrap items-end gap-2">
+                  {!ctx?.isAdmin && (
+                    <div>
+                      <label className="mb-1 block text-[11px] uppercase tracking-wide text-slate-500">Setup secret</label>
+                      <input
+                        type="password"
+                        className="input w-56"
+                        placeholder="Enter setup secret"
+                        value={secret}
+                        onChange={(e) => setSecret(e.target.value)}
+                      />
+                    </div>
+                  )}
+                  <button onClick={enableAgency} disabled={busy} className="btn-ghost">
+                    {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Building2 className="h-4 w-4" />}
+                    Enable without billing
+                  </button>
+                </div>
+                <p className="mt-3 flex items-start gap-2 text-[11px] text-slate-500">
+                  <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-gold-400" />
+                  Preview access for the owner/admin. Regular customers unlock the workspace with an active $399/mo subscription above.
+                </p>
+              </div>
+            )}
+          </div>
         </div>
       ) : (
         <>

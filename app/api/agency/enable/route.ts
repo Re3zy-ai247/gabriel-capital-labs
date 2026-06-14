@@ -6,9 +6,10 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 // Flips the signed-in account into an agency account (and promotes it to the
-// owner/ADMIN role). PHASE 1 PREVIEW: an existing ADMIN can enable directly;
-// otherwise the owner provides the server's SETUP_SECRET. In phase 2 this is set
-// automatically when the $399/mo agency subscription is active.
+// owner/ADMIN role). This is the OWNER/PREVIEW path — an existing ADMIN can enable
+// directly, otherwise the owner provides the server's SETUP_SECRET. Regular
+// customers instead unlock agency mode by purchasing the $399/mo subscription,
+// which sets isAgency automatically via the Stripe webhook (see lib/billing.ts).
 export async function POST(req: Request) {
   const account = await currentAccount();
   if (!account) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

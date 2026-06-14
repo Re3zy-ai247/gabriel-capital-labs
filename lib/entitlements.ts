@@ -23,7 +23,7 @@ export function isPremium(user: {
 }): boolean {
   // An agency account always has full features (its $399 plan covers its clients).
   if (user.isAgency) return true;
-  if (user.plan === "premium") return true;
+  if (user.plan === "premium" || user.plan === "agency") return true;
   return Boolean(user.subscriptionStatus && ACTIVE_STATES.has(user.subscriptionStatus));
 }
 

@@ -11,15 +11,19 @@ export default function PricingPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function upgrade() {
+  async function upgrade(plan: 'premium' | 'agency' = 'premium') {
     setError(null);
     if (!session) {
-      router.push('/register?next=/pricing');
+      router.push(`/register?next=${plan === 'agency' ? '/agency' : '/pricing'}`);
       return;
     }
     setBusy(true);
     try {
-      const res = await fetch('/api/stripe/checkout', { method: 'POST' });
+      const res = await fetch('/api/stripe/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan }),
+      });
       const data = await res.json();
       if (res.ok && data.url) {
         window.location.href = data.url;
@@ -45,7 +49,7 @@ export default function PricingPage() {
 
       {/* Pricing Cards */}
       <div className="max-w-6xl mx-auto px-6 pb-16">
-        <div className="grid md:grid-cols-2 gap-8">
+        <div className="grid md:grid-cols-3 gap-8 items-start">
           {/* Free Plan */}
           <div className="bg-slate-800 border border-slate-700 rounded-lg p-8">
             <h3 className="text-2xl font-bold mb-2">Free</h3>
@@ -125,7 +129,7 @@ export default function PricingPage() {
             </ul>
 
             <button
-              onClick={upgrade}
+              onClick={() => upgrade('premium')}
               disabled={busy}
               className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:opacity-60 text-white keep-white py-3 rounded-lg font-semibold transition"
             >
@@ -134,6 +138,51 @@ export default function PricingPage() {
             {error && <p className="mt-3 text-sm text-red-400">{error}</p>}
             <p className="mt-3 text-center text-xs text-slate-400">
               Secure checkout by Stripe · 30-day money-back guarantee
+            </p>
+          </div>
+
+          {/* Agency Plan */}
+          <div className="bg-gradient-to-br from-indigo-900 to-slate-800 border border-indigo-500/60 rounded-lg p-8">
+            <h3 className="text-2xl font-bold mb-2">Agency</h3>
+            <p className="text-slate-300 mb-6">Run your own credit-repair business</p>
+
+            <div className="mb-6">
+              <div className="text-4xl font-bold mb-2">$399</div>
+              <p className="text-slate-300 text-sm">/month, cancel anytime</p>
+            </div>
+
+            <ul className="space-y-3 mb-8 text-sm">
+              <li className="flex items-center">
+                <span className="text-indigo-300 mr-3">✓</span>
+                Everything in Premium
+              </li>
+              <li className="flex items-center">
+                <span className="text-indigo-300 mr-3">✓</span>
+                <span className="font-bold text-white">Unlimited managed clients</span>
+              </li>
+              <li className="flex items-center">
+                <span className="text-indigo-300 mr-3">✓</span>
+                A dedicated workspace per client
+              </li>
+              <li className="flex items-center">
+                <span className="text-indigo-300 mr-3">✓</span>
+                Follow-up clock + roster KPI reporting
+              </li>
+              <li className="flex items-center">
+                <span className="text-indigo-300 mr-3">✓</span>
+                Full AI analysis &amp; letter engine for each client
+              </li>
+            </ul>
+
+            <button
+              onClick={() => upgrade('agency')}
+              disabled={busy}
+              className="w-full bg-indigo-500 hover:bg-indigo-600 disabled:opacity-60 text-white keep-white py-3 rounded-lg font-semibold transition"
+            >
+              {busy ? 'Redirecting to checkout…' : session ? 'Start Agency Plan' : 'Get Agency'}
+            </button>
+            <p className="mt-3 text-center text-xs text-slate-400">
+              Secure checkout by Stripe · cancel anytime
             </p>
           </div>
         </div>

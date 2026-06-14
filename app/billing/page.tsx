@@ -6,7 +6,8 @@ import { Suspense, useEffect, useState } from 'react';
 import { AppShell } from '@/components/AppShell';
 
 interface Status {
-  plan: 'free' | 'premium';
+  plan: 'free' | 'premium' | 'agency';
+  isAgency: boolean;
   subscriptionStatus: string | null;
   currentPeriodEnd: string | null;
   memberSince: string | null;
@@ -114,7 +115,10 @@ function BillingInner() {
 
   if (authStatus !== 'authenticated') return null;
 
-  const premium = status?.plan === 'premium';
+  const isAgency = status?.plan === 'agency';
+  const premium = status?.plan === 'premium' || isAgency;
+  const planLabel = isAgency ? 'Agency' : premium ? 'Premium' : 'Free';
+  const monthlyCost = isAgency ? '$399.00' : premium ? '$99.00' : '$0.00';
 
   return (
     <AppShell title="/ Billing">
@@ -124,7 +128,7 @@ function BillingInner() {
 
         {justCheckedOut && (
           <div className="mb-8 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-5 py-4 text-emerald-300">
-            🎉 Welcome to Premium! Your subscription is being activated — this page will update momentarily.
+            🎉 Welcome{isAgency ? ' to Agency' : ' to Premium'}! Your subscription is being activated — this page will update momentarily.
           </div>
         )}
 
@@ -138,14 +142,16 @@ function BillingInner() {
               <div className="grid md:grid-cols-2 gap-8">
                 <div>
                   <div className="text-slate-400 text-sm mb-2">PLAN TYPE</div>
-                  <div className="text-3xl font-bold mb-2">{premium ? 'Premium' : 'Free'}</div>
+                  <div className="text-3xl font-bold mb-2">{planLabel}</div>
                   {premium && status?.subscriptionStatus && (
                     <div className="inline-block text-xs uppercase tracking-wide px-2 py-1 rounded bg-slate-800 text-slate-300 mb-4">
                       {status.subscriptionStatus.replace('_', ' ')}
                     </div>
                   )}
                   <p className="text-slate-400 mb-6">
-                    {premium
+                    {isAgency
+                      ? 'Manage unlimited clients in their own workspaces, each with the full AI analysis and letter engine.'
+                      : premium
                       ? 'Unlimited AI-refined dispute letters, the AI strategist, and 90-day tracking.'
                       : 'You have 3 dispute letters per month. Upgrade for unlimited letters + AI refinement.'}
                   </p>
@@ -173,7 +179,7 @@ function BillingInner() {
                   <div className="space-y-4">
                     <div>
                       <div className="text-slate-400 text-sm">Monthly Cost</div>
-                      <div className="text-2xl font-bold">{premium ? '$99.00' : '$0.00'}</div>
+                      <div className="text-2xl font-bold">{monthlyCost}</div>
                     </div>
                     {premium && (
                       <div className="border-t border-slate-700 pt-4">

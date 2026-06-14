@@ -16,8 +16,11 @@ export async function GET() {
   if (!user) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const entitlement = await getEntitlement(user);
+  // Distinguish the agency tier from premium so the UI can label it correctly.
+  const plan = user.isAgency || user.plan === "agency" ? "agency" : entitlement.premium ? "premium" : "free";
   return NextResponse.json({
-    plan: entitlement.premium ? "premium" : "free",
+    plan,
+    isAgency: Boolean(user.isAgency),
     subscriptionStatus: user.subscriptionStatus,
     currentPeriodEnd: user.currentPeriodEnd,
     memberSince: user.createdAt,
