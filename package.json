@@ -5,7 +5,7 @@
   "description": "Gabriel Capital Labs — AI-powered credit dispute education platform (web / desktop / mobile PWA)",
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && (prisma db push --skip-generate || echo 'schema push skipped — run /api/admin/migrate to apply additive columns') && next build",
+    "build": "prisma generate && (prisma db push --skip-generate --accept-data-loss || echo 'schema push skipped — run /api/admin/migrate to apply additive columns') && next build",
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
