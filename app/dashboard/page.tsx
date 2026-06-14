@@ -5,6 +5,7 @@ import { StatCard } from "@/components/ui/StatCard";
 import { prisma } from "@/lib/prisma";
 import { currentUserOrDemo } from "@/lib/session";
 import { BUREAU_LABEL } from "@/lib/bureaus";
+import { yearsSince } from "@/lib/utils";
 import type { Bureau } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
@@ -26,6 +27,16 @@ export default async function DashboardPage() {
   const disputed = disputedIds.size;
   const active = tradelines.filter((t) => disputedIds.has(t.id) && !t.resolved).length;
   const completion = negative ? Math.round((resolved / negative) * 100) : 0;
+
+  // Quick wins: items past the 7-year FCRA §605 reporting window are the cleanest
+  // removals (must drop off), so they should be attacked first. Computed from the
+  // date of first delinquency on each unresolved item.
+  const aged = tradelines
+    .filter((t) => !t.resolved)
+    .map((t) => ({ t, yrs: yearsSince(t.dateOfFirstDelinquency) }))
+    .filter((x): x is { t: (typeof tradelines)[number]; yrs: number } => x.yrs != null);
+  const obsolete = aged.filter((x) => x.yrs >= 7).sort((a, b) => b.yrs - a.yrs);
+  const nearObsolete = aged.filter((x) => x.yrs >= 6 && x.yrs < 7);
 
   const byBureau = (b: Bureau) => {
     const inB = tradelines.filter((t) => {
@@ -50,6 +61,48 @@ export default async function DashboardPage() {
             </p>
           </div>
           <Link href="/upload" className="btn-primary shrink-0">Upload your report</Link>
+        </div>
+      )}
+
+      {obsolete.length > 0 && (
+        <div className="card mb-4 border-emerald-500/30 bg-emerald-500/[0.06] p-5">
+          <div className="flex items-center gap-2 text-sm font-semibold text-emerald-300">
+            ⚡ Quick Wins — easiest deletions first
+          </div>
+          <p className="mt-1 max-w-2xl text-sm text-slate-400">
+            {obsolete.length} item{obsolete.length === 1 ? " is" : "s are"} past the 7-year FCRA reporting window (§605)
+            and must drop off your report. These are the cleanest removals — dispute them first for the fastest visible
+            improvement.
+          </p>
+          <div className="mt-3 space-y-2">
+            {obsolete.slice(0, 6).map(({ t, yrs }) => (
+              <div
+                key={t.id}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-ink-700/70 bg-ink-900/40 p-3"
+              >
+                <div className="min-w-0">
+                  <div className="truncate text-sm font-medium">{t.creditorName}</div>
+                  <div className="text-[11px] text-slate-500">
+                    First delinquency ~{Math.floor(yrs)} years ago · obsolete under FCRA §605
+                  </div>
+                </div>
+                <Link
+                  href={`/letters?tradeline=${t.id}&strategy=fcra_605`}
+                  className="btn-primary shrink-0 !py-1.5 text-xs"
+                >
+                  Dispute as obsolete →
+                </Link>
+              </div>
+            ))}
+          </div>
+          {(obsolete.length > 6 || nearObsolete.length > 0) && (
+            <p className="mt-3 text-[11px] text-slate-500">
+              {obsolete.length > 6 ? `+ ${obsolete.length - 6} more obsolete item(s). ` : ""}
+              {nearObsolete.length > 0
+                ? `${nearObsolete.length} item(s) are approaching the window (6+ years) — queue these next.`
+                : ""}
+            </p>
+          )}
         </div>
       )}
 
