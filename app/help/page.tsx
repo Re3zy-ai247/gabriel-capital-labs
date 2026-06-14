@@ -47,7 +47,7 @@ export default function HelpPage() {
       <div className="max-w-6xl mx-auto px-6 py-16">
         <h1 className="text-5xl font-bold mb-4">Help & Support</h1>
         <p className="text-xl text-slate-400 mb-12">
-          Find guides, answers, and support for using Gabriel Capital Labs
+          Find guides, answers, and support for using CreditVector™
         </p>
 
         {/* Search */}

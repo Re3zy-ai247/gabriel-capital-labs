@@ -1,7 +1,7 @@
 {
-  "name": "Gabriel Capital Labs",
-  "short_name": "GCL",
-  "description": "AI-powered credit dispute education platform",
+  "name": "CreditVector — AI-Powered Credit Intelligence",
+  "short_name": "CreditVector",
+  "description": "CreditVector™ by Gabriel Capital Labs — an AI-powered credit intelligence platform",
   "id": "/dashboard",
   "start_url": "/dashboard",
   "scope": "/",

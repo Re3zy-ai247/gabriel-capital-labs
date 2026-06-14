@@ -6,11 +6,11 @@ import { Providers } from "@/components/Providers";
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
-  title: "Gabriel Capital Labs — Engineering Financial Freedom",
-  description: "AI-powered credit dispute education platform. Understand your report, dispute inaccuracies under the FCRA.",
+  title: "CreditVector™ — AI-Powered Credit Intelligence Platform",
+  description: "CreditVector™ by Gabriel Capital Labs — an AI-powered credit intelligence platform. Understand your report, dispute inaccuracies under the FCRA, and build toward your goals.",
   manifest: "/manifest.json",
-  applicationName: "Gabriel Capital Labs",
-  appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "GCL" },
+  applicationName: "CreditVector",
+  appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "CreditVector" },
   icons: { icon: "/icons/icon-192.png", apple: "/icons/icon-192.png" },
 };
 

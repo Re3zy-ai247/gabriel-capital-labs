@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth";
 import { DISCLAIMER } from "@/lib/compliance";
 import { HeroVisual } from "@/components/landing/HeroVisual";
 import { Reveal } from "@/components/landing/Reveal";
+import { BRAND, MODULES } from "@/lib/brand";
 import {
   Upload,
   ScanSearch,
@@ -17,9 +18,22 @@ import {
   ShieldCheck,
   Building2,
   Check,
+  Mails,
+  Radar,
+  Gavel,
+  TrendingUp,
+  Landmark,
+  Briefcase,
+  ArrowRight,
+  type LucideIcon,
 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
+
+// Resolve module icon names (from lib/brand.ts) to components.
+const MODULE_ICONS: Record<string, LucideIcon> = {
+  ScanSearch, Mails, Radar, Scale, Gavel, Compass, TrendingUp, Landmark, Briefcase,
+};
 
 const steps = [
   {
@@ -102,7 +116,10 @@ export default async function Home() {
             <span className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-emerald-400 to-emerald-600 text-slate-900">
               <ShieldCheck className="h-5 w-5" />
             </span>
-            Gabriel Capital Labs
+            <span className="leading-none">
+              {BRAND.product}<span className="text-emerald-400">™</span>
+              <span className="ml-2 hidden text-xs font-normal text-slate-500 sm:inline">{BRAND.byline}</span>
+            </span>
           </span>
           <div className="flex items-center gap-4">
             <Link href="/pricing" className="text-slate-300 transition hover:text-white">
@@ -124,7 +141,7 @@ export default async function Home() {
         <div className="mx-auto grid max-w-6xl items-center gap-12 px-6 pb-16 pt-16 lg:grid-cols-2 lg:pt-24">
           <div className="animate-rise text-center lg:text-left">
             <p className="mb-4 inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-300">
-              <Brain className="h-3.5 w-3.5" /> AI-Powered Credit Dispute Education
+              <Brain className="h-3.5 w-3.5" /> {BRAND.tagline}
             </p>
             <h1 className="mb-6 text-5xl font-bold leading-tight md:text-6xl">
               Understand your credit reports.
@@ -220,6 +237,72 @@ export default async function Home() {
                 </div>
               </Reveal>
             ))}
+          </div>
+        </div>
+
+        {/* Platform suite — the CreditVector modules */}
+        <div className="mx-auto max-w-6xl px-6 py-16">
+          <Reveal>
+            <p className="mb-3 text-center text-xs font-semibold uppercase tracking-widest text-emerald-400">
+              The {BRAND.product} Platform
+            </p>
+            <h2 className="mb-4 text-center text-3xl font-bold">One platform. Your whole credit journey.</h2>
+            <p className="mx-auto mb-12 max-w-2xl text-center text-slate-400">
+              {BRAND.product}™ is built as a suite of intelligence modules. Start with the dispute stack today —
+              the rest of the platform is rolling out.
+            </p>
+          </Reveal>
+          <div className="grid gap-5 md:grid-cols-3">
+            {MODULES.map((m, i) => {
+              const Icon = MODULE_ICONS[m.icon] ?? Brain;
+              const live = m.status === "live";
+              const card = (
+                <div
+                  className={`group flex h-full flex-col rounded-2xl border p-6 transition duration-200 ${
+                    live
+                      ? "border-slate-700 bg-slate-800/70 hover:-translate-y-1 hover:border-emerald-500/50 hover:shadow-glow"
+                      : "border-dashed border-slate-700/70 bg-slate-800/40"
+                  }`}
+                >
+                  <div className="mb-4 flex items-center justify-between">
+                    <div
+                      className={`flex h-11 w-11 items-center justify-center rounded-xl transition ${
+                        live ? "bg-emerald-500/15 text-emerald-400 group-hover:bg-emerald-500/25" : "bg-slate-700/40 text-slate-400"
+                      }`}
+                    >
+                      <Icon className="h-5 w-5" />
+                    </div>
+                    {live ? (
+                      <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-300">
+                        Live
+                      </span>
+                    ) : (
+                      <span className="rounded-full bg-slate-700/50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                        Coming soon
+                      </span>
+                    )}
+                  </div>
+                  <h3 className={`mb-2 text-lg font-bold ${live ? "" : "text-slate-300"}`}>{m.name}</h3>
+                  <p className="text-sm text-slate-400">{m.tagline}</p>
+                  {live && m.href && (
+                    <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-emerald-400 opacity-0 transition group-hover:opacity-100">
+                      Open <ArrowRight className="h-3.5 w-3.5" />
+                    </span>
+                  )}
+                </div>
+              );
+              return (
+                <Reveal key={m.key} delay={(i % 3) * 80}>
+                  {live && m.href ? (
+                    <Link href={m.href} className="block h-full">
+                      {card}
+                    </Link>
+                  ) : (
+                    card
+                  )}
+                </Reveal>
+              );
+            })}
           </div>
         </div>
 

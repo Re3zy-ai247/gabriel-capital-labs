@@ -41,7 +41,7 @@ export async function resolvePremiumPriceId(stripe: Stripe): Promise<string> {
   if (existing.data[0]) return existing.data[0].id;
 
   const product = await stripe.products.create({
-    name: "Gabriel Capital Labs — Premium",
+    name: "CreditVector — Premium",
     description:
       "Unlimited AI-refined dispute letters, the AI dispute strategist, and 90-day progress tracking.",
   });
@@ -69,7 +69,7 @@ export async function resolveAgencyPriceId(stripe: Stripe): Promise<string> {
   if (existing.data[0]) return existing.data[0].id;
 
   const product = await stripe.products.create({
-    name: "Gabriel Capital Labs — Agency",
+    name: "CreditVector — Agency",
     description:
       "Manage unlimited clients in their own workspaces, run the full analysis and letter engine for each, and dispute at scale.",
   });
