@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
 import { Disclaimer } from "@/components/Disclaimer";
-import { Building2, Loader2, UserPlus, FolderOpen, Trash2, Mails, AlertTriangle } from "lucide-react";
+import { Building2, Loader2, UserPlus, FolderOpen, Trash2, Mails, AlertTriangle, Search } from "lucide-react";
 
 interface Client {
   id: string;
@@ -11,11 +11,21 @@ interface Client {
   location: string;
   negativeItems: number;
   letters: number;
+  lastRound: number | null;
+  lastSentAt: string | null;
+  daysSince: number | null;
+  nextRoundDueAt: string | null;
+  needsAttention: boolean;
 }
 interface Ctx {
   isAgency: boolean;
   isAdmin: boolean;
   agencyName?: string | null;
+}
+
+function fmtDate(iso: string | null): string {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric", timeZone: "UTC" });
 }
 
 export default function AgencyPage() {
@@ -25,6 +35,8 @@ export default function AgencyPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [search, setSearch] = useState("");
+  const [secret, setSecret] = useState("");
 
   // Add-client form
   const [form, setForm] = useState({ fullName: "", addressLine1: "", city: "", state: "", zip: "" });
@@ -59,7 +71,7 @@ export default function AgencyPage() {
       const res = await fetch("/api/agency/enable", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
+        body: JSON.stringify({ secret }),
       });
       const d = await res.json();
       if (!res.ok) {
@@ -118,6 +130,11 @@ export default function AgencyPage() {
     }
   }
 
+  const filtered = clients.filter((c) =>
+    `${c.name} ${c.location}`.toLowerCase().includes(search.trim().toLowerCase())
+  );
+  const attentionCount = clients.filter((c) => c.needsAttention).length;
+
   return (
     <AppShell title="/ Agency">
       <div className="mb-4 flex items-center gap-2">
@@ -139,39 +156,90 @@ export default function AgencyPage() {
             The Agency tier lets you manage unlimited clients in their own workspaces, run the full analysis and
             letter engine for each, and generate disputes at scale — for <span className="font-semibold text-slate-200">$399/mo</span>.
           </p>
-          {ctx?.isAdmin ? (
-            <button onClick={enableAgency} disabled={busy} className="btn-primary mt-4">
+          <div className="mt-4 flex flex-wrap items-end gap-2">
+            {!ctx?.isAdmin && (
+              <div>
+                <label className="mb-1 block text-[11px] uppercase tracking-wide text-slate-500">Setup secret</label>
+                <input
+                  type="password"
+                  className="input w-56"
+                  placeholder="Enter setup secret"
+                  value={secret}
+                  onChange={(e) => setSecret(e.target.value)}
+                />
+              </div>
+            )}
+            <button onClick={enableAgency} disabled={busy} className="btn-primary">
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Building2 className="h-4 w-4" />}
-              Enable agency mode (preview)
+              Enable agency mode
             </button>
-          ) : (
-            <div className="mt-4 flex items-start gap-2 rounded-lg border border-gold-500/30 bg-gold-500/10 p-3 text-xs text-gold-200">
-              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-              Billing for the $399/mo Agency plan is being finalized. This tier will unlock here once it&apos;s live.
-            </div>
-          )}
+          </div>
+          <p className="mt-3 flex items-start gap-2 text-[11px] text-slate-500">
+            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-gold-400" />
+            Preview access for the owner. In production this unlocks automatically with an active $399/mo Agency subscription.
+          </p>
         </div>
       ) : (
         <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
           {/* Client roster */}
           <div>
-            <div className="mb-2 text-sm font-semibold">
-              Clients <span className="text-slate-500">({clients.length})</span>
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+              <div className="text-sm font-semibold">
+                Clients <span className="text-slate-500">({clients.length})</span>
+                {attentionCount > 0 && (
+                  <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-rose-500/15 px-2 py-0.5 text-[11px] font-semibold text-rose-300">
+                    <AlertTriangle className="h-3 w-3" /> {attentionCount} need follow-up
+                  </span>
+                )}
+              </div>
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500" />
+                <input
+                  className="input w-56 pl-7"
+                  placeholder="Search clients…"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
             </div>
             {clients.length === 0 ? (
               <div className="card p-6 text-sm text-slate-400">No clients yet. Add your first client on the right →</div>
+            ) : filtered.length === 0 ? (
+              <div className="card p-6 text-sm text-slate-400">No clients match “{search}”.</div>
             ) : (
               <div className="space-y-2">
-                {clients.map((c) => (
-                  <div key={c.id} className="card flex flex-wrap items-center justify-between gap-3 p-4">
+                {filtered.map((c) => (
+                  <div
+                    key={c.id}
+                    className={`card flex flex-wrap items-center justify-between gap-3 p-4 ${
+                      c.needsAttention ? "border-rose-500/40 bg-rose-500/[0.04]" : ""
+                    }`}
+                  >
                     <div className="min-w-0">
-                      <div className="truncate text-sm font-medium">{c.name}</div>
+                      <div className="flex items-center gap-2">
+                        <span className="truncate text-sm font-medium">{c.name}</span>
+                        {c.needsAttention && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-rose-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase text-rose-300">
+                            <AlertTriangle className="h-3 w-3" /> Send next round
+                          </span>
+                        )}
+                      </div>
                       <div className="text-[11px] text-slate-500">
                         {c.location || "No address on file"} · {c.negativeItems} item{c.negativeItems === 1 ? "" : "s"} ·{" "}
                         <span className="inline-flex items-center gap-1">
                           <Mails className="h-3 w-3" /> {c.letters} letter{c.letters === 1 ? "" : "s"}
                         </span>
                       </div>
+                      {c.lastSentAt ? (
+                        <div className={`mt-0.5 text-[11px] ${c.needsAttention ? "text-rose-300" : "text-slate-500"}`}>
+                          Round {c.lastRound} sent {fmtDate(c.lastSentAt)} · day {c.daysSince} ·{" "}
+                          {c.needsAttention
+                            ? `next round due ${fmtDate(c.nextRoundDueAt)} (overdue)`
+                            : `next round due ${fmtDate(c.nextRoundDueAt)} (in ${Math.max(0, 30 - (c.daysSince ?? 0))}d)`}
+                        </div>
+                      ) : (
+                        <div className="mt-0.5 text-[11px] text-slate-600">No letters mailed yet</div>
+                      )}
                     </div>
                     <div className="flex items-center gap-2">
                       <button onClick={() => openClient(c.id)} disabled={busy} className="btn-primary !py-1.5 text-xs">

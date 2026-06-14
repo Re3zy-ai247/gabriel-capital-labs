@@ -1,9 +1,10 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { signOut } from "next-auth/react";
 import { cn } from "@/lib/utils";
 import {
-  LayoutDashboard, Upload, ListTree, Mails, Target, CalendarRange, Gauge, Settings, CreditCard, ScanSearch, LineChart, Building2,
+  LayoutDashboard, Upload, ListTree, Mails, Target, CalendarRange, Gauge, Settings, CreditCard, ScanSearch, LineChart, Building2, LogOut,
 } from "lucide-react";
 
 const NAV = [
@@ -61,6 +62,13 @@ export function Sidebar() {
           })}
         </nav>
       </div>
+      <button
+        onClick={() => signOut({ callbackUrl: "/login" })}
+        className="nav-item mt-4 w-full text-left text-slate-400 hover:text-rose-300"
+      >
+        <LogOut className="h-4 w-4" />
+        Log out
+      </button>
       <div className="mt-auto px-2 pt-6 text-[10px] text-slate-500">
         v1.0 · Educational tool · Not legal advice
       </div>

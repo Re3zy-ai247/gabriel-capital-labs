@@ -26,16 +26,62 @@ export async function GET() {
   const tlMap = new Map(tl.map((r) => [r.userId, r._count]));
   const ltMap = new Map(lt.map((r) => [r.userId, r._count]));
 
-  return NextResponse.json({
-    clients: clients.map((c) => ({
+  // Each client's most recently MAILED letter drives the follow-up clock: the
+  // FCRA reinvestigation runs ~30 days from when the dispute was sent, so the
+  // agent should send the next round around day 30. We surface days-since-sent,
+  // the due date, and an attention flag when 30+ days have passed with no logged
+  // response — then sort so the work that needs attention rises to the top.
+  const mailed = ids.length
+    ? await prisma.letter.findMany({
+        where: { userId: { in: ids }, mailedAt: { not: null } },
+        select: { userId: true, round: true, mailedAt: true, responseAt: true },
+        orderBy: { mailedAt: "desc" },
+      })
+    : [];
+  const latest = new Map<string, { round: number; mailedAt: Date; responseAt: Date | null }>();
+  for (const l of mailed) {
+    if (!latest.has(l.userId) && l.mailedAt) {
+      latest.set(l.userId, { round: l.round, mailedAt: l.mailedAt, responseAt: l.responseAt });
+    }
+  }
+
+  const now = Date.now();
+  const DAY = 86_400_000;
+  const out = clients.map((c) => {
+    const last = latest.get(c.id);
+    let lastRound: number | null = null;
+    let lastSentAt: string | null = null;
+    let daysSince: number | null = null;
+    let nextRoundDueAt: string | null = null;
+    let needsAttention = false;
+    if (last) {
+      lastRound = last.round;
+      lastSentAt = last.mailedAt.toISOString();
+      daysSince = Math.floor((now - last.mailedAt.getTime()) / DAY);
+      nextRoundDueAt = new Date(last.mailedAt.getTime() + 30 * DAY).toISOString();
+      needsAttention = daysSince >= 30 && !last.responseAt;
+    }
+    return {
       id: c.id,
       name: c.fullName || c.name || "Unnamed client",
       location: [c.city, c.state].filter(Boolean).join(", "),
       negativeItems: tlMap.get(c.id) ?? 0,
       letters: ltMap.get(c.id) ?? 0,
-      createdAt: c.createdAt,
-    })),
+      lastRound,
+      lastSentAt,
+      daysSince,
+      nextRoundDueAt,
+      needsAttention,
+    };
   });
+
+  // Needs-attention first, then most-overdue (largest daysSince), then the rest.
+  out.sort((a, b) => {
+    if (a.needsAttention !== b.needsAttention) return a.needsAttention ? -1 : 1;
+    return (b.daysSince ?? -1) - (a.daysSince ?? -1);
+  });
+
+  return NextResponse.json({ clients: out });
 }
 
 // POST: add a managed client. They are a User row with no password (cannot log

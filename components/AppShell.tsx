@@ -1,6 +1,7 @@
 import { Sidebar, MobileNav } from "./Sidebar";
 import { ThemeToggle } from "./ThemeToggle";
 import { AgencyBar } from "./AgencyBar";
+import { HeaderLogout } from "./HeaderLogout";
 import Link from "next/link";
 
 export function AppShell({ title, children }: { title: string; children: React.ReactNode }) {
@@ -13,7 +14,7 @@ export function AppShell({ title, children }: { title: string; children: React.R
           <div className="flex items-center gap-3 text-xs text-slate-400">
             <ThemeToggle />
             <Link href="/upload" className="btn-primary !py-1.5">+ New Dispute</Link>
-            <span className="hidden sm:inline">Demo User</span>
+            <HeaderLogout />
           </div>
         </header>
         <AgencyBar />
