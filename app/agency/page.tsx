@@ -23,9 +23,32 @@ interface Ctx {
   agencyName?: string | null;
 }
 
+interface Period {
+  wtd: number;
+  mtd: number;
+  ytd: number;
+  total: number;
+}
+interface Kpi {
+  activeClients: number;
+  clientsAdded: Period;
+  letters: Period;
+  deleted: Period;
+}
+
 function fmtDate(iso: string | null): string {
   if (!iso) return "—";
   return new Date(iso).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric", timeZone: "UTC" });
+}
+
+function KpiCard({ label, value, sub, accent }: { label: string; value: number; sub: string; accent: string }) {
+  return (
+    <div className="card animate-rise p-4">
+      <div className="text-[11px] uppercase tracking-wide text-slate-400">{label}</div>
+      <div className={`mt-1 text-3xl font-bold ${accent}`}>{value.toLocaleString()}</div>
+      <div className="mt-0.5 text-[11px] text-slate-500">{sub}</div>
+    </div>
+  );
 }
 
 export default function AgencyPage() {
@@ -37,6 +60,7 @@ export default function AgencyPage() {
   const [busy, setBusy] = useState(false);
   const [search, setSearch] = useState("");
   const [secret, setSecret] = useState("");
+  const [kpi, setKpi] = useState<Kpi | null>(null);
 
   // Add-client form
   const [form, setForm] = useState({ fullName: "", addressLine1: "", city: "", state: "", zip: "" });
@@ -49,13 +73,18 @@ export default function AgencyPage() {
     }
   }
 
+  async function loadKpi() {
+    const res = await fetch("/api/agency/kpi");
+    if (res.ok) setKpi(await res.json());
+  }
+
   useEffect(() => {
     (async () => {
       try {
         const res = await fetch("/api/agency/context");
         const c = await res.json();
         setCtx(c);
-        if (c.isAgency) await loadClients();
+        if (c.isAgency) await Promise.all([loadClients(), loadKpi()]);
       } catch {
         setError("Could not load agency workspace.");
       } finally {
@@ -102,7 +131,7 @@ export default function AgencyPage() {
         return;
       }
       setForm({ fullName: "", addressLine1: "", city: "", state: "", zip: "" });
-      await loadClients();
+      await Promise.all([loadClients(), loadKpi()]);
     } finally {
       setBusy(false);
     }
@@ -124,7 +153,10 @@ export default function AgencyPage() {
     setBusy(true);
     try {
       const res = await fetch(`/api/agency/clients/${id}`, { method: "DELETE" });
-      if (res.ok) setClients((p) => p.filter((c) => c.id !== id));
+      if (res.ok) {
+        setClients((p) => p.filter((c) => c.id !== id));
+        loadKpi();
+      }
     } finally {
       setBusy(false);
     }
@@ -180,6 +212,21 @@ export default function AgencyPage() {
           </p>
         </div>
       ) : (
+        <>
+        {/* KPI report — something to show for the work (WTD / MTD / YTD) */}
+        {kpi && (
+          <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <KpiCard label="Active Clients" value={kpi.activeClients} accent="text-brand-400"
+              sub={`+${kpi.clientsAdded.wtd} this week · +${kpi.clientsAdded.mtd} this month`} />
+            <KpiCard label="Letters Generated" value={kpi.letters.ytd} accent="text-emerald-400"
+              sub={`${kpi.letters.wtd} WTD · ${kpi.letters.mtd} MTD · ${kpi.letters.total} all-time`} />
+            <KpiCard label="Clients Added (YTD)" value={kpi.clientsAdded.ytd} accent="text-gold-400"
+              sub={`${kpi.clientsAdded.wtd} WTD · ${kpi.clientsAdded.mtd} MTD`} />
+            <KpiCard label="Accounts Deleted" value={kpi.deleted.total} accent="text-rose-400"
+              sub={`${kpi.deleted.wtd} WTD · ${kpi.deleted.mtd} MTD · ${kpi.deleted.ytd} YTD`} />
+          </div>
+        )}
+
         <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
           {/* Client roster */}
           <div>
@@ -309,6 +356,7 @@ export default function AgencyPage() {
             </p>
           </form>
         </div>
+        </>
       )}
 
       <Disclaimer />

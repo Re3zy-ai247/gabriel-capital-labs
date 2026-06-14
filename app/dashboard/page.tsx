@@ -38,6 +38,18 @@ export default async function DashboardPage() {
   const obsolete = aged.filter((x) => x.yrs >= 7).sort((a, b) => b.yrs - a.yrs);
   const nearObsolete = aged.filter((x) => x.yrs >= 6 && x.yrs < 7);
 
+  // Follow-up clock (same logic the agency roster uses, for the user's own
+  // disputes): a mailed letter triggers the ~30-day FCRA reinvestigation window,
+  // after which it's time to escalate to the next round.
+  const DAY = 86_400_000;
+  const nowMs = Date.now();
+  const followUps = letters
+    .filter((l) => l.mailedAt)
+    .map((l) => ({ l, days: Math.floor((nowMs - new Date(l.mailedAt as Date).getTime()) / DAY) }))
+    .filter((x) => x.days >= 20)
+    .sort((a, b) => b.days - a.days);
+  const firstName = (user.fullName || user.name || "").trim().split(" ")[0] || "there";
+
   const byBureau = (b: Bureau) => {
     const inB = tradelines.filter((t) => {
       const d = t.bureauData as Record<string, { presence?: string }>;
@@ -50,7 +62,43 @@ export default async function DashboardPage() {
   return (
     <AppShell title="/ Dashboard">
       <EduBanner />
-      <h2 className="mb-4 text-xl font-semibold">Your Credit Dashboard</h2>
+      <div className="mb-4 animate-rise">
+        <h2 className="text-2xl font-bold">Welcome back, {firstName} 👋</h2>
+        <p className="text-sm text-slate-400">Here&apos;s where your disputes stand today.</p>
+      </div>
+
+      {followUps.length > 0 && (
+        <div className="card animate-rise mb-4 border-gold-500/30 bg-gold-500/[0.05] p-5">
+          <div className="text-sm font-semibold text-gold-300">⏱ Disputes awaiting follow-up</div>
+          <p className="mt-1 text-xs text-slate-400">
+            The bureau has ~30 days to reinvestigate after a dispute is mailed. When that passes, escalate to the next round.
+          </p>
+          <div className="mt-3 space-y-2">
+            {followUps.slice(0, 6).map(({ l, days }) => {
+              const due = days >= 30 && !l.responseText;
+              return (
+                <div
+                  key={l.id}
+                  className={`flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3 ${
+                    due ? "border-rose-500/40 bg-rose-500/[0.05]" : "border-ink-700/70"
+                  }`}
+                >
+                  <div className="min-w-0 text-sm">
+                    <span className="font-medium">{l.recipientName}</span>
+                    <span className="ml-2 text-[11px] text-slate-500">Round {l.round} · day {days}</span>
+                  </div>
+                  <Link
+                    href="/letters"
+                    className={`shrink-0 text-xs font-semibold ${due ? "text-rose-300" : "text-slate-400"} hover:underline`}
+                  >
+                    {due ? "Ready for next round →" : `Due in ${Math.max(0, 30 - days)}d`}
+                  </Link>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {reports.length === 0 && (
         <div className="card mb-4 flex flex-col items-start gap-3 border-brand-500/30 bg-brand-500/5 p-6 md:flex-row md:items-center md:justify-between">

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Gauge } from "lucide-react";
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("demo@gabrielcapitallabs.com");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const router = useRouter();
@@ -23,8 +23,8 @@ export default function LoginPage() {
           <div className="grid h-8 w-8 place-items-center rounded-lg bg-brand-500 text-ink-950"><Gauge className="h-5 w-5" /></div>
           <span className="font-semibold">Gabriel Capital Labs</span>
         </div>
-        <label className="label">Email</label>
-        <input className="input mb-3" value={email} onChange={(e) => setEmail(e.target.value)} />
+        <label className="label">Email or username</label>
+        <input className="input mb-3" placeholder="you@example.com or username" value={email} onChange={(e) => setEmail(e.target.value)} />
         <label className="label">Password</label>
         <input type="password" className="input mb-4" value={password} onChange={(e) => setPassword(e.target.value)} />
         {err && <p className="mb-3 text-xs text-rose-400">{err}</p>}

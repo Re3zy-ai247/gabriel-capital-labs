@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { EduBanner } from "@/components/Disclaimer";
-import { Loader2, Save } from "lucide-react";
+import { Loader2, Save, Lock } from "lucide-react";
 
 interface Profile {
   fullName: string;
@@ -22,6 +22,9 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
+  const [pw, setPw] = useState({ current: "", next: "", confirm: "" });
+  const [pwBusy, setPwBusy] = useState(false);
+  const [pwMsg, setPwMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   useEffect(() => {
     fetch("/api/profile")
@@ -56,6 +59,29 @@ export default function SettingsPage() {
     });
     setBusy(false);
     setStatus(res.ok ? "Profile saved. Your dispute letters will use this information." : "Could not save — please try again.");
+  }
+
+  async function changePassword(e: React.FormEvent) {
+    e.preventDefault();
+    setPwMsg(null);
+    if (pw.next !== pw.confirm) {
+      setPwMsg({ ok: false, text: "New passwords don't match." });
+      return;
+    }
+    setPwBusy(true);
+    const res = await fetch("/api/profile/password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ currentPassword: pw.current, newPassword: pw.next }),
+    });
+    const d = await res.json().catch(() => ({}));
+    setPwBusy(false);
+    if (res.ok) {
+      setPwMsg({ ok: true, text: "Password updated." });
+      setPw({ current: "", next: "", confirm: "" });
+    } else {
+      setPwMsg({ ok: false, text: d.error || "Could not update password." });
+    }
   }
 
   return (
@@ -160,6 +186,57 @@ export default function SettingsPage() {
             </div>
           </form>
         )}
+
+        {/* Password & security */}
+        <div className="mt-8 border-t border-ink-700/70 pt-6">
+          <h2 className="mb-1 flex items-center gap-2 text-xl font-bold">
+            <Lock className="h-5 w-5 text-brand-400" /> Password &amp; Security
+          </h2>
+          <p className="mb-4 text-sm text-slate-400">
+            Use at least 10 characters with an uppercase letter, a number, and a special character (e.g. ! @ # $).
+          </p>
+          <form onSubmit={changePassword} className="max-w-sm space-y-3">
+            <div>
+              <label className="mb-1 block text-sm text-slate-400">Current password</label>
+              <input
+                type="password"
+                autoComplete="current-password"
+                className="input w-full"
+                value={pw.current}
+                onChange={(e) => setPw({ ...pw, current: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm text-slate-400">New password</label>
+              <input
+                type="password"
+                autoComplete="new-password"
+                className="input w-full"
+                value={pw.next}
+                onChange={(e) => setPw({ ...pw, next: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm text-slate-400">Confirm new password</label>
+              <input
+                type="password"
+                autoComplete="new-password"
+                className="input w-full"
+                value={pw.confirm}
+                onChange={(e) => setPw({ ...pw, confirm: e.target.value })}
+              />
+            </div>
+            <div className="flex items-center gap-3 pt-1">
+              <button type="submit" disabled={pwBusy || !pw.current || !pw.next} className="btn-primary">
+                {pwBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Lock className="h-4 w-4" />}
+                Update password
+              </button>
+              {pwMsg && (
+                <span className={`text-sm ${pwMsg.ok ? "text-emerald-400" : "text-rose-400"}`}>{pwMsg.text}</span>
+              )}
+            </div>
+          </form>
+        </div>
       </div>
     </AppShell>
   );

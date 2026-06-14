@@ -55,6 +55,7 @@ enum LetterStatus {
 model User {
   id            String     @id @default(cuid())
   email         String     @unique
+  username      String?    @unique  // optional login handle (e.g. "ceogabriel")
   name          String?
   passwordHash  String?
   // Admin & subscription
@@ -121,6 +122,17 @@ model Document {
 
   @@unique([userId, type])
   @@index([userId])
+}
+
+// Audit row written when an agency deletes a managed client, so the agency KPI
+// report can show accounts-deleted by period (WTD / MTD / YTD).
+model AgencyClientDeletion {
+  id         String   @id @default(cuid())
+  agencyId   String
+  clientName String?
+  deletedAt  DateTime @default(now())
+
+  @@index([agencyId])
 }
 
 // User-logged credit scores over time (manual entry — we don't pull live scores).

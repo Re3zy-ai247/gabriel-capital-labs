@@ -14,10 +14,14 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
 
   const client = await prisma.user.findFirst({
     where: { id: params.id, managedByAgencyId: agency.id },
-    select: { id: true },
+    select: { id: true, fullName: true, name: true },
   });
   if (!client) return NextResponse.json({ error: "Client not found." }, { status: 404 });
 
+  // Record the deletion for the agency KPI report, then remove the client.
+  await prisma.agencyClientDeletion.create({
+    data: { agencyId: agency.id, clientName: client.fullName || client.name || null },
+  });
   await prisma.user.delete({ where: { id: client.id } });
   return NextResponse.json({ ok: true });
 }
