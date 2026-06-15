@@ -47,14 +47,23 @@ export async function syncSubscriptionToUser(sub: Stripe.Subscription): Promise<
     currentPeriodEnd: periodEnd ? new Date(periodEnd * 1000) : null,
   };
 
-  // Agency access follows the agency subscription: an active agency plan unlocks it;
-  // a lapse revokes it — but never for an ADMIN (the owner keeps preview access and
-  // the secret-based enable path independent of billing).
-  if (active && tier === "agency") {
+  // Agency access follows the agency subscription: an active agency (or Agency Pro)
+  // plan unlocks it; a lapse revokes it — but never for an ADMIN (the owner keeps
+  // preview access and the secret-based enable path independent of billing).
+  if (active && (tier === "agency" || tier === "agency_pro")) {
     data.isAgency = true;
   } else if (!active && user.isAgency && user.role !== "ADMIN") {
     data.isAgency = false;
   }
 
   await prisma.user.update({ where: { id: user.id }, data });
+}
+
+// Grant one-time letter credits (from a letter-pack purchase). Idempotency is
+// handled by the caller keying off the Stripe event.
+export async function creditLetters(userId: string, credits: number): Promise<void> {
+  await prisma.user.update({
+    where: { id: userId },
+    data: { letterCredits: { increment: credits } },
+  });
 }

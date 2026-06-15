@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type Stripe from "stripe";
 import { getStripe } from "@/lib/stripe";
-import { syncSubscriptionToUser } from "@/lib/billing";
+import { syncSubscriptionToUser, creditLetters } from "@/lib/billing";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -35,6 +35,11 @@ export async function POST(req: Request) {
           const subId = typeof cs.subscription === "string" ? cs.subscription : cs.subscription.id;
           const sub = await stripe.subscriptions.retrieve(subId);
           await syncSubscriptionToUser(sub);
+        } else if (cs.mode === "payment" && cs.metadata?.product === "letters_5") {
+          // One-time letter pack — grant the purchased credits.
+          const userId = cs.metadata.userId;
+          const credits = Number(cs.metadata.credits) || 0;
+          if (userId && credits > 0) await creditLetters(userId, credits);
         }
         break;
       }

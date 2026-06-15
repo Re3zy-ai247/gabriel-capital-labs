@@ -128,6 +128,17 @@ export async function POST(req: Request) {
       consumerComplete = consumerComplete && r.consumerComplete;
     }
 
+    // Spend purchased letter credits for anything beyond the free monthly allowance.
+    if (!entitlement.premium && created.length > 0) {
+      const fromCredits = Math.max(0, created.length - entitlement.freeMonthlyRemaining);
+      if (fromCredits > 0) {
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { letterCredits: { decrement: fromCredits } },
+        });
+      }
+    }
+
     const after = await getEntitlement(user);
     return NextResponse.json({
       ok: true,

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { randomBytes } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { currentAccount } from "@/lib/session";
+import { agencyClientLimit } from "@/lib/entitlements";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -94,6 +95,21 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
   const fullName = String(body.fullName || "").trim();
   if (!fullName) return NextResponse.json({ error: "Client name is required." }, { status: 400 });
+
+  // Enforce the managed-client cap by agency tier (Agency = 50, Agency Pro / admin = unlimited).
+  const limit = agencyClientLimit(agency);
+  if (limit !== null) {
+    const current = await prisma.user.count({ where: { managedByAgencyId: agency.id } });
+    if (current >= limit) {
+      return NextResponse.json(
+        {
+          error: `You've reached your ${limit}-client limit on the Agency plan. Upgrade to Agency Pro for unlimited clients.`,
+          upgrade: true,
+        },
+        { status: 402 }
+      );
+    }
+  }
 
   const synthethicEmail = `managed-${randomBytes(8).toString("hex")}@clients.gabrielcapitallabs.local`;
 

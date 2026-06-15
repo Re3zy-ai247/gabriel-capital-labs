@@ -13,92 +13,134 @@ export function getStripe(): Stripe | null {
   return _stripe;
 }
 
+export type PaidPlan = "premium" | "agency" | "agency_pro";
+export type BillingInterval = "month" | "year";
+
+// Price points (cents). Annual = ~10 months (2 months free).
+export const PREMIUM_PRICE_CENTS = 9900; // $99 / mo
+export const AGENCY_PRICE_CENTS = 39900; // $399 / mo
+export const AGENCY_PRO_PRICE_CENTS = 79900; // $799 / mo
+export const LETTER_PACK_PRICE_CENTS = 1900; // $19 one-time
+export const LETTER_PACK_CREDITS = 5;
+
+// Backwards-compatible lookup keys (the original monthly prices keep theirs so
+// existing Stripe prices are reused).
 export const PREMIUM_LOOKUP_KEY = "gcl_premium_monthly";
-export const PREMIUM_PRICE_CENTS = 9900; // $99.00 / month
-
 export const AGENCY_LOOKUP_KEY = "gcl_agency_monthly";
-export const AGENCY_PRICE_CENTS = 39900; // $399.00 / month
 
-// The two paid tiers we sell. "premium" is the consumer plan; "agency" unlocks the
-// multi-client agency workspace. Both are stored in User.plan; isPremium() treats
-// either as full-featured.
-export type PaidPlan = "premium" | "agency";
+interface ProductDef {
+  key: string;
+  name: string;
+  description: string;
+}
 
-// Resolve the recurring $99/mo Premium price. Order of preference:
-//   1. STRIPE_PRICE_ID env var (explicit)
-//   2. an existing price with our lookup_key
-//   3. create the product + price on the fly (idempotent via lookup_key)
-// This means the operator never has to hand-create a price in the dashboard.
-export async function resolvePremiumPriceId(stripe: Stripe): Promise<string> {
-  const fromEnv = process.env.STRIPE_PRICE_ID;
-  if (fromEnv) return fromEnv;
-
-  const existing = await stripe.prices.list({
-    lookup_keys: [PREMIUM_LOOKUP_KEY],
-    active: true,
-    limit: 1,
-  });
-  if (existing.data[0]) return existing.data[0].id;
-
-  const product = await stripe.products.create({
+// One Stripe Product per plan; prices hang off it. `key` is stored in product
+// metadata (gcl_product) so resolveProduct can find it again without lookup_keys.
+const PRODUCTS: Record<string, ProductDef> = {
+  premium: {
+    key: "premium",
     name: "CreditVector — Premium",
-    description:
-      "Unlimited AI-refined dispute letters, the AI dispute strategist, and 90-day progress tracking.",
-  });
-  const price = await stripe.prices.create({
-    product: product.id,
-    unit_amount: PREMIUM_PRICE_CENTS,
-    currency: "usd",
-    recurring: { interval: "month" },
-    lookup_key: PREMIUM_LOOKUP_KEY,
-  });
-  return price.id;
+    description: "Unlimited AI-refined dispute letters, the AI dispute strategist, and 90-day progress tracking.",
+  },
+  agency: {
+    key: "agency",
+    name: "CreditVector — Agency",
+    description: "Manage clients in their own workspaces with the full analysis and letter engine. Up to 50 clients.",
+  },
+  agency_pro: {
+    key: "agency_pro",
+    name: "CreditVector — Agency Pro",
+    description: "Everything in Agency with unlimited managed clients, for high-volume teams.",
+  },
+  letters_5: {
+    key: "letters_5",
+    name: "CreditVector — 5 Dispute Letters",
+    description: "A one-time pack of 5 additional dispute letters.",
+  },
+};
+
+interface PriceDef {
+  lookup: string;
+  product: string;
+  amountCents: number;
+  interval: BillingInterval | null; // null = one-time
 }
 
-// Resolve the recurring $399/mo Agency price, same auto-provisioning strategy as
-// Premium (env override → lookup_key → create on the fly).
-export async function resolveAgencyPriceId(stripe: Stripe): Promise<string> {
-  const fromEnv = process.env.STRIPE_AGENCY_PRICE_ID;
-  if (fromEnv) return fromEnv;
+// All purchasable prices, keyed by `<plan>_<interval>` (subscriptions) or product key (one-time).
+export const PRICES: Record<string, PriceDef> = {
+  premium_month: { lookup: PREMIUM_LOOKUP_KEY, product: "premium", amountCents: PREMIUM_PRICE_CENTS, interval: "month" },
+  premium_year: { lookup: "gcl_premium_yearly", product: "premium", amountCents: 99000, interval: "year" },
+  agency_month: { lookup: AGENCY_LOOKUP_KEY, product: "agency", amountCents: AGENCY_PRICE_CENTS, interval: "month" },
+  agency_year: { lookup: "gcl_agency_yearly", product: "agency", amountCents: 399000, interval: "year" },
+  agency_pro_month: { lookup: "gcl_agency_pro_monthly", product: "agency_pro", amountCents: AGENCY_PRO_PRICE_CENTS, interval: "month" },
+  agency_pro_year: { lookup: "gcl_agency_pro_yearly", product: "agency_pro", amountCents: 799000, interval: "year" },
+  letters_5: { lookup: "gcl_letters_5", product: "letters_5", amountCents: LETTER_PACK_PRICE_CENTS, interval: null },
+};
 
-  const existing = await stripe.prices.list({
-    lookup_keys: [AGENCY_LOOKUP_KEY],
-    active: true,
-    limit: 1,
+// Find-or-create the Stripe Product for a plan key, tagged with metadata so it's
+// reused across its monthly/annual prices.
+async function resolveProduct(stripe: Stripe, productKey: string): Promise<string> {
+  const def = PRODUCTS[productKey];
+  const list = await stripe.products.list({ active: true, limit: 100 });
+  const existing = list.data.find((p) => p.metadata?.gcl_product === productKey || p.name === def.name);
+  if (existing) return existing.id;
+  const created = await stripe.products.create({
+    name: def.name,
+    description: def.description,
+    metadata: { gcl_product: productKey },
   });
+  return created.id;
+}
+
+// Resolve a price id by catalog key. Order: STRIPE_PRICE_ID env override (premium
+// monthly only, legacy) → existing price by lookup_key → create the price.
+export async function resolvePrice(stripe: Stripe, key: string): Promise<string> {
+  const def = PRICES[key];
+  if (!def) throw new Error(`Unknown price key: ${key}`);
+  if (key === "premium_month" && process.env.STRIPE_PRICE_ID) return process.env.STRIPE_PRICE_ID;
+
+  const existing = await stripe.prices.list({ lookup_keys: [def.lookup], active: true, limit: 1 });
   if (existing.data[0]) return existing.data[0].id;
 
-  const product = await stripe.products.create({
-    name: "CreditVector — Agency",
-    description:
-      "Manage unlimited clients in their own workspaces, run the full analysis and letter engine for each, and dispute at scale.",
-  });
+  const product = await resolveProduct(stripe, def.product);
   const price = await stripe.prices.create({
-    product: product.id,
-    unit_amount: AGENCY_PRICE_CENTS,
+    product,
+    unit_amount: def.amountCents,
     currency: "usd",
-    recurring: { interval: "month" },
-    lookup_key: AGENCY_LOOKUP_KEY,
+    lookup_key: def.lookup,
+    ...(def.interval ? { recurring: { interval: def.interval } } : {}),
   });
   return price.id;
 }
 
-export async function resolvePriceId(stripe: Stripe, plan: PaidPlan): Promise<string> {
-  return plan === "agency" ? resolveAgencyPriceId(stripe) : resolvePremiumPriceId(stripe);
+// Resolve a subscription price for a plan + interval.
+export async function resolvePriceId(
+  stripe: Stripe,
+  plan: PaidPlan,
+  interval: BillingInterval = "month"
+): Promise<string> {
+  return resolvePrice(stripe, `${plan}_${interval}`);
 }
 
-// Map a subscription's price back to one of our plan tiers so the webhook can tell
-// an agency subscription apart from a premium one. Prefers the lookup_key (stable,
-// set on every price we provision) and falls back to the amount for safety.
-export function planForPrice(price: {
-  lookup_key?: string | null;
-  unit_amount?: number | null;
-} | null | undefined): PaidPlan {
-  if (!price) return "premium";
-  if (price.lookup_key === AGENCY_LOOKUP_KEY) return "agency";
-  if (price.lookup_key === PREMIUM_LOOKUP_KEY) return "premium";
-  if (price.unit_amount === AGENCY_PRICE_CENTS) return "agency";
+// Map a subscription's price back to a plan tier (for the webhook). Checks the
+// most specific lookup-key prefix first.
+export function planForPrice(price: { lookup_key?: string | null; unit_amount?: number | null } | null | undefined): PaidPlan {
+  const lk = price?.lookup_key ?? "";
+  if (lk.startsWith("gcl_agency_pro")) return "agency_pro";
+  if (lk.startsWith("gcl_agency")) return "agency";
+  if (lk.startsWith("gcl_premium")) return "premium";
+  const amt = price?.unit_amount ?? 0;
+  if (amt === AGENCY_PRO_PRICE_CENTS || amt === 799000) return "agency_pro";
+  if (amt === AGENCY_PRICE_CENTS || amt === 399000) return "agency";
   return "premium";
+}
+
+// Legacy single-price resolvers kept for any older callers.
+export async function resolvePremiumPriceId(stripe: Stripe): Promise<string> {
+  return resolvePrice(stripe, "premium_month");
+}
+export async function resolveAgencyPriceId(stripe: Stripe): Promise<string> {
+  return resolvePrice(stripe, "agency_month");
 }
 
 // Derive the canonical site URL for redirect targets.

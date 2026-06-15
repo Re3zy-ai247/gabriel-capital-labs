@@ -16,11 +16,16 @@ export async function GET() {
   if (!user) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const entitlement = await getEntitlement(user);
-  // Distinguish the agency tier from premium so the UI can label it correctly.
-  const plan = user.isAgency || user.plan === "agency" ? "agency" : entitlement.premium ? "premium" : "free";
+  // Distinguish the tiers so the UI can label + price them correctly.
+  const plan =
+    user.plan === "agency_pro" ? "agency_pro"
+    : user.isAgency || user.plan === "agency" ? "agency"
+    : entitlement.premium ? "premium"
+    : "free";
   return NextResponse.json({
     plan,
     isAgency: Boolean(user.isAgency),
+    letterCredits: entitlement.letterCredits,
     subscriptionStatus: user.subscriptionStatus,
     currentPeriodEnd: user.currentPeriodEnd,
     memberSince: user.createdAt,

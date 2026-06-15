@@ -6,8 +6,9 @@ import { Suspense, useEffect, useState } from 'react';
 import { AppShell } from '@/components/AppShell';
 
 interface Status {
-  plan: 'free' | 'premium' | 'agency';
+  plan: 'free' | 'premium' | 'agency' | 'agency_pro';
   isAgency: boolean;
+  letterCredits?: number;
   subscriptionStatus: string | null;
   currentPeriodEnd: string | null;
   memberSince: string | null;
@@ -115,10 +116,11 @@ function BillingInner() {
 
   if (authStatus !== 'authenticated') return null;
 
-  const isAgency = status?.plan === 'agency';
+  const isAgencyPro = status?.plan === 'agency_pro';
+  const isAgency = status?.plan === 'agency' || isAgencyPro;
   const premium = status?.plan === 'premium' || isAgency;
-  const planLabel = isAgency ? 'Agency' : premium ? 'Premium' : 'Free';
-  const monthlyCost = isAgency ? '$399.00' : premium ? '$99.00' : '$0.00';
+  const planLabel = isAgencyPro ? 'Agency Pro' : isAgency ? 'Agency' : premium ? 'Premium' : 'Free';
+  const monthlyCost = isAgencyPro ? '$799.00' : isAgency ? '$399.00' : premium ? '$99.00' : '$0.00';
 
   return (
     <AppShell title="/ Billing">

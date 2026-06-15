@@ -160,6 +160,11 @@ function LettersInner() {
   return (
     <AppShell title="/ Dispute Letters">
       <EduBanner />
+      {params.get("purchase") === "success" && (
+        <div className="mb-4 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
+          🎉 Payment received — your letter pack is being added. Your extra letters will be available momentarily.
+        </div>
+      )}
       <h2 className="mb-4 text-xl font-semibold">Dispute Letter Builder</h2>
 
       {noTradelines ? (
@@ -244,9 +249,25 @@ function LettersInner() {
             )}
             {error && <p className="mt-3 text-xs text-rose-400">{error}</p>}
             {upgrade && (
-              <Link href="/pricing" className="mt-2 block text-center text-xs font-semibold text-emerald-400 underline">
-                Upgrade to Premium for unlimited letters →
-              </Link>
+              <div className="mt-2 space-y-1.5 text-center">
+                <Link href="/pricing" className="block text-xs font-semibold text-emerald-400 underline">
+                  Upgrade to Premium for unlimited letters →
+                </Link>
+                <button
+                  onClick={async () => {
+                    const r = await fetch("/api/stripe/checkout", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ product: "letters_5" }),
+                    });
+                    const j = await r.json();
+                    if (r.ok && j.url) window.location.href = j.url;
+                  }}
+                  className="text-[11px] text-slate-400 underline hover:text-slate-200"
+                >
+                  …or buy a one-time 5-letter pack for $19
+                </button>
+              </div>
             )}
           </div>
 

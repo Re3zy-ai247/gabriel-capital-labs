@@ -2,26 +2,24 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getStripe, resolvePriceId, siteUrl, type PaidPlan } from "@/lib/stripe";
+import {
+  getStripe, resolvePrice, resolvePriceId, siteUrl,
+  LETTER_PACK_CREDITS, type PaidPlan, type BillingInterval,
+} from "@/lib/stripe";
 import { getOrCreateStripeCustomer } from "@/lib/billing";
 
 export const dynamic = "force-dynamic";
 
-// Creates a Stripe Checkout Session for a paid subscription and returns its URL.
-// Body: { plan?: "premium" | "agency" } — defaults to "premium" ($99/mo). The
-// "agency" plan is the $399/mo tier that unlocks the multi-client workspace.
+// Creates a Stripe Checkout Session. Body:
+//   { plan: "premium"|"agency"|"agency_pro", interval?: "month"|"year" }  — subscription
+//   { product: "letters_5" }                                              — one-time letter pack
 export async function POST(req: Request) {
   const stripe = getStripe();
   if (!stripe) {
-    return NextResponse.json(
-      { error: "Billing is not configured yet. Please try again later." },
-      { status: 503 }
-    );
+    return NextResponse.json({ error: "Billing is not configured yet. Please try again later." }, { status: 503 });
   }
 
   const body = await req.json().catch(() => ({}));
-  const plan: PaidPlan = body?.plan === "agency" ? "agency" : "premium";
-
   const session = await getServerSession(authOptions);
   const email = session?.user?.email;
   if (!email) return NextResponse.json({ error: "Please sign in first." }, { status: 401 });
@@ -29,24 +27,43 @@ export async function POST(req: Request) {
   const user = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
   if (!user) return NextResponse.json({ error: "Account not found." }, { status: 404 });
 
-  if (plan === "agency") {
-    if (user.plan === "agency") {
-      return NextResponse.json({ error: "You're already on the Agency plan." }, { status: 400 });
-    }
-  } else if (user.plan === "premium" || user.plan === "agency") {
-    return NextResponse.json(
-      { error: user.plan === "agency" ? "Your Agency plan already includes Premium." : "You're already on Premium." },
-      { status: 400 }
-    );
-  }
+  const base = siteUrl();
 
   try {
     const customerId = await getOrCreateStripeCustomer(stripe, user);
-    const priceId = await resolvePriceId(stripe, plan);
-    const base = siteUrl();
-    // Agency buyers land back on /agency (their workspace); premium on /billing.
-    const successPath = plan === "agency" ? "/agency?checkout=success" : "/billing?checkout=success";
-    const cancelPath = plan === "agency" ? "/agency?checkout=cancelled" : "/pricing?checkout=cancelled";
+
+    // ── One-time letter pack ────────────────────────────────────────────────
+    if (body.product === "letters_5") {
+      const priceId = await resolvePrice(stripe, "letters_5");
+      const checkout = await stripe.checkout.sessions.create({
+        mode: "payment",
+        customer: customerId,
+        line_items: [{ price: priceId, quantity: 1 }],
+        allow_promotion_codes: true,
+        success_url: `${base}/letters?purchase=success`,
+        cancel_url: `${base}/letters?purchase=cancelled`,
+        metadata: { userId: user.id, product: "letters_5", credits: String(LETTER_PACK_CREDITS) },
+      });
+      return NextResponse.json({ url: checkout.url });
+    }
+
+    // ── Subscriptions ───────────────────────────────────────────────────────
+    const plan: PaidPlan = ["premium", "agency", "agency_pro"].includes(body.plan) ? body.plan : "premium";
+    const interval: BillingInterval = body.interval === "year" ? "year" : "month";
+
+    // Block buying a plan you already have (or better).
+    const tier = (p: string) => (p === "agency_pro" ? 3 : p === "agency" ? 2 : p === "premium" ? 1 : 0);
+    if (tier(user.plan) >= tier(plan)) {
+      const label = user.plan === "agency_pro" ? "Agency Pro" : user.plan === "agency" ? "Agency" : "Premium";
+      return NextResponse.json(
+        { error: plan === user.plan ? `You're already on ${label}.` : `Your ${label} plan already includes this.` },
+        { status: 400 }
+      );
+    }
+
+    const priceId = await resolvePriceId(stripe, plan, interval);
+    const successPath = plan === "premium" ? "/billing?checkout=success" : "/agency?checkout=success";
+    const cancelPath = plan === "premium" ? "/pricing?checkout=cancelled" : "/agency?checkout=cancelled";
 
     const checkout = await stripe.checkout.sessions.create({
       mode: "subscription",
@@ -55,8 +72,8 @@ export async function POST(req: Request) {
       allow_promotion_codes: true,
       success_url: `${base}${successPath}`,
       cancel_url: `${base}${cancelPath}`,
-      subscription_data: { metadata: { userId: user.id, plan } },
-      metadata: { userId: user.id, plan },
+      subscription_data: { metadata: { userId: user.id, plan, interval } },
+      metadata: { userId: user.id, plan, interval },
     });
 
     return NextResponse.json({ url: checkout.url });

@@ -45,6 +45,7 @@ const STATEMENTS = [
   `ALTER TABLE "Letter" ADD COLUMN IF NOT EXISTS "parentLetterId" TEXT`,
   // Admin controls: account disabling + the admin audit log.
   `ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "disabled" BOOLEAN NOT NULL DEFAULT false`,
+  `ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "letterCredits" INTEGER NOT NULL DEFAULT 0`,
   `CREATE TABLE IF NOT EXISTS "AdminAuditLog" (
      "id" TEXT NOT NULL PRIMARY KEY,
      "actorId" TEXT NOT NULL,

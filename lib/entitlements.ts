@@ -1,19 +1,21 @@
 import { prisma } from "./prisma";
 
-// Free tier: 3 dispute letters per calendar month, no AI refinement.
-// Premium: unlimited letters + Opus-powered AI refinement + AI strategist.
+// Free tier: 3 dispute letters per calendar month, no AI refinement. Purchased
+// letter-pack credits are spent once the monthly free allowance is exhausted.
+// Premium / Agency / Agency Pro: unlimited letters + AI.
 export const FREE_LETTER_LIMIT = 3;
 
 export interface Entitlement {
   premium: boolean;
   plan: string;
   aiRefinement: boolean;
-  letterLimit: number | null; // null = unlimited
+  letterLimit: number | null; // null = unlimited; otherwise the monthly free cap
   lettersUsedThisMonth: number;
-  lettersRemaining: number | null; // null = unlimited
+  lettersRemaining: number | null; // null = unlimited; includes purchased credits
+  letterCredits: number; // one-time purchased credits remaining
+  freeMonthlyRemaining: number; // free letters left this month (0 for premium)
 }
 
-// A subscription counts as active for entitlement purposes in these states.
 const ACTIVE_STATES = new Set(["active", "trialing", "past_due"]);
 
 export function isPremium(user: {
@@ -21,25 +23,35 @@ export function isPremium(user: {
   subscriptionStatus?: string | null;
   isAgency?: boolean | null;
 }): boolean {
-  // An agency account always has full features (its $399 plan covers its clients).
   if (user.isAgency) return true;
-  if (user.plan === "premium" || user.plan === "agency") return true;
+  if (user.plan === "premium" || user.plan === "agency" || user.plan === "agency_pro") return true;
   return Boolean(user.subscriptionStatus && ACTIVE_STATES.has(user.subscriptionStatus));
+}
+
+// Managed-client cap by agency tier. ADMINs and Agency Pro are unlimited (null);
+// the base Agency plan is capped; non-agency accounts can't hold clients.
+export function agencyClientLimit(user: {
+  role?: string | null;
+  plan?: string | null;
+  isAgency?: boolean | null;
+}): number | null {
+  if (user.role === "ADMIN") return null;
+  if (user.plan === "agency_pro") return null;
+  if (user.isAgency) return 50;
+  return 0;
 }
 
 function startOfMonthUTC(d = new Date()): Date {
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1));
 }
 
-// Computes the user's current entitlement, counting letters generated this
-// calendar month. Letters are the source of truth for usage — no separate
-// counter to drift out of sync.
 export async function getEntitlement(user: {
   id: string;
   plan?: string | null;
   subscriptionStatus?: string | null;
   isAgency?: boolean | null;
   managedByAgencyId?: string | null;
+  letterCredits?: number | null;
 }): Promise<Entitlement> {
   let premium = isPremium(user);
   // A managed client inherits its agency's entitlement (the agency is the payer).
@@ -50,28 +62,44 @@ export async function getEntitlement(user: {
     });
     if (agency && isPremium(agency)) premium = true;
   }
+
   const lettersUsedThisMonth = await prisma.letter.count({
     where: { userId: user.id, createdAt: { gte: startOfMonthUTC() } },
   });
-  const letterLimit = premium ? null : FREE_LETTER_LIMIT;
-  const lettersRemaining =
-    letterLimit === null ? null : Math.max(0, letterLimit - lettersUsedThisMonth);
+  const letterCredits = Math.max(0, user.letterCredits ?? 0);
+
+  if (premium) {
+    return {
+      premium: true,
+      plan: "premium",
+      aiRefinement: true,
+      letterLimit: null,
+      lettersUsedThisMonth,
+      lettersRemaining: null,
+      letterCredits,
+      freeMonthlyRemaining: 0,
+    };
+  }
+
+  const freeMonthlyRemaining = Math.max(0, FREE_LETTER_LIMIT - lettersUsedThisMonth);
   return {
-    premium,
-    plan: premium ? "premium" : "free",
-    aiRefinement: premium,
-    letterLimit,
+    premium: false,
+    plan: "free",
+    aiRefinement: false,
+    letterLimit: FREE_LETTER_LIMIT,
     lettersUsedThisMonth,
-    lettersRemaining,
+    lettersRemaining: freeMonthlyRemaining + letterCredits,
+    letterCredits,
+    freeMonthlyRemaining,
   };
 }
 
 export function canGenerateLetter(e: Entitlement): { allowed: boolean; reason?: string } {
-  if (e.letterLimit === null) return { allowed: true };
-  if (e.lettersUsedThisMonth >= e.letterLimit) {
+  if (e.lettersRemaining === null) return { allowed: true };
+  if (e.lettersRemaining <= 0) {
     return {
       allowed: false,
-      reason: `You've used all ${e.letterLimit} free dispute letters this month. Upgrade to Premium for unlimited letters and AI refinement.`,
+      reason: `You've used your ${FREE_LETTER_LIMIT} free dispute letters this month. Upgrade to Premium for unlimited letters, or buy a letter pack.`,
     };
   }
   return { allowed: true };
