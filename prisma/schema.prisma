@@ -108,6 +108,18 @@ model AdminAuditLog {
   @@index([createdAt])
 }
 
+// Admin broadcast shown as a banner to all users. Typically one active at a time.
+model Announcement {
+  id        String   @id @default(cuid())
+  title     String
+  body      String   @db.Text
+  tone      String   @default("info") // "info" | "success" | "warning"
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@index([active])
+}
+
 enum DocType {
   GOV_ID_FRONT
   GOV_ID_BACK

@@ -2,13 +2,16 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { BarChart3, Ticket, Users, Building2, ScrollText } from "lucide-react";
+import { BarChart3, Ticket, Users, Building2, ScrollText, CreditCard, ShieldCheck, Megaphone } from "lucide-react";
 
 const TABS = [
   { href: "/admin", label: "Overview", icon: BarChart3 },
   { href: "/admin/discounts", label: "Discount Codes", icon: Ticket },
+  { href: "/admin/billing", label: "Billing", icon: CreditCard },
   { href: "/admin/users", label: "Users", icon: Users },
   { href: "/admin/agencies", label: "Agencies", icon: Building2 },
+  { href: "/admin/compliance", label: "Compliance", icon: ShieldCheck },
+  { href: "/admin/announcements", label: "Announcements", icon: Megaphone },
   { href: "/admin/audit", label: "Audit Log", icon: ScrollText },
 ];
 

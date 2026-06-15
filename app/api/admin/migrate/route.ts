@@ -1,8 +1,21 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireAdmin } from "@/lib/admin";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+
+// The migration is additive/idempotent, but applying schema is privileged. Allow
+// it only for a signed-in ADMIN (browser) OR a caller presenting the SETUP_SECRET
+// (curl: ?secret= or x-setup-secret header) so it can still be run headlessly.
+async function authorize(req: Request): Promise<boolean> {
+  if (await requireAdmin()) return true;
+  const setup = process.env.SETUP_SECRET;
+  if (!setup) return false;
+  const url = new URL(req.url);
+  const provided = req.headers.get("x-setup-secret") || url.searchParams.get("secret") || "";
+  return provided === setup;
+}
 
 // Applies the additive billing columns to the User table if they are missing.
 // This is a safety net for environments where `prisma db push` did not run
@@ -44,6 +57,16 @@ const STATEMENTS = [
      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
    )`,
   `CREATE INDEX IF NOT EXISTS "AdminAuditLog_createdAt_idx" ON "AdminAuditLog"("createdAt")`,
+  // Broadcast announcements.
+  `CREATE TABLE IF NOT EXISTS "Announcement" (
+     "id" TEXT NOT NULL PRIMARY KEY,
+     "title" TEXT NOT NULL,
+     "body" TEXT NOT NULL,
+     "tone" TEXT NOT NULL DEFAULT 'info',
+     "active" BOOLEAN NOT NULL DEFAULT true,
+     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+   )`,
+  `CREATE INDEX IF NOT EXISTS "Announcement_active_idx" ON "Announcement"("active")`,
 ];
 
 async function run() {
@@ -55,7 +78,10 @@ async function run() {
   return applied;
 }
 
-export async function POST() {
+export async function POST(req: Request) {
+  if (!(await authorize(req))) {
+    return NextResponse.json({ error: "Not authorized" }, { status: 403 });
+  }
   try {
     const applied = await run();
     return NextResponse.json({ ok: true, applied });
@@ -68,6 +94,6 @@ export async function POST() {
   }
 }
 
-export async function GET() {
-  return POST();
+export async function GET(req: Request) {
+  return POST(req);
 }
