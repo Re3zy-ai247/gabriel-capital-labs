@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { AdminTabs } from "@/components/admin/AdminTabs";
-import { Loader2, CreditCard, RefreshCcw } from "lucide-react";
+import { Loader2, CreditCard, RefreshCcw, PackagePlus } from "lucide-react";
 
 interface Charge {
   id: string;
@@ -67,10 +67,28 @@ export default function AdminBillingPage() {
     setBusy(null);
   }
 
+  async function provision() {
+    setBusy("provision");
+    setErr(null);
+    const r = await fetch("/api/admin/billing/provision", { method: "POST" });
+    const d = await r.json();
+    setErr(r.ok ? `✓ Synced ${d.count} prices to Stripe (Premium, Agency, Agency Pro — monthly + annual — and the letter pack).` : d.error || "Sync failed.");
+    setBusy(null);
+  }
+
   return (
     <AppShell title="/ Admin">
       <AdminTabs />
-      {err && <p className="mb-3 text-sm text-rose-400">{err}</p>}
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-ink-700/70 bg-ink-900/40 px-4 py-3">
+        <div className="text-xs text-slate-400">
+          Products appear in Stripe when first purchased. Sync to create them all now (also use this on your live account before launch).
+        </div>
+        <button onClick={provision} disabled={busy === "provision"} className="btn-ghost !py-1.5 text-xs">
+          {busy === "provision" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <PackagePlus className="h-3.5 w-3.5" />}
+          Sync products to Stripe
+        </button>
+      </div>
+      {err && <p className="mb-3 text-sm text-slate-300">{err}</p>}
       {loading ? (
         <div className="flex items-center gap-2 text-sm text-slate-400">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading…
