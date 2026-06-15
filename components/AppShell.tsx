@@ -1,6 +1,7 @@
 import { Sidebar, MobileNav } from "./Sidebar";
 import { ThemeToggle } from "./ThemeToggle";
 import { AgencyBar } from "./AgencyBar";
+import { ImpersonationBanner } from "./admin/ImpersonationBanner";
 import { HeaderLogout } from "./HeaderLogout";
 import Link from "next/link";
 
@@ -17,6 +18,7 @@ export function AppShell({ title, children }: { title: string; children: React.R
             <HeaderLogout />
           </div>
         </header>
+        <ImpersonationBanner />
         <AgencyBar />
         <main className="flex-1 px-5 py-6 pb-24 md:pb-6">{children}</main>
         <MobileNav />

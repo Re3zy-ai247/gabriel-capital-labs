@@ -30,6 +30,20 @@ const STATEMENTS = [
   `ALTER TABLE "Letter" ADD COLUMN IF NOT EXISTS "responseAnalysis" TEXT`,
   `ALTER TABLE "Letter" ADD COLUMN IF NOT EXISTS "responseAt" TIMESTAMP(3)`,
   `ALTER TABLE "Letter" ADD COLUMN IF NOT EXISTS "parentLetterId" TEXT`,
+  // Admin controls: account disabling + the admin audit log.
+  `ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "disabled" BOOLEAN NOT NULL DEFAULT false`,
+  `CREATE TABLE IF NOT EXISTS "AdminAuditLog" (
+     "id" TEXT NOT NULL PRIMARY KEY,
+     "actorId" TEXT NOT NULL,
+     "actorEmail" TEXT NOT NULL,
+     "action" TEXT NOT NULL,
+     "targetType" TEXT,
+     "targetId" TEXT,
+     "summary" TEXT NOT NULL,
+     "metadata" JSONB,
+     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+   )`,
+  `CREATE INDEX IF NOT EXISTS "AdminAuditLog_createdAt_idx" ON "AdminAuditLog"("createdAt")`,
 ];
 
 async function run() {

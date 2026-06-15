@@ -60,6 +60,7 @@ model User {
   passwordHash  String?
   // Admin & subscription
   role          UserRole   @default(USER)
+  disabled      Boolean    @default(false) // admin can disable an account (blocks login)
   // Billing — Stripe subscription state. plan is the source of truth for entitlements.
   plan                 String    @default("free") // "free" | "premium"
   stripeCustomerId     String?   @unique
@@ -89,6 +90,22 @@ model User {
   managedByAgencyId String?
   managedByAgency   User?   @relation("AgencyClients", fields: [managedByAgencyId], references: [id], onDelete: Cascade)
   managedClients    User[]  @relation("AgencyClients")
+}
+
+// Append-only record of privileged admin actions (discount codes created, plans
+// comped, roles changed, impersonation started, accounts disabled, etc.).
+model AdminAuditLog {
+  id         String   @id @default(cuid())
+  actorId    String   // the admin who performed the action
+  actorEmail String
+  action     String   // machine key, e.g. "discount.create" | "user.comp_plan" | "user.impersonate"
+  targetType String?  // "user" | "discount" | "agency" | ...
+  targetId   String?
+  summary    String   // human-readable one-liner
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
 }
 
 enum DocType {

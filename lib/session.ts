@@ -7,6 +7,11 @@ import { prisma } from "./prisma";
 // so every existing page/route operates inside that client's workspace.
 export const WORKSPACE_COOKIE = "gcl_client";
 
+// Cookie holding the user an ADMIN is currently impersonating ("view as"). Only
+// honored when the real signed-in account is an ADMIN. currentAccount() stays the
+// real admin (so admin controls remain accessible); only the data subject flips.
+export const IMPERSONATE_COOKIE = "gcl_impersonate";
+
 // The actual signed-in account — NEVER the workspace client. Use this for
 // agency management and billing, where the agency (the payer) is the subject.
 export async function currentAccount() {
@@ -23,6 +28,16 @@ export async function currentAccount() {
 export async function currentUser() {
   const account = await currentAccount();
   if (!account) return null;
+
+  // Admin impersonation takes precedence: a real ADMIN "viewing as" another user
+  // sees that user's data everywhere currentUser() is used.
+  if (account.role === "ADMIN") {
+    const impId = cookies().get(IMPERSONATE_COOKIE)?.value;
+    if (impId && impId !== account.id) {
+      const target = await prisma.user.findUnique({ where: { id: impId } });
+      if (target) return target;
+    }
+  }
 
   if (account.isAgency) {
     const clientId = cookies().get(WORKSPACE_COOKIE)?.value;
@@ -43,6 +58,18 @@ export async function currentUserOrDemo() {
   if (u) return u;
   if (process.env.NODE_ENV === "production") return null;
   return prisma.user.findUnique({ where: { email: "demo@gabrielcapitallabs.com" } });
+}
+
+// If a real ADMIN is currently impersonating someone, returns { real, target };
+// otherwise null. Used by the app shell to render the impersonation banner.
+export async function impersonationContext() {
+  const account = await currentAccount();
+  if (!account || account.role !== "ADMIN") return null;
+  const impId = cookies().get(IMPERSONATE_COOKIE)?.value;
+  if (!impId || impId === account.id) return null;
+  const target = await prisma.user.findUnique({ where: { id: impId } });
+  if (!target) return null;
+  return { real: account, target };
 }
 
 // Convenience for UI: who is signed in, and which client (if any) they're acting

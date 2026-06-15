@@ -5,8 +5,9 @@ import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { cn } from "@/lib/utils";
 import { BRAND } from "@/lib/brand";
+import { useAdminContext } from "./admin/useAdminContext";
 import {
-  LayoutDashboard, Upload, ListTree, Mails, Target, CalendarRange, Gauge, Settings, CreditCard, ScanSearch, LineChart, Building2, LogOut, Menu, X,
+  LayoutDashboard, Upload, ListTree, Mails, Target, CalendarRange, Gauge, Settings, CreditCard, ScanSearch, LineChart, Building2, LogOut, Menu, X, ShieldCheck,
 } from "lucide-react";
 
 const NAV = [
@@ -25,6 +26,9 @@ const ACCOUNT_NAV = [
   { href: "/settings", label: "Settings", icon: Settings },
   { href: "/billing", label: "Billing", icon: CreditCard },
 ];
+
+// Admin link is prepended to the account section only for ADMIN users.
+const ADMIN_LINK = { href: "/admin", label: "Admin", icon: ShieldCheck };
 
 // Primary destinations pinned to the mobile bottom bar; everything else (incl.
 // Agency, Settings, Billing) lives behind "More".
@@ -48,6 +52,8 @@ function BrandMark() {
 
 export function Sidebar() {
   const path = usePathname();
+  const ctx = useAdminContext();
+  const accountNav = ctx?.isAdmin ? [ADMIN_LINK, ...ACCOUNT_NAV] : ACCOUNT_NAV;
   return (
     <aside className="hidden w-60 shrink-0 flex-col border-r border-ink-700/70 bg-ink-900/60 p-4 md:flex">
       <div className="mb-6 px-2">
@@ -67,7 +73,7 @@ export function Sidebar() {
       <div className="mt-6 border-t border-ink-700/70 pt-4">
         <div className="mb-1 px-3 text-[10px] uppercase tracking-wide text-slate-500">Account</div>
         <nav className="flex flex-col gap-1">
-          {ACCOUNT_NAV.map((n) => {
+          {accountNav.map((n) => {
             const active = path === n.href || path?.startsWith(n.href + "/");
             return (
               <Link key={n.href} href={n.href} className={cn("nav-item", active && "nav-item-active")}>
@@ -95,6 +101,8 @@ export function Sidebar() {
 export function MobileNav() {
   const path = usePathname();
   const [open, setOpen] = useState(false);
+  const ctx = useAdminContext();
+  const accountNav = ctx?.isAdmin ? [ADMIN_LINK, ...ACCOUNT_NAV] : ACCOUNT_NAV;
   const primary = MOBILE_PRIMARY.map((href) => NAV.find((n) => n.href === href)!).filter(Boolean);
   const isActive = (href: string) => path === href || path?.startsWith(href + "/");
 
@@ -122,7 +130,7 @@ export function MobileNav() {
             <div className="mt-4 border-t border-ink-700/70 pt-4">
               <div className="mb-1 px-1 text-[10px] uppercase tracking-wide text-slate-500">Account</div>
               <nav className="grid grid-cols-2 gap-2">
-                {ACCOUNT_NAV.map((n) => (
+                {accountNav.map((n) => (
                   <Link key={n.href} href={n.href} onClick={() => setOpen(false)}
                     className={cn("nav-item", isActive(n.href) && "nav-item-active")}>
                     <n.icon className="h-4 w-4" /> {n.label}

@@ -18,6 +18,7 @@ export const authOptions: NextAuthOptions = {
           where: { OR: [{ email: id }, { username: id }] },
         });
         if (!user?.passwordHash) return null;
+        if (user.disabled) return null; // admin-disabled accounts cannot sign in
         const ok = await bcrypt.compare(credentials.password, user.passwordHash);
         if (!ok) return null;
         return { id: user.id, email: user.email, name: user.name ?? undefined };
