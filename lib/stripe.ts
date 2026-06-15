@@ -28,10 +28,18 @@ export const LETTER_PACK_CREDITS = 5;
 export const PREMIUM_LOOKUP_KEY = "gcl_premium_monthly";
 export const AGENCY_LOOKUP_KEY = "gcl_agency_monthly";
 
+// Stripe product tax codes (required when Managed Payments is enabled so Stripe
+// can compute/remit sales tax). Consumer plans use SaaS "personal use"; the
+// agency tiers are B2B → SaaS "business use". Override the IDs via env if Stripe
+// changes them. Verify the human-readable label in the dashboard.
+export const TAX_CODE_SAAS_PERSONAL = process.env.STRIPE_TAX_CODE_SAAS_PERSONAL || "txcd_10103000";
+export const TAX_CODE_SAAS_BUSINESS = process.env.STRIPE_TAX_CODE_SAAS_BUSINESS || "txcd_10103001";
+
 interface ProductDef {
   key: string;
   name: string;
   description: string;
+  taxCode: string;
 }
 
 // One Stripe Product per plan; prices hang off it. `key` is stored in product
@@ -41,22 +49,33 @@ const PRODUCTS: Record<string, ProductDef> = {
     key: "premium",
     name: "CreditVector — Premium",
     description: "Unlimited AI-refined dispute letters, the AI dispute strategist, and 90-day progress tracking.",
+    taxCode: TAX_CODE_SAAS_PERSONAL,
   },
   agency: {
     key: "agency",
     name: "CreditVector — Agency",
     description: "Manage clients in their own workspaces with the full analysis and letter engine. Up to 50 clients.",
+    taxCode: TAX_CODE_SAAS_BUSINESS,
   },
   agency_pro: {
     key: "agency_pro",
     name: "CreditVector — Agency Pro",
     description: "Everything in Agency with unlimited managed clients, for high-volume teams.",
+    taxCode: TAX_CODE_SAAS_BUSINESS,
   },
   letters_5: {
     key: "letters_5",
     name: "CreditVector — 5 Dispute Letters",
     description: "A one-time pack of 5 additional dispute letters.",
+    taxCode: TAX_CODE_SAAS_PERSONAL,
   },
+};
+
+// Older product names (pre-rebrand) mapped to their catalog key, so tax-code
+// reconciliation can also fix products created before the catalog existed.
+const LEGACY_PRODUCT_NAMES: Record<string, string> = {
+  "Gabriel Capital Labs — Premium": "premium",
+  "Gabriel Capital Labs — Agency": "agency",
 };
 
 interface PriceDef {
@@ -83,13 +102,39 @@ async function resolveProduct(stripe: Stripe, productKey: string): Promise<strin
   const def = PRODUCTS[productKey];
   const list = await stripe.products.list({ active: true, limit: 100 });
   const existing = list.data.find((p) => p.metadata?.gcl_product === productKey || p.name === def.name);
-  if (existing) return existing.id;
+  if (existing) {
+    // Keep the tax code in sync (needed for Managed Payments eligibility).
+    const current = typeof existing.tax_code === "string" ? existing.tax_code : existing.tax_code?.id ?? null;
+    if (def.taxCode && current !== def.taxCode) {
+      await stripe.products.update(existing.id, { tax_code: def.taxCode });
+    }
+    return existing.id;
+  }
   const created = await stripe.products.create({
     name: def.name,
     description: def.description,
+    tax_code: def.taxCode,
     metadata: { gcl_product: productKey },
   });
   return created.id;
+}
+
+// Ensure every recognized product (current or legacy-named) carries its tax code.
+// Idempotent; returns the names that were updated. Run from the provision route.
+export async function reconcileTaxCodes(stripe: Stripe): Promise<string[]> {
+  const list = await stripe.products.list({ active: true, limit: 100 });
+  const updated: string[] = [];
+  for (const p of list.data) {
+    const key = p.metadata?.gcl_product || LEGACY_PRODUCT_NAMES[p.name] || (Object.values(PRODUCTS).find((d) => d.name === p.name)?.key ?? "");
+    const want = key ? PRODUCTS[key]?.taxCode : undefined;
+    if (!want) continue;
+    const current = typeof p.tax_code === "string" ? p.tax_code : p.tax_code?.id ?? null;
+    if (current !== want) {
+      await stripe.products.update(p.id, { tax_code: want });
+      updated.push(p.name);
+    }
+  }
+  return updated;
 }
 
 // Resolve a price id by catalog key. Order: STRIPE_PRICE_ID env override (premium

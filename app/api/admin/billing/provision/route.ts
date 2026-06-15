@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getStripe, resolvePrice, PRICES } from "@/lib/stripe";
+import { getStripe, resolvePrice, reconcileTaxCodes, PRICES } from "@/lib/stripe";
 import { requireAdmin, logAudit } from "@/lib/admin";
 
 export const dynamic = "force-dynamic";
@@ -26,14 +26,16 @@ export async function POST(req: Request) {
   for (const key of Object.keys(PRICES)) {
     prices[key] = await resolvePrice(stripe, key);
   }
+  // Backfill tax codes onto every recognized product (Managed Payments needs them).
+  const taxUpdated = await reconcileTaxCodes(stripe);
 
   const admin = await requireAdmin();
   if (admin) {
     await logAudit({
       actor: { id: admin.id, email: admin.email },
       action: "billing.provision",
-      summary: `Provisioned ${Object.keys(prices).length} prices in Stripe`,
+      summary: `Provisioned ${Object.keys(prices).length} prices; set tax codes on ${taxUpdated.length} products`,
     });
   }
-  return NextResponse.json({ ok: true, count: Object.keys(prices).length, prices });
+  return NextResponse.json({ ok: true, count: Object.keys(prices).length, prices, taxUpdated });
 }
