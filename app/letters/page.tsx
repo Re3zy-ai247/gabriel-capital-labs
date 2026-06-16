@@ -54,6 +54,8 @@ function LettersInner() {
   const [strategyId, setStrategyId] = useState("fcra_611");
   const [tradelineId, setTradelineId] = useState("");
   const [bureausSel, setBureausSel] = useState<string[]>([]);
+  const [recipientName, setRecipientName] = useState("");
+  const [recipientAddress, setRecipientAddress] = useState("");
   const [letter, setLetter] = useState<{ id: string; body: string } | null>(null);
   const [genCount, setGenCount] = useState(0);
   const [aiRefined, setAiRefined] = useState(false);
@@ -86,6 +88,10 @@ function LettersInner() {
     const tl = tradelines.find((t) => t.id === id);
     if (tl) {
       setBureausSel(tl.bureaus.length ? tl.bureaus : ["EQUIFAX"]);
+      // Pre-fill the furnisher/collector recipient name; reset the address so the
+      // user supplies the mailing address for the newly-selected account.
+      setRecipientName(tl.creditorName);
+      setRecipientAddress("");
       if (overrideStrategy) setStrategyId(overrideStrategy);
       else if (tl.recommendedStrategy) setStrategyId(tl.recommendedStrategy);
     }
@@ -114,7 +120,13 @@ function LettersInner() {
     try {
       const res = await fetch("/api/letters/generate", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tradelineId, strategyId, ...(isBureauStrategy ? { targetBureaus: bureausSel } : {}) }),
+        body: JSON.stringify({
+          tradelineId,
+          strategyId,
+          ...(isBureauStrategy
+            ? { targetBureaus: bureausSel }
+            : { recipientName: recipientName.trim(), recipientAddress: recipientAddress.trim() }),
+        }),
       });
       const j = await res.json();
       if (res.status === 402) { setError(j.error); setUpgrade(true); return; }
@@ -237,6 +249,33 @@ function LettersInner() {
                     </button>
                   ))}
                 </div>
+              </div>
+            )}
+
+            {/* Furnisher / collector recipient address — makes the letter mail-ready */}
+            {!isBureauStrategy && selectedTradeline && (
+              <div className="mb-4">
+                <label className="label">
+                  Send to ({strategy?.recipient === "collector" ? "collection agency" : "furnisher / creditor"})
+                </label>
+                <p className="mb-2 text-[11px] text-slate-500">
+                  This letter is sent directly to the {strategy?.recipient === "collector" ? "collector" : "furnisher"} —
+                  add their mailing address so it&apos;s ready to send. You&apos;ll find it on the account statement or the
+                  account&apos;s entry on your credit report.
+                </p>
+                <input
+                  className="input mb-2"
+                  value={recipientName}
+                  onChange={(e) => setRecipientName(e.target.value)}
+                  placeholder="Recipient name"
+                />
+                <textarea
+                  className="input resize-y"
+                  rows={3}
+                  value={recipientAddress}
+                  onChange={(e) => setRecipientAddress(e.target.value)}
+                  placeholder={"Mailing address\nP.O. Box / Street\nCity, State ZIP"}
+                />
               </div>
             )}
 

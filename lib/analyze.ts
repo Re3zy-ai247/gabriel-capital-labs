@@ -70,6 +70,7 @@ export async function analyzeReportText(
       dateOfFirstDelinquency: ex.dofd ? new Date(ex.dofd) : null,
       bureauData,
       nonStrategic: cls.nonStrategic,
+      creditorName: ex.creditorName,
     });
     return { ex, cls, bureauData, score, balanceCents };
   });

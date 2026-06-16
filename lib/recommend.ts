@@ -1,5 +1,6 @@
 import { AccountType, Probability } from "@prisma/client";
 import { getBureauData, crossBureauConflicts } from "./bureauData";
+import { obsolescenceWindowYears, bureauTextBlob } from "./obsolescence";
 import { yearsSince } from "./utils";
 
 export interface RecommendInput {
@@ -8,6 +9,7 @@ export interface RecommendInput {
   probability: Probability;
   dateOfFirstDelinquency?: Date | string | null;
   bureauData: unknown;
+  creditorName?: string | null;
 }
 
 export interface Recommendation {
@@ -27,12 +29,19 @@ export function recommendStrategy(t: RecommendInput): Recommendation {
     };
   }
 
-  // Obsolete items first — if it's past the 7-year window, removal is the cleanest play.
+  // Obsolete items first — if it's past its §605 window, removal is the cleanest
+  // play. A Chapter 7/11 bankruptcy public record reports for 10 years, not 7, so
+  // we never recommend an obsolescence dispute on a bankruptcy until year 10.
+  const windowYears = obsolescenceWindowYears({
+    accountType: t.accountType,
+    creditorName: t.creditorName,
+    text: bureauTextBlob(getBureauData(t.bureauData)),
+  });
   const age = (t.dateOfFirstDelinquency ? yearsSince(t.dateOfFirstDelinquency) : 0) ?? 0;
-  if (age >= 7) {
+  if (age >= windowYears) {
     return {
       strategyId: "fcra_605",
-      reason: `This item's first delinquency is about ${Math.floor(age)} years old. Under FCRA §605 most adverse items must drop off after 7 years — request removal as obsolete.`,
+      reason: `This item's first delinquency is about ${Math.floor(age)} years old. Under FCRA §605 this item should drop off after ${windowYears} years — request removal as obsolete.`,
     };
   }
 

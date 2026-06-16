@@ -1,5 +1,6 @@
 import { AccountType, Probability } from "@prisma/client";
 import { type BureauData, crossBureauConflicts, hasCrossBureauKnowledge } from "./bureauData";
+import { obsolescenceWindowYears, bureauTextBlob } from "./obsolescence";
 import { yearsSince } from "./utils";
 
 export interface ScoreInput {
@@ -9,6 +10,7 @@ export interface ScoreInput {
   dateOfFirstDelinquency?: Date | string | null;
   bureauData: BureauData;
   nonStrategic: boolean;
+  creditorName?: string | null;
 }
 
 export interface ScoreResult {
@@ -61,16 +63,22 @@ export function scoreTradeline(input: ScoreInput): ScoreResult {
     angles.push("Zero-balance collection still reporting — challenge ongoing accuracy/relevance.");
   }
 
-  // Age vs 7-year FCRA window
+  // Age vs the FCRA §605 reporting window — 7 years for most items, 10 for a
+  // Chapter 7/11 (or dismissed Chapter 13) bankruptcy public record.
+  const windowYears = obsolescenceWindowYears({
+    accountType: input.accountType,
+    creditorName: input.creditorName,
+    text: bureauTextBlob(input.bureauData),
+  });
   const yrs = yearsSince(input.dateOfFirstDelinquency);
   if (yrs != null) {
-    if (yrs >= 7) {
+    if (yrs >= windowYears) {
       score += 30;
-      reasons.push("Past the 7-year FCRA reporting window — strong obsolescence argument (§605).");
+      reasons.push(`Past the ${windowYears}-year FCRA reporting window — strong obsolescence argument (§605).`);
       angles.push("Dispute as obsolete under FCRA §605.");
-    } else if (yrs >= 6) {
+    } else if (yrs >= windowYears - 1) {
       score += 10;
-      reasons.push("Approaching the 7-year window.");
+      reasons.push(`Approaching the ${windowYears}-year window.`);
     }
   }
 

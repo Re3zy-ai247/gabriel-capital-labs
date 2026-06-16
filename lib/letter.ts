@@ -1,14 +1,16 @@
-import type { Bureau } from "@prisma/client";
+import type { Bureau, AccountType } from "@prisma/client";
 import { STRATEGY_BY_ID, type Strategy } from "./strategies";
 import { STATUTES } from "./statutes";
 import { BUREAU_ADDRESS, BUREAU_LABEL } from "./bureaus";
 import { getBureauData, presentBureaus, hasCrossBureauKnowledge, crossBureauConflicts, type BureauData } from "./bureauData";
+import { obsolescenceWindowYears, bureauTextBlob } from "./obsolescence";
 import { formatCents, formatDate } from "./utils";
 
 export interface LetterTradeline {
   creditorName: string;
   originalCreditor?: string | null;
   accountNumberMask?: string | null;
+  accountType?: AccountType;
   balance: number;
   dateOfFirstDelinquency?: Date | string | null;
   bureauData: unknown;
@@ -28,13 +30,36 @@ export interface LetterContext {
   recipientLines: string[];
   targetBureau?: Bureau;
   consumerComplete: boolean;
+  // True when the recipient block is mail-ready: bureau letters always are; a
+  // furnisher/collector letter is complete only once a recipient address is given.
+  recipientComplete: boolean;
   crossBureau: boolean;
   presentBureaus: Bureau[];
   conflicts: string[];
   data: BureauData;
+  // FCRA §605 reporting window for this item (7 years, or 10 for a bankruptcy
+  // public record). Used to keep the obsolescence language accurate.
+  obsolescenceYears: number;
   // Dispute round (1 = first dispute). Drives the tone ladder: neutral
   // investigation in R1, method-of-verification in R2, regulatory framing by R4/5.
   round: number;
+}
+
+// Optional override of the recipient block for furnisher/collector letters, so a
+// direct dispute is addressed to the actual mailing address instead of a
+// "[Furnisher mailing address]" placeholder.
+export interface RecipientOverride {
+  name?: string | null;
+  address?: string | null; // free-text, one address line per newline
+}
+
+// Split a free-text address into clean, non-empty lines for the recipient block.
+function addressLines(address: string | null | undefined): string[] {
+  if (!address) return [];
+  return address
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean);
 }
 
 export function buildContext(
@@ -42,7 +67,8 @@ export function buildContext(
   t: LetterTradeline,
   consumer: LetterConsumer,
   targetBureau?: Bureau,
-  round: number = 1
+  round: number = 1,
+  recipient?: RecipientOverride
 ): LetterContext {
   const strategy = STRATEGY_BY_ID[strategyId] ?? STRATEGY_BY_ID["fcra_611"];
   const data = getBureauData(t.bureauData);
@@ -51,13 +77,20 @@ export function buildContext(
 
   let recipientName = "";
   let recipientLines: string[] = [];
+  let recipientComplete = true;
   if (strategy.recipient === "bureau") {
     const addr = BUREAU_ADDRESS[bureau];
     recipientName = addr.name;
     recipientLines = addr.lines;
   } else {
-    recipientName = t.creditorName;
-    recipientLines = ["[Furnisher mailing address]"];
+    recipientName = (recipient?.name?.trim() || t.creditorName);
+    const provided = addressLines(recipient?.address);
+    if (provided.length) {
+      recipientLines = provided;
+    } else {
+      recipientLines = ["[Furnisher mailing address]"];
+      recipientComplete = false;
+    }
   }
 
   const consumerComplete = Boolean(consumer.fullName && consumer.addressLine1 && consumer.city && consumer.state && consumer.zip);
@@ -68,10 +101,16 @@ export function buildContext(
     recipientLines,
     targetBureau: strategy.recipient === "bureau" ? bureau : undefined,
     consumerComplete,
+    recipientComplete,
     crossBureau: hasCrossBureauKnowledge(data),
     presentBureaus: present,
     conflicts: crossBureauConflicts(data),
     data,
+    obsolescenceYears: obsolescenceWindowYears({
+      accountType: t.accountType ?? "OTHER",
+      creditorName: t.creditorName,
+      text: bureauTextBlob(data),
+    }),
     round: Math.max(1, round),
   };
 }
@@ -233,8 +272,12 @@ export function renderTemplateLetter(t: LetterTradeline, ctx: LetterContext, con
     );
   }
   if (ctx.strategy.id === "fcra_605") {
+    const windowPhrase =
+      ctx.obsolescenceYears === 10
+        ? "ten years for a bankruptcy of this type"
+        : "seven years for most adverse information";
     lines.push(
-      `Under ${STATUTES.fcra_605.short} (${STATUTES.fcra_605.usc}), adverse information generally may not be reported beyond seven years. If this item is obsolete, I request its removal.`,
+      `Under ${STATUTES.fcra_605.short} (${STATUTES.fcra_605.usc}), adverse information generally may not be reported beyond ${windowPhrase}. If this item is obsolete, I request its removal.`,
       ""
     );
   }

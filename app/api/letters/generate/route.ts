@@ -18,7 +18,8 @@ async function generateOne(
   strategyId: string,
   targetBureau: Bureau | undefined,
   useAI: boolean,
-  apiKey: string | undefined
+  apiKey: string | undefined,
+  recipient?: { name?: string | null; address?: string | null }
 ) {
   const consumer = {
     fullName: user.fullName,
@@ -27,7 +28,7 @@ async function generateOne(
     state: user.state,
     zip: user.zip,
   };
-  const ctx = buildContext(strategyId, tradeline, consumer, targetBureau);
+  const ctx = buildContext(strategyId, tradeline, consumer, targetBureau, 1, recipient);
   let body = renderTemplateLetter(tradeline, ctx, consumer);
   let aiRefined = false;
 
@@ -65,7 +66,7 @@ async function generateOne(
       complianceFlags: flags,
     },
   });
-  return { letter, aiRefined, consumerComplete: ctx.consumerComplete };
+  return { letter, aiRefined, consumerComplete: ctx.consumerComplete, recipientComplete: ctx.recipientComplete };
 }
 
 // Generates one or more dispute letters — one per selected bureau for bureau-type
@@ -83,6 +84,15 @@ export async function POST(req: Request) {
     // Resolve the strategy's recipient to decide whether bureau targeting applies.
     const ctxProbe = buildContext(strategyId, tradeline as any, {}, undefined);
     const isBureau = ctxProbe.strategy.recipient === "bureau";
+
+    // Furnisher/collector letters can carry a user-supplied recipient address so
+    // the letter is mail-ready (bureau letters use the known bureau addresses).
+    const recipient = isBureau
+      ? undefined
+      : {
+          name: typeof body.recipientName === "string" ? body.recipientName : undefined,
+          address: typeof body.recipientAddress === "string" ? body.recipientAddress : undefined,
+        };
 
     // Determine the target bureau list.
     let targets: (Bureau | undefined)[] = [undefined];
@@ -121,11 +131,13 @@ export async function POST(req: Request) {
     const created = [];
     let anyAI = false;
     let consumerComplete = true;
+    let recipientComplete = true;
     for (const b of toGenerate) {
-      const r = await generateOne(user, tradeline as any, strategyId, b, entitlement.aiRefinement, key);
+      const r = await generateOne(user, tradeline as any, strategyId, b, entitlement.aiRefinement, key, recipient);
       created.push(r.letter);
       anyAI = anyAI || r.aiRefined;
       consumerComplete = consumerComplete && r.consumerComplete;
+      recipientComplete = recipientComplete && r.recipientComplete;
     }
 
     // Spend purchased letter credits for anything beyond the free monthly allowance.
@@ -150,11 +162,14 @@ export async function POST(req: Request) {
       upgrade: capped,
       entitlement: after,
       consumerComplete,
-      warning: consumerComplete
-        ? capped
-          ? `Generated ${created.length} letter(s). You hit your free monthly limit — upgrade for unlimited letters.`
-          : null
-        : "Complete your Consumer Info (name + mailing address) before printing — the draft contains placeholders.",
+      recipientComplete,
+      warning: !consumerComplete
+        ? "Complete your Consumer Info (name + mailing address) before printing — the draft contains placeholders."
+        : !recipientComplete
+        ? "Add the furnisher/collector mailing address before printing — the draft still shows a [Furnisher mailing address] placeholder."
+        : capped
+        ? `Generated ${created.length} letter(s). You hit your free monthly limit — upgrade for unlimited letters.`
+        : null,
     });
   } catch (e) {
     console.error("letter generation error", e);

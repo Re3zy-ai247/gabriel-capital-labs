@@ -21,6 +21,7 @@ export async function GET() {
       probability: t.probability,
       dateOfFirstDelinquency: t.dateOfFirstDelinquency,
       bureauData: t.bureauData,
+      creditorName: t.creditorName,
     });
     return {
       ...t,
