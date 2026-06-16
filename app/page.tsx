@@ -6,6 +6,7 @@ import { DISCLAIMER } from "@/lib/compliance";
 import { HeroVisual } from "@/components/landing/HeroVisual";
 import { Reveal } from "@/components/landing/Reveal";
 import { BRAND, MODULES } from "@/lib/brand";
+import { BrandLogo } from "@/components/BrandLogo";
 import {
   Upload,
   ScanSearch,
@@ -15,7 +16,6 @@ import {
   Scale,
   Compass,
   Activity,
-  ShieldCheck,
   Building2,
   Check,
   Mails,
@@ -113,9 +113,7 @@ export default async function Home() {
         {/* Nav */}
         <nav className="mx-auto flex max-w-6xl items-center justify-between px-6 py-6">
           <span className="flex items-center gap-2 text-xl font-bold">
-            <span className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-emerald-400 to-emerald-600 text-slate-900">
-              <ShieldCheck className="h-5 w-5" />
-            </span>
+            <BrandLogo className="h-9 w-9" />
             <span className="leading-none">
               {BRAND.product}<span className="text-emerald-400">™</span>
               <span className="ml-2 hidden text-xs font-normal text-slate-500 sm:inline">{BRAND.byline}</span>

@@ -6,8 +6,9 @@ import { signOut } from "next-auth/react";
 import { cn } from "@/lib/utils";
 import { BRAND } from "@/lib/brand";
 import { useAdminContext } from "./admin/useAdminContext";
+import { BrandLogo } from "./BrandLogo";
 import {
-  LayoutDashboard, Upload, ListTree, Mails, Target, CalendarRange, Gauge, Settings, CreditCard, ScanSearch, LineChart, Building2, LogOut, Menu, X, ShieldCheck,
+  LayoutDashboard, Upload, ListTree, Mails, Target, CalendarRange, Settings, CreditCard, ScanSearch, LineChart, Building2, LogOut, Menu, X, ShieldCheck,
 } from "lucide-react";
 
 const NAV = [
@@ -37,9 +38,7 @@ const MOBILE_PRIMARY = ["/dashboard", "/upload", "/tradelines", "/letters"];
 function BrandMark() {
   return (
     <div className="flex items-center gap-2">
-      <div className="grid h-8 w-8 place-items-center rounded-lg bg-brand-500 text-ink-950">
-        <Gauge className="h-5 w-5" />
-      </div>
+      <BrandLogo className="h-9 w-9" />
       <span className="text-sm font-semibold leading-tight">
         {BRAND.product}
         <span className="text-brand-400">™</span>

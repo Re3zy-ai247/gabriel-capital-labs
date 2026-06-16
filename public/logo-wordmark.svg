@@ -1,0 +1,22 @@
+<svg viewBox="0 0 1180 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="CreditVector">
+  <defs>
+    <linearGradient id="wmGreen" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#3fd886"/>
+      <stop offset="1" stop-color="#0c9a55"/>
+    </linearGradient>
+    <linearGradient id="wmBlue" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#1e40af"/>
+      <stop offset="1" stop-color="#3b82f6"/>
+    </linearGradient>
+  </defs>
+  <!-- Mark -->
+  <g transform="translate(20,32) scale(0.34)">
+    <path d="M 346 142 A 158 158 0 1 0 346 370" fill="none" stroke="url(#wmGreen)" stroke-width="58" stroke-linecap="round"/>
+    <path d="M 208 210 L 250 392 L 455 118" fill="none" stroke="url(#wmBlue)" stroke-width="58" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 455 118 L 392 150 M 455 118 L 447 192" fill="none" stroke="url(#wmBlue)" stroke-width="58" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <!-- Wordmark -->
+  <text x="218" y="158" font-family="Inter, 'Helvetica Neue', Arial, sans-serif" font-size="132" font-weight="800" letter-spacing="-3">
+    <tspan fill="#14213d">Credit</tspan><tspan fill="#0c9a55">Vector</tspan>
+  </text>
+</svg>

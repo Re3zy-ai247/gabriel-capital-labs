@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { Gauge } from "lucide-react";
+import { BrandLogo } from "@/components/BrandLogo";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -20,7 +20,7 @@ export default function LoginPage() {
     <div className="grid min-h-screen place-items-center px-4">
       <form onSubmit={submit} className="card w-full max-w-sm p-6">
         <div className="mb-5 flex items-center gap-2">
-          <div className="grid h-8 w-8 place-items-center rounded-lg bg-brand-500 text-ink-950"><Gauge className="h-5 w-5" /></div>
+          <BrandLogo className="h-9 w-9" />
           <span className="font-semibold">CreditVector™ <span className="text-[10px] font-normal text-slate-500">by Gabriel Capital Labs</span></span>
         </div>
         <label className="label">Email or username</label>
