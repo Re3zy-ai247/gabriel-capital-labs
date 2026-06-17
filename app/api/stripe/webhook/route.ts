@@ -39,7 +39,7 @@ export async function POST(req: Request) {
           // One-time letter pack — grant the purchased credits.
           const userId = cs.metadata.userId;
           const credits = Number(cs.metadata.credits) || 0;
-          if (userId && credits > 0) await creditLetters(userId, credits);
+          if (userId && credits > 0) await creditLetters(userId, credits, event.id);
         }
         break;
       }

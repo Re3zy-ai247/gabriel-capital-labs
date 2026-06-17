@@ -59,11 +59,44 @@ export async function syncSubscriptionToUser(sub: Stripe.Subscription): Promise<
   await prisma.user.update({ where: { id: user.id }, data });
 }
 
-// Grant one-time letter credits (from a letter-pack purchase). Idempotency is
-// handled by the caller keying off the Stripe event.
-export async function creditLetters(userId: string, credits: number): Promise<void> {
-  await prisma.user.update({
-    where: { id: userId },
-    data: { letterCredits: { increment: credits } },
+// Lazily ensure the webhook-dedup ledger exists. Runtime raw SQL works through
+// the Prisma Accelerate proxy (only build-time `prisma db push` does not), so we
+// create the table on demand rather than depending on a migration having run.
+let dedupTableReady = false;
+async function ensureDedupTable(): Promise<void> {
+  if (dedupTableReady) return;
+  await prisma.$executeRawUnsafe(
+    `CREATE TABLE IF NOT EXISTS "StripeWebhookEvent" ("id" TEXT PRIMARY KEY, "type" TEXT NOT NULL, "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP)`
+  );
+  dedupTableReady = true;
+}
+
+// Grant one-time letter credits (from a letter-pack purchase). Stripe delivers
+// webhooks AT LEAST ONCE, so the same checkout.session.completed event can arrive
+// more than once (retry on a slow 2xx, network hiccup, or a manual "Resend").
+// When an eventId is supplied we record it in a ledger and increment in the SAME
+// transaction, so a redelivery is a no-op and can never double-credit. Without an
+// eventId the grant is unconditional (e.g. an admin/manual grant).
+export async function creditLetters(userId: string, credits: number, eventId?: string): Promise<void> {
+  if (!eventId) {
+    await prisma.user.update({
+      where: { id: userId },
+      data: { letterCredits: { increment: credits } },
+    });
+    return;
+  }
+  await ensureDedupTable();
+  await prisma.$transaction(async (tx) => {
+    const inserted = await tx.$executeRawUnsafe(
+      `INSERT INTO "StripeWebhookEvent" ("id", "type") VALUES ($1, $2) ON CONFLICT ("id") DO NOTHING`,
+      eventId,
+      "letters_5"
+    );
+    // 0 rows inserted → this event was already processed; do not credit again.
+    if (inserted === 0) return;
+    await tx.user.update({
+      where: { id: userId },
+      data: { letterCredits: { increment: credits } },
+    });
   });
 }
