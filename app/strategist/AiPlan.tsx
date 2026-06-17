@@ -2,6 +2,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Sparkles, Loader2 } from "lucide-react";
+import { Markdown } from "@/components/Markdown";
 
 // Premium AI action-plan generator. Free users see an upgrade prompt; premium
 // users get an Opus-generated, sequenced 90-day plan grounded in their items.
@@ -65,8 +66,8 @@ export function AiPlan() {
       )}
 
       {plan && (
-        <div className="mt-4 rounded-lg border border-ink-700 bg-ink-900/60 p-4">
-          <pre className="whitespace-pre-wrap font-sans text-[13px] leading-relaxed text-slate-200">{plan}</pre>
+        <div className="mt-4 rounded-lg border border-ink-700 bg-ink-900/60 p-5">
+          <Markdown source={plan} />
         </div>
       )}
     </div>
