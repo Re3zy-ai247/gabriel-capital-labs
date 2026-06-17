@@ -83,6 +83,7 @@ model User {
   documents     Document[]
   communityThreads CommunityThread[]
   communityReplies CommunityReply[]
+  supportTickets   SupportTicket[]
 
   // ---- Agency tier ($399/mo): an agency manages many "clients" on their behalf.
   // A managed client is itself a User row with managedByAgencyId set and no
@@ -296,5 +297,37 @@ model CommunityReply {
   createdAt  DateTime        @default(now())
 
   @@index([threadId, createdAt])
+}
+
+// ---- Support tickets: available to EVERY signed-in user regardless of plan.
+// A ticket is a thread of messages between the user and staff (isStaff replies).
+model SupportTicket {
+  id             String                 @id @default(cuid())
+  user           User?                  @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userId         String?
+  userEmail      String                 // snapshot so staff can reply even if the user is removed
+  userName       String                 // snapshot display name
+  subject        String
+  category       String                 @default("general") // general | billing | technical | account
+  status         String                 @default("open")    // open | responded | closed
+  lastActivityAt DateTime               @default(now())
+  createdAt      DateTime               @default(now())
+  messages       SupportTicketMessage[]
+
+  @@index([status, lastActivityAt])
+  @@index([userId])
+}
+
+model SupportTicketMessage {
+  id         String        @id @default(cuid())
+  ticket     SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  ticketId   String
+  authorId   String?
+  authorName String
+  isStaff    Boolean       @default(false) // true = posted by support/admin
+  body       String        @db.Text
+  createdAt  DateTime      @default(now())
+
+  @@index([ticketId, createdAt])
 }
 

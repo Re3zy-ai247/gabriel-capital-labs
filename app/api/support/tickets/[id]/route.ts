@@ -1,0 +1,47 @@
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { requireSupportUser, supportCategoryLabel } from "@/lib/support";
+
+export const dynamic = "force-dynamic";
+
+// GET: a ticket + its messages. Owner or ADMIN only.
+export async function GET(_req: Request, { params }: { params: { id: string } }) {
+  const account = await requireSupportUser();
+  if (!account) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const isAdmin = account.role === "ADMIN";
+
+  const ticket = await prisma.supportTicket.findUnique({
+    where: { id: params.id },
+    include: { messages: { orderBy: { createdAt: "asc" } } },
+  });
+  if (!ticket) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!isAdmin && ticket.userId !== account.id) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  return NextResponse.json({
+    isAdmin,
+    ticket: {
+      id: ticket.id,
+      subject: ticket.subject,
+      category: ticket.category,
+      categoryLabel: supportCategoryLabel(ticket.category),
+      status: ticket.status,
+      userName: ticket.userName,
+      userEmail: ticket.userEmail,
+      createdAt: ticket.createdAt,
+      messages: ticket.messages.map((m) => ({
+        id: m.id, authorName: m.authorName, isStaff: m.isStaff, body: m.body, createdAt: m.createdAt,
+      })),
+    },
+  });
+}
+
+// PATCH: ADMIN updates the ticket status (open | responded | closed).
+export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+  const account = await requireSupportUser();
+  if (!account || account.role !== "ADMIN") return NextResponse.json({ error: "Not authorized" }, { status: 403 });
+  const b = await req.json().catch(() => ({}));
+  const status = ["open", "responded", "closed"].includes(b.status) ? b.status : null;
+  if (!status) return NextResponse.json({ error: "Bad status" }, { status: 400 });
+  await prisma.supportTicket.update({ where: { id: params.id }, data: { status } });
+  return NextResponse.json({ ok: true });
+}

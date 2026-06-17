@@ -9,7 +9,7 @@ import { useAdminContext } from "./admin/useAdminContext";
 import { useCommunityAccess } from "./community/useCommunityAccess";
 import { BrandLogo } from "./BrandLogo";
 import {
-  LayoutDashboard, Upload, ListTree, Mails, Target, CalendarRange, Settings, CreditCard, ScanSearch, LineChart, Building2, LogOut, Menu, X, ShieldCheck, MessagesSquare,
+  LayoutDashboard, Upload, ListTree, Mails, Target, CalendarRange, Settings, CreditCard, ScanSearch, LineChart, Building2, LogOut, Menu, X, ShieldCheck, MessagesSquare, LifeBuoy,
 } from "lucide-react";
 
 const NAV = [
@@ -27,6 +27,7 @@ const ACCOUNT_NAV = [
   { href: "/agency", label: "Agency", icon: Building2 },
   { href: "/settings", label: "Settings", icon: Settings },
   { href: "/billing", label: "Billing", icon: CreditCard },
+  { href: "/support", label: "Support", icon: LifeBuoy },
 ];
 
 // Admin link is prepended to the account section only for ADMIN users.
