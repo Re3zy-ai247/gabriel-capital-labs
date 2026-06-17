@@ -55,10 +55,19 @@ export default function SettingsPage() {
     const res = await fetch("/api/profile", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(profile),
+      body: JSON.stringify({ ...profile, email }),
     });
+    const d = await res.json().catch(() => ({}));
     setBusy(false);
-    setStatus(res.ok ? "Profile saved. Your dispute letters will use this information." : "Could not save — please try again.");
+    if (!res.ok) {
+      setStatus(d.error || "Could not save — please try again.");
+      return;
+    }
+    setStatus(
+      d.emailChanged
+        ? "Saved. Your account email was updated — you can sign in with the new email or your username."
+        : "Profile saved. Your dispute letters will use this information."
+    );
   }
 
   async function changePassword(e: React.FormEvent) {
@@ -100,16 +109,19 @@ export default function SettingsPage() {
           </div>
         ) : (
           <form onSubmit={save} className="space-y-4">
-            {email && (
-              <div>
-                <label className="block text-sm text-slate-400 mb-1">Account Email</label>
-                <input
-                  value={email}
-                  disabled
-                  className="w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-slate-500"
-                />
-              </div>
-            )}
+            <div>
+              <label className="block text-sm text-slate-400 mb-1">Account Email</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="email"
+                className="w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-slate-100 focus:border-brand-500 focus:outline-none"
+              />
+              <p className="mt-1 text-xs text-slate-500">
+                Used to sign in (along with your username) and to receive billing receipts. Changing it won&apos;t log you out.
+              </p>
+            </div>
             <div>
               <label className="block text-sm text-slate-400 mb-1">Full Legal Name</label>
               <input
