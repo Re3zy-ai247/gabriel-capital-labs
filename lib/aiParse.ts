@@ -1,5 +1,8 @@
 import type { Bureau } from "@prisma/client";
 import type { ExtractedTradeline } from "./parse";
+import type { CreditorKind } from "./classify";
+
+const CREDITOR_KINDS = ["original_creditor", "debt_buyer", "collection_agency", "government", "unknown"] as const;
 
 // AI-powered credit-report extraction. Turns the raw text of ANY bureau report
 // (single-bureau or tri-merge, AnnualCreditReport.com, Credit Karma export, a
@@ -16,6 +19,7 @@ interface AIAccount {
   originalCreditor: string;
   accountNumberMask: string;
   accountTypeHint: string;
+  creditorKind: string;
   balanceCents: number;
   status: string;
   dofd: string;
@@ -41,6 +45,12 @@ const SCHEMA = {
             description:
               "One of: revolving, installment, mortgage, collection, charge-off, student loan, public record, government, inquiry, other. Empty string if unclear.",
           },
+          creditorKind: {
+            type: "string",
+            enum: CREDITOR_KINDS,
+            description:
+              "Classify the ENTITY using your real-world knowledge of the company, NOT the report's section heading. 'original_creditor' = the bank, card issuer, lender, retailer, or consumer-financing company that originated the account (e.g. MDG / MDG Financing is a consumer-financing company => original_creditor; also Discover, Capital One, OneMain, Navient, Fortiva, Genesis). 'debt_buyer' = a firm that purchases charged-off debt (LVNV/Resurgent, Midland/MCM, Portfolio Recovery, Jefferson Capital, Cavalry, Encore). 'collection_agency' = a third-party collector working accounts it may not own. 'government' = child support, tax, court, DMV, tolls. Use 'unknown' only if you genuinely cannot tell. An account listed under a 'Collections' heading can still be an original creditor — judge by what the company actually is.",
+          },
           balanceCents: { type: "integer", description: "Balance in integer cents. 0 if not stated." },
           status: { type: "string", description: "Account status as printed (e.g. 'Open', 'Charge-off', 'Collection'); else empty string." },
           dofd: { type: "string", description: "Date of first delinquency, ISO yyyy-mm-dd if derivable; else empty string." },
@@ -57,6 +67,7 @@ const SCHEMA = {
           "originalCreditor",
           "accountNumberMask",
           "accountTypeHint",
+          "creditorKind",
           "balanceCents",
           "status",
           "dofd",
@@ -80,7 +91,8 @@ function systemPrompt(covered: Bureau[]): string {
     "4. balanceCents is integer cents: $1,477 -> 147700; $0 or unknown -> 0. The balance is the dollar amount labeled as the balance — NEVER use a list/section number (e.g. '2.6', '11.') as a balance.",
     "5. creditorName must be the clean creditor/collector name ONLY. Strip any leading list/section/outline number (e.g. '2.6 Mdg Us Inc' -> 'Mdg Us Inc', '11. Collections' is a header, not an account) and any trailing status parenthetical like '(CLOSED)' — put open/closed in the status field instead.",
     "6. NEVER output a record for non-account content. Exclude: educational/explanatory blurbs (e.g. 'Collections are accounts with outstanding debt...'), debt-to-credit ratio descriptions, payment-history tables or headers, 'Comments'/'Contact'/'Remarks' labels, bureau-name strings (e.g. 'EquifaxExperianTransUnion'), bare section headers (e.g. 'Collections', 'Public Records'), score summaries, soft inquiries, and personal-information sections. If a line reads like a sentence or a heading rather than a creditor name, it is NOT an account.",
-    "7. Return strictly the structured JSON. No commentary.",
+    "7. creditorKind: classify the ENTITY by what the company actually is, using your real-world knowledge — not by the report's section heading. A consumer-financing company or original lender that happens to be listed under 'Collections' is still an original_creditor (e.g. MDG / MDG Financing => original_creditor, never debt_buyer). Only tag debt_buyer for firms that buy charged-off debt (LVNV, Midland/MCM, Portfolio Recovery, Jefferson Capital, Cavalry, Encore) and collection_agency for third-party collectors. This drives which dispute letter is generated, so be precise.",
+    "8. Return strictly the structured JSON. No commentary.",
   ].join("\n");
 }
 
@@ -151,6 +163,9 @@ export async function aiExtractTradelines(
         dofd: a.dofd?.trim() || undefined,
         dateReported: a.dateReported?.trim() || undefined,
         typeHint: a.accountTypeHint?.trim() || undefined,
+        kind: (CREDITOR_KINDS as readonly string[]).includes(a.creditorKind)
+          ? (a.creditorKind as CreditorKind)
+          : undefined,
         perBureau,
       } satisfies ExtractedTradeline;
     });

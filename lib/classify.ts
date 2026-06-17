@@ -1,17 +1,38 @@
 import { AccountType } from "@prisma/client";
 
-// Known third-party debt buyers / collection agencies (lowercased substrings).
+// What KIND of entity a creditor is. The AI extractor judges this from real-world
+// knowledge of the company (see lib/aiParse.ts); our curated lists below are
+// high-confidence overrides for names we are certain about.
+export type CreditorKind =
+  | "original_creditor"
+  | "debt_buyer"
+  | "collection_agency"
+  | "government"
+  | "unknown";
+
+// High-confidence third-party DEBT BUYERS — firms whose business is buying
+// charged-off debt. Tagged isDebtBuyer=true. Do NOT add original creditors or
+// financing companies here (e.g. MDG / MDG Financing is NOT a debt buyer).
 const DEBT_BUYERS = [
-  "lvnv", "portfolio recov", "midland", "jefferson capital", "cavalry", "resurgent",
-  "encore", "1st crd", "first credit", "mdg us", "convergent", "enhanced recovery",
-  "iq data", "national credit", "receivables", "collection",
+  "lvnv", "resurgent", "portfolio recov", "midland", "mcm", "jefferson capital",
+  "cavalry", "encore", "sherman", "unifund", "second round",
+  "absolute resolutions", "pra group", "velocity invest",
 ];
 
-// Original creditors that are frequently mis-tagged as collections.
+// Third-party COLLECTION AGENCIES (collect debt they may not own) and names that
+// literally read as a collector. Tagged COLLECTION but isDebtBuyer=false.
+const COLLECTION_AGENCIES = [
+  "convergent", "enhanced recovery", "iq data", "ic system", "transworld",
+  "afni", "1st crd", "first credit", "receivables", "collection",
+  "national credit", "credit management",
+];
+
+// Original creditors / lenders / consumer-financing companies frequently
+// mis-tagged as collections. MDG (mdg.com — consumer financing) lives HERE, not
+// in DEBT_BUYERS, so its accounts are never labeled a third-party collection.
 const ORIGINAL_CREDITORS: { match: string[]; type: AccountType }[] = [
-  { match: ["discover"], type: AccountType.REVOLVING },
-  { match: ["capital one", "amex", "american express", "synchrony", "comenity", "fingerhut", "extra "], type: AccountType.REVOLVING },
-  { match: ["onemain", "one main", "upgrade", "best egg", "lendingclub", "sofi", "marcus"], type: AccountType.INSTALLMENT },
+  { match: ["discover", "capital one", "amex", "american express", "synchrony", "comenity", "fingerhut", "extra ", "credit one", "merrick", "mission lane"], type: AccountType.REVOLVING },
+  { match: ["onemain", "one main", "upgrade", "best egg", "lendingclub", "sofi", "marcus", "mdg", "fortiva", "genesis", "concora", "avant", "oportun"], type: AccountType.INSTALLMENT },
   { match: ["navient", "nelnet", "great lakes", "mohela", "sallie mae"], type: AccountType.STUDENT_LOAN },
   { match: ["mortgage", "home loan", "wells fargo home", "rocket mortgage"], type: AccountType.MORTGAGE },
 ];
@@ -25,27 +46,62 @@ export interface ClassifyResult {
   nonStrategic: boolean; // true => should NOT be queued for dispute letters
 }
 
-export function classifyCreditor(nameRaw: string, hint?: string): ClassifyResult {
+// Map a free-text account-type hint to an AccountType. Used as a fallback and to
+// type accounts the AI flags as original creditors.
+function typeFromHint(h: string): AccountType | null {
+  if (!h) return null;
+  if (h.includes("mortgage") || h.includes("real estate")) return AccountType.MORTGAGE;
+  if (h.includes("student")) return AccountType.STUDENT_LOAN;
+  if (h.includes("auto") || h.includes("vehicle") || h.includes("install")) return AccountType.INSTALLMENT;
+  if (h.includes("revolv") || h.includes("credit card") || h.includes("charge account") || h.includes("line of credit")) return AccountType.REVOLVING;
+  if (h.includes("collection")) return AccountType.COLLECTION;
+  if (h.includes("charge")) return AccountType.CHARGE_OFF;
+  if (h.includes("inquiry")) return AccountType.INQUIRY;
+  return null;
+}
+
+// Resolve a creditor's account type and whether it's a third-party debt buyer.
+// Precedence: curated lists (we're sure) > the AI's real-world judgment (kind) >
+// the raw type hint. `kind` comes from the AI extractor and lets us classify
+// companies that aren't in our lists without hardcoding every name.
+export function classifyCreditor(nameRaw: string, hint?: string, kind?: CreditorKind): ClassifyResult {
   const name = (nameRaw || "").toLowerCase();
   const h = (hint || "").toLowerCase();
 
-  if (GOVERNMENT.some((g) => name.includes(g))) {
+  // 1. Government (by name or the AI's judgment) — non-strategic, don't dispute.
+  if (kind === "government" || GOVERNMENT.some((g) => name.includes(g))) {
     return { accountType: AccountType.GOVERNMENT, isDebtBuyer: false, nonStrategic: true };
   }
 
-  // Original creditor patterns take precedence over generic "collection" hints.
+  // 2. Curated original creditors win over a generic "collection" hint or an AI
+  //    mislabel — these are financing/lender names we are sure about.
   for (const oc of ORIGINAL_CREDITORS) {
     if (oc.match.some((m) => name.includes(m))) {
       return { accountType: oc.type, isDebtBuyer: false, nonStrategic: false };
     }
   }
 
-  const isDebtBuyer = DEBT_BUYERS.some((d) => name.includes(d));
-  if (isDebtBuyer || h.includes("collection")) {
-    return { accountType: AccountType.COLLECTION, isDebtBuyer, nonStrategic: false };
+  // 3. Curated high-confidence debt buyers, then collection agencies (by name).
+  if (DEBT_BUYERS.some((d) => name.includes(d))) {
+    return { accountType: AccountType.COLLECTION, isDebtBuyer: true, nonStrategic: false };
   }
-  if (h.includes("charge")) return { accountType: AccountType.CHARGE_OFF, isDebtBuyer: false, nonStrategic: false };
-  if (h.includes("inquiry")) return { accountType: AccountType.INQUIRY, isDebtBuyer: false, nonStrategic: false };
+  if (COLLECTION_AGENCIES.some((d) => name.includes(d))) {
+    return { accountType: AccountType.COLLECTION, isDebtBuyer: false, nonStrategic: false };
+  }
+
+  // 4. Trust the AI's real-world knowledge of the entity when our lists don't hit.
+  if (kind === "debt_buyer") return { accountType: AccountType.COLLECTION, isDebtBuyer: true, nonStrategic: false };
+  if (kind === "collection_agency") return { accountType: AccountType.COLLECTION, isDebtBuyer: false, nonStrategic: false };
+  if (kind === "original_creditor") {
+    // An original creditor is never a third-party collection; ignore a stray
+    // "collection" hint and type it from the remaining signal.
+    const t = typeFromHint(h);
+    return { accountType: t && t !== AccountType.COLLECTION ? t : AccountType.OTHER, isDebtBuyer: false, nonStrategic: false };
+  }
+
+  // 5. Fall back to the raw hint, then OTHER.
+  const fromHint = typeFromHint(h);
+  if (fromHint) return { accountType: fromHint, isDebtBuyer: false, nonStrategic: false };
 
   return { accountType: AccountType.OTHER, isDebtBuyer: false, nonStrategic: false };
 }

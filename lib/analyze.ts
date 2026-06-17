@@ -61,7 +61,7 @@ export async function analyzeReportText(
 
   const records = extracted.map((ex) => {
     const balanceCents = safeCents(ex.balanceCents);
-    const cls = classifyCreditor(ex.creditorName, ex.typeHint);
+    const cls = classifyCreditor(ex.creditorName, ex.typeHint, ex.kind);
     const bureauData = toBureauData(ex, coveredBureaus);
     const score = scoreTradeline({
       accountType: cls.accountType,

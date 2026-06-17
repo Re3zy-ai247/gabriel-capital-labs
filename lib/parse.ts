@@ -1,5 +1,6 @@
 import type { Bureau } from "@prisma/client";
 import type { BureauData, BureauFields } from "./bureauData";
+import type { CreditorKind } from "./classify";
 
 // Deterministic heuristic extractor — the fallback used when AI extraction is
 // unavailable (no ANTHROPIC_API_KEY) or fails. Real credit-report PDFs flatten
@@ -17,6 +18,7 @@ export interface ExtractedTradeline {
   dofd?: string;
   dateReported?: string;
   typeHint?: string;
+  kind?: CreditorKind; // AI's judgment of the entity (original creditor vs debt buyer, etc.)
   // per-bureau raw values, only for bureaus actually present in this report
   perBureau: Partial<Record<Bureau, Omit<BureauFields, "presence">>>;
 }
