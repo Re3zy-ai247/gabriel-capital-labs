@@ -26,12 +26,20 @@ This file is the fast-start: read it instead of re-reading the whole tree.
 - **Furnisher address auto-fill:** the AI parser now extracts each account's Contact block (name + mailing address) into a self-heal `TradelineContact` table; the Dispute Letter Builder pre-fills the recipient name + address (editable), and the generate route falls back to it when blank. Existing accounts need a **Re-analyze** to backfill.
 - **Go-live audit: GREEN** (all 6 dimensions). Static: `tsc --noEmit` clean, `classify.test.ts` 29/29. Live prod probes: public 200; every protected API 401/403; admin routes + `/api/admin/migrate` 403; unsigned Stripe webhook 400. Dimensions: `auth-security`, `croa-legal`, `email-change`, `session-12` (session integrity), `stripe-live`, `billing-entitlements`.
 - **Stripe LIVE** (`sk_live`); webhook (`/api/stripe/webhook`, 5 events) verified with a real $1 charge; live catalog synced; letter-pack credits idempotent.
+- **Kai hardened against prompt injection / scope abuse / prompt-extraction** (`lib/kai.ts`): absolute SECURITY & SCOPE block (credit-only, refuse code/off-topic, never reveal the system prompt, never emit secrets, compliance rules can't be waived); forum post fenced in BEGIN/END markers labeled UNTRUSTED; `sanitizeForPrompt()` caps length + strips fence-spoofing (`scripts/kai-sanitize.test.ts`, 8/8). **Verified architectural fact: no secret/env var is ever interpolated into ANY AI prompt — keys are only SDK constructor args. Kai has no tools/DB/secrets, so it cannot exfiltrate data.**
+- **Strategist plan now renders as markdown** (`components/Markdown.tsx`, a tiny dependency-free renderer: headings, bold/italic/code, GFM tables, hr, lists) instead of a raw `<pre>`.
 - **Shipped:** account-email change (Settings) — **now requires current-password confirmation** (`bcrypt.compare`, 403 on mismatch; UI prompts only when the email actually changes); **Community Hub + Kai** master agent (Opus 4.8, CROA-reviewed — bankruptcy answer approved); **Support ticket center** (`/support`, all plans, admin staff view); **MDG creditor-classification fix** (AI now judges `creditorKind`); `agency/enable` ADMIN-escalation removed; `invoice.payment_succeeded` handler.
 
-## Pending / next tasks
-- [x] **Go-live audit — DONE 2026-06-17:** all 6 dimensions green (see Status).
-- [ ] **User-side Stripe (owner does these):** set merchant-notification email to `reygabriel@creditvector.app`; enable **Customer emails → Successful payments**.
-- [ ] **MDG verify:** click **Re-analyze report** on Tradelines to reclassify existing tradelines with the new classifier.
+## ▶ NEXT SESSION — resume here (parked 2026-06-17, all code pushed & deployed)
+Pre-launch checklist, in priority order:
+1. **[TOP] Security review of the attachment / file-upload path** — newest attack surface. Adversarially check: `app/api/attachments/[id]/route.ts` IDOR (support = ticket-owner-or-staff, community = membership), `lib/attachments.ts` (validation, encryption, scope/refId integrity), the 4 multipart compose routes (support new-ticket + reply, community new-thread + reply). Run `/security-review` or do it inline. *This was the agreed next task.*
+2. **`Report.rawText` stored unencrypted** (`schema.prisma` Report model) — raw credit-report PII (account #s, addresses) sits in plaintext for re-analysis. Documents/attachments are AES-encrypted; reports aren't. Encrypt at rest (reuse `lib/docCrypto.ts`) or scrub before storage.
+3. **No rate limiting** — AI endpoints (`ask-kai`, `strategist/plan`, `letters/generate`) are paywall-gated so abuse is bounded, but add per-user/IP limits on those + `register` + `support`.
+4. **User-side Stripe (owner does these):** set merchant-notification email to `reygabriel@creditvector.app`; enable **Customer emails → Successful payments**.
+5. **MDG verify:** click **Re-analyze report** on Tradelines (also backfills furnisher addresses).
+6. **CROA/legal positioning** — "educational, not credit-repair" framing is a counsel sign-off, not a code task.
+
+Verification baseline (all green at park): `tsc` clean · `next build` ok · `classify.test.ts` 29/29 · `kai-sanitize.test.ts` 8/8.
 
 ## File map
 - **Stripe:** `lib/stripe.ts` (catalog), `lib/billing.ts` (sub sync + `creditLetters`), `app/api/stripe/{checkout,webhook,portal}`.
@@ -42,5 +50,6 @@ This file is the fast-start: read it instead of re-reading the whole tree.
 - **Support:** `app/support/page.tsx`, `app/api/support/*`, `lib/support.ts` (+ `lib/supportShared.ts`).
 - **Attachments:** `lib/attachments.ts` (server, `Attachment` model) + `lib/attachmentsShared.ts` (client-safe), `components/Attachments.tsx` (`AttachmentPicker`/`AttachmentList`/`imagesFromClipboard`), `app/api/attachments/[id]` (auth'd stream).
 - **Admin:** `app/admin/*`, `app/api/admin/*` (gated by `requireAdmin`). **Auth/session:** `lib/auth.ts`, `lib/session.ts`.
+- **AI safety:** `lib/kai.ts` (Kai system prompt + injection defenses), `lib/compliance.ts` (CROA scrubber), `components/Markdown.tsx` (renders AI markdown output). All AI surfaces: `lib/kai.ts`, `lib/aiParse.ts`, `lib/letter.ts`, `app/api/strategist/plan`, `lib/round2.ts`, `app/api/identity/*` — none ever puts a secret in a prompt.
 
 **CROA bar:** never guarantee deletion or score increases; no §609 / Metro-2 deletion myths; don't promise removal of accurate negative items. Kai + letters run through `lib/compliance.ts`.
