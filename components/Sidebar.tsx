@@ -6,9 +6,10 @@ import { signOut } from "next-auth/react";
 import { cn } from "@/lib/utils";
 import { BRAND } from "@/lib/brand";
 import { useAdminContext } from "./admin/useAdminContext";
+import { useCommunityAccess } from "./community/useCommunityAccess";
 import { BrandLogo } from "./BrandLogo";
 import {
-  LayoutDashboard, Upload, ListTree, Mails, Target, CalendarRange, Settings, CreditCard, ScanSearch, LineChart, Building2, LogOut, Menu, X, ShieldCheck,
+  LayoutDashboard, Upload, ListTree, Mails, Target, CalendarRange, Settings, CreditCard, ScanSearch, LineChart, Building2, LogOut, Menu, X, ShieldCheck, MessagesSquare,
 } from "lucide-react";
 
 const NAV = [
@@ -31,6 +32,9 @@ const ACCOUNT_NAV = [
 // Admin link is prepended to the account section only for ADMIN users.
 const ADMIN_LINK = { href: "/admin", label: "Admin", icon: ShieldCheck };
 
+// Community link appears in the main nav only for agency members (+ owner).
+const COMMUNITY_LINK = { href: "/community", label: "Community", icon: MessagesSquare };
+
 // Primary destinations pinned to the mobile bottom bar; everything else (incl.
 // Agency, Settings, Billing) lives behind "More".
 const MOBILE_PRIMARY = ["/dashboard", "/upload", "/tradelines", "/letters"];
@@ -52,6 +56,8 @@ function BrandMark() {
 export function Sidebar() {
   const path = usePathname();
   const ctx = useAdminContext();
+  const community = useCommunityAccess();
+  const mainNav = community?.canAccess ? [...NAV, COMMUNITY_LINK] : NAV;
   const accountNav = ctx?.isAdmin ? [ADMIN_LINK, ...ACCOUNT_NAV] : ACCOUNT_NAV;
   return (
     <aside className="hidden w-60 shrink-0 flex-col border-r border-ink-700/70 bg-ink-900/60 p-4 md:flex">
@@ -59,7 +65,7 @@ export function Sidebar() {
         <BrandMark />
       </div>
       <nav className="flex flex-col gap-1">
-        {NAV.map((n) => {
+        {mainNav.map((n) => {
           const active = path === n.href || path?.startsWith(n.href + "/");
           return (
             <Link key={n.href} href={n.href} className={cn("nav-item", active && "nav-item-active")}>
@@ -101,6 +107,8 @@ export function MobileNav() {
   const path = usePathname();
   const [open, setOpen] = useState(false);
   const ctx = useAdminContext();
+  const community = useCommunityAccess();
+  const mainNav = community?.canAccess ? [...NAV, COMMUNITY_LINK] : NAV;
   const accountNav = ctx?.isAdmin ? [ADMIN_LINK, ...ACCOUNT_NAV] : ACCOUNT_NAV;
   const primary = MOBILE_PRIMARY.map((href) => NAV.find((n) => n.href === href)!).filter(Boolean);
   const isActive = (href: string) => path === href || path?.startsWith(href + "/");
@@ -119,7 +127,7 @@ export function MobileNav() {
               </button>
             </div>
             <nav className="grid grid-cols-2 gap-2">
-              {NAV.map((n) => (
+              {mainNav.map((n) => (
                 <Link key={n.href} href={n.href} onClick={() => setOpen(false)}
                   className={cn("nav-item", isActive(n.href) && "nav-item-active")}>
                   <n.icon className="h-4 w-4" /> {n.label}

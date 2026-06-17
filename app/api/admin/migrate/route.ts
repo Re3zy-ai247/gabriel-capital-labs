@@ -68,6 +68,32 @@ const STATEMENTS = [
      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
    )`,
   `CREATE INDEX IF NOT EXISTS "Announcement_active_idx" ON "Announcement"("active")`,
+  // Agency Community Hub — threads + replies (Kai replies have isKai=true).
+  `CREATE TABLE IF NOT EXISTS "CommunityThread" (
+     "id" TEXT NOT NULL PRIMARY KEY,
+     "authorId" TEXT REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE,
+     "authorName" TEXT NOT NULL,
+     "category" TEXT NOT NULL DEFAULT 'general',
+     "title" TEXT NOT NULL,
+     "body" TEXT NOT NULL,
+     "pinned" BOOLEAN NOT NULL DEFAULT false,
+     "locked" BOOLEAN NOT NULL DEFAULT false,
+     "replyCount" INTEGER NOT NULL DEFAULT 0,
+     "lastActivityAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+   )`,
+  `CREATE INDEX IF NOT EXISTS "CommunityThread_pinned_lastActivityAt_idx" ON "CommunityThread"("pinned", "lastActivityAt")`,
+  `CREATE INDEX IF NOT EXISTS "CommunityThread_category_idx" ON "CommunityThread"("category")`,
+  `CREATE TABLE IF NOT EXISTS "CommunityReply" (
+     "id" TEXT NOT NULL PRIMARY KEY,
+     "threadId" TEXT NOT NULL REFERENCES "CommunityThread"("id") ON DELETE CASCADE ON UPDATE CASCADE,
+     "authorId" TEXT REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE,
+     "authorName" TEXT NOT NULL,
+     "body" TEXT NOT NULL,
+     "isKai" BOOLEAN NOT NULL DEFAULT false,
+     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+   )`,
+  `CREATE INDEX IF NOT EXISTS "CommunityReply_threadId_createdAt_idx" ON "CommunityReply"("threadId", "createdAt")`,
 ];
 
 async function run() {
