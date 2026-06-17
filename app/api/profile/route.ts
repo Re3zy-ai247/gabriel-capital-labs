@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { currentUserOrDemo } from "@/lib/session";
 import { getStripe } from "@/lib/stripe";
@@ -21,13 +22,22 @@ export async function POST(req: Request) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const b = await req.json();
 
-  // Optional email change: validate, normalize, and ensure it's not taken.
+  // Optional email change. Because this changes the login identity, it requires
+  // confirming the current password (same bar as the change-password flow) before
+  // we validate, normalize, and ensure the address isn't already taken.
   let nextEmail: string | undefined;
   if (typeof b.email === "string") {
     const candidate = b.email.trim().toLowerCase();
     if (candidate && candidate !== user.email) {
       if (!EMAIL_RE.test(candidate)) {
         return NextResponse.json({ error: "That doesn't look like a valid email address." }, { status: 400 });
+      }
+      if (!user.passwordHash) {
+        return NextResponse.json({ error: "This account has no password set, so its email can't be changed here." }, { status: 400 });
+      }
+      const confirmed = await bcrypt.compare(String(b.currentPassword || ""), user.passwordHash);
+      if (!confirmed) {
+        return NextResponse.json({ error: "Enter your current password to change your email." }, { status: 403 });
       }
       const taken = await prisma.user.findUnique({ where: { email: candidate } });
       if (taken && taken.id !== user.id) {

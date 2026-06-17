@@ -19,6 +19,8 @@ const empty: Profile = { fullName: "", addressLine1: "", addressLine2: "", city:
 export default function SettingsPage() {
   const [profile, setProfile] = useState<Profile>(empty);
   const [email, setEmail] = useState<string>("");
+  const [originalEmail, setOriginalEmail] = useState<string>("");
+  const [emailPw, setEmailPw] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
@@ -40,22 +42,31 @@ export default function SettingsPage() {
             zip: data.zip ?? "",
           });
           setEmail(data.email ?? "");
+          setOriginalEmail(data.email ?? "");
         }
       })
       .finally(() => setLoading(false));
   }, []);
+
+  // True once the user has actually edited the account email — only then do we
+  // require (and send) the current password to confirm the identity change.
+  const emailChanged = email.trim().toLowerCase() !== originalEmail.trim().toLowerCase();
 
   const set = (field: keyof Profile) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setProfile({ ...profile, [field]: e.target.value });
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
+    if (emailChanged && !emailPw) {
+      setStatus("Enter your current password to confirm the email change.");
+      return;
+    }
     setBusy(true);
     setStatus(null);
     const res = await fetch("/api/profile", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...profile, email }),
+      body: JSON.stringify({ ...profile, email, ...(emailChanged ? { currentPassword: emailPw } : {}) }),
     });
     const d = await res.json().catch(() => ({}));
     setBusy(false);
@@ -63,6 +74,8 @@ export default function SettingsPage() {
       setStatus(d.error || "Could not save — please try again.");
       return;
     }
+    setEmailPw("");
+    if (d.emailChanged) setOriginalEmail(email);
     setStatus(
       d.emailChanged
         ? "Saved. Your account email was updated — you can sign in with the new email or your username."
@@ -121,6 +134,22 @@ export default function SettingsPage() {
               <p className="mt-1 text-xs text-slate-500">
                 Used to sign in (along with your username) and to receive billing receipts. Changing it won&apos;t log you out.
               </p>
+              {emailChanged && (
+                <div className="mt-3">
+                  <label className="block text-sm text-slate-400 mb-1">Confirm current password</label>
+                  <input
+                    type="password"
+                    autoComplete="current-password"
+                    value={emailPw}
+                    onChange={(e) => setEmailPw(e.target.value)}
+                    placeholder="Required to change your email"
+                    className="w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-slate-100 focus:border-brand-500 focus:outline-none"
+                  />
+                  <p className="mt-1 text-xs text-slate-500">
+                    For your security, confirm your current password to change the account email.
+                  </p>
+                </div>
+              )}
             </div>
             <div>
               <label className="block text-sm text-slate-400 mb-1">Full Legal Name</label>

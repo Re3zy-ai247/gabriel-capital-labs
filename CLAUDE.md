@@ -22,14 +22,14 @@ This file is the fast-start: read it instead of re-reading the whole tree.
 5. **Client/server split:** a `"use client"` page must NOT import a module that pulls in `prisma`/`next/headers`. Keep shared constants in a `*Shared.ts` (see `lib/communityShared.ts`, `lib/supportShared.ts`).
 
 ## Status (2026-06-17)
+- **Go-live audit: GREEN** (all 6 dimensions). Static: `tsc --noEmit` clean, `classify.test.ts` 29/29. Live prod probes: public 200; every protected API 401/403; admin routes + `/api/admin/migrate` 403; unsigned Stripe webhook 400. Dimensions: `auth-security`, `croa-legal`, `email-change`, `session-12` (session integrity), `stripe-live`, `billing-entitlements`.
 - **Stripe LIVE** (`sk_live`); webhook (`/api/stripe/webhook`, 5 events) verified with a real $1 charge; live catalog synced; letter-pack credits idempotent.
-- **Shipped:** account-email change (Settings); **Community Hub + Kai** master agent (Opus 4.8, CROA-reviewed — bankruptcy answer approved); **Support ticket center** (`/support`, all plans, admin staff view); **MDG creditor-classification fix** (AI now judges `creditorKind`); `agency/enable` ADMIN-escalation removed; `invoice.payment_succeeded` handler.
+- **Shipped:** account-email change (Settings) — **now requires current-password confirmation** (`bcrypt.compare`, 403 on mismatch; UI prompts only when the email actually changes); **Community Hub + Kai** master agent (Opus 4.8, CROA-reviewed — bankruptcy answer approved); **Support ticket center** (`/support`, all plans, admin staff view); **MDG creditor-classification fix** (AI now judges `creditorKind`); `agency/enable` ADMIN-escalation removed; `invoice.payment_succeeded` handler.
 
 ## Pending / next tasks
-- [ ] **Finish the go-live audit:** only `billing-entitlements` was fully verified (rate limit hit). Re-run `auth-security`, `croa-legal`, `email-change`, `session-12`, `stripe-live`.
+- [x] **Go-live audit — DONE 2026-06-17:** all 6 dimensions green (see Status).
 - [ ] **User-side Stripe (owner does these):** set merchant-notification email to `reygabriel@creditvector.app`; enable **Customer emails → Successful payments**.
 - [ ] **MDG verify:** click **Re-analyze report** on Tradelines to reclassify existing tradelines with the new classifier.
-- [ ] Optional: `git add CLAUDE.md` to track this file in the repo (currently untracked, but auto-loads locally).
 
 ## File map
 - **Stripe:** `lib/stripe.ts` (catalog), `lib/billing.ts` (sub sync + `creditLetters`), `app/api/stripe/{checkout,webhook,portal}`.
