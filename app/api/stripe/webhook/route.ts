@@ -49,6 +49,15 @@ export async function POST(req: Request) {
         await syncSubscriptionToUser(event.data.object as Stripe.Subscription);
         break;
       }
+      case "invoice.payment_succeeded": {
+        // A successful (re)payment re-syncs the subscription so a previously-set
+        // past_due status is cleared back to the live Stripe status.
+        const inv = event.data.object as Stripe.Invoice;
+        const subRef = (inv as { subscription?: string | { id: string } | null }).subscription;
+        const subId = typeof subRef === "string" ? subRef : subRef?.id;
+        if (subId) await syncSubscriptionToUser(await stripe.subscriptions.retrieve(subId));
+        break;
+      }
       case "invoice.payment_failed": {
         const inv = event.data.object as Stripe.Invoice;
         const customerId = typeof inv.customer === "string" ? inv.customer : inv.customer?.id;
