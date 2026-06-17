@@ -12,6 +12,7 @@ import {
 interface Tradeline {
   id: string; creditorName: string; balance: number; accountType: string;
   bureaus: string[]; recommendedStrategy: string | null; recommendedReason: string;
+  furnisherName?: string | null; furnisherAddress?: string | null;
 }
 interface Strategy { id: string; label: string; blurb: string; riskNote?: string; recipient: string; }
 interface SavedLetter {
@@ -88,10 +89,11 @@ function LettersInner() {
     const tl = tradelines.find((t) => t.id === id);
     if (tl) {
       setBureausSel(tl.bureaus.length ? tl.bureaus : ["EQUIFAX"]);
-      // Pre-fill the furnisher/collector recipient name; reset the address so the
-      // user supplies the mailing address for the newly-selected account.
-      setRecipientName(tl.creditorName);
-      setRecipientAddress("");
+      // Pre-fill the furnisher/collector recipient from the contact we parsed off
+      // the report, so the letter is mail-ready with no manual entry. Both fields
+      // stay editable; fall back to the creditor name / blank address when absent.
+      setRecipientName(tl.furnisherName || tl.creditorName);
+      setRecipientAddress(tl.furnisherAddress || "");
       if (overrideStrategy) setStrategyId(overrideStrategy);
       else if (tl.recommendedStrategy) setStrategyId(tl.recommendedStrategy);
     }
@@ -258,11 +260,19 @@ function LettersInner() {
                 <label className="label">
                   Send to ({strategy?.recipient === "collector" ? "collection agency" : "furnisher / creditor"})
                 </label>
-                <p className="mb-2 text-[11px] text-slate-500">
-                  This letter is sent directly to the {strategy?.recipient === "collector" ? "collector" : "furnisher"} —
-                  add their mailing address so it&apos;s ready to send. You&apos;ll find it on the account statement or the
-                  account&apos;s entry on your credit report.
-                </p>
+                {selectedTradeline.furnisherAddress ? (
+                  <p className="mb-2 flex gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-2 text-[11px] text-emerald-300">
+                    <Sparkles className="h-3.5 w-3.5 shrink-0" />
+                    <span>We pulled this {strategy?.recipient === "collector" ? "collector" : "furnisher"}&apos;s mailing
+                    address straight from your report — review it and edit if needed.</span>
+                  </p>
+                ) : (
+                  <p className="mb-2 text-[11px] text-slate-500">
+                    This letter is sent directly to the {strategy?.recipient === "collector" ? "collector" : "furnisher"} —
+                    add their mailing address so it&apos;s ready to send. You&apos;ll find it on the account statement or the
+                    account&apos;s entry on your credit report.
+                  </p>
+                )}
                 <input
                   className="input mb-2"
                   value={recipientName}

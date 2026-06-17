@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireCommunityAccount } from "@/lib/community";
 import { requireAdmin, logAudit } from "@/lib/admin";
+import { listAttachments } from "@/lib/attachments";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -19,6 +20,10 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
 
   const isAdmin = account.role === "ADMIN";
   const isAuthor = thread.authorId === account.id;
+
+  const threadAttachments = await listAttachments("community_thread", [thread.id]);
+  const replyAttachments = await listAttachments("community_reply", thread.replies.map((r) => r.id));
+
   return NextResponse.json({
     thread: {
       id: thread.id,
@@ -30,6 +35,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
       locked: thread.locked,
       replyCount: thread.replyCount,
       createdAt: thread.createdAt,
+      attachments: threadAttachments[thread.id] || [],
       replies: thread.replies.map((r) => ({
         id: r.id,
         authorName: r.authorName,
@@ -37,6 +43,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
         isKai: r.isKai,
         createdAt: r.createdAt,
         canDelete: isAdmin || (!r.isKai && r.authorId === account.id),
+        attachments: replyAttachments[r.id] || [],
       })),
     },
     viewer: { isAdmin, isAuthor, canModerate: isAdmin || isAuthor, canPin: isAdmin },

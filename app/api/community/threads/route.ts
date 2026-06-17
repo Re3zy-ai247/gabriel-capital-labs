@@ -9,6 +9,7 @@ import {
   LIMITS,
 } from "@/lib/community";
 import { askKai } from "@/lib/kai";
+import { filesFromForm, validateFiles, saveAttachments } from "@/lib/attachments";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -58,18 +59,23 @@ export async function GET(req: Request) {
 }
 
 // Create a thread. When askKai is true, Kai posts an expert reply immediately.
+// Accepts multipart/form-data so the post can carry image/PDF attachments.
 export async function POST(req: Request) {
   const account = await requireCommunityAccount();
   if (!account) return NextResponse.json({ error: "Members only" }, { status: 403 });
 
-  const raw = await req.json().catch(() => ({}));
-  const title = cleanText(raw.title, LIMITS.title);
-  const body = cleanText(raw.body, LIMITS.body);
-  const category = normalizeCategory(raw.category);
-  const wantKai = Boolean(raw.askKai);
+  const form = await req.formData().catch(() => null);
+  if (!form) return NextResponse.json({ error: "Bad request." }, { status: 400 });
+  const title = cleanText(form.get("title"), LIMITS.title);
+  const body = cleanText(form.get("body"), LIMITS.body);
+  const category = normalizeCategory(form.get("category"));
+  const wantKai = form.get("askKai") === "true";
 
   if (title.length < 3) return NextResponse.json({ error: "Give your discussion a title." }, { status: 400 });
   if (body.length < 3) return NextResponse.json({ error: "Add some detail to your post." }, { status: 400 });
+
+  const { ok: files, error: fileError } = validateFiles(filesFromForm(form));
+  if (fileError) return NextResponse.json({ error: fileError }, { status: 400 });
 
   const thread = await prisma.communityThread.create({
     data: {
@@ -80,6 +86,14 @@ export async function POST(req: Request) {
       body,
     },
   });
+
+  if (files.length) {
+    try {
+      await saveAttachments({ scope: "community_thread", refId: thread.id, uploaderId: account.id, files });
+    } catch (e) {
+      console.error("community attachment save failed", e);
+    }
+  }
 
   let kaiReplied = false;
   if (wantKai) {

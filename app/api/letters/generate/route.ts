@@ -5,6 +5,7 @@ import { buildContext, renderTemplateLetter, buildSystemPrompt, buildUserPrompt 
 import { applyCompliance } from "@/lib/compliance";
 import { getEntitlement } from "@/lib/entitlements";
 import { presentBureaus, getBureauData } from "@/lib/bureauData";
+import { getFurnisherContact, formatFurnisherAddress } from "@/lib/furnisher";
 import type { Bureau } from "@prisma/client";
 
 export const maxDuration = 60;
@@ -93,6 +94,17 @@ export async function POST(req: Request) {
           name: typeof body.recipientName === "string" ? body.recipientName : undefined,
           address: typeof body.recipientAddress === "string" ? body.recipientAddress : undefined,
         };
+
+    // If the user left the address blank, fall back to the furnisher contact we
+    // parsed from their report — so a mail-ready letter needs zero manual entry.
+    if (recipient && !recipient.address?.trim()) {
+      const contact = await getFurnisherContact(tradeline.id);
+      const formatted = formatFurnisherAddress(contact);
+      if (formatted) {
+        recipient.address = formatted;
+        if (!recipient.name?.trim() && contact?.name) recipient.name = contact.name;
+      }
+    }
 
     // Determine the target bureau list.
     let targets: (Bureau | undefined)[] = [undefined];

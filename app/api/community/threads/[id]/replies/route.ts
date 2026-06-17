@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireCommunityAccount, communityDisplayName, cleanText, LIMITS } from "@/lib/community";
+import { filesFromForm, validateFiles, saveAttachments } from "@/lib/attachments";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 // Post a human reply to a thread. Locked threads accept replies from admins only.
+// Accepts multipart/form-data so a reply can carry image/PDF attachments.
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const account = await requireCommunityAccount();
   if (!account) return NextResponse.json({ error: "Members only" }, { status: 403 });
@@ -16,12 +18,27 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     return NextResponse.json({ error: "This discussion is locked." }, { status: 403 });
   }
 
-  const body = cleanText((await req.json().catch(() => ({}))).body, LIMITS.reply);
-  if (body.length < 2) return NextResponse.json({ error: "Write a reply first." }, { status: 400 });
+  const form = await req.formData().catch(() => null);
+  if (!form) return NextResponse.json({ error: "Bad request." }, { status: 400 });
+  const body = cleanText(form.get("body"), LIMITS.reply);
+  const { ok: files, error: fileError } = validateFiles(filesFromForm(form));
+  if (fileError) return NextResponse.json({ error: fileError }, { status: 400 });
+  // A reply needs either text or at least one attachment.
+  if (body.length < 2 && files.length === 0) {
+    return NextResponse.json({ error: "Write a reply or attach a file." }, { status: 400 });
+  }
 
   const reply = await prisma.communityReply.create({
     data: { threadId: thread.id, authorId: account.id, authorName: communityDisplayName(account), body },
   });
+  let attachments: Awaited<ReturnType<typeof saveAttachments>> = [];
+  if (files.length) {
+    try {
+      attachments = await saveAttachments({ scope: "community_reply", refId: reply.id, uploaderId: account.id, files });
+    } catch (e) {
+      console.error("community attachment save failed", e);
+    }
+  }
   await prisma.communityThread.update({
     where: { id: thread.id },
     data: { replyCount: { increment: 1 }, lastActivityAt: new Date() },
@@ -29,6 +46,6 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
   return NextResponse.json({
     ok: true,
-    reply: { id: reply.id, authorName: reply.authorName, body: reply.body, isKai: false, createdAt: reply.createdAt, canDelete: true },
+    reply: { id: reply.id, authorName: reply.authorName, body: reply.body, isKai: false, createdAt: reply.createdAt, canDelete: true, attachments },
   });
 }

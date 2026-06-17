@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
 import { KaiBadge } from "@/components/community/KaiAvatar";
 import { categoryLabel } from "@/lib/communityShared";
+import { AttachmentPicker, AttachmentList, imagesFromClipboard } from "@/components/Attachments";
+import type { AttachmentMeta } from "@/lib/attachmentsShared";
 import {
   ArrowLeft, Loader2, Pin, Lock, Unlock, Trash2, Sparkles, Send, MessageCircle,
 } from "lucide-react";
@@ -16,6 +18,7 @@ interface Reply {
   isKai: boolean;
   createdAt: string;
   canDelete: boolean;
+  attachments?: AttachmentMeta[];
 }
 interface ThreadData {
   id: string;
@@ -27,6 +30,7 @@ interface ThreadData {
   locked: boolean;
   replyCount: number;
   createdAt: string;
+  attachments?: AttachmentMeta[];
   replies: Reply[];
 }
 interface Viewer { isAdmin: boolean; isAuthor: boolean; canModerate: boolean; canPin: boolean; }
@@ -46,6 +50,7 @@ export default function ThreadPage({ params }: { params: { id: string } }) {
   const [notFound, setNotFound] = useState(false);
 
   const [reply, setReply] = useState("");
+  const [replyFiles, setReplyFiles] = useState<File[]>([]);
   const [busy, setBusy] = useState(false);
   const [kaiBusy, setKaiBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -65,15 +70,17 @@ export default function ThreadPage({ params }: { params: { id: string } }) {
   useEffect(() => { load(); }, [load]);
 
   async function postReply() {
-    if (reply.trim().length < 2) { setError("Write a reply first."); return; }
+    if (reply.trim().length < 2 && replyFiles.length === 0) { setError("Write a reply or attach a file."); return; }
     setBusy(true); setError(null);
     try {
-      const res = await fetch(`/api/community/threads/${params.id}/replies`, {
-        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ body: reply }),
-      });
+      const form = new FormData();
+      form.set("body", reply);
+      replyFiles.forEach((f) => form.append("files", f));
+      const res = await fetch(`/api/community/threads/${params.id}/replies`, { method: "POST", body: form });
       const j = await res.json();
       if (!res.ok) { setError(j.error || "Could not reply."); return; }
       setReply("");
+      setReplyFiles([]);
       load();
     } catch { setError("Network error."); } finally { setBusy(false); }
   }
@@ -138,6 +145,7 @@ export default function ThreadPage({ params }: { params: { id: string } }) {
         <h1 className="text-xl font-semibold">{thread.title}</h1>
         <div className="mt-1 text-xs text-slate-500">{thread.authorName} · {when(thread.createdAt)}</div>
         <p className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-slate-200">{thread.body}</p>
+        <AttachmentList items={thread.attachments} />
 
         {/* Controls */}
         <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-ink-700/60 pt-3">
@@ -174,7 +182,8 @@ export default function ThreadPage({ params }: { params: { id: string } }) {
                   {r.isKai && <span className="rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-300">Master Agent</span>}
                   <span className="text-[11px] text-slate-500">{when(r.createdAt)}</span>
                 </div>
-                <p className="mt-1.5 whitespace-pre-wrap text-sm leading-relaxed text-slate-200">{r.body}</p>
+                {r.body && <p className="mt-1.5 whitespace-pre-wrap text-sm leading-relaxed text-slate-200">{r.body}</p>}
+                <AttachmentList items={r.attachments} />
               </div>
               {r.canDelete && (
                 <button onClick={() => deleteReply(r.id)} className="shrink-0 text-slate-500 hover:text-rose-400" title="Delete reply"><Trash2 className="h-3.5 w-3.5" /></button>
@@ -190,7 +199,18 @@ export default function ThreadPage({ params }: { params: { id: string } }) {
           <p className="text-center text-sm text-slate-500"><Lock className="mr-1 inline h-3.5 w-3.5" /> This discussion is locked.</p>
         ) : (
           <>
-            <textarea className="input resize-y" rows={3} value={reply} onChange={(e) => setReply(e.target.value)} placeholder="Add to the discussion…" maxLength={6000} />
+            <textarea
+              className="input resize-y"
+              rows={3}
+              value={reply}
+              onChange={(e) => setReply(e.target.value)}
+              onPaste={(e) => { const imgs = imagesFromClipboard(e); if (imgs.length) setReplyFiles((f) => [...f, ...imgs]); }}
+              placeholder="Add to the discussion…"
+              maxLength={6000}
+            />
+            <div className="mt-2">
+              <AttachmentPicker files={replyFiles} onChange={setReplyFiles} disabled={busy} />
+            </div>
             {error && <p className="mt-2 text-xs text-rose-400">{error}</p>}
             <div className="mt-3 flex items-center gap-2">
               <button onClick={postReply} disabled={busy} className="btn-primary text-sm">

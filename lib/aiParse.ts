@@ -25,6 +25,13 @@ interface AIAccount {
   dofd: string;
   dateReported: string;
   reportedByBureaus: string[];
+  furnisherName: string;
+  furnisherAddressLine1: string;
+  furnisherAddressLine2: string;
+  furnisherCity: string;
+  furnisherState: string;
+  furnisherZip: string;
+  furnisherPhone: string;
 }
 
 const SCHEMA = {
@@ -61,6 +68,20 @@ const SCHEMA = {
               "Which of the COVERED bureaus report this account. MUST be a subset of the covered bureaus. Never include a bureau whose report was not provided.",
             items: { type: "string", enum: ALL_BUREAUS },
           },
+          furnisherName: {
+            type: "string",
+            description:
+              "The mailing-contact NAME for this account exactly as printed in its Contact/Remarks block (often the collector or current creditor, e.g. 'LVNV FUNDING LLC'). Empty string if no contact is shown.",
+          },
+          furnisherAddressLine1: {
+            type: "string",
+            description: "Street address or PO Box from the account's Contact block (e.g. 'PO BOX 1269'). Empty string if absent.",
+          },
+          furnisherAddressLine2: { type: "string", description: "Second address line (suite/unit) if printed; else empty string." },
+          furnisherCity: { type: "string", description: "City from the Contact block; else empty string." },
+          furnisherState: { type: "string", description: "Two-letter state code from the Contact block; else empty string." },
+          furnisherZip: { type: "string", description: "ZIP / postal code from the Contact block; else empty string." },
+          furnisherPhone: { type: "string", description: "Phone number from the Contact block as printed; else empty string." },
         },
         required: [
           "creditorName",
@@ -73,6 +94,13 @@ const SCHEMA = {
           "dofd",
           "dateReported",
           "reportedByBureaus",
+          "furnisherName",
+          "furnisherAddressLine1",
+          "furnisherAddressLine2",
+          "furnisherCity",
+          "furnisherState",
+          "furnisherZip",
+          "furnisherPhone",
         ],
       },
     },
@@ -92,7 +120,8 @@ function systemPrompt(covered: Bureau[]): string {
     "5. creditorName must be the clean creditor/collector name ONLY. Strip any leading list/section/outline number (e.g. '2.6 Mdg Us Inc' -> 'Mdg Us Inc', '11. Collections' is a header, not an account) and any trailing status parenthetical like '(CLOSED)' — put open/closed in the status field instead.",
     "6. NEVER output a record for non-account content. Exclude: educational/explanatory blurbs (e.g. 'Collections are accounts with outstanding debt...'), debt-to-credit ratio descriptions, payment-history tables or headers, 'Comments'/'Contact'/'Remarks' labels, bureau-name strings (e.g. 'EquifaxExperianTransUnion'), bare section headers (e.g. 'Collections', 'Public Records'), score summaries, soft inquiries, and personal-information sections. If a line reads like a sentence or a heading rather than a creditor name, it is NOT an account.",
     "7. creditorKind: classify the ENTITY by what the company actually is, using your real-world knowledge — not by the report's section heading. A consumer-financing company or original lender that happens to be listed under 'Collections' is still an original_creditor (e.g. MDG / MDG Financing => original_creditor, never debt_buyer). Only tag debt_buyer for firms that buy charged-off debt (LVNV, Midland/MCM, Portfolio Recovery, Jefferson Capital, Cavalry, Encore) and collection_agency for third-party collectors. This drives which dispute letter is generated, so be precise.",
-    "8. Return strictly the structured JSON. No commentary.",
+    "8. Furnisher contact: if the account shows a mailing contact (commonly a 'Contact' or remarks block with a company name, a street/PO Box, city, state, ZIP, and sometimes a phone — e.g. 'LVNV FUNDING LLC / PO BOX 1269 / GREENVILLE, SC 29602'), capture it in the furnisher* fields. This is the address a dispute letter to the furnisher/collector would be mailed to. Use empty strings for any part not shown; do NOT invent or guess an address.",
+    "9. Return strictly the structured JSON. No commentary.",
   ].join("\n");
 }
 
@@ -155,6 +184,19 @@ export async function aiExtractTradelines(
         };
       }
 
+      // Assemble the furnisher mailing contact, keeping only non-empty parts.
+      const clean = (s: string | undefined) => (s && s.trim() ? s.trim() : undefined);
+      const furnisher = {
+        name: clean(a.furnisherName),
+        line1: clean(a.furnisherAddressLine1),
+        line2: clean(a.furnisherAddressLine2),
+        city: clean(a.furnisherCity),
+        state: clean(a.furnisherState),
+        zip: clean(a.furnisherZip),
+        phone: clean(a.furnisherPhone),
+      };
+      const furnisherAddress = furnisher.line1 || furnisher.city || furnisher.zip ? furnisher : undefined;
+
       return {
         creditorName: a.creditorName.replace(/\s{2,}/g, " ").trim(),
         originalCreditor: a.originalCreditor?.trim() || undefined,
@@ -166,6 +208,7 @@ export async function aiExtractTradelines(
         kind: (CREDITOR_KINDS as readonly string[]).includes(a.creditorKind)
           ? (a.creditorKind as CreditorKind)
           : undefined,
+        furnisherAddress,
         perBureau,
       } satisfies ExtractedTradeline;
     });

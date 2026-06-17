@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireSupportUser, supportCategoryLabel } from "@/lib/support";
+import { listAttachments } from "@/lib/attachments";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +18,8 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
   if (!ticket) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (!isAdmin && ticket.userId !== account.id) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
+  const attachments = await listAttachments("support_message", ticket.messages.map((m) => m.id));
+
   return NextResponse.json({
     isAdmin,
     ticket: {
@@ -30,6 +33,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
       createdAt: ticket.createdAt,
       messages: ticket.messages.map((m) => ({
         id: m.id, authorName: m.authorName, isStaff: m.isStaff, body: m.body, createdAt: m.createdAt,
+        attachments: attachments[m.id] || [],
       })),
     },
   });

@@ -331,3 +331,26 @@ model SupportTicketMessage {
   @@index([ticketId, createdAt])
 }
 
+// Encrypted file attachments for support messages and community posts. Same
+// at-rest encryption as Document (AES-256-GCM, lib/docCrypto.ts, reusing
+// DOCUMENT_ENCRYPTION_KEY); bytes are NEVER public — streamed back only through
+// an ownership/membership-checked route (app/api/attachments/[id]). Polymorphic:
+// `scope` says which kind of parent and `refId` is that parent's id
+// (support_message | community_thread | community_reply). No FK so a parent in any
+// of those tables can own one; rows are cleaned up with their parent in code.
+model Attachment {
+  id         String   @id @default(cuid())
+  scope      String
+  refId      String
+  uploaderId String?
+  filename   String
+  mimeType   String
+  byteSize   Int
+  ciphertext Bytes
+  iv         Bytes
+  authTag    Bytes
+  createdAt  DateTime @default(now())
+
+  @@index([scope, refId])
+}
+

@@ -6,6 +6,7 @@ import { AppShell } from "@/components/AppShell";
 import { EduBanner } from "@/components/Disclaimer";
 import { KaiBadge } from "@/components/community/KaiAvatar";
 import { useCommunityAccess } from "@/components/community/useCommunityAccess";
+import { AttachmentPicker, imagesFromClipboard } from "@/components/Attachments";
 import { CATEGORIES, categoryLabel } from "@/lib/communityShared";
 import {
   MessagesSquare, Loader2, Pin, Lock, Plus, Sparkles, MessageCircle, Building2, ArrowRight,
@@ -49,6 +50,7 @@ export default function CommunityPage() {
   const [body, setBody] = useState("");
   const [formCat, setFormCat] = useState("general");
   const [askKai, setAskKai] = useState(false);
+  const [files, setFiles] = useState<File[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -69,11 +71,13 @@ export default function CommunityPage() {
     if (body.trim().length < 3) { setError("Add some detail to your post."); return; }
     setBusy(true); setError(null);
     try {
-      const res = await fetch("/api/community/threads", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, body, category: formCat, askKai }),
-      });
+      const form = new FormData();
+      form.set("title", title);
+      form.set("body", body);
+      form.set("category", formCat);
+      form.set("askKai", askKai ? "true" : "false");
+      files.forEach((f) => form.append("files", f));
+      const res = await fetch("/api/community/threads", { method: "POST", body: form });
       const j = await res.json();
       if (!res.ok) { setError(j.error || "Could not post."); return; }
       router.push(`/community/${j.id}`);
@@ -139,7 +143,18 @@ export default function CommunityPage() {
             </div>
           </div>
           <label className="label">Details</label>
-          <textarea className="input resize-y" rows={5} value={body} onChange={(e) => setBody(e.target.value)} placeholder="Share context, a question, a win, or a tactic…" maxLength={8000} />
+          <textarea
+            className="input resize-y"
+            rows={5}
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            onPaste={(e) => { const imgs = imagesFromClipboard(e); if (imgs.length) setFiles((f) => [...f, ...imgs]); }}
+            placeholder="Share context, a question, a win, or a tactic…"
+            maxLength={8000}
+          />
+          <div className="mt-2">
+            <AttachmentPicker files={files} onChange={setFiles} disabled={busy} />
+          </div>
           <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm text-slate-300">
             <input type="checkbox" checked={askKai} onChange={(e) => setAskKai(e.target.checked)} className="h-4 w-4 accent-amber-500" />
             <Sparkles className="h-4 w-4 text-amber-400" /> Ask Kai for an expert take on this

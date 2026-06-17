@@ -1,6 +1,7 @@
 import type { Bureau } from "@prisma/client";
 import type { BureauData, BureauFields } from "./bureauData";
 import type { CreditorKind } from "./classify";
+import type { FurnisherContact } from "./furnisher";
 
 // Deterministic heuristic extractor — the fallback used when AI extraction is
 // unavailable (no ANTHROPIC_API_KEY) or fails. Real credit-report PDFs flatten
@@ -19,6 +20,10 @@ export interface ExtractedTradeline {
   dateReported?: string;
   typeHint?: string;
   kind?: CreditorKind; // AI's judgment of the entity (original creditor vs debt buyer, etc.)
+  // Furnisher/collector mailing contact parsed from the account's Contact block,
+  // used to pre-fill the dispute-letter recipient address. AI-only (the regex
+  // fallback leaves it undefined).
+  furnisherAddress?: FurnisherContact;
   // per-bureau raw values, only for bureaus actually present in this report
   perBureau: Partial<Record<Bureau, Omit<BureauFields, "presence">>>;
 }

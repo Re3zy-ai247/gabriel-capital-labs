@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { currentUserOrDemo } from "@/lib/session";
 import { presentBureaus, getBureauData } from "@/lib/bureauData";
 import { recommendStrategy } from "@/lib/recommend";
+import { getFurnisherContacts, formatFurnisherAddress } from "@/lib/furnisher";
 
 export async function GET() {
   const user = await currentUserOrDemo();
@@ -11,6 +12,10 @@ export async function GET() {
     where: { userId: user.id },
     orderBy: [{ score: "desc" }],
   });
+
+  // Furnisher/collector mailing contacts parsed from the report, so the letter
+  // builder can pre-fill the recipient address.
+  const contacts = await getFurnisherContacts(tradelines.map((t) => t.id));
 
   // Enrich each tradeline with which bureaus report it and the recommended
   // opening strategy, so the letter builder can auto-target + auto-suggest.
@@ -23,11 +28,14 @@ export async function GET() {
       bureauData: t.bureauData,
       creditorName: t.creditorName,
     });
+    const contact = contacts[t.id];
     return {
       ...t,
       bureaus: presentBureaus(getBureauData(t.bureauData)),
       recommendedStrategy: rec.strategyId,
       recommendedReason: rec.reason,
+      furnisherName: contact?.name || null,
+      furnisherAddress: formatFurnisherAddress(contact) || null,
     };
   });
 

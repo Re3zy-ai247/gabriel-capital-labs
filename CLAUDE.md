@@ -22,6 +22,8 @@ This file is the fast-start: read it instead of re-reading the whole tree.
 5. **Client/server split:** a `"use client"` page must NOT import a module that pulls in `prisma`/`next/headers`. Keep shared constants in a `*Shared.ts` (see `lib/communityShared.ts`, `lib/supportShared.ts`).
 
 ## Status (2026-06-17)
+- **Attachments (support + community):** image/PDF uploads with drag-drop + paste-a-screenshot on every composer (new ticket, ticket reply, new thread, thread reply). Stored AES-256-GCM-encrypted (`Attachment` model, self-heal table, reuses `DOCUMENT_ENCRYPTION_KEY`); served only via the ownership-checked `GET /api/attachments/[id]`. Limits: images+PDF, 10MB/file, 5/post. Compose routes are now `multipart/form-data`.
+- **Furnisher address auto-fill:** the AI parser now extracts each account's Contact block (name + mailing address) into a self-heal `TradelineContact` table; the Dispute Letter Builder pre-fills the recipient name + address (editable), and the generate route falls back to it when blank. Existing accounts need a **Re-analyze** to backfill.
 - **Go-live audit: GREEN** (all 6 dimensions). Static: `tsc --noEmit` clean, `classify.test.ts` 29/29. Live prod probes: public 200; every protected API 401/403; admin routes + `/api/admin/migrate` 403; unsigned Stripe webhook 400. Dimensions: `auth-security`, `croa-legal`, `email-change`, `session-12` (session integrity), `stripe-live`, `billing-entitlements`.
 - **Stripe LIVE** (`sk_live`); webhook (`/api/stripe/webhook`, 5 events) verified with a real $1 charge; live catalog synced; letter-pack credits idempotent.
 - **Shipped:** account-email change (Settings) — **now requires current-password confirmation** (`bcrypt.compare`, 403 on mismatch; UI prompts only when the email actually changes); **Community Hub + Kai** master agent (Opus 4.8, CROA-reviewed — bankruptcy answer approved); **Support ticket center** (`/support`, all plans, admin staff view); **MDG creditor-classification fix** (AI now judges `creditorKind`); `agency/enable` ADMIN-escalation removed; `invoice.payment_succeeded` handler.
@@ -35,9 +37,10 @@ This file is the fast-start: read it instead of re-reading the whole tree.
 - **Stripe:** `lib/stripe.ts` (catalog), `lib/billing.ts` (sub sync + `creditLetters`), `app/api/stripe/{checkout,webhook,portal}`.
 - **Entitlements/tiers:** `lib/entitlements.ts` (free=3/mo no-AI, premium=unlimited+AI, agency/agency_pro=full+isAgency, Agency cap 50 clients).
 - **Report ingestion / accuracy:** `lib/aiParse.ts` (AI extraction incl. `creditorKind`), `lib/parse.ts` (regex fallback), `lib/classify.ts` (creditor kind/type, `scripts/classify.test.ts`), `lib/analyze.ts` (pipeline).
-- **Letters:** `lib/letter.ts`, `lib/obsolescence.ts` (7yr/10yr §605).
+- **Letters:** `lib/letter.ts`, `lib/obsolescence.ts` (7yr/10yr §605). Furnisher mailing contact: `lib/furnisher.ts` (self-heal `TradelineContact`), parsed in `lib/aiParse.ts`, pre-filled in `app/letters/page.tsx`.
 - **Community/Kai:** `app/community/*`, `app/api/community/*`, `lib/community.ts` (+ `lib/communityShared.ts`), `lib/kai.ts`.
 - **Support:** `app/support/page.tsx`, `app/api/support/*`, `lib/support.ts` (+ `lib/supportShared.ts`).
+- **Attachments:** `lib/attachments.ts` (server, `Attachment` model) + `lib/attachmentsShared.ts` (client-safe), `components/Attachments.tsx` (`AttachmentPicker`/`AttachmentList`/`imagesFromClipboard`), `app/api/attachments/[id]` (auth'd stream).
 - **Admin:** `app/admin/*`, `app/api/admin/*` (gated by `requireAdmin`). **Auth/session:** `lib/auth.ts`, `lib/session.ts`.
 
 **CROA bar:** never guarantee deletion or score increases; no §609 / Metro-2 deletion myths; don't promise removal of accurate negative items. Kai + letters run through `lib/compliance.ts`.

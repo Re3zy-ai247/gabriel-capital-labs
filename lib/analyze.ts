@@ -4,6 +4,7 @@ import { aiExtractTradelines } from "./aiParse";
 import { classifyCreditor } from "./classify";
 import { scoreTradeline } from "./scoring";
 import { computeDuplicateGroups } from "./dedupe";
+import { saveFurnisherContact } from "./furnisher";
 
 export interface AnalyzeResult {
   tradelines: number;
@@ -86,7 +87,7 @@ export async function analyzeReportText(
 
   for (let i = 0; i < records.length; i++) {
     const r = records[i];
-    await prisma.tradeline.create({
+    const created = await prisma.tradeline.create({
       data: {
         userId,
         reportId,
@@ -105,6 +106,15 @@ export async function analyzeReportText(
         duplicateGroup: groups[String(i)] ?? null,
       },
     });
+    // Persist the furnisher's mailing contact (if the report showed one) so the
+    // letter builder can pre-fill it. Best-effort — never fail an analysis over it.
+    if (r.ex.furnisherAddress) {
+      try {
+        await saveFurnisherContact(created.id, r.ex.furnisherAddress);
+      } catch (e) {
+        console.error("furnisher contact save failed", e);
+      }
+    }
   }
 
   await prisma.report.update({ where: { id: reportId }, data: { analyzedAt: new Date() } });

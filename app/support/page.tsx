@@ -2,6 +2,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { SUPPORT_CATEGORIES, supportCategoryLabel } from "@/lib/supportShared";
+import { AttachmentPicker, AttachmentList, imagesFromClipboard } from "@/components/Attachments";
+import type { AttachmentMeta } from "@/lib/attachmentsShared";
 import { LifeBuoy, Loader2, Plus, Send, ArrowLeft, ShieldCheck } from "lucide-react";
 
 interface TicketRow {
@@ -9,7 +11,7 @@ interface TicketRow {
   userName: string; userEmail: string; messageCount: number;
   lastActivityAt: string; createdAt: string;
 }
-interface Msg { id: string; authorName: string; isStaff: boolean; body: string; createdAt: string; }
+interface Msg { id: string; authorName: string; isStaff: boolean; body: string; createdAt: string; attachments?: AttachmentMeta[]; }
 interface TicketDetail {
   id: string; subject: string; category: string; categoryLabel: string; status: string;
   userName: string; userEmail: string; createdAt: string; messages: Msg[];
@@ -38,10 +40,12 @@ export default function SupportPage() {
   const [subject, setSubject] = useState("");
   const [category, setCategory] = useState("general");
   const [body, setBody] = useState("");
+  const [files, setFiles] = useState<File[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [reply, setReply] = useState("");
+  const [replyFiles, setReplyFiles] = useState<File[]>([]);
   const [replyBusy, setReplyBusy] = useState(false);
 
   const loadList = useCallback(() => {
@@ -67,26 +71,28 @@ export default function SupportPage() {
     if (body.trim().length < 5) { setError("Please describe the issue."); return; }
     setBusy(true); setError(null);
     try {
-      const res = await fetch("/api/support/tickets", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ subject, category, body }),
-      });
+      const form = new FormData();
+      form.set("subject", subject);
+      form.set("category", category);
+      form.set("body", body);
+      files.forEach((f) => form.append("files", f));
+      const res = await fetch("/api/support/tickets", { method: "POST", body: form });
       const j = await res.json();
       if (!res.ok) { setError(j.error || "Could not submit."); return; }
-      setSubject(""); setBody(""); setCategory("general"); setOpen(false);
+      setSubject(""); setBody(""); setCategory("general"); setFiles([]); setOpen(false);
       loadList(); openTicket(j.id);
     } catch { setError("Network error."); } finally { setBusy(false); }
   }
 
   async function sendReply() {
-    if (!selected || reply.trim().length < 1) return;
+    if (!selected || (reply.trim().length < 1 && replyFiles.length === 0)) return;
     setReplyBusy(true);
     try {
-      const res = await fetch(`/api/support/tickets/${selected.id}/messages`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ body: reply }),
-      });
-      if (res.ok) { setReply(""); openTicket(selected.id); loadList(); }
+      const form = new FormData();
+      form.set("body", reply);
+      replyFiles.forEach((f) => form.append("files", f));
+      const res = await fetch(`/api/support/tickets/${selected.id}/messages`, { method: "POST", body: form });
+      if (res.ok) { setReply(""); setReplyFiles([]); openTicket(selected.id); loadList(); }
     } finally { setReplyBusy(false); }
   }
 
@@ -124,7 +130,8 @@ export default function SupportPage() {
                       {m.isStaff && <span className="rounded-full bg-brand-500/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase text-brand-300">Staff</span>}
                       <span>{when(m.createdAt)}</span>
                     </div>
-                    <p className="whitespace-pre-wrap leading-relaxed text-slate-200">{m.body}</p>
+                    {m.body && <p className="whitespace-pre-wrap leading-relaxed text-slate-200">{m.body}</p>}
+                    <AttachmentList items={m.attachments} />
                   </div>
                 ))}
               </div>
@@ -144,7 +151,18 @@ export default function SupportPage() {
               <p className="card mt-3 p-4 text-center text-sm text-slate-500">This ticket is closed. Open a new one if you still need help.</p>
             ) : (
               <div className="card mt-3 p-4">
-                <textarea className="input resize-y" rows={3} value={reply} onChange={(e) => setReply(e.target.value)} placeholder={isAdmin ? "Reply as support…" : "Add a reply…"} maxLength={6000} />
+                <textarea
+                  className="input resize-y"
+                  rows={3}
+                  value={reply}
+                  onChange={(e) => setReply(e.target.value)}
+                  onPaste={(e) => { const imgs = imagesFromClipboard(e); if (imgs.length) setReplyFiles((f) => [...f, ...imgs]); }}
+                  placeholder={isAdmin ? "Reply as support…" : "Add a reply…"}
+                  maxLength={6000}
+                />
+                <div className="mt-2">
+                  <AttachmentPicker files={replyFiles} onChange={setReplyFiles} disabled={replyBusy} />
+                </div>
                 <button onClick={sendReply} disabled={replyBusy} className="btn-primary mt-3 text-sm">
                   {replyBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} Send
                 </button>
@@ -185,7 +203,18 @@ export default function SupportPage() {
             {SUPPORT_CATEGORIES.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
           </select>
           <label className="label">Details</label>
-          <textarea className="input resize-y" rows={5} value={body} onChange={(e) => setBody(e.target.value)} placeholder="What happened, what you expected, and any steps to reproduce…" maxLength={6000} />
+          <textarea
+            className="input resize-y"
+            rows={5}
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            onPaste={(e) => { const imgs = imagesFromClipboard(e); if (imgs.length) setFiles((f) => [...f, ...imgs]); }}
+            placeholder="What happened, what you expected, and any steps to reproduce…"
+            maxLength={6000}
+          />
+          <div className="mt-2">
+            <AttachmentPicker files={files} onChange={setFiles} disabled={busy} />
+          </div>
           {error && <p className="mt-3 text-xs text-rose-400">{error}</p>}
           <div className="mt-4 flex items-center gap-2">
             <button onClick={submit} disabled={busy} className="btn-primary">
