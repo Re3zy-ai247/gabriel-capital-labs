@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { currentAccount } from "@/lib/session";
 import { canAccessCommunity } from "@/lib/community";
-import { loadAttachment, docCryptoReady } from "@/lib/attachments";
+import { loadAttachment, decryptAttachment, docCryptoReady } from "@/lib/attachments";
 import { isImageMime } from "@/lib/attachmentsShared";
 
 export const dynamic = "force-dynamic";
@@ -19,7 +19,10 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
   const att = await loadAttachment(params.id);
   if (!att) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  // Authorize by the owning record.
+  // Authorize by the owning record BEFORE decrypting (loadAttachment returns the
+  // bytes still encrypted, so an unauthorized request never triggers crypto work).
+  // The community branches also confirm the parent still exists, so a deleted
+  // post's attachments stop being downloadable even if a stray row survives.
   let allowed = false;
   if (att.scope === "support_message") {
     const msg = await prisma.supportTicketMessage.findUnique({
@@ -27,20 +30,36 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
       select: { ticket: { select: { userId: true } } },
     });
     allowed = !!msg && (account.role === "ADMIN" || msg.ticket?.userId === account.id);
-  } else if (att.scope === "community_thread" || att.scope === "community_reply") {
-    allowed = canAccessCommunity(account);
+  } else if (att.scope === "community_thread") {
+    if (canAccessCommunity(account)) {
+      const thread = await prisma.communityThread.findUnique({ where: { id: att.refId }, select: { id: true } });
+      allowed = !!thread;
+    }
+  } else if (att.scope === "community_reply") {
+    if (canAccessCommunity(account)) {
+      const reply = await prisma.communityReply.findUnique({ where: { id: att.refId }, select: { id: true } });
+      allowed = !!reply;
+    }
   }
   if (!allowed) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  // Images render inline (thumbnails / preview); other files download.
+  const bytes = decryptAttachment(att);
+
+  // Images render inline (thumbnails / preview); other files download. Harden the
+  // response so user-controlled bytes can't be sniffed into an executable type:
+  // nosniff pins the declared Content-Type, the sandbox CSP neuters any script if a
+  // payload were mislabeled as an image, and DENY blocks framing.
   const disposition = isImageMime(att.mimeType) ? "inline" : "attachment";
   const filename = att.filename.replace(/"/g, "");
-  return new Response(new Uint8Array(att.bytes), {
+  return new Response(new Uint8Array(bytes), {
     headers: {
       "Content-Type": att.mimeType || "application/octet-stream",
-      "Content-Length": String(att.bytes.length),
+      "Content-Length": String(bytes.length),
       "Content-Disposition": `${disposition}; filename="${filename}"`,
       "Cache-Control": "private, max-age=3600",
+      "X-Content-Type-Options": "nosniff",
+      "Content-Security-Policy": "default-src 'none'; sandbox",
+      "X-Frame-Options": "DENY",
     },
   });
 }

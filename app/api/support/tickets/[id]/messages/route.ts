@@ -22,7 +22,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   const form = await req.formData().catch(() => null);
   if (!form) return NextResponse.json({ error: "Bad request." }, { status: 400 });
   const body = cleanSupportText(form.get("body"), SUPPORT_LIMITS.body);
-  const { ok: files, error: fileError } = validateFiles(filesFromForm(form));
+  const { ok: files, error: fileError } = await validateFiles(filesFromForm(form));
   if (fileError) return NextResponse.json({ error: fileError }, { status: 400 });
   // A reply needs either text or at least one attachment.
   if (body.length < 1 && files.length === 0) {

@@ -74,7 +74,7 @@ export async function POST(req: Request) {
   if (title.length < 3) return NextResponse.json({ error: "Give your discussion a title." }, { status: 400 });
   if (body.length < 3) return NextResponse.json({ error: "Add some detail to your post." }, { status: 400 });
 
-  const { ok: files, error: fileError } = validateFiles(filesFromForm(form));
+  const { ok: files, error: fileError } = await validateFiles(filesFromForm(form));
   if (fileError) return NextResponse.json({ error: fileError }, { status: 400 });
 
   const thread = await prisma.communityThread.create({

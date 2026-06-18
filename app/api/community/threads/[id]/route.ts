@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireCommunityAccount } from "@/lib/community";
 import { requireAdmin, logAudit } from "@/lib/admin";
-import { listAttachments } from "@/lib/attachments";
+import { listAttachments, deleteAttachmentsFor } from "@/lib/attachments";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -85,7 +85,15 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
     return NextResponse.json({ error: "You can only delete your own discussions." }, { status: 403 });
   }
 
+  // Collect the reply ids before the delete cascades them away, so their encrypted
+  // attachments can be swept too (the Attachment table has no FK to the parent).
+  const replyIds = (
+    await prisma.communityReply.findMany({ where: { threadId: thread.id }, select: { id: true } })
+  ).map((r) => r.id);
+
   await prisma.communityThread.delete({ where: { id: params.id } });
+  await deleteAttachmentsFor("community_thread", [thread.id]);
+  await deleteAttachmentsFor("community_reply", replyIds);
   if (isAdmin && thread.authorId !== account.id) {
     await logAudit({
       actor: { id: account.id, email: account.email },

@@ -59,9 +59,26 @@ export interface FileValidation {
   error?: string;
 }
 
-// Validate a set of uploaded files against the type/size/count limits. Returns the
-// accepted files (all-or-nothing) plus a human error when something is rejected.
-export function validateFiles(files: File[]): FileValidation {
+// Confirm a file's leading bytes match its declared image/PDF type, so a hostile
+// upload can't smuggle HTML/script bytes under an image MIME label (the declared
+// `file.type` is fully client-controlled). We only reject on a CONFIDENT mismatch;
+// the stream route's nosniff + sandbox CSP cover anything ambiguous.
+function magicMatches(mime: string, head: Buffer): boolean {
+  const m = (mime || "").toLowerCase();
+  const at = (i: number, ...sig: number[]) => sig.every((b, k) => head[i + k] === b);
+  if (m === "application/pdf") return at(0, 0x25, 0x50, 0x44, 0x46); // "%PDF"
+  if (m === "image/png") return at(0, 0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a);
+  if (m === "image/jpeg" || m === "image/jpg") return at(0, 0xff, 0xd8, 0xff);
+  if (m === "image/gif") return at(0, 0x47, 0x49, 0x46, 0x38); // "GIF8"
+  if (m === "image/webp") return at(0, 0x52, 0x49, 0x46, 0x46) && at(8, 0x57, 0x45, 0x42, 0x50); // "RIFF"…"WEBP"
+  if (m === "image/heic" || m === "image/heif") return at(4, 0x66, 0x74, 0x79, 0x70); // ISO-BMFF "ftyp" box
+  return false;
+}
+
+// Validate a set of uploaded files against the type/size/count limits AND sniff
+// each file's magic bytes against its declared type. Returns the accepted files
+// (all-or-nothing) plus a human error when something is rejected.
+export async function validateFiles(files: File[]): Promise<FileValidation> {
   if (files.length === 0) return { ok: [] };
   if (files.length > ATTACH_LIMITS.maxPerPost) {
     return { ok: [], error: `You can attach up to ${ATTACH_LIMITS.maxPerPost} files per message.` };
@@ -73,6 +90,10 @@ export function validateFiles(files: File[]): FileValidation {
     if (f.size === 0) return { ok: [], error: `"${f.name}" is empty.` };
     if (f.size > ATTACH_LIMITS.maxBytes) {
       return { ok: [], error: `"${f.name}" is too large (max ${ATTACH_LIMITS.maxBytes / (1024 * 1024)}MB).` };
+    }
+    const head = Buffer.from(await f.slice(0, 16).arrayBuffer());
+    if (!magicMatches(f.type, head)) {
+      return { ok: [], error: `"${f.name}" doesn't match its file type. Re-export it as a real image or PDF.` };
     }
   }
   return { ok: files };
@@ -144,20 +165,42 @@ export async function listAttachments(
   return out;
 }
 
-export interface DecryptedAttachment {
+export interface LoadedAttachment {
   scope: string;
   refId: string;
   filename: string;
   mimeType: string;
-  bytes: Buffer;
+  blob: EncryptedBlob;
 }
 
-// Fetch + decrypt one attachment by id (for the authenticated stream route). The
-// CALLER is responsible for the ownership/membership check via scope + refId.
-export async function loadAttachment(id: string): Promise<DecryptedAttachment | null> {
+// Fetch one attachment's metadata + still-ENCRYPTED bytes by id (for the authed
+// stream route). Decryption is deliberately deferred to decryptAttachment() so the
+// CALLER can run its ownership/membership check on scope + refId BEFORE any crypto
+// work runs on an unauthorized request.
+export async function loadAttachment(id: string): Promise<LoadedAttachment | null> {
   await ensureAttachmentTable();
   const row = await prisma.attachment.findUnique({ where: { id } });
   if (!row) return null;
-  const bytes = decryptDocument({ ciphertext: row.ciphertext as Buffer, iv: row.iv as Buffer, authTag: row.authTag as Buffer });
-  return { scope: row.scope, refId: row.refId, filename: row.filename, mimeType: row.mimeType, bytes };
+  return {
+    scope: row.scope,
+    refId: row.refId,
+    filename: row.filename,
+    mimeType: row.mimeType,
+    blob: { ciphertext: row.ciphertext as Buffer, iv: row.iv as Buffer, authTag: row.authTag as Buffer },
+  };
+}
+
+// Decrypt the bytes of an attachment loaded by loadAttachment() — call ONLY after
+// the caller has authorized the viewer.
+export function decryptAttachment(att: LoadedAttachment): Buffer {
+  return decryptDocument(att.blob);
+}
+
+// Remove the encrypted attachments belonging to deleted parent records, so a
+// "deleted" post doesn't leave downloadable PII behind. Self-heals the table first
+// so a parent with no attachments can't 500 the delete on a fresh deploy.
+export async function deleteAttachmentsFor(scope: AttachScope, refIds: string[]): Promise<void> {
+  if (!refIds.length) return;
+  await ensureAttachmentTable();
+  await prisma.attachment.deleteMany({ where: { scope, refId: { in: refIds } } });
 }

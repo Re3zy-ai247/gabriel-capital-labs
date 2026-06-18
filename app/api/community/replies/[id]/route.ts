@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireCommunityAccount } from "@/lib/community";
 import { logAudit } from "@/lib/admin";
+import { deleteAttachmentsFor } from "@/lib/attachments";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -22,6 +23,7 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
   }
 
   await prisma.communityReply.delete({ where: { id: params.id } });
+  await deleteAttachmentsFor("community_reply", [reply.id]);
   await prisma.communityThread.update({
     where: { id: reply.threadId },
     data: { replyCount: { decrement: 1 } },

@@ -51,7 +51,7 @@ export async function POST(req: Request) {
   if (subject.length < 3) return NextResponse.json({ error: "Add a short subject." }, { status: 400 });
   if (body.length < 5) return NextResponse.json({ error: "Please describe the issue." }, { status: 400 });
 
-  const { ok: files, error: fileError } = validateFiles(filesFromForm(form));
+  const { ok: files, error: fileError } = await validateFiles(filesFromForm(form));
   if (fileError) return NextResponse.json({ error: fileError }, { status: 400 });
 
   const name = supportDisplayName(account);
