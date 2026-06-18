@@ -1,9 +1,16 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
 
-const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
+// Plus Jakarta Sans — a modern grotesk with more character than Inter, tuned for
+// both display headlines (heavier weights) and dense data UI. Exposed as --font-sans.
+const sans = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  variable: "--font-sans",
+  display: "swap",
+  weight: ["400", "500", "600", "700", "800"],
+});
 
 export const metadata: Metadata = {
   title: "CreditVector™ — AI-Powered Credit Intelligence Platform",
@@ -37,7 +44,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0a0c10",
+  themeColor: "#060a14",
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
@@ -48,11 +55,12 @@ const noFlashTheme = `(function(){try{var t=localStorage.getItem('theme');if(t==
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={inter.variable} suppressHydrationWarning>
+    <html lang="en" className={sans.variable} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: noFlashTheme }} />
       </head>
       <body className="font-sans antialiased">
+        <a href="#main" className="skip-link">Skip to content</a>
         <Providers>{children}</Providers>
       </body>
     </html>

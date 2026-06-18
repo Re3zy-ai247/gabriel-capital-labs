@@ -299,7 +299,7 @@ function LettersInner() {
             {error && <p className="mt-3 text-xs text-rose-400">{error}</p>}
             {upgrade && (
               <div className="mt-2 space-y-1.5 text-center">
-                <Link href="/pricing" className="block text-xs font-semibold text-emerald-400 underline">
+                <Link href="/pricing" className="block text-xs font-semibold text-brand-300 underline">
                   Upgrade to Premium for unlimited letters →
                 </Link>
                 <button

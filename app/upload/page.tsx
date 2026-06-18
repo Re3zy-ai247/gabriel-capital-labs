@@ -148,13 +148,13 @@ export default function UploadPage() {
             <div className="mb-4 inline-flex rounded-lg border border-ink-700 p-1 text-sm">
               <button
                 onClick={() => setMode("paste")}
-                className={`flex items-center gap-2 rounded-md px-3 py-1.5 ${mode === "paste" ? "bg-brand-500 text-ink-950" : "text-slate-300"}`}
+                className={`flex items-center gap-2 rounded-md px-3 py-1.5 ${mode === "paste" ? "bg-brand-500 text-brand-ink" : "text-slate-300"}`}
               >
                 <ClipboardPaste className="h-4 w-4" /> Paste text
               </button>
               <button
                 onClick={() => setMode("pdf")}
-                className={`flex items-center gap-2 rounded-md px-3 py-1.5 ${mode === "pdf" ? "bg-brand-500 text-ink-950" : "text-slate-300"}`}
+                className={`flex items-center gap-2 rounded-md px-3 py-1.5 ${mode === "pdf" ? "bg-brand-500 text-brand-ink" : "text-slate-300"}`}
               >
                 <FileText className="h-4 w-4" /> Upload PDF
               </button>

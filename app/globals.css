@@ -5,18 +5,17 @@
 /* ============================================================
    THEME TOKENS — values are space-separated RGB triplets so they
    compose with Tailwind alpha modifiers (e.g. bg-ink-800/60).
-   :root = dark (default, identical to the original palette).
-   html.light = light theme.
+   :root = dark (default, deep navy). html.light = light theme.
    ============================================================ */
 :root {
   color-scheme: dark;
-  /* surfaces */
-  --ink-950: 10 12 16;
-  --ink-900: 14 17 23;
-  --ink-800: 21 26 34;
-  --ink-700: 29 36 47;
-  --ink-600: 42 51 64;
-  /* slate (Tailwind defaults — unchanged in dark) */
+  /* navy surfaces */
+  --ink-950: 6 10 20;     /* #060a14 — deepest page */
+  --ink-900: 10 15 28;    /* #0a0f1c */
+  --ink-800: 16 23 41;    /* #101729 — card */
+  --ink-700: 27 37 60;    /* #1b253c — border */
+  --ink-600: 40 53 82;    /* #283552 — hover border */
+  /* slate (text bright, surface dark) */
   --slate-50: 248 250 252;
   --slate-200: 226 232 240;
   --slate-300: 203 213 225;
@@ -28,55 +27,70 @@
   --slate-900: 15 23 42;
   --slate-950: 2 6 23;
   /* page background + foreground text */
-  --fg: 231 237 243;
-  --page-1: rgba(43, 208, 127, 0.08);
-  --page-2: rgba(242, 193, 78, 0.05);
-  --page-base: #0a0c10;
+  --fg: 226 234 245;
+  --page-1: rgba(14, 165, 196, 0.10);  /* teal */
+  --page-2: rgba(37, 99, 235, 0.08);   /* blue */
+  --page-base: #060a14;
 }
 
 html.light {
   color-scheme: light;
-  /* surfaces become light (page = soft gray, cards/header = white) */
-  --ink-950: 243 244 246;
+  /* surfaces become light (page = soft blue-gray, cards/header = white) */
+  --ink-950: 240 244 250;
   --ink-900: 255 255 255;
   --ink-800: 255 255 255;
-  --ink-700: 226 232 240;
-  --ink-600: 203 213 225;
+  --ink-700: 223 230 240;
+  --ink-600: 199 210 226;
   /* slate: bright shades become dark text; dark shades become light surfaces */
   --slate-50: 248 250 252;
-  --slate-200: 30 41 59;   /* bright text -> dark */
-  --slate-300: 51 65 85;   /* secondary text -> dark */
-  --slate-400: 100 116 139;/* muted text, darkened for contrast on white */
-  --slate-500: 100 116 139;/* muted text / mid surface — fine either way */
-  --slate-600: 71 85 105;  /* muted text / surface */
-  --slate-700: 226 232 240;/* surface */
-  --slate-800: 241 245 249;/* surface */
-  --slate-900: 248 250 252;/* surface */
-  --slate-950: 243 244 246;/* page surface */
+  --slate-200: 30 41 59;
+  --slate-300: 51 65 85;
+  --slate-400: 100 116 139;
+  --slate-500: 100 116 139;
+  --slate-600: 71 85 105;
+  --slate-700: 223 230 240;
+  --slate-800: 241 245 249;
+  --slate-900: 248 250 252;
+  --slate-950: 240 244 250;
   --fg: 15 23 42;
-  --page-1: rgba(43, 208, 127, 0.10);
-  --page-2: rgba(242, 193, 78, 0.10);
-  --page-base: #f3f4f6;
+  --page-1: rgba(14, 165, 196, 0.10);
+  --page-2: rgba(37, 99, 235, 0.06);
+  --page-base: #eef2f8;
 }
+
+html { scroll-behavior: smooth; }
 
 body {
   background:
-    radial-gradient(1200px 600px at 80% -10%, var(--page-1), transparent 60%),
-    radial-gradient(900px 500px at -10% 10%, var(--page-2), transparent 55%),
+    radial-gradient(1200px 620px at 82% -12%, var(--page-1), transparent 60%),
+    radial-gradient(960px 520px at -12% 8%, var(--page-2), transparent 55%),
     var(--page-base);
   color: rgb(var(--fg));
-  min-height: 100vh;
+  min-height: 100dvh;
 }
 
-/* In light mode, content text-white must flip to the dark foreground so it stays
-   readable; buttons that need white-on-color opt out with .keep-white. */
-html.light .text-white:not(.keep-white) {
-  color: rgb(var(--fg));
-}
+/* In light mode, content text-white flips to the dark foreground so it stays
+   readable; elements that need fixed white-on-color opt out with .keep-white. */
+html.light .text-white:not(.keep-white) { color: rgb(var(--fg)); }
 .keep-white,
-html.light .keep-white {
-  color: #ffffff;
+html.light .keep-white { color: #ffffff; }
+
+::selection { background: rgba(14, 165, 196, 0.30); color: #fff; }
+
+/* Visible keyboard focus everywhere (accessibility, not optional). */
+:where(a, button, input, textarea, select, [tabindex]):focus-visible {
+  outline: 2px solid rgb(var(--slate-50));
+  outline-offset: 2px;
 }
+
+/* Skip-to-content link for keyboard users. */
+.skip-link {
+  position: absolute; left: 1rem; top: -3rem; z-index: 100;
+  border-radius: 0.5rem; background: #04121b; color: #fff;
+  padding: 0.5rem 0.875rem; font-size: 0.8125rem; font-weight: 600;
+  transition: top 0.18s ease;
+}
+.skip-link:focus { top: 1rem; }
 
 @layer components {
   .card {
@@ -92,26 +106,44 @@ html.light .keep-white {
     @apply flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-slate-300/80 transition hover:bg-ink-700/60 hover:text-white;
   }
   .nav-item-active {
-    @apply bg-ink-700 text-white shadow-glow;
+    @apply bg-brand-500/10 text-white ring-1 ring-inset ring-brand-500/25;
   }
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50;
   }
-  .btn-primary { @apply btn bg-brand-500 text-ink-950 hover:bg-brand-400; }
-  .btn-ghost { @apply btn border border-ink-600 text-slate-200 hover:bg-ink-700; }
+  /* Primary CTA: fixed dark navy text on bright teal — AA on both themes. */
+  .btn-primary { @apply btn bg-brand-500 text-brand-ink shadow-glow hover:bg-brand-400; }
+  .btn-ghost { @apply btn border border-ink-600 text-slate-200 hover:border-ink-600 hover:bg-ink-700; }
   .btn-danger { @apply btn bg-rose-600 text-white hover:bg-rose-700; }
+  .btn-lg { @apply rounded-xl px-6 py-3 text-base; }
   .input {
-    @apply w-full rounded-lg border border-ink-600 bg-ink-900/80 px-3 py-2 text-sm text-white outline-none focus:border-brand-500;
+    @apply w-full rounded-lg border border-ink-600 bg-ink-900/80 px-3 py-2 text-sm text-white outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30;
   }
   .label { @apply mb-1 block text-xs font-medium uppercase tracking-wide text-slate-400; }
+
+  /* ---- Marketing / layout primitives ---- */
+  .container-x { @apply mx-auto w-full max-w-content px-6; }
+  .section { @apply py-20 md:py-28; }
+  .eyebrow {
+    @apply inline-flex items-center gap-2 rounded-full border border-brand-500/30 bg-brand-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-brand-300;
+  }
+  .h-display { @apply font-display font-semibold tracking-tight; }
+  .lede { @apply text-lg leading-relaxed text-slate-300 md:text-xl; }
+  .tnum { font-variant-numeric: tabular-nums; }
+  .balance { text-wrap: balance; }
+  .pretty { text-wrap: pretty; }
+  /* Brand text gradient — teal→blue. */
+  .text-gradient {
+    @apply bg-gradient-to-r from-brand-300 via-brand-400 to-ocean-400 bg-clip-text text-transparent;
+  }
+  /* Hairline divider tuned to the navy palette. */
+  .hairline { @apply border-ink-700/60; }
 }
 
-/* btn-primary keeps white text in light mode (sits on the green brand color). */
-html.light .btn-primary { color: #ffffff; }
 /* Inputs sit on white surfaces in light mode — keep their text dark. */
 html.light .input { color: rgb(var(--fg)); }
 /* Card shadow is too heavy for light mode. */
-html.light .card { box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06), 0 4px 16px rgba(15, 23, 42, 0.08); }
+html.light .card { box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06), 0 8px 24px -10px rgba(15, 23, 42, 0.12); }
 
 /* ---- Motion & interactivity — keep the UI feeling alive, not stiff ---- */
 @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
@@ -121,7 +153,7 @@ html.light .card { box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06), 0 4px 16px rgba
 
 /* Subtle lift + border highlight on interactive surfaces. */
 .card { transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease; }
-.card:hover { transform: translateY(-2px); border-color: rgba(148, 163, 184, 0.45); }
+.card:hover { transform: translateY(-2px); border-color: rgba(14, 165, 196, 0.40); }
 .btn { transition: transform 0.12s ease, background-color 0.15s ease, opacity 0.15s ease; }
 .btn:active { transform: translateY(1px) scale(0.99); }
 
@@ -133,7 +165,17 @@ html.light .card { box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06), 0 4px 16px rgba
   66%  { transform: translate3d(-3%, 4%, 0) scale(0.96); }
   100% { transform: translate3d(0,0,0) scale(1); }
 }
-.aurora { position: absolute; border-radius: 9999px; filter: blur(70px); opacity: 0.5; animation: drift 18s ease-in-out infinite; will-change: transform; }
+.aurora { position: absolute; border-radius: 9999px; filter: blur(72px); opacity: 0.5; animation: drift 18s ease-in-out infinite; will-change: transform; }
+
+/* Faint grid texture for hero / CTA backdrops — breaks digital flatness. */
+.grid-texture {
+  background-image:
+    linear-gradient(rgba(148, 163, 184, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.06) 1px, transparent 1px);
+  background-size: 56px 56px;
+  -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, #000 30%, transparent 75%);
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, #000 30%, transparent 75%);
+}
 
 /* Scroll-reveal: hidden until .is-visible is added by the Reveal observer. */
 .reveal { opacity: 0; transform: translateY(20px); transition: opacity 0.6s cubic-bezier(0.16,1,0.3,1), transform 0.6s cubic-bezier(0.16,1,0.3,1); }
@@ -161,6 +203,7 @@ html.light .card { box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06), 0 4px 16px rgba
 
 /* Respect users who prefer less motion. */
 @media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
   .animate-rise, .animate-fadein, .animate-float, .animate-draw, .animate-rise-stagger, .aurora { animation: none; }
   .card:hover, .btn:active { transform: none; }
   .reveal { opacity: 1; transform: none; transition: none; }

@@ -3,47 +3,93 @@ import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Gauge } from "lucide-react";
+import { Eye, EyeOff, Loader2, Check } from "lucide-react";
+import { AuthLayout } from "@/components/marketing/AuthLayout";
 
 export default function RegisterPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [show, setShow] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const router = useRouter();
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    setBusy(true); setErr(null);
+    setBusy(true);
+    setErr(null);
     const res = await fetch("/api/register", {
-      method: "POST", headers: { "Content-Type": "application/json" },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name, email, password }),
     });
     const j = await res.json();
-    if (!res.ok) { setErr(j.error || "Could not create account"); setBusy(false); return; }
+    if (!res.ok) {
+      setErr(j.error || "We couldn't create your account. Please try again.");
+      setBusy(false);
+      return;
+    }
     const s = await signIn("credentials", { email, password, redirect: false });
     setBusy(false);
-    if (s?.error) setErr("Account created — please sign in."); else router.push("/dashboard");
+    if (s?.error) setErr("Your account is ready — please sign in.");
+    else router.push("/dashboard");
   }
 
   return (
-    <div className="grid min-h-screen place-items-center px-4">
-      <form onSubmit={submit} className="card w-full max-w-sm p-6">
-        <div className="mb-5 flex items-center gap-2">
-          <div className="grid h-8 w-8 place-items-center rounded-lg bg-brand-500 text-ink-950"><Gauge className="h-5 w-5" /></div>
-          <span className="font-semibold">Create your account</span>
+    <AuthLayout heading="Create your account" subheading="Free to start — no card required. See your reports in minutes.">
+      <form onSubmit={submit} noValidate className="space-y-4">
+        <div>
+          <label htmlFor="name" className="label">Name</label>
+          <input id="name" className="input" autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} />
         </div>
-        <label className="label">Name</label>
-        <input className="input mb-3" value={name} onChange={(e) => setName(e.target.value)} />
-        <label className="label">Email</label>
-        <input className="input mb-3" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-        <label className="label">Password (min 8 chars)</label>
-        <input className="input mb-4" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} />
-        {err && <p className="mb-3 text-xs text-rose-400">{err}</p>}
-        <button className="btn-primary w-full" disabled={busy}>{busy ? "Creating…" : "Create account"}</button>
-        <p className="mt-4 text-center text-[11px] text-slate-500">Already have an account? <Link href="/login" className="text-brand-400">Sign in</Link></p>
+
+        <div>
+          <label htmlFor="email" className="label">Email</label>
+          <input id="email" className="input" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+        </div>
+
+        <div>
+          <label htmlFor="password" className="label">Password</label>
+          <div className="relative">
+            <input
+              id="password"
+              type={show ? "text" : "password"}
+              className="input pr-10"
+              autoComplete="new-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              minLength={8}
+            />
+            <button
+              type="button"
+              onClick={() => setShow((v) => !v)}
+              className="absolute inset-y-0 right-0 grid w-10 place-items-center text-slate-400 transition hover:text-slate-200"
+              aria-label={show ? "Hide password" : "Show password"}
+            >
+              {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
+          </div>
+          <p className={`mt-1.5 flex items-center gap-1.5 text-xs ${password.length >= 8 ? "text-success-400" : "text-slate-500"}`}>
+            <Check className="h-3.5 w-3.5" strokeWidth={2.5} /> At least 8 characters
+          </p>
+        </div>
+
+        {err && (
+          <p role="alert" className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-300">
+            {err}
+          </p>
+        )}
+
+        <button className="btn-primary btn-lg w-full" disabled={busy}>
+          {busy ? (<><Loader2 className="h-4 w-4 animate-spin" /> Creating…</>) : "Create account"}
+        </button>
       </form>
-    </div>
+
+      <p className="mt-6 text-center text-sm text-slate-400">
+        Already have an account? <Link href="/login" className="font-medium text-brand-300 transition hover:text-brand-200">Sign in</Link>
+      </p>
+    </AuthLayout>
   );
 }
