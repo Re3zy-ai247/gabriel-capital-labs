@@ -46,3 +46,49 @@ export function decryptDocument(blob: EncryptedBlob): Buffer {
   decipher.setAuthTag(blob.authTag);
   return Buffer.concat([decipher.update(blob.ciphertext), decipher.final()]);
 }
+
+// String-at-rest encryption for credit-report PII (Report.rawText). Same
+// AES-256-GCM key/cipher as the document helpers, but serialized into a single
+// self-describing column value so no schema change is needed. Format:
+//   "cv1:" + base64(iv) + "." + base64(authTag) + "." + base64(ciphertext)
+// The "cv1:" prefix lets readers tell ciphertext from legacy plaintext rows.
+const TEXT_PREFIX = "cv1:";
+
+// True when a stored value is one of our encrypted strings (vs legacy plaintext).
+export function isEncryptedText(s: string | null | undefined): boolean {
+  return !!s && s.startsWith(TEXT_PREFIX);
+}
+
+export function encryptText(plaintext: string): string {
+  if (!plaintext) return plaintext; // empty string / falsy passes through unchanged
+  const iv = randomBytes(12); // 96-bit nonce, recommended for GCM
+  const cipher = createCipheriv(ALGO, getKey(), iv);
+  const ciphertext = Buffer.concat([cipher.update(plaintext, "utf8"), cipher.final()]);
+  const authTag = cipher.getAuthTag();
+  return (
+    TEXT_PREFIX +
+    iv.toString("base64") +
+    "." +
+    authTag.toString("base64") +
+    "." +
+    ciphertext.toString("base64")
+  );
+}
+
+// Dual-read: decrypts our "cv1:" values; returns anything else verbatim so
+// existing plaintext rows (and the demo seed) keep working. A "cv1:" value that
+// is malformed or fails the GCM auth check throws rather than returning garbage.
+export function decryptText(stored: string | null | undefined): string {
+  if (!stored) return "";
+  if (!stored.startsWith(TEXT_PREFIX)) return stored; // legacy plaintext
+  const parts = stored.slice(TEXT_PREFIX.length).split(".");
+  if (parts.length !== 3) {
+    throw new Error("Malformed encrypted text: expected 3 base64 parts.");
+  }
+  const iv = Buffer.from(parts[0], "base64");
+  const authTag = Buffer.from(parts[1], "base64");
+  const ciphertext = Buffer.from(parts[2], "base64");
+  const decipher = createDecipheriv(ALGO, getKey(), iv);
+  decipher.setAuthTag(authTag);
+  return Buffer.concat([decipher.update(ciphertext), decipher.final()]).toString("utf8");
+}

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { currentUserOrDemo } from "@/lib/session";
 import { analyzeReportText } from "@/lib/analyze";
+import { decryptText } from "@/lib/docCrypto";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -25,7 +26,7 @@ export async function POST(req: Request) {
     const result = await analyzeReportText(prisma, {
       userId: user.id,
       reportId: report.id,
-      rawText: report.rawText,
+      rawText: decryptText(report.rawText),
       coveredBureaus: report.bureaus,
     });
     created += result.tradelines;

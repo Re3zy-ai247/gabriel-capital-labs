@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { currentUserOrDemo } from "@/lib/session";
 import { analyzeReportText } from "@/lib/analyze";
 import { extractPdfText } from "@/lib/pdf";
+import { encryptText } from "@/lib/docCrypto";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -74,19 +75,22 @@ export async function POST(req: Request) {
   }
 
   try {
+    // Cap once, then store the ciphertext. Keep the plaintext locally for the
+    // immediate analysis — report.rawText is now encrypted and unusable directly.
+    const plainText = rawText.slice(0, 500_000);
     const report = await prisma.report.create({
       data: {
         userId: user.id,
         fileName,
         bureaus,
-        rawText: rawText.slice(0, 500_000),
+        rawText: encryptText(plainText),
       },
     });
 
     const result = await analyzeReportText(prisma, {
       userId: user.id,
       reportId: report.id,
-      rawText: report.rawText!,
+      rawText: plainText,
       coveredBureaus: bureaus,
     });
 

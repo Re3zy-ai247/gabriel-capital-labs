@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { currentUserOrDemo } from "@/lib/session";
-import { decryptDocument, docCryptoReady } from "@/lib/docCrypto";
+import { decryptDocument, decryptText, docCryptoReady } from "@/lib/docCrypto";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -144,7 +144,7 @@ export async function POST() {
     identity,
     "",
     "CREDIT REPORT TEXT (find the Personal Information / consumer identification section):",
-    report.rawText.slice(0, 120_000),
+    decryptText(report.rawText).slice(0, 120_000),
   ].join("\n");
 
   // Multimodal content: ID image(s) first (when present), then the text prompt.
