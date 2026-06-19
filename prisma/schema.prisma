@@ -354,3 +354,18 @@ model Attachment {
   @@index([scope, refId])
 }
 
+// ---- Rate limiting: DB-backed fixed-window counter ---------------------------
+// Vercel serverless + Prisma Accelerate means in-memory counters don't survive
+// across instances, so each (key, window) pair gets one row whose count is
+// atomically incremented per request. `bucket` is `${key}:${windowStart}` where
+// windowStart = floor(now/windowSec). Self-heals at runtime like the other tables
+// (lib/rateLimit.ts), so no manual migrate is needed. Stale rows are harmless —
+// they simply stop being touched once their window passes.
+model RateHit {
+  id          String   @id @default(cuid())
+  bucket      String   @unique
+  count       Int      @default(0)
+  windowStart BigInt
+  createdAt   DateTime @default(now())
+}
+

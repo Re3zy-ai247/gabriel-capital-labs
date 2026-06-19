@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { currentUserOrDemo } from "@/lib/session";
+import { enforceRateLimit } from "@/lib/rateLimit";
 import { getEntitlement } from "@/lib/entitlements";
 import { STRATEGIES } from "@/lib/strategies";
 import { formatCents } from "@/lib/utils";
@@ -13,6 +14,10 @@ export const runtime = "nodejs";
 export async function POST() {
   const user = await currentUserOrDemo();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  // Per-user cap before the (expensive) Opus call.
+  const limited = await enforceRateLimit(`strategist:${user.id}`, 10, 3600);
+  if (limited) return limited;
 
   const entitlement = await getEntitlement(user);
   if (!entitlement.premium) {

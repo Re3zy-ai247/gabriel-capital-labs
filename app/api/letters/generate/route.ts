@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { currentUserOrDemo } from "@/lib/session";
+import { enforceRateLimit } from "@/lib/rateLimit";
 import { buildContext, renderTemplateLetter, buildSystemPrompt, buildUserPrompt } from "@/lib/letter";
 import { applyCompliance } from "@/lib/compliance";
 import { getEntitlement } from "@/lib/entitlements";
@@ -76,6 +77,10 @@ export async function POST(req: Request) {
   try {
     const user = await currentUserOrDemo();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    // Per-user cap before any AI refinement / letter generation work.
+    const limited = await enforceRateLimit(`letters:${user.id}`, 40, 3600);
+    if (limited) return limited;
 
     const body = await req.json();
     const { tradelineId, strategyId } = body;

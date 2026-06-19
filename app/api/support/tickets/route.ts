@@ -4,6 +4,7 @@ import {
   requireSupportUser, supportDisplayName, normalizeSupportCategory, cleanSupportText, SUPPORT_LIMITS,
 } from "@/lib/support";
 import { filesFromForm, validateFiles, saveAttachments } from "@/lib/attachments";
+import { enforceRateLimit } from "@/lib/rateLimit";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -42,6 +43,10 @@ export async function GET() {
 export async function POST(req: Request) {
   const account = await requireSupportUser();
   if (!account) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  // Per-account cap on ticket creation to curb spam.
+  const limited = await enforceRateLimit(`support:${account.id}`, 10, 3600);
+  if (limited) return limited;
 
   const form = await req.formData().catch(() => null);
   if (!form) return NextResponse.json({ error: "Bad request." }, { status: 400 });
