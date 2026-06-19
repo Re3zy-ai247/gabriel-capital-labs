@@ -69,6 +69,12 @@ const AGENCY_POINTS = [
   { icon: Clock, title: "Follow-up clock", body: "Bureau response windows are tracked per client, surfacing who needs a next round and when." },
 ];
 
+const KAI_POINTS = [
+  "Strategy on demand for any client — collections, charge-offs, reinvestigations, escalations",
+  "Grounded in the FCRA/FDCPA and reviewed for CROA compliance",
+  "Included with every Agency plan — no add-ons",
+];
+
 export default async function Home() {
   const session = await getServerSession(authOptions);
   if (session) redirect("/dashboard");
@@ -259,6 +265,31 @@ export default async function Home() {
                 <AgencyRosterVisual />
               </Reveal>
             </div>
+
+            {/* Kai — AI master agent, included with every Agency plan */}
+            <Reveal>
+              <div className="mt-16 grid items-center gap-10 rounded-3xl border border-brand-500/25 bg-gradient-to-br from-brand-500/10 via-ink-900/40 to-ocean-700/20 p-8 md:grid-cols-2 md:p-10">
+                <div>
+                  <span className="eyebrow"><Sparkles className="h-3.5 w-3.5" /> Master agent</span>
+                  <h3 className="h-display mt-4 text-2xl text-white md:text-3xl text-balance">Kai — an AI credit strategist for your whole team</h3>
+                  <p className="mt-4 text-slate-300 pretty">
+                    Every Agency plan includes Kai in the Community Hub — an expert AI agent your team can ask about dispute
+                    strategy, FCRA rights, and the strongest next move on any client. Grounded in the law and reviewed for compliance.
+                  </p>
+                  <ul className="mt-6 space-y-3">
+                    {KAI_POINTS.map((p) => (
+                      <li key={p} className="flex items-start gap-3 text-sm text-slate-300">
+                        <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-500/15 text-brand-300">
+                          <Check className="h-3 w-3" strokeWidth={3} />
+                        </span>
+                        {p}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <KaiChatVisual />
+              </div>
+            </Reveal>
           </div>
         </section>
 
@@ -337,6 +368,34 @@ export default async function Home() {
       </main>
 
       <SiteFooter />
+    </div>
+  );
+}
+
+// Kai chat mock for the agency section — illustrative; Kai gives educational
+// guidance grounded in the FCRA and never guarantees an outcome.
+function KaiChatVisual() {
+  return (
+    <div aria-hidden className="rounded-2xl border border-ink-700/70 bg-ink-900/70 p-5 shadow-card backdrop-blur">
+      <div className="mb-4 flex items-center gap-3 border-b border-ink-700/60 pb-3">
+        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-brand-400 to-ocean-500 text-white">
+          <Sparkles className="h-4 w-4" />
+        </span>
+        <div>
+          <div className="text-sm font-semibold text-white">Kai</div>
+          <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
+            <span className="h-1.5 w-1.5 rounded-full bg-success-400" /> AI master agent · online
+          </div>
+        </div>
+      </div>
+      <div className="mb-3 ml-auto max-w-[85%] rounded-2xl rounded-tr-sm bg-ink-700/60 px-3.5 py-2.5 text-xs text-slate-200">
+        A client&apos;s collection was &ldquo;verified&rdquo; twice. What&apos;s the strongest next round?
+      </div>
+      <div className="max-w-[92%] rounded-2xl rounded-tl-sm border border-brand-500/25 bg-brand-500/10 px-3.5 py-2.5 text-xs leading-relaxed text-slate-200">
+        Request the bureau&apos;s <span className="text-brand-200">method of verification</span> under FCRA §611(a)(7) — who they
+        spoke to and what records they checked. If it stays unverifiable, escalate with a CFPB complaint. I can draft both for this client.
+      </div>
+      <p className="mt-3 text-[10px] text-slate-500">Illustrative. Kai gives educational guidance grounded in the FCRA — never a guaranteed outcome.</p>
     </div>
   );
 }
