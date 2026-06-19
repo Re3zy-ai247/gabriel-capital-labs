@@ -119,18 +119,23 @@ async function resolveProduct(stripe: Stripe, productKey: string): Promise<strin
   return created.id;
 }
 
-// Ensure every recognized product (current or legacy-named) carries its tax code.
-// Idempotent; returns the names that were updated. Run from the provision route.
+// Ensure every recognized product (current or legacy-named) carries its correct tax
+// code AND description — so a catalog copy change (e.g. the managed-client cap) reaches
+// the live product, whose description is otherwise only set at creation time. Idempotent;
+// returns the names updated. Run from the provision route ("Sync products to Stripe").
 export async function reconcileTaxCodes(stripe: Stripe): Promise<string[]> {
   const list = await stripe.products.list({ active: true, limit: 100 });
   const updated: string[] = [];
   for (const p of list.data) {
     const key = p.metadata?.gcl_product || LEGACY_PRODUCT_NAMES[p.name] || (Object.values(PRODUCTS).find((d) => d.name === p.name)?.key ?? "");
-    const want = key ? PRODUCTS[key]?.taxCode : undefined;
-    if (!want) continue;
-    const current = typeof p.tax_code === "string" ? p.tax_code : p.tax_code?.id ?? null;
-    if (current !== want) {
-      await stripe.products.update(p.id, { tax_code: want });
+    const def = key ? PRODUCTS[key] : undefined;
+    if (!def) continue;
+    const update: Stripe.ProductUpdateParams = {};
+    const currentTax = typeof p.tax_code === "string" ? p.tax_code : p.tax_code?.id ?? null;
+    if (def.taxCode && currentTax !== def.taxCode) update.tax_code = def.taxCode;
+    if (p.description !== def.description) update.description = def.description;
+    if (Object.keys(update).length > 0) {
+      await stripe.products.update(p.id, update);
       updated.push(p.name);
     }
   }
