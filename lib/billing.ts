@@ -8,7 +8,17 @@ export async function getOrCreateStripeCustomer(
   stripe: Stripe,
   user: { id: string; email: string; name?: string | null; stripeCustomerId?: string | null }
 ): Promise<string> {
-  if (user.stripeCustomerId) return user.stripeCustomerId;
+  // A stored id can be stale — e.g. a TEST-mode customer after the secret key was
+  // switched to LIVE. Verify it still exists in the current Stripe mode; if the
+  // retrieve fails (wrong mode / deleted), fall through and create a fresh one.
+  if (user.stripeCustomerId) {
+    try {
+      const existing = await stripe.customers.retrieve(user.stripeCustomerId);
+      if (existing && !(existing as { deleted?: boolean }).deleted) return user.stripeCustomerId;
+    } catch {
+      // not found in this mode — recreate below
+    }
+  }
   const customer = await stripe.customers.create({
     email: user.email,
     name: user.name ?? undefined,
