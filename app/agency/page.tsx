@@ -236,7 +236,7 @@ export default function AgencyPage() {
             letter engine for each, and generate disputes at scale.
           </p>
           <ul className="mt-4 space-y-1.5 text-sm text-slate-300">
-            <li className="flex items-center gap-2"><span className="text-brand-400">✓</span> Unlimited managed clients — no per-seat logins</li>
+            <li className="flex items-center gap-2"><span className="text-brand-400">✓</span> Up to 20 managed clients — no per-seat logins</li>
             <li className="flex items-center gap-2"><span className="text-brand-400">✓</span> Full AI analysis &amp; letter engine for every client</li>
             <li className="flex items-center gap-2"><span className="text-brand-400">✓</span> Follow-up clock &amp; KPI reporting across your roster</li>
           </ul>
@@ -252,7 +252,9 @@ export default function AgencyPage() {
           </div>
           <p className="mt-3 text-[11px] text-slate-500">Secure checkout by Stripe · your card never touches our servers.</p>
 
-          {/* Owner preview — enable without billing via ADMIN role or the setup secret. */}
+          {/* Owner/admin preview — enable agency mode without billing. Admins only;
+              regular users (and demo) never see the no-billing bypass. */}
+          {ctx?.isAdmin && (
           <div className="mt-5 border-t border-slate-800 pt-4">
             {!showOwnerPreview ? (
               <button
@@ -288,6 +290,7 @@ export default function AgencyPage() {
               </div>
             )}
           </div>
+          )}
         </div>
       ) : (
         <>

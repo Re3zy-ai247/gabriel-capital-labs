@@ -59,7 +59,7 @@ const PRICING = [
   },
   {
     name: "Agency", price: "$399", cadence: "/mo", href: "/pricing", cta: "Explore Agency", featured: false,
-    features: ["Everything in Premium", "A workspace per client", "Roster KPIs + follow-up clock", "Up to 50 managed clients"],
+    features: ["Everything in Premium", "A workspace per client", "Roster KPIs + follow-up clock", "Up to 20 managed clients"],
   },
 ];
 

@@ -47,7 +47,7 @@ Verification baseline (all green at park): `tsc` clean · `next build` ok · `cl
 
 ## File map
 - **Stripe:** `lib/stripe.ts` (catalog), `lib/billing.ts` (sub sync + `creditLetters`), `app/api/stripe/{checkout,webhook,portal}`.
-- **Entitlements/tiers:** `lib/entitlements.ts` (free=3/mo no-AI, premium=unlimited+AI, agency/agency_pro=full+isAgency, Agency cap 50 clients).
+- **Entitlements/tiers:** `lib/entitlements.ts` (free=3/mo no-AI, premium=unlimited+AI, agency/agency_pro=full+isAgency, Agency cap 20 clients).
 - **Report ingestion / accuracy:** `lib/aiParse.ts` (AI extraction incl. `creditorKind`), `lib/parse.ts` (regex fallback), `lib/classify.ts` (creditor kind/type, `scripts/classify.test.ts`), `lib/analyze.ts` (pipeline).
 - **Letters:** `lib/letter.ts`, `lib/obsolescence.ts` (7yr/10yr §605). Furnisher mailing contact: `lib/furnisher.ts` (self-heal `TradelineContact`), parsed in `lib/aiParse.ts`, pre-filled in `app/letters/page.tsx`.
 - **Community/Kai:** `app/community/*`, `app/api/community/*`, `lib/community.ts` (+ `lib/communityShared.ts`), `lib/kai.ts`.

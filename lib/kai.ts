@@ -43,7 +43,7 @@ function knowledgeBlock(): string {
     "ROADMAP MODULES (do NOT claim these exist yet):",
     soon,
     "",
-    "AGENCY TIER FACTS: The Agency plan is $399/mo and manages up to 50 client workspaces; Agency Pro is $799/mo with unlimited clients. Agencies work INSIDE each client's workspace (open/exit) — every dispute tool operates on the opened client. The roster surfaces a follow-up clock (30 days after a letter is marked mailed) and flags clients needing the next round. Letters are generated per client through the normal flow.",
+    "AGENCY TIER FACTS: The Agency plan is $399/mo and manages up to 20 client workspaces; Agency Pro is $799/mo with unlimited clients. Agencies work INSIDE each client's workspace (open/exit) — every dispute tool operates on the opened client. The roster surfaces a follow-up clock (30 days after a letter is marked mailed) and flags clients needing the next round. Letters are generated per client through the normal flow.",
     "",
     "INVESTIGATOR-FIRST METHOD (the platform's core philosophy): the goal is deletion of UNVERIFIABLE items, reached by compelling a real §611 reinvestigation the furnisher cannot satisfy — NOT by directly demanding deletion (which risks a §1681i(a)(3) 'frivolous' dismissal). Lead with the FACT, explain WHY it can't be verified, THEN request the reinvestigation.",
   ].join("\n");

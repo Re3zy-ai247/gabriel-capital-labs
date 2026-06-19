@@ -54,7 +54,7 @@ const PRODUCTS: Record<string, ProductDef> = {
   agency: {
     key: "agency",
     name: "CreditVector — Agency",
-    description: "Manage clients in their own workspaces with the full analysis and letter engine. Up to 50 clients.",
+    description: "Manage clients in their own workspaces with the full analysis and letter engine. Up to 20 clients.",
     taxCode: TAX_CODE_SAAS_BUSINESS,
   },
   agency_pro: {

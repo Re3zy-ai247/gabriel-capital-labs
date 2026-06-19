@@ -37,7 +37,7 @@ const TIERS: Tier[] = [
   },
   {
     plan: "agency", name: "Agency", monthly: 399, yearly: 3990, blurb: "Run your own practice",
-    features: ["Everything in Premium", "Up to 50 managed clients", "A workspace per client", "Roster KPIs + follow-up clock"],
+    features: ["Everything in Premium", "Up to 20 managed clients", "A workspace per client", "Roster KPIs + follow-up clock"],
     accent: "text-ocean-300", cardClass: "border-ocean-500/50 bg-ink-800/50",
     buttonClass: "btn bg-ocean-500 text-white keep-white hover:bg-ocean-400",
   },
@@ -51,7 +51,7 @@ const TIERS: Tier[] = [
 
 const FAQ: [string, string][] = [
   ["Can I cancel anytime?", "Yes — no contracts. Cancel from your billing dashboard; access continues to the end of the period."],
-  ["What does Agency Pro add?", "The Agency plan includes up to 50 managed clients. Agency Pro removes that cap for high-volume teams."],
+  ["What does Agency Pro add?", "The Agency plan includes up to 20 managed clients. Agency Pro removes that cap for high-volume teams."],
   ["Do letter-pack credits expire?", "No. Purchased letters are used automatically once your free monthly allowance runs out, and they carry over month to month."],
   ["Do you handle disputes for me?", "We generate professional, FCRA-grounded letters you review and mail yourself. You stay in control — we never act on your behalf."],
 ];

@@ -37,7 +37,7 @@ export function agencyClientLimit(user: {
 }): number | null {
   if (user.role === "ADMIN") return null;
   if (user.plan === "agency_pro") return null;
-  if (user.isAgency) return 50;
+  if (user.isAgency) return 20;
   return 0;
 }
 
