@@ -3,6 +3,37 @@
 CreditVector™ (by **Gabriel Capital Labs**) — a Next.js 14 credit-dispute **education** SaaS.
 This file is the fast-start: read it instead of re-reading the whole tree.
 
+## 🧭 CreditVector Operating System
+*The governing doc — every other section serves these rules.*
+
+**Company:** Gabriel Capital Labs · **Product:** CreditVector™
+
+**Mission:** Build the leading AI-powered credit intelligence platform in America.
+
+**Every decision optimizes:** Compliance · Trust · Retention · Revenue · Product quality · User outcomes. *(When these conflict, the override rule below governs: Stripe/legal/compliance beat growth.)*
+
+**Before implementing ANY feature — run all five reviews. No feature ships until all five pass:**
+1. **CEO Review** → `/plan-ceo-review` — validate scope, mission fit, North Star.
+2. **Engineering Review** → `/plan-eng-review` — architecture, correctness, risk.
+3. **Design Review** → `/plan-design-review` (design system) + `/design-review` (visual QA).
+4. **Compliance Review** → `/compliance-review` — CreditVector's CCO gate for consumer-finance law (FCRA / FDCPA / CROA / FTC §5 / CFPB-UDAAP / state CSO / Stripe / UDAP), anchored to `lib/compliance.ts` + the **CROA bar** at the bottom of this file. *(gstack `/cso` is the **security**/STRIDE pass — not legal. gstack doesn't know consumer-finance law; `/compliance-review` does.)*
+5. **QA Review** → `/qa` (or `/qa-only`).
+
+**Special Compliance Rules (non-negotiable):**
+- Never promise credit-repair outcomes.
+- Never guarantee deletions.
+- Never guarantee score improvements.
+- Treat CreditVector as **software and education first**.
+- Review every user-facing flow through **CROA, FCRA, CFPB, FTC, and state CSO** risk lenses.
+- **Stripe, legal, and compliance concerns override growth concerns.**
+
+**Product North Star:** CreditVector should feel like the **Bloomberg Terminal for consumer credit**.
+
+## gstack
+Installed at `~/.claude/skills/gstack` ([Garry Tan's gstack](https://github.com/garrytan/gstack) — turns Claude Code into a virtual engineering team). Drives the five-review gate above.
+Use `/browse` from gstack for all web browsing. Never use `mcp__claude-in-chrome__*` tools.
+Available skills: `/office-hours`, `/plan-ceo-review`, `/plan-eng-review`, `/plan-design-review`, `/design-consultation`, `/design-shotgun`, `/design-html`, `/review`, `/ship`, `/land-and-deploy`, `/canary`, `/benchmark`, `/browse`, `/open-gstack-browser`, `/qa`, `/qa-only`, `/design-review`, `/setup-browser-cookies`, `/setup-deploy`, `/setup-gbrain`, `/sync-gbrain`, `/retro`, `/investigate`, `/document-release`, `/document-generate`, `/codex`, `/cso`, `/autoplan`, `/pair-agent`, `/careful`, `/freeze`, `/guard`, `/unfreeze`, `/gstack-upgrade`, `/learn`.
+
 ## Stack
 - Next.js 14 App Router · Prisma over a **Prisma Accelerate** proxy · NextAuth (JWT, credentials — login by **email OR username**) · Stripe-hosted Checkout · Anthropic SDK (Opus 4.8).
 - Brand single-source-of-truth: `lib/brand.ts`. CROA compliance scrubber: `lib/compliance.ts`.
