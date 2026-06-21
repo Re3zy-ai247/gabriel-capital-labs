@@ -28,6 +28,7 @@ import {
   Users,
   ClipboardList,
   Clock,
+  MessagesSquare,
 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -75,6 +76,12 @@ const KAI_POINTS = [
   "Included with every Agency plan — no add-ons",
 ];
 
+const COMMUNITY_POINTS = [
+  "Ask questions and compare notes with other members",
+  "Kai's answers are grounded in the FCRA and reviewed for compliance",
+  "A searchable knowledge base your team can build on",
+];
+
 export default async function Home() {
   const session = await getServerSession(authOptions);
   if (session) redirect("/dashboard");
@@ -100,9 +107,9 @@ export default async function Home() {
                 <Sparkles className="h-3.5 w-3.5" /> {BRAND.tagline}
               </span>
               <h1 className="h-display mt-6 text-balance text-5xl leading-[1.05] md:text-6xl">
-                Understand your credit.
+                Stop guessing what&apos;s on your credit report.
                 <br />
-                <span className="text-gradient">Dispute what&apos;s inaccurate.</span>
+                <span className="text-gradient">Dispute what&apos;s inaccurate — yourself.</span>
               </h1>
               <p className="lede mt-6 max-w-xl">
                 {BRAND.product} reads all three bureau reports with AI, flags inaccuracies, drafts FCRA-grounded dispute
@@ -181,7 +188,7 @@ export default async function Home() {
                 eyebrow="Bureau report analysis"
                 title="See every account across all three bureaus at once"
                 body="The AI reads Equifax, Experian, and TransUnion side by side, surfacing the dates, balances, and statuses that don't match — the inconsistencies a manual read misses."
-                points={["Cross-bureau discrepancy detection", "Plain-English explanation of each item", "Unverifiable and outdated items flagged"]}
+                points={["Spot cross-bureau discrepancies in minutes", "Plain-English explanation of each item", "Unverifiable and outdated items flagged"]}
                 visual={<BureauVisual />}
               />
             </Reveal>
@@ -197,7 +204,7 @@ export default async function Home() {
             </Reveal>
             <Reveal>
               <FeatureSplit
-                eyebrow="Response Intelligence Engine"
+                eyebrow="Know what to do next"
                 title="Reads each bureau response and plans your next move"
                 body="When a bureau responds, the engine reads the outcome, scores what actually happened, and suggests the most appropriate next round — so you're never guessing what to do next."
                 points={["Outcome detection from raw responses", "Suggested next-round strategy", "Nothing slips past a deadline"]}
@@ -207,7 +214,7 @@ export default async function Home() {
             <Reveal>
               <FeatureSplit
                 flip
-                eyebrow="CFPB escalation workflow"
+                eyebrow="Escalation, done right"
                 title="When bureaus stall, escalate with regulator-grade framing"
                 body="If a reinvestigation goes nowhere, CreditVector helps you escalate through the proper channels — Consumer Financial Protection Bureau complaints and state Attorney General pathways."
                 points={["Structured CFPB complaint drafting", "State Attorney General pathway", "Every step documented in your timeline"]}
@@ -288,6 +295,41 @@ export default async function Home() {
                   </ul>
                 </div>
                 <KaiChatVisual />
+              </div>
+            </Reveal>
+          </div>
+        </section>
+
+        {/* ---------- Community ---------- */}
+        <section id="community" className="container-x section">
+          <div className="grid items-center gap-14 lg:grid-cols-2">
+            <Reveal>
+              <CommunityVisual />
+            </Reveal>
+            <Reveal delay={120}>
+              <div>
+                <span className="eyebrow"><MessagesSquare className="h-3.5 w-3.5" /> Community Hub</span>
+                <h2 className="h-display mt-4 text-3xl text-white md:text-4xl text-balance">Learn from people working on the same thing</h2>
+                <p className="lede mt-4">
+                  The Community Hub is where members and agencies compare notes on what&apos;s working — dispute strategy, bureau
+                  timelines, and hard-won lessons — with Kai, our compliance-reviewed AI strategist, in the room to keep answers
+                  grounded in the FCRA.
+                </p>
+                <ul className="mt-6 space-y-3">
+                  {COMMUNITY_POINTS.map((p) => (
+                    <li key={p} className="flex items-start gap-3 text-sm text-slate-300">
+                      <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-500/15 text-brand-300">
+                        <Check className="h-3 w-3" strokeWidth={3} />
+                      </span>
+                      {p}
+                    </li>
+                  ))}
+                </ul>
+                <Link href="/register" className="btn-ghost btn-lg mt-9">Join the community <ArrowRight className="h-4 w-4" /></Link>
+                <p className="mt-5 text-xs leading-relaxed text-slate-500">
+                  Community posts are members&apos; own opinions — not CreditVector or legal advice, and no outcome is guaranteed.
+                  Only Kai&apos;s answers are reviewed for compliance.
+                </p>
               </div>
             </Reveal>
           </div>
@@ -430,6 +472,44 @@ function AgencyRosterVisual() {
               </div>
             </div>
             <span className="text-[11px] tabular-nums text-slate-400">{c.open} open</span>
+          </div>
+        ))}
+      </div>
+      <p className="mt-3 text-[10px] text-slate-500">Illustrative example.</p>
+    </div>
+  );
+}
+
+// Compact community mock for the community section — illustrative threads.
+function CommunityVisual() {
+  const threads = [
+    { title: "Bureau “verified” a collection twice — next step?", replies: 7, kai: true },
+    { title: "How long did your reinvestigation actually take?", replies: 12, kai: false },
+    { title: "Method-of-verification request — anyone have a template?", replies: 5, kai: true },
+    { title: "Agency tip: tracking response windows at scale", replies: 9, kai: false },
+  ];
+  return (
+    <div aria-hidden className="rounded-2xl border border-ink-700/70 bg-ink-900/70 p-5 shadow-card backdrop-blur">
+      <div className="mb-4 flex items-center justify-between">
+        <div>
+          <div className="text-[11px] uppercase tracking-wide text-slate-500">Community Hub</div>
+          <div className="text-sm font-semibold text-white">Recent discussions</div>
+        </div>
+        <span className="rounded-full bg-brand-500/15 px-2.5 py-0.5 text-[10px] font-semibold text-brand-300">Kai in the room</span>
+      </div>
+      <div className="space-y-2">
+        {threads.map((t) => (
+          <div key={t.title} className="flex items-start gap-3 rounded-lg border border-ink-700/50 bg-ink-800/40 px-3 py-2.5">
+            <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-ink-700 text-slate-300">
+              <MessagesSquare className="h-3.5 w-3.5" />
+            </span>
+            <div>
+              <div className="text-xs font-medium text-slate-200">{t.title}</div>
+              <div className="mt-0.5 flex items-center gap-2 text-[10px] text-slate-500">
+                <span className="tabular-nums">{t.replies} replies</span>
+                {t.kai && <span className="rounded bg-brand-500/15 px-1.5 py-0.5 font-semibold text-brand-300">Kai answered</span>}
+              </div>
+            </div>
           </div>
         ))}
       </div>
