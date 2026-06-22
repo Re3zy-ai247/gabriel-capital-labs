@@ -1,5 +1,6 @@
 import { currentAccount } from "./session";
 import { prisma } from "./prisma";
+import { deleteAttachmentsFor } from "./attachments";
 import { CATEGORIES, CATEGORY_KEYS, type Category } from "./communityShared";
 
 export { CATEGORIES, CATEGORY_KEYS, type Category };
@@ -55,6 +56,21 @@ const COMMUNITY_DDL = [
      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
    )`,
   `CREATE INDEX IF NOT EXISTS "CommunityReply_threadId_createdAt_idx" ON "CommunityReply"("threadId", "createdAt")`,
+  `CREATE TABLE IF NOT EXISTS "CommunityReport" (
+     "id" TEXT NOT NULL PRIMARY KEY,
+     "targetType" TEXT NOT NULL,
+     "targetId" TEXT NOT NULL,
+     "threadId" TEXT NOT NULL,
+     "reporterId" TEXT REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE,
+     "reporterName" TEXT NOT NULL,
+     "reason" TEXT,
+     "status" TEXT NOT NULL DEFAULT 'open',
+     "resolvedById" TEXT,
+     "resolvedAt" TIMESTAMP(3),
+     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+   )`,
+  `CREATE INDEX IF NOT EXISTS "CommunityReport_status_createdAt_idx" ON "CommunityReport"("status", "createdAt")`,
+  `CREATE INDEX IF NOT EXISTS "CommunityReport_targetType_targetId_idx" ON "CommunityReport"("targetType", "targetId")`,
 ];
 
 let communityTablesReady = false;
@@ -94,10 +110,52 @@ export const LIMITS = {
   title: 140,
   body: 8000,
   reply: 6000,
+  reportReason: 1000,
 };
 
 // Collapse whitespace runs of 3+ blank lines and hard-trim to a max length.
 export function cleanText(input: unknown, max: number): string {
   const s = typeof input === "string" ? input : "";
   return s.replace(/\r\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim().slice(0, max);
+}
+
+export type ReportTargetType = "thread" | "reply";
+
+// Resolve (close) any OPEN reports pointing at the given targets — called whenever
+// the underlying content is removed, so the moderation queue never shows a report
+// whose content is already gone.
+async function resolveOpenReports(targets: { type: ReportTargetType; id: string }[]): Promise<void> {
+  if (!targets.length) return;
+  await prisma.communityReport.updateMany({
+    where: { status: "open", OR: targets.map((t) => ({ targetType: t.type, targetId: t.id })) },
+    data: { status: "actioned", resolvedAt: new Date() },
+  });
+}
+
+// Delete a thread and everything that hangs off it: its replies cascade via the FK,
+// but their encrypted attachments (no FK) and any open reports must be swept in
+// code. Shared by the author/admin delete route and the admin moderation queue.
+export async function deleteThreadAndAttachments(threadId: string): Promise<void> {
+  const replyIds = (
+    await prisma.communityReply.findMany({ where: { threadId }, select: { id: true } })
+  ).map((r) => r.id);
+  await prisma.communityThread.delete({ where: { id: threadId } });
+  await deleteAttachmentsFor("community_thread", [threadId]);
+  await deleteAttachmentsFor("community_reply", replyIds);
+  await resolveOpenReports([
+    { type: "thread", id: threadId },
+    ...replyIds.map((id) => ({ type: "reply" as const, id })),
+  ]);
+}
+
+// Delete a single reply, sweep its attachment, keep the parent replyCount in sync,
+// and close any open reports against it.
+export async function deleteReplyAndAttachments(replyId: string, threadId: string): Promise<void> {
+  await prisma.communityReply.delete({ where: { id: replyId } });
+  await deleteAttachmentsFor("community_reply", [replyId]);
+  await prisma.communityThread.update({
+    where: { id: threadId },
+    data: { replyCount: { decrement: 1 } },
+  });
+  await resolveOpenReports([{ type: "reply", id: replyId }]);
 }

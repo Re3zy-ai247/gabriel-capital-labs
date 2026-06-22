@@ -299,6 +299,28 @@ model CommunityReply {
   @@index([threadId, createdAt])
 }
 
+// Member-submitted reports flagging a thread or reply for admin moderation review.
+// Polymorphic + no FK to the target (`targetType` + `targetId`), so the report row
+// survives after the offending content is removed (keeps the moderation trail).
+// `threadId` is the owning thread for the admin's deep-link, even when the target
+// is a reply. Self-heals at runtime like the other community tables (lib/community.ts).
+model CommunityReport {
+  id           String    @id @default(cuid())
+  targetType   String    // "thread" | "reply"
+  targetId     String    // CommunityThread.id or CommunityReply.id
+  threadId     String    // owning thread, for the admin deep-link
+  reporterId   String?   // reporting User.id (null if the user is later removed)
+  reporterName String    // snapshot of the reporter's display name
+  reason       String?   @db.Text // optional free-text from the reporter
+  status       String    @default("open") // open | actioned | dismissed
+  resolvedById String?
+  resolvedAt   DateTime?
+  createdAt    DateTime  @default(now())
+
+  @@index([status, createdAt])
+  @@index([targetType, targetId])
+}
+
 // ---- Support tickets: available to EVERY signed-in user regardless of plan.
 // A ticket is a thread of messages between the user and staff (isStaff replies).
 model SupportTicket {

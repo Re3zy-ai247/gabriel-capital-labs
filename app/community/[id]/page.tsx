@@ -8,7 +8,7 @@ import { categoryLabel } from "@/lib/communityShared";
 import { AttachmentPicker, AttachmentList, imagesFromClipboard } from "@/components/Attachments";
 import type { AttachmentMeta } from "@/lib/attachmentsShared";
 import {
-  ArrowLeft, Loader2, Pin, Lock, Unlock, Trash2, Sparkles, Send, MessageCircle,
+  ArrowLeft, Loader2, Pin, Lock, Unlock, Trash2, Sparkles, Send, MessageCircle, Flag,
 } from "lucide-react";
 
 interface Reply {
@@ -18,6 +18,7 @@ interface Reply {
   isKai: boolean;
   createdAt: string;
   canDelete: boolean;
+  canReport: boolean;
   attachments?: AttachmentMeta[];
 }
 interface ThreadData {
@@ -33,7 +34,7 @@ interface ThreadData {
   attachments?: AttachmentMeta[];
   replies: Reply[];
 }
-interface Viewer { isAdmin: boolean; isAuthor: boolean; canModerate: boolean; canPin: boolean; }
+interface Viewer { isAdmin: boolean; isAuthor: boolean; canModerate: boolean; canPin: boolean; canReportThread: boolean; }
 
 function when(iso: string): string {
   return new Date(iso).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
@@ -54,6 +55,7 @@ export default function ThreadPage({ params }: { params: { id: string } }) {
   const [busy, setBusy] = useState(false);
   const [kaiBusy, setKaiBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [reported, setReported] = useState<Set<string>>(new Set());
 
   const load = useCallback(() => {
     fetch(`/api/community/threads/${params.id}`)
@@ -113,6 +115,21 @@ export default function ThreadPage({ params }: { params: { id: string } }) {
     if (res.ok) load();
   }
 
+  async function report(targetType: "thread" | "reply", targetId: string) {
+    const reason = prompt(
+      "Report this to the moderators? Optionally add why (e.g., promises guaranteed deletion, off-topic, spam):"
+    );
+    if (reason === null) return; // user cancelled
+    try {
+      const res = await fetch("/api/community/reports", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ targetType, targetId, reason }),
+      });
+      if (res.ok) setReported((s) => new Set(s).add(targetId));
+    } catch { /* non-critical */ }
+  }
+
   if (loading) {
     return <AppShell title="/ Community"><div className="grid h-64 place-items-center text-slate-500"><Loader2 className="h-6 w-6 animate-spin" /></div></AppShell>;
   }
@@ -162,6 +179,11 @@ export default function ThreadPage({ params }: { params: { id: string } }) {
           {viewer.canModerate && (
             <button onClick={deleteThread} className="btn-ghost text-xs text-slate-400 hover:text-rose-400"><Trash2 className="h-3.5 w-3.5" /> Delete</button>
           )}
+          {viewer.canReportThread && (
+            reported.has(thread.id)
+              ? <span className="inline-flex items-center gap-1 text-xs text-slate-500"><Flag className="h-3.5 w-3.5" /> Reported</span>
+              : <button onClick={() => report("thread", thread.id)} className="btn-ghost text-xs text-slate-400 hover:text-amber-300"><Flag className="h-3.5 w-3.5" /> Report</button>
+          )}
         </div>
       </div>
 
@@ -185,9 +207,16 @@ export default function ThreadPage({ params }: { params: { id: string } }) {
                 {r.body && <p className="mt-1.5 whitespace-pre-wrap text-sm leading-relaxed text-slate-200">{r.body}</p>}
                 <AttachmentList items={r.attachments} />
               </div>
-              {r.canDelete && (
-                <button onClick={() => deleteReply(r.id)} className="shrink-0 text-slate-500 hover:text-rose-400" title="Delete reply"><Trash2 className="h-3.5 w-3.5" /></button>
-              )}
+              <div className="flex shrink-0 items-center gap-2">
+                {r.canReport && (
+                  reported.has(r.id)
+                    ? <span className="text-[10px] text-slate-500">Reported</span>
+                    : <button onClick={() => report("reply", r.id)} className="text-slate-500 hover:text-amber-300" title="Report reply"><Flag className="h-3.5 w-3.5" /></button>
+                )}
+                {r.canDelete && (
+                  <button onClick={() => deleteReply(r.id)} className="text-slate-500 hover:text-rose-400" title="Delete reply"><Trash2 className="h-3.5 w-3.5" /></button>
+                )}
+              </div>
             </div>
           </div>
         ))}

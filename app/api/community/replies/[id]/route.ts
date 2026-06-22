@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireCommunityAccount } from "@/lib/community";
+import { requireCommunityAccount, deleteReplyAndAttachments } from "@/lib/community";
 import { logAudit } from "@/lib/admin";
-import { deleteAttachmentsFor } from "@/lib/attachments";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -22,12 +21,7 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
     return NextResponse.json({ error: "You can only delete your own replies." }, { status: 403 });
   }
 
-  await prisma.communityReply.delete({ where: { id: params.id } });
-  await deleteAttachmentsFor("community_reply", [reply.id]);
-  await prisma.communityThread.update({
-    where: { id: reply.threadId },
-    data: { replyCount: { decrement: 1 } },
-  });
+  await deleteReplyAndAttachments(reply.id, reply.threadId);
   if (isAdmin && !isOwn) {
     await logAudit({
       actor: { id: account.id, email: account.email },

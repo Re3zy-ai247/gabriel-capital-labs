@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { BarChart3, Ticket, Users, Building2, ScrollText, CreditCard, ShieldCheck, Megaphone } from "lucide-react";
+import { BarChart3, Ticket, Users, Building2, ScrollText, CreditCard, ShieldCheck, Megaphone, Flag } from "lucide-react";
 
 const TABS = [
   { href: "/admin", label: "Overview", icon: BarChart3 },
@@ -11,6 +11,7 @@ const TABS = [
   { href: "/admin/users", label: "Users", icon: Users },
   { href: "/admin/agencies", label: "Agencies", icon: Building2 },
   { href: "/admin/compliance", label: "Compliance", icon: ShieldCheck },
+  { href: "/admin/reports", label: "Reports", icon: Flag },
   { href: "/admin/announcements", label: "Announcements", icon: Megaphone },
   { href: "/admin/audit", label: "Audit Log", icon: ScrollText },
 ];
