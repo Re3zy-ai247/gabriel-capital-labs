@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 
 export interface AdminContext {
   isAdmin: boolean;
+  openReports?: number;
   impersonating: { active: boolean; email?: string; name?: string | null };
 }
 

@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { useAdminContext } from "./useAdminContext";
 import { BarChart3, Ticket, Users, Building2, ScrollText, CreditCard, ShieldCheck, Megaphone, Flag } from "lucide-react";
 
 const TABS = [
@@ -18,6 +19,8 @@ const TABS = [
 
 export function AdminTabs() {
   const path = usePathname();
+  const ctx = useAdminContext();
+  const openReports = ctx?.openReports ?? 0;
   return (
     <div className="mb-5 flex flex-wrap gap-1 border-b border-ink-700/70 pb-2">
       {TABS.map((t) => {
@@ -33,6 +36,9 @@ export function AdminTabs() {
           >
             <t.icon className="h-4 w-4" />
             {t.label}
+            {t.href === "/admin/reports" && openReports > 0 && (
+              <span className="rounded-full bg-rose-500/20 px-1.5 text-[10px] font-semibold text-rose-300">{openReports}</span>
+            )}
           </Link>
         );
       })}

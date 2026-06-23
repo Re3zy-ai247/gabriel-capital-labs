@@ -1,8 +1,10 @@
 "use client";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { AdminTabs } from "@/components/admin/AdminTabs";
-import { Loader2 } from "lucide-react";
+import { useAdminContext } from "@/components/admin/useAdminContext";
+import { Loader2, Flag } from "lucide-react";
 
 interface Overview {
   totalUsers: number;
@@ -35,6 +37,8 @@ function Stat({ label, value, sub, accent }: { label: string; value: string; sub
 export default function AdminOverviewPage() {
   const [data, setData] = useState<Overview | null>(null);
   const [loading, setLoading] = useState(true);
+  const ctx = useAdminContext();
+  const openReports = ctx?.openReports ?? 0;
 
   useEffect(() => {
     fetch("/api/admin/overview")
@@ -46,6 +50,16 @@ export default function AdminOverviewPage() {
   return (
     <AppShell title="/ Admin">
       <AdminTabs />
+      {openReports > 0 && (
+        <Link
+          href="/admin/reports"
+          className="mb-4 flex items-center gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm font-medium text-rose-200 transition hover:bg-rose-500/15"
+        >
+          <Flag className="h-4 w-4" />
+          {openReports} community {openReports === 1 ? "report" : "reports"} awaiting review
+          <span className="ml-auto text-rose-300">Review →</span>
+        </Link>
+      )}
       {loading ? (
         <div className="flex items-center gap-2 text-sm text-slate-400">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading metrics…

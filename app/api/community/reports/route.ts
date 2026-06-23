@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireCommunityAccount, communityDisplayName, cleanText, LIMITS } from "@/lib/community";
 import { enforceRateLimit } from "@/lib/rateLimit";
+import { sendAdminEmail } from "@/lib/email";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -56,5 +57,30 @@ export async function POST(req: Request) {
       reason: reason || null,
     },
   });
+
+  // Alert the admin when the queue transitions from empty -> non-empty (the "first
+  // open report"). Subsequent reports while the queue is non-empty don't re-email,
+  // so the admin gets one nudge per needs-attention cycle, not one per report.
+  // Fire-safe: any failure here (or a missing RESEND_API_KEY) never breaks the
+  // member's report. The email intentionally omits the reported content (no PII) —
+  // it just points the admin at the queue.
+  try {
+    const openCount = await prisma.communityReport.count({ where: { status: "open" } });
+    if (openCount === 1) {
+      const what = targetType === "thread" ? "a discussion" : "a reply";
+      const base = process.env.NEXTAUTH_URL || "https://www.creditvector.app";
+      await sendAdminEmail({
+        subject: "New community report awaiting review",
+        text:
+          `A member flagged ${what} in the CreditVector Community Hub for moderation review.\n\n` +
+          `Review and action it here: ${base}/admin/reports\n\n` +
+          `(You're getting this because a report opened while the queue was empty. ` +
+          `You won't get another until the queue is cleared.)`,
+      });
+    }
+  } catch (e) {
+    console.error("report alert failed (non-fatal)", e);
+  }
+
   return NextResponse.json({ ok: true });
 }
