@@ -408,6 +408,21 @@ model PasswordResetToken {
   @@index([userId])
 }
 
+// ---- Web Push (PWA phone notifications) -------------------------------------
+// One row per browser/device a user opted in from (a user can have several). Holds
+// the W3C PushSubscription (endpoint + keys). Self-heals at runtime (lib/push.ts);
+// dead endpoints (410/404 on send) are pruned automatically.
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
 // ---- CreditVector Brief: curated consumer-credit news feed ---------------------
 // AI drafts a summary; an admin must approve before it goes public (status flips to
 // "published"). Self-heals at runtime (lib/brief.ts). `slug` powers the public SEO

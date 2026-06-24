@@ -2,7 +2,8 @@
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { EduBanner } from "@/components/Disclaimer";
-import { Loader2, Save, Lock } from "lucide-react";
+import { Loader2, Save, Lock, Bell } from "lucide-react";
+import { PushToggle } from "@/components/PushToggle";
 
 interface Profile {
   fullName: string;
@@ -277,6 +278,17 @@ export default function SettingsPage() {
               )}
             </div>
           </form>
+        </div>
+
+        {/* Phone alerts (Web Push) */}
+        <div className="mt-8 border-t border-ink-700/70 pt-6">
+          <h2 className="mb-1 flex items-center gap-2 text-xl font-bold">
+            <Bell className="h-5 w-5 text-brand-400" /> Phone Alerts
+          </h2>
+          <p className="mb-4 text-sm text-slate-400">
+            Get a push notification on this device when something needs your attention (e.g. a Brief draft awaiting approval).
+          </p>
+          <PushToggle />
         </div>
       </div>
     </AppShell>

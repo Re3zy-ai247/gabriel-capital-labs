@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAdmin, logAudit } from "@/lib/admin";
 import { applyCompliance } from "@/lib/compliance";
 import { sendAdminEmail } from "@/lib/email";
+import { sendPushToAdmins } from "@/lib/push";
 import { ensureBriefTables, slugify } from "@/lib/brief";
 import { normalizeBriefCategory, BRIEF_LIMITS } from "@/lib/briefShared";
 
@@ -86,6 +87,7 @@ export async function POST(req: Request) {
         `A new CreditVector Brief draft is ready for your review and approval:\n\n"${title}"\n\n` +
         `Review and publish it here: ${base}/admin/brief\n\nNothing is public until you approve it.`,
     });
+    await sendPushToAdmins({ title: "Brief draft awaiting approval", body: title, url: "/admin/brief" });
   } catch (e) {
     console.error("brief draft alert failed (non-fatal)", e);
   }

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireCommunityAccount, communityDisplayName, cleanText, LIMITS } from "@/lib/community";
 import { enforceRateLimit } from "@/lib/rateLimit";
 import { sendAdminEmail } from "@/lib/email";
+import { sendPushToAdmins } from "@/lib/push";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -77,6 +78,7 @@ export async function POST(req: Request) {
           `(You're getting this because a report opened while the queue was empty. ` +
           `You won't get another until the queue is cleared.)`,
       });
+      await sendPushToAdmins({ title: "New community report", body: "A member flagged content for review.", url: "/admin/reports" });
     }
   } catch (e) {
     console.error("report alert failed (non-fatal)", e);
