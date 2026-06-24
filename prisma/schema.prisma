@@ -391,3 +391,20 @@ model RateHit {
   createdAt   DateTime @default(now())
 }
 
+// ---- Self-service password reset --------------------------------------------
+// Single-use, expiring tokens for the forgot/reset flow. Only the sha256 HASH of
+// the raw token is stored (the raw token lives only in the emailed link), so a DB
+// read can never reset anyone's password. Self-heals at runtime like the other
+// tables (lib/passwordReset.ts). No Prisma relation to User (kept standalone like
+// RateHit); the FK is added in the self-heal DDL.
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+}
+
