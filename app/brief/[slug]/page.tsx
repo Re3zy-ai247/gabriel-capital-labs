@@ -7,7 +7,7 @@ import { SiteFooter } from "@/components/marketing/SiteFooter";
 import { Markdown } from "@/components/Markdown";
 import { prisma } from "@/lib/prisma";
 import { getPublishedArticleBySlug } from "@/lib/brief";
-import { briefCategoryLabel, BRIEF_DISCLAIMER } from "@/lib/briefShared";
+import { briefCategoryLabel, briefCoverUrl, BRIEF_DISCLAIMER } from "@/lib/briefShared";
 
 export const dynamic = "force-dynamic";
 
@@ -21,12 +21,13 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   if (!a) return { title: "Article not found — CreditVector Brief" };
   const description = plain(a.summary, 160);
   const url = `/brief/${a.slug}`;
+  const cover = briefCoverUrl(a.title, briefCategoryLabel(a.category));
   return {
     title: `${a.title} — CreditVector Brief`,
     description,
     alternates: { canonical: url },
-    openGraph: { title: a.title, description, url, type: "article" },
-    twitter: { card: "summary_large_image", title: a.title, description },
+    openGraph: { title: a.title, description, url, type: "article", images: [{ url: cover, width: 1200, height: 630 }] },
+    twitter: { card: "summary_large_image", title: a.title, description, images: [cover] },
   };
 }
 
@@ -49,6 +50,14 @@ export default async function BriefArticlePage({ params }: { params: { slug: str
           <Link href="/brief" className="mb-5 inline-flex items-center gap-1 text-xs text-slate-400 transition hover:text-slate-200">
             <ArrowLeft className="h-3.5 w-3.5" /> CreditVector Brief
           </Link>
+
+          {/* Branded, auto-generated cover (no external/licensed imagery). */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={briefCoverUrl(a.title, briefCategoryLabel(a.category))}
+            alt=""
+            className="mb-6 aspect-[1200/630] w-full rounded-2xl border border-ink-700/60 object-cover"
+          />
 
           <div className="mb-3 flex flex-wrap items-center gap-2 text-[11px]">
             <span className="rounded-full bg-brand-500/10 px-2.5 py-0.5 font-semibold text-brand-300">

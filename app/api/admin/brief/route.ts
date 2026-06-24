@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin, logAudit } from "@/lib/admin";
 import { applyCompliance } from "@/lib/compliance";
+import { sendAdminEmail } from "@/lib/email";
 import { ensureBriefTables, slugify } from "@/lib/brief";
 import { normalizeBriefCategory, BRIEF_LIMITS } from "@/lib/briefShared";
 
@@ -74,5 +75,20 @@ export async function POST(req: Request) {
     targetType: "brief_article",
     targetId: article.id,
   });
+
+  // Nudge the admin's inbox that a draft awaits approval — their phone's mail app
+  // surfaces it as a notification. Fire-safe; never blocks the create.
+  try {
+    const base = process.env.NEXTAUTH_URL || "https://www.creditvector.app";
+    await sendAdminEmail({
+      subject: `Brief draft awaiting approval: ${title}`,
+      text:
+        `A new CreditVector Brief draft is ready for your review and approval:\n\n"${title}"\n\n` +
+        `Review and publish it here: ${base}/admin/brief\n\nNothing is public until you approve it.`,
+    });
+  } catch (e) {
+    console.error("brief draft alert failed (non-fatal)", e);
+  }
+
   return NextResponse.json({ ok: true, article });
 }

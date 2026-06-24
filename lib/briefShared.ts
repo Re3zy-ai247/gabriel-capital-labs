@@ -48,6 +48,13 @@ export const BRIEF_LIMITS = {
   tags: 8,
 };
 
+// Stateless cover-image URL for an article (title + category label drive the art).
+// Served by app/api/brief/cover; used as the visible cover AND the Open Graph image.
+export function briefCoverUrl(title: string, categoryLabel: string): string {
+  const p = new URLSearchParams({ title: title.slice(0, 160), category: categoryLabel.slice(0, 40) });
+  return `/api/brief/cover?${p.toString()}`;
+}
+
 // The card shape sent to the client (feed + API), shared so server + client agree.
 export interface BriefCardData {
   slug: string;
