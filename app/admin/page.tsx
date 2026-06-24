@@ -4,7 +4,7 @@ import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { AdminTabs } from "@/components/admin/AdminTabs";
 import { useAdminContext } from "@/components/admin/useAdminContext";
-import { Loader2, Flag } from "lucide-react";
+import { Loader2, Flag, Newspaper } from "lucide-react";
 
 interface Overview {
   totalUsers: number;
@@ -39,6 +39,7 @@ export default function AdminOverviewPage() {
   const [loading, setLoading] = useState(true);
   const ctx = useAdminContext();
   const openReports = ctx?.openReports ?? 0;
+  const pendingBrief = ctx?.pendingBrief ?? 0;
 
   useEffect(() => {
     fetch("/api/admin/overview")
@@ -58,6 +59,16 @@ export default function AdminOverviewPage() {
           <Flag className="h-4 w-4" />
           {openReports} community {openReports === 1 ? "report" : "reports"} awaiting review
           <span className="ml-auto text-rose-300">Review →</span>
+        </Link>
+      )}
+      {pendingBrief > 0 && (
+        <Link
+          href="/admin/brief"
+          className="mb-4 flex items-center gap-2 rounded-xl border border-brand-500/30 bg-brand-500/10 px-4 py-3 text-sm font-medium text-brand-200 transition hover:bg-brand-500/15"
+        >
+          <Newspaper className="h-4 w-4" />
+          {pendingBrief} Brief {pendingBrief === 1 ? "draft" : "drafts"} awaiting approval
+          <span className="ml-auto text-brand-300">Review →</span>
         </Link>
       )}
       {loading ? (

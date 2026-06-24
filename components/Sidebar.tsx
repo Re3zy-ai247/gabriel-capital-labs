@@ -86,8 +86,8 @@ export function Sidebar() {
               <Link key={n.href} href={n.href} className={cn("nav-item", active && "nav-item-active")}>
                 <n.icon className="h-4 w-4" />
                 {n.label}
-                {n.href === "/admin" && (ctx?.openReports ?? 0) > 0 && (
-                  <span className="ml-auto rounded-full bg-rose-500/20 px-1.5 text-[10px] font-semibold text-rose-300">{ctx?.openReports}</span>
+                {n.href === "/admin" && (ctx?.openReports ?? 0) + (ctx?.pendingBrief ?? 0) > 0 && (
+                  <span className="ml-auto rounded-full bg-rose-500/20 px-1.5 text-[10px] font-semibold text-rose-300">{(ctx?.openReports ?? 0) + (ctx?.pendingBrief ?? 0)}</span>
                 )}
               </Link>
             );
@@ -146,8 +146,8 @@ export function MobileNav() {
                   <Link key={n.href} href={n.href} onClick={() => setOpen(false)}
                     className={cn("nav-item", isActive(n.href) && "nav-item-active")}>
                     <n.icon className="h-4 w-4" /> {n.label}
-                    {n.href === "/admin" && (ctx?.openReports ?? 0) > 0 && (
-                      <span className="ml-auto rounded-full bg-rose-500/20 px-1.5 text-[10px] font-semibold text-rose-300">{ctx?.openReports}</span>
+                    {n.href === "/admin" && (ctx?.openReports ?? 0) + (ctx?.pendingBrief ?? 0) > 0 && (
+                      <span className="ml-auto rounded-full bg-rose-500/20 px-1.5 text-[10px] font-semibold text-rose-300">{(ctx?.openReports ?? 0) + (ctx?.pendingBrief ?? 0)}</span>
                     )}
                   </Link>
                 ))}

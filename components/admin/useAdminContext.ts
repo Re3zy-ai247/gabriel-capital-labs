@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 export interface AdminContext {
   isAdmin: boolean;
   openReports?: number;
+  pendingBrief?: number;
   impersonating: { active: boolean; email?: string; name?: string | null };
 }
 

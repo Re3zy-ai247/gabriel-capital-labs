@@ -22,6 +22,7 @@ export function AdminTabs() {
   const path = usePathname();
   const ctx = useAdminContext();
   const openReports = ctx?.openReports ?? 0;
+  const pendingBrief = ctx?.pendingBrief ?? 0;
   return (
     <div className="mb-5 flex flex-wrap gap-1 border-b border-ink-700/70 pb-2">
       {TABS.map((t) => {
@@ -39,6 +40,9 @@ export function AdminTabs() {
             {t.label}
             {t.href === "/admin/reports" && openReports > 0 && (
               <span className="rounded-full bg-rose-500/20 px-1.5 text-[10px] font-semibold text-rose-300">{openReports}</span>
+            )}
+            {t.href === "/admin/brief" && pendingBrief > 0 && (
+              <span className="rounded-full bg-rose-500/20 px-1.5 text-[10px] font-semibold text-rose-300">{pendingBrief}</span>
             )}
           </Link>
         );
