@@ -4,6 +4,10 @@ const withPWA = require("next-pwa")({
   register: true,
   skipWaiting: true,
   disable: process.env.NODE_ENV === "development",
+  // `_next/app-build-manifest.json` is NOT served at runtime (404s in prod), so
+  // workbox's precache of it fails → the service worker never installs/activates →
+  // Web Push can't subscribe. Exclude it from the precache manifest.
+  buildExcludes: [/app-build-manifest\.json$/],
 });
 
 const nextConfig = {
