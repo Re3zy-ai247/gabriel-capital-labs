@@ -408,3 +408,29 @@ model PasswordResetToken {
   @@index([userId])
 }
 
+// ---- CreditVector Brief: curated consumer-credit news feed ---------------------
+// AI drafts a summary; an admin must approve before it goes public (status flips to
+// "published"). Self-heals at runtime (lib/brief.ts). `slug` powers the public SEO
+// URL /brief/[slug]; `summary` is educational-framed markdown (never legal advice).
+model BriefArticle {
+  id            String    @id @default(cuid())
+  slug          String    @unique
+  title         String
+  summary       String    @db.Text
+  sourceUrl     String
+  sourceName    String
+  category      String    @default("consumer-rights")
+  tags          String[]
+  socialCaption String?
+  status        String    @default("draft") // draft | published | rejected
+  featured      Boolean   @default(false)
+  views         Int       @default(0)
+  authorId      String?
+  publishedAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([status, publishedAt])
+  @@index([category])
+}
+

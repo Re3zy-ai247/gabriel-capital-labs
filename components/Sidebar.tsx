@@ -9,7 +9,7 @@ import { useAdminContext } from "./admin/useAdminContext";
 import { useCommunityAccess } from "./community/useCommunityAccess";
 import { BrandLogo } from "./BrandLogo";
 import {
-  LayoutDashboard, Upload, ListTree, Mails, Target, CalendarRange, Settings, CreditCard, ScanSearch, LineChart, Building2, LogOut, Menu, X, ShieldCheck, MessagesSquare, LifeBuoy,
+  LayoutDashboard, Upload, ListTree, Mails, Target, CalendarRange, Settings, CreditCard, ScanSearch, LineChart, Building2, LogOut, Menu, X, ShieldCheck, MessagesSquare, LifeBuoy, Newspaper,
 } from "lucide-react";
 
 const NAV = [
@@ -21,6 +21,7 @@ const NAV = [
   { href: "/strategist", label: "AI Strategist", icon: Target },
   { href: "/scores", label: "Score Tracker", icon: LineChart },
   { href: "/journey", label: "90-Day Journey", icon: CalendarRange },
+  { href: "/brief", label: "Brief", icon: Newspaper },
 ];
 
 const ACCOUNT_NAV = [
