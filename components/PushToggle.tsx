@@ -16,6 +16,15 @@ function vapidKeyBytes(base64String: string): ArrayBuffer {
   return buffer;
 }
 
+// Reject after `ms` so a never-settling step (e.g. a slow service worker) can't
+// leave the button spinning forever.
+function withTimeout<T>(p: Promise<T>, ms: number, message: string): Promise<T> {
+  return Promise.race([
+    p,
+    new Promise<T>((_, reject) => setTimeout(() => reject(new Error(message)), ms)),
+  ]);
+}
+
 // Per-device opt-in for Web Push. Reuses the next-pwa-registered service worker
 // (which already carries our push handlers via worker/index.js).
 export function PushToggle() {
@@ -40,39 +49,50 @@ export function PushToggle() {
     }
   }, []);
 
-  async function registration(): Promise<ServiceWorkerRegistration> {
-    const existing = await navigator.serviceWorker.getRegistration();
-    if (!existing) await navigator.serviceWorker.register("/sw.js");
-    return navigator.serviceWorker.ready;
-  }
-
   async function enable() {
     setBusy(true);
     setMsg(null);
     try {
+      // 1) Make sure the service worker is active — with a timeout so we never hang.
+      const existing = await navigator.serviceWorker.getRegistration();
+      if (!existing) await navigator.serviceWorker.register("/sw.js");
+      const reg = await withTimeout(
+        navigator.serviceWorker.ready,
+        10000,
+        "Service worker didn't start — reload the page and try again."
+      );
+
+      // 2) Ask permission (this shows the browser prompt — tap Allow).
       const perm = await Notification.requestPermission();
-      if (perm !== "granted") {
-        setMsg("Notifications are blocked. Enable them for this site in your browser settings.");
+      if (perm === "denied") {
+        setMsg("Notifications are blocked for this site. Allow them in your browser's site settings, then try again.");
         return;
       }
-      const reg = await registration();
-      const sub = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: vapidKeyBytes(VAPID),
-      });
+      if (perm !== "granted") {
+        setMsg("Tap Allow on the notification prompt to enable alerts.");
+        return;
+      }
+
+      // 3) Subscribe (also timed out so a stalled push service can't hang the button).
+      const sub = await withTimeout(
+        reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: vapidKeyBytes(VAPID) }),
+        15000,
+        "Couldn't reach the push service — check your connection and try again."
+      );
+
       const res = await fetch("/api/push/subscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(sub),
       });
       if (!res.ok) {
-        setMsg("Couldn't save your subscription — try again.");
+        setMsg(res.status === 401 ? "Please sign in first, then enable alerts." : "Couldn't save your subscription — try again.");
         return;
       }
       setEnabled(true);
-      setMsg("Phone alerts are on for this device.");
-    } catch {
-      setMsg("Couldn't enable notifications on this device.");
+      setMsg("Phone alerts are on for this device. 🎉");
+    } catch (e) {
+      setMsg((e as Error)?.message || "Couldn't enable notifications on this device.");
     } finally {
       setBusy(false);
     }
