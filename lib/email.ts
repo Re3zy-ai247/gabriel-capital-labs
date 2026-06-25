@@ -28,6 +28,9 @@ export async function sendEmail(opts: {
   const key = process.env.RESEND_API_KEY;
   if (!key) return false; // dormant until configured — no-op, not an error
   const from = process.env.RESEND_FROM || "CreditVector <onboarding@resend.dev>";
+  // A real, monitored Reply-To (not a pure no-reply) is a modest deliverability +
+  // trust signal. Configurable; falls back to ADMIN_EMAIL.
+  const replyTo = process.env.RESEND_REPLY_TO || process.env.ADMIN_EMAIL;
   try {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 8000);
@@ -39,6 +42,7 @@ export async function sendEmail(opts: {
         to: opts.to,
         subject: opts.subject,
         text: opts.text,
+        ...(replyTo ? { reply_to: replyTo } : {}),
         ...(opts.html ? { html: opts.html } : {}),
       }),
       signal: controller.signal,
