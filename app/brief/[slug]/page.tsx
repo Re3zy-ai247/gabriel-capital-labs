@@ -5,8 +5,10 @@ import { ArrowLeft, ArrowRight, ExternalLink, Info } from "lucide-react";
 import { SiteNav } from "@/components/marketing/SiteNav";
 import { SiteFooter } from "@/components/marketing/SiteFooter";
 import { Markdown } from "@/components/Markdown";
+import { EngagementBar } from "@/components/brief/EngagementBar";
 import { prisma } from "@/lib/prisma";
-import { getPublishedArticleBySlug } from "@/lib/brief";
+import { getPublishedArticleBySlug, getUserReactions } from "@/lib/brief";
+import { currentAccount } from "@/lib/session";
 import { briefCategoryLabel, briefCoverUrl, youtubeVideoId, youtubeEmbedUrl, BRIEF_DISCLAIMER } from "@/lib/briefShared";
 
 export const dynamic = "force-dynamic";
@@ -45,6 +47,12 @@ export default async function BriefArticlePage({ params }: { params: { slug: str
   // Optional official YouTube embed. videoUrl is validated on write, but re-parse
   // here so a stored value can only ever resolve to a YouTube id (never an arbitrary src).
   const videoId = youtubeVideoId(a.videoUrl);
+
+  // Engagement state for the engagement bar (likes/bookmarks need a signed-in user).
+  const account = await currentAccount();
+  const reactions = account
+    ? await getUserReactions(a.id, account.id)
+    : { liked: false, bookmarked: false };
 
   return (
     <div className="relative min-h-screen bg-ink-950 text-white">
@@ -105,6 +113,15 @@ export default async function BriefArticlePage({ params }: { params: { slug: str
             <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
             <p>{BRIEF_DISCLAIMER}</p>
           </div>
+
+          <EngagementBar
+            slug={a.slug}
+            shareText={a.socialCaption || a.title}
+            isAuthed={!!account}
+            initialLiked={reactions.liked}
+            initialBookmarked={reactions.bookmarked}
+            initialLikeCount={a.likeCount}
+          />
 
           <div className="mt-6 leading-relaxed text-slate-200">
             <Markdown source={a.summary} />

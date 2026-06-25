@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
-import { Info } from "lucide-react";
+import Link from "next/link";
+import { Info, Bookmark } from "lucide-react";
 import { SiteNav } from "@/components/marketing/SiteNav";
 import { SiteFooter } from "@/components/marketing/SiteFooter";
 import { BriefFeed } from "@/components/brief/BriefFeed";
 import { listPublishedArticles, toCardData } from "@/lib/brief";
+import { currentAccount } from "@/lib/session";
 import { BRIEF_DISCLAIMER } from "@/lib/briefShared";
 
 export const dynamic = "force-dynamic";
@@ -22,7 +24,8 @@ export const metadata: Metadata = {
 };
 
 export default async function BriefPage() {
-  const articles = (await listPublishedArticles()).map(toCardData);
+  const [rows, account] = await Promise.all([listPublishedArticles(), currentAccount()]);
+  const articles = rows.map(toCardData);
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-ink-950 text-white">
@@ -41,6 +44,14 @@ export default async function BriefPage() {
           <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
           <p>{BRIEF_DISCLAIMER}</p>
         </div>
+
+        {account && (
+          <div className="mx-auto mt-4 flex max-w-2xl justify-end">
+            <Link href="/brief/saved" className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-400 transition hover:text-brand-300">
+              <Bookmark className="h-3.5 w-3.5" /> Saved articles
+            </Link>
+          </div>
+        )}
 
         <div className="mt-10">
           <BriefFeed initial={articles} />

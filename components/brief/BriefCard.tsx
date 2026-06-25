@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ExternalLink, Star } from "lucide-react";
+import { ExternalLink, Star, Heart } from "lucide-react";
 import { briefCoverUrl, type BriefCardData } from "@/lib/briefShared";
 
 function when(iso: string | null): string {
@@ -36,7 +36,14 @@ export function BriefCard({ a }: { a: BriefCardData }) {
           <span className="inline-flex min-w-0 items-center gap-1 truncate">
             <ExternalLink className="h-3 w-3 shrink-0" /> {a.sourceName}
           </span>
-          <span className="shrink-0">{when(a.publishedAt)}</span>
+          <span className="flex shrink-0 items-center gap-2.5">
+            {a.likeCount > 0 && (
+              <span className="inline-flex items-center gap-1" aria-label={`${a.likeCount} likes`}>
+                <Heart className="h-3 w-3" fill="currentColor" /> {a.likeCount}
+              </span>
+            )}
+            <span>{when(a.publishedAt)}</span>
+          </span>
         </div>
       </div>
     </Link>

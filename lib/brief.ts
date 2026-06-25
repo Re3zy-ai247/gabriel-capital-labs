@@ -48,9 +48,31 @@ export async function ensureBriefTables(): Promise<void> {
   await prisma.$executeRawUnsafe(
     `CREATE INDEX IF NOT EXISTS "BriefArticle_category_idx" ON "BriefArticle"("category")`
   );
-  // Added after the table shipped — self-heal the column on existing rows.
+  // Added after the table shipped — self-heal the columns on existing rows.
   await prisma.$executeRawUnsafe(
     `ALTER TABLE "BriefArticle" ADD COLUMN IF NOT EXISTS "videoUrl" TEXT`
+  );
+  await prisma.$executeRawUnsafe(
+    `ALTER TABLE "BriefArticle" ADD COLUMN IF NOT EXISTS "likeCount" INTEGER NOT NULL DEFAULT 0`
+  );
+  // Phase 2 engagement: per-user likes + bookmarks (one row per article/user/kind).
+  await prisma.$executeRawUnsafe(
+    `CREATE TABLE IF NOT EXISTS "BriefReaction" (
+       "id" TEXT NOT NULL PRIMARY KEY,
+       "articleId" TEXT NOT NULL,
+       "userId" TEXT NOT NULL,
+       "kind" TEXT NOT NULL,
+       "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+     )`
+  );
+  await prisma.$executeRawUnsafe(
+    `CREATE UNIQUE INDEX IF NOT EXISTS "BriefReaction_articleId_userId_kind_key" ON "BriefReaction"("articleId", "userId", "kind")`
+  );
+  await prisma.$executeRawUnsafe(
+    `CREATE INDEX IF NOT EXISTS "BriefReaction_userId_kind_createdAt_idx" ON "BriefReaction"("userId", "kind", "createdAt")`
+  );
+  await prisma.$executeRawUnsafe(
+    `CREATE INDEX IF NOT EXISTS "BriefReaction_articleId_kind_idx" ON "BriefReaction"("articleId", "kind")`
   );
   tableReady = true;
 }
@@ -197,6 +219,7 @@ export function toCardData(a: {
   summary: string;
   featured: boolean;
   views: number;
+  likeCount?: number | null;
   publishedAt: Date | null;
 }): BriefCardData {
   return {
@@ -210,6 +233,41 @@ export function toCardData(a: {
     excerpt: a.summary.replace(/[#>*`_]+/g, "").replace(/\s+/g, " ").trim().slice(0, 200),
     featured: a.featured,
     views: a.views,
+    likeCount: a.likeCount ?? 0,
     publishedAt: a.publishedAt ? a.publishedAt.toISOString() : null,
   };
+}
+
+// The current user's like/bookmark state for one article (for SSR-hydrating the
+// engagement bar so it renders correct on first paint, no flash).
+export async function getUserReactions(
+  articleId: string,
+  userId: string
+): Promise<{ liked: boolean; bookmarked: boolean }> {
+  await ensureBriefTables();
+  const rows = await prisma.briefReaction.findMany({
+    where: { articleId, userId },
+    select: { kind: true },
+  });
+  const kinds = new Set(rows.map((r) => r.kind));
+  return { liked: kinds.has("like"), bookmarked: kinds.has("bookmark") };
+}
+
+// A user's bookmarked, still-published articles — newest bookmark first. Backs the
+// /brief/saved view. Two-step (reactions → articles) keeps it simple and indexed.
+export async function listBookmarkedArticles(userId: string) {
+  await ensureBriefTables();
+  const marks = await prisma.briefReaction.findMany({
+    where: { userId, kind: "bookmark" },
+    orderBy: { createdAt: "desc" },
+    take: 200,
+    select: { articleId: true },
+  });
+  if (marks.length === 0) return [];
+  const order = new Map(marks.map((m, i) => [m.articleId, i]));
+  const articles = await prisma.briefArticle.findMany({
+    where: { id: { in: marks.map((m) => m.articleId) }, status: "published" },
+  });
+  // Preserve bookmark recency (the `in` query doesn't guarantee order).
+  return articles.sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
 }

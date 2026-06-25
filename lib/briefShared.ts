@@ -101,6 +101,14 @@ export function youtubeEmbedUrl(id: string): string {
   return `https://www.youtube-nocookie.com/embed/${id}?rel=0`;
 }
 
+// ---- Engagement (likes + bookmarks) ---------------------------------------
+export const BRIEF_REACTION_KINDS = ["like", "bookmark"] as const;
+export type BriefReactionKind = (typeof BRIEF_REACTION_KINDS)[number];
+
+export function isBriefReactionKind(v: unknown): v is BriefReactionKind {
+  return typeof v === "string" && (BRIEF_REACTION_KINDS as readonly string[]).includes(v);
+}
+
 // The card shape sent to the client (feed + API), shared so server + client agree.
 export interface BriefCardData {
   slug: string;
@@ -113,5 +121,6 @@ export interface BriefCardData {
   excerpt: string;
   featured: boolean;
   views: number;
+  likeCount: number;
   publishedAt: string | null;
 }

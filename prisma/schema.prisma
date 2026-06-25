@@ -441,6 +441,7 @@ model BriefArticle {
   status        String    @default("draft") // draft | published | rejected
   featured      Boolean   @default(false)
   views         Int       @default(0)
+  likeCount     Int       @default(0) // denormalized count of 'like' reactions
   authorId      String?
   publishedAt   DateTime?
   createdAt     DateTime  @default(now())
@@ -448,5 +449,20 @@ model BriefArticle {
 
   @@index([status, publishedAt])
   @@index([category])
+}
+
+// Per-user engagement on a Brief article. One row per (article, user, kind);
+// kind = 'like' (public count) | 'bookmark' (private save). Likes also bump the
+// denormalized BriefArticle.likeCount so the feed reads counts without an aggregate.
+model BriefReaction {
+  id        String   @id @default(cuid())
+  articleId String
+  userId    String
+  kind      String // 'like' | 'bookmark'
+  createdAt DateTime @default(now())
+
+  @@unique([articleId, userId, kind])
+  @@index([userId, kind, createdAt])
+  @@index([articleId, kind])
 }
 
