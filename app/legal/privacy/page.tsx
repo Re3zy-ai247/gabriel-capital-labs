@@ -21,7 +21,7 @@ export default function PrivacyPage() {
           <li>Account details you provide — your name, email, and password (stored only as a one-way hash).</li>
           <li>Credit report content you upload or paste, and any documents or attachments you add to disputes and support tickets.</li>
           <li>Support messages you send us.</li>
-          <li>Activity on the product — such as articles you save or like in CreditVector Brief — so we can show your saved list and how many readers found an article useful.</li>
+          <li>Activity on the product — such as articles you save or like, and comments you post in CreditVector Brief (which appear publicly under your username or first name) — so we can show your saved list, your comments, and how many readers found an article useful.</li>
           <li>Billing is handled by Stripe. We never see or store your full card number.</li>
         </ul>
       </section>

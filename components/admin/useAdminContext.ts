@@ -5,6 +5,7 @@ export interface AdminContext {
   isAdmin: boolean;
   openReports?: number;
   pendingBrief?: number;
+  flaggedComments?: number;
   impersonating: { active: boolean; email?: string; name?: string | null };
 }
 

@@ -22,7 +22,9 @@ export function AdminTabs() {
   const path = usePathname();
   const ctx = useAdminContext();
   const openReports = ctx?.openReports ?? 0;
-  const pendingBrief = ctx?.pendingBrief ?? 0;
+  // Brief tab signals all Brief work needing attention: drafts to approve +
+  // comments reported for moderation (the Brief page routes to each).
+  const briefAttention = (ctx?.pendingBrief ?? 0) + (ctx?.flaggedComments ?? 0);
   return (
     <div className="mb-5 flex flex-wrap gap-1 border-b border-ink-700/70 pb-2">
       {TABS.map((t) => {
@@ -41,8 +43,8 @@ export function AdminTabs() {
             {t.href === "/admin/reports" && openReports > 0 && (
               <span className="rounded-full bg-rose-500/20 px-1.5 text-[10px] font-semibold text-rose-300">{openReports}</span>
             )}
-            {t.href === "/admin/brief" && pendingBrief > 0 && (
-              <span className="rounded-full bg-rose-500/20 px-1.5 text-[10px] font-semibold text-rose-300">{pendingBrief}</span>
+            {t.href === "/admin/brief" && briefAttention > 0 && (
+              <span className="rounded-full bg-rose-500/20 px-1.5 text-[10px] font-semibold text-rose-300">{briefAttention}</span>
             )}
           </Link>
         );

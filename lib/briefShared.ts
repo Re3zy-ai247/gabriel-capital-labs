@@ -109,6 +109,24 @@ export function isBriefReactionKind(v: unknown): v is BriefReactionKind {
   return typeof v === "string" && (BRIEF_REACTION_KINDS as readonly string[]).includes(v);
 }
 
+// ---- Comments (Phase 2b) --------------------------------------------------
+export const BRIEF_COMMENT_LIMITS = { body: 1500, min: 2, reportReason: 300 };
+
+// Verbatim near the comment composer + above the list. Frames comments as reader
+// opinions (not CreditVector advice) and that they post without prior review —
+// the UGC half of the post-moderation compliance posture.
+export const BRIEF_COMMENT_DISCLAIMER =
+  "Comments are posted by CreditVector readers and reflect their own opinions — not legal or financial advice from CreditVector, and not reviewed or verified before they appear. Individual experiences vary and aren't typical or guaranteed. Keep it respectful and on-topic, and report anything that breaks the rules.";
+
+// The comment shape sent to the client, shared so server + client agree.
+export interface BriefCommentData {
+  id: string;
+  authorName: string;
+  body: string;
+  createdAt: string;
+  canDelete: boolean;
+}
+
 // The card shape sent to the client (feed + API), shared so server + client agree.
 export interface BriefCardData {
   slug: string;

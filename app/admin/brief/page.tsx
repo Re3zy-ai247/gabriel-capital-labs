@@ -1,9 +1,11 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { AdminTabs } from "@/components/admin/AdminTabs";
+import { useAdminContext } from "@/components/admin/useAdminContext";
 import { BRIEF_CATEGORIES, briefCategoryLabel } from "@/lib/briefShared";
-import { Loader2, Sparkles, Newspaper, Star, Trash2, ExternalLink, Check, X, Pencil } from "lucide-react";
+import { Loader2, Sparkles, Newspaper, Star, Trash2, ExternalLink, Check, X, Pencil, MessageSquare } from "lucide-react";
 
 interface Article {
   id: string;
@@ -118,9 +120,19 @@ export default function AdminBriefPage() {
     load();
   }
 
+  const adminCtx = useAdminContext();
+  const flaggedComments = adminCtx?.flaggedComments ?? 0;
+
   return (
     <AppShell title="/ Admin">
       <AdminTabs />
+
+      <div className="mb-5 flex justify-end">
+        <Link href="/admin/brief/comments" className="inline-flex items-center gap-1.5 rounded-lg border border-ink-700/70 px-3 py-1.5 text-xs font-medium text-slate-300 transition hover:border-brand-500/30 hover:text-brand-200">
+          <MessageSquare className="h-3.5 w-3.5" /> Moderate comments
+          {flaggedComments > 0 && <span className="rounded-full bg-rose-500/20 px-1.5 text-[10px] font-semibold text-rose-300">{flaggedComments}</span>}
+        </Link>
+      </div>
 
       {/* Composer */}
       <div className="card mb-6 p-5">

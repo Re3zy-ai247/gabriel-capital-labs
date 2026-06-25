@@ -7,7 +7,9 @@ import {
   normalizeBriefCategory,
   briefCategoryLabel,
   BRIEF_LIMITS,
+  BRIEF_COMMENT_LIMITS,
   type BriefCardData,
+  type BriefCommentData,
 } from "./briefShared";
 
 // Server-side CreditVector Brief helpers: self-heal table, the compliance-gated AI
@@ -73,6 +75,40 @@ export async function ensureBriefTables(): Promise<void> {
   );
   await prisma.$executeRawUnsafe(
     `CREATE INDEX IF NOT EXISTS "BriefReaction_articleId_kind_idx" ON "BriefReaction"("articleId", "kind")`
+  );
+  // Phase 2b comments + their report dedup ledger.
+  await prisma.$executeRawUnsafe(
+    `CREATE TABLE IF NOT EXISTS "BriefComment" (
+       "id" TEXT NOT NULL PRIMARY KEY,
+       "articleId" TEXT NOT NULL,
+       "userId" TEXT NOT NULL,
+       "authorName" TEXT NOT NULL,
+       "body" TEXT NOT NULL,
+       "status" TEXT NOT NULL DEFAULT 'visible',
+       "flagged" BOOLEAN NOT NULL DEFAULT false,
+       "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+     )`
+  );
+  await prisma.$executeRawUnsafe(
+    `CREATE INDEX IF NOT EXISTS "BriefComment_articleId_status_createdAt_idx" ON "BriefComment"("articleId", "status", "createdAt")`
+  );
+  await prisma.$executeRawUnsafe(
+    `CREATE INDEX IF NOT EXISTS "BriefComment_flagged_status_idx" ON "BriefComment"("flagged", "status")`
+  );
+  await prisma.$executeRawUnsafe(
+    `CREATE TABLE IF NOT EXISTS "BriefCommentReport" (
+       "id" TEXT NOT NULL PRIMARY KEY,
+       "commentId" TEXT NOT NULL,
+       "userId" TEXT NOT NULL,
+       "reason" TEXT,
+       "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+     )`
+  );
+  await prisma.$executeRawUnsafe(
+    `CREATE UNIQUE INDEX IF NOT EXISTS "BriefCommentReport_commentId_userId_key" ON "BriefCommentReport"("commentId", "userId")`
+  );
+  await prisma.$executeRawUnsafe(
+    `CREATE INDEX IF NOT EXISTS "BriefCommentReport_commentId_idx" ON "BriefCommentReport"("commentId")`
   );
   tableReady = true;
 }
@@ -270,4 +306,65 @@ export async function listBookmarkedArticles(userId: string) {
   });
   // Preserve bookmark recency (the `in` query doesn't guarantee order).
   return articles.sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
+}
+
+// ---- Comments (Phase 2b) --------------------------------------------------
+
+// Privacy-safe public handle for a comment author: a username, else just the
+// FIRST name, else a neutral default — never the full legal name (which may sit
+// in `name`/`fullName`). Snapshotted onto the comment at write time.
+export function briefCommentAuthorName(account: { username?: string | null; name?: string | null }): string {
+  const u = account.username?.trim();
+  if (u) return u.slice(0, 40);
+  const first = account.name?.trim().split(/\s+/)[0];
+  if (first) return first.slice(0, 40);
+  return "CreditVector reader";
+}
+
+// Clean + length-check + CROA-screen a reader comment. Pure (no DB) so it's
+// unit-testable. Returns ok:false when the text trips the compliance bar — we
+// REJECT prohibited-claim comments (guaranteed deletions, §609/Metro-2 myths,
+// legal conclusions) rather than silently rewording the reader, so we never host
+// the claim and never put words in their mouth.
+export function screenCommentBody(raw: unknown): { ok: true; body: string } | { ok: false; error: string } {
+  const s = (typeof raw === "string" ? raw : "")
+    .replace(/\r\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim()
+    .slice(0, BRIEF_COMMENT_LIMITS.body);
+  if (s.length < BRIEF_COMMENT_LIMITS.min) return { ok: false, error: "Write a comment first." };
+  const { flags } = applyCompliance(s);
+  if (flags.length > 0) {
+    return {
+      ok: false,
+      error:
+        "Comments can't promise guaranteed deletions or score increases, cite §609/Metro-2 deletion myths, " +
+        "or state legal conclusions. Please rephrase as your own experience or question.",
+    };
+  }
+  return { ok: true, body: s };
+}
+
+export async function listVisibleComments(articleId: string, take = 200) {
+  await ensureBriefTables();
+  return prisma.briefComment.findMany({
+    where: { articleId, status: "visible" },
+    orderBy: { createdAt: "desc" },
+    take,
+  });
+}
+
+// Map a stored comment to the client shape. canDelete is true for the author and
+// for any admin (admins moderate via the admin surface, but can also remove inline).
+export function toCommentData(
+  c: { id: string; userId: string; authorName: string; body: string; createdAt: Date },
+  viewer: { id: string; isAdmin: boolean } | null
+): BriefCommentData {
+  return {
+    id: c.id,
+    authorName: c.authorName,
+    body: c.body,
+    createdAt: c.createdAt.toISOString(),
+    canDelete: !!viewer && (viewer.isAdmin || viewer.id === c.userId),
+  };
 }

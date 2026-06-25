@@ -6,8 +6,9 @@ import { SiteNav } from "@/components/marketing/SiteNav";
 import { SiteFooter } from "@/components/marketing/SiteFooter";
 import { Markdown } from "@/components/Markdown";
 import { EngagementBar } from "@/components/brief/EngagementBar";
+import { BriefComments } from "@/components/brief/BriefComments";
 import { prisma } from "@/lib/prisma";
-import { getPublishedArticleBySlug, getUserReactions } from "@/lib/brief";
+import { getPublishedArticleBySlug, getUserReactions, listVisibleComments, toCommentData } from "@/lib/brief";
 import { currentAccount } from "@/lib/session";
 import { briefCategoryLabel, briefCoverUrl, youtubeVideoId, youtubeEmbedUrl, BRIEF_DISCLAIMER } from "@/lib/briefShared";
 
@@ -53,6 +54,11 @@ export default async function BriefArticlePage({ params }: { params: { slug: str
   const reactions = account
     ? await getUserReactions(a.id, account.id)
     : { liked: false, bookmarked: false };
+
+  // Comments are public (SSR'd for SEO + no flash); the bar/composer light up for
+  // signed-in viewers, and the author/admin get a delete control via canDelete.
+  const viewer = account ? { id: account.id, isAdmin: account.role === "ADMIN" } : null;
+  const comments = (await listVisibleComments(a.id)).map((c) => toCommentData(c, viewer));
 
   return (
     <div className="relative min-h-screen bg-ink-950 text-white">
@@ -143,6 +149,8 @@ export default async function BriefArticlePage({ params }: { params: { slug: str
             </p>
             <Link href="/register" className="btn-primary mt-4 inline-flex">Start free <ArrowRight className="h-4 w-4" /></Link>
           </div>
+
+          <BriefComments slug={a.slug} isAuthed={!!account} initial={comments} />
 
           <p className="mt-8 text-center text-[11px] text-slate-500">{BRIEF_DISCLAIMER}</p>
         </article>

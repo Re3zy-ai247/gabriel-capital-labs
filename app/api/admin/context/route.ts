@@ -18,6 +18,7 @@ export async function GET() {
 
   let openReports = 0;
   let pendingBrief = 0;
+  let flaggedComments = 0;
   if (admin) {
     try {
       await ensureCommunityTables();
@@ -28,8 +29,10 @@ export async function GET() {
     try {
       await ensureBriefTables();
       pendingBrief = await prisma.briefArticle.count({ where: { status: "draft" } });
+      flaggedComments = await prisma.briefComment.count({ where: { flagged: true, status: "visible" } });
     } catch {
       pendingBrief = 0;
+      flaggedComments = 0;
     }
   }
 
@@ -37,6 +40,7 @@ export async function GET() {
     isAdmin: Boolean(admin),
     openReports,
     pendingBrief,
+    flaggedComments,
     impersonating: imp ? { active: true, email: imp.target.email, name: imp.target.name } : { active: false },
   });
 }

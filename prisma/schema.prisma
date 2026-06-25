@@ -466,3 +466,35 @@ model BriefReaction {
   @@index([articleId, kind])
 }
 
+// Reader comment on a published Brief article (Phase 2b). Post-moderation:
+// comments appear immediately (status 'visible') but are CROA-screened on write
+// (prohibited-claim comments are rejected, not stored), reportable, and
+// admin-removable (status 'removed', reversible). authorName is a privacy-safe
+// handle snapshot (username or first name), never the full legal name.
+model BriefComment {
+  id         String   @id @default(cuid())
+  articleId  String
+  userId     String
+  authorName String
+  body       String   @db.Text
+  status     String   @default("visible") // visible | removed
+  flagged    Boolean  @default(false) // a reader reported it; awaits admin review
+  createdAt  DateTime @default(now())
+
+  @@index([articleId, status, createdAt])
+  @@index([flagged, status])
+}
+
+// Dedup ledger for comment reports — one row per (comment, reporter) so a reader
+// can't spam the moderation queue. Presence of any row flags the comment.
+model BriefCommentReport {
+  id        String   @id @default(cuid())
+  commentId String
+  userId    String
+  reason    String?
+  createdAt DateTime @default(now())
+
+  @@unique([commentId, userId])
+  @@index([commentId])
+}
+
