@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAdmin, logAudit } from "@/lib/admin";
 import { applyCompliance } from "@/lib/compliance";
 import { ensureBriefTables } from "@/lib/brief";
-import { normalizeBriefCategory, BRIEF_LIMITS } from "@/lib/briefShared";
+import { normalizeBriefCategory, normalizeYouTubeUrl, BRIEF_LIMITS } from "@/lib/briefShared";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -44,6 +44,16 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   }
   if (typeof raw.socialCaption === "string") {
     data.socialCaption = applyCompliance(cleanStr(raw.socialCaption, BRIEF_LIMITS.caption)).text || null;
+  }
+  if (typeof raw.videoUrl === "string") {
+    const rawVideo = cleanStr(raw.videoUrl, BRIEF_LIMITS.source);
+    if (!rawVideo) {
+      data.videoUrl = null; // blank clears the embed
+    } else {
+      const normalized = normalizeYouTubeUrl(rawVideo);
+      if (!normalized) return NextResponse.json({ error: "Video URL must be a valid YouTube link." }, { status: 400 });
+      data.videoUrl = normalized;
+    }
   }
   if (typeof raw.featured === "boolean") data.featured = raw.featured;
   if (raw.status === "draft" || raw.status === "published" || raw.status === "rejected") {

@@ -5,7 +5,7 @@ import { applyCompliance } from "@/lib/compliance";
 import { sendAdminEmail } from "@/lib/email";
 import { sendPushToAdmins } from "@/lib/push";
 import { ensureBriefTables, slugify } from "@/lib/brief";
-import { normalizeBriefCategory, BRIEF_LIMITS } from "@/lib/briefShared";
+import { normalizeBriefCategory, normalizeYouTubeUrl, BRIEF_LIMITS } from "@/lib/briefShared";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -55,6 +55,11 @@ export async function POST(req: Request) {
   if (!title || !summary) return NextResponse.json({ error: "Title and summary are required." }, { status: 400 });
   if (!isHttpUrl(sourceUrl)) return NextResponse.json({ error: "Source URL must be a valid http(s) link." }, { status: 400 });
 
+  // Optional video: blank clears it; anything non-blank must be a YouTube link.
+  const rawVideo = cleanStr(raw.videoUrl, BRIEF_LIMITS.source);
+  const videoUrl = rawVideo ? normalizeYouTubeUrl(rawVideo) : null;
+  if (rawVideo && !videoUrl) return NextResponse.json({ error: "Video URL must be a valid YouTube link." }, { status: 400 });
+
   const article = await prisma.briefArticle.create({
     data: {
       slug: slugify(title),
@@ -65,6 +70,7 @@ export async function POST(req: Request) {
       category: normalizeBriefCategory(raw.category),
       tags: cleanTags(raw.tags),
       socialCaption: applyCompliance(cleanStr(raw.socialCaption, BRIEF_LIMITS.caption)).text || null,
+      videoUrl,
       status: "draft",
       authorId: admin.id,
     },

@@ -7,7 +7,7 @@ import { SiteFooter } from "@/components/marketing/SiteFooter";
 import { Markdown } from "@/components/Markdown";
 import { prisma } from "@/lib/prisma";
 import { getPublishedArticleBySlug } from "@/lib/brief";
-import { briefCategoryLabel, briefCoverUrl, BRIEF_DISCLAIMER } from "@/lib/briefShared";
+import { briefCategoryLabel, briefCoverUrl, youtubeVideoId, youtubeEmbedUrl, BRIEF_DISCLAIMER } from "@/lib/briefShared";
 
 export const dynamic = "force-dynamic";
 
@@ -42,6 +42,10 @@ export default async function BriefArticlePage({ params }: { params: { slug: str
     ? new Date(a.publishedAt).toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" })
     : "";
 
+  // Optional official YouTube embed. videoUrl is validated on write, but re-parse
+  // here so a stored value can only ever resolve to a YouTube id (never an arbitrary src).
+  const videoId = youtubeVideoId(a.videoUrl);
+
   return (
     <div className="relative min-h-screen bg-ink-950 text-white">
       <SiteNav />
@@ -51,13 +55,33 @@ export default async function BriefArticlePage({ params }: { params: { slug: str
             <ArrowLeft className="h-3.5 w-3.5" /> CreditVector Brief
           </Link>
 
-          {/* Branded, auto-generated cover (no external/licensed imagery). */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={briefCoverUrl(a.title, briefCategoryLabel(a.category))}
-            alt=""
-            className="mb-6 aspect-[1200/630] w-full rounded-2xl border border-ink-700/60 object-cover"
-          />
+          {/* Official YouTube player when a video is attached, else the branded,
+              auto-generated cover (no external/licensed imagery). */}
+          {videoId ? (
+            <div className="mb-6">
+              <div className="aspect-video w-full overflow-hidden rounded-2xl border border-ink-700/60 bg-black">
+                <iframe
+                  src={youtubeEmbedUrl(videoId)}
+                  title={a.title}
+                  className="h-full w-full"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  referrerPolicy="strict-origin-when-cross-origin"
+                  loading="lazy"
+                  allowFullScreen
+                />
+              </div>
+              <p className="mt-2 text-[11px] text-slate-500">
+                Video hosted on YouTube by its original publisher, embedded for educational context. See the disclaimer below.
+              </p>
+            </div>
+          ) : (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={briefCoverUrl(a.title, briefCategoryLabel(a.category))}
+              alt=""
+              className="mb-6 aspect-[1200/630] w-full rounded-2xl border border-ink-700/60 object-cover"
+            />
+          )}
 
           <div className="mb-3 flex flex-wrap items-center gap-2 text-[11px]">
             <span className="rounded-full bg-brand-500/10 px-2.5 py-0.5 font-semibold text-brand-300">

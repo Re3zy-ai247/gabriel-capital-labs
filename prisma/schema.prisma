@@ -437,6 +437,7 @@ model BriefArticle {
   category      String    @default("consumer-rights")
   tags          String[]
   socialCaption String?
+  videoUrl      String?   // optional official YouTube link (embedded via the no-cookie player)
   status        String    @default("draft") // draft | published | rejected
   featured      Boolean   @default(false)
   views         Int       @default(0)

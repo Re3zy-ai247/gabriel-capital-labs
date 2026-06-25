@@ -55,6 +55,52 @@ export function briefCoverUrl(title: string, categoryLabel: string): string {
   return `/api/brief/cover?${p.toString()}`;
 }
 
+// ---- Optional YouTube video embed (official player only) ------------------
+// Legal posture: we embed via YouTube's own player; we never download or
+// re-host video. Parsing is host-allowlisted so a stored videoUrl can only ever
+// produce an iframe pointed at YouTube — never an arbitrary origin.
+
+const YT_ID = /^[A-Za-z0-9_-]{11}$/; // YouTube video ids are 11 url-safe chars.
+
+// Extract the 11-char video id from the common YouTube URL shapes, or null if the
+// input isn't a YouTube link. Used to validate admin input AND to build the embed.
+export function youtubeVideoId(input: unknown): string | null {
+  if (typeof input !== "string") return null;
+  const raw = input.trim();
+  if (!raw) return null;
+  let u: URL;
+  try {
+    u = new URL(raw);
+  } catch {
+    return null;
+  }
+  if (u.protocol !== "https:" && u.protocol !== "http:") return null;
+  const host = u.hostname.replace(/^www\./, "").replace(/^m\./, "").toLowerCase();
+  let id: string | null = null;
+  if (host === "youtu.be") {
+    id = u.pathname.split("/").filter(Boolean)[0] || null;
+  } else if (host === "youtube.com" || host === "youtube-nocookie.com") {
+    if (u.pathname === "/watch") {
+      id = u.searchParams.get("v");
+    } else {
+      const parts = u.pathname.split("/").filter(Boolean); // ['embed', ID] | ['shorts', ID] | ['v', ID]
+      if (parts.length === 2 && (parts[0] === "embed" || parts[0] === "shorts" || parts[0] === "v")) id = parts[1];
+    }
+  }
+  return id && YT_ID.test(id) ? id : null;
+}
+
+// Canonical watch URL to store (human-friendly), or null when not a YouTube link.
+export function normalizeYouTubeUrl(input: unknown): string | null {
+  const id = youtubeVideoId(input);
+  return id ? `https://www.youtube.com/watch?v=${id}` : null;
+}
+
+// Privacy-enhanced no-cookie player; rel=0 keeps related videos to the same channel.
+export function youtubeEmbedUrl(id: string): string {
+  return `https://www.youtube-nocookie.com/embed/${id}?rel=0`;
+}
+
 // The card shape sent to the client (feed + API), shared so server + client agree.
 export interface BriefCardData {
   slug: string;

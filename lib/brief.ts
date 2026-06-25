@@ -48,6 +48,10 @@ export async function ensureBriefTables(): Promise<void> {
   await prisma.$executeRawUnsafe(
     `CREATE INDEX IF NOT EXISTS "BriefArticle_category_idx" ON "BriefArticle"("category")`
   );
+  // Added after the table shipped — self-heal the column on existing rows.
+  await prisma.$executeRawUnsafe(
+    `ALTER TABLE "BriefArticle" ADD COLUMN IF NOT EXISTS "videoUrl" TEXT`
+  );
   tableReady = true;
 }
 

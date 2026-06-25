@@ -15,6 +15,7 @@ interface Article {
   category: string;
   tags: string[];
   socialCaption: string | null;
+  videoUrl: string | null;
   status: string;
   featured: boolean;
   views: number;
@@ -22,7 +23,7 @@ interface Article {
   createdAt: string;
 }
 
-const BLANK = { title: "", sourceUrl: "", sourceName: "", sourceText: "", summary: "", category: "consumer-rights", tags: "", socialCaption: "" };
+const BLANK = { title: "", sourceUrl: "", sourceName: "", sourceText: "", summary: "", category: "consumer-rights", tags: "", socialCaption: "", videoUrl: "" };
 
 export default function AdminBriefPage() {
   const [articles, setArticles] = useState<Article[]>([]);
@@ -57,6 +58,7 @@ export default function AdminBriefPage() {
     setF({
       title: a.title, sourceUrl: a.sourceUrl, sourceName: a.sourceName, sourceText: "",
       summary: a.summary, category: a.category, tags: a.tags.join(", "), socialCaption: a.socialCaption || "",
+      videoUrl: a.videoUrl || "",
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -80,7 +82,7 @@ export default function AdminBriefPage() {
     setSaving(true); setErr(null);
     const body = {
       title: f.title, sourceUrl: f.sourceUrl, sourceName: f.sourceName, summary: f.summary,
-      category: f.category, socialCaption: f.socialCaption,
+      category: f.category, socialCaption: f.socialCaption, videoUrl: f.videoUrl,
       tags: f.tags.split(",").map((t) => t.trim()).filter(Boolean),
     };
     try {
@@ -103,7 +105,9 @@ export default function AdminBriefPage() {
   async function publish(id: string) {
     if (!confirm(
       "Publish this article?\n\nConfirm the summary is accurate, uses attributed/hedged language " +
-      "(\"alleged\", \"according to the complaint\", \"the agency stated\"), and is supported by the linked source."
+      "(\"alleged\", \"according to the complaint\", \"the agency stated\"), and is supported by the linked source.\n\n" +
+      "If a video is attached: confirm it's from an official/credible channel and makes no guaranteed-deletion, " +
+      "score-increase, or specific-outcome claims."
     )) return;
     patch(id, { status: "published" });
   }
@@ -171,6 +175,12 @@ export default function AdminBriefPage() {
             <label className="label">Social caption</label>
             <input className="input" value={f.socialCaption} onChange={(e) => setF({ ...f, socialCaption: e.target.value })} placeholder="Short, neutral share caption" />
           </div>
+        </div>
+
+        <div className="mt-3">
+          <label className="label">YouTube video (optional)</label>
+          <input className="input" value={f.videoUrl} onChange={(e) => setF({ ...f, videoUrl: e.target.value })} placeholder="https://www.youtube.com/watch?v=… — embeds the official player; leave blank for none" />
+          <p className="mt-1 text-[11px] text-slate-500">Paste a youtube.com or youtu.be link from an official/source channel. We embed the official player — never re-host video. Blank removes it.</p>
         </div>
 
         {err && <p className="mt-3 text-xs text-rose-400">{err}</p>}
