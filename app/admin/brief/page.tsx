@@ -38,6 +38,8 @@ export default function AdminBriefPage() {
   const [aiBusy, setAiBusy] = useState(false);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [ingestBusy, setIngestBusy] = useState(false);
+  const [ingestMsg, setIngestMsg] = useState<string | null>(null);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -51,6 +53,21 @@ export default function AdminBriefPage() {
   }, [filter]);
 
   useEffect(() => { load(); }, [load]);
+
+  async function runIngest() {
+    setIngestBusy(true); setIngestMsg(null);
+    try {
+      const res = await fetch("/api/admin/brief/ingest", { method: "POST" });
+      const j = await res.json();
+      if (!res.ok) { setIngestMsg(j.error || "Ingest failed."); return; }
+      setIngestMsg(
+        j.created > 0
+          ? `Created ${j.created} draft${j.created === 1 ? "" : "s"} from ${j.scanned} scanned — review them below.`
+          : `No new articles (scanned ${j.scanned}, all already ingested).`
+      );
+      if (j.created > 0) { setFilter("draft"); load(); }
+    } catch { setIngestMsg("Network error."); } finally { setIngestBusy(false); }
+  }
 
   function resetForm() { setEditingId(null); setF({ ...BLANK }); setErr(null); }
 
@@ -127,7 +144,18 @@ export default function AdminBriefPage() {
     <AppShell title="/ Admin">
       <AdminTabs />
 
-      <div className="mb-5 flex justify-end">
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={runIngest}
+            disabled={ingestBusy}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-brand-500/30 bg-brand-500/10 px-3 py-1.5 text-xs font-medium text-brand-200 transition hover:bg-brand-500/20 disabled:opacity-60"
+            title="Pull the latest articles from official CFPB/FTC feeds and draft summaries for your review"
+          >
+            {ingestBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />} Fetch latest news
+          </button>
+          {ingestMsg && <span className="text-[11px] text-slate-400">{ingestMsg}</span>}
+        </div>
         <Link href="/admin/brief/comments" className="inline-flex items-center gap-1.5 rounded-lg border border-ink-700/70 px-3 py-1.5 text-xs font-medium text-slate-300 transition hover:border-brand-500/30 hover:text-brand-200">
           <MessageSquare className="h-3.5 w-3.5" /> Moderate comments
           {flaggedComments > 0 && <span className="rounded-full bg-rose-500/20 px-1.5 text-[10px] font-semibold text-rose-300">{flaggedComments}</span>}
