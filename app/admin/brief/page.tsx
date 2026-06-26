@@ -5,7 +5,7 @@ import { AppShell } from "@/components/AppShell";
 import { AdminTabs } from "@/components/admin/AdminTabs";
 import { useAdminContext } from "@/components/admin/useAdminContext";
 import { BRIEF_CATEGORIES, briefCategoryLabel } from "@/lib/briefShared";
-import { Loader2, Sparkles, Newspaper, Star, Trash2, ExternalLink, Check, X, Pencil, MessageSquare } from "lucide-react";
+import { Loader2, Sparkles, Newspaper, Star, Trash2, ExternalLink, Check, X, Pencil, MessageSquare, Mail } from "lucide-react";
 
 interface Article {
   id: string;
@@ -41,6 +41,7 @@ export default function AdminBriefPage() {
   const [ingestBusy, setIngestBusy] = useState(false);
   const [ingestMsg, setIngestMsg] = useState<string | null>(null);
   const [resummarizingId, setResummarizingId] = useState<string | null>(null);
+  const [digestBusy, setDigestBusy] = useState(false);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -80,6 +81,18 @@ export default function AdminBriefPage() {
       if (editingId === id) resetForm();
       load();
     } catch { alert("Network error."); } finally { setResummarizingId(null); }
+  }
+
+  async function sendTestDigest() {
+    setDigestBusy(true); setIngestMsg(null);
+    try {
+      const res = await fetch("/api/admin/brief/digest-test", { method: "POST" });
+      const j = await res.json();
+      if (!res.ok) { setIngestMsg(j.error || "Test digest failed."); return; }
+      if (j.error) { setIngestMsg(j.error); return; }
+      if (j.skipped) { setIngestMsg(`Digest skipped: ${j.skipped}.`); return; }
+      setIngestMsg(j.sent > 0 ? `Test digest sent to ${j.to} (${j.articles} article${j.articles === 1 ? "" : "s"}).` : "Digest could not be sent (check email config).");
+    } catch { setIngestMsg("Network error."); } finally { setDigestBusy(false); }
   }
 
   function resetForm() { setEditingId(null); setF({ ...BLANK }); setErr(null); }
@@ -166,6 +179,14 @@ export default function AdminBriefPage() {
             title="Pull the latest articles from official CFPB/FTC feeds and draft summaries for your review"
           >
             {ingestBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />} Fetch latest news
+          </button>
+          <button
+            onClick={sendTestDigest}
+            disabled={digestBusy}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-ink-700/70 px-3 py-1.5 text-xs font-medium text-slate-300 transition hover:border-brand-500/30 hover:text-brand-200 disabled:opacity-60"
+            title="Email yourself a preview of this week's digest"
+          >
+            {digestBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Mail className="h-3.5 w-3.5" />} Send test digest
           </button>
           {ingestMsg && <span className="text-[11px] text-slate-400">{ingestMsg}</span>}
         </div>

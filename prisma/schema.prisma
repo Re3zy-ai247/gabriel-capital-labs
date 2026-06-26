@@ -61,6 +61,7 @@ model User {
   // Admin & subscription
   role          UserRole   @default(USER)
   disabled      Boolean    @default(false) // admin can disable an account (blocks login)
+  briefDigest   Boolean    @default(false) // opted in to the weekly CreditVector Brief email digest
   letterCredits Int        @default(0) // one-time letter-pack credits (consumed past the free monthly allowance)
   // Billing — Stripe subscription state. plan is the source of truth for entitlements.
   plan                 String    @default("free") // "free" | "premium"

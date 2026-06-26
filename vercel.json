@@ -4,6 +4,7 @@
   "buildCommand": "prisma generate && (prisma db push --skip-generate --accept-data-loss || echo 'DB not attached yet — skipping schema push') && next build",
   "installCommand": "npm install",
   "crons": [
-    { "path": "/api/cron/brief-ingest", "schedule": "0 13 * * *" }
+    { "path": "/api/cron/brief-ingest", "schedule": "0 13 * * *" },
+    { "path": "/api/cron/brief-digest", "schedule": "0 14 * * 1" }
   ]
 }

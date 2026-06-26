@@ -24,6 +24,7 @@ export async function sendEmail(opts: {
   subject: string;
   text: string;
   html?: string;
+  headers?: Record<string, string>; // e.g. List-Unsubscribe for the weekly digest
 }): Promise<boolean> {
   const key = process.env.RESEND_API_KEY;
   if (!key) return false; // dormant until configured — no-op, not an error
@@ -44,6 +45,7 @@ export async function sendEmail(opts: {
         text: opts.text,
         ...(replyTo ? { reply_to: replyTo } : {}),
         ...(opts.html ? { html: opts.html } : {}),
+        ...(opts.headers ? { headers: opts.headers } : {}),
       }),
       signal: controller.signal,
     });

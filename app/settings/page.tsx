@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { EduBanner } from "@/components/Disclaimer";
-import { Loader2, Save, Lock, Bell } from "lucide-react";
+import { Loader2, Save, Lock, Bell, Mail } from "lucide-react";
 import { PushToggle } from "@/components/PushToggle";
 
 interface Profile {
@@ -28,6 +28,32 @@ export default function SettingsPage() {
   const [pw, setPw] = useState({ current: "", next: "", confirm: "" });
   const [pwBusy, setPwBusy] = useState(false);
   const [pwMsg, setPwMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [digest, setDigest] = useState(false);
+  const [digestBusy, setDigestBusy] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/brief/digest/preference")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d) setDigest(Boolean(d.briefDigest)); });
+  }, []);
+
+  async function toggleDigest(next: boolean) {
+    setDigestBusy(true);
+    const prev = digest;
+    setDigest(next); // optimistic
+    try {
+      const res = await fetch("/api/brief/digest/preference", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ subscribe: next }),
+      });
+      if (!res.ok) setDigest(prev);
+    } catch {
+      setDigest(prev);
+    } finally {
+      setDigestBusy(false);
+    }
+  }
 
   useEffect(() => {
     fetch("/api/profile")
@@ -289,6 +315,28 @@ export default function SettingsPage() {
             Get a push notification on this device when something needs your attention (e.g. a Brief draft awaiting approval).
           </p>
           <PushToggle />
+        </div>
+
+        {/* Email updates (Brief digest) */}
+        <div className="mt-8 border-t border-ink-700/70 pt-6">
+          <h2 className="mb-1 flex items-center gap-2 text-xl font-bold">
+            <Mail className="h-5 w-5 text-brand-400" /> Email Updates
+          </h2>
+          <p className="mb-4 text-sm text-slate-400">
+            Get a weekly email digest of the latest CreditVector Brief — educational consumer-credit news. You can unsubscribe anytime.
+          </p>
+          <button
+            type="button"
+            onClick={() => toggleDigest(!digest)}
+            disabled={digestBusy}
+            aria-pressed={digest}
+            className={`inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition disabled:opacity-60 ${
+              digest ? "border-success-500/40 bg-success-500/10 text-success-300" : "border-ink-700/70 text-slate-300 hover:border-brand-500/30 hover:text-brand-200"
+            }`}
+          >
+            {digestBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
+            {digest ? "Subscribed — weekly digest on" : "Subscribe to the weekly digest"}
+          </button>
         </div>
       </div>
     </AppShell>
