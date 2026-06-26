@@ -40,6 +40,7 @@ export default function AdminBriefPage() {
   const [err, setErr] = useState<string | null>(null);
   const [ingestBusy, setIngestBusy] = useState(false);
   const [ingestMsg, setIngestMsg] = useState<string | null>(null);
+  const [resummarizingId, setResummarizingId] = useState<string | null>(null);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -67,6 +68,18 @@ export default function AdminBriefPage() {
       );
       if (j.created > 0) { setFilter("draft"); load(); }
     } catch { setIngestMsg("Network error."); } finally { setIngestBusy(false); }
+  }
+
+  async function resummarize(id: string) {
+    if (!confirm("Re-summarize this article from its source?\n\nThis re-fetches the full source article and replaces the current summary, category, tags, and caption with a fresh AI summary (and attaches an official video if the source page has one). The compliance scrubber still runs.")) return;
+    setResummarizingId(id);
+    try {
+      const res = await fetch(`/api/admin/brief/${id}/resummarize`, { method: "POST" });
+      const j = await res.json();
+      if (!res.ok) { alert(j.error || "Re-summarize failed."); return; }
+      if (editingId === id) resetForm();
+      load();
+    } catch { alert("Network error."); } finally { setResummarizingId(null); }
   }
 
   function resetForm() { setEditingId(null); setF({ ...BLANK }); setErr(null); }
@@ -259,6 +272,9 @@ export default function AdminBriefPage() {
 
               <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-ink-700/60 pt-3">
                 <button onClick={() => editArticle(a)} className="btn-ghost text-xs"><Pencil className="h-3.5 w-3.5" /> Edit</button>
+                <button onClick={() => resummarize(a.id)} disabled={resummarizingId === a.id} className="btn-ghost text-xs" title="Re-fetch the full source article and regenerate the summary">
+                  {resummarizingId === a.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />} Re-summarize
+                </button>
                 {a.status !== "published" ? (
                   <button onClick={() => publish(a.id)} className="inline-flex items-center gap-1.5 rounded-lg border border-success-500/40 bg-success-500/10 px-3 py-1.5 text-xs font-medium text-success-300 hover:bg-success-500/20"><Check className="h-3.5 w-3.5" /> Publish</button>
                 ) : (

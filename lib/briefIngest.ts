@@ -289,3 +289,45 @@ export async function ingestBriefFeeds(opts: { maxPerRun?: number } = {}): Promi
 
   return result;
 }
+
+export interface ResummarizeResult {
+  ok: boolean;
+  error?: string;
+}
+
+// Re-fetch an existing article's source (full body + video) and regenerate its
+// summary/category/tags/caption in place — the one-click fix for an old draft that
+// was created from a thin RSS snippet. Admin-triggered; reuses the same scrubbed,
+// hedged summarizer. Leaves the article's status alone and never clears an existing
+// video. On a fetch/substance failure it changes NOTHING and reports why.
+export async function resummarizeArticle(articleId: string): Promise<ResummarizeResult> {
+  await ensureBriefTables();
+  const article = await prisma.briefArticle.findUnique({
+    where: { id: articleId },
+    select: { id: true, title: true, sourceUrl: true, videoUrl: true },
+  });
+  if (!article) return { ok: false, error: "Article not found." };
+
+  const page = await fetchArticlePage(article.sourceUrl);
+  const body = page.text.trim();
+  if (body.length < 400) {
+    return { ok: false, error: "Couldn't fetch enough article text from the source to re-summarize — edit the summary manually instead." };
+  }
+
+  const sourceText = `${article.title}\n\n${body}`.slice(0, 18000);
+  const suggestion = await summarizeArticle({ title: article.title, sourceText });
+  if (!suggestion.usedAI) return { ok: false, error: "The AI summarizer is not available right now." };
+  if (!suggestion.summary) return { ok: false, error: "The source didn't yield a substantive summary." };
+
+  await prisma.briefArticle.update({
+    where: { id: article.id },
+    data: {
+      summary: suggestion.summary,
+      category: suggestion.category,
+      tags: suggestion.tags,
+      socialCaption: suggestion.socialCaption || null,
+      videoUrl: page.videoUrl || article.videoUrl, // attach a found video, never clear one
+    },
+  });
+  return { ok: true };
+}
