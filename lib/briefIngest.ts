@@ -1,6 +1,6 @@
 import { prisma } from "./prisma";
 import { ensureBriefTables, slugify, summarizeArticle } from "./brief";
-import { BRIEF_LIMITS } from "./briefShared";
+import { BRIEF_LIMITS, youtubeVideoId } from "./briefShared";
 import { sendAdminEmail } from "./email";
 import { sendPushToAdmins } from "./push";
 
@@ -27,6 +27,25 @@ export const BRIEF_FEEDS: BriefFeed[] = [
 
 // Identify ourselves politely; some .gov WAFs 403 a bare client.
 const BRIEF_FETCH_UA = "CreditVectorBriefBot/1.0 (+https://www.creditvector.app)";
+
+// We only ever fetch full article bodies from the SAME trusted hosts our feeds live
+// on — so an unexpected/foreign link in a feed item can never make us fetch an
+// arbitrary URL (SSRF guard). Derived from BRIEF_FEEDS.
+const ALLOWED_ARTICLE_HOSTS = BRIEF_FEEDS.map((f) => {
+  try {
+    return new URL(f.url).hostname.replace(/^www\./, "").toLowerCase();
+  } catch {
+    return "";
+  }
+}).filter(Boolean);
+function isAllowedArticleHost(url: string): boolean {
+  try {
+    const h = new URL(url).hostname.replace(/^www\./, "").toLowerCase();
+    return ALLOWED_ARTICLE_HOSTS.some((d) => h === d || h.endsWith("." + d));
+  } catch {
+    return false;
+  }
+}
 
 function isHttpUrl(u: string): boolean {
   return /^https?:\/\/\S+/i.test(u);
@@ -88,6 +107,78 @@ export function stripHtml(s: string): string {
     .trim();
 }
 
+// Pull the readable body text out of a full article HTML page. Heuristic (no DOM
+// dependency): prefer the <main>/<article> region, drop scripts/nav/header/footer/
+// aside/forms, turn block tags into newlines, then strip + decode. Tuned for the
+// clean semantic markup of the curated .gov sources. Pure — unit-tested.
+export function extractMainText(html: string): string {
+  const main = html.match(/<main\b[\s\S]*?<\/main>/i) || html.match(/<article\b[\s\S]*?<\/article>/i);
+  let region = main ? main[0] : html;
+  region = region
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<noscript[\s\S]*?<\/noscript>/gi, " ")
+    .replace(/<nav[\s\S]*?<\/nav>/gi, " ")
+    .replace(/<header[\s\S]*?<\/header>/gi, " ")
+    .replace(/<footer[\s\S]*?<\/footer>/gi, " ")
+    .replace(/<aside[\s\S]*?<\/aside>/gi, " ")
+    .replace(/<form[\s\S]*?<\/form>/gi, " ")
+    .replace(/<!--[\s\S]*?-->/g, " ");
+  // Preserve paragraph structure: block-closing tags become newlines.
+  region = region.replace(/<\/(p|div|li|h[1-6]|section|tr|br)\s*\/?>/gi, "\n");
+  const text = decodeEntities(region.replace(/<[^>]+>/g, " "));
+  return text
+    .replace(/[ \t ]+/g, " ")
+    .replace(/ *\n */g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .replace(/\s+([.,!?;:])/g, "$1")
+    .trim();
+}
+
+// Find an embedded official YouTube video on the source page, if any — prefer real
+// <iframe> embeds (an actual player in the article), then explicit youtube URLs.
+// Validates every candidate through the host-allowlisted parser, so it can only
+// ever return a real YouTube video. Returns a canonical watch URL or null. Pure.
+export function findEmbeddedYouTube(html: string): string | null {
+  const iframes = html.match(/<iframe\b[^>]*?\ssrc=["']([^"']+)["'][^>]*>/gi) || [];
+  for (const tag of iframes) {
+    const m = tag.match(/\ssrc=["']([^"']+)["']/i);
+    const id = m ? youtubeVideoId(decodeEntities(m[1])) : null;
+    if (id) return `https://www.youtube.com/watch?v=${id}`;
+  }
+  const urls = html.match(/https?:\/\/(?:www\.|m\.)?(?:youtube(?:-nocookie)?\.com\/[^\s"'<>\\]+|youtu\.be\/[^\s"'<>\\]+)/gi) || [];
+  for (const u of urls) {
+    const id = youtubeVideoId(decodeEntities(u));
+    if (id) return `https://www.youtube.com/watch?v=${id}`;
+  }
+  return null;
+}
+
+interface FetchedPage {
+  text: string;
+  videoUrl: string | null;
+}
+
+// Fetch the full article page (with a timeout) and return its readable body text +
+// any embedded official YouTube video. Fails safe to empty so the caller falls back
+// to the RSS snippet.
+async function fetchArticlePage(url: string): Promise<FetchedPage> {
+  if (!isAllowedArticleHost(url)) return { text: "", videoUrl: null };
+  try {
+    const res = await fetch(url, {
+      headers: { "User-Agent": BRIEF_FETCH_UA, Accept: "text/html,application/xhtml+xml" },
+      cache: "no-store",
+      signal: AbortSignal.timeout(12000),
+    });
+    if (!res.ok) return { text: "", videoUrl: null };
+    const html = await res.text();
+    return { text: extractMainText(html), videoUrl: findEmbeddedYouTube(html) };
+  } catch (e) {
+    console.error("Brief article fetch failed", url, e);
+    return { text: "", videoUrl: null };
+  }
+}
+
 export interface IngestResult {
   scanned: number;
   created: number;
@@ -140,10 +231,22 @@ export async function ingestBriefFeeds(opts: { maxPerRun?: number } = {}): Promi
     }
     seen.add(c.link); // guard against duplicate links within this same run
 
-    const sourceText = `${c.title}\n\n${stripHtml(c.description)}`.trim();
+    // Fetch the FULL article body (+ scan the page for an embedded official video)
+    // so the brief is substantive — not a "the source was only a title" stub.
+    const page = await fetchArticlePage(c.link);
+    const rss = stripHtml(c.description);
+    const body = (page.text.length >= rss.length ? page.text : rss).trim();
+    // Too thin to brief meaningfully — skip rather than draft a hollow article.
+    if (body.length < 400) {
+      result.skipped++;
+      continue;
+    }
+
+    const sourceText = `${c.title}\n\n${body}`.slice(0, 18000);
     const suggestion = await summarizeArticle({ title: c.title, sourceText });
+    // usedAI:false = no key; empty summary = the model judged there was no real
+    // substance to brief. Either way, don't create a hollow draft.
     if (!suggestion.usedAI || !suggestion.summary) {
-      // No AI provider configured or the model returned nothing usable — skip.
       result.skipped++;
       continue;
     }
@@ -158,6 +261,7 @@ export async function ingestBriefFeeds(opts: { maxPerRun?: number } = {}): Promi
         category: suggestion.category,
         tags: suggestion.tags,
         socialCaption: suggestion.socialCaption || null,
+        videoUrl: page.videoUrl, // auto-attached official embed (admin still approves)
         status: "draft",
       },
     });
