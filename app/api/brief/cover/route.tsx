@@ -2,13 +2,16 @@ import { ImageResponse } from "next/og";
 
 export const runtime = "edge";
 
-// Stateless, query-param-driven branded cover image for Brief articles (1200x630).
-// Generated from the title + category — no copyright risk, no AI-photo risk. Doubles
-// as the visible cover on cards/detail AND the Open Graph image for shared links.
+// Stateless, query-param-driven branded image for Brief articles (1200x630). No
+// copyright/AI-photo risk. Two modes:
+//   • with ?title=…  → headline card, used as the Open Graph / social image only.
+//   • without title  → branded masthead (category + tagline), the ON-PAGE cover —
+//     omits the title so it never duplicates the heading shown right beside it.
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
-  const title = (searchParams.get("title") || "CreditVector Brief").slice(0, 160);
+  const title = (searchParams.get("title") || "").slice(0, 160);
   const category = (searchParams.get("category") || "News").slice(0, 40);
+  const hasTitle = title.trim().length > 0;
 
   return new ImageResponse(
     (
@@ -47,7 +50,11 @@ export async function GET(req: Request) {
           >
             {category}
           </span>
-          <span style={{ color: "white", fontSize: 56, fontWeight: 800, lineHeight: 1.12, maxWidth: 1010 }}>{title}</span>
+          {hasTitle ? (
+            <span style={{ color: "white", fontSize: 56, fontWeight: 800, lineHeight: 1.12, maxWidth: 1010 }}>{title}</span>
+          ) : (
+            <span style={{ color: "white", fontSize: 64, fontWeight: 800, lineHeight: 1.1, maxWidth: 1010 }}>Consumer-credit news, explained</span>
+          )}
         </div>
 
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>

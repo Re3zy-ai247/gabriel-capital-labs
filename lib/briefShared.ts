@@ -48,9 +48,18 @@ export const BRIEF_LIMITS = {
   tags: 8,
 };
 
-// Stateless cover-image URL for an article (title + category label drive the art).
-// Served by app/api/brief/cover; used as the visible cover AND the Open Graph image.
-export function briefCoverUrl(title: string, categoryLabel: string): string {
+// On-page branded cover — by CATEGORY only, NO article title. The title is already
+// shown as the heading, so baking it into the art too just duplicates it. Per-
+// category means it also caches well. Served by app/api/brief/cover.
+export function briefCoverUrl(categoryLabel: string): string {
+  const p = new URLSearchParams({ category: categoryLabel.slice(0, 40) });
+  return `/api/brief/cover?${p.toString()}`;
+}
+
+// Open Graph / social-share image — DOES include the title (a shared link benefits
+// from the headline on the image, and og:title shows it too). Used only in <meta>,
+// never rendered on-page, so it doesn't duplicate the visible heading.
+export function briefOgImageUrl(title: string, categoryLabel: string): string {
   const p = new URLSearchParams({ title: title.slice(0, 160), category: categoryLabel.slice(0, 40) });
   return `/api/brief/cover?${p.toString()}`;
 }

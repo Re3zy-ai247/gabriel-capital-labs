@@ -10,7 +10,7 @@ import { BriefComments } from "@/components/brief/BriefComments";
 import { prisma } from "@/lib/prisma";
 import { getPublishedArticleBySlug, getUserReactions, listVisibleComments, toCommentData } from "@/lib/brief";
 import { currentAccount } from "@/lib/session";
-import { briefCategoryLabel, briefCoverUrl, youtubeVideoId, youtubeEmbedUrl, BRIEF_DISCLAIMER } from "@/lib/briefShared";
+import { briefCategoryLabel, briefCoverUrl, briefOgImageUrl, youtubeVideoId, youtubeEmbedUrl, BRIEF_DISCLAIMER } from "@/lib/briefShared";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +24,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   if (!a) return { title: "Article not found — CreditVector Brief" };
   const description = plain(a.summary, 160);
   const url = `/brief/${a.slug}`;
-  const cover = briefCoverUrl(a.title, briefCategoryLabel(a.category));
+  const cover = briefOgImageUrl(a.title, briefCategoryLabel(a.category));
   return {
     title: `${a.title} — CreditVector Brief`,
     description,
@@ -91,7 +91,7 @@ export default async function BriefArticlePage({ params }: { params: { slug: str
           ) : (
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={briefCoverUrl(a.title, briefCategoryLabel(a.category))}
+              src={briefCoverUrl(briefCategoryLabel(a.category))}
               alt=""
               className="mb-6 aspect-[1200/630] w-full rounded-2xl border border-ink-700/60 object-cover"
             />
@@ -105,6 +105,10 @@ export default async function BriefArticlePage({ params }: { params: { slug: str
           </div>
 
           <h1 className="h-display text-3xl text-white md:text-4xl text-balance">{a.title}</h1>
+
+          {a.socialCaption && (
+            <p className="mt-3 text-lg leading-relaxed text-slate-300 text-balance">{a.socialCaption}</p>
+          )}
 
           <a
             href={a.sourceUrl}

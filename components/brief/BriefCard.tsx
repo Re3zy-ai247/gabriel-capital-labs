@@ -15,9 +15,10 @@ export function BriefCard({ a }: { a: BriefCardData }) {
       href={`/brief/${a.slug}`}
       className="group flex h-full flex-col overflow-hidden rounded-2xl border border-ink-700/70 bg-ink-800/50 transition hover:-translate-y-0.5 hover:border-brand-500/40"
     >
-      {/* Branded, auto-generated cover (no external/licensed imagery). */}
+      {/* Branded, auto-generated cover (category masthead — no title, so the
+          headline below isn't duplicated; no external/licensed imagery). */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={briefCoverUrl(a.title, a.categoryLabel)} alt="" loading="lazy" className="aspect-[1200/630] w-full object-cover" />
+      <img src={briefCoverUrl(a.categoryLabel)} alt="" loading="lazy" className="aspect-[1200/630] w-full object-cover" />
 
       <div className="flex flex-1 flex-col p-5">
         <div className="mb-3 flex items-center gap-2">
