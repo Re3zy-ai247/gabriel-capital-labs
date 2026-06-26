@@ -2,7 +2,7 @@
 // Guards the pure RSS-parsing helpers behind the Phase 3 ingest: item extraction,
 // CDATA/entity decoding, and HTML stripping. (Network fetch + drafting are covered
 // by manual/admin "Fetch latest news" runs against the live feeds.)
-import { parseRssItems, stripHtml, extractMainText, findEmbeddedYouTube } from "../lib/briefIngest";
+import { parseRssItems, stripHtml, extractMainText, findEmbeddedYouTube, findPdfLink } from "../lib/briefIngest";
 
 let pass = 0;
 let fail = 0;
@@ -71,6 +71,13 @@ check("finds a youtu.be link in markup", findEmbeddedYouTube(`<a href="https://y
 check("decodes &amp; in an embed URL", findEmbeddedYouTube(`<iframe src="https://www.youtube.com/embed/${ID}?rel=0&amp;start=5"></iframe>`) === `https://www.youtube.com/watch?v=${ID}`);
 check("ignores a non-YouTube (vimeo) iframe", findEmbeddedYouTube(`<iframe src="https://player.vimeo.com/video/123"></iframe>`) === null);
 check("returns null when no video", findEmbeddedYouTube(PAGE) === null);
+
+// --- findPdfLink: report-PDF fallback, trusted hosts only ---
+check("finds a report PDF on a trusted host", findPdfLink(`<a href="https://files.consumerfinance.gov/f/documents/report_2026.pdf">Read</a>`) === "https://files.consumerfinance.gov/f/documents/report_2026.pdf");
+check("finds an ftc.gov PDF", findPdfLink(`<a href="https://www.ftc.gov/system/files/x.pdf?a=1">x</a>`) === "https://www.ftc.gov/system/files/x.pdf?a=1");
+check("ignores a PDF on a foreign host (SSRF)", findPdfLink(`<a href="https://evil.test/leak.pdf">x</a>`) === null);
+check("ignores a relative (non-http) PDF", findPdfLink(`<a href="/files/local.pdf">x</a>`) === null);
+check("returns null when no PDF link", findPdfLink(PAGE) === null);
 
 console.log(`\nbrief-ingest.test.ts: ${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);

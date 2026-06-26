@@ -1,6 +1,7 @@
 import { prisma } from "./prisma";
 import { ensureBriefTables, slugify, summarizeArticle } from "./brief";
 import { BRIEF_LIMITS, youtubeVideoId } from "./briefShared";
+import { extractPdfText } from "./pdf";
 import { sendAdminEmail } from "./email";
 import { sendPushToAdmins } from "./push";
 
@@ -159,8 +160,45 @@ interface FetchedPage {
   videoUrl: string | null;
 }
 
+// Find the first linked PDF on a TRUSTED host — many CFPB/FTC "newsroom" items are
+// report pages whose substance lives in a linked PDF, not the HTML body. Pure;
+// SSRF-safe (same host allowlist as article fetches).
+export function findPdfLink(html: string): string | null {
+  const links = html.match(/href=["']([^"']+\.pdf(?:\?[^"']*)?)["']/gi) || [];
+  for (const l of links) {
+    const m = l.match(/href=["']([^"']+)["']/i);
+    if (!m) continue;
+    const url = decodeEntities(m[1]);
+    if (/^https?:\/\//i.test(url) && isAllowedArticleHost(url)) return url;
+  }
+  return null;
+}
+
+// Download + extract text from a report PDF (size-capped, timed out). Reuses the
+// app's existing pdf-parse helper. Fails safe to "".
+async function fetchPdfText(url: string): Promise<string> {
+  try {
+    const res = await fetch(url, {
+      headers: { "User-Agent": BRIEF_FETCH_UA },
+      cache: "no-store",
+      signal: AbortSignal.timeout(20000),
+    });
+    if (!res.ok) return "";
+    const declared = Number(res.headers.get("content-length") || "0");
+    if (declared > 15_000_000) return ""; // don't pull huge reports (15MB cap)
+    const buf = Buffer.from(await res.arrayBuffer());
+    if (buf.length > 15_000_000) return "";
+    const text = await extractPdfText(buf);
+    return text.replace(/[ \t]+/g, " ").replace(/\n{3,}/g, "\n\n").trim().slice(0, 18000);
+  } catch (e) {
+    console.error("Brief PDF fetch failed", url, e);
+    return "";
+  }
+}
+
 // Fetch the full article page (with a timeout) and return its readable body text +
-// any embedded official YouTube video. Fails safe to empty so the caller falls back
+// any embedded official YouTube video. When the HTML body is thin (a report page),
+// fall back to a linked PDF's text. Fails safe to empty so the caller can fall back
 // to the RSS snippet.
 async function fetchArticlePage(url: string): Promise<FetchedPage> {
   if (!isAllowedArticleHost(url)) return { text: "", videoUrl: null };
@@ -172,7 +210,17 @@ async function fetchArticlePage(url: string): Promise<FetchedPage> {
     });
     if (!res.ok) return { text: "", videoUrl: null };
     const html = await res.text();
-    return { text: extractMainText(html), videoUrl: findEmbeddedYouTube(html) };
+    let text = extractMainText(html);
+    const videoUrl = findEmbeddedYouTube(html);
+    // Report-style page (substance is in a linked PDF) — pull the PDF text.
+    if (text.length < 500) {
+      const pdfUrl = findPdfLink(html);
+      if (pdfUrl) {
+        const pdfText = await fetchPdfText(pdfUrl);
+        if (pdfText.length > text.length) text = pdfText;
+      }
+    }
+    return { text, videoUrl };
   } catch (e) {
     console.error("Brief article fetch failed", url, e);
     return { text: "", videoUrl: null };
