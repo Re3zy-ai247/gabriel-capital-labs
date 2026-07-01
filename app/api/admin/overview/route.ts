@@ -11,7 +11,7 @@ export async function GET() {
 
   const since30 = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
-  const [totalUsers, signups30d, premiumUsers, agencyUsers, activeSubs, totalLetters, totalReports, managedClients] =
+  const [totalUsers, signups30d, premiumUsers, agencyUsers, activeSubs, totalLetters, totalReports, managedClients, churnedSubs, pastDueSubs] =
     await Promise.all([
       prisma.user.count({ where: { managedByAgencyId: null } }),
       prisma.user.count({ where: { createdAt: { gte: since30 }, managedByAgencyId: null } }),
@@ -21,6 +21,8 @@ export async function GET() {
       prisma.letter.count(),
       prisma.report.count(),
       prisma.user.count({ where: { managedByAgencyId: { not: null } } }),
+      prisma.user.count({ where: { subscriptionStatus: { in: ["canceled", "unpaid"] } } }),
+      prisma.user.count({ where: { subscriptionStatus: "past_due" } }),
     ]);
 
   const mrrCents = premiumUsers * PREMIUM_PRICE_CENTS + agencyUsers * AGENCY_PRICE_CENTS;
@@ -38,5 +40,10 @@ export async function GET() {
     mrr: mrrCents / 100,
     arr: (mrrCents * 12) / 100,
     conversionRate: totalUsers ? Math.round((paid / totalUsers) * 1000) / 10 : 0,
+    churnedSubs,
+    pastDueSubs,
+    // Churn = ever-canceled / (currently-active + ever-canceled). A lifetime proxy until
+    // time-series billing history is instrumented (backlog G-14).
+    churnRate: activeSubs + churnedSubs ? Math.round((churnedSubs / (activeSubs + churnedSubs)) * 1000) / 10 : 0,
   });
 }

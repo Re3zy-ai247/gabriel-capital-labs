@@ -18,6 +18,9 @@ interface Overview {
   mrr: number;
   arr: number;
   conversionRate: number;
+  churnedSubs: number;
+  pastDueSubs: number;
+  churnRate: number;
 }
 
 function money(n: number) {
@@ -92,8 +95,15 @@ export default function AdminOverviewPage() {
             <Stat label="Letters Generated" value={data.totalLetters.toLocaleString()} />
             <Stat label="Reports Analyzed" value={data.totalReports.toLocaleString()} />
           </div>
+          <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
+            <Stat label="Churn" value={`${data.churnRate}%`} sub={`${data.churnedSubs} canceled / unpaid`}
+              accent={data.churnRate > 0 ? "text-rose-400" : undefined} />
+            <Stat label="Past due (at risk)" value={`${data.pastDueSubs}`} sub="payment failing"
+              accent={data.pastDueSubs > 0 ? "text-gold-400" : undefined} />
+          </div>
           <p className="mt-4 text-[11px] text-slate-500">
             MRR is based on active plan entitlements ($99 Premium, $399 Agency), including comped accounts.
+            Churn is a lifetime proxy (canceled ÷ canceled+active) until time-series billing is wired (G-14).
           </p>
         </>
       )}
