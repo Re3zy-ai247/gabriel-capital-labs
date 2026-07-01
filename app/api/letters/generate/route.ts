@@ -4,6 +4,7 @@ import { currentUserOrDemo } from "@/lib/session";
 import { enforceRateLimit } from "@/lib/rateLimit";
 import { buildContext, renderTemplateLetter, buildSystemPrompt, buildUserPrompt } from "@/lib/letter";
 import { applyCompliance } from "@/lib/compliance";
+import { encryptText } from "@/lib/docCrypto";
 import { getEntitlement } from "@/lib/entitlements";
 import { presentBureaus, getBureauData } from "@/lib/bureauData";
 import { getFurnisherContact, formatFurnisherAddress } from "@/lib/furnisher";
@@ -64,10 +65,12 @@ async function generateOne(
       recipientType: ctx.strategy.recipient,
       recipientName: ctx.recipientName,
       targetBureau: ctx.targetBureau ?? null,
-      body: text,
+      body: encryptText(text),
       complianceFlags: flags,
     },
   });
+  // Persist ciphertext, but hand the caller/client the plaintext body it needs to render.
+  letter.body = text;
   return { letter, aiRefined, consumerComplete: ctx.consumerComplete, recipientComplete: ctx.recipientComplete };
 }
 

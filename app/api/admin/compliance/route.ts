@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/admin";
 import { applyCompliance, COMPLIANCE_RULES, DISCLAIMER } from "@/lib/compliance";
+import { decryptText } from "@/lib/docCrypto";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +25,8 @@ export async function GET() {
   });
 
   const items = letters.map((l) => {
-    const rescan = applyCompliance(l.body);
+    const body = decryptText(l.body);
+    const rescan = applyCompliance(body);
     return {
       id: l.id,
       userEmail: l.user.email,
@@ -37,7 +39,7 @@ export async function GET() {
       storedFlags: l.complianceFlags,
       rescanFlags: rescan.flags,
       flagged: rescan.flags.length > 0,
-      body: l.body,
+      body,
     };
   });
 

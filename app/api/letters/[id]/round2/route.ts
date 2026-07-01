@@ -4,6 +4,7 @@ import { currentUserOrDemo } from "@/lib/session";
 import { buildContext, renderTemplateLetter, buildSystemPrompt } from "@/lib/letter";
 import { buildRound2UserPrompt, type ResponseAnalysis } from "@/lib/round2";
 import { applyCompliance } from "@/lib/compliance";
+import { encryptText, decryptText } from "@/lib/docCrypto";
 import { getEntitlement, canGenerateLetter } from "@/lib/entitlements";
 import type { Bureau } from "@prisma/client";
 
@@ -90,7 +91,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         messages: [
           {
             role: "user",
-            content: buildRound2UserPrompt(parent.tradeline as any, ctx, body, parent.responseText, analysis),
+            content: buildRound2UserPrompt(parent.tradeline as any, ctx, body, decryptText(parent.responseText), analysis),
           },
         ],
       } as any);
@@ -115,10 +116,12 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       targetBureau: ctx.targetBureau ?? null,
       round: parent.round + 1,
       parentLetterId: parent.id,
-      body: text,
+      body: encryptText(text),
       complianceFlags: flags,
     },
   });
+  // Persist ciphertext, return plaintext for immediate render.
+  letter.body = text;
 
   const after = await getEntitlement(user);
   return NextResponse.json({ ok: true, letter, aiRefined, entitlement: after });

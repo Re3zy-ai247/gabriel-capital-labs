@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { currentUserOrDemo } from "@/lib/session";
+import { decryptText } from "@/lib/docCrypto";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +29,7 @@ export async function GET() {
       complianceFlags: l.complianceFlags,
       createdAt: l.createdAt,
       mailedAt: l.mailedAt,
-      preview: l.body.slice(0, 240),
+      preview: decryptText(l.body).slice(0, 240),
       hasResponse: Boolean(l.responseText),
       responseOutcome: l.responseOutcome,
       responseAnalysis: l.responseAnalysis,

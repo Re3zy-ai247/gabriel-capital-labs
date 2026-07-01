@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { currentUserOrDemo } from "@/lib/session";
 import { extractPdfText } from "@/lib/pdf";
 import { analyzeResponse } from "@/lib/round2";
+import { enforceRateLimit } from "@/lib/rateLimit";
+import { encryptText, decryptText } from "@/lib/docCrypto";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -14,6 +16,12 @@ export const maxDuration = 60;
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const user = await currentUserOrDemo();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  // This route runs an AI analysis (analyzeResponse) — cap it per user so it can't
+  // be spammed for cost/abuse, mirroring the other AI endpoints (letters/generate,
+  // strategist, kai). Fails open.
+  const limited = await enforceRateLimit(`letters-response:${user.id}`, 20, 3600);
+  if (limited) return limited;
 
   const letter = await prisma.letter.findFirst({ where: { id: params.id, userId: user.id } });
   if (!letter) return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -51,7 +59,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
   let analysis = null;
   try {
-    analysis = await analyzeResponse(letter.body, responseText);
+    analysis = await analyzeResponse(decryptText(letter.body), responseText);
   } catch (e) {
     console.error("response analysis failed", e);
   }
@@ -59,7 +67,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   const updated = await prisma.letter.update({
     where: { id: letter.id },
     data: {
-      responseText: responseText.slice(0, 200_000),
+      responseText: encryptText(responseText.slice(0, 200_000)),
       responseOutcome: analysis?.outcome ?? "unknown",
       responseAnalysis: analysis ? JSON.stringify(analysis) : null,
       responseAt: new Date(),

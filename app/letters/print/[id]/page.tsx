@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { currentUserOrDemo } from "@/lib/session";
-import { decryptDocument, docCryptoReady } from "@/lib/docCrypto";
+import { decryptDocument, decryptText, docCryptoReady } from "@/lib/docCrypto";
 import { PrintActions } from "./PrintActions";
 
 export const dynamic = "force-dynamic";
@@ -22,6 +22,8 @@ export default async function LetterPrintPage({ params }: { params: { id: string
   if (!user) return notFound();
   const letter = await prisma.letter.findFirst({ where: { id: params.id, userId: user.id } });
   if (!letter) return notFound();
+  // body is encrypted at rest — decrypt for the printable packet.
+  letter.body = decryptText(letter.body);
 
   // Documents the user toggled "include in letters". Images are decrypted
   // server-side and embedded as data URIs so they print without a public URL.

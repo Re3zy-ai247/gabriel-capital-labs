@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { currentUserOrDemo } from "@/lib/session";
 import { getEntitlement } from "@/lib/entitlements";
 import { applyCompliance } from "@/lib/compliance";
+import { encryptText } from "@/lib/docCrypto";
 import { BUREAU_ADDRESS, BUREAU_LABEL } from "@/lib/bureaus";
 
 export const dynamic = "force-dynamic";
@@ -106,10 +107,12 @@ export async function POST(req: Request) {
         recipientType: "bureau",
         recipientName: addr.name,
         targetBureau: bureau,
-        body: text,
+        body: encryptText(text),
         complianceFlags: flags,
       },
     });
+    // Persist ciphertext, return plaintext for immediate render.
+    letter.body = text;
 
     return NextResponse.json({
       ok: true,
