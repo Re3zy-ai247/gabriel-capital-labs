@@ -69,7 +69,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     data: {
       responseText: encryptText(responseText.slice(0, 200_000)),
       responseOutcome: analysis?.outcome ?? "unknown",
-      responseAnalysis: analysis ? JSON.stringify(analysis) : null,
+      responseAnalysis: analysis ? encryptText(JSON.stringify(analysis)) : null,
       responseAt: new Date(),
       status: "RESPONSE_RECEIVED",
     },

@@ -7,27 +7,31 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-// One-time (idempotent) backfill: encrypts any Letter.body / Letter.responseText
-// still stored as plaintext at rest. Already-encrypted ("cv1:") values and empty
-// ones are skipped, so it is safe to run repeatedly. ADMIN-only — it reads every
-// consumer's dispute-letter + bureau-response PII. Mirrors /api/admin/encrypt-reports.
+// One-time (idempotent) backfill: encrypts any Letter.body / Letter.responseText /
+// Letter.responseAnalysis still stored as plaintext at rest. Already-encrypted
+// ("cv1:") values and empty ones are skipped, so it is safe to run repeatedly.
+// ADMIN-only — it reads every consumer's dispute-letter + bureau-response PII.
+// Mirrors /api/admin/encrypt-reports.
 export async function POST() {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: "Admins only" }, { status: 403 });
 
   const letters = await prisma.letter.findMany({
-    select: { id: true, body: true, responseText: true },
+    select: { id: true, body: true, responseText: true, responseAnalysis: true },
   });
 
   let encrypted = 0;
   let skipped = 0;
   for (const letter of letters) {
-    const data: { body?: string; responseText?: string } = {};
+    const data: { body?: string; responseText?: string; responseAnalysis?: string } = {};
     if (letter.body && !isEncryptedText(letter.body)) {
       data.body = encryptText(letter.body);
     }
     if (letter.responseText && !isEncryptedText(letter.responseText)) {
       data.responseText = encryptText(letter.responseText);
+    }
+    if (letter.responseAnalysis && !isEncryptedText(letter.responseAnalysis)) {
+      data.responseAnalysis = encryptText(letter.responseAnalysis);
     }
     if (Object.keys(data).length === 0) {
       skipped++;

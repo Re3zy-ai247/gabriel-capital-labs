@@ -7,11 +7,14 @@ import { decryptText } from "@/lib/docCrypto";
 export const dynamic = "force-dynamic";
 
 // Return a letter to the client with its at-rest-encrypted fields decrypted.
-function decryptedLetter<T extends { body: string; responseText: string | null }>(l: T): T {
+function decryptedLetter<
+  T extends { body: string; responseText: string | null; responseAnalysis: string | null }
+>(l: T): T {
   return {
     ...l,
     body: decryptText(l.body),
     responseText: l.responseText ? decryptText(l.responseText) : l.responseText,
+    responseAnalysis: l.responseAnalysis ? decryptText(l.responseAnalysis) : l.responseAnalysis,
   };
 }
 

@@ -71,7 +71,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   const analysis: ResponseAnalysis | null = parent.responseAnalysis
     ? (() => {
         try {
-          return JSON.parse(parent.responseAnalysis as string);
+          return JSON.parse(decryptText(parent.responseAnalysis));
         } catch {
           return null;
         }

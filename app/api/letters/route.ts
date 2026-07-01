@@ -32,7 +32,7 @@ export async function GET() {
       preview: decryptText(l.body).slice(0, 240),
       hasResponse: Boolean(l.responseText),
       responseOutcome: l.responseOutcome,
-      responseAnalysis: l.responseAnalysis,
+      responseAnalysis: l.responseAnalysis ? decryptText(l.responseAnalysis) : l.responseAnalysis,
       parentLetterId: l.parentLetterId,
     })),
   });
