@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { currentUserOrDemo } from "@/lib/session";
+import { meteredMessage } from "@/lib/aiMeter";
+import { recordKaiEvent } from "@/lib/kaiEvents";
 import { enforceRateLimit } from "@/lib/rateLimit";
 import { buildContext, renderTemplateLetter, buildSystemPrompt, buildUserPrompt } from "@/lib/letter";
 import { applyCompliance } from "@/lib/compliance";
@@ -37,9 +39,7 @@ async function generateOne(
 
   if (useAI && apiKey) {
     try {
-      const { default: Anthropic } = await import("@anthropic-ai/sdk");
-      const client = new Anthropic({ apiKey });
-      const msg = await client.messages.create({
+      const msg = await meteredMessage("letter-generate", user.id, {
         model: process.env.LLM_MODEL || "claude-opus-4-8",
         max_tokens: 6000,
         thinking: { type: "adaptive" },
@@ -68,6 +68,11 @@ async function generateOne(
       body: encryptText(text),
       complianceFlags: flags,
     },
+  });
+  await recordKaiEvent(user.id, "letter.generated", {
+    refType: "letter",
+    refId: letter.id,
+    payload: { strategy: ctx.strategy.id, recipient: ctx.recipientName, aiRefined },
   });
   // Persist ciphertext, but hand the caller/client the plaintext body it needs to render.
   letter.body = text;

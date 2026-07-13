@@ -5,6 +5,7 @@ import { extractPdfText } from "@/lib/pdf";
 import { analyzeResponse } from "@/lib/round2";
 import { enforceRateLimit } from "@/lib/rateLimit";
 import { encryptText, decryptText } from "@/lib/docCrypto";
+import { recordKaiEvent } from "@/lib/kaiEvents";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -73,6 +74,12 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       responseAt: new Date(),
       status: "RESPONSE_RECEIVED",
     },
+  });
+
+  await recordKaiEvent(user.id, "response.received", {
+    refType: "letter",
+    refId: letter.id,
+    payload: { outcome: updated.responseOutcome, analyzed: analysis !== null },
   });
 
   return NextResponse.json({

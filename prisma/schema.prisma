@@ -499,3 +499,38 @@ model BriefCommentReport {
   @@index([commentId])
 }
 
+
+// BI-COST-01 — one row per AI call, written by lib/aiMeter.ts (self-heal table;
+// costUsd is a list-price ESTIMATE — billing truth is the provider console).
+model AiUsage {
+  id               String   @id @default(cuid())
+  surface          String
+  model            String
+  userId           String?
+  inputTokens      Int      @default(0)
+  outputTokens     Int      @default(0)
+  cacheReadTokens  Int      @default(0)
+  cacheWriteTokens Int      @default(0)
+  costUsd          Float    @default(0)
+  ok               Boolean  @default(true)
+  ms               Int      @default(0)
+  createdAt        DateTime @default(now())
+
+  @@index([surface, createdAt])
+  @@index([userId, createdAt])
+}
+
+// Kai event stream (ADR-0007 E1) — append-only; producers in lib/kaiEvents.ts.
+// Consumers (timeline, Kai Home, digests) render from this, never invent facts.
+model KaiEvent {
+  id         String   @id @default(cuid())
+  userId     String
+  type       String
+  refType    String?
+  refId      String?
+  payload    Json?
+  occurredAt DateTime @default(now())
+
+  @@index([userId, occurredAt])
+  @@index([type, occurredAt])
+}

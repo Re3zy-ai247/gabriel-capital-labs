@@ -5,6 +5,7 @@ import { currentUserOrDemo } from "@/lib/session";
 import { analyzeReportText } from "@/lib/analyze";
 import { extractPdfText } from "@/lib/pdf";
 import { encryptText } from "@/lib/docCrypto";
+import { recordKaiEvent } from "@/lib/kaiEvents";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -92,6 +93,17 @@ export async function POST(req: Request) {
       reportId: report.id,
       rawText: plainText,
       coveredBureaus: bureaus,
+    });
+
+    await recordKaiEvent(user.id, "report.uploaded", {
+      refType: "report",
+      refId: report.id,
+      payload: { fileName, bureaus },
+    });
+    await recordKaiEvent(user.id, "report.analyzed", {
+      refType: "report",
+      refId: report.id,
+      payload: { tradelines: result.tradelines, usedAI: result.usedAI },
     });
 
     if (result.tradelines === 0) {

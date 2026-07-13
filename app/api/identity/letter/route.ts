@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { Bureau } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { currentUserOrDemo } from "@/lib/session";
+import { meteredMessage } from "@/lib/aiMeter";
 import { getEntitlement } from "@/lib/entitlements";
 import { applyCompliance } from "@/lib/compliance";
 import { encryptText } from "@/lib/docCrypto";
@@ -87,9 +88,7 @@ export async function POST(req: Request) {
   ].join("\n");
 
   try {
-    const { default: Anthropic } = await import("@anthropic-ai/sdk");
-    const client = new Anthropic({ apiKey: key });
-    const msg = await client.messages.create({
+    const msg = await meteredMessage("identity-letter", user.id, {
       model: process.env.LLM_MODEL || "claude-opus-4-8",
       max_tokens: 4000,
       system,

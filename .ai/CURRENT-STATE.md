@@ -28,6 +28,9 @@ Report upload → AI parse/analyze → tradelines/scoring → strategist → dis
 - `.env.example` drift: still lists deleted `SETUP_SECRET`; missing `COMPANY_POSTAL_ADDRESS`, `CRON_SECRET`.
 - `tsconfig.tsbuildinfo` is tracked in git (build artifact).
 
+## Build Era — Sprint 1 SHIPPED to working tree (2026-07-12, uncommitted→committed locally, NOT pushed)
+**Roadmap #4 BI-COST-01:** `lib/aiMeter.ts` — `meteredMessage()` now wraps ALL 9 Anthropic call sites (kai, parse, brief-summarize, response-analysis, strategist, identity×2, letter-generate, letter-round2); `AiUsage` self-heal table records tokens/cost-estimate/latency/success per call, fail-open; this is also the ADR-0009 provider seam. **Roadmap #5 ADR-0007 E1:** `lib/kaiEvents.ts` — `KaiEvent` self-heal table + fail-open `recordKaiEvent()`/`listKaiEvents()`; producers live in upload (uploaded+analyzed), re-analyze, letter-generate, letter PATCH (mailed + dispute.resolved), letter response (response.received). Validated: tsc clean · next build clean · guards green (brief-ingest 26/26, kai-sanitize 8/8, classify 29/29). Next: #6 Timeline page + surface AiUsage on `/admin/automation`.
+
 ## Validation status
 `npx tsc --noEmit` clean (2026-07-12) · `next build` ok (2026-06-30) · 9 guard scripts green at last run (see `TESTING.md`).
 

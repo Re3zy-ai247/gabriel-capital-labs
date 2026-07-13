@@ -2,6 +2,7 @@ import { STRATEGIES } from "./strategies";
 import { STATUTES } from "./statutes";
 import { MODULES, BRAND } from "./brand";
 import { applyCompliance } from "./compliance";
+import { meteredMessage } from "./aiMeter";
 
 // Kai — the CreditVector master agent. Named after the founder's Shiba Inu.
 // A grounded, CROA-safe expert that helps AGENCY operators with the law, the
@@ -122,9 +123,7 @@ export async function askKai(input: {
   }
 
   try {
-    const { default: Anthropic } = await import("@anthropic-ai/sdk");
-    const client = new Anthropic({ apiKey: key });
-    const msg = await client.messages.create({
+    const msg = await meteredMessage("kai", null, {
       model: process.env.LLM_MODEL || "claude-opus-4-8",
       max_tokens: 2000,
       thinking: { type: "adaptive" },

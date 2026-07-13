@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { currentUserOrDemo } from "@/lib/session";
 import { analyzeReportText } from "@/lib/analyze";
 import { decryptText } from "@/lib/docCrypto";
+import { recordKaiEvent } from "@/lib/kaiEvents";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -31,6 +32,10 @@ export async function POST(req: Request) {
     });
     created += result.tradelines;
   }
+
+  await recordKaiEvent(user.id, "report.analyzed", {
+    payload: { reportsAnalyzed: reports.length, tradelines: created },
+  });
 
   return NextResponse.json({ ok: true, reportsAnalyzed: reports.length, tradelines: created });
 }

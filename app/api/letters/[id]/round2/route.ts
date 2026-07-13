@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { currentUserOrDemo } from "@/lib/session";
+import { meteredMessage } from "@/lib/aiMeter";
 import { buildContext, renderTemplateLetter, buildSystemPrompt } from "@/lib/letter";
 import { buildRound2UserPrompt, type ResponseAnalysis } from "@/lib/round2";
 import { applyCompliance } from "@/lib/compliance";
@@ -81,9 +82,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   const key = process.env.ANTHROPIC_API_KEY;
   if (entitlement.aiRefinement && key) {
     try {
-      const { default: Anthropic } = await import("@anthropic-ai/sdk");
-      const client = new Anthropic({ apiKey: key });
-      const msg = await client.messages.create({
+      const msg = await meteredMessage("letter-round2", user.id, {
         model: process.env.LLM_MODEL || "claude-opus-4-8",
         max_tokens: 6000,
         thinking: { type: "adaptive" },

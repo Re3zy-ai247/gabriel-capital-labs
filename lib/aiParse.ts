@@ -1,6 +1,7 @@
 import type { Bureau } from "@prisma/client";
 import type { ExtractedTradeline } from "./parse";
 import type { CreditorKind } from "./classify";
+import { meteredMessage } from "./aiMeter";
 
 const CREDITOR_KINDS = ["original_creditor", "debt_buyer", "collection_agency", "government", "unknown"] as const;
 
@@ -133,10 +134,7 @@ export async function aiExtractTradelines(
   if (!key) return null;
   if (!rawText || rawText.trim().length < 20) return null;
 
-  const { default: Anthropic } = await import("@anthropic-ai/sdk");
-  const client = new Anthropic({ apiKey: key });
-
-  const msg = await client.messages.create({
+  const msg = await meteredMessage("parse", null, {
     // Extraction is mechanical — use a faster model by default for speed.
     model: process.env.LLM_PARSE_MODEL || "claude-sonnet-4-6",
     max_tokens: 8000,

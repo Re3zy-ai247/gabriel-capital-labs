@@ -2,6 +2,7 @@ import { randomBytes } from "crypto";
 import { Prisma } from "@prisma/client";
 import { prisma } from "./prisma";
 import { applyCompliance } from "./compliance";
+import { meteredMessage } from "./aiMeter";
 import {
   BRIEF_CATEGORY_KEYS,
   normalizeBriefCategory,
@@ -202,9 +203,7 @@ export async function summarizeArticle(input: { title: string; sourceText: strin
   ].join("\n");
 
   try {
-    const { default: Anthropic } = await import("@anthropic-ai/sdk");
-    const client = new Anthropic({ apiKey: key });
-    const msg = await client.messages.create({
+    const msg = await meteredMessage("brief-summarize", null, {
       model: process.env.LLM_MODEL || "claude-opus-4-8",
       max_tokens: 2200,
       system: BRIEF_SYSTEM,

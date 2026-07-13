@@ -3,6 +3,7 @@ import type { LetterStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { currentUserOrDemo } from "@/lib/session";
 import { decryptText } from "@/lib/docCrypto";
+import { recordKaiEvent } from "@/lib/kaiEvents";
 
 export const dynamic = "force-dynamic";
 
@@ -75,11 +76,24 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     },
   });
 
+  if (status === "MAILED" && !existing.mailedAt) {
+    await recordKaiEvent(user.id, "letter.mailed", {
+      refType: "letter",
+      refId: letter.id,
+      payload: { recipient: existing.recipientName, round: existing.round },
+    });
+  }
+
   // When a dispute is marked RESOLVED, reflect that on the tradeline.
   if (status === "RESOLVED" && existing.tradelineId) {
     await prisma.tradeline.update({
       where: { id: existing.tradelineId },
       data: { resolved: true },
+    });
+    await recordKaiEvent(user.id, "dispute.resolved", {
+      refType: "tradeline",
+      refId: existing.tradelineId,
+      payload: { recipient: existing.recipientName, round: existing.round },
     });
   }
 

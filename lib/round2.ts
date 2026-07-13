@@ -1,5 +1,6 @@
 import { formatCents } from "./utils";
 import type { LetterContext, LetterTradeline } from "./letter";
+import { meteredMessage } from "./aiMeter";
 
 export interface ResponseAnalysis {
   outcome: "verified" | "deleted" | "updated" | "no_response" | "unknown";
@@ -41,9 +42,6 @@ export async function analyzeResponse(
   if (!key) return null;
   if (!responseText || responseText.trim().length < 15) return null;
 
-  const { default: Anthropic } = await import("@anthropic-ai/sdk");
-  const client = new Anthropic({ apiKey: key });
-
   const system = [
     "You analyze a credit reporting agency's or furnisher's WRITTEN RESPONSE to a consumer's FCRA/FDCPA dispute.",
     "Determine precisely what they did and identify concrete weaknesses a lawful follow-up can target.",
@@ -58,7 +56,7 @@ export async function analyzeResponse(
     responseText.slice(0, 40_000),
   ].join("\n");
 
-  const msg = await client.messages.create({
+  const msg = await meteredMessage("response-analysis", null, {
     model: process.env.LLM_PARSE_MODEL || "claude-sonnet-4-6",
     max_tokens: 1500,
     system,
