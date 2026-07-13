@@ -1,6 +1,10 @@
 'use client';
 
 import Link from 'next/link';
+import { StatuteCard } from '@/components/StatuteCard';
+import { STATUTES, type StatuteKey } from '@/lib/statutes';
+
+const STATUTE_ORDER = Object.keys(STATUTES) as StatuteKey[];
 
 const guides = [
   {
@@ -84,6 +88,21 @@ export default function HelpPage() {
               </div>
             </div>
           ))}
+        </div>
+
+        {/* The law, in plain English (W13 statute library) */}
+        <div className="mt-16">
+          <h2 className="text-3xl font-bold mb-3">The law, in plain English</h2>
+          <p className="text-slate-400 mb-8 max-w-3xl">
+            Every statute the letters and I cite, decoded — and one click from the actual operative text, because you
+            should never have to trust a citation you can&apos;t read. These are your existing legal rights; using them
+            is a process, not a guarantee of any outcome.
+          </p>
+          <div className="grid gap-4 md:grid-cols-2">
+            {STATUTE_ORDER.map((k) => (
+              <StatuteCard key={k} statute={k} />
+            ))}
+          </div>
         </div>
 
         {/* Contact Support */}

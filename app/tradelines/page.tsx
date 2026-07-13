@@ -10,6 +10,8 @@ import { presentBureaus, getBureauData, crossBureauConflicts, conflictFields } f
 import { BUREAU_SHORT, BUREAU_LABEL } from "@/lib/bureaus";
 import { formatCents, formatDate } from "@/lib/utils";
 import { fallOffInsight, formatMonthYear, duplicateGroups, groupAdjacentOrder } from "@/lib/tradelineInsights";
+import { StatuteCard } from "@/components/StatuteCard";
+import type { StatuteKey } from "@/lib/statutes";
 
 const BUREAU_ORDER: Bureau[] = ["EQUIFAX", "EXPERIAN", "TRANSUNION"];
 
@@ -45,6 +47,13 @@ export default async function TradelinesPage() {
       `${setAsideCount} ${setAsideCount === 1 ? "is" : "are"} government/statutory — I set ${setAsideCount === 1 ? "it" : "them"} aside so you don't spend a dispute round where it can't work`,
   ].filter(Boolean);
   const ordered = groupAdjacentOrder(tradelines, groups);
+
+  // Contextual statute cards (W13) — only the laws this user's rows actually
+  // invoke, never a generic law dump.
+  const relevantStatutes: StatuteKey[] = [];
+  if (tradelines.some((t) => t.probability !== "NOT_RECOMMENDED")) relevantStatutes.push("fcra_611");
+  if (obsoleteCount > 0 || tradelines.some((t) => t.reasons.some((r) => r.includes("§605")))) relevantStatutes.push("fcra_605");
+  if (tradelines.some((t) => t.accountType === "COLLECTION")) relevantStatutes.push("fdcpa_809");
 
   return (
     <AppShell title="/ Tradelines">
@@ -129,7 +138,7 @@ export default async function TradelinesPage() {
                         className="pill border border-ink-600 bg-ink-700/60 text-slate-400"
                         title={`FCRA §605 limits how long this can report. Based on the first-delinquency date on file, its window ends around ${formatMonthYear(fallOff.fallOffDate)}.`}
                       >
-                        §605: falls off ~{formatMonthYear(fallOff.fallOffDate)}
+                        §605 window ends ~{formatMonthYear(fallOff.fallOffDate)}
                       </span>
                     )}
                   </div>
@@ -219,6 +228,19 @@ export default async function TradelinesPage() {
           </div>
         )}
       </div>
+      {relevantStatutes.length > 0 && (
+        <div className="mt-6">
+          <div className="mb-3 flex items-baseline gap-2">
+            <h3 className="text-sm font-semibold text-slate-200">The law behind these reads</h3>
+            <span className="text-[11px] text-slate-500">only the statutes your rows actually invoke</span>
+          </div>
+          <div className="grid gap-3 md:grid-cols-3">
+            {relevantStatutes.map((k) => (
+              <StatuteCard key={k} statute={k} />
+            ))}
+          </div>
+        </div>
+      )}
       <Disclaimer />
     </AppShell>
   );
