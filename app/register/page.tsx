@@ -23,15 +23,21 @@ export default function RegisterPage() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name, email, password }),
-    });
-    const j = await res.json();
+    }).catch(() => null);
+    if (!res) {
+      setBusy(false);
+      setErr("The connection dropped mid-request. Try again — nothing was lost.");
+      return;
+    }
+    const j = await res.json().catch(() => ({}));
     if (!res.ok) {
       setErr(j.error || "We couldn't create your account. Please try again.");
       setBusy(false);
       return;
     }
-    const s = await signIn("credentials", { email, password, redirect: false });
+    const s = await signIn("credentials", { email, password, redirect: false }).catch(() => null);
     setBusy(false);
+    if (!s) { setErr("Your account is ready — please sign in."); return; }
     if (s?.error) setErr("Your account is ready — please sign in.");
     else router.push("/dashboard");
   }

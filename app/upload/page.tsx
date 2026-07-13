@@ -233,9 +233,13 @@ export default function UploadPage() {
             onClick={async () => {
               setBusy(true);
               setStatus("Re-analyzing stored reports…");
-              const res = await fetch("/api/reports/analyze", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
-              const j = await res.json();
+              const res = await fetch("/api/reports/analyze", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" }).catch(() => null);
               setBusy(false);
+              if (!res) {
+                setStatus("The connection dropped mid-request. Try again — nothing was lost.");
+                return;
+              }
+              const j = await res.json().catch(() => ({}));
               setStatus(res.ok ? `All re-read — ${j.tradelines} tradelines across ${j.reportsAnalyzed} ${j.reportsAnalyzed === 1 ? "report" : "reports"}.` : j.error || "The re-analysis didn't finish. Try again in a moment.");
               await loadReports();
               router.refresh();

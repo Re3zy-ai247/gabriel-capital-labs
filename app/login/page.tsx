@@ -18,9 +18,12 @@ export default function LoginPage() {
     e.preventDefault();
     setBusy(true);
     setErr(null);
-    const res = await signIn("credentials", { email, password, redirect: false });
+    // .catch guards the transport: a network drop must re-enable the button,
+    // never strand the spinner.
+    const res = await signIn("credentials", { email, password, redirect: false }).catch(() => null);
     setBusy(false);
-    if (res?.error) setErr("We couldn't sign you in. Check your details and try again.");
+    if (!res) setErr("The connection dropped mid-request. Try again — nothing was lost.");
+    else if (res.error) setErr("We couldn't sign you in. Check your details and try again.");
     else router.push("/dashboard");
   }
 

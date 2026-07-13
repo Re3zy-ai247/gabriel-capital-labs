@@ -182,11 +182,16 @@ export default function AgencyPage() {
 
   async function openClient(id: string) {
     setBusy(true);
-    await fetch("/api/agency/select", {
+    const res = await fetch("/api/agency/select", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ clientId: id }),
-    });
+    }).catch(() => null);
+    if (!res || !res.ok) {
+      setBusy(false);
+      setError("Could not open that client's workspace. Try again in a moment.");
+      return;
+    }
     router.push("/dashboard");
     router.refresh();
   }

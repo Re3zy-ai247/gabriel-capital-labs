@@ -38,7 +38,12 @@ function ResetInner() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ token, password }),
-    });
+    }).catch(() => null);
+    if (!res) {
+      setBusy(false);
+      setErr("The connection dropped mid-request. Try again — nothing was lost.");
+      return;
+    }
     const j = await res.json().catch(() => ({}));
     setBusy(false);
     if (!res.ok) { setErr(j.error || "Could not reset your password."); return; }

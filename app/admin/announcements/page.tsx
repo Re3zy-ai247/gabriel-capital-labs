@@ -41,8 +41,8 @@ export default function AdminAnnouncementsPage() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(form),
-    });
-    if (r.ok) {
+    }).catch(() => null);
+    if (r?.ok) {
       setForm({ title: "", body: "", tone: "info" });
       await load();
     }

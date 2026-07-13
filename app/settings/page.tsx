@@ -94,7 +94,12 @@ export default function SettingsPage() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...profile, email, ...(emailChanged ? { currentPassword: emailPw } : {}) }),
-    });
+    }).catch(() => null);
+    if (!res) {
+      setBusy(false);
+      setStatus("The connection dropped mid-request. Try again — nothing was lost.");
+      return;
+    }
     const d = await res.json().catch(() => ({}));
     setBusy(false);
     if (!res.ok) {

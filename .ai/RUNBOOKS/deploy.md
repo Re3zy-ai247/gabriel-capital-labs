@@ -20,3 +20,6 @@ Branch → `git push -u origin <branch>` → Vercel auto-builds a Preview. URL v
 ## Gotchas
 - Build command lives in `vercel.json`, NOT package.json (it includes the tolerated `prisma db push`).
 - Schema changes do NOT deploy via push — see `schema-change.md`.
+
+## Operations
+Deployment protocol, incident triage (x-cv-release skew rule), CDN cache contract, and the skew-protection posture live in the root [OPERATIONS.md](../../OPERATIONS.md) — read it before changing deploy behavior.

@@ -94,8 +94,8 @@ export default function AdminUsersPage() {
 
   async function impersonate(id: string) {
     setBusy(true);
-    const r = await fetch(`/api/admin/users/${id}/impersonate`, { method: "POST" });
-    if (r.ok) {
+    const r = await fetch(`/api/admin/users/${id}/impersonate`, { method: "POST" }).catch(() => null);
+    if (r?.ok) {
       router.push("/dashboard");
       router.refresh();
     } else {
