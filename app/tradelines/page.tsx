@@ -8,6 +8,7 @@ import { currentUserOrDemo } from "@/lib/session";
 import { presentBureaus, getBureauData, crossBureauConflicts } from "@/lib/bureauData";
 import { BUREAU_SHORT } from "@/lib/bureaus";
 import { formatCents } from "@/lib/utils";
+import { fallOffInsight, formatMonthYear, duplicateGroups, groupAdjacentOrder } from "@/lib/tradelineInsights";
 
 export const dynamic = "force-dynamic";
 
@@ -29,11 +30,18 @@ export default async function TradelinesPage() {
   const conflictCount = tradelines.filter((t) => crossBureauConflicts(getBureauData(t.bureauData)).length > 0).length;
   const obsoleteCount = tradelines.filter((t) => t.reasons.some((r) => r.includes("§605"))).length;
   const debtBuyerCount = tradelines.filter((t) => t.isDebtBuyer).length;
+  const groups = duplicateGroups(tradelines);
+  const dupCount = tradelines.filter((t) => t.duplicateGroup && groups.has(t.duplicateGroup)).length;
+  const setAsideCount = tradelines.filter((t) => t.probability === "NOT_RECOMMENDED").length;
   const findings = [
     conflictCount > 0 && `${conflictCount} carr${conflictCount === 1 ? "ies" : "y"} cross-bureau inconsistencies`,
     obsoleteCount > 0 && `${obsoleteCount} ${obsoleteCount === 1 ? "is" : "are"} past the §605 reporting window`,
+    dupCount > 0 && `${dupCount} appear to be the same underlying debt reported more than once`,
     debtBuyerCount > 0 && `${debtBuyerCount} ${debtBuyerCount === 1 ? "is a debt-buyer collection" : "are debt-buyer collections"}`,
+    setAsideCount > 0 &&
+      `${setAsideCount} ${setAsideCount === 1 ? "is" : "are"} government/statutory — I set ${setAsideCount === 1 ? "it" : "them"} aside so you don't spend a dispute round where it can't work`,
   ].filter(Boolean);
+  const ordered = groupAdjacentOrder(tradelines, groups);
 
   return (
     <AppShell title="/ Tradelines">
@@ -70,13 +78,52 @@ export default async function TradelinesPage() {
           <div className="col-span-1">Priority</div>
           <div className="col-span-1"></div>
         </div>
-        {tradelines.map((t) => {
+        {ordered.map((t) => {
           const data = getBureauData(t.bureauData);
           const present = presentBureaus(data).map((b) => BUREAU_SHORT[b]);
+          const dupSize = t.duplicateGroup ? groups.get(t.duplicateGroup) : undefined;
+          const fallOff = fallOffInsight(t);
+          // Quiet countdown chip only when the §605 clock is actually in play:
+          // already past the window, or ending within two years. Silence otherwise.
+          const showClock = fallOff && (fallOff.pastWindow || fallOff.monthsRemaining <= 24);
           return (
-            <div key={t.id} className="grid grid-cols-12 items-center gap-2 border-b border-ink-700/50 px-4 py-3 text-sm last:border-0">
+            <div
+              key={t.id}
+              className={`grid grid-cols-12 items-center gap-2 border-b border-ink-700/50 px-4 py-3 text-sm last:border-0 ${dupSize ? "border-l-2 border-l-ocean-500/50" : ""}`}
+            >
               <div className="col-span-4 min-w-0">
-                <div className="truncate font-medium">{t.creditorName}{t.isDebtBuyer && <span className="ml-2 pill bg-rose-500/10 text-rose-300">debt buyer</span>}</div>
+                <div className="truncate font-medium">
+                  {t.creditorName}
+                  {t.isDebtBuyer && <span className="ml-2 pill bg-rose-500/10 text-rose-300">debt buyer</span>}
+                </div>
+                {(dupSize || showClock) && (
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    {dupSize && (
+                      <span
+                        className="pill border border-ocean-500/30 bg-ocean-500/10 text-ocean-300"
+                        title={`These ${dupSize} entries appear to report the same underlying debt. They're grouped together here — start with the strongest one.`}
+                      >
+                        same debt ×{dupSize}
+                      </span>
+                    )}
+                    {showClock && fallOff.pastWindow && (
+                      <span
+                        className="pill border border-brand-500/30 bg-brand-500/10 text-brand-300"
+                        title={`Past the ${fallOff.windowYears}-year FCRA §605 reporting window based on the first-delinquency date on file — a strong obsolescence dispute.`}
+                      >
+                        §605 window passed
+                      </span>
+                    )}
+                    {showClock && !fallOff.pastWindow && (
+                      <span
+                        className="pill border border-ink-600 bg-ink-700/60 text-slate-400"
+                        title={`FCRA §605 limits how long this can report. Based on the first-delinquency date on file, its window ends around ${formatMonthYear(fallOff.fallOffDate)}.`}
+                      >
+                        §605: falls off ~{formatMonthYear(fallOff.fallOffDate)}
+                      </span>
+                    )}
+                  </div>
+                )}
                 {t.reasons[0] && <div className="truncate text-xs text-slate-500" title={t.reasons[0]}>{t.reasons[0]}</div>}
               </div>
               <div className="col-span-2 text-xs text-slate-400">{TYPE_LABEL[t.accountType]}</div>
@@ -84,10 +131,17 @@ export default async function TradelinesPage() {
               <div className="col-span-2"><BureauBadges bureaus={present} /></div>
               <div className="col-span-1"><ProbabilityBadge p={t.probability} /></div>
               <div className="col-span-1 text-right">
-                {t.probability !== "NOT_RECOMMENDED" && (
+                {t.probability !== "NOT_RECOMMENDED" ? (
                   <Link href={`/letters?tradeline=${t.id}`} className="text-xs font-semibold text-brand-400 hover:text-brand-300">
                     Dispute →
                   </Link>
+                ) : (
+                  <span
+                    className="text-[11px] text-slate-500"
+                    title={t.reasons[0] ?? "Government/statutory debt generally can't be disputed off a report — I've excluded it so you don't waste a round."}
+                  >
+                    set aside
+                  </span>
                 )}
               </div>
             </div>

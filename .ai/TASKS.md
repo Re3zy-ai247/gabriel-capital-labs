@@ -11,11 +11,11 @@ Compact, current-only. Done items get deleted (history lives in git). Company ba
 - [ ] MDG verify: Re-analyze a report (also backfills furnisher addresses)
 
 ## Engineering (next up)
-- [ ] Add `List-Unsubscribe` header to the digest before/at go-live
 - [ ] G-14: real Stripe MRR on `/admin` overview or label "estimated"; unify `overview`/`stats`
-- [ ] `.env.example` hygiene: drop `SETUP_SECRET`/`STRIPE_PRICE_ID`, add `COMPANY_POSTAL_ADDRESS`+`CRON_SECRET` (names only)
 - [ ] Regenerate favicon/PWA/OG from de-shadowed `logo-mark.png`
-- [ ] Untrack `tsconfig.tsbuildinfo` (add to `.gitignore`)
+- [ ] Deferred perf items (Sprint-1 auditor log): landing force-dynamic→middleware · Sidebar context fetches→provider · letters/upload server-prefetch · letters form htmlFor/id pass
+
+Verified already done (removed 2026-07-12): `List-Unsubscribe` + One-Click headers live in `lib/briefDigest.ts` · `*.tsbuildinfo` untracked & gitignored · `.env.example` updated (adds `CRON_SECRET`+`COMPANY_POSTAL_ADDRESS`; `SETUP_SECRET`/`STRIPE_PRICE_ID` are still live code paths, so kept with a delete-after-bootstrap warning instead of dropped).
 
 ## Candidate features (unscheduled)
 - [ ] Brief stat/data cards · [ ] Brief admin image-upload (licensed/.gov only)

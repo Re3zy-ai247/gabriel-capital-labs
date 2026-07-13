@@ -6,10 +6,12 @@ import { LineChart, Loader2, Plus } from "lucide-react";
 
 interface Entry { id: string; bureau: string; score: number; recordedAt: string; }
 
+// Series colors from the token palette (brand teal / ocean blue / gold) — green
+// stays reserved for success states, so it isn't a bureau color.
 const BUREAUS = [
-  { id: "EQUIFAX", label: "Equifax", color: "#34d399" },
+  { id: "EQUIFAX", label: "Equifax", color: "#28c2db" },
   { id: "EXPERIAN", label: "Experian", color: "#60a5fa" },
-  { id: "TRANSUNION", label: "TransUnion", color: "#f59e0b" },
+  { id: "TRANSUNION", label: "TransUnion", color: "#f2c14e" },
 ];
 const COLOR: Record<string, string> = Object.fromEntries(BUREAUS.map((b) => [b.id, b.color]));
 
@@ -61,6 +63,23 @@ export default function ScoresPage() {
     return m;
   }, [entries]);
 
+  // The arc: first → latest per bureau, only when there are 2+ entries to compare.
+  const arcs = useMemo(() => {
+    const m: Record<string, { delta: number; since: string; count: number }> = {};
+    for (const b of BUREAUS) {
+      const list = entries.filter((e) => e.bureau === b.id);
+      if (list.length >= 2) {
+        const first = list[0], last = list[list.length - 1];
+        m[b.id] = {
+          delta: last.score - first.score,
+          since: new Date(first.recordedAt).toLocaleDateString("en-US", { month: "short", year: "numeric", timeZone: "UTC" }),
+          count: list.length,
+        };
+      }
+    }
+    return m;
+  }, [entries]);
+
   return (
     <AppShell title="/ Score Tracker">
       <EduBanner />
@@ -74,14 +93,25 @@ export default function ScoresPage() {
 
       {/* Latest scores */}
       <div className="mb-4 grid grid-cols-3 gap-3">
-        {BUREAUS.map((b) => (
-          <div key={b.id} className="card p-4 text-center">
-            <div className="text-[11px] uppercase text-slate-400">{b.label}</div>
-            <div className="text-2xl font-bold" style={{ color: b.color }}>
-              {latest[b.id]?.score ?? "—"}
+        {BUREAUS.map((b) => {
+          const arc = arcs[b.id];
+          return (
+            <div key={b.id} className="card p-4 text-center">
+              <div className="text-[11px] uppercase text-slate-400">{b.label}</div>
+              <div className="text-2xl font-bold tnum" style={{ color: b.color }}>
+                {latest[b.id]?.score ?? "—"}
+              </div>
+              {arc && (
+                <div
+                  className={`mt-0.5 text-[11px] font-medium tnum ${arc.delta > 0 ? "text-success-400" : arc.delta < 0 ? "text-rose-400" : "text-slate-500"}`}
+                  title={`${arc.count} entries logged for ${b.label} — the change from your first entry to your latest.`}
+                >
+                  {arc.delta > 0 ? "+" : ""}{arc.delta} since {arc.since}
+                </div>
+              )}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Chart */}
@@ -144,28 +174,57 @@ function ScoreChart({ entries }: { entries: Entry[] }) {
   const x = (t: number) => (tMax === tMin ? PAD : PAD + ((t - tMin) / (tMax - tMin)) * (W - 2 * PAD));
   const y = (s: number) => H - PAD - ((s - sMin) / (sMax - sMin)) * (H - 2 * PAD);
 
-  const series = BUREAUS.map((b) => ({
-    color: b.color,
-    pts: entries.filter((e) => e.bureau === b.id).map((e) => ({ cx: x(new Date(e.recordedAt).getTime()), cy: y(e.score) })),
-  }));
+  const series = BUREAUS.map((b) => {
+    const list = entries.filter((e) => e.bureau === b.id);
+    return {
+      label: b.label,
+      color: b.color,
+      list,
+      pts: list.map((e) => ({ cx: x(new Date(e.recordedAt).getTime()), cy: y(e.score) })),
+    };
+  });
+
+  const described = series
+    .filter((s) => s.list.length > 0)
+    .map((s) =>
+      s.list.length > 1
+        ? `${s.label}: ${s.list.length} entries, ${s.list[0].score} to ${s.list[s.list.length - 1].score}`
+        : `${s.label}: 1 entry at ${s.list[0].score}`
+    )
+    .join(". ");
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ maxHeight: 240 }}>
-      {/* gridlines at 550, 670, 740 */}
+    <svg
+      viewBox={`0 0 ${W} ${H}`}
+      className="w-full"
+      style={{ maxHeight: 240 }}
+      role="img"
+      aria-label={`Score history you logged. ${described}.`}
+    >
       {[400, 550, 670, 740, 800].map((s) => (
         <g key={s}>
-          <line x1={PAD} y1={y(s)} x2={W - PAD} y2={y(s)} stroke="#1e293b" strokeWidth="1" />
-          <text x={4} y={y(s) + 3} fontSize="9" fill="#64748b">{s}</text>
+          <line x1={PAD} y1={y(s)} x2={W - PAD} y2={y(s)} className="stroke-ink-700" strokeWidth="1" />
+          <text x={4} y={y(s) + 3} fontSize="9" className="fill-slate-500">{s}</text>
         </g>
       ))}
       {series.map((ser, i) =>
         ser.pts.length > 1 ? (
-          <polyline key={i} fill="none" stroke={ser.color} strokeWidth="2"
-            points={ser.pts.map((p) => `${p.cx},${p.cy}`).join(" ")} />
+          <polyline
+            key={i}
+            fill="none"
+            stroke={ser.color}
+            strokeWidth="2"
+            points={ser.pts.map((p) => `${p.cx},${p.cy}`).join(" ")}
+            pathLength={1}
+            className="animate-draw"
+            style={{ strokeDasharray: 1, strokeDashoffset: 1 }}
+          />
         ) : null
       )}
       {series.map((ser, i) =>
-        ser.pts.map((p, j) => <circle key={`${i}-${j}`} cx={p.cx} cy={p.cy} r="3" fill={ser.color} />)
+        ser.pts.map((p, j) => (
+          <circle key={`${i}-${j}`} cx={p.cx} cy={p.cy} r="3" fill={ser.color} className="animate-fadein" />
+        ))
       )}
     </svg>
   );

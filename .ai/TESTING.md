@@ -22,6 +22,8 @@ npx tsx scripts/<name>.test.ts   # guard scripts (below)
 | `youtube.test.ts` | embed host-allowlist/spoof defense | 25/25 |
 | `obsolescence.test.ts` | §605 7yr/10yr windows | green |
 | `formatDate.test.ts` | date formatting | green |
+| `kai-manifest.test.ts` | Kai asset manifest laws | 44/44 |
+| `tradeline-insights.test.ts` | §605 fall-off display math + duplicate grouping | 9/9 |
 
 ## Prod probes (auth gates, run after deploy)
 `curl` https://www.creditvector.app — expect: public pages **200**; protected APIs (`/api/letters` etc.) **401/403**; admin routes + `/api/admin/migrate` **403**; unsigned Stripe webhook **400**. Never expect a 200-with-effect from an unauthenticated call.
