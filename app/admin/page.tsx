@@ -17,6 +17,7 @@ interface Overview {
   totalReports: number;
   mrr: number;
   arr: number;
+  mrrSource?: "stripe" | "estimated";
   conversionRate: number;
   churnedSubs: number;
   pastDueSubs: number;
@@ -83,9 +84,14 @@ export default function AdminOverviewPage() {
       ) : (
         <>
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-            <Stat label="MRR" value={money(data.mrr)} sub={`${money(data.arr)} ARR`} accent="text-brand-400" />
+            <Stat
+              label={data.mrrSource === "stripe" ? "MRR (Stripe)" : "MRR (estimated)"}
+              value={money(data.mrr)}
+              sub={`${money(data.arr)} ARR`}
+              accent="text-brand-400"
+            />
             <Stat label="Paid Subscriptions" value={`${data.premiumUsers + data.agencyUsers}`}
-              sub={`${data.premiumUsers} premium · ${data.agencyUsers} agency`} accent="text-emerald-400" />
+              sub={`${data.premiumUsers} premium · ${data.agencyUsers} agency`} accent="text-success-400" />
             <Stat label="Active in Stripe" value={`${data.activeSubs}`} sub="active / trialing / past-due" />
             <Stat label="Conversion" value={`${data.conversionRate}%`} sub="paid / total accounts" accent="text-gold-400" />
           </div>
@@ -102,8 +108,10 @@ export default function AdminOverviewPage() {
               accent={data.pastDueSubs > 0 ? "text-gold-400" : undefined} />
           </div>
           <p className="mt-4 text-[11px] text-slate-500">
-            MRR is based on active plan entitlements ($99 Premium, $399 Agency), including comped accounts.
-            Churn is a lifetime proxy (canceled ÷ canceled+active) until time-series billing is wired (G-14).
+            {data.mrrSource === "stripe"
+              ? "MRR is summed from live Stripe subscriptions (active + past-due, normalized monthly; trials and comped accounts excluded)."
+              : "MRR is an ESTIMATE from plan entitlements ($99 Premium, $399 Agency) — Stripe was unreachable; comped accounts inflate it."}{" "}
+            Churn is a lifetime proxy (canceled ÷ canceled+active) until time-series billing is wired.
           </p>
         </>
       )}

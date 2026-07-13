@@ -201,3 +201,34 @@ export function siteUrl(): string {
     "http://localhost:3000"
   );
 }
+
+// G-14: real MRR from live Stripe subscriptions, normalized to monthly cents.
+// Definition: sums active + past_due subscription items (committed revenue —
+// past_due until Stripe cancels it); EXCLUDES trialing (no money collected yet)
+// and comped/entitlement-only accounts (they have no Stripe subscription).
+// Yearly prices count at 1/12 per month. Returns null when Stripe is
+// unconfigured or the API errors — callers fall back to a labeled estimate.
+export async function liveMrrCents(): Promise<number | null> {
+  const stripe = getStripe();
+  if (!stripe) return null;
+  try {
+    let total = 0;
+    for (const status of ["active", "past_due"] as const) {
+      for await (const sub of stripe.subscriptions.list({ status, limit: 100 })) {
+        for (const item of sub.items.data) {
+          const price = item.price;
+          if (!price?.recurring || price.unit_amount == null) continue;
+          const per = price.unit_amount * (item.quantity ?? 1);
+          const { interval, interval_count: n } = price.recurring;
+          if (interval === "month") total += per / n;
+          else if (interval === "year") total += per / (12 * n);
+          // week/day intervals aren't sold — skip rather than guess.
+        }
+      }
+    }
+    return Math.round(total);
+  } catch (e) {
+    console.error("liveMrrCents failed (falling back to estimate)", e);
+    return null;
+  }
+}

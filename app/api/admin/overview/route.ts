@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/admin";
-import { PREMIUM_PRICE_CENTS, AGENCY_PRICE_CENTS } from "@/lib/stripe";
+import { PREMIUM_PRICE_CENTS, AGENCY_PRICE_CENTS, liveMrrCents } from "@/lib/stripe";
 
 export const dynamic = "force-dynamic";
 
@@ -25,7 +25,10 @@ export async function GET() {
       prisma.user.count({ where: { subscriptionStatus: "past_due" } }),
     ]);
 
-  const mrrCents = premiumUsers * PREMIUM_PRICE_CENTS + agencyUsers * AGENCY_PRICE_CENTS;
+  // G-14: real Stripe revenue first; the counts×price estimate only as a labeled
+  // fallback (it overcounts comped accounts and ignores annual discounts).
+  const stripeMrrCents = await liveMrrCents();
+  const mrrCents = stripeMrrCents ?? premiumUsers * PREMIUM_PRICE_CENTS + agencyUsers * AGENCY_PRICE_CENTS;
   const paid = premiumUsers + agencyUsers;
 
   return NextResponse.json({
@@ -39,6 +42,7 @@ export async function GET() {
     totalReports,
     mrr: mrrCents / 100,
     arr: (mrrCents * 12) / 100,
+    mrrSource: stripeMrrCents != null ? "stripe" : "estimated",
     conversionRate: totalUsers ? Math.round((paid / totalUsers) * 1000) / 10 : 0,
     churnedSubs,
     pastDueSubs,

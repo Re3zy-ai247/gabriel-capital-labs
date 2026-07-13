@@ -11,7 +11,6 @@ Compact, current-only. Done items get deleted (history lives in git). Company ba
 - [ ] MDG verify: Re-analyze a report (also backfills furnisher addresses)
 
 ## Engineering (next up)
-- [ ] G-14: real Stripe MRR on `/admin` overview or label "estimated"; unify `overview`/`stats`
 - [ ] Regenerate favicon/PWA/OG from de-shadowed `logo-mark.png`
 - [ ] Deferred perf items (Sprint-1 auditor log): landing force-dynamic→middleware · Sidebar context fetches→provider · letters/upload server-prefetch · letters form htmlFor/id pass
 
