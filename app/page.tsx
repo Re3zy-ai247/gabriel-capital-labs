@@ -1,7 +1,4 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { BRAND, MODULES } from "@/lib/brand";
 import { SiteNav } from "@/components/marketing/SiteNav";
 import { SiteFooter } from "@/components/marketing/SiteFooter";
@@ -31,8 +28,8 @@ import {
   MessagesSquare,
 } from "lucide-react";
 
-export const dynamic = "force-dynamic";
-
+// Fully static — middleware.ts handles the signed-in → /dashboard redirect, so
+// no session read (and no dynamic rendering) is needed here.
 const STEPS = [
   { icon: Upload, title: "Upload your reports", body: "Pull your free reports from AnnualCreditReport.com. The AI reads all three bureaus in seconds." },
   { icon: ScanSearch, title: "See what can be disputed", body: "Every inaccuracy, inconsistency, and unverifiable item is flagged and explained across Equifax, Experian, and TransUnion." },
@@ -82,10 +79,7 @@ const COMMUNITY_POINTS = [
   "A searchable knowledge base your team can build on",
 ];
 
-export default async function Home() {
-  const session = await getServerSession(authOptions);
-  if (session) redirect("/dashboard");
-
+export default function Home() {
   const soon = MODULES.filter((m) => m.status === "soon");
 
   return (
