@@ -6,18 +6,23 @@ import { prisma } from "@/lib/prisma";
 import { currentUserOrDemo } from "@/lib/session";
 import { BUREAU_LABEL } from "@/lib/bureaus";
 import { yearsSince } from "@/lib/utils";
+import { getKaiHomeData, REINVESTIGATION_DAYS } from "@/lib/kaiHome";
 import type { Bureau } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 
+// Kai Home (ADR-0007 E2): the dashboard as a morning briefing — overnight
+// delta, one recommended action with its receipt, the deadline radar, and a
+// timeline snippet. All passive intelligence; zero AI calls on this page.
 export default async function DashboardPage() {
   const user = await currentUserOrDemo();
-  if (!user) return <AppShell title="/ Dashboard"><p className="text-slate-400">Please sign in.</p></AppShell>;
+  if (!user) return <AppShell title="/ Kai Home"><p className="text-slate-400">Please sign in.</p></AppShell>;
 
-  const [tradelines, letters, reports] = await Promise.all([
+  const [tradelines, letters, reports, kai] = await Promise.all([
     prisma.tradeline.findMany({ where: { userId: user.id } }),
     prisma.letter.findMany({ where: { userId: user.id } }),
     prisma.report.findMany({ where: { userId: user.id } }),
+    getKaiHomeData(user.id),
   ]);
 
   // Single source of truth — every metric derives from these arrays so they reconcile.
@@ -29,8 +34,7 @@ export default async function DashboardPage() {
   const completion = negative ? Math.round((resolved / negative) * 100) : 0;
 
   // Quick wins: items past the 7-year FCRA §605 reporting window are the cleanest
-  // removals (must drop off), so they should be attacked first. Computed from the
-  // date of first delinquency on each unresolved item.
+  // removals (must drop off), so they should be attacked first.
   const aged = tradelines
     .filter((t) => !t.resolved)
     .map((t) => ({ t, yrs: yearsSince(t.dateOfFirstDelinquency) }))
@@ -38,16 +42,6 @@ export default async function DashboardPage() {
   const obsolete = aged.filter((x) => x.yrs >= 7).sort((a, b) => b.yrs - a.yrs);
   const nearObsolete = aged.filter((x) => x.yrs >= 6 && x.yrs < 7);
 
-  // Follow-up clock (same logic the agency roster uses, for the user's own
-  // disputes): a mailed letter triggers the ~30-day FCRA reinvestigation window,
-  // after which it's time to escalate to the next round.
-  const DAY = 86_400_000;
-  const nowMs = Date.now();
-  const followUps = letters
-    .filter((l) => l.mailedAt)
-    .map((l) => ({ l, days: Math.floor((nowMs - new Date(l.mailedAt as Date).getTime()) / DAY) }))
-    .filter((x) => x.days >= 20)
-    .sort((a, b) => b.days - a.days);
   const firstName = (user.fullName || user.name || "").trim().split(" ")[0] || "there";
 
   const byBureau = (b: Bureau) => {
@@ -59,40 +53,92 @@ export default async function DashboardPage() {
     return { total: inB.length, resolved: res };
   };
 
+  const eventLabel = (e: (typeof kai.recentEvents)[number]) => {
+    const p = (e.payload ?? {}) as Record<string, unknown>;
+    switch (e.type) {
+      case "report.uploaded": return "Credit report uploaded";
+      case "report.analyzed": return `Report analyzed — ${String(p.tradelines ?? "")} accounts reviewed`;
+      case "letter.generated": return "Dispute letter generated";
+      case "letter.mailed": return `Round ${String(p.round ?? "")} mailed to ${String(p.recipient ?? "")}`;
+      case "response.received": return `Bureau response logged (${String(p.outcome ?? "recorded")})`;
+      case "dispute.resolved": return "Item marked resolved";
+      default: return e.type;
+    }
+  };
+
   return (
-    <AppShell title="/ Dashboard">
+    <AppShell title="/ Kai Home">
       <EduBanner />
+
+      {/* Greeting — neutral wording on purpose: the server can't know the user's
+          local time-of-day, and a wrong "good morning" costs more trust than a
+          right one earns (Art. II applied to microcopy). */}
       <div className="mb-4 animate-rise">
-        <h2 className="text-2xl font-bold">Welcome back, {firstName} 👋</h2>
-        <p className="text-sm text-slate-400">Here&apos;s where your disputes stand today.</p>
+        <div className="flex items-center gap-2">
+          <span className="rounded-md bg-brand-500/15 px-1.5 py-0.5 text-[10px] font-bold tracking-widest text-brand-300">KAI</span>
+          <h2 className="text-2xl font-bold">Welcome back, {firstName}.</h2>
+        </div>
+        <p className="mt-1 text-sm text-slate-400">
+          {kai.overnight.length > 0 ? "Here's what happened since your last visit:" : "Your file is quiet — here's where everything stands."}
+        </p>
+        {kai.overnight.length > 0 && (
+          <ul className="mt-2 space-y-1">
+            {kai.overnight.map((o, i) => (
+              <li key={i} className="text-sm text-slate-300">
+                <span className="mr-1.5 text-brand-400">✓</span>
+                <Link href={o.href} className="hover:underline">{o.text}</Link>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
-      {followUps.length > 0 && (
+      {/* KAI RECOMMENDS — one action at a time, always with its receipt. */}
+      {kai.recommendation && (
+        <div className="card animate-rise mb-4 border-brand-500/40 bg-brand-500/[0.06] p-5">
+          <div className="text-[10px] font-bold uppercase tracking-widest text-brand-300">Kai recommends</div>
+          <div className="mt-1.5 text-base font-semibold">{kai.recommendation.title}</div>
+          <p className="mt-1 max-w-2xl text-sm text-slate-400">{kai.recommendation.body}</p>
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <Link href={kai.recommendation.href} className="btn-primary">{kai.recommendation.cta} →</Link>
+            <span className="text-[11px] text-slate-500">{kai.recommendation.basis}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Deadline radar — the §611 clock, per unanswered mailed letter. */}
+      {kai.deadlines.length > 0 && (
         <div className="card animate-rise mb-4 border-gold-500/30 bg-gold-500/[0.05] p-5">
-          <div className="text-sm font-semibold text-gold-300">⏱ Disputes awaiting follow-up</div>
+          <div className="text-sm font-semibold text-gold-300">⏱ Deadline radar</div>
           <p className="mt-1 text-xs text-slate-400">
-            The bureau has ~30 days to reinvestigate after a dispute is mailed. When that passes, escalate to the next round.
+            Bureaus have ~{REINVESTIGATION_DAYS} days to reinvestigate after a dispute is mailed (FCRA §611). When a window closes, log the response or escalate.
           </p>
           <div className="mt-3 space-y-2">
-            {followUps.slice(0, 6).map(({ l, days }) => {
-              const due = days >= 30 && !l.responseText;
+            {kai.deadlines.map((d) => {
+              const overdue = d.daysLeft <= 0;
+              const closing = d.daysLeft > 0 && d.daysLeft <= 5;
               return (
                 <div
-                  key={l.id}
+                  key={d.letterId}
                   className={`flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3 ${
-                    due ? "border-rose-500/40 bg-rose-500/[0.05]" : "border-ink-700/70"
+                    overdue ? "border-rose-500/40 bg-rose-500/[0.05]" : closing ? "border-gold-500/40" : "border-ink-700/70"
                   }`}
                 >
                   <div className="min-w-0 text-sm">
-                    <span className="font-medium">{l.recipientName}</span>
-                    <span className="ml-2 text-[11px] text-slate-500">Round {l.round} · day {days}</span>
+                    <span className="font-medium">{d.recipient}</span>
+                    <span className="ml-2 text-[11px] text-slate-500">Round {d.round} · day {d.daysElapsed} of {REINVESTIGATION_DAYS}</span>
                   </div>
-                  <Link
-                    href="/letters"
-                    className={`shrink-0 text-xs font-semibold ${due ? "text-rose-300" : "text-slate-400"} hover:underline`}
-                  >
-                    {due ? "Ready for next round →" : `Due in ${Math.max(0, 30 - days)}d`}
-                  </Link>
+                  <div className="flex shrink-0 items-center gap-3">
+                    <div className="hidden h-1.5 w-24 overflow-hidden rounded-full bg-ink-700 sm:block" aria-hidden>
+                      <div
+                        className={`h-full ${overdue ? "bg-rose-500" : "bg-gold-500"}`}
+                        style={{ width: `${Math.min(100, Math.round((d.daysElapsed / REINVESTIGATION_DAYS) * 100))}%` }}
+                      />
+                    </div>
+                    <Link href="/letters" className={`text-xs font-semibold hover:underline ${overdue ? "text-rose-300" : "text-slate-400"}`}>
+                      {overdue ? "Window passed — act →" : `${d.daysLeft}d left`}
+                    </Link>
+                  </div>
                 </div>
               );
             })}
@@ -100,12 +146,12 @@ export default async function DashboardPage() {
         </div>
       )}
 
-      {reports.length === 0 && (
+      {reports.length === 0 && !kai.recommendation && (
         <div className="card mb-4 flex flex-col items-start gap-3 border-brand-500/30 bg-brand-500/5 p-6 md:flex-row md:items-center md:justify-between">
           <div>
-            <div className="text-base font-semibold">Let&apos;s get started 👋</div>
+            <div className="text-base font-semibold">Let&apos;s get started</div>
             <p className="mt-1 text-sm text-slate-400">
-              Upload your credit report and we&apos;ll analyze every account, flag what can be disputed, and draft your letters.
+              Upload your credit report and Kai will analyze every account, flag what can be disputed, and draft your letters.
             </p>
           </div>
           <Link href="/upload" className="btn-primary shrink-0">Upload your report</Link>
@@ -113,9 +159,9 @@ export default async function DashboardPage() {
       )}
 
       {obsolete.length > 0 && (
-        <div className="card mb-4 border-emerald-500/30 bg-emerald-500/[0.06] p-5">
-          <div className="flex items-center gap-2 text-sm font-semibold text-emerald-300">
-            ⚡ Quick Wins — easiest deletions first
+        <div className="card mb-4 border-success-500/30 bg-success-500/[0.06] p-5">
+          <div className="flex items-center gap-2 text-sm font-semibold text-success-300">
+            ⚡ Quick Wins — easiest disputes first
           </div>
           <p className="mt-1 max-w-2xl text-sm text-slate-400">
             {obsolete.length} item{obsolete.length === 1 ? " is" : "s are"} past the 7-year FCRA reporting window (§605)
@@ -172,11 +218,17 @@ export default async function DashboardPage() {
             <div className="h-full bg-brand-500" style={{ width: `${completion}%` }} />
           </div>
         </div>
+        {/* Real derived signal (replaces the old estimated-points placeholder — CX-2). */}
         <div className="card p-5">
-          <div className="text-xs uppercase tracking-wide text-slate-400">Est. Points Recovered</div>
-          <div className="mt-2 text-3xl font-bold text-gold-400">~ estimate</div>
-          <p className="mt-1 text-[11px] text-slate-500">
-            Estimated impact only — actual results vary by profile, utilization, and scoring model. Not a prediction.
+          <div className="text-xs uppercase tracking-wide text-slate-400">Responses Received</div>
+          <div className="mt-2 flex items-end gap-3">
+            <div className="text-3xl font-bold text-gold-400">
+              {kai.responsesReceived}<span className="text-lg text-slate-500"> / {kai.lettersMailed}</span>
+            </div>
+            <div className="pb-1 text-xs text-slate-500">responses to mailed disputes</div>
+          </div>
+          <p className="mt-2 text-[11px] text-slate-500">
+            Log each bureau reply on the letter — Kai reads it and lines up your next round.
           </p>
         </div>
       </div>
@@ -199,6 +251,26 @@ export default async function DashboardPage() {
           );
         })}
       </div>
+
+      {/* Timeline snippet — the last few real events, linking to the full story. */}
+      {kai.recentEvents.length > 0 && (
+        <div className="card mt-3 p-5">
+          <div className="mb-3 flex items-center justify-between">
+            <div className="text-sm font-semibold">Your timeline</div>
+            <Link href="/journey" className="text-xs font-semibold text-brand-400 hover:underline">view all →</Link>
+          </div>
+          <div className="space-y-2">
+            {kai.recentEvents.map((e) => (
+              <div key={e.id} className="flex items-center justify-between gap-3 text-sm">
+                <span className="min-w-0 truncate text-slate-300">{eventLabel(e)}</span>
+                <span className="shrink-0 text-[11px] text-slate-500">
+                  {new Date(e.occurredAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="mt-3 grid grid-cols-3 gap-3">
         <StatCard label="Reports Uploaded" value={reports.length} />
