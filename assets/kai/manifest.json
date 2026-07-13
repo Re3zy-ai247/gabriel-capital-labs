@@ -1,0 +1,46 @@
+{
+  "$schema": "./manifest.schema.md",
+  "rules": {
+    "neverOverwriteCanonical": true,
+    "versioning": "Kai evolves through versioning, never replacement. Every non-v1 render references its parentVersion. New versions are new files; old files are never deleted or overwritten.",
+    "governance": "Approval/scoring canon lives in .ai/ASSET-REGISTRY.md (Creative OS gate). This manifest is the file-level version ledger. Guard: scripts/kai-manifest.test.ts"
+  },
+  "assets": [
+    {
+      "id": "CV-KAI-MASTER-001",
+      "version": "v1",
+      "date": "2026-07-12",
+      "prompt": "Founder-generated in Higgsfield pre-pipeline; exact prompt text not recorded. Future versions compose creative/HIGGSFIELD-PROMPTS.md blocks (KAI-P-001 lineage).",
+      "generator": "Higgsfield",
+      "credits": null,
+      "lighting": "INK-STUDIO (dark navy, soft key, cool rim)",
+      "camera": "SHOT-B front seated, 16:9",
+      "expression": "Kai-Welcoming",
+      "pose": "seated, front-facing, open-mouth smile",
+      "approvedBy": "Rey Gabriel (founder)",
+      "canonical": true,
+      "parentVersion": null,
+      "file": "master/kai-master-v1.png",
+      "status": "file-pending-drop",
+      "notes": "Kai v1 — THE canonical production render. Score 23/25; recorded deltas: eyes render amber-brown vs near-black truth, coat slightly golden, forepaws crop at frame edge. Product copies: public/kai/kai-master.png + kai-master-sq.png."
+    },
+    {
+      "id": "CV-KAI-SCENE-001",
+      "version": "v1",
+      "date": "2026-07-12",
+      "prompt": "Founder-generated in Higgsfield pre-pipeline; exact prompt text not recorded.",
+      "generator": "Higgsfield",
+      "credits": null,
+      "lighting": "dark sci-fi room, teal hologram key (off-bible variant; acceptable for scene use)",
+      "camera": "3/4 body, 16:9",
+      "expression": "Kai-Explaining",
+      "pose": "seated, right forepaw raised to holographic panel",
+      "approvedBy": "Rey Gabriel (founder)",
+      "canonical": false,
+      "parentVersion": null,
+      "file": "holograms/kai-hologram-scene-v1.png",
+      "status": "file-pending-drop",
+      "notes": "Scene render for marketing/hologram art direction. Identity reference remains MASTER-001 + photos (face slightly more stylized here). Visual proof of KAI-HOLOGRAM-SYSTEM grammar."
+    }
+  ]
+}

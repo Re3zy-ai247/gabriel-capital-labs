@@ -23,7 +23,9 @@ Kai is a real dog — the founder's Shiba Inu. The reference photos are ground t
 ## Render style lock
 Refined **cinematic 3D character** for a venture-backed fintech brand: realistic fur groom with slightly simplified forms suitable for web animation. Premium, calm, trustworthy. **NOT** cartoonish, chibi, childish, exaggerated, meme-styled ("doge"), plush-toy, or low-poly.
 
-## Expression Library (the 8 canonical states + IDs)
+## Expression Library (the 8 canonical render states + IDs)
+
+> **Expanded emotional-state catalog (founder directive 2026-07-12): canonical in code — `lib/kaiStates.ts`.** 16 named states (Idle, Welcoming, Happy, GoodNews, Celebrating, Congratulations, Concerned, BadNews, Teaching, Explaining, Reviewing, Analyzing, Thinking, Searching, Waiting, Listening) mapping onto the 8 render states + MASTER-001, with three new renders needed (Concerned/BadNews → STATE-09, Listening → STATE-10). Each state carries its emotional guardrail in the catalog. Files land as `assets/kai/expressions/Kai-<State>-vN.png` → exported to `public/kai/states/`. The emotional-range law below governs all of them.
 | ID | State | Notes |
 |---|---|---|
 | CV-KAI-STATE-01 | Neutral seated idle | THE master pose; breathing/blink added in-app, not in render |
