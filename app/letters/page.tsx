@@ -208,8 +208,8 @@ function LettersInner() {
       ) : (
         <div className="grid gap-4 md:grid-cols-[340px_1fr]">
           <div className="card h-fit p-4">
-            <label className="label">Negative Item</label>
-            <select className="input mb-1" value={tradelineId} onChange={(e) => applyItem(e.target.value)}>
+            <label htmlFor="letter-item" className="label">Negative Item</label>
+            <select id="letter-item" className="input mb-1" value={tradelineId} onChange={(e) => applyItem(e.target.value)}>
               <option value="">Select a negative item…</option>
               {tradelines.map((t) => (
                 <option key={t.id} value={t.id}>{t.creditorName} — ${(t.balance / 100).toLocaleString()}</option>
@@ -225,8 +225,8 @@ function LettersInner() {
               </div>
             )}
 
-            <label className="label">Letter Type / Strategy</label>
-            <select className="input mb-1" value={strategyId} onChange={(e) => setStrategyId(e.target.value)}>
+            <label htmlFor="letter-strategy" className="label">Letter Type / Strategy</label>
+            <select id="letter-strategy" className="input mb-1" value={strategyId} onChange={(e) => setStrategyId(e.target.value)}>
               {strategies.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.label}{selectedTradeline?.recommendedStrategy === s.id ? "  ★ recommended" : ""}
@@ -243,15 +243,16 @@ function LettersInner() {
             {/* Bureau targeting */}
             {isBureauStrategy && selectedTradeline && (
               <div className="mb-4">
-                <label className="label">Send to bureau(s)</label>
+                <span className="label" id="letter-bureaus-label">Send to bureau(s)</span>
                 <p className="mb-2 text-[11px] text-slate-500">
                   This account is reported by {selectedTradeline.bureaus.map((b) => BUREAU_LABEL[b]).join(", ") || "—"}.
                   Generate one letter per bureau you select.
                 </p>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-2" role="group" aria-labelledby="letter-bureaus-label">
                   {(selectedTradeline.bureaus.length ? selectedTradeline.bureaus : ["EQUIFAX", "EXPERIAN", "TRANSUNION"]).map((b) => (
                     <button
                       key={b}
+                      aria-pressed={bureausSel.includes(b)}
                       onClick={() => toggleBureau(b)}
                       className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
                         bureausSel.includes(b)
@@ -269,7 +270,7 @@ function LettersInner() {
             {/* Furnisher / collector recipient address — makes the letter mail-ready */}
             {!isBureauStrategy && selectedTradeline && (
               <div className="mb-4">
-                <label className="label">
+                <label htmlFor="letter-recipient-name" className="label">
                   Send to ({strategy?.recipient === "collector" ? "collection agency" : "furnisher / creditor"})
                 </label>
                 {selectedTradeline.furnisherAddress ? (
@@ -286,12 +287,14 @@ function LettersInner() {
                   </p>
                 )}
                 <input
+                  id="letter-recipient-name"
                   className="input mb-2"
                   value={recipientName}
                   onChange={(e) => setRecipientName(e.target.value)}
                   placeholder="Recipient name"
                 />
                 <textarea
+                  aria-label="Recipient mailing address"
                   className="input resize-y"
                   rows={3}
                   value={recipientAddress}
