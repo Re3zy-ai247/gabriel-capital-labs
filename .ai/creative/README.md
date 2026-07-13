@@ -36,5 +36,5 @@ The permanent creative operating system. **Claude = Creative Director** (compose
 7. **Register** — `ASSET-REGISTRY.md` entry: ID, job_id, score, cost, approved use.
 8. **Compliance** — anything public passes `/compliance-review` (storyboards reviewed at board stage, before render spend).
 
-## Current state (2026-07-12)
-Reference photos received in chat (4: cowboy-costume, 3/4 standing, front close, seated smiling). **Higgsfield upload pending** (widget issued — canonical `CV-KAI-REF-001..004` media_ids not yet minted). **No master render exists yet** (`CV-KAI-MASTER-001` = next generation, gated by this system). Credit balance at last check: 1,010 (Plus) — stills-first strategy mandatory; video renders are marketing-hero-only.
+## Current state (2026-07-12, updated)
+**Kai v1 EXISTS.** `CV-KAI-MASTER-001` (navy-studio seated render) is founder-approved canonical — scored 23/25 with recorded deltas (eyes darker in truth; see Character Bible). `CV-KAI-SCENE-001` (hologram paw-raise) registered for scene/marketing + hologram art direction. Ground truth = 3 real photos in founder custody. Next renders: the 8 expression states (KAI-P-002..008) referencing MASTER-001 + photos, eye-color biased toward the photographs. Product asset drop paths: `public/kai/kai-master.png` + `public/kai/kai-master-sq.png`. Credit balance at last check: 1,010 (Plus) — stills-first stands.

@@ -17,10 +17,25 @@ Check here BEFORE generating any visual asset (paid or free). Never regenerate a
 - **Path:** `app/api/brief/cover` (edge `next/og`, stateless title+category) via `briefCoverUrl`
 - **Status:** APPROVED · **Use:** Brief card/article covers AND OG images. Do not hand-generate Brief covers.
 
-## CV-KAI-* — Kai mascot assets (governed by the Creative OS, `creative/` + ADR-0008)
-ID scheme: `CV-KAI-REF-001..004` (ground-truth photos — received 2026-07-12, Higgsfield media_ids PENDING upload; never published without founder consent) · `CV-KAI-MASTER-001` (founder-approved master render — DOES NOT EXIST YET) · `CV-KAI-STATE-01..08` (canonical expression states — pending master approval).
-- **Status:** production pipeline defined (`creative/README.md`); first render blocked on photo upload to Higgsfield.
-- **Rules:** every render composes `creative/HIGGSFIELD-PROMPTS.md` blocks + canonical reference media; scored per `creative/CONSISTENCY-SCORING.md` (canonical bar: ≥22/25, identity axis 5) BEFORE registration; founder approves anything canonical or public; each accepted entry here records job_id, score, and credits spent. AI renders are drafts until individually approved — never ship an unapproved stand-in to prod.
+## CV-KAI-* — Kai character assets (governed by the Creative OS, `creative/` + ADR-0008)
+
+### CV-KAI-REF-001..003 — ground-truth photographs (ULTIMATE source of truth)
+Real Kai: 3/4 standing (QR bone tag) · front close-up (ring tag) · seated open-mouth smile (bed). In founder custody; provided in-chat 2026-07-12. NEVER published without explicit founder consent (real pet/home). Every future render is judged against THESE, not against prior renders.
+
+### CV-KAI-MASTER-001 — ✅ THE canonical production render (Kai v1)
+- **Founder-approved 2026-07-12** ("This render becomes Kai v1"). Higgsfield render, 16:9: Kai seated, front-facing, open-mouth smile, dark-navy INK-studio environment, soft key + cool rim.
+- **Consistency score:** 23/25 (A4·B5·C5·D4·E5). **Accepted deltas, recorded:** eye shade renders amber-brown vs Kai's near-black; coat slightly golden; forepaws crop at frame edge (head-crop derivations only).
+- **Approved use:** visual baseline for landing, onboarding, dashboard/Kai Home, community, product screenshots, tutorials, marketing, animation planning, and as REFERENCE MEDIA in every future Higgsfield prompt (with the real photos). **Do not:** redesign, reinterpret, restyle, or regenerate from scratch.
+- **File custody:** founder's Higgsfield library + local. **Product drop path when wired: `public/kai/kai-master.png`** (16:9 master) + `public/kai/kai-master-sq.png` (1:1 crop) — components will reference these paths.
+
+### CV-KAI-SCENE-001 — hologram paw-raise scene render
+- Higgsfield 16:9: Kai raising a paw to a teal holographic panel, dark sci-fi room. Founder-provided same date. Face slightly more stylized than MASTER-001 (use for scene/marketing contexts, not identity reference); projection grammar matches `creative/KAI-HOLOGRAM-SYSTEM.md` strikingly well — the visual proof of the hologram language.
+- **Approved use:** marketing/landing hologram moments, hologram-system art direction reference. Identity reference stays MASTER-001 + photos.
+
+### CV-KAI-STATE-01..08 — expression states (NEXT to generate)
+Unblocked: generate via `creative/HIGGSFIELD-PROMPTS.md` KAI-P-002..008 with MASTER-001 + photos as reference media; bias eye color DARKER toward photo truth (the recorded delta); score each ≥22/25 with identity 5 before registration.
+
+**Rules (unchanged):** compose prompt blocks + canonical reference media · score before registration (`creative/CONSISTENCY-SCORING.md`) · founder approves canonical/public · record job_id, score, credits per entry.
 
 ## Rules for paid generation (Higgsfield/Abacus/etc.)
 1. Check this registry + `PROMPT-REGISTRY.md` first.

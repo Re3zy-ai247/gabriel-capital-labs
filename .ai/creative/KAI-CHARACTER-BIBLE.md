@@ -5,9 +5,11 @@
 Kai is a real dog — the founder's Shiba Inu. The reference photos are ground truth; every render is judged against them, not against previous renders' drift. Persona/voice: `../KAI-EXPERIENCE.md` §10 (helpful · calm · professional · confident · friendly — an elite strategist).
 
 ## Identity hierarchy (reference order for every generation)
-1. **CV-KAI-REF-001..004** — the real photos (ground truth; Higgsfield media_ids pending upload)
-2. **CV-KAI-MASTER-001** — the founder-approved master render (does not exist yet; becomes the mandatory consistency reference in every subsequent generation)
+1. **CV-KAI-REF-001..003** — the real photos (ULTIMATE ground truth)
+2. **CV-KAI-MASTER-001 — ✅ EXISTS: Kai v1, founder-approved 2026-07-12** (navy-studio seated render; the mandatory reference in every subsequent generation, alongside the photos)
 3. Derived state renders (CV-KAI-STATE-*) — never used as identity source, only as pose reference
+
+**Recorded master deltas (bias future renders back toward photo truth):** MASTER-001's eyes render amber-brown — real Kai's are near-black; coat runs slightly golden. Future prompts inherit the master's style/lighting/pose language while pulling eye color and coat depth toward the photographs. This is refinement toward truth, not reinterpretation.
 
 ## Physical specification (VERIFIED from reference photos)
 - **Breed/build:** red Shiba Inu, adult, compact athletic frame; alert upright posture; slight forward-friendly head carriage.
