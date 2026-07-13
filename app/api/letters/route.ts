@@ -29,6 +29,7 @@ export async function GET() {
       complianceFlags: l.complianceFlags,
       createdAt: l.createdAt,
       mailedAt: l.mailedAt,
+      responseAt: l.responseAt, // Engine 3: own-history response latency
       preview: decryptText(l.body).slice(0, 240),
       hasResponse: Boolean(l.responseText),
       responseOutcome: l.responseOutcome,

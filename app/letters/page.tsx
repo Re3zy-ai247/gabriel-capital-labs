@@ -8,6 +8,7 @@ import {
   Mails, Loader2, AlertTriangle, Copy, Check, Printer, Sparkles, Send, Trash2,
   Upload, ArrowUpRight, ShieldCheck,
 } from "lucide-react";
+import { ownResponseLatencyDays, forecastFor, POSSIBLE_RESPONSES } from "@/lib/forecast";
 
 interface Tradeline {
   id: string; creditorName: string; balance: number; accountType: string;
@@ -18,7 +19,7 @@ interface Strategy { id: string; label: string; blurb: string; riskNote?: string
 interface SavedLetter {
   id: string; creditorName: string | null; recipientName: string; status: string;
   strategy: string; round: number; targetBureau: string | null;
-  createdAt: string; mailedAt: string | null; preview: string;
+  createdAt: string; mailedAt: string | null; responseAt: string | null; preview: string;
   hasResponse: boolean; responseOutcome: string | null; responseAnalysis: string | null;
   parentLetterId: string | null;
 }
@@ -407,6 +408,7 @@ function LettersInner() {
               <LetterRow
                 key={l.id}
                 l={l}
+                ownLatency={ownResponseLatencyDays(saved, l.targetBureau)}
                 onStatus={setStatus}
                 onDelete={() => setConfirmDelete(l.id)}
                 confirming={confirmDelete === l.id}
@@ -447,9 +449,10 @@ function letterStoryline(l: SavedLetter): string | null {
 
 // A single saved-letter row with the Round 2 response flow.
 function LetterRow({
-  l, onStatus, onDelete, confirming, onConfirmDelete, onCancelDelete, onChanged,
+  l, ownLatency, onStatus, onDelete, confirming, onConfirmDelete, onCancelDelete, onChanged,
 }: {
   l: SavedLetter;
+  ownLatency: { medianDays: number; sample: number } | null;
   onStatus: (id: string, s: string) => void;
   onDelete: () => void;
   confirming: boolean;
@@ -458,6 +461,7 @@ function LetterRow({
   onChanged: () => void;
 }) {
   const [openResp, setOpenResp] = useState(false);
+  const [openForecast, setOpenForecast] = useState(false);
   const [respText, setRespText] = useState("");
   const [respFile, setRespFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
@@ -471,6 +475,9 @@ function LetterRow({
       ? Math.max(0, Math.floor((Date.now() - new Date(l.mailedAt).getTime()) / 86400000))
       : null;
   const windowOverdue = windowDay != null && windowDay > 30;
+  // Engine 3 Tier A — the forecast for this mailed-waiting dispute, from statute
+  // + this user's own history. Predictive of timeline/options, never of result.
+  const forecast = forecastFor(l, ownLatency);
 
   async function submitResponse() {
     setBusy(true); setMsg(null);
@@ -533,6 +540,39 @@ function LetterRow({
               <span className={`text-[10px] ${windowOverdue ? "font-semibold text-rose-300" : "text-slate-500"}`}>
                 {windowOverdue ? "window passed" : `${Math.max(0, 30 - windowDay)}d left`}
               </span>
+              {forecast && (
+                <button
+                  onClick={() => setOpenForecast((v) => !v)}
+                  className="text-[10px] font-semibold text-brand-400 hover:underline"
+                  aria-expanded={openForecast}
+                >
+                  {openForecast ? "hide forecast" : "what happens next →"}
+                </button>
+              )}
+            </div>
+          )}
+          {/* Engine 3 Tier A — Kai's forecast: window, own-history, options,
+              contingency. Predictive of timeline/options, never of outcome. */}
+          {forecast && openForecast && (
+            <div className="mt-2 rounded-lg border border-ink-700 bg-ink-900/50 p-3 text-xs">
+              <div className="mb-1 flex items-center gap-1.5">
+                <span className="rounded bg-brand-500/15 px-1 py-px text-[9px] font-bold tracking-widest text-brand-300">KAI</span>
+                <span className="font-semibold text-slate-200">What happens next</span>
+              </div>
+              <p className="text-slate-400">{forecast.windowText}</p>
+              {forecast.ownHistoryText && <p className="mt-1 text-slate-500">{forecast.ownHistoryText}</p>}
+              <div className="mt-2">
+                <div className="mb-1 font-semibold text-slate-300">The bureau can come back four ways</div>
+                <ul className="space-y-1 text-slate-400">
+                  {POSSIBLE_RESPONSES.map((r) => (
+                    <li key={r.outcome}>
+                      <span className="font-medium text-slate-300">{r.outcome}:</span> {r.meaning}{" "}
+                      <span className="text-slate-500">{r.next}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <p className="mt-2 text-slate-500">{forecast.contingency}</p>
             </div>
           )}
         </div>

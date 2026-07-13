@@ -18,6 +18,8 @@ Status legend: ✅ live (computed from real data now) · ⚠️ estimate (labele
 | BI-ACT-01 | Activation | reports uploaded → analyzed rate (+ stale >1h unparsed) | `/admin/product` | ✅ |
 | BI-FUNNEL-01 | Dispute funnel | generated→mailed→responded→resolved; outcome split; favorable rate | `/admin/product` | ✅ |
 | BI-FEAT-01 | Feature usage | per-module usage | needs events | ❌ (top candidate) |
+| BI-OUT-01 | Forecast accuracy | Engine 3 predicted vs actual response window, backtested on own history | needs backtest job | ❌ (Sprint VI; own-data) |
+| BI-OUT-02 | Outcome cohort sizes | sample count per strategy×bureau cell (k-anonymity gate n≥30) | `lib/outcomeStats.ts` (Engine 1, unbuilt) | ❌ (gated: consent+CSO/CCO) |
 | BI-AGY-01 | Agency growth | agency/agency_pro accounts + managed clients | DB count | ✅ |
 | BI-ENG-01 | Report-pipeline health | stale/unparsed reports | `/admin/product` | ✅ |
 
