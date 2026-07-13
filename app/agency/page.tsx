@@ -63,6 +63,7 @@ export default function AgencyPage() {
   const [showOwnerPreview, setShowOwnerPreview] = useState(false);
   const [justCheckedOut, setJustCheckedOut] = useState(false);
   const [kpi, setKpi] = useState<Kpi | null>(null);
+  const [kaiSort, setKaiSort] = useState(true);
 
   // Add-client form
   const [form, setForm] = useState({ fullName: "", addressLine1: "", city: "", state: "", zip: "" });
@@ -106,7 +107,7 @@ export default function AgencyPage() {
           }, 2500);
         }
       } catch {
-        setError("Could not load agency workspace.");
+        setError("I couldn't reach the agency workspace. Refresh the page and I'll pick right back up.");
       } finally {
         setLoading(false);
       }
@@ -209,6 +210,21 @@ export default function AgencyPage() {
   );
   const attentionCount = clients.filter((c) => c.needsAttention).length;
 
+  // Kai briefing aggregates — computed only from the roster this page already loaded.
+  const pastWindow = clients.filter((c) => c.needsAttention && c.lastSentAt).length;
+  const awaitingFirst = clients.filter((c) => !c.lastSentAt).length;
+  const needsWork = clients.filter((c) => c.needsAttention || !c.lastSentAt).length;
+  const briefingParts: string[] = [];
+  if (pastWindow > 0) briefingParts.push(`${pastWindow} past the 30-day response window`);
+  if (awaitingFirst > 0) briefingParts.push(`${awaitingFirst} awaiting a first letter`);
+
+  // Kai's priority: overdue follow-ups first (oldest clock leading), then clients
+  // with no letters out yet, then everyone inside their window.
+  const rank = (c: Client) => (c.needsAttention ? 0 : !c.lastSentAt ? 1 : 2);
+  const roster = kaiSort
+    ? [...filtered].sort((a, b) => rank(a) - rank(b) || (b.daysSince ?? -1) - (a.daysSince ?? -1))
+    : filtered;
+
   return (
     <AppShell title="/ Agency">
       <div className="mb-4 flex items-center gap-2">
@@ -220,7 +236,7 @@ export default function AgencyPage() {
 
       {loading ? (
         <div className="flex items-center gap-2 text-sm text-slate-400">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+          <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> I&apos;m opening your roster and checking every follow-up clock…
         </div>
       ) : !ctx?.isAgency ? (
         // Not an agency yet — show the gate.
@@ -294,6 +310,38 @@ export default function AgencyPage() {
         </div>
       ) : (
         <>
+        {/* Kai agency briefing — real counts from the roster this page already loaded */}
+        {clients.length > 0 && (
+          <div className="card animate-rise mb-4 p-4">
+            <div className="mb-1.5 flex items-center gap-2">
+              <span className="rounded bg-brand-500/15 px-1.5 py-0.5 text-[10px] font-bold tracking-widest text-brand-300">KAI</span>
+              <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Agency Briefing</span>
+            </div>
+            {needsWork > 0 ? (
+              <p className="text-sm text-slate-200">
+                I checked every follow-up clock. {needsWork} of {clients.length} client
+                {clients.length === 1 ? "" : "s"} {needsWork === 1 ? "needs" : "need"} attention:{" "}
+                {briefingParts.join(", ")}.
+              </p>
+            ) : (
+              <p className="text-sm text-slate-200">
+                I checked every follow-up clock today.{" "}
+                {clients.length === 1
+                  ? "Your client is inside the response window."
+                  : `All ${clients.length} clients are inside their response windows.`}{" "}
+                Nothing due yet — I&apos;ll keep watching.
+              </p>
+            )}
+            <p className="mt-1 text-[11px] text-slate-500">
+              {pastWindow > 0
+                ? "Bureaus generally owe a reinvestigation response within about 30 days under FCRA §611 — flagged clients are ready for their next round."
+                : awaitingFirst > 0
+                ? "A client's ~30-day clock starts when the bureau receives their first letter. Open a workspace to draft round one."
+                : "The 30-day clock comes from FCRA §611 reinvestigation timelines. I flag any client whose window passes."}
+            </p>
+          </div>
+        )}
+
         {/* KPI report — something to show for the work (WTD / MTD / YTD) */}
         {kpi && (
           <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -320,23 +368,58 @@ export default function AgencyPage() {
                   </span>
                 )}
               </div>
-              <div className="relative">
-                <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500" />
-                <input
-                  className="input w-56 pl-7"
-                  placeholder="Search clients…"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                />
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="flex rounded-lg border border-slate-800 p-0.5 text-[11px]" role="group" aria-label="Sort clients">
+                  <button
+                    type="button"
+                    onClick={() => setKaiSort(true)}
+                    aria-pressed={kaiSort}
+                    className={`rounded-md px-2 py-1 font-semibold transition ${
+                      kaiSort ? "bg-brand-500/15 text-brand-300" : "text-slate-500 hover:text-slate-300"
+                    }`}
+                  >
+                    Kai&apos;s priority
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setKaiSort(false)}
+                    aria-pressed={!kaiSort}
+                    className={`rounded-md px-2 py-1 font-semibold transition ${
+                      !kaiSort ? "bg-brand-500/15 text-brand-300" : "text-slate-500 hover:text-slate-300"
+                    }`}
+                  >
+                    Roster order
+                  </button>
+                </div>
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500" aria-hidden="true" />
+                  <input
+                    className="input w-56 pl-7"
+                    placeholder="Search clients…"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                  />
+                </div>
               </div>
             </div>
             {clients.length === 0 ? (
-              <div className="card p-6 text-sm text-slate-400">No clients yet. Add your first client on the right →</div>
+              <div className="card p-6">
+                <div className="mb-2 flex items-center gap-2">
+                  <span className="rounded bg-brand-500/15 px-1.5 py-0.5 text-[10px] font-bold tracking-widest text-brand-300">KAI</span>
+                  <span className="text-sm font-semibold">Your roster is ready.</span>
+                </div>
+                <p className="text-sm text-slate-400">
+                  Add your first client on the right — a full legal name is enough to start. The moment they&apos;re in,
+                  I set up their workspace and start tracking their follow-up clock so no dispute round slips.
+                </p>
+              </div>
             ) : filtered.length === 0 ? (
-              <div className="card p-6 text-sm text-slate-400">No clients match “{search}”.</div>
+              <div className="card p-6 text-sm text-slate-400">
+                No clients match “{search}”. Clear the search to see the full roster.
+              </div>
             ) : (
               <div className="space-y-2">
-                {filtered.map((c) => (
+                {roster.map((c) => (
                   <div
                     key={c.id}
                     className={`card flex flex-wrap items-center justify-between gap-3 p-4 ${
@@ -346,11 +429,16 @@ export default function AgencyPage() {
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="truncate text-sm font-medium">{c.name}</span>
-                        {c.needsAttention && (
+                        {c.needsAttention ? (
                           <span className="inline-flex items-center gap-1 rounded-full bg-rose-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase text-rose-300">
-                            <AlertTriangle className="h-3 w-3" /> Send next round
+                            <AlertTriangle className="h-3 w-3" aria-hidden="true" />
+                            {c.daysSince !== null ? `Day ${c.daysSince} — window passed` : "Send next round"}
                           </span>
-                        )}
+                        ) : !c.lastSentAt ? (
+                          <span className="inline-flex items-center rounded-full bg-gold-400/15 px-2 py-0.5 text-[10px] font-semibold uppercase text-gold-400">
+                            Awaiting first letter
+                          </span>
+                        ) : null}
                       </div>
                       <div className="text-[11px] text-slate-500">
                         {c.location || "No address on file"} · {c.negativeItems} item{c.negativeItems === 1 ? "" : "s"} ·{" "}
@@ -366,7 +454,9 @@ export default function AgencyPage() {
                             : `next round due ${fmtDate(c.nextRoundDueAt)} (in ${Math.max(0, 30 - (c.daysSince ?? 0))}d)`}
                         </div>
                       ) : (
-                        <div className="mt-0.5 text-[11px] text-slate-600">No letters mailed yet</div>
+                        <div className="mt-0.5 text-[11px] text-slate-600">
+                          No letters mailed yet — open the workspace to draft round one. The ~30-day clock starts when the bureau receives it.
+                        </div>
                       )}
                     </div>
                     <div className="flex items-center gap-2">
@@ -378,8 +468,9 @@ export default function AgencyPage() {
                         disabled={busy}
                         className="text-slate-500 transition hover:text-rose-400"
                         title="Delete client"
+                        aria-label={`Delete ${c.name}`}
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-4 w-4" aria-hidden="true" />
                       </button>
                     </div>
                   </div>

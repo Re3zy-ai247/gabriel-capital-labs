@@ -23,7 +23,7 @@ function when(iso: string) {
 function statusChip(status: string) {
   const map: Record<string, string> = {
     open: "bg-amber-500/15 text-amber-300",
-    responded: "bg-emerald-500/15 text-emerald-300",
+    responded: "bg-success-500/15 text-success-300",
     closed: "bg-slate-500/15 text-slate-400",
   };
   return map[status] || "bg-slate-500/15 text-slate-400";
@@ -164,7 +164,8 @@ export default function SupportPage() {
                   <AttachmentPicker files={replyFiles} onChange={setReplyFiles} disabled={replyBusy} />
                 </div>
                 <button onClick={sendReply} disabled={replyBusy} className="btn-primary mt-3 text-sm">
-                  {replyBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} Send
+                  {replyBusy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Send className="h-4 w-4" aria-hidden="true" />}
+                  {replyBusy ? "Sending…" : "Send"}
                 </button>
               </div>
             )}
@@ -196,6 +197,10 @@ export default function SupportPage() {
 
       {open && !isAdmin && (
         <div className="card mb-5 p-5">
+          <p className="mb-4 text-sm leading-relaxed text-slate-300">
+            <span className="mr-2 rounded bg-brand-500/15 px-1.5 py-0.5 text-[10px] font-bold tracking-widest text-brand-300">KAI</span>
+            Tell me what&apos;s wrong. If it&apos;s about a dispute in progress, check the letter&apos;s card first — I keep each one&apos;s status current.
+          </p>
           <label className="label">Subject</label>
           <input className="input mb-3" value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Briefly, what's the issue?" maxLength={160} />
           <label className="label">Category</label>
@@ -218,7 +223,8 @@ export default function SupportPage() {
           {error && <p className="mt-3 text-xs text-rose-400">{error}</p>}
           <div className="mt-4 flex items-center gap-2">
             <button onClick={submit} disabled={busy} className="btn-primary">
-              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} Submit ticket
+              {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Send className="h-4 w-4" aria-hidden="true" />}
+              {busy ? "Filing this with the team…" : "Submit ticket"}
             </button>
             <button onClick={() => setOpen(false)} className="btn-ghost text-sm">Cancel</button>
           </div>
@@ -229,8 +235,15 @@ export default function SupportPage() {
         <div className="grid h-40 place-items-center text-slate-500"><Loader2 className="h-6 w-6 animate-spin" /></div>
       ) : tickets.length === 0 ? (
         <div className="card flex flex-col items-center gap-3 p-10 text-center">
-          <LifeBuoy className="h-8 w-8 text-slate-600" />
-          <p className="text-sm text-slate-400">{isAdmin ? "No tickets yet." : "No tickets yet. Open one if you need help."}</p>
+          <LifeBuoy className="h-8 w-8 text-slate-600" aria-hidden="true" />
+          {isAdmin ? (
+            <p className="text-sm text-slate-400">No tickets yet.</p>
+          ) : (
+            <p className="text-sm text-slate-400">
+              <span className="mr-2 rounded bg-brand-500/15 px-1.5 py-0.5 text-[10px] font-bold tracking-widest text-brand-300">KAI</span>
+              No open tickets. If something&apos;s off, I&apos;m here.
+            </p>
+          )}
         </div>
       ) : (
         <div className="space-y-2">

@@ -11,7 +11,7 @@ One line per ADR; full records in `ADR/`. New decisions: copy `ADR/ADR-0000-temp
 | [0005](ADR/ADR-0005-kai-guardrails.md) | Kai guardrails — scope lockdown + untrusted-input fencing | Accepted |
 | [0006](ADR/ADR-0006-kai-ai-last-architecture.md) | Kai Intelligence Engine — AI-last retrieval architecture + credit economy | **Proposed** (awaits founder approval; partially supersedes 0005 when accepted) |
 | [0007](ADR/ADR-0007-kai-experience-layer.md) | Kai Experience Layer — passive intelligence, event engine, proactive surfacing | **Proposed** (E1–E4 independent of 0006; E5 depends on it) |
-| [0008](ADR/ADR-0008-creative-os.md) | Creative OS — canonical Kai character system + scored render gate (`.ai/creative/`) | Accepted |
+| [0008](ADR/ADR-0008-creative-os.md) | Creative OS — canonical Kai character system + scored render gate (`.ai/creative/`) | Accepted · **amendment 2026-07-12: Kai identity FROZEN at v1 (CV-KAI-MASTER-001) by explicit founder directive — no redesigns, no reinterpretations** |
 | [0009](ADR/ADR-0009-product-first-os-later.md) | Product first, OS later — GIOS extracted FROM CreditVector; architecture frozen; CX-only focus; resolves G-PLAT-1 | **Accepted (founder directive)** |
 
 Candidate future ADRs (write only when the decision is actually made/verified): multi-tenant agency isolation model · payment/plan entitlement architecture · compliance-scrubber design · community moderation model.

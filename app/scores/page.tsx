@@ -46,11 +46,11 @@ export default function ScoresPage() {
         body: JSON.stringify({ bureau, score: n, recordedAt: date }),
       });
       const j = await res.json();
-      if (!res.ok) { setError(j.error || "Could not save."); return; }
+      if (!res.ok) { setError(j.error || "That entry didn't save. Try again — nothing was lost."); return; }
       setScore("");
       load();
     } catch {
-      setError("Network error.");
+      setError("The connection dropped before I could save that. Try again — nothing was lost.");
     } finally { setBusy(false); }
   }
 
@@ -66,8 +66,10 @@ export default function ScoresPage() {
       <EduBanner />
       <h2 className="mb-1 text-xl font-semibold">Credit Score Tracker</h2>
       <p className="mb-4 max-w-2xl text-sm text-slate-400">
-        Log your scores from each bureau over time to watch your progress as disputes resolve. (Enter scores from your
-        own monitoring — we don&apos;t pull live scores.)
+        <span className="mr-2 rounded bg-brand-500/15 px-1.5 py-0.5 text-[10px] font-bold tracking-widest text-brand-300">KAI</span>
+        I log every score you record and hold the trend across all three bureaus
+        {!loading && entries.length > 0 && <> — {entries.length} entr{entries.length === 1 ? "y" : "ies"} so far</>}.
+        Enter scores from your own monitoring — I don&apos;t pull live scores.
       </p>
 
       {/* Latest scores */}
@@ -88,9 +90,11 @@ export default function ScoresPage() {
           <LineChart className="h-4 w-4 text-brand-400" /> Score History
         </div>
         {loading ? (
-          <p className="text-sm text-slate-500">Loading…</p>
+          <p className="text-sm text-slate-500">I&apos;m pulling up your score history…</p>
         ) : entries.length === 0 ? (
-          <p className="py-8 text-center text-sm text-slate-500">No scores logged yet. Add your first below.</p>
+          <p className="py-8 text-center text-sm text-slate-500">
+            No entries yet. Log your first score below — I&apos;ll plot it here and hold the trend from there.
+          </p>
         ) : (
           <ScoreChart entries={entries} />
         )}

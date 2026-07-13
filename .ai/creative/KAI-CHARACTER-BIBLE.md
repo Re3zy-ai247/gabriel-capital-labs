@@ -1,4 +1,4 @@
-# Kai Character Bible (canonical identity — PERMANENT)
+# Kai Character Bible (canonical identity — PERMANENT · **IDENTITY FROZEN at Kai v1 by explicit founder directive, 2026-07-12** — freeze recorded in `DECISIONS.md` under ADR-0008)
 
 > **Permanence & IP clause.** Kai is permanent **Gabriel Capital Labs intellectual property, designed above the product level** — the company's Chief Intelligence Officer character; CreditVector is licensee #1 and future GCL products license the same character (`BRAND-UNIVERSE.md` §IP structure). Kai is a trusted executive in a two-character cast with Rey Gabriel — **not an assistant, not a mascot, not a pet** ("mascot" is retired vocabulary). **No future session, agent, or contributor may redefine Kai** — not his identity spec, personality, emotional range, or hard locks. This bible is amended only by explicit founder decision recorded as an edit here + an ADR note. "Improving" Kai by regeneration, restyle, or personality drift is a defect, not a contribution. (Character trademark registration: NEEDS CONFIRMATION — route to CLO/counsel with the CreditVector™ mark question.)
 

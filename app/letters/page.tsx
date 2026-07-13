@@ -6,7 +6,7 @@ import { AppShell } from "@/components/AppShell";
 import { EduBanner } from "@/components/Disclaimer";
 import {
   Mails, Loader2, AlertTriangle, Copy, Check, Printer, Sparkles, Send, Trash2,
-  Lightbulb, Upload, ArrowUpRight, ShieldCheck,
+  Upload, ArrowUpRight, ShieldCheck,
 } from "lucide-react";
 
 interface Tradeline {
@@ -183,8 +183,14 @@ function LettersInner() {
 
       {noTradelines ? (
         <div className="card flex flex-col items-center gap-3 p-10 text-center">
-          <Mails className="h-8 w-8 text-slate-600" />
-          <p className="text-sm text-slate-400">No accounts to dispute yet.</p>
+          <Mails className="h-8 w-8 text-slate-600" aria-hidden />
+          <div className="flex items-center gap-1.5">
+            <span className="rounded bg-brand-500/15 px-1.5 py-0.5 text-[10px] font-bold tracking-widest text-brand-300">KAI</span>
+            <p className="text-sm font-medium text-slate-200">I have nothing to work with yet.</p>
+          </div>
+          <p className="max-w-sm text-sm text-slate-400">
+            Upload a credit report and I&apos;ll flag the items worth challenging — every letter starts there.
+          </p>
           <Link href="/upload" className="btn-primary">Upload a credit report</Link>
         </div>
       ) : (
@@ -198,19 +204,13 @@ function LettersInner() {
               ))}
             </select>
 
-            {/* Recommendation guidance */}
-            {selectedTradeline && (
-              selectedTradeline.recommendedStrategy ? (
-                <div className="mb-3 flex gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-2 text-[11px] text-emerald-300">
-                  <Lightbulb className="h-3.5 w-3.5 shrink-0" />
-                  <span>{selectedTradeline.recommendedReason}</span>
-                </div>
-              ) : (
-                <div className="mb-3 flex gap-2 rounded-lg border border-rose-500/30 bg-rose-500/10 p-2 text-[11px] text-rose-300">
-                  <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-                  <span>{selectedTradeline.recommendedReason}</span>
-                </div>
-              )
+            {/* Recommendation guidance — items Kai advises against get the warning here;
+                the positive recommendation renders as Kai's insight above the button. */}
+            {selectedTradeline && !selectedTradeline.recommendedStrategy && (
+              <div className="mb-3 flex gap-2 rounded-lg border border-rose-500/30 bg-rose-500/10 p-2 text-[11px] text-rose-300">
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                <span>{selectedTradeline.recommendedReason}</span>
+              </div>
             )}
 
             <label className="label">Letter Type / Strategy</label>
@@ -262,8 +262,8 @@ function LettersInner() {
                 </label>
                 {selectedTradeline.furnisherAddress ? (
                   <p className="mb-2 flex gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-2 text-[11px] text-emerald-300">
-                    <Sparkles className="h-3.5 w-3.5 shrink-0" />
-                    <span>We pulled this {strategy?.recipient === "collector" ? "collector" : "furnisher"}&apos;s mailing
+                    <Sparkles className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                    <span>I pulled this {strategy?.recipient === "collector" ? "collector" : "furnisher"}&apos;s mailing
                     address straight from your report — review it and edit if needed.</span>
                   </p>
                 ) : (
@@ -286,6 +286,18 @@ function LettersInner() {
                   onChange={(e) => setRecipientAddress(e.target.value)}
                   placeholder={"Mailing address\nP.O. Box / Street\nCity, State ZIP"}
                 />
+              </div>
+            )}
+
+            {/* Kai's insight — real recommendation from lib/recommend, never invented. */}
+            {selectedTradeline?.recommendedStrategy && (
+              <div className="mb-3 flex items-start gap-2 rounded-lg border border-brand-500/30 bg-brand-500/10 p-2.5 text-[11px] leading-relaxed text-slate-300">
+                <span className="rounded bg-brand-500/15 px-1.5 py-0.5 text-[10px] font-bold tracking-widest text-brand-300">KAI</span>
+                <span>
+                  I&apos;d challenge this under{" "}
+                  {strategies.find((s) => s.id === selectedTradeline.recommendedStrategy)?.label || "the recommended strategy"} —{" "}
+                  {selectedTradeline.recommendedReason}
+                </span>
               </div>
             )}
 
@@ -357,7 +369,14 @@ function LettersInner() {
               </>
             ) : (
               <div className="grid h-full place-items-center text-center text-sm text-slate-500">
-                <div><Mails className="mx-auto mb-2 h-8 w-8 text-slate-600" />Pick an item — we&apos;ll recommend the right letter and bureaus.<br />Your AI-grounded dispute letter will appear here.</div>
+                <div>
+                  <Mails className="mx-auto mb-2 h-8 w-8 text-slate-600" aria-hidden />
+                  <div className="mb-1 flex items-center justify-center gap-1.5">
+                    <span className="rounded bg-brand-500/15 px-1.5 py-0.5 text-[10px] font-bold tracking-widest text-brand-300">KAI</span>
+                    <span className="font-medium text-slate-300">No letters yet.</span>
+                  </div>
+                  Pick a flagged item and I&apos;ll draft the first round —<br />grounded in the statutes, refined by me.
+                </div>
               </div>
             )}
           </div>
@@ -388,6 +407,29 @@ function LettersInner() {
   );
 }
 
+// Kai's one-line status story for a letter — computed only from the row's own
+// real fields (status, mailedAt, targetBureau). Same day math as the dashboard.
+function letterStoryline(l: SavedLetter): string | null {
+  if (l.hasResponse) return null; // the Kai Response Card takes over from here
+  if (l.status === "MAILED" && l.mailedAt) {
+    const day = Math.floor((Date.now() - new Date(l.mailedAt).getTime()) / 86400000);
+    if (!l.targetBureau) {
+      return day <= 0
+        ? "Mailed today — I'm watching for their response."
+        : `Day ${day} since mailing — I'm watching for their response.`;
+    }
+    if (day <= 0) return "Mailed today — the ~30-day §611 reinvestigation window just opened. I'm watching it.";
+    if (day > 30) return `Day ${day} — the ~30-day §611 window has passed. If nothing arrived, log that; a non-response is worth escalating.`;
+    return `Day ${day} of 30 — I'm watching the reinvestigation window.`;
+  }
+  if (l.status === "GENERATED" || l.status === "PRINTED" || l.status === "DRAFT") {
+    return l.targetBureau
+      ? "Ready to mail — the §611 clock starts when the bureau receives it."
+      : "Ready to mail — the response clock starts once it arrives.";
+  }
+  return null;
+}
+
 // A single saved-letter row with the Round 2 response flow.
 function LetterRow({
   l, onStatus, onDelete, confirming, onConfirmDelete, onCancelDelete, onChanged,
@@ -406,6 +448,7 @@ function LetterRow({
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const analysis = l.responseAnalysis ? safeParse(l.responseAnalysis) : null;
+  const storyline = letterStoryline(l);
 
   async function submitResponse() {
     setBusy(true); setMsg(null);
@@ -444,6 +487,12 @@ function LetterRow({
           <div className="truncate text-xs text-slate-500">
             {l.recipientName} · {new Date(l.createdAt).toLocaleDateString()}
           </div>
+          {storyline && (
+            <div className="mt-0.5 flex items-center gap-1.5 text-[11px] text-slate-400">
+              <span className="rounded bg-brand-500/15 px-1 py-px text-[9px] font-bold tracking-widest text-brand-300">KAI</span>
+              <span className="truncate">{storyline}</span>
+            </div>
+          )}
         </div>
         {l.hasResponse && l.responseOutcome && (
           <span className={`pill ${OUTCOME_COLOR[l.responseOutcome] || "bg-slate-500/15 text-slate-300"}`}>
@@ -462,7 +511,7 @@ function LetterRow({
           </div>
         ) : (
           <div className="flex items-center gap-1.5">
-            <Link href={`/letters/print/${l.id}`} target="_blank" className="btn-ghost text-xs"><Printer className="h-3.5 w-3.5" /></Link>
+            <Link href={`/letters/print/${l.id}`} target="_blank" className="btn-ghost text-xs" aria-label="Print letter"><Printer className="h-3.5 w-3.5" aria-hidden /></Link>
             {l.status !== "MAILED" && l.status !== "RESOLVED" && l.status !== "RESPONSE_RECEIVED" && (
               <button onClick={() => onStatus(l.id, "MAILED")} className="btn-ghost text-xs">Mark mailed</button>
             )}
@@ -479,8 +528,8 @@ function LetterRow({
             {l.status === "MAILED" && (
               <button onClick={() => onStatus(l.id, "RESOLVED")} className="btn-ghost text-xs">Resolved</button>
             )}
-            <button onClick={onDelete} className="btn-ghost text-xs text-slate-400 hover:text-rose-400" title="Delete letter">
-              <Trash2 className="h-3.5 w-3.5" />
+            <button onClick={onDelete} className="btn-ghost text-xs text-slate-400 hover:text-rose-400" title="Delete letter" aria-label="Delete letter">
+              <Trash2 className="h-3.5 w-3.5" aria-hidden />
             </button>
           </div>
         )}

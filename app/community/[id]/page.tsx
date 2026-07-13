@@ -137,8 +137,9 @@ export default function ThreadPage({ params }: { params: { id: string } }) {
     return (
       <AppShell title="/ Community">
         <div className="card mx-auto mt-6 max-w-md p-8 text-center text-sm text-slate-400">
-          This discussion doesn&apos;t exist or you don&apos;t have access.
-          <div className="mt-4"><Link href="/community" className="btn-ghost text-sm"><ArrowLeft className="h-4 w-4" /> Back to Community</Link></div>
+          I couldn&apos;t find this discussion — it may have been removed, or it isn&apos;t available on your plan. Everything
+          current is on the Community index.
+          <div className="mt-4"><Link href="/community" className="btn-ghost text-sm"><ArrowLeft className="h-4 w-4" aria-hidden="true" /> Back to Community</Link></div>
         </div>
       </AppShell>
     );
@@ -167,8 +168,8 @@ export default function ThreadPage({ params }: { params: { id: string } }) {
         {/* Controls */}
         <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-ink-700/60 pt-3">
           <button onClick={summonKai} disabled={kaiBusy} className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-xs font-medium text-amber-300 hover:bg-amber-500/20 disabled:opacity-60">
-            {kaiBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-            {kaiBusy ? "Kai is thinking…" : "Ask Kai"}
+            {kaiBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />}
+            {kaiBusy ? "Kai is reading the thread…" : "Ask Kai"}
           </button>
           {viewer.canPin && (
             <>
@@ -201,7 +202,7 @@ export default function ThreadPage({ params }: { params: { id: string } }) {
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <span className={`text-sm font-medium ${r.isKai ? "text-amber-300" : ""}`}>{r.authorName}</span>
-                  {r.isKai && <span className="rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-300">Master Agent</span>}
+                  {r.isKai && <span className="rounded bg-brand-500/15 px-1.5 py-0.5 text-[10px] font-bold tracking-widest text-brand-300">KAI</span>}
                   <span className="text-[11px] text-slate-500">{when(r.createdAt)}</span>
                 </div>
                 {r.body && <p className="mt-1.5 whitespace-pre-wrap text-sm leading-relaxed text-slate-200">{r.body}</p>}
@@ -211,10 +212,10 @@ export default function ThreadPage({ params }: { params: { id: string } }) {
                 {r.canReport && (
                   reported.has(r.id)
                     ? <span className="text-[10px] text-slate-500">Reported</span>
-                    : <button onClick={() => report("reply", r.id)} className="text-slate-500 hover:text-amber-300" title="Report reply"><Flag className="h-3.5 w-3.5" /></button>
+                    : <button onClick={() => report("reply", r.id)} className="text-slate-500 hover:text-amber-300" title="Report reply" aria-label="Report reply"><Flag className="h-3.5 w-3.5" aria-hidden="true" /></button>
                 )}
                 {r.canDelete && (
-                  <button onClick={() => deleteReply(r.id)} className="text-slate-500 hover:text-rose-400" title="Delete reply"><Trash2 className="h-3.5 w-3.5" /></button>
+                  <button onClick={() => deleteReply(r.id)} className="text-slate-500 hover:text-rose-400" title="Delete reply" aria-label="Delete reply"><Trash2 className="h-3.5 w-3.5" aria-hidden="true" /></button>
                 )}
               </div>
             </div>

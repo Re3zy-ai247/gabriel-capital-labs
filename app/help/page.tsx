@@ -27,7 +27,7 @@ const guides = [
     items: [
       { title: 'Understanding the 90-Day Journey', description: 'How credit disputes are resolved over time' },
       { title: 'Reading Your Reports', description: 'How to interpret changes in your credit reports' },
-      { title: 'Checking Dispute Status', description: 'Monitor what\'s being fixed across bureaus' },
+      { title: 'Checking Dispute Status', description: 'Track each dispute\'s reinvestigation status across bureaus' },
     ],
   },
   {
@@ -45,17 +45,22 @@ export default function HelpPage() {
   return (
     <div className="min-h-screen bg-slate-950 text-white">
       <div className="max-w-6xl mx-auto px-6 py-16">
+        <div className="mb-3 flex items-center gap-2">
+          <span className="rounded bg-brand-500/15 px-1.5 py-0.5 text-[10px] font-bold tracking-widest text-brand-300">KAI</span>
+          <span className="text-[11px] font-semibold uppercase tracking-widest text-slate-500">Briefing room</span>
+        </div>
         <h1 className="text-5xl font-bold mb-4">Help & Support</h1>
         <p className="text-xl text-slate-400 mb-12">
-          Find guides, answers, and support for using CreditVector™
+          The essentials, explained the way I explain them — plainly. Start with a guide; if it doesn&apos;t settle the question, send it to the team below.
         </p>
 
         {/* Search */}
         <div className="mb-16">
           <input
             type="text"
-            placeholder="Search help topics..."
-            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-6 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+            placeholder="Search the briefing room..."
+            aria-label="Search help topics"
+            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-6 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-brand-500"
           />
         </div>
 
@@ -82,14 +87,14 @@ export default function HelpPage() {
         </div>
 
         {/* Contact Support */}
-        <div className="mt-16 bg-gradient-to-r from-emerald-900/20 to-blue-900/20 border border-slate-700 rounded-lg p-12 text-center">
-          <h2 className="text-3xl font-bold mb-4">Still need help?</h2>
+        <div className="mt-16 bg-gradient-to-r from-brand-900/20 to-ocean-700/20 border border-slate-700 rounded-lg p-12 text-center">
+          <h2 className="text-3xl font-bold mb-4">Didn&apos;t find your answer?</h2>
           <p className="text-slate-400 mb-6 max-w-2xl mx-auto">
-            Our support team is here to help. Premium members get priority email support within 24 hours.
+            Open a ticket and the team picks it up from there. Premium members get priority email support within 24 hours.
           </p>
-          <button className="bg-emerald-500 hover:bg-emerald-600 text-white keep-white px-8 py-3 rounded-lg font-semibold transition">
-            Contact Support
-          </button>
+          <Link href="/support" className="inline-block bg-brand-500 hover:bg-brand-600 text-white keep-white px-8 py-3 rounded-lg font-semibold transition">
+            Open a ticket
+          </Link>
         </div>
 
         {/* Quick Tips */}
@@ -109,7 +114,7 @@ export default function HelpPage() {
               <div className="text-2xl mb-3">📋</div>
               <h3 className="font-bold mb-2">Use the Strategist</h3>
               <p className="text-slate-400 text-sm">
-                Our AI-powered strategist prioritizes which items to dispute first for maximum impact.
+                Our AI-powered strategist prioritizes which items to dispute first — and explains why.
               </p>
             </div>
 

@@ -185,7 +185,7 @@ export default function SettingsPage() {
                 onChange={set("fullName")}
                 required
                 placeholder="As it appears on your credit reports"
-                className="w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-white placeholder:text-slate-600 focus:border-emerald-500 focus:outline-none"
+                className="w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-white placeholder:text-slate-600 focus:border-brand-500 focus:outline-none"
               />
             </div>
             <div>
@@ -195,7 +195,7 @@ export default function SettingsPage() {
                 onChange={set("addressLine1")}
                 required
                 placeholder="Street address"
-                className="w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-white placeholder:text-slate-600 focus:border-emerald-500 focus:outline-none"
+                className="w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-white placeholder:text-slate-600 focus:border-brand-500 focus:outline-none"
               />
             </div>
             <div>
@@ -204,7 +204,7 @@ export default function SettingsPage() {
                 value={profile.addressLine2}
                 onChange={set("addressLine2")}
                 placeholder="Apt, suite, unit"
-                className="w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-white placeholder:text-slate-600 focus:border-emerald-500 focus:outline-none"
+                className="w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-white placeholder:text-slate-600 focus:border-brand-500 focus:outline-none"
               />
             </div>
             <div className="grid grid-cols-3 gap-4">
@@ -214,7 +214,7 @@ export default function SettingsPage() {
                   value={profile.city}
                   onChange={set("city")}
                   required
-                  className="w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-white focus:border-emerald-500 focus:outline-none"
+                  className="w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-white focus:border-brand-500 focus:outline-none"
                 />
               </div>
               <div className="col-span-1">
@@ -225,7 +225,7 @@ export default function SettingsPage() {
                   required
                   maxLength={2}
                   placeholder="CA"
-                  className="w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-white placeholder:text-slate-600 uppercase focus:border-emerald-500 focus:outline-none"
+                  className="w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-white placeholder:text-slate-600 uppercase focus:border-brand-500 focus:outline-none"
                 />
               </div>
               <div className="col-span-1">
@@ -236,7 +236,7 @@ export default function SettingsPage() {
                   required
                   inputMode="numeric"
                   placeholder="90210"
-                  className="w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-white placeholder:text-slate-600 focus:border-emerald-500 focus:outline-none"
+                  className="w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-white placeholder:text-slate-600 focus:border-brand-500 focus:outline-none"
                 />
               </div>
             </div>
@@ -245,10 +245,10 @@ export default function SettingsPage() {
               <button
                 type="submit"
                 disabled={busy}
-                className="inline-flex items-center gap-2 rounded-lg bg-emerald-500 px-6 py-2 font-semibold text-white keep-white transition hover:bg-emerald-600 disabled:opacity-50"
+                className="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-6 py-2 font-semibold text-white keep-white transition hover:bg-brand-600 disabled:opacity-50"
               >
-                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                Save Profile
+                {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Save className="h-4 w-4" aria-hidden="true" />}
+                {busy ? "Saving your details…" : "Save Profile"}
               </button>
               {status && <span className="text-sm text-slate-400">{status}</span>}
             </div>
@@ -261,6 +261,7 @@ export default function SettingsPage() {
             <Lock className="h-5 w-5 text-brand-400" /> Password &amp; Security
           </h2>
           <p className="mb-4 text-sm text-slate-400">
+            Changing your password only changes how you sign in — your reports, letters, and dispute history stay exactly as they are.
             Use at least 10 characters with an uppercase letter, a number, and a special character (e.g. ! @ # $).
           </p>
           <form onSubmit={changePassword} className="max-w-sm space-y-3">
@@ -300,7 +301,7 @@ export default function SettingsPage() {
                 Update password
               </button>
               {pwMsg && (
-                <span className={`text-sm ${pwMsg.ok ? "text-emerald-400" : "text-rose-400"}`}>{pwMsg.text}</span>
+                <span className={`text-sm ${pwMsg.ok ? "text-success-400" : "text-rose-400"}`}>{pwMsg.text}</span>
               )}
             </div>
           </form>
@@ -311,8 +312,10 @@ export default function SettingsPage() {
           <h2 className="mb-1 flex items-center gap-2 text-xl font-bold">
             <Bell className="h-5 w-5 text-brand-400" /> Phone Alerts
           </h2>
-          <p className="mb-4 text-sm text-slate-400">
-            Get a push notification on this device when something needs your attention (e.g. a Brief draft awaiting approval).
+          <p className="mb-4 text-sm leading-relaxed text-slate-400">
+            <span className="mr-2 rounded bg-brand-500/15 px-1.5 py-0.5 text-[10px] font-bold tracking-widest text-brand-300">KAI</span>
+            Turn this on and I&apos;ll send a push to this device when something needs your attention (e.g. a Brief draft awaiting approval).
+            Turn it off and the alerts stop — nothing else about your account changes.
           </p>
           <PushToggle />
         </div>
@@ -322,8 +325,10 @@ export default function SettingsPage() {
           <h2 className="mb-1 flex items-center gap-2 text-xl font-bold">
             <Mail className="h-5 w-5 text-brand-400" /> Email Updates
           </h2>
-          <p className="mb-4 text-sm text-slate-400">
-            Get a weekly email digest of the latest CreditVector Brief — educational consumer-credit news. You can unsubscribe anytime.
+          <p className="mb-4 text-sm leading-relaxed text-slate-400">
+            <span className="mr-2 rounded bg-brand-500/15 px-1.5 py-0.5 text-[10px] font-bold tracking-widest text-brand-300">KAI</span>
+            I&apos;ll email you a weekly digest of the CreditVector Brief — educational consumer-credit news, explained plainly.
+            You can stop it any time, and every email includes an unsubscribe link.
           </p>
           <button
             type="button"

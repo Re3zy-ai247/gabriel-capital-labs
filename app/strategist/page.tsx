@@ -25,8 +25,15 @@ export default async function StrategistPage() {
   return (
     <AppShell title="/ AI Strategist">
       <EduBanner />
-      <h2 className="mb-1 text-xl font-semibold">AI Dispute Strategist</h2>
-      <p className="mb-4 text-sm text-slate-400">Attack priority ranked by account type, age, debt-buyer status, and verifiable inconsistencies.</p>
+      <h2 className="mb-1 flex items-center gap-2 text-xl font-semibold">
+        <span className="rounded bg-brand-500/15 px-1.5 py-0.5 text-[10px] font-bold tracking-widest text-brand-300">KAI</span>
+        Strategy Desk
+      </h2>
+      <p className="mb-4 text-sm text-slate-400">
+        {tradelines.length > 0
+          ? `I weighed ${tradelines.length === 1 ? "your item" : `all ${tradelines.length} of your items`} against account type, age, debt-buyer status, and verifiable inconsistencies. This is the order I'd work the queue.`
+          : "This is where I rank your dispute queue — by account type, age, debt-buyer status, and verifiable inconsistencies."}
+      </p>
 
       <AiPlan />
 
@@ -36,6 +43,17 @@ export default async function StrategistPage() {
         <div className="card p-4 text-center"><div className="text-xl font-bold text-slate-300">{counts.LOW}</div><div className="text-[11px] uppercase text-slate-400">Low</div></div>
         <div className="card p-4 text-center"><div className="text-xl font-bold text-rose-300">{counts.NR}</div><div className="text-[11px] uppercase text-slate-400">Excluded</div></div>
       </div>
+
+      {tradelines.length === 0 && (
+        <div className="card p-8 text-center">
+          <p className="text-sm font-medium text-slate-300">Nothing on my desk yet.</p>
+          <p className="mx-auto mt-1 max-w-md text-xs text-slate-400">
+            Upload a credit report and I&apos;ll rank every tradeline by dispute strength — the queue builds itself from
+            your real data.
+          </p>
+          <Link href="/upload" className="btn-primary mt-4 inline-flex">Upload your report</Link>
+        </div>
+      )}
 
       <div className="space-y-2">
         {queue.map((t, i) => (
@@ -57,8 +75,8 @@ export default async function StrategistPage() {
 
       {excluded.length > 0 && (
         <div className="card mt-5 p-4">
-          <div className="mb-2 text-sm font-semibold text-rose-300">Excluded from dispute queue</div>
-          <p className="mb-3 text-xs text-slate-400">These are government/statutory debts that generally cannot be disputed off a report. Pursuing them is ineffective and can hurt credibility.</p>
+          <div className="mb-2 text-sm font-semibold text-rose-300">I pulled these out of the queue</div>
+          <p className="mb-3 text-xs text-slate-400">They&apos;re government or statutory debts that generally cannot be disputed off a report. Disputing them wastes a cycle and can hurt your credibility with the bureaus — so I keep them off the desk.</p>
           {excluded.map((t) => (
             <div key={t.id} className="flex items-center justify-between border-t border-ink-700/50 py-2 text-sm first:border-0">
               <span>{t.creditorName}</span><span className="text-xs text-slate-500">{formatCents(t.balance)}</span>

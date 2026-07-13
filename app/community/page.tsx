@@ -101,8 +101,8 @@ export default function CommunityPage() {
           <Building2 className="mx-auto mb-3 h-9 w-9 text-brand-400" />
           <h2 className="mb-2 text-lg font-semibold">The Community Hub is for Agency members</h2>
           <p className="mb-5 text-sm text-slate-400">
-            Connect with other agency operators, share wins and strategy, and get expert answers from <strong>Kai</strong>,
-            the CreditVector master agent. Unlock it with an Agency subscription.
+            Connect with other agency operators and share wins and strategy. Bring <strong>Kai</strong> into any thread and
+            he answers with statutes and process — never promises. Unlock it with an Agency subscription.
           </p>
           <Link href="/pricing" className="btn-primary inline-flex">See Agency plans <ArrowRight className="h-4 w-4" /></Link>
         </div>
@@ -118,14 +118,17 @@ export default function CommunityPage() {
       <div className="card mb-5 flex flex-col gap-4 bg-gradient-to-br from-amber-500/10 to-transparent p-5 sm:flex-row sm:items-center">
         <KaiBadge className="h-14 w-14" />
         <div className="min-w-0 flex-1">
-          <h2 className="text-lg font-semibold">Agency Hub — with Kai, your master agent</h2>
-          <p className="text-sm text-slate-400">
-            Chat with fellow operators, share what&apos;s working, and ask <strong className="text-amber-300">Kai</strong> anything about
-            disputes, the law, or running your agency on CreditVector. Start a discussion and tick &ldquo;Ask Kai&rdquo; for an expert take.
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-lg font-semibold">Agency Hub</h2>
+            <span className="rounded bg-brand-500/15 px-1.5 py-0.5 text-[10px] font-bold tracking-widest text-brand-300">KAI</span>
+          </div>
+          <p className="mt-1 text-sm text-slate-400">
+            Ask anything about the dispute process. Bring me into a thread and I answer with receipts:
+            the statute, the rule, or the process step. Never promises.
           </p>
         </div>
         <button onClick={() => { setOpen((v) => !v); setFormCat(cat || "general"); }} className="btn-primary shrink-0">
-          <Plus className="h-4 w-4" /> New discussion
+          <Plus className="h-4 w-4" aria-hidden="true" /> New discussion
         </button>
       </div>
 
@@ -155,10 +158,20 @@ export default function CommunityPage() {
           <div className="mt-2">
             <AttachmentPicker files={files} onChange={setFiles} disabled={busy} />
           </div>
-          <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm text-slate-300">
-            <input type="checkbox" checked={askKai} onChange={(e) => setAskKai(e.target.checked)} className="h-4 w-4 accent-amber-500" />
-            <Sparkles className="h-4 w-4 text-amber-400" /> Ask Kai for an expert take on this
+          <label className="mt-3 flex cursor-pointer items-start gap-2 text-sm text-slate-300">
+            <input type="checkbox" checked={askKai} onChange={(e) => setAskKai(e.target.checked)} className="mt-0.5 h-4 w-4 accent-amber-500" />
+            <span>
+              <span className="flex items-center gap-1.5">
+                <Sparkles className="h-4 w-4 text-amber-400" aria-hidden="true" /> Bring Kai into this thread
+              </span>
+              <span className="mt-0.5 block text-xs text-slate-500">I answer with statutes and process — never promises.</span>
+            </span>
           </label>
+          <p className="mt-3 text-[11px] leading-relaxed text-slate-500">
+            <span className="mr-1.5 rounded bg-brand-500/15 px-1.5 py-0.5 text-[10px] font-bold tracking-widest text-brand-300">KAI</span>
+            House rule: process language, never promised outcomes. Threads are moderated — claims of guaranteed
+            deletions or score gains don&apos;t belong here and can be removed.
+          </p>
           {error && <p className="mt-3 text-xs text-rose-400">{error}</p>}
           <div className="mt-4 flex items-center gap-2">
             <button onClick={submit} disabled={busy} className="btn-primary">
@@ -180,11 +193,24 @@ export default function CommunityPage() {
 
       {/* Thread list */}
       {loading ? (
-        <div className="grid h-40 place-items-center text-slate-500"><Loader2 className="h-6 w-6 animate-spin" /></div>
+        <div className="grid h-40 place-items-center text-slate-500">
+          <div className="flex flex-col items-center gap-2">
+            <Loader2 className="h-6 w-6 animate-spin" aria-hidden="true" />
+            <p className="text-xs">Pulling up the latest discussions…</p>
+          </div>
+        </div>
       ) : threads.length === 0 ? (
         <div className="card flex flex-col items-center gap-3 p-10 text-center">
-          <MessagesSquare className="h-8 w-8 text-slate-600" />
-          <p className="text-sm text-slate-400">No discussions here yet. Be the first to start one.</p>
+          <MessagesSquare className="h-8 w-8 text-slate-600" aria-hidden="true" />
+          <span className="rounded bg-brand-500/15 px-1.5 py-0.5 text-[10px] font-bold tracking-widest text-brand-300">KAI</span>
+          <p className="max-w-md text-sm text-slate-400">
+            Nothing posted {cat ? "in this category" : "here"} yet. Start the first discussion: a
+            question, a win, or a bureau response you&apos;re unsure about. If the law speaks to it, I&apos;ll answer with the
+            statute.
+          </p>
+          <button onClick={() => { setOpen(true); setFormCat(cat || "general"); }} className="btn-primary mt-1">
+            <Plus className="h-4 w-4" aria-hidden="true" /> Start the first discussion
+          </button>
         </div>
       ) : (
         <div className="space-y-2">
