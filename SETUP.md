@@ -1,5 +1,7 @@
 # Gabriel Capital Labs — Go-Live Setup
 
+> ⚠️ **HISTORICAL (go-live is complete; e.g. `SETUP_SECRET` was deleted 2026-06-16).** Current env vars/services: [.ai/INTEGRATIONS.md](.ai/INTEGRATIONS.md) · owner actions: [.ai/RUNBOOKS/admin-actions.md](.ai/RUNBOOKS/admin-actions.md).
+
 Everything in the code is done. To switch billing + accounts on, set the
 environment variables below in **Vercel → Project Settings → Environment
 Variables**, redeploy, then run the one-time bootstrap. ~10 minutes total.

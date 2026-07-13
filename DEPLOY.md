@@ -1,5 +1,7 @@
 # Deploying Gabriel Capital Labs (web + desktop + mobile)
 
+> ⚠️ **HISTORICAL (first-time setup guide).** The app is already deployed to production. Current deploy procedure: [.ai/RUNBOOKS/deploy.md](.ai/RUNBOOKS/deploy.md) · services/env vars: [.ai/INTEGRATIONS.md](.ai/INTEGRATIONS.md).
+
 You deploy ONCE as a website. Desktop and mobile are then installed from that URL
 (it's a PWA) — no separate app builds or app-store submissions required.
 

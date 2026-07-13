@@ -1,0 +1,56 @@
+# Product Delight System — 100 micro-moments + the WOW-50
+
+Two registries. **Part A: 100 delight micro-moments** — small, quiet, Apple-grade touches (never loud, never gimmicky; all obey MOTION-BIBLE physics + reduced-motion). **Part B: WOW-50** — the moments where users think "wow" because *uncertainty just died*. Build state: DESIGNED — each item ships only through `FOUNDER-STANDARD.md`. IDs are stable for roadmap reference.
+
+## Part A — 100 delight micro-moments
+
+**Upload & parsing (D1–D8)**
+D1 drop-zone breathes faintly on file-drag-over · D2 filename morphs into a neat document card on drop · D3 real stage names during parse ("Reading Experian section…") · D4 page-count + bureau auto-detected and shown ("Tri-merge, 42 pages — good file") · D5 parse success: document card settles with a soft checkmark draw · D6 parse fail: card tilts gently (not shake-scold), fix suggestion inline · D7 re-upload remembers last bureau choice · D8 slow parses show Kai thinking, not a bar stuck at 99%.
+
+**First report & analysis (D9–D16)**
+D9 tradelines cascade in staggered 40ms, oldest first · D10 per-bureau presence dots draw left→right per row · D11 conflict rows get the single teal pulse · D12 counts count up only on first reveal, never again · D13 "N items worth reviewing" card materializes last, after evidence · D14 hovering a classification shows the plain-English why · D15 obsolete items show a quiet countdown chip ("falls off in 14 months") · D16 the whole reveal is replayable from settings (users show people).
+
+**Insights & evidence (D17–D24)**
+D17 every claim expands to evidence in place, no navigation · D18 statute citations render as elegant cards, not legal soup · D19 evidence highlights draw as slow underlines · D20 comparison cells illuminate as you read (scroll-linked, subtle) · D21 "how sure are we" badge on every finding · D22 unknowns say "unknown" beautifully (honest empty cells, no fake data) · D23 copy-evidence copies a formatted, cited block · D24 second visit to the same insight skips the animation (respect familiarity).
+
+**Letter builder (D25–D34)**
+D25 strategy pre-selected with the reason shown ("recommended because: 2-bureau conflict") · D26 grounded lines draw first, refined lines shimmer second — always in that order · D27 furnisher address pre-fills with source chip · D28 placeholder fields glow until filled (gate before print) · D29 tone is legally sober; a "why this wording" expander teaches the statute per paragraph · D30 print preview is beautiful — the letter itself is a brand asset · D31 "mailed it" button starts the clock with a satisfying radar-arc spin-up · D32 envelope-addressing helper (fold lines, certified-mail tips) · D33 letter history reads like case files, not a list · D34 generating letter #2 references letter #1's outcome automatically.
+
+**Waiting & timeline (D35–D42)**
+D35 deadline radar ticks daily, visible on Kai Home · D36 timeline nodes ignite with soft ticks when events land · D37 hollow future nodes = due, filled = done (learned in one glance) · D38 day-15 check-in card: "halfway — here's what typically happens next" · D39 weekly education card matched to their situation · D40 mail-window Kai: STATE-03 ears perk on login near deadline days · D41 nothing-happened weeks still render honestly ("no movement — that's normal at day 9") · D42 the timeline is shareable as a clean image (data anonymized by default).
+
+**Response & outcomes (D43–D50)**
+D43 response upload gets the same premium parse treatment · D44 outcome classification explained before celebrated · D45 removed item: strikethrough draws slowly across the tradeline, then the row exhales out · D46 verified item: no gloom — the escalation path renders immediately as the next chapter · D47 MoV generation offered as one-click continuation · D48 outcome recorded → funnel stats update live where visible · D49 favorable outcomes ask consent to inspire others (anonymized, "results vary") · D50 every outcome updates the goal distance ("mortgage-ready" tracker).
+
+**Kai presence (D51–D58)**
+D51 first-ever greeting chip, once, 6 seconds · D52 ears perk exactly when a real event arrives · D53 gaze follows cursor with 200ms dignity lag · D54 dismissed twice → that element class goes quiet (and he remembers) · D55 Kai's chip blinks... never; it breathes · D56 empty states are Kai's stage ("Nothing here yet — upload and I'll get to work") · D57 reduced-motion users get composed still Kai, full function · D58 Kai Home greeting uses time-of-day + real overnight facts, never fake warmth.
+
+**Community & Brief (D59–D66)**
+D59 "discussions like yours" matched by tag, shown with match reason · D60 attorney-verified badge with tap-through to what verification means · D61 posting shows the compliance screen as protection, not censorship ("we keep claims honest here") · D62 reply notifications say who + what thread, one line · D63 Brief cards carry branded covers + source favicons · D64 "relevant to your dispute" Brief chip with the connection stated · D65 saved articles shelf renders like a reading list, not bookmarks · D66 comment box shows the rules inline, softly, before violation not after.
+
+**Navigation, states & system (D67–D76)**
+D67 every empty state teaches the one action that fills it · D68 skeletons match real layout exactly (zero shift) · D69 back always returns scroll position · D70 keyboard palette (⌘K) for power users · D71 saves are silent-optimistic with quiet undo, not toast confetti · D72 errors: blame-free line + specific fix + support link with context pre-attached · D73 404 is Kai looking left/right, one useful link out · D74 session expiry preserves the draft, always · D75 print styles for every artifact (reports, timelines) · D76 dark/light both first-class; toggle animates 300ms cross-fade once, never a strobe.
+
+**Settings, billing & email (D77–D86)**
+D77 settings sections explain consequences before toggles · D78 credit balance visible with plain math ("2 credits ≈ 1 deep analysis") · D79 buying credits shows exactly what they buy, no decoy pricing · D80 cancel flow is one page, dignified, no guilt copy — and says what happens to data · D81 invoices are clean PDFs with the brand type · D82 plan comparison states limits honestly (free tier described respectfully) · D83 digest emails open with the user's own week, not marketing · D84 unsubscribe is one click and works instantly, confirmed plainly · D85 email typography matches product typography (one brand, one type voice) · D86 payment failure email is calm: what happened, one link, no red panic.
+
+**Agency (D87–D93)**
+D87 client cards show health at a glance (clock chips, not walls of data) · D88 "needs attention" sort explains each flag · D89 adding a client is a 60-second flow with a checklist of consents · D90 per-client timeline identical to consumer view (one mental model) · D91 SLA digest Monday morning, three lines per client max · D92 workspace switcher remembers context per client · D93 client-facing exports carry the agency's professionalism (clean, cited).
+
+**Celebrations & long arc (D94–D100)**
+D94 milestone celebrations are proportional (wag < timeline light-up < victory projection) · D95 anniversaries noted quietly ("one year of watching your file — here's the arc") · D96 score log draws its line slowly on first monthly view · D97 goal reached → the goal card folds into a "achieved" shelf · D98 referral ask appears only after a victory, once, politely · D99 export-everything (data dignity) is prominent, beautiful, complete · D100 the last screen of cancellation says thank you and means it — the exit is also the brand.
+
+## Part B — the WOW-50 (uncertainty-killers)
+
+**Understanding (W1–W10):** W1 the tri-merge decoded into one honest grid (the money shot) · W2 "this account appears 3 ways — here's each version" side-by-side · W3 plain-English classification of every tradeline with the why · W4 the obsolescence countdown (§605 made visible) · W5 duplicate-debt grouping ("these three collections are the same debt") · W6 the un-disputable flagged honestly (government/child support — protects users from wasted rounds) · W7 score-factor honesty ("we show what's in your file, not a magic number") · W8 report-to-report diff after re-pull ("what changed since March") · W9 identity-document discrepancy scan results in one card · W10 the first analysis replay — watching your own file get understood.
+
+**Process & law (W11–W20):** W11 the §611 clock starting the moment you mail — the law as UI · W12 the full dispute flow drawn before you start (no mystery steps) · W13 statute cards: FCRA in language a tired adult reads at 11pm · W14 "what the bureau actually does with your letter" explainer · W15 MoV explained + generated in one continuation · W16 escalation tree shown when verified (options, not dead end) · W17 the anti-myth moments ("no, §609 isn't a magic eraser — here's what works") · W18 realistic-odds framing per strategy (rule-based, honest) · W19 certified-mail guidance with the why · W20 the CFPB-complaint path explained for stalls (education, not filing-for-you).
+
+**Intelligence & memory (W21–W30):** W21 Kai's overnight delta — the product worked while you slept · W22 the recommendation card with rule confidence and one-click action · W23 "from your file:" memory chips — Kai cites YOUR documents · W24 the retrieval waterfall performing visibly before an AI answer · W25 provenance chips on every answer, all tappable · W26 confidence badges calibrated and explained · W27 the reasoning summary expander ("how I got here") · W28 deadline rescue ("window closes Thursday — send by Tuesday") · W29 dismissed advice stays dismissed — he remembers · W30 cost shown before any paid ask — no meter anxiety.
+
+**Progress & proof (W31–W40):** W31 the auto-built case timeline — your entire dispute history as one drawing · W32 the funnel from generated→resolved with YOUR numbers · W33 the removed-item strikethrough moment · W34 goal-distance tracking (mortgage-ready arc) · W35 the yearly arc view (W95's big sibling) · W36 every letter's outcome linked back to its strategy (learning loop visible) · W37 the case file export — hand a lawyer everything, cited, in minutes · W38 agency: 20 client timelines in one board · W39 agency: the follow-up clock board (nothing slips) · W40 community outcomes context ("disputes like yours, what happened" — aggregated, typical-results framed).
+
+**Trust fabric (W41–W50):** W41 "not yet instrumented" — the product that refuses to fake a number · W42 the letter that shows its grounded/refined layers honestly · W43 the compliance screen protecting users' own posts from unsafe claims · W44 attorney-verified answers existing at all · W45 encrypted-at-rest badge with a real explanation of what's protected · W46 the no-promises pledge ON the pricing page · W47 cancel-in-one-page dignity · W48 export-everything completeness · W49 support tickets answered with your context already attached · W50 the moment a user realizes every single claim in the product has a receipt — and always did.
+
+## Usage
+Roadmap references these IDs (`ROADMAP-V2.md`). When building a surface, ship its delight items in the same PR as the feature — delight retrofitted is delight forgotten. Each item passes the FOUNDER-STANDARD gate with its feature.

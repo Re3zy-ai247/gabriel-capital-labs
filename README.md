@@ -2,6 +2,8 @@
 
 AI-powered **credit dispute education platform** — one codebase that ships as a **website**, an **installable desktop app**, and a **mobile app** (PWA). Rebuilt as a clean, deploy-ready Next.js full-stack application with the accuracy and compliance fixes from QA baked in.
 
+> **Working on this repo with Claude Code?** Start at [CLAUDE.md](CLAUDE.md) → [.ai/INDEX.md](.ai/INDEX.md) → [.ai/CURRENT-STATE.md](.ai/CURRENT-STATE.md). The `.ai/` directory is the canonical governance/documentation hub; on any conflict, `.ai/` wins over this README.
+
 > Educational tool. Not legal advice. No outcome is guaranteed.
 
 ## Stack
