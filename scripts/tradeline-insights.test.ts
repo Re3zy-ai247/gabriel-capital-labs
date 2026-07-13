@@ -1,6 +1,7 @@
 // Guards for the §605 fall-off display math and duplicate-debt grouping that the
 // tradelines page renders. Run: npx tsx scripts/tradeline-insights.test.ts
 import { fallOffInsight, formatMonthYear, duplicateGroups, groupAdjacentOrder } from "../lib/tradelineInsights";
+import { conflictFields, crossBureauConflicts, type BureauData } from "../lib/bureauData";
 
 let failures = 0;
 function eq(label: string, got: unknown, want: unknown) {
@@ -49,6 +50,22 @@ eq("group members pulled adjacent at strongest member's slot",
   groupAdjacentOrder(rows, groups).map((r) => r.id), ["a", "c", "b", "d"]);
 eq("no groups → order untouched",
   groupAdjacentOrder(rows, new Map()).map((r) => r.id), ["a", "b", "c", "d"]);
+
+// ---- conflictFields ↔ crossBureauConflicts (sentence text is load-bearing) ----
+const conflicted: BureauData = {
+  EQUIFAX: { presence: "PRESENT", status: "Open Collection", balanceCents: 101300, dofd: "2021-02-01" },
+  EXPERIAN: { presence: "PRESENT", status: "Closed", balanceCents: 98000, dofd: "2021-06-01" },
+};
+eq("all three fields flagged when they disagree", [...conflictFields(conflicted)].sort(), ["balance", "dofd", "status"]);
+eq("sentences unchanged by the conflictFields refactor", crossBureauConflicts(conflicted), [
+  "Balance differs across bureaus reporting this account.",
+  "Account status differs across bureaus reporting this account.",
+  "Date of first delinquency differs across bureaus — possible re-aging.",
+]);
+eq("single-bureau knowledge → no conflict claims", [
+  conflictFields({ EQUIFAX: { presence: "PRESENT", balanceCents: 5000 } }).size,
+  crossBureauConflicts({ EQUIFAX: { presence: "PRESENT", balanceCents: 5000 } }).length,
+], [0, 0]);
 
 console.log(failures === 0 ? "\nALL PASS" : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

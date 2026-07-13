@@ -5,10 +5,13 @@ import { ProbabilityBadge, BureauBadges } from "@/components/ui/Badge";
 import { ReanalyzeButton } from "@/components/ReanalyzeButton";
 import { prisma } from "@/lib/prisma";
 import { currentUserOrDemo } from "@/lib/session";
-import { presentBureaus, getBureauData, crossBureauConflicts } from "@/lib/bureauData";
-import { BUREAU_SHORT } from "@/lib/bureaus";
-import { formatCents } from "@/lib/utils";
+import type { Bureau } from "@prisma/client";
+import { presentBureaus, getBureauData, crossBureauConflicts, conflictFields } from "@/lib/bureauData";
+import { BUREAU_SHORT, BUREAU_LABEL } from "@/lib/bureaus";
+import { formatCents, formatDate } from "@/lib/utils";
 import { fallOffInsight, formatMonthYear, duplicateGroups, groupAdjacentOrder } from "@/lib/tradelineInsights";
+
+const BUREAU_ORDER: Bureau[] = ["EQUIFAX", "EXPERIAN", "TRANSUNION"];
 
 export const dynamic = "force-dynamic";
 
@@ -86,11 +89,18 @@ export default async function TradelinesPage() {
           // Quiet countdown chip only when the §605 clock is actually in play:
           // already past the window, or ending within two years. Silence otherwise.
           const showClock = fallOff && (fallOff.pastWindow || fallOff.monthsRemaining <= 24);
-          return (
-            <div
-              key={t.id}
-              className={`grid grid-cols-12 items-center gap-2 border-b border-ink-700/50 px-4 py-3 text-sm last:border-0 ${dupSize ? "border-l-2 border-l-ocean-500/50" : ""}`}
-            >
+          // W2 — "this account appears N ways": expandable only when at least one
+          // bureau gave us real field data to show. Absence of data stays silent.
+          const known = BUREAU_ORDER.filter((b) => data[b]);
+          const hasDetail = known.some((b) => {
+            const f = data[b]!;
+            return Boolean(f.status || f.balanceCents != null || f.dateReported || f.dofd || f.remarks);
+          });
+          const diff = conflictFields(data);
+          const conflictLines = crossBureauConflicts(data);
+          const wrapperClass = `block border-b border-ink-700/50 last:border-0 ${dupSize ? "border-l-2 border-l-ocean-500/50" : ""}`;
+          const row = (
+            <div className="grid grid-cols-12 items-center gap-2 px-4 py-3 text-sm">
               <div className="col-span-4 min-w-0">
                 <div className="truncate font-medium">
                   {t.creditorName}
@@ -128,7 +138,15 @@ export default async function TradelinesPage() {
               </div>
               <div className="col-span-2 text-xs text-slate-400">{TYPE_LABEL[t.accountType]}</div>
               <div className="col-span-2 text-slate-300">{formatCents(t.balance)}</div>
-              <div className="col-span-2"><BureauBadges bureaus={present} /></div>
+              <div className="col-span-2">
+                <BureauBadges bureaus={present} />
+                {hasDetail && (
+                  <div className="mt-0.5 text-[10px] text-slate-500">
+                    <span className="group-open:hidden">compare ▾</span>
+                    <span className="hidden group-open:inline">close ▴</span>
+                  </div>
+                )}
+              </div>
               <div className="col-span-1"><ProbabilityBadge p={t.probability} /></div>
               <div className="col-span-1 text-right">
                 {t.probability !== "NOT_RECOMMENDED" ? (
@@ -146,6 +164,49 @@ export default async function TradelinesPage() {
               </div>
             </div>
           );
+
+          if (!hasDetail) return <div key={t.id} className={wrapperClass}>{row}</div>;
+          return (
+            <details key={t.id} className={`group ${wrapperClass}`}>
+              <summary className="block cursor-pointer list-none transition hover:bg-ink-800/40 [&::-webkit-details-marker]:hidden">
+                {row}
+              </summary>
+              <div className="border-t border-ink-700/40 bg-ink-800/30 px-4 py-4">
+                {conflictLines.length > 0 && (
+                  <p className="mb-3 text-xs text-slate-300">
+                    <span className="mr-2 rounded bg-brand-500/15 px-1.5 py-0.5 text-[10px] font-bold tracking-widest text-brand-300">KAI</span>
+                    This account doesn&apos;t tell one story: {conflictLines.join(" ")} Inconsistent data can&apos;t all
+                    be accurate — that&apos;s the dispute angle.
+                  </p>
+                )}
+                <div className="grid gap-3 sm:grid-cols-3">
+                  {known.map((b) => {
+                    const f = data[b]!;
+                    if (f.presence === "ABSENT") {
+                      return (
+                        <div key={b} className="rounded-lg border border-ink-700 p-3">
+                          <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{BUREAU_LABEL[b]}</div>
+                          <p className="mt-1.5 text-xs text-slate-500">Not reporting this account.</p>
+                        </div>
+                      );
+                    }
+                    return (
+                      <div key={b} className="rounded-lg border border-ink-700 p-3">
+                        <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{BUREAU_LABEL[b]}</div>
+                        <dl className="mt-2 space-y-1 text-xs">
+                          {f.status && <Field label="Status" value={f.status} hot={diff.has("status")} />}
+                          {f.balanceCents != null && <Field label="Balance" value={formatCents(f.balanceCents)} hot={diff.has("balance")} />}
+                          {f.dateReported && <Field label="Reported" value={formatDate(f.dateReported)} />}
+                          {f.dofd && <Field label="First delinquency" value={formatDate(f.dofd)} hot={diff.has("dofd")} />}
+                          {f.remarks && <Field label="Remarks" value={f.remarks} />}
+                        </dl>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </details>
+          );
         })}
         {!tradelines.length && (
           <div className="px-4 py-10 text-center">
@@ -160,5 +221,21 @@ export default async function TradelinesPage() {
       </div>
       <Disclaimer />
     </AppShell>
+  );
+}
+
+// One labeled value in a bureau's comparison card. `hot` marks a field that
+// crossBureauConflicts flagged as disagreeing across bureaus.
+function Field({ label, value, hot }: { label: string; value: string; hot?: boolean }) {
+  return (
+    <div className="flex justify-between gap-2">
+      <dt className="shrink-0 text-slate-500">{label}</dt>
+      <dd
+        className={`text-right ${hot ? "font-semibold text-gold-400" : "text-slate-300"}`}
+        title={hot ? "This value differs across the bureaus reporting this account." : undefined}
+      >
+        {value}
+      </dd>
+    </div>
   );
 }

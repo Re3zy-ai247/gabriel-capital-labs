@@ -32,21 +32,37 @@ export function hasCrossBureauKnowledge(data: BureauData): boolean {
   return known.length >= 2;
 }
 
-// Real, defensible cross-bureau discrepancies — ONLY computed when we have
-// knowledge of 2+ bureaus. Never fabricates "other bureau doesn't report this".
-export function crossBureauConflicts(data: BureauData): string[] {
-  if (!hasCrossBureauKnowledge(data)) return [];
+// Which specific fields disagree across the bureaus reporting this account —
+// ONLY computed when we have knowledge of 2+ bureaus. Never fabricates "other
+// bureau doesn't report this". Drives both the conflict sentences below and the
+// per-field highlighting in the side-by-side bureau comparison.
+export type ConflictField = "balance" | "status" | "dofd";
+
+export function conflictFields(data: BureauData): Set<ConflictField> {
+  const out = new Set<ConflictField>();
+  if (!hasCrossBureauKnowledge(data)) return out;
   const present = presentBureaus(data);
-  const conflicts: string[] = [];
 
   const balances = present.map((b) => data[b]?.balanceCents).filter((v) => v != null) as number[];
-  if (new Set(balances).size > 1) conflicts.push("Balance differs across bureaus reporting this account.");
+  if (new Set(balances).size > 1) out.add("balance");
 
   const statuses = present.map((b) => data[b]?.status?.toLowerCase()).filter(Boolean) as string[];
-  if (new Set(statuses).size > 1) conflicts.push("Account status differs across bureaus reporting this account.");
+  if (new Set(statuses).size > 1) out.add("status");
 
   const dofds = present.map((b) => data[b]?.dofd).filter(Boolean) as string[];
-  if (new Set(dofds).size > 1) conflicts.push("Date of first delinquency differs across bureaus — possible re-aging.");
+  if (new Set(dofds).size > 1) out.add("dofd");
 
-  return conflicts;
+  return out;
+}
+
+const CONFLICT_TEXT: Record<ConflictField, string> = {
+  balance: "Balance differs across bureaus reporting this account.",
+  status: "Account status differs across bureaus reporting this account.",
+  dofd: "Date of first delinquency differs across bureaus — possible re-aging.",
+};
+
+// Real, defensible cross-bureau discrepancies as sentences (scoring, letters,
+// Kai). Wording is load-bearing — downstream copy quotes these strings.
+export function crossBureauConflicts(data: BureauData): string[] {
+  return [...conflictFields(data)].map((f) => CONFLICT_TEXT[f]);
 }
