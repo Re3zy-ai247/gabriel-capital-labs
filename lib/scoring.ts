@@ -42,7 +42,7 @@ export function scoreTradeline(input: ScoreInput): ScoreResult {
   // Category impact
   if (input.accountType === AccountType.COLLECTION) {
     score += input.isDebtBuyer ? 38 : 28;
-    reasons.push(input.isDebtBuyer ? "Third-party debt-buyer collection — high deletion potential." : "Collection account.");
+    reasons.push(input.isDebtBuyer ? "Third-party debt-buyer collection — the buyer must be able to validate the debt it purchased, including the chain of assignment." : "Collection account.");
     if (input.isDebtBuyer) angles.push("Demand validation of the chain of assignment from the original creditor.");
   } else if (input.accountType === AccountType.CHARGE_OFF) {
     score += 30;

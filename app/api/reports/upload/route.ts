@@ -82,6 +82,12 @@ export async function POST(req: Request) {
     async start(controller) {
       const emit = (obj: Record<string, unknown>) =>
         controller.enqueue(encoder.encode(JSON.stringify(obj) + "\n"));
+      // Track persistence so failure messages tell the truth: a pre-analysis
+      // failure deletes the orphaned report (cascade unwinds partial tradelines)
+      // so "try again" can't create duplicates; a post-analysis failure keeps
+      // the completed work and says where to find it.
+      let report: { id: string } | null = null;
+      let analyzed = false;
       try {
         if (pdfBuf) {
           emit({ stage: "extracting" });
@@ -98,7 +104,7 @@ export async function POST(req: Request) {
         // immediate analysis — report.rawText is encrypted and unusable directly.
         const plainText = rawText.slice(0, 500_000);
         emit({ stage: "received" });
-        const report = await prisma.report.create({
+        report = await prisma.report.create({
           data: {
             userId: user.id,
             fileName,
@@ -112,6 +118,7 @@ export async function POST(req: Request) {
           { userId: user.id, reportId: report.id, rawText: plainText, coveredBureaus: bureaus },
           (stage) => emit({ stage })
         );
+        analyzed = true;
 
         await recordKaiEvent(user.id, "report.uploaded", {
           refType: "report",
@@ -131,7 +138,7 @@ export async function POST(req: Request) {
             tradelines: 0,
             usedAI: result.usedAI,
             warning:
-              "We saved the report but couldn't identify any accounts. Make sure you pasted the tradeline/account section of the report.",
+              "Your report is saved — I just couldn't identify individual accounts in the text that came through. Try again with the part of the report that lists your accounts; if the PDF is scanned, paste that section as text and I'll read it.",
           });
           controller.close();
           return;
@@ -147,7 +154,9 @@ export async function POST(req: Request) {
         const obsolete = rows.filter((t) => t.reasons.some((r) => r.includes("§605"))).length;
         const high = rows.filter((t) => t.probability === "HIGH").length;
         const medium = rows.filter((t) => t.probability === "MEDIUM").length;
-        const top = rows.find((t) => t.probability !== "NOT_RECOMMENDED") ?? null;
+        // Only recommend what the engine actually endorses — a LOW row must
+        // never wear a "worth pursuing" pill it didn't earn.
+        const top = rows.find((t) => t.probability === "HIGH" || t.probability === "MEDIUM") ?? null;
         const topRec = top
           ? recommendStrategy({
               accountType: top.accountType,
@@ -165,7 +174,7 @@ export async function POST(req: Request) {
           tradelines: result.tradelines,
           usedAI: result.usedAI,
           reveal: {
-            accounts: result.tradelines,
+            accounts: rows.length,
             bureaus,
             conflicts,
             obsolete,
@@ -184,7 +193,15 @@ export async function POST(req: Request) {
         controller.close();
       } catch (e) {
         console.error("upload analyze error", e);
-        emit({ error: "Upload failed during analysis. Please try again." });
+        if (report && !analyzed) {
+          // Unwind the orphan so a retry is genuinely a clean retry.
+          await prisma.report.delete({ where: { id: report.id } }).catch(() => {});
+          emit({ error: "The analysis hit a snag on our side — nothing about your report or your credit caused this. Give it another try in a moment." });
+        } else if (report) {
+          emit({ error: "Your report was saved and analyzed, but I couldn't load the summary. It's waiting under 'Your uploaded reports' on this page." });
+        } else {
+          emit({ error: "The analysis hit a snag on our side — nothing about your report or your credit caused this. Give it another try in a moment." });
+        }
         controller.close();
       }
     },

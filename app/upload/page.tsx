@@ -35,8 +35,8 @@ interface Reveal {
 // Each line maps to a REAL pipeline stage the server just entered — the server
 // only emits a stage when that work actually begins (never animated fiction).
 const STAGE_LINES: Record<string, string> = {
-  extracting: "Extracting the text from your PDF.",
-  received: "Report received — encrypting it before anything else touches it.",
+  extracting: "I've got your PDF — reading the text out of it now.",
+  received: "I'm encrypting your report before it's stored.",
   reading: "I'm reading every account on the report.",
   scoring: "I'm comparing bureaus and scoring each account's dispute position.",
 };
@@ -135,7 +135,11 @@ export default function UploadPage() {
         const j = await res.json().catch(() => ({}));
         setBusy(false);
         setStatus(null);
-        setError(j.error || "Upload failed.");
+        setError(
+          res.status === 401
+            ? "Your session ended. Sign in again in a new tab, then come back here — everything you entered is still on this page."
+            : j.error || "Upload failed."
+        );
         return;
       }
 
@@ -174,7 +178,7 @@ export default function UploadPage() {
       setBusy(false);
       setStatus(null);
       if (!final || final.error) {
-        setError(final?.error || "Upload failed during analysis. Please try again.");
+        setError(final?.error || "The analysis hit a snag on our side — nothing about your report or your credit caused this. Give it another try in a moment.");
         return;
       }
       setDone({ tradelines: final.tradelines ?? 0, usedAI: Boolean(final.usedAI) });
@@ -182,12 +186,18 @@ export default function UploadPage() {
         setReveal(final.reveal);
         loadReports();
       } else if (final.warning) {
-        setError(final.warning);
+        // Saved-but-no-accounts is guidance, not failure: KAI-badged status
+        // line, and the saved report appears below with its Delete affordance.
+        loadReports();
+        setStatus(final.warning);
       }
     } catch {
       setBusy(false);
       setStatus(null);
-      setError("The connection dropped mid-request. Try again — nothing was lost.");
+      // The server may have finished persisting after the connection dropped —
+      // pointing at the list below prevents a duplicate re-upload.
+      loadReports();
+      setError("The connection dropped mid-read. Check 'Your uploaded reports' just below — if this report is listed, it made it through; if it isn't, try again.");
     }
   }
 
@@ -217,13 +227,13 @@ export default function UploadPage() {
             {reveal.accounts} account{reveal.accounts === 1 ? "" : "s"} across{" "}
             {reveal.bureaus.map((b) => BUREAUS.find((x) => x.id === b)?.label ?? b).join(", ")}.
             {reveal.conflicts > 0 && (
-              <> {reveal.conflicts} do{reveal.conflicts === 1 ? "esn't" : "n't"} tell one story across bureaus.</>
+              <> {reveal.conflicts} account{reveal.conflicts === 1 ? " doesn't" : "s don't"} tell one story across bureaus.</>
             )}
             {reveal.obsolete > 0 && (
-              <> {reveal.obsolete} {reveal.obsolete === 1 ? "is" : "are"} past the §605 reporting window.</>
+              <> {reveal.obsolete} {reveal.obsolete === 1 ? "is" : "are"} past the FCRA §605 time limit — the law caps how long items like these can stay on a report.</>
             )}
             {reveal.conflicts === 0 && reveal.obsolete === 0 && (
-              <> No cross-bureau conflicts or §605 flags stand out — my read on each account is in its row.</>
+              <> No cross-bureau conflicts or age-limit flags stand out — my read on each account is in its row.</>
             )}
           </p>
 
@@ -233,7 +243,7 @@ export default function UploadPage() {
               <div className="mt-1.5 flex flex-wrap items-center gap-2">
                 <span className="text-base font-semibold">{reveal.top.creditor}</span>
                 <span className={`pill ${reveal.top.probability === "HIGH" ? "bg-brand-500/15 text-brand-300" : "bg-gold-500/15 text-gold-400"}`}>
-                  {reveal.top.probability === "HIGH" ? "High confidence" : "Worth pursuing"}
+                  {reveal.top.probability === "HIGH" ? "Strong dispute grounds" : "Worth disputing"}
                 </span>
               </div>
               {reveal.top.reason && <p className="mt-1 text-sm text-slate-400">{reveal.top.reason}</p>}
@@ -263,10 +273,10 @@ export default function UploadPage() {
 
           <p className="mt-4 text-xs text-slate-500">
             {reveal.high > 0 || reveal.medium > 0
-              ? `${reveal.high} high-confidence dispute target${reveal.high === 1 ? "" : "s"} · ${reveal.medium} medium. `
+              ? `${reveal.high} account${reveal.high === 1 ? "" : "s"} with strong dispute grounds · ${reveal.medium} with moderate grounds. `
               : ""}
-            Scored by rules against your report&apos;s own data — every claim traces to a line in the file, and each
-            account&apos;s row shows the why.
+            Scored by fixed rules against the data read from your report — each account&apos;s row shows exactly why it
+            was flagged.
           </p>
         </div>
       ) : done && done.tradelines > 0 ? (
@@ -384,7 +394,7 @@ export default function UploadPage() {
                 return;
               }
               const j = await res.json().catch(() => ({}));
-              setStatus(res.ok ? `All re-read — ${j.tradelines} tradelines across ${j.reportsAnalyzed} ${j.reportsAnalyzed === 1 ? "report" : "reports"}.` : j.error || "The re-analysis didn't finish. Try again in a moment.");
+              setStatus(res.ok ? `All re-read — ${j.tradelines} tradelines across ${j.reportsAnalyzed} ${j.reportsAnalyzed === 1 ? "report" : "reports"}.` : res.status === 401 ? "Your session ended. Sign in again in a new tab, then press Re-analyze — your reports are saved." : j.error || "The re-analysis didn't finish. Try again in a moment.");
               await loadReports();
               router.refresh();
             }}
