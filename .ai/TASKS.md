@@ -12,7 +12,10 @@ Compact, current-only. Done items get deleted (history lives in git). Company ba
 
 ## Engineering (next up)
 - [ ] Regenerate favicon/PWA/OG from de-shadowed `logo-mark.png`
-- [ ] Deferred perf items (Sprint-1 auditor log): landing force-dynamic→middleware · Sidebar context fetches→provider · letters/upload server-prefetch · letters form htmlFor/id pass
+- [ ] Letters/upload server-prefetch — deliberately deferred until CX-1 conversational letter flow (restructuring those pages first avoids rework)
+- [ ] Letters form htmlFor/id association pass (a11y, low)
+
+Done in Wave 3 (2026-07-12): landing force-dynamic→middleware (/ is static now) · Sidebar/shell context fetches deduped via TTL'd module cache.
 
 Verified already done (removed 2026-07-12): `List-Unsubscribe` + One-Click headers live in `lib/briefDigest.ts` · `*.tsbuildinfo` untracked & gitignored · `.env.example` updated (adds `CRON_SECRET`+`COMPANY_POSTAL_ADDRESS`; `SETUP_SECRET`/`STRIPE_PRICE_ID` are still live code paths, so kept with a delete-after-bootstrap warning instead of dropped).
 
