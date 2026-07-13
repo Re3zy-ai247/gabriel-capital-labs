@@ -135,7 +135,7 @@ export default async function JourneyPage() {
     <AppShell title="/ Timeline">
       <EduBanner />
       <div className="mb-1 flex items-center gap-2 animate-rise">
-        <span className="rounded-md bg-brand-500/15 px-1.5 py-0.5 text-[10px] font-bold tracking-widest text-brand-300">KAI</span>
+        <span className="rounded bg-brand-500/15 px-1.5 py-0.5 text-[10px] font-bold tracking-widest text-brand-300">KAI</span>
         <h2 className="text-xl font-semibold">Your dispute timeline</h2>
       </div>
       <p className="mb-3 text-sm text-slate-400">Everything that has happened on your file, and what's coming next. {completion}% of the 90-day journey complete.</p>

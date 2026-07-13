@@ -69,12 +69,20 @@ function LettersInner() {
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const deepApplied = useRef(false);
 
+  const [loaded, setLoaded] = useState(false);
+
   const loadSaved = useCallback(() => {
     fetch("/api/letters").then((r) => r.json()).then((d) => setSaved(d.letters || []));
   }, []);
 
   useEffect(() => {
-    fetch("/api/tradelines").then((r) => r.json()).then((d) => setTradelines(d.tradelines || []));
+    // The loaded flag gates the empty state so users with data never see a
+    // misleading "nothing to work with" flash before the fetch resolves.
+    fetch("/api/tradelines")
+      .then((r) => r.json())
+      .then((d) => setTradelines(d.tradelines || []))
+      .catch(() => {})
+      .finally(() => setLoaded(true));
     fetch("/api/strategies").then((r) => r.json()).then((d) => setStrategies(d.strategies || []));
     loadSaved();
   }, [loadSaved]);
@@ -181,7 +189,11 @@ function LettersInner() {
       )}
       <h2 className="mb-4 text-xl font-semibold">Dispute Letter Builder</h2>
 
-      {noTradelines ? (
+      {!loaded ? (
+        <div className="card p-10 text-center text-sm text-slate-500" aria-busy="true">
+          <Loader2 className="mx-auto mb-2 h-5 w-5 animate-spin" aria-hidden /> Pulling up your items…
+        </div>
+      ) : noTradelines ? (
         <div className="card flex flex-col items-center gap-3 p-10 text-center">
           <Mails className="h-8 w-8 text-slate-600" aria-hidden />
           <div className="flex items-center gap-1.5">
@@ -338,12 +350,12 @@ function LettersInner() {
                 <div className="mb-3 flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     {genCount > 1 && (
-                      <span className="rounded-full bg-blue-500/15 px-2 py-0.5 text-[11px] font-semibold text-blue-300">
+                      <span className="pill bg-ocean-500/15 text-ocean-300">
                         Generated {genCount} letters — one per bureau
                       </span>
                     )}
                     {aiRefined && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-brand-500/15 px-2 py-0.5 text-[11px] font-semibold text-brand-300">
+                      <span className="pill bg-brand-500/15 text-brand-300">
                         <Sparkles className="h-3 w-3" aria-hidden /> Refined by Kai
                       </span>
                     )}
@@ -538,26 +550,26 @@ function LetterRow({
           </div>
         ) : (
           <div className="flex items-center gap-1.5">
-            <Link href={`/letters/print/${l.id}`} target="_blank" className="btn-ghost text-xs" aria-label="Print letter"><Printer className="h-3.5 w-3.5" aria-hidden /></Link>
+            <Link href={`/letters/print/${l.id}`} target="_blank" className="btn-ghost min-h-[44px] min-w-[44px] justify-center text-xs" aria-label="Print letter"><Printer className="h-3.5 w-3.5" aria-hidden /></Link>
             {l.status !== "MAILED" && l.status !== "RESOLVED" && l.status !== "RESPONSE_RECEIVED" && (
-              <button onClick={() => onStatus(l.id, "MAILED")} className="btn-ghost text-xs font-semibold text-brand-300" title="Mailing starts the bureau's ~30-day §611 clock — tell me when it's in the mail.">
+              <button onClick={() => onStatus(l.id, "MAILED")} className="btn-ghost min-h-[44px] text-xs font-semibold text-brand-300" title="Mailing starts the bureau's ~30-day §611 clock — tell me when it's in the mail.">
                 Mark mailed
               </button>
             )}
             {(l.status === "MAILED" || l.status === "RESPONSE_RECEIVED") && !l.hasResponse && (
-              <button onClick={() => setOpenResp((v) => !v)} className="btn-ghost text-xs">
+              <button onClick={() => setOpenResp((v) => !v)} className="btn-ghost min-h-[44px] text-xs">
                 <Upload className="h-3.5 w-3.5" /> Log response
               </button>
             )}
             {l.hasResponse && l.responseOutcome !== "deleted" && (
-              <button onClick={genRound2} disabled={busy} className="btn-ghost text-xs text-brand-300">
+              <button onClick={genRound2} disabled={busy} className="btn-ghost min-h-[44px] text-xs text-brand-300">
                 {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ArrowUpRight className="h-3.5 w-3.5" />} Round 2
               </button>
             )}
             {l.status === "MAILED" && (
-              <button onClick={() => onStatus(l.id, "RESOLVED")} className="btn-ghost text-xs">Resolved</button>
+              <button onClick={() => onStatus(l.id, "RESOLVED")} className="btn-ghost min-h-[44px] text-xs">Resolved</button>
             )}
-            <button onClick={onDelete} className="btn-ghost text-xs text-slate-400 hover:text-rose-400" title="Delete letter" aria-label="Delete letter">
+            <button onClick={onDelete} className="btn-ghost min-h-[44px] min-w-[44px] justify-center text-xs text-slate-400 hover:text-rose-400" title="Delete letter" aria-label="Delete letter">
               <Trash2 className="h-3.5 w-3.5" aria-hidden />
             </button>
           </div>
@@ -653,7 +665,7 @@ function LetterRow({
                 <><Send className="h-3.5 w-3.5" /> Have Kai read it</>
               )}
             </button>
-            <button onClick={() => setOpenResp(false)} className="text-xs text-slate-400">Cancel</button>
+            <button onClick={() => setOpenResp(false)} className="min-h-[44px] px-2 text-xs text-slate-400 hover:text-slate-200">Cancel</button>
           </div>
           {msg && <p className="mt-2 text-xs text-rose-400">{msg}</p>}
         </div>

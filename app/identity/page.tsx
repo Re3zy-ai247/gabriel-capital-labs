@@ -150,7 +150,7 @@ export default function IdentityPage() {
       {result && (
         <>
           {result.usedId && (
-            <div className="mb-3 inline-flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs text-emerald-300">
+            <div className="mb-3 inline-flex items-center gap-2 rounded-lg border border-success-500/30 bg-success-500/10 px-3 py-1.5 text-xs text-success-300">
               <ScanSearch className="h-3.5 w-3.5" /> Compared against your uploaded government ID.
             </div>
           )}
@@ -161,7 +161,11 @@ export default function IdentityPage() {
           ) : (
             <div className="space-y-3">
               <div className="text-sm font-semibold">
-                {result.discrepancies.length} potential discrepanc{result.discrepancies.length === 1 ? "y" : "ies"} to dispute first
+                <span className="mr-2 rounded bg-brand-500/15 px-1.5 py-0.5 text-[10px] font-bold tracking-widest text-brand-300">KAI</span>
+                I found {result.discrepancies.length} potential discrepanc{result.discrepancies.length === 1 ? "y" : "ies"} to dispute first
+                {result.discrepancies.filter((d) => d.severity === "high").length > 0
+                  ? ` — ${result.discrepancies.filter((d) => d.severity === "high").length} high severity`
+                  : ""}. Drafting a correction letter below is the next step.
               </div>
               {result.discrepancies.map((d, i) => (
                 <div key={i} className={`card border p-4 ${SEV_COLOR[d.severity] || ""}`}>
@@ -186,7 +190,7 @@ export default function IdentityPage() {
               {/* Generate correction letter (premium) */}
               <div className="card mt-4 p-5">
                 <div className="mb-1 flex items-center gap-2 text-sm font-semibold">
-                  <Sparkles className="h-4 w-4 text-emerald-400" /> Generate a Personal Information correction letter
+                  <Sparkles className="h-4 w-4 text-brand-400" /> Generate a Personal Information correction letter
                 </div>
                 <p className="mb-3 text-xs text-slate-400">
                   Pick a bureau — the letter will include <span className="font-medium text-slate-300">only the items that bureau reports</span>, never another bureau&apos;s data.
@@ -210,7 +214,7 @@ export default function IdentityPage() {
                     <span className="text-xs text-rose-400">
                       {letterMsg}{" "}
                       {letterMsg.includes("Premium") && (
-                        <Link href="/pricing" className="font-semibold text-emerald-400 underline">Upgrade →</Link>
+                        <Link href="/pricing" className="font-semibold text-brand-300 underline">Upgrade →</Link>
                       )}
                     </span>
                   )}

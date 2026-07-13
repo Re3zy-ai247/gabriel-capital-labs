@@ -109,6 +109,9 @@ export default function ScoresPage() {
                   {arc.delta > 0 ? "+" : ""}{arc.delta} since {arc.since}
                 </div>
               )}
+              {!arc && latest[b.id] && (
+                <div className="mt-0.5 text-[11px] text-slate-500">first entry — log the next and I&apos;ll hold the trend</div>
+              )}
             </div>
           );
         })}

@@ -41,6 +41,9 @@ export default async function DashboardPage() {
     .filter((x): x is { t: (typeof tradelines)[number]; yrs: number } => x.yrs != null);
   const obsolete = aged.filter((x) => x.yrs >= 7).sort((a, b) => b.yrs - a.yrs);
   const nearObsolete = aged.filter((x) => x.yrs >= 6 && x.yrs < 7);
+  // One recommendation at a time: if Kai's recommendation card already points at
+  // an obsolete item, Quick Wins must not repeat the same item and CTA.
+  const quickWins = obsolete.filter((x) => kai.recommendation?.href !== `/letters?tradeline=${x.t.id}&strategy=fcra_605`);
 
   const firstName = (user.fullName || user.name || "").trim().split(" ")[0] || "there";
 
@@ -76,7 +79,7 @@ export default async function DashboardPage() {
           right one earns (Art. II applied to microcopy). */}
       <div className="mb-4 animate-rise">
         <div className="flex items-center gap-2">
-          <span className="rounded-md bg-brand-500/15 px-1.5 py-0.5 text-[10px] font-bold tracking-widest text-brand-300">KAI</span>
+          <span className="rounded bg-brand-500/15 px-1.5 py-0.5 text-[10px] font-bold tracking-widest text-brand-300">KAI</span>
           <h2 className="text-2xl font-bold">Welcome back, {firstName}.</h2>
         </div>
         <p className="mt-1 text-sm text-slate-400">
@@ -86,8 +89,8 @@ export default async function DashboardPage() {
           <ul className="mt-2 space-y-1">
             {kai.overnight.map((o, i) => (
               <li key={i} className="text-sm text-slate-300">
-                <span className="mr-1.5 text-brand-400" aria-hidden>✓</span>
-                <Link href={o.href} className="hover:underline">{o.text}</Link>
+                <span className="mr-2 inline-block h-1 w-1 rounded-full bg-brand-400 align-middle" aria-hidden />
+                <Link href={o.href} className="underline decoration-ink-600 underline-offset-2 transition-colors hover:text-slate-100 hover:decoration-brand-400">{o.text}</Link>
               </li>
             ))}
           </ul>
@@ -104,7 +107,7 @@ export default async function DashboardPage() {
           <p className="mt-1 max-w-2xl text-sm text-slate-400">{kai.recommendation.body}</p>
           <div className="mt-3 flex flex-wrap items-center gap-3">
             <Link href={kai.recommendation.href} className="btn-primary">{kai.recommendation.cta} →</Link>
-            <span className="text-[11px] text-slate-500">{kai.recommendation.basis}</span>
+            <span className="text-xs text-slate-500">{kai.recommendation.basis}</span>
           </div>
         </div>
       )}
@@ -112,7 +115,7 @@ export default async function DashboardPage() {
       {/* Deadline radar — the §611 clock, per unanswered mailed letter. */}
       {kai.deadlines.length > 0 && (
         <div className="card mb-4 border-gold-500/30 bg-gold-500/[0.05] p-5">
-          <div className="text-sm font-semibold text-gold-300">⏱ Deadline radar</div>
+          <div className="text-[10px] font-bold uppercase tracking-widest text-gold-300">Deadline radar</div>
           <p className="mt-1 text-xs text-slate-400">
             Bureaus have ~{REINVESTIGATION_DAYS} days to reinvestigate after a dispute is mailed (FCRA §611). When a window closes, log the response or escalate.
           </p>
@@ -133,7 +136,7 @@ export default async function DashboardPage() {
                   <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
                     <div className="min-w-0 text-sm">
                       <span className="font-medium">{d.recipient}</span>
-                      <span className="ml-2 text-[11px] text-slate-500">Round {d.round} · day {d.daysElapsed} of {REINVESTIGATION_DAYS}</span>
+                      <span className="ml-2 text-xs text-slate-500">Round {d.round} · day {d.daysElapsed} of {REINVESTIGATION_DAYS}</span>
                     </div>
                     <div className="flex shrink-0 items-center gap-3">
                       <div
@@ -170,7 +173,7 @@ export default async function DashboardPage() {
       )}
 
       {reports.length === 0 && !kai.recommendation && (
-        <div className="card mb-4 flex flex-col items-start gap-3 border-brand-500/30 bg-brand-500/5 p-6 md:flex-row md:items-center md:justify-between">
+        <div className="card mb-4 flex flex-col items-start gap-3 border-brand-500/30 bg-brand-500/5 p-5 md:flex-row md:items-center md:justify-between">
           <div>
             <div className="text-base font-semibold">Let&apos;s get started</div>
             <p className="mt-1 text-sm text-slate-400">
@@ -181,24 +184,24 @@ export default async function DashboardPage() {
         </div>
       )}
 
-      {obsolete.length > 0 && (
-        <div className="card mb-4 border-success-500/30 bg-success-500/[0.06] p-5">
-          <div className="flex items-center gap-2 text-sm font-semibold text-success-300">
-            ⚡ Quick Wins — easiest disputes first
+      {quickWins.length > 0 && (
+        <div className="card mb-4 p-5">
+          <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+            Quick wins — easiest disputes first
           </div>
           <p className="mt-1 max-w-2xl text-sm text-slate-400">
-            {obsolete.length} item{obsolete.length === 1 ? " is" : "s are"} past the 7-year FCRA reporting window (§605)
+            {quickWins.length} item{quickWins.length === 1 ? " is" : "s are"} past the 7-year FCRA reporting window (§605)
             and may no longer be reported. These are the cleanest disputes to open — the statute does the heavy lifting.
           </p>
           <div className="mt-3 space-y-2">
-            {obsolete.slice(0, 6).map(({ t, yrs }) => (
+            {quickWins.slice(0, 6).map(({ t, yrs }) => (
               <div
                 key={t.id}
                 className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-ink-700/70 bg-ink-900/40 p-3"
               >
                 <div className="min-w-0">
                   <div className="truncate text-sm font-medium">{t.creditorName}</div>
-                  <div className="text-[11px] text-slate-500">
+                  <div className="text-xs text-slate-500">
                     First delinquency ~{Math.floor(yrs)} years ago · obsolete under FCRA §605
                   </div>
                 </div>
@@ -211,9 +214,9 @@ export default async function DashboardPage() {
               </div>
             ))}
           </div>
-          {(obsolete.length > 6 || nearObsolete.length > 0) && (
-            <p className="mt-3 text-[11px] text-slate-500">
-              {obsolete.length > 6 ? `+ ${obsolete.length - 6} more obsolete ${obsolete.length - 6 === 1 ? "item" : "items"}. ` : ""}
+          {(quickWins.length > 6 || nearObsolete.length > 0) && (
+            <p className="mt-3 text-xs text-slate-500">
+              {quickWins.length > 6 ? `+ ${quickWins.length - 6} more obsolete ${quickWins.length - 6 === 1 ? "item" : "items"}. ` : ""}
               {nearObsolete.length > 0
                 ? `${nearObsolete.length} ${nearObsolete.length === 1 ? "item is" : "items are"} approaching the window (6+ years) — queue these next.`
                 : ""}
@@ -232,7 +235,7 @@ export default async function DashboardPage() {
         <StatCard label="Items Resolved" value={resolved} accent="success" />
       </div>
 
-      <div className="mt-3 grid gap-3 md:grid-cols-2">
+      <div className="mt-4 grid gap-3 md:grid-cols-2">
         <div className="card p-5">
           <div className="text-xs uppercase tracking-wide text-slate-400">Dispute Completion</div>
           <div className="mt-2 flex items-end gap-3">
@@ -259,13 +262,13 @@ export default async function DashboardPage() {
             </div>
             <div className="pb-1 text-xs text-slate-500">responses to mailed disputes</div>
           </div>
-          <p className="mt-2 text-[11px] text-slate-500">
+          <p className="mt-2 text-xs text-slate-500">
             Log each bureau reply on the letter — Kai reads it and lines up your next round.
           </p>
         </div>
       </div>
 
-      <div className="card mt-3 p-5">
+      <div className="card mt-4 p-5">
         <div className="mb-3 text-sm font-semibold">Dispute Progress by Bureau</div>
         {(["EQUIFAX", "EXPERIAN", "TRANSUNION"] as Bureau[]).map((b) => {
           const s = byBureau(b);
@@ -293,7 +296,7 @@ export default async function DashboardPage() {
 
       {/* Timeline snippet — the last few real events, linking to the full story. */}
       {kai.recentEvents.length > 0 && (
-        <div className="card mt-3 p-5">
+        <div className="card mt-4 p-5">
           <div className="mb-3 flex items-center justify-between">
             <div className="text-sm font-semibold">Your timeline</div>
             <Link href="/journey" className="text-xs font-semibold text-brand-400 hover:underline">view all →</Link>
@@ -302,7 +305,7 @@ export default async function DashboardPage() {
             {kai.recentEvents.map((e) => (
               <div key={e.id} className="flex items-center justify-between gap-3 text-sm">
                 <span className="min-w-0 truncate text-slate-300">{eventLabel(e)}</span>
-                <span className="shrink-0 text-[11px] text-slate-500">
+                <span className="shrink-0 text-xs text-slate-500">
                   {new Date(e.occurredAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                 </span>
               </div>

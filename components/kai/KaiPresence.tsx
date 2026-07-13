@@ -98,7 +98,7 @@ export function KaiPresence() {
   }, [open]);
 
   if (hidden || !ctx) return null;
-  if (pathname === "/dashboard") return null; // Kai Home IS Kai — no double presence
+  if (pathname === "/dashboard" || pathname === "/journey") return null; // Kai Home and the Kai-narrated timeline ARE Kai — no double presence
 
   const hasSomething = Boolean(ctx.recommendation || ctx.deadline || ctx.overnightCount > 0);
   const contextLine = ctx.deadline

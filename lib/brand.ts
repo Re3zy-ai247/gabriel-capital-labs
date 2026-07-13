@@ -86,7 +86,7 @@ export const MODULES: PlatformModule[] = [
   {
     key: "funding-hub",
     name: "Funding Hub",
-    tagline: "A marketplace that matches you to personal and business funding once your profile is ready.",
+    tagline: "A marketplace that matches you to personal and business funding options.",
     status: "soon",
     icon: "Landmark",
   },

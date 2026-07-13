@@ -80,7 +80,7 @@ html.light .keep-white { color: #ffffff; }
 /* Visible keyboard focus everywhere (accessibility, not optional).
    Theme-aware: --fg tracks the foreground in both themes, so the ring stays
    visible on dark ink AND on white light-mode cards (slate-50 vanished there). */
-:where(a, button, input, textarea, select, [tabindex]):focus-visible {
+:where(a, button, input, textarea, select, summary, [tabindex]):focus-visible {
   outline: 2px solid rgb(var(--fg) / 0.9);
   outline-offset: 2px;
 }
@@ -99,7 +99,7 @@ html.light .keep-white { color: #ffffff; }
     @apply rounded-xl2 border border-ink-700/70 bg-ink-800/60 backdrop-blur shadow-card;
   }
   .stat {
-    @apply card p-5 transition hover:border-ink-600;
+    @apply card p-5;
   }
   .pill {
     @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium;
@@ -153,9 +153,12 @@ html.light .card { box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06), 0 8px 24px -10p
 .animate-rise { animation: rise 0.4s cubic-bezier(0.16, 1, 0.3, 1) both; }
 .animate-fadein { animation: fadein 0.5s ease-out both; }
 
-/* Subtle lift + border highlight on interactive surfaces. */
-.card { transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease; }
-.card:hover { transform: translateY(-2px); border-color: rgba(14, 165, 196, 0.40); }
+/* Subtle lift + border highlight — ONLY on genuinely interactive cards (a
+   hover lift on a non-clickable card is a false click affordance). Opt a
+   custom element in with .card-interactive. */
+.card { transition: border-color 0.18s ease, box-shadow 0.18s ease; }
+a.card, button.card, .card-interactive { transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease; }
+a.card:hover, button.card:hover, .card-interactive:hover { transform: translateY(-2px); border-color: rgba(14, 165, 196, 0.40); }
 .btn { transition: transform 0.12s ease, background-color 0.15s ease, opacity 0.15s ease; }
 .btn:active { transform: translateY(1px) scale(0.99); }
 
@@ -207,7 +210,7 @@ html.light .card { box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06), 0 8px 24px -10p
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   .animate-rise, .animate-fadein, .animate-float, .animate-draw, .animate-rise-stagger, .aurora { animation: none; }
-  .card:hover, .btn:active { transform: none; }
+  a.card:hover, button.card:hover, .card-interactive:hover, .btn:active { transform: none; }
   .reveal { opacity: 1; transform: none; transition: none; }
   .animate-draw { stroke-dashoffset: 0 !important; }
   .shine::after { display: none; }

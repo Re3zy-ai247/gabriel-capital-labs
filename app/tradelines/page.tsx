@@ -3,6 +3,7 @@ import { AppShell } from "@/components/AppShell";
 import { Disclaimer, EduBanner } from "@/components/Disclaimer";
 import { ProbabilityBadge, BureauBadges } from "@/components/ui/Badge";
 import { ReanalyzeButton } from "@/components/ReanalyzeButton";
+import { StatCard } from "@/components/ui/StatCard";
 import { prisma } from "@/lib/prisma";
 import { currentUserOrDemo } from "@/lib/session";
 import type { Bureau } from "@prisma/client";
@@ -76,9 +77,9 @@ export default async function TradelinesPage() {
       )}
 
       <div className="mb-4 grid grid-cols-3 gap-3">
-        <div className="card p-4 text-center"><div className="text-xl font-bold text-brand-400">{high}</div><div className="text-[11px] uppercase text-slate-400">High confidence</div></div>
-        <div className="card p-4 text-center"><div className="text-xl font-bold text-gold-400">{med}</div><div className="text-[11px] uppercase text-slate-400">Medium</div></div>
-        <div className="card p-4 text-center"><div className="text-xl font-bold text-slate-300">{weak}</div><div className="text-[11px] uppercase text-slate-400">Weak / low priority</div></div>
+        <StatCard label="High confidence" value={high} accent="brand" />
+        <StatCard label="Medium" value={med} accent="gold" />
+        <StatCard label="Weak / low priority" value={weak} />
       </div>
 
       <div className="card overflow-hidden">
@@ -159,7 +160,10 @@ export default async function TradelinesPage() {
               <div className="col-span-1"><ProbabilityBadge p={t.probability} /></div>
               <div className="col-span-1 text-right">
                 {t.probability !== "NOT_RECOMMENDED" ? (
-                  <Link href={`/letters?tradeline=${t.id}`} className="text-xs font-semibold text-brand-400 hover:text-brand-300">
+                  <Link
+                    href={`/letters?tradeline=${t.id}`}
+                    className="-mx-2 -my-3 inline-flex min-h-[44px] items-center px-2 py-3 text-xs font-semibold text-brand-400 underline-offset-2 hover:text-brand-300 hover:underline"
+                  >
                     Dispute →
                   </Link>
                 ) : (
@@ -177,7 +181,7 @@ export default async function TradelinesPage() {
           if (!hasDetail) return <div key={t.id} className={wrapperClass}>{row}</div>;
           return (
             <details key={t.id} className={`group ${wrapperClass}`}>
-              <summary className="block cursor-pointer list-none transition hover:bg-ink-800/40 [&::-webkit-details-marker]:hidden">
+              <summary className="block cursor-pointer list-none transition hover:bg-ink-800/40 focus-visible:bg-ink-800/40 [&::-webkit-details-marker]:hidden">
                 {row}
               </summary>
               <div className="border-t border-ink-700/40 bg-ink-800/30 px-4 py-4">

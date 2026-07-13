@@ -17,9 +17,11 @@ const TILES = [
   { label: "Resolved", value: "23", tone: "text-success-400" },
 ];
 
+// Fictional creditor names on purpose — naming real furnishers next to "Resolved"
+// would imply outcomes against real companies (CROA/FTC net-impression risk).
 const ROWS = [
-  { name: "Capital One — late payment", bureau: "Experian", status: "Resolved", tone: "bg-success-500/15 text-success-300" },
-  { name: "Midland Funding — balance mismatch", bureau: "TransUnion", status: "In review", tone: "bg-gold-500/15 text-gold-400" },
+  { name: "Northline Bank Card — late payment", bureau: "Experian", status: "Resolved", tone: "bg-success-500/15 text-success-300" },
+  { name: "Crestline Portfolio Group — balance mismatch", bureau: "TransUnion", status: "In review", tone: "bg-gold-500/15 text-gold-400" },
   { name: "Unknown inquiry — 03/14", bureau: "Equifax", status: "Sent", tone: "bg-brand-500/15 text-brand-300" },
 ];
 
@@ -57,8 +59,8 @@ export function DashboardPreview() {
               <div className="text-[11px] uppercase tracking-wide text-slate-500">Welcome back</div>
               <div className="text-sm font-semibold text-white">Your dispute overview</div>
             </div>
-            <span className="rounded-full bg-success-500/15 px-2.5 py-0.5 text-[10px] font-semibold text-success-300">
-              On track
+            <span className="rounded-full bg-brand-500/15 px-2.5 py-0.5 text-[10px] font-semibold text-brand-300">
+              2 response windows open
             </span>
           </div>
 
@@ -74,15 +76,15 @@ export function DashboardPreview() {
 
           {/* Kai recommendation — mirrors the real product's Kai Home card.
               Copy stays in Kai's voice: first-person work, receipt in-frame
-              (the Midland row below), process language only. */}
+              (the Crestline row below), process language only. */}
           <div className="mb-4 rounded-xl border border-brand-500/25 bg-brand-500/10 p-3">
             <div className="flex items-center gap-2">
               <span className="rounded bg-brand-500/15 px-1.5 py-0.5 text-[10px] font-bold tracking-widest text-brand-300">KAI</span>
               <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Recommends</span>
             </div>
             <p className="mt-1.5 text-[11px] leading-relaxed text-slate-200">
-              Midland Funding&apos;s balance doesn&apos;t match between TransUnion and Equifax. I&apos;d request the
-              method of verification — FCRA &sect;611(a)(7).
+              Crestline Portfolio Group&apos;s balance doesn&apos;t match between TransUnion and Equifax. I&apos;d
+              request the method of verification — FCRA &sect;611(a)(7).
             </p>
             <p className="mt-2 border-t border-brand-500/15 pt-2 text-[10px] leading-relaxed text-slate-400">
               <span className="tabular-nums">Day 12 of 30</span> &middot; TransUnion response window — I&apos;m
@@ -93,8 +95,8 @@ export function DashboardPreview() {
           {/* Trend chart */}
           <div className="mb-4 rounded-xl border border-ink-700/60 bg-ink-800/40 p-3">
             <div className="mb-1.5 flex items-center justify-between">
-              <span className="text-[11px] font-medium text-slate-300">Items resolved over time</span>
-              <span className="text-[10px] text-slate-500">last 90 days</span>
+              <span className="text-[11px] font-medium text-slate-300">Dispute activity</span>
+              <span className="text-[10px] text-slate-500">letters sent + responses logged · last 90 days</span>
             </div>
             <svg viewBox="0 0 320 72" className="h-16 w-full" preserveAspectRatio="none">
               <defs>

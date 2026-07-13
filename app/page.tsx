@@ -32,7 +32,7 @@ import {
 // no session read (and no dynamic rendering) is needed here.
 const STEPS = [
   { icon: Upload, title: "Upload your reports", body: "Pull your free reports from AnnualCreditReport.com. The AI reads all three bureaus in seconds." },
-  { icon: ScanSearch, title: "See what can be disputed", body: "Every inaccuracy, inconsistency, and unverifiable item is flagged and explained across Equifax, Experian, and TransUnion." },
+  { icon: ScanSearch, title: "See what can be disputed", body: "Potential inaccuracies, inconsistencies, and unverifiable items are flagged and explained across Equifax, Experian, and TransUnion." },
   { icon: FileText, title: "Generate dispute letters", body: "Professional, FCRA-grounded letters drafted for you. Review, refine with AI, print, and mail them yourself." },
   { icon: Activity, title: "Track every dispute", body: "Follow each dispute through the bureaus' response windows and watch your progress in one dashboard." },
 ];
@@ -221,7 +221,7 @@ export default function Home() {
                 eyebrow="Know what to do next"
                 title="Reads each bureau response and plans your next move"
                 body="When a bureau responds, the engine reads the outcome, scores what actually happened, and suggests the most appropriate next round — so you're never guessing what to do next."
-                points={["Outcome detection from raw responses", "Suggested next-round strategy", "Nothing slips past a deadline"]}
+                points={["Outcome detection from raw responses", "Suggested next-round strategy", "Response-window deadlines tracked automatically"]}
                 visual={<ResponseVisual />}
               />
             </Reveal>
@@ -240,18 +240,17 @@ export default function Home() {
           {/* Roadmap strip */}
           <Reveal>
             <div className="mt-20 rounded-2xl border border-ink-700/60 bg-ink-900/50 p-6 md:p-8">
-              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                <div>
-                  <h3 className="text-lg font-semibold text-white">More of the platform is rolling out</h3>
-                  <p className="mt-1 text-sm text-slate-400">CreditVector is built as a suite — here&apos;s what&apos;s next.</p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {soon.map((m) => (
-                    <span key={m.key} className="rounded-full border border-ink-600 bg-ink-800/60 px-3 py-1 text-xs font-medium text-slate-300">
-                      {m.name}
-                    </span>
-                  ))}
-                </div>
+              <div>
+                <h3 className="text-lg font-semibold text-white">More of the platform is rolling out</h3>
+                <p className="mt-1 text-sm text-slate-400">CreditVector is built as a suite — here&apos;s what&apos;s next.</p>
+              </div>
+              <div className="mt-6 grid gap-3 sm:grid-cols-3">
+                {soon.map((m) => (
+                  <div key={m.key} className="rounded-xl border border-ink-600 bg-ink-800/60 p-4">
+                    <div className="text-sm font-semibold text-slate-200">{m.name}</div>
+                    <p className="mt-1 text-xs leading-relaxed text-slate-500">{m.tagline}</p>
+                  </div>
+                ))}
               </div>
             </div>
           </Reveal>
@@ -364,7 +363,7 @@ export default function Home() {
                 <div className={`relative flex h-full flex-col rounded-2xl border p-7 ${t.featured ? "border-brand-500/60 bg-gradient-to-b from-brand-500/10 to-ink-800/40 shadow-glow" : "border-ink-700/70 bg-ink-800/50"}`}>
                   {t.featured && (
                     <span className="absolute -top-3 left-7 rounded-full bg-brand-500 px-3 py-0.5 text-xs font-bold text-brand-ink">
-                      Most popular
+                      Recommended
                     </span>
                   )}
                   <h3 className="text-lg font-semibold text-white">{t.name}</h3>

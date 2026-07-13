@@ -125,11 +125,11 @@ function BillingInner() {
   return (
     <AppShell title="/ Billing">
       <div className="max-w-4xl">
-        <h1 className="text-3xl font-bold mb-2">Billing &amp; Subscription</h1>
+        <h1 className="text-xl font-semibold mb-2">Billing &amp; Subscription</h1>
         <p className="text-slate-400 mb-8">Manage your plan and payment settings</p>
 
         {justCheckedOut && (
-          <div className="mb-8 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-5 py-4 text-emerald-300">
+          <div className="mb-8 rounded-lg border border-success-500/40 bg-success-500/10 px-5 py-4 text-success-300">
             🎉 Welcome{isAgency ? ' to Agency' : ' to Premium'}! Your subscription is being activated — this page will update momentarily.
           </div>
         )}
@@ -139,7 +139,7 @@ function BillingInner() {
         ) : (
           <>
             {/* Current Plan */}
-            <div className="bg-slate-900 border border-slate-700 rounded-lg p-8 mb-8">
+            <div className="card p-6 mb-8">
               <h2 className="text-2xl font-bold mb-6">Your Current Plan</h2>
               <div className="grid md:grid-cols-2 gap-8">
                 <div>
@@ -169,15 +169,15 @@ function BillingInner() {
                     <button
                       onClick={startCheckout}
                       disabled={busy}
-                      className="bg-emerald-500 hover:bg-emerald-600 disabled:opacity-60 text-white keep-white px-6 py-2 rounded-lg font-semibold transition"
+                      className="btn-primary px-6"
                     >
                       {busy ? 'Redirecting…' : 'Upgrade to Premium — $99/mo'}
                     </button>
                   )}
-                  {error && <p className="mt-3 text-sm text-red-400">{error}</p>}
+                  {error && <p className="mt-3 text-sm text-rose-400">{error}</p>}
                 </div>
 
-                <div className="bg-slate-800 rounded-lg p-6">
+                <div className="rounded-lg border border-ink-700 bg-ink-900/60 p-6">
                   <div className="space-y-4">
                     <div>
                       <div className="text-slate-400 text-sm">Monthly Cost</div>
@@ -193,12 +193,18 @@ function BillingInner() {
                     )}
                     <div className="border-t border-slate-700 pt-4">
                       <div className="text-slate-400 text-sm">Letters This Month</div>
-                      <div className="text-lg font-semibold">
+                      <div className="text-lg font-semibold tnum">
                         {status?.entitlement.lettersUsedThisMonth ?? 0}
                         {status?.entitlement.letterLimit !== null
                           ? ` / ${status?.entitlement.letterLimit}`
                           : ' (unlimited)'}
                       </div>
+                      {status?.entitlement.letterLimit !== null && (
+                        <p className="mt-1 text-xs text-slate-400">
+                          <span className="mr-1.5 rounded bg-brand-500/15 px-1.5 py-0.5 text-[10px] font-bold tracking-widest text-brand-300">KAI</span>
+                          {status?.entitlement.lettersRemaining ?? 0} letter{(status?.entitlement.lettersRemaining ?? 0) === 1 ? '' : 's'} remaining — your allotment resets on the 1st of each month.
+                        </p>
+                      )}
                     </div>
                     <div className="border-t border-slate-700 pt-4">
                       <div className="text-slate-400 text-sm">Member Since</div>
@@ -210,7 +216,7 @@ function BillingInner() {
             </div>
 
             {/* What's Included */}
-            <div className="bg-slate-900 border border-slate-700 rounded-lg p-8 mb-8">
+            <div className="card p-6 mb-8">
               <h2 className="text-2xl font-bold mb-6">{premium ? "What's Included" : 'Unlock with Premium'}</h2>
               <div className="grid md:grid-cols-2 gap-6">
                 {[
@@ -220,7 +226,7 @@ function BillingInner() {
                   ['Priority Support', 'Faster help when you need it.'],
                 ].map(([title, desc]) => (
                   <div key={title} className="flex items-start gap-3">
-                    <span className={`text-2xl flex-shrink-0 ${premium ? 'text-emerald-500' : 'text-slate-600'}`}>
+                    <span className={`text-2xl flex-shrink-0 ${premium ? 'text-success-500' : 'text-slate-600'}`}>
                       {premium ? '✓' : '○'}
                     </span>
                     <div>
@@ -233,7 +239,7 @@ function BillingInner() {
             </div>
 
             {/* Payment & invoices via Stripe portal */}
-            <div className="bg-slate-900 border border-slate-700 rounded-lg p-8">
+            <div className="card p-6">
               <h2 className="text-2xl font-bold mb-4">Payment &amp; Invoices</h2>
               <p className="text-slate-400 text-sm mb-6">
                 Payments are processed securely by Stripe — your card details never touch our servers. Update your card,
