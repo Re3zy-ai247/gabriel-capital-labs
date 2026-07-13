@@ -188,8 +188,7 @@ export default async function DashboardPage() {
           </div>
           <p className="mt-1 max-w-2xl text-sm text-slate-400">
             {obsolete.length} item{obsolete.length === 1 ? " is" : "s are"} past the 7-year FCRA reporting window (§605)
-            and must drop off your report. These are the cleanest removals — dispute them first for the fastest visible
-            improvement.
+            and may no longer be reported. These are the cleanest disputes to open — the statute does the heavy lifting.
           </p>
           <div className="mt-3 space-y-2">
             {obsolete.slice(0, 6).map(({ t, yrs }) => (
@@ -214,27 +213,30 @@ export default async function DashboardPage() {
           </div>
           {(obsolete.length > 6 || nearObsolete.length > 0) && (
             <p className="mt-3 text-[11px] text-slate-500">
-              {obsolete.length > 6 ? `+ ${obsolete.length - 6} more obsolete item(s). ` : ""}
+              {obsolete.length > 6 ? `+ ${obsolete.length - 6} more obsolete ${obsolete.length - 6 === 1 ? "item" : "items"}. ` : ""}
               {nearObsolete.length > 0
-                ? `${nearObsolete.length} item(s) are approaching the window (6+ years) — queue these next.`
+                ? `${nearObsolete.length} ${nearObsolete.length === 1 ? "item is" : "items are"} approaching the window (6+ years) — queue these next.`
                 : ""}
             </p>
           )}
         </div>
       )}
 
+      {/* Four numbers, each one a decision: what's wrong, what's engaged, what's
+          in flight, what's already won. Activity counters (letters generated,
+          reports uploaded) live on their own pages — not here. */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <StatCard label="Negative Items" value={negative} accent="rose" />
         <StatCard label="Items Disputed" value={disputed} accent="slate" />
         <StatCard label="Active Disputes" value={active} accent="gold" />
-        <StatCard label="Letters Generated" value={letters.length} accent="brand" />
+        <StatCard label="Items Resolved" value={resolved} accent="success" />
       </div>
 
       <div className="mt-3 grid gap-3 md:grid-cols-2">
         <div className="card p-5">
           <div className="text-xs uppercase tracking-wide text-slate-400">Dispute Completion</div>
           <div className="mt-2 flex items-end gap-3">
-            <div className="text-3xl font-bold text-brand-400">{completion}%</div>
+            <div className="tnum text-3xl font-bold text-brand-400">{completion}%</div>
             <div className="pb-1 text-xs text-slate-500">{resolved} of {negative} items resolved</div>
           </div>
           <div
@@ -252,7 +254,7 @@ export default async function DashboardPage() {
         <div className="card p-5">
           <div className="text-xs uppercase tracking-wide text-slate-400">Responses Received</div>
           <div className="mt-2 flex items-end gap-3">
-            <div className="text-3xl font-bold text-gold-400">
+            <div className="tnum text-3xl font-bold text-gold-400">
               {kai.responsesReceived}<span className="text-lg text-slate-500"> / {kai.lettersMailed}</span>
             </div>
             <div className="pb-1 text-xs text-slate-500">responses to mailed disputes</div>
@@ -308,12 +310,6 @@ export default async function DashboardPage() {
           </div>
         </div>
       )}
-
-      <div className="mt-3 grid grid-cols-3 gap-3">
-        <StatCard label="Reports Uploaded" value={reports.length} />
-        <StatCard label="Analyzed" value={reports.filter((r) => r.analyzedAt).length} />
-        <StatCard label="Items Resolved" value={resolved} accent="brand" />
-      </div>
 
       <Disclaimer />
     </AppShell>
