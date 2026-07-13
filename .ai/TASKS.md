@@ -3,6 +3,7 @@
 Compact, current-only. Done items get deleted (history lives in git). Company backlog: `~/Documents/Gabriel-Capital-Labs-AIOS/BACKLOG.md` via `/gcl` — link, don't copy.
 
 ## Owner-blocked (surface at every session start)
+- [ ] Decide: upgrade Vercel to Pro (~$20/mo) to enable Skew Protection (eliminates stale-tab 500s across deploys; checklist in `OPERATIONS.md`)
 - [ ] Set `COMPANY_POSTAL_ADDRESS` in Vercel prod → digest test → verify (CAN-SPAM gate)
 - [ ] Run `/api/admin/encrypt-letters` backfill (admin console, one-time, idempotent); confirm `/api/admin/encrypt-reports` was run
 - [ ] Counsel: CROA positioning sign-off · news-editorial posture before first auto-drafted publish
