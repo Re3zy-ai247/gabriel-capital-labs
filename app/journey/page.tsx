@@ -18,8 +18,27 @@ type Entry = {
   ts: Date;
   icon: "upload" | "search" | "file" | "mail" | "mailopen" | "done";
   text: string;
+  sub?: string; // what it means / what happens next — rule-based, never invented
   href: string;
 };
+
+// Every event answers "what does it mean, what happens next" — one calm line,
+// derived from the event type (and outcome where one exists).
+function meaningFor(icon: Entry["icon"], outcome?: string): string {
+  switch (icon) {
+    case "upload": return "This file is the evidence base — everything I flag traces back to it.";
+    case "search": return "Every account now carries a classification and my dispute-priority read.";
+    case "file": return "Drafted and grounded in the statutes — it becomes real when you mail it.";
+    case "mail": return `The bureau owes a reinvestigation within ~${REINVESTIGATION_DAYS} days of receiving it (§611).`;
+    case "mailopen":
+      if (outcome === "deleted") return "Watch your next report to confirm it stays gone — reinsertion requires notice (§611(a)(5)).";
+      if (outcome === "verified") return "“Verified” is a claim, not the end — the method-of-verification demand is the counter.";
+      if (outcome === "no_response") return "A non-answer doesn't satisfy §611 — that failure is the basis for escalation.";
+      if (outcome === "updated") return "Compare the changed fields — a partial fix can still leave inaccurate data.";
+      return "I read the response and lined up the next move on the letter.";
+    case "done": return "One less negative item working against your file.";
+  }
+}
 
 const ICONS = {
   upload: Upload,
@@ -51,22 +70,22 @@ export default async function JourneyPage() {
     const base = { key: e.id, ts: new Date(e.occurredAt) };
     switch (e.type) {
       case "report.uploaded":
-        entries.push({ ...base, icon: "upload", text: "Credit report uploaded", href: "/tradelines" });
+        entries.push({ ...base, icon: "upload", text: "Credit report uploaded", sub: meaningFor("upload"), href: "/tradelines" });
         break;
       case "report.analyzed":
-        entries.push({ ...base, icon: "search", text: `Kai analyzed the report — ${String(p.tradelines ?? "")} accounts reviewed`, href: "/tradelines" });
+        entries.push({ ...base, icon: "search", text: `Kai analyzed the report — ${String(p.tradelines ?? "")} accounts reviewed`, sub: meaningFor("search"), href: "/tradelines" });
         break;
       case "letter.generated":
-        entries.push({ ...base, icon: "file", text: `Dispute letter generated${p.strategy ? ` (${String(p.strategy)})` : ""}`, href: "/letters" });
+        entries.push({ ...base, icon: "file", text: `Dispute letter generated${p.strategy ? ` (${String(p.strategy)})` : ""}`, sub: meaningFor("file"), href: "/letters" });
         break;
       case "letter.mailed":
-        entries.push({ ...base, icon: "mail", text: `Round ${String(p.round ?? "")} mailed to ${String(p.recipient ?? "the bureau")} — §611 clock started`, href: "/letters" });
+        entries.push({ ...base, icon: "mail", text: `Round ${String(p.round ?? "")} mailed to ${String(p.recipient ?? "the bureau")} — §611 clock started`, sub: meaningFor("mail"), href: "/letters" });
         break;
       case "response.received":
-        entries.push({ ...base, icon: "mailopen", text: `Bureau response logged — outcome: ${String(p.outcome ?? "recorded")}`, href: "/letters" });
+        entries.push({ ...base, icon: "mailopen", text: `Bureau response logged — outcome: ${String(p.outcome ?? "recorded")}`, sub: meaningFor("mailopen", String(p.outcome ?? "")), href: "/letters" });
         break;
       case "dispute.resolved":
-        entries.push({ ...base, icon: "done", text: "Item marked resolved", href: "/tradelines" });
+        entries.push({ ...base, icon: "done", text: "Item marked resolved", sub: meaningFor("done"), href: "/tradelines" });
         break;
       default:
         break;
@@ -76,18 +95,18 @@ export default async function JourneyPage() {
   // --- History predating the event stream (synthesized, deduped) --------------
   for (const r of reports) {
     if (!seen.has(`report.uploaded:${r.id}`)) {
-      entries.push({ key: `hist-r-${r.id}`, ts: r.uploadedAt, icon: "upload", text: `Credit report uploaded (${r.fileName || "report"})`, href: "/tradelines" });
+      entries.push({ key: `hist-r-${r.id}`, ts: r.uploadedAt, icon: "upload", text: `Credit report uploaded (${r.fileName || "report"})`, sub: meaningFor("upload"), href: "/tradelines" });
     }
   }
   for (const l of letters) {
     if (!seen.has(`letter.generated:${l.id}`)) {
-      entries.push({ key: `hist-lg-${l.id}`, ts: l.createdAt, icon: "file", text: `Round ${l.round} letter generated for ${l.recipientName}`, href: "/letters" });
+      entries.push({ key: `hist-lg-${l.id}`, ts: l.createdAt, icon: "file", text: `Round ${l.round} letter generated for ${l.recipientName}`, sub: meaningFor("file"), href: "/letters" });
     }
     if (l.mailedAt && !seen.has(`letter.mailed:${l.id}`)) {
-      entries.push({ key: `hist-lm-${l.id}`, ts: l.mailedAt, icon: "mail", text: `Round ${l.round} mailed to ${l.recipientName} — §611 clock started`, href: "/letters" });
+      entries.push({ key: `hist-lm-${l.id}`, ts: l.mailedAt, icon: "mail", text: `Round ${l.round} mailed to ${l.recipientName} — §611 clock started`, sub: meaningFor("mail"), href: "/letters" });
     }
     if (l.responseAt && !seen.has(`response.received:${l.id}`)) {
-      entries.push({ key: `hist-lr-${l.id}`, ts: l.responseAt, icon: "mailopen", text: `${l.recipientName} responded — outcome: ${l.responseOutcome ?? "recorded"}`, href: "/letters" });
+      entries.push({ key: `hist-lr-${l.id}`, ts: l.responseAt, icon: "mailopen", text: `${l.recipientName} responded — outcome: ${l.responseOutcome ?? "recorded"}`, sub: meaningFor("mailopen", l.responseOutcome ?? ""), href: "/letters" });
     }
   }
   entries.sort((a, b) => b.ts.getTime() - a.ts.getTime());
@@ -197,6 +216,7 @@ export default async function JourneyPage() {
                       </span>
                       <Link href={e.href} className="group block">
                         <span className="text-sm text-slate-300 group-hover:text-slate-100">{e.text}</span>
+                        {e.sub && <span className="mt-0.5 block text-xs text-slate-500">{e.sub}</span>}
                       </Link>
                     </div>
                   );

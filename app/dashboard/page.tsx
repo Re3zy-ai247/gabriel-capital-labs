@@ -235,9 +235,11 @@ export default async function DashboardPage() {
         <StatCard label="Items Resolved" value={resolved} accent="success" />
       </div>
 
+      {/* ONE progress card — overall + per-bureau in a single answer to "how much
+          progress have I made?" (was two cards saying the same thing twice). */}
       <div className="mt-4 grid gap-3 md:grid-cols-2">
         <div className="card p-5">
-          <div className="text-xs uppercase tracking-wide text-slate-400">Dispute Completion</div>
+          <div className="text-xs uppercase tracking-wide text-slate-400">Progress</div>
           <div className="mt-2 flex items-end gap-3">
             <div className="tnum text-3xl font-bold text-brand-400">{completion}%</div>
             <div className="pb-1 text-xs text-slate-500">{resolved} of {negative} items resolved</div>
@@ -251,6 +253,30 @@ export default async function DashboardPage() {
             aria-label={`Dispute completion: ${resolved} of ${negative} items resolved`}
           >
             <div className="h-full bg-brand-500" style={{ width: `${completion}%` }} />
+          </div>
+          <div className="mt-4 space-y-2.5">
+            {(["EQUIFAX", "EXPERIAN", "TRANSUNION"] as Bureau[]).map((b) => {
+              const s = byBureau(b);
+              const pct = s.total ? Math.round((s.resolved / s.total) * 100) : 0;
+              return (
+                <div key={b}>
+                  <div className="flex justify-between text-xs text-slate-400">
+                    <span>{BUREAU_LABEL[b]}</span>
+                    <span className="tnum">{s.resolved} of {s.total} resolved</span>
+                  </div>
+                  <div
+                    className="mt-1 h-1.5 overflow-hidden rounded-full bg-ink-700"
+                    role="progressbar"
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-valuenow={pct}
+                    aria-label={`${BUREAU_LABEL[b]}: ${s.resolved} of ${s.total} resolved`}
+                  >
+                    <div className="h-full bg-brand-500" style={{ width: `${pct}%` }} />
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
         {/* Real derived signal (replaces the old estimated-points placeholder — CX-2). */}
@@ -266,32 +292,6 @@ export default async function DashboardPage() {
             Log each bureau reply on the letter — Kai reads it and lines up your next round.
           </p>
         </div>
-      </div>
-
-      <div className="card mt-4 p-5">
-        <div className="mb-3 text-sm font-semibold">Dispute Progress by Bureau</div>
-        {(["EQUIFAX", "EXPERIAN", "TRANSUNION"] as Bureau[]).map((b) => {
-          const s = byBureau(b);
-          const pct = s.total ? Math.round((s.resolved / s.total) * 100) : 0;
-          return (
-            <div key={b} className="mb-3 last:mb-0">
-              <div className="flex justify-between text-xs text-slate-400">
-                <span>{BUREAU_LABEL[b]}</span>
-                <span>{s.resolved} of {s.total} resolved</span>
-              </div>
-              <div
-                className="mt-1 h-1.5 overflow-hidden rounded-full bg-ink-700"
-                role="progressbar"
-                aria-valuemin={0}
-                aria-valuemax={100}
-                aria-valuenow={pct}
-                aria-label={`${BUREAU_LABEL[b]}: ${s.resolved} of ${s.total} resolved`}
-              >
-                <div className="h-full bg-brand-500" style={{ width: `${pct}%` }} />
-              </div>
-            </div>
-          );
-        })}
       </div>
 
       {/* Timeline snippet — the last few real events, linking to the full story. */}
