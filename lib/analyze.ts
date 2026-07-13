@@ -39,12 +39,18 @@ function safeDate(v: string | undefined | null): Date | null {
 // falls back to the deterministic regex parser.
 export async function analyzeReportText(
   prisma: PrismaClient,
-  opts: { userId: string; reportId: string; rawText: string; coveredBureaus: Bureau[] }
+  opts: { userId: string; reportId: string; rawText: string; coveredBureaus: Bureau[] },
+  // Optional narration hook: fired when a REAL pipeline stage begins, so the
+  // upload UI can narrate honestly. Stages: "reading" (account extraction) and
+  // "scoring" (classification + cross-bureau scoring + persistence). Never call
+  // this for work that isn't happening.
+  onStage?: (stage: "reading" | "scoring") => void
 ): Promise<AnalyzeResult> {
   const { userId, reportId, rawText, coveredBureaus } = opts;
 
   let extracted: ExtractedTradeline[] = [];
   let usedAI = false;
+  onStage?.("reading");
   try {
     const ai = await aiExtractTradelines(rawText, coveredBureaus);
     if (ai && ai.length) {
@@ -58,6 +64,7 @@ export async function analyzeReportText(
     extracted = extractRawTradelines(rawText, coveredBureaus);
   }
 
+  onStage?.("scoring");
   await prisma.tradeline.deleteMany({ where: { reportId } });
 
   const records = extracted.map((ex) => {

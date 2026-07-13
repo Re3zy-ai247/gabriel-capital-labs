@@ -13,6 +13,34 @@ interface StoredReport {
   tradelines: number;
 }
 
+// The reveal payload — every number computed server-side from the rows just
+// persisted, by the same engines that power tradelines/letters.
+interface Reveal {
+  accounts: number;
+  bureaus: string[];
+  conflicts: number;
+  obsolete: number;
+  high: number;
+  medium: number;
+  top: {
+    id: string;
+    creditor: string;
+    probability: string;
+    reason: string;
+    strategy: string | null;
+    why: string;
+  } | null;
+}
+
+// Each line maps to a REAL pipeline stage the server just entered — the server
+// only emits a stage when that work actually begins (never animated fiction).
+const STAGE_LINES: Record<string, string> = {
+  extracting: "Extracting the text from your PDF.",
+  received: "Report received — encrypting it before anything else touches it.",
+  reading: "I'm reading every account on the report.",
+  scoring: "I'm comparing bureaus and scoring each account's dispute position.",
+};
+
 const BUREAUS = [
   { id: "EQUIFAX", label: "Equifax" },
   { id: "EXPERIAN", label: "Experian" },
@@ -29,6 +57,7 @@ export default function UploadPage() {
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<{ tradelines: number; usedAI: boolean } | null>(null);
+  const [reveal, setReveal] = useState<Reveal | null>(null);
   const [dragging, setDragging] = useState(false);
   const [reports, setReports] = useState<StoredReport[]>([]);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
@@ -92,7 +121,8 @@ export default function UploadPage() {
     }
 
     setBusy(true);
-    setStatus(mode === "pdf" ? "Kai is reading your PDF — extracting every account…" : "Kai is reading your report — extracting every account…");
+    setReveal(null);
+    setStatus("Sending your report…");
     try {
       const form = new FormData();
       form.set("bureaus", bureaus.join(","));
@@ -100,18 +130,59 @@ export default function UploadPage() {
       if (mode === "pdf" && file) form.set("file", file);
 
       const res = await fetch("/api/reports/upload", { method: "POST", body: form });
-      const j = await res.json();
-      setBusy(false);
-      setStatus(null);
-      if (!res.ok) {
+      if (!res.ok || !res.body) {
+        // Validation/auth failures come back as plain JSON with a status code.
+        const j = await res.json().catch(() => ({}));
+        setBusy(false);
+        setStatus(null);
         setError(j.error || "Upload failed.");
         return;
       }
-      setDone({ tradelines: j.tradelines, usedAI: j.usedAI });
-      if (j.tradelines > 0) {
-        setTimeout(() => router.push("/tradelines"), 1400);
-      } else if (j.warning) {
-        setError(j.warning);
+
+      // NDJSON stream: narrate each real stage as the server enters it; the
+      // final line carries the result (and the reveal).
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffered = "";
+      let final: {
+        ok?: boolean;
+        tradelines?: number;
+        usedAI?: boolean;
+        warning?: string;
+        error?: string;
+        reveal?: Reveal;
+      } | null = null;
+      for (;;) {
+        const { done: eof, value } = await reader.read();
+        if (eof) break;
+        buffered += decoder.decode(value, { stream: true });
+        let nl;
+        while ((nl = buffered.indexOf("\n")) >= 0) {
+          const line = buffered.slice(0, nl).trim();
+          buffered = buffered.slice(nl + 1);
+          if (!line) continue;
+          try {
+            const evt = JSON.parse(line);
+            if (evt.stage && STAGE_LINES[evt.stage]) setStatus(STAGE_LINES[evt.stage]);
+            else final = evt;
+          } catch {
+            /* partial line noise — ignore */
+          }
+        }
+      }
+
+      setBusy(false);
+      setStatus(null);
+      if (!final || final.error) {
+        setError(final?.error || "Upload failed during analysis. Please try again.");
+        return;
+      }
+      setDone({ tradelines: final.tradelines ?? 0, usedAI: Boolean(final.usedAI) });
+      if ((final.tradelines ?? 0) > 0 && final.reveal) {
+        setReveal(final.reveal);
+        loadReports();
+      } else if (final.warning) {
+        setError(final.warning);
       }
     } catch {
       setBusy(false);
@@ -133,12 +204,80 @@ export default function UploadPage() {
         bureau reports unless its report was actually uploaded.
       </p>
 
-      {done && done.tradelines > 0 ? (
+      {reveal ? (
+        <div className="card animate-rise p-6">
+          {/* The reveal — a professional walking in with answers. Every number
+              below was computed from the rows just persisted. */}
+          <div className="flex items-center gap-2">
+            <span className="rounded bg-brand-500/15 px-1.5 py-0.5 text-[10px] font-bold tracking-widest text-brand-300">KAI</span>
+            <span className="text-lg font-semibold">I finished reviewing your report.</span>
+          </div>
+
+          <p className="mt-3 max-w-2xl text-sm text-slate-300">
+            {reveal.accounts} account{reveal.accounts === 1 ? "" : "s"} across{" "}
+            {reveal.bureaus.map((b) => BUREAUS.find((x) => x.id === b)?.label ?? b).join(", ")}.
+            {reveal.conflicts > 0 && (
+              <> {reveal.conflicts} do{reveal.conflicts === 1 ? "esn't" : "n't"} tell one story across bureaus.</>
+            )}
+            {reveal.obsolete > 0 && (
+              <> {reveal.obsolete} {reveal.obsolete === 1 ? "is" : "are"} past the §605 reporting window.</>
+            )}
+            {reveal.conflicts === 0 && reveal.obsolete === 0 && (
+              <> No cross-bureau conflicts or §605 flags stand out — my read on each account is in its row.</>
+            )}
+          </p>
+
+          {reveal.top && (
+            <div className="mt-4 rounded-lg border border-brand-500/30 bg-brand-500/[0.06] p-4">
+              <div className="text-[10px] font-bold uppercase tracking-widest text-brand-300">What matters most</div>
+              <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                <span className="text-base font-semibold">{reveal.top.creditor}</span>
+                <span className={`pill ${reveal.top.probability === "HIGH" ? "bg-brand-500/15 text-brand-300" : "bg-gold-500/15 text-gold-400"}`}>
+                  {reveal.top.probability === "HIGH" ? "High confidence" : "Worth pursuing"}
+                </span>
+              </div>
+              {reveal.top.reason && <p className="mt-1 text-sm text-slate-400">{reveal.top.reason}</p>}
+              {reveal.top.why && <p className="mt-1.5 text-xs text-slate-500">{reveal.top.why}</p>}
+              <div className="mt-3 flex flex-wrap items-center gap-3">
+                <button
+                  onClick={() =>
+                    router.push(
+                      `/letters?tradeline=${reveal.top!.id}${reveal.top!.strategy ? `&strategy=${reveal.top!.strategy}` : ""}`
+                    )
+                  }
+                  className="btn-primary"
+                >
+                  Start with {reveal.top.creditor} →
+                </button>
+                <button onClick={() => router.push("/tradelines")} className="btn-ghost text-sm">
+                  See every account →
+                </button>
+              </div>
+            </div>
+          )}
+          {!reveal.top && (
+            <div className="mt-4">
+              <button onClick={() => router.push("/tradelines")} className="btn-primary">See every account →</button>
+            </div>
+          )}
+
+          <p className="mt-4 text-xs text-slate-500">
+            {reveal.high > 0 || reveal.medium > 0
+              ? `${reveal.high} high-confidence dispute target${reveal.high === 1 ? "" : "s"} · ${reveal.medium} medium. `
+              : ""}
+            Scored by rules against your report&apos;s own data — every claim traces to a line in the file, and each
+            account&apos;s row shows the why.
+          </p>
+        </div>
+      ) : done && done.tradelines > 0 ? (
         <div className="card flex flex-col items-center gap-3 p-10 text-center">
           <CheckCircle2 className="h-10 w-10 text-brand-400" />
           <div className="text-lg font-semibold">Analyzed {done.tradelines} accounts</div>
           <p className="text-sm text-slate-400">
-            {done.usedAI ? "AI extraction complete." : "Report parsed."} Taking you to your tradelines…
+            {done.usedAI ? "Extraction complete." : "Report parsed."}{" "}
+            <button onClick={() => router.push("/tradelines")} className="font-semibold text-brand-400 hover:underline">
+              See your tradelines →
+            </button>
           </p>
         </div>
       ) : (
@@ -219,7 +358,12 @@ export default function UploadPage() {
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <UploadCloud className="h-4 w-4" />}
               {busy ? "Kai is reading…" : "Analyze Report"}
             </button>
-            {status && <p className="mt-3 text-xs text-brand-300">{status}</p>}
+            {status && (
+              <p aria-live="polite" className="mt-3 flex items-center gap-2 text-xs text-brand-300">
+                <span className="rounded bg-brand-500/15 px-1 py-px text-[9px] font-bold tracking-widest text-brand-300">KAI</span>
+                {status}
+              </p>
+            )}
             {error && <p className="mt-3 text-xs text-rose-400">{error}</p>}
           </div>
         </div>

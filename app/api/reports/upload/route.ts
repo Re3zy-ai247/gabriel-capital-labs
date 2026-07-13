@@ -6,6 +6,8 @@ import { analyzeReportText } from "@/lib/analyze";
 import { extractPdfText } from "@/lib/pdf";
 import { encryptText } from "@/lib/docCrypto";
 import { recordKaiEvent } from "@/lib/kaiEvents";
+import { getBureauData, crossBureauConflicts } from "@/lib/bureauData";
+import { recommendStrategy } from "@/lib/recommend";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -24,6 +26,7 @@ export async function POST(req: Request) {
   let rawText = "";
   let fileName = "pasted-report.txt";
   let bureaus: Bureau[] = [];
+  let pdfBuf: Buffer | null = null; // extracted inside the stream so it can be narrated
 
   const contentType = req.headers.get("content-type") || "";
 
@@ -43,9 +46,7 @@ export async function POST(req: Request) {
           return NextResponse.json({ error: "PDF too large (max 15 MB)." }, { status: 413 });
         }
         fileName = f.name || "uploaded-report.pdf";
-        const buf = Buffer.from(await f.arrayBuffer());
-        const pdfText = await extractPdfText(buf);
-        if (pdfText.length > rawText.length) rawText = pdfText;
+        pdfBuf = Buffer.from(await f.arrayBuffer());
       }
     } else {
       const body = await req.json().catch(() => ({}));
@@ -65,72 +66,131 @@ export async function POST(req: Request) {
       { status: 400 }
     );
   }
-  if (rawText.length < 40) {
-    return NextResponse.json(
-      {
-        error:
-          "We couldn't read enough text. If you uploaded a scanned/image PDF, paste the report text instead.",
-      },
-      { status: 400 }
-    );
+  const TOO_SHORT =
+    "We couldn't read enough text. If you uploaded a scanned/image PDF, paste the report text instead.";
+  // Pasted-only uploads can be validated up front; PDF text length is only
+  // known after extraction, which happens (and is narrated) inside the stream.
+  if (!pdfBuf && rawText.length < 40) {
+    return NextResponse.json({ error: TOO_SHORT }, { status: 400 });
   }
 
-  try {
-    // Cap once, then store the ciphertext. Keep the plaintext locally for the
-    // immediate analysis — report.rawText is now encrypted and unusable directly.
-    const plainText = rawText.slice(0, 500_000);
-    const report = await prisma.report.create({
-      data: {
-        userId: user.id,
-        fileName,
-        bureaus,
-        rawText: encryptText(plainText),
-      },
-    });
+  // Streamed NDJSON: one line per REAL pipeline stage as it begins, then the
+  // final result (with the reveal payload) as the last line. No stage is ever
+  // emitted for work that isn't actually happening — honest narration only.
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream({
+    async start(controller) {
+      const emit = (obj: Record<string, unknown>) =>
+        controller.enqueue(encoder.encode(JSON.stringify(obj) + "\n"));
+      try {
+        if (pdfBuf) {
+          emit({ stage: "extracting" });
+          const pdfText = await extractPdfText(pdfBuf);
+          if (pdfText.length > rawText.length) rawText = pdfText;
+          if (rawText.length < 40) {
+            emit({ error: TOO_SHORT });
+            controller.close();
+            return;
+          }
+        }
 
-    const result = await analyzeReportText(prisma, {
-      userId: user.id,
-      reportId: report.id,
-      rawText: plainText,
-      coveredBureaus: bureaus,
-    });
+        // Cap once, then store the ciphertext. Keep the plaintext locally for the
+        // immediate analysis — report.rawText is encrypted and unusable directly.
+        const plainText = rawText.slice(0, 500_000);
+        emit({ stage: "received" });
+        const report = await prisma.report.create({
+          data: {
+            userId: user.id,
+            fileName,
+            bureaus,
+            rawText: encryptText(plainText),
+          },
+        });
 
-    await recordKaiEvent(user.id, "report.uploaded", {
-      refType: "report",
-      refId: report.id,
-      payload: { fileName, bureaus },
-    });
-    await recordKaiEvent(user.id, "report.analyzed", {
-      refType: "report",
-      refId: report.id,
-      payload: { tradelines: result.tradelines, usedAI: result.usedAI },
-    });
+        const result = await analyzeReportText(
+          prisma,
+          { userId: user.id, reportId: report.id, rawText: plainText, coveredBureaus: bureaus },
+          (stage) => emit({ stage })
+        );
 
-    if (result.tradelines === 0) {
-      return NextResponse.json({
-        ok: true,
-        reportId: report.id,
-        tradelines: 0,
-        usedAI: result.usedAI,
-        warning:
-          "We saved the report but couldn't identify any accounts. Make sure you pasted the tradeline/account section of the report.",
-      });
-    }
+        await recordKaiEvent(user.id, "report.uploaded", {
+          refType: "report",
+          refId: report.id,
+          payload: { fileName, bureaus },
+        });
+        await recordKaiEvent(user.id, "report.analyzed", {
+          refType: "report",
+          refId: report.id,
+          payload: { tradelines: result.tradelines, usedAI: result.usedAI },
+        });
 
-    return NextResponse.json({
-      ok: true,
-      reportId: report.id,
-      tradelines: result.tradelines,
-      usedAI: result.usedAI,
-    });
-  } catch (e) {
-    console.error("upload analyze error", e);
-    return NextResponse.json(
-      {
-        error: "Upload failed during analysis. Please try again.",
-        detail: e instanceof Error ? e.message : String(e),
-      },
-      { status: 500 }
-    );
-  }
+        if (result.tradelines === 0) {
+          emit({
+            ok: true,
+            reportId: report.id,
+            tradelines: 0,
+            usedAI: result.usedAI,
+            warning:
+              "We saved the report but couldn't identify any accounts. Make sure you pasted the tradeline/account section of the report.",
+          });
+          controller.close();
+          return;
+        }
+
+        // The reveal — computed from the rows just persisted, same engines as
+        // every other surface (nothing invented, everything traceable).
+        const rows = await prisma.tradeline.findMany({
+          where: { reportId: report.id },
+          orderBy: { score: "desc" },
+        });
+        const conflicts = rows.filter((t) => crossBureauConflicts(getBureauData(t.bureauData)).length > 0).length;
+        const obsolete = rows.filter((t) => t.reasons.some((r) => r.includes("§605"))).length;
+        const high = rows.filter((t) => t.probability === "HIGH").length;
+        const medium = rows.filter((t) => t.probability === "MEDIUM").length;
+        const top = rows.find((t) => t.probability !== "NOT_RECOMMENDED") ?? null;
+        const topRec = top
+          ? recommendStrategy({
+              accountType: top.accountType,
+              isDebtBuyer: top.isDebtBuyer,
+              probability: top.probability,
+              dateOfFirstDelinquency: top.dateOfFirstDelinquency,
+              bureauData: top.bureauData,
+              creditorName: top.creditorName,
+            })
+          : null;
+
+        emit({
+          ok: true,
+          reportId: report.id,
+          tradelines: result.tradelines,
+          usedAI: result.usedAI,
+          reveal: {
+            accounts: result.tradelines,
+            bureaus,
+            conflicts,
+            obsolete,
+            high,
+            medium,
+            top: top && {
+              id: top.id,
+              creditor: top.creditorName,
+              probability: top.probability,
+              reason: top.reasons[0] ?? "",
+              strategy: topRec?.strategyId ?? null,
+              why: topRec?.reason ?? "",
+            },
+          },
+        });
+        controller.close();
+      } catch (e) {
+        console.error("upload analyze error", e);
+        emit({ error: "Upload failed during analysis. Please try again." });
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(stream, {
+    headers: { "Content-Type": "application/x-ndjson", "Cache-Control": "no-store" },
+  });
 }
