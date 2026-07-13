@@ -92,7 +92,7 @@ export default function UploadPage() {
     }
 
     setBusy(true);
-    setStatus(mode === "pdf" ? "Reading your PDF and analyzing accounts…" : "Analyzing your report…");
+    setStatus(mode === "pdf" ? "Kai is reading your PDF — extracting every account…" : "Kai is reading your report — extracting every account…");
     try {
       const form = new FormData();
       form.set("bureaus", bureaus.join(","));
@@ -216,7 +216,7 @@ export default function UploadPage() {
 
             <button onClick={submit} disabled={busy} className="btn-primary mt-5 w-full">
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <UploadCloud className="h-4 w-4" />}
-              {busy ? "Analyzing…" : "Analyze Report"}
+              {busy ? "Kai is reading…" : "Analyze Report"}
             </button>
             {status && <p className="mt-3 text-xs text-brand-300">{status}</p>}
             {error && <p className="mt-3 text-xs text-rose-400">{error}</p>}

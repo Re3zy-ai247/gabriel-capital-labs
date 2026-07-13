@@ -1,0 +1,136 @@
+"use client";
+
+// Floating Kai (Product Sprint 1 P2). NOT a chatbot: a quiet, context-aware
+// presence rendering the same passive intelligence as Kai Home. Anti-overwhelm
+// laws (KAI-PRODUCT-DESIGN §7): never auto-opens, one recommendation only,
+// dismissible for the whole session, silent when there is nothing real to say.
+import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { X } from "lucide-react";
+
+type KaiContext = {
+  recommendation: { title: string; cta: string; href: string; basis: string } | null;
+  deadline: { recipient: string; daysLeft: number } | null;
+  overnightCount: number;
+};
+
+const CACHE_KEY = "kai-presence-ctx-v1";
+const DISMISS_KEY = "kai-presence-dismissed";
+const CACHE_TTL_MS = 5 * 60 * 1000;
+
+export function KaiPresence() {
+  const pathname = usePathname();
+  const [ctx, setCtx] = useState<KaiContext | null>(null);
+  const [open, setOpen] = useState(false);
+  const [hidden, setHidden] = useState(true);
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (sessionStorage.getItem(DISMISS_KEY)) return; // stays dismissed all session
+
+    try {
+      const cached = sessionStorage.getItem(CACHE_KEY);
+      if (cached) {
+        const { at, data } = JSON.parse(cached) as { at: number; data: KaiContext };
+        if (Date.now() - at < CACHE_TTL_MS) {
+          setCtx(data);
+          setHidden(false);
+          return;
+        }
+      }
+    } catch {
+      /* cache is best-effort */
+    }
+
+    const t = setTimeout(async () => {
+      try {
+        const res = await fetch("/api/kai/context");
+        if (!res.ok) return; // signed out or error → Kai simply isn't there
+        const data = (await res.json()) as KaiContext;
+        sessionStorage.setItem(CACHE_KEY, JSON.stringify({ at: Date.now(), data }));
+        setCtx(data);
+        setHidden(false);
+      } catch {
+        /* network hiccup → stay hidden; never an error state for a presence */
+      }
+    }, 400); // let the page render first — Kai is never the LCP
+    return () => clearTimeout(t);
+  }, []);
+
+  // Close the panel on navigation; collapse focus back to the pill.
+  useEffect(() => {
+    setOpen(false);
+  }, [pathname]);
+
+  if (hidden || !ctx) return null;
+  if (pathname === "/dashboard") return null; // Kai Home IS Kai — no double presence
+
+  const hasSomething = Boolean(ctx.recommendation || ctx.deadline || ctx.overnightCount > 0);
+  const contextLine = ctx.deadline
+    ? ctx.deadline.daysLeft <= 0
+      ? `The ${ctx.deadline.recipient} response window has passed.`
+      : `Watching the ${ctx.deadline.recipient} window — ${ctx.deadline.daysLeft}d left.`
+    : ctx.overnightCount > 0
+      ? `${ctx.overnightCount} update${ctx.overnightCount === 1 ? "" : "s"} since your last visit.`
+      : "Your file is quiet. I'm watching it.";
+
+  function dismiss() {
+    sessionStorage.setItem(DISMISS_KEY, "1");
+    setHidden(true);
+  }
+
+  return (
+    <div className="fixed bottom-20 right-4 z-30 md:bottom-6 md:right-6 print:hidden">
+      {open && (
+        <div
+          ref={panelRef}
+          role="dialog"
+          aria-label="Kai"
+          className="mb-2 w-72 rounded-xl border border-ink-600/80 bg-ink-900/95 p-4 shadow-2xl shadow-black/40 backdrop-blur motion-safe:animate-rise"
+        >
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex items-center gap-1.5">
+              <span className="rounded bg-brand-500/15 px-1.5 py-0.5 text-[10px] font-bold tracking-widest text-brand-300">KAI</span>
+              <span className="text-[11px] text-slate-500">your intelligence layer</span>
+            </div>
+            <button onClick={dismiss} aria-label="Dismiss Kai for this session" className="text-slate-500 hover:text-slate-300">
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+
+          <p className="mt-2 text-sm text-slate-300">{contextLine}</p>
+
+          {ctx.recommendation && (
+            <div className="mt-3 rounded-lg border border-brand-500/30 bg-brand-500/[0.06] p-3">
+              <div className="text-[10px] font-bold uppercase tracking-widest text-brand-300">Kai recommends</div>
+              <div className="mt-1 text-xs font-medium text-slate-200">{ctx.recommendation.title}</div>
+              <Link href={ctx.recommendation.href} onClick={() => setOpen(false)} className="btn-primary mt-2 inline-block !py-1 text-[11px]">
+                {ctx.recommendation.cta} →
+              </Link>
+              <p className="mt-1.5 text-[10px] text-slate-500">{ctx.recommendation.basis}</p>
+            </div>
+          )}
+
+          <Link href="/dashboard" onClick={() => setOpen(false)} className="mt-3 block text-[11px] font-semibold text-brand-400 hover:underline">
+            Open Kai Home →
+          </Link>
+        </div>
+      )}
+
+      <button
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        aria-label={open ? "Close Kai" : `Open Kai${hasSomething ? " — updates available" : ""}`}
+        className="flex items-center gap-2 rounded-full border border-ink-600/80 bg-ink-900/95 py-2 pl-3 pr-3.5 text-xs shadow-lg shadow-black/30 backdrop-blur transition-colors hover:border-brand-500/40"
+      >
+        <span className="relative flex h-2 w-2" aria-hidden>
+          <span className={`absolute inline-flex h-full w-full rounded-full ${hasSomething ? "bg-brand-400 motion-safe:animate-ping opacity-60" : ""}`} />
+          <span className={`relative inline-flex h-2 w-2 rounded-full ${hasSomething ? "bg-brand-400" : "bg-slate-600"}`} />
+        </span>
+        <span className="font-bold tracking-widest text-brand-300">KAI</span>
+      </button>
+    </div>
+  );
+}

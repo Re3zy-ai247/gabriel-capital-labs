@@ -4,6 +4,7 @@ import { AgencyBar } from "./AgencyBar";
 import { ImpersonationBanner } from "./admin/ImpersonationBanner";
 import { AnnouncementBanner } from "./AnnouncementBanner";
 import { HeaderLogout } from "./HeaderLogout";
+import { KaiPresence } from "./kai/KaiPresence";
 import Link from "next/link";
 
 export function AppShell({ title, children }: { title: string; children: React.ReactNode }) {
@@ -23,6 +24,7 @@ export function AppShell({ title, children }: { title: string; children: React.R
         <AnnouncementBanner />
         <AgencyBar />
         <main className="flex-1 px-5 py-6 pb-24 md:pb-6">{children}</main>
+        <KaiPresence />
         <MobileNav />
       </div>
     </div>

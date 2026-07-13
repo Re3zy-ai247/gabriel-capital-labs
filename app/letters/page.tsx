@@ -291,7 +291,7 @@ function LettersInner() {
 
             <button onClick={generate} disabled={busy} className="btn-primary w-full">
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mails className="h-4 w-4" />}
-              {busy ? "Generating…" : isBureauStrategy && bureausSel.length > 1 ? `Generate ${bureausSel.length} Letters` : "Generate Letter"}
+              {busy ? "Kai is drafting your letter…" : isBureauStrategy && bureausSel.length > 1 ? `Generate ${bureausSel.length} Letters` : "Generate Letter"}
             </button>
             {remaining !== null && (
               <p className="mt-2 text-center text-[11px] text-slate-500">{remaining} free letters left this month</p>
@@ -486,21 +486,69 @@ function LetterRow({
         )}
       </div>
 
-      {/* AI analysis of the logged response */}
+      {/* Kai Response Card — outcome, evidence, why, and exactly one next action. */}
       {analysis && (
-        <div className="mt-2 rounded-lg border border-ink-700 bg-ink-900/50 p-3 text-xs">
-          <div className="mb-1 flex items-center gap-1.5 font-semibold text-slate-200">
-            <ShieldCheck className="h-3.5 w-3.5 text-brand-400" /> AI analysis of the response
+        <div
+          className={`mt-2 rounded-lg border p-3 text-xs ${
+            l.responseOutcome === "deleted"
+              ? "border-success-500/40 bg-success-500/[0.06]"
+              : "border-ink-700 bg-ink-900/50"
+          }`}
+        >
+          <div className="mb-1.5 flex items-center gap-1.5">
+            <span className="rounded bg-brand-500/15 px-1 py-px text-[9px] font-bold tracking-widest text-brand-300">KAI</span>
+            <span className="font-semibold text-slate-200">
+              {l.responseOutcome === "deleted" && "The item was deleted. One down."}
+              {l.responseOutcome === "verified" && "They said “verified” — that's a claim, not the end."}
+              {l.responseOutcome === "updated" && "They changed the item — check what, exactly."}
+              {l.responseOutcome === "no_response" && "This reply doesn't actually answer your dispute."}
+              {(!l.responseOutcome || l.responseOutcome === "unknown") && "Here's what I read in the response."}
+            </span>
           </div>
-          <p className="text-slate-400">{analysis.summary}</p>
+
+          {/* What this outcome means — teach one transferable thing. */}
+          <p className="text-slate-400">
+            {l.responseOutcome === "verified" &&
+              "“Verified” means the bureau claims the furnisher confirmed the item. Under FCRA §611(a)(7) you can demand the method of verification — how exactly they checked."}
+            {l.responseOutcome === "deleted" &&
+              "The item should no longer appear on this bureau's report. Watch your next report to confirm it stays gone — reinsertion requires the bureau to notify you (§611(a)(5))."}
+            {l.responseOutcome === "updated" &&
+              "Compare the updated fields against your records — a partial correction can still leave inaccurate data worth a targeted follow-up."}
+            {l.responseOutcome === "no_response" &&
+              "A non-substantive reply doesn't satisfy the bureau's §611 reinvestigation duty. That failure itself becomes the basis for your escalation."}
+          </p>
+
+          {/* Evidence — the model's grounded read of the response text. */}
+          <div className="mt-2">
+            <div className="mb-0.5 font-semibold text-slate-300">What the response says</div>
+            <p className="text-slate-400">{analysis.summary}</p>
+          </div>
           {analysis.weaknesses?.length > 0 && (
-            <ul className="mt-2 list-disc space-y-0.5 pl-4 text-slate-400">
-              {analysis.weaknesses.map((w: string, i: number) => <li key={i}>{w}</li>)}
-            </ul>
+            <div className="mt-2">
+              <div className="mb-0.5 font-semibold text-slate-300">Weaknesses a follow-up can target</div>
+              <ul className="list-disc space-y-0.5 pl-4 text-slate-400">
+                {analysis.weaknesses.map((w: string, i: number) => <li key={i}>{w}</li>)}
+              </ul>
+            </div>
           )}
-          {l.responseOutcome !== "deleted" && (
-            <p className="mt-2 text-brand-300">Recommended: {analysis.recommendedNextStep}</p>
-          )}
+
+          {/* One next action + the honest basis line. */}
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            {l.responseOutcome !== "deleted" ? (
+              <button onClick={genRound2} disabled={busy} className="btn-primary !py-1.5 text-xs">
+                {busy ? (
+                  <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Kai is drafting Round {l.round + 1}…</>
+                ) : (
+                  <>Draft Round {l.round + 1} targeting these weaknesses →</>
+                )}
+              </button>
+            ) : (
+              <Link href="/journey" className="btn-ghost !py-1.5 text-xs">See it on your timeline →</Link>
+            )}
+            <span className="text-[10px] text-slate-500">
+              ● Kai's analysis — based only on the response text you logged, nothing invented.
+            </span>
+          </div>
         </div>
       )}
 
@@ -521,7 +569,11 @@ function LetterRow({
               <input type="file" accept="application/pdf" className="hidden" onChange={(e) => setRespFile(e.target.files?.[0] ?? null)} />
             </label>
             <button onClick={submitResponse} disabled={busy} className="btn-primary text-xs">
-              {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />} Analyze response
+              {busy ? (
+                <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Kai is reading the response…</>
+              ) : (
+                <><Send className="h-3.5 w-3.5" /> Have Kai read it</>
+              )}
             </button>
             <button onClick={() => setOpenResp(false)} className="text-xs text-slate-400">Cancel</button>
           </div>
