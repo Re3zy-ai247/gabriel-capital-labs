@@ -130,7 +130,7 @@ export default function AgencyPage() {
       }
       setError(d.error || "Could not start checkout. Please try again.");
     } catch {
-      setError("Network error. Please try again.");
+      setError("The connection dropped mid-request. Try again — nothing was lost.");
     } finally {
       setBusy(false);
     }

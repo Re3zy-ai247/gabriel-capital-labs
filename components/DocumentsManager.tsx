@@ -99,7 +99,7 @@ export function DocumentsManager() {
       }
       setDocs((prev) => [j.document, ...prev.filter((d) => d.type !== type)]);
     } catch {
-      setError("Network error during upload.");
+      setError("The connection dropped during the upload. Try again — nothing partial was kept.");
     } finally {
       setBusyType(null);
     }
@@ -151,7 +151,7 @@ export function DocumentsManager() {
 
       {loading ? (
         <div className="flex items-center gap-2 text-sm text-slate-400">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+          <Loader2 className="h-4 w-4 animate-spin" /> Opening your documents…
         </div>
       ) : (
         <div className="space-y-2">

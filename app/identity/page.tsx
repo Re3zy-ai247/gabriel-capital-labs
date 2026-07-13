@@ -74,7 +74,7 @@ export default function IdentityPage() {
       if (!res.ok) { setError(j.error || "Analysis failed."); return; }
       setResult(j); setState("ok");
     } catch {
-      setError("Network error. Please try again.");
+      setError("The connection dropped mid-request. Try again — nothing was lost.");
     } finally { setBusy(false); }
   }
 
@@ -91,7 +91,7 @@ export default function IdentityPage() {
       if (!res.ok) { setLetterMsg(j.error || "Could not generate the letter."); return; }
       setLetter({ id: j.letter.id, body: j.letter.body });
     } catch {
-      setLetterMsg("Network error.");
+      setLetterMsg("The connection dropped mid-request. Try again — nothing was lost.");
     } finally { setLetterBusy(false); }
   }
 

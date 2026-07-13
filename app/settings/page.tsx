@@ -145,7 +145,7 @@ export default function SettingsPage() {
 
         {loading ? (
           <div className="flex items-center gap-2 text-slate-400">
-            <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+            <Loader2 className="h-4 w-4 animate-spin" /> Pulling up your account…
           </div>
         ) : (
           <form onSubmit={save} className="space-y-4">

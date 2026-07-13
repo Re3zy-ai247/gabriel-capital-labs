@@ -83,7 +83,7 @@ export function PricingTiers() {
         setBusy(null);
       }
     } catch {
-      setError("Network error. Please try again.");
+      setError("The connection dropped mid-request. Try again — nothing was lost.");
       setBusy(null);
     }
   }

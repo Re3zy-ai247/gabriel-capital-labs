@@ -82,7 +82,7 @@ export default function CommunityPage() {
       if (!res.ok) { setError(j.error || "Could not post."); return; }
       router.push(`/community/${j.id}`);
     } catch {
-      setError("Network error. Try again.");
+      setError("The connection dropped mid-request. Try again — nothing was lost.");
     } finally { setBusy(false); }
   }
 

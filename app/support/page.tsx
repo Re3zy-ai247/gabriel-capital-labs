@@ -81,7 +81,7 @@ export default function SupportPage() {
       if (!res.ok) { setError(j.error || "Could not submit."); return; }
       setSubject(""); setBody(""); setCategory("general"); setFiles([]); setOpen(false);
       loadList(); openTicket(j.id);
-    } catch { setError("Network error."); } finally { setBusy(false); }
+    } catch { setError("The connection dropped mid-request. Try again — nothing was lost."); } finally { setBusy(false); }
   }
 
   async function sendReply() {

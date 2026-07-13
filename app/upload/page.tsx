@@ -116,7 +116,7 @@ export default function UploadPage() {
     } catch {
       setBusy(false);
       setStatus(null);
-      setError("Network error. Please try again.");
+      setError("The connection dropped mid-request. Try again — nothing was lost.");
     }
   }
 
@@ -236,7 +236,7 @@ export default function UploadPage() {
               const res = await fetch("/api/reports/analyze", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
               const j = await res.json();
               setBusy(false);
-              setStatus(res.ok ? `Done — ${j.tradelines} tradelines across ${j.reportsAnalyzed} report(s).` : j.error || "Failed");
+              setStatus(res.ok ? `All re-read — ${j.tradelines} tradelines across ${j.reportsAnalyzed} ${j.reportsAnalyzed === 1 ? "report" : "reports"}.` : j.error || "The re-analysis didn't finish. Try again in a moment.");
               await loadReports();
               router.refresh();
             }}

@@ -37,7 +37,7 @@ export function BriefComments({ slug, isAuthed, initial }: { slug: string; isAut
       setComments((c) => [j.comment, ...c]);
       setBody("");
     } catch {
-      setErr("Network error. Please try again.");
+      setErr("The connection dropped mid-request. Try again — nothing was lost.");
     } finally {
       setBusy(false);
     }

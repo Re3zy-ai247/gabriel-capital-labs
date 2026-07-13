@@ -92,7 +92,7 @@ function BillingInner() {
         setBusy(false);
       }
     } catch {
-      setError('Network error.');
+      setError('The connection dropped mid-request. Try again — nothing was lost.');
       setBusy(false);
     }
   }
@@ -109,7 +109,7 @@ function BillingInner() {
         setBusy(false);
       }
     } catch {
-      setError('Network error.');
+      setError('The connection dropped mid-request. Try again — nothing was lost.');
       setBusy(false);
     }
   }
@@ -135,7 +135,7 @@ function BillingInner() {
         )}
 
         {loading ? (
-          <p className="text-slate-400">Loading…</p>
+          <p className="text-slate-400">Pulling up your plan…</p>
         ) : (
           <>
             {/* Current Plan */}

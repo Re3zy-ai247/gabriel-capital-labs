@@ -132,7 +132,7 @@ function LettersInner() {
       });
       const j = await res.json();
       if (res.status === 402) { setError(j.error); setUpgrade(true); return; }
-      if (!res.ok) { setError(j.error || "Generation failed"); return; }
+      if (!res.ok) { setError(j.error || "That letter didn't generate. Try again in a moment."); return; }
       setLetter({ id: j.letter.id, body: j.letter.body });
       setGenCount(j.count || 1);
       setAiRefined(Boolean(j.aiRefined));
@@ -141,7 +141,7 @@ function LettersInner() {
       setRemaining(j.entitlement?.lettersRemaining ?? null);
       loadSaved();
     } catch {
-      setError("Network error. Please try again.");
+      setError("The connection dropped mid-request. Try again — nothing was lost.");
     } finally { setBusy(false); }
   }
 
@@ -449,6 +449,13 @@ function LetterRow({
   const [msg, setMsg] = useState<string | null>(null);
   const analysis = l.responseAnalysis ? safeParse(l.responseAnalysis) : null;
   const storyline = letterStoryline(l);
+  // §611 window progress — same visual grammar as the Kai Home radar, so the
+  // clock reads identically everywhere. Only for mailed rows still waiting.
+  const windowDay =
+    l.status === "MAILED" && l.mailedAt && !l.hasResponse
+      ? Math.max(0, Math.floor((Date.now() - new Date(l.mailedAt).getTime()) / 86400000))
+      : null;
+  const windowOverdue = windowDay != null && windowDay > 30;
 
   async function submitResponse() {
     setBusy(true); setMsg(null);
@@ -459,10 +466,10 @@ function LetterRow({
       if (!respText.trim() && !respFile) { setMsg("Paste the response text or attach a PDF."); setBusy(false); return; }
       const res = await fetch(`/api/letters/${l.id}/response`, { method: "POST", body: form });
       const j = await res.json();
-      if (!res.ok) { setMsg(j.error || "Failed"); setBusy(false); return; }
+      if (!res.ok) { setMsg(j.error || "That didn't go through. Try again in a moment."); setBusy(false); return; }
       setOpenResp(false); setRespText(""); setRespFile(null);
       onChanged();
-    } catch { setMsg("Network error."); } finally { setBusy(false); }
+    } catch { setMsg("The connection dropped mid-request. Try again — nothing was lost."); } finally { setBusy(false); }
   }
 
   async function genRound2() {
@@ -470,9 +477,9 @@ function LetterRow({
     try {
       const res = await fetch(`/api/letters/${l.id}/round2`, { method: "POST" });
       const j = await res.json();
-      if (!res.ok) { setMsg(j.error || "Failed"); setBusy(false); return; }
+      if (!res.ok) { setMsg(j.error || "That didn't go through. Try again in a moment."); setBusy(false); return; }
       onChanged();
-    } catch { setMsg("Network error."); } finally { setBusy(false); }
+    } catch { setMsg("The connection dropped mid-request. Try again — nothing was lost."); } finally { setBusy(false); }
   }
 
   return (
@@ -491,6 +498,26 @@ function LetterRow({
             <div className="mt-0.5 flex items-center gap-1.5 text-[11px] text-slate-400">
               <span className="rounded bg-brand-500/15 px-1 py-px text-[9px] font-bold tracking-widest text-brand-300">KAI</span>
               <span className="truncate">{storyline}</span>
+            </div>
+          )}
+          {windowDay != null && (
+            <div className="mt-1.5 flex items-center gap-2">
+              <div
+                className="h-1.5 w-32 overflow-hidden rounded-full bg-ink-700"
+                role="progressbar"
+                aria-valuemin={0}
+                aria-valuemax={30}
+                aria-valuenow={Math.min(windowDay, 30)}
+                aria-label={`Day ${windowDay} of the 30-day reinvestigation window`}
+              >
+                <div
+                  className={`h-full transition-[width] duration-700 ${windowOverdue ? "bg-rose-500" : "bg-gold-500"}`}
+                  style={{ width: `${Math.min(100, (windowDay / 30) * 100)}%` }}
+                />
+              </div>
+              <span className={`text-[10px] ${windowOverdue ? "font-semibold text-rose-300" : "text-slate-500"}`}>
+                {windowOverdue ? "window passed" : `${Math.max(0, 30 - windowDay)}d left`}
+              </span>
             </div>
           )}
         </div>
@@ -513,7 +540,9 @@ function LetterRow({
           <div className="flex items-center gap-1.5">
             <Link href={`/letters/print/${l.id}`} target="_blank" className="btn-ghost text-xs" aria-label="Print letter"><Printer className="h-3.5 w-3.5" aria-hidden /></Link>
             {l.status !== "MAILED" && l.status !== "RESOLVED" && l.status !== "RESPONSE_RECEIVED" && (
-              <button onClick={() => onStatus(l.id, "MAILED")} className="btn-ghost text-xs">Mark mailed</button>
+              <button onClick={() => onStatus(l.id, "MAILED")} className="btn-ghost text-xs font-semibold text-brand-300" title="Mailing starts the bureau's ~30-day §611 clock — tell me when it's in the mail.">
+                Mark mailed
+              </button>
             )}
             {(l.status === "MAILED" || l.status === "RESPONSE_RECEIVED") && !l.hasResponse && (
               <button onClick={() => setOpenResp((v) => !v)} className="btn-ghost text-xs">

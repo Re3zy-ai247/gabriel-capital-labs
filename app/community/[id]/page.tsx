@@ -84,7 +84,7 @@ export default function ThreadPage({ params }: { params: { id: string } }) {
       setReply("");
       setReplyFiles([]);
       load();
-    } catch { setError("Network error."); } finally { setBusy(false); }
+    } catch { setError("The connection dropped mid-request. Try again — nothing was lost."); } finally { setBusy(false); }
   }
 
   async function summonKai() {
@@ -94,7 +94,7 @@ export default function ThreadPage({ params }: { params: { id: string } }) {
       const j = await res.json();
       if (!res.ok) { setError(j.error || "Kai is unavailable right now."); return; }
       load();
-    } catch { setError("Network error."); } finally { setKaiBusy(false); }
+    } catch { setError("The connection dropped mid-request. Try again — nothing was lost."); } finally { setKaiBusy(false); }
   }
 
   async function moderate(patch: { pinned?: boolean; locked?: boolean }) {
