@@ -104,7 +104,7 @@ export default async function Home() {
           <div className="container-x relative grid items-center gap-14 pb-20 pt-16 lg:grid-cols-[1.05fr_1fr] lg:pt-24">
             <div className="animate-rise">
               <span className="eyebrow">
-                <Sparkles className="h-3.5 w-3.5" /> {BRAND.tagline}
+                <Sparkles className="h-3.5 w-3.5" aria-hidden /> {BRAND.tagline}
               </span>
               <h1 className="h-display mt-6 text-balance text-5xl leading-[1.05] md:text-6xl">
                 Stop guessing what&apos;s on your credit report.
@@ -116,14 +116,34 @@ export default async function Home() {
                 letters, and tracks every dispute — one platform for consumers and the agencies that serve them.
               </p>
               <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-                <Link href="/register" className="btn-primary btn-lg shine">
-                  Start free — no card required <ArrowRight className="h-4 w-4" />
+                <Link href="/register" className="btn-primary btn-lg shine w-full sm:w-auto">
+                  Start free — no card required <ArrowRight className="h-4 w-4" aria-hidden />
                 </Link>
-                <a href="#how" className="btn-ghost btn-lg">See how it works</a>
+                <a href="#how" className="btn-ghost btn-lg w-full sm:w-auto">See how it works</a>
               </div>
-              <p className="mt-6 text-sm text-slate-400">
+              <p className="mt-5 text-sm font-medium text-slate-300">
+                We promise the process, never the outcome.
+              </p>
+              <p className="mt-2 text-sm text-slate-500">
                 Free plan includes full report analysis and 3 dispute letters a month. Cancel anytime.
               </p>
+
+              {/* Kai's introduction */}
+              <div className="mt-8 flex items-start gap-3.5 border-l-2 border-brand-500/40 pl-4">
+                {/* TODO(kai-portrait): when the portrait ships at /kai/kai-master-sq.png, replace this
+                    avatar with <img src="/kai/kai-master-sq.png" alt="" width={44} height={44}
+                    className="h-11 w-11 shrink-0 rounded-xl border border-brand-500/30 object-cover" />.
+                    Server component — no onError fallback available, so enable only once the file exists. */}
+                <span aria-hidden className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-brand-400 to-ocean-500 text-white">
+                  <Sparkles className="h-5 w-5" />
+                </span>
+                <div className="min-w-0">
+                  <span className="rounded bg-brand-500/15 px-1.5 py-0.5 text-[10px] font-bold tracking-widest text-brand-300">KAI</span>
+                  <p className="mt-1.5 max-w-md text-sm leading-relaxed text-slate-300 pretty">
+                    &ldquo;I read credit reports so you don&apos;t have to. Every recommendation comes with its receipt — the rule it fired on and, where the law applies, the statute.&rdquo;
+                  </p>
+                </div>
+              </div>
             </div>
 
             <div className="animate-fadein">
@@ -151,7 +171,7 @@ export default async function Home() {
             <div className="mx-auto max-w-2xl text-center">
               <span className="eyebrow">How it works</span>
               <h2 className="h-display mt-4 text-3xl text-white md:text-4xl text-balance">From upload to mailed dispute in four steps</h2>
-              <p className="lede mt-4">You have the right to dispute inaccurate information yourself — for free. We make exercising it dramatically easier.</p>
+              <p className="lede mt-4">You have the right to dispute inaccurate information yourself — for free. We make exercising it easier.</p>
             </div>
           </Reveal>
           <div className="mt-14 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
@@ -160,7 +180,7 @@ export default async function Home() {
                 <div className="group h-full rounded-2xl border border-ink-700/70 bg-ink-800/50 p-6 transition hover:-translate-y-1 hover:border-brand-500/40">
                   <div className="flex items-center justify-between">
                     <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-500/10 text-brand-300 transition group-hover:bg-brand-500/20">
-                      <s.icon className="h-5 w-5" />
+                      <s.icon className="h-5 w-5" aria-hidden />
                     </span>
                     <span className="text-sm font-semibold tabular-nums text-slate-600">0{i + 1}</span>
                   </div>
@@ -249,14 +269,14 @@ export default async function Home() {
             <div className="grid items-center gap-14 lg:grid-cols-2">
               <Reveal>
                 <div>
-                  <span className="eyebrow"><Building2 className="h-3.5 w-3.5" /> For credit-repair agencies</span>
+                  <span className="eyebrow"><Building2 className="h-3.5 w-3.5" aria-hidden /> For credit-repair agencies</span>
                   <h2 className="h-display mt-4 text-3xl text-white md:text-4xl text-balance">Run your whole client roster from one workspace</h2>
                   <p className="lede mt-4">The same intelligence consumers use, scaled for the teams that serve them — a dedicated, isolated workspace for every client.</p>
                   <div className="mt-8 space-y-5">
                     {AGENCY_POINTS.map((p) => (
                       <div key={p.title} className="flex items-start gap-4">
                         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-ocean-500/15 text-ocean-300">
-                          <p.icon className="h-5 w-5" />
+                          <p.icon className="h-5 w-5" aria-hidden />
                         </span>
                         <div>
                           <div className="font-semibold text-white">{p.title}</div>
@@ -265,7 +285,7 @@ export default async function Home() {
                       </div>
                     ))}
                   </div>
-                  <Link href="/pricing" className="btn-ghost btn-lg mt-9">Explore Agency plans <ArrowRight className="h-4 w-4" /></Link>
+                  <Link href="/pricing" className="btn-ghost btn-lg mt-9">Explore Agency plans <ArrowRight className="h-4 w-4" aria-hidden /></Link>
                 </div>
               </Reveal>
               <Reveal delay={120}>
@@ -277,7 +297,7 @@ export default async function Home() {
             <Reveal>
               <div className="mt-16 grid items-center gap-10 rounded-3xl border border-brand-500/25 bg-gradient-to-br from-brand-500/10 via-ink-900/40 to-ocean-700/20 p-8 md:grid-cols-2 md:p-10">
                 <div>
-                  <span className="eyebrow"><Sparkles className="h-3.5 w-3.5" /> Master agent</span>
+                  <span className="eyebrow"><Sparkles className="h-3.5 w-3.5" aria-hidden /> Master agent</span>
                   <h3 className="h-display mt-4 text-2xl text-white md:text-3xl text-balance">Kai — an AI credit strategist for your whole team</h3>
                   <p className="mt-4 text-slate-300 pretty">
                     Every Agency plan includes Kai in the Community Hub — an expert AI agent your team can ask about dispute
@@ -287,7 +307,7 @@ export default async function Home() {
                     {KAI_POINTS.map((p) => (
                       <li key={p} className="flex items-start gap-3 text-sm text-slate-300">
                         <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-500/15 text-brand-300">
-                          <Check className="h-3 w-3" strokeWidth={3} />
+                          <Check className="h-3 w-3" strokeWidth={3} aria-hidden />
                         </span>
                         {p}
                       </li>
@@ -308,7 +328,7 @@ export default async function Home() {
             </Reveal>
             <Reveal delay={120}>
               <div>
-                <span className="eyebrow"><MessagesSquare className="h-3.5 w-3.5" /> Community Hub</span>
+                <span className="eyebrow"><MessagesSquare className="h-3.5 w-3.5" aria-hidden /> Community Hub</span>
                 <h2 className="h-display mt-4 text-3xl text-white md:text-4xl text-balance">Learn from people working on the same thing</h2>
                 <p className="lede mt-4">
                   The Community Hub is where members and agencies compare notes on what&apos;s working — dispute strategy, bureau
@@ -319,13 +339,13 @@ export default async function Home() {
                   {COMMUNITY_POINTS.map((p) => (
                     <li key={p} className="flex items-start gap-3 text-sm text-slate-300">
                       <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-500/15 text-brand-300">
-                        <Check className="h-3 w-3" strokeWidth={3} />
+                        <Check className="h-3 w-3" strokeWidth={3} aria-hidden />
                       </span>
                       {p}
                     </li>
                   ))}
                 </ul>
-                <Link href="/register" className="btn-ghost btn-lg mt-9">Join the community <ArrowRight className="h-4 w-4" /></Link>
+                <Link href="/register" className="btn-ghost btn-lg mt-9">Join the community <ArrowRight className="h-4 w-4" aria-hidden /></Link>
                 <p className="mt-5 text-xs leading-relaxed text-slate-500">
                   Community posts are members&apos; own opinions — not CreditVector or legal advice, and no outcome is guaranteed.
                   Only Kai&apos;s answers are reviewed for compliance.
@@ -361,7 +381,7 @@ export default async function Home() {
                   <ul className="mt-6 space-y-3 text-sm">
                     {t.features.map((f) => (
                       <li key={f} className="flex items-start gap-2.5 text-slate-300">
-                        <Check className="mt-0.5 h-4 w-4 shrink-0 text-brand-400" strokeWidth={2.5} /> {f}
+                        <Check className="mt-0.5 h-4 w-4 shrink-0 text-brand-400" strokeWidth={2.5} aria-hidden /> {f}
                       </li>
                     ))}
                   </ul>
@@ -400,8 +420,9 @@ export default async function Home() {
               <div className="relative">
                 <h2 className="h-display mx-auto max-w-2xl text-3xl text-white md:text-4xl text-balance">Your credit report. Your rights. Your move.</h2>
                 <p className="mx-auto mt-4 max-w-xl text-slate-300">Create a free account and see what&apos;s on your reports in minutes — no card required.</p>
-                <Link href="/register" className="btn-primary btn-lg shine mt-9 inline-flex">
-                  Create your free account <ArrowRight className="h-4 w-4" />
+                <p className="mx-auto mt-6 max-w-xl text-sm text-slate-400">We promise the process, never the outcome.</p>
+                <Link href="/register" className="btn-primary btn-lg shine mt-8 inline-flex w-full sm:w-auto">
+                  Create your free account <ArrowRight className="h-4 w-4" aria-hidden />
                 </Link>
               </div>
             </div>

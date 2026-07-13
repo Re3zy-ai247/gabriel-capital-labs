@@ -55,13 +55,14 @@ export default async function DashboardPage() {
 
   const eventLabel = (e: (typeof kai.recentEvents)[number]) => {
     const p = (e.payload ?? {}) as Record<string, unknown>;
+    // Verb-first labels — each line reads as work done, not paperwork filed.
     switch (e.type) {
-      case "report.uploaded": return "Credit report uploaded";
-      case "report.analyzed": return `Report analyzed — ${String(p.tradelines ?? "")} accounts reviewed`;
-      case "letter.generated": return "Dispute letter generated";
-      case "letter.mailed": return `Round ${String(p.round ?? "")} mailed to ${String(p.recipient ?? "")}`;
-      case "response.received": return `Bureau response logged (${String(p.outcome ?? "recorded")})`;
-      case "dispute.resolved": return "Item marked resolved";
+      case "report.uploaded": return "Uploaded a credit report";
+      case "report.analyzed": return `Analyzed the report — ${String(p.tradelines ?? "")} accounts reviewed`;
+      case "letter.generated": return "Generated a dispute letter";
+      case "letter.mailed": return `Mailed Round ${String(p.round ?? "")} to ${String(p.recipient ?? "the bureau")}`;
+      case "response.received": return `Logged a bureau response (${String(p.outcome ?? "recorded")})`;
+      case "dispute.resolved": return "Marked an item resolved";
       default: return e.type;
     }
   };
@@ -79,13 +80,13 @@ export default async function DashboardPage() {
           <h2 className="text-2xl font-bold">Welcome back, {firstName}.</h2>
         </div>
         <p className="mt-1 text-sm text-slate-400">
-          {kai.overnight.length > 0 ? "Here's what happened since your last visit:" : "Your file is quiet — here's where everything stands."}
+          {kai.overnight.length > 0 ? "Here's what I logged in the last two days:" : "I checked today. No new activity in the last two days — here's where everything stands."}
         </p>
         {kai.overnight.length > 0 && (
           <ul className="mt-2 space-y-1">
             {kai.overnight.map((o, i) => (
               <li key={i} className="text-sm text-slate-300">
-                <span className="mr-1.5 text-brand-400">✓</span>
+                <span className="mr-1.5 text-brand-400" aria-hidden>✓</span>
                 <Link href={o.href} className="hover:underline">{o.text}</Link>
               </li>
             ))}
@@ -93,9 +94,11 @@ export default async function DashboardPage() {
         )}
       </div>
 
-      {/* KAI RECOMMENDS — one action at a time, always with its receipt. */}
+      {/* KAI RECOMMENDS — one action at a time, always with its receipt.
+          Staggered entrance behind the greeting (the only two animated entries
+          in the first viewport); .animate-rise-stagger respects reduced motion. */}
       {kai.recommendation && (
-        <div className="card animate-rise mb-4 border-brand-500/40 bg-brand-500/[0.06] p-5">
+        <div className="card animate-rise-stagger mb-4 border-brand-500/40 bg-brand-500/[0.06] p-5" style={{ animationDelay: "90ms" }}>
           <div className="text-[10px] font-bold uppercase tracking-widest text-brand-300">Kai recommends</div>
           <div className="mt-1.5 text-base font-semibold">{kai.recommendation.title}</div>
           <p className="mt-1 max-w-2xl text-sm text-slate-400">{kai.recommendation.body}</p>
@@ -108,7 +111,7 @@ export default async function DashboardPage() {
 
       {/* Deadline radar — the §611 clock, per unanswered mailed letter. */}
       {kai.deadlines.length > 0 && (
-        <div className="card animate-rise mb-4 border-gold-500/30 bg-gold-500/[0.05] p-5">
+        <div className="card mb-4 border-gold-500/30 bg-gold-500/[0.05] p-5">
           <div className="text-sm font-semibold text-gold-300">⏱ Deadline radar</div>
           <p className="mt-1 text-xs text-slate-400">
             Bureaus have ~{REINVESTIGATION_DAYS} days to reinvestigate after a dispute is mailed (FCRA §611). When a window closes, log the response or escalate.
@@ -117,27 +120,47 @@ export default async function DashboardPage() {
             {kai.deadlines.map((d) => {
               const overdue = d.daysLeft <= 0;
               const closing = d.daysLeft > 0 && d.daysLeft <= 5;
+              const dayNow = Math.min(REINVESTIGATION_DAYS, Math.max(0, d.daysElapsed));
+              const pct = Math.min(100, Math.round((d.daysElapsed / REINVESTIGATION_DAYS) * 100));
+              const clockLabel = `Response window: day ${dayNow} of ${REINVESTIGATION_DAYS} since mailing`;
               return (
                 <div
                   key={d.letterId}
-                  className={`flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3 ${
+                  className={`rounded-lg border p-3 ${
                     overdue ? "border-rose-500/40 bg-rose-500/[0.05]" : closing ? "border-gold-500/40" : "border-ink-700/70"
                   }`}
                 >
-                  <div className="min-w-0 text-sm">
-                    <span className="font-medium">{d.recipient}</span>
-                    <span className="ml-2 text-[11px] text-slate-500">Round {d.round} · day {d.daysElapsed} of {REINVESTIGATION_DAYS}</span>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-3">
-                    <div className="hidden h-1.5 w-24 overflow-hidden rounded-full bg-ink-700 sm:block" aria-hidden>
-                      <div
-                        className={`h-full ${overdue ? "bg-rose-500" : "bg-gold-500"}`}
-                        style={{ width: `${Math.min(100, Math.round((d.daysElapsed / REINVESTIGATION_DAYS) * 100))}%` }}
-                      />
+                  <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+                    <div className="min-w-0 text-sm">
+                      <span className="font-medium">{d.recipient}</span>
+                      <span className="ml-2 text-[11px] text-slate-500">Round {d.round} · day {d.daysElapsed} of {REINVESTIGATION_DAYS}</span>
                     </div>
-                    <Link href="/letters" className={`text-xs font-semibold hover:underline ${overdue ? "text-rose-300" : "text-slate-400"}`}>
-                      {overdue ? "Window passed — act →" : `${d.daysLeft}d left`}
-                    </Link>
+                    <div className="flex shrink-0 items-center gap-3">
+                      <div
+                        className="hidden h-1.5 w-24 overflow-hidden rounded-full bg-ink-700 sm:block"
+                        role="progressbar"
+                        aria-valuemin={0}
+                        aria-valuemax={REINVESTIGATION_DAYS}
+                        aria-valuenow={dayNow}
+                        aria-label={clockLabel}
+                      >
+                        <div className={`h-full ${overdue ? "bg-rose-500" : "bg-gold-500"}`} style={{ width: `${pct}%` }} />
+                      </div>
+                      <Link href="/letters" className={`text-xs font-semibold hover:underline ${overdue ? "text-rose-300" : "text-slate-400"}`}>
+                        {overdue ? "Window passed — act →" : `${d.daysLeft}d left`}
+                      </Link>
+                    </div>
+                  </div>
+                  {/* Mobile: the clock shows as a thin full-width bar under the row instead of disappearing. */}
+                  <div
+                    className="mt-2 h-1 w-full overflow-hidden rounded-full bg-ink-700 sm:hidden"
+                    role="progressbar"
+                    aria-valuemin={0}
+                    aria-valuemax={REINVESTIGATION_DAYS}
+                    aria-valuenow={dayNow}
+                    aria-label={clockLabel}
+                  >
+                    <div className={`h-full ${overdue ? "bg-rose-500" : "bg-gold-500"}`} style={{ width: `${pct}%` }} />
                   </div>
                 </div>
               );
@@ -214,7 +237,14 @@ export default async function DashboardPage() {
             <div className="text-3xl font-bold text-brand-400">{completion}%</div>
             <div className="pb-1 text-xs text-slate-500">{resolved} of {negative} items resolved</div>
           </div>
-          <div className="mt-3 h-2 overflow-hidden rounded-full bg-ink-700">
+          <div
+            className="mt-3 h-2 overflow-hidden rounded-full bg-ink-700"
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={completion}
+            aria-label={`Dispute completion: ${resolved} of ${negative} items resolved`}
+          >
             <div className="h-full bg-brand-500" style={{ width: `${completion}%` }} />
           </div>
         </div>
@@ -244,7 +274,14 @@ export default async function DashboardPage() {
                 <span>{BUREAU_LABEL[b]}</span>
                 <span>{s.resolved} of {s.total} resolved</span>
               </div>
-              <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-ink-700">
+              <div
+                className="mt-1 h-1.5 overflow-hidden rounded-full bg-ink-700"
+                role="progressbar"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={pct}
+                aria-label={`${BUREAU_LABEL[b]}: ${s.resolved} of ${s.total} resolved`}
+              >
                 <div className="h-full bg-brand-500" style={{ width: `${pct}%` }} />
               </div>
             </div>

@@ -23,7 +23,7 @@ export function AppShell({ title, children }: { title: string; children: React.R
         <ImpersonationBanner />
         <AnnouncementBanner />
         <AgencyBar />
-        <main className="flex-1 px-5 py-6 pb-24 md:pb-6">{children}</main>
+        <main id="main" className="flex-1 px-5 py-6 pb-24 md:pb-6">{children}</main>
         <KaiPresence />
         <MobileNav />
       </div>

@@ -32,15 +32,15 @@ const STATUS_LABEL: Record<string, string> = {
 };
 const STATUS_COLOR: Record<string, string> = {
   GENERATED: "bg-slate-500/15 text-slate-300",
-  MAILED: "bg-blue-500/15 text-blue-300",
+  MAILED: "bg-ocean-500/15 text-ocean-300",
   RESPONSE_RECEIVED: "bg-gold-500/15 text-gold-300",
-  RESOLVED: "bg-emerald-500/15 text-emerald-300",
+  RESOLVED: "bg-success-500/15 text-success-300",
 };
 const OUTCOME_LABEL: Record<string, string> = {
   verified: "Verified (kept)", deleted: "Deleted ✓", updated: "Updated", no_response: "Non-response", unknown: "Logged",
 };
 const OUTCOME_COLOR: Record<string, string> = {
-  deleted: "bg-emerald-500/15 text-emerald-300",
+  deleted: "bg-success-500/15 text-success-300",
   verified: "bg-rose-500/15 text-rose-300",
   updated: "bg-gold-500/15 text-gold-300",
   no_response: "bg-rose-500/15 text-rose-300",
@@ -175,7 +175,7 @@ function LettersInner() {
     <AppShell title="/ Dispute Letters">
       <EduBanner />
       {params.get("purchase") === "success" && (
-        <div className="mb-4 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
+        <div className="mb-4 rounded-lg border border-success-500/40 bg-success-500/10 px-4 py-3 text-sm text-success-300">
           🎉 Payment received — your letter pack is being added. Your extra letters will be available momentarily.
         </div>
       )}
@@ -261,7 +261,7 @@ function LettersInner() {
                   Send to ({strategy?.recipient === "collector" ? "collection agency" : "furnisher / creditor"})
                 </label>
                 {selectedTradeline.furnisherAddress ? (
-                  <p className="mb-2 flex gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-2 text-[11px] text-emerald-300">
+                  <p className="mb-2 flex gap-2 rounded-lg border border-success-500/30 bg-success-500/10 p-2 text-[11px] text-success-300">
                     <Sparkles className="h-3.5 w-3.5 shrink-0" aria-hidden />
                     <span>I pulled this {strategy?.recipient === "collector" ? "collector" : "furnisher"}&apos;s mailing
                     address straight from your report — review it and edit if needed.</span>
@@ -343,8 +343,8 @@ function LettersInner() {
                       </span>
                     )}
                     {aiRefined && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[11px] font-semibold text-emerald-300">
-                        <Sparkles className="h-3 w-3" /> AI-refined (Opus 4.8)
+                      <span className="inline-flex items-center gap-1 rounded-full bg-brand-500/15 px-2 py-0.5 text-[11px] font-semibold text-brand-300">
+                        <Sparkles className="h-3 w-3" aria-hidden /> Refined by Kai
                       </span>
                     )}
                   </div>
@@ -477,11 +477,11 @@ function LetterRow({
 
   return (
     <div className="px-4 py-3 text-sm">
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 truncate font-medium">
             {l.creditorName || l.recipientName}
-            {l.round > 1 && <span className="pill bg-blue-500/15 text-blue-300">Round {l.round}</span>}
+            {l.round > 1 && <span className="pill bg-ocean-500/15 text-ocean-300">Round {l.round}</span>}
             {l.targetBureau && <span className="pill bg-ink-700 text-slate-300">{BUREAU_SHORT[l.targetBureau]}</span>}
           </div>
           <div className="truncate text-xs text-slate-500">

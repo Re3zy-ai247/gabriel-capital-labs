@@ -139,7 +139,14 @@ export default async function JourneyPage() {
         <h2 className="text-xl font-semibold">Your dispute timeline</h2>
       </div>
       <p className="mb-3 text-sm text-slate-400">Everything that has happened on your file, and what's coming next. {completion}% of the 90-day journey complete.</p>
-      <div className="mb-6 h-2 overflow-hidden rounded-full bg-ink-700">
+      <div
+        className="mb-6 h-2 overflow-hidden rounded-full bg-ink-700"
+        role="progressbar"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={completion}
+        aria-label={`90-day journey: ${completion}% complete`}
+      >
         <div className="h-full bg-gradient-to-r from-brand-500 to-gold-400" style={{ width: `${completion}%` }} />
       </div>
 
@@ -151,6 +158,8 @@ export default async function JourneyPage() {
               <div key={l.id} className="flex items-center gap-3 text-sm">
                 <Circle className="h-4 w-4 shrink-0 text-gold-400" aria-hidden />
                 <span className="min-w-0 flex-1 text-slate-300">
+                  {/* Hollow node = due, not done — say so for screen readers. */}
+                  <span className="sr-only">Due: </span>
                   {l.recipientName} response window {daysLeft <= 0 ? "has closed" : `closes in ${daysLeft} day${daysLeft === 1 ? "" : "s"}`} (Round {l.round})
                 </span>
                 <Link href="/letters" className="shrink-0 text-xs font-semibold text-brand-400 hover:underline">
@@ -164,23 +173,26 @@ export default async function JourneyPage() {
 
       {entries.length === 0 ? (
         <div className="card p-6 text-center">
-          <div className="text-sm font-semibold">Nothing here yet — and that's easy to fix.</div>
+          <div className="text-sm font-semibold">Your timeline starts with one upload.</div>
           <p className="mx-auto mt-1 max-w-md text-sm text-slate-400">
-            Upload your credit report and Kai will get to work. Every step after that — analysis, letters, mail windows, responses — shows up here.
+            Upload your credit report and I&apos;ll read every account, flag what can be disputed,
+            and draft the letters. Each step lands here as it happens.
           </p>
           <Link href="/upload" className="btn-primary mt-4 inline-block">Upload your report</Link>
         </div>
       ) : (
         <div className="space-y-5">
-          {Array.from(byDay.entries()).map(([day, dayEntries]) => (
-            <div key={day}>
+          {Array.from(byDay.entries()).map(([day, dayEntries], groupIndex) => (
+            // Only the first day group animates in — one entrance per viewport, not a cascade.
+            <div key={day} className={groupIndex === 0 ? "animate-rise" : undefined}>
               <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">{day}</div>
-              <div className="relative ml-2 space-y-3 border-l border-ink-700 pl-5">
+              {/* Tighter rail on small screens so icons + copy don't cramp at 375px. */}
+              <div className="relative ml-1 space-y-3 border-l border-ink-700 pl-4 sm:ml-2 sm:pl-5">
                 {dayEntries.map((e) => {
                   const Icon = ICONS[e.icon];
                   return (
                     <div key={e.key} className="relative">
-                      <span className="absolute -left-[27px] top-0.5 grid h-4 w-4 place-items-center rounded-full bg-ink-900 ring-1 ring-ink-600">
+                      <span className="absolute -left-[25px] top-0.5 grid h-4 w-4 place-items-center rounded-full bg-ink-900 ring-1 ring-ink-600 sm:-left-[27px]">
                         <Icon className={`h-3 w-3 ${e.icon === "done" ? "text-success-400" : "text-brand-400"}`} aria-hidden />
                       </span>
                       <Link href={e.href} className="group block">

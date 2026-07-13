@@ -70,8 +70,8 @@ export function Sidebar() {
         {mainNav.map((n) => {
           const active = path === n.href || path?.startsWith(n.href + "/");
           return (
-            <Link key={n.href} href={n.href} className={cn("nav-item", active && "nav-item-active")}>
-              <n.icon className="h-4 w-4" />
+            <Link key={n.href} href={n.href} aria-current={active ? "page" : undefined} className={cn("nav-item", active && "nav-item-active")}>
+              <n.icon className="h-4 w-4" aria-hidden />
               {n.label}
             </Link>
           );
@@ -83,8 +83,8 @@ export function Sidebar() {
           {accountNav.map((n) => {
             const active = path === n.href || path?.startsWith(n.href + "/");
             return (
-              <Link key={n.href} href={n.href} className={cn("nav-item", active && "nav-item-active")}>
-                <n.icon className="h-4 w-4" />
+              <Link key={n.href} href={n.href} aria-current={active ? "page" : undefined} className={cn("nav-item", active && "nav-item-active")}>
+                <n.icon className="h-4 w-4" aria-hidden />
                 {n.label}
                 {n.href === "/admin" && (ctx?.openReports ?? 0) + (ctx?.pendingBrief ?? 0) > 0 && (
                   <span className="ml-auto rounded-full bg-rose-500/20 px-1.5 text-[10px] font-semibold text-rose-300">{(ctx?.openReports ?? 0) + (ctx?.pendingBrief ?? 0)}</span>
@@ -98,7 +98,7 @@ export function Sidebar() {
         onClick={() => signOut({ callbackUrl: "/login" })}
         className="nav-item mt-4 w-full text-left text-slate-400 hover:text-rose-300"
       >
-        <LogOut className="h-4 w-4" />
+        <LogOut className="h-4 w-4" aria-hidden />
         Log out
       </button>
       <div className="mt-auto px-2 pt-6 text-[10px] text-slate-500">
@@ -127,15 +127,16 @@ export function MobileNav() {
           <div className="absolute inset-x-0 bottom-0 max-h-[85vh] overflow-y-auto rounded-t-2xl border-t border-ink-700 bg-ink-900 p-5 pb-8 shadow-2xl animate-rise">
             <div className="mb-4 flex items-center justify-between">
               <BrandMark />
-              <button onClick={() => setOpen(false)} className="rounded-lg p-2 text-slate-400 hover:bg-ink-700 hover:text-white" aria-label="Close menu">
-                <X className="h-5 w-5" />
+              <button onClick={() => setOpen(false)} className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg p-2 text-slate-400 hover:bg-ink-700 hover:text-white" aria-label="Close menu">
+                <X className="h-5 w-5" aria-hidden />
               </button>
             </div>
             <nav className="grid grid-cols-2 gap-2">
               {mainNav.map((n) => (
                 <Link key={n.href} href={n.href} onClick={() => setOpen(false)}
-                  className={cn("nav-item", isActive(n.href) && "nav-item-active")}>
-                  <n.icon className="h-4 w-4" /> {n.label}
+                  aria-current={isActive(n.href) ? "page" : undefined}
+                  className={cn("nav-item min-h-[44px]", isActive(n.href) && "nav-item-active")}>
+                  <n.icon className="h-4 w-4" aria-hidden /> {n.label}
                 </Link>
               ))}
             </nav>
@@ -144,8 +145,9 @@ export function MobileNav() {
               <nav className="grid grid-cols-2 gap-2">
                 {accountNav.map((n) => (
                   <Link key={n.href} href={n.href} onClick={() => setOpen(false)}
-                    className={cn("nav-item", isActive(n.href) && "nav-item-active")}>
-                    <n.icon className="h-4 w-4" /> {n.label}
+                    aria-current={isActive(n.href) ? "page" : undefined}
+                    className={cn("nav-item min-h-[44px]", isActive(n.href) && "nav-item-active")}>
+                    <n.icon className="h-4 w-4" aria-hidden /> {n.label}
                     {n.href === "/admin" && (ctx?.openReports ?? 0) + (ctx?.pendingBrief ?? 0) > 0 && (
                       <span className="ml-auto rounded-full bg-rose-500/20 px-1.5 text-[10px] font-semibold text-rose-300">{(ctx?.openReports ?? 0) + (ctx?.pendingBrief ?? 0)}</span>
                     )}
@@ -155,9 +157,9 @@ export function MobileNav() {
             </div>
             <button
               onClick={() => { setOpen(false); signOut({ callbackUrl: "/login" }); }}
-              className="nav-item mt-4 w-full text-left text-slate-400 hover:text-rose-300"
+              className="nav-item mt-4 min-h-[44px] w-full text-left text-slate-400 hover:text-rose-300"
             >
-              <LogOut className="h-4 w-4" /> Log out
+              <LogOut className="h-4 w-4" aria-hidden /> Log out
             </button>
           </div>
         </div>
@@ -167,17 +169,19 @@ export function MobileNav() {
       <nav className="fixed inset-x-0 bottom-0 z-30 flex justify-around border-t border-ink-700 bg-ink-900/95 py-2 backdrop-blur md:hidden">
         {primary.map((n) => (
           <Link key={n.href} href={n.href}
-            className={cn("flex flex-col items-center gap-0.5 px-2 text-[10px]", isActive(n.href) ? "text-brand-400" : "text-slate-400")}>
-            <n.icon className="h-5 w-5" />
+            aria-current={isActive(n.href) ? "page" : undefined}
+            className={cn("flex min-h-[44px] min-w-[44px] flex-col items-center justify-center gap-0.5 rounded-lg px-2 text-[10px] font-medium transition-colors", isActive(n.href) ? "text-brand-400" : "text-slate-400")}>
+            <n.icon className="h-5 w-5" aria-hidden />
             {n.label.split(" ")[0]}
           </Link>
         ))}
         <button
           onClick={() => setOpen(true)}
-          className={cn("flex flex-col items-center gap-0.5 px-2 text-[10px]", open ? "text-brand-400" : "text-slate-400")}
+          className={cn("flex min-h-[44px] min-w-[44px] flex-col items-center justify-center gap-0.5 rounded-lg px-2 text-[10px] font-medium transition-colors", open ? "text-brand-400" : "text-slate-400")}
           aria-label="More navigation"
+          aria-expanded={open}
         >
-          <Menu className="h-5 w-5" />
+          <Menu className="h-5 w-5" aria-hidden />
           More
         </button>
       </nav>

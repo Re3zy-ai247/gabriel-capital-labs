@@ -165,6 +165,7 @@ export default function UploadPage() {
                 value={text}
                 onChange={(e) => setText(e.target.value)}
                 rows={14}
+                aria-label="Credit report text — paste the accounts section of your report"
                 placeholder={"Paste your credit report's accounts section here…\n\nDiscover Card\nType: Revolving\nBalance: $1,477\nStatus: Charge-off\nAccount#: XXXX1477"}
                 className="w-full resize-y rounded-lg border border-ink-700 bg-ink-900 p-3 font-mono text-xs text-slate-200 placeholder:text-slate-600 focus:border-brand-500 focus:outline-none"
               />
@@ -207,7 +208,7 @@ export default function UploadPage() {
                     type="checkbox"
                     checked={bureaus.includes(b.id)}
                     onChange={() => toggleBureau(b.id)}
-                    className="h-4 w-4 accent-emerald-500"
+                    className="h-4 w-4 accent-brand-500"
                   />
                   {b.label}
                 </label>

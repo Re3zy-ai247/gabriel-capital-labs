@@ -24,7 +24,10 @@ export function KaiPresence() {
   const [ctx, setCtx] = useState<KaiContext | null>(null);
   const [open, setOpen] = useState(false);
   const [hidden, setHidden] = useState(true);
+  const rootRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+  const pillRef = useRef<HTMLButtonElement>(null);
+  const wasOpenRef = useRef(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -59,10 +62,40 @@ export function KaiPresence() {
     return () => clearTimeout(t);
   }, []);
 
-  // Close the panel on navigation; collapse focus back to the pill.
+  // Close the panel on navigation WITHOUT the focus-return (the user is going
+  // somewhere — yanking focus back to the pill on the destination page would
+  // steal it from the new page's content).
   useEffect(() => {
+    wasOpenRef.current = false;
     setOpen(false);
   }, [pathname]);
+
+  // Lightweight focus handoff: the PANEL (not the dismiss button — Enter there
+  // would hide Kai for the whole session) receives focus on open; the pill gets
+  // it back on user-initiated close. Non-modal, no trap.
+  useEffect(() => {
+    if (open) {
+      wasOpenRef.current = true;
+      panelRef.current?.focus();
+    } else if (wasOpenRef.current) {
+      wasOpenRef.current = false;
+      pillRef.current?.focus();
+    }
+  }, [open]);
+
+  // Escape closes the panel — but only when focus is within Kai's own UI, so
+  // a user mid-typing in an unrelated input never has focus stolen.
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      const root = rootRef.current;
+      if (root && document.activeElement && !root.contains(document.activeElement)) return;
+      setOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [open]);
 
   if (hidden || !ctx) return null;
   if (pathname === "/dashboard") return null; // Kai Home IS Kai — no double presence
@@ -82,11 +115,13 @@ export function KaiPresence() {
   }
 
   return (
-    <div className="fixed bottom-20 right-4 z-30 md:bottom-6 md:right-6 print:hidden">
+    <div ref={rootRef} className="fixed bottom-20 right-4 z-30 md:bottom-6 md:right-6 print:hidden">
       {open && (
         <div
           ref={panelRef}
+          tabIndex={-1}
           role="dialog"
+          aria-modal="false"
           aria-label="Kai"
           className="mb-2 w-72 rounded-xl border border-ink-600/80 bg-ink-900/95 p-4 shadow-2xl shadow-black/40 backdrop-blur motion-safe:animate-rise"
         >
@@ -95,8 +130,8 @@ export function KaiPresence() {
               <span className="rounded bg-brand-500/15 px-1.5 py-0.5 text-[10px] font-bold tracking-widest text-brand-300">KAI</span>
               <span className="text-[11px] text-slate-500">your intelligence layer</span>
             </div>
-            <button onClick={dismiss} aria-label="Dismiss Kai for this session" className="text-slate-500 hover:text-slate-300">
-              <X className="h-3.5 w-3.5" />
+            <button onClick={dismiss} aria-label="Dismiss Kai for this session" className="-m-1.5 rounded-md p-1.5 text-slate-500 transition-colors hover:text-slate-300">
+              <X className="h-3.5 w-3.5" aria-hidden />
             </button>
           </div>
 
@@ -120,10 +155,11 @@ export function KaiPresence() {
       )}
 
       <button
+        ref={pillRef}
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-label={open ? "Close Kai" : `Open Kai${hasSomething ? " — updates available" : ""}`}
-        className="flex items-center gap-2 rounded-full border border-ink-600/80 bg-ink-900/95 py-2 pl-3 pr-3.5 text-xs shadow-lg shadow-black/30 backdrop-blur transition-colors hover:border-brand-500/40"
+        className="flex items-center gap-2 rounded-full border border-ink-600/80 bg-ink-900/95 py-2 pl-3 pr-3.5 text-xs shadow-lg shadow-black/30 backdrop-blur transition-colors hover:border-brand-500/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2 focus-visible:ring-offset-ink-900"
       >
         <span className="relative flex h-2 w-2" aria-hidden>
           <span className={`absolute inline-flex h-full w-full rounded-full ${hasSomething ? "bg-brand-400 motion-safe:animate-ping opacity-60" : ""}`} />

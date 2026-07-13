@@ -77,9 +77,11 @@ html.light .keep-white { color: #ffffff; }
 
 ::selection { background: rgba(14, 165, 196, 0.30); color: #fff; }
 
-/* Visible keyboard focus everywhere (accessibility, not optional). */
+/* Visible keyboard focus everywhere (accessibility, not optional).
+   Theme-aware: --fg tracks the foreground in both themes, so the ring stays
+   visible on dark ink AND on white light-mode cards (slate-50 vanished there). */
 :where(a, button, input, textarea, select, [tabindex]):focus-visible {
-  outline: 2px solid rgb(var(--slate-50));
+  outline: 2px solid rgb(var(--fg) / 0.9);
   outline-offset: 2px;
 }
 

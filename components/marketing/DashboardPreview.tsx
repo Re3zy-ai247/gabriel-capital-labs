@@ -72,6 +72,24 @@ export function DashboardPreview() {
             ))}
           </div>
 
+          {/* Kai recommendation — mirrors the real product's Kai Home card.
+              Copy stays in Kai's voice: first-person work, receipt in-frame
+              (the Midland row below), process language only. */}
+          <div className="mb-4 rounded-xl border border-brand-500/25 bg-brand-500/10 p-3">
+            <div className="flex items-center gap-2">
+              <span className="rounded bg-brand-500/15 px-1.5 py-0.5 text-[10px] font-bold tracking-widest text-brand-300">KAI</span>
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Recommends</span>
+            </div>
+            <p className="mt-1.5 text-[11px] leading-relaxed text-slate-200">
+              Midland Funding&apos;s balance doesn&apos;t match between TransUnion and Equifax. I&apos;d request the
+              method of verification — FCRA &sect;611(a)(7).
+            </p>
+            <p className="mt-2 border-t border-brand-500/15 pt-2 text-[10px] leading-relaxed text-slate-400">
+              <span className="tabular-nums">Day 12 of 30</span> &middot; TransUnion response window — I&apos;m
+              watching it.
+            </p>
+          </div>
+
           {/* Trend chart */}
           <div className="mb-4 rounded-xl border border-ink-700/60 bg-ink-800/40 p-3">
             <div className="mb-1.5 flex items-center justify-between">

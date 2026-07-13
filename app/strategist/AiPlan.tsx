@@ -41,7 +41,10 @@ export function AiPlan() {
       <div className="flex items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-sm font-semibold">
-            <Sparkles className="h-4 w-4 text-emerald-400" /> AI Action Plan
+            <Sparkles className="h-4 w-4 text-brand-300" aria-hidden="true" /> AI Action Plan{" "}
+            <span className="rounded bg-brand-500/15 px-1.5 py-0.5 text-[10px] font-bold tracking-widest text-brand-300">
+              KAI
+            </span>
           </div>
           <p className="mt-1 text-xs text-slate-400">
             A personalized, sequenced 90-day plan written by Claude Opus 4.8 from your actual items — which to dispute
@@ -49,16 +52,26 @@ export function AiPlan() {
           </p>
         </div>
         <button onClick={generate} disabled={busy} className="btn-primary shrink-0">
-          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-          {busy ? "Thinking…" : plan ? "Regenerate" : "Generate my plan"}
+          {busy ? (
+            <Loader2 className="h-4 w-4 motion-safe:animate-spin" aria-hidden="true" />
+          ) : (
+            <Sparkles className="h-4 w-4" aria-hidden="true" />
+          )}
+          {busy ? "I'm working…" : plan ? "Regenerate" : "Generate my plan"}
         </button>
       </div>
+
+      {busy && (
+        <p className="mt-3 text-xs text-slate-400" role="status" aria-live="polite">
+          I&apos;m weighing every item against the strategy catalog…
+        </p>
+      )}
 
       {error && (
         <div className="mt-3 text-xs text-rose-400">
           {error}{" "}
           {upgrade && (
-            <Link href="/pricing" className="font-semibold text-emerald-400 underline">
+            <Link href="/pricing" className="font-semibold text-brand-300 underline">
               Upgrade to Premium →
             </Link>
           )}
