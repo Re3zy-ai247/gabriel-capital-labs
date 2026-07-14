@@ -81,7 +81,7 @@ export interface MailCenterRow {
   timeline: TimelineStage[];
 }
 
-const RESERVED = "Available after live provider integration.";
+const RESERVED = "Available after live mail integration.";
 const OUTCOME_LABEL: Record<string, string> = {
   deleted: "Removed on this bureau", verified: "Kept as reported", updated: "Updated",
   no_response: "No substantive response", unknown: "Logged",

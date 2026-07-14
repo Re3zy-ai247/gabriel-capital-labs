@@ -40,6 +40,24 @@ function meaningFor(icon: Entry["icon"], outcome?: string): string {
   }
 }
 
+// CreditVector Mail milestones the customer sees on the timeline (Sprint XI). We
+// surface the human moments and skip internal steps; each says what happened +
+// what's next, no jargon, no fabricated provider progress.
+function mailStatusLine(status: string): { icon: Entry["icon"]; text: string; sub: string } | null {
+  switch (status) {
+    case "IN_REVIEW":
+      return { icon: "file", text: "I recommended mailing this dispute", sub: "Ready for your review and approval — I never send anything without your say-so." };
+    case "APPROVED":
+      return { icon: "done", text: "You approved this dispute for mailing", sub: "Your approval is recorded — the next step is confirming and queuing it." };
+    case "PAID":
+      return { icon: "file", text: "Price locked in — no charge yet", sub: "Live mailing isn't switched on, so no card is charged; this just locks in the price for when it is." };
+    case "QUEUED":
+      return { icon: "mail", text: "Queued for mailing", sub: "Your Mail Manifest is your proof of intent. It mails the moment live mailing is enabled." };
+    default:
+      return null; // provider stages (printed/delivered/…) aren't reached until live mailing
+  }
+}
+
 const ICONS = {
   upload: Upload,
   search: Search,
@@ -87,6 +105,13 @@ export default async function JourneyPage() {
       case "dispute.resolved":
         entries.push({ ...base, icon: "done", text: "Item marked resolved", sub: meaningFor("done"), href: "/tradelines" });
         break;
+      case "mail.status": {
+        // CreditVector Mail lifecycle (Sprint XI). Render only the milestones a
+        // customer cares about; skip internal steps. Kai's voice, no jargon.
+        const line = mailStatusLine(String(p.status ?? ""));
+        if (line) entries.push({ ...base, icon: line.icon, text: line.text, sub: line.sub, href: "/mail" });
+        break;
+      }
       default:
         break;
     }

@@ -34,6 +34,9 @@ const LABEL: Record<string, (p: Record<string, unknown>) => { text: string; href
   "letter.mailed": (p) => ({ text: `Round ${String(p.round ?? "")} went out to ${String(p.recipient ?? "the bureau")} — the §611 clock started`, href: "/letters" }),
   "response.received": (p) => ({ text: `a bureau response came back (${String(p.outcome ?? "logged")})`, href: "/letters" }),
   "dispute.resolved": () => ({ text: "an item was marked resolved", href: "/journey" }),
+  "mail.status": (p) => String(p.status) === "QUEUED"
+    ? { text: "you queued a dispute for CreditVector to mail", href: "/mail" }
+    : { text: "", href: "/mail" }, // only surface the queued milestone in case memory
 };
 
 // Returns the "while you were away" summary (events since the PREVIOUS visit),
@@ -64,7 +67,8 @@ export async function caseMemorySince(userId: string): Promise<CaseMemory> {
     const events = await listKaiEvents(userId, 50);
     const items = events
       .filter((e) => new Date(e.occurredAt) > previous && LABEL[e.type])
-      .map((e) => LABEL[e.type]((e.payload ?? {}) as Record<string, unknown>));
+      .map((e) => LABEL[e.type]((e.payload ?? {}) as Record<string, unknown>))
+      .filter((it) => it.text); // some events (e.g. non-queued mail steps) render nothing
     if (!items.length) return null;
     return { since: previous, items: items.slice(0, 5) };
   } catch (e) {

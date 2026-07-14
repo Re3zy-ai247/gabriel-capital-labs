@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { currentUserOrDemo } from "@/lib/session";
 import { decryptText } from "@/lib/docCrypto";
 import { buildMailCenter, HEALTH_LABEL, HEALTH_TONE, STAGE_STATE_LABEL, type MailLetter, type StageState } from "@/lib/mailCenter";
+import { PrismaMailStore, MAIL_STATUS_LABEL, type MailStatus } from "@/lib/mail";
 import { CheckCircle2, Circle, Clock, Lock, Mail } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -40,6 +41,12 @@ export default async function MailCenterPage() {
   }));
 
   const { rows, stats } = buildMailCenter(letters);
+
+  // Real CreditVector-Mail manifests (Sprint XI): join by mailId = mail_<letterId>
+  // so a queued "mail for me" dispute shows its manifest status honestly.
+  const manifests = await new PrismaMailStore().listByUser(user.id, 200).catch(() => []);
+  const manifestByLetter = new Map<string, MailStatus>();
+  for (const m of manifests) if (m.letterId) manifestByLetter.set(m.letterId, m.status);
 
   return (
     <AppShell title="/ Mail Center">
@@ -96,9 +103,13 @@ export default async function MailCenterPage() {
                 </div>
                 <div className="flex shrink-0 flex-col items-end gap-1">
                   <span className={`pill border ${HEALTH_TONE[row.health]}`}>{HEALTH_LABEL[row.health]}</span>
-                  <span className="text-[11px] text-slate-500 tnum">
-                    {row.dateSent ? `Sent ${new Date(row.dateSent).toLocaleDateString("en-US", { month: "short", day: "numeric" })}` : "Not mailed"}
-                  </span>
+                  {manifestByLetter.has(row.letterId) ? (
+                    <span className="pill border border-ocean-500/30 bg-ocean-500/10 text-ocean-300">CreditVector Mail · {MAIL_STATUS_LABEL[manifestByLetter.get(row.letterId)!]}</span>
+                  ) : (
+                    <span className="text-[11px] text-slate-500 tnum">
+                      {row.dateSent ? `Sent ${new Date(row.dateSent).toLocaleDateString("en-US", { month: "short", day: "numeric" })}` : "Not mailed"}
+                    </span>
+                  )}
                 </div>
                 <span className="ml-auto shrink-0 text-[10px] font-medium text-brand-400 sm:ml-0">
                   <span className="group-open:hidden">Timeline ▾</span>

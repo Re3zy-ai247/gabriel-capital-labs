@@ -54,6 +54,7 @@ export interface InitiateInput {
   recipient: MailAddress;
   spec: MailPieceSpec;
   cost: PriceBreakdown;      // the price the user is agreeing to (from estimate)
+  contentHash?: string;      // SHA-256 of the exact letter approved — proof of intent
 }
 
 export class MailApprovalError extends Error {
@@ -115,7 +116,9 @@ export class MailService {
     await this.store.create(manifest);
     return this.transition(manifest, {
       to: "IN_REVIEW", actor: "kai", event: "kai.recommended",
-      detail: "Kai recommends mailing; awaiting the user's approval.",
+      detail: input.contentHash
+        ? `Kai recommends mailing; awaiting the user's approval. Letter content hash: ${input.contentHash}`
+        : "Kai recommends mailing; awaiting the user's approval.",
     });
   }
 
@@ -132,6 +135,20 @@ export class MailService {
     const m = await this.require(mailId);
     if (m.status !== "APPROVED") throw new MailApprovalError(`cannot take payment before approval (status ${m.status})`);
     return this.transition(m, { to: "PAID", actor: "system", event: "payment.captured", detail: paymentRef });
+  }
+
+  // Queue the paid piece for the provider — the LAST step before live dispatch.
+  // Reaches QUEUED and STOPS. No provider is contacted and no provider state is
+  // ever fabricated here: everything past QUEUED (PDF_GENERATED, PROVIDER_ACCEPTED,
+  // …) waits for live integration (dispatch(), gated by MAIL_LIVE). This is how a
+  // customer completes the workflow today without a single real letter moving.
+  async queueForProvider(mailId: string): Promise<MailManifest> {
+    const m = await this.require(mailId);
+    if (m.status !== "PAID") throw new MailApprovalError(`cannot queue before payment (status ${m.status})`);
+    return this.transition(m, {
+      to: "QUEUED", actor: "system", event: "queued",
+      detail: "Queued for the mail provider — awaiting live mail integration.",
+    });
   }
 
   // Execute: dispatch the paid piece to the provider. HARD GATE — refuses unless
