@@ -37,6 +37,8 @@ const LABEL: Record<string, (p: Record<string, unknown>) => { text: string; href
   "mail.status": (p) => String(p.status) === "QUEUED"
     ? { text: "you queued a dispute for CreditVector to mail", href: "/mail" }
     : { text: "", href: "/mail" }, // only surface the queued milestone in case memory
+  "campaign.approved": (p) => ({ text: `you approved Campaign ${String(p.sequence ?? "")} — a focused set of disputes`, href: "/campaigns" }),
+  "campaign.active": (p) => ({ text: `Campaign ${String(p.sequence ?? "")} got underway`, href: "/campaigns" }),
 };
 
 // Returns the "while you were away" summary (events since the PREVIOUS visit),

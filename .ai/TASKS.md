@@ -11,6 +11,13 @@ Compact, current-only. Done items get deleted (history lives in git). Company ba
 - [ ] Owner test: Brief comment flow (banned phrase → 422; report → moderate)
 - [ ] MDG verify: Re-analyze a report (also backfills furnisher addresses)
 
+## Sprint XII — Kai Campaign Intelligence (shipped to working tree, ADR-0012)
+- [ ] **CCO/counsel review** the consumer-facing campaign copy + the frivolous-or-irrelevant framing before pushing (compliance-review gate) — every warning is category-tagged (law/policy/recommendation); confirm the §611(a)(3) citation + "not a headcount" framing is acceptable.
+- [ ] Backlog: admin policy-editor UI for `CampaignPolicy` (today: `CAMPAIGN_POLICY` env override + version stamped into each snapshot = audit history).
+- [ ] Backlog: agency per-client Campaign Command view (the composer + store are already per-client-isolated; this is a surfacing task).
+- [ ] Backlog (Low, from Sprint XII adversarial review, MAIL_LIVE off): concurrency hardening — `attachLetterForQueue` find→create and `nextSequence` read-then-write can, on a double-clicked/retried confirm, mint a duplicate single-item campaign or a duplicate per-user sequence number. Add a `(userId,sequence)` unique constraint + an idempotency key (letterId) so the auto-campaign create is exactly-once. Mail double-queue is already prevented by the MailManifest optimistic audit-length guard.
+- [ ] Backlog (Low): a multi-CRA bureau `CampaignItem` records only the first per-CRA `letterId`/`queued` flag (every per-CRA letter still passes the gate via `snapshotCovers`; only the item↔letters tracking is partial). Model item→letters as one-to-many if per-CRA queue tracking is needed.
+
 ## Engineering (next up)
 - [ ] Regenerate favicon/PWA/OG from de-shadowed `logo-mark.png`
 - [ ] Letters/upload server-prefetch — deliberately deferred until CX-1 conversational letter flow (restructuring those pages first avoids rework)

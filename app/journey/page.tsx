@@ -112,6 +112,14 @@ export default async function JourneyPage() {
         if (line) entries.push({ ...base, icon: line.icon, text: line.text, sub: line.sub, href: "/mail" });
         break;
       }
+      // Kai Campaign Intelligence (Sprint XII). Show the moments the customer
+      // decides on — the recommendation is chrome, the approval + start are real.
+      case "campaign.approved":
+        entries.push({ ...base, icon: "file", text: `Campaign ${String(p.sequence ?? "")} approved`, sub: "A focused set of disputes, reviewed and locked in — mail them and I'll keep them together.", href: "/campaigns" });
+        break;
+      case "campaign.active":
+        entries.push({ ...base, icon: "mail", text: `Campaign ${String(p.sequence ?? "")} is underway`, sub: "A dispute in this campaign is queued — the response window opens once it's received.", href: "/campaigns" });
+        break;
       default:
         break;
     }

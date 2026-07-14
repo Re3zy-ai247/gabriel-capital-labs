@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { currentUserOrDemo } from "@/lib/session";
 import { MailService } from "@/lib/mail";
 import { recordDecision } from "@/lib/decisionRegistry";
+import { campaignService, letterTarget } from "@/lib/campaignInput";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +27,27 @@ export async function POST(_req: Request, { params }: { params: { mailId: string
     return NextResponse.json({ error: "Approve the dispute before confirming." }, { status: 409 });
   }
 
+  // CAMPAIGN GATE (Sprint XII, ADR-0012) — every mailed dispute must belong to a
+  // campaign. Attach this letter to the approved campaign that covers it; if none
+  // exists, a coherent single-item campaign is created + approved for exactly this
+  // dispute (a lone send is never blocked). Fail-closed: if the association can't
+  // be recorded, we do NOT queue — the invariant holds. MAIL_LIVE stays off.
+  let campaignInfo: { id: string; sequence: number; created: boolean } | null = null;
+  if (m.letterId) {
+    try {
+      const target = await letterTarget(user.id, m.letterId);
+      // Gate EVERY mailable letter — even one with no tradeline (the service keys
+      // it on the letter id so nothing queues outside a campaign; fail-closed).
+      if (target) {
+        const csvc = campaignService();
+        const { campaign, created } = await csvc.attachLetterForQueue(user.id, m.letterId, target);
+        campaignInfo = { id: campaign.id, sequence: campaign.sequence, created };
+      }
+    } catch {
+      return NextResponse.json({ error: "Couldn't tie this dispute to a campaign just now — nothing was queued. Try again." }, { status: 409 });
+    }
+  }
+
   try {
     // No real charge while MAIL_LIVE is off — the ref documents that explicitly.
     if (m.status === "APPROVED") {
@@ -39,10 +61,15 @@ export async function POST(_req: Request, { params }: { params: { mailId: string
       : null;
     await recordDecision({
       userId: user.id, tradelineId: m.tradelineId, strategyId: letter?.strategy ?? null,
-      confidence: "acted", basis: ["Customer approved and queued this dispute for mailing via the Mail Center."],
+      confidence: "acted",
+      basis: [
+        campaignInfo
+          ? `Customer approved and queued this dispute under Campaign ${campaignInfo.sequence}.`
+          : "Customer approved and queued this dispute for mailing via the Mail Center.",
+      ],
     });
 
-    return NextResponse.json({ manifest: queued });
+    return NextResponse.json({ manifest: queued, campaign: campaignInfo });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : "Could not queue." }, { status: 409 });
   }

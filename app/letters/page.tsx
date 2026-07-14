@@ -188,7 +188,14 @@ function LettersInner() {
           🎉 Payment received — your letter pack is being added. Your extra letters will be available momentarily.
         </div>
       )}
-      <h2 className="mb-4 text-xl font-semibold">Dispute Letter Builder</h2>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-xl font-semibold">Dispute Letter Builder</h2>
+        {tradelines.length > 1 && (
+          <Link href="/campaigns" className="inline-flex items-center gap-1 text-xs font-semibold text-brand-300 hover:underline">
+            <Sparkles className="h-3.5 w-3.5" aria-hidden /> Disputing several items? Let Kai plan a focused campaign →
+          </Link>
+        )}
+      </div>
 
       {!loaded ? (
         <div className="card p-10 text-center text-sm text-slate-500" aria-busy="true">

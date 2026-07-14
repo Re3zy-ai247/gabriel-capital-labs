@@ -13,7 +13,14 @@ export type KaiEventType =
   // CreditVector Mail (Sprint VIII) — one event per lifecycle transition; the
   // canonical MailStatus rides in the payload. Timeline/case-memory consumers
   // that don't recognize it simply ignore it (their default branch).
-  | "mail.status";
+  | "mail.status"
+  // Kai Campaign Intelligence (Sprint XII, ADR-0012) — campaign milestones; the
+  // sequence + detail ride in the payload. Consumers that don't recognize these
+  // ignore them (default branch).
+  | "campaign.recommended"
+  | "campaign.approved"
+  | "campaign.active"
+  | "campaign.canceled";
 
 let kaiEventReady = false;
 async function ensureKaiEventTable(): Promise<void> {
