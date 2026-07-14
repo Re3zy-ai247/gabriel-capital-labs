@@ -16,6 +16,8 @@ import type { StatuteKey } from "@/lib/statutes";
 import { explainTradeline } from "@/lib/explain";
 import { recommendStrategy } from "@/lib/recommend";
 import { KaiWhy } from "@/components/kai/KaiWhy";
+import { RecommendationIntelPanel } from "@/components/kai/RecommendationIntel";
+import { recommendationIntel } from "@/lib/recommendationIntel";
 
 const BUREAU_ORDER: Bureau[] = ["EQUIFAX", "EXPERIAN", "TRANSUNION"];
 
@@ -122,6 +124,14 @@ export default async function TradelinesPage() {
             probability: t.probability, reasons: t.reasons, dateOfFirstDelinquency: t.dateOfFirstDelinquency,
             bureauData: t.bureauData, creditorName: t.creditorName, recommendedStrategy: strat?.strategyId ?? null,
           });
+          // Engine 2 recommendation intelligence — own-data + deterministic engines.
+          // Cross-user history stays gated (no CCO consumer approval yet) → shows
+          // the honest "still gathering data" state.
+          const intel = strat ? recommendationIntel({
+            accountType: t.accountType, isDebtBuyer: t.isDebtBuyer, balance: t.balance,
+            probability: t.probability, reasons: t.reasons, dateOfFirstDelinquency: t.dateOfFirstDelinquency,
+            bureauData: t.bureauData, creditorName: t.creditorName, recommendedStrategy: strat.strategyId,
+          }) : null;
           const expandable = hasDetail || t.probability !== "NOT_RECOMMENDED";
           const wrapperClass = `block border-b border-ink-700/50 last:border-0 ${dupSize ? "border-l-2 border-l-ocean-500/50" : ""}`;
           const row = (
@@ -222,6 +232,7 @@ export default async function TradelinesPage() {
               <div className="space-y-3 border-t border-ink-700/40 bg-ink-800/30 px-4 py-4">
                 {/* The structured "why" — always present for a disputable row. */}
                 <KaiWhy e={explanation} />
+                {intel && <RecommendationIntelPanel intel={intel} />}
 
                 {/* Per-bureau side-by-side, only when we hold real field data. */}
                 {hasDetail && (

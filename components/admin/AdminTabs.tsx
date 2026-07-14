@@ -3,13 +3,14 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useAdminContext } from "./useAdminContext";
-import { BarChart3, Activity, TrendingUp, Zap, Ticket, Users, Building2, ScrollText, CreditCard, ShieldCheck, Megaphone, Flag, Newspaper } from "lucide-react";
+import { BarChart3, Activity, TrendingUp, Zap, Ticket, Users, Building2, ScrollText, CreditCard, ShieldCheck, Megaphone, Flag, Newspaper, Brain } from "lucide-react";
 
 const TABS = [
   { href: "/admin", label: "Overview", icon: BarChart3 },
   { href: "/admin/product", label: "Product", icon: Activity },
   { href: "/admin/marketing", label: "Marketing", icon: TrendingUp },
   { href: "/admin/automation", label: "Automation", icon: Zap },
+  { href: "/admin/intelligence", label: "Intelligence", icon: Brain },
   { href: "/admin/discounts", label: "Discount Codes", icon: Ticket },
   { href: "/admin/billing", label: "Billing", icon: CreditCard },
   { href: "/admin/users", label: "Users", icon: Users },

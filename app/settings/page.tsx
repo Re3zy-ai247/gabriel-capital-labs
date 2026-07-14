@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { EduBanner } from "@/components/Disclaimer";
-import { Loader2, Save, Lock, Bell, Mail } from "lucide-react";
+import { Loader2, Save, Lock, Bell, Mail, ShieldCheck } from "lucide-react";
 import { PushToggle } from "@/components/PushToggle";
 
 interface Profile {
@@ -30,12 +30,30 @@ export default function SettingsPage() {
   const [pwMsg, setPwMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [digest, setDigest] = useState(false);
   const [digestBusy, setDigestBusy] = useState(false);
+  const [contribute, setContribute] = useState(false);
+  const [contributeBusy, setContributeBusy] = useState(false);
 
   useEffect(() => {
     fetch("/api/brief/digest/preference")
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => { if (d) setDigest(Boolean(d.briefDigest)); });
+    fetch("/api/profile/outcome-consent")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d) setContribute(Boolean(d.contribute)); });
   }, []);
+
+  async function toggleContribute(next: boolean) {
+    setContributeBusy(true);
+    const prev = contribute;
+    setContribute(next); // optimistic
+    try {
+      const res = await fetch("/api/profile/outcome-consent", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contribute: next }),
+      });
+      if (!res.ok) setContribute(prev);
+    } catch { setContribute(prev); } finally { setContributeBusy(false); }
+  }
 
   async function toggleDigest(next: boolean) {
     setDigestBusy(true);
@@ -346,6 +364,32 @@ export default function SettingsPage() {
           >
             {digestBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
             {digest ? "Subscribed — weekly digest on" : "Subscribe to the weekly digest"}
+          </button>
+        </div>
+
+        {/* Contribute anonymized outcomes (Engine 1 consent) */}
+        <div className="mt-8 border-t border-ink-700/70 pt-6">
+          <h2 className="mb-1 flex items-center gap-2 text-xl font-bold">
+            <ShieldCheck className="h-5 w-5 text-brand-400" /> Help improve recommendations
+          </h2>
+          <p className="mb-4 max-w-2xl text-sm leading-relaxed text-slate-400">
+            <span className="mr-2 rounded bg-brand-500/15 px-1.5 py-0.5 text-[10px] font-bold tracking-widest text-brand-300">KAI</span>
+            Optional: let me include your dispute <em>outcomes</em> — strategy, bureau, round, and how long a response
+            took — in anonymized, aggregate patterns that make recommendations sharper for everyone. Never your name,
+            your accounts, or your letters; only counts, and only combined with enough other people that no one is
+            identifiable. Off by default, reversible any time.
+          </p>
+          <button
+            type="button"
+            onClick={() => toggleContribute(!contribute)}
+            disabled={contributeBusy}
+            aria-pressed={contribute}
+            className={`inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition disabled:opacity-60 ${
+              contribute ? "border-success-500/40 bg-success-500/10 text-success-300" : "border-ink-700/70 text-slate-300 hover:border-brand-500/30 hover:text-brand-200"
+            }`}
+          >
+            {contributeBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
+            {contribute ? "Contributing anonymized outcomes" : "Contribute anonymized outcomes"}
           </button>
         </div>
       </div>

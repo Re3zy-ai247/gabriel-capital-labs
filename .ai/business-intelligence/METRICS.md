@@ -41,6 +41,8 @@ Status legend: ✅ live (computed from real data now) · ⚠️ estimate (labele
 | BI-COST-01 | AI / token cost | spend per AI surface | Anthropic console (manual); per-surface instrumentation | ❌ (CAIO top task) |
 | BI-COST-02 | Infra cost | Vercel + DB + Resend spend | provider consoles (manual) | ❌ |
 | BI-LAUNCH-01 | Launch readiness | founder-gate checklist (G-01, G-02, backfill) | AIOS `DASHBOARD.md` | ✅ (manual) |
+| BI-OUT-01 | Outcome patterns (Engine 1) | k-anon aggregate favorable-rate & median latency by strategy/bureau/round/type over CONSENTED, anonymized disputes | `/admin/intelligence` (live, deterministic) | ✅ compute / ❌ data (pre-launch: ~0 observations; needs ≥20/cell) |
+| BI-OUT-02 | Outcome contributors | users opted in to `OutcomeConsent` | `/admin/intelligence` | ✅ |
 
 ## Instrumentation backlog (priority order)
 1. **BI-COST-01** AI cost per surface — protects margin before scale (CAIO).
