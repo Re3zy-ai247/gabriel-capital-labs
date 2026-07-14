@@ -55,13 +55,13 @@ const RECIPIENT_LABEL: Record<string, string> = { bureau: "Credit bureaus", furn
 const CAT_LABEL: Record<WarnCat, string> = { law: "The law", policy: "CreditVector policy", recommendation: "Kai's take" };
 const CAT_TONE: Record<WarnCat, string> = {
   law: "border-ocean-500/30 bg-ocean-500/10 text-ocean-200",
-  policy: "border-gold-500/30 bg-gold-500/10 text-gold-200",
+  policy: "border-gold-500/30 bg-gold-500/10 text-gold-400",
   recommendation: "border-brand-500/30 bg-brand-500/10 text-brand-200",
 };
 const STATUS_TONE: Record<string, string> = {
-  RECOMMENDED: "bg-brand-500/15 text-brand-300", NEEDS_REVIEW: "bg-gold-500/15 text-gold-300",
+  RECOMMENDED: "bg-brand-500/15 text-brand-300", NEEDS_REVIEW: "bg-gold-500/15 text-gold-400",
   APPROVED: "bg-ocean-500/15 text-ocean-300", ACTIVE: "bg-ocean-500/15 text-ocean-300",
-  WAITING: "bg-slate-500/15 text-slate-300", RESPONSE_RECEIVED: "bg-gold-500/15 text-gold-300",
+  WAITING: "bg-slate-500/15 text-slate-300", RESPONSE_RECEIVED: "bg-gold-500/15 text-gold-400",
   COMPLETED: "bg-success-500/15 text-success-300", CANCELED: "bg-slate-500/15 text-slate-400",
   SUPERSEDED: "bg-slate-500/15 text-slate-400",
 };
@@ -309,7 +309,7 @@ function Customize({ caseItems, policy, seq, defaultSelected, onBack, onDone, on
               <div className="flex flex-wrap items-center gap-2 text-sm font-medium text-slate-200">
                 {i.creditorName}
                 <span className="pill bg-ink-700 text-slate-400">{RECIPIENT_LABEL[i.recipientType] ?? i.recipientType}</span>
-                {i.activeInvestigation && <span className="pill bg-gold-500/15 text-gold-300">dispute open</span>}
+                {i.activeInvestigation && <span className="pill bg-gold-500/15 text-gold-400">dispute open</span>}
                 {i.alreadyInFlight && !i.activeInvestigation && <span className="pill bg-slate-500/15 text-slate-400">in progress</span>}
               </div>
               <div className="text-xs text-slate-500">{i.strategyLabel} · grounds: {i.probability.toLowerCase()}</div>
@@ -330,7 +330,7 @@ function Customize({ caseItems, policy, seq, defaultSelected, onBack, onDone, on
 
           {review.conflicts.length > 0 && (
             <div className="mb-3">
-              <div className="mb-1 text-xs font-semibold text-gold-300">Worth a look before sending</div>
+              <div className="mb-1 text-xs font-semibold text-gold-400">Worth a look before sending</div>
               <ul className="space-y-1 text-[11px] text-slate-400">{review.conflicts.map((c, n) => <li key={n} className="flex gap-1.5"><AlertTriangle className="mt-0.5 h-3 w-3 shrink-0 text-gold-400" aria-hidden />{c}</li>)}</ul>
             </div>
           )}

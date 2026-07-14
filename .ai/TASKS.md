@@ -18,6 +18,9 @@ Compact, current-only. Done items get deleted (history lives in git). Company ba
 - [ ] Backlog (Low, from Sprint XII adversarial review, MAIL_LIVE off): concurrency hardening — `attachLetterForQueue` find→create and `nextSequence` read-then-write can, on a double-clicked/retried confirm, mint a duplicate single-item campaign or a duplicate per-user sequence number. Add a `(userId,sequence)` unique constraint + an idempotency key (letterId) so the auto-campaign create is exactly-once. Mail double-queue is already prevented by the MailManifest optimistic audit-length guard.
 - [ ] Backlog (Low): a multi-CRA bureau `CampaignItem` records only the first per-CRA `letterId`/`queued` flag (every per-CRA letter still passes the gate via `snapshotCovers`; only the item↔letters tracking is partial). Model item→letters as one-to-many if per-CRA queue tracking is needed.
 
+## Sprint XIII — Mission Control (shipped to working tree, ADR-0013)
+- [ ] Backlog (Low, from the 5-review pass): export the live-campaign status set from the campaign engine and reuse it in `lib/missionControl.ts` (currently duplicated) · dedupe `getMissionControl` row reads (tradelines/letters fetched by several reused engines per dashboard load; Accelerate bills per query) · the single next step renders in three framings (mission row / Next Action hero / Command Center tile) — deliberate, revisit if it reads redundant · the "view" link in the Waiting-on list is <44px (a11y polish).
+
 ## Engineering (next up)
 - [ ] Regenerate favicon/PWA/OG from de-shadowed `logo-mark.png`
 - [ ] Letters/upload server-prefetch — deliberately deferred until CX-1 conversational letter flow (restructuring those pages first avoids rework)
