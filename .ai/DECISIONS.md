@@ -14,5 +14,6 @@ One line per ADR; full records in `ADR/`. New decisions: copy `ADR/ADR-0000-temp
 | [0008](ADR/ADR-0008-creative-os.md) | Creative OS — canonical Kai character system + scored render gate (`.ai/creative/`) | Accepted · **amendment 2026-07-12: Kai identity FROZEN at v1 (CV-KAI-MASTER-001) by explicit founder directive — no redesigns, no reinterpretations** |
 | [0009](ADR/ADR-0009-product-first-os-later.md) | Product first, OS later — GIOS extracted FROM CreditVector; architecture frozen; CX-only focus; resolves G-PLAT-1 | **Accepted (founder directive)** |
 | [0010](ADR/ADR-0010-intelligence-layer.md) | Intelligence Layer — 4 compounding engines built in CV, harvested later; Engine 3 Tier A ships gate-free, cross-user engines gated on consent+CSO/CCO+ADR-0006 | **Proposed** (Engine 3 Tier A built 2026-07-13; rest awaits gates) |
+| [0011](ADR/ADR-0011-creditvector-mail.md) | CreditVector Mail — provider-abstract mailing platform (LetterStream = Provider #1, dry-run; live integration deferred) | **Accepted** (architecture; live integration deferred) |
 
 Candidate future ADRs (write only when the decision is actually made/verified): multi-tenant agency isolation model · payment/plan entitlement architecture · compliance-scrubber design · community moderation model.

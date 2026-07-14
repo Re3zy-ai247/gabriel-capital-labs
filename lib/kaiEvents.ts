@@ -9,7 +9,11 @@ export type KaiEventType =
   | "letter.generated"
   | "letter.mailed"
   | "response.received"
-  | "dispute.resolved";
+  | "dispute.resolved"
+  // CreditVector Mail (Sprint VIII) — one event per lifecycle transition; the
+  // canonical MailStatus rides in the payload. Timeline/case-memory consumers
+  // that don't recognize it simply ignore it (their default branch).
+  | "mail.status";
 
 let kaiEventReady = false;
 async function ensureKaiEventTable(): Promise<void> {
