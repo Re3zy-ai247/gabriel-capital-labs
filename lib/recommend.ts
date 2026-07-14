@@ -1,6 +1,6 @@
 import { AccountType, Probability } from "@prisma/client";
 import { getBureauData, crossBureauConflicts } from "./bureauData";
-import { obsolescenceWindowYears, bureauTextBlob } from "./obsolescence";
+import { obsolescenceWindowYears, bureauTextBlob, reportingOffsetDays } from "./obsolescence";
 import { yearsSince } from "./utils";
 
 export interface RecommendInput {
@@ -38,7 +38,9 @@ export function recommendStrategy(t: RecommendInput): Recommendation {
     text: bureauTextBlob(getBureauData(t.bureauData)),
   });
   const age = (t.dateOfFirstDelinquency ? yearsSince(t.dateOfFirstDelinquency) : 0) ?? 0;
-  if (age >= windowYears) {
+  // §1681c(c)(1): collection/charge-off reporting starts 180 days after DOFD.
+  const windowYrs = windowYears + reportingOffsetDays(t.accountType) / 365.25;
+  if (age >= windowYrs) {
     return {
       strategyId: "fcra_605",
       reason: `This item's first delinquency is about ${Math.floor(age)} years old. Under FCRA §605 this item should drop off after ${windowYears} years — request removal as obsolete.`,

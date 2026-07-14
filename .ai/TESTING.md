@@ -25,6 +25,7 @@ npx tsx scripts/<name>.test.ts   # guard scripts (below)
 | `kai-manifest.test.ts` | Kai asset manifest laws | 44/44 |
 | `tradeline-insights.test.ts` | §605 fall-off display math + duplicate grouping + conflict-field flags | 12/12 |
 | `forecast.test.ts` | Engine 3 Tier A own-data latency + §611 window forecast | 12/12 |
+| `explain.test.ts` | Kai Explainability Layer — structured "why" from real data, uncertainty never hidden | 14/14 |
 
 ## Prod probes (auth gates, run after deploy)
 `curl` https://www.creditvector.app — expect: public pages **200**; protected APIs (`/api/letters` etc.) **401/403**; admin routes + `/api/admin/migrate` **403**; unsigned Stripe webhook **400**. Never expect a 200-with-effect from an unauthenticated call.

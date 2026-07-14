@@ -7,6 +7,7 @@ import { currentUserOrDemo } from "@/lib/session";
 import { BUREAU_LABEL } from "@/lib/bureaus";
 import { yearsSince } from "@/lib/utils";
 import { getKaiHomeData, REINVESTIGATION_DAYS } from "@/lib/kaiHome";
+import { caseMemorySince } from "@/lib/kaiSeen";
 import type { Bureau } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
@@ -18,11 +19,12 @@ export default async function DashboardPage() {
   const user = await currentUserOrDemo();
   if (!user) return <AppShell title="/ Kai Home"><p className="text-slate-400">Please sign in.</p></AppShell>;
 
-  const [tradelines, letters, reports, kai] = await Promise.all([
+  const [tradelines, letters, reports, kai, caseMemory] = await Promise.all([
     prisma.tradeline.findMany({ where: { userId: user.id } }),
     prisma.letter.findMany({ where: { userId: user.id } }),
     prisma.report.findMany({ where: { userId: user.id } }),
     getKaiHomeData(user.id),
+    caseMemorySince(user.id), // Kai Case Memory — "while you were away", from real events
   ]);
 
   // Single source of truth — every metric derives from these arrays so they reconcile.
@@ -82,18 +84,38 @@ export default async function DashboardPage() {
           <span className="rounded bg-brand-500/15 px-1.5 py-0.5 text-[10px] font-bold tracking-widest text-brand-300">KAI</span>
           <h2 className="text-2xl font-bold">Welcome back, {firstName}.</h2>
         </div>
-        <p className="mt-1 text-sm text-slate-400">
-          {kai.overnight.length > 0 ? "Here's what I logged in the last two days:" : "I checked today. No new activity in the last two days — here's where everything stands."}
-        </p>
-        {kai.overnight.length > 0 && (
-          <ul className="mt-2 space-y-1">
-            {kai.overnight.map((o, i) => (
-              <li key={i} className="text-sm text-slate-300">
-                <span className="mr-2 inline-block h-1 w-1 rounded-full bg-brand-400 align-middle" aria-hidden />
-                <Link href={o.href} className="underline decoration-ink-600 underline-offset-2 transition-colors hover:text-slate-100 hover:decoration-brand-400">{o.text}</Link>
-              </li>
-            ))}
-          </ul>
+        {caseMemory ? (
+          <>
+            {/* Kai Case Memory — the returning-user catch-up, from real events
+                since their last visit (never the conversation). */}
+            <p className="mt-1 text-sm text-slate-400">
+              While you were away — since {new Date(caseMemory.since).toLocaleDateString("en-US", { month: "long", day: "numeric" })}:
+            </p>
+            <ul className="mt-2 space-y-1">
+              {caseMemory.items.map((o, i) => (
+                <li key={i} className="text-sm text-slate-300">
+                  <span className="mr-2 inline-block h-1 w-1 rounded-full bg-brand-400 align-middle" aria-hidden />
+                  <Link href={o.href} className="underline decoration-ink-600 underline-offset-2 transition-colors hover:text-slate-100 hover:decoration-brand-400">{o.text}</Link>
+                </li>
+              ))}
+            </ul>
+          </>
+        ) : (
+          <>
+            <p className="mt-1 text-sm text-slate-400">
+              {kai.overnight.length > 0 ? "Here's what I logged in the last two days:" : "I checked today. No new activity in the last two days — here's where everything stands."}
+            </p>
+            {kai.overnight.length > 0 && (
+              <ul className="mt-2 space-y-1">
+                {kai.overnight.map((o, i) => (
+                  <li key={i} className="text-sm text-slate-300">
+                    <span className="mr-2 inline-block h-1 w-1 rounded-full bg-brand-400 align-middle" aria-hidden />
+                    <Link href={o.href} className="underline decoration-ink-600 underline-offset-2 transition-colors hover:text-slate-100 hover:decoration-brand-400">{o.text}</Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </>
         )}
       </div>
 

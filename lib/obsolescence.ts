@@ -9,6 +9,18 @@ import type { BureauData } from "./bureauData";
 export const DEFAULT_WINDOW_YEARS = 7;
 export const BANKRUPTCY_WINDOW_YEARS = 10;
 
+// 15 U.S.C. §1681c(c)(1): for a collection or charge-off, the 7-year reporting
+// clock starts 180 days AFTER the date of first delinquency (the delinquency
+// that immediately preceded the collection/charge-off). Omitting this offset
+// makes us claim obsolescence ~180 days early — inaccurate and CROA-unsafe.
+export const CHARGEOFF_OFFSET_DAYS = 180;
+
+export function reportingOffsetDays(accountType: AccountType): number {
+  return accountType === AccountType.COLLECTION || accountType === AccountType.CHARGE_OFF
+    ? CHARGEOFF_OFFSET_DAYS
+    : 0;
+}
+
 const BANKRUPTCY_RE =
   /\bbankruptc|\bchapter\s*(?:7|11|13|seven|eleven|thirteen)\b|\border(?:\s+for)?\s+relief\b|\bin\s+re\b/i;
 const CH13_RE = /\bchapter\s*(?:13|thirteen)\b/i;

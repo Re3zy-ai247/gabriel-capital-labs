@@ -1,5 +1,5 @@
 import type { AccountType } from "@prisma/client";
-import { obsolescenceWindowYears, bureauTextBlob } from "./obsolescence";
+import { obsolescenceWindowYears, bureauTextBlob, reportingOffsetDays } from "./obsolescence";
 import { getBureauData } from "./bureauData";
 
 // Display-layer math for the §605 clock and duplicate-debt grouping. Everything
@@ -29,7 +29,11 @@ export function fallOffInsight(t: {
     creditorName: t.creditorName,
     text: bureauTextBlob(getBureauData(t.bureauData)),
   });
-  const fallOffDate = new Date(Date.UTC(dofd.getUTCFullYear() + windowYears, dofd.getUTCMonth(), dofd.getUTCDate()));
+  // §1681c(c)(1): collection/charge-off clocks start 180 days after DOFD.
+  const offsetMs = reportingOffsetDays(t.accountType) * 24 * 60 * 60 * 1000;
+  const fallOffDate = new Date(
+    Date.UTC(dofd.getUTCFullYear() + windowYears, dofd.getUTCMonth(), dofd.getUTCDate()) + offsetMs
+  );
   const msLeft = fallOffDate.getTime() - Date.now();
   const monthsRemaining = Math.max(0, Math.ceil(msLeft / (1000 * 60 * 60 * 24 * 30.44)));
   return { windowYears, fallOffDate, monthsRemaining, pastWindow: msLeft <= 0 };

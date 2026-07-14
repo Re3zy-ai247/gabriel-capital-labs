@@ -20,7 +20,9 @@ eq("8yr-old collection → past the 7yr window", [past?.windowYears, past?.pastW
 
 const sixYrsAgo = new Date(); sixYrsAgo.setUTCFullYear(sixYrsAgo.getUTCFullYear() - 6);
 const soon = fallOffInsight({ accountType: "CHARGE_OFF", creditorName: "Capital One", bureauData: {}, dateOfFirstDelinquency: sixYrsAgo });
-eq("6yr-old charge-off → inside window, ~12 months left", [soon?.windowYears, soon?.pastWindow, soon != null && soon.monthsRemaining >= 11 && soon.monthsRemaining <= 13], [7, false, true]);
+// 6yr-old charge-off: window is 7yr + 180 days (§1681c(c)(1)) ≈ 7.5yr from DOFD,
+// so ~18 months remain (not ~12 — the 180-day offset pushes fall-off later).
+eq("6yr-old charge-off → inside window, ~18 months left (incl. 180-day offset)", [soon?.windowYears, soon?.pastWindow, soon != null && soon.monthsRemaining >= 17 && soon.monthsRemaining <= 19], [7, false, true]);
 
 // Chapter 7 public record honors the 10-year window (same engine as scoring/letters).
 const bk = fallOffInsight({
@@ -31,9 +33,13 @@ const bk = fallOffInsight({
 });
 eq("8yr-old Chapter 7 public record → 10yr window, NOT past", [bk?.windowYears, bk?.pastWindow], [10, false]);
 
-// UTC calendar math — a fixed DOFD produces a fixed fall-off month regardless of local zone.
+// UTC calendar math — a fixed DOFD produces a fixed fall-off month regardless of
+// local zone. COLLECTION: 2020-03-15 + 7yr + 180 days = 2027-09 (§1681c(c)(1)).
 const fixed = fallOffInsight({ accountType: "COLLECTION", bureauData: {}, dateOfFirstDelinquency: "2020-03-15" });
-eq("fall-off month is DOFD + window in UTC", fixed && formatMonthYear(fixed.fallOffDate), "Mar 2027");
+eq("collection fall-off = DOFD + 7yr + 180 days in UTC", fixed && formatMonthYear(fixed.fallOffDate), "Sep 2027");
+// A public record (no 180-day offset) still lands on the plain +window month.
+const pr = fallOffInsight({ accountType: "PUBLIC_RECORD", creditorName: "State Tax Lien", bureauData: {}, dateOfFirstDelinquency: "2020-03-15" });
+eq("public-record fall-off = DOFD + 7yr (no offset)", pr && formatMonthYear(pr.fallOffDate), "Mar 2027");
 
 // ---- duplicateGroups ----
 const rows = [

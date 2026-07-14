@@ -1,6 +1,6 @@
 import { AccountType, Probability } from "@prisma/client";
 import { type BureauData, crossBureauConflicts, hasCrossBureauKnowledge } from "./bureauData";
-import { obsolescenceWindowYears, bureauTextBlob } from "./obsolescence";
+import { obsolescenceWindowYears, bureauTextBlob, reportingOffsetDays } from "./obsolescence";
 import { yearsSince } from "./utils";
 
 export interface ScoreInput {
@@ -71,12 +71,15 @@ export function scoreTradeline(input: ScoreInput): ScoreResult {
     text: bureauTextBlob(input.bureauData),
   });
   const yrs = yearsSince(input.dateOfFirstDelinquency);
+  // Collection/charge-off clocks start 180 days after DOFD (§1681c(c)(1)); fold
+  // that into the year threshold so we never call an item obsolete early.
+  const windowYrs = windowYears + reportingOffsetDays(input.accountType) / 365.25;
   if (yrs != null) {
-    if (yrs >= windowYears) {
+    if (yrs >= windowYrs) {
       score += 30;
       reasons.push(`Past the ${windowYears}-year FCRA reporting window — strong obsolescence argument (§605).`);
       angles.push("Dispute as obsolete under FCRA §605.");
-    } else if (yrs >= windowYears - 1) {
+    } else if (yrs >= windowYrs - 1) {
       score += 10;
       reasons.push(`Approaching the ${windowYears}-year window.`);
     }

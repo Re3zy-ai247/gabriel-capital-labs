@@ -13,6 +13,9 @@ import { formatCents, formatDate } from "@/lib/utils";
 import { fallOffInsight, formatMonthYear, duplicateGroups, groupAdjacentOrder } from "@/lib/tradelineInsights";
 import { StatuteCard } from "@/components/StatuteCard";
 import type { StatuteKey } from "@/lib/statutes";
+import { explainTradeline } from "@/lib/explain";
+import { recommendStrategy } from "@/lib/recommend";
+import { KaiWhy } from "@/components/kai/KaiWhy";
 
 const BUREAU_ORDER: Bureau[] = ["EQUIFAX", "EXPERIAN", "TRANSUNION"];
 
@@ -108,6 +111,18 @@ export default async function TradelinesPage() {
           });
           const diff = conflictFields(data);
           const conflictLines = crossBureauConflicts(data);
+          // Kai Explainability Layer — the structured "why" for this item, from
+          // real data + the deterministic engines. Every DISPUTABLE row expands
+          // so the recommendation can always answer "why", even single-bureau.
+          const strat = t.probability !== "NOT_RECOMMENDED"
+            ? recommendStrategy({ accountType: t.accountType, isDebtBuyer: t.isDebtBuyer, probability: t.probability, dateOfFirstDelinquency: t.dateOfFirstDelinquency, bureauData: t.bureauData, creditorName: t.creditorName })
+            : null;
+          const explanation = explainTradeline({
+            accountType: t.accountType, isDebtBuyer: t.isDebtBuyer, balance: t.balance,
+            probability: t.probability, reasons: t.reasons, dateOfFirstDelinquency: t.dateOfFirstDelinquency,
+            bureauData: t.bureauData, creditorName: t.creditorName, recommendedStrategy: strat?.strategyId ?? null,
+          });
+          const expandable = hasDetail || t.probability !== "NOT_RECOMMENDED";
           const wrapperClass = `block border-b border-ink-700/50 last:border-0 ${dupSize ? "border-l-2 border-l-ocean-500/50" : ""}`;
           const row = (
             <div className="grid grid-cols-12 items-center gap-2 px-4 py-3 text-sm">
@@ -144,47 +159,73 @@ export default async function TradelinesPage() {
                     )}
                   </div>
                 )}
-                {t.reasons[0] && <div className="truncate text-xs text-slate-500" title={t.reasons[0]}>{t.reasons[0]}</div>}
+                {t.reasons[0] && (
+                  <div className="truncate text-xs text-slate-500" title={t.reasons[0]}>
+                    {t.reasons[0]}
+                    {/* Full, untruncated text for screen readers (title alone is unreliable). */}
+                    <span className="sr-only"> {t.reasons[0]}</span>
+                  </div>
+                )}
               </div>
               <div className="col-span-2 text-xs text-slate-400">{TYPE_LABEL[t.accountType]}</div>
               <div className="col-span-2 text-slate-300">{formatCents(t.balance)}</div>
               <div className="col-span-2">
                 <BureauBadges bureaus={present} />
-                {hasDetail && (
-                  <div className="mt-0.5 text-[10px] text-slate-500">
-                    <span className="group-open:hidden">compare ▾</span>
+                {expandable && (
+                  <div className="mt-0.5 text-[10px] font-medium text-brand-400">
+                    <span className="group-open:hidden">Kai&apos;s read ▾</span>
                     <span className="hidden group-open:inline">close ▴</span>
                   </div>
                 )}
               </div>
               <div className="col-span-1"><ProbabilityBadge p={t.probability} /></div>
-              <div className="col-span-1 text-right">
-                {t.probability !== "NOT_RECOMMENDED" ? (
-                  <Link
-                    href={`/letters?tradeline=${t.id}`}
-                    className="-mx-2 -my-3 inline-flex min-h-[44px] items-center px-2 py-3 text-xs font-semibold text-brand-400 underline-offset-2 hover:text-brand-300 hover:underline"
-                  >
-                    Dispute →
-                  </Link>
-                ) : (
-                  <span
-                    className="text-[11px] text-slate-500"
-                    title={t.reasons[0] ?? "Government/statutory debt generally can't be disputed off a report — I've excluded it so you don't waste a round."}
-                  >
-                    set aside
-                  </span>
-                )}
-              </div>
+              {/* Action lives OUTSIDE this grid (rendered as a sibling overlay) so
+                  the interactive Dispute link is never nested inside <summary>. */}
+              <div className="col-span-1" aria-hidden />
             </div>
           );
 
-          if (!hasDetail) return <div key={t.id} className={wrapperClass}>{row}</div>;
+          const action =
+            t.probability !== "NOT_RECOMMENDED" ? (
+              <Link
+                href={`/letters?tradeline=${t.id}`}
+                className="inline-flex min-h-[44px] items-center text-xs font-semibold text-brand-400 underline-offset-2 hover:text-brand-300 hover:underline"
+              >
+                Dispute →
+              </Link>
+            ) : (
+              <span
+                className="text-[11px] text-slate-500"
+                title={t.reasons[0] ?? "Government/statutory debt generally can't be disputed off a report — I've excluded it so you don't waste a round."}
+              >
+                set aside
+                <span className="sr-only">. {t.reasons[0] ?? "Government or statutory debt generally can't be disputed off a report, so it's excluded so you don't waste a round."}</span>
+              </span>
+            );
+
+          if (!expandable) {
+            return (
+              <div key={t.id} className={`relative ${wrapperClass}`}>
+                {row}
+                <div className="absolute right-4 top-3 z-10 text-right">{action}</div>
+              </div>
+            );
+          }
           return (
-            <details key={t.id} className={`group ${wrapperClass}`}>
+            <details key={t.id} className={`group relative ${wrapperClass}`}>
               <summary className="block cursor-pointer list-none transition hover:bg-ink-800/40 focus-visible:bg-ink-800/40 [&::-webkit-details-marker]:hidden">
                 {row}
               </summary>
-              <div className="border-t border-ink-700/40 bg-ink-800/30 px-4 py-4">
+              {/* Sibling of <summary>, pinned to the header row — keeps the
+                  interactive Dispute CTA out of the disclosure toggle. */}
+              <div className="pointer-events-none absolute right-4 top-3 z-10 text-right [&_a]:pointer-events-auto">{action}</div>
+              <div className="space-y-3 border-t border-ink-700/40 bg-ink-800/30 px-4 py-4">
+                {/* The structured "why" — always present for a disputable row. */}
+                <KaiWhy e={explanation} />
+
+                {/* Per-bureau side-by-side, only when we hold real field data. */}
+                {hasDetail && (
+                <div>
                 {conflictLines.length > 0 && (
                   <p className="mb-3 text-xs text-slate-300">
                     <span className="mr-2 rounded bg-brand-500/15 px-1.5 py-0.5 text-[10px] font-bold tracking-widest text-brand-300">KAI</span>
@@ -217,6 +258,8 @@ export default async function TradelinesPage() {
                     );
                   })}
                 </div>
+                </div>
+                )}
               </div>
             </details>
           );

@@ -534,3 +534,10 @@ model KaiEvent {
   @@index([userId, occurredAt])
   @@index([type, occurredAt])
 }
+
+// Kai Case Memory (Sprint VII): per-user last-seen marker for the "while you were
+// away" catch-up. Self-heal table (ADR-0001), accessed via raw SQL in lib/kaiSeen.ts.
+model KaiSeen {
+  userId String   @id
+  seenAt DateTime @default(now())
+}
