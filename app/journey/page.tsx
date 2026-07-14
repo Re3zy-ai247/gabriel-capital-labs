@@ -36,7 +36,7 @@ function meaningFor(icon: Entry["icon"], outcome?: string): string {
       if (outcome === "no_response") return "A non-answer doesn't satisfy §611 — that failure is the basis for escalation.";
       if (outcome === "updated") return "Compare the changed fields — a partial fix can still leave inaccurate data.";
       return "I read the response and lined up the next move on the letter.";
-    case "done": return "One less negative item working against your file.";
+    case "done": return "This item is resolved on this dispute.";
   }
 }
 
@@ -128,7 +128,7 @@ export default async function JourneyPage() {
       { label: "Upload your credit report", done: reports.length > 0 },
       { label: "Review analyzed tradelines", done: tradelines > 0 },
       { label: "Generate first dispute letters", done: letters.length > 0 },
-      { label: "Mail letters via certified mail", done: letters.some((l) => l.mailedAt) },
+      { label: "Mail your first dispute letters", done: letters.some((l) => l.mailedAt) },
     ]},
     { title: "Month 2 — Responses & Escalations", steps: [
       { label: "Log bureau responses", done: letters.some((l) => l.responseAt) },
@@ -157,7 +157,10 @@ export default async function JourneyPage() {
         <span className="rounded bg-brand-500/15 px-1.5 py-0.5 text-[10px] font-bold tracking-widest text-brand-300">KAI</span>
         <h2 className="text-xl font-semibold">Your dispute timeline</h2>
       </div>
-      <p className="mb-3 text-sm text-slate-400">Everything that has happened on your file, and what's coming next. {completion}% of the 90-day journey complete.</p>
+      <p className="mb-3 text-sm text-slate-400">
+        Everything that has happened on your file, and what&apos;s coming next. {completion}% of the 90-day journey complete.
+        {" "}<Link href="/mail" className="font-semibold text-brand-400 hover:underline">Track mailed disputes in the Mail Center →</Link>
+      </p>
       <div
         className="mb-6 h-2 overflow-hidden rounded-full bg-ink-700"
         role="progressbar"
