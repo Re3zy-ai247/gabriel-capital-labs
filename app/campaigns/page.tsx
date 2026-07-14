@@ -54,7 +54,7 @@ const FAMILY_LABEL: Record<Family, string> = {
 const RECIPIENT_LABEL: Record<string, string> = { bureau: "Credit bureaus", furnisher: "Furnisher", collector: "Collector" };
 const CAT_LABEL: Record<WarnCat, string> = { law: "The law", policy: "CreditVector policy", recommendation: "Kai's take" };
 const CAT_TONE: Record<WarnCat, string> = {
-  law: "border-ocean-500/30 bg-ocean-500/10 text-ocean-200",
+  law: "border-ocean-500/30 bg-ocean-500/10 text-ocean-300",
   policy: "border-gold-500/30 bg-gold-500/10 text-gold-400",
   recommendation: "border-brand-500/30 bg-brand-500/10 text-brand-200",
 };

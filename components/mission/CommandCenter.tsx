@@ -16,7 +16,7 @@ const TONE_BORDER: Record<Health, string> = {
 };
 
 export function CommandCenter({ data }: { data: MissionControlData }) {
-  const { command, capacity, deferred, health, caseHealth } = data;
+  const { command, capacity, deferred, health, caseHealth, ownHistory } = data;
 
   return (
     <section aria-label="Command Center" className="space-y-4">
@@ -27,6 +27,14 @@ export function CommandCenter({ data }: { data: MissionControlData }) {
           Case {caseHealth === "green" ? "healthy" : caseHealth === "amber" ? "needs attention" : "action overdue"}
         </span>
       </div>
+
+      {/* What your history suggests — gate-free, from your own verified outcomes. */}
+      {ownHistory && (
+        <div className="card border-ocean-500/25 bg-ocean-500/[0.05] p-3 text-[13px] text-slate-300">
+          <span className="mr-1.5 rounded bg-ocean-500/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-ocean-300">Your history</span>
+          {ownHistory}
+        </div>
+      )}
 
       {/* 8 deep-linked sections */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">

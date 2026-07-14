@@ -21,6 +21,10 @@ Compact, current-only. Done items get deleted (history lives in git). Company ba
 ## Sprint XIII — Mission Control (shipped to working tree, ADR-0013)
 - [ ] Backlog (Low, from the 5-review pass): export the live-campaign status set from the campaign engine and reuse it in `lib/missionControl.ts` (currently duplicated) · dedupe `getMissionControl` row reads (tradelines/letters fetched by several reused engines per dashboard load; Accelerate bills per query) · the single next step renders in three framings (mission row / Next Action hero / Command Center tile) — deliberate, revisit if it reads redundant · the "view" link in the Waiting-on list is <44px (a11y polish).
 
+## Sprint XIV — Verified Outcome Ledger (shipped to working tree, ADR-0014)
+- [ ] Fast-follow: surface own verified-outcome history in `recommendationIntel` + `forecast` panels (tradelines/letters), not just Mission Control — pass `ownOutcomeTrack` in and add a gate-free own-history line via `ownTrackLine`.
+- [ ] When the CCO opens `consumerDisplayApproved`: point the cross-user aggregation at `ledgerCorpus` (the durable, provenance-tagged source) and retire the dormant Letters-based `buildOutcomeCorpus`.
+
 ## Engineering (next up)
 - [ ] Regenerate favicon/PWA/OG from de-shadowed `logo-mark.png`
 - [ ] Letters/upload server-prefetch — deliberately deferred until CX-1 conversational letter flow (restructuring those pages first avoids rework)

@@ -15,6 +15,7 @@ import type { Letter } from "@prisma/client";
 import { getKaiHomeData, REINVESTIGATION_DAYS, type KaiHomeData, type KaiRecommendation, type OvernightItem } from "@/lib/kaiHome";
 import { caseMemorySince, type CaseMemory } from "@/lib/kaiSeen";
 import { campaignService, buildComposerItems } from "@/lib/campaignInput";
+import { ownOutcomeTrack, ownHistorySummary, type OwnTrack } from "@/lib/outcomeLedger";
 import {
   resolveCampaignPolicy, includedItems, deferredItems, FAMILY_LABEL,
   type Campaign, type CampaignItem, type CampaignPolicy, type ComposedCampaign,
@@ -47,6 +48,7 @@ export interface MissionControlData {
   health: HealthSignal[];
   caseHealth: Health;
   hasReport: boolean;
+  ownHistory: string | null; // gate-free own verified-outcome track record (Sprint XIV)
 }
 
 // Everything the pure assembler needs — already loaded, deterministic.
@@ -61,6 +63,7 @@ export interface MissionInputs {
   scoreEntries: { bureau: string; score: number; recordedAt: Date }[];
   nextSeq: number;
   policy: CampaignPolicy;
+  ownTrack?: OwnTrack;
   now?: number;
 }
 
@@ -257,13 +260,14 @@ export function assembleMission(x: MissionInputs): MissionControlData {
     { key: "next", title: "Recommended next action", stat: nextAction ? nextAction.cta : "On track", sub: nextAction ? "one step at a time" : "no action needed", href: nextAction?.href ?? "/journey", tone: nextAction ? "amber" : "green" },
   ];
 
-  return { firstName, caseMemory, overnight: kai.overnight, tasks, waiting, automatic, nextAction, nextUnlock, command, capacity, deferred, health, caseHealth, hasReport };
+  const ownHistory = x.ownTrack ? ownHistorySummary(x.ownTrack) : null;
+  return { firstName, caseMemory, overnight: kai.overnight, tasks, waiting, automatic, nextAction, nextUnlock, command, capacity, deferred, health, caseHealth, hasReport, ownHistory };
 }
 
 // The loader — pulls the real rows and hands them to the pure assembler.
 export async function getMissionControl(userId: string, user: { fullName?: string | null; name?: string | null }): Promise<MissionControlData> {
   const svc = campaignService();
-  const [kai, caseMemory, campaigns, items, tradelines, letters, scoreEntries, nextSeq] = await Promise.all([
+  const [kai, caseMemory, campaigns, items, tradelines, letters, scoreEntries, ownTrack, nextSeq] = await Promise.all([
     getKaiHomeData(userId),
     caseMemorySince(userId),
     svc.list(userId, 50),
@@ -271,12 +275,12 @@ export async function getMissionControl(userId: string, user: { fullName?: strin
     prisma.tradeline.findMany({ where: { userId }, select: { id: true, resolved: true } }),
     prisma.letter.findMany({ where: { userId }, orderBy: { createdAt: "desc" }, select: { id: true, tradelineId: true, recipientName: true, parentLetterId: true, responseAt: true, responseOutcome: true, mailedAt: true } }),
     prisma.scoreEntry.findMany({ where: { userId }, select: { bureau: true, score: true, recordedAt: true }, orderBy: { recordedAt: "asc" } }),
+    ownOutcomeTrack(userId),
     svc.nextSequence(userId),
   ]);
   const composed = svc.compose(items, nextSeq);
   return assembleMission({
     user, kai, caseMemory, campaigns, composed, tradelines,
-    letters,
-    scoreEntries, nextSeq, policy: resolveCampaignPolicy(),
+    letters, scoreEntries, ownTrack, nextSeq, policy: resolveCampaignPolicy(),
   });
 }

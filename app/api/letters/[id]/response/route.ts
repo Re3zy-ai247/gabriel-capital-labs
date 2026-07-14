@@ -6,6 +6,7 @@ import { analyzeResponse } from "@/lib/round2";
 import { enforceRateLimit } from "@/lib/rateLimit";
 import { encryptText, decryptText } from "@/lib/docCrypto";
 import { recordKaiEvent } from "@/lib/kaiEvents";
+import { recordVerifiedOutcome } from "@/lib/outcomeLedger";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -80,6 +81,14 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     refType: "letter",
     refId: letter.id,
     payload: { outcome: updated.responseOutcome, analyzed: analysis !== null },
+  });
+
+  // Close the compounding loop: record this verified outcome in the ledger,
+  // linked to the recommendation that produced it (Sprint XIV, fail-open).
+  await recordVerifiedOutcome({
+    userId: user.id, letterId: letter.id, tradelineId: letter.tradelineId,
+    strategy: letter.strategy, recipientType: letter.recipientType, bureau: letter.targetBureau ?? null,
+    round: letter.round, outcome: updated.responseOutcome, mailedAt: letter.mailedAt, responseAt: updated.responseAt,
   });
 
   return NextResponse.json({
