@@ -36,6 +36,10 @@ Compact, current-only. Done items get deleted (history lives in git). Company ba
 ## Sprint XVII — Financial Roadmap Engine (shipped to working tree, ADR-0017)
 - [ ] Future modules (Credit Builder, Funding Hub, Business Credit, Monitoring, Mobile, API) consume `financialRoadmap` for the journey view — never build their own roadmap/stage logic.
 
+## Sprint XVIII — Credit Builder OS (shipped to working tree, ADR-0018)
+- [x] Closed the CVI double-load: the dashboard now calls `loadSnapshot` once and `assembleIntelligence(snap)` (was `creditIntelligence` + a separate CVI load) — CVI/Mission/Roadmap/Builder all share the one snapshot. (getMissionControl still loads its own rows — folding it onto the snapshot remains the open half of that follow-up.)
+- [ ] Future modules (Funding Hub, Business Credit, Monitoring, Mobile, API) consume `builderOS` — never build their own builder recommendations.
+
 ## Engineering (next up)
 - [ ] Regenerate favicon/PWA/OG from de-shadowed `logo-mark.png`
 - [ ] Letters/upload server-prefetch — deliberately deferred until CX-1 conversational letter flow (restructuring those pages first avoids rework)
