@@ -1,9 +1,11 @@
 # ADR-0022: Kai OS Module Architecture — the module contract, capability engine, feature flags
 
-Status: **PROPOSED** (awaits founder approval; no code until approved). Governs the OS
-substrate that every future module and tier is built on.
+Status: **Accepted** (founder-approved 2026-07-15). Governs the OS substrate every future
+module and tier is built on. Companion: **ADR-0023 (Kai Intelligence Layer)** defines what
+sits ABOVE the Capability Engine (the reasoning/orchestration brain). This ADR = "what CAN
+Kai do"; ADR-0023 = "what SHOULD Kai do."
 Date: 2026-07-15
-Decision owners: Founder directive (AI Credit Intelligence OS pivot)
+Decision owners: Founder directive (AI Operating System — dispute engine is Module #1)
 
 ## Context
 CreditVector is now the **AI Credit Intelligence Operating System**; Kai IS the product
@@ -17,23 +19,31 @@ tier is buildable well until this lands.
 
 ## Decision
 
-### 1. The Module Contract (`lib/os/module.ts` — PROPOSED)
-Every Kai module implements one interface. First-class, loosely coupled, extractable.
+### 1. The Module Contract (`lib/os/module.ts` — the plug) — "wrap, don't rewrite"
+Every Kai module implements ONE interface — plug-and-play, no special cases. Existing
+engines are **wrapped**, not rewritten (they are valuable IP); the dispute engine becomes
+the `credit` module unchanged behind the wrapper.
 ```ts
-export interface KaiModule<Out> {
-  id: string;                         // "credit" | "funding" | "business" | ...
-  kaiTierRequired: KaiTier;           // Lite | Professional | Pro | Agency | Enterprise
-  capability: CapabilityKey;          // the flag/entitlement key this module gates on
-  compliance: ComplianceBoundary;     // regimes it touches (Article 22) — declared, not implied
+export interface KaiModule {
+  id: string;                                   // "credit" | "funding" | ...
+  name: string;                                 // "Kai Credit"
+  capabilities(): CapabilityKey[];              // what this module can do (feeds the Capability Engine)
+  requiredPlan(cap: CapabilityKey): PlanKey;    // entitlement gate, per capability
+  requiredReasoning(cap: CapabilityKey): ReasoningTier; // deterministic | retrieval | generative
+  permissions(): Permission[];                  // least-privilege reads/actions
+  compliance(): ComplianceBoundary;             // regimes it touches (Article 22) — declared, not implied
   // Pure over the already-loaded shared snapshot/records — NO new DB reads.
-  assemble(ctx: OsContext): Out;      // deterministic module output
-  // What Kai's router can reach without spending a token (Article 19).
-  routes(out: Out): RoutableAnswer[];
+  execute(ctx: OsContext, cap: CapabilityKey): ModuleResult;
+  confidence(r: ModuleResult): Confidence;      // grounds-confidence, never an outcome (KAI-OS §5)
+  explain(r: ModuleResult): Receipt;            // cited reasoning (Article 4)
+  auditTrail(r: ModuleResult): AuditEntry;      // immutable "what + why" record
 }
 ```
 - `OsContext` carries the single-loaded snapshot + shared memory (Knowledge Graph, Outcome
-  Ledger, case records) — modules never re-query. The dispute engine becomes `credit` module.
-- `assemble` is pure (unit-testable, no DB), matching today's `assembleExecution`/`buildBuilder`.
+  Ledger, case records) — modules never re-query. `execute` is pure (unit-testable, no DB),
+  matching today's `assembleExecution`/`buildBuilder`.
+- The **Intelligence Layer (ADR-0023)** orchestrates modules THROUGH this contract; the
+  Capability Engine (below) answers whether a given capability is available/entitled.
 
 ### 2. The Capability Engine (`lib/os/capability.ts` — PROPOSED) — the keystone
 One deterministic resolver, the single source of truth for access:
