@@ -40,6 +40,10 @@ Compact, current-only. Done items get deleted (history lives in git). Company ba
 - [x] Closed the CVI double-load: the dashboard now calls `loadSnapshot` once and `assembleIntelligence(snap)` (was `creditIntelligence` + a separate CVI load) — CVI/Mission/Roadmap/Builder all share the one snapshot. (getMissionControl still loads its own rows — folding it onto the snapshot remains the open half of that follow-up.)
 - [ ] Future modules (Funding Hub, Business Credit, Monitoring, Mobile, API) consume `builderOS` — never build their own builder recommendations.
 
+## Sprint XIX — Knowledge Graph (shipped to working tree, ADR-0019)
+- [ ] The dashboard now runs 3 load paths (getMissionControl, loadSnapshot, financialGraph) — tradelines/letters are read by more than one. Consider a single link-row load shared across snapshot + graph to shave queries (perf, not correctness).
+- [ ] Future modules consume `financialGraph` / `neighbors` for relationship lookups — never re-derive edges.
+
 ## Engineering (next up)
 - [ ] Regenerate favicon/PWA/OG from de-shadowed `logo-mark.png`
 - [ ] Letters/upload server-prefetch — deliberately deferred until CX-1 conversational letter flow (restructuring those pages first avoids rework)

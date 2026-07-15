@@ -6,12 +6,14 @@ import { loadSnapshot, assembleIntelligence } from "@/lib/intelligence";
 import { assembleMissions } from "@/lib/missionEngine";
 import { buildRoadmap } from "@/lib/roadmap";
 import { buildBuilder } from "@/lib/builder";
+import { financialGraph } from "@/lib/knowledge";
 import { MissionControl } from "@/components/mission/MissionControl";
 import { CommandCenter } from "@/components/mission/CommandCenter";
 import { ReadinessStrip } from "@/components/mission/ReadinessStrip";
 import { MissionQueue } from "@/components/mission/MissionQueue";
 import { RoadmapView } from "@/components/mission/RoadmapView";
 import { BuilderView } from "@/components/mission/BuilderView";
+import { KnowledgeJourney } from "@/components/mission/KnowledgeJourney";
 
 export const dynamic = "force-dynamic";
 
@@ -27,9 +29,10 @@ export default async function DashboardPage() {
   // Load the CVI snapshot ONCE (Sprint XVIII) — CVI, the Mission Engine, the
   // Roadmap, and the Credit Builder all compose from it, so nothing is queried
   // twice. Mission Control loads its own view in parallel.
-  const [data, snap] = await Promise.all([
+  const [data, snap, knowledge] = await Promise.all([
     getMissionControl(user.id, user),
     loadSnapshot(user.id),
+    financialGraph(user.id),                          // the Knowledge Graph (link-only rows)
   ]);
   const intel = assembleIntelligence(snap);
   const mission = assembleMissions(intel, data);   // prioritized queue
@@ -44,6 +47,7 @@ export default async function DashboardPage() {
           a first-time user (no report yet) sees only the single upload mission. */}
       {data.hasReport && <MissionQueue mission={mission} />}
       {data.hasReport && <RoadmapView roadmap={roadmap} />}
+      {data.hasReport && <KnowledgeJourney knowledge={knowledge} />}
       {data.hasReport && <BuilderView builder={builder} />}
       {data.hasReport && <ReadinessStrip intel={intel} />}
       {data.hasReport && <CommandCenter data={data} />}
