@@ -61,5 +61,12 @@ Verified already done (removed 2026-07-12): `List-Unsubscribe` + One-Click heade
 - [ ] Backlog (Low, CCO hygiene — non-blocking, from the compliance GO): "strengthens the file over time" phrasing (`ExecutionPriority.ts` builder tier reason + `ExecutionRisk.ts` builder ifIgnored) — optionally reword to "the habits that build strong credit" (general mechanism, never a personalized outcome). Consistent with the already-approved Builder OS framing.
 - [ ] Backlog (Low): the ladder rungs `waiting_creditor` / `funding_dependency` / `mortgage_dependency` have no mission `type` mapped to them yet (they exist for future missions); wire them when those mission types ship so the queue orders them explicitly rather than via the `outcome_dependency` fallback.
 
+## Sprint XXI — Founder Polish & Intelligence (branch `sprint-xxi-founder-polish` `c9396e2`, ADR-0021; PREVIEW-ONLY, UNMERGED)
+- [ ] **Founder: review the Preview + authed click-through, then approve merge.** Preview (owner-SSO): https://gabriel-capital-labs-7yw6xk4qp-rey-gabriel-s-projects.vercel.app · `main`/prod untouched · MAIL_LIVE OFF.
+- [x] Phase 1 Letter Intelligence (recipient-differentiated, CCO GO) · Phase 2 Credit Builder page + educational planners · Phase 3 Academy · Phase 4 Readiness→Executive Queue · nav restored. Guards 28/28.
+- [ ] **Sprint XXII (deferred, founder-scoped):** comprehensive every-page copy/CTA polish + landing/pricing/onboarding audit; IA regrouping (CORE/INTELLIGENCE/ACCOUNT); **dashboard slimming** (Builder + Knowledge now have dedicated pages → the dashboard could drop the inline BuilderView/KnowledgeJourney and link to the pages, reducing the wall-of-widgets — needs founder OK as a visible change); Kai platform-wide positioning + a canonical pricing/entitlement matrix.
+- [ ] Backlog (Low): Letter precision — direct-furnisher dispute cites §1681s-2(b) (full duty attaches on CRA notice; direct disputes run via §1681s-2(a)(8)/Reg V) — add a precision note; `cfpb_threat` strategy could force the regulatory-tone closing regardless of round.
+- [ ] Backlog: when a future report upload provides limits/statement dates, the Builder educational planners (utilization/payment-timing/statement-dates) auto-upgrade to data-driven — wire the data path when available.
+
 ## Candidate features (unscheduled)
 - [ ] Brief stat/data cards · [ ] Brief admin image-upload (licensed/.gov only)
