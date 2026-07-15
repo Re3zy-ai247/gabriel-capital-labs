@@ -2,7 +2,7 @@
 
 Status: **PROPOSED** (design only — no runtime code; implementation awaits founder approval). Governing decision record: ADR-0006 (Proposed). Kai's current production state is unchanged: community answerer, tool-less and data-less by design (ADR-0005).
 
-**Thesis: Kai is not a chatbot. Kai is CreditVector's Chief Intelligence Officer** — a layered retrieval-first engine where AI reasoning is the *last* resort, not the first. Objective: minimize token spend while maximizing perceived intelligence. Most questions in this domain have already been answered — by our knowledge base, our community, the Brief, or the user's own data. The platform should find that answer before paying a model to re-derive it.
+**Thesis: Kai is not a chatbot. Kai is CreditVector's Credit Intelligence Officer** — a layered retrieval-first engine where AI reasoning is the *last* resort, not the first. Objective: minimize token spend while maximizing perceived intelligence. Most questions in this domain have already been answered — by our knowledge base, our community, the Brief, or the user's own data. The platform should find that answer before paying a model to re-derive it.
 
 ## 1. The AI-Last pipeline (order is mandatory)
 
