@@ -5,6 +5,7 @@
 import { buildContext, renderTemplateLetter, type LetterTradeline, type LetterConsumer } from "../lib/letter";
 import { analyzeResponse } from "../lib/round2";
 import { obsolescenceWindowYears } from "../lib/obsolescence";
+import { fallOffInsight } from "../lib/tradelineInsights";
 import { appKernel } from "../lib/os/host/kernel";
 import { actorFromSession } from "../lib/os/host/identity";
 import { entitlementSnapshot } from "../lib/os/host/entitlements";
@@ -82,10 +83,20 @@ async function main() {
   ok("obsolescence: kernel-routed === lib/obsolescence (byte-identical)", res.ok && (res.data as { years: number }).years === direct);
 }
 
+// ---- Document/tradeline §605 fall-off (migration #8): deterministic, byte-identical ----
+{
+  const INS = "credit.tradeline.insight" as CapabilityKey;
+  const k = appKernel({ clock: memoryClock() });
+  const iInput = { accountType: "COLLECTION" as const, creditorName: "Midland", bureauData: {}, dateOfFirstDelinquency: "2021-03-01" };
+  const direct = fallOffInsight(iInput);
+  const res = await k.dispatch(actor, INS, iInput, ent, "obsolescence");
+  ok("tradeline.insight: kernel-routed === lib/tradelineInsights (byte-identical)", res.ok && JSON.stringify(res.data) === JSON.stringify(direct));
+}
+
 // ---- Marketplace: capabilities are self-describing metadata ----
 {
   const m = appKernel({ clock: memoryClock() }).manifest();
-  ok("manifest: all 3 credit capabilities carry marketplace metadata", m.length === 3 && m.every((s) => s.description.length > 0 && s.plugin === "credit" && typeof s.premium === "boolean" && s.inputSchema.length > 0 && s.outputSchema.length > 0));
+  ok("manifest: all 4 credit capabilities carry marketplace metadata", m.length === 4 && m.every((s) => s.description.length > 0 && s.plugin === "credit" && typeof s.premium === "boolean" && s.inputSchema.length > 0 && s.outputSchema.length > 0));
   ok("manifest: premium classification correct (analyze paid, obsolescence free)", m.find((s) => s.key === "credit.response.analyze")!.premium && !m.find((s) => s.key === "credit.obsolescence.window")!.premium);
 }
 }

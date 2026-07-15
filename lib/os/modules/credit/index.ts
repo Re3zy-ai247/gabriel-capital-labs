@@ -6,6 +6,7 @@
 import { buildContext, renderTemplateLetter, type LetterTradeline, type LetterConsumer, type RecipientOverride } from "@/lib/letter";
 import { analyzeResponse } from "@/lib/round2";
 import { obsolescenceWindowYears } from "@/lib/obsolescence";
+import { fallOffInsight } from "@/lib/tradelineInsights";
 import type { Bureau, AccountType } from "@prisma/client";
 import type { CapabilityKey, CapabilitySpec, KaiModule, ModuleResult, OsContext } from "@/lib/os/kernel";
 
@@ -25,6 +26,7 @@ function isDraftInput(x: unknown): x is DraftLetterInput {
 const DRAFT = "credit.letter.draft" as CapabilityKey;
 const ANALYZE = "credit.response.analyze" as CapabilityKey;
 const OBSOLESCENCE = "credit.obsolescence.window" as CapabilityKey;
+const INSIGHT = "credit.tradeline.insight" as CapabilityKey;
 
 // Input for credit.response.analyze (migration #6 — Response Intelligence, AI-backed/async).
 export interface AnalyzeResponseInput { originalLetter: string; responseText: string }
@@ -35,6 +37,11 @@ function isAnalyzeInput(x: unknown): x is AnalyzeResponseInput {
 export interface ObsolescenceInput { accountType: AccountType; creditorName?: string | null; text?: string | null }
 function isObsolescenceInput(x: unknown): x is ObsolescenceInput {
   return !!x && typeof x === "object" && typeof (x as ObsolescenceInput).accountType === "string";
+}
+// Input for credit.tradeline.insight (migration #8 — Document/tradeline §605 fall-off analysis).
+export interface InsightInput { accountType: AccountType; creditorName?: string | null; bureauData: unknown; dateOfFirstDelinquency?: Date | string | null }
+function isInsightInput(x: unknown): x is InsightInput {
+  return !!x && typeof x === "object" && typeof (x as InsightInput).accountType === "string" && "bureauData" in (x as object);
 }
 
 const bad = (summary: string): ModuleResult => ({ ok: false, receipt: { summary, evidence: [] }, confidence: { level: "insufficient", basis: "guard" } });
@@ -48,6 +55,7 @@ export function creditModule(): KaiModule {
       { key: DRAFT, description: "Draft an FCRA-grounded dispute letter (recipient-differentiated).", version: 1, owner: "credit-team", plugin: "credit", premium: false, experimental: false, securityClass: "regulated", requiredPermissions: ["letters:generate"], inputSchema: "{ strategyId, tradeline, consumer, targetBureau?, round?, recipient? }", outputSchema: "{ letter, strategyId, recipient, round }", compliance: { regimes: ["FCRA"], permissiblePurposes: ["dispute", "goodwill", "validation", "escalation", "obsolescence"] }, reasoning: "deterministic" },
       { key: ANALYZE, description: "Analyze a bureau/furnisher response and surface escalation grounds.", version: 1, owner: "credit-team", plugin: "credit", premium: true, experimental: false, securityClass: "regulated", requiredPermissions: ["responses:analyze"], inputSchema: "{ originalLetter, responseText }", outputSchema: "{ outcome, summary, weaknesses, recommendedNextStep }", compliance: { regimes: ["FCRA", "FDCPA"], permissiblePurposes: ["dispute", "response_analysis", "escalation"] }, reasoning: "generative" },
       { key: OBSOLESCENCE, description: "Compute the FCRA §605 obsolescence window (years) for an item.", version: 1, owner: "credit-team", plugin: "credit", premium: false, experimental: false, securityClass: "regulated", requiredPermissions: ["obsolescence:check"], inputSchema: "{ accountType, creditorName?, text? }", outputSchema: "{ years }", compliance: { regimes: ["FCRA"], permissiblePurposes: ["dispute", "obsolescence"] }, reasoning: "deterministic" },
+      { key: INSIGHT, description: "§605 fall-off analysis for a tradeline (window, fall-off date, months remaining).", version: 1, owner: "credit-team", plugin: "credit", premium: false, experimental: false, securityClass: "regulated", requiredPermissions: ["tradeline:read"], inputSchema: "{ accountType, creditorName?, bureauData, dateOfFirstDelinquency? }", outputSchema: "{ windowYears, fallOffDate, monthsRemaining, pastWindow } | null", compliance: { regimes: ["FCRA"], permissiblePurposes: ["dispute", "obsolescence"] }, reasoning: "deterministic" },
     ],
     async execute(_ctx: OsContext, key: CapabilityKey, input: unknown): Promise<ModuleResult> {
       // credit.letter.draft — deterministic, sync. WRAPS lib/letter unchanged (byte-identical).
@@ -83,6 +91,18 @@ export function creditModule(): KaiModule {
           data: { years },
           receipt: { summary: `§605 obsolescence window: ${years} years`, evidence: [`accountType: ${input.accountType}`] },
           confidence: { level: "high", basis: "deterministic §605 rule (lib/obsolescence)" },
+        };
+      }
+      // credit.tradeline.insight — deterministic. WRAPS lib/tradelineInsights unchanged.
+      if (key === INSIGHT) {
+        if (!isInsightInput(input)) return bad("invalid input for credit.tradeline.insight");
+        const insight = fallOffInsight(input);
+        if (!insight) return { ok: false, receipt: { summary: "No date of first delinquency on file — no obsolescence claim.", evidence: [] }, confidence: { level: "insufficient", basis: "no DOFD (never invent a date)" } };
+        return {
+          ok: true,
+          data: insight,
+          receipt: { summary: `Falls off ${insight.fallOffDate.toISOString().slice(0, 10)} (${insight.monthsRemaining} months remaining)`, evidence: [`window: ${insight.windowYears}y`, `pastWindow: ${insight.pastWindow}`] },
+          confidence: { level: "high", basis: "deterministic §605 fall-off (lib/tradelineInsights)" },
         };
       }
       return bad(`unknown capability ${key}`);

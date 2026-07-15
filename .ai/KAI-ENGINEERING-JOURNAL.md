@@ -43,8 +43,13 @@ including **byte-identical** equivalence. **No live route rewired yet — additi
 - **Durable-audit design (per the directive — design now, Postgres at #11):** `AuditEntry` gained `pluginId`, `correlationId`, and an optional `latencyMs` (**undefined until the perf harness exists — never fabricated**, D-02). Dispatch stamps every record with a correlation id + plugin id. The append-only mechanism is unchanged; only the shape is richer.
 - **Migration #7 — Investigation/§605:** `credit.obsolescence.window` wraps `lib/obsolescence.obsolescenceWindowYears` (deterministic) — **byte-identical**, available to all (deterministic → free). Exercised the new self-describing spec end-to-end.
 
+### M9 — Increment 4: Document/§605 fall-off (#8) + GIOS reframe
+- **Migration #8:** `credit.tradeline.insight` wraps `lib/tradelineInsights.fallOffInsight` (deterministic §605 fall-off) — **byte-identical** (both paths read the same `Date.now()` instant). Available to all. Four `credit.*` capabilities now route through the kernel.
+- **GIOS reframe:** the founder renamed the platform **GIOS (Gabriel Intelligence Operating System)** — CreditVector is Plugin #1 / the reference implementation. **No architecture change** (same kernel/plugin model); only positioning + the Dashboard title.
+- **Disciplined deferral (the founder's own rule):** Layer-2 services (Agent Runtime / SDK / global Memory Graph / Marketplace UI / Observability) are built AS the migration reaches them or when a plugin needs them — **not speculatively**. The Agent Runtime overlaps the Intelligence Layer (ADR-0023), which is gated behind the ABI freeze (Sprint 3). Building it now would generalize from zero agents (R8). So: continue the migration; the platform services land on evidence.
+
 ### Architecture-flaw watch
-Increment 1: none. Increment 2: one ABI refinement (async `execute`). Increment 3: the Marketplace metadata + audit-shape are **additive** enrichments (the ABI is unfrozen) — no redesign, no rewrite, existing engines untouched. Post-migration red team: capabilities are now reusable platform infra (✓ the founder's test — another plugin can consume the manifest/kernel unchanged). The architecture is not wrong; we continue.
+Increments 1–4: no architecture flaw. One ABI refinement (async `execute`, Inc 2); the rest additive (Marketplace metadata, audit shape, 4 wrapped capabilities). Post-migration red team: capabilities are reusable platform infra (✓ another plugin consumes the manifest/kernel unchanged). The architecture is not wrong; we continue.
 
 ---
 

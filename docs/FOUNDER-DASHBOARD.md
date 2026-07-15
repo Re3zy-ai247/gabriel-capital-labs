@@ -1,17 +1,23 @@
-# Kai Platform — Founder Dashboard
+# GIOS — Gabriel Intelligence Operating System — Founder Dashboard
 
-> Single source of truth for the platform. Updated after every migration. **Honesty rule:**
-> metrics not yet instrumented are marked *"not instrumented"* — no number is ever fabricated.
+> Single source of truth for the platform. **GIOS** = the operating system every future Gabriel
+> product runs on (same Kai Kernel; broader mission). **CreditVector is Plugin #1 — the proof,
+> not the destination.** Updated after every migration. **Honesty rule:** metrics not yet
+> instrumented are marked *"Not Yet Instrumented"* — no number is ever fabricated.
+>
+> *Layer discipline (ADR-0022/0024): Layer 2 platform services — Agent Runtime, SDK, global
+> Memory Graph, Marketplace UI, Observability — are built AS the migration reaches them (or when
+> a plugin needs them), never speculatively ("no speculative abstraction").*
 
 ---
 
 ## PLATFORM STATUS
 | | |
 |---|---|
-| **Kai Platform progress** | ~25% (Kernel done + Marketplace metadata; Credit plugin 3 capabilities migrated; other subsystems pending) |
+| **GIOS progress** | ~28% (Kernel done + Marketplace metadata; Credit plugin — 4 capabilities migrated; other subsystems pending) |
 | **Current sprint** | Sprint 2 — CreditVector becomes Plugin #1 |
-| **Current increment** | Increment 3 — Investigation/§605 + Capability Marketplace metadata + durable-audit design |
-| **Current branch** | `sprint2-inc3-marketplace` |
+| **Current increment** | Increment 4 — Document/tradeline §605 fall-off (#8) |
+| **Current branch** | `sprint2-inc4-document` |
 | **Current commit** | (this commit) |
 | **Build** | ✅ `next build` clean |
 | **Tests** | ✅ 30 guard scripts green (kernel: 33 internal checks · credit plugin: 15) |
@@ -42,8 +48,9 @@ Kai Platform
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
 | **Letter Engine** (`credit.letter.draft`) | ✅ | ✅ | Direct (not flipped) | ready | **byte-identical** ✅ | suite green | 12 | not instrumented | not instrumented | flag/branch | LOW | routed, proven |
 | **Response Intelligence** (`credit.response.analyze`) | ✅ | ✅ | Direct (not flipped) | ready | delegation-equal ✅ (AI-gated) | suite green | 15 | not instrumented | not instrumented | flag/branch | LOW | routed, proven |
-| **Investigation / §605** (`credit.obsolescence.window`) | ✅ | ✅ | Direct (not flipped) | ready | **byte-identical** ✅ | suite green | 15 | not instrumented | not instrumented | flag/branch | LOW | routed, proven |
-| Document / Workflow / Notification | ⏳ | ⏳ | Direct | — | — | — | — | — | — | — | — | pending |
+| **Investigation / §605** (`credit.obsolescence.window`) | ✅ | ✅ | Direct (not flipped) | ready | **byte-identical** ✅ | suite green | 17 | not instrumented | not instrumented | flag/branch | LOW | routed, proven |
+| **Document / §605 fall-off** (`credit.tradeline.insight`) | ✅ | ✅ | Direct (not flipped) | ready | **byte-identical** ✅ | suite green | 17 | not instrumented | not instrumented | flag/branch | LOW | routed, proven |
+| Workflow / Notification | ⏳ | ⏳ | Direct | — | — | — | — | — | — | — | — | pending |
 | Durable Audit · Kai Memory Graph | ⏳ (in-mem ref) | — | — | — | — | — | — | — | — | — | MED | pending |
 
 *Live routes are intentionally NOT flipped yet — the kernel path is built + proven equivalent first; each route flips behind a flag with the old path as fallback (zero-risk).*
