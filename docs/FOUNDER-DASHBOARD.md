@@ -14,15 +14,15 @@
 ## PLATFORM STATUS
 | | |
 |---|---|
-| **GIOS progress** | ~28% (Kernel done + Marketplace metadata; Credit plugin — 4 capabilities migrated; other subsystems pending) |
+| **GIOS progress** | ~32% (Kernel done + Marketplace metadata; Credit plugin — 5 capabilities migrated incl. first workflow; other subsystems pending) |
 | **Current sprint** | Sprint 2 — CreditVector becomes Plugin #1 |
-| **Current increment** | Increment 4 — Document/tradeline §605 fall-off (#8) |
-| **Current branch** | `sprint2-inc4-document` |
+| **Current increment** | Increment 5 — Workflow / campaign compose (#9) |
+| **Current branch** | `sprint2-inc5-workflow` |
 | **Current commit** | (this commit) |
 | **Build** | ✅ `next build` clean |
-| **Tests** | ✅ 30 guard scripts green (kernel: 33 internal checks · credit plugin: 15) |
+| **Tests** | ✅ green — kernel: 33 internal checks · credit plugin: 19 checks (all byte-identical/equivalence guards pass) |
 | **Platform infra added** | self-describing capabilities (`Kernel.manifest()` — Marketplace seed) · durable-audit shape (actor/tenant/plugin/capability/correlation/decision/latency, append-only) designed |
-| **Deployment** | prod on `main`; Increment 2 is **preview-first, not merged** · MAIL_LIVE OFF |
+| **Deployment** | prod on `main` (Increments 1–4 merged); Increment 5 is **preview-first, not merged** · no live route flipped · MAIL_LIVE OFF |
 
 ---
 
@@ -30,11 +30,11 @@
 ```
 Kai Platform
 ██████████  Kai Kernel                 done (mechanism-only, tested) + Marketplace metadata + manifest()
-████░░░░░░  Credit Plugin              in migration — 3 capabilities wrapped (letter.draft, response.analyze, obsolescence.window)
+█████░░░░░  Credit Plugin              in migration — 5 capabilities wrapped (letter.draft, response.analyze, obsolescence.window, tradeline.insight, campaign.compose)
 ██████████  Response Intelligence      wrapped + kernel-routed + byte-equivalent (route not flipped)
 ██████████  Investigation / §605       wrapped + kernel-routed + byte-identical (route not flipped)
-░░░░░░░░░░  Document Engine            pending
-░░░░░░░░░░  Workflow Engine            pending
+██████████  Document / §605 fall-off   wrapped + kernel-routed + byte-identical (route not flipped)
+██████████  Workflow / campaign        wrapped + kernel-routed + byte-identical (route not flipped)
 ░░░░░░░░░░  Notification Engine        pending
 ░░░░░░░░░░  Durable Audit (Postgres)   pending (adapter — in-memory reference today)
 ░░░░░░░░░░  Kai Memory Graph           pending (adapter — in-memory reference today)
@@ -49,8 +49,9 @@ Kai Platform
 | **Letter Engine** (`credit.letter.draft`) | ✅ | ✅ | Direct (not flipped) | ready | **byte-identical** ✅ | suite green | 12 | not instrumented | not instrumented | flag/branch | LOW | routed, proven |
 | **Response Intelligence** (`credit.response.analyze`) | ✅ | ✅ | Direct (not flipped) | ready | delegation-equal ✅ (AI-gated) | suite green | 15 | not instrumented | not instrumented | flag/branch | LOW | routed, proven |
 | **Investigation / §605** (`credit.obsolescence.window`) | ✅ | ✅ | Direct (not flipped) | ready | **byte-identical** ✅ | suite green | 17 | not instrumented | not instrumented | flag/branch | LOW | routed, proven |
-| **Document / §605 fall-off** (`credit.tradeline.insight`) | ✅ | ✅ | Direct (not flipped) | ready | **byte-identical** ✅ | suite green | 17 | not instrumented | not instrumented | flag/branch | LOW | routed, proven |
-| Workflow / Notification | ⏳ | ⏳ | Direct | — | — | — | — | — | — | — | — | pending |
+| **Document / §605 fall-off** (`credit.tradeline.insight`) | ✅ | ✅ | Direct (not flipped) | ready | **byte-identical** ✅ | suite green | 19 | not instrumented | not instrumented | flag/branch | LOW | routed, proven |
+| **Workflow / campaign** (`credit.campaign.compose`) | ✅ | ✅ | Direct (not flipped) | ready | **byte-identical** ✅ | suite green | 19 | not instrumented | not instrumented | flag/branch | LOW | routed, proven |
+| Notification Engine | ⏳ | ⏳ | Direct | — | — | — | — | — | — | — | — | pending |
 | Durable Audit · Kai Memory Graph | ⏳ (in-mem ref) | — | — | — | — | — | — | — | — | — | MED | pending |
 
 *Live routes are intentionally NOT flipped yet — the kernel path is built + proven equivalent first; each route flips behind a flag with the old path as fallback (zero-risk).*
@@ -62,7 +63,7 @@ Kai Platform
 |---|---|
 | Typecheck | ✅ clean |
 | Build | ✅ clean |
-| Guard suite | ✅ 30/30 scripts |
+| Guard suite | ✅ kernel 33 + credit plugin 19 checks, all green |
 | Security invariants (tested) | tenant isolation · default-deny PEP · append-only audit · idempotency · permissible-purpose |
 | Test coverage % | **not instrumented** (tracked debt D-01) |
 | Performance / memory | **not instrumented** (tracked debt D-02) |

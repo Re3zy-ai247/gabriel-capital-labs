@@ -6,6 +6,7 @@ import { buildContext, renderTemplateLetter, type LetterTradeline, type LetterCo
 import { analyzeResponse } from "../lib/round2";
 import { obsolescenceWindowYears } from "../lib/obsolescence";
 import { fallOffInsight } from "../lib/tradelineInsights";
+import { composeCampaign, type ComposerItem } from "../lib/campaign";
 import { appKernel } from "../lib/os/host/kernel";
 import { actorFromSession } from "../lib/os/host/identity";
 import { entitlementSnapshot } from "../lib/os/host/entitlements";
@@ -93,10 +94,27 @@ async function main() {
   ok("tradeline.insight: kernel-routed === lib/tradelineInsights (byte-identical)", res.ok && JSON.stringify(res.data) === JSON.stringify(direct));
 }
 
+// ---- Workflow / campaign compose (migration #9): deterministic, byte-identical ----
+{
+  const COMPOSE = "credit.campaign.compose" as CapabilityKey;
+  const k = appKernel({ clock: memoryClock() });
+  const mk = (over: Partial<ComposerItem>): ComposerItem => ({
+    tradelineId: "t1", creditorName: "Midland", accountType: "COLLECTION", isDebtBuyer: true, probability: "HIGH",
+    score: 80, recipientType: "bureau", strategyId: "fcra_611", strategyLabel: "FCRA §611", strategyReason: "cross-bureau conflict",
+    bureaus: ["EQUIFAX"], pastWindow: false, monthsToFallOff: 12, hasConflicts: true, duplicateGroup: null,
+    estimatedPages: 2, activeInvestigation: false, priorRounds: 0, lastOutcome: null, alreadyInFlight: false, ...over,
+  });
+  const items = [mk({ tradelineId: "t1" }), mk({ tradelineId: "t2", creditorName: "Portfolio Recovery", hasConflicts: false, probability: "MEDIUM", score: 55 })];
+  const direct = composeCampaign(items, { nextSequence: 1 });
+  const res = await k.dispatch(actor, COMPOSE, { items, nextSequence: 1 }, ent, "campaign");
+  ok("campaign.compose: available to all (deterministic → free)", k.resolve(COMPOSE, entitlementSnapshot({ premium: false })) === "available");
+  ok("campaign.compose: kernel-routed === lib/campaign (byte-identical)", res.ok && JSON.stringify(res.data) === JSON.stringify(direct));
+}
+
 // ---- Marketplace: capabilities are self-describing metadata ----
 {
   const m = appKernel({ clock: memoryClock() }).manifest();
-  ok("manifest: all 4 credit capabilities carry marketplace metadata", m.length === 4 && m.every((s) => s.description.length > 0 && s.plugin === "credit" && typeof s.premium === "boolean" && s.inputSchema.length > 0 && s.outputSchema.length > 0));
+  ok("manifest: all 5 credit capabilities carry marketplace metadata", m.length === 5 && m.every((s) => s.description.length > 0 && s.plugin === "credit" && typeof s.premium === "boolean" && s.inputSchema.length > 0 && s.outputSchema.length > 0));
   ok("manifest: premium classification correct (analyze paid, obsolescence free)", m.find((s) => s.key === "credit.response.analyze")!.premium && !m.find((s) => s.key === "credit.obsolescence.window")!.premium);
 }
 }

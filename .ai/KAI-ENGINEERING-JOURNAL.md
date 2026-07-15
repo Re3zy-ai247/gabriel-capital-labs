@@ -48,8 +48,14 @@ including **byte-identical** equivalence. **No live route rewired yet — additi
 - **GIOS reframe:** the founder renamed the platform **GIOS (Gabriel Intelligence Operating System)** — CreditVector is Plugin #1 / the reference implementation. **No architecture change** (same kernel/plugin model); only positioning + the Dashboard title.
 - **Disciplined deferral (the founder's own rule):** Layer-2 services (Agent Runtime / SDK / global Memory Graph / Marketplace UI / Observability) are built AS the migration reaches them or when a plugin needs them — **not speculatively**. The Agent Runtime overlaps the Intelligence Layer (ADR-0023), which is gated behind the ABI freeze (Sprint 3). Building it now would generalize from zero agents (R8). So: continue the migration; the platform services land on evidence.
 
+### M10 — Increment 5: Workflow / campaign compose (#9)
+- **Migration #9 — Workflow:** `credit.campaign.compose` wraps `lib/campaign.composeCampaign` (deterministic dispute sequencing — ranks disputable items by evidence, applies the per-recipient ceiling, and emits included/deferred/excluded decisions + warnings + next-unlock). **Byte-identical** (`JSON.stringify(kernel) === JSON.stringify(direct)`), available to all (deterministic → free). Five `credit.*` capabilities now route through the kernel.
+- **Why this was the right #9:** the composer is a pure function — no clocks, no randomness, no I/O — so it's the first *workflow*/orchestration capability yet needs no new kernel primitive. It proves the ABI hosts multi-item orchestration, not just single-item transforms, with the same wrap-and-prove discipline. No ABI change.
+- **Confidence mapping (honest, not fabricated):** the receipt reuses the composer's own `rationale` + counts of included items / warnings; confidence is `high` when `hasRecommendation`, else `insufficient` — reading the engine's own signal rather than inventing one.
+- **Discipline held:** additive only; no live route flipped; the existing composer + its UI are untouched. The `expanded`/`nextSequence` options pass straight through — no reinterpretation.
+
 ### Architecture-flaw watch
-Increments 1–4: no architecture flaw. One ABI refinement (async `execute`, Inc 2); the rest additive (Marketplace metadata, audit shape, 4 wrapped capabilities). Post-migration red team: capabilities are reusable platform infra (✓ another plugin consumes the manifest/kernel unchanged). The architecture is not wrong; we continue.
+Increments 1–5: no architecture flaw. One ABI refinement (async `execute`, Inc 2); the rest additive (Marketplace metadata, audit shape, 5 wrapped capabilities incl. the first workflow). Post-migration red team: capabilities are reusable platform infra (✓ another plugin consumes the manifest/kernel unchanged); a multi-item workflow fit the contract with zero new primitives. The architecture is not wrong; we continue.
 
 ---
 

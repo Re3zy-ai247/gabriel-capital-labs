@@ -7,6 +7,7 @@ import { buildContext, renderTemplateLetter, type LetterTradeline, type LetterCo
 import { analyzeResponse } from "@/lib/round2";
 import { obsolescenceWindowYears } from "@/lib/obsolescence";
 import { fallOffInsight } from "@/lib/tradelineInsights";
+import { composeCampaign, type ComposerItem } from "@/lib/campaign";
 import type { Bureau, AccountType } from "@prisma/client";
 import type { CapabilityKey, CapabilitySpec, KaiModule, ModuleResult, OsContext } from "@/lib/os/kernel";
 
@@ -27,6 +28,7 @@ const DRAFT = "credit.letter.draft" as CapabilityKey;
 const ANALYZE = "credit.response.analyze" as CapabilityKey;
 const OBSOLESCENCE = "credit.obsolescence.window" as CapabilityKey;
 const INSIGHT = "credit.tradeline.insight" as CapabilityKey;
+const COMPOSE = "credit.campaign.compose" as CapabilityKey;
 
 // Input for credit.response.analyze (migration #6 — Response Intelligence, AI-backed/async).
 export interface AnalyzeResponseInput { originalLetter: string; responseText: string }
@@ -43,6 +45,11 @@ export interface InsightInput { accountType: AccountType; creditorName?: string 
 function isInsightInput(x: unknown): x is InsightInput {
   return !!x && typeof x === "object" && typeof (x as InsightInput).accountType === "string" && "bureauData" in (x as object);
 }
+// Input for credit.campaign.compose (migration #9 — Workflow: deterministic dispute sequencing).
+export interface ComposeInput { items: ComposerItem[]; nextSequence?: number; expanded?: boolean }
+function isComposeInput(x: unknown): x is ComposeInput {
+  return !!x && typeof x === "object" && Array.isArray((x as ComposeInput).items);
+}
 
 const bad = (summary: string): ModuleResult => ({ ok: false, receipt: { summary, evidence: [] }, confidence: { level: "insufficient", basis: "guard" } });
 
@@ -56,6 +63,7 @@ export function creditModule(): KaiModule {
       { key: ANALYZE, description: "Analyze a bureau/furnisher response and surface escalation grounds.", version: 1, owner: "credit-team", plugin: "credit", premium: true, experimental: false, securityClass: "regulated", requiredPermissions: ["responses:analyze"], inputSchema: "{ originalLetter, responseText }", outputSchema: "{ outcome, summary, weaknesses, recommendedNextStep }", compliance: { regimes: ["FCRA", "FDCPA"], permissiblePurposes: ["dispute", "response_analysis", "escalation"] }, reasoning: "generative" },
       { key: OBSOLESCENCE, description: "Compute the FCRA §605 obsolescence window (years) for an item.", version: 1, owner: "credit-team", plugin: "credit", premium: false, experimental: false, securityClass: "regulated", requiredPermissions: ["obsolescence:check"], inputSchema: "{ accountType, creditorName?, text? }", outputSchema: "{ years }", compliance: { regimes: ["FCRA"], permissiblePurposes: ["dispute", "obsolescence"] }, reasoning: "deterministic" },
       { key: INSIGHT, description: "§605 fall-off analysis for a tradeline (window, fall-off date, months remaining).", version: 1, owner: "credit-team", plugin: "credit", premium: false, experimental: false, securityClass: "regulated", requiredPermissions: ["tradeline:read"], inputSchema: "{ accountType, creditorName?, bureauData, dateOfFirstDelinquency? }", outputSchema: "{ windowYears, fallOffDate, monthsRemaining, pastWindow } | null", compliance: { regimes: ["FCRA"], permissiblePurposes: ["dispute", "obsolescence"] }, reasoning: "deterministic" },
+      { key: COMPOSE, description: "Sequence disputable items into a focused dispute campaign (workflow).", version: 1, owner: "credit-team", plugin: "credit", premium: false, experimental: false, securityClass: "regulated", requiredPermissions: ["campaign:compose"], inputSchema: "{ items: ComposerItem[], nextSequence?, expanded? }", outputSchema: "{ items, rationale, warnings, nextUnlock, hasRecommendation, ... }", compliance: { regimes: ["FCRA"], permissiblePurposes: ["dispute", "campaign"] }, reasoning: "deterministic" },
     ],
     async execute(_ctx: OsContext, key: CapabilityKey, input: unknown): Promise<ModuleResult> {
       // credit.letter.draft — deterministic, sync. WRAPS lib/letter unchanged (byte-identical).
@@ -103,6 +111,18 @@ export function creditModule(): KaiModule {
           data: insight,
           receipt: { summary: `Falls off ${insight.fallOffDate.toISOString().slice(0, 10)} (${insight.monthsRemaining} months remaining)`, evidence: [`window: ${insight.windowYears}y`, `pastWindow: ${insight.pastWindow}`] },
           confidence: { level: "high", basis: "deterministic §605 fall-off (lib/tradelineInsights)" },
+        };
+      }
+      // credit.campaign.compose — deterministic. WRAPS lib/campaign.composeCampaign unchanged.
+      if (key === COMPOSE) {
+        if (!isComposeInput(input)) return bad("invalid input for credit.campaign.compose");
+        const composed = composeCampaign(input.items, { nextSequence: input.nextSequence, expanded: input.expanded });
+        const included = composed.items.filter((i) => i.decision === "included").length;
+        return {
+          ok: true,
+          data: composed,
+          receipt: { summary: composed.rationale, evidence: [`${included} item(s) included`, `${composed.warnings.length} warning(s)`] },
+          confidence: { level: composed.hasRecommendation ? "high" : "insufficient", basis: "deterministic campaign composer (lib/campaign)" },
         };
       }
       return bad(`unknown capability ${key}`);
