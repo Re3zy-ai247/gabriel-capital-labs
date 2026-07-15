@@ -2,7 +2,13 @@
 
 > Authoritative snapshot. Update after meaningful work; keep compact; move superseded detail to `ARCHIVE/`. Never turn this into a chronological log.
 
-**Last updated:** 2026-07-15 · **Branch:** `main` @ `2aaa4b9` (Sprints XII–XXII released) · **Prod:** LIVE at https://www.creditvector.app (Vercel auto-deploys on push to `main`)
+**Last updated:** 2026-07-15 · **Branch:** `main` @ `c855828` (Sprints XII–XXV released) · **Prod:** LIVE at https://www.creditvector.app (Vercel auto-deploys on push to `main`)
+
+**✅ PRODUCTION RELEASE 2026-07-15 (founder-approved) — Sprints XXIII + XXIV + XXV shipped to prod.** `main` fast-forwarded `72db116`→`c855828`, LINEAR history preserved (XXIII `be35806` → XXIV `3f5ac66` → XXV `091c2ac` → title-fix `c855828`), no squash/rewrite. Gate: tsc clean · **28/28 guards** · build clean. Verified in prod: mobile DashboardPreview fix live (`grid-cols-1` — no hidden 132px track); apex docs `CREDITVECTOR-OS.md` (§1) + `KAI-OS.md` (§2) in `INDEX.md`; all cross-refs resolve; APIs 401; MAIL_LIVE OFF (no provider request possible).
+- **Sprint XXIII:** mobile-first DashboardPreview recomposition + reusable motion primitives (`components/landing/motion/` Stagger/Parallax, reduced-motion-safe) + `ANIMATION-ARCHITECTURE.md` (design-only cinematic plan).
+- **Sprint XXIV (ADR-pending):** `.ai/CREDITVECTOR-OS.md` — the company/product constitution (13 sections, apex #1; philosophy, points to detailed docs).
+- **Sprint XXV:** `.ai/KAI-OS.md` — Kai's intelligence constitution (17 sections + Kai Agent Contract & Oath, apex #2). Reconciled Kai's CreditVector-role title Chief→**Credit** Intelligence Officer in `KAI-INTELLIGENCE.md`.
+- **Backlog (Low):** the company-level brand-IP character title ("Chief Intelligence Officer of the room he's standing in") in `creative/` + `BRAND-UNIVERSE.md` is founder-locked (ADR-0008) and intentionally UNCHANGED — reconciling product-title vs company-character-title is a **founder decision + ADR**, not a copy edit.
 
 **✅ PRODUCTION RELEASE 2026-07-15 (founder-approved) — Sprints XXI + XXII shipped to prod.** `main` fast-forwarded `92e09d2`→`b10cbad` (XXI) then `b10cbad`→`2aaa4b9` (XXII), no squash/rewrite. Verified in prod: `/academy` + `/builder` (restored modules) → 200; landing shows "Credit Intelligence Officer" (Kai repositioned, "master agent" gone); APIs 401; MAIL_LIVE OFF.
 - **Sprint XXI (ADR-0021):** Letter Intelligence (recipient-differentiated dispute letters, CCO GO) · Credit Builder page `/builder` (educational-vs-data-driven planners) · CreditVector Academy `/academy` (`lib/academy.ts`, 8-level file-connected progression, elevated Knowledge Journey) · Readiness → first-class Executive Queue signal · nav restored. Guards 28/28.
