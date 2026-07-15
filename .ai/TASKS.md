@@ -25,6 +25,10 @@ Compact, current-only. Done items get deleted (history lives in git). Company ba
 - [ ] Fast-follow: surface own verified-outcome history in `recommendationIntel` + `forecast` panels (tradelines/letters), not just Mission Control — pass `ownOutcomeTrack` in and add a gate-free own-history line via `ownTrackLine`.
 - [ ] When the CCO opens `consumerDisplayApproved`: point the cross-user aggregation at `ledgerCorpus` (the durable, provenance-tagged source) and retire the dormant Letters-based `buildOutcomeCorpus`.
 
+## Sprint XV — Credit Intelligence Platform (shipped to working tree, ADR-0015)
+- [ ] Follow-up: unify `getMissionControl` onto the platform `loadSnapshot` so the dashboard loads the case once (today it calls both — overlapping userId-scoped reads). Makes Mission Control thinner, per the platform principle.
+- [ ] Future modules (Funding Hub, Credit Builder, Business Credit, Monitoring, Mobile, AI API) MUST consume `@/lib/intelligence` — never compute their own intelligence.
+
 ## Engineering (next up)
 - [ ] Regenerate favicon/PWA/OG from de-shadowed `logo-mark.png`
 - [ ] Letters/upload server-prefetch — deliberately deferred until CX-1 conversational letter flow (restructuring those pages first avoids rework)
