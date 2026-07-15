@@ -6,14 +6,19 @@
 import type { CapabilityKey, EntitlementSnapshot, Permission } from "@/lib/os/kernel";
 
 const DRAFT = "credit.letter.draft" as CapabilityKey;
+const ANALYZE = "credit.response.analyze" as CapabilityKey;
 
-// `premium` mirrors lib/entitlements.isPremium. Increment 1: letter drafting is available to
-// every authenticated user (matching today's behavior — the monthly free-letter LIMIT is a
-// downstream policy at the save step, and will migrate to a PEP policy provider later).
-export function entitlementSnapshot(_opts: { premium: boolean }): EntitlementSnapshot {
+// `premium` mirrors lib/entitlements.isPremium. Letter drafting is available to every
+// authenticated user (today's behavior; the monthly free-letter LIMIT is a downstream policy
+// that migrates to a PEP provider later). Response Intelligence is a paid capability today
+// (AI tools are a Professional feature) — so it's flagged live but granted only to premium.
+export function entitlementSnapshot(opts: { premium: boolean }): EntitlementSnapshot {
+  const caps = new Set<CapabilityKey>([DRAFT]);
+  const perms = new Set<Permission>(["letters:generate"]);
+  if (opts.premium) { caps.add(ANALYZE); perms.add("responses:analyze"); }
   return {
-    grantedCapabilities: new Set<CapabilityKey>([DRAFT]),
-    flags: new Map<CapabilityKey, boolean>([[DRAFT, true]]),
-    grantedPermissions: new Set<Permission>(["letters:generate"]),
+    grantedCapabilities: caps,
+    flags: new Map<CapabilityKey, boolean>([[DRAFT, true], [ANALYZE, true]]),
+    grantedPermissions: perms,
   };
 }

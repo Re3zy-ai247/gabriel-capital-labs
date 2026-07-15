@@ -71,8 +71,9 @@ export class Kernel {
     };
   }
 
-  // ---- Dispatch (the syscall): authorize → execute → audit + emit. Idempotent. ----
-  dispatch(actor: Actor, key: CapabilityKey, input: unknown, ent: EntitlementSnapshot, purpose: PurposeToken, idempotencyKey?: string): ModuleResult {
+  // ---- Dispatch (the syscall): authorize → execute → audit + emit. Idempotent. Async so
+  //      generative/retrieval capabilities (which await a provider) work uniformly. ----
+  async dispatch(actor: Actor, key: CapabilityKey, input: unknown, ent: EntitlementSnapshot, purpose: PurposeToken, idempotencyKey?: string): Promise<ModuleResult> {
     const ctx = this.buildContext(actor, ent);
     const decision = authorize(actor, key, purpose, this.registry, ent);
     if (!decision.allow) {
@@ -84,7 +85,7 @@ export class Kernel {
       return { ok: true, receipt: { summary: "idempotent replay", evidence: [] }, confidence: { level: "high", basis: "prior execution" } };
     }
     const mod = this.registry.moduleFor(key)!; // guaranteed by authorize()
-    const result = mod.execute(ctx, key, input);
+    const result = await mod.execute(ctx, key, input);
     ctx.audit({ actorId: actor.id, tenantId: actor.tenantId, key, decision: result.ok ? "allow" : "error", reason: result.receipt.summary });
     if (idempotencyKey) this.idem.mark(`op:${idempotencyKey}`);
     ctx.emit(`${key}.done`, { ok: result.ok }, idempotencyKey ?? `${key}:${stamp(this.ports.clock).version}`);

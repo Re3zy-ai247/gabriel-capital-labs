@@ -65,9 +65,12 @@ export interface KaiModule {
   name: string;               // "Kai Credit"
   trust: TrustTier;
   capabilities(): CapabilitySpec[];
-  // Pure over the already-loaded OsContext — NO new DB reads. Returns the deterministic
-  // result; the kernel wraps it with authorization, audit, and events.
-  execute(ctx: OsContext, key: CapabilityKey, input: unknown): ModuleResult;
+  // Executes a capability over the already-loaded OsContext. Deterministic capabilities are
+  // pure + synchronous (return a value); retrieval/generative capabilities are async (they
+  // await a provider). ABI refinement (Sprint 2 Inc 2): async is required — a real capability
+  // (response intelligence) is AI-backed. The kernel awaits it and wraps it with
+  // authorization, audit, and events. (ABI stays unfrozen until Sprint 3 for exactly this.)
+  execute(ctx: OsContext, key: CapabilityKey, input: unknown): ModuleResult | Promise<ModuleResult>;
 }
 
 // ---- Policy (PDP) & entitlement providers (POLICY lives in plugins, not the kernel) ----

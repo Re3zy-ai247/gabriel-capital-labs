@@ -88,8 +88,8 @@ const bob: Actor = { id: "u_bob", tenantId: "t_b", trust: "first_party" };
   ok("PEP: deny when not entitled", !authorize(alice, CREATE, "dispute", r, ent({ caps: [] })).allow);
 }
 
-// ---- 6-9. Kernel: dispatch, idempotency, tenant isolation, audit, events ----
-{
+// ---- 6-9 + 10: async kernel behaviors (in main() — this package is CJS, no top-level await) ----
+async function main() {
   ran = 0;
   const audit = inMemoryAudit(), events = inMemoryEventLog();
   const bnode: MemoryNode = { id: "n1", type: "tradeline", tenantId: "t_b", regime: "FCRA", stamp: { validTime: "x", txTime: "x", version: 1 as Version }, data: {} };
@@ -100,17 +100,17 @@ const bob: Actor = { id: "u_bob", tenantId: "t_b", trust: "first_party" };
   let delivered = 0; k.subscribe("credit.*", () => { delivered++; });
 
   // dispatch: authorized executes + audits allow + emits
-  const r1 = k.dispatch(alice, CREATE, {}, ent(), "dispute", "op-1");
+  const r1 = await k.dispatch(alice, CREATE, {}, ent(), "dispute", "op-1");
   ok("dispatch: authorized runs the module", r1.ok && ran === 1);
   ok("dispatch: emitted event delivered to subscriber", delivered === 1);
   ok("dispatch: audit recorded an allow", audit.entries().some((e) => e.key === CREATE && e.decision === "allow"));
 
   // idempotency: same op key does NOT re-execute
-  const r2 = k.dispatch(alice, CREATE, {}, ent(), "dispute", "op-1");
+  const r2 = await k.dispatch(alice, CREATE, {}, ent(), "dispute", "op-1");
   ok("dispatch: idempotent — not re-executed (no double action)", r2.ok && ran === 1);
 
   // denial: not re-executed, denial result, audit deny
-  const r3 = k.dispatch(alice, CREATE, {}, ent(), "marketing", "op-2");
+  const r3 = await k.dispatch(alice, CREATE, {}, ent(), "marketing", "op-2");
   ok("dispatch: denied → not executed + denial result", !r3.ok && ran === 1 && /denied/.test(r3.receipt.summary));
   ok("dispatch: denial audited", audit.entries().some((e) => e.decision === "deny"));
 
@@ -129,16 +129,18 @@ const bob: Actor = { id: "u_bob", tenantId: "t_b", trust: "first_party" };
   const before = delivered;
   ctxA.emit("credit.test", {}, "same-id"); ctxA.emit("credit.test", {}, "same-id");
   ok("event bus: idempotent redelivery (once per subscriber)", delivered === before + 1);
-}
 
-// ---- 10. Integration: full happy path + compliance stop ----
-{
+  // ---- 10. Integration: full happy path + compliance stop ----
   ran = 0;
-  const k = new Kernel({ clock: memoryClock(), audit: inMemoryAudit(), events: inMemoryEventLog(), memory: inMemoryMemory() });
-  k.register(creditModule()); k.registerPolicy(compliancePDP);
-  ok("integration: resolve→available then dispatch(dispute) runs", k.resolve(CREATE, ent()) === "available" && k.dispatch(alice, CREATE, {}, ent(), "dispute").ok && ran === 1);
-  ok("integration: compliance stops a bad-purpose call", !k.dispatch(alice, CREATE, {}, ent(), "marketing").ok);
+  const ik = new Kernel({ clock: memoryClock(), audit: inMemoryAudit(), events: inMemoryEventLog(), memory: inMemoryMemory() });
+  ik.register(creditModule()); ik.registerPolicy(compliancePDP);
+  const run = await ik.dispatch(alice, CREATE, {}, ent(), "dispute");
+  ok("integration: resolve→available then dispatch(dispute) runs", ik.resolve(CREATE, ent()) === "available" && run.ok && ran === 1);
+  const denied = await ik.dispatch(alice, CREATE, {}, ent(), "marketing");
+  ok("integration: compliance stops a bad-purpose call", !denied.ok);
 }
 
-console.log(failures === 0 ? "\nAll Kai Kernel guards passed." : `\n${failures} guard(s) failed.`);
-process.exit(failures === 0 ? 0 : 1);
+main().then(() => {
+  console.log(failures === 0 ? "\nAll Kai Kernel guards passed." : `\n${failures} guard(s) failed.`);
+  process.exit(failures === 0 ? 0 : 1);
+});

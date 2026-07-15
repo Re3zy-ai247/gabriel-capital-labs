@@ -3,6 +3,7 @@
 // the Registry, Capability Resolution, the PEP, and Audit. Pure — no DB, no AI.
 // Run: npx tsx scripts/credit-plugin.test.ts
 import { buildContext, renderTemplateLetter, type LetterTradeline, type LetterConsumer } from "../lib/letter";
+import { analyzeResponse } from "../lib/round2";
 import { appKernel } from "../lib/os/host/kernel";
 import { actorFromSession } from "../lib/os/host/identity";
 import { entitlementSnapshot } from "../lib/os/host/entitlements";
@@ -28,13 +29,12 @@ const ent = entitlementSnapshot({ premium: true });
   ok("resolution: unmigrated capability is unavailable (not registered yet)", k.resolve("credit.dispute.escalate" as CapabilityKey, ent) === "unavailable");
 }
 
+async function main() {
 // ---- BYTE-IDENTICAL equivalence (wrap, don't rewrite) ----
 {
-  // Direct call to the existing engine.
   const direct = renderTemplateLetter(tradeline, buildContext("fcra_611", tradeline, consumer, "EQUIFAX", 1), consumer);
-  // Same call, routed through the Kai Kernel.
   const k = appKernel({ clock: memoryClock() });
-  const res = k.dispatch(actor, DRAFT, input, ent, "dispute");
+  const res = await k.dispatch(actor, DRAFT, input, ent, "dispute");
   ok("dispatch: authorized + ok", res.ok);
   ok("ZERO BEHAVIOR CHANGE: kernel-routed letter === direct engine output (byte-identical)", res.ok && (res.data as { letter: string }).letter === direct);
   ok("receipt cites the strategy (explainable)", /FCRA §611/i.test(res.receipt.summary) || res.receipt.evidence.some((e) => /fcra_611/.test(e)));
@@ -44,19 +44,35 @@ const ent = entitlementSnapshot({ premium: true });
 {
   const audit = inMemoryAudit();
   const k = appKernel({ clock: memoryClock(), audit });
-  k.dispatch(actor, DRAFT, input, ent, "dispute");
+  await k.dispatch(actor, DRAFT, input, ent, "dispute");
   ok("audit: the draft flowed through the append-only audit log (allow)", audit.entries().some((e) => e.key === DRAFT && e.decision === "allow"));
 }
 
 // ---- The PEP actually gates (default-deny) ----
 {
   const k = appKernel({ clock: memoryClock() });
-  ok("PEP: non-permissible purpose denied", !k.dispatch(actor, DRAFT, input, ent, "marketing").ok);
+  ok("PEP: non-permissible purpose denied", !(await k.dispatch(actor, DRAFT, input, ent, "marketing")).ok);
   const noPerm = { ...ent, grantedPermissions: new Set<string>() };
-  ok("PEP: missing permission denied", !k.dispatch(actor, DRAFT, input, noPerm, "dispute").ok);
+  ok("PEP: missing permission denied", !(await k.dispatch(actor, DRAFT, input, noPerm, "dispute")).ok);
   const notFlagged = { ...ent, flags: new Map([[DRAFT, false]]) };
-  ok("PEP: flagged-off capability denied (coming_soon)", !k.dispatch(actor, DRAFT, input, notFlagged, "dispute").ok);
+  ok("PEP: flagged-off capability denied (coming_soon)", !(await k.dispatch(actor, DRAFT, input, notFlagged, "dispute")).ok);
 }
 
-console.log(failures === 0 ? "\nAll Kai Credit plugin guards passed." : `\n${failures} guard(s) failed.`);
-process.exit(failures === 0 ? 0 : 1);
+// ---- Response Intelligence (migration #6): async capability, wraps lib/round2 ----
+{
+  const ANALYZE = "credit.response.analyze" as CapabilityKey;
+  const k = appKernel({ clock: memoryClock() });
+  ok("response.analyze: premium → available", k.resolve(ANALYZE, ent) === "available");
+  ok("response.analyze: gated to premium (free → not_entitled)", k.resolve(ANALYZE, entitlementSnapshot({ premium: false })) === "not_entitled");
+  // Equivalence: the kernel-routed capability delegates to lib/round2 — both agree (null → not-ok
+  // in this env; no fabrication). Proves the async ABI + wrap without a live AI key.
+  const direct = await analyzeResponse("original letter text", "short");
+  const res = await k.dispatch(actor, ANALYZE, { originalLetter: "original letter text", responseText: "short" }, ent, "response_analysis");
+  ok("response.analyze: delegation matches lib/round2 (async ABI, no fabrication)", (direct === null) === (!res.ok));
+}
+}
+
+main().then(() => {
+  console.log(failures === 0 ? "\nAll Kai Credit plugin guards passed." : `\n${failures} guard(s) failed.`);
+  process.exit(failures === 0 ? 0 : 1);
+});

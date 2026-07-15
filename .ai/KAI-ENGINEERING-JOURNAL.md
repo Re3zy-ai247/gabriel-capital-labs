@@ -32,8 +32,14 @@ including **byte-identical** equivalence. **No live route rewired yet — additi
 ### M6 — In-memory adapters now; durable Audit/Memory are subsystems #11/#12
 - Per R8 (don't build persistence infra early), Increment 1 uses the reference in-memory Audit/Event/Memory adapters. The **durable Postgres append-only audit + monotonic version (DB sequence) + the Kai Memory Graph** land when migration reaches #11/#12 — same port shapes, no kernel change.
 
+### M7 — Increment 2 (Response Intelligence): the first implementation-driven ABI refinement
+- **What implementation exposed:** `credit.response.analyze` wraps `lib/round2.analyzeResponse`, which is **async** (it awaits the AI provider). The Module Contract's `execute` was synchronous — it couldn't host a retrieval/generative capability.
+- **Was it an architecture flaw?** No — it's the **expected ABI evolution** the reference implementation exists to surface (which is exactly why we don't freeze the ABI until Sprint 3). The kernel, plugin model, and Covenant are unchanged.
+- **Minimum correction:** `execute(): ModuleResult | Promise<ModuleResult>`; `dispatch` is now `async` and awaits it. Deterministic capabilities stay sync; generative ones are async — one uniform path.
+- **Migration:** `credit.response.analyze` is gated to premium (AI tools are a paid feature) via the entitlement snapshot — a real use of Capability Resolution. Equivalence proven by delegation (both paths agree; no live AI key needed, no fabrication).
+
 ### Architecture-flaw watch
-None found this increment. The contract held: wrapping an existing pure engine behind `KaiModule.execute` was clean, and the PEP/audit/resolution path produced identical output. Per the rule ("no more architecture unless implementation proves it wrong"), we continue.
+Increment 1: none. Increment 2: one ABI refinement (async `execute`), evidence-driven, minimum change — **not** a redesign. Per the rule ("no more architecture unless implementation proves it wrong"), the architecture is not wrong; we continue.
 
 ---
 
