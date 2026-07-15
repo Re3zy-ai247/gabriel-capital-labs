@@ -6,6 +6,37 @@
 
 ---
 
+## 2026-07-15 — Sprint 2 (Increment 1): CreditVector becomes Plugin #1
+Migration items #1–#5 (Identity · Capability Resolution · Registry · Dispute/Letter engine).
+`lib/os/host/` + `lib/os/modules/credit/`; 9 guards green (`scripts/credit-plugin.test.ts`),
+including **byte-identical** equivalence. **No live route rewired yet — additive + proven first.**
+
+### M1 — Wrap, never rewrite (proven byte-identical)
+- **Why:** the dispute engine is valuable IP and is battle-tested in prod; the Covenant + the ratified plan say wrap it.
+- **How:** `creditModule().execute()` for `credit.letter.draft` **delegates** to the unchanged `buildContext` + `renderTemplateLetter` (`lib/letter`). A guard asserts the kernel-routed output **=== the direct engine output, byte for byte.**
+- **Migration:** subsequent capabilities (dispute/response/investigation/…) wrap their existing engines the same way; each proven equivalent before any route flips.
+
+### M2 — Additive migration; routes flip only after per-capability equivalence
+- **Why:** "zero regression" — the safest path is to build the kernel path, **prove it equals prod**, then switch the route (behind a flag, with the old path as fallback). Increment 1 does NOT touch live routes; it establishes the path + the proof.
+- **Tradeoff:** temporary duplication (both paths exist) until a capability's route flips. Worth it for zero-risk migration.
+
+### M3 — Actor tenant mapping
+- `actorFromSession(user, dataOwnerId?)`: `tenantId` = the data-owning scope — a consumer's own id, or an agency-worked client's id (the same id existing queries scope by). Trust = first_party. **Open item:** the agency "acting as client" path passes `dataOwnerId` explicitly; wire that when the agency flows migrate.
+
+### M4 — The plan→capability map is the Capability Engine, grown incrementally
+- `entitlementSnapshot()` is the ADR-0022 Capability Engine realized — built once per request (single-load). Increment 1 declares one capability; it grows as subsystems migrate. The **free-letter monthly limit** stays a downstream policy for now and will migrate to a **PEP policy provider** (nice example of policy-as-plugin) in a later increment.
+
+### M5 — Idempotency is for outward/mutating capabilities, not pure drafts
+- `credit.letter.draft` is pure/repeatable → dispatched **without** an idempotency key (a replay stub would be wrong for a pure read). Idempotency keys attach to mutating capabilities (`…send`, `…mail`, `…charge`). The kernel mechanism is tested in `kernel.test.ts`.
+
+### M6 — In-memory adapters now; durable Audit/Memory are subsystems #11/#12
+- Per R8 (don't build persistence infra early), Increment 1 uses the reference in-memory Audit/Event/Memory adapters. The **durable Postgres append-only audit + monotonic version (DB sequence) + the Kai Memory Graph** land when migration reaches #11/#12 — same port shapes, no kernel change.
+
+### Architecture-flaw watch
+None found this increment. The contract held: wrapping an existing pure engine behind `KaiModule.execute` was clean, and the PEP/audit/resolution path produced identical output. Per the rule ("no more architecture unless implementation proves it wrong"), we continue.
+
+---
+
 ## 2026-07-15 — Sprint 1: the hardened Kai Kernel (`lib/os/kernel/`)
 Governed by ADR-0024/0025/0026. Pure, mechanism-only, 33 guards green (`scripts/kernel.test.ts`).
 
