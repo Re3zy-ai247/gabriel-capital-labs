@@ -4,10 +4,12 @@ import { currentUserOrDemo } from "@/lib/session";
 import { getMissionControl } from "@/lib/missionControl";
 import { creditIntelligence } from "@/lib/intelligence";
 import { assembleMissions } from "@/lib/missionEngine";
+import { buildRoadmap } from "@/lib/roadmap";
 import { MissionControl } from "@/components/mission/MissionControl";
 import { CommandCenter } from "@/components/mission/CommandCenter";
 import { ReadinessStrip } from "@/components/mission/ReadinessStrip";
 import { MissionQueue } from "@/components/mission/MissionQueue";
+import { RoadmapView } from "@/components/mission/RoadmapView";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +31,8 @@ export default async function DashboardPage() {
   // The Mission Engine ranks the CVI opportunities + Mission Control windows into
   // one prioritized queue — PURE over what's already loaded (no extra queries).
   const mission = assembleMissions(intel, data);
+  // The Roadmap Engine sequences the same already-loaded data into the journey view.
+  const roadmap = buildRoadmap(intel, mission, data);
 
   return (
     <AppShell title="/ Mission Control">
@@ -37,6 +41,7 @@ export default async function DashboardPage() {
       {/* The full operating-system summary appears once there's a case to summarize —
           a first-time user (no report yet) sees only the single upload mission. */}
       {data.hasReport && <MissionQueue mission={mission} />}
+      {data.hasReport && <RoadmapView roadmap={roadmap} />}
       {data.hasReport && <ReadinessStrip intel={intel} />}
       {data.hasReport && <CommandCenter data={data} />}
       <Disclaimer />
