@@ -8,7 +8,7 @@ import Link from "next/link";
 import type { ExecutionResult, ExecutionItem } from "@/lib/execution";
 import type { PriorityBand, MissionState, Level } from "@/lib/missionEngine";
 import {
-  Target, Clock, ArrowUpRight, Lock, AlertTriangle, Sparkles, ListChecks, ChevronDown, ShieldAlert,
+  Target, Clock, ArrowUpRight, Lock, AlertTriangle, Sparkles, ListChecks, ChevronDown, ShieldAlert, Gauge,
 } from "lucide-react";
 
 const BAND_DOT: Record<PriorityBand, string> = { critical: "bg-rose-400", high: "bg-gold-400", medium: "bg-ocean-400", low: "bg-slate-500" };
@@ -20,7 +20,7 @@ const RISK_TONE: Record<"high" | "medium" | "low", string> = { high: "text-rose-
 const ACTIONABLE: ReadonlySet<MissionState> = new Set<MissionState>(["available", "needs_review", "in_progress"]);
 
 export function ExecutiveQueue({ execution }: { execution: ExecutionResult }) {
-  const { today, biggestUnlock, caseRisk, buckets, note } = execution;
+  const { today, biggestUnlock, caseRisk, readiness, buckets, note } = execution;
   const visible = buckets.filter((b) => b.items.length > 0);
   if (visible.length === 0) return null;
 
@@ -42,6 +42,16 @@ export function ExecutiveQueue({ execution }: { execution: ExecutionResult }) {
           title={caseRisk.level === "high" ? "Time-sensitive" : caseRisk.level === "medium" ? "Worth watching" : "Nothing at risk"}
           sub={caseRisk.note} tone={RISK_TONE[caseRisk.level]} />
       </div>
+
+      {/* Readiness — a first-class signal feeding the queue (Phase 4). */}
+      {readiness.focus && (
+        <div className="card flex flex-wrap items-center gap-x-3 gap-y-1 p-3 text-[12px]">
+          <span className="pill inline-flex items-center gap-1 bg-ink-700 text-slate-300"><Gauge className="h-2.5 w-2.5" aria-hidden />Readiness: {readiness.band}</span>
+          <span className="text-slate-300">Next goal: <span className="font-medium text-slate-100">{readiness.focus.label}</span></span>
+          {readiness.focus.blocker && <span className="min-w-0 text-slate-400">· {readiness.focus.blocker}</span>}
+          <span className="text-slate-500">· {readiness.focus.timeline}</span>
+        </div>
+      )}
 
       {visible.map((b) => (
         <div key={b.key}>

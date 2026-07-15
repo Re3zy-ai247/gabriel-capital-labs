@@ -58,6 +58,7 @@ function build(over: Partial<IntelSnapshot> = {}, mcOver: Partial<MissionControl
   const { execution: e, mission } = build();
   ok("five buckets, in order", e.buckets.map((b) => b.key).join(",") === "DO_NOW,WAITING,BLOCKED,OPTIONAL,COMPLETED");
   ok("counts match bucket lengths", e.buckets.every((b) => e.counts[b.key] === b.items.length));
+  ok("readiness signal present (Phase 4, reused CVI readiness)", !!e.readiness && ["Not ready", "Building", "Strong", "Unknown"].includes(e.readiness.band) && /not a lending decision/i.test(e.readiness.note));
   const all = e.buckets.flatMap((b) => b.items);
   ok("every item is cited (no uncited recommendations)", all.length > 0 && all.every((i) => i.citations.mission.length > 0));
   ok("every item has required fields", all.every((i) => i.title && i.requiredAction && i.expectedOutcome && i.ifIgnored && i.timeline && i.evidence));

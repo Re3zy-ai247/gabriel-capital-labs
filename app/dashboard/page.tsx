@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { GraduationCap, ArrowUpRight } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Disclaimer, EduBanner } from "@/components/Disclaimer";
 import { currentUserOrDemo } from "@/lib/session";
@@ -8,6 +10,7 @@ import { buildRoadmap } from "@/lib/roadmap";
 import { buildBuilder } from "@/lib/builder";
 import { financialGraph } from "@/lib/knowledge";
 import { assembleExecution } from "@/lib/execution";
+import { buildAcademy } from "@/lib/academy";
 import { MissionControl } from "@/components/mission/MissionControl";
 import { ExecutiveQueue } from "@/components/mission/ExecutiveQueue";
 import { CommandCenter } from "@/components/mission/CommandCenter";
@@ -43,6 +46,7 @@ export default async function DashboardPage() {
   // The Execution Engine (Sprint XX) orchestrates all of the above into ONE
   // Executive Queue — pure, no new query, composed from the already-loaded engines.
   const execution = assembleExecution({ intel, mission, roadmap, builder, knowledge, mc: data, snap });
+  const academy = buildAcademy(snap); // pure over the already-loaded snapshot
 
   return (
     <AppShell title="/ Mission Control">
@@ -51,6 +55,19 @@ export default async function DashboardPage() {
       {/* The full operating-system summary appears once there's a case to summarize —
           a first-time user (no report yet) sees only the single upload mission. */}
       {data.hasReport && <ExecutiveQueue execution={execution} />}
+      {data.hasReport && academy.nextLesson && (
+        <Link href="/academy" className="mb-4 block">
+          <div className="card flex items-center gap-3 p-4 transition-colors hover:bg-ink-800/40">
+            <GraduationCap className="h-5 w-5 shrink-0 text-brand-300" aria-hidden />
+            <div className="min-w-0 flex-1">
+              <div className="text-[10px] font-bold uppercase tracking-widest text-brand-300">Continue learning · Academy</div>
+              <div className="text-sm font-semibold text-slate-100">Level {academy.nextLesson.level} — {academy.nextLesson.title}</div>
+              <div className="truncate text-[12px] text-slate-400">{academy.nextLesson.connection ?? academy.nextLesson.summary}</div>
+            </div>
+            <ArrowUpRight className="h-4 w-4 shrink-0 text-slate-500" aria-hidden />
+          </div>
+        </Link>
+      )}
       {data.hasReport && <MissionQueue mission={mission} />}
       {data.hasReport && <RoadmapView roadmap={roadmap} />}
       {data.hasReport && <KnowledgeJourney knowledge={knowledge} />}

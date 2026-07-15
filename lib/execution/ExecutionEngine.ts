@@ -17,7 +17,8 @@
 import type {
   Mission, FinancialMission, Level, MissionState, MissionTimelineEntry,
 } from "@/lib/missionEngine";
-import type { CreditIntelligence, IntelSnapshot } from "@/lib/intelligence";
+import type { CreditIntelligence, IntelSnapshot, ReadinessLevel } from "@/lib/intelligence";
+import { estimatedReadinessBand } from "@/lib/intelligence";
 import type { BuilderOS } from "@/lib/builder";
 import type { FinancialRoadmap } from "@/lib/roadmap";
 import type { FinancialKnowledge } from "@/lib/knowledge";
@@ -62,15 +63,42 @@ export interface ExecutionItem {
   citations: ExecutionCitations;
 }
 
+// Readiness promoted to a first-class signal feeding the Executive Queue (Sprint XXI,
+// Phase 4). NOT a new engine — it reads the CVI readiness the platform already
+// computed and surfaces the nearest goal + its blocker so the queue reflects where
+// the user is heading. Never a lending decision, never an approval prediction.
+export interface ReadinessSignal {
+  band: "Not ready" | "Building" | "Strong" | "Unknown";
+  focus: { goal: string; label: string; level: ReadinessLevel; blocker: string | null; timeline: string } | null;
+  note: string;
+}
+
 export interface ExecutionResult {
   hasReport: boolean;
   today: ExecutionItem | null;                                    // the single most important DO_NOW
   biggestUnlock: { title: string; unlock: string; itemId: string } | null;
   caseRisk: { level: "high" | "medium" | "low"; note: string };   // "what happens if I do nothing"
+  readiness: ReadinessSignal;                                     // the readiness lens on the queue
   buckets: { key: ExecutionBucket; label: string; blurb: string; items: ExecutionItem[] }[];
   counts: Record<ExecutionBucket, number>;
   timeline: MissionTimelineEntry[];
   note: string;
+}
+
+// Reuse the already-computed CVI readiness — the nearest goal the file isn't ready
+// for, and the first prerequisite it's still failing (checks that pass are prefixed
+// "✓"). No new scoring; no fabricated approval odds.
+function readinessSignal(intel: CreditIntelligence, snap: IntelSnapshot): ReadinessSignal {
+  const focus = intel.readiness.find((r) => r.level === "not_ready") ?? intel.readiness.find((r) => r.level === "almost") ?? null;
+  return {
+    band: estimatedReadinessBand(snap),
+    focus: focus ? {
+      goal: focus.goal, label: focus.label, level: focus.level,
+      blocker: focus.reasons.find((r) => !/^✓/.test(r.text))?.text ?? null,
+      timeline: focus.estimatedTimeline,
+    } : null,
+    note: "Readiness reflects how your file lines up with common lending prerequisites — it is not a lending decision or an approval prediction.",
+  };
 }
 
 // Everything the pure assembler needs — all already computed on the dashboard.
@@ -202,6 +230,7 @@ export function assembleExecution(x: ExecutionInputs): ExecutionResult {
     today: doNow[0] ?? null,
     biggestUnlock: biggestUnlock(doNow, impactById),
     caseRisk: caseRisk(x.snap),
+    readiness: readinessSignal(x.intel, x.snap),
     buckets,
     counts,
     timeline: caseTimeline(x.mission),
