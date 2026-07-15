@@ -1,6 +1,9 @@
 # ADR-0024: The Kai Kernel — the immutable microkernel of Kai OS
 
-Status: **PROPOSED — for founder review before implementation** (challenge invited).
+Status: **Accepted (architecture)** — direction approved; Amendments #1–3 incorporated
+(mechanism-only kernel · Temporal substrate + Clock/Version primitive #9 in-kernel, Temporal
+Engine as a service · KaiDNA™/Kai Memory Graph branding); hardened by `KERNEL-RED-TEAM.md`.
+**Implementation gated on the founder's post-red-team go** (see the review's verdict).
 Refines ADR-0022/0023 (does not replace them).
 Date: 2026-07-15
 Decision owners: Founder directive ("What is the Kai Kernel?")
@@ -121,3 +124,44 @@ Everything under the 7-gate DoD (Article 23). Wrap, don't rewrite. Preview-first
 If you want an even smaller kernel, the only two primitives I'd consider *demoting* to
 privileged plugins are the Event Bus and Audit — but I recommend keeping them in-kernel
 because every module needs them and their trustworthiness must be beyond a plugin's reach.
+
+---
+
+## Addendum A — Temporal (Amendment #2): substrate in the kernel, engine as a service
+**Ruling (mechanism vs policy applied to time): split it.**
+- **In the kernel (mechanism, forever):** every record the kernel mediates (memory/graph
+  nodes, audit, decisions, events) is **append-only and bitemporal** — stamped with
+  **valid-time** (when it was true in the world) and **transaction-time** (when we learned
+  it) plus a **monotonic, kernel-issued version**. Nothing is ever overwritten; state is a
+  succession of immutable values (Hickey's epochal time — which is already our model:
+  self-healing append-only tables, a graph recomputed from immutable rows). This adds one
+  primitive: **#9 Clock/Version Authority** — the *single* source of ordering and version
+  issuance. No plugin may mint a timestamp or version (this also preserves our determinism
+  rule: no plugin calls `Date.now()`; the kernel supplies logical time). Tiny, stable, and
+  the backbone of causality, audit integrity, and reproducibility.
+- **Outside the kernel (a registered service, evolves):** the **Temporal Engine** — the
+  *rich* logic: as-of queries ("report before/after the dispute"), before/after diffs,
+  history replay, and **future-scheduled** actions. Heavy query/scheduling logic must not
+  live in the kernel; scheduling of future events uses a **durable scheduler** (cron/queue),
+  never an in-process timer.
+- **Why this split is the maintainable answer:** the *guarantee* (immutability, ordering,
+  versioning — "nothing is lost, everything is in time") is forever → kernel. The *features*
+  (time-travel queries, diffs, scheduling) will change for 20 years → service. Bake the
+  guarantee into the mechanism; keep the features replaceable.
+
+## Addendum B — Branding (Amendment #3): KaiDNA™ / Kai Memory Graph
+- **Implementation name (developers build against):** **Kai Memory Graph** — the
+  regime-tagged, consent-bound, financial-intelligence-scoped graph behind the Memory
+  Interface.
+- **Product name (users hear):** **KaiDNA™**.
+- Same relationship as Kubernetes→etcd, AWS→Nitro. Marketing uses KaiDNA™; the codebase,
+  ADRs, and schema use Kai Memory Graph. The three data constraints (regime+consent tagging
+  with permissible-purpose at the PEP · financial-intelligence scope · determinism/
+  fact-vs-inference) apply to the implementation regardless of the brand.
+
+## Red Team
+This design was subjected to an adversarial architecture review — see `KERNEL-RED-TEAM.md`.
+The hardening it produced (kernel-is-a-library-not-a-daemon on serverless · scoped
+event-sourcing · single-preloaded-context PEP · the shared graph is a governed integration
+contract · permissible-purpose is a counsel-designed legal model, graph stays FCRA-scoped
+until then · build incrementally by migrating Credit first) is binding on the implementation.

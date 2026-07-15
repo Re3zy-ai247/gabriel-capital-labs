@@ -439,8 +439,23 @@ analyst at your side — or it doesn't belong. When in doubt, return here.
 
 > Part I is *why* and *what it must feel like*. Part II is *how the system is built so it
 > can become a decade-long AI operating system without accumulating debt.* These are
-> principles; the implementable design lives in **ADR-0022 (Kai OS Module Architecture)**
-> and the docs each article names. Where an article states a rule, it is binding.
+> principles; the implementable design lives in **ADR-0022 (Module Architecture)**,
+> **ADR-0023 (Intelligence Layer)**, and **ADR-0024 (The Kai Kernel)** — the core is the
+> **Kernel** (mechanism, never business logic); the Capability Engine is one service
+> registered into it. Where an article states a rule, it is binding.
+>
+> **The governing law of Part II is `ADR-0025 — The Kai Kernel Covenant`** (13 immutable
+> invariants: the Kernel owns mechanisms not business logic · every capability is external,
+> registered, and replaceable · every policy is pluggable · deterministic-first, AI-last ·
+> everything auditable, explainable, and versioned-in-time · the user is sovereign ·
+> compliance is a Kernel invariant · the Kernel stays stable while the ecosystem evolves).
+> Where any ADR or line of code conflicts with the Covenant, the Covenant wins. The kernel
+> design was hardened by an adversarial review — `KERNEL-RED-TEAM.md` (binding: kernel is a
+> library + durable stores on serverless, not a daemon · event-sourcing scoped to facts/
+> decisions · single-preloaded-context PEP · the Memory Graph is a governed versioned
+> contract · permissible-purpose is counsel-designed and the graph stays FCRA-scoped until
+> then · **build incrementally — thin kernel, migrate Credit first, generalize from real
+> modules, no speculative breadth**).
 
 ## Article 14 — AI-First Principles
 - **Deterministic-first, AI-last.** The engines compute; AI is the last resort, invoked
