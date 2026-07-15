@@ -70,7 +70,7 @@ const AGENCY_POINTS = [
 const KAI_POINTS = [
   "Strategy on demand for any client — collections, charge-offs, reinvestigations, escalations",
   "Grounded in the FCRA/FDCPA and reviewed for CROA compliance",
-  "Included with every Agency plan — no add-ons",
+  "Part of CreditVector — extended across your whole client roster on Agency plans, no add-ons",
 ];
 
 const COMMUNITY_POINTS = [
@@ -132,7 +132,10 @@ export default function Home() {
                   <Sparkles className="h-5 w-5" />
                 </span>
                 <div className="min-w-0">
-                  <span className="rounded bg-brand-500/15 px-1.5 py-0.5 text-[10px] font-bold tracking-widest text-brand-300">KAI</span>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="rounded bg-brand-500/15 px-1.5 py-0.5 text-[10px] font-bold tracking-widest text-brand-300">KAI</span>
+                    <span className="text-xs font-semibold text-slate-300">Your Credit Intelligence Officer</span>
+                  </div>
                   <p className="mt-1.5 max-w-md text-sm leading-relaxed text-slate-300 pretty">
                     &ldquo;I read credit reports so you don&apos;t have to. Every recommendation comes with its receipt — the rule it fired on and, where the law applies, the statute.&rdquo;
                   </p>
@@ -286,15 +289,16 @@ export default function Home() {
               </Reveal>
             </div>
 
-            {/* Kai — AI master agent, included with every Agency plan */}
+            {/* Kai — CreditVector's Credit Intelligence Officer; Agency extends it across the roster + Community Hub */}
             <Reveal>
               <div className="mt-16 grid items-center gap-10 rounded-3xl border border-brand-500/25 bg-gradient-to-br from-brand-500/10 via-ink-900/40 to-ocean-700/20 p-8 md:grid-cols-2 md:p-10">
                 <div>
-                  <span className="eyebrow"><Sparkles className="h-3.5 w-3.5" aria-hidden /> Master agent</span>
-                  <h3 className="h-display mt-4 text-2xl text-white md:text-3xl text-balance">Kai — an AI credit strategist for your whole team</h3>
+                  <span className="eyebrow"><Sparkles className="h-3.5 w-3.5" aria-hidden /> Kai for your team</span>
+                  <h3 className="h-display mt-4 text-2xl text-white md:text-3xl text-balance">Your Credit Intelligence Officer, across every client</h3>
                   <p className="mt-4 text-slate-300 pretty">
-                    Every Agency plan includes Kai in the Community Hub — an expert AI agent your team can ask about dispute
-                    strategy, FCRA rights, and the strongest next move on any client. Grounded in the law and reviewed for compliance.
+                    Kai works every CreditVector file. On Agency plans, Kai extends across your whole roster and joins your team in
+                    the Community Hub — ready with dispute strategy, FCRA rights, and the strongest next move on any client.
+                    Grounded in the law and reviewed for compliance.
                   </p>
                   <ul className="mt-6 space-y-3">
                     {KAI_POINTS.map((p) => (
@@ -440,7 +444,7 @@ function KaiChatVisual() {
         <div>
           <div className="text-sm font-semibold text-white">Kai</div>
           <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
-            <span className="h-1.5 w-1.5 rounded-full bg-success-400" /> AI master agent · online
+            <span className="h-1.5 w-1.5 rounded-full bg-success-400" /> Credit Intelligence Officer · online
           </div>
         </div>
       </div>
