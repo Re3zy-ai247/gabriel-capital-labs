@@ -1,9 +1,12 @@
 # .ai Knowledge Index — read THIS to decide what else to read
 
-Default context budget per task: root `CLAUDE.md` + this file + `CURRENT-STATE.md` + task files. Everything below is read **only when the task matches**. All docs canonical unless marked otherwise. Last verified: 2026-07-12.
+Default context budget per task: root `CLAUDE.md` + this file + `CURRENT-STATE.md` + task files. Everything below is read **only when the task matches**. All docs canonical unless marked otherwise. Last verified: 2026-07-15.
+
+> **`CREDITVECTOR-OS.md` is the apex constitution — the philosophy every other doc derives from.** Skim it before implementing anything non-trivial (mission, product/design/Kai/copy/compliance philosophy, engineering + founder principles, the North Star). It states *why*; the docs below own the *how* (tokens, statutes, prompts). Where a detailed doc conflicts with the OS, the OS wins.
 
 | Doc | Read when… |
 |---|---|
+| `CREDITVECTOR-OS.md` | **The constitution.** Before any feature, design, Kai, copy, or compliance decision — it sets the principles the rest of `.ai/` implements. Amend only with founder approval + an ADR. |
 | `CONSTITUTION.md` | Once per unfamiliar session, or when unsure how to operate (labels, token rules, stop conditions). Binding. |
 | `CURRENT-STATE.md` | **Every session.** Live snapshot, pending owner actions, next tasks. |
 | `TASKS.md` | Picking up work / adding follow-ups. Company backlog is external (`/gcl`). |
