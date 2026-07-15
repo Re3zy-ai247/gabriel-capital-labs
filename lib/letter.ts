@@ -212,6 +212,105 @@ function buildFindings(t: LetterTradeline, ctx: LetterContext): Finding[] {
   return findings.slice(0, 5);
 }
 
+// REQUESTED ACTION + the exact evidence demanded — differentiated by who the letter
+// is to. A bureau owes a §611 reasonable reinvestigation; a furnisher owes its own
+// §1681s-2(b) investigation; a collector owes §1692g validation. Emitting the wrong
+// demand (asking a collector for a "§611 reinvestigation") is both legally wrong and
+// pattern-matchable as a credit-repair template, so the demand tracks the recipient.
+// Every request stays conditional ("if it cannot be verified") — never an outcome.
+function requestedAction(ctx: LetterContext): string[] {
+  const out: string[] = [];
+  switch (ctx.strategy.id) {
+    case "goodwill":
+      out.push("REQUESTED ACTION");
+      out.push(
+        "  I am not disputing the accuracy of this item. I am respectfully asking, as a gesture of goodwill, that you consider removing or revising the reported late payment(s) in light of my broader history with the account. I understand this is a courtesy and that you are under no obligation to grant it."
+      );
+      return out;
+    case "cease_desist":
+      out.push("REQUESTED ACTION");
+      out.push(
+        `  Pursuant to ${STATUTES.fdcpa_805c.short} (${STATUTES.fdcpa_805c.usc}), I request that you cease further communication with me regarding this account, except as the statute expressly permits (for example, to advise that collection efforts are being terminated or to notify me of a specific remedy you intend to invoke). This letter does not acknowledge the debt and does not waive any right, including my right to dispute it or to request validation.`
+      );
+      return out;
+    case "pay_delete":
+      out.push("REQUESTED ACTION");
+      out.push(
+        "  Without acknowledging that this debt is owed, I am willing to resolve this account in exchange for the complete deletion of the associated tradeline from every consumer reporting agency to which you furnish it. If you accept, please confirm the arrangement in writing BEFORE any payment is made; a written agreement is a condition of any payment, because some data-furnishing agreements discourage deletion in exchange for payment."
+      );
+      return out;
+  }
+
+  switch (ctx.strategy.recipient) {
+    case "collector":
+      out.push("REQUESTED ACTION — VALIDATION OF DEBT");
+      out.push(`  1. Validate this debt under ${STATUTES.fdcpa_809.short} (${STATUTES.fdcpa_809.usc}): the amount claimed, the name and address of the original creditor, and an itemized accounting of the balance.`);
+      out.push("  2. Provide documentation of your authority to collect — the assignment or bill of sale evidencing the chain of title from the original creditor to you.");
+      out.push("  3. Cease collection activity until validation is mailed to me.");
+      out.push("  4. To the extent you continue to furnish this account to the consumer reporting agencies, conduct the investigation the FCRA requires of a furnisher and report only information you have verified as accurate and complete.");
+      return out;
+    case "furnisher":
+      out.push("REQUESTED ACTION — FURNISHER INVESTIGATION");
+      out.push(`  1. Conduct your own reasonable investigation of the disputed information under ${STATUTES.fcra_623.short} (${STATUTES.fcra_623.usc}).`);
+      out.push("  2. Review the account-level records that would substantiate this reporting — the original signed agreement, the account statements or ledger, and the complete payment history — rather than re-confirming a summary tradeline.");
+      out.push("  3. Report the results of your investigation to every consumer reporting agency to which you furnish this account.");
+      out.push("  4. Modify, delete, or permanently block any item you find to be inaccurate, incomplete, or that cannot be verified against those records.");
+      return out;
+    case "bureau":
+    default:
+      out.push("REQUESTED ACTION — REINVESTIGATION");
+      out.push(`  1. Conduct a reasonable reinvestigation of each disputed item under ${STATUTES.fcra_611.short} (${STATUTES.fcra_611.usc}).`);
+      out.push("  2. Forward all relevant information to the furnisher and require it to verify each disputed element against original, account-level documentation — not merely re-match my name and balance to its own record.");
+      out.push("  3. Correct or delete any information that cannot be verified as both accurate and complete.");
+      out.push("  4. Disclose the method of verification under FCRA §611(a)(7): the business contacted, the procedure used, and the documentation relied upon.");
+      out.push("  5. Provide an updated copy of my consumer file and written notice of the results.");
+      return out;
+  }
+}
+
+// The deadline sentence + round-scaled escalation — also recipient-specific, so a
+// collector/furnisher is never told to "complete a §611 reinvestigation in 30 days."
+function closing(ctx: LetterContext): string[] {
+  // Non-dispute strategies get a matching close and NO reinvestigation/validation
+  // demand and NO regulatory escalation ladder.
+  if (ctx.strategy.id === "goodwill") {
+    return ["Thank you for considering this request. I value the account relationship and appreciate any consideration you can extend."];
+  }
+  if (ctx.strategy.id === "cease_desist") {
+    return [`Please treat this letter as my written cease-communication request under ${STATUTES.fdcpa_805c.short} (${STATUTES.fdcpa_805c.usc}). I am not waiving any right, including my right to dispute this debt or to request validation, and I ask that you confirm in writing that further communication will stop.`];
+  }
+  if (ctx.strategy.id === "pay_delete") {
+    return [`This is a settlement offer and is not an acknowledgment of the debt. Please respond in writing. If we do not reach a written agreement, I reserve all rights, including the right to dispute this debt and to request validation under ${STATUTES.fdcpa_809.short} (${STATUTES.fdcpa_809.usc}).`];
+  }
+  const out: string[] = [];
+  if (ctx.strategy.recipient === "collector") {
+    // Timeliness is hedged: the §1692g(b) cease-collection duty only attaches to a
+    // dispute made within 30 days of the collector's initial notice — a date we
+    // don't track, so we never assert it as fact.
+    out.push(`This is a written dispute. To the extent it is timely under ${STATUTES.fdcpa_809.short} (${STATUTES.fdcpa_809.usc}), please cease collection until you have mailed the validation described above. Nothing in this letter acknowledges the debt or waives any defense.`);
+  } else if (ctx.strategy.recipient === "furnisher") {
+    out.push(`Please complete your investigation and report the corrected results to the consumer reporting agencies under ${STATUTES.fcra_623.short} (${STATUTES.fcra_623.usc}). If an item cannot be substantiated against your account records, it should be modified, deleted, or blocked.`);
+  } else {
+    out.push(`Under ${STATUTES.fcra_611.short} (${STATUTES.fcra_611.usc}), please complete this reinvestigation within 30 days of receipt. If any disputed item cannot be verified as accurate and complete, it should be corrected or deleted.`);
+  }
+  out.push("");
+  // Escalation ladder — only the regulatory framing scales with the round.
+  if (ctx.round >= 4) {
+    out.push(
+      "This letter, together with my prior correspondence on this matter, constitutes a complete record of the disputes I have raised and the responses received. If the disputed information is not corrected or deleted, I am prepared to submit this record to the Consumer Financial Protection Bureau and my state Attorney General for review. Please preserve all records, investigation notes, verification documentation, and audit trails relating to this dispute."
+    );
+  } else if (ctx.round === 3) {
+    out.push(
+      "Because a prior response did not disclose how the disputed information was verified, I again request the method of verification and the specific source documentation relied upon. Please preserve all records related to this dispute. If the information cannot be substantiated, I reserve the right to seek review through the Consumer Financial Protection Bureau and other appropriate channels."
+    );
+  } else {
+    out.push(
+      "Please preserve all records related to this dispute. If the disputed information cannot be adequately verified or addressed, I reserve the right to seek review through the Consumer Financial Protection Bureau and other appropriate regulatory channels."
+    );
+  }
+  return out;
+}
+
 // Deterministic, compliance-safe letter. Used as the LLM's grounding draft and as
 // a fallback when no LLM key is configured. CRITICAL: only emits cross-bureau
 // language when crossBureau is true.
@@ -229,9 +328,27 @@ export function renderTemplateLetter(t: LetterTradeline, ctx: LetterContext, con
   lines.push(`RE: ${ctx.round >= 2 ? "Continued dispute" : "Dispute"} of ${t.creditorName} account ${acct}`, "");
   lines.push(`To Whom It May Concern,`, "");
 
-  // Round-aware opening. R1 frames a neutral investigation; R2+ reference the
-  // unresolved prior dispute. The investigation request always follows the facts.
-  if (ctx.round >= 2) {
+  // Purpose-built opening. The three NON-DISPUTE strategies do not challenge the
+  // item's accuracy, so they open on their own terms and carry NO findings section
+  // (a goodwill letter that also lists "factual concerns" contradicts itself). The
+  // accuracy disputes keep the neutral, round-aware investigation frame.
+  const nonDispute = ctx.strategy.id === "goodwill" || ctx.strategy.id === "cease_desist" || ctx.strategy.id === "pay_delete";
+  if (ctx.strategy.id === "goodwill") {
+    lines.push(
+      "I am writing regarding the above account. I am not disputing the accuracy of what is reported; rather, I am asking you to consider a goodwill adjustment in light of my overall history with the account, as explained below.",
+      ""
+    );
+  } else if (ctx.strategy.id === "cease_desist") {
+    lines.push(
+      "I am writing regarding the above account to make a formal request under the Fair Debt Collection Practices Act, set out below. This letter is not an acknowledgment that the debt is owed.",
+      ""
+    );
+  } else if (ctx.strategy.id === "pay_delete") {
+    lines.push(
+      "I am writing to propose a resolution of the above account. This is a settlement communication and is not an acknowledgment that the debt is owed or an admission of liability.",
+      ""
+    );
+  } else if (ctx.round >= 2) {
     lines.push(
       `I am writing to follow up on a prior dispute concerning the above account, which remains unresolved. Having reviewed the information that appears on ${
         ctx.targetBureau ? `my ${bureauName} consumer file` : "my consumer credit file"
@@ -248,42 +365,41 @@ export function renderTemplateLetter(t: LetterTradeline, ctx: LetterContext, con
   }
 
   // INVESTIGATOR SUMMARY — Data Element / Fact / Why It Matters. Grounded strictly
-  // in available data; cross-bureau facts only when ctx.crossBureau is true.
-  const findings = buildFindings(t, ctx);
-  lines.push("SUMMARY OF FACTUAL CONCERNS");
-  if (!ctx.crossBureau) {
-    lines.push(
-      `(The following concerns relate solely to how this account is reported on my ${bureauName} file. I make no representation about any other consumer reporting agency, as I have not reviewed those files.)`
-    );
-  }
-  lines.push("");
-  findings.forEach((f, i) => {
-    lines.push(`${i + 1}. ${f.element}`);
-    lines.push(`   Fact: ${f.fact}`);
-    lines.push(`   Why it matters: ${f.why}`);
+  // in available data; cross-bureau facts only when ctx.crossBureau is true. Emitted
+  // only for accuracy disputes — never for goodwill / cease & desist / pay-for-delete.
+  if (!nonDispute) {
+    const findings = buildFindings(t, ctx);
+    lines.push("SUMMARY OF FACTUAL CONCERNS");
+    if (!ctx.crossBureau) {
+      lines.push(
+        `(The following concerns relate solely to how this account is reported on my ${bureauName} file. I make no representation about any other consumer reporting agency, as I have not reviewed those files.)`
+      );
+    }
     lines.push("");
-  });
-
-  // Strategy-specific demand
-  if (ctx.strategy.id === "validation" || ctx.strategy.id === "fdcpa") {
-    lines.push(
-      `Pursuant to ${STATUTES.fdcpa_809.short} (${STATUTES.fdcpa_809.usc}), I request validation of this debt, including the name and address of the original creditor, the amount owed, and documentation establishing your authority to collect. Please cease collection activity until validation is provided.`,
-      ""
-    );
+    findings.forEach((f, i) => {
+      lines.push(`${i + 1}. ${f.element}`);
+      lines.push(`   Fact: ${f.fact}`);
+      lines.push(`   Why it matters: ${f.why}`);
+      lines.push("");
+    });
   }
+
+  // Obsolescence grounds — the specific basis for the §605 strategy (bureau only).
   if (ctx.strategy.id === "fcra_605") {
     const windowPhrase =
       ctx.obsolescenceYears === 10
         ? "ten years for a bankruptcy of this type"
         : "seven years for most adverse information";
     lines.push(
-      `Under ${STATUTES.fcra_605.short} (${STATUTES.fcra_605.usc}), adverse information generally may not be reported beyond ${windowPhrase}. If this item is obsolete, I request its removal.`,
+      "GROUNDS — OBSOLESCENCE",
+      `  Under ${STATUTES.fcra_605.short} (${STATUTES.fcra_605.usc}), adverse information generally may not be reported beyond ${windowPhrase}. If the reporting period for this item has expired, I request that it be treated as obsolete and removed.`,
       ""
     );
   }
 
-  // Statutory authority — quote the actual operative law, not just the code, so
-  // the recipient sees the precise obligation they are under.
+  // Statutory authority — quote the actual operative law, not just the code, so the
+  // recipient sees the precise obligation they are under. (Skipped for goodwill,
+  // which cites no statute and makes no legal demand.)
   if (ctx.strategy.statutes.length) {
     lines.push("STATUTORY AUTHORITY");
     for (const k of ctx.strategy.statutes) {
@@ -294,37 +410,10 @@ export function renderTemplateLetter(t: LetterTradeline, ctx: LetterContext, con
     lines.push("");
   }
 
-  lines.push("REQUESTED ACTION");
-  lines.push("  1. Conduct a reasonable reinvestigation of the disputed information.");
-  lines.push("  2. Verify each disputed data element with the original source documentation.");
-  lines.push("  3. Correct any inaccurate or incomplete information.");
-  lines.push("  4. Delete any information that cannot be verified as complete and accurate.");
-  lines.push("  5. Provide the method of verification and the source(s) relied upon.");
-  lines.push("");
-  lines.push(
-    `Under ${STATUTES.fcra_611.short} (${STATUTES.fcra_611.usc}), please complete this reinvestigation within 30 days. If any disputed information cannot be verified as complete and accurate, it should be deleted or corrected.`,
-    ""
-  );
-
-  // Closing escalates with the round. R1-2 reserve the CFPB as a single sentence;
-  // R3 presses for the method of verification; R4-5 frame the letter as the
-  // record supporting a regulatory complaint.
-  if (ctx.round >= 4) {
-    lines.push(
-      "This letter, together with my prior correspondence on this matter, constitutes a complete record of the disputes I have raised and the responses received. If the disputed information is not corrected or deleted, I am prepared to submit this record to the Consumer Financial Protection Bureau and my state Attorney General for review. Please preserve all records, investigation notes, verification documentation, and audit trails relating to this dispute.",
-      ""
-    );
-  } else if (ctx.round === 3) {
-    lines.push(
-      "Because a prior response did not disclose how the disputed information was verified, I again request the method of verification and the specific source documentation relied upon. Please preserve all records related to this dispute. If the information cannot be substantiated, I reserve the right to seek review through the Consumer Financial Protection Bureau and other appropriate channels.",
-      ""
-    );
-  } else {
-    lines.push(
-      "Please preserve all records related to this dispute. If the disputed information cannot be adequately verified or addressed through the reinvestigation process, I reserve the right to seek review through the Consumer Financial Protection Bureau and other appropriate regulatory channels.",
-      ""
-    );
-  }
+  // Recipient- and strategy-specific requested action + evidence, then the matching
+  // deadline sentence and round-scaled escalation.
+  lines.push(...requestedAction(ctx), "");
+  lines.push(...closing(ctx), "");
   lines.push("Respectfully,", "", name);
 
   return lines.join("\n");
@@ -376,7 +465,8 @@ export function buildSystemPrompt(round: number = 1): string {
     "3. CROSS-BUREAU RULE: reference what other bureaus report ONLY if crossBureauKnowledge is true. If false, make NO claim or implication about any bureau other than the target. Absence of data is never evidence.",
     "4. Cite only the statutes and cases listed above, and only where they genuinely apply to the chosen strategy. Do not perpetuate the §609-forces-deletion myth.",
     "5. No threats, no all-caps demands, no fabricated legal consequences. A firm, professional, literate tone. This is consumer education, not legal advice — do not claim to be the consumer's attorney.",
-    "6. Output ONLY the finished letter text (sender block, date, recipient block, RE line, body, signature). No preamble, no commentary, no markdown.",
+    "6. RECIPIENT-SPECIFIC DEMANDS — match the demand to the recipient and never mix them. A BUREAU is asked to conduct a §611 reasonable reinvestigation and to disclose the §611(a)(7) method of verification (the business contacted, the procedure used, the documentation relied upon). A FURNISHER is asked to conduct its own §1681s-2(b) investigation against account-level records (the original agreement, statements/ledger, full payment history) and to report corrections to every CRA it furnishes. A COLLECTOR is asked to validate under FDCPA §1692g (the amount, the original creditor's name and address, and the chain of title) and to cease collection until validation is mailed. NEVER demand a '§611 reinvestigation within 30 days' from a collector or furnisher, and NEVER ask a bureau to 'validate' a debt. A goodwill request makes no legal demand; a cease-and-desist or pay-for-delete adds no accuracy dispute and admits nothing.",
+    "7. Output ONLY the finished letter text (sender block, date, recipient block, RE line, body, signature). No preamble, no commentary, no markdown.",
   ].join("\n");
 }
 
