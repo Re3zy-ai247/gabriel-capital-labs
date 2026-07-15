@@ -53,5 +53,12 @@ Done in Wave 3 (2026-07-12): landing force-dynamic→middleware (/ is static now
 
 Verified already done (removed 2026-07-12): `List-Unsubscribe` + One-Click headers live in `lib/briefDigest.ts` · `*.tsbuildinfo` untracked & gitignored · `.env.example` updated (adds `CRON_SECRET`+`COMPANY_POSTAL_ADDRESS`; `SETUP_SECRET`/`STRIPE_PRICE_ID` are still live code paths, so kept with a delete-after-bootstrap warning instead of dropped).
 
+## Sprint XX — Execution Engine (committed to `sprint-xx-execution-engine`, ADR-0020; PREVIEW-ONLY, UNMERGED)
+- [ ] **Owner: choose Preview-deploy mechanism** — this working copy is NOT Vercel-linked (`.vercel/project.json` absent), so `npx vercel` can't deploy non-interactively. Options: (a) authorize `npx vercel link` to the existing project + preview deploy (uploads source; prod alias untouched); or (b) authorize pushing branch `sprint-xx-execution-engine` to GitHub → Vercel Git-integration auto-builds a Preview (prod deploys only from `main`). Either is preview-only; **neither pushes to prod**. Blocked pending owner pick.
+- [ ] **Owner: approve merge to `main`** AFTER reviewing the Preview. Until then `main` stays untouched, MAIL_LIVE OFF.
+- [ ] **Product decision (from ADR-0020):** the Executive Queue currently AUGMENTS the per-module views (MissionQueue/Roadmap/Builder/Knowledge/Command remain below as drill-downs). Decide whether to fully retire those into the queue ("replace scattered recommendations") or keep them as expandable detail. Reversible either way.
+- [ ] Backlog (Low, CCO hygiene — non-blocking, from the compliance GO): "strengthens the file over time" phrasing (`ExecutionPriority.ts` builder tier reason + `ExecutionRisk.ts` builder ifIgnored) — optionally reword to "the habits that build strong credit" (general mechanism, never a personalized outcome). Consistent with the already-approved Builder OS framing.
+- [ ] Backlog (Low): the ladder rungs `waiting_creditor` / `funding_dependency` / `mortgage_dependency` have no mission `type` mapped to them yet (they exist for future missions); wire them when those mission types ship so the queue orders them explicitly rather than via the `outcome_dependency` fallback.
+
 ## Candidate features (unscheduled)
 - [ ] Brief stat/data cards · [ ] Brief admin image-upload (licensed/.gov only)

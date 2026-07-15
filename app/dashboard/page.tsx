@@ -7,7 +7,9 @@ import { assembleMissions } from "@/lib/missionEngine";
 import { buildRoadmap } from "@/lib/roadmap";
 import { buildBuilder } from "@/lib/builder";
 import { financialGraph } from "@/lib/knowledge";
+import { assembleExecution } from "@/lib/execution";
 import { MissionControl } from "@/components/mission/MissionControl";
+import { ExecutiveQueue } from "@/components/mission/ExecutiveQueue";
 import { CommandCenter } from "@/components/mission/CommandCenter";
 import { ReadinessStrip } from "@/components/mission/ReadinessStrip";
 import { MissionQueue } from "@/components/mission/MissionQueue";
@@ -38,6 +40,9 @@ export default async function DashboardPage() {
   const mission = assembleMissions(intel, data);   // prioritized queue
   const roadmap = buildRoadmap(intel, mission, data); // the journey
   const builder = buildBuilder(snap, intel);          // the Credit Builder OS
+  // The Execution Engine (Sprint XX) orchestrates all of the above into ONE
+  // Executive Queue — pure, no new query, composed from the already-loaded engines.
+  const execution = assembleExecution({ intel, mission, roadmap, builder, knowledge, mc: data, snap });
 
   return (
     <AppShell title="/ Mission Control">
@@ -45,6 +50,7 @@ export default async function DashboardPage() {
       <MissionControl data={data} />
       {/* The full operating-system summary appears once there's a case to summarize —
           a first-time user (no report yet) sees only the single upload mission. */}
+      {data.hasReport && <ExecutiveQueue execution={execution} />}
       {data.hasReport && <MissionQueue mission={mission} />}
       {data.hasReport && <RoadmapView roadmap={roadmap} />}
       {data.hasReport && <KnowledgeJourney knowledge={knowledge} />}
