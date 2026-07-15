@@ -54,9 +54,23 @@ export interface Confidence { level: "high" | "moderate" | "low" | "insufficient
 export interface Receipt { summary: string; evidence: string[] } // cited reasoning (KAI-OS §4)
 export interface ModuleResult { ok: boolean; data?: unknown; receipt: Receipt; confidence: Confidence }
 
+// Marketplace metadata (Sprint 2 Inc 3) — every capability is SELF-DESCRIBING so it can be
+// listed, discovered, versioned, priced, and reused by any plugin/app. This is the seed of
+// the Kai Marketplace and the "capability usage" observability. Platform infra, not
+// CreditVector-specific. (ABI refinement — unfrozen until Sprint 3.)
+export type SecurityClass = "public" | "internal" | "regulated" | "sensitive";
 export interface CapabilitySpec {
   key: CapabilityKey;
+  description: string;                 // human-readable (marketplace)
+  version: number;                     // major (matches @major in the key)
+  owner: string;                       // owning team
+  plugin: string;                      // module id that provides it
+  premium: boolean;                    // requires a paid entitlement
+  experimental: boolean;               // beta / not GA
+  securityClass: SecurityClass;
   requiredPermissions: Permission[];
+  inputSchema: string;                 // description/ref of the input contract
+  outputSchema: string;                // description/ref of the output contract
   compliance: ComplianceBoundary;
   reasoning: "deterministic" | "retrieval" | "generative";
 }
@@ -88,13 +102,18 @@ export interface EntitlementSnapshot {
 }
 
 // ---- Audit (append-only, tamper-proof, kernel-only) ----
+// Durable-audit shape (designed now; the Postgres adapter lands with subsystem #11). Every
+// record: who/where/what/why/when + correlation + outcome. Append-only, never editable.
 export interface AuditEntry {
-  stamp: Stamp;
+  stamp: Stamp;             // timestamp (tx + valid time) + monotonic version
   actorId: string;
   tenantId: string;
+  pluginId?: string;        // the plugin that owns the capability
   key: CapabilityKey | string;
+  correlationId?: string;   // ties one request's audit records together
   decision: "allow" | "deny" | "event" | "error";
   reason: string;
+  latencyMs?: number;       // measured by the perf harness (debt D-02); undefined until then — never fabricated
 }
 export interface AuditSink { append(e: AuditEntry): void } // append-only; no update/delete
 

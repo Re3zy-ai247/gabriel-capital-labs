@@ -38,8 +38,13 @@ including **byte-identical** equivalence. **No live route rewired yet — additi
 - **Minimum correction:** `execute(): ModuleResult | Promise<ModuleResult>`; `dispatch` is now `async` and awaits it. Deterministic capabilities stay sync; generative ones are async — one uniform path.
 - **Migration:** `credit.response.analyze` is gated to premium (AI tools are a paid feature) via the entitlement snapshot — a real use of Capability Resolution. Equivalence proven by delegation (both paths agree; no live AI key needed, no fabrication).
 
+### M8 — Increment 3: Marketplace metadata + durable-audit design + Investigation/§605 (#7)
+- **Platform infra (reduces Plugin #2 effort):** `CapabilitySpec` is now self-describing — description, version, owner, plugin, premium, experimental, securityClass, input/output schema, compliance. `Kernel.manifest()` returns the catalog (the Marketplace seed + "capability usage" observability). This is reusable *platform* infrastructure, not credit-specific — any future plugin's capabilities are discoverable/priced/versioned the same way.
+- **Durable-audit design (per the directive — design now, Postgres at #11):** `AuditEntry` gained `pluginId`, `correlationId`, and an optional `latencyMs` (**undefined until the perf harness exists — never fabricated**, D-02). Dispatch stamps every record with a correlation id + plugin id. The append-only mechanism is unchanged; only the shape is richer.
+- **Migration #7 — Investigation/§605:** `credit.obsolescence.window` wraps `lib/obsolescence.obsolescenceWindowYears` (deterministic) — **byte-identical**, available to all (deterministic → free). Exercised the new self-describing spec end-to-end.
+
 ### Architecture-flaw watch
-Increment 1: none. Increment 2: one ABI refinement (async `execute`), evidence-driven, minimum change — **not** a redesign. Per the rule ("no more architecture unless implementation proves it wrong"), the architecture is not wrong; we continue.
+Increment 1: none. Increment 2: one ABI refinement (async `execute`). Increment 3: the Marketplace metadata + audit-shape are **additive** enrichments (the ABI is unfrozen) — no redesign, no rewrite, existing engines untouched. Post-migration red team: capabilities are now reusable platform infra (✓ the founder's test — another plugin can consume the manifest/kernel unchanged). The architecture is not wrong; we continue.
 
 ---
 

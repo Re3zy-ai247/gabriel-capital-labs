@@ -4,6 +4,7 @@
 // Run: npx tsx scripts/credit-plugin.test.ts
 import { buildContext, renderTemplateLetter, type LetterTradeline, type LetterConsumer } from "../lib/letter";
 import { analyzeResponse } from "../lib/round2";
+import { obsolescenceWindowYears } from "../lib/obsolescence";
 import { appKernel } from "../lib/os/host/kernel";
 import { actorFromSession } from "../lib/os/host/identity";
 import { entitlementSnapshot } from "../lib/os/host/entitlements";
@@ -69,6 +70,23 @@ async function main() {
   const direct = await analyzeResponse("original letter text", "short");
   const res = await k.dispatch(actor, ANALYZE, { originalLetter: "original letter text", responseText: "short" }, ent, "response_analysis");
   ok("response.analyze: delegation matches lib/round2 (async ABI, no fabrication)", (direct === null) === (!res.ok));
+}
+
+// ---- Investigation / §605 (migration #7): deterministic, byte-identical ----
+{
+  const OBS = "credit.obsolescence.window" as CapabilityKey;
+  const k = appKernel({ clock: memoryClock() });
+  const oInput = { accountType: "COLLECTION" as const, creditorName: "Midland", text: "" };
+  const direct = obsolescenceWindowYears(oInput);
+  const res = await k.dispatch(actor, OBS, oInput, ent, "obsolescence");
+  ok("obsolescence: kernel-routed === lib/obsolescence (byte-identical)", res.ok && (res.data as { years: number }).years === direct);
+}
+
+// ---- Marketplace: capabilities are self-describing metadata ----
+{
+  const m = appKernel({ clock: memoryClock() }).manifest();
+  ok("manifest: all 3 credit capabilities carry marketplace metadata", m.length === 3 && m.every((s) => s.description.length > 0 && s.plugin === "credit" && typeof s.premium === "boolean" && s.inputSchema.length > 0 && s.outputSchema.length > 0));
+  ok("manifest: premium classification correct (analyze paid, obsolescence free)", m.find((s) => s.key === "credit.response.analyze")!.premium && !m.find((s) => s.key === "credit.obsolescence.window")!.premium);
 }
 }
 

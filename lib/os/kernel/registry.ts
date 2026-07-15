@@ -34,6 +34,7 @@ export class Registry {
     return d ? this.modules.get(d) ?? null : null;
   }
   spec(key: CapabilityKey): CapabilitySpec | null { return this.specs.get(key) ?? null; }
+  allSpecs(): CapabilitySpec[] { return [...this.specs.values()]; } // the Marketplace catalog
   policies(): readonly PolicyDecisionProvider[] { return this.pdps; }
   subscribers(): readonly { pattern: string; handler: Subscription["handler"] }[] { return this.subs; }
   isRegistered(key: CapabilityKey): boolean { return this.specs.has(key); }

@@ -36,6 +36,10 @@ export class Kernel {
     return resolve(key, this.registry, ent);
   }
 
+  // ---- The Marketplace catalog: every registered capability's self-describing metadata.
+  //      Powers discovery, versioning, pricing, and "capability usage" observability. ----
+  manifest() { return this.registry.allSpecs(); }
+
   // ---- Build the per-request context ONCE (single-load; R3). Modules only see this. ----
   buildContext(actor: Actor, ent: EntitlementSnapshot): OsContext {
     const { clock } = this.ports;
@@ -75,18 +79,20 @@ export class Kernel {
   //      generative/retrieval capabilities (which await a provider) work uniformly. ----
   async dispatch(actor: Actor, key: CapabilityKey, input: unknown, ent: EntitlementSnapshot, purpose: PurposeToken, idempotencyKey?: string): Promise<ModuleResult> {
     const ctx = this.buildContext(actor, ent);
+    const correlationId = idempotencyKey ?? `${key}:${stamp(this.ports.clock).version}`;
+    const pluginId = this.registry.moduleFor(key)?.id;
     const decision = authorize(actor, key, purpose, this.registry, ent);
     if (!decision.allow) {
-      ctx.audit({ actorId: actor.id, tenantId: actor.tenantId, key, decision: "deny", reason: decision.reason });
+      ctx.audit({ actorId: actor.id, tenantId: actor.tenantId, pluginId, correlationId, key, decision: "deny", reason: decision.reason });
       return denial(decision.reason);
     }
     if (idempotencyKey && this.idem.seen(`op:${idempotencyKey}`)) {
-      ctx.audit({ actorId: actor.id, tenantId: actor.tenantId, key, decision: "event", reason: "idempotent replay — not re-executed" });
+      ctx.audit({ actorId: actor.id, tenantId: actor.tenantId, pluginId, correlationId, key, decision: "event", reason: "idempotent replay — not re-executed" });
       return { ok: true, receipt: { summary: "idempotent replay", evidence: [] }, confidence: { level: "high", basis: "prior execution" } };
     }
     const mod = this.registry.moduleFor(key)!; // guaranteed by authorize()
     const result = await mod.execute(ctx, key, input);
-    ctx.audit({ actorId: actor.id, tenantId: actor.tenantId, key, decision: result.ok ? "allow" : "error", reason: result.receipt.summary });
+    ctx.audit({ actorId: actor.id, tenantId: actor.tenantId, pluginId, correlationId, key, decision: result.ok ? "allow" : "error", reason: result.receipt.summary });
     if (idempotencyKey) this.idem.mark(`op:${idempotencyKey}`);
     ctx.emit(`${key}.done`, { ok: result.ok }, idempotencyKey ?? `${key}:${stamp(this.ports.clock).version}`);
     return result;

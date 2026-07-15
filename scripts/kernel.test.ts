@@ -23,7 +23,8 @@ function creditModule(): KaiModule {
   return {
     id: "credit", name: "Kai Credit", trust: "first_party",
     capabilities: (): CapabilitySpec[] => [{
-      key: CREATE, requiredPermissions: ["letters:generate"],
+      key: CREATE, description: "test", version: 1, owner: "test", plugin: "credit", premium: false, experimental: false,
+      securityClass: "regulated", requiredPermissions: ["letters:generate"], inputSchema: "{}", outputSchema: "{}",
       compliance: { regimes: ["FCRA"], permissiblePurposes: ["dispute"] }, reasoning: "deterministic",
     }],
     execute: () => { ran++; return { ok: true, data: { letterId: "L1" }, receipt: { summary: "drafted dispute", evidence: ["tradeline X"] }, confidence: { level: "high", basis: "deterministic" } }; },

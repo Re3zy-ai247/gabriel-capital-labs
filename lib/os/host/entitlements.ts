@@ -7,18 +7,19 @@ import type { CapabilityKey, EntitlementSnapshot, Permission } from "@/lib/os/ke
 
 const DRAFT = "credit.letter.draft" as CapabilityKey;
 const ANALYZE = "credit.response.analyze" as CapabilityKey;
+const OBSOLESCENCE = "credit.obsolescence.window" as CapabilityKey;
 
 // `premium` mirrors lib/entitlements.isPremium. Letter drafting is available to every
 // authenticated user (today's behavior; the monthly free-letter LIMIT is a downstream policy
 // that migrates to a PEP provider later). Response Intelligence is a paid capability today
 // (AI tools are a Professional feature) — so it's flagged live but granted only to premium.
 export function entitlementSnapshot(opts: { premium: boolean }): EntitlementSnapshot {
-  const caps = new Set<CapabilityKey>([DRAFT]);
-  const perms = new Set<Permission>(["letters:generate"]);
-  if (opts.premium) { caps.add(ANALYZE); perms.add("responses:analyze"); }
+  const caps = new Set<CapabilityKey>([DRAFT, OBSOLESCENCE]);            // deterministic → all users
+  const perms = new Set<Permission>(["letters:generate", "obsolescence:check"]);
+  if (opts.premium) { caps.add(ANALYZE); perms.add("responses:analyze"); } // AI tools → paid
   return {
     grantedCapabilities: caps,
-    flags: new Map<CapabilityKey, boolean>([[DRAFT, true], [ANALYZE, true]]),
+    flags: new Map<CapabilityKey, boolean>([[DRAFT, true], [ANALYZE, true], [OBSOLESCENCE, true]]),
     grantedPermissions: perms,
   };
 }

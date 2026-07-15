@@ -8,13 +8,14 @@
 ## PLATFORM STATUS
 | | |
 |---|---|
-| **Kai Platform progress** | ~20% (Kernel done; Credit plugin in migration; other subsystems pending) |
+| **Kai Platform progress** | ~25% (Kernel done + Marketplace metadata; Credit plugin 3 capabilities migrated; other subsystems pending) |
 | **Current sprint** | Sprint 2 — CreditVector becomes Plugin #1 |
-| **Current increment** | Increment 2 — Response Intelligence + async-ABI refinement |
-| **Current branch** | `sprint2-inc2-response` |
+| **Current increment** | Increment 3 — Investigation/§605 + Capability Marketplace metadata + durable-audit design |
+| **Current branch** | `sprint2-inc3-marketplace` |
 | **Current commit** | (this commit) |
 | **Build** | ✅ `next build` clean |
-| **Tests** | ✅ 30 guard scripts green (kernel: 33 internal checks · credit plugin: 12) |
+| **Tests** | ✅ 30 guard scripts green (kernel: 33 internal checks · credit plugin: 15) |
+| **Platform infra added** | self-describing capabilities (`Kernel.manifest()` — Marketplace seed) · durable-audit shape (actor/tenant/plugin/capability/correlation/decision/latency, append-only) designed |
 | **Deployment** | prod on `main`; Increment 2 is **preview-first, not merged** · MAIL_LIVE OFF |
 
 ---
@@ -22,10 +23,10 @@
 ## PLATFORM ROADMAP
 ```
 Kai Platform
-██████████  Kai Kernel                 done (mechanism-only, tested)
-███░░░░░░░  Credit Plugin              in migration — 2 capabilities wrapped (letter.draft, response.analyze)
-███░░░░░░░  Response Intelligence      wrapped + kernel-routed (this increment); live route not flipped
-░░░░░░░░░░  Investigation Engine       pending
+██████████  Kai Kernel                 done (mechanism-only, tested) + Marketplace metadata + manifest()
+████░░░░░░  Credit Plugin              in migration — 3 capabilities wrapped (letter.draft, response.analyze, obsolescence.window)
+██████████  Response Intelligence      wrapped + kernel-routed + byte-equivalent (route not flipped)
+██████████  Investigation / §605       wrapped + kernel-routed + byte-identical (route not flipped)
 ░░░░░░░░░░  Document Engine            pending
 ░░░░░░░░░░  Workflow Engine            pending
 ░░░░░░░░░░  Notification Engine        pending
@@ -40,8 +41,9 @@ Kai Platform
 | Subsystem | Wrapped | Kernel-routed | Live route | Flag | Equivalence | Regression | Kernel guards | Latency | Memory | Rollback | Risk | Status |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
 | **Letter Engine** (`credit.letter.draft`) | ✅ | ✅ | Direct (not flipped) | ready | **byte-identical** ✅ | suite green | 12 | not instrumented | not instrumented | flag/branch | LOW | routed, proven |
-| **Response Intelligence** (`credit.response.analyze`) | ✅ | ✅ | Direct (not flipped) | ready | delegation-equal ✅ (AI-gated) | suite green | 12 | not instrumented | not instrumented | flag/branch | LOW | routed, proven |
-| Investigation / Document / Workflow / Notification | ⏳ | ⏳ | Direct | — | — | — | — | — | — | — | — | pending |
+| **Response Intelligence** (`credit.response.analyze`) | ✅ | ✅ | Direct (not flipped) | ready | delegation-equal ✅ (AI-gated) | suite green | 15 | not instrumented | not instrumented | flag/branch | LOW | routed, proven |
+| **Investigation / §605** (`credit.obsolescence.window`) | ✅ | ✅ | Direct (not flipped) | ready | **byte-identical** ✅ | suite green | 15 | not instrumented | not instrumented | flag/branch | LOW | routed, proven |
+| Document / Workflow / Notification | ⏳ | ⏳ | Direct | — | — | — | — | — | — | — | — | pending |
 | Durable Audit · Kai Memory Graph | ⏳ (in-mem ref) | — | — | — | — | — | — | — | — | — | MED | pending |
 
 *Live routes are intentionally NOT flipped yet — the kernel path is built + proven equivalent first; each route flips behind a flag with the old path as fallback (zero-risk).*
