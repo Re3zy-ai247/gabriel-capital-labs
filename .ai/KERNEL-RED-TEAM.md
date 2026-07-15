@@ -115,3 +115,93 @@ which are now part of ADR-0024:
 If we honor R8, this is legendary and lasts. If we ignore R8 and build the whole OS before the
 second module exists, we will rebuild it. **Recommendation: proceed to implementation of the
 thin, hardened kernel + Credit migration only.**
+
+---
+
+# Round 2 — Ecosystem scale: "hundreds of third-party plugins, 5–10 years out"
+Attacking the design assuming untrusted third-party plugins + multi-tenancy, through Linux /
+Kubernetes / AWS / Stripe / Temporal / Event-Sourcing / DDD / Clean & Hexagonal / Capability
+Security / Zero-Trust / NIST / OWASP / Fowler / Greg Young / Lamport / Helland / Borg / Cell
+Architecture. Round 1 assumed *our* modules; this round breaks that assumption.
+
+## 🔴 E1 — The trust boundary flips. In-process plugins can never become third-party. (Cap-Security / Zero-Trust / OWASP)
+Round 1's kernel-as-library runs plugins **in-process**. That's fine for first-party, fatal
+for third-party: an in-process TS plugin shares the process — one malicious/buggy plugin owns
+everything (data exfiltration, tenant crossover, audit tampering). Capability tokens limit
+what a plugin may *invoke*, but **not** what in-process code can *reach*.
+**Redesign now (the seam, not the impl):** define the plugin execution boundary as
+**out-of-process / WASM-sandboxed** for anything untrusted, communicating only via the
+capability protocol. Ship v1 first-party in-process, **but design the boundary so third-party
+slots in with no rewrite.** If we bake in-process-trusted assumptions, third-party is a
+ground-up rebuild. (ADR-0026 §3, §8.)
+
+## 🔴 E2 — "Kernel" is a distributed system, not a process. (Lamport / Helland / Vogels)
+N concurrent stateless invocations share durable state — so kernel invariants are
+distributed-systems problems: the **Clock/Version Authority cannot be an in-process counter**
+(concurrent invocations collide) — it must be a **monotonic sequence from a single source**
+(DB sequence / coordination service); the **Event Bus is at-least-once → every handler must be
+idempotent** (Helland: "idempotence is the answer"); two invocations resolving+dispatching the
+same outward capability must not double-execute → **idempotency keys** (we already do this for
+Stripe/mail — reuse the pattern). Every kernel invariant must be **correct under concurrency**,
+designed now — retrofitting concurrency-correctness is a rewrite.
+
+## 🔴 E3 — Kernel ABI stability is the #1 ten-year invariant. (Linux "don't break userspace")
+We version capabilities and plugins but not the **kernel's own plugin-facing contract**
+(Module Contract, `OsContext`, ports). With hundreds of dependents, changing it breaks
+everyone. Linux's longevity is mostly *"we do not break userspace."*
+**Bind now:** the kernel ABI is **stability-guaranteed — additive-only, long deprecation
+windows, never a silent break.** Add it to the Covenant (done: invariant #14).
+
+## 🔴 E4 — Third-party + regulated data = a new liability regime, not a feature. (Compliance / NIST)
+If a stranger's plugin reads FCRA/GLBA data on our platform, **we** carry the exposure
+(permissible-purpose, furnisher/reseller liability). This is R5 at ecosystem scale.
+**Bind now:** third-party plugins **cannot touch regulated data without a counsel-designed
+compliance certification**; **v1: only first-party/certified plugins touch FCRA data;
+third-party is sandboxed away from it.** (ADR-0026 §9.)
+
+## 🟠 E5–E7 — the standard platform hazards, contained by design
+- **E5 Blast radius (Amazon Cell / Borg):** a runaway plugin/hot tenant degrades shared
+  stores (Postgres/Accelerate, the graph). → **Per-plugin/per-tenant quotas + rate limits at
+  the PEP;** partition strategy for the shared stores at scale.
+- **E6 Event schema is forever (Greg Young):** you can never mutate an emitted event's shape.
+  → **Versioned event contracts + upcasting;** a schema registry governs the shared bus.
+- **E7 Bounded contexts (DDD / Fowler):** the shared graph tempts a big ball of mud. → **Each
+  plugin is a bounded context; the Memory Graph is the governed *context map* — published,
+  versioned contracts only** (reinforces R4). Hexagonal check: kernel **ports must not leak
+  Prisma/Vercel** to plugins, or plugins couple to our infra.
+
+## The framing challenge — is "AI Operating System" right? (pushing back, as asked)
+**No — not as the engineering term.** An OS manages *hardware* (CPU, memory, I/O, scheduling);
+we manage identity, capabilities, policy, memory, time, audit, dispatch, intelligence. The OS
+label is an evocative *metaphor*, not an accurate architecture, and over-claiming it invites
+"where's your scheduler/driver model?" and — worse — confuses engineers about what to build.
+- **"Kernel"** — *accurate* for the core (small privileged mechanism + syscalls/capabilities +
+  a security boundary + plugins). Keep it. This is the honest technical center.
+- **"Platform"** — *accurate* for the whole, once third parties build on it (App Store / Stripe
+  / AWS / Salesforce are platforms, not "operating systems"). This is the honest business term.
+- **"Runtime"** — accurate for the execution aspect (dispatch/execute capabilities), but
+  undersells the governance + memory + intelligence.
+- **"AI Civilization Kernel"** — **reject.** Grandiose, describes nothing, will read as hubris
+  and age badly. Don't put it in engineering docs.
+**Recommended framing (same brand/impl split we already use — KaiDNA/Kai Memory Graph):**
+externally, **"Kai OS"** is fine as the *product narrative* ("everything runs on Kai").
+Internally/engineering, be precise: **a governed, memory-centric AI capability platform with a
+mechanism kernel.** What makes it *not* a generic plugin platform — and worth building — is the
+combination the others don't have: **capability-based security + a shared governed memory graph
++ compliance-as-a-kernel-invariant + deterministic-first intelligence.** CreditVector is the
+**reference implementation / flagship first-party plugin** that proves it.
+
+## Round 2 verdict — FREEZE THE PHILOSOPHY, not yet the full third-party impl
+After genuinely trying to break it: **the foundation is correct.** Mechanism-only kernel +
+capability-based security + plugins-as-policy + governed shared memory is *exactly* how the
+durable multi-party platforms (Chrome, VS Code, K8s, Terraform, Stripe) are built. It survives.
+**Freeze now:** the Covenant (ADR-0025, +invariant #14), the mechanism-only primitive set
+(the 9 primitives), and the plugin-as-policy model. These are the decade-stable core.
+**Add these four bindings before freezing the *implementation* contract** (all now in
+ADR-0024/0026): (E1) out-of-process/WASM plugin seam; (E2) distributed/idempotent kernel
+invariants + monotonic version source; (E3) kernel-ABI stability; (E4) compliance certification
+for third-party regulated-data access.
+**Build order unchanged and disciplined (R8):** thin first-party kernel → migrate Credit as
+plugin #1 (zero behavior change) → generalize from real modules. **Third-party ecosystem is
+v2+**, but its seams (signing, manifest, sandbox boundary, capability grant) are defined now so
+it is an *addition*, never a *rewrite*. **Recommendation: freeze the kernel philosophy + primitives; proceed to the thin first-party kernel + Credit migration.**

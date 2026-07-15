@@ -43,6 +43,10 @@ Decision owners: Founder
     that still makes sense in twenty years: elegant over clever, simple over complex,
     mechanisms over policies, kernel over modules, platform over application, longevity over
     speed.
+14. **We never break a plugin.** The kernel's plugin-facing contract (the Module Contract,
+    the context, the ports) is stability-guaranteed — additive-only, with long deprecation
+    windows, never a silent break. This is Linux's "we do not break userspace," and it is the
+    single most important promise the platform makes to everyone who builds on it.
 
 ## Standing
 This Covenant is incorporated into `CREDITVECTOR-OS.md` (the Constitution) as the governing
