@@ -1,5 +1,16 @@
 # CreditVector OS — The Constitution
 
+> **What we are (founder mandate, 2026-07-15).** CreditVector is the **AI Credit
+> Intelligence Operating System.** **Kai IS the product** — a single, unified Credit
+> Intelligence Officer. The dispute engine is one module ("Kai Credit"); over time Kai
+> grows more modules (Funding, Business, Collections, Identity, Mortgage, Auto, Wealth,
+> Legal, Compliance), all sharing **one memory** and presenting **one assistant**. People
+> don't buy software or dispute letters — they **hire an AI Credit Intelligence Officer.**
+> Every decision, every sprint, every line is evaluated through this lens. Build for the
+> next decade, not the next demo. **Part I** below is the enduring philosophy; **Part II**
+> is the operating-system architecture and governance that makes it real and keeps it
+> honest.
+
 > The permanent operating manual for CreditVector™ (by Gabriel Capital Labs).
 > **Read this before implementing anything.** Every future engineer, designer, AI
 > agent, marketer, and Claude session inherits from this document. It is philosophy,
@@ -421,6 +432,114 @@ The rules of engagement we've developed in practice — binding on every session
 Everything we build is measured against that feeling. A feature, a screen, a sentence, an
 animation, a price, a Kai reply either *reinforces* the sense of a brilliant, honest
 analyst at your side — or it doesn't belong. When in doubt, return here.
+
+---
+
+# Part II — The Operating System: Architecture & Governance
+
+> Part I is *why* and *what it must feel like*. Part II is *how the system is built so it
+> can become a decade-long AI operating system without accumulating debt.* These are
+> principles; the implementable design lives in **ADR-0022 (Kai OS Module Architecture)**
+> and the docs each article names. Where an article states a rule, it is binding.
+
+## Article 14 — AI-First Principles
+- **Deterministic-first, AI-last.** The engines compute; AI is the last resort, invoked
+  only when deterministic layers can't answer (the 8-layer pipeline, `KAI-INTELLIGENCE.md`).
+  This is both a cost discipline and a truth discipline — deterministic output can't
+  hallucinate and can be cited.
+- **Every AI surface is grounded, cited, and uncertainty-disclosed** (`KAI-OS.md`).
+- **AI is a capability of modules, never a free-floating chatbot.** Kai reasons *over*
+  module outputs; it does not replace them.
+- **Token cost is an architectural constraint**, not an afterthought — retrieval, caching,
+  and short-circuiting come before generation.
+
+## Article 15 — The Module Contract
+Every Kai module (Credit, Funding, Business, Collections, Identity, Mortgage, Auto, Wealth,
+Legal, Compliance) is a first-class, independently-extractable unit that MUST:
+1. **Consume the shared snapshot/records** — never issue its own duplicate DB reads.
+2. **Be pure and single-load** — a typed function over already-loaded data (the existing
+   `lib/intelligence`/`execution`/`knowledge`/`builder` pattern is the reference).
+3. **Expose a typed capability interface** + an internal API route (API-first).
+4. **Declare its feature flag, entitlement gate, Kai capability tier, and compliance
+   boundary** (Article 22) as part of its contract.
+5. **Register its deterministic outputs** as routable layers Kai reaches before spending a
+   token (Article 19).
+6. **Own no second source of truth** and remain loosely coupled — removable/extractable
+   without breaking the OS. Detailed interface: **ADR-0022**.
+
+## Article 16 — Memory Architecture & the Knowledge Graph
+- **One memory, shared by every module.** Kai remembers the *case*, from immutable
+  structured records — never a fabricated conversational persona (`KAI-OS.md` §9).
+- **The Knowledge Graph** (`lib/knowledge`) is the connective tissue: deterministic
+  relationships recomputed from real rows; every node references a canonical id; no
+  fabricated edges. New modules add node/edge types, never a parallel graph.
+- **The Verified Outcome Ledger** is the learning substrate (own-history + consented,
+  k-anonymous aggregates; ADR-0010/0014). Structured memory always wins over free-form.
+- Memory is tenant-isolated and user-scoped by construction (Article 21).
+
+## Article 17 — The Capability Engine
+- A single deterministic layer answers, for any `(user, capability)`: *is it available,
+  entitled, and flagged on?* — returning `available | entitled-but-coming-soon |
+  not-entitled | unavailable`. Modules, UI, pricing, and Kai all read from THIS.
+- It is the **single source of truth** that makes the pricing page, entitlements, module
+  access, and Kai's tier **structurally incapable of disagreeing** (enforces `CREDITVECTOR-OS`
+  §7 / Article 20 as code, not discipline).
+- Foundational build; design in **ADR-0022** + `PRICING-V2-ROADMAP.md`.
+
+## Article 18 — Feature-Flag Architecture
+- **Every new capability ships behind a flag.** Flags are deterministic, derived from
+  the plan/capability map (not ad-hoc `if plan===`), and are the same signal that drives
+  "Coming soon" states — so a surface can never advertise what a user can't have.
+- Flags gate at the module boundary (Article 15) and degrade gracefully when off.
+- No capability is exposed to any user before its flag, entitlement, tests, compliance
+  sign-off, and docs exist (Article 23).
+
+## Article 19 — AI Routing & Multi-Agent Orchestration
+- **Long-term architecture: Kai is a multi-agent OS presenting one unified assistant.**
+  Specialized module-agents (Credit, Funding, Legal…) are orchestrated behind a single
+  Kai surface — the user always experiences *one* Credit Intelligence Officer.
+- The **router** (the 8-layer pipeline, ADR-0006) decides deterministically which
+  module/agent answers, short-circuiting on the first confident, cited result before any
+  generation. Orchestration is deterministic where possible; generative only at the edges.
+- Every routed answer carries provenance (which module/agent, what evidence) — one
+  assistant, never a black box.
+
+## Article 20 — The Entitlement Model
+- Access is **entitlement-driven**, resolved through the Capability Engine (Article 17)
+  from the plan/capability map (`lib/entitlements` + `PRICING-V2-ROADMAP.md`).
+- **The page/entitlements/Stripe must always agree** — enforced by reading one source,
+  not by manual sync. No checkout is ever exposed for an unavailable product.
+- Managed-client inheritance, tier upgrades, and Kai capability tiers all resolve here.
+
+## Article 21 — Data Ownership & Privacy
+- **The user owns their data.** We are a custodian: user-scoped reads, tenant isolation,
+  least-privilege, encryption at rest for PII (`SECURITY.md`, `docCrypto` pattern).
+- **No cross-user leakage; no private data in URLs or logs; no PII in illustrative/
+  cinematic examples.** Aggregate contribution is opt-in, reversible, identifier-stripped,
+  and k-anonymous, gated by the CCO (Article 22).
+- Consent is explicit and revocable; no invisible autonomous action (`KAI-OS.md` §8, §15).
+
+## Article 22 — Human Review: the CCO Gate & the CTO Gate
+- **The CCO Gate** (`/compliance-review`) — no user-facing or money-touching surface ships
+  without it. **Each new module carries a compliance-boundary map** naming the regimes it
+  touches *before* a line is written. New modules add NEW regimes beyond FCRA/FDCPA/CROA:
+  **Legal → UPL**, **Wealth / loan-optimization → SEC / Investment Advisers Act**,
+  **Mortgage / Auto → RESPA / TILA / ECOA**, **Identity / monitoring → GLBA**. Compliance
+  beats growth, always.
+- **The CTO Gate** — no architecture ships without an ADR and a reuse/soundness review:
+  does it honor the Module Contract? reuse the substrate? add no duplicate source of
+  truth? stay loosely coupled and extractable? add no hidden debt?
+- Both gates are blocking. Founder approval is required before merge (preview-first).
+
+## Article 23 — ADR Governance & the Definition of Done
+- **Every new capability exists as an architectural decision before it exists as code.**
+  Non-trivial work starts with an ADR (`DECISIONS.md` → `ADR/`); the ADR is founder-approved
+  before implementation begins.
+- **No feature ships without all seven:** (1) Constitution alignment · (2) ADR approval ·
+  (3) compliance review (CCO Gate) · (4) feature flags · (5) entitlement mapping · (6)
+  tests (typecheck + build + guards + targeted new guards) · (7) documentation.
+- Preview-first; founder approval before merge; MAIL_LIVE stays OFF until the founder
+  flips it. Every sprint must **strengthen** the platform and add no technical debt.
 
 ---
 
