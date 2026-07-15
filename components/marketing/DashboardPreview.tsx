@@ -33,10 +33,13 @@ export function DashboardPreview() {
         <span className="h-3 w-3 rounded-full bg-rose-400/70" />
         <span className="h-3 w-3 rounded-full bg-gold-400/70" />
         <span className="h-3 w-3 rounded-full bg-success-400/70" />
-        <span className="ml-3 text-xs text-slate-500">app.creditvector.app/dashboard</span>
+        <span className="ml-3 truncate text-xs text-slate-500">app.creditvector.app/dashboard</span>
       </div>
 
-      <div className="grid grid-cols-[132px_1fr]">
+      {/* Mobile-first: a single column so the panel gets the FULL width (the old
+          fixed 132px sidebar track left a dead gutter on phones and squeezed the
+          panel). The mini-sidebar + two-column layout return at sm+. */}
+      <div className="grid grid-cols-1 sm:grid-cols-[132px_1fr]">
         {/* Mini sidebar */}
         <nav className="hidden flex-col gap-1 border-r border-ink-700/60 p-3 sm:flex">
           {NAV.map((n) => (
@@ -69,7 +72,7 @@ export function DashboardPreview() {
             {TILES.map((t) => (
               <div key={t.label} className="rounded-xl border border-ink-700/60 bg-ink-800/60 p-3">
                 <div className={`text-2xl font-bold tabular-nums ${t.tone}`}>{t.value}</div>
-                <div className="mt-0.5 text-[10px] leading-tight text-slate-400">{t.label}</div>
+                <div className="mt-0.5 text-[11px] leading-tight text-slate-400 sm:text-[10px]">{t.label}</div>
               </div>
             ))}
           </div>
@@ -122,8 +125,8 @@ export function DashboardPreview() {
             {ROWS.map((r) => (
               <div key={r.name} className="flex items-center justify-between rounded-lg border border-ink-700/50 bg-ink-800/40 px-3 py-2">
                 <div className="min-w-0">
-                  <div className="truncate text-[11px] font-medium text-slate-200">{r.name}</div>
-                  <div className="text-[10px] text-slate-500">{r.bureau}</div>
+                  <div className="truncate text-xs font-medium text-slate-200 sm:text-[11px]">{r.name}</div>
+                  <div className="text-[11px] text-slate-500 sm:text-[10px]">{r.bureau}</div>
                 </div>
                 <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${r.tone}`}>{r.status}</span>
               </div>
