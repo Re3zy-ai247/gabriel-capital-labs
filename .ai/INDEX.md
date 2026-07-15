@@ -2,11 +2,14 @@
 
 Default context budget per task: root `CLAUDE.md` + this file + `CURRENT-STATE.md` + task files. Everything below is read **only when the task matches**. All docs canonical unless marked otherwise. Last verified: 2026-07-15.
 
-> **`CREDITVECTOR-OS.md` is the apex constitution — the philosophy every other doc derives from.** Skim it before implementing anything non-trivial (mission, product/design/Kai/copy/compliance philosophy, engineering + founder principles, the North Star). It states *why*; the docs below own the *how* (tokens, statutes, prompts). Where a detailed doc conflicts with the OS, the OS wins.
+> **Two apex constitutions govern everything below.** Both state the *why*; the docs below own the *how* (tokens, statutes, prompts). Where a detailed doc conflicts with an apex constitution, the constitution wins.
+> 1. **Read `CREDITVECTOR-OS.md` before implementing anything** — the company + product constitution (mission, design, copy, compliance philosophy, engineering + founder principles, the North Star).
+> 2. **Read `KAI-OS.md` before creating or modifying any Kai behavior, recommendation, message, prompt, memory, intelligence surface, or autonomous workflow** — the intelligence constitution (Kai's reasoning hierarchy, evidence/confidence rules, user-control contract, per-surface behavior, the Kai Agent Contract + Oath).
 
 | Doc | Read when… |
 |---|---|
-| `CREDITVECTOR-OS.md` | **The constitution.** Before any feature, design, Kai, copy, or compliance decision — it sets the principles the rest of `.ai/` implements. Amend only with founder approval + an ADR. |
+| `CREDITVECTOR-OS.md` | **Company constitution.** Before any feature, design, Kai, copy, or compliance decision — it sets the principles the rest of `.ai/` implements. Amend only with founder approval + an ADR. |
+| `KAI-OS.md` | **Intelligence constitution.** Before creating/modifying ANY Kai behavior, recommendation, message, prompt, memory, intelligence surface, or autonomous workflow. Governs how Kai reasons, cites, discloses uncertainty, and defers to user approval. Amend only with founder approval + an ADR. |
 | `CONSTITUTION.md` | Once per unfamiliar session, or when unsure how to operate (labels, token rules, stop conditions). Binding. |
 | `CURRENT-STATE.md` | **Every session.** Live snapshot, pending owner actions, next tasks. |
 | `TASKS.md` | Picking up work / adding follow-ups. Company backlog is external (`/gcl`). |
