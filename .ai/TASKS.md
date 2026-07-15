@@ -29,6 +29,10 @@ Compact, current-only. Done items get deleted (history lives in git). Company ba
 - [ ] Follow-up: unify `getMissionControl` onto the platform `loadSnapshot` so the dashboard loads the case once (today it calls both — overlapping userId-scoped reads). Makes Mission Control thinner, per the platform principle.
 - [ ] Future modules (Funding Hub, Credit Builder, Business Credit, Monitoring, Mobile, AI API) MUST consume `@/lib/intelligence` — never compute their own intelligence.
 
+## Sprint XVI — Financial Mission Engine (shipped to working tree, ADR-0016)
+- [ ] Follow-up: fold Mission Control's own Today's-Mission task list into the Mission Engine queue so the dashboard has one ranked source (they currently overlap — the engine's #1 == Mission Control's next action by construction, but consolidating removes the redundancy).
+- [ ] Future modules (Credit Builder, Funding Hub, Business Credit, Monitoring, Mobile, API) plug into `financialMission` — never build their own queue/priority.
+
 ## Engineering (next up)
 - [ ] Regenerate favicon/PWA/OG from de-shadowed `logo-mark.png`
 - [ ] Letters/upload server-prefetch — deliberately deferred until CX-1 conversational letter flow (restructuring those pages first avoids rework)
