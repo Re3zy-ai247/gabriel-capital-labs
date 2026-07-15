@@ -43,7 +43,7 @@ const FAQ: [string, string][] = [
   ["How is my credit data protected?", "Uploaded reports and documents are encrypted at rest with AES-256 and are only ever served back to you over an authenticated, access-checked connection — never a public link."],
   ["Do I need all three bureau reports?", "No — you can start with one. CreditVector works with whatever you upload, and cross-bureau comparison gets stronger as you add Equifax, Experian, and TransUnion."],
   ["Can I cancel anytime?", "Yes. There are no contracts. Cancel from your billing settings and access continues to the end of your billing period."],
-  ["What does it cost?", "The Free plan includes full report analysis and 3 dispute letters a month. Premium is $99/month for unlimited letters and AI tools. Agencies start at $399/month."],
+  ["What does it cost?", "The Free plan (Explorer) includes full report analysis and 3 dispute letters a month. Professional is $99/month for unlimited letters and Kai's full dispute intelligence. Agency plans start at $399/month. More plans are on the roadmap — see the pricing page."],
 ];
 
 const PRICING = [
@@ -52,7 +52,7 @@ const PRICING = [
     features: ["Full report analysis", "Cross-bureau inaccuracy review", "3 dispute letters / month"],
   },
   {
-    name: "Premium", price: "$99", cadence: "/mo", href: "/pricing", cta: "Get Premium", featured: true,
+    name: "Professional", price: "$99", cadence: "/mo", href: "/pricing", cta: "Get Professional", featured: true,
     features: ["Unlimited dispute letters", "AI letter refinement", "Dispute strategist", "90-day progress tracking"],
   },
   {

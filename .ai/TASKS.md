@@ -2,6 +2,11 @@
 
 Compact, current-only. Done items get deleted (history lives in git). Company backlog: `~/Documents/Gabriel-Capital-Labs-AIOS/BACKLOG.md` via `/gcl` — link, don't copy.
 
+## Pricing V2 (branch `sprint-pricing-v2`, preview-first — money-touching, needs founder approval before merge)
+- [ ] **Founder: review + approve the Pricing V2 page.** 7-tier repositioning (Kai-as-hero); LIVE checkout only for Explorer/Professional($99)/Agency($399); Professional+/Agency Pro/Scale/Enterprise = "Coming soon" (no Buy button). CCO GO (2 fixes applied: waitlist-CTA→"Start free", agency-templates wording). tsc+build clean.
+- [ ] **Phase 2/3 build program:** see `.ai/PRICING-V2-ROADMAP.md` — every unbuilt tier/feature (metered conversational Kai, Funding Hub, Business Credit OS, team/API/SSO/white-label, new Stripe prices) is a tracked item. A tier flips "Coming soon"→live only after it ships + CCO gate + Stripe price live.
+- [ ] **Phase 2 (Low, from CCO):** wire real waitlist capture (`Waitlist` table + `POST /api/waitlist`) so the Coming-soon CTA can honestly say "Join the waitlist" (today it's "Start free" — no unbacked promise).
+
 ## Owner-blocked (surface at every session start)
 - [ ] **Founder decision (Low, from XXV release):** Kai's title is now split — CreditVector product role = "**Credit** Intelligence Officer" (CVOS/KAI-OS/landing/KAI-INTELLIGENCE), company-level brand-IP character = "**Chief** Intelligence Officer of the room he's standing in" (`creative/` + `BRAND-UNIVERSE.md`, founder-locked ADR-0008). Decide whether these coexist by design or should unify; unifying the creative canon needs an explicit founder decision + ADR (do NOT edit the frozen Kai IP without it).
 - [ ] Decide: upgrade Vercel to Pro (~$20/mo) to enable Skew Protection (eliminates stale-tab 500s across deploys; checklist in `OPERATIONS.md`)
