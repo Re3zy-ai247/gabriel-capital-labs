@@ -17,12 +17,40 @@
 | **GIOS progress** | ~36% (Kernel done + Marketplace metadata; Credit plugin — 5 capabilities; **first PLATFORM capability** `notify.plan` — a second module on the kernel with zero kernel edits) |
 | **Current sprint** | Sprint 2 — CreditVector becomes Plugin #1 |
 | **Current increment** | Increment 6 — Notification DECISION `notify.plan` (#10); effect **designed-not-built** (ADR-0027) |
-| **Current branch** | `sprint2-inc6-notify-plan` |
-| **Current commit** | (this commit) |
+| **Current phase** | **GIOS Kernel Maturity** — governance artifacts + #11 pre-implementation architecture review |
+| **Current commit** | `afa0a98` (Inc 1–6 **merged + pushed to origin/main**; live in prod) |
 | **Build** | ✅ `next build` clean |
 | **Tests** | ✅ green — kernel: 33 · credit plugin: 19 · **platform notify: 23** (byte-identical/idempotency/CAN-SPAM/hash-only/PEP) |
-| **Platform infra added** | self-describing capabilities (`Kernel.manifest()` — now **multi-plugin**) · durable-audit shape designed · **first platform module** (`notify`) proving another module registers with zero kernel change |
-| **Deployment** | prod on `main` (Inc 1–5 merged; **Inc 5 merged locally, push-to-prod held for founder go**); Inc 6 **preview-first, not merged** · no live route flipped · **MAIL_LIVE OFF** (stays off until durable IdempotencyStore + retries + replay done) |
+| **Platform infra added** | self-describing capabilities (`Kernel.manifest()` — now **multi-plugin**) · **first platform module** (`notify`) proving another module registers with zero kernel change · **`/architecture/` governance corpus** (Constitution, Capability Map, Promotion rules, Review Pipeline) |
+| **Deployment** | Inc 1–6 **live on origin/main `afa0a98`** · no live route flipped · **MAIL_LIVE OFF** (stays off until durable IdempotencyStore + retries + replay done) |
+
+---
+
+## GIOS KERNEL MATURITY — *the operating system itself* (not CreditVector)
+> Maturity is a **defined rubric**, never a vibe metric. Each axis is a real count; the composite is
+> a stated formula, not a measured performance number.
+
+| Axis | State | Basis |
+|---|---|---|
+| **Kernel mechanism** | ✅ **13/13 primitives built + guarded** | Identity, Registry, Namespace, Resolver, PEP, Dispatch, Permissions, Clock, Audit, Event Bus, Memory, Manifest, Idempotency ([Capability Map](../architecture/GIOS-KERNEL-CAPABILITY-MAP.md)) |
+| **Durable adapters** | ⏳ **0/4 durable** (all in-memory) | Audit · Event · Memory · Idempotency are reference in-mem ports; durable Postgres = #11/#12 |
+| **Effect-safety** | ⚠️ **not effect-ready** | D-07 (dispatch mark-on-failure/synthetic replay) + D-08 (payload-blind PEP) open; no effect crosses dispatch yet |
+| **ABI** | 🔒 **unfrozen by design** | frozen at Sprint 3 after CreditVector exercises it (ADR-0024) |
+| **Composite kernel maturity** | **Mechanism complete · Durability + Effect-safety not started (gated to #11)** | = (mechanism 100%) + (durability 0%) + (effect-safety 0%); *rubric, not performance* |
+
+| | |
+|---|---|
+| **Capability maturity** | KERNEL 13 · REGISTERED 6 (5 credit + 1 platform) · DESIGNED 1 (notification effect) · CANDIDATE ~12 app-local · CONCEPT ~10 roadmap |
+| **Registered capabilities** | `credit.letter.draft` · `credit.response.analyze` · `credit.obsolescence.window` · `credit.tradeline.insight` · `credit.campaign.compose` · `notify.plan.compose` |
+| **Capabilities awaiting promotion** | **`lib/compliance`** (~10 consumers — strongest) · `lib/aiMeter` (~9) · `lib/knowledge` (~8) · `lib/intelligence` (~16, decompose first) · `lib/forecast` (~5). `scoring`/`recommend`/`classify` → credit **plugin**, not kernel. `decisionRegistry` (1) fails the twice-bar. |
+| **Kernel health** | mechanism-only held (no app import in `lib/os/kernel/`) · 75 guards green · typecheck + build clean · product-agnostic (2nd module registered w/ zero kernel edits) |
+| **Security posture** | **tested invariants:** tenant isolation · default-deny PEP · append-only audit · idempotency mechanism · permissible-purpose · hash-only receipts. **known gaps:** effect-safety (D-07/D-08) · in-mem persistence (no cross-invocation dedupe) |
+| **Architecture debt** | D-07, D-08 (kernel effect-safety) · D-03 durable audit · D-04 durable memory · A-01 ABI unfrozen (by design) |
+| **Open architectural risks** | R-05, R-06 (kernel defects, harmless until an effect ships) · R-02 (no durable audit/version) · R-03 (permissible-purpose is placeholder vs counsel model) · R-04 (no perf/coverage instrumentation) |
+| **ADR count** | **28** (ADR-0000 … ADR-0027); `/architecture/` corpus: 4 canonical docs |
+| **Production readiness (kernel path)** | additive · un-flipped · behavior-neutral · deployed (`afa0a98`). No user-facing change shipped. |
+| **Future roadmap** | #11 Durable Audit → #12 Kai Memory Graph → **Sprint 3 ABI freeze** → (post-freeze, evidence-gated) Agent/AI Runtime · Prediction · Learning · Marketplace · SDK · Global Memory |
+| **Product-agnostic proof** | onboarding GTG Quant / Gabriel AI OS = register a `KaiModule` + entitlement grant; **zero kernel change** (as `notify` demonstrated) |
 
 ---
 
