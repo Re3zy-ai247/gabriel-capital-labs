@@ -4,6 +4,7 @@
 // (R8: don't build persistence infra before a subsystem needs it). Registration is static.
 import { Kernel, inMemoryAudit, inMemoryEventLog, inMemoryMemory, memoryClock, type KernelPorts } from "@/lib/os/kernel";
 import { creditModule } from "@/lib/os/modules/credit";
+import { notifyModule } from "@/lib/os/modules/notify";
 
 export function appKernel(ports?: Partial<KernelPorts>): Kernel {
   const k = new Kernel({
@@ -15,5 +16,8 @@ export function appKernel(ports?: Partial<KernelPorts>): Kernel {
   });
   // Plugin #1 — CreditVector. Future modules register here, same contract, no special case.
   k.register(creditModule());
+  // Platform module (Migration #10) — GIOS-generic notification DECISION (Layer 2). Not an app
+  // plugin: any application on GIOS inherits it. Decision only; the Layer-3 send is not built.
+  k.register(notifyModule());
   return k;
 }

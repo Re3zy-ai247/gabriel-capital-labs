@@ -114,7 +114,8 @@ async function main() {
 // ---- Marketplace: capabilities are self-describing metadata ----
 {
   const m = appKernel({ clock: memoryClock() }).manifest();
-  ok("manifest: all 5 credit capabilities carry marketplace metadata", m.length === 5 && m.every((s) => s.description.length > 0 && s.plugin === "credit" && typeof s.premium === "boolean" && s.inputSchema.length > 0 && s.outputSchema.length > 0));
+  const credit = m.filter((s) => s.plugin === "credit"); // manifest is now multi-plugin (credit + platform notify)
+  ok("manifest: all 5 credit capabilities carry marketplace metadata", credit.length === 5 && credit.every((s) => s.description.length > 0 && s.plugin === "credit" && typeof s.premium === "boolean" && s.inputSchema.length > 0 && s.outputSchema.length > 0));
   ok("manifest: premium classification correct (analyze paid, obsolescence free)", m.find((s) => s.key === "credit.response.analyze")!.premium && !m.find((s) => s.key === "credit.obsolescence.window")!.premium);
 }
 }
