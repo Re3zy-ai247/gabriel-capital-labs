@@ -20,10 +20,21 @@ const nextConfig = {
   reactStrictMode: true,
   eslint: { ignoreDuringBuilds: true },
   async headers() {
+    // Global security headers (RC1 P0-4). Conservative, non-breaking set — NO strict CSP (would
+    // need per-surface browser verification; tracked as a follow-on) and HSTS WITHOUT `preload`
+    // (reversible; owner submits to the preload list separately if desired).
+    const security = [
+      { key: "X-Content-Type-Options", value: "nosniff" },
+      { key: "X-Frame-Options", value: "SAMEORIGIN" },
+      { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+      { key: "X-DNS-Prefetch-Control", value: "on" },
+      { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" },
+      { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+    ];
     return [
       {
         source: "/:path*",
-        headers: [{ key: "x-cv-release", value: RELEASE }],
+        headers: [{ key: "x-cv-release", value: RELEASE }, ...security],
       },
     ];
   },

@@ -1,0 +1,48 @@
+name: CI
+
+# Production safety gate (RC1 P0-1). Runs on every push + PR. Blocks a red build from being
+# merged/relied on. Pair with GitHub branch protection (require this check on `main`) — that
+# settings step is owner-side (see CREDITVECTOR_RC1_EXECUTION.md P0-1).
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      # CI-only placeholder so build-time auth helpers never see an undefined secret. NOT a real
+      # secret and never used in production.
+      NEXTAUTH_SECRET: ci-placeholder-not-used-in-production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - name: Install
+        run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Lint (advisory — pre-existing issues; not a launch gate)
+        run: npm run lint
+        continue-on-error: true
+      - name: Guards (DB-free suite — 31 scripts)
+        run: |
+          set -e
+          for f in scripts/*.test.ts; do
+            case "$f" in
+              *classify.test.ts) echo "skip $f (requires a database)"; continue;;
+            esac
+            echo "── $f"
+            npx tsx "$f"
+          done
+      - name: Build
+        run: npm run build
