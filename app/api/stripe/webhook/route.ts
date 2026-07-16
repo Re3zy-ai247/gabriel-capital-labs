@@ -3,6 +3,7 @@ import type Stripe from "stripe";
 import { getStripe } from "@/lib/stripe";
 import { syncSubscriptionToUser, creditLetters } from "@/lib/billing";
 import { prisma } from "@/lib/prisma";
+import { reportError } from "@/lib/observability";
 
 export const dynamic = "force-dynamic";
 // Stripe needs the raw, unparsed body to verify the signature.
@@ -23,7 +24,7 @@ export async function POST(req: Request) {
   try {
     event = stripe.webhooks.constructEvent(body, sig, webhookSecret);
   } catch (e) {
-    console.error("stripe webhook signature verification failed", e);
+    reportError(e, { scope: "stripe-webhook", phase: "signature" });
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
 
@@ -76,7 +77,7 @@ export async function POST(req: Request) {
         break;
     }
   } catch (e) {
-    console.error("stripe webhook handler error", e);
+    reportError(e, { scope: "stripe-webhook", phase: "handler" }); // payment-processing failure — alert-worthy
     return NextResponse.json({ error: "Handler error" }, { status: 500 });
   }
 
