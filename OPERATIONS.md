@@ -66,3 +66,42 @@ announcements/impersonate) — all 8 fixed the same day with `.catch(() => null)
 Rule for new mutations: every `setBusy(true)` must have a throw path that resets it (`finally`,
 or a `.catch(() => null)` + early return). Metering/events (`lib/aiMeter.ts`, `lib/kaiEvents.ts`)
 and push (`lib/push.ts`) are fail-open — an observability failure never breaks the user action.
+
+## Backup & Disaster Recovery (RC1 P0-3)
+
+> **Status: BLOCKED on one external input — the underlying database provider.** `DATABASE_URL` is a
+> Prisma **Accelerate** proxy (`prisma+postgres://`), which hides the origin Postgres provider. The
+> backup/restore guarantees, RPO, and RTO are **properties of that origin provider**, and a restore
+> **cannot be proven** without (a) the owner confirming the provider and (b) read access to run a
+> restore drill. **No values below are assumed or fabricated** — the unknowns are marked so.
+
+**What must be protected:** the single Postgres database is the entire system of record — users,
+subscriptions/Stripe linkage, letters, reports (encrypted `rawText`), documents/attachments
+(AES-256-GCM), campaigns, mail manifests, audit logs, Brief content. There is **no other durable
+store**. Encryption keys (`DOCUMENT_ENCRYPTION_KEY`, `NEXTAUTH_SECRET`) live only in Vercel env — a
+DB restore is useless without them, so **the env-var set is part of the backup scope** (export the
+Vercel env inventory; store the key material in a password manager, never in the repo).
+
+**Owner action to unblock (≤15 min):** confirm the origin provider in the **Prisma Data Platform /
+Accelerate** dashboard (or Vercel → Storage/Integrations). Typical origins: Neon, Supabase, Vercel
+Postgres, RDS — each has native automated backups + PITR; record the retention window it gives you.
+
+**Restore-validation drill (ready to run the moment the provider is known — this IS the proof):**
+1. In the provider console, create a **fresh throwaway database** from the latest automated
+   backup / a PITR snapshot (do NOT touch prod).
+2. Point a **local** `.env` `DATABASE_URL` at the restored copy (bypass Accelerate — use the direct
+   connection string).
+3. `npx prisma db pull` (schema present?) → run a read: `npx tsx -e "import {prisma} from './lib/prisma'; prisma.user.count().then(c=>{console.log('users',c);process.exit()})"`.
+4. Confirm row counts are sane vs prod and an encrypted `Report.rawText` decrypts with the prod
+   `DOCUMENT_ENCRYPTION_KEY` (proves the key + data restore together).
+5. Record: snapshot timestamp, restore wall-clock (**= measured RTO**), and the snapshot age
+   (**= measured RPO**). Tear down the throwaway DB.
+
+**Targets (to establish after the drill — do not guess):** RPO ≤ provider's PITR granularity
+(commonly ≤5 min for Neon/Supabase); RTO = the measured restore time in step 5. **Fill these in
+with measured numbers; leave blank until proven.**
+
+**Schema-drift caveat (already known, ADR-0001):** prod schema is applied by runtime self-heal DDL,
+not migrations — a restored DB self-heals its tables on first request, so a restore does not need a
+separate migration step, but verify the self-heal `ensureXTable` gates ran (check for the expected
+tables) before declaring the restore complete.
