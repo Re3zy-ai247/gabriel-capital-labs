@@ -28,16 +28,35 @@ export function isPremium(user: {
   return Boolean(user.subscriptionStatus && ACTIVE_STATES.has(user.subscriptionStatus));
 }
 
-// Managed-client cap by agency tier. ADMINs and Agency Pro are unlimited (null);
-// the base Agency plan is capped; non-agency accounts can't hold clients.
+// Managed-client (workspace) cap by agency tier — the live source of truth for
+// creation-gating. Approved packaging (2026-07-16): Agency 15 (solo operator) ·
+// Agency Pro 40 (growing team) · Scale 100 (established agency) · Enterprise
+// negotiated (null until per-account entitlement config exists). ADMINs are
+// unlimited. Existing clients above a cap are NEVER locked or deleted — the cap
+// gates NEW workspace creation only (enforced in app/api/agency/clients POST).
+//
+// GRANDFATHER CLAUSE: accounts created before the packaging effective date keep
+// the entitlement they were sold — Agency was marketed as "up to 20 clients" and
+// Agency Pro as "unlimited clients". A sold entitlement is never retroactively
+// reduced. (Prices got the same treatment: AGENCY_PRO_LEGACY_* in lib/stripe.ts.)
+//
+// These values must stay in lockstep with config/capabilityMatrix.ts (dormant
+// Phase-B data) — a guard should compare them when the matrix activates.
+const NEW_PACKAGING_EFFECTIVE = Date.UTC(2026, 6, 17); // 2026-07-17 — approved packaging ships
+
 export function agencyClientLimit(user: {
   role?: string | null;
   plan?: string | null;
   isAgency?: boolean | null;
+  createdAt?: Date | string | null;
 }): number | null {
   if (user.role === "ADMIN") return null;
-  if (user.plan === "agency_pro") return null;
-  if (user.isAgency) return 20;
+  const created = user.createdAt ? new Date(user.createdAt).getTime() : Number.POSITIVE_INFINITY;
+  const legacy = created < NEW_PACKAGING_EFFECTIVE;
+  if (user.plan === "enterprise") return null; // negotiated/unlimited until configurable entitlements land
+  if (user.plan === "scale") return 100;
+  if (user.plan === "agency_pro") return legacy ? null : 40; // sold "unlimited" before the change
+  if (user.isAgency) return legacy ? 20 : 15; // sold "up to 20" before the change
   return 0;
 }
 
@@ -99,7 +118,7 @@ export function canGenerateLetter(e: Entitlement): { allowed: boolean; reason?: 
   if (e.lettersRemaining <= 0) {
     return {
       allowed: false,
-      reason: `You've used your ${FREE_LETTER_LIMIT} free dispute letters this month. Upgrade to Premium for unlimited letters, or buy a letter pack.`,
+      reason: `You've used your ${FREE_LETTER_LIMIT} free dispute letters this month. Upgrade to Professional for unlimited letters, or buy a letter pack.`,
     };
   }
   return { allowed: true };

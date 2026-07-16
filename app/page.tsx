@@ -57,7 +57,7 @@ const PRICING = [
   },
   {
     name: "Agency", price: "$399", cadence: "/mo", href: "/pricing", cta: "Explore Agency", featured: false,
-    features: ["Everything in Premium", "A workspace per client", "Roster KPIs + follow-up clock", "Up to 20 managed clients"],
+    features: ["Everything in Professional", "A workspace per client", "Roster KPIs + follow-up clock", "Up to 15 active client workspaces"],
   },
 ];
 
@@ -328,9 +328,9 @@ export default function Home() {
                 <span className="eyebrow"><MessagesSquare className="h-3.5 w-3.5" aria-hidden /> Community Hub</span>
                 <h2 className="h-display mt-4 text-3xl text-white md:text-4xl text-balance">Learn from people working on the same thing</h2>
                 <p className="lede mt-4">
-                  The Community Hub is where members and agencies compare notes on what&apos;s working — dispute strategy, bureau
-                  timelines, and hard-won lessons — with Kai, our compliance-reviewed AI strategist, in the room to keep answers
-                  grounded in the FCRA.
+                  The Community Hub — included with the Agency plan — is where credit professionals compare notes on what&apos;s
+                  working: dispute strategy, bureau timelines, and hard-won lessons, with Kai, your Credit Intelligence Officer,
+                  in the room to keep answers grounded in the FCRA.
                 </p>
                 <ul className="mt-6 space-y-3">
                   {COMMUNITY_POINTS.map((p) => (
@@ -342,7 +342,7 @@ export default function Home() {
                     </li>
                   ))}
                 </ul>
-                <Link href="/register" className="btn-ghost btn-lg mt-9">Join the community <ArrowRight className="h-4 w-4" aria-hidden /></Link>
+                <Link href="/pricing" className="btn-ghost btn-lg mt-9">See Agency plans <ArrowRight className="h-4 w-4" aria-hidden /></Link>
                 <p className="mt-5 text-xs leading-relaxed text-slate-500">
                   Community posts are members&apos; own opinions — not CreditVector or legal advice, and no outcome is guaranteed.
                   Only Kai&apos;s answers are reviewed for compliance.

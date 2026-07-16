@@ -72,7 +72,7 @@ export default function AdminBillingPage() {
     setErr(null);
     const r = await fetch("/api/admin/billing/provision", { method: "POST" });
     const d = await r.json();
-    setErr(r.ok ? `✓ Synced ${d.count} prices to Stripe (Premium, Agency, Agency Pro — monthly + annual — and the letter pack).` : d.error || "Sync failed.");
+    setErr(r.ok ? `✓ Synced ${d.count} prices to Stripe (Professional, Agency, Agency Pro — monthly + annual — and the letter pack).` : d.error || "Sync failed.");
     setBusy(null);
   }
 

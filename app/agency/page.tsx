@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
 import { Disclaimer } from "@/components/Disclaimer";
@@ -55,6 +56,7 @@ export default function AgencyPage() {
   const router = useRouter();
   const [ctx, setCtx] = useState<Ctx | null>(null);
   const [clients, setClients] = useState<Client[]>([]);
+  const [clientLimit, setClientLimit] = useState<number | null>(null); // null = unlimited/negotiated
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -73,6 +75,7 @@ export default function AgencyPage() {
     if (res.ok) {
       const d = await res.json();
       setClients(d.clients || []);
+      setClientLimit(d.limit === undefined ? null : d.limit);
     }
   }
 
@@ -251,13 +254,13 @@ export default function AgencyPage() {
               🎉 Payment received — activating your Agency workspace. This will unlock momentarily…
             </div>
           )}
-          <div className="text-base font-semibold">Run your own credit-repair business on our platform</div>
+          <div className="text-base font-semibold">Run your dispute practice on our platform</div>
           <p className="mt-2 text-sm text-slate-400">
-            The Agency tier lets you manage unlimited clients in their own workspaces, run the full analysis and
-            letter engine for each, and generate disputes at scale.
+            The Agency plan is built for solo operators: manage each client in their own workspace, run the full
+            analysis and letter engine for every one, and stay on top of each follow-up window.
           </p>
           <ul className="mt-4 space-y-1.5 text-sm text-slate-300">
-            <li className="flex items-center gap-2"><span className="text-brand-400">✓</span> Up to 20 managed clients — no per-seat logins</li>
+            <li className="flex items-center gap-2"><span className="text-brand-400">✓</span> Up to 15 active client workspaces — no per-seat logins</li>
             <li className="flex items-center gap-2"><span className="text-brand-400">✓</span> Full AI analysis &amp; letter engine for every client</li>
             <li className="flex items-center gap-2"><span className="text-brand-400">✓</span> Follow-up clock &amp; KPI reporting across your roster</li>
           </ul>
@@ -366,7 +369,10 @@ export default function AgencyPage() {
           <div>
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
               <div className="text-sm font-semibold">
-                Clients <span className="text-slate-500">({clients.length})</span>
+                Clients{" "}
+                <span className="text-slate-500 tnum">
+                  {clientLimit === null ? `(${clients.length})` : `${clients.length} / ${clientLimit}`}
+                </span>
                 {attentionCount > 0 && (
                   <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-rose-500/15 px-2 py-0.5 text-[11px] font-semibold text-rose-300">
                     <AlertTriangle className="h-3 w-3" /> {attentionCount} need follow-up
@@ -407,6 +413,33 @@ export default function AgencyPage() {
                 </div>
               </div>
             </div>
+            {/* Honest plan-consumption banner — real roster count vs the plan cap only.
+                Shown from 80% capacity; never blocks access to existing clients. */}
+            {clientLimit !== null && clients.length >= Math.ceil(clientLimit * 0.8) && (
+              <div
+                className={`mb-3 rounded-lg border p-3 text-xs ${
+                  clients.length >= clientLimit
+                    ? "border-gold-500/40 bg-gold-500/10 text-gold-300"
+                    : "border-ink-600 bg-ink-800/60 text-slate-300"
+                }`}
+              >
+                <span className="font-semibold">
+                  {clients.length >= clientLimit
+                    ? `You've reached your plan's capacity of ${clientLimit} client workspaces.`
+                    : `Approaching capacity — ${clients.length} of ${clientLimit} client workspaces in use.`}
+                </span>{" "}
+                Your existing clients always stay fully accessible.{" "}
+                <Link href="/pricing" className="font-semibold text-brand-300 underline">
+                  {/* Honest next step by current cap: Agency (15/20-legacy) → Agency Pro (soon),
+                      Agency Pro (40) → Scale (soon), Scale (100) → Enterprise (contact). */}
+                  {clientLimit > 40
+                    ? "Talk to us about Enterprise for custom capacity →"
+                    : clientLimit > 20
+                      ? "Scale — up to 100 workspaces — is coming soon. See what's ahead →"
+                      : "Agency Pro — up to 40 workspaces — is coming soon. See what's ahead →"}
+                </Link>
+              </div>
+            )}
             {clients.length === 0 ? (
               <div className="card p-6">
                 <div className="mb-2 flex items-center gap-2">

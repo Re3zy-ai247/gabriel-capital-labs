@@ -19,7 +19,11 @@ export type BillingInterval = "month" | "year";
 // Price points (cents). Annual = ~10 months (2 months free).
 export const PREMIUM_PRICE_CENTS = 9900; // $99 / mo
 export const AGENCY_PRICE_CENTS = 39900; // $399 / mo
-export const AGENCY_PRO_PRICE_CENTS = 79900; // $799 / mo
+export const AGENCY_PRO_PRICE_CENTS = 69900; // $699 / mo (approved packaging 2026-07-16)
+// Legacy Agency Pro price points (pre-2026-07-16 provisioning was $799). Any
+// subscription already on these prices must keep resolving to agency_pro.
+export const AGENCY_PRO_LEGACY_MONTH_CENTS = 79900;
+export const AGENCY_PRO_LEGACY_YEAR_CENTS = 799000;
 export const LETTER_PACK_PRICE_CENTS = 1900; // $19 one-time
 export const LETTER_PACK_CREDITS = 5;
 
@@ -47,20 +51,20 @@ interface ProductDef {
 const PRODUCTS: Record<string, ProductDef> = {
   premium: {
     key: "premium",
-    name: "CreditVector — Premium",
+    name: "CreditVector — Professional",
     description: "Unlimited AI-refined dispute letters, the AI dispute strategist, and 90-day progress tracking.",
     taxCode: TAX_CODE_SAAS_PERSONAL,
   },
   agency: {
     key: "agency",
     name: "CreditVector — Agency",
-    description: "Manage clients in their own workspaces with the full analysis and letter engine. Up to 20 clients.",
+    description: "Manage clients in their own workspaces with the full analysis and letter engine. Up to 15 active client workspaces — built for solo operators.",
     taxCode: TAX_CODE_SAAS_BUSINESS,
   },
   agency_pro: {
     key: "agency_pro",
     name: "CreditVector — Agency Pro",
-    description: "Everything in Agency with unlimited managed clients, for high-volume teams.",
+    description: "Everything in Agency with up to 40 active client workspaces, team collaboration, analytics, and bulk actions — built for growing teams.",
     taxCode: TAX_CODE_SAAS_BUSINESS,
   },
   letters_5: {
@@ -91,8 +95,12 @@ export const PRICES: Record<string, PriceDef> = {
   premium_year: { lookup: "gcl_premium_yearly", product: "premium", amountCents: 99000, interval: "year" },
   agency_month: { lookup: AGENCY_LOOKUP_KEY, product: "agency", amountCents: AGENCY_PRICE_CENTS, interval: "month" },
   agency_year: { lookup: "gcl_agency_yearly", product: "agency", amountCents: 399000, interval: "year" },
-  agency_pro_month: { lookup: "gcl_agency_pro_monthly", product: "agency_pro", amountCents: AGENCY_PRO_PRICE_CENTS, interval: "month" },
-  agency_pro_year: { lookup: "gcl_agency_pro_yearly", product: "agency_pro", amountCents: 799000, interval: "year" },
+  // v2 lookup keys: Stripe prices are amount-immutable and resolvePrice matches by
+  // lookup_key WITHOUT verifying unit_amount — reusing the old keys would forever
+  // resolve to any already-provisioned $799 price. New keys guarantee the $699
+  // catalog provisions fresh; legacy $799 subs still map to agency_pro in planForPrice.
+  agency_pro_month: { lookup: "gcl_agency_pro_monthly_v2", product: "agency_pro", amountCents: AGENCY_PRO_PRICE_CENTS, interval: "month" },
+  agency_pro_year: { lookup: "gcl_agency_pro_yearly_v2", product: "agency_pro", amountCents: 699000, interval: "year" },
   letters_5: { lookup: "gcl_letters_5", product: "letters_5", amountCents: LETTER_PACK_PRICE_CENTS, interval: null },
 };
 
@@ -134,6 +142,9 @@ export async function reconcileTaxCodes(stripe: Stripe): Promise<string[]> {
     const currentTax = typeof p.tax_code === "string" ? p.tax_code : p.tax_code?.id ?? null;
     if (def.taxCode && currentTax !== def.taxCode) update.tax_code = def.taxCode;
     if (p.description !== def.description) update.description = def.description;
+    // Self-heal the display name so a catalog rename (e.g. Premium → Professional)
+    // reaches the live product; product name is otherwise only set at creation.
+    if (p.name !== def.name) update.name = def.name;
     if (Object.keys(update).length > 0) {
       await stripe.products.update(p.id, update);
       updated.push(p.name);
@@ -142,12 +153,13 @@ export async function reconcileTaxCodes(stripe: Stripe): Promise<string[]> {
   return updated;
 }
 
-// Resolve a price id by catalog key. Order: STRIPE_PRICE_ID env override (premium
-// monthly only, legacy) → existing price by lookup_key → create the price.
+// Resolve a price id by catalog key. Order: existing price by lookup_key →
+// create the price. (The legacy STRIPE_PRICE_ID env override was removed
+// 2026-07-16 — verified unset in every Vercel environment; lookup-key
+// resolution is the sole production path.)
 export async function resolvePrice(stripe: Stripe, key: string): Promise<string> {
   const def = PRICES[key];
   if (!def) throw new Error(`Unknown price key: ${key}`);
-  if (key === "premium_month" && process.env.STRIPE_PRICE_ID) return process.env.STRIPE_PRICE_ID;
 
   const existing = await stripe.prices.list({ lookup_keys: [def.lookup], active: true, limit: 1 });
   if (existing.data[0]) return existing.data[0].id;
@@ -180,7 +192,13 @@ export function planForPrice(price: { lookup_key?: string | null; unit_amount?: 
   if (lk.startsWith("gcl_agency")) return "agency";
   if (lk.startsWith("gcl_premium")) return "premium";
   const amt = price?.unit_amount ?? 0;
-  if (amt === AGENCY_PRO_PRICE_CENTS || amt === 799000) return "agency_pro";
+  if (
+    amt === AGENCY_PRO_PRICE_CENTS ||
+    amt === 699000 ||
+    amt === AGENCY_PRO_LEGACY_MONTH_CENTS ||
+    amt === AGENCY_PRO_LEGACY_YEAR_CENTS
+  )
+    return "agency_pro";
   if (amt === AGENCY_PRICE_CENTS || amt === 399000) return "agency";
   return "premium";
 }

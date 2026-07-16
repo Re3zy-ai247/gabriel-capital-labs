@@ -119,8 +119,8 @@ function BillingInner() {
   const isAgencyPro = status?.plan === 'agency_pro';
   const isAgency = status?.plan === 'agency' || isAgencyPro;
   const premium = status?.plan === 'premium' || isAgency;
-  const planLabel = isAgencyPro ? 'Agency Pro' : isAgency ? 'Agency' : premium ? 'Premium' : 'Free';
-  const monthlyCost = isAgencyPro ? '$799.00' : isAgency ? '$399.00' : premium ? '$99.00' : '$0.00';
+  const planLabel = isAgencyPro ? 'Agency Pro' : isAgency ? 'Agency' : premium ? 'Professional' : 'Free';
+  const monthlyCost = isAgencyPro ? '$699.00' : isAgency ? '$399.00' : premium ? '$99.00' : '$0.00';
 
   return (
     <AppShell title="/ Billing">
@@ -130,7 +130,7 @@ function BillingInner() {
 
         {justCheckedOut && (
           <div className="mb-8 rounded-lg border border-success-500/40 bg-success-500/10 px-5 py-4 text-success-300">
-            🎉 Welcome{isAgency ? ' to Agency' : ' to Premium'}! Your subscription is being activated — this page will update momentarily.
+            🎉 Welcome{isAgency ? ' to Agency' : ' to Professional'}! Your subscription is being activated — this page will update momentarily.
           </div>
         )}
 
@@ -152,9 +152,9 @@ function BillingInner() {
                   )}
                   <p className="text-slate-400 mb-6">
                     {isAgency
-                      ? 'Manage unlimited clients in their own workspaces, each with the full AI analysis and letter engine.'
+                      ? `Manage each client in their own workspace with the full AI analysis and letter engine — up to ${isAgencyPro ? '40' : '15'} active client workspaces on your plan.`
                       : premium
-                      ? 'Unlimited AI-refined dispute letters, the AI strategist, and 90-day tracking.'
+                      ? 'Unlimited AI-refined dispute letters, the Kai Strategy Desk, and 90-day tracking.'
                       : 'You have 3 dispute letters per month. Upgrade for unlimited letters + AI refinement.'}
                   </p>
                   {premium ? (
@@ -171,7 +171,7 @@ function BillingInner() {
                       disabled={busy}
                       className="btn-primary px-6"
                     >
-                      {busy ? 'Redirecting…' : 'Upgrade to Premium — $99/mo'}
+                      {busy ? 'Redirecting…' : 'Upgrade to Professional — $99/mo'}
                     </button>
                   )}
                   {error && <p className="mt-3 text-sm text-rose-400">{error}</p>}
@@ -217,7 +217,7 @@ function BillingInner() {
 
             {/* What's Included */}
             <div className="card p-6 mb-8">
-              <h2 className="text-2xl font-bold mb-6">{premium ? "What's Included" : 'Unlock with Premium'}</h2>
+              <h2 className="text-2xl font-bold mb-6">{premium ? "What's Included" : 'Unlock Professional'}</h2>
               <div className="grid md:grid-cols-2 gap-6">
                 {[
                   ['Unlimited Dispute Letters', 'Generate as many professional dispute letters as you need.'],
@@ -254,7 +254,7 @@ function BillingInner() {
                   {busy ? 'Opening…' : 'Open Billing Portal'}
                 </button>
               ) : (
-                <p className="text-slate-500 text-sm">No billing history yet. Upgrade to Premium to get started.</p>
+                <p className="text-slate-500 text-sm">No billing history yet. Upgrade to Professional to get started.</p>
               )}
             </div>
           </>

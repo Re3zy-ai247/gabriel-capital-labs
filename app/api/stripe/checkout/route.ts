@@ -7,6 +7,7 @@ import {
   LETTER_PACK_CREDITS, type PaidPlan, type BillingInterval,
 } from "@/lib/stripe";
 import { getOrCreateStripeCustomer } from "@/lib/billing";
+import { track, PRODUCT_EVENTS } from "@/lib/events";
 
 export const dynamic = "force-dynamic";
 
@@ -48,13 +49,17 @@ export async function POST(req: Request) {
     }
 
     // ── Subscriptions ───────────────────────────────────────────────────────
-    const plan: PaidPlan = ["premium", "agency", "agency_pro"].includes(body.plan) ? body.plan : "premium";
+    // Purchasable plans ONLY. agency_pro is "Coming soon" on /pricing — the page
+    // promises "you can't be charged for a plan that isn't available yet", so the
+    // API must not sell it either (it was previously reachable by hand-crafted
+    // POST at a stale price). Re-add it here the day the tier goes live.
+    const plan: PaidPlan = ["premium", "agency"].includes(body.plan) ? body.plan : "premium";
     const interval: BillingInterval = body.interval === "year" ? "year" : "month";
 
     // Block buying a plan you already have (or better).
     const tier = (p: string) => (p === "agency_pro" ? 3 : p === "agency" ? 2 : p === "premium" ? 1 : 0);
     if (tier(user.plan) >= tier(plan)) {
-      const label = user.plan === "agency_pro" ? "Agency Pro" : user.plan === "agency" ? "Agency" : "Premium";
+      const label = user.plan === "agency_pro" ? "Agency Pro" : user.plan === "agency" ? "Agency" : "Professional";
       return NextResponse.json(
         { error: plan === user.plan ? `You're already on ${label}.` : `Your ${label} plan already includes this.` },
         { status: 400 }
@@ -76,6 +81,7 @@ export async function POST(req: Request) {
       metadata: { userId: user.id, plan, interval },
     });
 
+    await track(PRODUCT_EVENTS.subscriptionStarted, { userId: user.id, meta: { plan, interval } });
     return NextResponse.json({ url: checkout.url });
   } catch (e) {
     console.error("stripe checkout error", e);

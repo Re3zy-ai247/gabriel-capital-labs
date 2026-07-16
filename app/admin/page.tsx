@@ -110,7 +110,7 @@ export default function AdminOverviewPage() {
           <p className="mt-4 text-[11px] text-slate-500">
             {data.mrrSource === "stripe"
               ? "MRR is summed from live Stripe subscriptions (active + past-due, normalized monthly; trials and comped accounts excluded)."
-              : "MRR is an ESTIMATE from plan entitlements ($99 Premium, $399 Agency) — Stripe was unreachable; comped accounts inflate it."}{" "}
+              : "MRR is an ESTIMATE from plan entitlements ($99 Professional, $399 Agency) — Stripe was unreachable; comped accounts inflate it."}{" "}
             Churn is a lifetime proxy (canceled ÷ canceled+active) until time-series billing is wired.
           </p>
         </>

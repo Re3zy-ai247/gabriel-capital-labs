@@ -82,7 +82,9 @@ export async function GET() {
     return (b.daysSince ?? -1) - (a.daysSince ?? -1);
   });
 
-  return NextResponse.json({ clients: out });
+  // limit rides along so the roster UI can show honest plan consumption
+  // (e.g. "12 / 15") — null = unlimited/negotiated.
+  return NextResponse.json({ clients: out, limit: agencyClientLimit(agency) });
 }
 
 // POST: add a managed client. They are a User row with no password (cannot log
@@ -96,14 +98,24 @@ export async function POST(req: Request) {
   const fullName = String(body.fullName || "").trim();
   if (!fullName) return NextResponse.json({ error: "Client name is required." }, { status: 400 });
 
-  // Enforce the managed-client cap by agency tier (Agency = 50, Agency Pro / admin = unlimited).
+  // Enforce the managed-client workspace cap by tier (Agency 15 · Agency Pro 40 ·
+  // Scale 100 · Enterprise negotiated; lib/entitlements.agencyClientLimit is the
+  // source of truth). Creation-gating ONLY — existing clients are never locked.
   const limit = agencyClientLimit(agency);
   if (limit !== null) {
     const current = await prisma.user.count({ where: { managedByAgencyId: agency.id } });
     if (current >= limit) {
+      // Honest next-step copy: Agency Pro and Scale are not purchasable yet
+      // ("Coming soon" on /pricing) — never phrase them as a buy-now action.
+      const next =
+        agency.plan === "scale"
+          ? "Talk to us about Enterprise for custom capacity — see the pricing page."
+          : agency.plan === "agency_pro"
+            ? "Scale — with up to 100 client workspaces — is coming soon; see the pricing page for details."
+            : "Agency Pro — with up to 40 client workspaces — is coming soon; see the pricing page for details.";
       return NextResponse.json(
         {
-          error: `You've reached your ${limit}-client limit on the Agency plan. Upgrade to Agency Pro for unlimited clients.`,
+          error: `You've reached your plan's capacity of ${limit} active client workspaces. Your existing clients stay fully accessible. ${next}`,
           upgrade: true,
         },
         { status: 402 }
