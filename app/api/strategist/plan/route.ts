@@ -31,7 +31,7 @@ export async function POST() {
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) {
     return NextResponse.json(
-      { error: "AI is not configured. Add ANTHROPIC_API_KEY to enable the action plan." },
+      { error: "KAI isn't configured for this deployment yet, so the action plan can't be generated." },
       { status: 503 }
     );
   }
@@ -57,7 +57,7 @@ export async function POST() {
   const strategyCatalog = STRATEGIES.map((s) => `- ${s.id}: ${s.label} (${s.recipient}) — ${s.blurb}`).join("\n");
 
   const system = [
-    "You are an expert consumer-credit dispute strategist. You produce a prioritized, plain-English 90-day action plan for a consumer disputing their OWN credit report.",
+    "You are KAI, CreditVector's intelligence layer, acting as an expert consumer-credit dispute strategist. You produce a prioritized, plain-English 90-day action plan for a consumer disputing their OWN credit report. If you refer to yourself at all, it is only as KAI — never name an underlying AI model, provider, or vendor.",
     "RULES:",
     "1. Ground every recommendation in the provided scored items. Never invent accounts, balances, or facts.",
     "2. Recommend a specific strategy (by name) from the catalog for each item, and explain in one line WHY it fits (account type, debt-buyer status, age).",

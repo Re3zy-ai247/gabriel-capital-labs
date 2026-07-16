@@ -69,8 +69,8 @@ ANTHROPIC_API_KEY = sk-ant-...     (from console.anthropic.com → API Keys)
 ```
 
 Without this, Premium users still get fully-grounded template letters; with it,
-Premium letters are refined by Claude Opus 4.8 using FCRA/FDCPA law + case law.
-The free tier never calls the API.
+Premium letters are refined by KAI, CreditVector's intelligence layer, using
+FCRA/FDCPA law + case law. The free tier never calls the API.
 
 ---
 

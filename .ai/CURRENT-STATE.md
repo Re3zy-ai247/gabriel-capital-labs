@@ -7,6 +7,8 @@
 **Last updated:** 2026-07-15 · **Branch:** `main` @ `0ebba21` · **Prod:** LIVE at
 https://www.creditvector.app (Vercel auto-deploys on push to `main`) · **MAIL_LIVE OFF**.
 
+**Committed locally, push pending (2026-07-16):** KAI-first branding pass — all user-facing foundation-model references removed (AiPlan card → "KAI Intelligence" badge + new description; billing bullet; identity/strategist unconfigured-AI notices; SETUP.md "refined by" line) + KAI identity policy in `KAI_SYSTEM` (never expose provider/model/vendor/routing; identify only as KAI) + strategist-plan persona branded as KAI. Guards green (kai-sanitize 8/8, kai-manifest 44/44, tsc). Internal model config/comments/engineering docs untouched. Owner OK required before push→deploy.
+
 ## What's live now
 - **CreditVector app:** all Sprints XII–XXV + Pricing V2 shipped to prod (7 pricing tiers; LIVE
   checkout only for Explorer/Professional/Agency; rest "Coming soon"). History → ADRs/archive.

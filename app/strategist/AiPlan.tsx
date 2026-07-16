@@ -43,12 +43,13 @@ export function AiPlan() {
           <div className="flex items-center gap-2 text-sm font-semibold">
             <Sparkles className="h-4 w-4 text-brand-300" aria-hidden="true" /> AI Action Plan{" "}
             <span className="rounded bg-brand-500/15 px-1.5 py-0.5 text-[10px] font-bold tracking-widest text-brand-300">
-              KAI
+              KAI Intelligence
             </span>
           </div>
           <p className="mt-1 text-xs text-slate-400">
-            A personalized, sequenced 90-day plan written by Claude Opus 4.8 from your actual items — which to dispute
-            first, which strategy to use, and why.
+            KAI analyzes every account in your credit profile, identifies the strongest dispute opportunities,
+            prioritizes them by estimated impact, and generates a personalized 90-day strategy explaining what to
+            dispute first, which legal approach to use, and why.
           </p>
         </div>
         <button onClick={generate} disabled={busy} className="btn-primary shrink-0">

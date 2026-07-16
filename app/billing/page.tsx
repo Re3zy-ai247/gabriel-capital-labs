@@ -221,7 +221,7 @@ function BillingInner() {
               <div className="grid md:grid-cols-2 gap-6">
                 {[
                   ['Unlimited Dispute Letters', 'Generate as many professional dispute letters as you need.'],
-                  ['AI-Powered Refinement', 'Opus-class AI grounds every letter in FCRA, FDCPA, and case law.'],
+                  ['AI-Powered Refinement', 'KAI grounds every letter in FCRA, FDCPA, and case law.'],
                   ['90-Day Progress Tracking', 'Monitor disputes across all three bureaus.'],
                   ['Priority Support', 'Faster help when you need it.'],
                 ].map(([title, desc]) => (
