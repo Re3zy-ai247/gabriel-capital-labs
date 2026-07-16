@@ -1,6 +1,11 @@
 # GIOS — Gabriel Intelligence Operating System — Founder Dashboard
 
-> Single source of truth for the platform. **GIOS** = the operating system every future Gabriel
+> **Canonical current truth = [architecture/FOUNDER-CONTEXT.md](../architecture/FOUNDER-CONTEXT.md).**
+> This dashboard is the founder-facing **metrics view**; state/roadmap/risks/scorecard are mirrored
+> from FOUNDER-CONTEXT (§8–§14) — edit them there, not here. Kernel detail → Capability Map; per-
+> migration *why* → Engineering Journal.
+>
+> Founder-facing metrics view of the platform. **GIOS** = the operating system every future Gabriel
 > product runs on (same Kai Kernel; broader mission). **CreditVector is Plugin #1 — the proof,
 > not the destination.** Updated after every migration. **Honesty rule:** metrics not yet
 > instrumented are marked *"Not Yet Instrumented"* — no number is ever fabricated.

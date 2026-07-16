@@ -8,6 +8,8 @@ CreditVector™ (by **Gabriel Capital Labs**) — a Next.js 14 consumer-credit *
 3. [.ai/CURRENT-STATE.md](.ai/CURRENT-STATE.md) — live snapshot + **pending owner actions (raise them)** + next tasks.
 4. Files directly related to the task.
 
+**GIOS / kernel work?** Skip the broad corpus — read [architecture/BOOTSTRAP.md](architecture/BOOTSTRAP.md) (5-min) → [architecture/FOUNDER-CONTEXT.md](architecture/FOUNDER-CONTEXT.md) (canonical current truth). These replace the dashboard/journal/ADR sprawl for GIOS context. One concept → one home (FOUNDER-CONTEXT §12).
+
 Binding rules: [.ai/CONSTITUTION.md](.ai/CONSTITUTION.md) (truth labels VERIFIED/INFERRED/PROPOSED/NEEDS CONFIRMATION · reuse-first · small reversible changes · no false completion · token-efficiency protocol). Do NOT bulk-read `.ai/` or the whole tree.
 
 ## 🧭 CreditVector Operating System

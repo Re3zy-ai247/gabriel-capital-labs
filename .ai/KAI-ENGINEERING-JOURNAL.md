@@ -1,8 +1,9 @@
 # Kai Engineering Journal
 
-> Institutional memory. For every major implementation decision: **why**, **alternatives**,
-> **tradeoffs**, **performance**, **security**, **future migration path**. So future
-> contributors understand not just *what* was built but *why*. Newest entries on top.
+> **Scope = the *why* archive only** (long-term memory). For current state/roadmap/risks read
+> [../architecture/FOUNDER-CONTEXT.md](../architecture/FOUNDER-CONTEXT.md); don't restate them here.
+> This file keeps, per major decision: **why**, **alternatives**, **tradeoffs**, **performance**,
+> **security**, **future migration path**. Newest entries on top.
 
 ---
 
