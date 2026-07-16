@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { currentUserOrDemo } from "@/lib/session";
+import { enforceRateLimit } from "@/lib/rateLimit";
 import { analyzeReportText } from "@/lib/analyze";
 import { decryptText } from "@/lib/docCrypto";
 import { recordKaiEvent } from "@/lib/kaiEvents";
@@ -14,6 +15,8 @@ export const runtime = "nodejs";
 export async function POST(req: Request) {
   const user = await currentUserOrDemo();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const limited = await enforceRateLimit(`report-analyze:${user.id}`, 10, 3600); // fans out paid AI over all reports — cost guard
+  if (limited) return limited;
 
   const { reportId } = await req.json().catch(() => ({}));
   const reports = await prisma.report.findMany({

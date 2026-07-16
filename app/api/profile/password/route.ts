@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { currentAccount } from "@/lib/session";
+import { enforceRateLimit } from "@/lib/rateLimit";
 import { validatePassword } from "@/lib/password";
 
 export const dynamic = "force-dynamic";
@@ -12,6 +13,8 @@ export const runtime = "nodejs";
 export async function POST(req: Request) {
   const account = await currentAccount();
   if (!account) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const limited = await enforceRateLimit(`profile-password:${account.id}`, 10, 900); // current-password brute-force guard
+  if (limited) return limited;
 
   const body = await req.json().catch(() => ({}));
   const currentPassword = String(body.currentPassword || "");

@@ -14,6 +14,8 @@ const EXPECTED_ENV = [
   "ANTHROPIC_API_KEY", "RESEND_API_KEY", "RESEND_FROM", "CRON_SECRET", "COMPANY_POSTAL_ADDRESS",
   "DOCUMENT_ENCRYPTION_KEY", "VAPID_PRIVATE_KEY", "NEXT_PUBLIC_VAPID_PUBLIC_KEY",
   "ALERT_WEBHOOK_URL", "MAIL_LIVE", "KERNEL_DURABLE",
+  // Surfaced so the founder can detect a lingering god-mode secret in prod (presence only):
+  "SETUP_SECRET", "ADMIN_PASSWORD",
 ];
 
 export async function GET() {

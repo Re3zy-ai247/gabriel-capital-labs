@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { Bureau } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { currentUserOrDemo } from "@/lib/session";
+import { enforceRateLimit } from "@/lib/rateLimit";
 import { analyzeReportText } from "@/lib/analyze";
 import { extractPdfText } from "@/lib/pdf";
 import { encryptText } from "@/lib/docCrypto";
@@ -22,6 +23,8 @@ const VALID_BUREAUS: Bureau[] = ["EQUIFAX", "EXPERIAN", "TRANSUNION"];
 export async function POST(req: Request) {
   const user = await currentUserOrDemo();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const limited = await enforceRateLimit(`report-upload:${user.id}`, 20, 3600); // paid AI extraction — abuse/cost guard
+  if (limited) return limited;
 
   let rawText = "";
   let fileName = "pasted-report.txt";

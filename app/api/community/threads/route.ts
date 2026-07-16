@@ -9,6 +9,7 @@ import {
   LIMITS,
 } from "@/lib/community";
 import { askKai } from "@/lib/kai";
+import { enforceRateLimit } from "@/lib/rateLimit";
 import { filesFromForm, validateFiles, saveAttachments } from "@/lib/attachments";
 
 export const dynamic = "force-dynamic";
@@ -76,6 +77,12 @@ export async function POST(req: Request) {
 
   const { ok: files, error: fileError } = await validateFiles(filesFromForm(form));
   if (fileError) return NextResponse.json({ error: fileError }, { status: 400 });
+
+  // Same paid-Kai budget as the /ask-kai route — a thread create with askKai=true must not bypass it.
+  if (wantKai) {
+    const kaiLimited = await enforceRateLimit(`kai:${account.id}`, 20, 3600);
+    if (kaiLimited) return kaiLimited;
+  }
 
   const thread = await prisma.communityThread.create({
     data: {

@@ -113,9 +113,9 @@ export async function POST(req: Request) {
     const applied = await run();
     return NextResponse.json({ ok: true, applied });
   } catch (e) {
-    console.error("migrate error", e);
+    console.error("migrate error", e); // full driver detail stays server-side only
     return NextResponse.json(
-      { error: "Migration failed.", detail: e instanceof Error ? e.message : String(e) },
+      { error: "Migration failed." }, // do not echo raw DB/driver internals to the caller
       { status: 500 }
     );
   }

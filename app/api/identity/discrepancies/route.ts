@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { currentUserOrDemo } from "@/lib/session";
 import { meteredMessage } from "@/lib/aiMeter";
+import { enforceRateLimit } from "@/lib/rateLimit";
 import { decryptDocument, decryptText, docCryptoReady } from "@/lib/docCrypto";
 
 export const dynamic = "force-dynamic";
@@ -73,6 +74,8 @@ const SCHEMA = {
 export async function POST() {
   const user = await currentUserOrDemo();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const limited = await enforceRateLimit(`identity-discrepancies:${user.id}`, 10, 3600); // AI multimodal — abuse/cost guard
+  if (limited) return limited;
 
   const identityComplete = Boolean(user.fullName && user.addressLine1 && user.city && user.state && user.zip);
   if (!identityComplete) {

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { seedDemoUser, DEMO_EMAIL, DEMO_PASSWORD } from "@/lib/demoSeed";
+import { enforceRateLimit, clientIp } from "@/lib/rateLimit";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -11,6 +12,8 @@ export const runtime = "nodejs";
 // can't be used to generate load. The seed is fully deterministic (no AI calls).
 // Pass ?force=1 to refresh the demo's reports/tradelines back to the clean set.
 async function handle(req: Request) {
+  const limited = await enforceRateLimit(`demo-seed:${clientIp(req)}`, 5, 3600); // unauth destructive re-seed — IP throttle
+  if (limited) return limited;
   const force = new URL(req.url).searchParams.get("force");
   try {
     const existing = await prisma.user.findUnique({

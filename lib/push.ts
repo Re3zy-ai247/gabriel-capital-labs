@@ -46,7 +46,29 @@ export interface WebPushSub {
   keys: { p256dh: string; auth: string };
 }
 
+// Validate a user-supplied push endpoint at the write boundary (defensive; the send path is
+// admin-only today but goes live with user-facing push). Require https + reject IP-literal /
+// loopback / link-local / private / metadata hosts so a stored endpoint can never become an SSRF
+// sink when web-push later POSTs to it.
+export function isSafePushEndpoint(raw: string): boolean {
+  let u: URL;
+  try { u = new URL(raw); } catch { return false; }
+  if (u.protocol !== "https:") return false;
+  const host = u.hostname.toLowerCase();
+  if (host === "localhost" || host.endsWith(".local")) return false;
+  if (host === "[::1]" || host.startsWith("[fc") || host.startsWith("[fd") || host.startsWith("[fe80")) return false;
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(host)) {
+    const p = host.split(".").map(Number);
+    if (p[0] === 0 || p[0] === 10 || p[0] === 127) return false;
+    if (p[0] === 169 && p[1] === 254) return false;              // link-local + cloud metadata
+    if (p[0] === 172 && p[1] >= 16 && p[1] <= 31) return false;
+    if (p[0] === 192 && p[1] === 168) return false;
+  }
+  return true;
+}
+
 export async function savePushSubscription(userId: string, sub: WebPushSub): Promise<void> {
+  if (!isSafePushEndpoint(sub.endpoint)) throw new Error("invalid push endpoint");
   await ensurePushTable();
   // Re-subscribing from the same device updates the keys + ownership (upsert on endpoint).
   await prisma.pushSubscription.upsert({

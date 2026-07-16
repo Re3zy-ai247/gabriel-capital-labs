@@ -3,6 +3,7 @@ import type { Bureau } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { currentUserOrDemo } from "@/lib/session";
 import { meteredMessage } from "@/lib/aiMeter";
+import { enforceRateLimit } from "@/lib/rateLimit";
 import { getEntitlement } from "@/lib/entitlements";
 import { applyCompliance } from "@/lib/compliance";
 import { encryptText } from "@/lib/docCrypto";
@@ -26,6 +27,8 @@ interface Discrepancy {
 export async function POST(req: Request) {
   const user = await currentUserOrDemo();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const limited = await enforceRateLimit(`identity-letter:${user.id}`, 20, 3600); // paid Opus letter — cost guard
+  if (limited) return limited;
 
   const entitlement = await getEntitlement(user);
   if (!entitlement.premium) {

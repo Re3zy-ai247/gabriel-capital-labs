@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { currentUserOrDemo } from "@/lib/session";
 import { meteredMessage } from "@/lib/aiMeter";
+import { enforceRateLimit } from "@/lib/rateLimit";
 import { buildContext, renderTemplateLetter, buildSystemPrompt } from "@/lib/letter";
 import { buildRound2UserPrompt, type ResponseAnalysis } from "@/lib/round2";
 import { applyCompliance } from "@/lib/compliance";
@@ -19,6 +20,8 @@ export const maxDuration = 60;
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const user = await currentUserOrDemo();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const limited = await enforceRateLimit(`letters-round2:${user.id}`, 20, 3600); // paid Opus escalation letter — cost guard
+  if (limited) return limited;
 
   const parent = await prisma.letter.findFirst({
     where: { id: params.id, userId: user.id },

@@ -34,6 +34,11 @@ export async function ensureRateLimitTable(): Promise<void> {
 // the original client (Vercel sets this). Falls back to "unknown" so a missing
 // header buckets everyone together rather than throwing.
 export function clientIp(req: Request): string {
+  // Prefer the platform-set x-real-ip (Vercel populates it at the edge) — it is NOT
+  // client-controllable. The leftmost x-forwarded-for hop IS attacker-supplied, so relying on it
+  // lets a spoofed header land each request in a fresh rate-limit bucket (auth brute-force bypass).
+  const real = req.headers.get("x-real-ip");
+  if (real && real.trim()) return real.trim();
   const xff = req.headers.get("x-forwarded-for");
   if (xff) {
     const first = xff.split(",")[0]?.trim();
