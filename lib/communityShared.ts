@@ -14,7 +14,7 @@ export const CATEGORIES: Category[] = [
   { key: "wins", label: "Wins", blurb: "Deletions, results, and client success stories." },
   { key: "strategy", label: "Strategy", blurb: "Dispute tactics, round sequencing, and escalation." },
   { key: "tools", label: "Tools & Workflow", blurb: "Using CreditVector to run your agency efficiently." },
-  { key: "questions", label: "Questions for Kai", blurb: "Ask the master agent anything about the system." },
+  { key: "questions", label: "Questions for Kai", blurb: "Ask Kai anything about the system." },
 ];
 
 export const CATEGORY_KEYS = CATEGORIES.map((c) => c.key);

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { currentUserOrDemo } from "@/lib/session";
 import { decryptText } from "@/lib/docCrypto";
 import { recordKaiEvent } from "@/lib/kaiEvents";
+import { track, PRODUCT_EVENTS } from "@/lib/events";
 
 export const dynamic = "force-dynamic";
 
@@ -95,6 +96,12 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       refId: existing.tradelineId,
       payload: { recipient: existing.recipientName, round: existing.round },
     });
+  }
+
+  // Only on the actual transition into RESOLVED — re-PATCHing an already-resolved
+  // letter must not inflate the funnel metric.
+  if (status === "RESOLVED" && existing.status !== "RESOLVED") {
+    await track(PRODUCT_EVENTS.disputeCompleted, { userId: user.id, meta: { round: existing.round } });
   }
 
   return NextResponse.json({ ok: true, letter: decryptedLetter(letter) });

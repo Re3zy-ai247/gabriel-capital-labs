@@ -7,6 +7,7 @@ import { analyzeReportText } from "@/lib/analyze";
 import { extractPdfText } from "@/lib/pdf";
 import { encryptText } from "@/lib/docCrypto";
 import { recordKaiEvent } from "@/lib/kaiEvents";
+import { track, PRODUCT_EVENTS } from "@/lib/events";
 import { getBureauData, crossBureauConflicts } from "@/lib/bureauData";
 import { recommendStrategy } from "@/lib/recommend";
 
@@ -133,6 +134,7 @@ export async function POST(req: Request) {
           refId: report.id,
           payload: { tradelines: result.tradelines, usedAI: result.usedAI },
         });
+        await track(PRODUCT_EVENTS.reportUploaded, { userId: user.id, meta: { bureaus: bureaus.length, tradelines: result.tradelines } });
 
         if (result.tradelines === 0) {
           emit({

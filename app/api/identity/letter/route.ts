@@ -33,7 +33,7 @@ export async function POST(req: Request) {
   const entitlement = await getEntitlement(user);
   if (!entitlement.premium) {
     return NextResponse.json(
-      { error: "Generating correction letters is a Premium feature.", upgrade: true },
+      { error: "Generating correction letters is a Professional feature.", upgrade: true },
       { status: 402 }
     );
   }

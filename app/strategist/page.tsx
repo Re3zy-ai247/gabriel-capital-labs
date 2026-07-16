@@ -5,7 +5,6 @@ import { ProbabilityBadge } from "@/components/ui/Badge";
 import { AiPlan } from "./AiPlan";
 import { prisma } from "@/lib/prisma";
 import { currentUserOrDemo } from "@/lib/session";
-import { estimatedPointImpact } from "@/lib/scoring";
 import { formatCents } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -23,7 +22,7 @@ export default async function StrategistPage() {
   const excluded = tradelines.filter((t) => t.probability === "NOT_RECOMMENDED");
 
   return (
-    <AppShell title="/ AI Strategist">
+    <AppShell title="/ Strategy Desk">
       <EduBanner />
       <h2 className="mb-1 flex items-center gap-2 text-xl font-semibold">
         <span className="rounded bg-brand-500/15 px-1.5 py-0.5 text-[10px] font-bold tracking-widest text-brand-300">KAI</span>
@@ -35,7 +34,7 @@ export default async function StrategistPage() {
           : "This is where I rank your dispute queue — by account type, age, debt-buyer status, and verifiable inconsistencies."}
       </p>
 
-      <AiPlan />
+      <AiPlan currentItemCount={queue.length} storageKey={user ? `cv-strategy-plan:${user.id}` : null} />
 
       <div className="mb-5 grid grid-cols-4 gap-3">
         <div className="card p-4 text-center"><div className="text-xl font-bold text-brand-400">{counts.HIGH}</div><div className="text-[11px] uppercase text-slate-400">High</div></div>
@@ -65,8 +64,8 @@ export default async function StrategistPage() {
               <div className="truncate text-xs text-slate-500">{t.reasons[0] || "—"} · {formatCents(t.balance)}</div>
             </div>
             <div className="text-right">
-              <div className="text-sm font-semibold text-brand-400">+{estimatedPointImpact(t.accountType, t.probability)} pts</div>
-              <div className="text-[10px] text-slate-500">est. impact</div>
+              <div className="text-[10px] uppercase tracking-wide text-slate-500">Dispute strength</div>
+              <div className="text-sm font-semibold text-brand-400">{t.probability === "HIGH" ? "Strong" : t.probability === "MEDIUM" ? "Moderate" : "Limited"}</div>
             </div>
             <Link href={`/letters?tradeline=${t.id}`} className="btn-ghost shrink-0 text-xs">Dispute →</Link>
           </div>

@@ -140,6 +140,21 @@ export default async function LetterPrintPage({ params }: { params: { id: string
             ))}
         </div>
       </main>
+
+      {/* Screen-only mailing guide — closes the print→mail handoff for first-time
+          self-mailers. Never printed (print:hidden); process-only, no outcome claims. */}
+      <aside className="mx-auto mb-16 max-w-[8.5in] rounded-xl border border-slate-300 bg-white px-6 py-5 text-sm text-slate-700 shadow-sm print:hidden">
+        <div className="mb-2 flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-slate-500">
+          <span className="rounded bg-brand-500/15 px-1.5 py-0.5 text-slate-700">KAI</span> How to mail this
+        </div>
+        <ol className="list-decimal space-y-1.5 pl-5 leading-relaxed">
+          <li>Print every page — the letter and any enclosures — then sign and date it.</li>
+          <li>Mail it to the address shown at the top of the letter.</li>
+          <li>First-class mail works. Certified mail with return receipt costs a little more but gives you proof of delivery and the date the response window starts — worth it for a dispute.</li>
+          <li>Keep a copy of everything you send, then mark the letter mailed in CreditVector so I can track the response window with you.</li>
+        </ol>
+        <p className="mt-3 text-xs text-slate-500">Educational guidance on exercising your own rights — not legal advice, and no outcome is guaranteed.</p>
+      </aside>
     </div>
   );
 }

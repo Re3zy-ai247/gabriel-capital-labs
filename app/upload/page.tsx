@@ -349,7 +349,7 @@ export default function UploadPage() {
           {/* Bureau selection + submit */}
           <div className="card h-fit p-5">
             <div className="mb-2 text-sm font-semibold">Which bureau(s) does this report cover?</div>
-            <p className="mb-3 text-xs text-slate-500">This powers our accuracy guarantee. A tri-merge from AnnualCreditReport.com covers all three.</p>
+            <p className="mb-3 text-xs text-slate-500">This lets KAI cross-check every account across all three bureaus. A tri-merge from AnnualCreditReport.com covers all three.</p>
             <div className="space-y-2">
               {BUREAUS.map((b) => (
                 <label key={b.id} className="flex cursor-pointer items-center gap-2 text-sm">

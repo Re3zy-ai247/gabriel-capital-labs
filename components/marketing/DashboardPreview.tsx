@@ -7,7 +7,7 @@ const NAV = [
   { icon: LayoutDashboard, label: "Overview", active: true },
   { icon: ListTree, label: "Tradelines" },
   { icon: Mails, label: "Dispute Letters" },
-  { icon: Target, label: "AI Strategist" },
+  { icon: Target, label: "Strategy Desk" },
   { icon: CalendarRange, label: "90-Day Journey" },
 ];
 

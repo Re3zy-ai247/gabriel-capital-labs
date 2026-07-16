@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { trackClient } from '@/lib/trackClient';
 
 // Copy stays inside the CROA bar: process language only — no "fix your credit",
 // no absolute detection claims, no offers (free trial) that don't exist.
@@ -48,7 +49,14 @@ export default function OnboardingPage() {
   const router = useRouter();
   const [completedSteps, setCompletedSteps] = useState<number[]>([]);
 
+  // Private Alpha funnel: onboarding viewed.
+  useEffect(() => {
+    trackClient('onboarding_started');
+  }, []);
+
   const handleStepClick = (step: number, href: string) => {
+    // First engagement with a step = entered the product from onboarding.
+    if (completedSteps.length === 0) trackClient('onboarding_completed');
     setCompletedSteps([...completedSteps, step]);
     router.push(href);
   };
@@ -116,7 +124,7 @@ export default function OnboardingPage() {
         <div className="mt-16 card p-8 text-center">
           <h2 className="text-2xl font-bold mb-4">Want the full engine?</h2>
           <p className="text-slate-400 mb-6">
-            Premium includes unlimited dispute letters and AI refinement. The free tier stays free — 3 letters a month.
+            Professional includes unlimited dispute letters and AI refinement. The free tier stays free — 3 letters a month.
           </p>
           <Link href="/pricing" className="btn-primary btn-lg inline-flex">
             View Pricing

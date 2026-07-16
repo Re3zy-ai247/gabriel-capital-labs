@@ -230,7 +230,8 @@ function Payment({ prep, busy, error, onConfirm, onBack }: { prep: Prep; busy: b
       <p className="mt-3 rounded-lg border border-gold-500/30 bg-gold-500/10 p-3 text-xs text-gold-400">
         <Lock className="mr-1 inline h-3.5 w-3.5" aria-hidden />
         Live mailing isn&apos;t switched on yet, so <strong>no card is charged and no letter is sent</strong>. Confirming
-        queues your dispute and locks in this price; you&apos;ll be able to pay and send the moment live mailing goes live.
+        saves this dispute to your mailing queue at today&apos;s listed price — you can review, edit, or remove it any time,
+        and you&apos;ll approve the final price before anything mails.
       </p>
 
       <p className="mt-3 min-h-[1rem] text-xs text-rose-400" role="alert" aria-live="polite">{error ?? ""}</p>

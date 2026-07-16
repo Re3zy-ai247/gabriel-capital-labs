@@ -50,7 +50,7 @@ function mailStatusLine(status: string): { icon: Entry["icon"]; text: string; su
     case "APPROVED":
       return { icon: "done", text: "You approved this dispute for mailing", sub: "Your approval is recorded — the next step is confirming and queuing it." };
     case "PAID":
-      return { icon: "file", text: "Price locked in — no charge yet", sub: "Live mailing isn't switched on, so no card is charged; this just locks in the price for when it is." };
+      return { icon: "file", text: "Saved to your mailing queue — no charge yet", sub: "Live mailing isn't switched on, so no card is charged. Your dispute is queued at today's listed price; you'll approve the final price before anything mails." };
     case "QUEUED":
       return { icon: "mail", text: "Queued for mailing", sub: "Your Mail Manifest is your proof of intent. It mails the moment live mailing is enabled." };
     default:

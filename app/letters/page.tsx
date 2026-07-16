@@ -335,7 +335,7 @@ function LettersInner() {
             {upgrade && (
               <div className="mt-2 space-y-1.5 text-center">
                 <Link href="/pricing" className="block text-xs font-semibold text-brand-300 underline">
-                  Upgrade to Premium for unlimited letters →
+                  Upgrade to Professional for unlimited letters →
                 </Link>
                 <button
                   onClick={async () => {
@@ -375,15 +375,17 @@ function LettersInner() {
                     <button onClick={copyLetter} className="btn-ghost text-xs">
                       {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />} {copied ? "Copied" : "Copy"}
                     </button>
-                    <Link href={`/letters/print/${letter.id}`} target="_blank" className="btn-ghost text-xs">
+                    <Link href={`/letters/print/${letter.id}`} target="_blank" className="btn-primary !py-1.5 text-xs">
                       <Printer className="h-3.5 w-3.5" /> Print / PDF
-                    </Link>
-                    <Link href={`/mail/send/${letter.id}`} className="btn-primary !py-1.5 text-xs">
-                      <Send className="h-3.5 w-3.5" /> Mail with CreditVector
                     </Link>
                     <button onClick={() => setStatus(letter.id, "MAILED")} className="btn-ghost text-xs">
                       Mark mailed myself
                     </button>
+                    {/* Live mailing (MAIL_LIVE) is off during beta — this is a queue-for-later flow, honestly
+                        labeled and de-emphasized so it's never mistaken for a letter that's already been sent. */}
+                    <Link href={`/mail/send/${letter.id}`} className="btn-ghost text-xs text-slate-400" title="Queue this dispute for CreditVector to mail once live mailing is switched on — nothing is charged or sent yet.">
+                      <Send className="h-3.5 w-3.5" /> Mail via CreditVector (soon)
+                    </Link>
                   </div>
                 </div>
                 {warning && (
@@ -606,12 +608,13 @@ function LetterRow({
             <Link href={`/letters/print/${l.id}`} target="_blank" className="btn-ghost min-h-[44px] min-w-[44px] justify-center text-xs" aria-label="Print letter"><Printer className="h-3.5 w-3.5" aria-hidden /></Link>
             {l.status !== "MAILED" && l.status !== "RESOLVED" && l.status !== "RESPONSE_RECEIVED" && (
               <>
-                <Link href={`/mail/send/${l.id}`} className="btn-primary min-h-[44px] !py-1.5 text-xs" title="Review, approve, and queue this dispute for CreditVector to mail.">
-                  <Send className="h-3.5 w-3.5" aria-hidden /> Mail it
-                </Link>
-                <button onClick={() => onStatus(l.id, "MAILED")} className="btn-ghost min-h-[44px] text-xs" title="Prefer to mail it yourself? Mark it mailed to start the response clock.">
+                <button onClick={() => onStatus(l.id, "MAILED")} className="btn-primary min-h-[44px] !py-1.5 text-xs" title="Printed and mailed it yourself? Mark it mailed to start the response clock.">
                   Mark mailed myself
                 </button>
+                {/* MAIL_LIVE off during beta — queue-for-later, de-emphasized so it never reads as already 'sent'. */}
+                <Link href={`/mail/send/${l.id}`} className="btn-ghost min-h-[44px] text-xs text-slate-400" title="Queue this dispute for CreditVector to mail once live mailing is switched on — nothing is charged or sent yet.">
+                  <Send className="h-3.5 w-3.5" aria-hidden /> Mail via CreditVector (soon)
+                </Link>
               </>
             )}
             {(l.status === "MAILED" || l.status === "RESPONSE_RECEIVED") && !l.hasResponse && (

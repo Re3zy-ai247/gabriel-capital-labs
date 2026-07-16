@@ -128,7 +128,7 @@ export function KaiPresence() {
           <div className="flex items-start justify-between gap-2">
             <div className="flex items-center gap-1.5">
               <span className="rounded bg-brand-500/15 px-1.5 py-0.5 text-[10px] font-bold tracking-widest text-brand-300">KAI</span>
-              <span className="text-[11px] text-slate-500">your intelligence layer</span>
+              <span className="text-[11px] text-slate-500">Credit Intelligence Officer</span>
             </div>
             <button onClick={dismiss} aria-label="Dismiss Kai for this session" className="-m-1.5 rounded-md p-1.5 text-slate-500 transition-colors hover:text-slate-300">
               <X className="h-3.5 w-3.5" aria-hidden />

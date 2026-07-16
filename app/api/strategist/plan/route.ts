@@ -6,6 +6,7 @@ import { enforceRateLimit } from "@/lib/rateLimit";
 import { getEntitlement } from "@/lib/entitlements";
 import { STRATEGIES } from "@/lib/strategies";
 import { formatCents } from "@/lib/utils";
+import { track, PRODUCT_EVENTS } from "@/lib/events";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -23,7 +24,7 @@ export async function POST() {
   const entitlement = await getEntitlement(user);
   if (!entitlement.premium) {
     return NextResponse.json(
-      { error: "The AI action plan is a Premium feature.", upgrade: true },
+      { error: "The AI action plan is a Professional feature.", upgrade: true },
       { status: 402 }
     );
   }
@@ -57,7 +58,7 @@ export async function POST() {
   const strategyCatalog = STRATEGIES.map((s) => `- ${s.id}: ${s.label} (${s.recipient}) — ${s.blurb}`).join("\n");
 
   const system = [
-    "You are KAI, CreditVector's intelligence layer, acting as an expert consumer-credit dispute strategist. You produce a prioritized, plain-English 90-day action plan for a consumer disputing their OWN credit report. If you refer to yourself at all, it is only as KAI — never name an underlying AI model, provider, or vendor.",
+    "You are Kai, the Credit Intelligence Officer for CreditVector — a calm, evidence-driven credit analyst, not a chatbot. You produce a prioritized, plain-English 90-day action plan for a consumer disputing their OWN credit report. Brief the user like an analyst: direct, specific, and educational; never hype, upsell, or imply a guaranteed outcome. If you refer to yourself at all, it is only as Kai — never name an underlying AI model, provider, or vendor.",
     "RULES:",
     "1. Ground every recommendation in the provided scored items. Never invent accounts, balances, or facts.",
     "2. Recommend a specific strategy (by name) from the catalog for each item, and explain in one line WHY it fits (account type, debt-buyer status, age).",
@@ -87,9 +88,11 @@ export async function POST() {
     const textBlock = (msg.content as any[]).find((c) => c.type === "text");
     const plan = textBlock && "text" in textBlock ? textBlock.text.trim() : "";
     if (!plan) return NextResponse.json({ error: "Could not generate a plan. Try again." }, { status: 500 });
+    await track(PRODUCT_EVENTS.strategyGenerated, { userId: user.id, meta: { items: queue.length } });
     return NextResponse.json({ ok: true, plan, items: queue.length });
   } catch (e) {
     console.error("strategist plan error", e);
+    await track(PRODUCT_EVENTS.failure, { userId: user.id, meta: { surface: "strategist_plan" } });
     return NextResponse.json({ error: "Plan generation failed. Please try again." }, { status: 500 });
   }
 }

@@ -4,6 +4,7 @@ import { getStripe } from "@/lib/stripe";
 import { syncSubscriptionToUser, creditLetters } from "@/lib/billing";
 import { prisma } from "@/lib/prisma";
 import { reportError } from "@/lib/observability";
+import { track, PRODUCT_EVENTS } from "@/lib/events";
 
 export const dynamic = "force-dynamic";
 // Stripe needs the raw, unparsed body to verify the signature.
@@ -36,6 +37,10 @@ export async function POST(req: Request) {
           const subId = typeof cs.subscription === "string" ? cs.subscription : cs.subscription.id;
           const sub = await stripe.subscriptions.retrieve(subId);
           await syncSubscriptionToUser(sub);
+          await track(PRODUCT_EVENTS.subscriptionCompleted, {
+            userId: cs.metadata?.userId ?? null,
+            meta: { plan: cs.metadata?.plan ?? null },
+          });
         } else if (cs.mode === "payment" && cs.metadata?.product === "letters_5") {
           // One-time letter pack — grant the purchased credits.
           const userId = cs.metadata.userId;

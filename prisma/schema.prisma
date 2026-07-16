@@ -541,3 +541,18 @@ model KaiSeen {
   userId String   @id
   seenAt DateTime @default(now())
 }
+
+// ProductEvent (Private Alpha instrumentation, Beta Launch Strategy §5.2): a
+// minimal first-party funnel/analytics sink, distinct from the user-facing
+// KaiEvent stream. Self-heal table (ADR-0001), accessed via raw SQL in
+// lib/events.ts. Meta is minimal and never contains PII.
+model ProductEvent {
+  id        String   @id @default(cuid())
+  userId    String?
+  name      String
+  meta      Json?
+  createdAt DateTime @default(now())
+
+  @@index([name, createdAt])
+  @@index([userId])
+}

@@ -87,7 +87,7 @@ export default function IdentityPage() {
         body: JSON.stringify({ discrepancies: result.discrepancies, bureau }),
       });
       const j = await res.json();
-      if (res.status === 402) { setLetterMsg("Generating correction letters is a Premium feature."); return; }
+      if (res.status === 402) { setLetterMsg("Generating correction letters is a Professional feature."); return; }
       if (!res.ok) { setLetterMsg(j.error || "Could not generate the letter."); return; }
       setLetter({ id: j.letter.id, body: j.letter.body });
     } catch {
@@ -213,7 +213,7 @@ export default function IdentityPage() {
                   {letterMsg && (
                     <span className="text-xs text-rose-400">
                       {letterMsg}{" "}
-                      {letterMsg.includes("Premium") && (
+                      {letterMsg.includes("Professional") && (
                         <Link href="/pricing" className="font-semibold text-brand-300 underline">Upgrade →</Link>
                       )}
                     </span>

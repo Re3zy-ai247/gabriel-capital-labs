@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { currentUserOrDemo } from "@/lib/session";
 import { meteredMessage } from "@/lib/aiMeter";
 import { recordKaiEvent } from "@/lib/kaiEvents";
+import { track, PRODUCT_EVENTS } from "@/lib/events";
 import { enforceRateLimit } from "@/lib/rateLimit";
 import { buildContext, renderTemplateLetter, buildSystemPrompt, buildUserPrompt } from "@/lib/letter";
 import { applyCompliance } from "@/lib/compliance";
@@ -137,7 +138,7 @@ export async function POST(req: Request) {
     if (entitlement.lettersRemaining !== null && entitlement.lettersRemaining <= 0) {
       return NextResponse.json(
         {
-          error: "You've used all 3 free dispute letters this month. Upgrade to Premium for unlimited letters and AI refinement.",
+          error: "You've used all 3 free dispute letters this month. Upgrade to Professional for unlimited letters and AI refinement.",
           upgrade: true,
           entitlement,
         },
@@ -176,6 +177,8 @@ export async function POST(req: Request) {
       }
     }
 
+    await track(PRODUCT_EVENTS.disputeCreated, { userId: user.id, meta: { count: created.length, aiRefined: anyAI } });
+
     const after = await getEntitlement(user);
     return NextResponse.json({
       ok: true,
@@ -198,6 +201,7 @@ export async function POST(req: Request) {
     });
   } catch (e) {
     console.error("letter generation error", e);
+    await track(PRODUCT_EVENTS.failure, { meta: { surface: "letter_generate" } });
     return NextResponse.json({ error: "Letter generation failed. Please try again." }, { status: 500 });
   }
 }

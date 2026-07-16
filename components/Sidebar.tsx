@@ -20,7 +20,7 @@ const NAV = [
   { href: "/letters", label: "Dispute Letters", icon: Mails },
   { href: "/campaigns", label: "Campaigns", icon: Layers },
   { href: "/mail", label: "Mail Center", icon: Send },
-  { href: "/strategist", label: "AI Strategist", icon: Target },
+  { href: "/strategist", label: "Strategy Desk", icon: Target },
   { href: "/scores", label: "Score Tracker", icon: LineChart },
   { href: "/builder", label: "Credit Builder", icon: Sprout },
   { href: "/academy", label: "Academy", icon: GraduationCap },
