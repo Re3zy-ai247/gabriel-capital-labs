@@ -38,8 +38,8 @@
 | Axis | State | Basis |
 |---|---|---|
 | **Kernel mechanism** | ✅ **13/13 primitives built + guarded** | Identity, Registry, Namespace, Resolver, PEP, Dispatch, Permissions, Clock, Audit, Event Bus, Memory, Manifest, Idempotency ([Capability Map](../architecture/GIOS-KERNEL-CAPABILITY-MAP.md)) |
-| **Durable adapters** | ⏳ **0/4 durable** (all in-memory) | Audit · Event · Memory · Idempotency are reference in-mem ports; durable Postgres = #11/#12 |
-| **Effect-safety** | ⚠️ **not effect-ready** | D-07 (dispatch mark-on-failure/synthetic replay) + D-08 (payload-blind PEP) open; no effect crosses dispatch yet |
+| **Durable adapters** | 🟡 **3/4 implemented flag-off** (Audit · Event · Idempotency via `host/durable.ts`, `KERNEL_DURABLE` off, prod-validate before enable); Memory = #12 | durable Postgres adapters written + logic-proven; in-mem remains the default |
+| **Effect-safety** | 🟡 **D-07 FIXED** (claim/settle, #11) · D-08 open | dispatch is claim-before-effect + settle-on-success + replay-original (guarded); D-08 (payload-blind PEP) ships with the effect |
 | **ABI** | 🔒 **unfrozen by design** | frozen at Sprint 3 after CreditVector exercises it (ADR-0024) |
 | **Composite kernel maturity** | **Mechanism complete · Durability + Effect-safety not started (gated to #11)** | = (mechanism 100%) + (durability 0%) + (effect-safety 0%); *rubric, not performance* |
 
@@ -98,7 +98,7 @@ Kai Platform
 |---|---|
 | Typecheck | ✅ clean |
 | Build | ✅ clean |
-| Guard suite | ✅ kernel 33 + credit plugin 19 + platform notify 23 checks, all green |
+| Guard suite | ✅ kernel 33 + credit 19 + notify 23 + **durable/#11 13** checks, all green (+ D-02 perf harness) |
 | Security invariants (tested) | tenant isolation · default-deny PEP · append-only audit · idempotency · permissible-purpose |
 | Test coverage % | **not instrumented** (tracked debt D-01) |
 | Performance / memory | **not instrumented** (tracked debt D-02) |
@@ -109,7 +109,17 @@ Kai Platform
 ---
 
 ## PERFORMANCE DASHBOARD
-**Not yet instrumented.** No latency/CPU/memory/bundle/query numbers are recorded because we have not built the measurement harness — and we do not fabricate them. Instrumenting kernel-dispatch / capability-resolution / PEP / audit cost is tracked debt **D-02** and should land before the first live-route flip (so old-vs-kernel latency is measured, not guessed). Kernel primitives are pure in-memory computations over a single preloaded context (designed to be sub-millisecond), but that is a *design intent*, not a *measurement*.
+**MEASURED (D-02 harness `scripts/perf-harness.ts`, 2026-07-15) — in-memory dispatch path, warm:**
+| Capability | p50 | p95 | p99 | max | write amplification / dispatch |
+|---|--:|--:|--:|--:|---|
+| `notify.plan.compose` (keyless) | 0.015 ms | 0.031 ms | 0.060 ms | 2.996 ms | 1 audit · 1 event · 3 version-stamp |
+| `notify.plan.compose` (keyed, claim/settle) | 0.014 ms | 0.020 ms | 0.051 ms | 1.439 ms | 1 audit · 1 event · 2 version-stamp |
+| `credit.obsolescence.window` (keyless) | 0.003 ms | 0.004 ms | 0.021 ms | 0.906 ms | 1 audit · 1 event · 3 version-stamp |
+
+**Insight:** the version authority (~3 stamps/dispatch) is the durable-path optimization target (fold
+stamps / pre-allocate version blocks). **NOT measured (prod-only, not fabricated):** serverless cold
+start + the durable-Postgres path (`KERNEL_DURABLE` on) — bracket in prod (aiMeter `Date.now` pattern).
+**Next:** set + enforce a p95 budget before the first live-route flip.
 
 ---
 
@@ -120,7 +130,7 @@ Kai Platform
 | R-02 | Durable audit/version not yet backed (in-mem) → no cross-invocation ordering | Med | — | Subsystem #11 supplies DB-sequence + Postgres audit | Eng | S2 | open (planned) |
 | R-03 | Permissible-purpose is a placeholder mechanism, not the counsel-designed legal model | High (legal) | Low (FCRA-scoped) | graph stays FCRA-scoped; counsel designs the model before multi-regime | Founder+CCO | S3+ | open |
 | R-04 | No perf/coverage instrumentation | Med | — | build the harness before route flips | Eng | S2/S3 | open |
-| R-05 | Kernel `dispatch` not effect-safe: marks idempotency key on failure + replays synthetic `ok:true` → a side effect could be silently non-delivered yet reported success | High (only IF an effect ships) | — | fix D-07 (three-state ledger, mark-on-success-only, replay-returns-original) BEFORE any effect crosses dispatch; no effect rides dispatch today | Eng | S3/#11 | open (harmless now) |
+| R-05 | Kernel `dispatch` not effect-safe (mark-on-failure + synthetic `ok:true` replay) | (was High) | — | claim/settle three-state ledger + mark-on-success-only + replay-returns-original landed & guarded (#11, ADR-0028) | Eng | S3/#11 | **CLOSED (D-07 fixed)** |
 | R-06 | PEP is payload-blind — recipient (`to`) authorized by nobody; a cross-tenant `to` would pass | High (only IF an effect ships) | — | fix D-08 (recipient-ownership guard + tenant-scoped idempotency namespace) BEFORE any effect crosses dispatch | Eng | S3/#11 | open (harmless now) |
 
 ---
@@ -129,12 +139,12 @@ Kai Platform
 | ID | Description | Reason deferred | Severity | Owner | Expected sprint | Dependencies |
 |---|---|---|---|---|---|---|
 | D-01 | Test coverage % not instrumented | no coverage tool wired | Low | Eng | S3 | — |
-| D-02 | Perf/memory harness not built | R8 — measure before flip, not speculatively | Med | Eng | S2/S3 | — |
+| D-02 | Perf/memory harness | R8 — measure before flip | Med | Eng | S3 | **DONE** — `scripts/perf-harness.ts` (warm p50/p95/p99 + write amplification + heap); **set p95 budget next** |
 | D-03 | Durable Postgres audit + monotonic version (DB sequence) | subsystem #11 (priority order) | Med | Eng | S2 | self-heal table |
 | D-04 | Kai Memory Graph durable adapter (over `lib/knowledge`) | subsystem #12 | Med | Eng | S2 | — |
 | D-05 | Free-letter monthly limit should become a PEP policy provider | keep behavior identical first | Low | Eng | S2 | letter route flip |
 | D-06 | Agency "acting as client" tenant mapping | wire when agency flows migrate | Low | Eng | S2 | — |
-| D-07 | `dispatch` idempotency is effect-unsafe (mark-on-failure + synthetic-`ok:true` replay); in-memory store = no cross-invocation dedupe | surfaced by #10 review; no effect crosses dispatch yet (harmless) | High (blocks effect) | Eng | #11/S3 | durable Postgres 3-state IdempotencyStore |
+| D-07 | `dispatch` effect-unsafe (mark-on-failure + synthetic replay) | — | **RESOLVED** — claim/settle + durable 3-state ledger (flag-off); guarded | Eng | #11 | **CLOSED** |
 | D-08 | PEP payload-blind → no recipient-ownership guard on the effect path | surfaced by #10 review; decision-only today | High (blocks effect) | Eng | #11/S3 | — |
 
 ---

@@ -38,20 +38,19 @@ Full: [GIOS-CONSTITUTION.md](GIOS-CONSTITUTION.md) · promotion: [CAPABILITY-PRO
 Agent/AI Runtime · Prediction · Learning · Marketplace · SDK.
 
 ## Current priorities
-1. **#11 Durable Audit** — review DONE; **ADR-0028 pending founder approval**; do NOT implement first.
-2. D-02 perf harness (gates route flips). 3. Flip the 6 proven routes (behind flags). 4. Promote
-`lib/compliance` (≈10 consumers). Ranked plan: FOUNDER-CONTEXT §11.
+1. **Set the D-02 p95 budget + validate `KERNEL_DURABLE` against a prod DB** (#11 is implemented +
+flag-off; ADR-0028 §5). 2. Flip the 6 proven routes (behind flags). 3. Promote `lib/compliance`
+(≈10 consumers). 4. #12 Memory Graph → ABI freeze. Ranked plan: FOUNDER-CONTEXT §11.
 
 ## Open reviews
-- ADR-0027 (notification decision-vs-effect) — **ACCEPTED**.
-- #11 Durable Audit — **reviewed**, verdict proceed-with-required-changes → ADR-0028 pending.
-- `arch/kernel-maturity-governance` — docs branch, pending merge.
+- ADR-0027 (notification decision-vs-effect) — **ACCEPTED** (`notify.plan` shipped).
+- ADR-0028 (Durable Audit) — **ACCEPTED**; **#11 implemented, flag-off**.
 
 ## Known risks
-**D-07** (dispatch effect-unsafe: mark-on-failure + synthetic replay; in-mem = no serverless dedupe)
-· **D-08** (PEP payload-blind → effect recipient unauthorized) — both harmless until an effect
-crosses dispatch; fixed with #11/effect. D-02 (no perf). R-03 (legal purpose model placeholder).
-ABI unfrozen by design.
+**D-07** (dispatch effect-unsafe) — **FIXED** (claim/settle, #11, guarded). **D-08** (PEP
+payload-blind → effect recipient unauthorized) — open; ships with the effect. D-02 — **done**
+(harness); set the p95 budget. `KERNEL_DURABLE` durable path pending prod-DB validation. R-03 (legal
+purpose model placeholder). ABI unfrozen by design.
 
 ## Branch strategy
 One branch per increment (`sprint2-incN-*`) or concern (`arch/*`). Commit preview-first → founder

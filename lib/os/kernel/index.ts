@@ -3,7 +3,7 @@
 // Everything side-effecting is an injected port (hexagonal). ABI is NOT frozen until
 // CreditVector has been migrated as Plugin #1 and exercised it (Sprint 3).
 export * from "./types";
-export { Kernel, inMemoryIdempotency, type KernelPorts, type IdempotencyStore } from "./kernel";
+export { Kernel, inMemoryIdempotency, type KernelPorts, type IdempotencyStore, type IdemState, type ReplayReceipt } from "./kernel";
 export { Registry } from "./registry";
 export { resolve } from "./resolve";
 export { authorize } from "./pep";

@@ -7,6 +7,41 @@
 
 ---
 
+## 2026-07-15 — Sprint 3: Durable Audit (#11) + the D-07 fix (ADR-0028)
+`lib/os/kernel/` (dispatch + ports) + `lib/os/host/durable.ts`; 13 guards (`scripts/kernel-durable.test.ts`).
+
+### M12 — #11 Durable Audit: implemented flag-off; the D-07 fix landed + proven
+- **Why the naive framing was wrong (adversarial review, unanimous):** the kernel ports are
+  **synchronous fire-and-forget `void`**; durability on Accelerate is **async**; Vercel **freezes
+  after `return`** → an un-awaited write is discarded. A drop-in adapter swap would be silently
+  lossy under the exact cold-start conditions #11 exists to survive. So #11 reshaped into a
+  **KernelPorts-durability + claim/settle** change, not an adapter swap. ADR-0028.
+- **What shipped (flag-off, dormant — the kernel has no prod caller):** (1) `IdempotencyStore`
+  `{seen,mark}` → **`{claim,settle,lookup}` 3-state**, awaitable (durable = an awaited call inside
+  the already-async dispatch). (2) **dispatch = claim-before-effect**: only the "won" caller
+  executes; `committed` → returns the **original** receipt (no synthetic `ok:true`); `pending` → an
+  honest **INDETERMINATE**; a thrown/`!ok` execute settles **failed** (reclaimable — never
+  mark-on-failure). **This is the D-07 fix**, landed separably and guard-proven. (3) `Kernel.flush()`
+  + optional `AuditSink/EventLog.flush()` — durable adapters buffer sync + persist on the awaited
+  flush (never fire-and-forget). (4) **Host** durable Postgres adapters (`durableAudit` hash-only +
+  hash chain, `durableEventLog`, `durableIdempotency` INSERT…ON CONFLICT, `reserveDurableClock`
+  block-allocated sequence) behind **`KERNEL_DURABLE`** (default OFF) — kept in the host so the
+  kernel core imports no prisma.
+- **Evidence-first, honestly bounded:** the claim/settle **logic** is proven end-to-end incl. the
+  awaited async path (via a fake-async store that models `INSERT…ON CONFLICT`) — **no DB needed**.
+  The durable Postgres adapters follow proven repo patterns (`billing.ts` ON CONFLICT, `MailStore`
+  self-heal, `aiMeter` write) but are **NOT locally testable** → prod-DB validation under injected
+  cold-start/redelivery/crash is a **promotion criterion** before `KERNEL_DURABLE` is enabled
+  (ADR-0028 §5). Byte-identical for keyless dispatch (the 6 registered capabilities pass no key).
+- **D-02 perf harness (`scripts/perf-harness.ts`) — MEASURED, not estimated:** warm dispatch p95 ≈
+  0.02–0.03 ms (`notify.plan`), 0.004 ms (obsolescence). **Write amplification: ~3 version-stamps +
+  1 audit + 1 event per dispatch** — the harness surfaces the version authority as the durable-path
+  optimization target (fold stamps / pre-allocate blocks), exactly as the review predicted. Cold
+  start + durable-Postgres latency are **prod-only** (reported as such, never fabricated). Next:
+  set + enforce a p95 budget before any route flip.
+- **Discipline:** additive; no route flipped; `MAIL_LIVE` OFF; **D-08** (payload-blind PEP) NOT
+  pulled into #11 — it ships with the effect. No MemoryStore change (that is #12).
+
 ## 2026-07-15 — Sprint 2 (Increment 1): CreditVector becomes Plugin #1
 Migration items #1–#5 (Identity · Capability Resolution · Registry · Dispute/Letter engine).
 `lib/os/host/` + `lib/os/modules/credit/`; 9 guards green (`scripts/credit-plugin.test.ts`),

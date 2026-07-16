@@ -52,7 +52,10 @@ export type PurposeToken = string; // the declared purpose-of-use for a call (R5
 // ---- Module Contract (the plug — ADR-0024/0026; ABI NOT frozen until Sprint 3) ----
 export interface Confidence { level: "high" | "moderate" | "low" | "insufficient"; basis: string }
 export interface Receipt { summary: string; evidence: string[] } // cited reasoning (KAI-OS §4)
-export interface ModuleResult { ok: boolean; data?: unknown; receipt: Receipt; confidence: Confidence }
+// `replay` = this is the stored ORIGINAL receipt of a prior committed execution (never a synthetic
+// success). `pending` = a concurrent invocation holds the idempotency claim and is in-flight; the
+// caller must NOT re-execute and must NOT treat it as success (the honest INDETERMINATE, ADR-0028).
+export interface ModuleResult { ok: boolean; data?: unknown; receipt: Receipt; confidence: Confidence; replay?: boolean; pending?: boolean }
 
 // Marketplace metadata (Sprint 2 Inc 3) — every capability is SELF-DESCRIBING so it can be
 // listed, discovered, versioned, priced, and reused by any plugin/app. This is the seed of
@@ -115,7 +118,10 @@ export interface AuditEntry {
   reason: string;
   latencyMs?: number;       // measured by the perf harness (debt D-02); undefined until then — never fabricated
 }
-export interface AuditSink { append(e: AuditEntry): void } // append-only; no update/delete
+// append-only; no update/delete. `append` STAYS SYNCHRONOUS (enqueues); a durable adapter buffers
+// in-process and persists on the awaited `flush()` — never fire-and-forget (would be lost on the
+// serverless freeze after `return`). In-mem adapter omits `flush` (no-op). ADR-0028 §1.1.
+export interface AuditSink { append(e: AuditEntry): void; flush?(): Promise<void> }
 
 // ---- Event Bus (durable log in prod; at-least-once → handlers MUST be idempotent) ----
 export interface KaiEvent {
@@ -125,7 +131,7 @@ export interface KaiEvent {
   stamp: Stamp;
   payload: Record<string, unknown>;
 }
-export interface EventLog { append(e: KaiEvent): void } // durable append; delivery is host-driven
+export interface EventLog { append(e: KaiEvent): void; flush?(): Promise<void> } // durable append (buffered+flushed like AuditSink); delivery is host-driven
 
 // ---- Memory Interface (the Kai Memory Graph port; EVERY access is PEP-gated) ----
 export interface MemoryNode { id: string; type: string; tenantId: string; regime: Regime; stamp: Stamp; data: Record<string, unknown> }

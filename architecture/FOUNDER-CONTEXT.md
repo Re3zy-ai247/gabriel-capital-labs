@@ -38,14 +38,14 @@ guarded. Detail: [GIOS-KERNEL-CAPABILITY-MAP.md](GIOS-KERNEL-CAPABILITY-MAP.md) 
 | Namespace | `domain.entity.action[@major]` grammar | `namespace.ts` |
 | Resolver | "what CAN this actor do?" (pure, preloaded) | `resolve.ts` |
 | PEP (Security) | "may it *now*?" default-deny; **payload-blind (D-08)** | `pep.ts` |
-| Dispatch | authorize→idempotency→execute→audit+emit; **effect-unsafe (D-07)** | `kernel.ts:80` |
+| Dispatch | authorize→**claim**→execute→audit+emit→**settle**; effect-safe (D-07 fixed, ADR-0028) | `kernel.ts` |
 | Permissions/Entitlements | plan→capability map, single-load | `types.ts:98` |
 | Clock/Version Authority | monotonic version + logical time; **in-mem only** | `clock.ts` |
 | Audit | append-only port; **in-mem only** | `types.ts:107` |
 | Event Bus | at-least-once append log; **in-mem only** | `types.ts:121` |
 | Memory Interface | PEP-gated, tenant-scoped port; **in-mem only** | `types.ts:132` |
 | Manifest/Marketplace | self-describing capability catalog (multi-plugin) | `kernel.ts:41` |
-| Idempotency store | dedupe; **in-mem Set → no serverless dedupe (D-07)** | `kernel.ts:106` |
+| Idempotency store | **3-state claim/settle** (in-mem default; durable Postgres adapter flag-off) | `kernel.ts` · `host/durable.ts` |
 
 ## 4. Registered capabilities (proven byte-identical; NO live route flipped)
 | Key | Wraps | Plugin | Layer | Notes |
@@ -92,37 +92,39 @@ route flipped). **Next (Sprint 3), ranked in §11.**
 #11 Durable Audit  →  #12 Kai Memory Graph  →  ABI FREEZE (Sprint 3)
       →  (evidence-gated, post-freeze) Agent/AI Runtime · Prediction · Learning · Marketplace · SDK
 ```
-**Current priority:** #11 Durable Audit — architecture review DONE, **awaiting founder approval to
-write ADR-0028**; do NOT implement before the ADR.
+**Current priority:** #11 Durable Audit **IMPLEMENTED (flag-off, dormant)** — claim/settle dispatch
+(D-07 fixed), 3-state ledger, `flush()`, durable Postgres host adapters behind `KERNEL_DURABLE`
+(default OFF; pending prod-DB validation, ADR-0028 §5). Next: set the D-02 p95 budget → route flips.
 
 ## 9. Open reviews / decisions
 | Item | State |
 |---|---|
 | ADR-0027 (Notification decision-vs-effect) | **ACCEPTED** — implemented as `notify.plan` |
-| **#11 Durable Audit review** | **DONE** (verdict: proceed-with-required-changes) → **ADR-0028 pending founder approval** |
-| `arch/kernel-maturity-governance` branch (docs-only) | **committed, pending merge approval** |
-| Live route flips (the 6 proven capabilities) | **not started** — need D-02 perf harness first |
-| notify **effect** boundary | **deferred** — blocked on #11 + a real 2nd consumer |
+| ADR-0028 (Durable Audit) | **ACCEPTED** — **#11 implemented, flag-off** |
+| Live route flips (the 6 proven capabilities) | **not started** — set the D-02 p95 budget first |
+| `KERNEL_DURABLE` enable in prod | blocked on prod-DB validation of the durable path (ADR-0028 §5) |
+| notify **effect** boundary | **deferred** — blocked on #11 done ✅ + a real 2nd consumer (still absent) |
 
 ## 10. Known risks / debt (canonical register — dashboard mirrors this)
 | ID | What | Blocks | Status |
 |---|---|---|---|
-| **D-07** | dispatch marks idempotency on failure + synthetic `ok:true` replay; in-mem = no serverless dedupe | any effect | fix inside #11 (claim/settle) |
-| **D-08** | PEP payload-blind → effect recipient authorized by nobody | any effect | fix with effect (own change) |
-| D-02 | no perf/coverage harness | live route flips | open |
-| D-03/D-04 | no durable audit/memory adapters | #11/#12 | in progress (#11) |
+| **D-07** | dispatch effect-unsafe (mark-on-failure + synthetic replay; no serverless dedupe) | any effect | **FIXED** — claim/settle landed + guarded (ADR-0028, #11) |
+| **D-08** | PEP payload-blind → effect recipient authorized by nobody | any effect | open — fix with the effect (own change) |
+| D-02 | perf harness | live route flips | **DONE** — `scripts/perf-harness.ts`; warm numbers measured; **set p95 budget next** |
+| D-03/D-04 | durable audit/memory adapters | #11/#12 | audit: **implemented flag-off** (prod-validate before enable); memory: #12 |
 | R-03 | permissible-purpose is placeholder vs counsel legal model | multi-regime | open (FCRA-scoped) |
 | A-01 | ABI unfrozen (by design until Sprint 3) | Marketplace/SDK/3rd-party | intended |
-| — | append-only audit + PII collides w/ GLBA/CCPA erasure | #11 | hash-only + crypto-shred (ADR-0028) |
+| — | append-only audit + PII vs GLBA/CCPA erasure | `KERNEL_DURABLE` enable | hash-only enforced in `durableAudit`; per-tenant crypto-shred = follow-on (ADR-0028 §1.5) |
 
 ## 11. Sprint 3 — ranked plan (Phase 7 output)
 Ranked by composite of ROI · risk · dependencies · token-cost · value · time. Lower rank = do first.
 
 | # | Task | ROI | Risk | Depends on | Token cost | Eng value | Est | Why this rank |
 |---|---|---|---|---|---|---|---|---|
-| 1 | **ADR-0028 + #11 Durable Audit** (KernelPorts durability via awaited `flush()`, `{claim,settle}` 3-state ledger, version SEQUENCE, structural hash-only, `KERNEL_DURABLE` flag OFF) | **High** | High | ADR approval | High | Unblocks effects; fixes D-07 + version authority; supplies durable store | L | Everything downstream (effects, #12, route flips) needs durable persistence + the D-07 fix. Highest leverage. |
-| 2 | **D-02 perf harness** (instrument `latencyMs` via `aiMeter` bracket; p95 budget) | High | Low | — | Low | Gates every route flip honestly; small, reusable | S | Cheap, unblocks flips + gives #11 its cost proof. Do alongside #11. |
-| 3 | **Live route flips** (route the 6 proven capabilities behind flags, old path fallback) | **High** (first user-facing payoff) | Med | #2 | Med | Turns 6 proven-but-dormant migrations into real usage | M | The migrations only pay off once flipped; safe once perf-measured. |
+| ✅ | **ADR-0028 + #11 Durable Audit** — **DONE (flag-off)**: claim/settle dispatch (D-07 fixed), 3-state ledger, `flush()`, durable Postgres host adapters behind `KERNEL_DURABLE`. 13 guards green. | — | — | — | — | done | done | Highest leverage — unblocks effects/#12/flips. |
+| ✅ | **D-02 perf harness** — **DONE**: `scripts/perf-harness.ts` measures warm p50/p95/p99 + write amplification + heap. | — | — | — | — | done | done | Warm numbers measured; **set the p95 budget** = the next micro-task. |
+| 1 | **Set the D-02 p95 budget + validate `KERNEL_DURABLE` against a prod DB** (injected cold-start/redelivery/crash, ADR-0028 §5) | **High** | Med | prod DB | Med | Turns #11 from dormant to enable-ready; the gate for effects | M | The last thing between a proven durable design and a usable one. |
+| 2 | **Live route flips** (route the 6 proven capabilities behind flags, old path fallback) | **High** (first user-facing payoff) | Med | p95 budget | Med | Turns 6 proven-but-dormant migrations into real usage | M | The migrations only pay off once flipped; safe once budgeted. |
 | 4 | **Promote `lib/compliance` → `policy.content.screen` PDP** | High | Med | ADR | Med | ~10 real consumers; strongest platform promotion | M | Best-evidenced next promotion; a mandatory PDP hardens every credit surface. |
 | 5 | **#12 Kai Memory Graph** (durable tenant-scoped Memory adapter) | Med | High | #11 patterns | High | Enables shared memory / learning substrate | L | Reuses #11 persistence; defer until #11 lands + a 2nd memory consumer exists. |
 | 6 | **Sprint 3 ABI freeze** | Med | Med | #11, #12, route flips | Low | Unlocks Marketplace/SDK/3rd-party | S | Freeze only after CreditVector fully exercises the ABI (the whole point of not freezing early). |
@@ -158,9 +160,9 @@ Ranked by composite of ROI · risk · dependencies · token-cost · value · tim
 | Documentation | A | canonical corpus + this single-truth file; one-home-per-concept map |
 | Maintainability | A | wrap-not-rewrite; existing engines untouched; 6 capabilities routed |
 | Governance | A | Constitution + Promotion gate + Review pipeline codified; 2 adversarial reviews before code |
-| Security | A− | tested: tenant isolation, default-deny PEP, append-only audit, idempotency, hash-only. Gaps: D-07/D-08 (effect-safety), in-mem persistence |
+| Security | A | tested: tenant isolation, default-deny PEP, append-only audit, **claim/settle idempotency (D-07 fixed)**, hash-only. Remaining gap: D-08 (fix with the effect) |
 | Compliance | B+ | CROA scrubber live; hash-only receipts by design; CCO gate mandated. Open: R-03 legal purpose model |
 | Developer velocity | A− | 75 guards + typecheck + build gate; preview-first; fast increments |
 | Token efficiency | B→A (this blitz) | startup was ~19.5k tok (CLAUDE+INDEX+CURRENT-STATE); this file targets replacing most of it |
 | Future-AI onboarding | A (post-blitz) | BOOTSTRAP.md <5 min; this file = one read |
-| **Performance** | — | **Not Yet Instrumented (D-02)** — grade honestly withheld |
+| **Performance** | B+ | **Now MEASURED (D-02 harness):** warm dispatch p95 ≈ 0.02–0.03 ms (`notify.plan`), 0.004 ms (obsolescence); write amplification 1 audit + 1 event + ~3 version-stamps/dispatch (the durable optimization target). Cold-start + durable-Postgres latency remain prod-only (not fabricated). p95 budget not yet set → not an A. |
