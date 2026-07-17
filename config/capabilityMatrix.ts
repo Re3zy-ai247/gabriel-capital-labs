@@ -74,17 +74,33 @@ const OFF_UNTIL_GATED: ReadonlyArray<[CapabilityKey, boolean]> = [
   [ADV_PERMS, false], // team system not built
 ];
 
+// Every capability the platform knows about — the flag universe. The kernel's
+// resolve() checks the FLAG before the GRANT (absent flag = OFF → "coming_soon"),
+// and the live host snapshot flags ALL capabilities so an ungranted-but-shipped
+// capability resolves "not_entitled" (an upsell), never "coming_soon" (a lie).
+// The matrix mirrors that law: every universe capability is flagged per tier
+// (true unless gated), whether or not the tier grants it.
+const ALL_CAPABILITIES: readonly CapabilityKey[] = [
+  ...CORE, ...PAID, COMMUNITY, MEMORY, ANALYTICS, WORKSPACES, TEAM, BULK, AUTOMATION,
+  API_ACCESS, WEBHOOKS, MANAGER_DASH, ADV_PERMS, BRANDING, WHITE_LABEL, SSO,
+  PRIORITY_SUPPORT, ACCOUNT_MGMT, PRIVATE_DEPLOY,
+];
+
 function grant(
   capabilities: CapabilityKey[],
   permissions: Permission[],
   limits: Array<[LimitKey, number | null]>,
   extraFlags: ReadonlyArray<[CapabilityKey, boolean]> = []
 ): TierGrant {
+  const gated = new Map(OFF_UNTIL_GATED);
+  const flags = new Map<CapabilityKey, boolean>();
+  for (const c of ALL_CAPABILITIES) flags.set(c, gated.has(c) ? false : true);
+  for (const [c, v] of extraFlags) flags.set(c, v);
   return {
     capabilities: new Set(capabilities),
     permissions: new Set(permissions),
     limits: new Map(limits),
-    flags: new Map([...OFF_UNTIL_GATED, ...extraFlags]),
+    flags,
   };
 }
 

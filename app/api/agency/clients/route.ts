@@ -3,6 +3,7 @@ import { randomBytes } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { currentAccount } from "@/lib/session";
 import { agencyClientLimit } from "@/lib/entitlements";
+import { track, PRODUCT_EVENTS } from "@/lib/events";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -140,5 +141,6 @@ export async function POST(req: Request) {
     select: { id: true, fullName: true },
   });
 
+  void track(PRODUCT_EVENTS.workspaceCreated, { userId: agency.id }); // fail-open analytics; never blocks the flow
   return NextResponse.json({ client: { id: client.id, name: client.fullName } });
 }

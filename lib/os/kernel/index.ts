@@ -10,3 +10,6 @@ export { authorize } from "./pep";
 export { parseKey, formatKey, isValidKey, domainOf, type ParsedKey } from "./namespace";
 export { stamp, memoryClock } from "./clock";
 export { inMemoryAudit, inMemoryEventLog, inMemoryMemory } from "./adapters";
+// Platform Phase B — tier & quota surfaces (mechanism types + the single evaluator).
+export type { PlanTier, LimitKey, TierGrant, TierCapabilityMatrix } from "./tiers";
+export { withinLimit, type QuotaDecision } from "./quota";

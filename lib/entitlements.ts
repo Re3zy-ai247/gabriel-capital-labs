@@ -1,9 +1,58 @@
 import { prisma } from "./prisma";
+import { CAPABILITY_MATRIX } from "@/config/capabilityMatrix";
+import { grantForTier, limitForTier } from "@/lib/os/host/tierResolver";
+import { planTierFromUser, ACTIVE_SUBSCRIPTION_STATES } from "@/lib/os/host/billingTier";
+import type { CapabilityKey } from "@/lib/os/kernel";
 
 // Free tier: 3 dispute letters per calendar month, no AI refinement. Purchased
 // letter-pack credits are spent once the monthly free allowance is exhausted.
 // Premium / Agency / Agency Pro: unlimited letters + AI.
 export const FREE_LETTER_LIMIT = 3;
+
+// ── Platform Phase B, B3 (flag-gated adapter — DEFAULT OFF) ──────────────────
+// When CAPABILITY_PLATFORM=true, isPremium/agencyClientLimit derive from the
+// capability matrix through the tier resolver instead of the legacy boolean
+// branches. The public API shapes are frozen; the golden guard
+// (scripts/platform-foundation.test.ts) asserts BYTE-IDENTICAL output between
+// the two paths for every BILLING-PRODUCED user shape (bare shapes billing
+// never writes are pinned there explicitly, incl. known divergences, and get a
+// DB scan re-check at the B4 gate before any route flips — owner-gated).
+// The GRANDFATHER CLAUSE stays with the product (sold entitlements never
+// shrink): it is applied here as a per-account override on top of the matrix —
+// the same override mechanism Enterprise session limits will use.
+export function capabilityPlatformEnabled(): boolean {
+  return process.env.CAPABILITY_PLATFORM === "true";
+}
+
+const ANALYZE = "credit.response.analyze" as CapabilityKey;
+
+/** Matrix-derived premium: the paid axis (response.analyze), using the same
+ *  flag-aware law as kernel resolve() — granted AND flagged on. */
+export function isPremiumViaPlatform(user: {
+  plan?: string | null;
+  subscriptionStatus?: string | null;
+  isAgency?: boolean | null;
+}): boolean {
+  const grant = grantForTier(planTierFromUser(user), CAPABILITY_MATRIX);
+  return grant.capabilities.has(ANALYZE) && grant.flags.get(ANALYZE) === true;
+}
+
+/** Matrix-derived workspace cap + grandfather override. ADMIN = unlimited. */
+export function agencyClientLimitViaPlatform(user: {
+  role?: string | null;
+  plan?: string | null;
+  isAgency?: boolean | null;
+  createdAt?: Date | string | null;
+}): number | null {
+  if (user.role === "ADMIN") return null;
+  const created = user.createdAt ? new Date(user.createdAt).getTime() : Number.POSITIVE_INFINITY;
+  if (created < NEW_PACKAGING_EFFECTIVE) {
+    // Sold-entitlement overrides (pre-packaging accounts keep what they bought).
+    if (user.plan === "agency_pro") return null;
+    if (user.isAgency && user.plan !== "scale" && user.plan !== "enterprise") return 20;
+  }
+  return limitForTier(planTierFromUser(user), CAPABILITY_MATRIX, "CLIENT_WORKSPACE_LIMIT");
+}
 
 export interface Entitlement {
   premium: boolean;
@@ -16,13 +65,14 @@ export interface Entitlement {
   freeMonthlyRemaining: number; // free letters left this month (0 for premium)
 }
 
-const ACTIVE_STATES = new Set(["active", "trialing", "past_due"]);
+const ACTIVE_STATES = ACTIVE_SUBSCRIPTION_STATES; // single canonical definition (lib/os/host/billingTier.ts)
 
 export function isPremium(user: {
   plan?: string | null;
   subscriptionStatus?: string | null;
   isAgency?: boolean | null;
 }): boolean {
+  if (capabilityPlatformEnabled()) return isPremiumViaPlatform(user);
   if (user.isAgency) return true;
   if (user.plan === "premium" || user.plan === "agency" || user.plan === "agency_pro") return true;
   return Boolean(user.subscriptionStatus && ACTIVE_STATES.has(user.subscriptionStatus));
@@ -50,6 +100,7 @@ export function agencyClientLimit(user: {
   isAgency?: boolean | null;
   createdAt?: Date | string | null;
 }): number | null {
+  if (capabilityPlatformEnabled()) return agencyClientLimitViaPlatform(user);
   if (user.role === "ADMIN") return null;
   const created = user.createdAt ? new Date(user.createdAt).getTime() : Number.POSITIVE_INFINITY;
   const legacy = created < NEW_PACKAGING_EFFECTIVE;

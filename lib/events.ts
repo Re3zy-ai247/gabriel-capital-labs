@@ -20,6 +20,11 @@ export const PRODUCT_EVENTS = {
   subscriptionStarted: "subscription_started",
   subscriptionCompleted: "subscription_completed",
   failure: "failure",
+  // Platform Phase B additions — SERVER-EMITTED ONLY (not client-reportable):
+  workspaceCreated: "workspace_created", // EMITTED: agency clients POST
+  teamInvited: "team_invited", // RESERVED, not yet emitted (team foundation is flag-gated)
+  featureAdopted: "feature_adopted", // RESERVED, not yet emitted (meta.feature = first use)
+  retentionPing: "retention_ping", // RESERVED, not yet emitted (meta.day = N-day return)
 } as const;
 
 export type ProductEventName = (typeof PRODUCT_EVENTS)[keyof typeof PRODUCT_EVENTS];
