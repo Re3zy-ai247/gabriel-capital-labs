@@ -24,7 +24,7 @@ export async function POST() {
   const entitlement = await getEntitlement(user);
   if (!entitlement.premium) {
     return NextResponse.json(
-      { error: "The AI action plan is a Professional feature.", upgrade: true },
+      { error: "The Action Plan is a Professional feature.", upgrade: true },
       { status: 402 }
     );
   }

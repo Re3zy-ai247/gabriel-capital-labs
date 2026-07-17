@@ -7,7 +7,7 @@ export const BRAND = {
   parent: "Gabriel Capital Labs",
   byline: "by Gabriel Capital Labs",
   full: "CreditVector™ by Gabriel Capital Labs",
-  tagline: "AI-Powered Credit Intelligence Platform",
+  tagline: "The Credit Intelligence Operating System",
   shortName: "CreditVector",
 } as const;
 
@@ -39,7 +39,7 @@ export const MODULES: PlatformModule[] = [
   {
     key: "dispute-engine",
     name: "Dispute Engine",
-    tagline: "FCRA-grounded dispute letters, drafted and refined by AI, ready to review and mail.",
+    tagline: "FCRA-grounded dispute letters, drafted and refined by Kai, ready to review and mail.",
     status: "live",
     icon: "Mails",
     href: "/letters",

@@ -152,10 +152,10 @@ function BillingInner() {
                   )}
                   <p className="text-slate-400 mb-6">
                     {isAgency
-                      ? `Manage each client in their own workspace with the full AI analysis and letter engine — up to ${isAgencyPro ? '40' : '15'} active client workspaces on your plan.`
+                      ? `Manage each client in their own workspace with the full credit analysis and letter engine — up to ${isAgencyPro ? '40' : '15'} active client workspaces on your plan.`
                       : premium
-                      ? 'Unlimited AI-refined dispute letters, the Kai Strategy Desk, and 90-day tracking.'
-                      : 'You have 3 dispute letters per month. Upgrade for unlimited letters + AI refinement.'}
+                      ? 'Unlimited refined dispute letters, the Kai Strategy Desk, and 90-day tracking.'
+                      : 'You have 3 dispute letters per month. Upgrade for unlimited letters + letter refinement.'}
                   </p>
                   {premium ? (
                     <button
@@ -221,7 +221,7 @@ function BillingInner() {
               <div className="grid md:grid-cols-2 gap-6">
                 {[
                   ['Unlimited Dispute Letters', 'Generate as many professional dispute letters as you need.'],
-                  ['AI-Powered Refinement', 'KAI grounds every letter in FCRA, FDCPA, and case law.'],
+                  ['Letter Refinement', 'KAI grounds every letter in FCRA, FDCPA, and case law.'],
                   ['90-Day Progress Tracking', 'Monitor disputes across all three bureaus.'],
                   ['Priority Support', 'Faster help when you need it.'],
                 ].map(([title, desc]) => (

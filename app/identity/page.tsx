@@ -143,7 +143,7 @@ export default function IdentityPage() {
       {state === "needsAI" && (
         <div className="card flex items-start gap-3 p-6 text-sm text-slate-300">
           <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-gold-400" />
-          The identity check needs KAI&apos;s AI engine, which isn&apos;t configured for this deployment yet.
+          The identity check needs KAI, which isn&apos;t configured for this deployment yet.
         </div>
       )}
 

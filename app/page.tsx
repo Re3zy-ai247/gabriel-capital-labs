@@ -31,9 +31,9 @@ import {
 // Fully static — middleware.ts handles the signed-in → /dashboard redirect, so
 // no session read (and no dynamic rendering) is needed here.
 const STEPS = [
-  { icon: Upload, title: "Upload your reports", body: "Pull your free reports from AnnualCreditReport.com. The AI reads all three bureaus in seconds." },
+  { icon: Upload, title: "Upload your reports", body: "Pull your free reports from AnnualCreditReport.com. Kai reads all three bureaus in seconds." },
   { icon: ScanSearch, title: "See what can be disputed", body: "Potential inaccuracies, inconsistencies, and unverifiable items are flagged and explained across Equifax, Experian, and TransUnion." },
-  { icon: FileText, title: "Generate dispute letters", body: "Professional, FCRA-grounded letters drafted for you. Review, refine with AI, print, and mail them yourself." },
+  { icon: FileText, title: "Generate dispute letters", body: "Professional, FCRA-grounded letters drafted for you. Review, refine with Kai, print, and mail them yourself." },
   { icon: Activity, title: "Track every dispute", body: "Follow each dispute through the bureaus' response windows and watch your progress in one dashboard." },
 ];
 
@@ -53,7 +53,7 @@ const PRICING = [
   },
   {
     name: "Professional", price: "$99", cadence: "/mo", href: "/pricing", cta: "Get Professional", featured: true,
-    features: ["Unlimited dispute letters", "AI letter refinement", "Dispute strategist", "90-day progress tracking"],
+    features: ["Unlimited dispute letters", "Letter refinement", "Dispute strategist", "90-day progress tracking"],
   },
   {
     name: "Agency", price: "$399", cadence: "/mo", href: "/pricing", cta: "Explore Agency", featured: false,
@@ -106,7 +106,7 @@ export default function Home() {
                 <span className="text-gradient">Dispute what&apos;s inaccurate — yourself.</span>
               </h1>
               <p className="lede mt-6 max-w-xl">
-                {BRAND.product} reads all three bureau reports with AI, flags inaccuracies, drafts FCRA-grounded dispute
+                {BRAND.product} reads all three bureau reports, flags inaccuracies, drafts FCRA-grounded dispute
                 letters, and tracks every dispute — one platform for consumers and the agencies that serve them.
               </p>
               <div className="mt-9 flex flex-col gap-3 sm:flex-row">
@@ -204,7 +204,7 @@ export default function Home() {
               <FeatureSplit
                 eyebrow="Bureau report analysis"
                 title="See every account across all three bureaus at once"
-                body="The AI reads Equifax, Experian, and TransUnion side by side, surfacing the dates, balances, and statuses that don't match — the inconsistencies a manual read misses."
+                body="Kai reads Equifax, Experian, and TransUnion side by side, surfacing the dates, balances, and statuses that don't match — the inconsistencies a manual read misses."
                 points={["Spot cross-bureau discrepancies in minutes", "Plain-English explanation of each item", "Unverifiable and outdated items flagged"]}
                 visual={<BureauVisual />}
               />
@@ -215,7 +215,7 @@ export default function Home() {
                 eyebrow="Dispute letter generation"
                 title="FCRA-grounded letters, drafted and compliance-checked"
                 body="Every letter cites your actual rights under the Fair Credit Reporting Act and is run through a compliance check before you ever see it — no deletion myths, no false promises."
-                points={["Cites the specific rights that apply", "Compliance-scrubbed automatically", "Edit, refine with AI, print, and mail"]}
+                points={["Cites the specific rights that apply", "Compliance-scrubbed automatically", "Edit, refine with Kai, print, and mail"]}
                 visual={<LetterVisual />}
               />
             </Reveal>

@@ -110,7 +110,7 @@ export function AiPlan({ currentItemCount, storageKey }: { currentItemCount: num
       <div className="flex items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-sm font-semibold">
-            <Sparkles className="h-4 w-4 text-brand-300" aria-hidden="true" /> AI Action Plan{" "}
+            <Sparkles className="h-4 w-4 text-brand-300" aria-hidden="true" /> Action Plan{" "}
             <span className="rounded bg-brand-500/15 px-1.5 py-0.5 text-[10px] font-bold tracking-widest text-brand-300">
               KAI Intelligence
             </span>

@@ -114,7 +114,7 @@ export function LetterVisual() {
           <div className="h-2 w-4/5 rounded bg-slate-700/50" />
         </div>
       </div>
-      <p className="mt-3 text-[11px] text-slate-500">Drafted by AI, grounded in your rights — you review, print, and mail it.</p>
+      <p className="mt-3 text-[11px] text-slate-500">Drafted by Kai, grounded in your rights — you review, print, and mail it.</p>
     </VisualFrame>
   );
 }

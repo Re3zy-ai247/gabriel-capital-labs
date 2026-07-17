@@ -124,7 +124,7 @@ export default function OnboardingPage() {
         <div className="mt-16 card p-8 text-center">
           <h2 className="text-2xl font-bold mb-4">Want the full engine?</h2>
           <p className="text-slate-400 mb-6">
-            Professional includes unlimited dispute letters and AI refinement. The free tier stays free — 3 letters a month.
+            Professional includes unlimited dispute letters and letter refinement. The free tier stays free — 3 letters a month.
           </p>
           <Link href="/pricing" className="btn-primary btn-lg inline-flex">
             View Pricing

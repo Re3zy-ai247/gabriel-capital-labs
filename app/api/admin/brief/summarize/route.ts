@@ -23,7 +23,7 @@ export async function POST(req: Request) {
 
   const suggestion = await summarizeArticle({ title, sourceText });
   if (!suggestion.usedAI) {
-    return NextResponse.json({ error: "The AI summarizer is unavailable right now." }, { status: 503 });
+    return NextResponse.json({ error: "The summarizer is unavailable right now." }, { status: 503 });
   }
   return NextResponse.json({ ok: true, suggestion });
 }

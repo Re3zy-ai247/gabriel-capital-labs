@@ -13,14 +13,14 @@ const sans = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "CreditVector™ — AI-Powered Credit Intelligence Platform",
-  description: "CreditVector™ by Gabriel Capital Labs — an AI-powered credit intelligence platform. Understand your report, dispute inaccuracies under the FCRA, and build toward your goals.",
+  title: "CreditVector™ — The Credit Intelligence Operating System",
+  description: "CreditVector™ by Gabriel Capital Labs — the credit intelligence operating system. Understand your report, dispute inaccuracies under the FCRA, and build toward your goals.",
   manifest: "/manifest.json",
   applicationName: "CreditVector",
   metadataBase: new URL("https://www.creditvector.app"),
   appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "CreditVector" },
   openGraph: {
-    title: "CreditVector™ — AI-Powered Credit Intelligence Platform",
+    title: "CreditVector™ — The Credit Intelligence Operating System",
     description: "Understand your credit reports, dispute inaccuracies under the FCRA, and track every dispute — all in one place.",
     url: "https://www.creditvector.app",
     siteName: "CreditVector",
@@ -29,7 +29,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "CreditVector™ — AI-Powered Credit Intelligence Platform",
+    title: "CreditVector™ — The Credit Intelligence Operating System",
     description: "Understand your credit reports, dispute inaccuracies under the FCRA, and track every dispute — all in one place.",
     images: ["/og-image.png"],
   },
