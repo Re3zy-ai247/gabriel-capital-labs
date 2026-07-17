@@ -1,9 +1,10 @@
 import { SiteNav } from "@/components/marketing/SiteNav";
 import { SiteFooter } from "@/components/marketing/SiteFooter";
+import { TrustBar } from "@/components/marketing/Showcase";
 import { PricingTiers } from "./PricingTiers";
 
 export const metadata = {
-  title: "Pricing — CreditVector™ AI Credit Intelligence OS",
+  title: "Pricing — CreditVector™ Credit Intelligence Operating System",
   description: "You're not buying dispute letters — you're hiring Kai, your Credit Intelligence Officer. Start free; upgrade for more intelligence. Explorer, Professional, and Agency are live today.",
 };
 
@@ -13,7 +14,7 @@ export default function PricingPage() {
       <SiteNav />
       <main id="main">
         <section className="container-x pb-10 pt-16 text-center">
-          <span className="eyebrow">The AI Credit Intelligence Operating System</span>
+          <span className="eyebrow">The Credit Intelligence Operating System</span>
           <h1 className="h-display mx-auto mt-5 max-w-3xl text-4xl text-white md:text-5xl text-balance">
             You&apos;re not buying dispute letters.
             <br />
@@ -28,6 +29,10 @@ export default function PricingPage() {
 
         <section className="container-x pb-24">
           <PricingTiers />
+          {/* Trust band — same honest signals as the landing page; no fabricated traction */}
+          <div className="mx-auto mt-16 max-w-6xl">
+            <TrustBar />
+          </div>
         </section>
       </main>
       <SiteFooter />

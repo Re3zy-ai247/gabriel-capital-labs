@@ -260,8 +260,8 @@ export default function AgencyPage() {
             analysis and letter engine for every one, and stay on top of each follow-up window.
           </p>
           <ul className="mt-4 space-y-1.5 text-sm text-slate-300">
-            <li className="flex items-center gap-2"><span className="text-brand-400">✓</span> Up to 15 active client workspaces — no per-seat logins</li>
-            <li className="flex items-center gap-2"><span className="text-brand-400">✓</span> Full AI analysis &amp; letter engine for every client</li>
+            <li className="flex items-center gap-2"><span className="text-brand-400">✓</span> Manage up to 15 active clients, each in a private workspace — no per-seat logins</li>
+            <li className="flex items-center gap-2"><span className="text-brand-400">✓</span> Full credit analysis &amp; letter engine for every client</li>
             <li className="flex items-center gap-2"><span className="text-brand-400">✓</span> Follow-up clock &amp; KPI reporting across your roster</li>
           </ul>
           <div className="mt-5 flex items-baseline gap-2">

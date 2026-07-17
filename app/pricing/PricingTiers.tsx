@@ -36,41 +36,41 @@ const TIERS: Tier[] = [
     id: "explorer", name: "Explorer", kai: "Kai Lite", kaiLine: "Kai reads your report and explains what it found.",
     monthly: 0, yearly: 0, blurb: "Meet your Credit Intelligence Officer", status: "live", freeRegister: true, group: "consumer",
     features: [
-      "Upload all three bureau reports",
-      "AI report analysis + cross-bureau intelligence",
-      "Mission Control dashboard",
-      "CreditVector Academy — learn your rights",
-      "3 dispute letters / month",
-      "Kai Lite: report explanations & FCRA education",
+      "Upload your three bureau reports and see them in one place — never a credit pull",
+      "Kai reads every account and flags what doesn't match",
+      "Mission Control — your whole case on one screen",
+      "Academy: know your FCRA rights in plain English",
+      "3 professional dispute letters every month, free",
+      "Ask Kai what any item on your report means — plain English, any time",
     ],
     accent: "text-slate-300", cardClass: "border-ink-700/70 bg-ink-800/50", buttonClass: "btn-ghost",
   },
   {
     id: "professional", name: "Professional", kai: "Kai Professional", kaiLine: "Kai works your active disputes, end to end.",
     monthly: 99, yearly: 990, blurb: "Your credit analyst, working every day", status: "live", plan: "premium", popular: true, group: "consumer",
-    inherits: "Everything in Explorer, plus:",
+    inherits: "Everything in Explorer, plus Kai goes to work:",
     features: [
-      "Unlimited AI report analysis",
-      "Bureau response intelligence — Kai reads each response",
-      "Next-round & method-of-verification recommendations",
-      "Unlimited dispute letters + AI refinement",
-      "Credit Builder guidance",
+      "Unlimited analysis — re-run Kai after every bureau update",
+      "Kai reads every bureau response and tells you what it actually says",
+      "Always know your strongest supported next move (method-of-verification built in)",
+      "Unlimited letters, refined by Kai and grounded in the FCRA",
+      "Credit Builder guidance for the rebuild phase",
       "Readiness intelligence (funding & mortgage — not a lending decision)",
-      "Timeline intelligence & 90-day tracking",
+      "Every 30-day window tracked — see where each dispute clock stands",
     ],
     accent: "text-brand-300", cardClass: "border-brand-500/60 bg-gradient-to-b from-brand-500/10 to-ink-800/40 shadow-glow", buttonClass: "btn-primary shine",
   },
   {
     id: "professional_plus", name: "Professional+", kai: "Kai Pro", kaiLine: "Kai remembers your whole strategy over time.",
-    monthly: 149, yearly: 1490, blurb: "For power users", status: "soon", group: "consumer",
+    monthly: 149, yearly: 1490, blurb: "Your strategy, compounding over time", status: "soon", group: "consumer",
     inherits: "Everything in Professional, plus:",
     features: [
-      "Kai Pro — persistent long-term strategy memory",
-      "Funding Hub",
-      "Business Credit OS",
-      "Advanced analytics & priority AI",
-      "Beta features + future modules included",
-      "Private community",
+      "Kai remembers every dispute, response, and outcome — your whole history",
+      "Funding Hub — funding-readiness intelligence (not a lending decision)",
+      "Business Credit OS — intelligence for your business file",
+      "Priority AI + advanced analytics on your own progress",
+      "Every future module included as it ships",
+      "Private member community",
     ],
     accent: "text-brand-200", cardClass: "border-brand-500/25 bg-ink-800/40", buttonClass: "btn-ghost",
   },
@@ -79,11 +79,11 @@ const TIERS: Tier[] = [
     monthly: 399, yearly: 3990, blurb: "Built for solo operators", status: "live", plan: "agency", group: "agency",
     inherits: "Everything in Professional — for every client, plus:",
     features: [
-      "Up to 15 active client workspaces",
-      "Agency dashboard + client roster",
-      "Per-client follow-up clock (§611 windows)",
-      "Per-client dispute letters & tracking",
-      "Kai works each client's file in isolation",
+      "Manage up to 15 active clients, each in a private workspace",
+      "Your entire roster on one dashboard",
+      "A follow-up clock on every client's §611 window — tracked automatically",
+      "The full dispute engine on every client file",
+      "Kai analyzes each client independently — files never mix",
       "Professional+ modules roll out to your roster as they launch",
     ],
     accent: "text-ocean-300", cardClass: "border-ocean-500/50 bg-ink-800/50", buttonClass: "btn bg-ocean-500 text-white keep-white hover:bg-ocean-400",
@@ -91,41 +91,41 @@ const TIERS: Tier[] = [
   {
     id: "agency_pro", name: "Agency Pro", kai: "Kai Agency", kaiLine: "Kai for a growing team.",
     monthly: 699, yearly: 6990, blurb: "Built for growing teams", status: "soon", group: "agency",
-    inherits: "Everything in Agency, plus:",
+    inherits: "Everything in Agency, plus room to grow:",
     features: [
-      "Up to 40 active client workspaces",
-      "Team collaboration",
-      "Advanced reporting & agency analytics",
-      "Bulk actions",
-      "Custom branding",
-      "Priority support",
+      "Grow to 40 active clients without changing how you work",
+      "Bring on staff — grow beyond a solo practice",
+      "See your practice's performance at a glance",
+      "Bulk actions — finish roster-wide tasks in one pass",
+      "Your brand on the client experience",
+      "Priority support — answers when clients are waiting",
     ],
     accent: "text-ocean-200", cardClass: "border-ocean-600/30 bg-ink-800/40", buttonClass: "btn-ghost",
   },
   {
     id: "scale", name: "Scale", kai: "Kai Agency", kaiLine: "Kai across your whole operation.",
     monthly: 1299, yearly: 12990, blurb: "Built for established agencies", status: "soon", group: "agency",
-    inherits: "Everything in Agency Pro, plus:",
+    inherits: "Everything in Agency Pro — at operating scale:",
     features: [
-      "Up to 100 active client workspaces",
-      "Unlimited team members",
-      "Advanced automation",
-      "API access & webhooks",
-      "Manager dashboards & advanced permissions",
-      "Dedicated onboarding + recurring strategy reviews",
+      "Run up to 100 active clients across your whole team",
+      "Unlimited team members — your org chart, your rules",
+      "Automation handles the repetitive work between rounds",
+      "API & webhooks — plug CreditVector into your stack",
+      "Manager visibility across every desk and every client",
+      "White-glove onboarding + recurring strategy reviews",
     ],
     accent: "text-ocean-200", cardClass: "border-ocean-600/30 bg-ink-800/40", buttonClass: "btn-ghost",
   },
   {
     id: "enterprise", name: "Enterprise", kai: "Kai Enterprise", kaiLine: "Kai, deployed to your standard.",
     monthly: null, yearly: null, blurb: "Built for complex organizations", status: "contact", group: "agency",
-    inherits: "Everything in Scale, plus:",
+    inherits: "Everything in Scale, plus a true partnership:",
     features: [
-      "Custom client capacity & team size",
-      "SSO & advanced security",
-      "White-label",
-      "Dedicated account manager & SLA",
-      "Custom integrations & training",
+      "Capacity, controls, and terms shaped around your organization",
+      "SSO & advanced security controls",
+      "White-label — CreditVector under your brand",
+      "A named account team and a real SLA",
+      "Custom integrations, training, and rollout support",
       "Private deployment where supported",
     ],
     accent: "text-slate-200", cardClass: "border-ink-600/60 bg-gradient-to-b from-ink-800/60 to-ink-900/40", buttonClass: "btn-ghost",
@@ -137,30 +137,37 @@ const TIERS: Tier[] = [
 // for what genuinely exists today; everything future is "s" (or lives under a column
 // already badged "Coming soon"). Order matches TIERS.
 const COLS = ["Explorer", "Professional", "Professional+", "Agency", "Agency Pro", "Scale", "Enterprise"];
+// Grouped for scan speed. "@group" rows render as full-width section headers.
+// Cell truth values are unchanged from the flat matrix (API access + Webhooks
+// merged into one row — their values were identical).
 const MATRIX: [string, ...string[]][] = [
+  ["@group", "Kai intelligence"],
+  ["Credit report analysis", "y", "y", "y", "y", "y", "y", "y"],
+  ["Cross-bureau intelligence", "y", "y", "y", "y", "y", "y", "y"],
+  ["Unlimited reports", "n", "y", "y", "y", "y", "y", "y"],
   ["Kai capability", "Lite", "Professional", "Pro", "Agency", "Agency", "Agency", "Enterprise"],
   ["Conversational Kai", "s", "s", "Unlimited", "s", "Unlimited", "Unlimited", "Unlimited"],
   ["Persistent Kai memory", "n", "Case", "Long-term", "Case", "Long-term", "Long-term", "Long-term"],
-  ["AI report analysis", "y", "y", "y", "y", "y", "y", "y"],
-  ["Cross-bureau intelligence", "y", "y", "y", "y", "y", "y", "y"],
-  ["Unlimited reports", "n", "y", "y", "y", "y", "y", "y"],
+  ["@group", "Dispute engine"],
   ["Dispute letters", "3/mo", "Unlimited", "Unlimited", "Unlimited", "Unlimited", "Unlimited", "Unlimited"],
-  ["AI letter refinement", "n", "y", "y", "y", "y", "y", "y"],
+  ["Letter refinement", "n", "y", "y", "y", "y", "y", "y"],
   ["Bureau response intelligence", "n", "y", "y", "y", "y", "y", "y"],
   ["Strategy & next-round planning", "n", "y", "y", "y", "y", "y", "y"],
   ["Method-of-verification guidance", "n", "y", "y", "y", "y", "y", "y"],
+  ["@group", "Guidance & growth"],
   ["CFPB guidance", "Edu", "y", "y", "y", "y", "y", "y"],
   ["Credit Builder", "Edu", "y", "y", "y", "y", "y", "y"],
-  ["Funding Hub", "n", "s", "y", "s", "y", "y", "y"],
-  ["Business Credit OS", "n", "s", "y", "s", "y", "y", "y"],
+  ["Funding Hub", "n", "n", "y", "s", "y", "y", "y"],
+  ["Business Credit OS", "n", "n", "y", "s", "y", "y", "y"],
   ["Community access", "n", "n", "y", "y", "y", "y", "y"],
-  ["Client workspaces", "-", "-", "-", "15", "40", "100", "Custom"],
+  ["@group", "Agency operations"],
+  ["Active client workspaces", "-", "-", "-", "15", "40", "100", "Custom"],
   ["Team members", "-", "-", "-", "n", "s", "Unlimited", "Unlimited"],
   ["Agency dashboard", "-", "-", "-", "y", "y", "y", "y"],
   ["Bulk actions", "-", "-", "-", "n", "s", "s", "y"],
   ["Automation", "-", "-", "-", "n", "n", "s", "y"],
-  ["API access", "-", "-", "-", "n", "n", "s", "y"],
-  ["Webhooks", "-", "-", "-", "n", "n", "s", "y"],
+  ["@group", "Platform & partnership"],
+  ["API access & webhooks", "-", "-", "-", "n", "n", "s", "y"],
   ["Custom branding", "-", "-", "-", "n", "s", "s", "y"],
   ["Priority support", "n", "n", "s", "n", "s", "s", "y"],
   ["SSO", "-", "-", "-", "-", "-", "-", "s"],
@@ -174,6 +181,7 @@ const FAQ: [string, string][] = [
   ["What does “Coming soon” mean?", "Explorer, Professional, and Agency are live today. Professional+, Agency Pro, Scale, and Enterprise are on our roadmap — you can start free now and grow into them, but you can't be charged for a plan that isn't available yet. When a plan ships, its checkout goes live."],
   ["Does Kai guarantee results?", "No, and no one legally can. Kai provides educational guidance grounded in the FCRA and helps you exercise rights you already have. The bureaus decide each outcome; accurate items can't be removed by disputing them. You stay in control — Kai recommends, you approve, and you mail your own letters."],
   ["Can I cancel anytime?", "Yes — no contracts. Cancel from your billing dashboard; access continues to the end of your billing period."],
+  ["What happens when I outgrow my plan?", "You upgrade in place — your data, clients, letters, and history move with you, nothing is re-imported and nothing is lost. Reaching a plan's client capacity never locks existing work; it only pauses adding new client workspaces until you upgrade."],
 ];
 
 export function PricingTiers() {
@@ -203,7 +211,7 @@ export function PricingTiers() {
       {/* Kai thesis band */}
       <div className="mx-auto max-w-3xl rounded-2xl border border-brand-500/25 bg-brand-500/[0.06] p-5 text-center">
         <div className="mb-1 inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-brand-300"><Sparkles className="h-3.5 w-3.5" aria-hidden /> Everyone gets Kai</div>
-        <p className="text-sm text-slate-300">Like ChatGPT, everyone gets the intelligence — your plan decides how capable Kai becomes. <span className="text-slate-400">Kai Lite → Professional → Pro → Agency → Enterprise.</span></p>
+        <p className="text-sm text-slate-300">One intelligence runs every plan — your tier decides how much of Kai you unlock. <span className="text-slate-400">Kai Lite → Professional → Pro → Agency → Enterprise.</span></p>
       </div>
 
       {/* Interval toggle */}
@@ -219,6 +227,7 @@ export function PricingTiers() {
       <div className="mx-auto mt-6 grid max-w-5xl items-stretch gap-6 md:grid-cols-3">
         {consumer.map((t) => <TierCard key={t.id} t={t} interval={interval} busy={busy} onCheckout={checkout} signedIn={!!session} />)}
       </div>
+      <p className="mt-4 text-center text-xs text-slate-500">No contracts · Cancel anytime · Uploading reports never triggers a credit pull</p>
 
       {/* Agency */}
       <h2 className="mt-14 text-center text-sm font-bold uppercase tracking-widest text-slate-400">For agencies</h2>
@@ -260,14 +269,25 @@ export function PricingTiers() {
               </tr>
             </thead>
             <tbody>
-              {MATRIX.map((row) => (
-                <tr key={row[0]} className="border-b border-ink-700/40 last:border-0">
-                  <td className="sticky left-0 z-10 bg-ink-900/90 p-3 text-left text-[13px] font-medium text-slate-300">{row[0]}</td>
-                  {row.slice(1).map((cell, i) => (
-                    <td key={i} className="p-3 text-center">{renderCell(cell)}</td>
-                  ))}
-                </tr>
-              ))}
+              {MATRIX.map((row, ri) =>
+                row[0] === "@group" ? (
+                  // Label lives in the sticky first cell (same pinning as feature names)
+                  // so it stays visible during horizontal scroll on mobile.
+                  <tr key={`g-${row[1]}`} className="border-b border-ink-700/40">
+                    <td className="sticky left-0 z-10 whitespace-nowrap bg-ink-900 px-3 pb-2 pt-5 text-left text-[10px] font-bold uppercase tracking-widest text-brand-300/90">
+                      {row[1]}
+                    </td>
+                    <td colSpan={COLS.length} className="bg-ink-900" aria-hidden />
+                  </tr>
+                ) : (
+                  <tr key={`${row[0]}-${ri}`} className="border-b border-ink-700/40 last:border-0">
+                    <td className="sticky left-0 z-10 bg-ink-900/90 p-3 text-left text-[13px] font-medium text-slate-300">{row[0]}</td>
+                    {row.slice(1).map((cell, i) => (
+                      <td key={i} className="p-3 text-center">{renderCell(cell)}</td>
+                    ))}
+                  </tr>
+                )
+              )}
             </tbody>
           </table>
         </div>
@@ -355,7 +375,7 @@ function TierCard({ t, interval, busy, onCheckout, signedIn }: {
           <Link href="/register" className="btn-ghost w-full">Start free <ArrowRight className="h-4 w-4" aria-hidden /></Link>
         )}
         {t.status === "contact" && (
-          <Link href="/support" className="btn-ghost w-full">Talk to us <ArrowRight className="h-4 w-4" aria-hidden /></Link>
+          <Link href="/support" className="btn-ghost w-full">Talk to our team <ArrowRight className="h-4 w-4" aria-hidden /></Link>
         )}
       </div>
     </div>
