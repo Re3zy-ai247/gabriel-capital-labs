@@ -22,6 +22,7 @@ const FLAGS: Array<{ name: string; scope: string }> = [
   { name: "TEAM_FOUNDATION", scope: "dormant team/workspace foundation" },
   { name: "SESSION_FOUNDATION", scope: "dormant device/session foundation (no enforcement)" },
   { name: "KAI_CASE_MEMORY", scope: "persistent Kai memory store — ADR-0006 founder gate, must stay OFF" },
+  { name: "KAI_GRAPH_LOADER", scope: "dormant: real-case → Unified Credit Graph loader (admin trace surface only; OFF)" },
   ...PLATFORM_MODULES.filter((m) => m.flagEnv).map((m) => ({ name: m.flagEnv, scope: `dormant module shell: ${m.name}` })),
 ];
 
