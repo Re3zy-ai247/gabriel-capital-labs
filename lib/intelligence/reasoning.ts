@@ -68,6 +68,11 @@ export type StrategyHook = (tradelineNodeId: string) => { label: string } | null
 const FORBIDDEN_OUTCOME_PATTERNS: readonly RegExp[] = [
   /will be (deleted|removed)/i, /guarantee/i, /\d+\s*%\s*(chance|probability)/i,
   /score (will|should) (increase|improve|go up)/i, /definitely/i, /documented path to/i,
+  // Obsolescence/deletion certainty — a §605 item is disputed to REQUEST that a
+  // bureau verify and remove it, never asserted to drop off on its own. These
+  // catch the class the six patterns above missed (e.g. "must drop off under §605").
+  /must (drop off|be removed|be deleted)/i, /will (drop off|fall off|be dropped)/i,
+  /automatically (removed|deleted|dropped|drops? off)/i,
 ];
 
 export function scanForbiddenLanguage(text: string): string | null {

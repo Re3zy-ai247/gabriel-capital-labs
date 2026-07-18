@@ -54,7 +54,7 @@ export const STRATEGIES: Strategy[] = [
     label: "FCRA §605 — Obsolete Item",
     recipient: "bureau",
     statutes: ["fcra_605"],
-    blurb: "For items beyond the 7-year reporting window that must be removed as obsolete.",
+    blurb: "For items that appear to sit beyond their FCRA §605 reporting window — disputed to ask the bureau to verify the reporting period and remove the item as obsolete if it can't be substantiated.",
   },
   {
     id: "fcra_623",

@@ -43,7 +43,7 @@ export function recommendStrategy(t: RecommendInput): Recommendation {
   if (age >= windowYrs) {
     return {
       strategyId: "fcra_605",
-      reason: `This item's first delinquency is about ${Math.floor(age)} years old. Under FCRA §605 this item should drop off after ${windowYears} years — request removal as obsolete.`,
+      reason: `This item's first delinquency is about ${Math.floor(age)} years old. Under FCRA §605 the reporting period for this item is ${windowYears} years — because it appears to sit beyond that window, ask the bureau to verify the reporting period and remove it as obsolete if it can't be substantiated.`,
     };
   }
 

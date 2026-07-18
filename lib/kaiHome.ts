@@ -4,6 +4,7 @@
 import type { Letter, Report, Tradeline } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { listKaiEvents } from "@/lib/kaiEvents";
+import { recommendStrategy } from "@/lib/recommend";
 import { yearsSince } from "@/lib/utils";
 
 const DAY = 86_400_000;
@@ -58,7 +59,8 @@ function deadlinesFrom(letters: Letter[]): KaiDeadline[] {
 
 // One recommendation at a time (KAI-PRODUCT-DESIGN §7 anti-overwhelm law),
 // picked by fixed priority. Each branch states its receipt in `basis`.
-function pickRecommendation(
+// Exported for the CROA guard (scripts/kai-recommendation.test.ts) — pure, no DB.
+export function pickRecommendation(
   tradelines: Tradeline[],
   letters: Letter[],
   reports: Report[]
@@ -91,17 +93,33 @@ function pickRecommendation(
     };
   }
 
-  // 3. Obsolete items are the cleanest disputes — attack them first.
+  // 3. An item the canonical strategy engine flags as past its FCRA §605
+  //    reporting window. Detection is DELEGATED to recommendStrategy so Kai
+  //    applies the same window math it uses everywhere — ten years for a
+  //    Chapter 7/11 bankruptcy public record, plus the 180-day collection/
+  //    charge-off offset — and never asserts obsolescence a bureau would reject.
+  //    Kai observes the fact, explains the applicable law, flags the potential
+  //    issue, and recommends verification — never a guaranteed removal.
   const obsolete = tradelines.find(
-    (t) => !t.resolved && (yearsSince(t.dateOfFirstDelinquency) ?? 0) >= 7
+    (t) =>
+      !t.resolved &&
+      recommendStrategy({
+        accountType: t.accountType,
+        isDebtBuyer: t.isDebtBuyer,
+        probability: t.probability,
+        dateOfFirstDelinquency: t.dateOfFirstDelinquency,
+        bureauData: t.bureauData,
+        creditorName: t.creditorName,
+      }).strategyId === "fcra_605"
   );
   if (obsolete) {
+    const age = Math.floor(yearsSince(obsolete.dateOfFirstDelinquency) ?? 0);
     return {
-      title: `${obsolete.creditorName} is past the 7-year reporting window.`,
-      body: "Items older than 7 years from first delinquency must drop off under FCRA §605 — the cleanest dispute available on your file.",
-      cta: "Dispute as obsolete",
+      title: `${obsolete.creditorName} may be past its FCRA §605 reporting window.`,
+      body: `Its first delinquency is about ${age} years old. Under FCRA §605, most adverse items are reported for seven years from the date of first delinquency — ten years for a Chapter 7 or 11 bankruptcy public record, and collections and charge-offs add a 180-day offset. Because this item appears to sit beyond that window, disputing it asks the bureau to verify the reporting period and remove the item if it can't be substantiated.`,
+      cta: "Review this item & dispute",
       href: `/letters?tradeline=${obsolete.id}&strategy=fcra_605`,
-      basis: "Rule: date of first delinquency ≥ 7 years (§605 obsolescence).",
+      basis: "Rule: the strategy engine flags this item as past its §605 reporting window (bankruptcy and collection/charge-off offsets applied).",
     };
   }
 
