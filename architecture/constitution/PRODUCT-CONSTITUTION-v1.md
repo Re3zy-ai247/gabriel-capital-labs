@@ -1,16 +1,15 @@
-# The CreditVector Product Constitution · v1
+# The CreditVector Product Constitution · v1.0
 
-**Status: KAI'S VISUAL IDENTITY FROZEN (founder resolution, 2026-07-17) · two counsel/founder items
-open before full ratification.** The four-lens freeze review surfaced three forks. The blocker —
-Kai's visual form — is now **resolved and frozen**: two worlds, never blurred (in-product = KAI
-monogram + executive intelligence; marketing/education only = the rendered Shiba Inu; see Article
-III). Two items remain open (they gate only their own sections, not the identity/architecture):
-the CROA posture classification and the commerce/offers boundary. This is the apex document. Every
-future feature, screen, API,
-prompt, animation, notification, UX decision, wording change, and AI behavior must trace back to
-this constitution and compile against it. After freeze, nothing in this document set changes except
-through a formal **ADR** (Architecture / Amendment Decision Record) that cites the specific Article
-it amends and the reason.
+**Constitution Version: v1.0 · Status: RATIFIED · State: FROZEN — 2026-07-17.** Future changes
+require a formal **ADR** or **Constitutional Amendment; never a silent edit.** The identity,
+architecture, hierarchy, the Five Laws, and the two-world visual identity are ratified and frozen.
+Two counsel-gated items remain **open sub-items within this constitution** (they gate only their own
+sections, not the identity/architecture, and are resolved by ADR): the CROA posture classification
+(Article III / Brand §4) and the commerce/offers boundary (Article VIII). This is the apex document.
+Every future feature, screen, API, prompt, animation, notification, UX decision, wording change, and
+AI behavior must trace back to this constitution and compile against it. After freeze, nothing in
+this document set changes except through a formal ADR (Architecture / Amendment Decision Record) that
+cites the specific Article it amends and the reason.
 
 *Model: Apple's Human Interface Guidelines · Anthropic's Constitutional AI · Stripe's design
 principles · Linear's product philosophy — combined into one source of truth for CreditVector.*
@@ -191,6 +190,8 @@ Architecture → Implementation Plan → Production Code.**
 
 ---
 
-*Drafted v1, 2026-07-17. Gabriel Capital Labs · CreditVector. **Status: review-complete, pending
-founder decisions before ratification** (Kai's visual form · CROA posture classification · commerce/
-offers boundary). This becomes the canonical foundation on ratification.*
+*Constitution v1.0 — Gabriel Capital Labs · CreditVector. **RATIFIED & FROZEN, 2026-07-17.** This is
+the canonical foundation. Future changes require an ADR or a Constitutional Amendment — never a silent
+edit. The engineering lifecycle in Article IX is superseded by **ADR-0001 (Engineering Lifecycle)**;
+the Article itself is unchanged (amendment via ADR, per the founder's directive). Two counsel-gated
+sub-items remain open (CROA posture; commerce/offers boundary), resolved by future ADRs.*

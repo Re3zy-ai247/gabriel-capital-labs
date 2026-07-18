@@ -1,4 +1,4 @@
-# CreditVector Brand Architecture · v1 *(FROZEN 2026-07-17)*
+# CreditVector Brand Architecture · v1.0 *(RATIFIED · FROZEN · 2026-07-17 · changes require an ADR or Constitutional Amendment)*
 
 *Derives from [PRODUCT-CONSTITUTION-v1.md](PRODUCT-CONSTITUTION-v1.md) Article I. Amend by ADR only.
 Owns: the hierarchy, the Kai-is-not-the-OS distinction, naming, and positioning.*

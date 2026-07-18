@@ -1,4 +1,4 @@
-# Kai Trust Model · v1 *(FROZEN 2026-07-17)*
+# Kai Trust Model · v1.0 *(RATIFIED · FROZEN · 2026-07-17 · changes require an ADR or Constitutional Amendment)*
 
 *How Kai earns and protects trust. Derives from Law II + Law V + KAI-IDENTITY-SPECIFICATION §11,13,14,
 31,32. Amend by ADR only. Codebase home: `lib/intelligence/reasoning.ts` (`scoreConfidence`,

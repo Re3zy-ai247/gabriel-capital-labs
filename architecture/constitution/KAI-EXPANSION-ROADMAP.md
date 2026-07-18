@@ -1,4 +1,4 @@
-# Kai Expansion Roadmap · v1 *(FROZEN 2026-07-17)*
+# Kai Expansion Roadmap · v1.0 *(RATIFIED · FROZEN · 2026-07-17 · changes require an ADR or Constitutional Amendment)*
 
 *How the operating domain grows without ever changing Kai. Derives from Constitution Article I + V,
 Brand Architecture §5, KAI-IDENTITY-SPECIFICATION §35. Amend by ADR only. This is architecture, not a

@@ -1,4 +1,4 @@
-# Kai Notification Standard · v1 *(FROZEN 2026-07-17)*
+# Kai Notification Standard · v1.0 *(RATIFIED · FROZEN · 2026-07-17 · changes require an ADR or Constitutional Amendment)*
 
 *When Kai speaks, waits, defers, and is silent. Derives from Law IV + KAI-IDENTITY-SPECIFICATION
 §15,26–30. Amend by ADR only. Codebase homes: `notify.plan` capability (ADR-0027, decision-only),

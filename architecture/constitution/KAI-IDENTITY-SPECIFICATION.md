@@ -1,4 +1,4 @@
-# Kai Identity Specification · v1 *(FROZEN 2026-07-17)*
+# Kai Identity Specification · v1.0 *(RATIFIED · FROZEN · 2026-07-17 · changes require an ADR or Constitutional Amendment)*
 
 *Kai's permanent identity. Derives from [PRODUCT-CONSTITUTION-v1.md](PRODUCT-CONSTITUTION-v1.md);
 compiles against the Five Laws. Amend by ADR only. Where a section names another document, that

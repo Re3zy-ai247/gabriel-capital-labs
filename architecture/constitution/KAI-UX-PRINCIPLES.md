@@ -1,4 +1,4 @@
-# Kai UX Principles · v1 *(FROZEN 2026-07-17)*
+# Kai UX Principles · v1.0 *(RATIFIED · FROZEN · 2026-07-17 · changes require an ADR or Constitutional Amendment)*
 
 *How the experience behaves. Derives from Constitution Article IV. Amend by ADR only. Every screen
 and flow compiles against this.*

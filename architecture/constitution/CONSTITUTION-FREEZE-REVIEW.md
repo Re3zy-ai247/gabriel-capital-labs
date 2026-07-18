@@ -1,4 +1,4 @@
-# Constitution Freeze — Review Docket · v1 *(2026-07-17)*
+# Constitution Freeze — Review Docket · v1.0 *(RATIFIED · FROZEN · 2026-07-17)*
 
 *The four independent reviews the freeze required, their findings, what was fixed, and the open
 decisions that block ratification. Referenced by [PRODUCT-CONSTITUTION-v1.md](PRODUCT-CONSTITUTION-v1.md)

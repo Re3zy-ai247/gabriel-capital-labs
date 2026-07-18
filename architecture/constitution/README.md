@@ -1,4 +1,8 @@
-# CreditVector Product Constitution — v1 *(canonical, in-repo)*
+# CreditVector Product Constitution — v1.0 *(canonical, in-repo)*
+
+> **Constitution Version: v1.0 · Status: RATIFIED · State: FROZEN · 2026-07-17.**
+> Future changes require an **ADR** or a **Constitutional Amendment — never a silent edit.**
+> Engineering lifecycle: superseded by [ADR-0001 (Engineering Lifecycle)](adr/ADR-0001-engineering-lifecycle.md).
 
 The frozen product-and-identity foundation for CreditVector and Kai. This directory is the canonical,
 version-controlled home of the constitution. Every future feature, screen, API, prompt, animation,
@@ -70,11 +74,14 @@ Kai; what remains is the OS. "Powered by Kai" is the only correct connector; we 
 
 ## Ratification status
 
-- **Kai's visual identity — FROZEN & cross-verified** (founder resolution 2026-07-17; the
-  identity-contradiction review returned consistent). The hierarchy, the Kai≠OS distinction, the Five
-  Laws, and the two-world visual identity are frozen.
-- **Full ratification is pending two counsel/founder items** (below), which gate only their own
-  sections, not the identity/architecture.
+- **RATIFIED & FROZEN — Constitution v1.0, 2026-07-17.** The hierarchy, the Kai≠OS distinction, Kai's
+  identity, the Five Laws, and the two-world visual identity are ratified and frozen; a final
+  ratification pass verified them consistent (no contradictory hierarchy; Kai, CreditVector, "The
+  Credit Operating System," and Gabriel Capital Labs defined consistently; the two-world rule enforced
+  everywhere; all cross-references, links, and README pointers resolve; no deprecated document is
+  referenced).
+- **Two counsel-gated sub-items remain open** (below); they gate only their own sections, not the
+  identity/architecture, and are resolved by future ADRs.
 
 ## Remaining counsel-gated items *(open — do not treat as frozen)*
 

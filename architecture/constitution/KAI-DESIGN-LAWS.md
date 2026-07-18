@@ -1,4 +1,4 @@
-# Kai Design Laws · v1 *(FROZEN 2026-07-17)*
+# Kai Design Laws · v1.0 *(RATIFIED · FROZEN · 2026-07-17 · changes require an ADR or Constitutional Amendment)*
 
 *How CreditVector looks and moves. Derives from the Five Laws + KAI-IDENTITY-SPECIFICATION §19–25,33.
 Amend by ADR only. Uses the shipped design system (`app/globals.css`, `tailwind.config.ts`) — invents

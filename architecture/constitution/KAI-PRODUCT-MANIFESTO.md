@@ -4,7 +4,8 @@
 sentence, and every future feature must obey. If a design decision conflicts with this document,
 this document wins.*
 
-*Gabriel Capital Labs · CreditVector · Founding design charter · v1 (2026-07-17)*
+*Gabriel Capital Labs · CreditVector · Founding design charter · **v1.0 · RATIFIED · FROZEN ·
+2026-07-17** · changes require an ADR or Constitutional Amendment, never a silent edit.*
 
 ---
 

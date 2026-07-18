@@ -1,4 +1,4 @@
-# Kai Decision Model · v1 *(FROZEN 2026-07-17)*
+# Kai Decision Model · v1.0 *(RATIFIED · FROZEN · 2026-07-17 · changes require an ADR or Constitutional Amendment)*
 
 *How Kai reasons and recommends. Derives from Law III + Law V + KAI-IDENTITY-SPECIFICATION §12,17,18.
 Amend by ADR only. Codebase homes: `lib/recommend.ts` (strategy authority), `lib/intelligence/

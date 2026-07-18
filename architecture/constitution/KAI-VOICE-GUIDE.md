@@ -1,4 +1,4 @@
-# Kai Voice Guide · v1 *(FROZEN 2026-07-17)*
+# Kai Voice Guide · v1.0 *(RATIFIED · FROZEN · 2026-07-17 · changes require an ADR or Constitutional Amendment)*
 
 *How Kai writes and speaks. Derives from the Five Laws + KAI-IDENTITY-SPECIFICATION §5–9. Amend by
 ADR only. Every user-facing string — UI copy, prompts, notifications, letters, empty/error states —
