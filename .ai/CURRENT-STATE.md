@@ -4,9 +4,11 @@
 > chronological log. **GIOS/kernel current truth → [../architecture/FOUNDER-CONTEXT.md](../architecture/FOUNDER-CONTEXT.md)** (do not restate it here). **Full sprint history (V–XXV, Build Waves)
 > → `ARCHIVE/CURRENT-STATE-full-2026-07-15.md` + ADRs 0010–0027 + `KAI-ENGINEERING-JOURNAL.md` + git.**
 
-**Last updated:** 2026-07-17 · **Branch:** `main` — the four stacked sprints below are now
+**Last updated:** 2026-07-18 · **Branch:** `main` — the four stacked sprints below are now
 **COMMITTED (`ed8cbf2` → this commit) and UNPUSHED**; prod still runs `56e2ed4`. · **Prod:** LIVE at
 https://www.creditvector.app (Vercel auto-deploys on push to `main`) · **MAIL_LIVE OFF**.
+**Active feature branch `impl/mission-control-v1`** — PUSHED to origin, **UNMERGED (do not merge yet)**:
+Mission Control OS shell (ADR-0002) + `graphInputFromSnapshot`; see the top entry below.
 
 ⚠️ **Commit order note (2026-07-17):** Phase C landed BEFORE Phase B, inverting the planned
 B-then-C sequence. `lib/platform/health.ts` (Phase B) imports `kaiSelfTest` + `caseMemoryStoreEnabled`
@@ -16,6 +18,8 @@ commit (`b7a34e1`) EXCEPT its pricing-matrix subset, which is physically insepar
 regrouping and landed in `ed8cbf2` (same-hunk delete/re-add + atomic rewrites; splitting would have
 required fabricating an unvalidated intermediate matrix — precedent `ad239e3`). No Stripe commit
 exists: that migration already landed in `ad239e3`; nothing Stripe-related was dirty.
+
+**Mission Control OS shell (ADR-0002) + `graphInputFromSnapshot` (2026-07-18, branch `impl/mission-control-v1` — PUSHED to origin, UNMERGED · `f5b4cff` → `6375d68` → `34fb605`):** two commits stacked on the ADR-0002 draft, both fully dormant. **(1) `6375d68` docs(adr-0002)** — ADR-0002 (Mission Control ratified as the EXISTING OS shell + only additive, reuse-first versions of the five absent sub-surfaces: command palette, global search, notifications center, system health, quick actions) was approved-in-principle, then corrected after a 5-lens adversarial review: the two overclaims fixed, server-authorization/tenant-scoping/no-PII-in-URL bindings added to global search + quick actions, cross-registry ADR citations namespaced, and `scripts/two-world.test.ts` broadened (inline-SVG-Shiba `aria-label` + kaiStates product-import detection) with a **documented WARNING exemption** for the one pre-existing community render (2004/0/1). **(2) `34fb605` feat(intelligence)** — **`graphInputFromSnapshot` now EXISTS** (the roadmap's "highest-leverage single build", Phase-C prerequisite): pure deterministic projector `projectGraphInput` (`lib/intelligence/graphProject.ts`, no I/O — reuses `presentBureaus`/`REINVESTIGATION_DAYS`; partitions INQUIRY/PUBLIC_RECORD; PRESENT-only bureau provenance; recipientType statutory routing; absent sections omitted, never fabricated) + tenant-safe async wrapper (`graphLoader.ts`, `where:{userId}`, fail-closed on empty userId) feeding the ratified `buildCreditGraph`→`reason` pipeline; ONE flag-gated read-only admin consumer (`app/api/admin/graph-trace`, `KAI_GRAPH_LOADER` **default OFF → 404**, own-tenant, validator-gated trace withheld on any error). No new engine/graph model (independent 6-axis + duplication audits: reuse-first; pure/IO split mirrors `knowledge/loader→engine`). Validated: tsc 0 · two-world 2004/0/1 · graph-loader 31/0. **MAIL_LIVE / KERNEL_DURABLE / KAI_GRAPH_LOADER all OFF; `main` untouched; no deploy path changed; nothing merged.** ⚠️ **Pre-activation gate documented in code:** reconcile the GOVERNMENT `accountType` exclusion (match `snapshot.ts`/`recommend.ts`) BEFORE `KAI_GRAPH_LOADER` is ever flipped over real cases. Governance open item (community render) → Known issues below.
 
 **Kai Experience Sprint — language audit (2026-07-16, COMMITTED `b7a34e1` — push pending):** Phase-1 branding-hierarchy pass (Platform=CreditVector · Employee=Kai · features=plain English · GIOS invisible). Removed unnecessary "AI" from user-facing FEATURE labels + made Kai the consistent actor: site title/OG "AI-Powered Credit Intelligence Platform"→"The Credit Intelligence Operating System" (layout.tsx + `lib/brand.ts` tagline — the site-wide rendered source, caught as an orphan by review); pricing matrix "AI report analysis"→"Credit report analysis", "AI letter refinement"→"Letter refinement"; pricing eyebrow + page `<title>` de-AI'd; landing how-it-works "The AI reads/refine with AI"→"Kai reads/refine with Kai" (+ module tagline + Showcase "Drafted by Kai"); billing/onboarding/agency/identity feature labels; AiPlan card "AI Action Plan"→"Action Plan" (badge already "KAI Intelligence") + its 402 string. **DELIBERATELY LEFT (non-negotiables):** the compliance disclaimer + privacy disclosure ("AI-powered educational tool" — legal wording, transparency), `lib/stripe.ts` product description (billing — deferred to a coordinated Stripe-metadata pass), code comments. **Rest of the sprint (Phases 2-10: activity feed, Mission Control, executive summary, decision explanations, confidence, empty states, delight) NOT rebuilt — already implemented by KaiEvents · MissionControl/ExecutiveQueue · CVI/`explain.ts` · Phase-C confidence engine · the 16-state Kai Catalog + Character Bible; parallel builds would duplicate existing systems.** 2-lens adversarial review → 3 orphan HIGHs (brand.ts tagline, pricing title, landing AI-actor) all fixed; matrix-truth findings were misattributed CX-sprint work (git diff shows all stacked uncommitted sprints). Guards 35/35, tsc 0, build ✓. Zero entitlement/pricing/billing/platform logic touched — display strings only.
 
@@ -75,6 +79,15 @@ pipeline dry-run, MAIL_LIVE off).
    to Pro (~$20/mo) to enable. Checklist in `OPERATIONS.md`.
 
 ## Known issues / debt
+- ⚖️ **OWNER GOVERNANCE RULING — Community boundary / Kai character rendering (OPEN).**
+  `components/community/KaiAvatar.tsx` renders the Shiba **as "Kai"** on the community product routes
+  (`app/community/*`, via `KaiBadge`). Community is a *"distinct product zone"* (Constitution
+  Art. VIII), NOT an Art. III marketing/education surface; Design Laws §11 confines the character to
+  marketing/education and fails it on *"any product or executive surface"* — so on the plain text this
+  reads as a two-world violation. Reserved to the founder (Art. VI.2): resolve by **removing the
+  render** OR a **narrow ADR carving community out of §11**. Recorded in ADR-0002 Open Items;
+  `scripts/two-world.test.ts` surfaces it as a documented WARNING (exempted, not silently passed).
+  Pre-existing; independent of the `impl/mission-control-v1` slice.
 - Favicon/OG images still the pre-de-shadow shield render (on-brand; regen pending).
 - `.env.example` drift: still lists deleted `SETUP_SECRET`; missing `COMPANY_POSTAL_ADDRESS`.
 - `tsconfig.tsbuildinfo` tracked in git (build artifact) — confirm untracked.
@@ -109,9 +122,10 @@ pipeline dry-run, MAIL_LIVE off).
    fabricated from a ZIP regex at `LetterStreamProvider.ts:76`) and would violate the letter
    engine's own Rule 2 (`lib/letter.ts:464`) — needs a real verification predicate + counsel
    sign-off. Cross-bureau reconciliation is speculative (the schema cannot represent two addresses;
-   `TradelineContact` is 1:1 on `tradelineId`). A Recipient Graph would be the SECOND unwired
-   consumer of `buildCreditGraph` — **`graphInputFromSnapshot` does not exist** (verified zero hits;
-   the graph runs only on the synthetic fixture). Reuse `scoreConfidence`
+   `TradelineContact` is 1:1 on `tradelineId`). A Recipient Graph would be a consumer
+   of `buildCreditGraph` — **`graphInputFromSnapshot` now EXISTS** (built 2026-07-18 on
+   `impl/mission-control-v1`, flag-gated OFF — see the Mission Control entry at top; before this it
+   ran only on the synthetic fixture). Reuse `scoreConfidence`
    (`lib/intelligence/reasoning.ts:78`); do NOT mint a 7th confidence ladder.
 2. **GIOS Sprint 3**: ADR-0028 + #11 Durable Audit → D-02 perf harness → route flips.
    Ranked plan: **FOUNDER-CONTEXT §11**.
