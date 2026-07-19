@@ -25,17 +25,19 @@ export default function Loading() {
         {/* Network-state disclosure bone (small viewports) */}
         <div className="card mb-4 h-11 animate-pulse bg-ink-800/60 xl:hidden" />
 
-        <div className="grid gap-6 lg:grid-cols-[220px_minmax(0,1fr)] xl:grid-cols-[220px_minmax(0,1fr)_280px]">
+        <div className="grid gap-6 lg:grid-cols-[236px_minmax(0,1fr)] xl:grid-cols-[236px_minmax(0,1fr)_280px]">
           {/* Rail bones */}
-          <div className="hidden space-y-2 lg:block">
-            {Array.from({ length: 7 }, (_, i) => (
-              <div key={i} className="h-10 animate-pulse rounded-lg bg-ink-700/40" style={{ opacity: 1 - i * 0.09 }} />
+          <div className="hidden space-y-1 lg:block">
+            <div className="mb-1.5 h-3 w-20 animate-pulse rounded bg-ink-700/50" />
+            {Array.from({ length: 6 }, (_, i) => (
+              <div key={i} className="h-[52px] animate-pulse rounded-lg bg-ink-700/40" style={{ opacity: 1 - i * 0.1 }} />
             ))}
           </div>
 
           {/* Feed bones */}
           <div className="min-w-0 space-y-2">
             <div className="card h-12 animate-pulse bg-ink-800/60" />
+            <div className="mt-2 h-3 w-32 animate-pulse rounded bg-ink-700/50" />
             {Array.from({ length: 4 }, (_, i) => (
               <div key={i} className="card space-y-2.5 p-4" style={{ opacity: 1 - i * 0.15 }}>
                 <div className="h-3 w-40 animate-pulse rounded bg-ink-700/50" />

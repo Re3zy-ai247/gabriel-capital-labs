@@ -52,7 +52,7 @@ function deriveParams(state: AmbientState) {
   };
 }
 
-export function AmbientGrid({ state = { total: 0, awaiting: 0, active: 0 } }: { state?: AmbientState }) {
+export function AmbientGrid({ state = { total: 0, awaiting: 0, active: 0 }, tint = "from-ocean-500/[0.04]" }: { state?: AmbientState; tint?: string }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const stickRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -108,6 +108,11 @@ export function AmbientGrid({ state = { total: 0, awaiting: 0, active: 0 } }: { 
     let height = 0;
     const dpr = Math.min(window.devicePixelRatio || 1, MAX_DPR);
     const pointer = { x: 0, y: 0, tx: 0, ty: 0 };
+    // Room presence (Living Intelligence): considering a workspace door leans the
+    // field in — a small, eased breath bias that decays back to rest. Behavior
+    // tied to a real interaction, bounded, and imperceptible as "animation".
+    const focus = { bias: 0, target: 0, decayAt: 0 };
+    const onFocus = () => { focus.target = 0.12; focus.decayAt = performance.now() + 900; };
 
     const resize = () => {
       // Measure the STICKY viewport-sized frame, never the full-feed wrapper —
@@ -129,6 +134,9 @@ export function AmbientGrid({ state = { total: 0, awaiting: 0, active: 0 } }: { 
       const t = now / 1000;
       pointer.x += (pointer.tx - pointer.x) * 0.06;
       pointer.y += (pointer.ty - pointer.y) * 0.06;
+      if (now > focus.decayAt) focus.target = 0;
+      focus.bias += (focus.target - focus.bias) * 0.04; // eased in, eased out
+      const liveBreath = breath + focus.bias;
 
       ctx.clearRect(0, 0, width, height);
       const drift = (t * DRIFT_PX_PER_S) % spacing;
@@ -142,8 +150,8 @@ export function AmbientGrid({ state = { total: 0, awaiting: 0, active: 0 } }: { 
           const rank = Math.floor((p / (Math.PI * 2)) * 97);
           const isAccent = rank < accents;
           const alpha = isAccent
-            ? 0.09 + 0.06 * (0.5 + 0.5 * Math.sin(t * breath * 0.6 + p)) // slower, slightly warmer pulse
-            : 0.04 + 0.05 * (0.5 + 0.5 * Math.sin(t * breath + p));
+            ? 0.09 + 0.06 * (0.5 + 0.5 * Math.sin(t * liveBreath * 0.6 + p)) // slower, slightly warmer pulse
+            : 0.04 + 0.05 * (0.5 + 0.5 * Math.sin(t * liveBreath + p));
           const x = c * spacing - drift + pointer.x;
           const y = r * spacing - drift * 0.6 + pointer.y;
           ctx.fillStyle = `rgba(${isAccent ? accentRgb : rgb},${alpha.toFixed(3)})`;
@@ -178,6 +186,7 @@ export function AmbientGrid({ state = { total: 0, awaiting: 0, active: 0 } }: { 
     ro.observe(stick);
     document.addEventListener("visibilitychange", onVisibility);
     window.addEventListener("pointermove", onPointer, { passive: true });
+    window.addEventListener("operator-focus", onFocus);
     visible = !document.hidden;
     setRunning();
 
@@ -188,6 +197,7 @@ export function AmbientGrid({ state = { total: 0, awaiting: 0, active: 0 } }: { 
       ro.disconnect();
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("pointermove", onPointer);
+      window.removeEventListener("operator-focus", onFocus);
     };
   }, [active, total, awaiting, activeThreads]);
 
@@ -195,8 +205,10 @@ export function AmbientGrid({ state = { total: 0, awaiting: 0, active: 0 } }: { 
     // overflow-clip (not hidden): clips without creating a scroll container, so
     // the sticky viewport frame below tracks the page scroll correctly.
     <div ref={wrapRef} aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 overflow-clip text-slate-400">
-      {/* Static fallback + base: always present, costs nothing, reads as depth. */}
-      <div className="absolute inset-0 bg-gradient-to-b from-ocean-500/[0.04] via-transparent to-transparent" />
+      {/* Static fallback + base: always present, costs nothing, reads as depth.
+          The tint is the ROOM's atmosphere — server-chosen per workspace, so
+          entering another room genuinely changes the environment (zero JS). */}
+      <div className={`absolute inset-0 bg-gradient-to-b ${tint} via-transparent to-transparent`} />
       {active && (
         <div ref={stickRef} className="sticky top-0 h-screen">
           <canvas ref={canvasRef} className="absolute inset-0" />

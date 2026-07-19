@@ -4,7 +4,7 @@ import { categoryLabel } from "@/lib/communityShared";
 import { timeAgo, isOpenLoop, type OperatorThread } from "./format";
 
 // Operator Network work item (Phase 1.1). This is an intelligence work object,
-// not a forum row: the operational subject and its PROVABLE state dominate;
+// never a message-board row: the operational subject and its PROVABLE state dominate;
 // human attribution is secondary (demoted to the footer). Every state shown is
 // backed by an existing authoritative field — pinned, locked, replyCount,
 // isKai-derived kaiAnswered, lastActivityAt. Nothing is implied beyond those
@@ -15,7 +15,7 @@ export function FeedCard({ t }: { t: OperatorThread }) {
   return (
     <Link
       href={`/community/${t.id}`}
-      className="card block p-4 transition hover:border-brand-500/50 focus-visible:border-brand-500/50"
+      className={`card ops-card block p-4 transition hover:border-brand-500/50 focus-visible:border-brand-500/50${open ? " ops-breathe" : ""}`}
     >
       {/* Domain + provable state — the work object's header */}
       <div className="flex flex-wrap items-center gap-2 text-[11px]">
@@ -34,7 +34,7 @@ export function FeedCard({ t }: { t: OperatorThread }) {
             <Lock className="h-3 w-3" aria-hidden="true" /> Closed
           </span>
         ) : (
-          <span className="text-slate-500">In discussion</span>
+          <span className="text-slate-500">In session</span>
         )}
         {t.kaiAnswered && (
           <span className="inline-flex items-center gap-1 rounded bg-brand-500/15 px-1.5 py-0.5 font-semibold text-brand-300">

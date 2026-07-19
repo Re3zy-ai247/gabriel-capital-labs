@@ -69,8 +69,8 @@ check("no customer-facing 'Community Hub' chrome remains in the shell",
 // ── Rail: working destinations only; no false semantics ──────────────────────
 check("rail has NO disabled/SOON navigation theater", !/SOON|aria-disabled/.test(rail));
 check("rail has no success-colored navigation state (green = verified only)", !/success-/.test(rail) && !/>HERE</.test(rail));
-check("rail renders only the existing category channels", /CATEGORIES\.map/.test(rail) && !/"events"|Lounge|Bookmarks/.test(rail));
-check("nav landmarks labeled", /aria-label="Channels"/.test(rail) && /aria-label="Network state"/.test(page));
+check("rail renders only the existing category rooms", /CATEGORIES\.map/.test(rail) && !/"events"|Lounge|Bookmarks/.test(rail));
+check("nav landmarks labeled (workspace + situation vocabulary)", /aria-label="Workspaces"/.test(rail) && /aria-label="Situation report"/.test(page));
 
 // ── Ambient layer: data-driven + etiquette (Design Bible §4.3) ───────────────
 check("ambient is driven by real aggregate state (typed props from the server)",
@@ -151,10 +151,10 @@ check("detail page vocabulary matches the shell (responses, not replies)", /"res
 check("display-name fallback is population-neutral (never 'Agency Member')",
   /\|\| "Member"/.test(community) && !/"Agency Member"/.test(community));
 check("strip counts are scoped to the visible queue (same set as the feed)",
-  /scoped\.filter\(isOpenLoop\)/.test(page) && /const feed = scoped/.test(page));
+  /scoped\.filter\(isOpenLoop\)/.test(page) && /const queue = scoped/.test(page));
 check("strip title is a real heading (h1 → h2 outline restored)", /<h2 className="text-sm font-semibold/.test(page));
-check("card state vocabulary is field-backed ('In discussion', never a recency claim)",
-  /In discussion/.test(card) && !/>Active</.test(card));
+check("card state vocabulary is field-backed ('In session', never a recency claim)",
+  /In session/.test(card) && !/>Active</.test(card) && !/In discussion/.test(card));
 check("Kai panel claims only what the payload proves ('Most recently active', not 'Latest')",
   /Most recently active:/.test(now) && !/Latest: \{/.test(now));
 check("canvas is viewport-bounded (sticky h-screen frame measured, not the feed wrapper)",
@@ -169,6 +169,52 @@ check("no sub-AA slate-600 TEXT in the shell (decorative aria-hidden icons exemp
   ![page, rail].some((s) => s.split("\n").some((l) => /text-slate-600/.test(l) && !/aria-hidden="true"/.test(l))));
 check("admin/module registry naming follows the decision",
   /Operator Network/.test(read("lib/platform/modules.ts")) && /Operator Network/.test(read("components/marketing/SiteNav.tsx")));
+
+const living = read("components/community/LivingIntelligence.tsx");
+const css = read("app/globals.css");
+const shared = read("lib/communityShared.ts");
+
+// ── Phase 1.2: Intelligence Operations Center interaction language ───────────
+check("workspaces, not chat channels: no hash glyph and no Hash icon in the rail",
+  !/Hash/.test(rail) && !/>#/.test(rail) && /Workspaces/.test(rail));
+check("rooms carry LIVE derived state (briefs + awaiting) on every door",
+  /RoomState/.test(rail) && /awaiting/.test(rail) && /briefs/.test(rail));
+check("workspace names are executive rooms over FROZEN storage keys",
+  /Strategy Council/.test(shared) && /Kai Intelligence/.test(shared) && /Executive Briefing/.test(shared) &&
+  /key: "wins"/.test(shared) && /key: "questions"/.test(shared) && /key: "general"/.test(shared));
+check("room bylines stay process-language (records, never promises)",
+  /records, never promises/.test(shared) && !/guarantee/i.test(shared));
+check("the queue is sectioned operational work, not a feed",
+  /Requires attention/.test(page) && /Active intelligence/.test(page) && /requiresAttention/.test(page));
+check("each room has a server-chosen atmosphere (deterministic tint map)",
+  /ATMOSPHERE/.test(page) && /tint=\{ATMOSPHERE\[channel\]/.test(page.replace(/\s+/g, " ")));
+check("no forum vocabulary in shell display strings",
+  ![page, card, now, composer].some((f) => /discussion|forum\b|any thread/i.test(f)) &&
+  !/>Channel</.test(composer) && /Workspace</.test(composer));
+check("brief vocabulary is consistent (file a brief, briefs end-cap)",
+  /File a brief/.test(composer) && /File brief/.test(composer) && /"brief" : "briefs"/.test(page));
+check("house-rule compliance copy keeps its binding first sentence",
+  /House rule: process language, never promised outcomes/.test(composer));
+check("Living Intelligence island: reduced-motion + Save-Data attach nothing",
+  /prefers-reduced-motion/.test(living) && /saveData/.test(living));
+check("Living Intelligence island: delegated, throttled, fully cleaned up",
+  /closest/.test(living) && /requestAnimationFrame/.test(living) &&
+  /removeEventListener\("pointermove"/.test(living) && /removeEventListener\("pointerover"/.test(living));
+check("Living Intelligence island renders nothing (behavior only)", /return null;/.test(living));
+check("Living Intelligence imports only react", (living.match(/^import .+ from "(.+)";?$/gm) ?? []).every((l) => /from "react"/.test(l)));
+check("computation reveal is pure CSS at render (ops-card overlay + vars)",
+  /\.ops-card::after/.test(css) && /--lx/.test(css) && /radial-gradient/.test(css));
+check("breathing is MEANINGFUL only: awaiting-first-response cards, 6s border-alpha",
+  /ops-breathe 6s/.test(css) && /\$\{open \? " ops-breathe" : ""\}/.test(card));
+check("living-intelligence CSS is reduced-motion silent",
+  /prefers-reduced-motion[^}]*\{[^}]*\.ops-card::after \{ display: none/s.test(css.replace(/\n/g, " ")) || (/@media \(prefers-reduced-motion: reduce\)/.test(css) && /\.ops-breathe \{ animation: none/.test(css)));
+check("ambient responds to room presence (operator-focus bias, eased + decaying)",
+  /operator-focus/.test(ambient) && /focus\.bias/.test(ambient) && /decayAt/.test(ambient) &&
+  /removeEventListener\("operator-focus"/.test(ambient.replace(/window\./g, "")));
+check("room doors announce themselves to the ambient field (data-workspace)",
+  /data-workspace/.test(rail) && /data-workspace/.test(living));
+check("detail page speaks brief/response vocabulary",
+  /this brief/.test(detail) && !/this discussion/.test(detail) && /Add your response/.test(detail));
 
 if (bad.length) console.error(bad.join("\n"));
 console.log(`\noperator-shell.test.ts: ${pass} passed, ${fail} failed`);

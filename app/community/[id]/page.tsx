@@ -72,7 +72,7 @@ export default function ThreadPage({ params }: { params: { id: string } }) {
   useEffect(() => { load(); }, [load]);
 
   async function postReply() {
-    if (reply.trim().length < 2 && replyFiles.length === 0) { setError("Write a reply or attach a file."); return; }
+    if (reply.trim().length < 2 && replyFiles.length === 0) { setError("Write a response or attach a file."); return; }
     setBusy(true); setError(null);
     try {
       const form = new FormData();
@@ -80,7 +80,7 @@ export default function ThreadPage({ params }: { params: { id: string } }) {
       replyFiles.forEach((f) => form.append("files", f));
       const res = await fetch(`/api/community/threads/${params.id}/replies`, { method: "POST", body: form });
       const j = await res.json();
-      if (!res.ok) { setError(j.error || "Could not reply."); return; }
+      if (!res.ok) { setError(j.error || "Could not post the response."); return; }
       setReply("");
       setReplyFiles([]);
       load();
@@ -105,7 +105,7 @@ export default function ThreadPage({ params }: { params: { id: string } }) {
   }
 
   async function deleteThread() {
-    if (!confirm("Delete this discussion and all replies?")) return;
+    if (!confirm("Delete this brief and all responses?")) return;
     const res = await fetch(`/api/community/threads/${params.id}`, { method: "DELETE" });
     if (res.ok) router.push("/community");
   }
@@ -137,7 +137,7 @@ export default function ThreadPage({ params }: { params: { id: string } }) {
     return (
       <AppShell title="/ Operator Network">
         <div className="card mx-auto mt-6 max-w-md p-8 text-center text-sm text-slate-400">
-          I couldn&apos;t find this discussion — it may have been removed, or it isn&apos;t available on your plan. Everything
+          I couldn&apos;t find this brief — it may have been removed, or it isn&apos;t available on your plan. Everything
           current is on the Operator Network index.
           <div className="mt-4"><Link href="/community" className="btn-ghost text-sm"><ArrowLeft className="h-4 w-4" aria-hidden="true" /> Back to the Operator Network</Link></div>
         </div>
@@ -169,7 +169,7 @@ export default function ThreadPage({ params }: { params: { id: string } }) {
         <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-ink-700/60 pt-3">
           <button onClick={summonKai} disabled={kaiBusy} className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-xs font-medium text-amber-300 hover:bg-amber-500/20 disabled:opacity-60">
             {kaiBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />}
-            {kaiBusy ? "Kai is reading the thread…" : "Ask Kai"}
+            {kaiBusy ? "Kai is reading the brief…" : "Ask Kai"}
           </button>
           {viewer.canPin && (
             <>
@@ -212,10 +212,10 @@ export default function ThreadPage({ params }: { params: { id: string } }) {
                 {r.canReport && (
                   reported.has(r.id)
                     ? <span className="text-[10px] text-slate-500">Reported</span>
-                    : <button onClick={() => report("reply", r.id)} className="text-slate-500 hover:text-amber-300" title="Report reply" aria-label="Report reply"><Flag className="h-3.5 w-3.5" aria-hidden="true" /></button>
+                    : <button onClick={() => report("reply", r.id)} className="text-slate-500 hover:text-amber-300" title="Report response" aria-label="Report response"><Flag className="h-3.5 w-3.5" aria-hidden="true" /></button>
                 )}
                 {r.canDelete && (
-                  <button onClick={() => deleteReply(r.id)} className="text-slate-500 hover:text-rose-400" title="Delete reply" aria-label="Delete reply"><Trash2 className="h-3.5 w-3.5" aria-hidden="true" /></button>
+                  <button onClick={() => deleteReply(r.id)} className="text-slate-500 hover:text-rose-400" title="Delete response" aria-label="Delete response"><Trash2 className="h-3.5 w-3.5" aria-hidden="true" /></button>
                 )}
               </div>
             </div>
@@ -226,7 +226,7 @@ export default function ThreadPage({ params }: { params: { id: string } }) {
       {/* Reply composer */}
       <div className="card mt-4 p-4">
         {locked ? (
-          <p className="text-center text-sm text-slate-500"><Lock className="mr-1 inline h-3.5 w-3.5" /> This discussion is locked.</p>
+          <p className="text-center text-sm text-slate-500"><Lock className="mr-1 inline h-3.5 w-3.5" /> This brief is closed.</p>
         ) : (
           <>
             <textarea
@@ -235,7 +235,7 @@ export default function ThreadPage({ params }: { params: { id: string } }) {
               value={reply}
               onChange={(e) => setReply(e.target.value)}
               onPaste={(e) => { const imgs = imagesFromClipboard(e); if (imgs.length) setReplyFiles((f) => [...f, ...imgs]); }}
-              placeholder="Add to the discussion…"
+              placeholder="Add your response…"
               maxLength={6000}
             />
             <div className="mt-2">

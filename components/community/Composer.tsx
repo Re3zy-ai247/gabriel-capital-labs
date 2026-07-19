@@ -32,7 +32,7 @@ export function Composer({ initialCategory }: { initialCategory: string }) {
   }
 
   async function submit() {
-    if (title.trim().length < 3) { setError("Give your discussion a title."); return; }
+    if (title.trim().length < 3) { setError("Give your brief a title."); return; }
     if (body.trim().length < 3) { setError("Add some detail to your post."); return; }
     setBusy(true); setError(null);
     try {
@@ -59,7 +59,7 @@ export function Composer({ initialCategory }: { initialCategory: string }) {
           className="card flex min-h-[44px] w-full items-center gap-2.5 px-4 py-3 text-left text-sm text-slate-500 transition hover:border-brand-500/50"
         >
           <Plus className="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
-          Start a discussion — a question, a win, or a bureau response you&apos;re unsure about…
+          File a brief — a question, a result, or a bureau response you&apos;re unsure about…
         </button>
       ) : (
         <div className="card p-5">
@@ -75,7 +75,7 @@ export function Composer({ initialCategory }: { initialCategory: string }) {
           />
           <div className="mb-3 grid gap-3 sm:grid-cols-[1fr_auto]">
             <div>
-              <label className="label" htmlFor="composer-category">Channel</label>
+              <label className="label" htmlFor="composer-category">Workspace</label>
               <select id="composer-category" className="input" value={formCat} onChange={(e) => setFormCat(e.target.value)}>
                 {CATEGORIES.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
               </select>
@@ -99,21 +99,21 @@ export function Composer({ initialCategory }: { initialCategory: string }) {
             <input type="checkbox" checked={askKai} onChange={(e) => setAskKai(e.target.checked)} className="mt-0.5 h-4 w-4 accent-amber-500" />
             <span>
               <span className="flex items-center gap-1.5">
-                <Sparkles className="h-4 w-4 text-amber-400" aria-hidden="true" /> Bring Kai into this thread
+                <Sparkles className="h-4 w-4 text-amber-400" aria-hidden="true" /> Bring Kai into this brief
               </span>
               <span className="mt-0.5 block text-xs text-slate-500">I answer with statutes and process — never promises.</span>
             </span>
           </label>
           <p className="mt-3 text-[11px] leading-relaxed text-slate-500">
             <span className="mr-1.5 rounded bg-brand-500/15 px-1.5 py-0.5 text-[10px] font-bold tracking-widest text-brand-300">KAI</span>
-            House rule: process language, never promised outcomes. Threads are moderated — claims of guaranteed
+            House rule: process language, never promised outcomes. Posts are moderated — claims of guaranteed
             deletions or score gains don&apos;t belong here and can be removed.
           </p>
           {error && <p className="mt-3 text-xs text-rose-400" role="alert">{error}</p>}
           <div className="mt-4 flex items-center gap-2">
             <button onClick={submit} disabled={busy} className="btn-primary">
               {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <MessagesSquare className="h-4 w-4" aria-hidden="true" />}
-              {busy ? (askKai ? "Posting & asking Kai…" : "Posting…") : "Post discussion"}
+              {busy ? (askKai ? "Filing & asking Kai…" : "Filing…") : "File brief"}
             </button>
             <button onClick={() => setOpen(false)} disabled={busy} className="btn-ghost text-sm">Close</button>
           </div>
@@ -124,7 +124,7 @@ export function Composer({ initialCategory }: { initialCategory: string }) {
           once the form is open. Same island, same state — no duplicate logic. */}
       {!open && (
         <div className="fixed bottom-20 right-4 z-10 sm:hidden">
-          <button onClick={expand} className="btn-primary !rounded-full !px-4 shadow-glow" aria-label="Start a discussion">
+          <button onClick={expand} className="btn-primary !rounded-full !px-4 shadow-glow" aria-label="File a brief">
             <Plus className="h-4 w-4" aria-hidden="true" /> New
           </button>
         </div>
