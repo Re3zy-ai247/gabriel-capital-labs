@@ -123,8 +123,8 @@ export function Composer({ initialCategory }: { initialCategory: string }) {
       {/* Mobile composer affordance: sticky, above the app's bottom nav, hidden
           once the form is open. Same island, same state — no duplicate logic. */}
       {!open && (
-        <div className="pointer-events-none sticky bottom-20 z-10 -mb-10 flex justify-end pr-1 sm:hidden">
-          <button onClick={expand} className="btn-primary pointer-events-auto !rounded-full !px-4 shadow-glow" aria-label="Start a discussion">
+        <div className="fixed bottom-20 right-4 z-10 sm:hidden">
+          <button onClick={expand} className="btn-primary !rounded-full !px-4 shadow-glow" aria-label="Start a discussion">
             <Plus className="h-4 w-4" aria-hidden="true" /> New
           </button>
         </div>

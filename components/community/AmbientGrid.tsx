@@ -2,24 +2,37 @@
 import { useEffect, useRef, useState } from "react";
 
 // Operator Network ambient layer (Design Bible §4.3, plane 0) — a single canvas
-// "intelligence grid": a dot lattice with slow deterministic drift and a small
-// pointer-parallax depth response. It is peripheral and NEVER informational —
-// if this component renders nothing, the product is complete.
+// "intelligence grid" that is a sub-perceptual visualization of REAL network
+// state, not decoration. The server passes aggregate, non-sensitive counts and
+// the lattice derives from them deterministically:
 //
-// Laws implemented here:
-//  • deterministic motion — phase comes from grid indices, no RNG anywhere;
+//   • lattice density   ← total discussions      (a fuller network sits denser)
+//   • breathing rate    ← recently-active count  (a working network breathes faster)
+//   • attention accents ← open loops awaiting a first response (a few warmer dots)
+//
+// Only aggregate integers cross the server→client boundary — no content, no
+// identifiers, no personal information. If this layer never renders, nothing
+// is lost (it is peripheral and non-informational by law).
+//
+// Etiquette (unchanged from Phase 1):
+//  • deterministic motion — phases come from grid indices, no RNG anywhere;
 //  • paused when the tab is hidden or the layer is off-viewport;
 //  • prefers-reduced-motion / Save-Data ⇒ canvas never mounts (CSS gradient only);
-//  • deferred mount (idle callback after LCP) so it costs nothing on first paint;
+//  • deferred mount (idle callback after LCP);
 //  • pointer parallax is depth only (≤6px), applied to the lattice, never content;
 //  • DPR capped at 2; frame work bounded to the visible area.
 //
 // No external libraries. No runtime asset generation.
 
-const SPACING = 64; // px between lattice dots
-const DRIFT_PX_PER_S = 3; // slow, sub-perceptual drift
+export interface AmbientState {
+  total: number; // discussions in the network (capped upstream at the fetch cap)
+  awaiting: number; // open loops: zero responses, not locked
+  active: number; // threads with activity in the recent window
+}
+
 const PARALLAX_MAX = 6; // px — Design Bible cap
 const MAX_DPR = 2;
+const DRIFT_PX_PER_S = 3; // slow, sub-perceptual drift
 
 // Deterministic per-dot phase from lattice indices (no randomness).
 function phase(col: number, row: number): number {
@@ -27,10 +40,26 @@ function phase(col: number, row: number): number {
   return (n - Math.floor(n)) * Math.PI * 2;
 }
 
-export function AmbientGrid() {
+// State → lattice parameters. Bounded, documented, deterministic.
+function deriveParams(state: AmbientState) {
+  const total = Math.max(0, Math.min(state.total, 120));
+  const active = Math.max(0, Math.min(state.active, 20));
+  const awaiting = Math.max(0, Math.min(state.awaiting, 10));
+  return {
+    spacing: 76 - total * 0.2, // 76px (quiet network) → 52px (full network)
+    breath: 0.25 + active * 0.02, // alpha oscillation rate: 0.25 → 0.65 rad/s
+    accents: awaiting, // number of attention-tinted dots per ~97-cell tile
+  };
+}
+
+export function AmbientGrid({ state = { total: 0, awaiting: 0, active: 0 } }: { state?: AmbientState }) {
   const wrapRef = useRef<HTMLDivElement>(null);
+  const stickRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [active, setActive] = useState(false);
+  // Primitive deps (not the object identity) so a re-render with equal values
+  // never tears down the canvas/observers.
+  const { total, awaiting, active: activeThreads } = state;
 
   // Mount gate: idle (post-LCP), motion allowed, data saver off.
   useEffect(() => {
@@ -44,7 +73,6 @@ export function AmbientGrid() {
     const idle = (window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number }).requestIdleCallback;
     const handle = idle ? idle(start, { timeout: 1500 }) : window.setTimeout(start, 1200);
 
-    // If the user enables reduced motion mid-session, honor it immediately.
     const onChange = () => { if (reduced.matches) setActive(false); };
     reduced.addEventListener?.("change", onChange);
     return () => {
@@ -57,26 +85,35 @@ export function AmbientGrid() {
   useEffect(() => {
     if (!active) return;
     const wrap = wrapRef.current;
+    const stick = stickRef.current;
     const canvas = canvasRef.current;
-    if (!wrap || !canvas) return;
+    if (!wrap || !stick || !canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // Theme-aware dot color: read the wrapper's resolved text color once.
+    const { spacing, breath, accents } = deriveParams({ total, awaiting, active: activeThreads });
+
+    // Theme-aware base dot color from the wrapper's resolved text color; the
+    // attention accent uses the gold/attention family at low alpha (Law C3:
+    // saturation maps to "needs a person", and these dots ARE the open loops).
     const resolved = getComputedStyle(wrap).color || "rgb(148, 163, 184)";
     const rgb = resolved.startsWith("rgb") ? resolved.replace(/rgba?\(([^)]+)\)/, "$1").split(",").slice(0, 3).join(",") : "148,163,184";
+    const accentRgb = "242,193,78"; // gold-400 — the attention family
 
     let raf = 0;
     let running = false;
-    let visible = true; // page visibility
-    let onScreen = true; // intersection
+    let visible = true;
+    let onScreen = true;
     let width = 0;
     let height = 0;
     const dpr = Math.min(window.devicePixelRatio || 1, MAX_DPR);
-    const pointer = { x: 0, y: 0, tx: 0, ty: 0 }; // current + target parallax offset
+    const pointer = { x: 0, y: 0, tx: 0, ty: 0 };
 
     const resize = () => {
-      const r = wrap.getBoundingClientRect();
+      // Measure the STICKY viewport-sized frame, never the full-feed wrapper —
+      // the canvas buffer and per-frame lattice loop must stay O(viewport),
+      // independent of how tall the feed grows.
+      const r = stick.getBoundingClientRect();
       width = Math.ceil(r.width);
       height = Math.ceil(r.height);
       canvas.width = width * dpr;
@@ -90,24 +127,28 @@ export function AmbientGrid() {
       raf = 0;
       if (!running) return;
       const t = now / 1000;
-      // Ease the parallax toward its target (settled, no spring/overshoot).
       pointer.x += (pointer.tx - pointer.x) * 0.06;
       pointer.y += (pointer.ty - pointer.y) * 0.06;
 
       ctx.clearRect(0, 0, width, height);
-      const drift = (t * DRIFT_PX_PER_S) % SPACING;
-      const cols = Math.ceil(width / SPACING) + 2;
-      const rows = Math.ceil(height / SPACING) + 2;
+      const drift = (t * DRIFT_PX_PER_S) % spacing;
+      const cols = Math.ceil(width / spacing) + 2;
+      const rows = Math.ceil(height / spacing) + 2;
       for (let c = 0; c < cols; c++) {
         for (let r = 0; r < rows; r++) {
           const p = phase(c, r);
-          // Sub-perceptual breathing: alpha oscillates slowly per dot.
-          const alpha = 0.04 + 0.05 * (0.5 + 0.5 * Math.sin(t * 0.35 + p));
-          const x = c * SPACING - drift + pointer.x;
-          const y = r * SPACING - drift * 0.6 + pointer.y;
-          ctx.fillStyle = `rgba(${rgb},${alpha.toFixed(3)})`;
+          // A cell is an attention accent iff its deterministic rank (0..96)
+          // falls under the open-loop count — accent density tracks real state.
+          const rank = Math.floor((p / (Math.PI * 2)) * 97);
+          const isAccent = rank < accents;
+          const alpha = isAccent
+            ? 0.09 + 0.06 * (0.5 + 0.5 * Math.sin(t * breath * 0.6 + p)) // slower, slightly warmer pulse
+            : 0.04 + 0.05 * (0.5 + 0.5 * Math.sin(t * breath + p));
+          const x = c * spacing - drift + pointer.x;
+          const y = r * spacing - drift * 0.6 + pointer.y;
+          ctx.fillStyle = `rgba(${isAccent ? accentRgb : rgb},${alpha.toFixed(3)})`;
           ctx.beginPath();
-          ctx.arc(x, y, 1, 0, Math.PI * 2);
+          ctx.arc(x, y, isAccent ? 1.3 : 1, 0, Math.PI * 2);
           ctx.fill();
         }
       }
@@ -125,7 +166,6 @@ export function AmbientGrid() {
     const onVisibility = () => { visible = !document.hidden; setRunning(); };
     const io = new IntersectionObserver((entries) => { onScreen = entries[0]?.isIntersecting ?? true; setRunning(); });
     const onPointer = (e: PointerEvent) => {
-      // Depth response only: offset the lattice a few px toward the pointer.
       const nx = e.clientX / window.innerWidth - 0.5;
       const ny = e.clientY / window.innerHeight - 0.5;
       pointer.tx = nx * PARALLAX_MAX * 2;
@@ -135,7 +175,7 @@ export function AmbientGrid() {
 
     resize();
     io.observe(wrap);
-    ro.observe(wrap);
+    ro.observe(stick);
     document.addEventListener("visibilitychange", onVisibility);
     window.addEventListener("pointermove", onPointer, { passive: true });
     visible = !document.hidden;
@@ -149,13 +189,19 @@ export function AmbientGrid() {
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("pointermove", onPointer);
     };
-  }, [active]);
+  }, [active, total, awaiting, activeThreads]);
 
   return (
-    <div ref={wrapRef} aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 overflow-hidden text-slate-400">
+    // overflow-clip (not hidden): clips without creating a scroll container, so
+    // the sticky viewport frame below tracks the page scroll correctly.
+    <div ref={wrapRef} aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 overflow-clip text-slate-400">
       {/* Static fallback + base: always present, costs nothing, reads as depth. */}
       <div className="absolute inset-0 bg-gradient-to-b from-ocean-500/[0.04] via-transparent to-transparent" />
-      {active && <canvas ref={canvasRef} className="absolute inset-0" />}
+      {active && (
+        <div ref={stickRef} className="sticky top-0 h-screen">
+          <canvas ref={canvasRef} className="absolute inset-0" />
+        </div>
+      )}
     </div>
   );
 }

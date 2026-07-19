@@ -75,6 +75,11 @@ html.light .text-white:not(.keep-white) { color: rgb(var(--fg)); }
 .keep-white,
 html.light .keep-white { color: #ffffff; }
 
+/* Gold-400 text is an attention accent tuned for dark ink (11.8:1 there) but
+   ~1.5:1 on the light page — flip it to a dark gold in light mode (4.9:1+ AA).
+   Green stays reserved for verified states; this keeps attention in the gold family. */
+html.light .text-gold-400 { color: #8a6116; }
+
 ::selection { background: rgba(14, 165, 196, 0.30); color: #fff; }
 
 /* Visible keyboard focus everywhere (accessibility, not optional).

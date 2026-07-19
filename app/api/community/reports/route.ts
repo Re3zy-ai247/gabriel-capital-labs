@@ -73,7 +73,7 @@ export async function POST(req: Request) {
       await sendAdminEmail({
         subject: "New community report awaiting review",
         text:
-          `A member flagged ${what} in the CreditVector Community Hub for moderation review.\n\n` +
+          `A member flagged ${what} in the CreditVector Operator Network for moderation review.\n\n` +
           `Review and action it here: ${base}/admin/reports\n\n` +
           `(You're getting this because a report opened while the queue was empty. ` +
           `You won't get another until the queue is cleared.)`,

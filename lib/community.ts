@@ -1,17 +1,26 @@
 import { currentAccount } from "./session";
 import { prisma } from "./prisma";
+import { isPremium } from "./entitlements";
 import { deleteAttachmentsFor } from "./attachments";
 import { CATEGORIES, CATEGORY_KEYS, type Category } from "./communityShared";
 
 export { CATEGORIES, CATEGORY_KEYS, type Category };
 
-// The Agency Community Hub is members-only: open to AGENCY subscribers (the
-// $399/mo Agency and Agency Pro tiers set isAgency via the Stripe webhook) and to
-// the platform owner/ADMIN. Regular Premium customers do not have access.
+// The Operator Network is for every PAYING CreditVector member (founder decision,
+// Phase 1.1) plus the platform owner/ADMIN. Paid status comes from the ONE
+// canonical predicate — lib/entitlements.isPremium (plan + isAgency + active
+// subscription states) — never re-derived here, so billing truth cannot drift.
+// Fail-closed: unpaid, expired, or canceled accounts get nothing. A delinquent
+// (past_due) account KEEPS access during Stripe's payment-retry grace window —
+// past_due is in ACTIVE_SUBSCRIPTION_STATES (lib/os/host/billingTier.ts) and is
+// cleared back to a live status (or canceled) by the invoice webhook handlers.
+// A managed client (a consumer worked by an agency) is NOT itself a paying
+// member — its own row carries no paid plan — so it does not gain access; the
+// agency inheritance in getEntitlement() is deliberately NOT consulted here.
 //
-// Authorship always uses currentAccount() — the REAL signed-in agency — never an
+// Authorship always uses currentAccount() — the REAL signed-in account — never an
 // impersonated client or an opened client workspace, so posts are attributed to
-// the agency, not to a consumer being managed.
+// the member, not to a consumer being managed.
 
 export type CommunityAccount = NonNullable<Awaited<ReturnType<typeof currentAccount>>>;
 
@@ -19,11 +28,11 @@ export function canAccessCommunity(account: {
   role?: string | null;
   isAgency?: boolean | null;
   plan?: string | null;
+  subscriptionStatus?: string | null;
 } | null): boolean {
   if (!account) return false;
   if (account.role === "ADMIN") return true;
-  if (account.isAgency) return true;
-  return account.plan === "agency" || account.plan === "agency_pro";
+  return isPremium(account);
 }
 
 // Community tables are created lazily at runtime — CREATE TABLE IF NOT EXISTS via
@@ -92,13 +101,16 @@ export async function requireCommunityAccount(): Promise<CommunityAccount | null
   return account;
 }
 
-// Display name for an agency in the hub: its brand, falling back to the account
-// name, then a neutral default. Snapshotted onto each thread/reply at post time.
+// Display name for a member in the Operator Network: the agency brand if the
+// account has one, falling back to the account name, then a population-neutral
+// default — the network is open to ALL paying members (Phase 1.1), so the
+// fallback must never imply an agency affiliation. Snapshotted at post time;
+// historical agency-era rows keep their (then-accurate) snapshots.
 export function communityDisplayName(account: {
   agencyName?: string | null;
   name?: string | null;
 }): string {
-  return (account.agencyName?.trim() || account.name?.trim() || "Agency Member").slice(0, 80);
+  return (account.agencyName?.trim() || account.name?.trim() || "Member").slice(0, 80);
 }
 
 export function normalizeCategory(value: unknown): string {

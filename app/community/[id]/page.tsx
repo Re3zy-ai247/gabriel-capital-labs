@@ -131,15 +131,15 @@ export default function ThreadPage({ params }: { params: { id: string } }) {
   }
 
   if (loading) {
-    return <AppShell title="/ Community"><div className="grid h-64 place-items-center text-slate-500"><Loader2 className="h-6 w-6 animate-spin" /></div></AppShell>;
+    return <AppShell title="/ Operator Network"><div className="grid h-64 place-items-center text-slate-500"><Loader2 className="h-6 w-6 animate-spin" /></div></AppShell>;
   }
   if (notFound || !thread || !viewer) {
     return (
-      <AppShell title="/ Community">
+      <AppShell title="/ Operator Network">
         <div className="card mx-auto mt-6 max-w-md p-8 text-center text-sm text-slate-400">
           I couldn&apos;t find this discussion — it may have been removed, or it isn&apos;t available on your plan. Everything
-          current is on the Community index.
-          <div className="mt-4"><Link href="/community" className="btn-ghost text-sm"><ArrowLeft className="h-4 w-4" aria-hidden="true" /> Back to Community</Link></div>
+          current is on the Operator Network index.
+          <div className="mt-4"><Link href="/community" className="btn-ghost text-sm"><ArrowLeft className="h-4 w-4" aria-hidden="true" /> Back to the Operator Network</Link></div>
         </div>
       </AppShell>
     );
@@ -148,9 +148,9 @@ export default function ThreadPage({ params }: { params: { id: string } }) {
   const locked = thread.locked && !viewer.isAdmin;
 
   return (
-    <AppShell title="/ Community">
+    <AppShell title="/ Operator Network">
       <Link href="/community" className="mb-3 inline-flex items-center gap-1 text-xs text-slate-400 hover:text-slate-200">
-        <ArrowLeft className="h-3.5 w-3.5" /> Community
+        <ArrowLeft className="h-3.5 w-3.5" /> Operator Network
       </Link>
 
       {/* Original post */}
@@ -190,7 +190,7 @@ export default function ThreadPage({ params }: { params: { id: string } }) {
 
       {/* Replies */}
       <div className="mt-4 flex items-center gap-2 text-sm font-semibold text-slate-300">
-        <MessageCircle className="h-4 w-4" /> {thread.replyCount} {thread.replyCount === 1 ? "reply" : "replies"}
+        <MessageCircle className="h-4 w-4" /> {thread.replyCount} {thread.replyCount === 1 ? "response" : "responses"}
       </div>
       <div className="mt-2 space-y-2">
         {thread.replies.map((r) => (

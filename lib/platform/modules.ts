@@ -24,7 +24,7 @@ export interface PlatformModule {
 }
 
 export const PLATFORM_MODULES: readonly PlatformModule[] = [
-  { slug: "community", name: "Community Hub", capability: "community.access", flagEnv: "", status: "live", gate: "shipped (agency plans)", completion: 100 },
+  { slug: "community", name: "Operator Network", capability: "community.access", flagEnv: "", status: "live", gate: "shipped (every paid tier — Phase 1.1)", completion: 100 },
   { slug: "credit-builder", name: "Credit Builder", capability: "credit.strategy.plan", flagEnv: "", status: "live", gate: "shipped (guidance)", completion: 100 },
   { slug: "advanced-analytics", name: "Advanced Analytics", capability: "analytics.advanced.view", flagEnv: "MODULE_ANALYTICS", status: "dormant", gate: "read-models over ProductEvent (this sprint) → tier views", completion: 45 },
   { slug: "persistent-memory", name: "Persistent Memory (Kai Pro)", capability: "kai.memory.persist", flagEnv: "MODULE_MEMORY", status: "dormant", gate: "ADR-0006 founder gate", completion: 20 },

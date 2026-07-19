@@ -11,7 +11,7 @@ const LINKS = [
   { href: "/#how", label: "How it works" },
   { href: "/#platform", label: "Platform" },
   { href: "/#agencies", label: "For agencies" },
-  { href: "/#community", label: "Community" },
+  { href: "/#community", label: "Operator Network" },
   { href: "/pricing", label: "Pricing" },
   { href: "/#faq", label: "FAQ" },
 ];

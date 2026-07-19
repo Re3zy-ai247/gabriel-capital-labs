@@ -38,8 +38,9 @@ const ACCOUNT_NAV = [
 // Admin link is prepended to the account section only for ADMIN users.
 const ADMIN_LINK = { href: "/admin", label: "Admin", icon: ShieldCheck };
 
-// Community link appears in the main nav only for agency members (+ owner).
-const COMMUNITY_LINK = { href: "/community", label: "Community", icon: MessagesSquare };
+// Operator Network link appears in the main nav for every paid member (+ owner);
+// visibility follows the server's /api/community/access probe (canAccessCommunity).
+const COMMUNITY_LINK = { href: "/community", label: "Operator Network", icon: MessagesSquare };
 
 // Primary destinations pinned to the mobile bottom bar; everything else (incl.
 // Agency, Settings, Billing) lives behind "More".
