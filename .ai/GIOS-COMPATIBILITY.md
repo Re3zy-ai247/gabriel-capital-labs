@@ -1,6 +1,14 @@
 # GIOS Compatibility Contract
 
-Standards alignment with Gabriel Intelligence OS (GIOS) — **conventions only, not a runtime integration**. CreditVector and GIOS are separate products in separate repositories.
+> ⚠️ **DIRECTION superseded by [`ADR-0033`](ADR/ADR-0033-platform-constitution-gios-kai-creditvector.md)
+> (2026-07-19).** The canonical target hierarchy is now **GIOS → Kai → CreditVector**: GIOS is the intelligence
+> runtime, Kai is the platform intelligence runtime that belongs to GIOS, and CreditVector is the first vertical
+> application on it. The "unrelated runtime" framing below describes the **prior** relationship. **The
+> ENGINEERING non-goals in this doc REMAIN in force** — today there is still no runtime coupling (separate
+> repos, no shared secrets/DB, no importing GIOS code); convergence is structural, not live. This contract now
+> governs only the *engineering conventions + non-goals*; the *hierarchy* lives in ADR-0033.
+
+Standards alignment with Gabriel Intelligence OS (GIOS) — **conventions only, not a runtime integration** *(today; the target relationship is ADR-0033)*. CreditVector and GIOS are separate products in separate repositories.
 
 ## CVIOS ↔ GIOS ↔ AIOS (the three-layer map, added Phase 2, 2026-07-12)
 - **GIOS** (`~/Documents/Projects/Gabriel-AI-OS/gabriel-os`) — a separate PRODUCT whose governance conventions both systems share (this contract).

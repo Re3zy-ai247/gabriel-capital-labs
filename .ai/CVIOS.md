@@ -1,5 +1,11 @@
 # CreditVector Intelligence OS (CVIOS) — platform architecture
 
+> ⚠️ **Platform hierarchy is frozen in [`GIOS-PLATFORM.md`](GIOS-PLATFORM.md) (v1.0) + `ADR-0033`.** Canonical:
+> **GIOS (kernel) → Kai (intelligence runtime, L2) → CreditVector (this vertical) → apps → modules →
+> foundation.** **Kai belongs to GIOS, not to CVIOS** — where the diagram below shows Kai as a CVIOS-level
+> Master Agent, read it as *CreditVector's use of the platform Kai*, not Kai's home. CVIOS = the **CreditVector
+> vertical's** architecture (L4–L6); it inherits the shared kernel (L0–L3), never forks it.
+
 How everything fits together as ONE platform. Each subsystem is labeled **LIVE** (verified in code/prod) or **PROPOSED** (documented direction, no runtime yet). CVIOS is the **product-level** operating system; the **company-level** operating system is the Gabriel Capital Labs AIOS (`~/Documents/Gabriel-Capital-Labs-AIOS/` — charter, decision rights, backlog, `/gcl` agent fleet). Boundary: `GIOS-COMPATIBILITY.md` §CVIOS.
 
 ```

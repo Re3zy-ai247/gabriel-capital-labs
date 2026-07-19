@@ -41,7 +41,7 @@ The codebase's form-heaviest surfaces are exactly the highest-anxiety moments: `
 | `help` | B− | fold into support deflection + statute cards |
 | Admin suite (14 screens) | B — honest and functional | not customer-facing; only #27 (real MRR) urgent |
 
-## 4 · Agency Command Center (CX-5, expands roadmap #34–35)
+## 4 · Agency Command (CX-5, expands roadmap #34–35)
 The most powerful AI workspace for agencies = the owner's morning in one screen:
 - **Daily command center:** Kai Agency Briefing at top (events across all clients overnight, SLA risks ranked, today's must-dos) — the agency version of Kai Home, from the same event engine (client-scoped).
 - **Client prioritization:** the existing needs-attention logic promoted to a ranked queue with *reasons shown* (D88) — "Maria R: bureau response day 32, unopened."
