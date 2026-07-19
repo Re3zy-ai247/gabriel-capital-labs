@@ -129,7 +129,7 @@ New items from the screen-by-screen audit, slotted by the same scoring:
 | → Tier A, after #11 | CX-1 | Conversational letter flow (Kai-guided steps replace the 546-line form wall; power path retained) | L | T, the peak-moment fix |
 | → Tier A, after #7 | CX-2 | Dashboard fixes riding Kai Home: kill/replace the literal "~ estimate" card (dashboard/page.tsx:177), event-driven greeting | S | T, craft |
 | → Tier A, with #6 | CX-3 | Merge `journey` page into the E1 timeline — one timeline, never two | S | anti-duplication |
-| → Tier B, after #34 | CX-5a | Agency Command Center v1: daily Kai briefing, ranked priority queue with reasons, bulk Round-2 suggestions (per-client review step) | M | R, M11 |
+| → Tier B, after #34 | CX-5a | Agency Command v1: daily Kai briefing, ranked priority queue with reasons, bulk Round-2 suggestions (per-client review step) | M | R, M11 |
 | → Tier C | CX-5b | Agency multi-seat/team collaboration (roles, assignments, per-seat audit; pricing + security review first) | L | R, M11 |
 | → Tier B, after #52 | CX-6 | Per-thread AI summaries — generated once per N replies, cached, batch-lane | S | C, M5 |
 | → Tier B/C boundary | CX-7 | Anonymous lender/furnisher response statistics (k-anonymity, DPO+CCO gates, min sample sizes) | L | M4, category-defining |

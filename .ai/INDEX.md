@@ -24,9 +24,12 @@ Default context budget per task: root `CLAUDE.md` + this file + `CURRENT-STATE.m
 | `DECISIONS.md` → `ADR/` | Before changing anything architectural — check if a decision already governs it; add an ADR when you make one. |
 | `ASSET-REGISTRY.md` | Before generating/using ANY visual asset (logo rules live here). |
 | `PROMPT-REGISTRY.md` | Before writing/editing ANY AI prompt or doing paid media generation. |
-| `GIOS-COMPATIBILITY.md` | Cross-project governance questions; the CVIOS↔AIOS↔GIOS layer map. |
+| `GIOS-PLATFORM.md` (FROZEN v1.0) → `ADR/ADR-0034` | **THE platform constitution — read first, ten minutes.** Immutable layer model (L0–L7), canonical dependency graph, ownership registry (one owner per thing), dependency + 26 architecture laws, the 10 Platform Contracts every vertical implements, the GIOS plugin model, Kai's permanent charter, the 100-products answer. Every future ADR derives from and cites it. FROZEN (L0–L3 + laws amendable only by superseding ADR + founder). |
+| `ADR/ADR-0033` (Platform hierarchy decision) | **The canonical hierarchy: GIOS → Kai → CreditVector** (consolidated into GIOS-PLATFORM.md). Read before any question of "what is GIOS / Kai / CreditVector / Agency Command / Mission Control," platform layering, or how a future vertical plugs in. GIOS = intelligence runtime · Kai = platform intelligence runtime (belongs to GIOS) · CreditVector = first vertical (CVIOS) · AIOS = orthogonal company OS. Parent of ADR-0032/0031. PROPOSED (target architecture; no runtime coupling yet). |
+| `GIOS-COMPATIBILITY.md` | Engineering conventions + non-goals for GIOS alignment (no coupling today). **Hierarchy/direction now lives in ADR-0033.** |
 | `VISION.md` | Questioning long-term direction or sequencing new modules (5-year horizons — NOT a roadmap). |
 | `CVIOS.md` | Understanding how all platform subsystems fit together (Consumer OS, Agency OS, Kai, Brief, BI, marketplace…). |
+| `AGENCY-COMMAND.md` → `ADR/ADR-0032` (layering) + `ADR/ADR-0031` (packaging) | The **Agency Command™** operating-layer pillar. **Canonical layering (ADR-0032): Kai kernel → Agency Command → Mission Control → modules** — Kai is the platform intelligence kernel (KAI-OS), NOT a module; Agency Command owns orchestration not data; Mission Control is one module; the Executive Morning Brief + Agency Health Score are Kai's surface. Packaging v3 (caps 15/30/50), the +10 add-on, Staff-Users seats, Revenue/Business Intelligence in ADR-0031. Read before any agency layering, packaging, capacity, seat, brief, or health-score work. PROPOSED (architecture only). |
 | `executive/` | Acting in/for a specific executive lens (CEO…CAIO). Start at `executive/README.md` (role↔charter↔skill↔dashboard map). |
 | `business-intelligence/` | Defining, citing, or instrumenting ANY metric — `METRICS.md` is the only place metrics are defined (BI-XXX-NN). |
 | `marketing/` | Any marketing work: `README.md` (channels/SOPs) · `BRAND-VOICE.md` (voice+language rules) · `CAMPAIGN-LIBRARY.md` (check before creating assets). |
@@ -42,7 +45,7 @@ Default context budget per task: root `CLAUDE.md` + this file + `CURRENT-STATE.m
 | `MOAT.md` | The 12 compounding assets — every feature names its moat (Founder's Standard Q10). |
 | `ROADMAP-V2.md` | THE ranked Top-100 roadmap (supersedes ROADMAP.md for sequencing). First build sprint: #4 metering + #5 event engine. |
 | `platform/` (Gabriel Intelligence) | Company platform blueprint — JARVIS runtime, Product SDK, Founder Intelligence layer, 3-year architecture roadmap, Rule of Two extraction law. Read when scoping product #2 or any extraction. |
-| `CX-REVIEW.md` | Screen-by-screen product audit (2026-07-12): verdicts per screen, journey friction fixes, conversational-workflow pattern, Agency Command Center, community-Premium economics, retention engine. New items = CX-IDs in ROADMAP-V2 Amendment 1. |
+| `CX-REVIEW.md` | Screen-by-screen product audit (2026-07-12): verdicts per screen, journey friction fixes, conversational-workflow pattern, Agency Command, community-Premium economics, retention engine. New items = CX-IDs in ROADMAP-V2 Amendment 1. |
 | `RUNBOOKS/` | `deploy.md` (ship/env vars/preview) · `schema-change.md` (ADR-0001 procedure) · `admin-actions.md` (one-time owner actions). |
 | `SOP/ship-a-feature.md` | Shipping any feature — the 7-step workflow + five-review gate + definition of done. |
 | `ARCHIVE/` | Historical only — never load by default. Original pre-governance CLAUDE.md + 2026-06 QA traceability table live here. |
