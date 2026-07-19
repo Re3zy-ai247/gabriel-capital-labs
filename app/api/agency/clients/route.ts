@@ -99,9 +99,9 @@ export async function POST(req: Request) {
   const fullName = String(body.fullName || "").trim();
   if (!fullName) return NextResponse.json({ error: "Client name is required." }, { status: 400 });
 
-  // Enforce the managed-client workspace cap by tier (Agency 15 · Agency Pro 40 ·
-  // Scale 100 · Enterprise negotiated; lib/entitlements.agencyClientLimit is the
-  // source of truth). Creation-gating ONLY — existing clients are never locked.
+  // Enforce the managed-client workspace cap by tier (Agency 15 · Agency Pro 30 ·
+  // Scale 50 · Enterprise custom; lib/entitlements.agencyClientLimit → resolveAgencyCapacity
+  // is the source of truth). Creation-gating ONLY — existing clients are never locked.
   const limit = agencyClientLimit(agency);
   if (limit !== null) {
     const current = await prisma.user.count({ where: { managedByAgencyId: agency.id } });
@@ -112,8 +112,8 @@ export async function POST(req: Request) {
         agency.plan === "scale"
           ? "Talk to us about Enterprise for custom capacity — see the pricing page."
           : agency.plan === "agency_pro"
-            ? "Scale — with up to 100 client workspaces — is coming soon; see the pricing page for details."
-            : "Agency Pro — with up to 40 client workspaces — is coming soon; see the pricing page for details.";
+            ? "Scale — with up to 50 client workspaces — is coming soon; see the pricing page for details."
+            : "Agency Pro — with up to 30 client workspaces — is coming soon; see the pricing page for details.";
       return NextResponse.json(
         {
           error: `You've reached your plan's capacity of ${limit} active client workspaces. Your existing clients stay fully accessible. ${next}`,

@@ -33,6 +33,9 @@
 // Enterprise session limits need).
 import type { CapabilityKey, Permission } from "@/lib/os/kernel/types";
 import type { LimitKey, PlanTier, TierCapabilityMatrix, TierGrant } from "@/lib/os/kernel/tiers";
+// Canonical packaging constants (ADR-0031 §4) — imported so this dormant declaration can
+// NEVER drift from the live gate (lib/entitlements.agencyClientLimit → resolveAgencyCapacity).
+import { WORKSPACE_BASE_V3, STAFF_USER_LIMIT } from "@/lib/agencyCapacity";
 
 const cap = (k: string) => k as CapabilityKey;
 
@@ -133,9 +136,9 @@ export const CAPABILITY_MATRIX: TierCapabilityMatrix = {
   ]),
   agency: grant([...CORE, ...PAID, COMMUNITY, WORKSPACES], AGENCY_PERMS, [
     ["LETTERS_MONTHLY_LIMIT", null],
-    ["CLIENT_WORKSPACE_LIMIT", 15], // lockstep with agencyClientLimit
-    ["CONCURRENT_SESSION_LIMIT", 1], // declared; NOT enforceable yet
-    ["TEAM_MEMBER_LIMIT", 0],
+    ["CLIENT_WORKSPACE_LIMIT", WORKSPACE_BASE_V3.agency], // canonical (ADR-0031); lockstep with agencyClientLimit
+    ["CONCURRENT_SESSION_LIMIT", 1], // device cap — NOT staff seats; declared, NOT enforceable yet
+    ["TEAM_MEMBER_LIMIT", STAFF_USER_LIMIT.agency], // canonical staff seats (ADR-0031); declaration-only
     ["API_CALLS_MONTHLY_LIMIT", 0],
   ]),
   agency_pro: grant(
@@ -143,9 +146,9 @@ export const CAPABILITY_MATRIX: TierCapabilityMatrix = {
     AGENCY_PERMS,
     [
       ["LETTERS_MONTHLY_LIMIT", null],
-      ["CLIENT_WORKSPACE_LIMIT", 40],
-      ["CONCURRENT_SESSION_LIMIT", 3],
-      ["TEAM_MEMBER_LIMIT", 5], // PLACEHOLDER — owner decision pending; team system not built
+      ["CLIENT_WORKSPACE_LIMIT", WORKSPACE_BASE_V3.agency_pro], // canonical (ADR-0031)
+      ["CONCURRENT_SESSION_LIMIT", 3], // device cap — NOT staff seats
+      ["TEAM_MEMBER_LIMIT", STAFF_USER_LIMIT.agency_pro], // canonical staff seats (ADR-0031); declaration-only
       ["API_CALLS_MONTHLY_LIMIT", 0],
     ]
   ),
@@ -155,9 +158,9 @@ export const CAPABILITY_MATRIX: TierCapabilityMatrix = {
     AGENCY_PERMS,
     [
       ["LETTERS_MONTHLY_LIMIT", null],
-      ["CLIENT_WORKSPACE_LIMIT", 100],
-      ["CONCURRENT_SESSION_LIMIT", 5],
-      ["TEAM_MEMBER_LIMIT", null], // repository truth: no bound defined; unlimited per pricing spec
+      ["CLIENT_WORKSPACE_LIMIT", WORKSPACE_BASE_V3.scale], // canonical (ADR-0031)
+      ["CONCURRENT_SESSION_LIMIT", 5], // device cap — NOT staff seats
+      ["TEAM_MEMBER_LIMIT", STAFF_USER_LIMIT.scale], // canonical staff seats (ADR-0031); declaration-only
       ["API_CALLS_MONTHLY_LIMIT", 10_000], // PLACEHOLDER — owner decision pending
     ]
   ),

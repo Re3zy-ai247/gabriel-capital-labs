@@ -34,14 +34,19 @@ check("matrix has a grant for every tier", EXPECTED.every((t) => !!M[t]));
 // ── 2. LOCKSTEP LAW: matrix workspace limits === live agencyClientLimit ─────
 const wl = (t: PlanTier) => M[t].limits.get("CLIENT_WORKSPACE_LIMIT");
 check("lockstep: agency 15", wl("agency") === 15 && agencyClientLimit({ isAgency: true, createdAt: POST }) === 15);
-check("lockstep: agency_pro 40", wl("agency_pro") === 40 && agencyClientLimit({ plan: "agency_pro", isAgency: true, createdAt: POST }) === 40);
-check("lockstep: scale 100", wl("scale") === 100 && agencyClientLimit({ plan: "scale", isAgency: true, createdAt: POST }) === 100);
+check("lockstep: agency_pro 30 (v3)", wl("agency_pro") === 30 && agencyClientLimit({ plan: "agency_pro", isAgency: true, createdAt: POST }) === 30);
+check("lockstep: scale 50 (v3)", wl("scale") === 50 && agencyClientLimit({ plan: "scale", isAgency: true, createdAt: POST }) === 50);
 check("lockstep: enterprise negotiated (null)", wl("enterprise") === null && agencyClientLimit({ plan: "enterprise", isAgency: true, createdAt: POST }) === null);
 check("lockstep: consumer tiers hold zero workspaces", wl("explorer") === 0 && wl("professional") === 0 && wl("professional_plus") === 0 && agencyClientLimit({ createdAt: POST }) === 0);
 
 // ── 3. GRANDFATHER CLAUSE: sold entitlements never shrink ───────────────────
 check("grandfather: pre-2026-07-17 Agency keeps 20", agencyClientLimit({ isAgency: true, createdAt: PRE }) === 20);
 check("grandfather: pre-2026-07-17 Agency Pro keeps unlimited", agencyClientLimit({ plan: "agency_pro", isAgency: true, createdAt: PRE }) === null);
+// v2 packaging (2026-07-17 .. 2026-07-18) grandfathered to 40/100 (ADR-0031 §2.4 — no
+// retroactive reduction); v3 (POST) is 30/50. pre-v3 keeps the sold cap.
+const V2 = new Date("2026-07-18");
+check("grandfather: v2-era Agency Pro keeps 40 (no retroactive cut)", agencyClientLimit({ plan: "agency_pro", isAgency: true, createdAt: V2 }) === 40);
+check("grandfather: v2-era Scale keeps 100 (no retroactive cut)", agencyClientLimit({ plan: "scale", isAgency: true, createdAt: V2 }) === 100);
 check("grandfather: missing createdAt treated as NEW packaging (fail-closed to 15)", agencyClientLimit({ isAgency: true }) === 15);
 check("grandfather: ADMIN always unlimited", agencyClientLimit({ role: "ADMIN", createdAt: PRE }) === null && agencyClientLimit({ role: "ADMIN", createdAt: POST }) === null);
 
