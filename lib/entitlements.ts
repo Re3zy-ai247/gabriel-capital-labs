@@ -3,6 +3,7 @@ import { CAPABILITY_MATRIX } from "@/config/capabilityMatrix";
 import { grantForTier, limitForTier } from "@/lib/os/host/tierResolver";
 import { planTierFromUser, ACTIVE_SUBSCRIPTION_STATES } from "@/lib/os/host/billingTier";
 import type { CapabilityKey } from "@/lib/os/kernel";
+import { resolveAgencyCapacity } from "@/lib/agencyCapacity";
 
 // Free tier: 3 dispute letters per calendar month, no AI refinement. Purchased
 // letter-pack credits are spent once the monthly free allowance is exhausted.
@@ -79,19 +80,17 @@ export function isPremium(user: {
 }
 
 // Managed-client (workspace) cap by agency tier — the live source of truth for
-// creation-gating. Approved packaging (2026-07-16): Agency 15 (solo operator) ·
-// Agency Pro 40 (growing team) · Scale 100 (established agency) · Enterprise
-// negotiated (null until per-account entitlement config exists). ADMINs are
-// unlimited. Existing clients above a cap are NEVER locked or deleted — the cap
-// gates NEW workspace creation only (enforced in app/api/agency/clients POST).
+// creation-gating. Packaging v3 (ADR-0031): Agency 15 (solo operator) · Agency Pro 30
+// (growing team) · Scale 50 (established agency) · Enterprise custom. The canonical
+// values + effective-date grandfathering live in lib/agencyCapacity.resolveAgencyCapacity;
+// this function only layers ADMIN=unlimited + the dormant CAPABILITY_PLATFORM adapter on
+// top. ADMINs are unlimited. Existing clients above a cap are NEVER locked or deleted —
+// the cap gates NEW workspace creation only (enforced in app/api/agency/clients POST).
 //
-// GRANDFATHER CLAUSE: accounts created before the packaging effective date keep
-// the entitlement they were sold — Agency was marketed as "up to 20 clients" and
-// Agency Pro as "unlimited clients". A sold entitlement is never retroactively
-// reduced. (Prices got the same treatment: AGENCY_PRO_LEGACY_* in lib/stripe.ts.)
-//
-// These values must stay in lockstep with config/capabilityMatrix.ts (dormant
-// Phase-B data) — a guard should compare them when the matrix activates.
+// GRANDFATHER CLAUSE (in the resolver): accounts keep the capacity their era was sold —
+// legacy Agency "up to 20", legacy Agency Pro "unlimited", v2 Pro/Scale 40/100 — a sold
+// entitlement is never retroactively reduced. config/capabilityMatrix imports the same
+// canonical constants, so the dormant declaration can never drift from this live gate.
 const NEW_PACKAGING_EFFECTIVE = Date.UTC(2026, 6, 17); // 2026-07-17 — approved packaging ships
 
 export function agencyClientLimit(user: {
@@ -102,13 +101,12 @@ export function agencyClientLimit(user: {
 }): number | null {
   if (capabilityPlatformEnabled()) return agencyClientLimitViaPlatform(user);
   if (user.role === "ADMIN") return null;
-  const created = user.createdAt ? new Date(user.createdAt).getTime() : Number.POSITIVE_INFINITY;
-  const legacy = created < NEW_PACKAGING_EFFECTIVE;
-  if (user.plan === "enterprise") return null; // negotiated/unlimited until configurable entitlements land
-  if (user.plan === "scale") return 100;
-  if (user.plan === "agency_pro") return legacy ? null : 40; // sold "unlimited" before the change
-  if (user.isAgency) return legacy ? 20 : 15; // sold "up to 20" before the change
-  return 0;
+  // Canonical resolver (ADR-0031 §4) — THE single source of truth for workspace capacity.
+  // Packaging v3 (Agency 15 · Pro 30 · Scale 50) behind effective dates, with the
+  // grandfather clause preserving sold entitlements (legacy Agency 20 · Pro unlimited);
+  // no cap ever shrinks retroactively. Add-on packs default to 0 (no storage yet — wired
+  // by the later billing slice). Server values only; never a client-supplied capacity.
+  return resolveAgencyCapacity({ plan: user.plan, isAgency: user.isAgency, createdAt: user.createdAt }).workspaceLimit;
 }
 
 function startOfMonthUTC(d = new Date()): Date {
