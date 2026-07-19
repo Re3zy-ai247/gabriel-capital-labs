@@ -1,5 +1,7 @@
 # Current State
 
+**Operator Network Phase 1 — shell (2026-07-19, branch `feat/operator-network-shell`, UNPUSHED/UNMERGED):** the Community Hub page rebuilt as the server-rendered Operator Network shell per the frozen Architecture Blueprint + Design Bible v1.0. UI-ONLY: same agency-only gate (copy verbatim), same CommunityThread/Reply records, channels = existing `category` values, composer behavior preserved (multipart + askKai + attachments, extracted to a client island). New: 3-pane layout (rail · feed · Now panel), deterministic ambient canvas (reduced-motion/Save-Data/visibility-aware, deferred post-LCP, no libs), shape-matched loading skeletons, honest end-cap ("the feed ends"), mobile chips + `<details>` Now sheet + sticky composer trigger. NO new records/routes/flags/entitlements (guard-proven). Validation: tsc 0 · `operator-shell.test.ts` **33/0** · build ✓ (`/community` 5.53 kB route JS) · lint ✓ · gate screenshot verified (desktop+mobile, zero console errors). Authed 3-pane visual = owner click-through or Vercel preview after push. Detail page `[id]` deliberately untouched (Phase 1.1 candidate).
+
 > Authoritative operational snapshot of the **CreditVector app**. Compact by mandate — never a
 > chronological log. **GIOS/kernel current truth → [../architecture/FOUNDER-CONTEXT.md](../architecture/FOUNDER-CONTEXT.md)** (do not restate it here). **Full sprint history (V–XXV, Build Waves)
 > → `ARCHIVE/CURRENT-STATE-full-2026-07-15.md` + ADRs 0010–0027 + `KAI-ENGINEERING-JOURNAL.md` + git.**
