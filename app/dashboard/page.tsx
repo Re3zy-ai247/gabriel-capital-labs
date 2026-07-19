@@ -19,6 +19,9 @@ import { MissionQueue } from "@/components/mission/MissionQueue";
 import { RoadmapView } from "@/components/mission/RoadmapView";
 import { BuilderView } from "@/components/mission/BuilderView";
 import { KnowledgeJourney } from "@/components/mission/KnowledgeJourney";
+import { GxlField } from "@/components/gxl/GxlField";
+import { GxlPull } from "@/components/gxl/GxlPull";
+import gxl from "@/components/mission/mc.module.css";
 
 export const dynamic = "force-dynamic";
 
@@ -48,9 +51,22 @@ export default async function DashboardPage() {
   const execution = assembleExecution({ intel, mission, roadmap, builder, knowledge, mc: data, snap });
   const academy = buildAcademy(snap); // pure over the already-loaded snapshot
 
+  // The Watch Floor's ambient field runs on REAL queue aggregates (GXL L10:
+  // aliveness is never simulated) — total items on the floor, items awaiting a
+  // person, items actively in progress. Derived, never invented.
+  const allItems = execution.buckets.flatMap((b) => b.items);
+  const fieldState = {
+    total: allItems.length,
+    awaiting: allItems.filter((i) => i.status === "available" || i.status === "needs_review").length,
+    active: allItems.filter((i) => i.status === "in_progress" || i.status === "waiting").length,
+  };
+
   return (
     <AppShell title="/ Mission Control">
-      <EduBanner />
+      <div className={`${gxl.room} relative isolate -mx-5 -my-6 px-5 py-6`}>
+        <GxlField state={fieldState} tint="from-ocean-500/[0.05]" />
+        <GxlPull />
+        <EduBanner />
       <MissionControl data={data} />
       {/* The full operating-system summary appears once there's a case to summarize —
           a first-time user (no report yet) sees only the single upload mission. */}
@@ -75,6 +91,7 @@ export default async function DashboardPage() {
       {data.hasReport && <ReadinessStrip intel={intel} />}
       {data.hasReport && <CommandCenter data={data} />}
       <Disclaimer />
+      </div>
     </AppShell>
   );
 }

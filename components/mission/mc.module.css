@@ -1,0 +1,93 @@
+/* Mission Control — "The Watch Floor" (GXL synthesis, Phase 5 of the design
+   loop). Scoped module: the room's materials only — no global impact.
+   Laws implemented: light as luminance (one key pool on the mission slab),
+   depth as epistemic status (work lifted, settled past recessed), the three
+   type registers, hairline rules over card-chrome, gold only where a human is
+   needed, no entrance animation, hover rule-draw as computation reveal. */
+
+/* The room — archive dark with faint laid grain. */
+.room {
+  position: relative;
+  isolation: isolate;
+  background-image: repeating-linear-gradient(
+    0deg,
+    rgba(148, 163, 184, 0.012) 0px,
+    rgba(148, 163, 184, 0.012) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+}
+
+/* Registers. */
+.record { font-family: Georgia, 'Iowan Old Style', 'Times New Roman', serif; letter-spacing: 0.005em; }
+.engraved {
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgb(148 163 184);
+}
+.engravedDim { composes: engraved; color: rgb(100 116 139); }
+
+/* The slab — Today's Mission under the room's ONE key pool (luminance, never
+   simulated light). Sits on the work plane. */
+.slab {
+  position: relative;
+  background-image: radial-gradient(480px 150px at 22% 0%, rgba(226, 232, 240, 0.05), transparent 70%);
+}
+
+/* Verdict columns (the triptych) — typographic, transparent, top-ruled. */
+.verdict {
+  border-top: 1px solid rgba(51, 65, 85, 0.6);
+  padding-top: 0.75rem;
+  transition: border-color 0.2s ease;
+}
+.verdict:hover { border-color: rgba(148, 163, 184, 0.45); }
+
+/* Folio entries — hairline-ruled record rows replacing card-per-item. */
+.folio { border-top: 1px solid rgba(51, 65, 85, 0.5); }
+.entry {
+  position: relative;
+  border-bottom: 1px solid rgba(51, 65, 85, 0.35);
+  transition: background-color 0.2s ease;
+}
+.entry:hover { background-color: rgba(148, 163, 184, 0.03); }
+.entry::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -1px;
+  height: 1px;
+  width: 0;
+  background: rgba(40, 194, 219, 0.35);
+  transition: width 420ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.entry:hover::after,
+.entry:focus-within::after { width: 30%; }
+
+/* Work plane lift + the gold flag (a human is needed here). */
+.lifted { background-color: rgba(14, 165, 196, 0.022); }
+.flagged { border-left: 1px solid rgba(227, 169, 46, 0.55); }
+
+/* The settled past — recessed, low-ink, still readable (AA holds). */
+.recessed { opacity: 0.72; }
+.recessed:hover { opacity: 1; }
+
+/* The colophon — the deterministic disclosure, engraved and centered. */
+.colophon {
+  composes: engravedDim;
+  display: block;
+  text-align: center;
+  letter-spacing: 0.08em;
+  text-transform: none;
+  font-size: 10.5px;
+  line-height: 1.7;
+}
+
+/* The detent — presses land, never slide. */
+.detent:active { transform: translateY(0.5px); }
+
+@media (prefers-reduced-motion: reduce) {
+  .entry::after { transition: none; }
+  .entry:hover::after { width: 30%; }
+}
