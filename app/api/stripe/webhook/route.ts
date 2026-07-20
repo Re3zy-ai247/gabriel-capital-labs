@@ -39,7 +39,15 @@ export async function POST(req: Request) {
           await syncSubscriptionToUser(sub);
           await track(PRODUCT_EVENTS.subscriptionCompleted, {
             userId: cs.metadata?.userId ?? null,
-            meta: { plan: cs.metadata?.plan ?? null },
+            meta: {
+              plan: cs.metadata?.plan ?? null,
+              // ToS acceptance evidence. Stripe is the SYSTEM OF RECORD — it stores
+              // consent.terms_of_service on the Session permanently and it is visible
+              // in the Dashboard — so this is a queryable local pointer, not a second
+              // source of truth. null when STRIPE_TOS_CONSENT is off (no checkbox shown).
+              tosConsent: cs.consent?.terms_of_service ?? null,
+              checkoutSessionId: cs.id,
+            },
           });
         } else if (cs.mode === "payment" && cs.metadata?.product === "letters_5") {
           // One-time letter pack — grant the purchased credits.

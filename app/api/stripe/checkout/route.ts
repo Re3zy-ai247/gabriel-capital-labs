@@ -19,6 +19,31 @@ export const dynamic = "force-dynamic";
 // decision, not an implementation detail.
 const UPGRADE_PRORATION_BEHAVIOR = "create_prorations" as const;
 
+// Terms-of-Service acceptance at the point of payment, in ONE reviewable place.
+//
+// Stripe renders a required "I agree to the Terms of Service" checkbox and records
+// the acceptance on the Session as `consent.terms_of_service = "accepted"` with a
+// timestamp — Stripe is the durable system of record, so we invent no parallel
+// consent workflow (CROA wants a durable, retrievable acceptance; this is it).
+//
+// WHY THIS IS A FLAG AND NOT ALWAYS-ON: Stripe REJECTS session creation with
+// "You cannot collect consent to your terms of service unless a URL is set in the
+// Stripe Dashboard" (Settings → Public details → Terms of Service + Privacy Policy).
+// Shipping this unconditionally before those URLs exist would 500 every checkout —
+// a total billing outage. So it stays off until the Dashboard is configured, and
+// STRIPE_TOS_CONSENT=1 turns it on with no redeploy of logic.
+//
+// Turn-on order (both required, in this order):
+//   1. Stripe Dashboard → Settings → Public details → set Terms of Service URL
+//      (https://www.creditvector.app/legal/terms) and Privacy Policy URL
+//      (https://www.creditvector.app/legal/privacy).
+//   2. Set STRIPE_TOS_CONSENT=1 in Vercel and redeploy.
+// Verify on a preview deploy first: the checkbox appears and checkout still opens.
+const TOS_CONSENT_ENABLED = process.env.STRIPE_TOS_CONSENT === "1";
+const CONSENT_COLLECTION = TOS_CONSENT_ENABLED
+  ? { consent_collection: { terms_of_service: "required" as const } }
+  : {};
+
 // Creates a Stripe Checkout Session. Body:
 //   { plan: "premium"|"agency"|"agency_pro", interval?: "month"|"year" }  — subscription
 //   { product: "letters_5" }                                              — one-time letter pack
@@ -52,6 +77,7 @@ export async function POST(req: Request) {
         success_url: `${base}/letters?purchase=success`,
         cancel_url: `${base}/letters?purchase=cancelled`,
         metadata: { userId: user.id, product: "letters_5", credits: String(LETTER_PACK_CREDITS) },
+        ...CONSENT_COLLECTION,
       });
       return NextResponse.json({ url: checkout.url });
     }
@@ -162,6 +188,7 @@ export async function POST(req: Request) {
       cancel_url: `${base}${cancelPath}`,
       subscription_data: { metadata: { userId: user.id, plan, interval } },
       metadata: { userId: user.id, plan, interval },
+      ...CONSENT_COLLECTION,
     });
 
     await track(PRODUCT_EVENTS.subscriptionStarted, { userId: user.id, meta: { plan, interval } });
