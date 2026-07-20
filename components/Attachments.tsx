@@ -63,20 +63,24 @@ export function AttachmentPicker({
 
   return (
     <div>
-      <div
-        role="button"
-        tabIndex={0}
+      {/* A real <button>, not a role="button" div: the div carried tabIndex={0} with
+          no key handler, so it could be focused but never activated — keyboard and
+          switch users could not attach a file on any of the three write paths that
+          use this picker (WCAG 2.1.1). A native button gets Enter/Space for free. */}
+      <button
+        type="button"
+        disabled={disabled}
         onDragOver={(e) => { e.preventDefault(); if (!disabled) setDrag(true); }}
         onDragLeave={() => setDrag(false)}
         onDrop={(e) => { e.preventDefault(); setDrag(false); if (!disabled) add(Array.from(e.dataTransfer.files)); }}
         onClick={() => !disabled && inputRef.current?.click()}
-        className={`flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed px-3 py-2 text-[11px] transition ${
+        className={`flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed px-3 py-2 text-[11px] transition ${
           drag ? "border-brand-500 bg-brand-500/10 text-brand-300" : "border-ink-600 text-slate-500 hover:border-slate-500"
         } ${disabled ? "pointer-events-none opacity-50" : ""}`}
       >
         <Paperclip className="h-3.5 w-3.5" />
         Drag &amp; drop, paste a screenshot, or click to attach (images / PDF)
-      </div>
+      </button>
       <input
         ref={inputRef}
         type="file"

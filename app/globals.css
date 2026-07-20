@@ -17,6 +17,7 @@
   --ink-600: 40 53 82;    /* #283552 — hover border */
   /* slate (text bright, surface dark) */
   --slate-50: 248 250 252;
+  --slate-100: 241 245 249;
   --slate-200: 226 232 240;
   --slate-300: 203 213 225;
   --slate-400: 148 163 184;
@@ -43,6 +44,7 @@ html.light {
   --ink-600: 199 210 226;
   /* slate: bright shades become dark text; dark shades become light surfaces */
   --slate-50: 248 250 252;
+  --slate-100: 15 23 42;
   --slate-200: 30 41 59;
   --slate-300: 51 65 85;
   --slate-400: 100 116 139;

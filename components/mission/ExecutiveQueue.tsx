@@ -103,16 +103,15 @@ function ExecutionCard({ it }: { it: ExecutionItem }) {
           <span className="sr-only">{it.priority.band} priority.</span>
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-0.5">
+              {/* The provenance claim deliberately does NOT live on this title.
+                  GxlPull preventDefault()s clicks originating inside a [data-gxl-claim]
+                  element, and this span sits inside <summary> — so carrying the claim
+                  here suppressed the native disclosure toggle and the row would not
+                  expand on the production dashboard (GxlPull is mounted there). The
+                  claim now sits on the Evidence field inside the expanded body, where
+                  all three pull modalities work without fighting the disclosure. */}
               <span
-                data-gxl-claim
-                data-gxl-title={it.title}
-                data-gxl-room="Executive queue"
-                data-gxl-filed={it.timeline}
-                data-gxl-author="Execution Engine (deterministic)"
-                data-gxl-responses={`effort: ${it.effort}`}
-                data-gxl-state={STATE_LABEL[it.status]}
                 className={`${gxl.record} text-[15px] leading-snug ${settled ? "text-slate-400" : "text-slate-100"}`}
-                title="Press and hold to pull this item's provenance"
               >
                 {it.title}
               </span>
@@ -152,7 +151,24 @@ function ExecutionCard({ it }: { it: ExecutionItem }) {
               {it.blocks.length > 0 && <Field label="Unblocks">{it.blocks.join(" · ")}</Field>}
             </div>
           )}
-          <Field label="Evidence"><span className="text-slate-400">{it.evidence}</span></Field>
+          <Field label="Evidence">
+            <span
+              data-gxl-claim
+              data-gxl-title={it.title}
+              data-gxl-room="Executive queue"
+              data-gxl-filed={it.timeline}
+              data-gxl-author="Execution Engine (deterministic)"
+              data-gxl-responses={`effort: ${it.effort}`}
+              data-gxl-state={STATE_LABEL[it.status]}
+              className="cursor-pointer text-slate-400"
+              title="Press and hold, click, or press Enter to pull this item's provenance"
+              tabIndex={0}
+              role="button"
+              aria-label={`Pull provenance for ${it.title}`}
+            >
+              {it.evidence}
+            </span>
+          </Field>
 
           {/* Citations — every recommendation cites its sources. */}
           <div className="rounded-md bg-ink-800/50 p-3">

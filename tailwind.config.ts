@@ -24,6 +24,7 @@ const config: Config = {
         // mode; dark shades (700–950) are surfaces and flip light. Unchanged mechanism.
         slate: {
           50: v("slate-50"),
+          100: v("slate-100"),
           200: v("slate-200"),
           300: v("slate-300"),
           400: v("slate-400"),

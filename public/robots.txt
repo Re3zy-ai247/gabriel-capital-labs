@@ -1,2 +1,29 @@
 User-agent: *
 Allow: /
+
+# Authenticated surfaces render only a "Please sign in" shell to a crawler —
+# indexing them would put dozens of empty pages under the brand. Kept in lockstep
+# with app/sitemap.ts, which lists the public surface.
+Disallow: /dashboard
+Disallow: /letters
+Disallow: /tradelines
+Disallow: /journey
+Disallow: /community
+Disallow: /academy
+Disallow: /builder
+Disallow: /agency
+Disallow: /scores
+Disallow: /strategist
+Disallow: /settings
+Disallow: /billing
+Disallow: /upload
+Disallow: /identity
+Disallow: /mail
+Disallow: /support
+Disallow: /onboarding
+Disallow: /modules
+Disallow: /admin
+Disallow: /gxl
+Disallow: /api/
+
+Sitemap: https://www.creditvector.app/sitemap.xml

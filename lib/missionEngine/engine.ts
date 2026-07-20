@@ -52,8 +52,13 @@ export function assembleMissions(intel: CreditIntelligence, mc: MissionControlDa
     missions.push({ id: "m_cfpb", type: "escalate_cfpb", title: "Escalation available (CFPB / state AG)", reason: "A non-answer past the §611 window is grounds to escalate.", state: "available", priority: 88, band: "high", href: "/letters", deadline: null, dependency: "an overdue reinvestigation", effort: "medium", impact: "high", unlocks: null, evidence: "One or more response windows have passed.", confidence: intel.profile.confidence, progress: null });
   }
 
-  // Business Credit is a future module — a real but LOCKED mission (honest).
-  missions.push({ id: "m_business", type: "business_credit_setup", title: "Business credit setup", reason: "A future module — nothing to connect externally yet.", state: "locked", priority: 8, band: "low", href: "/dashboard", deadline: null, dependency: "the Business Credit module", effort: "medium", impact: "medium", unlocks: "business-funding readiness", evidence: "Business profile not collected.", confidence: "insufficient", progress: null });
+  // Business Credit setup was pushed here unconditionally at state "locked" with
+  // href "/dashboard" — a permanent, unclearable row that every operator saw on
+  // every visit, forever, linking back to the page they were already on. A queue
+  // whose bottom entry can never be cleared teaches people to stop trusting the
+  // queue. The module is genuinely unbuilt, so the honest surface for it is the
+  // roadmap, not the operator's daily action list. No other code or guard
+  // referenced m_business.
 
   // Waiting missions — from Mission Control's structured §611 windows (reused).
   const waiting: Mission[] = mc.waiting.map((w, i) => ({
