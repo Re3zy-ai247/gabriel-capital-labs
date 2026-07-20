@@ -10,10 +10,16 @@
 //   was therefore FALSE in current production.
 //
 //   `db push` makes the database match schema.prisma, which means it DROPS tables
-//   the schema does not declare. 14 tables in this repo are created at runtime by
+//   the schema does not declare. 15 tables in this repo are created at runtime by
 //   self-heal DDL and are deliberately NOT in schema.prisma — so each deploy was
-//   armed to drop them (destroy-on-next-deploy). Preview and production share one
-//   DATABASE_URL value, so any branch could trigger it against production data.
+//   armed to drop them. Preview and production share one DATABASE_URL value, so
+//   any branch could trigger it against production data.
+//
+//   The push was NOT idling: the Prisma CLI prints "already in sync" only when
+//   executedSteps === 0, and our build logs printed "now in sync" — steps ran on
+//   every build. No data-loss warning appeared, meaning those drops hit tables
+//   while still empty; once one holds rows, --accept-data-loss suppresses the
+//   refusal and the rows go with it.
 //
 // THE CONTRACT THIS GUARD ENFORCES:
 //   1. No build step may mutate the database. Schema arrives either through a
@@ -56,6 +62,12 @@ for (const [name, src] of buildPaths) {
 // Any db:push escape hatch must stay non-destructive (it prompts/refuses instead).
 check("db:push escape hatch carries no --accept-data-loss",
   !/--accept-data-loss/.test(pkgScripts["db:push"] ?? ""));
+
+// Deterministic installs: the deploy must resolve the exact committed lockfile,
+// not a fresh `npm install` tree. CI already uses `npm ci`; if the deploy used
+// `npm install`, the artifact CI green-lights is not the artifact that ships.
+check("vercel installCommand is deterministic (npm ci)",
+  /npm ci/.test((JSON.parse(vercelJson).installCommand as string) ?? ""));
 
 // The build must still generate the client — removing the push must not have
 // removed codegen, or the deployed bundle ships a stale Prisma client.
