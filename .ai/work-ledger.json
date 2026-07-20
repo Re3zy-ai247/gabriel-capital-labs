@@ -1,0 +1,68 @@
+{
+  "_schema": {
+    "purpose": "Concurrent-session ownership ledger (Sprint 6, Phase 8). More than one Claude session can hold this checkout at once; this file is how they avoid editing the same subsystem. Before starting a work package, a session claims it here in its own commit. If a subsystem is already claimed and active, choose a different, non-overlapping wave.",
+    "rule": "Claim before you build. Release on completion. Never edit files owned by an active claim you did not make.",
+    "fields": {
+      "package": "short slug for the work package",
+      "subsystem": "the product area",
+      "wave": "Sprint 6 wave number, or null",
+      "owner_session": "which session holds it",
+      "owns": "files/directories this package edits — the collision surface",
+      "started": "ISO date claimed",
+      "status": "active | complete | released",
+      "dependencies": "packages or gates this waits on",
+      "release_conditions": "what must be true to enable it in production",
+      "completion_commit": "sha once done, or null"
+    }
+  },
+  "packages": [
+    {
+      "package": "eng-ops-center",
+      "subsystem": "admin / internal operations",
+      "wave": 8,
+      "owner_session": "fable-release-train",
+      "owns": ["app/admin/ops/**", "lib/engOps.ts", "components/admin/AdminTabs.tsx (one nav entry only)"],
+      "started": "2026-07-20",
+      "status": "active",
+      "dependencies": "none — reads existing committed artifacts (quality ledger, release header)",
+      "release_conditions": "admin-gated, fail-closed; composes only real committed data; no new model, no privacy surface",
+      "completion_commit": null
+    },
+    {
+      "package": "quality-automation",
+      "subsystem": "CI / release",
+      "wave": null,
+      "owner_session": "fable-release-train",
+      "owns": [".github/workflows/{daily-health,weekly-verify,monthly-review}.yml", "scripts/prod-health.sh", ".ai/quality-ledger.json", ".ai/RUNBOOKS/release.md"],
+      "started": "2026-07-20",
+      "status": "complete",
+      "dependencies": "none",
+      "release_conditions": "deployed at 5c1132b",
+      "completion_commit": "5c1132b"
+    },
+    {
+      "package": "billing-consent-upgrade",
+      "subsystem": "billing / stripe",
+      "wave": null,
+      "owner_session": "other-session",
+      "owns": ["app/api/stripe/checkout/route.ts", "app/api/stripe/webhook/route.ts", "scripts/checkout-consent.test.ts"],
+      "started": "2026-07-20",
+      "status": "complete",
+      "dependencies": "none",
+      "release_conditions": "consent OFF until Stripe Dashboard ToS/Privacy URLs + STRIPE_TOS_CONSENT=1",
+      "completion_commit": "a5cb2ec"
+    },
+    {
+      "package": "observability-coverage",
+      "subsystem": "operations / observability",
+      "wave": null,
+      "owner_session": "other-session",
+      "owns": ["lib/briefIngest.ts", "app/api/cron/**", "scripts/observability.test.ts"],
+      "started": "2026-07-20",
+      "status": "complete",
+      "dependencies": "ALERT_WEBHOOK_URL unset — owner action to activate delivery",
+      "release_conditions": "coverage live; alert sink pending owner env var",
+      "completion_commit": "65cc4a4"
+    }
+  ]
+}
