@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireCommunityAccount, communityDisplayName, cleanText, LIMITS } from "@/lib/community";
+import { requireCommunityAccount, communityDisplayName, cleanText, LIMITS, screenCommunityText } from "@/lib/community";
 import { filesFromForm, validateFiles, saveAttachments } from "@/lib/attachments";
+import { enforceRateLimit } from "@/lib/rateLimit";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -27,6 +28,14 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   if (body.length < 2 && files.length === 0) {
     return NextResponse.json({ error: "Write a reply or attach a file." }, { status: 400 });
   }
+
+  // CROA screen BEFORE any write — same bar as thread creation. Fail-closed.
+  const screened = screenCommunityText(body);
+  if (!screened.ok) return NextResponse.json({ error: screened.error }, { status: 422 });
+
+  // Write throttle: reply creation was previously unlimited.
+  const limited = await enforceRateLimit(`community-reply:${account.id}`, 60, 3600);
+  if (limited) return limited;
 
   const reply = await prisma.communityReply.create({
     data: { threadId: thread.id, authorId: account.id, authorName: communityDisplayName(account), body },

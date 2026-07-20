@@ -7,6 +7,7 @@ import {
   cleanText,
   CATEGORY_KEYS,
   LIMITS,
+  screenCommunityText,
 } from "@/lib/community";
 import { askKai } from "@/lib/kai";
 import { enforceRateLimit } from "@/lib/rateLimit";
@@ -74,6 +75,16 @@ export async function POST(req: Request) {
 
   if (title.length < 3) return NextResponse.json({ error: "Give your discussion a title." }, { status: 400 });
   if (body.length < 3) return NextResponse.json({ error: "Add some detail to your post." }, { status: 400 });
+
+  // CROA screen BEFORE any write: a prohibited claim is rejected, never reworded,
+  // so the platform never hosts it and never rephrases a member. Fail-closed.
+  const screened = screenCommunityText(title, body);
+  if (!screened.ok) return NextResponse.json({ error: screened.error }, { status: 422 });
+
+  // Write throttle: thread creation was previously unlimited, which is both an
+  // abuse surface and the fan-out path for anything derived from new threads.
+  const limited = await enforceRateLimit(`community-thread:${account.id}`, 20, 3600);
+  if (limited) return limited;
 
   const { ok: files, error: fileError } = await validateFiles(filesFromForm(form));
   if (fileError) return NextResponse.json({ error: fileError }, { status: 400 });

@@ -3,6 +3,7 @@ import { prisma } from "./prisma";
 import { isPremium } from "./entitlements";
 import { deleteAttachmentsFor } from "./attachments";
 import { CATEGORIES, CATEGORY_KEYS, type Category } from "./communityShared";
+import { applyCompliance } from "./compliance";
 
 export { CATEGORIES, CATEGORY_KEYS, type Category };
 
@@ -124,6 +125,25 @@ export const LIMITS = {
   reply: 6000,
   reportReason: 1000,
 };
+
+// CROA screen for member-authored network text. Members post their OWN words, so a
+// prohibited claim is REJECTED, never silently reworded — the platform must not
+// host the claim and must not put words in a member's mouth. Mirrors the Brief's
+// screenCommentBody (lib/brief.ts) so both member-authored surfaces hold one bar.
+// (The letter engine keeps substitute-and-show: there the user reviews and approves
+// the final text before it goes anywhere, so rewriting is visible, not silent.)
+// Pure — no DB — so it stays unit-testable.
+export const COMMUNITY_CLAIM_ERROR =
+  "Posts can't promise guaranteed deletions or score increases, cite §609/Metro-2 deletion myths, " +
+  "or state legal conclusions. Please rephrase as your own experience or question.";
+
+export function screenCommunityText(...parts: string[]): { ok: true } | { ok: false; error: string } {
+  const joined = parts.filter(Boolean).join("\n\n");
+  if (!joined) return { ok: true };
+  const { flags } = applyCompliance(joined);
+  if (flags.length > 0) return { ok: false, error: COMMUNITY_CLAIM_ERROR };
+  return { ok: true };
+}
 
 // Collapse whitespace runs of 3+ blank lines and hard-trim to a max length.
 export function cleanText(input: unknown, max: number): string {

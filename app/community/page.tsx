@@ -12,7 +12,7 @@ import { prisma } from "@/lib/prisma";
 import { currentAccount } from "@/lib/session";
 import { canAccessCommunity, ensureCommunityTables, CATEGORY_KEYS } from "@/lib/community";
 import { CATEGORIES, BRIEFING_ROOM } from "@/lib/communityShared";
-import { Network, ArrowRight, MessagesSquare, ChevronDown } from "lucide-react";
+import { Network, ArrowRight, MessagesSquare, ChevronDown, Search } from "lucide-react";
 
 // The Operator Network (Phase 1.2) — an Intelligence Operations Center. The
 // mental model is WORKSPACES (rooms inside headquarters) over the frozen
@@ -81,7 +81,56 @@ async function loadThreads(): Promise<{ threads: OperatorThread[]; degraded: boo
   }
 }
 
-export default async function CommunityPage({ searchParams }: { searchParams?: { channel?: string } }) {
+// Search runs against the DATABASE, not the capped page set: filtering the
+// already-loaded 200 would silently omit older matches and quietly lie about
+// what the network holds. One extra read, only when a member actually searches.
+// Fail-closed: a failed search returns nothing and the UI says so.
+async function searchThreads(q: string, channel: string): Promise<OperatorThread[]> {
+  try {
+    await ensureCommunityTables();
+    const rows = await prisma.communityThread.findMany({
+      where: {
+        ...(channel ? { category: channel } : {}),
+        OR: [
+          { title: { contains: q, mode: "insensitive" } },
+          { body: { contains: q, mode: "insensitive" } },
+        ],
+      },
+      orderBy: [{ pinned: "desc" }, { lastActivityAt: "desc" }],
+      take: 100,
+    });
+    const ids = rows.map((t) => t.id);
+    const kaiRows = ids.length
+      ? await prisma.communityReply.findMany({
+          where: { threadId: { in: ids }, isKai: true },
+          distinct: ["threadId"],
+          select: { threadId: true },
+        })
+      : [];
+    const kaiSet = new Set(kaiRows.map((r) => r.threadId));
+    return rows.map((t) => ({
+      id: t.id,
+      title: t.title,
+      category: t.category,
+      authorName: t.authorName,
+      pinned: t.pinned,
+      locked: t.locked,
+      replyCount: t.replyCount,
+      kaiAnswered: kaiSet.has(t.id),
+      lastActivityAt: t.lastActivityAt.toISOString(),
+      excerpt: t.body.slice(0, 200),
+    }));
+  } catch (e) {
+    console.error("operator network: search failed", e);
+    return [];
+  }
+}
+
+export default async function CommunityPage({
+  searchParams,
+}: {
+  searchParams?: { channel?: string; q?: string };
+}) {
   // ---- Access gating: paying members, fail-closed (canAccessCommunity → isPremium) ----
   let account: Awaited<ReturnType<typeof currentAccount>> = null;
   try {
@@ -108,11 +157,18 @@ export default async function CommunityPage({ searchParams }: { searchParams?: {
 
   const raw = searchParams?.channel ?? "";
   const channel = CATEGORY_KEYS.includes(raw) ? raw : "";
+  const query = (searchParams?.q ?? "").trim().slice(0, 120);
   const { threads, degraded } = await loadThreads();
+
+  // A search replaces the queue's set, and the command strip follows it — strip
+  // counts always describe exactly the set rendered below them (guard-pinned).
+  // The ambient field, workspace doors, and Network State keep describing the
+  // whole network: they are the state of the building, not of your search.
+  const results = query ? await searchThreads(query, channel) : null;
 
   // The attention queue: pinned → open loops → recency → stable id (format.ts),
   // then sectioned into operational groups for the workspace (not a feed).
-  const scoped = channel ? threads.filter((t) => t.category === channel) : threads;
+  const scoped = results ?? (channel ? threads.filter((t) => t.category === channel) : threads);
   const queue = scoped.slice().sort(compareThreads);
   const requiresAttention = queue.filter((t) => t.pinned || isOpenLoop(t));
   const activeIntelligence = queue.filter((t) => !t.pinned && !isOpenLoop(t));
@@ -167,6 +223,52 @@ export default async function CommunityPage({ searchParams }: { searchParams?: {
           <ChannelChips channel={channel} />
         </div>
 
+        {/* Search — a plain GET form: zero hydration, works without JS, and the
+            query lives in the URL so a result set is linkable. Scoped to the
+            current workspace; searching the whole network means leaving the room. */}
+        <form method="get" role="search" className="mb-4 flex items-center gap-2">
+          {channel && <input type="hidden" name="channel" value={channel} />}
+          <div className="relative flex-1">
+            <Search
+              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500"
+              aria-hidden="true"
+            />
+            <input
+              type="search"
+              name="q"
+              defaultValue={query}
+              maxLength={120}
+              className="input min-h-[44px] w-full pl-9"
+              placeholder={roomMeta ? `Search ${roomMeta.label}…` : "Search the network…"}
+              aria-label={roomMeta ? `Search ${roomMeta.label}` : "Search the Operator Network"}
+            />
+          </div>
+          <button type="submit" className="btn-ghost min-h-[44px] px-4 text-sm">
+            Search
+          </button>
+          {query && (
+            <Link
+              href={channel ? `/community?channel=${channel}` : "/community"}
+              className="btn-ghost min-h-[44px] px-4 text-sm"
+            >
+              Clear
+            </Link>
+          )}
+        </form>
+
+        {/* Result header — states exactly what was searched and how deep the
+            answer goes. Never implies the whole archive was returned. */}
+        {results && (
+          <p role="status" className="mb-4 text-xs text-slate-400">
+            <span className="tnum">{results.length}</span>
+            {results.length === 100 ? "+ " : " "}
+            {results.length === 1 ? "brief" : "briefs"} matching{" "}
+            <span className="font-medium text-slate-300">&ldquo;{query}&rdquo;</span>
+            {roomMeta ? ` in ${roomMeta.label}` : " across the network"}
+            {results.length === 100 && " — showing the first 100, most recent first"}.
+          </p>
+        )}
+
         {/* Small-viewport Situation disclosure — native details, zero JS. */}
         <details className="group mb-4 xl:hidden">
           <summary className="card flex min-h-[44px] cursor-pointer list-none items-center gap-2 px-4 py-2.5 text-sm text-slate-400 [&::-webkit-details-marker]:hidden">
@@ -202,7 +304,13 @@ export default async function CommunityPage({ searchParams }: { searchParams?: {
                 <MessagesSquare className="h-8 w-8 text-slate-600" aria-hidden="true" />
                 <span className="rounded bg-brand-500/15 px-1.5 py-0.5 text-[10px] font-bold tracking-widest text-brand-300">KAI</span>
                 <p className="max-w-md text-sm text-slate-400">
-                  {roomMeta ? (
+                  {results ? (
+                    <>
+                      No brief matches <span className="font-medium text-slate-300">&ldquo;{query}&rdquo;</span>
+                      {roomMeta ? ` in ${roomMeta.label}` : " across the network"}. Try fewer words, or search the
+                      whole network from the Executive Briefing.
+                    </>
+                  ) : roomMeta ? (
                     <>
                       <span className="font-medium text-slate-300">{roomMeta.label}</span> — {roomMeta.blurb}{" "}
                       Nothing filed here yet. File the first brief and, if the law speaks to it, I&apos;ll answer with the statute.
@@ -243,8 +351,17 @@ export default async function CommunityPage({ searchParams }: { searchParams?: {
                 )}
                 {/* The queue ends (Design Bible Law F6) — an honest end, never infinite scroll. */}
                 <p className="mt-6 text-center text-[11px] text-slate-400">
-                  You&apos;re caught up — <span className="tnum">{queue.length}</span>{" "}
-                  {queue.length === 1 ? "brief" : "briefs"} in {roomMeta ? roomMeta.label : "the network"}.
+                  {results ? (
+                    <>
+                      End of results — <span className="tnum">{queue.length}</span>{" "}
+                      {queue.length === 1 ? "brief" : "briefs"} matching &ldquo;{query}&rdquo;.
+                    </>
+                  ) : (
+                    <>
+                      You&apos;re caught up — <span className="tnum">{queue.length}</span>{" "}
+                      {queue.length === 1 ? "brief" : "briefs"} in {roomMeta ? roomMeta.label : "the network"}.
+                    </>
+                  )}
                 </p>
               </>
             )}
