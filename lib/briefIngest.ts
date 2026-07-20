@@ -232,6 +232,11 @@ export interface IngestResult {
   created: number;
   skipped: number;
   drafts: { title: string; sourceName: string }[];
+  // Official sources that could not be read this run. A feed failure is survivable
+  // (the run continues with the remaining feeds) but it is NOT success: without this
+  // counter every source could be down, zero articles ingested, and the cron would
+  // still answer ok:true. The caller decides what to do; this makes it decidable.
+  feedErrors: number;
 }
 
 // Run the ingest. maxPerRun caps how many NEW drafts (and thus AI calls) a single
@@ -239,7 +244,7 @@ export interface IngestResult {
 export async function ingestBriefFeeds(opts: { maxPerRun?: number } = {}): Promise<IngestResult> {
   await ensureBriefTables();
   const maxPerRun = opts.maxPerRun ?? 5;
-  const result: IngestResult = { scanned: 0, created: 0, skipped: 0, drafts: [] };
+  const result: IngestResult = { scanned: 0, created: 0, skipped: 0, drafts: [], feedErrors: 0 };
 
   const candidates: { title: string; link: string; description: string; sourceName: string }[] = [];
   for (const feed of BRIEF_FEEDS) {
@@ -249,6 +254,7 @@ export async function ingestBriefFeeds(opts: { maxPerRun?: number } = {}): Promi
         cache: "no-store",
       });
       if (!res.ok) {
+        result.feedErrors++;
         console.error("Brief feed fetch failed", feed.url, res.status);
         continue;
       }
@@ -258,6 +264,7 @@ export async function ingestBriefFeeds(opts: { maxPerRun?: number } = {}): Promi
         candidates.push({ title: item.title, link: item.link, description: item.description, sourceName: feed.name });
       }
     } catch (e) {
+      result.feedErrors++;
       console.error("Brief feed error", feed.url, e);
     }
   }

@@ -9,6 +9,8 @@ import {
 import { getOrCreateStripeCustomer } from "@/lib/billing";
 import { ACTIVE_SUBSCRIPTION_STATES } from "@/lib/os/host/billingTier";
 import { track, PRODUCT_EVENTS } from "@/lib/events";
+import { reportError } from "@/lib/observability";
+import { requestId } from "@/lib/log";
 
 export const dynamic = "force-dynamic";
 
@@ -194,7 +196,17 @@ export async function POST(req: Request) {
     await track(PRODUCT_EVENTS.subscriptionStarted, { userId: user.id, meta: { plan, interval } });
     return NextResponse.json({ url: checkout.url });
   } catch (e) {
-    console.error("stripe checkout error", e);
+    // Revenue path. A failure here is a customer who tried to pay and could not, and
+    // it was previously invisible beyond a console line. Safe identifiers only — no
+    // Stripe secrets, no card data, no request body. The user-facing response is
+    // unchanged: reporting is additive and reportError never throws.
+    reportError(e, {
+      scope: "stripe-checkout",
+      requestId: requestId(req),
+      userId: user.id,
+      plan: typeof body?.plan === "string" ? body.plan : null,
+      product: typeof body?.product === "string" ? body.product : null,
+    });
     return NextResponse.json({ error: "Could not start checkout. Please try again." }, { status: 500 });
   }
 }

@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { sendWeeklyDigest } from "@/lib/briefDigest";
+import { reportError } from "@/lib/observability";
+import { requestId } from "@/lib/log";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -15,6 +17,17 @@ export async function GET(req: Request) {
   if (req.headers.get("authorization") !== `Bearer ${secret}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const result = await sendWeeklyDigest();
-  return NextResponse.json(result);
+  const rid = requestId(req);
+  try {
+    // sendWeeklyDigest returns its own honest shape (it refuses without a postal
+    // address and skips an empty week) — pass it through unchanged rather than
+    // wrapping it in a second, competing success signal.
+    const result = await sendWeeklyDigest();
+    return NextResponse.json(result);
+  } catch (e) {
+    // A throw here previously surfaced as an unexplained 500 with nothing reported —
+    // a weekly job, so the next chance to notice would have been seven days later.
+    reportError(e, { scope: "cron-brief-digest", phase: "run", requestId: rid });
+    return NextResponse.json({ ok: false, error: "Digest failed." }, { status: 500 });
+  }
 }
