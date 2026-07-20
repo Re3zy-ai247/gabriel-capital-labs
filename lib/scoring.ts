@@ -104,11 +104,9 @@ export function scoreTradeline(input: ScoreInput): ScoreResult {
   return { score, probability, reasons, disputeAngles: angles };
 }
 
-// Rough estimated score impact (educational only).
-export function estimatedPointImpact(accountType: AccountType, probability: Probability): number {
-  const base: Record<string, number> = {
-    COLLECTION: 25, CHARGE_OFF: 30, PUBLIC_RECORD: 35, STUDENT_LOAN: 15, REVOLVING: 12, INSTALLMENT: 12,
-  };
-  const mult = probability === "HIGH" ? 1 : probability === "MEDIUM" ? 0.6 : 0.35;
-  return Math.round((base[accountType] ?? 8) * mult);
-}
+// NOTE: estimatedPointImpact() was removed 2026-07-20. It fabricated a per-item
+// score projection ("+25 pts") from a hardcoded table — the exact claim a prior
+// sprint stripped from the strategist UI as a CROA/UDAAP risk (no one can predict
+// a bureau's scoring response). It had zero callers after that removal, so it was
+// dead code that only invited the claim's reintroduction. Score movement is
+// reported from what actually happened, never projected.
