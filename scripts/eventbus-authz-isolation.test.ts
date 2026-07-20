@@ -7,7 +7,9 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { scopeWhere, parseCursor, cursorOf, type AuthContext } from "../lib/eventBus/store";
-import { requestIdentity } from "../lib/eventBus/envelope";
+import { requestIdentity, systemIdentity, type PublishIdentity } from "../lib/eventBus/envelope";
+import { authorizePublish } from "../lib/eventBus/publish";
+import { getContract } from "../lib/eventBus/contracts";
 
 let pass = 0, fail = 0;
 function check(label: string, cond: boolean) {
@@ -68,6 +70,32 @@ check("cursorOf composes createdAtMs:id", cursorOf({ id: "evt_x", createdAt: new
   // NEVER `account.id ?? managedByAgencyId`: a non-agency actor's agencyId comes from the data owner, not the actor id.
   check("non-agency actor never stamps its own id as agencyId", mc.agencyId !== "c1");
 }
+
+// ── authorizePublish: the publish PEP (scope + required permission), fail-closed ─
+const idOf = (o: Partial<PublishIdentity>): PublishIdentity => ({
+  actorId: "a", tenantId: "t", agencyId: null, isAdmin: false, isAgency: false, grantedPermissions: new Set(), trusted: false, ...o,
+});
+const c = (type: string) => getContract(type, 1)!;
+
+// self-scope: any authenticated identity WITH the required permission
+check("self event allowed with the required permission", authorizePublish(c("LETTER_GENERATED"), idOf({ grantedPermissions: new Set(["letters:generate"]) })).ok === true);
+check("self event DENIED without the required permission", authorizePublish(c("LETTER_GENERATED"), idOf({ grantedPermissions: new Set() })).ok === false);
+check("self event (no perm required) allowed for a plain authenticated identity", authorizePublish(c("ACCOUNT_UPDATED"), idOf({})).ok === true);
+// agency-scope: requires an agency account
+check("agency event DENIED for a non-agency identity", authorizePublish(c("CLIENT_CREATED"), idOf({ isAgency: false })).ok === false);
+check("agency event allowed for an agency identity", authorizePublish(c("CLIENT_CREATED"), idOf({ isAgency: true })).ok === true);
+// platform-scope: requires admin
+check("platform event DENIED for a non-admin", authorizePublish(c("SYSTEM_EVENT"), idOf({ isAdmin: false })).ok === false);
+check("platform event allowed for an admin", authorizePublish(c("SYSTEM_EVENT"), idOf({ isAdmin: true })).ok === true);
+check("NOTIFICATION_CREATED DENIED for admin WITHOUT notify:plan", authorizePublish(c("NOTIFICATION_CREATED"), idOf({ isAdmin: true, grantedPermissions: new Set() })).ok === false);
+check("NOTIFICATION_CREATED allowed for admin WITH notify:plan", authorizePublish(c("NOTIFICATION_CREATED"), idOf({ isAdmin: true, grantedPermissions: new Set(["notify:plan"]) })).ok === true);
+// trusted system identity satisfies scope by construction but is still tenant-bound
+check("trusted system identity may publish a platform event", authorizePublish(c("SYSTEM_EVENT"), systemIdentity("t1")).ok === true);
+check("unresolved identity (no tenant) is denied", authorizePublish(c("SYSTEM_EVENT"), idOf({ tenantId: "" , trusted: false, isAdmin: true })).ok === false);
+
+// NEGATIVE CONTROL
+check("negative control: a non-agency, non-admin, unpermissioned identity cannot publish an agency or platform event",
+  authorizePublish(c("CLIENT_CREATED"), idOf({})).ok === false && authorizePublish(c("KAI_INSIGHT_CREATED"), idOf({})).ok === false);
 
 console.log(`\neventbus-authz-isolation.test.ts: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
