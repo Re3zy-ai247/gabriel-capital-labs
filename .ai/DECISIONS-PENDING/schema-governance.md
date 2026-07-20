@@ -1,6 +1,10 @@
 # Decision package: migration-first vs runtime self-heal
 
-**Status: DECISION REQUIRED — owner.** Nothing has been changed. This document
+**Status: DECISION RECORDED (2026-07-20) — staged implementation pending owner scheduling.**
+
+> **Owner principle (stated 2026-07-20):** migrations are the authoritative mechanism for planned production schema evolution; runtime self-heal remains ONLY for the explicitly enumerated legacy tables and must never become the default for a new model; every new feature schema change ships with a migration and a rollback plan; legacy self-heal dependencies retire incrementally. This matches the recommendation below. No risky production schema conversion is performed in this release.
+
+**Original status when written: DECISION REQUIRED — owner.** Nothing has been changed. This document
 presents evidence and a recommendation; it does not pick a side by implementing one.
 
 **Why it exists.** The Verified Launch Hardening sprint asked for a migration-first

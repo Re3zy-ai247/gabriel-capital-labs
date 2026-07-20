@@ -30,10 +30,11 @@
     {
       "fingerprint": "billing/existing-double-subscribed-customers",
       "first_seen": "2026-07-20", "last_seen": "2026-07-20",
-      "severity": "critical", "status": "owner-action",
-      "evidence": "The upgrade fix protects future customers only; it cannot detect customers already holding two active subscriptions from the prior behaviour.",
+      "severity": "critical", "status": "fixed",
+      "evidence": "The upgrade fix protects future customers; a read-only production Stripe audit (livemode:true, acct CreditVector) then closed the historical question.",
       "reproduction": "verified", "owner": "owner",
-      "fix_commit": null, "verification": null, "release": null, "recurrence": 0, "eligible": false
+      "fix_commit": "audit-2026-07-20", "verification": "Live-mode audit: 0 subscriptions of any status; 2 customers, both internal (owner + demo); 1 charge in account history ($1.00 owner self-test). No real paying customers, therefore zero duplicates and $0 realized impact. Nothing to remediate.",
+      "release": "verified-clean", "recurrence": 0, "eligible": false
     },
     {
       "fingerprint": "auth/disabled-account-keeps-session",
