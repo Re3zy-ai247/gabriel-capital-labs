@@ -63,5 +63,18 @@ const reset = readFileSync(join(root, "app/api/auth/reset-password/route.ts"), "
 check("password reset still only rotates the hash (known gap, tracked)",
   /passwordHash/.test(reset) && !/sessionsValidFrom|notBefore/.test(reset));
 
+
+// ── Authenticated bytes must not outlive the session that authorized them ────
+// app/api/attachments/[id]/route.ts served decrypted user uploads (bureau letters,
+// IDs, dispute evidence) with "private, max-age=3600" — a one-hour browser cache
+// that survived logout, so on a shared or borrowed device the file was still
+// served from disk with no further authorization. Its sibling document route
+// already used no-store.
+for (const routePath of ["app/api/attachments/[id]/route.ts", "app/api/documents/[id]/raw/route.ts"]) {
+  const src = readFileSync(join(root, routePath), "utf8");
+  check(`${routePath}: authenticated bytes are no-store`, /"Cache-Control":\s*"no-store, private"/.test(src));
+  check(`${routePath}: no max-age cache on authenticated bytes`, !/max-age=\d+/.test(src));
+}
+
 console.log(`\nsession-security.test.ts: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

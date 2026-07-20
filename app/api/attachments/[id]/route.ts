@@ -56,7 +56,14 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
       "Content-Type": att.mimeType || "application/octet-stream",
       "Content-Length": String(bytes.length),
       "Content-Disposition": `${disposition}; filename="${filename}"`,
-      "Cache-Control": "private, max-age=3600",
+      // no-store, not private/max-age. These bytes are decrypted user uploads —
+      // bureau letters, IDs, dispute evidence — released only after an ownership
+      // check. A one-hour browser cache outlived the session that authorized it:
+      // after logout (or on a shared or borrowed device) the file was still served
+      // from disk cache with no further authorization. The sibling document route
+      // already used no-store; this one did not. Re-fetching costs a decrypt, which
+      // is the correct price for authenticated bytes.
+      "Cache-Control": "no-store, private",
       "X-Content-Type-Options": "nosniff",
       "Content-Security-Policy": "default-src 'none'; sandbox",
       "X-Frame-Options": "DENY",
