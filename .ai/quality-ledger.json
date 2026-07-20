@@ -1,0 +1,137 @@
+{
+  "_schema": {
+    "purpose": "Machine-readable state of every verified quality defect. One row per defect, keyed by a stable fingerprint so the same defect is never counted twice across daily/weekly/monthly runs. Not a second database — a checked-in artifact, updated in the same commit that changes a defect's state.",
+    "fields": {
+      "fingerprint": "stable slug: <domain>/<short-name>, never reused",
+      "first_seen": "ISO date the defect was first verified",
+      "last_seen": "ISO date state last changed",
+      "severity": "critical | high | medium | low",
+      "status": "open | fixed | owner-action | blocked",
+      "evidence": "file:line or observed fact that proved it real",
+      "reproduction": "verified | structural | not-reproduced",
+      "owner": "engineering | owner | counsel",
+      "fix_commit": "sha, or null",
+      "verification": "how the fix was proven, or null",
+      "release": "sha or tag containing the fix once deployed, or null",
+      "recurrence": "count of times this exact fingerprint re-appeared after being marked fixed"
+    },
+    "repair_eligibility": "Track C-4. A defect may be prepared as an isolated repair PR ONLY if eligible=true. Eligible: deterministic lint/type errors with one correction, stale dep patches with passing tests, a guard broken by an explicit contract change, a missing no-store header on authenticated content, reproducible null handling, wrong static copy or route reference. NEVER eligible: billing mutation, auth architecture, authorization logic, migrations, legal/compliance policy, encryption, secrets, data deletion, subscription cancel/refund, production config, cross-tenant behaviour, or any uncertain business intent. No repair auto-merges."
+  },
+  "defects": [
+    {
+      "fingerprint": "billing/upgrade-second-subscription",
+      "first_seen": "2026-07-20", "last_seen": "2026-07-20",
+      "severity": "critical", "status": "fixed",
+      "evidence": "app/api/stripe/checkout/route.ts — upgrade passed the tier guard then created a 2nd mode:subscription session; no subscriptions.update existed. $99+$399=$498/mo.",
+      "reproduction": "structural", "owner": "engineering",
+      "fix_commit": "cebc8d9+7b009a0", "verification": "checkout-guard.test.ts 21 checks; not yet exercised against live Stripe",
+      "release": null, "recurrence": 0, "eligible": false
+    },
+    {
+      "fingerprint": "billing/existing-double-subscribed-customers",
+      "first_seen": "2026-07-20", "last_seen": "2026-07-20",
+      "severity": "critical", "status": "owner-action",
+      "evidence": "The upgrade fix protects future customers only; it cannot detect customers already holding two active subscriptions from the prior behaviour.",
+      "reproduction": "verified", "owner": "owner",
+      "fix_commit": null, "verification": null, "release": null, "recurrence": 0, "eligible": false
+    },
+    {
+      "fingerprint": "auth/disabled-account-keeps-session",
+      "first_seen": "2026-07-20", "last_seen": "2026-07-20",
+      "severity": "critical", "status": "fixed",
+      "evidence": "lib/session.ts currentAccount() never checked disabled; enforced only at sign-in (lib/auth.ts).",
+      "reproduction": "verified", "owner": "engineering",
+      "fix_commit": "cf4ea21", "verification": "session-security.test.ts fails-closed + no extra query",
+      "release": null, "recurrence": 0, "eligible": false
+    },
+    {
+      "fingerprint": "auth/password-reset-no-revocation",
+      "first_seen": "2026-07-20", "last_seen": "2026-07-20",
+      "severity": "high", "status": "blocked",
+      "evidence": "reset-password rotates passwordHash only; a stolen session survives the reset. Needs a notBefore/sessionVersion column.",
+      "reproduction": "verified", "owner": "owner",
+      "fix_commit": null, "verification": null, "release": null, "recurrence": 0, "eligible": false,
+      "blocked_by": "schema column requires ALTER-first/deploy-second sequencing against a DB not reachable from here"
+    },
+    {
+      "fingerprint": "cache/attachment-bytes-past-logout",
+      "first_seen": "2026-07-20", "last_seen": "2026-07-20",
+      "severity": "high", "status": "fixed",
+      "evidence": "app/api/attachments/[id]/route.ts served decrypted uploads with private,max-age=3600 — survived logout on shared devices.",
+      "reproduction": "verified", "owner": "engineering",
+      "fix_commit": "c6005af", "verification": "session-security.test.ts asserts no-store on both file routes",
+      "release": null, "recurrence": 0, "eligible": true
+    },
+    {
+      "fingerprint": "compliance/609-scrubber-dead-for-symbol-spelling",
+      "first_seen": "2026-07-20", "last_seen": "2026-07-20",
+      "severity": "high", "status": "fixed",
+      "evidence": "lib/compliance.ts §609 rule opened with \\b before §, a non-word char — the literal §609 spelling never matched on any generated letter.",
+      "reproduction": "verified", "owner": "engineering",
+      "fix_commit": "8c5d6f7", "verification": "all six myth spellings caught, lawful §609/§611 untouched",
+      "release": "deployed", "recurrence": 0, "eligible": false,
+      "eligibility_note": "Lives in compliance code. The fix looked mechanical (a regex correction) but required verifying it did not over-scrub lawful §609/§611 language — judgment, not mechanics. Compliance code is never autonomous-repair eligible."
+    },
+    {
+      "fingerprint": "build/db-push-drops-selfheal-tables",
+      "first_seen": "2026-07-20", "last_seen": "2026-07-20",
+      "severity": "critical", "status": "fixed",
+      "evidence": "vercel.json ran prisma db push --accept-data-loss on every prod+preview build against a shared DB, armed to drop 15 self-heal-owned tables.",
+      "reproduction": "verified", "owner": "engineering",
+      "fix_commit": "7e5dc85", "verification": "schema-safety.test.ts 16 checks; build log shows no Datasource line",
+      "release": "deployed", "recurrence": 0, "eligible": false
+    },
+    {
+      "fingerprint": "ux/slate-100-not-theme-aware",
+      "first_seen": "2026-07-20", "last_seen": "2026-07-20",
+      "severity": "high", "status": "fixed",
+      "evidence": "tailwind slate scale mapped 50/200..950 but not 100; text-slate-100 ~1.05:1 in light mode across 18 files incl. Mission Control heading.",
+      "reproduction": "verified", "owner": "engineering",
+      "fix_commit": "bb4a410", "verification": "browser-measured 1.05:1 -> 16:1",
+      "release": "deployed", "recurrence": 0, "eligible": true
+    },
+    {
+      "fingerprint": "ux/executive-queue-no-expand",
+      "first_seen": "2026-07-20", "last_seen": "2026-07-20",
+      "severity": "high", "status": "fixed",
+      "evidence": "data-gxl-claim inside <summary>; GxlPull preventDefault()s it, suppressing the native disclosure on the production dashboard.",
+      "reproduction": "verified", "owner": "engineering",
+      "fix_commit": "bb4a410", "verification": "claim relocated to the expanded body",
+      "release": "deployed", "recurrence": 0, "eligible": true
+    },
+    {
+      "fingerprint": "a11y/attachment-picker-keyboard-unreachable",
+      "first_seen": "2026-07-20", "last_seen": "2026-07-20",
+      "severity": "high", "status": "fixed",
+      "evidence": "components/Attachments.tsx role=button div, tabIndex=0, no key handler — WCAG 2.1.1 on three write paths.",
+      "reproduction": "verified", "owner": "engineering",
+      "fix_commit": "bb4a410", "verification": "converted to native <button>",
+      "release": "deployed", "recurrence": 0, "eligible": true
+    },
+    {
+      "fingerprint": "observability/alert-webhook-not-configured",
+      "first_seen": "2026-07-20", "last_seen": "2026-07-20",
+      "severity": "high", "status": "owner-action",
+      "evidence": "lib/observability.ts reads ALERT_WEBHOOK_URL; vercel env ls production returns zero matches. reportError logs but no alert reaches a human. Coverage widened by 65cc4a4 (stripe+crons) but the sink is still unset.",
+      "reproduction": "verified", "owner": "owner",
+      "fix_commit": "65cc4a4", "verification": "coverage added; delivery still unproven until the env var is set",
+      "release": null, "recurrence": 0, "eligible": false
+    },
+    {
+      "fingerprint": "compliance/operator-network-outside-privacy-policy",
+      "first_seen": "2026-07-20", "last_seen": "2026-07-20",
+      "severity": "high", "status": "owner-action",
+      "evidence": "Live privacy policy has zero matches for operator/community; the shipped Operator Network is a cross-user display running outside its disclosure.",
+      "reproduction": "verified", "owner": "counsel",
+      "fix_commit": null, "verification": null, "release": null, "recurrence": 0, "eligible": false
+    },
+    {
+      "fingerprint": "compliance/landing-cfpb-overstatement",
+      "first_seen": "2026-07-20", "last_seen": "2026-07-20",
+      "severity": "medium", "status": "owner-action",
+      "evidence": "app/page.tsx + Showcase.tsx advertise 'Structured CFPB complaint drafting'; no generator exists — lib/letter.ts produces a final-notice letter referencing intent.",
+      "reproduction": "verified", "owner": "counsel",
+      "fix_commit": null, "verification": null, "release": null, "recurrence": 0, "eligible": false
+    }
+  ]
+}
