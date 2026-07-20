@@ -27,7 +27,11 @@ const PROHIBITED: { pattern: RegExp; replacement: string }[] = [
   { pattern: /\b(the|this) inquiry was unauthorized\b/gi, replacement: "I do not recognize any application or transaction that would authorize this inquiry" },
 
   // — Credit-repair deletion myths (§609 / Metro 2) —
-  { pattern: /\b(§\s?609|section 609|fcra 609)\b([^.]*?)\b(requires?|compels?|mandates?|forces?) (deletion|removal)\b/gi, replacement: "§609 entitles me to disclosure of my file; I separately dispute the item's accuracy under §611" },
+  // NOTE: no leading \b before "§" — "§" is a non-word character, so \b can never
+  // match in front of it and the literal "§609" spelling (the most common way this
+  // myth is written) would slip the scrub entirely. Word boundaries are applied to
+  // the word-initial branches only.
+  { pattern: /(§\s?609|\b(?:section|fcra)\s?609\b)([^.]*?)\b(requires?|compels?|mandates?|forces?) (deletion|removal)\b/gi, replacement: "§609 entitles me to disclosure of my file; I separately dispute the item's accuracy under §611" },
   { pattern: /\bmetro\s?2\b([^.]*?)\b(requires?|compels?|mandates?) (deletion|removal)\b/gi, replacement: "the reported data appears internally inconsistent and warrants verification" },
 ];
 

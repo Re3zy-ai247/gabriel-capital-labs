@@ -297,7 +297,7 @@ export default function Home() {
                   <h3 className="h-display mt-4 text-2xl text-white md:text-3xl text-balance">Your Credit Intelligence Officer, across every client</h3>
                   <p className="mt-4 text-slate-300 pretty">
                     Kai works every CreditVector file. On Agency plans, Kai extends across your whole roster and joins your team in
-                    the Community Hub — ready with dispute strategy, FCRA rights, and the strongest next move on any client.
+                    the Operator Network — ready with dispute strategy, FCRA rights, and the strongest next move on any client.
                     Grounded in the law and reviewed for compliance.
                   </p>
                   <ul className="mt-6 space-y-3">
@@ -325,10 +325,10 @@ export default function Home() {
             </Reveal>
             <Reveal delay={120}>
               <div>
-                <span className="eyebrow"><MessagesSquare className="h-3.5 w-3.5" aria-hidden /> Community Hub</span>
+                <span className="eyebrow"><MessagesSquare className="h-3.5 w-3.5" aria-hidden /> Operator Network</span>
                 <h2 className="h-display mt-4 text-3xl text-white md:text-4xl text-balance">Learn from people working on the same thing</h2>
                 <p className="lede mt-4">
-                  The Community Hub — included with the Agency plan — is where credit professionals compare notes on what&apos;s
+                  The Operator Network — included with every paid plan — is where members compare notes on what&apos;s
                   working: dispute strategy, bureau timelines, and hard-won lessons, with Kai, your Credit Intelligence Officer,
                   in the room to keep answers grounded in the FCRA.
                 </p>
@@ -342,10 +342,10 @@ export default function Home() {
                     </li>
                   ))}
                 </ul>
-                <Link href="/pricing" className="btn-ghost btn-lg mt-9">See Agency plans <ArrowRight className="h-4 w-4" aria-hidden /></Link>
+                <Link href="/pricing" className="btn-ghost btn-lg mt-9">See plans <ArrowRight className="h-4 w-4" aria-hidden /></Link>
                 <p className="mt-5 text-xs leading-relaxed text-slate-500">
-                  Community posts are members&apos; own opinions — not CreditVector or legal advice, and no outcome is guaranteed.
-                  Only Kai&apos;s answers are reviewed for compliance.
+                  Operator Network posts are members&apos; own opinions — not CreditVector or legal advice, and no outcome is
+                  guaranteed. Only Kai&apos;s answers are reviewed for compliance.
                 </p>
               </div>
             </Reveal>
@@ -510,7 +510,7 @@ function CommunityVisual() {
     <div aria-hidden className="rounded-2xl border border-ink-700/70 bg-ink-900/70 p-5 shadow-card backdrop-blur">
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <div className="text-[11px] uppercase tracking-wide text-slate-500">Community Hub</div>
+          <div className="text-[11px] uppercase tracking-wide text-slate-500">Operator Network</div>
           <div className="text-sm font-semibold text-white">Recent discussions</div>
         </div>
         <span className="rounded-full bg-brand-500/15 px-2.5 py-0.5 text-[10px] font-semibold text-brand-300">Kai in the room</span>

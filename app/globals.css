@@ -75,6 +75,44 @@ html.light .text-white:not(.keep-white) { color: rgb(var(--fg)); }
 .keep-white,
 html.light .keep-white { color: #ffffff; }
 
+/* Gold-400 text is an attention accent tuned for dark ink (11.8:1 there) but
+   ~1.5:1 on the light page — flip it to a dark gold in light mode (4.9:1+ AA).
+   Green stays reserved for verified states; this keeps attention in the gold family. */
+html.light .text-gold-400 { color: #8a6116; }
+
+/* ── Living Intelligence (Operator Network Phase 1.2) ──────────────────────────
+   Behavior, never decoration. Two mechanisms, both pure CSS at render time:
+
+   1. Computation reveal — .ops-card carries a cursor-following luminance set via
+      --lx/--ly by ONE delegated listener (LivingIntelligence.tsx). The overlay
+      only exists while hovered; it conveys nothing informational (Law M2). */
+.ops-card { position: relative; }
+.ops-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  background: radial-gradient(160px circle at var(--lx, 50%) var(--ly, 50%), rgba(56, 189, 214, 0.055), transparent 70%);
+}
+.ops-card:hover::after { opacity: 1; }
+
+/* 2. Attention breathing — ONLY a brief awaiting its first response breathes,
+      because an open loop is real state that needs a person. 6s, border-alpha
+      only, sub-perceptual; never on resolved or active items. */
+@keyframes ops-breathe {
+  0%, 100% { border-color: rgba(227, 169, 46, 0.18); }
+  50% { border-color: rgba(227, 169, 46, 0.42); }
+}
+.ops-breathe { animation: ops-breathe 6s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ops-card::after { display: none; }
+  .ops-breathe { animation: none; border-color: rgba(227, 169, 46, 0.3); }
+}
+
 ::selection { background: rgba(14, 165, 196, 0.30); color: #fff; }
 
 /* Visible keyboard focus everywhere (accessibility, not optional).

@@ -10,7 +10,7 @@
 //     per account via entitlement override — never permanently hardcoded.
 //
 // LOCKSTEP LAW: until Phase-B activation, the CLIENT_WORKSPACE_LIMIT values here
-// MUST equal lib/entitlements.agencyClientLimit (15/40/100/null) — the golden
+// MUST equal lib/entitlements.agencyClientLimit (v3: 15/30/50/null) — the golden
 // test in Phase B2/B3 asserts it. CONCURRENT_SESSION_LIMIT is DECLARED here but
 // NOT ENFORCEABLE today (NextAuth stateless JWT, no session registry) — it must
 // not be advertised in the UI until the session-architecture package ships.
@@ -50,7 +50,7 @@ const PAID = [
   cap("credit.response.analyze"), //*
   cap("credit.campaign.compose"), //*
 ] as const;
-const COMMUNITY = cap("community.access"); //* (agency-gated today)
+const COMMUNITY = cap("community.access"); //* Operator Network — every paid tier (founder decision, Phase 1.1; lockstep with lib/community.canAccessCommunity)
 const MEMORY = cap("kai.memory.persist"); // ADR-0006 gated — flag OFF
 const ANALYTICS = cap("analytics.advanced.view");
 const WORKSPACES = cap("workspace.client.manage"); //* (agency roster)
@@ -108,8 +108,10 @@ function grant(
 }
 
 const BASE_PERMS: Permission[] = ["letters:generate", "obsolescence:check", "tradeline:read"];
-const PAID_PERMS: Permission[] = [...BASE_PERMS, "responses:analyze", "campaign:compose", "strategy:plan"];
-const AGENCY_PERMS: Permission[] = [...PAID_PERMS, "clients:manage", "community:read", "community:write"];
+// community:read/write ride with the PAID bundle (Operator Network = every paid
+// tier — Phase 1.1); agency adds only client management on top.
+const PAID_PERMS: Permission[] = [...BASE_PERMS, "responses:analyze", "campaign:compose", "strategy:plan", "community:read", "community:write"];
+const AGENCY_PERMS: Permission[] = [...PAID_PERMS, "clients:manage"];
 
 // ── The matrix: each tier = a bundle; higher tiers are supersets ─────────────
 export const CAPABILITY_MATRIX: TierCapabilityMatrix = {
@@ -120,7 +122,7 @@ export const CAPABILITY_MATRIX: TierCapabilityMatrix = {
     ["TEAM_MEMBER_LIMIT", 0],
     ["API_CALLS_MONTHLY_LIMIT", 0],
   ]),
-  professional: grant([...CORE, ...PAID], PAID_PERMS, [
+  professional: grant([...CORE, ...PAID, COMMUNITY], PAID_PERMS, [
     ["LETTERS_MONTHLY_LIMIT", null],
     ["CLIENT_WORKSPACE_LIMIT", 0],
     ["CONCURRENT_SESSION_LIMIT", 1],

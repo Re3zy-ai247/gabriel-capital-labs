@@ -36,7 +36,7 @@ Every response carries `x-cv-release: <first 12 of commit SHA>` (set at build in
   control promptly; precached assets are content-hashed. Residual risk: a tab open across a deploy
   may 404 an old prefetched chunk — Next.js falls back to a full navigation, self-healing.
 - **Vercel Skew Protection: NOT ENABLED — Hobby plan (feature is Pro/Enterprise).** Verified by API
-  on 2026-07-12 (`invalid_billing_plan`). When/if the account upgrades to Pro:
+  on 2026-07-12 (`invalid_billing_plan (⚠️ STALE 2026-07-20: team is now on **Pro** — Skew Protection is available; enable it via Settings → Advanced or PATCH /v9/projects/<id> {"skewProtectionMaxAge": 43200})`). When/if the account upgrades to Pro:
   1. Project Settings → Advanced → Skew Protection (or `PATCH /v9/projects/<id>` with
      `{"skewProtectionMaxAge": 43200}`).
   2. Compatibility (pre-checked): middleware matcher is `["/"]` only and reads only the NextAuth JWT

@@ -10,6 +10,7 @@ import type { PriorityBand, MissionState, Level } from "@/lib/missionEngine";
 import {
   Target, Clock, ArrowUpRight, Lock, AlertTriangle, Sparkles, ListChecks, ChevronDown, ShieldAlert, Gauge,
 } from "lucide-react";
+import gxl from "./mc.module.css";
 
 const BAND_DOT: Record<PriorityBand, string> = { critical: "bg-rose-400", high: "bg-gold-400", medium: "bg-ocean-400", low: "bg-slate-500" };
 const STATE_LABEL: Record<MissionState, string> = {
@@ -27,9 +28,9 @@ export function ExecutiveQueue({ execution }: { execution: ExecutionResult }) {
   return (
     <section aria-label="Executive queue" className="mb-4 space-y-4">
       <div className="flex items-center gap-2">
-        <Target className="h-4 w-4 text-brand-300" aria-hidden />
-        <h3 className="text-sm font-bold uppercase tracking-widest text-slate-400">Executive queue</h3>
-        <span className="text-[11px] text-slate-500">· Kai's one-list of what to do next</span>
+        <Target className="h-3.5 w-3.5 text-brand-300" aria-hidden />
+        <h3 className={gxl.engraved}>Executive queue</h3>
+        <span className="text-[11px] text-slate-500">· Kai&apos;s one-list of what to do next</span>
       </div>
 
       {/* The three questions every login should answer, up top. */}
@@ -55,52 +56,74 @@ export function ExecutiveQueue({ execution }: { execution: ExecutionResult }) {
 
       {visible.map((b) => (
         <div key={b.key}>
-          <div className="mb-2 flex items-baseline gap-2">
-            <h4 className="text-[11px] font-bold uppercase tracking-widest text-slate-300">{b.label}</h4>
-            <span className="tnum text-[11px] text-slate-500">{b.items.length}</span>
+          <div className="mb-1 flex items-baseline gap-2">
+            <h4 className={gxl.engraved}>{b.label}</h4>
+            <span className="tnum font-mono text-[11px] text-slate-500">{b.items.length}</span>
             <span className="text-[11px] text-slate-500">· {b.blurb}</span>
           </div>
-          <ol className="space-y-2">
+          <ol className={gxl.folio}>
             {b.items.map((it) => <ExecutionCard key={it.id} it={it} />)}
           </ol>
         </div>
       ))}
 
-      <p className="text-[10px] leading-relaxed text-slate-500">{note}</p>
+      <p className={gxl.colophon}>{note}</p>
     </section>
   );
 }
 
 function HeadTile({ icon, label, title, sub, href, tone }: { icon: React.ReactNode; label: string; title: string; sub: string; href?: string; tone?: string }) {
+  // The verdict column (GXL synthesis): typographic, transparent, top-ruled —
+  // three quiet verdicts, never three cards shouting.
   const inner = (
-    <div className="card h-full p-4">
-      <div className="mb-1.5 flex items-center gap-2"><span aria-hidden>{icon}</span><span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{label}</span></div>
-      <div className={`text-sm font-semibold ${tone ?? "text-slate-100"}`}>{title}</div>
-      <div className="mt-0.5 text-[12px] leading-snug text-slate-400">{sub}</div>
+    <div className={`${gxl.verdict} h-full px-1`}>
+      <div className="mb-1.5 flex items-center gap-2"><span aria-hidden>{icon}</span><span className={gxl.engravedDim}>{label}</span></div>
+      <div className={`${gxl.record} text-[15px] leading-snug ${tone ?? "text-slate-100"}`}>{title}</div>
+      <div className="mt-1 text-[12px] leading-snug text-slate-400">{sub}</div>
     </div>
   );
-  return href ? <Link href={href} className="block transition-colors hover:brightness-110">{inner}</Link> : inner;
+  return href ? <Link href={href} className={`block transition-colors hover:brightness-110 ${gxl.detent}`}>{inner}</Link> : inner;
 }
 
 function ExecutionCard({ it }: { it: ExecutionItem }) {
   const actionable = ACTIONABLE.has(it.status);
+  const settled = it.status === "completed" || it.status === "expired";
+  // GXL planes, derived from REAL status: actionable work lifts and carries the
+  // gold flag (a human is needed); the settled past recedes into the record.
+  const plane = settled
+    ? gxl.recessed
+    : actionable
+      ? `${gxl.lifted} ${gxl.flagged}`
+      : "";
   return (
-    <li className="card overflow-hidden p-0">
+    <li className={`${gxl.entry} ${plane}`}>
       <details className="group">
-        <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-3 transition-colors hover:bg-ink-800/40 [&::-webkit-details-marker]:hidden">
+        <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-3 [&::-webkit-details-marker]:hidden">
           <span className={`h-2 w-2 shrink-0 rounded-full ${BAND_DOT[it.priority.band]}`} aria-hidden />
           <span className="sr-only">{it.priority.band} priority.</span>
           <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-sm font-medium text-slate-100">{it.title}</span>
-              <span className="pill bg-ink-700 text-slate-300 inline-flex items-center gap-1">
+            <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-0.5">
+              <span
+                data-gxl-claim
+                data-gxl-title={it.title}
+                data-gxl-room="Executive queue"
+                data-gxl-filed={it.timeline}
+                data-gxl-author="Execution Engine (deterministic)"
+                data-gxl-responses={`effort: ${it.effort}`}
+                data-gxl-state={STATE_LABEL[it.status]}
+                className={`${gxl.record} text-[15px] leading-snug ${settled ? "text-slate-400" : "text-slate-100"}`}
+                title="Press and hold to pull this item's provenance"
+              >
+                {it.title}
+              </span>
+              <span className={`${gxl.engravedDim} inline-flex items-center gap-1`}>
                 {it.status === "locked" && <Lock className="h-2.5 w-2.5" aria-hidden />}{STATE_LABEL[it.status]}
               </span>
             </div>
             <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-slate-400">
-              <span className="inline-flex items-center gap-1"><Clock className="h-2.5 w-2.5" aria-hidden />{it.timeline}</span>
-              <span>effort: {it.effort}</span>
-              <span className="text-slate-500">{it.priority.reason}</span>
+              <span className="tnum inline-flex items-center gap-1 font-mono"><Clock className="h-2.5 w-2.5" aria-hidden />{it.timeline}</span>
+              <span className="tnum font-mono">effort: {it.effort}</span>
+              {!settled && <span className="text-slate-500">{it.priority.reason}</span>}
             </div>
           </div>
           <ChevronDown className="h-4 w-4 shrink-0 text-slate-500 transition-transform group-open:rotate-180" aria-hidden />
@@ -133,7 +156,7 @@ function ExecutionCard({ it }: { it: ExecutionItem }) {
 
           {/* Citations — every recommendation cites its sources. */}
           <div className="rounded-md bg-ink-800/50 p-3">
-            <div className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-500">Cited from</div>
+            <div className={`${gxl.engravedDim} mb-1.5`}>Cited from</div>
             <dl className="grid gap-x-4 gap-y-1 sm:grid-cols-2">
               <Cite k="Mission" v={it.citations.mission} />
               <Cite k="Outcome Ledger" v={it.citations.ledger} />
@@ -152,7 +175,7 @@ function ExecutionCard({ it }: { it: ExecutionItem }) {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <div className="mb-0.5 text-[10px] font-bold uppercase tracking-widest text-slate-500">{label}</div>
+      <div className={`${gxl.engravedDim} mb-0.5`}>{label}</div>
       <div className="text-slate-300">{children}</div>
     </div>
   );
