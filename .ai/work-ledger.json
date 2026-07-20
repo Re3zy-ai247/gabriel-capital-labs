@@ -17,6 +17,30 @@
   },
   "packages": [
     {
+      "package": "operator-network-slice",
+      "subsystem": "community / operator network",
+      "wave": 1,
+      "owner_session": "fable-moat-builder",
+      "owns": ["lib/network/**", "app/api/network/**", "prisma/migrations/**", "scripts/operator-shell.test.ts", "scripts/network-*.test.ts", ".ai/COUNSEL-REVIEW-operator-network.md"],
+      "started": "2026-07-20",
+      "status": "active",
+      "dependencies": "operator-shell guard amendment (this package); privacy counsel review (blocks PUBLIC activation only)",
+      "release_conditions": "flag OFF by default; tenant isolation runtime-proven; moderation path operational; privacy package reviewed before unrestricted public access",
+      "completion_commit": null
+    },
+    {
+      "package": "arena-slice",
+      "subsystem": "arena / progression",
+      "wave": 3,
+      "owner_session": "fable-moat-builder",
+      "owns": ["lib/arena/**", "app/api/arena/**", "app/admin/arena/**", "scripts/arena-*.test.ts", ".ai/ARENA-CONTRIBUTION-POLICY.md"],
+      "started": "2026-07-20",
+      "status": "active",
+      "dependencies": "verified-outcome evidence (lib/outcomeLedger), Academy evidence for education rule",
+      "release_conditions": "flag OFF by default; replay + anti-duplication proven; fraud hooks exist; no unverified historical XP displayed",
+      "completion_commit": null
+    },
+    {
       "package": "eng-ops-center",
       "subsystem": "admin / internal operations",
       "wave": 8,
