@@ -596,3 +596,35 @@ model NetworkMessageReadState {
   @@unique([userId, channelKey])
   @@index([userId])
 }
+
+// ── Platform Event Bus — immutable event log (Sprint 8) ──────────────────────
+// The platform-wide realtime backbone's durable, REPLAYABLE, full-payload event
+// log. Migration-first (NOT self-heal): created by a reviewed migration, never at
+// runtime. Distinct from KernelEvent (hash-only, by privacy directive) and from
+// KaiEvent (user-timeline). NO foreign key to User on purpose: events are an
+// immutable coordination spine that must OUTLIVE the entities they mention (an
+// ACCOUNT_DELETED event cannot cascade-delete with the account). `id` is
+// deterministic + tenant-scoped (evt_<sha256(tenantId|source|dedupeKey)>), so it is
+// the idempotency key — a retried publish is one ON CONFLICT(id) no-op. Ordering is
+// the proven Sprint 7 [createdAt asc, id asc] total order (a cursor of
+// createdAtMs:id), so no bespoke sequence is needed. payload is typed per contract
+// and refs-only (no value-bearing PII). Tenant + agency isolation is enforced at the
+// read layer via a SERVER-resolved AuthContext, backed by these indexes.
+model EventEnvelope {
+  id            String   @id
+  type          String
+  version       Int
+  tenantId      String
+  agencyId      String?
+  actorId       String
+  source        String
+  correlationId String
+  payload       Json
+  redactedAt    DateTime? // data-subject erasure tombstone: payload cleared, envelope kept
+  createdAt     DateTime @default(now())
+
+  @@index([tenantId, createdAt, id])
+  @@index([tenantId, agencyId, createdAt, id])
+  @@index([type, createdAt, id])
+  @@index([correlationId])
+}
