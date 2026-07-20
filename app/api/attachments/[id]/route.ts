@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { currentAccount } from "@/lib/session";
-import { canAccessCommunity } from "@/lib/community";
+import { canViewCommunityAttachment } from "@/lib/community/attachmentAuthz";
 import { loadAttachment, decryptAttachment, docCryptoReady } from "@/lib/attachments";
 import { isImageMime } from "@/lib/attachmentsShared";
 
@@ -31,15 +31,15 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
     });
     allowed = !!msg && (account.role === "ADMIN" || msg.ticket?.userId === account.id);
   } else if (att.scope === "community_thread") {
-    if (canAccessCommunity(account)) {
-      const thread = await prisma.communityThread.findUnique({ where: { id: att.refId }, select: { id: true } });
-      allowed = !!thread;
-    }
+    const thread = await prisma.communityThread.findUnique({ where: { id: att.refId } });
+    allowed = !!thread && canViewCommunityAttachment(account, thread);
   } else if (att.scope === "community_reply") {
-    if (canAccessCommunity(account)) {
-      const reply = await prisma.communityReply.findUnique({ where: { id: att.refId }, select: { id: true } });
-      allowed = !!reply;
-    }
+    // A reply's audience is its parent thread's audience — resolve the thread and
+    // gate on it, so a private thread's replies can never leak through the reply
+    // scope while the thread scope is protected.
+    const reply = await prisma.communityReply.findUnique({ where: { id: att.refId }, select: { threadId: true } });
+    const thread = reply ? await prisma.communityThread.findUnique({ where: { id: reply.threadId } }) : null;
+    allowed = !!thread && canViewCommunityAttachment(account, thread);
   }
   if (!allowed) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
