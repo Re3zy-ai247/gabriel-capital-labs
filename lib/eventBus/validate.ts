@@ -4,11 +4,15 @@
 //   1. Contract: the (type, version) must be a registered contract and the payload
 //      must satisfy its strict zod schema. Unknown type, unknown version, extra keys,
 //      or a shape mismatch => REJECTED (never coerced, never a partial persist).
-//   2. Structural PII guard: no payload key may be a value-bearing / free-text PII
-//      carrier. The event log is a refs-only coordination spine; details live in the
-//      owning table behind that table's own authorization. This runs on top of the
-//      schema so a future contract that adds a PII field is caught here AND by the
-//      registry test, not discovered in production.
+//   2. Structural PII guard: no payload KEY may name a value-bearing PII field, AND no
+//      free-text VALUE may match a high-confidence PII pattern (email / SSN / card /
+//      long digit run). The event log is a refs-only coordination spine; details live in
+//      the owning table behind that table's own authorization. Both checks run on top of
+//      the schema so a future contract that adds a PII field — or a producer that smuggles
+//      an email into SYSTEM_EVENT.detail or a changedFields entry — is caught here (and by
+//      the registry test), not discovered in the durable full-payload log. The value scan
+//      is high-confidence-only (it cannot catch a bare name/street); the refs-only
+//      discipline in contracts.ts remains the primary defense.
 import { getContract } from "./contracts";
 
 // Substrings that name a value-bearing PII / free-text field. Matched case-insensitively
@@ -29,8 +33,23 @@ function keyIsPII(key: string): boolean {
   return PII_DENYLIST.some((bad) => k.includes(bad));
 }
 
-// Recursively assert no PII-named key anywhere in the payload (objects + arrays).
+// High-confidence value-bearing PII patterns. Deliberately conservative (no false
+// positives on ids/enums): an email, an SSN (xxx-xx-xxxx or 9 bare digits), a 13-19 digit
+// run (card/account), or a formatted phone. It cannot catch a bare name or street — that
+// is why contracts.ts keeps payloads refs-only; this is the backstop, not the fence.
+const PII_VALUE_PATTERNS: readonly RegExp[] = [
+  /[^\s@]+@[^\s@]+\.[^\s@]+/,          // email
+  /\b\d{3}-\d{2}-\d{4}\b/,             // SSN formatted
+  /\b\d{13,19}\b/,                     // card / long account number
+  /\b\d{3}[-.\s]\d{3}[-.\s]\d{4}\b/,   // phone
+];
+function valueIsPII(s: string): boolean {
+  return PII_VALUE_PATTERNS.some((re) => re.test(s));
+}
+
+// Recursively assert no PII-named KEY and no PII-valued string anywhere in the payload.
 export function assertNoPII(value: unknown, path = ""): { ok: true } | { ok: false; badKey: string } {
+  if (typeof value === "string") return valueIsPII(value) ? { ok: false, badKey: `${path || "(root)"} (value)` } : { ok: true };
   if (value === null || typeof value !== "object") return { ok: true };
   if (Array.isArray(value)) {
     for (let i = 0; i < value.length; i++) {

@@ -82,7 +82,7 @@ export async function publish(input: PublishInput): Promise<PublishResult> {
   // 4. Assemble the immutable envelope. id is deterministic + tenant-scoped (idempotency
   //    key); correlationId is stable across retries (defaults to the id).
   const source = input.source ?? contract.defaultSource;
-  const id = deriveEventId(input.identity.tenantId, source, input.dedupeKey);
+  const id = deriveEventId(input.identity.tenantId, input.type, source, input.dedupeKey);
   const draft: DraftEvent = {
     id,
     type: input.type,

@@ -39,15 +39,15 @@ async function run() {
   check("wildcard subscriber fires", starCount === 1);
   check("non-matching subscriber does NOT fire", otherCount === 0);
 
-  // Re-deliver the SAME event id → per-(event,sub) dedupe → no second fire
-  await deliver(ev({ id: "evt_A" }));
-  check("redelivery of the same event does not double-fire (dedupe)", aCount === 1 && starCount === 1);
+  // Within ONE deliver() each subscription is visited once (no double-fire per event).
+  check("a single deliver fires each matching subscriber exactly once", aCount === 1 && starCount === 1);
 
-  // A DIFFERENT event id fires again
+  // Dedupe of a REPLAYED event lives at the publish layer (!replayed gate), not in the
+  // registry — deliver() is only ever called on a fresh persist. A distinct event fires again.
   await deliver(ev({ id: "evt_B" }));
-  check("a distinct event fires the handler again", aCount === 2);
+  check("a distinct fresh event fires the handler again", aCount === 2);
 
-  // Re-subscribing the same id replaces, never doubles
+  // Re-subscribing the same id replaces, never doubles → still one visit per deliver.
   subscribe("a", "SYSTEM_EVENT", () => { aCount += 10; });
   check("re-subscribe with same id does not duplicate the subscription", subscriberIds().filter((x) => x === "a").length === 1);
 
@@ -61,9 +61,10 @@ async function run() {
   clearSubscriptions();
 
   // ── deriveEventId idempotency + tenant scoping ──────────────────────────────
-  check("same (tenant,source,dedupeKey) => same id (idempotent)", deriveEventId("t1", "letters", "l:1") === deriveEventId("t1", "letters", "l:1"));
-  check("different tenant => different id (no cross-tenant collision)", deriveEventId("t1", "letters", "l:1") !== deriveEventId("t2", "letters", "l:1"));
-  check("different dedupeKey => different id", deriveEventId("t1", "letters", "l:1") !== deriveEventId("t1", "letters", "l:2"));
+  check("same (tenant,type,source,dedupeKey) => same id (idempotent)", deriveEventId("t1", "LETTER_GENERATED", "letters", "l:1") === deriveEventId("t1", "LETTER_GENERATED", "letters", "l:1"));
+  check("different tenant => different id (no cross-tenant collision)", deriveEventId("t1", "LETTER_GENERATED", "letters", "l:1") !== deriveEventId("t2", "LETTER_GENERATED", "letters", "l:1"));
+  check("different type => different id (no cross-type collision)", deriveEventId("t1", "LETTER_GENERATED", "letters", "l:1") !== deriveEventId("t1", "DISPUTE_CREATED", "letters", "l:1"));
+  check("different dedupeKey => different id", deriveEventId("t1", "LETTER_GENERATED", "letters", "l:1") !== deriveEventId("t1", "LETTER_GENERATED", "letters", "l:2"));
 
   // ── Publish reject paths (fail-closed, all return BEFORE persistence) ────────
   const valid = { type: "SYSTEM_EVENT" as const, payload: { kind: "deploy" }, identity: systemIdentity("t1"), dedupeKey: "sys:deploy:1" };

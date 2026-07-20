@@ -111,11 +111,13 @@ export function systemIdentity(tenantId: string, opts?: { actorId?: string; agen
   };
 }
 
-// Deterministic event id — the idempotency key. Tenant-scoped so two tenants using the
-// same producer key can never collide/suppress each other's event (the composite the
-// review demanded, folded into the PK). A retry with the same (tenant, source,
-// dedupeKey) yields the same id → ON CONFLICT no-op → replayed.
-export function deriveEventId(tenantId: string, source: string, dedupeKey: string): string {
-  const h = createHash("sha256").update(`${tenantId}|${source}|${dedupeKey}`).digest("hex");
+// Deterministic event id — the idempotency key. Includes the event TYPE and the tenant,
+// so two DIFFERENT types (or two tenants) sharing a source + dedupeKey can never collide
+// on the PK and get one silently dropped as a false "replay". A retry with the same
+// (tenant, type, source, dedupeKey) yields the same id → ON CONFLICT no-op → replayed.
+// `version` is deliberately EXCLUDED so a retry stays idempotent across a contract-version
+// bump (same logical event = same id); type is what prevents the cross-type collision.
+export function deriveEventId(tenantId: string, type: string, source: string, dedupeKey: string): string {
+  const h = createHash("sha256").update(`${tenantId}|${type}|${source}|${dedupeKey}`).digest("hex");
   return `evt_${h.slice(0, 32)}`;
 }

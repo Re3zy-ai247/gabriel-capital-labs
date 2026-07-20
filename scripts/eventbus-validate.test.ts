@@ -42,6 +42,13 @@ check("assertNoPII flags a nested balance field", assertNoPII({ tl: { balance: 1
 check("assertNoPII flags a field inside an array", assertNoPII({ items: [{ address: "x" }] }).ok === false);
 check("assertNoPII allows refs-only payload", assertNoPII({ letterId: "l1", tradelineId: "t1", changedFields: ["plan"] }).ok === true);
 check("PII denylist is non-empty", PII_DENYLIST.length > 10);
+// Value-scanning: a PII VALUE in a free-text field is rejected even if its key is innocuous.
+check("assertNoPII rejects an email VALUE", assertNoPII("user@example.com").ok === false);
+check("assertNoPII rejects a formatted SSN VALUE", assertNoPII("123-45-6789").ok === false);
+check("assertNoPII rejects a nested card-number VALUE", assertNoPII({ detail: "4111111111111111" }).ok === false);
+check("assertNoPII allows a plain field-name string VALUE", assertNoPII("plan").ok === true && assertNoPII({ changedFields: ["plan", "email"] }).ok === true);
+check("validateEvent rejects a PII email inside changedFields", validateEvent("ACCOUNT_UPDATED", 1, { accountId: "a1", changedFields: ["user@x.com"] }).ok === false);
+check("validateEvent rejects an SSN in SYSTEM_EVENT.detail", validateEvent("SYSTEM_EVENT", 1, { kind: "x", detail: "ssn 123-45-6789" }).ok === false);
 
 // A contract that (hypothetically) carried a PII field must be rejected by validateEvent
 // via the guard — simulate by asserting the guard runs on real payloads.
@@ -65,9 +72,10 @@ for (const [key, c] of Object.entries(CONTRACTS)) {
 check("currentVersion(LETTER_SENT) === 1", currentVersion("LETTER_SENT") === 1);
 check("contractKey composes type@version", contractKey("LETTER_SENT", 1) === "LETTER_SENT@1");
 check("getContract resolves a registered contract", getContract("LETTER_SENT", 1)?.type === "LETTER_SENT");
-// deterministic + tenant-scoped id: same inputs => same id; different tenant => different id
-check("deriveEventId is deterministic", deriveEventId("t1", "letters", "letter:1") === deriveEventId("t1", "letters", "letter:1"));
-check("deriveEventId is tenant-scoped (no cross-tenant collision)", deriveEventId("t1", "letters", "letter:1") !== deriveEventId("t2", "letters", "letter:1"));
+// deterministic + tenant+type-scoped id: same inputs => same id; different tenant/type => different id
+check("deriveEventId is deterministic", deriveEventId("t1", "LETTER_SENT", "letters", "letter:1") === deriveEventId("t1", "LETTER_SENT", "letters", "letter:1"));
+check("deriveEventId is tenant-scoped (no cross-tenant collision)", deriveEventId("t1", "LETTER_SENT", "letters", "letter:1") !== deriveEventId("t2", "LETTER_SENT", "letters", "letter:1"));
+check("deriveEventId is TYPE-scoped (two types, same source+dedupeKey, never collide)", deriveEventId("t1", "LETTER_SENT", "letters", "letter:1") !== deriveEventId("t1", "LETTER_GENERATED", "letters", "letter:1"));
 
 // ── NEGATIVE CONTROL ─────────────────────────────────────────────────────────
 check("negative control: an unregistered type is never silently accepted", validateEvent("ARENA_POINTS_CHANGED", 2, { xpDelta: 1, totalXp: 1, classId: "A" }).ok === false);
