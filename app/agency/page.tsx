@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
 import { Disclaimer } from "@/components/Disclaimer";
+import { openBillingPortal } from "@/lib/portalClient";
 import { Building2, Loader2, UserPlus, FolderOpen, Trash2, Mails, AlertTriangle, Search } from "lucide-react";
 
 interface Client {
@@ -59,6 +60,7 @@ export default function AgencyPage() {
   const [clientLimit, setClientLimit] = useState<number | null>(null); // null = unlimited/negotiated
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [portalOffer, setPortalOffer] = useState(false); // checkout refused: plan change belongs in the portal
   const [busy, setBusy] = useState(false);
   const [search, setSearch] = useState("");
   const [secret, setSecret] = useState("");
@@ -120,6 +122,7 @@ export default function AgencyPage() {
   async function subscribe() {
     setBusy(true);
     setError(null);
+    setPortalOffer(false);
     try {
       const res = await fetch("/api/stripe/checkout", {
         method: "POST",
@@ -131,6 +134,23 @@ export default function AgencyPage() {
         window.location.href = d.url;
         return;
       }
+      // An in-place upgrade (route: subscriptions.update) returns no redirect URL.
+      // Without this branch a SUCCESSFUL, already-charged upgrade fell through to
+      // the error path and told the customer to try again.
+      if (res.ok && d.upgraded) {
+        if (d.status === "active" || d.status === "trialing") {
+          // Plan state is written by the webhook, which may land a beat later —
+          // reuse the established ?checkout=success destination.
+          window.location.href = "/agency?checkout=success";
+          return;
+        }
+        // payment_behavior: "pending_if_incomplete" — the proration invoice needs
+        // authentication, so the plan has NOT changed yet. Never claim success.
+        setPortalOffer(true);
+        setError("Your plan change needs a payment confirmation before it takes effect. Open the billing portal to finish — you have not been charged twice.");
+        return;
+      }
+      if (d.portal) setPortalOffer(true);
       setError(d.error || "Could not start checkout. Please try again.");
     } catch {
       setError("The connection dropped mid-request. Try again — nothing was lost.");
@@ -241,6 +261,18 @@ export default function AgencyPage() {
       </div>
 
       {error && <p className="mb-3 text-sm text-rose-400">{error}</p>}
+      {portalOffer && (
+        <button
+          type="button"
+          onClick={async () => {
+            const err = await openBillingPortal();
+            if (err) setError(err);
+          }}
+          className="btn-primary mb-3"
+        >
+          Open billing portal
+        </button>
+      )}
 
       {loading ? (
         <div className="flex items-center gap-2 text-sm text-slate-400">

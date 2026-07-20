@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { Suspense, useEffect, useState } from 'react';
 import { AppShell } from '@/components/AppShell';
+import { openBillingPortal } from '@/lib/portalClient';
 
 interface Status {
   plan: 'free' | 'premium' | 'agency' | 'agency_pro';
@@ -42,6 +43,7 @@ function BillingInner() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [portalOffer, setPortalOffer] = useState(false); // checkout refused: plan change belongs in the portal
 
   const justCheckedOut = params.get('checkout') === 'success';
 
@@ -87,7 +89,24 @@ function BillingInner() {
       const res = await fetch('/api/stripe/checkout', { method: 'POST' });
       const data = await res.json();
       if (res.ok && data.url) window.location.href = data.url;
+      // An in-place upgrade (route: subscriptions.update) returns no redirect URL.
+      // Without this branch a SUCCESSFUL, already-charged upgrade fell through to
+      // the error path and told the customer to try again.
+      else if (res.ok && data.upgraded) {
+        if (data.status === 'active' || data.status === 'trialing') {
+          // Plan state is written by the webhook, which may land a beat later —
+          // reuse the existing ?checkout=success polling rather than a second path.
+          window.location.href = '/billing?checkout=success';
+        } else {
+          // payment_behavior: "pending_if_incomplete" — the proration invoice needs
+          // authentication, so the plan has NOT changed yet. Never claim success.
+          setPortalOffer(true);
+          setError('Your plan change needs a payment confirmation before it takes effect. Open the billing portal to finish — you have not been charged twice.');
+          setBusy(false);
+        }
+      }
       else {
+        if (data.portal) setPortalOffer(true);
         setError(data.error || 'Could not start checkout.');
         setBusy(false);
       }
@@ -100,16 +119,11 @@ function BillingInner() {
   async function openPortal() {
     setBusy(true);
     setError(null);
-    try {
-      const res = await fetch('/api/stripe/portal', { method: 'POST' });
-      const data = await res.json();
-      if (res.ok && data.url) window.location.href = data.url;
-      else {
-        setError(data.error || 'Could not open the billing portal.');
-        setBusy(false);
-      }
-    } catch {
-      setError('The connection dropped mid-request. Try again — nothing was lost.');
+    // Single implementation lives in lib/portalClient.ts; on success the browser
+    // is already navigating away, so `busy` deliberately stays true.
+    const err = await openBillingPortal();
+    if (err) {
+      setError(err);
       setBusy(false);
     }
   }
@@ -175,6 +189,11 @@ function BillingInner() {
                     </button>
                   )}
                   {error && <p className="mt-3 text-sm text-rose-400">{error}</p>}
+                  {portalOffer && (
+                    <button type="button" onClick={openPortal} disabled={busy} className="btn-primary mt-3">
+                      Open billing portal
+                    </button>
+                  )}
                 </div>
 
                 <div className="rounded-lg border border-ink-700 bg-ink-900/60 p-6">

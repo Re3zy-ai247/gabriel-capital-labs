@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react";
 import { useState } from "react";
 import { Check, X, Loader2, Sparkles, Clock, ArrowRight } from "lucide-react";
 import { FaqList } from "@/components/marketing/Showcase";
+import { openBillingPortal } from "@/lib/portalClient";
 
 type Status = "live" | "soon" | "contact";
 
@@ -190,16 +191,34 @@ export function PricingTiers() {
   const [interval, setIntervalState] = useState<"month" | "year">("month");
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [portalOffer, setPortalOffer] = useState(false); // checkout refused: plan change belongs in the portal
 
   async function checkout(payload: Record<string, unknown>, signedOutNext: string, key: string) {
     setError(null);
+    setPortalOffer(false);
     if (!session) { router.push(`/register?next=${signedOutNext}`); return; }
     setBusy(key);
     try {
       const res = await fetch("/api/stripe/checkout", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
       const data = await res.json();
       if (res.ok && data.url) window.location.href = data.url;
-      else { setError(data.error || "We couldn't start checkout. Please try again."); setBusy(null); }
+      // An in-place upgrade (route: subscriptions.update) returns no redirect URL.
+      // Without this branch a SUCCESSFUL, already-charged upgrade fell through to
+      // the error path and told the customer to try again.
+      else if (res.ok && data.upgraded) {
+        if (data.status === "active" || data.status === "trialing") {
+          // Same destination the checkout flow would have used; plan state is
+          // written by the webhook, which the target page already polls for.
+          window.location.href = payload.plan === "premium" ? "/billing?checkout=success" : "/agency?checkout=success";
+        } else {
+          // payment_behavior: "pending_if_incomplete" — the proration invoice needs
+          // authentication, so the plan has NOT changed yet. Never claim success.
+          setPortalOffer(true);
+          setError("Your plan change needs a payment confirmation before it takes effect. Open the billing portal to finish — you have not been charged twice.");
+          setBusy(null);
+        }
+      }
+      else { if (data.portal) setPortalOffer(true); setError(data.error || "We couldn't start checkout. Please try again."); setBusy(null); }
     } catch { setError("The connection dropped mid-request. Try again — nothing was lost."); setBusy(null); }
   }
 
@@ -235,6 +254,20 @@ export function PricingTiers() {
         {agency.map((t) => <TierCard key={t.id} t={t} interval={interval} busy={busy} onCheckout={checkout} signedIn={!!session} />)}
       </div>
       {error && <p role="alert" className="mt-5 text-center text-sm text-rose-300">{error}</p>}
+      {portalOffer && (
+        <div className="mt-3 text-center">
+          <button
+            type="button"
+            onClick={async () => {
+              const err = await openBillingPortal();
+              if (err) setError(err);
+            }}
+            className="btn-primary"
+          >
+            Open billing portal
+          </button>
+        </div>
+      )}
 
       {/* One-time letter pack (live) */}
       <div className="mx-auto mt-10 flex max-w-6xl flex-col items-center justify-between gap-4 rounded-2xl border border-ink-700/70 bg-ink-800/40 px-6 py-5 sm:flex-row">
