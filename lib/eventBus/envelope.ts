@@ -1,0 +1,116 @@
+// Platform Event Bus — the immutable event envelope (Sprint 8).
+//
+// This is a SUPERSET of the kernel's KaiEvent{id,type,tenantId,stamp,payload}
+// (lib/os/kernel/types.ts): same immutable-log spirit, extended with the fields a
+// PLATFORM backbone needs — actorId (the principal), agencyId (the second isolation
+// axis), source (emitting subsystem), correlationId (ties related events), and a
+// contract `version`. It is NOT a second bus: persistence reuses the Sprint 7
+// durable+cursor pattern, idempotency reuses the kernel's durable ledger, and audit
+// reuses KernelAudit. The genuinely new thing is a FULL-PAYLOAD durable log
+// (KernelEvent persists only a payload hash, by founder privacy directive, so it
+// cannot be extended for replay).
+//
+// Isolation is keyed on IDS, never names. actor = the real signed-in principal
+// (currentAccount().id); tenant = the DATA-OWNING scope (currentUser().id — a
+// client's id when an agency has that client open); agency = the owning agency id
+// (never agencyName, which is spoofable). Mirrors lib/os/host/identity.ts.
+import { createHash } from "crypto";
+
+// The closed set of platform event types. Adding one is a deliberate, reviewed
+// change (a new contract in contracts.ts) — the bus fails closed on any unknown type.
+export const EVENT_TYPES = [
+  "DISPUTE_CREATED",
+  "LETTER_GENERATED",
+  "LETTER_SENT",
+  "ACCOUNT_DELETED",
+  "ACCOUNT_UPDATED",
+  "CLIENT_CREATED",
+  "CLIENT_UPDATED",
+  "ACHIEVEMENT_UNLOCKED",
+  "ARENA_POINTS_CHANGED",
+  "MISSION_COMPLETED",
+  "NOTIFICATION_CREATED",
+  "SYSTEM_EVENT",
+  "KAI_INSIGHT_CREATED",
+] as const;
+export type EventType = (typeof EVENT_TYPES)[number];
+
+// Who may publish an event, along the isolation axes:
+//   self     — about the actor's OWN data (tenant derived server-side from the actor)
+//   agency   — about a managed client (actor must be an agency)
+//   platform — system/admin-initiated (SYSTEM_EVENT, notifications, Kai insights)
+export type PublishScope = "self" | "agency" | "platform";
+
+// The immutable envelope. `id` is deterministic (see deriveEventId) so publishing is
+// idempotent; `payload` is typed per contract and REFS-ONLY (no value-bearing PII).
+export interface PlatformEvent<T = Record<string, unknown>> {
+  id: string;
+  type: EventType;
+  version: number;
+  tenantId: string;          // data-owning scope
+  agencyId: string | null;   // agency isolation axis (id, never name); null = no agency
+  actorId: string;           // the real principal who caused it
+  source: string;            // emitting subsystem, e.g. "letters", "arena", "system"
+  correlationId: string;     // ties related events; stable across retries
+  payload: T;
+  createdAt: string;         // ISO — assigned by the store (DB default), echoed here
+}
+
+// The resolved, SERVER-SIDE identity a publish runs under. Never built from client
+// input. `trusted` marks an internal system publisher (the platform itself) — only
+// server code can construct one; it satisfies the "platform" scope without a session.
+export interface PublishIdentity {
+  actorId: string;
+  tenantId: string;
+  agencyId: string | null;
+  isAdmin: boolean;
+  isAgency: boolean;
+  grantedPermissions: ReadonlySet<string>;
+  trusted: boolean;
+}
+
+// Derive the identity for a normal request. actor = the real account (principal);
+// tenant = the data-owning user (a client's id when an agency has it open); agency =
+// the owning agency id ONLY when the account itself is an agency, else the data
+// owner's managing agency, else null. Never `account.id ?? managedByAgencyId`.
+export function requestIdentity(
+  account: { id: string; role?: string | null; isAgency?: boolean | null },
+  dataOwner: { id: string; managedByAgencyId?: string | null },
+  grantedPermissions: ReadonlySet<string>,
+): PublishIdentity {
+  const isAgency = account.isAgency === true;
+  const agencyId = isAgency ? account.id : (dataOwner.managedByAgencyId ?? null);
+  return {
+    actorId: account.id,
+    tenantId: dataOwner.id,
+    agencyId,
+    isAdmin: account.role === "ADMIN",
+    isAgency,
+    grantedPermissions,
+    trusted: false,
+  };
+}
+
+// Trusted internal system publisher (the platform itself). Constructed only by server
+// code — never reachable from an HTTP request body. Used for SYSTEM_EVENT / platform
+// notifications / Kai insights, scoped to a specific tenant.
+export function systemIdentity(tenantId: string, opts?: { actorId?: string; agencyId?: string | null }): PublishIdentity {
+  return {
+    actorId: opts?.actorId ?? "system",
+    tenantId,
+    agencyId: opts?.agencyId ?? null,
+    isAdmin: true,
+    isAgency: false,
+    grantedPermissions: new Set<string>(),
+    trusted: true,
+  };
+}
+
+// Deterministic event id — the idempotency key. Tenant-scoped so two tenants using the
+// same producer key can never collide/suppress each other's event (the composite the
+// review demanded, folded into the PK). A retry with the same (tenant, source,
+// dedupeKey) yields the same id → ON CONFLICT no-op → replayed.
+export function deriveEventId(tenantId: string, source: string, dedupeKey: string): string {
+  const h = createHash("sha256").update(`${tenantId}|${source}|${dedupeKey}`).digest("hex");
+  return `evt_${h.slice(0, 32)}`;
+}
