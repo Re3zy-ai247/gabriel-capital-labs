@@ -95,6 +95,9 @@ model User {
   managedByAgencyId String?
   managedByAgency   User?   @relation("AgencyClients", fields: [managedByAgencyId], references: [id], onDelete: Cascade)
   managedClients    User[]  @relation("AgencyClients")
+
+  networkMessages     NetworkMessage[]          @relation("NetworkMessages")
+  networkMessageReads NetworkMessageReadState[] @relation("NetworkMessageReads")
 }
 
 // Append-only record of privileged admin actions (discount codes created, plans
@@ -554,5 +557,42 @@ model ProductEvent {
   createdAt DateTime @default(now())
 
   @@index([name, createdAt])
+  @@index([userId])
+}
+
+// ── Operator Network — migration-first message layer (Sprint 7) ──────────────
+// The FIRST migration-backed feature under the ratified migration-first policy.
+// Reuses the frozen channel value-object registry (no Channel table), the CROA
+// screening (screenCommunityText), the polymorphic Attachment/CommunityReport, and
+// the canViewChannel/canPostChannel authz matrix. Tenant isolation is enforced at
+// RUNTIME by authz AND, as row-level defense-in-depth, by audienceAgencyId on the
+// row (stamped server-side from the channel's owner; null for members channels).
+model NetworkMessage {
+  id               String   @id @default(cuid())
+  channelKey       String
+  author           User?    @relation("NetworkMessages", fields: [authorId], references: [id], onDelete: SetNull)
+  authorId         String?
+  authorName       String
+  body             String   @db.Text
+  isKai            Boolean  @default(false)
+  audienceAgencyId String? // row-level tenant backstop; null = members channel
+  clientMsgId      String // client-supplied stable id => idempotent send
+  createdAt        DateTime @default(now())
+
+  @@unique([authorId, clientMsgId])
+  @@index([channelKey, createdAt, id])
+  @@index([audienceAgencyId])
+}
+
+model NetworkMessageReadState {
+  id                 String   @id @default(cuid())
+  user               User     @relation("NetworkMessageReads", fields: [userId], references: [id], onDelete: Cascade)
+  userId             String
+  channelKey         String
+  lastReadAt         DateTime
+  lastReadMessageId  String?
+  updatedAt          DateTime @updatedAt
+
+  @@unique([userId, channelKey])
   @@index([userId])
 }

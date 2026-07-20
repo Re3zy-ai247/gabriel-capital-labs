@@ -26,3 +26,12 @@ export function channelForCategory(category: string): Channel {
 // The keys the registry knows about — the frozen set plus the root. Used by callers
 // to validate a requested channel before authorizing.
 export const KNOWN_CHANNEL_KEYS: readonly string[] = ["", ...CATEGORY_KEYS];
+
+// The row-level tenant backstop value a message in this channel must carry. A
+// members/public channel stamps NULL; an agency_private channel stamps its owning
+// agency id. Persisted on NetworkMessage.audienceAgencyId and re-asserted in every
+// read WHERE clause, so a mis-stamped row can never leak across a tenant boundary
+// even if the authz layer were bypassed. Today every channel is "members" => null.
+export function channelAudienceId(c: Channel): string | null {
+  return c.visibility === "agency_private" ? (c.ownerAgencyId ?? null) : null;
+}
