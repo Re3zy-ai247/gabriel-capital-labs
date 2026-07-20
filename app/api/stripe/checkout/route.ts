@@ -7,6 +7,7 @@ import {
   LETTER_PACK_CREDITS, type PaidPlan, type BillingInterval,
 } from "@/lib/stripe";
 import { getOrCreateStripeCustomer } from "@/lib/billing";
+import { ACTIVE_SUBSCRIPTION_STATES } from "@/lib/os/host/billingTier";
 import { track, PRODUCT_EVENTS } from "@/lib/events";
 
 export const dynamic = "force-dynamic";
@@ -63,6 +64,29 @@ export async function POST(req: Request) {
       return NextResponse.json(
         { error: plan === user.plan ? `You're already on ${label}.` : `Your ${label} plan already includes this.` },
         { status: 400 }
+      );
+    }
+
+    // UPGRADE GUARD (fail-closed). The tier check above only blocks buying the SAME
+    // or a LOWER plan — an upgrade passes it. But this route only ever creates a NEW
+    // subscription; nothing here cancels or prorates an existing one, and no
+    // customer-facing subscriptions.update path exists anywhere in the app. So a
+    // Professional subscriber who bought Agency ended up billed for BOTH
+    // ($99 + $399 = $498/mo) instead of $399. Plan changes belong in the billing
+    // portal, which prorates. Refuse rather than risk a double charge; if the Stripe
+    // lookup itself fails, the surrounding catch returns 500 and no session is
+    // created — also fail-closed.
+    const existing = await stripe.subscriptions.list({ customer: customerId, status: "all", limit: 100 });
+    const billing = existing.data.filter((s) => ACTIVE_SUBSCRIPTION_STATES.has(s.status));
+    if (billing.length > 0) {
+      return NextResponse.json(
+        {
+          error:
+            "You already have an active subscription. Change your plan from the billing portal " +
+            "so you're charged the difference instead of being billed twice.",
+          portal: true,
+        },
+        { status: 409 }
       );
     }
 
