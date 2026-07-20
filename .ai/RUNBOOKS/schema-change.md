@@ -1,14 +1,44 @@
-# Runbook: Schema change (ADR-0001 — no build step may mutate the database)
+# Runbook: Schema change — MIGRATION-FIRST (owner-ratified 2026-07-20)
 
 Editing `schema.prisma` alone does NOT reach prod. (⚠️ Corrected 2026-07-20: the old claim that `db push` "silently fails through Accelerate" was FALSE — build logs showed it SUCCEEDING against a direct endpoint and dropping self-heal-owned tables. The push has been removed from all build commands; see ADR-0001's correction note.)
 
-## Adding a table (preferred: self-heal)
-1. Add the model to `prisma/schema.prisma` (typed client + build) → `npx prisma generate`.
-2. Create the table at runtime: `CREATE TABLE IF NOT EXISTS …` raw SQL inside a gate function called before first use. Copy an existing gate: `ensureCommunityTables` (`lib/community.ts`), `ensureSupportTables` (`lib/support.ts`), `ensureBriefTables` (`lib/brief.ts`).
-3. Static DDL strings only — never interpolate input.
+## POLICY (owner-ratified 2026-07-20): MIGRATION-FIRST for all new schema
 
-## Adding a column
-`ALTER TABLE … ADD COLUMN IF NOT EXISTS "col"` inside the domain's existing gate (example: `videoUrl` in `ensureBriefTables`).
+Migrations govern every new table, column, index, relation, constraint, enum, and
+model. **Runtime self-heal is LEGACY** — permitted only for the tables already on
+the `LEGACY_SELF_HEAL_ALLOWLIST` in `scripts/schema-safety.test.ts`. A new feature
+must NOT self-heal; the guard fails on any self-heal DDL outside that list. Adding a
+table to the legacy list requires a new owner-approved ADR.
+
+## Adding a table or column (migration-first)
+1. Add/modify the model in `prisma/schema.prisma`.
+2. Generate the migration SQL. There is no `prisma/migrations/` baseline yet, so the
+   first migration must baseline the existing DB before it can be applied cleanly —
+   see "Baseline" below. Generate the forward SQL with
+   `npx prisma migrate diff --from-schema-datasource prisma/schema.prisma --to-schema-datamodel prisma/schema.prisma --script` (or `migrate dev` against a throwaway/preview DB) and review it.
+3. **Validate against the PREVIEW database first** (it is isolated — see below). Never
+   against production, never in the build.
+4. Ship: the migration is applied as a deliberate release step (owner-gated for
+   production), with preflight, forward-validation, and a rollback/compensating plan
+   recorded in the release checklist (`.ai/RUNBOOKS/release.md`).
+5. Static DDL only if any raw SQL is unavoidable — never interpolate input.
+
+**Every migration records:** preflight · expected SQL effect · forward validation ·
+rollback or compensating plan · data-risk assessment. A destructive or uncertain
+production migration STOPS for owner approval.
+
+## Baseline (the first migration)
+`prisma/migrations/` does not exist. Introducing it against the live DB needs a
+baseline so Prisma does not try to recreate existing tables. Do this against the
+preview DB first and validate, then treat the production baseline as an owner-gated
+release step. Do NOT run `migrate dev`, `db push --accept-data-loss`, or any
+destructive command against the shared/production database.
+
+## Legacy self-heal (existing tables only — do NOT extend)
+The 32 legacy tables in `LEGACY_SELF_HEAL_ALLOWLIST` still create themselves via
+`CREATE TABLE IF NOT EXISTS`/`ALTER TABLE … ADD COLUMN IF NOT EXISTS` gate functions
+(`ensureCommunityTables` in `lib/community.ts`, etc.). These retire incrementally
+through separately reviewed migrations. Do not add a new table here.
 
 ## Legacy fallback
 `app/api/admin/migrate/route.ts` — needs ADMIN session; run from the owner's browser console:

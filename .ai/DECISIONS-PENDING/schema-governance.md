@@ -1,6 +1,6 @@
 # Decision package: migration-first vs runtime self-heal
 
-**Status: DECISION RECORDED (2026-07-20) — staged implementation pending owner scheduling.**
+**Status: RATIFIED (2026-07-20). Migration-first is authoritative for all new schema; self-heal is legacy-only (32 tables); guard-enforced in `scripts/schema-safety.test.ts`. Docs unified: CLAUDE.md, ADR-0001, `.ai/RUNBOOKS/schema-change.md`, `.ai/ARCHITECTURE.md`.**
 
 > **Owner principle (stated 2026-07-20):** migrations are the authoritative mechanism for planned production schema evolution; runtime self-heal remains ONLY for the explicitly enumerated legacy tables and must never become the default for a new model; every new feature schema change ships with a migration and a rollback plan; legacy self-heal dependencies retire incrementally. This matches the recommendation below. No risky production schema conversion is performed in this release.
 

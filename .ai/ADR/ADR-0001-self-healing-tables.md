@@ -1,6 +1,8 @@
 # ADR-0001: Self-healing tables instead of Prisma migrations
 
-Status: Accepted (in production since ~2026-06; recorded retroactively 2026-07-12)
+Status: **SUPERSEDED for NEW schema by the migration-first policy (owner-ratified 2026-07-20).** Retained as ACCEPTED for the 32 enumerated LEGACY tables only (`LEGACY_SELF_HEAL_ALLOWLIST` in `scripts/schema-safety.test.ts`), which self-heal until retired incrementally through reviewed migrations. All NEW tables/columns/indexes/relations/constraints/enums/models are migration-first (`.ai/RUNBOOKS/schema-change.md`); no new feature may introduce or depend on runtime-created schema; the guard fails on any self-heal DDL outside the legacy allowlist. Adding a table to that allowlist requires a new owner-approved ADR.
+
+Original status: Accepted (in production since ~2026-06; recorded retroactively 2026-07-12)
 Date: 2026-07-12 (recorded)
 Decision owners: Owner + Claude Code sessions
 

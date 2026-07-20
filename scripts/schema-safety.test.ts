@@ -92,7 +92,32 @@ const walk = (dir: string) => {
 };
 walk(libDir);
 
-check("self-heal DDL still present (ADR-0001 path intact)", healed.size > 0);
+check("self-heal DDL still present (legacy path intact)", healed.size > 0);
+
+// ── MIGRATION-FIRST ENFORCEMENT (owner-ratified 2026-07-20) ──────────────────
+// Migrations govern ALL new schema. Runtime self-heal is a LEGACY mechanism,
+// permitted ONLY for the tables that already used it when the policy was ratified.
+// This frozen allowlist is the complete set of tables allowed to carry self-heal
+// DDL. Any NEW self-heal DDL — even for a table also declared in schema.prisma —
+// is not in this list and fails the guard, so a new feature can never quietly
+// depend on runtime-created schema. Growing this list requires a new owner-approved
+// ADR (that is the "conscious, reviewed act" the policy demands), and it should
+// SHRINK over time as legacy tables are retired through reviewed migrations.
+const LEGACY_SELF_HEAL_ALLOWLIST = new Set([
+  "AiUsage", "Attachment", "BriefArticle", "BriefComment", "BriefCommentReport",
+  "BriefReaction", "Campaign", "ClientAssignment", "CommunityReply", "CommunityReport",
+  "CommunityThread", "DecisionRegistry", "KaiEvent", "KaiSeen", "KernelAudit",
+  "KernelEvent", "KernelIdempotency", "MailManifest", "OutcomeConsent",
+  "PasswordResetToken", "ProductEvent", "PushSubscription", "RateHit",
+  "StripeWebhookEvent", "SupportTicket", "SupportTicketMessage", "TeamInvitation",
+  "TeamMember", "TradelineContact", "UserDevice", "UserSession", "VerifiedOutcome",
+]);
+const newlySelfHealed = Array.from(healed).filter((t) => !LEGACY_SELF_HEAL_ALLOWLIST.has(t)).sort();
+check(
+  "migration-first: no NEW table self-heals — only the legacy allowlist may (new tables need a migration)",
+  newlySelfHealed.length === 0
+);
+if (newlySelfHealed.length) console.error("  new self-heal DDL not on the legacy allowlist (add a migration, not self-heal):", JSON.stringify(newlySelfHealed));
 
 // Tables the runtime creates that schema.prisma does NOT declare. These are the
 // ones a build-time `db push` would have dropped. The count is pinned so that
