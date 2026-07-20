@@ -17,6 +17,25 @@
   },
   "packages": [
     {
+      "package": "operator-network-realtime",
+      "subsystem": "operator network / realtime persistence",
+      "wave": 1,
+      "owner_session": "fable-operating-floor",
+      "owns": [
+        "prisma/schema.prisma (Channel/Message models only)",
+        "prisma/migrations/**",
+        "lib/network/**",
+        "app/api/network/**",
+        "app/network/**",
+        "scripts/network-*.test.ts"
+      ],
+      "started": "2026-07-20",
+      "status": "active",
+      "dependencies": "PROD migration is owner-gated (no prod DB access); preview DB reachable for validation. Cross-user presence/feed/broadcasts are privacy+CCO gated.",
+      "release_conditions": "migration validated on preview; message API tenant-safe + idempotent; flag OFF; NO cross-user presence/feed/outcome-broadcast without counsel",
+      "completion_commit": null
+    },
+    {
       "package": "operator-network-slice",
       "subsystem": "community / operator network",
       "wave": 1,
