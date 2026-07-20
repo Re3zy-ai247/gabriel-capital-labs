@@ -12,6 +12,13 @@ import { track, PRODUCT_EVENTS } from "@/lib/events";
 
 export const dynamic = "force-dynamic";
 
+// Billing policy for an in-place plan upgrade, in ONE reviewable place.
+// "create_prorations" charges the difference against the unused portion of the
+// current period — the customer pays the delta, never a second subscription.
+// Changing this changes what customers are charged: treat it as a pricing
+// decision, not an implementation detail.
+const UPGRADE_PRORATION_BEHAVIOR = "create_prorations" as const;
+
 // Creates a Stripe Checkout Session. Body:
 //   { plan: "premium"|"agency"|"agency_pro", interval?: "month"|"year" }  — subscription
 //   { product: "letters_5" }                                              — one-time letter pack
@@ -67,30 +74,82 @@ export async function POST(req: Request) {
       );
     }
 
-    // UPGRADE GUARD (fail-closed). The tier check above only blocks buying the SAME
-    // or a LOWER plan — an upgrade passes it. But this route only ever creates a NEW
-    // subscription; nothing here cancels or prorates an existing one, and no
-    // customer-facing subscriptions.update path exists anywhere in the app. So a
-    // Professional subscriber who bought Agency ended up billed for BOTH
-    // ($99 + $399 = $498/mo) instead of $399. Plan changes belong in the billing
-    // portal, which prorates. Refuse rather than risk a double charge; if the Stripe
-    // lookup itself fails, the surrounding catch returns 500 and no session is
-    // created — also fail-closed.
+    const priceId = await resolvePriceId(stripe, plan, interval);
+
+    // ── UPGRADE PATH ────────────────────────────────────────────────────────
+    // The tier check above only blocks buying the SAME or a LOWER plan; an upgrade
+    // passes it. Creating a Checkout Session at that point opened a SECOND
+    // subscription, leaving the customer billed for both ($99 + $399 = $498/mo).
+    // An upgrade must MODIFY the subscription the customer already has.
+    //
+    // Fail-closed ordering: the lookup happens before anything is created, and if
+    // it throws, the surrounding catch returns 500 with no session and no mutation.
     const existing = await stripe.subscriptions.list({ customer: customerId, status: "all", limit: 100 });
     const billing = existing.data.filter((s) => ACTIVE_SUBSCRIPTION_STATES.has(s.status));
-    if (billing.length > 0) {
+
+    if (billing.length > 1) {
+      // Ambiguous: we cannot know which subscription the customer meant to upgrade,
+      // and guessing risks mutating the wrong one or leaving a duplicate behind.
+      // Refuse and route to a human — 409, never a silent choice.
       return NextResponse.json(
         {
           error:
-            "You already have an active subscription. Change your plan from the billing portal " +
-            "so you're charged the difference instead of being billed twice.",
+            "Your account has more than one active subscription, so we can't safely change your plan " +
+            "automatically. Contact support and we'll sort it out without charging you twice.",
           portal: true,
         },
         { status: 409 }
       );
     }
 
-    const priceId = await resolvePriceId(stripe, plan, interval);
+    if (billing.length === 1) {
+      const sub = billing[0];
+      const items = sub.items?.data ?? [];
+      if (items.length !== 1) {
+        // A multi-item subscription is not a shape this app creates. Swapping a
+        // price on it could drop a line the customer is paying for.
+        return NextResponse.json(
+          {
+            error:
+              "Your subscription has a custom configuration we can't change automatically. " +
+              "Contact support and we'll move you across without charging you twice.",
+            portal: true,
+          },
+          { status: 409 }
+        );
+      }
+      if (items[0].price?.id === priceId) {
+        // Already on exactly this price — nothing to do. (The tier guard above
+        // catches same-plan by name; this catches same-price by identity.)
+        return NextResponse.json({ error: "You're already on this plan." }, { status: 400 });
+      }
+
+      // Modify in place. Stripe prorates the difference against the unused portion
+      // of the current period, so the customer pays the difference — never twice.
+      // `proration_behavior` is a named constant so the billing policy is one
+      // reviewable decision rather than a literal buried in a call.
+      const updated = await stripe.subscriptions.update(sub.id, {
+        items: [{ id: items[0].id, price: priceId }],
+        proration_behavior: UPGRADE_PRORATION_BEHAVIOR,
+        payment_behavior: "pending_if_incomplete",
+        metadata: { userId: user.id, plan, interval },
+      });
+
+      // Entitlements are NOT written here. `customer.subscription.updated` fires and
+      // the existing webhook is the single source of truth for plan state — keeping
+      // one writer, and keeping this route safe to retry.
+      await track(PRODUCT_EVENTS.subscriptionStarted, {
+        userId: user.id,
+        meta: { plan, interval, upgradedFrom: user.plan },
+      });
+      return NextResponse.json({
+        upgraded: true,
+        status: updated.status,
+        message: "Your plan is updated. You'll be charged the prorated difference, not a second subscription.",
+      });
+    }
+
+    // ── NEW SUBSCRIPTION PATH (no existing subscription) ────────────────────
     const successPath = plan === "premium" ? "/billing?checkout=success" : "/agency?checkout=success";
     const cancelPath = plan === "premium" ? "/pricing?checkout=cancelled" : "/agency?checkout=cancelled";
 
