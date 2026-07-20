@@ -1,0 +1,142 @@
+name: Monthly adversarial review
+
+# A bounded monthly review across the launch-critical domains. It does the parts a
+# workflow can honestly do — deterministic checks and a secret scan — and then
+# opens a checklist issue for the parts that require reasoning and reproduction.
+#
+# It does NOT claim to perform adversarial analysis itself. A YAML file cannot form
+# a hypothesis, reproduce it, or downgrade a severity on evidence. Pretending it
+# could would be the inflated-finding-count the review rules forbid. So the human
+# (or a dedicated review session) does the reasoning; this workflow gathers the
+# deterministic ground truth they start from and hands them the domain checklist.
+#
+# It makes NO repository modifications during the review — no commits, no PRs. Its
+# only write is the tracking issue.
+
+on:
+  schedule:
+    - cron: "0 7 1 * *" # 07:00 UTC on the 1st of each month
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: monthly-review
+  cancel-in-progress: false
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      NEXTAUTH_SECRET: ci-placeholder-not-used-in-production
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # secret scan needs history
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Deterministic ground truth
+        id: checks
+        continue-on-error: true
+        run: |
+          set +e
+          {
+            echo "typecheck: $(npm run typecheck >/dev/null 2>&1 && echo pass || echo FAIL)"
+            echo "build: $(npm run build >/dev/null 2>&1 && echo pass || echo FAIL)"
+          } | tee checks.txt
+
+      - name: Guard suite
+        id: guards
+        continue-on-error: true
+        run: |
+          set +e
+          P=0; T=0; FAILED=""
+          for f in scripts/*.test.ts; do
+            case "$f" in *classify.test.ts) continue;; esac
+            T=$((T+1))
+            npx tsx "$f" >/dev/null 2>&1 && P=$((P+1)) || FAILED="$FAILED $f"
+          done
+          echo "guards: $P/$T passed" | tee -a checks.txt
+          [ -z "$FAILED" ] && echo "guards_failed: none" >> checks.txt || echo "guards_failed:$FAILED" >> checks.txt
+
+      - name: Secret scan (history)
+        id: secrets
+        continue-on-error: true
+        run: |
+          # Grep-based, no external platform. Looks for committed live-key SHAPES,
+          # not our own placeholders. A hit is a hypothesis to verify, never an
+          # automatic conclusion — real keys may have been rotated already.
+          set +e
+          HITS=$(git grep -nIE '(sk_live_[0-9A-Za-z]{20,}|rk_live_[0-9A-Za-z]{20,}|whsec_[0-9A-Za-z]{20,}|-----BEGIN [A-Z ]*PRIVATE KEY-----)' \
+            $(git rev-list --all | head -200) 2>/dev/null | grep -vE 'ci-placeholder|example|test|REDACTED' | head -20)
+          if [ -n "$HITS" ]; then
+            echo "secret_scan: REVIEW — possible key shapes in history" >> checks.txt
+            echo "$HITS" | sed -E 's/(sk_live_|whsec_|rk_live_)[0-9A-Za-z]+/\1<REDACTED>/g' > secret-hits.txt
+          else
+            echo "secret_scan: clean" >> checks.txt
+          fi
+
+      - name: Dependency audit
+        continue-on-error: true
+        run: |
+          npm audit --audit-level=high --json > audit.json 2>/dev/null || true
+          H=$(node -e "try{const a=require('./audit.json');const v=a.metadata?.vulnerabilities||{};console.log((v.high||0)+(v.critical||0))}catch(e){console.log(0)}")
+          echo "dep_audit: $H high/critical" >> checks.txt
+
+      - name: Open the monthly review checklist issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          MONTH="$(date -u '+%Y-%m')"
+          TITLE="Monthly adversarial review — ${MONTH}"
+          GROUND="$(cat checks.txt 2>/dev/null || echo 'ground truth unavailable')"
+          HITS="$(cat secret-hits.txt 2>/dev/null || true)"
+          RUN="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+          BODY=$(cat <<EOF
+          Bounded adversarial review for ${MONTH}. Findings are **hypotheses until reproduced**; Critical/High require independent verification; downgrade severity when evidence does not support it. **No repository changes during review.**
+
+          ## Deterministic ground truth (this run)
+          \`\`\`
+          ${GROUND}
+          \`\`\`
+          $( [ -n "$HITS" ] && printf '\n**Secret-scan review items (redacted):**\n\`\`\`\n%s\n\`\`\`\n' "$HITS" )
+
+          ## Domains to review (reasoning + reproduction required — not automated)
+          - [ ] Authentication — session lifecycle, disabled/reset revocation
+          - [ ] Authorization — admin, agency, impersonation boundaries
+          - [ ] Billing — subscription state vs entitlement state, proration, duplicates
+          - [ ] Tenancy — cross-agency and managed-client isolation
+          - [ ] Data integrity — outcome ledger, consent history, idempotency
+          - [ ] Deployment — build determinism, schema safety, rollback
+          - [ ] Observability — do critical errors actually reach a human
+          - [ ] Recovery — what a rollback does and does not undo
+          - [ ] Performance — hot-path query cost, cold-start DDL
+          - [ ] Compliance evidence — CROA screening, consent capture, disclosures
+          - [ ] Agency boundaries — capacity, authorization records
+          - [ ] Community privacy — cross-user display vs privacy policy
+          - [ ] Operator Network permissions — who can read/write which room
+          - [ ] Arena reward integrity — every reward from a verified event (N/A until Arena exists)
+
+          Run: ${RUN}
+          EOF
+          )
+
+          EXISTING=$(gh issue list --state open --search "in:title \"$TITLE\"" --json number,title \
+            --jq ".[] | select(.title == \"$TITLE\") | .number" | head -n1)
+          if [ -n "$EXISTING" ]; then
+            echo "Review issue for ${MONTH} already open (#$EXISTING) — not duplicating."
+          else
+            gh issue create --title "$TITLE" --body "$BODY" || \
+            gh issue create --title "$TITLE" --body "$BODY"
+          fi
