@@ -93,7 +93,7 @@ const TIERS: Tier[] = [
     monthly: 699, yearly: 6990, blurb: "Built for growing teams", status: "soon", group: "agency",
     inherits: "Everything in Agency, plus room to grow:",
     features: [
-      "Grow to 40 active clients without changing how you work",
+      "Grow to 30 active clients without changing how you work",
       "Bring on staff — grow beyond a solo practice",
       "See your practice's performance at a glance",
       "Bulk actions — finish roster-wide tasks in one pass",
@@ -107,7 +107,7 @@ const TIERS: Tier[] = [
     monthly: 1299, yearly: 12990, blurb: "Built for established agencies", status: "soon", group: "agency",
     inherits: "Everything in Agency Pro — at operating scale:",
     features: [
-      "Run up to 100 active clients across your whole team",
+      "Run up to 50 active clients across your whole team",
       "Unlimited team members — your org chart, your rules",
       "Automation handles the repetitive work between rounds",
       "API & webhooks — plug CreditVector into your stack",
@@ -161,7 +161,7 @@ const MATRIX: [string, ...string[]][] = [
   ["Business Credit OS", "n", "n", "y", "s", "y", "y", "y"],
   ["Operator Network", "n", "y", "y", "y", "y", "y", "y"],
   ["@group", "Agency operations"],
-  ["Active client workspaces", "-", "-", "-", "15", "40", "100", "Custom"],
+  ["Active client workspaces", "-", "-", "-", "15", "30", "50", "Custom"],
   ["Team members", "-", "-", "-", "n", "s", "Unlimited", "Unlimited"],
   ["Agency dashboard", "-", "-", "-", "y", "y", "y", "y"],
   ["Bulk actions", "-", "-", "-", "n", "s", "s", "y"],

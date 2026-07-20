@@ -10,7 +10,7 @@
 //     per account via entitlement override — never permanently hardcoded.
 //
 // LOCKSTEP LAW: until Phase-B activation, the CLIENT_WORKSPACE_LIMIT values here
-// MUST equal lib/entitlements.agencyClientLimit (15/40/100/null) — the golden
+// MUST equal lib/entitlements.agencyClientLimit (v3: 15/30/50/null) — the golden
 // test in Phase B2/B3 asserts it. CONCURRENT_SESSION_LIMIT is DECLARED here but
 // NOT ENFORCEABLE today (NextAuth stateless JWT, no session registry) — it must
 // not be advertised in the UI until the session-architecture package ships.

@@ -87,6 +87,37 @@ ok("19· resolver activates no protected flag", !/CAPABILITY_PLATFORM|TEAM_FOUND
 // 20 · no billing / Stripe behavior change
 ok("20· resolver touches no Stripe/billing", !/stripe|checkout|webhook|unit_amount|PRICE_CENTS/i.test(cap));
 
+// ── 2026-07-20: atomic enforcement + display/engine consistency ───────────────
+// Two regressions pinned here:
+//  1. POST /api/agency/clients counted and inserted in two separate round trips,
+//     so two concurrent creations at 14/15 could both read 14, both pass, and land
+//     the agency at 16. Count+insert must sit in ONE transaction that first
+//     row-locks the agency, so the second creation observes the first.
+//  2. The pricing page advertised 40/100 active clients while the resolver enforced
+//     30/50 — a buyer would have been sold capacity the server would not honor.
+{
+  const routeSrc = read("app/api/agency/clients/route.ts");
+  ok("R1· client creation runs inside a transaction", /prisma\.\$transaction\(/.test(routeSrc));
+  ok("R2· the agency row is locked FOR UPDATE", /FOR UPDATE/.test(routeSrc));
+  const lockAt = routeSrc.indexOf("FOR UPDATE");
+  const countAt = routeSrc.indexOf("tx.user.count");
+  const createAt = routeSrc.indexOf("tx.user.create");
+  ok("R3· lock precedes the count", lockAt > -1 && countAt > -1 && lockAt < countAt);
+  ok("R4· count precedes the insert, same transaction", countAt > -1 && createAt > -1 && countAt < createAt);
+  ok("R5· no unguarded pre-transaction count remains",
+     !/await prisma\.user\.count\(\{ where: \{ managedByAgencyId/.test(routeSrc));
+  ok("R6· refusal is a 402 quoting the enforced limit", /status: 402/.test(routeSrc) && /e\.limit/.test(routeSrc));
+
+  const tiersSrc = read("app/pricing/PricingTiers.tsx");
+  ok("D1· matrix shows the enforced 15/30/50",
+     /"Active client workspaces", "-", "-", "-", "15", "30", "50", "Custom"/.test(tiersSrc));
+  ok("D2· no stale 40-client Agency Pro claim", !/Grow to 40 active clients/.test(tiersSrc));
+  ok("D3· no stale 100-client Scale claim", !/up to 100 active clients/.test(tiersSrc));
+  ok("D4· Agency Pro advertises 30", /Grow to 30 active clients/.test(tiersSrc));
+  ok("D5· Scale advertises 50", /up to 50 active clients/.test(tiersSrc));
+}
+
 if (bad.length) console.error(bad.join("\n"));
+
 console.log(`\nagency-capacity.test.ts: ${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);

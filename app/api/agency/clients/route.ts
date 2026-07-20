@@ -8,6 +8,16 @@ import { track, PRODUCT_EVENTS } from "@/lib/events";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
+// Sentinel so the capacity refusal can travel out of the transaction callback
+// without being mistaken for a database fault. Carries the limit that was in
+// force at decision time, so the 402 copy quotes what the server actually applied.
+class CapacityReached extends Error {
+  constructor(readonly limit: number) {
+    super("capacity_reached");
+    this.name = "CapacityReached";
+  }
+}
+
 // GET: the agency's client roster with light per-client stats.
 export async function GET() {
   const agency = await currentAccount();
@@ -103,9 +113,40 @@ export async function POST(req: Request) {
   // Scale 50 · Enterprise custom; lib/entitlements.agencyClientLimit → resolveAgencyCapacity
   // is the source of truth). Creation-gating ONLY — existing clients are never locked.
   const limit = agencyClientLimit(agency);
-  if (limit !== null) {
-    const current = await prisma.user.count({ where: { managedByAgencyId: agency.id } });
-    if (current >= limit) {
+
+  // The count and the insert MUST be one atomic act. Previously they were two
+  // round trips, so two concurrent creations at 14/15 could both read 14, both
+  // pass the check, and both insert — putting the agency at 16 on a 15 cap.
+  // A row lock on the agency's own User row serializes every creation for THIS
+  // agency (and only this agency) for the duration of the transaction, so the
+  // second creation reads the first one's committed row and is refused.
+  const synthethicEmail = `managed-${randomBytes(8).toString("hex")}@clients.gabrielcapitallabs.local`;
+
+  let client: { id: string; fullName: string | null };
+  try {
+    client = await prisma.$transaction(async (tx) => {
+      if (limit !== null) {
+        await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${agency.id} FOR UPDATE`;
+        const current = await tx.user.count({ where: { managedByAgencyId: agency.id } });
+        if (current >= limit) throw new CapacityReached(limit);
+      }
+      return tx.user.create({
+        data: {
+          email: synthethicEmail,
+          name: fullName,
+          fullName,
+          addressLine1: body.addressLine1 ? String(body.addressLine1).slice(0, 200) : null,
+          city: body.city ? String(body.city).slice(0, 120) : null,
+          state: body.state ? String(body.state).slice(0, 60) : null,
+          zip: body.zip ? String(body.zip).slice(0, 20) : null,
+          managedByAgencyId: agency.id,
+          isAgency: false,
+        },
+        select: { id: true, fullName: true },
+      });
+    });
+  } catch (e) {
+    if (e instanceof CapacityReached) {
       // Honest next-step copy: Agency Pro and Scale are not purchasable yet
       // ("Coming soon" on /pricing) — never phrase them as a buy-now action.
       const next =
@@ -116,30 +157,14 @@ export async function POST(req: Request) {
             : "Agency Pro — with up to 30 client workspaces — is coming soon; see the pricing page for details.";
       return NextResponse.json(
         {
-          error: `You've reached your plan's capacity of ${limit} active client workspaces. Your existing clients stay fully accessible. ${next}`,
+          error: `You've reached your plan's capacity of ${e.limit} active client workspaces. Your existing clients stay fully accessible. ${next}`,
           upgrade: true,
         },
         { status: 402 }
       );
     }
+    throw e;
   }
-
-  const synthethicEmail = `managed-${randomBytes(8).toString("hex")}@clients.gabrielcapitallabs.local`;
-
-  const client = await prisma.user.create({
-    data: {
-      email: synthethicEmail,
-      name: fullName,
-      fullName,
-      addressLine1: body.addressLine1 ? String(body.addressLine1).slice(0, 200) : null,
-      city: body.city ? String(body.city).slice(0, 120) : null,
-      state: body.state ? String(body.state).slice(0, 60) : null,
-      zip: body.zip ? String(body.zip).slice(0, 20) : null,
-      managedByAgencyId: agency.id,
-      isAgency: false,
-    },
-    select: { id: true, fullName: true },
-  });
 
   void track(PRODUCT_EVENTS.workspaceCreated, { userId: agency.id }); // fail-open analytics; never blocks the flow
   return NextResponse.json({ client: { id: client.id, name: client.fullName } });
