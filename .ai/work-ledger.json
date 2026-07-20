@@ -30,10 +30,10 @@
         "scripts/network-*.test.ts"
       ],
       "started": "2026-07-20",
-      "status": "active",
+      "status": "preview-validated",
       "dependencies": "PROD migration is owner-gated (no prod DB access); preview DB reachable for validation. Cross-user presence/feed/broadcasts are privacy+CCO gated.",
-      "release_conditions": "migration validated on preview; message API tenant-safe + idempotent; flag OFF; NO cross-user presence/feed/outcome-broadcast without counsel",
-      "completion_commit": null
+      "release_conditions": "SHIPPED (flag OFF): migration-first NetworkMessage + NetworkMessageReadState VALIDATED on the isolated preview db (resolve 0_init -> deploy -> status up-to-date; 26->29 tables, all 7 indexes); tenant-safe idempotent message API (currentAccount identity, canView/canPostChannel + cohort gate, CROA screen, rate-limit, P2002 replay, isOwn/no-authorId, audienceAgencyId backstop); cursor-polling chat UI at /network. GUARDS: network-cohort 15/15, network-messages 25/25, network-authz 36/36, schema-safety 17/17. OWNER-GATED: prod migration (same resolve->deploy), OPERATOR_NETWORK_ENABLED=true + OPERATOR_NETWORK_COHORT. REFUSED w/o counsel: cross-user presence/feed/outcome-broadcast.",
+      "completion_commit": "dc8e9a7 (schema+migration), 8125bf9 (API+cohort), 81d5ebe (UI)"
     },
     {
       "package": "operator-network-slice",
