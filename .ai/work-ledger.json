@@ -23,10 +23,10 @@
       "owner_session": "fable-release-train",
       "owns": ["app/admin/ops/**", "lib/engOps.ts", "components/admin/AdminTabs.tsx (one nav entry only)"],
       "started": "2026-07-20",
-      "status": "active",
+      "status": "complete",
       "dependencies": "none — reads existing committed artifacts (quality ledger, release header)",
       "release_conditions": "admin-gated, fail-closed; composes only real committed data; no new model, no privacy surface",
-      "completion_commit": null
+      "completion_commit": "3f4a212"
     },
     {
       "package": "quality-automation",
