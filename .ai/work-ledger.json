@@ -148,13 +148,13 @@
         "prisma/schema.prisma (EventEnvelope model only)",
         "prisma/migrations/** (new event_bus migration folder only)",
         "scripts/eventbus-*.test.ts",
-        "architecture/adr/ADR-event-bus-substrate.md"
+        ".ai/ADR/ADR-0035-platform-event-bus.md"
       ],
       "started": "2026-07-20",
-      "status": "active",
-      "dependencies": "REUSES (does not duplicate): kernel KaiEvent envelope + durableIdempotency (KernelIdempotency) + KernelAudit; Sprint 7 NetworkMessage cursor/idempotency pattern; buildNotificationPlan + sendPushToUser/sendEmail (notify path); entitlementSnapshot().grantedPermissions; currentAccount/currentUser + managedByAgencyId; enforceRateLimit; zod. Shares prisma/migrations/** with operator-network packages \u2014 filename-timestamp ordering reconciled at merge. PROD migration + activation owner-gated.",
-      "release_conditions": "substrate (contracts/validate/store/publish/registry/effect + reference subscribers) built, migration-first EventEnvelope preview-validated, flag EVENT_BUS_ENABLED OFF, tenant+agency isolation + authz + idempotency + replay tested, Sprint 7 green. DEFERRED owner-gated: prod migration, flag ON, wiring real Mission Control/Arena/Kai/Notifications/Operator Network producers+subscribers (owned by other packages \u2014 STOP/coordinate), live cross-instance catch-up delivery.",
-      "completion_commit": null
+      "status": "preview-validated",
+      "dependencies": "REUSES (does not duplicate): kernel KaiEvent envelope + durableIdempotency (KernelIdempotency); Sprint 7 NetworkMessage cursor/idempotency pattern; buildNotificationPlan + sendPushToUser (notify path); entitlementSnapshot().grantedPermissions; currentAccount/currentUser + managedByAgencyId; enforceRateLimit; zod. Shares prisma/migrations/** with operator-network packages \u2014 filename-timestamp ordering reconciled at merge. PROD migration + activation owner-gated.",
+      "release_conditions": "SHIPPED (flag OFF): ADR-0035; migration-first EventEnvelope PREVIEW-VALIDATED (29->30 tables); contracts/validate/store/publish/registry/effect + reference subscribers; admin-only read endpoint. GUARDS: eventbus validate 50 / authz-isolation 40 / idempotency-replay 19 / notification-nodup 9 / migration-guard 12 + preview-integration 14/14 on real Postgres. Sprint 7 + kernel + schema-safety 17 + operator-shell 94 green. OWNER-GATED: prod migration + EVENT_BUS_ENABLED=true; wiring real Mission Control/Arena(owned)/Kai/Notifications(5 sites)/Operator Network(owned) producers+subscribers (STOP/coordinate); live cross-instance catch-up delivery.",
+      "completion_commit": "b3fd0a4 (contracts), 23ff8eb (migration), 04db5b8 (store), f566c2a (publisher), b6d1b27 (subscribers), 23d9a35 (read endpoint), 96268a1 (tests)"
     }
   ]
 }
