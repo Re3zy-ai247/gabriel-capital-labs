@@ -36,6 +36,30 @@
 
 export const ARENA_POLICY_VERSION = 1 as const;
 
+// Evidence states, weakest to strongest. Only the top-tier "verified" may ever carry
+// top-tier XP weight — and it is UNREACHABLE today, deliberately, because no
+// mechanism produces it. This is documented so a future contributor cannot quietly
+// promote AI-classified text to "verified".
+//
+//   documented   — the user logged it; an AI classified their pasted text. This is
+//                  all the outcome ledger produces today. Self-attested, fabricable,
+//                  so it carries only a modest weight. (Every live class is here.)
+//   corroborated — a second independent signal agrees (e.g. a mailed-letter record
+//                  plus a response within the §611 window, or a staff spot-check).
+//                  No such corroboration pipeline exists yet.
+//   verified     — an independent, non-user-controlled source confirms it (a bureau
+//                  API, a human attestation record, a document the user could not
+//                  forge). The schema has NO field for this. Until one exists, no
+//                  outcome may be promoted past "documented".
+//
+// PROMOTION REQUIREMENT (documented -> verified): a durable attestation column on
+// VerifiedOutcome populated by a source the user does not control, plus a policy
+// version that references it. This does not exist. Do not add compliance claims or
+// imply a verified tier is live.
+export type EvidenceState = "documented" | "corroborated" | "verified";
+export const EVIDENCE_STATES: readonly EvidenceState[] = ["documented", "corroborated", "verified"];
+export const MAX_LIVE_EVIDENCE_STATE: EvidenceState = "documented";
+
 // Favorable outcomes, byte-identical to the Engine-1 vocabulary (lib/outcomeLedger.ts:23)
 // so Arena and the outcome ledger can never disagree on what "favorable" means.
 export const FAVORABLE_OUTCOMES: ReadonlySet<string> = new Set(["deleted", "updated"]);
