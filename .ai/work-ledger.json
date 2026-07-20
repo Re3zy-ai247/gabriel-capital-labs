@@ -7,7 +7,7 @@
       "subsystem": "the product area",
       "wave": "Sprint 6 wave number, or null",
       "owner_session": "which session holds it",
-      "owns": "files/directories this package edits — the collision surface",
+      "owns": "files/directories this package edits \u2014 the collision surface",
       "started": "ISO date claimed",
       "status": "active | complete | released",
       "dependencies": "packages or gates this waits on",
@@ -21,34 +21,51 @@
       "subsystem": "community / operator network",
       "wave": 1,
       "owner_session": "fable-moat-builder",
-      "owns": ["lib/network/**", "app/api/network/**", "prisma/migrations/**", "scripts/operator-shell.test.ts", "scripts/network-*.test.ts", ".ai/COUNSEL-REVIEW-operator-network.md"],
+      "owns": [
+        "lib/network/**",
+        "app/api/network/**",
+        "prisma/migrations/**",
+        "scripts/operator-shell.test.ts",
+        "scripts/network-*.test.ts",
+        ".ai/COUNSEL-REVIEW-operator-network.md"
+      ],
       "started": "2026-07-20",
-      "status": "foundation-complete",
+      "status": "foundation+security-complete",
       "dependencies": "realtime/messaging/private-channel persistence needs the DB + the contested schema-governance decision + the attachment-route audience fix + counsel review",
-      "release_conditions": "flag OFF by default; tenant isolation runtime-proven (DONE, 36/36); moderation path operational (DEFERRED); privacy package reviewed before unrestricted public access (drafted, counsel pending)",
-      "completion_commit": "e66241b (access matrix + channels, pure). NO guard amendment needed (no models this session). Realtime/DB DEFERRED."
+      "release_conditions": "SHIPPED: access matrix (36/36) + attachment tenant-isolation fix (17/17, 4945bde), flag OFF. DEFERRED: channel/message migration (needs first-migration baseline), realtime transport, chat UI, moderation, Kai \u2014 the DB-backed realtime product is the next multi-session build.",
+      "completion_commit": "e66241b (authz), 4945bde (attachment isolation). Realtime/DB DEFERRED."
     },
     {
       "package": "arena-slice",
       "subsystem": "arena / progression",
       "wave": 3,
       "owner_session": "fable-moat-builder",
-      "owns": ["lib/arena/**", "app/api/arena/**", "app/admin/arena/**", "scripts/arena-*.test.ts", ".ai/ARENA-CONTRIBUTION-POLICY.md"],
+      "owns": [
+        "lib/arena/**",
+        "app/api/arena/**",
+        "app/admin/arena/**",
+        "scripts/arena-*.test.ts",
+        ".ai/ARENA-CONTRIBUTION-POLICY.md"
+      ],
       "started": "2026-07-20",
-      "status": "foundation-complete",
+      "status": "cohort-ready",
       "dependencies": "user-facing own-XP surface + any append-only award table are follow-ups; cross-user ranking is REFUSED pending CCO",
-      "release_conditions": "flag OFF by default; replay + anti-duplication proven (DONE, 27/27); reconcile-on-read reversal proven; no cross-user leaderboard, no unverified/verified tier",
-      "completion_commit": "755fbb4 (policy+engine), 264aef0 (admin inspector on real data). Pure core proven; writers/leaderboard/streaks/seasons REFUSED or deferred."
+      "release_conditions": "SHIPPED: engine (27/27) + personal /arena surface + cohort gate (19/19), flag OFF. Set ARENA_ENABLED=true + ARENA_COHORT to enable for internal cohort. No cross-user ranking (refused).",
+      "completion_commit": "f357e07 (personal progression + cohort); 264aef0 (admin inspector); 755fbb4 (engine)"
     },
     {
       "package": "eng-ops-center",
       "subsystem": "admin / internal operations",
       "wave": 8,
       "owner_session": "fable-release-train",
-      "owns": ["app/admin/ops/**", "lib/engOps.ts", "components/admin/AdminTabs.tsx (one nav entry only)"],
+      "owns": [
+        "app/admin/ops/**",
+        "lib/engOps.ts",
+        "components/admin/AdminTabs.tsx (one nav entry only)"
+      ],
       "started": "2026-07-20",
       "status": "complete",
-      "dependencies": "none — reads existing committed artifacts (quality ledger, release header)",
+      "dependencies": "none \u2014 reads existing committed artifacts (quality ledger, release header)",
       "release_conditions": "admin-gated, fail-closed; composes only real committed data; no new model, no privacy surface",
       "completion_commit": "3f4a212"
     },
@@ -57,7 +74,12 @@
       "subsystem": "CI / release",
       "wave": null,
       "owner_session": "fable-release-train",
-      "owns": [".github/workflows/{daily-health,weekly-verify,monthly-review}.yml", "scripts/prod-health.sh", ".ai/quality-ledger.json", ".ai/RUNBOOKS/release.md"],
+      "owns": [
+        ".github/workflows/{daily-health,weekly-verify,monthly-review}.yml",
+        "scripts/prod-health.sh",
+        ".ai/quality-ledger.json",
+        ".ai/RUNBOOKS/release.md"
+      ],
       "started": "2026-07-20",
       "status": "complete",
       "dependencies": "none",
@@ -69,7 +91,11 @@
       "subsystem": "billing / stripe",
       "wave": null,
       "owner_session": "other-session",
-      "owns": ["app/api/stripe/checkout/route.ts", "app/api/stripe/webhook/route.ts", "scripts/checkout-consent.test.ts"],
+      "owns": [
+        "app/api/stripe/checkout/route.ts",
+        "app/api/stripe/webhook/route.ts",
+        "scripts/checkout-consent.test.ts"
+      ],
       "started": "2026-07-20",
       "status": "complete",
       "dependencies": "none",
@@ -81,10 +107,14 @@
       "subsystem": "operations / observability",
       "wave": null,
       "owner_session": "other-session",
-      "owns": ["lib/briefIngest.ts", "app/api/cron/**", "scripts/observability.test.ts"],
+      "owns": [
+        "lib/briefIngest.ts",
+        "app/api/cron/**",
+        "scripts/observability.test.ts"
+      ],
       "started": "2026-07-20",
       "status": "complete",
-      "dependencies": "ALERT_WEBHOOK_URL unset — owner action to activate delivery",
+      "dependencies": "ALERT_WEBHOOK_URL unset \u2014 owner action to activate delivery",
       "release_conditions": "coverage live; alert sink pending owner env var",
       "completion_commit": "65cc4a4"
     }
