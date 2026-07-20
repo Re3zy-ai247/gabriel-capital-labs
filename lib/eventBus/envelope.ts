@@ -54,7 +54,12 @@ export interface PlatformEvent<T = Record<string, unknown>> {
   correlationId: string;     // ties related events; stable across retries
   payload: T;
   createdAt: string;         // ISO — assigned by the store (DB default), echoed here
+  redactedAt: string | null; // data-subject erasure tombstone (payload cleared, envelope kept)
 }
+
+// What a publisher builds — everything except the fields the STORE owns (the DB
+// assigns createdAt; redactedAt is null until an erasure).
+export type DraftEvent<T = Record<string, unknown>> = Omit<PlatformEvent<T>, "createdAt" | "redactedAt">;
 
 // The resolved, SERVER-SIDE identity a publish runs under. Never built from client
 // input. `trusted` marks an internal system publisher (the platform itself) — only
