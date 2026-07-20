@@ -42,7 +42,8 @@ No local `DATABASE_URL`/`ANTHROPIC_API_KEY` — validate statically + `curl` pro
 Push to `main` → Vercel auto-deploys prod (~2 min). **Always confirm with the owner before pushing.** Vercel CLI only via `npx vercel` (auth'd `re3zy-ai247`). Env-var-only change → `npx vercel redeploy <latest-prod-url>`. Build command lives in **`vercel.json`**, not package.json.
 
 ## ⚠️ Critical gotchas
-1. **`prisma db push` silently fails through Accelerate** — schema edits do NOT reach prod. New tables/columns = self-heal runtime raw SQL (ADR-0001; procedure: `.ai/RUNBOOKS/schema-change.md`).
+1. **Schema reaches prod ONLY via runtime self-heal DDL (ADR-0001)** — new tables/columns = `CREATE TABLE IF NOT EXISTS` raw SQL at runtime (procedure: `.ai/RUNBOOKS/schema-change.md`). **No build step may mutate the database** (guard: `scripts/schema-safety.test.ts`).
+   ⚠️ **Corrected 2026-07-20 — the old note here said "`prisma db push` silently fails through Accelerate." That was FALSE in current production.** Vercel build logs (prod *and* preview) showed `prisma db push --accept-data-loss` **succeeding** against a direct endpoint (`db.prisma.io:5432`), and `DATABASE_URL` is one shared value across Production+Preview. Since `db push` makes the DB match `schema.prisma`, it was armed to **drop the 15 self-heal-owned tables** — including `VerifiedOutcome`, `OutcomeConsent`, and `StripeWebhookEvent` — on every deploy, from any branch. The push has been removed from both build commands.
 2. **Client/server split:** `"use client"` pages must not import modules pulling in `prisma`/`next/headers` — shared constants go in `*Shared.ts`.
 3. **Owner/ADMIN:** username `CEOGABRIEL`, login email `reygabriel@creditvector.app`. Sessions resolve by **user id**, not email. `currentUserOrDemo()` returns null in prod.
 4. **Logo:** `public/logo-mark.png` (real 3D shield) via `components/BrandLogo.tsx` — **never substitute a vector recreation** (`.ai/ASSET-REGISTRY.md`).

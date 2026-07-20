@@ -5,7 +5,13 @@ Date: 2026-07-12 (recorded)
 Decision owners: Owner + Claude Code sessions
 
 ## Context
-The database is reached only through a Prisma Accelerate proxy. `prisma db push` **silently fails** through Accelerate — schema edits never reach prod, and the Vercel build tolerates the push failing (`vercel.json` buildCommand). There is no direct-connection migration path in the deploy pipeline.
+The application reads through a Prisma Accelerate proxy, and this ADR was written believing `prisma db push` **silently failed** through it — so the build tolerated a failing push and schema arrived only via runtime self-heal DDL.
+
+> **CORRECTION (2026-07-20 — production truth).** The premise was wrong, or stopped being true. Vercel build logs for both production and preview show `prisma db push --skip-generate --accept-data-loss` **succeeding** against a direct endpoint: `Datasource "db": PostgreSQL database "postgres", schema "public" at "db.prisma.io:5432"` → `Your database is now in sync with your Prisma schema`. `DATABASE_URL` is a single value shared by Production and Preview, so any branch's preview build ran it against the production database.
+>
+> Because `db push` makes the database match `schema.prisma`, it drops tables the schema does not declare — and 15 tables here are deliberately self-heal-owned and absent from `schema.prisma`, including `VerifiedOutcome` (the outcome ledger, ADR-0014), `OutcomeConsent`, and `StripeWebhookEvent` (webhook dedupe). The build was therefore armed to destroy them on every deploy, with the self-heal path silently recreating them empty on next use.
+>
+> **The decision below still stands and is now enforced rather than assumed:** schema reaches production only through runtime self-heal DDL or an explicit reviewed migration. No build step may mutate the database. Both build commands had the push removed; `scripts/schema-safety.test.ts` pins it, along with the inventory of self-heal-owned tables so the two-world split stays a conscious decision.
 
 ## Decision
 New tables/columns are created **at runtime** via idempotent raw SQL (`CREATE TABLE IF NOT EXISTS`, `ALTER TABLE … ADD COLUMN IF NOT EXISTS`) inside per-domain gate functions called before first use. The Prisma model is still added to `schema.prisma` + `npx prisma generate` for the typed client and build.

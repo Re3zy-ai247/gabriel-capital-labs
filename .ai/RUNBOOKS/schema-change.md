@@ -1,6 +1,6 @@
-# Runbook: Schema change (ADR-0001 — never trust `prisma db push`)
+# Runbook: Schema change (ADR-0001 — no build step may mutate the database)
 
-`prisma db push` silently fails through Prisma Accelerate. Editing `schema.prisma` alone does NOT reach prod.
+Editing `schema.prisma` alone does NOT reach prod. (⚠️ Corrected 2026-07-20: the old claim that `db push` "silently fails through Accelerate" was FALSE — build logs showed it SUCCEEDING against a direct endpoint and dropping self-heal-owned tables. The push has been removed from all build commands; see ADR-0001's correction note.)
 
 ## Adding a table (preferred: self-heal)
 1. Add the model to `prisma/schema.prisma` (typed client + build) → `npx prisma generate`.
