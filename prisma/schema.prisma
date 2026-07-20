@@ -625,6 +625,7 @@ model EventEnvelope {
 
   @@index([tenantId, createdAt, id])
   @@index([tenantId, agencyId, createdAt, id])
+  @@index([agencyId, createdAt, id]) // agency-stream read: index-seek the { agencyId } OR-branch
   @@index([type, createdAt, id])
   @@index([correlationId])
 }

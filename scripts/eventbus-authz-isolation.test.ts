@@ -105,10 +105,17 @@ check("negative control: a non-agency, non-admin, unpermissioned identity cannot
   check("read route builds ctx with isAdmin from the session, NOT from query", /isAdmin:\s*true/.test(route) && /admin\.id/.test(route));
   check("read route never reads tenantId/agencyId from the query string", !/searchParams\.get\(["'](tenant|agency)/i.test(route));
   check("read route validates ?type against the known set", /EVENT_TYPES[\s\S]*includes/.test(route));
-  // Structural: only a read endpoint exists under app/api/event-bus — publishing is internal-only.
+  // Structural: only read + redact endpoints exist under app/api/event-bus — NO public
+  // publish endpoint (publishing is internal-only).
   const busApiDir = join(__dirname, "..", "app/api/event-bus");
   const subdirs = readdirSync(busApiDir);
   check("no public publish endpoint (internal publication only)", !subdirs.includes("publish") && subdirs.includes("read"));
+
+  // Redact (data-subject erasure) endpoint is admin-only, flag-gated, server-resolved ctx.
+  const redact = code("app/api/event-bus/redact/route.ts");
+  check("redact route is flag-gated + admin-only", /eventBusEnabled\(\)/.test(redact) && /requireAdmin\(\)/.test(redact));
+  check("redact route resolves ctx server-side (isAdmin from session), not from body", /isAdmin:\s*true/.test(redact) && /admin\.id/.test(redact));
+  check("redact route calls redactEvent (erasure path is wired)", /redactEvent\(/.test(redact));
 }
 
 console.log(`\neventbus-authz-isolation.test.ts: ${pass} passed, ${fail} failed`);

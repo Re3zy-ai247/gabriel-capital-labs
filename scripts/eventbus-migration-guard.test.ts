@@ -28,6 +28,20 @@ if (dir) {
   check("migration creates the correlationId index", /"EventEnvelope_correlationId_idx"/.test(sql));
 }
 
+// ── ALL event_bus* migrations are additive-only (0 DROP / 0 ALTER TABLE) ─────
+{
+  const busMigrations = readdirSync(migRoot).filter((d) => d.includes("_event_bus"));
+  check("at least the base + agency-index event_bus migrations exist", busMigrations.length >= 2);
+  for (const d of busMigrations) {
+    const sql = readFileSync(join(migRoot, d, "migration.sql"), "utf8");
+    check(`${d}: 0 DROP`, (sql.match(/\bDROP\b/g) || []).length === 0);
+    check(`${d}: 0 ALTER TABLE`, (sql.match(/ALTER TABLE/g) || []).length === 0);
+  }
+  const idxDir = busMigrations.find((d) => d.endsWith("_event_bus_agency_index"));
+  check("the agency-index migration exists and creates the agency-leading index", !!idxDir &&
+    /CREATE INDEX "EventEnvelope_agencyId_createdAt_id_idx"/.test(readFileSync(join(migRoot, idxDir!, "migration.sql"), "utf8")));
+}
+
 // ── EventEnvelope is migration-first, NOT on the legacy self-heal allowlist ───
 {
   const guard = readFileSync(join(root, "scripts/schema-safety.test.ts"), "utf8");
