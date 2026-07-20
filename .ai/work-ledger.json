@@ -23,10 +23,10 @@
       "owner_session": "fable-moat-builder",
       "owns": ["lib/network/**", "app/api/network/**", "prisma/migrations/**", "scripts/operator-shell.test.ts", "scripts/network-*.test.ts", ".ai/COUNSEL-REVIEW-operator-network.md"],
       "started": "2026-07-20",
-      "status": "active",
-      "dependencies": "operator-shell guard amendment (this package); privacy counsel review (blocks PUBLIC activation only)",
-      "release_conditions": "flag OFF by default; tenant isolation runtime-proven; moderation path operational; privacy package reviewed before unrestricted public access",
-      "completion_commit": null
+      "status": "foundation-complete",
+      "dependencies": "realtime/messaging/private-channel persistence needs the DB + the contested schema-governance decision + the attachment-route audience fix + counsel review",
+      "release_conditions": "flag OFF by default; tenant isolation runtime-proven (DONE, 36/36); moderation path operational (DEFERRED); privacy package reviewed before unrestricted public access (drafted, counsel pending)",
+      "completion_commit": "e66241b (access matrix + channels, pure). NO guard amendment needed (no models this session). Realtime/DB DEFERRED."
     },
     {
       "package": "arena-slice",
@@ -35,10 +35,10 @@
       "owner_session": "fable-moat-builder",
       "owns": ["lib/arena/**", "app/api/arena/**", "app/admin/arena/**", "scripts/arena-*.test.ts", ".ai/ARENA-CONTRIBUTION-POLICY.md"],
       "started": "2026-07-20",
-      "status": "active",
-      "dependencies": "verified-outcome evidence (lib/outcomeLedger), Academy evidence for education rule",
-      "release_conditions": "flag OFF by default; replay + anti-duplication proven; fraud hooks exist; no unverified historical XP displayed",
-      "completion_commit": null
+      "status": "foundation-complete",
+      "dependencies": "user-facing own-XP surface + any append-only award table are follow-ups; cross-user ranking is REFUSED pending CCO",
+      "release_conditions": "flag OFF by default; replay + anti-duplication proven (DONE, 27/27); reconcile-on-read reversal proven; no cross-user leaderboard, no unverified/verified tier",
+      "completion_commit": "755fbb4 (policy+engine), 264aef0 (admin inspector on real data). Pure core proven; writers/leaderboard/streaks/seasons REFUSED or deferred."
     },
     {
       "package": "eng-ops-center",
