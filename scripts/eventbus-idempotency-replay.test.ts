@@ -94,6 +94,20 @@ async function run() {
     check("non-admin cannot publish SYSTEM_EVENT => forbidden", platformDenied.ok === false && platformDenied.code === "forbidden");
   });
 
+  // ── Publisher failure is retry-safe: the store rethrows anything but P2002 ───
+  {
+    const { readFileSync } = await import("node:fs");
+    const { join } = await import("node:path");
+    const store = readFileSync(join(__dirname, "..", "lib/eventBus/store.ts"), "utf8")
+      .replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
+    check("appendEvent only swallows P2002 (idempotent replay)", /e\.code === "P2002"/.test(store));
+    check("appendEvent RETHROWS a non-P2002 failure (retry-safe, never fabricated success)", /\bthrow e;/.test(store));
+    // publish() awaits appendEvent and does NOT wrap it in a try/catch that hides failure,
+    // so a persist failure propagates to the caller for a clean retry (no partial fanout).
+    const pub = readFileSync(join(__dirname, "..", "lib/eventBus/publish.ts"), "utf8");
+    check("publish fans out ONLY on a fresh (non-replayed) persist", /if \(!replayed\) await deliver/.test(pub));
+  }
+
   console.log(`\neventbus-idempotency-replay.test.ts: ${pass} passed, ${fail} failed`);
   process.exit(fail ? 1 : 0);
 }

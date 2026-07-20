@@ -41,6 +41,14 @@ async function main() {
   check("second publish (same dedupeKey) is an idempotent replay", r2.ok === true && r2.replayed === true);
   check("replay returns the SAME event id", r1.ok && r2.ok && r1.event.id === r2.event.id);
 
+  check("correlationId defaults to the event id when not supplied", r1.ok && r1.event.correlationId === r1.event.id);
+
+  // 1b. Correlation: an explicit correlationId propagates and is stable across a retry.
+  const c1 = await publish({ type: "SYSTEM_EVENT", payload: { kind: "corr" }, identity: systemIdentity(TA), dedupeKey: "sys:corr:1", correlationId: "req-XYZ" });
+  const c2 = await publish({ type: "SYSTEM_EVENT", payload: { kind: "corr" }, identity: systemIdentity(TA), dedupeKey: "sys:corr:1", correlationId: "req-XYZ" });
+  check("explicit correlationId propagates onto the envelope", c1.ok && c1.event.correlationId === "req-XYZ");
+  check("correlationId is stable across an idempotent retry", c1.ok && c2.ok && c2.replayed === true && c2.event.correlationId === "req-XYZ");
+
   // 2. A request-identity self event with the required permission, full ref payload.
   const userId = requestIdentity({ id: TA, role: "USER", isAgency: false }, { id: TA, managedByAgencyId: null }, new Set(["letters:generate"]));
   const r3 = await publish({ type: "LETTER_GENERATED", payload: { letterId: "L1", status: "generated" }, identity: userId, dedupeKey: "letter:L1:generated" });
@@ -53,7 +61,7 @@ async function main() {
   // 4. Cross-tenant read isolation.
   const readA = await readSince(ctxA, { limit: 50 });
   const readB = await readSince(ctxB, { limit: 50 });
-  check("tenant A reads exactly its 2 events", readA.events.length === 2 && readA.events.every((e) => e.tenantId === TA));
+  check("tenant A reads exactly its 3 events", readA.events.length === 3 && readA.events.every((e) => e.tenantId === TA));
   check("tenant A NEVER sees a tenant B event", !readA.events.some((e) => e.tenantId === TB));
   check("tenant B reads exactly its 1 event, none of A's", readB.events.length === 1 && readB.events.every((e) => e.tenantId === TB));
 
