@@ -47,7 +47,9 @@ The one new table, `EventEnvelope`, is **migration-first** (Prisma model + offli
 
 ## 5. Validation
 
-Preview-validated on the isolated preview DB (`migrate deploy` → up-to-date; 29→30 tables, 11 cols, 5 indexes). End-to-end on real Postgres (`eventbus-preview-integration` 14/14: idempotent replay, cross-tenant isolation, full-payload replay, deterministic order, correlationId stability, live fanout). DB-less guards: validate 50, authz-isolation 40, idempotency-replay 19, notification-nodup 9, migration-guard 12. Sprint 7 + kernel + schema-safety + arena + operator-shell all green. `flag EVENT_BUS_ENABLED` OFF.
+Preview-validated on the isolated preview DB (`migrate deploy` → up-to-date; 29→30 tables, 4 migrations, 6 indexes). End-to-end on real Postgres (`eventbus-preview-integration` 14/14: idempotent replay, cross-tenant isolation, full-payload replay, deterministic order, correlationId stability, live fanout). DB-less guards: validate 57, authz-isolation 43, idempotency-replay 20, notification-nodup 9, migration-guard 18. Sprint 7 + kernel + schema-safety + arena + operator-shell all green. `flag EVENT_BUS_ENABLED` OFF.
+
+**19-agent adversarial code review** of the built code found 9 verified findings, all MEDIUM/LOW (zero BLOCKER/HIGH — the core isolation/authz/idempotency/replay held), all fixed: (a) `deriveEventId` now folds the event TYPE into the id hash so two types sharing (tenant, source, dedupeKey) cannot collide on the PK and drop one as a false replay; (b) the PII guard scans string VALUES (email/SSN/card/phone), not only key names; (c) the registry's unbounded in-process dedupe Set was removed and the "at-least-once / catches up via replayEvents" claim corrected to the honest at-most-once-per-fresh-persist contract (durable effect ledger provides at-most-once for effects; replay-driven redelivery is deferred); (d) `redactEvent` was wired to an admin-only `POST /api/event-bus/redact`; (e) an `[agencyId, createdAt, id]` index (additive migration) backs the agency-stream OR-branch.
 
 ## 6. Deferred (owner-gated) — NOT done here
 
