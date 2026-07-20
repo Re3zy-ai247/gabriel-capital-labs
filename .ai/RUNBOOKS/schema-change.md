@@ -16,3 +16,18 @@ Editing `schema.prisma` alone does NOT reach prod. (⚠️ Corrected 2026-07-20:
 
 ## Client/server rule
 A `"use client"` page must not import anything pulling in `prisma`/`next/headers` — shared constants go in a `*Shared.ts`.
+
+## Preview database (added 2026-07-20)
+
+Preview has its OWN Prisma Postgres database (`prisma-postgres-coffee-drawer`), separate from
+production. It starts empty. To provision or re-sync its schema — explicitly, never in a build:
+
+```bash
+vercel env pull /tmp/p/.env.preview --environment=preview
+DATABASE_URL="<the preview value>" npx prisma db push --skip-generate
+```
+
+Rules: never pass `--accept-data-loss`; verify the target is the preview database first
+(`SELECT current_database()`, and confirm the table count is what you expect) — production's
+`DATABASE_URL` is SENSITIVE and unreadable, so a mistake here cannot be undone by re-reading it.
+Delete the pulled env file afterwards; it contains a live credential.
