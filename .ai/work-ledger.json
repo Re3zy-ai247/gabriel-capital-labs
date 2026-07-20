@@ -136,6 +136,25 @@
       "dependencies": "ALERT_WEBHOOK_URL unset \u2014 owner action to activate delivery",
       "release_conditions": "coverage live; alert sink pending owner env var",
       "completion_commit": "65cc4a4"
+    },
+    {
+      "package": "event-bus",
+      "subsystem": "platform realtime backbone / event bus (Sprint 8)",
+      "wave": null,
+      "owner_session": "opus-event-bus",
+      "owns": [
+        "lib/eventBus/**",
+        "app/api/event-bus/**",
+        "prisma/schema.prisma (EventEnvelope model only)",
+        "prisma/migrations/** (new event_bus migration folder only)",
+        "scripts/eventbus-*.test.ts",
+        "architecture/adr/ADR-event-bus-substrate.md"
+      ],
+      "started": "2026-07-20",
+      "status": "active",
+      "dependencies": "REUSES (does not duplicate): kernel KaiEvent envelope + durableIdempotency (KernelIdempotency) + KernelAudit; Sprint 7 NetworkMessage cursor/idempotency pattern; buildNotificationPlan + sendPushToUser/sendEmail (notify path); entitlementSnapshot().grantedPermissions; currentAccount/currentUser + managedByAgencyId; enforceRateLimit; zod. Shares prisma/migrations/** with operator-network packages \u2014 filename-timestamp ordering reconciled at merge. PROD migration + activation owner-gated.",
+      "release_conditions": "substrate (contracts/validate/store/publish/registry/effect + reference subscribers) built, migration-first EventEnvelope preview-validated, flag EVENT_BUS_ENABLED OFF, tenant+agency isolation + authz + idempotency + replay tested, Sprint 7 green. DEFERRED owner-gated: prod migration, flag ON, wiring real Mission Control/Arena/Kai/Notifications/Operator Network producers+subscribers (owned by other packages \u2014 STOP/coordinate), live cross-instance catch-up delivery.",
+      "completion_commit": null
     }
   ]
 }
