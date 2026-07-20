@@ -4,7 +4,7 @@
 // the narrowest scope, and driven ONLY by a server-resolved AuthContext (never a
 // client-supplied tenantId/agencyId — the IDOR the adversarial review flagged as a
 // BLOCKER). The publish-authorization half is added alongside in the same file.
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { scopeWhere, parseCursor, cursorOf, type AuthContext } from "../lib/eventBus/store";
 import { requestIdentity, systemIdentity, type PublishIdentity } from "../lib/eventBus/envelope";
@@ -96,6 +96,20 @@ check("unresolved identity (no tenant) is denied", authorizePublish(c("SYSTEM_EV
 // NEGATIVE CONTROL
 check("negative control: a non-agency, non-admin, unpermissioned identity cannot publish an agency or platform event",
   authorizePublish(c("CLIENT_CREATED"), idOf({})).ok === false && authorizePublish(c("KAI_INSIGHT_CREATED"), idOf({})).ok === false);
+
+// ── Read endpoint: admin-only, flag-gated, server-resolved ctx (no IDOR) ─────
+{
+  const route = code("app/api/event-bus/read/route.ts");
+  check("read route is flag-gated (eventBusEnabled)", /eventBusEnabled\(\)/.test(route));
+  check("read route requires admin (requireAdmin)", /requireAdmin\(\)/.test(route));
+  check("read route builds ctx with isAdmin from the session, NOT from query", /isAdmin:\s*true/.test(route) && /admin\.id/.test(route));
+  check("read route never reads tenantId/agencyId from the query string", !/searchParams\.get\(["'](tenant|agency)/i.test(route));
+  check("read route validates ?type against the known set", /EVENT_TYPES[\s\S]*includes/.test(route));
+  // Structural: only a read endpoint exists under app/api/event-bus — publishing is internal-only.
+  const busApiDir = join(__dirname, "..", "app/api/event-bus");
+  const subdirs = readdirSync(busApiDir);
+  check("no public publish endpoint (internal publication only)", !subdirs.includes("publish") && subdirs.includes("read"));
+}
 
 console.log(`\neventbus-authz-isolation.test.ts: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
