@@ -75,7 +75,7 @@
 | R1 | **HIGH** | Pushing **local main** auto-deploys all 24 commits to production | **Never push main.** Push only the review branch (novel name → preview only) | no | no | — (this is the thing to avoid) |
 | R2 | **HIGH** | Prod DB lacks the 3 new tables; enabling a flag before `migrate deploy` → runtime errors | Flags stay **OFF** (fail-closed); prod migration is owner-gated + must precede any flag flip | no | no | **yes** — migrate before flag |
 | R3 | **MEDIUM** | `0_init` baseline would fail if executed against prod (tables exist) | Prod apply uses `migrate resolve --applied 0_init` first, never a raw run | no | no | yes (procedure) |
-| R4 | **MEDIUM** | PROPOSED docs (ADR-0037, VECTOR-XP, PERFORMANCE-INTELLIGENCE) treated as RATIFIED | Statuses say PROPOSED; founder ratification pending (ADR-0034). This record does not flip them | no | no | n/a |
+| R4 | **MEDIUM** | Founder-ratified PRINCIPLES mistaken as ratified POLICIES/implementation | §5 split is explicit: principles RATIFIED (2026-07-20); all values/legal/migrations/activation stay PROPOSED + owner-gated; ratification implies no implementation/legal/prod readiness | no | no | n/a |
 | R5 | **MEDIUM** | Cross-commit coupling in the event-bus chain (contracts→store→publisher→subscribers) | Do not cherry-pick individually; decompose only with care (see §6). History integrity first | no | no | n/a |
 | R6 | **LOW** | Pushing the review branch triggers a **preview deploy** + CI build | Benign — preview isolated, dormant/flag-off code, public repo; provides remote CI evidence | no | no | no |
 | R7 | **LOW** | Operator Network `/network` + Event Fabric are incomplete/dormant surfaces | Fail-closed flags; not reachable in prod | no | no | no |
