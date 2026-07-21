@@ -9,8 +9,11 @@
 // Cross-user surfaces are refused in v1 (see lib/arena/policy.ts note 4).
 import {
   xpForOutcome, classifyOutcome, outcomeAwardKey, ARENA_POLICY_VERSION,
-  type ArenaClassId,
+  xpForLevel, levelForXp, rankForLevel, type ArenaClassId,
 } from "./policy";
+// The level/rank curve now lives in lib/reputation/scoring.ts (via ./policy). Re-export
+// it so arena callers that import it from ./project keep working byte-for-byte.
+export { xpForLevel, levelForXp, rankForLevel };
 
 // The minimal shape Arena reads from a VerifiedOutcome row. `userId` is the
 // evidence owner and is the ONLY legitimate award earner — carried here so callers
@@ -42,30 +45,7 @@ export interface ArenaStanding {
   badges: string[];
 }
 
-// Deterministic level curve. xpForLevel(n) = 25*n*(n-1): 0/50/150/300/500/750...
-// Integer-only, tuned to the documented XP scale (a favorable outcome = 20).
-export function xpForLevel(n: number): number {
-  return 25 * n * (n - 1);
-}
-export function levelForXp(xp: number): number {
-  let n = 1;
-  while (xpForLevel(n + 1) <= xp) n++;
-  return n;
-}
-
-// Rank ladder by level. Deterministic, ordered, no ties to break.
-const RANKS: readonly { at: number; name: string }[] = [
-  { at: 1, name: "recruit" },
-  { at: 3, name: "contender" },
-  { at: 6, name: "operator" },
-  { at: 10, name: "veteran" },
-  { at: 15, name: "elite" },
-];
-export function rankForLevel(level: number): string {
-  let name = RANKS[0].name;
-  for (const r of RANKS) if (level >= r.at) name = r.name;
-  return name;
-}
+// (level/rank curve moved to lib/reputation/scoring.ts; imported + re-exported above)
 
 // Derive the award set for ONE user's outcome rows. Dedupe strictly on letterId
 // (the stable entity), so re-logged/duplicate rows for one letter collapse to a

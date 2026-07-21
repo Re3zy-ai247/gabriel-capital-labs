@@ -41,8 +41,11 @@ check("replayStanding takes a principal and authorizes own-data/admin", /replayS
 // reverseAward emits compensating facts (the fact stream tracks the ledger).
 check("reverseAward emits a compensating fact when a reversal is created", /reverseAward[\s\S]*?recordReputationEvent\(xpGrantedEvent/.test(service));
 check("no billing/marketplace/kai/network/UI imports", !/from "@\/lib\/(stripe|billing|kai|network|community)/.test(allRep) && !/from "@\/app\//.test(allRep));
-check("no arena EXPERIENCE import (only the pure policy/project modules)",
-  !/from "@\/lib\/arena\/(read|ownProgress|cohort|flags)"/.test(allRep) && /from "@\/lib\/arena\/policy"/.test(allRep) && /from "@\/lib\/arena\/project"/.test(allRep));
+// Ownership move (Sprint 10): reputation imports NO arena code at all — the canonical
+// scoring policy lives in lib/reputation/scoring.ts and Arena re-exports it. The prior
+// Reputation→Arena inversion is eliminated.
+check("reputation imports ZERO arena code (inversion gone)", !/from "@\/lib\/arena\//.test(allRep));
+check("reputation policy sources from its own scoring module", /from "@\/lib\/reputation\/scoring"/.test(allRep));
 check("xp is NEVER an input (no xp field on RecordAwardInput — policy-resolved only)", !/RecordAwardInput[\s\S]{0,400}xp\s*[:?]/.test(service));
 check("no HTTP surface (no route imports lib/reputation)", (() => {
   const hits: string[] = [];

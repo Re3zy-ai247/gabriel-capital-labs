@@ -10,11 +10,13 @@
 //
 // Fail-closed: awards resolve ONLY for live classes with a positive baseXp; everything
 // else (non-live class, unknown class, prohibited source) resolves to null.
+// Imports from the Reputation-OWNED scoring module (lib/reputation/scoring.ts) — NOT
+// from lib/arena. Reputation owns its policy and has zero dependency on the Arena
+// experience (the prior Reputation→Arena inversion is gone; Arena now re-exports scoring).
 import {
   ARENA_CLASSES, ARENA_POLICY_VERSION, PROHIBITED_XP_SOURCES, REFUSED_V1,
-  classifyOutcome, type ArenaClassId,
-} from "@/lib/arena/policy";
-import { xpForLevel, levelForXp, rankForLevel } from "@/lib/arena/project";
+  classifyOutcome, xpForLevel, levelForXp, rankForLevel, type ArenaClassId,
+} from "@/lib/reputation/scoring";
 
 export { ARENA_POLICY_VERSION as REPUTATION_POLICY_VERSION, classifyOutcome };
 export { xpForLevel, levelForXp, rankForLevel };
