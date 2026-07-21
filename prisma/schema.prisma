@@ -53,38 +53,38 @@ enum LetterStatus {
 }
 
 model User {
-  id            String     @id @default(cuid())
-  email         String     @unique
-  username      String?    @unique  // optional login handle (e.g. "ceogabriel")
-  name          String?
-  passwordHash  String?
+  id                   String            @id @default(cuid())
+  email                String            @unique
+  username             String?           @unique // optional login handle (e.g. "ceogabriel")
+  name                 String?
+  passwordHash         String?
   // Admin & subscription
-  role          UserRole   @default(USER)
-  disabled      Boolean    @default(false) // admin can disable an account (blocks login)
-  briefDigest   Boolean    @default(false) // opted in to the weekly CreditVector Brief email digest
-  letterCredits Int        @default(0) // one-time letter-pack credits (consumed past the free monthly allowance)
+  role                 UserRole          @default(USER)
+  disabled             Boolean           @default(false) // admin can disable an account (blocks login)
+  briefDigest          Boolean           @default(false) // opted in to the weekly CreditVector Brief email digest
+  letterCredits        Int               @default(0) // one-time letter-pack credits (consumed past the free monthly allowance)
   // Billing — Stripe subscription state. plan is the source of truth for entitlements.
-  plan                 String    @default("free") // "free" | "premium"
-  stripeCustomerId     String?   @unique
+  plan                 String            @default("free") // "free" | "premium"
+  stripeCustomerId     String?           @unique
   stripeSubscriptionId String?
-  subscriptionStatus   String?   // active | trialing | past_due | canceled | incomplete | ...
+  subscriptionStatus   String? // active | trialing | past_due | canceled | incomplete | ...
   currentPeriodEnd     DateTime?
   // Consumer info required before a letter can be finalized/printed
-  fullName      String?
-  addressLine1  String?
-  addressLine2  String?
-  city          String?
-  state         String?
-  zip           String?
-  createdAt     DateTime   @default(now())
-  reports       Report[]
-  tradelines    Tradeline[]
-  letters       Letter[]
-  scoreEntries  ScoreEntry[]
-  documents     Document[]
-  communityThreads CommunityThread[]
-  communityReplies CommunityReply[]
-  supportTickets   SupportTicket[]
+  fullName             String?
+  addressLine1         String?
+  addressLine2         String?
+  city                 String?
+  state                String?
+  zip                  String?
+  createdAt            DateTime          @default(now())
+  reports              Report[]
+  tradelines           Tradeline[]
+  letters              Letter[]
+  scoreEntries         ScoreEntry[]
+  documents            Document[]
+  communityThreads     CommunityThread[]
+  communityReplies     CommunityReply[]
+  supportTickets       SupportTicket[]
 
   // ---- Agency tier ($399/mo): an agency manages many "clients" on their behalf.
   // A managed client is itself a User row with managedByAgencyId set and no
@@ -98,18 +98,25 @@ model User {
 
   networkMessages     NetworkMessage[]          @relation("NetworkMessages")
   networkMessageReads NetworkMessageReadState[] @relation("NetworkMessageReads")
+
+  // ---- Operator Identity (Sprint 9). Additive back-relations only (no new column
+  // on User): the auth User stays the source of truth; OperatorIdentity is the
+  // platform-identity projection keyed to the account, and Organization is the
+  // durable org an account owns. Dormant behind OPERATOR_IDENTITY_ENABLED.
+  operatorIdentity   OperatorIdentity?
+  ownedOrganizations Organization[]    @relation("OrganizationOwner")
 }
 
 // Append-only record of privileged admin actions (discount codes created, plans
 // comped, roles changed, impersonation started, accounts disabled, etc.).
 model AdminAuditLog {
   id         String   @id @default(cuid())
-  actorId    String   // the admin who performed the action
+  actorId    String // the admin who performed the action
   actorEmail String
-  action     String   // machine key, e.g. "discount.create" | "user.comp_plan" | "user.impersonate"
-  targetType String?  // "user" | "discount" | "agency" | ...
+  action     String // machine key, e.g. "discount.create" | "user.comp_plan" | "user.impersonate"
+  targetType String? // "user" | "discount" | "agency" | ...
   targetId   String?
-  summary    String   // human-readable one-liner
+  summary    String // human-readable one-liner
   metadata   Json?
   createdAt  DateTime @default(now())
 
@@ -153,7 +160,7 @@ model Document {
   ciphertext       Bytes
   iv               Bytes
   authTag          Bytes
-  byteSize         Int      // size of the original plaintext, for display
+  byteSize         Int // size of the original plaintext, for display
   includeInLetters Boolean  @default(false)
   createdAt        DateTime @default(now())
 
@@ -186,81 +193,81 @@ model ScoreEntry {
 }
 
 model Report {
-  id          String      @id @default(cuid())
-  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId      String
-  fileName    String
+  id         String      @id @default(cuid())
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId     String
+  fileName   String
   // Which bureaus this uploaded report actually covered.
-  bureaus     Bureau[]
-  rawText     String?     @db.Text // stored so a report can be re-analyzed
-  uploadedAt  DateTime    @default(now())
-  analyzedAt  DateTime?
-  tradelines  Tradeline[]
+  bureaus    Bureau[]
+  rawText    String?     @db.Text // stored so a report can be re-analyzed
+  uploadedAt DateTime    @default(now())
+  analyzedAt DateTime?
+  tradelines Tradeline[]
 }
 
 model Tradeline {
-  id              String       @id @default(cuid())
-  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId          String
-  report          Report       @relation(fields: [reportId], references: [id], onDelete: Cascade)
-  reportId        String
+  id       String @id @default(cuid())
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId   String
+  report   Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  reportId String
 
-  creditorName    String
-  originalCreditor String?
+  creditorName      String
+  originalCreditor  String?
   accountNumberMask String?
-  accountType     AccountType  @default(OTHER)
-  isDebtBuyer     Boolean      @default(false)
-  balance         Int          @default(0) // cents
+  accountType       AccountType @default(OTHER)
+  isDebtBuyer       Boolean     @default(false)
+  balance           Int         @default(0) // cents
 
-  dateOpened      DateTime?
-  dateReported    DateTime?
+  dateOpened             DateTime?
+  dateReported           DateTime?
   dateOfFirstDelinquency DateTime?
 
   // Per-bureau presence + per-bureau values, stored as JSON keyed by bureau.
   // e.g. { "EQUIFAX": { "presence": "PRESENT", "status": "Open Collection", "balance": 101300 } }
-  bureauData      Json         @default("{}")
+  bureauData Json @default("{}")
 
   // Computed scoring
-  score           Int          @default(0)   // 0-100
-  probability     Probability  @default(LOW)
-  reasons         String[]     @default([])
-  disputeAngles   String[]     @default([])
+  score         Int         @default(0) // 0-100
+  probability   Probability @default(LOW)
+  reasons       String[]    @default([])
+  disputeAngles String[]    @default([])
 
   // Duplicate grouping — tradelines representing the same underlying debt share a key
-  duplicateGroup  String?
+  duplicateGroup String?
 
-  resolved        Boolean      @default(false)
-  letters         Letter[]
-  createdAt       DateTime     @default(now())
+  resolved  Boolean  @default(false)
+  letters   Letter[]
+  createdAt DateTime @default(now())
 }
 
 model Letter {
-  id            String       @id @default(cuid())
-  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId        String
-  tradeline     Tradeline?   @relation(fields: [tradelineId], references: [id], onDelete: SetNull)
-  tradelineId   String?
+  id          String     @id @default(cuid())
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String
+  tradeline   Tradeline? @relation(fields: [tradelineId], references: [id], onDelete: SetNull)
+  tradelineId String?
 
-  strategy      String       // e.g. "fcra_611", "validation"
-  recipientType String       // "bureau" | "furnisher" | "collector"
+  strategy      String // e.g. "fcra_611", "validation"
+  recipientType String // "bureau" | "furnisher" | "collector"
   recipientName String
   targetBureau  Bureau?
-  round         Int          @default(1)
+  round         Int     @default(1)
 
-  body          String       @db.Text
-  status        LetterStatus @default(GENERATED)
-  complianceFlags String[]   @default([])
+  body            String       @db.Text
+  status          LetterStatus @default(GENERATED)
+  complianceFlags String[]     @default([])
 
   // Bureau response + AI analysis (drives the Round 2 escalation flow).
-  responseText     String?    @db.Text  // pasted/extracted text of the bureau's response
-  responseOutcome  String?              // verified | deleted | updated | no_response | unknown
-  responseAnalysis String?    @db.Text  // AI summary of the response + escalation angle
+  responseText     String?   @db.Text // pasted/extracted text of the bureau's response
+  responseOutcome  String? // verified | deleted | updated | no_response | unknown
+  responseAnalysis String?   @db.Text // AI summary of the response + escalation angle
   responseAt       DateTime?
   // Links a Round 2 (escalation) letter back to the round it follows up on.
   parentLetterId   String?
 
-  createdAt     DateTime     @default(now())
-  mailedAt      DateTime?
+  createdAt DateTime  @default(now())
+  mailedAt  DateTime?
 }
 
 // ---- Agency Community Hub ----------------------------------------------------
@@ -271,19 +278,19 @@ model Letter {
 // the platform's master AI expert — participates as replies with isKai = true and
 // a null authorId.
 model CommunityThread {
-  id           String           @id @default(cuid())
-  author       User?            @relation(fields: [authorId], references: [id], onDelete: SetNull)
-  authorId     String?
-  authorName   String           // snapshot of the agency display name at post time
-  category     String           @default("general") // general | wins | strategy | tools | questions
-  title        String
-  body         String           @db.Text
-  pinned       Boolean          @default(false)
-  locked       Boolean          @default(false)
-  replyCount   Int              @default(0)
-  lastActivityAt DateTime       @default(now())
-  createdAt    DateTime         @default(now())
-  replies      CommunityReply[]
+  id             String           @id @default(cuid())
+  author         User?            @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  authorId       String?
+  authorName     String // snapshot of the agency display name at post time
+  category       String           @default("general") // general | wins | strategy | tools | questions
+  title          String
+  body           String           @db.Text
+  pinned         Boolean          @default(false)
+  locked         Boolean          @default(false)
+  replyCount     Int              @default(0)
+  lastActivityAt DateTime         @default(now())
+  createdAt      DateTime         @default(now())
+  replies        CommunityReply[]
 
   @@index([pinned, lastActivityAt])
   @@index([category])
@@ -295,7 +302,7 @@ model CommunityReply {
   threadId   String
   author     User?           @relation(fields: [authorId], references: [id], onDelete: SetNull)
   authorId   String?
-  authorName String          // snapshot; "Kai" for AI replies
+  authorName String // snapshot; "Kai" for AI replies
   body       String          @db.Text
   isKai      Boolean         @default(false) // true = generated by the Kai master agent
   createdAt  DateTime        @default(now())
@@ -310,11 +317,11 @@ model CommunityReply {
 // is a reply. Self-heals at runtime like the other community tables (lib/community.ts).
 model CommunityReport {
   id           String    @id @default(cuid())
-  targetType   String    // "thread" | "reply"
-  targetId     String    // CommunityThread.id or CommunityReply.id
-  threadId     String    // owning thread, for the admin deep-link
-  reporterId   String?   // reporting User.id (null if the user is later removed)
-  reporterName String    // snapshot of the reporter's display name
+  targetType   String // "thread" | "reply"
+  targetId     String // CommunityThread.id or CommunityReply.id
+  threadId     String // owning thread, for the admin deep-link
+  reporterId   String? // reporting User.id (null if the user is later removed)
+  reporterName String // snapshot of the reporter's display name
   reason       String?   @db.Text // optional free-text from the reporter
   status       String    @default("open") // open | actioned | dismissed
   resolvedById String?
@@ -331,11 +338,11 @@ model SupportTicket {
   id             String                 @id @default(cuid())
   user           User?                  @relation(fields: [userId], references: [id], onDelete: SetNull)
   userId         String?
-  userEmail      String                 // snapshot so staff can reply even if the user is removed
-  userName       String                 // snapshot display name
+  userEmail      String // snapshot so staff can reply even if the user is removed
+  userName       String // snapshot display name
   subject        String
   category       String                 @default("general") // general | billing | technical | account
-  status         String                 @default("open")    // open | responded | closed
+  status         String                 @default("open") // open | responded | closed
   lastActivityAt DateTime               @default(now())
   createdAt      DateTime               @default(now())
   messages       SupportTicketMessage[]
@@ -441,7 +448,7 @@ model BriefArticle {
   category      String    @default("consumer-rights")
   tags          String[]
   socialCaption String?
-  videoUrl      String?   // optional official YouTube link (embedded via the no-cookie player)
+  videoUrl      String? // optional official YouTube link (embedded via the no-cookie player)
   status        String    @default("draft") // draft | published | rejected
   featured      Boolean   @default(false)
   views         Int       @default(0)
@@ -501,7 +508,6 @@ model BriefCommentReport {
   @@unique([commentId, userId])
   @@index([commentId])
 }
-
 
 // BI-COST-01 — one row per AI call, written by lib/aiMeter.ts (self-heal table;
 // costUsd is a list-price ESTIMATE — billing truth is the provider console).
@@ -585,13 +591,13 @@ model NetworkMessage {
 }
 
 model NetworkMessageReadState {
-  id                 String   @id @default(cuid())
-  user               User     @relation("NetworkMessageReads", fields: [userId], references: [id], onDelete: Cascade)
-  userId             String
-  channelKey         String
-  lastReadAt         DateTime
-  lastReadMessageId  String?
-  updatedAt          DateTime @updatedAt
+  id                String   @id @default(cuid())
+  user              User     @relation("NetworkMessageReads", fields: [userId], references: [id], onDelete: Cascade)
+  userId            String
+  channelKey        String
+  lastReadAt        DateTime
+  lastReadMessageId String?
+  updatedAt         DateTime @updatedAt
 
   @@unique([userId, channelKey])
   @@index([userId])
@@ -611,7 +617,7 @@ model NetworkMessageReadState {
 // and refs-only (no value-bearing PII). Tenant + agency isolation is enforced at the
 // read layer via a SERVER-resolved AuthContext, backed by these indexes.
 model EventEnvelope {
-  id            String   @id
+  id            String    @id
   type          String
   version       Int
   tenantId      String
@@ -621,11 +627,104 @@ model EventEnvelope {
   correlationId String
   payload       Json
   redactedAt    DateTime? // data-subject erasure tombstone: payload cleared, envelope kept
-  createdAt     DateTime @default(now())
+  createdAt     DateTime  @default(now())
 
   @@index([tenantId, createdAt, id])
   @@index([tenantId, agencyId, createdAt, id])
   @@index([agencyId, createdAt, id]) // agency-stream read: index-seek the { agencyId } OR-branch
   @@index([type, createdAt, id])
   @@index([correlationId])
+}
+
+// ── Operator Identity — bounded context (Sprint 9) ───────────────────────────
+// Migration-first (NOT self-heal). Consolidates the scattered identity concerns
+// (OPERATOR-IDENTITY.md) into durable records WITHOUT duplicating the auth User:
+//   • OperatorIdentity  — the platform identity of an account (1:1), with an
+//     explicit lifecycle. `account` is the source of truth for auth/email/name;
+//     this row adds a stable operatorId, an optional reserved handle, and state.
+//   • Organization      — a durable org (agency) an account owns; `slug` unique.
+//     Replaces reliance on the spoofable free-text agencyName for the org's id.
+//   • OrganizationMembership — an operator's membership in an org with a role
+//     (the RBAC extension beyond User.role). @@unique(org, operator) makes
+//     membership idempotent and orphan-free.
+// All three are dormant behind OPERATOR_IDENTITY_ENABLED (fail-closed) until the
+// owner-gated migration + activation. Lifecycle transitions are governed by the
+// pure state machines in lib/identity/state.ts; DEACTIVATED/REMOVED/ARCHIVED are
+// terminal (no resurrection).
+
+enum OperatorState {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  DEACTIVATED
+}
+
+enum OrganizationKind {
+  AGENCY
+}
+
+enum OrganizationState {
+  ACTIVE
+  SUSPENDED
+  ARCHIVED
+}
+
+enum OrgRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum MembershipState {
+  ACTIVE
+  SUSPENDED
+  REMOVED
+}
+
+model OperatorIdentity {
+  id          String        @id @default(cuid())
+  account     User          @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  accountId   String        @unique // one operator identity per account, ever (idempotent register)
+  handle      String?       @unique // reserved, default-private; nullable until claimed
+  state       OperatorState @default(PENDING)
+  stateReason String? // short lifecycle note (bounded); never PII
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  memberships OrganizationMembership[]
+
+  @@index([state])
+}
+
+model Organization {
+  id             String            @id @default(cuid())
+  owner          User              @relation("OrganizationOwner", fields: [ownerAccountId], references: [id], onDelete: Cascade)
+  ownerAccountId String
+  name           String
+  slug           String            @unique // stable org id surface; never the spoofable agencyName
+  kind           OrganizationKind  @default(AGENCY)
+  state          OrganizationState @default(ACTIVE)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  memberships OrganizationMembership[]
+
+  @@index([ownerAccountId])
+  @@index([state])
+}
+
+model OrganizationMembership {
+  id             String           @id @default(cuid())
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organizationId String
+  operator       OperatorIdentity @relation(fields: [operatorId], references: [id], onDelete: Cascade)
+  operatorId     String
+  role           OrgRole          @default(MEMBER)
+  state          MembershipState  @default(ACTIVE)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  @@unique([organizationId, operatorId]) // idempotent + orphan-free membership
+  @@index([operatorId])
+  @@index([organizationId, state])
 }
