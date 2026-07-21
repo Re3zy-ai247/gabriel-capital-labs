@@ -33,8 +33,9 @@ These are load-bearing invariants already enforced in code. **Do not restate the
 | Admin impersonation ("view as") | SHIPPED | `lib/session.ts`, `AdminAuditLog` |
 | Entitlements / capability resolution | SHIPPED | `lib/entitlements.ts` |
 | Managed client's **own** identity (login/consent) | PARTIAL | passwordless `User`, synthetic `@clients.*` email — cannot sign in today |
-| Fine-grained RBAC beyond USER/ADMIN | PROPOSED | no team-member/staff/moderator role exists |
-| Durable identity lifecycle **events** | PROPOSED | only fire-and-forget `track(workspaceCreated)`; no durable `account.created`/`agency.client.added` |
+| Durable **OperatorIdentity** record + lifecycle state machine | **FOUNDATION BUILT (Sprint 9, dormant)** | `lib/identity/**` + migration `20260721120000_operator_identity`; flag-gated `OPERATOR_IDENTITY_ENABLED` (off) |
+| Durable **Organization** + **OrganizationMembership** (org-scoped RBAC) | **FOUNDATION BUILT (Sprint 9, dormant)** | `lib/identity/{repository,service}.ts`, `rbac.ts` (OrgRole → permission map) — beyond `{USER, ADMIN}` |
+| Durable identity lifecycle **events** | **FOUNDATION BUILT (Sprint 9, dormant)** | 6 refs-only Security/Audit contracts on the Event Fabric (`lib/identity/events.ts`); recorded via `appendEvent`, no fanout |
 
 ## 4. The Operator Network identity split (do not conflate)
 
@@ -45,7 +46,9 @@ Two distinct surfaces both called "Operator Network"; they have different identi
 
 Handle/presence disclosure and any cross-user surface remain under the counsel gate (`COUNSEL-REVIEW-operator-network.md` §1/§6/§8).
 
-## 5. The future Operator Identity Service (PROPOSED — next implementation target)
+## 5. The Operator Identity Service (FOUNDATION BUILT — Sprint 9, dormant · rest PROPOSED)
+
+**Sprint 9 status (2026-07-21, branch `feat/operator-identity`, un-merged):** the **foundation** is now implemented in `lib/identity/**`, migration-first (`20260721120000_operator_identity`, additive 0 DROP) and fully **dormant behind `OPERATOR_IDENTITY_ENABLED` (fail-closed off)**. Built: durable `OperatorIdentity` (1:1 to account, lifecycle state machine — terminal states block resurrection), durable `Organization` (owner by id, unique slug — not the spoofable `agencyName`), `OrganizationMembership` (`@@unique(org,operator)`, idempotent/orphan-free), the org-scoped RBAC permission map (`rbac.ts`, the extension beyond `{USER,ADMIN}` — a PEP-consumable mapping, NOT a parallel authz), the auth boundary (`principal.ts` — consumes `currentAccount()`, never authenticates), 6 refs-only Security/Audit identity events on the Event Fabric, and the reserved `operator_profile` media boundary (hard-off, not built). Authorization is by id (owner `ownerAccountId` / admin), fail-closed. NOT built (still PROPOSED, owner/counsel-gated): public profiles + rendering, managed-client credential login, educator verification, certifications, cross-agency multi-org activation, marketplace/reputation linkage, and any HTTP route. No route, no activation, no deploy, no production migration. The rest of this section is the still-PROPOSED target the foundation grows into.
 
 **This is architecture only. No code. The next implementation slice is owner-gated.** The service consolidates the scattered identity concerns above into one bounded context that other platform services (Reputation, Marketplace, Notifications, Kai, Audit) consume — without any of them re-deriving identity.
 
