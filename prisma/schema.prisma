@@ -702,6 +702,10 @@ model OperatorIdentity {
 
   memberships OrganizationMembership[]
 
+  // ---- Operator Reputation (Sprint 10): back-relations only.
+  xpAwards   XpAward[]
+  milestones ReputationMilestone[]
+
   @@index([state])
 }
 
@@ -740,4 +744,51 @@ model OrganizationMembership {
   @@unique([organizationId, operatorId]) // idempotent + orphan-free membership
   @@index([operatorId])
   @@index([organizationId, state])
+}
+
+// ── Operator Reputation — durable Vector XP ledger (Sprint 10) ────────────────
+// Migration-first (NOT self-heal). Implements VECTOR-XP.md §5: the APPEND-ONLY award
+// ledger elevating the v1 reconcile-on-read Arena fold to durable truth. Rules:
+//   • UNIQUE(subjectId, operatorId, awardKind) — the canonical idempotency triple.
+//     subjectId = the STABLE business entity (outcomeAwardKey(letterId), a cert id…),
+//     NEVER the per-emission event id (a naive sourceEventId key double-counts on
+//     outcome flips — BLOCKER per the 2026-07-20 adversarial review). awardKind = the
+//     earning DIMENSION ("outcome"…), not the class, so a deleted↔verified class flip
+//     cannot mint twice for one letter (Arena rule 2, generalized). Reversals occupy
+//     their own slot as awardKind "reverse:<kind>", referencing the original.
+//   • Rows are NEVER updated or deleted (corrections = appended compensating records
+//     with negative xp). The fold over the ledger re-derives truth; policy re-weights
+//     are forward-only. Scoring policy/values come from lib/arena/policy.ts
+//     (ARENA-CONTRIBUTION-POLICY owns policy; this service owns storage/progression).
+//   • Milestones are LATCHED facts (UNIQUE(operatorId, milestoneKey)) immune to future
+//     re-weighting; milestone DEFINITIONS are owner-gated (none built — DW-D8).
+// Dormant behind OPERATOR_REPUTATION_ENABLED (fail-closed OFF).
+model XpAward {
+  id            String           @id @default(cuid())
+  operator      OperatorIdentity @relation(fields: [operatorId], references: [id], onDelete: Cascade)
+  operatorId    String
+  subjectId     String // stable business entity the award is ABOUT (letterId-equivalent)
+  awardKind     String // earning dimension ("outcome" | …); reversals: "reverse:<kind>"
+  classId       String // ArenaClassId at issuance (data, deliberately NOT in the key)
+  xp            Int // signed: reversal/compensating rows are negative
+  policyVersion Int
+  reversesId    String? // compensating record → the original award's id
+  sourceEventId String? // provenance only (per-emission; NEVER part of the key)
+  createdAt     DateTime         @default(now())
+
+  @@unique([subjectId, operatorId, awardKind])
+  @@index([operatorId, createdAt, id])
+}
+
+model ReputationMilestone {
+  id            String           @id @default(cuid())
+  operator      OperatorIdentity @relation(fields: [operatorId], references: [id], onDelete: Cascade)
+  operatorId    String
+  milestoneKey  String // bounded machine key; definitions are owner-gated policy
+  xpAtAchieve   Int // the fold total when latched (stable evidence of achievement)
+  policyVersion Int
+  achievedAt    DateTime         @default(now())
+
+  @@unique([operatorId, milestoneKey]) // latched: earned once, never re-earned/removed
+  @@index([operatorId])
 }
