@@ -58,3 +58,7 @@ Prod migration apply + `EVENT_BUS_ENABLED=true`; wiring real producers/subscribe
 ## 7. Consequences
 
 Future features publish structured events instead of inventing bespoke realtime; consumers subscribe/replay instead of polling business tables. `EventEnvelope` is Prisma-managed and migration-backed (run `migrate deploy`, never `migrate dev`, to avoid drift reports). The substrate ships **dormant** — business value is latent until the owner-gated integrations land; this is stated, not oversold.
+
+## 8. Terminology & evolution
+
+This substrate is the implementation of the **CreditVector Event Fabric** (the platform-wide semantically-neutral backbone). The **`EventBus` / `lib/eventBus/**` package name is retained** (renaming reviewed code for terminology alone is churn). How the envelope and the 13 contracts are permitted to evolve — version-not-mutate, refs-only, content-ownership belongs to the emitting context, the `eventId`/`correlationId`/`causationId`/`traceId` distinction, the conceptual event taxonomy, and retention classes — is governed by [`ADR-0036`](ADR-0036-event-contract-evolution.md). `contracts.ts` remains the single source of truth for the taxonomy.
