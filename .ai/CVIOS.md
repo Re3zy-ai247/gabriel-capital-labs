@@ -70,3 +70,34 @@ How everything fits together as ONE platform. Each subsystem is labeled **LIVE**
 2. Every subsystem exposes its truth to BI honestly ("not yet instrumented" over estimates).
 3. Kai capability expansion is gated: ADR + `/compliance-review` + security review per step.
 4. Docs here are canonical for the PRODUCT; the AIOS charter is canonical for the COMPANY. Zero duplication between them — link.
+
+## Bounded-context reconciliation (code truth — 2026-07-20)
+The DDD **engineering** view (one owner per context; complements the product Subsystem registry above). Grounded in grep, honestly labelled per Constitution truth-labels/no-false-completion — many vision-named contexts are **ABSENT** in code or **renamed**. Ownership registry authority = `GIOS-PLATFORM.md §3`; a plugin *is* a bounded context (ADR-0026).
+
+| Bounded context | Status | Code owner | Reality / naming note |
+|---|---|---|---|
+| Operator Identity | SHIPPED | `lib/session.ts`, `lib/auth.ts`, `User` | see [`OPERATOR-IDENTITY.md`]; canonical principal = `currentAccount().id` |
+| Organizations / Agencies | SHIPPED | `User.isAgency`/`managedByAgencyId`, `app/api/agency` | agency is a **mode**, not a role; edge keyed on id |
+| Permissions / Entitlements | SHIPPED | `lib/os/kernel/pep.ts` (default-deny), `lib/entitlements.ts` | PEP live; `CAPABILITY_PLATFORM` flag OFF |
+| Letters (Disputes) | SHIPPED | `lib/letter.ts`, `app/letters` | a **Dispute IS a Letter** record — no separate Dispute model (DISPUTE_CREATED is a fabric event, PARTIAL) |
+| Evidence | PARTIAL | `lib/intelligence/graph.ts` (as graph nodes) | no dedicated Evidence model/dir |
+| Mission Control | SHIPPED | `lib/missionControl.ts`, `app/dashboard` (titled "/ Mission Control") | one module (ADR-0032), not the OS |
+| Operator Reputation | PARTIAL | `lib/arena/*` (reconcile-on-read, no table) | own-XP only; refusal register binding ([`ARENA-CONTRIBUTION-POLICY.md`]); "verified" tier PROPOSED |
+| Achievements / Certifications | PARTIAL | arena badges | Certifications ABSENT (no issuance record) |
+| Kai (intelligence) | SHIPPED | `lib/kai.ts`, `lib/intelligence/*` | tool-less by design (ADR-0005); kernel `lib/os/kernel` dormant (`KERNEL_DURABLE` off) |
+| Knowledge Graph | SHIPPED (index form) | `lib/intelligence/graph.ts` | Kai-feed PROPOSED |
+| Notifications | PARTIAL | `lib/email.ts` (Resend LIVE), `lib/push.ts`, `lib/os/modules/notify` | content owned by emitting context (ADR-0036) |
+| Event Fabric (Events) | PARTIAL (dormant) | `lib/eventBus/*`, `EventEnvelope` | 13 contracts; `EVENT_BUS_ENABLED` OFF; LIVE analytics stream is the separate `ProductEvent` path |
+| Analytics | SHIPPED | `lib/analytics/aggregate.ts`, `lib/events.ts` (ProductEvent) | fail-open telemetry |
+| Audit | SHIPPED | `AdminAuditLog` (+ `lib/admin.ts`); kernel `KernelAudit` dormant | |
+| Billing | SHIPPED | `lib/stripe.ts`, `lib/billing.ts` | LIVE Stripe |
+| Operator Network | PARTIAL | `lib/network/*`, `app/network` (dormant) + `/community` (LIVE forum) | two surfaces — do not conflate ([`OPERATOR-IDENTITY.md §4`]) |
+| Agency Command (Center) | SHIPPED | `app/agency` (titled "/ Agency") | "Command Center" deprecated (ADR-0032) |
+| Campus | ABSENT (renamed) | nearest = `lib/academy.ts` / `app/academy` | vision name "Campus" ≠ code "Academy" |
+| Marketplace | ABSENT | — | PROPOSED (`VISION.md` H5) |
+| Rooms | ABSENT (specimen) | `app/gxl` GXL gallery specimen (founder-only, noindex) | not a ratified context |
+| Meetings / Meeting Intelligence | ABSENT | — | no route/model |
+| Search | ABSENT | — | only incidental filter params |
+| Scheduling | ABSENT | — | only Vercel Cron endpoints, not a context |
+
+**Reading rule:** ABSENT/PROPOSED are aspirational — never cite them as shipped. Dormant flags (`EVENT_BUS_ENABLED`, `ARENA_ENABLED`, `OPERATOR_NETWORK_ENABLED`, `CAPABILITY_PLATFORM`) default **off**.
