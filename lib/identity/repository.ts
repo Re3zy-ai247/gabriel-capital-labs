@@ -114,8 +114,15 @@ export async function addMembership(
 export async function changeMembershipRole(
   organizationId: string, operatorId: string, from: OrgRole, to: OrgRole,
 ): Promise<{ count: number; membership: OrganizationMembership | null }> {
+  // The CAS guard keys on BOTH role AND state: "ACTIVE". Role and state live in
+  // orthogonal columns, so guarding role alone would let a role change commit over a
+  // concurrent remove/suspend (a REMOVED row emerging with an elevated role that would
+  // resurface on reactivation). Requiring state ACTIVE forces a concurrent state move
+  // to make this a count-0 conflict. (The subsequent read-back is a plain round-trip;
+  // under heavy concurrency the returned row/audit seq may reflect a later transition —
+  // non-exploitable, and atomic write+read coupling is a documented future hardening.)
   const res = await prisma.organizationMembership.updateMany({
-    where: { organizationId, operatorId, role: from },
+    where: { organizationId, operatorId, role: from, state: "ACTIVE" },
     data: { role: to },
   });
   if (res.count !== 1) return { count: res.count, membership: null };

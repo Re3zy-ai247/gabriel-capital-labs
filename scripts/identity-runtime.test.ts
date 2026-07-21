@@ -68,7 +68,7 @@ check("listMyMemberships: scoped to the principal's own operator", /findOperator
 check("registerOperator is find-or-create (idempotent, P2002-safe)", /findUnique\(\{ where: \{ accountId \} \}\)/.test(repository) && /isUniqueViolation\(e\)/.test(repository));
 check("addMembership is find-or-create on the unique (org,operator) key", /findMembership\(/.test(repository) && /organizationId_operatorId/.test(repository));
 check("operator transition is a GUARDED updateMany(where {id, state: from})", /updateMany\(\{\s*where: \{ id: operatorId, state: from \}/.test(repository));
-check("membership role change is a GUARDED updateMany(where {..., role: from})", /updateMany\(\{\s*where: \{ organizationId, operatorId, role: from \}/.test(repository));
+check("membership role change is a GUARDED, STATE-guarded updateMany (cannot land on a non-ACTIVE membership)", /where: \{ organizationId, operatorId, role: from, state: "ACTIVE" \}/.test(repository));
 check("guarded transitions require exactly one row moved (count !== 1 => conflict)", /res\.count !== 1/.test(repository));
 check("repository issues NO CREATE TABLE (migration-first, not self-heal)", !/CREATE TABLE/i.test(repository));
 check("repository never reads request/query input", !/searchParams|req\.query|request\./.test(repository));
