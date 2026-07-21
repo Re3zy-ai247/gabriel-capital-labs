@@ -1,6 +1,6 @@
 # Release Review — Sprint 7 + Sprint 8 + Constitutional Architecture
 
-**Status: REVIEW RECORD — DO NOT MERGE / DO NOT DEPLOY without owner approval.** Architecture docs herein remain **PROPOSED** (founder ratification pending, ADR-0034). Created 2026-07-20 as the auditable package for the accumulated unpushed chain.
+**Status: REVIEW RECORD — DO NOT MERGE / DO NOT DEPLOY without owner approval.** Constitutional **principles are FOUNDER-RATIFIED (2026-07-20, §5)**; architecture detail + all numerical/legal/economic policy values remain **PROPOSED / owner-gated**. Ratification implies no implementation, legal approval, or production readiness. Created 2026-07-20 as the auditable package for the accumulated (now pushed, un-merged) chain.
 
 ---
 
@@ -83,9 +83,14 @@
 
 **No BLOCKER to branch preservation or PR creation.** The only production-dangerous action (R1) is explicitly avoided.
 
-## 5. Ratification decision — **B: CONDITIONAL (recommend founder ratification; retain PROPOSED)**
+## 5. Ratification decision — **FOUNDER-RATIFIED PRINCIPLES · PROPOSED POLICIES (2026-07-20)**
 
-The constitutional package is **architecturally sound and internally consistent**: it derives from and cites the frozen `GIOS-PLATFORM.md` (ADR-0034 Law 26), introduces **no second source of truth** and **no frozen-law edit**, keeps identity ≻ reputation, business-health ≠ reputation, Vector-XP-never-decreases/spent/client-awarded, milestones/entitlements/claims distinct, Arena/Mission-Control as experiences (not truth), Marketplace-can't-mutate-XP, Kai-not-a-truth-source, no public 1–5 star rating, profile-media reusing the Attachment boundary, and one owner per bounded context. A 5-agent adversarial review hardened it (BLOCKER: award idempotency re-keyed to the stable `subjectId`; + HIGH controls added).
+**Update (2026-07-20): the founder has explicitly ratified the constitutional PRINCIPLES.** The prior CONDITIONAL recommendation is satisfied. Governance mechanism = ADR-0034 (ratifying ADR + founder approval): the ratifying instruments are **`ADR-0037` (Operator Growth) and `ADR-0038` (Professional Growth Economy)**, both carrying "principles RATIFIED (founder-approved)"; subordinate docs (`VECTOR-XP`, `PERFORMANCE-INTELLIGENCE`, `OPERATOR-IDENTITY`, `CREDITVECTOR-ECONOMY`) inherit ratified principles and retain PROPOSED architecture + policy values.
+
+**RATIFIED principles:** Credit Operating System positioning; evidence-not-popularity; **no public 1–5 star rating**; identity ≻ reputation; business-health ≠ reputation; Vector-XP invariants (permanent · never decreases/spent/transferable/purchased/sold/redeemed · not a coin/credit/token/currency/investment · server-authoritative + evidence-backed · browser cannot award); milestones stabilize / entitlements govern access / claims are one-time / claiming never deducts XP; Marketplace consumes entitlements but never mutates XP; Kai explains, never owns economic/KPI/reputation truth; PI owns SOP/KPI/health/maturity/trends; Arena/Mission-Control are experiences not truth; improvement-not-scale + meaningful-action; multiple pathways; financial/credit literacy first-class; referrals/affiliate/promotional-credits separate from XP (five-instrument separation); one owner per bounded context; Platform Services dependency direction.
+**REMAIN PROPOSED / owner-gated:** XP amounts/weights/caps/thresholds/recurrence/competition/cohort formulas · referral qualification · verified-client/verified-outcome definitions · fraud thresholds · Sybil implementation · public-profile fields · marketplace legal terms · promotional-credit policy · affiliate %/cash payouts · tax/liability accounting · privacy-deletion implementation · CROA/FCRA/FTC conclusions · production schemas · migrations · feature activation.
+
+**Ratification implies none of:** runtime implementation, legal approval, or production readiness. The package is **architecturally sound and internally consistent**: derives from + cites frozen `GIOS-PLATFORM.md` (ADR-0034 Law 26); no second source of truth; no frozen-law edit. A 5-agent adversarial review hardened it (BLOCKER: award idempotency re-keyed to the stable `subjectId`; + HIGH controls added).
 
 **Per ADR-0034, ratification (PROPOSED→RATIFIED) is a FOUNDER action** — not self-applied here. Statuses stay PROPOSED. The package is **ready for founder ratification with conditions**; the following remain **owner-gated and explicitly unratified**: XP weights/caps/formulas · referral & verified-client & verified-outcome definitions · Sybil primitive · public-profile fields & visibility defaults · marketplace legal terms & reward liability · consumer-facing visibility · CROA/FCRA/FTC treatment of public reputation · privacy/deletion over the immutable ledger · production migration approval · feature-flag activation.
 
