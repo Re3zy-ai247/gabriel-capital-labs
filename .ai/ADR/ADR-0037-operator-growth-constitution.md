@@ -1,6 +1,6 @@
 # ADR-0037: Operator Growth & Business Intelligence — constitutional extension
 
-Status: **PROPOSED (2026-07-20 — architecture/law only; not implemented, not merged, not pushed).**
+Status: **PRINCIPLES RATIFIED (founder-approved 2026-07-20 via [`ADR-0038`](ADR-0038-professional-growth-economy.md) §2 PGE-6) · POLICY VALUES PROPOSED (owner-gated).** Architecture/law only; not implemented, not merged, not pushed.
 Decision owners: Founder directive (Operator Growth vision) · Chief Architect (reconciliation).
 Derives from & cites (ADR-0034 Law 26): [`GIOS-PLATFORM.md`](../GIOS-PLATFORM.md) (frozen platform constitution — layer model, ownership registry, architecture laws) · [`ADR-0034`](ADR-0034-gios-platform-freeze.md) (freeze + derivation mandate) · [`ADR-0033`](ADR-0033-platform-constitution-gios-kai-creditvector.md) (GIOS→Kai→CreditVector hierarchy).
 Reconciles with: [`ARENA-CONTRIBUTION-POLICY.md`](../ARENA-CONTRIBUTION-POLICY.md) (reputation policy) · [`OPERATOR-IDENTITY.md`](../OPERATOR-IDENTITY.md) (identity) · [`ADR-0035`](ADR-0035-platform-event-bus.md)/[`ADR-0036`](ADR-0036-event-contract-evolution.md) (Event Fabric) · [`AGENCY-COMMAND.md`](../AGENCY-COMMAND.md) (Agency Health Score) · [`PRODUCT-VISION-V2.md`](../PRODUCT-VISION-V2.md) (experience).
