@@ -40,6 +40,7 @@ Relative ordering (A > D > Aq) is preserved; the absolute numbers are deliberate
 
 - **Cross-user / named leaderboard.** A public ranking of "who deleted the most tradelines" is an implied-typical-results surface (**CROA §1679b / FTC §5**), and the recorded corpus-consent authorizes *anonymized* contribution only — not a named competitive board. A ranked surface requires a **separate, explicit display-consent record + CCO/CROA sign-off**, defaulting off. Until then the only multi-user surface is **aggregate integers** (counts, never people) on the admin inspector.
 - **Streaks, seasons, cash affiliate payouts** — refusal register, pending owner + CCO.
+- **Generic public 1–5 star operator rating** — **constitutionally refused** ([`ADR-0037 §3`](ADR/ADR-0037-operator-growth-constitution.md)): incumbency bias, subjective popularity, fake reviews, competitive sabotage, unequal starting conditions, weak evidence, disproportionate harm from small samples. The platform presents **evidence-backed contribution, not a popularity number.** A future *structured, context-specific* feedback system (response-time compliance, verified attendance, moderated testimonials) is not categorically prohibited but must never become a popularity score, and needs its own architecture + consent + abuse controls + legal review.
 
 ## Prohibited XP sources (asserted by the guard, can never be awarded)
 
@@ -52,4 +53,6 @@ login · page-open · letter generation · report upload/analysis · message/rep
 ## Shipped this session (proven) vs deferred (owner/DB-gated)
 
 - **Shipped, pure, tested (27/27 + negative controls):** the policy, the projection engine (`deriveAwards`/`projectStanding`/`aggregateStats`), the level/rank ladder, the flag (OFF).
-- **Deferred:** any append-only award *table* (the read-projection needs none), the user-facing own-XP surface, and every refused surface above.
+- **Deferred:** any append-only award *table* (the v1 read-projection needs none), the user-facing own-XP surface, and every refused surface above.
+
+**Scope note:** this doc owns the **scoring policy** (classes, weights, refusals, un-farmable rules). The **lifetime-progression architecture** it feeds — the append-only award ledger, milestones, entitlements, reward claims, the 6 earning dimensions, and the anti-Sybil/fraud controls — is [`VECTOR-XP.md`](VECTOR-XP.md) (the Operator Reputation Service), governed by [`ADR-0037`](ADR/ADR-0037-operator-growth-constitution.md). "Vector XP" is the product framing of this same evidence-backed reputation. Arena is the **experience**; this policy + the ledger are the **truth**.
