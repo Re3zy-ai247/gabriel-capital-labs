@@ -10,3 +10,4 @@ export * from "./events";
 // repository is INTERNAL to the bounded context — reached only via ./service, which
 // owns authorization + policy resolution. Deliberately not re-exported.
 export * from "./service";
+export * from "./reconcile";

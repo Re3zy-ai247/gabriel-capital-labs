@@ -7,6 +7,7 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import * as svc from "../lib/reputation/service";
+import { reconcileOperatorFacts } from "../lib/reputation/reconcile";
 import { recordReputationEvent, operatorXpChangedEvent, awardReversedEvent, rankChangedEvent, milestoneReachedEvent, REPUTATION_EVENT_TYPES } from "../lib/reputation/events";
 import { validateEvent } from "../lib/eventBus/validate";
 import { getContract } from "../lib/eventBus/contracts";
@@ -23,6 +24,7 @@ const read = (p: string) => readFileSync(join(root, p), "utf8");
 const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
 const repository = strip(read("lib/reputation/repository.ts"));
 const service = strip(read("lib/reputation/service.ts"));
+const reconcile = strip(read("lib/reputation/reconcile.ts"));
 const allRep = readdirSync(join(root, "lib/reputation")).map((f) => strip(read(`lib/reputation/${f}`))).join("\n");
 
 // ── APPEND-ONLY by construction: no update/delete path anywhere ──────────────
@@ -73,6 +75,16 @@ check("no HTTP surface (no route imports lib/reputation)", (() => {
   check("events module has NO fanout (no deliver/registry import)", !/from "@\/lib\/eventBus\/registry"|\bdeliver\(/.test(strip(read("lib/reputation/events.ts"))));
 }
 
+// ── Phase 7: deterministic reconciliation publisher (recovery) ───────────────
+check("reconcile is admin-gated", /isAdmin\(principal\)/.test(reconcile));
+check("reconcile is READ-ONLY on the ledger (no create/update/delete of awards/milestones)",
+  !/xpAward\.(create|update|delete)|reputationMilestone\.(create|update|delete)|appendAward|latchMilestone/.test(reconcile));
+check("reconcile reuses the deterministic Event Fabric (recordReputationEvent), no new outbox table/queue",
+  /recordReputationEvent\(/.test(reconcile) && !/model .*Outbox|CREATE TABLE|prisma\.\w*[Oo]utbox/.test(reconcile));
+check("reconcile re-emits the SAME builders as the live path (idempotent ids match)",
+  /operatorXpChangedEvent\(/.test(reconcile) && /awardReversedEvent\(/.test(reconcile) && /rankChangedEvent\(/.test(reconcile) && /milestoneReachedEvent\(/.test(reconcile));
+check("reconcile folds standing the same way (floor at 0), so historical totalXp matches", /Math\.max\(0, rawSum\)/.test(reconcile));
+
 // ── EXECUTED fail-closed dormancy: every door disabled with the flag off ─────
 (async () => {
   const p: IdentityPrincipal = { id: "acc1", role: "ADMIN", isAgency: false, disabled: false };
@@ -82,8 +94,9 @@ check("no HTTP surface (no route imports lib/reputation)", (() => {
     svc.evaluateAndLatchMilestones("op1"),
     svc.getStanding(p, "op1"),
     svc.replayStanding(p, "op1"),
+    reconcileOperatorFacts(p, "op1"),
   ]);
-  check("ALL 5 service doors fail-closed disabled when OPERATOR_REPUTATION_ENABLED unset (no DB touch)",
+  check("ALL 6 doors (incl. reconcile) fail-closed disabled when OPERATOR_REPUTATION_ENABLED unset (no DB touch)",
     results.every((r) => r.ok === false && (r as { code?: string }).code === "disabled"));
   const ev = await recordReputationEvent(operatorXpChangedEvent({ operatorId: "op1", accountId: "acc1" }, { id: "aw1", classId: "A", xp: 20 }, 20, "system"));
   check("event recorder is fail-closed disabled too", ev.ok === false && (ev as { code?: string }).code === "disabled");
