@@ -105,8 +105,11 @@ check("no hero masthead: operational strip only (no marketing paragraph, no text
 check("strip states are derived, never fabricated", /awaiting = scoped\.filter\(isOpenLoop\)\.length/.test(page) && /activeRecent = scoped\.filter\(isRecent\)/.test(page));
 
 // ── No new backend (STOP-condition proof) ────────────────────────────────────
-check("no new Prisma models (schema untouched)",
-  !/model (Operator|Channel|CommunityReaction|PublicMedia|Notification|Reputation|DataPoint|Ledger)/.test(schema));
+// The operator-shell/community scope adds NO backend models. Word-boundary anchored so
+// a bare `model Operator` (and the other still-unbuilt speculative models) stay forbidden,
+// while the sanctioned Sprint 9 `model OperatorIdentity` foundation is not false-matched.
+check("no new operator-shell/community backend models",
+  !/model (Operator|Channel|CommunityReaction|PublicMedia|Notification|Reputation|DataPoint|Ledger)\b/.test(schema));
 check("community models remain exactly Thread/Reply/Report",
   ["model CommunityThread", "model CommunityReply", "model CommunityReport"].every((m) => schema.includes(m)) &&
   (schema.match(/^model Community/gm) ?? []).length === 3);
