@@ -14,6 +14,17 @@ Core dispute engine · Community + Kai · Support · Attachments/identity vault 
 4. **Operator Identity Service** — the next platform-service implementation target (architecture done: [`OPERATOR-IDENTITY.md`]). PROPOSED; owner-gated. Prereqs before code: migration-first identity schema, durable identity event contracts, CCO/counsel pass on public-profile/handle/consent, RBAC-beyond-USER/ADMIN reconciled with the PEP. Cross-user surfaces stay under the CROA §1679b / FTC §5 counsel STOP.
 5. **Event Fabric activation (owner-gated, Sprint 8):** prod `migrate deploy` of the 2 additive migrations + `EVENT_BUS_ENABLED=true` + wiring real producers/subscribers. Dormant until then.
 
+## Operator Growth & Business Intelligence arc — LOCKED scope, dependency-ordered (owner-gated; architecture = ADR-0037 + `VECTOR-XP.md` + `PERFORMANCE-INTELLIGENCE.md` + `OPERATOR-IDENTITY.md`)
+Mandatory future delivery. **No sprint numbers assigned** — dependency order governs (Identity ≻ Reputation · Evidence ≻ rewards · Performance-truth ≻ recommendations · Milestones ≻ entitlements · Entitlements ≻ marketplace unlocks). Every step is owner-gated + requires fraud/compliance/privacy/legal review before any weight or public surface goes live.
+1. **Operator Identity foundation** — professional profile schema, roles/membership, durable identity event contracts. (Prereq for everything below — OG-3.)
+2. **Profile Media Boundary** — extend `lib/attachments.ts` with an `operator_profile` scope + the missing controls (re-encode, EXIF strip, dimension limits, moderation, default avatar, access authz).
+3. **Vector XP integrity core** — migration-first append-only award ledger, idempotency `UNIQUE(sourceEventId, operatorId, awardKind)`, versioned policy, anti-Sybil/collusion + velocity caps, fraud holds. (Evidence ≻ rewards.)
+4. **Milestones → Entitlements → Reward Claims** — in that order; milestones stabilize earned progression against re-weighting.
+5. **Performance Intelligence Service** — SOP Engine, KPI Engine, Business Health Engine (generalizing `AGENCY-COMMAND §8`), Business Maturity, evidence-cited Kai recommendations. (Performance-truth ≻ recommendations.)
+6. **Experiences** — Mission Control business-health surface · Arena progression UI · Operator Profile UX · XP-gated Marketplace items/services (Marketplace never mutates XP). (Entitlements ≻ marketplace unlocks.)
+7. **Campus** education → authoritative educational evidence feeding professional-development XP (no arbitrary awards).
+8. **Cross-cutting gates (every step):** anti-exploitation controls, fraud/abuse review, privacy review, compliance/legal review, and the CROA §1679b / FTC §5 counsel STOP on any public cross-user reputation/profile/performance surface.
+
 ## Offered-but-unbuilt (Brief)
 - Stat/data cards (visuals for articles).
 - Admin image-upload (public-domain/.gov or licensed only).

@@ -82,7 +82,8 @@ The DDD **engineering** view (one owner per context; complements the product Sub
 | Letters (Disputes) | SHIPPED | `lib/letter.ts`, `app/letters` | a **Dispute IS a Letter** record — no separate Dispute model (DISPUTE_CREATED is a fabric event, PARTIAL) |
 | Evidence | PARTIAL | `lib/intelligence/graph.ts` (as graph nodes) | no dedicated Evidence model/dir |
 | Mission Control | SHIPPED | `lib/missionControl.ts`, `app/dashboard` (titled "/ Mission Control") | one module (ADR-0032), not the OS |
-| Operator Reputation | PARTIAL | `lib/arena/*` (reconcile-on-read, no table) | own-XP only; refusal register binding ([`ARENA-CONTRIBUTION-POLICY.md`]); "verified" tier PROPOSED |
+| Operator Reputation (Vector XP) | PARTIAL | `lib/arena/*` (reconcile-on-read, no table) | own-XP only; refusal register binding ([`ARENA-CONTRIBUTION-POLICY.md`]); ledger/milestones/entitlements/claims PROPOSED ([`VECTOR-XP.md`], ADR-0037); "verified" tier PROPOSED |
+| Performance Intelligence (SOP/KPI/Health) | PARTIAL (scattered) | seed: `AGENCY-COMMAND.md §8` health score + §4 revenue, `lib/missionControl.ts`, `lib/analytics` | SOP + KPI **engines** ABSENT; consolidated service PROPOSED ([`PERFORMANCE-INTELLIGENCE.md`], ADR-0037); business health ≠ reputation |
 | Achievements / Certifications | PARTIAL | arena badges | Certifications ABSENT (no issuance record) |
 | Kai (intelligence) | SHIPPED | `lib/kai.ts`, `lib/intelligence/*` | tool-less by design (ADR-0005); kernel `lib/os/kernel` dormant (`KERNEL_DURABLE` off) |
 | Knowledge Graph | SHIPPED (index form) | `lib/intelligence/graph.ts` | Kai-feed PROPOSED |
