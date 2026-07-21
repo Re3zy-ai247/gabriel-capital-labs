@@ -21,6 +21,7 @@ Default context budget per task: root `CLAUDE.md` + this file + `CURRENT-STATE.m
 | `TESTING.md` | Before claiming anything validated; lists commands + guard scripts + prod probes. |
 | `INTEGRATIONS.md` | Touching Stripe, Anthropic, Resend, Push, crons, env vars, or Vercel config. |
 | `ROADMAP.md` | Planning what to build next (repo-level). |
+| `PLATFORM-SERVICES-PHASE-II.md` | **Execution workspace for the Platform Services Era (opened 2026-07-21, tag `v0.8.0`).** The dependency-ordered 15-step build sequence (Operator Identity first) + per-slice discipline (migration-first, fail-closed flags, own-data defaults) + the engineering law. Points to the frozen architecture; does not redesign it. |
 | `DECISIONS.md` → `ADR/` | Before changing anything architectural — check if a decision already governs it; add an ADR when you make one. |
 | `ASSET-REGISTRY.md` | Before generating/using ANY visual asset (logo rules live here). |
 | `PROMPT-REGISTRY.md` | Before writing/editing ANY AI prompt or doing paid media generation. |
