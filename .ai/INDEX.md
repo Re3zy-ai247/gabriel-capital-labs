@@ -23,6 +23,7 @@ Default context budget per task: root `CLAUDE.md` + this file + `CURRENT-STATE.m
 | `ROADMAP.md` | Planning what to build next (repo-level). |
 | `PLATFORM-SERVICES-PHASE-II.md` | **Execution workspace for the Platform Services Era (opened 2026-07-21, tag `v0.8.0`).** The dependency-ordered 15-step build sequence (Operator Identity first) + per-slice discipline (migration-first, fail-closed flags, own-data defaults) + the engineering law. Points to the frozen architecture; does not redesign it. |
 | `RELEASE-v0.8.0-gate-c.md` | Point-in-time **v0.8.0 Gate C release record** (2026-07-21) — what merged/deployed, verification evidence, open gates D/F, next steps. Historical snapshot; `CURRENT-STATE.md` owns live state. |
+| `PLATFORM-OWNERSHIP-MAP.md` | **The one-owner-per-capability registry** (2026-07-21, subordinate to `GIOS-PLATFORM.md §3`). Read before adding or moving ownership of any Platform Service capability. Records the identity foundation's sole ownership of durable org+membership + the disclosed dormant-successor overlaps (agency mechanism; dead `teams.ts`). |
 | `DECISIONS.md` → `ADR/` | Before changing anything architectural — check if a decision already governs it; add an ADR when you make one. |
 | `ASSET-REGISTRY.md` | Before generating/using ANY visual asset (logo rules live here). |
 | `PROMPT-REGISTRY.md` | Before writing/editing ANY AI prompt or doing paid media generation. |
