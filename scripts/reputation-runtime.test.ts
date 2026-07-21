@@ -36,6 +36,10 @@ check("reads use the canonical fold order [createdAt asc, id asc]", /orderBy: \[
 check("identity is consumed READ-ONLY (findOperatorById only; no identity service/mutation import)",
   /from "@\/lib\/identity\/repository"/.test(service) && !/registerOperator|transitionOperator|addMembership|changeMembershipRole|createOrganization/.test(service));
 check("reputation never touches prisma.user / operatorIdentity writes", !/prisma\.user\.|operatorIdentity\.(create|update|delete)/.test(allRep));
+// replayStanding must authorize (own-data/admin) — not an open cross-user read.
+check("replayStanding takes a principal and authorizes own-data/admin", /replayStanding\(\s*\n?\s*principal: IdentityPrincipal/.test(service) && /operator\.accountId === principal\.id/.test(service));
+// reverseAward emits compensating facts (the fact stream tracks the ledger).
+check("reverseAward emits a compensating fact when a reversal is created", /reverseAward[\s\S]*?recordReputationEvent\(xpGrantedEvent/.test(service));
 check("no billing/marketplace/kai/network/UI imports", !/from "@\/lib\/(stripe|billing|kai|network|community)/.test(allRep) && !/from "@\/app\//.test(allRep));
 check("no arena EXPERIENCE import (only the pure policy/project modules)",
   !/from "@\/lib\/arena\/(read|ownProgress|cohort|flags)"/.test(allRep) && /from "@\/lib\/arena\/policy"/.test(allRep) && /from "@\/lib\/arena\/project"/.test(allRep));
@@ -51,7 +55,7 @@ check("no HTTP surface (no route imports lib/reputation)", (() => {
   const op = { operatorId: "op1", accountId: "acc1" };
   const samples = [
     xpGrantedEvent(op, { id: "aw1", classId: "A", xp: 20 }, 20, "system"),
-    rankChangedEvent(op, "recruit", "contender", "system"),
+    rankChangedEvent(op, "recruit", "contender", "system", "aw1"),
     milestoneReachedEvent(op, "xp.100", "system"),
   ];
   check("every builder payload passes its contract (refs-only)", samples.every((s) => validateEvent(s.type, 1, s.payload).ok === true));
@@ -74,7 +78,7 @@ check("no HTTP surface (no route imports lib/reputation)", (() => {
     svc.reverseAward(p, "aw1"),
     svc.evaluateAndLatchMilestones("op1"),
     svc.getStanding(p, "op1"),
-    svc.replayStanding("op1"),
+    svc.replayStanding(p, "op1"),
   ]);
   check("ALL 5 service doors fail-closed disabled when OPERATOR_REPUTATION_ENABLED unset (no DB touch)",
     results.every((r) => r.ok === false && (r as { code?: string }).code === "disabled"));

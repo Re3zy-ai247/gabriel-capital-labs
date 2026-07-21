@@ -31,7 +31,7 @@ const fail = (code: ErrorCode, error: string): { ok: false; code: ErrorCode; err
 
 export interface RecordAwardInput {
   operatorId: string;
-  subjectId: string; // the STABLE business entity (e.g. outcomeAwardKey(letterId))
+  subjectId: string; // the STABLE, version-free business entity (reputationSubjectId(type, id))
   awardKind: string; // earning dimension — must be a declared AwardKind
   classId: string; // resolved against the shipped policy (must be live)
   sourceEventId?: string | null; // provenance only
@@ -79,7 +79,7 @@ export async function recordAward(input: RecordAwardInput): Promise<ServiceResul
   let rankChanged: { from: string; to: string } | null = null;
   if (standing.rank !== before.rank) {
     rankChanged = { from: before.rank, to: standing.rank };
-    await recordReputationEvent(rankChangedEvent(opRef, before.rank, standing.rank, actorId));
+    await recordReputationEvent(rankChangedEvent(opRef, before.rank, standing.rank, actorId, award.id));
   }
   return { ok: true, data: { award, created: true, standing, rankChanged } };
 }
@@ -99,12 +99,24 @@ export async function reverseAward(
   if (!isAwardKind(original.awardKind)) return fail("invalid", "only a base award can be reversed"); // a reversal can't be reversed
   if (original.xp <= 0) return fail("invalid", "nothing to reverse");
 
+  const operator = await findOperatorById(original.operatorId);
+  if (!operator) return fail("not_found", "operator not found");
+  const before = foldStanding(await repo.listAwards(original.operatorId));
   const { award: reversal, created } = await repo.appendAward({
     operatorId: original.operatorId, subjectId: original.subjectId,
     awardKind: reversalKindFor(original.awardKind), classId: original.classId,
     xp: -original.xp, policyVersion: original.policyVersion, reversesId: original.id,
   });
   const standing = foldStanding(await repo.listAwards(original.operatorId));
+  if (created) {
+    // Emit the compensating facts so the durable fact stream tracks the ledger (a
+    // consumer must see the reversal, and a rank drop, not just a silent ledger move).
+    const opRef = { operatorId: operator.id, accountId: operator.accountId };
+    await recordReputationEvent(xpGrantedEvent(opRef, { id: reversal.id, classId: reversal.classId, xp: reversal.xp }, standing.totalXp, principal.id));
+    if (standing.rank !== before.rank) {
+      await recordReputationEvent(rankChangedEvent(opRef, before.rank, standing.rank, principal.id, reversal.id));
+    }
+  }
   return { ok: true, data: { reversal, created, standing } };
 }
 
@@ -152,10 +164,17 @@ export async function getStanding(
   return { ok: true, data: { standing: foldStanding(awards), milestones } };
 }
 
-// Deterministic replay: recompute standing purely from the ledger. Exposed so an
-// operational check can prove stored-nothing/derived-everything at any time.
-export async function replayStanding(operatorId: string): Promise<ServiceResult<ReputationStanding>> {
+// Deterministic replay: recompute standing purely from the ledger (proves stored-
+// nothing / derived-everything). Authorized identically to getStanding — own-data or
+// admin only; it returns the same ReputationStanding, so it must not be an
+// unauthenticated cross-user read.
+export async function replayStanding(
+  principal: IdentityPrincipal | null, operatorId: string,
+): Promise<ServiceResult<ReputationStanding>> {
   if (!operatorReputationEnabled()) return fail("disabled", "operator reputation disabled");
-  const awards = await repo.listAwards(operatorId);
-  return { ok: true, data: foldStanding(awards) };
+  if (!principal || principal.disabled) return fail("forbidden", "no principal");
+  const operator = await findOperatorById(operatorId);
+  if (!operator) return fail("not_found", "operator not found");
+  if (!(isAdmin(principal) || operator.accountId === principal.id)) return fail("forbidden", "own standing only");
+  return { ok: true, data: foldStanding(await repo.listAwards(operator.id)) };
 }

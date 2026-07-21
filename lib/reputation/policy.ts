@@ -12,13 +12,24 @@
 // else (non-live class, unknown class, prohibited source) resolves to null.
 import {
   ARENA_CLASSES, ARENA_POLICY_VERSION, PROHIBITED_XP_SOURCES, REFUSED_V1,
-  outcomeAwardKey, classifyOutcome, type ArenaClassId,
+  classifyOutcome, type ArenaClassId,
 } from "@/lib/arena/policy";
 import { xpForLevel, levelForXp, rankForLevel } from "@/lib/arena/project";
 
-export { ARENA_POLICY_VERSION as REPUTATION_POLICY_VERSION, outcomeAwardKey, classifyOutcome };
+export { ARENA_POLICY_VERSION as REPUTATION_POLICY_VERSION, classifyOutcome };
 export { xpForLevel, levelForXp, rankForLevel };
 export type { ArenaClassId };
+
+// The DURABLE subject key — deliberately NOT lib/arena/policy's outcomeAwardKey(), which
+// embeds `arena:v<POLICY_VERSION>:…` (fine for v1's storage-free reconcile-on-read fold,
+// but a BLOCKER for a durable ledger: a policy bump rotates every subjectId and lets one
+// letter mint a second award — VECTOR-XP §5 rejects "policyVersion in the key"). The
+// subjectId identifies the STABLE business entity ONLY; the running fold re-weights
+// forward using the separately-recorded policyVersion COLUMN, never the key. Version-free
+// by construction; asserted by reputation-core.test.ts.
+export function reputationSubjectId(entityType: string, entityId: string): string {
+  return `${entityType}:${entityId}`;
+}
 
 // Earning dimensions — the awardKind axis of the idempotency triple. One subject mints
 // at most one award per operator per DIMENSION (not per class), so an outcome flip that

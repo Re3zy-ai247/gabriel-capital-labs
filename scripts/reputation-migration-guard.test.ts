@@ -29,7 +29,11 @@ check("migration-first (no IF NOT EXISTS self-heal)", !/CREATE TABLE IF NOT EXIS
 check("award idempotency triple UNIQUE(subjectId, operatorId, awardKind)", /CREATE UNIQUE INDEX "XpAward_subjectId_operatorId_awardKind_key"/.test(sql));
 check("milestone latch UNIQUE(operatorId, milestoneKey)", /CREATE UNIQUE INDEX "ReputationMilestone_operatorId_milestoneKey_key"/.test(sql));
 check("fold order index (operatorId, createdAt, id)", /CREATE INDEX "XpAward_operatorId_createdAt_id_idx"/.test(sql));
-check("FKs cascade to OperatorIdentity (erasure-compatible)", (sql.match(/REFERENCES "OperatorIdentity"\("id"\) ON DELETE CASCADE/g) || []).length === 2);
+// Append-only integrity: the ledger FKs are RESTRICT, so a user/operator delete cannot
+// silently cascade-hard-delete XP history or un-latch a milestone (erasure must retain
+// pseudonymous rows explicitly — VECTOR-XP §6.1).
+check("ledger FKs are ON DELETE RESTRICT (no silent cascade hard-delete of the audit ledger)", (sql.match(/REFERENCES "OperatorIdentity"\("id"\) ON DELETE RESTRICT/g) || []).length === 2);
+check("ledger FKs are NOT cascade", !/REFERENCES "OperatorIdentity"\("id"\) ON DELETE CASCADE/.test(sql));
 
 // Schema declares the same truth; sourceEventId is provenance, NOT part of the key.
 {

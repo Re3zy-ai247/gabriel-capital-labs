@@ -89,14 +89,17 @@ export function xpGrantedEvent(
 }
 
 export function rankChangedEvent(
-  op: { operatorId: string; accountId: string }, from: string, to: string, actorId: string,
+  op: { operatorId: string; accountId: string }, from: string, to: string, actorId: string, causeId: string,
 ): ReputationEventInput {
   return {
     type: "OPERATOR_RANK_CHANGED",
     tenantId: op.accountId,
     actorId,
     payload: { operatorId: op.operatorId, from, to },
-    dedupeKey: `rank:${op.operatorId}:${from}->${to}`, // one fact per rank EDGE (monotonic ladder)
+    // Keyed per CAUSE (the triggering award/reversal id), NOT per edge: rank is
+    // non-monotonic once reversals exist (a drop then a re-cross is a real second fact),
+    // so an edge key would silently dedupe the legitimate re-promotion.
+    dedupeKey: `rank:${op.operatorId}:${causeId}`,
   };
 }
 

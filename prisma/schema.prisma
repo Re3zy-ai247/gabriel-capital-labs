@@ -765,9 +765,14 @@ model OrganizationMembership {
 // Dormant behind OPERATOR_REPUTATION_ENABLED (fail-closed OFF).
 model XpAward {
   id            String           @id @default(cuid())
-  operator      OperatorIdentity @relation(fields: [operatorId], references: [id], onDelete: Cascade)
+  // Restrict, NOT Cascade: this is an APPEND-ONLY audit ledger. A cascade off the
+  // operator (and transitively the account) would let a plain user-delete silently
+  // destroy XP history + compensating records. Erasure must RETAIN pseudonymous,
+  // PII-free award rows and shred only the identity join (VECTOR-XP §6.1) — an explicit
+  // step, never a silent FK cascade.
+  operator      OperatorIdentity @relation(fields: [operatorId], references: [id], onDelete: Restrict)
   operatorId    String
-  subjectId     String // stable business entity the award is ABOUT (letterId-equivalent)
+  subjectId     String // stable, VERSION-FREE business entity the award is ABOUT (reputationSubjectId)
   awardKind     String // earning dimension ("outcome" | …); reversals: "reverse:<kind>"
   classId       String // ArenaClassId at issuance (data, deliberately NOT in the key)
   xp            Int // signed: reversal/compensating rows are negative
@@ -782,7 +787,9 @@ model XpAward {
 
 model ReputationMilestone {
   id            String           @id @default(cuid())
-  operator      OperatorIdentity @relation(fields: [operatorId], references: [id], onDelete: Cascade)
+  // Restrict (see XpAward): a latched milestone is "earned once, ever" — a silent
+  // cascade delete would un-latch it and re-registration would re-earn it.
+  operator      OperatorIdentity @relation(fields: [operatorId], references: [id], onDelete: Restrict)
   operatorId    String
   milestoneKey  String // bounded machine key; definitions are owner-gated policy
   xpAtAchieve   Int // the fold total when latched (stable evidence of achievement)

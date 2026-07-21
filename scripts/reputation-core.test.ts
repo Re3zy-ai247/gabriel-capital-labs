@@ -9,8 +9,9 @@ import { join } from "node:path";
 import { foldStanding, EMPTY_STANDING, type AwardRow } from "../lib/reputation/fold";
 import {
   resolveAwardXp, isAwardKind, reversalKindFor, AWARD_KINDS, REPUTATION_REFUSED,
-  REPUTATION_PROHIBITED_SOURCES, MILESTONE_DEFINITIONS, REPUTATION_POLICY_VERSION,
+  REPUTATION_PROHIBITED_SOURCES, MILESTONE_DEFINITIONS, REPUTATION_POLICY_VERSION, reputationSubjectId,
 } from "../lib/reputation/policy";
+import * as repPolicy from "../lib/reputation/policy";
 import { evaluateMilestones, isValidMilestoneKey } from "../lib/reputation/milestones";
 import { ARENA_CLASSES, ARENA_POLICY_VERSION } from "../lib/arena/policy";
 import { levelForXp, rankForLevel } from "../lib/arena/project";
@@ -59,6 +60,12 @@ check("unknown class mints NOTHING", resolveAwardXp("ZZ") === null);
 check("policy version passes through unchanged", resolveAwardXp("A")?.policyVersion === ARENA_POLICY_VERSION && REPUTATION_POLICY_VERSION === ARENA_POLICY_VERSION);
 check("award kinds: 'outcome' only in v1 (dimensions are owner-gated)", AWARD_KINDS.length === 1 && isAwardKind("outcome") && !isAwardKind("education"));
 check("reversal kind is namespaced", reversalKindFor("outcome") === "reverse:outcome" && !isAwardKind("reverse:outcome"));
+
+// The durable subjectId MUST be version-free (a version-embedded key double-mints on a
+// policy bump — the HIGH the adversarial review caught).
+check("reputationSubjectId is version-free (no 'v<n>' in the key)", reputationSubjectId("letter", "L1") === "letter:L1" && !/v\d/.test(reputationSubjectId("outcome", "abc")));
+check("subjectId is stable across a hypothetical policy re-weight (Arena rule 2 preserved)", reputationSubjectId("letter", "L1") === reputationSubjectId("letter", "L1"));
+check("reputation does NOT re-export the version-embedded outcomeAwardKey as the subject", (repPolicy as Record<string, unknown>).outcomeAwardKey === undefined);
 
 // The refusal register is binding here exactly as in Arena.
 for (const refused of ["streaks", "cross_user_leaderboard", "named_ranking", "seasons", "cash_affiliate_payout", "outcome_count_broadcast"]) {

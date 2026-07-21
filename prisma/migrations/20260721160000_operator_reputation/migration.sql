@@ -44,7 +44,7 @@ CREATE UNIQUE INDEX "ReputationMilestone_operatorId_milestoneKey_key" ON "Reputa
 CREATE INDEX "ReputationMilestone_operatorId_idx" ON "ReputationMilestone"("operatorId");
 
 -- AddForeignKey
-ALTER TABLE "XpAward" ADD CONSTRAINT "XpAward_operatorId_fkey" FOREIGN KEY ("operatorId") REFERENCES "OperatorIdentity"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "XpAward" ADD CONSTRAINT "XpAward_operatorId_fkey" FOREIGN KEY ("operatorId") REFERENCES "OperatorIdentity"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "ReputationMilestone" ADD CONSTRAINT "ReputationMilestone_operatorId_fkey" FOREIGN KEY ("operatorId") REFERENCES "OperatorIdentity"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "ReputationMilestone" ADD CONSTRAINT "ReputationMilestone_operatorId_fkey" FOREIGN KEY ("operatorId") REFERENCES "OperatorIdentity"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
