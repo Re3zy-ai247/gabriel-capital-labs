@@ -3,7 +3,7 @@
 **Point-in-time record · 2026-07-21 · branch `feat/operator-identity` (UN-MERGED, not pushed).** The first Platform Services Phase II slice. Built, tested, adversarially reviewed; **dormant behind `OPERATOR_IDENTITY_ENABLED` (fail-closed OFF)**. Nothing merged/deployed/migrated/activated. Stops for architectural review. Live state authority: [`CURRENT-STATE.md`](CURRENT-STATE.md); canonical design: [`OPERATOR-IDENTITY.md`](OPERATOR-IDENTITY.md).
 
 ## Status
-`Built` · `Dormant (flag OFF)` · `Migration-first (additive, un-applied)` · `Adversarially reviewed — 1 MED fixed, 0 open blockers`
+`Built` · `Dormant (flag OFF)` · `Migration-first (additive, un-applied)` · `Adversarially reviewed — 1 MED fixed` · `Architecture-reviewed — APPROVE WITH MINOR CHANGES, corrections applied`
 
 Base `main`/`e233ca4` (v0.8.0). 8 commits `4a51459…4270fc8`. `lib/identity/**` (10 modules) + 1 migration + 4 guard scripts.
 
@@ -45,6 +45,15 @@ Vectors CLEAN: duplicate-identity/resurrection, tenant+org isolation/spoofing, p
 | 6 | `0f50f3a` | runtime/dormancy tests + operator-shell guard fix |
 | 7 | `4270fc8` | adversarial MED fix (state-guard role change) |
 | 8 | _this_ | docs — OPERATOR-IDENTITY status + this record |
+
+## 6b. Architectural review (pre-push, 2026-07-21 — 5-agent panel)
+All 5 boundary verdicts = **MINOR_CORRECTION**, 0 REQUIRES_REDESIGN → **APPROVE WITH MINOR CHANGES**. Auth independence, ownership boundaries, and Event-Fabric emit-only were confirmed clean. Corrections applied on-branch (`f6…` commits):
+- **Organization made genuinely generic** — `OrganizationKind` broadened to `{AGENCY, ENTERPRISE, EDUCATOR, VENDOR, INTERNAL}` and `kind` un-hardcoded through validation/service/repository/contract (it was agency-locked). Model was already generic; only the discriminator was under-populated ⇒ minor, not a redesign.
+- **FK integrity** — `Organization.ownerAccountId` FK `CASCADE → RESTRICT`: a shared org (and every member's membership) can't be destroyed by one account deletion.
+- **Single ownership truth** — assignable membership roles restricted to `{ADMIN, MEMBER}`; `OWNER` is derived from `ownerAccountId`, killing the latent dual-authority before the PEP consumes `rbac.ts`.
+- **Ownership decision recorded** ([`OPERATOR-IDENTITY.md §5`](OPERATOR-IDENTITY.md)) — `lib/identity` is the sole owner of durable org+membership; the pre-existing self-healed `lib/os/platform/teams.ts` + `teamStore.ts` (`TeamMember`/`TeamInvitation`/`ClientAssignment`) is **superseded**, reconciliation/retirement a **documented follow-up** (not built here). Membership stays a module inside Identity (no evidence to extract).
+
+All corrections migration-safe (migration unapplied, edited in place). Re-validated: typecheck 0, build 0, identity guards 31/58/65/36, full suite 60/2.
 
 ## 7. Owner-gated next steps (STOP — architectural review)
 Do NOT merge / deploy / migrate / enable. When approved: architectural review of this branch → merge (auto-deploys, dormant) → owner-gated migration (this migration, after the v0.8.0 Gate D `0_init` baseline) → **only then** may `OPERATOR_IDENTITY_ENABLED` be considered, with the still-PROPOSED profile/counsel items (public profiles, managed-client consent, educator/certs) unbuilt and out of scope until their own gates clear.
