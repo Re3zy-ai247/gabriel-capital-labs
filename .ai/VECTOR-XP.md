@@ -1,6 +1,6 @@
 # Vector XP — Operator Reputation Service architecture
 
-Status: **PROPOSED (2026-07-20 — architecture only; no code, schema, table, or migration).**
+Status: **Principles RATIFIED (founder-approved 2026-07-20 via [`ADR-0037`](ADR/ADR-0037-operator-growth-constitution.md)/[`ADR-0038`](ADR/ADR-0038-professional-growth-economy.md)) · architecture + all policy values PROPOSED (owner-gated).** No code, schema, table, or migration. Ratification of the invariants does NOT imply implementation, legal approval, or production readiness.
 Authority: derives from [`ADR-0037`](ADR/ADR-0037-operator-growth-constitution.md) (the law). Cites — does not restate — [`ARENA-CONTRIBUTION-POLICY.md`](ARENA-CONTRIBUTION-POLICY.md) (the scoring **policy**, source of truth `lib/arena/policy.ts`), [`ADR-0035`](ADR/ADR-0035-platform-event-bus.md)/[`ADR-0036`](ADR/ADR-0036-event-contract-evolution.md) (Event Fabric), [`OPERATOR-IDENTITY.md`](OPERATOR-IDENTITY.md) (identity precedes reputation), [`GIOS-PLATFORM.md`](GIOS-PLATFORM.md) §3 (ownership).
 Boundary: the **Operator Reputation Service** owns this. **Arena is the experience, not the truth.** The policy doc owns *what earns and how much + the refusals*; this doc owns *how it is stored, awarded idempotently, protected from fraud, and converted to milestones → entitlements → claims*. No overlap.
 

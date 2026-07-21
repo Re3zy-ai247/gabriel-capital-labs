@@ -1,6 +1,6 @@
 # Operator Identity — bounded context (consolidating index + future service package)
 
-Status: **index of EXISTING truth + PROPOSED future service.** No code/schema/flag change from this document.
+Status: **index of EXISTING truth + PROPOSED future service.** The *principle* **identity precedes reputation** is RATIFIED (founder-approved 2026-07-20 via [`ADR-0037`](ADR/ADR-0037-operator-growth-constitution.md) OG-3); the future Operator Identity Service architecture + all policy/schema remain PROPOSED (owner-gated). No code/schema/flag change from this document. Ratification does NOT imply implementation or legal approval.
 Authority: subordinate to [`GIOS-PLATFORM.md`](GIOS-PLATFORM.md) (ownership registry — one owner per thing) and [`CREDITVECTOR-OS.md`](CREDITVECTOR-OS.md) (apex). This file **cites, never redefines** the code and docs that already own each rule (ADR-0034 Law 26). If this file and the cited code disagree, the code wins.
 
 Cites: [`lib/session.ts`](../lib/session.ts) · [`lib/auth.ts`](../lib/auth.ts) · [`lib/entitlements.ts`](../lib/entitlements.ts) · `prisma/schema.prisma` (model `User`, enum `UserRole`) · [`lib/network/authz.ts`](../lib/network/authz.ts) (36/36) · [`AGENCY-COMMAND.md`](AGENCY-COMMAND.md) §role model · [`ADR-0035`](ADR/ADR-0035-platform-event-bus.md) §2 (identity triple) · [`COUNSEL-REVIEW-operator-network.md`](COUNSEL-REVIEW-operator-network.md) §1/§6/§8.

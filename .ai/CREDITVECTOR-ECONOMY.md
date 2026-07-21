@@ -1,6 +1,6 @@
 # CreditVector Professional Growth Economy — architecture
 
-Status: **PROPOSED architecture over RATIFIED principles (ADR-0038).** No code, schema, migration, or policy values.
+Status: **PROPOSED architecture over RATIFIED principles (ADR-0038, founder-approved 2026-07-20).** No code, schema, migration, or policy values. Ratification of the economy *principles* does NOT imply implementation, legal/accounting approval, or production readiness — every numerical/legal/fraud/privacy value here remains owner-gated.
 Authority: derives from [`ADR-0038`](ADR/ADR-0038-professional-growth-economy.md) (the law) + [`ADR-0037`](ADR/ADR-0037-operator-growth-constitution.md). **Governs relationships + fairness; it does NOT restate subsystem detail** — Vector XP mechanics live in [`VECTOR-XP.md`](VECTOR-XP.md), measurement in [`PERFORMANCE-INTELLIGENCE.md`](PERFORMANCE-INTELLIGENCE.md), scoring policy in [`ARENA-CONTRIBUTION-POLICY.md`](ARENA-CONTRIBUTION-POLICY.md). Cite, do not duplicate.
 
 ---

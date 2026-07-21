@@ -1,6 +1,6 @@
 # Performance Intelligence Service — architecture
 
-Status: **PROPOSED (2026-07-20 — architecture only; no code, schema, or migration).**
+Status: **Principles RATIFIED (founder-approved 2026-07-20 via [`ADR-0037`](ADR/ADR-0037-operator-growth-constitution.md) OG-4: business-health ≠ reputation) · architecture + all formulas/values PROPOSED (owner-gated).** Architecture only; no code, schema, or migration. Ratification does NOT imply implementation, legal approval, or production readiness.
 Authority: derives from [`ADR-0037`](ADR/ADR-0037-operator-growth-constitution.md) (OG-4: business health ≠ reputation; OG-5: projections ≠ truth). Cites — does not restate — [`AGENCY-COMMAND.md`](AGENCY-COMMAND.md) §4 (Revenue Intelligence) + §8 (Agency Health Score, the existing seed) · [`business-intelligence/METRICS.md`](business-intelligence/METRICS.md) · `lib/missionControl.ts` · `lib/analytics/aggregate.ts` · [`ADR-0032`](ADR/ADR-0032-platform-layering-kai-kernel.md) §5 (numbers deterministic, LLM writes prose only) · [`ADR-0035`](ADR/ADR-0035-platform-event-bus.md)/[`ADR-0036`](ADR/ADR-0036-event-contract-evolution.md) (Event Fabric) · [`GIOS-PLATFORM.md`](GIOS-PLATFORM.md) §3 (ownership).
 Boundary: the **Performance Intelligence Service** owns how effectively an organization *operates*. **Mission Control is its experience, not its truth.** It is **separate from reputation** (OG-4) — a KPI decline never touches Vector XP.
 
