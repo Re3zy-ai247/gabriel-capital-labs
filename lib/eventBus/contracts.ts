@@ -61,12 +61,16 @@ export const CONTRACTS: Readonly<Record<string, EventContract>> = {
     type: "CLIENT_UPDATED", version: 1, defaultSource: "agency", scope: "agency",
     schema: z.object({ clientId: z.string().min(1), changedFields: CHANGED_FIELDS }).strict(),
   },
+  // Progression facts are SERVER-AUTHORITATIVE (VECTOR-XP: XP can never be awarded
+  // from a browser-supplied amount). Scope tightened self -> platform in Sprint 10 when
+  // the Operator Reputation service became their emitting owner: only a trusted/admin
+  // identity may publish them (zero producers existed, so tightening breaks nothing).
   "ACHIEVEMENT_UNLOCKED@1": {
-    type: "ACHIEVEMENT_UNLOCKED", version: 1, defaultSource: "arena", scope: "self",
+    type: "ACHIEVEMENT_UNLOCKED", version: 1, defaultSource: "arena", scope: "platform",
     schema: z.object({ achievementId: z.string().min(1) }).strict(),
   },
   "ARENA_POINTS_CHANGED@1": {
-    type: "ARENA_POINTS_CHANGED", version: 1, defaultSource: "arena", scope: "self",
+    type: "ARENA_POINTS_CHANGED", version: 1, defaultSource: "arena", scope: "platform",
     // Refs-only: signed delta, running total, and the arena CLASS id (not free text).
     schema: z.object({ xpDelta: z.number().int(), totalXp: z.number().int().nonnegative(), classId: z.string().min(1).max(8) }).strict(),
   },
