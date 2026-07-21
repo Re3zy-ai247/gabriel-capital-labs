@@ -96,3 +96,35 @@ The constitutional package is **architecturally sound and internally consistent*
 
 ## 7. Recommended next gate
 **Release review first, then the owner-gated production migration + merge of the runtime range — before any new implementation.** Constitutional docs can be founder-ratified independently (docs-only, zero prod risk). Implementation order (unchanged): Operator Identity foundation → Profile/Media → Vector XP core → Milestones → Entitlements → Claims → Performance Intelligence → experiences.
+
+---
+
+## 8. Release-gate classification (2026-07-20 handoff)
+Findings sorted by the gate they block. **A genuine security/data-integrity issue is never downgraded to follow-up.**
+
+- **A — MUST FIX BEFORE PUSH (branch preservation unsafe):** **NONE.** Verified: no secret committed (`git ls-files` → only `.env.example`); clean git ancestry (`fsck` clean, linear FF over `f1e26b0`); a non-main push produces an **isolated PREVIEW only** (empirically `target:null`, `git-review-*` alias); preview uses the isolated preview DB, no build-time migration; CI is build/test-only (no deploy/merge). Branch push cannot mutate production.
+- **B — MUST FIX BEFORE MERGE:** **No code/test/isolation/authz/migration defect.** All guards green, flags fail-closed, migrations additive (0 DROP), build clean, constitutional statuses accurate (PROPOSED where unratified). Merge is an **owner decision** (merging `main` auto-deploys prod) that must be **coordinated with §C** (migration before any flag), not blocked by a defect.
+- **C — MUST FIX BEFORE DEPLOYMENT:** DW-C1…C5 below (migration baseline order, flags-stay-OFF, alert destination, rollback plan, prod verification).
+- **D — FOLLOW-UP AFTER PRESERVATION:** DW-D1…D13 below (owner-gated policy values, legal/economic decisions, future implementation, PR decomposition). **None is implemented or complete.**
+
+## 9. Deferred-work register
+| ID | Description | Sev | Gate | Subsystem | Evidence | Remediation | Owner gate | Status |
+|---|---|---|---|---|---|---|---|---|
+| DW-C1 | Production migration baseline | HIGH | DEPLOY | prisma | 4 additive migrations, prod at `f1e26b0` lacks the 3 new tables | `migrate resolve --applied 0_init` → `migrate deploy` → `migrate status` (0_init is resolve, not execute) | APPROVAL D | open |
+| DW-C2 | Flags stay OFF through deploy | HIGH | DEPLOY | flags | `EVENT_BUS_ENABLED`/`OPERATOR_NETWORK_ENABLED`/`ARENA_ENABLED`/`CAPABILITY_PLATFORM` fail-closed | keep OFF until DW-C1 done; activation = APPROVAL F | APPROVAL F | open |
+| DW-C3 | Alert destination unconfigured | MED | DEPLOY | observability | `ALERT_WEBHOOK_URL` unset (work-ledger observability-coverage) | set the webhook env var | owner | open |
+| DW-C4 | Rollback plan | MED | DEPLOY | release | prod deployments `isRollbackCandidate:true` | Vercel instant rollback to `f1e26b0`; migrations additive → rollback is code-only (new tables stay dormant) | owner | open |
+| DW-C5 | Production verification plan | MED | DEPLOY | release | — | post-deploy: `curl` auth gates (expect 401/403), health probe, confirm flags OFF | owner | open |
+| DW-D1 | Vector XP values/weights/caps | HIGH | ACTIVATION | Reputation | `VECTOR-XP.md` (no numbers) | product+economic+fraud+compliance+owner sign-off | APPROVAL F | open |
+| DW-D2 | Verified-client / referral / verified-outcome definitions | HIGH | ACTIVATION | Reputation/Economy | `CREDITVECTOR-ECONOMY §11` | define un-fakeable signals before any weight mints | owner+fraud | open |
+| DW-D3 | Fraud thresholds + Sybil primitive | HIGH | ACTIVATION | Reputation | `VECTOR-XP §6/§6.1` (named, unbuilt) | specify a concrete primitive + thresholds | fraud sign-off | open |
+| DW-D4 | Public profile policy + §1679b category names + visibility defaults | HIGH | ACTIVATION | Identity/Economy | `OPERATOR-IDENTITY §5b`, `ECONOMY §11` | §1679b-clean names BEFORE consent; default-private; client-consent+k-anonymity | CCO/counsel | open |
+| DW-D5 | Marketplace legal terms + facilitator liability + seller KYC | HIGH | ACTIVATION | Marketplace | `ADR-0037 §5`, `ECONOMY §7/§11` | written liability position + KYC + monitoring + takedown | CCO/legal | open |
+| DW-D6 | Affiliate architecture / promotional credits | MED | ENHANCEMENT | Economy | `ADR-0038 §4` (reserved) | separate ledger/tax/legal design when needed | owner+legal+accounting | open |
+| DW-D7 | Operator Identity implementation | HIGH | ENHANCEMENT | Identity | `OPERATOR-IDENTITY §5` | next impl target (migration-first, RBAC, event contracts) | APPROVAL F+ | open |
+| DW-D8 | Milestone/Entitlement/Reward-Claim schema | HIGH | ENHANCEMENT | Reputation/Entitlement | `VECTOR-XP §4/§5`, `ADR-0038 §5` | migration-first schema when built | owner | open |
+| DW-D9 | Performance Intelligence formulas + improvement measurement | MED | ENHANCEMENT | Perf-Intel | `PERFORMANCE-INTELLIGENCE §2.1/§3` | versioned formulas + integrity controls | owner | open |
+| DW-D10 | Counsel/privacy/compliance review | HIGH | ACTIVATION | Compliance | `COUNSEL-REVIEW-operator-network §0`; erasure-vs-ledger, client-consent | CROA/FCRA/FTC/GLBA + erasure position | CCO/counsel | open |
+| DW-D11 | Operator Network realtime completion | MED | ENHANCEMENT | Operator Network | `/network` flag-gated; live cross-instance delivery deferred | safe-low-watermark delivery design | owner | open |
+| DW-D12 | maker-checker + appeal mechanism design | MED | ACTIVATION | Governance | `ECONOMY §11` (named) | independent approver + appeal SLA/auto-reversal given `{USER,ADMIN}` | owner | open |
+| DW-D13 | PR decomposition (Sprint 7 / Sprint 8 / constitutional) | LOW | ENHANCEMENT | release | one preservation PR spans all three | split only with owner approval (history rewrite); **not done** | owner | open |
