@@ -32,6 +32,8 @@ function fakeLedger() {
     },
     settle: async (key: string, s: "committed" | "failed") => { state.set(key, s); },
     sendPush: async (userId: string) => { deps.sends.push(userId); },
+    // The EMITTING context supplies content; the fabric never authors it. Tests inject one.
+    composePush: () => ({ title: "emitter title", body: "emitter body" }),
   };
   return deps;
 }
@@ -58,11 +60,21 @@ async function run() {
     check("non-compliant commercial email is NOT sent (CAN-SPAM gate reused)", led.sends.length === 0);
   }
 
+  // ── The fabric authors NO content: no composer wired → nothing sent, nothing claimed ─
+  {
+    const led = fakeLedger();
+    const handler = makeNotificationCreatedHandler({ claim: led.claim, settle: led.settle, sendPush: led.sendPush } as unknown as NotifyDeps);
+    await handler(event({ channel: "push", purpose: "moderation_alert", recipientUserId: "u1", commercial: false, dedupeEvent: "noc:1" }));
+    check("no composePush → the fabric fabricates no content and sends nothing", led.sends.length === 0);
+    check("no composePush → no claim is taken (content is the emitter's, ADR-0036)", led.claims.length === 0);
+  }
+
   // ── A failed send is reclaimable (settled failed, not committed) ────────────
   {
     const led = fakeLedger();
+    const compose = () => ({ title: "t", body: "b" });
     const handler = makeNotificationCreatedHandler({
-      claim: led.claim, settle: led.settle,
+      claim: led.claim, settle: led.settle, composePush: compose,
       sendPush: async () => { throw new Error("push infra down"); },
     } as unknown as NotifyDeps);
     let threw = false;
@@ -72,7 +84,7 @@ async function run() {
     // A subsequent delivery can retry because the key was settled 'failed' → 'won' again
     const led2sends: string[] = [];
     const retryHandler = makeNotificationCreatedHandler({
-      claim: led.claim, settle: led.settle, sendPush: async (u: string) => { led2sends.push(u); },
+      claim: led.claim, settle: led.settle, composePush: compose, sendPush: async (u: string) => { led2sends.push(u); },
     } as unknown as NotifyDeps);
     await retryHandler(event({ channel: "push", purpose: "x", recipientUserId: "u1", commercial: false, dedupeEvent: "x:1" }));
     check("after a failed send, a redelivery re-sends (reclaimable, not stuck)", led2sends.length === 1);
@@ -86,6 +98,9 @@ async function run() {
     check("notificationCreated never references sendPushToAdmins (no admin broadcast)", !/sendPushToAdmins/.test(src));
     check("notificationCreated reuses buildNotificationPlan (no parallel notify system)", /buildNotificationPlan/.test(src));
     check("notificationCreated reuses the shared effect claim (no second idempotency store)", /claimEffect|deps\.claim/.test(src));
+    // Fabric owns transport, not content: the handler must not hardcode a user-facing body.
+    check("notificationCreated hardcodes NO notification body (content is the emitter's)", !/body:\s*["'`]/.test(src));
+    check("notificationCreated routes content via an injected composePush", /composePush/.test(src));
   }
 
   console.log(`\neventbus-notification-nodup.test.ts: ${pass} passed, ${fail} failed`);
