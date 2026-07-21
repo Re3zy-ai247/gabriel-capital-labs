@@ -47,6 +47,8 @@ Vector XP: **never decreases** through normal use · **never spent** · **non-tr
 
 **Milestones stabilize progression:** XP is a running fold (re-weightable forward per policy version); a milestone is a *latched* fact. This is why the ledger stores both the raw awards (for the fold) and the milestone-earned records (immune to re-weighting).
 
+**Latch vs clawback — the reconciliation (economy review 2026-07-20).** A milestone latches against **policy re-weighting**, NOT against **evidence invalidation**. A milestone (or entitlement, or consumed reward claim) built on **revocable evidence** — a referral that may charge back, an outcome that may flip — is **provisional until that evidence matures** past its clawback/chargeback-liability window; on reversal it is revoked via a compensating record (`CREDITVECTOR-ECONOMY.md §11`). **Cash-valued reward claims** (a subscription-month add-on, a consultation/exam voucher) carry real monetary value and therefore inherit the **promotional-credit governance** ([`ADR-0038 §4`](ADR/ADR-0038-professional-growth-economy.md)) — "claiming never deducts XP" is necessary but not sufficient. **Maker-checker** (two independent approvers) applies not just to manual XP adjustments but to entitlement grant/revoke, reward-claim issuance, and every compensating/invalidation write (§6.1).
+
 ## 5. Award ledger architecture (the integrity core)
 
 The v1 Arena engine is **reconcile-on-read** (no table — a pure fold over `VerifiedOutcome`). As non-outcome dimensions (education, community, growth) come online, that fold has **no single authoritative source event to reconcile against**, so a **durable append-only award ledger** becomes necessary. Design (migration-first when built; **not built now**):
