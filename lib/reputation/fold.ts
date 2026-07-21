@@ -67,3 +67,35 @@ export function foldStanding(rows: readonly AwardRow[]): ReputationStanding {
 }
 
 export const EMPTY_STANDING: ReputationStanding = foldStanding([]);
+
+// A rank transition, attributed to the ledger row (in CANONICAL fold order) at which the
+// cumulative total crosses a rank threshold. This is the SINGLE source of rank-fact
+// attribution: both the write path (recordAward/reverseAward) and the reconciler derive
+// rank facts from this, so they always produce byte-identical (cause-keyed) fact ids —
+// even under same-millisecond concurrent awards whose insertion order differs from the
+// canonical [createdAt, id] order (a serverless multi-instance cuid race). Deterministic.
+export interface RankTransition {
+  from: string;
+  to: string;
+  causeId: string; // the award/reversal row (canonical order) that crossed the threshold
+  totalXp: number; // the fold total at the crossing
+}
+
+export function rankTransitions(rows: readonly AwardRow[]): RankTransition[] {
+  const ordered = [...rows].sort(canonicalOrder);
+  const out: RankTransition[] = [];
+  let rawSum = 0;
+  let prevRank = EMPTY_STANDING.rank;
+  for (const r of ordered) {
+    const xp = Number.isFinite(r.xp) ? Math.trunc(r.xp) : 0;
+    if (xp === 0) continue;
+    rawSum += xp;
+    const totalXp = Math.max(0, rawSum);
+    const rank = rankForLevel(levelForXp(totalXp));
+    if (rank !== prevRank) {
+      out.push({ from: prevRank, to: rank, causeId: r.id, totalXp });
+      prevRank = rank;
+    }
+  }
+  return out;
+}

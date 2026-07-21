@@ -42,9 +42,8 @@ export const EVENT_TYPES = [
   "MEMBERSHIP_ROLE_CHANGED",
   "MEMBERSHIP_REMOVED",
   // ── Operator Reputation (Sprint 10) — refs-only progression facts recorded by
-  // lib/reputation. XP grants reuse ARENA_POINTS_CHANGED and badges reuse
-  // ACHIEVEMENT_UNLOCKED (one fact type per fact — no duplicates); only the two
-  // genuinely missing facts are added here.
+  // lib/reputation. Canonical domain facts; the Arena-named ARENA_POINTS_CHANGED /
+  // ACHIEVEMENT_UNLOCKED are deprecated (retained above for replay, no longer emitted).
   "OPERATOR_RANK_CHANGED",
   "MILESTONE_REACHED",
   // Canonical Reputation-domain facts (Sprint 10 Phase 6). OPERATOR_XP_CHANGED supersedes

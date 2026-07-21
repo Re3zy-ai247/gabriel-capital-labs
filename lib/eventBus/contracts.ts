@@ -147,7 +147,7 @@ export const CONTRACTS: Readonly<Record<string, EventContract>> = {
 
   // ── Operator Reputation (Sprint 10) ────────────────────────────────────────
   // Progression facts recorded by lib/reputation (refs-only: ids, bounded rank names,
-  // integers). XP grants reuse ARENA_POINTS_CHANGED@1; badges reuse
+  // integers). XP grants use OPERATOR_XP_CHANGED@1 (Phase 6); the old ARENA_POINTS_CHANGED@1 / badges reuse
   // ACHIEVEMENT_UNLOCKED@1 — the reputation service is now their emitting owner
   // (Arena consumes projections; it emits nothing). Source "reputation".
   "OPERATOR_RANK_CHANGED@1": {

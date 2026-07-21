@@ -15,7 +15,7 @@ import {
   resolveAwardXp, isAwardKind, reversalKindFor, REPUTATION_POLICY_VERSION,
   MILESTONE_DEFINITIONS, type MilestoneDefinition,
 } from "./policy";
-import { foldStanding, type ReputationStanding } from "./fold";
+import { foldStanding, rankTransitions, type ReputationStanding } from "./fold";
 import { evaluateMilestones, isValidMilestoneKey } from "./milestones";
 import * as repo from "./repository";
 import { findOperatorById } from "@/lib/identity/repository"; // READ-ONLY identity lookup — reputation never mutates identity
@@ -71,16 +71,20 @@ export async function recordAward(input: RecordAwardInput): Promise<ServiceResul
     return { ok: true, data: { award, created: false, standing: before, rankChanged: null } };
   }
 
-  const standing = foldStanding(await repo.listAwards(operator.id));
+  const afterAwards = await repo.listAwards(operator.id);
+  const standing = foldStanding(afterAwards);
   const actorId = input.actorId ?? "system";
   const opRef = { operatorId: operator.id, accountId: operator.accountId };
 
   await recordReputationEvent(operatorXpChangedEvent(opRef, { id: award.id, classId: award.classId, xp: award.xp }, standing.totalXp, actorId));
-  let rankChanged: { from: string; to: string } | null = null;
-  if (standing.rank !== before.rank) {
-    rankChanged = { from: before.rank, to: standing.rank };
-    await recordReputationEvent(rankChangedEvent(opRef, before.rank, standing.rank, actorId, award.id));
+  // Rank facts derive from the CANONICAL fold (rankTransitions), never this award's
+  // insertion order — so the write path and the reconciler emit byte-identical rank-fact
+  // ids (no double-publish under same-ms concurrent awards). Emitting all is idempotent
+  // (present ones dedupe) and bounded by the number of ranks.
+  for (const t of rankTransitions(afterAwards)) {
+    await recordReputationEvent(rankChangedEvent(opRef, t.from, t.to, actorId, t.causeId));
   }
+  const rankChanged = standing.rank !== before.rank ? { from: before.rank, to: standing.rank } : null;
   return { ok: true, data: { award, created: true, standing, rankChanged } };
 }
 
@@ -101,20 +105,21 @@ export async function reverseAward(
 
   const operator = await findOperatorById(original.operatorId);
   if (!operator) return fail("not_found", "operator not found");
-  const before = foldStanding(await repo.listAwards(original.operatorId));
   const { award: reversal, created } = await repo.appendAward({
     operatorId: original.operatorId, subjectId: original.subjectId,
     awardKind: reversalKindFor(original.awardKind), classId: original.classId,
     xp: -original.xp, policyVersion: original.policyVersion, reversesId: original.id,
   });
-  const standing = foldStanding(await repo.listAwards(original.operatorId));
+  const afterAwards = await repo.listAwards(original.operatorId);
+  const standing = foldStanding(afterAwards);
   if (created) {
     // Emit the compensating facts so the durable fact stream tracks the ledger (a
     // consumer must see the reversal, and a rank drop, not just a silent ledger move).
     const opRef = { operatorId: operator.id, accountId: operator.accountId };
     await recordReputationEvent(awardReversedEvent(opRef, { id: reversal.id, xp: reversal.xp }, original.id, standing.totalXp, principal.id));
-    if (standing.rank !== before.rank) {
-      await recordReputationEvent(rankChangedEvent(opRef, before.rank, standing.rank, principal.id, reversal.id));
+    // Rank facts from the canonical fold (same derivation as the reconciler).
+    for (const t of rankTransitions(afterAwards)) {
+      await recordReputationEvent(rankChangedEvent(opRef, t.from, t.to, principal.id, t.causeId));
     }
   }
   return { ok: true, data: { reversal, created, standing } };

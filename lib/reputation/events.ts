@@ -7,8 +7,9 @@
 // and deliberately NO fanout — Arena reads projections, not deliveries. The gate is the
 // REPUTATION flag, never the realtime bus flag.
 //
-// XP grants reuse ARENA_POINTS_CHANGED@1 and badges reuse ACHIEVEMENT_UNLOCKED@1 (one
-// fact type per fact); OPERATOR_RANK_CHANGED@1 + MILESTONE_REACHED@1 are the new facts.
+// Canonical domain facts (Phase 6): OPERATOR_XP_CHANGED (grants), REPUTATION_AWARD_REVERSED
+// (reversals), OPERATOR_RANK_CHANGED, MILESTONE_REACHED. The Arena-named ARENA_POINTS_CHANGED
+// / ACHIEVEMENT_UNLOCKED are deprecated (retained for replay, no longer emitted).
 // tenant = the operator's ACCOUNT id (server-resolved); actor = the causing principal.
 import { getContract, currentVersion } from "@/lib/eventBus/contracts";
 import { validateEvent } from "@/lib/eventBus/validate";

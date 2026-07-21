@@ -17,8 +17,7 @@
 import { operatorReputationEnabled } from "./flags";
 import { type IdentityPrincipal, isAdmin } from "@/lib/identity/principal";
 import { findOperatorById } from "@/lib/identity/repository"; // READ-ONLY identity lookup
-import { levelForXp, rankForLevel } from "./scoring";
-import { EMPTY_STANDING } from "./fold";
+import { rankTransitions } from "./fold";
 import * as repo from "./repository";
 import { recordReputationEvent, operatorXpChangedEvent, awardReversedEvent, rankChangedEvent, milestoneReachedEvent } from "./events";
 import type { ServiceResult, ErrorCode } from "./service";
@@ -50,30 +49,26 @@ export async function reconcileOperatorFacts(
   let created = 0, replayed = 0;
   const tally = (r: { ok: boolean; replayed?: boolean }) => { if (r.ok) { r.replayed ? replayed++ : created++; } };
 
-  // Walk the ledger in fold order, tracking the running standing EXACTLY as foldStanding
-  // does (raw running sum, floored at 0 for display) so each fact carries the same
-  // historical totalXp / rank the live path emitted.
+  // XP / reversal facts, one per ledger row (running canonical total floored at 0, EXACTLY
+  // as foldStanding). Same builder, dedupeKey, and type as the live path, so the
+  // deterministic id matches and appendEvent dedupes any already-present fact.
   let rawSum = 0;
-  let prevRank = EMPTY_STANDING.rank;
   for (const a of awards) {
     const xp = Number.isFinite(a.xp) ? Math.trunc(a.xp) : 0;
     if (xp === 0) continue; // foldStanding skips zero-xp rows; so do we
     rawSum += xp;
     const totalXp = Math.max(0, rawSum);
     const isReversal = a.xp < 0 || a.awardKind.startsWith("reverse:");
-    // The XP/reversal fact — same builder, dedupeKey, and type as the live path, so the
-    // deterministic id matches and appendEvent dedupes.
     tally(await recordReputationEvent(
       isReversal
         ? awardReversedEvent(opRef, { id: a.id, xp: a.xp }, a.reversesId ?? "", totalXp, actorId)
         : operatorXpChangedEvent(opRef, { id: a.id, classId: a.classId, xp: a.xp }, totalXp, actorId),
     ));
-    // The rank fact, cause-keyed on THIS row's id (matches the live path exactly).
-    const newRank = rankForLevel(levelForXp(totalXp));
-    if (newRank !== prevRank) {
-      tally(await recordReputationEvent(rankChangedEvent(opRef, prevRank, newRank, actorId, a.id)));
-      prevRank = newRank;
-    }
+  }
+  // Rank facts from the SHARED canonical derivation — byte-identical to the write path's
+  // rankTransitions attribution, so a reconcile run can never double-publish a rank fact.
+  for (const t of rankTransitions(awards)) {
+    tally(await recordReputationEvent(rankChangedEvent(opRef, t.from, t.to, actorId, t.causeId)));
   }
 
   // Latched milestones (their own idempotent facts).

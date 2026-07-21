@@ -6,7 +6,7 @@
 // XP value is minted outside the shipped policy, and that the refusal register holds.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { foldStanding, EMPTY_STANDING, type AwardRow } from "../lib/reputation/fold";
+import { foldStanding, rankTransitions, EMPTY_STANDING, type AwardRow } from "../lib/reputation/fold";
 import {
   resolveAwardXp, isAwardKind, reversalKindFor, AWARD_KINDS, REPUTATION_REFUSED,
   REPUTATION_PROHIBITED_SOURCES, MILESTONE_DEFINITIONS, REPUTATION_POLICY_VERSION, reputationSubjectId,
@@ -40,6 +40,16 @@ check("award/reversal counts", s1.awardCount === 3 && s1.reversalCount === 0);
 const tieA = foldStanding([row({ id: "a", createdAt: new Date(5) }), row({ id: "b", createdAt: new Date(5), xp: 8 })]);
 const tieB = foldStanding([row({ id: "b", createdAt: new Date(5), xp: 8 }), row({ id: "a", createdAt: new Date(5) })]);
 check("equal timestamps tie-break deterministically on id", JSON.stringify(tieA) === JSON.stringify(tieB));
+
+// rankTransitions is canonical-order-deterministic: same rows in ANY input order yield
+// identical cause-keyed transitions — so the write path and the reconciler can never
+// disagree on a rank fact (fixes the Phase-8 double-publish under same-ms concurrent awards).
+const rtRows = [row({ id: "aaa", xp: 100, createdAt: new Date(5) }), row({ id: "zzz", xp: 100, createdAt: new Date(5) })];
+const rt1 = rankTransitions(rtRows);
+const rt2 = rankTransitions([...rtRows].reverse());
+check("rankTransitions crosses recruit->contender at 200 XP, cause-keyed", rt1.length === 1 && rt1[0].to === "contender" && rt1[0].totalXp === 200);
+check("rankTransitions is input-order-independent (write path == reconciler)", JSON.stringify(rt1) === JSON.stringify(rt2));
+check("empty ledger has no rank transitions", rankTransitions([]).length === 0);
 
 // Reversals: compensating records lower the fold; the floor holds at 0.
 const withReversal = foldStanding([

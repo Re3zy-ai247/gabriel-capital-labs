@@ -84,6 +84,10 @@ check("reconcile reuses the deterministic Event Fabric (recordReputationEvent), 
 check("reconcile re-emits the SAME builders as the live path (idempotent ids match)",
   /operatorXpChangedEvent\(/.test(reconcile) && /awardReversedEvent\(/.test(reconcile) && /rankChangedEvent\(/.test(reconcile) && /milestoneReachedEvent\(/.test(reconcile));
 check("reconcile folds standing the same way (floor at 0), so historical totalXp matches", /Math\.max\(0, rawSum\)/.test(reconcile));
+// Rank facts derive from the SHARED canonical rankTransitions in BOTH the write path and
+// the reconciler — never from a per-award insertion cause — so they can't double-publish.
+check("both the write path and reconcile derive rank facts from rankTransitions()", /rankTransitions\(/.test(service) && /rankTransitions\(/.test(reconcile));
+check("neither path keys a rank fact on the just-inserted award id (insertion-order attribution removed)", !/rankChangedEvent\([^)]*award\.id\)/.test(service) && !/rankChangedEvent\([^)]*reversal\.id\)/.test(service));
 
 // ── EXECUTED fail-closed dormancy: every door disabled with the flag off ─────
 (async () => {
