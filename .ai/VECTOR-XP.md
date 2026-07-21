@@ -111,7 +111,9 @@ Pending classes mint **nothing** until a durable, un-fakeable evidence source ex
 
 ## 8. What this service does NOT own
 
-Identity (→ `OPERATOR-IDENTITY.md`) · business health/KPI/SOP (→ `PERFORMANCE-INTELLIGENCE.md`) · notification content (→ emitting context, ADR-0036) · marketplace inventory/pricing (→ Marketplace) · the Event Fabric transport (→ ADR-0035) · Kai reasoning. It **reads** domain events and the policy; it **writes** only awards/milestones/entitlements/claims.
+Identity (→ `OPERATOR-IDENTITY.md`) · business health/KPI/SOP (→ `PERFORMANCE-INTELLIGENCE.md`) · notification content (→ emitting context, ADR-0036) · marketplace inventory/pricing (→ Marketplace) · the Event Fabric transport (→ ADR-0035) · Kai reasoning · **cash: affiliate commissions and any promotional credits are SEPARATE instruments with separate ledgers ([`ADR-0038`](ADR/ADR-0038-professional-growth-economy.md) PGE-4) — Vector XP never converts to or from them, and is never a credit/coin/token/currency (PGE-3).** It **reads** domain events and the policy; it **writes** only awards/milestones/entitlements/claims.
+
+**Service dispositions (ADR-0038 §5):** **Milestone** = a module *inside* this service (a latched projection over the award ledger), not a separate microservice. **Entitlement** = a *distinct* context (grants/eligibility/lifecycle/revocation/audit, resolved through the existing PEP as an additive source). **Reward Claim** = a module inside the Entitlement Service (one-time consumption record). The economy's improvement-recognition, competitions/cohorts, and instrument-separation laws live in [`CREDITVECTOR-ECONOMY.md`](CREDITVECTOR-ECONOMY.md).
 
 ## 9. Status & gates
 
