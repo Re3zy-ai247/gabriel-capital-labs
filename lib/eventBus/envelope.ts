@@ -47,6 +47,11 @@ export const EVENT_TYPES = [
   // genuinely missing facts are added here.
   "OPERATOR_RANK_CHANGED",
   "MILESTONE_REACHED",
+  // Canonical Reputation-domain facts (Sprint 10 Phase 6). OPERATOR_XP_CHANGED supersedes
+  // the Arena-named ARENA_POINTS_CHANGED (retained, deprecated, replay-only);
+  // REPUTATION_AWARD_REVERSED is the dedicated compensating-record fact.
+  "OPERATOR_XP_CHANGED",
+  "REPUTATION_AWARD_REVERSED",
 ] as const;
 export type EventType = (typeof EVENT_TYPES)[number];
 

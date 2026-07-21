@@ -65,6 +65,10 @@ export const CONTRACTS: Readonly<Record<string, EventContract>> = {
   // from a browser-supplied amount). Scope tightened self -> platform in Sprint 10 when
   // the Operator Reputation service became their emitting owner: only a trusted/admin
   // identity may publish them (zero producers existed, so tightening breaks nothing).
+  // ⚠️ DEPRECATED (Sprint 10 Phase 6): ARENA_POINTS_CHANGED@1 is superseded by
+  // OPERATOR_XP_CHANGED@1, and ACHIEVEMENT_UNLOCKED@1 (badges, never emitted) has no
+  // reputation producer. Both are RETAINED (never removed) so replay of any historical
+  // row keeps validating; Reputation no longer emits either.
   "ACHIEVEMENT_UNLOCKED@1": {
     type: "ACHIEVEMENT_UNLOCKED", version: 1, defaultSource: "arena", scope: "platform",
     schema: z.object({ achievementId: z.string().min(1) }).strict(),
@@ -154,6 +158,27 @@ export const CONTRACTS: Readonly<Record<string, EventContract>> = {
   "MILESTONE_REACHED@1": {
     type: "MILESTONE_REACHED", version: 1, defaultSource: "reputation", scope: "platform",
     schema: z.object({ operatorId: z.string().min(1), milestoneKey: z.string().min(3).max(60) }).strict(),
+  },
+
+  // ── Canonical Reputation-domain facts (Sprint 10 Phase 6) ───────────────────
+  // OPERATOR_XP_CHANGED is the canonical XP-grant fact (the award-recorded and
+  // xp-changed events are ONE fact — emitting both would double-count downstream).
+  // It SUPERSEDES ARENA_POINTS_CHANGED@1 (retained above, deprecated, replay-only —
+  // Reputation no longer emits it). REPUTATION_AWARD_REVERSED is the dedicated
+  // compensating-record fact (a reversal is not a grant). Refs-only; source "reputation".
+  "OPERATOR_XP_CHANGED@1": {
+    type: "OPERATOR_XP_CHANGED", version: 1, defaultSource: "reputation", scope: "platform",
+    schema: z.object({
+      operatorId: z.string().min(1), awardId: z.string().min(1),
+      xpDelta: z.number().int(), totalXp: z.number().int().nonnegative(), classId: z.string().min(1).max(8),
+    }).strict(),
+  },
+  "REPUTATION_AWARD_REVERSED@1": {
+    type: "REPUTATION_AWARD_REVERSED", version: 1, defaultSource: "reputation", scope: "platform",
+    schema: z.object({
+      operatorId: z.string().min(1), reversalId: z.string().min(1), reversedAwardId: z.string().min(1),
+      xpDelta: z.number().int(), totalXp: z.number().int().nonnegative(),
+    }).strict(),
   },
 };
 

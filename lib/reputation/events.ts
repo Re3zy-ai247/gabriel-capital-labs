@@ -17,11 +17,14 @@ import { appendEvent } from "@/lib/eventBus/store";
 import { deriveEventId, systemIdentity, type DraftEvent, type EventType } from "@/lib/eventBus/envelope";
 import { operatorReputationEnabled } from "./flags";
 
+// Canonical Reputation-domain fact types (Sprint 10 Phase 6). Reputation no longer
+// emits the Arena-named ARENA_POINTS_CHANGED / ACHIEVEMENT_UNLOCKED (retained as
+// deprecated replay-only contracts).
 export const REPUTATION_EVENT_TYPES = [
-  "ARENA_POINTS_CHANGED",
+  "OPERATOR_XP_CHANGED",
+  "REPUTATION_AWARD_REVERSED",
   "OPERATOR_RANK_CHANGED",
   "MILESTONE_REACHED",
-  "ACHIEVEMENT_UNLOCKED",
 ] as const;
 export type ReputationEventType = (typeof REPUTATION_EVENT_TYPES)[number];
 
@@ -76,15 +79,32 @@ export async function recordReputationEvent(input: ReputationEventInput): Promis
 
 // ── Pure builders ────────────────────────────────────────────────────────────
 
-export function xpGrantedEvent(
+// Canonical XP-grant fact (the award-recorded AND xp-changed event are ONE fact —
+// emitting a separate "award recorded" would double-count downstream). One fact per
+// ledger row, replay-safe.
+export function operatorXpChangedEvent(
   op: { operatorId: string; accountId: string }, award: { id: string; classId: string; xp: number }, totalXp: number, actorId: string,
 ): ReputationEventInput {
   return {
-    type: "ARENA_POINTS_CHANGED",
+    type: "OPERATOR_XP_CHANGED",
     tenantId: op.accountId,
     actorId,
-    payload: { xpDelta: award.xp, totalXp, classId: award.classId },
-    dedupeKey: `award:${award.id}`, // one fact per ledger row, replay-safe
+    payload: { operatorId: op.operatorId, awardId: award.id, xpDelta: award.xp, totalXp, classId: award.classId },
+    dedupeKey: `award:${award.id}`,
+  };
+}
+
+// Canonical reversal fact — a compensating record is NOT a grant, so it gets its own
+// domain event. One fact per reversal row.
+export function awardReversedEvent(
+  op: { operatorId: string; accountId: string }, reversal: { id: string; xp: number }, reversedAwardId: string, totalXp: number, actorId: string,
+): ReputationEventInput {
+  return {
+    type: "REPUTATION_AWARD_REVERSED",
+    tenantId: op.accountId,
+    actorId,
+    payload: { operatorId: op.operatorId, reversalId: reversal.id, reversedAwardId, xpDelta: reversal.xp, totalXp },
+    dedupeKey: `reversal:${reversal.id}`,
   };
 }
 

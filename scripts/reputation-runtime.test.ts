@@ -7,7 +7,7 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import * as svc from "../lib/reputation/service";
-import { recordReputationEvent, xpGrantedEvent, rankChangedEvent, milestoneReachedEvent, REPUTATION_EVENT_TYPES } from "../lib/reputation/events";
+import { recordReputationEvent, operatorXpChangedEvent, awardReversedEvent, rankChangedEvent, milestoneReachedEvent, REPUTATION_EVENT_TYPES } from "../lib/reputation/events";
 import { validateEvent } from "../lib/eventBus/validate";
 import { getContract } from "../lib/eventBus/contracts";
 import { authorizePublish } from "../lib/eventBus/publish";
@@ -39,7 +39,7 @@ check("reputation never touches prisma.user / operatorIdentity writes", !/prisma
 // replayStanding must authorize (own-data/admin) — not an open cross-user read.
 check("replayStanding takes a principal and authorizes own-data/admin", /replayStanding\(\s*\n?\s*principal: IdentityPrincipal/.test(service) && /operator\.accountId === principal\.id/.test(service));
 // reverseAward emits compensating facts (the fact stream tracks the ledger).
-check("reverseAward emits a compensating fact when a reversal is created", /reverseAward[\s\S]*?recordReputationEvent\(xpGrantedEvent/.test(service));
+check("reverseAward emits a compensating fact when a reversal is created", /reverseAward[\s\S]*?recordReputationEvent\(awardReversedEvent/.test(service));
 check("no billing/marketplace/kai/network/UI imports", !/from "@\/lib\/(stripe|billing|kai|network|community)/.test(allRep) && !/from "@\/app\//.test(allRep));
 // Ownership move (Sprint 10): reputation imports NO arena code at all — the canonical
 // scoring policy lives in lib/reputation/scoring.ts and Arena re-exports it. The prior
@@ -57,7 +57,7 @@ check("no HTTP surface (no route imports lib/reputation)", (() => {
 {
   const op = { operatorId: "op1", accountId: "acc1" };
   const samples = [
-    xpGrantedEvent(op, { id: "aw1", classId: "A", xp: 20 }, 20, "system"),
+    operatorXpChangedEvent(op, { id: "aw1", classId: "A", xp: 20 }, 20, "system"),
     rankChangedEvent(op, "recruit", "contender", "system", "aw1"),
     milestoneReachedEvent(op, "xp.100", "system"),
   ];
@@ -85,7 +85,7 @@ check("no HTTP surface (no route imports lib/reputation)", (() => {
   ]);
   check("ALL 5 service doors fail-closed disabled when OPERATOR_REPUTATION_ENABLED unset (no DB touch)",
     results.every((r) => r.ok === false && (r as { code?: string }).code === "disabled"));
-  const ev = await recordReputationEvent(xpGrantedEvent({ operatorId: "op1", accountId: "acc1" }, { id: "aw1", classId: "A", xp: 20 }, 20, "system"));
+  const ev = await recordReputationEvent(operatorXpChangedEvent({ operatorId: "op1", accountId: "acc1" }, { id: "aw1", classId: "A", xp: 20 }, 20, "system"));
   check("event recorder is fail-closed disabled too", ev.ok === false && (ev as { code?: string }).code === "disabled");
 
   console.log(`\nreputation-runtime.test.ts: ${pass} passed, ${fail} failed`);

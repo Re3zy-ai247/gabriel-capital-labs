@@ -20,7 +20,7 @@ import { evaluateMilestones, isValidMilestoneKey } from "./milestones";
 import * as repo from "./repository";
 import { findOperatorById } from "@/lib/identity/repository"; // READ-ONLY identity lookup — reputation never mutates identity
 import { type IdentityPrincipal, isAdmin } from "@/lib/identity/principal";
-import { recordReputationEvent, xpGrantedEvent, rankChangedEvent, milestoneReachedEvent } from "./events";
+import { recordReputationEvent, operatorXpChangedEvent, awardReversedEvent, rankChangedEvent, milestoneReachedEvent } from "./events";
 import type { XpAward, ReputationMilestone } from "@prisma/client";
 
 export type ErrorCode = "disabled" | "forbidden" | "invalid" | "conflict" | "not_found";
@@ -75,7 +75,7 @@ export async function recordAward(input: RecordAwardInput): Promise<ServiceResul
   const actorId = input.actorId ?? "system";
   const opRef = { operatorId: operator.id, accountId: operator.accountId };
 
-  await recordReputationEvent(xpGrantedEvent(opRef, { id: award.id, classId: award.classId, xp: award.xp }, standing.totalXp, actorId));
+  await recordReputationEvent(operatorXpChangedEvent(opRef, { id: award.id, classId: award.classId, xp: award.xp }, standing.totalXp, actorId));
   let rankChanged: { from: string; to: string } | null = null;
   if (standing.rank !== before.rank) {
     rankChanged = { from: before.rank, to: standing.rank };
@@ -112,7 +112,7 @@ export async function reverseAward(
     // Emit the compensating facts so the durable fact stream tracks the ledger (a
     // consumer must see the reversal, and a rank drop, not just a silent ledger move).
     const opRef = { operatorId: operator.id, accountId: operator.accountId };
-    await recordReputationEvent(xpGrantedEvent(opRef, { id: reversal.id, classId: reversal.classId, xp: reversal.xp }, standing.totalXp, principal.id));
+    await recordReputationEvent(awardReversedEvent(opRef, { id: reversal.id, xp: reversal.xp }, original.id, standing.totalXp, principal.id));
     if (standing.rank !== before.rank) {
       await recordReputationEvent(rankChangedEvent(opRef, before.rank, standing.rank, principal.id, reversal.id));
     }
