@@ -84,6 +84,8 @@ The DDD **engineering** view (one owner per context; complements the product Sub
 | Mission Control | SHIPPED | `lib/missionControl.ts`, `app/dashboard` (titled "/ Mission Control") | one module (ADR-0032), not the OS |
 | Operator Reputation (Vector XP) | PARTIAL | `lib/arena/*` (reconcile-on-read, no table) | own-XP only; refusal register binding ([`ARENA-CONTRIBUTION-POLICY.md`]); ledger/milestones/entitlements/claims PROPOSED ([`VECTOR-XP.md`], ADR-0037); "verified" tier PROPOSED |
 | Performance Intelligence (SOP/KPI/Health) | PARTIAL (scattered) | seed: `AGENCY-COMMAND.md §8` health score + §4 revenue, `lib/missionControl.ts`, `lib/analytics` | SOP + KPI **engines** ABSENT; consolidated service PROPOSED ([`PERFORMANCE-INTELLIGENCE.md`], ADR-0037); business health ≠ reputation |
+| Entitlement Service (+ Reward Claim module) | ABSENT (PROPOSED) | seed: plan-entitlements `lib/entitlements.ts` | XP/milestone-derived access grants; distinct context ([`ADR-0038 §5`]); resolves through the PEP as an *additive* source (not a parallel authz); Reward Claim = one-time consumption module |
+| Professional Growth Economy (laws) | PROPOSED | [`ADR-0038`], [`CREDITVECTOR-ECONOMY.md`] | governs relationships/fairness only (improvement>scale, competitions/cohorts, affiliate/credits SEPARATE from XP); no XP amounts; principles founder-RATIFIED, values owner-gated |
 | Achievements / Certifications | PARTIAL | arena badges | Certifications ABSENT (no issuance record) |
 | Kai (intelligence) | SHIPPED | `lib/kai.ts`, `lib/intelligence/*` | tool-less by design (ADR-0005); kernel `lib/os/kernel` dormant (`KERNEL_DURABLE` off) |
 | Knowledge Graph | SHIPPED (index form) | `lib/intelligence/graph.ts` | Kai-feed PROPOSED |

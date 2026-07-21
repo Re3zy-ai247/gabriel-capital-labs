@@ -14,16 +14,26 @@ Core dispute engine · Community + Kai · Support · Attachments/identity vault 
 4. **Operator Identity Service** — the next platform-service implementation target (architecture done: [`OPERATOR-IDENTITY.md`]). PROPOSED; owner-gated. Prereqs before code: migration-first identity schema, durable identity event contracts, CCO/counsel pass on public-profile/handle/consent, RBAC-beyond-USER/ADMIN reconciled with the PEP. Cross-user surfaces stay under the CROA §1679b / FTC §5 counsel STOP.
 5. **Event Fabric activation (owner-gated, Sprint 8):** prod `migrate deploy` of the 2 additive migrations + `EVENT_BUS_ENABLED=true` + wiring real producers/subscribers. Dormant until then.
 
-## Operator Growth & Business Intelligence arc — LOCKED scope, dependency-ordered (owner-gated; architecture = ADR-0037 + `VECTOR-XP.md` + `PERFORMANCE-INTELLIGENCE.md` + `OPERATOR-IDENTITY.md`)
-Mandatory future delivery. **No sprint numbers assigned** — dependency order governs (Identity ≻ Reputation · Evidence ≻ rewards · Performance-truth ≻ recommendations · Milestones ≻ entitlements · Entitlements ≻ marketplace unlocks). Every step is owner-gated + requires fraud/compliance/privacy/legal review before any weight or public surface goes live.
-1. **Operator Identity foundation** — professional profile schema, roles/membership, durable identity event contracts. (Prereq for everything below — OG-3.)
-2. **Profile Media Boundary** — extend `lib/attachments.ts` with an `operator_profile` scope + the missing controls (re-encode, EXIF strip, dimension limits, moderation, default avatar, access authz).
-3. **Vector XP integrity core** — migration-first append-only award ledger, idempotency `UNIQUE(sourceEventId, operatorId, awardKind)`, versioned policy, anti-Sybil/collusion + velocity caps, fraud holds. (Evidence ≻ rewards.)
-4. **Milestones → Entitlements → Reward Claims** — in that order; milestones stabilize earned progression against re-weighting.
-5. **Performance Intelligence Service** — SOP Engine, KPI Engine, Business Health Engine (generalizing `AGENCY-COMMAND §8`), Business Maturity, evidence-cited Kai recommendations. (Performance-truth ≻ recommendations.)
-6. **Experiences** — Mission Control business-health surface · Arena progression UI · Operator Profile UX · XP-gated Marketplace items/services (Marketplace never mutates XP). (Entitlements ≻ marketplace unlocks.)
-7. **Campus** education → authoritative educational evidence feeding professional-development XP (no arbitrary awards).
-8. **Cross-cutting gates (every step):** anti-exploitation controls, fraud/abuse review, privacy review, compliance/legal review, and the CROA §1679b / FTC §5 counsel STOP on any public cross-user reputation/profile/performance surface.
+## Platform Services Era — LOCKED scope, dependency-ordered (owner-gated; architecture = ADR-0037 + ADR-0038 + `CREDITVECTOR-ECONOMY.md` + `VECTOR-XP.md` + `PERFORMANCE-INTELLIGENCE.md` + `OPERATOR-IDENTITY.md`)
+The next broad development era (Sprint identifiers retained where operationally useful). Mandatory future delivery, **dependency-ordered — no arbitrary sprint numbers** (Release ≻ Identity ≻ Reputation · Evidence ≻ rewards · Performance-truth ≻ recommendations · Milestones ≻ entitlements ≻ marketplace unlocks · Improvement measured before rewarded). Every step is owner-gated + requires fraud/compliance/privacy/legal review before any weight or public surface goes live.
+1. **Release & merge review** of the accumulated Sprint 7/8 work (branch `review/sprint7-8-constitutional`; see [`RELEASE-REVIEW-sprint7-8.md`]).
+2. **Owner-gated production migration baseline** — `migrate resolve --applied 0_init` → `migrate deploy` (4 additive migrations; 0 DROP).
+3. **Runtime release verification** (post-migration; flags stay OFF).
+4. **Operator Identity Service foundation** — professional profile schema, roles/membership, durable identity event contracts. (Prereq for all below — OG-3.)
+5. **Professional Operator Profile** — field set + visibility model (`OPERATOR-IDENTITY.md §5b`).
+6. **Profile Media integration** — extend `lib/attachments.ts` with an `operator_profile` scope + missing controls (re-encode, EXIF strip, CSAM/NCMEC, impersonation screen, moderation, default avatar, visibility-enforced serving).
+7. **Operator Reputation / Vector XP core** — migration-first append-only award ledger, idempotency `UNIQUE(subjectId, operatorId, awardKind)` (stable business entity — VECTOR-XP §5.1), versioned policy, anti-Sybil/collusion + velocity caps, fraud holds, improvement lens.
+8. **Milestones** (latched module in the Reputation Service).
+9. **Entitlements** (distinct service; resolves through the PEP).
+10. **Reward Claims** (module in the Entitlement Service; one-time consumption).
+11. **Performance Intelligence Service** — SOP/KPI/Health/Maturity + improvement-measurement integrity + evidence-cited Kai recommendations (CROA-scrubbed).
+12. **Mission Control projections** (business-health surface).
+13. **Arena progression expansion** — progression UI + evidence-based competitions/cohorts (`CREDITVECTOR-ECONOMY.md §5`).
+14. **Campus integration** — education → authoritative educational evidence (no arbitrary XP).
+15. **Marketplace integration** — entitlement-gated access; **never mutates XP**; CROA/CCO-screened inventory.
+16. **Operator Network integration** — evidence-backed contribution events.
+17. **Future economic incentives & affiliate systems** — SEPARATE instruments/ledgers (ADR-0038 PGE-4); reserved, not built; legal/accounting/tax gates.
+- **Cross-cutting gates (every step):** anti-exploitation controls, fraud/abuse review, privacy review, compliance/legal review, the CROA §1679b / FTC §5 counsel STOP on any public cross-user surface, and **no policy value (weight/cap/window/qualification/threshold) goes live without owner sign-off** (ADR-0038 §6).
 
 ## Offered-but-unbuilt (Brief)
 - Stat/data cards (visuals for articles).
