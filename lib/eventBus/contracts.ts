@@ -136,6 +136,21 @@ export const CONTRACTS: Readonly<Record<string, EventContract>> = {
     type: "MEMBERSHIP_REMOVED", version: 1, defaultSource: "identity", scope: "platform",
     schema: z.object({ organizationId: z.string().min(1), operatorId: z.string().min(1) }).strict(),
   },
+
+  // ── Operator Reputation (Sprint 10) ────────────────────────────────────────
+  // Progression facts recorded by lib/reputation (refs-only: ids, bounded rank names,
+  // integers). XP grants reuse ARENA_POINTS_CHANGED@1; badges reuse
+  // ACHIEVEMENT_UNLOCKED@1 — the reputation service is now their emitting owner
+  // (Arena consumes projections; it emits nothing). Source "reputation".
+  "OPERATOR_RANK_CHANGED@1": {
+    type: "OPERATOR_RANK_CHANGED", version: 1, defaultSource: "reputation", scope: "platform",
+    // Bounded rank identifiers from the shipped ladder (recruit/contender/…) — not free text.
+    schema: z.object({ operatorId: z.string().min(1), from: z.string().min(1).max(20), to: z.string().min(1).max(20) }).strict(),
+  },
+  "MILESTONE_REACHED@1": {
+    type: "MILESTONE_REACHED", version: 1, defaultSource: "reputation", scope: "platform",
+    schema: z.object({ operatorId: z.string().min(1), milestoneKey: z.string().min(3).max(60) }).strict(),
+  },
 };
 
 export function contractKey(type: string, version: number): string {

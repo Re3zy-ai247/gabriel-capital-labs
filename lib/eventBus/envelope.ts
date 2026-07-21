@@ -41,6 +41,12 @@ export const EVENT_TYPES = [
   "MEMBERSHIP_ADDED",
   "MEMBERSHIP_ROLE_CHANGED",
   "MEMBERSHIP_REMOVED",
+  // ── Operator Reputation (Sprint 10) — refs-only progression facts recorded by
+  // lib/reputation. XP grants reuse ARENA_POINTS_CHANGED and badges reuse
+  // ACHIEVEMENT_UNLOCKED (one fact type per fact — no duplicates); only the two
+  // genuinely missing facts are added here.
+  "OPERATOR_RANK_CHANGED",
+  "MILESTONE_REACHED",
 ] as const;
 export type EventType = (typeof EVENT_TYPES)[number];
 
