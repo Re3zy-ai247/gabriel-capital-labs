@@ -35,6 +35,13 @@
 - **INFO — canon:** VECTOR-XP §6 codified the `sourceEventId` key §5 rejected; §6 corrected to `UNIQUE(subjectId, operatorId, awardKind)`.
 - **Documented, not folded (dormant, activation-gated):** award-append and fact-emit are non-atomic — a crash between them loses a *fact* (never *truth*: standing always re-folds from the ledger); at-most-once best-effort facts are reconcilable by a future replay sweep, matching the Event Fabric's own posture.
 
+## 4c. Reconciliation session (2026-07-21, Phases 5–8 — post-Sprint-9-merge)
+After Sprint 9 merged to `main` (`f690373`, dormant), the stacked reputation branch was reconciled against a final architectural review's three findings:
+- **Phase 5 — policy ownership.** The canonical scoring policy (weights, classes, evidence caps, refusals, level/rank curve) moved VERBATIM from `lib/arena/policy.ts`/`project.ts` to **`lib/reputation/scoring.ts`** (Reputation-owned). Arena's modules are now byte-equivalent **compatibility re-exports**; `lib/reputation` has **zero Arena imports** — the Reputation→Arena inversion is gone; no value or refusal changed.
+- **Phase 6 — canonical event contracts.** Reputation now emits **domain-named** facts: `OPERATOR_XP_CHANGED@1` (grants — the award-recorded and xp-changed events are ONE fact, no double-count) and `REPUTATION_AWARD_REVERSED@1` (reversals), plus the existing `OPERATOR_RANK_CHANGED@1` / `MILESTONE_REACHED@1`. The Arena-named `ARENA_POINTS_CHANGED@1` / `ACHIEVEMENT_UNLOCKED@1` are **deprecated but RETAINED** (never removed — replay-safe); nothing emits them.
+- **Phase 7 — executable recovery.** Added `lib/reputation/reconcile.ts` — a **deterministic reconciliation publisher** that REUSES the Event Fabric's deterministic ids + idempotent `appendEvent` (no new outbox/queue). It folds the authoritative ledger and re-derives the exact facts the write path would have emitted (identical ids), so it recovers lost facts and never double-publishes. Admin-gated, tenant-safe, READ-ONLY on the ledger; publication status is never XP truth.
+- **Phase 8 — adversarial review** (14 agents, 4 vectors): 3 vectors CLEAN (policy ownership, contract double-emission, replay/tenant/ledger). **1 MED confirmed + fixed:** the reconciler attributed rank facts by canonical fold order while the write path used insertion order → under same-ms concurrent awards (cuid-vs-insertion divergence) a rank fact could double-publish. Fixed with a **shared `rankTransitions`** derivation used by BOTH the write path and the reconciler → byte-identical, order-independent rank-fact ids. (Residual LOW/INFO documented: a crash-recovered `OPERATOR_XP_CHANGED` payload's `totalXp` is canonical rather than insertion-order — id is award-keyed so it never double-publishes; the ledger fold stays truth.)
+
 ## 5. Commit inventory (`feat/operator-reputation`, stacked on `f690373`)
 | # | SHA | Subject |
 |---|---|---|
@@ -45,7 +52,12 @@
 | 5 | `bab22da` | guards + XP-fact scope tighten (self → platform) |
 | 6 | `b174a78` | docs — release record + ownership/canon updates |
 | 7 | `9250cd4` | adversarial fixes — version-free subject, RESTRICT FK, authz replay, reversal facts |
-| 8 | _this_ | docs — adversarial review outcome + VECTOR-XP §6 canon fix |
+| 8 | `90723d9` | docs — adversarial review outcome + VECTOR-XP §6 canon fix |
+| 9 | `55943fe` | Phase 5 — policy ownership move to `lib/reputation/scoring.ts` (Arena re-exports) |
+| 10 | `f3b76eb` | Phase 6 — canonical event contracts + deprecate Arena-named |
+| 11 | `0a42c79` | Phase 7 — deterministic reconciliation publisher |
+| 12 | `640abab` | Phase 8 — shared `rankTransitions` (no double-publish) + doc drift |
+| 13 | _this_ | docs — reconciliation session (Phases 5–8) record |
 
 ## 6. Owner-gated next steps (STOP at branch push)
 Do NOT merge/deploy/migrate/enable. Sequenced gates: Sprint 9 merge (approved, not executed) → this branch's review + merge → Gate D migrations (`0_init` baseline → event_bus → operator_identity → operator_reputation) → wiring real award producers (outcome facts) + Arena re-pointing to reputation projections (a thin-presentation refactor, its own slice) → only then `OPERATOR_REPUTATION_ENABLED`. Milestone definitions, non-outcome dimensions (education/community/agency), maker-checker approval flow, and every cross-user surface remain owner/counsel-gated and unbuilt.
