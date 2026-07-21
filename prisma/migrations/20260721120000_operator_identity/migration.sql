@@ -7,7 +7,7 @@
 CREATE TYPE "OperatorState" AS ENUM ('PENDING', 'ACTIVE', 'SUSPENDED', 'DEACTIVATED');
 
 -- CreateEnum
-CREATE TYPE "OrganizationKind" AS ENUM ('AGENCY');
+CREATE TYPE "OrganizationKind" AS ENUM ('AGENCY', 'ENTERPRISE', 'EDUCATOR', 'VENDOR', 'INTERNAL');
 
 -- CreateEnum
 CREATE TYPE "OrganizationState" AS ENUM ('ACTIVE', 'SUSPENDED', 'ARCHIVED');
@@ -89,7 +89,7 @@ CREATE UNIQUE INDEX "OrganizationMembership_organizationId_operatorId_key" ON "O
 ALTER TABLE "OperatorIdentity" ADD CONSTRAINT "OperatorIdentity_accountId_fkey" FOREIGN KEY ("accountId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Organization" ADD CONSTRAINT "Organization_ownerAccountId_fkey" FOREIGN KEY ("ownerAccountId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "Organization" ADD CONSTRAINT "Organization_ownerAccountId_fkey" FOREIGN KEY ("ownerAccountId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "OrganizationMembership" ADD CONSTRAINT "OrganizationMembership_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;

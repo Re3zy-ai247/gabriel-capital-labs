@@ -13,6 +13,13 @@
 export const ORG_ROLES = ["OWNER", "ADMIN", "MEMBER"] as const;
 export type OrgRole = (typeof ORG_ROLES)[number];
 
+// OWNER is DERIVED from Organization.ownerAccountId (the single source of ownership
+// truth), never minted as a membership row — so ownership can't fork into two authorities
+// (the org attribute vs. a membership role) once the PEP consumes this map. Only these
+// roles are assignable to a membership via the service.
+export const ASSIGNABLE_ORG_ROLES = ["ADMIN", "MEMBER"] as const;
+export type AssignableOrgRole = (typeof ASSIGNABLE_ORG_ROLES)[number];
+
 export const ORG_PERMISSIONS = [
   "org:view",
   "org:members:view",

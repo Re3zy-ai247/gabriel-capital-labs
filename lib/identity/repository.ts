@@ -18,6 +18,7 @@ import type { OperatorIdentity, Organization, OrganizationMembership } from "@pr
 import { prisma } from "@/lib/prisma";
 import type { OperatorState, MembershipState } from "./state";
 import type { OrgRole } from "./rbac";
+import type { OrganizationKind } from "./validation";
 
 function isUniqueViolation(e: unknown): boolean {
   return e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002";
@@ -62,7 +63,7 @@ export async function transitionOperator(
 
 // ── Organization ─────────────────────────────────────────────────────────────
 export async function createOrganization(
-  input: { ownerAccountId: string; name: string; slug: string; kind?: "AGENCY" },
+  input: { ownerAccountId: string; name: string; slug: string; kind?: OrganizationKind },
 ): Promise<{ ok: true; org: Organization } | { ok: false; error: "slug_taken" }> {
   try {
     const org = await prisma.organization.create({

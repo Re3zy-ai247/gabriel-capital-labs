@@ -7,7 +7,13 @@
 // claim `admin`, `creditvector`, an org's own reserved words, etc. (an impersonation /
 // confusion vector called out in OPERATOR-IDENTITY.md §5b).
 import { z } from "zod";
-import { ORG_ROLES } from "./rbac";
+import { ASSIGNABLE_ORG_ROLES } from "./rbac";
+
+// Organization kinds — the generic-entity discriminator (kept in lockstep with the
+// schema enum by identity-core.test.ts). AGENCY is one kind among Enterprises,
+// Educators, marketplace Vendors, and internal orgs.
+export const ORGANIZATION_KINDS = ["AGENCY", "ENTERPRISE", "EDUCATOR", "VENDOR", "INTERNAL"] as const;
+export type OrganizationKind = (typeof ORGANIZATION_KINDS)[number];
 
 // Words that cannot be claimed as a slug or handle — platform routes, brand terms,
 // and role words. Fail-closed: reserved => rejected.
@@ -56,7 +62,7 @@ export const createOrganizationInput = z
   .object({
     name: z.string().trim().min(2).max(120),
     slug: slugSchema.optional(), // derived from name when omitted
-    kind: z.literal("AGENCY").optional(),
+    kind: z.enum(ORGANIZATION_KINDS).optional(), // defaults to AGENCY server-side when omitted
   })
   .strict();
 export type CreateOrganizationInput = z.infer<typeof createOrganizationInput>;
@@ -65,7 +71,7 @@ export const addMembershipInput = z
   .object({
     organizationId: z.string().min(1).max(64),
     operatorId: z.string().min(1).max(64),
-    role: z.enum(ORG_ROLES).default("MEMBER"),
+    role: z.enum(ASSIGNABLE_ORG_ROLES).default("MEMBER"), // OWNER is derived, not assignable
   })
   .strict();
 export type AddMembershipInput = z.infer<typeof addMembershipInput>;
@@ -74,7 +80,7 @@ export const changeRoleInput = z
   .object({
     organizationId: z.string().min(1).max(64),
     operatorId: z.string().min(1).max(64),
-    role: z.enum(ORG_ROLES),
+    role: z.enum(ASSIGNABLE_ORG_ROLES), // OWNER is derived from ownerAccountId, not assignable
   })
   .strict();
 export type ChangeRoleInput = z.infer<typeof changeRoleInput>;

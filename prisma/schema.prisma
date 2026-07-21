@@ -659,8 +659,17 @@ enum OperatorState {
   DEACTIVATED
 }
 
+// Organization is a GENERIC platform entity; `kind` is the discriminator. AGENCY is
+// one kind — Educators, Enterprises, marketplace Vendors, and internal Gabriel Capital
+// Labs orgs are others. Kind-specific data lives in the owning vertical (keyed by
+// organizationId), never on this row. Extensible: adding a kind is an additive
+// `ALTER TYPE ADD VALUE`, never a redesign.
 enum OrganizationKind {
   AGENCY
+  ENTERPRISE
+  EDUCATOR
+  VENDOR
+  INTERNAL
 }
 
 enum OrganizationState {
@@ -698,7 +707,11 @@ model OperatorIdentity {
 
 model Organization {
   id             String            @id @default(cuid())
-  owner          User              @relation("OrganizationOwner", fields: [ownerAccountId], references: [id], onDelete: Cascade)
+  // Restrict, NOT Cascade: an Organization is a shared, multi-operator entity with its
+  // own ARCHIVED terminal state. Cascading it off the owner's account deletion would
+  // silently destroy the org AND cascade-wipe every other operator's membership. The
+  // owner account must be explicitly archived / ownership-transferred first.
+  owner          User              @relation("OrganizationOwner", fields: [ownerAccountId], references: [id], onDelete: Restrict)
   ownerAccountId String
   name           String
   slug           String            @unique // stable org id surface; never the spoofable agencyName

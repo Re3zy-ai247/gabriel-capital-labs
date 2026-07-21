@@ -92,7 +92,7 @@ export async function createOrganization(
   const slug = slugSchema.safeParse(candidate);
   if (!slug.success) return fail("invalid", "could not derive a valid slug from the name; provide one");
 
-  const res = await repo.createOrganization({ ownerAccountId: g.principal.id, name: parsed.data.name, slug: slug.data, kind: "AGENCY" });
+  const res = await repo.createOrganization({ ownerAccountId: g.principal.id, name: parsed.data.name, slug: slug.data, kind: parsed.data.kind ?? "AGENCY" });
   if (!res.ok) return fail("conflict", "slug already taken");
 
   await recordIdentityEvent(organizationCreatedEvent(res.org, g.principal.id));

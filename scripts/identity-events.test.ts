@@ -18,6 +18,7 @@ import {
 } from "../lib/identity/events";
 import { OPERATOR_STATES } from "../lib/identity/state";
 import { ORG_ROLES } from "../lib/identity/rbac";
+import { ORGANIZATION_KINDS } from "../lib/identity/validation";
 
 let pass = 0, fail = 0;
 function check(label: string, cond: boolean) {
@@ -43,6 +44,8 @@ check("OPERATOR_STATE_CHANGED rejects bad enum", validateEvent("OPERATOR_STATE_C
 check("MEMBERSHIP_ADDED valid role", validateEvent("MEMBERSHIP_ADDED", 1, { organizationId: "o1", operatorId: "op1", role: "MEMBER" }).ok === true);
 check("MEMBERSHIP_ADDED rejects bad role", validateEvent("MEMBERSHIP_ADDED", 1, { organizationId: "o1", operatorId: "op1", role: "GOD" } as any).ok === false);
 check("ORGANIZATION_CREATED valid", validateEvent("ORGANIZATION_CREATED", 1, { organizationId: "o1", ownerAccountId: "a1", kind: "AGENCY" }).ok === true);
+check("ORGANIZATION_CREATED accepts a non-AGENCY kind (generic org)", validateEvent("ORGANIZATION_CREATED", 1, { organizationId: "o1", ownerAccountId: "a1", kind: "ENTERPRISE" }).ok === true);
+check("ORGANIZATION_CREATED contract kind === every schema OrganizationKind", [...ORGANIZATION_KINDS].every((k) => validateEvent("ORGANIZATION_CREATED", 1, { organizationId: "o1", ownerAccountId: "a1", kind: k }).ok === true));
 
 // No identity payload carries a PII-named key (the guard denylists reason/name/etc.).
 {

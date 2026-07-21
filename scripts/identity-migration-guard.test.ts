@@ -47,6 +47,11 @@ check("membership is UNIQUE(organizationId, operatorId) — no duplicate/orphan"
 // ── Foreign keys wire the graph (cascade cleanup, no orphans) ────────────────
 check("OperatorIdentity.accountId FK -> User", /"OperatorIdentity_accountId_fkey"[\s\S]*REFERENCES "User"/.test(sql));
 check("Organization.ownerAccountId FK -> User", /"Organization_ownerAccountId_fkey"[\s\S]*REFERENCES "User"/.test(sql));
+// Shared-entity integrity: the Organization owner FK is RESTRICT (not CASCADE), so an
+// account deletion cannot silently destroy a shared org + wipe every member's membership.
+check("Organization owner FK is ON DELETE RESTRICT (shared-entity integrity)", /"Organization_ownerAccountId_fkey"[\s\S]*?REFERENCES "User"\("id"\) ON DELETE RESTRICT/.test(sql));
+// Organization is a GENERIC entity: the kind enum is not agency-locked.
+check("OrganizationKind is generic (AGENCY + other kinds, not agency-locked)", /CREATE TYPE "OrganizationKind" AS ENUM \('AGENCY',[^)]*'ENTERPRISE'/.test(sql));
 check("membership FK -> Organization", /"OrganizationMembership_organizationId_fkey"[\s\S]*REFERENCES "Organization"/.test(sql));
 check("membership FK -> OperatorIdentity", /"OrganizationMembership_operatorId_fkey"[\s\S]*REFERENCES "OperatorIdentity"/.test(sql));
 

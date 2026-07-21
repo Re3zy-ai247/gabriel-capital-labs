@@ -12,7 +12,7 @@ import {
 } from "../lib/identity/state";
 import { permissionsForRole, roleHasPermission, ORG_ROLES, _ROLE_PERMISSIONS } from "../lib/identity/rbac";
 import {
-  slugSchema, handleSchema, slugify, createOrganizationInput, addMembershipInput, changeRoleInput, RESERVED_IDENTIFIERS,
+  slugSchema, handleSchema, slugify, createOrganizationInput, addMembershipInput, changeRoleInput, RESERVED_IDENTIFIERS, ORGANIZATION_KINDS,
 } from "../lib/identity/validation";
 
 let pass = 0, fail = 0;
@@ -92,6 +92,14 @@ check("createOrganizationInput rejects extra keys (strict)", !createOrganization
 check("addMembershipInput defaults role=MEMBER", (() => { const r = addMembershipInput.safeParse({ organizationId: "o1", operatorId: "op1" }); return r.success && r.data.role === "MEMBER"; })());
 check("addMembershipInput rejects unknown role", !addMembershipInput.safeParse({ organizationId: "o1", operatorId: "op1", role: "GOD" }).success);
 check("changeRoleInput requires a role", !changeRoleInput.safeParse({ organizationId: "o1", operatorId: "op1" }).success);
+
+// ── Organization is GENERIC (not agency-locked); ownership is single-source ──
+check("OrganizationKind union === schema enum", JSON.stringify([...ORGANIZATION_KINDS].sort()) === JSON.stringify(enumValues("OrganizationKind").sort()));
+check("Organization is generic: >1 kind incl. ENTERPRISE (not agency-locked)", ORGANIZATION_KINDS.length >= 5 && (ORGANIZATION_KINDS as readonly string[]).includes("ENTERPRISE"));
+check("createOrganizationInput accepts a non-AGENCY kind", createOrganizationInput.safeParse({ name: "Acme University", kind: "EDUCATOR" }).success);
+check("createOrganizationInput rejects an unknown kind", !createOrganizationInput.safeParse({ name: "Acme", kind: "CULT" }).success);
+check("addMembershipInput REJECTS OWNER (derived from ownerAccountId, not assignable)", !addMembershipInput.safeParse({ organizationId: "o1", operatorId: "op1", role: "OWNER" }).success);
+check("changeRoleInput REJECTS OWNER (ownership transfer is not a role change)", !changeRoleInput.safeParse({ organizationId: "o1", operatorId: "op1", role: "OWNER" }).success);
 
 console.log(`\nidentity-core.test.ts: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

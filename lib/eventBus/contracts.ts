@@ -119,7 +119,7 @@ export const CONTRACTS: Readonly<Record<string, EventContract>> = {
   },
   "ORGANIZATION_CREATED@1": {
     type: "ORGANIZATION_CREATED", version: 1, defaultSource: "identity", scope: "platform",
-    schema: z.object({ organizationId: z.string().min(1), ownerAccountId: z.string().min(1), kind: z.enum(["AGENCY"]) }).strict(),
+    schema: z.object({ organizationId: z.string().min(1), ownerAccountId: z.string().min(1), kind: z.enum(["AGENCY", "ENTERPRISE", "EDUCATOR", "VENDOR", "INTERNAL"]) }).strict(),
   },
   "MEMBERSHIP_ADDED@1": {
     type: "MEMBERSHIP_ADDED", version: 1, defaultSource: "identity", scope: "platform",
