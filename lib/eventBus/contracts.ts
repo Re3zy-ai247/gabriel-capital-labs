@@ -96,6 +96,46 @@ export const CONTRACTS: Readonly<Record<string, EventContract>> = {
     // Ref-only: the insight id + optional subject ref — never the insight TEXT.
     schema: z.object({ insightId: z.string().min(1), subjectRef: z.string().min(1).max(120).optional() }).strict(),
   },
+
+  // ── Operator Identity (Sprint 9) ───────────────────────────────────────────
+  // Security/Audit events (permanent audit, refs-only, no external delivery — ADR-0036
+  // §5). defaultSource "identity"; scope "platform" (the identity service is platform
+  // infrastructure and records under a trusted systemIdentity). Payloads are ids +
+  // enums only — the lifecycle `reason` lives on OperatorIdentity.stateReason, never
+  // here (the PII guard rejects a "reason" KEY). Enum literals are inlined (not imported
+  // from lib/identity) to keep the bus free of a dependency cycle; identity-events.test.ts
+  // asserts they stay in lockstep with the schema enums.
+  "OPERATOR_REGISTERED@1": {
+    type: "OPERATOR_REGISTERED", version: 1, defaultSource: "identity", scope: "platform",
+    schema: z.object({ operatorId: z.string().min(1), accountId: z.string().min(1) }).strict(),
+  },
+  "OPERATOR_STATE_CHANGED@1": {
+    type: "OPERATOR_STATE_CHANGED", version: 1, defaultSource: "identity", scope: "platform",
+    schema: z.object({
+      operatorId: z.string().min(1),
+      from: z.enum(["PENDING", "ACTIVE", "SUSPENDED", "DEACTIVATED"]),
+      to: z.enum(["PENDING", "ACTIVE", "SUSPENDED", "DEACTIVATED"]),
+    }).strict(),
+  },
+  "ORGANIZATION_CREATED@1": {
+    type: "ORGANIZATION_CREATED", version: 1, defaultSource: "identity", scope: "platform",
+    schema: z.object({ organizationId: z.string().min(1), ownerAccountId: z.string().min(1), kind: z.enum(["AGENCY"]) }).strict(),
+  },
+  "MEMBERSHIP_ADDED@1": {
+    type: "MEMBERSHIP_ADDED", version: 1, defaultSource: "identity", scope: "platform",
+    schema: z.object({ organizationId: z.string().min(1), operatorId: z.string().min(1), role: z.enum(["OWNER", "ADMIN", "MEMBER"]) }).strict(),
+  },
+  "MEMBERSHIP_ROLE_CHANGED@1": {
+    type: "MEMBERSHIP_ROLE_CHANGED", version: 1, defaultSource: "identity", scope: "platform",
+    schema: z.object({
+      organizationId: z.string().min(1), operatorId: z.string().min(1),
+      from: z.enum(["OWNER", "ADMIN", "MEMBER"]), to: z.enum(["OWNER", "ADMIN", "MEMBER"]),
+    }).strict(),
+  },
+  "MEMBERSHIP_REMOVED@1": {
+    type: "MEMBERSHIP_REMOVED", version: 1, defaultSource: "identity", scope: "platform",
+    schema: z.object({ organizationId: z.string().min(1), operatorId: z.string().min(1) }).strict(),
+  },
 };
 
 export function contractKey(type: string, version: number): string {

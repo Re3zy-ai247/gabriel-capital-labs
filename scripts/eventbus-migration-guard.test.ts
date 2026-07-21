@@ -70,7 +70,10 @@ if (dir) {
 {
   const schema = readFileSync(join(root, "prisma/schema.prisma"), "utf8");
   check("EventEnvelope model declared once in schema.prisma", (schema.match(/^model EventEnvelope /gm) || []).length === 1);
-  check("EventEnvelope has NO foreign key to User (events outlive entities)", !/model EventEnvelope[\s\S]*?@relation[\s\S]*?\n}/.test(schema.slice(schema.indexOf("model EventEnvelope"))));
+  // Scope the check to the EventEnvelope model BLOCK only (later models legitimately
+  // carry @relation; a slice-to-end-of-file would bleed into them).
+  const envBlock = (schema.match(/model EventEnvelope \{[\s\S]*?\n\}/) || [""])[0];
+  check("EventEnvelope has NO foreign key to User (events outlive entities)", !/@relation/.test(envBlock) && !/\bUser\b/.test(envBlock));
 }
 
 console.log(`\neventbus-migration-guard.test.ts: ${pass} passed, ${fail} failed`);

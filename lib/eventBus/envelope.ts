@@ -32,6 +32,15 @@ export const EVENT_TYPES = [
   "NOTIFICATION_CREATED",
   "SYSTEM_EVENT",
   "KAI_INSIGHT_CREATED",
+  // ── Operator Identity (Sprint 9) — Security/Audit category, refs-only, no external
+  // delivery (ADR-0036 §5). Recorded by lib/identity via the durable store; the
+  // human-readable reason lives on the row, never in the refs-only payload.
+  "OPERATOR_REGISTERED",
+  "OPERATOR_STATE_CHANGED",
+  "ORGANIZATION_CREATED",
+  "MEMBERSHIP_ADDED",
+  "MEMBERSHIP_ROLE_CHANGED",
+  "MEMBERSHIP_REMOVED",
 ] as const;
 export type EventType = (typeof EVENT_TYPES)[number];
 
