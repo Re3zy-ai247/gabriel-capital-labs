@@ -26,6 +26,15 @@
 ## 4. Validation evidence
 `npm run typecheck` **0** · `npm run build` **0** · full guard suite **63 pass / 2 fail** (the 2 — `execution`, `missionEngine` — pre-existing on `main`, unrelated). Reputation guards: migration **15/0**, core **32/0**, runtime **25/0** (executed dormancy: all 5 doors + the event recorder return `disabled` flag-off, no DB touch). Regressions re-pass: eventbus (validate 73/0 incl. 21-type count, authz-isolation, idempotency-replay, notification-nodup), identity (core/events/runtime), arena (projection/cohort). DB-backed preview validation is owner-gated (not run).
 
+## 4b. Adversarial review (Phase 7 — 14 agents, 4 vectors, verify-passed)
+1 HIGH + 3 MED + LOWs, **0 BLOCKER**. Two vectors (forged-XP, ledger-mutation-application-layer) CLEAN. All fixed on-branch (`9250cd4`):
+- **HIGH — double-mint:** the durable `subjectId` reused `outcomeAwardKey()`, which embeds `arena:v<POLICY_VERSION>` — a policy bump rotated every key, letting one letter mint twice (the exact key §5 rejects). Fixed: `reputationSubjectId(type, id)` is **version-free**; `policyVersion` stays a recorded column for the forward-reweight only.
+- **MED — hard-delete:** ledger FKs `Cascade → RESTRICT`, so `prisma.user.delete` (the live agency client-delete route) can't silently cascade-destroy the append-only audit ledger or un-latch a milestone; erasure must retain pseudonymous rows explicitly (§6.1).
+- **MED — cross-user read:** `replayStanding` was unauthenticated on the public barrel; now own-data/admin gated.
+- **LOW — fact fidelity:** `reverseAward` now emits compensating XP + rank facts; the rank fact is keyed per **cause** (award id), not per edge, so a reversal-then-re-promotion isn't silently deduped.
+- **INFO — canon:** VECTOR-XP §6 codified the `sourceEventId` key §5 rejected; §6 corrected to `UNIQUE(subjectId, operatorId, awardKind)`.
+- **Documented, not folded (dormant, activation-gated):** award-append and fact-emit are non-atomic — a crash between them loses a *fact* (never *truth*: standing always re-folds from the ledger); at-most-once best-effort facts are reconcilable by a future replay sweep, matching the Event Fabric's own posture.
+
 ## 5. Commit inventory (`feat/operator-reputation`, stacked on `f690373`)
 | # | SHA | Subject |
 |---|---|---|
@@ -34,7 +43,9 @@
 | 3 | `0886b6c` | progression facts on the Event Fabric |
 | 4 | `7d6f947` | append-only ledger repository + runtime service |
 | 5 | `bab22da` | guards + XP-fact scope tighten (self → platform) |
-| 6 | _this_ | docs — release record + ownership/canon updates |
+| 6 | `b174a78` | docs — release record + ownership/canon updates |
+| 7 | `9250cd4` | adversarial fixes — version-free subject, RESTRICT FK, authz replay, reversal facts |
+| 8 | _this_ | docs — adversarial review outcome + VECTOR-XP §6 canon fix |
 
 ## 6. Owner-gated next steps (STOP at branch push)
 Do NOT merge/deploy/migrate/enable. Sequenced gates: Sprint 9 merge (approved, not executed) → this branch's review + merge → Gate D migrations (`0_init` baseline → event_bus → operator_identity → operator_reputation) → wiring real award producers (outcome facts) + Arena re-pointing to reputation projections (a thin-presentation refactor, its own slice) → only then `OPERATOR_REPUTATION_ENABLED`. Milestone definitions, non-outcome dimensions (education/community/agency), maker-checker approval flow, and every cross-user surface remain owner/counsel-gated and unbuilt.
