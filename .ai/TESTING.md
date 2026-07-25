@@ -13,6 +13,7 @@ npx tsx scripts/<name>.test.ts   # guard scripts (below)
 ## Guard scripts (`scripts/`) — run the ones touching your area
 | Guard | Covers | Last known |
 |---|---|---|
+| `gate-d-preflight.test.ts` | SQL-derived six-migration manifest, exhaustive catalog-state taxonomy, fingerprint/privilege fail-closed behavior, direct-URL ambiguity rejection, byte-identical retry | 65/65 |
 | `classify.test.ts` | creditor kind/type classification | 29/29 |
 | `kai-sanitize.test.ts` | Kai prompt-injection sanitizer | 8/8 |
 | `brief-ingest.test.ts` | RSS parser, enrichment, PDF fallback | 26/26 |
