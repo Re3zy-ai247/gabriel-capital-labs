@@ -29,11 +29,44 @@ for h in x-content-type-options x-frame-options referrer-policy strict-transport
   if grep -qi "^$h:" <<<"$H"; then printf "  OK   %s\n" "$h"; else printf "  FAIL missing %s\n" "$h"; fail=1; fi
 done
 
-REL=$(grep -i '^x-cv-release:' <<<"$H" | tr -d '\r' | awk '{print $2}')
-echo "▶ Release: x-cv-release=$REL"
+release_values=()
+release_continuation=0
+release_malformed=0
+while IFS= read -r header_line || [ -n "$header_line" ]; do
+  header_line=${header_line%$'\r'}
+  if [[ "$header_line" =~ ^[[:space:]] ]]; then
+    [ "$release_continuation" -eq 1 ] && release_malformed=1
+    continue
+  fi
+  release_continuation=0
+  if [[ "$header_line" != *:* ]]; then
+    continue
+  fi
+  header_name=${header_line%%:*}
+  header_value=${header_line#*:}
+  if [[ "$header_name" =~ ^[Xx]-[Cc][Vv]-[Rr][Ee][Ll][Ee][Aa][Ss][Ee]$ ]]; then
+    release_continuation=1
+    header_value=$(printf '%s' "$header_value" | sed -E 's/^[[:blank:]]+//; s/[[:blank:]]+$//')
+    release_values[${#release_values[@]}]=$header_value
+  fi
+done <<<"$H"
+
+REL=""
+if [ "$release_malformed" -ne 0 ] || [ "${#release_values[@]}" -ne 1 ] || ! [[ "${release_values[0]:-}" =~ ^[0-9a-f]{12}$ ]]; then
+  echo "▶ Release: malformed or non-unique x-cv-release header"
+  fail=1
+else
+  REL=${release_values[0]}
+  echo "▶ Release: x-cv-release=$REL"
+fi
 if [ -n "$EXPECT_SHA" ]; then
-  if [ "$REL" = "${EXPECT_SHA:0:12}" ]; then echo "  OK   exactly matches expected ${EXPECT_SHA:0:12}"
-  else echo "  FAIL x-cv-release=$REL != exact expected ${EXPECT_SHA:0:12} (deploy skew or malformed header)"; fail=1; fi
+  if ! [[ "$EXPECT_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+    echo "  FAIL expected SHA must be a full lowercase 40-character Git SHA"; fail=1
+  elif [ "$REL" = "${EXPECT_SHA:0:12}" ]; then
+    echo "  OK   exactly matches expected ${EXPECT_SHA:0:12}"
+  else
+    echo "  FAIL x-cv-release=${REL:-<invalid>} != exact expected ${EXPECT_SHA:0:12} (deploy skew or malformed header)"; fail=1
+  fi
 fi
 
 echo "▶ Health: $(curl -s "$BASE/api/health")"
