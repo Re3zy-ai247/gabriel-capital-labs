@@ -32,8 +32,8 @@ done
 REL=$(grep -i '^x-cv-release:' <<<"$H" | tr -d '\r' | awk '{print $2}')
 echo "▶ Release: x-cv-release=$REL"
 if [ -n "$EXPECT_SHA" ]; then
-  if [ "${REL:0:12}" = "${EXPECT_SHA:0:12}" ]; then echo "  OK   matches expected ${EXPECT_SHA:0:12}"
-  else echo "  FAIL x-cv-release=$REL != expected ${EXPECT_SHA:0:12} (deploy skew or not yet promoted)"; fail=1; fi
+  if [ "$REL" = "${EXPECT_SHA:0:12}" ]; then echo "  OK   exactly matches expected ${EXPECT_SHA:0:12}"
+  else echo "  FAIL x-cv-release=$REL != exact expected ${EXPECT_SHA:0:12} (deploy skew or malformed header)"; fail=1; fi
 fi
 
 echo "▶ Health: $(curl -s "$BASE/api/health")"
