@@ -10,7 +10,7 @@ This runbook is an execution package, not execution approval. It applies the six
 ## 1. Immutable boundaries
 
 - Use a clean checkout of the exact production release.
-- Use a direct PostgreSQL connection, never an Accelerate URL.
+- Use a direct PostgreSQL connection, never an Accelerate URL. Its grammar is exact: `postgres:`/`postgresql:`, authority `db.prisma.io:5432`, one database path, no fragment, and **only** one query parameter, `sslmode=require`. Reject every other parameter—including `host`, `hostaddr`, `port`, `service`, `servicefile`, `options`, `schema`, pooler controls, and duplicates—because Prisma can honor effective-target overrides after URI authority parsing.
 - All catalog inspection runs through `scripts/gate-d-preflight.ts` inside an explicitly `READ ONLY` transaction.
 - Expected schema is derived on every run from the six committed `migration.sql` files. A representative-object probe is prohibited.
 - The database fingerprint must be captured from a separately owner-approved production invariant and supplied back to the full preflight. Never infer or invent it.
@@ -36,7 +36,7 @@ This runbook is an execution package, not execution approval. It applies the six
 | 6 | `20260721160000_operator_reputation` | 0 | 2 | 16 | 4 | 2 | 2 |
 | **Total** |  | **11** | **34** | **304** | **62** | **34** | **21** |
 
-> **Review gate:** run `npx tsx scripts/gate-d-preflight.ts --manifest` and use its machine-derived totals as authority. If this table differs from the tool, STOP and correct this document before any database access. The current reviewed manifest also reports 48 enum values, 0 SQL unique constraints, 0 check constraints, and 0 extension requirements.
+> **Review gate:** run `npx --no-install tsx scripts/gate-d-preflight.ts --manifest` and use its machine-derived totals as authority. If this table differs from the tool, STOP and correct this document before any database access. The current reviewed manifest also reports 48 enum values, 0 SQL unique constraints, 0 check constraints, and 0 extension requirements.
 
 The parser recognizes only the SQL forms present in this chain: enum creation, table/column/primary-key definitions, explicit indexes, foreign keys, and extension declarations. Any unsupported statement or type/default construct aborts manifest generation. It verifies:
 
@@ -64,7 +64,7 @@ Each migration receives exactly one state:
 | `DRIFTED` | An expected object exists with a different definition, or a migration-owned table has an unexpected column/index/constraint. | **ABORT.** |
 | `HISTORY_ONLY` | History says applied, but the expected physical schema is absent, incomplete, or divergent. | **ABORT.** |
 | `SCHEMA_ONLY` | The complete physical schema matches byte-for-byte expectations, but applied history is absent. | Owner-reviewed baseline candidate only; not permission to resolve. |
-| `UNKNOWN` | Identity, catalog, history, checksum, permission, or outcome evidence is missing/ambiguous. | **ABORT.** |
+| `UNKNOWN` | Identity, catalog, history, checksum, permission, history-object proof, or outcome evidence is missing/ambiguous. Any `rolled_back_at` row—regardless of `finished_at`—is historically ambiguous, never absent. | **ABORT.** |
 
 Safe chain order is zero or more complete migrations followed by zero or more absent migrations. Once an `ALL_ABSENT` migration appears, every later migration must also be `ALL_ABSENT`. Any later present migration is incoherent and aborts. Production's live application requires the `0_init` baseline; `0_init = ALL_ABSENT` is therefore contradictory wrong-target/data-loss evidence and always aborts.
 
@@ -73,15 +73,60 @@ Safe chain order is zero or more complete migrations followed by zero or more ab
 | ID | Required evidence |
 |---|---|
 | P1 | Clean isolated checkout; `HEAD == origin/main`; no overlapping Gate D worktree/branch. |
-| P2 | Production release header exactly equals the first 12 characters of the reviewed `origin/main` SHA. HTTP 200 alone is insufficient. |
+| P2 | Production has exactly one `x-cv-release` field whose complete value is the lowercase 12-character prefix of the reviewed `origin/main` SHA. HTTP 200 alone is insufficient; duplicate, folded, combined, suffixed, prefixed, or internal-whitespace-bearing values fail. |
 | P3 | All five flags above are absent or not exactly `true` both in the immutable environment snapshot of the exact active Production deployment and in current Production configuration—and in any environment proven to share the target database. Record the evidence; do not change flags. |
 | P4 | Fresh production backup/snapshot identifier, UTC completion time, source database fingerprint, successful completion evidence, retention, integrity validation, and a restore procedure previously proven on an isolated target. A vague “backup exists” assertion fails. |
-| P5 | Owner-approved direct PostgreSQL URL obtained from the provider console: host `db.prisma.io`, port `5432`, `sslmode=require`, and no pooler/PgBouncer mode. `prisma:`, `pooled.db.prisma.io`, arbitrary hosts, and missing TLS invariant abort. |
+| P5 | Owner-approved direct PostgreSQL URL obtained from the provider console: exact URI grammar from §1, including only `sslmode=require`. `prisma:`, `pooled.db.prisma.io`, arbitrary/effective override hosts, pooler mode, unapproved query parameters, and missing TLS invariant abort. |
 | P6 | Owner-approved expected database fingerprint from §5. A newly observed value is not self-approving. |
 | P7 | Full preflight output retained; no `PARTIAL`, `DRIFTED`, `HISTORY_ONLY`, or `UNKNOWN`; chain order coherent. |
 | P8 | Read-only privilege report passes required `CONNECT`, `public` `USAGE`/`CREATE`, table ownership/ALTER-equivalent checks, and column `REFERENCES` checks. |
 | P9 | No Docker/container `db push` or other non-migration schema synchronizer has touched the target since the approved fingerprint/state evidence. |
 | P10 | Owner approves the exact reconciliation list, if any; full preflight is rerun afterward; owner then separately approves deploy. |
+
+Before any Gate D command, install and prove the lockfile-pinned local tools from the clean checkout. Do not let `npx` fetch a different CLI version:
+
+```bash
+npm ci
+npx --no-install prisma --version   # must report 5.22.0
+npx --no-install tsx --version
+```
+
+### Disposable local Prisma-engine proof (not a Gate D command)
+
+An isolated PostgreSQL integration can prove the six SQL files against the pinned Prisma engine, but it is **not** a Gate D preflight and supplies no Production evidence. The inspector intentionally rejects a local URL under §1; do not weaken that policy, add a `host` override, alter DNS, or use a shared Preview/Production target to make it run.
+
+Required local prerequisites are a Docker-compatible runtime and a previously approved, locally available PostgreSQL 16 image pinned by digest. Never run `docker compose up` or the application `Dockerfile` for this proof: the application startup path contains `db push` and is prohibited here.
+
+```bash
+: "${GATE_D_LOCAL_POSTGRES_IMAGE:?approved local postgres:16 image@sha256 digest is required}"
+docker image inspect "$GATE_D_LOCAL_POSTGRES_IMAGE" >/dev/null
+GATE_D_LOCAL_CONTAINER=creditvector-gate-d-local-pg
+if docker container inspect "$GATE_D_LOCAL_CONTAINER" >/dev/null 2>&1; then
+  echo "refusing to reuse existing $GATE_D_LOCAL_CONTAINER" >&2; exit 1
+fi
+cleanup_gate_d_local_pg() { docker rm -f "$GATE_D_LOCAL_CONTAINER" >/dev/null 2>&1 || true; }
+trap cleanup_gate_d_local_pg EXIT
+docker run -d --rm --name "$GATE_D_LOCAL_CONTAINER" \
+  --tmpfs /var/lib/postgresql/data:rw,noexec,nosuid,size=256m \
+  --publish 127.0.0.1:55432:5432 \
+  --env POSTGRES_USER=gate_d \
+  --env POSTGRES_PASSWORD=gate_d_local_only \
+  --env POSTGRES_DB=gate_d \
+  "$GATE_D_LOCAL_POSTGRES_IMAGE"
+for attempt in {1..30}; do
+  docker exec "$GATE_D_LOCAL_CONTAINER" pg_isready -U gate_d -d gate_d >/dev/null 2>&1 && break
+  sleep 1
+done
+docker exec "$GATE_D_LOCAL_CONTAINER" pg_isready -U gate_d -d gate_d >/dev/null
+DATABASE_URL='postgresql://gate_d:gate_d_local_only@127.0.0.1:55432/gate_d' \
+  npx --no-install prisma migrate deploy
+DATABASE_URL='postgresql://gate_d:gate_d_local_only@127.0.0.1:55432/gate_d' \
+  npx --no-install prisma migrate status
+trap - EXIT
+cleanup_gate_d_local_pg
+```
+
+The loopback password and database above are disposable only; the `--tmpfs` data directory and `--rm` cleanup prevent persistence. This engine proof does **not** satisfy P4's provider backup/restore evidence and cannot validate the production-target inspector. A dedicated catalog/recovery/restore harness for this deliberately non-production URL is separate work; do not mistake it for preflight or execution authorization.
 
 Execution-time release check:
 
@@ -94,7 +139,7 @@ curl -fsSI https://www.creditvector.app/ | tr -d '\r' | grep -i '^x-cv-release:'
 scripts/release-verify.sh https://www.creditvector.app "$(git rev-parse HEAD)"
 ```
 
-Require a clean status, equal full Git SHAs, and the entire `x-cv-release` value equal to that SHA's first 12 characters. `release-verify.sh` performs an exact comparison; a matching prefix with any suffix fails. Any mismatch aborts.
+Require a clean status, equal full Git SHAs, and exactly one syntactically valid `x-cv-release` field whose entire value equals that SHA's first 12 characters. `release-verify.sh` permits only normal HTTP optional whitespace around the field value; a matching prefix with any suffix, duplicate, folded, combined, or internal-whitespace value fails. Any mismatch aborts.
 
 Flag evidence:
 
@@ -197,7 +242,7 @@ If the target database is proven to be shared with Preview or another environmen
 
 ## 5. Database fingerprint — owner approval point 1
 
-The fingerprint is SHA-256 over PostgreSQL's stable cluster identifier plus database/schema OIDs and names, the active schema, and effective explicit search path. The tool obtains these from `pg_control_system`, `pg_database`, and `pg_namespace`; it never prints credentials or the underlying identifiers.
+The fingerprint is SHA-256 over PostgreSQL's stable cluster identifier plus database/schema OIDs and names, the active schema, and effective explicit search path. The tool obtains these from `pg_control_system`, `pg_database`, and `pg_namespace`; it never prints credentials or the underlying identifiers. It is **consistency evidence only**: it is not cryptographic authorization, does not attest provider provenance, and cannot bind a later Prisma process or connection to the identical physical target.
 
 1. The owner separately authorizes a read-only identity observation against a direct URL known from the provider console to be Production.
 2. Load `GATE_D_DATABASE_URL` through a secure, non-echoing mechanism in a dedicated shell. Do not paste it into a recorded command, log it, or reuse ambient `DATABASE_URL`. Require it to be non-empty, then make it immutable for that shell:
@@ -206,13 +251,13 @@ The fingerprint is SHA-256 over PostgreSQL's stable cluster identifier plus data
    : "${GATE_D_DATABASE_URL:?owner-supplied direct URL is required}"
    readonly GATE_D_DATABASE_URL
    export GATE_D_DATABASE_URL
-   npx tsx scripts/gate-d-preflight.ts --observe-fingerprint
+   npx --no-install tsx scripts/gate-d-preflight.ts --observe-fingerprint
    ```
 
 3. The command deliberately exits non-zero with `OWNER_VERIFICATION_REQUIRED`. The owner compares/records the hash with the provider project/database record and approves it as the expected invariant.
 4. If `pg_control_system` cannot be read, the active schema is not `public`, `public` is not first in the explicit search path, or the provider evidence cannot distinguish Production from Preview, state is `UNKNOWN` and Gate D stops.
 
-Do not generate and approve a fingerprint from an untrusted URL in the same step.
+Do not generate and approve a fingerprint from an untrusted URL in the same step. Preserve separate provider-side Production evidence, retain the approved output, and rerun §5/§6 immediately before any later reconciliation or deploy. A changed shell, URL variable, provider target, or material delay invalidates the evidence.
 
 ## 6. Exhaustive read-only preflight — owner approval point 2
 
@@ -221,7 +266,7 @@ Do not generate and approve a fingerprint from an untrusted URL in the same step
 : "${GATE_D_EXPECTED_DB_FINGERPRINT:?owner-approved fingerprint is required}"
 readonly GATE_D_DATABASE_URL GATE_D_EXPECTED_DB_FINGERPRINT
 export GATE_D_DATABASE_URL GATE_D_EXPECTED_DB_FINGERPRINT
-npx tsx scripts/gate-d-preflight.ts
+npx --no-install tsx scripts/gate-d-preflight.ts
 ```
 
 Properties:
@@ -254,11 +299,13 @@ The preflight reads, but never exercises, privileges:
 - `INSERT` and `UPDATE` on an existing `_prisma_migrations`, or schema `CREATE` when Prisma must create it;
 - execution and successful acquisition of Prisma's PostgreSQL advisory lock.
 
+Before reading migration rows or evaluating those privileges, the tool proves any existing `_prisma_migrations` relation is the pinned Prisma 5.22 ordinary permanent table: its exact eight columns/types/nullability/defaults, sole `id` primary key, and no RLS/policies/rules/triggers. A same-named view, partitioned/unlogged table, malformed shape, or extra constraint is `UNKNOWN`; the tool does not select from an untrusted relation. This is intentionally pinned to the lockfile's Prisma 5.22.0 engine—upgrade review must re-derive the invariant rather than silently accepting a different shape.
+
 It derives explicit capability results for type creation, table creation, index creation, constraint addition, and FK addition. `FALSE` or `UNKNOWN` on any required check aborts. Do not grant privileges during this runbook; access changes require a separate reviewed procedure.
 
 ## 8. Schema-only reconciliation — owner approval point 3
 
-Only migrations classified `SCHEMA_ONLY` are eligible for consideration. `PARTIAL`, `DRIFTED`, `HISTORY_ONLY`, and `UNKNOWN` are never resolve candidates.
+Only migrations classified `SCHEMA_ONLY` are eligible for consideration. `PARTIAL`, `DRIFTED`, `HISTORY_ONLY`, and `UNKNOWN` are never resolve candidates. A rolled-back, failed, incomplete, duplicate, contradictory, or malformed-history state is never treated as absent or schema-only.
 
 1. Compare `proposedResolveList` to the retained exhaustive evidence and migration checksums.
 2. Confirm P9: no Docker/non-migration synchronizer touched the target. If one did, stop even when the schema happens to match.
@@ -268,7 +315,7 @@ Only migrations classified `SCHEMA_ONLY` are eligible for consideration. `PARTIA
    ```bash
    : "${GATE_D_DATABASE_URL:?validated direct URL is required}"
    DATABASE_URL="${GATE_D_DATABASE_URL}" \
-     npx prisma migrate resolve --applied <owner-approved-exact-migration-name>
+     npx --no-install prisma migrate resolve --applied <owner-approved-exact-migration-name>
    ```
 
 5. Preserve command output and updated history evidence.
@@ -283,7 +330,7 @@ After backup proof, fingerprint match, full preflight, any separately approved r
 ```bash
 : "${GATE_D_DATABASE_URL:?validated direct URL is required}"
 DATABASE_URL="${GATE_D_DATABASE_URL}" \
-  npx prisma migrate deploy
+  npx --no-install prisma migrate deploy
 ```
 
 Run this only in the same dedicated shell whose immutable URL and owner-approved fingerprint passed the immediately preceding full preflight. Before running, compare the approved pending list with the preflight's exact `pendingDeployList`. Any difference aborts. Do not use `db push`, `migrate dev`, `reset`, `--accept-data-loss`, manual DDL, an ambient `DATABASE_URL`, or a different connection.
@@ -305,7 +352,7 @@ After any disconnect, timeout, process death, or failed deploy:
 | DDL fully committed; no history row exists | `SCHEMA_ONLY` candidate. Owner-reviewed resolution only after exhaustive proof. |
 | DDL fully committed; Prisma start row exists but finish bookkeeping is absent | `UNKNOWN` with complete physical evidence. Abort; use a separately reviewed failed-migration recovery/resolve procedure only after exhaustive proof. |
 | Prisma history says applied; physical schema incomplete/divergent | `HISTORY_ONLY`; abort. Prefer a separately reviewed forward corrective migration. |
-| Migration transaction fully rolled back; unfinished history remains | Prove every expected object absent. Use a separately reviewed Prisma failed-migration recovery procedure; never blind retry. |
+| Migration transaction fully rolled back; unfinished history remains | `UNKNOWN` even if every expected object is absent. Preserve the row and use a separately reviewed Prisma failed-migration recovery procedure; never blind retry or baseline-resolve it. |
 | A non-transactional statement or external actor left partial schema | `PARTIAL`/`DRIFTED`; abort and design a forward corrective migration. |
 | Network interruption leaves server outcome unknown | `UNKNOWN`; wait/inspect until physical and history outcomes are conclusive. |
 | Earlier migrations completed; a later migration failed | Preserve earlier additive objects/history; recover only the later migration after full-chain reprobe. |
@@ -360,10 +407,10 @@ Stop immediately on:
 - credential exposure risk;
 - non-direct connection;
 - missing, mismatched, or non-unique database identity evidence;
-- unreadable required catalog/history;
+- unreadable or malformed required catalog/history relation;
 - unsupported migration SQL;
 - `0_init = ALL_ABSENT`;
-- `PARTIAL`, `DRIFTED`, `HISTORY_ONLY`, `UNKNOWN`, checksum mismatch, unresolved history, or chain inversion;
+- `PARTIAL`, `DRIFTED`, `HISTORY_ONLY`, `UNKNOWN`, checksum mismatch, any rolled-back/unfinished history row, or chain inversion;
 - insufficient/unknown required privilege;
 - evidence that Docker `db push` or another synchronizer touched the target;
 - any preflight output change without an explained catalog/history change;
