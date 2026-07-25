@@ -11,6 +11,7 @@ import {
   CatalogSnapshot,
   GateDManifest,
   GATE_D_MIGRATION_CHAIN,
+  MigrationHistoryTable,
   MigrationExpectation,
   MigrationState,
   UnsupportedMigrationSqlError,
@@ -47,6 +48,29 @@ const identity = {
   currentUser: "gate_d_migrator",
 };
 const expectedFingerprint = databaseFingerprint(identity);
+
+function prismaMigrationHistoryTable(): MigrationHistoryTable {
+  return {
+    relationKind: "regular",
+    persistence: "permanent",
+    rowSecurityEnabled: false,
+    forceRowSecurity: false,
+    policyCount: 0,
+    ruleCount: 0,
+    triggerCount: 0,
+    columns: [
+      { name: "id", type: "character varying(36)", nullable: false, defaultExpression: null },
+      { name: "checksum", type: "character varying(64)", nullable: false, defaultExpression: null },
+      { name: "finished_at", type: "timestamp with time zone", nullable: true, defaultExpression: null },
+      { name: "migration_name", type: "character varying(255)", nullable: false, defaultExpression: null },
+      { name: "logs", type: "text", nullable: true, defaultExpression: null },
+      { name: "rolled_back_at", type: "timestamp with time zone", nullable: true, defaultExpression: null },
+      { name: "started_at", type: "timestamp with time zone", nullable: false, defaultExpression: "now()" },
+      { name: "applied_steps_count", type: "integer", nullable: false, defaultExpression: "0" },
+    ],
+    constraints: [{ kind: "PRIMARY_KEY", columns: ["id"] }],
+  };
+}
 
 function expectedMigration(name: string): MigrationExpectation {
   const migration = manifest.migrations.find((item) => item.name === name);
@@ -245,7 +269,7 @@ function fixture(
   return {
     identity: structuredClone(identity),
     fingerprint: expectedFingerprint,
-    historyTablePresent: true,
+    historyTable: prismaMigrationHistoryTable(),
     historyRows: manifest.migrations
       .filter((migration) => applied.has(migration.name))
       .map((migration) => ({
@@ -363,7 +387,7 @@ check("manifest covers all 62 explicit indexes", coverage.indexes === 62);
 check("manifest covers all 21 foreign keys", coverage.foreignKeys === 21);
 check("manifest records zero SQL unique constraints/checks/extensions", coverage.uniqueConstraints === 0 && coverage.checkConstraints === 0 && coverage.extensions === 0);
 {
-  const directUrl = "postgresql://db.prisma.io:5432/gate_d?sslmode=require";
+  const directUrl = "postgresql://gate:password@db.prisma.io:5432/gate_d?sslmode=require";
   const rejects = (url: string) => {
     try {
       validateDirectUrl(url);
@@ -377,8 +401,28 @@ check("manifest records zero SQL unique constraints/checks/extensions", coverage
     "direct URL rejects contradictory duplicate sslmode",
     rejects(`${directUrl}&sslmode=disable`),
   );
-  check("direct URL rejects case-variant PgBouncer mode", rejects(`${directUrl}&PGBOUNCER=TRUE`));
-  check("direct URL rejects every PgBouncer parameter value", rejects(`${directUrl}&pgbouncer=1`));
+  check("direct URL rejects duplicate sslmode", rejects(`${directUrl}&sslmode=require`));
+  check("direct URL rejects uppercase sslmode", rejects(directUrl.replace("sslmode", "SSLMODE")));
+  for (const parameter of [
+    "host=%2Fvar%2Frun%2Fpostgresql",
+    "hostaddr=127.0.0.1",
+    "port=5433",
+    "service=other",
+    "servicefile=%2Ftmp%2Fservice",
+    "options=-c%20search_path%3Dother",
+    "schema=other",
+    "application_name=unreviewed",
+    "pgbouncer=1",
+    "PGBOUNCER=TRUE",
+  ]) {
+    check(`direct URL rejects unapproved parameter ${parameter.split("=")[0]}`, rejects(`${directUrl}&${parameter}`));
+  }
+  check(
+    "direct URL rejects an implicit port",
+    rejects("postgresql://gate:password@db.prisma.io/gate_d?sslmode=require"),
+  );
+  check("direct URL rejects a missing database path", rejects("postgresql://db.prisma.io:5432/?sslmode=require"));
+  check("direct URL rejects a fragment", rejects(`${directUrl}#not-a-database-identity`));
 }
 
 // 1. Entire migration absent.
@@ -694,6 +738,45 @@ check("manifest records zero SQL unique constraints/checks/extensions", coverage
   check("finished and rolled-back history row -> UNKNOWN", state(report, reputation) === "UNKNOWN");
 }
 {
+  const snapshot = fixture();
+  const history = snapshot.historyRows.find((item) => item.migrationName === reputation)!;
+  history.finished = false;
+  history.finishedAt = null;
+  history.rolledBack = true;
+  history.rolledBackAt = "2026-07-25T12:00:02.000Z";
+  history.unresolved = false;
+  const report = reportFor(snapshot);
+  const migration = report.migrations.find((item) => item.name === reputation)!;
+  check("rolled-back-only history -> UNKNOWN", migration.state === "UNKNOWN");
+  check("rolled-back-only history aborts rather than proposing a baseline", report.decision === "ABORT" && !report.proposedResolveList.includes(reputation));
+  check("rolled-back-only history retains forensic row evidence", migration.historyEvidence[0]?.rolledBackAt !== null);
+}
+{
+  const snapshot = withoutMigration(fixture(), reputation, { keepHistory: true });
+  const history = snapshot.historyRows.find((item) => item.migrationName === reputation)!;
+  history.finished = false;
+  history.finishedAt = null;
+  history.rolledBack = true;
+  history.rolledBackAt = "2026-07-25T12:00:02.000Z";
+  history.unresolved = false;
+  const report = reportFor(snapshot);
+  check("rolled-back-only history with no physical objects -> UNKNOWN", state(report, reputation) === "UNKNOWN");
+  check("rolled-back-only history never becomes pending deploy", !report.pendingDeployList.includes(reputation));
+}
+{
+  const snapshot = fixture();
+  snapshot.historyTable!.relationKind = "view";
+  const report = reportFor(snapshot);
+  check("migration-history view substitution -> UNKNOWN", report.migrations.every((item) => item.state === "UNKNOWN"));
+  check("migration-history view substitution aborts", report.stopReasons.some((reason) => reason.includes("MIGRATION_HISTORY_INVALID:RELATION_KIND")));
+}
+{
+  const snapshot = fixture();
+  snapshot.historyTable!.rowSecurityEnabled = true;
+  const report = reportFor(snapshot);
+  check("migration-history RLS -> UNKNOWN", report.migrations.every((item) => item.history === "INVALID"));
+}
+{
   const snapshot = withoutMigration(fixture(), reputation);
   snapshot.permissions.historyInsert = false;
   const report = reportFor(snapshot);
@@ -701,7 +784,7 @@ check("manifest records zero SQL unique constraints/checks/extensions", coverage
 }
 {
   const snapshot = fixture();
-  snapshot.historyTablePresent = false;
+  snapshot.historyTable = null;
   snapshot.historyRows = [];
   snapshot.permissions.historyInsert = null;
   snapshot.permissions.historyUpdate = null;

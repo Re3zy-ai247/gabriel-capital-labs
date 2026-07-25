@@ -2,7 +2,7 @@
 //
 // This command is intentionally read-only. It derives the expected state from the
 // six committed migration.sql files, verifies a separately owner-approved database
-// fingerprint, reads PostgreSQL catalogs inside a READ ONLY transaction, and emits
+// fingerprint as consistency evidence only (not a later-connection attestation), reads PostgreSQL catalogs inside a READ ONLY transaction, and emits
 // deterministic JSON. It never executes or prints migration mutation commands.
 //
 // Static manifest only:
@@ -95,6 +95,7 @@ async function main(): Promise<void> {
         databaseFingerprint: fingerprint,
         decision: "OWNER_VERIFICATION_REQUIRED",
         formatVersion: 1,
+        fingerprintScope: "CONSISTENCY_EVIDENCE_ONLY",
         identitySource: "pg_control_system+pg_database+pg_namespace",
         mutationAuthorized: false,
       });

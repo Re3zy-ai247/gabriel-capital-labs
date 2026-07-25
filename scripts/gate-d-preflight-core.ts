@@ -218,6 +218,30 @@ export interface MigrationHistoryRow {
   logsPresent: boolean;
 }
 
+export interface MigrationHistoryColumn {
+  name: string;
+  type: string;
+  nullable: boolean;
+  defaultExpression: string | null;
+}
+
+export interface MigrationHistoryConstraint {
+  kind: "PRIMARY_KEY" | "UNIQUE" | "CHECK" | "FOREIGN_KEY";
+  columns: string[];
+}
+
+export interface MigrationHistoryTable {
+  relationKind: string;
+  persistence: string;
+  rowSecurityEnabled: boolean;
+  forceRowSecurity: boolean;
+  policyCount: number;
+  ruleCount: number;
+  triggerCount: number;
+  columns: MigrationHistoryColumn[];
+  constraints: MigrationHistoryConstraint[];
+}
+
 export interface RelationPrivilege {
   schema: string;
   table: string;
@@ -242,7 +266,7 @@ export interface CatalogPermissions {
 export interface CatalogSnapshot {
   identity: DatabaseIdentity;
   fingerprint: string;
-  historyTablePresent: boolean;
+  historyTable: MigrationHistoryTable | null;
   historyRows: MigrationHistoryRow[];
   enums: ActualEnum[];
   tables: ActualTable[];
@@ -278,7 +302,7 @@ export interface MigrationReport {
   name: string;
   state: MigrationState;
   physicalState: PhysicalMigrationState;
-  history: "APPLIED" | "ABSENT" | "AMBIGUOUS" | "CHECKSUM_MISMATCH";
+  history: "APPLIED" | "ABSENT" | "AMBIGUOUS" | "CHECKSUM_MISMATCH" | "INVALID";
   historyEvidence: Array<{
     id: string;
     checksumMatches: boolean;
@@ -312,6 +336,7 @@ export interface PreflightReport {
     observedFingerprint: string | null;
     matched: boolean | null;
     identitySource: "pg_control_system+pg_database+pg_namespace";
+    fingerprintScope: "CONSISTENCY_EVIDENCE_ONLY";
   };
   migrations: MigrationReport[];
   privilegeChecks: PrivilegeCheck[];
@@ -790,6 +815,74 @@ export function databaseFingerprint(identity: DatabaseIdentity): string {
     .digest("hex");
 }
 
+const PRISMA_5_22_MIGRATION_HISTORY_COLUMNS: readonly MigrationHistoryColumn[] = [
+  { name: "id", type: "character varying(36)", nullable: false, defaultExpression: null },
+  { name: "checksum", type: "character varying(64)", nullable: false, defaultExpression: null },
+  { name: "finished_at", type: "timestamp with time zone", nullable: true, defaultExpression: null },
+  { name: "migration_name", type: "character varying(255)", nullable: false, defaultExpression: null },
+  { name: "logs", type: "text", nullable: true, defaultExpression: null },
+  { name: "rolled_back_at", type: "timestamp with time zone", nullable: true, defaultExpression: null },
+  { name: "started_at", type: "timestamp with time zone", nullable: false, defaultExpression: "now()" },
+  { name: "applied_steps_count", type: "integer", nullable: false, defaultExpression: "0" },
+];
+
+function normalizeHistoryDefinition(value: string | null): string | null {
+  return value === null ? null : value.trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+/**
+ * Prisma 5.22 creates this exact ordinary, permanent relation. The Gate D
+ * package is pinned to that migration engine; a version change requires a
+ * fresh review of these compatibility invariants rather than a permissive
+ * best-effort interpretation of an arbitrary same-named relation.
+ */
+export function migrationHistoryTrustIssues(
+  historyTable: MigrationHistoryTable | null,
+): string[] {
+  if (!historyTable) return [];
+
+  const issues: string[] = [];
+  if (historyTable.relationKind !== "regular") issues.push("RELATION_KIND");
+  if (historyTable.persistence !== "permanent") issues.push("PERSISTENCE");
+  if (historyTable.rowSecurityEnabled || historyTable.forceRowSecurity || historyTable.policyCount !== 0) {
+    issues.push("ROW_SECURITY_OR_POLICY");
+  }
+  if (historyTable.ruleCount !== 0) issues.push("RULES");
+  if (historyTable.triggerCount !== 0) issues.push("TRIGGERS");
+
+  const actualByName = new Map(historyTable.columns.map((column) => [column.name, column]));
+  if (actualByName.size !== PRISMA_5_22_MIGRATION_HISTORY_COLUMNS.length ||
+      historyTable.columns.length !== PRISMA_5_22_MIGRATION_HISTORY_COLUMNS.length) {
+    issues.push("COLUMN_SET");
+  }
+  for (const expected of PRISMA_5_22_MIGRATION_HISTORY_COLUMNS) {
+    const actual = actualByName.get(expected.name);
+    if (!actual) {
+      issues.push(`COLUMN_MISSING:${expected.name}`);
+      continue;
+    }
+    if (normalizeHistoryDefinition(actual.type) !== expected.type) {
+      issues.push(`COLUMN_TYPE:${expected.name}`);
+    }
+    if (actual.nullable !== expected.nullable) issues.push(`COLUMN_NULLABILITY:${expected.name}`);
+    if (normalizeHistoryDefinition(actual.defaultExpression) !== expected.defaultExpression) {
+      issues.push(`COLUMN_DEFAULT:${expected.name}`);
+    }
+  }
+
+  const primaryKeys = historyTable.constraints.filter((constraint) => constraint.kind === "PRIMARY_KEY");
+  if (
+    historyTable.constraints.length !== 1 ||
+    primaryKeys.length !== 1 ||
+    primaryKeys[0].columns.length !== 1 ||
+    primaryKeys[0].columns[0] !== "id"
+  ) {
+    issues.push("PRIMARY_KEY_OR_CONSTRAINTS");
+  }
+
+  return Array.from(new Set(issues)).sort();
+}
+
 function same(left: unknown, right: unknown): boolean {
   return stableStringify(left) === stableStringify(right);
 }
@@ -1181,12 +1274,26 @@ function compareMigration(
 function historyForMigration(
   migration: MigrationExpectation,
   snapshot: CatalogSnapshot,
+  historyIssues: readonly string[],
 ): { status: MigrationReport["history"]; applied: boolean; reason?: string } {
+  if (historyIssues.length > 0) {
+    return {
+      status: "INVALID",
+      applied: false,
+      reason: `MIGRATION_HISTORY_INVALID:${historyIssues.join(",")}`,
+    };
+  }
   const rows = snapshot.historyRows.filter((item) => item.migrationName === migration.name);
-  const incoherent = rows.filter((item) => item.finished && item.rolledBack);
-  const unresolved = rows.filter((item) => item.unresolved && !item.rolledBack);
+  const incoherent = rows.filter(
+    (item) =>
+      item.rolledBack ||
+      item.unresolved ||
+      item.finished !== (item.finishedAt !== null) ||
+      item.rolledBack !== (item.rolledBackAt !== null) ||
+      item.unresolved !== (!item.finished && !item.rolledBack),
+  );
   const applied = rows.filter((item) => item.finished && !item.rolledBack);
-  if (incoherent.length > 0 || unresolved.length > 0 || applied.length > 1) {
+  if (incoherent.length > 0 || applied.length > 1) {
     return { status: "AMBIGUOUS", applied: false, reason: `HISTORY_AMBIGUOUS:${migration.name}` };
   }
   if (applied.length === 1) {
@@ -1202,7 +1309,13 @@ function migrationState(
   comparison: MigrationComparison,
   history: ReturnType<typeof historyForMigration>,
 ): MigrationState {
-  if (history.status === "AMBIGUOUS" || history.status === "CHECKSUM_MISMATCH") return "UNKNOWN";
+  if (
+    history.status === "AMBIGUOUS" ||
+    history.status === "CHECKSUM_MISMATCH" ||
+    history.status === "INVALID"
+  ) {
+    return "UNKNOWN";
+  }
   const complete = comparison.missing.length === 0 && comparison.mismatched.length === 0;
   if (history.applied) return complete ? "ALL_PRESENT_AND_MATCHING" : "HISTORY_ONLY";
   if (complete) return "SCHEMA_ONLY";
@@ -1241,6 +1354,9 @@ function privilegeChecks(
   snapshot: CatalogSnapshot,
   migrationReports: MigrationReport[],
 ): PrivilegeCheck[] {
+  const historyTablePresent = snapshot.historyTable !== null;
+  const historyIssues = migrationHistoryTrustIssues(snapshot.historyTable);
+  const trustedHistoryTable = historyTablePresent && historyIssues.length === 0;
   const pending = new Set(
     migrationReports.filter((item) => item.state === "ALL_ABSENT").map((item) => item.name),
   );
@@ -1249,6 +1365,10 @@ function privilegeChecks(
     { name: "database_connect", status: statusFromBoolean(snapshot.permissions.databaseConnect, true) },
     { name: "migration_advisory_lock", status: statusFromBoolean(snapshot.permissions.migrationLockHeld, true) },
     { name: "migration_history_read", status: statusFromBoolean(snapshot.permissions.historyReadable, true) },
+    {
+      name: "migration_history:shape",
+      status: !historyTablePresent ? "NOT_REQUIRED" : historyIssues.length === 0 ? "PASS" : "FAIL",
+    },
     { name: "schema:public:usage", status: statusFromBoolean(snapshot.permissions.schemaUsage, true) },
     { name: "transaction_read_only", status: statusFromBoolean(snapshot.permissions.transactionReadOnly, true) },
   ];
@@ -1260,7 +1380,7 @@ function privilegeChecks(
     (item) => item.enums.length + item.tables.length + item.indexes.length > 0,
   );
   const schemaCreateRequired =
-    createsSchemaObjects || (historyMutationRequired && !snapshot.historyTablePresent);
+    createsSchemaObjects || (historyMutationRequired && !historyTablePresent);
   checks.push({
     name: "schema:public:create",
     status: statusFromBoolean(snapshot.permissions.schemaCreate, schemaCreateRequired),
@@ -1269,14 +1389,14 @@ function privilegeChecks(
     name: "migration_history:insert",
     status: statusFromBoolean(
       snapshot.permissions.historyInsert,
-      historyMutationRequired && snapshot.historyTablePresent,
+      historyMutationRequired && trustedHistoryTable,
     ),
   });
   checks.push({
     name: "migration_history:update",
     status: statusFromBoolean(
       snapshot.permissions.historyUpdate,
-      historyMutationRequired && snapshot.historyTablePresent,
+      historyMutationRequired && trustedHistoryTable,
     ),
   });
   checks.push({
@@ -1342,9 +1462,11 @@ function privilegeChecks(
   const ownerIndexChecks = deduplicated.filter((item) => item.name.endsWith(":create_index"));
   const ownerConstraintChecks = deduplicated.filter((item) => item.name.endsWith(":add_constraint"));
   const referenceChecks = deduplicated.filter((item) => item.name.startsWith("references:"));
-  const historyWriteChecks = snapshot.historyTablePresent
+  const historyWriteChecks = trustedHistoryTable
     ? deduplicated.filter((item) => item.name.startsWith("migration_history:"))
-    : schemaCreateCheck;
+    : historyTablePresent
+      ? deduplicated.filter((item) => item.name === "migration_history:shape")
+      : schemaCreateCheck;
   const hasTypes = pendingMigrations.some((item) => item.enums.length > 0);
   const hasTables = pendingMigrations.some((item) => item.tables.length > 0);
   const hasIndexes = pendingMigrations.some((item) => item.indexes.length > 0);
@@ -1419,6 +1541,7 @@ export function buildUnknownPreflightReport(
       matched:
         expectedFingerprint && observedFingerprint ? expectedFingerprint === observedFingerprint : null,
       identitySource: "pg_control_system+pg_database+pg_namespace",
+      fingerprintScope: "CONSISTENCY_EVIDENCE_ONLY",
     },
     migrations: unknownMigrations(manifest, reason),
     privilegeChecks: [
@@ -1445,6 +1568,7 @@ export function buildPreflightReport(
     );
   }
 
+  const historyIssues = migrationHistoryTrustIssues(snapshot.historyTable);
   const stopReasons: string[] = [];
   const unexpectedHistory = snapshot.historyRows
     .filter((row) => !manifest.migrations.some((migration) => migration.name === row.migrationName))
@@ -1457,7 +1581,7 @@ export function buildPreflightReport(
 
   const migrations = manifest.migrations.map((migration): MigrationReport => {
     const comparison = compareMigration(manifest, migration, snapshot);
-    const history = historyForMigration(migration, snapshot);
+    const history = historyForMigration(migration, snapshot, historyIssues);
     if (history.reason) stopReasons.push(history.reason);
     const state = migrationState(comparison, history);
     const physicalState = physicalMigrationState(comparison);
@@ -1548,6 +1672,7 @@ export function buildPreflightReport(
       observedFingerprint: snapshot.fingerprint,
       matched: true,
       identitySource: "pg_control_system+pg_database+pg_namespace",
+      fingerprintScope: "CONSISTENCY_EVIDENCE_ONLY",
     },
     migrations,
     privilegeChecks: checks,

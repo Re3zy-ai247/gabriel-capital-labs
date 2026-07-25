@@ -13,10 +13,12 @@ import {
   DatabaseIdentity,
   DefaultExpectation,
   MigrationHistoryRow,
+  MigrationHistoryTable,
   RelationPrivilege,
   UnsupportedMigrationSqlError,
   canonicalDefault,
   databaseFingerprint,
+  migrationHistoryTrustIssues,
 } from "./gate-d-preflight-core";
 
 export class GateDDatabaseInspectionError extends Error {
@@ -80,6 +82,11 @@ type TableRow = {
   relation_kind: string;
   persistence: string;
   owner_usable: boolean | null;
+  row_security_enabled: boolean;
+  force_row_security: boolean;
+  policy_count: number;
+  rule_count: number;
+  trigger_count: number;
 };
 
 type ColumnRow = {
@@ -161,19 +168,16 @@ export function validateDirectUrl(databaseUrl: string): void {
   } catch {
     throw new GateDDatabaseInspectionError("DIRECT_POSTGRES_URL_REQUIRED");
   }
-  const port = parsed.port || "5432";
-  const parameters = [...parsed.searchParams.entries()].map(([key, value]) => ({
-    key: key.toLowerCase(),
-    value,
-  }));
-  const sslModes = parameters.filter((item) => item.key === "sslmode");
+  const parameters = [...parsed.searchParams.entries()];
   if (
     !["postgres:", "postgresql:"].includes(parsed.protocol) ||
     parsed.hostname.toLowerCase() !== "db.prisma.io" ||
-    port !== "5432" ||
-    sslModes.length !== 1 ||
-    sslModes[0].value !== "require" ||
-    parameters.some((item) => item.key === "pgbouncer")
+    parsed.port !== "5432" ||
+    parsed.hash !== "" ||
+    !/^\/[^/]+$/.test(parsed.pathname) ||
+    parameters.length !== 1 ||
+    parameters[0]?.[0] !== "sslmode" ||
+    parameters[0]?.[1] !== "require"
   ) {
     throw new GateDDatabaseInspectionError("DIRECT_POSTGRES_URL_REQUIRED");
   }
@@ -334,31 +338,6 @@ export async function inspectGateDDatabase(
       Prisma.sql`SELECT to_regclass('public."_prisma_migrations"') IS NOT NULL AS value`,
     );
     const historyTablePresent = historyPresence[0]?.value === true;
-    const historyRows = historyTablePresent
-      ? await tx.$queryRaw<HistoryRow[]>(Prisma.sql`
-          SELECT
-            id,
-            migration_name,
-            checksum,
-            started_at,
-            finished_at,
-            rolled_back_at,
-            finished_at IS NOT NULL AS finished,
-            rolled_back_at IS NOT NULL AS rolled_back,
-            finished_at IS NULL AND rolled_back_at IS NULL AS unresolved,
-            applied_steps_count::integer AS applied_steps_count,
-            COALESCE(logs, '') <> '' AS logs_present
-          FROM public."_prisma_migrations"
-          ORDER BY migration_name, id
-        `)
-      : [];
-    const historyPermissionRows = historyTablePresent
-      ? await tx.$queryRaw<HistoryPermissionRow[]>(Prisma.sql`
-          SELECT
-            has_table_privilege(current_user, 'public."_prisma_migrations"', 'INSERT') AS can_insert,
-            has_table_privilege(current_user, 'public."_prisma_migrations"', 'UPDATE') AS can_update
-        `)
-      : [];
 
     const [enumRows, tableRows, columnRows, indexRows, constraintRows, extensionRows] =
       await Promise.all([
@@ -397,7 +376,24 @@ export async function inspectGateDDatabase(
               WHEN 't' THEN 'temporary'
               ELSE relation.relpersistence::text
             END AS persistence,
-            pg_has_role(current_user, relation.relowner, 'USAGE') AS owner_usable
+            pg_has_role(current_user, relation.relowner, 'USAGE') AS owner_usable,
+            relation.relrowsecurity AS row_security_enabled,
+            relation.relforcerowsecurity AS force_row_security,
+            (
+              SELECT count(*)::integer
+              FROM pg_catalog.pg_policy AS policy
+              WHERE policy.polrelid = relation.oid
+            ) AS policy_count,
+            (
+              SELECT count(*)::integer
+              FROM pg_catalog.pg_rewrite AS rewrite_rule
+              WHERE rewrite_rule.ev_class = relation.oid
+            ) AS rule_count,
+            (
+              SELECT count(*)::integer
+              FROM pg_catalog.pg_trigger AS trigger_meta
+              WHERE trigger_meta.tgrelid = relation.oid
+            ) AS trigger_count
           FROM pg_catalog.pg_class AS relation
           JOIN pg_catalog.pg_namespace AS namespace ON namespace.oid = relation.relnamespace
           WHERE namespace.nspname = 'public'
@@ -583,6 +579,72 @@ export async function inspectGateDDatabase(
         `),
       ]);
 
+    const historyRelation = tableRows.find(
+      (row) => row.schema_name === "public" && row.table_name === "_prisma_migrations",
+    );
+    const historyTable: MigrationHistoryTable | null = historyTablePresent
+      ? {
+          relationKind: historyRelation?.relation_kind ?? "missing",
+          persistence: historyRelation?.persistence ?? "missing",
+          rowSecurityEnabled: historyRelation?.row_security_enabled ?? true,
+          forceRowSecurity: historyRelation?.force_row_security ?? true,
+          policyCount: historyRelation?.policy_count ?? -1,
+          ruleCount: historyRelation?.rule_count ?? -1,
+          triggerCount: historyRelation?.trigger_count ?? -1,
+          columns: columnRows
+            .filter(
+              (row) => row.schema_name === "public" && row.table_name === "_prisma_migrations",
+            )
+            .map((row) => ({
+              name: row.column_name,
+              type: actualType(row),
+              nullable: row.nullable,
+              defaultExpression: normalizeExpression(row.default_expression),
+            })),
+          constraints: constraintRows
+            .filter(
+              (row) => row.schema_name === "public" && row.table_name === "_prisma_migrations",
+            )
+            .map((row) => ({
+              kind:
+                row.constraint_type === "p"
+                  ? "PRIMARY_KEY"
+                  : row.constraint_type === "u"
+                    ? "UNIQUE"
+                    : row.constraint_type === "c"
+                      ? "CHECK"
+                      : "FOREIGN_KEY",
+              columns: row.source_columns,
+            })),
+        }
+      : null;
+    const trustedHistoryTable = historyTable !== null && migrationHistoryTrustIssues(historyTable).length === 0;
+    const [historyRows, historyPermissionRows] = trustedHistoryTable
+      ? await Promise.all([
+          tx.$queryRaw<HistoryRow[]>(Prisma.sql`
+            SELECT
+              id,
+              migration_name,
+              checksum,
+              started_at,
+              finished_at,
+              rolled_back_at,
+              finished_at IS NOT NULL AS finished,
+              rolled_back_at IS NOT NULL AS rolled_back,
+              finished_at IS NULL AND rolled_back_at IS NULL AS unresolved,
+              applied_steps_count::integer AS applied_steps_count,
+              COALESCE(logs, '') <> '' AS logs_present
+            FROM public."_prisma_migrations"
+            ORDER BY migration_name, id
+          `),
+          tx.$queryRaw<HistoryPermissionRow[]>(Prisma.sql`
+            SELECT
+              has_table_privilege(current_user, 'public."_prisma_migrations"', 'INSERT') AS can_insert,
+              has_table_privilege(current_user, 'public."_prisma_migrations"', 'UPDATE') AS can_update
+          `),
+        ])
+      : [[], []];
+
     const enumsByName = new Map<string, ActualEnum>();
     for (const row of enumRows) {
       const key = `${row.schema_name}.${row.enum_name}`;
@@ -694,9 +756,9 @@ export async function inspectGateDDatabase(
       transactionReadOnly: true,
       migrationLockHeld: true,
       catalogReadable: true,
-      historyReadable: true,
-      historyInsert: historyTablePresent ? (historyPermission?.can_insert ?? null) : null,
-      historyUpdate: historyTablePresent ? (historyPermission?.can_update ?? null) : null,
+      historyReadable: historyTablePresent && !trustedHistoryTable ? null : true,
+      historyInsert: trustedHistoryTable ? (historyPermission?.can_insert ?? null) : null,
+      historyUpdate: trustedHistoryTable ? (historyPermission?.can_update ?? null) : null,
       databaseConnect: permission?.database_connect ?? null,
       databaseCreate: permission?.database_create ?? null,
       schemaUsage: permission?.schema_usage ?? null,
@@ -709,7 +771,7 @@ export async function inspectGateDDatabase(
     return {
       identity,
       fingerprint,
-      historyTablePresent,
+      historyTable,
       historyRows: historyRows.map(
         (row): MigrationHistoryRow => ({
           id: row.id,
