@@ -9,19 +9,18 @@
 // never a client-supplied org name/slug. This is the "organization isolation" that makes
 // org spoofing and cross-org tampering impossible. Reads are self/owned-org/admin only.
 //
-// The write and its audit event are sequential and each idempotent (a deterministic
-// event id makes a retry a no-op). A crash between the committed write and the event is
-// the same at-most-once-effect window the Event Fabric's replay/reconciliation is built
-// to backfill; atomic write+event coupling is a documented future hardening.
+// Service-owned mutations retain their existing sequential, idempotent event writes.
+// The lifecycle exception delegates to lifecycle.ts, where its state/evidence pair is
+// transactionally coupled; this service must not duplicate that owner-specific boundary.
 import { operatorIdentityEnabled } from "./flags";
 import { type IdentityPrincipal, isAdmin } from "./principal";
-import { canTransitionOperator, canTransitionMembership, type OperatorState } from "./state";
+import { canTransitionMembership } from "./state";
 import { type OrgRole } from "./rbac";
-import { createOrganizationInput, addMembershipInput, changeRoleInput, slugSchema, slugify, stateReasonSchema } from "./validation";
+import { createOrganizationInput, addMembershipInput, changeRoleInput, slugSchema, slugify } from "./validation";
 import * as repo from "./repository";
 import {
   recordIdentityEvent,
-  operatorRegisteredEvent, operatorStateChangedEvent, organizationCreatedEvent,
+  operatorRegisteredEvent, organizationCreatedEvent,
   membershipAddedEvent, membershipRoleChangedEvent, membershipRemovedEvent,
 } from "./events";
 import type { OperatorIdentity, Organization, OrganizationMembership } from "@prisma/client";
@@ -52,32 +51,17 @@ export async function registerOwnOperator(principal: IdentityPrincipal | null): 
   return { ok: true, data: { operator, created } };
 }
 
-// Change an operator's lifecycle state. ADMIN may perform any legal transition; the
-// operator themselves may only DEACTIVATE their own identity. Fail-closed otherwise.
-export async function transitionOperatorState(
-  principal: IdentityPrincipal | null, operatorId: string, to: OperatorState, reason?: string,
-): Promise<ServiceResult<{ operator: OperatorIdentity }>> {
-  const g = gate(principal); if (!g.ok) return g;
-  const reasonParse = stateReasonSchema.safeParse(reason);
-  if (!reasonParse.success) return fail("invalid", "invalid reason");
-
-  const operator = await repo.findOperatorById(operatorId);
-  if (!operator) return fail("not_found", "operator not found");
-
-  const isSelf = operator.accountId === g.principal.id;
-  const allowed = isAdmin(g.principal) || (isSelf && to === "DEACTIVATED");
-  if (!allowed) return fail("forbidden", "not authorized to transition this operator");
-
-  const from = operator.state as OperatorState;
-  if (from === to) return fail("conflict", `already ${to}`);
-  if (!canTransitionOperator(from, to)) return fail("invalid", `illegal transition ${from} -> ${to}`);
-
-  const res = await repo.transitionOperator(operatorId, from, to, reasonParse.data ?? null);
-  if (res.count !== 1 || !res.operator) return fail("conflict", "state changed concurrently");
-
-  await recordIdentityEvent(operatorStateChangedEvent(res.operator, from, to, g.principal.id, res.operator.updatedAt.getTime()));
-  return { ok: true, data: { operator: res.operator } };
-}
+// Operator lifecycle transitions are owned by lib/identity/lifecycle.ts (Implementation
+// Slice 1). This door DELEGATES so there is exactly ONE implementation and one
+// authorization path — a second copy here would be the parallel implementation §17
+// forbids.
+//
+// The pre-Slice-1 authorization (raw `User.role === "ADMIN"`, or self -> DEACTIVATED with
+// no step-up) is SUPERSEDED. It is the §8.3 forbidden shortcut, and it permitted the
+// irreversible command with neither step-up nor an owner-invariant check. Callers now
+// supply an explicit bounded authority class, a reason class, an idempotency key, and a
+// sealed effective time (§4, §9.1, §11.2).
+export { transitionOperator } from "./lifecycle";
 
 // ── Organization ─────────────────────────────────────────────────────────────
 

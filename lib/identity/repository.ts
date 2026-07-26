@@ -48,17 +48,31 @@ export async function registerOperator(accountId: string): Promise<{ operator: O
   }
 }
 
-// Race-safe guarded transition. Returns the updated row ONLY when exactly one row moved.
+// Race-safe guarded transition. `client` lets the caller enlist this write in its own
+// transaction so state and its §11 evidence commit together. Defaults to `prisma`, so
+// every pre-existing caller is unchanged.
+export type IdentityWriteClient = Pick<typeof prisma, "operatorIdentity">;
+
 export async function transitionOperator(
-  operatorId: string, from: OperatorState, to: OperatorState, reason?: string | null,
-): Promise<{ count: number; operator: OperatorIdentity | null }> {
-  const res = await prisma.operatorIdentity.updateMany({
+  operatorId: string, from: OperatorState, to: OperatorState,
+  client: IdentityWriteClient = prisma, reason?: string | null,
+): Promise<{ count: number }> {
+  const res = await client.operatorIdentity.updateMany({
     where: { id: operatorId, state: from },
     data: { state: to, stateReason: reason ?? null },
   });
-  if (res.count !== 1) return { count: res.count, operator: null };
-  const operator = await prisma.operatorIdentity.findUnique({ where: { id: operatorId } });
-  return { count: 1, operator };
+  return { count: res.count };
+}
+
+// Idempotency ledger lookup. The derived event id is tenant-scoped and command-stable;
+// callers must compare every material input before accepting a replay.
+export function findEventById(id: string): Promise<{
+  id: string; type: string; version: number; correlationId: string; payload: unknown;
+} | null> {
+  return prisma.eventEnvelope.findUnique({
+    where: { id },
+    select: { id: true, type: true, version: true, correlationId: true, payload: true },
+  });
 }
 
 // ── Organization ─────────────────────────────────────────────────────────────

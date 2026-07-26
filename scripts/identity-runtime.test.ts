@@ -41,7 +41,10 @@ check("service authorizes by ownership (ownsOrAdmin), NOT a parallel permission 
 
 // ── Service structure: fail-closed gate FIRST in every door ──────────────────
 {
-  const doors = ["registerOwnOperator", "transitionOperatorState", "createOrganization", "addMember", "changeMemberRole", "removeMember", "getOperator", "listMembersOfOrganization", "listMyMemberships"];
+  // Slice 1: the operator lifecycle door moved to lib/identity/lifecycle.ts, which runs
+  // its OWN flag-first gate (pinned by identity-lifecycle.test.ts §11). service.ts
+  // re-exports it, so it is no longer an `export async function` here.
+  const doors = ["registerOwnOperator", "createOrganization", "addMember", "changeMemberRole", "removeMember", "getOperator", "listMembersOfOrganization", "listMyMemberships"];
   // Every exported service function begins by calling gate(...) before any repo/DB call.
   for (const d of doors) {
     const body = service.slice(service.indexOf(`export async function ${d}`));
@@ -57,7 +60,11 @@ check("service never authorizes on a client-supplied org name/slug", !/authoriz[
 check("service never reads request/query input", !/searchParams|req\.query|request\.nextUrl|headers\(\)/.test(service));
 
 // ── Auditability: every mutation records a durable identity event ────────────
-check("mutations record identity events (>= 6 recordIdentityEvent calls)", (service.match(/recordIdentityEvent\(/g) || []).length >= 6);
+// Slice 1: the lifecycle mutation records its evidence through the transactional
+// draft+append path (§11), not recordIdentityEvent, so service.ts now holds the
+// five non-lifecycle emitters and delegates the sixth.
+check("non-lifecycle mutations record identity events (5 recordIdentityEvent calls)", (service.match(/recordIdentityEvent\(/g) || []).length === 5);
+check("the lifecycle door is delegated, not reimplemented", /export \{ transitionOperator \} from "\.\/lifecycle"/.test(service));
 check("state transition stamps the event with the row's updatedAt (oscillation-safe)", /updatedAt\.getTime\(\)/.test(service));
 
 // ── Reads enforce isolation (self / owned-org / admin) ───────────────────────
@@ -78,7 +85,7 @@ check("repository never reads request/query input", !/searchParams|req\.query|re
   const p: IdentityPrincipal = { id: "a1", role: "ADMIN", isAgency: false, disabled: false };
   const results = await Promise.all([
     svc.registerOwnOperator(p),
-    svc.transitionOperatorState(p, "op1", "ACTIVE"),
+    svc.transitionOperator(p, { operatorId: "op1", to: "ACTIVE", authority: "PLATFORM_IDENTITY_REVIEW", basis: "PLATFORM_REVIEW_APPROVED", commandId: "c1", effectiveAt: 1 }),
     svc.createOrganization(p, { name: "Acme Credit" }),
     svc.addMember(p, { organizationId: "o1", operatorId: "op1", role: "MEMBER" }),
     svc.changeMemberRole(p, { organizationId: "o1", operatorId: "op1", role: "ADMIN" }),
@@ -88,7 +95,7 @@ check("repository never reads request/query input", !/searchParams|req\.query|re
     svc.listMyMemberships(p),
   ]);
   check("ALL 9 service doors are fail-closed disabled when OPERATOR_IDENTITY_ENABLED is unset (no DB touch)",
-    results.every((r) => r.ok === false && (r as any).code === "disabled"));
+    results.every((r: { ok: boolean }) => r.ok === false && (r as any).code === "disabled"));
   // Even a null principal returns disabled (flag checked first), never a crash.
   const nullp = await svc.createOrganization(null, { name: "X" });
   check("null principal + flag off -> disabled (no throw)", nullp.ok === false && (nullp as any).code === "disabled");
