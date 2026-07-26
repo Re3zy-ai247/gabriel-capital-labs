@@ -1,12 +1,16 @@
 # Identity Constitution v1.0 — Repository Feasibility and Contradiction Audit
 
+> **HISTORICAL REVIEW EVIDENCE — SUPERSEDED FOR SEMANTIC AUTHORITY**
+>
+> Retained as the independent review record required by the ratification process. The Founder ratified the amended [Identity Constitution v1.0 Ratification Edition](IDENTITY-CONSTITUTION.md) on 2026-07-26; that document now controls Identity semantics, and the audit's former decision gates are closed by its incorporated resolutions.
+
 > **REPOSITORY TRUTH — NOT A RATIFICATION**
 >
 > Reviewed 2026-07-26 against the frozen Platform Ownership Map, Architecture Freeze 1.0, current source, Prisma schema and migration history, Gate D tooling, and the dormant Identity foundation. This audit does not authorize implementation, activation, a migration, Gate D, production access, or a deployment.
 
-**Subject:** [Identity Constitution v1.0 — founder draft](IDENTITY-CONSTITUTION.md)
-**Audit status:** complete; proposed Constitution remains **PROPOSED — NOT RATIFIED**
-**Audit verdict:** **CONSTITUTION REQUIRES CLAUSE-LEVEL AMENDMENTS**
+**Subject:** superseded Identity Constitution v1.0 Founder Draft; current authority is the [Ratification Edition](IDENTITY-CONSTITUTION.md)
+**Audit status:** complete; historical review evidence
+**Audit verdict at review time:** **CONSTITUTION REQUIRED CLAUSE-LEVEL AMENDMENTS**; the Ratification Edition incorporated those amendments before founder ratification
 
 ## Scope and classification
 

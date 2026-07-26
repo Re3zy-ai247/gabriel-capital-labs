@@ -2,6 +2,8 @@
 
 **Whole-platform, repository-grounded, adversarially-verified review before the Gate D production schema baseline.** Authored 2026-07-21 against `main` @ `6c76454` (Sprint 9 + Sprint 10 merged, dormant). This is a **review artifact**, not a new source of truth: where it assesses an owned subject it cross-references the owning canon (`GIOS-PLATFORM.md`, `PLATFORM-OWNERSHIP-MAP.md`, `VECTOR-XP.md`, `OPERATOR-IDENTITY.md`, the ADRs) rather than restating it.
 
+> **Identity supersession note (2026-07-26):** [Identity Constitution v1.0](IDENTITY-CONSTITUTION.md) ratified after this review and supersedes this artifact's `managedByAgencyId → OrganizationMembership` successor/bridge language, its LOW classification of destructive Identity/managed-consumer cascades, and its former recommended reconciliation-migration slice. The valid plan is Consumer-management safety containment, Gate D extension, explicit Operator enrollment/Membership admission, and read-only reconciliation classification—never automatic conversion or backfill. The platform freeze and one-owner law remain ratified; no L0–L3 ownership moved.
+
 ---
 
 ## 0. Decisions (up front)
@@ -116,7 +118,7 @@ The `PLATFORM-OWNERSHIP-MAP.md` is **substantially accurate** — every raised o
 | Org RBAC map ↔ kernel PEP | **LOW** | Documented-not-implemented: the map says the PEP consumes `rbac.ts`; the PEP has zero reference to it. The map slightly overstates a live wire; `rbac.ts` correctly enforces nothing on its own. |
 | Scoring-policy source of truth | **LOW** | Stale *comment* in `lib/reputation/policy.ts` header still names Arena; `scoring.ts` is the real owner (Sprint-10 move). Code behavior is correct; only a comment is stale (→ §16). |
 | Durable membership vs shadow `TeamMember` | DOCUMENTED_TRANSITION | `lib/identity` is sole canonical owner; `lib/os/platform/teams.ts`/`teamStore.ts` is dead, zero consumers, self-heals shadow tables — **removal is a tracked follow-up**. |
-| Agency-client (`managedByAgencyId` vs `OrganizationMembership`) | DOCUMENTED_TRANSITION | Exactly one ACTIVE owner (the live `User.isAgency`); `OrganizationMembership` is the Gate-F-gated successor. |
+| Agency-client (`managedByAgencyId` vs `OrganizationMembership`) | **SUPERSEDED 2026-07-26** | Ratified Identity v1.0 establishes separate owners and meanings. Consumer-management remains active; Membership is distinct and never its automatic successor. |
 | Role taxonomies (`UserRole`/`OrgRole`/`TeamRole`) | NOT_A_CONFLICT | Legitimately scope-separated. |
 | XP write authority | NOT_A_CONFLICT | `XpAward` written only within `lib/reputation/*`. No marketplace/billing/Arena write path exists. |
 | Arena owning XP truth | NOT_A_CONFLICT | `lib/arena/project.ts` is pure/read-only; writes nothing. |
@@ -132,12 +134,12 @@ The `PLATFORM-OWNERSHIP-MAP.md` is **substantially accurate** — every raised o
 
 The Identity foundation is a **generic, correctly-shaped** base: `Organization.kind ∈ {AGENCY,ENTERPRISE,EDUCATOR,VENDOR,INTERNAL}` (adding a kind is an additive `ALTER TYPE`), unique slug, owner-by-id (`RESTRICT`), membership with `OrgRole`. It supports individual operators, agencies, enterprises, educators, vendors, internal teams, and multi-org membership **structurally**. Surviving gaps (all MEDIUM or below post-verification — none forces redesign, all are additive future work):
 
-- **Managed-client → Organization cutover has no implemented bridge** (MEDIUM, was BLOCKER). The `managedByAgencyId → OrganizationMembership` reconciliation is documented (Gate-F) but unwritten. Downgraded because the live agency model *works*; the successor is dormant and the migration is additive — this is a scheduled activation step, not a broken foundation.
+- **SUPERSEDED 2026-07-26 — no managed-client → Membership bridge is valid.** Ratified Identity v1.0 requires a read-only reconciliation classifier and explicit enrollment/admission; `managedByAgencyId` cannot create or authorize `OrganizationMembership`.
 - **Organization lifecycle (suspend/archive) and ownership transfer/succession are unreachable/unmodeled** (MEDIUM ×2). `OrganizationState` exists but no transition path; owner `RESTRICT` means an owner account cannot be deleted until transfer exists. Both are additive service methods within the frozen schema.
 - **No professional-profile projection model; `handle` is a defined-but-unclaimable column; membership `SUSPENDED` unreachable** (LOW). All additive.
-- **Identity deletion is cascade-only** with no consent record / erasure-vs-deletion distinction (LOW) — see §12 (the erasure strategy itself is sound; the *distinction* is unbuilt).
+- **SUPERSEDED SEVERITY 2026-07-26 — destructive deletion/cascades are a pre-activation BLOCKER.** The managed-client hard-delete route and cascading FKs must be contained and remediated through subject-scoped service termination/erasure and a later additive migration.
 
-**Identity verdict:** foundation sound and generic; the multi-tenant future is reachable additively. The cutover bridge and org-lifecycle methods are the top pre-activation implementation items.
+**Identity verdict as clarified by ratification:** the dormant foundation remains reusable, but activation is blocked on Consumer deletion/cascade safety, lifecycle/authority/evidence remediation, explicit enrollment/admission, and Gate D extension. No cutover bridge exists.
 
 ---
 
@@ -171,7 +173,7 @@ The Event Fabric (`EventEnvelope`, deterministic id = `sha256(tenant|type|source
 The seams support the collaboration future **without redesigning Identity/Event Fabric/Organizations/Reputation** — confirmed after the headline "attachment leak" HIGH was refuted (the audience predicate is already landed and fail-closed). Reality:
 
 - **No Room bounded context yet** (INFO, was HIGH): `channelKey` is a value-object over frozen community keys. Rooms (public/private/org/classroom/consultation/recorded/ephemeral) are a clean **new context** to add — the visibility/audience primitives (`canViewChannel`, `audienceAgencyId`) already exist as the seam.
-- **Network tenant key is bound to the legacy agency-account model** (LOW, was HIGH): it consumes the live agency identity, not `OrganizationMembership` — consistent with the documented Identity transition, not a parallel owner.
+- **Network tenant key is bound to the Consumer-management agency-account model** (LOW, was HIGH): it consumes the live managed-consumer capability, not `OrganizationMembership`. Ratified Identity v1.0 preserves this semantic separation.
 - **`NetworkMessage` publishes nothing to the Event Fabric; collaboration identity is the auth `User`, not `OperatorIdentity`** (LOW ×2). Both are additive wiring at activation (the fact seam + the identity consumption).
 
 **Collaboration verdict:** Rooms/Meetings/Network are addable as new contexts over existing seams; nothing forces a foundational redesign.
@@ -306,13 +308,13 @@ Invariants (permanent): Identity precedes Reputation precedes Arena/Marketplace-
 - Security hardening: per-access audit + maker-checker on admin impersonation; confirm the `SETUP_SECRET` bypass is disabled in prod.
 
 **Pre-activation implementation obligations (build within the frozen model, in dependency order):**
-managed-client → `OrganizationMembership` bridge · Organization suspend/archive/transfer methods · retire the Arena mutable-XP path in favor of the Reputation ledger · fairness governance (floors/sequencing/referral definitions) · Entitlement + Reward-Claim records · Performance Intelligence context · a machine/federated principal · professional-profile projection + media controls.
+managed-consumer deletion/cascade containment · explicit Operator enrollment and Membership admission · Organization suspend/archive/transfer methods · bounded Platform Authority/evidence · retire the Arena mutable-XP path in favor of the Reputation ledger · fairness governance (floors/sequencing/referral definitions) · Entitlement + Reward-Claim records · Performance Intelligence context · a machine/federated principal · professional-profile projection + media controls.
 
 ---
 
 ## 16. Recommended next slice + deferred capabilities
 
-**Recommended next implementation slice after Gate D:** **Operator Identity activation readiness** — the `managedByAgencyId → OrganizationMembership` reconciliation migration + Organization lifecycle (suspend/archive/transfer) methods, behind `OPERATOR_IDENTITY_ENABLED`. It unblocks every downstream context (Reputation producers, Rooms, profiles) and resolves the highest-cluster gap (Identity multi-tenancy) without touching the frozen schema. Pair it with defining the **Entitlement/Reward-Claim** and **machine-principal** seams on paper (ADR-level) so later Marketplace/API work cannot drift.
+**SUPERSEDED 2026-07-26 — next implementation slice:** [Identity Implementation Slice 0](IDENTITY-CONSTITUTION-IMPLEMENTATION-PLAN.md) contains the managed-client hard-delete path before any Identity mutation work. Subsequent dormant slices implement lifecycle, enrollment, Organizations, Membership, authorization, and evidence; a versioned Gate D extension and reviewed additive migration precede any schema-dependent activation. These implementation slices do not rename or authorize Constitution §14 release Stages. No automatic reconciliation migration is permitted.
 
 **Explicitly deferred (owner/counsel-gated, do not build before their predecessor):** Arena competitions, Marketplace, Affiliates, public profiles + photos, Rooms/Meetings/video, Campus certifications, Public API/SDK, Enterprise federation, cross-user reputation/outcome surfaces.
 
