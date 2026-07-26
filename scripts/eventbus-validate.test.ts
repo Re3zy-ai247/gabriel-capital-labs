@@ -19,8 +19,8 @@ for (const t of EVENT_TYPES) {
   check(`contract registered for ${t}`, Object.values(CONTRACTS).some((c) => c.type === t));
 }
 // 13 Sprint 8 core + 6 Sprint 9 Operator Identity + 2 Sprint 10 Operator Reputation
-// + 3 Slice 3 Organization facts (§6 lifecycle + §6.4 ownership invariant).
-check("26 event types declared", EVENT_TYPES.length === 26);
+// + 2 Slice 3 Organization state-change facts (§6 lifecycle + §6.4 ownership invariant).
+check("25 event types declared", EVENT_TYPES.length === 25);
 
 // ── Fail-closed: unknown type / version ──────────────────────────────────────
 check("unknown type rejected", validateEvent("NOT_A_TYPE", 1, {}).ok === false);
@@ -64,7 +64,8 @@ check("validateEvent rejects a payload whose KEY is PII (via a malformed extra)"
 // ── Every registered contract is itself PII-free (registry integrity) ────────
 for (const [key, c] of Object.entries(CONTRACTS)) {
   // Build a representative object from the schema's declared keys and assert none is PII-named.
-  const shape = (c.schema as z.ZodObject<z.ZodRawShape>)._def?.shape?.() ?? {};
+  const objectSchema = c.schema instanceof z.ZodEffects ? c.schema.innerType() : c.schema;
+  const shape = (objectSchema as z.ZodObject<z.ZodRawShape>)._def?.shape?.() ?? {};
   const keys = Object.keys(shape);
   const piiKey = keys.find((k) => PII_DENYLIST.some((bad) => k.toLowerCase().includes(bad)));
   check(`contract ${key} declares no PII-named field${piiKey ? ` (found: ${piiKey})` : ""}`, !piiKey);

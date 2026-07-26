@@ -19,8 +19,9 @@ import { authorizePublish } from "@/lib/eventBus/publish";
 import { appendEvent } from "@/lib/eventBus/store";
 import { deriveEventId, systemIdentity, type DraftEvent, type EventType } from "@/lib/eventBus/envelope";
 import { operatorIdentityEnabled } from "./flags";
-import type { OperatorState } from "./state";
+import type { OperatorState, OrganizationState } from "./state";
 import type { OrgRole } from "./rbac";
+import { ORGANIZATION_POLICY_VERSION } from "./organizations";
 
 // The identity subset of the platform event taxonomy.
 export const IDENTITY_EVENT_TYPES = [
@@ -33,7 +34,6 @@ export const IDENTITY_EVENT_TYPES = [
   // ── Organizations Runtime (Slice 3) — §6 lifecycle + §6.4 ownership invariant.
   "ORGANIZATION_SUSPENDED",
   "ORGANIZATION_ARCHIVED",
-  "OWNER_VALIDATED",
 ] as const;
 export type IdentityEventType = (typeof IDENTITY_EVENT_TYPES)[number];
 
@@ -227,76 +227,67 @@ export function membershipRemovedEvent(
   };
 }
 
-// ── Organizations Runtime (Slice 3) — lifecycle + ownership-invariant builders ──
-// PURE. Tenant is the OWNER's account (the subject of the ownership fact) and agencyId is
-// the Organization, matching the enrollment builders. dedupeKey is the commandId alone, so
-// the derived event id is a pure function of the command and the event stream is the
-// idempotency ledger (§11.2).
-//
-// `ownerVerdict` is recorded on every fact so an ownership defect is auditable from the
-// log without re-deriving the three-hop resolution (ICAP-1 A-6).
+// ── Organizations Runtime (Slice 3) — lifecycle evidence builders ─────────────
+// PURE. Tenant is the canonical owner's account and agencyId is the Organization. The
+// organization id is part of the dedupe key: command identifiers are scoped to a command
+// stream, not globally unique across an owner's Organizations. These builders only describe
+// successful state changes; arbitrary owner-validation reads emit no event.
 
 const organizationInput = (
-  type: IdentityEventType, ownerAccountId: string | null, organizationId: string,
-  actorId: string, commandId: string, payload: Record<string, unknown>, correlationId?: string,
+  type: "ORGANIZATION_SUSPENDED" | "ORGANIZATION_ARCHIVED", ownerAccountId: string,
+  organizationId: string, actorId: string, commandId: string, payload: Record<string, unknown>,
 ): IdentityEventInput => ({
   type,
-  // An organization with no resolvable owner still produces evidence; the tenant then
-  // falls back to the organization itself so the fact is never silently undeliverable.
-  tenantId: ownerAccountId ?? organizationId,
+  tenantId: ownerAccountId,
   actorId,
   agencyId: organizationId,
-  correlationId,
   payload,
-  dedupeKey: `operator-organization:${commandId}`,
+  dedupeKey: `operator-organization:${organizationId}:${commandId}`,
 });
 
+type OrganizationEventEvidence = {
+  organizationId: string;
+  ownerAccountId: string;
+  ownerVerdict: "OWNER_RESOLVED";
+  actorId: string;
+  commandId: string;
+  effectiveAt: number;
+  decisionDigest: string;
+};
+
+type OrganizationSuspensionEvidence = OrganizationEventEvidence & (
+  | { authorityClass: "OWNER"; basis: "OWNER_REQUESTED" }
+  | { authorityClass: "PLATFORM_COMPLIANCE"; basis: "COMPLIANCE_HOLD" }
+  | { authorityClass: "PLATFORM_SECURITY"; basis: "SECURITY_HOLD" }
+);
+
+type OrganizationArchivalEvidence = OrganizationEventEvidence & {
+  from: Extract<OrganizationState, "ACTIVE" | "SUSPENDED">;
+} & (
+  | { authorityClass: "OWNER"; basis: "OWNER_CLOSED" }
+  | { authorityClass: "PLATFORM_COMPLIANCE"; basis: "COMPLIANCE_CLOSED" }
+);
+
 export function organizationSuspendedEvent(
-  p: {
-    organizationId: string; ownerAccountId: string | null; authorityClass: string;
-    basis: string; ownerVerdict: string; policyVersion: string; actorId: string;
-    commandId: string; effectiveAt: number; decisionDigest: string; causationId: string | null;
-  }, correlationId?: string,
+  p: OrganizationSuspensionEvidence,
 ): IdentityEventInput {
   return organizationInput("ORGANIZATION_SUSPENDED", p.ownerAccountId, p.organizationId, p.actorId, p.commandId, {
     organizationId: p.organizationId, ownerAccountId: p.ownerAccountId,
     from: "ACTIVE", to: "SUSPENDED", authorityClass: p.authorityClass, basis: p.basis,
-    ownerVerdict: p.ownerVerdict, policyVersion: p.policyVersion, actorId: p.actorId,
+    ownerVerdict: p.ownerVerdict, policyVersion: ORGANIZATION_POLICY_VERSION, actorId: p.actorId,
     commandId: p.commandId, effectiveAt: p.effectiveAt,
-    decisionDigest: p.decisionDigest, causationId: p.causationId,
-  }, correlationId);
+    decisionDigest: p.decisionDigest, causationId: null,
+  });
 }
 
 export function organizationArchivedEvent(
-  p: {
-    organizationId: string; ownerAccountId: string | null; from: "ACTIVE" | "SUSPENDED";
-    authorityClass: string; basis: string; ownerVerdict: string; policyVersion: string;
-    actorId: string; commandId: string; effectiveAt: number; decisionDigest: string;
-    causationId: string | null;
-  }, correlationId?: string,
+  p: OrganizationArchivalEvidence,
 ): IdentityEventInput {
   return organizationInput("ORGANIZATION_ARCHIVED", p.ownerAccountId, p.organizationId, p.actorId, p.commandId, {
     organizationId: p.organizationId, ownerAccountId: p.ownerAccountId,
     from: p.from, to: "ARCHIVED", authorityClass: p.authorityClass, basis: p.basis,
-    ownerVerdict: p.ownerVerdict, policyVersion: p.policyVersion, actorId: p.actorId,
+    ownerVerdict: p.ownerVerdict, policyVersion: ORGANIZATION_POLICY_VERSION, actorId: p.actorId,
     commandId: p.commandId, effectiveAt: p.effectiveAt,
-    decisionDigest: p.decisionDigest, causationId: p.causationId,
-  }, correlationId);
-}
-
-export function ownerValidatedEvent(
-  p: {
-    organizationId: string; ownerAccountId: string | null; ownerOperatorId: string | null;
-    organizationState: string; ownerVerdict: string; valid: boolean; policyVersion: string;
-    actorId: string; commandId: string; effectiveAt: number; decisionDigest: string;
-    causationId: string | null;
-  }, correlationId?: string,
-): IdentityEventInput {
-  return organizationInput("OWNER_VALIDATED", p.ownerAccountId, p.organizationId, p.actorId, p.commandId, {
-    organizationId: p.organizationId, ownerAccountId: p.ownerAccountId,
-    ownerOperatorId: p.ownerOperatorId, organizationState: p.organizationState,
-    ownerVerdict: p.ownerVerdict, valid: p.valid, policyVersion: p.policyVersion,
-    actorId: p.actorId, commandId: p.commandId, effectiveAt: p.effectiveAt,
-    decisionDigest: p.decisionDigest, causationId: p.causationId,
-  }, correlationId);
+    decisionDigest: p.decisionDigest, causationId: null,
+  });
 }

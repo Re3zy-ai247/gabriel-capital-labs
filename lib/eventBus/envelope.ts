@@ -54,7 +54,6 @@ export const EVENT_TYPES = [
   // ── Organizations Runtime (Slice 3) — lifecycle + ownership-invariant facts (§6).
   "ORGANIZATION_SUSPENDED",
   "ORGANIZATION_ARCHIVED",
-  "OWNER_VALIDATED",
 ] as const;
 export type EventType = (typeof EVENT_TYPES)[number];
 

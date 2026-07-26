@@ -119,62 +119,56 @@ export const CONTRACTS: Readonly<Record<string, EventContract>> = {
   },
   // ── Organizations Runtime (Slice 3) — §6 lifecycle + §6.4 ownership invariant.
   // Refs-only. `basis` (not `reason*`) because the PII guard denylists keys containing
-  // "reason". `ownerVerdict` records WHICH hop of the account -> OperatorIdentity ->
-  // Membership resolution held or failed (ICAP-1 A-6), so an ownership defect is auditable
-  // without re-deriving it. These facts carry no authority: they record a decision that a
-  // bounded authority already made, they do not confer one.
+  // "reason". These state-change facts record a domain decision; Event Fabric transports
+  // them but does not confer authority or decide Organization semantics.
   "ORGANIZATION_SUSPENDED@1": {
     type: "ORGANIZATION_SUSPENDED", version: 1, defaultSource: "identity", scope: "platform",
     schema: z.object({
       organizationId: z.string().min(1),
-      ownerAccountId: z.string().min(1).nullable(),
+      ownerAccountId: z.string().min(1),
       from: z.literal("ACTIVE"),
       to: z.literal("SUSPENDED"),
       authorityClass: z.enum(["OWNER", "PLATFORM_COMPLIANCE", "PLATFORM_SECURITY"]),
       basis: z.enum(["OWNER_REQUESTED", "COMPLIANCE_HOLD", "SECURITY_HOLD"]),
-      ownerVerdict: z.enum(["OWNER_RESOLVED", "ORGANIZATION_NOT_FOUND", "OWNER_ACCOUNT_MISSING", "OWNER_OPERATOR_MISSING", "OWNER_OPERATOR_NOT_ACTIVE", "OWNER_MEMBERSHIP_MISSING", "OWNER_MEMBERSHIP_NOT_ACTIVE", "RIVAL_OWNER_CLAIM"]),
-      policyVersion: z.string().min(1).max(64),
+      ownerVerdict: z.literal("OWNER_RESOLVED"),
+      policyVersion: z.literal("operator-organization@1"),
       actorId: z.string().min(1),
       commandId: z.string().min(1).max(200),
       effectiveAt: z.number().int().positive(),
       decisionDigest: z.string().regex(/^sha256:[0-9a-f]{64}$/),
-      causationId: z.string().min(1).max(200).nullable(),
-    }).strict(),
+      causationId: z.null(),
+    }).strict().superRefine((value, ctx) => {
+      const coherent = (
+        (value.authorityClass === "OWNER" && value.basis === "OWNER_REQUESTED")
+        || (value.authorityClass === "PLATFORM_COMPLIANCE" && value.basis === "COMPLIANCE_HOLD")
+        || (value.authorityClass === "PLATFORM_SECURITY" && value.basis === "SECURITY_HOLD")
+      );
+      if (!coherent) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "authorityClass and basis are incoherent" });
+    }),
   },
   "ORGANIZATION_ARCHIVED@1": {
     type: "ORGANIZATION_ARCHIVED", version: 1, defaultSource: "identity", scope: "platform",
     schema: z.object({
       organizationId: z.string().min(1),
-      ownerAccountId: z.string().min(1).nullable(),
+      ownerAccountId: z.string().min(1),
       from: z.enum(["ACTIVE", "SUSPENDED"]),
       to: z.literal("ARCHIVED"),
-      authorityClass: z.enum(["OWNER", "PLATFORM_COMPLIANCE", "PLATFORM_SECURITY"]),
+      authorityClass: z.enum(["OWNER", "PLATFORM_COMPLIANCE"]),
       basis: z.enum(["OWNER_CLOSED", "COMPLIANCE_CLOSED"]),
-      ownerVerdict: z.enum(["OWNER_RESOLVED", "ORGANIZATION_NOT_FOUND", "OWNER_ACCOUNT_MISSING", "OWNER_OPERATOR_MISSING", "OWNER_OPERATOR_NOT_ACTIVE", "OWNER_MEMBERSHIP_MISSING", "OWNER_MEMBERSHIP_NOT_ACTIVE", "RIVAL_OWNER_CLAIM"]),
-      policyVersion: z.string().min(1).max(64),
+      ownerVerdict: z.literal("OWNER_RESOLVED"),
+      policyVersion: z.literal("operator-organization@1"),
       actorId: z.string().min(1),
       commandId: z.string().min(1).max(200),
       effectiveAt: z.number().int().positive(),
       decisionDigest: z.string().regex(/^sha256:[0-9a-f]{64}$/),
-      causationId: z.string().min(1).max(200).nullable(),
-    }).strict(),
-  },
-  "OWNER_VALIDATED@1": {
-    type: "OWNER_VALIDATED", version: 1, defaultSource: "identity", scope: "platform",
-    schema: z.object({
-      organizationId: z.string().min(1),
-      ownerAccountId: z.string().min(1).nullable(),
-      ownerOperatorId: z.string().min(1).nullable(),
-      organizationState: z.enum(["ACTIVE", "SUSPENDED", "ARCHIVED"]),
-      ownerVerdict: z.enum(["OWNER_RESOLVED", "ORGANIZATION_NOT_FOUND", "OWNER_ACCOUNT_MISSING", "OWNER_OPERATOR_MISSING", "OWNER_OPERATOR_NOT_ACTIVE", "OWNER_MEMBERSHIP_MISSING", "OWNER_MEMBERSHIP_NOT_ACTIVE", "RIVAL_OWNER_CLAIM"]),
-      valid: z.boolean(),
-      policyVersion: z.string().min(1).max(64),
-      actorId: z.string().min(1),
-      commandId: z.string().min(1).max(200),
-      effectiveAt: z.number().int().positive(),
-      decisionDigest: z.string().regex(/^sha256:[0-9a-f]{64}$/),
-      causationId: z.string().min(1).max(200).nullable(),
-    }).strict(),
+      causationId: z.null(),
+    }).strict().superRefine((value, ctx) => {
+      const coherent = (
+        (value.authorityClass === "OWNER" && value.basis === "OWNER_CLOSED")
+        || (value.authorityClass === "PLATFORM_COMPLIANCE" && value.basis === "COMPLIANCE_CLOSED")
+      );
+      if (!coherent) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "authorityClass and basis are incoherent" });
+    }),
   },
   "OPERATOR_STATE_CHANGED@1": {
     type: "OPERATOR_STATE_CHANGED", version: 1, defaultSource: "identity", scope: "platform",

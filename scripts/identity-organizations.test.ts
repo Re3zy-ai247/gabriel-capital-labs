@@ -1,6 +1,6 @@
 // Guard for Implementation Slice 3 — Organizations Runtime.
-// Identity Constitution v1.0 §2.4, §2.5, §5.3, §6.1-6.7, §8.1 gate 5, §11.2, §17.3,
-// as amended by ICAP-1 A-6 (the definition of "owner Membership").
+// Ratified Identity Constitution v1.0 §2.4, §2.5, §5.3, §6.1-6.7, §8.1 gate 5, §11.2,
+// and §17.3.
 //
 // PURE + EXECUTED, no database. `decideOrganizationTransition` and
 // `evaluateOwnerInvariant` are total, so both decision spaces are enumerated EXHAUSTIVELY
@@ -16,7 +16,7 @@ import {
   evaluateOwnerInvariant, ownerVerdictIsValid, decideOrganizationTransition,
   ownerControlResolverAvailable, platformAuthorityVerifierAvailable,
   suspensionAuthorityLedgerAvailable, organizationCreationBlock, organizationExecutionBlock,
-  sealOrganization, organizationDecisionDigest, replayedOrganization, organizationEventId,
+  sealOrganization, organizationDecisionDigest, replayedOrganization,
   suspendOrganization, archiveOrganization, reinstateOrganization, validateOrganizationOwner,
   ORGANIZATION_POLICY_VERSION, ORGANIZATION_AUTHORITIES, ORGANIZATION_BASES, OWNER_VERDICTS,
   type OrganizationAuthority, type OrganizationBasis, type OwnerFacts, type OwnerVerdict,
@@ -24,10 +24,11 @@ import {
 import { ORGANIZATION_STATES, canTransitionOrganization, type OrganizationState } from "../lib/identity/state";
 import { ASSIGNABLE_ORG_ROLES, ORG_ROLES } from "../lib/identity/rbac";
 import {
-  organizationSuspendedEvent, organizationArchivedEvent, ownerValidatedEvent,
+  organizationSuspendedEvent, organizationArchivedEvent,
 } from "../lib/identity/events";
 import { validateEvent, assertNoPII, PII_DENYLIST } from "../lib/eventBus/validate";
 import { getContract } from "../lib/eventBus/contracts";
+import { deriveEventId } from "../lib/eventBus/envelope";
 
 let pass = 0, fail = 0; const bad: string[] = [];
 const check = (l: string, c: boolean) => { c ? pass++ : (fail++, bad.push(`FAIL: ${l}`)); };
@@ -80,7 +81,7 @@ check("1e· unknown states denied",
   check("2b· EXHAUSTIVE: nothing ever leaves ARCHIVED", archivedLeaks === 0);
 }
 
-// ── 3. OWNER INVARIANT (§6.4, ICAP-1 A-6) — the primary objective ───────────
+// ── 3. OWNER INVARIANT (§6.4) — the primary objective ───────────────────────
 check("3· a fully resolved owner is valid", evaluateOwnerInvariant(GOOD) === "OWNER_RESOLVED"
   && ownerVerdictIsValid("OWNER_RESOLVED"));
 check("3b· MISSING OWNER: no organization", evaluateOwnerInvariant({ ...GOOD, organizationFound: false }) === "ORGANIZATION_NOT_FOUND");
@@ -117,14 +118,26 @@ check("4e· ownership is a single scalar projection, so two rows cannot both be 
 check("4f· EXHAUSTIVE: no verdict other than OWNER_RESOLVED is ever valid",
   VERDICTS.every((v) => ownerVerdictIsValid(v) === (v === "OWNER_RESOLVED")));
 
-// ── 5. OWNERLESS ACTIVE ORGANIZATION cannot authorize itself (§6.4) ────────
-check("5· an OWNER-authority act requires a valid canonical owner",
-  VERDICTS.filter((v) => v !== "OWNER_RESOLVED").every((v) => {
-    const d = decide({ ownerVerdict: v });
+// ── 5. Every legal transition requires a valid canonical owner (§6.4) ───────
+const LEGAL_DECISIONS = [
+  { from: "ACTIVE", to: "SUSPENDED", authority: "OWNER", basis: "OWNER_REQUESTED", suspendingAuthority: null },
+  { from: "ACTIVE", to: "SUSPENDED", authority: "PLATFORM_COMPLIANCE", basis: "COMPLIANCE_HOLD", suspendingAuthority: null },
+  { from: "ACTIVE", to: "SUSPENDED", authority: "PLATFORM_SECURITY", basis: "SECURITY_HOLD", suspendingAuthority: null },
+  { from: "ACTIVE", to: "ARCHIVED", authority: "OWNER", basis: "OWNER_CLOSED", suspendingAuthority: null },
+  { from: "ACTIVE", to: "ARCHIVED", authority: "PLATFORM_COMPLIANCE", basis: "COMPLIANCE_CLOSED", suspendingAuthority: null },
+  { from: "SUSPENDED", to: "ACTIVE", authority: "OWNER", basis: "OWNER_REQUESTED", suspendingAuthority: "OWNER" },
+  { from: "SUSPENDED", to: "ACTIVE", authority: "PLATFORM_COMPLIANCE", basis: "COMPLIANCE_HOLD", suspendingAuthority: "PLATFORM_COMPLIANCE" },
+  { from: "SUSPENDED", to: "ACTIVE", authority: "PLATFORM_SECURITY", basis: "SECURITY_HOLD", suspendingAuthority: "PLATFORM_SECURITY" },
+  { from: "SUSPENDED", to: "ARCHIVED", authority: "OWNER", basis: "OWNER_CLOSED", suspendingAuthority: null },
+  { from: "SUSPENDED", to: "ARCHIVED", authority: "PLATFORM_COMPLIANCE", basis: "COMPLIANCE_CLOSED", suspendingAuthority: null },
+] as const;
+check("5· every authority class is denied when the canonical owner is unresolved",
+  LEGAL_DECISIONS.every((request) => VERDICTS.filter((v) => v !== "OWNER_RESOLVED").every((ownerVerdict) => {
+    const d = decideOrganizationTransition({ ...request, organizationMatches: true, ownerVerdict });
     return !d.allowed && d.code === "owner_invariant";
-  }));
+  })));
 check("5b· a valid owner may suspend their own Organization", decide().allowed);
-check("5c· an ownerless Organization cannot be archived by OWNER authority",
+check("5c· an unresolved owner cannot be archived under a speculative remediation exception",
   !decide({ to: "ARCHIVED", basis: "OWNER_CLOSED", ownerVerdict: "OWNER_MEMBERSHIP_MISSING" }).allowed);
 
 // ── 6. Authority + basis coherence (§6.5-6.7, §11.2) ───────────────────────
@@ -198,10 +211,18 @@ check("8b· EXHAUSTIVE: organizationMatches=false denies every edge",
   check("9e· the digest is sha256:<64 hex> and PII-scan-safe",
     /^sha256:[0-9a-f]{64}$/.test(organizationDecisionDigest(sealed))
     && assertNoPII({ decisionDigest: organizationDecisionDigest(sealed) }).ok === true);
-  check("9f· the event id is a pure function of organization + commandId",
-    organizationEventId("org1", "cmd-1") === organizationEventId("org1", "cmd-1")
-    && organizationEventId("org1", "cmd-1") !== organizationEventId("org1", "cmd-2")
-    && organizationEventId("org2", "cmd-1") !== organizationEventId("org1", "cmd-1"));
+  const eventInput = {
+    organizationId: "org1", ownerAccountId: "acct-owner", authorityClass: "OWNER",
+    basis: "OWNER_REQUESTED", ownerVerdict: "OWNER_RESOLVED", actorId: "acct-owner",
+    commandId: "cmd-1", effectiveAt: T0, decisionDigest: organizationDecisionDigest(sealed),
+  } as const;
+  const orgOne = organizationSuspendedEvent(eventInput);
+  const orgTwo = organizationSuspendedEvent({ ...eventInput, organizationId: "org2" });
+  check("9f· actual envelope identity is deterministic and Organization-scoped",
+    deriveEventId(orgOne.tenantId, orgOne.type, "identity", orgOne.dedupeKey)
+      === deriveEventId(orgOne.tenantId, orgOne.type, "identity", orgOne.dedupeKey)
+    && deriveEventId(orgOne.tenantId, orgOne.type, "identity", orgOne.dedupeKey)
+      !== deriveEventId(orgOne.tenantId, orgOne.type, "identity", orgTwo.dedupeKey));
   check("9g· replay is decided on canonical equality, not key order",
     replayedOrganization({ a: 1, b: "x" }, { b: "x", a: 1 }).replay);
   check("9h· REPLAY ATTACK: a reused commandId with different inputs is NOT a replay",
@@ -216,17 +237,15 @@ check("8b· EXHAUSTIVE: organizationMatches=false denies every edge",
 {
   const digest = organizationDecisionDigest({ x: 1 });
   const base = {
-    organizationId: "org1", ownerAccountId: "acct-owner", ownerVerdict: "OWNER_RESOLVED",
-    policyVersion: ORGANIZATION_POLICY_VERSION, actorId: "acct-owner", commandId: "cmd-1",
-    effectiveAt: T0, decisionDigest: digest, causationId: "cause-1",
+    organizationId: "org1", ownerAccountId: "acct-owner", ownerVerdict: "OWNER_RESOLVED" as const,
+    actorId: "acct-owner", commandId: "cmd-1", effectiveAt: T0, decisionDigest: digest,
   };
   const samples = [
     organizationSuspendedEvent({ ...base, authorityClass: "OWNER", basis: "OWNER_REQUESTED" }),
     organizationArchivedEvent({ ...base, from: "ACTIVE", authorityClass: "OWNER", basis: "OWNER_CLOSED" }),
-    ownerValidatedEvent({ ...base, ownerOperatorId: "op-owner", organizationState: "ACTIVE", valid: true }),
   ];
-  check("10· all three organization contracts are registered",
-    ["ORGANIZATION_SUSPENDED", "ORGANIZATION_ARCHIVED", "OWNER_VALIDATED"].every((t) => getContract(t, 1) !== null));
+  check("10· both Organization state-change contracts are registered",
+    ["ORGANIZATION_SUSPENDED", "ORGANIZATION_ARCHIVED"].every((t) => getContract(t, 1) !== null));
   check("10b· ORGANIZATION_CREATED remains registered (Sprint 9, unchanged)", getContract("ORGANIZATION_CREATED", 1) !== null);
   check("10c· every organization payload validates against its contract",
     samples.every((s) => validateEvent(s.type, 1, s.payload).ok === true));
@@ -234,18 +253,26 @@ check("8b· EXHAUSTIVE: organizationMatches=false denies every edge",
     samples.every((s) => assertNoPII(s.payload).ok === true));
   check("10e· no payload key is PII-denylisted (including 'reason')",
     samples.every((s) => !Object.keys(s.payload).some((k) => PII_DENYLIST.some((b) => k.toLowerCase().includes(b)))));
-  check("10f· every payload carries the ownerVerdict so an ownership defect is auditable",
-    samples.every((s) => "ownerVerdict" in s.payload));
+  check("10f· every state-change payload records a resolved owner verdict",
+    samples.every((s) => s.payload.ownerVerdict === "OWNER_RESOLVED"));
   check("10g· every payload carries policy version, command id, sealed effectiveAt, digest, causation",
-    samples.every((s) => ["policyVersion", "commandId", "effectiveAt", "decisionDigest", "causationId"].every((k) => k in s.payload)));
-  check("10h· agencyId is the Organization; dedupeKey is the commandId alone",
-    samples.every((s) => s.agencyId === "org1" && s.dedupeKey === "operator-organization:cmd-1"));
+    samples.every((s) => ["policyVersion", "commandId", "effectiveAt", "decisionDigest", "causationId"].every((k) => k in s.payload)
+      && s.payload.policyVersion === ORGANIZATION_POLICY_VERSION && s.payload.causationId === null));
+  check("10h· agencyId is the Organization; dedupeKey is Organization-scoped",
+    samples.every((s) => s.agencyId === "org1" && s.dedupeKey === "operator-organization:org1:cmd-1"));
   check("10i· ARCHIVED cannot be recorded as a non-terminal target",
     validateEvent("ORGANIZATION_ARCHIVED", 1, { ...samples[1].payload, to: "ACTIVE" }).ok === false);
   check("10j· a suspension fact cannot claim an archival basis",
     validateEvent("ORGANIZATION_SUSPENDED", 1, { ...samples[0].payload, basis: "OWNER_CLOSED" }).ok === false);
-  check("10k· an unknown owner verdict is rejected",
-    validateEvent("OWNER_VALIDATED", 1, { ...samples[2].payload, ownerVerdict: "FINE_PROBABLY" }).ok === false);
+  check("10k· an unresolved owner verdict cannot be recorded as a state change",
+    validateEvent("ORGANIZATION_SUSPENDED", 1, { ...samples[0].payload, ownerVerdict: "OWNER_MEMBERSHIP_MISSING" }).ok === false);
+  check("10l· a suspension fact rejects a forged authority/basis pair",
+    validateEvent("ORGANIZATION_SUSPENDED", 1, { ...samples[0].payload, authorityClass: "PLATFORM_SECURITY", basis: "OWNER_REQUESTED" }).ok === false);
+  check("10m· an archival fact rejects Platform Security and a mismatched basis",
+    validateEvent("ORGANIZATION_ARCHIVED", 1, { ...samples[1].payload, authorityClass: "PLATFORM_SECURITY", basis: "COMPLIANCE_CLOSED" }).ok === false);
+  check("10n· the v1 Organization policy and causal shape cannot be forged",
+    validateEvent("ORGANIZATION_SUSPENDED", 1, { ...samples[0].payload, policyVersion: "other@1" }).ok === false
+    && validateEvent("ORGANIZATION_SUSPENDED", 1, { ...samples[0].payload, causationId: "caller-claim" }).ok === false);
 }
 
 // ── 11. Organizations does NOT do Membership / Enrollment / Platform Authority ──
@@ -263,13 +290,15 @@ check("8b· EXHAUSTIVE: organizationMatches=false denies every edge",
   check("11e· grants no organization roles (role appears only in a read filter)",
     !/data:\s*\{[^}]*\brole\b/.test(src) && /where:\s*\{ organizationId, role: "OWNER" \}/.test(src));
   check("11f· creates no schema and runs no migration", !/CREATE TABLE|ALTER TABLE|\$executeRaw|\$queryRaw/i.test(src));
-  check("11g· the owner resolution is ATOMIC (one transaction, cannot straddle a change)",
-    /\$transaction\(async \(tx\)/.test(src));
+  check("11g· the read resolver is not advertised as an atomic lifecycle adapter",
+    !/atomic owner-control resolver/.test(src));
+  check("11h· no unratified ICAP clause is presented as Organizations authority", !/ICAP-1/.test(src));
 }
 
 // ── 12. Capability gates + executed fail-closed ladder ────────────────────
 (async () => {
-  check("12· Slice 3 supplies the owner-control resolver Slice 1 blocked on", ownerControlResolverAvailable() === true);
+  check("12· Slice 1 remains hard-blocked until Organizations supplies a composable owner-control resolver",
+    ownerControlResolverAvailable() === false);
   check("12b· Platform Authority verification is absent, so a platform act fails closed",
     platformAuthorityVerifierAvailable() === false && organizationExecutionBlock("PLATFORM_SECURITY", "ACTIVE", "SUSPENDED") === "forbidden");
   check("12c· §6.6 needs the suspension ledger (Slice 6), so reinstatement fails closed",
@@ -295,6 +324,15 @@ check("8b· EXHAUSTIVE: organizationMatches=false denies every edge",
   check("12h· a null principal returns disabled, never a throw", nullp.ok === false && nullp.code === "disabled");
   check("12i· repeating a command is byte-identical while disabled (deterministic)",
     JSON.stringify(await suspendOrganization(p, cmd)) === JSON.stringify(results[0]));
+  const priorFlag = process.env.OPERATOR_IDENTITY_ENABLED;
+  try {
+    process.env.OPERATOR_IDENTITY_ENABLED = "true";
+    const validation = await validateOrganizationOwner(p, "another-organization");
+    check("12j· a flag-on generic principal cannot probe an unrelated Organization", validation.ok === false && validation.code === "forbidden");
+  } finally {
+    if (priorFlag === undefined) delete process.env.OPERATOR_IDENTITY_ENABLED;
+    else process.env.OPERATOR_IDENTITY_ENABLED = priorFlag;
+  }
 
   // ── 13. No migration, no schema change ─────────────────────────────────
   const schema = readFileSync("prisma/schema.prisma", "utf8");

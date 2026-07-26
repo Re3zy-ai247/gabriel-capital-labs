@@ -1,9 +1,9 @@
 // Operator Identity — ORGANIZATIONS RUNTIME (Implementation Slice 3).
 //
-// Implements Identity Constitution v1.0 §2.4 (Organization), §2.5 (Constitutional
-// Ownership), §6.1-6.7 (states, transitions, creation authority, the ownership invariant,
-// suspension, reactivation, archival), §8.1 gate 5 (tenant match), §11.2 (evidence), as
-// amended by ICAP-1 A-6 (the definition of "owner Membership"). Semantics are FROZEN.
+// Implements the ratified Identity Constitution v1.0 §2.4 (Organization), §2.5
+// (Constitutional Ownership), §6.1-6.7 (states, transitions, creation authority, the
+// ownership invariant, suspension, reactivation, archival), §8.1 gate 5 (tenant match),
+// and §11.2 (evidence). This dormant implementation does not amend those semantics.
 //
 // WHAT ORGANIZATIONS OWNS: organization lifecycle, the current-owner projection, and the
 // ownership invariant. WHAT IT DOES NOT DO: issue Membership, activate operators, issue
@@ -11,17 +11,11 @@
 // READ here to resolve the owner (§6.4 makes the owner's membership part of the
 // invariant); nothing writes one — Membership Runtime is Slice 4.
 //
-// THE CENTRAL DELIVERABLE is the canonical owner resolution. ICAP-1 A-6 fixed the
-// definition that v1.0 used thirteen times and never defined: the owner Membership is the
-// membership whose OperatorIdentity resolves to the Organization's current
-// `ownerAccountId` — identified by RESOLUTION, never by a role value, because §1.8 and
-// §2.5 make `OrgRole.OWNER` derived and non-assignable. A-6 also fixed the failure mode:
-// "An implementation that cannot resolve account -> OperatorIdentity -> Membership
-// deterministically may not enforce §6.4, §7.5, or §6.8, and fails closed."
-//
-// This module supplies the atomic resolver that Slice 1's lifecycle command hard-blocked
-// on, so the operator §4.7 owner guard now consumes real Organizations truth instead of a
-// blanket denial.
+// The canonical read resolves the owner Membership from the Organization's current
+// `ownerAccountId` through its OperatorIdentity. It never treats an `OrgRole.OWNER` row as
+// ownership: §1.8 and §2.5 make that role derived and non-assignable. The read is not an
+// atomic authorization adapter; lifecycle execution remains hard-blocked until Organizations
+// can supply one in the same transaction boundary as the guarded mutation.
 import { prisma } from "@/lib/prisma";
 import { canonicalJson, decisionDigest } from "./canonical";
 import { operatorIdentityEnabled } from "./flags";
@@ -44,7 +38,7 @@ export const ORGANIZATION_BASES = [
 ] as const;
 export type OrganizationBasis = (typeof ORGANIZATION_BASES)[number];
 
-// ── Owner resolution (§2.5, §6.4, ICAP-1 A-6) ────────────────────────────────
+// ── Owner resolution (§2.5, §6.4) ────────────────────────────────────────────
 // Three hops, each of which can fail. Every failure is a DISTINCT verdict so a denial
 // names the real defect instead of collapsing to "no owner".
 export const OWNER_VERDICTS = [
@@ -74,6 +68,7 @@ export interface OwnerFacts {
 export interface OwnerResolution {
   readonly verdict: OwnerVerdict;
   readonly organizationId: string;
+  readonly organizationState: OrganizationState | null;
   readonly ownerAccountId: string | null;
   readonly ownerOperatorId: string | null;
   /** True only for OWNER_RESOLVED. Anything else grants nothing (§1.11). */
@@ -105,9 +100,9 @@ export function ownerVerdictIsValid(v: OwnerVerdict): boolean {
 }
 
 /**
- * The ATOMIC owner resolution Slice 1 hard-blocked on. All three hops plus the rival-claim
- * scan run inside ONE transaction, so the resolution cannot straddle a concurrent
- * ownership or membership change and report a state that never simultaneously existed.
+ * Best-effort read of the §6.4 facts. The transaction keeps the related reads on one client,
+ * but no isolation/locking contract or mutation coupling exists yet. It must not authorize a
+ * state change or satisfy Identity's §4.7 atomic owner-control requirement.
  */
 export async function resolveOrganizationOwner(organizationId: string): Promise<OwnerResolution> {
   const facts = await prisma.$transaction(async (tx) => {
@@ -150,6 +145,7 @@ export async function resolveOrganizationOwner(organizationId: string): Promise<
   const verdict = evaluateOwnerInvariant(facts);
   return {
     verdict, organizationId,
+    organizationState: facts.organizationState,
     ownerAccountId: facts.ownerAccountId,
     ownerOperatorId: facts.ownerOperatorId,
     valid: ownerVerdictIsValid(verdict),
@@ -158,21 +154,11 @@ export async function resolveOrganizationOwner(organizationId: string): Promise<
 
 // ── Capability the operator lifecycle consumes (§4.7) ────────────────────────
 
-// Slice 3 supplies the atomic resolver, so the operator §4.7 guard is no longer a blanket
-// denial. It now consumes real Organizations truth.
+// The read above is deliberately not advertised as the lifecycle's atomic owner-control
+// resolver. Returning true would let Identity suspend/deactivate an operator using facts
+// outside its state/evidence transaction.
 export function ownerControlResolverAvailable(): boolean {
-  return true;
-}
-
-/**
- * §4.7 input: does this account currently own an ACTIVE or SUSPENDED Organization?
- * Owned by Organizations, not by the Identity repository — ownership is Organizations'
- * fact to state (§17.3).
- */
-export function countOwnedActiveOrSuspendedOrganizations(accountId: string): Promise<number> {
-  return prisma.organization.count({
-    where: { ownerAccountId: accountId, state: { in: ["ACTIVE", "SUSPENDED"] } },
-  });
+  return false;
 }
 
 // ── Lifecycle policy (§6.2, §6.5-6.7) ────────────────────────────────────────
@@ -241,9 +227,10 @@ export function decideOrganizationTransition(req: OrganizationDecisionRequest): 
   const isArchival = req.to === "ARCHIVED";
   if (isArchival !== ARCHIVAL_BASES.includes(req.basis)) return denyO("basis_incoherent");
 
-  // §6.4 — an OWNER-authority act requires a valid canonical owner. An Organization with
-  // no resolvable owner cannot authorize its own lifecycle change.
-  if (req.authority === "OWNER" && !ownerVerdictIsValid(req.ownerVerdict)) return denyO("owner_invariant");
+  // §6.4 applies to every legal Organization transition. No authority class may move an
+  // Organization while its canonical owner chain is unresolved; inventing a remediation
+  // exception would be an unratified custody rule.
+  if (!ownerVerdictIsValid(req.ownerVerdict)) return denyO("owner_invariant");
 
   // §6.6 — reactivation requires the SAME authority class that imposed the suspension, or
   // a higher separately ratified class. Determining the imposing class requires the
@@ -295,10 +282,6 @@ export function organizationExecutionBlock(
 
 // ── Evidence ─────────────────────────────────────────────────────────────────
 
-export function organizationEventId(organizationId: string, commandId: string): string {
-  return decisionDigest({ organizationId, commandId }).replace("sha256:", "evt_").slice(0, 36);
-}
-
 /** The sealed decision record every organization command digests (§11.2, §10.4). */
 export function sealOrganization(input: {
   organizationId: string; ownerAccountId: string | null; from: OrganizationState | null;
@@ -337,8 +320,6 @@ export interface OrganizationCommand {
   readonly commandId: string;
   /** SEALED input (§11.2) — never read from the clock inside this module. */
   readonly effectiveAt: number;
-  readonly correlationId?: string;
-  readonly causationId?: string;
 }
 
 function preambleO(principal: IdentityPrincipal | null, cmd: OrganizationCommand): OrganizationResult | null {
@@ -356,9 +337,9 @@ function preambleO(principal: IdentityPrincipal | null, cmd: OrganizationCommand
 }
 
 /**
- * Validate the §6.4 ownership invariant for one Organization and report the verdict.
- * READ-ONLY: it changes nothing, issues nothing, and grants nothing. This is the command
- * behind the OwnerValidated fact.
+ * No public or generic-principal owner-validation command exists until Organizations has a
+ * scoped authorization adapter. The read resolver above remains available to its owning
+ * domain, but arbitrary callers must not probe Organization existence or owner defects.
  */
 export async function validateOrganizationOwner(
   principal: IdentityPrincipal | null, organizationId: string,
@@ -366,14 +347,7 @@ export async function validateOrganizationOwner(
   if (!operatorIdentityEnabled()) return failO("disabled", "operator identity disabled");
   if (!principal || principal.disabled) return failO("forbidden", "no principal");
   if (typeof organizationId !== "string" || !organizationId.trim()) return failO("invalid", "invalid organizationId");
-
-  const resolution = await resolveOrganizationOwner(organizationId);
-  if (resolution.verdict === "ORGANIZATION_NOT_FOUND") return failO("not_found", "organization not found");
-  return {
-    ok: true, organizationId,
-    state: "ACTIVE", // the caller reads `verdict`; state is reported by the read path
-    verdict: resolution.verdict,
-  };
+  return failO("forbidden", "owner validation requires Organizations authorization");
 }
 
 export async function suspendOrganization(

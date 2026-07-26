@@ -102,9 +102,9 @@ export function platformAuthorityVerifierAvailable(): boolean {
   return false;
 }
 
-// Slice 3: Organizations now supplies the atomic owner-control resolver, so §4.7 is
-// enforced against real ownership truth instead of a blanket denial. Re-exported here so
-// every pre-existing importer is unchanged (§17 — one owner for the capability).
+// Organizations owns the future atomic owner-control adapter. Its current read resolver is
+// not transaction-composable with this command, so §4.7 remains hard-fail-closed. Re-exported
+// here so every pre-existing importer continues to use the Organizations-owned capability.
 export { ownerControlResolverAvailable };
 
 // Conservative execution requirement for irreversible transitions. It grants no authority
@@ -184,7 +184,7 @@ export function decideTransition(req: TransitionRequest): TransitionDecision {
 // Enrollment and Organizations share ONE implementation (§17). Re-exported here so every
 // pre-existing importer is unchanged.
 import { canonicalJson, decisionDigest } from "./canonical";
-import { countOwnedActiveOrSuspendedOrganizations, ownerControlResolverAvailable } from "./organizations";
+import { ownerControlResolverAvailable } from "./organizations";
 export { canonicalJson, decisionDigest };
 
 // ── The command ──────────────────────────────────────────────────────────────
@@ -355,19 +355,12 @@ export async function transitionOperator(
   const prior = await existingReplay();
   if (prior) return prior;
 
-  // §4.7 owner protection. Organizations owns this fact (§17.3); Identity consumes it.
-  // A failed lookup denies rather than assuming the operator owns nothing (§1.11).
-  let ownedOrganizations: number;
-  try {
-    ownedOrganizations = await countOwnedActiveOrSuspendedOrganizations(operator.accountId);
-  } catch {
-    return fail("owner_invariant", "owner-control resolution failed");
-  }
-
   const decision = decideTransition({
     from, to: cmd.to, authority: cmd.authority, basis: cmd.basis,
     actorIsSubject, stepUp: null,
-    ownsActiveOrSuspendedOrganization: ownedOrganizations > 0,
+    // Execution is hard-blocked above until Organizations supplies an atomic resolver that
+    // can be evaluated in this mutation/evidence transaction.
+    ownsActiveOrSuspendedOrganization: false,
   });
   if (!decision.allowed) return fail(decision.code, `transition denied: ${decision.code}`);
 
