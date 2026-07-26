@@ -149,6 +149,14 @@ export interface ActualTable {
   name: string;
   relationKind: string;
   persistence: string;
+  isPartition: boolean;
+  inheritanceParentCount: number;
+  inheritanceChildCount: number;
+  rowSecurityEnabled: boolean;
+  forceRowSecurity: boolean;
+  policyCount: number;
+  ruleCount: number;
+  triggerCount: number;
   ownerUsable: boolean | null;
 }
 
@@ -1026,11 +1034,33 @@ function compareMigration(
     mark(
       tablePath,
       actual
-        ? { kind: actual.relationKind, persistence: actual.persistence }
+        ? {
+            kind: actual.relationKind,
+            persistence: actual.persistence,
+            isPartition: actual.isPartition,
+            inheritanceParentCount: actual.inheritanceParentCount,
+            inheritanceChildCount: actual.inheritanceChildCount,
+            rowSecurityEnabled: actual.rowSecurityEnabled,
+            forceRowSecurity: actual.forceRowSecurity,
+            policyCount: actual.policyCount,
+            ruleCount: actual.ruleCount,
+            triggerCount: actual.triggerCount,
+          }
         : typeCollision
           ? { typeNamespaceCollision: typeCollision.kind }
           : undefined,
-      { kind: "regular", persistence: "permanent" },
+      {
+        kind: "regular",
+        persistence: "permanent",
+        isPartition: false,
+        inheritanceParentCount: 0,
+        inheritanceChildCount: 0,
+        rowSecurityEnabled: false,
+        forceRowSecurity: false,
+        policyCount: 0,
+        ruleCount: 0,
+        triggerCount: 0,
+      },
     );
 
     for (const column of expected.columns) {

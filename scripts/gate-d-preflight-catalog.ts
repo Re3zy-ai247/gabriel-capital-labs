@@ -407,6 +407,7 @@ export async function inspectGateDDatabase(
               SELECT count(*)::integer
               FROM pg_catalog.pg_trigger AS trigger_meta
               WHERE trigger_meta.tgrelid = relation.oid
+                AND NOT trigger_meta.tgisinternal
             ) AS trigger_count
           FROM pg_catalog.pg_class AS relation
           JOIN pg_catalog.pg_namespace AS namespace ON namespace.oid = relation.relnamespace
@@ -682,6 +683,14 @@ export async function inspectGateDDatabase(
       name: row.table_name,
       relationKind: row.relation_kind,
       persistence: row.persistence,
+      isPartition: row.is_partition,
+      inheritanceParentCount: row.inheritance_parent_count,
+      inheritanceChildCount: row.inheritance_child_count,
+      rowSecurityEnabled: row.row_security_enabled,
+      forceRowSecurity: row.force_row_security,
+      policyCount: row.policy_count,
+      ruleCount: row.rule_count,
+      triggerCount: row.trigger_count,
       ownerUsable: row.owner_usable,
     }));
     const columns: ActualColumn[] = columnRows.map((row) => ({

@@ -2,7 +2,7 @@
 
 **Status:** HARDENED FOR REVIEW · NOT EXECUTED · GATE D NOT AUTHORIZED
 **Repository baseline:** `main` / `origin/main` at `c28188fbd8a557c556ea89f124b7293cb769b5a3` on 2026-07-25
-**Production observation:** `x-cv-release: c28188fbd8a5` on 2026-07-25; reverify at execution time
+**Recorded release observation (not independently reverified by this review):** `x-cv-release: c28188fbd8a5` on 2026-07-25; reverify at execution time
 **Production database migration state:** **UNKNOWN** until the owner authorizes and reviews the read-only preflight below
 
 This runbook is an execution package, not execution approval. It applies the six committed additive migrations while all platform capabilities remain dormant. It does not activate Identity, Reputation, Arena, Network, or Event Fabric.
@@ -42,7 +42,7 @@ The parser recognizes only the SQL forms present in this chain: enum creation, t
 
 - object schema;
 - enum label order and values;
-- table kind;
+- table kind, partition/inheritance state, and absence of RLS/policies/rules/user-defined triggers;
 - exact column set, types, nullability, and defaults;
 - primary keys and SQL unique/check constraints;
 - index table, uniqueness, method, key order, direction/null ordering, default opclasses/collations, included columns, predicate, readiness/validity, exclusion, and null-distinct behavior;

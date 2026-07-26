@@ -105,6 +105,14 @@ function fixture(
         name: item.name,
         relationKind: "regular",
         persistence: "permanent",
+        isPartition: false,
+        inheritanceParentCount: 0,
+        inheritanceChildCount: 0,
+        rowSecurityEnabled: false,
+        forceRowSecurity: false,
+        policyCount: 0,
+        ruleCount: 0,
+        triggerCount: 0,
         ownerUsable: true,
       })),
     );
@@ -632,6 +640,7 @@ check("manifest records zero SQL unique constraints/checks/extensions", coverage
   check("catalog implementation uses REPEATABLE READ", /TransactionIsolationLevel\.RepeatableRead/.test(catalogSource));
   check("catalog implementation excludes concurrent Prisma migration via its advisory key", /pg_try_advisory_xact_lock\(72707369\)/.test(catalogSource));
   check("catalog implementation pins the approved direct Prisma endpoint", /db\.prisma\.io/.test(catalogSource) && /sslmode/.test(catalogSource));
+  check("catalog excludes internal FK triggers from table equivalence", /AND NOT trigger_meta\.tgisinternal/.test(catalogSource));
   check("catalog implementation contains no row/schema mutation SQL", !/\b(?:INSERT\s+INTO|UPDATE\s+[A-Za-z"]|DELETE\s+FROM|CREATE\s+(?:TABLE|TYPE|INDEX|EXTENSION)|ALTER\s+TABLE|DROP\s+|TRUNCATE\s+|GRANT\s+|REVOKE\s+)/i.test(catalogSource));
 }
 {
@@ -647,6 +656,14 @@ check("manifest records zero SQL unique constraints/checks/extensions", coverage
     name: "XpAward",
     relationKind: "view",
     persistence: "permanent",
+    isPartition: false,
+    inheritanceParentCount: 0,
+    inheritanceChildCount: 0,
+    rowSecurityEnabled: false,
+    forceRowSecurity: false,
+    policyCount: 0,
+    ruleCount: 0,
+    triggerCount: 0,
     ownerUsable: false,
   });
   const report = reportFor(snapshot);
@@ -697,6 +714,35 @@ check("manifest records zero SQL unique constraints/checks/extensions", coverage
   snapshot.tables.find((item) => item.name === "XpAward")!.persistence = "unlogged";
   const report = reportFor(snapshot);
   check("unlogged table mismatch -> DRIFTED", state(report, reputation) === "DRIFTED");
+}
+{
+  type UnsafeTableMetadata = {
+    isPartition: boolean;
+    inheritanceParentCount: number;
+    inheritanceChildCount: number;
+    rowSecurityEnabled: boolean;
+    forceRowSecurity: boolean;
+    policyCount: number;
+    ruleCount: number;
+    triggerCount: number;
+  };
+  for (const [label, mutate] of [
+    ["partition leaf", (table: UnsafeTableMetadata) => { table.isPartition = true; }],
+    ["inherited child", (table: UnsafeTableMetadata) => { table.inheritanceParentCount = 1; }],
+    ["inheritance parent", (table: UnsafeTableMetadata) => { table.inheritanceChildCount = 1; }],
+    ["row security", (table: UnsafeTableMetadata) => { table.rowSecurityEnabled = true; }],
+    ["force row security", (table: UnsafeTableMetadata) => { table.forceRowSecurity = true; }],
+    ["policy", (table: UnsafeTableMetadata) => { table.policyCount = 1; }],
+    ["rule", (table: UnsafeTableMetadata) => { table.ruleCount = 1; }],
+    ["trigger", (table: UnsafeTableMetadata) => { table.triggerCount = 1; }],
+  ] as const) {
+    const snapshot = fixture();
+    snapshot.historyRows = snapshot.historyRows.filter((item) => item.migrationName !== reputation);
+    const table = snapshot.tables.find((item) => item.name === "XpAward") as typeof snapshot.tables[number] & UnsafeTableMetadata;
+    mutate(table);
+    const report = reportFor(snapshot);
+    check(`unsafe Gate D table ${label} -> DRIFTED`, state(report, reputation) === "DRIFTED");
+  }
 }
 {
   const snapshot = fixture();
