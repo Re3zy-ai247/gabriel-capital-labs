@@ -13,11 +13,21 @@ import { authorizePublish } from "../lib/eventBus/publish";
 import { deriveEventId, systemIdentity, type PublishIdentity } from "../lib/eventBus/envelope";
 import {
   IDENTITY_EVENT_TYPES, recordIdentityEvent,
-  operatorRegisteredEvent, operatorStateChangedEvent, organizationCreatedEvent,
+  operatorRegisteredEvent, buildOperatorStateChangedEvent, organizationCreatedEvent,
   membershipAddedEvent, membershipRoleChangedEvent, membershipRemovedEvent,
+  type EvidenceInput,
 } from "../lib/identity/events";
 import { OPERATOR_STATES } from "../lib/identity/state";
 import { ORG_ROLES } from "../lib/identity/rbac";
+import { OPERATOR_LIFECYCLE_POLICY_VERSION, decisionDigest } from "../lib/identity/lifecycle";
+
+// A canonical Slice 1 evidence record (§11.2 minimum envelope).
+const EV_SEALED = {
+  policyVersion: OPERATOR_LIFECYCLE_POLICY_VERSION, operatorId: "op1", from: "ACTIVE" as const,
+  to: "SUSPENDED" as const, authorityClass: "SELF", basis: "SUBJECT_SELF_SERVICE_EXIT",
+  actorId: "act", commandId: "cmd-0", effectiveAt: 1_700_000_000_000, stepUp: false,
+};
+const EV: EvidenceInput = { ...EV_SEALED, decisionDigest: decisionDigest(EV_SEALED), causationId: null };
 import { ORGANIZATION_KINDS } from "../lib/identity/validation";
 
 let pass = 0, fail = 0;
@@ -50,17 +60,18 @@ check("ORGANIZATION_CREATED contract kind === every schema OrganizationKind", [.
 // No identity payload carries a PII-named key (the guard denylists reason/name/etc.).
 {
   const samples = [
-    operatorRegisteredEvent({ id: "op1", accountId: "a1" }, "act"),
-    operatorStateChangedEvent({ id: "op1", accountId: "a1" }, "ACTIVE", "SUSPENDED", "act", 123),
-    organizationCreatedEvent({ id: "o1", ownerAccountId: "a1", kind: "AGENCY" }, "act"),
-    membershipAddedEvent({ organizationId: "o1", operatorId: "op1", role: "MEMBER" }, "a1", "act"),
-    membershipRoleChangedEvent({ organizationId: "o1", operatorId: "op1" }, "MEMBER", "ADMIN", "a1", "act", 123),
-    membershipRemovedEvent({ organizationId: "o1", operatorId: "op1" }, "a1", "act"),
+    { ver: 1, e: operatorRegisteredEvent({ id: "op1", accountId: "a1" }, "act") },
+    // Slice 1: OPERATOR_STATE_CHANGED is now the versioned evidence contract (@2).
+    { ver: 2, e: buildOperatorStateChangedEvent({ id: "op1", accountId: "a1" }, EV, "act") },
+    { ver: 1, e: organizationCreatedEvent({ id: "o1", ownerAccountId: "a1", kind: "AGENCY" }, "act") },
+    { ver: 1, e: membershipAddedEvent({ organizationId: "o1", operatorId: "op1", role: "MEMBER" }, "a1", "act") },
+    { ver: 1, e: membershipRoleChangedEvent({ organizationId: "o1", operatorId: "op1" }, "MEMBER", "ADMIN", "a1", "act", 123) },
+    { ver: 1, e: membershipRemovedEvent({ organizationId: "o1", operatorId: "op1" }, "a1", "act") },
   ];
   const piiKey = /(email|ssn|name|phone|address|reason|body|token|secret|password)/i;
   check("every builder payload passes validate (refs-only, contract-clean)",
-    samples.every((s) => validateEvent(s.type, 1, s.payload).ok === true));
-  check("no builder payload has a PII-named key", samples.every((s) => !Object.keys(s.payload).some((k) => piiKey.test(k))));
+    samples.every((s) => validateEvent(s.e.type, s.ver, s.e.payload).ok === true));
+  check("no builder payload has a PII-named key", samples.every((s) => !Object.keys(s.e.payload).some((k) => piiKey.test(k))));
 }
 
 // ── Builders: correct subject tenant, actor, dedupeKey ───────────────────────
@@ -70,9 +81,13 @@ check("ORGANIZATION_CREATED contract kind === every schema OrganizationKind", [.
   check("register: actor = principal", e.actorId === "admin1");
   check("register: dedupeKey stable", e.dedupeKey === "operator:op9:registered");
 
-  const s1 = operatorStateChangedEvent({ id: "op9", accountId: "acc9" }, "ACTIVE", "SUSPENDED", "admin1", 111);
-  const s2 = operatorStateChangedEvent({ id: "op9", accountId: "acc9" }, "ACTIVE", "SUSPENDED", "admin1", 222);
-  check("state-change dedupeKey includes the seq (oscillation not collapsed)", s1.dedupeKey !== s2.dedupeKey);
+  // Slice 1: the dedupeKey is the commandId alone, so the event stream is the
+  // idempotency ledger — distinct commands never collapse, a replay always collides.
+  const s1 = buildOperatorStateChangedEvent({ id: "op9", accountId: "acc9" }, { ...EV, commandId: "cmd-1" }, "admin1");
+  const s2 = buildOperatorStateChangedEvent({ id: "op9", accountId: "acc9" }, { ...EV, commandId: "cmd-2" }, "admin1");
+  check("distinct commandIds produce distinct dedupeKeys (oscillation not collapsed)", s1.dedupeKey !== s2.dedupeKey);
+  check("the same commandId replays to the same dedupeKey",
+    buildOperatorStateChangedEvent({ id: "op9", accountId: "acc9" }, { ...EV, commandId: "cmd-1" }, "admin1").dedupeKey === s1.dedupeKey);
 
   const org = organizationCreatedEvent({ id: "o1", ownerAccountId: "acc9", kind: "AGENCY" }, "acc9");
   check("org-created: tenant = owner account", org.tenantId === "acc9");
