@@ -134,8 +134,13 @@ check("6d· EXHAUSTIVE: every allowed decision has a basis belonging to its auth
   })))));
 check("6e· Platform Authority verifier is absent, so an enum input cannot grant authority",
   platformAuthorityVerifierAvailable() === false && lifecycleExecutionBlock("PLATFORM_IDENTITY_REVIEW", "ACTIVE") === "forbidden");
-check("6f· suspension is hard-denied until Organizations supplies an atomic owner-control resolver",
-  ownerControlResolverAvailable() === false && lifecycleExecutionBlock("SELF", "SUSPENDED") === "owner_invariant");
+// Slice 3: Organizations now supplies the atomic owner-control resolver, so §4.7 is
+// enforced against real ownership truth rather than a blanket capability denial.
+check("6f· Organizations supplies the owner-control resolver, so suspension is no longer capability-blocked",
+  ownerControlResolverAvailable() === true && lifecycleExecutionBlock("SELF", "SUSPENDED") === null);
+check("6f2· §4.7 is still enforced — an owner of an ACTIVE/SUSPENDED Org cannot be suspended",
+  (() => { const d = decide("ACTIVE", "SUSPENDED", "SELF", "SUBJECT_SELF_SERVICE_EXIT", { ownsOrg: true });
+    return !d.allowed && d.code === "owner_invariant"; })());
 check("6g· deactivation is hard-denied until Authentication supplies a verifier",
   lifecycleExecutionBlock("SELF", "DEACTIVATED") === "step_up_required");
 
@@ -267,7 +272,10 @@ check("8e· NaN/Infinity rejected", (() => {
       { operatorId: "op1", to: "DEACTIVATED", authority: "SELF", basis: "SUBJECT_CONFIRMED_DEACTIVATION", commandId: "d1", effectiveAt: 1 },
     );
     check("11f· flag-on caller cannot forge Platform Authority", platform.ok === false && platform.code === "forbidden");
-    check("11g· flag-on suspension fails before an atomic owner-control resolver exists", selfSuspension.ok === false && selfSuspension.code === "owner_invariant");
+    // Slice 3: suspension now passes the capability gate and reaches data access, which
+    // has no database in this DB-free suite — proving the gate opened, not the invariant.
+    check("11g· flag-on suspension now reaches data access instead of a capability denial",
+      selfSuspension.ok === false && selfSuspension.code === "conflict");
     check("11h· flag-on deactivation fails before an Authentication verifier exists", deactivation.ok === false && deactivation.code === "step_up_required");
   } finally {
     if (priorFlag === undefined) delete process.env.OPERATOR_IDENTITY_ENABLED;
