@@ -117,6 +117,65 @@ export const CONTRACTS: Readonly<Record<string, EventContract>> = {
     type: "OPERATOR_REGISTERED", version: 1, defaultSource: "identity", scope: "platform",
     schema: z.object({ operatorId: z.string().min(1), accountId: z.string().min(1) }).strict(),
   },
+  // ── Organizations Runtime (Slice 3) — §6 lifecycle + §6.4 ownership invariant.
+  // Refs-only. `basis` (not `reason*`) because the PII guard denylists keys containing
+  // "reason". `ownerVerdict` records WHICH hop of the account -> OperatorIdentity ->
+  // Membership resolution held or failed (ICAP-1 A-6), so an ownership defect is auditable
+  // without re-deriving it. These facts carry no authority: they record a decision that a
+  // bounded authority already made, they do not confer one.
+  "ORGANIZATION_SUSPENDED@1": {
+    type: "ORGANIZATION_SUSPENDED", version: 1, defaultSource: "identity", scope: "platform",
+    schema: z.object({
+      organizationId: z.string().min(1),
+      ownerAccountId: z.string().min(1).nullable(),
+      from: z.literal("ACTIVE"),
+      to: z.literal("SUSPENDED"),
+      authorityClass: z.enum(["OWNER", "PLATFORM_COMPLIANCE", "PLATFORM_SECURITY"]),
+      basis: z.enum(["OWNER_REQUESTED", "COMPLIANCE_HOLD", "SECURITY_HOLD"]),
+      ownerVerdict: z.enum(["OWNER_RESOLVED", "ORGANIZATION_NOT_FOUND", "OWNER_ACCOUNT_MISSING", "OWNER_OPERATOR_MISSING", "OWNER_OPERATOR_NOT_ACTIVE", "OWNER_MEMBERSHIP_MISSING", "OWNER_MEMBERSHIP_NOT_ACTIVE", "RIVAL_OWNER_CLAIM"]),
+      policyVersion: z.string().min(1).max(64),
+      actorId: z.string().min(1),
+      commandId: z.string().min(1).max(200),
+      effectiveAt: z.number().int().positive(),
+      decisionDigest: z.string().regex(/^sha256:[0-9a-f]{64}$/),
+      causationId: z.string().min(1).max(200).nullable(),
+    }).strict(),
+  },
+  "ORGANIZATION_ARCHIVED@1": {
+    type: "ORGANIZATION_ARCHIVED", version: 1, defaultSource: "identity", scope: "platform",
+    schema: z.object({
+      organizationId: z.string().min(1),
+      ownerAccountId: z.string().min(1).nullable(),
+      from: z.enum(["ACTIVE", "SUSPENDED"]),
+      to: z.literal("ARCHIVED"),
+      authorityClass: z.enum(["OWNER", "PLATFORM_COMPLIANCE", "PLATFORM_SECURITY"]),
+      basis: z.enum(["OWNER_CLOSED", "COMPLIANCE_CLOSED"]),
+      ownerVerdict: z.enum(["OWNER_RESOLVED", "ORGANIZATION_NOT_FOUND", "OWNER_ACCOUNT_MISSING", "OWNER_OPERATOR_MISSING", "OWNER_OPERATOR_NOT_ACTIVE", "OWNER_MEMBERSHIP_MISSING", "OWNER_MEMBERSHIP_NOT_ACTIVE", "RIVAL_OWNER_CLAIM"]),
+      policyVersion: z.string().min(1).max(64),
+      actorId: z.string().min(1),
+      commandId: z.string().min(1).max(200),
+      effectiveAt: z.number().int().positive(),
+      decisionDigest: z.string().regex(/^sha256:[0-9a-f]{64}$/),
+      causationId: z.string().min(1).max(200).nullable(),
+    }).strict(),
+  },
+  "OWNER_VALIDATED@1": {
+    type: "OWNER_VALIDATED", version: 1, defaultSource: "identity", scope: "platform",
+    schema: z.object({
+      organizationId: z.string().min(1),
+      ownerAccountId: z.string().min(1).nullable(),
+      ownerOperatorId: z.string().min(1).nullable(),
+      organizationState: z.enum(["ACTIVE", "SUSPENDED", "ARCHIVED"]),
+      ownerVerdict: z.enum(["OWNER_RESOLVED", "ORGANIZATION_NOT_FOUND", "OWNER_ACCOUNT_MISSING", "OWNER_OPERATOR_MISSING", "OWNER_OPERATOR_NOT_ACTIVE", "OWNER_MEMBERSHIP_MISSING", "OWNER_MEMBERSHIP_NOT_ACTIVE", "RIVAL_OWNER_CLAIM"]),
+      valid: z.boolean(),
+      policyVersion: z.string().min(1).max(64),
+      actorId: z.string().min(1),
+      commandId: z.string().min(1).max(200),
+      effectiveAt: z.number().int().positive(),
+      decisionDigest: z.string().regex(/^sha256:[0-9a-f]{64}$/),
+      causationId: z.string().min(1).max(200).nullable(),
+    }).strict(),
+  },
   "OPERATOR_STATE_CHANGED@1": {
     type: "OPERATOR_STATE_CHANGED", version: 1, defaultSource: "identity", scope: "platform",
     schema: z.object({

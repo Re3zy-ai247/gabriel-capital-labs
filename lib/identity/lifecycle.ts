@@ -102,9 +102,10 @@ export function platformAuthorityVerifierAvailable(): boolean {
   return false;
 }
 
-export function ownerControlResolverAvailable(): boolean {
-  return false;
-}
+// Slice 3: Organizations now supplies the atomic owner-control resolver, so §4.7 is
+// enforced against real ownership truth instead of a blanket denial. Re-exported here so
+// every pre-existing importer is unchanged (§17 — one owner for the capability).
+export { ownerControlResolverAvailable };
 
 // Conservative execution requirement for irreversible transitions. It grants no authority
 // and remains a temporary fail-closed guard unless separately ratified for activation.
@@ -179,35 +180,12 @@ export function decideTransition(req: TransitionRequest): TransitionDecision {
   return { allowed: true, stepUpRequired };
 }
 
-// ── Canonical serialization + decision digest ────────────────────────────────
-// §10.4 requires byte-identical canonical evidence on replay. `canonicalJson` fixes key
-// order and rejects anything non-deterministic, so the digest is a stable function of the
-// sealed inputs alone.
-export function canonicalJson(value: unknown): string {
-  if (value === null) return "null";
-  const t = typeof value;
-  if (t === "string") return JSON.stringify(value);
-  if (t === "boolean") return String(value);
-  if (t === "number") {
-    if (!Number.isFinite(value as number)) throw new Error("non-finite number is not canonical");
-    if (!Number.isInteger(value as number)) throw new Error("non-integer number is not canonical");
-    return String(value);
-  }
-  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
-  if (t === "object") {
-    const rec = value as Record<string, unknown>;
-    const keys = Object.keys(rec).filter((k) => rec[k] !== undefined).sort();
-    return `{${keys.map((k) => `${JSON.stringify(k)}:${canonicalJson(rec[k])}`).join(",")}}`;
-  }
-  throw new Error(`value of type ${t} is not canonical`);
-}
-
-// `sha256:` prefixed so the digest can never begin with a digit run. The Event Fabric PII
-// value scan rejects a bare 13-19 digit run; the prefix makes a false positive
-// impossible rather than merely improbable, keeping this path deterministic.
-export function decisionDigest(sealed: Record<string, unknown>): string {
-  return `sha256:${createHash("sha256").update(canonicalJson(sealed)).digest("hex")}`;
-}
+// Canonical serialization + decision digest now live in ./canonical so Identity,
+// Enrollment and Organizations share ONE implementation (§17). Re-exported here so every
+// pre-existing importer is unchanged.
+import { canonicalJson, decisionDigest } from "./canonical";
+import { countOwnedActiveOrSuspendedOrganizations, ownerControlResolverAvailable } from "./organizations";
+export { canonicalJson, decisionDigest };
 
 // ── The command ──────────────────────────────────────────────────────────────
 
@@ -377,11 +355,19 @@ export async function transitionOperator(
   const prior = await existingReplay();
   if (prior) return prior;
 
+  // §4.7 owner protection. Organizations owns this fact (§17.3); Identity consumes it.
+  // A failed lookup denies rather than assuming the operator owns nothing (§1.11).
+  let ownedOrganizations: number;
+  try {
+    ownedOrganizations = await countOwnedActiveOrSuspendedOrganizations(operator.accountId);
+  } catch {
+    return fail("owner_invariant", "owner-control resolution failed");
+  }
+
   const decision = decideTransition({
     from, to: cmd.to, authority: cmd.authority, basis: cmd.basis,
     actorIsSubject, stepUp: null,
-    // Execution is hard-blocked above until Organizations supplies an atomic resolver.
-    ownsActiveOrSuspendedOrganization: false,
+    ownsActiveOrSuspendedOrganization: ownedOrganizations > 0,
   });
   if (!decision.allowed) return fail(decision.code, `transition denied: ${decision.code}`);
 

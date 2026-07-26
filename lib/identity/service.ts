@@ -18,6 +18,7 @@ import { canTransitionMembership } from "./state";
 import { type OrgRole } from "./rbac";
 import { createOrganizationInput, addMembershipInput, changeRoleInput, slugSchema, slugify } from "./validation";
 import * as repo from "./repository";
+import { organizationCreationBlock } from "./organizations";
 import {
   recordIdentityEvent,
   operatorRegisteredEvent, organizationCreatedEvent,
@@ -71,6 +72,15 @@ export async function createOrganization(
   const g = gate(principal); if (!g.ok) return g;
   const parsed = createOrganizationInput.safeParse(input);
   if (!parsed.success) return fail("invalid", parsed.error.issues[0]?.message ?? "invalid input");
+
+  // §5.3 — creation must ATOMICALLY establish the Organization, the owner projection, the
+  // owner's ACTIVE Membership, and evidence. Membership issuance is Slice 4, so a
+  // compliant creation is not yet constructible. §5.3 is explicit that the current
+  // membership-less, non-transactional creation "is noncompliant ... That is an activation
+  // blocker, not authority to weaken this clause" — so this fails closed rather than
+  // producing an Organization that violates §6.4 the instant it exists.
+  const creationBlock = organizationCreationBlock();
+  if (creationBlock) return fail("conflict", `organization creation unavailable: ${creationBlock}`);
 
   const candidate = parsed.data.slug ?? slugify(parsed.data.name);
   const slug = slugSchema.safeParse(candidate);
