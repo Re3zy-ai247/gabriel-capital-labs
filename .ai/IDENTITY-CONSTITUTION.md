@@ -1,6 +1,8 @@
 > **PROPOSED — NOT RATIFIED**
 >
 > This file preserves the founder draft for independent review. It does not authorize implementation, activation, a migration, Gate D, or any production action.
+>
+> See [the repository-grounded audit](IDENTITY-CONSTITUTION-AUDIT.md) before considering ratification.
 
 # CREDITVECTOR IDENTITY CONSTITUTION
 ## Version 1.0 — Founder Draft for Adversarial Review

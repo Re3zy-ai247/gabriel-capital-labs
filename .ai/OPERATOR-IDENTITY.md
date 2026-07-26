@@ -5,6 +5,8 @@ Authority: subordinate to [`GIOS-PLATFORM.md`](GIOS-PLATFORM.md) (ownership regi
 
 Cites: [`lib/session.ts`](../lib/session.ts) · [`lib/auth.ts`](../lib/auth.ts) · [`lib/entitlements.ts`](../lib/entitlements.ts) · `prisma/schema.prisma` (model `User`, enum `UserRole`) · [`lib/network/authz.ts`](../lib/network/authz.ts) (36/36) · [`AGENCY-COMMAND.md`](AGENCY-COMMAND.md) §role model · [`ADR-0035`](ADR/ADR-0035-platform-event-bus.md) §2 (identity triple) · [`COUNSEL-REVIEW-operator-network.md`](COUNSEL-REVIEW-operator-network.md) §1/§6/§8.
 
+**Proposed Identity Constitution (2026-07-26):** [IDENTITY-CONSTITUTION.md](IDENTITY-CONSTITUTION.md) is **PROPOSED — NOT RATIFIED**. Its independent [clause-level audit](IDENTITY-CONSTITUTION-AUDIT.md) found the core consumer/operator separation compatible, but requires amendments to coordinate the frozen managed-consumer transition, preserve lib/identity as the sole durable implementation owner, and resolve ownership/evidence/Gate D policy before ratification. No implementation is authorized by the draft or audit.
+
 ---
 
 ## 1. Why this document
