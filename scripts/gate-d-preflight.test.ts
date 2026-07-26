@@ -53,20 +53,23 @@ function prismaMigrationHistoryTable(): MigrationHistoryTable {
   return {
     relationKind: "regular",
     persistence: "permanent",
+    isPartition: false,
+    inheritanceParentCount: 0,
+    inheritanceChildCount: 0,
     rowSecurityEnabled: false,
     forceRowSecurity: false,
     policyCount: 0,
     ruleCount: 0,
     triggerCount: 0,
     columns: [
-      { name: "id", type: "character varying(36)", nullable: false, defaultExpression: null },
-      { name: "checksum", type: "character varying(64)", nullable: false, defaultExpression: null },
-      { name: "finished_at", type: "timestamp with time zone", nullable: true, defaultExpression: null },
-      { name: "migration_name", type: "character varying(255)", nullable: false, defaultExpression: null },
-      { name: "logs", type: "text", nullable: true, defaultExpression: null },
-      { name: "rolled_back_at", type: "timestamp with time zone", nullable: true, defaultExpression: null },
-      { name: "started_at", type: "timestamp with time zone", nullable: false, defaultExpression: "now()" },
-      { name: "applied_steps_count", type: "integer", nullable: false, defaultExpression: "0" },
+      { name: "id", type: "character varying(36)", nullable: false, defaultExpression: null, identityKind: "", generatedKind: "" },
+      { name: "checksum", type: "character varying(64)", nullable: false, defaultExpression: null, identityKind: "", generatedKind: "" },
+      { name: "finished_at", type: "timestamp with time zone", nullable: true, defaultExpression: null, identityKind: "", generatedKind: "" },
+      { name: "migration_name", type: "character varying(255)", nullable: false, defaultExpression: null, identityKind: "", generatedKind: "" },
+      { name: "logs", type: "text", nullable: true, defaultExpression: null, identityKind: "", generatedKind: "" },
+      { name: "rolled_back_at", type: "timestamp with time zone", nullable: true, defaultExpression: null, identityKind: "", generatedKind: "" },
+      { name: "started_at", type: "timestamp with time zone", nullable: false, defaultExpression: "now()", identityKind: "", generatedKind: "" },
+      { name: "applied_steps_count", type: "integer", nullable: false, defaultExpression: "0", identityKind: "", generatedKind: "" },
     ],
     constraints: [{ kind: "PRIMARY_KEY", columns: ["id"] }],
   };
@@ -775,6 +778,43 @@ check("manifest records zero SQL unique constraints/checks/extensions", coverage
   snapshot.historyTable!.rowSecurityEnabled = true;
   const report = reportFor(snapshot);
   check("migration-history RLS -> UNKNOWN", report.migrations.every((item) => item.history === "INVALID"));
+}
+{
+  const snapshot = fixture();
+  (snapshot.historyTable as MigrationHistoryTable & { isPartition: boolean }).isPartition = true;
+  const report = reportFor(snapshot);
+  check("migration-history partition leaf -> UNKNOWN", report.migrations.every((item) => item.history === "INVALID"));
+  check("migration-history partition leaf aborts", report.stopReasons.some((reason) => reason.includes("MIGRATION_HISTORY_INVALID:PARTITION_OR_INHERITANCE")));
+}
+{
+  const snapshot = fixture();
+  (snapshot.historyTable as MigrationHistoryTable & { inheritanceParentCount: number }).inheritanceParentCount = 1;
+  const report = reportFor(snapshot);
+  check("migration-history inherited child -> UNKNOWN", report.migrations.every((item) => item.history === "INVALID"));
+  check("migration-history inherited child aborts", report.stopReasons.some((reason) => reason.includes("MIGRATION_HISTORY_INVALID:PARTITION_OR_INHERITANCE")));
+}
+{
+  const snapshot = fixture();
+  (snapshot.historyTable as MigrationHistoryTable & { inheritanceChildCount: number }).inheritanceChildCount = 1;
+  const report = reportFor(snapshot);
+  check("migration-history inheritance parent -> UNKNOWN", report.migrations.every((item) => item.history === "INVALID"));
+  check("migration-history inheritance parent aborts", report.stopReasons.some((reason) => reason.includes("MIGRATION_HISTORY_INVALID:PARTITION_OR_INHERITANCE")));
+}
+{
+  const snapshot = fixture();
+  const column = snapshot.historyTable!.columns.find((item) => item.name === "id")!;
+  (column as typeof column & { identityKind: string }).identityKind = "a";
+  const report = reportFor(snapshot);
+  check("migration-history identity column -> UNKNOWN", report.migrations.every((item) => item.history === "INVALID"));
+  check("migration-history identity column aborts", report.stopReasons.some((reason) => reason.includes("MIGRATION_HISTORY_INVALID:COLUMN_IDENTITY_OR_GENERATED:id")));
+}
+{
+  const snapshot = fixture();
+  const column = snapshot.historyTable!.columns.find((item) => item.name === "id")!;
+  (column as typeof column & { generatedKind: string }).generatedKind = "s";
+  const report = reportFor(snapshot);
+  check("migration-history generated column -> UNKNOWN", report.migrations.every((item) => item.history === "INVALID"));
+  check("migration-history generated column aborts", report.stopReasons.some((reason) => reason.includes("MIGRATION_HISTORY_INVALID:COLUMN_IDENTITY_OR_GENERATED:id")));
 }
 {
   const snapshot = withoutMigration(fixture(), reputation);

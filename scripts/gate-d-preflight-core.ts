@@ -223,6 +223,8 @@ export interface MigrationHistoryColumn {
   type: string;
   nullable: boolean;
   defaultExpression: string | null;
+  identityKind: string;
+  generatedKind: string;
 }
 
 export interface MigrationHistoryConstraint {
@@ -233,6 +235,9 @@ export interface MigrationHistoryConstraint {
 export interface MigrationHistoryTable {
   relationKind: string;
   persistence: string;
+  isPartition: boolean;
+  inheritanceParentCount: number;
+  inheritanceChildCount: number;
   rowSecurityEnabled: boolean;
   forceRowSecurity: boolean;
   policyCount: number;
@@ -816,14 +821,14 @@ export function databaseFingerprint(identity: DatabaseIdentity): string {
 }
 
 const PRISMA_5_22_MIGRATION_HISTORY_COLUMNS: readonly MigrationHistoryColumn[] = [
-  { name: "id", type: "character varying(36)", nullable: false, defaultExpression: null },
-  { name: "checksum", type: "character varying(64)", nullable: false, defaultExpression: null },
-  { name: "finished_at", type: "timestamp with time zone", nullable: true, defaultExpression: null },
-  { name: "migration_name", type: "character varying(255)", nullable: false, defaultExpression: null },
-  { name: "logs", type: "text", nullable: true, defaultExpression: null },
-  { name: "rolled_back_at", type: "timestamp with time zone", nullable: true, defaultExpression: null },
-  { name: "started_at", type: "timestamp with time zone", nullable: false, defaultExpression: "now()" },
-  { name: "applied_steps_count", type: "integer", nullable: false, defaultExpression: "0" },
+  { name: "id", type: "character varying(36)", nullable: false, defaultExpression: null, identityKind: "", generatedKind: "" },
+  { name: "checksum", type: "character varying(64)", nullable: false, defaultExpression: null, identityKind: "", generatedKind: "" },
+  { name: "finished_at", type: "timestamp with time zone", nullable: true, defaultExpression: null, identityKind: "", generatedKind: "" },
+  { name: "migration_name", type: "character varying(255)", nullable: false, defaultExpression: null, identityKind: "", generatedKind: "" },
+  { name: "logs", type: "text", nullable: true, defaultExpression: null, identityKind: "", generatedKind: "" },
+  { name: "rolled_back_at", type: "timestamp with time zone", nullable: true, defaultExpression: null, identityKind: "", generatedKind: "" },
+  { name: "started_at", type: "timestamp with time zone", nullable: false, defaultExpression: "now()", identityKind: "", generatedKind: "" },
+  { name: "applied_steps_count", type: "integer", nullable: false, defaultExpression: "0", identityKind: "", generatedKind: "" },
 ];
 
 function normalizeHistoryDefinition(value: string | null): string | null {
@@ -844,6 +849,13 @@ export function migrationHistoryTrustIssues(
   const issues: string[] = [];
   if (historyTable.relationKind !== "regular") issues.push("RELATION_KIND");
   if (historyTable.persistence !== "permanent") issues.push("PERSISTENCE");
+  if (
+    historyTable.isPartition ||
+    historyTable.inheritanceParentCount !== 0 ||
+    historyTable.inheritanceChildCount !== 0
+  ) {
+    issues.push("PARTITION_OR_INHERITANCE");
+  }
   if (historyTable.rowSecurityEnabled || historyTable.forceRowSecurity || historyTable.policyCount !== 0) {
     issues.push("ROW_SECURITY_OR_POLICY");
   }
@@ -867,6 +879,9 @@ export function migrationHistoryTrustIssues(
     if (actual.nullable !== expected.nullable) issues.push(`COLUMN_NULLABILITY:${expected.name}`);
     if (normalizeHistoryDefinition(actual.defaultExpression) !== expected.defaultExpression) {
       issues.push(`COLUMN_DEFAULT:${expected.name}`);
+    }
+    if (actual.identityKind !== expected.identityKind || actual.generatedKind !== expected.generatedKind) {
+      issues.push(`COLUMN_IDENTITY_OR_GENERATED:${expected.name}`);
     }
   }
 

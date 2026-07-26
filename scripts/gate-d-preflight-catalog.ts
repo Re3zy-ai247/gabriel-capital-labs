@@ -81,6 +81,9 @@ type TableRow = {
   table_name: string;
   relation_kind: string;
   persistence: string;
+  is_partition: boolean;
+  inheritance_parent_count: number;
+  inheritance_child_count: number;
   owner_usable: boolean | null;
   row_security_enabled: boolean;
   force_row_security: boolean;
@@ -376,6 +379,17 @@ export async function inspectGateDDatabase(
               WHEN 't' THEN 'temporary'
               ELSE relation.relpersistence::text
             END AS persistence,
+            relation.relispartition AS is_partition,
+            (
+              SELECT count(*)::integer
+              FROM pg_catalog.pg_inherits AS inheritance
+              WHERE inheritance.inhrelid = relation.oid
+            ) AS inheritance_parent_count,
+            (
+              SELECT count(*)::integer
+              FROM pg_catalog.pg_inherits AS inheritance
+              WHERE inheritance.inhparent = relation.oid
+            ) AS inheritance_child_count,
             pg_has_role(current_user, relation.relowner, 'USAGE') AS owner_usable,
             relation.relrowsecurity AS row_security_enabled,
             relation.relforcerowsecurity AS force_row_security,
@@ -586,6 +600,9 @@ export async function inspectGateDDatabase(
       ? {
           relationKind: historyRelation?.relation_kind ?? "missing",
           persistence: historyRelation?.persistence ?? "missing",
+          isPartition: historyRelation?.is_partition ?? true,
+          inheritanceParentCount: historyRelation?.inheritance_parent_count ?? -1,
+          inheritanceChildCount: historyRelation?.inheritance_child_count ?? -1,
           rowSecurityEnabled: historyRelation?.row_security_enabled ?? true,
           forceRowSecurity: historyRelation?.force_row_security ?? true,
           policyCount: historyRelation?.policy_count ?? -1,
@@ -600,6 +617,8 @@ export async function inspectGateDDatabase(
               type: actualType(row),
               nullable: row.nullable,
               defaultExpression: normalizeExpression(row.default_expression),
+              identityKind: row.identity_kind,
+              generatedKind: row.generated_kind,
             })),
           constraints: constraintRows
             .filter(
