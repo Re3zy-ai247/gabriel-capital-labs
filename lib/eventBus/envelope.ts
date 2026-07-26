@@ -51,6 +51,12 @@ export const EVENT_TYPES = [
   // REPUTATION_AWARD_REVERSED is the dedicated compensating-record fact.
   "OPERATOR_XP_CHANGED",
   "REPUTATION_AWARD_REVERSED",
+  // ── Operator Enrollment (Slice 2) — pre-membership evidence (§2.8). Refs-only.
+  // These carry NO authority: an enrollment fact never authorizes anything (§5.2).
+  "ENROLLMENT_REQUESTED",
+  "ENROLLMENT_ACCEPTED",
+  "ENROLLMENT_EXPIRED",
+  "ENROLLMENT_REVOKED",
 ] as const;
 export type EventType = (typeof EVENT_TYPES)[number];
 

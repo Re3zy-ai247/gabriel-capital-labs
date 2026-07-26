@@ -117,6 +117,96 @@ export const CONTRACTS: Readonly<Record<string, EventContract>> = {
     type: "OPERATOR_REGISTERED", version: 1, defaultSource: "identity", scope: "platform",
     schema: z.object({ operatorId: z.string().min(1), accountId: z.string().min(1) }).strict(),
   },
+  // ── Operator Enrollment (Slice 2) — pre-membership evidence contracts (§2.8, §11.2).
+  // Every payload pins `authorityClass: "NONE"` as a literal: an enrollment fact can
+  // never be read as an authorization fact. Refs-only; `basis` (not `reason*`) because
+  // the PII guard denylists keys containing "reason"; `invitationRef` (not *token*) is an
+  // opaque reference, never the secret. `decisionDigest` is `sha256:`-prefixed so it can
+  // never trip the guard's bare-digit-run value scan.
+  "ENROLLMENT_REQUESTED@1": {
+    type: "ENROLLMENT_REQUESTED", version: 1, defaultSource: "identity", scope: "platform",
+    schema: z.object({
+      enrollmentId: z.string().min(1),
+      organizationId: z.string().min(1),
+      subjectAccountId: z.string().min(1),
+      entry: z.enum(["INVITATION", "APPLICATION"]),
+      state: z.enum(["INVITED", "REQUESTED"]),
+      basis: z.enum(["ORGANIZATION_INVITED", "SUBJECT_APPLIED"]),
+      authorityClass: z.literal("NONE"),
+      policyVersion: z.string().min(1).max(64),
+      actorId: z.string().min(1),
+      commandId: z.string().min(1).max(200),
+      effectiveAt: z.number().int().positive(),
+      expiresAt: z.number().int().positive(),
+      decisionDigest: z.string().regex(/^sha256:[0-9a-f]{64}$/),
+      causationId: z.string().min(1).max(200).nullable(),
+    }).strict(),
+  },
+  "ENROLLMENT_ACCEPTED@1": {
+    type: "ENROLLMENT_ACCEPTED", version: 1, defaultSource: "identity", scope: "platform",
+    schema: z.object({
+      enrollmentId: z.string().min(1),
+      organizationId: z.string().min(1),
+      subjectAccountId: z.string().min(1),
+      entry: z.enum(["INVITATION", "APPLICATION"]),
+      from: z.enum(["INVITED", "REQUESTED"]),
+      to: z.literal("ACCEPTED"),
+      basis: z.enum(["SUBJECT_ACCEPTED", "ORGANIZATION_APPROVED"]),
+      authorityClass: z.literal("NONE"),
+      policyVersion: z.string().min(1).max(64),
+      actorId: z.string().min(1),
+      commandId: z.string().min(1).max(200),
+      effectiveAt: z.number().int().positive(),
+      invitationRef: z.string().min(1).max(200),
+      // Consent is EVIDENCE (§5.5, ICAP-1 A-2): the episode is referenced by digest and
+      // described by bounded enums. The episode itself is immutable and never overwritten.
+      consentPurpose: z.enum(["OPERATOR_ENROLLMENT", "OPERATOR_TERMS"]),
+      consentScope: z.string().min(1).max(120),
+      consentMechanism: z.enum(["EXPLICIT_CHECKBOX", "SIGNED_ACCEPTANCE", "ADMINISTRATIVE_RECORD"]),
+      consentPolicyVersion: z.string().min(1).max(64),
+      consentEffectiveAt: z.number().int().positive(),
+      consentDigest: z.string().regex(/^sha256:[0-9a-f]{64}$/),
+      decisionDigest: z.string().regex(/^sha256:[0-9a-f]{64}$/),
+      causationId: z.string().min(1).max(200).nullable(),
+    }).strict(),
+  },
+  "ENROLLMENT_EXPIRED@1": {
+    type: "ENROLLMENT_EXPIRED", version: 1, defaultSource: "identity", scope: "platform",
+    schema: z.object({
+      enrollmentId: z.string().min(1),
+      organizationId: z.string().min(1),
+      subjectAccountId: z.string().min(1),
+      from: z.enum(["INVITED", "REQUESTED"]),
+      to: z.literal("EXPIRED"),
+      basis: z.literal("INVITATION_LAPSED"),
+      authorityClass: z.literal("NONE"),
+      policyVersion: z.string().min(1).max(64),
+      actorId: z.string().min(1),
+      commandId: z.string().min(1).max(200),
+      effectiveAt: z.number().int().positive(),
+      expiresAt: z.number().int().positive(),
+      decisionDigest: z.string().regex(/^sha256:[0-9a-f]{64}$/),
+      causationId: z.string().min(1).max(200).nullable(),
+    }).strict(),
+  },
+  "ENROLLMENT_REVOKED@1": {
+    type: "ENROLLMENT_REVOKED", version: 1, defaultSource: "identity", scope: "platform",
+    schema: z.object({
+      enrollmentId: z.string().min(1),
+      organizationId: z.string().min(1),
+      subjectAccountId: z.string().min(1),
+      from: z.enum(["INVITED", "REQUESTED"]),
+      to: z.literal("REVOKED"),
+      basis: z.enum(["ORGANIZATION_REVOKED", "SUBJECT_WITHDREW"]),
+      authorityClass: z.literal("NONE"),
+      policyVersion: z.string().min(1).max(64),
+      actorId: z.string().min(1),
+      commandId: z.string().min(1).max(200),
+      effectiveAt: z.number().int().positive(),
+      decisionDigest: z.string().regex(/^sha256:[0-9a-f]{64}$/),
+      causationId: z.string().min(1).max(200).nullable(),
+    }).strict(),
+  },
   "OPERATOR_STATE_CHANGED@1": {
     type: "OPERATOR_STATE_CHANGED", version: 1, defaultSource: "identity", scope: "platform",
     schema: z.object({
