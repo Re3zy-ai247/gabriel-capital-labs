@@ -18,7 +18,7 @@ npx vercel redeploy <that-url>                # required for env vars to take ef
 Branch → `git push -u origin <branch>` → Vercel auto-builds a Preview. URL via `npx vercel ls gabriel-capital-labs` (Environment=Preview). **Preview URLs 401 to anonymous** (Deployment Protection — that's auth, not failure); view logged into the Vercel account. Ship = merge to `main` (fast-forward) → push.
 
 ## Gotchas
-- Build command lives in `vercel.json`, NOT package.json (it includes the tolerated `prisma db push`).
+- Build command lives in `vercel.json`, NOT package.json (`prisma generate && next build`; no database mutation).
 - Schema changes do NOT deploy via push — see `schema-change.md`.
 
 ## Operations

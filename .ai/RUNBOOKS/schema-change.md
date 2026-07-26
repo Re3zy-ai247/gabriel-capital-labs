@@ -12,12 +12,15 @@ table to the legacy list requires a new owner-approved ADR.
 
 ## Adding a table or column (migration-first)
 1. Add/modify the model in `prisma/schema.prisma`.
-2. Generate the migration SQL. There is no `prisma/migrations/` baseline yet, so the
-   first migration must baseline the existing DB before it can be applied cleanly —
-   see "Baseline" below. Generate the forward SQL with
-   `npx prisma migrate diff --from-schema-datasource prisma/schema.prisma --to-schema-datamodel prisma/schema.prisma --script` (or `migrate dev` against a throwaway/preview DB) and review it.
-3. **Validate against the PREVIEW database first** (it is isolated — see below). Never
-   against production, never in the build.
+2. Generate the migration SQL. This repository now has the reviewed six-file
+   `prisma/migrations/` baseline, but Production history remains owner-gated and
+   unknown until Gate D. Do **not** use this generic procedure to reconcile that
+   baseline; follow `RUNBOOKS/gate-d-production-migration.md`. For later additive
+   work, append a reviewed migration after the committed chain. Generate forward SQL with
+   `npx --no-install prisma migrate diff --from-schema-datasource prisma/schema.prisma --to-schema-datamodel prisma/schema.prisma --script` (or `migrate dev` only against an owner-proven disposable target) and review it.
+3. **Validate only against a disposable target whose isolation is freshly proved**
+   (see below). Never presume a Vercel Preview target is isolated; never validate
+   against Production or in the build.
 4. Ship: the migration is applied as a deliberate release step (owner-gated for
    production), with preflight, forward-validation, and a rollback/compensating plan
    recorded in the release checklist (`.ai/RUNBOOKS/release.md`).
@@ -27,12 +30,12 @@ table to the legacy list requires a new owner-approved ADR.
 rollback or compensating plan · data-risk assessment. A destructive or uncertain
 production migration STOPS for owner approval.
 
-## Baseline (the first migration)
-`prisma/migrations/` does not exist. Introducing it against the live DB needs a
-baseline so Prisma does not try to recreate existing tables. Do this against the
-preview DB first and validate, then treat the production baseline as an owner-gated
-release step. Do NOT run `migrate dev`, `db push --accept-data-loss`, or any
-destructive command against the shared/production database.
+## Baseline (Gate D only)
+The source baseline is already committed as the six reviewed migrations. Production
+adoption is not a generic schema-change operation: use the dedicated Gate D runbook's
+read-only catalog proof, owner-approved reconciliation, and deliberate deploy steps.
+Do NOT run `migrate dev`, `db push --accept-data-loss`, or any destructive command
+against a shared/production database.
 
 ## Legacy self-heal (existing tables only — do NOT extend)
 The 32 legacy tables in `LEGACY_SELF_HEAL_ALLOWLIST` still create themselves via
@@ -47,17 +50,19 @@ through separately reviewed migrations. Do not add a new table here.
 ## Client/server rule
 A `"use client"` page must not import anything pulling in `prisma`/`next/headers` — shared constants go in a `*Shared.ts`.
 
-## Preview database (added 2026-07-20)
+## Preview / disposable target status
 
-Preview has its OWN Prisma Postgres database (`prisma-postgres-coffee-drawer`), separate from
-production. It starts empty. To provision or re-sync its schema — explicitly, never in a build:
+Repository history names a Preview Prisma Postgres project, but its current separation,
+emptiness, credential routing, and relationship to Production are **UNKNOWN until the
+owner proves them from current provider-side evidence**. Treat every nonlocal Preview or
+staging target as potentially shared until that proof is retained with the change.
 
-```bash
-vercel env pull /tmp/p/.env.preview --environment=preview
-DATABASE_URL="<the preview value>" npx prisma db push --skip-generate
-```
+`db push` is a legacy synchronizer, not a Gate D procedure. It is prohibited for
+Production, shared Preview/staging, or any target whose migration history matters.
+It may be considered only for a newly-created, owner-approved disposable database after
+fresh provider evidence proves isolation; never use an ambient or broadly pulled
+credential, never run it in a build, and never pass `--accept-data-loss`.
 
-Rules: never pass `--accept-data-loss`; verify the target is the preview database first
-(`SELECT current_database()`, and confirm the table count is what you expect) — production's
-`DATABASE_URL` is SENSITIVE and unreadable, so a mistake here cannot be undone by re-reading it.
-Delete the pulled env file afterwards; it contains a live credential.
+For the committed migration chain, use `prisma migrate deploy` only through the
+owner-gated Gate D runbook. Its documented local disposable engine proof deliberately
+does not use Vercel credentials or the application Docker path.

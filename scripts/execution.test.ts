@@ -9,6 +9,7 @@ import type { MissionControlData } from "../lib/missionControl";
 import type { FinancialKnowledge } from "../lib/knowledge";
 import { assembleExecution } from "../lib/execution/ExecutionEngine";
 import { LADDER } from "../lib/execution/ExecutionPriority";
+import { bucketOf } from "../lib/execution/ExecutionQueue";
 
 let failures = 0;
 function ok(label: string, cond: boolean) { if (!cond) { failures++; console.error(`✗ ${label}`); } else console.log(`✓ ${label}`); }
@@ -63,7 +64,7 @@ function build(over: Partial<IntelSnapshot> = {}, mcOver: Partial<MissionControl
   ok("every item is cited (no uncited recommendations)", all.length > 0 && all.every((i) => i.citations.mission.length > 0));
   ok("every item has required fields", all.every((i) => i.title && i.requiredAction && i.expectedOutcome && i.ifIgnored && i.timeline && i.evidence));
   ok("waiting missions land in WAITING", e.counts.WAITING >= 1);
-  ok("business-credit (locked) lands in BLOCKED", e.buckets.find((b) => b.key === "BLOCKED")!.items.some((i) => i.status === "locked"));
+  ok("locked mission state maps to BLOCKED", bucketOf("locked") === "BLOCKED");
   ok("completed items never exceed the ledger history", e.counts.COMPLETED <= mission.completed.length || e.counts.COMPLETED <= 12);
 }
 

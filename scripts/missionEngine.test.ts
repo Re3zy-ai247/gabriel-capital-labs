@@ -42,7 +42,7 @@ const opp = (key: string, over: Partial<Opportunity> = {}): Opportunity => ({ ke
   ok("overdue ranks before campaign", types.indexOf("monitor_deadline") < types.indexOf("approve_campaign"));
   ok("round2 is needs_review", m.queue.find((x) => x.type === "round_2")?.state === "needs_review");
   ok("overdue → a CFPB escalation mission is added", m.queue.some((x) => x.type === "escalate_cfpb"));
-  ok("business credit is a LOCKED mission (honest future module)", m.queue.find((x) => x.type === "business_credit_setup")?.state === "locked");
+  ok("unbuilt business credit stays out of the daily Mission queue", !m.queue.some((x) => x.type === "business_credit_setup"));
 }
 
 // ---- waiting missions from Mission Control windows, with progress ----

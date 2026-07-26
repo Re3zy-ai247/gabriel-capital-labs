@@ -14,6 +14,30 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  gate-d-preflight:
+    name: Gate D preflight
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      NEXTAUTH_SECRET: ci-placeholder-not-used-in-production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - name: Install (lockfile-exact)
+        run: npm ci
+      - name: Gate D deterministic verification
+        run: |
+          set -euo pipefail
+          npm run typecheck
+          npx --no-install prisma --version
+          npx --no-install tsx scripts/gate-d-preflight.test.ts
+          npx --no-install tsx scripts/release-verify.test.ts
+          npx --no-install tsx scripts/schema-safety.test.ts
+          bash -n scripts/release-verify.sh
+
   verify:
     runs-on: ubuntu-latest
     timeout-minutes: 20
