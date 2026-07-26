@@ -97,15 +97,79 @@ export function operatorRegisteredEvent(operator: { id: string; accountId: strin
   };
 }
 
-export function operatorStateChangedEvent(
-  operator: { id: string; accountId: string }, from: OperatorState, to: OperatorState, actorId: string, seq: number,
+// ── Operator Lifecycle Runtime (Slice 1) — versioned evidence, §11.2 + ICAP-1 ──
+// The sealed decision record the lifecycle command produces. Every field is an input to
+// the decision or a provenance reference; nothing is derived from ambient state.
+export interface EvidenceInput {
+  policyVersion: string;
+  operatorId: string;
+  from: OperatorState;
+  to: OperatorState;
+  authorityClass: string;
+  basis: string;
+  actorId: string;
+  commandId: string;
+  effectiveAt: number;
+  stepUp: boolean;
+  decisionDigest: string;
+  causationId: string | null;
+}
+
+// The dedupeKey is the commandId ALONE, so the derived event id is a pure function of the
+// command. That is what makes the event stream the idempotency ledger (ICAP-1 A-8): a
+// replay of the same command collides on the same id, and a DIFFERENT command carrying a
+// reused id is detected by comparing payloads rather than being silently swallowed.
+export function buildOperatorStateChangedEvent(
+  operator: { id: string; accountId: string }, evidence: EvidenceInput, actorId: string, correlationId?: string,
 ): IdentityEventInput {
   return {
     type: "OPERATOR_STATE_CHANGED",
     tenantId: operator.accountId,
     actorId,
-    payload: { operatorId: operator.id, from, to },
-    dedupeKey: `operator:${operator.id}:state:${to}:${seq}`,
+    correlationId,
+    payload: { ...evidence },
+    dedupeKey: `operator-lifecycle:${evidence.commandId}`,
+  };
+}
+
+// Build + validate + authorize a durable draft WITHOUT writing it, so the caller can
+// enlist the append in its own transaction (ICAP-1 A-7). Same fail-closed ladder as
+// recordIdentityEvent: contract -> payload/PII validation -> publish PEP.
+export type DraftResult =
+  | { ok: true; event: DraftEvent }
+  | { ok: false; code: "disabled" | "invalid" | "forbidden"; error: string };
+
+export function draftIdentityEvent(input: IdentityEventInput): DraftResult {
+  if (!operatorIdentityEnabled()) return { ok: false, code: "disabled", error: "operator identity disabled" };
+
+  const version = currentVersion(input.type as EventType);
+  const contract = getContract(input.type, version);
+  if (!contract) return { ok: false, code: "invalid", error: `unknown contract ${input.type}@${version}` };
+
+  const valid = validateEvent(input.type, version, input.payload);
+  if (!valid.ok) return { ok: false, code: "invalid", error: valid.error };
+  if (!input.dedupeKey) return { ok: false, code: "invalid", error: "missing dedupeKey" };
+  if (!input.tenantId || !input.actorId) return { ok: false, code: "invalid", error: "unresolved identity" };
+
+  const identity = systemIdentity(input.tenantId, { actorId: input.actorId, agencyId: input.agencyId ?? null });
+  const authz = authorizePublish(contract, identity);
+  if (!authz.ok) return { ok: false, code: "forbidden", error: authz.reason };
+
+  const source = contract.defaultSource;
+  const id = deriveEventId(input.tenantId, input.type, source, input.dedupeKey);
+  return {
+    ok: true,
+    event: {
+      id,
+      type: input.type as EventType,
+      version,
+      tenantId: input.tenantId,
+      agencyId: input.agencyId ?? null,
+      actorId: input.actorId,
+      source,
+      correlationId: input.correlationId ?? id,
+      payload: valid.payload,
+    },
   };
 }
 

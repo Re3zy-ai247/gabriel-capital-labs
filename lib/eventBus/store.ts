@@ -66,9 +66,19 @@ function cursorOf(e: PlatformEvent): string {
 // Idempotent append. The event id is deterministic + tenant-scoped, so a retried
 // publish collides on the PK and returns the ORIGINAL row (replayed:true) — never a
 // duplicate, never a second fanout. Retry-safe: a thrown insert is NOT swallowed.
-export async function appendEvent(draft: DraftEvent): Promise<{ event: PlatformEvent; replayed: boolean }> {
+// The minimal client surface appendEvent needs. `prisma` and an interactive-transaction
+// client both satisfy it, so a domain can enlist its evidence append in the SAME
+// transaction as the mutation the evidence describes (Identity Constitution §11 +
+// ICAP-1 A-7: a mutation and its evidence succeed together or neither is durable).
+// This is plumbing only — Event Fabric still transports and owns nothing semantic, and
+// every existing caller keeps the default `prisma` client and is byte-identical.
+export type EventWriteClient = Pick<typeof prisma, "eventEnvelope">;
+
+export async function appendEvent(
+  draft: DraftEvent, client: EventWriteClient = prisma,
+): Promise<{ event: PlatformEvent; replayed: boolean }> {
   try {
-    const row = await prisma.eventEnvelope.create({
+    const row = await client.eventEnvelope.create({
       data: {
         id: draft.id, type: draft.type, version: draft.version, tenantId: draft.tenantId,
         agencyId: draft.agencyId, actorId: draft.actorId, source: draft.source,

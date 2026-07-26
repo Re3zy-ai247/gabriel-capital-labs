@@ -125,6 +125,37 @@ export const CONTRACTS: Readonly<Record<string, EventContract>> = {
       to: z.enum(["PENDING", "ACTIVE", "SUSPENDED", "DEACTIVATED"]),
     }).strict(),
   },
+  // v2 — the versioned evidence contract for the Operator Lifecycle Runtime (Slice 1).
+  // Constitution §11.4: "Existing events remain compatibility facts. New actions must use
+  // a versioned evidence contract." v1 stays registered so historical rows keep validating
+  // against their own version on replay; nothing is rewritten.
+  // Carries the §11.2 envelope minimum that the shared EventEnvelope columns cannot: policy
+  // version, authority source, reason CLASS, idempotency key, causation, sealed effective
+  // time, and a provenance digest. Still refs-only — no PII, no free text.
+  // `basis` (not `reason*`) because the PII guard denylists keys containing "reason"; the
+  // guard is correct and is not weakened. `decisionDigest` is `sha256:`-prefixed so it can
+  // never trip the guard's bare-digit-run value scan.
+  "OPERATOR_STATE_CHANGED@2": {
+    type: "OPERATOR_STATE_CHANGED", version: 2, defaultSource: "identity", scope: "platform",
+    schema: z.object({
+      operatorId: z.string().min(1),
+      from: z.enum(["PENDING", "ACTIVE", "SUSPENDED", "DEACTIVATED"]),
+      to: z.enum(["PENDING", "ACTIVE", "SUSPENDED", "DEACTIVATED"]),
+      policyVersion: z.string().min(1).max(64),
+      authorityClass: z.enum(["SELF", "PLATFORM_IDENTITY_REVIEW", "PLATFORM_SECURITY"]),
+      basis: z.enum([
+        "SUBJECT_SELF_SERVICE_EXIT", "SUBJECT_WITHDRAWAL", "SUBJECT_CONFIRMED_DEACTIVATION",
+        "PLATFORM_REVIEW_APPROVED", "PLATFORM_REVIEW_REJECTED",
+        "PLATFORM_SECURITY_HOLD", "PLATFORM_SECURITY_CLEARED",
+      ]),
+      actorId: z.string().min(1),
+      commandId: z.string().min(1).max(200),
+      effectiveAt: z.number().int().positive(),
+      stepUp: z.boolean(),
+      decisionDigest: z.string().regex(/^sha256:[0-9a-f]{64}$/),
+      causationId: z.string().min(1).max(200).nullable(),
+    }).strict(),
+  },
   "ORGANIZATION_CREATED@1": {
     type: "ORGANIZATION_CREATED", version: 1, defaultSource: "identity", scope: "platform",
     schema: z.object({ organizationId: z.string().min(1), ownerAccountId: z.string().min(1), kind: z.enum(["AGENCY", "ENTERPRISE", "EDUCATOR", "VENDOR", "INTERNAL"]) }).strict(),
