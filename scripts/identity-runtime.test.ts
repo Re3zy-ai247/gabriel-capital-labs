@@ -61,7 +61,7 @@ check("service never reads request/query input", !/searchParams|req\.query|reque
 
 // ── Auditability: every mutation records a durable identity event ────────────
 // Slice 1: the lifecycle mutation records its evidence through the transactional
-// draft+append path (ICAP-1 A-7), not recordIdentityEvent, so service.ts now holds the
+// draft+append path (§11), not recordIdentityEvent, so service.ts now holds the
 // five non-lifecycle emitters and delegates the sixth.
 check("non-lifecycle mutations record identity events (5 recordIdentityEvent calls)", (service.match(/recordIdentityEvent\(/g) || []).length === 5);
 check("the lifecycle door is delegated, not reimplemented", /export \{ transitionOperator \} from "\.\/lifecycle"/.test(service));

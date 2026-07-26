@@ -1,22 +1,20 @@
 // Operator Identity — OPERATOR LIFECYCLE RUNTIME (Implementation Slice 1).
 //
-// Implements Identity Constitution v1.0 §4 (Operator Lifecycle) as amended by ICAP-1.
-// Semantics are FROZEN (Identity Semantic Baseline 1.0); this module implements them and
-// invents nothing. Every denial below cites the clause that requires it.
+// Implements the ratified Identity Constitution v1.0 §4 (Operator Lifecycle).
+// It does not claim authority from an untracked amendment or semantic-baseline artifact.
 //
 // SHAPE. Three pure layers plus one command:
 //   1. STATE MACHINE  — lib/identity/state.ts (unchanged, already ratified-correct).
 //   2. VALIDATOR      — `decideTransition`, pure and total: (request) -> decision.
-//   3. STEP-UP        — `stepUpCapabilityAvailable()`, fail-closed at the auth boundary.
+//   3. EXECUTION GATES — fail-closed seams for Authentication, Platform Authority, and
+//                         Organization control that are not implemented in this slice.
 //   4. COMMAND        — `transitionOperator`, the single door that performs the effect.
 //
-// WHY DEACTIVATED IS CURRENTLY UNREACHABLE. ICAP-1 A-10 requires authenticator step-up on
-// any transition to DEACTIVATED and makes step-up availability a Stage 5 (Gate F)
-// precondition: "the command may not be reachable before it exists." Authentication
-// exposes no step-up capability today, so `stepUpCapabilityAvailable()` returns false and
-// every path to DEACTIVATED denies. That is the intended constitutional outcome, not a
-// defect, and it is pinned by test. The gate is on the CAPABILITY, never on a
-// caller-supplied object, so a caller cannot fabricate an assertion to bypass it.
+// EXECUTION STATUS. The pure policy models the ratified state table. The executable command
+// is deliberately stricter while the prerequisite owners are absent: Platform Authority has
+// no verifier, Authentication has no step-up verifier, and Organizations has no atomic
+// owner-control resolver. Those facts deny execution before any state/evidence write. This is
+// a temporary fail-closed implementation choice, not a constitutional amendment or activation.
 //
 // DETERMINISM. No `Date.now()`, no randomness, no ambient state. `effectiveAt` is a
 // SEALED INPUT supplied by the caller (§1.16, §11.2). Identical sealed inputs plus an
@@ -30,22 +28,20 @@
 import { createHash } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { appendEvent } from "@/lib/eventBus/store";
+import { deriveEventId } from "@/lib/eventBus/envelope";
 import { operatorIdentityEnabled } from "./flags";
 import { type IdentityPrincipal } from "./principal";
-import { canTransitionOperator, type OperatorState } from "./state";
+import { canTransitionOperator, OPERATOR_STATES, type OperatorState } from "./state";
 import * as repo from "./repository";
 import { buildOperatorStateChangedEvent, draftIdentityEvent, type EvidenceInput } from "./events";
-import type { OperatorIdentity } from "@prisma/client";
 
 // The policy version pinned into every decision and every evidence record (§1.16, §11.2).
 // Bump ONLY when the decision function's behaviour changes; a replay of an old command
 // must be evaluated against the version it was decided under.
 export const OPERATOR_LIFECYCLE_POLICY_VERSION = "operator-lifecycle@1";
 
-// Bounded authority classes (§9.1). SELF is the subject acting on their own identity;
-// the two platform classes are §9.1 classes this command consumes but does not issue —
-// Platform Authority issuance is Slice 5, so a platform class is asserted by the caller
-// and is itself gated by the caller's own authorization. This module never grants it.
+// Bounded authority classes (§9.1). The pure policy recognizes platform classes, but the
+// command hard-denies them until Platform Authority owns a verified grant resolver.
 export const TRANSITION_AUTHORITIES = ["SELF", "PLATFORM_IDENTITY_REVIEW", "PLATFORM_SECURITY"] as const;
 export type TransitionAuthority = (typeof TRANSITION_AUTHORITIES)[number];
 
@@ -67,13 +63,15 @@ export type TransitionBasis = (typeof TRANSITION_BASES)[number];
 
 export type DenialCode =
   | "illegal_transition"   // §4.2 — edge not in the frozen table
-  | "step_up_required"     // ICAP-1 A-10 — irreversible command without step-up
+  | "step_up_required"     // temporary Authentication-verifier gate for irreversible command
   | "owner_invariant"      // §4.7 — sole owner of an ACTIVE/SUSPENDED Organization
   | "authority_insufficient" // §4.3 / §4.5 — authority class may not perform this edge
-  | "self_approval"        // §7.8 / §15.14 — actor approving their own platform action
+  | "self_approval"        // conservative separation-of-duty choice for pure platform policy
   | "basis_incoherent";    // basis does not match the authority/edge it claims
 
-export interface StepUpAssertion { readonly method: string; readonly assertedAt: number }
+// A pure-policy input only. It is NOT accepted by the executable command. Authentication
+// must later supply a verified fact through its own adapter; a caller object is never proof.
+export interface AuthenticationStepUpFact { readonly method: string; readonly verifiedAt: number }
 
 export interface TransitionRequest {
   readonly from: OperatorState;
@@ -81,7 +79,7 @@ export interface TransitionRequest {
   readonly authority: TransitionAuthority;
   readonly basis: TransitionBasis;
   readonly actorIsSubject: boolean;
-  readonly stepUp: StepUpAssertion | null;
+  readonly stepUp: AuthenticationStepUpFact | null;
   readonly ownsActiveOrSuspendedOrganization: boolean;
 }
 
@@ -91,16 +89,25 @@ export type TransitionDecision =
 
 const deny = (code: DenialCode): TransitionDecision => ({ allowed: false, code });
 
-// ── Step-up boundary ─────────────────────────────────────────────────────────
-// Identity does NOT implement authentication (§17.1). It asks Authentication whether a
-// step-up capability exists. None does today, so this is `false` and every irreversible
-// command fails closed. When Authentication ships step-up, this reads its capability —
-// it must never become a caller-supplied claim.
+// ── Execution prerequisites ───────────────────────────────────────────────────
+// Identity does NOT implement Authentication, Platform Authority, or Organization control.
+// No verifier/resolver exists today, so each seam is hard-fail-closed. Replacing any of
+// these constants requires its owning domain's reviewed adapter; it must never be toggled
+// from request input or a test-only hook.
 export function stepUpCapabilityAvailable(): boolean {
   return false;
 }
 
-// Which edges are irreversible and therefore demand step-up (ICAP-1 A-10).
+export function platformAuthorityVerifierAvailable(): boolean {
+  return false;
+}
+
+export function ownerControlResolverAvailable(): boolean {
+  return false;
+}
+
+// Conservative execution requirement for irreversible transitions. It grants no authority
+// and remains a temporary fail-closed guard unless separately ratified for activation.
 export function transitionRequiresStepUp(to: OperatorState): boolean {
   return to === "DEACTIVATED";
 }
@@ -145,18 +152,17 @@ export function decideTransition(req: TransitionRequest): TransitionDecision {
 
   // SELF authority is only SELF when the actor IS the subject.
   if (req.authority === "SELF" && !req.actorIsSubject) return deny("authority_insufficient");
-  // §7.8 / §15.14 — nobody exercises platform authority over their own identity.
+  // Conservative separation of duties: a platform-policy action may not target its actor.
   if (req.authority !== "SELF" && req.actorIsSubject) return deny("self_approval");
 
-  // §4.7 owner protection. Deactivation of a sole owner is barred outright. Suspension is
-  // barred too: §4.7 permits it "only when the resulting Organization control and
-  // resolution path is explicitly handled", and no such path exists (Organization
-  // lifecycle commands are Slice 3) — so it fails closed (§1.11).
+  // §4.7 bars deactivation of a sole owner. It permits suspension only with an explicit
+  // control/resolution path; denying it while no such path exists is a conservative choice.
   if (req.ownsActiveOrSuspendedOrganization && (req.to === "DEACTIVATED" || req.to === "SUSPENDED")) {
     return deny("owner_invariant");
   }
 
-  // ICAP-1 A-10 — irreversible commands require step-up, gated on the CAPABILITY.
+  // The current conservative execution policy requires an Authentication-owned step-up
+  // fact for irreversible commands; no such capability exists today.
   const stepUpRequired = transitionRequiresStepUp(req.to);
   if (stepUpRequired && (!stepUpCapabilityAvailable() || !req.stepUp)) return deny("step_up_required");
 
@@ -210,7 +216,7 @@ export type LifecycleErrorCode =
   | "idempotency_conflict" | DenialCode;
 
 export type LifecycleResult =
-  | { ok: true; operator: OperatorIdentity; eventId: string; replayed: boolean }
+  | { ok: true; operatorId: string; from: OperatorState; to: OperatorState; eventId: string; replayed: boolean }
   | { ok: false; code: LifecycleErrorCode; error: string };
 
 const fail = (code: LifecycleErrorCode, error: string): LifecycleResult => ({ ok: false, code, error });
@@ -220,24 +226,108 @@ export interface TransitionCommand {
   readonly to: OperatorState;
   readonly authority: TransitionAuthority;
   readonly basis: TransitionBasis;
-  /** Idempotency key (§11.2, ICAP-1 A-8). Same id + same material inputs => replay. */
+  /** Idempotency key (§4.2, §11.2). Same id + same material inputs => replay. */
   readonly commandId: string;
   /** SEALED input (§11.2). Never derived from the clock inside this module. */
   readonly effectiveAt: number;
-  readonly correlationId?: string;
-  readonly causationId?: string;
-  readonly stepUp?: StepUpAssertion | null;
 }
 
 function isNonEmpty(s: unknown): s is string {
   return typeof s === "string" && s.trim().length > 0 && s.length <= 200;
 }
 
+function isOperatorState(value: unknown): value is OperatorState {
+  return typeof value === "string" && (OPERATOR_STATES as readonly string[]).includes(value);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+// The event id is the command ledger key. It is tenant-scoped by the subject account,
+// so one command id cannot collide across operator identities on different accounts.
+export function lifecycleEventId(accountId: string, commandId: string): string {
+  return deriveEventId(accountId, "OPERATOR_STATE_CHANGED", "identity", `operator-lifecycle:${commandId}`);
+}
+
+export interface ExistingLifecycleEvent {
+  readonly id: string;
+  readonly type: string;
+  readonly version: number;
+  readonly correlationId: string;
+  readonly payload: unknown;
+}
+
+export interface LifecycleReplayInput {
+  readonly eventId: string;
+  readonly operatorId: string;
+  readonly to: OperatorState;
+  readonly authority: TransitionAuthority;
+  readonly basis: TransitionBasis;
+  readonly actorId: string;
+  readonly commandId: string;
+  readonly effectiveAt: number;
+}
+
+// A replay compares every caller-controlled material input, but intentionally reads the
+// original `from` state from durable evidence. The current projection may have advanced
+// through later legal transitions; that must not turn a matching retry into a new command.
+export function replayedLifecycleTransition(
+  prior: ExistingLifecycleEvent,
+  expected: LifecycleReplayInput,
+): { from: OperatorState; to: OperatorState } | null {
+  if (prior.type !== "OPERATOR_STATE_CHANGED" || prior.version !== 2 || prior.correlationId !== expected.eventId) return null;
+  if (!isRecord(prior.payload)) return null;
+  const p = prior.payload;
+  const from = p.from;
+  if (!isOperatorState(from) || !isOperatorState(p.to) || !canTransitionOperator(from, p.to)) return null;
+  if (
+    p.policyVersion !== OPERATOR_LIFECYCLE_POLICY_VERSION
+    || p.operatorId !== expected.operatorId
+    || p.to !== expected.to
+    || p.authorityClass !== expected.authority
+    || p.basis !== expected.basis
+    || p.actorId !== expected.actorId
+    || p.commandId !== expected.commandId
+    || p.effectiveAt !== expected.effectiveAt
+    || p.stepUp !== transitionRequiresStepUp(expected.to)
+    || p.causationId !== null
+  ) return null;
+
+  const sealed = {
+    policyVersion: p.policyVersion,
+    operatorId: p.operatorId,
+    from,
+    to: p.to,
+    authorityClass: p.authorityClass,
+    basis: p.basis,
+    actorId: p.actorId,
+    commandId: p.commandId,
+    effectiveAt: p.effectiveAt,
+    stepUp: p.stepUp,
+  };
+  if (typeof p.decisionDigest !== "string" || p.decisionDigest !== decisionDigest(sealed)) return null;
+  return { from, to: p.to };
+}
+
+// No command can exercise a missing owner domain's security authority. These hard blocks
+// make accidental flag activation safe; pure policy remains available for deterministic
+// review and later owner-integrated execution.
+export function lifecycleExecutionBlock(
+  authority: TransitionAuthority,
+  to: OperatorState,
+): "forbidden" | "step_up_required" | "owner_invariant" | null {
+  if (authority !== "SELF" && !platformAuthorityVerifierAvailable()) return "forbidden";
+  if (transitionRequiresStepUp(to) && !stepUpCapabilityAvailable()) return "step_up_required";
+  if ((to === "SUSPENDED" || to === "DEACTIVATED") && !ownerControlResolverAvailable()) return "owner_invariant";
+  return null;
+}
+
 /**
  * The ONE door for an operator lifecycle transition.
  *
- * Pipeline: flag -> principal -> input shape -> load subject -> owner invariant ->
- * pure decision -> idempotency pre-check -> atomic { guarded state write + evidence }.
+ * Pipeline: flag -> principal -> input shape -> execution prerequisites -> load subject ->
+ * idempotency ledger -> pure decision -> atomic { guarded state write + evidence }.
  */
 export async function transitionOperator(
   principal: IdentityPrincipal | null, cmd: TransitionCommand,
@@ -249,22 +339,49 @@ export async function transitionOperator(
   if (!isNonEmpty(cmd.commandId)) return fail("invalid", "invalid commandId");
   if (!TRANSITION_AUTHORITIES.includes(cmd.authority)) return fail("invalid", "unknown authority class");
   if (!TRANSITION_BASES.includes(cmd.basis)) return fail("invalid", "unknown basis");
+  if (!isOperatorState(cmd.to)) return fail("invalid", "unknown operator state");
   if (!Number.isInteger(cmd.effectiveAt) || cmd.effectiveAt <= 0) return fail("invalid", "effectiveAt must be a sealed integer timestamp");
 
-  const operator = await repo.findOperatorById(cmd.operatorId);
+  const executionBlock = lifecycleExecutionBlock(cmd.authority, cmd.to);
+  if (executionBlock) return fail(executionBlock, `transition unavailable: ${executionBlock}`);
+
+  let operator: Awaited<ReturnType<typeof repo.findOperatorById>>;
+  try {
+    operator = await repo.findOperatorById(cmd.operatorId);
+  } catch {
+    return fail("conflict", "operator lookup failed");
+  }
   if (!operator) return fail("not_found", "operator not found");
 
   const from = operator.state as OperatorState;
   const actorIsSubject = operator.accountId === principal.id;
+  const eventId = lifecycleEventId(operator.accountId, cmd.commandId);
+  const replayInput: LifecycleReplayInput = {
+    eventId, operatorId: operator.id, to: cmd.to, authority: cmd.authority,
+    basis: cmd.basis, actorId: principal.id, commandId: cmd.commandId, effectiveAt: cmd.effectiveAt,
+  };
 
-  // §4.7 guard input. Reading Organization state is a guard on THIS command; no
-  // Organization command is implemented or reachable here (Slice 3 owns those).
-  const ownedOrgs = await repo.countOwnedActiveOrSuspendedOrganizations(operator.accountId);
+  const existingReplay = async (): Promise<LifecycleResult | null> => {
+    let prior: ExistingLifecycleEvent | null;
+    try {
+      prior = await repo.findEventById(eventId);
+    } catch {
+      return fail("conflict", "idempotency lookup failed");
+    }
+    if (!prior) return null;
+    const original = replayedLifecycleTransition(prior, replayInput);
+    if (!original) return fail("idempotency_conflict", "commandId reused with different material inputs");
+    return { ok: true, operatorId: operator.id, ...original, eventId: prior.id, replayed: true };
+  };
+
+  const prior = await existingReplay();
+  if (prior) return prior;
 
   const decision = decideTransition({
     from, to: cmd.to, authority: cmd.authority, basis: cmd.basis,
-    actorIsSubject, stepUp: cmd.stepUp ?? null,
-    ownsActiveOrSuspendedOrganization: ownedOrgs > 0,
+    actorIsSubject, stepUp: null,
+    // Execution is hard-blocked above until Organizations supplies an atomic resolver.
+    ownsActiveOrSuspendedOrganization: false,
   });
   if (!decision.allowed) return fail(decision.code, `transition denied: ${decision.code}`);
 
@@ -283,39 +400,29 @@ export async function transitionOperator(
   const evidence: EvidenceInput = {
     ...sealed,
     decisionDigest: decisionDigest(sealed),
-    causationId: cmd.causationId ?? null,
+    // Slice 1 has no upstream domain command. A null causal predecessor and the
+    // server-derived event-id correlation are more truthful than caller-provided text.
+    causationId: null,
   };
 
-  const draft = draftIdentityEvent(
-    buildOperatorStateChangedEvent(operator, evidence, principal.id, cmd.correlationId),
-  );
+  const draft = draftIdentityEvent(buildOperatorStateChangedEvent(operator, evidence, principal.id));
   if (!draft.ok) return fail("invalid", draft.error);
+  if (draft.event.id !== eventId) return fail("invalid", "lifecycle event identity mismatch");
 
-  // ICAP-1 A-8 — idempotency BEFORE the effect. Same commandId with the same material
-  // inputs replays; the same commandId with DIFFERENT inputs is an error, never a
-  // silent no-op. The event log is the idempotency ledger: the id is derived from the
-  // commandId, so a repeat collides deterministically.
-  const prior = await repo.findEventById(draft.event.id);
-  if (prior) {
-    const same = canonicalJson(prior.payload) === canonicalJson(draft.event.payload);
-    if (!same) return fail("idempotency_conflict", "commandId reused with different material inputs");
-    return { ok: true, operator, eventId: prior.id, replayed: true };
-  }
-
-  // ICAP-1 A-7 — the mutation and its evidence succeed together or neither is durable.
+  // Ratified §11 requires new mutable state to be wrapped with durable evidence. The
+  // duplicate mode is strict so a racing/mismatched ledger row rolls this transaction back.
   try {
     const applied = await prisma.$transaction(async (tx) => {
       const res = await repo.transitionOperator(cmd.operatorId, from, cmd.to, tx);
       if (res.count !== 1) return null; // concurrent change — abort, write no evidence
-      await appendEvent(draft.event, tx);
-      return res.operator;
+      await appendEvent(draft.event, tx, { onDuplicate: "error" });
+      return true;
     });
-    if (!applied) return fail("conflict", "state changed concurrently");
-    return { ok: true, operator: applied, eventId: draft.event.id, replayed: false };
+    if (!applied) return (await existingReplay()) ?? fail("conflict", "state changed concurrently");
+    return { ok: true, operatorId: operator.id, from, to: cmd.to, eventId: draft.event.id, replayed: false };
   } catch {
-    // A unique collision here is a genuine race with another writer of the same command.
-    // Neither the state change nor the evidence is durable; the caller may retry and the
-    // idempotency pre-check will resolve it.
-    return fail("conflict", "transition did not commit");
+    // Strict duplicate handling rolls the state write back. A post-rollback ledger read
+    // distinguishes a matching concurrent command from a material-input collision.
+    return (await existingReplay()) ?? fail("conflict", "transition did not commit");
   }
 }

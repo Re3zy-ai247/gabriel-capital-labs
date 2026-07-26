@@ -1,5 +1,5 @@
 // Guard for Implementation Slice 1 — Operator Lifecycle Runtime.
-// Identity Constitution v1.0 §1.11, §1.16, §4, §9.1, §10.4, §11.2 + ICAP-1 A-7/A-8/A-10.
+// Identity Constitution v1.0 §1.11, §1.16, §4, §9.1, §10.4, §11.2.
 //
 // PURE + EXECUTED, no database. The decision function is total, so the whole transition
 // space is enumerated exhaustively rather than sampled: every (from, to, authority, basis,
@@ -11,9 +11,11 @@
 import { readFileSync } from "node:fs";
 import {
   decideTransition, canonicalJson, decisionDigest, transitionOperator,
-  transitionRequiresStepUp, stepUpCapabilityAvailable,
+  transitionRequiresStepUp, stepUpCapabilityAvailable, platformAuthorityVerifierAvailable,
+  ownerControlResolverAvailable, lifecycleExecutionBlock, lifecycleEventId,
+  replayedLifecycleTransition,
   OPERATOR_LIFECYCLE_POLICY_VERSION, TRANSITION_AUTHORITIES, TRANSITION_BASES,
-  type TransitionAuthority, type TransitionBasis, type StepUpAssertion,
+  type TransitionAuthority, type TransitionBasis, type AuthenticationStepUpFact,
 } from "../lib/identity/lifecycle";
 import { canTransitionOperator, OPERATOR_STATES, type OperatorState } from "../lib/identity/state";
 import { buildOperatorStateChangedEvent, draftIdentityEvent, type EvidenceInput } from "../lib/identity/events";
@@ -25,11 +27,11 @@ let pass = 0, fail = 0; const bad: string[] = [];
 const check = (label: string, cond: boolean) => { cond ? pass++ : (fail++, bad.push(`FAIL: ${label}`)); };
 
 const STATES = [...OPERATOR_STATES] as OperatorState[];
-const STEP_UP: StepUpAssertion = { method: "test", assertedAt: 1 };
+const STEP_UP: AuthenticationStepUpFact = { method: "test", verifiedAt: 1 };
 
 function decide(
   from: OperatorState, to: OperatorState, authority: TransitionAuthority, basis: TransitionBasis,
-  opts: { actorIsSubject?: boolean; stepUp?: StepUpAssertion | null; ownsOrg?: boolean } = {},
+  opts: { actorIsSubject?: boolean; stepUp?: AuthenticationStepUpFact | null; ownsOrg?: boolean } = {},
 ) {
   return decideTransition({
     from, to, authority, basis,
@@ -65,14 +67,14 @@ function decide(
     && ["PENDING->ACTIVE", "PENDING->DEACTIVATED", "ACTIVE->SUSPENDED", "ACTIVE->DEACTIVATED", "SUSPENDED->ACTIVE", "SUSPENDED->DEACTIVATED"]
       .every((e) => legal.includes(e)));
 
-  // Reachable today = every legal edge EXCEPT the three into DEACTIVATED, which A-10
-  // holds closed until Authentication ships step-up.
+  // The pure policy exposes only non-terminal edges while Authentication's step-up
+  // capability is absent. Executable command reachability is tested separately.
   const reachable = legal.filter((edge) => {
     const [from, to] = edge.split("->") as [OperatorState, OperatorState];
     return TRANSITION_AUTHORITIES.some((a) => TRANSITION_BASES.some((b) =>
       decide(from, to, a, b, { actorIsSubject: a === "SELF", stepUp: STEP_UP }).allowed));
   });
-  check("2b· every non-terminal edge has an authorized path", reachable.length === 3
+  check("2b· the pure policy exposes each currently non-terminal edge", reachable.length === 3
     && reachable.every((e) => !e.endsWith("->DEACTIVATED")));
 }
 
@@ -88,12 +90,12 @@ check("3e· SUSPENDED->ACTIVE by Platform Security (resolution evidence)",
 check("3f· SUSPENDED->ACTIVE by SELF is DENIED (no ratified self-reinstatement — fails closed)",
   !decide("SUSPENDED", "ACTIVE", "SELF", "SUBJECT_SELF_SERVICE_EXIT").allowed);
 
-// ── 4. DEACTIVATED is terminal and currently unreachable (§4.6 + ICAP-1 A-10) ─
+// ── 4. DEACTIVATED is terminal and temporarily hard-fail-closed ───────────────
 check("4· step-up capability is absent, so it is fail-closed false", stepUpCapabilityAvailable() === false);
 check("4b· only DEACTIVATED requires step-up", STATES.every((s) => transitionRequiresStepUp(s) === (s === "DEACTIVATED")));
 for (const from of ["PENDING", "ACTIVE", "SUSPENDED"] as OperatorState[]) {
   const d = decide(from, "DEACTIVATED", "PLATFORM_SECURITY", "PLATFORM_SECURITY_HOLD", { actorIsSubject: false, stepUp: STEP_UP });
-  check(`4c· ${from}->DEACTIVATED denied step_up_required even WITH an assertion (capability gate, not caller-supplied)`,
+  check(`4c· ${from}->DEACTIVATED denied step_up_required even with a pure-policy fact`,
     !d.allowed && d.code === "step_up_required");
 }
 check("4d· DEACTIVATED is terminal — no outbound edge from any authority", STATES.every((to) =>
@@ -130,6 +132,12 @@ check("6d· EXHAUSTIVE: every allowed decision has a basis belonging to its auth
     if (!d.allowed) return true;
     return (a === "SELF") === b.startsWith("SUBJECT_");
   })))));
+check("6e· Platform Authority verifier is absent, so an enum input cannot grant authority",
+  platformAuthorityVerifierAvailable() === false && lifecycleExecutionBlock("PLATFORM_IDENTITY_REVIEW", "ACTIVE") === "forbidden");
+check("6f· suspension is hard-denied until Organizations supplies an atomic owner-control resolver",
+  ownerControlResolverAvailable() === false && lifecycleExecutionBlock("SELF", "SUSPENDED") === "owner_invariant");
+check("6g· deactivation is hard-denied until Authentication supplies a verifier",
+  lifecycleExecutionBlock("SELF", "DEACTIVATED") === "step_up_required");
 
 // ── 7. Determinism (§1.16) ───────────────────────────────────────────────────
 {
@@ -170,8 +178,8 @@ check("8e· NaN/Infinity rejected", (() => {
 // ── 9. Evidence contract (§11.2 minimum envelope) ───────────────────────────
 {
   const sealed = { policyVersion: OPERATOR_LIFECYCLE_POLICY_VERSION, operatorId: "op1", from: "ACTIVE" as const, to: "SUSPENDED" as const, authorityClass: "SELF", basis: "SUBJECT_SELF_SERVICE_EXIT", actorId: "a1", commandId: "cmd-9", effectiveAt: 1_700_000_000_000, stepUp: false };
-  const ev: EvidenceInput = { ...sealed, decisionDigest: decisionDigest(sealed), causationId: "cause-1" };
-  const built = buildOperatorStateChangedEvent({ id: "op1", accountId: "acc1" }, ev, "a1", "corr-1");
+  const ev: EvidenceInput = { ...sealed, decisionDigest: decisionDigest(sealed), causationId: null };
+  const built = buildOperatorStateChangedEvent({ id: "op1", accountId: "acc1" }, ev, "a1");
 
   check("9· OPERATOR_STATE_CHANGED current version is 2 (versioned evidence contract, §11.4)", currentVersion("OPERATOR_STATE_CHANGED") === 2);
   check("9b· v1 stays registered so historical rows replay against their own version", getContract("OPERATOR_STATE_CHANGED", 1) !== null);
@@ -199,52 +207,97 @@ check("8e· NaN/Infinity rejected", (() => {
   check("9k· different commandId => different dedupeKey", a.dedupeKey !== b.dedupeKey);
 }
 
-// ── 10. Flag OFF: the whole runtime is a no-op (§14.9, §1.15) ───────────────
+// ── 10. Replay compares sealed material inputs, not the current projection ────
+{
+  const eventId = lifecycleEventId("acc-replay", "cmd-replay");
+  const sealed = {
+    policyVersion: OPERATOR_LIFECYCLE_POLICY_VERSION, operatorId: "op-replay",
+    from: "ACTIVE" as const, to: "SUSPENDED" as const, authorityClass: "SELF",
+    basis: "SUBJECT_SELF_SERVICE_EXIT", actorId: "acc-replay", commandId: "cmd-replay",
+    effectiveAt: 1_700_000_000_000, stepUp: false,
+  };
+  const prior = {
+    id: eventId, type: "OPERATOR_STATE_CHANGED", version: 2, correlationId: eventId,
+    payload: { ...sealed, decisionDigest: decisionDigest(sealed), causationId: null },
+  };
+  const expected = {
+    eventId, operatorId: "op-replay", to: "SUSPENDED" as const, authority: "SELF" as const,
+    basis: "SUBJECT_SELF_SERVICE_EXIT" as const, actorId: "acc-replay", commandId: "cmd-replay",
+    effectiveAt: 1_700_000_000_000,
+  };
+  const original = replayedLifecycleTransition(prior, expected);
+  check("10· matching replay returns the original transition even after a later projection change",
+    original?.from === "ACTIVE" && original.to === "SUSPENDED");
+  check("10b· material-input changes never replay", replayedLifecycleTransition(prior, { ...expected, effectiveAt: 2 }) === null);
+  check("10c· a mismatched correlation never replays", replayedLifecycleTransition({ ...prior, correlationId: "different" }, expected) === null);
+  check("10d· a tampered digest never replays", replayedLifecycleTransition({ ...prior, payload: { ...prior.payload, decisionDigest: "sha256:0000000000000000000000000000000000000000000000000000000000000000" } }, expected) === null);
+}
+
+// ── 11. Flag OFF: the whole runtime is a no-op (§14.9, §1.15) ───────────────
 (async () => {
-  check("10· flag is off in this environment", process.env.OPERATOR_IDENTITY_ENABLED !== "true");
+  check("11· flag is off in this environment", process.env.OPERATOR_IDENTITY_ENABLED !== "true");
 
   const sealed = { policyVersion: OPERATOR_LIFECYCLE_POLICY_VERSION, operatorId: "op1", from: "ACTIVE" as const, to: "SUSPENDED" as const, authorityClass: "SELF", basis: "SUBJECT_SELF_SERVICE_EXIT", actorId: "a1", commandId: "c", effectiveAt: 1, stepUp: false };
   const draft = draftIdentityEvent(buildOperatorStateChangedEvent({ id: "op1", accountId: "acc1" }, { ...sealed, decisionDigest: decisionDigest(sealed), causationId: null }, "a1"));
-  check("10b· draftIdentityEvent is fail-closed disabled with the flag off",
+  check("11b· draftIdentityEvent is fail-closed disabled with the flag off",
     draft.ok === false && draft.code === "disabled");
 
   const p = { id: "a1", role: "ADMIN", isAgency: false, disabled: false };
   const cmd = { operatorId: "op1", to: "ACTIVE" as const, authority: "PLATFORM_IDENTITY_REVIEW" as const, basis: "PLATFORM_REVIEW_APPROVED" as const, commandId: "c1", effectiveAt: 1 };
   const r = await transitionOperator(p, cmd);
-  check("10c· transitionOperator is disabled with the flag off (no DB touch)", r.ok === false && r.code === "disabled");
+  check("11c· transitionOperator is disabled with the flag off (no DB touch)", r.ok === false && r.code === "disabled");
   const rNull = await transitionOperator(null, cmd);
-  check("10d· null principal + flag off => disabled, never a throw", rNull.ok === false && rNull.code === "disabled");
+  check("11d· null principal + flag off => disabled, never a throw", rNull.ok === false && rNull.code === "disabled");
   const again = await transitionOperator(p, cmd);
-  check("10e· repeating the command is byte-identical while disabled (deterministic)",
+  check("11e· repeating the command is byte-identical while disabled (deterministic)",
     JSON.stringify(again) === JSON.stringify(r));
 
-  // ── 11. Structural guarantees ──────────────────────────────────────────────
+  // The master flag alone can never turn a missing authority/owner/authentication seam
+  // into a mutation path. These calls must return before any repository access.
+  const priorFlag = process.env.OPERATOR_IDENTITY_ENABLED;
+  try {
+    process.env.OPERATOR_IDENTITY_ENABLED = "true";
+    const platform = await transitionOperator(p, cmd);
+    const selfSuspension = await transitionOperator(
+      { id: "subject", role: "USER", isAgency: false, disabled: false },
+      { operatorId: "op1", to: "SUSPENDED", authority: "SELF", basis: "SUBJECT_SELF_SERVICE_EXIT", commandId: "s1", effectiveAt: 1 },
+    );
+    const deactivation = await transitionOperator(
+      { id: "subject", role: "USER", isAgency: false, disabled: false },
+      { operatorId: "op1", to: "DEACTIVATED", authority: "SELF", basis: "SUBJECT_CONFIRMED_DEACTIVATION", commandId: "d1", effectiveAt: 1 },
+    );
+    check("11f· flag-on caller cannot forge Platform Authority", platform.ok === false && platform.code === "forbidden");
+    check("11g· flag-on suspension fails before an atomic owner-control resolver exists", selfSuspension.ok === false && selfSuspension.code === "owner_invariant");
+    check("11h· flag-on deactivation fails before an Authentication verifier exists", deactivation.ok === false && deactivation.code === "step_up_required");
+  } finally {
+    if (priorFlag === undefined) delete process.env.OPERATOR_IDENTITY_ENABLED;
+    else process.env.OPERATOR_IDENTITY_ENABLED = priorFlag;
+  }
+
+  // ── 12. Structural guarantees ──────────────────────────────────────────────
   const life = readFileSync("lib/identity/lifecycle.ts", "utf8");
   const svc = readFileSync("lib/identity/service.ts", "utf8");
   const repoSrc = readFileSync("lib/identity/repository.ts", "utf8");
 
-  check("11· the flag is the FIRST gate in the command", life.indexOf("operatorIdentityEnabled()") < life.indexOf("repo.findOperatorById"));
-  check("11b· ICAP-1 A-7: state write and evidence append share one transaction",
-    /\$transaction\(async \(tx\)/.test(life) && /appendEvent\(draft\.event, tx\)/.test(life));
-  check("11c· evidence is NOT written when the guarded state write does not move a row",
+  check("12· the flag is the FIRST gate in the command", life.indexOf("operatorIdentityEnabled()") < life.indexOf("repo.findOperatorById"));
+  check("12b· state write and evidence append share one transaction with strict duplicate rollback",
+    /\$transaction\(async \(tx\)/.test(life) && /appendEvent\(draft\.event, tx, \{ onDuplicate: "error" \}\)/.test(life));
+  check("12c· evidence is NOT written when the guarded state write does not move a row",
     /if \(res\.count !== 1\) return null;/.test(life));
-  check("11d· ICAP-1 A-8: a reused commandId with different inputs is an error, not a no-op",
-    /idempotency_conflict/.test(life));
-  check("11e· service delegates — exactly one lifecycle implementation (§17)",
+  check("12d· the ledger is checked before pure transition evaluation and collisions fail closed",
+    life.indexOf("const prior = await existingReplay()") < life.indexOf("const decision = decideTransition") && /idempotency_conflict/.test(life));
+  check("12e· service delegates — exactly one lifecycle implementation (§17)",
     /export \{ transitionOperator \} from "\.\/lifecycle"/.test(svc) && !/updateMany/.test(svc));
-  check("11f· the §8.3 forbidden shortcut is gone from the lifecycle path",
+  check("12f· the §8.3 forbidden shortcut is gone from the lifecycle path",
     !/isAdmin\(/.test(life));
-  check("11g· repository issues no CREATE TABLE (migration-first)", !/CREATE TABLE/i.test(repoSrc));
-  // Scoped to the guard function itself: the pre-existing repo.createOrganization is
-  // Slice 3 territory and is untouched here.
-  {
-    const guard = repoSrc.match(/countOwnedActiveOrSuspendedOrganizations[\s\S]*?\n\}/)?.[0] ?? "";
-    check("11h· the §4.7 owner-invariant query is read-only (count only, no Organization command)",
-      guard.length > 0 && /organization\.count\(/.test(guard) && !/\.(update|delete|create|upsert)\w*\(/.test(guard));
-    check("11i· the lifecycle command never mutates an Organization",
-      !/organization\.(update|delete|create|upsert)/i.test(life));
-  }
-  check("11i· lifecycle module creates no schema and runs no migration",
+  check("12g· Platform Authority and owner-control execution are hard-fail-closed before subject lookup",
+    life.indexOf("const executionBlock = lifecycleExecutionBlock") < life.indexOf("repo.findOperatorById"));
+  const commandShape = life.match(/export interface TransitionCommand \{[\s\S]*?\n\}/)?.[0] ?? "";
+  check("12h· executable commands accept no caller-supplied step-up, causation, or correlation assertions",
+    !/stepUp|causationId|correlationId/.test(commandShape));
+  check("12i· lifecycle command never mutates an Organization", !/organization\.(update|delete|create|upsert)/i.test(life));
+  check("12j· repository issues no CREATE TABLE (migration-first)", !/CREATE TABLE/i.test(repoSrc));
+  check("12k· lifecycle module creates no schema and runs no migration",
     !/CREATE TABLE|ALTER TABLE|\$executeRaw/i.test(life));
 
   if (bad.length) console.error(bad.join("\n"));

@@ -48,38 +48,31 @@ export async function registerOperator(accountId: string): Promise<{ operator: O
   }
 }
 
-// Race-safe guarded transition. Returns the updated row ONLY when exactly one row moved.
-// `client` lets the caller enlist this write in its own transaction so the state change
-// and its evidence commit together (Identity Constitution §11 + ICAP-1 A-7). Defaults to
-// `prisma`, so every pre-existing caller is unchanged.
+// Race-safe guarded transition. `client` lets the caller enlist this write in its own
+// transaction so state and its §11 evidence commit together. Defaults to `prisma`, so
+// every pre-existing caller is unchanged.
 export type IdentityWriteClient = Pick<typeof prisma, "operatorIdentity">;
 
 export async function transitionOperator(
   operatorId: string, from: OperatorState, to: OperatorState,
   client: IdentityWriteClient = prisma, reason?: string | null,
-): Promise<{ count: number; operator: OperatorIdentity | null }> {
+): Promise<{ count: number }> {
   const res = await client.operatorIdentity.updateMany({
     where: { id: operatorId, state: from },
     data: { state: to, stateReason: reason ?? null },
   });
-  if (res.count !== 1) return { count: res.count, operator: null };
-  const operator = await client.operatorIdentity.findUnique({ where: { id: operatorId } });
-  return { count: 1, operator };
+  return { count: res.count };
 }
 
-// §4.7 owner-protection input. Counts Organizations owned by this account that are still
-// ACTIVE or SUSPENDED. READ-ONLY: no Organization command is implemented here — this is a
-// guard on the operator lifecycle command, and Organization runtime remains Slice 3.
-export function countOwnedActiveOrSuspendedOrganizations(accountId: string): Promise<number> {
-  return prisma.organization.count({
-    where: { ownerAccountId: accountId, state: { in: ["ACTIVE", "SUSPENDED"] } },
+// Idempotency ledger lookup. The derived event id is tenant-scoped and command-stable;
+// callers must compare every material input before accepting a replay.
+export function findEventById(id: string): Promise<{
+  id: string; type: string; version: number; correlationId: string; payload: unknown;
+} | null> {
+  return prisma.eventEnvelope.findUnique({
+    where: { id },
+    select: { id: true, type: true, version: true, correlationId: true, payload: true },
   });
-}
-
-// Idempotency ledger lookup (ICAP-1 A-8). The identity event stream IS the ledger: the
-// event id is derived from the commandId, so a replayed command collides deterministically.
-export function findEventById(id: string): Promise<{ id: string; payload: unknown } | null> {
-  return prisma.eventEnvelope.findUnique({ where: { id }, select: { id: true, payload: true } });
 }
 
 // ── Organization ─────────────────────────────────────────────────────────────

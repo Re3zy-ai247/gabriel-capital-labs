@@ -68,14 +68,24 @@ function cursorOf(e: PlatformEvent): string {
 // duplicate, never a second fanout. Retry-safe: a thrown insert is NOT swallowed.
 // The minimal client surface appendEvent needs. `prisma` and an interactive-transaction
 // client both satisfy it, so a domain can enlist its evidence append in the SAME
-// transaction as the mutation the evidence describes (Identity Constitution §11 +
-// ICAP-1 A-7: a mutation and its evidence succeed together or neither is durable).
+// transaction as the mutation the evidence describes (Identity Constitution §11).
 // This is plumbing only — Event Fabric still transports and owns nothing semantic, and
 // every existing caller keeps the default `prisma` client and is byte-identical.
 export type EventWriteClient = Pick<typeof prisma, "eventEnvelope">;
 
+// A transaction caller must request strict duplicate handling. PostgreSQL treats a unique
+// violation as transaction-fatal, so replay lookup belongs outside the failed transaction;
+// the owning domain can then compare its own material inputs before accepting a replay.
+export interface StrictDuplicateHandling {
+  readonly onDuplicate: "error";
+}
+
+export function appendEvent(draft: DraftEvent): Promise<{ event: PlatformEvent; replayed: boolean }>;
+export function appendEvent(
+  draft: DraftEvent, client: EventWriteClient, options: StrictDuplicateHandling,
+): Promise<{ event: PlatformEvent; replayed: boolean }>;
 export async function appendEvent(
-  draft: DraftEvent, client: EventWriteClient = prisma,
+  draft: DraftEvent, client: EventWriteClient = prisma, options?: StrictDuplicateHandling,
 ): Promise<{ event: PlatformEvent; replayed: boolean }> {
   try {
     const row = await client.eventEnvelope.create({
@@ -88,7 +98,8 @@ export async function appendEvent(
     return { event: toEvent(row as Row), replayed: false };
   } catch (e) {
     if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
-      const existing = await prisma.eventEnvelope.findUnique({ where: { id: draft.id } });
+      if (options?.onDuplicate === "error") throw e;
+      const existing = await client.eventEnvelope.findUnique({ where: { id: draft.id } });
       if (existing) return { event: toEvent(existing as Row), replayed: true };
     }
     throw e; // retry-safe: surface the failure so the caller can retry cleanly

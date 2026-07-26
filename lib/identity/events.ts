@@ -97,7 +97,7 @@ export function operatorRegisteredEvent(operator: { id: string; accountId: strin
   };
 }
 
-// ── Operator Lifecycle Runtime (Slice 1) — versioned evidence, §11.2 + ICAP-1 ──
+// ── Operator Lifecycle Runtime (Slice 1) — versioned evidence, §11.2 ──────────
 // The sealed decision record the lifecycle command produces. Every field is an input to
 // the decision or a provenance reference; nothing is derived from ambient state.
 export interface EvidenceInput {
@@ -116,7 +116,7 @@ export interface EvidenceInput {
 }
 
 // The dedupeKey is the commandId ALONE, so the derived event id is a pure function of the
-// command. That is what makes the event stream the idempotency ledger (ICAP-1 A-8): a
+// command. That is what makes the event stream the idempotency ledger: a
 // replay of the same command collides on the same id, and a DIFFERENT command carrying a
 // reused id is detected by comparing payloads rather than being silently swallowed.
 export function buildOperatorStateChangedEvent(
@@ -133,7 +133,7 @@ export function buildOperatorStateChangedEvent(
 }
 
 // Build + validate + authorize a durable draft WITHOUT writing it, so the caller can
-// enlist the append in its own transaction (ICAP-1 A-7). Same fail-closed ladder as
+// enlist the append in its own transaction (§11). Same fail-closed ladder as
 // recordIdentityEvent: contract -> payload/PII validation -> publish PEP.
 export type DraftResult =
   | { ok: true; event: DraftEvent }

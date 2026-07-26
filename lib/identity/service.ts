@@ -9,10 +9,9 @@
 // never a client-supplied org name/slug. This is the "organization isolation" that makes
 // org spoofing and cross-org tampering impossible. Reads are self/owned-org/admin only.
 //
-// The write and its audit event are sequential and each idempotent (a deterministic
-// event id makes a retry a no-op). A crash between the committed write and the event is
-// the same at-most-once-effect window the Event Fabric's replay/reconciliation is built
-// to backfill; atomic write+event coupling is a documented future hardening.
+// Service-owned mutations retain their existing sequential, idempotent event writes.
+// The lifecycle exception delegates to lifecycle.ts, where its state/evidence pair is
+// transactionally coupled; this service must not duplicate that owner-specific boundary.
 import { operatorIdentityEnabled } from "./flags";
 import { type IdentityPrincipal, isAdmin } from "./principal";
 import { canTransitionMembership } from "./state";
@@ -61,7 +60,7 @@ export async function registerOwnOperator(principal: IdentityPrincipal | null): 
 // no step-up) is SUPERSEDED. It is the §8.3 forbidden shortcut, and it permitted the
 // irreversible command with neither step-up nor an owner-invariant check. Callers now
 // supply an explicit bounded authority class, a reason class, an idempotency key, and a
-// sealed effective time (§4, §9.1, §11.2, ICAP-1 A-8/A-10).
+// sealed effective time (§4, §9.1, §11.2).
 export { transitionOperator } from "./lifecycle";
 
 // ── Organization ─────────────────────────────────────────────────────────────
