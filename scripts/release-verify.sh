@@ -2,9 +2,13 @@
 # RC1 P0-5 release verification — repeatable prod smoke test (the OPERATIONS.md post-deploy probes,
 # executable). Verifies: public routes 200, auth gates 401/403 (never 200-with-effect), health live,
 # security headers present, and x-cv-release consistency. Read-only. Usage:
-#   scripts/release-verify.sh [BASE_URL] [EXPECTED_SHA]   (defaults: prod, no SHA check)
+#   scripts/release-verify.sh BASE_URL [EXPECTED_SHA]   (explicit target required)
 set -uo pipefail
-BASE="${1:-https://www.creditvector.app}"
+if [ "$#" -lt 1 ] || [ "$#" -gt 2 ] || [ -z "${1:-}" ]; then
+  echo "Usage: scripts/release-verify.sh BASE_URL [EXPECTED_SHA]" >&2
+  exit 64
+fi
+BASE="$1"
 EXPECT_SHA="${2:-}"
 fail=0
 

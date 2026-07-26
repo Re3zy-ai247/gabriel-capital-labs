@@ -3,7 +3,7 @@
 // DB-free adversarial fixtures for release-header parsing. The fake curl command
 // never opens a network connection.
 import { spawnSync } from "node:child_process";
-import { chmodSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -28,6 +28,9 @@ writeFileSync(
   [
     "#!/usr/bin/env bash",
     "set -eu",
+    'if [ -n "${GATE_D_TEST_CURL_MARKER:-}" ]; then',
+    '  : > "$GATE_D_TEST_CURL_MARKER"',
+    "fi",
     'if [ "$1" = "-sI" ]; then',
     '  printf "%s" "$GATE_D_TEST_HEADERS"',
     "  exit 0",
@@ -77,7 +80,26 @@ function run(headerBlock: string): number | null {
   return result.status;
 }
 
+function runWithoutTarget(): { curlInvoked: boolean; status: number | null } {
+  const curlMarker = join(fixtureDir, "curl-without-target");
+  const result = spawnSync("bash", [join(root, "scripts", "release-verify.sh")], {
+    cwd: root,
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      GATE_D_TEST_CURL_MARKER: curlMarker,
+      GATE_D_TEST_HEADERS: headers(["x-cv-release: " + expectedRelease]),
+      PATH: fixtureDir + ":" + (process.env.PATH || ""),
+    },
+  });
+  return { curlInvoked: existsSync(curlMarker), status: result.status };
+}
+
 try {
+  {
+    const result = runWithoutTarget();
+    check("release verifier requires an explicit target before curl", result.status === 64 && !result.curlInvoked);
+  }
   check("exact single release header passes", run(headers(["x-cv-release: " + expectedRelease])) === 0);
   check(
     "trailing release-header token fails",
