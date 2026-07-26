@@ -25,15 +25,23 @@ check /api/admin/diagnostics  403
 
 echo "▶ Security headers (/)"
 H=$(curl -sI "$BASE/")
-for h in x-content-type-options x-frame-options referrer-policy strict-transport-security permissions-policy x-cv-release; do
-  if grep -qi "^$h:" <<<"$H"; then printf "  OK   %s\n" "$h"; else printf "  FAIL missing %s\n" "$h"; fail=1; fi
-done
 
+final_header_lines=""
 release_values=()
 release_continuation=0
 release_malformed=0
 while IFS= read -r header_line || [ -n "$header_line" ]; do
   header_line=${header_line%$'\r'}
+  if [[ "$header_line" =~ ^HTTP/[0-9.]+[[:space:]] ]]; then
+    # curl can expose interim/proxy responses before the final response. Only
+    # the final response is release evidence, so reset every response block.
+    final_header_lines=""
+    release_values=()
+    release_continuation=0
+    release_malformed=0
+    continue
+  fi
+  final_header_lines+="$header_line"$'\n'
   if [[ "$header_line" =~ ^[[:space:]] ]]; then
     [ "$release_continuation" -eq 1 ] && release_malformed=1
     continue
@@ -50,6 +58,10 @@ while IFS= read -r header_line || [ -n "$header_line" ]; do
     release_values[${#release_values[@]}]=$header_value
   fi
 done <<<"$H"
+
+for h in x-content-type-options x-frame-options referrer-policy strict-transport-security permissions-policy x-cv-release; do
+  if grep -qi "^$h:" <<<"$final_header_lines"; then printf "  OK   %s\n" "$h"; else printf "  FAIL missing %s\n" "$h"; fail=1; fi
+done
 
 REL=""
 if [ "$release_malformed" -ne 0 ] || [ "${#release_values[@]}" -ne 1 ] || ! [[ "${release_values[0]:-}" =~ ^[0-9a-f]{12}$ ]]; then

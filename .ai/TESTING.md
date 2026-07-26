@@ -14,7 +14,7 @@ npx --no-install tsx scripts/<name>.test.ts   # lockfile-local guard scripts (be
 | Guard | Covers | Last known |
 |---|---|---|
 | `gate-d-preflight.test.ts` | SQL-derived six-migration manifest, exhaustive catalog-state taxonomy, exact direct-target grammar, Prisma 5.22 history-object provenance, rolled-back-history fail-closed behavior, fingerprint/privilege behavior, byte-identical retry | 86/86 |
-| `release-verify.test.ts` | exact/non-unique/malformed `x-cv-release` field rejection without network access | 8/8 |
+| `release-verify.test.ts` | exact/final-response-only/non-unique/malformed `x-cv-release` field rejection without network access | 10/10 |
 | `classify.test.ts` | creditor kind/type classification | 29/29 |
 | `kai-sanitize.test.ts` | Kai prompt-injection sanitizer | 8/8 |
 | `brief-ingest.test.ts` | RSS parser, enrichment, PDF fallback | 26/26 |

@@ -46,9 +46,9 @@ writeFileSync(
 );
 chmodSync(fakeCurl, 0o700);
 
-function headers(releaseLines: string[]): string {
+function headers(releaseLines: string[], status = "HTTP/2 200"): string {
   return [
-    "HTTP/2 200",
+    status,
     "x-content-type-options: nosniff",
     "x-frame-options: SAMEORIGIN",
     "referrer-policy: no-referrer",
@@ -104,6 +104,20 @@ try {
     run(headers(["x-cv-release: " + expectedRelease, "\ttrailing-token"])) !== 0,
   );
   check("missing release header fails", run(headers([])) !== 0);
+  check(
+    "interim release header cannot satisfy a final response missing it",
+    run(
+      headers(["x-cv-release: " + expectedRelease], "HTTP/1.1 100 Continue") +
+        headers([]),
+    ) !== 0,
+  );
+  check(
+    "final release header supersedes malformed interim header",
+    run(
+      headers(["x-cv-release: malformed"], "HTTP/1.1 100 Continue") +
+        headers(["x-cv-release: " + expectedRelease]),
+    ) === 0,
+  );
 } finally {
   rmSync(fixtureDir, { recursive: true, force: true });
 }
