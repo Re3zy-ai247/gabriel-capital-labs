@@ -219,14 +219,20 @@ export default function AgencyPage() {
     router.refresh();
   }
 
+  // Client removal is contained server-side (Identity Constitution v1.0 §12.6, §19.1):
+  // the route no longer deletes a Consumer, so this must neither promise destruction in
+  // the confirm copy nor swallow the refusal silently.
   async function removeClient(id: string, name: string) {
-    if (!confirm(`Delete ${name} and all their reports, tradelines, and letters? This cannot be undone.`)) return;
+    if (!confirm(`Stop managing ${name}? Their records are kept.`)) return;
     setBusy(true);
     try {
       const res = await fetch(`/api/agency/clients/${id}`, { method: "DELETE" });
       if (res.ok) {
         setClients((p) => p.filter((c) => c.id !== id));
         loadKpi();
+      } else {
+        const body = await res.json().catch(() => null);
+        setError(body?.error || "Could not remove that client. Nothing was changed.");
       }
     } finally {
       setBusy(false);
