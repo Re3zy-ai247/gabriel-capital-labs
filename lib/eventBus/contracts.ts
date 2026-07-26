@@ -158,7 +158,7 @@ export const CONTRACTS: Readonly<Record<string, EventContract>> = {
       commandId: z.string().min(1).max(200),
       effectiveAt: z.number().int().positive(),
       invitationRef: z.string().min(1).max(200),
-      // Consent is EVIDENCE (§5.5, ICAP-1 A-2): the episode is referenced by digest and
+      // Consent is EVIDENCE (§5.5): the episode is referenced by digest and
       // described by bounded enums. The episode itself is immutable and never overwritten.
       consentPurpose: z.enum(["OPERATOR_ENROLLMENT", "OPERATOR_TERMS"]),
       consentScope: z.string().min(1).max(120),

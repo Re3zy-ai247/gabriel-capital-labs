@@ -95,7 +95,7 @@ export const ENROLLMENT_BASES = [
 ] as const;
 export type EnrollmentBasis = (typeof ENROLLMENT_BASES)[number];
 
-// ── Consent (§5.1 item 5, §5.5; ICAP-1 A-2) ──────────────────────────────────
+// ── Consent (§5.1 item 5, §5.5) ──────────────────────────────────────────────
 // Consent is EVIDENCE, never a mutable flag. Each episode is immutable and additive: a
 // withdrawal is a NEW episode, never an overwrite of the prior one. Operator consent is
 // distinct from consumer-service consent (§5.1 item 5) — the purpose enum enforces it.
@@ -227,9 +227,9 @@ export function decideEnrollment(req: EnrollmentDecisionRequest): EnrollmentDeci
 // ── Capability gates (fail-closed, mirroring Slice 1) ────────────────────────
 
 // §15.9 requires invitations to be single-purpose, expiring, revocable and identity-bound.
-// Binding requires a purpose-dedicated signing key. None exists, and reusing an
-// authentication or session secret is expressly prohibited (ICAP-1 A-4), so this is false
-// and every acceptance fails closed rather than trusting an unverifiable invitation.
+// Binding requires a purpose-dedicated signing key. No ratified verifier exists, and
+// reusing an authentication or session secret would be an unreviewed trust binding, so this
+// remains false and every acceptance fails closed rather than trusting an unverifiable invite.
 export function invitationVerifierAvailable(): boolean {
   return false;
 }
@@ -356,7 +356,7 @@ export async function revokeEnrollment(
 }
 
 /**
- * Replay comparison (§10.4, ICAP-1 A-8). A repeat of the same commandId with identical
+ * Replay comparison (§10.4). A repeat of the same commandId with identical
  * material inputs is a replay; a reused commandId with DIFFERENT inputs is an error and
  * must never be reported as success.
  */

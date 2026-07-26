@@ -116,7 +116,7 @@ check("4b· expiry is evaluated at the boundary (effectiveAt === expiresAt is ex
   const d = decide({ invitationVerified: false });
   check("4c· an unverifiable / tampered invitation is denied", !d.allowed && d.code === "invitation_unverified");
 }
-check("4d· the invitation verifier is fail-closed absent (no key reuse, ICAP-1 A-4)",
+check("4d· the invitation verifier is fail-closed absent (no unreviewed key reuse)",
   invitationVerifierAvailable() === false);
 {
   const d = decide({ from: "REVOKED" });
@@ -139,7 +139,7 @@ check("5b· EXHAUSTIVE: organizationMatches=false denies every edge",
     !decideEnrollment({ from, to, entry, actor, basis: "SUBJECT_ACCEPTED", actorIsSubject: true,
       organizationMatches: false, expiresAt: T0 + 1000, effectiveAt: T0, invitationVerified: true, consent: CONSENT }).allowed)))));
 
-// ── 6. Consent is evidence, not a flag (§5.1 item 5, §5.5, ICAP-1 A-2) ──────
+// ── 6. Consent is evidence, not a flag (§5.1 item 5, §5.5) ──────────────────
 {
   const d = decide({ consent: null });
   check("6· acceptance without consent is denied", !d.allowed && d.code === "consent_missing");

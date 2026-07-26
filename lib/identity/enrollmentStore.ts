@@ -4,7 +4,7 @@
 //
 // Enrollment needs durable, queryable pre-membership state: find a record, re-evaluate
 // its expiry and revocation AT REDEMPTION (§15.9), and append immutable consent episodes
-// (§5.5, ICAP-1 A-2). No such table exists — `prisma/schema.prisma` declares no
+// (§5.5). No such table exists — `prisma/schema.prisma` declares no
 // Enrollment, Invitation, Acceptance, or Consent model.
 //
 // Creating one requires a 7th migration directory. `scripts/gate-d-preflight-core.ts`
