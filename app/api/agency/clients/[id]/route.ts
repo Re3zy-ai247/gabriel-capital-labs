@@ -11,20 +11,21 @@ export const runtime = "nodejs";
 // `prisma.user.delete` on the managed client. Two constitutional defects made that
 // unsafe, independent of any feature flag:
 //
-//  1. `User.managedByAgencyId` is `ON DELETE CASCADE` (prisma/schema.prisma:96), so the
-//     delete destroyed the Consumer's entire case file — documents (encrypted government
-//     IDs), reports, tradelines, letters and bureau responses, score history. §12.2 and
-//     §16.5 forbid ending a service relationship by deleting the Consumer; §12.3 requires
-//     erasure to be a named, subject-scoped command, never a cascade.
+//  1. Deleting the managed Consumer triggered the separate `userId` cascade FKs on case
+//     data (documents, reports, tradelines, letters and score history). Independently,
+//     the `User.managedByAgencyId` self-FK still cascades managed Consumers if the agency
+//     principal is deleted (prisma/schema.prisma:95-97). §12.2 and §16.5 forbid ending a
+//     service relationship by deleting the Consumer; §12.3 requires erasure to be a
+//     named, subject-scoped command, never a cascade.
 //  2. The KPI row was committed BEFORE the fallible delete and outside any transaction,
 //     so the ledger could record a deletion that never happened (§12.6 item 6).
 //
 // Containment is unconditional and deliberately does NOT invent the replacement. Ending
 // an agency's management relationship is a distinct command (§12.1) that must revoke
 // agency access, supersede the relationship, preserve the Consumer, and write evidence
-// atomically. It does not exist yet, so this route fails closed instead of approximating
-// it. Detaching the Consumer here (nulling `managedByAgencyId`) would be an unevidenced
-// termination — also forbidden.
+// transactionally or through a causally linked durable workflow. It does not exist yet,
+// so this route fails closed instead of approximating it. Detaching the Consumer here
+// (nulling `managedByAgencyId`) would be an unevidenced termination — also forbidden.
 //
 // The authorization ladder below is unchanged on purpose. The lookup stays tenant-scoped
 // (`managedByAgencyId: agency.id`), so a caller who does not manage this id gets the same
@@ -37,8 +38,8 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
   if (!agency) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (!agency.isAgency) return NextResponse.json({ error: "Not an agency account." }, { status: 403 });
 
-  // Existence + tenancy check only. Only `id` is selected: nothing downstream needs the
-  // Consumer's name, so the contained path reads no Consumer PII.
+  // Existence + tenancy check only. The persistent id is still a personal identifier,
+  // but no additional direct identity/profile fields are selected or returned.
   const client = await prisma.user.findFirst({
     where: { id: params.id, managedByAgencyId: agency.id },
     select: { id: true },
@@ -51,7 +52,7 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
   return NextResponse.json(
     {
       error:
-        "Removing a client workspace is unavailable while a safer client-offboarding process is finalized. Nothing was changed and this client's records are intact. Contact support if you need to end management of this client.",
+        "Client offboarding is unavailable while a safer process is finalized. This request made no changes; no deletion or relationship termination was performed. Contact support to document your request and receive current next-step guidance.",
     },
     { status: 409 },
   );
