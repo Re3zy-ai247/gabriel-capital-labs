@@ -18,8 +18,9 @@ function check(label: string, cond: boolean) {
 for (const t of EVENT_TYPES) {
   check(`contract registered for ${t}`, Object.values(CONTRACTS).some((c) => c.type === t));
 }
-// 13 Sprint 8 core + 6 Sprint 9 Operator Identity + 2 Sprint 10 Operator Reputation.
-check("23 event types declared", EVENT_TYPES.length === 23); // +2 canonical reputation facts (Sprint 10 Phase 6)
+// 13 Sprint 8 core + 6 Sprint 9 Operator Identity + 2 Sprint 10 Operator Reputation
+// + 4 Slice 2 Operator Enrollment (pre-membership evidence, §2.8).
+check("27 event types declared", EVENT_TYPES.length === 27);
 
 // ── Fail-closed: unknown type / version ──────────────────────────────────────
 check("unknown type rejected", validateEvent("NOT_A_TYPE", 1, {}).ok === false);
