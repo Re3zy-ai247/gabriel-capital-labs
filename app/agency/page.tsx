@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
 import { Disclaimer } from "@/components/Disclaimer";
 import { openBillingPortal } from "@/lib/portalClient";
-import { Building2, Loader2, UserPlus, FolderOpen, Trash2, Mails, AlertTriangle, Search } from "lucide-react";
+import { Building2, Loader2, UserPlus, FolderOpen, CircleHelp, Mails, AlertTriangle, Search } from "lucide-react";
 
 interface Client {
   id: string;
@@ -219,18 +219,13 @@ export default function AgencyPage() {
     router.refresh();
   }
 
-  async function removeClient(id: string, name: string) {
-    if (!confirm(`Delete ${name} and all their reports, tradelines, and letters? This cannot be undone.`)) return;
-    setBusy(true);
-    try {
-      const res = await fetch(`/api/agency/clients/${id}`, { method: "DELETE" });
-      if (res.ok) {
-        setClients((p) => p.filter((c) => c.id !== id));
-        loadKpi();
-      }
-    } finally {
-      setBusy(false);
-    }
+  // Client offboarding is contained server-side (Identity Constitution v1.0 §12.6,
+  // §19.1). This informational control is deliberately local: it must not issue DELETE
+  // merely to learn that the governed workflow does not exist.
+  function showClientOffboardingStatus() {
+    setError(
+      "Client offboarding is currently unavailable. No request was sent, and no client data or management relationship was changed. Contact support to document your request and receive current next-step guidance.",
+    );
   }
 
   const filtered = clients.filter((c) =>
@@ -260,7 +255,7 @@ export default function AgencyPage() {
         <h2 className="text-xl font-semibold">{ctx?.agencyName || "Agency Workspace"}</h2>
       </div>
 
-      {error && <p className="mb-3 text-sm text-rose-400">{error}</p>}
+      {error && <p role="alert" aria-live="polite" className="mb-3 text-sm text-rose-400">{error}</p>}
       {portalOffer && (
         <button
           type="button"
@@ -534,13 +529,15 @@ export default function AgencyPage() {
                         <FolderOpen className="h-3.5 w-3.5" /> Open workspace
                       </button>
                       <button
-                        onClick={() => removeClient(c.id, c.name)}
+                        type="button"
+                        onClick={showClientOffboardingStatus}
                         disabled={busy}
-                        className="text-slate-500 transition hover:text-rose-400"
-                        title="Delete client"
-                        aria-label={`Delete ${c.name}`}
+                        className="inline-flex items-center gap-1 text-xs text-slate-500 transition hover:text-amber-400"
+                        title={`View client offboarding status for ${c.name}`}
+                        aria-label={`View client offboarding status for ${c.name}`}
                       >
-                        <Trash2 className="h-4 w-4" aria-hidden="true" />
+                        <CircleHelp className="h-4 w-4" aria-hidden="true" />
+                        <span>Offboarding unavailable</span>
                       </button>
                     </div>
                   </div>
