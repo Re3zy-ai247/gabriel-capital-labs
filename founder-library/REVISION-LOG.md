@@ -18,7 +18,8 @@ Governing rules are in **[Volume 0 — Why This Library Exists](VOLUME-00-WHY-TH
 | 0 | [Why This Library Exists](VOLUME-00-WHY-THIS-LIBRARY-EXISTS.md) | 1.0 | Draft | 2026-07-27 — created |
 | 1 | [Executive Summary](VOLUME-01-EXECUTIVE-SUMMARY.md) — CreditVector | 1.0 | Draft | 2026-07-27 — created; text unchanged since |
 | 2 | [Gabriel Capital Labs](VOLUME-02-GABRIEL-CAPITAL-LABS.md) | 1.0 | Draft | 2026-07-27 — created; prose tightened pre-publication |
-| 3–12 | See Volume 0 §Current Library Index | — | Planned | — |
+| 3 | [The Financial Trust Problem](VOLUME-03-THE-FINANCIAL-TRUST-PROBLEM.md) | 1.0 | Draft | 2026-07-27 — created |
+| 4–12 | See Volume 0 §Current Library Index | — | Planned | — |
 
 ---
 
@@ -106,6 +107,37 @@ FR-001 changed canonical positioning for Founder Library purposes. The engineeri
 
 **Until then:** do not state anywhere that ADR-0009 has been superseded in engineering governance. It has not.
 
+### OQ-002 — Volume 3 quantitative citation gap
+
+**Status:** Open · **Raised:** 2026-07-27 · **Owner:** Founder / whoever drafts Volume 3 v1.1
+
+Volume 3 diagnoses the financial trust problem without citing a single statistic. This is deliberate and disclosed in the volume's own evidence standard: substantial quantitative literature exists on consumer-report accuracy, dispute outcomes, and credit access, but it was not consulted, and reproducing remembered figures as verified facts would violate Volume 0's permanent rule 2.
+
+The affected passages name themselves — §8 (Economic Consequences) states outright that a quantified estimate would strengthen it.
+
+**To close:** a v1.1 revision informed by primary sources, with citations. Until then Volume 3 is a structural argument, not an empirical one, and should be represented as such to investors, regulators, and partners.
+
+---
+
+## Canonical frameworks
+
+Models introduced in one volume and used throughout the library. Per Volume 0 §Permanent Rules (rule 10), these are defined once and cited thereafter.
+
+### The Financial Trust Stack
+
+**Introduced:** Volume 3 §4 · **Status:** Analysis (Gabriel Capital Labs' own framework, not an external standard)
+
+Six dependent layers, each produced by the one beneath it:
+
+```
+Opportunity → Reputation → Execution → Education → Identity → Evidence
+   (top)                                                      (foundation)
+```
+
+Two rules govern it: **defects propagate upward**, and **layers cannot be repaired from above**.
+
+Later volumes should cite this model rather than restate it, and should locate any claimed capability or diagnosed failure at a specific layer. It is labelled Analysis, not Established — a reader may reject it. If it is later found not to hold, it is revised in Volume 3, not quietly dropped elsewhere.
+
 ---
 
 ## Observations carried forward
@@ -123,6 +155,13 @@ Durable notes that should shape future volumes. Recorded when identified; not al
 - **No pre-announcement.** The library describes what exists and has been validated. Volume 2's Future Portfolio is explicitly selection principles, not plans. Now binding as Volume 0 §Permanent Rules rule 12. Volumes 7, 9, and 11 will be under the most pressure to violate it.
 - **Volume 2 absorbed the standalone "Vision & Mission" scope.** Mission and decade vision are sections within it. No separate volume will be created. Recorded in Volume 0 §Current Library Index.
 
+**From Volume 3 (2026-07-27):**
+
+- **Per-volume evidence standards work and should continue.** Volume 3 introduced a three-tier labelling scheme — **[Established]** (public law or documented structure), **[Observed]** (widely accepted but not independently examined here), **[Analysis]** (the company's own reasoning) — applied inline throughout. It made the boundary between fact and argument visible to the reader and forced discipline on the author. Volumes 6–8, which will make market and competitive claims, should adopt the same scheme or a successor to it.
+- **The quantitative gap is stated, not hidden.** Volume 3 contains no statistics because the underlying sources were not consulted. This is recorded in the volume itself and tracked as OQ-002 rather than papered over with remembered figures. Future volumes face the same constraint and should handle it the same way.
+- **A diagnosis is written without the treatment in view.** Volume 3 makes no reference to CreditVector, deliberately, and states the test it should be held to: the analysis must remain accurate whether or not the company exists. Volume 4 is where the proposal appears, and it must be traceable back to failures Volume 3 diagnosed.
+- **The honest counterargument belongs in the document.** Volume 3 §7 states the strongest objection to its own argument (that the trust stack may not belong to any single party) without resolving it. Continuing this practice is what distinguishes analysis from advocacy.
+
 **From Volume 0 (2026-07-27):**
 
 - **The library's rules were previously implicit.** Statuses, versioning, conflict resolution, and the engineering/production authority boundary existed as practice before Volume 0 wrote them down. Volume 0 is therefore partly a record of what was already being done, and future governance changes amend Volume 0 rather than accumulating as habit.
@@ -139,3 +178,4 @@ Per Volume 0 §Versioning, these advance no document version.
 | 1 | HTML, self-contained | 2026-07-27 | Rebuilt on the shared library template; body text verified verbatim against the canonical Markdown |
 | 2 | HTML, self-contained | 2026-07-27 | Shared library template |
 | 0 | HTML, self-contained | 2026-07-27 | Shared template, plus in-document download and print controls |
+| 3 | HTML, self-contained | 2026-07-27 | Shared template; adds a CSS-built trust-stack figure and inline evidence labels. `<head>`, stylesheet, and scripts reused verbatim from the Volume 0 edition |

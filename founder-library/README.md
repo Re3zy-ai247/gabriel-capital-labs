@@ -25,7 +25,7 @@ The revision log also carries founder ratifications and open items, which are de
 | 0 | [Why This Library Exists](VOLUME-00-WHY-THIS-LIBRARY-EXISTS.md) — preface and governance | 1.0 | Draft |
 | 1 | [Executive Summary](VOLUME-01-EXECUTIVE-SUMMARY.md) — CreditVector | 1.0 | Draft |
 | 2 | [Gabriel Capital Labs](VOLUME-02-GABRIEL-CAPITAL-LABS.md) — the company | 1.0 | Draft |
-| 3 | The Financial Trust Problem | — | Planned |
+| 3 | [The Financial Trust Problem](VOLUME-03-THE-FINANCIAL-TRUST-PROBLEM.md) — the diagnosis | 1.0 | Draft |
 | 4 | The CreditVector Solution | — | Planned |
 | 5 | Product Philosophy | — | Planned |
 | 6 | Business Model | — | Planned |
