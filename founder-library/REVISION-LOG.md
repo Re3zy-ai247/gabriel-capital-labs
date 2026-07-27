@@ -21,7 +21,8 @@ Governing rules are in **[Volume 0 — Why This Library Exists](VOLUME-00-WHY-TH
 | 3 | [The Financial Trust Problem](VOLUME-03-THE-FINANCIAL-TRUST-PROBLEM.md) | 1.0 | Draft | 2026-07-27 — created |
 | 4 | [The CreditVector Solution](VOLUME-04-THE-CREDITVECTOR-SOLUTION.md) | 1.0 | Draft | 2026-07-27 — created |
 | 5 | [Product Philosophy](VOLUME-05-PRODUCT-PHILOSOPHY.md) | 1.0 | Draft | 2026-07-27 — created |
-| 6–12 | See Volume 0 §Current Library Index | — | Planned | — |
+| 6 | [Business Model](VOLUME-06-BUSINESS-MODEL.md) — *Book II* | 1.0 | Draft | 2026-07-27 — created |
+| 7–12 | See Volume 0 §Current Library Index | — | Planned | — |
 
 ---
 
@@ -205,6 +206,14 @@ Durable notes that should shape future volumes. Recorded when identified; not al
 - **The proposal admits it does not solve the binding constraint.** Volume 3 §10 identified institutional accountability as what technology cannot produce. Volume 4 states plainly that CreditVector does not solve it, operating only on the consumer's side of the relationship. Its weakest mapping entries (4.6 incentives, 4.7–4.8 institutional behaviour) sit exactly where the diagnosis predicted — offered as evidence the proposal was derived from the diagnosis rather than fitted to it afterward.
 - **Volume 4 stands or falls with Volume 3, by design.** It states that if the diagnosis is rejected, the proposal should be rejected too. Later volumes should preserve this dependency rather than letting the proposal float free of its reasoning.
 
+**From Volume 6 (2026-07-27) — Book II opens:**
+
+- **Citation accuracy degrades as the library grows, and only an audit catches it.** Volume 6's audit raised 48 findings and confirmed 25. **Nine of the confirmed findings were mis-citations** — passages attributed to Volume 4 §4.5 that live in Volume 1, a rule attributed to Volume 5 §10 that belongs to Volume 2 §Core Principles, *Refuse revenue that costs trust* attributed to §Our Philosophy rather than §Core Principles, and a high-pressure-selling diagnosis attributed to Volume 3 §6.3 rather than §6.9. Every one was written in good faith by an author who believed the citation was right. **As the corpus grows, citation verification must be mechanical rather than remembered** — which is what the editorial review's proposed Rule 18 exists for.
+- **A volume must not soften its own concession.** Volume 6 §3 concedes that dependency survives Volume 5 §4's test only *conditionally*. Two later passages then stated the matter as fully resolved. Caught and corrected. **A concession made once must hold everywhere in the same document**, or it was presentation rather than honesty.
+- **The legal-conclusion boundary is easy to cross by accident.** Volume 6 asserted that outcome-contingent payment "is prohibited in the domain" — a statutory conclusion, in a volume whose own evidence standard forbids exactly that, and which the library's only [Established] statement of CROA does not support (CROA's recorded prohibition is on *advance fees*, which constrains payment before performance, not payment contingent on outcome). Corrected to state commercial intent and point the legal question at counsel.
+- **Repeating a defect a previous volume was corrected for is the clearest signal a rule is missing.** Volume 5 was corrected before publication for asserting a state of the revision log that did not yet exist. **Volume 6 did the same thing** — it claimed new editorial debt "is recorded in the log" before any Volume 6 entry existed. Two occurrences in consecutive volumes is a process defect, not an authoring slip: **the log entry and the volume that references it must be written in the same commit, without exception.**
+- **The ratified engineering-side economy vocabulary must be quoted, not paraphrased.** Volume 6 named the fifth separated instrument "purchasable credits"; the ratified term is *promotional credits*, and the same record notes they are not introduced. Corrected.
+
 **From Volume 5 (2026-07-27):**
 
 - **Altitude must be declared before a volume is written, not after.** Volume 5's stated risk was duplicating Volume 2 §Our Philosophy or Volume 4 §2. It was written to own the *selection decision* — what earns the right to exist — which neither of the others addresses. An audit confirmed Volume 4 §2 is untouched (all seven principles tested), but found three genuine restatements of Volume 2 convictions, all fixed by citation before publication. **A volume adjacent to an existing one needs its distinct claim stated in its own front matter before drafting begins.**
@@ -264,6 +273,16 @@ Volume 0 §6 classifies Volume 5 among the *CreditVector product documents* — 
 
 Per Volume 0 §9 the conflict is logged rather than resolved by editing the older document, and Volume 5 discloses it on its own face. **Until resolved, Volume 0's classification governs any authority dispute and Volume 5's scope claim stands as the founder's stated intent.** Resolution belongs to Foundation Release v1.1, alongside FD-H1, which already requires reworking the same authority map.
 
+### OQ-006 — Volume 6's central economic thesis is unproven and stated as such
+
+**Status:** Open · **Raised:** 2026-07-27 · **Owner:** Founder
+
+Volume 6 §12 argues that trust compounds economically — through retention, acquisition cost, cost of being right, and optionality — and then states plainly that **none of this has accumulated yet**. The volume is a falsifiable commitment, not a demonstrated result, and it says so.
+
+The volume records what would show the model working (lengthening retention as cohorts age; a rising share of customers arriving by recommendation; falling cost to serve; professionals staking their practice on it; institutions accepting the record as evidence) and what would show it failing (retention explained by switching cost rather than value; acquisition cost rising with age; and — the clearest signal — **the company beginning to make exceptions to §5**).
+
+**To close:** evidence, over years. **Until then, Volume 6 must not be represented to investors or partners as demonstrating that the model works.** It demonstrates only that the model is compatible with the philosophy and states how it could be proved wrong.
+
 ---
 
 ## Presentation editions (no version change)
@@ -278,3 +297,4 @@ Per Volume 0 §Versioning, these advance no document version.
 | 3 | HTML, self-contained | 2026-07-27 | Shared template; adds a CSS-built trust-stack figure and inline evidence labels. `<head>`, stylesheet, and scripts reused verbatim from the Volume 0 edition |
 | 4 | HTML, self-contained | 2026-07-27 | Shared template; adds implementation-status label styling. Generated from the canonical Markdown by `_build_edition.py`, so text parity is structural rather than manual |
 | 5 | HTML, self-contained | 2026-07-27 | Shared template, generated by `_build_edition.py`. The builder was corrected to number an Evidence Standard section as §0 (Volume 3's convention) so Volume 5's cross-references resolve; **Volume 4's edition was deliberately not regenerated**, leaving FD-H2 as open debt |
+| 6 | HTML, self-contained | 2026-07-27 | Shared template, generated by `_build_edition.py`. First Book II edition; no builder change required |

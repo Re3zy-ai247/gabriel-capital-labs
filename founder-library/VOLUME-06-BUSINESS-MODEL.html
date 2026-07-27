@@ -1,0 +1,1316 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#060a14">
+<meta name="description" content="Founder Library Volume 6 — can Gabriel Capital Labs be profitable without violating its own philosophy?">
+<title>Business Model — Founder Library, Book II, Volume 6</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+  body { margin: 0; min-height: 100vh; }
+  h1, h2, h3, p, ol, ul, figure, blockquote, table { margin: 0; }
+  ol, ul { padding: 0; }
+  img, svg { display: block; max-width: 100%; }
+  a { color: inherit; }
+
+  :root {
+    --ground:        #f4f6f9;
+    --ground-2:      #ffffff;
+    --ink:           #0a1420;
+    --ink-2:         #4c5f72;
+    --ink-3:         #7f909f;
+    --rule:          #d3dce5;
+    --rule-soft:     #e4eaf0;
+    --accent:        #0c6c86;
+    --panel-bg:      #071223;
+    --panel-ink:     #d9e6f2;
+    --panel-ink-2:   #93a9c0;
+    --panel-accent:  #3fd0e6;
+    --panel-rule:    #1e3350;
+
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", "Hoefler Text", "Times New Roman", serif;
+    --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+
+    --measure: 39rem;
+    --rail: 11rem;
+    --gutter: 3.5rem;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground: #060a14; --ground-2: #0b1220;
+      --ink: #e2eaf3; --ink-2: #93a7bc; --ink-3: #64798f;
+      --rule: #1c2a3c; --rule-soft: #141f2e;
+      --accent: #3fd0e6;
+      --panel-bg: #10203a; --panel-ink: #e6eef7; --panel-ink-2: #a6bad0;
+      --panel-accent: #3fd0e6; --panel-rule: #263d5e;
+    }
+  }
+
+  :root[data-theme="light"] {
+    --ground: #f4f6f9; --ground-2: #ffffff;
+    --ink: #0a1420; --ink-2: #4c5f72; --ink-3: #7f909f;
+    --rule: #d3dce5; --rule-soft: #e4eaf0;
+    --accent: #0c6c86;
+    --panel-bg: #071223; --panel-ink: #d9e6f2; --panel-ink-2: #93a9c0;
+    --panel-accent: #3fd0e6; --panel-rule: #1e3350;
+  }
+
+  :root[data-theme="dark"] {
+    --ground: #060a14; --ground-2: #0b1220;
+    --ink: #e2eaf3; --ink-2: #93a7bc; --ink-3: #64798f;
+    --rule: #1c2a3c; --rule-soft: #141f2e;
+    --accent: #3fd0e6;
+    --panel-bg: #10203a; --panel-ink: #e6eef7; --panel-ink-2: #a6bad0;
+    --panel-accent: #3fd0e6; --panel-rule: #263d5e;
+  }
+
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--serif);
+    font-size: 17px;
+    line-height: 1.72;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  .wrap {
+    max-width: calc(var(--measure) + var(--rail) + var(--gutter) + 6rem);
+    margin: 0 auto;
+    padding: 0 1.25rem 5rem;
+  }
+
+  @media (min-width: 600px) { .wrap { padding: 0 1.5rem 6rem; } }
+
+  /* ---------- masthead ---------- */
+
+  .masthead {
+    padding: 3rem 0 2.25rem;
+    border-bottom: 1px solid var(--rule);
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  @media (min-width: 600px) { .masthead { padding: 4.5rem 0 2.75rem; gap: 1.5rem; } }
+
+  .org {
+    font-family: var(--mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+
+  .volume-line {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  .volume-line::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--rule);
+  }
+
+  .masthead h1 {
+    font-size: clamp(2.1rem, 8vw, 3.75rem);
+    line-height: 1.08;
+    font-weight: 400;
+    letter-spacing: -0.015em;
+    text-wrap: balance;
+  }
+
+  .masthead .lede {
+    font-size: 1.0625rem;
+    line-height: 1.65;
+    color: var(--ink-2);
+    max-width: var(--measure);
+  }
+
+  @media (min-width: 600px) { .masthead .lede { font-size: 1.1875rem; line-height: 1.62; } }
+
+  /* ---------- metadata ---------- */
+
+  .meta {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
+    gap: 1.1rem 1.5rem;
+    padding: 1.75rem 0;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .meta div { display: flex; flex-direction: column; gap: 0.28rem; }
+
+  .k {
+    font-family: var(--mono);
+    font-size: 0.625rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+
+  .meta .v {
+    font-family: var(--mono);
+    font-size: 0.8125rem;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .meta .v.status { color: var(--accent); }
+
+  .audience {
+    padding: 1.5rem 0;
+    border-bottom: 1px solid var(--rule);
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+  }
+
+  .audience p {
+    color: var(--ink-2);
+    font-size: 0.9375rem;
+    line-height: 1.7;
+    max-width: var(--measure);
+  }
+
+  /* ---------- document controls ---------- */
+
+  .controls {
+    padding: 1.5rem 0;
+    border-bottom: 1px solid var(--rule);
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+  }
+
+  .controls .btn-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+  }
+
+  .btn {
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.03em;
+    color: var(--ink);
+    background: transparent;
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+    padding: 0.7rem 1.05rem;
+    cursor: pointer;
+    line-height: 1.3;
+    flex: 1 1 auto;
+    min-height: 44px;
+    transition: border-color 0.18s ease, color 0.18s ease;
+  }
+
+  @media (min-width: 480px) { .btn { flex: 0 0 auto; } }
+
+  .btn:hover, .btn:focus-visible {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .btn:active { transform: translateY(1px); }
+
+  .controls .hint {
+    font-size: 0.8125rem;
+    line-height: 1.6;
+    color: var(--ink-3);
+    max-width: var(--measure);
+  }
+
+  .controls .status-msg {
+    font-family: var(--mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.06em;
+    color: var(--accent);
+    min-height: 1.2em;
+  }
+
+  /* ---------- mobile table of contents ---------- */
+
+  .toc {
+    border-bottom: 1px solid var(--rule);
+    padding: 0.35rem 0;
+  }
+
+  .toc summary {
+    font-family: var(--mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    cursor: pointer;
+    padding: 1.15rem 0;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    min-height: 44px;
+  }
+
+  .toc summary::-webkit-details-marker { display: none; }
+
+  .toc summary::after {
+    content: "+";
+    font-size: 1rem;
+    color: var(--accent);
+  }
+
+  .toc[open] summary::after { content: "–"; }
+
+  .toc ol {
+    list-style: none;
+    counter-reset: toc;
+    padding: 0 0 1.25rem;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .toc li { counter-increment: toc; }
+
+  .toc a {
+    display: flex;
+    gap: 0.85rem;
+    padding: 0.6rem 0;
+    text-decoration: none;
+    color: var(--ink-2);
+    font-size: 0.9375rem;
+    line-height: 1.4;
+    border-top: 1px solid var(--rule-soft);
+    min-height: 44px;
+    align-items: center;
+  }
+
+  .toc a::before {
+    content: "§" counter(toc);
+    font-family: var(--mono);
+    font-size: 0.6875rem;
+    color: var(--accent);
+    flex: 0 0 2.1rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .toc a:hover, .toc a:focus-visible { color: var(--ink); }
+
+  @media (min-width: 1080px) { .toc { display: none; } }
+
+  /* ---------- body grid ---------- */
+
+  .body-grid { display: block; padding-top: 2.75rem; }
+
+  .rail { display: none; }
+
+  @media (min-width: 1080px) {
+    .body-grid {
+      display: grid;
+      grid-template-columns: var(--rail) minmax(0, var(--measure));
+      gap: var(--gutter);
+      align-items: start;
+      padding-top: 3.5rem;
+    }
+
+    .rail {
+      display: block;
+      position: sticky;
+      top: 2.5rem;
+      border-left: 1px solid var(--rule);
+      max-height: calc(100vh - 5rem);
+      overflow-y: auto;
+    }
+
+    .rail ol { list-style: none; display: flex; flex-direction: column; gap: 0.1rem; }
+
+    .rail a {
+      display: block;
+      padding: 0.26rem 0 0.26rem 0.85rem;
+      margin-left: -1px;
+      border-left: 1px solid transparent;
+      font-family: var(--mono);
+      font-size: 0.6875rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--ink-3);
+      text-decoration: none;
+      transition: color 0.18s ease, border-color 0.18s ease;
+    }
+
+    .rail a:hover, .rail a:focus-visible { color: var(--ink); }
+
+    .rail a[aria-current="true"] {
+      color: var(--accent);
+      border-left-color: var(--accent);
+    }
+  }
+
+  .doc { max-width: var(--measure); }
+
+  /* ---------- sections ---------- */
+
+  .doc section { padding-bottom: 2.75rem; }
+
+  .doc section + section {
+    padding-top: 2.75rem;
+    border-top: 1px solid var(--rule-soft);
+  }
+
+  @media (min-width: 600px) {
+    .doc section { padding-bottom: 3.25rem; }
+    .doc section + section { padding-top: 3.25rem; }
+  }
+
+  .doc h2 {
+    font-size: clamp(1.375rem, 5vw, 1.875rem);
+    line-height: 1.24;
+    font-weight: 400;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+    margin-bottom: 1.15rem;
+    position: relative;
+  }
+
+  .doc h2 .sec {
+    font-family: var(--mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.1em;
+    color: var(--accent);
+    display: block;
+    margin-bottom: 0.55rem;
+  }
+
+  @media (min-width: 1080px) {
+    .doc h2 .sec { position: absolute; left: -3.6rem; top: 0.6em; margin: 0; }
+  }
+
+  .doc h3 {
+    font-size: 1.0625rem;
+    line-height: 1.42;
+    font-weight: 600;
+    text-wrap: balance;
+    margin: 2rem 0 0.7rem;
+  }
+
+  @media (min-width: 600px) { .doc h3 { font-size: 1.125rem; margin-top: 2.25rem; } }
+
+  .doc h3:first-of-type { margin-top: 0; }
+
+  .doc p { margin-bottom: 1.1rem; }
+  .doc p:last-child { margin-bottom: 0; }
+
+  .doc strong { font-weight: 600; color: var(--ink); }
+  .doc em { font-style: italic; }
+
+  .doc .opening { font-size: 1.0625rem; line-height: 1.68; }
+  @media (min-width: 600px) { .doc .opening { font-size: 1.125rem; } }
+
+  .doc .runin { margin-bottom: 1.1rem; }
+  .doc .runin b { font-weight: 600; }
+
+  .doc ol.spaced {
+    list-style: none;
+    counter-reset: item;
+    margin-bottom: 1.1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .doc ol.spaced > li {
+    counter-increment: item;
+    position: relative;
+    padding-left: 2.1rem;
+  }
+
+  .doc ol.spaced > li::before {
+    content: counter(item, decimal-leading-zero);
+    position: absolute;
+    left: 0;
+    top: 0.28em;
+    font-family: var(--mono);
+    font-size: 0.6875rem;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .doc ul.plain {
+    list-style: none;
+    margin-bottom: 1.1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+  }
+
+  .doc ul.plain > li { position: relative; padding-left: 1.5rem; }
+
+  .doc ul.plain > li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0.82em;
+    width: 0.6rem;
+    height: 1px;
+    background: var(--accent);
+  }
+
+  .doc dl.statuses { margin-bottom: 1.1rem; }
+
+  .doc dl.statuses > div {
+    padding: 1rem 0;
+    border-bottom: 1px solid var(--rule-soft);
+  }
+
+  .doc dl.statuses > div:first-child { border-top: 1px solid var(--rule-soft); }
+
+  .doc dl.statuses dt {
+    font-family: var(--mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 0.45rem;
+  }
+
+  .doc dl.statuses dd { margin: 0; }
+
+  /* ---------- the governing-rule panel ---------- */
+
+  .panel {
+    background: var(--panel-bg);
+    color: var(--panel-ink);
+    border-radius: 2px;
+    padding: 1.75rem 1.35rem;
+    margin: 1.75rem 0;
+  }
+
+  @media (min-width: 600px) { .panel { padding: 2.5rem 2.25rem; } }
+
+  .panel .label {
+    font-family: var(--mono);
+    font-size: 0.625rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--panel-accent);
+    display: block;
+    margin-bottom: 1rem;
+  }
+
+  .panel .rule-text {
+    font-size: 1.125rem;
+    line-height: 1.55;
+    color: var(--panel-ink);
+    text-wrap: pretty;
+  }
+
+  @media (min-width: 600px) { .panel .rule-text { font-size: 1.25rem; } }
+
+  .panel .rule-text strong { color: var(--panel-accent); font-weight: 600; }
+
+  .panel .note {
+    margin-top: 1.35rem;
+    padding-top: 1.15rem;
+    border-top: 1px solid var(--panel-rule);
+    font-family: var(--mono);
+    font-size: 0.6875rem;
+    line-height: 1.7;
+    color: var(--panel-ink-2);
+  }
+
+  /* ---------- index table ---------- */
+
+  .table-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin-bottom: 1.1rem;
+  }
+
+  table.index {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 20rem;
+    font-size: 0.9375rem;
+  }
+
+  table.index th, table.index td {
+    text-align: left;
+    padding: 0.65rem 0.85rem 0.65rem 0;
+    border-bottom: 1px solid var(--rule-soft);
+    vertical-align: baseline;
+  }
+
+  table.index th {
+    font-family: var(--mono);
+    font-size: 0.625rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    font-weight: 400;
+    border-bottom-color: var(--rule);
+  }
+
+  table.index td.num {
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+    width: 3rem;
+  }
+
+  table.index td.st {
+    font-family: var(--mono);
+    font-size: 0.6875rem;
+    color: var(--ink-3);
+    white-space: nowrap;
+  }
+
+  table.index tr.done td.st { color: var(--accent); }
+
+  /* ---------- colophon ---------- */
+
+  .colophon {
+    margin-top: 3rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--rule);
+    max-width: var(--measure);
+  }
+
+  .colophon p {
+    font-size: 0.8125rem;
+    line-height: 1.72;
+    color: var(--ink-3);
+    margin-bottom: 0.85rem;
+  }
+
+  .colophon p:last-child { margin-bottom: 0; }
+
+  .colophon .mark {
+    font-family: var(--mono);
+    font-size: 0.625rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+
+  @media (min-width: 1080px) {
+    .colophon { margin-left: calc(var(--rail) + var(--gutter)); }
+  }
+
+  /* ---------- accessibility ---------- */
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+    border-radius: 1px;
+  }
+
+  .skip {
+    position: absolute;
+    left: -9999px;
+    top: 0;
+    background: var(--ground-2);
+    color: var(--ink);
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--accent);
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    z-index: 10;
+  }
+
+  .skip:focus { left: 0.5rem; top: 0.5rem; }
+
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    .btn, .rail a, .toc a { transition: none; }
+    .btn:active { transform: none; }
+  }
+
+  /* ---------- print ---------- */
+
+  @media print {
+    :root {
+      --ground: #ffffff; --ground-2: #ffffff;
+      --ink: #000000; --ink-2: #222222; --ink-3: #555555;
+      --rule: #999999; --rule-soft: #cccccc;
+      --accent: #000000;
+      --panel-bg: #ffffff; --panel-ink: #000000;
+      --panel-ink-2: #333333; --panel-accent: #000000; --panel-rule: #999999;
+    }
+
+    .controls, .toc, .rail, .skip { display: none !important; }
+
+    body { background: #fff; color: #000; font-size: 11pt; line-height: 1.5; }
+    .wrap { max-width: none; padding: 0; }
+    .body-grid { display: block; padding-top: 1.5rem; }
+    .doc, .colophon, .masthead .lede, .audience p { max-width: none; margin-left: 0; }
+
+    .masthead { padding: 0 0 1rem; }
+    .masthead h1 { font-size: 24pt; }
+    .masthead .lede { font-size: 11pt; }
+
+    .doc h2 { font-size: 15pt; }
+    .doc h2 .sec { position: static; margin-bottom: 0.3rem; }
+    .doc h3 { font-size: 12pt; }
+
+    .doc section { padding-bottom: 1.2rem; page-break-inside: auto; }
+    .doc section + section { padding-top: 1.2rem; }
+    .doc h2, .doc h3 { page-break-after: avoid; break-after: avoid; }
+    .doc p, .doc li { orphans: 3; widows: 3; }
+
+    .panel { border: 1pt solid #000; padding: 1rem; page-break-inside: avoid; }
+    .panel .rule-text { font-size: 12pt; }
+
+    .table-scroll { overflow: visible; }
+    table.index { font-size: 10pt; page-break-inside: avoid; }
+
+    a { text-decoration: none; }
+  }
+
+  /* ---------- evidence labels ---------- */
+
+  .tag {
+    font-family: var(--mono);
+    font-size: 0.625rem;
+    letter-spacing: 0.06em;
+    white-space: nowrap;
+    padding: 0.1em 0.4em;
+    border: 1px solid currentColor;
+    border-radius: 2px;
+    vertical-align: 0.08em;
+    opacity: 0.95;
+  }
+
+  .t-est { color: var(--accent); }
+  .t-obs { color: var(--ink-2); }
+  .t-ana { color: var(--ink-3); }
+
+  .doc .standard {
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+    padding: 1.25rem 1.15rem;
+    margin-bottom: 1.5rem;
+  }
+
+  @media (min-width: 600px) { .doc .standard { padding: 1.6rem 1.5rem; } }
+
+  .doc .standard dl { display: flex; flex-direction: column; gap: 0.9rem; }
+  .doc .standard dt { margin-bottom: 0.25rem; }
+  .doc .standard dd { margin: 0; font-size: 0.9375rem; line-height: 1.6; color: var(--ink-2); }
+
+  /* ---------- the trust stack figure ---------- */
+
+  .stack {
+    margin: 1.75rem 0;
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 0;
+  }
+
+  .stack .layer {
+    border: 1px solid var(--rule);
+    border-bottom-width: 0;
+    padding: 0.85rem 1rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.3rem 0.85rem;
+    background: var(--ground-2);
+  }
+
+  .stack .layer:first-child { border-bottom-width: 1px; }
+
+  .stack .layer .name {
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    flex: 0 0 auto;
+    min-width: 7.5rem;
+  }
+
+  .stack .layer .gloss {
+    font-size: 0.9375rem;
+    line-height: 1.5;
+    color: var(--ink-2);
+  }
+
+  .stack .layer.base { border-top-width: 2px; border-top-color: var(--accent); }
+
+  .stack .arrow {
+    align-self: center;
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    color: var(--ink-3);
+    padding: 0.2rem 0;
+    line-height: 1;
+  }
+
+  .stack-caption {
+    font-family: var(--mono);
+    font-size: 0.6875rem;
+    line-height: 1.6;
+    color: var(--ink-3);
+    margin-top: 0.4rem;
+  }
+
+  @media print {
+    .stack .layer { background: #fff; }
+    .stack, .doc .standard { page-break-inside: avoid; }
+    .tag { opacity: 1; }
+  }
+
+  .t-live { color: var(--accent); border-style: solid; }
+  .t-part { color: var(--ink-2); border-style: dashed; }
+  .t-plan { color: var(--ink-3); border-style: dotted; }
+  .doc ul.caps { list-style: none; margin: 0 0 1.1rem; display: flex; flex-direction: column; gap: 0.6rem; }
+  .doc ul.caps > li { display: flex; flex-wrap: wrap; gap: 0.35rem 0.6rem; align-items: baseline; padding-left: 1.5rem; position: relative; }
+  .doc ul.caps > li::before { content: ""; position: absolute; left: 0; top: 0.82em; width: 0.6rem; height: 1px; background: var(--accent); }
+  .doc .stacklayer { font-style: italic; color: var(--ink-2); }
+</style>
+</head>
+<body>
+
+<a class="skip" href="#doc-main">Skip to document</a>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <p class="org">Gabriel Capital Labs · CreditVector Founder Library</p>
+    <p class="volume-line">Volume 06</p>
+    <h1>Business Model</h1>
+    <p class="lede">Can Gabriel Capital Labs build a profitable company without violating its own philosophy? If the answer is only by compromising its principles, the business model is wrong. This volume tests that rather than asserting it. It is not a pricing document, not a projection, and not an investor deck — it contains no prices, no forecasts, and no claim of future profitability.</p>
+  </header>
+
+  <section class="meta" aria-label="Document metadata">
+    <div><span class="k">Volume</span><span class="v">06</span></div>
+    <div><span class="k">Version</span><span class="v">1.0</span></div>
+    <div><span class="k">Status</span><span class="v status">Draft</span></div>
+    <div><span class="k">Date</span><span class="v">2026&#8209;07&#8209;27</span></div>
+    <div><span class="k">Book</span><span class="v">II</span></div>
+  </section>
+
+  <section class="audience" aria-label="Intended audience">
+    <span class="k">Intended audience</span>
+    <p>Investors · Enterprise customers · Board members · Executives · Product leaders · Future CEOs · Financial institutions</p>
+  </section>
+
+  <section class="audience" aria-label="Relationship to other volumes">
+    <span class="k">Relationship to other volumes</span>
+    <p>This volume opens <strong>Book II</strong>. The Foundation Edition (Volumes 0–5) is the governing framework for everything that follows, and this volume is its first real test. It depends most directly on <strong>Volume 5</strong>, which hands it an explicit falsification condition: a model that pays for engagement or dependency would invalidate Volume 5 §4 and Volume 4 §12 simultaneously. It also depends on <strong>Volume 2</strong>, <strong>Volume 3 §6.6</strong>, and <strong>Volume 4 §4.6</strong> — cited, never restated. Per <strong>Volume 0 §6</strong> it establishes no product capability, technical fact, or legal authority, and makes no claim about regulatory approvals. Foundation Edition editorial debt remains tracked for Foundation Release v1.1 and is <strong>not resolved here</strong>.</p>
+  </section>
+
+  <section class="controls" aria-label="Document actions">
+    <span class="k">This document</span>
+    <div class="btn-row">
+      <button type="button" class="btn" id="btn-download">Download This Document</button>
+      <button type="button" class="btn" id="btn-print">Print / Save as PDF</button>
+    </div>
+    <p class="hint">Downloading saves a complete copy of this page as a single HTML file that opens offline with no network access. Printing opens your browser's print dialog, where you can choose “Save as PDF”; navigation and these controls are omitted from the printed copy.</p>
+    <p class="status-msg" id="dl-status" role="status" aria-live="polite"></p>
+  </section>
+
+  <details class="toc">
+    <summary>Contents — 15 sections</summary>
+    <ol>
+      <li><a href="#s0">Evidence Standard</a></li>
+      <li><a href="#s1">Executive Summary</a></li>
+      <li><a href="#s2">Why Business Models Matter</a></li>
+      <li><a href="#s3">Revenue Should Follow Value</a></li>
+      <li><a href="#s4">Alignment</a></li>
+      <li><a href="#s5">What We Refuse To Monetize</a></li>
+      <li><a href="#s6">Sustainable Economics</a></li>
+      <li><a href="#s7">Pricing Philosophy</a></li>
+      <li><a href="#s8">Marketplace Philosophy</a></li>
+      <li><a href="#s9">Affiliate Philosophy</a></li>
+      <li><a href="#s10">Enterprise Philosophy</a></li>
+      <li><a href="#s11">Failure Modes</a></li>
+      <li><a href="#s12">The Economics Of Trust</a></li>
+      <li><a href="#s13">Closing</a></li>
+      <li><a href="#s14">Next Recommended Volume</a></li>
+    </ol>
+  </details>
+
+  <div class="body-grid">
+
+    <nav class="rail" aria-label="Document sections">
+      <ol>
+        <li><a href="#s0">Evidence std</a></li>
+        <li><a href="#s1">Summary</a></li>
+        <li><a href="#s2">Why it matters</a></li>
+        <li><a href="#s3">Revenue &amp; value</a></li>
+        <li><a href="#s4">Alignment</a></li>
+        <li><a href="#s5">Refusals</a></li>
+        <li><a href="#s6">Sustainable</a></li>
+        <li><a href="#s7">Pricing</a></li>
+        <li><a href="#s8">Marketplace</a></li>
+        <li><a href="#s9">Affiliate</a></li>
+        <li><a href="#s10">Enterprise</a></li>
+        <li><a href="#s11">Failure modes</a></li>
+        <li><a href="#s12">Economics of trust</a></li>
+        <li><a href="#s13">Closing</a></li>
+        <li><a href="#s14">Next</a></li>
+      </ol>
+    </nav>
+
+    <main class="doc" id="doc-main">
+
+      <section id="s0">
+        <h2><span class="sec">&sect;0</span>Evidence Standard</h2>
+        <p>This volume carries both label sets already established in the library, cited rather than redefined.</p>
+        <p class="runin"><b>Epistemic</b> — per Volume 3 &sect;Evidence Standard: <span class="tag t-est"><span class="tag t-est">[Established]</span></span> (public law, published regulation, or documented institutional structure) · <span class="tag t-obs"><span class="tag t-obs">[Observed]</span></span> (widely accepted but not independently examined here) · <span class="tag t-ana"><span class="tag t-ana">[Analysis]</span></span> (the company's own reasoning).</p>
+        <p class="runin"><b>Implementation</b> — per Volume 4 &sect;Evidence Standard: <span class="tag t-live"><span class="tag t-live">[Live]</span></span> (available to users today) · <span class="tag t-part"><span class="tag t-part">[Partial]</span></span> (exists in incomplete form) · <span class="tag t-plan"><span class="tag t-plan">[Planned]</span></span> (designed or intended; <strong>not available to anyone</strong>, regardless of what exists in a repository).</p>
+        <p>Substantially all of the argument in this volume is <span class="tag t-ana"><span class="tag t-ana">[Analysis]</span></span>. Where it describes what the company actually charges for, or what it has already decided, the statement is labelled.</p>
+        <p><strong>Three constraints on this volume specifically.</strong></p>
+        <ol class="spaced">
+          <li><strong>No prices, no projections, no profitability claim.</strong> This volume contains no pricing figures, no revenue forecasts, no unit economics, and no assertion that the company will become profitable. Where a number would strengthen an argument, the volume says so and leaves the gap visible — the same discipline Volume 3 applied to its own missing statistics.</li>
+        </ol>
+        <ol class="spaced">
+          <li><strong>Enduring principle is distinguished from current implementation throughout.</strong> A principle is intended to hold for decades. An implementation is what the company happens to do now and may change without any principle changing. They are marked differently, and confusing them would be the characteristic failure of a document like this.</li>
+        </ol>
+        <ol class="spaced">
+          <li><strong>Nothing here is a regulatory or legal conclusion.</strong> The company's status under any statute, and the permissibility of any commercial arrangement described, are questions for counsel. This volume states commercial intent, not legal position.</li>
+        </ol>
+      </section>
+
+      <section id="s1">
+        <h2><span class="sec">&sect;1</span>Executive Summary</h2>
+        <p><strong>A business model is part of the product. If the incentives are wrong, the product eventually becomes wrong</strong> — not through any decision to make it worse, but through the accumulation of decisions that each made the business slightly better.</p>
+        <p>This is the same mechanism Volume 5 &sect;1 identifies as drift, arriving from a different direction. Volume 5 addresses drift in what gets built. This volume addresses its cause: what the company gets paid for. A company can hold excellent product principles and still be pulled away from them, because principles are argued once a quarter and incentives operate continuously.</p>
+        <p><strong>The central claim of this volume is that Gabriel Capital Labs' economics can reinforce its philosophy rather than undermine it — and that this is a structural property of who pays, not a matter of restraint.</strong> The enduring principle is that the company is paid by the person or professional it serves, for access to a governed system — and not by advertisers, data buyers, lenders paying for lead flow, or per outcome. The current expression of that principle is a subscription. <strong>[Implementation, not principle]</strong> — the form may change; the arrangement underneath it may not. That single arrangement removes most of the pressures Volume 5 &sect;4 disqualifies, because there is no counterparty whose money improves when the user is worse off. It does not remove all of them — &sect;3 records that dependency survives only conditionally, and must be actively constrained rather than assumed away.</p>
+        <p class="runin"><b>The test is applied rather than asserted.</b> &sect;3 runs each of Volume 5's six disqualifying patterns against the revenue model and reports the result, including where the result is uncomfortable.</p>
+        <p class="runin"><b>Ten refusals follow, and they are constitutional rather than commercial.</b> &sect;5 states what the company refuses to monetize — fear, confusion, dependency, locked-in data, artificial scarcity, manipulative urgency, dark patterns, and the sale of user attention, behaviour, or data. These are permanent constraints in the sense Volume 0 rule 9 requires: stated before the pressure, not after.</p>
+        <p class="runin"><b>The honest tensions are named rather than managed.</b> &sect;4 addresses the sharpest objection available — that a company paid to help people with credit problems has a latent interest in credit problems continuing — and &sect;6 addresses the harder practical one, that education reduces the customer's need for the product. Neither is dismissed. One is answered structurally; the other is accepted as a real cost the company chooses to bear.</p>
+        <p class="runin"><b>What this volume cannot yet do is prove the thesis.</b> The argument that trust compounds economically is a claim about the future, and Volume 0 rule 2 does not permit the company to assert it as demonstrated. &sect;12 states what evidence would show the model working, what would show it failing, and acknowledges that at the time of writing neither has accumulated. A reader should treat this volume as a falsifiable commitment, not a result.</p>
+      </section>
+
+      <section id="s2">
+        <h2><span class="sec">&sect;2</span>Why Business Models Matter</h2>
+        <h3>Incentive gravity</h3>
+        <p>Every business model exerts a continuous, low-grade force on every decision made inside the company. Call it incentive gravity. It is weak enough to ignore in any single instance and impossible to resist in aggregate.</p>
+        <p>The mechanism is not corruption. It is selection. In any organisation, a great many proposals compete for finite attention, and the ones that survive are disproportionately the ones that make the business's primary metric improve. Nobody has to prefer them. They simply win more arguments, get resourced more often, and are remembered as successes — which teaches the organisation what a good idea looks like.</p>
+        <p>Over enough cycles, the company becomes <strong>optimised for what it is paid to optimise</strong>, whatever it believes about itself. This is why stated values are such weak predictors of company behaviour and why business models are such strong ones. If you want to know what a company will do in five years, the most informative thing you can learn is not its principles. It is who pays it, and for what.</p>
+        <h3>Why philosophy alone is not a defence</h3>
+        <p>Volume 5 establishes what deserves to exist and how to refuse what does not. That document is necessary and insufficient, for a reason worth stating plainly: <strong>a philosophy operates on decisions; a business model operates on the people making them.</strong></p>
+        <p>A product principle is invoked at a moment of choice, by someone who has to remember it, argue for it, and accept the cost of it. An incentive requires none of that. It shapes which choices arrive at the moment in the first place, which options feel obvious, and which arguments feel like friction. Asking a philosophy to hold against a misaligned business model is asking deliberate effort to defeat a continuous force, indefinitely, in every meeting, forever.</p>
+        <p>It does not work, and the failures are familiar enough that they need no naming. Companies with genuinely held user-first values have built products that harm users, because the revenue model rewarded it and the values were the only thing in the way.</p>
+        <p>The conclusion the company draws: <strong>the business model must be chosen so that the philosophy is the path of least resistance, not the obstacle in it.</strong> Where the two conflict, the model is the defect.</p>
+        <h3>What this implies about how to design one</h3>
+        <p>Three consequences follow, and they organise the rest of this volume.</p>
+        <p class="runin"><b>Design the model against the failure, not the opportunity.</b> The relevant question is not which model produces the most revenue but which produces the least pressure to do the wrong thing. That is a different optimisation and frequently selects a smaller business.</p>
+        <p class="runin"><b>Prefer models where doing the right thing is also the profitable thing</b> — not because virtue should be rewarded, but because a model that requires continuous virtue will eventually meet a quarter that cannot afford it.</p>
+        <p class="runin"><b>Assume the company will be under pressure and design for that case.</b> A model that only behaves well when the company is comfortable has not been designed; it has been described in good conditions.</p>
+      </section>
+
+      <section id="s3">
+        <h2><span class="sec">&sect;3</span>Revenue Should Follow Value</h2>
+        <h3>The principle</h3>
+        <p><strong>Revenue should be the consequence of creating value, never the objective that replaces it.</strong></p>
+        <p>The distinction sounds semantic and is entirely practical. It determines what happens when the two diverge — when there is a way to increase revenue that does not increase value, or a way to increase value that does not increase revenue. Every company encounters both. What it does then is its business model's actual content, and everything else is description.</p>
+        <p>Where revenue <em>follows</em> value, the first case is refused and the second is accepted as an investment. Where revenue has <em>replaced</em> value, the first is a discovery and the second is a leak.</p>
+        <h3>What this requires structurally</h3>
+        <p>A principle is only real if the structure supports it. Three properties make revenue-follows-value achievable rather than aspirational.</p>
+        <p class="runin"><b>The payer and the beneficiary are the same party.</b> This is the single most important structural fact in this volume. When the person who benefits is the person who pays, their judgement of value is the company's revenue signal, and the two cannot drift far apart without the customer noticing and leaving. When they are different parties — advertisers paying for attention, data buyers paying for behaviour, lenders paying for leads — the company's revenue signal is the <em>intermediary's</em> satisfaction, and the user's experience becomes an input to be optimised rather than the outcome being sold.</p>
+        <p>Volume 3 &sect;6.6 diagnosed exactly this arrangement as the most important structural problem in consumer credit: the party bearing the cost of an inaccurate record is not the customer of the parties who control it. <strong>A company entering that domain and reproducing the same separation would be enacting the problem it diagnosed.</strong> <span class="tag t-ana"><span class="tag t-ana">[Analysis]</span></span></p>
+        <p class="runin"><b>The unit sold is access to a capability, not a quantity of extraction.</b> What the company sells is continued access to a governed system. It is not selling outcomes it does not control, engagement it benefits from, or volume of user activity. This matters because the unit of sale determines what the company is motivated to increase.</p>
+        <p class="runin"><b>Value must be refusable.</b> A customer who is not getting value must be able to stop paying easily, take their record with them, and leave. If leaving is hard, revenue stops being evidence of value and becomes evidence of switching cost — at which point the company has lost its only reliable instrument for knowing whether it is doing a good job.</p>
+        <h3>Testing the model against Volume 5 &sect;4</h3>
+        <p>Volume 5 &sect;4 lists six disqualifying patterns and gives their unifying form: <em>would this feature's success metric improve in a world where the user is worse off?</em> A business model can be tested the same way. This is the test Volume 5 explicitly handed to this volume, and it is run here rather than asserted. <span class="tag t-ana"><span class="tag t-ana">[Analysis]</span></span></p>
+        <p class="runin"><b>Engagement over understanding.</b> The company is paid for a subscription, not for time spent, sessions started, or content consumed. Revenue does not improve when a user spends longer in the product. It arguably declines, since support cost rises and satisfaction falls. <strong>Survives</strong> — and note the direction: this model makes teaching cheaper for the company, not more expensive.</p>
+        <p class="runin"><b>Replaces thinking.</b> No revenue mechanism pays more when a user understands less. There is no per-decision fee and no automation upsell whose value depends on the user's inability to do it themselves. <strong>Survives.</strong></p>
+        <p class="runin"><b>Creates dependency.</b> This is the pattern a subscription model is most exposed to, because recurring revenue rewards retention and dependency is a form of retention. The structural answer is in &sect;5 and &sect;7: the user's record is exportable, education is delivered rather than withheld, and pricing does not penalise a user who needs the product less over time. <strong>Survives conditionally</strong> — the model does not create dependency, but it does not automatically resist it either. This one has to be actively defended, and &sect;5 makes the defence constitutional.</p>
+        <p class="runin"><b>Rewards manipulation.</b> There is no mechanism by which a user misrepresenting their situation obtains a better commercial outcome. <strong>Survives.</strong></p>
+        <p class="runin"><b>Encourages misinformation.</b> The company is not paid per claim generated, per letter sent, or per dispute filed in a way that would reward volume over quality. Where consumable credits exist, they are capacity, not encouragement — a point developed in &sect;7. <strong>Survives, with the caveat named in &sect;7.</strong></p>
+        <p class="runin"><b>Maximises metrics instead of outcomes.</b> Volume 4 &sect;12 already rejects downloads, intelligence-layer usage, feature velocity, and score movement as success measures. Subscription revenue is a lagging measure of sustained value rather than a proxy for activity. <strong>Survives.</strong></p>
+        <p class="runin"><b>Result: the model passes five of six outright and one conditionally.</b> The conditional one — dependency — is the reason &sect;5 exists as a constitutional constraint rather than a preference.</p>
+        <h3>The current shape</h3>
+        <p>For completeness, and clearly marked as implementation rather than principle:</p>
+        <ul class="caps">
+          <li>A <strong>free tier</strong> with limited capability and no intelligence features — <span class="tag t-live"><span class="tag t-live">[Live]</span></span></li>
+          <li>A <strong>paid consumer subscription</strong> with full capability — <span class="tag t-live"><span class="tag t-live">[Live]</span></span></li>
+          <li><strong>Professional tiers</strong> for operators managing multiple clients — <span class="tag t-live"><span class="tag t-live">[Live]</span></span></li>
+          <li><strong>Consumable credits</strong> purchasable for additional capacity — <span class="tag t-live"><span class="tag t-live">[Live]</span></span></li>
+        </ul>
+        <p><strong>[Implementation, not principle.]</strong> This shape reflects the engineering record as documented on 2026-07-27 and was not independently verified against production for this volume; per Volume 0 &sect;6, production truth governs. Any of these may change. <strong>What may not change without amending this volume is the arrangement underneath them: the beneficiary pays, the unit is access, and leaving is easy.</strong></p>
+      </section>
+
+      <section id="s4">
+        <h2><span class="sec">&sect;4</span>Alignment</h2>
+        <p>A business model is aligned when <strong>every participant becomes stronger as the platform succeeds</strong>. It is misaligned when one participant's gain requires another's loss — and the test is not whether the company intends harm but whether the arithmetic requires it.</p>
+        <p>Five participants. <span class="tag t-ana"><span class="tag t-ana">[Analysis]</span></span> throughout.</p>
+        <h3>Consumers</h3>
+        <p>The consumer pays for access and receives understanding, evidence, and the ability to act. The company's revenue continues only while that remains worth paying for.</p>
+        <p>The alignment is genuine but has a specific limit worth stating: <strong>the company is paid whether or not the consumer's situation improves.</strong> This is deliberate. The alternative — payment contingent on outcomes — is philosophically worse, because it would give the company a financial interest in the outcome of a process it does not control and must never appear to control. Whether any contingent arrangement would also be permissible in this domain is a question for counsel, and this volume does not answer it. But it means the consumer's protection is not the payment structure. It is the ability to leave, and the company's dependence on their willingness to stay.</p>
+        <h3>Operators and agencies</h3>
+        <p>Professionals pay for infrastructure that makes their practice more capable and more defensible. Their success and the company's are unusually well aligned, because a professional whose practice grows uses more capacity and stays longer, and a professional whose practice fails does neither.</p>
+        <p>The alignment has a boundary the company enforces against its own commercial interest: <strong>an operator who wants tooling to make unsupportable claims is not a customer the platform can serve.</strong> Volume 4 &sect;7 states this narrows the addressable market deliberately. In business-model terms it means the company declines a segment of a market it is already selling into — which is the clearest available evidence of whether the constraint is real.</p>
+        <h3>Enterprise and institutions</h3>
+        <p>Institutions would pay for governed, auditable process — evidence they can rely on and demonstrate. Their interest aligns with the consumer's in the specific respect that both need the record to be accurate. <span class="tag t-plan"><span class="tag t-plan">[Planned]</span></span> as a served surface; &sect;10 states what it would require.</p>
+        <h3>Gabriel Capital Labs</h3>
+        <p>The company's interest is durable recurring relationships with participants who remain because the product is worth having. There is no mechanism by which the company benefits from a user's confusion or continued difficulty. Dependency is the exception &sect;3 records: a subscription rewards retention, and dependency is a form of retention, which is why &sect;5 makes the constraint against it structural rather than leaving it to good intent.</p>
+        <h3>The tension worth naming</h3>
+        <p>Here is the sharpest objection to everything above, and it deserves to be stated by the company rather than discovered by a reader:</p>
+        <div class="panel">
+          <p class="rule-text"><strong>Does a company paid to help people with credit problems have an interest in credit problems continuing?</strong></p>
+        </div>
+        <p>At the level of the individual customer, no — the customer pays for access, not for having a problem, and a customer whose situation is resolved may keep the subscription for monitoring, preparation, and the next consequential moment. But at the level of the market, the honest answer is that <strong>a world in which the diagnosis in Volume 3 was solved would be a world with a smaller market for this product.</strong> That is true, and no framing removes it.</p>
+        <p>Three things are worth saying about it. <span class="tag t-ana"><span class="tag t-ana">[Analysis]</span></span></p>
+        <p>First, it is not unique to this company; it is the structure of nearly every remedial industry, including medicine and law, and those fields manage it through professional constraint rather than by pretending it is absent.</p>
+        <p>Second, the company's stated ambition makes the tension smaller rather than larger. Volume 4's scope is deliberately not limited to fixing errors — it addresses understanding, evidence, and preparation, which people need whether or not their record contains a defect. A company whose entire revenue depended on the presence of errors would face this objection much more sharply than one whose value is largely independent of them.</p>
+        <p>Third, and most importantly: <strong>the company cannot claim the tension is resolved, because it is not.</strong> What it can do is refuse the behaviours that would exploit it — which is what &sect;5 is for. A firm that profits from a problem and also lobbies to preserve it, obscures its causes, or discourages the fixes has crossed a line. One that profits from a problem while teaching people to need it less has accepted the cost of its own position.</p>
+      </section>
+
+      <section id="s5">
+        <h2><span class="sec">&sect;5</span>What We Refuse To Monetize</h2>
+        <p class="runin"><b>These are permanent constitutional constraints, not current policy.</b> They are stated in advance, before the revenue they forbid has ever been available, because per Volume 0 rule 9 a constraint stated afterward is an explanation. Each names the specific revenue being declined, so that the refusal is checkable rather than decorative.</p>
+        <h3>Fear</h3>
+        <p>The company does not sell relief from anxiety it created. It does not manufacture alarm about a person's situation to drive a purchase, does not present routine events as emergencies, and does not use the language of crisis in acquisition.</p>
+        <p>This is a real refusal with a real cost. Fear converts extraordinarily well in this domain, and Volume 3 &sect;9 explains why: the population is under sustained uncertainty, and uncertainty makes people responsive to anyone who names a threat. The company is declining the single most effective marketing instrument available to it.</p>
+        <p>The line, stated so it can be enforced: <strong>accurately describing a situation that is genuinely serious is not fear-based marketing. Creating urgency the facts do not support is.</strong> The distinction is in whether the emotion tracks reality.</p>
+        <h3>Confusion</h3>
+        <p>The company does not profit from a user failing to understand something — including failing to understand the company's own pricing, terms, or what they have purchased.</p>
+        <p>This is the most common quiet revenue source in consumer finance and adjacent industries: fees that are technically disclosed and practically undiscoverable, renewals timed to be forgotten, cancellation paths built to be abandoned. Every one of these is revenue that exists <em>because</em> comprehension failed.</p>
+        <p>Volume 3 &sect;6.1 diagnosed interpretive asymmetry as a core structural failure of the domain. <strong>A company that diagnosed that failure and then earned from it in its own billing would have forfeited the standing to describe it.</strong></p>
+        <h3>Dependency</h3>
+        <p>The company does not build revenue on the user's inability to function without it. Volume 5 &sect;4.3 defines dependency as the state in which the user cannot stop and is not more capable for having used the product; the business-model consequence is that <strong>retention must be produced by continued value rather than accumulated helplessness.</strong></p>
+        <p>Concretely, this forbids: withholding a user's own record or history to prevent departure; designing so that understanding is never acquired; and making cancellation or export harder than signing up. Each is individually defensible in a retention review. Together they describe a hostage.</p>
+        <h3>Locked-in data</h3>
+        <p class="runin"><b>A user's record belongs to them and leaves with them.</b> The evidentiary record — what was done, when, on what basis, what came back — is the compounding asset Volume 5 &sect;3 identifies, and the company's position is that an asset built out of the user's own history cannot be used as a hostage without inverting the product's purpose.</p>
+        <p>Export is a right, not a retention lever, and it is not degraded, delayed, or made deliberately inconvenient. The company accepts that this removes its strongest available switching cost.</p>
+        <h3>Artificial scarcity</h3>
+        <p>The company does not manufacture limits that exist only to drive purchase. Real constraints — capacity, cost, regulatory limits on what may be done — are legitimate and are explained as what they are. Limits invented to create a purchase moment are not.</p>
+        <p>The test: <strong>if the constraint would disappear the moment it stopped producing revenue, it was artificial.</strong></p>
+        <h3>Manipulative urgency</h3>
+        <p>No countdowns that do not correspond to real deadlines, no fabricated scarcity of availability, no pressure timed to a moment of vulnerability. Where a genuine deadline exists — a statutory window, a decision date the user has told the company about — stating it plainly is a service. Inventing one is manipulation.</p>
+        <h3>Dark patterns</h3>
+        <p>No interface design whose effectiveness depends on the user not noticing what it does. Volume 5 &sect;8 gives the test in its general form: <strong>would we be comfortable explaining this design choice to the user whose behaviour it changed?</strong> If explaining the mechanism would defeat it, the mechanism is the problem.</p>
+        <p>This covers pre-checked consents, misdirection in cancellation, buttons whose prominence is inverse to the user's interest, and consent flows written to be agreed to rather than read.</p>
+        <h3>Selling user attention</h3>
+        <p>The company does not sell advertising against its users, does not accept payment for placement or recommendation, and does not allow a third party's commercial interest to influence what a user is shown. &sect;11 develops why advertising specifically is incompatible with this product rather than merely undesirable.</p>
+        <h3>Selling user behaviour</h3>
+        <p>The company does not sell behavioural data, derived profiles, intent signals, or inferences about users — to lenders, marketers, brokers, or anyone else. This includes arrangements that are technically anonymised but commercially amount to selling what users do.</p>
+        <p class="runin"><b>The distinction the company holds:</b> aggregate, anonymised, consented understanding used to improve the product and to build the honest account of what actually happens in the system — which Volume 1 &sect;The CreditVector Solution describes under <em>A record that compounds</em> — is legitimate and is subject to privacy law and the user's consent. <strong>Selling access to that understanding, or to anything derived from an identifiable person, is not, and is refused irrespective of what consent could be obtained.</strong></p>
+        <h3>Selling user data</h3>
+        <p>The strongest of the ten, and the shortest. <strong>Consumer data is not the product and will not be sold, licensed, or brokered.</strong> Volume 1 and Volume 4 &sect;10 both state this as a permanent refusal; it is restated here only because a business-model document that omitted it would be conspicuous.</p>
+        <h3>Why these are constitutional</h3>
+        <p>Each of these represents revenue the company could obtain. Several would be significant. The refusals are worth nothing as statements and everything as constraints, and the difference is whether they hold when the revenue is needed.</p>
+        <p>Per Volume 2 and Volume 5 &sect;5, a refusal that depends on remembering it is enforced exactly as reliably as people remember. <strong>These belong in the structure — in what the system can be configured to do, in what the billing model can express, and in a governance process where removing one requires deliberate justification in writing.</strong> A future team that wishes to remove any of them should have to argue for it explicitly, on the record, against this text.</p>
+      </section>
+
+      <section id="s6">
+        <h2><span class="sec">&sect;6</span>Sustainable Economics</h2>
+        <h3>Why recurring relationships beat extractive transactions</h3>
+        <p>An extractive transaction maximises value captured from a single interaction. A recurring relationship maximises the number of interactions worth having. These produce different products, and the difference compounds.</p>
+        <p>The extractive model must capture value at the moment of maximum leverage — which, in this domain, is the moment of maximum distress. It is therefore structurally drawn toward the population least able to evaluate what they are buying, at the moment they are least able to evaluate it. This is not a hypothetical failure mode; Volume 3 &sect;7 describes it as the equilibrium the market currently selects for.</p>
+        <p>The recurring model has the opposite requirement: the customer must still want the product next month. That single constraint does more work than any values statement, because it makes the customer's continued judgement a gate on the company's revenue rather than an afterthought. <span class="tag t-ana"><span class="tag t-ana">[Analysis]</span></span></p>
+        <h3>What actually compounds</h3>
+        <p>Four assets, and none of them is revenue.</p>
+        <p><strong>Trust</strong>, in the sense Volume 2 &sect;Trust compounds establishes — earned one interaction at a time, unbuyable, and unavailable to a competitor with more capital at any speed.</p>
+        <p><strong>The user's evidentiary record</strong>, which grows more valuable to its owner the longer it runs, and which — per &sect;5 — they may take with them. A compounding asset the user can remove is a stronger commitment than one they cannot.</p>
+        <p><strong>Verified knowledge</strong>, where each answer that is established and checked reduces the cost of every future instance of the same question.</p>
+        <p><strong>Professional relationships</strong>, where an operator whose practice runs on the platform accumulates history, process, and defensibility that has to be rebuilt elsewhere — legitimately, because it is the record of their own work.</p>
+        <h3>Retention through value, and how to tell the difference</h3>
+        <p>Retention is an ambiguous signal. A user who stays because the product is worth having and a user who stays because leaving is difficult produce identical numbers.</p>
+        <p>The company's position is that <strong>the two must be distinguishable, and that the burden of distinguishing them falls on the company.</strong> The practical instrument is to make leaving genuinely easy — export intact, cancellation direct, no retention friction — so that retention becomes evidence again. A company that removes every artificial reason to stay can trust its own retention figures. One that does not, cannot, and will eventually mistake its switching costs for product quality.</p>
+        <h3>Education as an economic decision</h3>
+        <p>Volume 5 &sect;3 requires products to teach, and notes the awkwardness: a well-taught user needs the product less.</p>
+        <p>This volume states the economic consequence directly, because it is the place where philosophy and revenue most visibly diverge. <strong>Teaching reduces near-term consumption and increases long-term retention, and the company accepts that trade without claiming it is costless.</strong> A person who understands their situation may need fewer paid interactions this quarter. They are also the person who stays for years, returns at the next consequential moment, and recommends the product to someone they care about — which is the behaviour Volume 4 &sect;12 names as the actual success measure.</p>
+        <p>The company cannot yet demonstrate that this trade nets positive. &sect;12 states what evidence would show it, and admits none has accumulated.</p>
+        <h3>Professional growth</h3>
+        <p>For operators, the alignment is cleaner than for consumers: the company benefits when a professional's practice grows, and a professional's practice grows when their clients are well served. <strong>Where a platform's economics reward an operator for serving more clients worse, the platform has built the wrong instrument.</strong> The company's ratified position on this — that progression is measured by improvement rather than scale — is developed in &sect;8.</p>
+      </section>
+
+      <section id="s7">
+        <h2><span class="sec">&sect;7</span>Pricing Philosophy</h2>
+        <p class="runin"><b>No prices appear in this volume.</b> What follows are the properties any pricing must have. Prices change; these should not. <span class="tag t-ana"><span class="tag t-ana">[Analysis]</span></span> throughout.</p>
+        <h3>Fair</h3>
+        <p>Price should bear a defensible relationship to value delivered and cost incurred. The specific commitment: <strong>the company does not price against desperation.</strong> In a domain where people arrive under time pressure and financial strain, the willingness to pay at the moment of crisis is not a legitimate basis for setting a price, even though it is the most profitable one available.</p>
+        <p>This is a real constraint. Volume 1 states the product should be available "at a price that does not exploit urgency," and this is the principle that sentence was pointing at.</p>
+        <h3>Understandable</h3>
+        <p>A person should be able to state what they are paying and what they receive, in one sentence, without reading terms. Pricing complexity that produces revenue is a form of the confusion &sect;5 refuses to monetize, and the fact that it is disclosed does not make it understood.</p>
+        <h3>Predictable</h3>
+        <p>No surprise charges. No fees discovered at the moment they are incurred. A customer should be able to anticipate their cost before acting, and where a cost depends on usage, the dependence should be visible in advance rather than reconciled afterward.</p>
+        <h3>Transparent</h3>
+        <p>Published, not quoted on request; the same for comparable customers; and changed with notice rather than silently. Where different customers pay different amounts, the basis for the difference should be stateable without embarrassment.</p>
+        <h3>Scalable</h3>
+        <p>Pricing should work for someone with a single situation and for a professional practice with many, without requiring a different product or a negotiation. A model that only functions at one customer size will distort the product toward that size.</p>
+        <h3>Three specific prohibitions</h3>
+        <p class="runin"><b>Never exploit confusion.</b> Revenue that exists because the customer misunderstood the terms is revenue the company would have to defend by keeping them misunderstood.</p>
+        <p class="runin"><b>Never penalise learning.</b> A customer who becomes more capable — who needs fewer interactions, less assistance, less intervention — must not pay more, and must not lose access to what they have accumulated. A pricing model that charges more as competence grows is a model at war with Volume 5's central requirement.</p>
+        <p class="runin"><b>Never reward dependence.</b> No structure whose economics improve as the customer's autonomy declines.</p>
+        <h3>On consumable capacity</h3>
+        <p>The current implementation includes purchasable capacity alongside subscription — <span class="tag t-live"><span class="tag t-live">[Live]</span></span>, and <strong>[Implementation, not principle]</strong>.</p>
+        <p>This deserves a named caveat, because consumable units are the mechanism in this model most capable of drifting into something Volume 5 &sect;4 would disqualify. A capacity unit is legitimate when it reflects a real underlying cost and simply lets a customer do more of something they have decided to do. It becomes illegitimate the moment the company has an interest in the customer consuming more of it — at which point the product acquires a reason to encourage volume over quality, which is precisely the pattern &sect;3 tested against.</p>
+        <p class="runin"><b>The governing rule: capacity may be sold; consumption may never be encouraged.</b> The company does not optimise for units consumed, does not design to increase consumption, and does not treat consumption as a success metric. If a future team finds itself measuring the health of the business by units consumed, the model has drifted and this paragraph is the record that it was foreseen.</p>
+      </section>
+
+      <section id="s8">
+        <h2><span class="sec">&sect;8</span>Marketplace Philosophy</h2>
+        <p class="runin"><b>Nothing described in this section exists.</b> A marketplace is <span class="tag t-plan"><span class="tag t-plan">[Planned]</span></span> — designed at the level of principle, with policy values explicitly owner-gated and unresolved. This section states how such a thing would have to work if it were built, and per Volume 0 rule 12 it is not an announcement that it will be.</p>
+        <p>The company has already ratified principles governing this area on the engineering side, and they are referenced here rather than re-derived. <span class="tag t-est"><span class="tag t-est">[Established]</span></span> that these principles are ratified in the engineering record; <span class="tag t-ana"><span class="tag t-ana">[Analysis]</span></span> for the reasoning below. Per Volume 0 &sect;6, the engineering record governs engineering, and this volume does not alter it.</p>
+        <h3>Evidence, not popularity</h3>
+        <p><strong>Reputation in any Gabriel Capital Labs marketplace is derived from evidence of work performed, never from popularity.</strong> The company has explicitly ratified that there will be <strong>no public one-to-five star rating</strong>.</p>
+        <p>The reasoning is not aesthetic. A star rating aggregates sentiment, and sentiment in a professional services market measures satisfaction with the <em>experience</em> rather than quality of the <em>work</em> — which in a domain where the honest answer is often unwelcome systematically penalises the operators who tell clients the truth. An evidence-based standing measures what was actually done and what came of it. It is harder to build and considerably harder to game.</p>
+        <h3>Improvement, not scale</h3>
+        <p>Progression is measured by improvement rather than volume. An operator who serves ten clients excellently should be able to rank above one who serves a hundred adequately.</p>
+        <p>The reason is structural: a system that rewards scale creates pressure to take on more clients than can be served well, which converts a marketplace into a volume machine and reproduces the industry's existing failure. <span class="tag t-ana"><span class="tag t-ana">[Analysis]</span></span></p>
+        <h3>Separation of instruments</h3>
+        <p>The ratified position holds five instruments strictly separate: <strong>standing (reputation), business health, affiliate arrangements, promotional credits, and cash.</strong> None converts into another. <span class="tag t-est"><span class="tag t-est">[Established]</span></span> that the separation is ratified in the engineering record; the same record notes that promotional credits are not introduced, so nothing here describes an existing instrument.</p>
+        <p>This separation is the marketplace's central integrity mechanism, and it is worth explaining why. The moment standing can be bought — directly, or indirectly through spend, placement, or promotional participation — standing stops measuring work and starts measuring budget. Every marketplace that has degraded has degraded through exactly this conversion, usually gradually and usually with a reasonable-sounding first exception.</p>
+        <p class="runin"><b>Purchasing must never influence standing.</b> Not through fees, not through tiers, not through promotional placement presented as ranking.</p>
+        <h3>No pay-to-win</h3>
+        <p>No participant improves their position by paying for it. Paid placement, if it ever exists, must be visually and semantically distinct from earned standing and must never be presented as merit. Where a marketplace cannot make that distinction clear, it should not sell placement at all.</p>
+        <h3>Fair participation and transparent incentives</h3>
+        <p>Rules published in advance, applied uniformly, and explained. Every participant should be able to determine why they hold the position they hold and what would change it. A standing system nobody can inspect is a system nobody can trust, and it reproduces the opacity Volume 3 &sect;6.7 diagnosed.</p>
+        <p class="runin"><b>A marketplace that cannot satisfy all of the above should not be launched.</b> That is the actual commitment in this section — not that the company will build a fair marketplace, but that it will not build an unfair one.</p>
+      </section>
+
+      <section id="s9">
+        <h2><span class="sec">&sect;9</span>Affiliate Philosophy</h2>
+        <p><span class="tag t-plan"><span class="tag t-plan">[Planned]</span></span>; policy values are owner-gated and unresolved. This section states constraints, not a programme.</p>
+        <h3>Referral should reward value creation, not persuasion</h3>
+        <p>A referral incentive is a payment for influencing someone else's decision, which makes it the most easily corrupted mechanism in any business model. The corruption is predictable: whatever the incentive rewards, someone will do more of, including things the company would never do itself.</p>
+        <p><strong>The governing principle: a referral is a payment for introducing someone to something genuinely useful to them — never for the act of persuasion.</strong> A referral that produces a customer who should not have become one has destroyed value and been paid for it.</p>
+        <h3>What the structure must prevent</h3>
+        <p class="runin"><b>No incentive to deceive.</b> Where a referrer's compensation depends on a claim being made, the compensation will shape the claim. Any structure must be built so that overstating what the product does is not the highest-earning strategy available.</p>
+        <p class="runin"><b>No aggressive selling.</b> Volume 3 &sect;6.9 describes a population that first encounters this domain under time pressure and stress, while being marketed to by parties whose interests are not aligned with theirs. A referral programme that funded more of it would make the company a contributor to the problem it diagnosed, which is disqualifying regardless of the economics.</p>
+        <p class="runin"><b>No compounding recruitment structures.</b> Compensation for recruiting other referrers — rather than for creating value for end customers — produces a structure whose economics come from recruitment rather than from the product. The company will not build one.</p>
+        <p class="runin"><b>Retention-weighted, not signup-weighted.</b> A referral that pays on signup rewards volume. One that pays on a customer who stays and finds the product worth keeping rewards fit. The second is harder to run and is the only version compatible with &sect;3.</p>
+        <p class="runin"><b>Referrers are bound by the company's own claim standard.</b> A referrer who makes a promise the company would refuse to make has done reputational damage the company will be held responsible for — correctly. Any programme requires enforceable claim standards and the ability to remove participants who breach them, and the willingness to actually remove them when it costs revenue.</p>
+        <h3>The honest position</h3>
+        <p>The company has not solved this. Definitions for referral quality, fraud, and verified value remain unresolved and owner-gated, and the compliance boundaries in a regulated consumer-finance context require counsel. <span class="tag t-ana"><span class="tag t-ana">[Analysis]</span></span></p>
+        <p class="runin"><b>Until those are resolved, the correct output is no programme.</b> A referral programme is easy to launch and extremely difficult to un-launch once a population of participants depends on it, which makes it exactly the kind of decision Volume 2 &sect;Core Principles governs under <em>Prefer the reversible decision</em>: where a decision cannot be undone, slow down until the evidence justifies it.</p>
+      </section>
+
+      <section id="s10">
+        <h2><span class="sec">&sect;10</span>Enterprise Philosophy</h2>
+        <p><span class="tag t-plan"><span class="tag t-plan">[Planned]</span></span> as a served surface. Volume 4 &sect;3 places institutional accountability outside what the platform can solve; this section describes what an institutional relationship would have to look like if one existed. <span class="tag t-ana"><span class="tag t-ana">[Analysis]</span></span> throughout.</p>
+        <h3>What institutions actually need</h3>
+        <p>Not features — <strong>standards</strong>. An institution adopting any system inherits its failures and must be able to demonstrate to its own regulators, auditors, and counsel that the system behaves as claimed.</p>
+        <p class="runin"><b>Governance.</b> Documented, enforced constraints on what the system may do — the properties Volume 5 &sect;8 states as product integrity, made demonstrable to a third party rather than merely true.</p>
+        <p class="runin"><b>Transparency.</b> Visibility into how a conclusion was reached. An institution cannot defend a decision it cannot explain, and Volume 3 &sect;6.7 shows what happens in a market where explanation is unavailable.</p>
+        <p class="runin"><b>Evidence.</b> A durable record sufficient to reconstruct what occurred and on what basis — for the institution's own examination and for anyone examining the institution.</p>
+        <p class="runin"><b>Auditability.</b> The ability to be inspected by someone hostile to the result, and to survive it. This is a higher bar than transparency: transparency is showing your work, auditability is showing your work to someone trying to find the flaw.</p>
+        <p class="runin"><b>Long-term partnership.</b> Institutions plan in years. A vendor whose commercial model requires continuous expansion of scope is not a partner.</p>
+        <h3>Not lock-in</h3>
+        <p>The temptation in enterprise software is to make the relationship structurally difficult to exit — proprietary formats, contractual entanglement, integration depth that becomes hostage rather than value.</p>
+        <p><strong>The company's position is that lock-in and trust are substitutes, and it has chosen trust.</strong> An institution that stays because leaving is expensive is not a reference, will not expand the relationship, and will leave at the first genuine opportunity. One that stays because the system is worth having is all three.</p>
+        <p>Concretely: data is exportable in usable form; contracts do not require escalating commitment; and the integration is designed so that replacing it is possible. The company accepts that this makes revenue less defensible and believes it makes the relationship more so.</p>
+        <h3>The honest limitation</h3>
+        <p>Volume 4 is explicit that CreditVector operates on the consumer's side of a relationship whose institutional side it does not govern. <strong>A commercial relationship with an institution does not change that</strong>, and any enterprise arrangement that implied the company could deliver institutional behaviour it does not control would be selling something it cannot supply.</p>
+      </section>
+
+      <section id="s11">
+        <h2><span class="sec">&sect;11</span>Failure Modes</h2>
+        <p>How business models corrupt products. Each is a real mechanism, and for each the company states what would have to be true for it to happen here — because a failure mode you cannot describe concretely is one you cannot resist. <span class="tag t-ana"><span class="tag t-ana">[Analysis]</span></span> throughout.</p>
+        <h3>Ad-driven design</h3>
+        <p class="runin"><b>The mechanism.</b> Once revenue comes from attention, every design decision acquires a second objective: keep the user here. The objective is never stated and never has to be, because the metric supplies it.</p>
+        <p class="runin"><b>Why it is incompatible here rather than merely undesirable.</b> In this domain, advertising would introduce a party whose commercial interest competes with the user's at the exact moment the user is most vulnerable — and the most valuable advertisers against a population with credit difficulty are precisely the businesses that population should be most careful about. There is no version of this that is merely suboptimal.</p>
+        <p class="runin"><b>How it would arrive.</b> Not as a decision to sell advertising. As a partnership, a sponsored placement, a "relevant offer" whose relevance is commercial. The refusal in &sect;5 is written to catch it in that form.</p>
+        <h3>Attention optimisation</h3>
+        <p class="runin"><b>The mechanism.</b> Even without advertising, a company can begin optimising for time spent because engagement metrics are easy to measure and correlate loosely with everything else.</p>
+        <p class="runin"><b>How it would arrive.</b> As a dashboard. Someone instruments engagement because it is measurable, it becomes the number reviewed weekly, and within a year it is the number teams are optimising against — without anyone deciding it should be.</p>
+        <p class="runin"><b>The defence.</b> Volume 4 &sect;12 rejects it as a success measure. The business-model reinforcement is that subscription revenue does not improve with engagement, so the metric has no economic constituency inside the company. <strong>A vanity metric with no revenue behind it is much easier to kill.</strong></p>
+        <h3>Short-term metrics</h3>
+        <p class="runin"><b>The mechanism.</b> Quarterly measurement selects for interventions that pay within a quarter, and every asset in &sect;6 pays over years. A company measured quarterly will systematically underinvest in exactly the things this library says matter.</p>
+        <p class="runin"><b>The defence, honestly stated:</b> partial. The company can choose its internal measures and its investor expectations, and Volume 2 acknowledges this requires being structured to survive looking wrong. <strong>This failure mode is not designed out; it is resisted, and resistance can fail.</strong></p>
+        <h3>Feature bloat</h3>
+        <p class="runin"><b>The mechanism.</b> Every feature has a constituency and none has an opponent. Products accumulate because addition is locally justified and removal never is.</p>
+        <p class="runin"><b>The defence.</b> Volume 5 &sect;3 and &sect;4 exist specifically for this, and the business-model contribution is that the company is not paid per feature. Nothing in the revenue model rewards a longer list.</p>
+        <h3>Hidden pricing</h3>
+        <p class="runin"><b>The mechanism.</b> Revenue that depends on the customer not noticing. It arrives incrementally — a fee here, a default there, a renewal term nobody reads.</p>
+        <p class="runin"><b>The defence.</b> &sect;5 (confusion) and &sect;7 (understandable, predictable, transparent). The specific test: <strong>could a customer state what they pay and what they get, in one sentence, without reading terms?</strong> If not, the pricing has drifted.</p>
+        <h3>Lock-in</h3>
+        <p class="runin"><b>The mechanism.</b> Switching costs accumulate naturally — data, habit, integration — and at some point someone notices they are load-bearing for retention and stops removing them. That is the moment the model changes, and it is rarely marked by a decision.</p>
+        <p class="runin"><b>The defence.</b> &sect;5 (locked-in data) and &sect;6. The instrument is deliberately making leaving easy, which is the only way the company can continue to trust its own retention numbers.</p>
+        <h3>Data extraction</h3>
+        <p class="runin"><b>The mechanism.</b> The company accumulates a valuable dataset as a byproduct of operating. Someone eventually observes that it could be monetized, usually framed as anonymised, aggregated, and industry-benefiting.</p>
+        <p class="runin"><b>The defence.</b> &sect;5, twice, in the strongest terms the library uses. <strong>The framing to be suspicious of is the reasonable one</strong> — the first proposal will not be to sell user data. It will be to license insights.</p>
+        <h3>The general defence</h3>
+        <p>Every failure mode above arrives the same way: <strong>as a locally reasonable proposal, made by someone acting in good faith, in a quarter where it would help.</strong> None arrives as a decision to become worse.</p>
+        <p>The company's protection is therefore not vigilance, which degrades exactly when needed. It is that these are written down, before the pressure, with the mechanism named — so that whoever faces the proposal inherits a documented refusal rather than having to invent the argument while under pressure to say yes.</p>
+      </section>
+
+      <section id="s12">
+        <h2><span class="sec">&sect;12</span>The Economics Of Trust</h2>
+        <p>This is the chapter the rest of the volume depends on. If the argument here is wrong, the model described above is merely principled and unprofitable, and the company should say so.</p>
+        <h3>Why trust is an economic asset and not a soft one</h3>
+        <p>Trust in this section is used in the general form Volume 5 &sect;3 derives from Volume 2 &sect;10's canonical definition of financial trust. Volume 2 &sect;10's definition is domain-scoped and is not restated or generalised here. Its economic significance comes from four properties, none of which is sentimental. <span class="tag t-ana"><span class="tag t-ana">[Analysis]</span></span></p>
+        <p class="runin"><b>It reduces transaction cost.</b> Every interaction where a counterparty must verify what you say carries a cost. A party that is trusted is checked less, which is cheaper for everyone and compounds across every interaction.</p>
+        <p class="runin"><b>It cannot be purchased.</b> Capital can buy distribution, talent, technology, and time — but not trust, which is earned at a fixed maximum rate of one interaction at a time. This makes it the rarest thing in a competitive market: an advantage a better-funded competitor cannot simply outspend.</p>
+        <p class="runin"><b>It is asymmetric.</b> It accumulates linearly and can be destroyed in a single event. This is usually described as fragility; it is more useful to understand it as <strong>what makes the asset valuable</strong>. An advantage that could be rebuilt quickly after a breach would not be worth much. The severity of the downside is why the accumulated position is defensible.</p>
+        <p class="runin"><b>It transfers.</b> Trust earned in one interaction extends to adjacent claims by the same party, which is why an accumulated reputation lowers the cost of entering a new domain. Volume 2 grounds the falling cost of a second domain in the shared foundation rather than in transferred trust; this section proposes transfer as an additional mechanism, and it is the company's reasoning rather than Volume 2's.</p>
+        <h3>How it compounds commercially</h3>
+        <p>Four channels. <span class="tag t-ana"><span class="tag t-ana">[Analysis]</span></span></p>
+        <p class="runin"><b>Retention.</b> A trusted product is not re-evaluated at every renewal, which lowers the cost of keeping a customer and lengthens the relationship.</p>
+        <p class="runin"><b>Acquisition cost.</b> Recommendation is the cheapest acquisition channel and the only one that cannot be bought at scale. It is produced by trust and by nothing else.</p>
+        <p class="runin"><b>Cost of being right.</b> An organisation that has built accurate answers, verified knowledge, and disciplined process answers the next question more cheaply than one re-deriving it, and the gap widens with volume.</p>
+        <p class="runin"><b>Optionality.</b> A trusted institution is offered opportunities — partnerships, institutional relationships, regulatory engagement — that an untrusted one has to pursue. This is the hardest channel to measure and may be the largest.</p>
+        <h3>The uncomfortable shape of the curve</h3>
+        <p><strong>Every one of those channels pays late, and the investments that produce them cost now.</strong></p>
+        <p class="runin"><b>Volume 5 &sect;9 establishes the shape of this curve</b> — that a company building this way looks worse on every measure a market watches for a meaningful period, and that this is the permanent shape of the trade rather than a condition to be endured until it turns. This section adds only the commercial consequence: the reason most companies do not make the trade is not that they cannot see the argument, but that they cannot survive the interval.</p>
+        <p>This has a governance consequence the volume should state plainly: <strong>a company that adopts this model must be capitalised and governed to survive a period of looking wrong.</strong> If it is not, it will abandon the model precisely when the model was designed to be tested. That is a real risk of this strategy and it is not mitigated by believing in it.</p>
+        <h3>What would show this is working — and what would show it failing</h3>
+        <p>Volume 0 rule 2 does not permit the company to claim a compounding advantage it has not demonstrated. So this section states the evidence rather than the conclusion. <span class="tag t-ana"><span class="tag t-ana">[Analysis]</span></span></p>
+        <p class="runin"><b>Evidence the model is working:</b> retention that lengthens rather than decays as cohorts age · a rising share of new customers arriving by recommendation · falling cost to serve a customer as verified knowledge accumulates · professionals staking their practice on the platform · institutions accepting the record as evidence of documented process · and the company declining revenue on principle without losing the customers it kept.</p>
+        <p class="runin"><b>Evidence the model is failing:</b> retention explained by switching cost rather than value · acquisition cost rising rather than falling with age · the compounding assets not accumulating fast enough to offset the growth foregone · and — the clearest signal — <strong>the company beginning to make exceptions to &sect;5.</strong></p>
+        <p class="runin"><b>The current position, stated honestly: none of this has accumulated yet.</b> The company is early, the compounding argument is a claim about the future, and this volume is a falsifiable commitment rather than a demonstrated result. A reader should treat it as something to hold the company to, not as evidence that the company is right.</p>
+      </section>
+
+      <section id="s13">
+        <h2><span class="sec">&sect;13</span>Closing</h2>
+        <p><strong>A business model should exist because the product creates value — not because the product has learned how to extract it.</strong></p>
+        <p>The distinction is the whole of this volume. Both kinds of company have revenue, growth, and customers, and for a long time they are difficult to tell apart from outside. They diverge at the moment value and revenue point in different directions, and what a company does then is determined less by what it believes than by what it is paid for.</p>
+        <p>Gabriel Capital Labs' answer is to be paid by the person it serves, for access to a governed system, in a way that removes the mechanisms by which a company would come to profit from confusion, dependency, or attention. The ten refusals in &sect;5 are the parts of that answer that cost something, and they are the only parts worth judging the company on.</p>
+        <p class="runin"><b>This volume does not prove that the model works.</b> It argues that the model is compatible with the philosophy, tests it against the standard Volume 5 set, names the tensions it does not resolve — including the one about profiting from a problem the company would like to see reduced — and states what evidence would eventually settle the question. That is the most an honest business-model document can do this early, and claiming more would violate the standard the library was built to hold.</p>
+        <p>What can be said with confidence is narrower and more useful: <strong>if this company is ever found to have drifted, the drift will be visible here first.</strong> The business model is the earliest and most reliable indicator of what a company is becoming, which is why it was written down before there was much of a business to describe.</p>
+      </section>
+
+      <section id="s14">
+        <h2><span class="sec">&sect;14</span>Next Recommended Volume</h2>
+        <p class="runin"><b>Volume 7 — Market Opportunity.</b> The natural successor and the first volume that will require evidence this library does not yet have.</p>
+        <p>Volume 7 is bound by a standard already recorded: Volume 0 &sect;6 states that <em>every quantitative claim in a business or market document must cite its source or state that it is an estimate — an unsourced number in a market document is a defect, not a rounding.</em> Volume 3 and this volume both deliberately avoid figures; <strong>Volume 7 cannot.</strong> It is the first volume that must either bring real sources or declare its estimates as estimates, and it should be read as a test of whether the library's evidence discipline survives contact with numbers.</p>
+        <p>Readers should also note the open item recorded against Volume 3 (OQ-002) concerning the absence of quantitative citation. Volume 7 will inherit that problem directly.</p>
+      </section>
+
+    </main>
+  </div>
+
+  <footer class="colophon">
+    <p class="mark">Gabriel Capital Labs · CreditVector Founder Library · Volume 06 · v1.0 · Draft · 2026-07-27</p>
+    <p>Governance, revision history, founder ratifications, and open items are recorded in the Founder Library revision log. Implementation statuses reflect the engineering record as documented on 2026-07-27 and were not independently verified against production; per Volume 0 &sect;6, production truth governs. This HTML edition is a presentation of the canonical Markdown document and carries no independent authority; where the two differ, the Markdown governs.</p>
+  </footer>
+
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var FILENAME = "VOLUME-06-BUSINESS-MODEL.html";
+
+  /* ---- scroll-spy for the desktop rail ---- */
+  var links = Array.prototype.slice.call(document.querySelectorAll(".rail a"));
+  if (links.length && "IntersectionObserver" in window) {
+    var byId = {};
+    links.forEach(function (a) { byId[a.getAttribute("href").slice(1)] = a; });
+    var visible = Object.create(null);
+
+    function paint() {
+      var current = null;
+      var order = Object.keys(byId);
+      for (var i = 0; i < order.length; i++) {
+        if (visible[order[i]]) { current = order[i]; break; }
+      }
+      links.forEach(function (a) {
+        if (current && a === byId[current]) { a.setAttribute("aria-current", "true"); }
+        else { a.removeAttribute("aria-current"); }
+      });
+    }
+
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (e.isIntersecting) { visible[e.target.id] = true; }
+        else { delete visible[e.target.id]; }
+      });
+      paint();
+    }, { rootMargin: "-10% 0px -70% 0px", threshold: 0 });
+
+    document.querySelectorAll(".doc section").forEach(function (s) { io.observe(s); });
+  }
+
+  /* ---- close the mobile contents panel after a jump ---- */
+  var toc = document.querySelector(".toc");
+  if (toc) {
+    toc.addEventListener("click", function (e) {
+      if (e.target.tagName === "A") { toc.removeAttribute("open"); }
+    });
+  }
+
+  /* ---- status line ---- */
+  var statusEl = document.getElementById("dl-status");
+  var statusTimer = null;
+  function say(msg) {
+    if (!statusEl) { return; }
+    statusEl.textContent = msg;
+    if (statusTimer) { clearTimeout(statusTimer); }
+    statusTimer = setTimeout(function () { statusEl.textContent = ""; }, 6000);
+  }
+
+  /* ---- serialize the live document into a standalone HTML string ---- */
+  function serialize() {
+    var clone = document.documentElement.cloneNode(true);
+    // Drop runtime-only state so the saved copy opens in a clean state.
+    Array.prototype.forEach.call(clone.querySelectorAll("[aria-current]"), function (n) {
+      n.removeAttribute("aria-current");
+    });
+    Array.prototype.forEach.call(clone.querySelectorAll(".toc[open]"), function (n) {
+      n.removeAttribute("open");
+    });
+    var st = clone.querySelector("#dl-status");
+    if (st) { st.textContent = ""; }
+    return "<!doctype html>\n" + clone.outerHTML;
+  }
+
+  /* ---- download: Blob + object URL, with a data-URI fallback ---- */
+  var dlBtn = document.getElementById("btn-download");
+  if (dlBtn) {
+    dlBtn.addEventListener("click", function () {
+      var html = serialize();
+      var a = document.createElement("a");
+      a.download = FILENAME;
+      a.rel = "noopener";
+      var url = null;
+
+      try {
+        if (typeof Blob === "function" && window.URL && window.URL.createObjectURL) {
+          // A fresh object URL is created at click time, so this does not
+          // depend on any URL minted earlier in the page's life.
+          url = window.URL.createObjectURL(
+            new Blob([html], { type: "text/html;charset=utf-8" })
+          );
+          a.href = url;
+        } else {
+          a.href = "data:text/html;charset=utf-8," + encodeURIComponent(html);
+        }
+      } catch (err) {
+        a.href = "data:text/html;charset=utf-8," + encodeURIComponent(html);
+      }
+
+      a.style.display = "none";
+      document.body.appendChild(a);
+      a.click();
+
+      setTimeout(function () {
+        if (a.parentNode) { a.parentNode.removeChild(a); }
+        if (url) { window.URL.revokeObjectURL(url); }
+      }, 4000);
+
+      say("Downloaded " + FILENAME);
+    });
+  }
+
+  /* ---- print ---- */
+  var printBtn = document.getElementById("btn-print");
+  if (printBtn) {
+    printBtn.addEventListener("click", function () {
+      say("Opening print dialog — choose “Save as PDF”.");
+      window.print();
+    });
+  }
+})();
+</script>
+
+</body>
+</html>
