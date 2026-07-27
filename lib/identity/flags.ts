@@ -7,3 +7,11 @@
 export function operatorIdentityEnabled(): boolean {
   return process.env.OPERATOR_IDENTITY_ENABLED === "true";
 }
+
+// Enrollment-scoped gate (Slice 2). Constitution §14.6 and §22 #31: "A single global
+// boolean is insufficient to separate Stage 5 from Stage 6." Enrollment therefore has its
+// own reachability control, SUBORDINATE to the master kill switch — it can only ever
+// narrow, never widen, what the master flag permits. Same exact-string discipline.
+export function operatorEnrollmentEnabled(): boolean {
+  return operatorIdentityEnabled() && process.env.OPERATOR_IDENTITY_ENROLLMENT_ENABLED === "true";
+}

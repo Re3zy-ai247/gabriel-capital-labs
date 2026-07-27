@@ -30,6 +30,11 @@ export const IDENTITY_EVENT_TYPES = [
   "MEMBERSHIP_ADDED",
   "MEMBERSHIP_ROLE_CHANGED",
   "MEMBERSHIP_REMOVED",
+  // ── Operator Enrollment (Slice 2) — pre-membership evidence (§2.8).
+  "ENROLLMENT_REQUESTED",
+  "ENROLLMENT_ACCEPTED",
+  "ENROLLMENT_EXPIRED",
+  "ENROLLMENT_REVOKED",
 ] as const;
 export type IdentityEventType = (typeof IDENTITY_EVENT_TYPES)[number];
 
@@ -221,4 +226,102 @@ export function membershipRemovedEvent(
     payload: { organizationId: m.organizationId, operatorId: m.operatorId },
     dedupeKey: `membership:${m.organizationId}:${m.operatorId}:removed`,
   };
+}
+
+// ── Operator Enrollment (Slice 2) — pre-membership evidence builders ──────────
+// PURE. Each returns the refs-only input for one enrollment fact. The dedupeKey is the
+// commandId ALONE, so the derived event id is a pure function of the command and the
+// event stream is the idempotency ledger (§11.2): a replay collides deterministically,
+// and a reused commandId carrying different material inputs is caught by payload
+// comparison rather than silently swallowed.
+//
+// `authorityClass: "NONE"` is a literal in every payload and in every contract: an
+// enrollment fact can never be read as an authorization fact (§2.8, §5.2).
+
+const enrollmentInput = (
+  type: IdentityEventType, subjectAccountId: string, organizationId: string,
+  actorId: string, commandId: string, payload: Record<string, unknown>, correlationId?: string,
+): IdentityEventInput => ({
+  type,
+  tenantId: subjectAccountId, // the SUBJECT's account — server-resolved
+  actorId,
+  agencyId: organizationId,
+  correlationId,
+  payload,
+  dedupeKey: `operator-enrollment:${commandId}`,
+});
+
+export function enrollmentRequestedEvent(
+  p: {
+    enrollmentId: string; organizationId: string; subjectAccountId: string;
+    entry: "INVITATION" | "APPLICATION"; state: "INVITED" | "REQUESTED";
+    basis: "ORGANIZATION_INVITED" | "SUBJECT_APPLIED"; policyVersion: string;
+    actorId: string; commandId: string; effectiveAt: number; expiresAt: number;
+    decisionDigest: string; causationId: string | null;
+  }, correlationId?: string,
+): IdentityEventInput {
+  return enrollmentInput("ENROLLMENT_REQUESTED", p.subjectAccountId, p.organizationId, p.actorId, p.commandId, {
+    enrollmentId: p.enrollmentId, organizationId: p.organizationId, subjectAccountId: p.subjectAccountId,
+    entry: p.entry, state: p.state, basis: p.basis, authorityClass: "NONE",
+    policyVersion: p.policyVersion, actorId: p.actorId, commandId: p.commandId,
+    effectiveAt: p.effectiveAt, expiresAt: p.expiresAt,
+    decisionDigest: p.decisionDigest, causationId: p.causationId,
+  }, correlationId);
+}
+
+export function enrollmentAcceptedEvent(
+  p: {
+    enrollmentId: string; organizationId: string; subjectAccountId: string;
+    entry: "INVITATION" | "APPLICATION"; from: "INVITED" | "REQUESTED";
+    basis: "SUBJECT_ACCEPTED" | "ORGANIZATION_APPROVED"; policyVersion: string;
+    actorId: string; commandId: string; effectiveAt: number; invitationRef: string;
+    consentPurpose: "OPERATOR_ENROLLMENT" | "OPERATOR_TERMS"; consentScope: string;
+    consentMechanism: "EXPLICIT_CHECKBOX" | "SIGNED_ACCEPTANCE" | "ADMINISTRATIVE_RECORD";
+    consentPolicyVersion: string; consentEffectiveAt: number; consentDigest: string;
+    decisionDigest: string; causationId: string | null;
+  }, correlationId?: string,
+): IdentityEventInput {
+  return enrollmentInput("ENROLLMENT_ACCEPTED", p.subjectAccountId, p.organizationId, p.actorId, p.commandId, {
+    enrollmentId: p.enrollmentId, organizationId: p.organizationId, subjectAccountId: p.subjectAccountId,
+    entry: p.entry, from: p.from, to: "ACCEPTED", basis: p.basis, authorityClass: "NONE",
+    policyVersion: p.policyVersion, actorId: p.actorId, commandId: p.commandId,
+    effectiveAt: p.effectiveAt, invitationRef: p.invitationRef,
+    consentPurpose: p.consentPurpose, consentScope: p.consentScope,
+    consentMechanism: p.consentMechanism, consentPolicyVersion: p.consentPolicyVersion,
+    consentEffectiveAt: p.consentEffectiveAt, consentDigest: p.consentDigest,
+    decisionDigest: p.decisionDigest, causationId: p.causationId,
+  }, correlationId);
+}
+
+export function enrollmentExpiredEvent(
+  p: {
+    enrollmentId: string; organizationId: string; subjectAccountId: string;
+    from: "INVITED" | "REQUESTED"; policyVersion: string; actorId: string;
+    commandId: string; effectiveAt: number; expiresAt: number;
+    decisionDigest: string; causationId: string | null;
+  }, correlationId?: string,
+): IdentityEventInput {
+  return enrollmentInput("ENROLLMENT_EXPIRED", p.subjectAccountId, p.organizationId, p.actorId, p.commandId, {
+    enrollmentId: p.enrollmentId, organizationId: p.organizationId, subjectAccountId: p.subjectAccountId,
+    from: p.from, to: "EXPIRED", basis: "INVITATION_LAPSED", authorityClass: "NONE",
+    policyVersion: p.policyVersion, actorId: p.actorId, commandId: p.commandId,
+    effectiveAt: p.effectiveAt, expiresAt: p.expiresAt,
+    decisionDigest: p.decisionDigest, causationId: p.causationId,
+  }, correlationId);
+}
+
+export function enrollmentRevokedEvent(
+  p: {
+    enrollmentId: string; organizationId: string; subjectAccountId: string;
+    from: "INVITED" | "REQUESTED"; basis: "ORGANIZATION_REVOKED" | "SUBJECT_WITHDREW";
+    policyVersion: string; actorId: string; commandId: string; effectiveAt: number;
+    decisionDigest: string; causationId: string | null;
+  }, correlationId?: string,
+): IdentityEventInput {
+  return enrollmentInput("ENROLLMENT_REVOKED", p.subjectAccountId, p.organizationId, p.actorId, p.commandId, {
+    enrollmentId: p.enrollmentId, organizationId: p.organizationId, subjectAccountId: p.subjectAccountId,
+    from: p.from, to: "REVOKED", basis: p.basis, authorityClass: "NONE",
+    policyVersion: p.policyVersion, actorId: p.actorId, commandId: p.commandId,
+    effectiveAt: p.effectiveAt, decisionDigest: p.decisionDigest, causationId: p.causationId,
+  }, correlationId);
 }
