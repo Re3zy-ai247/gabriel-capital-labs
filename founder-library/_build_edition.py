@@ -85,7 +85,11 @@ def render_p(text):
 
 
 def render(md, secmap):
-    out, sec_i, opened = [], 0, False
+    # Volume 3's convention: an Evidence Standard section is §0, so the substantive
+    # document starts at §1 and cross-references written against that order resolve.
+    first_h2 = next((p for k, p in blocks(md) if k == "h2"), "")
+    sec_i = -1 if first_h2.startswith("Evidence Standard") else 0
+    out, opened = [], False
     for kind, payload in blocks(md):
         if kind == "h2":
             if opened: out.append("      </section>\n")
@@ -131,11 +135,12 @@ def render(md, secmap):
 
 
 if __name__ == "__main__":
-    md_path, head_path, out_path, vol, title, lede, meta_extra, rail_json = sys.argv[1:9]
+    md_path, head_path, out_path, vol, title, lede, meta_extra, rail_json, audience, relation = sys.argv[1:11]
     import json
     md = open(md_path, encoding="utf-8").read()
-    body_md = md.split("## Evidence Standard", 1)
-    body_md = "## Evidence Standard" + body_md[1] if len(body_md) > 1 else md
+    marker = "## Executive Summary" if "## Evidence Standard" not in md else "## Evidence Standard"
+    parts = md.split(marker, 1)
+    body_md = marker + parts[1] if len(parts) > 1 else md
     body_md = body_md.split("\n---\n\n*Governance, revision history")[0]
     secmap = []
     body = render(body_md, secmap)
@@ -174,12 +179,12 @@ if __name__ == "__main__":
 
   <section class="audience" aria-label="Intended audience">
     <span class="k">Intended audience</span>
-    <p>Investors · Enterprise customers · Regulators · Financial institutions · Product leaders · Engineers · Attorneys</p>
+    <p>{audience}</p>
   </section>
 
   <section class="audience" aria-label="Relationship to other volumes">
     <span class="k">Relationship to other volumes</span>
-    <p>This volume is <strong>entirely dependent on Volume 3</strong>. Every claim traces to a failure diagnosed there, and the mapping is explicit in &sect;4. Nothing appears here that Volume 3 did not diagnose. It also depends on <strong>Volume 2</strong> for the definition of financial trust and the company philosophy the design principles derive from. Per <strong>Volume 0 &sect;6</strong>, this volume describes reasoning and position — it does not establish product capability, technical fact, or legal authority, and production truth governs absolutely.</p>
+    <p>{relation}</p>
   </section>
 
   <section class="controls" aria-label="Document actions">

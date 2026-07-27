@@ -20,7 +20,8 @@ Governing rules are in **[Volume 0 — Why This Library Exists](VOLUME-00-WHY-TH
 | 2 | [Gabriel Capital Labs](VOLUME-02-GABRIEL-CAPITAL-LABS.md) | 1.0 | Draft | 2026-07-27 — created; prose tightened pre-publication |
 | 3 | [The Financial Trust Problem](VOLUME-03-THE-FINANCIAL-TRUST-PROBLEM.md) | 1.0 | Draft | 2026-07-27 — created |
 | 4 | [The CreditVector Solution](VOLUME-04-THE-CREDITVECTOR-SOLUTION.md) | 1.0 | Draft | 2026-07-27 — created |
-| 5–12 | See Volume 0 §Current Library Index | — | Planned | — |
+| 5 | [Product Philosophy](VOLUME-05-PRODUCT-PHILOSOPHY.md) | 1.0 | Draft | 2026-07-27 — created |
+| 6–12 | See Volume 0 §Current Library Index | — | Planned | — |
 
 ---
 
@@ -141,6 +142,40 @@ Later volumes should cite this model rather than restate it, and should locate a
 
 ---
 
+## Foundation Release v1.1 — editorial debt
+
+A **Constitutional Editorial Architecture Review** of Volumes 0–4 was completed 2026-07-27: nine independent category reviewers plus a completeness critic, with every falsifiable claim given to a separate reviewer instructed to refute it. **89 findings raised · 32 confirmed · 57 refuted.**
+
+**Founder decision (2026-07-27): none of these findings is to be resolved now.** They are tracked here as coordinated editorial debt for a future **Foundation Release v1.1**, so that Volumes 0–4 are revised once, together, rather than drifting through piecemeal edits. Volume 5 was authored under that instruction and resolves none of them.
+
+**Confirmed debt, by severity.**
+
+**Critical**
+
+- **FD-C1 — Layer arithmetic.** The Financial Trust Stack has six layers (Evidence, Identity, Education, Execution, Reputation, Opportunity). *Accountability is not one of them.* Volume 3's fourth headline claim and Volume 4's "four layers directly, one indirectly, and one not at all" both treat the binding constraint as though it were a layer. Affects the load-bearing sentence of both volumes.
+
+**High**
+
+- **FD-H1** Volume 0's index lists Volumes 3 and 4 as *Planned*; §6 refers to "later Volumes 4 and 5"; Volume 3 and Volume 12 have no authority layer.
+- **FD-H2** The §-numbering scheme is printed only in the HTML editions, and Volume 4's edition numbers from §1 while Volume 3's numbers from §0 — so Volume 4's ~40 internal self-references are off by one. *(Volume 5's edition follows Volume 3's convention; the builder was corrected for new volumes without regenerating Volume 4.)*
+- **FD-H3** Volume 3 §7 raises the strongest objection to Volume 4's premise; Volume 4 never answers it.
+- **FD-H4** *Bidirectionality* is constitutive of financial trust in Volume 2 and a healthy-system requirement in Volume 3, and appears zero times in Volume 4.
+- **FD-H5** Volume 0 frames the library as a pre-registered hypothesis; the hypothesis Volume 2 registers is not the one Volumes 3 and 4 test.
+- **FD-H6** The consumer is named the platform's conscience and is in no volume's intended audience; the bank executive is in every audience and is served only disclaimers.
+- **FD-H7** Volume 1 sits outside every mechanism built after it and asserts as present fact a capability Volume 4 labels [Partial] — not covered by its three logged v1.1 items.
+- **FD-H8** The pre-publication audit records 21 refutations without their reasoning.
+- **FD-H9** README and Volume 0 contradict each other on whether the library is itself an external communication.
+
+**Medium** — three disagreeing library indexes · Rule-10 duplications in Volume 4 ("operating system", the label table, Volume 1's constituency) · Volume 1's "entry point" claim contradicted by three documents · [Established] applied 24× in Volume 3 with one citation supplied · the consumer notice appears on Volume 1 only · no security, privacy, or retention posture anywhere · no volume names an author, making *Reviewed* status unreachable in principle · the README's eight-element standard, which four of five volumes fail · Volume 2 §Why Now unlabelled while Volume 3 labels the same class [Observed] · no pointer from Volume 0 to where the engineering record lives.
+
+**Low** — the presentation-editions register lists Volume 1 and 2 HTML editions that do not exist as artifacts · Volume 1 points to the retired title "Volume 2 — Vision & Mission" · forward pointers to unwritten volumes are not marked unwritten.
+
+**Recommended missing documents** (recorded, not created): the company's own regulatory position; data stewardship (privacy, security, retention, portability); a negative-results register, which Volume 0 mandates in three places and for which no destination exists; a concept register; organization and succession; a risk register with falsification conditions; a GIOS volume. Volume 6 should precede Volumes 7–9 because two volumes forward-depend on it.
+
+**Full review record:** the workflow transcript and per-finding refutation reasoning are retained in the session record. **The refutations are part of the evidence** — several serious-sounding findings collapsed on inspection, and per Volume 0 §Preserving Negative Results that outcome is recorded rather than discarded.
+
+---
+
 ## Observations carried forward
 
 Durable notes that should shape future volumes. Recorded when identified; not all require action.
@@ -169,6 +204,13 @@ Durable notes that should shape future volumes. Recorded when identified; not al
 - **Repository code is not a capability.** Substantial subsystems are deployed dormant behind fail-closed flags, or complete in source but unmerged, or pending an un-executed gated production migration. None is reachable by users. Volume 4 labels all of it **[Planned]** and says so explicitly. This distinction is easy to lose and expensive to lose.
 - **The proposal admits it does not solve the binding constraint.** Volume 3 §10 identified institutional accountability as what technology cannot produce. Volume 4 states plainly that CreditVector does not solve it, operating only on the consumer's side of the relationship. Its weakest mapping entries (4.6 incentives, 4.7–4.8 institutional behaviour) sit exactly where the diagnosis predicted — offered as evidence the proposal was derived from the diagnosis rather than fitted to it afterward.
 - **Volume 4 stands or falls with Volume 3, by design.** It states that if the diagnosis is rejected, the proposal should be rejected too. Later volumes should preserve this dependency rather than letting the proposal float free of its reasoning.
+
+**From Volume 5 (2026-07-27):**
+
+- **Altitude must be declared before a volume is written, not after.** Volume 5's stated risk was duplicating Volume 2 §Our Philosophy or Volume 4 §2. It was written to own the *selection decision* — what earns the right to exist — which neither of the others addresses. An audit confirmed Volume 4 §2 is untouched (all seven principles tested), but found three genuine restatements of Volume 2 convictions, all fixed by citation before publication. **A volume adjacent to an existing one needs its distinct claim stated in its own front matter before drafting begins.**
+- **Adversarial audit before publication is now standard practice.** Volume 4: 23 raised, 21 refuted, 2 fixed. Volume 5: 51 raised, 37 refuted, 14 fixed. The high refutation rate is the point — a finding that cannot survive a hostile reading should not change a document.
+- **Do not propagate a known defect into a new volume while its instance is tracked as debt.** Volume 5's first render reproduced Volume 4's §-numbering off-by-one (FD-H2). The builder was corrected so new volumes follow Volume 3's convention; **Volume 4's existing edition was not regenerated**, so FD-H2 remains open debt rather than being silently resolved.
+- **A volume must not assert a state of the record it has not yet created.** Volume 5 initially said the GTG Quant gap "is logged as an open item" before OQ-004 existed. Per Volume 0 §Versioning step 4, the log is updated in the same commit as the thing it records.
 
 **From Volume 0 (2026-07-27):**
 
@@ -204,6 +246,24 @@ Before publication, Volume 4 was audited across five dimensions by independent r
 
 **Limitation of this audit.** It verified Volume 4 against Volumes 0–3 and against the documented engineering record. It did **not** verify implementation statuses against production — see OQ-003.
 
+### OQ-004 — GTG Quant is within a governing volume's scope and has no describing document
+
+**Status:** Open · **Raised:** 2026-07-27 · **Owner:** Founder
+
+Volume 5 governs **CreditVector, GIOS, and GTG Quant**. The Founder Library has never introduced GTG Quant: no volume describes it, and Volume 5 deliberately makes no claim about what it is or does. Per the engineering record it is a prospective separate application built on GIOS rather than part of the CreditVector codebase — that is the extent of what is documented.
+
+A philosophy that governs a product the library has never introduced is a gap, not an error. **To close:** either a volume that introduces GTG Quant at the same strategic altitude Volume 2 gives GIOS, or an explicit founder decision that it stays outside the library's scope while remaining inside the philosophy's.
+
+**Until then:** no Founder Library document may describe GTG Quant beyond the single sentence above, and no volume may imply it exists as a shipped product.
+
+### OQ-005 — Volume 5's altitude conflicts with Volume 0's authority map
+
+**Status:** Open · **Raised:** 2026-07-27 · **Owner:** Founder · **Bundled into:** Foundation Release v1.1
+
+Volume 0 §6 classifies Volume 5 among the *CreditVector product documents* — written before Volume 5 existed. Volume 5 claims **company altitude** and jurisdiction over every product, on founder instruction.
+
+Per Volume 0 §9 the conflict is logged rather than resolved by editing the older document, and Volume 5 discloses it on its own face. **Until resolved, Volume 0's classification governs any authority dispute and Volume 5's scope claim stands as the founder's stated intent.** Resolution belongs to Foundation Release v1.1, alongside FD-H1, which already requires reworking the same authority map.
+
 ---
 
 ## Presentation editions (no version change)
@@ -217,3 +277,4 @@ Per Volume 0 §Versioning, these advance no document version.
 | 0 | HTML, self-contained | 2026-07-27 | Shared template, plus in-document download and print controls |
 | 3 | HTML, self-contained | 2026-07-27 | Shared template; adds a CSS-built trust-stack figure and inline evidence labels. `<head>`, stylesheet, and scripts reused verbatim from the Volume 0 edition |
 | 4 | HTML, self-contained | 2026-07-27 | Shared template; adds implementation-status label styling. Generated from the canonical Markdown by `_build_edition.py`, so text parity is structural rather than manual |
+| 5 | HTML, self-contained | 2026-07-27 | Shared template, generated by `_build_edition.py`. The builder was corrected to number an Evidence Standard section as §0 (Volume 3's convention) so Volume 5's cross-references resolve; **Volume 4's edition was deliberately not regenerated**, leaving FD-H2 as open debt |
