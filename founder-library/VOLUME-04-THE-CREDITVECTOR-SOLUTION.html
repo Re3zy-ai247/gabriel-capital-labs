@@ -1,0 +1,1382 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#060a14">
+<meta name="description" content="Founder Library Volume 4 — a systems proposal responding to the diagnosis in Volume 3.">
+<title>The CreditVector Solution — Founder Library, Volume 4</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+  body { margin: 0; min-height: 100vh; }
+  h1, h2, h3, p, ol, ul, figure, blockquote, table { margin: 0; }
+  ol, ul { padding: 0; }
+  img, svg { display: block; max-width: 100%; }
+  a { color: inherit; }
+
+  :root {
+    --ground:        #f4f6f9;
+    --ground-2:      #ffffff;
+    --ink:           #0a1420;
+    --ink-2:         #4c5f72;
+    --ink-3:         #7f909f;
+    --rule:          #d3dce5;
+    --rule-soft:     #e4eaf0;
+    --accent:        #0c6c86;
+    --panel-bg:      #071223;
+    --panel-ink:     #d9e6f2;
+    --panel-ink-2:   #93a9c0;
+    --panel-accent:  #3fd0e6;
+    --panel-rule:    #1e3350;
+
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", "Hoefler Text", "Times New Roman", serif;
+    --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+
+    --measure: 39rem;
+    --rail: 11rem;
+    --gutter: 3.5rem;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground: #060a14; --ground-2: #0b1220;
+      --ink: #e2eaf3; --ink-2: #93a7bc; --ink-3: #64798f;
+      --rule: #1c2a3c; --rule-soft: #141f2e;
+      --accent: #3fd0e6;
+      --panel-bg: #10203a; --panel-ink: #e6eef7; --panel-ink-2: #a6bad0;
+      --panel-accent: #3fd0e6; --panel-rule: #263d5e;
+    }
+  }
+
+  :root[data-theme="light"] {
+    --ground: #f4f6f9; --ground-2: #ffffff;
+    --ink: #0a1420; --ink-2: #4c5f72; --ink-3: #7f909f;
+    --rule: #d3dce5; --rule-soft: #e4eaf0;
+    --accent: #0c6c86;
+    --panel-bg: #071223; --panel-ink: #d9e6f2; --panel-ink-2: #93a9c0;
+    --panel-accent: #3fd0e6; --panel-rule: #1e3350;
+  }
+
+  :root[data-theme="dark"] {
+    --ground: #060a14; --ground-2: #0b1220;
+    --ink: #e2eaf3; --ink-2: #93a7bc; --ink-3: #64798f;
+    --rule: #1c2a3c; --rule-soft: #141f2e;
+    --accent: #3fd0e6;
+    --panel-bg: #10203a; --panel-ink: #e6eef7; --panel-ink-2: #a6bad0;
+    --panel-accent: #3fd0e6; --panel-rule: #263d5e;
+  }
+
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--serif);
+    font-size: 17px;
+    line-height: 1.72;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  .wrap {
+    max-width: calc(var(--measure) + var(--rail) + var(--gutter) + 6rem);
+    margin: 0 auto;
+    padding: 0 1.25rem 5rem;
+  }
+
+  @media (min-width: 600px) { .wrap { padding: 0 1.5rem 6rem; } }
+
+  /* ---------- masthead ---------- */
+
+  .masthead {
+    padding: 3rem 0 2.25rem;
+    border-bottom: 1px solid var(--rule);
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  @media (min-width: 600px) { .masthead { padding: 4.5rem 0 2.75rem; gap: 1.5rem; } }
+
+  .org {
+    font-family: var(--mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+
+  .volume-line {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  .volume-line::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--rule);
+  }
+
+  .masthead h1 {
+    font-size: clamp(2.1rem, 8vw, 3.75rem);
+    line-height: 1.08;
+    font-weight: 400;
+    letter-spacing: -0.015em;
+    text-wrap: balance;
+  }
+
+  .masthead .lede {
+    font-size: 1.0625rem;
+    line-height: 1.65;
+    color: var(--ink-2);
+    max-width: var(--measure);
+  }
+
+  @media (min-width: 600px) { .masthead .lede { font-size: 1.1875rem; line-height: 1.62; } }
+
+  /* ---------- metadata ---------- */
+
+  .meta {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
+    gap: 1.1rem 1.5rem;
+    padding: 1.75rem 0;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .meta div { display: flex; flex-direction: column; gap: 0.28rem; }
+
+  .k {
+    font-family: var(--mono);
+    font-size: 0.625rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+
+  .meta .v {
+    font-family: var(--mono);
+    font-size: 0.8125rem;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .meta .v.status { color: var(--accent); }
+
+  .audience {
+    padding: 1.5rem 0;
+    border-bottom: 1px solid var(--rule);
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+  }
+
+  .audience p {
+    color: var(--ink-2);
+    font-size: 0.9375rem;
+    line-height: 1.7;
+    max-width: var(--measure);
+  }
+
+  /* ---------- document controls ---------- */
+
+  .controls {
+    padding: 1.5rem 0;
+    border-bottom: 1px solid var(--rule);
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+  }
+
+  .controls .btn-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+  }
+
+  .btn {
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.03em;
+    color: var(--ink);
+    background: transparent;
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+    padding: 0.7rem 1.05rem;
+    cursor: pointer;
+    line-height: 1.3;
+    flex: 1 1 auto;
+    min-height: 44px;
+    transition: border-color 0.18s ease, color 0.18s ease;
+  }
+
+  @media (min-width: 480px) { .btn { flex: 0 0 auto; } }
+
+  .btn:hover, .btn:focus-visible {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .btn:active { transform: translateY(1px); }
+
+  .controls .hint {
+    font-size: 0.8125rem;
+    line-height: 1.6;
+    color: var(--ink-3);
+    max-width: var(--measure);
+  }
+
+  .controls .status-msg {
+    font-family: var(--mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.06em;
+    color: var(--accent);
+    min-height: 1.2em;
+  }
+
+  /* ---------- mobile table of contents ---------- */
+
+  .toc {
+    border-bottom: 1px solid var(--rule);
+    padding: 0.35rem 0;
+  }
+
+  .toc summary {
+    font-family: var(--mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    cursor: pointer;
+    padding: 1.15rem 0;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    min-height: 44px;
+  }
+
+  .toc summary::-webkit-details-marker { display: none; }
+
+  .toc summary::after {
+    content: "+";
+    font-size: 1rem;
+    color: var(--accent);
+  }
+
+  .toc[open] summary::after { content: "–"; }
+
+  .toc ol {
+    list-style: none;
+    counter-reset: toc;
+    padding: 0 0 1.25rem;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .toc li { counter-increment: toc; }
+
+  .toc a {
+    display: flex;
+    gap: 0.85rem;
+    padding: 0.6rem 0;
+    text-decoration: none;
+    color: var(--ink-2);
+    font-size: 0.9375rem;
+    line-height: 1.4;
+    border-top: 1px solid var(--rule-soft);
+    min-height: 44px;
+    align-items: center;
+  }
+
+  .toc a::before {
+    content: "§" counter(toc);
+    font-family: var(--mono);
+    font-size: 0.6875rem;
+    color: var(--accent);
+    flex: 0 0 2.1rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .toc a:hover, .toc a:focus-visible { color: var(--ink); }
+
+  @media (min-width: 1080px) { .toc { display: none; } }
+
+  /* ---------- body grid ---------- */
+
+  .body-grid { display: block; padding-top: 2.75rem; }
+
+  .rail { display: none; }
+
+  @media (min-width: 1080px) {
+    .body-grid {
+      display: grid;
+      grid-template-columns: var(--rail) minmax(0, var(--measure));
+      gap: var(--gutter);
+      align-items: start;
+      padding-top: 3.5rem;
+    }
+
+    .rail {
+      display: block;
+      position: sticky;
+      top: 2.5rem;
+      border-left: 1px solid var(--rule);
+      max-height: calc(100vh - 5rem);
+      overflow-y: auto;
+    }
+
+    .rail ol { list-style: none; display: flex; flex-direction: column; gap: 0.1rem; }
+
+    .rail a {
+      display: block;
+      padding: 0.26rem 0 0.26rem 0.85rem;
+      margin-left: -1px;
+      border-left: 1px solid transparent;
+      font-family: var(--mono);
+      font-size: 0.6875rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--ink-3);
+      text-decoration: none;
+      transition: color 0.18s ease, border-color 0.18s ease;
+    }
+
+    .rail a:hover, .rail a:focus-visible { color: var(--ink); }
+
+    .rail a[aria-current="true"] {
+      color: var(--accent);
+      border-left-color: var(--accent);
+    }
+  }
+
+  .doc { max-width: var(--measure); }
+
+  /* ---------- sections ---------- */
+
+  .doc section { padding-bottom: 2.75rem; }
+
+  .doc section + section {
+    padding-top: 2.75rem;
+    border-top: 1px solid var(--rule-soft);
+  }
+
+  @media (min-width: 600px) {
+    .doc section { padding-bottom: 3.25rem; }
+    .doc section + section { padding-top: 3.25rem; }
+  }
+
+  .doc h2 {
+    font-size: clamp(1.375rem, 5vw, 1.875rem);
+    line-height: 1.24;
+    font-weight: 400;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+    margin-bottom: 1.15rem;
+    position: relative;
+  }
+
+  .doc h2 .sec {
+    font-family: var(--mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.1em;
+    color: var(--accent);
+    display: block;
+    margin-bottom: 0.55rem;
+  }
+
+  @media (min-width: 1080px) {
+    .doc h2 .sec { position: absolute; left: -3.6rem; top: 0.6em; margin: 0; }
+  }
+
+  .doc h3 {
+    font-size: 1.0625rem;
+    line-height: 1.42;
+    font-weight: 600;
+    text-wrap: balance;
+    margin: 2rem 0 0.7rem;
+  }
+
+  @media (min-width: 600px) { .doc h3 { font-size: 1.125rem; margin-top: 2.25rem; } }
+
+  .doc h3:first-of-type { margin-top: 0; }
+
+  .doc p { margin-bottom: 1.1rem; }
+  .doc p:last-child { margin-bottom: 0; }
+
+  .doc strong { font-weight: 600; color: var(--ink); }
+  .doc em { font-style: italic; }
+
+  .doc .opening { font-size: 1.0625rem; line-height: 1.68; }
+  @media (min-width: 600px) { .doc .opening { font-size: 1.125rem; } }
+
+  .doc .runin { margin-bottom: 1.1rem; }
+  .doc .runin b { font-weight: 600; }
+
+  .doc ol.spaced {
+    list-style: none;
+    counter-reset: item;
+    margin-bottom: 1.1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .doc ol.spaced > li {
+    counter-increment: item;
+    position: relative;
+    padding-left: 2.1rem;
+  }
+
+  .doc ol.spaced > li::before {
+    content: counter(item, decimal-leading-zero);
+    position: absolute;
+    left: 0;
+    top: 0.28em;
+    font-family: var(--mono);
+    font-size: 0.6875rem;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .doc ul.plain {
+    list-style: none;
+    margin-bottom: 1.1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+  }
+
+  .doc ul.plain > li { position: relative; padding-left: 1.5rem; }
+
+  .doc ul.plain > li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0.82em;
+    width: 0.6rem;
+    height: 1px;
+    background: var(--accent);
+  }
+
+  .doc dl.statuses { margin-bottom: 1.1rem; }
+
+  .doc dl.statuses > div {
+    padding: 1rem 0;
+    border-bottom: 1px solid var(--rule-soft);
+  }
+
+  .doc dl.statuses > div:first-child { border-top: 1px solid var(--rule-soft); }
+
+  .doc dl.statuses dt {
+    font-family: var(--mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 0.45rem;
+  }
+
+  .doc dl.statuses dd { margin: 0; }
+
+  /* ---------- the governing-rule panel ---------- */
+
+  .panel {
+    background: var(--panel-bg);
+    color: var(--panel-ink);
+    border-radius: 2px;
+    padding: 1.75rem 1.35rem;
+    margin: 1.75rem 0;
+  }
+
+  @media (min-width: 600px) { .panel { padding: 2.5rem 2.25rem; } }
+
+  .panel .label {
+    font-family: var(--mono);
+    font-size: 0.625rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--panel-accent);
+    display: block;
+    margin-bottom: 1rem;
+  }
+
+  .panel .rule-text {
+    font-size: 1.125rem;
+    line-height: 1.55;
+    color: var(--panel-ink);
+    text-wrap: pretty;
+  }
+
+  @media (min-width: 600px) { .panel .rule-text { font-size: 1.25rem; } }
+
+  .panel .rule-text strong { color: var(--panel-accent); font-weight: 600; }
+
+  .panel .note {
+    margin-top: 1.35rem;
+    padding-top: 1.15rem;
+    border-top: 1px solid var(--panel-rule);
+    font-family: var(--mono);
+    font-size: 0.6875rem;
+    line-height: 1.7;
+    color: var(--panel-ink-2);
+  }
+
+  /* ---------- index table ---------- */
+
+  .table-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin-bottom: 1.1rem;
+  }
+
+  table.index {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 20rem;
+    font-size: 0.9375rem;
+  }
+
+  table.index th, table.index td {
+    text-align: left;
+    padding: 0.65rem 0.85rem 0.65rem 0;
+    border-bottom: 1px solid var(--rule-soft);
+    vertical-align: baseline;
+  }
+
+  table.index th {
+    font-family: var(--mono);
+    font-size: 0.625rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    font-weight: 400;
+    border-bottom-color: var(--rule);
+  }
+
+  table.index td.num {
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+    width: 3rem;
+  }
+
+  table.index td.st {
+    font-family: var(--mono);
+    font-size: 0.6875rem;
+    color: var(--ink-3);
+    white-space: nowrap;
+  }
+
+  table.index tr.done td.st { color: var(--accent); }
+
+  /* ---------- colophon ---------- */
+
+  .colophon {
+    margin-top: 3rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--rule);
+    max-width: var(--measure);
+  }
+
+  .colophon p {
+    font-size: 0.8125rem;
+    line-height: 1.72;
+    color: var(--ink-3);
+    margin-bottom: 0.85rem;
+  }
+
+  .colophon p:last-child { margin-bottom: 0; }
+
+  .colophon .mark {
+    font-family: var(--mono);
+    font-size: 0.625rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+
+  @media (min-width: 1080px) {
+    .colophon { margin-left: calc(var(--rail) + var(--gutter)); }
+  }
+
+  /* ---------- accessibility ---------- */
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+    border-radius: 1px;
+  }
+
+  .skip {
+    position: absolute;
+    left: -9999px;
+    top: 0;
+    background: var(--ground-2);
+    color: var(--ink);
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--accent);
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    z-index: 10;
+  }
+
+  .skip:focus { left: 0.5rem; top: 0.5rem; }
+
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    .btn, .rail a, .toc a { transition: none; }
+    .btn:active { transform: none; }
+  }
+
+  /* ---------- print ---------- */
+
+  @media print {
+    :root {
+      --ground: #ffffff; --ground-2: #ffffff;
+      --ink: #000000; --ink-2: #222222; --ink-3: #555555;
+      --rule: #999999; --rule-soft: #cccccc;
+      --accent: #000000;
+      --panel-bg: #ffffff; --panel-ink: #000000;
+      --panel-ink-2: #333333; --panel-accent: #000000; --panel-rule: #999999;
+    }
+
+    .controls, .toc, .rail, .skip { display: none !important; }
+
+    body { background: #fff; color: #000; font-size: 11pt; line-height: 1.5; }
+    .wrap { max-width: none; padding: 0; }
+    .body-grid { display: block; padding-top: 1.5rem; }
+    .doc, .colophon, .masthead .lede, .audience p { max-width: none; margin-left: 0; }
+
+    .masthead { padding: 0 0 1rem; }
+    .masthead h1 { font-size: 24pt; }
+    .masthead .lede { font-size: 11pt; }
+
+    .doc h2 { font-size: 15pt; }
+    .doc h2 .sec { position: static; margin-bottom: 0.3rem; }
+    .doc h3 { font-size: 12pt; }
+
+    .doc section { padding-bottom: 1.2rem; page-break-inside: auto; }
+    .doc section + section { padding-top: 1.2rem; }
+    .doc h2, .doc h3 { page-break-after: avoid; break-after: avoid; }
+    .doc p, .doc li { orphans: 3; widows: 3; }
+
+    .panel { border: 1pt solid #000; padding: 1rem; page-break-inside: avoid; }
+    .panel .rule-text { font-size: 12pt; }
+
+    .table-scroll { overflow: visible; }
+    table.index { font-size: 10pt; page-break-inside: avoid; }
+
+    a { text-decoration: none; }
+  }
+
+  /* ---------- evidence labels ---------- */
+
+  .tag {
+    font-family: var(--mono);
+    font-size: 0.625rem;
+    letter-spacing: 0.06em;
+    white-space: nowrap;
+    padding: 0.1em 0.4em;
+    border: 1px solid currentColor;
+    border-radius: 2px;
+    vertical-align: 0.08em;
+    opacity: 0.95;
+  }
+
+  .t-est { color: var(--accent); }
+  .t-obs { color: var(--ink-2); }
+  .t-ana { color: var(--ink-3); }
+
+  .doc .standard {
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+    padding: 1.25rem 1.15rem;
+    margin-bottom: 1.5rem;
+  }
+
+  @media (min-width: 600px) { .doc .standard { padding: 1.6rem 1.5rem; } }
+
+  .doc .standard dl { display: flex; flex-direction: column; gap: 0.9rem; }
+  .doc .standard dt { margin-bottom: 0.25rem; }
+  .doc .standard dd { margin: 0; font-size: 0.9375rem; line-height: 1.6; color: var(--ink-2); }
+
+  /* ---------- the trust stack figure ---------- */
+
+  .stack {
+    margin: 1.75rem 0;
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 0;
+  }
+
+  .stack .layer {
+    border: 1px solid var(--rule);
+    border-bottom-width: 0;
+    padding: 0.85rem 1rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.3rem 0.85rem;
+    background: var(--ground-2);
+  }
+
+  .stack .layer:first-child { border-bottom-width: 1px; }
+
+  .stack .layer .name {
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    flex: 0 0 auto;
+    min-width: 7.5rem;
+  }
+
+  .stack .layer .gloss {
+    font-size: 0.9375rem;
+    line-height: 1.5;
+    color: var(--ink-2);
+  }
+
+  .stack .layer.base { border-top-width: 2px; border-top-color: var(--accent); }
+
+  .stack .arrow {
+    align-self: center;
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    color: var(--ink-3);
+    padding: 0.2rem 0;
+    line-height: 1;
+  }
+
+  .stack-caption {
+    font-family: var(--mono);
+    font-size: 0.6875rem;
+    line-height: 1.6;
+    color: var(--ink-3);
+    margin-top: 0.4rem;
+  }
+
+  @media print {
+    .stack .layer { background: #fff; }
+    .stack, .doc .standard { page-break-inside: avoid; }
+    .tag { opacity: 1; }
+  }
+
+  .t-live { color: var(--accent); border-style: solid; }
+  .t-part { color: var(--ink-2); border-style: dashed; }
+  .t-plan { color: var(--ink-3); border-style: dotted; }
+  .doc ul.caps { list-style: none; margin: 0 0 1.1rem; display: flex; flex-direction: column; gap: 0.6rem; }
+  .doc ul.caps > li { display: flex; flex-wrap: wrap; gap: 0.35rem 0.6rem; align-items: baseline; padding-left: 1.5rem; position: relative; }
+  .doc ul.caps > li::before { content: ""; position: absolute; left: 0; top: 0.82em; width: 0.6rem; height: 1px; background: var(--accent); }
+  .doc .stacklayer { font-style: italic; color: var(--ink-2); }
+</style>
+</head>
+<body>
+
+<a class="skip" href="#doc-main">Skip to document</a>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <p class="org">Gabriel Capital Labs · CreditVector Founder Library</p>
+    <p class="volume-line">Volume 04</p>
+    <h1>The CreditVector Solution</h1>
+    <p class="lede">A systems proposal responding to the diagnosis in Volume 3. It is not marketing, not product documentation, and not a feature list. It answers one question: if Volume 3's diagnosis is correct, what kind of platform would be required to improve the system? CreditVector is one proposed answer — not the only possible one, and not an inevitable one.</p>
+  </header>
+
+  <section class="meta" aria-label="Document metadata">
+    <div><span class="k">Volume</span><span class="v">04</span></div>
+    <div><span class="k">Version</span><span class="v">1.0</span></div>
+    <div><span class="k">Status</span><span class="v status">Draft</span></div>
+    <div><span class="k">Date</span><span class="v">2026&#8209;07&#8209;27</span></div>
+    <div><span class="k">Depends on</span><span class="v">Volume 3</span></div>
+  </section>
+
+  <section class="audience" aria-label="Intended audience">
+    <span class="k">Intended audience</span>
+    <p>Investors · Enterprise customers · Regulators · Financial institutions · Product leaders · Engineers · Attorneys</p>
+  </section>
+
+  <section class="audience" aria-label="Relationship to other volumes">
+    <span class="k">Relationship to other volumes</span>
+    <p>This volume is <strong>entirely dependent on Volume 3</strong>. Every claim traces to a failure diagnosed there, and the mapping is explicit in &sect;4. Nothing appears here that Volume 3 did not diagnose. It also depends on <strong>Volume 2</strong> for the definition of financial trust and the company philosophy the design principles derive from. Per <strong>Volume 0 &sect;6</strong>, this volume describes reasoning and position — it does not establish product capability, technical fact, or legal authority, and production truth governs absolutely.</p>
+  </section>
+
+  <section class="controls" aria-label="Document actions">
+    <span class="k">This document</span>
+    <div class="btn-row">
+      <button type="button" class="btn" id="btn-download">Download This Document</button>
+      <button type="button" class="btn" id="btn-print">Print / Save as PDF</button>
+    </div>
+    <p class="hint">Downloading saves a complete copy of this page as a single HTML file that opens offline with no network access. Printing opens your browser's print dialog, where you can choose “Save as PDF”; navigation and these controls are omitted from the printed copy.</p>
+    <p class="status-msg" id="dl-status" role="status" aria-live="polite"></p>
+  </section>
+
+  <details class="toc">
+    <summary>Contents — 15 sections</summary>
+    <ol>
+      <li><a href="#s1">Evidence Standard</a></li>
+      <li><a href="#s2">Executive Summary</a></li>
+      <li><a href="#s3">Design Principles</a></li>
+      <li><a href="#s4">Design Objective</a></li>
+      <li><a href="#s5">Mapping the Diagnosis to the Solution</a></li>
+      <li><a href="#s6">Architectural Philosophy</a></li>
+      <li><a href="#s7">The Consumer Experience</a></li>
+      <li><a href="#s8">The Professional Experience</a></li>
+      <li><a href="#s9">Intelligence</a></li>
+      <li><a href="#s10">Governance</a></li>
+      <li><a href="#s11">What CreditVector Will Never Become</a></li>
+      <li><a href="#s12">Honest Limitations</a></li>
+      <li><a href="#s13">Success Criteria</a></li>
+      <li><a href="#s14">Closing</a></li>
+      <li><a href="#s15">Next Recommended Volume</a></li>
+    </ol>
+  </details>
+
+  <div class="body-grid">
+
+    <nav class="rail" aria-label="Document sections">
+      <ol>
+        <li><a href="#s1">Evidence std</a></li>
+        <li><a href="#s2">Summary</a></li>
+        <li><a href="#s3">Principles</a></li>
+        <li><a href="#s4">Objective</a></li>
+        <li><a href="#s5">The mapping</a></li>
+        <li><a href="#s6">Architecture</a></li>
+        <li><a href="#s7">Consumer</a></li>
+        <li><a href="#s8">Professional</a></li>
+        <li><a href="#s9">Intelligence</a></li>
+        <li><a href="#s10">Governance</a></li>
+        <li><a href="#s11">Refusals</a></li>
+        <li><a href="#s12">Limitations</a></li>
+        <li><a href="#s13">Success</a></li>
+        <li><a href="#s14">Closing</a></li>
+        <li><a href="#s15">Next</a></li>
+      </ol>
+    </nav>
+
+    <main class="doc" id="doc-main">
+
+      <section id="s1">
+        <h2><span class="sec">&sect;1</span>Evidence Standard for This Volume</h2>
+        <p>This volume carries <strong>two</strong> label sets. The first continues the epistemic standard established in Volume 3 &sect;0:</p>
+        <div class="table-scroll">
+          <table class="index">
+            <tr><th scope="col">Label</th><th scope="col">Meaning</th></tr>
+            <tr><td><span class="tag t-est"><span class="tag t-est">[Established]</span></span></td><td>A matter of public law, published regulation, or documented institutional structure.</td></tr>
+            <tr><td><span class="tag t-obs"><span class="tag t-obs">[Observed]</span></span></td><td>Widely reported and generally accepted, but dependent on interpretation or on evidence not independently examined here.</td></tr>
+            <tr><td><span class="tag t-ana"><span class="tag t-ana">[Analysis]</span></span></td><td>Gabriel Capital Labs' own reasoning. Argued, not authoritative.</td></tr>
+          </table>
+        </div>
+        <p>The second set is required because this volume describes a platform, and a proposal that quietly implies things exist is the most damaging error it could make. <strong>Every capability described in &sect;4 through &sect;9 carries an implementation status:</strong></p>
+        <div class="table-scroll">
+          <table class="index">
+            <tr><th scope="col">Label</th><th scope="col">Meaning</th></tr>
+            <tr><td><span class="tag t-live"><span class="tag t-live">[Live]</span></span></td><td>Available to users in production today.</td></tr>
+            <tr><td><span class="tag t-part"><span class="tag t-part">[Partial]</span></span></td><td>Exists in production in incomplete or early form.</td></tr>
+            <tr><td><span class="tag t-plan"><span class="tag t-plan">[Planned]</span></span></td><td>Designed or intended. <strong>Not available to users.</strong> May exist in the repository, may be deployed but inactive, or may not be built at all.</td></tr>
+          </table>
+        </div>
+        <p><strong>Three warnings about the implementation labels, stated plainly:</strong></p>
+        <ol class="spaced">
+          <li><strong>They reflect the engineering record as documented on 2026-07-27, not an independent inspection of production.</strong> No production system, database, or deployment was queried in the preparation of this volume. Per Volume 0 &sect;6, production truth governs and this volume does not establish it.</li>
+        </ol>
+        <ol class="spaced">
+          <li><strong><span class="tag t-plan">[Planned]</span> includes work that exists in the repository but is not reachable by users.</strong> Substantial subsystems are deployed in a dormant, fail-closed state behind feature flags that are off, and further work is complete in source but unmerged or pending a gated production migration. None of that is available to anyone, and this volume labels all of it <span class="tag t-plan">[Planned]</span>. Code existing is not a capability existing.</li>
+        </ol>
+        <ol class="spaced">
+          <li><strong>Where status is uncertain, this volume labels down, not up.</strong> A capability described as <span class="tag t-plan">[Planned]</span> may be closer to reality than the label suggests. None described as <span class="tag t-live">[Live]</span> should be less real than the label suggests. If that asymmetry is wrong anywhere, it is a defect and should be corrected in a revision.</li>
+        </ol>
+        <p class="runin"><b>On outcomes.</b> This volume describes no promised result. CreditVector is software and education. It does not guarantee deletions, score changes, approvals, or any other outcome, and &sect;10 and &sect;11 state the limits in full rather than in a footnote.</p>
+      </section>
+
+      <section id="s2">
+        <h2><span class="sec">&sect;2</span>Executive Summary</h2>
+        <p>Volume 3 diagnosed the financial trust problem as structural. Its central findings were that financial trust is produced by a six-layer stack; that defects propagate upward and cannot be repaired from above; that the consumer is the subject of the record but not the customer of the system; and that the binding constraint is institutional accountability, which technology cannot manufacture.</p>
+        <p>This volume proposes what follows from that diagnosis.</p>
+        <p class="runin"><b>The proposal is an operating system for financial trust, not an application.</b> Volume 3's failures are not independent — they are consequences of one another, propagating up a stack. A collection of tools addressing them individually reproduces the fragmentation Volume 3 &sect;7 identified as a structural outcome of how the market is arranged. What the diagnosis calls for is a governed layer beneath the work: one that establishes truth before permitting action, grounds every claim in inspectable evidence, teaches rather than merely acts, and keeps consequential decisions with the person. <span class="tag t-ana"><span class="tag t-ana">[Analysis]</span></span></p>
+        <p class="runin"><b>It operates from the bottom of the stack upward.</b> Per Volume 3's Rule 2, a defect at any layer cannot be fixed from above. The proposal therefore begins at Evidence and Identity, builds Education on that foundation, and enables Execution from there. It makes no attempt to act directly on Reputation or Opportunity, which is the standard failure of the category. <span class="tag t-ana"><span class="tag t-ana">[Analysis]</span></span></p>
+        <p class="runin"><b>It addresses five of six layers and does not solve the binding constraint.</b> This is the most important sentence in this document. Volume 3 &sect;10 established that trust requires accountability, that accountability is a governance property of institutions, and that no amount of technical excellence on one side of a relationship creates an obligation on the other. <strong>CreditVector operates on the consumer's side of that relationship.</strong> It can make a person's evidence better, their understanding deeper, and their execution more competent. It cannot make a furnisher investigate more carefully, a credit reporting agency match more accurately, or a lender price more fairly. A reader who expects this proposal to solve the accountability problem should stop here, because it does not.</p>
+        <p><strong>What it can do is change the quality of what institutions receive, and the capability of the person on the other side of them.</strong> Volume 3 &sect;6.8 observed that when a well-documented dispute and a form-letter dispute arrive looking substantially alike, the link between evidence quality and outcome quality weakens. The proposal's wager is that a person who understands their situation, holds organized evidence, acts through disciplined process, and keeps a durable record of what occurred is in a materially better position than one who does not — even inside an unchanged system. That is a modest claim compared to what the category typically promises, and it is the one the diagnosis actually supports. <span class="tag t-ana"><span class="tag t-ana">[Analysis]</span></span></p>
+        <p class="runin"><b>If Volume 3's diagnosis is rejected, this proposal should be rejected with it.</b> The two documents stand or fall together, deliberately. If the failures are behavioral rather than structural, a different intervention is required. If financial trust has no stack structure, the sequencing here is arbitrary. If accountability is not the binding constraint, then this volume's central admission is unnecessary and its scope is wrong. Nothing here is offered as self-evidently correct; it follows from a diagnosis, and it inherits that diagnosis's uncertainty.</p>
+      </section>
+
+      <section id="s3">
+        <h2><span class="sec">&sect;3</span>Design Principles</h2>
+        <p>Seven principles govern what gets built. They derive from <strong>Volume 2 &sect;Our Philosophy</strong> and are the operational form of it — company belief translated into design rule. They are developed here rather than listed because a principle that has not been reasoned through will not survive its first collision with a deadline. <span class="tag t-ana"><span class="tag t-ana">[Analysis]</span></span> throughout.</p>
+        <h3>Truth before action</h3>
+        <p>No action is taken until the underlying facts are established and shown.</p>
+        <p>The temptation runs the other way. A person arriving in distress wants to <em>do something</em>, and a platform that offers immediate action feels more useful than one that first insists on establishing what is actually true. But per Volume 3's Rule 1, an action taken on an incorrect understanding produces a confident error that propagates upward — and per &sect;6.8, reinvestigation runs in weeks and a matter may require several rounds against decisions that are often time-bound, so a poorly grounded first attempt consumes time the person may not have. <span class="tag t-ana"><span class="tag t-ana">[Analysis]</span></span></p>
+        <p>In practice this inverts the usual sequence. The record is assembled and reconciled first. Disagreements between sources are surfaced rather than resolved into a single confident view. Only then is action available. This is slower at the start and produces better outcomes downstream, and the company accepts the trade.</p>
+        <h3>Evidence before opinion</h3>
+        <p>Every claim the platform makes is grounded in something inspectable, and the grounding travels with the claim.</p>
+        <p>Volume 3 &sect;6.1 diagnosed the consumer's problem as <em>interpretive</em> access rather than data access — knowing what the data means, not merely seeing it. A platform that tells a person what to think about their record, without showing what that judgment rests on, has replaced one opaque authority with another. The person is no better positioned; they have simply changed which institution they are trusting blindly.</p>
+        <p>So an assertion about a record points to the specific data that produced it. A statement about rights points to the statute. A characterization of a situation distinguishes what was retrieved from what was inferred. Where the platform does not know, it says so rather than producing a plausible answer.</p>
+        <h3>Education before automation</h3>
+        <p>The platform's purpose is to leave the person more capable, not more dependent.</p>
+        <p>This is the principle most in tension with product convenience, and the one most likely to be abandoned under growth pressure, so it is stated precisely. Automation that acts on someone's behalf while leaving them no more able to understand their own situation has created a dependency and called it a service. Volume 3 &sect;6.3 and &sect;6.9 diagnosed the education layer as a genuine structural failure — meaning the gap is real and the remedy is teaching, not substitution.</p>
+        <p>The test: after using the platform, does the person understand their situation better than before? If a capability makes the outcome better and the person no wiser, it has addressed a symptom at the Execution layer while leaving the Education defect beneath it intact — and per Rule 1, that defect will produce the next failure.</p>
+        <h3>Transparency before convenience</h3>
+        <p>Complexity is explained, not hidden.</p>
+        <p>Volume 3 &sect;10 warned specifically that a better interface can obscure rather than resolve: an interface presenting an uncertain situation as simple and settled has not reduced the complexity but transferred risk to a user who now believes they understand something they do not.</p>
+        <p>The design consequence is that the platform shows uncertainty rather than smoothing it away. Where the bureaus disagree, the disagreement is visible. Where a likely outcome is genuinely unknown, it is stated as unknown. Where a score is an estimate, it is presented as an estimate with its basis. This produces an experience that is less reassuring than it could be, which is the correct trade in a domain where false reassurance is expensive.</p>
+        <h3>Governance before intelligence</h3>
+        <p>Constraints are established before capability is added, not after.</p>
+        <p>Volume 3 &sect;10 established that automation amplifies whatever it is pointed at, and that intelligent systems generate confident, unverifiable claims — the failure mode this domain can least afford. It follows that capability must be constrained <em>before</em> deployment, and that the constraint must be structural rather than advisory. A rule that depends on someone remembering to apply it will be applied exactly as reliably as people remember. This mirrors Volume 2's <em>Constraints create reliability</em>.</p>
+        <p>The practical form: where a deterministic process produces a correct result, use it rather than asking a model to reproduce it. Where a model is genuinely needed, its output passes through controls enforcing what may and may not be said — regardless of what it produced or what a user asked for.</p>
+        <h3>Consumer agency over automation</h3>
+        <p>Consequential actions are taken by the person, not on their behalf.</p>
+        <p>Volume 3 diagnosed a system in which the consumer is the subject of a record they do not control. A platform that takes control from the institutions and gives it to itself has not returned agency to the person — it has relocated the same problem. This is also Volume 2's <em>The person decides</em>.</p>
+        <p>So the platform prepares, explains, organizes, and recommends. It does not send correspondence, authorize actions with legal consequence, or make decisions of significance without the person explicitly choosing. The friction this creates is intentional. A person who did not choose an action cannot defend it, learn from it, or be accountable for it.</p>
+        <h3>Trust compounds</h3>
+        <p>The design optimizes for the assets that grow more valuable with use.</p>
+        <p>Per Volume 2's <em>Trust compounds</em>, an accumulated record of reliability appreciates while features depreciate. In this domain the compounding asset is the person's own evidentiary record: what was disputed, when, on what basis, what came back, what remains open. That record grows more valuable to its owner the longer it runs, and it is the thing a competitor cannot supply retroactively.</p>
+        <p>Volume 3 &sect;7 explained why the market selects against this — trust compounds slowly and unobservably, while short-term results are legible and attributable. Choosing to build the slow thing anyway is a strategic bet, stated as one in Volume 2 and inherited here.</p>
+      </section>
+
+      <section id="s4">
+        <h2><span class="sec">&sect;4</span>Design Objective</h2>
+        <p class="runin"><b>The objective is to strengthen the Financial Trust Stack from the bottom up.</b> Volume 3 &sect;4 established the six layers and the two rules governing them. This section states precisely which layers are in scope and which are not.</p>
+        <h3>In scope</h3>
+        <p class="runin"><b>Evidence.</b> Assembling a complete, reconciled, durable record of a person's financial standing — including the disagreements between sources — and preserving what was done about it over time. This is the foundation, and per Rule 2 everything above depends on getting it right.</p>
+        <p class="runin"><b>Identity.</b> Ensuring the record belongs to the person it describes: detecting items that appear to be misattributed, and preserving documentation that supports identity claims. In scope with a real caveat — the platform can <em>detect and document</em> apparent identity failures. It cannot correct the matching logic inside a credit reporting agency, which is where such failures originate.</p>
+        <p class="runin"><b>Education.</b> Making the record interpretable to the person it describes, and building durable understanding of what it contains, what rights exist in relation to it, and what actions realistically accomplish. Volume 3 diagnosed this layer as failing for structural reasons — accurate education is expensive to produce and hard to monetize, while confident misinformation is cheap and highly monetizable — which makes it a layer where a platform that chooses accuracy can genuinely differ.</p>
+        <p class="runin"><b>Execution.</b> Making disciplined action possible: identifying what is contestable, assembling documentation, directing claims to the correct parties, tracking what happens, and interpreting responses. In scope with the limitation Volume 3 &sect;6.8 identified, examined in &sect;4.8.</p>
+        <h3>Partially in scope</h3>
+        <p class="runin"><b>Reputation.</b> In scope only in the specific sense that a more accurate, better-documented record beneath it should produce a more accurate reputation above it — which is Rule 1 operating in the favorable direction. <strong>Out of scope in every direct sense.</strong> The platform does not model, influence, negotiate with, or optimize against scoring systems. Any capability presented as directly improving reputation would be operating at the wrong altitude, and per Volume 3 &sect;7 would be either cosmetic or misrepresented.</p>
+        <h3>Out of scope</h3>
+        <p class="runin"><b>Opportunity.</b> The platform does not grant, arrange, or influence access to housing, employment, credit, or insurance. It is not a lender, a broker, or an intermediary in any transaction where standing is evaluated.</p>
+        <p class="runin"><b>Institutional accountability — the binding constraint.</b> Volume 3 &sect;10 identified this as what technology cannot produce and what trust actually requires. CreditVector does not solve it. It cannot compel a furnisher to investigate thoroughly, a reporting agency to match accurately, or a user of a report to weigh it fairly. &sect;11 states this and its consequences in full.</p>
+        <p class="runin"><b>Incentive structure.</b> Volume 3 &sect;6.6 identified misaligned incentives as the most important structural problem. A single platform does not change who pays whom in an industry. &sect;4.6 describes the narrow thing it can do instead, which is considerably less than solving it.</p>
+        <h3>The honest shape of the scope</h3>
+        <p>The proposal addresses <strong>four layers directly, one indirectly, and one not at all</strong> — and the one it does not address is the one Volume 3 identified as binding.</p>
+        <p>This is a smaller claim than the category typically makes, and it is stated first rather than discovered later. A platform that fixes evidence, identity, education, and execution has meaningfully improved the position of the person standing in front of an unchanged institution. It has not changed the institution. Both halves of that sentence are true and neither should be dropped. <span class="tag t-ana"><span class="tag t-ana">[Analysis]</span></span></p>
+      </section>
+
+      <section id="s5">
+        <h2><span class="sec">&sect;5</span>Mapping the Diagnosis to the Solution</h2>
+        <p>This section is the core of the volume. It takes each structural problem from Volume 3 &sect;6 in order and states the problem, why it exists, the design response, and the expected limitation.</p>
+        <p class="runin"><b>Nothing appears here that Volume 3 did not diagnose.</b> Where a response is <span class="tag t-plan">[Planned]</span>, it is not available to users regardless of what exists in a repository.</p>
+        <h3>4.1 — Information asymmetry</h3>
+        <p class="runin"><b>Problem</b> <em>(Volume 3 &sect;6.1 — Education, resting on Evidence).</em> Every other party understands the system better than the person it describes. The asymmetry is interpretive, not merely about access: knowing what the data means, which parts are contestable, and what an action would realistically accomplish.</p>
+        <p class="runin"><b>Why it exists.</b> Access was addressed by law; interpretation was not. Furnishers, agencies, users, and model developers each hold operational knowledge acquired through participation. The consumer participates once every few years, under stress. <span class="tag t-ana"><span class="tag t-ana">[Analysis]</span></span></p>
+        <p class="runin"><b>Design response.</b> Attach interpretation to the record itself rather than selling it separately. Each item carries a plain-language explanation of what it is, what it means, where it came from, and what effect it plausibly has. Explanation is treated as a property of the record — the thing Volume 3 &sect;11 listed as a characteristic of a healthy system — rather than a premium service.</p>
+        <ul class="caps">
+          <li>Per-item explanation in plain language — <span class="tag t-part"><span class="tag t-part">[Partial]</span></span></li>
+          <li>Per-bureau presence displayed per item, so the reader sees which agencies carry it — <span class="tag t-live"><span class="tag t-live">[Live]</span></span></li>
+          <li>Creditor and item classification to make the record legible — <span class="tag t-live"><span class="tag t-live">[Live]</span></span></li>
+          <li>An explanation of <em>why</em> an item is prioritized, not just that it is — <span class="tag t-part"><span class="tag t-part">[Partial]</span></span></li>
+        </ul>
+        <p class="runin"><b>Expected limitation.</b> Interpretation is only as good as the underlying data, which is supplied by the same system being interpreted. The platform can explain what a status code means; it cannot verify that the code accurately describes what happened. It reduces the asymmetry without closing it, because part of the asymmetry consists of information no external party holds. <span class="tag t-ana"><span class="tag t-ana">[Analysis]</span></span></p>
+        <h3>4.2 — Fragmented records</h3>
+        <p class="runin"><b>Problem</b> <em>(Volume 3 &sect;6.2 — Evidence and Identity).</em> There is no single record. At least three exist, held by separate agencies with no obligation to agree, and nothing in the architecture forces resolution when they disagree.</p>
+        <p class="runin"><b>Why it exists.</b> The agencies are independent commercial entities, and furnishing is voluntary — no law compels a creditor to report. <span class="tag t-est"><span class="tag t-est">[Established]</span></span> Fragmentation is therefore a structural property rather than a defect anyone introduced, which is the same reading Volume 3 &sect;6 applies to all ten problems. <span class="tag t-ana"><span class="tag t-ana">[Analysis]</span></span></p>
+        <p class="runin"><b>Design response.</b> Reconcile without flattening. The platform assembles what each source says about each item and <strong>presents the disagreement as a finding rather than resolving it into a single confident view.</strong> Volume 3 &sect;11 named this explicitly: a system presenting one confident view assembled from disagreeing sources is misrepresenting its own certainty.</p>
+        <ul class="caps">
+          <li>Per-bureau presence and status reconciled per tradeline — <span class="tag t-live"><span class="tag t-live">[Live]</span></span></li>
+          <li>Disagreement surfaced to the user rather than silently resolved — <span class="tag t-live"><span class="tag t-live">[Live]</span></span></li>
+          <li>Longitudinal reconciliation, so a record corrected at one agency and not another is visible as an inconsistency over time — <span class="tag t-part"><span class="tag t-part">[Partial]</span></span></li>
+        </ul>
+        <p class="runin"><b>Expected limitation.</b> The platform reconciles only what it can see. It has no authority to compel agreement, no mechanism to determine which of three disagreeing sources is correct, and no visibility into records held by specialty agencies the person has not supplied. It makes fragmentation visible. It does not end it. <span class="tag t-ana"><span class="tag t-ana">[Analysis]</span></span></p>
+        <h3>4.3 — The consumer knowledge gap</h3>
+        <p class="runin"><b>Problem</b> <em>(Volume 3 &sect;6.3 — Education).</em> Understanding one's position requires operational knowledge most people do not have, and the informational commons is populated substantially by claims that are wrong, because accurate education is expensive to produce while confident misinformation is cheap and highly monetizable.</p>
+        <p class="runin"><b>Why it exists.</b> An economic asymmetry. Truthful education about this domain is unexciting, hard to monetize directly, and constrains what the educator may then sell. Misinformation converts better. <span class="tag t-ana"><span class="tag t-ana">[Analysis]</span></span></p>
+        <p class="runin"><b>Design response.</b> Produce accurate education as a first-class output and accept that it monetizes poorly. This includes refusing to repeat the domain's profitable myths — that certain statutory citations compel deletion, that accurate negative information can be removed, that outcomes can be guaranteed. Refusing them costs conversion, which is the point: the refusal is only meaningful when it is expensive.</p>
+        <ul class="caps">
+          <li>Educational surfaces explaining mechanics in plain language — <span class="tag t-part"><span class="tag t-part">[Partial]</span></span></li>
+          <li>A consumer-credit news function drawing on official regulatory sources, with a human review gate before publication — <span class="tag t-live"><span class="tag t-live">[Live]</span></span></li>
+          <li>An intelligence layer answering questions within a defined scope (&sect;8) — <span class="tag t-live"><span class="tag t-live">[Live]</span></span></li>
+          <li>Systematic, structured statute and rights education — <span class="tag t-plan"><span class="tag t-plan">[Planned]</span></span></li>
+        </ul>
+        <p class="runin"><b>Expected limitation.</b> Education requires engagement, and the people most affected have the least available attention — Volume 3 &sect;9 noted that financial strain itself consumes cognitive capacity. A platform can make accurate education available and cannot make it consumed. There is also no mechanism by which this constrains what anyone else publishes. <span class="tag t-ana"><span class="tag t-ana">[Analysis]</span></span></p>
+        <h3>4.4 — Compliance complexity</h3>
+        <p class="runin"><b>Problem</b> <em>(Volume 3 &sect;6.4 — Execution).</em> An extensive, layered framework enforced across jurisdictions with meaningful variation. It obscures rights from consumers, raises costs for legitimate operators, and encourages defensive process design.</p>
+        <p class="runin"><b>Why it exists.</b> Decades of accumulated federal and state law responding to real harms, without a unifying simplification. <span class="tag t-est"><span class="tag t-est">[Established]</span></span></p>
+        <p class="runin"><b>Design response.</b> Absorb the complexity into the system so the person does not have to hold it. Constraints are enforced structurally in the software rather than left to the diligence of whoever is typing — the <em>Governance before intelligence</em> principle applied to correspondence.</p>
+        <ul class="caps">
+          <li>Automated compliance controls on generated correspondence, applied before a human reviews it — <span class="tag t-live"><span class="tag t-live">[Live]</span></span></li>
+          <li>Deterministic generation grounded in the user's actual data, with optional refinement passing the same controls — <span class="tag t-live"><span class="tag t-live">[Live]</span></span></li>
+          <li>Plain-language explanation of the rights that apply to a given situation — <span class="tag t-part"><span class="tag t-part">[Partial]</span></span></li>
+          <li>Compliance tooling for professional operators — <span class="tag t-part"><span class="tag t-part">[Partial]</span></span></li>
+        </ul>
+        <p class="runin"><b>Expected limitation.</b> The platform provides software and education, <strong>not legal advice.</strong> It cannot determine whether a person has a legal claim, represent anyone, or substitute for counsel. It also cannot reduce the actual complexity of the law — only the burden of navigating it for the specific actions it supports. Where a situation exceeds that scope, the correct output is a referral, not an answer. <span class="tag t-ana"><span class="tag t-ana">[Analysis]</span></span></p>
+        <h3>4.5 — Administrative friction</h3>
+        <p class="runin"><b>Problem</b> <em>(Volume 3 &sect;6.5 — Execution).</em> Correction is procedurally demanding, and the friction falls hardest on people with the least time, flexibility, and administrative experience — functioning as a regressive filter on the exercise of a legal right.</p>
+        <p class="runin"><b>Why it exists.</b> The process was designed around institutional convenience, with the consumer as the party expected to absorb the coordination cost. <span class="tag t-ana"><span class="tag t-ana">[Analysis]</span></span></p>
+        <p class="runin"><b>Design response.</b> Reduce friction without removing the person from the decision — the <em>Consumer agency over automation</em> principle. The platform performs the assembly, organization, formatting, and tracking. The person decides what to contest and authorizes each action.</p>
+        <ul class="caps">
+          <li>Structured generation of grounded correspondence from the person's own data — <span class="tag t-live"><span class="tag t-live">[Live]</span></span></li>
+          <li>Pre-filled furnisher and agency addressing — <span class="tag t-live"><span class="tag t-live">[Live]</span></span></li>
+          <li>Print and export for physical mailing, which the person sends — <span class="tag t-live"><span class="tag t-live">[Live]</span></span></li>
+          <li>Response tracking and structured follow-up rounds — <span class="tag t-live"><span class="tag t-live">[Live]</span></span></li>
+          <li>Response interpretation, explaining what a reply means and what options follow — <span class="tag t-live"><span class="tag t-live">[Live]</span></span></li>
+        </ul>
+        <p class="runin"><b>Expected limitation.</b> Friction is reduced, not eliminated, and this is partly deliberate: per <em>Consumer agency</em>, the platform does not transmit correspondence on the person's behalf or make consequential choices for them. Some of the remaining friction is the cost of keeping the person genuinely in control. The rest is imposed by external processes the platform does not govern. <span class="tag t-ana"><span class="tag t-ana">[Analysis]</span></span></p>
+        <h3>4.6 — Incentive misalignment</h3>
+        <p class="runin"><b>Problem</b> <em>(Volume 3 &sect;6.6 — all layers).</em> The party bearing the cost of an inaccurate record is not the party controlling its accuracy, and is not the customer of the parties who do. Volume 3 called this the most important structural problem and the source of several others.</p>
+        <p class="runin"><b>Why it exists.</b> The reporting industry's revenue flows from furnishers and users. The consumer is the subject of the record, not the customer of the system. <span class="tag t-obs"><span class="tag t-obs">[Observed]</span></span></p>
+        <p class="runin"><b>Design response.</b> This one deserves care, because it is the problem a platform can least affect and the one most tempting to overclaim about.</p>
+        <p class="runin"><b>The platform does not fix the incentive structure of the reporting industry.</b> What it does is take the consumer as its actual customer, so that at least one participant in the person's situation is paid by them and accountable to them. That is a narrow, real thing: it aligns <em>this</em> platform's incentives with the person, without altering anyone else's.</p>
+        <ul class="caps">
+          <li>The consumer, or a professional acting for them, is the paying customer — <span class="tag t-live"><span class="tag t-live">[Live]</span></span></li>
+          <li>Consumer data is not sold; it is not a revenue source — <span class="tag t-live"><span class="tag t-live">[Live]</span></span></li>
+          <li>Refusal of revenue requiring unsupportable claims (Volume 2's <em>Refuse revenue that costs trust</em>) — <span class="tag t-live"><span class="tag t-live">[Live]</span></span> as a standing policy</li>
+        </ul>
+        <p class="runin"><b>Expected limitation.</b> This is the weakest response in the mapping and should be read as such. One aligned participant does not realign an industry. The platform has no ability to change what a credit reporting agency is paid for, what a furnisher is measured on, or who bears the cost of an error. Volume 3's most important structural problem remains substantially unaddressed by this proposal, and any suggestion otherwise would be a misrepresentation. <span class="tag t-ana"><span class="tag t-ana">[Analysis]</span></span></p>
+        <h3>4.7 — Lack of transparency</h3>
+        <p class="runin"><b>Problem</b> <em>(Volume 3 &sect;6.7 — Education and Reputation).</em> Scoring weights, matching algorithms, and the internal basis for furnisher verification are not visible, making it structurally difficult for a consumer to determine why a decision went as it did.</p>
+        <p class="runin"><b>Why it exists.</b> Some opacity is legitimate — fully public scoring models would be gamed. Some is commercial. The consumer's need to understand was not a design input. <span class="tag t-ana"><span class="tag t-ana">[Analysis]</span></span></p>
+        <p class="runin"><b>Design response.</b> The platform cannot make other institutions transparent. It can refuse to add a further layer of opacity, and hold itself to the standard it cannot impose on others.</p>
+        <ul class="caps">
+          <li>Every assessment shows what produced it; nothing is asserted without inspectable grounding — <span class="tag t-part"><span class="tag t-part">[Partial]</span></span></li>
+          <li>Honest scoring: assessments state their uncertainty rather than presenting confident numbers the data does not support — <span class="tag t-live"><span class="tag t-live">[Live]</span></span></li>
+          <li>Where a metric is not measured, it is reported as not measured rather than estimated into something more flattering — <span class="tag t-live"><span class="tag t-live">[Live]</span></span> as a standing policy</li>
+          <li>The intelligence layer attributes what it relies on (&sect;8) — <span class="tag t-live"><span class="tag t-live">[Live]</span></span></li>
+        </ul>
+        <p class="runin"><b>Expected limitation.</b> This addresses the platform's own transparency, which is the smaller half of the problem. The consumer still cannot see inside a scoring model, a matching algorithm, or a furnisher's investigation. <strong>The platform can be transparent about what it knows and cannot make visible what it cannot see.</strong> <span class="tag t-ana"><span class="tag t-ana">[Analysis]</span></span></p>
+        <h3>4.8 — Slow dispute resolution</h3>
+        <p class="runin"><b>Problem</b> <em>(Volume 3 &sect;6.8 — Execution).</em> Statutory reinvestigation runs in weeks while financial decisions are often time-bound, so a correct resolution can arrive after the decision it was meant to inform. Additionally, because dispute traffic moves through a standardized channel with limited codes and constrained free text, a well-documented dispute and a form-letter dispute may arrive at the furnisher looking substantially alike.</p>
+        <p class="runin"><b>Why it exists.</b> Statutory timelines, and an inter-industry channel designed for processing volume efficiently rather than for conveying evidentiary nuance. <span class="tag t-est"><span class="tag t-est">[Established]</span></span> that the timelines and channel exist as described.</p>
+        <p class="runin"><b>Design response.</b> The platform cannot accelerate a statutory period or change the channel. Two things remain available. <span class="tag t-ana"><span class="tag t-ana">[Analysis]</span></span></p>
+        <p>First, <strong>reduce the time the person controls.</strong> The interval between discovering a problem and submitting a well-formed claim is entirely the consumer's, and it is where most delay actually accumulates — through not knowing what to do, assembling documentation slowly, and submitting something that has to be redone.</p>
+        <p>Second, <strong>maximize the quality of what enters the channel.</strong> If compression weakens the link between evidence quality and outcome quality, the response is to make the submitted claim as specific, well-grounded, and complete as possible, and to preserve the full documentation outside the channel so it is available on escalation.</p>
+        <ul class="caps">
+          <li>Rapid movement from record to a grounded, specific claim — <span class="tag t-live"><span class="tag t-live">[Live]</span></span></li>
+          <li>Documentation preserved in full, in the person's own durable record — <span class="tag t-part"><span class="tag t-part">[Partial]</span></span></li>
+          <li>Structured tracking of timelines and follow-up rounds — <span class="tag t-live"><span class="tag t-live">[Live]</span></span></li>
+          <li>Response analysis that identifies an inadequate reply and explains the options — <span class="tag t-live"><span class="tag t-live">[Live]</span></span></li>
+        </ul>
+        <p class="runin"><b>Expected limitation.</b> The statutory clock is unchanged. Compression in the inter-industry channel is unchanged. Whether a furnisher's investigation is thorough is unchanged. <strong>This response improves the consumer's half of a process whose other half it cannot influence</strong>, and where the outcome turns on the quality of an investigation the platform cannot observe, it can improve the input and nothing further. It does not make disputes succeed, and no claim here should be read as suggesting otherwise. <span class="tag t-ana"><span class="tag t-ana">[Analysis]</span></span></p>
+        <h3>4.9 — Poor financial education</h3>
+        <p class="runin"><b>Problem</b> <em>(Volume 3 &sect;6.9 — Education).</em> Formal financial education is inconsistent and typically covers general concepts rather than the operational specifics of the reporting system. Most people first encounter the mechanics at the moment they are harmed by them.</p>
+        <p class="runin"><b>Why it exists.</b> Curriculum decisions are made locally, the domain is unglamorous and changes, and no institution owns teaching it. <span class="tag t-obs"><span class="tag t-obs">[Observed]</span></span></p>
+        <p class="runin"><b>Design response.</b> Deliver operational education continuously rather than only at the moment of crisis — Volume 3 &sect;11's <em>education precedes need</em>.</p>
+        <ul class="caps">
+          <li>Education embedded in the workflow, at the moment a concept becomes relevant — <span class="tag t-part"><span class="tag t-part">[Partial]</span></span></li>
+          <li>Regulatory and industry developments summarized from official sources with a human review gate — <span class="tag t-live"><span class="tag t-live">[Live]</span></span></li>
+          <li>Question-answering within a defined scope (&sect;8) — <span class="tag t-live"><span class="tag t-live">[Live]</span></span></li>
+          <li>A community surface where people encounter others' situations, with moderation — <span class="tag t-live"><span class="tag t-live">[Live]</span></span></li>
+          <li>Structured curriculum available before need arises — <span class="tag t-plan"><span class="tag t-plan">[Planned]</span></span></li>
+        </ul>
+        <p class="runin"><b>Expected limitation.</b> The platform reaches people who have already arrived, which is usually after the harm. It cannot reach the population that most needs education before need — that requires schools, employers, and public institutions, and is not something a consumer platform can substitute for. <span class="tag t-ana"><span class="tag t-ana">[Analysis]</span></span></p>
+        <h3>4.10 — Reactive rather than proactive design</h3>
+        <p class="runin"><b>Problem</b> <em>(Volume 3 &sect;6.10 — the whole stack).</em> The system records and reports but does not surface what requires attention. Monitoring products report that something changed rather than what it means or what to do. The burden of vigilance falls on the least informed party.</p>
+        <p class="runin"><b>Why it exists.</b> The system was built to answer institutional queries, not to advise its subjects. Notification was never a design requirement. <span class="tag t-ana"><span class="tag t-ana">[Analysis]</span></span></p>
+        <p class="runin"><b>Design response.</b> Notify with meaning rather than with events. A change alert that does not explain significance has transferred the interpretive burden back to the person — the same failure Volume 3 &sect;6.1 diagnosed, in a new wrapper.</p>
+        <ul class="caps">
+          <li>Prioritization surfacing what warrants attention first, with reasoning — <span class="tag t-live"><span class="tag t-live">[Live]</span></span></li>
+          <li>Strategic assessment identifying issues before they become urgent — <span class="tag t-live"><span class="tag t-live">[Live]</span></span></li>
+          <li>Ongoing meaning-carrying monitoring across sources — <span class="tag t-plan"><span class="tag t-plan">[Planned]</span></span></li>
+          <li>Life-event-aware preparation, so a person approaching a mortgage or lease knows what to address in advance — <span class="tag t-plan"><span class="tag t-plan">[Planned]</span></span></li>
+        </ul>
+        <p class="runin"><b>Expected limitation.</b> Genuine proactivity requires continuous data access the platform does not independently possess; much of the record is supplied by the person. There is a deeper limit too: a system that notices problems earlier still cannot make institutions resolve them faster. Earlier detection helps only where earlier action helps. <span class="tag t-ana"><span class="tag t-ana">[Analysis]</span></span></p>
+        <h3>What the mapping shows</h3>
+        <p>Read together, the ten responses form a pattern worth stating explicitly. <span class="tag t-ana"><span class="tag t-ana">[Analysis]</span></span></p>
+        <p>The strongest responses are at <strong>Evidence, Education, and Execution</strong> — the layers where the consumer's own position is the constraint and where a platform can genuinely change what a person knows and does.</p>
+        <p>The weakest are at <strong>incentive structure (4.6)</strong> and <strong>institutional behavior (4.7, 4.8)</strong> — the layers where the constraint is what another party is obliged to do.</p>
+        <p>That distribution is not a gap in the design. It is the diagnosis reasserting itself: Volume 3 &sect;10 said accountability is the binding constraint and technology cannot produce it, and a proposal honestly derived from that diagnosis must be weakest exactly where the diagnosis said it would be. A proposal claiming uniform strength across all ten would be evidence that it had not taken the diagnosis seriously.</p>
+      </section>
+
+      <section id="s6">
+        <h2><span class="sec">&sect;6</span>Architectural Philosophy</h2>
+        <p class="runin"><b>CreditVector is proposed as the Financial Trust Operating System.</b> This section explains what that means and why the diagnosis calls for an operating system rather than an application. <span class="tag t-ana"><span class="tag t-ana">[Analysis]</span></span> throughout.</p>
+        <h3>Why an operating system</h3>
+        <p>An operating system does not do an application's work. It governs how work is permitted to happen: what resources may be used, how components are isolated, what happens when something misbehaves, what record exists of what occurred. Applications become simpler because the operating system holds the hard, general problems.</p>
+        <p>Three properties of Volume 3's diagnosis call for that shape rather than an application's.</p>
+        <p class="runin"><b>The failures are interdependent.</b> They propagate up a stack, which means addressing them individually addresses symptoms. Something must hold the relationship between layers — ensuring evidence is established before action is available, that education precedes execution, that a claim is grounded before it is made. That coordinating role is what an operating system performs.</p>
+        <p class="runin"><b>The constraints must hold across everything.</b> Volume 3 &sect;10 established that automation amplifies whatever it is pointed at, and that constraints applied per-feature will be applied unevenly and abandoned under pressure. A constraint that must hold everywhere belongs beneath everything, where opting out requires deliberate effort by someone who must justify it.</p>
+        <p class="runin"><b>The record must outlive any single interaction.</b> The compounding asset is longitudinal: what was done, when, on what basis, what came back. A record spanning years and every capability cannot belong to a feature. It belongs to the layer beneath them.</p>
+        <h3>What it governs</h3>
+        <p>The operating layer governs, at minimum: what may be asserted and what must be grounded; the order of operations up the stack; what constitutes a consequential action requiring explicit authorization; what must be recorded and retained; and where the system's authority ends and a referral is required.</p>
+        <p>Capabilities built on that layer inherit those properties rather than reimplementing them — and, more importantly, cannot easily opt out of them when a deadline arrives.</p>
+        <h3>Relationship to GIOS</h3>
+        <p class="runin"><b>GIOS is the constitutional operating system for trustworthy intelligence</b> — Gabriel Capital Labs' foundation, described strategically in Volume 2 &sect;Why GIOS Exists. CreditVector is its first production application.</p>
+        <p>The relationship is one of inheritance. GIOS holds the general problems of making intelligent systems accountable: grounding, scope, auditability, institutional memory, and enforced restraint. CreditVector holds the domain: what financial trust is, how the stack behaves, what the statutes require, and what a person in this situation needs.</p>
+        <p>This division matters for two reasons. <strong>The governance is not bespoke</strong> — it was not invented for this product, and will not be quietly relaxed for this product's convenience. And <strong>the domain work is genuinely specific</strong> — nothing about GIOS produces knowledge of consumer credit, which had to be built.</p>
+        <p>Per Volume 2, this volume discusses GIOS strategically only. Implementation is out of scope for the Founder Library entirely.</p>
+        <h3>What this architecture does not imply</h3>
+        <p>Calling something an operating system is a claim about structure, not a claim about completeness or quality. It does not imply the platform is finished, that every capability described is built, or that the governance is perfect. It states where the constraints live and what governs what. Whether the execution is good is a separate question, answered by evidence rather than by architecture.</p>
+      </section>
+
+      <section id="s7">
+        <h2><span class="sec">&sect;7</span>The Consumer Experience</h2>
+        <p>This section describes what the platform should feel like to use. It describes intent and does not promise outcomes. <span class="tag t-ana"><span class="tag t-ana">[Analysis]</span></span> throughout.</p>
+        <p class="runin"><b>It should feel like being shown, not being told.</b> The dominant experience of the current system is receiving a verdict — a number, a denial, a reason code — with no visible reasoning. The platform's experience should invert that. The person sees what the record says, where sources disagree, what each item means, and why something is prioritized. The reasoning is available at every point.</p>
+        <p class="runin"><b>It should reduce uncertainty even when the news is bad.</b> Volume 3 &sect;9 established that uncertainty is a distinct burden from bad news: a person who knows their standing can plan, while a person who does not know whether their record is accurate cannot. The goal is therefore not reassurance — it is <em>resolution of ambiguity</em>. A person who learns their record is accurate and their situation is difficult has been genuinely helped, even though nothing improved.</p>
+        <p class="runin"><b>It should build confidence through understanding, not through promises.</b> Confidence produced by a promise is borrowed and collapses when the promise fails. Confidence produced by understanding is the person's own. The difference is testable: can they now explain their own situation to someone else?</p>
+        <p class="runin"><b>Evidence should be visible and theirs.</b> What was sent, when, on what basis, and what came back — organized, retrievable, and belonging to the person. This is the compounding asset, and it should feel like an asset: something accumulating rather than a series of disconnected transactions.</p>
+        <p class="runin"><b>Control should be unambiguous.</b> Every consequential action is one the person took. Nothing is sent, published, or committed without an explicit decision. When the platform recommends, it explains its reasoning and the person may decline. Declining is a legitimate outcome and should never be treated as an error state.</p>
+        <p class="runin"><b>It should be honest about difficulty.</b> Where a situation is hard, the platform says so. Where an action is unlikely to help, it says that too — including when saying so costs engagement. Volume 3 &sect;11 observed that in a healthy system the participant most worth trusting is the one most careful about what they claim.</p>
+        <p class="runin"><b>What it should never feel like.</b> It should never feel like a machine promising to fix something. It should never present a projection as a prediction, or a possibility as a plan. And it should never make someone feel that the outcome is being handled for them — because it is not, and that impression would be both false and disempowering.</p>
+      </section>
+
+      <section id="s8">
+        <h2><span class="sec">&sect;8</span>The Professional Experience</h2>
+        <p>Credit professionals, agencies, and educators are the second constituency, and their need follows from Volume 3 &sect;7's diagnosis of fragmentation. <span class="tag t-ana"><span class="tag t-ana">[Analysis]</span></span> throughout.</p>
+        <p class="runin"><b>Why infrastructure rather than tools.</b> A professional serving many people faces the same stack across every case, plus obligations of their own: documentation of work performed, a defensible compliance posture, continuity when staff change, and a record that withstands outside examination.</p>
+        <p>Assembled from disconnected tools, this produces exactly the pathology Volume 3 &sect;7 described — competent point solutions with nothing spanning the stack, and integration left to the participant. For a professional, the cost compounds across every client, and the failure mode is worse: an operator whose process is undocumented cannot demonstrate that they behaved correctly, which is the specific exposure their licence depends on.</p>
+        <p class="runin"><b>What infrastructure means here.</b> Multiple client workspaces on one governed core, so every case inherits the same constraints. Compliance controls that protect the operator as well as the client. An audit trail sufficient to show what was done and why. Continuity that belongs to the practice rather than to whoever handled the case.</p>
+        <ul class="caps">
+          <li>Multi-client workspaces for professional operators — <span class="tag t-live"><span class="tag t-live">[Live]</span></span></li>
+          <li>Shared compliance controls applied to all generated correspondence — <span class="tag t-live"><span class="tag t-live">[Live]</span></span></li>
+          <li>Per-client record and history — <span class="tag t-live"><span class="tag t-live">[Live]</span></span></li>
+          <li>Bulk operations, white-label surfaces, and expanded operator tooling — <span class="tag t-plan"><span class="tag t-plan">[Planned]</span></span></li>
+        </ul>
+        <p class="runin"><b>The constituency is deliberately selected.</b> The professional market has largely been served by tools indifferent to whether the operator using them remains lawful. Building for operators who intend to stay lawful narrows the addressable market — many operators do not want a system that refuses to produce the claims their marketing depends on. That narrowing is the intent. Per Volume 2's <em>Refuse revenue that costs trust</em>, an operator who wants those claims is not a customer this platform can serve.</p>
+        <p class="runin"><b>Educators and organizations</b> — nonprofits, employers, housing programs, community institutions — have a distinct requirement: a platform whose claims they can stand behind publicly, since their credibility transfers to whatever they recommend. <span class="tag t-plan"><span class="tag t-plan">[Planned]</span></span> as a distinct served surface.</p>
+        <p class="runin"><b>Expected limitation.</b> Infrastructure improves how a professional works. It does not make them competent, and it does not make them honest. A well-instrumented operator with bad judgment produces well-documented bad judgment. The platform can constrain what may be generated and record what was done; it cannot supply professional judgment.</p>
+      </section>
+
+      <section id="s9">
+        <h2><span class="sec">&sect;9</span>Intelligence</h2>
+        <p><strong>Kai is the platform's intelligence layer. It is not an autonomous decision-maker, and the distinction is architectural rather than descriptive.</strong> <span class="tag t-ana"><span class="tag t-ana">[Analysis]</span></span> throughout.</p>
+        <h3>What Kai is for</h3>
+        <p>Explaining what a record contains. Answering questions within a defined scope. Drafting and organizing. Surfacing what matters and why. It operates on the person's own situation and grounds what it says in that situation and in the sources it relies on.</p>
+        <ul class="caps">
+          <li>Question-answering within a credit-specific scope — <span class="tag t-live"><span class="tag t-live">[Live]</span></span></li>
+          <li>Explanation and drafting assistance on the person's own record — <span class="tag t-live"><span class="tag t-live">[Live]</span></span></li>
+          <li>Broader assistance across the platform — <span class="tag t-plan"><span class="tag t-plan">[Planned]</span></span></li>
+        </ul>
+        <h3>Why intelligence must be governed</h3>
+        <p>Volume 3 &sect;10 stated the reason precisely: intelligent systems present their best guess and their most certain knowledge in the same register, and in a domain where a wrong answer costs someone a home, a system that is usually right — with no way to know which time you are in — is not a solution.</p>
+        <p>An ungoverned intelligence layer in this domain would introduce a <strong>new</strong> source of confident error into a system whose core problem is already confident error. That is not an improvement; it is the same failure with better latency.</p>
+        <p>Governance is what converts the capability into something a person can act on. It defines what may be asserted, what must be grounded, what must be refused, and what record is left. Per <em>Governance before intelligence</em>, those constraints exist before the capability, not after.</p>
+        <h3>Why Kai refuses</h3>
+        <p>Refusal is a designed feature, not a limitation awaiting removal. Kai declines in four situations:</p>
+        <p class="runin"><b>Outside its competence.</b> Questions beyond consumer credit are declined rather than answered generally.</p>
+        <p class="runin"><b>Where the answer requires a licensed professional.</b> Legal and financial advice are refused with a referral. The platform provides education; the boundary is structural rather than a disclaimer.</p>
+        <p class="runin"><b>Where the grounding is absent.</b> Where Kai cannot ground an answer, it says so rather than producing something plausible. A fluent answer with no basis is the most dangerous output available to it.</p>
+        <p class="runin"><b>Where the request seeks a prohibited claim.</b> Requests for guaranteed outcomes, promised deletions, or the domain's statutory folklore are refused regardless of how they are asked. This constraint does not depend on the phrasing of the request.</p>
+        <h3>Why refusal builds trust</h3>
+        <p>Because it is the only available evidence that the system knows its limits.</p>
+        <p>A system that answers everything provides no signal about reliability — the person cannot distinguish grounded answers from generated ones, since both arrive with equal fluency. A system that visibly declines has demonstrated a boundary, and every answer it <em>does</em> give is worth more as a result. Trust is not produced by capability; it is produced by capability with visible limits.</p>
+        <p>There is a commercial cost. A refusing system is less impressive in demonstration and less satisfying in the moment than one that always has an answer. Per Volume 2, the company accepts that trade.</p>
+        <p class="runin"><b>Expected limitation.</b> Governance reduces error; it does not eliminate it. A grounded, scoped, constrained intelligence layer can still be wrong — misread a record, misjudge relevance, explain something unclearly. Which is why per <em>Consumer agency over automation</em>, Kai does not take consequential actions. It informs a decision the person makes, and that arrangement is the actual safety mechanism, not the intelligence layer's own reliability.</p>
+      </section>
+
+      <section id="s10">
+        <h2><span class="sec">&sect;10</span>Governance</h2>
+        <p>Governance in this volume means the product-level property: the enforced constraints determining what the platform may do, assert, and refuse. Engineering governance is a separate record that this library does not describe and does not govern (Volume 0 &sect;6). <span class="tag t-ana"><span class="tag t-ana">[Analysis]</span></span> throughout.</p>
+        <h3>Why constitutional governance</h3>
+        <p>"Constitutional" is used precisely: constraints that bind the platform, exist prior to any particular feature, and cannot be set aside by the convenience of a single decision.</p>
+        <p>The alternative is governance as policy — rules that exist in documents and depend on people remembering and choosing to apply them. Volume 2's <em>Constraints create reliability</em> explains why that fails: a rule enforced by diligence is enforced exactly as reliably as people are diligent, and diligence is at its lowest precisely when pressure is at its highest.</p>
+        <p>Volume 3 makes the requirement sharper. In a domain where the market rewards overclaiming and desperation makes it profitable, a platform relying on good intentions will drift, one defensible decision at a time. Governance is what makes drift require deliberate effort rather than mere inattention.</p>
+        <h3>What governance covers</h3>
+        <p class="runin"><b>What may be claimed.</b> No promised outcomes, guaranteed deletions, or implied score improvements — in the product, in generated correspondence, in the intelligence layer's answers, and in marketing. One standard everywhere, because a company holding its product to a standard its marketing ignores has not adopted the standard.</p>
+        <p class="runin"><b>What must be grounded.</b> Assertions about a person's situation point to what produced them.</p>
+        <p class="runin"><b>Where authority ends.</b> Education, not legal advice. Software, not representation. The boundary is enforced rather than disclaimed.</p>
+        <p class="runin"><b>Who decides.</b> Consequential actions belong to the person.</p>
+        <p class="runin"><b>What is recorded.</b> What was done, when, and on what basis — so it can be examined later.</p>
+        <h3>Why compliance is architecture</h3>
+        <p>Per Volume 2's <em>Compliance is architecture</em>: legal constraint is a design input at the start and an enforced control in the system, not a review step at the end.</p>
+        <p>Volume 3 &sect;6.4 diagnosed compliance complexity as encouraging defensive process design optimized to be defensible rather than useful. Building the constraint into the system is what allows the two to coincide — the process is defensible <em>because</em> it is correct, rather than defensible instead of being correct.</p>
+        <p class="runin"><b>Expected limitation.</b> Governance constrains the platform. It does not constrain anyone else. It cannot make a furnisher investigate properly, a competitor stop overclaiming, or a market reward restraint. It ensures this platform behaves consistently, which is a precondition for being trusted and not a solution to the diagnosis.</p>
+      </section>
+
+      <section id="s11">
+        <h2><span class="sec">&sect;11</span>What CreditVector Will Never Become</h2>
+        <p>These are permanent constraints, not current policy. They are stated as refusals because, per Volume 0 &sect;Permanent Rules (rule 9), constraints stated in advance are constraints while constraints stated afterward are explanations.</p>
+        <p class="runin"><b>Never a guaranteed-outcome operation.</b> No promised deletions, score improvements, or approvals — not in marketing, not in product copy, not in an intelligence layer's answer, not in a sales conversation. This is the refusal from which the others follow, and the one that costs the most.</p>
+        <p class="runin"><b>Never a seller of consumer data.</b> Consumer data is not the product and will not be sold, licensed, or brokered. A moat built on a breach of the trust that created it is a liability with a delayed invoice.</p>
+        <p class="runin"><b>Never an unlicensed advice product.</b> The platform provides education and software. It does not provide legal or financial advice, does not represent anyone, and does not substitute for counsel. Where a situation requires a professional, the correct output is a referral.</p>
+        <p class="runin"><b>Never a platform that acts without consent.</b> No consequential action is taken on a person's behalf without their explicit decision. Convenience is never a sufficient reason to remove a person from a decision that affects them.</p>
+        <p class="runin"><b>Never a seller of statutory folklore.</b> The domain's profitable myths — that certain citations compel deletion, that accurate information can be removed on procedural grounds, that specific letter formats produce specific results — are not sold, implied, or tolerated in generated output.</p>
+        <p class="runin"><b>Never a system that hides its uncertainty.</b> Where the platform does not know, it says so. Where a projection is a projection, it is labelled. Confident presentation of uncertain conclusions is prohibited regardless of how much better it would convert.</p>
+        <p class="runin"><b>Never a platform whose marketing exceeds its product.</b> One claim standard across every surface. What is said externally is what the product does.</p>
+        <p class="runin"><b>Never a dependency masquerading as a service.</b> A person who has used the platform should be more capable, not merely better served. Any capability making outcomes better while leaving the person no wiser has failed the <em>Education before automation</em> test.</p>
+        <p class="runin"><b>Never a system that takes the record from its subject.</b> The person's evidentiary record belongs to them, is available to them, and leaves with them. A platform holding a record hostage to retain a customer has inverted its purpose.</p>
+      </section>
+
+      <section id="s12">
+        <h2><span class="sec">&sect;12</span>Honest Limitations</h2>
+        <p>This section exists to be believed. Every item is a real limit, stated plainly. <span class="tag t-ana"><span class="tag t-ana">[Analysis]</span></span> throughout.</p>
+        <p class="runin"><b>It cannot guarantee deletions.</b> No entry can be guaranteed removed. Whether an item is corrected depends on whether it is inaccurate, what the furnisher's investigation finds, and how the agency responds — none of which the platform controls.</p>
+        <p class="runin"><b>It cannot remove accurate negative information.</b> Accurate adverse information remains reportable for the periods the law permits. Any product claiming otherwise is describing something it cannot do.</p>
+        <p class="runin"><b>It cannot guarantee score changes.</b> Scores are computed by third-party models from data the platform does not control, using weightings that are proprietary. A more accurate record may produce a different score; that is a possibility, not a promise.</p>
+        <p class="runin"><b>It cannot make institutions behave correctly.</b> The central limitation, and the one Volume 3 &sect;10 identified as the binding constraint. It cannot compel thorough investigation, accurate matching, fair pricing, or good-faith engagement. It improves one side of a relationship whose other side it does not govern.</p>
+        <p class="runin"><b>It cannot change the incentive structure of the industry.</b> Per &sect;4.6, taking the consumer as its customer aligns one participant. It does not change what anyone else is paid for or measured on.</p>
+        <p class="runin"><b>It cannot accelerate statutory timelines.</b> Reinvestigation periods are set by law. The platform reduces the delay the consumer controls and cannot compress the rest.</p>
+        <p class="runin"><b>It cannot eliminate human judgment.</b> What to contest, what evidence supports a claim, whether an explanation is persuasive, what to do with an unsatisfactory response — these require judgment. The platform informs judgment; it does not replace it, and any design implying otherwise would be misrepresenting what the system does.</p>
+        <p class="runin"><b>It cannot replace attorneys.</b> It is not a law firm and does not provide legal advice or representation. Some situations require counsel, and the correct output there is a referral, not an answer.</p>
+        <p class="runin"><b>It cannot eliminate financial hardship.</b> An accurate record is not the same as a good financial position. Someone whose record is entirely correct and whose circumstances are difficult has a real problem the platform cannot solve. Accuracy is a precondition for fair treatment, not a remedy for hardship.</p>
+        <p class="runin"><b>It cannot reach the people who most need it before they need it.</b> Per &sect;4.9, the platform serves people who arrive, generally after harm. Education before need requires institutions a consumer platform cannot substitute for.</p>
+        <p class="runin"><b>It cannot guarantee its own correctness.</b> The platform can misread a record, misjudge relevance, or explain something poorly. Governance reduces error rather than eliminating it. This is why consequential decisions stay with the person — the safety mechanism is the arrangement, not the reliability of any component.</p>
+        <p class="runin"><b>Its capabilities are unevenly mature.</b> Per the evidence standard, some described capabilities are <span class="tag t-live">[Live]</span>, some <span class="tag t-part">[Partial]</span>, and some <span class="tag t-plan">[Planned]</span>. A <span class="tag t-plan">[Planned]</span> capability is not available to users regardless of what exists in a repository, and this document should not be read as describing a finished system.</p>
+      </section>
+
+      <section id="s13">
+        <h2><span class="sec">&sect;13</span>Success Criteria</h2>
+        <p>How the proposal should be judged — and how it should not. <span class="tag t-ana"><span class="tag t-ana">[Analysis]</span></span> throughout.</p>
+        <h3>Not by</h3>
+        <p class="runin"><b>Downloads, signups, or usage volume.</b> These measure reach, not whether anyone was helped. A platform could grow rapidly while leaving every user no better informed.</p>
+        <p class="runin"><b>Intelligence-layer usage.</b> Volume 2's cost argument runs the other way: a rising deflection rate, where accurate answers already exist and do not require generation, is a <em>better</em> outcome than rising usage. Measuring AI usage as success would invert the incentive.</p>
+        <p class="runin"><b>Feature count or shipping velocity.</b> Volume 3 &sect;7 explained why the market selects for visible short-term output. Adopting that as an internal measure would import the failure mode the diagnosis identified.</p>
+        <p class="runin"><b>Score movement.</b> The most tempting metric and the most corrupting. Optimizing for reported score changes creates pressure toward the reputation layer — precisely the wrong altitude per Rule 2 — and toward claiming credit for changes with other causes.</p>
+        <h3>But by</h3>
+        <p class="runin"><b>Accuracy.</b> Are the platform's assessments correct? When it says an item is inaccurate, is it? This is measurable against outcomes and is the foundation of everything else.</p>
+        <p class="runin"><b>Consumer understanding.</b> Can a person explain their own situation better after using the platform than before? Per <em>Education before automation</em>, this is the test the platform is most likely to quietly fail, and it should be measured directly rather than inferred.</p>
+        <p class="runin"><b>Decision quality.</b> Did people make better decisions — including the decision not to act when action would not help? A platform whose users correctly decline to dispute is succeeding, though it will look like disengagement in any conventional funnel.</p>
+        <p class="runin"><b>Trust, measured by durability.</b> Do people stay, return at the next consequential moment, and recommend it to people they care about? Per Volume 2, trust compounds; its signature is longitudinal rather than immediate.</p>
+        <p class="runin"><b>Institutional confidence.</b> Do professionals stake their licence on it, and would institutions accept its record as evidence of a documented process? This is the strictest external test available and the one furthest out.</p>
+        <p class="runin"><b>Long-term relationships.</b> Retention measured in years, and the accumulating value of a person's own record. The compounding asset is the record; its growth is the clearest evidence that the strategy is working.</p>
+        <p class="runin"><b>Claims that survive scrutiny.</b> Does what the company says about itself hold up under examination? Per Volume 0, this document is itself subject to that test.</p>
+        <h3>The uncomfortable property</h3>
+        <p>Every criterion above is slower and harder to measure than the ones rejected, and several will look like underperformance on conventional measures. A platform succeeding by these criteria may show lower engagement, lower intelligence-layer usage, and fewer disputes filed than a platform succeeding by the rejected ones.</p>
+        <p>That divergence is expected. It is also the point at which the strategy will be under the most pressure to be abandoned, which is why the criteria are written down now — before the pressure arrives, per Volume 0 &sect;2.</p>
+      </section>
+
+      <section id="s14">
+        <h2><span class="sec">&sect;14</span>Closing</h2>
+        <p>If Volume 3 diagnosed the disease, CreditVector is one proposed treatment — not because it is inevitable, but because it follows from the diagnosis.</p>
+        <p>The proposal makes a modest claim by the standards of its category. It does not promise outcomes. It does not claim to fix the system. It addresses four layers of the trust stack directly, one indirectly, and openly declines the one Volume 3 identified as binding. Its weakest responses sit exactly where the diagnosis predicted they would, and that correspondence is offered as evidence the proposal was derived from the diagnosis rather than fitted to it afterward.</p>
+        <p>What it claims is this: a person who understands their situation, holds organized evidence, acts through disciplined process, and keeps a durable record of what occurred is in a materially better position than one who does not — even inside a system that has not changed. And a platform that refuses to overclaim, grounds what it says, and leaves consequential decisions with the person is a better instrument for that than the alternatives currently on offer.</p>
+        <p>Both claims are testable, and both may be wrong. The criteria in &sect;12 exist so that the answer arrives as evidence rather than as assertion.</p>
+        <p>The larger reason to attempt it is stated in Volume 2: consumer credit was chosen as a proving ground because it is a market that rewards overclaiming, and demonstrating that a constrained system can win where restraint is punished proves something a comfortable market never could. This volume is what that argument looks like when it is made specific.</p>
+        <p>A reader who accepts the diagnosis and rejects this proposal has done something useful — the diagnosis is the more durable document, and better proposals should exist. A reader who accepts the proposal without the diagnosis has accepted a conclusion without its reasoning, which per Volume 0 is the thing this library was built to prevent.</p>
+      </section>
+
+      <section id="s15">
+        <h2><span class="sec">&sect;15</span>Next Recommended Volume</h2>
+        <p class="runin"><b>Volume 5 — Product Philosophy.</b> The principles in &sect;2 govern what gets built. Volume 5 develops the discipline underneath them: how decisions are made about what to build, what to refuse, how quality is judged, and how the constraints hold when a deadline argues against them. Read after this volume, it explains why the mapping in &sect;4 stops where it does.</p>
+        <p class="runin"><b>Volume 6 — Business Model</b> follows, and should be read against &sect;12. A business model incompatible with those success criteria would invalidate them, and the two documents must be consistent or one of them is wrong.</p>
+      </section>
+
+    </main>
+  </div>
+
+  <footer class="colophon">
+    <p class="mark">Gabriel Capital Labs · CreditVector Founder Library · Volume 04 · v1.0 · Draft · 2026-07-27</p>
+    <p>Governance, revision history, founder ratifications, and open items are recorded in the Founder Library revision log. Implementation statuses reflect the engineering record as documented on 2026-07-27 and were not independently verified against production; per Volume 0 &sect;6, production truth governs. This HTML edition is a presentation of the canonical Markdown document and carries no independent authority; where the two differ, the Markdown governs.</p>
+  </footer>
+
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var FILENAME = "VOLUME-04-THE-CREDITVECTOR-SOLUTION.html";
+
+  /* ---- scroll-spy for the desktop rail ---- */
+  var links = Array.prototype.slice.call(document.querySelectorAll(".rail a"));
+  if (links.length && "IntersectionObserver" in window) {
+    var byId = {};
+    links.forEach(function (a) { byId[a.getAttribute("href").slice(1)] = a; });
+    var visible = Object.create(null);
+
+    function paint() {
+      var current = null;
+      var order = Object.keys(byId);
+      for (var i = 0; i < order.length; i++) {
+        if (visible[order[i]]) { current = order[i]; break; }
+      }
+      links.forEach(function (a) {
+        if (current && a === byId[current]) { a.setAttribute("aria-current", "true"); }
+        else { a.removeAttribute("aria-current"); }
+      });
+    }
+
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (e.isIntersecting) { visible[e.target.id] = true; }
+        else { delete visible[e.target.id]; }
+      });
+      paint();
+    }, { rootMargin: "-10% 0px -70% 0px", threshold: 0 });
+
+    document.querySelectorAll(".doc section").forEach(function (s) { io.observe(s); });
+  }
+
+  /* ---- close the mobile contents panel after a jump ---- */
+  var toc = document.querySelector(".toc");
+  if (toc) {
+    toc.addEventListener("click", function (e) {
+      if (e.target.tagName === "A") { toc.removeAttribute("open"); }
+    });
+  }
+
+  /* ---- status line ---- */
+  var statusEl = document.getElementById("dl-status");
+  var statusTimer = null;
+  function say(msg) {
+    if (!statusEl) { return; }
+    statusEl.textContent = msg;
+    if (statusTimer) { clearTimeout(statusTimer); }
+    statusTimer = setTimeout(function () { statusEl.textContent = ""; }, 6000);
+  }
+
+  /* ---- serialize the live document into a standalone HTML string ---- */
+  function serialize() {
+    var clone = document.documentElement.cloneNode(true);
+    // Drop runtime-only state so the saved copy opens in a clean state.
+    Array.prototype.forEach.call(clone.querySelectorAll("[aria-current]"), function (n) {
+      n.removeAttribute("aria-current");
+    });
+    Array.prototype.forEach.call(clone.querySelectorAll(".toc[open]"), function (n) {
+      n.removeAttribute("open");
+    });
+    var st = clone.querySelector("#dl-status");
+    if (st) { st.textContent = ""; }
+    return "<!doctype html>\n" + clone.outerHTML;
+  }
+
+  /* ---- download: Blob + object URL, with a data-URI fallback ---- */
+  var dlBtn = document.getElementById("btn-download");
+  if (dlBtn) {
+    dlBtn.addEventListener("click", function () {
+      var html = serialize();
+      var a = document.createElement("a");
+      a.download = FILENAME;
+      a.rel = "noopener";
+      var url = null;
+
+      try {
+        if (typeof Blob === "function" && window.URL && window.URL.createObjectURL) {
+          // A fresh object URL is created at click time, so this does not
+          // depend on any URL minted earlier in the page's life.
+          url = window.URL.createObjectURL(
+            new Blob([html], { type: "text/html;charset=utf-8" })
+          );
+          a.href = url;
+        } else {
+          a.href = "data:text/html;charset=utf-8," + encodeURIComponent(html);
+        }
+      } catch (err) {
+        a.href = "data:text/html;charset=utf-8," + encodeURIComponent(html);
+      }
+
+      a.style.display = "none";
+      document.body.appendChild(a);
+      a.click();
+
+      setTimeout(function () {
+        if (a.parentNode) { a.parentNode.removeChild(a); }
+        if (url) { window.URL.revokeObjectURL(url); }
+      }, 4000);
+
+      say("Downloaded " + FILENAME);
+    });
+  }
+
+  /* ---- print ---- */
+  var printBtn = document.getElementById("btn-print");
+  if (printBtn) {
+    printBtn.addEventListener("click", function () {
+      say("Opening print dialog — choose “Save as PDF”.");
+      window.print();
+    });
+  }
+})();
+</script>
+
+</body>
+</html>

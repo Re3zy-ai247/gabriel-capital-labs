@@ -19,7 +19,8 @@ Governing rules are in **[Volume 0 — Why This Library Exists](VOLUME-00-WHY-TH
 | 1 | [Executive Summary](VOLUME-01-EXECUTIVE-SUMMARY.md) — CreditVector | 1.0 | Draft | 2026-07-27 — created; text unchanged since |
 | 2 | [Gabriel Capital Labs](VOLUME-02-GABRIEL-CAPITAL-LABS.md) | 1.0 | Draft | 2026-07-27 — created; prose tightened pre-publication |
 | 3 | [The Financial Trust Problem](VOLUME-03-THE-FINANCIAL-TRUST-PROBLEM.md) | 1.0 | Draft | 2026-07-27 — created |
-| 4–12 | See Volume 0 §Current Library Index | — | Planned | — |
+| 4 | [The CreditVector Solution](VOLUME-04-THE-CREDITVECTOR-SOLUTION.md) | 1.0 | Draft | 2026-07-27 — created |
+| 5–12 | See Volume 0 §Current Library Index | — | Planned | — |
 
 ---
 
@@ -162,10 +163,46 @@ Durable notes that should shape future volumes. Recorded when identified; not al
 - **A diagnosis is written without the treatment in view.** Volume 3 makes no reference to CreditVector, deliberately, and states the test it should be held to: the analysis must remain accurate whether or not the company exists. Volume 4 is where the proposal appears, and it must be traceable back to failures Volume 3 diagnosed.
 - **The honest counterargument belongs in the document.** Volume 3 §7 states the strongest objection to its own argument (that the trust stack may not belong to any single party) without resolving it. Continuing this practice is what distinguishes analysis from advocacy.
 
+**From Volume 4 (2026-07-27):**
+
+- **A second label set was required: implementation status.** Volume 3's epistemic labels answer "how do we know this?" They do not answer "does this exist?" Volume 4 added **[Live] / [Partial] / [Planned]** because a proposal describing a platform can mislead most damagingly by implying capabilities exist. The stated policy is to **label down, not up** when uncertain. Every future volume describing product capability must carry this second set.
+- **Repository code is not a capability.** Substantial subsystems are deployed dormant behind fail-closed flags, or complete in source but unmerged, or pending an un-executed gated production migration. None is reachable by users. Volume 4 labels all of it **[Planned]** and says so explicitly. This distinction is easy to lose and expensive to lose.
+- **The proposal admits it does not solve the binding constraint.** Volume 3 §10 identified institutional accountability as what technology cannot produce. Volume 4 states plainly that CreditVector does not solve it, operating only on the consumer's side of the relationship. Its weakest mapping entries (4.6 incentives, 4.7–4.8 institutional behaviour) sit exactly where the diagnosis predicted — offered as evidence the proposal was derived from the diagnosis rather than fitted to it afterward.
+- **Volume 4 stands or falls with Volume 3, by design.** It states that if the diagnosis is rejected, the proposal should be rejected too. Later volumes should preserve this dependency rather than letting the proposal float free of its reasoning.
+
 **From Volume 0 (2026-07-27):**
 
 - **The library's rules were previously implicit.** Statuses, versioning, conflict resolution, and the engineering/production authority boundary existed as practice before Volume 0 wrote them down. Volume 0 is therefore partly a record of what was already being done, and future governance changes amend Volume 0 rather than accumulating as habit.
 - **Presentation vs. revision is now an explicit distinction.** HTML editions and typesetting advance no version. This lets presentation improve continuously without disturbing the versioned record — relevant because Volumes 1 and 2 have both been reissued in new HTML editions with no text change.
+
+### OQ-003 — Volume 4 implementation statuses are unverified against production
+
+**Status:** Open · **Raised:** 2026-07-27 · **Owner:** Founder / engineering
+
+Volume 4 labels every described capability **[Live]**, **[Partial]**, or **[Planned]**. Those labels were assigned from the engineering record as documented on 2026-07-27. **No production system, database, or deployment was queried.** Per Volume 0 §6 the Founder Library cannot establish production truth, and this volume explicitly defers to it.
+
+The stated policy is to label down, not up: a **[Planned]** capability may be closer to reality than its label suggests; none marked **[Live]** should be less real than its label suggests.
+
+**To close:** verify each **[Live]** and **[Partial]** claim against the deployed product, and issue Volume 4 v1.1 with corrections. Until then, Volume 4's capability statuses are the company's documented belief, not a verified inventory — and should be represented that way to investors and partners.
+
+---
+
+## Pre-publication verification
+
+Recorded because Volume 0 §Preserving Negative Results requires that checks and their outcomes be part of the record, not only their conclusions.
+
+### Volume 4 — adversarial audit, 2026-07-27
+
+Before publication, Volume 4 was audited across five dimensions by independent reviewers — traceability to Volume 3, epistemic labelling, implied implementation, the compliance bar and tone, and cross-volume consistency. **Every finding was then given to a separate reviewer instructed to refute it**, defaulting to refuted unless the finding clearly held against the text.
+
+**Result: 23 findings raised · 21 refuted · 2 confirmed.** Both confirmed findings were fixed before publication; neither required a structural change.
+
+1. **Traceability, MEDIUM — a citation that did not support its claim.** Volume 4 §2 (*Truth before action*) attributed to Volume 3 §6.8 a "finite number of chances to be taken seriously" mechanism. Volume 3 §6.8 diagnoses timing mismatch and channel compression, and its compression finding points the other way: if a furnisher cannot distinguish a well-documented dispute from a form-letter one, there is no accruing seriousness to spend. This violated Volume 4's own guarantee that nothing appears in it that Volume 3 did not diagnose. **Fixed** — restated to the mechanism Volume 3 actually diagnoses (finite rounds against time-bound decisions) and labelled [Analysis].
+2. **Epistemics, MEDIUM — analysis labelled as established fact.** Volume 4 §4.2 labelled "Fragmentation is a structural property, not a defect anyone introduced" as **[Established]**. Volume 3's §6 preamble labels that identical proposition **[Analysis]**. **Fixed** — split, so the documented structure (furnishing is voluntary; no law compels a creditor to report) keeps [Established] and the exculpatory inference carries [Analysis].
+
+**The 21 refuted findings are as informative as the 2 confirmed.** Several were serious-sounding — that ~28 capabilities asserted production availability as fact, that §5 and §9 were unlabelled and present-tense, that the Closing claimed superiority over competitors. Each collapsed on inspection, usually because the reviewer missed a disclosure the document already makes, or misread the governing rule. This is the pattern the refute-first design exists to produce: a finding that cannot survive a hostile reading should not change a document.
+
+**Limitation of this audit.** It verified Volume 4 against Volumes 0–3 and against the documented engineering record. It did **not** verify implementation statuses against production — see OQ-003.
 
 ---
 
@@ -179,3 +216,4 @@ Per Volume 0 §Versioning, these advance no document version.
 | 2 | HTML, self-contained | 2026-07-27 | Shared library template |
 | 0 | HTML, self-contained | 2026-07-27 | Shared template, plus in-document download and print controls |
 | 3 | HTML, self-contained | 2026-07-27 | Shared template; adds a CSS-built trust-stack figure and inline evidence labels. `<head>`, stylesheet, and scripts reused verbatim from the Volume 0 edition |
+| 4 | HTML, self-contained | 2026-07-27 | Shared template; adds implementation-status label styling. Generated from the canonical Markdown by `_build_edition.py`, so text parity is structural rather than manual |
