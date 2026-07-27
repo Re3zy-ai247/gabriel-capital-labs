@@ -1,0 +1,1161 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#060a14">
+<meta name="description" content="Founder Library Volume 0 — the preface and governance document for the CreditVector Founder Library.">
+<title>Why This Library Exists — Founder Library, Volume 0</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+  body { margin: 0; min-height: 100vh; }
+  h1, h2, h3, p, ol, ul, figure, blockquote, table { margin: 0; }
+  ol, ul { padding: 0; }
+  img, svg { display: block; max-width: 100%; }
+  a { color: inherit; }
+
+  :root {
+    --ground:        #f4f6f9;
+    --ground-2:      #ffffff;
+    --ink:           #0a1420;
+    --ink-2:         #4c5f72;
+    --ink-3:         #7f909f;
+    --rule:          #d3dce5;
+    --rule-soft:     #e4eaf0;
+    --accent:        #0c6c86;
+    --panel-bg:      #071223;
+    --panel-ink:     #d9e6f2;
+    --panel-ink-2:   #93a9c0;
+    --panel-accent:  #3fd0e6;
+    --panel-rule:    #1e3350;
+
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", "Hoefler Text", "Times New Roman", serif;
+    --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+
+    --measure: 39rem;
+    --rail: 11rem;
+    --gutter: 3.5rem;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground: #060a14; --ground-2: #0b1220;
+      --ink: #e2eaf3; --ink-2: #93a7bc; --ink-3: #64798f;
+      --rule: #1c2a3c; --rule-soft: #141f2e;
+      --accent: #3fd0e6;
+      --panel-bg: #10203a; --panel-ink: #e6eef7; --panel-ink-2: #a6bad0;
+      --panel-accent: #3fd0e6; --panel-rule: #263d5e;
+    }
+  }
+
+  :root[data-theme="light"] {
+    --ground: #f4f6f9; --ground-2: #ffffff;
+    --ink: #0a1420; --ink-2: #4c5f72; --ink-3: #7f909f;
+    --rule: #d3dce5; --rule-soft: #e4eaf0;
+    --accent: #0c6c86;
+    --panel-bg: #071223; --panel-ink: #d9e6f2; --panel-ink-2: #93a9c0;
+    --panel-accent: #3fd0e6; --panel-rule: #1e3350;
+  }
+
+  :root[data-theme="dark"] {
+    --ground: #060a14; --ground-2: #0b1220;
+    --ink: #e2eaf3; --ink-2: #93a7bc; --ink-3: #64798f;
+    --rule: #1c2a3c; --rule-soft: #141f2e;
+    --accent: #3fd0e6;
+    --panel-bg: #10203a; --panel-ink: #e6eef7; --panel-ink-2: #a6bad0;
+    --panel-accent: #3fd0e6; --panel-rule: #263d5e;
+  }
+
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--serif);
+    font-size: 17px;
+    line-height: 1.72;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  .wrap {
+    max-width: calc(var(--measure) + var(--rail) + var(--gutter) + 6rem);
+    margin: 0 auto;
+    padding: 0 1.25rem 5rem;
+  }
+
+  @media (min-width: 600px) { .wrap { padding: 0 1.5rem 6rem; } }
+
+  /* ---------- masthead ---------- */
+
+  .masthead {
+    padding: 3rem 0 2.25rem;
+    border-bottom: 1px solid var(--rule);
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  @media (min-width: 600px) { .masthead { padding: 4.5rem 0 2.75rem; gap: 1.5rem; } }
+
+  .org {
+    font-family: var(--mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+
+  .volume-line {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  .volume-line::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--rule);
+  }
+
+  .masthead h1 {
+    font-size: clamp(2.1rem, 8vw, 3.75rem);
+    line-height: 1.08;
+    font-weight: 400;
+    letter-spacing: -0.015em;
+    text-wrap: balance;
+  }
+
+  .masthead .lede {
+    font-size: 1.0625rem;
+    line-height: 1.65;
+    color: var(--ink-2);
+    max-width: var(--measure);
+  }
+
+  @media (min-width: 600px) { .masthead .lede { font-size: 1.1875rem; line-height: 1.62; } }
+
+  /* ---------- metadata ---------- */
+
+  .meta {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
+    gap: 1.1rem 1.5rem;
+    padding: 1.75rem 0;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .meta div { display: flex; flex-direction: column; gap: 0.28rem; }
+
+  .k {
+    font-family: var(--mono);
+    font-size: 0.625rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+
+  .meta .v {
+    font-family: var(--mono);
+    font-size: 0.8125rem;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .meta .v.status { color: var(--accent); }
+
+  .audience {
+    padding: 1.5rem 0;
+    border-bottom: 1px solid var(--rule);
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+  }
+
+  .audience p {
+    color: var(--ink-2);
+    font-size: 0.9375rem;
+    line-height: 1.7;
+    max-width: var(--measure);
+  }
+
+  /* ---------- document controls ---------- */
+
+  .controls {
+    padding: 1.5rem 0;
+    border-bottom: 1px solid var(--rule);
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+  }
+
+  .controls .btn-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+  }
+
+  .btn {
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.03em;
+    color: var(--ink);
+    background: transparent;
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+    padding: 0.7rem 1.05rem;
+    cursor: pointer;
+    line-height: 1.3;
+    flex: 1 1 auto;
+    min-height: 44px;
+    transition: border-color 0.18s ease, color 0.18s ease;
+  }
+
+  @media (min-width: 480px) { .btn { flex: 0 0 auto; } }
+
+  .btn:hover, .btn:focus-visible {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .btn:active { transform: translateY(1px); }
+
+  .controls .hint {
+    font-size: 0.8125rem;
+    line-height: 1.6;
+    color: var(--ink-3);
+    max-width: var(--measure);
+  }
+
+  .controls .status-msg {
+    font-family: var(--mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.06em;
+    color: var(--accent);
+    min-height: 1.2em;
+  }
+
+  /* ---------- mobile table of contents ---------- */
+
+  .toc {
+    border-bottom: 1px solid var(--rule);
+    padding: 0.35rem 0;
+  }
+
+  .toc summary {
+    font-family: var(--mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    cursor: pointer;
+    padding: 1.15rem 0;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    min-height: 44px;
+  }
+
+  .toc summary::-webkit-details-marker { display: none; }
+
+  .toc summary::after {
+    content: "+";
+    font-size: 1rem;
+    color: var(--accent);
+  }
+
+  .toc[open] summary::after { content: "–"; }
+
+  .toc ol {
+    list-style: none;
+    counter-reset: toc;
+    padding: 0 0 1.25rem;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .toc li { counter-increment: toc; }
+
+  .toc a {
+    display: flex;
+    gap: 0.85rem;
+    padding: 0.6rem 0;
+    text-decoration: none;
+    color: var(--ink-2);
+    font-size: 0.9375rem;
+    line-height: 1.4;
+    border-top: 1px solid var(--rule-soft);
+    min-height: 44px;
+    align-items: center;
+  }
+
+  .toc a::before {
+    content: "§" counter(toc);
+    font-family: var(--mono);
+    font-size: 0.6875rem;
+    color: var(--accent);
+    flex: 0 0 2.1rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .toc a:hover, .toc a:focus-visible { color: var(--ink); }
+
+  @media (min-width: 1080px) { .toc { display: none; } }
+
+  /* ---------- body grid ---------- */
+
+  .body-grid { display: block; padding-top: 2.75rem; }
+
+  .rail { display: none; }
+
+  @media (min-width: 1080px) {
+    .body-grid {
+      display: grid;
+      grid-template-columns: var(--rail) minmax(0, var(--measure));
+      gap: var(--gutter);
+      align-items: start;
+      padding-top: 3.5rem;
+    }
+
+    .rail {
+      display: block;
+      position: sticky;
+      top: 2.5rem;
+      border-left: 1px solid var(--rule);
+      max-height: calc(100vh - 5rem);
+      overflow-y: auto;
+    }
+
+    .rail ol { list-style: none; display: flex; flex-direction: column; gap: 0.1rem; }
+
+    .rail a {
+      display: block;
+      padding: 0.26rem 0 0.26rem 0.85rem;
+      margin-left: -1px;
+      border-left: 1px solid transparent;
+      font-family: var(--mono);
+      font-size: 0.6875rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--ink-3);
+      text-decoration: none;
+      transition: color 0.18s ease, border-color 0.18s ease;
+    }
+
+    .rail a:hover, .rail a:focus-visible { color: var(--ink); }
+
+    .rail a[aria-current="true"] {
+      color: var(--accent);
+      border-left-color: var(--accent);
+    }
+  }
+
+  .doc { max-width: var(--measure); }
+
+  /* ---------- sections ---------- */
+
+  .doc section { padding-bottom: 2.75rem; }
+
+  .doc section + section {
+    padding-top: 2.75rem;
+    border-top: 1px solid var(--rule-soft);
+  }
+
+  @media (min-width: 600px) {
+    .doc section { padding-bottom: 3.25rem; }
+    .doc section + section { padding-top: 3.25rem; }
+  }
+
+  .doc h2 {
+    font-size: clamp(1.375rem, 5vw, 1.875rem);
+    line-height: 1.24;
+    font-weight: 400;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+    margin-bottom: 1.15rem;
+    position: relative;
+  }
+
+  .doc h2 .sec {
+    font-family: var(--mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.1em;
+    color: var(--accent);
+    display: block;
+    margin-bottom: 0.55rem;
+  }
+
+  @media (min-width: 1080px) {
+    .doc h2 .sec { position: absolute; left: -3.6rem; top: 0.6em; margin: 0; }
+  }
+
+  .doc h3 {
+    font-size: 1.0625rem;
+    line-height: 1.42;
+    font-weight: 600;
+    text-wrap: balance;
+    margin: 2rem 0 0.7rem;
+  }
+
+  @media (min-width: 600px) { .doc h3 { font-size: 1.125rem; margin-top: 2.25rem; } }
+
+  .doc h3:first-of-type { margin-top: 0; }
+
+  .doc p { margin-bottom: 1.1rem; }
+  .doc p:last-child { margin-bottom: 0; }
+
+  .doc strong { font-weight: 600; color: var(--ink); }
+  .doc em { font-style: italic; }
+
+  .doc .opening { font-size: 1.0625rem; line-height: 1.68; }
+  @media (min-width: 600px) { .doc .opening { font-size: 1.125rem; } }
+
+  .doc .runin { margin-bottom: 1.1rem; }
+  .doc .runin b { font-weight: 600; }
+
+  .doc ol.spaced {
+    list-style: none;
+    counter-reset: item;
+    margin-bottom: 1.1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .doc ol.spaced > li {
+    counter-increment: item;
+    position: relative;
+    padding-left: 2.1rem;
+  }
+
+  .doc ol.spaced > li::before {
+    content: counter(item, decimal-leading-zero);
+    position: absolute;
+    left: 0;
+    top: 0.28em;
+    font-family: var(--mono);
+    font-size: 0.6875rem;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .doc ul.plain {
+    list-style: none;
+    margin-bottom: 1.1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+  }
+
+  .doc ul.plain > li { position: relative; padding-left: 1.5rem; }
+
+  .doc ul.plain > li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0.82em;
+    width: 0.6rem;
+    height: 1px;
+    background: var(--accent);
+  }
+
+  .doc dl.statuses { margin-bottom: 1.1rem; }
+
+  .doc dl.statuses > div {
+    padding: 1rem 0;
+    border-bottom: 1px solid var(--rule-soft);
+  }
+
+  .doc dl.statuses > div:first-child { border-top: 1px solid var(--rule-soft); }
+
+  .doc dl.statuses dt {
+    font-family: var(--mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 0.45rem;
+  }
+
+  .doc dl.statuses dd { margin: 0; }
+
+  /* ---------- the governing-rule panel ---------- */
+
+  .panel {
+    background: var(--panel-bg);
+    color: var(--panel-ink);
+    border-radius: 2px;
+    padding: 1.75rem 1.35rem;
+    margin: 1.75rem 0;
+  }
+
+  @media (min-width: 600px) { .panel { padding: 2.5rem 2.25rem; } }
+
+  .panel .label {
+    font-family: var(--mono);
+    font-size: 0.625rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--panel-accent);
+    display: block;
+    margin-bottom: 1rem;
+  }
+
+  .panel .rule-text {
+    font-size: 1.125rem;
+    line-height: 1.55;
+    color: var(--panel-ink);
+    text-wrap: pretty;
+  }
+
+  @media (min-width: 600px) { .panel .rule-text { font-size: 1.25rem; } }
+
+  .panel .rule-text strong { color: var(--panel-accent); font-weight: 600; }
+
+  .panel .note {
+    margin-top: 1.35rem;
+    padding-top: 1.15rem;
+    border-top: 1px solid var(--panel-rule);
+    font-family: var(--mono);
+    font-size: 0.6875rem;
+    line-height: 1.7;
+    color: var(--panel-ink-2);
+  }
+
+  /* ---------- index table ---------- */
+
+  .table-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin-bottom: 1.1rem;
+  }
+
+  table.index {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 20rem;
+    font-size: 0.9375rem;
+  }
+
+  table.index th, table.index td {
+    text-align: left;
+    padding: 0.65rem 0.85rem 0.65rem 0;
+    border-bottom: 1px solid var(--rule-soft);
+    vertical-align: baseline;
+  }
+
+  table.index th {
+    font-family: var(--mono);
+    font-size: 0.625rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    font-weight: 400;
+    border-bottom-color: var(--rule);
+  }
+
+  table.index td.num {
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+    width: 3rem;
+  }
+
+  table.index td.st {
+    font-family: var(--mono);
+    font-size: 0.6875rem;
+    color: var(--ink-3);
+    white-space: nowrap;
+  }
+
+  table.index tr.done td.st { color: var(--accent); }
+
+  /* ---------- colophon ---------- */
+
+  .colophon {
+    margin-top: 3rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--rule);
+    max-width: var(--measure);
+  }
+
+  .colophon p {
+    font-size: 0.8125rem;
+    line-height: 1.72;
+    color: var(--ink-3);
+    margin-bottom: 0.85rem;
+  }
+
+  .colophon p:last-child { margin-bottom: 0; }
+
+  .colophon .mark {
+    font-family: var(--mono);
+    font-size: 0.625rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+
+  @media (min-width: 1080px) {
+    .colophon { margin-left: calc(var(--rail) + var(--gutter)); }
+  }
+
+  /* ---------- accessibility ---------- */
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+    border-radius: 1px;
+  }
+
+  .skip {
+    position: absolute;
+    left: -9999px;
+    top: 0;
+    background: var(--ground-2);
+    color: var(--ink);
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--accent);
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    z-index: 10;
+  }
+
+  .skip:focus { left: 0.5rem; top: 0.5rem; }
+
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    .btn, .rail a, .toc a { transition: none; }
+    .btn:active { transform: none; }
+  }
+
+  /* ---------- print ---------- */
+
+  @media print {
+    :root {
+      --ground: #ffffff; --ground-2: #ffffff;
+      --ink: #000000; --ink-2: #222222; --ink-3: #555555;
+      --rule: #999999; --rule-soft: #cccccc;
+      --accent: #000000;
+      --panel-bg: #ffffff; --panel-ink: #000000;
+      --panel-ink-2: #333333; --panel-accent: #000000; --panel-rule: #999999;
+    }
+
+    .controls, .toc, .rail, .skip { display: none !important; }
+
+    body { background: #fff; color: #000; font-size: 11pt; line-height: 1.5; }
+    .wrap { max-width: none; padding: 0; }
+    .body-grid { display: block; padding-top: 1.5rem; }
+    .doc, .colophon, .masthead .lede, .audience p { max-width: none; margin-left: 0; }
+
+    .masthead { padding: 0 0 1rem; }
+    .masthead h1 { font-size: 24pt; }
+    .masthead .lede { font-size: 11pt; }
+
+    .doc h2 { font-size: 15pt; }
+    .doc h2 .sec { position: static; margin-bottom: 0.3rem; }
+    .doc h3 { font-size: 12pt; }
+
+    .doc section { padding-bottom: 1.2rem; page-break-inside: auto; }
+    .doc section + section { padding-top: 1.2rem; }
+    .doc h2, .doc h3 { page-break-after: avoid; break-after: avoid; }
+    .doc p, .doc li { orphans: 3; widows: 3; }
+
+    .panel { border: 1pt solid #000; padding: 1rem; page-break-inside: avoid; }
+    .panel .rule-text { font-size: 12pt; }
+
+    .table-scroll { overflow: visible; }
+    table.index { font-size: 10pt; page-break-inside: avoid; }
+
+    a { text-decoration: none; }
+  }
+</style>
+</head>
+<body>
+
+<a class="skip" href="#doc-main">Skip to document</a>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <p class="org">Gabriel Capital Labs · CreditVector Founder Library</p>
+    <p class="volume-line">Volume 00</p>
+    <h1>Why This Library Exists</h1>
+    <p class="lede">The preface and governance document for the entire Founder Library. It establishes what the library is, what authority it holds, how it is read, how it changes, and the rules that govern every volume in it. It contains no strategy, no product description, and no argument for the business — it exists so that every other volume can be read correctly.</p>
+  </header>
+
+  <section class="meta" aria-label="Document metadata">
+    <div><span class="k">Volume</span><span class="v">00</span></div>
+    <div><span class="k">Version</span><span class="v">1.0</span></div>
+    <div><span class="k">Status</span><span class="v status">Draft</span></div>
+    <div><span class="k">Date</span><span class="v">2026&#8209;07&#8209;27</span></div>
+    <div><span class="k">Governs</span><span class="v">All volumes</span></div>
+  </section>
+
+  <section class="audience" aria-label="Intended audience">
+    <span class="k">Intended audience</span>
+    <p>Anyone who reads, writes, revises, or relies on a Founder Library volume. In practice: future employees and leaders of Gabriel Capital Labs, investors, advisors, attorneys, partners, and any successor responsible for the company's institutional record. Written first for people who will arrive later.</p>
+  </section>
+
+  <section class="controls" aria-label="Document actions">
+    <span class="k">This document</span>
+    <div class="btn-row">
+      <button type="button" class="btn" id="btn-download">Download This Document</button>
+      <button type="button" class="btn" id="btn-print">Print / Save as PDF</button>
+    </div>
+    <p class="hint">Downloading saves a complete copy of this page as a single HTML file that opens offline with no network access. Printing opens your browser's print dialog, where you can choose “Save as PDF”; navigation and these controls are omitted from the printed copy.</p>
+    <p class="status-msg" id="dl-status" role="status" aria-live="polite"></p>
+  </section>
+
+  <details class="toc">
+    <summary>Contents — 16 sections</summary>
+    <ol>
+      <li><a href="#s1">Executive Summary</a></li>
+      <li><a href="#s2">Why This Library Exists</a></li>
+      <li><a href="#s3">Why Decisions Are Written Down</a></li>
+      <li><a href="#s4">Institutional Memory as Infrastructure</a></li>
+      <li><a href="#s5">How to Read the Founder Library</a></li>
+      <li><a href="#s6">Document Authority and Scope</a></li>
+      <li><a href="#s7">Document Statuses</a></li>
+      <li><a href="#s8">Versioning and Revision Rules</a></li>
+      <li><a href="#s9">Conflict Resolution Between Documents</a></li>
+      <li><a href="#s10">Preserving Negative Results</a></li>
+      <li><a href="#s11">The Founder's Role</a></li>
+      <li><a href="#s12">Outliving the Founder</a></li>
+      <li><a href="#s13">What This Library Is Not</a></li>
+      <li><a href="#s14">Permanent Rules</a></li>
+      <li><a href="#s15">Closing Statement</a></li>
+      <li><a href="#s16">Current Library Index</a></li>
+    </ol>
+  </details>
+
+  <div class="body-grid">
+
+    <nav class="rail" aria-label="Document sections">
+      <ol>
+        <li><a href="#s1">Summary</a></li>
+        <li><a href="#s2">Why it exists</a></li>
+        <li><a href="#s3">Written down</a></li>
+        <li><a href="#s4">Memory</a></li>
+        <li><a href="#s5">How to read</a></li>
+        <li><a href="#s6">Authority</a></li>
+        <li><a href="#s7">Statuses</a></li>
+        <li><a href="#s8">Versioning</a></li>
+        <li><a href="#s9">Conflicts</a></li>
+        <li><a href="#s10">Negative results</a></li>
+        <li><a href="#s11">Founder's role</a></li>
+        <li><a href="#s12">Outliving</a></li>
+        <li><a href="#s13">What it is not</a></li>
+        <li><a href="#s14">Permanent rules</a></li>
+        <li><a href="#s15">Closing</a></li>
+        <li><a href="#s16">Index</a></li>
+      </ol>
+    </nav>
+
+    <main class="doc" id="doc-main">
+
+      <section id="s1">
+        <h2><span class="sec">&sect;1</span>Executive Summary</h2>
+        <p class="opening">The Founder Library is the written record of what Gabriel Capital Labs believes, why it believes it, and what it decided under what conditions.</p>
+        <p>It exists because a company's reasoning is its most perishable asset. Products are recorded in code, finances in ledgers, and obligations in contracts. The reasoning — why this domain, why this constraint, why this refusal, what was tried and abandoned — lives in the heads of a small number of people and evaporates as those people change roles, disagree in retrospect, or leave. What replaces it is a reconstruction: a tidier, more flattering account in which every decision was obvious and every outcome intended. That reconstruction is worse than no record at all, because it is confident.</p>
+        <p>The library is therefore built on four commitments.</p>
+        <p class="runin"><b>It is versioned, not replaced.</b> A volume that becomes wrong is amended in a numbered revision that states what changed. Superseded text is preserved. The library records what the company believed at a point in time, and destroying that record to make the present look consistent would defeat its purpose.</p>
+        <p class="runin"><b>It is bounded.</b> The Founder Library describes the company's reasoning and positions. It does not govern engineering, and it does not describe production. A sentence here has no authority over what the software actually does, and can never be cited as evidence that it does it.</p>
+        <p class="runin"><b>It preserves negative results.</b> Abandoned directions, disproved assumptions, and capabilities built and then removed are recorded with the same care as successes. A record of only good outcomes teaches a successor nothing about judgment.</p>
+        <p class="runin"><b>It is meant to outlive its author.</b> The founder is the library's initial authority and its first constraint, not a permanent substitute for evidence or governance. The library is structured so that authority transfers to process as the company matures.</p>
+        <p>This volume defines the statuses a document can hold, the rules by which volumes are revised, the order in which conflicts between volumes resolve, the distinction between library claims and repository or production truth, and the permanent rules that bind every future volume.</p>
+      </section>
+
+      <section id="s2">
+        <h2><span class="sec">&sect;2</span>Why This Library Exists</h2>
+        <p>Three reasons, each independent.</p>
+
+        <h3>Because reasoning decays faster than artifacts</h3>
+        <p>A company accumulates durable artifacts almost automatically. Code persists. Contracts persist. Financial records persist because law requires it.</p>
+        <p>The reasoning behind them persists only if someone writes it down. Within two years, the people who made a decision will disagree about why. Within five, most of them will be gone, and the decision will be inherited by people who can see the constraint but not its cause. They will then face a familiar choice: honor a rule they do not understand, or discard it. Both are bad. Honoring an unexplained rule produces cargo cult; discarding it repeats an error someone already paid for.</p>
+        <p>The library is the mechanism that makes the third option available — understanding the rule well enough to keep it deliberately or change it deliberately.</p>
+
+        <h3>Because philosophy has to be written before it is tested</h3>
+        <p>There is a narrow window in which a company can state what it believes honestly, and it closes early.</p>
+        <p>Before commercial pressure arrives, principles are cheap to state and easy to state accurately. After it arrives, every statement of principle is also a defense of whatever the company has already done. A refusal written down in advance is a constraint. The same refusal written down after the fact — after the tempting revenue was declined, or worse, accepted — is a press release.</p>
+        <p>Gabriel Capital Labs' central claim is that constraint under pressure produces reliability. That claim is only testable if the constraints were recorded before the pressure. The library is written early for the same reason a scientist registers a hypothesis before running the experiment: so that the record cannot be quietly adjusted to match the result.</p>
+        <p>This has an uncomfortable consequence the company accepts. Some of what is written here will later look naive, and some will be proved wrong. Those volumes stay in the library, marked, with the correction recorded alongside them.</p>
+
+        <h3>Because a successor deserves the reasoning, not just the conclusion</h3>
+        <p>Every organization eventually hands its decisions to people who did not make them. What those people inherit determines whether the company compounds or restarts.</p>
+        <p>A conclusion without its reasoning is a rule. A conclusion with its reasoning is a judgment that can be re-exercised under new conditions. The second is worth far more, and it is the only one that survives circumstances changing.</p>
+      </section>
+
+      <section id="s3">
+        <h2><span class="sec">&sect;3</span>Why Decisions Are Written Down</h2>
+        <p>Writing a decision down does four things that discussing it does not.</p>
+        <p class="runin"><b>It forces the reasoning to be complete.</b> A decision that cannot be written down clearly has usually not been made clearly. The act of writing surfaces the step that was skipped, the assumption nobody named, and the alternative nobody actually considered. A meaningful fraction of decisions change while being written.</p>
+        <p class="runin"><b>It makes the decision reviewable later against what was known at the time.</b> The most common error in reviewing a past decision is judging it by information that did not exist when it was made. A written record fixes what was known, which is the only fair basis for asking whether the judgment was sound. A decision can be correct and still produce a bad outcome; a decision can be careless and get lucky. Distinguishing these is the whole of learning from experience, and it requires a record.</p>
+        <p class="runin"><b>It separates the decision from the person.</b> An unwritten decision belongs to whoever remembers it most confidently and argues for it most forcefully. A written decision belongs to the organization. This matters most when the person who made it is senior, because seniority substitutes for reasoning easily and invisibly.</p>
+        <p class="runin"><b>It makes reversal cheap and honest.</b> An organization that cannot find what it decided cannot revisit it without re-litigating everything. When the decision and its rationale are written, reversing it is a bounded act: the conditions changed, here is how, here is the amendment. Companies that cannot do this cheaply tend not to do it at all, and accumulate commitments nobody would make again.</p>
+        <p>The corollary: a decision worth making is worth the ten minutes required to record it. The company's most expensive mistakes are rarely the wrong decisions. They are the decisions nobody can reconstruct.</p>
+      </section>
+
+      <section id="s4">
+        <h2><span class="sec">&sect;4</span>Institutional Memory as Infrastructure</h2>
+        <p>Institutional memory is usually described as a cultural nicety. Gabriel Capital Labs treats it as infrastructure, in the strict sense: a shared, maintained system that everything else depends on and that degrades silently when neglected.</p>
+        <p class="runin"><b>It compounds.</b> Every recorded decision makes the next one faster, because a settled question stays settled. An organization without institutional memory re-derives the same conclusions repeatedly, each time at full cost, and cannot tell the difference between a new question and an old one. The gap between these two organizations widens every year.</p>
+        <p class="runin"><b>It is what makes governance survivable.</b> A governed organization is often assumed to be slower. It is slower only if governance means asking permission. Where governance means having already decided, and having recorded why, the governed organization is faster — it is building on settled ground while the ungoverned one is arguing about foundations. The company's ability to enter a new domain quickly depends entirely on how much of its prior thinking it can actually retrieve.</p>
+        <p class="runin"><b>It degrades invisibly.</b> Nothing breaks when institutional memory is lost. There is no error, no failing test, no incident. The organization simply becomes gradually less able to explain itself, and nobody notices until a decision needs revisiting and the reasoning is gone. This is why institutional memory has to be maintained deliberately, on a schedule, by people who are accountable for it — like any other infrastructure whose failure mode is slow.</p>
+        <p class="runin"><b>It is a moat, and an unusual one.</b> Most competitive advantages can be bought. Institutional memory cannot. A competitor can hire the same people, buy the same tools, and copy the same features, and still not possess the accumulated record of what this company tried, learned, and rejected. It is available only to organizations that spent the years.</p>
+        <p>The Founder Library is the company-level layer of that infrastructure. It is not the only layer — engineering keeps its own record, and that record governs engineering — but it is the layer that holds the reasoning a successor cannot reconstruct from artifacts.</p>
+      </section>
+
+      <section id="s5">
+        <h2><span class="sec">&sect;5</span>How to Read the Founder Library</h2>
+        <p class="runin"><b>Read Volume 0 first, then Volume 2, then Volume 1.</b> Volume 0 tells you what kind of documents these are. Volume 2 defines the company. Volume 1 describes the first product. Reading the product before the company inverts the dependency and makes CreditVector look like the whole thesis rather than its first instance.</p>
+        <p class="runin"><b>Read the status before the prose.</b> A Draft is a considered position that has not been reviewed. A Ratified document is a decision. The difference matters more than anything in the text, and it is stated at the top of every volume for that reason.</p>
+        <p class="runin"><b>Read the date as part of the claim.</b> Every volume states what was believed on a specific date. A statement about the market, the technology, or the company's own state is a claim about that date, not a permanent truth. An old volume is not wrong for being old.</p>
+        <p class="runin"><b>Assume nothing carries authority it does not claim.</b> These documents describe reasoning and position. Where a volume appears to make a claim about what software does, what a law requires, or what a metric shows, treat it as a summary that must be verified against the governing source before anyone relies on it. The next section defines what those sources are.</p>
+        <p class="runin"><b>Expect refusals.</b> Most volumes state what the company will not do alongside what it will. The refusals are not rhetorical framing. They are the load-bearing part, and they are the part a reader should test the company against.</p>
+      </section>
+
+      <section id="s6">
+        <h2><span class="sec">&sect;6</span>Document Authority and Scope</h2>
+        <p>The Founder Library is one record among several, and it is not the most authoritative one for most questions. Confusing these layers is the single most likely way this library causes harm, so the boundaries are stated explicitly.</p>
+        <p>The layers, in order of what each one governs:</p>
+
+        <h3>Company-level documents</h3>
+        <p><strong>Volume 2 — Gabriel Capital Labs</strong>, and this volume. These govern claims about the company: its mission, philosophy, principles, selection logic, and canonical definitions. Where any other volume makes a company-level claim that conflicts with Volume 2, Volume 2 governs.</p>
+
+        <h3>GIOS-level documents</h3>
+        <p>Strategic descriptions of the foundational operating system, currently held within Volume 2. These govern what GIOS is <em>for</em> and why it exists. They do not describe how it is built, and the Founder Library does not document its internals.</p>
+
+        <h3>CreditVector product documents</h3>
+        <p><strong>Volume 1</strong>, and later Volumes 4 and 5. These govern product-level positioning and description. They do not govern company-level claims, and they do not describe implementation.</p>
+
+        <h3>Business and market documents</h3>
+        <p>Volumes 6 through 11. These govern claims about the business model, market, competition, and go-to-market approach. Every quantitative claim in these volumes must cite its source or state that it is an estimate. An unsourced number in a market document is a defect, not a rounding.</p>
+
+        <h3>Engineering constitutions, ADRs, and repository truth</h3>
+        <p>The engineering governance record — the constitution, architectural decision records, runbooks, and the repository itself. <strong>These govern engineering. The Founder Library does not.</strong></p>
+        <p>A Founder Library volume cannot authorize an engineering change, cannot supersede an ADR, cannot relax a compliance control, and cannot establish that any technical thing is true. Where a founder decision recorded here has engineering implications, it is a decision <em>to be taken through</em> engineering governance — not a decision already taken there. Until that process runs, the engineering record stands unchanged and remains authoritative for engineering purposes.</p>
+
+        <h3>Production truth</h3>
+        <p>What the deployed system actually does, right now, for real users. <strong>This is the highest authority on any question of fact about the product</strong>, and nothing in the Founder Library can override it or substitute for checking it.</p>
+        <p>If a volume describes a capability and production does not have it, production is right and the volume is wrong. The correct response is to amend the volume, never to describe production more generously. This applies with full force to anything a reader might rely on: what the software does, what it refuses to do, what data it holds, what it costs, and what any metric actually measures.</p>
+
+        <div class="panel">
+          <span class="label">The governing rule</span>
+          <p class="rule-text">Founder Library prose describes <strong>reasoning and position</strong>. It never establishes technical fact, legal authority, or product capability. For those, the engineering record and production reality govern absolutely.</p>
+          <p class="note">Volume 0 · &sect;6 — binding on every volume, present and future.</p>
+        </div>
+      </section>
+
+      <section id="s7">
+        <h2><span class="sec">&sect;7</span>Document Statuses</h2>
+        <p>Every volume carries exactly one status. The status is part of the document, not metadata about it, and it determines how much weight a reader may place on the text.</p>
+        <dl class="statuses">
+          <div>
+            <dt>Draft</dt>
+            <dd>A considered position, written to the library's standard, that has not been formally reviewed. A Draft represents the author's genuine current view and may be relied upon for understanding the company's thinking. It may not be cited as a company commitment. Most volumes begin and remain here for some time; this is normal and not a deficiency.</dd>
+          </div>
+          <div>
+            <dt>Reviewed</dt>
+            <dd>Examined by at least one qualified reader other than the author, with findings recorded. Review establishes that the document is internally coherent, consistent with the volumes it depends on, and free of claims the reviewer knows to be false. Review is not agreement, and a Reviewed document is not yet a commitment.</dd>
+          </div>
+          <div>
+            <dt>Ratified</dt>
+            <dd>Formally adopted by the founder or, once such a body exists, by the governing authority of the company. A Ratified volume states the company's actual position. Other volumes must be consistent with it, and a conflict with a Ratified document is a defect in the other document. Ratification is deliberate and dated; nothing becomes Ratified by age or by nobody objecting.</dd>
+          </div>
+          <div>
+            <dt>Superseded</dt>
+            <dd>Replaced by a later document or a later version, and retained in full. A Superseded document remains readable, remains part of the record, and states what replaced it and when. Superseded text is never deleted. It is the primary evidence of what the company believed before it changed its mind, which is exactly what a successor needs and exactly what a company under pressure is tempted to remove.</dd>
+          </div>
+          <div>
+            <dt>Archived</dt>
+            <dd>No longer part of the active library, retained for the historical record. Archiving applies to documents that are neither current nor superseded by a specific successor — an abandoned direction, a volume whose subject no longer exists. Archived documents are moved, never destroyed, and the reason for archiving is recorded.</dd>
+          </div>
+        </dl>
+        <p>Two rules govern all five:</p>
+        <ol class="spaced">
+          <li><strong>A status change is an event and is logged.</strong> The revision log records what changed status, when, and on whose authority.</li>
+          <li><strong>Nothing is ever deleted.</strong> The library grows monotonically. Removing a document from the record is the one action this governance does not permit.</li>
+        </ol>
+      </section>
+
+      <section id="s8">
+        <h2><span class="sec">&sect;8</span>Versioning and Revision Rules</h2>
+        <p class="opening"><strong>Volumes evolve through versioned amendment. They are never silently replaced.</strong></p>
+        <p>This is the library's central mechanical rule, and it exists because silent replacement destroys the thing the library is for. A document that is quietly edited to match present circumstances tells a future reader only what is currently convenient to believe. A document that carries its revisions tells them how the company's thinking actually moved — which is the more valuable and less flattering record.</p>
+
+        <h3>The version scheme</h3>
+        <ul class="plain">
+          <li><strong>Major version</strong> (1.0 → 2.0) — the document's substantive position changed. Something the company asserted, it no longer asserts.</li>
+          <li><strong>Minor version</strong> (1.0 → 1.1) — the position is unchanged; the document was corrected, clarified, extended, or reconciled with another volume.</li>
+          <li><strong>No version change</strong> — presentation only. Typography, formatting, a new HTML edition, a fixed typo that changes no meaning. Presentation work never advances a version, because the document did not change.</li>
+        </ul>
+
+        <h3>The revision procedure</h3>
+        <ol class="spaced">
+          <li>The need for a revision is logged when it is identified, whether or not it is acted on immediately. Most revisions are logged well before they are made.</li>
+          <li>A revision states what changed and why, at the top of the revised document or in the log.</li>
+          <li>Where the change is substantive, the prior text is preserved — quoted in the revision note or retained as a Superseded version.</li>
+          <li>The revision log is updated in the same commit as the revision itself.</li>
+        </ol>
+
+        <h3>What is never done</h3>
+        <ul class="plain">
+          <li>Editing a published volume to resolve a conflict with a newer one. The conflict is logged and resolved through a numbered revision.</li>
+          <li>Backdating a change to make an earlier document look more prescient.</li>
+          <li>Removing a claim that turned out to be wrong instead of marking it wrong.</li>
+          <li>Changing a document's status without recording who changed it and when.</li>
+        </ul>
+        <p><strong>Presentation is not revision.</strong> A volume may be reissued in a new HTML edition, retypeset, or reformatted without becoming a new version, provided the text is unchanged. The distinction is worth protecting: it lets the library's presentation improve continuously without disturbing the versioned record of what was said.</p>
+      </section>
+
+      <section id="s9">
+        <h2><span class="sec">&sect;9</span>Conflict Resolution Between Documents</h2>
+        <p>Conflicts are expected. A library written over years by people under time pressure will contain contradictions, and detecting them is a sign the library is being read rather than a sign it has failed.</p>
+        <p>When two documents conflict, resolve in this order:</p>
+        <ol class="spaced">
+          <li><strong>Scope.</strong> Determine which document has authority over the claim in question, using the layers defined above. A company-level claim resolves to Volume 2. A product-level claim resolves to the product volumes. A claim about what the software does resolves to production, and neither document wins.</li>
+          <li><strong>Status.</strong> Within the same scope, Ratified governs Reviewed, which governs Draft. A Draft never overrides a Ratified document, however recent or well-argued.</li>
+          <li><strong>Recency.</strong> Within the same scope and status, the later document governs — provided it acknowledges the earlier one. A later document that contradicts an earlier one without noticing is not a resolution; it is a second defect. Both get logged.</li>
+          <li><strong>Escalation.</strong> If the conflict cannot be resolved by scope, status, or recency, it is logged as an open item requiring the founder's decision — or, once governance has transferred, the responsible authority's — and it is not resolved by whoever happens to be editing.</li>
+        </ol>
+        <p>Two standing rules:</p>
+        <p class="runin"><b>Log the conflict when you find it, even if you cannot resolve it.</b> An unlogged known conflict is worse than an open one, because the next reader spends the same effort discovering it.</p>
+        <p class="runin"><b>Never resolve a conflict by editing the older document.</b> That is silent replacement wearing a reasonable-sounding justification, and it is the specific failure this library is designed to prevent.</p>
+      </section>
+
+      <section id="s10">
+        <h2><span class="sec">&sect;10</span>Preserving Negative Results</h2>
+        <p>The library records what did not work with the same care as what did.</p>
+        <p>This includes: directions considered and rejected, and why. Assumptions held and later disproved. Products or capabilities built and then removed. Markets entered and exited. Metrics that came in worse than expected. Decisions that were reasonable at the time and wrong in hindsight, marked as both.</p>
+        <p>Three reasons this is not optional.</p>
+        <p class="runin"><b>A record of only successes teaches nothing about judgment.</b> A successor reading a library of good outcomes learns that the company was correct, which is useless. A successor reading what was tried and abandoned learns <em>how the company decides</em> — which questions were asked, which evidence mattered, where the reasoning was thin. That is the transferable thing.</p>
+        <p class="runin"><b>Unrecorded failures are repeated.</b> An organization that does not record what it abandoned will re-propose it, usually within a few years, usually with the same enthusiasm and the same reasoning. The cost of that repetition is paid in full each time.</p>
+        <p class="runin"><b>A company that cannot record its own failures is not entitled to claim its systems are trustworthy.</b> Gabriel Capital Labs' argument is that intelligent systems should say what they do not know and report what did not work. A company that held its software to that standard and exempted itself would be making a claim it does not practice. The library is where that consistency is either demonstrated or exposed.</p>
+        <p>The practical rule: <strong>when a volume is revised because something in it turned out to be wrong, the revision says so plainly.</strong> Not "updated to reflect current thinking" — what was believed, what happened, and what is believed now.</p>
+      </section>
+
+      <section id="s11">
+        <h2><span class="sec">&sect;11</span>The Founder's Role</h2>
+        <p>The founder is the library's initial authority. This is a statement of fact about an early-stage company, not a governance principle, and the distinction matters.</p>
+        <p>At present, the founder ratifies volumes, resolves conflicts that cannot be resolved by scope or status, and decides the open questions the library surfaces. There is no other body that could do this, and pretending otherwise would be a fiction that made the record less accurate rather than more.</p>
+        <p>But founder authority has explicit limits, and stating them is part of the point of this volume.</p>
+        <p class="runin"><b>The founder's ratification makes something the company's position. It does not make it true.</b> A ratified claim about the market, the technology, or the product is still subject to evidence, and evidence outranks it. Where a ratified position is contradicted by what actually happens, the position is wrong and gets revised.</p>
+        <p class="runin"><b>The founder cannot ratify across scope boundaries.</b> A founder decision recorded in this library does not change engineering governance, does not supersede an ADR, and does not alter production. Those changes happen through their own processes, and until they do, they have not happened. A founder decision may direct that such a process be run. It cannot substitute for it.</p>
+        <p class="runin"><b>Founder authority is meant to decrease.</b> As the company acquires people with real domain expertise, formal review, and a governing body, authority over each class of decision should transfer to whoever is best positioned to make it — with the transfer recorded in the log. A founder whose authority is undiminished after a decade has not built an institution; they have built a dependency.</p>
+        <p class="runin"><b>The founder is bound by the library's rules.</b> The founder may not silently edit a published volume, may not remove an unflattering record, and may not resolve a conflict by fiat without logging it. Governance that exempts its author is not governance, and this is the specific place where that exemption would be easiest to take.</p>
+      </section>
+
+      <section id="s12">
+        <h2><span class="sec">&sect;12</span>Outliving the Founder</h2>
+        <p>The library is written to be useful to people who will never meet its author.</p>
+        <p>This shapes how it is written. Nothing depends on shared context, unstated assumptions, or knowing what someone meant. Terms that carry weight are defined once, in a stated place, and cited elsewhere rather than re-explained. Decisions record their conditions, so a successor can tell whether those conditions still hold. Refusals record their reasoning, so a successor can distinguish a principle from a habit.</p>
+        <p>It also sets an obligation on whoever holds the library later.</p>
+        <p class="runin"><b>Preserve the record, especially the parts that are inconvenient.</b> The strongest temptation for any successor is to tidy the history — to remove the abandoned direction, the disproved assumption, the volume that now reads as naive. Each removal is individually defensible and collectively fatal. What remains is a record that only confirms present belief.</p>
+        <p class="runin"><b>Continue the practice, do not merely maintain the archive.</b> A library that stops accumulating becomes a historical curiosity within a few years. Its value comes from being current enough to be consulted and honest enough to be trusted, and both require ongoing work by someone accountable for it.</p>
+        <p class="runin"><b>Amend freely; delete never.</b> A successor who concludes the founder was wrong should say so in the library, with reasoning, in a numbered revision. That is the system working exactly as designed. The founder's judgment is not the thing being preserved. The practice of recording judgment honestly is.</p>
+        <p>If Gabriel Capital Labs succeeds, most of the people who make it succeed are not yet here. This library is the part of the company that will be waiting for them.</p>
+      </section>
+
+      <section id="s13">
+        <h2><span class="sec">&sect;13</span>What This Library Is Not</h2>
+        <p class="runin"><b>Not a marketing asset.</b> These volumes are written to be accurate, not persuasive. Where accuracy and persuasion conflict, accuracy wins, and several volumes state costs and risks that a marketing document would omit. Material drawn from the library for external use is a separate work product held to marketing and compliance review; the library itself is not that.</p>
+        <p class="runin"><b>Not a specification.</b> No volume describes how anything is built. Nothing here can be implemented from, and nothing here constrains an implementation. Engineering documents do that work.</p>
+        <p class="runin"><b>Not a substitute for engineering or legal governance.</b> The library does not supersede an ADR, authorize a change, establish a compliance position, or create legal authority. Where a volume touches a regulated matter, it describes the company's understanding, not a legal conclusion, and counsel governs.</p>
+        <p class="runin"><b>Not a record of what production does.</b> Volumes describe products in the terms the company uses to explain them. That is not the same as an accurate technical description of deployed behavior, and it must never be relied on as one.</p>
+        <p class="runin"><b>Not a roadmap or a commitment.</b> Forward-looking passages describe intent and selection logic under stated conditions. They are not promises, not schedules, and not announcements. Volume 2 states this explicitly of its portfolio discussion, and it holds library-wide.</p>
+        <p class="runin"><b>Not finished.</b> Most volumes are Drafts, several are unwritten, and some of what is written will prove wrong. A library that claimed to be complete would be claiming the company had stopped learning.</p>
+      </section>
+
+      <section id="s14">
+        <h2><span class="sec">&sect;14</span>Permanent Rules of the Founder Library</h2>
+        <p>These bind every volume, present and future. They are stated as rules because a principle that yields under pressure was never a rule.</p>
+        <ol class="spaced">
+          <li><strong>Every volume states its version, status, date, purpose, and intended audience.</strong> A document without these cannot be read safely, because the reader has no way to know what weight it carries.</li>
+          <li><strong>Every claim is supportable.</strong> Unmeasured is stated as unmeasured. Estimated is stated as estimated. A number without a source is a defect. The strength of a claim never exceeds the strength of its evidence.</li>
+          <li><strong>Nothing is deleted.</strong> Documents are superseded or archived, never removed. Superseded text is retained and readable.</li>
+          <li><strong>Volumes are amended in versioned revisions, never silently replaced.</strong> Every substantive change is recorded in the revision log.</li>
+          <li><strong>Presentation is not revision.</strong> A volume may be reissued or redesigned without a version change, provided the text is unchanged.</li>
+          <li><strong>The library never overrides engineering governance or production truth.</strong> Where a volume conflicts with the engineering record on an engineering matter, or with production on a matter of fact, the volume is wrong.</li>
+          <li><strong>Negative results are recorded.</strong> What was abandoned, disproved, or removed is written down with the same care as what succeeded.</li>
+          <li><strong>Conflicts are logged when found</strong>, resolved by scope, then status, then recency — and never by editing the older document.</li>
+          <li><strong>Every volume making forward-looking claims states what the company will not do.</strong> Constraints stated in advance are constraints. Constraints stated afterward are explanations.</li>
+          <li><strong>Terms are defined once and cited thereafter.</strong> No volume creates a second definition of a term another volume already defines.</li>
+          <li><strong>The founder is bound by these rules.</strong> No author, including the founder, may exempt themselves from the record.</li>
+          <li><strong>No volume pre-announces.</strong> Products and capabilities are described once they exist and have been validated.</li>
+        </ol>
+      </section>
+
+      <section id="s15">
+        <h2><span class="sec">&sect;15</span>Closing Statement</h2>
+        <p>A company's written record is usually an afterthought — assembled late, for an audience outside the company, describing decisions whose reasoning has already been lost.</p>
+        <p>This library is an attempt to do the opposite: to write the reasoning down while it is still accurate, to keep the parts that later prove embarrassing, and to submit the author to the same standard as everyone who comes after.</p>
+        <p>The value of that will not be visible for years. Its test is not whether these volumes read well now, but whether someone reading them in a decade — with no access to the people who wrote them, facing a decision this company has not imagined — finds a record honest enough to be useful.</p>
+        <p>That is the only thing this library is for.</p>
+      </section>
+
+      <section id="s16">
+        <h2><span class="sec">&sect;16</span>Current Library Index</h2>
+        <div class="table-scroll">
+          <table class="index">
+            <thead>
+              <tr><th scope="col">#</th><th scope="col">Volume</th><th scope="col">Status</th></tr>
+            </thead>
+            <tbody>
+              <tr class="done"><td class="num">00</td><td>Why This Library Exists</td><td class="st">Draft v1.0</td></tr>
+              <tr class="done"><td class="num">01</td><td>Executive Summary</td><td class="st">Draft v1.0</td></tr>
+              <tr class="done"><td class="num">02</td><td>Gabriel Capital Labs</td><td class="st">Draft v1.0</td></tr>
+              <tr><td class="num">03</td><td>The Financial Trust Problem</td><td class="st">Planned</td></tr>
+              <tr><td class="num">04</td><td>The CreditVector Solution</td><td class="st">Planned</td></tr>
+              <tr><td class="num">05</td><td>Product Philosophy</td><td class="st">Planned</td></tr>
+              <tr><td class="num">06</td><td>Business Model</td><td class="st">Planned</td></tr>
+              <tr><td class="num">07</td><td>Market Opportunity</td><td class="st">Planned</td></tr>
+              <tr><td class="num">08</td><td>Competitive Landscape</td><td class="st">Planned</td></tr>
+              <tr><td class="num">09</td><td>Go-To-Market Strategy</td><td class="st">Planned</td></tr>
+              <tr><td class="num">10</td><td>Financial Trust Ecosystem</td><td class="st">Planned</td></tr>
+              <tr><td class="num">11</td><td>Long-Term Roadmap</td><td class="st">Planned</td></tr>
+              <tr><td class="num">12</td><td>Founder Manifesto</td><td class="st">Planned</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p><strong>Note on the former "Vision &amp; Mission" volume.</strong> Volume 2 was originally scoped as a standalone <em>Vision &amp; Mission</em> document. That scope was absorbed into <strong>Volume 2 — Gabriel Capital Labs</strong>, where the mission and the decade vision appear as sections, on the reasoning that both are company-level claims belonging in the document that defines the company. No separate Vision &amp; Mission volume will be created; a reader looking for it should read Volume 2.</p>
+        <p>Additional volumes may be added as the company grows. Volume numbers are permanent once assigned, and a retired volume number is not reused.</p>
+      </section>
+
+    </main>
+  </div>
+
+  <footer class="colophon">
+    <p class="mark">Gabriel Capital Labs · CreditVector Founder Library · Volume 00 · v1.0 · Draft · 2026-07-27</p>
+    <p>Governance, revision history, founder ratifications, and open items are recorded in the Founder Library revision log. This HTML edition is a presentation of the canonical Markdown document and carries no independent authority; where the two differ, the Markdown governs.</p>
+  </footer>
+
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var FILENAME = "VOLUME-00-WHY-THIS-LIBRARY-EXISTS.html";
+
+  /* ---- scroll-spy for the desktop rail ---- */
+  var links = Array.prototype.slice.call(document.querySelectorAll(".rail a"));
+  if (links.length && "IntersectionObserver" in window) {
+    var byId = {};
+    links.forEach(function (a) { byId[a.getAttribute("href").slice(1)] = a; });
+    var visible = Object.create(null);
+
+    function paint() {
+      var current = null;
+      var order = Object.keys(byId);
+      for (var i = 0; i < order.length; i++) {
+        if (visible[order[i]]) { current = order[i]; break; }
+      }
+      links.forEach(function (a) {
+        if (current && a === byId[current]) { a.setAttribute("aria-current", "true"); }
+        else { a.removeAttribute("aria-current"); }
+      });
+    }
+
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (e.isIntersecting) { visible[e.target.id] = true; }
+        else { delete visible[e.target.id]; }
+      });
+      paint();
+    }, { rootMargin: "-10% 0px -70% 0px", threshold: 0 });
+
+    document.querySelectorAll(".doc section").forEach(function (s) { io.observe(s); });
+  }
+
+  /* ---- close the mobile contents panel after a jump ---- */
+  var toc = document.querySelector(".toc");
+  if (toc) {
+    toc.addEventListener("click", function (e) {
+      if (e.target.tagName === "A") { toc.removeAttribute("open"); }
+    });
+  }
+
+  /* ---- status line ---- */
+  var statusEl = document.getElementById("dl-status");
+  var statusTimer = null;
+  function say(msg) {
+    if (!statusEl) { return; }
+    statusEl.textContent = msg;
+    if (statusTimer) { clearTimeout(statusTimer); }
+    statusTimer = setTimeout(function () { statusEl.textContent = ""; }, 6000);
+  }
+
+  /* ---- serialize the live document into a standalone HTML string ---- */
+  function serialize() {
+    var clone = document.documentElement.cloneNode(true);
+    // Drop runtime-only state so the saved copy opens in a clean state.
+    Array.prototype.forEach.call(clone.querySelectorAll("[aria-current]"), function (n) {
+      n.removeAttribute("aria-current");
+    });
+    Array.prototype.forEach.call(clone.querySelectorAll(".toc[open]"), function (n) {
+      n.removeAttribute("open");
+    });
+    var st = clone.querySelector("#dl-status");
+    if (st) { st.textContent = ""; }
+    return "<!doctype html>\n" + clone.outerHTML;
+  }
+
+  /* ---- download: Blob + object URL, with a data-URI fallback ---- */
+  var dlBtn = document.getElementById("btn-download");
+  if (dlBtn) {
+    dlBtn.addEventListener("click", function () {
+      var html = serialize();
+      var a = document.createElement("a");
+      a.download = FILENAME;
+      a.rel = "noopener";
+      var url = null;
+
+      try {
+        if (typeof Blob === "function" && window.URL && window.URL.createObjectURL) {
+          // A fresh object URL is created at click time, so this does not
+          // depend on any URL minted earlier in the page's life.
+          url = window.URL.createObjectURL(
+            new Blob([html], { type: "text/html;charset=utf-8" })
+          );
+          a.href = url;
+        } else {
+          a.href = "data:text/html;charset=utf-8," + encodeURIComponent(html);
+        }
+      } catch (err) {
+        a.href = "data:text/html;charset=utf-8," + encodeURIComponent(html);
+      }
+
+      a.style.display = "none";
+      document.body.appendChild(a);
+      a.click();
+
+      setTimeout(function () {
+        if (a.parentNode) { a.parentNode.removeChild(a); }
+        if (url) { window.URL.revokeObjectURL(url); }
+      }, 4000);
+
+      say("Downloaded " + FILENAME);
+    });
+  }
+
+  /* ---- print ---- */
+  var printBtn = document.getElementById("btn-print");
+  if (printBtn) {
+    printBtn.addEventListener("click", function () {
+      say("Opening print dialog — choose “Save as PDF”.");
+      window.print();
+    });
+  }
+})();
+</script>
+
+</body>
+</html>
