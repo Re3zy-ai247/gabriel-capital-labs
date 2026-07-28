@@ -1,17 +1,26 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { seedDemoUser, DEMO_EMAIL, DEMO_PASSWORD } from "@/lib/demoSeed";
+import { seedDemoUser, DEMO_EMAIL } from "@/lib/demoSeed";
 import { enforceRateLimit, clientIp } from "@/lib/rateLimit";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-// Ensures the public demo account exists so anyone can explore the app. Safe to
-// expose: it only ever touches the single shared demo user (whose password is
-// intentionally public), is idempotent, and skips the work once seeded so it
-// can't be used to generate load. The seed is fully deterministic (no AI calls).
-// Pass ?force=1 to refresh the demo's reports/tradelines back to the clean set.
+// LOCAL-DEVELOPMENT ONLY. Ensures the demo account exists so the app is
+// explorable without configuring auth; ?force=1 refreshes the demo's
+// reports/tradelines back to the clean set. The seed is deterministic (no AI
+// calls) and idempotent.
+//
+// It is unauthenticated and ?force=1 is destructive, so in production it must
+// not exist at all: the rate limiter is its only other containment and that
+// fails OPEN (lib/rateLimit.ts). The guard uses the same NODE_ENV predicate as
+// the demo-user fallback in lib/session.ts. It never returns the demo password
+// either — an endpoint must not hand out a working credential in any
+// environment.
 async function handle(req: Request) {
+  if (process.env.NODE_ENV === "production") {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
   const limited = await enforceRateLimit(`demo-seed:${clientIp(req)}`, 5, 3600); // unauth destructive re-seed — IP throttle
   if (limited) return limited;
   const force = new URL(req.url).searchParams.get("force");
@@ -26,7 +35,6 @@ async function handle(req: Request) {
         ok: true,
         alreadySeeded: true,
         email: DEMO_EMAIL,
-        password: DEMO_PASSWORD,
       });
     }
 
@@ -35,7 +43,6 @@ async function handle(req: Request) {
       ok: true,
       seeded: true,
       email: DEMO_EMAIL,
-      password: DEMO_PASSWORD,
       tradelines,
     });
   } catch (e) {
