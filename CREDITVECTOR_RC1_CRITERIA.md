@@ -2,7 +2,7 @@
 
 **The executive Go/No-Go checklist for CreditVector Version 1.0.**
 
-**Version:** 1.3 · **Status:** Draft — not ratified · **Date:** 2026-07-28 (Waves 1–2.1 applied)
+**Version:** 1.4 · **Status:** Draft — not ratified · **Date:** 2026-07-28 (Waves 1–2.2 applied)
 **Method:** repository audit of 26 launch-critical subsystems; every finding independently
 re-verified against source before entry. **No code was written. No feature was implemented.**
 
@@ -112,7 +112,29 @@ The two that remain are the two that were never engineering-blocked — they wer
 
 **All twelve must close. No exceptions, no partial credit.**
 
-### Wave 2.1 status (2026-07-28) — read this column first
+### Wave 2.2 status (2026-07-28) — read this column first
+
+**Every proposed PR was simulated in an isolated worktree cherry-picked onto `origin/main`.** The
+combined branch passing proved nothing about extraction, and simulation falsified the plan in three
+places. **Verdict: the extraction plan was UNSAFE AS PLANNED; it is now CONDITIONAL.**
+
+| # | Finding | Status |
+|---|---|---|
+| **FK corrective was unguarded** | A PR-4 built with `717697f` omitted cherry-picks clean, typechecks and passes the terms, schema-safety, Gate D **and terms-runtime** guards at exit 0 — while shipping `ON DELETE CASCADE`, which destroys consent evidence irreversibly | ✅ **CLOSED** — FK now pinned in model and migration; that state fails 4 assertions |
+| **Runtime guards never ran in CI** | `scripts/*.test.ts` is non-recursive, so `scripts/runtime/` — the only checks executing real handlers — was never executed by any job | ✅ **CLOSED** — own CI step + registered in `.ai/TESTING.md` |
+| **PR-0's commit list does not apply** | `[7099bde, 27bc430]` both CONFLICT on `origin/main` | ✅ **CORRECTED** in `RC1-RELEASE-SEQUENCE.md` |
+| **PR-4 dependencies understated** | Also hard-depends on `a2fa6ea` **and** `6bc4cf4`; the second is textually invisible — the package builds clean without it while **reintroducing the email-keyed billing identity `6bc4cf4` fixed** | ✅ **CORRECTED** |
+| **PR-1 as hypothesised was wrong** | `013ea53` is counsel-gated compliance and must move to PR-3; `c3c4954` must move to PR-2 | ⚠️ **OWNER DECISION REQUIRED** |
+| **The branch carries two workstreams** | Founder Library / Knowledge commits sit beneath the RC1 work; a PR opened from this branch would ship them | ⚠️ **Cherry-pick only, never branch-merge** |
+| **RC1 docs cite branch-local hashes** | Cherry-picking mints new SHAs, so ~90 citations become unresolvable on `main` | ⚠️ **OWNER DECISION REQUIRED** |
+
+**No blocker status changed.** B-05 BLOCKED — COUNSEL · B-06 BLOCKED — OWNER + PRODUCTION ·
+B-09 OPEN · B-10 PARTIAL · B-12 BLOCKED — COUNSEL · C-01/C-02 VERIFICATION REQUIRED — PRODUCTION.
+**No merge, deploy, migration apply, or Gate D baseline occurred.**
+
+---
+
+### Wave 2.1 status (2026-07-28)
 
 **The environment blocker that qualified every prior result is gone.** `npm ci` succeeds,
 `prisma generate` succeeds, `npx tsc --noEmit` exits 0, `npx next build` exits 0, and **79/79 guard

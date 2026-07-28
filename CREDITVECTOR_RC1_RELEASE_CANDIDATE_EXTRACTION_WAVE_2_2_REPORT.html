@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CreditVector — RC1 Release Candidate Extraction, Wave 2.2</title>
+<meta name="description" content="RC1 Execution Wave 2 — Go/No-Go status, blockers, and required decisions.">
+<style>
+:root{--bg:#ffffff;--fg:#14181f;--mut:#4a5462;--line:#d9dee6;--acc:#0b4fa8;--code:#f2f4f7;
+--red:#8a1420;--redbg:#fdeaec;--amb:#7a4a00;--ambbg:#fff5e0;--grn:#0f5c34;--grnbg:#e6f5ec;}
+*{box-sizing:border-box}
+body{margin:0;padding:1.1rem;background:var(--bg);color:var(--fg);
+font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+-webkit-text-size-adjust:100%;overflow-wrap:break-word}
+main{max-width:60rem;margin:0 auto}
+h1{font-size:1.6rem;line-height:1.25;margin:.2rem 0 .4rem;letter-spacing:-.01em}
+h2{font-size:1.28rem;margin:2.2rem 0 .7rem;padding-bottom:.32rem;border-bottom:2px solid var(--line)}
+h3{font-size:1.08rem;margin:1.6rem 0 .5rem}
+h4{font-size:1rem;margin:1.2rem 0 .4rem;color:var(--mut)}
+p{margin:.7rem 0}
+a{color:var(--acc)}
+code{background:var(--code);padding:.12em .38em;border-radius:4px;
+font:.86em/1.4 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;word-break:break-word}
+hr{border:0;border-top:1px solid var(--line);margin:2rem 0}
+blockquote{margin:1.1rem 0;padding:.85rem 1rem;background:var(--redbg);
+border-left:4px solid var(--red);border-radius:0 6px 6px 0;color:#5c0f18}
+blockquote strong{color:var(--red)}
+ul,ol{padding-left:1.35rem;margin:.7rem 0}
+li{margin:.34rem 0}
+.tw{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:1rem 0;
+border:1px solid var(--line);border-radius:8px}
+table{border-collapse:collapse;width:100%;min-width:34rem;font-size:.9rem}
+th,td{padding:.55rem .7rem;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+th{background:#f5f7fa;font-weight:650;white-space:nowrap}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:nth-child(even){background:#fafbfc}
+.meta{color:var(--mut);font-size:.92rem;margin:.5rem 0 1.2rem}
+nav.toc{background:#f7f9fb;border:1px solid var(--line);border-radius:8px;padding:.85rem 1rem;margin:1.4rem 0}
+nav.toc h2{font-size:.82rem;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);
+border:0;margin:0 0 .5rem;padding:0}
+nav.toc ol{margin:0;padding-left:1.2rem;font-size:.92rem}
+nav.toc li{margin:.2rem 0}
+.legend{display:flex;flex-wrap:wrap;gap:.4rem;margin:1rem 0}
+.tag{font-size:.76rem;font-weight:650;padding:.18rem .5rem;border-radius:999px;white-space:nowrap}
+.t-open{background:var(--redbg);color:var(--red)}
+.t-part{background:var(--ambbg);color:var(--amb)}
+.t-closed{background:var(--grnbg);color:var(--grn)}
+footer{margin-top:2.5rem;padding-top:1rem;border-top:1px solid var(--line);
+color:var(--mut);font-size:.85rem}
+@media(max-width:34rem){body{padding:.8rem}h1{font-size:1.35rem}table{font-size:.84rem;min-width:30rem}}
+@media print{body{padding:0;font-size:11pt}nav.toc{break-inside:avoid}
+.tw{overflow:visible;border:0}table{min-width:0;font-size:9pt}
+h2{break-after:avoid}tr{break-inside:avoid}a{color:#000;text-decoration:none}
+a[href^="http"]::after{content:" (" attr(href) ")";font-size:8pt;color:#555}}
+</style></head><body><main>
+<p class="meta"><strong>Gabriel Capital Labs</strong> · Draft — not ratified · 2026-07-28<br>
+Branch <code>claude/creditvector-founder-library-jwnbhc</code> · Commits <code>d6303fc</code> → <code>HEAD</code></p>
+<div class="legend"><span class="tag t-closed">CLOSED 9</span><span class="tag t-part">PARTIAL 3</span><span class="tag t-open">OPEN / BLOCKED 2</span><span class="tag t-open">VERIFICATION REQUIRED 2</span></div>
+<nav class="toc"><h2>Contents</h2><ol><li><a href="#1-context-for-a-reader-with-no-repository-access">1. Context for a reader with no repository access</a></li><li><a href="#2-starting-and-ending-state">2. Starting and ending state</a></li><li><a href="#3-agents-and-ownership">3. Agents and ownership</a></li><li><a href="#4-commit-archaeology-what-the-branch-actually-contains">4. Commit archaeology — what the branch actually contains</a></li><li><a href="#5-hidden-dependencies-found">5. Hidden dependencies found</a></li><li><a href="#6-defects-confirmed-and-corrected-this-wave">6. Defects confirmed and corrected this wave</a></li><li><a href="#7-extraction-matrix">7. Extraction matrix</a></li><li><a href="#8-pr-4-state-matrix-six-states-on-a-disposable-local-postgresql">8. PR-4 state matrix — six states on a disposable local PostgreSQL</a></li><li><a href="#9-verification-per-exact-simulated-state">9. Verification — per exact simulated state</a></li><li><a href="#10-runtime-versus-source-level-evidence">10. Runtime versus source-level evidence</a></li><li><a href="#11-negative-control-evidence">11. Negative-control evidence</a></li><li><a href="#12-release-graph-merge-is-deploy">12. Release graph — merge is deploy</a></li><li><a href="#13-updated-go-no-go-no-go-unchanged">13. Updated Go/No-Go — 🔴 NO-GO, unchanged</a></li><li><a href="#14-decisions-required">14. Decisions required</a></li><li><a href="#15-recommendations">15. Recommendations</a></li></ol></nav>
+<h1 id="creditvector-rc1-release-candidate-extraction-wave-2-2">CreditVector — RC1 Release Candidate Extraction, Wave 2.2</h1>
+<p>
+<strong>Date:</strong> 2026-07-28 · <strong>Branch:</strong> <code>claude/creditvector-founder-library-jwnbhc</code>
+ 
+<strong>Commit range:</strong> <code>d6303fc</code> → HEAD (2 commits) · <strong>Status:</strong> Draft — not ratified
+</p>
+<blockquote><strong>Verdict: the extraction plan was UNSAFE AS PLANNED. It is now CONDITIONAL.</strong> <strong>RC1 remains 🔴 NO-GO.</strong> No blocker status changed. <strong>No merge, no deploy, no migration applied, no Gate D baseline, no production contact, no GitHub PR created, no secret value printed.</strong></blockquote>
+<hr>
+<h2 id="1-context-for-a-reader-with-no-repository-access">1. Context for a reader with no repository access</h2>
+<p>
+<strong>CreditVector</strong> is a live Next.js 14 consumer-credit <strong>education</strong> SaaS (creditvector.app) with live
+ 
+Stripe billing. <strong>RC1</strong> is its Version 1.0 release program. An audit of 26 subsystems produced NO-GO
+ 
+with 12 launch-blocking defects; Waves 1, 2 and 2.1 closed 9 and produced a proposed six-PR release
+ 
+sequence.
+</p>
+<p>
+<strong>Wave 2.2 asked one question: is that sequence actually safe?</strong> The combined branch passing every
+ 
+check proves nothing about whether each extracted PR is independently buildable, testable and free of
+ 
+hidden dependencies. So every proposed PR was **cherry-picked onto <code>origin/main</code> in an isolated
+ 
+worktree and verified there**.
+</p>
+<p>
+<strong>Merging to <code>main</code> auto-deploys production.</strong> Merge and deploy are the same event; there is no
+ 
+"merge now, migrate later".
+</p>
+<hr>
+<h2 id="2-starting-and-ending-state">2. Starting and ending state</h2>
+<div class="tw"><table><thead><tr><th></th><th></th></tr></thead><tbody>
+<tr><td>Branch</td><td><code>claude/creditvector-founder-library-jwnbhc</code> (unchanged, never force-pushed)</td></tr>
+<tr><td>Starting commit</td><td><code>d6303fc</code> (Wave 2.1 end)</td></tr>
+<tr><td>Ending commit</td><td><code>beeafd1</code> + this docs commit</td></tr>
+<tr><td><code>origin/main</code></td><td><code>dfe7a3a</code> — <strong>a strict ancestor</strong>, no independent drift</td></tr>
+<tr><td>Worktrees</td><td>all <code>sim/*</code> created, used, and removed; <code>git worktree list</code> = source repo only</td></tr>
+<tr><td>Working tree</td><td>clean</td></tr>
+</tbody></table></div>
+<hr>
+<h2 id="3-agents-and-ownership">3. Agents and ownership</h2>
+<div class="tw"><table><thead><tr><th>Agent</th><th>Scope</th></tr></thead><tbody>
+<tr><td>1 — Commit archaeology</td><td>Read-only. 18 CreditVector commits, 53 paths, 18 solo cherry-pick probes via <code>git merge-tree</code></td></tr>
+<tr><td>2 — PR-0 / PR-1 simulation</td><td>Worktrees <code>a2-*</code></td></tr>
+<tr><td>3 — PR-2 / PR-3 simulation</td><td>Worktrees <code>a3-*</code></td></tr>
+<tr><td>4 — PR-4 migration package</td><td>Worktrees <code>a4-*</code>, disposable local PostgreSQL, six states A–F</td></tr>
+<tr><td>5 — PR-5 + adversarial</td><td>Worktrees <code>a5-*</code>, intermediate-state truth probes, 15 scripted attacks</td></tr>
+<tr><td>Coordinator</td><td>Shared facts, worktree infra, corrective commits, RC1 update, reports</td></tr>
+</tbody></table></div>
+<p>
+<strong>Simulation infrastructure:</strong> <code>package.json</code> and <code>package-lock.json</code> are byte-identical across the
+ 
+whole range, so <code>node_modules</code> was shared by symlink — which later proved to be a **methodological
+ 
+finding in itself** (§7.6).
+</p>
+<hr>
+<h2 id="4-commit-archaeology-what-the-branch-actually-contains">4. Commit archaeology — what the branch actually contains</h2>
+<p>
+<strong>The branch carries TWO WORKSTREAMS stacked on one another.</strong> Beneath the 18 CreditVector RC1
+ 
+commits sit 8 Founder Library / Knowledge Architecture commits (<code>bda4d22</code> … <code>e6d9b21</code>) belonging to a
+ 
+<strong>separate workstream that must never ship in a CreditVector PR</strong>.
+</p>
+<p>
+<strong>Consequence: every PR must be built by CHERRY-PICK, never by branching and merging this branch.</strong>
+ 
+A GitHub PR opened from it would carry all 8.
+</p>
+<p>
+<strong>Solo cherry-pick probes onto <code>origin/main</code> (executed, 18 commits):</strong>
+</p>
+<ul><li><strong>Clean (10):</strong> <code>c9c884e</code> <code>a2fa6ea</code> <code>c3c4954</code> <code>6bc4cf4</code> <code>013ea53</code> <code>bd8f108</code> <code>826413b</code> <code>26d2b1c</code> <code>a2b0a04</code> <code>4871d4e</code></li><li><strong>CONFLICT (8):</strong> <code>27bc430</code> <code>86ba824</code> <code>7099bde</code> <code>59fad4f</code> <code>c7d1506</code> <code>717697f</code> <code>2911d44</code> <code>d6303fc</code></li></ul>
+<p>
+<strong>The dangerous class — commits that pick CLEANLY but are semantically broken alone (3):</strong>
+ 
+<code>a2b0a04</code> registers a migration that does not exist → Gate D guard <strong>crashes</strong>; <code>26d2b1c</code> adds the
+ 
+migration without registering it → the same throw fires in the opposite direction (**bidirectional
+ 
+coupling**); <code>4871d4e</code>'s runtime guards execute route handlers that do not yet contain the asserted
+ 
+behaviour.
+</p>
+<hr>
+<h2 id="5-hidden-dependencies-found">5. Hidden dependencies found</h2>
+<div class="tw"><table><thead><tr><th>Dependency</th><th>Kind</th><th>How proven</th></tr></thead><tbody>
+<tr><td><code>717697f</code> → <code>26d2b1c</code></td><td>Hard, modify/delete</td><td>Solo pick conflicts on <code>migration.sql</code></td></tr>
+<tr><td><code>26d2b1c</code> ⟷ <code>a2b0a04</code></td><td><strong>Bidirectional</strong></td><td><code>loadGateDManifest</code> set-equality <strong>throws</strong> either way</td></tr>
+<tr><td><code>2911d44</code> → <code>a2fa6ea</code></td><td>Hard, hunk-level</td><td><code>2911d44</code> carries <code>a2fa6ea</code>'s import as trailing <em>context</em></td></tr>
+<tr><td><strong>PR-4 → <code>6bc4cf4</code></strong></td><td><strong>Semantic, textually invisible</strong></td><td>Picks clean without it and <strong>builds</strong> — but reintroduces the email-keyed billing identity <code>6bc4cf4</code> fixed</td></tr>
+<tr><td><code>59fad4f</code> → <code>c3c4954</code></td><td>Hard, 3 shared files</td><td>Solo pick conflicts</td></tr>
+<tr><td><code>86ba824</code> → <code>013ea53</code></td><td>Hard, 2 shared files</td><td>Solo pick conflicts</td></tr>
+<tr><td><code>7099bde</code> → <code>826413b</code></td><td>Hard, content</td><td><code>OPERATIONS.md</code> conflict — <strong>this breaks PR-0's published commit list</strong></td></tr>
+<tr><td><code>27bc430</code> → <code>c9c884e</code></td><td>Hard, modify/delete</td><td>Criteria file exists nowhere on <code>main</code></td></tr>
+<tr><td>RC1 docs → cherry-pick mechanism</td><td><strong>Unsatisfiable</strong></td><td>~90 branch-local SHAs; cherry-pick mints new ones</td></tr>
+<tr><td>Every result → shared Prisma client</td><td>Methodological</td><td>Global mutable state across worktrees</td></tr>
+</tbody></table></div>
+<p>
+<strong>PR-2 → PR-1 was FALSIFIED</strong>, not confirmed: <code>[c3c4954, 59fad4f]</code> picks clean onto bare
+ 
+<code>origin/main</code>, builds, and passes 71/71. It has no ordering constraint against PR-1.
+</p>
+<hr>
+<h2 id="6-defects-confirmed-and-corrected-this-wave">6. Defects confirmed and corrected this wave</h2>
+<h3 id="d-1-the-fk-corrective-was-protected-by-nothing-closed-beeafd1">D-1 · The FK corrective was protected by nothing — <strong>CLOSED</strong> (<code>beeafd1</code>)</h3>
+<p>
+<strong>The disqualifying finding.</strong> A PR-4 assembled with <code>717697f</code> silently omitted:
+</p>
+<ul><li>cherry-picks <strong>clean</strong></li><li><code>tsc --noEmit</code> <strong>exit 0</strong></li><li><code>scripts/terms-acceptance.test.ts</code> <strong>exit 0</strong></li><li><code>scripts/schema-safety.test.ts</code> <strong>exit 0</strong></li><li><code>scripts/gate-d-preflight.test.ts</code> <strong>exit 0</strong></li><li><code>scripts/runtime/terms-acceptance.runtime.test.ts</code> <strong>exit 0</strong></li></ul>
+<p>
+…while shipping <code>ON DELETE CASCADE</code> — the foreign key that **destroys consent evidence on any User
+ 
+delete**, irreversibly, because no backfill exists and none is permitted. <code>grep RESTRICT|CASCADE</code>
+ 
+across every guard returned <strong>zero hits</strong>. A reviewer seeing green CI had no signal at all.
+</p>
+<p>
+<code>scripts/terms-acceptance.test.ts</code> now pins the FK action in <strong>both</strong> the model and the migration,
+ 
+following the precedent <code>identity-migration-guard.test.ts:52</code> already sets for <code>Organization.owner</code>.
+ 
+<strong>Negative control: the exact state that was fully green now fails 4 assertions</strong> (78 → 74 pass).
+</p>
+<h3 id="d-2-runtime-guards-never-ran-in-ci-closed-beeafd1">D-2 · Runtime guards never ran in CI — <strong>CLOSED</strong> (<code>beeafd1</code>)</h3>
+<p>
+<code>scripts/*.test.ts</code> is a <strong>non-recursive</strong> glob, so <code>scripts/runtime/</code> — the only checks that execute
+ 
+real route handlers instead of matching source text — was executed by <strong>no CI job</strong>. The strongest
+ 
+evidence in the repository was evidence CI never looked at. Added as its own step; registered in
+ 
+<code>.ai/TESTING.md</code> with the source-level/runtime distinction stated explicitly.
+</p>
+<h3 id="d-3-release-sequence-document-was-false-corrected-beeafd1">D-3 · Release-sequence document was false — <strong>CORRECTED</strong> (<code>beeafd1</code>)</h3>
+<p>
+PR-0's published list <code>[7099bde, 27bc430]</code> <strong>does not apply</strong> — both conflict. PR-4 was documented as
+ 
+depending only on the migration; it also hard-depends on <code>a2fa6ea</code> <strong>and</strong> <code>6bc4cf4</code>. Both corrections
+ 
+are marked <strong>in place</strong> rather than rewritten away, so the record shows what was believed and what
+ 
+execution showed.
+</p>
+<hr>
+<h2 id="7-extraction-matrix">7. Extraction matrix</h2>
+<div class="tw"><table><thead><tr><th>PR</th><th>Base</th><th>Commits</th><th>Independent build</th><th>Tests</th><th>Migration dep</th><th>Counsel gate</th><th>Safe to merge now</th><th>Auto-deploy</th></tr></thead><tbody>
+<tr><td><strong>PR-0</strong></td><td><code>origin/main</code></td><td><code>c9c884e</code>→<code>826413b</code>→<code>7099bde</code>→<code>27bc430</code> <strong>(corrected)</strong></td><td><strong>PASS</strong></td><td>70/70</td><td>NONE</td><td>N/A</td><td><strong>CONDITIONAL</strong> — carries <code>app/global-error.tsx</code>, so not documentation-only</td><td><strong>YES</strong>, behaviourally inert</td></tr>
+<tr><td><strong>PR-1</strong></td><td><code>origin/main</code></td><td><code>a2fa6ea</code>, <code>6bc4cf4</code>, <code>bd8f108</code> <strong>(re-cut)</strong></td><td><strong>PASS</strong></td><td>73/73</td><td><strong>NONE</strong> (zero <code>TermsAcceptance</code> hits)</td><td>none — <code>013ea53</code> removed</td><td><strong>PASS — strongest unit</strong></td><td><strong>YES</strong></td></tr>
+<tr><td><strong>PR-2</strong></td><td><code>origin/main</code></td><td><code>c3c4954</code>, <code>59fad4f</code> + runtime split</td><td><strong>PASS</strong></td><td>73/73</td><td>NONE</td><td>none</td><td><strong>CONDITIONAL</strong></td><td><strong>YES</strong></td></tr>
+<tr><td><strong>PR-3</strong></td><td><code>origin/main</code></td><td><code>013ea53</code>, <code>86ba824</code> <strong>(must combine)</strong></td><td><strong>PASS</strong></td><td>compliance corpus green</td><td>NONE</td><td><strong>YES</strong></td><td><strong>BLOCKED — COUNSEL</strong></td><td><strong>YES</strong></td></tr>
+<tr><td><strong>PR-4</strong></td><td><strong>PR-1</strong></td><td><code>26d2b1c</code>,<code>717697f</code>,<code>a2b0a04</code>,<code>2911d44</code> + terms runtime</td><td><strong>FAIL as a unit</strong></td><td>74 guards + 6 DB states</td><td><strong>HARD</strong></td><td>consent retention</td><td><strong>BLOCKED — OWNER + PRODUCTION</strong></td><td><strong>YES — hazardous</strong></td></tr>
+<tr><td><strong>PR-5a</strong></td><td><code>origin/main</code></td><td><code>c9c884e</code></td><td><strong>PASS</strong></td><td>70/70</td><td>NONE</td><td>disclosure only</td><td><strong>CONDITIONAL</strong></td><td><strong>YES</strong>, inert</td></tr>
+<tr><td><strong>PR-5b</strong></td><td>after PR-1…PR-4</td><td><code>27bc430</code>,<code>c7d1506</code>,<code>d6303fc</code></td><td><strong>PASS</strong></td><td>70/70</td><td>truth dep</td><td>N/A</td><td><strong>NOT SAFE</strong> until all land</td><td><strong>YES</strong>, inert</td></tr>
+</tbody></table></div>
+<p>
+<strong>PR-4 is not one cherry-pickable unit.</strong> Three independent proofs: it does not apply to <code>origin/main</code>;
+ 
+it needs two PR-1 commits; and merging it <em>is</em> deploying schema-dependent code against a database with
+ 
+no <code>TermsAcceptance</code> table. <strong>Recommended split: PR-4a = schema + migration only</strong> (deployable safely —
+ 
+STATE B proved an additive unused table is inert), <strong>PR-4b = route + UI + guards</strong>, merged only after
+ 
+the migration is applied and forward-validated.
+</p>
+<hr>
+<h2 id="8-pr-4-state-matrix-six-states-on-a-disposable-local-postgresql">8. PR-4 state matrix — six states on a disposable local PostgreSQL</h2>
+<div class="tw"><table><thead><tr><th>State</th><th>Setup</th><th>Result</th></tr></thead><tbody>
+<tr><td><strong>A</strong></td><td>App code, migration NOT applied</td><td><strong>UNSAFE</strong> — <code>prisma.termsAcceptance</code> throws P2021 → <strong>500 on every in-place upgrade</strong>. Fails closed (no wrong charge), but the upgrade path is down</td></tr>
+<tr><td><strong>B</strong></td><td>Migration applied, OLD app code</td><td><strong>SAFE — verified, not assumed.</strong> Additive unused table; behaviour unchanged. <em>This is what makes the 4a/4b split viable</em></td></tr>
+<tr><td><strong>C</strong></td><td>Migration + full package</td><td><strong>PASS</strong> — schema, generated client, UI, API and guards align</td></tr>
+<tr><td><strong>D</strong></td><td>Code rolled back, rows exist</td><td>Gate disappears, rows persist — <strong>safe</strong></td></tr>
+<tr><td><strong>E</strong></td><td>Migration rollback, table empty</td><td><strong>Safe</strong> — <code>DROP TABLE</code> clean, no dependent-object error</td></tr>
+<tr><td><strong>F</strong></td><td>Migration rollback, rows exist</td><td><strong>UNSAFE AND IRREVERSIBLE</strong> — Postgres executes the drop <strong>silently</strong>; consent evidence cannot be reconstructed and no backfill is permitted</td></tr>
+</tbody></table></div>
+<p>
+<strong>Therefore: once the table holds rows, the migration is effectively forward-only.</strong>
+</p>
+<hr>
+<h2 id="9-verification-per-exact-simulated-state">9. Verification — per exact simulated state</h2>
+<div class="tw"><table><thead><tr><th>State</th><th>tsc</th><th>Guards</th><th>next build</th></tr></thead><tbody>
+<tr><td><code>origin/main</code> control</td><td>PASS</td><td>70/70</td><td>PASS</td></tr>
+<tr><td>PR-0</td><td>PASS</td><td>70/70</td><td>PASS</td></tr>
+<tr><td>PR-1</td><td>PASS</td><td>73/73</td><td>PASS</td></tr>
+<tr><td>PR-2</td><td>PASS</td><td>73/73</td><td>PASS</td></tr>
+<tr><td>PR-3</td><td>PASS</td><td>compliance corpus green</td><td>PASS</td></tr>
+<tr><td>PR-4 (STATE C)</td><td>PASS</td><td>74 terms guards + Gate D</td><td>PASS</td></tr>
+<tr><td>PR-5</td><td>PASS</td><td>70/70</td><td>PASS</td></tr>
+<tr><td>Pre-PR-4 stack (11 picks)</td><td>PASS</td><td>74/74</td><td>PASS</td></tr>
+<tr><td>Max counsel-free (16 picks)</td><td>PASS</td><td>78/78</td><td>PASS</td></tr>
+<tr><td><strong>Source branch after correctives</strong></td><td><strong>PASS</strong></td><td><strong>79/79</strong></td><td><strong>PASS</strong></td></tr>
+</tbody></table></div>
+<p>
+<code>npm run lint</code> — <strong>FAIL, 3 pre-existing errors</strong> in files untouched by any wave; CI sets
+ 
+<code>continue-on-error: true</code>. <code>prisma validate</code> fails in the harness on missing <code>DATABASE_URL</code> — a harness
+ 
+artifact reproducing identically on bare <code>origin/main</code>, <strong>not</strong> a unit regression.
+</p>
+<hr>
+<h2 id="10-runtime-versus-source-level-evidence">10. Runtime versus source-level evidence</h2>
+<p>
+<strong>RUNTIME (real execution):</strong> the six PR-4 database states on a disposable PostgreSQL · FK deletion
+ 
+refusal · acceptance concurrency (10 concurrent upserts → 1 row; deterministic interleave → unique
+ 
+violation, proving the <em>constraint</em> not luck enforces it) · the three <code>scripts/runtime/</code> guards.
+</p>
+<p>
+<strong>SOURCE-LEVEL ONLY:</strong> every <code>scripts/*.test.ts</code> regex guard, including <code>stripe-lifecycle.test.ts</code>.
+ 
+<strong>Agent 3 flagged an overstatement:</strong> <code>59fad4f</code>'s message says that guard "pins the three-state
+ 
+contract" — it pins the <strong>source text</strong> of that contract. Corrected in this report's framing.
+</p>
+<p>
+<strong>Methodological finding (§7.6):</strong> all worktrees shared one <code>node_modules</code>, so the generated Prisma
+ 
+client is <strong>global mutable state</strong> that <code>verify.sh</code> never regenerates. Agent 5 observed it change
+ 
+mid-flight, detected it, and repaired it. **Consequence, stated honestly: some simulated <code>tsc</code>/<code>build</code>
+ 
+results in this wave may not be CI-equivalent.** Re-verification with a per-state <code>prisma generate</code> is
+ 
+<strong>OWNER DECISION REQUIRED</strong> before any PR is opened.
+</p>
+<hr>
+<h2 id="11-negative-control-evidence">11. Negative-control evidence</h2>
+<div class="tw"><table><thead><tr><th>Control</th><th>Result</th></tr></thead><tbody>
+<tr><td><strong>PR-4 with <code>717697f</code> omitted</strong></td><td>Fully green before the fix; <strong>fails 4 assertions after</strong> — the decisive proof</td></tr>
+<tr><td><code>scripts/terms-acceptance.test.ts</code></td><td>78/78; FK assertions fail on reverted FK</td></tr>
+<tr><td>18 solo cherry-pick probes</td><td>10 clean / 8 conflict, each with exact conflicting paths</td></tr>
+<tr><td>PR-2 → PR-1 dependency</td><td><strong>Falsified by execution</strong>, not assumed</td></tr>
+<tr><td>Intermediate-state truth probes</td><td>3 states built; RC1 artifacts measurably false in all 3</td></tr>
+</tbody></table></div>
+<hr>
+<h2 id="12-release-graph-merge-is-deploy">12. Release graph — merge <em>is</em> deploy</h2>
+<p>
+```
+ 
+[review] ─► [owner approves merge] ─► [merge to main] ═══► [AUTO-DEPLOY prod]
+ 
+                                          these are ONE event
+</p>
+<p>
+PR-5a ─► PR-0 ─► PR-1 ─┬─► PR-2 ────────────────────────────────► PR-5b
+ 
+                       │                                            ▲
+ 
+PR-3 ── BLOCKED: COUNSEL ───────────────────────────────────────────┤
+ 
+                       │                                            │
+ 
+                       └─► PR-4a (schema+migration) ─► [owner: Gate D baseline]
+ 
+                                                       ─► [backup — NOT VERIFIED]
+ 
+                                                       ─► [apply migration]
+ 
+                                                       ─► [forward-validate]
+ 
+                                                       ─► PR-4b (route+UI) ──────┘
+ 
+                                                       ─► [smoke test] ─► [monitor]
+ 
+```
+</p>
+<hr>
+<h2 id="13-updated-go-no-go-no-go-unchanged">13. Updated Go/No-Go — 🔴 NO-GO, unchanged</h2>
+<div class="tw"><table><thead><tr><th>Blocker</th><th>State</th><th>Gate</th></tr></thead><tbody>
+<tr><td>B-01…B-04, B-04g, B-07, B-08, B-11, Gate D guard</td><td>✅ <strong>CLOSED</strong> (9)</td><td>—</td></tr>
+<tr><td><strong>B-05</strong> compliance bar</td><td>⚠️ PARTIAL</td><td><strong>BLOCKED — COUNSEL</strong></td></tr>
+<tr><td><strong>B-06</strong> terms acceptance</td><td>⚠️ PARTIAL</td><td><strong>BLOCKED — OWNER + PRODUCTION</strong></td></tr>
+<tr><td><strong>B-09</strong> backup/recovery</td><td>❌ OPEN — no drill has run</td><td><strong>OWNER + PRODUCTION</strong></td></tr>
+<tr><td><strong>B-10</strong> alerting</td><td>⚠️ PARTIAL — <code>ALERT_WEBHOOK_URL</code> unset</td><td><strong>PRODUCTION</strong></td></tr>
+<tr><td><strong>B-12</strong> counsel sign-off</td><td>❌ <strong>BLOCKED — COUNSEL</strong></td><td><strong>COUNSEL</strong></td></tr>
+<tr><td>C-01 · C-02</td><td><strong>VERIFICATION REQUIRED — PRODUCTION</strong></td><td><strong>PRODUCTION</strong></td></tr>
+</tbody></table></div>
+<p>
+<strong>SAFE TO REVIEW:</strong> all seven units. <strong>SAFE TO MERGE (after owner approval, given merge = deploy):</strong>
+ 
+PR-5a, PR-0 (with the <code>global-error.tsx</code> decision), PR-1, PR-2.
+ 
+<strong>NOT SAFE TO MERGE:</strong> PR-3 (counsel), PR-4a/4b (owner + production), PR-5b (until the rest land).
+</p>
+<hr>
+<h2 id="14-decisions-required">14. Decisions required</h2>
+<p>
+<strong>OWNER:</strong> O1 accept <code>app/global-error.tsx</code> in PR-0 or split <code>826413b</code> · O2 approve the PR-1 re-cut
+ 
+(moving <code>013ea53</code> → PR-3, <code>c3c4954</code> → PR-2) · O3 approve the <strong>PR-4a/4b split</strong> · O4 authorise a
+ 
+documentation pass to strip ~90 branch-local hash citations · O5 accept the disabled-paying-subscriber
+ 
+stranding PR-1 introduces, or open the remedy gate first · O6 require a per-state <code>prisma generate</code>
+ 
+re-verification before any PR opens · O7 approve the Gate D baseline · O8 decide the disclosure posture
+ 
+of merging a defect corpus to a public <code>main</code>.
+</p>
+<p>
+<strong>COUNSEL:</strong> C1 <strong>B-12</strong> CROA/FCRA positioning · C2 <strong>B-05</strong> — and three newly measured gaps
+ 
+(hyphenated Metro-2, the "forces" verb, the "accurate" qualifier) should go in front of counsel before
+ 
+PR-3 · C3 consent-evidence retention (<code>TermsAcceptance</code> FK/retention) · C4 acceptance scope — per
+ 
+revision or per transaction.
+</p>
+<p>
+<strong>PRODUCTION:</strong> confirm DB provider + <strong>run the restore drill</strong> (B-09) · set <code>ALERT_WEBHOOK_URL</code> and
+ 
+<strong>prove delivery</strong> (B-10) · <code>SETUP_SECRET</code> (C-01) · encryption backfill (C-02) · <code>STRIPE_TOS_CONSENT</code>
+ 
++ Dashboard Terms URL · <strong>whether Vercel preview deployments are access-protected</strong> — <code>DATABASE_URL</code> is
+ 
+one shared value across Production and Preview, so a preview of the terms PR runs against the live
+ 
+database · whether branch protection requires the CI check on <code>main</code> (V-09).
+</p>
+<hr>
+<h2 id="15-recommendations">15. Recommendations</h2>
+<p>
+<strong>MERGE: NO — not yet, and never as a branch.</strong> <strong>DEPLOY: NOT AUTHORIZED.</strong>
+</p>
+<p>
+<strong>EXACT NEXT ACTION:</strong> answer <strong>O2</strong> (approve the PR-1 re-cut) and <strong>O3</strong> (approve the PR-4a/4b split).
+ 
+Those two unlock the entire sequence: PR-1 is extraction-proven and is the strongest unit in the
+ 
+programme, and the 4a/4b split is the only shape that satisfies owner direction #6 — because STATE B
+ 
+proved an additive unused table deploys safely while STATE A proved the route without it does not.
+</p>
+<hr>
+<p>
+*Repository truth is authoritative. Nothing here asserts a production fact, a completed drill, a
+ 
+measured RPO/RTO, a live alert delivery, or a legal conclusion. **No merge, deployment, Gate D
+ 
+baseline, or production migration occurred in this wave.***
+</p>
+<footer>Projection of <code>CREDITVECTOR_RC1_RELEASE_CANDIDATE_EXTRACTION_WAVE_2_2_REPORT.md</code>, which is canonical.
+Contains no credentials, secrets, tokens, or environment values.</footer>
+</main></body></html>
