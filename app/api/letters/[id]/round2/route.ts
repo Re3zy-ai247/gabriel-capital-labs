@@ -7,7 +7,8 @@ import { buildContext, renderTemplateLetter, buildSystemPrompt } from "@/lib/let
 import { buildRound2UserPrompt, type ResponseAnalysis } from "@/lib/round2";
 import { applyCompliance } from "@/lib/compliance";
 import { encryptText, decryptText } from "@/lib/docCrypto";
-import { getEntitlement, canGenerateLetter } from "@/lib/entitlements";
+import { getEntitlement, canGenerateLetter, spendLetterCredits } from "@/lib/entitlements";
+import { track, PRODUCT_EVENTS } from "@/lib/events";
 import type { Bureau } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
@@ -124,6 +125,13 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   });
   // Persist ciphertext, return plaintext for immediate render.
   letter.body = text;
+
+  // A Round 2 letter consumes entitlement on the SAME terms as /api/letters/generate:
+  // it spends a purchased credit past the free allowance, and it is metered on the
+  // append-only ledger that lib/entitlements reads back as monthly usage. Without both,
+  // every escalation letter was free and invisible to the meter.
+  await spendLetterCredits(user.id, entitlement, 1);
+  await track(PRODUCT_EVENTS.disputeCreated, { userId: user.id, meta: { count: 1, aiRefined } });
 
   const after = await getEntitlement(user);
   return NextResponse.json({ ok: true, letter, aiRefined, entitlement: after });
