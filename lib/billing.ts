@@ -128,27 +128,105 @@ async function ensureDedupTable(): Promise<void> {
   dedupTableReady = true;
 }
 
+// A claim is written as `pending:<eventType>` and rewritten to the bare
+// `<eventType>` by completeStripeEvent once handling has actually finished. The
+// existing `type` column therefore carries the pending-vs-completed distinction —
+// no new column, no new table, no migration.
+//
+// Rows written before this change hold a bare type, so they read as COMPLETED and
+// keep refusing duplicates exactly as they did. The letter-pack ledger row
+// (`<eventId>:letters_5`) is likewise bare and unaffected.
+const PENDING_PREFIX = "pending:";
+
+// A claim still pending after this long cannot belong to a live invocation: the
+// longest maxDuration this app declares is 60s and Vercel's ceiling is far below
+// 15 minutes, so the instance that held it was timed out, OOM-killed or evicted
+// before it could complete or release. Such a claim is abandoned by definition and
+// may be re-claimed, which is what lets Stripe's retry actually run instead of
+// being deduped into oblivion. The window is deliberately far wider than any
+// possible execution so a SLOW invocation is never stolen from mid-flight.
+const STALE_CLAIM_MINUTES = 15;
+
 // Claim a Stripe event id in the dedup ledger BEFORE any handling work.
 // Stripe delivers webhooks AT LEAST ONCE and makes no ordering guarantee, so the
 // same event can arrive twice (retry after a slow 2xx, a manual "Resend"). Returns
-// true when this call was the first to record the id — the caller then owns the
-// event; false means it was already processed and must NOT be handled again.
-export async function claimStripeEvent(eventId: string, type: string): Promise<boolean> {
+// true when this call now owns the event; false means it is already completed, or
+// another invocation is handling it right now, and it must NOT be handled again.
+//
+// Still ONE atomic statement: the INSERT wins the race for a fresh id, and the
+// ON CONFLICT arm re-claims ONLY a row that is both still pending and older than
+// the abandonment window. A completed row never matches the WHERE, so a genuine
+// duplicate is still refused forever.
+/** Outcome of trying to take the processing claim for a Stripe event.
+ *  - `claimed`    — this invocation owns the event and must handle it.
+ *  - `completed`  — a previous delivery handled it to completion. Acknowledge (200);
+ *                   Stripe should stop retrying, which is correct.
+ *  - `in_flight`  — a claim exists, is still PENDING, and has not aged out. Either a
+ *                   concurrent invocation is working on it, or one died less than
+ *                   STALE_CLAIM_MINUTES ago. The caller MUST answer non-2xx.
+ *
+ *  The third state is the whole point. Collapsing `in_flight` into `completed` and
+ *  answering 200 was the residual defect: Stripe treats 200 as "delivered", stops
+ *  retrying, and if the claim-holder had actually died the event is lost forever —
+ *  the exact failure the pending/stale mechanism exists to prevent. */
+export type StripeEventClaim = "claimed" | "completed" | "in_flight";
+
+export async function claimStripeEvent(eventId: string, type: string): Promise<StripeEventClaim> {
   await ensureDedupTable();
-  const inserted = await prisma.$executeRawUnsafe(
-    `INSERT INTO "StripeWebhookEvent" ("id", "type") VALUES ($1, $2) ON CONFLICT ("id") DO NOTHING`,
+  const claimed = await prisma.$executeRawUnsafe(
+    `INSERT INTO "StripeWebhookEvent" ("id", "type") VALUES ($1, $2)
+     ON CONFLICT ("id") DO UPDATE
+       SET "type" = EXCLUDED."type", "createdAt" = CURRENT_TIMESTAMP
+     WHERE "StripeWebhookEvent"."type" LIKE '${PENDING_PREFIX}%'
+       AND "StripeWebhookEvent"."createdAt" < CURRENT_TIMESTAMP - INTERVAL '${STALE_CLAIM_MINUTES} minutes'`,
     eventId,
-    type
+    PENDING_PREFIX + type
   );
-  return inserted > 0;
+  if (claimed > 0) return "claimed";
+
+  // The claim was refused. Read the surviving row to learn WHY: a settled row has
+  // the bare event type, a live claim still carries the pending marker.
+  const rows = await prisma.$queryRawUnsafe<Array<{ type: string }>>(
+    `SELECT "type" FROM "StripeWebhookEvent" WHERE "id" = $1`,
+    eventId
+  );
+  const existing = rows[0]?.type;
+  // No row at all should be impossible after an ON CONFLICT refusal, but if it
+  // happens, treat it as in-flight so Stripe retries rather than dropping the event.
+  if (!existing) return "in_flight";
+  return existing.startsWith(PENDING_PREFIX) ? "in_flight" : "completed";
+}
+
+// Settle the claim once handling has SUCCEEDED. Until this runs the row is only a
+// pending claim, so an invocation killed between the claim and the response leaves
+// a claim that expires instead of one that silently swallows Stripe's retry.
+// Best effort: the work is already done and Stripe must not be told to retry it,
+// so a failure here is reported, not thrown. The row then expires and a manual
+// "Resend" could re-handle the event — every handler is idempotent (subscription
+// syncs re-retrieve current state; the letter-pack grant has its own transactional
+// ledger key), so that is the safe direction to fail in.
+export async function completeStripeEvent(eventId: string, type: string): Promise<void> {
+  try {
+    await prisma.$executeRawUnsafe(
+      `UPDATE "StripeWebhookEvent" SET "type" = $2 WHERE "id" = $1`,
+      eventId,
+      type
+    );
+  } catch (e) {
+    reportError(e, { scope: "stripe-billing", phase: "complete-event", eventId });
+  }
 }
 
 // Give the claim back when handling FAILED, so Stripe's retry can process the
-// event instead of being deduped into oblivion. Best effort: if the release itself
-// fails we report it rather than mask the original handler error.
+// event immediately instead of waiting out the abandonment window. Scoped to a
+// PENDING row so it can never delete a settled one. Best effort: if the release
+// itself fails we report it rather than mask the original handler error.
 export async function releaseStripeEvent(eventId: string): Promise<void> {
   try {
-    await prisma.$executeRawUnsafe(`DELETE FROM "StripeWebhookEvent" WHERE "id" = $1`, eventId);
+    await prisma.$executeRawUnsafe(
+      `DELETE FROM "StripeWebhookEvent" WHERE "id" = $1 AND "type" LIKE '${PENDING_PREFIX}%'`,
+      eventId
+    );
   } catch (e) {
     reportError(e, { scope: "stripe-billing", phase: "release-event", eventId });
   }
