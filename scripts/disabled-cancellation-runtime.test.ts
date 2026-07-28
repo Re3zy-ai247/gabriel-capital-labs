@@ -429,6 +429,48 @@ async function run() {
   check("1 RUNTIME the ordinary portal call still passes no `configuration`",
     portalSessions.every((s) => !("configuration" in s)));
 
+  // ── CASE 13 — RUNTIME. The route's EXPORTED SURFACE is pinned ───────────────
+  // "Cancellation-only" was enforced for POST but not for the module. An
+  // adversarial review appended `export async function DELETE()` calling
+  // stripe.subscriptions.resume and the ENTIRE guard suite stayed green: no check
+  // looked at what the module exports, and a method this file never invokes is
+  // invisible to behavioural assertions. Pin the surface itself, as an ALLOWLIST —
+  // a denylist of Stripe methods would have to anticipate every future one.
+  //
+  // Next.js treats each uppercase HTTP-verb export of a route module as a live
+  // endpoint, so an unlisted verb here is not dead code: it is a reachable, ungated
+  // capability on a route whose entire justification is that it has exactly one.
+  const HTTP_VERBS = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"];
+  const selfCancelModule = require("../app/api/billing/self-cancel/route") as Record<string, unknown>;
+  const exportedVerbs = HTTP_VERBS.filter((v) => typeof selfCancelModule[v] === "function");
+  check("13 RUNTIME the route exports exactly GET and POST — no other HTTP method",
+    exportedVerbs.length === 2 && exportedVerbs.includes("GET") && exportedVerbs.includes("POST"));
+  const ALLOWED_EXPORTS = new Set(["GET", "POST", "dynamic", "runtime"]);
+  const unexpected = Object.keys(selfCancelModule).filter((k) => !ALLOWED_EXPORTS.has(k));
+  check("13 RUNTIME the route exports nothing beyond GET, POST and the route config",
+    unexpected.length === 0);
+
+  // ── CASE 14 — RUNTIME. The GET body carries no Stripe identifier ────────────
+  // The handler documents "Returns booleans and human copy only — never a Stripe
+  // customer or subscription id" and nothing enforced it: the only leak assertion
+  // in this file was applied to the POST body. Adding the caller's own ids to the
+  // GET body left all guards green. Assert the body BOTH ways — no id-shaped
+  // substring, and an explicit key allowlist so a future field cannot smuggle one
+  // in under a different name.
+  const GET_KEYS = new Set(["eligible", "reason", "message", "error"]);
+  for (const [label, row] of [
+    ["suspended payer", suspendedPayer],
+    ["suspended non-payer", suspendedFree],
+    ["enabled account", activePayer],
+  ] as Array<[string, Row]>) {
+    signInAs(row);
+    const g = await body(await selfCancel.GET());
+    check(`14 RUNTIME the GET body for the ${label} leaks no Stripe identifier`,
+      !/cus_|sub_|sk_live|sk_test|price_/.test(textOf(g)));
+    check(`14 RUNTIME the GET body for the ${label} carries only allowlisted keys`,
+      Object.keys(g).every((k) => GET_KEYS.has(k)));
+  }
+
   console.log(`\ndisabled-cancellation-runtime.test.ts: ${pass} passed, ${fail} failed`);
   process.exit(fail ? 1 : 0);
 }

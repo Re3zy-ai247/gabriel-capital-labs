@@ -117,6 +117,11 @@ export async function POST() {
   const customerId = account.stripeCustomerId;
   const subscriptionId = account.stripeSubscriptionId;
 
+  // Whether the cancellation request was actually handed to Stripe. A throw AFTER
+  // that point may be a lost RESPONSE to a request that already applied, so the
+  // failure copy below must not claim nothing changed. See the catch block.
+  let mutationAttempted = false;
+
   try {
     const sub = await stripe.subscriptions.retrieve(subscriptionId);
 
@@ -155,6 +160,7 @@ export async function POST() {
       });
     }
 
+    mutationAttempted = true;
     const updated = await stripe.subscriptions.update(subscriptionId, { cancel_at_period_end: true });
 
     await logAudit({
@@ -177,10 +183,21 @@ export async function POST() {
     // embed live identifiers ("No such subscription: sub_...") and this caller is a
     // suspended account, so the message text goes to the server log only. Never
     // e.message, never a stack, never an id.
+    //
+    // The message also must not overstate what we know. The failure can land on
+    // either side of the mutation: a throw from `retrieve` means nothing was sent,
+    // but a throw from `update` may be a LOST RESPONSE to a request Stripe already
+    // applied. Claiming "nothing was changed" in that second case is a categorical
+    // statement about a state this handler cannot observe — and it is the case
+    // where the subscription IS in fact scheduled to cancel. Retrying is safe
+    // either way, because the idempotency branch above reports an already-scheduled
+    // cancellation as success rather than issuing a second mutation.
     console.error("self-cancel stripe error", e);
     return NextResponse.json(
       {
-        error: `We could not reach the payment processor to cancel your subscription. Nothing was charged and nothing was changed — please try again in a few minutes. ${SUPPORT_HINT}`,
+        error: mutationAttempted
+          ? `We sent the cancellation but did not get a confirmation back, so we cannot tell you yet whether it went through. Please try again in a few minutes — it is safe to retry, and if the first attempt did go through the retry will simply tell you it is already cancelled. ${SUPPORT_HINT}`
+          : `We could not reach the payment processor, so nothing was sent and nothing was changed — please try again in a few minutes. ${SUPPORT_HINT}`,
       },
       { status: 502 }
     );

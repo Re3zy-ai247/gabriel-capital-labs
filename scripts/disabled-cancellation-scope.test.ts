@@ -109,9 +109,47 @@ check(`${ROUTE} imports sessionAccountState, not currentAccount/currentUser`,
 for (const forbidden of [
   "checkout.sessions.create", "subscriptions.create", "prices.create", "customers.create",
   "subscriptions.cancel", "paymentIntents", "invoices.create",
+  // Added after an adversarial review: `subscriptions.resume` was absent from this
+  // list, so a resume capability bolted onto this route left every guard green.
+  "subscriptions.resume", "subscriptionSchedules", "invoices.pay", "invoiceItems",
+  "billingPortal", "promotionCodes", "paymentMethods", "setupIntents",
 ]) {
   check(`${ROUTE} never calls ${forbidden}`, !route.includes(forbidden));
 }
+
+// A denylist can only ever forbid what someone thought of. `subscriptions.resume`
+// proved that: it was not on the list above until an adversary used it. So ALSO
+// assert the positive form — the complete set of Stripe methods this route reaches
+// must be exactly the two cancellation needs. Anything new fails here whether or
+// not it was anticipated.
+const ALLOWED_STRIPE_CALLS = new Set(["subscriptions.retrieve", "subscriptions.update"]);
+// Match on the RESOURCE name, not on a receiver called `stripe`. Anchoring to
+// /stripe\./ is evadable in one line — `(stripe as unknown as X).subscriptions
+// .resume(id)` does not contain the literal `stripe.subscriptions`, and an early
+// version of this check waved that mutation through. The resource names are
+// Stripe's own and do not collide with anything else this route touches.
+const STRIPE_RESOURCES =
+  "subscriptions|subscriptionSchedules|subscriptionItems|checkout|prices|products|customers"
+  + "|invoices|invoiceItems|paymentIntents|paymentMethods|setupIntents|billingPortal"
+  + "|promotionCodes|coupons|taxRates|refunds|charges|transfers|payouts|sources|tokens|quotes";
+const stripeCalls = [
+  ...route.matchAll(new RegExp(`\\b(${STRIPE_RESOURCES})\\.([A-Za-z_]+)\\s*\\(`, "g")),
+].map((m) => `${m[1]}.${m[2]}`);
+check(`${ROUTE} reaches at least one Stripe method (the allowlist is not vacuous)`,
+  stripeCalls.length > 0);
+const disallowed = [...new Set(stripeCalls)].filter((c) => !ALLOWED_STRIPE_CALLS.has(c));
+check(`${ROUTE} calls ONLY subscriptions.retrieve and subscriptions.update — found: ${
+  [...new Set(stripeCalls)].join(", ") || "none"}`, disallowed.length === 0);
+
+// Pin the EXPORTED SURFACE at source level too. The runtime guard imports the
+// module and checks the same property; this catches it in the same file a reviewer
+// is reading, and catches a verb added behind a conditional the runtime never hits.
+const HTTP_VERBS = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"];
+const exportedVerbs = HTTP_VERBS.filter((v) =>
+  new RegExp(`export\\s+(?:async\\s+)?function\\s+${v}\\b`).test(route)
+  || new RegExp(`export\\s+const\\s+${v}\\b`).test(route));
+check(`${ROUTE} exports exactly GET and POST — a new HTTP method is a new capability`,
+  exportedVerbs.length === 2 && exportedVerbs.includes("GET") && exportedVerbs.includes("POST"));
 check(`${ROUTE} issues exactly one mutating Stripe call`,
   (route.match(/stripe\.subscriptions\.update\(/g) ?? []).length === 1);
 check(`${ROUTE} only ever schedules cancel_at_period_end`,
@@ -170,7 +208,12 @@ check("the page offers no upgrade or purchase action",
 check("the page tells the user cancelling does not restore access",
   /does not restore access/i.test(page));
 check("a dropped request is never reported as a completed cancellation",
-  /Nothing was changed/.test(page));
+  /cannot tell you yet whether it went through/.test(page));
+// ...and it must not make the OPPOSITE categorical claim either. A request that
+// dropped in flight may already have applied server-side, so "nothing was changed"
+// is a statement about a state neither the page nor the handler can observe.
+check("a dropped request does not falsely claim nothing changed",
+  !/Nothing was changed/i.test(page));
 
 // The middleware must not start redirecting this path away.
 const middleware = read("middleware.ts");

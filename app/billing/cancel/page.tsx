@@ -50,8 +50,12 @@ export default function CancelSubscriptionPage() {
       if (res.ok) setResult(data.message ?? 'Your subscription is canceled.');
       else setError(data.error ?? 'We could not cancel your subscription. Please try again shortly.');
     } catch {
-      // A dropped request must never look like a completed cancellation.
-      setError('The connection dropped before we could confirm. Nothing was changed — please try again.');
+      // A dropped request must never look like a completed cancellation — but it
+      // must not claim the opposite either. The request may have reached the server
+      // and applied before the connection died, so the honest answer is "unknown",
+      // plus the fact that makes it safe to act on: retrying is idempotent, and a
+      // retry after a cancellation that did land reports it as already cancelled.
+      setError('The connection dropped before we could confirm, so we cannot tell you yet whether it went through. Please try again — it is safe to retry.');
     } finally {
       setBusy(false);
     }
