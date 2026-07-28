@@ -17,6 +17,7 @@ const guards = readdirSync(here)
 // explicit registration — every guard named here must still be on disk, so
 // removing or renaming one fails the CI step instead of quietly shrinking cover.
 const REQUIRED = [
+  "invoice-shape.runtime.test.ts",
   "stripe-webhook-claim.runtime.test.ts",
   "stripe-webhook-reorder.runtime.test.ts",
   "unknown-price-failclosed.runtime.test.ts",

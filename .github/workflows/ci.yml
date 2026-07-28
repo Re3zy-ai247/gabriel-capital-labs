@@ -69,11 +69,12 @@ jobs:
             npx tsx "$f"
           done
       # scripts/*.test.ts is a NON-RECURSIVE glob, so the runtime guards under
-      # scripts/runtime/ were never executed by the step above. They are the only
-      # checks in the repository that run the real route handlers rather than
-      # matching their source text, so leaving them unreferenced meant the strongest
-      # evidence we have was not evidence CI ever looked at. run-all.ts globs its own
-      # directory and fails the job on any failure.
+      # scripts/runtime/ were never executed by the step above — the strongest
+      # money-path evidence we have was not evidence CI ever looked at. These run the
+      # real route handlers rather than matching their source text. (Guards that
+      # execute code but live directly under scripts/ are already covered by the step
+      # above; only this directory needs its own step.) run-all.ts globs its own
+      # directory, enforces an explicit REQUIRED list, and fails the job on any failure.
       - name: Runtime guards (real handlers, mocked Stripe and Prisma)
         run: npx tsx scripts/runtime/run-all.ts
       - name: Build

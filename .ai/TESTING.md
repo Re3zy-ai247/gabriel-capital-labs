@@ -30,15 +30,22 @@ npx --no-install tsx scripts/<name>.test.ts   # lockfile-local guard scripts (be
 | `explain.test.ts` | Kai Explainability Layer — structured "why" from real data, uncertainty never hidden | 14/14 |
 | `stripe-lifecycle.test.ts` | RC1 money-path guard — pins the SOURCE TEXT of the webhook claim contract, current-state retrieval, and fail-closed price mapping. It matches shape; it does not execute a handler. The runtime proof is in the table below | 84/84 |
 
-### `scripts/runtime/` — the only RUNTIME guards
+### `scripts/runtime/` — the money-path RUNTIME guards
 
-Run with `npx tsx scripts/runtime/run-all.ts` (CI step "Runtime guards"). Everything else in the
-table above matches SOURCE TEXT; these execute the real route handlers against mocked Stripe and a
-fake Prisma layer that parses the SQL the code actually issues. **`scripts/*.test.ts` is a
-non-recursive glob and does not reach them** — that is why they have their own CI step.
+Run with `npx tsx scripts/runtime/run-all.ts` (CI step "Runtime guards"). Most guards in the table
+above match SOURCE TEXT; these execute the real route handlers against mocked Stripe and a fake
+Prisma layer that parses the SQL the code actually issues. **`scripts/*.test.ts` is a non-recursive
+glob and does not reach them** — that is why they have their own CI step.
+
+They are not the repository's only executing guards: `scripts/identity-runtime.test.ts` and
+`scripts/reputation-runtime.test.ts` also run real `lib/` code, and other units may add executing
+guards directly under `scripts/`, where the non-recursive glob already covers them. What is unique
+to this directory is the *route-handler* harness in `_harness.ts` and the SQL-parsing fake in
+`_fakes.ts` — and the separate CI step they require.
 
 | Guard | Covers |
 |---|---|
+| `invoice-shape.runtime.test.ts` | both Stripe invoice payload shapes (legacy `invoice.subscription`, basil `invoice.parent.subscription_details.subscription`), each as a string and as an expanded object, across `payment_failed` and `payment_succeeded`, asserted on the write that reaches the DB | 52/52 |
 | `stripe-webhook-claim.runtime.test.ts` | claimed / in_flight / completed / stale re-claim / handler failure then retry, through the real `POST` | 36/36 |
 | `stripe-webhook-reorder.runtime.test.ts` | out-of-order delivery — a stale `updated` after a `deleted` cannot restore a revoked plan (and the mirror case cannot revoke a paying one) | 44/44 |
 | `unknown-price-failclosed.runtime.test.ts` | an unrecognised price writes no `plan` key at all | 29/29 |
