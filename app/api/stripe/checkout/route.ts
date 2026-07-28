@@ -8,6 +8,10 @@ import {
 } from "@/lib/stripe";
 import { getOrCreateStripeCustomer } from "@/lib/billing";
 import { ACTIVE_SUBSCRIPTION_STATES } from "@/lib/os/host/billingTier";
+import {
+  CURRENT_TERMS_VERSION, TERMS_URL,
+  hasAcceptedTermsVersion, isCurrentTermsVersion, recordTermsAcceptance,
+} from "@/lib/terms";
 import { track, PRODUCT_EVENTS } from "@/lib/events";
 import { reportError } from "@/lib/observability";
 import { requestId } from "@/lib/log";
@@ -202,23 +206,49 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "You're already on this plan." }, { status: 400 });
       }
 
+      // ── B-06: acceptance gate for the upgrade path ────────────────────────
+      // CONSENT_COLLECTION above reaches only Checkout Sessions. This branch never
+      // opens Checkout, so Stripe renders no Terms-of-Service checkbox and records
+      // no acceptance — even with STRIPE_TOS_CONSENT=1. Without this gate a
+      // customer moves onto a higher-priced plan having agreed to nothing at the
+      // point of that charge, and Stripe offers no consent mechanism on
+      // subscriptions.update. So acceptance is captured HERE, before the mutation,
+      // and stored durably by @/lib/terms.
+      //
+      // WHY THE BODY FLAG IS NOT THE MECHANISM: `acceptTerms` is the user's
+      // assertion, not the record. The record is a row written server-side, keyed
+      // to the account resolved by id, carrying the version the SERVER publishes —
+      // a client cannot choose which terms it is deemed to have accepted, and a
+      // client that sends nothing gets no row and no plan change.
+      //
+      // FAIL-CLOSED: this runs before every mutation in this branch. A caller
+      // hitting the API directly without acceptance gets 428 and Stripe is never
+      // touched; a database failure throws into the catch below and returns 500
+      // with no subscription changed. There is no env flag that turns it off —
+      // one would be a switch that re-opens the hole.
+      //
+      // NOT RETROACTIVE: an existing subscriber has no row (nothing backfilled
+      // one), so their next upgrade asks them, once, for this version.
+      if (!(await hasAcceptedTermsVersion(user.id))) {
+        if (!isCurrentTermsVersion(body.acceptTerms)) {
+          return NextResponse.json(
+            {
+              error: "Please review and accept the Terms of Service to change your plan.",
+              termsRequired: true,
+              termsVersion: CURRENT_TERMS_VERSION,
+              termsUrl: TERMS_URL,
+            },
+            { status: 428 }
+          );
+        }
+        // Durable first: if this write fails we never reach the charge.
+        await recordTermsAcceptance(user.id, CURRENT_TERMS_VERSION, "stripe_subscription_upgrade");
+      }
+
       // Modify in place. Stripe prorates the difference against the unused portion
       // of the current period, so the customer pays the difference — never twice.
       // `proration_behavior` is a named constant so the billing policy is one
       // reviewable decision rather than a literal buried in a call.
-      //
-      // ⚠️ KNOWN GAP — B-06 (ToS consent is NOT collected on this path).
-      // CONSENT_COLLECTION above only applies to Checkout Sessions. This upgrade
-      // never opens Checkout, so Stripe renders no Terms-of-Service checkbox and
-      // records no acceptance on the customer — even with STRIPE_TOS_CONSENT=1.
-      // A customer can therefore move onto a higher-priced plan having agreed to
-      // nothing at the point of that charge. Stripe offers no consent mechanism on
-      // subscriptions.update, so closing this needs an in-app acceptance captured
-      // BEFORE this call and stored durably, which needs a schema change (a
-      // consent timestamp + policy version on User) under the MIGRATION-FIRST
-      // policy — out of scope for this wave, tracked in the RC1 blocker list.
-      // scripts/checkout-consent.test.ts currently pins the two-spread reality on
-      // purpose; it must be updated in the same change that closes this.
       const updated = await stripe.subscriptions.update(sub.id, {
         items: [{ id: items[0].id, price: priceId }],
         proration_behavior: UPGRADE_PRORATION_BEHAVIOR,
