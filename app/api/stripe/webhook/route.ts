@@ -1,7 +1,14 @@
 import { NextResponse } from "next/server";
 import type Stripe from "stripe";
 import { getStripe } from "@/lib/stripe";
-import { syncSubscriptionToUser, creditLetters, claimStripeEvent, releaseStripeEvent } from "@/lib/billing";
+import type { StripeEventClaim } from "@/lib/billing";
+import {
+  syncSubscriptionToUser,
+  creditLetters,
+  claimStripeEvent,
+  completeStripeEvent,
+  releaseStripeEvent,
+} from "@/lib/billing";
 import { prisma } from "@/lib/prisma";
 import { reportError } from "@/lib/observability";
 import { track, PRODUCT_EVENTS } from "@/lib/events";
@@ -78,14 +85,31 @@ export async function POST(req: Request) {
   // acknowledged without being handled a second time. A ledger failure returns 500
   // so Stripe retries — handling an event with no dedup available risks double
   // credits, which is worse than a retry.
-  let firstDelivery = false;
+  //
+  // The claim is PENDING until completeStripeEvent settles it below. That matters
+  // because the only release used to be the handler catch: if this instance were
+  // timed out, OOM-killed or evicted between the claim and the response, the claim
+  // survived, Stripe's retry was deduped away, and the event was lost forever.
+  // A pending claim instead expires (lib/billing.ts STALE_CLAIM_MINUTES), so the
+  // retry is processed — while a genuine duplicate of a COMPLETED event is still
+  // refused.
+  let claim: StripeEventClaim;
   try {
-    firstDelivery = await claimStripeEvent(event.id, event.type);
+    claim = await claimStripeEvent(event.id, event.type);
   } catch (e) {
     reportError(e, { scope: "stripe-webhook", phase: "dedupe", eventId: event.id, eventType: event.type });
     return NextResponse.json({ error: "Dedupe unavailable" }, { status: 500 });
   }
-  if (!firstDelivery) return NextResponse.json({ received: true, duplicate: true });
+  // Already handled to completion: acknowledge, and Stripe correctly stops.
+  if (claim === "completed") return NextResponse.json({ received: true, duplicate: true });
+  // Still PENDING and not yet aged out. Answering 200 here would be the old bug in a
+  // new place: Stripe would mark the event delivered and stop retrying, so if the
+  // claim-holder had died the event would be lost anyway. Answer non-2xx and let
+  // Stripe retry — by the next attempt the claim is either settled (-> 200 above) or
+  // stale (-> re-claimable). 409 because this is a conflict, not a server fault.
+  if (claim === "in_flight") {
+    return NextResponse.json({ error: "Event already in flight", retry: true }, { status: 409 });
+  }
 
   try {
     switch (event.type) {
@@ -165,6 +189,11 @@ export async function POST(req: Request) {
     await releaseStripeEvent(event.id);
     return NextResponse.json({ error: "Handler error" }, { status: 500 });
   }
+
+  // Handling succeeded — settle the claim. Only now does the ledger row become a
+  // permanent "already processed" record; before this line it was a claim that
+  // expires if this instance dies.
+  await completeStripeEvent(event.id, event.type);
 
   return NextResponse.json({ received: true });
 }

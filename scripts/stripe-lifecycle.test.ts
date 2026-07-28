@@ -34,7 +34,7 @@
 //   handler threw       -> release      (so Stripe's retry is not deduped away)
 //   subscription event  -> re-retrieve  (act on CURRENT state; ordering is moot)
 //   unknown price       -> null         (never guess a paid tier)
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { ACTIVE_SUBSCRIPTION_STATES } from "../lib/os/host/billingTier";
 
@@ -57,8 +57,24 @@ const switchAt = webhook.indexOf("switch (event.type)");
 check("webhook claims the event id in the dedup ledger", claimAt > -1);
 check("the claim happens BEFORE the handler switch", claimAt > -1 && switchAt > -1 && claimAt < switchAt);
 check("the claim is keyed on the Stripe event id", /claimStripeEvent\(event\.id/.test(webhook));
-check("a redelivery returns 200 without re-handling",
-  /if \(!firstDelivery\) return NextResponse\.json\(\{ received: true/.test(webhook));
+// The claim is THREE-state, and the distinction is load-bearing. Collapsing
+// "in_flight" into "completed" and answering 200 reintroduces the exact loss the
+// pending/stale mechanism exists to prevent: Stripe marks the event delivered,
+// stops retrying, and if the claim-holder died the event is gone. Only a COMPLETED
+// event may be acknowledged; a live-but-unsettled claim must be answered non-2xx.
+check("a COMPLETED redelivery returns 200 without re-handling",
+  /if \(claim === "completed"\) return NextResponse\.json\(\{ received: true/.test(webhook));
+check("an IN-FLIGHT (pending, not yet stale) delivery is answered non-2xx so Stripe retries",
+  /if \(claim === "in_flight"\)[\s\S]{0,220}status: (?:409|425|429|5\d\d)/.test(webhook));
+check("the in-flight refusal is NOT a 2xx (that would tell Stripe to stop retrying)",
+  !/if \(claim === "in_flight"\)[\s\S]{0,220}status: 2\d\d/.test(webhook));
+// And the library must actually be able to tell the two apart, or the route's branch
+// is decorative: a boolean return cannot distinguish completed from in-flight.
+check("claimStripeEvent distinguishes completed from in-flight (not a boolean)",
+  /Promise<StripeEventClaim>/.test(billing) &&
+  /return existing\.startsWith\(PENDING_PREFIX\) \? "in_flight" : "completed"/.test(billing));
+check("a refused claim with no surviving row fails toward retry, never toward silence",
+  /if \(!existing\) return "in_flight"/.test(billing));
 check("a ledger failure returns non-2xx so Stripe retries (never handled undeduped)",
   /phase: "dedupe"[\s\S]{0,200}status: 500/.test(webhook));
 
@@ -82,6 +98,104 @@ check("no NEW table is created for dedup",
 // its own row differently or the second claim no-ops and the credit is skipped.
 check("the letter-pack grant keys its ledger row separately from the event claim",
   /`\$\{eventId\}:letters_5`/.test(billing));
+
+// ── B-04g · the claim-then-handle WINDOW cannot swallow an event ─────────────
+// The Wave 1 fix released the claim only from the handler catch. A Vercel timeout,
+// OOM or instance kill between the claim and the response therefore left the claim
+// held forever: Stripe's retry was deduped away and the event was PERMANENTLY LOST.
+// The claim is now written PENDING and settled only after handling succeeds, and a
+// pending claim older than the abandonment window may be re-claimed. Same single
+// atomic statement, same table, no new column — the existing `type` column carries
+// the pending marker and `createdAt` carries the window.
+const claimFn = billing.slice(billing.indexOf("export async function claimStripeEvent"));
+const claimBody = claimFn.slice(0, claimFn.indexOf("\n}\n") + 2);
+check("claimStripeEvent body was located (the check is not vacuous)", claimBody.length > 0);
+check("the claim is still ONE atomic INSERT ... ON CONFLICT (no read-then-write race)",
+  /INSERT INTO "StripeWebhookEvent"[\s\S]*ON CONFLICT \("id"\)/.test(claimBody));
+check("an abandoned claim can be re-taken (ON CONFLICT DO UPDATE, not DO NOTHING)",
+  /ON CONFLICT \("id"\) DO UPDATE/.test(claimBody) && !/ON CONFLICT \("id"\) DO NOTHING/.test(claimBody));
+check("re-claiming requires the existing row to still be PENDING (a completed event is never re-run)",
+  /WHERE "StripeWebhookEvent"\."type" LIKE '\$\{PENDING_PREFIX\}%'/.test(claimBody));
+check("re-claiming ALSO requires the claim to be older than the abandonment window (a live invocation is never stolen)",
+  /AND "StripeWebhookEvent"\."createdAt" < CURRENT_TIMESTAMP - INTERVAL '\$\{STALE_CLAIM_MINUTES\} minutes'/.test(claimBody));
+check("the re-claim refreshes createdAt, so the window restarts for the new owner",
+  /"createdAt" = CURRENT_TIMESTAMP/.test(claimBody));
+check("the row is written with the pending marker, not the bare event type",
+  /PENDING_PREFIX \+ type/.test(claimBody) && !/^\s*type\s*$/m.test(claimBody));
+
+// Settlement: the claim only becomes a permanent dedup record after success.
+const completeFn = billing.slice(billing.indexOf("export async function completeStripeEvent"));
+const completeBody = completeFn.slice(0, completeFn.indexOf("\n}\n") + 2);
+check("completeStripeEvent body was located (the check is not vacuous)", completeBody.length > 0);
+check("settling rewrites the ledger row's type", /UPDATE "StripeWebhookEvent" SET "type" = \$2/.test(completeBody));
+check("the settled value is the BARE event type (it must no longer match the pending marker)",
+  !/PENDING_PREFIX/.test(completeBody));
+check("settlement never throws (the work is done; Stripe must not be told to retry it)",
+  /catch \(e\)/.test(completeBody) && !/throw/.test(completeBody));
+
+// The route must settle on the SUCCESS path only, after the handler switch.
+const completeCallAt = webhook.indexOf("completeStripeEvent(event.id, event.type)");
+const okReturnAt = webhook.lastIndexOf("return NextResponse.json({ received: true });");
+check("the webhook settles the claim after handling succeeds", completeCallAt > -1);
+check("settlement happens AFTER the handler switch, never before it",
+  completeCallAt > -1 && switchAt > -1 && completeCallAt > switchAt);
+check("settlement happens BEFORE the 200 is returned",
+  completeCallAt > -1 && okReturnAt > completeCallAt);
+check("settlement is not inside the failure path (it follows the handler catch)",
+  completeCallAt > -1 && handlerCatchAt > -1 && completeCallAt > handlerCatchAt);
+check("the duplicate short-circuit still returns before any handling",
+  webhook.indexOf("duplicate: true") > -1 && webhook.indexOf("duplicate: true") < switchAt);
+
+// The release must not be able to erase a SETTLED row.
+const releaseFn = billing.slice(billing.indexOf("export async function releaseStripeEvent"));
+const releaseBody = releaseFn.slice(0, releaseFn.indexOf("\n}\n") + 2);
+check("releaseStripeEvent body was located (the check is not vacuous)", releaseBody.length > 0);
+check("the release deletes only a still-PENDING row",
+  /DELETE FROM "StripeWebhookEvent" WHERE "id" = \$1 AND "type" LIKE '\$\{PENDING_PREFIX\}%'/.test(releaseBody));
+
+// NO SCHEMA CHANGE. The ledger DDL must still be the legacy three-column table and
+// nothing may alter it — the whole point is that this fix needs no migration.
+const ddl = /CREATE TABLE IF NOT EXISTS "StripeWebhookEvent" \(([^)]*\)[^)]*)\)/.exec(billing)?.[1] ?? "";
+check("the ledger DDL was located (the check is not vacuous)", ddl.length > 0);
+check("the ledger still has exactly the legacy id/type/createdAt columns",
+  /"id" TEXT PRIMARY KEY/.test(ddl) && /"type" TEXT NOT NULL/.test(ddl) && /"createdAt" TIMESTAMP/.test(ddl));
+check("no column was added to carry the pending state", !/"(status|state|completedAt|claimedAt)"/.test(billing));
+check("nothing alters the ledger table at runtime", !/ALTER TABLE "StripeWebhookEvent"/.test(billing));
+
+// Cross-artifact sanity, so the two constants cannot drift into nonsense.
+const pendingPrefix = /const PENDING_PREFIX = "([^"]*)"/.exec(billing)?.[1] ?? "";
+check("PENDING_PREFIX is a non-empty marker (an empty prefix would match every row)",
+  pendingPrefix.length > 0);
+// A handled event type that itself began with the marker would be indistinguishable
+// from a pending claim, so the settled row would read as still-pending forever.
+const handledTypes = Array.from(
+  webhook.slice(webhook.indexOf("HANDLED_EVENT_TYPES"), webhook.indexOf("]);")).matchAll(/"([a-z_.]+\.[a-z_.]+)"/g)
+).map((m) => m[1]);
+check("the handled-event list was located (the check is not vacuous)", handledTypes.length >= 6);
+check("no handled event type collides with the pending marker",
+  handledTypes.every((t) => !t.startsWith(pendingPrefix)));
+// The window must exceed the longest execution this app can possibly have, or a
+// slow-but-alive invocation could have its claim stolen and its event handled twice.
+const staleMinutes = Number(/const STALE_CLAIM_MINUTES = (\d+)/.exec(billing)?.[1] ?? "0");
+const declaredMaxDurations: number[] = [];
+const walkRoutes = (dir: string) => {
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const p = join(dir, entry.name);
+    if (entry.isDirectory()) walkRoutes(p);
+    else if (entry.name === "route.ts") {
+      for (const m of readFileSync(p, "utf8").matchAll(/export const maxDuration = (\d+)/g)) {
+        declaredMaxDurations.push(Number(m[1]));
+      }
+    }
+  }
+};
+walkRoutes(join(root, "app", "api"));
+check("route maxDuration declarations were found (the check is not vacuous)", declaredMaxDurations.length > 0);
+check("the abandonment window is longer than the longest maxDuration any route declares",
+  staleMinutes * 60 > Math.max(...declaredMaxDurations));
+// Vercel's own serverless ceiling, independent of what this repo declares.
+check("the abandonment window also exceeds Vercel's maximum function duration",
+  staleMinutes * 60 > 800);
 
 // ── B-04b · subscription handlers act on CURRENT state, not the payload ──────
 const subCaseAt = webhook.indexOf('case "customer.subscription.deleted"');
