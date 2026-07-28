@@ -826,13 +826,22 @@ model ReputationMilestone {
 // in the migration and no default: an existing paid subscriber who never agreed to
 // anything must not be represented here as having agreed.
 //
-// onDelete: Cascade — the row is evidence ABOUT a person and is keyed to their id;
-// when the account is erased the evidence must go with it rather than survive as an
-// orphaned identifier. (Contrast XpAward, which is Restrict because it is a
-// pseudonymous ledger that must outlive the identity join.)
+// onDelete: Restrict — NOT a retention decision, a refusal to let a foreign key make
+// one. Identity Constitution §12.3: erasure "is never a foreign-key cascade and never
+// an incidental consequence of deleting another principal"; §16 item 6: "Erasure and
+// retention are policy-driven commands, not cascades"; the §18 Authority Matrix names
+// "FK cascade" the forbidden mechanism for Execute erasure. §12.5 requires a consent store
+// to declare an erasure behavior, and §12.4 reserves durations to a counsel-ratified
+// schedule that does not exist yet — so Cascade would ALSO be an implementation
+// promising immediate total deletion, which §12.4 forbids until then. Restrict decides
+// nothing about how long consent evidence is kept; it only forces the explicit,
+// evidenced erasure command §12.3 requires. Same reasoning, same choice as XpAward and
+// ReputationMilestone; Organization.owner is the precedent for Restrict onto User.
+// No application path may hard-delete a User today (scripts/consumer-deletion-
+// containment.test.ts), so this changes no current runtime behaviour.
 model TermsAcceptance {
   id         String   @id @default(cuid())
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Restrict)
   userId     String
   version    String // terms revision agreed to, e.g. the /legal/terms `updated` date
   context    String // where it was given, e.g. "stripe_subscription_upgrade"

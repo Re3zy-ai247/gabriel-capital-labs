@@ -222,9 +222,12 @@ export async function POST(req: Request) {
       // client that sends nothing gets no row and no plan change.
       //
       // FAIL-CLOSED: this runs before every mutation in this branch. A caller
-      // hitting the API directly without acceptance gets 428 and Stripe is never
-      // touched; a database failure throws into the catch below and returns 500
-      // with no subscription changed. There is no env flag that turns it off —
+      // hitting the API directly without acceptance gets 428 with NO subscription
+      // created or modified and NO charge — the only Stripe calls that precede it
+      // are the customer lookup/creation and the read-only price and subscription
+      // lookups above, none of which bills anyone; a database failure throws into
+      // the catch below and returns 500 with no subscription changed. There is no
+      // env flag that turns it off —
       // one would be a switch that re-opens the hole.
       //
       // NOT RETROACTIVE: an existing subscriber has no row (nothing backfilled

@@ -47,4 +47,8 @@ CREATE UNIQUE INDEX "TermsAcceptance_userId_version_key" ON "TermsAcceptance"("u
 CREATE INDEX "TermsAcceptance_userId_acceptedAt_idx" ON "TermsAcceptance"("userId", "acceptedAt");
 
 -- AddForeignKey
-ALTER TABLE "TermsAcceptance" ADD CONSTRAINT "TermsAcceptance_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+-- ON DELETE RESTRICT, not CASCADE: Identity Constitution §12.3, §16 item 6 and the §18
+-- Authority Matrix forbid erasure by foreign-key cascade. This refuses a raw User delete
+-- (P2003) rather than silently destroying
+-- consent evidence; it decides no retention period (§12.4 reserves those to counsel).
+ALTER TABLE "TermsAcceptance" ADD CONSTRAINT "TermsAcceptance_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
