@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { currentAccount } from "@/lib/session";
 import {
   getStripe, resolvePrice, resolvePriceId, siteUrl,
   LETTER_PACK_CREDITS, type PaidPlan, type BillingInterval,
@@ -20,6 +20,21 @@ export const dynamic = "force-dynamic";
 // Changing this changes what customers are charged: treat it as a pricing
 // decision, not an implementation detail.
 const UPGRADE_PRORATION_BEHAVIOR = "create_prorations" as const;
+
+// The plans this API will actually sell, in ONE reviewable place.
+//
+// agency_pro is deliberately ABSENT: it is "Coming soon" on /pricing, and that
+// page promises "you can't be charged for a plan that isn't available yet".
+// Re-add it here the day the tier goes live, together with its live price.
+//
+// This list is a REFUSAL list, not a default list — see the validation at the
+// subscription branch below. Coercing an unrecognized plan into a purchasable one
+// sells the customer a product they did not ask for.
+const PURCHASABLE_PLANS = ["premium", "agency"] as const;
+type PurchasablePlan = (typeof PURCHASABLE_PLANS)[number];
+function isPurchasablePlan(value: string): value is PurchasablePlan {
+  return (PURCHASABLE_PLANS as readonly string[]).includes(value);
+}
 
 // Terms-of-Service acceptance at the point of payment, in ONE reviewable place.
 //
@@ -47,8 +62,9 @@ const CONSENT_COLLECTION = TOS_CONSENT_ENABLED
   : {};
 
 // Creates a Stripe Checkout Session. Body:
-//   { plan: "premium"|"agency"|"agency_pro", interval?: "month"|"year" }  — subscription
-//   { product: "letters_5" }                                              — one-time letter pack
+//   { plan?: "premium"|"agency", interval?: "month"|"year" }  — subscription
+//                                     (plan omitted = premium; any other value is a 400)
+//   { product: "letters_5" }                                  — one-time letter pack
 export async function POST(req: Request) {
   const stripe = getStripe();
   if (!stripe) {
@@ -56,11 +72,25 @@ export async function POST(req: Request) {
   }
 
   const body = await req.json().catch(() => ({}));
-  const session = await getServerSession(authOptions);
-  const email = session?.user?.email;
-  if (!email) return NextResponse.json({ error: "Please sign in first." }, { status: 401 });
 
-  const user = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
+  // Resolve the account by user ID, never by the session's email. Email is
+  // user-mutable (app/api/profile/route.ts changes it) while the JWT keeps the
+  // address it was minted with, so an email lookup either misses the real owner
+  // — blocking a paying customer from buying — or, once the released address is
+  // registered by someone else, resolves to a STRANGER's row and would charge
+  // this session against that person's Stripe customer. currentAccount()
+  // resolves by id and re-checks `disabled` fail-closed. It is also the right
+  // helper for billing specifically: unlike currentUser(), it never follows the
+  // agency workspace or admin impersonation cookie, so a purchase is always made
+  // by (and billed to) the account that is actually signed in.
+  //
+  // The 401/404 split is preserved: no session at all is 401, a session whose
+  // account no longer resolves (deleted or disabled) is 404.
+  const session = await getServerSession(authOptions);
+  const signedIn = Boolean((session?.user as { id?: string } | undefined)?.id);
+  if (!signedIn) return NextResponse.json({ error: "Please sign in first." }, { status: 401 });
+
+  const user = await currentAccount();
   if (!user) return NextResponse.json({ error: "Account not found." }, { status: 404 });
 
   const base = siteUrl();
@@ -85,11 +115,31 @@ export async function POST(req: Request) {
     }
 
     // ── Subscriptions ───────────────────────────────────────────────────────
-    // Purchasable plans ONLY. agency_pro is "Coming soon" on /pricing — the page
-    // promises "you can't be charged for a plan that isn't available yet", so the
-    // API must not sell it either (it was previously reachable by hand-crafted
-    // POST at a stale price). Re-add it here the day the tier goes live.
-    const plan: PaidPlan = ["premium", "agency"].includes(body.plan) ? body.plan : "premium";
+    // An unrecognized plan is REFUSED, never coerced. This line previously fell
+    // back to premium for any value it did not recognize, so a client posting
+    // plan:"agency_pro" (marketed at $699 on /pricing) was silently charged $99
+    // and provisioned Professional — the wrong product, at the wrong price, with
+    // no error telling anyone. Anything outside PURCHASABLE_PLANS is a 400 now.
+    //
+    // An OMITTED plan still means "premium". That is the standing contract with
+    // app/billing/page.tsx, whose Upgrade button posts no body at all and means
+    // Professional; only a plan that was actually ASKED for and is not sellable is
+    // rejected. (Changing that default is a client change in a file this route
+    // does not own.)
+    const requestedPlan: string =
+      typeof body.plan === "string" && body.plan.length > 0 ? body.plan : "premium";
+    if (!isPurchasablePlan(requestedPlan)) {
+      return NextResponse.json(
+        {
+          error:
+            requestedPlan === "agency_pro"
+              ? "Agency Pro isn't available for purchase yet, so you can't be charged for it."
+              : "That plan isn't available. Please choose a plan from the pricing page.",
+        },
+        { status: 400 }
+      );
+    }
+    const plan: PaidPlan = requestedPlan;
     const interval: BillingInterval = body.interval === "year" ? "year" : "month";
 
     // Block buying a plan you already have (or better).
@@ -156,6 +206,19 @@ export async function POST(req: Request) {
       // of the current period, so the customer pays the difference — never twice.
       // `proration_behavior` is a named constant so the billing policy is one
       // reviewable decision rather than a literal buried in a call.
+      //
+      // ⚠️ KNOWN GAP — B-06 (ToS consent is NOT collected on this path).
+      // CONSENT_COLLECTION above only applies to Checkout Sessions. This upgrade
+      // never opens Checkout, so Stripe renders no Terms-of-Service checkbox and
+      // records no acceptance on the customer — even with STRIPE_TOS_CONSENT=1.
+      // A customer can therefore move onto a higher-priced plan having agreed to
+      // nothing at the point of that charge. Stripe offers no consent mechanism on
+      // subscriptions.update, so closing this needs an in-app acceptance captured
+      // BEFORE this call and stored durably, which needs a schema change (a
+      // consent timestamp + policy version on User) under the MIGRATION-FIRST
+      // policy — out of scope for this wave, tracked in the RC1 blocker list.
+      // scripts/checkout-consent.test.ts currently pins the two-spread reality on
+      // purpose; it must be updated in the same change that closes this.
       const updated = await stripe.subscriptions.update(sub.id, {
         items: [{ id: items[0].id, price: priceId }],
         proration_behavior: UPGRADE_PRORATION_BEHAVIOR,
