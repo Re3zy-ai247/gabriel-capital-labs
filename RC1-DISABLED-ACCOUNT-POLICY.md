@@ -1,9 +1,11 @@
 # RC1 — Disabled accounts and live billing
 
-**Status: OWNER DECISION REQUIRED. Nothing in this document has been implemented.**
-It maps the behaviour that exists today and lays out bounded options. It does not choose one,
-and it does not state a legal conclusion — where a legal question is load-bearing it is marked
-**BLOCKED — COUNSEL** and routed to B-12.
+**Status: DECIDED — the owner ratified a cancellation-only policy (RC1 Wave 2.4). The remedy is
+implemented in the companion release unit, not in this one.** See §5 for what was chosen and why.
+This document is now the RECORD of that decision: §1 remains the verified behaviour it maps, §3
+remains the options analysis the choice was made from, and neither has been rewritten after the
+fact. It still states no legal conclusion — where a legal question is load-bearing it is marked
+**BLOCKED — COUNSEL** and routed to B-12, and **B-12 is still open**.
 
 Scope: what happens to a paying subscriber whose account is disabled. Raised by RC1 Wave 1,
 which changed `app/api/stripe/portal/route.ts` to resolve identity through `currentAccount()`.
@@ -183,21 +185,44 @@ task, not a code change, and it is listed in `scripts/verify-production.sh` §2.
 
 ---
 
-## 5. The decision requested
+## 5. The decision — ANSWERED (RC1 Wave 2.4)
 
-> **Which policy governs a disabled account that holds a live subscription — A, B, C, or D
-> (and if C, cancel at period end or immediately)?**
+> **Which policy governs a disabled account that holds a live subscription?**
 
-Nothing will be implemented until that is answered. Two notes for the answer:
+**Option A, in substance — cancellation-only self-service — but implemented WITHOUT the hosted
+Billing Portal**, because the portal half of Option A turned out to be unreachable from this
+repository.
 
-1. **B is the only option that needs no code**, so it can also serve as an interim floor while a
-   larger option is built — but only if the contact channel and SLA are actually published,
-   because an unpublished channel leaves the customer exactly where §1 puts them.
-2. **The counsel question in §2 may constrain the answer.** If B-12 concludes that a
-   self-service cancellation path is required, B alone stops being sufficient and the choice
-   narrows to A, C or D.
+**Why not the portal.** Option A above assumed "a portal configuration that permits cancellation
+only". The repository contains exactly one `billingPortal.sessions.create` call and it passes no
+`configuration` parameter, and there is no `billingPortal.configurations` anywhere in the tree. What
+a portal session actually permits — update card, change plan, resume, buy — is therefore Stripe
+Dashboard state that cannot be proven, reviewed or regression-tested from here. Handing an
+unrestricted portal to a suspended account would have meant *asserting* a restriction we cannot
+demonstrate, so it was rejected.
+
+**What ships instead.** A direct server-side cancellation path, reusing the same Stripe primitive
+`app/api/admin/billing/cancel/route.ts` already relies on: `subscriptions.update` with
+`cancel_at_period_end: true`, with the subject pinned to the caller's own row. It grants no other
+capability. Billing stops at the end of the already-paid period; immediate cancellation stays an
+admin action. **The implementation and its guards live in the companion release unit**, not in this
+one — this unit is the Stripe webhook lifecycle.
+
+**Two things this decision did NOT settle, and they are not closed:**
+
+1. **The reachability ceiling.** `lib/auth.ts` refuses sign-in for a disabled account, and sessions
+   are stateless JWTs. The remedy therefore works only while an already-issued token is still valid.
+   A suspended user who has signed out cannot reach it. Closing that means reopening a scoped
+   sign-in surface — the exact security cost §3 Option A priced — and it was deliberately **not**
+   smuggled into the release. It remains an open owner decision.
+2. **The counsel question in §2 is unchanged and still BLOCKED — COUNSEL (B-12).** Whether a
+   self-service path is *required*, and what a defensible alternative channel looks like, is not
+   resolved by this decision. Nothing here is legal advice.
+
+**Option B is still worth having as a floor** — a published contact channel and SLA cost no code and
+cover the signed-out case that item 1 leaves open.
 
 ---
 
-*Related: `CREDITVECTOR_RC1_CRITERIA.md` (canonical Go/No-Go) · `scripts/verify-production.sh`
-(the production reconciliation procedure) · `.ai/RUNBOOKS/schema-change.md` (needed only for D).*
+*Related: `scripts/verify-production.sh` (the production reconciliation procedure) ·
+`.ai/RUNBOOKS/schema-change.md` (needed only for D).*

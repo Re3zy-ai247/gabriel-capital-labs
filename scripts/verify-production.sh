@@ -331,8 +331,10 @@ note "legacy Agency Pro at \$799/mo and \$7,990/yr are DELIBERATELY still mapped
 record verify "disabled accounts hold no live subscription" "identity state lives in our DB; billing state lives in Stripe — neither side sees both"
 note "admin UI → Users → filter disabled; for each, check subscriptionStatus"
 note "cross-check in Stripe Dashboard (LIVE) → Customers → the matching stripeCustomerId"
-note "any disabled account with an ACTIVE subscription is billing a customer who cannot self-cancel"
-note "→ decision required: RC1-DISABLED-ACCOUNT-POLICY.md"
+note "any disabled account with an ACTIVE subscription needs resolving one way or the other"
+note "policy DECIDED — cancellation-only self-service; see RC1-DISABLED-ACCOUNT-POLICY.md §5"
+note "the path is reachable only while an already-issued session token is still valid, so the"
+note "existing population still has to be reconciled by hand — this check is that reconciliation"
 
 record verify "the deployed release is the reviewed commit" "the repo cannot prove what is deployed"
 note "curl -sI ${BASE}/ | grep -i x-cv-release   # compare with the reviewed SHA"
