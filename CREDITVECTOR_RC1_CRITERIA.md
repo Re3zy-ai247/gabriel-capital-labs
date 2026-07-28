@@ -2,7 +2,7 @@
 
 **The executive Go/No-Go checklist for CreditVector Version 1.0.**
 
-**Version:** 1.0 · **Status:** Draft — not ratified · **Date:** 2026-07-28
+**Version:** 1.1 · **Status:** Draft — not ratified · **Date:** 2026-07-28 (Wave 1 applied)
 **Method:** repository audit of 26 launch-critical subsystems; every finding independently
 re-verified against source before entry. **No code was written. No feature was implemented.**
 
@@ -64,14 +64,24 @@ the audit container, an environmental limitation, not a finding.
 
 ## 2. VERDICT
 
-> # 🔴 NO-GO for Version 1.0
+> # 🔴 NO-GO for Version 1.0 — but materially advanced
 >
-> **12 launch-blocking defects** across billing integrity, compliance, security, data integrity and
-> operations. **14 items require live verification** before any gate can be closed.
+> **Execution Wave 1 (2026-07-28) closed 7 of the 12 launch blockers** and landed partial fixes on 2
+> more. **3 remain open** and **none of the three is an engineering task** — they are counsel, an
+> owner-run restore drill, and a schema change requiring owner ratification. **14 items still require
+> live verification.**
 >
-> **This is not a "needs polish" verdict.** Four of the twelve cause **direct revenue loss or
-> incorrect charges on live Stripe billing today**, and one is a **compliance control that does not
-> enforce a bar the company has declared non-negotiable.**
+> | | Wave 0 (audit) | After Wave 1 |
+> |---|---|---|
+> | Blockers closed | 0 | **7** (B-01, B-02, B-03, B-04, B-07, B-08, B-11) |
+> | Partially closed | 0 | **2** (B-05 compliance, B-10 monitoring) |
+> | Open | 12 | **3** (B-06 schema · B-09 owner drill · B-12 counsel) |
+> | Conditional | 2 | 2 (C-01, C-02 — both VERIFICATION REQUIRED) |
+> | Guard checks added | 0 | **243** across 5 new guard scripts |
+>
+> **Every revenue-integrity blocker is closed.** The free-letter bypass, wrong-plan checkout, stale-email
+> billing authorization, and webhook ordering are fixed and guarded. What remains is legal sign-off, a
+> restore drill only the owner can unblock, and one consent column.
 
 **The product is strong.** The dispute engine, letter generation, §605 obsolescence math, client-
 capacity enforcement, encryption at rest, and prompt-injection fencing are genuinely well-built and
@@ -101,6 +111,32 @@ The two that remain are the two that were never engineering-blocked — they wer
 ## 3. Launch-blocking defects — the Go/No-Go gate
 
 **All twelve must close. No exceptions, no partial credit.**
+
+### Wave 1 status (2026-07-28) — read this column first
+
+| # | Status | Where |
+|---|---|---|
+| B-01 free-letter bypass | ✅ **CLOSED** | `a2fa6ea` — usage reads the append-only ledger, `MAX(rows, ledger)` |
+| B-02 wrong-plan checkout | ✅ **CLOSED** | `6bc4cf4` — unknown plan → 400; `6bc4cf4`/`c3c4954` — `planForPrice` fails closed |
+| B-03 stale-email billing authz | ✅ **CLOSED** | `6bc4cf4` — all three routes use `currentAccount()`; guard blocks reintroduction |
+| B-04 webhook idempotency/ordering | ✅ **CLOSED** | `c3c4954` — ledger claim + re-retrieve. **Residual:** a timeout/OOM between claim and return leaves the claim held and drops that event |
+| B-05 compliance score bar | ⚠️ **PARTIAL** | `013ea53` — gap closed, but literal-phrase regexes; ~half of a 20-phrase adversarial set still slips through. **Counsel question** |
+| B-06 no ToS acceptance | ❌ **OPEN** | Needs a `termsAcceptedAt` column — **no schema this wave**. Marker comment at the upgrade call site |
+| B-07 demo-seed credentials | ✅ **CLOSED** | `bd8f108` — 404 in production, password removed from the body |
+| B-08 letter orphaning | ✅ **CLOSED** | `bd8f108` — natural-key re-link inside one transaction. **Trade-off:** all-or-nothing on very large reports |
+| B-09 backup/recovery | ❌ **OPEN** | `826413b` corrected the runbook's superseded schema premise and added the post-restore repair step. **The drill itself is owner-blocked and has not run. RPO/RTO remain blank** |
+| B-10 alerting/monitoring | ⚠️ **PARTIAL** | `826413b` — 404 now fails the probe, `global-error.tsx` added, cron-liveness check documented. **`ALERT_WEBHOOK_URL` is still unset — alerting remains dormant** |
+| B-11 admin revocation | ✅ **CLOSED** | `bd8f108` — `requireAdmin()` fails closed on `disabled`, resolves by id |
+| B-12 counsel sign-off | ❌ **OPEN** | External. Unchanged — and still the critical path |
+
+**One fix failed verification and was corrected before commit.** Wave 1's `invoice.payment_failed`
+gate initially read only the legacy `invoice.subscription` field. Stripe moved that field in API
+version `2025-03-31.basil`, and which shape arrives depends on the version pinned on the **webhook
+endpoint**, not the SDK's outbound pin — so under a modern endpoint the gate would have fired on
+every invoice and **`past_due` would never have been written at all**, silently disabling dunning.
+The resolver now reads both shapes, with a guard assertion that fails if either is removed.
+
+---
 
 | # | Defect | Subsystem | Evidence | Risk |
 |---|---|---|---|---|
@@ -733,6 +769,49 @@ engineering work below fits inside that window.
 | **5–7** | Accessibility sweep · X-1 guard hardening (auth sweep, capacity copy, compliance completeness) | Eng |
 | **Counsel returns** | Apply required copy/flow changes → CCO gate → re-run all gates | All |
 | **Gate review** | Every box in §7 ticked, with evidence | **Founder** |
+
+---
+
+## 8a. Execution Wave 1 — record (2026-07-28)
+
+Six subsystems, strictly disjoint file ownership, **zero schema changes** (MIGRATION-FIRST keeps new
+schema an owner-ratified release step). Every fix independently verified by a separate agent that
+re-ran the guards and attempted a bypass; guards were proved non-vacuous by running them against the
+pre-fix tree.
+
+**18 files changed · 6 commits · 5 new guard scripts · 243 new checks.**
+
+| Guard | Checks | Non-vacuity proof (run against pre-fix tree) |
+|---|---:|---|
+| `scripts/billing-integrity.test.ts` | 31 | 5 passed, **26 failed** |
+| `scripts/stripe-lifecycle.test.ts` | 52 | breaking either invoice shape fails it |
+| `scripts/billing-identity.test.ts` | 37 | fails if email-keyed identity returns |
+| `scripts/compliance-bar.test.ts` | 90 | 71 passed, **19 failed** |
+| `scripts/critical-paths.test.ts` | 33 | 9 passed, **24 failed** |
+
+All pre-existing guards covering the changed subsystems still pass: `agency-capacity` 40/40,
+`checkout-guard` 21/21, `checkout-consent` 11/11, `schema-safety` 17/17, `observability` 18/18.
+`letter.test.ts` cannot execute here — it needs `@prisma/client`, and it fails identically at clean
+HEAD, so this is environmental and pre-existing.
+
+### Residual risks introduced by Wave 1 — stated plainly
+
+1. **Webhook claim-then-handle window.** A Vercel timeout, OOM or instance kill between claiming an
+   event and returning leaves the claim held, so Stripe's retry is deduplicated away and that event
+   is permanently dropped. Narrower than the ordering bug it replaces, but new. A claim TTL or a
+   completed-marker would close it.
+2. **Re-analysis is now all-or-nothing** inside a 15s interactive transaction with a sequential create
+   loop up to the parser's 150-row cap. It fails closed rather than corrupting data, but a very large
+   report could time out where it previously wrote partial rows. **Needs production verification.**
+3. **`planForPrice` now fails closed**, which converts a silent over-grant into a silent under-grant: a
+   customer on a Dashboard-created, imported, promotional or metered price now keeps their existing
+   plan instead of being handed premium. Correct, but it will surface as support tickets if such
+   prices exist. **Owner should confirm the live catalog has no out-of-band prices.**
+4. **Compliance rules can reject member posts that previously published**, because `applyCompliance`
+   flags are a hard reject gate on community writes.
+5. **A disabled-but-paying subscriber now gets 401 from the billing portal** and cannot self-cancel,
+   because `currentAccount()` fails closed on `disabled`. Correct for security, but it means account
+   suspension must be paired with a billing decision.
 
 ---
 
