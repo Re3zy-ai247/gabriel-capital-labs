@@ -86,6 +86,14 @@ export async function POST(req: Request) {
   // so Stripe retries — handling an event with no dedup available risks double
   // credits, which is worse than a retry.
   //
+  // ROLLING THIS BACK IS NOT A PLAIN REVERT. The claim reuses the EXISTING
+  // "StripeWebhookEvent"."type" column and writes `pending:<eventType>` into it, under
+  // the BARE event id — the same key the pre-change creditLetters() ledger used. Revert
+  // this code with pending rows still in the table and the old creditLetters() reads
+  // them as "already processed", so a letter-pack purchase is silently never credited.
+  // Procedure, with the exact cleanup SQL and its stop conditions:
+  // .ai/RUNBOOKS/stripe-webhook-rollback.md
+  //
   // The claim is PENDING until completeStripeEvent settles it below. That matters
   // because the only release used to be the handler catch: if this instance were
   // timed out, OOM-killed or evicted between the claim and the response, the claim
