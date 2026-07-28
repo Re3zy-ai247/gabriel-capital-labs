@@ -1,0 +1,5 @@
+# Working projections are transient and never committed.
+# Only release snapshots under releases/ are tracked. Architecture §6.3.
+build/
+*.tmp
+_*.tmp

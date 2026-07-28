@@ -2,7 +2,7 @@
 
 The Founder Library is versioned documentation. Volumes evolve through revisions, never replacement. This log records status, founder ratifications, revisions made and pending, observations carried forward, and open items.
 
-Governing rules are in **[Volume 0 — Why This Library Exists](VOLUME-00-WHY-THIS-LIBRARY-EXISTS.md)**. In summary:
+Governing rules are in **[Volume 0 — Why This Library Exists](books/book-01-foundation/VOLUME-00-WHY-THIS-LIBRARY-EXISTS.md)**. In summary:
 
 - A published volume is never overwritten to fix a downstream inconsistency. The inconsistency is logged here and resolved in a numbered revision.
 - Major version = the position changed. Minor version = corrected, clarified, or reconciled. **Presentation-only work advances no version.**
@@ -15,13 +15,13 @@ Governing rules are in **[Volume 0 — Why This Library Exists](VOLUME-00-WHY-TH
 
 | # | Volume | Version | Status | Last change |
 |---|---|---|---|---|
-| 0 | [Why This Library Exists](VOLUME-00-WHY-THIS-LIBRARY-EXISTS.md) | 1.0 | Draft | 2026-07-27 — created |
-| 1 | [Executive Summary](VOLUME-01-EXECUTIVE-SUMMARY.md) — CreditVector | 1.0 | Draft | 2026-07-27 — created; text unchanged since |
-| 2 | [Gabriel Capital Labs](VOLUME-02-GABRIEL-CAPITAL-LABS.md) | 1.0 | Draft | 2026-07-27 — created; prose tightened pre-publication |
-| 3 | [The Financial Trust Problem](VOLUME-03-THE-FINANCIAL-TRUST-PROBLEM.md) | 1.0 | Draft | 2026-07-27 — created |
-| 4 | [The CreditVector Solution](VOLUME-04-THE-CREDITVECTOR-SOLUTION.md) | 1.0 | Draft | 2026-07-27 — created |
-| 5 | [Product Philosophy](VOLUME-05-PRODUCT-PHILOSOPHY.md) | 1.0 | Draft | 2026-07-27 — created |
-| 6 | [Business Model](VOLUME-06-BUSINESS-MODEL.md) — *Book II* | 1.0 | Draft | 2026-07-27 — created |
+| 0 | [Why This Library Exists](books/book-01-foundation/VOLUME-00-WHY-THIS-LIBRARY-EXISTS.md) | 1.0 | Draft | 2026-07-27 — created |
+| 1 | [Executive Summary](books/book-01-foundation/VOLUME-01-EXECUTIVE-SUMMARY.md) — CreditVector | 1.0 | Draft | 2026-07-27 — created; text unchanged since |
+| 2 | [Gabriel Capital Labs](books/book-01-foundation/VOLUME-02-GABRIEL-CAPITAL-LABS.md) | 1.0 | Draft | 2026-07-27 — created; prose tightened pre-publication |
+| 3 | [The Financial Trust Problem](books/book-01-foundation/VOLUME-03-THE-FINANCIAL-TRUST-PROBLEM.md) | 1.0 | Draft | 2026-07-27 — created |
+| 4 | [The CreditVector Solution](books/book-01-foundation/VOLUME-04-THE-CREDITVECTOR-SOLUTION.md) | 1.0 | Draft | 2026-07-27 — created |
+| 5 | [Product Philosophy](books/book-01-foundation/VOLUME-05-PRODUCT-PHILOSOPHY.md) | 1.0 | Draft | 2026-07-27 — created |
+| 6 | [Business Model](books/book-02-market-and-model/VOLUME-06-BUSINESS-MODEL.md) — *Book II* | 1.0 | Draft | 2026-07-27 — created |
 | 7–12 | See Volume 0 §Current Library Index | — | Planned | — |
 
 ---

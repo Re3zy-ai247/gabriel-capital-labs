@@ -1,3 +1,20 @@
+<!--
+ARCHIVED 2026-07-27
+Reason: superseded by the domain README written under Knowledge Architecture 1.0.
+Superseded by: knowledge/founder-library/README.md
+Authorised by: Founder (Knowledge Architecture 1.0 migration)
+Original path: founder-library/README.md
+Path history: founder-library/README.md (2026-07-27 → 2026-07-28)
+
+NOTE ON THE LINKS BELOW: the relative paths in this document resolved correctly
+at the time it was archived, when the volumes were siblings of this file. They do
+not resolve from the archive, and they are LEFT AS THEY WERE ON PURPOSE — this is
+a frozen record of what the file said, not a maintained document. The volumes are
+now at knowledge/founder-library/books/. Architecture §8 rule 1: append-only.
+
+This file is append-only. Do not modify it.
+-->
+
 # CreditVector Founder Library
 
 The canonical business, product, executive, investor, and strategic documentation for **CreditVector™** by **Gabriel Capital Labs**.
