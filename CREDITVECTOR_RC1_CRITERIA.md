@@ -2,7 +2,7 @@
 
 **The executive Go/No-Go checklist for CreditVector Version 1.0.**
 
-**Version:** 1.4 · **Status:** Draft — not ratified · **Date:** 2026-07-28 (Waves 1–2.2 applied)
+**Version:** 1.5 · **Status:** Draft — not ratified · **Date:** 2026-07-28 (Waves 1–2.3 applied)
 **Method:** repository audit of 26 launch-critical subsystems; every finding independently
 re-verified against source before entry. **No code was written. No feature was implemented.**
 
@@ -112,7 +112,40 @@ The two that remain are the two that were never engineering-blocked — they wer
 
 **All twelve must close. No exceptions, no partial credit.**
 
-### Wave 2.2 status (2026-07-28) — read this column first
+### Wave 2.3 status (2026-07-28) — read this column first
+
+**Four clean release branches now exist, each cut from verified current `origin/main` (`dfe7a3a`) and
+each proven independently under CI-equivalent conditions** — `rm -rf node_modules .next` → `npm ci` →
+`prisma generate` → `tsc --noEmit` → full guard suite → `next build`, with no shared install, no shared
+Prisma client, and no borrowed build output (owner decision **O6**).
+
+| Unit | Branch | Head | Files | Typecheck | Build | Guards | Merge posture |
+|---|---|---|---|---|---|---|---|
+| PR-1 | `release/pr1-critical-fixes` | `103f84e` | 14 | PASS | PASS | 73/73 | **NOT SAFE TO MERGE** — owner items |
+| PR-2 | `release/pr2-stripe-lifecycle` | `475e180` | 14 | PASS | PASS | 71/71 + 2/2 runtime | **CONDITIONAL — OWNER** |
+| PR-0b | `release/pr0b-ops-runbooks` | `57359d7` | 6 | PASS | PASS | 70/70 | **SAFE TO MERGE** |
+| PR-0c | `release/pr0c-global-error-boundary` | `6309e39` | 1 | PASS | PASS | 70/70 | **SAFE TO MERGE** |
+
+Control branch `release/control-origin-main` (base, 0 picks) records 70/70 guards, `tsc` PASS,
+`next build` PASS. Guard arithmetic cross-checks the extraction: base 70 · PR-1 +3 · PR-2 +1 ·
+PR-0b/0c +0. **Cross-branch file overlap: ZERO.** Founder Library commits in ancestry: **0** on every
+branch. Forbidden paths in diff: **0** on every branch.
+
+**New risk recorded — PR-2 rollback is asymmetric.** Reverting PR-2 leaves `pending:%` rows in
+`StripeWebhookEvent` that the restored code reads as "already processed", silently dropping those
+webhooks. Remediation requires a production `DELETE ... WHERE type LIKE 'pending:%'` — **a production
+action, not performed.**
+
+**No blocker status changed this wave.** PR-3, PR-4a, PR-4b, PR-5 and PR-0a remain **prepared
+manifests only — not built, not authorized.** **Branches are local only — nothing was pushed, no
+GitHub PR was created.** No merge, deploy, migration apply, Gate D baseline, live Stripe mutation, or
+production database contact occurred.
+
+Full record: `CREDITVECTOR_RC1_CLEAN_RELEASE_BRANCH_WAVE_2_3_REPORT.md`.
+
+---
+
+### Wave 2.2 status (2026-07-28)
 
 **Every proposed PR was simulated in an isolated worktree cherry-picked onto `origin/main`.** The
 combined branch passing proved nothing about extraction, and simulation falsified the plan in three

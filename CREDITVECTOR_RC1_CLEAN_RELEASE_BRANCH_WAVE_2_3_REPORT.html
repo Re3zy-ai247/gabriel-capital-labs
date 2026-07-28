@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CreditVector — RC1 Release Candidate Extraction, Wave 2.2</title>
+<meta name="description" content="RC1 Execution Wave 2 — Go/No-Go status, blockers, and required decisions.">
+<style>
+:root{--bg:#ffffff;--fg:#14181f;--mut:#4a5462;--line:#d9dee6;--acc:#0b4fa8;--code:#f2f4f7;
+--red:#8a1420;--redbg:#fdeaec;--amb:#7a4a00;--ambbg:#fff5e0;--grn:#0f5c34;--grnbg:#e6f5ec;}
+*{box-sizing:border-box}
+body{margin:0;padding:1.1rem;background:var(--bg);color:var(--fg);
+font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+-webkit-text-size-adjust:100%;overflow-wrap:break-word}
+main{max-width:60rem;margin:0 auto}
+h1{font-size:1.6rem;line-height:1.25;margin:.2rem 0 .4rem;letter-spacing:-.01em}
+h2{font-size:1.28rem;margin:2.2rem 0 .7rem;padding-bottom:.32rem;border-bottom:2px solid var(--line)}
+h3{font-size:1.08rem;margin:1.6rem 0 .5rem}
+h4{font-size:1rem;margin:1.2rem 0 .4rem;color:var(--mut)}
+p{margin:.7rem 0}
+a{color:var(--acc)}
+code{background:var(--code);padding:.12em .38em;border-radius:4px;
+font:.86em/1.4 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;word-break:break-word}
+hr{border:0;border-top:1px solid var(--line);margin:2rem 0}
+blockquote{margin:1.1rem 0;padding:.85rem 1rem;background:var(--redbg);
+border-left:4px solid var(--red);border-radius:0 6px 6px 0;color:#5c0f18}
+blockquote strong{color:var(--red)}
+ul,ol{padding-left:1.35rem;margin:.7rem 0}
+li{margin:.34rem 0}
+.tw{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:1rem 0;
+border:1px solid var(--line);border-radius:8px}
+table{border-collapse:collapse;width:100%;min-width:34rem;font-size:.9rem}
+th,td{padding:.55rem .7rem;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+th{background:#f5f7fa;font-weight:650;white-space:nowrap}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:nth-child(even){background:#fafbfc}
+.meta{color:var(--mut);font-size:.92rem;margin:.5rem 0 1.2rem}
+nav.toc{background:#f7f9fb;border:1px solid var(--line);border-radius:8px;padding:.85rem 1rem;margin:1.4rem 0}
+nav.toc h2{font-size:.82rem;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);
+border:0;margin:0 0 .5rem;padding:0}
+nav.toc ol{margin:0;padding-left:1.2rem;font-size:.92rem}
+nav.toc li{margin:.2rem 0}
+.legend{display:flex;flex-wrap:wrap;gap:.4rem;margin:1rem 0}
+.tag{font-size:.76rem;font-weight:650;padding:.18rem .5rem;border-radius:999px;white-space:nowrap}
+.t-open{background:var(--redbg);color:var(--red)}
+.t-part{background:var(--ambbg);color:var(--amb)}
+.t-closed{background:var(--grnbg);color:var(--grn)}
+footer{margin-top:2.5rem;padding-top:1rem;border-top:1px solid var(--line);
+color:var(--mut);font-size:.85rem}
+@media(max-width:34rem){body{padding:.8rem}h1{font-size:1.35rem}table{font-size:.84rem;min-width:30rem}}
+@media print{body{padding:0;font-size:11pt}nav.toc{break-inside:avoid}
+.tw{overflow:visible;border:0}table{min-width:0;font-size:9pt}
+h2{break-after:avoid}tr{break-inside:avoid}a{color:#000;text-decoration:none}
+a[href^="http"]::after{content:" (" attr(href) ")";font-size:8pt;color:#555}}
+</style></head><body><main>
+<p class="meta"><strong>Gabriel Capital Labs</strong> · Draft — not ratified · 2026-07-28<br>
+Branch <code>claude/creditvector-founder-library-jwnbhc</code> · Commits <code>d6303fc</code> → <code>HEAD</code></p>
+<div class="legend"><span class="tag t-closed">CLOSED 9</span><span class="tag t-part">PARTIAL 3</span><span class="tag t-open">OPEN / BLOCKED 2</span><span class="tag t-open">VERIFICATION REQUIRED 2</span></div>
+<nav class="toc"><h2>Contents</h2><ol><li><a href="#1-context-for-a-reader-with-no-repository-access">1. Context for a reader with no repository access</a></li><li><a href="#2-owner-decisions-applied">2. Owner decisions applied</a></li><li><a href="#3-agents-and-ownership">3. Agents and ownership</a></li><li><a href="#4-two-workstream-exclusion-proof">4. Two-workstream exclusion — proof</a></li><li><a href="#5-clean-branch-matrix">5. Clean-branch matrix</a></li><li><a href="#6-branch-results">6. Branch results</a></li><li><a href="#7-corrections-made-during-the-wave">7. Corrections made during the wave</a></li><li><a href="#8-runtime-vs-source-level-evidence">8. Runtime vs source-level evidence</a></li><li><a href="#9-copy-and-paste-ready-pr-packages">9. Copy-and-paste-ready PR packages</a></li><li><a href="#10-prepared-manifests-not-authorized-not-built">10. Prepared manifests — NOT authorized, NOT built</a></li><li><a href="#11-go-no-go-no-go-unchanged">11. Go/No-Go — 🔴 NO-GO, unchanged</a></li><li><a href="#12-actions-required">12. Actions required</a></li><li><a href="#13-recommendation">13. Recommendation</a></li></ol></nav>
+<h1 id="creditvector-rc1-clean-release-branch-program-wave-2-3">CreditVector — RC1 Clean Release Branch Program, Wave 2.3</h1>
+<p>
+<strong>Date:</strong> 2026-07-28 · <strong>Source branch:</strong> <code>claude/creditvector-founder-library-jwnbhc</code> @ <code>5a4b006</code>
+ 
+<strong>Verified base:</strong> <code>origin/main</code> = <code>dfe7a3a</code> — <strong>fetched and confirmed UNCHANGED since Wave 2.2</strong>
+ 
+<strong>Status:</strong> Draft — not ratified
+</p>
+<blockquote><strong>Four clean release branches now exist, each built from <code>origin/main</code> and proven under isolated CI-equivalent conditions.</strong> The mixed source branch is no longer the delivery vehicle. <strong>RC1 remains 🔴 NO-GO.</strong> No blocker status changed. <strong>No merge, no deploy, no production migration, no Gate D baseline, no live Stripe mutation, no production database contact, no GitHub PR created, no push of any release branch.</strong></blockquote>
+<hr>
+<h2 id="1-context-for-a-reader-with-no-repository-access">1. Context for a reader with no repository access</h2>
+<p>
+<strong>CreditVector</strong> is a live Next.js 14 consumer-credit <strong>education</strong> SaaS (creditvector.app) with live
+ 
+Stripe billing. <strong>RC1</strong> is its Version 1.0 release program. Waves 1–2.2 fixed 9 launch blockers and
+ 
+proved that the working branch <strong>could not be shipped as-is</strong>: it carries two unrelated workstreams,
+ 
+and several proposed PRs were unbuildable as specified.
+</p>
+<p>
+<strong>Wave 2.3 built the actual release units.</strong> Each is a fresh branch from <code>origin/main</code>, assembled by
+ 
+cherry-pick, and proven with <strong>its own <code>npm ci</code> and its own <code>prisma generate</code></strong> — never shared state.
+</p>
+<p>
+<strong>Merging to <code>main</code> auto-deploys production.</strong> Merge and deploy are one event.
+</p>
+<hr>
+<h2 id="2-owner-decisions-applied">2. Owner decisions applied</h2>
+<div class="tw"><table><thead><tr><th></th><th>Decision</th><th>How it was executed</th></tr></thead><tbody>
+<tr><td><strong>O1</strong></td><td>PR-1 = <code>a2fa6ea</code>, <code>6bc4cf4</code>, <code>bd8f108</code>; exclude <code>c3c4954</code>, <code>013ea53</code></td><td>Executed exactly; compliance and webhook files proven <strong>byte-identical to <code>origin/main</code></strong></td></tr>
+<tr><td><strong>O2</strong></td><td>PR-4a / PR-4b split approved</td><td><strong>Not built</strong> — manifests only</td></tr>
+<tr><td><strong>O3</strong></td><td><code>app/global-error.tsx</code> must not sit in a docs-only PR</td><td>Extracted into its own branch, <strong>PR-0c</strong></td></tr>
+<tr><td><strong>O4</strong></td><td>Source hashes must not pose as extracted hashes</td><td>Every source hash labelled <strong>PROVENANCE</strong>; extracted hashes listed separately</td></tr>
+<tr><td><strong>O5</strong></td><td>Disabled paying subscribers must not stay stranded</td><td><strong>Not implemented.</strong> Preserved as an RC1 item and stated plainly below</td></tr>
+<tr><td><strong>O6</strong></td><td>Isolated deps + per-branch Prisma generation mandatory</td><td>Enforced: <code>rm -rf node_modules .next</code> → <code>npm ci</code> → <code>prisma generate</code> per branch</td></tr>
+</tbody></table></div>
+<hr>
+<h2 id="3-agents-and-ownership">3. Agents and ownership</h2>
+<div class="tw"><table><thead><tr><th>Agent</th><th>Owned</th></tr></thead><tbody>
+<tr><td>1 — Base verification &amp; manifests</td><td>Read-only; produced the extraction recipes</td></tr>
+<tr><td>2 — PR-1</td><td><code>release/pr1-critical-fixes</code> only</td></tr>
+<tr><td>3 — PR-2</td><td><code>release/pr2-stripe-lifecycle</code> only</td></tr>
+<tr><td>4 — PR-0b / PR-0c</td><td>those two branches only</td></tr>
+<tr><td>5 — Adversarial</td><td>Read-only on others' branches; own <code>a5-*</code> controls</td></tr>
+<tr><td>Coordinator</td><td>Base verification, infrastructure, control branch, ancestry proof, RC1, reports</td></tr>
+</tbody></table></div>
+<hr>
+<h2 id="4-two-workstream-exclusion-proof">4. Two-workstream exclusion — proof</h2>
+<p>
+The source branch carries <strong>8 Founder Library / Knowledge Architecture commits</strong> beneath the RC1 work.
+ 
+<strong>Every clean branch was built from <code>origin/main</code>, never from the source branch.</strong>
+</p>
+<p>
+<strong>Coordinator-verified, all four branches:</strong>
+</p>
+<div class="tw"><table><thead><tr><th>Branch</th><th>Base is <code>origin/main</code></th><th>FL commits in ancestry</th><th>Forbidden paths in diff</th></tr></thead><tbody>
+<tr><td><code>release/pr1-critical-fixes</code></td><td>✅</td><td><strong>0</strong></td><td><strong>0</strong></td></tr>
+<tr><td><code>release/pr2-stripe-lifecycle</code></td><td>✅</td><td><strong>0</strong></td><td><strong>0</strong></td></tr>
+<tr><td><code>release/pr0b-ops-runbooks</code></td><td>✅</td><td><strong>0</strong></td><td><strong>0</strong></td></tr>
+<tr><td><code>release/pr0c-global-error-boundary</code></td><td>✅</td><td><strong>0</strong></td><td><strong>0</strong></td></tr>
+</tbody></table></div>
+<p>
+<strong>A false positive in my own scan, corrected by the control:</strong> <code>architecture/GIOS-*</code> **already exists
+ 
+on <code>origin/main</code>**. Its presence in a tree is therefore <em>not</em> an extraction defect — only its presence
+ 
+in a <strong>diff</strong> would be, and that count is 0 everywhere. Three agents independently flagged the same
+ 
+thing.
+</p>
+<p>
+<strong>Control branch</strong> (<code>release/control-origin-main</code>, bare <code>origin/main</code>, isolated install):
+ 
+<code>npm ci</code> PASS · <code>prisma generate</code> PASS · <code>tsc</code> PASS · <strong>70/70 guards</strong> · <code>next build</code> PASS.
+ 
+<code>prisma validate</code> FAILs on missing <code>DATABASE_URL</code> — <strong>a harness artifact reproducing on the control</strong>,
+ 
+so it is never a branch regression.
+</p>
+<hr>
+<h2 id="5-clean-branch-matrix">5. Clean-branch matrix</h2>
+<div class="tw"><table><thead><tr><th>Unit</th><th>Branch</th><th>Base</th><th>Head</th><th>Picks</th><th>Files</th><th>Typecheck</th><th>Build</th><th>Guards</th><th>Runtime</th><th>Forbidden</th><th>Review</th><th>Merge</th></tr></thead><tbody>
+<tr><td><strong>PR-1</strong></td><td><code>release/pr1-critical-fixes</code></td><td><code>dfe7a3a</code></td><td><code>103f84e</code></td><td>3</td><td>14</td><td><strong>PASS</strong></td><td><strong>PASS</strong></td><td><strong>73/73</strong></td><td>n/a</td><td><strong>PASS</strong></td><td><strong>SAFE TO REVIEW</strong></td><td><strong>NOT SAFE TO MERGE</strong> — owner items</td></tr>
+<tr><td><strong>PR-2</strong></td><td><code>release/pr2-stripe-lifecycle</code></td><td><code>dfe7a3a</code></td><td><code>475e180</code></td><td>3</td><td>14</td><td><strong>PASS</strong></td><td><strong>PASS</strong></td><td><strong>71/71</strong></td><td><strong>2/2 PASS</strong></td><td><strong>PASS</strong></td><td><strong>SAFE TO REVIEW</strong></td><td><strong>CONDITIONAL — OWNER</strong></td></tr>
+<tr><td><strong>PR-0b</strong></td><td><code>release/pr0b-ops-runbooks</code></td><td><code>dfe7a3a</code></td><td><code>57359d7</code></td><td>3</td><td>6</td><td><strong>PASS</strong></td><td><strong>PASS</strong></td><td><strong>70/70</strong></td><td>n/a</td><td><strong>PASS</strong></td><td><strong>SAFE TO REVIEW</strong></td><td><strong>SAFE TO MERGE</strong></td></tr>
+<tr><td><strong>PR-0c</strong></td><td><code>release/pr0c-global-error-boundary</code></td><td><code>dfe7a3a</code></td><td><code>6309e39</code></td><td>1</td><td>1</td><td><strong>PASS</strong></td><td><strong>PASS</strong></td><td><strong>70/70</strong></td><td>n/a</td><td><strong>PASS</strong></td><td><strong>SAFE TO REVIEW</strong></td><td><strong>SAFE TO MERGE</strong></td></tr>
+</tbody></table></div>
+<p>
+<strong>Guard arithmetic is itself a cross-check:</strong> base 70 · PR-1 +3 = 73 · PR-2 +1 = 71 · PR-0b 70 ·
+ 
+PR-0c 70. Any deviation would mean a leaked or dropped file.
+</p>
+<p>
+<strong>Cross-branch file overlap: ZERO</strong> — the four diffs are fully disjoint (coordinator-verified).
+</p>
+<hr>
+<h2 id="6-branch-results">6. Branch results</h2>
+<h3 id="pr-1-critical-product-and-authorization-fixes">PR-1 — critical product and authorization fixes</h3>
+<p>
+<strong>Provenance:</strong> <code>a2fa6ea</code>, <code>6bc4cf4</code>, <code>bd8f108</code> · <strong>Extracted:</strong> 3 commits ending <code>103f84e</code>
+ 
+<strong>Files (14):</strong> <code>lib/entitlements.ts</code> · <code>lib/admin.ts</code> · <code>lib/analyze.ts</code> · letters <code>generate</code>/<code>round2</code> ·
+ 
+<code>api/billing/status</code> · <code>api/stripe/{checkout,portal}</code> · <code>api/demo/seed</code> · <code>app/{agency,billing}/page.tsx</code> ·
+ 
+3 new guards.
+</p>
+<p>
+Free-letter deletion bypass closed (usage derives from the append-only ledger) · Round 2 entitlement
+ 
+enforced · balances cannot go negative · unknown plan fails closed · billing identity resolves by
+ 
+<strong>immutable user id</strong> · demo credentials not exposed · re-analysis preserves letter↔tradeline links ·
+ 
+disabled admins refused.
+</p>
+<p>
+<strong>Isolation proven by coordinator:</strong> <code>lib/compliance.ts</code> and <code>app/api/stripe/webhook/route.ts</code> are
+ 
+<strong>byte-identical to <code>origin/main</code></strong> — PR-1 contains no PR-2 or PR-3 behaviour. No <code>TermsAcceptance</code>
+ 
+reference; no <code>components/TermsAccept.tsx</code>.
+</p>
+<p>
+<strong>⚠ Disabled paying subscriber — NOT resolved.</strong> <code>6bc4cf4</code> routes the Stripe portal through
+ 
+<code>currentAccount()</code>, which fails closed on <code>disabled</code>, so a suspended <strong>paying</strong> customer gets 401 and
+ 
+cannot self-cancel. That is the intended security behaviour, and it <strong>narrowly worsens</strong> the known
+ 
+condition by closing an incidental self-cancel path. Per <strong>O5</strong> the remedy stays an RC1 item.
+</p>
+<h3 id="pr-2-stripe-lifecycle-and-webhook-correction">PR-2 — Stripe lifecycle and webhook correction</h3>
+<p>
+<strong>Provenance:</strong> <code>c3c4954</code>, <code>59fad4f</code>, plus path-extracted runtime guards from <code>4871d4e</code> and the CI step
+ 
+from <code>beeafd1</code> · <strong>Extracted:</strong> 3 commits ending <code>475e180</code>
+</p>
+<p>
+Three-state claim (<code>claimed</code> / <code>in_flight</code> / <code>completed</code>) · abandoned claims age out so Stripe's retry
+ 
+can run · re-retrieval so a delayed event cannot revoke a paying customer · unknown price writes **no
+ 
+<code>plan</code> key**.
+</p>
+<p>
+<strong>These are the repository's first RUNTIME guards</strong> — they execute the real handler. Wired into CI as
+ 
+their own step because <code>scripts/*.test.ts</code> is a <strong>non-recursive</strong> glob that never reached them.
+ 
+<strong>MIGRATION-FIRST compliant:</strong> the claim reuses the existing <code>type</code> column; <code>prisma/</code> diff is <strong>empty</strong>;
+ 
+<code>schema-safety</code> 17/17 unmodified.
+</p>
+<p>
+<strong>⚠ Asymmetric rollback — undisclosed by the builder, found by adversarial review.</strong> Reverting PR-2
+ 
+leaves <code>pending:%</code> rows in <code>StripeWebhookEvent</code>; the restored code treats any row as "already
+ 
+processed", so those webhooks would be <strong>silently dropped</strong>. Remediation is a production
+ 
+<code>DELETE ... WHERE type LIKE 'pending:%'</code> — <strong>a production action, not performed.</strong>
+</p>
+<h3 id="pr-0b-operational-runbooks-and-read-only-tooling">PR-0b — operational runbooks and read-only tooling</h3>
+<p>
+<strong>Provenance:</strong> <code>826413b</code> (partial), <code>7099bde</code> (whole), <code>beeafd1</code> (partial) · <strong>Head:</strong> <code>57359d7</code>
+ 
+<strong>Files (6):</strong> <code>OPERATIONS.md</code> · <code>.ai/RUNBOOKS/{restore-drill,alert-activation}.md</code> · <code>.ai/INDEX.md</code> ·
+ 
+<code>.env.example</code> · <code>scripts/prod-health.sh</code>
+</p>
+<p>
+<strong>Zero files under <code>app/</code>, <code>lib/</code>, <code>components/</code>, <code>prisma/</code></strong> — the compiled bundle is identical to
+ 
+base. Runbooks claim nothing they cannot prove: the drill is recorded <strong>NOT RUN</strong> with RPO/RTO blank
+ 
+by design; alert <strong>configuration presence is explicitly distinguished from delivery proof</strong>.
+</p>
+<p>
+<strong>The <code>826413b</code> split was deterministic, not a judgement call:</strong> every pre-image blob matches
+ 
+<code>origin/main</code> exactly, so path extraction reproduces the post-image byte-for-byte.
+</p>
+<h3 id="pr-0c-global-error-boundary">PR-0c — global error boundary</h3>
+<p>
+<strong>Provenance:</strong> <code>826413b</code> (1 of 4 files) · <strong>Head:</strong> <code>6309e39</code> · <strong>Files: 1</strong> — <code>app/global-error.tsx</code>
+</p>
+<p>
+<strong>Zero imports.</strong> Renders its own <code>&lt;html&gt;</code>/<code>&lt;body&gt;</code> with inline styles, deliberately avoiding prisma,
+ 
+<code>next/headers</code>, brand modules and Tailwind — because it runs precisely when the shell has already
+ 
+failed. Emitted artifact confirmed in the branch's own build.
+</p>
+<hr>
+<h2 id="7-corrections-made-during-the-wave">7. Corrections made during the wave</h2>
+<ol><li><strong><code>scripts/verify-production.sh</code> belongs to PR-2, not PR-0b.</strong> Agent 4 disagreed with the task prompt and was right — it is a Stripe/production verification harness, not ops documentation.</li><li><strong>My <code>forbidden.sh</code> had a false positive</strong> on <code>architecture/GIOS-*</code>; the control proved those files already live on <code>origin/main</code>. Only diff-relative checks are meaningful.</li><li><strong><code>scripts/runtime/_fakes.ts</code> is a git-binary blob</strong> (one NUL byte). It must be moved with <code>git checkout &lt;sha&gt; -- &lt;path&gt;</code>; a text patch or copy-paste would silently corrupt it.</li><li><strong><code>717697f</code> is not schema-only</strong> — it also edits the checkout route, which complicates the O2 PR-4a/PR-4b split. Flagged for the future manifest, not resolved here.</li></ol>
+<hr>
+<h2 id="8-runtime-vs-source-level-evidence">8. Runtime vs source-level evidence</h2>
+<p>
+<strong>RUNTIME (PR-2 only):</strong> <code>scripts/runtime/run-all.ts</code> exit 0 — <code>stripe-webhook-claim</code> 36/36,
+ 
+<code>unknown-price-failclosed</code> 29/29, executing the real route handler.
+</p>
+<p>
+<strong>SOURCE-LEVEL:</strong> every <code>scripts/*.test.ts</code>, including <code>stripe-lifecycle.test.ts</code> (84/84), which pins
+ 
+the <strong>source text</strong> of the three-state contract — labelled as such in <code>.ai/TESTING.md</code> and <strong>not</strong> to be
+ 
+quoted as runtime proof.
+</p>
+<p>
+<strong>Negative controls (adversarial agent, on-branch):</strong> disabling the in-flight rejection → 31/5, exit 1.
+ 
+Removing the subscription re-retrieval → 25/11 and 28/1 across both runtime guards, plus 82/2 at source
+ 
+level, exit 1. <strong>Known gap, self-declared:</strong> the guards prove the re-retrieval <em>executes</em>, not that a
+ 
+reordered <code>deleted</code>-then-stale-<code>active</code> pair leaves the plan revoked. Adding that scenario is the
+ 
+cheapest remaining improvement.
+</p>
+<hr>
+<h2 id="9-copy-and-paste-ready-pr-packages">9. Copy-and-paste-ready PR packages</h2>
+<blockquote>All four: <strong>base <code>main</code></strong> · <strong>merging auto-deploys production (~2 min)</strong> · owner confirmation required per <code>CLAUDE.md</code> · nothing pushed, no GitHub PR created.</blockquote>
+<h3 id="pr-1">PR-1</h3>
+<p>
+<strong>Title:</strong> <code>fix(billing,security): close the free-letter bypass, resolve billing identity by user id, and restore admin revocation</code>
+</p>
+<p>
+<strong>Body:</strong>
+ 
+```
+ 
+Three extraction-proven critical fixes, cherry-picked onto main. PROVENANCE: a2fa6ea, 6bc4cf4, bd8f108
+ 
+(source-branch hashes; this branch's commits are new objects).
+</p>
+<ul><li>Free-letter paywall: usage now derives from the append-only ProductEvent ledger, so deleting letters</li></ul>
+<p>
+  no longer resets the meter. Round 2 consumes entitlement; credits cannot go negative.
+</p>
+<ul><li>Billing identity: three routes resolved the account by mutable session email. A subscriber who</li></ul>
+<p>
+  changed their email could not reach the Stripe portal to cancel, and a re-registered address could
+ 
+  resolve a stale JWT to a stranger's billing. Now uses currentAccount() (immutable user id).
+</p>
+<ul><li>Security: requireAdmin() honours <code>disabled</code>; /api/demo/seed 404s in production and returns no</li></ul>
+<p>
+  password; report re-analysis re-links dispute letters instead of orphaning them.
+</p>
+<p>
+NO schema or migration dependency. lib/compliance.ts and the Stripe webhook route are byte-identical
+ 
+to main — this PR contains no compliance or webhook-lifecycle behaviour.
+</p>
+<p>
+Verified on this branch with its own npm ci and prisma generate: tsc PASS, next build PASS, 73/73 guards.
+</p>
+<p>
+KNOWN CONSEQUENCE (owner-acknowledged, RC1 item): a disabled-but-paying subscriber now gets 401 from
+ 
+the billing portal and cannot self-cancel. Intended fail-closed security behaviour; the narrowly scoped
+ 
+cancellation-only path remains RC1 work and is not implemented here.
+</p>
+<p>
+VERIFICATION REQUIRED — PRODUCTION: re-analysis now runs in one 15s interactive transaction; large
+ 
+reports must be measured against that ceiling.
+</p>
+<p>
+Merging to main auto-deploys production.
+ 
+```
+</p>
+<h3 id="pr-2">PR-2</h3>
+<p>
+<strong>Title:</strong> <code>fix(stripe): make subscription webhooks idempotent, ordering-safe and claim-window-free, with the first runtime guards in CI</code>
+</p>
+<p>
+<strong>Body:</strong>
+ 
+```
+ 
+PROVENANCE: c3c4954, 59fad4f, plus path-extracted runtime guards (4871d4e) and the runtime CI step
+ 
+(beeafd1). This branch's commits are new objects.
+</p>
+<p>
+Three-state claim (claimed / in_flight / completed): a duplicate is refused forever, while an abandoned
+ 
+claim ages out so Stripe's retry can actually run. Subscription events re-retrieve current state, so a
+ 
+delayed event cannot restore a revoked plan or revoke a paying customer. An unrecognised price now
+ 
+fails CLOSED — no plan key is written at all.
+</p>
+<p>
+MIGRATION-FIRST COMPLIANT: the claim reuses the EXISTING <code>type</code> column as pending:&lt;eventType&gt;. No new
+ 
+column, no new table, no migration. prisma/ diff is empty; schema-safety passes 17/17 unmodified.
+</p>
+<p>
+FIRST RUNTIME GUARDS: scripts/runtime/ executes the real route handler. Wired into CI as its own step
+ 
+because scripts/*.test.ts is a non-recursive glob that never reached it. Proven non-decorative by two
+ 
+mutations, each turning the suite red. scripts/stripe-lifecycle.test.ts is SOURCE-LEVEL and must not be
+ 
+quoted as runtime proof.
+</p>
+<p>
+Verified on this branch with its own npm ci and prisma generate: tsc PASS, next build PASS, 71/71
+ 
+source guards, 2/2 runtime guards.
+</p>
+<p>
+⚠ ASYMMETRIC ROLLBACK: reverting this PR leaves pending:&lt;eventType&gt; rows in StripeWebhookEvent, and the
+ 
+restored code treats any row as "already processed" — those webhooks would be silently dropped.
+ 
+Remediation is a production DELETE of rows WHERE type LIKE 'pending:%'. Blast radius is limited to
+ 
+events in flight within the 15-minute window at revert time.
+</p>
+<p>
+MERGE ORDER: merge PR-0b at or before this PR — verify-production.sh references
+ 
+.ai/RUNBOOKS/alert-activation.md, which lands there.
+</p>
+<p>
+Merging to main auto-deploys production and changes LIVE Stripe webhook handling.
+ 
+```
+</p>
+<h3 id="pr-0b">PR-0b</h3>
+<p>
+<strong>Title:</strong> <code>docs(ops): executable restore-drill and alert-activation runbooks, a hardened health probe, and .env.example drift fix</code>
+</p>
+<p>
+<strong>Body:</strong>
+ 
+```
+ 
+PROVENANCE: 826413b (partial — ops files only), 7099bde (whole), beeafd1 (partial — the INDEX row).
+</p>
+<p>
+Documentation and ops tooling only. No file under app/, lib/, components/, prisma/ or middleware is
+ 
+touched, so the compiled bundle is identical to base.
+</p>
+<p>
+The runbooks claim nothing they cannot prove: the restore drill is recorded as NOT RUN with RPO/RTO
+ 
+blank by design; alert configuration presence is explicitly distinguished from delivery proof; the
+ 
+drill is provider-neutral because the origin database provider behind Prisma Accelerate is unconfirmed.
+ 
+scripts/prod-health.sh no longer scores a deleted route (404) as healthy.
+</p>
+<p>
+Verified on this branch with its own npm ci: tsc PASS, next build PASS, 70/70 guards (identical to base).
+</p>
+<p>
+This does NOT close RC1 B-09 or B-10 — no drill has run and no alert delivery has been proven.
+</p>
+<p>
+Merging to main auto-deploys production; the bundle is byte-unchanged.
+ 
+```
+</p>
+<h3 id="pr-0c">PR-0c</h3>
+<p>
+<strong>Title:</strong> <code>fix(reliability): add the root error boundary app/global-error.tsx</code>
+</p>
+<p>
+<strong>Body:</strong>
+ 
+```
+ 
+PROVENANCE: 826413b (1 of its 4 files). Split out per owner decision O3 so runtime code does not ride
+ 
+in a documentation-only PR.
+</p>
+<p>
+A throw inside the root layout is uncatchable by app/error.tsx. This adds the Next.js root boundary.
+ 
+It has ZERO imports and renders its own html/body with inline styles — deliberately avoiding prisma,
+ 
+next/headers, brand modules and Tailwind, because it runs precisely when the shell has already failed.
+ 
+It surfaces the Next.js digest so an incident can be correlated, and nothing else.
+</p>
+<p>
+One added file. Strictly additive: there is no path by which it fires on a healthy render.
+</p>
+<p>
+Verified on this branch with its own npm ci: tsc PASS, next build PASS (emitted chunk confirmed),
+ 
+70/70 guards.
+</p>
+<p>
+Merging to main auto-deploys production.
+ 
+```
+</p>
+<hr>
+<h2 id="10-prepared-manifests-not-authorized-not-built">10. Prepared manifests — NOT authorized, NOT built</h2>
+<div class="tw"><table><thead><tr><th>Unit</th><th>Intended contents</th><th>Gate</th><th>Stop condition</th></tr></thead><tbody>
+<tr><td><strong>PR-0a</strong></td><td><code>c9c884e</code> — RC1 criteria doc (PR-2 references it)</td><td>Owner disclosure decision</td><td>Not built this wave</td></tr>
+<tr><td><strong>PR-3</strong></td><td><code>013ea53</code> + <code>86ba824</code> (<strong>must combine</strong> — <code>86ba824</code> conflicts without <code>013ea53</code>)</td><td><strong>BLOCKED — COUNSEL</strong></td><td>Do not build for merge until counsel clears B-05</td></tr>
+<tr><td><strong>PR-4a</strong></td><td>Terms schema + additive migration + FK <code>RESTRICT</code> + Gate D registration</td><td><strong>BLOCKED — OWNER + PRODUCTION</strong></td><td>⚠ <code>717697f</code> is <strong>not schema-only</strong> — it also edits the checkout route, so a strictly schema-only 4a cannot take it whole</td></tr>
+<tr><td><strong>PR-4b</strong></td><td><code>lib/terms.ts</code>, <code>components/TermsAccept.tsx</code>, route enforcement, caller wiring, guards</td><td>Depends on <strong>applied and forward-validated</strong> 4a</td><td>Must not merge before the migration is live</td></tr>
+<tr><td><strong>PR-5</strong></td><td>RC1 records (<code>27bc430</code>, <code>c7d1506</code>, <code>d6303fc</code>, <code>5a4b006</code>)</td><td>After real release states exist</td><td>Wave 2.2 proved these are false in every intermediate state</td></tr>
+</tbody></table></div>
+<hr>
+<h2 id="11-go-no-go-no-go-unchanged">11. Go/No-Go — 🔴 NO-GO, unchanged</h2>
+<p>
+<strong>CLOSED (9):</strong> B-01…B-04, B-04g, B-07, B-08, B-11, Gate D guard.
+ 
+<strong>B-05</strong> BLOCKED — COUNSEL · <strong>B-06</strong> BLOCKED — OWNER + PRODUCTION · <strong>B-09</strong> OPEN (no drill) ·
+ 
+<strong>B-10</strong> PARTIAL (<code>ALERT_WEBHOOK_URL</code> unset) · <strong>B-12</strong> BLOCKED — COUNSEL ·
+ 
+<strong>C-01/C-02</strong> VERIFICATION REQUIRED — PRODUCTION.
+</p>
+<p>
+<strong>SAFE TO REVIEW:</strong> all four. <strong>SAFE TO MERGE (owner push; merge = deploy):</strong> PR-0b, PR-0c.
+ 
+<strong>CONDITIONAL:</strong> PR-2 (add the rollback caveat; merge PR-0b first). <strong>NOT SAFE TO MERGE:</strong> PR-1 until
+ 
+the O5 consequence is accepted. <strong>BLOCKED:</strong> PR-3, PR-4a/4b, PR-5.
+</p>
+<p>
+<strong>Recommended merge order:</strong> PR-0c → PR-0b → PR-2 → PR-1.
+</p>
+<hr>
+<h2 id="12-actions-required">12. Actions required</h2>
+<p>
+<strong>OWNER:</strong> accept the PR-1 disabled-subscriber consequence (or open the O5 remedy first) · add the
+ 
+asymmetric-rollback caveat to PR-2 · merge PR-0b at or before PR-2 · decide whether to land PR-0a or
+ 
+soften PR-2's reference to it · authorize each push (merge = deploy) · decide whether to push these
+ 
+branches to the remote (<strong>not authorized in this session</strong>).
+</p>
+<p>
+<strong>COUNSEL:</strong> B-12 CROA/FCRA positioning · B-05 compliance bar (gates PR-3) · consent-evidence retention
+ 
+· acceptance scope. <strong>None of the four branches requires a counsel gate</strong> — <code>lib/compliance.ts</code> is
+ 
+byte-identical to <code>origin/main</code> on all four.
+</p>
+<p>
+<strong>PRODUCTION:</strong> restore drill (B-09) · prove alert delivery (B-10) · <code>SETUP_SECRET</code> (C-01) · encryption
+ 
+backfill (C-02) · measure the re-analysis 15s transaction · confirm the live <code>StripeWebhookEvent</code> table
+ 
+has the <code>createdAt</code> column the stale-claim window queries · whether Vercel previews are
+ 
+access-protected (<code>DATABASE_URL</code> is shared across Production and Preview).
+</p>
+<hr>
+<h2 id="13-recommendation">13. Recommendation</h2>
+<p>
+<strong>EXACT NEXT ACTION: review and merge PR-0c and PR-0b.</strong> They are the lowest-risk units in the entire
+ 
+programme — one self-contained added file, and documentation with a byte-unchanged bundle — and PR-0b
+ 
+unblocks PR-2's documentation reference. Then take PR-2 with the rollback caveat added, then PR-1 once
+ 
+the O5 consequence is accepted.
+</p>
+<p>
+**Nothing was pushed. No GitHub PR was created. Pushing the release branches to the remote requires
+ 
+explicit owner authorization that was not given in this session.**
+</p>
+<hr>
+<p>
+*Repository truth is authoritative. **No merge, deployment, Gate D baseline, production migration, live
+ 
+Stripe mutation, or production database contact occurred in this wave.***
+</p>
+<footer>Projection of <code>CREDITVECTOR_RC1_RELEASE_CANDIDATE_EXTRACTION_WAVE_2_2_REPORT.md</code>, which is canonical.
+Contains no credentials, secrets, tokens, or environment values.</footer>
+</main></body></html>
