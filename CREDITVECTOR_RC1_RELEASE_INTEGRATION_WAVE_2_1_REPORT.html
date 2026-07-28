@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CreditVector — RC1 Release Integration, Wave 2.1</title>
+<meta name="description" content="RC1 Execution Wave 2 — Go/No-Go status, blockers, and required decisions.">
+<style>
+:root{--bg:#ffffff;--fg:#14181f;--mut:#4a5462;--line:#d9dee6;--acc:#0b4fa8;--code:#f2f4f7;
+--red:#8a1420;--redbg:#fdeaec;--amb:#7a4a00;--ambbg:#fff5e0;--grn:#0f5c34;--grnbg:#e6f5ec;}
+*{box-sizing:border-box}
+body{margin:0;padding:1.1rem;background:var(--bg);color:var(--fg);
+font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+-webkit-text-size-adjust:100%;overflow-wrap:break-word}
+main{max-width:60rem;margin:0 auto}
+h1{font-size:1.6rem;line-height:1.25;margin:.2rem 0 .4rem;letter-spacing:-.01em}
+h2{font-size:1.28rem;margin:2.2rem 0 .7rem;padding-bottom:.32rem;border-bottom:2px solid var(--line)}
+h3{font-size:1.08rem;margin:1.6rem 0 .5rem}
+h4{font-size:1rem;margin:1.2rem 0 .4rem;color:var(--mut)}
+p{margin:.7rem 0}
+a{color:var(--acc)}
+code{background:var(--code);padding:.12em .38em;border-radius:4px;
+font:.86em/1.4 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;word-break:break-word}
+hr{border:0;border-top:1px solid var(--line);margin:2rem 0}
+blockquote{margin:1.1rem 0;padding:.85rem 1rem;background:var(--redbg);
+border-left:4px solid var(--red);border-radius:0 6px 6px 0;color:#5c0f18}
+blockquote strong{color:var(--red)}
+ul,ol{padding-left:1.35rem;margin:.7rem 0}
+li{margin:.34rem 0}
+.tw{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:1rem 0;
+border:1px solid var(--line);border-radius:8px}
+table{border-collapse:collapse;width:100%;min-width:34rem;font-size:.9rem}
+th,td{padding:.55rem .7rem;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+th{background:#f5f7fa;font-weight:650;white-space:nowrap}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:nth-child(even){background:#fafbfc}
+.meta{color:var(--mut);font-size:.92rem;margin:.5rem 0 1.2rem}
+nav.toc{background:#f7f9fb;border:1px solid var(--line);border-radius:8px;padding:.85rem 1rem;margin:1.4rem 0}
+nav.toc h2{font-size:.82rem;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);
+border:0;margin:0 0 .5rem;padding:0}
+nav.toc ol{margin:0;padding-left:1.2rem;font-size:.92rem}
+nav.toc li{margin:.2rem 0}
+.legend{display:flex;flex-wrap:wrap;gap:.4rem;margin:1rem 0}
+.tag{font-size:.76rem;font-weight:650;padding:.18rem .5rem;border-radius:999px;white-space:nowrap}
+.t-open{background:var(--redbg);color:var(--red)}
+.t-part{background:var(--ambbg);color:var(--amb)}
+.t-closed{background:var(--grnbg);color:var(--grn)}
+footer{margin-top:2.5rem;padding-top:1rem;border-top:1px solid var(--line);
+color:var(--mut);font-size:.85rem}
+@media(max-width:34rem){body{padding:.8rem}h1{font-size:1.35rem}table{font-size:.84rem;min-width:30rem}}
+@media print{body{padding:0;font-size:11pt}nav.toc{break-inside:avoid}
+.tw{overflow:visible;border:0}table{min-width:0;font-size:9pt}
+h2{break-after:avoid}tr{break-inside:avoid}a{color:#000;text-decoration:none}
+a[href^="http"]::after{content:" (" attr(href) ")";font-size:8pt;color:#555}}
+</style></head><body><main>
+<p class="meta"><strong>Gabriel Capital Labs</strong> · Draft — not ratified · 2026-07-28<br>
+Branch <code>claude/creditvector-founder-library-jwnbhc</code> · Commits <code>c7d1506</code> → <code>HEAD</code></p>
+<div class="legend"><span class="tag t-closed">CLOSED 9</span><span class="tag t-part">PARTIAL 3</span><span class="tag t-open">OPEN / BLOCKED 2</span><span class="tag t-open">VERIFICATION REQUIRED 2</span></div>
+<nav class="toc"><h2>Contents</h2><ol><li><a href="#1-context-for-a-reader-with-no-repository-access">1. Context for a reader with no repository access</a></li><li><a href="#2-starting-and-ending-state">2. Starting and ending state</a></li><li><a href="#3-agents-and-file-ownership">3. Agents and file ownership</a></li><li><a href="#4-delta-reviewed">4. Delta reviewed</a></li><li><a href="#5-defects-confirmed-and-corrected">5. Defects confirmed and corrected</a></li><li><a href="#6-terms-ux-implementation">6. Terms UX implementation</a></li><li><a href="#7-paid-path-inventory-three-paths-three-different-consent-stories">7. Paid-path inventory — three paths, three different consent stories</a></li><li><a href="#8-migration-review">8. Migration review</a></li><li><a href="#9-toolchain-results">9. Toolchain results</a></li><li><a href="#10-runtime-versus-source-level-verification">10. Runtime versus source-level verification</a></li><li><a href="#11-negative-control-evidence">11. Negative-control evidence</a></li><li><a href="#12-proposed-pr-separation-the-branch-is-not-a-release-unit">12. Proposed PR separation — the branch is not a release unit</a></li><li><a href="#13-migration-and-deployment-sequence-owner-controlled">13. Migration and deployment sequence (owner-controlled)</a></li><li><a href="#14-updated-go-no-go">14. Updated Go/No-Go</a></li><li><a href="#15-remaining-engineering-work-wave-2-s-claim-retracted">15. Remaining engineering work — Wave 2&#x27;s claim retracted</a></li><li><a href="#16-decisions-required">16. Decisions required</a></li><li><a href="#17-commit-list">17. Commit list</a></li><li><a href="#18-recommendations">18. Recommendations</a></li></ol></nav>
+<h1 id="creditvector-rc1-release-integration-wave-2-1">CreditVector — RC1 Release Integration, Wave 2.1</h1>
+<p>
+<strong>Date:</strong> 2026-07-28 · <strong>Branch:</strong> <code>claude/creditvector-founder-library-jwnbhc</code>
+ 
+<strong>Commit range:</strong> <code>c7d1506</code> → HEAD (5 commits) · <strong>Status:</strong> Draft — not ratified
+</p>
+<blockquote><strong>Verdict: 🔴 NO-GO for Version 1.0. The branch is still not a release unit — but it is now reviewable, release-sequenced, and for the first time actually verified.</strong> <strong>The environment blocker that qualified every prior result is gone.</strong> <code>npm ci</code>, <code>prisma generate</code>, <code>tsc --noEmit</code>, <code>next build</code> and <strong>79/79 guards</strong> all pass. Waves 1–2 could run none of them.</blockquote>
+<hr>
+<h2 id="1-context-for-a-reader-with-no-repository-access">1. Context for a reader with no repository access</h2>
+<p>
+<strong>CreditVector</strong> is a live Next.js 14 consumer-credit <strong>education</strong> SaaS (creditvector.app) with live
+ 
+Stripe billing, built by Gabriel Capital Labs. It is deliberately <em>not</em> a credit-repair service.
+</p>
+<p>
+<strong>RC1</strong> is the Version 1.0 release program. An audit of 26 subsystems produced NO-GO with 12
+ 
+launch-blocking defects. <strong>Wave 1</strong> closed 7. <strong>Wave 2</strong> added durable terms acceptance, hardened the
+ 
+compliance bar, and wrote recovery runbooks — but shipped a server contract with <strong>no UI</strong>, so every
+ 
+in-place upgrade would have been refused with HTTP 428 once deployed.
+</p>
+<p>
+<strong>Wave 2.1</strong> is release integration: validate the Wave 2 delta, build the missing UI, verify at
+ 
+runtime, and produce an exact release sequence. <strong>Not another audit.</strong>
+</p>
+<p>
+Repository truth is authoritative. Code cannot prove production configuration, completed drills,
+ 
+measured RPO/RTO, live alert delivery, live Stripe catalog contents, or legal approval.
+</p>
+<hr>
+<h2 id="2-starting-and-ending-state">2. Starting and ending state</h2>
+<div class="tw"><table><thead><tr><th></th><th></th></tr></thead><tbody>
+<tr><td>Branch</td><td><code>claude/creditvector-founder-library-jwnbhc</code> (unchanged)</td></tr>
+<tr><td>Starting commit</td><td><code>c7d1506</code> (Wave 2 end)</td></tr>
+<tr><td>Ending commit</td><td>this commit (the 5th below). A document cannot cite its own hash, so the range is stated as <code>c7d1506..HEAD</code></td></tr>
+<tr><td>Working tree</td><td>clean</td></tr>
+<tr><td>Merged / deployed / migration applied</td><td><strong>None. No push to <code>main</code>, no deploy, no production migration.</strong></td></tr>
+</tbody></table></div>
+<hr>
+<h2 id="3-agents-and-file-ownership">3. Agents and file ownership</h2>
+<p>
+One coordinator + four bounded agents, strictly disjoint.
+</p>
+<div class="tw"><table><thead><tr><th>Agent</th><th>Owned</th></tr></thead><tbody>
+<tr><td>1 — Wave 2 code &amp; migration review</td><td><code>prisma/schema.prisma</code>, the migration SQL, <code>lib/terms.ts</code>, <code>lib/billing.ts</code>, <code>app/api/stripe/{checkout,webhook}/route.ts</code></td></tr>
+<tr><td>2 — Terms UX &amp; paid paths</td><td><code>components/TermsAccept.tsx</code> (new), <code>app/pricing/PricingTiers.tsx</code>, <code>app/billing/page.tsx</code>, <code>app/agency/page.tsx</code>, <code>app/letters/page.tsx</code>, <code>scripts/terms-acceptance.test.ts</code>, paid-path inventory</td></tr>
+<tr><td>3 — Toolchain &amp; runtime</td><td><code>scripts/runtime/<strong></code> (new). </strong>Read-only on product code**</td></tr>
+<tr><td>4 — Release sequencing</td><td><code>RC1-RELEASE-SEQUENCE.md</code>, <code>.ai/RUNBOOKS/migration-apply-terms-acceptance.md</code>. Read-only on code</td></tr>
+<tr><td>Coordinator</td><td>dependency graph, <code>scripts/gate-d-preflight*</code>, commits, RC1 update, reports</td></tr>
+</tbody></table></div>
+<p>
+<strong>Ownership violations: none.</strong> No agent touched <code>knowledge/</code>, <code>architecture/GIOS-*</code>, or Founder
+ 
+Library governance.
+</p>
+<hr>
+<h2 id="4-delta-reviewed">4. Delta reviewed</h2>
+<p>
+<code>git diff 27bc430..c7d1506</code> — 21 files, +3549/−183. Reviewed: the <code>TermsAcceptance</code> model and its
+ 
+migration, the 428 gate ordering in the checkout route, the three-state webhook claim in
+ 
+<code>lib/billing.ts</code>, the compliance carve-outs, and <code>scripts/verify-production.sh</code> safety. **No re-audit
+ 
+of the 26 domains.**
+</p>
+<hr>
+<h2 id="5-defects-confirmed-and-corrected">5. Defects confirmed and corrected</h2>
+<h3 id="d-1-termsacceptance-erased-consent-by-fk-cascade-fixed-717697f">D-1 · <code>TermsAcceptance</code> erased consent by FK cascade — <strong>FIXED</strong> (<code>717697f</code>)</h3>
+<p>
+The Wave 2 migration shipped <code>ON DELETE CASCADE</code>, justified by a comment reasoning that erased
+ 
+accounts should take their evidence with them. **That is a retention determination, and repository law
+ 
+reserves it elsewhere:** <code>.ai/IDENTITY-CONSTITUTION.md</code> §12.3 — erasure "is never a foreign-key cascade
+ 
+and never an incidental consequence of deleting another principal"; §16 item 6 — "erasure and retention
+ 
+are policy-driven commands, not cascades"; §18 names FK cascade as the forbidden mechanism; §12.4
+ 
+reserves durations to a counsel-ratified schedule that does not yet exist.
+</p>
+<p>
+<code>RESTRICT</code> is the <strong>decision-deferring</strong> choice — it fixes no retention period, it only refuses to let a
+ 
+foreign key execute an erasure nobody authorised. In-repo precedent agrees (<code>XpAward</code>,
+ 
+<code>ReputationMilestone</code>, <code>Organization.owner</code>).
+</p>
+<p>
+<strong>Verified at runtime against a real Postgres 16.13:</strong> with Cascade, deleting a User succeeded and left
+ 
+<strong>zero</strong> acceptance rows — the evidence was destroyed by the constraint. After the fix the delete is
+ 
+refused and the row survives; <code>confdeltype</code> reads <code>'r'</code>. Schema and migration kept in lockstep
+ 
+(<code>migrate diff --exit-code</code> = 0). Changes no current behaviour — no application path hard-deletes a
+ 
+User today — so this removed a latent erasure while the migration is still unapplied and the fix is free.
+</p>
+<h3 id="d-2-gate-d-preflight-guard-crashed-in-ci-fixed-a2b0a04">D-2 · Gate D preflight guard <strong>crashed</strong> in CI — <strong>FIXED</strong> (<code>a2b0a04</code>)</h3>
+<p>
+Wave 2 added a migration directory without registering it in <code>GATE_D_MIGRATION_CHAIN</code>.
+ 
+<code>loadGateDManifest</code> diffs the on-disk set against that manifest and <strong>throws</strong> on mismatch — so the
+ 
+guard did not fail, it <strong>crashed before printing anything</strong>, on a job CI actually runs. The Wave 2
+ 
+branch would have gone red on a stack trace with no usable message.
+</p>
+<p>
+Three corrections: register the migration; raise the coverage tripwires to the <strong>computed</strong> totals
+ 
+(7 migrations · 35 tables · 309 columns · 35 PKs · 64 indexes · 22 FKs — deltas of exactly +1/+5/+1/+2/+1,
+ 
+precisely what the migration adds and nothing else, which is itself evidence it does only what it
+ 
+claims); and fix test 18, which pinned the reputation migration by name because it <em>happened</em> to be the
+ 
+chain's tail. It no longer is, so removing it produced a mid-chain <strong>gap</strong> — a different state with a
+ 
+different decision — and the test failed for the right reason. It now derives the tail. <strong>105/105.</strong>
+</p>
+<h3 id="d-3-over-claiming-comment-on-the-acceptance-gate-fixed-717697f">D-3 · Over-claiming comment on the acceptance gate — <strong>FIXED</strong> (<code>717697f</code>)</h3>
+<p>
+The gate's comment said "Stripe is never touched" at the 428. Not accurate: the customer
+ 
+lookup/creation and read-only price and subscription lookups run before it. <strong>None bills anyone</strong>, so
+ 
+the substantive property holds — but the sentence would have let a future reviewer over-claim.
+</p>
+<h3 id="d-4-missing-acceptance-ui-built-2911d44">D-4 · Missing acceptance UI — <strong>BUILT</strong> (<code>2911d44</code>)</h3>
+<p>
+See §6.
+</p>
+<hr>
+<h2 id="6-terms-ux-implementation">6. Terms UX implementation</h2>
+<p>
+<code>components/TermsAccept.tsx</code>, shared by the three callers that can actually reach the upgrade branch —
+ 
+classified <strong>by the request each one sends</strong>, not assumed: <code>app/pricing/PricingTiers.tsx</code>,
+ 
+<code>app/agency/page.tsx</code>, <code>app/billing/page.tsx</code>. (<code>app/letters/page.tsx</code> is the letter pack — a different
+ 
+mechanism, correctly left alone.)
+</p>
+<ul><li>checkbox is component-local state seeded <strong>false on every mount</strong> — no prop, no persistence, no</li></ul>
+<p>
+  <code>defaultChecked</code>, so it <strong>cannot</strong> be pre-checked; confirm refused until acceptance is explicit
+</p>
+<ul><li>links the <strong>currently published</strong> <code>/legal/terms</code> and states no terms of its own — **no new legal or</li></ul>
+<p>
+  marketing wording anywhere**
+</p>
+<ul><li><strong>the version stays server-owned end to end.</strong> No client file contains or can construct a version: the</li></ul>
+<p>
+  component reads <code>termsVersion</code> off the server's own 428 body, echoes exactly that string back, and the
+ 
+  route re-validates it against its published constant. A forged version is refused.
+</p>
+<ul><li>accessible: real <code>&lt;label&gt;</code> association, keyboard operable, visible focus, <code>aria-describedby</code> on the</li></ul>
+<p>
+  error, blocked state <strong>announced</strong>, not colour-only
+</p>
+<ul><li>other form input survives a recoverable error; the 428 renders human-readable recovery guidance</li><li><strong>the UI is not the enforcement layer</strong> — the API still fails closed if bypassed</li></ul>
+<hr>
+<h2 id="7-paid-path-inventory-three-paths-three-different-consent-stories">7. Paid-path inventory — three paths, three different consent stories</h2>
+<div class="tw"><table><thead><tr><th>Path</th><th>Mechanism</th><th>Consent today</th><th>Durable local record</th><th>Bypass risk</th></tr></thead><tbody>
+<tr><td><strong>In-place upgrade</strong></td><td><code>subscriptions.update</code></td><td><strong>Hard 428 gate</strong></td><td>✅ <code>TermsAcceptance</code></td><td>None once migration applied</td></tr>
+<tr><td><strong>New subscription</strong></td><td>Checkout Session</td><td>Stripe <code>consent_collection</code></td><td>❌ analytics pointer only</td><td><strong>Inert unless <code>STRIPE_TOS_CONSENT=1</code> AND a Dashboard Terms URL</strong></td></tr>
+<tr><td><strong>Letter pack ($19)</strong></td><td>Checkout Session</td><td>Stripe <code>consent_collection</code></td><td>❌ none</td><td>Same conditional</td></tr>
+<tr><td><strong>Stripe Billing Portal</strong></td><td>Portal plan change</td><td>—</td><td>❌ none</td><td><strong>Structurally bypasses the gate</strong> — Dashboard setting, not code</td></tr>
+</tbody></table></div>
+<p>
+<strong>Technical recommendation (not a legal determination):</strong> <code>consent_collection</code> alone is not a technical
+ 
+control — it is inert by default and <strong>fails silently</strong>: with the flag off, checkout succeeds, the
+ 
+customer pays, <code>cs.consent</code> is null, and nothing refuses, warns, or records the absence.
+</p>
+<p>
+<strong>COUNSEL REQUIRED:</strong> <code>@@unique([userId, version])</code> makes acceptance **per revision, not per
+ 
+transaction**. Under a shared-record shape, someone who accepted while buying a letter pack would not
+ 
+be asked again at a later upgrade. Whether that is acceptable is a legal question.
+</p>
+<hr>
+<h2 id="8-migration-review">8. Migration review</h2>
+<div class="tw"><table><thead><tr><th>Question</th><th>Answer</th></tr></thead><tbody>
+<tr><td>Additive?</td><td><strong>PASS</strong> — 1 CREATE TABLE, 2 CREATE INDEX, 1 ADD CONSTRAINT. Zero DROP, zero ALTER of any existing table, <strong>zero INSERT/UPDATE/COPY, no backfill, no DEFAULT that could manufacture an acceptance</strong></td></tr>
+<tr><td>Rollback-safe?</td><td><strong>CONDITIONAL.</strong> Rolling back the <em>app</em> while leaving the table strands nobody. Dropping the <em>table</em> strands people two ways: live app code hard-fails every upgrade; and if rows exist, DROP destroys consent evidence <strong>that cannot be reconstructed</strong>, because nothing may fabricate it retroactively. <code>DROP TABLE</code> is valid <strong>only</strong> while the table is empty and the app is not yet live</td></tr>
+<tr><td>Fails before Stripe mutation?</td><td><strong>PASS</strong> — gate precedes <code>subscriptions.update</code>; no charge, no subscription created</td></tr>
+<tr><td>Concurrent duplicates?</td><td><strong>PASS</strong> — UNIQUE is in the <strong>database</strong>, not only Prisma. Prisma compiles the upsert to read-then-write, so the race window is real; the constraint closes it. Loser gets a 500 with <strong>no Stripe mutation</strong> — fail-closed</td></tr>
+<tr><td>Acceptance ≠ payment?</td><td><strong>PASS</strong> — the three states are cleanly separable and nothing conflates them</td></tr>
+<tr><td><code>pending:</code> prefix collision?</td><td><strong>PASS</strong> — none of the six handled Stripe event types contains a colon</td></tr>
+<tr><td>409 causes retry?</td><td><strong>PASS</strong> — Stripe retries on any non-2xx; 409 is returned before any handling</td></tr>
+</tbody></table></div>
+<p>
+<strong>VERIFICATION REQUIRED — PRODUCTION:</strong> the successful <code>migrate deploy</code> ran against an <strong>empty local</strong>
+ 
+database. Production has <strong>no <code>_prisma_migrations</code> history</strong>, so <code>migrate deploy</code> there would attempt
+ 
+<code>0_init</code> against a populated database. <strong>A Gate D baseline is a prerequisite.</strong>
+</p>
+<hr>
+<h2 id="9-toolchain-results">9. Toolchain results</h2>
+<div class="tw"><table><thead><tr><th>Check</th><th>Result</th></tr></thead><tbody>
+<tr><td><code>npm ci</code></td><td><strong>PASS</strong> — 735 packages</td></tr>
+<tr><td><code>npx prisma generate</code> · <code>npx prisma validate</code></td><td><strong>PASS</strong></td></tr>
+<tr><td><code>npx tsc --noEmit</code></td><td><strong>PASS</strong> — exit 0</td></tr>
+<tr><td><code>npx next build</code></td><td><strong>PASS</strong> — exit 0</td></tr>
+<tr><td>Guard suite — <strong>79 scripts</strong></td><td><strong>PASS — 79/79, 0 failing</strong></td></tr>
+<tr><td><code>scripts/gate-d-preflight.test.ts</code></td><td><strong>PASS</strong> — 105/105 (was crashing)</td></tr>
+<tr><td><code>scripts/terms-acceptance.test.ts</code></td><td><strong>PASS</strong> — 74 assertions</td></tr>
+<tr><td><code>npm run lint</code></td><td><strong>FAIL — 3 errors, PRE-EXISTING.</strong> Both files untouched by Waves 2/2.1; CI sets <code>continue-on-error: true</code>, "not a launch gate"</td></tr>
+<tr><td><code>migrate diff --from-migrations</code> (chain-vs-schema)</td><td><strong>NOT RUN — ENVIRONMENT</strong> — needs a shadow database</td></tr>
+<tr><td>Migration apply to production</td><td><strong>NOT RUN — OWNER AUTHORIZATION REQUIRED</strong></td></tr>
+</tbody></table></div>
+<hr>
+<h2 id="10-runtime-versus-source-level-verification">10. Runtime versus source-level verification</h2>
+<p>
+The distinction that mattered for three waves, now resolved for the critical paths.
+</p>
+<p>
+<strong>RUNTIME-VERIFIED (real execution):</strong> FK cascade behaviour, migration apply and rollback, acceptance
+ 
+concurrency (real Postgres 16.13) · acceptance written <strong>before</strong> any Stripe mutation, asserted on
+ 
+<strong>ordering index</strong> · 428 with <strong>no</strong> money-moving call · idempotent repeat under a real unique
+ 
+constraint · Stripe failure after acceptance leaving the record intact and never reporting an upgrade ·
+ 
+the full webhook claim cycle (claimed / in_flight / completed / stale re-claim / failure-then-retry) ·
+ 
+unknown price failing closed, asserted by <strong>absence of a <code>plan</code> key</strong> in the update payload — which a
+ 
+final-state read could not distinguish from "wrote the same value".
+</p>
+<p>
+<strong>SOURCE-LEVEL ONLY:</strong> gate positional ordering in the route text, UI wiring assertions, the compliance
+ 
+rule inventory, and every <code>scripts/*.test.ts</code> regex guard. These are labelled as such and are <strong>not</strong>
+ 
+claimed as runtime proof.
+</p>
+<hr>
+<h2 id="11-negative-control-evidence">11. Negative-control evidence</h2>
+<div class="tw"><table><thead><tr><th>Guard</th><th>Proof</th></tr></thead><tbody>
+<tr><td><code>terms-acceptance.test.ts</code> (74)</td><td><strong>15/15 mutations detected</strong></td></tr>
+<tr><td><code>gate-d-preflight.test.ts</code> (105)</td><td>Restored from crash; coverage totals computed, not guessed</td></tr>
+<tr><td><code>scripts/runtime/*</code> (113 assertions)</td><td>Each runtime test re-run against deliberately broken behaviour and shown failing</td></tr>
+<tr><td><code>stripe-lifecycle</code> (84) · <code>compliance-bar</code> (263)</td><td>Wave 2 controls, unbroken</td></tr>
+</tbody></table></div>
+<hr>
+<h2 id="12-proposed-pr-separation-the-branch-is-not-a-release-unit">12. Proposed PR separation — <strong>the branch is not a release unit</strong></h2>
+<p>
+<strong>Chosen strategy: dependency-ordered separate PRs, each cherry-picking whole reviewed commits.</strong>
+ 
+Rejected: merging the branch (deploys schema-dependent code before the migration) and history rewrite
+ 
+(destroys reviewed evidence for no gain).
+</p>
+<div class="tw"><table><thead><tr><th>PR</th><th>Unit</th><th>Contents</th><th>Migration dep</th><th>Merging auto-deploys?</th><th>Blocked by</th></tr></thead><tbody>
+<tr><td><strong>PR-0</strong></td><td>A + H</td><td>Docs, runbooks, read-only tooling</td><td>none</td><td>Yes, harmlessly</td><td>—</td></tr>
+<tr><td><strong>PR-1</strong></td><td>B</td><td>Wave 1 production-path fixes</td><td>none</td><td><strong>Yes</strong></td><td>—</td></tr>
+<tr><td><strong>PR-2</strong></td><td>C</td><td>Webhook lifecycle correction</td><td>none</td><td><strong>Yes</strong></td><td>PR-1</td></tr>
+<tr><td><strong>PR-3</strong></td><td>G</td><td>Compliance bar</td><td>none</td><td><strong>Yes</strong></td><td><strong>COUNSEL (B-05)</strong></td></tr>
+<tr><td><strong>PR-4</strong></td><td>D+E+F</td><td><strong>Terms model + UI + enforcement — indivisible</strong></td><td><strong>YES</strong></td><td><strong>Yes — hazardous</strong></td><td><strong>Migration applied first</strong></td></tr>
+<tr><td><strong>PR-5</strong></td><td>A</td><td>Wave 2/2.1 record</td><td>none</td><td>Yes, harmlessly</td><td>all above</td></tr>
+</tbody></table></div>
+<p>
+<strong>PR-4 is indivisible</strong> because <code>scripts/terms-acceptance.test.ts</code> asserts across the model, the UI and
+ 
+the route — splitting it makes CI red on every fragment.
+</p>
+<p>
+```
+ 
+PR-0 ──► PR-1 ──► PR-2 ──────────────────────────► PR-5
+ 
+PR-3 ── COUNSEL gate ──────────────────────────────┤
+ 
+[owner: Gate D baseline] ─► [apply migration] ─► [forward-validate] ─► PR-4 ┘
+ 
+        ^^^ not a PR — a production operation ^^^
+ 
+```
+</p>
+<hr>
+<h2 id="13-migration-and-deployment-sequence-owner-controlled">13. Migration and deployment sequence (owner-controlled)</h2>
+<ol><li><strong>Gate D baseline</strong> — production has no <code>_prisma_migrations</code> history; <code>migrate deploy</code> is expected to fail on <code>0_init</code>. <strong>OWNER DECISION REQUIRED.</strong></li><li><strong>Snapshot/backup</strong> — required. <strong>This report does not claim a backup exists; none has been verified.</strong></li><li><strong>Apply</strong> <code>20260728000000_terms_acceptance</code>.</li><li><strong>Forward-validate</strong> — five columns, <code>COUNT(*) = 0</code>, both indexes, FK <code>confdeltype = 'r'</code>.</li><li><strong><code>prisma generate</code> + build.</strong></li><li><strong>Ship UI</strong> (PR-4 contains both UI and enforcement — they deploy together).</li><li><strong>Smoke test</strong> — upgrade without acceptance returns 428 and creates no Stripe change; with acceptance succeeds and writes exactly one row.</li><li><strong>Monitor</strong> — 428 rate, 500 rate on the upgrade path, webhook 409 rate.</li></ol>
+<p>
+<strong>Rollback constraints — stated honestly.</strong> Rolling back the app while leaving the table is safe.
+ 
+Dropping the table is safe <strong>only</strong> while it is empty and the app is not live. **Once rows exist, the
+ 
+migration is effectively forward-only**, because consent evidence cannot be reconstructed and nothing
+ 
+may fabricate it.
+</p>
+<hr>
+<h2 id="14-updated-go-no-go">14. Updated Go/No-Go</h2>
+<h3 id="no-go">🔴 NO-GO</h3>
+<div class="tw"><table><thead><tr><th>Blocker</th><th>State</th><th>Gate</th></tr></thead><tbody>
+<tr><td>B-01…B-04, B-04g, B-07, B-08, B-11</td><td>✅ <strong>CLOSED</strong> (8)</td><td>—</td></tr>
+<tr><td>Gate D CI guard</td><td>✅ <strong>CLOSED</strong> this wave</td><td>—</td></tr>
+<tr><td><strong>B-06</strong> terms acceptance</td><td>⚠️ <strong>PARTIAL</strong> — UI + FK fix done; <strong>migration unapplied</strong></td><td><strong>OWNER DECISION REQUIRED</strong></td></tr>
+<tr><td><strong>B-05</strong> compliance bar</td><td>⚠️ <strong>PARTIAL</strong></td><td><strong>COUNSEL REQUIRED</strong></td></tr>
+<tr><td><strong>B-10</strong> alerting</td><td>⚠️ <strong>PARTIAL</strong></td><td><strong>PRODUCTION</strong></td></tr>
+<tr><td><strong>B-09</strong> backup/recovery</td><td>❌ <strong>OPEN</strong> — no drill has run</td><td><strong>OWNER + PRODUCTION</strong></td></tr>
+<tr><td><strong>B-12</strong> counsel sign-off</td><td>❌ <strong>BLOCKED — COUNSEL</strong></td><td><strong>COUNSEL</strong></td></tr>
+<tr><td>C-01 · C-02</td><td><strong>VERIFICATION REQUIRED — PRODUCTION</strong></td><td><strong>PRODUCTION</strong></td></tr>
+</tbody></table></div>
+<hr>
+<h2 id="15-remaining-engineering-work-wave-2-s-claim-retracted">15. Remaining engineering work — Wave 2's claim retracted</h2>
+<p>
+<strong>Wave 2 said "no remaining blocker is engineering work." That was false, and this wave proves it:</strong>
+ 
+the terms UI was engineering and did not exist; the Gate D guard was crashing in CI; the FK was
+ 
+erasing consent. All three are now fixed and committed.
+</p>
+<p>
+<strong>Still ENGINEERING:</strong> regenerate the Gate D runbook manifest for seven migrations (rides with the
+ 
+apply) · local consent trace for new-subscription and letter-pack paths (<strong>conditional on O7/counsel</strong>) ·
+ 
+acceptance at registration (<strong>conditional on O5</strong>) · disabled-account cancellation path (**conditional on
+ 
+O3**) · 3 pre-existing lint errors · wire <code>scripts/runtime/run-all.ts</code> into <code>.ai/TESTING.md</code> · stale
+ 
+<code>lib/billing.ts</code> comment citing a retracted premise.
+</p>
+<hr>
+<h2 id="16-decisions-required">16. Decisions required</h2>
+<p>
+<strong>OWNER:</strong> O1 apply the migration — yes/no · O2 approve the Gate D baseline · O3 ratify a
+ 
+disabled-account billing policy (a paying disabled customer currently <strong>cannot cancel</strong>) · O4 backfill
+ 
+option for existing subscribers (<strong>A = no backfill is what the code does</strong>) · O5 acceptance at
+ 
+registration? · O6 approve each of the six merges · O7 is a local consent trace for the other two paid
+ 
+paths in scope for v1.0?
+</p>
+<p>
+<strong>COUNSEL:</strong> C1 <strong>B-12</strong> CROA/FCRA positioning (critical path) · C2 <strong>B-05</strong> the eight compliance-bar
+ 
+questions (gates PR-3) · C3 are backfill options B/C lawful? · C4 acceptance scope — per revision or per
+ 
+transaction?
+</p>
+<p>
+<strong>PRODUCTION:</strong> confirm the DB provider and <strong>run the restore drill</strong> (B-09) · set <code>ALERT_WEBHOOK_URL</code>
+ 
+and <strong>prove delivery</strong> (B-10) · <code>SETUP_SECRET</code> presence (C-01) · encryption backfill completeness (C-02) ·
+ 
+<code>STRIPE_TOS_CONSENT</code> + Dashboard Terms URL · whether the Billing Portal permits plan changes ·
+ 
+out-of-band Stripe prices.
+</p>
+<hr>
+<h2 id="17-commit-list">17. Commit list</h2>
+<div class="tw"><table><thead><tr><th>Hash</th><th>Commit</th></tr></thead><tbody>
+<tr><td><code>717697f</code></td><td><code>fix(schema): TermsAcceptance must not erase consent by FK cascade</code></td></tr>
+<tr><td><code>a2b0a04</code></td><td><code>fix(ci): repair the Gate D preflight guard broken by the Wave 2 migration</code></td></tr>
+<tr><td><code>2911d44</code></td><td><code>feat(billing): terms-acceptance UI for the in-place upgrade path</code></td></tr>
+<tr><td><code>4871d4e</code></td><td><code>test(runtime): mocked runtime guards, plus the release sequence and migration runbook</code></td></tr>
+<tr><td><em>(this commit)</em></td><td><code>docs(rc1): record Wave 2.1 — criteria v1.3 plus release-integration report and HTML</code></td></tr>
+</tbody></table></div>
+<hr>
+<h2 id="18-recommendations">18. Recommendations</h2>
+<p>
+<strong>MERGE: NO — not as a branch.</strong> Merge PR-0 → PR-1 → PR-2 individually once reviewed. **PR-4 must not
+ 
+merge until the migration is applied and forward-validated.**
+</p>
+<p>
+<strong>DEPLOY: NO.</strong> No production change is authorised by this wave.
+</p>
+<p>
+<strong>EXACT NEXT ACTION:</strong> answer <strong>O1</strong> (apply the migration — yes/no) and <strong>O2</strong> (approve the Gate D
+ 
+baseline). Those two unblock PR-4, which is the only unit carrying real launch value that is currently
+ 
+frozen. Everything else in PR-0/1/2 is reviewable and mergeable <strong>today</strong>.
+</p>
+<hr>
+<p>
+*Repository truth is authoritative. Nothing here asserts a production fact, a completed drill, a
+ 
+measured RPO/RTO, a live alert delivery, or a legal conclusion. A written runbook is not operational
+ 
+proof.*
+</p>
+<footer>Projection of <code>CREDITVECTOR_RC1_RELEASE_INTEGRATION_WAVE_2_1_REPORT.md</code>, which is canonical.
+Contains no credentials, secrets, tokens, or environment values.</footer>
+</main></body></html>

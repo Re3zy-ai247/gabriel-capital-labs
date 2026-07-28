@@ -2,7 +2,7 @@
 
 **The executive Go/No-Go checklist for CreditVector Version 1.0.**
 
-**Version:** 1.2 · **Status:** Draft — not ratified · **Date:** 2026-07-28 (Waves 1–2 applied)
+**Version:** 1.3 · **Status:** Draft — not ratified · **Date:** 2026-07-28 (Waves 1–2.1 applied)
 **Method:** repository audit of 26 launch-critical subsystems; every finding independently
 re-verified against source before entry. **No code was written. No feature was implemented.**
 
@@ -112,7 +112,33 @@ The two that remain are the two that were never engineering-blocked — they wer
 
 **All twelve must close. No exceptions, no partial credit.**
 
-### Wave 2 status (2026-07-28) — read this column first
+### Wave 2.1 status (2026-07-28) — read this column first
+
+**The environment blocker that qualified every prior result is gone.** `npm ci` succeeds,
+`prisma generate` succeeds, `npx tsc --noEmit` exits 0, `npx next build` exits 0, and **79/79 guard
+scripts pass**. Waves 1–2 could run none of these. Claims previously marked NOT RUN — ENVIRONMENT are
+now **PASS**, and the terms gate and webhook claim machine are **runtime-verified**, not regex-verified.
+
+| # | Status | Where |
+|---|---|---|
+| B-06 terms acceptance | ⚠️ **PARTIAL** — materially advanced | `2911d44` — UI now exists on all three upgrade callers, so the gate is satisfiable. `717697f` — FK corrected Cascade → **RESTRICT**. **Migration still NOT applied. OWNER DECISION REQUIRED** |
+| Gate D CI guard | ✅ **CLOSED** — Wave 2 regression | `a2b0a04` — Wave 2 added a migration without registering it; the guard **crashed** in CI rather than failing. Restored 105/105 |
+| Toolchain | ✅ **PASS** | typecheck, build, 79/79 guards. Lint: 3 pre-existing errors in files Wave 2 never touched; CI marks lint advisory |
+| Runtime verification | ✅ **NEW** | `4871d4e` — `scripts/runtime/` executes the real handlers; acceptance-before-Stripe proven by ordering index, webhook claim cycle proven end to end |
+| B-05 · B-09 · B-10 · B-12 | unchanged | See Wave 2 row below |
+
+**Two defects were found in Wave 2's own output and corrected here.** (1) The `TermsAcceptance` FK
+shipped as `ON DELETE CASCADE`; a real-Postgres test showed deleting a User destroyed the consent
+evidence, which `.ai/IDENTITY-CONSTITUTION.md` §12.3 forbids as an erasure mechanism. (2) The Gate D
+preflight guard crashed in CI because the new migration was never registered in its manifest.
+
+**Wave 2's claim that "no remaining blocker is engineering work" was wrong** and is retracted: the
+terms UI was engineering, and it did not exist. The corrected classification is in
+`RC1-RELEASE-SEQUENCE.md`.
+
+---
+
+### Wave 2 status (2026-07-28)
 
 | # | Status | Where |
 |---|---|---|
