@@ -10,6 +10,24 @@ const PROHIBITED: { pattern: RegExp; replacement: string }[] = [
   { pattern: /\b100% removal\b/gi, replacement: "removal of unverifiable items" },
   { pattern: /\bforce (you|the bureau) to delete\b/gi, replacement: "request deletion of unverifiable information" },
 
+  // — Score-outcome promises (the DISCLAIMER below names score improvement as
+  //   never-guaranteed; these are the rules that actually enforce it) —
+  // The BAR IS PROMISES, NOT THE TOPIC: explaining how scores work is educational and
+  // must pass untouched, so every pattern requires a guarantee, a promissory modal, or
+  // a specific point figure. Hedged teaching ("can improve your score over time",
+  // "your score may go up") is deliberately left alone.
+  // Ordering note: the specific "guarantee + score" rule runs BEFORE the bare
+  // point-figure rules so it consumes the whole promise instead of leaving a fragment,
+  // and the "by N points" rule runs before the generic modal rule for the same reason.
+  { pattern: /\bguaranteed (?:\d+\+?[-\s]?point )?(?:credit )?score (increase|improvement|boost|jump|gain)\b/gi, replacement: "possible score change, which is never guaranteed" },
+  { pattern: /\bguaranteed (higher|better|improved) (?:credit )?score\b/gi, replacement: "possible score change, which is never guaranteed" },
+  { pattern: /\b(we|i|they) (?:guarantee|promise)s? (?:you )?(?:a |an )?(?:\d+\+?[-\s]?point )?(?:higher |better |improved )?(?:credit )?scores?(?: (?:increase|improvement|boost|jump|gain))?\b/gi, replacement: "$1 cannot guarantee any score outcome" },
+  { pattern: /\b(?:raise|boost|increase|improve|lift|add) (?:your |their |his |her |the )?(?:credit )?scores? by (?:up to )?\d+\+?(?: ?points?)?/gi, replacement: "help you understand what moves a credit score; point changes vary by profile and are never guaranteed" },
+  { pattern: /\b\d+\+?[-\s]?points?(?: score)? (?:increase|boost|jump|gain|improvement)\b/gi, replacement: "point change that varies by individual credit profile and is never guaranteed" },
+  { pattern: /\b(?:credit )?score (?:increase|boost|jump|gain|improvement) of \d+\+? ?points?\b/gi, replacement: "score change that varies by individual credit profile and is never guaranteed" },
+  { pattern: /\b(?:your |their |the )?(?:credit )?scores? will (?:go up|increase|improve|rise|jump|climb)(?: by \d+\+? ?points?)?/gi, replacement: "your score may change over time, and no score outcome is guaranteed" },
+  { pattern: /\b(?:will|we'll|i'll|going to) (?:boost|raise|increase|improve|fix|repair) (?:your |their |his |her |the )?(?:credit )?scores?\b/gi, replacement: "can help you understand what influences your credit score, though no score outcome is guaranteed" },
+
   // — Legal-conclusion assertions (only an adjudicator can declare a violation) —
   { pattern: /\bthis (is|constitutes) fraud\b/gi, replacement: "this raises concerns that warrant investigation" },
   { pattern: /\bthis is illegal\b/gi, replacement: "this raises concerns that warrant investigation" },
