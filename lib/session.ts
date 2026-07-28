@@ -83,6 +83,38 @@ export async function impersonationContext() {
   return { real: account, target };
 }
 
+// The signed-in row PLUS whether it is disabled, for the ONE surface that must be
+// able to tell "suspended" apart from "signed out": the cancellation-only billing
+// path (app/api/billing/self-cancel). currentAccount() collapses both into null —
+// correct everywhere else, but it also strands a suspended PAYING subscriber with
+// no way to stop being billed, because /api/stripe/portal answers 401 to them.
+//
+// This helper deliberately does LESS than currentAccount()/currentUser():
+//   • it resolves ONLY by the immutable session user id — never by the session's
+//     email, which app/api/profile/route.ts lets the user change (a stale JWT
+//     holding a released address would otherwise resolve to whoever registered it
+//     next, i.e. cancel a stranger's subscription);
+//   • it reads NO cookies — not WORKSPACE_COOKIE, not IMPERSONATE_COOKIE — so an
+//     agency or an impersonating admin can never reach this path as someone else;
+//   • it grants NOTHING. It reports state. Every caller must still decide, and the
+//     cancellation route refuses the "enabled" state outright so the ordinary
+//     billing path stays provably unchanged.
+// Callers must treat "disabled" as still-blocked for all ordinary access.
+export type SessionAccountState =
+  | { state: "anonymous"; account: null }
+  | { state: "enabled"; account: NonNullable<Awaited<ReturnType<typeof currentAccount>>> }
+  | { state: "disabled"; account: NonNullable<Awaited<ReturnType<typeof currentAccount>>> };
+
+export async function sessionAccountState(): Promise<SessionAccountState> {
+  const session = await getServerSession(authOptions);
+  const id = (session?.user as { id?: string } | undefined)?.id;
+  if (!id) return { state: "anonymous", account: null };
+  const account = await prisma.user.findUnique({ where: { id } });
+  // A session id with no row (deleted user) is anonymous, not disabled — fail closed.
+  if (!account) return { state: "anonymous", account: null };
+  return account.disabled ? { state: "disabled", account } : { state: "enabled", account };
+}
+
 // Convenience for UI: who is signed in, and which client (if any) they're acting
 // as right now. Used by the app shell to show the "acting as" banner.
 export async function currentWorkspace() {
