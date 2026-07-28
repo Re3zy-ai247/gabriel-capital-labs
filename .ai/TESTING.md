@@ -28,6 +28,22 @@ npx --no-install tsx scripts/<name>.test.ts   # lockfile-local guard scripts (be
 | `tradeline-insights.test.ts` | §605 fall-off display math + duplicate grouping + conflict-field flags | 12/12 |
 | `forecast.test.ts` | Engine 3 Tier A own-data latency + §611 window forecast | 12/12 |
 | `explain.test.ts` | Kai Explainability Layer — structured "why" from real data, uncertainty never hidden | 14/14 |
+| `stripe-lifecycle.test.ts` | RC1 money-path guard — pins the SOURCE TEXT of the webhook claim contract, current-state retrieval, and fail-closed price mapping. It matches shape; it does not execute a handler. The runtime proof is in the table below | 84/84 |
+
+### `scripts/runtime/` — the only RUNTIME guards
+
+Run with `npx tsx scripts/runtime/run-all.ts` (CI step "Runtime guards"). Everything else in the
+table above matches SOURCE TEXT; these execute the real route handlers against mocked Stripe and a
+fake Prisma layer that parses the SQL the code actually issues. **`scripts/*.test.ts` is a
+non-recursive glob and does not reach them** — that is why they have their own CI step.
+
+| Guard | Covers |
+|---|---|
+| `stripe-webhook-claim.runtime.test.ts` | claimed / in_flight / completed / stale re-claim / handler failure then retry, through the real `POST` | 36/36 |
+| `unknown-price-failclosed.runtime.test.ts` | an unrecognised price writes no `plan` key at all | 29/29 |
+
+`scripts/runtime/README.md` states what these guards do NOT prove — no Postgres, no real
+concurrency, no Stripe, no browser. Read it before quoting a pass as evidence.
 
 ## Isolated database integration
 
