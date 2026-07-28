@@ -7,10 +7,14 @@
 # on first. It holds NO secrets, so it can never leak one.
 #
 # Deliberately NOT checked here, because doing so honestly requires credentials
-# this job must not hold: database connectivity, AI-provider configuration, cron
-# execution status. Asserting those from an unauthenticated probe would mean
-# inventing a health endpoint that reports internal state to the world — a worse
-# trade than leaving them to the authenticated admin diagnostics page.
+# this job must not hold: database connectivity, AI-provider configuration, and
+# whether a cron actually EXECUTED. Asserting those from an unauthenticated probe
+# would mean inventing a health endpoint that reports internal state to the world —
+# a worse trade than leaving them to the authenticated admin diagnostics page.
+# Cron *execution* liveness is therefore a documented human step:
+# OPERATIONS.md → "Cron liveness (VERIFICATION REQUIRED)". Check 6 below proves only
+# what an anonymous caller can prove — that the cron routes still exist, are gated,
+# and have a CRON_SECRET configured at all.
 set -uo pipefail
 
 BASE="${CV_BASE_URL:-https://www.creditvector.app}"
@@ -35,11 +39,15 @@ done
 
 # 2. Authenticated API must FAIL CLOSED to an anonymous caller. A 200 here would
 #    mean an auth gate had come off — the single most serious thing this can catch.
+#    404 is a FAILURE, not a pass: these routes are supposed to exist, so a 404 means
+#    the route was deleted or misrouted by a deploy — the regression this probe exists
+#    to catch. Scoring it green is how a missing route looks identical to a locked one.
 for path in "/api/agency/clients" "/api/community/threads"; do
   c=$(code_of "${BASE}${path}")
   case "$c" in
-    401|403|404) record ok "auth gate ${path}" "fails closed (HTTP ${c})" ;;
+    401|403) record ok "auth gate ${path}" "fails closed (HTTP ${c})" ;;
     200) record fail "auth gate ${path}" "SERVED 200 TO AN ANONYMOUS CALLER" ;;
+    404) record fail "auth gate ${path}" "ROUTE GONE (HTTP 404) — deleted or misrouted by a deploy" ;;
     *)   record fail "auth gate ${path}" "unexpected HTTP ${c}" ;;
   esac
 done
@@ -69,6 +77,23 @@ if echo "$robots" | grep -q "Disallow: /dashboard"; then
 else
   record fail "robots.txt" "Disallow rules missing — authed routes may be indexable"
 fi
+
+# 6. Cron routes are present and CONFIGURED. This does NOT prove a schedule fired —
+#    only production access can (OPERATIONS.md → "Cron liveness"). It does prove, with
+#    no credentials, the two silent-death modes the schedule cannot report on itself:
+#    the route vanished (404), or CRON_SECRET is unset so the route refuses every
+#    invocation (503) and brief ingest/digest are dead while nothing complains.
+#    An unauthenticated GET is side-effect-free: both handlers check the secret first.
+for path in "/api/cron/brief-ingest" "/api/cron/brief-digest"; do
+  c=$(code_of "${BASE}${path}")
+  case "$c" in
+    401) record ok "cron config ${path}" "CRON_SECRET set, route gated (HTTP 401)" ;;
+    503) record fail "cron config ${path}" "CRON_SECRET UNSET — this cron can never run (HTTP 503)" ;;
+    404) record fail "cron config ${path}" "ROUTE GONE (HTTP 404) — deleted or misrouted by a deploy" ;;
+    200) record fail "cron config ${path}" "RAN FOR AN ANONYMOUS CALLER (HTTP 200)" ;;
+    *)   record fail "cron config ${path}" "unexpected HTTP ${c}" ;;
+  esac
+done
 
 echo
 if [ "$FAILURES" -eq 0 ]; then
