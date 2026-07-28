@@ -5,11 +5,18 @@ import Stripe from "stripe";
 // 503 instead. Configure STRIPE_SECRET_KEY in Vercel to enable billing.
 let _stripe: Stripe | null = null;
 
+// Pin the Stripe API version explicitly. Left unset, the SDK sends whichever
+// version the INSTALLED package defaults to, so an `npm ci` against a bumped
+// lockfile would silently change live response shapes under billing. This value
+// is the default of the currently pinned stripe@22.2.0, so pinning it changes
+// nothing today — it only stops a dependency bump from moving it for us.
+export const STRIPE_API_VERSION = "2026-05-27.dahlia";
+
 export function getStripe(): Stripe | null {
   if (_stripe) return _stripe;
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) return null;
-  _stripe = new Stripe(key);
+  _stripe = new Stripe(key, { apiVersion: STRIPE_API_VERSION });
   return _stripe;
 }
 
@@ -186,7 +193,12 @@ export async function resolvePriceId(
 
 // Map a subscription's price back to a plan tier (for the webhook). Checks the
 // most specific lookup-key prefix first.
-export function planForPrice(price: { lookup_key?: string | null; unit_amount?: number | null } | null | undefined): PaidPlan {
+//
+// FAILS CLOSED: a price we do not recognize by lookup_key OR by amount returns
+// null, never a paid tier. The old `return "premium"` fallback meant any
+// hand-created, imported or legacy Stripe price silently provisioned a paid plan.
+// Callers must treat null as "unknown — do not change the plan" and report it.
+export function planForPrice(price: { lookup_key?: string | null; unit_amount?: number | null } | null | undefined): PaidPlan | null {
   const lk = price?.lookup_key ?? "";
   if (lk.startsWith("gcl_agency_pro")) return "agency_pro";
   if (lk.startsWith("gcl_agency")) return "agency";
@@ -200,7 +212,8 @@ export function planForPrice(price: { lookup_key?: string | null; unit_amount?: 
   )
     return "agency_pro";
   if (amt === AGENCY_PRICE_CENTS || amt === 399000) return "agency";
-  return "premium";
+  if (amt === PREMIUM_PRICE_CENTS || amt === 99000) return "premium";
+  return null;
 }
 
 // Legacy single-price resolvers kept for any older callers.
