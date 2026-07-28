@@ -18,6 +18,7 @@ rows that exist afterwards.
 ```bash
 npx --no-install tsx scripts/runtime/run-all.ts            # all guards, one summary
 npx --no-install tsx scripts/runtime/stripe-webhook-claim.runtime.test.ts
+npx --no-install tsx scripts/runtime/stripe-webhook-reorder.runtime.test.ts
 npx --no-install tsx scripts/runtime/unknown-price-failclosed.runtime.test.ts
 ```
 
@@ -35,6 +36,7 @@ suite, not a change to it.
 | Guard | Proves at runtime |
 | --- | --- |
 | `stripe-webhook-claim.runtime.test.ts` | The full claim lifecycle end to end through `POST`: fresh event → **claimed** → handled → **settled**; redelivery of a settled event → 200 `duplicate`, handler not re-run; a live pending claim → **409** (never a 200 that would end Stripe's retries); an abandoned pending claim ages out and **is** re-processed, while a one-minute-old claim is not; a handler failure **releases** the claim and the retry then succeeds; `releaseStripeEvent` deletes a pending row but never a settled one; an unhandled event type is acknowledged and never enters the ledger. |
+| `stripe-webhook-reorder.runtime.test.ts` | **Out-of-order delivery.** Stripe guarantees no ordering, so a `customer.subscription.deleted` can be followed by a DELAYED, STALE `customer.subscription.updated` whose payload still says `active`. The guard drives that exact pair through the real `POST` with the event payload and Stripe's CURRENT state set independently, and proves the plan stays **revoked**: the handler re-retrieves, the write carries `plan: "free"`, and no update in the scenario writes an agency plan. The mirror case (a stale `deleted` after a real reactivation) must not revoke a paying customer. A duplicate of the stale event stays idempotent. A **control** case — Stripe currently `active` — really does restore the plan, so none of the above passes merely because the handler can never write a plan. |
 | `unknown-price-failclosed.runtime.test.ts` | An unrecognized Stripe price on an **active** subscription writes **no `plan` key at all** (asserted against the `data` object handed to `user.update`, not against final state), grants no agency access, leaves the stored plan untouched, and is reported with the price id. A recognized price still provisions (control). An **inactive** subscription still writes `plan: "free"` whatever the price says, because revocation is always safe. A subscription whose customer maps to no account writes nothing and is reported. |
 
 ## How the mocking works
@@ -102,13 +104,23 @@ direction is what they attest, not the absolute numbers:
 | `data.plan = active ? (tier ?? "premium") : "free"` | 25 passed, **4 failed** |
 | `planForPrice` returns `"premium"` instead of `null` | 19 passed, **10 failed** |
 
+Recorded for `stripe-webhook-reorder.runtime.test.ts` (44 assertions), each mutation applied to a
+working copy of `app/api/stripe/webhook/route.ts` and reverted immediately afterwards:
+
+| Break | Result |
+| --- | --- |
+| Act on `event.data.object` instead of re-retrieving current state | 27 passed, **17 failed** (exit 1) |
+| Drop the `claim === "completed"` duplicate short-circuit | 39 passed, **5 failed** (exit 1) |
+| _(unmodified)_ | **44 passed, 0 failed** (exit 0) |
+
 Each guard also carries **control** assertions (a recognized price really did
 provision; a pending row really is deletable; the handler really did run) so that a "nothing happened" pass cannot
 be mistaken for a proof.
 
 ## Adding a guard
 
-1. Name it `<topic>.runtime.test.ts` in this directory.
+1. Name it `<topic>.runtime.test.ts` in this directory **and add that filename to `REQUIRED` in
+   `run-all.ts`** — discovery alone cannot tell a deleted guard from one that never existed.
 2. Register every mock with `mockModule()` / `mockPackage()` **first**, then
    `loadModule()` the code under test.
 3. Assert on behaviour — status, ordering via `CallLog.before()`, the `data`

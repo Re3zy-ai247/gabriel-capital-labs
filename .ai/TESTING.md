@@ -40,6 +40,7 @@ non-recursive glob and does not reach them** — that is why they have their own
 | Guard | Covers |
 |---|---|
 | `stripe-webhook-claim.runtime.test.ts` | claimed / in_flight / completed / stale re-claim / handler failure then retry, through the real `POST` | 36/36 |
+| `stripe-webhook-reorder.runtime.test.ts` | out-of-order delivery — a stale `updated` after a `deleted` cannot restore a revoked plan (and the mirror case cannot revoke a paying one) | 44/44 |
 | `unknown-price-failclosed.runtime.test.ts` | an unrecognised price writes no `plan` key at all | 29/29 |
 
 `scripts/runtime/README.md` states what these guards do NOT prove — no Postgres, no real
