@@ -2,7 +2,7 @@
 
 **The executive Go/No-Go checklist for CreditVector Version 1.0.**
 
-**Version:** 1.5 · **Status:** Draft — not ratified · **Date:** 2026-07-28 (Waves 1–2.3 applied)
+**Version:** 1.6 · **Status:** Draft — not ratified · **Date:** 2026-07-28 (Waves 1–2.4 applied)
 **Method:** repository audit of 26 launch-critical subsystems; every finding independently
 re-verified against source before entry. **No code was written. No feature was implemented.**
 
@@ -112,7 +112,50 @@ The two that remain are the two that were never engineering-blocked — they wer
 
 **All twelve must close. No exceptions, no partial credit.**
 
-### Wave 2.3 status (2026-07-28) — read this column first
+### Wave 2.4 status (2026-07-28) — read this column first
+
+**Both release units were rebuilt from `origin/main` (`dfe7a3a`, re-verified unchanged),
+adversarially attacked, corrected, and re-proven from scratch.** PR-1-v2 `ec7b467` (6 commits,
+19 files) · PR-2-v2 `f24778a` (8 commits, 17 files). File overlap between them: **0**.
+
+| | PR-1-v2 | PR-2-v2 | Merged tree |
+|---|---|---|---|
+| `tsc` · `next build` | PASS · PASS | PASS · PASS | PASS · PASS |
+| `scripts/*.test.ts` | **75/0** | **71/0** | **76/0** |
+| `scripts/runtime/` | n/a by design | **4/0** | **4/0** |
+| `prisma generate` · `validate` | PASS · PASS | PASS · PASS | PASS · PASS |
+
+Each proven after `rm -rf node_modules .next` with its **own** `npm ci` and Prisma client
+(distinct inodes, no symlinks) — owner decision **O6**. The merged tree is the actual release and
+was validated separately; `verify-production.sh` flips **21 pass / 1 fail → 22 pass / 0 fail**.
+
+**Adversarial review confirmed 8 findings; all 8 are closed.** The severe one was the Wave 2.2
+defect class repeating on a money path: the dual-shape Stripe invoice resolver was guarded **only by
+source text** and was defeated while the behaviour stayed broken — under a basil-pinned webhook
+endpoint `past_due` is never written and **dunning silently stops**. Neither invoice branch had any
+executed coverage. Closed by `scripts/runtime/invoice-shape.runtime.test.ts` (52 executed
+assertions); the defeating mutation now turns it **42/10 exit 1** while the source guard stays 84/84.
+
+**Disabled-subscriber item: ⚠ PARTIAL — NOT closed.** Technical policy implemented (direct
+server-side `cancel_at_period_end`, not a Billing Portal session — no portal configuration is
+repository-controlled, so cancellation-only cannot be proven there), runtime-verified, and proven
+cancellation-only under attack (34/34 independent assertions, no lever found). **But `lib/auth.ts`
+refuses sign-in for a disabled account**, so the remedy works only inside an already-issued JWT's
+remaining lifetime; a signed-out suspended user cannot reach it. That is an unresolved owner
+decision, and the RC1 rules forbid closing the item while one remains.
+
+**No blocker status changed.** B-05 BLOCKED — COUNSEL · B-06 BLOCKED — OWNER + PRODUCTION ·
+B-09 OPEN · B-10 PARTIAL · B-12 BLOCKED — COUNSEL · C-01/C-02 VERIFICATION REQUIRED — PRODUCTION.
+**PR-0a is no longer a dependency of PR-2** — every reference to the unpublished criteria document
+is gone from the PR-2 diff.
+
+**Branches are local only.** No push, no GitHub PR, no merge, no deploy, no production SQL, no live
+Stripe mutation, no production database contact, no migration apply, no Gate D baseline, no schema
+change. Full record: `CREDITVECTOR_RC1_CLEAN_RELEASE_HARDENING_WAVE_2_4_REPORT.md`.
+
+---
+
+### Wave 2.3 status (2026-07-28)
 
 **Four clean release branches now exist, each cut from verified current `origin/main` (`dfe7a3a`) and
 each proven independently under CI-equivalent conditions** — `rm -rf node_modules .next` → `npm ci` →

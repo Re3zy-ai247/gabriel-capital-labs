@@ -1,0 +1,1042 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CreditVector — RC1 Release Candidate Extraction, Wave 2.2</title>
+<meta name="description" content="RC1 Execution Wave 2 — Go/No-Go status, blockers, and required decisions.">
+<style>
+:root{--bg:#ffffff;--fg:#14181f;--mut:#4a5462;--line:#d9dee6;--acc:#0b4fa8;--code:#f2f4f7;
+--red:#8a1420;--redbg:#fdeaec;--amb:#7a4a00;--ambbg:#fff5e0;--grn:#0f5c34;--grnbg:#e6f5ec;}
+*{box-sizing:border-box}
+body{margin:0;padding:1.1rem;background:var(--bg);color:var(--fg);
+font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+-webkit-text-size-adjust:100%;overflow-wrap:break-word}
+main{max-width:60rem;margin:0 auto}
+h1{font-size:1.6rem;line-height:1.25;margin:.2rem 0 .4rem;letter-spacing:-.01em}
+h2{font-size:1.28rem;margin:2.2rem 0 .7rem;padding-bottom:.32rem;border-bottom:2px solid var(--line)}
+h3{font-size:1.08rem;margin:1.6rem 0 .5rem}
+h4{font-size:1rem;margin:1.2rem 0 .4rem;color:var(--mut)}
+p{margin:.7rem 0}
+a{color:var(--acc)}
+code{background:var(--code);padding:.12em .38em;border-radius:4px;
+font:.86em/1.4 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;word-break:break-word}
+hr{border:0;border-top:1px solid var(--line);margin:2rem 0}
+blockquote{margin:1.1rem 0;padding:.85rem 1rem;background:var(--redbg);
+border-left:4px solid var(--red);border-radius:0 6px 6px 0;color:#5c0f18}
+blockquote strong{color:var(--red)}
+ul,ol{padding-left:1.35rem;margin:.7rem 0}
+li{margin:.34rem 0}
+.tw{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:1rem 0;
+border:1px solid var(--line);border-radius:8px}
+table{border-collapse:collapse;width:100%;min-width:34rem;font-size:.9rem}
+th,td{padding:.55rem .7rem;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+th{background:#f5f7fa;font-weight:650;white-space:nowrap}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:nth-child(even){background:#fafbfc}
+.meta{color:var(--mut);font-size:.92rem;margin:.5rem 0 1.2rem}
+nav.toc{background:#f7f9fb;border:1px solid var(--line);border-radius:8px;padding:.85rem 1rem;margin:1.4rem 0}
+nav.toc h2{font-size:.82rem;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);
+border:0;margin:0 0 .5rem;padding:0}
+nav.toc ol{margin:0;padding-left:1.2rem;font-size:.92rem}
+nav.toc li{margin:.2rem 0}
+.legend{display:flex;flex-wrap:wrap;gap:.4rem;margin:1rem 0}
+.tag{font-size:.76rem;font-weight:650;padding:.18rem .5rem;border-radius:999px;white-space:nowrap}
+.t-open{background:var(--redbg);color:var(--red)}
+.t-part{background:var(--ambbg);color:var(--amb)}
+.t-closed{background:var(--grnbg);color:var(--grn)}
+footer{margin-top:2.5rem;padding-top:1rem;border-top:1px solid var(--line);
+color:var(--mut);font-size:.85rem}
+@media(max-width:34rem){body{padding:.8rem}h1{font-size:1.35rem}table{font-size:.84rem;min-width:30rem}}
+@media print{body{padding:0;font-size:11pt}nav.toc{break-inside:avoid}
+.tw{overflow:visible;border:0}table{min-width:0;font-size:9pt}
+h2{break-after:avoid}tr{break-inside:avoid}a{color:#000;text-decoration:none}
+a[href^="http"]::after{content:" (" attr(href) ")";font-size:8pt;color:#555}}
+</style></head><body><main>
+<p class="meta"><strong>Gabriel Capital Labs</strong> · Draft — not ratified · 2026-07-28<br>
+Branch <code>claude/creditvector-founder-library-jwnbhc</code> · Commits <code>d6303fc</code> → <code>HEAD</code></p>
+<div class="legend"><span class="tag t-closed">CLOSED 9</span><span class="tag t-part">PARTIAL 3</span><span class="tag t-open">OPEN / BLOCKED 2</span><span class="tag t-open">VERIFICATION REQUIRED 2</span></div>
+<nav class="toc"><h2>Contents</h2><ol><li><a href="#1-context">1. Context</a></li><li><a href="#2-current-base-and-whether-it-moved">2. Current base — and whether it moved</a></li><li><a href="#3-agents-and-ownership">3. Agents and ownership</a></li><li><a href="#4-disabled-subscriber-design-selected">4. Disabled-subscriber design selected</a></li><li><a href="#5-cancellation-only-implementation">5. Cancellation-only implementation</a></li><li><a href="#6-security-and-authorization-proof">6. Security and authorization proof</a></li><li><a href="#7-reordered-event-runtime-scenario">7. Reordered-event runtime scenario</a></li><li><a href="#8-negative-control-proof">8. Negative-control proof</a></li><li><a href="#9-pr-2-rollback-procedure">9. PR-2 rollback procedure</a></li><li><a href="#10-disposable-database-rollback-test">10. Disposable-database rollback test</a></li><li><a href="#11-findings-raised-and-closed-this-wave">11. Findings raised and closed this wave</a></li><li><a href="#12-pr-0a-dependency-removal">12. PR-0a dependency removal</a></li><li><a href="#13-pr-1-v2-clean-branch">13. PR-1-v2 — clean branch</a></li><li><a href="#14-pr-2-v2-clean-branch">14. PR-2-v2 — clean branch</a></li><li><a href="#15-ancestry-and-forbidden-path-proof">15. Ancestry and forbidden-path proof</a></li><li><a href="#16-isolated-dependency-and-prisma-generation-proof">16. Isolated dependency and Prisma generation proof</a></li><li><a href="#17-typecheck-build-guard-results">17. Typecheck / build / guard results</a></li><li><a href="#18-runtime-versus-source-level-evidence">18. Runtime versus source-level evidence</a></li><li><a href="#19-rollback-constraints">19. Rollback constraints</a></li><li><a href="#20-residual-risks">20. Residual risks</a></li><li><a href="#21-updated-rc1-status-no-go-unchanged">21. Updated RC1 status — 🔴 NO-GO, unchanged</a></li><li><a href="#22-safe-to-review-safe-to-merge">22. Safe to review · safe to merge</a></li><li><a href="#23-pr-packages-copy-and-paste-ready">23. PR packages — copy-and-paste ready</a></li><li><a href="#24-owner-actions">24. Owner actions</a></li><li><a href="#25-counsel-actions">25. Counsel actions</a></li><li><a href="#26-production-actions">26. Production actions</a></li><li><a href="#27-exact-next-action">27. Exact next action</a></li><li><a href="#28-artifacts">28. Artifacts</a></li><li><a href="#29-prohibitions-explicit-confirmation">29. Prohibitions — explicit confirmation</a></li></ol></nav>
+<h1 id="creditvector-rc1-clean-release-hardening-wave-2-4">CreditVector — RC1 Clean Release Hardening, Wave 2.4</h1>
+<p>
+<strong>Date:</strong> 2026-07-28 · <strong>Base:</strong> <code>origin/main</code> = <code>dfe7a3a</code> — <strong>re-fetched and verified UNCHANGED</strong>
+ 
+<strong>Status:</strong> Draft — not ratified
+</p>
+<blockquote><strong>Both release units were rebuilt from <code>origin/main</code>, adversarially attacked, corrected, and re-proven from scratch.</strong> PR-1-v2 <code>ec7b467</code> · PR-2-v2 <code>f24778a</code>. <strong>RC1 remains 🔴 NO-GO.</strong> No blocker status changed. The disabled-subscriber item is <strong>PARTIAL</strong>, not closed — the remedy works, but a suspended user who has signed out cannot reach it. <strong>No push · no GitHub PR · no merge · no deploy · no production SQL · no live Stripe mutation · no production database contact · no migration apply · no Gate D baseline · no schema change.</strong></blockquote>
+<hr>
+<h2 id="1-context">1. Context</h2>
+<p>
+CreditVector is a live Next.js 14 consumer-credit <strong>education</strong> SaaS with live Stripe billing.
+ 
+Wave 2.3 produced four clean release branches; adversarial review of two of them surfaced two
+ 
+release-level weaknesses. **Wave 2.4 closed both, then attacked the result and closed eight more
+ 
+findings.**
+</p>
+<p>
+<strong>Merging to <code>main</code> auto-deploys production.</strong> Merge and deploy are one event.
+</p>
+<hr>
+<h2 id="2-current-base-and-whether-it-moved">2. Current base — and whether it moved</h2>
+<p>
+<code>origin/main</code> = <code>dfe7a3ab06e966d87d4ed53fb518f10333bbb61e</code>, fetched at the start of the wave and
+ 
+<strong>re-fetched and re-verified after all corrective commits</strong>. It did not move. Every branch below has
+ 
+that exact commit as its merge-base, so nothing was built against a base that shifted underneath it.
+</p>
+<hr>
+<h2 id="3-agents-and-ownership">3. Agents and ownership</h2>
+<div class="tw"><table><thead><tr><th>Agent</th><th>Owned</th><th>Outcome</th></tr></thead><tbody>
+<tr><td>1 — disabled-subscriber cancellation</td><td><code>lib/session.ts</code> helper, new <code>app/api/billing/</code> route, one page, new <code>scripts/*.test.ts</code></td><td>Shape B implemented, 118 assertions</td></tr>
+<tr><td>2 — webhook reorder + rollback</td><td><code>scripts/runtime/</code>, rollback runbook, <code>verify-production.sh</code>, <code>ci.yml</code></td><td>Reorder guard 44/44, rollback drilled on real Postgres</td></tr>
+<tr><td>3 — clean reconstruction</td><td>both <code>release/*-v2</code> branches</td><td>Rebuilt from <code>origin/main</code>, content-neutral</td></tr>
+<tr><td>4 — adversarial</td><td>read-only + own scratch</td><td><strong>8 findings confirmed</strong>, 25 mutations run</td></tr>
+<tr><td>Coordinator (me)</td><td>base verification, adjudication, corrective commits, re-proof, reports</td><td>Closed all 8</td></tr>
+</tbody></table></div>
+<p>
+<strong>A second orchestration attempt failed at the harness level</strong> and is reported rather than hidden:
+ 
+every sub-agent tool call was rejected by the permission layer with its input stripped, including
+ 
+<code>StructuredOutput</code>. The agents executed nothing, both worktrees were untouched, and the agent
+ 
+<strong>refused to fabricate results to satisfy the schema</strong> — the correct behaviour. I performed the
+ 
+corrective pass directly instead.
+</p>
+<hr>
+<h2 id="4-disabled-subscriber-design-selected">4. Disabled-subscriber design selected</h2>
+<p>
+<strong>Shape B — direct server-side Stripe cancellation.</strong> Not the hosted Billing Portal.
+</p>
+<p>
+Owner policy item 7 forbids handing a disabled user an unrestricted portal. Whether the portal is
+ 
+cancellation-only is <strong>not provable from this repository</strong>: there is exactly one
+ 
+<code>billingPortal.sessions.create</code> call, it passes <strong>no <code>configuration</code> parameter</strong>, and no
+ 
+<code>billingPortal.configurations</code> object exists anywhere in the tree. What a portal session permits —
+ 
+update card, change plan, resume, buy — is Stripe Dashboard state that cannot be reviewed or
+ 
+regression-tested here. Asserting a restriction we cannot demonstrate was rejected.
+</p>
+<p>
+Shape B reuses the exact primitive <code>app/api/admin/billing/cancel/route.ts</code> already relies on:
+ 
+<code>subscriptions.update(id, { cancel_at_period_end: true })</code>, subject pinned to the caller's own row.
+ 
+<strong>Consequence stated plainly and shown in the UI:</strong> billing stops at the end of the already-paid
+ 
+period, not instantly; one paid period may still elapse and no refund is issued. Immediate
+ 
+cancellation stays an <strong>admin</strong> action.
+</p>
+<p>
+<strong>That premise is now locked by a guard.</strong> <code>scripts/disabled-cancellation-scope.test.ts</code> re-derives
+ 
+it every CI run — portal route is still the only <code>billingPortal</code> caller, no configurations object
+ 
+exists, the create call still carries no <code>configuration</code>. If anyone adds one, the guard fails and
+ 
+forces the portal-vs-server-side decision to be re-made deliberately rather than drifting.
+</p>
+<hr>
+<h2 id="5-cancellation-only-implementation">5. Cancellation-only implementation</h2>
+<p>
+Three pieces, all in PR-1-v2:
+</p>
+<ol><li><strong><code>lib/session.ts</code> → <code>sessionAccountState()</code></strong> — one new helper that does strictly <em>less</em> than the existing resolvers: resolves only by immutable session user id, reads <strong>no cookies</strong> (neither the agency workspace nor admin impersonation), grants nothing, reports state. <strong><code>currentAccount()</code> and <code>currentUser()</code> are byte-for-byte untouched.</strong></li><li><strong><code>app/api/billing/self-cancel/route.ts</code></strong> — <code>POST</code> takes <strong>no body and no query</strong>, so the subscription id can only come from the caller's own row and cross-account cancellation has no parameter to travel through. Stripe is then asked to confirm the subscription belongs to this user's customer before any mutation. An <strong>enabled</strong> account is refused 403 and sent to the ordinary billing page — which is what makes the normal path provably unaffected. Fails closed for a disabled non-payer, idempotent on repeat, audited via <code>logAudit</code>, rate-limited by resolved user id, and Stripe error text is never echoed (it embeds live ids such as <code>No such subscription: sub_…</code>). It never writes to the <code>User</code> row: <code>disabled</code>, <code>plan</code> and <code>role</code> cannot be touched.</li><li><strong><code>app/billing/cancel/page.tsx</code></strong> — standalone, no <code>AppShell</code>, no server gate, no layout above it, links nowhere into the app. A remedy nobody can navigate to is theoretical.</li></ol>
+<p>
+<strong>⚠ The reachability ceiling — NOT closed, and the reason this item stays PARTIAL.</strong> <code>lib/auth.ts</code>
+ 
+refuses sign-in for a disabled account (<code>if (user.disabled) return null;</code>, before the password
+ 
+compare) and sessions are stateless JWTs. The remedy therefore works **only while an already-issued
+ 
+token is still valid**. A suspended user who has signed out cannot reach it. Closing that means
+ 
+reopening a scoped sign-in surface in one of the repository's highest-risk files — it was
+ 
+deliberately <strong>not</strong> smuggled into the release and remains an open owner decision.
+</p>
+<hr>
+<h2 id="6-security-and-authorization-proof">6. Security and authorization proof</h2>
+<p>
+The adversary attacked the shipped path and <strong>could not lever it into any other billing capability</strong>
+ 
+— 34/34 of its own independent assertions held, driving the real handlers over its own fakes:
+</p>
+<ul><li>Attacker-supplied identity inert through every channel tried: bodies <code>{userId}</code>, <code>{id}</code>,</li></ul>
+<p>
+  <code>{subscriptionId}</code>, <code>{customer}</code>, <code>{account:{id}}</code>, <code>{immediate:true,subscriptionId}</code>, query
+ 
+  <code>?userId=&amp;subscriptionId=</code>, headers <code>x-user-id</code> / <code>x-forwarded-user</code>. <strong>Zero</strong> Stripe calls named a
+ 
+  foreign subscription or customer; <code>subscriptions.cancel</code> was never reached, so an injected
+ 
+  <code>immediate:true</code> cannot force an instant cancel.
+</p>
+<ul><li>Disabled paying user → portal <strong>401</strong> with no session minted · billing status <strong>404</strong> · checkout</li></ul>
+<p>
+  <code>premium</code>/<code>agency</code>/<code>agency_pro</code> <strong>404 with zero Stripe calls</strong> · one-time letter-pack purchase
+ 
+  <strong>404</strong>. Disabled non-payer → <strong>404</strong>, no Stripe call at all.
+</p>
+<ul><li>Stale/mutable email could not redirect the subject: a session carrying the victim's id and a</li></ul>
+<p>
+  squatter's current address resolved to the <strong>victim</strong>, and every recorded lookup was keyed by id.
+</p>
+<ul><li>Four consecutive POSTs, including one after flipping Stripe-side status to <code>canceled</code>, produced</li></ul>
+<p>
+  <strong>exactly one</strong> <code>subscriptions.update</code>.
+</p>
+<ul><li>Enabled-account regression: portal still 200 against their own customer, checkout still creates a</li></ul>
+<p>
+  session, <code>agency_pro</code> still refused 400 rather than silently downgraded.
+</p>
+<hr>
+<h2 id="7-reordered-event-runtime-scenario">7. Reordered-event runtime scenario</h2>
+<p>
+<code>scripts/runtime/stripe-webhook-reorder.runtime.test.ts</code> — <strong>44/44</strong>, executing the real webhook
+ 
+handler and real <code>lib/billing.ts</code> with the event payload and Stripe's <em>current</em> state set
+ 
+independently.
+</p>
+<p>
+The required sequence: local subscription <strong>active</strong> (written by the real handler, not seeded) →
+ 
+<code>customer.subscription.deleted</code> with Stripe currently canceled → plan revoked to <code>free</code> → a
+ 
+<strong>delayed stale</strong> <code>customer.subscription.updated</code> under a different event id whose snapshot still
+ 
+says <code>active</code> → the guard first asserts the payload really does say active, so the scenario cannot
+ 
+be vacuous → <code>retrieve</code> count is 1 and ordered <strong>before</strong> the write → Stripe's current state is
+ 
+still canceled → plan stays <code>free</code>, and the plans-written projection is exactly <code>["free"]</code> → the
+ 
+stale event demonstrably could not restore the plan → re-posting the same event id returns
+ 
+<code>duplicate: true</code> with zero further retrieves or writes.
+</p>
+<p>
+Plus the mirror case (a stale <code>deleted</code> after reactivation must not revoke a paying customer), a
+ 
+three-delivery reordered burst, and a control proving the handler <strong>can</strong> still write a plan.
+</p>
+<hr>
+<h2 id="8-negative-control-proof">8. Negative-control proof</h2>
+<p>
+Every guard added or extended this wave was proven to fail on the mutation it exists to catch. Each
+ 
+mutation was reverted and the file verified byte-identical afterwards.
+</p>
+<div class="tw"><table><thead><tr><th>#</th><th>Branch</th><th>Mutation</th><th>Before</th><th>After</th></tr></thead><tbody>
+<tr><td>1</td><td>PR-2</td><td><strong>text-preserving invoice defeat</strong> — drop the legacy early return, compute the modern id and <code>void</code> it</td><td>invoice 52/0</td><td><strong>42/10, exit 1</strong> (source guard stays 84/0)</td></tr>
+<tr><td>2</td><td>PR-2</td><td>break only the expanded-object form of the modern shape</td><td>52/0</td><td><strong>47/5</strong> (source guard stays green)</td></tr>
+<tr><td>3</td><td>PR-2</td><td>act on the event snapshot instead of re-retrieving</td><td>reorder 44/0</td><td><strong>27/17, exit 1</strong></td></tr>
+<tr><td>4</td><td>PR-2</td><td>remove the <code>completed</code> idempotency short-circuit</td><td>reorder 44/0</td><td><strong>39/5, exit 1</strong></td></tr>
+<tr><td>5</td><td>PR-1</td><td>append <code>export async function DELETE()</code> calling <code>subscriptions.resume</code></td><td>scope 66/0 · runtime 72/0</td><td><strong>64/2 · 70/2</strong></td></tr>
+<tr><td>6</td><td>PR-1</td><td>call <code>subscriptions.resume</code> inside the existing <code>POST</code> (writing around the surface pin)</td><td>66/0</td><td><strong>65/1</strong></td></tr>
+<tr><td>7</td><td>PR-1</td><td><code>quotes.create</code> via a cast — <strong>on no denylist anywhere</strong></td><td>66/0</td><td><strong>65/1</strong></td></tr>
+<tr><td>8</td><td>PR-1</td><td>leak the caller's own Stripe ids from the <code>GET</code> body</td><td>runtime 72/0</td><td><strong>69/3</strong></td></tr>
+<tr><td>9</td><td>PR-1</td><td>revert the failure copy to the categorical claim</td><td>scope 66/0</td><td><strong>64/2</strong></td></tr>
+</tbody></table></div>
+<p>
+<strong>My own first version of the allowlist was wrong and the mutation testing caught it.</strong> Anchoring to
+ 
+<code>/stripe\./</code> is evaded in one line by <code>(stripe as unknown as X).subscriptions.resume(id)</code>, which
+ 
+contains no literal <code>stripe.subscriptions</code> — mutation 6 initially passed the allowlist and was caught
+ 
+only by the denylist. The check now matches on Stripe's <strong>resource names</strong> rather than on a receiver
+ 
+called <code>stripe</code>, which is what makes mutation 7 — a method nobody enumerated — fail.
+</p>
+<p>
+Earlier in the wave the adversary ran <strong>25 mutations across both branches; 22 went red.</strong> The three
+ 
+survivors are findings 1, 2 and 3 in §11 and are all now closed.
+</p>
+<hr>
+<h2 id="9-pr-2-rollback-procedure">9. PR-2 rollback procedure</h2>
+<p>
+<code>.ai/RUNBOOKS/stripe-webhook-rollback.md</code>. It opens by stating that rollback is **operationally
+ 
+asymmetric and NOT a simple code revert**: rolling forward is a deploy; rolling back is a deploy
+ 
+<strong>plus a data step that must happen first</strong>.
+</p>
+<p>
+PR-2 writes <code>pending:&lt;eventType&gt;</code> into the existing <code>StripeWebhookEvent.type</code> column. Pre-PR-2 code
+ 
+treats <strong>any</strong> existing row as already-processed, so reverting while pending rows remain silently
+ 
+drops those events.
+</p>
+<p>
+Ordered: <strong>stop/drain</strong> (disable the endpoint, record start, wait ≥ 15 min = <code>STALE_CLAIM_MINUTES</code>;
+ 
+Stripe buffers and retries for 3 days, so draining is a pause not a loss) → <strong>identify</strong> pending rows
+ 
+via <strong>aggregates only</strong> (the table holds only id/type/createdAt, but ids correlate to customers;
+ 
+<code>SELECT *</code>, exporting ids into tickets, and pasting them into an AI prompt are all forbidden) →
+ 
+<strong>decide</strong> what is genuinely abandoned → <strong>delete</strong> → <strong>verify</strong> before/after counts → <strong>deploy</strong> the
+ 
+revert and confirm the <code>x-cv-release</code> SHA → <strong>replay</strong> via Stripe's own retry schedule → **verify no
+ 
+active event was lost<strong> → </strong>monitor** for 24h and re-check daily for three days.
+</p>
+<p>
+```sql
+ 
+DELETE FROM "StripeWebhookEvent"
+ 
+ WHERE "type" LIKE 'pending:%'
+ 
+   AND "createdAt" &lt; CURRENT_TIMESTAMP - INTERVAL '30 minutes';
+ 
+```
+</p>
+<p>
+<strong>Age filter justified, not guessed:</strong> 30 minutes is 2× the <code>STALE_CLAIM_MINUTES = 15</code> window the
+ 
+code itself uses. A row older than 15 minutes is already re-claimable by the running code, so
+ 
+deleting it removes nothing the system considers owned; the doubling is margin because the code
+ 
+evaluates 15 minutes inside one atomic statement while the DELETE runs from a separate session
+ 
+minutes after the count. Narrower can delete a claim a live invocation still holds; wider is slower,
+ 
+not safer. The unscoped post-drain sweep is gated on the endpoint being disabled.
+</p>
+<p>
+<strong>Not executed.</strong> Placeholders <code>&lt;PROD_DB&gt;</code>, <code>&lt;ROLLBACK_SHA&gt;</code>, <code>&lt;ENDPOINT_ID&gt;</code>, <code>&lt;START_UTC&gt;</code> only.
+</p>
+<hr>
+<h2 id="10-disposable-database-rollback-test">10. Disposable-database rollback test</h2>
+<p>
+Rehearsed on a <strong>throwaway local PostgreSQL 16 cluster</strong> (<code>initdb</code> into the scratchpad,
+ 
+<code>listen_addresses=''</code> so it never bound a TCP port; cluster stopped and data directory deleted
+ 
+afterwards). <strong>No production connection string was used and no production database was contacted.</strong>
+</p>
+<p>
+Schema verified first: <code>StripeWebhookEvent</code> is <strong>not</strong> in <code>prisma/schema.prisma</code> — it is a
+ 
+self-heal-owned legacy table, so the authoritative DDL is <code>ensureDedupTable()</code> in <code>lib/billing.ts</code>,
+ 
+which confirms double-quoted PascalCase identifiers and that <code>createdAt</code> exists.
+</p>
+<p>
+12 realistic rows seeded. <strong>Failure mode reproduced first:</strong> with a pending row left in place, the
+ 
+pre-PR-2 statement <code>INSERT … ON CONFLICT ("id") DO NOTHING</code> returned <strong>INSERT 0 0</strong> — exactly the
+ 
+signal old code reads as "already processed", so letter-pack credits are never granted. **Fix
+ 
+demonstrated:<strong> after cleanup the identical statement returned </strong>INSERT 0 1**.
+</p>
+<p>
+Counts total/pending/settled: <strong>12/5/7 → 9/2/7</strong> (filtered delete, <code>DELETE 3</code>) → <strong>7/0/7</strong> (post-drain
+ 
+sweep). <strong>Settled never moved: 7 → 7 → 7.</strong> Both letter-pack key shapes survived.
+</p>
+<p>
+The adversary independently reproduced this on its own cluster and additionally proved a **20-way
+ 
+concurrent race<strong> on one fresh event id: </strong>1 winner, 19 losers, 0 errors** — which closes the
+ 
+<code>ON CONFLICT</code> atomicity gap that was previously "unproven by anything in this repository." It could
+ 
+not make the cleanup delete a row it should not.
+</p>
+<hr>
+<h2 id="11-findings-raised-and-closed-this-wave">11. Findings raised and closed this wave</h2>
+<div class="tw"><table><thead><tr><th>#</th><th>Sev</th><th>Branch</th><th>Finding</th><th>Status</th></tr></thead><tbody>
+<tr><td>1</td><td><strong>HIGH</strong></td><td>PR-2</td><td>Dual-shape invoice resolver guarded <strong>only by source text</strong>; defeated while behaviour stayed broken. <strong>Zero executed coverage</strong> of either invoice branch. Under a basil-pinned endpoint, <code>past_due</code> is never written and <strong>dunning silently stops</strong></td><td>✅ <strong>CLOSED</strong> — <code>invoice-shape.runtime.test.ts</code>, 52 executed assertions, mutation now 42/10</td></tr>
+<tr><td>2</td><td>MED</td><td>PR-1</td><td>Exported surface unpinned — an added <code>DELETE</code> calling <code>subscriptions.resume</code> left all 75 guards green</td><td>✅ <strong>CLOSED</strong> — pinned at runtime and source</td></tr>
+<tr><td>3</td><td>MED</td><td>PR-1</td><td><code>GET</code> body leak invariant documented but unenforced</td><td>✅ <strong>CLOSED</strong> — asserted at runtime, plus key allowlist</td></tr>
+<tr><td>4</td><td>MED</td><td>both</td><td>Neither PR description said <strong>merging equals production deployment</strong></td><td>✅ <strong>CLOSED</strong> — in both bodies below</td></tr>
+<tr><td>5</td><td>MED</td><td>PR-1</td><td>No rollback statement despite a <strong>one-way data change</strong> (<code>spendLetterCredits</code> decrements <code>User.letterCredits</code>; a code revert does not restore them)</td><td>✅ <strong>CLOSED</strong> — in the PR body below</td></tr>
+<tr><td>6</td><td>MED</td><td>both</td><td><code>RC1-DISABLED-ACCOUNT-POLICY.md</code> asserted "nothing has been implemented" while the companion unit implements it — and unlike check 1.6 this does <strong>not</strong> self-resolve on merge</td><td>✅ <strong>CLOSED</strong> — corrected in place</td></tr>
+<tr><td>7</td><td>LOW</td><td>PR-2</td><td><code>.ai/TESTING.md</code> and <code>ci.yml</code> called <code>scripts/runtime/</code> "the only RUNTIME guards" — already false on <code>origin/main</code></td><td>✅ <strong>CLOSED</strong> — reworded</td></tr>
+<tr><td>8</td><td>LOW</td><td>PR-1</td><td>Failure copy promised "Nothing was charged and nothing was changed" even when the mutation had applied</td><td>✅ <strong>CLOSED</strong> — branches on whether Stripe was reached</td></tr>
+</tbody></table></div>
+<p>
+<strong>Coordinator adjudication on finding 6.</strong> The document <strong>stays in PR-2</strong>. Moving it would make PR-2
+ 
+reference a file it does not ship — the unpublished-document dependency owner item 10 forbids. It is
+ 
+corrected in place instead: §5 now records what was decided and why the portal half was unreachable,
+ 
+while §1's verified behaviour and §3's options analysis are untouched, so this is the record of a
+ 
+decision rather than a rewrite of the evidence it was made from. Both the reachability ceiling and
+ 
+<strong>B-12 BLOCKED — COUNSEL</strong> are recorded as explicitly <em>not</em> closed.
+</p>
+<hr>
+<h2 id="12-pr-0a-dependency-removal">12. PR-0a dependency removal</h2>
+<p>
+<strong>Fully removed.</strong> All references to the unpublished <code>CREDITVECTOR_RC1_CRITERIA.md</code> are gone from
+ 
+<code>scripts/verify-production.sh</code> (three, plus three bare finding labels a reader without the document
+ 
+cannot resolve, rewritten into the concrete consequence they stood for), and — one the first sweep
+ 
+missed and I caught — from <code>RC1-DISABLED-ACCOUNT-POLICY.md</code>'s closing <em>Related</em> line.
+</p>
+<p>
+Grepping every file in the PR-2-v2 diff for <code>CREDITVECTOR_RC1_CRITERIA</code> or <code>RC1-RELEASE-SEQUENCE</code>
+ 
+now returns <strong>nothing</strong>. The PR-0b pointer to <code>.ai/RUNBOOKS/alert-activation.md</code> was also softened to
+ 
+the same meaning without the external file. <code>ci.yml</code>'s reference to <code>CREDITVECTOR_RC1_EXECUTION.md</code>
+ 
+is <strong>not</strong> a dependency — that file exists on <code>origin/main</code>.
+</p>
+<p>
+<strong>No referenced document was created.</strong> PR-2 can merge alone.
+</p>
+<hr>
+<h2 id="13-pr-1-v2-clean-branch">13. PR-1-v2 — clean branch</h2>
+<p>
+<strong>Branch</strong> <code>release/pr1-critical-fixes-v2</code> · <strong>base</strong> <code>dfe7a3a</code> · <strong>head</strong> <code>ec7b467</code> · <strong>6 commits</strong> ·
+ 
+<strong>19 files</strong>
+</p>
+<p>
+<strong>Extracted commits</strong> (newly minted objects): <code>b924b5a</code> · <code>653c357</code> · <code>d5f7b37</code> · <code>dbbc472</code> ·
+ 
+<code>4058cae</code> · <code>ec7b467</code>
+</p>
+<p>
+<strong>Source provenance</strong> (pre-existing, never interchangeable with the above): mixed-branch
+ 
+<code>a2fa6ea</code> · <code>6bc4cf4</code> · <code>bd8f108</code> → Wave 2.3 extracts <code>b1f214e</code> · <code>f1bf7fa</code> · <code>103f84e</code>; Agent 1
+ 
+<code>4f9bebe</code> · <code>e16c41d</code>. <code>cherry-pick -x</code> stacked both trailers, so the chain is machine-readable in
+ 
+the commit bodies.
+</p>
+<p>
+<strong>Files:</strong> <code>lib/entitlements.ts</code> · <code>lib/session.ts</code> · <code>lib/admin.ts</code> · <code>lib/analyze.ts</code> ·
+ 
+<code>app/api/billing/self-cancel/route.ts</code> <em>(new)</em> · <code>app/billing/cancel/page.tsx</code> <em>(new)</em> ·
+ 
+<code>app/api/billing/status</code> · <code>app/api/stripe/{checkout,portal}</code> · <code>app/api/demo/seed</code> ·
+ 
+<code>app/api/letters/generate</code> · <code>app/api/letters/[id]/round2</code> · <code>app/{agency,billing}/page.tsx</code> ·
+ 
+5 guards <em>(new)</em>.
+</p>
+<p>
+<strong>User-visible:</strong> a suspended paying subscriber can reach <code>/billing/cancel</code> and stop being billed ·
+ 
+free-letter meter no longer resets when letters are deleted · Round 2 consumes entitlement · a
+ 
+subscriber who changed their email can reach billing again · disabled admins lose admin surfaces.
+</p>
+<p>
+<strong>Internal:</strong> usage derives from the append-only <code>ProductEvent</code> ledger · balances cannot go negative ·
+ 
+unknown plan fails closed · billing identity resolves by <strong>immutable user id</strong> · re-analysis
+ 
+preserves letter↔tradeline links · demo credentials not exposed in production.
+</p>
+<p>
+<strong>Runtime evidence:</strong> <code>disabled-cancellation-runtime.test.ts</code> <strong>72/72</strong>, executing the real
+ 
+<code>self-cancel</code> and <code>portal</code> handlers over the real <code>lib/session.ts</code>.
+ 
+<strong>Source-level evidence:</strong> <code>disabled-cancellation-scope.test.ts</code> <strong>66/66</strong>, <code>billing-identity</code> 39,
+ 
+<code>billing-integrity</code> 31, <code>critical-paths</code> 33 — labelled as source-level and <strong>not</strong> to be quoted as
+ 
+runtime proof.
+ 
+<strong>Negative controls:</strong> rows 5–9 of §8.
+</p>
+<p>
+<strong>Migration dependency:</strong> <strong>NONE.</strong> <code>prisma/schema.prisma</code> byte-identical to <code>origin/main</code>; 0
+ 
+<code>prisma/</code> paths in the diff.
+</p>
+<hr>
+<h2 id="14-pr-2-v2-clean-branch">14. PR-2-v2 — clean branch</h2>
+<p>
+<strong>Branch</strong> <code>release/pr2-stripe-lifecycle-v2</code> · <strong>base</strong> <code>dfe7a3a</code> · <strong>head</strong> <code>f24778a</code> ·
+ 
+<strong>8 commits</strong> · <strong>17 files</strong>
+</p>
+<p>
+<strong>Extracted commits:</strong> <code>4ea4c16</code> · <code>e698814</code> · <code>0896d07</code> · <code>fe4c524</code> · <code>62dfd52</code> · <code>cfa2986</code> ·
+ 
+<code>17f9e62</code> · <code>f24778a</code>
+</p>
+<p>
+<strong>Source provenance:</strong> mixed-branch <code>c3c4954</code> · <code>59fad4f</code> → Wave 2.3 extracts <code>e6e481b</code> · <code>4eda8d4</code> ·
+ 
+<code>475e180</code>; Agent 2 <code>81dac13</code> · <code>2e014c6</code> · <code>07099ca</code>. <code>475e180</code> carries <strong>no</strong> cherry-pick trailer
+ 
+because it was authored by <strong>path extraction</strong>, not cherry-pick — upstream <code>4871d4e</code>/<code>beeafd1</code> could
+ 
+not be taken whole without dragging in terms-release content. Its provenance is in its own commit body.
+</p>
+<p>
+<strong>Files:</strong> <code>app/api/stripe/webhook/route.ts</code> · <code>lib/billing.ts</code> · <code>lib/stripe.ts</code> ·
+ 
+<code>scripts/runtime/</code> (7 files, 4 guards) · <code>scripts/stripe-lifecycle.test.ts</code> ·
+ 
+<code>scripts/verify-production.sh</code> · <code>.ai/RUNBOOKS/stripe-webhook-rollback.md</code> · <code>.ai/TESTING.md</code> ·
+ 
+<code>.github/workflows/ci.yml</code> · <code>RC1-DISABLED-ACCOUNT-POLICY.md</code>.
+</p>
+<p>
+<strong>User-visible:</strong> a paying customer is not silently downgraded by a late webhook · a cancelled
+ 
+customer cannot have their plan restored by a stale one · dunning actually fires under either Stripe
+ 
+API version.
+</p>
+<p>
+<strong>Internal:</strong> three-state claim (<code>claimed</code> / <code>in_flight</code> / <code>completed</code>) with 409 on in-flight so
+ 
+Stripe retries · abandoned claims age out · subscription events re-retrieve current state · unknown
+ 
+price writes <strong>no <code>plan</code> key at all</strong>.
+</p>
+<p>
+<strong>Runtime evidence:</strong> <code>run-all.ts</code> <strong>4/4</strong> — <code>invoice-shape</code> 52, <code>stripe-webhook-reorder</code> 44,
+ 
+<code>stripe-webhook-claim</code> 36, <code>unknown-price-failclosed</code> 29 — all executing real handlers.
+ 
+<strong>Source-level evidence:</strong> <code>stripe-lifecycle.test.ts</code> <strong>84/84</strong>, explicitly labelled source-text in
+ 
+<code>.ai/TESTING.md</code>.
+ 
+<strong>Negative controls:</strong> rows 1–4 of §8.
+</p>
+<p>
+<strong>Migration dependency:</strong> <strong>NONE.</strong> The claim reuses the existing <code>type</code> column; <code>prisma/</code> diff
+ 
+empty; <code>schema-safety</code> 17/17 unmodified. Notable because <code>StripeWebhookEvent</code> is a self-heal-owned
+ 
+legacy table — this money-path work correctly introduces no schema of its own.
+</p>
+<hr>
+<h2 id="15-ancestry-and-forbidden-path-proof">15. Ancestry and forbidden-path proof</h2>
+<div class="tw"><table><thead><tr><th>Property</th><th>PR-1-v2</th><th>PR-2-v2</th></tr></thead><tbody>
+<tr><td><code>merge-base(origin/main, HEAD)</code></td><td><code>dfe7a3a</code> — i.e. <code>origin/main</code> itself</td><td><code>dfe7a3a</code></td></tr>
+<tr><td><code>is-ancestor origin/main HEAD</code></td><td>TRUE</td><td>TRUE</td></tr>
+<tr><td>Commits above base</td><td>6 (= intended picks)</td><td>8 (= intended picks)</td></tr>
+<tr><td>Founder Library commits in ancestry</td><td><strong>0</strong></td><td><strong>0</strong></td></tr>
+<tr><td>Forbidden paths in <strong>diff</strong></td><td><strong>0</strong></td><td><strong>0</strong></td></tr>
+<tr><td><code>prisma/</code> paths in diff</td><td><strong>0</strong></td><td><strong>0</strong></td></tr>
+<tr><td>Symlinks added</td><td><strong>0</strong></td><td><strong>0</strong></td></tr>
+<tr><td>Working tree</td><td>clean</td><td>clean</td></tr>
+</tbody></table></div>
+<p>
+<code>architecture/GIOS-<em></code> present in the </em>tree* is a <strong>known false positive</strong> — those files already exist
+ 
+on <code>origin/main</code>. Only diff presence is meaningful, and it is 0 on both.
+</p>
+<p>
+<strong>File overlap between the two diffs: 0</strong> (<code>comm -12</code> over both sorted diff file lists).
+ 
+<strong>Isolation, measured by byte:</strong> PR-1-v2 leaves <code>app/api/stripe/webhook/route.ts</code>, <code>lib/billing.ts</code>,
+ 
+<code>.ai/TESTING.md</code> and <code>ci.yml</code> <strong>byte-identical to <code>origin/main</code></strong>; PR-2-v2 leaves <code>lib/session.ts</code>,
+ 
+<code>lib/entitlements.ts</code>, <code>app/api/stripe/portal/route.ts</code> and all of <code>app/api/billing/</code>
+ 
+<strong>byte-identical</strong>. Both diffs measured 0 bytes on those paths.
+</p>
+<hr>
+<h2 id="16-isolated-dependency-and-prisma-generation-proof">16. Isolated dependency and Prisma generation proof</h2>
+<p>
+Each branch was proven in its <strong>own</strong> worktree after <code>rm -rf node_modules .next</code>, with its <strong>own</strong>
+ 
+<code>npm ci</code> and its <strong>own</strong> <code>npx prisma generate</code>. <code>node_modules</code> verified a **real directory, not a
+ 
+symlink<strong>, with </strong>distinct inodes** (<code>2442918</code> vs <code>2515406</code>). No worktree reused another's
+ 
+dependencies, generated Prisma client, or build output — owner decision <strong>O6</strong>.
+</p>
+<p>
+<strong><code>prisma validate</code> — resolved, not excused.</strong> It PASSES on both branches when given
+ 
+<code>DATABASE_URL='postgresql://throwaway:throwaway@127.0.0.1:5432/throwaway_validate?schema=public'</code> — a
+ 
+loopback placeholder that is never dialled (validate is a static schema check) and does not resemble
+ 
+any production value. Without it, both fail identically, <strong>as does the bare <code>origin/main</code> control</strong>,
+ 
+and <code>prisma/schema.prisma</code> is byte-identical to <code>origin/main</code> on both — so the bare failure is
+ 
+provably a property of the missing env var, not of either branch.
+</p>
+<hr>
+<h2 id="17-typecheck-build-guard-results">17. Typecheck / build / guard results</h2>
+<div class="tw"><table><thead><tr><th></th><th>PR-1-v2</th><th>PR-2-v2</th><th><strong>Merged tree</strong></th></tr></thead><tbody>
+<tr><td><code>npm ci</code></td><td>PASS</td><td>PASS</td><td>PASS</td></tr>
+<tr><td><code>prisma generate</code></td><td>PASS</td><td>PASS</td><td>PASS</td></tr>
+<tr><td><code>prisma validate</code></td><td>PASS</td><td>PASS</td><td>PASS</td></tr>
+<tr><td><code>tsc --noEmit</code></td><td><strong>PASS</strong></td><td><strong>PASS</strong></td><td><strong>PASS</strong></td></tr>
+<tr><td><code>scripts/*.test.ts</code></td><td><strong>75 / 0</strong></td><td><strong>71 / 0</strong></td><td><strong>76 / 0</strong></td></tr>
+<tr><td><code>scripts/runtime/run-all.ts</code></td><td>n/a by design</td><td><strong>4 / 0</strong></td><td><strong>4 / 0</strong></td></tr>
+<tr><td><code>next build</code></td><td><strong>PASS</strong></td><td><strong>PASS</strong></td><td><strong>PASS</strong></td></tr>
+<tr><td>working tree</td><td>clean</td><td>clean</td><td>clean</td></tr>
+</tbody></table></div>
+<p>
+<strong>Guard arithmetic reconciles:</strong> <code>origin/main</code> carries 70 top-level guards. PR-1-v2 = 70 + 5 = <strong>75</strong>.
+ 
+PR-2-v2 = 70 + 1 = <strong>71</strong> (its other four live under <code>scripts/runtime/</code>). Merged = 70 + 5 + 1 = <strong>76</strong>.
+</p>
+<p>
+<strong>Merged-tree validation</strong> — neither branch alone is the release. The two merge with <strong>no conflict</strong>;
+ 
+the merged tree passes everything above, <code>/api/billing/self-cancel</code> and <code>/billing/cancel</code> are both
+ 
+emitted, the policy-document contradiction is <strong>gone</strong>, and <code>verify-production.sh</code> flips from
+ 
+<strong>21 pass / 1 fail</strong> to <strong>22 pass / 0 fail</strong> — the check-1.6 coupling resolves exactly as predicted.
+</p>
+<hr>
+<h2 id="18-runtime-versus-source-level-evidence">18. Runtime versus source-level evidence</h2>
+<p>
+<strong>RUNTIME</strong> (executes real handlers): PR-2's four <code>scripts/runtime/</code> guards (161 assertions) and
+ 
+PR-1's <code>disabled-cancellation-runtime.test.ts</code> (72). PR-1's runtime guard is <strong>self-contained</strong> —
+ 
+its own fakes, directly under <code>scripts/</code>, so the existing non-recursive CI glob runs it with no CI
+ 
+change and <strong>no dependency on PR-2's harness</strong>. That is what keeps the two units disjoint.
+</p>
+<p>
+<strong>SOURCE-LEVEL</strong>: everything else, including <code>stripe-lifecycle.test.ts</code> (84) and
+ 
+<code>disabled-cancellation-scope.test.ts</code> (66). Both are labelled as such and **must not be quoted as
+ 
+runtime proof**. The adversary confirmed no source guard is mislabelled anywhere.
+</p>
+<p>
+<strong>The lesson this wave paid for:</strong> a source-text assertion cannot survive an adversary who preserves
+ 
+the text. That is precisely how finding 1 defeated the invoice guard, and it is why the fix is an
+ 
+executed assertion on the resulting write rather than a better regex.
+</p>
+<hr>
+<h2 id="19-rollback-constraints">19. Rollback constraints</h2>
+<ul><li><strong>PR-2 rollback is asymmetric.</strong> Reverting leaves <code>pending:%</code> rows the restored code reads as</li></ul>
+<p>
+  already-processed. Requires the §9 data step <strong>first</strong>, and its safety depends on an operator
+ 
+  actually disabling the endpoint and waiting 15 minutes — <strong>procedural, not enforced by code</strong>.
+</p>
+<ul><li><strong>PR-1 makes a one-way data change.</strong> <code>spendLetterCredits()</code> decrements <code>User.letterCredits</code>. A</li></ul>
+<p>
+  code revert does <strong>not</strong> restore credits already spent, and the meter silently returns to the
+ 
+  delete-to-reset behaviour the PR exists to fix.
+</p>
+<ul><li><strong>Merging is deploying.</strong> Rollback in both cases is a production deploy, not a git operation.</li></ul>
+<hr>
+<h2 id="20-residual-risks">20. Residual risks</h2>
+<ol><li><strong>Fake-backed, not integration.</strong> <code>FakePrisma</code> is not Postgres — no transactions, no isolation, no row locking, no real <code>CURRENT_TIMESTAMP</code>. Both units should be exercised in a Stripe <strong>test-mode</strong> environment before release. <em>(Partially mitigated: the <code>ON CONFLICT</code> claim was proven atomic under a 20-way race on real Postgres 16.)</em></li><li><strong>The reachability ceiling</strong> (§5) — a signed-out suspended user cannot reach the remedy.</li><li><strong>The rollback runbook</strong> was rehearsed on 12 synthetic rows, never at production volume, never through Accelerate's proxy, never under live webhook traffic.</li><li><strong>Stripe replication lag</strong> — the guards prove the handler writes <em>current</em> Stripe state; they cannot prove Stripe's own <code>retrieve</code> is current. That window is Stripe's to close.</li><li><strong><code>.ai/INDEX.md</code> has no route to the new rollback runbook</strong> — deliberately not added, because <code>.ai/INDEX.md</code> belongs to PR-0b and editing it would break the proven file-disjointness. Worth adding when the release is assembled.</li><li><strong>PR-1's guards are not registered in <code>.ai/TESTING.md</code></strong> — same reason. A deliberate post-merge follow-up, not an oversight.</li><li><strong>PR-2-v2 standalone still reports one <code>verify-production.sh</code> FAIL</strong> (check 1.6, asserting PR-1's portal identity change). Deliberately left as a real failure rather than softened; not a CI step; resolves on merge.</li></ol>
+<hr>
+<h2 id="21-updated-rc1-status-no-go-unchanged">21. Updated RC1 status — 🔴 NO-GO, unchanged</h2>
+<p>
+<strong>CLOSED (9):</strong> B-01…B-04, B-04g, B-07, B-08, B-11, Gate D guard.
+ 
+<strong>B-05</strong> BLOCKED — COUNSEL · <strong>B-06</strong> BLOCKED — OWNER + PRODUCTION · <strong>B-09</strong> OPEN (no drill) ·
+ 
+<strong>B-10</strong> PARTIAL · <strong>B-12</strong> BLOCKED — COUNSEL · <strong>C-01/C-02</strong> VERIFICATION REQUIRED — PRODUCTION.
+</p>
+<p>
+<strong>Disabled-subscriber item: ⚠ PARTIAL — NOT closed.</strong> The RC1 rules permit closing it only if *no
+ 
+unresolved owner decision remains*. The reachability ceiling is exactly such a decision, so it stays
+ 
+open. What <em>is</em> closed: the technical policy is implemented, runtime verification passes, and access
+ 
+is proven cancellation-only.
+</p>
+<p>
+<strong>Nothing here changes the overall verdict.</strong> Two units improving does not make a release.
+</p>
+<hr>
+<h2 id="22-safe-to-review-safe-to-merge">22. Safe to review · safe to merge</h2>
+<div class="tw"><table><thead><tr><th>Unit</th><th>Review</th><th>Merge</th></tr></thead><tbody>
+<tr><td><strong>PR-1-v2</strong></td><td>✅ <strong>SAFE TO REVIEW</strong></td><td>⚠ <strong>CONDITIONAL</strong> — owner must accept the period-end cancellation semantics, the one-way <code>letterCredits</code> decrement, and the reachability ceiling as a known open item</td></tr>
+<tr><td><strong>PR-2-v2</strong></td><td>✅ <strong>SAFE TO REVIEW</strong></td><td>⚠ <strong>CONDITIONAL</strong> — owner must accept the asymmetric rollback and have the runbook to hand before merging</td></tr>
+</tbody></table></div>
+<p>
+<strong>Recommended merge order: PR-1-v2 → PR-2-v2</strong>, so <code>verify-production.sh</code> is never transiently red.
+ 
+Both orders are textually conflict-free and the merged result is green either way.
+</p>
+<hr>
+<h2 id="23-pr-packages-copy-and-paste-ready">23. PR packages — copy-and-paste ready</h2>
+<blockquote>Both: <strong>base <code>main</code></strong> · <strong>merging auto-deploys production (~2 min)</strong> · owner confirmation required per <code>CLAUDE.md</code> · nothing pushed, no GitHub PR created.</blockquote>
+<h3 id="pr-1-v2">PR-1-v2</h3>
+<p>
+<strong>Title:</strong> <code>fix(billing,security): close the free-letter bypass, resolve billing identity by user id, and give suspended paying subscribers a cancellation-only path</code>
+</p>
+<p>
+<strong>Body:</strong>
+ 
+```
+ 
+⚠️ MERGING THIS PR DEPLOYS IT TO PRODUCTION. Push to main triggers a Vercel production deploy
+ 
+(~2 min). This PR changes the live money path — entitlement metering, billing identity resolution,
+ 
+and admin authorization. Approving it is releasing it.
+</p>
+<p>
+PROVENANCE: a2fa6ea, 6bc4cf4, bd8f108 (mixed-branch) via Wave 2.3 extracts b1f214e, f1bf7fa,
+ 
+103f84e, plus 4f9bebe and e16c41d. This branch's commits are new objects; cherry-pick -x stacked
+ 
+both trailers so the chain is machine-readable in the commit bodies.
+</p>
+<p>
+WHAT IT DOES
+</p>
+<ul><li>Free-letter paywall: usage derives from the append-only ProductEvent ledger, so deleting letters</li></ul>
+<p>
+  no longer resets the meter. Round 2 consumes entitlement; credits cannot go negative.
+</p>
+<ul><li>Billing identity: three routes resolved the account by mutable session email. A subscriber who</li></ul>
+<p>
+  changed their email could not reach the portal to cancel, and a re-registered address could
+ 
+  resolve a stale JWT to a stranger's billing. Now resolves by immutable user id.
+</p>
+<ul><li>Security: requireAdmin() honours <code>disabled</code>; /api/demo/seed 404s in production and returns no</li></ul>
+<p>
+  password; report re-analysis re-links dispute letters instead of orphaning them.
+</p>
+<ul><li>NEW — a cancellation-only path for a SUSPENDED paying subscriber. currentAccount() fails closed on</li></ul>
+<p>
+  <code>disabled</code>, which is correct, but it made a suspended user indistinguishable from a signed-out one
+ 
+  everywhere including /api/stripe/portal — so someone we disabled while they held a live paid
+ 
+  subscription kept being billed with no self-service way to stop it.
+</p>
+<p>
+WHY NOT THE STRIPE BILLING PORTAL. The repository contains exactly one billingPortal.sessions.create
+ 
+call, it passes no <code>configuration</code>, and no billingPortal.configurations object exists anywhere. What
+ 
+a portal session permits (update card, change plan, resume, buy) is Stripe Dashboard state that
+ 
+cannot be proven, reviewed or regression-tested from this repository, so it must not be assumed
+ 
+cancellation-only for a suspended account. This uses the same server-side primitive
+ 
+app/api/admin/billing/cancel/route.ts already relies on, with the subject pinned to the caller's own
+ 
+row. A guard now re-derives that premise every CI run, so adding a portal configuration later forces
+ 
+the decision to be re-made deliberately rather than drifting.
+</p>
+<p>
+CANCELLATION SEMANTICS: cancel_at_period_end (matching the admin route's default). Billing stops at
+ 
+the END of the already-paid period, not instantly. One paid period may still elapse and no refund is
+ 
+issued. Immediate cancellation remains an ADMIN action.
+</p>
+<p>
+SECURITY SHAPE: POST takes no body and no query, so a subscription id has no parameter to travel
+ 
+through; Stripe is asked to confirm the subscription belongs to this user's customer before any
+ 
+mutation; an ENABLED account is refused 403 and sent to the ordinary billing page, which is what
+ 
+keeps the normal path provably unchanged; a disabled non-payer fails closed; repeat calls are
+ 
+idempotent; the action is audited and rate-limited by resolved user id; Stripe error text is never
+ 
+echoed because it embeds live identifiers. The route never writes to the User row — <code>disabled</code>,
+ 
+<code>plan</code> and <code>role</code> cannot be touched, and no application access is restored.
+</p>
+<p>
+⚠️ ROLLBACK IS NOT SYMMETRIC. spendLetterCredits() decrements User.letterCredits on every metered
+ 
+letter. Reverting this PR does NOT restore credits already spent, and the meter silently returns to
+ 
+the delete-to-reset behaviour this PR exists to fix. There is no data step that undoes it. Treat a
+ 
+revert as a forward decision, not a restore.
+</p>
+<p>
+⚠️ KNOWN OPEN ITEM, deliberately not fixed here. lib/auth.ts refuses sign-in for a disabled account
+ 
+and sessions are stateless JWTs, so this path works only while an already-issued token is still
+ 
+valid. A suspended user who has signed out cannot reach it. Closing that means reopening a scoped
+ 
+sign-in surface in one of the repository's highest-risk files; it was not smuggled into this PR and
+ 
+remains an owner decision. RC1 keeps the disabled-subscriber item PARTIAL, not closed.
+</p>
+<p>
+NO schema or migration dependency — prisma/schema.prisma is byte-identical to main, 0 prisma/ paths
+ 
+in the diff. app/api/stripe/webhook/route.ts and lib/billing.ts are byte-identical to main, so this
+ 
+PR contains no webhook-lifecycle behaviour. No compliance change.
+</p>
+<p>
+VERIFIED on this branch after rm -rf node_modules .next, its own npm ci and its own prisma generate:
+ 
+tsc PASS, next build PASS (both new surfaces emitted), 75/75 guards. RUNTIME evidence:
+ 
+disabled-cancellation-runtime.test.ts 72/72 executes the real self-cancel and portal handlers.
+ 
+SOURCE-LEVEL: disabled-cancellation-scope.test.ts 66/66 — do not quote it as runtime proof.
+</p>
+<p>
+NON-VACUITY: an appended DELETE calling subscriptions.resume → 64/2 and 70/2; resume inside the
+ 
+existing POST → 65/1; quotes.create via a cast, on no denylist → 65/1; Stripe ids leaked from the
+ 
+GET body → 69/3; the old categorical failure copy → 64/2.
+</p>
+<p>
+VERIFICATION REQUIRED — PRODUCTION: re-analysis runs in one 15s interactive transaction; large
+ 
+reports must be measured against that ceiling. The existing population of disabled accounts holding
+ 
+a live subscription must still be reconciled by hand.
+</p>
+<p>
+MERGE ORDER: merge this before PR-2-v2 so verify-production.sh check 1.6 is never transiently red.
+ 
+```
+</p>
+<h3 id="pr-2-v2">PR-2-v2</h3>
+<p>
+<strong>Title:</strong> <code>fix(stripe): make subscription webhooks idempotent, ordering-safe and claim-window-free, with executed coverage of both invoice payload shapes</code>
+</p>
+<p>
+<strong>Body:</strong>
+ 
+```
+ 
+⚠️ MERGING THIS PR DEPLOYS IT TO PRODUCTION. Push to main triggers a Vercel production deploy
+ 
+(~2 min) and changes LIVE Stripe webhook handling — the single writer of entitlements. Approving it
+ 
+is releasing it.
+</p>
+<p>
+PROVENANCE: c3c4954, 59fad4f (mixed-branch) via Wave 2.3 extracts e6e481b, 4eda8d4, 475e180, plus
+ 
+81dac13, 2e014c6, 07099ca. 475e180 carries no cherry-pick trailer because it was authored by PATH
+ 
+EXTRACTION rather than cherry-pick — the upstream commits could not be taken whole without dragging
+ 
+in terms-release content. Its provenance is documented in its own commit body.
+</p>
+<p>
+WHAT IT DOES
+</p>
+<ul><li>Three-state claim (claimed / in_flight / completed): a duplicate is refused forever, while an</li></ul>
+<p>
+  abandoned claim ages out so Stripe's retry can actually run. An in-flight event gets 409, not 200,
+ 
+  so Stripe keeps retrying instead of being told to stop.
+</p>
+<ul><li>Subscription events re-retrieve current state, so a delayed event cannot restore a revoked plan or</li></ul>
+<p>
+  revoke a paying customer.
+</p>
+<ul><li>An unrecognised price fails CLOSED — no plan key is written at all.</li><li>Both Stripe invoice payload shapes are now EXECUTED, not asserted by text (see below).</li></ul>
+<p>
+MIGRATION-FIRST COMPLIANT: the claim reuses the EXISTING <code>type</code> column as pending:&lt;eventType&gt;. No new
+ 
+column, no new table, no migration. prisma/ diff is empty; schema-safety passes 17/17 unmodified.
+ 
+Notable because StripeWebhookEvent is a self-heal-owned legacy table absent from schema.prisma — this
+ 
+money-path work correctly introduces no schema of its own.
+</p>
+<p>
+WHY THE INVOICE GUARD CHANGED. An adversarial review defeated the source-text guard on
+ 
+invoiceSubscriptionId while leaving the behaviour broken: keeping the string the regex greps for and
+ 
+discarding the value it computes makes the handler completely blind to the modern
+ 
+invoice.parent.subscription_details.subscription shape, and tsc, all 71 top-level guards and all 3
+ 
+runtime guards stayed green. Which shape arrives depends on the API version pinned on the WEBHOOK
+ 
+ENDPOINT, not on what the SDK sends — so under a 2025-03-31.basil endpoint that means
+ 
+invoice.payment_failed never resolves a subscription, past_due is never written, and DUNNING SILENTLY
+ 
+STOPS. Neither invoice branch had any executed coverage anywhere in the repository.
+ 
+invoice-shape.runtime.test.ts now drives the real handler across both events and all four payload
+ 
+forms and asserts on the write that reaches the DB.
+</p>
+<p>
+RUNTIME GUARDS IN CI: scripts/runtime/ executes the real route handlers. It has its own CI step
+ 
+because scripts/*.test.ts is a non-recursive glob that never reached it, and run-all.ts enforces an
+ 
+explicit REQUIRED list so a deleted guard cannot masquerade as one that never existed.
+ 
+scripts/stripe-lifecycle.test.ts is SOURCE-LEVEL and must not be quoted as runtime proof.
+</p>
+<p>
+⚠️ ASYMMETRIC ROLLBACK — READ .ai/RUNBOOKS/stripe-webhook-rollback.md BEFORE REVERTING. Rolling
+ 
+forward is a deploy; rolling back is a deploy PLUS a data step that must happen FIRST. This PR writes
+ 
+pending:&lt;eventType&gt; rows into StripeWebhookEvent, and pre-PR code treats any existing row as already
+ 
+processed — so reverting with pending rows present silently DROPS those webhooks. Reproduced on a
+ 
+throwaway Postgres 16 cluster: the old claim statement returned INSERT 0 0 (credits never granted)
+ 
+with a pending row present, and INSERT 0 1 after cleanup. Remediation is a production DELETE of rows
+ 
+WHERE type LIKE 'pending:%' AND createdAt &lt; now() - 30 minutes, after disabling the Stripe endpoint
+ 
+and waiting 15 minutes. That safety depends on the operator actually doing so — it is procedural, not
+ 
+enforced by code. NO PRODUCTION SQL HAS BEEN EXECUTED.
+</p>
+<p>
+VERIFIED on this branch after rm -rf node_modules .next, its own npm ci and its own prisma generate:
+ 
+tsc PASS, next build PASS, 71/71 source guards, 4/4 runtime guards (invoice-shape 52,
+ 
+stripe-webhook-reorder 44, stripe-webhook-claim 36, unknown-price-failclosed 29).
+</p>
+<p>
+NON-VACUITY: the text-preserving invoice defeat → 42/10 exit 1 while the source guard stays 84/84;
+ 
+breaking only the expanded-object form → 47/5; acting on the event snapshot instead of re-retrieving
+ 
+→ 27/17; removing the idempotency short-circuit → 39/5.
+</p>
+<p>
+SELF-CONTAINED: no reference to any unpublished document. lib/session.ts, lib/entitlements.ts,
+ 
+app/api/stripe/portal/route.ts and all of app/api/billing/ are byte-identical to main, so this PR
+ 
+contains no PR-1 product behaviour.
+</p>
+<p>
+KNOWN: run standalone, scripts/verify-production.sh reports one FAIL (check 1.6) because it asserts
+ 
+the portal identity change that ships in PR-1-v2. It is annotated in place rather than softened —
+ 
+turning a real security assertion into "verification required" would weaken it — and it is not a CI
+ 
+step. It resolves once both land.
+</p>
+<p>
+MERGE ORDER: merge PR-1-v2 first.
+ 
+```
+</p>
+<hr>
+<h2 id="24-owner-actions">24. Owner actions</h2>
+<ul><li>Accept PR-1's <strong>period-end</strong> cancellation semantics (one already-paid period may elapse, no refund).</li><li>Accept the <strong>one-way <code>letterCredits</code> decrement</strong> — reverting PR-1 does not restore spent credits.</li><li>Accept the <strong>reachability ceiling</strong>, or commission the scoped sign-in work as a separate unit.</li></ul>
+<p>
+  Option B from the policy document — a <strong>published</strong> contact channel and SLA — costs no code and
+ 
+  covers the signed-out case today.
+</p>
+<ul><li>Have the rollback runbook to hand <strong>before</strong> merging PR-2, not after.</li><li>Merge <strong>PR-1-v2 → PR-2-v2</strong>. Authorize each push individually: <strong>merge = deploy</strong>.</li><li>Decide whether to push these branches to the remote — <strong>not authorized in this session</strong>.</li></ul>
+<h2 id="25-counsel-actions">25. Counsel actions</h2>
+<p>
+<strong>B-12 CROA/FCRA positioning</strong> · <strong>B-05 compliance bar</strong> · consent-evidence retention · and the
+ 
+specific question this wave surfaced but did <strong>not</strong> answer: whether a self-service cancellation path
+ 
+is <em>required</em>, and what a defensible alternative channel looks like for a suspended customer.
+ 
+<strong>Neither branch requires a counsel gate to review</strong> — <code>lib/compliance.ts</code> is byte-identical to
+ 
+<code>origin/main</code> on both.
+</p>
+<h2 id="26-production-actions">26. Production actions</h2>
+<p>
+Restore drill (B-09) · prove alert delivery (B-10) · <code>SETUP_SECRET</code> (C-01) · encryption backfill
+ 
+(C-02) · measure the re-analysis 15s transaction · **reconcile the existing population of disabled
+ 
+accounts holding a live subscription** · confirm which Stripe API version the live webhook endpoint
+ 
+is pinned to · exercise both units in Stripe <strong>test mode</strong> before release.
+</p>
+<hr>
+<h2 id="27-exact-next-action">27. Exact next action</h2>
+<p>
+<strong>Review PR-1-v2, then PR-2-v2, in that order.</strong> Both are structurally sound, mutually disjoint, and
+ 
+individually proven under CI-equivalent isolation; what remains before either can merge is owner
+ 
+acceptance of the named consequences in §24 — not more engineering.
+</p>
+<hr>
+<h2 id="28-artifacts">28. Artifacts</h2>
+<div class="tw"><table><thead><tr><th>Path</th><th>Note</th></tr></thead><tbody>
+<tr><td><code>CREDITVECTOR_RC1_CLEAN_RELEASE_HARDENING_WAVE_2_4_REPORT.md</code></td><td>canonical</td></tr>
+<tr><td><code>CREDITVECTOR_RC1_CLEAN_RELEASE_HARDENING_WAVE_2_4_REPORT.html</code></td><td>matched mobile projection</td></tr>
+<tr><td><code>CREDITVECTOR_RC1_CRITERIA.md</code></td><td>v1.6 — Wave 2.4 status block</td></tr>
+<tr><td><code>release/pr1-critical-fixes-v2</code> @ <code>ec7b467</code></td><td>local only</td></tr>
+<tr><td><code>release/pr2-stripe-lifecycle-v2</code> @ <code>f24778a</code></td><td>local only</td></tr>
+</tbody></table></div>
+<p>
+<strong>Repository truth is authoritative; production truth is not visible from here.</strong> Every PASS above is
+ 
+a repository fact measured in an isolated worktree. Nothing in this report is evidence about the
+ 
+running production system.
+</p>
+<hr>
+<h2 id="29-prohibitions-explicit-confirmation">29. Prohibitions — explicit confirmation</h2>
+<p>
+<strong>No push</strong> (<code>git ls-remote --heads origin</code> returns <strong>0</strong> matching <code>release/<em></code>, <code>wip/</em></code> and <code>tmp/*</code>) ·
+ 
+<strong>no GitHub PR created</strong> · <strong>no merge to <code>main</code></strong> · <strong>no deploy</strong> · <strong>no production SQL executed</strong> ·
+ 
+<strong>no live Stripe mutation</strong> · <strong>no production database contact</strong> · <strong>no migration applied</strong> · **no
+ 
+Gate D baseline<strong> · </strong>no schema change** (<code>prisma/schema.prisma</code> byte-identical to <code>origin/main</code> on
+ 
+both branches) · <strong>no secret values printed</strong> · <strong>no reviewed history rewritten</strong> — the Wave 2.3
+ 
+branches are untouched and both v2 branches are new · <strong>no other-workstream content</strong> in either diff.
+</p>
+<p>
+The throwaway Postgres cluster used for the rollback drill never bound a TCP port and its data
+ 
+directory was deleted. The merged-tree validation worktree was removed.
+</p>
+<footer>Projection of <code>CREDITVECTOR_RC1_RELEASE_CANDIDATE_EXTRACTION_WAVE_2_2_REPORT.md</code>, which is canonical.
+Contains no credentials, secrets, tokens, or environment values.</footer>
+</main></body></html>
