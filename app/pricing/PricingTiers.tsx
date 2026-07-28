@@ -7,6 +7,7 @@ import { useState } from "react";
 import { Check, X, Loader2, Sparkles, Clock, ArrowRight } from "lucide-react";
 import { FaqList } from "@/components/marketing/Showcase";
 import { openBillingPortal } from "@/lib/portalClient";
+import { TermsAccept, readTermsChallenge, type TermsChallenge } from "@/components/TermsAccept";
 
 type Status = "live" | "soon" | "contact";
 
@@ -192,15 +193,29 @@ export function PricingTiers() {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [portalOffer, setPortalOffer] = useState(false); // checkout refused: plan change belongs in the portal
+  // 428: the in-place plan change needs a recorded acceptance first. The pending
+  // request is kept verbatim so the retry buys exactly what was clicked — the
+  // selected tier and the monthly/annual toggle both survive.
+  const [terms, setTerms] = useState<
+    (TermsChallenge & { payload: Record<string, unknown>; signedOutNext: string; key: string }) | null
+  >(null);
 
-  async function checkout(payload: Record<string, unknown>, signedOutNext: string, key: string) {
+  // `acceptTerms` is the customer's assertion, echoed from the version the SERVER
+  // named in its 428 — this page neither stores nor constructs a terms version.
+  async function checkout(payload: Record<string, unknown>, signedOutNext: string, key: string, acceptTerms?: string) {
     setError(null);
     setPortalOffer(false);
     if (!session) { router.push(`/register?next=${signedOutNext}`); return; }
     setBusy(key);
     try {
-      const res = await fetch("/api/stripe/checkout", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      const res = await fetch("/api/stripe/checkout", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(acceptTerms ? { ...payload, acceptTerms } : payload) });
       const data = await res.json();
+      // The route refuses an in-place plan change until this account has recorded
+      // acceptance of the published terms. Surface the checkbox and let them
+      // retry — a dead end here is a customer who wants to pay and cannot.
+      const challenge = readTermsChallenge(res, data);
+      if (challenge) { setTerms({ ...challenge, payload, signedOutNext, key }); setBusy(null); return; }
+      setTerms(null);
       if (res.ok && data.url) window.location.href = data.url;
       // An in-place upgrade (route: subscriptions.update) returns no redirect URL.
       // Without this branch a SUCCESSFUL, already-charged upgrade fell through to
@@ -254,6 +269,16 @@ export function PricingTiers() {
         {agency.map((t) => <TierCard key={t.id} t={t} interval={interval} busy={busy} onCheckout={checkout} signedIn={!!session} />)}
       </div>
       {error && <p role="alert" className="mt-5 text-center text-sm text-rose-300">{error}</p>}
+      {terms && (
+        <TermsAccept
+          className="mx-auto mt-5 max-w-xl"
+          message={terms.message}
+          termsUrl={terms.url}
+          busy={busy !== null}
+          onAccept={() => checkout(terms.payload, terms.signedOutNext, terms.key, terms.version)}
+          onCancel={() => setTerms(null)}
+        />
+      )}
       {portalOffer && (
         <div className="mt-3 text-center">
           <button

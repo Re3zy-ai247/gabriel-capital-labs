@@ -19,9 +19,15 @@
 //      string, and it matches the terms text actually published at /legal/terms.
 //   4. Nothing manufactures consent: no backfill in the migration, no bulk write
 //      in the library, no default that would make an absent acceptance look given.
+//   5. (§6) The UI half: the customer can SATISFY the gate — an explicit,
+//      never-pre-checked box, a blocked submit, human-readable 428 recovery — and
+//      the paths that were never gated stay exactly as they were.
 //
-// Static analysis on purpose: node_modules is not installed in this environment
-// and importing @prisma/client cannot run here.
+// WHAT KIND OF CHECK THIS IS: every assertion below is SOURCE-LEVEL (static) —
+// it reads the shape of the code, never a running process. It cannot prove the
+// route returned 428 to a real browser, that a real checkbox rendered, or that
+// Stripe was not called. Runtime evidence comes from `npx tsc --noEmit`,
+// `npx next build`, and production verification — not from this file.
 import { readFileSync, existsSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
@@ -154,6 +160,113 @@ check("lib/terms.ts declares a version constant", declared !== "");
 check("the recorded version equals the published revision of /legal/terms " +
   `(page=${publishedVersion || "?"} lib=${declared || "?"})`,
   publishedVersion !== "" && declared === publishedVersion);
+
+console.log("\n6. the UI half — the customer can satisfy the gate, and only where it applies");
+// The set of UI callers is DERIVED by scanning app/ for the checkout endpoint, not
+// hard-coded as a list this file also asserts against. A fifth caller added later
+// trips the first check and gets reviewed instead of shipping unwired.
+function walkTsx(dir: string): string[] {
+  const out: string[] = [];
+  for (const e of readdirSync(dir, { withFileTypes: true })) {
+    const p = join(dir, e.name);
+    if (e.isDirectory()) out.push(...walkTsx(p));
+    else if (e.name.endsWith(".tsx")) out.push(p);
+  }
+  return out;
+}
+const CHECKOUT_ENDPOINT = "/api/stripe/checkout";
+const callers = walkTsx(join(root, "app"))
+  .filter((f) => readFileSync(f, "utf8").includes(CHECKOUT_ENDPOINT))
+  .map((f) => f.slice(root.length + 1).split("\\").join("/"))
+  .sort();
+
+// Classified by MECHANISM, from the request each caller actually sends:
+//  · a caller that names a subscription `plan` (or names none, which the route
+//    reads as Professional) can reach the in-place `subscriptions.update` branch
+//    and therefore the 428.
+//  · a caller that only buys `product: "letters_5"` opens a payment-mode Checkout
+//    Session every time and can never reach that branch — Stripe's own
+//    consent_collection is the only mechanism there. Wiring the checkbox into it
+//    would be a consent prompt for a gate that does not exist.
+const UPGRADE_CALLERS = ["app/agency/page.tsx", "app/billing/page.tsx", "app/pricing/PricingTiers.tsx"];
+const PACK_ONLY_CALLERS = ["app/letters/page.tsx"];
+check("the UI callers of the checkout API are exactly the known set " +
+  `(found: ${callers.join(", ") || "none"})`,
+  JSON.stringify(callers) === JSON.stringify([...UPGRADE_CALLERS, ...PACK_ONLY_CALLERS].sort()));
+
+const componentPath = join(root, "components/TermsAccept.tsx");
+check("the shared acceptance component exists", existsSync(componentPath));
+const ui = existsSync(componentPath) ? readFileSync(componentPath, "utf8") : "";
+const uiCode = codeOf(ui);
+
+check("it is a client component", /^"use client";/m.test(ui));
+check("it pulls in no server-only module (client/server split holds)",
+  ui !== "" && !/@\/lib\/prisma|next\/headers/.test(uiCode));
+
+// — the box itself —
+check("there is a real checkbox", /type="checkbox"/.test(uiCode));
+check("it is UNCHECKED BY DEFAULT (state seeded false, controlled, never defaultChecked)",
+  /const \[accepted, setAccepted\] = useState\(false\)/.test(uiCode) &&
+  /checked=\{accepted\}/.test(uiCode) &&
+  !/defaultChecked/.test(uiCode) &&
+  !/useState\(true\)/.test(uiCode));
+// Association is checked by matching the label's target to the INPUT's own id
+// expression, so renaming the identifier cannot make this pass vacuously.
+const inputTag = (uiCode.match(/<input[\s\S]*?\/>/) || [""])[0];
+const inputId = (inputTag.match(/id=\{([A-Za-z0-9_]+)\}/) || [, ""])[1];
+check("the checkbox carries an id (label check below is not vacuous)", inputId !== "");
+check(`a real <label htmlFor> points at that checkbox (id=${inputId || "?"})`,
+  inputId !== "" && new RegExp(`<label[^>]*htmlFor=\\{${inputId}\\}`).test(uiCode));
+
+// — the gate —
+const iGuard = uiCode.indexOf("if (!accepted)");
+const iAccept = uiCode.indexOf("onAccept()");
+check("the confirm handler REFUSES to submit until acceptance is explicit",
+  iGuard !== -1 && iAccept !== -1 && iGuard < iAccept);
+check("the unavailable state is announced, not signalled by colour alone " +
+  "(aria-disabled + describedby + a text hint)",
+  /aria-disabled=/.test(uiCode) && /aria-describedby=/.test(uiCode) && /id=\{hintId\}/.test(uiCode));
+check("the acceptance error is announced to assistive tech", /role="alert"/.test(uiCode));
+check("it links to the CURRENTLY published terms page, same route as lib/terms.ts",
+  new RegExp(`DEFAULT_TERMS_URL = "${(lib.match(/TERMS_URL\s*=\s*"([^"]+)"/) || [, "\u0000"])[1]}"`).test(uiCode));
+check("the component states no terms of its own and makes no outcome claim",
+  ui !== "" && !/\b(guarantee|guaranteed|deletion|removal|raise your score|improve your score)\b/i.test(ui));
+
+// — the version stays server-owned —
+check("the component holds no terms version and cannot construct one",
+  ui !== "" && !/\d{4}-\d{2}-\d{2}/.test(uiCode));
+check("the version the client echoes is READ OFF the server's response",
+  /body\.termsVersion/.test(uiCode) && /res\.status !== 428/.test(uiCode));
+
+// — per-caller wiring —
+const callerSrc = new Map(callers.map((c) => [c, readFileSync(join(root, c), "utf8")]));
+for (const c of UPGRADE_CALLERS) {
+  const src = callerSrc.get(c) ?? "";
+  const code = codeOf(src);
+  check(`${c}: recognises the acceptance precondition`, /readTermsChallenge\(/.test(code));
+  check(`${c}: renders the acceptance UI (the 428 is not a dead end)`, /<TermsAccept/.test(code));
+  check(`${c}: retries with the version the SERVER named`, /\.version\)/.test(code));
+  check(`${c}: sends the assertion only when it was asked for`, /acceptTerms\s*\?/.test(code));
+  check(`${c}: hard-codes no terms version`, src !== "" && !/\d{4}-\d{2}-\d{2}/.test(code));
+}
+for (const c of [...UPGRADE_CALLERS, ...PACK_ONLY_CALLERS]) {
+  // A status code is a protocol detail. The customer reads the server's sentence.
+  // Comments stripped — a comment naming the status is documentation, not display.
+  check(`${c}: shows the customer no raw status code`, !/\b428\b/.test(codeOf(callerSrc.get(c) ?? "")));
+}
+
+// — the paths that were never gated are untouched —
+for (const c of PACK_ONLY_CALLERS) {
+  const code = codeOf(callerSrc.get(c) ?? "");
+  check(`${c}: still buys the one-time pack the same way`, /product: "letters_5"/.test(code));
+  check(`${c}: is NOT wired to the acceptance UI (no gate exists on that path)`,
+    !/TermsAccept/.test(code) && !/acceptTerms/.test(code));
+}
+const pricing = codeOf(callerSrc.get("app/pricing/PricingTiers.tsx") ?? "");
+check("the free tier still registers rather than paying (no checkout, no gate)",
+  /freeRegister/.test(pricing) && /href=\{signedIn \? "\/dashboard" : "\/register"\}/.test(pricing));
+check("the letter pack on /pricing still calls checkout with its original shape",
+  /checkout\(\{ product: "letters_5" \}, "\/letters", "letters_5"\)/.test(pricing));
 
 console.log(`\nterms-acceptance.test.ts: ${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);

@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react';
 import { Suspense, useEffect, useState } from 'react';
 import { AppShell } from '@/components/AppShell';
 import { openBillingPortal } from '@/lib/portalClient';
+import { TermsAccept, readTermsChallenge, type TermsChallenge } from '@/components/TermsAccept';
 import { resolveAgencyCapacity } from '@/lib/agencyCapacity';
 
 interface Status {
@@ -45,6 +46,10 @@ function BillingInner() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [portalOffer, setPortalOffer] = useState(false); // checkout refused: plan change belongs in the portal
+  // 428: acceptance needed first. Reachable from this button whenever the account
+  // still reads `free` while Stripe already holds an active subscription (a webhook
+  // that has not landed yet), which is exactly the route's in-place upgrade branch.
+  const [terms, setTerms] = useState<TermsChallenge | null>(null);
 
   const justCheckedOut = params.get('checkout') === 'success';
 
@@ -83,12 +88,27 @@ function BillingInner() {
     };
   }, [authStatus, justCheckedOut]);
 
-  async function startCheckout() {
+  // `acceptTerms` is the customer's assertion, echoed from the version the SERVER
+  // named in its 428 — this page neither stores nor constructs a terms version.
+  // The first attempt still posts NO body, preserving the standing contract with
+  // the route (an omitted plan means Professional).
+  async function startCheckout(acceptTerms?: string) {
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch('/api/stripe/checkout', { method: 'POST' });
+      const res = await fetch(
+        '/api/stripe/checkout',
+        acceptTerms
+          ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ acceptTerms }) }
+          : { method: 'POST' }
+      );
       const data = await res.json();
+      // The route refuses an in-place plan change until this account has recorded
+      // acceptance of the published terms. Surface the checkbox and let them
+      // retry — a dead end here is a customer who wants to pay and cannot.
+      const challenge = readTermsChallenge(res, data);
+      if (challenge) { setTerms(challenge); setBusy(false); return; }
+      setTerms(null);
       if (res.ok && data.url) window.location.href = data.url;
       // An in-place upgrade (route: subscriptions.update) returns no redirect URL.
       // Without this branch a SUCCESSFUL, already-charged upgrade fell through to
@@ -197,7 +217,7 @@ function BillingInner() {
                     </button>
                   ) : (
                     <button
-                      onClick={startCheckout}
+                      onClick={() => startCheckout()}
                       disabled={busy}
                       className="btn-primary px-6"
                     >
@@ -205,6 +225,16 @@ function BillingInner() {
                     </button>
                   )}
                   {error && <p className="mt-3 text-sm text-rose-400">{error}</p>}
+                  {terms && (
+                    <TermsAccept
+                      className="mt-4 max-w-xl"
+                      message={terms.message}
+                      termsUrl={terms.url}
+                      busy={busy}
+                      onAccept={() => startCheckout(terms.version)}
+                      onCancel={() => setTerms(null)}
+                    />
+                  )}
                   {portalOffer && (
                     <button type="button" onClick={openPortal} disabled={busy} className="btn-primary mt-3">
                       Open billing portal
