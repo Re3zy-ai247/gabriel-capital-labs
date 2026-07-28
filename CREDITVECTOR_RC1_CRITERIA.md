@@ -2,7 +2,7 @@
 
 **The executive Go/No-Go checklist for CreditVector Version 1.0.**
 
-**Version:** 1.1 · **Status:** Draft — not ratified · **Date:** 2026-07-28 (Wave 1 applied)
+**Version:** 1.2 · **Status:** Draft — not ratified · **Date:** 2026-07-28 (Waves 1–2 applied)
 **Method:** repository audit of 26 launch-critical subsystems; every finding independently
 re-verified against source before entry. **No code was written. No feature was implemented.**
 
@@ -112,7 +112,28 @@ The two that remain are the two that were never engineering-blocked — they wer
 
 **All twelve must close. No exceptions, no partial credit.**
 
-### Wave 1 status (2026-07-28) — read this column first
+### Wave 2 status (2026-07-28) — read this column first
+
+| # | Status | Where |
+|---|---|---|
+| B-05 compliance score bar | ⚠️ **PARTIAL** | `86ba824` — rules generalized; negation + attribution carve-outs. Over-blocking of consumer-warning copy measured **3/8 → 1/8** on an independent corpus. Promises with no score/deletion noun still pass. **COUNSEL REQUIRED** for the standard |
+| B-06 terms acceptance | ⚠️ **PARTIAL** | `26d2b1c` — durable versioned `TermsAcceptance` + enforced 428 gate on the in-place upgrade path. **Migration authored, NOT applied.** New-subscription and letter-pack paths still depend on `STRIPE_TOS_CONSENT` — **VERIFICATION REQUIRED — PRODUCTION**. **OWNER DECISION REQUIRED** to apply |
+| B-09 backup/recovery | ❌ **OPEN** | `7099bde` — provider-neutral drill runbook with gated exit criteria and a blank RPO/RTO worksheet. **No drill has run.** Blocked on owner confirming the DB provider |
+| B-10 alerting/monitoring | ⚠️ **PARTIAL** | `7099bde` — activation + delivery-drill runbook. **`ALERT_WEBHOOK_URL` still unset.** Config presence is not delivery proof |
+| B-12 counsel sign-off | ❌ **BLOCKED — COUNSEL** | External. Unchanged, still the critical path |
+| B-04g webhook claim window | ✅ **CLOSED** | `59fad4f` — three-state claim; in-flight answers 409 so Stripe retries. A 200 there was the Wave 1 bug in a new place |
+
+**Wave 2 corrected three of its own findings before commit.** (1) The compliance
+attribution carve-out required a relative pronoun, so participial forms missed and
+member scam-warnings were being rejected — over-blocking had got *worse* than Wave 1.
+(2) `claimStripeEvent` returned a boolean, conflating "completed" with "may have died",
+so a retry inside the window still lost the event. (3) A guard assertion counted a
+decision memo's existence as a PASS, and another left `NEGATION_WINDOW` free to widen
+to 100000 with every assertion green — that exact mutation now fails.
+
+---
+
+### Wave 1 status (2026-07-28)
 
 | # | Status | Where |
 |---|---|---|

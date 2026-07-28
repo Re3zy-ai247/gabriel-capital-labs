@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CreditVector — RC1 Execution Wave 2 Report</title>
+<meta name="description" content="RC1 Execution Wave 2 — Go/No-Go status, blockers, and required decisions.">
+<style>
+:root{--bg:#ffffff;--fg:#14181f;--mut:#4a5462;--line:#d9dee6;--acc:#0b4fa8;--code:#f2f4f7;
+--red:#8a1420;--redbg:#fdeaec;--amb:#7a4a00;--ambbg:#fff5e0;--grn:#0f5c34;--grnbg:#e6f5ec;}
+*{box-sizing:border-box}
+body{margin:0;padding:1.1rem;background:var(--bg);color:var(--fg);
+font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+-webkit-text-size-adjust:100%;overflow-wrap:break-word}
+main{max-width:60rem;margin:0 auto}
+h1{font-size:1.6rem;line-height:1.25;margin:.2rem 0 .4rem;letter-spacing:-.01em}
+h2{font-size:1.28rem;margin:2.2rem 0 .7rem;padding-bottom:.32rem;border-bottom:2px solid var(--line)}
+h3{font-size:1.08rem;margin:1.6rem 0 .5rem}
+h4{font-size:1rem;margin:1.2rem 0 .4rem;color:var(--mut)}
+p{margin:.7rem 0}
+a{color:var(--acc)}
+code{background:var(--code);padding:.12em .38em;border-radius:4px;
+font:.86em/1.4 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;word-break:break-word}
+hr{border:0;border-top:1px solid var(--line);margin:2rem 0}
+blockquote{margin:1.1rem 0;padding:.85rem 1rem;background:var(--redbg);
+border-left:4px solid var(--red);border-radius:0 6px 6px 0;color:#5c0f18}
+blockquote strong{color:var(--red)}
+ul,ol{padding-left:1.35rem;margin:.7rem 0}
+li{margin:.34rem 0}
+.tw{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:1rem 0;
+border:1px solid var(--line);border-radius:8px}
+table{border-collapse:collapse;width:100%;min-width:34rem;font-size:.9rem}
+th,td{padding:.55rem .7rem;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+th{background:#f5f7fa;font-weight:650;white-space:nowrap}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:nth-child(even){background:#fafbfc}
+.meta{color:var(--mut);font-size:.92rem;margin:.5rem 0 1.2rem}
+nav.toc{background:#f7f9fb;border:1px solid var(--line);border-radius:8px;padding:.85rem 1rem;margin:1.4rem 0}
+nav.toc h2{font-size:.82rem;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);
+border:0;margin:0 0 .5rem;padding:0}
+nav.toc ol{margin:0;padding-left:1.2rem;font-size:.92rem}
+nav.toc li{margin:.2rem 0}
+.legend{display:flex;flex-wrap:wrap;gap:.4rem;margin:1rem 0}
+.tag{font-size:.76rem;font-weight:650;padding:.18rem .5rem;border-radius:999px;white-space:nowrap}
+.t-open{background:var(--redbg);color:var(--red)}
+.t-part{background:var(--ambbg);color:var(--amb)}
+.t-closed{background:var(--grnbg);color:var(--grn)}
+footer{margin-top:2.5rem;padding-top:1rem;border-top:1px solid var(--line);
+color:var(--mut);font-size:.85rem}
+@media(max-width:34rem){body{padding:.8rem}h1{font-size:1.35rem}table{font-size:.84rem;min-width:30rem}}
+@media print{body{padding:0;font-size:11pt}nav.toc{break-inside:avoid}
+.tw{overflow:visible;border:0}table{min-width:0;font-size:9pt}
+h2{break-after:avoid}tr{break-inside:avoid}a{color:#000;text-decoration:none}
+a[href^="http"]::after{content:" (" attr(href) ")";font-size:8pt;color:#555}}
+</style></head><body><main>
+<p class="meta"><strong>Gabriel Capital Labs</strong> · Draft — not ratified · 2026-07-28<br>
+Branch <code>claude/creditvector-founder-library-jwnbhc</code> · Commits <code>27bc430</code> → <code>59fad4f</code></p>
+<div class="legend"><span class="tag t-closed">CLOSED 8</span><span class="tag t-part">PARTIAL 3</span><span class="tag t-open">OPEN / BLOCKED 2</span><span class="tag t-open">VERIFICATION REQUIRED 2</span></div>
+<nav class="toc"><h2>Contents</h2><ol><li><a href="#1-context-for-a-reader-with-no-repository-access">1. Context for a reader with no repository access</a></li><li><a href="#2-mission-and-constraints">2. Mission and constraints</a></li><li><a href="#3-starting-state">3. Starting state</a></li><li><a href="#4-agents-and-ownership-boundaries">4. Agents and ownership boundaries</a></li><li><a href="#5-files-changed">5. Files changed</a></li><li><a href="#6-commits">6. Commits</a></li><li><a href="#7-what-each-change-actually-did">7. What each change actually did</a></li><li><a href="#8-tests-and-checks-executed">8. Tests and checks executed</a></li><li><a href="#9-negative-controls-and-non-vacuity-evidence">9. Negative controls and non-vacuity evidence</a></li><li><a href="#10-failed-approaches-and-corrections">10. Failed approaches and corrections</a></li><li><a href="#11-rc1-go-no-go-status">11. RC1 Go/No-Go status</a></li><li><a href="#12-residual-risks-introduced-by-wave-2">12. Residual risks introduced by Wave 2</a></li><li><a href="#13-owner-decisions-required">13. Owner decisions required</a></li><li><a href="#14-counsel-decisions-required">14. Counsel decisions required</a></li><li><a href="#15-production-verification-required">15. Production verification required</a></li><li><a href="#16-recommendation">16. Recommendation</a></li></ol></nav>
+<h1 id="creditvector-rc1-execution-wave-2-report">CreditVector — RC1 Execution Wave 2 Report</h1>
+<p>
+<strong>Date:</strong> 2026-07-28 · <strong>Branch:</strong> <code>claude/creditvector-founder-library-jwnbhc</code>
+ 
+<strong>Commit range:</strong> <code>27bc430</code> → <code>59fad4f</code> (5 commits) · <strong>Status:</strong> Draft — not ratified
+</p>
+<blockquote><strong>Verdict: 🔴 NO-GO for Version 1.0. Do NOT merge this branch to <code>main</code> as a unit.</strong> A push to <code>main</code> auto-deploys production and would take the paid upgrade path down. See §12 for the required release order.</blockquote>
+<hr>
+<h2 id="1-context-for-a-reader-with-no-repository-access">1. Context for a reader with no repository access</h2>
+<p>
+<strong>CreditVector</strong> is a live Next.js 14 consumer-credit <strong>education</strong> SaaS (creditvector.app) with live
+ 
+Stripe billing, built by Gabriel Capital Labs. It is deliberately <em>not</em> a credit-repair service: it
+ 
+operates under a CROA bar forbidding promised outcomes, guaranteed deletions, or score improvements.
+</p>
+<p>
+<strong>RC1</strong> is the Version 1.0 release program, governed by three documents — an assessment
+ 
+(<code>CREDITVECTOR_RC1.md</code>), a plan (<code>CREDITVECTOR_RC1_EXECUTION.md</code>), and the canonical binary Go/No-Go
+ 
+checklist (<code>CREDITVECTOR_RC1_CRITERIA.md</code>). An audit of 26 subsystems produced NO-GO with 12
+ 
+launch-blocking defects. <strong>Wave 1</strong> closed 7. <strong>Wave 2</strong> is this report.
+</p>
+<p>
+Two repository rules shape everything below:
+</p>
+<ul><li><strong>MIGRATION-FIRST</strong> (owner-ratified 2026-07-20): new schema ships as a reviewed migration applied as</li></ul>
+<p>
+  a deliberate owner release step, never in the build.
+</p>
+<ul><li><strong>Repository truth is authoritative.</strong> Code cannot prove production configuration, completed drills,</li></ul>
+<p>
+  measured RPO/RTO, live alert delivery, live Stripe catalog contents, or legal approval. Those are
+ 
+  never inferred here.
+</p>
+<hr>
+<h2 id="2-mission-and-constraints">2. Mission and constraints</h2>
+<p>
+Close remaining blockers where repository policy authorizes; reduce the rest to exact owner, counsel,
+ 
+and production packages. No architecture redesign, no feature expansion, no push to <code>main</code>, no
+ 
+production deployment, no live Stripe or database mutation. Another workstream's artifacts
+ 
+(<code>knowledge/</code>, <code>architecture/GIOS-*</code>, Founder Library) are read-only dependencies — <strong>none was touched.</strong>
+</p>
+<hr>
+<h2 id="3-starting-state">3. Starting state</h2>
+<div class="tw"><table><thead><tr><th></th><th></th></tr></thead><tbody>
+<tr><td>Branch</td><td><code>claude/creditvector-founder-library-jwnbhc</code></td></tr>
+<tr><td>Starting commit</td><td><code>27bc430</code> (Wave 1 end)</td></tr>
+<tr><td>Working tree</td><td>clean</td></tr>
+<tr><td>Ending commit</td><td><code>59fad4f</code></td></tr>
+<tr><td>Migrations before / after</td><td>6 → 7 directories (the 7th <strong>authored, not applied</strong>)</td></tr>
+</tbody></table></div>
+<hr>
+<h2 id="4-agents-and-ownership-boundaries">4. Agents and ownership boundaries</h2>
+<p>
+One coordinator + four implementation agents (parallel, strictly disjoint) + one adversarial verifier
+ 
+(started only after implementation finished).
+</p>
+<div class="tw"><table><thead><tr><th>Agent</th><th>Owned files</th></tr></thead><tbody>
+<tr><td>1 — Terms Acceptance</td><td><code>prisma/schema.prisma</code>, <code>prisma/migrations/**</code> (new dir), <code>lib/terms.ts</code>, <code>app/api/stripe/checkout/route.ts</code>, <code>scripts/terms-acceptance.test.ts</code>, <code>RC1-B06-*.md</code></td></tr>
+<tr><td>2 — Compliance</td><td><code>lib/compliance.ts</code>, <code>scripts/compliance-bar.test.ts</code>, <code>RC1-B05-*.md</code></td></tr>
+<tr><td>3 — Recovery &amp; Monitoring</td><td><code>OPERATIONS.md</code>, <code>.ai/RUNBOOKS/restore-drill.md</code>, <code>.ai/RUNBOOKS/alert-activation.md</code> (docs only — owned no script)</td></tr>
+<tr><td>4 — Harness &amp; Webhook</td><td><code>scripts/verify-production.sh</code>, <code>app/api/stripe/webhook/route.ts</code>, <code>lib/billing.ts</code>, <code>scripts/stripe-lifecycle.test.ts</code>, <code>RC1-DISABLED-ACCOUNT-POLICY.md</code></td></tr>
+<tr><td>5 — Adversarial verifier</td><td>read-only; mutation-tested every guard</td></tr>
+</tbody></table></div>
+<p>
+<strong>Ownership violations: none.</strong> No agent wrote outside its set; no migration applied; no competing RC1
+ 
+checklist created; no secret value in any artifact.
+</p>
+<hr>
+<h2 id="5-files-changed">5. Files changed</h2>
+<p>
+<strong>Modified (9):</strong> <code>OPERATIONS.md</code> · <code>app/api/stripe/checkout/route.ts</code> · <code>app/api/stripe/webhook/route.ts</code> ·
+ 
+<code>lib/billing.ts</code> · <code>lib/compliance.ts</code> · <code>prisma/schema.prisma</code> · <code>scripts/checkout-consent.test.ts</code> ·
+ 
+<code>scripts/compliance-bar.test.ts</code> · <code>scripts/stripe-lifecycle.test.ts</code>
+</p>
+<p>
+<strong>Added (9):</strong> <code>lib/terms.ts</code> · <code>prisma/migrations/20260728000000_terms_acceptance/migration.sql</code> ·
+ 
+<code>scripts/terms-acceptance.test.ts</code> · <code>scripts/verify-production.sh</code> ·
+ 
+<code>.ai/RUNBOOKS/restore-drill.md</code> · <code>.ai/RUNBOOKS/alert-activation.md</code> ·
+ 
+<code>RC1-B06-TERMS-ACCEPTANCE-PACKAGE.md</code> · <code>RC1-B05-COUNSEL-REVIEW.md</code> · <code>RC1-DISABLED-ACCOUNT-POLICY.md</code>
+</p>
+<hr>
+<h2 id="6-commits">6. Commits</h2>
+<div class="tw"><table><thead><tr><th>Hash</th><th>Commit</th></tr></thead><tbody>
+<tr><td><code>26d2b1c</code></td><td><code>feat(billing): durable versioned terms acceptance on the paid upgrade path (migration NOT applied)</code></td></tr>
+<tr><td><code>86ba824</code></td><td><code>fix(compliance): generalize the score bar and stop rejecting scam warnings</code></td></tr>
+<tr><td><code>7099bde</code></td><td><code>docs(ops): executable restore-drill and alert-activation runbooks</code></td></tr>
+<tr><td><code>59fad4f</code></td><td><code>fix(stripe): close the webhook claim window; add the production verification harness</code></td></tr>
+<tr><td><em>(pending)</em></td><td><code>docs(rc1): record Execution Wave 2</code> — criteria v1.2 + this report + HTML</td></tr>
+</tbody></table></div>
+<hr>
+<h2 id="7-what-each-change-actually-did">7. What each change actually did</h2>
+<h3 id="b-06-terms-acceptance-partial">B-06 — Terms acceptance · <strong>PARTIAL</strong></h3>
+<p>
+The in-place upgrade (<code>stripe.subscriptions.update</code>) never touches Stripe Checkout, so
+ 
+<code>consent_collection</code> never renders and <strong>Stripe records nothing</strong> — the highest-value transaction in
+ 
+the product took money with zero recorded acceptance.
+</p>
+<p>
+Added a <code>TermsAcceptance</code> model with <code>@@unique([userId, version])</code>, a reviewed migration, <code>lib/terms.ts</code>,
+ 
+and an enforced gate that records acceptance durably <strong>before</strong> the Stripe call and refuses with <strong>428</strong>
+ 
+otherwise. The recorded version is a <strong>server constant, never the request body</strong>, cross-checked against
+ 
+the published revision date of <code>app/legal/terms</code>. No environment flag can disable the gate.
+</p>
+<p>
+<strong>The migration writes no rows.</strong> Existing subscribers never consented, and inventing retroactive
+ 
+consent is the one thing this must not do. Backfill options are presented unpicked.
+</p>
+<p>
+<strong>Why PARTIAL:</strong> the gate covers <strong>one of three</strong> paid paths. New subscriptions and the letter pack
+ 
+still record acceptance only via <code>consent_collection</code>, inert unless <code>STRIPE_TOS_CONSENT=1</code> <strong>and</strong> a
+ 
+Terms URL is set in the live Stripe Dashboard — neither verified anywhere.
+</p>
+<h3 id="b-05-compliance-score-bar-partial">B-05 — Compliance score bar · <strong>PARTIAL</strong></h3>
+<p>
+Wave 1's rules were literal phrases defeated by rewording. Wave 2 generalized them and added two
+ 
+carve-outs so the control does not punish the education the platform exists to deliver: a <strong>negation</strong>
+ 
+carve-out ("no one can guarantee deletion") and an <strong>attribution</strong> carve-out ("firms that promise
+ 
+guaranteed deletions are usually scams").
+</p>
+<p>
+<strong>The attribution carve-out was initially wrong and made things worse.</strong> It required a relative pronoun,
+ 
+so every participial form missed — <em>"a company promising"</em>, <em>"an ad guaranteeing"</em>, <em>"firms advertising"</em>.
+ 
+On <code>lib/community.ts</code> these flags are a <strong>hard reject gate</strong>, so members warning each other about scams
+ 
+were rejected outright. Fixed to accept a bare participle or verb, and evaluated over a window extending
+ 
+<strong>past</strong> the match, because the linking word is often the matched text itself (in *"an ad guaranteeing a
+ 
+100 point increase"<em> everything before the offset is just </em>"an ad"*). The window stops at the first
+ 
+sentence break; the first-person exclusion still applies, so <em>"we are a company that guarantees deletion"</em>
+ 
+is still caught.
+</p>
+<p>
+<strong>Measured independently:</strong> over-blocking of consumer-warning copy <strong>3/8 → 1/8</strong>. The remaining case puts
+ 
+its negation <em>after</em> the claim, which a backward-looking window structurally cannot see.
+</p>
+<p>
+<strong>Honest limit:</strong> phrase matching has a ceiling. Promises carrying no score or deletion noun
+ 
+("Guaranteed results or your money back") still pass. <strong>Regex does not establish CROA compliance.</strong>
+</p>
+<h3 id="b-09-recovery-open">B-09 — Recovery · <strong>OPEN</strong></h3>
+<p>
+<code>.ai/RUNBOOKS/restore-drill.md</code> is provider-<strong>neutral</strong> by necessity: <code>DATABASE_URL</code> is a Prisma
+ 
+Accelerate proxy, so the origin Postgres provider is unknown and no provider-specific command is
+ 
+invented. §1 is a fact block that must be filled before the drill starts — <em>"I think it's Neon"</em> is
+ 
+explicitly not a recorded answer; an unrecognised provider routes to <em>"do not improvise"</em>. The drill
+ 
+hard-stops if automated backups return NO or UNKNOWN, and forbids substituting a manual <code>pg_dump</code> for a
+ 
+backup never proven to exist.
+</p>
+<p>
+Exit criteria are <strong>gated, not narrated</strong>: a schema diff via <code>prisma db pull</code>; a **decrypt of one
+ 
+encrypted <code>Report.rawText</code> with the production key** (which is what proves data and key were restored
+ 
+together); and <code>prisma migrate status</code> clean. The clock does not stop until the migration repair
+ 
+completes — <em>a database you cannot migrate is not a recovered database.</em> That repair path is itself
+ 
+labelled <strong>UNPROVEN</strong>, because production carries no <code>_prisma_migrations</code> history.
+</p>
+<p>
+<strong>RPO and RTO remain blank worksheet fields.</strong> No example numbers, because an example number in a
+ 
+recovery runbook becomes a quoted commitment.
+</p>
+<h3 id="b-10-monitoring-partial">B-10 — Monitoring · <strong>PARTIAL</strong></h3>
+<p>
+<code>.ai/RUNBOOKS/alert-activation.md</code>: choosing a destination, setting the variable **without printing its
+ 
+value<strong>, and the end-to-end drill that proves an alert actually </strong>arrived** — configuration presence is
+ 
+not delivery proof — plus cron liveness and failure handling. <code>ALERT_WEBHOOK_URL</code> is still unset.
+</p>
+<h3 id="b-04g-webhook-claim-window-closed">B-04g — Webhook claim window · <strong>CLOSED</strong></h3>
+<p>
+Wave 1 released the ledger claim only from the handler catch, so a timeout, OOM or eviction between
+ 
+claim and response left it held: Stripe's retry was deduplicated away and **the event was lost
+ 
+permanently**. The claim is now written PENDING and settled only on success, and a stale pending claim
+ 
+may be re-taken — one atomic <code>INSERT … ON CONFLICT DO UPDATE</code> reusing the existing <code>type</code> and
+ 
+<code>createdAt</code> columns, so <strong>no schema change and no new self-heal DDL</strong>.
+</p>
+<p>
+<strong>That alone was not sufficient.</strong> <code>claimStripeEvent</code> returned a boolean, conflating *"already
+ 
+completed"<em> with </em>"claimed by an invocation that may have died"* — both answered 200, and a 200 tells
+ 
+Stripe to stop retrying, so a retry inside the window still lost the event. **This was the Wave 1 bug in
+ 
+a new place.<strong> The claim is now three-state: <code>completed</code> → 200, <code>in_flight</code> → </strong>409** so Stripe retries,
+ 
+<code>claimed</code> → handle. A refused claim with no surviving row fails toward retry, never toward silence.
+</p>
+<h3 id="production-verification-harness">Production verification harness</h3>
+<p>
+<code>scripts/verify-production.sh</code>: env presence (<strong>never values</strong>), <code>SETUP_SECRET</code>-gated route inventory,
+ 
+encryption-backfill measurability, Stripe catalog consistency, disabled-account handling, toolchain
+ 
+prerequisites. Read-only by default, mutation behind an explicit flag, fail-closed. Most items correctly
+ 
+report <strong>VERIFICATION REQUIRED — PRODUCTION</strong>, and the closing line states that <strong>a clean run is not a Go.</strong>
+</p>
+<hr>
+<h2 id="8-tests-and-checks-executed">8. Tests and checks executed</h2>
+<div class="tw"><table><thead><tr><th>Check</th><th>Result</th></tr></thead><tbody>
+<tr><td>Guard suite (76 scripts)</td><td><strong>29 fully green · 0 failing · 47 NOT RUN — ENVIRONMENT</strong></td></tr>
+<tr><td><code>scripts/terms-acceptance.test.ts</code></td><td><strong>PASS</strong> — 36 assertions</td></tr>
+<tr><td><code>scripts/compliance-bar.test.ts</code></td><td><strong>PASS</strong> — 263 assertions</td></tr>
+<tr><td><code>scripts/stripe-lifecycle.test.ts</code></td><td><strong>PASS</strong> — 84 assertions</td></tr>
+<tr><td><code>scripts/checkout-consent.test.ts</code></td><td><strong>PASS</strong> — 12 assertions (re-scoped)</td></tr>
+<tr><td><code>scripts/schema-safety.test.ts</code></td><td><strong>PASS</strong> — 17 assertions (no new self-heal DDL)</td></tr>
+<tr><td><code>scripts/billing-integrity</code> / <code>billing-identity</code> / <code>critical-paths</code> / <code>observability</code> / <code>agency-capacity</code></td><td><strong>PASS</strong> (Wave 1 guards, unbroken)</td></tr>
+<tr><td><code>bash -n</code> on both shell scripts</td><td><strong>PASS</strong></td></tr>
+<tr><td><code>npm run typecheck</code></td><td><strong>NOT RUN — ENVIRONMENT</strong> — <code>node_modules</code> absent</td></tr>
+<tr><td><code>npx next build</code> · <code>npm run lint</code></td><td><strong>NOT RUN — ENVIRONMENT</strong> — same</td></tr>
+<tr><td>47 remaining guards</td><td><strong>NOT RUN — ENVIRONMENT</strong> — <code>Cannot find module '@prisma/client'</code>; identical at clean HEAD</td></tr>
+<tr><td>Any live production probe</td><td><strong>NOT RUN — ENVIRONMENT</strong> — outbound CONNECT blocked (<code>curl: (56) 403</code>)</td></tr>
+<tr><td>Migration apply / forward-validate / rollback</td><td><strong>NOT RUN — OWNER AUTHORIZATION REQUIRED</strong></td></tr>
+<tr><td>Restore drill · alert delivery drill</td><td><strong>NOT RUN</strong> — provider identity / <code>ALERT_WEBHOOK_URL</code> absent</td></tr>
+</tbody></table></div>
+<p>
+<strong>Load-bearing gap:</strong> <code>prisma.termsAcceptance</code> is a <strong>new client accessor</strong> that exists only after
+ 
+<code>prisma generate</code> against the updated schema. <code>tsx</code> proves syntax, not types. **<code>npm run typecheck</code>
+ 
+must pass before merge.**
+</p>
+<hr>
+<h2 id="9-negative-controls-and-non-vacuity-evidence">9. Negative controls and non-vacuity evidence</h2>
+<p>
+Every new or changed guard was proved to fail against deliberately broken behavior.
+</p>
+<div class="tw"><table><thead><tr><th>Guard</th><th>Kind</th><th>Proof</th></tr></thead><tbody>
+<tr><td><code>terms-acceptance</code></td><td>source-level</td><td><strong>9/9 mutations caught</strong> — gate deleted (8 FAIL), gate moved after the Stripe call (4 FAIL), client version recorded instead of server constant, env kill-switch added (3 variants), backfill added to migration, UNIQUE downgraded, version drift, error swallowed</td></tr>
+<tr><td><code>stripe-lifecycle</code></td><td>source-level</td><td><strong>7/7 mutations caught</strong> — <code>DO NOTHING</code> restored (4 FAIL), pending-only condition removed (2), staleness removed (1), window shrunk (2), unscoped release (1), settle-before-handler (2), <strong>in-flight collapsed to 200 (1)</strong></td></tr>
+<tr><td><code>compliance-bar</code></td><td><strong>runtime behavioral</strong> — executes the rules</td><td>trailing-guarantee rule neutered (6 FAIL), first-person exclusion dropped (3 FAIL), <strong><code>NEGATION_WINDOW</code> widened to 100000 (1 FAIL — previously passed silently)</strong></td></tr>
+<tr><td><code>verify-production.sh</code></td><td>source-level + opt-in probe</td><td>3/3 mutations caught — route deleted, <code>cv1:</code> constant renamed, diagnostics returning values instead of booleans</td></tr>
+</tbody></table></div>
+<p>
+<strong>Vacuous assertions found and removed:</strong> a <code>verify-production.sh</code> check recorded a <strong>PASS</strong> for the mere
+ 
+existence of a decision memo this wave authored — demoted to VERIFICATION REQUIRED, since a document is
+ 
+not a control and counting one's own output inflates the total. <code>NEGATION_WINDOW</code>, the first-person
+ 
+exclusion, and the forward window's sentence boundary are now pinned.
+</p>
+<p>
+<strong>Guard-kind distinction, carried deliberately:</strong> every Wave 2 guard except <code>compliance-bar</code> is
+ 
+<strong>source-level</strong>. The 428 refusal, the pending-claim expiry, and the harness probe path are
+ 
+<strong>code-reviewed only</strong> — no runtime behavior of the terms gate or the webhook claim cycle was exercised,
+ 
+because there is no database and the migration is unapplied.
+</p>
+<hr>
+<h2 id="10-failed-approaches-and-corrections">10. Failed approaches and corrections</h2>
+<ol><li><strong>Attribution carve-out required a relative pronoun.</strong> Missed all participial forms; measured over-blocking got <em>worse</em> than Wave 1 — a member writing <em>"firms advertising guaranteed deletions are usually scams"</em> was rejected. Fixed; 3/8 → 1/8.</li><li><strong>Backward-only carve-out window.</strong> The linking word is often the matched text itself. Widened to a sentence-bounded forward window, first-person exclusion retained.</li><li><strong><code>claimStripeEvent</code> returned a boolean.</strong> Could not distinguish completed from in-flight, so a retry inside the window still got 200 and the event was still lost. Made three-state; the guard now pins that in-flight is never answered 2xx.</li><li><strong>A guard counted a memo's existence as a PASS.</strong> Demoted.</li><li><strong><code>NEGATION_WINDOW</code> was unguarded</strong> — widening it to 100000 disabled the control with every assertion green. Now pinned.</li><li><strong><code>checkout-consent.test.ts</code> had silently inverted in meaning.</strong> Its "no parallel consent mirror" rule now passes while the opposite is deliberately true on the upgrade path. Re-scoped to the two Checkout-Session paths in the same commit that introduced the change.</li></ol>
+<hr>
+<h2 id="11-rc1-go-no-go-status">11. RC1 Go/No-Go status</h2>
+<h3 id="no-go-for-version-1-0">🔴 NO-GO for Version 1.0</h3>
+<div class="tw"><table><thead><tr><th>Blocker</th><th>Wave 1</th><th>Wave 2</th><th>Gate</th></tr></thead><tbody>
+<tr><td>B-01 · B-02 · B-03 · B-04 · B-07 · B-08 · B-11</td><td><strong>CLOSED</strong></td><td>unchanged</td><td>—</td></tr>
+<tr><td><strong>B-04g</strong> webhook claim window</td><td><em>(introduced)</em></td><td>✅ <strong>CLOSED</strong></td><td>—</td></tr>
+<tr><td><strong>B-05</strong> compliance score bar</td><td>PARTIAL</td><td>⚠️ <strong>PARTIAL</strong> (measurably stronger)</td><td><strong>COUNSEL REQUIRED</strong></td></tr>
+<tr><td><strong>B-06</strong> terms acceptance</td><td>OPEN</td><td>⚠️ <strong>PARTIAL</strong></td><td><strong>OWNER DECISION REQUIRED</strong></td></tr>
+<tr><td><strong>B-09</strong> backup/recovery</td><td>OPEN</td><td>❌ <strong>OPEN</strong> (drill package ready)</td><td><strong>OWNER + PRODUCTION</strong></td></tr>
+<tr><td><strong>B-10</strong> alerting</td><td>PARTIAL</td><td>⚠️ <strong>PARTIAL</strong> (activation package ready)</td><td><strong>OWNER + PRODUCTION</strong></td></tr>
+<tr><td><strong>B-12</strong> counsel sign-off</td><td>OPEN</td><td>❌ <strong>BLOCKED — COUNSEL</strong></td><td><strong>COUNSEL</strong></td></tr>
+<tr><td>C-01 <code>SETUP_SECRET</code> · C-02 backfills</td><td>conditional</td><td><strong>VERIFICATION REQUIRED — PRODUCTION</strong></td><td><strong>PRODUCTION</strong></td></tr>
+</tbody></table></div>
+<p>
+<strong>Closed: 8 · Partial: 3 · Open/Blocked: 2 · Verification required: 2.</strong>
+ 
+<strong>No remaining blocker is engineering work.</strong> Every one needs an owner decision, counsel, or production access.
+</p>
+<hr>
+<h2 id="12-residual-risks-introduced-by-wave-2">12. Residual risks introduced by Wave 2</h2>
+<ol><li><strong>RELEASE-ORDER HAZARD (blocking).</strong> Pushing this branch to <code>main</code> auto-deploys. Deploying the route <strong>before</strong> the migration is applied → <strong>HTTP 500 on every in-place upgrade</strong>. Deploying <strong>before</strong> the <code>acceptTerms</code> UI ships → <strong>HTTP 428 on every in-place upgrade</strong>. Either way the upgrade revenue path is down. <strong>Required order: apply migration → forward-validate → ship UI → deploy route.</strong></li><li><strong>B-06's own release step has an unnamed dependency.</strong> Applying via <code>prisma migrate deploy</code> is expected to <strong>fail on <code>0_init</code></strong>, because production carries no <code>_prisma_migrations</code> history. Approving B-06 implies approving a <strong>Gate D baseline operation first.</strong></li><li><strong>Terms gate has no kill switch</strong> (deliberate: "direct API bypass must fail closed"). Correct, but it means the sequencing in item 1 is not optional.</li><li><strong><code>invoice.payment_failed</code> is the one handler that writes state from the event snapshot</strong> without re-retrieving. Now that a stale claim can be re-processed, a re-claimed old event could set <code>past_due</code> on a subscriber who has since paid. Self-heals on the next success event. Low.</li><li><strong>Compliance carve-outs widen what is permitted.</strong> Each carve-out is a deliberate hole to protect educational speech; the first-person exclusion is the only thing preventing a first-party promise from using one.</li></ol>
+<hr>
+<h2 id="13-owner-decisions-required">13. Owner decisions required</h2>
+<ol><li><strong>Apply migration <code>20260728000000_terms_acceptance</code> and ship the B-06 gate — YES/NO.</strong> If YES, name the existing-subscriber backfill option (A: no backfill — what the code does; B: prospective re-consent campaign; C: cite pre-existing Stripe consent per cohort). <strong>B and C are counsel questions.</strong></li><li><strong>Approve the Gate D baseline</strong> that applying any migration now depends on (item 12.2).</li><li><strong>Confirm the DB provider</strong> behind Prisma Accelerate (~15 min) to unblock B-09.</li><li><strong>Ratify a disabled-account billing policy</strong> — four options in <code>RC1-DISABLED-ACCOUNT-POLICY.md</code>. Today a disabled but paying subscriber cannot self-cancel while Stripe keeps charging.</li><li><strong>Should registration also require acceptance?</strong> Needs signup UI work not in scope here.</li><li><code>TermsAcceptance</code> retention: <code>onDelete: Cascade</code> vs <code>Restrict</code> + explicit shredding.</li></ol>
+<hr>
+<h2 id="14-counsel-decisions-required">14. Counsel decisions required</h2>
+<ol><li><strong>B-12</strong> — CROA/FCRA positioning, news/defamation posture, ToS/Privacy/refund. <strong>Still the critical path.</strong></li><li><strong>B-05</strong> — the eight questions in <code>RC1-B05-COUNSEL-REVIEW.md</code>. Is this phrase set the right bar? <strong>Use the independently measured numbers in §7, not corpus-relative ones.</strong></li><li><strong>B-06</strong> — is acceptance required at registration as well as at the point of upgrade? And are backfill options B/C lawful?</li></ol>
+<hr>
+<h2 id="15-production-verification-required">15. Production verification required</h2>
+<div class="tw"><table><thead><tr><th>#</th><th>Question</th><th>Command</th></tr></thead><tbody>
+<tr><td>1</td><td>Is <code>ALERT_WEBHOOK_URL</code> set — and has an alert <strong>arrived</strong>?</td><td><code>.ai/RUNBOOKS/alert-activation.md</code> (drill, not a config read)</td></tr>
+<tr><td>2</td><td>DB provider identity, then <strong>run the drill</strong>; record measured RPO/RTO</td><td><code>.ai/RUNBOOKS/restore-drill.md</code></td></tr>
+<tr><td>3</td><td>Is <code>SETUP_SECRET</code> set? (C-01)</td><td><code>scripts/verify-production.sh</code></td></tr>
+<tr><td>4</td><td>Did the encryption backfills complete? (C-02)</td><td><code>scripts/verify-production.sh</code></td></tr>
+<tr><td>5</td><td>Is <code>STRIPE_TOS_CONSENT=1</code> <strong>and</strong> a Terms URL set in the live Stripe Dashboard?</td><td>Stripe Dashboard</td></tr>
+<tr><td>6</td><td>Any out-of-band Stripe prices?</td><td><code>scripts/verify-production.sh</code></td></tr>
+<tr><td>7</td><td>Does a 150-tradeline re-analysis fit the 15s transaction ceiling?</td><td>Wave 1 residual</td></tr>
+<tr><td>8</td><td><code>npm run typecheck</code> + <code>next build</code></td><td><strong>Before merge</strong></td></tr>
+<tr><td>9</td><td>Post-deploy: upgrade without <code>acceptTerms</code> returns 428 and creates no Stripe change</td><td>curl</td></tr>
+</tbody></table></div>
+<hr>
+<h2 id="16-recommendation">16. Recommendation</h2>
+<p>
+<strong>READY FOR REVIEW — NOT READY FOR MERGE, NOT READY FOR DEPLOY.</strong>
+</p>
+<p>
+The branch is a coherent, guarded, honestly-labelled improvement. It is <strong>not</strong> mergeable as a unit,
+ 
+because merging deploys, and deploying in the wrong order takes down the upgrade path (§12.1).
+</p>
+<p>
+<strong>Exact next step:</strong> the owner answers decision 13.1 (apply the migration — yes/no) and 13.3 (name the
+ 
+DB provider). Those two answers unblock more remaining RC1 work than all other actions combined —
+ 
+13.1 gates the B-06 release sequence, and 13.3 converts B-09 from OPEN to executable the same day.
+</p>
+<p>
+A further engineering wave is <strong>not</strong> the bottleneck. **The bottleneck is three decisions and one
+ 
+15-minute console lookup.**
+</p>
+<hr>
+<p>
+*Repository truth is authoritative. Nothing in this document asserts a production fact, a completed
+ 
+drill, a measured RPO/RTO, a live alert delivery, or a legal conclusion. Where those appear, they are
+ 
+marked VERIFICATION REQUIRED, OWNER DECISION REQUIRED, or COUNSEL REQUIRED.*
+</p>
+<footer>Projection of <code>CREDITVECTOR_RC1_EXECUTION_WAVE_2_REPORT.md</code>, which is canonical.
+Contains no credentials, secrets, tokens, or environment values.</footer>
+</main></body></html>
