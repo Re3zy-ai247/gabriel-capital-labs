@@ -28,6 +28,21 @@ npx --no-install tsx scripts/<name>.test.ts   # lockfile-local guard scripts (be
 | `tradeline-insights.test.ts` | §605 fall-off display math + duplicate grouping + conflict-field flags | 12/12 |
 | `forecast.test.ts` | Engine 3 Tier A own-data latency + §611 window forecast | 12/12 |
 | `explain.test.ts` | Kai Explainability Layer — structured "why" from real data, uncertainty never hidden | 14/14 |
+| `terms-acceptance.test.ts` | RC1 B-06 — the 428 gate precedes any Stripe mutation, the version is server-owned, the migration manufactures no consent, and the TermsAcceptance FK is RESTRICT (source-level) | 78/78 |
+| `stripe-lifecycle.test.ts` · `billing-integrity.test.ts` · `billing-identity.test.ts` · `critical-paths.test.ts` · `compliance-bar.test.ts` | RC1 Wave 1/2 money-path, identity and compliance guards. `compliance-bar` EXECUTES the rules; the rest are source-level | green |
+
+### `scripts/runtime/` — the only RUNTIME guards
+
+Run with `npx tsx scripts/runtime/run-all.ts` (CI step "Runtime guards"). Everything else in this
+table matches SOURCE TEXT; these execute the real route handlers against mocked Stripe and a fake
+Prisma layer that parses the SQL the code actually issues. **`scripts/*.test.ts` is a non-recursive
+glob and does not reach them** — that is why they have their own CI step.
+
+| Guard | Covers |
+|---|---|
+| `terms-acceptance.runtime.test.ts` | acceptance written BEFORE any Stripe mutation (asserted on ordering index), 428 with no money-moving call, idempotent repeat, Stripe failure after acceptance |
+| `stripe-webhook-claim.runtime.test.ts` | claimed / in_flight / completed / stale re-claim / handler failure then retry |
+| `unknown-price-failclosed.runtime.test.ts` | an unrecognised price writes no `plan` key at all |
 
 ## Isolated database integration
 

@@ -168,9 +168,18 @@ Stripe product a smaller blast radius per deploy beats fewer deploy events.
 ### PR-0 · Unit A + H — documentation, runbooks, read-only tooling
 - **Purpose:** put the apply runbook and the release sequence on `main` *before* the owner needs
   them, and land verification tooling that cannot affect runtime.
-- **Commits/files:** `7099bde`, `27bc430`; new commits for `RC1-PAID-PATH-CONSENT-INVENTORY.md`,
-  `scripts/runtime/**`, `RC1-RELEASE-SEQUENCE.md`, `.ai/RUNBOOKS/migration-apply-terms-acceptance.md`.
+- **⚠ CORRECTED 2026-07-28 (Wave 2.2, proven by execution — the list below was wrong).**
+  The original list `[7099bde, 27bc430]` **does not apply.** Cherry-picking `7099bde` onto
+  `origin/main` **CONFLICTS** on `OPERATIONS.md` (that file's prior state comes from `826413b`), and
+  `27bc430` **CONFLICTS** modify/delete on `CREDITVECTOR_RC1_CRITERIA.md` (created by `c9c884e`).
+  Both were executed and both returned exit 2.
+- **Commits/files (corrected):** `c9c884e` → `826413b` → `7099bde` → `27bc430`, in that order; plus
+  new commits for `RC1-PAID-PATH-CONSENT-INVENTORY.md`, `RC1-RELEASE-SEQUENCE.md`,
+  `.ai/RUNBOOKS/migration-apply-terms-acceptance.md`.
   **Exclude `c7d1506`** (it describes code not yet on `main`).
+  **`scripts/runtime/**` moves to PR-2**, the first unit whose behaviour those guards actually assert.
+- **⚠ PR-0 is not documentation-only as cut:** `826413b` carries `app/global-error.tsx`, real runtime
+  code. Either accept it as a passenger or split the commit — **OWNER DECISION REQUIRED**.
 - **Depends on:** nothing. **Migration dependency:** none.
 - **Merging auto-deploys:** **YES** — but no file is imported by the app or by CI's guard glob, so the
   deployed bundle is byte-equivalent in behaviour.
@@ -241,7 +250,20 @@ Stripe product a smaller blast radius per deploy beats fewer deploy events.
   - **C3** — Agent 2's `components/TermsAccept.tsx`, the three wired callers, and
     `scripts/terms-acceptance.test.ts` §6.
 - **Why indivisible:** §3.2. Any split is a red CI.
-- **Depends on:** PR-0 (the runbook), and **on a completed production operation that is not a PR** —
+- **⚠ CORRECTED 2026-07-28 (Wave 2.2, proven by execution).** PR-4 additionally hard-depends on
+  **two PR-1 commits**, which this document previously omitted:
+  - `a2fa6ea` — `2911d44`'s import hunks in `app/agency/page.tsx` and `app/billing/page.tsx` carry
+    `a2fa6ea`'s added import line as trailing *context*. Without it the pick CONFLICTS (executed).
+  - `6bc4cf4` — semantic and textually invisible: the terms package picks CLEAN onto `a2fa6ea` alone
+    and passes `prisma validate`, `tsc --noEmit` and `next build`, but that state **reintroduces the
+    email-keyed billing identity `6bc4cf4` fixed**. A cherry-pick list is not a dependency proof.
+  **PR-1 must merge before PR-4.** Omitting `6bc4cf4` produces a green tree carrying a fixed defect.
+- **⚠ The FK corrective (C2) is now guard-pinned.** Wave 2.2 built PR-4 with it omitted: the tree
+  cherry-picked clean, typechecked, and passed the terms, schema-safety, gate-d-preflight **and**
+  terms-runtime guards at exit 0 while shipping `ON DELETE CASCADE`. `scripts/terms-acceptance.test.ts`
+  now pins the FK in both model and migration; that exact state fails 4 assertions.
+- **Depends on:** PR-0 (the runbook), **PR-1** (`a2fa6ea` + `6bc4cf4`, above), and **on a completed
+  production operation that is not a PR** —
   the Gate D baseline plus the migration apply.
 - **Migration dependency: HARD AND BLOCKING.** Merging before the table exists = **HTTP 500 on every
   in-place upgrade** (§3.3). Merging before C3 = **HTTP 428 with no way to satisfy it**.

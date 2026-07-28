@@ -268,5 +268,24 @@ check("the free tier still registers rather than paying (no checkout, no gate)",
 check("the letter pack on /pricing still calls checkout with its original shape",
   /checkout\(\{ product: "letters_5" \}, "\/letters", "letters_5"\)/.test(pricing));
 
+// ── The FK action is pinned, in BOTH the model and the migration ─────────────
+// Wave 2.2 proved this guard was needed by building the package with the RESTRICT
+// corrective (717697f) deliberately omitted: the tree cherry-picked clean, typechecked,
+// and passed THIS guard, schema-safety, gate-d-preflight and the terms runtime guard —
+// every one exit 0 — while shipping ON DELETE CASCADE. That FK destroys consent evidence
+// on any User delete, and once applied to production the loss is silent and irreversible
+// (no backfill exists and none is permitted). The corrective was protected by nothing but
+// human memory. .ai/IDENTITY-CONSTITUTION.md §12.3 forbids erasure by cascade; §18 names
+// FK cascade as the forbidden mechanism. Precedent for pinning it in a guard:
+// scripts/identity-migration-guard.test.ts:52 does exactly this for Organization.owner.
+check("migration FK on TermsAcceptance is ON DELETE RESTRICT, never CASCADE",
+  /"TermsAcceptance_userId_fkey"[\s\S]*?REFERENCES "User"\("id"\) ON DELETE RESTRICT/.test(migration));
+check("the migration contains NO cascading delete on TermsAcceptance",
+  !/ON DELETE CASCADE/.test(migration));
+check("the Prisma model declares onDelete: Restrict (model and migration in lockstep)",
+  /onDelete:\s*Restrict/.test(model));
+check("the Prisma model declares no Cascade on the user relation",
+  !/onDelete:\s*Cascade/.test(model));
+
 console.log(`\nterms-acceptance.test.ts: ${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);

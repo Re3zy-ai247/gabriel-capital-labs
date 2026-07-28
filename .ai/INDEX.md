@@ -60,6 +60,6 @@ Default context budget per task: root `CLAUDE.md` + this file + `CURRENT-STATE.m
 | `ROADMAP-V2.md` | THE ranked Top-100 roadmap (supersedes ROADMAP.md for sequencing). First build sprint: #4 metering + #5 event engine. |
 | `platform/` (Gabriel Intelligence) | Company platform blueprint — JARVIS runtime, Product SDK, Founder Intelligence layer, 3-year architecture roadmap, Rule of Two extraction law. Read when scoping product #2 or any extraction. |
 | `CX-REVIEW.md` | Screen-by-screen product audit (2026-07-12): verdicts per screen, journey friction fixes, conversational-workflow pattern, Agency Command, community-Premium economics, retention engine. New items = CX-IDs in ROADMAP-V2 Amendment 1. |
-| `RUNBOOKS/` | `deploy.md` (ship/env vars/preview) · `schema-change.md` (ADR-0001 procedure) · `admin-actions.md` (one-time owner actions). |
+| `RUNBOOKS/` | `deploy.md` (ship/env vars/preview) · `schema-change.md` (ADR-0001 procedure) · `admin-actions.md` (one-time owner actions) · `restore-drill.md` (RC1 B-09 — provider-neutral; the drill has NOT been run and RPO/RTO are blank by design) · `alert-activation.md` (RC1 B-10 — config presence is not delivery proof) · `migration-apply-terms-acceptance.md` (RC1 B-06 — owner-controlled; the migration is NOT applied). |
 | `SOP/ship-a-feature.md` | Shipping any feature — the 7-step workflow + five-review gate + definition of done. |
 | `ARCHIVE/` | Historical only — never load by default. Original pre-governance CLAUDE.md + 2026-06 QA traceability table live here. |
