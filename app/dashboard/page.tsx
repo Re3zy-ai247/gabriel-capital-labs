@@ -12,6 +12,8 @@ import { financialGraph } from "@/lib/knowledge";
 import { assembleExecution } from "@/lib/execution";
 import { buildAcademy } from "@/lib/academy";
 import { MissionControl } from "@/components/mission/MissionControl";
+import { MissionEntry } from "@/components/cxos/mission/MissionEntry";
+import { CommandHeader } from "@/components/cxos/mission/CommandHeader";
 import { ExecutiveQueue } from "@/components/mission/ExecutiveQueue";
 import { CommandCenter } from "@/components/mission/CommandCenter";
 import { ReadinessStrip } from "@/components/mission/ReadinessStrip";
@@ -61,12 +63,40 @@ export default async function DashboardPage() {
     active: allItems.filter((i) => i.status === "in_progress" || i.status === "waiting").length,
   };
 
+  // CXOS Phase 4 — the authenticated entry + command header run on REAL resolved
+  // state only: the user row, the deterministic health signals, queue aggregates,
+  // and Kai's actual computed next action. Auth already succeeded (this render IS
+  // the proof); the signed-out branch above renders with no overlay at all.
+  const cxRole = user.role === "ADMIN" ? "ADMIN" : user.isAgency ? "AGENCY" : "OPERATOR";
+  const cxIdentity = user.username ?? user.email.split("@")[0];
+  const cxHealth = data.health.map((h) => ({ label: h.label, status: h.status }));
+
   return (
     <AppShell title="/ Mission Control">
+      <MissionEntry
+        firstName={data.firstName}
+        identity={cxIdentity}
+        role={cxRole}
+        plan={user.plan}
+        health={cxHealth}
+        tasksCount={data.tasks.length}
+        waitingCount={data.waiting.length}
+        hasReport={data.hasReport}
+        nextAction={data.nextAction ? data.nextAction.title : null}
+      />
       <div className={`${gxl.room} relative isolate -mx-5 -my-6 px-5 py-6`}>
         <GxlField state={fieldState} tint="from-ocean-500/[0.05]" />
         <GxlPull />
         <EduBanner />
+      <CommandHeader
+        firstName={data.firstName}
+        identity={cxIdentity}
+        role={cxRole}
+        plan={user.plan}
+        health={cxHealth}
+        capacity={data.capacity}
+        isAgency={user.isAgency}
+      />
       <MissionControl data={data} />
       {/* The full operating-system summary appears once there's a case to summarize —
           a first-time user (no report yet) sees only the single upload mission. */}

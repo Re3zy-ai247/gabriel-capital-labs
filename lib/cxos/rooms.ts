@@ -54,11 +54,10 @@ export const CXOS_ROOMS: CxosRoom[] = [
   {
     key: "mission-control",
     name: "Mission Control",
-    href: "/dashboard",
-    status: "PRODUCT",
-    phase: "Phase 4 (planned)",
-    line: "Security clearance → systems online → displays wake → Kai appears. Entry not yet built.",
-    authed: true,
+    href: "/review/mission-control",
+    status: "PROTOTYPE",
+    phase: "Phase 4",
+    line: "Identity → clearance → systems waking → evidence online → Kai's brief → command transferred. Entry + shell over the real room.",
   },
   {
     key: "arena",

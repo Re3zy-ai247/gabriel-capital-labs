@@ -87,8 +87,8 @@ check("the review stage LOOPS instead of finishing (Escape exits)",
      "operator-network", "dashboard", "enterprise", "landing-journey"].every((k) => keys.includes(k)));
   check("PLANNED rooms exist and are never given a fake live entry",
     /status: "PLANNED"/.test(rooms) && /no entry yet/.test(hub));
-  check("exactly two PROTOTYPE rooms today (Threshold · Landing Journey)",
-    (rooms.match(/status: "PROTOTYPE"/g) ?? []).length === 2);
+  check("exactly three PROTOTYPE rooms today (Threshold · Landing Journey · Mission Control)",
+    (rooms.match(/status: "PROTOTYPE"/g) ?? []).length === 3);
 }
 
 console.log(`\ncxos-review.test.ts: ${pass} passed, ${fail} failed`);

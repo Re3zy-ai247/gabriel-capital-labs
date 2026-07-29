@@ -431,6 +431,15 @@ html.cx-debug-bounds [data-chapter] { outline: 1px dashed rgba(34, 211, 238, 0.5
 .cx-nav-open { animation: cx-nav-open-out var(--cx-open-ms) var(--ease-vector) forwards; }
 .cx-nav-open .cx-nav-rail { animation: cx-nav-rail-part var(--cx-open-ms) var(--ease-vector) forwards; }
 
+/* ── Phase 4 · the authenticated entry into Mission Control ──
+   The veil plays over the REAL rendered dashboard. cx-mc-safety is the same
+   pure-CSS guarantee the Threshold darkness carries: if every script after
+   mount failed, the veil still removes itself at 12s and the room is there. */
+@keyframes cx-mc-safety { to { opacity: 0; visibility: hidden; } }
+.cx-mc-veil { animation: fadein 0.35s var(--ease-vector) both, cx-mc-safety 0.5s ease 12s forwards; }
+.cx-mc-leave { animation: cx-nav-open-out 0.5s var(--ease-vector) forwards; }
+.cx-mc-line { animation: rise var(--dur-settle) var(--ease-vector) both; }
+
 /* Respect users who prefer less motion. */
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
@@ -465,4 +474,8 @@ html.cx-debug-bounds [data-chapter] { outline: 1px dashed rgba(34, 211, 238, 0.5
   .cx-debug-bounds { /* director-only static outline; no motion to remove */ }
   .cx-nav-veil, .cx-nav-cover, .cx-nav-open { animation: none !important; display: none !important; }
   .cx-nav-rail, .cx-nav-rail-l, .cx-nav-rail-r { animation: none !important; }
+  /* Phase 4: reduced motion is tier D — MissionEntry mounts nothing. These
+     resets make that unconditional even if a mount ever leaked. */
+  .cx-mc-veil, .cx-mc-leave { animation: none !important; display: none !important; }
+  .cx-mc-line { animation: none !important; }
 }
