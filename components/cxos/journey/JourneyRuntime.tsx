@@ -22,7 +22,11 @@ import { isDirectorActive } from "@/lib/cxos/reviewMode";
 // handler, no touch handler, no preventDefault anywhere in the journey.
 export function JourneyRuntime() {
   const [director, setDirector] = useState(false);
-  const [tier, setTier] = useState<CxTier>("A");
+  // null until detection has run — starting at a concrete tier would make the
+  // detection setState a no-op re-render on matching devices, and the stamp
+  // effect below would never see the real tier. (Caught by the Stage 5
+  // battery: desktop never stamped data-cxjourney.)
+  const [tier, setTier] = useState<CxTier | null>(null);
   const [forced, setForced] = useState<CxTier | null>(null);
   const baseTier = useRef<CxTier>("D");
 
@@ -36,10 +40,10 @@ export function JourneyRuntime() {
   // The active tier: a Director force-preview may DOWNGRADE the projection or
   // restore the detected tier, but a reduced-motion visitor is tier D
   // absolutely — no instrument overrides accessibility.
-  const active: CxTier = baseTier.current === "D" ? "D" : forced ?? tier;
+  const active: CxTier | null = tier === null ? null : baseTier.current === "D" ? "D" : forced ?? tier;
 
   useEffect(() => {
-    if (active === "D") return; // nothing stamped, nothing listened to
+    if (active === null || active === "D") return; // nothing stamped, nothing listened to
     const html = document.documentElement;
     html.setAttribute("data-cxjourney", active);
 
@@ -102,7 +106,7 @@ export function JourneyRuntime() {
     };
   }, [active]);
 
-  if (!director) return null;
+  if (!director || active === null) return null;
   return (
     <JourneyDirectorStrip
       active={active}

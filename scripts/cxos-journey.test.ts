@@ -62,7 +62,7 @@ check("the runtime pauses when the tab is hidden", /document\.hidden/.test(runti
     cxpRules.length > 0 &&
     cxpRules.every((m) => /html\[data-cxjourney=/.test(m[0].split("{")[0])));
   check("tier D stamps nothing: the runtime returns before ANY listener on D",
-    /if \(active === "D"\) return;/.test(runtime));
+    /if \(active === null \|\| active === "D"\) return;/.test(runtime));
   check("chapter copy is server-rendered (no \"use client\" in the chapters)",
     !/"use client"/.test(chamber) && !/"use client"/.test(awakens));
   check("chapter visuals are aria-hidden illustrative surfaces with the honest caption",
