@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CXOS Phase 3 — Audit · Experience Architecture · Motion Specification</title>
+<meta name="description" content="Stage 1-3 design truth: repository audit, chapter map, capability tiers, transition registry, per-chapter motion specs.">
+<style>
+:root{--bg:#ffffff;--fg:#14181f;--mut:#4a5462;--line:#d9dee6;--acc:#0b4fa8;--code:#f2f4f7;
+--red:#8a1420;--redbg:#fdeaec;--amb:#7a4a00;--ambbg:#fff5e0;--grn:#0f5c34;--grnbg:#e6f5ec;}
+*{box-sizing:border-box}
+body{margin:0;padding:1.1rem;background:var(--bg);color:var(--fg);
+font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+-webkit-text-size-adjust:100%;overflow-wrap:break-word}
+main{max-width:60rem;margin:0 auto}
+h1{font-size:1.6rem;line-height:1.25;margin:.2rem 0 .4rem;letter-spacing:-.01em}
+h2{font-size:1.28rem;margin:2.2rem 0 .7rem;padding-bottom:.32rem;border-bottom:2px solid var(--line)}
+h3{font-size:1.08rem;margin:1.6rem 0 .5rem}
+h4{font-size:1rem;margin:1.2rem 0 .4rem;color:var(--mut)}
+p{margin:.7rem 0}
+a{color:var(--acc)}
+code{background:var(--code);padding:.12em .38em;border-radius:4px;
+font:.86em/1.4 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;word-break:break-word}
+hr{border:0;border-top:1px solid var(--line);margin:2rem 0}
+blockquote{margin:1.1rem 0;padding:.85rem 1rem;background:var(--redbg);
+border-left:4px solid var(--red);border-radius:0 6px 6px 0;color:#5c0f18}
+blockquote strong{color:var(--red)}
+ul,ol{padding-left:1.35rem;margin:.7rem 0}
+li{margin:.34rem 0}
+.tw{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:1rem 0;
+border:1px solid var(--line);border-radius:8px}
+table{border-collapse:collapse;width:100%;min-width:34rem;font-size:.9rem}
+th,td{padding:.55rem .7rem;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+th{background:#f5f7fa;font-weight:650;white-space:nowrap}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:nth-child(even){background:#fafbfc}
+.meta{color:var(--mut);font-size:.92rem;margin:.5rem 0 1.2rem}
+nav.toc{background:#f7f9fb;border:1px solid var(--line);border-radius:8px;padding:.85rem 1rem;margin:1.4rem 0}
+nav.toc h2{font-size:.82rem;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);
+border:0;margin:0 0 .5rem;padding:0}
+nav.toc ol{margin:0;padding-left:1.2rem;font-size:.92rem}
+nav.toc li{margin:.2rem 0}
+.legend{display:flex;flex-wrap:wrap;gap:.4rem;margin:1rem 0}
+.tag{font-size:.76rem;font-weight:650;padding:.18rem .5rem;border-radius:999px;white-space:nowrap}
+.t-open{background:var(--redbg);color:var(--red)}
+.t-part{background:var(--ambbg);color:var(--amb)}
+.t-closed{background:var(--grnbg);color:var(--grn)}
+footer{margin-top:2.5rem;padding-top:1rem;border-top:1px solid var(--line);
+color:var(--mut);font-size:.85rem}
+@media(max-width:34rem){body{padding:.8rem}h1{font-size:1.35rem}table{font-size:.84rem;min-width:30rem}}
+@media print{body{padding:0;font-size:11pt}nav.toc{break-inside:avoid}
+.tw{overflow:visible;border:0}table{min-width:0;font-size:9pt}
+h2{break-after:avoid}tr{break-inside:avoid}a{color:#000;text-decoration:none}
+a[href^="http"]::after{content:" (" attr(href) ")";font-size:8pt;color:#555}}
+</style></head><body><main>
+<p class="meta"><strong>Gabriel Capital Labs · CreditVector™ Experience OS</strong> · 2026-07-29<br>
+Branch <code>feat/cxos-phase3</code> · production truth <code>f449c35</code> · feature branch only — no merge, no deploy</p>
+<nav class="toc"><h2>Contents</h2><ol><li><a href="#stage-1-3-audit-experience-architecture-motion-specification">Stage 1–3: Audit · Experience Architecture · Motion Specification</a></li><li><a href="#stage-1-repository-audit">STAGE 1 — REPOSITORY AUDIT</a></li><li><a href="#stage-2-experience-architecture">STAGE 2 — EXPERIENCE ARCHITECTURE</a></li><li><a href="#stage-3-motion-specification">STAGE 3 — MOTION SPECIFICATION</a></li></ol></nav>
+<h1 id="cxos-phase-3-the-living-landing-journey-the-cinematic-transition-system">CXOS Phase 3 — The Living Landing Journey &amp; the Cinematic Transition System</h1>
+<h2 id="stage-1-3-audit-experience-architecture-motion-specification">Stage 1–3: Audit · Experience Architecture · Motion Specification</h2>
+<p>
+<strong>2026-07-29 · branch <code>feat/cxos-phase3</code> · base: CXOS Phase 2 + Founder Review System (<code>68cb304</code>) reconciled with production truth <code>f449c35</code> (merge <code>7b1d2fd</code>, fix <code>0e3957e</code>)</strong>
+ 
+<strong>Planning + design document. The vertical-slice implementation report is <code>CXOS_PHASE_3_REPORT.md</code>.</strong>
+ 
+<strong>No merge. No production deployment. Feature branch only.</strong>
+</p>
+<hr>
+<h2 id="stage-1-repository-audit">STAGE 1 — REPOSITORY AUDIT</h2>
+<h3 id="1-1-production-truth-verified">1.1 Production truth (VERIFIED)</h3>
+<ul><li><code>origin/main</code> = <strong><code>f449c35</code></strong> — the owner merged draft PRs #8 (PR-1-v2) and #9 (PR-2-v2); production runs both release units.</li><li><code>feat/cxos-phase3</code> = CXOS Phases 1–2 + Founder Review System <strong>merged with <code>f449c35</code></strong>. Nine conflicts, all RC1 territory, resolved to main's ratified versions — except <code>app/billing/page.tsx</code> + <code>app/agency/page.tsx</code>, where the branch's versions are a strict superset (main's v2 content <strong>plus</strong> the RC1 B-06 terms-acceptance wiring); taking main's there broke <code>terms-acceptance.test.ts</code> 8/78, caught and fixed in <code>0e3957e</code>.</li><li>After reconciliation: <strong><code>tsc</code> clean · all 81 source guards green · all 5 runtime guards green.</strong></li></ul>
+<h3 id="1-2-landing-page-structure-the-raw-material">1.2 Landing-page structure (the raw material)</h3>
+<p>
+<code>app/page.tsx</code> — fully static, one server component, middleware handles signed-in redirect. Sections in DOM order:
+</p>
+<div class="tw"><table><thead><tr><th>#</th><th>Section</th><th>Anchor</th><th>Content</th></tr></thead><tbody>
+<tr><td>0</td><td>Hero (CXOS Scene 1 <code>cx-arrival</code>)</td><td>—</td><td>h1 "Stop guessing…", Kai introduction, DashboardPreview</td></tr>
+<tr><td>1</td><td>Trust / compliance band</td><td>—</td><td>TrustBar + educational-tool disclaimer</td></tr>
+<tr><td>2</td><td>How it works</td><td><code>#how</code></td><td>4 STEPS cards</td></tr>
+<tr><td>3</td><td>Platform (four engines)</td><td><code>#platform</code></td><td>4 FeatureSplits + roadmap strip</td></tr>
+<tr><td>4</td><td>Agency</td><td><code>#agencies</code></td><td>roster visual + Kai-for-your-team</td></tr>
+<tr><td>5</td><td>Operator Network</td><td><code>#community</code></td><td>community visual + compliance note</td></tr>
+<tr><td>6</td><td>Pricing</td><td><code>#pricing</code></td><td>3 tiers + letter-pack note</td></tr>
+<tr><td>7</td><td>FAQ</td><td><code>#faq</code></td><td>6 compliance-reviewed Q&amp;As</td></tr>
+<tr><td>8</td><td>Final CTA</td><td>—</td><td>"Your credit report. Your rights. Your move."</td></tr>
+</tbody></table></div>
+<p>
+All copy is compliance-authoritative and reused verbatim; the illustrative-visual convention (<code>aria-hidden</code> + "Illustrative example" caption) is established by <code>KaiChatVisual</code> / <code>AgencyRosterVisual</code> / <code>CommunityVisual</code>.
+</p>
+<h3 id="1-3-animation-inventory">1.3 Animation inventory</h3>
+<ul><li><strong>Token layer</strong> (<code>app/globals.css</code> §CXOS): <code>--ease-vector</code>, <code>--dur-settle/reveal/focus/crossfade/draw</code>, <code>--aurora-marketing/app</code>. Primitives: Settle (<code>animate-rise</code> + <code>.cx-d1..d4</code>), Reveal (<code>.reveal</code>+safety), Draw (<code>animate-draw</code>), Drift (<code>.aurora</code>), Shine (<code>.shine</code>, <code>.cx-sheen-overlay</code>), Focus (<code>.cx-focus-out</code>). Reduced-motion block neutralizes every one; <code>cxos-grammar.test.ts</code> enumerates every <code>.cx-*</code> class and fails if one is missing from the block.</li><li><strong>Threshold</strong> (Phase 2): pre-paint darkness script, fail-closed gate, lazy three+gsap chunk. Untouched by Phase 3 except the seam contract (§3.0).</li><li><strong><code>components/landing/motion/Parallax.tsx</code></strong> — an UNUSED primitive, comment: <em>"Foundation for the future cinematic homepage."</em> rAF-throttled passive scroll + IO gate + reduced-motion hard return + transform-only. <strong>Phase 3 adopts this exact pattern as the journey runtime's engine — reuse-first, repository precedent.</strong></li><li>Other rAF users: community ambient visuals, gxl — out of scope, untouched.</li><li><strong>No scroll library, no framer-motion, no R3F installed.</strong> three <code>0.185.1</code> (MIT) and gsap <code>3.15.0</code> (standard no-charge license) exist for the Threshold chunk only.</li></ul>
+<h3 id="1-4-constraints-found">1.4 Constraints found</h3>
+<ul><li><code>/journey</code> is an existing PRODUCT route (the consumer timeline, ADR-0007). The landing journey's review stage is therefore <strong><code>/review/landing</code></strong>, room key <code>landing-journey</code>.</li><li><code>middleware.ts</code> matcher is <code>["/"]</code> — signed-in visitors never see the landing journey; no interference.</li><li>CI runs <code>scripts/*.test.ts</code> (non-recursive) + <code>scripts/runtime/run-all.ts</code> — a new guard file is picked up automatically.</li><li>Landing first-load JS: <strong>97.7 kB</strong> review-enabled / 96.8 kB production (Phase 2 baseline).</li></ul>
+<hr>
+<h2 id="stage-2-experience-architecture">STAGE 2 — EXPERIENCE ARCHITECTURE</h2>
+<h3 id="2-1-the-narrative-journey-chapter-map">2.1 The narrative journey (chapter map)</h3>
+<p>
+Phase 3 does not replace the landing page — it <strong>stages</strong> it. The existing sections become chapters of one continuous descent; two NEW chapters are inserted between the trust band and <code>#how</code> to give the story its missing emotional beats:
+</p>
+<p>
+```
+ 
+CH 0  THE THRESHOLD        (existing, untouched)    darkness → the name → the opening
+ 
+CH 0b THE ARRIVAL          (existing hero, Scene 1)  anticipation → orientation
+ 
+─────────────────────────────────────────────────────────────────────────────
+ 
+CH 1  THE PROBLEM CHAMBER  (NEW, #problem)           uncertainty — three bureaus,
+ 
+                                                     three versions of the story
+ 
+CH 2  INTELLIGENCE AWAKENS (NEW, #awakens)           discovery — scattered facts
+ 
+                                                     align into classified evidence
+ 
+─────────────────────────────────────────────────────────────────────────────
+ 
+CH 3  THE EVIDENCE ENGINE  (existing #how+#platform) control      [future phase]
+ 
+CH 4  THE TWO PATHS        (existing #agencies)      possibility  [future phase]
+ 
+CH 5  OPERATOR NETWORK     (existing #community)     relationship [future phase]
+ 
+CH 6  THE ARENA SIGNAL     (not present; Arena not live — honest) [future phase]
+ 
+CH 7  THE CONVERSION GATE  (existing #pricing→/pricing) action    [slice: transition]
+ 
+```
+</p>
+<p>
+<strong>The vertical slice implements:</strong> Threshold → Hero → CH 1 → CH 2 → one real cinematic route transition (<code>/</code> → <code>/pricing</code>) → destination → back navigation. Chapters 3–7's cinematic upgrades are future phases; their content ships today exactly as it already exists.
+</p>
+<h3 id="2-2-the-three-levels-of-motion-mapped-to-repository-truth">2.2 The three levels of motion (mapped to repository truth)</h3>
+<div class="tw"><table><thead><tr><th>Level</th><th>Scope</th><th>Duration</th><th>Mechanism</th></tr></thead><tbody>
+<tr><td>1 — World transitions</td><td>Threshold (exists); future first-entries</td><td>6–10 s, skippable, once/session</td><td>WebGL overlay, lazy chunk</td></tr>
+<tr><td>2 — Chapter transitions</td><td>landing chapters, scroll-driven</td><td>0.8–2.5 s per transformation</td><td>CSS transforms driven by a scroll-progress custom property; <strong>native scroll authoritative</strong></td></tr>
+<tr><td>3 — Route transitions</td><td>registered marketing routes</td><td>0.4–1.5 s, hard fail-open</td><td>CSS overlay ("cover" pattern); navigation is never delayed more than the cover-in (≤ 450 ms)</td></tr>
+</tbody></table></div>
+<h3 id="2-3-capability-tier-policy-lib-cxos-capability-ts">2.3 Capability-tier policy (<code>lib/cxos/capability.ts</code>)</h3>
+<div class="tw"><table><thead><tr><th>Tier</th><th>Trigger</th><th>Journey behavior</th><th>Route transitions</th></tr></thead><tbody>
+<tr><td><strong>A</strong></td><td>default desktop</td><td>full choreography + depth planes</td><td>full (≈1.0 s)</td></tr>
+<tr><td><strong>B</strong></td><td>mobile viewport</td><td>same choreography, single plane (no parallax depth)</td><td>shortened (≈0.8 s)</td></tr>
+<tr><td><strong>C</strong></td><td><code>saveData</code> · <code>deviceMemory &lt; 4</code></td><td>no scroll-driven transforms; settles only</td><td>minimal crossfade (0.28 s)</td></tr>
+<tr><td><strong>D</strong></td><td><code>prefers-reduced-motion</code> · user toggle off</td><td>none — everything at rest state</td><td>instant navigation</td></tr>
+</tbody></table></div>
+<p>
+Decision order: reduced-motion → user toggle (<code>localStorage cx-cinematic="off"</code>) → saveData → deviceMemory → viewport. Fail direction is always downward; detection failure of any signal ⇒ the more conservative tier. The tier is stamped as <code>html[data-cxjourney="A|B|C"]</code> (D stamps nothing — the document stays untouched).
+</p>
+<h3 id="2-4-state-machine-lifecycle">2.4 State machine &amp; lifecycle</h3>
+<p>
+<strong>Journey runtime</strong> (<code>components/cxos/journey/JourneyRuntime.tsx</code>, mounted once on the landing page):
+</p>
+<p>
+```
+ 
+mount → detectTier
+ 
+  D → return (no listeners, no attribute, zero cost)
+ 
+  A/B/C → stamp html[data-cxjourney] → register [data-chapter] sections
+ 
+        → IO: data-state ahead|active|passed (cheap class states)
+ 
+        → A/B only: passive scroll + rAF → write --cxp ∈ [0,1] per active section
+ 
+unmount → remove attribute, disconnect all
+ 
+```
+</p>
+<p>
+<code>--cxp</code> is the chapter's scroll progress (0 = entering viewport, 1 = leaving). All choreography is pure CSS <code>calc()</code> on <code>--cxp</code> — transform/opacity only, compositor-only, zero layout writes from CSS, one <code>scrollY</code> read per frame from JS (the <code>Parallax.tsx</code> discipline).
+</p>
+<p>
+<strong>Route transition shell</strong> (<code>components/cxos/transitions/TransitionShell.tsx</code>, mounted in the root layout — persists across App Router navigations, renders <code>null</code> when idle):
+</p>
+<p>
+```
+ 
+idle → (document click, capture: plain left-click on same-origin &lt;a&gt;,
+ 
+        no modifiers, target≠_blank, download absent)
+ 
+     → registry.find(from, to) → null? do nothing (link works natively)
+ 
+     → tier D or replayed this session at C? → do nothing / minimal
+ 
+     → COVER-IN (≤450 ms) → router.push(to) AT cover-in end
+ 
+     → pathname changed → OPEN-OUT (≤550 ms) → focus destination h1 → idle
+ 
+FAIL-OPEN: hard timeout (1800 ms from click) → location.assign(to)
+ 
+           chunk/router failure → location.assign(to)
+ 
+           Escape during overlay → skip to OPEN-OUT immediately
+ 
+```
+</p>
+<h3 id="2-5-navigation-laws-mechanisms">2.5 Navigation laws → mechanisms</h3>
+<div class="tw"><table><thead><tr><th>Law</th><th>Mechanism</th></tr></thead><tbody>
+<tr><td>Links remain real links</td><td>interception is event-delegation over real <code>&lt;a href&gt;</code>; modified clicks, middle clicks, new-tab, copy-link all untouched</td></tr>
+<tr><td>Never delay indefinitely</td><td>navigation fires at cover-in end (≤450 ms); 1800 ms hard <code>location.assign</code> failsafe</td></tr>
+<tr><td>Back/forward never replay</td><td>only <code>click</code> is intercepted — <code>popstate</code> is never touched</td></tr>
+<tr><td>Returning users shorter</td><td><code>sessionStorage cx-nav-n</code>: first play full, after that tier-C duration</td></tr>
+<tr><td>User disable</td><td><code>cx-cinematic=off</code> (footer control, localStorage) ⇒ tier D</td></tr>
+<tr><td>Reduced motion</td><td>tier D — checked before everything else</td></tr>
+<tr><td>Never obscure errors</td><td>transitions run only on REGISTERED marketing routes; a <code>CRITICAL_NEVER</code> denylist (<code>/login</code>, <code>/register</code>, <code>/billing</code>, <code>/dashboard</code>, <code>/api</code>, <code>/legal</code>, <code>/support</code>, <code>/admin</code>, <code>/settings</code>, checkout/Stripe flows) is consulted <strong>before</strong> the registry and cannot be overridden by an entry</td></tr>
+<tr><td>No route inaccessible on failure</td><td>overlay is pure CSS in the sync bundle (no lazy chunk to fail); JS-off ⇒ plain links; the shell never <code>preventDefault</code>s before a registry match</td></tr>
+<tr><td>No autoplay audio</td><td>transitions are silent by design; no audio code exists in them</td></tr>
+<tr><td>Review never consumes session</td><td>shell + runtime write nothing in review mode</td></tr>
+</tbody></table></div>
+<h3 id="2-6-failure-model">2.6 Failure model</h3>
+<ul><li><strong>JS fails / disabled</strong> → server-rendered page, all chapter content visible at rest state (visible-by-default CSS; choreography only under <code>html[data-cxjourney]</code>).</li><li><strong>Transition overlay stuck</strong> → 1800 ms <code>location.assign</code>; overlay carries its own CSS end-state (<code>cx-enter-safety</code> pattern is precedent).</li><li><strong>rAF starvation / hidden tab</strong> → IO gate stops writes off-screen; <code>visibilitychange</code> pauses the loop.</li><li><strong>Chapter CSS fails to load</strong> → content is semantic HTML; nothing depends on the choreography.</li></ul>
+<h3 id="2-7-folder-structure">2.7 Folder structure</h3>
+<p>
+```
+ 
+lib/cxos/capability.ts               tier detection (pure, testable)
+ 
+lib/cxos/transitions/registry.ts     CRITICAL_NEVER + transition definitions + find()
+ 
+components/cxos/journey/JourneyRuntime.tsx   scroll runtime + director strip
+ 
+components/cxos/journey/ProblemChamber.tsx   CH 1 (server component)
+ 
+components/cxos/journey/IntelligenceAwakens.tsx  CH 2 (server component)
+ 
+components/cxos/transitions/TransitionShell.tsx  route-transition overlay
+ 
+app/review/landing/page.tsx          review stage: chapters, projections, simulations
+ 
+scripts/cxos-journey.test.ts         guard (see §2.9)
+ 
+```
+</p>
+<h3 id="2-8-performance-budgets-set-before-implementation">2.8 Performance budgets (set before implementation)</h3>
+<div class="tw"><table><thead><tr><th>Budget</th><th>Target</th><th>Baseline</th></tr></thead><tbody>
+<tr><td>Landing first-load JS</td><td>≤ 102 kB review-enabled</td><td>97.7 kB</td></tr>
+<tr><td>New sync client JS (runtime+shell+capability+registry)</td><td>≤ ~4 kB of that delta</td><td>—</td></tr>
+<tr><td>LCP</td><td>unchanged (hero untouched; nothing new above the fold)</td><td>—</td></tr>
+<tr><td>CLS from journey</td><td>0 (transform/opacity only)</td><td>0</td></tr>
+<tr><td>Scroll frame cost</td><td>1 <code>scrollY</code> read + N <code>--cxp</code> writes, no layout</td><td>—</td></tr>
+<tr><td>Cover-in before navigation</td><td>≤ 450 ms</td><td>—</td></tr>
+<tr><td>Total transition (A)</td><td>≤ 1.5 s perceived</td><td>—</td></tr>
+<tr><td>Fail-open ceiling</td><td>1800 ms</td><td>—</td></tr>
+<tr><td>New WebGL contexts</td><td><strong>0</strong> (Threshold remains the only one)</td><td>1 max</td></tr>
+<tr><td>New lazy chunks</td><td>0 (slice is CSS+DOM; heavy tiers earn chunks in later phases)</td><td>—</td></tr>
+</tbody></table></div>
+<h3 id="2-9-testing-strategy">2.9 Testing strategy</h3>
+<ul><li><code>scripts/cxos-journey.test.ts</code> (source guard, non-vacuity by mutation): no <code>preventDefault</code> on wheel/touch/scroll; passive listeners; visible-by-default CSS scoping; plain-left-click-only interception; <code>CRITICAL_NEVER</code> consulted before registry and covers billing/auth/admin; hard-timeout <code>location.assign</code> present; <code>popstate</code> untouched; reduced-motion ⇒ tier D before all other signals; durations within Level 3 bounds; no session writes in review mode.</li><li><code>cxos-grammar.test.ts</code> enumeration automatically forces reduced-motion coverage of every new <code>.cx-*</code> class.</li><li><code>cxos-review.test.ts</code> updated for the new room truth (two PROTOTYPE rooms).</li><li>Playwright behavioral pass (Stage 5): the full adversarial list.</li></ul>
+<h3 id="2-10-rollback-strategy">2.10 Rollback strategy</h3>
+<p>
+The slice is additive: two new sections, one runtime, one shell, one stage. Rollback = revert the Phase 3 implementation commits; no schema, no data, no route removed, no dependency added. The Threshold and Phase 1 grammar are untouched files except <code>app/page.tsx</code> (two inserted sections + runtime mount) and <code>globals.css</code> (appended layer) — both plain <code>git revert</code>-able.
+</p>
+<h3 id="2-11-asset-plan-higgsfield-evaluation">2.11 Asset plan (Higgsfield evaluation)</h3>
+<p>
+Evaluated and <strong>deferred</strong>: the slice's chapters are procedural (CSS/DOM) and hold the visual bar without generated media. Generated environmental plates only become candidates in later phases (Arena/Academy concept rooms) and only through the mandated checklist (purpose doc, license, fallback, size budget, mobile + reduced-data delivery, measurement). No heavy asset ships in Phase 3. <strong>Zero new dependencies. Zero new asset bytes.</strong>
+</p>
+<hr>
+<h2 id="stage-3-motion-specification">STAGE 3 — MOTION SPECIFICATION</h2>
+<p>
+Shared: easing <code>var(--ease-vector)</code> everywhere; sound NONE (chapters and transitions are silent; the only sound in CXOS remains the Threshold's opt-in toggle); exit condition for every chapter is simply scrolling on (nothing pins, nothing traps); failure timeout N/A for scroll choreography (content visible by default), 1800 ms for route transitions.
+</p>
+<h3 id="ch-0-ch-0b-seam-existing-must-not-regress">CH 0 → CH 0b seam (existing, must not regress)</h3>
+<p>
+Threshold dissolve hands focus to <code>#main h1</code>; hero plays Scene 1. Phase 3 adds nothing above the hero. <strong>Verification: first-paint darkness screenshot + pixel-compare of the hero.</strong>
+</p>
+<h3 id="chapter-1-the-problem-chamber-problem">CHAPTER 1 — THE PROBLEM CHAMBER (<code>#problem</code>)</h3>
+<div class="tw"><table><thead><tr><th>Spec</th><th>Value</th></tr></thead><tbody>
+<tr><td>Purpose</td><td>uncertainty made visible: three bureaus, three versions of the same account</td></tr>
+<tr><td>Initial state (p=0)</td><td>three bureau fragment cards scattered: rotated −6°/+4°/−2°, offset ±24–40 px, dimmed (opacity .75), edges cold</td></tr>
+<tr><td>Final state (p=1)</td><td>fragments have drifted <strong>apart</strong> slightly (tension is not resolved here — resolution belongs to CH 2), copy block fully settled</td></tr>
+<tr><td>Camera</td><td>none — depth is layered translate: back plane ×0.3, mid ×0.6, content ×1 (tier A only)</td></tr>
+<tr><td>Lighting</td><td>ink-950 base; a single dim aurora (app amplitude 0.15) — the darkest chamber on the page</td></tr>
+<tr><td>Typography</td><td>eyebrow "The problem" · h2 "Three bureaus. Three versions of your story." (new, compliance-held: factual, no promise) · body reuses the hero's factual framing</td></tr>
+<tr><td>Fragments (aria-hidden, "Illustrative example")</td><td>same account, three tellings: Equifax "Auto loan · Balance $8,214 · Reported May 12" / Experian "Auto loan · Balance $7,940 · Reported Apr 28" / TransUnion "Auto loan · Closed · Not reported"; a quiet "31 days" deadline chip, unattached</td></tr>
+<tr><td>Scroll mapping</td><td>drift/rotation interpolate linearly on <code>--cxp</code>; text uses <code>.reveal</code> settles (existing primitive)</td></tr>
+<tr><td>Duration</td><td>≈1 viewport of scroll ≈ 1–2 s at normal speed (Level 2 window)</td></tr>
+<tr><td>Reduced motion / tier C/D</td><td>fragments at legible rest composition (slight static tilt), full opacity; text visible</td></tr>
+<tr><td>Mobile (B)</td><td>single plane, same choreography, tighter offsets (±12 px)</td></tr>
+<tr><td>Fallback</td><td>no-JS = rest composition; nothing hidden</td></tr>
+<tr><td>Budget</td><td>0 layout writes; 3 composited layers</td></tr>
+</tbody></table></div>
+<h3 id="chapter-2-intelligence-awakens-awakens">CHAPTER 2 — INTELLIGENCE AWAKENS (<code>#awakens</code>)</h3>
+<div class="tw"><table><thead><tr><th>Spec</th><th>Value</th></tr></thead><tbody>
+<tr><td>Purpose</td><td>discovery: the same facts, aligned, classified, structured — order emerging from evidence</td></tr>
+<tr><td>Initial state (p=0)</td><td>the three tellings tilted/offset (echoing CH 1), classification chips unlit, connective path undrawn, deadline unstructured</td></tr>
+<tr><td>Final state (p≈0.6+)</td><td>rows aligned to a single evidence column (rotate→0, offset→0), chips lit — "Potential inaccuracy" · "Unverifiable" · "Cross-bureau mismatch" (terms from existing copy), SVG evidence path drawn (Draw primitive, <code>stroke-dashoffset</code> on <code>--cxp</code>), deadline chip docked "Response window · tracked"</td></tr>
+<tr><td>Kai's presence</td><td>the existing executive-intelligence framing only — a KAI wordmark chip on the column header; <strong>no mascot, no avatar, no humanoid</strong></td></tr>
+<tr><td>Typography</td><td>eyebrow "Intelligence awakens" · h2 "Kai reads all three — and the noise becomes evidence." · body VERBATIM from STEPS[1]: "Potential inaccuracies, inconsistencies, and unverifiable items are flagged and explained across Equifax, Experian, and TransUnion."</td></tr>
+<tr><td>Scroll mapping</td><td>alignment completes by p=0.6 (the payoff lands mid-viewport, not at exit); chips settle at p .35/.45/.55; path draws p .3→.7</td></tr>
+<tr><td>Motion meaning</td><td>computation + evidence assembly + state change — every movement is one of the six grammar primitives</td></tr>
+<tr><td>Reduced motion / C/D</td><td>fully aligned, chips lit, path drawn — the RESOLVED state is the rest state (the narrative's meaning survives without motion)</td></tr>
+<tr><td>Mobile (B)</td><td>same, single plane</td></tr>
+<tr><td>Budget</td><td>1 SVG path; chips are opacity/transform only</td></tr>
+</tbody></table></div>
+<h3 id="route-transition-the-commercial-surface-pricing">ROUTE TRANSITION — "The commercial surface" (<code>/</code> → <code>/pricing</code>)</h3>
+<div class="tw"><table><thead><tr><th>Spec</th><th>Value</th></tr></thead><tbody>
+<tr><td>Concept</td><td>the cinematic environment <strong>resolves into a calm, exact commercial surface</strong> — the one place the mandate demands calm over spectacle</td></tr>
+<tr><td>Cover-in (≤420 ms)</td><td>ink veil rises to 1; two hairline teal rails sweep from the left/right edges and meet center — "resolving"</td></tr>
+<tr><td>Navigation</td><td><code>router.push</code> fires at cover-in end (≤450 ms after click)</td></tr>
+<tr><td>Open-out (≤520 ms)</td><td>rails part horizontally; veil dissolves onto the pricing page, which is fully painted beneath; destination h1 receives focus</td></tr>
+<tr><td>Tier durations</td><td>A 420+520 ms · B 340+420 ms · C/repeat crossfade 280 ms · D none</td></tr>
+<tr><td>Skip / failure</td><td>Escape ⇒ immediate open-out; 1800 ms ⇒ <code>location.assign</code>; JS-off ⇒ plain link</td></tr>
+<tr><td>Never obscures</td><td>pricing prices render beneath the veil and are fully legible the moment it parts; the overlay never delays checkout (checkout routes are in <code>CRITICAL_NEVER</code>)</td></tr>
+</tbody></table></div>
+<h3 id="director-instrumentation-journey">Director instrumentation (journey)</h3>
+<p>
+<code>?director</code> on <code>/</code> adds the journey strip: current chapter + live <code>--cxp</code> + tier + force-tier cycle (A/B/C/D preview) + chapter-boundary outlines. <code>/review/landing</code> is the room stage: chapter doors, projection notes (reduced-motion, mobile, tablet, low-power via forced tiers), transition replay, and timeout simulation (<code>?cxsim=timeout</code>, review builds only). Production hard-off inherits <code>reviewBuildAllowed()</code> untouched.
+</p>
+<hr>
+<p>
+<em>Stage 4 (implementation), Stage 5 (adversarial validation), and Stage 6 (delivery) are recorded in <code>CXOS_PHASE_3_REPORT.md</code>.</em>
+</p>
+
+<footer>Projection of <code>CXOS_PHASE_3_JOURNEY.md</code>, which is canonical.
+Contains no credentials, secrets, tokens, or environment values.</footer>
+</main></body></html>
