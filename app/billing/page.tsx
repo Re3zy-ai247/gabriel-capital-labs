@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react';
 import { Suspense, useEffect, useState } from 'react';
 import { AppShell } from '@/components/AppShell';
 import { openBillingPortal } from '@/lib/portalClient';
+import { resolveAgencyCapacity } from '@/lib/agencyCapacity';
 
 interface Status {
   plan: 'free' | 'premium' | 'agency' | 'agency_pro';
@@ -135,6 +136,21 @@ function BillingInner() {
   const premium = status?.plan === 'premium' || isAgency;
   const planLabel = isAgencyPro ? 'Agency Pro' : isAgency ? 'Agency' : premium ? 'Professional' : 'Free';
   const monthlyCost = isAgencyPro ? '$699.00' : isAgency ? '$399.00' : premium ? '$99.00' : '$0.00';
+  // Workspace capacity is NEVER hardcoded here: it comes from the same canonical
+  // resolver the server enforces with (lib/agencyCapacity, ADR-0031 §4), fed the same
+  // server-owned inputs the billing status route returns. Hardcoded copy is how a buyer
+  // gets sold capacity the server will not honor (pinned in scripts/agency-capacity.test.ts).
+  const workspaceLimit = resolveAgencyCapacity({
+    plan: status?.plan,
+    isAgency: status?.isAgency,
+    createdAt: status?.memberSince,
+  }).workspaceLimit;
+  const workspaceCopy =
+    workspaceLimit === null
+      ? ' — unlimited active client workspaces on your plan'
+      : workspaceLimit > 0
+      ? ` — up to ${workspaceLimit} active client workspaces on your plan`
+      : '';
 
   return (
     <AppShell title="/ Billing">
@@ -166,7 +182,7 @@ function BillingInner() {
                   )}
                   <p className="text-slate-400 mb-6">
                     {isAgency
-                      ? `Manage each client in their own workspace with the full credit analysis and letter engine — up to ${isAgencyPro ? '40' : '15'} active client workspaces on your plan.`
+                      ? `Manage each client in their own workspace with the full credit analysis and letter engine${workspaceCopy}.`
                       : premium
                       ? 'Unlimited refined dispute letters, the Kai Strategy Desk, and 90-day tracking.'
                       : 'You have 3 dispute letters per month. Upgrade for unlimited letters + letter refinement.'}

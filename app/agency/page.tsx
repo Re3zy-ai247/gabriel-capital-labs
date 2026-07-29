@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
 import { Disclaimer } from "@/components/Disclaimer";
 import { openBillingPortal } from "@/lib/portalClient";
+import { WORKSPACE_BASE_V3 } from "@/lib/agencyCapacity";
 import { Building2, Loader2, UserPlus, FolderOpen, CircleHelp, Mails, AlertTriangle, Search } from "lucide-react";
 
 interface Client {
@@ -287,7 +288,7 @@ export default function AgencyPage() {
             analysis and letter engine for every one, and stay on top of each follow-up window.
           </p>
           <ul className="mt-4 space-y-1.5 text-sm text-slate-300">
-            <li className="flex items-center gap-2"><span className="text-brand-400">✓</span> Manage up to 15 active clients, each in a private workspace — no per-seat logins</li>
+            <li className="flex items-center gap-2"><span className="text-brand-400">✓</span> Manage up to {WORKSPACE_BASE_V3.agency} active clients, each in a private workspace — no per-seat logins</li>
             <li className="flex items-center gap-2"><span className="text-brand-400">✓</span> Full credit analysis &amp; letter engine for every client</li>
             <li className="flex items-center gap-2"><span className="text-brand-400">✓</span> Follow-up clock &amp; KPI reporting across your roster</li>
           </ul>
@@ -457,13 +458,16 @@ export default function AgencyPage() {
                 </span>{" "}
                 Your existing clients always stay fully accessible.{" "}
                 <Link href="/pricing" className="font-semibold text-brand-300 underline">
-                  {/* Honest next step by current cap: Agency (15/20-legacy) → Agency Pro (soon),
-                      Agency Pro (40) → Scale (soon), Scale (100) → Enterprise (contact). */}
-                  {clientLimit > 40
+                  {/* Honest next step by current cap, quoted from the CANONICAL v3 base
+                      (lib/agencyCapacity, ADR-0031 §4) — never a hardcoded number, so the
+                      upsell can never advertise capacity the server would not honor:
+                      below Agency Pro's base → Agency Pro; at/above it → Scale; at/above
+                      Scale's base (incl. grandfathered 100) → Enterprise. */}
+                  {clientLimit >= WORKSPACE_BASE_V3.scale
                     ? "Talk to us about Enterprise for custom capacity →"
-                    : clientLimit > 20
-                      ? "Scale — up to 100 workspaces — is coming soon. See what's ahead →"
-                      : "Agency Pro — up to 40 workspaces — is coming soon. See what's ahead →"}
+                    : clientLimit >= WORKSPACE_BASE_V3.agency_pro
+                      ? `Scale — up to ${WORKSPACE_BASE_V3.scale} workspaces — is coming soon. See what's ahead →`
+                      : `Agency Pro — up to ${WORKSPACE_BASE_V3.agency_pro} workspaces — is coming soon. See what's ahead →`}
                 </Link>
               </div>
             )}
