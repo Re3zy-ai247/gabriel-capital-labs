@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CreditVector — RC1 Release Candidate Extraction, Wave 2.2</title>
+<meta name="description" content="RC1 Execution Wave 2 — Go/No-Go status, blockers, and required decisions.">
+<style>
+:root{--bg:#ffffff;--fg:#14181f;--mut:#4a5462;--line:#d9dee6;--acc:#0b4fa8;--code:#f2f4f7;
+--red:#8a1420;--redbg:#fdeaec;--amb:#7a4a00;--ambbg:#fff5e0;--grn:#0f5c34;--grnbg:#e6f5ec;}
+*{box-sizing:border-box}
+body{margin:0;padding:1.1rem;background:var(--bg);color:var(--fg);
+font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+-webkit-text-size-adjust:100%;overflow-wrap:break-word}
+main{max-width:60rem;margin:0 auto}
+h1{font-size:1.6rem;line-height:1.25;margin:.2rem 0 .4rem;letter-spacing:-.01em}
+h2{font-size:1.28rem;margin:2.2rem 0 .7rem;padding-bottom:.32rem;border-bottom:2px solid var(--line)}
+h3{font-size:1.08rem;margin:1.6rem 0 .5rem}
+h4{font-size:1rem;margin:1.2rem 0 .4rem;color:var(--mut)}
+p{margin:.7rem 0}
+a{color:var(--acc)}
+code{background:var(--code);padding:.12em .38em;border-radius:4px;
+font:.86em/1.4 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;word-break:break-word}
+hr{border:0;border-top:1px solid var(--line);margin:2rem 0}
+blockquote{margin:1.1rem 0;padding:.85rem 1rem;background:var(--redbg);
+border-left:4px solid var(--red);border-radius:0 6px 6px 0;color:#5c0f18}
+blockquote strong{color:var(--red)}
+ul,ol{padding-left:1.35rem;margin:.7rem 0}
+li{margin:.34rem 0}
+.tw{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:1rem 0;
+border:1px solid var(--line);border-radius:8px}
+table{border-collapse:collapse;width:100%;min-width:34rem;font-size:.9rem}
+th,td{padding:.55rem .7rem;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+th{background:#f5f7fa;font-weight:650;white-space:nowrap}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:nth-child(even){background:#fafbfc}
+.meta{color:var(--mut);font-size:.92rem;margin:.5rem 0 1.2rem}
+nav.toc{background:#f7f9fb;border:1px solid var(--line);border-radius:8px;padding:.85rem 1rem;margin:1.4rem 0}
+nav.toc h2{font-size:.82rem;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);
+border:0;margin:0 0 .5rem;padding:0}
+nav.toc ol{margin:0;padding-left:1.2rem;font-size:.92rem}
+nav.toc li{margin:.2rem 0}
+.legend{display:flex;flex-wrap:wrap;gap:.4rem;margin:1rem 0}
+.tag{font-size:.76rem;font-weight:650;padding:.18rem .5rem;border-radius:999px;white-space:nowrap}
+.t-open{background:var(--redbg);color:var(--red)}
+.t-part{background:var(--ambbg);color:var(--amb)}
+.t-closed{background:var(--grnbg);color:var(--grn)}
+footer{margin-top:2.5rem;padding-top:1rem;border-top:1px solid var(--line);
+color:var(--mut);font-size:.85rem}
+@media(max-width:34rem){body{padding:.8rem}h1{font-size:1.35rem}table{font-size:.84rem;min-width:30rem}}
+@media print{body{padding:0;font-size:11pt}nav.toc{break-inside:avoid}
+.tw{overflow:visible;border:0}table{min-width:0;font-size:9pt}
+h2{break-after:avoid}tr{break-inside:avoid}a{color:#000;text-decoration:none}
+a[href^="http"]::after{content:" (" attr(href) ")";font-size:8pt;color:#555}}
+</style></head><body><main>
+<p class="meta"><strong>Gabriel Capital Labs</strong> · Draft — not ratified · 2026-07-28<br>
+Branch <code>claude/creditvector-founder-library-jwnbhc</code> · Commits <code>d6303fc</code> → <code>HEAD</code></p>
+<div class="legend"><span class="tag t-closed">CLOSED 9</span><span class="tag t-part">PARTIAL 3</span><span class="tag t-open">OPEN / BLOCKED 2</span><span class="tag t-open">VERIFICATION REQUIRED 2</span></div>
+<nav class="toc"><h2>Contents</h2><ol><li><a href="#1-desktop-storyboard">1. Desktop storyboard</a></li><li><a href="#2-mobile-storyboard-390-844-reference-designed-first-not-adapted-down">2. Mobile storyboard (390×844 reference; designed first, not adapted down)</a></li><li><a href="#3-high-fidelity-composition-specs-shared">3. High-fidelity composition specs (shared)</a></li><li><a href="#4-scene-transition-map">4. Scene-transition map</a></li><li><a href="#5-motion-board">5. Motion board</a></li><li><a href="#6-what-these-boards-are-not">6. What these boards are not</a></li></ol></nav>
+<h1 id="cxos-storyboards-motion-board">CXOS — Storyboards &amp; Motion Board</h1>
+<p>
+<strong>CreditVector Experience OS · v1 · 2026-07-29</strong>
+ 
+<strong>Status: DRAFT — contingent on screenplay approval. Planning only; no implementation.</strong>
+</p>
+<blockquote>The program sequence is screenplay → approval → storyboard. These boards are supplied now so the Founder reviews one complete package; they are <strong>drafts that inherit any screenplay amendment</strong> and are void where the screenplay changes. Frames are specified as precise compositional documents (grid, planes, type scale, lighting values) rather than rendered comps — renderable 1:1 by any implementer of the grammar, with zero ambiguity about hierarchy. Vocabulary: grammar terms from <code>CXOS_FOUNDATION.md</code> §5 (Settle · Reveal · Draw · Drift · Shine · Focus · vector ease). Grid: 12-col <code>container-x</code> desktop · single-column mobile. Planes: Atmosphere / Content / Instrument.</blockquote>
+<hr>
+<h2 id="1-desktop-storyboard">1. Desktop storyboard</h2>
+<p>
+Frames are keyed to screenplay scenes. "A/C/I" = plane assignment.
+</p>
+<h3 id="frame-1a-1c-public-arrival">Frame 1a–1c — Public Arrival</h3>
+<ul><li><strong>1a (t=0, LCP):</strong> complete page, no choreography yet. Grid: headline block cols 1–6, shield</li></ul>
+<p>
+  cols 8–12 vertically centered. Type: eyebrow (11px caps, brand-300) → <code>h-display</code> 6xl,
+ 
+  <code>leading-[1.05]</code>, <code>text-balance</code> → lede (slate-300, max-w-xl) → CTA pair (primary + ghost).
+ 
+  A: grid texture + both auroras at opacity 0. C: all text. I: shield raster via <code>next/image</code>,
+ 
+  priority.
+</p>
+<ul><li><strong>1b (t≈1.2s):</strong> auroras at 0.5 (brand upper-left 460px, ocean right 420px, blur 72px);</li></ul>
+<p>
+  headline/CTA settled (staggered Settle, 80ms).
+</p>
+<ul><li><strong>1c (t≈2.0s, final):</strong> shield settled with one Shine sweep completed; page is at rest;</li></ul>
+<p>
+  Drift continues at 18s period. **This frame = the reduced-motion still and the return-visit
+ 
+  state.**
+</p>
+<h3 id="frame-2a-2b-credit-problem">Frame 2a–2b — Credit Problem</h3>
+<ul><li><strong>2a:</strong> rack Focus midpoint — headline plane at opacity 0.4/blur 4px upper third; three report</li></ul>
+<p>
+  fragments (I-plane cards, <code>ink-800</code> surface, <code>ink-700</code> border) entering cols 2–11 as a
+ 
+  horizontal triptych, equal widths, 24px gutters. Each card: bureau name (11px caps slate-500),
+ 
+  account row, one highlighted field.
+</p>
+<ul><li><strong>2b:</strong> Draw complete — a 1.5px brand-400 path connecting the three disagreeing fields,</li></ul>
+<p>
+  drawn left→right; the disputed values at 105% scale. Caption row beneath in operator voice.
+</p>
+<h3 id="frame-3a-3b-evidence">Frame 3a–3b — Evidence</h3>
+<ul><li><strong>3a:</strong> insert — one product frame (real tradeline comparison capture) spans cols 2–11,</li></ul>
+<p>
+  border <code>ink-700</code>, elevation 1. Desktop-only: frame is sticky for ≤ 2 viewports.
+</p>
+<ul><li><strong>3b:</strong> four annotation labels settled at frame edges (12px, slate-300, connector Draws to</li></ul>
+<p>
+  fields). Labels use real product vocabulary only (BureauIQ, per-bureau columns, <code>tnum</code> data).
+ 
+  <strong>No success green anywhere in this frame.</strong>
+</p>
+<h3 id="frame-4-kai">Frame 4 — Kai</h3>
+<ul><li>Single centered column, cols 4–9. A Kai briefing card (I-plane): Kai wordmark row, then 4</li></ul>
+<p>
+  lines of a real FCRA explanation revealed 120ms apart, statute citation in brand-300.
+ 
+  A: one small brand glow (240px, opacity 0.25) directly behind the card — the only
+ 
+  behind-instrument light in the film. Massive whitespace above/below (≥ 160px).
+ 
+  <strong>No mascot. No chat affordance.</strong>
+</p>
+<h3 id="frame-5a-5c-mission-control-marketing">Frame 5a–5c — Mission Control (marketing)</h3>
+<ul><li><strong>5a:</strong> wide — full dashboard frame cols 1–12 at 90% width, centered, aurora dimmed to 0.15.</li><li><strong>5b:</strong> insert — dispute timeline panel enlarged cols 3–10; Draw traces evidence → letter →</li></ul>
+<p>
+  response along the timeline spine.
+</p>
+<ul><li><strong>5c:</strong> insert — letter citation panel; two FCRA citations underlined via Draw.</li><li>Module tiles labelled exactly per <code>lib/brand.ts</code> (BureauIQ · Dispute Engine · Response</li></ul>
+<p>
+  Intelligence · FCRA Engine).
+</p>
+<h3 id="frame-6-agency">Frame 6 — Agency</h3>
+<ul><li>Two-column: copy cols 1–5, roster frame cols 6–12. Roster: 5 workspace rows + capacity meter</li></ul>
+<p>
+  rendered at its true static proportion (no fill animation). Aurora ocean-weighted.
+</p>
+<h3 id="frame-7-consumer">Frame 7 — Consumer</h3>
+<ul><li>Mirrored composition (copy right, artifact left): single letter frame with two citation</li></ul>
+<p>
+  underlines (Draw), education banner beneath. Aurora brand-weighted.
+</p>
+<h3 id="frame-8-arena-marketing">Frame 8 — Arena (marketing)</h3>
+<ul><li>Vertical monument composition: progression rail centered cols 6–7 as a 2px vertical line with</li></ul>
+<p>
+  level marks; copy flanks at cols 2–5. A: single vertical brand gradient (120px wide, opacity
+ 
+  0.2) directly behind the rail; both auroras stilled. ≥ 200px whitespace top and bottom.
+ 
+  Numbers <code>tnum</code>, arrive static.
+</p>
+<h3 id="frame-9-education">Frame 9 — Education</h3>
+<ul><li>Centered column (sibling of Frame 4): three concept cards in a row cols 3–10 (rights /</li></ul>
+<p>
+  process / timelines), icon + two lines each. No product frame.
+</p>
+<h3 id="frame-10-pricing">Frame 10 — Pricing</h3>
+<ul><li>Symmetric authority composition: interval toggle centered; tier table centered cols 2–11.</li></ul>
+<p>
+  Recommended tier: static 1px brand border. "Coming soon" columns visibly muted with honest
+ 
+  labels. Flattest lighting in the film (aurora 0.1).
+</p>
+<h3 id="frame-11-login">Frame 11 — Login</h3>
+<ul><li>Shipped <code>AuthLayout</code> split: brand panel left (aurora 0.25, shield small, three assurance</li></ul>
+<p>
+  rows), form panel right on flat ink. Nothing animates during input.
+</p>
+<h3 id="frame-12a-12d-the-threshold-2-5s">Frame 12a–12d — The Threshold (≤ 2.5s)</h3>
+<ul><li><strong>12a (0ms):</strong> auth panel dims to 0.4/blur 4px (Focus out).</li><li><strong>12b (400ms):</strong> dark stage; shield small and centered, settled.</li><li><strong>12c (400–2000ms):</strong> Mission Control panels Settle <em>outward from the shield</em> in reading</li></ul>
+<p>
+  order, 60ms stagger — nav, then case header, then module panels.
+</p>
+<ul><li><strong>12d (≤2500ms):</strong> full Mission Control; aurora crossfaded to 0.15; focus on the h1.</li></ul>
+<p>
+  <strong>Any input at any frame cuts directly to 12d.</strong>
+</p>
+<h3 id="frame-13-mission-control-authenticated">Frame 13 — Mission Control (authenticated)</h3>
+<ul><li>Consumer arrival: case status header full-width; next-action card upper-left (the protagonist);</li></ul>
+<p>
+  Kai briefing card right rail, dismissible. Agency arrival: practice roster as protagonist,
+ 
+  capacity and staff seats in header. Operator type density; panels settle once, then static.
+</p>
+<h3 id="frame-14-arena-entry">Frame 14 — Arena Entry</h3>
+<ul><li>The member's own rail: vertical composition from Frame 8, personalized. Entry Draw of the rail</li></ul>
+<p>
+  (1.2s, once per session), XP provenance rows beneath (event → evidence → points, <code>tnum</code>).
+ 
+  Policy version line in the footer of the surface, visible without scroll.
+</p>
+<h3 id="frame-15-reduced-motion-stills">Frame 15 — Reduced-motion stills</h3>
+<ul><li>One still per frame above: the resolved end-state, aurora as static two-stop gradient, Draw</li></ul>
+<p>
+  paths pre-drawn, thresholds cut. <strong>Each still is reviewed as a standalone composition</strong> —
+ 
+  this row of the board is the approval gate for every other row.
+</p>
+<hr>
+<h2 id="2-mobile-storyboard-390-844-reference-designed-first-not-adapted-down">2. Mobile storyboard (390×844 reference; designed first, not adapted down)</h2>
+<p>
+Global mobile rules: single column; no sticky stages; no parallax; intro choreography ≤ 6s
+ 
+ceiling (actual: same 2.0s arrival); tap targets ≥ 44px; primary CTA within thumb reach;
+ 
+<code>dvh</code> viewport units; auroras at 65% desktop size and 0.4 amplitude to protect contrast.
+</p>
+<div class="tw"><table><thead><tr><th>Scene</th><th>Mobile composition</th></tr></thead><tbody>
+<tr><td>1</td><td>Stack: eyebrow → 4xl headline → lede → full-width primary CTA → ghost CTA → shield (60vw, centered, below the fold line but visible on first swipe). Same 2.0s Settle sequence</td></tr>
+<tr><td>2</td><td>Fragments stack vertically; Draw runs top→bottom connecting the three disagreeing fields; each card full-width</td></tr>
+<tr><td>3</td><td>Product frame full-width, <strong>not sticky</strong>; annotations become numbered captions <em>below</em> the frame (connector Draws replaced by number badges on the frame)</td></tr>
+<tr><td>4</td><td>Card full-width; glow scaled to 160px; line-by-line Reveal preserved</td></tr>
+<tr><td>5</td><td>Frame full-width; the two inserts become sequential full-width crops (timeline, then citations) with their Draws intact</td></tr>
+<tr><td>6–7</td><td>Copy above artifact, artifact full-width; Agency/Consumer presented sequentially (no tabs on mobile)</td></tr>
+<tr><td>8</td><td>Rail stays vertical and centered — the monument composition survives mobile perfectly; flanking copy moves above/below</td></tr>
+<tr><td>9</td><td>Concept cards stack</td></tr>
+<tr><td>10</td><td>Tier table becomes per-tier cards with a horizontal scroll comparison row (<code>overflow-x</code>, scroll-snap); toggle sticky at top of the section only</td></tr>
+<tr><td>11</td><td>Brand panel compresses to a header band (shield + one assurance line); form is the page</td></tr>
+<tr><td>12</td><td>Threshold shortened to ≤ 1.8s: Focus-out → shield beat → panels settle top-to-bottom. Same skip/remember/reduced rules</td></tr>
+<tr><td>13</td><td>Next-action card first, always; Kai briefing as a dismissible sheet from the bottom, never a blocking modal</td></tr>
+<tr><td>14</td><td>Rail full-height left-aligned with provenance rows to its right at compressed density</td></tr>
+<tr><td>15</td><td>Stills of every mobile frame, same gate</td></tr>
+</tbody></table></div>
+<hr>
+<h2 id="3-high-fidelity-composition-specs-shared">3. High-fidelity composition specs (shared)</h2>
+<ul><li><strong>Surfaces:</strong> page <code>ink-950</code> · card <code>ink-800</code> · border <code>ink-700</code> · elevated instrument border</li></ul>
+<p>
+  <code>ink-600</code>.
+</p>
+<ul><li><strong>Text ramp:</strong> headline white · lede <code>slate-300</code> · secondary <code>slate-400</code> · captions/labels</li></ul>
+<p>
+  <code>slate-500</code> 11px caps tracked.
+</p>
+<ul><li><strong>Accents:</strong> interactive/brand <code>brand-400/500</code> · depth fields <code>ocean-500</code> · **success green only</li></ul>
+<p>
+  on evidenced positive states** (appears in exactly two boards: a resolved dispute inside
+ 
+  Frame 5b's timeline, and nowhere in marketing atmosphere).
+</p>
+<ul><li><strong>Radii/elevation:</strong> cards <code>rounded-2xl</code>-class per shipped <code>.card</code>; elevation via border +</li></ul>
+<p>
+  subtle shadow, never heavy drop shadows.
+</p>
+<ul><li><strong>Iconography:</strong> lucide-react line icons only (shipped); no filled/emoji/3D icons. The 3D</li></ul>
+<p>
+  shield is the sole dimensional object in the system.
+</p>
+<ul><li><strong>Imagery:</strong> real product captures and the real shield raster only. Any Higgsfield-generated</li></ul>
+<p>
+  atmosphere study is a design-exploration artifact and never ships as product imagery.
+</p>
+<hr>
+<h2 id="4-scene-transition-map">4. Scene-transition map</h2>
+<div class="tw"><table><thead><tr><th>From → To</th><th>Transition</th><th>Duration</th><th>Continuity carrier</th></tr></thead><tbody>
+<tr><td>1 → 2</td><td>scroll; rack Focus headline→evidence</td><td>scroll-scrubbed</td><td>grid texture</td></tr>
+<tr><td>2 → 3</td><td>Draw path continues downward into the product frame</td><td>scroll-scrubbed</td><td>the brand-400 evidence line</td></tr>
+<tr><td>3 → 4</td><td>Focus out of frame; whitespace expands</td><td>scroll</td><td>aurora dim level</td></tr>
+<tr><td>4 → 5</td><td>push-in on briefing card, crossfade to wide</td><td>320ms</td><td>the briefing card (revealed as a Mission Control panel)</td></tr>
+<tr><td>5 → 6 → 7</td><td>crossfade on shared stage</td><td>240ms</td><td>the product frame chrome</td></tr>
+<tr><td>7 → 8</td><td>citation underline Draws down into the Arena rail</td><td>scroll</td><td>one continuous line</td></tr>
+<tr><td>8 → 9 → 10</td><td>plain scroll, no device</td><td>—</td><td>typography rhythm</td></tr>
+<tr><td>10 → 11</td><td>route change: crossfade-with-settle (View Transitions; instant fallback)</td><td>280ms</td><td>aurora</td></tr>
+<tr><td>11 → 12 → 13</td><td>the Threshold (screenplay Scene 12)</td><td>≤ 2.5s / 300ms / 0ms</td><td>aurora + shield</td></tr>
+<tr><td>13 → 14</td><td>route crossfade; Arena's vertical gradient rises</td><td>280ms</td><td>ink ground</td></tr>
+</tbody></table></div>
+<p>
+<strong>Rule: every transition names its continuity carrier — the one element the eye keeps.</strong> A
+ 
+transition with no carrier is a cut, and cuts belong to the user.
+</p>
+<hr>
+<h2 id="5-motion-board">5. Motion board</h2>
+<p>
+The complete motion vocabulary of the film. Anything not on this board does not move.
+</p>
+<div class="tw"><table><thead><tr><th>#</th><th>Name</th><th>Primitive(s)</th><th>Duration / ease</th><th>Where</th><th>Reduced-motion</th></tr></thead><tbody>
+<tr><td>M1</td><td>Arrival breath</td><td>Drift (aurora 0→0.5)</td><td>1200ms · vector ease</td><td>Scene 1</td><td>static gradient</td></tr>
+<tr><td>M2</td><td>Headline settle</td><td>Settle ×3 staggered 80ms</td><td>400ms each</td><td>Scenes 1, 11</td><td>visible immediately</td></tr>
+<tr><td>M3</td><td>Shield settle + sheen</td><td>Settle → Shine</td><td>400ms + 600ms</td><td>Scene 1</td><td>static shield</td></tr>
+<tr><td>M4</td><td>Evidence trace</td><td>Draw (scroll-scrubbed)</td><td>scroll-linked</td><td>Scenes 2, 3, 5, 7</td><td>pre-drawn</td></tr>
+<tr><td>M5</td><td>Fragment raise</td><td>elevation + 1.02 scale</td><td>150ms</td><td>Scene 2 hover/tap</td><td>state change only</td></tr>
+<tr><td>M6</td><td>Briefing compose</td><td>Reveal ×n staggered 120ms</td><td>600ms each</td><td>Scene 4, 13</td><td>all visible</td></tr>
+<tr><td>M7</td><td>Panel assembly</td><td>Settle ×n staggered 60ms</td><td>400ms each</td><td>Scenes 5, 12, 13</td><td>assembled</td></tr>
+<tr><td>M8</td><td>Rack focus</td><td>Focus (blur 4px, opacity 0.4)</td><td>350ms</td><td>Scenes 2, 4, 12</td><td>instant swap</td></tr>
+<tr><td>M9</td><td>Route crossfade</td><td>crossfade + Settle</td><td>240–320ms</td><td>all route changes</td><td>instant</td></tr>
+<tr><td>M10</td><td>Threshold</td><td>M8 → M3 → M7 composed</td><td>≤ 2500ms total</td><td>Scene 12</td><td>cut</td></tr>
+<tr><td>M11</td><td>Arena rail</td><td>Draw (time-based, once)</td><td>1200ms</td><td>Scenes 8, 14</td><td>drawn</td></tr>
+<tr><td>M12</td><td>Instrument hover</td><td>Shine + border brighten</td><td>150ms</td><td>all interactive cards</td><td>border only</td></tr>
+</tbody></table></div>
+<p>
+<strong>Global constraints:</strong> transform/opacity only · no layout animation · no infinite animation
+ 
+except Drift · every sequence carries a CSS-only safety net landing its final frame · nothing
+ 
+exceeds the timing summary ceilings in <code>CXOS_SCREENPLAY.md</code>.
+</p>
+<hr>
+<h2 id="6-what-these-boards-are-not">6. What these boards are not</h2>
+<p>
+No code, no CSS, no components, no Figma files, no rendered comps, and no implementation prompts
+ 
+were produced. The boards become buildable specifications only after the Founder approves D-1
+ 
+(grammar) and D-2 (screenplay) in <code>CXOS_FOUNDATION.md</code> §16 — and Phase 3 of the roadmap begins
+ 
+only behind the repository's five-review gate.
+</p>
+<footer>Projection of <code>CREDITVECTOR_RC1_RELEASE_CANDIDATE_EXTRACTION_WAVE_2_2_REPORT.md</code>, which is canonical.
+Contains no credentials, secrets, tokens, or environment values.</footer>
+</main></body></html>

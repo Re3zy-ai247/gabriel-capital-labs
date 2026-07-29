@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CreditVector — RC1 Release Candidate Extraction, Wave 2.2</title>
+<meta name="description" content="RC1 Execution Wave 2 — Go/No-Go status, blockers, and required decisions.">
+<style>
+:root{--bg:#ffffff;--fg:#14181f;--mut:#4a5462;--line:#d9dee6;--acc:#0b4fa8;--code:#f2f4f7;
+--red:#8a1420;--redbg:#fdeaec;--amb:#7a4a00;--ambbg:#fff5e0;--grn:#0f5c34;--grnbg:#e6f5ec;}
+*{box-sizing:border-box}
+body{margin:0;padding:1.1rem;background:var(--bg);color:var(--fg);
+font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+-webkit-text-size-adjust:100%;overflow-wrap:break-word}
+main{max-width:60rem;margin:0 auto}
+h1{font-size:1.6rem;line-height:1.25;margin:.2rem 0 .4rem;letter-spacing:-.01em}
+h2{font-size:1.28rem;margin:2.2rem 0 .7rem;padding-bottom:.32rem;border-bottom:2px solid var(--line)}
+h3{font-size:1.08rem;margin:1.6rem 0 .5rem}
+h4{font-size:1rem;margin:1.2rem 0 .4rem;color:var(--mut)}
+p{margin:.7rem 0}
+a{color:var(--acc)}
+code{background:var(--code);padding:.12em .38em;border-radius:4px;
+font:.86em/1.4 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;word-break:break-word}
+hr{border:0;border-top:1px solid var(--line);margin:2rem 0}
+blockquote{margin:1.1rem 0;padding:.85rem 1rem;background:var(--redbg);
+border-left:4px solid var(--red);border-radius:0 6px 6px 0;color:#5c0f18}
+blockquote strong{color:var(--red)}
+ul,ol{padding-left:1.35rem;margin:.7rem 0}
+li{margin:.34rem 0}
+.tw{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:1rem 0;
+border:1px solid var(--line);border-radius:8px}
+table{border-collapse:collapse;width:100%;min-width:34rem;font-size:.9rem}
+th,td{padding:.55rem .7rem;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+th{background:#f5f7fa;font-weight:650;white-space:nowrap}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:nth-child(even){background:#fafbfc}
+.meta{color:var(--mut);font-size:.92rem;margin:.5rem 0 1.2rem}
+nav.toc{background:#f7f9fb;border:1px solid var(--line);border-radius:8px;padding:.85rem 1rem;margin:1.4rem 0}
+nav.toc h2{font-size:.82rem;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);
+border:0;margin:0 0 .5rem;padding:0}
+nav.toc ol{margin:0;padding-left:1.2rem;font-size:.92rem}
+nav.toc li{margin:.2rem 0}
+.legend{display:flex;flex-wrap:wrap;gap:.4rem;margin:1rem 0}
+.tag{font-size:.76rem;font-weight:650;padding:.18rem .5rem;border-radius:999px;white-space:nowrap}
+.t-open{background:var(--redbg);color:var(--red)}
+.t-part{background:var(--ambbg);color:var(--amb)}
+.t-closed{background:var(--grnbg);color:var(--grn)}
+footer{margin-top:2.5rem;padding-top:1rem;border-top:1px solid var(--line);
+color:var(--mut);font-size:.85rem}
+@media(max-width:34rem){body{padding:.8rem}h1{font-size:1.35rem}table{font-size:.84rem;min-width:30rem}}
+@media print{body{padding:0;font-size:11pt}nav.toc{break-inside:avoid}
+.tw{overflow:visible;border:0}table{min-width:0;font-size:9pt}
+h2{break-after:avoid}tr{break-inside:avoid}a{color:#000;text-decoration:none}
+a[href^="http"]::after{content:" (" attr(href) ")";font-size:8pt;color:#555}}
+</style></head><body><main>
+<p class="meta"><strong>Gabriel Capital Labs</strong> · Draft — not ratified · 2026-07-28<br>
+Branch <code>claude/creditvector-founder-library-jwnbhc</code> · Commits <code>d6303fc</code> → <code>HEAD</code></p>
+<div class="legend"><span class="tag t-closed">CLOSED 9</span><span class="tag t-part">PARTIAL 3</span><span class="tag t-open">OPEN / BLOCKED 2</span><span class="tag t-open">VERIFICATION REQUIRED 2</span></div>
+<nav class="toc"><h2>Contents</h2><ol><li><a href="#1-repository-grounded-assessment">1. Repository-grounded assessment</a></li><li><a href="#2-five-reference-study">2. Five-reference study</a></li><li><a href="#3-selected-design-skills">3. Selected design skills</a></li><li><a href="#4-selected-mcp-tool-stack">4. Selected MCP / tool stack</a></li><li><a href="#5-the-creditvector-experience-grammar">5. The CreditVector Experience Grammar</a></li><li><a href="#10-technology-recommendation">10. Technology recommendation</a></li><li><a href="#11-performance-budget">11. Performance budget</a></li><li><a href="#12-accessibility-plan">12. Accessibility plan</a></li><li><a href="#13-seo-plan">13. SEO plan</a></li><li><a href="#14-production-risk-assessment">14. Production risk assessment</a></li><li><a href="#15-implementation-roadmap-post-approval-each-phase-behind-the-five-review-gate">15. Implementation roadmap (post-approval; each phase behind the five-review gate)</a></li><li><a href="#16-founder-review-package-the-decisions-only-you-can-make">16. Founder review package — the decisions only you can make</a></li></ol></nav>
+<h1 id="cxos-creditvector-experience-os-founding-design-constitution">CXOS — CreditVector Experience OS · Founding Design Constitution</h1>
+<p>
+<strong>Program:</strong> Experience Architecture · <strong>Phase:</strong> 1 — Planning only · <strong>Date:</strong> 2026-07-29
+ 
+<strong>Status: DRAFT — awaiting Founder approval. No implementation. No code was changed.</strong>
+</p>
+<blockquote>This document is the constitution: assessment, references, skills, tools, and the Experience Grammar, plus the technology recommendation, budgets, plans, risks and roadmap. The screenplay lives in <code>CXOS_SCREENPLAY.md</code>; the boards in <code>CXOS_STORYBOARD.md</code>. One sentence governs everything below: <strong>the visitor is entering a professional operating system, and every scene must earn trust before it earns admiration.</strong></blockquote>
+<hr>
+<h2 id="1-repository-grounded-assessment">1. Repository-grounded assessment</h2>
+<p>
+Everything in this program builds on what is verifiably shipped at <code>origin/main</code> (<code>dfe7a3a</code>). CXOS
+ 
+is an evolution of an existing, coherent system — not a blank page.
+</p>
+<p>
+<strong>Already in production, and load-bearing for CXOS:</strong>
+</p>
+<div class="tw"><table><thead><tr><th>Asset</th><th>Where</th><th>CXOS significance</th></tr></thead><tbody>
+<tr><td>Brand source of truth</td><td><code>lib/brand.ts</code></td><td>Product = CreditVector™, parent = Gabriel Capital Labs, tagline "The Credit Intelligence Operating System", and a <strong>module vocabulary</strong> (BureauIQ · Dispute Engine · Response Intelligence · FCRA Engine, all <code>live</code>) — the OS framing already exists in code</td></tr>
+<tr><td>Design tokens</td><td><code>tailwind.config.ts</code> + <code>app/globals.css</code></td><td>Navy/blue/teal system: <code>ink-<em></code> surfaces, <code>brand-</em></code> blue→teal primary, <code>ocean-<em></code> depth, <code>success-</em></code> <strong>reserved for positive outcomes only</strong>, <code>brand-ink</code> for AA contrast. CSS-var-backed, theme-aware</td></tr>
+<tr><td>Typography</td><td><code>app/layout.tsx</code></td><td><strong>Plus Jakarta Sans</strong> as <code>--font-sans</code>, spanning display headlines and dense data UI</td></tr>
+<tr><td>Motion utilities</td><td><code>app/globals.css</code></td><td><code>.reveal</code> (with a <strong>CSS-only safety net</strong> that force-reveals at 2.5s if the observer never fires), <code>.aurora</code> (18s drift, blurred), <code>.shine</code>, <code>.animate-rise/-fadein/-float/-draw</code> — <strong>all already gated behind <code>prefers-reduced-motion</code></strong>. The house ease is <code>cubic-bezier(0.16, 1, 0.3, 1)</code></td></tr>
+<tr><td>Logo hard rule</td><td><code>components/BrandLogo.tsx</code>, <code>.ai/DESIGN-SYSTEM.md</code></td><td>The <strong>real 3D shield raster</strong> <code>public/logo-mark.png</code>. The owner rejected vector recreations. CXOS treats the shield as a <em>photographed object with mass</em>, never a redrawn glyph</td></tr>
+<tr><td>Marketing shell</td><td><code>components/marketing/</code></td><td><code>SiteNav</code>, <code>SiteFooter</code>, <code>Showcase</code> (zig-zag + FAQ + trust bar), <code>DashboardPreview</code>, split-screen <code>AuthLayout</code>, <code>LegalShell</code></td></tr>
+<tr><td>Landing</td><td><code>app/page.tsx</code></td><td>Static-rendered hero (aurora + grid texture + <code>animate-rise</code>), deliberately kept static — <code>middleware.ts</code> exists <em>specifically</em> so the auth check doesn't force it dynamic. <strong>CXOS must preserve this property</strong></td></tr>
+<tr><td>Arena</td><td><code>app/arena/page.tsx</code>, <code>lib/arena/*</code></td><td>Already live and already honest: own-data progression, XP <strong>only from evidenced activity</strong> ("Nothing is awarded for signing in, posting, or opening pages"), versioned policy, server-authoritative. The Arena constitution asked for below is largely <em>already enforced in code</em></td></tr>
+<tr><td>Kai identity</td><td><code>lib/kai.ts</code>, <code>.ai/</code> records</td><td>"Credit Intelligence Officer" — calm, evidence-driven, never a chatbot. Shiba mascot is marketing-only</td></tr>
+<tr><td>Compliance bar</td><td><code>lib/compliance.ts</code>, <code>.ai/COMPLIANCE.md</code></td><td>CROA constraints scrub letters; <strong>the same bar binds cinematic copy</strong> — no promised outcomes, deletions, or score improvements may appear in any narration</td></tr>
+<tr><td>PWA + theme</td><td><code>next-pwa</code>, <code>theme-color #060a14</code></td><td>The app already meets users at OS level; the deepest ink is already the brand's "darkness"</td></tr>
+</tbody></table></div>
+<p>
+<strong>Gaps CXOS must fill (verified absences):</strong>
+</p>
+<ul><li><strong>No Education destination.</strong> No <code>app/learn|edu|academy</code> route exists; education lives inside Kai</li></ul>
+<p>
+  explanations and banners. The Education scene designs a destination that does not yet exist.
+</p>
+<ul><li><strong>No "Mission Control" naming.</strong> The authenticated home is <code>app/dashboard</code> inside <code>AppShell</code>.</li></ul>
+<p>
+  Renaming/reframing is a product decision the Founder must ratify (Decision D-3, §16).
+</p>
+<ul><li><strong>No page-transition system.</strong> Motion today is <em>within-page</em> (reveal/rise); there is no</li></ul>
+<p>
+  route-to-route transition language and no View Transitions usage.
+</p>
+<ul><li><strong>No motion library.</strong> The only animation dependency is CSS. That is a strength to build on, not</li></ul>
+<p>
+  a deficiency to correct (§10).
+</p>
+<ul><li><strong>Stale favicon/OG renders</strong> — already a known follow-up in <code>.ai/DESIGN-SYSTEM.md</code>; becomes part</li></ul>
+<p>
+  of Phase 2.
+</p>
+<p>
+<strong>Constraint inherited from the codebase:</strong> <code>"use client"</code> pages must not import server modules;
+ 
+the landing must stay statically renderable; merge to <code>main</code> deploys production. Every cinematic
+ 
+layer must therefore be an <em>enhancement over server-rendered semantic HTML</em>, never a gate in front
+ 
+of it.
+</p>
+<hr>
+<h2 id="2-five-reference-study">2. Five-reference study</h2>
+<p>
+<strong>⚠ Capture disclosure — read first.</strong> This session's environment has <strong>no outbound web access</strong>
+ 
+(verified: apple.com, linear.app and stripe.com are all unreachable through the egress proxy).
+ 
+Live capture — scroll video, full-page screenshots, section crops, timing measurement — **could not
+ 
+be performed and none is claimed**. What follows extracts principles from prior knowledge of these
+ 
+properties, clearly labelled as such. §2.6 specifies the capture protocol to run when a
+ 
+network-capable environment (or the Founder's own browser) is available, so the study can be
+ 
+completed with real artifacts before implementation begins.
+</p>
+<h3 id="2-1-cinematic-arrival-apple-product-pages">2.1 Cinematic arrival — Apple (product pages)</h3>
+<p>
+<strong>Why this reference:</strong> Apple's product pages are the discipline standard for arrival: a single
+ 
+object, darkness, light, and restraint. Nothing moves that does not carry meaning.
+</p>
+<p>
+<strong>Principles to extract (not copy):</strong>
+</p>
+<ul><li><strong>One protagonist per scene.</strong> The product is the only lit object; everything else recedes.</li></ul>
+<p>
+  <em>CreditVector adaptation:</em> the 3D shield is the protagonist of arrival — photographed object,
+ 
+  mass and light, never a flat mark.
+</p>
+<ul><li><strong>Scroll as the projector.</strong> The user's scroll drives the sequence; the page never plays <em>at</em></li></ul>
+<p>
+  them. <em>Adaptation:</em> the public arrival after the (skippable) intro is scroll-scrubbed, user-paced.
+</p>
+<ul><li><strong>Type as an object.</strong> Headlines arrive with the same physical language as imagery — they settle,</li></ul>
+<p>
+  they do not bounce. <em>Adaptation:</em> <code>animate-rise</code> generalised into the "Settle" primitive (§5.8).
+</p>
+<ul><li><strong>Silence.</strong> No autoplay audio, ever. Matches CXOS non-negotiables exactly.</li></ul>
+<p>
+<strong>Do not copy:</strong> Apple's minimal-copy strategy. CreditVector is a regulated consumer-finance
+ 
+education product; it must <em>explain more</em>, not less. Evidence density is the brand.
+</p>
+<h3 id="2-2-scroll-storytelling-stripe-stripe-com">2.2 Scroll storytelling — Stripe (stripe.com)</h3>
+<p>
+<strong>Why:</strong> the canonical proof that a financial-infrastructure company can feel premium through
+ 
+typography, gradient light and information design — while remaining fast and semantic.
+</p>
+<p>
+<strong>Principles:</strong>
+</p>
+<ul><li><strong>Light as brand.</strong> The gradient is an identity, not a decoration, and it lives <em>behind</em> the</li></ul>
+<p>
+  content plane. <em>Adaptation:</em> the existing <code>.aurora</code> drift is CreditVector's light; CXOS names and
+ 
+  disciplines it (§5.5) instead of importing a new one.
+</p>
+<ul><li><strong>Diagram-first persuasion.</strong> Stripe convinces with labelled architecture, not adjectives.</li></ul>
+<p>
+  <em>Adaptation:</em> the Evidence scene shows a real cross-bureau discrepancy anatomy, labelled, with
+ 
+  real product vocabulary (BureauIQ, FCRA citations) — never a fake dashboard.
+</p>
+<ul><li><strong>Dense footers, calm heroes.</strong> Information density increases as intent increases down the page.</li><li><strong>Performance as respect.</strong> Stripe animates transforms and opacity only; layout is never</li></ul>
+<p>
+  animated. Adopted as a hard rule (§11).
+</p>
+<p>
+<strong>Do not copy:</strong> Stripe's iridescent multi-hue ramp. CreditVector's palette rule is navy/blue/teal
+ 
+with green reserved for success — a <em>narrower</em>, more governed light.
+</p>
+<h3 id="2-3-product-demonstration-linear-linear-app">2.3 Product demonstration — Linear (linear.app)</h3>
+<p>
+<strong>Why:</strong> the best-in-class case of the <em>real product UI</em> as the cinematic subject. Linear never
+ 
+shows an illustration where a screenshot of truth will do.
+</p>
+<p>
+<strong>Principles:</strong>
+</p>
+<ul><li><strong>The product is the film set.</strong> Demos are real UI at real density, gently lit and cropped.</li></ul>
+<p>
+  <em>Adaptation:</em> <code>DashboardPreview</code> already exists; CXOS upgrades it to "the demonstration stage" —
+ 
+  real Mission Control frames, real letter anatomy, <code>tnum</code> data typography.
+</p>
+<ul><li><strong>Micro-motion signals quality.</strong> 150–250ms easing on interactive elements communicates</li></ul>
+<p>
+  engineering care better than any headline.
+</p>
+<ul><li><strong>Keyboard-visible confidence.</strong> Showing operator affordances (shortcuts, command surfaces)</li></ul>
+<p>
+  signals "built for professionals". <em>Adaptation:</em> Mission Control demo shows Kai briefings and
+ 
+  evidence timelines being <em>worked</em>, not admired.
+</p>
+<p>
+<strong>Do not copy:</strong> Linear's monochrome austerity. CreditVector carries hope as a brand emotion;
+ 
+the success token exists to be <em>earned and shown</em>.
+</p>
+<h3 id="2-4-premium-saas-conversion-vercel-vercel-com">2.4 Premium SaaS conversion — Vercel (vercel.com)</h3>
+<p>
+<strong>Why:</strong> dark-surface authority, engineering credibility, and the cleanest join-the-platform
+ 
+conversion mechanics in the category.
+</p>
+<p>
+<strong>Principles:</strong>
+</p>
+<ul><li><strong>The CTA is calm and constant.</strong> One primary action per viewport, always reachable, never</li></ul>
+<p>
+  pulsing. <em>Adaptation:</em> "Start free — no card required" already exists; CXOS keeps exactly one
+ 
+  primary CTA visible per scene, styled <code>btn-primary</code>, with the <code>shine</code> reserved for hover.
+</p>
+<ul><li><strong>Proof adjacency.</strong> Every claim sits next to its evidence (benchmarks, logos, live demos).</li></ul>
+<p>
+  <em>Adaptation:</em> claims sit next to <em>governed</em> evidence — FCRA citations, the education framing,
+ 
+  real product surfaces. No fabricated metrics, no invented logos.
+</p>
+<ul><li><strong>Pricing as an engineering table.</strong> Dense, truthful, comparable. The existing 7-tier matrix</li></ul>
+<p>
+  with honest "Coming soon" states is already this; CXOS styles it, never spins it.
+</p>
+<p>
+<strong>Do not copy:</strong> Vercel's developer-insider tone. CreditVector's consumer must feel <em>invited</em>, not
+ 
+tested.
+</p>
+<h3 id="2-5-marketing-product-transition-superhuman-onboarding-arc">2.5 Marketing → product transition — Superhuman (onboarding arc)</h3>
+<p>
+<strong>Why:</strong> the strongest known example of the <em>threshold</em> — the moment a visitor becomes an operator
+ 
+— treated as a designed experience rather than a redirect.
+</p>
+<p>
+<strong>Principles:</strong>
+</p>
+<ul><li><strong>The threshold is a scene.</strong> Login → first product frame deserves the same care as the hero.</li></ul>
+<p>
+  <em>Adaptation:</em> Scene 12 (Authenticated Transition) — a ≤ 2.5s compression from marketing
+ 
+  atmosphere into Mission Control, skippable, remembered per user.
+</p>
+<ul><li><strong>Continuity of light.</strong> The brand's light source survives the login boundary, so the product</li></ul>
+<p>
+  feels like the <em>inside</em> of the thing the marketing showed. <em>Adaptation:</em> the aurora persists into
+ 
+  Mission Control at reduced amplitude (§5.5).
+</p>
+<ul><li><strong>First-run is briefing, not tour.</strong> Superhuman teaches by doing. <em>Adaptation:</em> Kai delivers a</li></ul>
+<p>
+  first-session briefing — contextual, dismissible, never a modal maze.
+</p>
+<p>
+<strong>Do not copy:</strong> Superhuman's concierge exclusivity. CreditVector's promise is access and
+ 
+education, not scarcity.
+</p>
+<h3 id="2-6-capture-protocol-to-complete-this-study-when-network-access-exists">2.6 Capture protocol (to complete this study when network access exists)</h3>
+<p>
+For each of the five references, capture from a network-capable environment: desktop 1440×900 and
+ 
+mobile 390×844 full-page screenshots; a 60fps scroll recording of the full page; section crops at
+ 
+each narrative beat; DevTools performance trace of initial load; a written observation log covering
+ 
+typography scale ratios, spacing rhythm, motion durations/easings (read from computed styles),
+ 
+camera language, and mobile degradation strategy. Store under <code>design/references/&lt;name&gt;/</code> (a
+ 
+future, approved commit) with a one-page principle-extraction per reference. Playwright (already
+ 
+installed in CI environments) automates all of it. **Principles above are then re-validated or
+ 
+corrected against the captures — the study is not final until that pass happens.**
+</p>
+<hr>
+<h2 id="3-selected-design-skills">3. Selected design skills</h2>
+<p>
+Evaluated against installed reality: <code>~/.claude/skills</code> in this environment contains only document
+ 
+tooling (docx/pdf/pptx/xlsx and internals). **Neither MengTo skills, GSAP skills, nor the Claude
+ 
+design-skill packs are installed here**, and the gstack referenced by <code>CLAUDE.md</code> is absent in this
+ 
+session. Nothing was adopted on reputation.
+</p>
+<div class="tw"><table><thead><tr><th>Skill / pack</th><th>Decision</th><th>Purpose if adopted</th><th>When used</th><th>When avoided</th><th>License note</th></tr></thead><tbody>
+<tr><td><code>dataviz</code> (present in session)</td><td><strong>ADOPT — Phase ≥ 2</strong></td><td>Chart/dashboard visual discipline for Mission Control data surfaces and marketing charts</td><td>Any chart, KPI tile, or progression visual</td><td>Marketing prose pages</td><td>Session-provided; no external license</td></tr>
+<tr><td><code>artifact-design</code> (present)</td><td><strong>ADOPT — review aid only</strong></td><td>Design-calibration reference when producing HTML review artifacts</td><td>Founder review packages</td><td>Production code</td><td>Session-provided</td></tr>
+<tr><td>MengTo skills (SwiftUI/design)</td><td><strong>DEFER — not installed</strong></td><td>Motion/composition patterns</td><td>Only if installed and licensed at implementation</td><td>Phase 1 (planning needs none)</td><td><strong>Verify license before any install</strong></td></tr>
+<tr><td>GSAP skills</td><td><strong>REJECT for now</strong></td><td>ScrollTrigger patterns</td><td>Only if Tier-3 motion (§10) is ever approved</td><td>Everywhere else — the tech recommendation makes GSAP unnecessary</td><td>GSAP licensing changed over time; verify before adoption</td></tr>
+<tr><td>Claude design skills (web packs)</td><td><strong>DEFER — not installed</strong></td><td>Component patterns</td><td>Implementation phase, selectively</td><td>Phase 1</td><td>Verify per-pack</td></tr>
+</tbody></table></div>
+<p>
+<strong>Principle:</strong> Phase 1 required zero external skills, so zero were adopted. Each future adoption
+ 
+must name its purpose, license, and the CreditVector adaptation in the PR that introduces it.
+</p>
+<hr>
+<h2 id="4-selected-mcp-tool-stack">4. Selected MCP / tool stack</h2>
+<div class="tw"><table><thead><tr><th>Tool</th><th>Decision</th><th>Rationale</th></tr></thead><tbody>
+<tr><td><strong>Playwright MCP / Playwright</strong></td><td><strong>ADOPT</strong></td><td>Chromium is preinstalled in this environment. Uses: (a) baseline capture of CreditVector's <em>own</em> current pages, (b) the §2.6 reference captures once network-capable, (c) visual regression of the grammar during implementation, (d) reduced-motion and mobile-viewport verification as CI checks. Directly improves production quality</td></tr>
+<tr><td><strong>Higgsfield MCP</strong></td><td><strong>ADOPT — narrow, marketing-only</strong></td><td>Available in this session. Permitted: mood frames, atmosphere studies, marketing imagery for storyboard exploration. <strong>Forbidden: any generated product UI, any fabricated dashboard or metric, anything presented as a screenshot of the product.</strong> The mascot stays marketing-only; Higgsfield output never enters Mission Control</td></tr>
+<tr><td><strong>Three.js Devtools MCP</strong></td><td><strong>REJECT</strong></td><td>Not present, and the technology recommendation (§10) requires no WebGL to reach any core functionality. Adding the tool would invite the technology. Revisit only if a Tier-3 "shield hero" experiment is ever separately approved</td></tr>
+<tr><td><strong>Stripe MCP</strong></td><td>Out of scope for CXOS</td><td>Unauthorized in this session; noted only because billing surfaces appear in the pricing scene — which uses repository truth, not live Stripe</td></tr>
+</tbody></table></div>
+<p>
+<strong>Never add technology because it is fashionable</strong> — each adoption above names the production
+ 
+quality it buys.
+</p>
+<hr>
+<h2 id="5-the-creditvector-experience-grammar">5. The CreditVector Experience Grammar</h2>
+<p>
+The grammar is the constitution's core: the rules that make every surface unmistakably
+ 
+CreditVector. Everything extends what is shipped; nothing contradicts a token.
+</p>
+<h3 id="5-1-typography">5.1 Typography</h3>
+<ul><li><strong>One family, two voices.</strong> Plus Jakarta Sans throughout. <em>Display voice</em>: 600–800 weight,</li></ul>
+<p>
+  tight leading (<code>1.05</code> as shipped in the hero), <code>text-balance</code>, used only for scene titles.
+ 
+  <em>Operator voice</em>: 400–500, comfortable leading, <code>tnum</code> tabular numerals **mandatory for every
+ 
+  number that represents money, scores, XP or dates**.
+</p>
+<ul><li><strong>Scale is narrative position.</strong> The deeper into the product, the smaller and denser the type.</li></ul>
+<p>
+  Marketing peaks at <code>text-6xl</code>; Mission Control never exceeds <code>text-lg</code> for headers. Density is
+ 
+  how the product says "you are now an operator."
+</p>
+<ul><li><strong>No decorative type ever.</strong> No serifs, no scripts, no stunt fonts — including in Arena.</li></ul>
+<h3 id="5-2-composition">5.2 Composition</h3>
+<ul><li><strong>The 12-column stage.</strong> Marketing composes on <code>container-x</code>; scenes alternate a 1.05:1 split</li></ul>
+<p>
+  (shipped hero ratio) with full-bleed evidence panels.
+</p>
+<ul><li><strong>One protagonist per viewport.</strong> Every scroll position has exactly one focal object — a</li></ul>
+<p>
+  headline, the shield, a product frame, a piece of evidence. If two things compete, the scene is
+ 
+  wrong.
+</p>
+<ul><li><strong>Asymmetry for narrative, symmetry for authority.</strong> Story sections zig-zag (shipped</li></ul>
+<p>
+  <code>FeatureSplit</code>); trust moments (pricing, security, legal) center and symmetrize.
+</p>
+<h3 id="5-3-depth">5.3 Depth</h3>
+<ul><li><strong>Three planes, never more.</strong> <em>Atmosphere</em> (aurora + grid texture, <code>pointer-events-none</code>),</li></ul>
+<p>
+  <em>Content</em> (the semantic document), <em>Instrument</em> (cards and product frames that carry elevation).
+ 
+  Parallax between planes is ≤ 8px total — perceptible mass, never a ride.
+</p>
+<ul><li><strong>Elevation is earned.</strong> Only interactive instruments elevate on hover. Text never floats.</li></ul>
+<h3 id="5-4-scale">5.4 Scale</h3>
+<ul><li><strong>Objects have mass.</strong> The shield renders large and <em>still</em>; scale changes are ≤ 4% and slow.</li></ul>
+<p>
+  Nothing pops. Growth communicates approach, not excitement.
+</p>
+<ul><li><strong>The zoom is forbidden.</strong> No zoom-through transitions, no dolly-zooms — vestibular safety and</li></ul>
+<p>
+  brand calm agree here.
+</p>
+<h3 id="5-5-lighting">5.5 Lighting</h3>
+<ul><li><strong>One light source: the Aurora.</strong> The shipped <code>.aurora</code> (brand/ocean blurs, 18s drift) is</li></ul>
+<p>
+  canonized as the brand's light. It is <em>weather</em>, not decoration: present at low amplitude on
+ 
+  every major surface, brightest at public arrival, dimmest inside Mission Control (opacity ≤ 0.15,
+ 
+  drift period doubled), and <strong>absent from print, reduced-motion renders as a static gradient</strong>.
+</p>
+<ul><li><strong>Darkness is the ground state.</strong> <code>ink-950</code> / <code>#060a14</code> is where every journey begins. Light</li></ul>
+<p>
+  reveals; it does not flash. Success light (<code>success-*</code> green) appears <strong>only</strong> on genuinely
+ 
+  positive, evidenced states — never in marketing atmosphere.
+</p>
+<h3 id="5-6-color">5.6 Color</h3>
+<ul><li>The palette rule stands unamended: <strong>navy/blue/teal; green only for success</strong>. CXOS adds one</li></ul>
+<p>
+  discipline: <em>emotional mapping</em>. <code>ink</code> = ground and calm · <code>ocean</code> = depth and process ·
+ 
+  <code>brand</code> (blue→teal) = intelligence and action · <code>success</code> = verified positive outcome ·
+ 
+  <code>amber/red</code> families (existing status colors) = honest warning, never drama.
+</p>
+<ul><li><strong>No new hues.</strong> Arena prestige is expressed through light, metal-like neutrals and typography —</li></ul>
+<p>
+  never gold-rush yellows or neon.
+</p>
+<h3 id="5-7-camera-language">5.7 Camera language</h3>
+<p>
+There is no literal 3D camera. "Camera" is compositional attention, executed with transform and
+ 
+opacity only:
+</p>
+<ul><li><strong>Establishing wide</strong> — full-bleed section, atmosphere visible, one protagonist.</li><li><strong>Push-in</strong> — protagonist scales 1.00→1.04 over ≥ 600ms as it becomes interactive.</li><li><strong>Rack focus</strong> — plane A blurs/dims (opacity 0.4, blur 4px) as plane B sharpens; used to move</li></ul>
+<p>
+  attention between marketing claim and product evidence.
+</p>
+<ul><li><strong>Insert</strong> — a cropped detail (a citation, one tradeline row) fills the stage.</li><li><strong>Cut</strong> — instant, reserved for user-initiated navigation. The user always outranks the camera.</li></ul>
+<h3 id="5-8-motion-language-the-six-primitives">5.8 Motion language — the six primitives</h3>
+<p>
+All motion is composed from six named primitives, all transform/opacity-only, all on the house
+ 
+ease <code>cubic-bezier(0.16, 1, 0.3, 1)</code> ("<strong>vector ease</strong>"), all disabled or reduced under
+ 
+<code>prefers-reduced-motion</code>:
+</p>
+<div class="tw"><table><thead><tr><th>Primitive</th><th>Shipped basis</th><th>Duration</th><th>Meaning</th></tr></thead><tbody>
+<tr><td><strong>Settle</strong></td><td><code>.animate-rise</code></td><td>400ms</td><td>An object takes its place. The default entrance</td></tr>
+<tr><td><strong>Reveal</strong></td><td><code>.reveal</code> (+ safety net)</td><td>600ms</td><td>Content earns visibility as the reader arrives</td></tr>
+<tr><td><strong>Draw</strong></td><td><code>.animate-draw</code></td><td>1.8s</td><td>Evidence being traced — underlines, connections, paths</td></tr>
+<tr><td><strong>Drift</strong></td><td><code>.aurora</code></td><td>18s+</td><td>Atmosphere breathing. Never on content</td></tr>
+<tr><td><strong>Shine</strong></td><td><code>.shine</code></td><td>on hover</td><td>Machined-surface highlight. Interactive only</td></tr>
+<tr><td><strong>Focus</strong></td><td>new</td><td>350ms</td><td>Rack-focus between planes (§5.7)</td></tr>
+</tbody></table></div>
+<p>
+<strong>The 2.5s safety net generalizes:</strong> every choreographed sequence must have a CSS-only fallback
+ 
+that lands the final frame even if all JavaScript fails. Shipped precedent: <code>reveal-safety</code>.
+</p>
+<h3 id="5-9-transition-language">5.9 Transition language</h3>
+<ul><li><strong>Within a page:</strong> primitives only.</li><li><strong>Between pages:</strong> a 240–320ms crossfade-with-settle (View Transitions API where supported,</li></ul>
+<p>
+  instant navigation where not). The aurora persists across the boundary — light is the thread of
+ 
+  continuity.
+</p>
+<ul><li><strong>Across the threshold (login → Mission Control):</strong> the one cinematic transition in the product,</li></ul>
+<p>
+  ≤ 2.5s, skippable by any input, remembered (plays in full once; subsequent logins get the 300ms
+ 
+  short form). Specified as Scene 12.
+</p>
+<h3 id="5-10-scroll-language">5.10 Scroll language</h3>
+<ul><li>Scroll is <em>the user's</em> instrument. Scenes scrub with scroll; nothing scroll-jacks, no section</li></ul>
+<p>
+  snapping on desktop, no hijacked momentum. Sticky stages (a pinned product frame while copy
+ 
+  scrolls past) are permitted for ≤ 2 viewports at a time and never on mobile.
+</p>
+<ul><li>Scroll progress may drive Draw primitives (evidence tracing) — the strongest storytelling tool</li></ul>
+<p>
+  in the grammar, and the cheapest.
+</p>
+<h3 id="5-11-audio-philosophy">5.11 Audio philosophy</h3>
+<p>
+<strong>Silence is the design.</strong> No autoplay audio anywhere, ever. No ambient soundscapes. If a future
+ 
+feature genuinely requires sound (an accessibility cue), it is opt-in, off by default, and never
+ 
+essential to meaning.
+</p>
+<h3 id="5-12-interaction-philosophy">5.12 Interaction philosophy</h3>
+<ul><li>Every interactive element answers in ≤ 150ms with a state change.</li><li>Hover is enhancement; every interaction is fully specified for touch and keyboard first.</li><li>The keyboard is an operator's instrument: visible focus (<code>:focus-visible</code>) styled with brand</li></ul>
+<p>
+  tokens, logical order, skip links on every marketing page.
+</p>
+<ul><li>Nothing moves <em>toward</em> the cursor. Instruments respond; they do not perform.</li></ul>
+<h3 id="5-13-empty-states">5.13 Empty states</h3>
+<p>
+An empty state is a <strong>briefing, not an apology</strong>: what this surface will show, what evidence
+ 
+produces it, and the single next action. Kai's voice, one sentence, one button. (Shipped
+ 
+precedent: Arena's "No XP yet. Only evidenced activity counts…" — that is the house tone.)
+</p>
+<h3 id="5-14-loading-philosophy">5.14 Loading philosophy</h3>
+<ul><li><strong>Never fake progress.</strong> No indeterminate spinners longer than 400ms; skeletons mirror the true</li></ul>
+<p>
+  layout of what is coming.
+</p>
+<ul><li>Real work (Kai analysis) shows <em>what is actually happening</em> in plain language, because the work</li></ul>
+<p>
+  is genuinely being done — visible truthful process is a trust asset. **No fabricated "thinking"
+ 
+  theatre**, no artificial delay, ever.
+</p>
+<h3 id="5-15-error-philosophy">5.15 Error philosophy</h3>
+<p>
+Errors state: what happened, what it means for the user, what is safe to do next — in human
+ 
+sentences, without Stripe/internal identifiers (shipped precedent: the self-cancel route's
+ 
+failure copy, corrected in Wave 2.4 to never claim knowledge it lacks). The same honesty bar binds
+ 
+every surface: <strong>an error message may not assert a state the system cannot observe.</strong>
+</p>
+<h3 id="5-16-reduced-motion-philosophy">5.16 Reduced-motion philosophy</h3>
+<p>
+<code>prefers-reduced-motion</code> receives the <strong>same narrative with the motion removed</strong>, not a lesser
+ 
+site: final-frame compositions, static aurora gradient, instant transitions, Draw rendered as
+ 
+already-drawn. Information parity is a hard requirement; it is also the print philosophy and the
+ 
+low-power philosophy. Reduced Motion is Scene 15 of the screenplay — a first-class experience,
+ 
+designed, not derived.
+</p>
+<h3 id="5-17-mobile-philosophy">5.17 Mobile philosophy</h3>
+<ul><li>Mobile is the <em>majority</em> arrival and is designed first for every scene.</li><li>No pinned stages, no parallax, intro shortened to ≤ 6s, tap targets ≥ 44px, thumb-reach primary</li></ul>
+<p>
+  actions, <code>dvh</code> units for stable composition.
+</p>
+<ul><li>Performance budget is set on mid-tier Android (§11), not on a MacBook.</li></ul>
+<hr>
+<h2 id="10-technology-recommendation">10. Technology recommendation</h2>
+<p>
+**Three tiers; core functionality requires only Tier 1. Nothing requires WebGL, Three.js, video,
+ 
+GSAP or Rive — this satisfies the non-negotiable by construction.**
+</p>
+<div class="tw"><table><thead><tr><th>Tier</th><th>Technology</th><th>Used for</th><th>Requirement</th></tr></thead><tbody>
+<tr><td><strong>1 — Foundation</strong></td><td>Semantic HTML + existing CSS tokens/utilities, CSS scroll-driven animations where supported, IntersectionObserver reveals (shipped), <code>next/font</code>, <code>next/image</code></td><td>Everything. The entire narrative is readable and navigable at this tier</td><td><strong>Mandatory; always works</strong></td></tr>
+<tr><td><strong>2 — Enhancement</strong></td><td>Web Animations API for choreographed sequences (intro, threshold transition), View Transitions API for route crossfades, <code>sessionStorage</code> for intro memory</td><td>The cinematic layer</td><td>Progressive; feature-detected; absence is invisible</td></tr>
+<tr><td><strong>3 — Experiment (NOT approved)</strong></td><td>WebGL shield rendering, Lottie/Rive vignettes</td><td>Nothing currently</td><td>Requires separate Founder approval + its own performance case</td></tr>
+</tbody></table></div>
+<p>
+<strong>Explicitly rejected for core:</strong> GSAP (Tier 1+2 cover every specified motion; adds bytes and a
+ 
+license question), Three.js (no approved 3D), autoplay video (bytes + silence rule), Lottie for
+ 
+core UI (JSON animation bytes vs CSS). <strong>Framer Motion: not adopted</strong>; the primitive set is six
+ 
+CSS/WAAPI patterns and a dependency would outweigh them.
+</p>
+<p>
+The intro is a <strong>DOM timeline</strong>: real headline, real shield image, real tokens, animated with
+ 
+WAAPI — so it is skippable mid-frame, reduced-motion collapses it to its final frame, SEO sees
+ 
+the real content, and zero cinematic bytes precede LCP.
+</p>
+<hr>
+<h2 id="11-performance-budget">11. Performance budget</h2>
+<div class="tw"><table><thead><tr><th>Metric</th><th>Budget</th><th>Note</th></tr></thead><tbody>
+<tr><td>LCP (marketing, mobile P75)</td><td><strong>≤ 2.5s</strong> (target 1.8s)</td><td>LCP element is the real hero headline or shield <code>next/image</code> — never an intro asset</td></tr>
+<tr><td>First Meaningful Paint</td><td>Before any intro frame</td><td>The intro plays <em>over</em> painted content, never instead of it</td></tr>
+<tr><td>CLS</td><td>&lt; 0.1</td><td>All motion transform/opacity-only; layout is never animated</td></tr>
+<tr><td>INP</td><td>&lt; 200ms</td><td>Skip control must respond &lt; 100ms</td></tr>
+<tr><td>Intro duration</td><td>8–12s desktop · ≤ 6s mobile · <strong>0s</strong> reduced-motion/returning</td><td>Skippable at any frame by any input; remembered in <code>sessionStorage</code></td></tr>
+<tr><td>Marketing JS (gz)</td><td>≤ 170KB total; cinematic layer ≤ 25KB of it</td><td>Tier-2 code lazy-loaded post-LCP</td></tr>
+<tr><td>Cinematic assets</td><td>≤ 300KB above the fold; aurora is CSS (0 bytes)</td><td>Shield raster served AVIF/WebP via <code>next/image</code></td></tr>
+<tr><td>Test device</td><td>Mid-tier Android, throttled 4G</td><td>Budgets verified there, not on desktop</td></tr>
+<tr><td>Regression gate</td><td>Playwright + Lighthouse CI on every experience PR</td><td>Failing budget blocks merge</td></tr>
+</tbody></table></div>
+<hr>
+<h2 id="12-accessibility-plan">12. Accessibility plan</h2>
+<ul><li><strong>WCAG 2.2 AA</strong> across every scene; AA contrast is already a stated repo requirement</li></ul>
+<p>
+  (<code>brand-ink</code> exists for it) — CXOS inherits and extends it to all new compositions.
+</p>
+<ul><li><strong>Reduced motion:</strong> §5.16 — full information parity, verified per scene in review, automated as</li></ul>
+<p>
+  a Playwright check (<code>prefers-reduced-motion</code> emulation, assert final-frame content present).
+</p>
+<ul><li><strong>Intro:</strong> skippable by click/tap/key/scroll; skip control is the <em>first</em> focusable element;</li></ul>
+<p>
+  <code>aria-live="polite"</code> announces "Introduction — press Escape to skip"; no flashing content
+ 
+  (≤ 3 flashes/sec, WCAG 2.3.1); no essential information exists only in the intro.
+</p>
+<ul><li><strong>Keyboard:</strong> full traversal of every scene; visible focus; skip links; focus is <em>managed</em></li></ul>
+<p>
+  across route transitions (moved to the destination's h1, not lost to <code>body</code>).
+</p>
+<ul><li><strong>Screen readers:</strong> the cinematic layer is <code>aria-hidden</code> decoration over a complete semantic</li></ul>
+<p>
+  document; scene narration exists as real headings/paragraphs in DOM order.
+</p>
+<ul><li><strong>Vestibular safety:</strong> no parallax beyond 8px, no zoom-through, no scroll-jacking — grammar</li></ul>
+<p>
+  rules, restated here as a11y guarantees.
+</p>
+<ul><li><strong>Audio:</strong> none, so no captions burden; if opt-in audio ever ships, captions ship with it.</li></ul>
+<hr>
+<h2 id="13-seo-plan">13. SEO plan</h2>
+<ul><li><strong>The intro never gates content.</strong> Every marketing page remains server-rendered semantic HTML;</li></ul>
+<p>
+  crawlers see the full narrative as headings and copy. The landing <strong>stays static</strong> (preserving
+ 
+  the shipped middleware design).
+</p>
+<ul><li><strong>Per-destination metadata:</strong> unique title/description per scene-page; OG/Twitter images</li></ul>
+<p>
+  regenerated as part of Phase 2 (fixing the known stale-render follow-up).
+</p>
+<ul><li><strong>Structured data:</strong> <code>Organization</code> + <code>WebSite</code> on the landing; <code>Product</code>/<code>Offer</code> on pricing</li></ul>
+<p>
+  (truthful tiers only — "Coming soon" tiers carry no <code>Offer</code>); <code>FAQPage</code> on the existing FAQ.
+</p>
+<ul><li><strong>Performance is ranking:</strong> the §11 budgets are also the Core Web Vitals SEO strategy.</li><li><strong>No cloaking risk:</strong> reduced-motion, no-JS and crawler experiences are the <em>same document</em> —</li></ul>
+<p>
+  the progressive-enhancement architecture makes this true by construction.
+</p>
+<ul><li><strong>Compliance meets SEO:</strong> metadata copy is bound by the same CROA bar — no "credit repair",</li></ul>
+<p>
+  no outcome promises in titles/descriptions.
+</p>
+<hr>
+<h2 id="14-production-risk-assessment">14. Production risk assessment</h2>
+<div class="tw"><table><thead><tr><th>#</th><th>Risk</th><th>Severity</th><th>Mitigation</th></tr></thead><tbody>
+<tr><td>R1</td><td><strong>Cinematic copy drifts past the CROA bar</strong> (narration promising outcomes)</td><td><strong>Critical</strong></td><td>Every scene's narration passes <code>/compliance-review</code> before implementation; the screenplay already writes narration to the education bar</td></tr>
+<tr><td>R2</td><td><strong>Intro damages LCP/conversion</strong></td><td>High</td><td>Architecture makes intro post-LCP by construction; A/B the intro's presence itself; budgets gate merges</td></tr>
+<tr><td>R3</td><td><strong>Intro fatigue</strong> for returning users</td><td>High</td><td>Play once per session/user; 300ms short form thereafter; "replay" affordance in footer</td></tr>
+<tr><td>R4</td><td><strong>Scope creep into implementation before approval</strong></td><td>High</td><td>This package is planning-only; the stop condition is contractual; implementation prompts only after Founder sign-off</td></tr>
+<tr><td>R5</td><td><strong>Brand fragmentation</strong> — destinations drift into separate visual products</td><td>Medium</td><td>The grammar is canonical; per-destination atmospheres vary only §5.5 lighting amplitude and §5.1 density, nothing else</td></tr>
+<tr><td>R6</td><td>View Transitions API support gaps</td><td>Low</td><td>Tier-2 progressive; absence = instant navigation, which is the current behavior</td></tr>
+<tr><td>R7</td><td><strong>Reference study incomplete</strong> (no live captures this session)</td><td>Medium</td><td>§2.6 protocol runs before implementation; principles re-validated against captures</td></tr>
+<tr><td>R8</td><td>Landing forced dynamic by experience code</td><td>Medium</td><td>Static rendering is a stated acceptance criterion of Phase 3; CI check asserts it</td></tr>
+<tr><td>R9</td><td>Mascot leaks into product surfaces</td><td>Low</td><td>Grammar rule + review checklist item; mascot assets live only under marketing paths</td></tr>
+<tr><td>R10</td><td>Arena reads as gamified/casino under new styling</td><td>Medium</td><td>Arena scene styled from the <em>existing honest mechanics</em> (evidence-only XP, versioned policy); no countdowns, no scarcity, no jackpot light</td></tr>
+</tbody></table></div>
+<hr>
+<h2 id="15-implementation-roadmap-post-approval-each-phase-behind-the-five-review-gate">15. Implementation roadmap (post-approval; each phase behind the five-review gate)</h2>
+<div class="tw"><table><thead><tr><th>Phase</th><th>Scope</th><th>Exit criterion</th></tr></thead><tbody>
+<tr><td><strong>0</strong></td><td>Baseline: Playwright capture of every current page (desktop/mobile/reduced-motion); Lighthouse baselines; §2.6 reference captures</td><td>Baseline report committed</td></tr>
+<tr><td><strong>1</strong></td><td><strong>This package</strong> — Founder review</td><td>Founder approval of grammar + screenplay</td></tr>
+<tr><td><strong>2</strong></td><td>Grammar codification: token additions (Focus primitive, lighting amplitudes, transition durations), OG/favicon regeneration, motion utilities extended in <code>globals.css</code></td><td>Tokens shipped; zero visual regression on existing pages</td></tr>
+<tr><td><strong>3</strong></td><td>Public arrival: landing rebuilt per Scenes 1–10 (static, budget-gated, intro as Tier-2 layer)</td><td>Budgets green; conversion not degraded; compliance sign-off on all copy</td></tr>
+<tr><td><strong>4</strong></td><td>The threshold: auth pages per Scene 11; Scene 12 transition; Mission Control arrival (Scene 13)</td><td>Transition ≤ 2.5s, skippable, remembered; dashboard functionality untouched</td></tr>
+<tr><td><strong>5</strong></td><td>Arena entry (Scene 14) + agency/consumer arrival differentiation</td><td>Arena mechanics byte-unchanged; styling only</td></tr>
+<tr><td><strong>6</strong></td><td>Education destination (net-new product surface — needs its own product definition first)</td><td>Separate product review before design implementation</td></tr>
+</tbody></table></div>
+<p>
+Sequencing rule: <strong>no phase begins until the prior phase's budgets and reviews are green.</strong>
+</p>
+<hr>
+<h2 id="16-founder-review-package-the-decisions-only-you-can-make">16. Founder review package — the decisions only you can make</h2>
+<div class="tw"><table><thead><tr><th>#</th><th>Decision</th><th>Options</th><th>Recommendation</th></tr></thead><tbody>
+<tr><td>D-1</td><td>Approve the Experience Grammar (§5) as constitutional</td><td>approve / amend</td><td>Approve; it codifies what's already shipped</td></tr>
+<tr><td>D-2</td><td>Approve the screenplay (<code>CXOS_SCREENPLAY.md</code>)</td><td>approve / amend scenes</td><td>Approve with any narration edits — narration is yours</td></tr>
+<tr><td>D-3</td><td><strong>"Mission Control" naming</strong> — rename the authenticated home?</td><td>keep "Dashboard" / adopt "Mission Control"</td><td>Adopt; the OS framing already exists in <code>lib/brand.ts</code></td></tr>
+<tr><td>D-4</td><td>Intro existence on the public landing</td><td>ship / A-B test / skip</td><td><strong>A/B test</strong> — R2 is real; let data decide</td></tr>
+<tr><td>D-5</td><td>Education destination</td><td>commission product definition / defer</td><td>Commission — it is the only missing destination</td></tr>
+<tr><td>D-6</td><td>Tier-3 experiments (WebGL shield)</td><td>reject / sandbox later</td><td>Reject for now; revisit after Phase 4 ships</td></tr>
+<tr><td>D-7</td><td>Storyboard fidelity</td><td>proceed from <code>CXOS_STORYBOARD.md</code> drafts / commission visual comps first</td><td>Proceed; boards are implementation-ready once D-1/D-2 approve</td></tr>
+<tr><td>D-8</td><td>Reference capture</td><td>run §2.6 yourself / authorize a network-capable session</td><td>Either; required before Phase 3</td></tr>
+</tbody></table></div>
+<p>
+**Stop condition honored: nothing has been implemented, no product file was modified, and no
+ 
+implementation prompt will be generated until these decisions return.**
+</p>
+<footer>Projection of <code>CREDITVECTOR_RC1_RELEASE_CANDIDATE_EXTRACTION_WAVE_2_2_REPORT.md</code>, which is canonical.
+Contains no credentials, secrets, tokens, or environment values.</footer>
+</main></body></html>

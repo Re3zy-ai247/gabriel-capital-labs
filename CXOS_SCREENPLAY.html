@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CreditVector — RC1 Release Candidate Extraction, Wave 2.2</title>
+<meta name="description" content="RC1 Execution Wave 2 — Go/No-Go status, blockers, and required decisions.">
+<style>
+:root{--bg:#ffffff;--fg:#14181f;--mut:#4a5462;--line:#d9dee6;--acc:#0b4fa8;--code:#f2f4f7;
+--red:#8a1420;--redbg:#fdeaec;--amb:#7a4a00;--ambbg:#fff5e0;--grn:#0f5c34;--grnbg:#e6f5ec;}
+*{box-sizing:border-box}
+body{margin:0;padding:1.1rem;background:var(--bg);color:var(--fg);
+font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+-webkit-text-size-adjust:100%;overflow-wrap:break-word}
+main{max-width:60rem;margin:0 auto}
+h1{font-size:1.6rem;line-height:1.25;margin:.2rem 0 .4rem;letter-spacing:-.01em}
+h2{font-size:1.28rem;margin:2.2rem 0 .7rem;padding-bottom:.32rem;border-bottom:2px solid var(--line)}
+h3{font-size:1.08rem;margin:1.6rem 0 .5rem}
+h4{font-size:1rem;margin:1.2rem 0 .4rem;color:var(--mut)}
+p{margin:.7rem 0}
+a{color:var(--acc)}
+code{background:var(--code);padding:.12em .38em;border-radius:4px;
+font:.86em/1.4 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;word-break:break-word}
+hr{border:0;border-top:1px solid var(--line);margin:2rem 0}
+blockquote{margin:1.1rem 0;padding:.85rem 1rem;background:var(--redbg);
+border-left:4px solid var(--red);border-radius:0 6px 6px 0;color:#5c0f18}
+blockquote strong{color:var(--red)}
+ul,ol{padding-left:1.35rem;margin:.7rem 0}
+li{margin:.34rem 0}
+.tw{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:1rem 0;
+border:1px solid var(--line);border-radius:8px}
+table{border-collapse:collapse;width:100%;min-width:34rem;font-size:.9rem}
+th,td{padding:.55rem .7rem;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+th{background:#f5f7fa;font-weight:650;white-space:nowrap}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:nth-child(even){background:#fafbfc}
+.meta{color:var(--mut);font-size:.92rem;margin:.5rem 0 1.2rem}
+nav.toc{background:#f7f9fb;border:1px solid var(--line);border-radius:8px;padding:.85rem 1rem;margin:1.4rem 0}
+nav.toc h2{font-size:.82rem;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);
+border:0;margin:0 0 .5rem;padding:0}
+nav.toc ol{margin:0;padding-left:1.2rem;font-size:.92rem}
+nav.toc li{margin:.2rem 0}
+.legend{display:flex;flex-wrap:wrap;gap:.4rem;margin:1rem 0}
+.tag{font-size:.76rem;font-weight:650;padding:.18rem .5rem;border-radius:999px;white-space:nowrap}
+.t-open{background:var(--redbg);color:var(--red)}
+.t-part{background:var(--ambbg);color:var(--amb)}
+.t-closed{background:var(--grnbg);color:var(--grn)}
+footer{margin-top:2.5rem;padding-top:1rem;border-top:1px solid var(--line);
+color:var(--mut);font-size:.85rem}
+@media(max-width:34rem){body{padding:.8rem}h1{font-size:1.35rem}table{font-size:.84rem;min-width:30rem}}
+@media print{body{padding:0;font-size:11pt}nav.toc{break-inside:avoid}
+.tw{overflow:visible;border:0}table{min-width:0;font-size:9pt}
+h2{break-after:avoid}tr{break-inside:avoid}a{color:#000;text-decoration:none}
+a[href^="http"]::after{content:" (" attr(href) ")";font-size:8pt;color:#555}}
+</style></head><body><main>
+<p class="meta"><strong>Gabriel Capital Labs</strong> · Draft — not ratified · 2026-07-28<br>
+Branch <code>claude/creditvector-founder-library-jwnbhc</code> · Commits <code>d6303fc</code> → <code>HEAD</code></p>
+<div class="legend"><span class="tag t-closed">CLOSED 9</span><span class="tag t-part">PARTIAL 3</span><span class="tag t-open">OPEN / BLOCKED 2</span><span class="tag t-open">VERIFICATION REQUIRED 2</span></div>
+<nav class="toc"><h2>Contents</h2><ol><li><a href="#scene-1-public-arrival">Scene 1 — Public Arrival</a></li><li><a href="#scene-2-the-credit-problem">Scene 2 — The Credit Problem</a></li><li><a href="#scene-3-evidence">Scene 3 — Evidence</a></li><li><a href="#scene-4-kai">Scene 4 — Kai</a></li><li><a href="#scene-5-mission-control-marketing-view">Scene 5 — Mission Control (marketing view)</a></li><li><a href="#scene-6-agency">Scene 6 — Agency</a></li><li><a href="#scene-7-consumer">Scene 7 — Consumer</a></li><li><a href="#scene-8-arena">Scene 8 — Arena</a></li><li><a href="#scene-9-education">Scene 9 — Education</a></li><li><a href="#scene-10-pricing">Scene 10 — Pricing</a></li><li><a href="#scene-11-login-join">Scene 11 — Login / Join</a></li><li><a href="#scene-12-authenticated-transition-the-threshold">Scene 12 — Authenticated Transition (the Threshold)</a></li><li><a href="#scene-13-mission-control-authenticated-arrival">Scene 13 — Mission Control (authenticated arrival)</a></li><li><a href="#scene-14-arena-entry-authenticated">Scene 14 — Arena Entry (authenticated)</a></li><li><a href="#scene-15-reduced-motion-the-parallel-film">Scene 15 — Reduced Motion (the parallel film)</a></li><li><a href="#timing-summary">Timing summary</a></li></ol></nav>
+<h1 id="cxos-the-screenplay">CXOS — The Screenplay</h1>
+<p>
+<strong>CreditVector Experience OS · Scene Script v1 · 2026-07-29</strong>
+ 
+<strong>Status: DRAFT — awaiting Founder approval. Planning only; nothing here is implemented.</strong>
+</p>
+<blockquote>This is the screenplay, not the storyboard: what happens, what it means, and what the visitor feels — scene by scene. Camera and motion terms are defined in the Experience Grammar (<code>CXOS_FOUNDATION.md</code> §5). Every duration respects the 8–12s intro budget; every scroll scene is user-paced. <strong>All narration below is written to the compliance bar: education, evidence and rights — never outcome promises.</strong> Narration text is the Founder's to edit.</blockquote>
+<p>
+<strong>Cast of non-negotiables present in every scene:</strong> silence (no audio) · skippability · reduced-
+ 
+motion parity (Scene 15) · real product truth only · one protagonist per viewport.
+</p>
+<hr>
+<h2 id="scene-1-public-arrival">Scene 1 — Public Arrival</h2>
+<ul><li><strong>Emotion:</strong> stillness → recognition. <em>"This is a serious place."</em></li><li><strong>Goal:</strong> establish darkness, light and identity in the first breath; deliver LCP before any</li></ul>
+<p>
+  cinema.
+</p>
+<ul><li><strong>Camera:</strong> establishing wide. The page paints complete (headline, shield, CTA) — then the</li></ul>
+<p>
+  cinematic layer breathes over it.
+</p>
+<ul><li><strong>Motion:</strong> the aurora <em>arrives</em> — opacity 0 → 0.5 over 1.2s (Drift begins). Headline and CTA</li></ul>
+<p>
+  Settle (400ms, staggered 80ms). The shield — the real 3D raster — Settles last, with a single
+ 
+  Shine pass across its surface.
+</p>
+<ul><li><strong>Lighting:</strong> ink-950 ground; one brand aurora upper-left, one ocean aurora right (the shipped</li></ul>
+<p>
+  composition, canonized).
+</p>
+<ul><li><strong>Narration (on screen):</strong> eyebrow — <em>"The Credit Intelligence Operating System."</em> Headline —</li></ul>
+<p>
+  <em>"Understand your credit. Dispute what's inaccurate — yourself."</em>
+</p>
+<ul><li><strong>Interaction:</strong> everything is live immediately; scrolling at any moment ends the choreography</li></ul>
+<p>
+  and hands over the page. Skip affordance is present but this scene needs none — it <em>is</em> the page.
+</p>
+<ul><li><strong>Duration:</strong> 2.0s of choreography over already-painted content.</li><li><strong>Exit:</strong> first scroll → Scene 2. (The full 8–12s "awakening" sequence exists only on first</li></ul>
+<p>
+  visit; returning sessions get the settled final frame instantly.)
+</p>
+<h2 id="scene-2-the-credit-problem">Scene 2 — The Credit Problem</h2>
+<ul><li><strong>Emotion:</strong> recognition of unfairness — <em>"they know this happens to people like me"</em> — without</li></ul>
+<p>
+  fear-mongering.
+</p>
+<ul><li><strong>Goal:</strong> name the problem honestly: errors exist across three bureaus, and most people never</li></ul>
+<p>
+  see them side by side.
+</p>
+<ul><li><strong>Camera:</strong> rack focus from headline plane to an evidence plane: three report fragments</li></ul>
+<p>
+  (Equifax / Experian / TransUnion), same account, different data.
+</p>
+<ul><li><strong>Motion:</strong> the three fragments Reveal in sequence; a Draw traces the discrepancy between them</li></ul>
+<p>
+  — one date that disagrees, one balance that doesn't match. Scroll-scrubbed.
+</p>
+<ul><li><strong>Lighting:</strong> aurora dims to 0.3; the discrepancy trace is the brightest object (brand-400).</li><li><strong>Narration:</strong> *"Your credit report isn't one document. It's three — and they don't always</li></ul>
+<p>
+  agree. Federal law gives you the right to dispute what's inaccurate."*
+</p>
+<ul><li><strong>Interaction:</strong> hovering/tapping a fragment raises it (Instrument elevation) and enlarges the</li></ul>
+<p>
+  disputed field.
+</p>
+<ul><li><strong>Duration:</strong> user-paced; composition resolves within one viewport of scroll.</li><li><strong>Exit:</strong> the traced discrepancy line <em>continues downward</em> into Scene 3 — evidence literally</li></ul>
+<p>
+  leads to the product.
+</p>
+<h2 id="scene-3-evidence">Scene 3 — Evidence</h2>
+<ul><li><strong>Emotion:</strong> relief through competence — <em>"someone has organized this."</em></li><li><strong>Goal:</strong> show BureauIQ doing what the copy just described: real cross-bureau anatomy, labelled.</li><li><strong>Camera:</strong> insert — a real product frame (tradeline comparison) fills the stage; sticky for one</li></ul>
+<p>
+  viewport on desktop while labels annotate; never sticky on mobile.
+</p>
+<ul><li><strong>Motion:</strong> annotation labels Settle one at a time as scroll progresses; Draw connects each</li></ul>
+<p>
+  label to its field. <code>tnum</code> numerals throughout.
+</p>
+<ul><li><strong>Lighting:</strong> neutral; the product frame carries its own in-app lighting. Success green appears</li></ul>
+<p>
+  <strong>nowhere</strong> here — nothing has been resolved yet, and the grammar forbids unearned green.
+</p>
+<ul><li><strong>Narration:</strong> *"BureauIQ reads all three reports and shows you every account, every</li></ul>
+<p>
+  discrepancy, every date — side by side. Evidence first. Always."*
+</p>
+<ul><li><strong>Interaction:</strong> the frame is a still of truth (a real capture, not a live demo) — labelled as</li></ul>
+<p>
+  such.
+</p>
+<ul><li><strong>Duration:</strong> user-paced, ~1.5 viewports.</li><li><strong>Exit:</strong> rack focus from evidence to a calm insert of text — Kai is introduced by voice before</li></ul>
+<p>
+  appearance.
+</p>
+<h2 id="scene-4-kai">Scene 4 — Kai</h2>
+<ul><li><strong>Emotion:</strong> trust in judgment — <em>"an analyst, not a gimmick."</em></li><li><strong>Goal:</strong> introduce Kai as the governed intelligence layer: assists, explains, educates; never</li></ul>
+<p>
+  fabricates, never replaces judgment.
+</p>
+<ul><li><strong>Camera:</strong> the quietest scene in the film. Center-composed single column, generous whitespace.</li><li><strong>Motion:</strong> a Kai briefing composes itself line by line (Reveal, 120ms stagger) — a real</li></ul>
+<p>
+  explanation of a real FCRA concept, citing the actual statute the product cites.
+</p>
+<ul><li><strong>Lighting:</strong> a single, small brand glow behind the briefing card — the only scene where the</li></ul>
+<p>
+  light source sits <em>behind an instrument</em>, marking intelligence.
+</p>
+<ul><li><strong>Narration:</strong> *"Kai is CreditVector's intelligence layer. Kai explains what it finds, cites</li></ul>
+<p>
+  the law it relies on, and drafts letters you review — Kai never invents, and never decides for
+ 
+  you."* (Note: "AI-powered" appears nowhere — per constitution.)
+</p>
+<ul><li><strong>Interaction:</strong> none beyond scroll. Kai is observed here, not operated. **The Shiba mascot does</li></ul>
+<p>
+  not appear** — this is a product scene.
+</p>
+<ul><li><strong>Duration:</strong> user-paced; short.</li><li><strong>Exit:</strong> the briefing card scales 1.00→1.04 (push-in) and crossfades into the wide of Scene 5 —</li></ul>
+<p>
+  Kai's briefing was one panel <em>of Mission Control</em>.
+</p>
+<h2 id="scene-5-mission-control-marketing-view">Scene 5 — Mission Control (marketing view)</h2>
+<ul><li><strong>Emotion:</strong> ambition — <em>"this is the cockpit of my financial life."</em></li><li><strong>Goal:</strong> show the operating system claim being true: modules, evidence timeline, letters in</li></ul>
+<p>
+  flight — the real dashboard, gently lit.
+</p>
+<ul><li><strong>Camera:</strong> establishing wide of the full product frame, then two inserts (dispute timeline;</li></ul>
+<p>
+  a letter's citation panel).
+</p>
+<ul><li><strong>Motion:</strong> the frame Settles; module tiles Reveal in reading order; one Draw traces a dispute's</li></ul>
+<p>
+  path from evidence → letter → response.
+</p>
+<ul><li><strong>Lighting:</strong> aurora at 0.15 (the inside-the-product amplitude); the interface's own hierarchy</li></ul>
+<p>
+  does the lighting.
+</p>
+<ul><li><strong>Narration:</strong> *"Mission Control. Every report, every dispute, every deadline — one governed</li></ul>
+<p>
+  workspace."* Module names appear exactly as <code>lib/brand.ts</code> states them.
+</p>
+<ul><li><strong>Interaction:</strong> none — observation. (Real interactivity is Scene 13's job, after login.)</li><li><strong>Duration:</strong> user-paced, ~2 viewports.</li><li><strong>Exit:</strong> split — the frame divides toward two doors: Consumer and Agency.</li></ul>
+<h2 id="scene-6-agency">Scene 6 — Agency</h2>
+<ul><li><strong>Emotion:</strong> professional respect — <em>"built for my practice."</em></li><li><strong>Goal:</strong> the operator story: client workspaces, capacity, staff seats — honest tiers with the</li></ul>
+<p>
+  shipped honest caps.
+</p>
+<ul><li><strong>Camera:</strong> push-in on a multi-workspace roster frame.</li><li><strong>Motion:</strong> workspace rows Reveal; the capacity meter Settles at its true proportion — never</li></ul>
+<p>
+  animating toward "full" (no fake scarcity).
+</p>
+<ul><li><strong>Lighting:</strong> slightly cooler (ocean-weighted aurora) — the professional temperature.</li><li><strong>Narration:</strong> *"Agencies run every client in their own workspace — the same evidence engine,</li></ul>
+<p>
+  at practice scale."*
+</p>
+<ul><li><strong>Interaction:</strong> tab affordance to peek Consumer ↔ Agency framing (also serving Scene 7).</li><li><strong>Duration:</strong> user-paced; one viewport.</li><li><strong>Exit:</strong> crossfade to Scene 7 (same stage, different door).</li></ul>
+<h2 id="scene-7-consumer">Scene 7 — Consumer</h2>
+<ul><li><strong>Emotion:</strong> personal hope, grounded — <em>"I can actually do this myself."</em></li><li><strong>Goal:</strong> the self-advocate story: one person, their three reports, their first letter — and the</li></ul>
+<p>
+  education that makes them capable.
+</p>
+<ul><li><strong>Camera:</strong> insert of a single letter with its FCRA citations highlighted.</li><li><strong>Motion:</strong> Draw underlines the citations; the education banner Reveals beneath — the product's</li></ul>
+<p>
+  actual education-first framing, on screen.
+</p>
+<ul><li><strong>Lighting:</strong> slightly warmer brand amplitude — the human temperature.</li><li><strong>Narration:</strong> *"You review everything. You send everything. You learn your rights as you go —</li></ul>
+<p>
+  because this is your credit, and your case."*
+</p>
+<ul><li><strong>Interaction:</strong> none new.</li><li><strong>Duration:</strong> one viewport.</li><li><strong>Exit:</strong> the citation underline Draws downward into Scene 8's threshold.</li></ul>
+<h2 id="scene-8-arena">Scene 8 — Arena</h2>
+<ul><li><strong>Emotion:</strong> earned prestige — <em>"progress that means something."</em></li><li><strong>Goal:</strong> present Arena exactly as the code already enforces it: XP only from evidenced</li></ul>
+<p>
+  activity, permanent, server-authoritative — a hall of operators, not a casino.
+</p>
+<ul><li><strong>Camera:</strong> establishing wide with more negative space than any scene before — prestige is</li></ul>
+<p>
+  spatial.
+</p>
+<ul><li><strong>Motion:</strong> a progression rail Draws slowly (1.8s); level marks Settle. Nothing pulses, nothing</li></ul>
+<p>
+  counts up excitedly; numbers arrive already true, in <code>tnum</code>.
+</p>
+<ul><li><strong>Lighting:</strong> the aurora stills almost completely; light narrows to a single vertical brand</li></ul>
+<p>
+  gradient behind the rail — the institutional column.
+</p>
+<ul><li><strong>Narration:</strong> *"The Arena. Progress here is earned one way: real, evidenced activity. Nothing</li></ul>
+<p>
+  is awarded for showing up."* (Direct descendant of the shipped empty-state copy.)
+</p>
+<ul><li><strong>Interaction:</strong> none — the marketing Arena is observed. Entry is Scene 14.</li><li><strong>Duration:</strong> short; restraint <em>is</em> the message.</li><li><strong>Exit:</strong> cut (user scroll) to Scene 9.</li></ul>
+<h2 id="scene-9-education">Scene 9 — Education</h2>
+<ul><li><strong>Emotion:</strong> generosity — <em>"they teach me even before I pay."</em></li><li><strong>Goal:</strong> state the education-first identity; preview the future Education destination honestly</li></ul>
+<p>
+  (it does not exist yet as a route — nothing is faked as live).
+</p>
+<ul><li><strong>Camera:</strong> calm centered column, sibling composition to Scene 4 (Kai and education are the</li></ul>
+<p>
+  same voice).
+</p>
+<ul><li><strong>Motion:</strong> three concept cards Reveal (rights, process, timelines). No product frame — there</li></ul>
+<p>
+  is no product surface to show truthfully yet.
+</p>
+<ul><li><strong>Lighting:</strong> neutral, bright-end of the marketing range.</li><li><strong>Narration:</strong> *"CreditVector teaches the law it uses. Every letter cites it. Every explanation</li></ul>
+<p>
+  links to it."*
+</p>
+<ul><li><strong>Interaction:</strong> links to existing educational content only.</li><li><strong>Duration:</strong> one viewport.</li><li><strong>Exit:</strong> scroll into pricing — generosity earns the right to ask.</li></ul>
+<h2 id="scene-10-pricing">Scene 10 — Pricing</h2>
+<ul><li><strong>Emotion:</strong> clarity and self-respect — <em>"I understand exactly what I'd pay for."</em></li><li><strong>Goal:</strong> the engineering table: real tiers, real caps, honest "Coming soon" states (shipped</li></ul>
+<p>
+  behavior: unpurchasable tiers cannot be charged).
+</p>
+<ul><li><strong>Camera:</strong> symmetric, centered — the authority composition (§5.2).</li><li><strong>Motion:</strong> minimal. Rows Reveal once; the recommended tier carries a static brand border, not</li></ul>
+<p>
+  a pulse. Numbers in <code>tnum</code>.
+</p>
+<ul><li><strong>Lighting:</strong> flattest scene in the film — pricing under honest light.</li><li><strong>Narration:</strong> the table itself; plus the shipped guarantee *"you can't be charged for a plan</li></ul>
+<p>
+  that isn't available yet."*
+</p>
+<ul><li><strong>Interaction:</strong> interval toggle (monthly/annual), plan CTAs. Fully functional, zero drama.</li><li><strong>Duration:</strong> as long as the visitor needs.</li><li><strong>Exit:</strong> primary CTA → Scene 11.</li></ul>
+<h2 id="scene-11-login-join">Scene 11 — Login / Join</h2>
+<ul><li><strong>Emotion:</strong> crossing a threshold with confidence.</li><li><strong>Goal:</strong> the shipped split-screen <code>AuthLayout</code>, elevated: brand panel carries the aurora and</li></ul>
+<p>
+  three truthful assurances; the form is instrument-grade.
+</p>
+<ul><li><strong>Camera:</strong> static two-panel composition; no motion during credential entry (respect for a</li></ul>
+<p>
+  security moment).
+</p>
+<ul><li><strong>Motion:</strong> panel content Settles once on load; nothing moves while typing.</li><li><strong>Lighting:</strong> aurora at 0.25 on the brand panel only; form panel is calm ink.</li><li><strong>Narration:</strong> the three assurance points (real, shipped copy — encryption, review-first</li></ul>
+<p>
+  letters, education).
+</p>
+<ul><li><strong>Interaction:</strong> the form. Every a11y rule of §12 applies; errors follow §5.15.</li><li><strong>Duration:</strong> n/a — functional.</li><li><strong>Exit:</strong> successful auth → Scene 12.</li></ul>
+<h2 id="scene-12-authenticated-transition-the-threshold">Scene 12 — Authenticated Transition (the Threshold)</h2>
+<ul><li><strong>Emotion:</strong> <em>arrival.</em> The single most designed 2.5 seconds in the product.</li><li><strong>Goal:</strong> compress marketing atmosphere into operator atmosphere; make login feel like entering</li></ul>
+<p>
+  the thing the site showed.
+</p>
+<ul><li><strong>Camera:</strong> rack focus: the auth panel dims and blurs; a dark stage holds the shield small and</li></ul>
+<p>
+  centered; Mission Control's frame resolves <em>around</em> it — the interface assembles from the
+ 
+  identity outward.
+</p>
+<ul><li><strong>Motion:</strong> ≤ 2.5s WAAPI timeline: shield Settle (400ms) → interface panels Settle outward in</li></ul>
+<p>
+  reading order (staggered 60ms) → aurora crossfades from marketing amplitude to 0.15 → done.
+ 
+  Skippable by any input at any frame; plays <strong>once per user</strong> — subsequent logins get a 300ms
+ 
+  crossfade.
+</p>
+<ul><li><strong>Lighting:</strong> the one continuous light: the aurora <em>never cuts</em> across the boundary — it dims.</li><li><strong>Narration:</strong> none. Silence and light.</li><li><strong>Interaction:</strong> any input skips to the final frame instantly.</li><li><strong>Duration:</strong> ≤ 2.5s (first login) · 300ms (thereafter) · 0ms (reduced motion).</li><li><strong>Exit:</strong> Mission Control, fully interactive, focus on the page heading.</li></ul>
+<h2 id="scene-13-mission-control-authenticated-arrival">Scene 13 — Mission Control (authenticated arrival)</h2>
+<ul><li><strong>Emotion:</strong> quiet command — NASA console, Bloomberg density, Apple calm.</li><li><strong>Goal:</strong> the operator's first 10 seconds: state of the case, next action, Kai's briefing —</li></ul>
+<p>
+  without a tour, without confetti.
+</p>
+<ul><li><strong>Camera:</strong> the working interface. Density per §5.1 (operator voice, <code>tnum</code>).</li><li><strong>Motion:</strong> panels Settle once (60ms stagger) and never move again; data updates state-change</li></ul>
+<p>
+  only. Kai's briefing card Reveals last, dismissible.
+</p>
+<ul><li><strong>Lighting:</strong> aurora at ≤ 0.15, doubled drift period — atmosphere at the edge of perception.</li><li><strong>Narration:</strong> Kai's actual contextual briefing (real data, real next step). Empty states per</li></ul>
+<p>
+  §5.13 — briefings, not apologies.
+</p>
+<ul><li><strong>Interaction:</strong> everything. This is the product; the experience layer must never add friction</li></ul>
+<p>
+  to it. <strong>Consumer and Agency arrivals differ</strong>: consumer opens on <em>my case</em>; agency opens on
+ 
+  <em>the practice roster</em> — same grammar, different first protagonist.
+</p>
+<ul><li><strong>Duration:</strong> persistent surface.</li><li><strong>Exit:</strong> n/a.</li></ul>
+<h2 id="scene-14-arena-entry-authenticated">Scene 14 — Arena Entry (authenticated)</h2>
+<ul><li><strong>Emotion:</strong> belonging to an institution — <em>"my record, on the wall."</em></li><li><strong>Goal:</strong> the member's own progression, rendered with prestige: level, XP provenance, policy</li></ul>
+<p>
+  version — the shipped mechanics, ceremonially framed.
+</p>
+<ul><li><strong>Camera:</strong> vertical composition; the member's rail is the protagonist.</li><li><strong>Motion:</strong> one Draw of the member's own progression rail on entry (1.2s, once per session);</li></ul>
+<p>
+  XP numbers arrive as truth, never count up. No badges rain, no sparkles.
+</p>
+<ul><li><strong>Lighting:</strong> the institutional column from Scene 8, personalized: the member's rail carries</li></ul>
+<p>
+  the single vertical gradient.
+</p>
+<ul><li><strong>Narration:</strong> the shipped policy line, elevated in type: *"XP is derived from your own</li></ul>
+<p>
+  verified evidence."* Policy version visibly stated — governance as design.
+</p>
+<ul><li><strong>Interaction:</strong> progression detail, evidence provenance per XP event.</li><li><strong>Duration:</strong> persistent surface; entry choreography ≤ 1.2s, once per session.</li><li><strong>Exit:</strong> n/a.</li></ul>
+<h2 id="scene-15-reduced-motion-the-parallel-film">Scene 15 — Reduced Motion (the parallel film)</h2>
+<ul><li><strong>Emotion:</strong> identical to every scene above. That is the point.</li><li><strong>Goal:</strong> full narrative parity with zero motion: every scene delivers its final frame as a</li></ul>
+<p>
+  designed static composition.
+</p>
+<ul><li><strong>Camera:</strong> every scene's <em>resolved</em> composition, art-directed as stills — not frozen</li></ul>
+<p>
+  mid-animation.
+</p>
+<ul><li><strong>Motion:</strong> none. Aurora renders as a static two-stop gradient. Draw renders already-drawn.</li></ul>
+<p>
+  Transitions are instant. The Scene 12 threshold is a cut to Mission Control.
+</p>
+<ul><li><strong>Lighting:</strong> identical values, static.</li><li><strong>Narration:</strong> identical text — it was always real DOM content.</li><li><strong>Interaction:</strong> identical — interactivity never depended on motion.</li><li><strong>Duration:</strong> 0s of choreography anywhere.</li><li><strong>Exit:</strong> n/a. This scene is a build target and a review checklist item for every other scene:</li></ul>
+<p>
+  <strong>no scene is approved until its reduced-motion still stands on its own.</strong>
+</p>
+<hr>
+<h2 id="timing-summary">Timing summary</h2>
+<div class="tw"><table><thead><tr><th>Beat</th><th>First visit</th><th>Return visit</th><th>Reduced motion</th></tr></thead><tbody>
+<tr><td>Public arrival choreography</td><td>2.0s over painted content</td><td>0s (settled frame)</td><td>0s</td></tr>
+<tr><td>Full "awakening" sequence (Scenes 1→5 scroll)</td><td>user-paced</td><td>user-paced</td><td>user-paced, static</td></tr>
+<tr><td>Login → Mission Control threshold</td><td>≤ 2.5s</td><td>300ms</td><td>0s</td></tr>
+<tr><td>Arena entry</td><td>≤ 1.2s</td><td>once per session</td><td>0s</td></tr>
+<tr><td><strong>Hard ceiling, any automatic sequence</strong></td><td><strong>12s</strong> (skippable throughout)</td><td>—</td><td>—</td></tr>
+</tbody></table></div>
+<p>
+**Nothing plays without consent, nothing repeats without request, and nothing exists only in
+ 
+motion.**
+</p>
+<footer>Projection of <code>CREDITVECTOR_RC1_RELEASE_CANDIDATE_EXTRACTION_WAVE_2_2_REPORT.md</code>, which is canonical.
+Contains no credentials, secrets, tokens, or environment values.</footer>
+</main></body></html>
