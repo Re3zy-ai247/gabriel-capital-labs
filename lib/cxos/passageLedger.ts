@@ -1,0 +1,186 @@
+// CXOS Phase 5.1 — THE PASSAGE · semantic visual ledger.
+//
+// The Phase 5 law, extended: an element without a ledger row does not ship,
+// and every row now also declares its FALLBACK treatment (what the element
+// becomes when the cinematic system is absent — no-JS, tier C/D, or a
+// runtime failure). scripts/cxos-passage.test.ts enforces coverage.
+//
+// lib/cxos/arenaLedger.ts (the Phase 5 chamber ledger) is untouched and
+// still governs the live /arena surfaces. This ledger governs the review
+// journey's environments and the travel between them.
+
+export type PassageLedgerStatus = "PROTOTYPE" | "SPECIMEN" | "PLANNED";
+
+export interface PassageLedgerRow {
+  element: string;
+  represents: string;
+  source: string;
+  status: PassageLedgerStatus;
+  whenAbsent: string;
+  interactive: boolean;
+  reducedMotion: string;
+  fallback: string;
+}
+
+export const PASSAGE_LEDGER: PassageLedgerRow[] = [
+  {
+    element: "MC instrument wall",
+    represents: "Mission Control's analytical register — observation and control as architecture",
+    source: "composition only; the panel copy quotes the synthetic mission fixture",
+    status: "SPECIMEN",
+    whenAbsent: "never absent within the origin environment",
+    interactive: false,
+    reducedMotion: "static — no settle animation",
+    fallback: "plain in-flow panels; same text, no depth staging",
+  },
+  {
+    element: "MC command axis",
+    represents: "the room's central operational line — the eye's anchor in the blue register",
+    source: "composition only",
+    status: "SPECIMEN",
+    whenAbsent: "never absent within the origin environment",
+    interactive: false,
+    reducedMotion: "static",
+    fallback: "a plain horizontal rule",
+  },
+  {
+    element: "MC zone panels",
+    represents: "today's real zones (queue · waiting · Kai) in fixture form",
+    source: "synthetic mission fixture (labeled)",
+    status: "SPECIMEN",
+    whenAbsent: "never absent within the origin environment",
+    interactive: false,
+    reducedMotion: "static",
+    fallback: "plain in-flow cards; same figures",
+  },
+  {
+    element: "Arena call aperture",
+    represents: "clearance truth: the Arena is reachable for THIS record — the call embedded in the far wall",
+    source: "fixture access state (mirrors arenaAccessible(): flag AND cohort)",
+    status: "PROTOTYPE",
+    whenAbsent: "flag-off / outside-cohort fixtures render NOTHING in its place — no teaser, no upsell",
+    interactive: true,
+    reducedMotion: "static seam light; activation is an in-page link, no ceremony",
+    fallback: "a plain in-page link to the Arena floor section",
+  },
+  {
+    element: "Clearance stencils",
+    represents: "the resolved clearance facts, spoken ceremonially (technical truth lives in the director tray)",
+    source: "fixture record; the evidence line branches on awardCount — an empty record is told the truth",
+    status: "PROTOTYPE",
+    whenAbsent: "cancelled journeys never show them; empty record swaps the evidence line for 'No evidence on record.'",
+    interactive: false,
+    reducedMotion: "never mounts (no cinematic travel)",
+    fallback: "none — the settled page carries the same facts in the chamber",
+  },
+  {
+    element: "Passage rails",
+    represents: "Mission Control's rectilinear geometry in motion — the room pulling past the camera",
+    source: "composition only",
+    status: "PROTOTYPE",
+    whenAbsent: "no travel → no rails",
+    interactive: false,
+    reducedMotion: "never mounts",
+    fallback: "none — decorative travel only",
+  },
+  {
+    element: "Conversion arcs",
+    represents: "the dimensional conversion: straight blue rails bending into concentric gold arcs",
+    source: "composition only",
+    status: "PROTOTYPE",
+    whenAbsent: "no travel → no arcs",
+    interactive: false,
+    reducedMotion: "never mounts",
+    fallback: "none — decorative travel only",
+  },
+  {
+    element: "Threshold gate",
+    represents: "the crossing — the aperture opening full-frame onto the chamber; THE ARENA is engraved in its frame (architecture, not caption)",
+    source: "composition only",
+    status: "PROTOTYPE",
+    whenAbsent: "no travel → the settled chamber is simply there",
+    interactive: false,
+    reducedMotion: "never mounts",
+    fallback: "none — the floor's establishing view carries the same geometry",
+  },
+  {
+    element: "Chamber floor ring",
+    represents: "the Arena's radial ground — the establishing geometry the threshold's final frame match-cuts into",
+    source: "composition only",
+    status: "SPECIMEN",
+    whenAbsent: "never absent within the floor environment",
+    interactive: false,
+    reducedMotion: "static engraving",
+    fallback: "static engraving (same rule set)",
+  },
+  {
+    element: "Standing core dais",
+    represents: "the operator's permanent lifetime record as the chamber's center — rank · level · lifetime XP at the real level percentage",
+    source: "fixture standing (curve-consistent with lib/reputation/scoring.ts); maps 1:1 to Reputation-owned state",
+    status: "PROTOTYPE",
+    whenAbsent: "empty record → the dais holds at zero with the truthful line; data-error → the EMPTY standing, never a stale number",
+    interactive: false,
+    reducedMotion: "static ring at the real percentage",
+    fallback: "static ring + plain figures",
+  },
+  {
+    element: "Evidence vault plaques",
+    represents: "the documented evidence behind awarded XP, engraved — nothing more than the record holds",
+    source: "fixture awards (labels reuse the real evidence-class vocabulary)",
+    status: "PROTOTYPE",
+    whenAbsent: "no awards → absence plus 'Only evidenced activity builds this record.' — no placeholder plaques",
+    interactive: false,
+    reducedMotion: "static plaques",
+    fallback: "plain list; same rows",
+  },
+  {
+    element: "Milestone gallery seals",
+    represents: "earned milestones as illuminated positions — earned only, never projected",
+    source: "fixture badges",
+    status: "PROTOTYPE",
+    whenAbsent: "zero badges → the gallery shows nothing earned; no unearned milestone is ever represented as earned",
+    interactive: false,
+    reducedMotion: "static seals",
+    fallback: "plain list; same rows",
+  },
+  {
+    element: "Sealed competition threshold",
+    represents: "where competitions WILL open — refused in policy v1, rendered as sealed architecture",
+    source: "REFUSED_V1 (read-only policy re-export)",
+    status: "PLANNED",
+    whenAbsent: "always the sealed PLANNED state; the component has no open branch",
+    interactive: false,
+    reducedMotion: "static",
+    fallback: "static — identical",
+  },
+  {
+    element: "Kai observation point",
+    represents: "Kai reading the operator's own record — restrained executive intelligence, no chat window, no mascot",
+    source: "deterministic function of the fixture record; no AI call",
+    status: "PROTOTYPE",
+    whenAbsent: "empty record → Kai reads the empty vault truthfully",
+    interactive: false,
+    reducedMotion: "static band",
+    fallback: "static band — identical",
+  },
+  {
+    element: "Return line",
+    represents: "the reverse journey — gold contracting to a line, cooling back into the blue register",
+    source: "composition only",
+    status: "PROTOTYPE",
+    whenAbsent: "no travel → returning is a plain in-page link",
+    interactive: true,
+    reducedMotion: "never mounts; the return control is a plain link",
+    fallback: "a plain in-page link back to Mission Control",
+  },
+  {
+    element: "SYNTHETIC tab",
+    represents: "the honesty label — every figure on this route is review fixture data, minimized during travel, never removed",
+    source: "unconditional (outside every beat conditional)",
+    status: "PROTOTYPE",
+    whenAbsent: "never absent — it renders in every overlay state including the threshold's silence",
+    interactive: false,
+    reducedMotion: "the settled banner carries the same truth",
+    fallback: "the settled banner carries the same truth",
+  },
+];

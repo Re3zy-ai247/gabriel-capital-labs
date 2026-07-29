@@ -205,14 +205,16 @@ export function MissionEntry(props: MissionEntryProps) {
           e.stopPropagation();
           finish();
         }}
-        className="absolute bottom-6 right-6 rounded-lg border border-ink-600 px-3 py-1.5 text-xs text-slate-400 transition hover:border-brand-500/50 hover:text-slate-200"
+        className="absolute right-6 rounded-lg border border-ink-600 px-3 py-1.5 text-xs text-slate-400 transition hover:border-brand-500/50 hover:text-slate-200"
+        style={{ bottom: "max(1.5rem, env(safe-area-inset-bottom))" }}
       >
         Skip — Esc
       </button>
 
       {review.current && (
         <div
-          className="absolute bottom-6 left-6 flex items-center gap-2 font-mono text-[11px] text-slate-400"
+          className="absolute left-4 flex max-w-[calc(100vw-8.5rem)] flex-wrap items-center gap-2 font-mono text-[11px] text-slate-400"
+          style={{ bottom: "max(1rem, env(safe-area-inset-bottom))" }}
           onClick={(e) => e.stopPropagation()}
         >
           <span className="font-bold text-brand-300">ENTRY</span>

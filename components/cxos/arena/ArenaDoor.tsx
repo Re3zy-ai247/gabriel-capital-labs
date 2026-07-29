@@ -1,26 +1,33 @@
 import Link from "next/link";
-import { Trophy, ArrowUpRight } from "lucide-react";
 
-// CXOS Phase 5 — the call. Rendered by the dashboard ONLY when
-// arenaAccessible(user) passed on the server: accounts outside the cohort see
-// nothing — no teaser, no sealed-door upsell, no implied purchase path (ledger row
-// "Arena door"). A plain, real link; the ceremony happens on arrival.
+// CXOS Phase 5.1 — the call, restaged as an embedded threshold rather than
+// an ordinary CTA card. Rendered by the dashboard ONLY when
+// arenaAccessible(user) passed on the server: accounts outside the cohort
+// see nothing — no teaser, no sealed-door upsell, no implied purchase path
+// (ledger row "Arena door"). Still a plain, real link; the ceremony
+// happens on arrival. The gold seam is architecture, not a badge.
 export function ArenaDoor({ totalXp, level }: { totalXp: number; level: number }) {
   return (
-    <Link href="/arena" className="mb-4 block">
-      <div className="card relative flex items-center gap-3 overflow-hidden p-4 transition-colors hover:bg-ink-800/40">
+    <Link href="/arena" className="group mb-4 block" aria-label="The Arena — proceed to the floor">
+      <div className="relative overflow-hidden rounded-2xl border border-amber-400/25 bg-[#0a0705] px-5 py-4 transition-colors group-hover:border-amber-400/50">
         <div aria-hidden className="cx-ar-doorlight pointer-events-none absolute inset-0" />
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-400/10 text-amber-300">
-          <Trophy className="h-5 w-5" aria-hidden />
-        </span>
-        <div className="min-w-0 flex-1">
-          <div className="text-[10px] font-bold uppercase tracking-widest text-amber-200/80">The Arena · internal cohort</div>
-          <div className="text-sm font-semibold text-slate-100">
-            Your record stands at level {level} · {totalXp} lifetime XP
+        {/* the seam — light rising from the floor line of the recess */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-6 bottom-0 h-px"
+          style={{ background: "linear-gradient(90deg, transparent, rgba(245,199,110,0.7), transparent)" }}
+        />
+        <div className="relative flex items-baseline justify-between gap-4">
+          <div className="min-w-0">
+            <div className="text-[13px] font-bold tracking-[0.35em] text-amber-100/90">THE ARENA</div>
+            <div className="mt-1 font-mono text-[12px] text-slate-400 tnum">
+              clearance held · level {level} · {totalXp} lifetime XP
+            </div>
           </div>
-          <div className="text-[12px] text-slate-400">Enter the floor — evidence becomes standing.</div>
+          <span className="shrink-0 text-[11px] font-semibold tracking-[0.15em] text-amber-200/90 transition-colors group-hover:text-amber-200">
+            PROCEED TO THE FLOOR →
+          </span>
         </div>
-        <ArrowUpRight className="h-4 w-4 shrink-0 text-slate-500" aria-hidden />
       </div>
     </Link>
   );

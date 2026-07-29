@@ -141,9 +141,15 @@ export function ArenaEntry(props: ArenaEntryProps) {
             {beat >= 1 && (
               <div className="cx-mc-line">
                 <div className="text-[10px] font-bold tracking-[0.3em] text-amber-200/70">ARENA CLEARANCE</div>
-                <p className="mt-1 font-mono text-sm text-slate-200">
-                  {props.identity} · internal cohort · policy v{props.policyVersion}
-                </p>
+                {/* Phase 5.1 copy law: the audience hears ceremony; the
+                    technical truth lives in the director instruments. */}
+                <p className="mt-1 text-sm text-slate-200">Clearance confirmed.</p>
+                <p className="mt-0.5 text-sm text-slate-300">Record located.</p>
+                {review.current && (
+                  <p className="mt-1 font-mono text-[11px] text-slate-500">
+                    {props.identity} · internal cohort · policy v{props.policyVersion}
+                  </p>
+                )}
               </div>
             )}
             {beat >= 2 && (
@@ -155,7 +161,7 @@ export function ArenaEntry(props: ArenaEntryProps) {
                       <li key={a.label + a.xp} className="flex items-baseline justify-between gap-3 text-slate-300">
                         <span className="truncate">{a.label}</span>
                         <span className="shrink-0 text-amber-200">
-                          +{a.xp} <span className="text-[10px] text-slate-500">{a.cls}</span>
+                          +{a.xp} <span className="text-[10px] text-slate-500">{a.cls} evidence</span>
                         </span>
                       </li>
                     ))}
@@ -202,14 +208,16 @@ export function ArenaEntry(props: ArenaEntryProps) {
           e.stopPropagation();
           finish();
         }}
-        className="absolute bottom-6 right-6 rounded-lg border border-ink-600 px-3 py-1.5 text-xs text-slate-400 transition hover:border-amber-400/50 hover:text-slate-200"
+        className="absolute right-6 rounded-lg border border-ink-600 px-3 py-1.5 text-xs text-slate-400 transition hover:border-amber-400/50 hover:text-slate-200"
+        style={{ bottom: "max(1.5rem, env(safe-area-inset-bottom))" }}
       >
         Skip — Esc
       </button>
 
       {review.current && (
         <div
-          className="absolute bottom-6 left-6 flex items-center gap-2 font-mono text-[11px] text-slate-400"
+          className="absolute left-4 flex max-w-[calc(100vw-8.5rem)] flex-wrap items-center gap-2 font-mono text-[11px] text-slate-400"
+          style={{ bottom: "max(1rem, env(safe-area-inset-bottom))" }}
           onClick={(e) => e.stopPropagation()}
         >
           <span className="font-bold text-amber-200">ENTRY</span>

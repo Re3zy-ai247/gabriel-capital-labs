@@ -11,13 +11,15 @@ import {
 } from "@/components/cxos/arena/ArenaChamber";
 
 // SYNTHETIC fixtures — clearly-marked review data corresponding to no real
-// account. XP numbers are arbitrary review values; award labels reuse the
-// real evidence-class vocabulary so the Founder reviews true shapes.
+// account. Values are CURVE-CONSISTENT with the real scoring engine
+// (xpForLevel(n) = 25·n·(n−1); the operator rank begins at level 6):
+// 820 XP ⇒ level 6 ⇒ operator — no engine-impossible standing is staged.
+// Award labels reuse the real evidence-class vocabulary.
 const POPULATED: Omit<ArenaEntryProps, "forceVariant" | "forceReview"> = {
   identity: "cxreview-consumer",
   rank: "operator",
-  level: 3,
-  totalXp: 640,
+  level: 6,
+  totalXp: 820,
   awardCount: 5,
   badges: ["First evidenced outcome", "Round 2 completed"],
   topAwards: [
@@ -30,8 +32,8 @@ const POPULATED: Omit<ArenaEntryProps, "forceVariant" | "forceReview"> = {
 
 const EMPTY: Omit<ArenaEntryProps, "forceVariant" | "forceReview"> = {
   identity: "cxreview-consumer",
-  rank: "novice",
-  level: 0,
+  rank: "recruit",
+  level: 1,
   totalXp: 0,
   awardCount: 0,
   badges: [],
@@ -99,13 +101,13 @@ export function ArenaStage() {
           {(state === "populated" || state === "empty") && (
             <>
               <StandingRing
-                pct={state === "empty" ? 0 : 64}
+                pct={state === "empty" ? 0 : 23}
                 rank={fx.rank}
                 level={fx.level}
                 totalXp={fx.totalXp}
               />
               <MilestoneSeals badges={fx.badges} />
-              <KaiArenaBrief awardCount={fx.awardCount} level={fx.level} xpToNext={state === "empty" ? 100 : 160} />
+              <KaiArenaBrief awardCount={fx.awardCount} level={fx.level} xpToNext={state === "empty" ? 50 : 230} />
               <div className="mt-5">
                 <CompetitionAperture />
               </div>

@@ -68,6 +68,14 @@ export const CXOS_ROOMS: CxosRoom[] = [
     line: "Clearance → evidence vault → ascent → the chamber. Own-record only (policy v1); live surface stays flag+cohort gated.",
   },
   {
+    key: "passage",
+    name: "The Passage",
+    href: "/review/mission-control-to-arena",
+    status: "PROTOTYPE",
+    phase: "Phase 5.1",
+    line: "Mission Control origin → the call → clearance → the passage → dimensional conversion → threshold → greeting → the floor → the return. Synthetic fixtures, end to end.",
+  },
+  {
     key: "academy",
     name: "Academy",
     href: "/review#academy",

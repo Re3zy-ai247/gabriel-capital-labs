@@ -82,13 +82,13 @@ check("the review stage LOOPS instead of finishing (Escape exits)",
 // ── 6 · the room registry stays honest ───────────────────────────────────────
 {
   const keys = [...rooms.matchAll(/key: "([a-z-]+)"/g)].map((m) => m[1]);
-  check("all ten mandated rooms are registered (plus the Phase 3 landing journey)",
+  check("all ten mandated rooms are registered (plus the Phase 3 landing journey and the Phase 5.1 passage)",
     ["threshold", "hero", "mission-control", "arena", "academy", "kai", "marketplace",
-     "operator-network", "dashboard", "enterprise", "landing-journey"].every((k) => keys.includes(k)));
+     "operator-network", "dashboard", "enterprise", "landing-journey", "passage"].every((k) => keys.includes(k)));
   check("PLANNED rooms exist and are never given a fake live entry",
     /status: "PLANNED"/.test(rooms) && /no entry yet/.test(hub));
-  check("exactly four PROTOTYPE rooms today (Threshold · Landing Journey · Mission Control · Arena)",
-    (rooms.match(/status: "PROTOTYPE"/g) ?? []).length === 4);
+  check("exactly five PROTOTYPE rooms today (Threshold · Landing Journey · Mission Control · Arena · The Passage)",
+    (rooms.match(/status: "PROTOTYPE"/g) ?? []).length === 5);
 }
 
 console.log(`\ncxos-review.test.ts: ${pass} passed, ${fail} failed`);
