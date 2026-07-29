@@ -440,6 +440,32 @@ html.cx-debug-bounds [data-chapter] { outline: 1px dashed rgba(34, 211, 238, 0.5
 .cx-mc-leave { animation: cx-nav-open-out 0.5s var(--ease-vector) forwards; }
 .cx-mc-line { animation: rise var(--dur-settle) var(--ease-vector) both; }
 
+/* ── Phase 5 · the Arena — prestige grammar (gold on ink) ──
+   The veil carries the same 12s pure-CSS safety guarantee as every CXOS
+   overlay. The reveal ring is the one declared ceremonial element (ledger). */
+.cx-ar-veil {
+  background:
+    radial-gradient(60% 60% at 50% 42%, rgba(245, 199, 110, 0.10), transparent 70%),
+    rgba(2, 3, 8, 0.97);
+  animation: fadein 0.35s var(--ease-vector) both, cx-mc-safety 0.5s ease 12s forwards;
+}
+.cx-ar-ring {
+  position: absolute; left: 50%; top: 42%; height: 560px; width: 560px;
+  transform: translate(-50%, -50%) scale(0.55);
+  border-radius: 9999px; opacity: 0.25;
+  border: 1px solid rgba(245, 199, 110, 0.35);
+  box-shadow: 0 0 80px rgba(245, 199, 110, 0.12) inset;
+  transition: transform 1.6s var(--ease-vector), opacity 1.6s var(--ease-vector);
+}
+.cx-ar-ring-open { transform: translate(-50%, -50%) scale(1.05); opacity: 0.8; }
+.cx-ar-standing { /* static conic ring — the sweep is the DATA, not motion */ }
+.cx-ar-aperture {
+  background: radial-gradient(50% 80% at 50% 100%, rgba(148, 163, 184, 0.07), transparent 70%);
+}
+.cx-ar-doorlight {
+  background: radial-gradient(70% 120% at 0% 50%, rgba(245, 199, 110, 0.08), transparent 60%);
+}
+
 /* Respect users who prefer less motion. */
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
@@ -478,4 +504,12 @@ html.cx-debug-bounds [data-chapter] { outline: 1px dashed rgba(34, 211, 238, 0.5
      resets make that unconditional even if a mount ever leaked. */
   .cx-mc-veil, .cx-mc-leave { animation: none !important; display: none !important; }
   .cx-mc-line { animation: none !important; }
+  /* Phase 5: tier D mounts no Arena entry; belt-and-braces resets. The
+     standing ring, aperture and door light are static gradients (no motion
+     to remove) — listed for the grammar enumeration. */
+  .cx-ar-veil { animation: none !important; display: none !important; }
+  .cx-ar-ring, .cx-ar-ring-open { transition: none !important; }
+  .cx-ar-standing { /* static */ }
+  .cx-ar-aperture { /* static */ }
+  .cx-ar-doorlight { /* static */ }
 }

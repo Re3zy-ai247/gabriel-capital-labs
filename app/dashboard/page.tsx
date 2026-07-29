@@ -13,6 +13,9 @@ import { assembleExecution } from "@/lib/execution";
 import { buildAcademy } from "@/lib/academy";
 import { MissionControl } from "@/components/mission/MissionControl";
 import { MissionEntry } from "@/components/cxos/mission/MissionEntry";
+import { ArenaDoor } from "@/components/cxos/arena/ArenaDoor";
+import { arenaAccessible } from "@/lib/arena/cohort";
+import { readOwnProgress } from "@/lib/arena/ownProgress";
 import { CommandHeader } from "@/components/cxos/mission/CommandHeader";
 import { ExecutiveQueue } from "@/components/mission/ExecutiveQueue";
 import { CommandCenter } from "@/components/mission/CommandCenter";
@@ -63,6 +66,10 @@ export default async function DashboardPage() {
     active: allItems.filter((i) => i.status === "in_progress" || i.status === "waiting").length,
   };
 
+  // CXOS Phase 5 — the call: the Arena door renders ONLY when the real
+  // server-side gate passes (flag + cohort). Outside the cohort: nothing.
+  const cxArena = arenaAccessible(user) ? await readOwnProgress(user.id) : null;
+
   // CXOS Phase 4 — the authenticated entry + command header run on REAL resolved
   // state only: the user row, the deterministic health signals, queue aggregates,
   // and Kai's actual computed next action. Auth already succeeded (this render IS
@@ -97,6 +104,7 @@ export default async function DashboardPage() {
         capacity={data.capacity}
         isAgency={user.isAgency}
       />
+      {cxArena && <ArenaDoor totalXp={cxArena.standing.totalXp} level={cxArena.standing.level} />}
       <MissionControl data={data} />
       {/* The full operating-system summary appears once there's a case to summarize —
           a first-time user (no report yet) sees only the single upload mission. */}

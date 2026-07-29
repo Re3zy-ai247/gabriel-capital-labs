@@ -62,11 +62,10 @@ export const CXOS_ROOMS: CxosRoom[] = [
   {
     key: "arena",
     name: "Arena",
-    href: "/arena",
-    status: "PRODUCT",
-    phase: "Phase 5 (planned)",
-    line: "The vault: doors, evidence-backed XP assembling, operator recognized. Entry not yet built.",
-    authed: true,
+    href: "/review/arena",
+    status: "PROTOTYPE",
+    phase: "Phase 5",
+    line: "Clearance → evidence vault → ascent → the chamber. Own-record only (policy v1); live surface stays flag+cohort gated.",
   },
   {
     key: "academy",
