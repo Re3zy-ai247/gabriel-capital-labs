@@ -273,6 +273,19 @@ a.card:hover, button.card:hover, .card-interactive:hover { transform: translateY
 
 /* ═══ CXOS primitives (Phase 1) ═══ */
 
+/* Phase 2 · the Threshold's first-paint darkness. Set by the inline entry
+   script on app/page.tsx BEFORE the hero parses, owned by the Threshold once
+   it mounts, and removed on exit. pointer-events stays none — input always
+   belongs to the page or to the Threshold dialog, never to this paint. The
+   12s keyframed fade is a pure-CSS safety net: if every script after the
+   entry decision failed, the page still becomes readable by itself. */
+@keyframes cx-enter-safety { to { opacity: 0; visibility: hidden; } }
+html[data-cxenter]::after {
+  content: ""; position: fixed; inset: 0; z-index: 99; background: #02040a;
+  pointer-events: none; animation: cx-enter-safety 0.6s ease 12s forwards;
+}
+
+
 /* Focus — rack-focus between planes (grammar §5.7, motion board M8). The plane
    that loses attention recedes; it never disappears. */
 .cx-focus-out { opacity: 0.4; filter: blur(4px); transition: opacity var(--dur-focus) var(--ease-vector), filter var(--dur-focus) var(--ease-vector); }

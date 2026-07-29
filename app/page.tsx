@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { BRAND, MODULES } from "@/lib/brand";
 import { SiteNav } from "@/components/marketing/SiteNav";
+import { ThresholdGate } from "@/components/cxos/ThresholdGate";
 import { SiteFooter } from "@/components/marketing/SiteFooter";
 import { DashboardPreview } from "@/components/marketing/DashboardPreview";
 import {
@@ -84,6 +85,21 @@ export default function Home() {
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-ink-950 text-white [&_section]:scroll-mt-20">
+      {/* CXOS Phase 2 — the Threshold. First human visit ENTERS CreditVector;
+          crawlers, no-JS, reduced-motion and returning sessions land directly
+          on this fully server-rendered page beneath it. The inline script runs
+          BEFORE the hero is parsed: when (and only when) this visit will get
+          the walk, it drops the page into darkness at first paint, so the Hero
+          is never glimpsed before it is earned. The darkness itself carries a
+          CSS-only 12s safety fade (the reveal-safety pattern) so no failure
+          mode can strand a black screen. */}
+      <script
+        dangerouslySetInnerHTML={{
+          __html:
+            'try{if(!matchMedia("(prefers-reduced-motion: reduce)").matches&&!sessionStorage.getItem("cx-threshold")){var c=document.createElement("canvas");if(c.getContext("webgl2")||c.getContext("webgl"))document.documentElement.setAttribute("data-cxenter","1")}}catch(e){}',
+        }}
+      />
+      <ThresholdGate />
       <SiteNav />
 
       <main id="main">
