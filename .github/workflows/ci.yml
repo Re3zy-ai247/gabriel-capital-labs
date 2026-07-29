@@ -58,7 +58,7 @@ jobs:
       - name: Lint (advisory — pre-existing issues; not a launch gate)
         run: npm run lint
         continue-on-error: true
-      - name: Guards (DB-free suite — 31 scripts)
+      - name: Guards (DB-free suite)
         run: |
           set -e
           for f in scripts/*.test.ts; do
@@ -68,5 +68,14 @@ jobs:
             echo "── $f"
             npx tsx "$f"
           done
+      # scripts/*.test.ts is a NON-RECURSIVE glob, so the runtime guards under
+      # scripts/runtime/ were never executed by the step above — the strongest
+      # money-path evidence we have was not evidence CI ever looked at. These run the
+      # real route handlers rather than matching their source text. (Guards that
+      # execute code but live directly under scripts/ are already covered by the step
+      # above; only this directory needs its own step.) run-all.ts globs its own
+      # directory, enforces an explicit REQUIRED list, and fails the job on any failure.
+      - name: Runtime guards (real handlers, mocked Stripe and Prisma)
+        run: npx tsx scripts/runtime/run-all.ts
       - name: Build
         run: npm run build
