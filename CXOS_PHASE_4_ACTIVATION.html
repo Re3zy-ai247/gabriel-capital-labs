@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CXOS Phase 4 — Preview Authentication Activation Runbook</title>
+<meta name="description" content="Phone-friendly activation: isolated Preview database, env scoping matrix, hard safety gate proofs, bootstrap, verification walk, revocation ladder.">
+<style>
+:root{--bg:#ffffff;--fg:#14181f;--mut:#4a5462;--line:#d9dee6;--acc:#0b4fa8;--code:#f2f4f7;
+--red:#8a1420;--redbg:#fdeaec;--amb:#7a4a00;--ambbg:#fff5e0;--grn:#0f5c34;--grnbg:#e6f5ec;}
+*{box-sizing:border-box}
+body{margin:0;padding:1.1rem;background:var(--bg);color:var(--fg);
+font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+-webkit-text-size-adjust:100%;overflow-wrap:break-word}
+main{max-width:60rem;margin:0 auto}
+h1{font-size:1.6rem;line-height:1.25;margin:.2rem 0 .4rem;letter-spacing:-.01em}
+h2{font-size:1.28rem;margin:2.2rem 0 .7rem;padding-bottom:.32rem;border-bottom:2px solid var(--line)}
+h3{font-size:1.08rem;margin:1.6rem 0 .5rem}
+h4{font-size:1rem;margin:1.2rem 0 .4rem;color:var(--mut)}
+p{margin:.7rem 0}
+a{color:var(--acc)}
+code{background:var(--code);padding:.12em .38em;border-radius:4px;
+font:.86em/1.4 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;word-break:break-word}
+hr{border:0;border-top:1px solid var(--line);margin:2rem 0}
+blockquote{margin:1.1rem 0;padding:.85rem 1rem;background:var(--redbg);
+border-left:4px solid var(--red);border-radius:0 6px 6px 0;color:#5c0f18}
+blockquote strong{color:var(--red)}
+ul,ol{padding-left:1.35rem;margin:.7rem 0}
+li{margin:.34rem 0}
+.tw{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:1rem 0;
+border:1px solid var(--line);border-radius:8px}
+table{border-collapse:collapse;width:100%;min-width:34rem;font-size:.9rem}
+th,td{padding:.55rem .7rem;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+th{background:#f5f7fa;font-weight:650;white-space:nowrap}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:nth-child(even){background:#fafbfc}
+.meta{color:var(--mut);font-size:.92rem;margin:.5rem 0 1.2rem}
+nav.toc{background:#f7f9fb;border:1px solid var(--line);border-radius:8px;padding:.85rem 1rem;margin:1.4rem 0}
+nav.toc h2{font-size:.82rem;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);
+border:0;margin:0 0 .5rem;padding:0}
+nav.toc ol{margin:0;padding-left:1.2rem;font-size:.92rem}
+nav.toc li{margin:.2rem 0}
+.legend{display:flex;flex-wrap:wrap;gap:.4rem;margin:1rem 0}
+.tag{font-size:.76rem;font-weight:650;padding:.18rem .5rem;border-radius:999px;white-space:nowrap}
+.t-open{background:var(--redbg);color:var(--red)}
+.t-part{background:var(--ambbg);color:var(--amb)}
+.t-closed{background:var(--grnbg);color:var(--grn)}
+footer{margin-top:2.5rem;padding-top:1rem;border-top:1px solid var(--line);
+color:var(--mut);font-size:.85rem}
+@media(max-width:34rem){body{padding:.8rem}h1{font-size:1.35rem}table{font-size:.84rem;min-width:30rem}}
+@media print{body{padding:0;font-size:11pt}nav.toc{break-inside:avoid}
+.tw{overflow:visible;border:0}table{min-width:0;font-size:9pt}
+h2{break-after:avoid}tr{break-inside:avoid}a{color:#000;text-decoration:none}
+a[href^="http"]::after{content:" (" attr(href) ")";font-size:8pt;color:#555}}
+</style></head><body><main>
+<p class="meta"><strong>Gabriel Capital Labs · CreditVector™ Experience OS</strong> · 2026-07-29<br>
+Branch <code>feat/cxos-phase3</code> · production untouched · no secret values appear in this document</p>
+<nav class="toc"><h2>Contents</h2><ol><li><a href="#1-verified-truth-re-checked-this-session">1. Verified truth (re-checked this session)</a></li><li><a href="#2-the-environment-variable-scoping-matrix">2. The environment-variable scoping matrix</a></li><li><a href="#3-create-the-isolated-preview-database-phone-friendly">3. Create the isolated Preview database (phone-friendly)</a></li><li><a href="#4-the-hard-safety-gate-prove-isolation-before-attesting">4. THE HARD SAFETY GATE — prove isolation before attesting</a></li><li><a href="#5-initialize-the-schema-the-one-step-that-needs-a-terminal">5. Initialize the schema (the one step that needs a terminal)</a></li><li><a href="#6-create-the-review-accounts-secret-stays-in-your-shell">6. Create the review accounts (secret stays in your shell)</a></li><li><a href="#7-sign-in-and-experience-it-all-on-your-phone-or-desktop">7. Sign in and experience it (all on your phone or desktop)</a></li><li><a href="#8-owner-checklist-what-changed-and-how-to-undo-it">8. Owner checklist — what changed, and how to undo it</a></li></ol></nav>
+<h1 id="cxos-phase-4-preview-authentication-activation-runbook">CXOS Phase 4 — Preview Authentication Activation Runbook</h1>
+<p>
+<strong>2026-07-29 · branch <code>feat/cxos-phase3</code> · Status: EVERYTHING AUTOMATED IS DONE — the remaining steps are yours by design</strong>
+ 
+<strong>No merge. No production deployment. No production database contact. Production env vars: change nothing.</strong>
+</p>
+<blockquote>The safe sign-in flow is fully built, gated, and proven. The gates now refuse to open for anyone but you: isolating the Preview database and scoping the secrets happen in YOUR Vercel and database consoles, which no session can (or should) reach. This runbook is the exact, phone-friendly path — with a live proof instrument at every step so nothing is taken on faith.</blockquote>
+<hr>
+<h2 id="1-verified-truth-re-checked-this-session">1. Verified truth (re-checked this session)</h2>
+<ul><li><code>origin/main</code> = <code>f449c35</code> (unmoved). Branch <code>feat/cxos-phase3</code>; the Vercel Preview</li></ul>
+<p>
+  deployment is CURRENT (deployment <code>dpl_Dg89ZRJu…</code> = commit <code>a03304e</code>, READY, stable alias
+ 
+  <code>gabriel-capital-labs-git-feat-cxo-06bc43-rey-gabriel-s-projects.vercel.app</code>); this runbook's
+ 
+  push adds the proof endpoint (<code>GET /api/cxos/founder-bootstrap</code>).
+</p>
+<ul><li><strong>Database provider:</strong> Prisma Postgres / Prisma Data Platform (documented endpoints</li></ul>
+<p>
+  <code>accelerate.prisma-data.net</code> + direct <code>db.prisma.io:5432</code> — VERIFIED from the repository's
+ 
+  own incident records). It supports <strong>multiple databases per project</strong> — an isolated Preview
+ 
+  database is a first-class object, created in the console in under a minute.
+</p>
+<ul><li><strong>The deployed app reads exactly ONE database variable: <code>DATABASE_URL</code></strong> (audited:</li></ul>
+<p>
+  <code>schema.prisma</code> has no <code>directUrl</code>; zero references to <code>PRISMA_DATABASE_URL</code>,
+ 
+  <code>POSTGRES_URL</code>, <code>POSTGRES_PRISMA_URL</code>, <code>POSTGRES_URL_NON_POOLING</code>, or <code>DIRECT_URL</code> anywhere
+ 
+  in runtime code — only operator-run tooling reads <code>GATE_D_DATABASE_URL</code>, and the opt-in
+ 
+  <code>EVENTBUS_INTEGRATION</code> script reads <code>DATABASE_URL</code> when YOU run it). So one Preview-scoped
+ 
+  <code>DATABASE_URL</code> row is genuinely sufficient — but the matrix below covers every variable so
+ 
+  nothing is assumed.
+</p>
+<ul><li>Correction for the record: the Phase 4 report said "84 source guard files"; the true count</li></ul>
+<p>
+  is <strong>83</strong> (+5 runtime).
+</p>
+<h2 id="2-the-environment-variable-scoping-matrix">2. The environment-variable scoping matrix</h2>
+<div class="tw"><table><thead><tr><th>Variable</th><th>Production</th><th>Preview</th><th>Development (local)</th><th>Required?</th><th>Must differ from Production?</th></tr></thead><tbody>
+<tr><td><code>DATABASE_URL</code></td><td>existing value — <strong>DO NOT TOUCH</strong></td><td><strong>NEW isolated Prisma Postgres URL</strong></td><td>local throwaway</td><td>YES — the only DB var the app reads</td><td><strong>YES — this is the isolation</strong></td></tr>
+<tr><td><code>PRISMA_DATABASE_URL</code> · <code>POSTGRES_URL</code> · <code>POSTGRES_PRISMA_URL</code> · <code>POSTGRES_URL_NON_POOLING</code> · <code>DIRECT_URL</code></td><td>not read by this codebase</td><td>not read</td><td>not read</td><td>NO</td><td>n/a — inert if present; leave untouched</td></tr>
+<tr><td><code>NEXTAUTH_SECRET</code></td><td>existing — DO NOT TOUCH</td><td><strong>ADD a fresh value, Preview scope</strong> (login 500s without it)</td><td>any local value</td><td>YES</td><td>YES (recommended — preview sessions then validate nowhere else)</td></tr>
+<tr><td><code>NEXTAUTH_URL</code></td><td>existing (<code>https://www.creditvector.app</code>) — DO NOT TOUCH</td><td><strong>must be ABSENT</strong> (NextAuth v4 then derives each deployment's URL from <code>VERCEL_URL</code>)</td><td><code>http://localhost:3000</code></td><td>Prod: yes · Preview: must NOT exist</td><td>must be absent in Preview</td></tr>
+<tr><td><code>VERCEL_URL</code></td><td>system-set</td><td>system-set</td><td>—</td><td>automatic</td><td>automatic</td></tr>
+<tr><td><code>CXOS_PREVIEW_DB_ISOLATED</code></td><td><strong>must NOT exist</strong></td><td><code>1</code> — set ONLY after §4's proofs</td><td>optional</td><td>Preview only</td><td>must not exist in Production</td></tr>
+<tr><td><code>CXOS_FOUNDER_BOOTSTRAP_SECRET</code></td><td><strong>must NOT exist</strong></td><td>fresh random, Preview only</td><td>optional</td><td>Preview only</td><td>must not exist in Production</td></tr>
+<tr><td><code>CXOS_FOUNDER_REVIEW_PASSWORD</code></td><td><strong>must NOT exist</strong></td><td>your chosen review password, Preview only</td><td>optional</td><td>Preview only</td><td>must not exist in Production</td></tr>
+</tbody></table></div>
+<p>
+Defense in depth: even if the three CXOS variables leaked into Production scope, the route
+ 
+404s there — first line, mutation-proven, and verified against a live production-env server
+ 
+presenting every secret.
+</p>
+<h2 id="3-create-the-isolated-preview-database-phone-friendly">3. Create the isolated Preview database (phone-friendly)</h2>
+<p>
+In <strong>console.prisma.io</strong> (works in a mobile browser):
+</p>
+<ol><li>Open your workspace → the project that owns the production database.</li><li><strong>New database</strong> (Create database) → name it <code>creditvector-preview</code> → pick the same region.</li><li>Open the new database → <strong>Connect</strong> → copy its connection string (one tap). This string is the ONLY thing you carry to Vercel; never paste it anywhere else.</li></ol>
+<p>
+In <strong>Vercel</strong> (mobile web: vercel.com → project <code>gabriel-capital-labs</code> → Settings →
+ 
+Environment Variables):
+</p>
+<ol><li>Find <code>DATABASE_URL</code> → if its single row has <strong>Preview</strong> ticked, EDIT and un-tick Preview (leave Production exactly as it is). Then <strong>Add</strong> → key <code>DATABASE_URL</code>, value = the new string from step 3, environment = <strong>Preview only</strong> → Save.</li><li><strong>Add</strong> <code>NEXTAUTH_SECRET</code> → a fresh random value → Preview only. (Generate on your phone: any password manager's generator is fine; length ≥ 32.)</li><li>If <code>NEXTAUTH_URL</code> has Preview ticked → edit and un-tick Preview.</li><li><strong>Add</strong> (all Preview-only): <code>CXOS_FOUNDER_BOOTSTRAP_SECRET</code> (fresh random) and <code>CXOS_FOUNDER_REVIEW_PASSWORD</code> (the password YOU will type at the review login). <strong>Do NOT add <code>CXOS_PREVIEW_DB_ISOLATED</code> yet</strong> — that is the attestation, and it comes after the proofs in §4.</li><li>Deployments → the latest <code>feat/cxos-phase3</code> deployment → ⋯ → <strong>Redeploy</strong> (so the new Preview scope applies).</li></ol>
+<h2 id="4-the-hard-safety-gate-prove-isolation-before-attesting">4. THE HARD SAFETY GATE — prove isolation before attesting</h2>
+<p>
+Already proven by automation (live servers + mutations, recorded in the Phase 4 report and
+ 
+this session): production bootstrap 404 with all secrets presented · un-attested preview 409 ·
+ 
+GET fingerprint 404 in production · database never read without attestation · no credential
+ 
+ever echoed · no static password exists · this session changed NOTHING in your Vercel or any
+ 
+real database.
+</p>
+<p>
+<strong>Yours to verify (each is one glance):</strong>
+</p>
+<ol><li><strong>Two different rows in Vercel:</strong> <code>DATABASE_URL</code> now shows a Production row (old value, untouched) and a Preview row (new value). Tap reveal on each — visibly different strings. That kills "a second variable pointing at the same database".</li><li><strong>What the deployment ACTUALLY resolves:</strong> open, in your phone browser (you'll pass the Vercel SSO wall first — that protection stays ON): <code>https://gabriel-capital-labs-git-feat-cxo-06bc43-rey-gabriel-s-projects.vercel.app/api/cxos/founder-bootstrap</code> You'll see JSON: <code>vercelEnv:"preview"</code>, the redacted database identity (host + name + fingerprint — no credentials), and the gate booleans. Confirm the host/fingerprint match the NEW database (compare host with the Prisma console's connect view), and that <code>nextauthSecretConfigured:true</code>, <code>nextauthUrlSet:false</code>.</li><li><strong>Production unchanged:</strong> the same URL on <code>https://www.creditvector.app/api/cxos/founder-bootstrap</code> → 404 page. (Also: you changed no Production-scoped row in step §3.)</li></ol>
+<p>
+If — and only if — 1–3 hold: Vercel → add <code>CXOS_PREVIEW_DB_ISOLATED=1</code> (Preview only) →
+ 
+Redeploy once more. Re-open the GET: <code>isolationAttested:true</code>,
+ 
+<code>reviewAccounts: consumer/agency "absent"</code> (it now reads the EMPTY isolated database).
+</p>
+<h2 id="5-initialize-the-schema-the-one-step-that-needs-a-terminal">5. Initialize the schema (the one step that needs a terminal)</h2>
+<p>
+The new database is empty. From any computer with the repo (this is NOT a migration and NOT
+ 
+production — it materializes the schema into a disposable review fixture):
+</p>
+<p>
+```bash
+ 
+read -s PREVIEW_DB   # paste the NEW preview connection string; nothing echoes
+ 
+DATABASE_URL="$PREVIEW_DB" npx prisma db push
+ 
+unset PREVIEW_DB
+ 
+```
+</p>
+<p>
+Never run this with any other URL. Production schema changes remain MIGRATION-FIRST and are
+ 
+untouched by this runbook.
+</p>
+<h2 id="6-create-the-review-accounts-secret-stays-in-your-shell">6. Create the review accounts (secret stays in your shell)</h2>
+<p>
+The protected preview refuses curl without Vercel SSO, so first: Vercel → Settings →
+ 
+Deployment Protection → <strong>Protection Bypass for Automation</strong> → Add secret → copy it.
+ 
+(Protection itself stays ON — this is Vercel's supported automation path.)
+</p>
+<p>
+```bash
+ 
+read -s BOOT; read -s BYPASS   # bootstrap secret, then bypass token; nothing echoes
+ 
+curl -X POST \
+ 
+  -H "x-cxos-bootstrap: $BOOT" \
+ 
+  -H "x-vercel-protection-bypass: $BYPASS" \
+ 
+  https://gabriel-capital-labs-git-feat-cxo-06bc43-rey-gabriel-s-projects.vercel.app/api/cxos/founder-bootstrap
+ 
+unset BOOT BYPASS
+ 
+```
+</p>
+<p>
+Expect <code>{"ok":true,"accounts":[{...created:true},{...created:true}]}</code>. Run it twice —
+ 
+the second run returns <code>created:false</code> for both (idempotency, live). The response carries no
+ 
+credential material (guard-pinned). Re-open the GET: <code>reviewAccounts</code> now <code>active</code>/<code>active</code>.
+</p>
+<h2 id="7-sign-in-and-experience-it-all-on-your-phone-or-desktop">7. Sign in and experience it (all on your phone or desktop)</h2>
+<div class="tw"><table><thead><tr><th>Step</th><th>Where</th><th>Expect</th></tr></thead><tbody>
+<tr><td>Sign in (consumer)</td><td><code>&lt;preview&gt;/login</code> — identifier <code>cxreview-consumer</code>, your review password</td><td><strong>the first authenticated entry</strong>: identity → clearance → systems → evidence → Kai's brief → the room</td></tr>
+<tr><td>Returning entry</td><td>leave <code>/dashboard</code>, come back</td><td>the ~1 s short variant</td></tr>
+<tr><td>Consumer projection</td><td>the room</td><td>OPERATOR command header, your empty case ("first mission staged")</td></tr>
+<tr><td>Agency projection</td><td>sign out → sign in <code>cxreview-agency</code></td><td>AGENCY OPERATOR header, agency clearance beat</td></tr>
+<tr><td>Logout</td><td>Sidebar → Log out</td><td>immediate → <code>/login</code></td></tr>
+<tr><td>Signed-out deep link</td><td>open <code>/dashboard</code> signed out</td><td>truthful "Please sign in.", no overlay</td></tr>
+<tr><td>Revoke test</td><td>§6 curl with <code>?revoke=1</code> appended</td><td>both logins refused afterwards; GET shows <code>revoked</code></td></tr>
+<tr><td>Re-enable</td><td>§6 curl again (no <code>?revoke</code>)</td><td>accounts re-enabled, <code>active</code></td></tr>
+</tbody></table></div>
+<p>
+Clickable protected paths (Vercel SSO first):
+ 
+<strong>Login</strong> <code>/login</code> · <strong>Mission Control</strong> <code>/dashboard</code> · <strong>Review hub</strong> <code>/review</code> ·
+ 
+<strong>Mission Control stage</strong> <code>/review/mission-control</code> (consumer/agency selectors are on the
+ 
+stage) · <strong>Proof endpoint</strong> <code>/api/cxos/founder-bootstrap</code> — all on
+ 
+<code>https://gabriel-capital-labs-git-feat-cxo-06bc43-rey-gabriel-s-projects.vercel.app</code>.
+</p>
+<p>
+Recordings of the complete authenticated walkthrough (desktop + mobile + tablet +
+ 
+reduced-motion + returning + agency), captured against the real auth stack with the real login
+ 
+form, were delivered with the Phase 4 report. Your §7 walk is the live confirmation of the
+ 
+same flow. (This session cannot reach the protected preview — its egress proxy blocks
+ 
+vercel.app and the SSO wall is yours alone — which is exactly as it should be.)
+</p>
+<h2 id="8-owner-checklist-what-changed-and-how-to-undo-it">8. Owner checklist — what changed, and how to undo it</h2>
+<p>
+<strong>Changed in Vercel (all Preview scope; Production rows untouched):</strong>
+ 
+<code>DATABASE_URL</code> (new Preview row) · <code>NEXTAUTH_SECRET</code> (new Preview row) · <code>NEXTAUTH_URL</code>
+ 
+(Preview un-ticked) · <code>CXOS_PREVIEW_DB_ISOLATED=1</code> · <code>CXOS_FOUNDER_BOOTSTRAP_SECRET</code> ·
+ 
+<code>CXOS_FOUNDER_REVIEW_PASSWORD</code> · one Protection Bypass automation secret.
+ 
+<strong>Created outside Vercel:</strong> one disposable Prisma Postgres database (<code>creditvector-preview</code>)
+ 
+holding only synthetic review rows.
+</p>
+<p>
+<strong>Revocation ladder (any step alone is effective):</strong>
+</p>
+<ol><li>Accounts: §6 curl with <code>?revoke=1</code> → both disabled (sign-in refused + live sessions evicted).</li><li>Route: delete <code>CXOS_FOUNDER_BOOTSTRAP_SECRET</code> → the bootstrap ceases to exist (404).</li><li>Attestation: delete <code>CXOS_PREVIEW_DB_ISOLATED</code> → hard 409, and the GET stops reading the DB.</li><li>Everything: delete the <code>creditvector-preview</code> database in the Prisma console — every synthetic row and the whole fixture disappear. Delete the automation bypass secret.</li></ol>
+<p>
+<strong>Credential hygiene, verified:</strong> no secret value appears in the repository, this report, the
+ 
+chat, the screenshots, or the recordings (guard + mutation <code>M3</code>/<code>M9</code> + response checks). The
+ 
+only literal passwords ever used were container-local throwaways for a database that no longer
+ 
+exists outside this session.
+</p>
+<hr>
+<p>
+*No merge. No production deployment. No production database was contacted at any point.
+ 
+Stop point: you sign in, walk the entry, and review both projections — then Phase 4 closes on
+ 
+your decision block (Phase 4 report §11).*
+</p>
+<footer>Projection of <code>CXOS_PHASE_4_ACTIVATION.md</code>, which is canonical.
+Contains no credentials, secrets, tokens, or environment values.</footer>
+</main></body></html>
