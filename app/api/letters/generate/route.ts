@@ -8,7 +8,7 @@ import { enforceRateLimit } from "@/lib/rateLimit";
 import { buildContext, renderTemplateLetter, buildSystemPrompt, buildUserPrompt } from "@/lib/letter";
 import { applyCompliance } from "@/lib/compliance";
 import { encryptText } from "@/lib/docCrypto";
-import { getEntitlement } from "@/lib/entitlements";
+import { getEntitlement, spendLetterCredits } from "@/lib/entitlements";
 import { presentBureaus, getBureauData } from "@/lib/bureauData";
 import { getFurnisherContact, formatFurnisherAddress } from "@/lib/furnisher";
 import type { Bureau } from "@prisma/client";
@@ -167,15 +167,9 @@ export async function POST(req: Request) {
     }
 
     // Spend purchased letter credits for anything beyond the free monthly allowance.
-    if (!entitlement.premium && created.length > 0) {
-      const fromCredits = Math.max(0, created.length - entitlement.freeMonthlyRemaining);
-      if (fromCredits > 0) {
-        await prisma.user.update({
-          where: { id: user.id },
-          data: { letterCredits: { decrement: fromCredits } },
-        });
-      }
-    }
+    // Clamped + conditionally guarded in lib/entitlements so the balance can never go
+    // negative (a negative balance silently eats the next letter-pack purchase).
+    await spendLetterCredits(user.id, entitlement, created.length);
 
     await track(PRODUCT_EVENTS.disputeCreated, { userId: user.id, meta: { count: created.length, aiRefined: anyAI } });
 

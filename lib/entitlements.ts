@@ -1,4 +1,5 @@
 import { prisma } from "./prisma";
+import { PRODUCT_EVENTS } from "@/lib/events";
 import { CAPABILITY_MATRIX } from "@/config/capabilityMatrix";
 import { grantForTier, limitForTier } from "@/lib/os/host/tierResolver";
 import { planTierFromUser, ACTIVE_SUBSCRIPTION_STATES } from "@/lib/os/host/billingTier";
@@ -113,6 +114,70 @@ function startOfMonthUTC(d = new Date()): Date {
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1));
 }
 
+// Sum this month's dispute_created events from the APPEND-ONLY ProductEvent ledger.
+// Letter rows alone cannot meter usage: a user may DELETE their own letters
+// (DELETE /api/letters/[id]), which would reset the free-tier meter and make the 402
+// paywall bypassable. No route deletes ProductEvent rows, so the ledger is the honest
+// floor. Volume is tiny (the free tier is 3/month), so a fetch + JS sum is correct and
+// cheap — no JSON aggregation. Fails toward CHARGING: an event whose meta.count is
+// missing or unparseable still counts as 1 letter, never 0. Raw SQL matches the other
+// ProductEvent readers (lib/events.ts, lib/analytics/aggregate.ts) — self-heal table.
+async function lettersUsedFromLedger(userId: string, since: Date): Promise<number> {
+  try {
+    const rows = await prisma.$queryRawUnsafe<Array<{ meta: unknown }>>(
+      `SELECT "meta" FROM "ProductEvent" WHERE "userId" = $1 AND "name" = $2 AND "createdAt" >= $3`,
+      userId,
+      PRODUCT_EVENTS.disputeCreated,
+      since
+    );
+    let total = 0;
+    for (const r of rows) {
+      const raw = (r.meta as Record<string, unknown> | null)?.count;
+      const n = typeof raw === "number" ? raw : typeof raw === "string" ? Number(raw) : NaN;
+      total += Number.isFinite(n) && n >= 1 ? Math.floor(n) : 1;
+    }
+    return total;
+  } catch (e) {
+    // The ledger is a legacy self-heal table; if it is unreachable, degrade to the
+    // Letter row count (today's behavior) rather than failing every entitlement read.
+    console.error("entitlements: ledger usage read failed, using row count:", e);
+    return 0;
+  }
+}
+
+/**
+ * Spend purchased letter-pack credits for letters generated beyond the free monthly
+ * allowance. THE decrement path for every letter surface (generate + round 2) so the
+ * accounting exists in exactly one place.
+ *
+ * The decrement is clamped to the credits actually held AND conditional on the row
+ * still holding them, so a concurrent spend can never drive the balance negative — a
+ * negative balance would silently eat a future letter-pack purchase.
+ */
+export async function spendLetterCredits(
+  userId: string,
+  e: Pick<Entitlement, "premium" | "freeMonthlyRemaining" | "letterCredits">,
+  generated: number
+): Promise<void> {
+  if (e.premium || generated <= 0) return;
+  const beyondFree = Math.max(0, generated - Math.max(0, e.freeMonthlyRemaining));
+  const fromCredits = Math.min(beyondFree, Math.max(0, e.letterCredits));
+  if (fromCredits <= 0) return;
+
+  const spent = await prisma.user.updateMany({
+    where: { id: userId, letterCredits: { gte: fromCredits } },
+    data: { letterCredits: { decrement: fromCredits } },
+  });
+  if (spent.count === 0) {
+    // Lost the race (or the balance was already below the amount): clamp at zero
+    // instead of leaving a negative balance behind.
+    await prisma.user.updateMany({
+      where: { id: userId, letterCredits: { lt: fromCredits } },
+      data: { letterCredits: 0 },
+    });
+  }
+}
+
 export async function getEntitlement(user: {
   id: string;
   plan?: string | null;
@@ -131,9 +196,16 @@ export async function getEntitlement(user: {
     if (agency && isPremium(agency)) premium = true;
   }
 
-  const lettersUsedThisMonth = await prisma.letter.count({
-    where: { userId: user.id, createdAt: { gte: startOfMonthUTC() } },
-  });
+  // Monthly usage = MAX(deletable Letter rows, append-only ProductEvent ledger).
+  // The ledger closes the delete-to-reset paywall bypass; the MAX means the meter can
+  // never read LOWER than it does today, so pre-ledger accounts are not retroactively
+  // granted free letters.
+  const monthStart = startOfMonthUTC();
+  const [letterRowsThisMonth, ledgerUsedThisMonth] = await Promise.all([
+    prisma.letter.count({ where: { userId: user.id, createdAt: { gte: monthStart } } }),
+    lettersUsedFromLedger(user.id, monthStart),
+  ]);
+  const lettersUsedThisMonth = Math.max(letterRowsThisMonth, ledgerUsedThisMonth);
   const letterCredits = Math.max(0, user.letterCredits ?? 0);
 
   if (premium) {

@@ -2,23 +2,31 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "./auth";
 import { prisma } from "./prisma";
 
-export async function isAdmin(email: string): Promise<boolean> {
-  const user = await prisma.user.findUnique({
-    where: { email },
-    select: { role: true },
-  });
-  return user?.role === "ADMIN";
+// True when the CURRENT session belongs to an enabled ADMIN. Privilege is
+// resolved from the session's user id — NEVER from a caller-supplied email:
+// users can change their own email (app/api/profile/route.ts), so an
+// email-keyed lookup is a stale, user-mutable identifier to authorize on.
+export async function isAdmin(): Promise<boolean> {
+  return (await requireAdmin()) !== null;
 }
 
 // Returns the signed-in ADMIN's User row, or null if not signed in / not an
-// admin. Resolves the REAL session identity (never an impersonated user), so it
-// is the correct gate for every /api/admin/* route and for granting admin nav.
+// admin / disabled. Resolves the REAL session identity (never an impersonated
+// user), so it is the correct gate for every /api/admin/* route and for granting
+// admin nav.
 export async function requireAdmin() {
   const session = await getServerSession(authOptions);
   const id = (session?.user as { id?: string } | undefined)?.id;
   if (!id) return null;
   const user = await prisma.user.findUnique({ where: { id } });
   if (!user || user.role !== "ADMIN") return null;
+  // `disabled` was enforced only at sign-in (lib/auth.ts). Sessions are stateless
+  // JWTs with no maxAge, so NextAuth's 30-day default applied: an admin suspended
+  // AFTER sign-in kept /admin and every admin API for up to a month — admin
+  // privilege had no revocation path. Re-checking here costs no extra query (the
+  // row is already loaded) and fails closed, matching currentAccount() in
+  // lib/session.ts.
+  if (user.disabled) return null;
   return user;
 }
 
