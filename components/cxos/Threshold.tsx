@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import gsap from "gsap";
 import { createThresholdScene, type ThresholdScene } from "./thresholdScene";
+import { DirectorHUD, type DirectorController } from "./DirectorHUD";
 import { BRAND } from "@/lib/brand";
 
 // CXOS Threshold — the ENTRY (Phase 2 · "walking into the operating system").
@@ -23,11 +24,13 @@ import { BRAND } from "@/lib/brand";
 
 const DUR = 10; // master timeline seconds (auto-advance; input accelerates)
 
-export function Threshold({ onDone }: { onDone: () => void }) {
+export function Threshold({ onDone, review = false }: { onDone: () => void; review?: boolean }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const skipRef = useRef<HTMLButtonElement>(null);
   const doneRef = useRef(false);
+  const ctlRef = useRef<DirectorController | null>(null);
+  const [hudReady, setHudReady] = useState(false);
   const [soundOn, setSoundOn] = useState(false);
   const audioRef = useRef<{ ctx: AudioContext; gain: GainNode } | null>(null);
 
@@ -74,9 +77,13 @@ export function Threshold({ onDone }: { onDone: () => void }) {
     // stride — "every scroll is another step" — and can only move forward.
     let target = 0;
     let actual = 0;
+    let paused = false;
+    let speed = 1;
+    let parallaxOn = true;
+    const frameTimes: number[] = [];
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
-      target += Math.min(Math.abs(e.deltaY), 120) * 0.0022;
+      if (!paused) target += Math.min(Math.abs(e.deltaY), 120) * 0.0022 * speed;
     };
     let touchY = 0;
     const onTouchStart = (e: TouchEvent) => { touchY = e.touches[0].clientY; };
@@ -84,18 +91,19 @@ export function Threshold({ onDone }: { onDone: () => void }) {
       e.preventDefault();
       const dy = touchY - e.touches[0].clientY;
       touchY = e.touches[0].clientY;
-      if (dy > 0) target += dy * 0.004;
+      if (dy > 0 && !paused) target += dy * 0.004 * speed;
     };
 
     // The room answers the hand: pointer parallax, and device tilt where it is
     // available without a permission wall (never prompt inside the Threshold).
     const onPointer = (e: PointerEvent) => {
+      if (!parallaxOn) return;
       scene?.setParallax((e.clientX / window.innerWidth - 0.5) * 2, (e.clientY / window.innerHeight - 0.5) * 2);
     };
     const iosPermissionWall =
       typeof (DeviceOrientationEvent as unknown as { requestPermission?: unknown }).requestPermission === "function";
     const onTilt = (e: DeviceOrientationEvent) => {
-      if (e.gamma == null || e.beta == null) return;
+      if (!parallaxOn || e.gamma == null || e.beta == null) return;
       scene?.setParallax(Math.max(-1, Math.min(1, e.gamma / 28)), Math.max(-1, Math.min(1, (e.beta - 40) / 32)));
     };
     const onKey = (e: KeyboardEvent) => {
@@ -119,8 +127,12 @@ export function Threshold({ onDone }: { onDone: () => void }) {
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
       if (!document.hidden) {
-        target = Math.min(1, target + dt / (mobile ? 8 : DUR)); // the walk never stalls
-        actual += (target - actual) * Math.min(1, dt * 4.5);    // heavy, smooth inertia
+        frameTimes.push(dt * 1000);
+        if (frameTimes.length > 120) frameTimes.shift();
+        if (!paused) {
+          target = Math.min(1, target + (dt * speed) / (mobile ? 8 : DUR)); // the walk never stalls
+          actual += (target - actual) * Math.min(1, dt * 4.5);              // heavy, smooth inertia
+        }
         tl.progress(actual);
         scene?.setProgress(actual);
         scene?.tick(dt);
@@ -128,7 +140,10 @@ export function Threshold({ onDone }: { onDone: () => void }) {
           // sound follows the walk: the hum swells toward the opening
           audioRef.current.gain.gain.setTargetAtTime(0.02 + actual * 0.03, audioRef.current.ctx.currentTime, 0.2);
         }
-        if (actual > 0.999) finish(false);
+        if (actual > 0.999) {
+          if (review) { target = 0; actual = 0; } // the review stage loops; Escape exits
+          else finish(false);
+        }
       }
       raf = requestAnimationFrame(frame);
     };
@@ -136,10 +151,31 @@ export function Threshold({ onDone }: { onDone: () => void }) {
 
     skipRef.current?.focus({ preventScroll: true });
 
+    // ── Director console (Founder Review Mode only — never on production) ────
+    if (review && scene) {
+      const sc = scene;
+      ctlRef.current = {
+        getProgress: () => actual,
+        setProgress: (p) => { target = p; actual = p; },
+        setPaused: (v) => { paused = v; },
+        isPaused: () => paused,
+        setSpeed: (v) => { speed = v; },
+        getSpeed: () => speed,
+        setDensity: (f) => sc.setDensity(f),
+        setIntensity: (f) => sc.setIntensity(f),
+        setParallaxEnabled: (v) => { parallaxOn = v; },
+        getCameraZ: () => sc.getCameraZ(),
+        frameTimes,
+        replay: () => { target = 0; actual = 0; paused = false; },
+      };
+      setHudReady(true);
+    }
+
     function finish(immediate: boolean) {
       if (doneRef.current) return;
       doneRef.current = true;
-      try { sessionStorage.setItem("cx-threshold", "1"); } catch { /* private mode */ }
+      // Review runs never consume the visitor's one first impression.
+      if (!review) { try { sessionStorage.setItem("cx-threshold", "1"); } catch { /* private mode */ } }
       const cleanup = () => {
         cancelAnimationFrame(raf);
         window.removeEventListener("wheel", onWheel);
@@ -233,6 +269,7 @@ export function Threshold({ onDone }: { onDone: () => void }) {
         </div>
       </div>
 
+      {hudReady && ctlRef.current ? <DirectorHUD ctl={ctlRef.current} /> : null}
       <div className="absolute right-4 top-4 flex items-center gap-2 md:right-6 md:top-6">
         <button type="button" onClick={toggleSound}
           className="rounded-lg border border-ink-600/80 bg-ink-900/60 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-widest text-slate-300 backdrop-blur transition hover:border-brand-500/50 hover:text-white"

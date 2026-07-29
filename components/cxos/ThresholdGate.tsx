@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ComponentType } from "react";
+import { isDirectorActive } from "@/lib/cxos/reviewMode";
 
 // CXOS Threshold — the GATE (Phase 2).
 //
@@ -23,16 +24,21 @@ import { useEffect, useState, type ComponentType } from "react";
 //                                     load event + an idle callback, so not one
 //                                     cinematic byte competes with LCP.
 export function ThresholdGate() {
-  const [Threshold, setThreshold] = useState<ComponentType<{ onDone: () => void }> | null>(null);
+  const [Threshold, setThreshold] = useState<ComponentType<{ onDone: () => void; review?: boolean }> | null>(null);
+  const [review, setReview] = useState(false);
   const [done, setDone] = useState(false);
 
   useEffect(() => {
     // The pre-paint script may have dropped the page into darkness; every early
     // return below must lift it, or a condition mismatch would strand black.
     const lift = () => document.documentElement.removeAttribute("data-cxenter");
+    // Founder Review Mode (?director on a non-production build) replays the
+    // entry regardless of session memory. It never overrides reduced motion.
+    const director = isDirectorActive();
+    if (director) setReview(true);
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return lift();
     try {
-      if (sessionStorage.getItem("cx-threshold") === "1") return lift();
+      if (!director && sessionStorage.getItem("cx-threshold") === "1") return lift();
     } catch {
       return lift(); // storage unavailable — never risk replaying forever
     }
@@ -64,5 +70,5 @@ export function ThresholdGate() {
   }, []);
 
   if (done || !Threshold) return null;
-  return <Threshold onDone={() => setDone(true)} />;
+  return <Threshold review={review} onDone={() => setDone(true)} />;
 }

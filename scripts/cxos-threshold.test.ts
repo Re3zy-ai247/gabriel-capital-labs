@@ -99,9 +99,9 @@ check("the corridor is ONE instanced draw", /new InstancedMesh\(strip, sMat, STR
 check("no shadows anywhere in the scene", !/castShadow|receiveShadow|shadowMap/.test(scn));
 check("antialias off — resolution spent on particles, not edges", /antialias: false/.test(scn));
 check("the walk cannot stall (auto-advance floor exists alongside input strides)",
-  /target = Math\.min\(1, target \+ dt \//.test(thr));
+  /target = Math\.min\(1, target \+ \(dt \* speed\) \//.test(thr));
 check("input can only move the walk FORWARD (scroll never rewinds the entry)",
-  /if \(dy > 0\) target \+=/.test(thr) && !/target -=/.test(thr));
+  /if \(dy > 0 && !paused\) target \+=/.test(thr) && !/target -=/.test(thr));
 check("no iOS permission wall — tilt only where it is free",
   /requestPermission/.test(thr) && /if \(!iosPermissionWall\) window\.addEventListener\("deviceorientation"/.test(thr));
 

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { BRAND, MODULES } from "@/lib/brand";
 import { SiteNav } from "@/components/marketing/SiteNav";
 import { ThresholdGate } from "@/components/cxos/ThresholdGate";
+import { reviewBuildAllowed } from "@/lib/cxos/reviewMode";
 import { SiteFooter } from "@/components/marketing/SiteFooter";
 import { DashboardPreview } from "@/components/marketing/DashboardPreview";
 import {
@@ -96,7 +97,9 @@ export default function Home() {
       <script
         dangerouslySetInnerHTML={{
           __html:
-            'try{if(!matchMedia("(prefers-reduced-motion: reduce)").matches&&!sessionStorage.getItem("cx-threshold")){var c=document.createElement("canvas");if(c.getContext("webgl2")||c.getContext("webgl"))document.documentElement.setAttribute("data-cxenter","1")}}catch(e){}',
+            'try{var R=' +
+            (reviewBuildAllowed() ? "1" : "0") +
+            '&&/[?&](director|cxos|review)(=|&|$)/.test(location.search);if(!matchMedia("(prefers-reduced-motion: reduce)").matches&&(R||!sessionStorage.getItem("cx-threshold"))){var c=document.createElement("canvas");if(c.getContext("webgl2")||c.getContext("webgl"))document.documentElement.setAttribute("data-cxenter","1")}}catch(e){}',
         }}
       />
       <ThresholdGate />

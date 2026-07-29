@@ -43,6 +43,11 @@ const OCEAN = 0x2563eb;  // the ocean/blue depth family
 export interface ThresholdScene {
   setProgress(p: number): void;
   setParallax(x: number, y: number): void;
+  /** Director controls: fraction of the particle field to draw (0.1–1). */
+  setDensity(f: number): void;
+  /** Director controls: light multiplier (0.2–1.5) on every emissive element. */
+  setIntensity(f: number): void;
+  getCameraZ(): number;
   tick(dt: number): void;
   resize(): void;
   dispose(): void;
@@ -136,6 +141,8 @@ export function createThresholdScene(canvas: HTMLCanvasElement, mobile: boolean)
 
   // ── State ─────────────────────────────────────────────────────────────────
   let progress = 0;
+  let density = 1;           // Director: fraction of particles drawn
+  let intensity = 1;         // Director: emissive multiplier
   let px = 0, py = 0;        // parallax target (pointer / tilt)
   let cx = 0, cy = 0;        // smoothed camera offset
   let time = 0;
@@ -147,6 +154,12 @@ export function createThresholdScene(canvas: HTMLCanvasElement, mobile: boolean)
 
   function setProgress(p: number) { progress = clamp01(p); }
   function setParallax(x: number, y: number) { px = x; py = y; }
+  function setDensity(f: number) {
+    density = Math.min(1, Math.max(0.1, f));
+    pGeo.setDrawRange(0, Math.floor(COUNT * density));
+  }
+  function setIntensity(f: number) { intensity = Math.min(1.5, Math.max(0.2, f)); }
+  function getCameraZ() { return camera.position.z; }
 
   function tick(dt: number) {
     time += dt;
@@ -160,7 +173,7 @@ export function createThresholdScene(canvas: HTMLCanvasElement, mobile: boolean)
     camera.lookAt(cx * 0.35, 0.35, camera.position.z - 30);
 
     // Beat 0 — the void breathes in.
-    pMat.opacity = 0.14 + ease(win(0, 0.14)) * 0.5;
+    pMat.opacity = (0.14 + ease(win(0, 0.14)) * 0.5) * intensity;
     // Particles drift; late in the walk they streak past (z-velocity with progress).
     const flow = 0.35 + ease(win(0.85, 1)) * 26;
     const pos = pGeo.getAttribute("position") as BufferAttribute;
@@ -175,15 +188,15 @@ export function createThresholdScene(canvas: HTMLCanvasElement, mobile: boolean)
 
     // Beat 1 — the first light: distant, then undeniable.
     const lightIn = ease(win(0.12, 0.3));
-    coreMat.opacity = lightIn * 0.9 + ease(win(0.92, 1)) * 0.1;
+    coreMat.opacity = (lightIn * 0.9 + ease(win(0.92, 1)) * 0.1) * intensity;
     core.scale.setScalar(4 + lightIn * 5 + ease(win(0.85, 1)) * 60);
-    nebMat.opacity = lightIn * 0.55;
+    nebMat.opacity = lightIn * 0.55 * intensity;
 
     // Beat 2 — the architecture assembles: strips fade up in sequence, with a
     // slow sinusoidal "power" shimmer that reads as energy, not blinking.
     const arch = win(0.28, 0.52);
-    sMat.opacity = ease(arch) * 0.85;
-    railMat.opacity = ease(win(0.32, 0.5)) * 0.5;
+    sMat.opacity = ease(arch) * 0.85 * intensity;
+    railMat.opacity = ease(win(0.32, 0.5)) * 0.5 * intensity;
     const pulse = 0.92 + Math.sin(time * 1.7) * 0.08;
     sMat.color.setHex(TEAL).multiplyScalar(pulse);
 
@@ -209,5 +222,5 @@ export function createThresholdScene(canvas: HTMLCanvasElement, mobile: boolean)
   }
 
   resize();
-  return { setProgress, setParallax, tick, resize, dispose };
+  return { setProgress, setParallax, setDensity, setIntensity, getCameraZ, tick, resize, dispose };
 }

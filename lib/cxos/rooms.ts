@@ -1,0 +1,115 @@
+// CXOS — the room registry (Founder Review System).
+//
+// One list, consumed by the /review hub, the Director HUD's room selector, and
+// every future phase's review page. A room is a destination with its own
+// atmosphere and its own entry; PLANNED rooms appear here so the Founder always
+// sees the whole map, not just what shipped.
+//
+// Client-safe: constants only, no server imports.
+
+export type RoomStatus =
+  | "PROTOTYPE" // CXOS entry experience implemented, under Founder review
+  | "LIVE" // CXOS treatment shipped to the product surface
+  | "PRODUCT" // the product surface exists; its CXOS entry is not built yet
+  | "PLANNED"; // neither surface nor entry exists yet
+
+export interface CxosRoom {
+  key: string;
+  name: string;
+  /** Where the experience (or today's surface) is entered. */
+  href: string;
+  status: RoomStatus;
+  phase: string;
+  /** One line the Founder reads on the review card. */
+  line: string;
+  /** True when the room requires an authenticated session to be meaningful. */
+  authed?: boolean;
+}
+
+export const CXOS_ROOMS: CxosRoom[] = [
+  {
+    key: "threshold",
+    name: "The Threshold",
+    href: "/review/threshold",
+    status: "PROTOTYPE",
+    phase: "Phase 2",
+    line: "Darkness → light → architecture → the name → CreditVector → the opening. The public entry.",
+  },
+  {
+    key: "hero",
+    name: "Hero / Arrival",
+    href: "/?director",
+    status: "LIVE",
+    phase: "Phase 1",
+    line: "Scene 1 arrival on the landing — aurora breath, settle ladder, sheen. Pure CSS, zero JS.",
+  },
+  {
+    key: "mission-control",
+    name: "Mission Control",
+    href: "/dashboard",
+    status: "PRODUCT",
+    phase: "Phase 4 (planned)",
+    line: "Security clearance → systems online → displays wake → Kai appears. Entry not yet built.",
+    authed: true,
+  },
+  {
+    key: "arena",
+    name: "Arena",
+    href: "/arena",
+    status: "PRODUCT",
+    phase: "Phase 5 (planned)",
+    line: "The vault: doors, evidence-backed XP assembling, operator recognized. Entry not yet built.",
+    authed: true,
+  },
+  {
+    key: "academy",
+    name: "Academy",
+    href: "/review#academy",
+    status: "PLANNED",
+    phase: "Phase 6 (needs product definition D-5)",
+    line: "The warm room — knowledge as light. No route exists yet; nothing is faked as live.",
+  },
+  {
+    key: "kai",
+    name: "Kai",
+    href: "/dashboard",
+    status: "PRODUCT",
+    phase: "Phase 4 (planned)",
+    line: "Executive intelligence, present in every room; its own introduction rides Mission Control.",
+    authed: true,
+  },
+  {
+    key: "marketplace",
+    name: "Marketplace",
+    href: "/review#marketplace",
+    status: "PLANNED",
+    phase: "Unscheduled",
+    line: "Registry placeholder — no product surface exists.",
+  },
+  {
+    key: "operator-network",
+    name: "Operator Network",
+    href: "/community",
+    status: "PRODUCT",
+    phase: "Unscheduled",
+    line: "The operator floor. CXOS entry unscheduled.",
+    authed: true,
+  },
+  {
+    key: "dashboard",
+    name: "Consumer Command",
+    href: "/dashboard",
+    status: "PRODUCT",
+    phase: "Phase 4 (planned)",
+    line: "The consumer's own case as the first protagonist.",
+    authed: true,
+  },
+  {
+    key: "enterprise",
+    name: "Enterprise",
+    href: "/review#enterprise",
+    status: "PLANNED",
+    phase: "Unscheduled",
+    line: "Registry placeholder — no product surface exists.",
+  },
+];
