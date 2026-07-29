@@ -305,7 +305,7 @@ Both are **NOT AUTHORIZED TO MERGE** and **NOT AUTHORIZED TO DEPLOY** in this se
 
 ## 28. Final report commit hash
 
-Committed to `claude/creditvector-founder-library-jwnbhc` — see the commit recorded in chat. **Remote publication of the report is not required for this task**; the two release branches are the only refs published for review.
+**`c596515`** on `claude/creditvector-founder-library-jwnbhc` (the working branch, pushed under standing session authorization — *not* as part of this publication). **The two `release/*-v2` branches are the only refs published for review**, and the mixed source branch was never used as a PR head.
 
 ---
 
