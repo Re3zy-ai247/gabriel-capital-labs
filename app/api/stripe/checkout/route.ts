@@ -252,6 +252,19 @@ export async function POST(req: Request) {
       // of the current period, so the customer pays the difference — never twice.
       // `proration_behavior` is a named constant so the billing policy is one
       // reviewable decision rather than a literal buried in a call.
+      //
+      // ⚠️ KNOWN GAP — B-06 (ToS consent is NOT collected on this path).
+      // CONSENT_COLLECTION above only applies to Checkout Sessions. This upgrade
+      // never opens Checkout, so Stripe renders no Terms-of-Service checkbox and
+      // records no acceptance on the customer — even with STRIPE_TOS_CONSENT=1.
+      // A customer can therefore move onto a higher-priced plan having agreed to
+      // nothing at the point of that charge. Stripe offers no consent mechanism on
+      // subscriptions.update, so closing this needs an in-app acceptance captured
+      // BEFORE this call and stored durably, which needs a schema change (a
+      // consent timestamp + policy version on User) under the MIGRATION-FIRST
+      // policy — out of scope for this wave, tracked in the RC1 blocker list.
+      // scripts/checkout-consent.test.ts currently pins the two-spread reality on
+      // purpose; it must be updated in the same change that closes this.
       const updated = await stripe.subscriptions.update(sub.id, {
         items: [{ id: items[0].id, price: priceId }],
         proration_behavior: UPGRADE_PRORATION_BEHAVIOR,

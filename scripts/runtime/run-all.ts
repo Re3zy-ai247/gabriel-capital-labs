@@ -12,8 +12,26 @@ const guards = readdirSync(here)
   .filter((f) => f.endsWith(".runtime.test.ts"))
   .sort();
 
+// Discovery alone cannot tell a DELETED guard from one that never existed: drop a
+// file and this runner would happily report "1 guard passed". REQUIRED is the
+// explicit registration — every guard named here must still be on disk, so
+// removing or renaming one fails the CI step instead of quietly shrinking cover.
+const REQUIRED = [
+  "invoice-shape.runtime.test.ts",
+  "stripe-webhook-claim.runtime.test.ts",
+  "stripe-webhook-reorder.runtime.test.ts",
+  "unknown-price-failclosed.runtime.test.ts",
+];
+
 if (guards.length === 0) {
   console.error("run-all: no *.runtime.test.ts guards found — refusing to report success");
+  process.exit(1);
+}
+
+const missing = REQUIRED.filter((r) => !guards.includes(r));
+if (missing.length > 0) {
+  console.error(`run-all: registered guard(s) missing from disk: ${missing.join(", ")}`);
+  console.error("run-all: if a guard was intentionally renamed, update REQUIRED in this file.");
   process.exit(1);
 }
 

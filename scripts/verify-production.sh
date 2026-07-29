@@ -8,11 +8,12 @@
 #   CV_VERIFY_OUT=/some/dir bash scripts/verify-production.sh   # also write report files there
 #
 # WHAT THIS IS
-#   CREDITVECTOR_RC1_CRITERIA.md §6 lists questions that "cannot be answered from the
-#   repository". This turns the answerable part of that list into a repeatable, safe
-#   check, and — for the part that genuinely needs production credentials — prints the
-#   exact owner command instead of guessing. It is a harness, NOT a second Go/No-Go
-#   checklist: CREDITVECTOR_RC1_CRITERIA.md remains the canonical gate.
+#   A repeatable, safe pass over the release questions that CAN be answered from the
+#   repository, plus — for the part that genuinely needs production credentials — the
+#   exact owner command printed instead of guessed. It is a HARNESS, not a Go/No-Go
+#   checklist. A clean run is evidence, never a release decision: whatever release
+#   assessment the owner is working from remains the canonical gate, and this script
+#   deliberately does not name or depend on one.
 #
 # THE FOUR STATUSES (nothing else is ever printed)
 #   PASS                            proven here, now, from the repository or a live probe
@@ -124,8 +125,9 @@ fi
 
 # 1.3 SETUP_SECRET — WHICH routes it gates, and HOW it may be presented.
 #     A secret accepted in the query string is written to every access log, proxy log and
-#     browser history it passes through; that is RC1 finding C-01. Enumerate rather than
-#     assume, so a route added later shows up here instead of silently widening the surface.
+#     browser history it passes through — so the PRESENTATION MODE is checked here, not just
+#     whether the secret exists. Enumerate rather than assume, so a route added later shows up
+#     here instead of silently widening the surface.
 SETUP_ROUTES="$(cd "$ROOT" && grep -rl 'SETUP_SECRET' --include=route.ts app 2>/dev/null | sort)"
 if [ -z "$SETUP_ROUTES" ]; then
   record pass "SETUP_SECRET gates no route" "no route reads SETUP_SECRET (the god-mode path is gone from code)"
@@ -133,7 +135,7 @@ else
   record pass "SETUP_SECRET gated routes enumerated" "$(wc -l <<<"$SETUP_ROUTES" | tr -d ' ') route(s) accept it"
   while IFS= read -r r; do
     if grep -qE 'searchParams\.get\("secret"\)' "$ROOT/$r"; then
-      note "${r} — accepts ?secret= IN THE QUERY STRING (C-01: lands in logs/history)"
+      note "${r} — accepts ?secret= IN THE QUERY STRING (it lands in access logs and browser history)"
     else
       note "${r} — header/body only"
     fi
@@ -231,6 +233,11 @@ fi
 
 # 1.6 Disabled-account billing behaviour (REPOSITORY half — the policy question is
 #     RC1-DISABLED-ACCOUNT-POLICY.md, which is an OWNER DECISION, not a check).
+#     EXPECTED FAIL until the portal identity change ships. The portal still resolves
+#     identity the old way on this branch, so the first check below reports FAIL. That is
+#     the harness telling the truth about the tree it is pointed at, not a regression from
+#     the webhook work — and this script is deliberately NOT a CI gate, so it blocks nothing.
+#     It flips to PASS on its own the moment the portal starts using currentAccount().
 PORTAL="$(src app/api/stripe/portal/route.ts)"
 if grep -qE '^\s*const [A-Za-z]+ = await currentAccount\(\);' <<<"$PORTAL"; then
   record pass "billing portal resolves by id and fails closed" "portal uses currentAccount() (id-resolved, re-checks disabled)"
@@ -296,9 +303,9 @@ echo "SECTION 2 — PRODUCTION VALIDATION (owner/credentialed)"
 record verify "ALERT_WEBHOOK_URL is set in production" "presence only — never print the value"
 note "npx vercel env ls production | grep -c ALERT_WEBHOOK_URL   # expect exactly 1"
 note "or: sign in as ADMIN → GET /api/admin/diagnostics → envPresent.ALERT_WEBHOOK_URL === true"
-note "SET is not DELIVERED: the drill in .ai/RUNBOOKS/alert-activation.md is what answers V-05"
+note "SET is not DELIVERED: only an end-to-end alert drill (fire a real alert, confirm it arrives) proves this"
 
-record verify "SETUP_SECRET is UNSET in production" "presence only. It is a god-mode setup credential; RC1 C-01 wants it absent once setup is done"
+record verify "SETUP_SECRET is UNSET in production" "presence only. It is a god-mode setup credential and must be absent once first-run setup is done"
 note "npx vercel env ls production | grep -c SETUP_SECRET        # expect exactly 0"
 note "or: GET /api/admin/diagnostics → envPresent.SETUP_SECRET === false"
 note "unauthenticated presence probe (no value revealed): pass --probe to this script"
@@ -324,8 +331,10 @@ note "legacy Agency Pro at \$799/mo and \$7,990/yr are DELIBERATELY still mapped
 record verify "disabled accounts hold no live subscription" "identity state lives in our DB; billing state lives in Stripe — neither side sees both"
 note "admin UI → Users → filter disabled; for each, check subscriptionStatus"
 note "cross-check in Stripe Dashboard (LIVE) → Customers → the matching stripeCustomerId"
-note "any disabled account with an ACTIVE subscription is billing a customer who cannot self-cancel"
-note "→ decision required: RC1-DISABLED-ACCOUNT-POLICY.md"
+note "any disabled account with an ACTIVE subscription needs resolving one way or the other"
+note "policy DECIDED — cancellation-only self-service; see RC1-DISABLED-ACCOUNT-POLICY.md §5"
+note "the path is reachable only while an already-issued session token is still valid, so the"
+note "existing population still has to be reconciled by hand — this check is that reconciliation"
 
 record verify "the deployed release is the reviewed commit" "the repo cannot prove what is deployed"
 note "curl -sI ${BASE}/ | grep -i x-cv-release   # compare with the reviewed SHA"
@@ -347,7 +356,7 @@ if [ "$PROBE" = 1 ]; then
     c=$(curl -s -o /dev/null -w "%{http_code}" --max-time 20 -X POST "${BASE}/api/admin/bootstrap" \
           -H "Content-Type: application/json" -d '{}')
     case "$c" in
-      503) record pass "SETUP_SECRET unset in production" "bootstrap answers 503 'not configured' — C-01 god-mode path is closed" ;;
+      503) record pass "SETUP_SECRET unset in production" "bootstrap answers 503 'not configured' — the god-mode setup path is closed" ;;
       403) record fail "SETUP_SECRET unset in production" "bootstrap answers 403 — the secret IS configured; any route accepting ?secret= is a live log-exposure risk" ;;
       404) record fail "bootstrap route reachable" "HTTP 404 — route deleted or misrouted by a deploy" ;;
       200) record fail "bootstrap refuses an empty secret" "HTTP 200 — the setup endpoint RAN for an anonymous caller" ;;
@@ -399,7 +408,7 @@ if [ "$FAILURES" -gt 0 ]; then
 fi
 if [ "$VERIFYS" -gt 0 ] || [ "$SKIPS" -gt 0 ]; then
   echo "   $((VERIFYS + SKIPS)) item(s) are UNANSWERED. Unanswered is not passed."
-  echo "   A clean run of this harness is NOT a Go. The gate is CREDITVECTOR_RC1_CRITERIA.md."
+  echo "   A clean run of this harness is NOT a Go. This script measures; it does not decide."
 fi
 
 if [ -n "${CV_VERIFY_OUT:-}" ] && [ -d "${CV_VERIFY_OUT}" ]; then

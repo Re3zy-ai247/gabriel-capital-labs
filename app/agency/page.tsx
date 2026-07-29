@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
 import { Disclaimer } from "@/components/Disclaimer";
 import { openBillingPortal } from "@/lib/portalClient";
-import { TermsAccept, readTermsChallenge, type TermsChallenge } from "@/components/TermsAccept";
 import { WORKSPACE_BASE_V3 } from "@/lib/agencyCapacity";
 import { Building2, Loader2, UserPlus, FolderOpen, CircleHelp, Mails, AlertTriangle, Search } from "lucide-react";
 
@@ -63,9 +62,6 @@ export default function AgencyPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [portalOffer, setPortalOffer] = useState(false); // checkout refused: plan change belongs in the portal
-  // Set when the route reports the acceptance precondition: an existing subscriber
-  // upgrading in place must agree to the published terms before the plan changes.
-  const [terms, setTerms] = useState<TermsChallenge | null>(null);
   const [busy, setBusy] = useState(false);
   const [search, setSearch] = useState("");
   const [secret, setSecret] = useState("");
@@ -124,9 +120,7 @@ export default function AgencyPage() {
     })();
   }, []);
 
-  // `acceptTerms` is the customer's assertion, echoed from the version the SERVER
-  // named in its 428 — this page neither stores nor constructs a terms version.
-  async function subscribe(acceptTerms?: string) {
+  async function subscribe() {
     setBusy(true);
     setError(null);
     setPortalOffer(false);
@@ -134,18 +128,9 @@ export default function AgencyPage() {
       const res = await fetch("/api/stripe/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(acceptTerms ? { plan: "agency", acceptTerms } : { plan: "agency" }),
+        body: JSON.stringify({ plan: "agency" }),
       });
       const d = await res.json();
-      // The route refuses an in-place plan change until this account has recorded
-      // acceptance of the published terms. Surface the checkbox and let them
-      // retry — a dead end here is a customer who wants to pay and cannot.
-      const challenge = readTermsChallenge(res, d);
-      if (challenge) {
-        setTerms(challenge);
-        return;
-      }
-      setTerms(null);
       if (res.ok && d.url) {
         window.location.href = d.url;
         return;
@@ -312,21 +297,11 @@ export default function AgencyPage() {
             <span className="text-sm text-slate-400">/month · cancel anytime</span>
           </div>
           <div className="mt-4">
-            <button onClick={() => subscribe()} disabled={busy} className="btn-primary">
+            <button onClick={subscribe} disabled={busy} className="btn-primary">
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Building2 className="h-4 w-4" />}
               Subscribe to Agency — $399/mo
             </button>
           </div>
-          {terms && (
-            <TermsAccept
-              className="mt-4"
-              message={terms.message}
-              termsUrl={terms.url}
-              busy={busy}
-              onAccept={() => subscribe(terms.version)}
-              onCancel={() => setTerms(null)}
-            />
-          )}
           <p className="mt-3 text-[11px] text-slate-500">Secure checkout by Stripe · your card never touches our servers.</p>
 
           {/* Owner/admin preview — enable agency mode without billing. Admins only;

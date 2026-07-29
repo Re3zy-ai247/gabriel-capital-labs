@@ -3,7 +3,7 @@
 // WHAT THIS IS. Every other guard in scripts/ is SOURCE-LEVEL: it reads the shape
 // of the code with a regex and never executes it. The guards in this directory
 // EXECUTE the product modules — the real app/api/stripe/checkout/route.ts, the
-// real app/api/stripe/webhook/route.ts, the real lib/terms.ts and lib/billing.ts —
+// real app/api/stripe/webhook/route.ts, the real lib/billing.ts and lib/stripe.ts —
 // with their I/O boundaries (Prisma, Stripe, NextAuth) replaced by in-process
 // fakes. They observe behaviour, ordering and return values, not text.
 //
@@ -15,8 +15,8 @@
 // the modules under test becomes a `require()` that passes through
 // `Module._load`. We patch that one function: a request whose RESOLVED absolute
 // path (or whose bare specifier) has been registered returns the fake instead.
-// Resolving first means `./prisma` from lib/billing.ts and `@/lib/prisma` from
-// lib/terms.ts hit the SAME override, because tsx resolves both to the same file.
+// Resolving first means `./prisma` from lib/billing.ts and `@/lib/prisma` from a
+// route module hit the SAME override, because tsx resolves both to one file.
 //
 // ORDER MATTERS: register every mock BEFORE the first `loadModule()` of code
 // under test. A top-level `import` of that code would be hoisted above the
