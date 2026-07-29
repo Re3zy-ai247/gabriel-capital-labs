@@ -15,6 +15,9 @@ import {
   FaqList,
 } from "@/components/marketing/Showcase";
 import { Reveal } from "@/components/landing/Reveal";
+import { JourneyRuntime } from "@/components/cxos/journey/JourneyRuntime";
+import { ProblemChamber } from "@/components/cxos/journey/ProblemChamber";
+import { IntelligenceAwakens } from "@/components/cxos/journey/IntelligenceAwakens";
 import {
   Sparkles,
   Upload,
@@ -103,6 +106,11 @@ export default function Home() {
         }}
       />
       <ThresholdGate />
+      {/* CXOS Phase 3 — the landing-journey runtime. Stamps the capability
+          tier and drives each chapter's --cxp; tier D (reduced motion or the
+          footer toggle) mounts nothing and the page is its server-rendered
+          self. Native scroll stays authoritative — no wheel handlers exist. */}
+      <JourneyRuntime />
       <SiteNav />
 
       <main id="main">
@@ -186,6 +194,13 @@ export default function Home() {
             </p>
           </Reveal>
         </section>
+
+        {/* ---------- CXOS Phase 3 · Chapters 1–2 of the landing journey ----------
+            The Problem Chamber (#problem) makes fragmentation felt; Intelligence
+            Awakens (#awakens) aligns the same facts into classified evidence.
+            Both are server components with the full copy in HTML at t=0. */}
+        <ProblemChamber />
+        <IntelligenceAwakens />
 
         {/* ---------- How it works ---------- */}
         <section id="how" className="container-x section">

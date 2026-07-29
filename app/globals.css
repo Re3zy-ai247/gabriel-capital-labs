@@ -331,6 +331,106 @@ html[data-cxenter]::after {
   transform: skewX(-20deg); animation: cx-sheen 0.6s var(--ease-vector) 1.4s 1 both;
 }
 
+/* ── Phase 3 · the Living Landing Journey (chapters) + route transitions ──
+   The runtime stamps html[data-cxjourney="A|B|C"] and writes each chapter's
+   scroll progress into its own --cxp (0→1 across one viewport crossing).
+   EVERYTHING here is transform/opacity on that number — compositor-only.
+
+   THE SAFETY CONTRACT (the reveal-safety principle, structural form): every
+   rule below is scoped under html[data-cxjourney] — the no-JS / tier-D /
+   reduced-motion document never matches any of it, so the rest state IS the
+   server-rendered page. Nothing is hidden by default; choreography is earned,
+   never required. */
+[data-chapter] { --cxp: 0; }
+
+/* CH1 · the Problem Chamber — three depth planes drift APART as the visitor
+   descends (tension, unresolved). Base composition (the rest state) is the
+   scattered tilt written in the transform's constant terms. */
+.cx-frag { will-change: transform; }
+.cx-frag-a { transform: rotate(-6deg); }
+.cx-frag-b { transform: rotate(4deg); }
+.cx-frag-c { transform: rotate(-2.5deg); }
+html[data-cxjourney="A"] .cx-frag-a,
+html[data-cxjourney="B"] .cx-frag-a {
+  transform: translate3d(calc(var(--cxp) * -18px), calc(var(--cxp) * -26px), 0) rotate(calc(-6deg - var(--cxp) * 2deg));
+}
+html[data-cxjourney="A"] .cx-frag-b,
+html[data-cxjourney="B"] .cx-frag-b {
+  transform: translate3d(calc(var(--cxp) * 22px), calc(var(--cxp) * -10px), 0) rotate(calc(4deg + var(--cxp) * 2deg));
+}
+html[data-cxjourney="A"] .cx-frag-c,
+html[data-cxjourney="B"] .cx-frag-c {
+  transform: translate3d(calc(var(--cxp) * -12px), calc(var(--cxp) * 18px), 0) rotate(calc(-2.5deg - var(--cxp) * 1.5deg));
+}
+/* the unattached deadline chip drifts on the deepest plane (tier A only) */
+html[data-cxjourney="A"] .cx-frag-d {
+  transform: translate3d(calc(var(--cxp) * 14px), calc(var(--cxp) * 10px), 0);
+}
+
+/* CH2 · Intelligence Awakens — the same tellings ALIGN: rows carry their
+   misalignment in the choreographed state and settle to zero by p=0.6 (the
+   payoff lands mid-viewport). Rest state = already aligned (the resolved
+   narrative survives without motion). */
+.cx-align-a, .cx-align-b, .cx-align-c { will-change: transform; }
+html[data-cxjourney="A"] .cx-align-a,
+html[data-cxjourney="B"] .cx-align-a {
+  transform: translate3d(calc((1 - min(1, calc(var(--cxp) / 0.6))) * -20px), 0, 0)
+    rotate(calc((1 - min(1, calc(var(--cxp) / 0.6))) * -4deg));
+}
+html[data-cxjourney="A"] .cx-align-b,
+html[data-cxjourney="B"] .cx-align-b {
+  transform: translate3d(calc((1 - min(1, calc(var(--cxp) / 0.6))) * 24px), 0, 0)
+    rotate(calc((1 - min(1, calc(var(--cxp) / 0.6))) * 3deg));
+}
+html[data-cxjourney="A"] .cx-align-c,
+html[data-cxjourney="B"] .cx-align-c {
+  transform: translate3d(calc((1 - min(1, calc(var(--cxp) / 0.6))) * -14px), 0, 0)
+    rotate(calc((1 - min(1, calc(var(--cxp) / 0.6))) * 2.5deg));
+}
+/* classification chips light in sequence (state change, not decoration) */
+html[data-cxjourney="A"] .cx-chip-1, html[data-cxjourney="B"] .cx-chip-1 { opacity: clamp(0, calc((var(--cxp) - 0.35) / 0.08), 1); }
+html[data-cxjourney="A"] .cx-chip-2, html[data-cxjourney="B"] .cx-chip-2 { opacity: clamp(0, calc((var(--cxp) - 0.45) / 0.08), 1); }
+html[data-cxjourney="A"] .cx-chip-3, html[data-cxjourney="B"] .cx-chip-3 { opacity: clamp(0, calc((var(--cxp) - 0.55) / 0.08), 1); }
+/* the evidence spine draws p .3→.7 (Draw primitive; rest state = drawn) */
+.cx-spine { stroke-dasharray: 1; stroke-dashoffset: 0; }
+html[data-cxjourney="A"] .cx-spine,
+html[data-cxjourney="B"] .cx-spine {
+  stroke-dashoffset: calc(1 - clamp(0, calc((var(--cxp) - 0.3) / 0.4), 1));
+}
+
+/* Director-only chapter boundary outlines (review builds; toggled by the
+   journey strip). */
+html.cx-debug-bounds [data-chapter] { outline: 1px dashed rgba(34, 211, 238, 0.5); outline-offset: -1px; }
+
+/* Route-transition veil — "the environment resolves into a calm, exact
+   commercial surface." Cover-in: ink rises, two hairline rails meet center.
+   Open-out: rails part, veil dissolves onto the painted destination.
+   Timing comes from the shell via --cx-cover-ms/--cx-open-ms; both halves
+   also carry `forwards` end states, so a stalled script leaves the veil at a
+   finished frame while the shell's 1800ms location.assign clock — not CSS —
+   guarantees arrival. */
+.cx-nav-veil {
+  position: fixed; inset: 0; z-index: 95; pointer-events: auto;
+  background: linear-gradient(180deg, #02040a 0%, #060a14 100%);
+}
+.cx-nav-rail {
+  position: absolute; top: 50%; height: 1px; width: 50vw;
+  background: linear-gradient(90deg, transparent, rgba(34, 211, 238, 0.9));
+  box-shadow: 0 0 12px rgba(34, 211, 238, 0.35);
+}
+.cx-nav-rail-l { left: 0; transform-origin: left; }
+.cx-nav-rail-r { right: 0; transform: scaleX(-1); transform-origin: right; }
+@keyframes cx-nav-cover-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes cx-nav-rail-in { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes cx-nav-rail-in-r { from { transform: scaleX(0); } to { transform: scaleX(-1); } }
+.cx-nav-cover { animation: cx-nav-cover-in var(--cx-cover-ms) var(--ease-vector) forwards; }
+.cx-nav-cover .cx-nav-rail-l { animation: cx-nav-rail-in var(--cx-cover-ms) var(--ease-vector) forwards; }
+.cx-nav-cover .cx-nav-rail-r { animation: cx-nav-rail-in-r var(--cx-cover-ms) var(--ease-vector) forwards; }
+@keyframes cx-nav-open-out { from { opacity: 1; } to { opacity: 0; visibility: hidden; } }
+@keyframes cx-nav-rail-part { to { transform: scaleX(0); opacity: 0; } }
+.cx-nav-open { animation: cx-nav-open-out var(--cx-open-ms) var(--ease-vector) forwards; }
+.cx-nav-open .cx-nav-rail { animation: cx-nav-rail-part var(--cx-open-ms) var(--ease-vector) forwards; }
+
 /* Respect users who prefer less motion. */
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
@@ -347,4 +447,22 @@ html[data-cxenter]::after {
   .cx-d1, .cx-d2, .cx-d3, .cx-d4 { animation-delay: 0s; }
   .cx-sheen-overlay::after { animation: none; display: none; }
   .cx-focus-out { transition: none; }
+  /* Phase 3: a reduced-motion visitor is tier D (the runtime stamps nothing),
+     so none of the [data-cxjourney] rules can match — these belt-and-braces
+     resets make the rest states unconditional even if a stamp ever leaked.
+     Chapter rest states: CH1 keeps its static scattered tilt (legible
+     composition); CH2 rests RESOLVED — aligned, chips lit, spine drawn. */
+  .cx-frag-a { transform: rotate(-6deg) !important; }
+  .cx-frag-b { transform: rotate(4deg) !important; }
+  .cx-frag-c { transform: rotate(-2.5deg) !important; }
+  .cx-frag-d { transform: none !important; }
+  .cx-align-a, .cx-align-b, .cx-align-c { transform: none !important; }
+  .cx-chip-1, .cx-chip-2, .cx-chip-3 { opacity: 1 !important; }
+  .cx-chip { opacity: 1 !important; }
+  .cx-spine { stroke-dashoffset: 0 !important; }
+  .cx-frag { will-change: auto; }
+  .cx-chamber { /* chapters carry no animation of their own; listed for the grammar enumeration */ }
+  .cx-debug-bounds { /* director-only static outline; no motion to remove */ }
+  .cx-nav-veil, .cx-nav-cover, .cx-nav-open { animation: none !important; display: none !important; }
+  .cx-nav-rail, .cx-nav-rail-l, .cx-nav-rail-r { animation: none !important; }
 }

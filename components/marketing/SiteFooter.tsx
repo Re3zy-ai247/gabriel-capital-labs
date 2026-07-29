@@ -2,6 +2,7 @@ import Link from "next/link";
 import { BrandLogo } from "@/components/BrandLogo";
 import { BRAND } from "@/lib/brand";
 import { DISCLAIMER } from "@/lib/compliance";
+import { CinematicToggle } from "@/components/cxos/CinematicToggle";
 
 const COLS: { heading: string; links: { label: string; href: string }[] }[] = [
   {
@@ -65,6 +66,7 @@ export function SiteFooter() {
             <div className="flex items-center gap-5 text-xs text-slate-500">
               <Link href="/legal/privacy" className="transition hover:text-slate-300">Privacy</Link>
               <Link href="/legal/terms" className="transition hover:text-slate-300">Terms</Link>
+              <CinematicToggle />
               <span>Educational tool · Not legal advice</span>
             </div>
           </div>

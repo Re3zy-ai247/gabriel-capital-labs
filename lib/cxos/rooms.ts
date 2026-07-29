@@ -44,6 +44,14 @@ export const CXOS_ROOMS: CxosRoom[] = [
     line: "Scene 1 arrival on the landing — aurora breath, settle ladder, sheen. Pure CSS, zero JS.",
   },
   {
+    key: "landing-journey",
+    name: "The Landing Journey",
+    href: "/review/landing",
+    status: "PROTOTYPE",
+    phase: "Phase 3",
+    line: "Chapters 1–2 (Problem Chamber → Intelligence Awakens) + the pricing route transition. Scroll-directed, native scroll authoritative.",
+  },
+  {
     key: "mission-control",
     name: "Mission Control",
     href: "/dashboard",
