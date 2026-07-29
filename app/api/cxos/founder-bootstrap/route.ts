@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { timingSafeEqual } from "node:crypto";
+import { createHash, timingSafeEqual } from "node:crypto";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { enforceRateLimit, clientIp } from "@/lib/rateLimit";
@@ -61,6 +61,95 @@ function safeEqual(a: string, b: string): boolean {
   const bb = Buffer.from(b);
   if (ab.length !== bb.length) return false;
   return timingSafeEqual(ab, bb);
+}
+
+// The isolation fingerprint — the Founder's phone-checkable proof surface.
+//
+// GET returns ONLY non-secret facts: which environment this deployment
+// resolved, a REDACTED identity of the database it would talk to (scheme +
+// host + database name + a 12-hex sha256 of the full URL — never the
+// username, password, or query string, where Accelerate keeps its api_key),
+// and presence BOOLEANS for every gate variable. This is how the Founder
+// proves, before any account exists, that the feature deployment resolves
+// Preview-scoped values and that the database identity differs from the
+// Production row visible in the Vercel UI.
+//
+// It deliberately does NOT touch the database unless isolation is already
+// attested — an un-attested deployment may still point at production, and
+// this route must not even read from it.
+function dbFingerprint(): {
+  configured: boolean;
+  scheme?: string;
+  host?: string;
+  database?: string | null;
+  fingerprint?: string;
+} {
+  const raw = process.env.DATABASE_URL;
+  if (!raw) return { configured: false };
+  try {
+    // URL() rejects some postgres schemes' userinfo edge cases; normalize the
+    // scheme for parsing only. The RESPONSE never includes credentials or the
+    // query string.
+    const u = new URL(raw.replace(/^prisma\+postgres:/, "https:").replace(/^postgres(ql)?:/, "https:"));
+    return {
+      configured: true,
+      scheme: raw.split(":")[0],
+      host: u.hostname + (u.port ? `:${u.port}` : ""),
+      database: u.pathname && u.pathname !== "/" ? u.pathname.slice(1) : null,
+      fingerprint: "sha256:" + createHash("sha256").update(raw).digest("hex").slice(0, 12),
+    };
+  } catch {
+    return { configured: true, fingerprint: "sha256:" + createHash("sha256").update(raw).digest("hex").slice(0, 12) };
+  }
+}
+
+export async function GET() {
+  if (process.env.VERCEL_ENV === "production") {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+  const isPreview = process.env.VERCEL_ENV === "preview";
+  const isLocalDev = process.env.NODE_ENV === "development";
+  if (!isPreview && !isLocalDev) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+  const attested = process.env.CXOS_PREVIEW_DB_ISOLATED === "1";
+
+  // Review-account state is read ONLY behind the attestation — never query a
+  // possibly-shared database.
+  let reviewAccounts: Record<string, string> = {
+    consumer: "not checked — isolation not attested",
+    agency: "not checked — isolation not attested",
+  };
+  if (attested) {
+    try {
+      const rows = await prisma.user.findMany({
+        where: { email: { in: REVIEW_ACCOUNTS.map((a) => a.email) } },
+        select: { email: true, disabled: true },
+      });
+      reviewAccounts = Object.fromEntries(
+        REVIEW_ACCOUNTS.map((a) => {
+          const row = rows.find((r) => r.email === a.email);
+          return [a.isAgency ? "agency" : "consumer", row ? (row.disabled ? "revoked" : "active") : "absent"];
+        })
+      );
+    } catch {
+      reviewAccounts = { consumer: "database unreachable", agency: "database unreachable" };
+    }
+  }
+
+  return NextResponse.json({
+    vercelEnv: process.env.VERCEL_ENV ?? "local",
+    commit: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? null,
+    database: dbFingerprint(),
+    gates: {
+      isolationAttested: attested,
+      bootstrapSecretConfigured: !!process.env.CXOS_FOUNDER_BOOTSTRAP_SECRET,
+      reviewPasswordConfigured: !!process.env.CXOS_FOUNDER_REVIEW_PASSWORD,
+      nextauthSecretConfigured: !!process.env.NEXTAUTH_SECRET,
+      nextauthUrlSet: !!process.env.NEXTAUTH_URL,
+    },
+    reviewAccounts,
+  });
 }
 
 export async function POST(req: Request) {

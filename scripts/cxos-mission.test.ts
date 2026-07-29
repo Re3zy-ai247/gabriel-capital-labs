@@ -62,6 +62,28 @@ function check(label: string, cond: boolean) {
     !/role:\s*["']?(ADMIN|AGENCY)/.test(boot));
 }
 
+// ── 1b · the isolation fingerprint (GET) discloses facts, never secrets ──────
+{
+  const fn = boot.slice(boot.indexOf("export async function GET"), boot.indexOf("export async function POST"));
+  const prodIdx = fn.indexOf('process.env.VERCEL_ENV === "production"');
+  check("GET: the production hard-off EXISTS and is the FIRST condition",
+    prodIdx !== -1 && prodIdx < fn.indexOf('VERCEL_ENV === "preview"') &&
+    /if \(process\.env\.VERCEL_ENV === "production"\) \{\s*return NextResponse\.json\(\{ error: "Not found" \}, \{ status: 404 \}\);/.test(fn));
+  check("GET: the database is queried ONLY behind the isolation attestation",
+    /if \(attested\) \{\s*try \{\s*const rows = await prisma/.test(fn) &&
+    (fn.match(/prisma\./g) ?? []).length === 1);
+  // scope: the fingerprint helper + GET only — the POST legitimately parses
+  // its own ?revoke searchParam, which is not a disclosure surface
+  const fpAndGet = boot.slice(boot.indexOf("function dbFingerprint"), boot.indexOf("export async function POST"));
+  check("GET: the fingerprint never echoes credentials or the query string",
+    !/u\.username|u\.password|u\.search\b|searchParams/.test(fpAndGet) &&
+    /createHash\("sha256"\)/.test(fpAndGet));
+  check("GET: gate variables are disclosed as BOOLEANS only",
+    /bootstrapSecretConfigured: !!process\.env\.CXOS_FOUNDER_BOOTSTRAP_SECRET/.test(fn) &&
+    /reviewPasswordConfigured: !!process\.env\.CXOS_FOUNDER_REVIEW_PASSWORD/.test(fn) &&
+    /nextauthSecretConfigured: !!process\.env\.NEXTAUTH_SECRET/.test(fn));
+}
+
 // ── 2 · the entry never masks truth ──────────────────────────────────────────
 check("entry: rendered ONLY by the authenticated branch (signed-out renders no overlay)",
   dash.indexOf("Please sign in.") < dash.indexOf("<MissionEntry") &&
