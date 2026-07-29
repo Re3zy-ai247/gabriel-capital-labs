@@ -125,7 +125,7 @@ run again.
 | `STRIPE_SECRET_KEY` | ✅ for billing | `sk_test_`/`sk_live_` |
 | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | ✅ for billing | `pk_test_`/`pk_live_` |
 | `STRIPE_WEBHOOK_SECRET` | ✅ for billing | `whsec_` |
-| `STRIPE_PRICE_ID` | optional | auto-created if omitted |
+| ~~`STRIPE_PRICE_ID`~~ | **removed 2026-07-16** | no longer read by any code. Prices resolve by `lookup_key` in `lib/stripe.ts`; setting this has no effect |
 | `ANTHROPIC_API_KEY` | ✅ for AI | premium letter refinement |
 | `LLM_MODEL` | optional | defaults to `claude-opus-4-8` |
 | `SETUP_SECRET` | one-time | delete after bootstrap |

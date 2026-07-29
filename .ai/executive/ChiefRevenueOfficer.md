@@ -6,7 +6,7 @@
 
 **KPIs:** BI-REV-01 MRR/ARR (0 subs, pre-launch — Stripe is truth; admin MRR estimated until G-14) · BI-REV-02 conversion free→paid (not yet instrumented) · BI-USER-03 churn + past-due (live on `/admin`) · BI-AGY-01 agency accounts (live count).
 
-**Responsibilities:** own the catalog truth (`lib/stripe.ts` PRICES: premium $99/$990 · agency $399/$3990 · agency_pro $799/$7990 · letters_5 $19) · entitlement/pricing-page consistency · agency-tier growth motion (ICPs via `/gcl-leadgen`) · checkout funnel health.
+**Responsibilities:** own the catalog truth (`lib/stripe.ts` PRICES: premium $99/$990 · agency $399/$3990 · agency_pro $699/$6,990 · letters_5 $19) · entitlement/pricing-page consistency · agency-tier growth motion (ICPs via `/gcl-leadgen`) · checkout funnel health.
 
 **Roadmaps:** G-07 user-side Stripe emails · post-launch: promotion codes (admin discount tooling exists), annual-plan push, agency partner program (`../VISION.md` horizon 4).
 

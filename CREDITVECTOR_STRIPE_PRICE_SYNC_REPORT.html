@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CreditVector — RC1 Release Candidate Extraction, Wave 2.2</title>
+<meta name="description" content="RC1 Execution Wave 2 — Go/No-Go status, blockers, and required decisions.">
+<style>
+:root{--bg:#ffffff;--fg:#14181f;--mut:#4a5462;--line:#d9dee6;--acc:#0b4fa8;--code:#f2f4f7;
+--red:#8a1420;--redbg:#fdeaec;--amb:#7a4a00;--ambbg:#fff5e0;--grn:#0f5c34;--grnbg:#e6f5ec;}
+*{box-sizing:border-box}
+body{margin:0;padding:1.1rem;background:var(--bg);color:var(--fg);
+font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+-webkit-text-size-adjust:100%;overflow-wrap:break-word}
+main{max-width:60rem;margin:0 auto}
+h1{font-size:1.6rem;line-height:1.25;margin:.2rem 0 .4rem;letter-spacing:-.01em}
+h2{font-size:1.28rem;margin:2.2rem 0 .7rem;padding-bottom:.32rem;border-bottom:2px solid var(--line)}
+h3{font-size:1.08rem;margin:1.6rem 0 .5rem}
+h4{font-size:1rem;margin:1.2rem 0 .4rem;color:var(--mut)}
+p{margin:.7rem 0}
+a{color:var(--acc)}
+code{background:var(--code);padding:.12em .38em;border-radius:4px;
+font:.86em/1.4 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;word-break:break-word}
+hr{border:0;border-top:1px solid var(--line);margin:2rem 0}
+blockquote{margin:1.1rem 0;padding:.85rem 1rem;background:var(--redbg);
+border-left:4px solid var(--red);border-radius:0 6px 6px 0;color:#5c0f18}
+blockquote strong{color:var(--red)}
+ul,ol{padding-left:1.35rem;margin:.7rem 0}
+li{margin:.34rem 0}
+.tw{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:1rem 0;
+border:1px solid var(--line);border-radius:8px}
+table{border-collapse:collapse;width:100%;min-width:34rem;font-size:.9rem}
+th,td{padding:.55rem .7rem;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+th{background:#f5f7fa;font-weight:650;white-space:nowrap}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:nth-child(even){background:#fafbfc}
+.meta{color:var(--mut);font-size:.92rem;margin:.5rem 0 1.2rem}
+nav.toc{background:#f7f9fb;border:1px solid var(--line);border-radius:8px;padding:.85rem 1rem;margin:1.4rem 0}
+nav.toc h2{font-size:.82rem;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);
+border:0;margin:0 0 .5rem;padding:0}
+nav.toc ol{margin:0;padding-left:1.2rem;font-size:.92rem}
+nav.toc li{margin:.2rem 0}
+.legend{display:flex;flex-wrap:wrap;gap:.4rem;margin:1rem 0}
+.tag{font-size:.76rem;font-weight:650;padding:.18rem .5rem;border-radius:999px;white-space:nowrap}
+.t-open{background:var(--redbg);color:var(--red)}
+.t-part{background:var(--ambbg);color:var(--amb)}
+.t-closed{background:var(--grnbg);color:var(--grn)}
+footer{margin-top:2.5rem;padding-top:1rem;border-top:1px solid var(--line);
+color:var(--mut);font-size:.85rem}
+@media(max-width:34rem){body{padding:.8rem}h1{font-size:1.35rem}table{font-size:.84rem;min-width:30rem}}
+@media print{body{padding:0;font-size:11pt}nav.toc{break-inside:avoid}
+.tw{overflow:visible;border:0}table{min-width:0;font-size:9pt}
+h2{break-after:avoid}tr{break-inside:avoid}a{color:#000;text-decoration:none}
+a[href^="http"]::after{content:" (" attr(href) ")";font-size:8pt;color:#555}}
+</style></head><body><main>
+<p class="meta"><strong>Gabriel Capital Labs</strong> · Draft — not ratified · 2026-07-28<br>
+Branch <code>claude/creditvector-founder-library-jwnbhc</code> · Commits <code>d6303fc</code> → <code>HEAD</code></p>
+<div class="legend"><span class="tag t-closed">CLOSED 9</span><span class="tag t-part">PARTIAL 3</span><span class="tag t-open">OPEN / BLOCKED 2</span><span class="tag t-open">VERIFICATION REQUIRED 2</span></div>
+<nav class="toc"><h2>Contents</h2><ol><li><a href="#1-what-was-asked-and-what-is-actually-there">1. What was asked, and what is actually there</a></li><li><a href="#2-old-price-ids-new-price-ids">2. Old Price IDs · New Price IDs</a></li><li><a href="#3-every-location-agency-pro-pricing-is-referenced-origin-main">3. Every location Agency Pro pricing is referenced — origin/main</a></li><li><a href="#4-why-the-archived-799-prices-are-already-unreachable-three-independent-reasons">4. Why the archived $799 prices are already unreachable — three independent reasons</a></li><li><a href="#5-why-editing-the-legacy-constants-would-have-been-harmful">5. Why editing the legacy constants would have been harmful</a></li><li><a href="#6-verification-results">6. Verification results</a></li><li><a href="#7-files-modified-documentation-only-2-files">7. Files modified — documentation only, 2 files</a></li><li><a href="#8-reported-deliberately-not-changed">8. Reported, deliberately not changed</a></li><li><a href="#9-the-operational-risk-this-is-what-actually-needs-your-attention">9. ⚠ The operational risk — this is what actually needs your attention</a></li><li><a href="#10-finding-the-agency-pro-catalog-is-completely-unguarded">10. ⚠ Finding — the Agency Pro catalog is completely unguarded</a></li><li><a href="#11-tests-executed">11. Tests executed</a></li><li><a href="#12-owner-actions">12. Owner actions</a></li><li><a href="#13-constraints-observed">13. Constraints observed</a></li></ol></nav>
+<h1 id="creditvector-stripe-agency-pro-price-sync">CreditVector — Stripe Agency Pro Price Sync</h1>
+<p>
+<strong>Date:</strong> 2026-07-29 · <strong>Production truth:</strong> <code>origin/main</code> = <code>dfe7a3a</code> · <strong>Repository truth only</strong>
+</p>
+<blockquote>## Verdict: NO CODE CHANGE REQUIRED — and none was made <strong>The repository contains zero Stripe Price IDs.</strong> There is nothing to replace. Prices are resolved at runtime by <code>lookup_key</code>, and the Agency Pro catalog is <strong>already</strong> on the new <strong>$699 / $6,990</strong> values. <strong>Two stale documentation references were corrected. No code, no amounts, no other product touched.</strong> <strong>⚠ The real risk is on the Stripe side, not in the repository.</strong> See §9 — if the new prices you created do not carry the <code>_v2</code> lookup keys, the application will create a <em>third</em> pair of prices. <strong>⚠ And the catalog is completely unguarded.</strong> Proven in §10: reverting Agency Pro to the archived $799 / $7,990 prices leaves typecheck clean and <strong>all 70 guards green</strong>.</blockquote>
+<hr>
+<h2 id="1-what-was-asked-and-what-is-actually-there">1. What was asked, and what is actually there</h2>
+<p>
+The task was to replace the archived Agency Pro Stripe <strong>Price IDs</strong> with the newly active ones.
+ 
+That operation has no target in this repository.
+</p>
+<p>
+```ts
+ 
+// lib/stripe.ts — resolvePrice()
+ 
+const existing = await stripe.prices.list({ lookup_keys: [def.lookup], active: true, limit: 1 });
+ 
+if (existing.data[0]) return existing.data[0].id;
+ 
+// ...otherwise CREATE the price
+ 
+```
+</p>
+<p>
+Prices are <strong>found-or-created by <code>lookup_key</code> at runtime</strong>. The application never stores, reads or
+ 
+hardcodes a <code>price_...</code> identifier. The in-code comment records why:
+</p>
+<blockquote><em>"The legacy <code>STRIPE_PRICE_ID</code> env override was removed 2026-07-16 — verified unset in every Vercel environment; lookup-key resolution is the sole production path."</em></blockquote>
+<hr>
+<h2 id="2-old-price-ids-new-price-ids">2. Old Price IDs · New Price IDs</h2>
+<div class="tw"><table><thead><tr><th></th><th>Value</th></tr></thead><tbody>
+<tr><td><strong>Old (archived) Agency Pro Price IDs</strong></td><td><strong>Not present in the repository.</strong> Exhaustive search for <code>price_[A-Za-z0-9]{8,}</code> across the entire <code>origin/main</code> tree (excluding <code>node_modules</code>, <code>.git</code>, <code>.next</code>) returns <strong>zero matches</strong> — no source file, config, JSON, YAML, markdown, <code>.env.example</code>, script, migration or seed contains one</td></tr>
+<tr><td><strong>New (active) Agency Pro Price IDs</strong></td><td><strong>Not supplied, and not needed.</strong> The task did not provide the new <code>price_...</code> values, and no repository location would consume them</td></tr>
+</tbody></table></div>
+<p>
+<strong>No Price ID was invented, substituted or written.</strong> Doing so would have required fabricating
+ 
+identifiers, and would have introduced the first hardcoded price binding into a codebase that
+ 
+deliberately has none.
+</p>
+<p>
+<strong>What the repository binds instead — already the new prices:</strong>
+</p>
+<div class="tw"><table><thead><tr><th>Catalog key</th><th>Lookup key</th><th>Amount (cents)</th><th>Displayed</th></tr></thead><tbody>
+<tr><td><code>agency_pro_month</code></td><td><code>gcl_agency_pro_monthly_v2</code></td><td><strong>69900</strong></td><td><strong>$699 / month</strong></td></tr>
+<tr><td><code>agency_pro_year</code></td><td><code>gcl_agency_pro_yearly_v2</code></td><td><strong>699000</strong></td><td><strong>$6,990 / year</strong></td></tr>
+</tbody></table></div>
+<hr>
+<h2 id="3-every-location-agency-pro-pricing-is-referenced-origin-main">3. Every location Agency Pro pricing is referenced — <code>origin/main</code></h2>
+<div class="tw"><table><thead><tr><th>#</th><th>Location</th><th>Content</th><th>Class</th><th>Decides what the customer is charged?</th></tr></thead><tbody>
+<tr><td>1</td><td><code>lib/stripe.ts:22</code></td><td><code>AGENCY_PRO_PRICE_CENTS = 69900</code></td><td>Amount constant</td><td><strong>YES</strong></td></tr>
+<tr><td>2</td><td><code>lib/stripe.ts:25-26</code></td><td><code>AGENCY_PRO_LEGACY_MONTH_CENTS = 79900</code>, <code>..._YEAR_CENTS = 799000</code></td><td>Legacy amount constants</td><td>No — <strong>tier mapping only</strong> (see §5)</td></tr>
+<tr><td>3</td><td><code>lib/stripe.ts:102</code></td><td><code>agency_pro_month</code> → <code>gcl_agency_pro_monthly_v2</code>, 69900</td><td><strong>Lookup key</strong></td><td><strong>YES</strong></td></tr>
+<tr><td>4</td><td><code>lib/stripe.ts:103</code></td><td><code>agency_pro_year</code> → <code>gcl_agency_pro_yearly_v2</code>, 699000</td><td><strong>Lookup key</strong></td><td><strong>YES</strong></td></tr>
+<tr><td>5</td><td><code>lib/stripe.ts:191</code></td><td><code>if (lk.startsWith("gcl_agency_pro")) return "agency_pro"</code></td><td>Tier mapping</td><td>No</td></tr>
+<tr><td>6</td><td><code>lib/stripe.ts:195-199</code></td><td>amount fallback incl. legacy 79900 / 799000</td><td>Tier mapping</td><td>No</td></tr>
+<tr><td>7</td><td><code>app/api/stripe/checkout/route.ts:37</code></td><td><code>PURCHASABLE_PLANS = ["premium", "agency"]</code> — <strong><code>agency_pro</code> absent</strong></td><td>Purchase gate</td><td><strong>YES — it refuses</strong></td></tr>
+<tr><td>8</td><td><code>app/billing/page.tsx:137</code></td><td><code>isAgencyPro ? '$699.00'</code></td><td>Display copy</td><td>No</td></tr>
+<tr><td>9</td><td><code>app/pricing/PricingTiers.tsx:94</code></td><td><code>monthly: 699, yearly: 6990, status: "soon"</code></td><td>Display copy</td><td>No</td></tr>
+<tr><td>10</td><td><code>.ai/executive/ChiefRevenueOfficer.md:9</code></td><td>catalog stated as <code>agency_pro $799/$7990</code></td><td><strong>Documentation — WRONG</strong></td><td>No — <strong>corrected, §7</strong></td></tr>
+<tr><td>11</td><td><code>SETUP.md:128</code></td><td><code>STRIPE_PRICE_ID</code> documented as a live optional env var</td><td><strong>Documentation — WRONG</strong></td><td>No — <strong>corrected, §7</strong></td></tr>
+<tr><td>12</td><td><code>.ai/PRICING-V2-ROADMAP.md:11,38</code></td><td><code>agency_pro ($799/mo, legacy)</code>; "add their price IDs to <code>lib/billing.ts</code>"</td><td>Documentation — stale</td><td>No — <strong>reported, not changed (§8)</strong></td></tr>
+<tr><td>13</td><td><code>.ai/CURRENT-STATE.md:108,112</code></td><td>records the $799 debt and the <code>_v2</code> decision</td><td>Documentation — historical record</td><td>No — correct as written</td></tr>
+<tr><td>14</td><td><code>.ai/ADR/ADR-0031</code>, <code>ADR-0034</code></td><td>already flag the roadmap doc as stale</td><td>Documentation</td><td>No — correct as written</td></tr>
+</tbody></table></div>
+<p>
+<strong>Environment variables:</strong> no variable anywhere supplies a price ID. <code>.env.example</code> contains only
+ 
+<code>STRIPE_SECRET_KEY</code>, <code>STRIPE_WEBHOOK_SECRET</code> and <code>STRIPE_TOS_CONSENT</code>. No code reads
+ 
+<code>STRIPE_PRICE_ID</code> — the only surviving mention is the comment recording its removal.
+</p>
+<hr>
+<h2 id="4-why-the-archived-799-prices-are-already-unreachable-three-independent-reasons">4. Why the archived $799 prices are already unreachable — three independent reasons</h2>
+<p>
+<strong>Reason 1 — the resolver filters on <code>active</code>.</strong> <code>resolvePrice</code> passes <code>active: true</code>, so an
+ 
+<strong>archived</strong> price can never be returned by lookup, regardless of its key.
+</p>
+<p>
+<strong>Reason 2 — the lookup keys were already versioned.</strong> The <code>_v2</code> suffix exists precisely for this
+ 
+situation. From <code>lib/stripe.ts</code>:
+</p>
+<blockquote><em>"Stripe prices are amount-immutable and resolvePrice matches by lookup_key WITHOUT verifying unit_amount — reusing the old keys would forever resolve to any already-provisioned $799 price. New keys guarantee the $699 catalog provisions fresh."</em></blockquote>
+<p>
+<strong>Reason 3 — Agency Pro cannot be bought at all.</strong> It is absent from <code>PURCHASABLE_PLANS</code>, and a
+ 
+request is refused:
+</p>
+<p>
+```ts
+ 
+const PURCHASABLE_PLANS = ["premium", "agency"] as const;   // agency_pro deliberately ABSENT
+ 
+// ...
+ 
+"Agency Pro isn't available for purchase yet, so you can't be charged for it."   // HTTP 400
+ 
+```
+</p>
+<p>
+So <code>resolvePriceId(stripe, "agency_pro", …)</code> is <strong>unreachable from checkout</strong>. Neither the archived
+ 
+prices nor the new ones are currently used by any customer-facing path.
+</p>
+<hr>
+<h2 id="5-why-editing-the-legacy-constants-would-have-been-harmful">5. Why editing the legacy constants would have been harmful</h2>
+<p>
+<code>AGENCY_PRO_LEGACY_MONTH_CENTS</code> (79900) and <code>AGENCY_PRO_LEGACY_YEAR_CENTS</code> (799000) look like exactly
+ 
+the kind of "stale price" a sync task would delete. <strong>They must stay.</strong> They are consumed only by
+ 
+<code>planForPrice()</code>, which maps a subscription's price back to a tier:
+</p>
+<p>
+```ts
+ 
+if (amt === AGENCY_PRO_PRICE_CENTS || amt === 699000
+ 
+ || amt === AGENCY_PRO_LEGACY_MONTH_CENTS || amt === AGENCY_PRO_LEGACY_YEAR_CENTS)
+ 
+  return "agency_pro";
+ 
+```
+</p>
+<p>
+Removing them would mean any existing subscriber still on a $799 or $7,990 price falls through to the
+ 
+final <code>return "premium"</code> — <strong>silently downgraded from Agency Pro to Professional</strong> by the webhook, on
+ 
+their next subscription event. Archiving a price in Stripe does not cancel subscriptions already on
+ 
+it, so this is a live hazard, not a theoretical one.
+</p>
+<hr>
+<h2 id="6-verification-results">6. Verification results</h2>
+<div class="tw"><table><thead><tr><th>Requirement</th><th>Result</th><th>Evidence</th></tr></thead><tbody>
+<tr><td>Checkout uses the new <strong>monthly</strong> price</td><td><strong>N/A — BLOCKED BY DESIGN</strong></td><td><code>agency_pro</code> is not in <code>PURCHASABLE_PLANS</code>; the request returns <strong>400</strong>. When it is activated, <code>resolvePriceId(stripe, "agency_pro", "month")</code> resolves <code>gcl_agency_pro_monthly_v2</code> @ <strong>69900</strong></td></tr>
+<tr><td><strong>Annual</strong> checkout uses the new annual price</td><td><strong>N/A — BLOCKED BY DESIGN</strong></td><td>Same gate. <code>interval: "year"</code> → <code>gcl_agency_pro_yearly_v2</code> @ <strong>699000</strong></td></tr>
+<tr><td>Upgrades reference the correct price</td><td><strong>PASS</strong></td><td>The in-place upgrade uses the <em>same</em> <code>priceId</code> from <code>resolvePriceId(plan, interval)</code> — one resolver, one catalog. Upgrading <em>to</em> <code>agency_pro</code> is refused by the same whitelist gate</td></tr>
+<tr><td>Downgrades still work</td><td><strong>PASS — unaffected</strong></td><td>Downgrade is not a checkout operation. Checkout refuses same-or-lower tier (<code>tier(user.plan) &gt;= tier(plan)</code> → 400); downgrades run through the Stripe Billing Portal, which is price-catalog independent</td></tr>
+<tr><td>Billing portal remains valid</td><td><strong>PASS — unaffected</strong></td><td><code>billingPortal.sessions.create({ customer, return_url })</code> takes no price and no configuration. Nothing in this task touches it</td></tr>
+<tr><td>No other products changed</td><td><strong>PASS</strong></td><td><code>premium</code> ($99/$990), <code>agency</code> ($399/$3,990) and <code>letters_5</code> ($19) are byte-unchanged. <strong>No code file was modified at all</strong></td></tr>
+<tr><td>Display copy matches the new price</td><td><strong>PASS</strong></td><td><code>app/billing/page.tsx:137</code> <code>'$699.00'</code>; <code>app/pricing/PricingTiers.tsx:94</code> <code>monthly: 699, yearly: 6990</code></td></tr>
+</tbody></table></div>
+<hr>
+<h2 id="7-files-modified-documentation-only-2-files">7. Files modified — documentation only, 2 files</h2>
+<p>
+No source file, configuration file, test or migration was modified.
+</p>
+<div class="tw"><table><thead><tr><th>File</th><th>Change</th><th>Why</th></tr></thead><tbody>
+<tr><td><code>.ai/executive/ChiefRevenueOfficer.md:9</code></td><td><code>agency_pro $799/$7990</code> → <strong><code>agency_pro $699/$6,990</code></strong></td><td>The line claims to state "the catalog truth (<code>lib/stripe.ts</code> PRICES…)" and contradicted the money system of record. <code>premium</code> and <code>agency</code> on the same line were already correct and were left alone</td></tr>
+<tr><td><code>SETUP.md:128</code></td><td>`STRIPE_PRICE_ID \</td><td>optional \</td><td>auto-created if omitted` → marked <strong>removed 2026-07-16, no longer read by any code</strong></td><td>This was the repository's only remaining <em>price-ID</em> reference. It documented an env var that no code reads, and would have led an operator to set a variable with no effect</td></tr>
+</tbody></table></div>
+<p>
+<strong>No pricing amount was changed.</strong> Both edits bring documentation into agreement with code that was
+ 
+already correct.
+</p>
+<hr>
+<h2 id="8-reported-deliberately-not-changed">8. Reported, deliberately not changed</h2>
+<p>
+<code>.ai/PRICING-V2-ROADMAP.md</code> line 11 still calls Agency Pro <code>$799/mo, legacy</code>, and line 38 instructs
+ 
+adding "their price IDs to <code>lib/billing.ts</code>" — an architecture that no longer exists (lookup keys, in
+ 
+<code>lib/stripe.ts</code>). <strong>This was left alone on purpose:</strong> <code>ADR-0034</code> explicitly reviewed this exact
+ 
+staleness and recorded the decision to defer it to the ADR-0031 packaging slice. Overriding a
+ 
+recorded architectural decision unilaterally is out of scope for a price-sync task. **Owner
+ 
+decision.** Note that lines 14 and 23 of the same document already describe the new $699 correctly,
+ 
+so the file contradicts itself.
+</p>
+<hr>
+<h2 id="9-the-operational-risk-this-is-what-actually-needs-your-attention">9. ⚠ The operational risk — this is what actually needs your attention</h2>
+<p>
+<code>resolvePrice</code> is <strong>find-or-create by lookup key</strong>. It does not check the amount. So:
+</p>
+<ul><li>If the new $699 / $6,990 prices you created <strong>carry</strong> <code>gcl_agency_pro_monthly_v2</code> and</li></ul>
+<p>
+  <code>gcl_agency_pro_yearly_v2</code> → everything resolves correctly the moment Agency Pro is activated.
+</p>
+<ul><li>If they <strong>do not</strong> carry those lookup keys → the lookup finds nothing, and the application</li></ul>
+<p>
+  <strong>creates a third pair of Agency Pro prices</strong> at $699/$6,990 with those keys, on the next Agency
+ 
+  Pro checkout or the next run of the admin catalog sync. You would then have archived $799 prices,
+ 
+  your new $699 prices sitting unused, and a second set of $699 prices created by the app.
+</p>
+<p>
+A Stripe <code>lookup_key</code> can only be attached to <strong>one active price at a time</strong>, so if some <em>other</em>
+ 
+active price already holds a <code>_v2</code> key, creation will conflict rather than silently duplicate.
+</p>
+<p>
+<strong>Check in the Stripe Dashboard before activating Agency Pro:</strong> confirm exactly one active price
+ 
+holds <code>gcl_agency_pro_monthly_v2</code> at $699, and exactly one holds <code>gcl_agency_pro_yearly_v2</code> at
+ 
+$6,990. If your new prices lack the keys, <code>transfer_lookup_key</code> moves a key onto the right price
+ 
+without creating anything.
+</p>
+<p>
+<code>.ai/CURRENT-STATE.md:108</code> already carries the matching warning: *"the admin 'Sync products to
+ 
+Stripe' route would create the $699 <code>_v2</code> prices — **do not run it until Agency Pro is activated for
+ 
+sale.**"*
+</p>
+<p>
+<strong>This session performed no Stripe operation of any kind.</strong> The Stripe MCP connector is not
+ 
+authorized here, so the live catalog could not be read; the check above is yours to run.
+</p>
+<hr>
+<h2 id="10-finding-the-agency-pro-catalog-is-completely-unguarded">10. ⚠ Finding — the Agency Pro catalog is completely unguarded</h2>
+<p>
+<strong>No guard anywhere pins the Agency Pro amounts or lookup keys.</strong> A search of all of <code>scripts/</code> for
+ 
+<code>69900</code>, <code>699000</code> or <code>gcl_agency_pro</code> returns nothing.
+</p>
+<p>
+<strong>Proven, not asserted.</strong> In an isolated <code>origin/main</code> worktree I reverted Agency Pro to exactly the
+ 
+state this task was meant to fix — the archived prices <em>and</em> the old lookup keys:
+</p>
+<p>
+```
+ 
+AGENCY_PRO_PRICE_CENTS = 79900
+ 
+agency_pro_month: lookup "gcl_agency_pro_monthly",  amountCents: 79900
+ 
+agency_pro_year:  lookup "gcl_agency_pro_yearly",   amountCents: 799000
+ 
+```
+</p>
+<p>
+<strong>Result: <code>tsc --noEmit</code> exit 0 · 70 / 70 guards pass · 0 fail.</strong> Nothing went red. The file was then
+ 
+restored byte-identically (<code>git diff --stat</code> empty).
+</p>
+<p>
+So the correct catalog is held in place by nothing but the last person who edited it — and the
+ 
+archived $799 prices still exist in Stripe, so a revert would silently reconnect to them the moment
+ 
+Agency Pro is activated. **Recommended: add an amount-and-lookup-key assertion to a billing guard
+ 
+before Agency Pro goes on sale.** That is a code change beyond this task's scope and was not made.
+</p>
+<p>
+One guard <em>does</em> protect the purchase gate — but it ships in the unmerged PR-1-v2:
+ 
+<code>scripts/billing-identity.test.ts:119</code> asserts *"agency_pro is NOT purchasable while /pricing calls it
+ 
+Coming soon."* <strong>It will fail the day you add <code>agency_pro</code> to <code>PURCHASABLE_PLANS</code></strong> — that is
+ 
+intentional, and updating it is part of activating the tier.
+</p>
+<hr>
+<h2 id="11-tests-executed">11. Tests executed</h2>
+<p>
+All runs against <code>origin/main</code> (<code>dfe7a3a</code>) in its own isolated worktree with its own <code>node_modules</code>
+ 
+and generated Prisma client. <code>prisma validate</code> used the throwaway loopback placeholder
+ 
+<code>postgresql://throwaway:throwaway@127.0.0.1:5432/throwaway_validate?schema=public</code> — never a
+ 
+production value.
+</p>
+<div class="tw"><table><thead><tr><th>Check</th><th>Result</th></tr></thead><tbody>
+<tr><td><code>npx tsc --noEmit</code></td><td><strong>PASS</strong> (exit 0)</td></tr>
+<tr><td><code>npx next build</code></td><td><strong>PASS</strong> (exit 0)</td></tr>
+<tr><td>Full <code>scripts/*.test.ts</code> suite</td><td><strong>70 passed / 0 failed</strong></td></tr>
+<tr><td><code>agency-capacity.test.ts</code></td><td><strong>40 / 0</strong></td></tr>
+<tr><td><code>capability-matrix.test.ts</code></td><td><strong>40 / 0</strong></td></tr>
+<tr><td>Mutation control (§10)</td><td>catalog reverted to $799 → <strong>still 70 / 0</strong> — the gap</td></tr>
+</tbody></table></div>
+<p>
+<strong>Billing guards that do not exist on production</strong>, run where they actually live (the unmerged draft
+ 
+PRs), since a "billing tests" claim would otherwise be misleading:
+</p>
+<div class="tw"><table><thead><tr><th>Guard</th><th>Branch</th><th>Result</th></tr></thead><tbody>
+<tr><td><code>billing-identity.test.ts</code></td><td><code>release/pr1-critical-fixes-v2</code> (PR <strong>#8</strong>)</td><td><strong>39 / 0</strong></td></tr>
+<tr><td><code>billing-integrity.test.ts</code></td><td><code>release/pr1-critical-fixes-v2</code></td><td><strong>31 / 0</strong></td></tr>
+<tr><td><code>critical-paths.test.ts</code></td><td><code>release/pr1-critical-fixes-v2</code></td><td><strong>33 / 0</strong></td></tr>
+<tr><td><code>stripe-lifecycle.test.ts</code></td><td><code>release/pr2-stripe-lifecycle-v2</code> (PR <strong>#9</strong>)</td><td><strong>84 / 0</strong></td></tr>
+</tbody></table></div>
+<hr>
+<h2 id="12-owner-actions">12. Owner actions</h2>
+<ol><li><strong>Verify the lookup keys in Stripe (§9)</strong> — confirm one active price holds <code>gcl_agency_pro_monthly_v2</code> at $699 and one holds <code>gcl_agency_pro_yearly_v2</code> at $6,990. This is the only step that determines whether the sync is actually complete.</li><li><strong>Do not run the admin "Sync products to Stripe" route</strong> until Agency Pro is activated for sale — it will create the <code>_v2</code> prices.</li><li><strong>Decide on a catalog guard (§10)</strong> before activating the tier.</li><li><strong>Decide on <code>.ai/PRICING-V2-ROADMAP.md</code> (§8)</strong> — currently self-contradictory, deferred by ADR-0034.</li><li><strong>Activating Agency Pro is a separate change</strong>, not a price sync: add <code>agency_pro</code> to <code>PURCHASABLE_PLANS</code>, update <code>scripts/billing-identity.test.ts</code>, and flip the <code>/pricing</code> card from "Coming soon". Not done here.</li><li>Optionally authorize the <strong>Stripe MCP connector</strong> (claude.ai connector settings) so the live catalog can be read directly in a future session.</li></ol>
+<hr>
+<h2 id="13-constraints-observed">13. Constraints observed</h2>
+<p>
+**No pricing amount modified · no other Stripe product touched · no Stripe price created · no Stripe
+ 
+API call of any kind · no deploy · no merge · no push · no production database contact · no migration
+ 
+· no secret printed.** No source file, test, configuration or migration was changed — the only edits
+ 
+are the two documentation corrections in §7.
+</p>
+<p>
+<strong>Repository truth only.</strong> Everything above is measured from <code>origin/main</code> = <code>dfe7a3a</code>. Nothing here
+ 
+is evidence about your live Stripe catalog, which this session could not read.
+</p>
+<footer>Projection of <code>CREDITVECTOR_RC1_RELEASE_CANDIDATE_EXTRACTION_WAVE_2_2_REPORT.md</code>, which is canonical.
+Contains no credentials, secrets, tokens, or environment values.</footer>
+</main></body></html>
