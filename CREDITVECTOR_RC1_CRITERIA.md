@@ -2,7 +2,7 @@
 
 **The executive Go/No-Go checklist for CreditVector Version 1.0.**
 
-**Version:** 1.6 · **Status:** Draft — not ratified · **Date:** 2026-07-28 (Waves 1–2.4 applied)
+**Version:** 1.7 · **Status:** Draft — not ratified · **Date:** 2026-07-29 (Waves 1–2.5 applied)
 **Method:** repository audit of 26 launch-critical subsystems; every finding independently
 re-verified against source before entry. **No code was written. No feature was implemented.**
 
@@ -112,7 +112,49 @@ The two that remain are the two that were never engineering-blocked — they wer
 
 **All twelve must close. No exceptions, no partial credit.**
 
-### Wave 2.4 status (2026-07-28) — read this column first
+### Wave 2.5 status (2026-07-29) — read this column first
+
+**Both release units are published as protected DRAFT pull requests against `main`.** Publication
+closes no blocker; RC1 remains 🔴 NO-GO.
+
+| Unit | PR | Head | Draft | CI | Preview |
+|---|---|---|---|---|---|
+| PR-1-v2 | **#8** | `ec7b467` | **DRAFT** | **5/5 success** | Ready (Preview, not Production) |
+| PR-2-v2 | **#9** | `f24778a` | **DRAFT** | **5/5 success** | Ready (Preview, not Production) |
+
+`origin/main` re-verified `dfe7a3a` — **unmoved**, so the Wave 2.4 proof remains current. Both
+branches pushed at exactly the reviewed commits; nothing else was pushed (`wip/*` 0, `tmp/*` 0, no
+tag). #9 carries an explicit merge-dependency line on #8. Auto-merge never enabled; neither PR
+approved.
+
+**Preview-safety repository review PASSED on ten vectors** — no build-time DB mutation, no seed, no
+migration, no import-time DDL, crons secret-gated and Production-only, no webhook registration, and
+**0 preview-affecting config files changed by either branch**.
+
+**⚠ One required check is UNMEASURED, not passed.** Preview authentication could not be tested from
+the session: the 403 seen on both preview URLs is this environment's egress proxy denying CONNECT,
+proven by a control in which public `vercel.com` and `nextjs.org` are equally unreachable. Recorded
+**VERIFICATION REQUIRED — OWNER**, with the exact command in the Wave 2.5 report §18.
+
+**⚠ Documentation discrepancy recorded.** `CLAUDE.md` line 46 still states `DATABASE_URL` is one
+shared value across Production+Preview; the owner reports they are separately scoped. Owner should
+reconcile. Worst case is bounded — the `prisma db push` that once armed table drops is gone from the
+build.
+
+**Disabled-subscriber item: still ⚠ PARTIAL.** A signed-out disabled user cannot reauthenticate. For
+v1.0 the gap is covered by `.ai/RUNBOOKS/support-assisted-cancellation.md`, whose published support
+channel and SLA are **OWNER ACTION REQUIRED and deliberately blank** — until both are set the
+fallback is a plan, not a control, and must not be cited as mitigation.
+
+**No blocker status changed.** B-05 · B-12 BLOCKED — COUNSEL · B-06 BLOCKED — OWNER + PRODUCTION ·
+B-09 OPEN · B-10 PARTIAL · C-01/C-02 VERIFICATION REQUIRED — PRODUCTION.
+**No merge, no auto-merge, no deploy, no production SQL, no live Stripe mutation, no production
+database contact, no migration, no Gate D baseline, no release tag.**
+Full record: `CREDITVECTOR_RC1_DRAFT_PR_PUBLICATION_WAVE_2_5_REPORT.md`.
+
+---
+
+### Wave 2.4 status (2026-07-28)
 
 **Both release units were rebuilt from `origin/main` (`dfe7a3a`, re-verified unchanged),
 adversarially attacked, corrected, and re-proven from scratch.** PR-1-v2 `ec7b467` (6 commits,

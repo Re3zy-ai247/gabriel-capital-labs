@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CreditVector — RC1 Release Candidate Extraction, Wave 2.2</title>
+<meta name="description" content="RC1 Execution Wave 2 — Go/No-Go status, blockers, and required decisions.">
+<style>
+:root{--bg:#ffffff;--fg:#14181f;--mut:#4a5462;--line:#d9dee6;--acc:#0b4fa8;--code:#f2f4f7;
+--red:#8a1420;--redbg:#fdeaec;--amb:#7a4a00;--ambbg:#fff5e0;--grn:#0f5c34;--grnbg:#e6f5ec;}
+*{box-sizing:border-box}
+body{margin:0;padding:1.1rem;background:var(--bg);color:var(--fg);
+font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+-webkit-text-size-adjust:100%;overflow-wrap:break-word}
+main{max-width:60rem;margin:0 auto}
+h1{font-size:1.6rem;line-height:1.25;margin:.2rem 0 .4rem;letter-spacing:-.01em}
+h2{font-size:1.28rem;margin:2.2rem 0 .7rem;padding-bottom:.32rem;border-bottom:2px solid var(--line)}
+h3{font-size:1.08rem;margin:1.6rem 0 .5rem}
+h4{font-size:1rem;margin:1.2rem 0 .4rem;color:var(--mut)}
+p{margin:.7rem 0}
+a{color:var(--acc)}
+code{background:var(--code);padding:.12em .38em;border-radius:4px;
+font:.86em/1.4 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;word-break:break-word}
+hr{border:0;border-top:1px solid var(--line);margin:2rem 0}
+blockquote{margin:1.1rem 0;padding:.85rem 1rem;background:var(--redbg);
+border-left:4px solid var(--red);border-radius:0 6px 6px 0;color:#5c0f18}
+blockquote strong{color:var(--red)}
+ul,ol{padding-left:1.35rem;margin:.7rem 0}
+li{margin:.34rem 0}
+.tw{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:1rem 0;
+border:1px solid var(--line);border-radius:8px}
+table{border-collapse:collapse;width:100%;min-width:34rem;font-size:.9rem}
+th,td{padding:.55rem .7rem;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+th{background:#f5f7fa;font-weight:650;white-space:nowrap}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:nth-child(even){background:#fafbfc}
+.meta{color:var(--mut);font-size:.92rem;margin:.5rem 0 1.2rem}
+nav.toc{background:#f7f9fb;border:1px solid var(--line);border-radius:8px;padding:.85rem 1rem;margin:1.4rem 0}
+nav.toc h2{font-size:.82rem;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);
+border:0;margin:0 0 .5rem;padding:0}
+nav.toc ol{margin:0;padding-left:1.2rem;font-size:.92rem}
+nav.toc li{margin:.2rem 0}
+.legend{display:flex;flex-wrap:wrap;gap:.4rem;margin:1rem 0}
+.tag{font-size:.76rem;font-weight:650;padding:.18rem .5rem;border-radius:999px;white-space:nowrap}
+.t-open{background:var(--redbg);color:var(--red)}
+.t-part{background:var(--ambbg);color:var(--amb)}
+.t-closed{background:var(--grnbg);color:var(--grn)}
+footer{margin-top:2.5rem;padding-top:1rem;border-top:1px solid var(--line);
+color:var(--mut);font-size:.85rem}
+@media(max-width:34rem){body{padding:.8rem}h1{font-size:1.35rem}table{font-size:.84rem;min-width:30rem}}
+@media print{body{padding:0;font-size:11pt}nav.toc{break-inside:avoid}
+.tw{overflow:visible;border:0}table{min-width:0;font-size:9pt}
+h2{break-after:avoid}tr{break-inside:avoid}a{color:#000;text-decoration:none}
+a[href^="http"]::after{content:" (" attr(href) ")";font-size:8pt;color:#555}}
+</style></head><body><main>
+<p class="meta"><strong>Gabriel Capital Labs</strong> · Draft — not ratified · 2026-07-28<br>
+Branch <code>claude/creditvector-founder-library-jwnbhc</code> · Commits <code>d6303fc</code> → <code>HEAD</code></p>
+<div class="legend"><span class="tag t-closed">CLOSED 9</span><span class="tag t-part">PARTIAL 3</span><span class="tag t-open">OPEN / BLOCKED 2</span><span class="tag t-open">VERIFICATION REQUIRED 2</span></div>
+<nav class="toc"><h2>Contents</h2><ol><li><a href="#1-context">1. Context</a></li><li><a href="#2-owner-decisions-used">2. Owner decisions used</a></li><li><a href="#3-vercel-preview-protection-facts-owner-provided">3. Vercel preview-protection facts — owner-provided</a></li><li><a href="#4-preview-safety-repository-review-pass">4. Preview-safety repository review — PASS</a></li><li><a href="#5-current-origin-main">5. Current origin/main</a></li><li><a href="#6-whether-it-moved">6. Whether it moved</a></li><li><a href="#7-pr-1-branch-verification">7. PR-1 branch verification</a></li><li><a href="#8-pr-2-branch-verification">8. PR-2 branch verification</a></li><li><a href="#9-workstream-exclusion-proof">9. Workstream exclusion proof</a></li><li><a href="#10-forbidden-path-proof">10. Forbidden-path proof</a></li><li><a href="#11-branch-push-results">11. Branch push results</a></li><li><a href="#12-draft-pr-creation-results">12. Draft PR creation results</a></li><li><a href="#13-pr-1-number-and-url">13. PR-1 — number and URL</a></li><li><a href="#14-pr-2-number-and-url">14. PR-2 — number and URL</a></li><li><a href="#15-draft-status">15. Draft status</a></li><li><a href="#16-ci-status-per-pr">16. CI status per PR</a></li><li><a href="#17-preview-url-per-pr">17. Preview URL per PR</a></li><li><a href="#18-preview-authentication-protection-verification-required">18. Preview authentication / protection — VERIFICATION REQUIRED</a></li><li><a href="#19-whether-any-production-deployment-occurred">19. Whether any production deployment occurred</a></li><li><a href="#20-whether-any-migration-or-production-mutation-occurred">20. Whether any migration or production mutation occurred</a></li><li><a href="#21-support-fallback-artifact">21. Support fallback artifact</a></li><li><a href="#22-owner-actions-remaining">22. Owner actions remaining</a></li><li><a href="#23-counsel-actions-remaining">23. Counsel actions remaining</a></li><li><a href="#24-production-actions-remaining">24. Production actions remaining</a></li><li><a href="#25-exact-review-order">25. Exact review order</a></li><li><a href="#26-exact-next-action">26. Exact next action</a></li><li><a href="#27-artifact-paths">27. Artifact paths</a></li><li><a href="#28-final-report-commit-hash">28. Final report commit hash</a></li><li><a href="#29-prohibitions-explicit-confirmation">29. Prohibitions — explicit confirmation</a></li></ol></nav>
+<h1 id="creditvector-rc1-draft-pr-publication-wave-2-5">CreditVector — RC1 Draft PR Publication, Wave 2.5</h1>
+<p>
+<strong>Date:</strong> 2026-07-29 · <strong>Base:</strong> <code>origin/main</code> = <code>dfe7a3a</code> — <strong>re-fetched and verified UNCHANGED</strong>
+ 
+<strong>Status:</strong> Draft — not ratified
+</p>
+<blockquote><strong>Both release units are published as protected DRAFT pull requests.</strong> <strong>PR-1-v2 → <a href="https://github.com/Re3zy-ai247/gabriel-capital-labs/pull/8">#8</a></strong> · <strong>PR-2-v2 → <a href="https://github.com/Re3zy-ai247/gabriel-capital-labs/pull/9">#9</a></strong> <strong>RC1 remains 🔴 NO-GO.</strong> Opening draft PRs closes no blocker. The disabled-subscriber item stays <strong>PARTIAL</strong>. <strong>NOT AUTHORIZED TO MERGE · NOT AUTHORIZED TO DEPLOY.</strong> No merge · no auto-merge · no approval · no production SQL · no live Stripe mutation · no production database contact · no migration · no Gate D baseline · no release tag · no secret values printed. <strong>⚠ One required check could NOT be performed from this environment: preview authentication.</strong> It is recorded as VERIFICATION REQUIRED, not PASS. See §18 — the owner must run it.</blockquote>
+<hr>
+<h2 id="1-context">1. Context</h2>
+<p>
+Wave 2.4 rebuilt both release units from <code>origin/main</code>, attacked them adversarially, closed eight findings, and re-proved both from scratch under CI-equivalent isolation. Wave 2.5 publishes them for protected, owner-visible review. <strong>No new engineering was performed on the release branches</strong> — both were published at exactly the commits that were proven.
+</p>
+<hr>
+<h2 id="2-owner-decisions-used">2. Owner decisions used</h2>
+<div class="tw"><table><thead><tr><th></th><th>Decision</th><th>How it was applied</th></tr></thead><tbody>
+<tr><td>1</td><td>Period-end cancellation (<code>cancel_at_period_end: true</code>)</td><td>Stated in PR #8 body</td></tr>
+<tr><td>2</td><td>No automatic refund</td><td>Stated in PR #8 body</td></tr>
+<tr><td>3</td><td>Narrowly scoped cancellation-only path for disabled users with a valid session</td><td>Stated in PR #8 body</td></tr>
+<tr><td>4</td><td>A signed-out disabled user cannot reauthenticate</td><td>Stated in PR #8 body as the reachability limit</td></tr>
+<tr><td>5</td><td>That gap handled by support-assisted fallback for v1.0, not by reopening auth</td><td>New runbook (§21); referenced from PR #8</td></tr>
+<tr><td>6</td><td>Support channel and SLA remain OWNER ACTION REQUIRED</td><td>Left deliberately blank in the runbook</td></tr>
+<tr><td>7</td><td>One-way <code>letterCredits</code> decrement acknowledged</td><td>Stated in PR #8 body</td></tr>
+<tr><td>8</td><td>PR-2 rollback asymmetric, requires the tested runbook</td><td>Stated in PR #9 body</td></tr>
+<tr><td>9</td><td>Merge order PR-1 → production verification → PR-2</td><td>Stated in both bodies; #9 carries the explicit dependency line</td></tr>
+<tr><td>10</td><td>Push the two clean branches and create DRAFT PRs</td><td>Executed</td></tr>
+<tr><td>11</td><td>Merge, deploy, DB access, Stripe mutation, migrations, tagging remain unauthorized</td><td><strong>None performed</strong></td></tr>
+</tbody></table></div>
+<hr>
+<h2 id="3-vercel-preview-protection-facts-owner-provided">3. Vercel preview-protection facts — owner-provided</h2>
+<p>
+Treated as owner-provided configuration facts, not re-derived: Vercel Authentication enabled · Require Log In enabled · Standard Protection selected · previews require a logged-in Vercel team member · Preview and Production have <strong>separately scoped</strong> database variables · production Stripe secrets scoped to Production · merge to <code>main</code> auto-deploys Production · draft PRs may create protected previews.
+</p>
+<p>
+<strong>⚠ One repository record contradicts one of these, and it is recorded rather than silently overridden.</strong>
+ 
+<code>CLAUDE.md</code> line 46, a correction dated 2026-07-20, states: <em>"<code>DATABASE_URL</code> is one shared value across Production+Preview."</em> The owner now reports Preview and Production are separately scoped.
+</p>
+<p>
+<strong>Assessment.</strong> Env-var scoping is Vercel dashboard state — something the repository cannot observe and the owner can. The owner's statement is the more recent direct observation, so it supersedes an eight-day-old transcription of that same dashboard state. <strong>This is a stale documentation record, not conflicting evidence about repository behaviour</strong>, so it does not trigger the stop condition.
+</p>
+<p>
+<strong>It still matters, and the worst case is now bounded.</strong> If the values were shared, a preview would read and write production rows for any authenticated action. What it could <em>no longer</em> do is destroy schema: the <code>prisma db push</code> that once armed table drops has been removed from the build (§4). <strong>Recommended owner action: reconcile <code>CLAUDE.md</code> line 46 against the current dashboard, and correct whichever is wrong.</strong>
+</p>
+<hr>
+<h2 id="4-preview-safety-repository-review-pass">4. Preview-safety repository review — PASS</h2>
+<p>
+Inspected only preview-affecting configuration, per the token constitution.
+</p>
+<div class="tw"><table><thead><tr><th>Vector</th><th>Finding</th><th>Result</th></tr></thead><tbody>
+<tr><td>Build command</td><td><code>vercel.json</code> → <code>prisma generate &amp;&amp; next build</code>. <strong>No <code>prisma db push</code>, no <code>migrate deploy</code>, no seed.</strong> Byte-identical on <code>main</code> and <strong>both</strong> release branches</td><td><strong>PASS</strong></td></tr>
+<tr><td><code>postinstall</code></td><td><code>prisma generate</code> only — no DB mutation</td><td><strong>PASS</strong></td></tr>
+<tr><td>Seed logic</td><td><code>db:seed</code> / <code>seed</code> exist as manual scripts; <strong>invoked by no build step, workflow or route</strong></td><td><strong>PASS</strong></td></tr>
+<tr><td>Migration execution</td><td>No migration runs anywhere in build or startup; 0 <code>prisma/</code> paths in either diff</td><td><strong>PASS</strong></td></tr>
+<tr><td>Startup / self-heal DDL</td><td>Self-heal is <code>CREATE TABLE IF NOT EXISTS</code> on <strong>first runtime use</strong>, never at import time. It is additive-only — no <code>DROP</code>, no <code>ALTER</code>. There are no module-level side effects</td><td><strong>PASS</strong></td></tr>
+<tr><td>Cron execution</td><td>Two crons in <code>vercel.json</code>, both <code>CRON_SECRET</code>-gated and returning 503 when unset. Vercel schedules crons on <strong>Production only</strong>, and neither release branch touches a cron route</td><td><strong>PASS</strong></td></tr>
+<tr><td>Webhook registration</td><td><code>webhookEndpoints</code> appears nowhere in <code>lib/</code>, <code>app/</code> or <code>scripts/</code> — nothing registers or mutates a Stripe endpoint on boot</td><td><strong>PASS</strong></td></tr>
+<tr><td>Background jobs</td><td>None started at import time</td><td><strong>PASS</strong></td></tr>
+<tr><td>Config drift</td><td>Neither branch touches <code>vercel.json</code>, <code>package.json</code>, any cron route, or <code>prisma/seed</code> — <strong>0 preview-affecting config files changed</strong></td><td><strong>PASS</strong></td></tr>
+<tr><td>CI workflow</td><td>PR-2's <code>ci.yml</code> diff adds <strong>no</strong> <code>prisma db push</code>, <code>migrate deploy</code>, seed step, or <code>DATABASE_URL</code> usage</td><td><strong>PASS</strong></td></tr>
+</tbody></table></div>
+<p>
+<strong>Conclusion: opening these draft PRs cannot execute a migration, run seed logic, perform startup DDL, trigger a cron, register a webhook, or mark a deployment Production.</strong>
+</p>
+<p>
+One nuance worth stating plainly: <strong>the push, not the PR, is what creates a preview deployment.</strong> Vercel builds any pushed branch connected to the project. So the deployment-triggering action was the authorized branch push.
+</p>
+<hr>
+<h2 id="5-current-origin-main">5. Current <code>origin/main</code></h2>
+<p>
+<code>dfe7a3ab06e966d87d4ed53fb518f10333bbb61e</code>
+</p>
+<h2 id="6-whether-it-moved">6. Whether it moved</h2>
+<p>
+<strong>It did not move.</strong> Identical to the Wave 2.4 base. <strong>No base drift invalidates either branch</strong>, so the Wave 2.4 proof remains current and CI was not re-run locally.
+</p>
+<hr>
+<h2 id="7-pr-1-branch-verification">7. PR-1 branch verification</h2>
+<div class="tw"><table><thead><tr><th>Gate</th><th>Evidence</th><th>Result</th></tr></thead><tbody>
+<tr><td>Branch exists</td><td><code>release/pr1-critical-fixes-v2</code></td><td><strong>PASS</strong></td></tr>
+<tr><td>Head is the reviewed commit</td><td><code>ec7b467d4d8216e1128645c3302dfb463e025441</code> — <strong>exactly</strong> the expected <code>ec7b467</code>, unchanged</td><td><strong>PASS</strong></td></tr>
+<tr><td>Working tree clean</td><td>0 uncommitted</td><td><strong>PASS</strong></td></tr>
+<tr><td>Merge base</td><td><code>dfe7a3a</code> — i.e. <code>origin/main</code> itself</td><td><strong>PASS</strong></td></tr>
+<tr><td><code>is-ancestor origin/main HEAD</code></td><td>TRUE — strict linear descendant, no merge commit</td><td><strong>PASS</strong></td></tr>
+</tbody></table></div>
+<h2 id="8-pr-2-branch-verification">8. PR-2 branch verification</h2>
+<div class="tw"><table><thead><tr><th>Gate</th><th>Evidence</th><th>Result</th></tr></thead><tbody>
+<tr><td>Branch exists</td><td><code>release/pr2-stripe-lifecycle-v2</code></td><td><strong>PASS</strong></td></tr>
+<tr><td>Head is the reviewed commit</td><td><code>f24778ac6bf56e923675939899befc8972539118</code> — <strong>exactly</strong> the expected <code>f24778a</code>, unchanged</td><td><strong>PASS</strong></td></tr>
+<tr><td>Working tree clean</td><td>0 uncommitted</td><td><strong>PASS</strong></td></tr>
+<tr><td>Merge base</td><td><code>dfe7a3a</code></td><td><strong>PASS</strong></td></tr>
+<tr><td><code>is-ancestor origin/main HEAD</code></td><td>TRUE</td><td><strong>PASS</strong></td></tr>
+</tbody></table></div>
+<p>
+<strong>Neither head changed during this wave.</strong> The support-fallback artifact (§21) was deliberately <strong>not</strong> added to either release branch, precisely so both would publish at the exact commits Wave 2.4 proved. Trade-off named: the runbook therefore ships outside these two PRs and is referenced from #8 rather than included in it.
+</p>
+<hr>
+<h2 id="9-workstream-exclusion-proof">9. Workstream exclusion proof</h2>
+<div class="tw"><table><thead><tr><th>Property</th><th>PR-1-v2</th><th>PR-2-v2</th></tr></thead><tbody>
+<tr><td>Founder Library / Knowledge Architecture commits in ancestry</td><td><strong>0</strong></td><td><strong>0</strong></td></tr>
+<tr><td>Mixed source branch used as PR head</td><td><strong>No</strong> — never</td><td><strong>No</strong></td></tr>
+<tr><td>Mutual file overlap between the two diffs</td><td><strong>0</strong></td><td><strong>0</strong></td></tr>
+</tbody></table></div>
+<p>
+The mixed branch <code>claude/creditvector-founder-library-jwnbhc</code> was <strong>not</strong> used as a PR source and was not pushed as part of publication.
+</p>
+<h2 id="10-forbidden-path-proof">10. Forbidden-path proof</h2>
+<div class="tw"><table><thead><tr><th>Scan (diff-relative vs <code>origin/main</code>)</th><th>PR-1-v2</th><th>PR-2-v2</th></tr></thead><tbody>
+<tr><td><code>knowledge/</code>, <code>founder-library/</code>, <code>architecture/GIOS</code></td><td><strong>0</strong></td><td><strong>0</strong></td></tr>
+<tr><td><code>prisma/</code> or <code>migrations</code> paths</td><td><strong>0</strong></td><td><strong>0</strong></td></tr>
+</tbody></table></div>
+<p>
+<code>architecture/GIOS-<em></code> present in the </em>tree* remains a known false positive — those files already exist on <code>origin/main</code>. Only diff presence is meaningful.
+</p>
+<hr>
+<h2 id="11-branch-push-results">11. Branch push results</h2>
+<p>
+Normal non-force push. Exactly two branches.
+</p>
+<div class="tw"><table><thead><tr><th>Remote branch</th><th>Local head</th><th>Remote head</th><th>Exact commit accepted</th><th>Result</th></tr></thead><tbody>
+<tr><td><code>release/pr1-critical-fixes-v2</code></td><td><code>ec7b467d…</code></td><td><code>ec7b467d…</code></td><td><strong>YES</strong></td><td><strong>PASS</strong> — new branch</td></tr>
+<tr><td><code>release/pr2-stripe-lifecycle-v2</code></td><td><code>f24778ac…</code></td><td><code>f24778ac…</code></td><td><strong>YES</strong></td><td><strong>PASS</strong> — new branch</td></tr>
+</tbody></table></div>
+<p>
+<strong>Nothing else was pushed:</strong> <code>wip/<em></code> = 0 · <code>tmp/</em></code> = 0 · the mixed source branch was not pushed in this operation · <strong>no tag was created or pushed</strong> (the 2 tags on the remote pre-date this session). No force push.
+</p>
+<hr>
+<h2 id="12-draft-pr-creation-results">12. Draft PR creation results</h2>
+<p>
+Two PRs created with <code>draft: true</code>, base <code>main</code>. No PR template exists in the repository, so the bodies follow the Wave 2.4 packages.
+</p>
+<p>
+<strong>One publication-metadata defect found and corrected.</strong> PR #9's stored body had the literal token <code>pending:&lt;eventType&gt;</code> <strong>stripped to <code>pending:</code></strong> — GitHub removed the angle-bracket token even inside a code span, silently changing the meaning of the rollback description. Corrected by rewriting those two passages without angle brackets (<code>the value </code>pending:<code> followed by the Stripe event type</code>, and <code>rows whose </code>type<code> begins with </code>pending:``). This is exactly the "clearly publication metadata" class the brief permits fixing. <strong>No other content changed, and neither branch was touched.</strong>
+</p>
+<p>
+<strong>Labels: none applied.</strong> <code>release</code> was checked and does <strong>not</strong> exist in this repository, and <code>billing</code>, <code>security</code>, <code>stripe</code>, <code>rc1</code> and <code>draft</code> are not GitHub defaults either (<code>bug</code> was confirmed present, so label lookup works). Per instruction, labels were <strong>not invented</strong> and creating repository labels was not authorized.
+</p>
+<hr>
+<h2 id="13-pr-1-number-and-url">13. PR-1 — number and URL</h2>
+<p>
+<strong>#8</strong> — https://github.com/Re3zy-ai247/gabriel-capital-labs/pull/8
+ 
+Head <code>release/pr1-critical-fixes-v2</code> @ <code>ec7b467</code> · base <code>main</code> @ <code>dfe7a3a</code> · <strong>6 commits · 19 files · +1842 / −92</strong>
+</p>
+<h2 id="14-pr-2-number-and-url">14. PR-2 — number and URL</h2>
+<p>
+<strong>#9</strong> — https://github.com/Re3zy-ai247/gabriel-capital-labs/pull/9
+ 
+Head <code>release/pr2-stripe-lifecycle-v2</code> @ <code>f24778a</code> · base <code>main</code> @ <code>dfe7a3a</code> · <strong>8 commits · 17 files · +2774 / −19</strong>
+ 
+Carries the explicit line: <em>"Merge dependency: PR-1-v2 (#8) must merge and complete production verification before this PR may merge."</em>
+</p>
+<h2 id="15-draft-status">15. Draft status</h2>
+<div class="tw"><table><thead><tr><th>PR</th><th><code>draft</code></th><th><code>state</code></th><th><code>merged</code></th><th><code>mergeable_state</code></th></tr></thead><tbody>
+<tr><td>#8</td><td><strong>true — DRAFT</strong></td><td>open</td><td><strong>false</strong></td><td><code>blocked</code> (expected for a draft)</td></tr>
+<tr><td>#9</td><td><strong>true — DRAFT</strong></td><td>open</td><td><strong>false</strong></td><td><code>blocked</code></td></tr>
+</tbody></table></div>
+<p>
+<strong>Neither is ready-for-review. Auto-merge was not enabled. Neither PR was approved or reviewed.</strong>
+</p>
+<hr>
+<h2 id="16-ci-status-per-pr">16. CI status per PR</h2>
+<p>
+Both PRs carry two workflow runs on the same SHA — one triggered by the <strong>push</strong>, one by the <strong>pull_request</strong> event.
+</p>
+<p>
+<strong>PR #8 — all checks complete, all green:</strong>
+</p>
+<div class="tw"><table><thead><tr><th>Check</th><th>Run</th><th>Conclusion</th></tr></thead><tbody>
+<tr><td><code>verify</code></td><td>30409647493 (push)</td><td><strong>success</strong></td></tr>
+<tr><td><code>Gate D preflight</code></td><td>30409647493 (push)</td><td><strong>success</strong></td></tr>
+<tr><td><code>verify</code></td><td>30409691896 (PR)</td><td><strong>success</strong></td></tr>
+<tr><td><code>Gate D preflight</code></td><td>30409691896 (PR)</td><td><strong>success</strong></td></tr>
+<tr><td><code>Vercel Preview Comments</code></td><td>—</td><td><strong>success</strong></td></tr>
+</tbody></table></div>
+<p>
+Combined commit status: <strong>success</strong>.
+</p>
+<p>
+<strong>PR #9 — all checks complete, all green:</strong>
+</p>
+<div class="tw"><table><thead><tr><th>Check</th><th>Run</th><th>Conclusion</th></tr></thead><tbody>
+<tr><td><code>verify</code></td><td>30409648484 (push)</td><td><strong>success</strong></td></tr>
+<tr><td><code>Gate D preflight</code></td><td>30409648484 (push)</td><td><strong>success</strong></td></tr>
+<tr><td><code>Gate D preflight</code></td><td>30409722462 (PR)</td><td><strong>success</strong></td></tr>
+<tr><td><code>verify</code></td><td>30409722462 (PR)</td><td><strong>success</strong> — completed 00:02:11Z</td></tr>
+<tr><td><code>Vercel Preview Comments</code></td><td>—</td><td><strong>success</strong></td></tr>
+</tbody></table></div>
+<p>
+Combined commit status: <strong>success</strong>. <strong>No check failed on either PR; 5/5 green on both.</strong> The last <code>verify</code> on #9 was briefly <code>in_progress</code> when first observed and has since completed successfully — recorded here as the final state, not the first reading.
+</p>
+<hr>
+<h2 id="17-preview-url-per-pr">17. Preview URL per PR</h2>
+<p>
+Both deployments reported <strong>Ready</strong> by the Vercel GitHub app, both labelled <strong>Preview</strong>:
+</p>
+<div class="tw"><table><thead><tr><th>PR</th><th>Preview URL</th><th>Vercel status</th></tr></thead><tbody>
+<tr><td>#8</td><td><code>https://gabriel-capital-labs-git-release-911b5d-rey-gabriel-s-projects.vercel.app</code></td><td>Ready — "Deployment has completed"</td></tr>
+<tr><td>#9</td><td><code>https://gabriel-capital-labs-git-release-a5bb5c-rey-gabriel-s-projects.vercel.app</code></td><td>Ready</td></tr>
+</tbody></table></div>
+<hr>
+<h2 id="18-preview-authentication-protection-verification-required">18. Preview authentication / protection — VERIFICATION REQUIRED</h2>
+<p>
+<strong>Result: NOT VERIFIABLE FROM THIS ENVIRONMENT. Recorded as VERIFICATION REQUIRED — not PASS, not FAIL.</strong>
+</p>
+<p>
+An unauthenticated request to both preview URLs returned <strong>HTTP 403</strong>. That looks like protection working, and it would have been easy to record as PASS. <strong>It is not evidence.</strong> The 403 is the session's own egress policy proxy refusing the connection, not Vercel:
+</p>
+<ul><li>The proxy's diagnostics report <code>connect_rejected</code> — <em>"gateway answered 403 to CONNECT (policy denial or upstream failure)"</em> — naming the preview host explicitly.</li><li><strong>Control:</strong> <code>https://vercel.com/</code> and <code>https://nextjs.org/</code> — both public — are equally unreachable (HTTP 000). Outbound egress is blocked generally.</li><li>The 403 body was 36 bytes with no Vercel SSO markers, no <code>_vercel_sso</code> cookie, and no redirect to a Vercel login.</li></ul>
+<p>
+So the check the brief asks for — <em>does the preview request Vercel authentication</em> — could not be observed either way, and the proxy README forbids retrying policy denials.
+</p>
+<p>
+<strong>OWNER MUST RUN THIS</strong>, from a normal browser or terminal, signed <strong>out</strong> of Vercel:
+</p>
+<p>
+```
+ 
+curl -sI https://gabriel-capital-labs-git-release-911b5d-rey-gabriel-s-projects.vercel.app/
+ 
+curl -sI https://gabriel-capital-labs-git-release-a5bb5c-rey-gabriel-s-projects.vercel.app/
+ 
+```
+</p>
+<ul><li>Redirect to <code>vercel.com/sso-api…</code> or an authentication challenge → <strong>PASS</strong>, protection confirmed.</li><li><strong>HTTP 200 with the application rendering → FAIL. Do not proceed toward merge</strong>, and treat the preview as having been publicly exposed from the moment of the push.</li></ul>
+<p>
+Owner-provided configuration (Standard Protection, Require Log In) says the answer should be PASS. <strong>That is the expectation, not the measurement.</strong>
+</p>
+<h2 id="19-whether-any-production-deployment-occurred">19. Whether any production deployment occurred</h2>
+<p>
+<strong>NO.</strong> Both deployments are <strong>Preview</strong>, created from non-production branches. Vercel promotes only the production branch (<code>main</code>), and <code>main</code> was not modified. No deployment was marked Production.
+</p>
+<h2 id="20-whether-any-migration-or-production-mutation-occurred">20. Whether any migration or production mutation occurred</h2>
+<p>
+<strong>NO.</strong> No migration applied or baselined · no production SQL executed · no production database contacted · no live Stripe mutation · no Gate D baseline · no schema change (<code>prisma/schema.prisma</code> byte-identical to <code>origin/main</code> on both branches, 0 <code>prisma/</code> paths in either diff) · no production environment variable changed.
+</p>
+<hr>
+<h2 id="21-support-fallback-artifact">21. Support fallback artifact</h2>
+<p>
+<strong>Created: <code>.ai/RUNBOOKS/support-assisted-cancellation.md</code>.</strong>
+</p>
+<p>
+It states the gap exactly — a disabled subscriber <strong>with</strong> a valid session can self-cancel at <code>/billing/cancel</code>; one who has signed out <strong>cannot</strong>, because <code>lib/auth.ts</code> refuses sign-in for a disabled account before the password is compared — and records that such a customer continues to be billed with no in-product way to stop it.
+</p>
+<p>
+It requires support to offer an <strong>identity-verified</strong> cancellation via the existing audit-logged admin route, so every cancellation is auditable; forbids any support employee from ever requesting a password, token or secret; requires telling the customer plainly that period-end cancellation does not refund the current period and does not restore access; and separates suspension from billing so cancellation is never used to re-enable an account.
+</p>
+<p>
+<strong>Two fields are left deliberately blank as OWNER ACTION REQUIRED — the published support channel and the response SLA.</strong> No email address and no SLA were invented. The document states that <strong>until both are set the fallback is a plan, not a control</strong>, and must not be cited as mitigation. It also states that it is an <strong>operational fallback, not a closed technical capability</strong>, and names what would retire it: a scoped, single-purpose re-authentication path — an open owner decision, not scheduled work.
+</p>
+<p>
+Authentication architecture was <strong>not</strong> modified. The artifact lives outside both release branches and touches no other workstream.
+</p>
+<hr>
+<h2 id="22-owner-actions-remaining">22. Owner actions remaining</h2>
+<ol><li><strong>Run the preview-protection check in §18.</strong> Nothing else in this report substitutes for it.</li><li><strong>Reconcile <code>CLAUDE.md</code> line 46</strong> against the current Vercel dashboard — it still records <code>DATABASE_URL</code> as one shared value across Production and Preview.</li><li><strong>Publish the support channel and SLA</strong> in the runbook. Until then the fallback is not a control.</li><li>Review <strong>#8 first</strong>, then <strong>#9</strong>. Accept the named consequences: period-end cancellation with no refund, the one-way <code>letterCredits</code> decrement, PARTIAL reachability, and PR-2's asymmetric rollback.</li><li>Have <code>.ai/RUNBOOKS/stripe-webhook-rollback.md</code> to hand <strong>before</strong> merging #9.</li><li>Decide whether to create the five requested labels — none exist and none were invented.</li></ol>
+<h2 id="23-counsel-actions-remaining">23. Counsel actions remaining</h2>
+<p>
+<strong>B-12</strong> CROA/FCRA positioning · <strong>B-05</strong> compliance bar · consent-evidence retention · and the open question this programme surfaced: whether a self-service cancellation path is <em>required</em>, and whether a support-channel-only fallback is defensible for a suspended consumer-finance customer. <strong>Neither PR requires a counsel gate to review</strong> — <code>lib/compliance.ts</code> is byte-identical to <code>origin/main</code> on both.
+</p>
+<h2 id="24-production-actions-remaining">24. Production actions remaining</h2>
+<p>
+Restore drill (B-09) · prove alert delivery (B-10) · <code>SETUP_SECRET</code> (C-01) · encryption backfill (C-02) · measure the 15s re-analysis transaction · <strong>reconcile disabled accounts holding a live subscription</strong> · confirm which Stripe API version the live webhook endpoint is pinned to · exercise both units in Stripe <strong>test mode</strong>. All remain <strong>VERIFICATION REQUIRED — PRODUCTION</strong>.
+</p>
+<hr>
+<h2 id="25-exact-review-order">25. Exact review order</h2>
+<ol><li><strong>#8</strong> — <code>release/pr1-critical-fixes-v2</code> — <strong>SAFE TO REVIEW</strong></li><li>Production verification of #8</li><li><strong>#9</strong> — <code>release/pr2-stripe-lifecycle-v2</code> — <strong>SAFE TO REVIEW</strong></li></ol>
+<p>
+Both are <strong>NOT AUTHORIZED TO MERGE</strong> and <strong>NOT AUTHORIZED TO DEPLOY</strong> in this session.
+</p>
+<h2 id="26-exact-next-action">26. Exact next action</h2>
+<p>
+<strong>Run the two <code>curl -sI</code> commands in §18 while signed out of Vercel.</strong> Preview protection is the one publication-safety property that could not be measured here, and it gates whether these previews may stay open. Then review #8.
+</p>
+<h2 id="27-artifact-paths">27. Artifact paths</h2>
+<div class="tw"><table><thead><tr><th>Path</th><th>Note</th></tr></thead><tbody>
+<tr><td><code>CREDITVECTOR_RC1_DRAFT_PR_PUBLICATION_WAVE_2_5_REPORT.md</code></td><td>canonical</td></tr>
+<tr><td><code>CREDITVECTOR_RC1_DRAFT_PR_PUBLICATION_WAVE_2_5_REPORT.html</code></td><td>matched mobile projection</td></tr>
+<tr><td><code>.ai/RUNBOOKS/support-assisted-cancellation.md</code></td><td>support fallback (new)</td></tr>
+<tr><td><code>CREDITVECTOR_RC1_CRITERIA.md</code></td><td>v1.7 — Wave 2.5 status block</td></tr>
+</tbody></table></div>
+<h2 id="28-final-report-commit-hash">28. Final report commit hash</h2>
+<p>
+Committed to <code>claude/creditvector-founder-library-jwnbhc</code> — see the commit recorded in chat. <strong>Remote publication of the report is not required for this task</strong>; the two release branches are the only refs published for review.
+</p>
+<hr>
+<h2 id="29-prohibitions-explicit-confirmation">29. Prohibitions — explicit confirmation</h2>
+<p>
+<strong>No merge</strong> · <strong>no auto-merge</strong> (never enabled) · <strong>no approval or review submitted</strong> · <strong>no production deployment authorization</strong> · <strong>no production SQL</strong> · <strong>no live Stripe mutation</strong> · <strong>no production database contact</strong> · <strong>no migration applied or baselined</strong> · <strong>no Gate D baseline</strong> · <strong>no release tag created or pushed</strong> · <strong>no production environment variable changed</strong> · <strong>no secret values printed</strong> · <strong>no other workstream modified</strong> · <strong>the mixed source branch was never used as a PR head</strong>.
+</p>
+<p>
+<strong>Repository and GitHub truth are distinguished throughout.</strong> Branch, ancestry, diff and guard facts are repository truth. PR numbers, draft state, CI conclusions and preview URLs are GitHub/Vercel truth. <strong>Preview authentication is neither — it is unmeasured, and §18 says so.</strong> Nothing here is evidence about the running production system.
+</p>
+<footer>Projection of <code>CREDITVECTOR_RC1_RELEASE_CANDIDATE_EXTRACTION_WAVE_2_2_REPORT.md</code>, which is canonical.
+Contains no credentials, secrets, tokens, or environment values.</footer>
+</main></body></html>
