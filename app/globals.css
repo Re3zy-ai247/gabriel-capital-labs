@@ -188,9 +188,29 @@ html.light .input { color: rgb(var(--fg)); }
 html.light .card { box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06), 0 8px 24px -10px rgba(15, 23, 42, 0.12); }
 
 /* ---- Motion & interactivity — keep the UI feeling alive, not stiff ---- */
+
+/* ═══ CXOS Experience Grammar — Phase 1 codification (CXOS_FOUNDATION.md §5) ═══
+   Tokens first: every duration and ease in the experience layer resolves through
+   these custom properties, so timing is governed in one place and a future
+   change is one edit, not a hunt. The six motion primitives of the grammar are
+   Settle (.animate-rise) · Reveal (.reveal) · Draw (.animate-draw) ·
+   Drift (.aurora) · Shine (.shine) · Focus (.cx-focus-out). The token values
+   below are byte-for-byte the values the utilities already shipped with —
+   codification, not redesign; existing pages must not change. */
+:root {
+  --ease-vector: cubic-bezier(0.16, 1, 0.3, 1); /* the house ease */
+  --dur-settle: 0.4s;    /* Settle — an object takes its place */
+  --dur-reveal: 0.6s;    /* Reveal — content earns visibility  */
+  --dur-focus: 0.35s;    /* Focus — rack-focus between planes  */
+  --dur-crossfade: 0.28s;/* route crossfade (Phase 3+)         */
+  --dur-draw: 1.8s;      /* Draw — evidence being traced       */
+  --aurora-marketing: 0.5; /* aurora amplitude, public arrival  */
+  --aurora-app: 0.15;      /* aurora amplitude, in-application  */
+}
+
 @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 @keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
-.animate-rise { animation: rise 0.4s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.animate-rise { animation: rise var(--dur-settle) var(--ease-vector) both; }
 .animate-fadein { animation: fadein 0.5s ease-out both; }
 
 /* Subtle lift + border highlight — ONLY on genuinely interactive cards (a
@@ -210,7 +230,7 @@ a.card:hover, button.card:hover, .card-interactive:hover { transform: translateY
   66%  { transform: translate3d(-3%, 4%, 0) scale(0.96); }
   100% { transform: translate3d(0,0,0) scale(1); }
 }
-.aurora { position: absolute; border-radius: 9999px; filter: blur(72px); opacity: 0.5; animation: drift 18s ease-in-out infinite; will-change: transform; }
+.aurora { position: absolute; border-radius: 9999px; filter: blur(72px); opacity: var(--aurora-marketing); animation: drift 18s ease-in-out infinite; will-change: transform; }
 
 /* Faint grid texture for hero / CTA backdrops — breaks digital flatness. */
 .grid-texture {
@@ -227,7 +247,7 @@ a.card:hover, button.card:hover, .card-interactive:hover { transform: translateY
    fires (JS blocked, hydration still in flight on a slow connection), the
    delayed forwards animation makes the section visible anyway — the marketing
    page must never depend on JS to be readable. */
-.reveal { opacity: 0; transform: translateY(20px); transition: opacity 0.6s cubic-bezier(0.16,1,0.3,1), transform 0.6s cubic-bezier(0.16,1,0.3,1); animation: reveal-safety 0s linear 2.5s forwards; }
+.reveal { opacity: 0; transform: translateY(20px); transition: opacity var(--dur-reveal) var(--ease-vector), transform var(--dur-reveal) var(--ease-vector); animation: reveal-safety 0s linear 2.5s forwards; }
 .reveal.is-visible { opacity: 1; transform: none; }
 @keyframes reveal-safety { to { opacity: 1; transform: none; } }
 
@@ -237,7 +257,7 @@ a.card:hover, button.card:hover, .card-interactive:hover { transform: translateY
 
 /* Self-drawing SVG line (set stroke-dasharray/offset to the path length inline). */
 @keyframes draw { to { stroke-dashoffset: 0; } }
-.animate-draw { animation: draw 1.8s cubic-bezier(0.16,1,0.3,1) 0.3s forwards; }
+.animate-draw { animation: draw var(--dur-draw) var(--ease-vector) 0.3s forwards; }
 
 /* Sheen sweep across primary CTAs on hover. */
 .shine { position: relative; overflow: hidden; }
@@ -251,6 +271,53 @@ a.card:hover, button.card:hover, .card-interactive:hover { transform: translateY
 /* Staggered entrance — apply with inline animation-delay. */
 .animate-rise-stagger { animation: rise 0.5s cubic-bezier(0.16,1,0.3,1) both; }
 
+/* ═══ CXOS primitives (Phase 1) ═══ */
+
+/* Focus — rack-focus between planes (grammar §5.7, motion board M8). The plane
+   that loses attention recedes; it never disappears. */
+.cx-focus-out { opacity: 0.4; filter: blur(4px); transition: opacity var(--dur-focus) var(--ease-vector), filter var(--dur-focus) var(--ease-vector); }
+
+/* Aurora at application amplitude (§5.5): inside the product the weather is at
+   the edge of perception — dimmer, and drifting at half speed. Shipped now as a
+   utility; first applied in the Mission Control phase. */
+.aurora-app { opacity: var(--aurora-app); animation-duration: 36s; }
+
+/* ── Scene 1 · the Arrival (screenplay Scene 1; motion board M1–M3) ──
+   2.0s of choreography over ALREADY-PAINTED content: the page is complete at
+   t=0 and the arrival breathes over it. .cx-arrival scopes the sequence to the
+   hero so nothing else on the page inherits it. */
+
+/* M1 · Arrival breath — the aurora arrives (opacity 0 → marketing amplitude
+   over 1.2s), then keeps drifting. `both` holds the pre-state so there is no
+   flash of full-strength atmosphere before the breath begins. */
+@keyframes cx-breath { from { opacity: 0; } to { opacity: var(--aurora-marketing); } }
+.cx-arrival .aurora { animation: cx-breath 1.2s var(--ease-vector) both, drift 18s ease-in-out infinite; }
+/* The offset aurora keeps its drift phase-shift WITHOUT delaying its breath —
+   a single inline animation-delay would postpone both animations at once,
+   which is exactly why these delays live here as a class instead. */
+.cx-arrival .aurora-late { animation-delay: 0s, 5s; }
+
+/* M2 · Settle stagger — 80ms steps (screenplay: "staggered 80ms"). Delays are
+   classes, not inline styles, so reduced-motion can zero every one of them in
+   one place below. */
+.cx-d1 { animation-delay: 80ms; }
+.cx-d2 { animation-delay: 160ms; }
+.cx-d3 { animation-delay: 240ms; }
+.cx-d4 { animation-delay: 400ms; }
+
+/* M3 · single sheen pass — the Shine gradient run ONCE, automatically, as the
+   arrival's final beat (1.4s = after the breath completes), instead of on
+   hover. Lives in its own absolutely-positioned overlay so the clip needed by
+   the sweep never clips the host card's shadow. Weaker than the CTA hover
+   shine (0.18 vs 0.35): it crosses a large surface. */
+@keyframes cx-sheen { from { left: -75%; } to { left: 125%; } }
+.cx-sheen-overlay { position: absolute; inset: 0; overflow: hidden; border-radius: 1rem; pointer-events: none; }
+.cx-sheen-overlay::after {
+  content: ""; position: absolute; top: 0; left: -75%; width: 50%; height: 100%;
+  background: linear-gradient(120deg, transparent, rgba(255,255,255,0.18), transparent);
+  transform: skewX(-20deg); animation: cx-sheen 0.6s var(--ease-vector) 1.4s 1 both;
+}
+
 /* Respect users who prefer less motion. */
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
@@ -259,4 +326,12 @@ a.card:hover, button.card:hover, .card-interactive:hover { transform: translateY
   .reveal { opacity: 1; transform: none; transition: none; }
   .animate-draw { stroke-dashoffset: 0 !important; }
   .shine::after { display: none; }
+  /* CXOS: reduced motion is the SAME narrative with the motion removed
+     (grammar §5.16) — every scene lands its final frame instantly. The
+     .cx-arrival .aurora rule must be repeated here because its two-selector
+     specificity would otherwise beat the .aurora reset above. */
+  .cx-arrival .aurora { animation: none; opacity: var(--aurora-marketing); }
+  .cx-d1, .cx-d2, .cx-d3, .cx-d4 { animation-delay: 0s; }
+  .cx-sheen-overlay::after { animation: none; display: none; }
+  .cx-focus-out { transition: none; }
 }

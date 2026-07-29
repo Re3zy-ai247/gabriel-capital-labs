@@ -13,7 +13,7 @@ Font: **Plus Jakarta Sans** (`--font-sans`). Reusable classes (`globals.css` `@l
 Marketing components (`components/marketing/`): `SiteNav`, `SiteFooter`, `Showcase` (FeatureSplit zig-zag + FaqList + TrustBar), `DashboardPreview`, `AuthLayout` (split-screen auth), `LegalShell`. Landing `app/page.tsx`; legal `app/legal/{privacy,terms}`; custom 404 `app/not-found.tsx`.
 
 ## Motion & accessibility
-Motion utils (`.reveal .aurora .shine .animate-*`) all respect `prefers-reduced-motion`. AA contrast is a requirement (that's why `brand-ink` exists). `theme-color` = `#060a14`. UI work must check responsive behavior (Definition of done).
+Motion utils (`.reveal .aurora .shine .animate-*`) all respect `prefers-reduced-motion`. **CXOS grammar (2026-07-29):** timing is governed by tokens in `globals.css` — `--ease-vector` (the house ease) plus `--dur-*` and `--aurora-*` — and the six primitives Settle/Reveal/Draw/Drift/Shine/Focus resolve through them (canon: `CXOS_FOUNDATION.md` §5). New `cx-*` utilities MUST appear in the reduced-motion block; `scripts/cxos-grammar.test.ts` enforces this by enumeration. AA contrast is a requirement (that's why `brand-ink` exists). `theme-color` = `#060a14`. UI work must check responsive behavior (Definition of done).
 
 ## Logo (hard rule)
 `components/BrandLogo.tsx` renders the owner's **real 3D shield raster** `public/logo-mark.png` (de-shadowed 2026-06-18). **Never substitute a vector recreation — the owner rejected those.** See `ASSET-REGISTRY.md`. Known follow-up: favicon/OG PNGs are still the older (pre-de-shadow) render.

@@ -88,42 +88,47 @@ export default function Home() {
 
       <main id="main">
         {/* ---------- Hero ---------- */}
-        <section className="relative overflow-hidden">
+        {/* CXOS Scene 1 — the Arrival (screenplay Scene 1, motion board M1-M3).
+            cx-arrival scopes the 2.0s choreography to this section only; the page
+            below it is untouched. Content is complete in the server-rendered HTML
+            at t=0 — the choreography plays OVER painted content, never instead
+            of it, and reduced-motion lands this exact layout instantly. */}
+        <section className="cx-arrival relative overflow-hidden">
           <div className="pointer-events-none absolute inset-0">
             <div className="grid-texture absolute inset-0" />
             <div className="aurora left-[-8%] top-[-12%] h-[460px] w-[460px] bg-brand-500/30" />
-            <div className="aurora right-[-10%] top-[2%] h-[420px] w-[420px] bg-ocean-500/25" style={{ animationDelay: "5s" }} />
+            <div className="aurora aurora-late right-[-10%] top-[2%] h-[420px] w-[420px] bg-ocean-500/25" />
           </div>
 
           <div className="container-x relative grid items-center gap-14 pb-20 pt-16 lg:grid-cols-[1.05fr_1fr] lg:pt-24">
-            <div className="animate-rise">
-              <span className="eyebrow">
+            <div>
+              <span className="eyebrow animate-rise">
                 <Sparkles className="h-3.5 w-3.5" aria-hidden /> {BRAND.tagline}
               </span>
-              <h1 className="h-display mt-6 text-balance text-5xl leading-[1.05] md:text-6xl">
+              <h1 className="h-display animate-rise cx-d1 mt-6 text-balance text-5xl leading-[1.05] md:text-6xl">
                 Stop guessing what&apos;s on your credit report.
                 <br />
                 <span className="text-gradient">Dispute what&apos;s inaccurate — yourself.</span>
               </h1>
-              <p className="lede mt-6 max-w-xl">
+              <p className="lede animate-rise cx-d2 mt-6 max-w-xl">
                 {BRAND.product} reads all three bureau reports, flags inaccuracies, drafts FCRA-grounded dispute
                 letters, and tracks every dispute — one platform for consumers and the agencies that serve them.
               </p>
-              <div className="mt-9 flex flex-col gap-3 sm:flex-row">
+              <div className="animate-rise cx-d3 mt-9 flex flex-col gap-3 sm:flex-row">
                 <Link href="/register" className="btn-primary btn-lg shine w-full sm:w-auto">
                   Start free — no card required <ArrowRight className="h-4 w-4" aria-hidden />
                 </Link>
                 <a href="#how" className="btn-ghost btn-lg w-full sm:w-auto">See how it works</a>
               </div>
-              <p className="mt-5 text-sm font-medium text-slate-300">
+              <p className="animate-rise cx-d4 mt-5 text-sm font-medium text-slate-300">
                 We promise the process, never the outcome.
               </p>
-              <p className="mt-2 text-sm text-slate-500">
+              <p className="animate-rise cx-d4 mt-2 text-sm text-slate-500">
                 Free plan includes full report analysis and 3 dispute letters a month. Cancel anytime.
               </p>
 
               {/* Kai's introduction */}
-              <div className="mt-8 flex items-start gap-3.5 border-l-2 border-brand-500/40 pl-4">
+              <div className="animate-rise cx-d4 mt-8 flex items-start gap-3.5 border-l-2 border-brand-500/40 pl-4">
                 {/* TODO(kai-portrait): when the portrait ships at /kai/kai-master-sq.png, replace this
                     avatar with <img src="/kai/kai-master-sq.png" alt="" width={44} height={44}
                     className="h-11 w-11 shrink-0 rounded-xl border border-brand-500/30 object-cover" />.
@@ -143,8 +148,9 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="animate-fadein">
+            <div className="animate-rise cx-d4 relative">
               <DashboardPreview />
+              <span aria-hidden className="cx-sheen-overlay rounded-2xl" />
             </div>
           </div>
         </section>
