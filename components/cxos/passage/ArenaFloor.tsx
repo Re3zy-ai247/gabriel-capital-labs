@@ -37,10 +37,14 @@ export function ArenaFloor({
   // sticky container and silently kill the depth scaffold (adversarial review
   // finding, 2026-07-29). clip contains paint without becoming a scroller.
   return (
-    <div id="arena-floor" className="cx-p-arena relative isolate overflow-clip text-white">
+    <div
+      id="arena-floor"
+      data-cxp-arrived={arrived ? "" : undefined}
+      className="cx-p-arena relative isolate overflow-clip text-white"
+    >
       {/* the ground: warm umber rising from the floor line; light from BELOW.
           Phase 5.2 adds the chamber's atmosphere — haze, slow light shafts and
-          drifting motes. All compositor-only, all very slow, all decorative
+          static motes. The bounded motion is compositor-only and decorative
           (ledger), and all switched off under reduced motion. They remain
           viewport-bound while the operator walks, making every station one
           inhabited chamber rather than an object on a long webpage. */}
@@ -127,10 +131,10 @@ export function ArenaFloor({
         <div className="cx-p-stage mx-auto flex max-w-2xl flex-col items-center justify-center text-center">
           <div className="cx-p-depth" data-station="b">
             <div aria-hidden className="cx-p-station-index">II</div>
-            <div className="cx-p-dais cx-p-live-core relative mx-auto grid h-52 w-52 place-items-center sm:h-56 sm:w-56">
+            <div className="cx-p-dais relative mx-auto grid h-52 w-52 place-items-center sm:h-56 sm:w-56">
               <div
                 aria-hidden
-                className="cx-p-live-ring absolute inset-0 rounded-full"
+                className="absolute inset-0 rounded-full"
                 style={{
                   background: `conic-gradient(#f5c76e ${pct * 3.6}deg, rgba(148,163,184,0.14) 0deg)`,
                   WebkitMask: "radial-gradient(circle, transparent 64%, black 65%)",

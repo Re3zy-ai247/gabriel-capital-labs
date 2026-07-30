@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { detectTier, type CxTier } from "@/lib/cxos/capability";
 import {
   BEATS_FIRST,
   BEATS_MOBILE,
@@ -19,6 +18,12 @@ import { MissionControlOrigin } from "./MissionControlOrigin";
 import { ArenaFloor } from "./ArenaFloor";
 import { PassageOverlay } from "./PassageOverlay";
 import { PassageTray } from "./PassageTray";
+import {
+  readPassageCapabilities,
+  resolvePassageProjection,
+  type PassageCapabilities,
+  type PassageProjection,
+} from "./projection";
 
 // CXOS Phase 5.1 — THE PASSAGE · the journey state machine.
 //
@@ -70,7 +75,14 @@ const CINEMATIC = new Set<PassagePhase>([
 ]);
 
 export function PassageJourney() {
-  const [tier, setTier] = useState<CxTier | null>(null);
+  const [capabilities, setCapabilities] =
+    useState<PassageCapabilities | null>(null);
+  const [projection, setProjection] =
+    useState<PassageProjection>("auto");
+  const [projectionPrompt, setProjectionPrompt] = useState<
+    "reduced" | "constrained" | null
+  >(null);
+  const [confirmedReduced, setConfirmedReduced] = useState(false);
   const [phase, setPhase] = useState<PassagePhase>("origin");
   const [env, setEnv] = useState<"mc" | "arena">("mc");
   const [fxKey, setFxKey] = useState<PassageStateKey>("populated");
@@ -83,6 +95,7 @@ export function PassageJourney() {
   // CSS animation clocks start at zero and the negative-delay seek is exact.
   const [runNonce, setRunNonce] = useState(0);
 
+  const mainRef = useRef<HTMLElement>(null);
   const originRef = useRef<HTMLDivElement>(null);
   const floorRef = useRef<HTMLDivElement>(null);
   const footerRef = useRef<HTMLParagraphElement>(null);
@@ -92,10 +105,24 @@ export function PassageJourney() {
   const rafToken = useRef<number | null>(null);
   const announceRef = useRef("");
   const announceFlipRef = useRef(false);
-  const skipRef = useRef<(() => void) | null>(null);
+  const skipRef = useRef<((staticDestination?: boolean) => void) | null>(
+    null
+  );
+  const projectionRef = useRef<PassageProjection>("auto");
+  const confirmedReducedRef = useRef(false);
 
   phaseRef.current = phase;
+  projectionRef.current = projection;
+  confirmedReducedRef.current = confirmedReduced;
   const fx = useMemo(() => passageFixture(fxKey), [fxKey]);
+  const projectionResolution = useMemo(
+    () =>
+      capabilities
+        ? resolvePassageProjection(projection, capabilities)
+        : null,
+    [capabilities, projection]
+  );
+  const tier = projectionResolution?.tier ?? null;
   const cinematic = tier === "A" || tier === "B";
 
   // aria-live only announces on a DOM change — an identical string is a
@@ -107,31 +134,6 @@ export function PassageJourney() {
     announceRef.current = s;
   }, []);
 
-  // ── tier detection + the document stamp ─────────────────────────────
-  useEffect(() => {
-    try {
-      const detected = detectTier();
-      // A coarse-pointer landscape phone can be wider than 768 px while
-      // remaining too short for the desktop 3D stack. Keep this review
-      // journey on its single-plane mobile projection in that geometry.
-      const t =
-        detected === "A" &&
-        window.matchMedia("(max-height: 560px) and (pointer: coarse)").matches
-          ? "B"
-          : detected;
-      setTier(t);
-      if (t === "A" || t === "B") {
-        document.documentElement.setAttribute("data-cxpassage", t);
-      }
-    } catch {
-      setTier("C");
-    }
-    return () => {
-      document.documentElement.removeAttribute("data-cxpassage");
-      timers.current.forEach((id) => window.clearTimeout(id));
-    };
-  }, []);
-
   const arm = (fn: () => void, ms: number) => {
     timers.current.push(window.setTimeout(fn, ms));
   };
@@ -139,6 +141,39 @@ export function PassageJourney() {
     timers.current.forEach((id) => window.clearTimeout(id));
     timers.current = [];
   };
+
+  // ── capability snapshot + pre-paint document stamp ──────────────────
+  useEffect(() => {
+    setCapabilities(readPassageCapabilities());
+    return () => {
+      document.documentElement.removeAttribute("data-cxpassage");
+      timers.current.forEach((id) => window.clearTimeout(id));
+    };
+  }, []);
+
+  useLayoutEffect(() => {
+    if (tier === "A" || tier === "B") {
+      document.documentElement.setAttribute("data-cxpassage", tier);
+    } else {
+      document.documentElement.removeAttribute("data-cxpassage");
+    }
+    return () => {
+      document.documentElement.removeAttribute("data-cxpassage");
+    };
+  }, [tier]);
+
+  useEffect(() => {
+    const root = mainRef.current;
+    const onVisibility = () => {
+      root?.toggleAttribute("data-cxp-hidden", document.hidden);
+    };
+    onVisibility();
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      root?.removeAttribute("data-cxp-hidden");
+    };
+  }, []);
 
   // ── the one environment swap (opaque-veil, same-frame) ───────────────
   const swapEnv = useCallback((to: "mc" | "arena") => {
@@ -160,7 +195,7 @@ export function PassageJourney() {
   // ── inert containment while the overlay plays ────────────────────────
   // Both environments AND the footer: the only operable things outside the
   // dialog are the director instruments, deliberately.
-  const overlayActive = CINEMATIC.has(phase);
+  const overlayActive = cinematic && CINEMATIC.has(phase);
   useEffect(() => {
     const o = originRef.current;
     const f = floorRef.current;
@@ -175,28 +210,19 @@ export function PassageJourney() {
     };
   }, [overlayActive]);
 
-  // A mid-journey OS reduced-motion flip must never strand an invisible
-  // modal (the reduce CSS hides the veil while inert holds): settle by the
-  // same two-phase law the moment the preference changes.
-  useEffect(() => {
-    if (!overlayActive) return;
-    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const onChange = (e: MediaQueryListEvent) => {
-      if (e.matches) skipRef.current?.();
-    };
-    mq.addEventListener?.("change", onChange);
-    return () => mq.removeEventListener?.("change", onChange);
-  }, [overlayActive]);
-
   // ── settles ──────────────────────────────────────────────────────────
   // Every settle lifts inert BEFORE focusing — an inert subtree refuses
   // focus, and the containment effect only clears after the phase change.
   const liftInert = useCallback(() => {
     originRef.current?.removeAttribute("inert");
     floorRef.current?.removeAttribute("inert");
+    footerRef.current?.removeAttribute("inert");
   }, []);
 
-  const settleForward = useCallback((announceArrival = true) => {
+  const settleForward = useCallback((
+    announceArrival = true,
+    staticDestination = false
+  ) => {
     clearTimers();
     setPaused(false);
     setSeekMs(null);
@@ -216,9 +242,20 @@ export function PassageJourney() {
     requestAnimationFrame(() => {
       // Native wheel/touch/PageDown default may have moved the document
       // beneath the fixed passage veil. Every forward settle reasserts the
-      // Arena threshold after that default action, even when env was already
-      // swapped at the threshold beat.
-      window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
+      // Arena threshold after that default action. In the complete static
+      // document Mission Control precedes the Arena, so its destination is
+      // the Arena section rather than document scroll zero.
+      if (staticDestination) {
+        document.querySelector<HTMLElement>("#arena-floor")?.scrollIntoView({
+          behavior: "instant" as ScrollBehavior,
+          block: "start",
+        });
+      } else {
+        window.scrollTo({
+          top: 0,
+          behavior: "instant" as ScrollBehavior,
+        });
+      }
       liftInert();
       // querySelector over a selector LIST returns the first match in
       // DOCUMENT order — the hidden origin h1 would win and refuse focus.
@@ -276,6 +313,210 @@ export function PassageJourney() {
     });
   }, [swapEnv, liftInert, say]);
 
+  // A committed projection change always starts from one settled truth.
+  // The Director tray retains focus; an OS-driven reset restores focus to
+  // Mission Control after inert has been lifted.
+  const resetReviewToOrigin = useCallback(
+    (message: string) => {
+      clearTimers();
+      setPaused(false);
+      setSeekMs(null);
+      setArrived(false);
+      setRunKind("first");
+      setRunNonce((nonce) => nonce + 1);
+      swapEnv("mc");
+      liftInert();
+      setPhase("origin");
+      say(message);
+      const keepTray = trayOpenRef.current;
+      requestAnimationFrame(() => {
+        window.scrollTo({
+          top: 0,
+          behavior: "instant" as ScrollBehavior,
+        });
+        if (keepTray) return;
+        const target =
+          document.querySelector<HTMLElement>("[data-cxp-proceed]") ??
+          document.querySelector<HTMLElement>(".cx-p-mc h1");
+        if (!target) return;
+        if (target.tagName === "H1") target.setAttribute("tabindex", "-1");
+        target.focus({ preventScroll: true });
+      });
+    },
+    [liftInert, say, swapEnv]
+  );
+
+  const commitProjection = useCallback(
+    (
+      next: PassageProjection,
+      reducedConfirmation = false,
+      message?: string
+    ) => {
+      if (CINEMATIC.has(phaseRef.current)) {
+        say("Projection controls are unavailable during a journey. Skip or wait for the journey to settle.");
+        return;
+      }
+      projectionRef.current = next;
+      confirmedReducedRef.current =
+        next === "cinematic" && reducedConfirmation;
+      setProjection(next);
+      setConfirmedReduced(
+        next === "cinematic" && reducedConfirmation
+      );
+      setProjectionPrompt(null);
+      resetReviewToOrigin(
+        message ??
+          `Review projection: ${
+            next === "auto"
+              ? "Auto"
+              : next === "cinematic"
+                ? "Cinematic"
+                : "Reduced Motion / Static"
+          }. Mission Control.`
+      );
+    },
+    [resetReviewToOrigin, say]
+  );
+
+  const requestProjection = useCallback(
+    (next: PassageProjection) => {
+      if (CINEMATIC.has(phaseRef.current)) {
+        say("Projection controls are unavailable during a journey. Skip or wait for the journey to settle.");
+        return;
+      }
+      if (next === projectionRef.current && projectionPrompt === null) {
+        say("That review projection is already active.");
+        return;
+      }
+      if (next !== "cinematic") {
+        commitProjection(next);
+        return;
+      }
+
+      const latest = readPassageCapabilities();
+      const cinematicResolution = resolvePassageProjection(
+        "cinematic",
+        latest
+      );
+      setCapabilities(latest);
+      if (!cinematicResolution.cinematicAvailable) {
+        setProjectionPrompt("constrained");
+        say(`${cinematicResolution.reason}. Cinematic was not enabled.`);
+        return;
+      }
+      if (latest.browserReduced) {
+        setProjectionPrompt("reduced");
+        say("Cinematic requires confirmation because the browser requests reduced motion.");
+        return;
+      }
+      commitProjection("cinematic");
+    },
+    [commitProjection, projectionPrompt, say]
+  );
+
+  const confirmReducedCinematic = useCallback(() => {
+    const latest = readPassageCapabilities();
+    const cinematicResolution = resolvePassageProjection(
+      "cinematic",
+      latest
+    );
+    setCapabilities(latest);
+    if (!cinematicResolution.cinematicAvailable) {
+      setProjectionPrompt("constrained");
+      say(`${cinematicResolution.reason}. Cinematic was not enabled.`);
+      return;
+    }
+    commitProjection(
+      "cinematic",
+      latest.browserReduced,
+      "Cinematic review projection enabled. The browser still requests reduced motion; its setting is unchanged. Mission Control."
+    );
+  }, [commitProjection, say]);
+
+  const cancelProjectionPrompt = useCallback(() => {
+    setProjectionPrompt(null);
+    say("Cinematic confirmation cancelled. The current review projection is unchanged.");
+  }, [say]);
+
+  // Capability changes keep Auto truthful. A newly reduced browser settles
+  // Auto by the existing two-phase law. An explicit Cinematic selected while
+  // motion was allowed must reset and ask for fresh confirmation; only a
+  // session that confirmed while reduced may continue.
+  useEffect(() => {
+    const reduced = window.matchMedia(
+      "(prefers-reduced-motion: reduce)"
+    );
+    const onReduced = (event: MediaQueryListEvent) => {
+      const latest = readPassageCapabilities();
+      setCapabilities(latest);
+      if (!event.matches) {
+        confirmedReducedRef.current = false;
+        setConfirmedReduced(false);
+        // A prompt raised under the old preference is no longer truthful.
+        // Auto also changes from a complete static document back to the
+        // cinematic display model, so reset before the floor is hidden; a
+        // deep static scroll must never become a blank/stale viewport.
+        setProjectionPrompt((current) =>
+          current === "reduced" ? null : current
+        );
+        if (projectionRef.current === "auto") {
+          resetReviewToOrigin(
+            "The browser no longer requests reduced motion. Auto restored the cinematic-capable Mission Control review."
+          );
+        }
+        return;
+      }
+      if (
+        projectionRef.current === "cinematic" &&
+        !confirmedReducedRef.current
+      ) {
+        mainRef.current?.removeAttribute("data-cxp-cinematic");
+        projectionRef.current = "auto";
+        setProjection("auto");
+        setConfirmedReduced(false);
+        setProjectionPrompt("reduced");
+        resetReviewToOrigin(
+          "The browser now requests reduced motion. Cinematic stopped; confirm it again in the Director tray to continue on this synthetic review."
+        );
+        return;
+      }
+      if (
+        projectionRef.current === "auto" &&
+        CINEMATIC.has(phaseRef.current)
+      ) {
+        // The updated capability snapshot makes the destination a complete
+        // static document. Preserve the two-phase law while ensuring a
+        // forward settle scrolls to the Arena section, not document zero.
+        skipRef.current?.(true);
+        return;
+      }
+      if (projectionRef.current === "auto") {
+        resetReviewToOrigin(
+          "The browser now requests reduced motion. Auto restored the complete static review from Mission Control."
+        );
+      }
+    };
+    const onStorage = (event: StorageEvent) => {
+      if (event.key !== "cx-cinematic") return;
+      const latest = readPassageCapabilities();
+      setCapabilities(latest);
+      if (
+        projectionRef.current === "auto" &&
+        latest.autoTier !== "A" &&
+        latest.autoTier !== "B" &&
+        CINEMATIC.has(phaseRef.current)
+      ) {
+        skipRef.current?.(true);
+      }
+    };
+    reduced.addEventListener?.("change", onReduced);
+    window.addEventListener("storage", onStorage);
+    return () => {
+      reduced.removeEventListener?.("change", onReduced);
+      window.removeEventListener("storage", onStorage);
+    };
+  }, [resetReviewToOrigin]);
+
   // ── the journeys ─────────────────────────────────────────────────────
   const beginJourney = useCallback(
     (variant: "first" | "returning", restart = false) => {
@@ -283,6 +524,7 @@ export function PassageJourney() {
       // restart path deliberately replaces the running one (clearTimers
       // below disarms every ghost timer of the replaced run).
       if (!restart && CINEMATIC.has(phaseRef.current)) return;
+      if (!cinematic) return;
       // No ceremony exists for a state the gate refuses: the flag-off and
       // outside-cohort fixtures have no call, and the director instruments
       // honor the same truth (adversarial review finding, 2026-07-29).
@@ -341,11 +583,12 @@ export function PassageJourney() {
     },
     // fx.key/fx.access matter too — EMPTY_RECORD is shared by the empty
     // and data-error fixtures, so fx.record alone would go stale between them.
-    [tier, fx, settleForward, swapEnv, say]
+    [cinematic, tier, fx, settleForward, swapEnv, say]
   );
 
   const beginReturn = useCallback(() => {
     if (CINEMATIC.has(phaseRef.current)) return;
+    if (!cinematic) return;
     clearTimers();
     setRunKind("return");
     setRunNonce((n) => n + 1);
@@ -357,16 +600,16 @@ export function PassageJourney() {
     arm(() => {
       if (CINEMATIC.has(phaseRef.current)) settleReturn();
     }, WATCHDOG_MS);
-  }, [swapEnv, settleReturn, say]);
+  }, [cinematic, swapEnv, settleReturn, say]);
 
   // ── two-phase skip (Escape · click · wheel · touch · keys) ───────────
   const cancelable = CANCEL_PHASES.includes(phase);
-  const skip = useCallback(() => {
+  const skip = useCallback((staticDestination = false) => {
     const p = phaseRef.current;
     if (!CINEMATIC.has(p)) return;
     if (p === "returning") settleReturn();
     else if (CANCEL_PHASES.includes(p)) settleCancel();
-    else settleForward();
+    else settleForward(true, staticDestination);
   }, [settleCancel, settleForward, settleReturn]);
 
   // The reduced-motion listener and any late caller reach the CURRENT skip.
@@ -416,10 +659,13 @@ export function PassageJourney() {
       scheduled = false;
       if (document.hidden) return;
       const vh = window.innerHeight;
-      for (const el of stations) {
+      const measurements = stations.map((el) => {
         const rect = el.getBoundingClientRect();
         // 0 when the station enters, 1 when it leaves — clamped.
         const p = Math.min(1, Math.max(0, 1 - (rect.top + rect.height * 0.5) / (vh + rect.height * 0.5)));
+        return { el, p };
+      });
+      for (const { el, p } of measurements) {
         el.style.setProperty("--cxs", p.toFixed(3));
       }
     };
@@ -447,7 +693,8 @@ export function PassageJourney() {
       // The gate's truth binds the instruments too: no jump can conjure a
       // ceremony (or the floor) for a state whose call does not exist.
       if (!fx.access) return;
-      if (target === "floor") return settleForward();
+      if (target === "floor") return settleForward(true, !cinematic);
+      if (!cinematic) return;
       if (target === "returning") {
         if (env !== "arena") swapEnv("arena");
         setRunKind("return");
@@ -476,12 +723,12 @@ export function PassageJourney() {
         if (CINEMATIC.has(phaseRef.current)) settleForward();
       }, WATCHDOG_MS);
     },
-    [tier, env, fx, swapEnv, settleForward, settleReturn]
+    [cinematic, tier, env, fx, swapEnv, settleForward, settleReturn]
   );
 
   const scrub = useCallback(
     (ms: number) => {
-      if (!fx.access) return;
+      if (!fx.access || !cinematic) return;
       const mobile = tier === "B";
       const beats = mobile ? BEATS_MOBILE : BEATS_FIRST;
       if (!CINEMATIC.has(phaseRef.current) || phaseRef.current === "returning") {
@@ -504,7 +751,7 @@ export function PassageJourney() {
         if (CINEMATIC.has(phaseRef.current)) settleForward();
       }, WATCHDOG_MS);
     },
-    [tier, fx, swapEnv, settleForward]
+    [cinematic, tier, fx, swapEnv, settleForward]
   );
 
   // Resume a held inspection: the negative-delay seek is KEPT (the world
@@ -514,7 +761,7 @@ export function PassageJourney() {
   // inert document behind a frozen veil (adversarial review finding).
   const resumeRun = useCallback(() => {
     const p = phaseRef.current;
-    if (!CINEMATIC.has(p)) return;
+    if (!cinematic || !CINEMATIC.has(p)) return;
     clearTimers();
     setPaused(false);
     if (p === "returning") {
@@ -540,12 +787,23 @@ export function PassageJourney() {
     arm(() => {
       if (CINEMATIC.has(phaseRef.current)) settleForward();
     }, WATCHDOG_MS);
-  }, [tier, seekMs, swapEnv, settleForward, settleReturn]);
+  }, [cinematic, tier, seekMs, swapEnv, settleForward, settleReturn]);
 
   // ── render ───────────────────────────────────────────────────────────
   const journeyEnd = tier === "B" ? JOURNEY_END_MOBILE_MS : JOURNEY_END_MS;
+  const projectionLocked =
+    capabilities === null || CINEMATIC.has(phase);
   return (
-    <main id="main" tabIndex={-1} className="min-h-screen bg-ink-950 text-white">
+    <main
+      ref={mainRef}
+      id="main"
+      tabIndex={-1}
+      data-cxp-projection={projection}
+      data-cxp-cinematic={
+        projection === "cinematic" && cinematic ? "" : undefined
+      }
+      className="cx-p-review min-h-screen bg-ink-950 text-white"
+    >
       {/* concise assistive status — the world itself is decorative */}
       <p aria-live="polite" role="status" className="sr-only">
         {announce}
@@ -558,7 +816,9 @@ export function PassageJourney() {
         <MissionControlOrigin
           fx={fx}
           cinematic={cinematic}
-          quiet={phase === "call" || phase === "clearance"}
+          quiet={
+            overlayActive && env === "mc" && runKind !== "return"
+          }
           onProceed={() => beginJourney("first")}
         />
       </div>
@@ -587,6 +847,22 @@ export function PassageJourney() {
 
       <PassageTray
         tier={tier}
+        projection={projection}
+        projectionReason={
+          projectionResolution?.reason ??
+          "Detecting browser conditions…"
+        }
+        browserReduced={capabilities?.browserReduced ?? null}
+        applicationEffectsOff={
+          capabilities?.applicationEffectsOff ?? null
+        }
+        cinematicAvailable={
+          projectionResolution?.cinematicAvailable ?? false
+        }
+        confirmedReduced={confirmedReduced}
+        projectionLocked={projectionLocked}
+        projectionPrompt={projectionPrompt}
+        journeyControlsDisabled={!cinematic}
         phase={phase}
         env={env}
         fxKey={fxKey}
@@ -595,6 +871,9 @@ export function PassageJourney() {
         record={fx.record}
         note={fx.note}
         trayOpenRef={trayOpenRef}
+        onProjection={requestProjection}
+        onConfirmCinematic={confirmReducedCinematic}
+        onCancelCinematic={cancelProjectionPrompt}
         onState={(k) => {
           clearTimers();
           setFxKey(k);

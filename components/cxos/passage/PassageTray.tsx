@@ -1,9 +1,18 @@
 "use client";
 
-import { useEffect, useRef, useState, type MutableRefObject, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type MutableRefObject,
+  type ReactNode,
+  type Ref,
+} from "react";
 import type { CxTier } from "@/lib/cxos/capability";
 import type { PassagePhase } from "@/lib/cxos/passageTimeline";
 import type { PassageRecord, PassageStateKey } from "./fixtures";
+import type { PassageProjection } from "./projection";
 
 // CXOS Phase 5.1 — the director tray, mobile-safe by construction.
 //
@@ -22,6 +31,15 @@ import type { PassageRecord, PassageStateKey } from "./fixtures";
 
 export function PassageTray({
   tier,
+  projection,
+  projectionReason,
+  browserReduced,
+  applicationEffectsOff,
+  cinematicAvailable,
+  confirmedReduced,
+  projectionLocked,
+  projectionPrompt,
+  journeyControlsDisabled,
   phase,
   env,
   fxKey,
@@ -30,6 +48,9 @@ export function PassageTray({
   record,
   note,
   trayOpenRef,
+  onProjection,
+  onConfirmCinematic,
+  onCancelCinematic,
   onState,
   onFirst,
   onReturning,
@@ -38,6 +59,15 @@ export function PassageTray({
   onResume,
 }: {
   tier: CxTier | null;
+  projection: PassageProjection;
+  projectionReason: string;
+  browserReduced: boolean | null;
+  applicationEffectsOff: boolean | null;
+  cinematicAvailable: boolean;
+  confirmedReduced: boolean;
+  projectionLocked: boolean;
+  projectionPrompt: "reduced" | "constrained" | null;
+  journeyControlsDisabled: boolean;
   phase: PassagePhase;
   env: "mc" | "arena";
   fxKey: PassageStateKey;
@@ -46,6 +76,9 @@ export function PassageTray({
   record: PassageRecord;
   note: string | null;
   trayOpenRef: MutableRefObject<boolean>;
+  onProjection: (projection: PassageProjection) => void;
+  onConfirmCinematic: () => void;
+  onCancelCinematic: () => void;
   onState: (k: PassageStateKey) => void;
   onFirst: () => void;
   onReturning: () => void;
@@ -57,16 +90,47 @@ export function PassageTray({
   const [scrubMs, setScrubMs] = useState(0);
   const sheetRef = useRef<HTMLDivElement>(null);
   const pillRef = useRef<HTMLButtonElement>(null);
+  const cinematicRef = useRef<HTMLButtonElement>(null);
+  const previousPromptRef = useRef(projectionPrompt);
+  const projectionLabel =
+    projection === "auto"
+      ? "AUTO"
+      : projection === "cinematic"
+        ? "CINEMATIC"
+        : "STATIC";
   // Closing always returns focus to the pill — never to body, from which the
   // next Escape would silently settle the journey (review finding).
-  const close = () => {
+  const close = useCallback(() => {
+    if (projectionPrompt) onCancelCinematic();
     setOpen(false);
     pillRef.current?.focus({ preventScroll: true });
+  }, [onCancelCinematic, projectionPrompt]);
+  const keepCurrentProjection = () => {
+    onCancelCinematic();
+    requestAnimationFrame(() =>
+      cinematicRef.current?.focus({ preventScroll: true })
+    );
+  };
+  const playConfirmedCinematic = () => {
+    onConfirmCinematic();
+    requestAnimationFrame(() =>
+      cinematicRef.current?.focus({ preventScroll: true })
+    );
   };
 
   useEffect(() => {
     trayOpenRef.current = open;
   }, [open, trayOpenRef]);
+
+  useEffect(() => {
+    const previous = previousPromptRef.current;
+    previousPromptRef.current = projectionPrompt;
+    if (open && previous !== null && projectionPrompt === null) {
+      requestAnimationFrame(() =>
+        cinematicRef.current?.focus({ preventScroll: true })
+      );
+    }
+  }, [open, projectionPrompt]);
 
   useEffect(() => {
     if (!open) return;
@@ -79,7 +143,7 @@ export function PassageTray({
     // Capture phase: the sheet consumes Escape before the journey handler.
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
-  }, [open]);
+  }, [close, open]);
 
   const lighting =
     env === "mc" ? "analytical blue" : phase === "conversion" ? "conversion" : "ceremonial gold";
@@ -112,7 +176,7 @@ export function PassageTray({
         className="cx-p-traypill fixed left-4 z-[99] min-h-11 rounded-full border border-ink-600 bg-ink-950/85 px-4 py-2.5 font-mono text-[11px] font-bold tracking-widest text-slate-300 backdrop-blur transition hover:border-brand-500/60"
         style={{ bottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
       >
-        DIRECTOR {open ? "▾" : "▸"}
+        DIRECTOR · {projectionLabel} {open ? "▾" : "▸"}
       </button>
 
       {open && (
@@ -132,6 +196,132 @@ export function PassageTray({
           }}
         >
           <div className="mx-auto max-w-3xl space-y-4 font-mono text-[12px] text-slate-300">
+            <fieldset className="border-b border-ink-700/60 pb-4">
+              <legend className="mb-2 text-[10px] font-bold tracking-[0.25em] text-slate-300">
+                FOUNDER PROJECTION
+              </legend>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                <TrayBtn
+                  active={projection === "auto"}
+                  disabled={
+                    projectionLocked || projectionPrompt !== null
+                  }
+                  onClick={() => onProjection("auto")}
+                >
+                  Auto
+                </TrayBtn>
+                <TrayBtn
+                  buttonRef={cinematicRef}
+                  active={projection === "cinematic"}
+                  disabled={projectionLocked}
+                  onClick={() => onProjection("cinematic")}
+                >
+                  Cinematic
+                </TrayBtn>
+                <TrayBtn
+                  active={projection === "static"}
+                  disabled={
+                    projectionLocked || projectionPrompt !== null
+                  }
+                  onClick={() => onProjection("static")}
+                >
+                  Reduced Motion / Static
+                </TrayBtn>
+              </div>
+
+              {projectionLocked && (
+                <p className="mt-2 text-[11px] leading-relaxed text-slate-400">
+                  {browserReduced === null
+                    ? "Detecting browser conditions before projection controls become available."
+                    : "Projection changes are locked during the journey. Skip or wait for it to settle."}
+                </p>
+              )}
+
+              {projectionPrompt === "reduced" && (
+                <div
+                  className="mt-3 border-l-2 border-amber-400/70 bg-amber-400/5 px-3 py-3"
+                  aria-describedby="cxp-reduced-warning"
+                >
+                  <p
+                    id="cxp-reduced-warning"
+                    className="max-w-2xl leading-relaxed text-amber-100"
+                  >
+                    Your browser requests reduced motion. Cinematic will
+                    animate this synthetic review only and does not change
+                    your system setting.
+                  </p>
+                  <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                    <TrayBtn onClick={playConfirmedCinematic}>
+                      Play Cinematic for this review
+                    </TrayBtn>
+                    <TrayBtn onClick={keepCurrentProjection}>
+                      Keep Reduced Motion / Static
+                    </TrayBtn>
+                  </div>
+                </div>
+              )}
+
+              {projectionPrompt === "constrained" && (
+                <div className="mt-3 border-l-2 border-slate-500 bg-slate-400/5 px-3 py-3">
+                  <p className="max-w-2xl leading-relaxed text-slate-300">
+                    Cinematic is unavailable in this browser condition.
+                    Data Saver, low-memory safety, and failed capability
+                    detection are never overridden.
+                  </p>
+                  <div className="mt-3">
+                    <TrayBtn onClick={keepCurrentProjection}>
+                      Keep current projection
+                    </TrayBtn>
+                  </div>
+                </div>
+              )}
+
+              <dl className="mt-3 grid gap-1 text-[11px] text-slate-400 sm:grid-cols-2">
+                <div>
+                  <dt className="inline">Browser preference: </dt>
+                  <dd className="inline text-slate-200">
+                    {browserReduced === null
+                      ? "detecting…"
+                      : browserReduced
+                        ? "reduced motion"
+                        : "no motion reduction"}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="inline">Review projection: </dt>
+                  <dd className="inline text-slate-200">
+                    {projectionLabel} · tier {tier ?? "…"}
+                  </dd>
+                </div>
+                <div className="sm:col-span-2">
+                  <dt className="inline">Reason: </dt>
+                  <dd className="inline text-slate-200">
+                    {projectionReason}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="inline">Application effects: </dt>
+                  <dd className="inline text-slate-200">
+                    {applicationEffectsOff === null
+                      ? "detecting…"
+                      : applicationEffectsOff
+                        ? "off"
+                        : "available"}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="inline">Cinematic safety: </dt>
+                  <dd className="inline text-slate-200">
+                    {cinematicAvailable
+                      ? confirmedReduced
+                        ? "confirmed for this route instance"
+                        : "available"
+                      : "bounded static"}
+                  </dd>
+                </div>
+              </dl>
+            </fieldset>
+
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-400">
               <span>
                 tier <span className="text-slate-300">{tier ?? "…"}</span>
@@ -153,9 +343,24 @@ export function PassageTray({
             <div>
               <div className="mb-1.5 text-[10px] font-bold tracking-[0.25em] text-slate-400">JOURNEY</div>
               <div className="flex flex-wrap gap-2">
-                <TrayBtn onClick={onFirst}>▶ first (~{(journeyEndMs / 1000).toFixed(1)}s)</TrayBtn>
-                <TrayBtn onClick={onReturning}>▶ returning (~1.4s)</TrayBtn>
-                <TrayBtn onClick={onResume}>resume</TrayBtn>
+                <TrayBtn
+                  disabled={journeyControlsDisabled}
+                  onClick={onFirst}
+                >
+                  ▶ first (~{(journeyEndMs / 1000).toFixed(1)}s)
+                </TrayBtn>
+                <TrayBtn
+                  disabled={journeyControlsDisabled}
+                  onClick={onReturning}
+                >
+                  ▶ returning (~1.4s)
+                </TrayBtn>
+                <TrayBtn
+                  disabled={journeyControlsDisabled}
+                  onClick={onResume}
+                >
+                  resume
+                </TrayBtn>
               </div>
             </div>
 
@@ -163,7 +368,16 @@ export function PassageTray({
               <div className="mb-1.5 text-[10px] font-bold tracking-[0.25em] text-slate-400">JUMP TO BEAT</div>
               <div className="flex flex-wrap gap-2">
                 {beatJumps.map((b) => (
-                  <TrayBtn key={b.p} active={phase === b.p} onClick={() => onJump(b.p)}>
+                  <TrayBtn
+                    key={b.p}
+                    active={phase === b.p}
+                    disabled={
+                      journeyControlsDisabled &&
+                      b.p !== "origin" &&
+                      b.p !== "floor"
+                    }
+                    onClick={() => onJump(b.p)}
+                  >
                     {b.label}
                   </TrayBtn>
                 ))}
@@ -181,12 +395,13 @@ export function PassageTray({
                 max={journeyEndMs}
                 step={100}
                 value={scrubMs}
+                disabled={journeyControlsDisabled}
                 onChange={(e) => {
                   const ms = Number(e.target.value);
                   setScrubMs(ms);
                   onScrub(ms);
                 }}
-                className="w-full"
+                className="w-full disabled:cursor-not-allowed disabled:opacity-50"
               />
             </div>
 
@@ -233,8 +448,11 @@ export function PassageTray({
                 (xpForLevel = 25·n·(n−1))
               </p>
               <p className="mt-1">
-                Projections: reduced motion &amp; effects-off ⇒ tier D (no cinema, settled document) · no-JS ⇒ the same
-                settled document · no WebGL anywhere in this experience.
+                Auto honors browser reduced motion and application effects-off
+                as separate signals. A confirmed Cinematic override applies
+                only to this synthetic review route; Data Saver and low-memory
+                safety remain static. No-JS renders the settled document. No
+                WebGL exists anywhere in this experience.
               </p>
             </div>
           </div>
@@ -246,19 +464,25 @@ export function PassageTray({
 
 function TrayBtn({
   active,
+  disabled,
+  buttonRef,
   onClick,
   children,
 }: {
   active?: boolean;
+  disabled?: boolean;
+  buttonRef?: Ref<HTMLButtonElement>;
   onClick: () => void;
   children: ReactNode;
 }) {
   return (
     <button
+      ref={buttonRef}
       type="button"
       aria-pressed={active}
+      disabled={disabled}
       onClick={onClick}
-      className={`min-h-[44px] rounded border px-3 py-2 transition ${
+      className={`min-h-[44px] rounded border px-3 py-2 transition disabled:cursor-not-allowed disabled:opacity-50 ${
         active
           ? "border-amber-400/70 font-bold text-amber-200 ring-1 ring-amber-400/40"
           : "border-ink-600 hover:border-amber-400/60"

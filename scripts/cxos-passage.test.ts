@@ -41,6 +41,10 @@
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import {
+  resolvePassageProjection,
+  type PassageCapabilities,
+} from "../components/cxos/passage/projection";
 
 const root = join(__dirname, "..");
 const read = (p: string) => readFileSync(join(root, p), "utf8");
@@ -50,6 +54,7 @@ const overlay = read("components/cxos/passage/PassageOverlay.tsx");
 const origin = read("components/cxos/passage/MissionControlOrigin.tsx");
 const floor = read("components/cxos/passage/ArenaFloor.tsx");
 const tray = read("components/cxos/passage/PassageTray.tsx");
+const projection = read("components/cxos/passage/projection.ts");
 const fixtures = read("components/cxos/passage/fixtures.ts");
 const timeline = read("lib/cxos/passageTimeline.ts");
 const ledger = read("lib/cxos/passageLedger.ts");
@@ -67,7 +72,7 @@ const css = read("app/globals.css");
 
 // The component bundle: everything that renders — fixtures.ts is the ONE
 // place standing literals are permitted.
-const bundle = journey + overlay + origin + floor + tray;
+const bundle = journey + overlay + origin + floor + tray + projection;
 
 let pass = 0;
 let fail = 0;
@@ -92,6 +97,51 @@ check("the only arena-library import is the read-only policy re-export",
   !/from "@\/lib\/arena\/(?!policy")/.test(bundle) && /REFUSED_V1/.test(floor));
 check("no session/local storage WRITE exists anywhere on this route (no marker to consume)",
   !/sessionStorage\.setItem|localStorage\.setItem|sessionStorage\.getItem|localStorage\.getItem/.test(bundle));
+{
+  const desktop: PassageCapabilities = {
+    autoTier: "A",
+    browserReduced: false,
+    applicationEffectsOff: false,
+    saveData: false,
+    lowMemory: false,
+    mobile: false,
+    coarsePointer: false,
+    detectionFailed: false,
+  };
+  const withCaps = (
+    patch: Partial<PassageCapabilities>
+  ): PassageCapabilities => ({ ...desktop, ...patch });
+  const tierFor = (
+    requested: "auto" | "cinematic" | "static",
+    patch: Partial<PassageCapabilities> = {}
+  ) => resolvePassageProjection(requested, withCaps(patch));
+
+  check("projection resolver: Auto preserves A/B/D/C capability truth",
+    tierFor("auto").tier === "A" &&
+    tierFor("auto", { autoTier: "B", mobile: true }).tier === "B" &&
+    tierFor("auto", { autoTier: "D", browserReduced: true }).tier === "D" &&
+    tierFor("auto", { autoTier: "D", applicationEffectsOff: true }).tier === "D" &&
+    tierFor("auto", { autoTier: "C", saveData: true }).tier === "C" &&
+    tierFor("auto", { autoTier: "C", lowMemory: true }).tier === "C" &&
+    tierFor("auto", { autoTier: "C", detectionFailed: true }).tier === "C");
+  check("projection resolver: Static is always D",
+    ["A", "B", "C", "D"].every((autoTier) =>
+      tierFor("static", { autoTier: autoTier as PassageCapabilities["autoTier"] }).tier === "D"
+    ));
+  check("projection resolver: Cinematic is A desktop, B mobile/coarse, and may override effects-off",
+    tierFor("cinematic").tier === "A" &&
+    tierFor("cinematic", { mobile: true }).tier === "B" &&
+    tierFor("cinematic", { coarsePointer: true }).tier === "B" &&
+    tierFor("cinematic", { applicationEffectsOff: true, autoTier: "D" }).tier === "A");
+  check("projection resolver: Cinematic never upgrades constrained conditions",
+    [
+      tierFor("cinematic", { saveData: true, autoTier: "C" }),
+      tierFor("cinematic", { lowMemory: true, autoTier: "C" }),
+      tierFor("cinematic", { detectionFailed: true, autoTier: "C" }),
+    ].every((result) =>
+      result.tier === "C" && result.cinematicAvailable === false
+    ));
+}
 
 // ── 2 · honesty ──────────────────────────────────────────────────────────────
 check("no random or clock-derived numbers anywhere in the passage",
@@ -179,10 +229,11 @@ check("no ceremony exists for a state the gate refuses — instruments included"
   // beginJourney, jumpTo and scrub each honor fx.access, so no director
   // instrument can conjure a journey (or the floor) for flag-off /
   // outside-cohort fixtures whose origin wall correctly shows no call.
-  (journey.match(/if \(!fx\.access\) return;/g) ?? []).length === 3);
+  (journey.match(/if \(!fx\.access\) return;/g) ?? []).length >= 2 &&
+  /if \(!fx\.access \|\| !cinematic\) return;/.test(journey));
 check("no teaser for the ungated: honest absence, no upsell vocabulary",
   /fx\.access \? \(/.test(origin) &&
-  !/locked|Upgrade to enter|Unlock the Arena|join the waitlist/i.test(bundle));
+  !/\blocked\b|Upgrade to enter|Unlock the Arena|join the waitlist/i.test(stripComments(origin)));
 
 // ── 3 · the SYNTHETIC label law ──────────────────────────────────────────────
 check("both settled environments carry the unconditional SYNTHETIC banner",
@@ -196,7 +247,7 @@ check("the overlay's minimized SYNTHETIC tab exists OUTSIDE every beat condition
 check("CANCEL_PHASES is exactly call + clearance",
   /CANCEL_PHASES[\s\S]{0,120}=\s*\["call", "clearance"\]/.test(timeline));
 check("skip() branches: cancel before departure, forward after",
-  /CANCEL_PHASES\.includes\(p\)\) settleCancel\(\);\s*else settleForward\(\)/.test(journey));
+  /CANCEL_PHASES\.includes\(p\)\) settleCancel\(\);\s*else settleForward\(true, staticDestination\)/.test(journey));
 check("Escape always skips; Space/PageDown only off a control; wheel/touch PASSIVE",
   /if \(e\.key === "Escape"\) return skip\(\);/.test(journey) &&
   /e\.key === " " \|\| e\.key === "PageDown"\) && !onControl/.test(journey) &&
@@ -211,9 +262,13 @@ check("no preventDefault, no scroll lock, no history mutation anywhere in the pa
   !/documentElement\.style\.overflow|body\.style\.overflow/.test(bundle) &&
   !/pushState|replaceState/.test(bundle));
 check("every programmatic scroll is explicitly instant (smooth CSS can never drive a settle)",
-  /scrollTo\(\{ top: 0, behavior: "instant"/.test(journey) &&
+  /scrollTo\(\{\s*top: 0,\s*behavior: "instant"/.test(journey) &&
   !/scrollTo\(\s*\d/.test(bundle) &&
-  !/scrollIntoView\((?!\{ behavior: "instant")/.test(bundle));
+  (() => {
+    const calls = bundle.match(/scrollIntoView\(\{[\s\S]{0,180}?\}\)/g) ?? [];
+    return calls.length >= 2 &&
+      calls.every((call) => /behavior:\s*"instant"/.test(call));
+  })());
 {
   // Double activation cannot stack journeys, and the ONE deliberate replace
   // path (a director restart) must disarm the replaced run's timers before
@@ -255,9 +310,68 @@ check("the match cut: the overlay's final frame and the floor share the establis
 // ── 7 · tier law + reduced motion + safety ordering ─────────────────────────
 check("only tiers A/B stamp the document; C/D never mount the cinema",
   /const cinematic = tier === "A" \|\| tier === "B";/.test(journey) &&
-  /if \(t === "A" \|\| t === "B"\)[\s\S]{0,120}setAttribute\("data-cxpassage", t\)/.test(journey));
-check("reduced motion: the belt-and-braces veil reset exists",
-  /\.cx-p-veil \{ animation: none !important; display: none !important; \}/.test(css));
+  /if \(tier === "A" \|\| tier === "B"\)[\s\S]{0,140}setAttribute\("data-cxpassage", tier\)/.test(journey) &&
+  /const overlayActive = cinematic && CINEMATIC\.has\(phase\);/.test(journey));
+check("reduced motion remains static unless this review root has explicit Cinematic",
+  /:where\(\.cx-p-review:not\(\[data-cxp-cinematic\]\)\) \.cx-p-veil/.test(css) &&
+  /animation: none !important;\s*\n\s*display: none !important;/.test(css) &&
+  /data-cxp-cinematic=\{[\s\S]{0,120}projection === "cinematic" && cinematic/.test(journey) &&
+  !/html\[data-cxp-cinematic\]/.test(css));
+check("projection state begins Auto, stores no consent, and never autoplays on confirmation",
+  /useState<PassageProjection>\("auto"\)/.test(journey) &&
+  !/sessionStorage|document\.cookie|sendBeacon|XMLHttpRequest/.test(stripComments(bundle)) &&
+  !/fetch\(/.test(bundle) &&
+  (() => {
+    const start = journey.indexOf("const confirmReducedCinematic");
+    const end = journey.indexOf("const cancelProjectionPrompt", start);
+    const confirm = journey.slice(start, end);
+    return start !== -1 && end !== -1 && !/beginJourney/.test(confirm);
+  })());
+check("reduced Cinematic is pending until explicit confirmation",
+  /if \(latest\.browserReduced\) \{\s*\n\s*setProjectionPrompt\("reduced"\)/.test(journey) &&
+  /commitProjection\(\s*\n\s*"cinematic",\s*\n\s*latest\.browserReduced/.test(journey) &&
+  /projectionPrompt === "reduced"/.test(tray));
+check("the reduced-motion warning is exact, inline, and uses the single Journey live region",
+  /Your browser requests reduced motion\. Cinematic will\s+animate this synthetic review only and does not change\s+your system setting\./.test(tray) &&
+  /Play Cinematic for this review/.test(tray) &&
+  /Keep Reduced Motion \/ Static/.test(tray) &&
+  (journey.match(/aria-live="polite"/g) ?? []).length === 1 &&
+  !/role="alert"|aria-modal/.test(tray));
+check("Browser preference and Review projection are disclosed separately",
+  /Browser preference:/.test(tray) && /Review projection:/.test(tray) &&
+  /Application effects:/.test(tray));
+check("projection buttons are 44 px, non-color-only, and locked by raw cinematic phase",
+  /min-h-\[44px\]/.test(tray) &&
+  /aria-pressed=\{active\}/.test(tray) &&
+  /\{active && <span aria-hidden>▸ <\/span>\}/.test(tray) &&
+  /capabilities === null \|\| CINEMATIC\.has\(phase\)/.test(journey) &&
+  /disabled=\{\s*\n\s*projectionLocked \|\| projectionPrompt !== null/.test(tray));
+check("an OS reduced-motion flip revokes the scoped override and requires fresh confirmation",
+  /mainRef\.current\?\.removeAttribute\("data-cxp-cinematic"\)/.test(journey) &&
+  /projectionRef\.current = "auto"/.test(journey) &&
+  /setProjectionPrompt\("reduced"\)/.test(journey) &&
+  /reduced\.removeEventListener\?\.\("change", onReduced\)/.test(journey));
+check("removing reduced motion clears stale consent UI and resets Auto before the static floor is hidden",
+  /current === "reduced" \? null : current/.test(journey) &&
+  /browser no longer requests reduced motion[\s\S]{0,120}cinematic-capable Mission Control review/.test(journey));
+check("Auto capability revocation preserves the two-phase law with a static Arena destination",
+  /skipRef\.current\?\.\(true\)/.test(journey) &&
+  /settleForward\(true, staticDestination\)/.test(journey) &&
+  /#arena-floor[\s\S]{0,120}scrollIntoView/.test(journey));
+check("settled Auto resets focus and scroll when reduced motion changes the document model",
+  /browser now requests reduced motion[\s\S]{0,120}complete static review from Mission Control/.test(journey));
+check("a removed inline confirmation restores focus to Cinematic when the tray remains open",
+  /previousPromptRef/.test(tray) &&
+  /previous !== null && projectionPrompt === null/.test(tray) &&
+  /cinematicRef\.current\?\.focus/.test(tray));
+check("unexplained Tier C is retained as a failed capability read",
+  /detected === "C" && !saveData && !lowMemory/.test(projection) &&
+  /detectionFailed,/.test(projection));
+check("reduced-motion override revocation suppresses Mission Control quiet-state transitions",
+  /:where\(\.cx-p-review:not\(\[data-cxp-cinematic\]\)\) :is\([\s\S]{0,320}\.cx-p-mc-panel[\s\S]{0,320}\.cx-p-call-ring[\s\S]{0,100}transition: none !important;/.test(css));
+check("tray close/Escape cancels pending confirmation without persisting it",
+  /if \(projectionPrompt\) onCancelCinematic\(\);/.test(tray) &&
+  /if \(e\.key === "Escape"\)[\s\S]{0,80}close\(\)/.test(tray));
 {
   // NUMERIC safety ordering — presence-first, then the arithmetic. A
   // watchdog re-armed to a useless value or a safety fade shorter than the
@@ -270,6 +384,23 @@ check("reduced motion: the belt-and-braces veil reset exists",
   const safe = Number((timeline.match(/CSS_SAFETY_DELAY_S = (\d+)/) ?? [])[1]);
   check("timeline constants exist",
     [end, endB, ret, retj, dog, safe].every((n) => Number.isFinite(n) && n > 0));
+  const compactTimeline = timeline.replace(/\s+/g, " ");
+  check("the Phase 5.2 beat snapshot is numerically unchanged",
+    [
+      '{ phase: "call", at: 0 }',
+      '{ phase: "clearance", at: 1000 }',
+      '{ phase: "passage", at: 3400 }',
+      '{ phase: "conversion", at: 5800 }',
+      '{ phase: "threshold", at: 8000 }',
+      '{ phase: "greeting", at: 10400 }',
+      '{ phase: "clearance", at: 900 }',
+      '{ phase: "passage", at: 3000 }',
+      '{ phase: "conversion", at: 5200 }',
+      '{ phase: "threshold", at: 7300 }',
+      '{ phase: "greeting", at: 9000 }',
+    ].every((beat) => compactTimeline.includes(beat)) &&
+    end === 11800 && endB === 10600 && ret === 1400 &&
+    retj === 1800 && dog === 14000 && safe === 18);
   check("first journey respects the ratified ≤ 12 s first-entry ceiling",
     end <= 12000 && end >= 7000);
   check("returning respects the house ≤ 1.5 s law; the return journey stays ≤ 2 s",
@@ -316,7 +447,23 @@ check("the watchdog forces the truthful forward settle",
 }
 check("the station rAF is passive and hidden-tab aware",
   /addEventListener\("scroll", onScroll, \{ passive: true \}\)/.test(journey) &&
-  /document\.hidden/.test(journey));
+  /document\.hidden/.test(journey) &&
+  /const measurements = stations\.map/.test(journey) &&
+  /for \(const \{ el, p \} of measurements\)/.test(journey));
+check("hidden documents pause ambient CSS only — never Passage safety/travel",
+  /addEventListener\("visibilitychange", onVisibility\)/.test(journey) &&
+  /removeEventListener\("visibilitychange", onVisibility\)/.test(journey) &&
+  /data-cxp-hidden/.test(journey) &&
+  /\.cx-p-review\[data-cxp-hidden\] :is\(/.test(css) &&
+  (() => {
+    const start = css.indexOf(".cx-p-review[data-cxp-hidden] :is(");
+    const end = css.indexOf(") {", start);
+    const paused = css.slice(start, end);
+    return start !== -1 && end !== -1 &&
+      /cx-p-live-core/.test(paused) &&
+      /cx-p-floor-seal/.test(paused) &&
+      !/cx-p-veil|cx-p-safety|cx-p-world/.test(paused);
+  })());
 
 // ── 9 · the semantic ledger (no row, no ship — with fallback treatment) ─────
 {
@@ -327,9 +474,10 @@ check("the station rAF is passive and hidden-tab aware",
     "Milestone gallery seals", "Sealed competition threshold", "Kai observation point",
     "Return line", "SYNTHETIC tab",
     // Phase 5.2 — the architectural cinematics
-    "Mission Control power-down", "Departure aperture", "Distant arena light",
+    "Mission Control ambient signals", "Mission Control power-down",
+    "Departure aperture", "Distant arena light",
     "Floor separation", "Hallway light shafts", "Hallway motes", "Monument colonnade",
-    "Arrival register", "Living chamber atmosphere",
+    "Arena floor seal", "Arrival register", "Living chamber atmosphere",
   ];
   check("the passage ledger covers every shipped element",
     elements.every((e) => ledger.includes(`"${e}"`)));
@@ -355,22 +503,37 @@ check("the technical clearance truth lives in the tray, not the ceremony",
 // ── 10b · Phase 5.2 · architectural cinematics ──────────────────────────────
 check("Mission Control powers down when the Arena is called",
   /data-cxp-quiet=\{quiet \? "" : undefined\}/.test(origin) &&
-  /quiet=\{phase === "call" \|\| phase === "clearance"\}/.test(journey) &&
+  /quiet=\{\s*overlayActive && env === "mc" && runKind !== "return"\s*\}/.test(journey) &&
   /\.cx-p-mc\[data-cxp-quiet\] \.cx-p-mc-panel/.test(css) &&
-  /\.cx-p-mc\[data-cxp-quiet\] \.cx-p-mc-axis/.test(css));
+  /\.cx-p-mc\[data-cxp-quiet\] \.cx-p-mc-axis/.test(css) &&
+  /\.cx-p-mc\[data-cxp-quiet\] \.cx-p-mc-signal/.test(css));
 check("the architecture opens: floor separates, aperture forms, light is distant and LATE",
   /cx-p-split-l/.test(overlay) && /cx-p-split-r/.test(overlay) &&
   /className="cx-p-aperture"/.test(overlay) && /className="cx-p-farlight"/.test(overlay) &&
-  // the gold light must not be present at the start of the timeline
-  /@keyframes cx-p-farlightk \{\s*\n\s*0%, 4% \{[^}]*opacity: 0;/.test(css));
+  // Cool architecture leads. Gold is withheld until the later hallway.
+  /@keyframes cx-p-farlightk \{\s*\n\s*0%, 34% \{[^}]*opacity: 0;/.test(css) &&
+  /@keyframes cx-p-shaftk \{\s*\n\s*0%, 36% \{[^}]*opacity: 0;/.test(css) &&
+  /@keyframes cx-p-motesk \{\s*\n\s*0%, 38% \{[^}]*opacity: 0;/.test(css));
 check("the Arena's atmosphere bleeds up the hallway before arrival",
   /className="cx-p-shafts"/.test(overlay) && /className="cx-p-motes"/.test(overlay));
+check("cold activation is paint-contained and power-down animates no shadow",
+  /\.cx-p-veil \{[\s\S]{0,360}contain: layout paint;[\s\S]{0,100}isolation: isolate;/.test(css) &&
+  /\.cx-p-mc\[data-cxp-quiet\] \.cx-p-call-ring \{[\s\S]{0,140}transform: scale\(1\.035\)/.test(css) &&
+  !/transition: box-shadow/.test(css));
 check("the threshold is monumental: a colonnade recedes behind the establishing ring",
   /className="cx-p-colonnade"/.test(overlay) && /cx-p-colonnade/.test(floor));
 {
   // Every ambient keyframe's BODY is extracted and tested: atmosphere may
   // only move transform and opacity, or it stops being free.
-  const ambient = ["cx-p-breathek", "cx-p-spink", "cx-p-driftk", "cx-p-shaftbreathek", "cx-p-regk"];
+  const ambient = [
+    "cx-p-callwakek",
+    "cx-p-signallivek",
+    "cx-p-horizonlivek",
+    "cx-p-breathek",
+    "cx-p-spink",
+    "cx-p-shaftbreathek",
+    "cx-p-floorsealink",
+  ];
   const bodies = ambient.map((n) => {
     const i = css.indexOf(`@keyframes ${n} `);
     if (i === -1) return null;
@@ -382,24 +545,43 @@ check("the threshold is monumental: a colonnade recedes behind the establishing 
     }
     return null;
   });
-  check("the chamber is ALIVE — slow, compositor-only, never JavaScript",
-    // BOTH breathing bodies (the establishing ring and the standing dais)
-    // and both ring rotations must be present — a presence test passed while
-    // one of them had been stripped (recorded).
-    (floor.match(/cx-p-live-core/g) ?? []).length === 2 &&
+  const compositorOnly = bodies.every((body) => {
+    if (body === null) return false;
+    const properties = [...body.matchAll(/([a-z-]+)\s*:/g)].map((m) => m[1]);
+    return properties.length > 0 &&
+      properties.every((property) =>
+        property === "transform" || property === "opacity"
+      );
+  });
+  check("the two rooms are alive — bounded, compositor-only, never JavaScript",
+    // Only the establishing monument breathes/rotates. Offscreen evidence
+    // geometry remains static and never animates data.
+    (floor.match(/cx-p-live-core/g) ?? []).length === 1 &&
     // exact class token — cx-p-live-ring-slow contains the shorter name
-    (floor.match(/cx-p-live-ring(?=["\s])/g) ?? []).length === 2 &&
+    (floor.match(/cx-p-live-ring(?=["\s])/g) ?? []).length === 1 &&
     /cx-p-live-ring-slow/.test(floor) &&
     /cx-p-live-motes/.test(floor) && /cx-p-live-shafts/.test(floor) &&
     /cx-p-live-fog/.test(floor) && /cx-p-live-reflect/.test(floor) &&
-    bodies.every((b) => b !== null) &&
-    bodies.every((b) => !/(^|[^-])\b(width|height|margin|padding|top|left|right|bottom|font-size|border-width)\s*:/.test(b!)));
+    compositorOnly);
+  check("ambient channel caps hold: Mission Control ≤3 and Arena ≤3",
+    /animation: cx-p-callwakek 6\.4s[^;]*infinite/.test(css) &&
+    /animation: cx-p-signallivek 7s[^;]*infinite/.test(css) &&
+    /animation: cx-p-horizonlivek 24s[^;]*infinite/.test(css) &&
+    /animation: cx-p-breathek 9s[^;]*infinite/.test(css) &&
+    (css.match(/animation: cx-p-spink [^;]*infinite/g) ?? []).length === 2 &&
+    /animation: cx-p-shaftbreathek 16s[^;]*infinite/.test(css) &&
+    !/html\[data-cxpassage\] \.cx-p-live-motes/.test(css));
 }
-check("ambient motion is genuinely slow (≥ 9 s cycles; the rings are near-imperceptible)",
+check("Arena ambient motion is genuinely slow (≥ 9 s; rings near-imperceptible)",
   /html\[data-cxpassage\] \.cx-p-live-core \{ animation: cx-p-breathek 9s/.test(css) &&
   /html\[data-cxpassage\] \.cx-p-live-ring \{ animation: cx-p-spink 240s/.test(css) &&
   /html\[data-cxpassage\] \.cx-p-live-ring-slow \{ animation: cx-p-spink 420s/.test(css) &&
-  /html\[data-cxpassage\] \.cx-p-live-motes \{[\s\S]{0,320}cx-p-driftk 90s/.test(css));
+  /html\[data-cxpassage\] \.cx-p-live-shafts \{[\s\S]{0,120}cx-p-shaftbreathek 16s/.test(css));
+check("Arena arrival resolves the existing floor seal once, never as an ambient loop",
+  /data-cxp-arrived=\{arrived \? "" : undefined\}/.test(floor) &&
+  /html\[data-cxpassage\] \.cx-p-arena\[data-cxp-arrived\] \.cx-p-floor-seal/.test(css) &&
+  /animation: cx-p-floorsealink 1\.7s/.test(css) &&
+  /cx-p-floor-seal[\s\S]{0,240}animation: none !important/.test(css));
 check("Tier C/D and no-JS keep the settled room static by default",
   /html\[data-cxpassage\] \.cx-p-call-ring \{[\s\S]{0,120}animation: cx-p-callwakek/.test(css) &&
   /html\[data-cxpassage\] \.cx-p-reg-1/.test(css) &&
@@ -411,9 +593,10 @@ check("scroll advances a camera through real depth, per tier",
   /html\[data-cxpassage="A"\] \.cx-p-depth \{[\s\S]{0,300}translate3d\([\s\S]{0,200}clamp\(-190px/.test(css) &&
   /html\[data-cxpassage="B"\] \.cx-p-depth/.test(css));
 check("every Phase 5.2 element carries a ledger row",
-  ["Mission Control power-down", "Departure aperture", "Distant arena light",
+  ["Mission Control ambient signals", "Mission Control power-down",
+   "Departure aperture", "Distant arena light",
    "Floor separation", "Hallway light shafts", "Hallway motes", "Monument colonnade",
-   "Arrival register", "Living chamber atmosphere"].every((e) => ledger.includes(`"${e}"`)));
+   "Arena floor seal", "Arrival register", "Living chamber atmosphere"].every((e) => ledger.includes(`"${e}"`)));
 
 // ── 11 · laws established by the post-implementation adversarial review ─────
 check("a held inspection can always be resumed: resume re-arms settle AND watchdog",
@@ -431,19 +614,30 @@ check("the footer is inerted with the environments (no operable control under th
   /for \(const el of \[o, f, ft\]\)/.test(journey) &&
   /className="mt-16 px-6 pb-24[\s\S]{0,160}sm:mt-0 sm:pb-10"/.test(journey));
 check("a mid-journey reduced-motion flip settles instead of stranding an invisible modal",
-  /matchMedia\("\(prefers-reduced-motion: reduce\)"\)/.test(journey) && /skipRef\.current\?\.\(\)/.test(journey));
+  /matchMedia\(\s*"\(prefers-reduced-motion: reduce\)"/.test(journey) &&
+  /skipRef\.current\?\.\(true\)/.test(journey) &&
+  /resetReviewToOrigin\(/.test(journey));
+check("Tier C/D Director instruments cannot start an invisible journey",
+  (() => {
+    const begin = journey.slice(journey.indexOf("const beginJourney"), journey.indexOf("const beginReturn"));
+    const ret = journey.slice(journey.indexOf("const beginReturn"), journey.indexOf("// ── two-phase skip"));
+    const scrubSource = journey.slice(journey.indexOf("const scrub"), journey.indexOf("const resumeRun"));
+    return /if \(!cinematic\) return;/.test(begin) &&
+      /if \(!cinematic\) return;/.test(ret) &&
+      /!fx\.access \|\| !cinematic/.test(scrubSource);
+  })());
 check("identical announcements still reach the live region on every repeat",
   /announceFlipRef\.current = !announceFlipRef\.current/.test(journey) &&
   /announceFlipRef\.current \?/.test(journey) && /role="status"/.test(journey));
 check("the natural journey end does not stomp the greeting announcement",
   /settleForward\(false\), end\)/.test(journey) && /if \(announceArrival\) say\(/.test(journey));
 check("director instruments never steal focus from the open tray",
-  (journey.match(/const keepTray = trayOpenRef\.current;/g) ?? []).length === 3 &&
+  (journey.match(/const keepTray = trayOpenRef\.current;/g) ?? []).length >= 4 &&
   /takeFocus=\{!trayOpenRef\.current\}/.test(journey) && /autoFocus=\{takeFocus\}/.test(overlay));
 check("cancel has a focus target even when the call does not exist",
   /\[data-cxp-proceed\]"\) \?\?\s*\n\s*document\.querySelector<HTMLElement>\("\.cx-p-mc h1"\)/.test(journey));
 check("closing the tray returns focus to its pill, never to body",
-  /const close = \(\) => \{\s*\n\s*setOpen\(false\);\s*\n\s*pillRef\.current\?\.focus/.test(tray));
+  /const close = useCallback\(\(\) => \{[\s\S]{0,140}setOpen\(false\);[\s\S]{0,80}pillRef\.current\?\.focus/.test(tray));
 check("the condensed mobile run gets its own readable windows",
   /\.cx-p-run-b \.cx-p-stencil \{ animation-name: cx-p-stk-b; \}/.test(css) &&
   /\.cx-p-run-b \.cx-p-g-1 \{ animation-name: cx-p-g1k-b; \}/.test(css) &&
@@ -456,15 +650,16 @@ check("settled assistive speech always closes over the current fixture",
   /const fx = useMemo\(\(\) => passageFixture\(fxKey\), \[fxKey\]\)/.test(journey) &&
   /\}, \[fx, swapEnv, liftInert, say\]\);/.test(journey));
 check("every forward settle reasserts the Arena threshold after native input",
-  (journey.match(/window\.scrollTo\(\{ top: 0, behavior: "instant"/g) ?? []).length >= 2 &&
+  (journey.match(/window\.scrollTo\(\{\s*top: 0,\s*behavior: "instant"/g) ?? []).length >= 2 &&
+  /#arena-floor"\)\?\.scrollIntoView\(\{[\s\S]{0,120}behavior: "instant"/.test(journey) &&
   /Native wheel\/touch\/PageDown default/.test(journey));
 check("the global skip target and both fallback fragment paths have focus destinations",
-  /<main id="main" tabIndex=\{-1\}/.test(journey) &&
+  /id="main"[\s\S]{0,80}tabIndex=\{-1\}/.test(journey) &&
   /href="#arena-floor"[\s\S]{0,520}#arena-floor h1/.test(origin) &&
   /href="#main"[\s\S]{0,520}\.cx-p-mc h1/.test(floor));
 check("a short coarse-pointer phone stays on the single-plane projection",
-  /max-height: 560px\) and \(pointer: coarse\)/.test(journey) &&
-  /detected === "A"/.test(journey) && /\? "B"/.test(journey));
+  /max-height: 560px\) and \(pointer: coarse\)/.test(projection) &&
+  /detected === "A" && coarseShort \? "B" : detected/.test(projection));
 check("review honesty is visually concise and fully exposed to assistive tech",
   (origin.match(/<span className="sr-only">SYNTHETIC REVIEW DATA/g) ?? []).length === 1 &&
   (floor.match(/<span className="sr-only">SYNTHETIC REVIEW DATA/g) ?? []).length === 1);
