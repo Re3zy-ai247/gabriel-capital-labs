@@ -97,22 +97,64 @@ check("no random or clock-derived numbers anywhere in the passage",
   !/Math\.random|Date\.now|new Date\(/.test(bundle));
 check("no standing literal outside the fixtures module",
   !/totalXp: \d/.test(bundle) && !/\d+ lifetime XP/.test(bundle) && !/Level \d/.test(bundle));
+
+// ── 2b · Phase 5.2 · the typography law (the release blocker) ───────────────
+check("exactly ONE in-world stencil exists — a stack cannot collide",
+  (overlay.match(/className="cx-p-stencil"/g) ?? []).length === 1 &&
+  !/cx-p-st-1|cx-p-st-2|cx-p-st-3/.test(overlay + css));
+{
+  // Read the WHOLE rule body — a fixed-length window silently stopped short
+  // of the mutated line and let the nowrap regression through (recorded).
+  const ruleBody = (sel: string) => {
+    const i = css.indexOf(sel + " {");
+    if (i === -1) return "";
+    const open = css.indexOf("{", i);
+    const close = css.indexOf("}", open);
+    return css.slice(open, close + 1);
+  };
+  const stencil = ruleBody(".cx-p-stencil");
+  check("in-flight type is fluid and WRAPS instead of overflowing",
+    /font-size: clamp\(/.test(stencil) &&
+    /letter-spacing: clamp\(/.test(stencil) &&
+    // wrapping is required POSITIVELY, and nowrap is banned outright
+    /overflow-wrap: break-word/.test(stencil) && /text-wrap: balance/.test(stencil) &&
+    !/white-space:\s*nowrap/.test(stencil) &&
+    /width: min\(80vw/.test(stencil) &&
+    /font-size: clamp\(/.test(ruleBody(".cx-p-greet")) &&
+    /font-size: clamp\(/.test(ruleBody(".cx-p-engraved")));
+  check("even the SCALED exit frame fits the narrowest viewport",
+    // 80vw × 1.14 = 91vw — the measured clip at 320 px cannot recur
+    /scale\(1\.14\)/.test(css) && !/scale\(1\.22\)/.test(css));
+}
+check("the arrival register is FLOW layout — overlap is impossible by construction",
+  /className="cx-p-reg relative mt-8 w-full max-w-sm space-y-2 font-mono"/.test(floor) &&
+  !/cx-p-reg[\s\S]{0,200}position: absolute/.test(css));
+check("the register is staggered slowly (≥600 ms apart, ≥0.9 s each)",
+  /\.cx-p-reg-1, \.cx-p-reg-2, \.cx-p-reg-3, \.cx-p-reg-4, \.cx-p-reg-5 \{\s*\n\s*animation: cx-p-regk 0\.9s/.test(css) &&
+  /\.cx-p-reg-2 \{ animation-delay: 0\.95s; \}/.test(css) &&
+  /\.cx-p-reg-5 \{ animation-delay: 3\.15s; \}/.test(css));
 check("the greeting and floor render fixture properties, never constants",
-  /r\.displayName/.test(overlay) && /r\.totalXp/.test(overlay) && /r\.totalXp/.test(floor) &&
-  /r\.rank/.test(floor));
-check("the clearance evidence line branches on the record (an empty record is told the truth)",
-  /"Evidence in order\."/.test(overlay) && /"No evidence on record\."/.test(overlay) &&
-  /r\.awardCount > 0/.test(overlay));
+  // Phase 5.2: the overlay speaks only the operator's name; every figure
+  // is rendered by the floor, from the fixture record.
+  /r\.displayName/.test(overlay) && /r\.totalXp/.test(floor) && /r\.rank/.test(floor) &&
+  /r\.level/.test(floor) && /r\.awardCount/.test(floor));
+// Phase 5.2 · the arrival register replaced the in-flight caption stack:
+// the room reads the record on the SETTLED floor, in flow, and every line
+// states only what is true for the state that shows it.
+check("the arrival register branches every line on the record",
+  /label="CLEARANCE" value="verified"/.test(floor) &&
+  /fx\.key === "data-error" \? "fail-safe" : `\$\{r\.rank\} · level \$\{r\.level\}`/.test(floor) &&
+  /r\.awardCount > 0\s*\?\s*`\$\{r\.awardCount\} accepted`\s*:\s*"none on record"/.test(floor) &&
+  /fx\.key === "data-error" \? "unavailable" : `\$\{r\.totalXp\} XP loaded`/.test(floor));
+check("the register is spoken exactly as it is rendered (one source, both channels)",
+  /function registerSpeech/.test(journey) && /say\(registerSpeech\(fx\)\)/.test(journey) &&
+  /Evidence unavailable\. Lifetime record unavailable\./.test(journey));
 check("a failed record read is NEVER told it was located (product + review)",
   // the live entry states only what the server proved — the gate passed
   !/Record located\./.test(entryCode) && /Clearance confirmed\./.test(entryCode) &&
-  // the journey tells the data-error state the truth in every channel
-  /fx\.key === "data-error" \? "Record unavailable\." : "Record located\."/.test(overlay) &&
-  /Record unavailable — the fail-safe empty standing is shown\./.test(overlay) &&
-  /Record unavailable\. Fail-safe standing shown\./.test(journey) &&
+  // no surface anywhere claims a located record
+  !/Record located\./.test(stripComments(overlay)) &&
   /record unavailable — fail-safe standing shown/.test(origin));
-check("the greeting branches on the record too",
-  /awardCount > 0\s*\?\s*`Standing recognized/.test(overlay));
 check("data-error fails closed to the EMPTY record — never a stale or invented standing",
   /case "data-error":[\s\S]{0,600}record: EMPTY_RECORD/.test(fixtures));
 check("fixture standing is curve-consistent (the engine's own arithmetic, documented)",
@@ -225,6 +267,9 @@ check("reduced motion: the belt-and-braces veil reset exists",
     ret <= 1500 && retj <= 2000);
   check("the mobile journey is shorter than the desktop journey",
     endB < end);
+  // Phase 5.2: the Founder found the condensed run too fast to comprehend.
+  check("the mobile journey was SLOWED, not just shortened (≥ 10 s)",
+    endB >= 10000);
   check("safety ordering: journey end < JS watchdog < pure-CSS safety",
     end < dog && dog < safe * 1000 && retj < dog);
   check("the CSS safety literal mirrors the timeline constant",
@@ -263,6 +308,10 @@ check("the station rAF is passive and hidden-tab aware",
     "Chamber floor ring", "Standing core dais", "Evidence vault plaques",
     "Milestone gallery seals", "Sealed competition threshold", "Kai observation point",
     "Return line", "SYNTHETIC tab",
+    // Phase 5.2 — the architectural cinematics
+    "Mission Control power-down", "Departure aperture", "Distant arena light",
+    "Floor separation", "Hallway light shafts", "Hallway motes", "Monument colonnade",
+    "Arrival register", "Living chamber atmosphere",
   ];
   check("the passage ledger covers every shipped element",
     elements.every((e) => ledger.includes(`"${e}"`)));
@@ -284,6 +333,63 @@ check("the sheet contains its own scroll (no page bleed)",
 check("the technical clearance truth lives in the tray, not the ceremony",
   /TECHNICAL CLEARANCE/.test(tray) && /internal cohort/.test(tray) &&
   !/internal cohort/.test(overlay));
+
+// ── 10b · Phase 5.2 · architectural cinematics ──────────────────────────────
+check("Mission Control powers down when the Arena is called",
+  /data-cxp-quiet=\{quiet \? "" : undefined\}/.test(origin) &&
+  /quiet=\{phase === "call" \|\| phase === "clearance"\}/.test(journey) &&
+  /\.cx-p-mc\[data-cxp-quiet\] \.cx-p-mc-panel/.test(css) &&
+  /\.cx-p-mc\[data-cxp-quiet\] \.cx-p-mc-axis/.test(css));
+check("the architecture opens: floor separates, aperture forms, light is distant and LATE",
+  /cx-p-split-l/.test(overlay) && /cx-p-split-r/.test(overlay) &&
+  /className="cx-p-aperture"/.test(overlay) && /className="cx-p-farlight"/.test(overlay) &&
+  // the gold light must not be present at the start of the timeline
+  /@keyframes cx-p-farlightk \{\s*\n\s*0%, 4% \{[^}]*opacity: 0;/.test(css));
+check("the Arena's atmosphere bleeds up the hallway before arrival",
+  /className="cx-p-shafts"/.test(overlay) && /className="cx-p-motes"/.test(overlay));
+check("the threshold is monumental: a colonnade recedes behind the establishing ring",
+  /className="cx-p-colonnade"/.test(overlay) && /cx-p-colonnade/.test(floor));
+{
+  // Every ambient keyframe's BODY is extracted and tested: atmosphere may
+  // only move transform and opacity, or it stops being free.
+  const ambient = ["cx-p-breathek", "cx-p-spink", "cx-p-driftk", "cx-p-shaftbreathek", "cx-p-regk"];
+  const bodies = ambient.map((n) => {
+    const i = css.indexOf(`@keyframes ${n} `);
+    if (i === -1) return null;
+    const open = css.indexOf("{", i);
+    let depth = 0;
+    for (let k = open; k < css.length; k++) {
+      if (css[k] === "{") depth++;
+      else if (css[k] === "}" && --depth === 0) return css.slice(open, k + 1);
+    }
+    return null;
+  });
+  check("the chamber is ALIVE — slow, compositor-only, never JavaScript",
+    // BOTH breathing bodies (the establishing ring and the standing dais)
+    // and both ring rotations must be present — a presence test passed while
+    // one of them had been stripped (recorded).
+    (floor.match(/cx-p-live-core/g) ?? []).length === 2 &&
+    // exact class token — cx-p-live-ring-slow contains the shorter name
+    (floor.match(/cx-p-live-ring(?=["\s])/g) ?? []).length === 2 &&
+    /cx-p-live-ring-slow/.test(floor) &&
+    /cx-p-live-motes/.test(floor) && /cx-p-live-shafts/.test(floor) &&
+    /cx-p-live-fog/.test(floor) && /cx-p-live-reflect/.test(floor) &&
+    bodies.every((b) => b !== null) &&
+    bodies.every((b) => !/(^|[^-])\b(width|height|margin|padding|top|left|right|bottom|font-size|border-width)\s*:/.test(b!)));
+}
+check("ambient motion is genuinely slow (≥ 9 s cycles; the rings are near-imperceptible)",
+  /\.cx-p-live-core \{ animation: cx-p-breathek 9s/.test(css) &&
+  /\.cx-p-live-ring \{ animation: cx-p-spink 240s/.test(css) &&
+  /\.cx-p-live-ring-slow \{ animation: cx-p-spink 420s/.test(css) &&
+  /\.cx-p-live-motes \{[\s\S]{0,320}cx-p-driftk 90s/.test(css));
+check("scroll advances a camera through real depth, per tier",
+  /html\[data-cxpassage\] \.cx-p-stage \{ perspective: 1100px; \}/.test(css) &&
+  /html\[data-cxpassage="A"\] \.cx-p-depth \{[\s\S]{0,300}translate3d\([\s\S]{0,200}clamp\(-190px/.test(css) &&
+  /html\[data-cxpassage="B"\] \.cx-p-depth/.test(css));
+check("every Phase 5.2 element carries a ledger row",
+  ["Mission Control power-down", "Departure aperture", "Distant arena light",
+   "Floor separation", "Hallway light shafts", "Hallway motes", "Monument colonnade",
+   "Arrival register", "Living chamber atmosphere"].every((e) => ledger.includes(`"${e}"`)));
 
 // ── 11 · laws established by the post-implementation adversarial review ─────
 check("a held inspection can always be resumed: resume re-arms settle AND watchdog",
@@ -312,8 +418,9 @@ check("cancel has a focus target even when the call does not exist",
 check("closing the tray returns focus to its pill, never to body",
   /const close = \(\) => \{\s*\n\s*setOpen\(false\);\s*\n\s*pillRef\.current\?\.focus/.test(tray));
 check("the condensed mobile run gets its own readable windows",
-  /\.cx-p-run-b \.cx-p-g-2 \{ animation-name: cx-p-g2k-b; \}/.test(css) &&
-  /@keyframes cx-p-st1k-b/.test(css));
+  /\.cx-p-run-b \.cx-p-stencil \{ animation-name: cx-p-stk-b; \}/.test(css) &&
+  /\.cx-p-run-b \.cx-p-g-1 \{ animation-name: cx-p-g1k-b; \}/.test(css) &&
+  /@keyframes cx-p-stk-b/.test(css));
 check("active tray controls are never distinguished by colour alone",
   /ring-1 ring-amber-400\/40/.test(tray) && /\{active && <span aria-hidden>▸ <\/span>\}/.test(tray));
 

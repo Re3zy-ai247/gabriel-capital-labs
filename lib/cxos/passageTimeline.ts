@@ -8,6 +8,10 @@
 //   journey end  <  JS watchdog  <  pure-CSS safety fade
 //      11.8 s          14 s              18 s
 //
+// Phase 5.2 redistributed the beats WITHIN the same 11.8 s envelope rather
+// than lengthening it: the departure is quieter, the threshold holds longer,
+// and the room's recognition of the operator moved onto the settled floor.
+//
 // The forced part of the first journey ends ≤ 12 s — the house first-entry
 // ceiling ratified in Phase 4/5 (cxos-arena.test.ts pins 7–12 s) is not
 // silently outgrown; the ceremony's tail (Kai's line, the scroll hint)
@@ -29,24 +33,27 @@ export type PassagePhase =
 // continuous dolly, not stationary caption cards.
 export const BEATS_FIRST: { phase: PassagePhase; at: number }[] = [
   { phase: "call", at: 0 },
-  { phase: "clearance", at: 800 },
-  { phase: "passage", at: 3200 },
-  { phase: "conversion", at: 5600 },
+  { phase: "clearance", at: 1000 },
+  { phase: "passage", at: 3400 },
+  { phase: "conversion", at: 5800 },
   { phase: "threshold", at: 8000 },
-  { phase: "greeting", at: 10200 },
+  { phase: "greeting", at: 10400 },
 ];
 export const JOURNEY_END_MS = 11800;
 
-// Tier B (mobile): condensed single-plane journey.
+// Tier B (mobile): a single-plane journey, PACED SLOWER than it was — the
+// Founder's review found the condensed run too fast to comprehend. It is
+// now 10.6 s (was 8.2 s), still under the desktop run and the 12 s ceiling,
+// with the readable beats given the most room.
 export const BEATS_MOBILE: { phase: PassagePhase; at: number }[] = [
   { phase: "call", at: 0 },
-  { phase: "clearance", at: 600 },
-  { phase: "passage", at: 2200 },
-  { phase: "conversion", at: 3800 },
-  { phase: "threshold", at: 5400 },
-  { phase: "greeting", at: 6600 },
+  { phase: "clearance", at: 900 },
+  { phase: "passage", at: 3000 },
+  { phase: "conversion", at: 5200 },
+  { phase: "threshold", at: 7300 },
+  { phase: "greeting", at: 9000 },
 ];
-export const JOURNEY_END_MOBILE_MS = 8200;
+export const JOURNEY_END_MOBILE_MS = 10600;
 
 // Returning (director instrument) — inside the house ≤1.5 s returning law.
 export const RETURNING_END_MS = 1400;

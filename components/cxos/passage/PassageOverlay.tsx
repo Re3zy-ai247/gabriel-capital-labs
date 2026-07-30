@@ -68,38 +68,39 @@ export function PassageOverlay({
             {/* the room becomes the set: MC-continuous ground + panels */}
             <div className="cx-p-set absolute inset-0" />
             <div className="cx-p-grid absolute inset-x-[-40%] bottom-[-12%] h-[70%]" />
-            {/* rectilinear wall planes that pass the camera */}
+            {/* the floor separates along the command axis */}
+            <div className="cx-p-split cx-p-split-l" />
+            <div className="cx-p-split cx-p-split-r" />
+            {/* rectilinear wall planes retract past the camera */}
             <div className="cx-p-panelrow cx-p-pr-l absolute" />
             <div className="cx-p-panelrow cx-p-pr-r absolute" />
             {/* converging rails */}
             <div className="cx-p-rails absolute inset-0" />
-            {/* clearance stencils — read as they pass, never captions.
-                Every line is truthful for the state that shows it: under
-                the data-error fixture the record was NOT located, and the
-                stencil says so. */}
-            <div className="cx-p-stencil cx-p-st-1">Clearance confirmed.</div>
-            <div className="cx-p-stencil cx-p-st-2">
-              {fx.key === "data-error" ? "Record unavailable." : "Record located."}
-            </div>
-            <div className="cx-p-stencil cx-p-st-3">
-              {fx.key === "data-error"
-                ? "Fail-safe standing shown."
-                : r.awardCount > 0
-                  ? "Evidence in order."
-                  : "No evidence on record."}
-            </div>
+            {/* the circular aperture forms on the axis */}
+            <div className="cx-p-aperture" />
+            {/* and far beyond it, late and small: the first gold light */}
+            <div className="cx-p-farlight" />
+            {/* ONE in-world line. Everything the ceremony used to say in
+                flight is now said on arrival, in flow, where it is legible
+                at any width (Phase 5.2 — the collision fix is structural). */}
+            <div className="cx-p-stencil">Clearance confirmed.</div>
             {/* dimensional conversion: warmth + concentric gold arcs */}
             <div className="cx-p-warm absolute inset-0" />
             <div className="cx-p-arcs absolute inset-0" />
+            {/* the Arena's atmosphere reaches back up the hallway */}
+            <div className="cx-p-shafts" />
+            <div className="cx-p-motes" />
             {/* the threshold — the chamber's establishing geometry (the
-                match cut: same cx-p-est composition Station A rests in) */}
+                match cut: same cx-p-est composition Station A rests in),
+                with the monument's colonnade receding into the dark */}
             <div className="cx-p-gate absolute inset-0 grid place-items-center">
-              <div className="text-center">
+              <div className="cx-p-colonnade" />
+              <div className="relative text-center">
                 <div className="cx-p-est mx-auto">
                   <div className="cx-p-est-ring" />
                   <div className="cx-p-est-engrave" />
                 </div>
-                <p className="cx-p-engraved cx-p-gate-name mt-6 text-[26px] font-bold tracking-[0.5em] text-amber-100/90 md:text-4xl">
+                <p className="cx-p-engraved cx-p-gate-name mt-6 font-bold text-amber-100/90">
                   THE ARENA
                 </p>
               </div>
@@ -115,20 +116,14 @@ export function PassageOverlay({
         )}
       </div>
 
-      {/* the greeting — the one place standing is spoken (visuals; the
-          live region announces the same lines) */}
+      {/* THE WELCOME — one line, the emotional peak. The room's recognition
+          of the record plays on the settled floor (ArenaFloor), slowly and
+          in flow, so nothing is ever rushed or stacked. */}
       {run !== "return" && (
-        <div aria-hidden className="pointer-events-none absolute inset-0 flex items-center justify-center">
-          <div className="mx-6 w-full max-w-md text-center">
-            <p className="cx-p-greet cx-p-g-1 text-2xl font-semibold text-slate-100">
+        <div aria-hidden className="pointer-events-none absolute inset-0 flex items-center justify-center px-5">
+          <div className="w-full max-w-lg text-center">
+            <p className="cx-p-greet cx-p-g-1 font-semibold text-slate-100">
               Welcome to the Arena, {r.displayName}.
-            </p>
-            <p className="cx-p-greet cx-p-g-2 mt-3 font-mono text-[13px] text-amber-200/90 tnum">
-              {fx.key === "data-error"
-                ? "Record unavailable — the fail-safe empty standing is shown."
-                : r.awardCount > 0
-                  ? `Standing recognized — ${r.rank} · Level ${r.level} · ${r.totalXp} lifetime XP · ${r.awardCount} evidenced awards.`
-                  : `Standing recognized — ${r.rank} · Level ${r.level}. Only evidenced activity builds this record.`}
             </p>
           </div>
         </div>

@@ -13,14 +13,20 @@ import type { PassageFixture } from "./fixtures";
 export function MissionControlOrigin({
   fx,
   cinematic,
+  quiet,
   onProceed,
 }: {
   fx: PassageFixture;
   cinematic: boolean;
+  // Phase 5.2 — the power-down. Set the moment the Arena is called: the
+  // instruments recede, the panels dim and the command axis contracts, all
+  // while the veil is still transparent, so the room is SEEN acknowledging
+  // the call before anything moves.
+  quiet?: boolean;
   onProceed: () => void;
 }) {
   return (
-    <div className="cx-p-mc relative overflow-hidden bg-[#030711] text-white">
+    <div data-cxp-quiet={quiet ? "" : undefined} className="cx-p-mc relative overflow-hidden bg-[#030711] text-white">
       {/* light from above — the analytical register */}
       <div aria-hidden className="cx-p-mc-light pointer-events-none absolute inset-x-0 top-0 h-64" />
       <div aria-hidden className="grid-texture absolute inset-0 opacity-30" />

@@ -45,6 +45,18 @@ import { PassageTray } from "./PassageTray";
 //   run is a founder-review run, so there is no first-entry marker to
 //   consume (the live cx-mc / cx-arena markers are never touched).
 
+// The arrival register, spoken. Mirrors exactly what ArenaFloor renders, so
+// an assistive listener and a sighted visitor receive the same recognition —
+// and both are told the truth when the record could not be read.
+function registerSpeech(fx: ReturnType<typeof passageFixture>) {
+  const r = fx.record;
+  if (fx.key === "data-error") {
+    return `Welcome to the Arena, ${r.displayName}. Clearance verified. Standing fail-safe. Evidence unavailable. Lifetime record unavailable. The floor is ready.`;
+  }
+  const evidence = r.awardCount > 0 ? `${r.awardCount} accepted` : "none on record";
+  return `Welcome to the Arena, ${r.displayName}. Clearance verified. Standing ${r.rank}, level ${r.level}. Evidence ${evidence}. Lifetime record ${r.totalXp} XP loaded. The floor is ready.`;
+}
+
 const CINEMATIC = new Set<PassagePhase>([
   "call",
   "clearance",
@@ -178,10 +190,12 @@ export function PassageJourney() {
     setSeekMs(null);
     swapEnv("arena");
     setArrived(true);
-    // The natural end does NOT re-announce: the greeting was the last
-    // utterance and a fresh status would stomp it in the live region
-    // (adversarial review finding, 2026-07-29). Skips and watchdogs do.
+    // On the natural end the ARRIVAL REGISTER is what speaks — the room
+    // reading the record aloud, matching what it renders on the floor. A
+    // skip or watchdog settle says only that it arrived, because no
+    // ceremony played (review finding: never stomp the greeting).
     if (announceArrival) say("Arena arrival complete.");
+    else say(registerSpeech(fx));
     // Focus the destination heading BEFORE the overlay unmounts: the h1
     // is already in the (newly displayed) floor; the overlay goes next
     // commit, so no keystroke ever lands on body. When the director's
@@ -296,13 +310,7 @@ export function PassageJourney() {
               say("The Arena.");
             }
             if (b.phase === "greeting") {
-              say(
-                fx.key === "data-error"
-                  ? `Welcome to the Arena, ${fx.record.displayName}. Record unavailable — the fail-safe empty standing is shown.`
-                  : fx.record.awardCount > 0
-                    ? `Welcome to the Arena, ${fx.record.displayName}. Standing recognized — ${fx.record.rank}, level ${fx.record.level}, ${fx.record.totalXp} lifetime XP, ${fx.record.awardCount} evidenced awards.`
-                    : `Welcome to the Arena, ${fx.record.displayName}. Standing recognized — ${fx.record.rank}, level ${fx.record.level}. Only evidenced activity builds this record.`
-              );
+              say(`Welcome to the Arena, ${fx.record.displayName}.`);
             }
           }, b.at);
         }
@@ -530,7 +538,12 @@ export function PassageJourney() {
         ref={originRef}
         style={cinematic && env !== "mc" ? { display: "none" } : undefined}
       >
-        <MissionControlOrigin fx={fx} cinematic={cinematic} onProceed={() => beginJourney("first")} />
+        <MissionControlOrigin
+          fx={fx}
+          cinematic={cinematic}
+          quiet={phase === "call" || phase === "clearance"}
+          onProceed={() => beginJourney("first")}
+        />
       </div>
 
       <div

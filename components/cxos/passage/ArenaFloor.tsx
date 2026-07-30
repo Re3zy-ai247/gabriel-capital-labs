@@ -34,30 +34,63 @@ export function ArenaFloor({
   // finding, 2026-07-29). clip contains paint without becoming a scroller.
   return (
     <div id="arena-floor" className="cx-p-arena relative overflow-clip text-white">
-      {/* the ground: warm umber rising from the floor line; light from BELOW */}
+      {/* the ground: warm umber rising from the floor line; light from BELOW.
+          Phase 5.2 adds the chamber's atmosphere — haze, slow light shafts and
+          drifting motes. All compositor-only, all very slow, all decorative
+          (ledger), and all switched off under reduced motion. */}
       <div aria-hidden className="cx-p-ar-ground pointer-events-none absolute inset-0" />
+      <div aria-hidden className="cx-p-live-fog pointer-events-none absolute inset-0" />
+      <div aria-hidden className="cx-p-live-shafts pointer-events-none absolute inset-0" />
+      <div aria-hidden className="cx-p-live-motes pointer-events-none absolute inset-0" />
       <div aria-hidden className="cx-p-ar-perimeter pointer-events-none absolute inset-x-0 bottom-0 h-80" />
 
       {/* Station A — the establishing chamber (the match-cut target) */}
-      <section className="cx-p-station relative flex min-h-[100svh] flex-col items-center justify-center px-6 text-center">
-        <div aria-hidden className="cx-p-est mx-auto">
-          <div className="cx-p-est-ring" />
-          <div className="cx-p-est-engrave" />
+      <section className="cx-p-station relative flex min-h-[100svh] flex-col items-center justify-center px-5 text-center">
+        <div aria-hidden className="cx-p-colonnade pointer-events-none" />
+        <div aria-hidden className="cx-p-est cx-p-live-core relative mx-auto">
+          <div className="cx-p-est-ring cx-p-live-ring" />
+          <div className="cx-p-est-engrave cx-p-live-ring-slow" />
         </div>
-        <p className="cx-p-engraved mt-6 text-[26px] font-bold tracking-[0.5em] text-amber-100/90 md:text-4xl">
-          THE ARENA
-        </p>
+        <div aria-hidden className="cx-p-live-reflect pointer-events-none absolute inset-x-0 bottom-0 h-40" />
+        <p className="cx-p-engraved relative mt-6 font-bold text-amber-100/90">THE ARENA</p>
         <h1 className="sr-only">The Arena</h1>
+
+        {/* THE ROOM RECOGNIZES THE OPERATOR — an arrival register, not a
+            greeting card. Four short lines in NORMAL FLOW, staggered slowly:
+            flow layout makes overlap structurally impossible at every width,
+            and each line states only what is true for this record (the
+            data-error state is told its record is unavailable). */}
         {arrived && (
-          <div className="cx-p-greet-tail mt-4 max-w-md">
-            <div className="flex items-center justify-center gap-2">
+          <div className="cx-p-reg relative mt-8 w-full max-w-sm space-y-2 font-mono">
+            <RegisterLine n={1} label="CLEARANCE" value="verified" />
+            <RegisterLine
+              n={2}
+              label="STANDING"
+              value={fx.key === "data-error" ? "fail-safe" : `${r.rank} · level ${r.level}`}
+            />
+            <RegisterLine
+              n={3}
+              label="EVIDENCE"
+              value={
+                fx.key === "data-error"
+                  ? "unavailable"
+                  : r.awardCount > 0
+                    ? `${r.awardCount} accepted`
+                    : "none on record"
+              }
+            />
+            <RegisterLine
+              n={4}
+              label="LIFETIME RECORD"
+              value={fx.key === "data-error" ? "unavailable" : `${r.totalXp} XP loaded`}
+            />
+            <div className="cx-p-reg-5 flex items-center justify-center gap-2 pt-3">
               <span className="rounded bg-amber-400/15 px-1.5 py-0.5 text-[10px] font-bold tracking-widest text-amber-200">KAI</span>
-              <span className="text-[11px] text-slate-400">reading your record</span>
+              <span className="text-[11px] text-slate-400">the floor is ready</span>
             </div>
-            <p className="mt-1.5 text-sm text-slate-300">The floor is ready.</p>
           </div>
         )}
-        <p className="mt-8 text-[11px] tracking-[0.25em] text-slate-500">
+        <p className="relative mt-8 text-[10px] tracking-[0.25em] text-slate-500 sm:text-[11px]">
           {cinematic ? "SCROLL TO WALK THE FLOOR" : "THE FLOOR, STATION BY STATION"}
         </p>
         <p className="mt-4 inline-block rounded-full border border-gold-400/40 bg-gold-400/10 px-3 py-1 text-[11px] font-bold tracking-widest text-gold-400">
@@ -74,10 +107,10 @@ export function ArenaFloor({
       <section className="cx-p-station relative px-6" aria-label="Standing core">
         <div className="cx-p-stage mx-auto flex max-w-2xl flex-col items-center justify-center text-center">
           <div className="cx-p-depth" data-station="b">
-            <div className="cx-p-dais relative mx-auto grid h-56 w-56 place-items-center">
+            <div className="cx-p-dais cx-p-live-core relative mx-auto grid h-52 w-52 place-items-center sm:h-56 sm:w-56">
               <div
                 aria-hidden
-                className="absolute inset-0 rounded-full"
+                className="cx-p-live-ring absolute inset-0 rounded-full"
                 style={{
                   background: `conic-gradient(#f5c76e ${pct * 3.6}deg, rgba(148,163,184,0.14) 0deg)`,
                   WebkitMask: "radial-gradient(circle, transparent 64%, black 65%)",
@@ -205,6 +238,19 @@ export function ArenaFloor({
           </div>
         </div>
       </section>
+    </div>
+  );
+}
+
+// One line of the arrival register. Normal flow, fluid type, wrapping — the
+// room speaks in order and nothing can ever overlap (Phase 5.2).
+function RegisterLine({ n, label, value }: { n: number; label: string; value: string }) {
+  return (
+    <div className={`cx-p-reg-${n} flex items-baseline justify-between gap-3 border-b border-amber-400/15 pb-1.5 text-left`}>
+      <span className="shrink-0 text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500 sm:text-[10px]">
+        {label}
+      </span>
+      <span className="text-right text-[11px] capitalize text-amber-200/90 tnum sm:text-[12px]">{value}</span>
     </div>
   );
 }
