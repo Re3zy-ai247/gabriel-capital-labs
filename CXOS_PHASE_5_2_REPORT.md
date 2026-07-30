@@ -1,135 +1,218 @@
-# CXOS Phase 5.2 — Architectural Cinematics
+# CXOS Phase 5.2 — Pre-Deployment RC Validation Record
 
 **Gabriel Capital Labs · CreditVector™ Experience OS**
-Date 2026-07-30 · Branch `feat/cxos-phase3` · Implementation commit `e7d2152` (parent `324c0f6`, Phase 5.1) · Production truth `f449c35` on `main` — **untouched**.
-Refinement only: no new product feature, no production touch, no authentication change, no database logic, no Arena ownership change, no XP, no architecture redesign. The existing route, state machine, timeline, scene grammar and guards were reused; every change is surgical.
 
-## 1. Executive summary
+**Date:** 2026-07-30
 
-Phase 5.1 built a journey between two rooms. The Founder's verdict was that it still read as navigating between web pages rather than moving through one facility — and that a responsive animation defect made words unreadable on phones.
+**Review branch:** `feat/cxos-phase3`
 
-Phase 5.2 does two things. It **closes the release blocker with measurement**, and it **converts the transition into architecture**: the origin room now visibly powers down when the Arena is called, its floor separates and an aperture forms on the command axis, a small gold light appears late and far beyond it, the Arena's warmth and suspended motes bleed back up the hallway before the chamber is seen, the threshold reveals a colonnade receding into the dark, and the room then **reads the operator's record aloud** — clearance, standing, evidence, lifetime record — on the settled floor where nothing is rushed. The chamber itself is alive: a breathing standing core, rings turning once per four minutes, drifting motes, slow shafts, haze, a soft floor reflection — for **zero JavaScript**, because every one of them is compositor-only CSS.
+**RC baseline:** `2736deae9831cd5a936b30de227f40bd6edd9b13`
 
-The blocker: reproduced at **11 text-collision frames per width across all five mandated widths** (not only mobile) plus overflow at 320 px, root-caused to three captions sharing one absolute point with overlapping visibility windows, and fixed structurally rather than by retiming. Re-measured: **59 defect frames → 0**.
+**Production baseline at freeze:** `origin/main` at `f449c35d0eca9463c15e86f8cbd4cd7f4e948d03`
 
-Validation: `cxos-passage` **83/83** with **33 mutations all RED** (two guards were caught *vacuous* mid-pass and closed), responsive probe **0 defects at 320/360/390/430/tablet**, journey battery **48/48**, suite **85/85**, both builds green, production-flagged build still inert with zero fixture bytes, `/arena` still 307-dormant, landing **99.1 kB unchanged**.
+**Record boundary:** This is the pre-deployment validation record. It does not claim an RC commit, remote branch identity, Vercel deployment, or remote-review result. Those facts belong only in the later `CXOS_PHASE_5_2_VERCEL_HANDOFF.txt` and `CXOS_PHASE_5_2_VERCEL_HANDOFF.html` after they are verified.
 
-## 2. The release blocker — evidence, cause, fix, proof
+## Executive decision summary
 
-**Evidence (before).** A probe walks the whole journey at 150 ms intervals at each mandated width and records every perceptible text box (opacity > 0.08), any pairwise intersection, any horizontal overflow, and the smallest rendered font size:
+**VERIFIED LOCALLY — the requested Release Candidate refinement is complete at the pre-deployment freeze.** Mission Control now reads as an asymmetric command chamber, the Passage preserves a visible origin during power-down and builds anticipation through a converging hallway, and the Arena reads as an inhabited ceremonial room rather than a title screen followed by cards. The same fixture facts, route, state machine, accessibility contract, and five-station information architecture remain in place.
 
-| Width | Collision frames | Overflow frames |
+This assignment changed presentation and interaction behavior only. It did **not** change schema, migrations, Prisma, APIs, backend behavior, authentication, Stripe, billing, legal copy, production flags, or architecture. This record neither authorizes nor reports a merge, push, deployment, promotion, migration, or database action.
+
+## Scope completed
+
+### Mission Control — a room, not a dashboard
+
+- Replaced the equal-card grid with a command-axis composition: instrument banks, horizon, runway, vault, side consoles, and a central chamfered threshold aperture.
+- Preserved the existing execution, systems, Kai brief, standing, and lifetime-XP fixture facts.
+- Made the CTA part of the room’s architecture while retaining a measured 44 px target.
+- Reduced review disclosure to the concise visible truth `SYNTHETIC REVIEW · NO LIVE DATA`; the complete disclosure remains available to assistive technology.
+
+### The Passage — power-down to anticipation
+
+- The origin remains visible while its instruments power down; the journey no longer begins by dropping to an almost-black interruption.
+- Cool rectilinear planes converge toward a distant aperture, then yield to warm Arena geometry.
+- The far gold light appears late, the hallway gains depth, and the threshold frame cleanly match-cuts to the settled Arena frame.
+- Desktop Tier A remains 11.8 seconds; mobile Tier B is now correctly synchronized at 10.6 seconds in both CSS and the state machine.
+- Returning to Mission Control restores scroll position and heading focus. Escape labels now distinguish cancel from forward skip truthfully.
+
+### The Arena — inhabited, authoritative, ceremonial
+
+- Added a viewport-bound vault, ground plane, fog, shafts, motes, perimeter piers, arch, colonnade, and floor seal.
+- Converted evidence cards into an engraved ledger and milestone pills into earned seals.
+- Reframed the arrival register and Kai line as a plinth inscription with complete fail-safe recognition when data is unavailable.
+- Numbered the remaining stations II–V and preserved native scroll as the movement mechanism.
+- Reserved the recognition plinth before reveal to prevent mobile layout shift.
+- Optimized mobile QA exposed the review footer under the fixed Director tray. The narrow fix adds `mt-16` mobile footer clearance and resets it with `sm:mt-0`; the Passage guard pins that responsive contract.
+- Kept the Director available without falsely claiming a modal interaction.
+
+## Before / after room audit
+
+| Surface | Before RC refinement | After RC refinement |
 |---|---|---|
-| 320 | 11 | 4 |
-| 360 | 11 | 0 |
-| 390 | 11 | 0 |
-| 430 | 11 | 0 |
-| tablet 768 | 11 | 0 |
+| Mission Control | Three equal information cards plus a CTA card; large unused void; dashboard reading | Asymmetric instrument banks around a command axis and threshold aperture; room reading |
+| Power-down | Origin obscured early by an almost-black veil | Visible room acknowledgment: instruments dim, axis contracts, then departure begins |
+| Passage | Thin cardinal-crosshair/reticle geometry | Filled converging hallway planes, distant aperture, late gold anticipation |
+| Threshold | Arrival frame and settled frame felt adjacent | Threshold ring and title match the settled Station A frame |
+| Arena arrival | Title screen plus metadata table | Full-height recognition ceremony inside a monumental chamber |
+| Evidence | Rounded card stack | Engraved ledger within the room |
+| Milestones | UI pills | Earned seals |
+| Mobile | Dashboard compression and disclosure/Director collision risk; final footer could sit beneath the fixed tray | Preserved typography, Tier B single-plane depth, clear disclosure, and explicit mobile footer clearance reset at `sm` |
+| Reduced motion | Static document exposed part of the next station in the arrival viewport | Complete 100svh Station A ceremony, all relevant animations `none` |
 
-Sample collision at 320 px: `"Clearance confirmed."` and `"Record located."` intersecting by **190 × 20 px at full opacity on both**. Captured frames are in the gallery — the words render straight through each other exactly as reported.
+## Beat walkthrough
 
-**Cause.** Not timing. Three clearance stencils were absolutely positioned at the *same* point (`left: 50%; top: 44%`) while their visibility windows overlapped by design error — stencil 1 faded out at 19 % of the timeline while stencil 2 was already appearing at 14 %. On top of that, `white-space: nowrap` with fixed `15px` type and `0.35em` tracking cannot fit "NO EVIDENCE ON RECORD." into 320 px. The condensed mobile windows I had added in 5.1 made the overlap wider, not narrower.
+| Beat | Operator experience |
+|---|---|
+| Power-down | Mission Control remains visible while the active instruments recede and the room acknowledges the call |
+| Departure | The command axis contracts and opens into a framed aperture |
+| Hallway | Filled planes and rails converge; the room behind is gone, but the destination is not yet granted |
+| Anticipation | A small distant gold light appears late; warmth begins to travel back through the corridor |
+| Conversion | Rectilinear blue geometry bends into concentric gold architecture |
+| Threshold | The monumental ring and Arena title hold without competing copy |
+| Recognition | Clearance, standing, evidence, lifetime record, and Kai are visually presented in sequence and announced once to assistive technology |
+| Floor | Native scroll advances through Standing, Evidence Vault, Milestones, and the return threshold |
 
-**Fix — removing the possibility, not the symptom.**
-1. **Exactly one in-world stencil exists.** A stack cannot collide. Guard-pinned by count.
-2. **Fluid type everywhere in flight** — `clamp()` font-size *and* letter-spacing on the stencil, the welcome line and the engraved wordmark.
-3. **It wraps** (`text-wrap: balance` + `overflow-wrap: break-word`), and `white-space: nowrap` is banned by guard.
-4. **The scaled frame fits too** — the box is `80vw` and the exit scale was reduced 1.22 → 1.14, so even the transformed frame stays inside 320 px. (The final 3 px clip was found by measurement, not assumed.)
-5. **Everything the ceremony said mid-flight moved to arrival, in normal flow** — the arrival register is a flex column, so overlap is structurally impossible at any width.
-6. **The mobile run was slowed**, 8.2 s → **10.6 s** (still shorter than desktop and still under the ratified 12 s first-entry ceiling), with the readable beats given the most room.
+## Responsive and reduced-motion walkthroughs
 
-**Proof (after).** Same probe, same widths: **0 collisions, 0 overflow frames, at 320 / 360 / 390 / 430 / 768.** The probe now ships as `p52_typo_probe.py` so the blocker can never silently return.
+All recordings begin in Mission Control, enter the Arena, visit the floor stations, return to Mission Control, and end at `scrollY: 0` with focus on the Mission Control heading.
 
-## 3. The transition, beat by beat
+| Walkthrough | Projection | Resolution | Duration | Result |
+|---|---:|---:|---:|---|
+| `after-desktop-walkthrough.webm` | Tier A | 1440 × 900 | 32.04 s | 0 overflow · 0 console errors |
+| `after-tablet-walkthrough.webm` | Tier A | 1024 × 768 | 31.12 s | 0 overflow · 0 console errors |
+| `after-mobile-walkthrough.webm` | Tier B | 390 × 844 | 27.68 s | 0 overflow · 0 console errors |
+| `after-reduced-motion-walkthrough.webm` | Static | 390 × 844 | 11.64 s | relevant animations `none` · 0 overflow · 0 console errors |
 
-Desktop 11.8 s (the envelope is unchanged — the beats were redistributed, not lengthened); mobile 10.6 s on a single plane.
+### Walkthrough integrity
 
-| Beat | Window | What the operator experiences |
-|---|---|---|
-| **THE CALL** | 0 – 1.0 s | The room *pauses*. Instrument light recedes, panels dim to 0.28, the command axis contracts to a point, the aperture ring stops pulsing and holds. Seen through the still-transparent veil, so Mission Control is watched acknowledging the call before anything moves |
-| **CLEARANCE** | 1.0 – 3.4 s | The camera is already moving. One line — "CLEARANCE CONFIRMED." — passes the lens as an object in the world. The floor separates along the axis; a circular aperture forms |
-| **THE PASSAGE** | 3.4 – 5.8 s | Wall planes retract past the camera; the rails converge. Far beyond the aperture a small gold light appears — **late and tiny**, the first evidence that something ahead is enormous |
-| **CONVERSION** | 5.8 – 8.0 s | Rectilinear blue bends into concentric gold arcs; the haze warms. The Arena's light shafts and suspended motes begin bleeding back up the hallway |
-| **THE THRESHOLD** | 8.0 – 10.4 s | The chamber opens full-frame: establishing ring, engraved wordmark, and a **colonnade of perimeter piers receding into the dark**. Silence and scale — no text but the SYNTHETIC tab |
-| **THE WELCOME** | 10.4 – 11.8 s | One line: "Welcome to the Arena, Jordan." |
-| **THE RECOGNITION** | on the settled floor | The room reads the record, one line every 700 ms over ~3.8 s. Unhurried, because nothing here is forced |
+| File | SHA-256 |
+|---|---|
+| Desktop | `f244340ca7d1325e24fc320e53bcb3fdade428d5519abc37887eeb6b6443513e` |
+| Tablet | `eb305f704dc2fd7e73232195ee04b586dfa123b45ad82935cd2193aea2585759` |
+| Mobile | `28f9ca3dd66cacdaca306f7804c64be096f5ea36cad5eb3ec90da88b340e7768` |
+| Reduced motion | `97108aedfb26d5337bf7bec562e9666dadf6b00b85d8ff8b06fefd79321eaab4` |
 
-**The recognition register** (each line bound to the record, never to a constant):
+Evidence directory:
 
-```
-CLEARANCE          Verified
-STANDING           Operator · Level 6
-EVIDENCE           5 Accepted
-LIFETIME RECORD    820 XP Loaded
-KAI                the floor is ready
-```
+`/Users/re3zy/.codex/visualizations/2026/07/30/019fb2e6-99f1-7e21-9030-32ad0b7d19c9/cxos-rc`
 
-A failed read is told the truth instead: `STANDING fail-safe · EVIDENCE unavailable · LIFETIME RECORD unavailable`. The same words are spoken to assistive technology from a single source (`registerSpeech`), so a screen-reader listener and a sighted visitor receive the identical recognition.
+The directory also contains the seven final desktop beat captures, matched baseline captures, final desktop/tablet/mobile station captures, `after-validation.json`, and `after-walkthrough-manifest.json`.
 
-## 4. The chamber is alive — for zero JavaScript
+## Before / after gallery
 
-| Element | Motion | Period |
-|---|---|---|
-| Standing core (establishing ring + dais) | breathing scale 1 → 1.018 | 9 s |
-| Gold rings | rotation, opposed directions | 240 s · 420 s |
-| Ambient motes | drift | 90 s |
-| Light shafts | opacity breathing | 16 s |
-| Haze · floor reflection | static atmosphere | — |
+### Mission Control
 
-Every ambient keyframe body is extracted and tested by the guard: atmosphere may animate **transform and opacity only**. Nothing conveys data — the standing ring's *sweep* is the data, its rotation is not — and each element carries a ledger row. Under reduced motion all of it stops; the room stays monumental and simply does not move.
+![Before — Mission Control dashboard reading](/Users/re3zy/.codex/visualizations/2026/07/30/019fb2e6-99f1-7e21-9030-32ad0b7d19c9/cxos-rc/before-desktop-origin-motion.png)
 
-**This deliberately amends a Phase 5.1 law.** The old battery asserted *zero* running animations on the settled floor. The Founder asked for a living chamber, so that check was wrong in spirit: the real requirement is that **no JavaScript frame loop runs while settled**. That is now measured directly by instrumenting `requestAnimationFrame` for 1.2 s on the settled floor (result: ≤ 2 calls) while separately asserting the ambient animations exist and touch only compositor properties. The amendment is recorded here rather than made quietly.
+![After — Mission Control command chamber](/Users/re3zy/.codex/visualizations/2026/07/30/019fb2e6-99f1-7e21-9030-32ad0b7d19c9/cxos-rc/after-desktop-origin-motion.png)
 
-## 5. Scroll as physical movement
+### Passage
 
-The stations carry an 1100 px `perspective`, and each approaches through real depth — tier A translates up to 190 px in Z as it comes toward the lens and settles as it passes; tier B walks on a single plane with scale instead of a 3D stack. Native scroll remains authoritative: no hijack, no lock, no `preventDefault`. Tier C/D and no-JS keep the natural-height document with plain links.
+![Before — reticle-like passage](/Users/re3zy/.codex/visualizations/2026/07/30/019fb2e6-99f1-7e21-9030-32ad0b7d19c9/cxos-rc/before-desktop-02-passage.png)
 
-## 6. What was deliberately not done
+![After — converging architectural hallway](/Users/re3zy/.codex/visualizations/2026/07/30/019fb2e6-99f1-7e21-9030-32ad0b7d19c9/cxos-rc/after-desktop-02-passage.png)
 
-- **No audio.** The mandate describes ambient room audio fading out. House law and WCAG forbid autoplay sound, and Phase 2's guard pins sound to a user gesture. The silence is rendered visually (the power-down) instead. Adding audio would need an explicit opt-in control and a separate review.
-- **No WebGL.** "Reuse the existing scene graph" and the token constitution both point the same way; the CSS-3D world remains one implementation that is simultaneously the experience, the no-WebGL projection, the no-JS document and the reduced-motion page.
-- **The forced journey was not lengthened.** The ratified first-entry ceiling is 7–12 s and it is numerically guard-pinned. Slowness was bought by *redistributing* beats and by moving the ceremony onto the settled floor, where the mandate's "first thirty seconds inside the Arena" actually live and nothing is on a timer.
-- **Text was reduced in flight, not overall.** Three mid-flight captions became one; the recognition it displaced now happens where it can be read.
+### Arena
 
-## 7. Validation
+![Before — title screen and isolated metadata](/Users/re3zy/.codex/visualizations/2026/07/30/019fb2e6-99f1-7e21-9030-32ad0b7d19c9/cxos-rc/before-desktop-07-arena-settled.png)
 
-**Guard `scripts/cxos-passage.test.ts`: 83/83.** New laws pinned: one-stencil-only; fluid + wrapping type with the scaled frame fitting; flow-layout register with a ≥ 600 ms stagger; the mobile run ≥ 10 s; the power-down; the late gold light; the hallway bleed; the colonnade; both breathing bodies and both ring rotations; ambient keyframe bodies compositor-only; ambient periods genuinely slow; per-tier camera depth; all 25 ledger rows.
+![After — inhabited ceremonial chamber](/Users/re3zy/.codex/visualizations/2026/07/30/019fb2e6-99f1-7e21-9030-32ad0b7d19c9/cxos-rc/after-desktop-07-arena-settled.png)
 
-**Mutations: 33/33 RED**, every restore byte-identical. The Phase 5.2 additions: the caption stack returns · type made fixed-size · wrapping removed · register stagger collapsed · mobile sped back up · power-down disabled · gold light made immediate · chamber stops breathing · ambient motion made fast · an ambient keyframe animates layout · scroll depth removed · a ledger row omitted.
+## Accessibility conclusion
 
-**Two guards were caught vacuous during this pass and are recorded, not hidden:** the `nowrap` ban used a fixed 420-character window that never reached the mutated line (now the whole rule body is extracted, and wrapping is required *positively*), and the "chamber is alive" check passed a presence test while one of two breathing bodies had been stripped (now both are counted, with exact class-token matching because `cx-p-live-ring-slow` contains the shorter name). Both mutations were re-run and are now RED.
+**VERIFIED by automated and keyboard-oriented browser checks:**
 
-**Responsive probe: 0 defect frames** at 320 / 360 / 390 / 430 / tablet.
-**Journey battery: 48/48** — including the power-down measured as a real opacity drop, the register verified as strictly increasing row geometry (flow-stacked, never overlapping), the no-rAF proof, the ambient-property proof, and reduced motion confirmed completely still.
-**Suite 85/85 · typecheck 0 · review and production builds green · production-flagged build:** route inert with zero fixture bytes, `/arena` 307-dormant. **Landing 99.1 kB — unchanged.**
+- Axe returned **0 violations in each of 7 production-mode scenarios**.
+- Desktop, tablet, portrait mobile, and coarse-pointer landscape mobile had zero horizontal overflow.
+- The global skip link resolves to a focusable `main`.
+- Arrival focus moves to `The Arena`; static return links restore focus to `Mission Control`.
+- Proceed and Director controls measure 44 px high.
+- Data-read failure announces fail-safe truth rather than a successful standing.
+- Reduced motion, cinematic-off, and constrained-device paths mount no cinematic tier and report all relevant animation names as `none`.
+- The Director is deliberately operable during passage; the overlay therefore does not make a false `aria-modal` claim.
 
-## 8. Rollback
+Automated checks do not constitute certification by every screen reader/browser combination. A manual assistive-technology pass remains prudent before any future production release.
 
-Single commit `e7d2152`, additive and presentational. Reverting it restores Phase 5.1 exactly; no migration, dependency, env var, flag or schema is involved. Production never contained any of it.
+## Performance conclusion
 
-## 9. Honest limitations
+**CURRENT LOCAL EVIDENCE — functionally clean, with a performance caveat requiring Founder review and remote confirmation:**
 
-1. **The colonnade and motes are gradient geometry, not modelled objects.** They read convincingly in motion and at rest; a modelled monument would need the WebGL path this phase deliberately declined.
-2. **Ambient rotation is genuinely near-invisible** (240 s / 420 s). That is the intent — "nothing should feel random" — but on a short recording it can read as static. The director scrubber is the way to inspect it.
-3. **The register's five lines are the one place text grew.** It replaced three mid-flight captions, so net forced reading fell; if the Founder wants it shorter, lines 3 and 4 are the candidates.
-4. **Tier B drops the 3D wall stack, the floor grid and the floor split** by budget choice. The mobile recording shows exactly what ships.
-5. **No audio, by law** (§6).
+- Review route: **10.7 kB route JS / 105 kB first load**.
+- Functional matrix: **7/7** with **0 Axe violations, 0 console errors, 0 horizontal overflow, and 0 CLS**; return focus and `scrollY: 0` remained intact.
+- Comprehensive long-task observation: depending on profile, intermittent main-thread tasks ranged from **57–244 ms** during startup and/or the Passage.
+- Isolated mobile-natural rerun after stopping the gstack daemon: **59 ms** at startup and **67 ms / 85 ms** during the Passage, **211 ms total**.
+- The functional results do not erase the long-task observations. This record assigns neither a performance pass nor a hard failure; the caveat requires Founder review and confirmation on the remote Preview.
+- No new dependency, image asset, font, WebGL layer, canvas loop, or runtime JavaScript animation loop was added.
+- Ambient movement remains slow CSS transform/opacity work. Tier C/D, no-cinematic, and reduced-motion projections are static.
 
-## 10. Founder decision block
+## Validation ledger
 
-- [ ] Approve the mobile typography fix
-- [ ] Approve responsive pacing (320 · 360 · 390 · 430 · tablet)
-- [ ] Approve the Mission Control power-down
-- [ ] Approve the departure architecture (floor separation · aperture)
-- [ ] Approve the distant-light anticipation
-- [ ] Approve the hallway atmosphere
-- [ ] Approve the monumental threshold
-- [ ] Approve the arrival recognition ceremony
-- [ ] Approve the living chamber
-- [ ] Approve scroll-as-movement
-- [ ] Approve the amended aliveness law (no JS frame loop, ambient CSS permitted)
-- [ ] Approve Phase 5.2
-- [ ] Request changes
+| Check | Result |
+|---|---|
+| `npm run typecheck` | PASS |
+| `NEXT_PUBLIC_CXOS_REVIEW=1 npx next build` | PASS — optimized build; no DB mutation step |
+| CXOS guards | PASS — 399/399 across grammar, threshold, review, journey, mission, arena, and passage |
+| `scripts/cxos-passage.test.ts` | PASS — 94/94 |
+| Lint on all touched TS/TSX files | PASS — no warnings or errors |
+| `git diff --check` | PASS |
+| Production-mode browser matrix | FUNCTIONALLY CLEAN — 7/7, 0 Axe violations, 0 console errors, 0 overflow, 0 CLS; return/focus intact |
+| Local performance observation | CAVEAT — intermittent 57–244 ms main-thread long tasks across startup and/or Passage depending on profile; no pass/fail assigned |
+| Isolated mobile-natural rerun | CAVEAT — 59 ms startup plus 67 ms and 85 ms during Passage; 211 ms total after stopping the gstack daemon |
+| Four final walkthroughs | PASS — correct projection, return focus, `scrollY: 0` |
+| Standalone HTML render | PASS — 6/6 embedded images decoded, 0 console errors, 0 overflow |
+| Mobile footer/tray clearance | PASS — footer receives `mt-16` on mobile and resets with `sm:mt-0`; guard-pinned |
+
+Repository-wide `npm run lint` is **not green on the RC baseline** because of unrelated pre-existing findings in `app/gxl/[room]/page.tsx`, `app/letters/page.tsx`, and `lib/pdf.ts`, plus a hook warning in `app/agency/page.tsx`. None is changed by this RC; touched-file lint is green.
+
+## Corrections to the previous Phase 5.2 report
+
+- The earlier responsive-probe result remains historical evidence, but `p52_typo_probe.py` is not present in the repository and is no longer claimed to ship.
+- “Reads the record aloud” is corrected to “visually presents the record and announces it once to assistive technology.” No audio ships.
+- “Alive for zero JavaScript” is corrected to “no runtime JavaScript animation loop.” React still runs the interaction state machine.
+- “Zero long tasks” and the later narrower correction are both superseded: comprehensive optimized QA intermittently observed **57–244 ms** main-thread tasks across startup and/or Passage depending on profile. An isolated mobile-natural rerun after stopping the gstack daemon recorded **59 ms** at startup and **67 ms / 85 ms** during Passage (**211 ms total**). This is a current performance caveat, not a declared pass or hard failure; remote confirmation remains required.
+- The earlier report claimed HTML/PDF evidence that was not present as described. This assignment delivers the updated Markdown report, a verified standalone HTML report, screenshots, JSON evidence, and four WebM walkthroughs. No PDF is claimed.
+- Historical counts are not reused as current proof; the validation ledger above reflects the exact RC working tree.
+
+## Production-safety and risk review
+
+### Pre-deployment RC diff
+
+The implementation delta from `2736dea` touches only:
+
+- `app/globals.css`
+- five existing Passage presentation components
+- `lib/cxos/passageLedger.ts`
+- `scripts/cxos-passage.test.ts`
+- this report, its standalone HTML companion, and the existing current-state entry
+
+There are no changes under Prisma, migrations, API routes, auth, Stripe, billing, legal, package manifests, lockfiles, or `vercel.json`. The build command did not mutate a database.
+
+### Branch-lineage risk
+
+**HIGH integration caution, not an RC design blocker:** `feat/cxos-phase3` is 58 commits ahead of `origin/main`, and commits predating the `2736dea` RC baseline include changes outside this assignment’s allowed surface. This branch must **not** be merged wholesale. If the Founder approves the room language, integration should extract or reconcile only the reviewed RC delta from `2736dea` after a separate production-safety review.
+
+### Freeze and later deployment handoff
+
+This document freezes the local pre-deployment validation record for the reviewed delta against `2736dea`; it intentionally does not state a commit, remote branch SHA, Preview URL, or deployment result. If a Preview is later verified, its exact identity, remote validation, production-safety confirmations, and current caveats must be recorded in the two Vercel handoff artifacts. Any future isolated integration should remain one reversible presentation patch; there is no migration, environment change, dependency addition, or data rollback in this RC scope.
+
+### Existing owner actions still pending
+
+Unrelated owner actions remain open in `.ai/CURRENT-STATE.md`, including the verified postal address, historical letter/report encryption backfill, counsel review, Stripe email verification, Brief comment testing, and skew-protection work. This assignment did not alter or close them.
+
+## Founder Decision Block
+
+- [ ] Approve Mission Control as the command-chamber language
+- [ ] Approve Passage power-down, departure, hallway, anticipation, conversion, and threshold
+- [ ] Approve the Arena as one inhabited ceremonial room
+- [ ] Approve desktop Tier A
+- [ ] Approve tablet Tier A
+- [ ] Approve mobile Tier B and preserved typography
+- [ ] Approve the reduced-motion/static projection
+- [ ] Approve the accessibility conclusion and review the performance caveat pending remote confirmation
+- [ ] Accept the branch-lineage integration caution
+- [ ] Request changes — cite the room, beat, and viewport
 - [ ] Reject
 
-Silence is not treated as approval. Work stops here pending these decisions.
+Silence is not approval. This pre-deployment record does not authorize a next phase, merge, push, deployment, migration, promotion, or production action.
+
+PRE-DEPLOYMENT VALIDATION FROZEN

@@ -31,7 +31,7 @@ export const PASSAGE_LEDGER: PassageLedgerRow[] = [
     whenAbsent: "never absent within the origin environment",
     interactive: false,
     reducedMotion: "static — no settle animation",
-    fallback: "plain in-flow panels; same text, no depth staging",
+    fallback: "plain in-flow instrument rows; same text, no depth staging",
   },
   {
     element: "MC command axis",
@@ -51,7 +51,7 @@ export const PASSAGE_LEDGER: PassageLedgerRow[] = [
     whenAbsent: "never absent within the origin environment",
     interactive: false,
     reducedMotion: "static",
-    fallback: "plain in-flow cards; same figures",
+    fallback: "plain in-flow instrument rows; same figures",
   },
   {
     element: "Arena call aperture",
@@ -245,13 +245,13 @@ export const PASSAGE_LEDGER: PassageLedgerRow[] = [
   },
   {
     element: "Arrival register",
-    represents: "the room reading the operator's own record aloud: clearance, standing, evidence, lifetime record",
+    represents: "the room presenting the operator's own record visually and announcing it once to assistive technology: clearance, standing, evidence, lifetime record",
     source: "fixture record; each line branches on it (a failed read is told it is unavailable)",
     status: "PROTOTYPE",
-    whenAbsent: "only plays for a visitor who crossed via the passage; the settled floor otherwise carries the same facts",
+    whenAbsent: "cinematic tiers withhold it until the crossing completes; static/fallback tiers present it immediately",
     interactive: false,
     reducedMotion: "present in full immediately — same words, no stagger",
-    fallback: "the stations carry the same record",
+    fallback: "present in full immediately — the same settled final frame",
   },
   {
     element: "Living chamber atmosphere",

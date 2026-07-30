@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { detectTier, type CxTier } from "@/lib/cxos/capability";
 import {
@@ -31,13 +31,14 @@ import { PassageTray } from "./PassageTray";
 // Laws enforced here (guard-pinned in scripts/cxos-passage.test.ts):
 // · The environment swap happens in ONE synchronous commit while the veil
 //   is fully opaque: display swap + scrollTo({behavior:"instant"}) before
-//   the next paint — nothing visible ever shifts (CLS 0).
+//   the next paint — no stale-position frame is exposed.
 // · Two-phase escape: during call/clearance Escape/click/wheel CANCELS to
 //   the origin (the misclick is never force-shipped); from passage onward
 //   they settle forward to the floor.
-// · Focus containment: the overlay is aria-modal and both environments are
-//   inert while it plays; focus moves to the destination heading BEFORE
-//   the overlay unmounts.
+// · Focus containment: both environments are inert while the review dialog
+//   plays; the deliberate Director instrument remains operable, so the dialog
+//   never makes a false aria-modal claim. Focus moves to the destination
+//   heading BEFORE the overlay unmounts.
 // · Safety ordering: journey end < 14 s JS watchdog < 18 s pure-CSS fade.
 // · Native scroll stays authoritative on the floor; the station rAF only
 //   writes CSS vars, never preventDefault, never a scroll lock.
@@ -45,7 +46,8 @@ import { PassageTray } from "./PassageTray";
 //   run is a founder-review run, so there is no first-entry marker to
 //   consume (the live cx-mc / cx-arena markers are never touched).
 
-// The arrival register, spoken. Mirrors exactly what ArenaFloor renders, so
+// The arrival register, announced to assistive technology. It mirrors exactly
+// what ArenaFloor renders, so
 // an assistive listener and a sighted visitor receive the same recognition —
 // and both are told the truth when the record could not be read.
 function registerSpeech(fx: ReturnType<typeof passageFixture>) {
@@ -89,24 +91,34 @@ export function PassageJourney() {
   const trayOpenRef = useRef(false);
   const rafToken = useRef<number | null>(null);
   const announceRef = useRef("");
+  const announceFlipRef = useRef(false);
   const skipRef = useRef<(() => void) | null>(null);
 
   phaseRef.current = phase;
-  const fx = passageFixture(fxKey);
+  const fx = useMemo(() => passageFixture(fxKey), [fxKey]);
   const cinematic = tier === "A" || tier === "B";
 
   // aria-live only announces on a DOM change — an identical string is a
   // bailed-out state update and says nothing. A zero-width toggle makes
   // every announcement land (adversarial review finding, 2026-07-29).
   const say = useCallback((s: string) => {
-    setAnnounce(announceRef.current === s ? s + "​" : s);
+    announceFlipRef.current = !announceFlipRef.current;
+    setAnnounce(`${s}${announceFlipRef.current ? "​" : "‌"}`);
     announceRef.current = s;
   }, []);
 
   // ── tier detection + the document stamp ─────────────────────────────
   useEffect(() => {
     try {
-      const t = detectTier();
+      const detected = detectTier();
+      // A coarse-pointer landscape phone can be wider than 768 px while
+      // remaining too short for the desktop 3D stack. Keep this review
+      // journey on its single-plane mobile projection in that geometry.
+      const t =
+        detected === "A" &&
+        window.matchMedia("(max-height: 560px) and (pointer: coarse)").matches
+          ? "B"
+          : detected;
       setTier(t);
       if (t === "A" || t === "B") {
         document.documentElement.setAttribute("data-cxpassage", t);
@@ -190,8 +202,8 @@ export function PassageJourney() {
     setSeekMs(null);
     swapEnv("arena");
     setArrived(true);
-    // On the natural end the ARRIVAL REGISTER is what speaks — the room
-    // reading the record aloud, matching what it renders on the floor. A
+    // On the natural end the ARRIVAL REGISTER is announced once to assistive
+    // technology, matching what the room renders on the floor. A
     // skip or watchdog settle says only that it arrived, because no
     // ceremony played (review finding: never stomp the greeting).
     if (announceArrival) say("Arena arrival complete.");
@@ -202,6 +214,11 @@ export function PassageJourney() {
     // tray drove this settle, focus stays in the tray.
     const keepTray = trayOpenRef.current;
     requestAnimationFrame(() => {
+      // Native wheel/touch/PageDown default may have moved the document
+      // beneath the fixed passage veil. Every forward settle reasserts the
+      // Arena threshold after that default action, even when env was already
+      // swapped at the threshold beat.
+      window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
       liftInert();
       // querySelector over a selector LIST returns the first match in
       // DOCUMENT order — the hidden origin h1 would win and refuse focus.
@@ -215,7 +232,7 @@ export function PassageJourney() {
       }
       setPhase("floor");
     });
-  }, [swapEnv, liftInert, say]);
+  }, [fx, swapEnv, liftInert, say]);
 
   const settleCancel = useCallback(() => {
     clearTimers();
@@ -528,7 +545,7 @@ export function PassageJourney() {
   // ── render ───────────────────────────────────────────────────────────
   const journeyEnd = tier === "B" ? JOURNEY_END_MOBILE_MS : JOURNEY_END_MS;
   return (
-    <main id="top" className="min-h-screen bg-ink-950 text-white">
+    <main id="main" tabIndex={-1} className="min-h-screen bg-ink-950 text-white">
       {/* concise assistive status — the world itself is decorative */}
       <p aria-live="polite" role="status" className="sr-only">
         {announce}
@@ -601,11 +618,11 @@ export function PassageJourney() {
 
       <p
         ref={footerRef}
-        className="px-6 pb-24 pl-6 text-center text-[11px] leading-relaxed text-slate-600 sm:pb-10"
+        className="mt-16 px-6 pb-24 pl-6 text-center text-[11px] leading-relaxed text-slate-400 sm:mt-0 sm:pb-10"
       >
         Review instruments exist only in review builds; production is hard-off. This route
         never writes a session marker — no real visitor&apos;s first entry is consumed.{" "}
-        <Link href="/review" className="text-brand-300">
+        <Link href="/review" className="text-brand-300 underline decoration-brand-300/60 underline-offset-2">
           ← All rooms
         </Link>
       </p>

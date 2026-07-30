@@ -50,11 +50,12 @@ export function PassageOverlay({
   return (
     <div
       role="dialog"
-      aria-modal="true"
       aria-label={
         run === "return"
           ? "Returning to Mission Control. Press Escape to skip."
-          : "Traveling to the Arena. Press Escape to skip."
+          : cancelable
+            ? "Arena passage called. Press Escape to cancel and remain in Mission Control."
+            : "Traveling to the Arena. Press Escape to skip to the Arena threshold."
       }
       data-cxp-paused={paused ? "" : undefined}
       className={`cx-p-veil fixed inset-0 z-[97] overflow-hidden ${runClass}`}
@@ -141,7 +142,7 @@ export function PassageOverlay({
           e.stopPropagation();
           onSkip();
         }}
-        className="absolute right-6 rounded-lg border border-ink-600 bg-ink-950/70 px-3 py-1.5 text-xs text-slate-400 transition hover:border-amber-400/50 hover:text-slate-200"
+        className="absolute right-4 min-h-11 min-w-11 rounded-lg border border-ink-600 bg-ink-950/70 px-3 py-2 text-xs text-slate-300 transition hover:border-amber-400/50 hover:text-slate-100 sm:right-6"
         style={{ bottom: "max(1.5rem, env(safe-area-inset-bottom))" }}
       >
         {cancelable ? "Cancel — Esc" : "Skip — Esc"}

@@ -109,7 +109,7 @@ export function PassageTray({
         aria-expanded={open}
         aria-controls="cxp-tray-sheet"
         onClick={() => (open ? close() : setOpen(true))}
-        className="cx-p-traypill fixed left-4 z-[99] rounded-full border border-ink-600 bg-ink-950/85 px-4 py-2.5 font-mono text-[11px] font-bold tracking-widest text-slate-300 backdrop-blur transition hover:border-brand-500/60"
+        className="cx-p-traypill fixed left-4 z-[99] min-h-11 rounded-full border border-ink-600 bg-ink-950/85 px-4 py-2.5 font-mono text-[11px] font-bold tracking-widest text-slate-300 backdrop-blur transition hover:border-brand-500/60"
         style={{ bottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
       >
         DIRECTOR {open ? "▾" : "▸"}
@@ -132,7 +132,7 @@ export function PassageTray({
           }}
         >
           <div className="mx-auto max-w-3xl space-y-4 font-mono text-[12px] text-slate-300">
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-500">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-400">
               <span>
                 tier <span className="text-slate-300">{tier ?? "…"}</span>
               </span>
@@ -151,7 +151,7 @@ export function PassageTray({
             </div>
 
             <div>
-              <div className="mb-1.5 text-[10px] font-bold tracking-[0.25em] text-slate-500">JOURNEY</div>
+              <div className="mb-1.5 text-[10px] font-bold tracking-[0.25em] text-slate-400">JOURNEY</div>
               <div className="flex flex-wrap gap-2">
                 <TrayBtn onClick={onFirst}>▶ first (~{(journeyEndMs / 1000).toFixed(1)}s)</TrayBtn>
                 <TrayBtn onClick={onReturning}>▶ returning (~1.4s)</TrayBtn>
@@ -160,7 +160,7 @@ export function PassageTray({
             </div>
 
             <div>
-              <div className="mb-1.5 text-[10px] font-bold tracking-[0.25em] text-slate-500">JUMP TO BEAT</div>
+              <div className="mb-1.5 text-[10px] font-bold tracking-[0.25em] text-slate-400">JUMP TO BEAT</div>
               <div className="flex flex-wrap gap-2">
                 {beatJumps.map((b) => (
                   <TrayBtn key={b.p} active={phase === b.p} onClick={() => onJump(b.p)}>
@@ -171,7 +171,7 @@ export function PassageTray({
             </div>
 
             <div>
-              <label htmlFor="cxp-scrub" className="mb-1.5 block text-[10px] font-bold tracking-[0.25em] text-slate-500">
+              <label htmlFor="cxp-scrub" className="mb-1.5 block text-[10px] font-bold tracking-[0.25em] text-slate-400">
                 TIMELINE SCRUB · {(scrubMs / 1000).toFixed(1)}s / {(journeyEndMs / 1000).toFixed(1)}s
               </label>
               <input
@@ -191,7 +191,7 @@ export function PassageTray({
             </div>
 
             <div>
-              <div className="mb-1.5 text-[10px] font-bold tracking-[0.25em] text-slate-500">FLOOR STATIONS</div>
+              <div className="mb-1.5 text-[10px] font-bold tracking-[0.25em] text-slate-400">FLOOR STATIONS</div>
               <div className="flex flex-wrap gap-2">
                 {stations.map((s) => (
                   <TrayBtn
@@ -215,7 +215,7 @@ export function PassageTray({
             </div>
 
             <div>
-              <div className="mb-1.5 text-[10px] font-bold tracking-[0.25em] text-slate-500">FIXTURE STATE</div>
+              <div className="mb-1.5 text-[10px] font-bold tracking-[0.25em] text-slate-400">FIXTURE STATE</div>
               <div className="flex flex-wrap gap-2">
                 {states.map((s) => (
                   <TrayBtn key={s.key} active={fxKey === s.key} onClick={() => onState(s.key)}>
@@ -223,10 +223,10 @@ export function PassageTray({
                   </TrayBtn>
                 ))}
               </div>
-              {note && <p className="mt-2 max-w-xl text-[11px] leading-relaxed text-slate-500">{note}</p>}
+              {note && <p className="mt-2 max-w-xl text-[11px] leading-relaxed text-slate-400">{note}</p>}
             </div>
 
-            <div className="border-t border-ink-700/60 pt-3 text-[11px] text-slate-500">
+            <div className="border-t border-ink-700/60 pt-3 text-[11px] text-slate-400">
               <div className="mb-1 text-[10px] font-bold tracking-[0.25em]">TECHNICAL CLEARANCE (director only)</div>
               <p className="tnum">
                 {record.handle} · internal cohort mirror · policy v{record.policyVersion} · curve-consistent standing

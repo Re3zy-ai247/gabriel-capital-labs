@@ -20,9 +20,10 @@
 //     hijack; no preventDefault, no scroll lock, no history mutation, and
 //     every programmatic scroll is explicitly instant (the base
 //     stylesheet's scroll-behavior:smooth must never drive a settle).
-//  6. Containment: aria-modal dialog, both environments inert while the
-//     overlay plays, focus moves to the destination heading BEFORE the
-//     overlay unmounts, cancel returns focus to the activation control.
+//  6. Containment: both environments are inert while the honest non-modal
+//     review dialog plays (Director remains deliberately operable), focus
+//     moves to the destination heading BEFORE the overlay unmounts, and
+//     cancel returns focus to the activation control.
 //  7. Environment replacement: the two rooms render mutually exclusively
 //     under the cinematic tiers; the swap happens behind the opaque veil
 //     at the threshold beat; the overlay's final frame and the floor's
@@ -127,12 +128,19 @@ check("exactly ONE in-world stencil exists — a stack cannot collide",
     /scale\(1\.14\)/.test(css) && !/scale\(1\.22\)/.test(css));
 }
 check("the arrival register is FLOW layout — overlap is impossible by construction",
-  /className="cx-p-reg relative mt-8 w-full max-w-sm space-y-2 font-mono"/.test(floor) &&
+  floor.includes("cx-p-reg relative mt-8 w-full max-w-sm space-y-2 font-mono") &&
   !/cx-p-reg[\s\S]{0,200}position: absolute/.test(css));
+check("the register reserves its final plinth before reveal (no arrival CLS)",
+  /cx-p-reg-pending/.test(floor) &&
+  /\.cx-p-reg \{[\s\S]{0,120}min-height: 11\.75rem/.test(css) &&
+  /\.cx-p-reg-pending \{[\s\S]{0,100}visibility: hidden/.test(css));
 check("the register is staggered slowly (≥600 ms apart, ≥0.9 s each)",
-  /\.cx-p-reg-1, \.cx-p-reg-2, \.cx-p-reg-3, \.cx-p-reg-4, \.cx-p-reg-5 \{\s*\n\s*animation: cx-p-regk 0\.9s/.test(css) &&
-  /\.cx-p-reg-2 \{ animation-delay: 0\.95s; \}/.test(css) &&
-  /\.cx-p-reg-5 \{ animation-delay: 3\.15s; \}/.test(css));
+  /html\[data-cxpassage\] \.cx-p-reg-1,[\s\S]{0,260}animation: cx-p-regk 0\.9s/.test(css) &&
+  /html\[data-cxpassage\] \.cx-p-reg-2 \{ animation-delay: 0\.95s; \}/.test(css) &&
+  /html\[data-cxpassage\] \.cx-p-reg-5 \{ animation-delay: 3\.15s; \}/.test(css));
+check("the static/fallback narrative includes the complete recognition register",
+  /const showRegister = arrived \|\| !cinematic;/.test(floor) &&
+  /\{showRegister && \(/.test(floor));
 check("the greeting and floor render fixture properties, never constants",
   // Phase 5.2: the overlay speaks only the operator's name; every figure
   // is rendered by the floor, from the fixture record.
@@ -222,9 +230,10 @@ check("every programmatic scroll is explicitly instant (smooth CSS can never dri
 }
 
 // ── 5 · containment + focus ──────────────────────────────────────────────────
-check("the overlay is an aria-modal dialog naming its escape hatch",
-  /role="dialog"/.test(overlay) && /aria-modal="true"/.test(overlay) &&
-  /Press Escape to skip\./.test(overlay));
+check("the overlay is an honest non-modal review dialog naming cancel vs skip",
+  /role="dialog"/.test(overlay) && !/aria-modal=/.test(overlay) &&
+  /Press Escape to cancel and remain in Mission Control\./.test(overlay) &&
+  /Press Escape to skip to the Arena threshold\./.test(overlay));
 check("both environments are inert while the overlay plays, cleared on every settle",
   /setAttribute\("inert", ""\)/.test(journey) && /removeAttribute\("inert"\)/.test(journey));
 check("focus lands on the destination heading BEFORE the overlay unmounts",
@@ -274,6 +283,15 @@ check("reduced motion: the belt-and-braces veil reset exists",
     end < dog && dog < safe * 1000 && retj < dog);
   check("the CSS safety literal mirrors the timeline constant",
     new RegExp(`cx-p-safety 0\\.5s ease ${safe}s forwards`).test(css));
+  const cssDurMs = (className: string) => {
+    const raw = (css.match(new RegExp(`\\.${className} \\{ --cxp-dur: ([\\d.]+)s; \\}`)) ?? [])[1];
+    return Math.round(Number(raw) * 1000);
+  };
+  check("every CSS film duration mirrors its state-machine constant",
+    cssDurMs("cx-p-run-a") === end &&
+    cssDurMs("cx-p-run-b") === endB &&
+    cssDurMs("cx-p-run-r") === ret &&
+    cssDurMs("cx-p-run-ret") === retj);
 }
 check("the watchdog forces the truthful forward settle",
   /arm\(\(\) => \{\s*if \(CINEMATIC\.has\(phaseRef\.current\)\) settleForward\(\);\s*\}, WATCHDOG_MS\)/.test(journey));
@@ -293,7 +311,7 @@ check("the watchdog forces the truthful forward settle",
     /min-height: 100vh; min-height: 100svh;/.test(css) &&
     /maxHeight: "60vh"/.test(tray) && /maxBlockSize: "60svh"/.test(tray));
   check("the floor root uses overflow-CLIP — overflow-hidden would kill sticky",
-    /className="cx-p-arena relative overflow-clip/.test(floor) &&
+    /className="cx-p-arena relative isolate overflow-clip/.test(floor) &&
     !/cx-p-arena[^"]*overflow-hidden/.test(floor));
 }
 check("the station rAF is passive and hidden-tab aware",
@@ -378,10 +396,16 @@ check("the threshold is monumental: a colonnade recedes behind the establishing 
     bodies.every((b) => !/(^|[^-])\b(width|height|margin|padding|top|left|right|bottom|font-size|border-width)\s*:/.test(b!)));
 }
 check("ambient motion is genuinely slow (≥ 9 s cycles; the rings are near-imperceptible)",
-  /\.cx-p-live-core \{ animation: cx-p-breathek 9s/.test(css) &&
-  /\.cx-p-live-ring \{ animation: cx-p-spink 240s/.test(css) &&
-  /\.cx-p-live-ring-slow \{ animation: cx-p-spink 420s/.test(css) &&
-  /\.cx-p-live-motes \{[\s\S]{0,320}cx-p-driftk 90s/.test(css));
+  /html\[data-cxpassage\] \.cx-p-live-core \{ animation: cx-p-breathek 9s/.test(css) &&
+  /html\[data-cxpassage\] \.cx-p-live-ring \{ animation: cx-p-spink 240s/.test(css) &&
+  /html\[data-cxpassage\] \.cx-p-live-ring-slow \{ animation: cx-p-spink 420s/.test(css) &&
+  /html\[data-cxpassage\] \.cx-p-live-motes \{[\s\S]{0,320}cx-p-driftk 90s/.test(css));
+check("Tier C/D and no-JS keep the settled room static by default",
+  /html\[data-cxpassage\] \.cx-p-call-ring \{[\s\S]{0,120}animation: cx-p-callwakek/.test(css) &&
+  /html\[data-cxpassage\] \.cx-p-reg-1/.test(css) &&
+  /html\[data-cxpassage\] \.cx-p-live-shafts \{[\s\S]{0,120}animation: cx-p-shaftbreathek/.test(css) &&
+  !/^\.cx-p-live-core \{[^}]*animation:/m.test(css) &&
+  !/^\.cx-p-live-ring \{[^}]*animation:/m.test(css));
 check("scroll advances a camera through real depth, per tier",
   /html\[data-cxpassage\] \.cx-p-stage \{ perspective: 1100px; \}/.test(css) &&
   /html\[data-cxpassage="A"\] \.cx-p-depth \{[\s\S]{0,300}translate3d\([\s\S]{0,200}clamp\(-190px/.test(css) &&
@@ -403,11 +427,14 @@ check("the veil's OWN safety fade pauses with the world during inspection",
 check("the environment scroll runs in a LAYOUT effect — never a post-paint frame",
   /useLayoutEffect\(\(\) => \{[\s\S]{0,600}window\.scrollTo\(\{ top: 0, behavior: "instant"/.test(journey));
 check("the footer is inerted with the environments (no operable control under the veil)",
-  /footerRef/.test(journey) && /for \(const el of \[o, f, ft\]\)/.test(journey));
+  /footerRef/.test(journey) &&
+  /for \(const el of \[o, f, ft\]\)/.test(journey) &&
+  /className="mt-16 px-6 pb-24[\s\S]{0,160}sm:mt-0 sm:pb-10"/.test(journey));
 check("a mid-journey reduced-motion flip settles instead of stranding an invisible modal",
   /matchMedia\("\(prefers-reduced-motion: reduce\)"\)/.test(journey) && /skipRef\.current\?\.\(\)/.test(journey));
-check("identical announcements still reach the live region",
-  /announceRef\.current === s \? s \+/.test(journey) && /role="status"/.test(journey));
+check("identical announcements still reach the live region on every repeat",
+  /announceFlipRef\.current = !announceFlipRef\.current/.test(journey) &&
+  /announceFlipRef\.current \?/.test(journey) && /role="status"/.test(journey));
 check("the natural journey end does not stomp the greeting announcement",
   /settleForward\(false\), end\)/.test(journey) && /if \(announceArrival\) say\(/.test(journey));
 check("director instruments never steal focus from the open tray",
@@ -423,6 +450,32 @@ check("the condensed mobile run gets its own readable windows",
   /@keyframes cx-p-stk-b/.test(css));
 check("active tray controls are never distinguished by colour alone",
   /ring-1 ring-amber-400\/40/.test(tray) && /\{active && <span aria-hidden>▸ <\/span>\}/.test(tray));
+
+// ── 12 · RC accessibility + fallback laws ──────────────────────────────────
+check("settled assistive speech always closes over the current fixture",
+  /const fx = useMemo\(\(\) => passageFixture\(fxKey\), \[fxKey\]\)/.test(journey) &&
+  /\}, \[fx, swapEnv, liftInert, say\]\);/.test(journey));
+check("every forward settle reasserts the Arena threshold after native input",
+  (journey.match(/window\.scrollTo\(\{ top: 0, behavior: "instant"/g) ?? []).length >= 2 &&
+  /Native wheel\/touch\/PageDown default/.test(journey));
+check("the global skip target and both fallback fragment paths have focus destinations",
+  /<main id="main" tabIndex=\{-1\}/.test(journey) &&
+  /href="#arena-floor"[\s\S]{0,520}#arena-floor h1/.test(origin) &&
+  /href="#main"[\s\S]{0,520}\.cx-p-mc h1/.test(floor));
+check("a short coarse-pointer phone stays on the single-plane projection",
+  /max-height: 560px\) and \(pointer: coarse\)/.test(journey) &&
+  /detected === "A"/.test(journey) && /\? "B"/.test(journey));
+check("review honesty is visually concise and fully exposed to assistive tech",
+  (origin.match(/<span className="sr-only">SYNTHETIC REVIEW DATA/g) ?? []).length === 1 &&
+  (floor.match(/<span className="sr-only">SYNTHETIC REVIEW DATA/g) ?? []).length === 1);
+check("primary passage controls meet the 44 px target",
+  /cx-p-proceed[\s\S]{0,180}min-height: 2\.75rem/.test(origin + css) &&
+  /min-h-11 min-w-11/.test(overlay) &&
+  /cx-p-traypill[\s\S]{0,180}min-h-11/.test(tray));
+check("Arena atmosphere is viewport-bound, not animated across the long document",
+  /cx-p-ar-ground pointer-events-none fixed inset-0/.test(floor) &&
+  /cx-p-live-motes pointer-events-none fixed inset-0/.test(floor) &&
+  /cx-p-ar-perimeter pointer-events-none fixed/.test(floor));
 
 console.log(`\ncxos-passage.test.ts: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
