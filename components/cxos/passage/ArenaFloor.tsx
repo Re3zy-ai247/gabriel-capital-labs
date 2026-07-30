@@ -29,8 +29,11 @@ export function ArenaFloor({
 }) {
   const r = fx.record;
   const pct = r.xpForNextLevel > 0 ? Math.min(100, Math.round((r.xpIntoLevel / r.xpForNextLevel) * 100)) : 100;
+  // overflow-CLIP, never hidden: overflow:hidden would make this element the
+  // sticky container and silently kill the depth scaffold (adversarial review
+  // finding, 2026-07-29). clip contains paint without becoming a scroller.
   return (
-    <div id="arena-floor" className="cx-p-arena relative overflow-hidden text-white">
+    <div id="arena-floor" className="cx-p-arena relative overflow-clip text-white">
       {/* the ground: warm umber rising from the floor line; light from BELOW */}
       <div aria-hidden className="cx-p-ar-ground pointer-events-none absolute inset-0" />
       <div aria-hidden className="cx-p-ar-perimeter pointer-events-none absolute inset-x-0 bottom-0 h-80" />

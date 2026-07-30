@@ -54,10 +54,14 @@ export function MissionControlOrigin({
                 ARENA CLEARANCE AVAILABLE
               </div>
               <p className="mt-2 text-sm text-slate-300">
-                Your standing is confirmed. The Arena is open.
+                {fx.key === "data-error"
+                  ? "Clearance confirmed. The Arena is open."
+                  : "Your standing is confirmed. The Arena is open."}
               </p>
               <p className="mt-1 font-mono text-[12px] text-slate-500 tnum">
-                {fx.record.rank} · Level {fx.record.level} · {fx.record.totalXp} lifetime XP
+                {fx.key === "data-error"
+                  ? "record unavailable — fail-safe standing shown"
+                  : `${fx.record.rank} · Level ${fx.record.level} · ${fx.record.totalXp} lifetime XP`}
               </p>
               {cinematic ? (
                 <button

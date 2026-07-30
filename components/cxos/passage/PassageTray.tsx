@@ -56,6 +56,13 @@ export function PassageTray({
   const [open, setOpen] = useState(false);
   const [scrubMs, setScrubMs] = useState(0);
   const sheetRef = useRef<HTMLDivElement>(null);
+  const pillRef = useRef<HTMLButtonElement>(null);
+  // Closing always returns focus to the pill — never to body, from which the
+  // next Escape would silently settle the journey (review finding).
+  const close = () => {
+    setOpen(false);
+    pillRef.current?.focus({ preventScroll: true });
+  };
 
   useEffect(() => {
     trayOpenRef.current = open;
@@ -66,7 +73,7 @@ export function PassageTray({
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         e.stopPropagation();
-        setOpen(false);
+        close();
       }
     };
     // Capture phase: the sheet consumes Escape before the journey handler.
@@ -97,10 +104,11 @@ export function PassageTray({
   return (
     <>
       <button
+        ref={pillRef}
         type="button"
         aria-expanded={open}
         aria-controls="cxp-tray-sheet"
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => (open ? close() : setOpen(true))}
         className="cx-p-traypill fixed left-4 z-[99] rounded-full border border-ink-600 bg-ink-950/85 px-4 py-2.5 font-mono text-[11px] font-bold tracking-widest text-slate-300 backdrop-blur transition hover:border-brand-500/60"
         style={{ bottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
       >
@@ -115,7 +123,10 @@ export function PassageTray({
           aria-label="Director console"
           className="cx-p-sheet fixed inset-x-0 bottom-0 z-[98] overflow-y-auto rounded-t-2xl border-t border-ink-600 bg-ink-950/95 px-4 pt-4 backdrop-blur"
           style={{
-            maxHeight: "60svh",
+            maxHeight: "60vh",
+            // svh wins where supported; the vh line above is the fallback so
+            // an old engine can never render an unbounded sheet.
+            maxBlockSize: "60svh",
             overscrollBehavior: "contain",
             paddingBottom: "max(4.5rem, calc(env(safe-area-inset-bottom) + 4rem))",
           }}
@@ -186,7 +197,10 @@ export function PassageTray({
                   <TrayBtn
                     key={s.id}
                     onClick={() => {
+                      // The sheet covers the lower viewport: close it so the
+                      // centered station is actually visible (review finding).
                       if (env !== "arena") onJump("floor");
+                      close();
                       requestAnimationFrame(() => {
                         document
                           .querySelector(`[data-station="${s.id}"]`)
@@ -245,9 +259,14 @@ function TrayBtn({
       aria-pressed={active}
       onClick={onClick}
       className={`min-h-[44px] rounded border px-3 py-2 transition ${
-        active ? "border-amber-400/70 text-amber-200" : "border-ink-600 hover:border-amber-400/60"
+        active
+          ? "border-amber-400/70 font-bold text-amber-200 ring-1 ring-amber-400/40"
+          : "border-ink-600 hover:border-amber-400/60"
       }`}
     >
+      {/* state is never colour alone: the active control also carries a
+          mark, a ring and heavier weight (review finding) */}
+      {active && <span aria-hidden>▸ </span>}
       {children}
     </button>
   );

@@ -28,9 +28,20 @@ export interface PassageOverlayProps {
   onSkip: () => void;
   paused?: boolean;
   seekMs?: number | null;
+  // False when a director instrument drove this mount: focus stays where
+  // the director put it instead of being yanked to the Skip button.
+  takeFocus?: boolean;
 }
 
-export function PassageOverlay({ run, fx, cancelable, onSkip, paused, seekMs }: PassageOverlayProps) {
+export function PassageOverlay({
+  run,
+  fx,
+  cancelable,
+  onSkip,
+  paused,
+  seekMs,
+  takeFocus = true,
+}: PassageOverlayProps) {
   const r = fx.record;
   const runClass =
     run === "first" ? "cx-p-run-a" : run === "mobile" ? "cx-p-run-b" : run === "returning" ? "cx-p-run-r" : "cx-p-run-ret";
@@ -62,11 +73,20 @@ export function PassageOverlay({ run, fx, cancelable, onSkip, paused, seekMs }: 
             <div className="cx-p-panelrow cx-p-pr-r absolute" />
             {/* converging rails */}
             <div className="cx-p-rails absolute inset-0" />
-            {/* clearance stencils — read as they pass, never captions */}
+            {/* clearance stencils — read as they pass, never captions.
+                Every line is truthful for the state that shows it: under
+                the data-error fixture the record was NOT located, and the
+                stencil says so. */}
             <div className="cx-p-stencil cx-p-st-1">Clearance confirmed.</div>
-            <div className="cx-p-stencil cx-p-st-2">Record located.</div>
+            <div className="cx-p-stencil cx-p-st-2">
+              {fx.key === "data-error" ? "Record unavailable." : "Record located."}
+            </div>
             <div className="cx-p-stencil cx-p-st-3">
-              {r.awardCount > 0 ? "Evidence in order." : "No evidence on record."}
+              {fx.key === "data-error"
+                ? "Fail-safe standing shown."
+                : r.awardCount > 0
+                  ? "Evidence in order."
+                  : "No evidence on record."}
             </div>
             {/* dimensional conversion: warmth + concentric gold arcs */}
             <div className="cx-p-warm absolute inset-0" />
@@ -104,9 +124,11 @@ export function PassageOverlay({ run, fx, cancelable, onSkip, paused, seekMs }: 
               Welcome to the Arena, {r.displayName}.
             </p>
             <p className="cx-p-greet cx-p-g-2 mt-3 font-mono text-[13px] text-amber-200/90 tnum">
-              {r.awardCount > 0
-                ? `Standing recognized — ${r.rank} · Level ${r.level} · ${r.totalXp} lifetime XP · ${r.awardCount} evidenced awards.`
-                : `Standing recognized — ${r.rank} · Level ${r.level}. Only evidenced activity builds this record.`}
+              {fx.key === "data-error"
+                ? "Record unavailable — the fail-safe empty standing is shown."
+                : r.awardCount > 0
+                  ? `Standing recognized — ${r.rank} · Level ${r.level} · ${r.totalXp} lifetime XP · ${r.awardCount} evidenced awards.`
+                  : `Standing recognized — ${r.rank} · Level ${r.level}. Only evidenced activity builds this record.`}
             </p>
           </div>
         </div>
@@ -118,7 +140,8 @@ export function PassageOverlay({ run, fx, cancelable, onSkip, paused, seekMs }: 
       </span>
       <button
         type="button"
-        autoFocus
+        // eslint-disable-next-line jsx-a11y/no-autofocus
+        autoFocus={takeFocus}
         onClick={(e) => {
           e.stopPropagation();
           onSkip();

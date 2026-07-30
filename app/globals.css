@@ -481,6 +481,7 @@ html.cx-debug-bounds [data-chapter] { outline: 1px dashed rgba(34, 211, 238, 0.5
   background: #02040a;
   animation: fadein 0.4s var(--ease-vector) both, cx-p-safety 0.5s ease 18s forwards;
 }
+.cx-p-veil[data-cxp-paused],
 .cx-p-veil[data-cxp-paused] * { animation-play-state: paused !important; }
 .cx-p-run-a { --cxp-dur: 11.8s; }
 .cx-p-run-b { --cxp-dur: 8.2s; }
@@ -640,6 +641,46 @@ html.cx-debug-bounds [data-chapter] { outline: 1px dashed rgba(34, 211, 238, 0.5
 .cx-p-run-r .cx-p-stencil, .cx-p-run-r .cx-p-panelrow, .cx-p-run-r .cx-p-grid,
 .cx-p-run-r .cx-p-rails, .cx-p-run-r .cx-p-greet { display: none; }
 .cx-p-run-b .cx-p-panelrow, .cx-p-run-b .cx-p-grid { display: none; }
+/* Tier B readability: the condensed run reaches each readable layer earlier
+   and holds it longer — a shared percentage window would give the densest
+   line of the journey ~0.4s on a phone. */
+@keyframes cx-p-st1k-b {
+  0%, 4% { transform: translate(-50%, -50%) scale(0.72); opacity: 0; }
+  8% { opacity: 1; }
+  20% { opacity: 1; }
+  24% { transform: translate(-50%, -50%) scale(1.3); opacity: 0; }
+  100% { transform: translate(-50%, -50%) scale(1.3); opacity: 0; }
+}
+@keyframes cx-p-st2k-b {
+  0%, 13% { transform: translate(-50%, -50%) scale(0.72); opacity: 0; }
+  17% { opacity: 1; }
+  28% { opacity: 1; }
+  32% { transform: translate(-50%, -50%) scale(1.3); opacity: 0; }
+  100% { transform: translate(-50%, -50%) scale(1.3); opacity: 0; }
+}
+@keyframes cx-p-st3k-b {
+  0%, 22% { transform: translate(-50%, -50%) scale(0.72); opacity: 0; }
+  26% { opacity: 1; }
+  37% { opacity: 1; }
+  41% { transform: translate(-50%, -50%) scale(1.3); opacity: 0; }
+  100% { transform: translate(-50%, -50%) scale(1.3); opacity: 0; }
+}
+@keyframes cx-p-g1k-b {
+  0%, 76% { transform: translateY(14px); opacity: 0; }
+  82% { transform: translateY(0); opacity: 1; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+@keyframes cx-p-g2k-b {
+  0%, 84% { transform: translateY(14px); opacity: 0; }
+  89% { transform: translateY(0); opacity: 1; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+.cx-p-run-b .cx-p-st-1 { animation-name: cx-p-st1k-b; }
+.cx-p-run-b .cx-p-st-2 { animation-name: cx-p-st2k-b; }
+.cx-p-run-b .cx-p-st-3 { animation-name: cx-p-st3k-b; }
+.cx-p-run-b .cx-p-g-1 { animation-name: cx-p-g1k-b; }
+.cx-p-run-b .cx-p-g-2 { animation-name: cx-p-g2k-b; }
+
 /* the return journey — gold contracts to a line, cools back to blue */
 @keyframes cx-p-retgoldk {
   0% { transform: scaleY(1); opacity: 0.9; }
@@ -732,8 +773,11 @@ html.cx-debug-bounds [data-chapter] { outline: 1px dashed rgba(34, 211, 238, 0.5
 }
 /* depth scaffold — ONLY under the runtime stamp; the no-JS / tier C / D
    document is natural height with plain links */
-html[data-cxpassage] .cx-p-station { min-height: 120svh; }
-html[data-cxpassage] .cx-p-stage { position: sticky; top: 0; min-height: 100svh; }
+html[data-cxpassage] .cx-p-station { min-height: 120vh; min-height: 120svh; }
+html[data-cxpassage] .cx-p-stage {
+  position: sticky; top: 0;
+  min-height: 100vh; min-height: 100svh;
+}
 html[data-cxpassage="A"] .cx-p-depth {
   transform: translate3d(0, clamp(-24px, calc((0.5 - var(--cxs, 0.5)) * 72px), 40px), 0);
   opacity: min(1, calc(0.62 + 0.76 * var(--cxs, 0.5)));

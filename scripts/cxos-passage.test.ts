@@ -53,6 +53,15 @@ const fixtures = read("components/cxos/passage/fixtures.ts");
 const timeline = read("lib/cxos/passageTimeline.ts");
 const ledger = read("lib/cxos/passageLedger.ts");
 const page = read("app/review/mission-control-to-arena/page.tsx");
+// The shipped Arena entry: Phase 5.1 moved its technical clearance line
+// behind the director instruments, so its ceremonial copy is now this
+// guard's business too.
+const entry = read("components/cxos/arena/ArenaEntry.tsx");
+// Comment-stripped view: a copy BAN must test rendered code, never the
+// comment that explains the ban (the recurring house hazard).
+const stripComments = (src: string) =>
+  src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+const entryCode = stripComments(entry);
 const css = read("app/globals.css");
 
 // The component bundle: everything that renders — fixtures.ts is the ONE
@@ -92,7 +101,16 @@ check("the greeting and floor render fixture properties, never constants",
   /r\.displayName/.test(overlay) && /r\.totalXp/.test(overlay) && /r\.totalXp/.test(floor) &&
   /r\.rank/.test(floor));
 check("the clearance evidence line branches on the record (an empty record is told the truth)",
-  /awardCount > 0 \? "Evidence in order\." : "No evidence on record\."/.test(overlay));
+  /"Evidence in order\."/.test(overlay) && /"No evidence on record\."/.test(overlay) &&
+  /r\.awardCount > 0/.test(overlay));
+check("a failed record read is NEVER told it was located (product + review)",
+  // the live entry states only what the server proved — the gate passed
+  !/Record located\./.test(entryCode) && /Clearance confirmed\./.test(entryCode) &&
+  // the journey tells the data-error state the truth in every channel
+  /fx\.key === "data-error" \? "Record unavailable\." : "Record located\."/.test(overlay) &&
+  /Record unavailable — the fail-safe empty standing is shown\./.test(overlay) &&
+  /Record unavailable\. Fail-safe standing shown\./.test(journey) &&
+  /record unavailable — fail-safe standing shown/.test(origin));
 check("the greeting branches on the record too",
   /awardCount > 0\s*\?\s*`Standing recognized/.test(overlay));
 check("data-error fails closed to the EMPTY record — never a stale or invented standing",
@@ -107,6 +125,11 @@ check("milestones: absence renders absence, never placeholder seals",
   /badges\.length > 0 \?/.test(floor) && /Nothing earned yet/.test(floor));
 check("no gamification-noise vocabulary anywhere in the passage",
   !/\bstars?\b|star rating|popularity|upvote|like count|leaderboard/i.test(bundle));
+check("no ceremony exists for a state the gate refuses — instruments included",
+  // beginJourney, jumpTo and scrub each honor fx.access, so no director
+  // instrument can conjure a journey (or the floor) for flag-off /
+  // outside-cohort fixtures whose origin wall correctly shows no call.
+  (journey.match(/if \(!fx\.access\) return;/g) ?? []).length === 3);
 check("no teaser for the ungated: honest absence, no upsell vocabulary",
   /fx\.access \? \(/.test(origin) &&
   !/locked|Upgrade to enter|Unlock the Arena|join the waitlist/i.test(bundle));
@@ -124,10 +147,15 @@ check("CANCEL_PHASES is exactly call + clearance",
   /CANCEL_PHASES[\s\S]{0,120}=\s*\["call", "clearance"\]/.test(timeline));
 check("skip() branches: cancel before departure, forward after",
   /CANCEL_PHASES\.includes\(p\)\) settleCancel\(\);\s*else settleForward\(\)/.test(journey));
-check("Escape · Space · PageDown skip; wheel/touch are PASSIVE skip intent",
-  /e\.key === "Escape" \|\| e\.key === " " \|\| e\.key === "PageDown"/.test(journey) &&
+check("Escape always skips; Space/PageDown only off a control; wheel/touch PASSIVE",
+  /if \(e\.key === "Escape"\) return skip\(\);/.test(journey) &&
+  /e\.key === " " \|\| e\.key === "PageDown"\) && !onControl/.test(journey) &&
+  /closest\("button, a, input, select, textarea, \[tabindex\]"\)/.test(journey) &&
   /addEventListener\("wheel", onWheel, \{ passive: true \}\)/.test(journey) &&
   /addEventListener\("touchmove", onTouch, \{ passive: true \}\)/.test(journey));
+check("scroll input is skip intent ONLY when the director tray is closed",
+  (journey.match(/if \(!trayOpenRef\.current\) skip\(\);/g) ?? []).length === 2 &&
+  /if \(trayOpenRef\.current\) return;/.test(journey));
 check("no preventDefault, no scroll lock, no history mutation anywhere in the passage",
   !/\.preventDefault\(\)/.test(bundle) &&
   !/documentElement\.style\.overflow|body\.style\.overflow/.test(bundle) &&
@@ -136,8 +164,20 @@ check("every programmatic scroll is explicitly instant (smooth CSS can never dri
   /scrollTo\(\{ top: 0, behavior: "instant"/.test(journey) &&
   !/scrollTo\(\s*\d/.test(bundle) &&
   !/scrollIntoView\((?!\{ behavior: "instant")/.test(bundle));
-check("double activation cannot stack journeys",
-  (journey.match(/if \(CINEMATIC\.has\(phaseRef\.current\)\) return;/g) ?? []).length >= 2);
+{
+  // Double activation cannot stack journeys, and the ONE deliberate replace
+  // path (a director restart) must disarm the replaced run's timers before
+  // arming its own — a guard-return that skipped clearTimers left ghost
+  // timers that later teleported the page (adversarial review finding).
+  const bj = journey.slice(journey.indexOf("const beginJourney"), journey.indexOf("const beginReturn"));
+  const guardIdx = bj.indexOf("if (!restart && CINEMATIC.has(phaseRef.current)) return;");
+  const clearIdx = bj.indexOf("clearTimers();");
+  check("double activation cannot stack journeys (restart replaces, never overlaps)",
+    guardIdx !== -1 && clearIdx !== -1 && guardIdx < clearIdx &&
+    /if \(CINEMATIC\.has\(phaseRef\.current\)\) return;/.test(journey.slice(journey.indexOf("const beginReturn"))));
+  check("every fresh run remounts the overlay so its animation clock starts at zero",
+    /setRunNonce\(\(n\) => n \+ 1\)/.test(bj) && /key=\{runNonce\}/.test(journey));
+}
 
 // ── 5 · containment + focus ──────────────────────────────────────────────────
 check("the overlay is an aria-modal dialog naming its escape hatch",
@@ -200,9 +240,16 @@ check("the watchdog forces the truthful forward settle",
   check("every --cxs choreography rule is scoped under html[data-cxpassage]",
     cxsRules.length > 0 && cxsRules.every((m) => /html\[data-cxpassage/.test(m[0].split("{")[0])));
   check("the station scaffold (min-height + sticky) exists ONLY under the stamp",
-    /html\[data-cxpassage\] \.cx-p-station \{ min-height: 120svh; \}/.test(css) &&
-    /html\[data-cxpassage\] \.cx-p-stage \{ position: sticky/.test(css) &&
+    /html\[data-cxpassage\] \.cx-p-station \{ min-height: 120vh; min-height: 120svh; \}/.test(css) &&
+    /html\[data-cxpassage\] \.cx-p-stage \{\s*\n\s*position: sticky/.test(css) &&
     !/^\.cx-p-station \{ min-height/m.test(css));
+  check("svh always carries a vh fallback (a pre-svh engine must not drop the scaffold)",
+    /min-height: 120vh; min-height: 120svh;/.test(css) &&
+    /min-height: 100vh; min-height: 100svh;/.test(css) &&
+    /maxHeight: "60vh"/.test(tray) && /maxBlockSize: "60svh"/.test(tray));
+  check("the floor root uses overflow-CLIP — overflow-hidden would kill sticky",
+    /className="cx-p-arena relative overflow-clip/.test(floor) &&
+    !/cx-p-arena[^"]*overflow-hidden/.test(floor));
 }
 check("the station rAF is passive and hidden-tab aware",
   /addEventListener\("scroll", onScroll, \{ passive: true \}\)/.test(journey) &&
@@ -237,6 +284,38 @@ check("the sheet contains its own scroll (no page bleed)",
 check("the technical clearance truth lives in the tray, not the ceremony",
   /TECHNICAL CLEARANCE/.test(tray) && /internal cohort/.test(tray) &&
   !/internal cohort/.test(overlay));
+
+// ── 11 · laws established by the post-implementation adversarial review ─────
+check("a held inspection can always be resumed: resume re-arms settle AND watchdog",
+  /const resumeRun = useCallback/.test(journey) &&
+  /arm\(\(\) => settleForward\(\), Math\.max\(120, end - from\)\)/.test(journey) &&
+  /onResume=\{resumeRun\}/.test(journey));
+check("every held beat re-arms the JS watchdog (the CSS fade is never the only exit)",
+  (journey.match(/if \(CINEMATIC\.has\(phaseRef\.current\)\) settleForward\(\);\s*\}, WATCHDOG_MS\)/g) ?? []).length >= 3);
+check("the veil's OWN safety fade pauses with the world during inspection",
+  /\.cx-p-veil\[data-cxp-paused\],\s*\n\.cx-p-veil\[data-cxp-paused\] \* \{ animation-play-state: paused !important; \}/.test(css));
+check("the environment scroll runs in a LAYOUT effect — never a post-paint frame",
+  /useLayoutEffect\(\(\) => \{[\s\S]{0,600}window\.scrollTo\(\{ top: 0, behavior: "instant"/.test(journey));
+check("the footer is inerted with the environments (no operable control under the veil)",
+  /footerRef/.test(journey) && /for \(const el of \[o, f, ft\]\)/.test(journey));
+check("a mid-journey reduced-motion flip settles instead of stranding an invisible modal",
+  /matchMedia\("\(prefers-reduced-motion: reduce\)"\)/.test(journey) && /skipRef\.current\?\.\(\)/.test(journey));
+check("identical announcements still reach the live region",
+  /announceRef\.current === s \? s \+/.test(journey) && /role="status"/.test(journey));
+check("the natural journey end does not stomp the greeting announcement",
+  /settleForward\(false\), end\)/.test(journey) && /if \(announceArrival\) say\(/.test(journey));
+check("director instruments never steal focus from the open tray",
+  (journey.match(/const keepTray = trayOpenRef\.current;/g) ?? []).length === 3 &&
+  /takeFocus=\{!trayOpenRef\.current\}/.test(journey) && /autoFocus=\{takeFocus\}/.test(overlay));
+check("cancel has a focus target even when the call does not exist",
+  /\[data-cxp-proceed\]"\) \?\?\s*\n\s*document\.querySelector<HTMLElement>\("\.cx-p-mc h1"\)/.test(journey));
+check("closing the tray returns focus to its pill, never to body",
+  /const close = \(\) => \{\s*\n\s*setOpen\(false\);\s*\n\s*pillRef\.current\?\.focus/.test(tray));
+check("the condensed mobile run gets its own readable windows",
+  /\.cx-p-run-b \.cx-p-g-2 \{ animation-name: cx-p-g2k-b; \}/.test(css) &&
+  /@keyframes cx-p-st1k-b/.test(css));
+check("active tray controls are never distinguished by colour alone",
+  /ring-1 ring-amber-400\/40/.test(tray) && /\{active && <span aria-hidden>▸ <\/span>\}/.test(tray));
 
 console.log(`\ncxos-passage.test.ts: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

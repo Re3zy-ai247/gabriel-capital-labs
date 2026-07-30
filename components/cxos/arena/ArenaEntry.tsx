@@ -142,9 +142,13 @@ export function ArenaEntry(props: ArenaEntryProps) {
               <div className="cx-mc-line">
                 <div className="text-[10px] font-bold tracking-[0.3em] text-amber-200/70">ARENA CLEARANCE</div>
                 {/* Phase 5.1 copy law: the audience hears ceremony; the
-                    technical truth lives in the director instruments. */}
+                    technical truth lives in the director instruments. Only
+                    the claim the server actually proved is spoken: the gate
+                    passed. "Record located." was removed — the progress
+                    read fails closed to EMPTY on error, so an affirmative
+                    located-record line could be false during a degraded
+                    read (adversarial review finding, 2026-07-29). */}
                 <p className="mt-1 text-sm text-slate-200">Clearance confirmed.</p>
-                <p className="mt-0.5 text-sm text-slate-300">Record located.</p>
                 {review.current && (
                   <p className="mt-1 font-mono text-[11px] text-slate-500">
                     {props.identity} · internal cohort · policy v{props.policyVersion}
