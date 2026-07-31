@@ -8,7 +8,10 @@ import {
   useState,
   type CSSProperties,
 } from "react";
-import { useCxosRoomRuntime } from "@/components/cxos/runtime/useCxosRoomRuntime";
+import {
+  scrollCxosElementImmediately,
+  useCxosRoomRuntime,
+} from "@/components/cxos/runtime/useCxosRoomRuntime";
 import type {
   CxosExperienceProjection,
   CxosRoomRuntimeDefinition,
@@ -669,6 +672,114 @@ export function AgencyCommandStage() {
           </p>
         </section>
 
+        <details
+          ref={directorRef}
+          className={styles.director}
+          onKeyDown={handleDirectorKeyDown}
+          onToggle={(event) => {
+            if (event.currentTarget.open) {
+              scrollCxosElementImmediately(event.currentTarget);
+            }
+          }}
+        >
+          <summary ref={directorSummaryRef}>
+            <span>DIRECTOR</span>
+            <strong>
+              {projection.toUpperCase()} · {operatingModel.toUpperCase()} ·{" "}
+              {fixtureLabel.toUpperCase()}
+            </strong>
+          </summary>
+          <div className={styles.directorPanel}>
+            <div className={styles.directorStatus}>
+              <span>Resolved projection</span>
+              <strong>
+                Tier {resolution.tier} · {resolution.reason}
+              </strong>
+            </div>
+
+            <fieldset>
+              <legend>Experience</legend>
+              <div className={styles.controlGrid}>
+                {(["auto", "cinematic", "static"] as const).map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    aria-pressed={projection === option}
+                    disabled={
+                      option === "cinematic" && !resolution.cinematicAvailable
+                    }
+                    onClick={() => applyProjection(option)}
+                  >
+                    {option}
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+
+            {cinematicPromptOpen && (
+              <div className={styles.motionPrompt} role="alert">
+                <p>
+                  The browser requests reduced motion. Force review cinema for this
+                  route instance only? Browser settings will not change.
+                </p>
+                <div>
+                  <button type="button" onClick={keepReducedMotion}>
+                    Keep static
+                  </button>
+                  <button
+                    type="button"
+                    onClick={forceCinematicForReview}
+                    disabled={!resolution.cinematicAvailable}
+                  >
+                    Force review cinema
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <fieldset>
+              <legend>Operating model</legend>
+              <div className={styles.controlGrid}>
+                {(["solo", "team"] as const).map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    aria-pressed={operatingModel === option}
+                    onClick={() => applyOperatingModel(option)}
+                  >
+                    {option === "solo" ? "Solo Agency" : "Team Specimen"}
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+
+            <fieldset>
+              <legend>Fixture state</legend>
+              <div className={styles.stateControls}>
+                {AGENCY_FIXTURE_STATES.map((option) => (
+                  <button
+                    key={option.key}
+                    type="button"
+                    aria-pressed={fixtureState === option.key}
+                    onClick={() => applyFixtureState(option.key)}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+
+            <button
+              type="button"
+              className={styles.replay}
+              onClick={replayArrival}
+              disabled={departing}
+            >
+              Replay grand arrival
+            </button>
+          </div>
+        </details>
+
         {fixtureState !== "permission" && (
           <FacilityDirectory
             activeDistrict={activeDistrict}
@@ -906,109 +1017,6 @@ export function AgencyCommandStage() {
           </>
         )}
       </div>
-
-      <details
-        ref={directorRef}
-        className={styles.director}
-        onKeyDown={handleDirectorKeyDown}
-      >
-        <summary ref={directorSummaryRef}>
-          <span>DIRECTOR</span>
-          <strong>
-            {projection.toUpperCase()} · {operatingModel.toUpperCase()} ·{" "}
-            {fixtureLabel.toUpperCase()}
-          </strong>
-        </summary>
-        <div className={styles.directorPanel}>
-          <div className={styles.directorStatus}>
-            <span>Resolved projection</span>
-            <strong>
-              Tier {resolution.tier} · {resolution.reason}
-            </strong>
-          </div>
-
-          <fieldset>
-            <legend>Experience</legend>
-            <div className={styles.controlGrid}>
-              {(["auto", "cinematic", "static"] as const).map((option) => (
-                <button
-                  key={option}
-                  type="button"
-                  aria-pressed={projection === option}
-                  disabled={
-                    option === "cinematic" && !resolution.cinematicAvailable
-                  }
-                  onClick={() => applyProjection(option)}
-                >
-                  {option}
-                </button>
-              ))}
-            </div>
-          </fieldset>
-
-          {cinematicPromptOpen && (
-            <div className={styles.motionPrompt} role="alert">
-              <p>
-                The browser requests reduced motion. Force review cinema for this
-                route instance only? Browser settings will not change.
-              </p>
-              <div>
-                <button type="button" onClick={keepReducedMotion}>
-                  Keep static
-                </button>
-                <button
-                  type="button"
-                  onClick={forceCinematicForReview}
-                  disabled={!resolution.cinematicAvailable}
-                >
-                  Force review cinema
-                </button>
-              </div>
-            </div>
-          )}
-
-          <fieldset>
-            <legend>Operating model</legend>
-            <div className={styles.controlGrid}>
-              {(["solo", "team"] as const).map((option) => (
-                <button
-                  key={option}
-                  type="button"
-                  aria-pressed={operatingModel === option}
-                  onClick={() => applyOperatingModel(option)}
-                >
-                  {option === "solo" ? "Solo Agency" : "Team Specimen"}
-                </button>
-              ))}
-            </div>
-          </fieldset>
-
-          <fieldset>
-            <legend>Fixture state</legend>
-            <div className={styles.stateControls}>
-              {AGENCY_FIXTURE_STATES.map((option) => (
-                <button
-                  key={option.key}
-                  type="button"
-                  aria-pressed={fixtureState === option.key}
-                  onClick={() => applyFixtureState(option.key)}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
-          </fieldset>
-
-          <button
-            type="button"
-            className={styles.replay}
-            onClick={replayArrival}
-            disabled={departing}
-          >
-            Replay grand arrival
-          </button>
-        </div>
-      </details>
     </main>
   );
 }

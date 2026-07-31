@@ -1998,11 +1998,11 @@
 }
 
 .director {
-  position: fixed;
-  right: max(1rem, env(safe-area-inset-right));
-  bottom: max(1rem, env(safe-area-inset-bottom));
+  position: relative;
+  inset: auto;
   z-index: 20;
-  width: min(27rem, calc(100vw - 2rem));
+  width: min(27rem, 100%);
+  margin: 1rem 0 1.5rem auto;
   color: var(--agency-copy);
 }
 
@@ -2744,14 +2744,36 @@
   }
 
   .director {
-    left: max(0.65rem, env(safe-area-inset-left));
-    right: max(0.65rem, env(safe-area-inset-right));
-    bottom: max(0.65rem, env(safe-area-inset-bottom));
-    width: auto;
+    width: max-content;
+    max-width: 100%;
+    margin-right: 0;
+  }
+
+  .director:not([open]) summary strong {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .director[open] {
+    width: 100%;
+  }
+
+  .director summary {
+    flex-wrap: wrap;
+  }
+
+  .director summary strong {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    white-space: normal;
   }
 
   .directorPanel {
-    max-height: min(76svh, 42rem);
+    max-height: min(70dvh, 42rem);
   }
 }
 

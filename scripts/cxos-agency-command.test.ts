@@ -961,6 +961,23 @@ check(
     stageCode,
   ),
 );
+const directorEscapeHandler = sourceBetween(
+  stageCode,
+  "const handleDirectorKeyDown",
+  "const fixtureLabel",
+);
+check(
+  "Director Escape closes only Director and restores summary focus",
+  /event\.preventDefault\(\)/.test(directorEscapeHandler) &&
+    /event\.stopPropagation\(\)/.test(directorEscapeHandler) &&
+    /removeAttribute\("open"\)/.test(directorEscapeHandler) &&
+    /directorSummaryRef\.current\?\.focus\(\{ preventScroll: true \}\)/.test(
+      directorEscapeHandler,
+    ) &&
+    !/settleRuntimeArrival|replayRuntimeArrival|beginDeparture|completeDeparture|moveToDistrict|clearKaiSession|setKaiCommand|setKaiTurns|setFixtureState|setOperatingModel|setProjection/.test(
+      directorEscapeHandler,
+    ),
+);
 check(
   "queue and empty-state handoffs focus the revealed controls without smooth scrolling",
   (stageCode.match(/scrollIntoView\(\{ block: "center", behavior: "auto" \}\)/g) ?? [])
@@ -995,7 +1012,52 @@ check(
     /env\(safe-area-inset-top\)/.test(css) &&
     /env\(safe-area-inset-left\)/.test(css) &&
     /env\(safe-area-inset-right\)/.test(css) &&
+    /env\(safe-area-inset-bottom\)/.test(css) &&
     !/width:\s*calc\(100vw/.test(css),
+);
+const baseDirectorRule =
+  css.match(/(?:^|\n)\.director\s*\{([\s\S]*?)\}/)?.[1] ?? "";
+const directorMarkupAt = stage.indexOf("<details");
+const stateBandMarkupAt = stage.indexOf("className={styles.stateBand}");
+const directoryMarkupAt = stage.indexOf("<FacilityDirectory");
+const firstDistrictMarkupAt = stage.indexOf("<AgencyDistrictShell");
+check(
+  "Director is in normal flow after projection state and before navigation or canonical districts",
+  stateBandMarkupAt >= 0 &&
+    directorMarkupAt > stateBandMarkupAt &&
+    directoryMarkupAt > directorMarkupAt &&
+    firstDistrictMarkupAt > directoryMarkupAt &&
+    /position:\s*relative/.test(baseDirectorRule) &&
+    /inset:\s*auto/.test(baseDirectorRule) &&
+    /width:\s*min\(27rem,\s*100%\)/.test(baseDirectorRule) &&
+    !/position:\s*(?:fixed|sticky)|(?:top|right|bottom|left):/.test(
+      baseDirectorRule,
+    ),
+);
+check(
+  "mobile Director is compact until explicit expansion and remains bounded in its safe-area-aware flow container",
+  /\.director:not\(\[open\]\) summary strong\s*\{[\s\S]{0,220}clip-path:\s*inset\(50%\)/.test(
+    css,
+  ) &&
+    /\.director\[open\]\s*\{[\s\S]{0,80}width:\s*100%/.test(css) &&
+    /\.directorPanel\s*\{[\s\S]{0,160}max-height:\s*min\(70dvh,\s*42rem\)/.test(css) &&
+    /<details[\s\S]{0,200}className=\{styles\.director\}[\s\S]{0,400}<summary/.test(
+      stage,
+    ) &&
+    /onToggle=\{\(event\) => \{[\s\S]{0,100}event\.currentTarget\.open[\s\S]{0,120}scrollCxosElementImmediately\(event\.currentTarget\)/.test(
+      stage,
+    ) &&
+    !/<details[^>]*\sopen(?:\s|=|>)/.test(stage),
+);
+check(
+  "Director clearance remains CSS-first without scroll or resize measurement",
+  !/\b(?:ResizeObserver|MutationObserver)\b|getBoundingClientRect|getComputedStyle|visualViewport/.test(
+    stageCode,
+  ) &&
+    !/addEventListener\(\s*["'](?:scroll|resize|orientationchange|wheel|touchmove)["']/.test(
+      stageCode,
+    ) &&
+    !/\bon(?:Scroll|Resize|Wheel|TouchMove)\s*=/.test(stage),
 );
 check(
   "mobile arrival reserves the fixed action slot to prevent settled-state layout shift",
