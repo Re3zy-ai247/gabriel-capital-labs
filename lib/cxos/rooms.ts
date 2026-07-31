@@ -76,11 +76,19 @@ export const CXOS_ROOMS: CxosRoom[] = [
     line: "Mission Control origin → the call → clearance → the passage → dimensional conversion → threshold → greeting → the floor → the return. Synthetic fixtures, end to end.",
   },
   {
+    key: "agency-command",
+    name: "Agency Command",
+    href: "/review/agency-command",
+    status: "PROTOTYPE",
+    phase: "Phase 6",
+    line: "Kai's Executive Morning Brief → agency operations specimen. Synthetic Founder-review fixtures only; no live agency data, team system, billing, or actions are connected.",
+  },
+  {
     key: "academy",
     name: "Academy",
     href: "/review#academy",
     status: "PLANNED",
-    phase: "Phase 6 (needs product definition D-5)",
+    phase: "Unscheduled (needs product definition D-5)",
     line: "The warm room — knowledge as light. No route exists yet; nothing is faked as live.",
   },
   {

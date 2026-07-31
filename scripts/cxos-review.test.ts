@@ -82,13 +82,25 @@ check("the review stage LOOPS instead of finishing (Escape exits)",
 // ── 6 · the room registry stays honest ───────────────────────────────────────
 {
   const keys = [...rooms.matchAll(/key: "([a-z-]+)"/g)].map((m) => m[1]);
-  check("all ten mandated rooms are registered (plus the Phase 3 landing journey and the Phase 5.1 passage)",
+  check("all ten mandated rooms are registered (plus the landing journey, passage, and Phase 6 Agency Command prototype)",
     ["threshold", "hero", "mission-control", "arena", "academy", "kai", "marketplace",
-     "operator-network", "dashboard", "enterprise", "landing-journey", "passage"].every((k) => keys.includes(k)));
+     "operator-network", "dashboard", "enterprise", "landing-journey", "passage",
+     "agency-command"].every((k) => keys.includes(k)));
   check("PLANNED rooms exist and are never given a fake live entry",
     /status: "PLANNED"/.test(rooms) && /no entry yet/.test(hub));
-  check("exactly five PROTOTYPE rooms today (Threshold · Landing Journey · Mission Control · Arena · The Passage)",
-    (rooms.match(/status: "PROTOTYPE"/g) ?? []).length === 5);
+  const agencyCommand = rooms.match(/\{\s*key: "agency-command"[\s\S]*?\n  \},/)?.[0] ?? "";
+  check("Agency Command is an honest Phase 6 review prototype at its isolated route",
+    /name: "Agency Command"/.test(agencyCommand) &&
+    /href: "\/review\/agency-command"/.test(agencyCommand) &&
+    /status: "PROTOTYPE"/.test(agencyCommand) &&
+    /phase: "Phase 6"/.test(agencyCommand) &&
+    /Synthetic Founder-review fixtures only/.test(agencyCommand));
+  const academy = rooms.match(/\{\s*key: "academy"[\s\S]*?\n  \},/)?.[0] ?? "";
+  check("Academy is unscheduled pending D-5 (no invented Phase 7)",
+    /phase: "Unscheduled \(needs product definition D-5\)"/.test(academy) &&
+    !/Phase [67]/.test(academy));
+  check("exactly six PROTOTYPE rooms today (Threshold · Landing Journey · Mission Control · Arena · The Passage · Agency Command)",
+    (rooms.match(/status: "PROTOTYPE"/g) ?? []).length === 6);
 }
 
 console.log(`\ncxos-review.test.ts: ${pass} passed, ${fail} failed`);
