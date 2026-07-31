@@ -9,6 +9,7 @@
 //
 // No live Agency workspace, auth/session state, API, database, billing, storage,
 // product navigation, model, clock, or random value may cross that boundary.
+import { createHash } from "node:crypto";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import {
@@ -18,6 +19,7 @@ import {
   AGENCY_HEALTH_DRIVERS,
   AGENCY_KAI_NO_ACTION_RECEIPT,
   AGENCY_KAI_WORKFLOWS,
+  AGENCY_PERSONALIZATIONS,
   AGENCY_PORTFOLIO,
   AGENCY_QUEUE,
   resolveAgencyKaiIntent,
@@ -81,6 +83,7 @@ const fixtureCode = codeOf(fixtures);
 const runtimePolicyCode = codeOf(runtimePolicy);
 const runtimeAdapterCode = codeOf(runtimeAdapter);
 const presentationCode = `${stageCode}\n${fixtureCode}`;
+const fixturesSha256 = createHash("sha256").update(fixtures).digest("hex");
 
 // -- 1 · exact, isolated Phase 6.2 route surface -----------------------------
 for (const file of expectedRouteFiles) {
@@ -216,40 +219,84 @@ check(
     /\{district\.kaiContext\}/.test(stage) &&
     /Continue to \{nextDistrict\.name\}/.test(stage),
 );
+check(
+  "RC3 preserves the RC2 canonical fixture source byte-for-byte",
+  fixturesSha256 === "9f212d3ae6db92e05b8ea50e4df3a0141f0688720e627b4ba08b140b97332146",
+);
+check(
+  "district journey state is derived only from canonical order and active district",
+  /const activeDistrictIndex = AGENCY_DISTRICTS\.findIndex/.test(stageCode) &&
+    /!journeyActive[\s\S]{0,80}"static"[\s\S]{0,180}districtIndex === activeDistrictIndex[\s\S]{0,180}"operating"[\s\S]{0,180}districtIndex > activeDistrictIndex[\s\S]{0,180}"queued"[\s\S]{0,80}"cleared"/.test(
+      stageCode,
+    ) &&
+    /data-journey-state=\{journeyState\}/.test(stage) &&
+    (stage.match(/data-environment=\{district\.id\}/g) ?? []).length === 1,
+);
+check(
+  "each district exposes one pointer-inert measurable rail and decorative spatial field",
+  /aria-hidden="true"[\s\S]{0,100}className=\{styles\.districtEnvironment\}/.test(stage) &&
+    /aria-hidden="true" className=\{styles\.districtRail\}/.test(stage) &&
+    /className=\{styles\.districtThreshold\}/.test(stage) &&
+    /data-plane="depth"/.test(stage) &&
+    /data-plane="horizon"/.test(stage) &&
+    /data-plane="signal"/.test(stage),
+);
 
-// -- 5 · six deterministic arrival beats ------------------------------------
+// -- 5 · seven deterministic arrival beats ----------------------------------
 const activationRailSource = sourceBetween(
   stage,
   "function ActivationRail",
   "function CapacityHorizon",
 );
-const activationTuples = [
-  ...activationRailSource.matchAll(
-    /"([a-z-]+)":\s*\[\s*"([^"]+)",\s*"([^"]+)",?\s*\]/g,
-  ),
-].map((match) => match.slice(1));
-const expectedLoadingBeats = [
-  ["origin-acknowledgment", "Origin acknowledged", "Mission Control transfer"],
-  ["authority-recognition", "Authority recognized", "Synthetic operator only"],
-  ["facility-acquisition", "Facility acquisition", "Fixture scope unresolved"],
-  ["systems-online", "Systems held", "No occupancy inferred"],
-  ["kai-greeting", "Kai channel held", "Awaiting displayed sources"],
-  ["command-settlement", "Command settlement", "Complete static state available"],
-];
-const expectedSettledBeats = [
-  ["origin-acknowledgment", "Origin acknowledged", "Mission Control transfer"],
-  ["authority-recognition", "Authority recognized", "Synthetic operator only"],
-  ["facility-acquisition", "Facility acquired", "Agency scope resolved"],
-  ["systems-online", "Systems online", "Fixed horizon and ledgers"],
-  ["kai-greeting", "Kai greeting", "Deterministic channel ready"],
-  ["command-settlement", "Command settled", "Seven districts available"],
-];
 check(
-  "loading and resolved arrival projections each expose the exact six beats",
-  JSON.stringify(activationTuples.slice(0, 6)) ===
-    JSON.stringify(expectedLoadingBeats) &&
-    JSON.stringify(activationTuples.slice(6)) ===
-      JSON.stringify(expectedSettledBeats),
+  "boundary and operating arrival projections each expose seven truthful beats",
+  [
+    "mission-control-origin",
+    "operator-authority",
+    "agency-identity",
+    "systems-readiness",
+    "kai-recognition",
+    "destination-acquisition",
+    "command-settlement",
+  ].every(
+    (beat) =>
+      (activationRailSource.match(new RegExp(`"${beat}"`, "g")) ?? []).length === 2,
+  ) &&
+    /state !== "populated" && state !== "capacity"/.test(activationRailSource) &&
+    /Agency identity bounded/.test(activationRailSource) &&
+    /No live state inferred/.test(activationRailSource) &&
+    /No action connected/.test(activationRailSource) &&
+    /Agency identified/.test(activationRailSource) &&
+    /Fixed horizon and ledgers/.test(activationRailSource) &&
+    /Deterministic channel ready/.test(activationRailSource) &&
+    (activationRailSource.match(/`\$\{recommendedDestination\} (?:available|next)`/g) ?? [])
+      .length === 2,
+);
+check(
+  "arrival copy is fixture-bound and destination acquisition follows canonical personalization",
+  /function resolveAgencyArrivalProjection/.test(stage) &&
+    /state === "populated" \|\| state === "capacity"/.test(stage) &&
+    /destination: personalization\.recommendedDestination/.test(stage) &&
+    AGENCY_PERSONALIZATIONS.solo.recommendedDestination ===
+      "Client Operations Floor" &&
+    AGENCY_PERSONALIZATIONS.team.recommendedDestination ===
+      "Team Operations Room" &&
+    /loading:[\s\S]{0,180}Source-backed operating facts remain unresolved/.test(stage) &&
+    /empty:[\s\S]{0,180}No illustrative work is staged/.test(stage) &&
+    /permission:[\s\S]{0,220}No agency identity is disclosed/.test(stage) &&
+    /staticArrival: `Complete static Agency Command projection\. \$\{arrivalProjection\.greeting\}`/.test(
+      stage,
+    ) &&
+    /escapeArrival: `Agency Command arrival skipped\. \$\{arrivalProjection\.greeting\}`/.test(
+      stage,
+    ) &&
+    /if \(fixtureState === "permission"\)[\s\S]{0,260}focus: \{ kind: "room" \}[\s\S]{0,220}no agency identity is disclosed/i.test(
+      stage,
+    ) &&
+    /recommendedDestination=\{arrivalProjection\.destination\}/.test(stage) &&
+    /\{arrivalProjection\.destinationLabel\} · \{arrivalProjection\.destination\}/.test(
+      stage,
+    ),
 );
 check(
   "arrival is sequenced through the shared runtime, replayable, skippable, and Escape-settled",
@@ -267,7 +314,11 @@ check(
     /agencySystemActivate/.test(css) &&
     /agencyCapacityForm/.test(css) &&
     /agencyLedgerActivate/.test(css) &&
-    /agencyKaiArrive/.test(css),
+    /agencyKaiArrive/.test(css) &&
+    /agencyArrivalRecognition/.test(css) &&
+    /\.room\[data-arrival-settled="false"\] \.arrivalThreshold \.activationRail li::before/.test(
+      css,
+    ),
 );
 const declaredArrivalBeats = [
   ...sourceBetween(
@@ -287,11 +338,12 @@ check(
   "Agency binds the exact approved arrival and motion contracts to rendered runtime output",
   JSON.stringify(declaredArrivalBeats) ===
     JSON.stringify([
-      "origin-acknowledgment",
-      "authority-recognition",
-      "facility-acquisition",
-      "systems-online",
-      "kai-greeting",
+      "mission-control-origin",
+      "operator-authority",
+      "agency-identity",
+      "systems-readiness",
+      "kai-recognition",
+      "destination-acquisition",
       "command-settlement",
     ]) &&
     JSON.stringify(declaredMotionChannels) ===
@@ -563,6 +615,17 @@ check(
     /Clear route-local Kai session/.test(stage),
 );
 check(
+  "contextual staging carries the clicked district instead of observer-lag context",
+  /const stageKaiSuggestion = \([\s\S]{0,120}sourceDistrict: AgencyDistrictId/.test(
+    stageCode,
+  ) &&
+    /sourceDistrict !== "kai-suite"[\s\S]{0,100}setKaiContextDistrict\(sourceDistrict\)/.test(
+      stageCode,
+    ) &&
+    /onStageKai\(district\.suggestions\[0\], district\.id\)/.test(stageCode) &&
+    /stageKaiSuggestion\(suggestion, kaiContextDistrict\)/.test(stageCode),
+);
+check(
   "double submission is guarded within the animation frame",
   /if \(kaiSubmitLockedRef\.current\) return[\s\S]{0,180}kaiSubmitLockedRef\.current = true[\s\S]{0,180}requestAnimationFrame[\s\S]{0,180}kaiSubmitLockedRef\.current = false/.test(
     stageCode,
@@ -587,6 +650,17 @@ check(
     /COMMAND CLEARED[\s\S]{0,180}AGENCY_KAI_NO_ACTION_RECEIPT/.test(stageCode) &&
     /COMMAND STAGED[\s\S]{0,180}AGENCY_KAI_NO_ACTION_RECEIPT/.test(stageCode) &&
     !/Nothing was saved or changed|No production data changed/.test(stageCode),
+);
+check(
+  "Kai district staging is available only in operating fixtures and boundary states expose no dead control",
+  /const kaiWorkflowAvailable =\s*fixtureState === "populated" \|\| fixtureState === "capacity"/.test(
+    stage,
+  ) &&
+    (stage.match(/kaiAvailable=\{kaiWorkflowAvailable\}/g) ?? []).length === 7 &&
+    /\{kaiAvailable \? \([\s\S]{0,260}Stage with Kai[\s\S]{0,220}Kai held · fixture boundary/.test(
+      stage,
+    ) &&
+    /\.kaiContext \.kaiBoundary\s*\{/.test(css),
 );
 
 // -- 8 · route-local reset, exit, and BFCache boundaries ---------------------
@@ -884,6 +958,23 @@ check(
     /aria-live="polite"/.test(stage) &&
     /:focus-visible/.test(css),
 );
+check(
+  "journey state is capability-stable and static tiers expose no false current district",
+  /const journeyCapable = resolution\.tier === "A" \|\| resolution\.tier === "B"/.test(
+    stage,
+  ) &&
+    /intersectionObserver:\s*typeof window\.IntersectionObserver === "function"/.test(
+      runtimeAdapterCode,
+    ) &&
+    /!capabilities\.intersectionObserver/.test(runtimePolicyCode) &&
+    /activeDistrict=\{journeyCapable \? activeDistrict : null\}/.test(stage) &&
+    (stage.match(/journeyActive=\{journeyCapable\}/g) ?? []).length === 7 &&
+    /const journeyState = !journeyActive\s*\? "static"/.test(stage) &&
+    /data-current=\{journeyActive && activeDistrict === district\.id \? "true" : "false"\}/.test(
+      stage,
+    ) &&
+    !/journeyActive=\{environment\.scrollActivation\}/.test(stage),
+);
 const reducedMotionAt = css.search(
   /@media\s*\(\s*prefers-reduced-motion\s*:\s*reduce\s*\)/,
 );
@@ -933,6 +1024,8 @@ check(
       runtimeAdapterCode,
     ) &&
     /data-departing=\{departing \? "true" : "false"\}/.test(stage) &&
+    /Kai confirms the review-route handoff to Mission Control/.test(stage) &&
+    /Kai confirms Mission Control handoff · route session clears/.test(stage) &&
     /agencyReturnHandoff 460ms/.test(css),
 );
 check(
@@ -953,24 +1046,33 @@ check(
       runtimeAdapterCode,
     ) &&
     /scrollCxosWindowImmediately\(0\)/.test(runtimeAdapterCode) &&
-    /event\.key !== "Escape" \|\| !directorRef\.current\?\.open/.test(stageCode),
+    /event\.key !== "Escape" \|\| !director\?\.open/.test(stageCode),
 );
 check(
-  "Director Escape is consumed before the runtime arrival Escape handler",
-  /event\.key !== "Escape" \|\| !directorRef\.current\?\.open[\s\S]{0,180}event\.preventDefault\(\);[\s\S]{0,80}event\.stopPropagation\(\);[\s\S]{0,180}directorSummaryRef\.current\?\.focus\(\{ preventScroll: true \}\)/.test(
+  "Director Escape is captured globally before the runtime arrival Escape handler",
+  /window\.addEventListener\("keydown", closeDirectorOnEscape, true\)/.test(
     stageCode,
-  ),
+  ) &&
+    /event\.key !== "Escape" \|\| !director\?\.open[\s\S]{0,220}event\.preventDefault\(\);[\s\S]{0,80}event\.stopImmediatePropagation\(\)/.test(
+    stageCode,
+  ) &&
+    /window\.removeEventListener\("keydown", closeDirectorOnEscape, true\)/.test(
+      stageCode,
+    ),
 );
 const directorEscapeHandler = sourceBetween(
   stageCode,
-  "const handleDirectorKeyDown",
-  "const fixtureLabel",
+  "const closeDirectorOnEscape",
+  "window.addEventListener",
 );
 check(
-  "Director Escape closes only Director and restores summary focus",
+  "Director Escape closes only Director and conditionally restores summary focus",
   /event\.preventDefault\(\)/.test(directorEscapeHandler) &&
-    /event\.stopPropagation\(\)/.test(directorEscapeHandler) &&
+    /event\.stopImmediatePropagation\(\)/.test(directorEscapeHandler) &&
     /removeAttribute\("open"\)/.test(directorEscapeHandler) &&
+    /const focusWasInside = director\.contains\(document\.activeElement\)/.test(
+      directorEscapeHandler,
+    ) &&
     /directorSummaryRef\.current\?\.focus\(\{ preventScroll: true \}\)/.test(
       directorEscapeHandler,
     ) &&
@@ -1014,6 +1116,152 @@ check(
     /env\(safe-area-inset-right\)/.test(css) &&
     /env\(safe-area-inset-bottom\)/.test(css) &&
     !/width:\s*calc\(100vw/.test(css),
+);
+const baseDistrictRule =
+  css.match(/(?:^|\n)\.district\s*\{([\s\S]*?)\}/)?.[1] ?? "";
+const mobileCssAt = css.indexOf("@media (max-width: 767px)");
+const mobileCss = mobileCssAt >= 0 ? css.slice(mobileCssAt) : "";
+const extremeReflowCss = sourceBetween(
+  css,
+  "@media (max-width: 260px)",
+  "@media (pointer: coarse)",
+);
+check(
+  "one logical environmental gutter separates every measurable district rail from content",
+  /--agency-district-rail-gutter:\s*1\.25rem/.test(baseDistrictRule) &&
+    /padding-inline:\s*[\s\S]{0,100}var\(--agency-district-rail-gutter\)/.test(
+      baseDistrictRule,
+    ) &&
+    /\.districtRail\s*\{[\s\S]{0,180}inset-inline-start:\s*0[\s\S]{0,100}width:\s*2px/.test(
+      css,
+    ) &&
+    /\.district\s*\{[\s\S]{0,180}padding-inline:\s*var\(--agency-district-rail-gutter\) 0\.75rem/.test(
+      mobileCss,
+    ) &&
+    !/\.districtHeader h2\s*\{[\s\S]{0,120}(?:margin-left|padding-left|translateX)/.test(
+      mobileCss,
+    ),
+);
+check(
+  "threshold state changes reserve fixed geometry and cannot introduce CLS",
+  /\.districtThreshold strong\s*\{[\s\S]{0,180}inline-size:\s*10ch[\s\S]{0,120}min-inline-size:\s*10ch[\s\S]{0,180}text-align:\s*right/.test(
+    css,
+  ) &&
+    /\.districtThreshold strong span\s*\{[\s\S]{0,100}position:\s*absolute[\s\S]{0,100}inset:\s*0/.test(
+      css,
+    ) &&
+    ["static", "queued", "operating", "cleared"].every(
+      (state) =>
+        stage.includes(`data-threshold-state="${state}"`) &&
+        css.includes(`[data-threshold-state="${state}"]`),
+    ) &&
+    !/<strong>\{journeyState\}<\/strong>/.test(stage),
+);
+check(
+  "contextual Kai suggestions reserve their measured mobile and reflow footprints",
+  /\.room \.kaiSuggestions button\s*\{[\s\S]{0,80}min-block-size:\s*3\.3rem/.test(
+    mobileCss,
+  ) &&
+    /\.room \.kaiSuggestions button\s*\{[\s\S]{0,80}min-block-size:\s*4\.3rem/.test(
+      extremeReflowCss,
+    ),
+);
+check(
+  "journey motion never transforms the observed district box or pins mobile semantics",
+  !/\btransform\s*:/.test(baseDistrictRule) &&
+    !/\.district\[data-current="true"\]\s*\{[\s\S]{0,120}\btransform\s*:/.test(
+      css,
+    ) &&
+    !/\.(?:districtHeader|districtTruth|districtBody|districtHandoff|kaiContext)\s*\{[^}]*position:\s*sticky/.test(
+      mobileCss,
+    ) &&
+    !/scroll-snap-type|scroll-snap-align/.test(css),
+);
+check(
+  "district scroll progression is a single desktop fine-pointer progressive enhancement",
+  /@media \(min-width:\s*768px\) and \(pointer:\s*fine\)/.test(css) &&
+    /@supports \(animation-timeline:\s*view\(\)\)/.test(css) &&
+    /\.room\[data-arrival-settled="true"\]\[data-tier="A"\] \.districtEnvironment,[\s\S]{0,140}\.room\[data-arrival-settled="true"\]\[data-tier="B"\] \.districtEnvironment\s*\{[^}]*animation-timeline:\s*view\(\)/.test(
+      css,
+    ) &&
+    /"data-cxos-motion": environment\.motion/.test(runtimeAdapterCode) &&
+    /"data-cxos-heartbeat": environment\.heartbeat/.test(runtimeAdapterCode) &&
+    (css.match(/^\s*animation-timeline:\s*view\(\)/gm) ?? []).length >= 3,
+);
+check(
+  "inactive, paused, hidden, departing, and static projections stop district heartbeat work",
+  /\.district:not\(\[data-current="true"\]\) \.flowTrack b\s*\{[\s\S]{0,80}animation-play-state:\s*paused/.test(
+    css,
+  ) &&
+    /\.room:not\(\[data-cxos-motion="active"\]\) \.districtRail i/.test(css) &&
+    /\.room\[data-cxos-heartbeat="active"\] \.district\[data-current="true"\] \.districtRail i/.test(
+      css,
+    ) &&
+    /\.room\[data-fixture="loading"\] \.districtRail i/.test(css) &&
+    /\.room\[data-fixture="empty"\] \.districtRail i/.test(css) &&
+    /\.room\[data-hidden="true"\] \.districtRail i/.test(css) &&
+    /\.room\[data-departing="true"\] \.districtRail i/.test(css) &&
+    /animation-play-state:\s*paused !important/.test(css) &&
+    /\.room\[data-tier="C"\] \.districtEnvironment[\s\S]{0,120}\.room\[data-tier="D"\] \.districtEnvironment/.test(
+      css,
+    ),
+);
+const districtRhythmDurations = AGENCY_DISTRICTS.map((district) =>
+  css.match(
+    new RegExp(
+      `\\.district\\[data-agency-district="${district.id}"\\]\\s*\\{[^}]*?--agency-district-rail-duration:\\s*([0-9.]+s)`,
+    ),
+  )?.[1],
+);
+check(
+  "all seven districts project a distinct purpose-paced rail rhythm from one bounded channel",
+  districtRhythmDurations.every(Boolean) &&
+    new Set(districtRhythmDurations).size === AGENCY_DISTRICTS.length &&
+    /animation:\s*agencyFacilityChannel var\(--agency-district-rail-duration\)[\s\S]{0,100}var\(--agency-district-rail-easing\) infinite/.test(
+      css,
+    ),
+);
+check(
+  "district operating moments are scroll-bound after settlement and pause without declaration churn",
+  /\}\s*@supports \(animation-timeline:\s*view\(\)\)\s*\{[\s\S]{0,220}\.room\[data-arrival-settled="true"\]\[data-tier="A"\] \.districtTruth::after/.test(
+    css,
+  ) &&
+  /\.room\[data-arrival-settled="true"\]\[data-tier="A"\] \.districtTruth::after,[\s\S]{0,140}\.room\[data-arrival-settled="true"\]\[data-tier="B"\] \.districtTruth::after/.test(
+    css,
+  ) &&
+    /\.room\[data-arrival-settled="true"\]\[data-tier="A"\] \.districtBody > \*,[\s\S]{0,140}\.room\[data-arrival-settled="true"\]\[data-tier="B"\] \.districtBody > \*/.test(
+      css,
+    ) &&
+    /animation-range:\s*entry 4% entry 46%/.test(css) &&
+    /animation-range:\s*entry 18% entry 54%/.test(css) &&
+    !/\.room\[data-(?:cxos-motion|arrival-settled)="(?:active|true)"\] \.district\[data-current="true"\] \.district(?:Truth|Body)/.test(
+      css,
+    ) &&
+    /\.district:focus-within \.districtTruth::after,[\s\S]{0,100}animation-play-state:\s*paused !important/.test(
+      css,
+    ),
+);
+check(
+  "extreme reflow collapses decorative threshold metadata and permits heading wrap",
+  /\.districtThreshold i,[\s\S]{0,100}display:\s*none/.test(extremeReflowCss) &&
+    /\.districtHeader h2,[\s\S]{0,220}overflow-wrap:\s*anywhere/.test(
+      extremeReflowCss,
+    ) &&
+    /\.arrivalThreshold \.activationRail\s*\{[\s\S]{0,80}grid-template-columns:\s*1fr/.test(
+      extremeReflowCss,
+    ) &&
+    /\.footer \.returnThreshold\s*\{[\s\S]{0,60}min-width:\s*0/.test(
+      extremeReflowCss,
+    ),
+);
+check(
+  "district h2 headings own the spatial hierarchy and nested instruments use h3",
+  /<h2 id=\{`\$\{district\.id\}-heading`\}/.test(stage) &&
+    /function InstrumentHeader[\s\S]{0,420}<h3 id=\{id\}>\{title\}<\/h3>/.test(
+      stage,
+    ) &&
+    /id="heartbeat-heading">The agency is breathing<\/h3>/.test(stage) &&
+    !/<h2 id="(?:heartbeat|loading|empty|queue|portfolio)-heading"/.test(stage),
 );
 const baseDirectorRule =
   css.match(/(?:^|\n)\.director\s*\{([\s\S]*?)\}/)?.[1] ?? "";

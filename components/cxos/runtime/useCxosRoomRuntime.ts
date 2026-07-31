@@ -125,6 +125,8 @@ function readCxosRuntimeCapabilities(): CxosRuntimeCapabilities {
       lowMemory: typeof nav.deviceMemory === "number" && nav.deviceMemory < 4,
       mobile: window.matchMedia("(max-width: 767px)").matches,
       coarsePointer: window.matchMedia("(pointer: coarse)").matches,
+      intersectionObserver:
+        typeof window.IntersectionObserver === "function",
       detectionFailed: false,
     };
   } catch {
@@ -373,24 +375,33 @@ export function useCxosRoomRuntime<DistrictId extends string>({
       return;
     }
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          const id = entry.target.getAttribute(
-            "data-cxos-district",
-          ) as DistrictId | null;
-          if (!id || !definition.districts.includes(id)) continue;
-          visibility.set(id, entry.isIntersecting ? entry.intersectionRatio : 0);
-        }
-        setActiveDistrict((current) =>
-          selectCxosActiveDistrict(definition.districts, visibility, current),
-        );
-      },
-      {
-        rootMargin: "-18% 0px -56% 0px",
-        threshold: [0, 0.01, 0.08, 0.24, 0.5],
-      },
-    );
+    let observer: IntersectionObserver;
+    try {
+      observer = new IntersectionObserver(
+        (entries) => {
+          for (const entry of entries) {
+            const id = entry.target.getAttribute(
+              "data-cxos-district",
+            ) as DistrictId | null;
+            if (!id || !definition.districts.includes(id)) continue;
+            visibility.set(id, entry.isIntersecting ? entry.intersectionRatio : 0);
+          }
+          setActiveDistrict((current) =>
+            selectCxosActiveDistrict(definition.districts, visibility, current),
+          );
+        },
+        {
+          rootMargin: "-18% 0px -56% 0px",
+          threshold: [0, 0.01, 0.08, 0.24, 0.5],
+        },
+      );
+    } catch {
+      setCapabilities((current) => ({
+        ...current,
+        intersectionObserver: false,
+      }));
+      return;
+    }
 
     sections.forEach((section) => observer.observe(section));
     return () => observer.disconnect();

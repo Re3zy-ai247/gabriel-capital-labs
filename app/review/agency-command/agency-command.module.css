@@ -101,6 +101,15 @@
   opacity: 0;
 }
 
+.departureHandoff strong {
+  margin-top: 0.55rem;
+  color: var(--agency-text);
+  font-size: clamp(1.05rem, 2.2vw, 1.6rem);
+  font-weight: 620;
+  letter-spacing: -0.02em;
+  opacity: 0;
+}
+
 .departureHandoff i {
   display: block;
   width: min(56vw, 42rem);
@@ -116,7 +125,8 @@
   animation: agencyReturnHandoff 460ms cubic-bezier(0.2, 0.74, 0.2, 1) both;
 }
 
-.room[data-departing="true"] .departureHandoff span {
+.room[data-departing="true"] .departureHandoff span,
+.room[data-departing="true"] .departureHandoff strong {
   animation: agencyReturnLabel 460ms cubic-bezier(0.2, 0.74, 0.2, 1) both;
 }
 
@@ -444,7 +454,7 @@
   padding-bottom: 0.85rem;
 }
 
-.instrumentHeader h2 {
+.instrumentHeader h3 {
   margin: 0.4rem 0 0;
   color: var(--agency-text);
   font-size: 1rem;
@@ -737,9 +747,9 @@
   margin-bottom: 1.4rem;
 }
 
-.sectionHeading h2,
-.loadingState h2,
-.emptyState h2,
+.sectionHeading h3,
+.loadingState h3,
+.emptyState h3,
 .permissionState h2 {
   margin: 0.45rem 0 0;
   color: var(--agency-text);
@@ -3020,38 +3030,42 @@
 }
 
 .room[data-arrival-settled="false"] .arrivalThreshold .activationRail li:nth-child(1) {
-  animation-delay: 190ms;
+  animation-delay: 160ms;
 }
 
 .room[data-arrival-settled="false"] .arrivalThreshold .activationRail li:nth-child(2) {
-  animation-delay: 330ms;
+  animation-delay: 285ms;
 }
 
 .room[data-arrival-settled="false"] .arrivalThreshold .activationRail li:nth-child(3) {
-  animation-delay: 470ms;
+  animation-delay: 410ms;
 }
 
 .room[data-arrival-settled="false"] .arrivalThreshold .activationRail li:nth-child(4) {
-  animation-delay: 610ms;
+  animation-delay: 535ms;
 }
 
 .room[data-arrival-settled="false"] .arrivalThreshold .activationRail li:nth-child(5) {
-  animation-delay: 750ms;
+  animation-delay: 660ms;
 }
 
 .room[data-arrival-settled="false"] .arrivalThreshold .activationRail li:nth-child(6) {
-  animation-delay: 890ms;
+  animation-delay: 785ms;
+}
+
+.room[data-arrival-settled="false"] .arrivalThreshold .activationRail li:nth-child(7) {
+  animation-delay: 910ms;
 }
 
 .room[data-arrival-settled="false"] .arrivalGreeting {
-  animation: agencyThresholdBeat 400ms 980ms cubic-bezier(0.2, 0.74, 0.2, 1) both;
+  animation: agencyThresholdBeat 400ms 1035ms cubic-bezier(0.2, 0.74, 0.2, 1) both;
 }
 
 .room[data-arrival-settled="false"] .arrivalActions {
   animation: none;
 }
 
-/* Tier B preserves the six disclosed beats inside the 700ms arrival budget. */
+/* Tier B preserves the seven disclosed beats inside the 700ms arrival budget. */
 .room[data-tier="B"][data-arrival-settled="false"] .arrivalOrigin {
   animation-duration: 180ms;
   animation-delay: 0ms;
@@ -3067,32 +3081,36 @@
 }
 
 .room[data-tier="B"][data-arrival-settled="false"] .arrivalThreshold .activationRail li:nth-child(1) {
-  animation-delay: 80ms;
+  animation-delay: 70ms;
 }
 
 .room[data-tier="B"][data-arrival-settled="false"] .arrivalThreshold .activationRail li:nth-child(2) {
-  animation-delay: 130ms;
+  animation-delay: 110ms;
 }
 
 .room[data-tier="B"][data-arrival-settled="false"] .arrivalThreshold .activationRail li:nth-child(3) {
-  animation-delay: 180ms;
+  animation-delay: 150ms;
 }
 
 .room[data-tier="B"][data-arrival-settled="false"] .arrivalThreshold .activationRail li:nth-child(4) {
-  animation-delay: 230ms;
+  animation-delay: 190ms;
 }
 
 .room[data-tier="B"][data-arrival-settled="false"] .arrivalThreshold .activationRail li:nth-child(5) {
-  animation-delay: 280ms;
+  animation-delay: 230ms;
 }
 
 .room[data-tier="B"][data-arrival-settled="false"] .arrivalThreshold .activationRail li:nth-child(6) {
-  animation-delay: 330ms;
+  animation-delay: 270ms;
+}
+
+.room[data-tier="B"][data-arrival-settled="false"] .arrivalThreshold .activationRail li:nth-child(7) {
+  animation-delay: 310ms;
 }
 
 .room[data-tier="B"][data-arrival-settled="false"] .arrivalGreeting {
   animation-duration: 220ms;
-  animation-delay: 390ms;
+  animation-delay: 380ms;
 }
 
 .room[data-tier="B"][data-arrival-settled="false"] .arrivalActions {
@@ -3109,8 +3127,43 @@
 }
 
 .arrivalThreshold .activationRail {
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  position: relative;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   border-top: 1px solid var(--agency-line);
+}
+
+.arrivalThreshold .activationRail li {
+  position: relative;
+  overflow: hidden;
+}
+
+.arrivalThreshold .activationRail li::before {
+  pointer-events: none;
+  position: absolute;
+  inset: 0 0 auto;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--agency-blue), transparent);
+  content: "";
+  opacity: 0.34;
+  transform: scaleX(1);
+  transform-origin: left;
+}
+
+.arrivalThreshold .activationRail li:nth-child(2n)::before {
+  transform-origin: right;
+}
+
+.arrivalThreshold .activationRail li:nth-child(3n)::before {
+  background: linear-gradient(90deg, transparent, rgba(244, 199, 109, 0.78), transparent);
+}
+
+.arrivalThreshold .activationRail li:last-child::before {
+  transform-origin: center;
+}
+
+.room[data-arrival-settled="false"] .arrivalThreshold .activationRail li::before {
+  animation: agencyArrivalRecognition 420ms cubic-bezier(0.2, 0.74, 0.2, 1) both;
+  animation-delay: inherit;
 }
 
 .arrivalThreshold .activationRail li:last-child {
@@ -3228,37 +3281,31 @@
 
 /* One floor, seven spatial districts. */
 .district {
+  --agency-district-rail-gutter: 1.25rem;
+  --agency-district-rail-duration: 8.4s;
+  --agency-district-rail-easing: ease-in-out;
+  --agency-district-rail-origin: center bottom;
   position: relative;
   min-height: clamp(38rem, 72svh, 58rem);
   scroll-margin-top: 6.75rem;
   overflow: clip;
   border-bottom: 1px solid var(--agency-line-strong);
-  padding: clamp(3rem, 6vw, 6rem) clamp(0rem, 1.2vw, 1rem);
+  padding-block: clamp(3rem, 6vw, 6rem);
+  padding-inline:
+    var(--agency-district-rail-gutter)
+    clamp(0rem, 1.2vw, 1rem);
   isolation: isolate;
 }
 
-.district::before,
 .district::after {
   pointer-events: none;
   position: absolute;
   content: "";
 }
 
-.district::before {
-  inset: clamp(3rem, 6vw, 6rem) auto clamp(3rem, 6vw, 6rem) 0;
-  width: 2px;
-  background: linear-gradient(transparent, var(--agency-blue-strong), transparent);
-  opacity: 0.18;
-  transform: scaleY(0.38);
-  transform-origin: center;
-  transition:
-    opacity 240ms ease,
-    transform 400ms cubic-bezier(0.2, 0.74, 0.2, 1);
-}
-
 .district::after {
   inset: 0;
-  z-index: -1;
+  z-index: -2;
   background:
     linear-gradient(90deg, rgba(56, 189, 248, 0.025), transparent 22% 78%, rgba(56, 189, 248, 0.018)),
     linear-gradient(180deg, rgba(8, 23, 42, 0.2), transparent 32rem);
@@ -3266,17 +3313,253 @@
   transition: opacity 240ms ease;
 }
 
-.district[data-current="true"]::before {
-  opacity: 0.82;
-  transform: scaleY(1);
-}
-
 .district[data-current="true"]::after {
   opacity: 1;
 }
 
+.districtRail {
+  pointer-events: none;
+  position: absolute;
+  inset-block: clamp(3rem, 6vw, 6rem);
+  inset-inline-start: 0;
+  z-index: 2;
+  width: 2px;
+  overflow: hidden;
+  background: linear-gradient(transparent, rgba(56, 189, 248, 0.5), transparent);
+  opacity: 0.34;
+  transform: scaleY(0.56);
+  transform-origin: center;
+  transition:
+    opacity 240ms ease,
+    transform 520ms cubic-bezier(0.2, 0.74, 0.2, 1);
+}
+
+.districtRail i {
+  position: absolute;
+  inset: 0;
+  display: block;
+  background: linear-gradient(transparent, var(--agency-blue), transparent);
+  opacity: 0.42;
+  transform: scaleY(0.28);
+  transform-origin: var(--agency-district-rail-origin);
+  animation: agencyFacilityChannel var(--agency-district-rail-duration)
+    var(--agency-district-rail-easing) infinite;
+  animation-play-state: paused;
+}
+
+.district[data-current="true"] .districtRail {
+  opacity: 0.9;
+  transform: scaleY(1);
+}
+
+.room[data-cxos-heartbeat="active"] .district[data-current="true"] .districtRail i {
+  animation-play-state: running;
+}
+
+.districtThreshold {
+  pointer-events: none;
+  position: absolute;
+  inset-block-start: 0.85rem;
+  inset-inline:
+    var(--agency-district-rail-gutter)
+    clamp(0rem, 1.2vw, 1rem);
+  z-index: 2;
+  display: grid;
+  grid-template-columns: auto minmax(2rem, 1fr) auto;
+  gap: 0.7rem;
+  align-items: center;
+  color: var(--agency-dim);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.75rem;
+  font-weight: 740;
+  letter-spacing: 0.12em;
+  line-height: 1.4;
+  text-transform: uppercase;
+}
+
+.districtThreshold i {
+  height: 1px;
+  background: linear-gradient(90deg, rgba(134, 215, 255, 0.5), transparent);
+  opacity: 0.48;
+  transform: scaleX(0.38);
+  transform-origin: left;
+  transition:
+    opacity 260ms ease,
+    transform 520ms cubic-bezier(0.2, 0.74, 0.2, 1);
+}
+
+.districtThreshold strong {
+  position: relative;
+  display: block;
+  inline-size: 10ch;
+  min-inline-size: 10ch;
+  block-size: 1.4em;
+  color: var(--agency-dim);
+  font: inherit;
+  letter-spacing: 0.08em;
+  text-align: right;
+}
+
+.districtThreshold strong span {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  text-align: right;
+}
+
+.district[data-journey-state="static"]
+  .districtThreshold
+  strong
+  [data-threshold-state="static"],
+.district[data-journey-state="queued"]
+  .districtThreshold
+  strong
+  [data-threshold-state="queued"],
+.district[data-journey-state="operating"]
+  .districtThreshold
+  strong
+  [data-threshold-state="operating"],
+.district[data-journey-state="cleared"]
+  .districtThreshold
+  strong
+  [data-threshold-state="cleared"] {
+  opacity: 1;
+}
+
+.district[data-current="true"] .districtThreshold {
+  color: var(--agency-blue);
+}
+
+.district[data-current="true"] .districtThreshold i {
+  opacity: 0.94;
+  transform: scaleX(1);
+}
+
+.district[data-current="true"] .districtThreshold strong {
+  color: var(--agency-blue);
+}
+
+.districtEnvironment {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  opacity: 0.3;
+  transform: translate3d(0, 6px, 0);
+  transition:
+    opacity 480ms ease,
+    transform 620ms cubic-bezier(0.2, 0.74, 0.2, 1);
+}
+
+.districtEnvironment > span {
+  position: absolute;
+  display: block;
+}
+
+.districtEnvironment [data-plane="depth"] {
+  inset: 4rem 0 2rem;
+  background:
+    radial-gradient(circle at 22% 28%, rgba(56, 189, 248, 0.12), transparent 24rem),
+    linear-gradient(115deg, transparent 20%, rgba(56, 189, 248, 0.035) 20.2% 49.8%, transparent 50%);
+  transform: translate3d(0, 7px, 0);
+}
+
+.districtEnvironment [data-plane="horizon"] {
+  inset: 48% 4% auto;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(134, 215, 255, 0.56), transparent);
+  opacity: 0.42;
+  transform: scaleX(0.46);
+}
+
+.districtEnvironment [data-plane="signal"] {
+  right: clamp(1rem, 6vw, 6rem);
+  bottom: clamp(2rem, 8vh, 6rem);
+  display: grid;
+  width: clamp(5rem, 12vw, 10rem);
+  height: clamp(5rem, 12vw, 10rem);
+  place-items: center;
+  border: 1px solid rgba(134, 215, 255, 0.12);
+  border-radius: 50%;
+  opacity: 0.5;
+  transform: scale(0.78);
+}
+
+.districtEnvironment [data-plane="signal"] i,
+.districtEnvironment [data-plane="signal"] b,
+.districtEnvironment [data-plane="signal"] em {
+  position: absolute;
+  display: block;
+  border: 1px solid rgba(134, 215, 255, 0.2);
+  border-radius: inherit;
+}
+
+.districtEnvironment [data-plane="signal"] i {
+  inset: 18%;
+}
+
+.districtEnvironment [data-plane="signal"] b {
+  inset: 36%;
+  border-color: rgba(134, 215, 255, 0.42);
+}
+
+.districtEnvironment [data-plane="signal"] em {
+  width: 1px;
+  height: 126%;
+  border: 0;
+  background: linear-gradient(transparent, rgba(134, 215, 255, 0.56), transparent);
+  transform: rotate(38deg);
+}
+
+.district[data-journey-state="operating"] .districtEnvironment {
+  opacity: 0.92;
+  transform: translate3d(0, 0, 0);
+}
+
+.district[data-journey-state="cleared"] .districtEnvironment {
+  opacity: 0.22;
+  transform: translate3d(0, -6px, 0);
+}
+
 .district[data-agency-district="central-command"] {
+  --agency-district-rail-duration: 10.8s;
+  --agency-district-rail-easing: cubic-bezier(0.32, 0.08, 0.24, 1);
   min-height: clamp(46rem, 88svh, 66rem);
+}
+
+.district[data-agency-district="client-operations"] {
+  --agency-district-rail-duration: 6.4s;
+  --agency-district-rail-easing: linear;
+  --agency-district-rail-origin: center top;
+}
+
+.district[data-agency-district="team-operations"] {
+  --agency-district-rail-duration: 8.8s;
+  --agency-district-rail-easing: cubic-bezier(0.4, 0, 0.6, 1);
+  --agency-district-rail-origin: center;
+}
+
+.district[data-agency-district="business-health"] {
+  --agency-district-rail-duration: 11.6s;
+  --agency-district-rail-easing: ease-in-out;
+}
+
+.district[data-agency-district="evidence-archive"] {
+  --agency-district-rail-duration: 7.6s;
+  --agency-district-rail-easing: cubic-bezier(0.2, 0.74, 0.2, 1);
+  --agency-district-rail-origin: center top;
+}
+
+.district[data-agency-district="kai-suite"] {
+  --agency-district-rail-duration: 12.8s;
+  --agency-district-rail-easing: cubic-bezier(0.32, 0.08, 0.24, 1);
+  --agency-district-rail-origin: center;
+}
+
+.district[data-agency-district="growth-threshold"] {
+  --agency-district-rail-duration: 9.4s;
+  --agency-district-rail-easing: cubic-bezier(0.18, 0.72, 0.2, 1);
 }
 
 .district[data-agency-district="kai-suite"]::after {
@@ -3289,6 +3572,206 @@
   background:
     linear-gradient(180deg, rgba(8, 28, 50, 0.28), transparent 28rem),
     linear-gradient(90deg, transparent, rgba(56, 189, 248, 0.035));
+}
+
+.districtEnvironment[data-environment="central-command"] [data-plane="depth"] {
+  background:
+    radial-gradient(circle at 26% 24%, rgba(56, 189, 248, 0.16), transparent 23rem),
+    linear-gradient(90deg, transparent 54%, rgba(134, 215, 255, 0.045) 54.2% 54.4%, transparent 54.6%);
+}
+
+.districtEnvironment[data-environment="client-operations"] [data-plane="horizon"] {
+  inset: 42% 5% auto;
+  height: 5.5rem;
+  background: repeating-linear-gradient(
+    180deg,
+    rgba(134, 215, 255, 0.3) 0 1px,
+    transparent 1px 1.1rem
+  );
+  transform: scaleX(0.72);
+}
+
+.districtEnvironment[data-environment="team-operations"] [data-plane="signal"] {
+  border-radius: 0.2rem;
+  transform: rotate(45deg) scale(0.68);
+}
+
+.districtEnvironment[data-environment="team-operations"] [data-plane="signal"] i,
+.districtEnvironment[data-environment="team-operations"] [data-plane="signal"] b {
+  border-radius: 0.1rem;
+}
+
+.districtEnvironment[data-environment="business-health"] [data-plane="depth"] {
+  background:
+    radial-gradient(circle at 68% 46%, transparent 0 7rem, rgba(134, 215, 255, 0.08) 7.05rem 7.15rem, transparent 7.2rem 12rem, rgba(134, 215, 255, 0.04) 12.05rem 12.15rem, transparent 12.2rem),
+    linear-gradient(180deg, rgba(8, 31, 56, 0.16), transparent 72%);
+}
+
+.districtEnvironment[data-environment="business-health"] [data-plane="signal"] {
+  right: auto;
+  left: clamp(2rem, 8vw, 8rem);
+  border-color: rgba(244, 199, 109, 0.14);
+}
+
+.districtEnvironment[data-environment="evidence-archive"] [data-plane="depth"] {
+  background:
+    repeating-linear-gradient(90deg, transparent 0 13%, rgba(134, 215, 255, 0.04) 13% calc(13% + 1px)),
+    linear-gradient(180deg, rgba(7, 29, 52, 0.18), transparent 76%);
+}
+
+.districtEnvironment[data-environment="evidence-archive"] [data-plane="signal"] {
+  width: clamp(4rem, 9vw, 7rem);
+  border-radius: 0.15rem;
+}
+
+.districtEnvironment[data-environment="kai-suite"] [data-plane="depth"] {
+  background:
+    radial-gradient(circle at 50% 38%, rgba(56, 189, 248, 0.18), transparent 23rem),
+    linear-gradient(90deg, transparent 30%, rgba(134, 215, 255, 0.05) 50%, transparent 70%);
+}
+
+.districtEnvironment[data-environment="kai-suite"] [data-plane="signal"] {
+  right: 50%;
+  bottom: 12%;
+  border-radius: 0.2rem;
+  transform: translate3d(50%, 0, 0) rotate(45deg) scale(0.72);
+}
+
+.districtEnvironment[data-environment="growth-threshold"] [data-plane="horizon"] {
+  inset-block-start: auto;
+  bottom: 20%;
+  transform: scaleX(0.84);
+}
+
+.districtEnvironment[data-environment="growth-threshold"] [data-plane="signal"] {
+  width: clamp(7rem, 16vw, 13rem);
+  height: clamp(7rem, 16vw, 13rem);
+  border-radius: 0;
+  border-block-color: rgba(244, 199, 109, 0.2);
+}
+
+.districtHeader,
+.districtTruth,
+.kaiContext {
+  transition:
+    border-color 260ms ease,
+    background-color 260ms ease,
+    transform 480ms cubic-bezier(0.2, 0.74, 0.2, 1);
+}
+
+.district[data-journey-state="queued"] .districtHeader,
+.district[data-journey-state="queued"] .districtTruth,
+.district[data-journey-state="queued"] .kaiContext {
+  transform: translate3d(0, 6px, 0);
+}
+
+.district[data-journey-state="cleared"] .districtHeader,
+.district[data-journey-state="cleared"] .districtTruth,
+.district[data-journey-state="cleared"] .kaiContext {
+  transform: translate3d(0, -4px, 0);
+}
+
+.district[data-journey-state="operating"] .districtHeader,
+.district[data-journey-state="operating"] .districtTruth,
+.district[data-journey-state="operating"] .kaiContext {
+  transform: translate3d(0, 0, 0);
+}
+
+.district[data-current="true"] .districtTruth,
+.district[data-current="true"] .kaiContext {
+  border-color: rgba(134, 215, 255, 0.44);
+  background: linear-gradient(90deg, rgba(8, 32, 56, 0.28), transparent 78%);
+}
+
+.districtTruth {
+  position: relative;
+  overflow: hidden;
+}
+
+.districtTruth::after {
+  pointer-events: none;
+  position: absolute;
+  inset: auto 0 0;
+  height: 1px;
+  background: linear-gradient(90deg, var(--agency-blue), transparent 72%);
+  content: "";
+  opacity: 0;
+  transform: scaleX(0.18);
+  transform-origin: left;
+}
+
+.district:not([data-current="true"]) .flowTrack b {
+  animation-play-state: paused;
+}
+
+.district:focus-within .districtHeader,
+.district:focus-within .districtTruth,
+.district:focus-within .kaiContext {
+  transform: none !important;
+}
+
+.district:focus-within .districtTruth::after,
+.district:focus-within .districtBody > * {
+  animation-play-state: paused !important;
+  transform: none !important;
+}
+
+.overheadLight,
+.horizon {
+  transition:
+    opacity 620ms ease,
+    transform 900ms cubic-bezier(0.2, 0.74, 0.2, 1);
+}
+
+.room[data-active-district="central-command"] .overheadLight {
+  transform: translate3d(-8%, 0, 0) scaleX(0.92);
+}
+
+.room[data-active-district="client-operations"] .overheadLight {
+  transform: translate3d(-3%, 0, 0) scaleX(1.04);
+}
+
+.room[data-active-district="team-operations"] .overheadLight {
+  transform: translate3d(4%, 0, 0) scaleX(0.88);
+}
+
+.room[data-active-district="business-health"] .overheadLight {
+  opacity: 0.82;
+  transform: translate3d(9%, 0, 0) scaleX(1.08);
+}
+
+.room[data-active-district="evidence-archive"] .overheadLight {
+  opacity: 0.66;
+  transform: translate3d(2%, 0, 0) scaleX(0.78);
+}
+
+.room[data-active-district="kai-suite"] .overheadLight {
+  opacity: 0.94;
+  transform: translate3d(0, 0, 0) scaleX(0.72);
+}
+
+.room[data-active-district="growth-threshold"] .overheadLight {
+  opacity: 0.76;
+  transform: translate3d(7%, 0, 0) scaleX(1.12);
+}
+
+.room[data-active-district="central-command"] .horizon,
+.room[data-active-district="client-operations"] .horizon {
+  transform: translate3d(0, 0, 0) scaleX(0.72);
+}
+
+.room[data-active-district="team-operations"] .horizon,
+.room[data-active-district="business-health"] .horizon {
+  transform: translate3d(0, 5rem, 0) scaleX(0.88);
+}
+
+.room[data-active-district="evidence-archive"] .horizon,
+.room[data-active-district="kai-suite"] .horizon {
+  transform: translate3d(0, 9rem, 0) scaleX(0.58);
+}
+
+.room[data-active-district="growth-threshold"] .horizon {
+  transform: translate3d(0, 13rem, 0) scaleX(1);
 }
 
 .districtHeader {
@@ -3334,19 +3817,6 @@
   line-height: 1;
   outline: none;
   text-wrap: balance;
-}
-
-.room[data-scroll-ready="true"] .districtHeader {
-  opacity: 1;
-  transform: translate3d(0, 4px, 0);
-  transition:
-    opacity 240ms ease,
-    transform 300ms cubic-bezier(0.2, 0.74, 0.2, 1);
-}
-
-.room[data-scroll-ready="true"] .district[data-current="true"] .districtHeader {
-  opacity: 1;
-  transform: translate3d(0, 0, 0);
 }
 
 .districtTruth {
@@ -3409,6 +3879,19 @@
 .kaiContext button {
   padding: 0.6rem 0.9rem;
   white-space: nowrap;
+}
+
+.kaiContext .kaiBoundary {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  border: 1px solid var(--agency-line);
+  padding: 0.6rem 0.9rem;
+  color: var(--agency-dim);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  line-height: 1.4;
+  text-transform: uppercase;
 }
 
 .districtBody {
@@ -4024,7 +4507,7 @@
   color: var(--agency-muted);
 }
 
-/* Heartbeat 2.0: six disclosed, fixed channels. The whole instrument is
+/* Heartbeat 3.0: six disclosed, fixed channels. The whole instrument is
  * decorative and compositor-only; the semantic equivalent remains in District 02.
  */
 .facilityPulse {
@@ -4106,13 +4589,28 @@
 .room[data-arrival-settled="false"] .ambientSweep,
 .room[data-arrival-settled="false"] .roomBreath,
 .room[data-arrival-settled="false"] .flowTrack b,
+.room[data-arrival-settled="false"] .districtRail i,
 .room[data-arrival-settled="false"] .facilityPulse i,
+.room:not([data-cxos-motion="active"]) .flowTrack b,
+.room:not([data-cxos-motion="active"]) .districtRail i,
+.room:not([data-cxos-motion="active"]) .facilityPulse i,
+.room:not([data-cxos-motion="active"]) .districtEnvironment,
+.room:not([data-cxos-motion="active"]) .districtTruth::after,
+.room:not([data-cxos-motion="active"]) .districtBody > *,
 .room[data-hidden="true"] .facilityPulse i,
+.room[data-hidden="true"] .districtRail i,
+.room[data-hidden="true"] .districtEnvironment,
+.room[data-hidden="true"] .districtTruth::after,
+.room[data-hidden="true"] .districtBody > *,
 .room[data-departing="true"] .ambientSweep,
 .room[data-departing="true"] .roomBreath,
 .room[data-departing="true"] .flowTrack b,
-.room[data-departing="true"] .facilityPulse i {
-  animation-play-state: paused;
+.room[data-departing="true"] .districtRail i,
+.room[data-departing="true"] .facilityPulse i,
+.room[data-departing="true"] .districtEnvironment,
+.room[data-departing="true"] .districtTruth::after,
+.room[data-departing="true"] .districtBody > * {
+  animation-play-state: paused !important;
 }
 
 .room[data-hidden="true"] .arrivalThreshold *,
@@ -4125,7 +4623,12 @@
 .room[data-fixture="empty"] .facilityPulse i,
 .room[data-fixture="unavailable"] .facilityPulse i,
 .room[data-fixture="error"] .facilityPulse i,
-.room[data-fixture="permission"] .facilityPulse i {
+.room[data-fixture="permission"] .facilityPulse i,
+.room[data-fixture="loading"] .districtRail i,
+.room[data-fixture="empty"] .districtRail i,
+.room[data-fixture="unavailable"] .districtRail i,
+.room[data-fixture="error"] .districtRail i,
+.room[data-fixture="permission"] .districtRail i {
   animation: none;
   opacity: 0.3;
   transform: scaleY(0.28);
@@ -4139,6 +4642,27 @@
 .room[data-tier="C"] .facilityPulse,
 .room[data-tier="D"] .facilityPulse {
   display: none;
+}
+
+.room[data-tier="C"] .districtHeader,
+.room[data-tier="C"] .districtTruth,
+.room[data-tier="C"] .kaiContext,
+.room[data-tier="D"] .districtHeader,
+.room[data-tier="D"] .districtTruth,
+.room[data-tier="D"] .kaiContext {
+  transform: none;
+}
+
+.room[data-tier="C"] .districtEnvironment,
+.room[data-tier="D"] .districtEnvironment {
+  opacity: 0.38;
+  transform: none;
+}
+
+.room[data-tier="C"] .districtRail,
+.room[data-tier="D"] .districtRail {
+  opacity: 0.5;
+  transform: scaleY(1);
 }
 
 /* The exit compresses the headquarters back into Mission Control's cool axis. */
@@ -4187,6 +4711,83 @@
   scrollbar-gutter: stable;
 }
 
+@keyframes agencyDistrictTruthDraw {
+  from {
+    opacity: 0.24;
+    transform: scaleX(0.18);
+  }
+
+  to {
+    opacity: 0.9;
+    transform: scaleX(1);
+  }
+}
+
+@keyframes agencyDistrictOperatingMoment {
+  from {
+    transform: translate3d(0, 8px, 0);
+  }
+
+  to {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes agencyDistrictTravel {
+  0% {
+    opacity: 0.2;
+    transform: translate3d(0, 8px, 0);
+  }
+
+  42%,
+  58% {
+    opacity: 0.9;
+    transform: translate3d(0, 0, 0);
+  }
+
+  100% {
+    opacity: 0.22;
+    transform: translate3d(0, -8px, 0);
+  }
+}
+
+@media (min-width: 768px) and (pointer: fine) {
+  @supports (animation-timeline: view()) {
+    .room[data-arrival-settled="true"][data-tier="A"] .districtEnvironment,
+    .room[data-arrival-settled="true"][data-tier="B"] .districtEnvironment {
+      animation: agencyDistrictTravel linear both;
+      animation-timeline: view();
+      animation-range: entry 0% exit 100%;
+    }
+  }
+}
+
+@supports (animation-timeline: view()) {
+  .room[data-arrival-settled="true"][data-tier="A"] .districtTruth::after,
+  .room[data-arrival-settled="true"][data-tier="B"] .districtTruth::after {
+    animation: agencyDistrictTruthDraw linear both;
+    animation-timeline: view();
+    animation-range: entry 4% entry 46%;
+  }
+
+  .room[data-arrival-settled="true"][data-tier="A"] .districtBody > *,
+  .room[data-arrival-settled="true"][data-tier="B"] .districtBody > * {
+    animation: agencyDistrictOperatingMoment linear both;
+    animation-timeline: view();
+    animation-range: entry 6% entry 42%;
+  }
+
+  .room[data-arrival-settled="true"][data-tier="A"] .districtBody > :nth-child(2),
+  .room[data-arrival-settled="true"][data-tier="B"] .districtBody > :nth-child(2) {
+    animation-range: entry 12% entry 48%;
+  }
+
+  .room[data-arrival-settled="true"][data-tier="A"] .districtBody > :nth-child(n + 3),
+  .room[data-arrival-settled="true"][data-tier="B"] .districtBody > :nth-child(n + 3) {
+    animation-range: entry 18% entry 54%;
+  }
+}
+
 @keyframes agencyThresholdBeat {
   from {
     opacity: 0;
@@ -4196,6 +4797,18 @@
   to {
     opacity: 1;
     transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes agencyArrivalRecognition {
+  from {
+    opacity: 0;
+    transform: scaleX(0.08);
+  }
+
+  to {
+    opacity: 0.72;
+    transform: scaleX(1);
   }
 }
 
@@ -4371,7 +4984,13 @@
     border-right: 0;
   }
 
-  .arrivalThreshold .activationRail li:nth-last-child(-n + 2) {
+  .arrivalThreshold .activationRail li:nth-last-child(2) {
+    border-bottom: 1px solid var(--agency-line);
+  }
+
+  .arrivalThreshold .activationRail li:last-child {
+    grid-column: 1 / -1;
+    border-right: 0;
     border-bottom: 0;
   }
 
@@ -4421,15 +5040,20 @@
   .district {
     min-height: 0;
     scroll-margin-top: 0.75rem;
-    padding: 3.25rem 0;
+    padding-block: 3.25rem;
+    padding-inline: var(--agency-district-rail-gutter) 0.75rem;
   }
 
   .district[data-agency-district="central-command"] {
     min-height: 0;
   }
 
-  .district::before {
-    inset: 3.25rem auto 3.25rem 0;
+  .districtRail {
+    inset-block: 3.25rem;
+  }
+
+  .districtThreshold {
+    inset-inline: var(--agency-district-rail-gutter) 0.75rem;
   }
 
   .districtHeader,
@@ -4564,6 +5188,12 @@
     width: 100%;
   }
 
+  /* Context changes replace only deterministic suggestion copy. Reserve the
+   * measured two-line footprint so a longer label cannot move the Kai suite. */
+  .room .kaiSuggestions button {
+    min-block-size: 3.3rem;
+  }
+
   .kaiSuggestions > div {
     display: grid;
     grid-template-columns: 1fr;
@@ -4642,6 +5272,60 @@
 
   .archiveEvidenceList p {
     grid-column: 2;
+  }
+}
+
+@media (max-width: 260px) {
+  /* Practical 200% reflow leaves a 131px command column. Three lines is the
+   * largest reviewed fixture label, so every contextual slot reserves it. */
+  .room .kaiSuggestions button {
+    min-block-size: 4.3rem;
+  }
+
+  .arrivalThreshold .activationRail {
+    grid-template-columns: 1fr;
+  }
+
+  .arrivalThreshold .activationRail li,
+  .arrivalThreshold .activationRail li:nth-child(2n),
+  .arrivalThreshold .activationRail li:last-child {
+    grid-column: auto;
+    border-right: 0;
+    border-bottom: 1px solid var(--agency-line);
+  }
+
+  .arrivalThreshold .activationRail li:last-child {
+    border-bottom: 0;
+  }
+
+  .arrivalThreshold .activationRail strong,
+  .arrivalThreshold .activationRail small {
+    overflow-wrap: anywhere;
+  }
+
+  .districtThreshold {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .districtThreshold i,
+  .districtThreshold strong {
+    display: none;
+  }
+
+  .districtThreshold span {
+    overflow-wrap: anywhere;
+  }
+
+  .districtHeader h2,
+  .districtHeader > p,
+  .districtTruth p,
+  .kaiContext p,
+  .districtBody {
+    overflow-wrap: anywhere;
+  }
+
+  .footer .returnThreshold {
+    min-width: 0;
   }
 }
 

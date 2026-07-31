@@ -38,6 +38,7 @@ import {
   type AgencyFixtureState,
   type AgencyKaiResolution,
   type AgencyOperatingModel,
+  type AgencyPersonalization,
   type AgencyQueueItem,
   type AgencyQueueKind,
 } from "./fixtures";
@@ -52,11 +53,12 @@ interface KaiConversationTurn {
 }
 
 const AGENCY_ARRIVAL_BEATS = [
-  "origin-acknowledgment",
-  "authority-recognition",
-  "facility-acquisition",
-  "systems-online",
-  "kai-greeting",
+  "mission-control-origin",
+  "operator-authority",
+  "agency-identity",
+  "systems-readiness",
+  "kai-recognition",
+  "destination-acquisition",
   "command-settlement",
 ] as const;
 
@@ -65,6 +67,40 @@ const AGENCY_MOTION_CHANNELS = [
   "operational-sweep",
   "client-flow",
 ] as const;
+
+function resolveAgencyArrivalProjection(
+  state: AgencyFixtureState,
+  personalization: AgencyPersonalization
+) {
+  if (state === "populated" || state === "capacity") {
+    return {
+      greeting: personalization.greeting,
+      destination: personalization.recommendedDestination,
+      destinationLabel: "Recommended first destination",
+    } as const;
+  }
+
+  const boundaryGreetings: Record<AgencyFixtureState, string> = {
+    populated: personalization.greeting,
+    capacity: personalization.greeting,
+    loading:
+      "Agency Command is available in a held loading fixture. Source-backed operating facts remain unresolved.",
+    empty:
+      "Agency Command is ready in an empty synthetic fixture. No illustrative work is staged.",
+    unavailable:
+      "Agency Command is available at a source-unavailable boundary. No connected source is inferred.",
+    error:
+      "Agency Command is available in a held error fixture. No failed live system is implied.",
+    permission:
+      "Agency Command is unavailable because operator authority could not be projected. No agency identity is disclosed.",
+  };
+
+  return {
+    greeting: boundaryGreetings[state],
+    destination: "Central Command",
+    destinationLabel: "Review destination",
+  } as const;
+}
 
 const AGENCY_CORE_RUNTIME = {
   roomId: "agency-command",
@@ -119,6 +155,12 @@ export function AgencyCommandStage() {
   const kaiSubmitLockedRef = useRef(false);
   const kaiInputRef = useRef<HTMLInputElement>(null);
   const personalization = AGENCY_PERSONALIZATIONS[operatingModel];
+  const arrivalProjection = resolveAgencyArrivalProjection(
+    fixtureState,
+    personalization
+  );
+  const kaiWorkflowAvailable =
+    fixtureState === "populated" || fixtureState === "capacity";
 
   const clearKaiSession = useCallback(() => {
     setKaiCommand("");
@@ -138,11 +180,10 @@ export function AgencyCommandStage() {
     roomHeadingRef,
     observerKey: fixtureState,
     messages: {
-      staticArrival: `Agency Command is available in complete static form. ${personalization.greeting}`,
-      escapeArrival:
-        "Agency Command arrival skipped. The complete facility is available.",
+      staticArrival: `Complete static Agency Command projection. ${arrivalProjection.greeting}`,
+      escapeArrival: `Agency Command arrival skipped. ${arrivalProjection.greeting}`,
       departure:
-        "Return acknowledged. Agency instruments are receding toward Mission Control.",
+        "Return acknowledged. Kai confirms the review-route handoff to Mission Control; Agency instruments are receding.",
     },
     announce: setAnnouncement,
     onRouteReset: clearKaiSession,
@@ -165,6 +206,26 @@ export function AgencyCommandStage() {
     beginDeparture,
     completeDeparture,
   } = runtime;
+  const journeyCapable = resolution.tier === "A" || resolution.tier === "B";
+
+  useEffect(() => {
+    const closeDirectorOnEscape = (event: KeyboardEvent) => {
+      const director = directorRef.current;
+      if (event.key !== "Escape" || !director?.open) return;
+      const focusWasInside = director.contains(document.activeElement);
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      director.removeAttribute("open");
+      if (focusWasInside) {
+        directorSummaryRef.current?.focus({ preventScroll: true });
+      }
+      setAnnouncement("Director controls closed.");
+    };
+
+    window.addEventListener("keydown", closeDirectorOnEscape, true);
+    return () =>
+      window.removeEventListener("keydown", closeDirectorOnEscape, true);
+  }, []);
 
   useEffect(() => {
     if (capabilities.detectionFailed) return;
@@ -373,9 +434,12 @@ export function AgencyCommandStage() {
     );
   };
 
-  const stageKaiSuggestion = (suggestion: string) => {
-    if (activeDistrict !== "kai-suite") {
-      setKaiContextDistrict(activeDistrict);
+  const stageKaiSuggestion = (
+    suggestion: string,
+    sourceDistrict: AgencyDistrictId
+  ) => {
+    if (sourceDistrict !== "kai-suite") {
+      setKaiContextDistrict(sourceDistrict);
     }
     setKaiCommand(suggestion);
     setEditingKaiTurnId(null);
@@ -429,11 +493,20 @@ export function AgencyCommandStage() {
     if (arrivalSettled) return;
     settleRuntimeArrival({
       focus: { kind: "room" },
-      announcement: `Agency Command settled. ${personalization.greeting}`,
+      announcement: `Agency Command settled. ${arrivalProjection.greeting}`,
     });
   };
 
   const skipArrival = () => {
+    if (fixtureState === "permission") {
+      settleRuntimeArrival({
+        focus: { kind: "room" },
+        announcement:
+          "Agency Command arrival skipped. Operator authority could not be projected; no agency identity is disclosed.",
+      });
+      return;
+    }
+
     settleRuntimeArrival({
       focus: { kind: "district", districtId: "central-command" },
       announcement: "Agency Command arrival skipped. Central Command is ready.",
@@ -494,17 +567,6 @@ export function AgencyCommandStage() {
     event: React.AnimationEvent<HTMLDivElement>
   ) => {
     completeDeparture(event);
-  };
-
-  const handleDirectorKeyDown = (
-    event: React.KeyboardEvent<HTMLDetailsElement>
-  ) => {
-    if (event.key !== "Escape" || !directorRef.current?.open) return;
-    event.preventDefault();
-    event.stopPropagation();
-    directorRef.current.removeAttribute("open");
-    directorSummaryRef.current?.focus({ preventScroll: true });
-    setAnnouncement("Director controls closed.");
   };
 
   const fixtureLabel = stateLabel(fixtureState);
@@ -574,7 +636,8 @@ export function AgencyCommandStage() {
         className={styles.departureHandoff}
         onAnimationEnd={completeMissionControlReturn}
       >
-        <span>MISSION CONTROL</span>
+        <span>OPERATING STATE ACKNOWLEDGED</span>
+        <strong>KAI HANDOFF · MISSION CONTROL ACQUIRED</strong>
         <i />
       </div>
 
@@ -625,12 +688,13 @@ export function AgencyCommandStage() {
               <ActivationRail
                 state={fixtureState}
                 beatOrder={runtime.arrivalBeats}
+                recommendedDestination={arrivalProjection.destination}
               />
               <div className={styles.arrivalGreeting}>
                 <p>KAI EXECUTIVE CHANNEL · SYNTHETIC FIXTURE</p>
-                <strong>{personalization.greeting}</strong>
+                <strong>{arrivalProjection.greeting}</strong>
                 <span>
-                  Recommended first destination · {personalization.recommendedDestination}
+                  {arrivalProjection.destinationLabel} · {arrivalProjection.destination}
                 </span>
               </div>
             </>
@@ -675,7 +739,6 @@ export function AgencyCommandStage() {
         <details
           ref={directorRef}
           className={styles.director}
-          onKeyDown={handleDirectorKeyDown}
           onToggle={(event) => {
             if (event.currentTarget.open) {
               scrollCxosElementImmediately(event.currentTarget);
@@ -782,7 +845,7 @@ export function AgencyCommandStage() {
 
         {fixtureState !== "permission" && (
           <FacilityDirectory
-            activeDistrict={activeDistrict}
+            activeDistrict={journeyCapable ? activeDistrict : null}
             onNavigate={moveToDistrict}
           />
         )}
@@ -806,6 +869,8 @@ export function AgencyCommandStage() {
             <AgencyDistrictShell
               district={AGENCY_DISTRICTS[0]}
               activeDistrict={activeDistrict}
+              journeyActive={journeyCapable}
+              kaiAvailable={kaiWorkflowAvailable}
               onNavigate={moveToDistrict}
               onStageKai={stageKaiSuggestion}
             >
@@ -848,6 +913,8 @@ export function AgencyCommandStage() {
             <AgencyDistrictShell
               district={AGENCY_DISTRICTS[1]}
               activeDistrict={activeDistrict}
+              journeyActive={journeyCapable}
+              kaiAvailable={kaiWorkflowAvailable}
               onNavigate={moveToDistrict}
               onStageKai={stageKaiSuggestion}
             >
@@ -910,6 +977,8 @@ export function AgencyCommandStage() {
             <AgencyDistrictShell
               district={AGENCY_DISTRICTS[2]}
               activeDistrict={activeDistrict}
+              journeyActive={journeyCapable}
+              kaiAvailable={kaiWorkflowAvailable}
               onNavigate={moveToDistrict}
               onStageKai={stageKaiSuggestion}
             >
@@ -919,6 +988,8 @@ export function AgencyCommandStage() {
             <AgencyDistrictShell
               district={AGENCY_DISTRICTS[3]}
               activeDistrict={activeDistrict}
+              journeyActive={journeyCapable}
+              kaiAvailable={kaiWorkflowAvailable}
               onNavigate={moveToDistrict}
               onStageKai={stageKaiSuggestion}
             >
@@ -931,6 +1002,8 @@ export function AgencyCommandStage() {
             <AgencyDistrictShell
               district={AGENCY_DISTRICTS[4]}
               activeDistrict={activeDistrict}
+              journeyActive={journeyCapable}
+              kaiAvailable={kaiWorkflowAvailable}
               onNavigate={moveToDistrict}
               onStageKai={stageKaiSuggestion}
             >
@@ -950,6 +1023,8 @@ export function AgencyCommandStage() {
             <AgencyDistrictShell
               district={AGENCY_DISTRICTS[5]}
               activeDistrict={activeDistrict}
+              journeyActive={journeyCapable}
+              kaiAvailable={kaiWorkflowAvailable}
               onNavigate={moveToDistrict}
               onStageKai={stageKaiSuggestion}
             >
@@ -975,7 +1050,9 @@ export function AgencyCommandStage() {
                   }
                 }}
                 onSubmit={prepareKaiCommand}
-                onSuggestion={stageKaiSuggestion}
+                onSuggestion={(suggestion) =>
+                  stageKaiSuggestion(suggestion, kaiContextDistrict)
+                }
                 onRevise={reviseKaiTurn}
                 onCancel={cancelKaiTurn}
                 onClear={clearKaiCommand}
@@ -985,6 +1062,8 @@ export function AgencyCommandStage() {
             <AgencyDistrictShell
               district={AGENCY_DISTRICTS[6]}
               activeDistrict={activeDistrict}
+              journeyActive={journeyCapable}
+              kaiAvailable={kaiWorkflowAvailable}
               onNavigate={moveToDistrict}
               onStageKai={stageKaiSuggestion}
             >
@@ -1008,7 +1087,7 @@ export function AgencyCommandStage() {
                     href="/review/mission-control"
                     onClick={beginMissionControlReturn}
                   >
-                    <span>Operating state acknowledged · route session clears</span>
+                    <span>Kai confirms Mission Control handoff · route session clears</span>
                     <strong>Return to Mission Control</strong>
                   </a>
                 </nav>
@@ -1025,7 +1104,7 @@ function FacilityDirectory({
   activeDistrict,
   onNavigate,
 }: {
-  activeDistrict: AgencyDistrictId;
+  activeDistrict: AgencyDistrictId | null;
   onNavigate: (districtId: AgencyDistrictId) => void;
 }) {
   return (
@@ -1067,18 +1146,35 @@ function FacilityDirectory({
 function AgencyDistrictShell({
   district,
   activeDistrict,
+  journeyActive,
+  kaiAvailable,
   onNavigate,
   onStageKai,
   children,
 }: {
   district: AgencyDistrict;
   activeDistrict: AgencyDistrictId;
+  journeyActive: boolean;
+  kaiAvailable: boolean;
   onNavigate: (districtId: AgencyDistrictId) => void;
-  onStageKai: (suggestion: string) => void;
+  onStageKai: (
+    suggestion: string,
+    sourceDistrict: AgencyDistrictId
+  ) => void;
   children: React.ReactNode;
 }) {
   const districtIndex = AGENCY_DISTRICTS.findIndex((item) => item.id === district.id);
+  const activeDistrictIndex = AGENCY_DISTRICTS.findIndex(
+    (item) => item.id === activeDistrict
+  );
   const nextDistrict = AGENCY_DISTRICTS[districtIndex + 1];
+  const journeyState = !journeyActive
+    ? "static"
+    : districtIndex === activeDistrictIndex
+      ? "operating"
+      : districtIndex > activeDistrictIndex
+        ? "queued"
+        : "cleared";
 
   return (
     <section
@@ -1086,9 +1182,33 @@ function AgencyDistrictShell({
       className={styles.district}
       data-agency-district={district.id}
       data-cxos-district={district.id}
-      data-current={activeDistrict === district.id ? "true" : "false"}
+      data-current={journeyActive && activeDistrict === district.id ? "true" : "false"}
+      data-journey-state={journeyState}
       aria-labelledby={`${district.id}-heading`}
     >
+      <div
+        aria-hidden="true"
+        className={styles.districtEnvironment}
+        data-environment={district.id}
+      >
+        <span data-plane="depth" />
+        <span data-plane="horizon" />
+        <span data-plane="signal"><i /><b /><em /></span>
+      </div>
+      <div aria-hidden="true" className={styles.districtRail}>
+        <i />
+      </div>
+      <div aria-hidden="true" className={styles.districtThreshold}>
+        <span>THRESHOLD {district.index}</span>
+        <i />
+        <strong>
+          <span data-threshold-state="static">static</span>
+          <span data-threshold-state="queued">queued</span>
+          <span data-threshold-state="operating">operating</span>
+          <span data-threshold-state="cleared">cleared</span>
+        </strong>
+      </div>
+
       <header className={styles.districtHeader}>
         <div>
           <p>DISTRICT {district.index} / 07</p>
@@ -1110,9 +1230,18 @@ function AgencyDistrictShell({
             <span>KAI · CONTEXTUAL CHANNEL</span>
             <p>{district.kaiContext}</p>
           </div>
-          <button type="button" onClick={() => onStageKai(district.suggestions[0])}>
-            Stage with Kai
-          </button>
+          {kaiAvailable ? (
+            <button
+              type="button"
+              onClick={() => onStageKai(district.suggestions[0], district.id)}
+            >
+              Stage with Kai
+            </button>
+          ) : (
+            <span className={styles.kaiBoundary}>
+              Kai held · fixture boundary
+            </span>
+          )}
         </aside>
       )}
 
@@ -1220,7 +1349,7 @@ function InstrumentHeader({
   return (
     <div className={styles.instrumentHeader}>
       <p>{eyebrow}</p>
-      <h2 id={id}>{title}</h2>
+      <h3 id={id}>{title}</h3>
     </div>
   );
 }
@@ -1228,44 +1357,54 @@ function InstrumentHeader({
 function ActivationRail({
   state,
   beatOrder,
+  recommendedDestination,
 }: {
   state: AgencyFixtureState;
   beatOrder: readonly string[];
+  recommendedDestination: string;
 }) {
   const steps: Record<string, readonly [label: string, detail: string]> =
-    state === "loading"
+    state !== "populated" && state !== "capacity"
       ? {
-          "origin-acknowledgment": [
+          "mission-control-origin": [
             "Origin acknowledged",
             "Mission Control transfer",
           ],
-          "authority-recognition": [
+          "operator-authority": [
             "Authority recognized",
             "Synthetic operator only",
           ],
-          "facility-acquisition": [
-            "Facility acquisition",
-            "Fixture scope unresolved",
+          "agency-identity": [
+            "Agency identity bounded",
+            "Synthetic fixture only",
           ],
-          "systems-online": ["Systems held", "No occupancy inferred"],
-          "kai-greeting": ["Kai channel held", "Awaiting displayed sources"],
+          "systems-readiness": ["Systems held", "No live state inferred"],
+          "kai-recognition": ["Kai channel held", "No action connected"],
+          "destination-acquisition": [
+            "Destination acquired",
+            `${recommendedDestination} available`,
+          ],
           "command-settlement": [
             "Command settlement",
             "Complete static state available",
           ],
         }
       : {
-          "origin-acknowledgment": [
+          "mission-control-origin": [
             "Origin acknowledged",
             "Mission Control transfer",
           ],
-          "authority-recognition": [
+          "operator-authority": [
             "Authority recognized",
             "Synthetic operator only",
           ],
-          "facility-acquisition": ["Facility acquired", "Agency scope resolved"],
-          "systems-online": ["Systems online", "Fixed horizon and ledgers"],
-          "kai-greeting": ["Kai greeting", "Deterministic channel ready"],
+          "agency-identity": ["Agency identified", "Agency scope resolved"],
+          "systems-readiness": ["Systems ready", "Fixed horizon and ledgers"],
+          "kai-recognition": ["Kai recognized", "Deterministic channel ready"],
+          "destination-acquisition": [
+            "Destination acquired",
+            `${recommendedDestination} next`,
+          ],
           "command-settlement": [
             "Command settled",
             "Seven districts available",
@@ -1364,7 +1503,7 @@ function OperationalHeartbeat({
       <div className={styles.sectionHeading}>
         <div>
           <p className={styles.stationIndex}>OPERATING HEARTBEAT</p>
-          <h2 id="heartbeat-heading">The agency is breathing</h2>
+          <h3 id="heartbeat-heading">The agency is breathing</h3>
         </div>
         <p>FIXED CHOREOGRAPHY · VALUES NEVER CHANGE</p>
       </div>
@@ -1858,7 +1997,7 @@ function LoadingState() {
   return (
     <section className={styles.loadingState} aria-labelledby="loading-heading">
       <p className={styles.stationIndex}>MANUALLY HELD FIXTURE</p>
-      <h2 id="loading-heading">Command ledgers are resolving</h2>
+      <h3 id="loading-heading">Command ledgers are resolving</h3>
       <p role="status">
         Loading remains visible until the Founder selects another fixture state.
         No spinner, countdown, request, or simulated completion runs.
@@ -1881,7 +2020,7 @@ function EmptyState({
   return (
     <section className={styles.emptyState} aria-labelledby="empty-heading">
       <p className={styles.stationIndex}>FIRST WORKSPACE</p>
-      <h2 id="empty-heading">No illustrative work is staged</h2>
+      <h3 id="empty-heading">No illustrative work is staged</h3>
       <p>
         This design specimen shows a proposed first-workspace presentation:
         portfolio row, source-coverage receipt, and review queue. No Phase 6
@@ -1930,7 +2069,7 @@ function PriorityQueue({
       <div className={styles.sectionHeading}>
         <div>
           <p className={styles.stationIndex}>COMMAND LEDGER 01</p>
-          <h2 id="queue-heading">Priority work queue</h2>
+          <h3 id="queue-heading">Priority work queue</h3>
         </div>
         <p>SYNTHETIC TASK RECORDS · DISPLAY-STATE CONTROLS ONLY</p>
       </div>
@@ -2023,7 +2162,7 @@ function PortfolioLedger({
       <div className={styles.sectionHeading}>
         <div>
           <p className={styles.stationIndex}>COMMAND LEDGER 02</p>
-          <h2 id="portfolio-heading">Client portfolio ledger</h2>
+          <h3 id="portfolio-heading">Client portfolio ledger</h3>
         </div>
         <p>ILLUSTRATIVE WORKSPACES · NO CUSTOMER DATA</p>
       </div>

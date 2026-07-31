@@ -101,6 +101,7 @@ for (const [label, candidate] of invalidDefinitions) {
 
 const desktop = {
   ...CONSERVATIVE_CXOS_RUNTIME_CAPABILITIES,
+  intersectionObserver: true,
   detectionFailed: false,
 };
 const mobile = { ...desktop, mobile: true };
@@ -108,6 +109,7 @@ const coarse = { ...desktop, coarsePointer: true };
 const reduced = { ...desktop, browserReduced: true };
 const saveData = { ...desktop, saveData: true };
 const lowMemory = { ...desktop, lowMemory: true };
+const missingDistrictObservation = { ...desktop, intersectionObserver: false };
 
 check(
   "desktop Auto resolves Tier A",
@@ -119,9 +121,11 @@ check(
     resolveCxosRuntimeProjection("auto", coarse, false).tier === "B",
 );
 check(
-  "Data Saver, low memory, and detection failure resolve Tier C",
+  "Data Saver, low memory, missing district observation, and detection failure resolve Tier C",
   resolveCxosRuntimeProjection("auto", saveData, false).tier === "C" &&
     resolveCxosRuntimeProjection("auto", lowMemory, false).tier === "C" &&
+    resolveCxosRuntimeProjection("auto", missingDistrictObservation, false)
+      .tier === "C" &&
     resolveCxosRuntimeProjection(
       "auto",
       CONSERVATIVE_CXOS_RUNTIME_CAPABILITIES,
@@ -322,6 +326,8 @@ check(
     /query\.addListener\(listener\)/.test(adapter) &&
     /query\.removeListener\(listener\)/.test(adapter) &&
     /setCapabilities\(CONSERVATIVE_CXOS_RUNTIME_CAPABILITIES\)/.test(adapter) &&
+    /typeof window\.IntersectionObserver === "function"/.test(adapter) &&
+    /intersectionObserver: false/.test(adapter) &&
     /addEventListener\("visibilitychange", update\)/.test(adapter) &&
     /removeEventListener\("visibilitychange", update\)/.test(adapter) &&
     /addEventListener\("keydown", skipOnEscape\)/.test(adapter) &&

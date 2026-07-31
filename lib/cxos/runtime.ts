@@ -34,6 +34,7 @@ export interface CxosRuntimeCapabilities {
   lowMemory: boolean;
   mobile: boolean;
   coarsePointer: boolean;
+  intersectionObserver: boolean;
   detectionFailed: boolean;
 }
 
@@ -43,6 +44,7 @@ export const CONSERVATIVE_CXOS_RUNTIME_CAPABILITIES: CxosRuntimeCapabilities = {
   lowMemory: false,
   mobile: false,
   coarsePointer: false,
+  intersectionObserver: false,
   detectionFailed: true,
 };
 
@@ -184,7 +186,10 @@ export function resolveCxosRuntimeProjection(
   contractValid = true,
 ): CxosProjectionResolution {
   const constrained =
-    capabilities.detectionFailed || capabilities.saveData || capabilities.lowMemory;
+    capabilities.detectionFailed ||
+    capabilities.saveData ||
+    capabilities.lowMemory ||
+    !capabilities.intersectionObserver;
 
   if (!contractValid) {
     return {
@@ -211,7 +216,9 @@ export function resolveCxosRuntimeProjection(
         ? "Capability detection failed safely"
         : capabilities.saveData
           ? "Data Saver keeps the review conservative"
-          : "Low-memory safety keeps the review conservative",
+          : capabilities.lowMemory
+            ? "Low-memory safety keeps the review conservative"
+            : "District observation is unavailable; the room remains static",
       cinematicAvailable: false,
       static: true,
     };
