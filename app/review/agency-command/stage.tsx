@@ -3,30 +3,40 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import styles from "./agency-command.module.css";
 import {
+  AGENCY_AUTHORIZED_SOURCES,
   AGENCY_BOTTLENECKS,
+  AGENCY_DISTRICTS,
   AGENCY_EVIDENCE_FIELD,
   AGENCY_FIXTURE_STATES,
   AGENCY_HEARTBEAT_SIGNALS,
   AGENCY_HEALTH_DRIVERS,
-  AGENCY_KAI_NOTE_SEED,
-  AGENCY_KAI_WORKFLOWS,
+  AGENCY_KAI_NO_ACTION_RECEIPT,
+  AGENCY_PERSONALIZATIONS,
   AGENCY_PORTFOLIO,
   AGENCY_QUEUE,
   AGENCY_QUEUE_FILTERS,
   AGENCY_TEAM_SPECIMEN,
   AGENCY_WORKLOAD_FIELD,
+  resolveAgencyKaiIntent,
+  type AgencyDistrict,
+  type AgencyDistrictId,
   type AgencyFixtureState,
+  type AgencyKaiResolution,
+  type AgencyOperatingModel,
   type AgencyQueueItem,
   type AgencyQueueKind,
-  type KaiWorkflowId,
 } from "./fixtures";
 
 type ExperienceProjection = "auto" | "cinematic" | "static";
-type OperatingModel = "solo" | "team";
 type ExperienceTier = "A" | "B" | "C" | "D";
 type QueueFilter = "all" | AgencyQueueKind;
 
-const DEFAULT_KAI_WORKFLOW: KaiWorkflowId = "activity-summary";
+interface KaiConversationTurn {
+  id: string;
+  command: string;
+  districtId: AgencyDistrictId;
+  resolution: AgencyKaiResolution;
+}
 
 interface ReviewCapabilities {
   browserReduced: boolean;
@@ -171,11 +181,22 @@ function scrollWindowImmediately(top: number, left = 0) {
   });
 }
 
+function scrollElementImmediately(element: HTMLElement) {
+  const scrollMarginTop = Number.parseFloat(
+    window.getComputedStyle(element).scrollMarginTop
+  );
+  const top =
+    window.scrollY +
+    element.getBoundingClientRect().top -
+    (Number.isFinite(scrollMarginTop) ? scrollMarginTop : 0);
+  scrollWindowImmediately(Math.max(0, top));
+}
+
 export function AgencyCommandStage() {
   const [projection, setProjection] =
     useState<ExperienceProjection>("auto");
   const [operatingModel, setOperatingModel] =
-    useState<OperatingModel>("solo");
+    useState<AgencyOperatingModel>("solo");
   const [fixtureState, setFixtureState] =
     useState<AgencyFixtureState>("populated");
   const [queueFilter, setQueueFilter] = useState<QueueFilter>("all");
@@ -183,11 +204,16 @@ export function AgencyCommandStage() {
   const [intakeOpen, setIntakeOpen] = useState(false);
   const [arrivalKey, setArrivalKey] = useState(0);
   const [arrivalSettled, setArrivalSettled] = useState(false);
-  const [activeKaiWorkflow, setActiveKaiWorkflow] =
-    useState<KaiWorkflowId>(DEFAULT_KAI_WORKFLOW);
-  const [preparedKaiWorkflow, setPreparedKaiWorkflow] =
-    useState<KaiWorkflowId | null>(DEFAULT_KAI_WORKFLOW);
-  const [kaiNoteDraft, setKaiNoteDraft] = useState(AGENCY_KAI_NOTE_SEED);
+  const [activeDistrict, setActiveDistrict] =
+    useState<AgencyDistrictId>("central-command");
+  const [kaiContextDistrict, setKaiContextDistrict] =
+    useState<AgencyDistrictId>("central-command");
+  const [kaiCommand, setKaiCommand] = useState("");
+  const [kaiTurns, setKaiTurns] = useState<KaiConversationTurn[]>([]);
+  const [editingKaiTurnId, setEditingKaiTurnId] = useState<string | null>(null);
+  const [kaiCommandReceipt, setKaiCommandReceipt] = useState(
+    "ROUTE SESSION EMPTY · Nothing is prepared and no production action is connected."
+  );
   const [departing, setDeparting] = useState(false);
   const [capabilities, setCapabilities] = useState<ReviewCapabilities>(
     CONSERVATIVE_CAPABILITIES
@@ -195,6 +221,7 @@ export function AgencyCommandStage() {
   const [reducedMotionOverride, setReducedMotionOverride] = useState(false);
   const [cinematicPromptOpen, setCinematicPromptOpen] = useState(false);
   const [documentHidden, setDocumentHidden] = useState(false);
+  const [capabilitiesReady, setCapabilitiesReady] = useState(false);
   const [announcement, setAnnouncement] = useState(
     "Agency Command synthetic review loaded."
   );
@@ -208,9 +235,17 @@ export function AgencyCommandStage() {
   const previousReducedMotionRef = useRef<boolean | null>(null);
   const departureCommittedRef = useRef(false);
   const returnFallbackRef = useRef<number | null>(null);
+  const kaiTurnSequenceRef = useRef(0);
+  const kaiSubmitLockedRef = useRef(false);
+  const kaiInputRef = useRef<HTMLInputElement>(null);
+  const staticArrivalFocusRef = useRef(false);
 
   useEffect(() => {
-    const update = () => setCapabilities(readReviewCapabilities());
+    scrollWindowImmediately(0);
+    const update = () => {
+      setCapabilities(readReviewCapabilities());
+      setCapabilitiesReady(true);
+    };
     const media = [
       window.matchMedia("(prefers-reduced-motion: reduce)"),
       window.matchMedia("(max-width: 767px)"),
@@ -228,6 +263,28 @@ export function AgencyCommandStage() {
     update();
     document.addEventListener("visibilitychange", update);
     return () => document.removeEventListener("visibilitychange", update);
+  }, []);
+
+  useEffect(() => {
+    const clearRouteState = () => {
+      setKaiCommand("");
+      setKaiTurns([]);
+      setEditingKaiTurnId(null);
+      setKaiCommandReceipt(
+        "ROUTE SESSION EMPTY · Nothing is prepared and no production action is connected."
+      );
+      kaiTurnSequenceRef.current = 0;
+    };
+    const clearRestoredRouteState = (event: PageTransitionEvent) => {
+      if (!event.persisted) return;
+      clearRouteState();
+    };
+    window.addEventListener("pagehide", clearRouteState);
+    window.addEventListener("pageshow", clearRestoredRouteState);
+    return () => {
+      window.removeEventListener("pagehide", clearRouteState);
+      window.removeEventListener("pageshow", clearRestoredRouteState);
+    };
   }, []);
 
   useEffect(
@@ -281,6 +338,89 @@ export function AgencyCommandStage() {
       ),
     [capabilities, projection, reducedMotionOverride]
   );
+  const personalization = AGENCY_PERSONALIZATIONS[operatingModel];
+
+  useEffect(() => {
+    if (!capabilitiesReady || arrivalSettled) return;
+    if (resolution.tier === "C" || resolution.tier === "D") {
+      setArrivalSettled(true);
+      if (!staticArrivalFocusRef.current) {
+        staticArrivalFocusRef.current = true;
+        window.requestAnimationFrame(() => {
+          roomHeadingRef.current?.focus({ preventScroll: true });
+          setAnnouncement(
+            `Agency Command is available in complete static form. ${personalization.greeting}`
+          );
+        });
+      }
+    }
+  }, [arrivalSettled, capabilitiesReady, personalization.greeting, resolution.tier]);
+
+  useEffect(() => {
+    if (arrivalSettled) return;
+    const skipOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      setArrivalSettled(true);
+      window.requestAnimationFrame(() => {
+        roomHeadingRef.current?.focus({ preventScroll: true });
+        setAnnouncement("Agency Command arrival skipped. The complete facility is available.");
+      });
+    };
+    window.addEventListener("keydown", skipOnEscape);
+    return () => window.removeEventListener("keydown", skipOnEscape);
+  }, [arrivalSettled]);
+
+  useEffect(() => {
+    if (!arrivalSettled) return;
+    const visibility = new Map<AgencyDistrictId, number>();
+    const sections = Array.from(
+      document.querySelectorAll<HTMLElement>("[data-agency-district]")
+    );
+    if (sections.length === 0 || typeof IntersectionObserver === "undefined") {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          const id = entry.target.getAttribute(
+            "data-agency-district"
+          ) as AgencyDistrictId | null;
+          if (!id) return;
+          visibility.set(id, entry.isIntersecting ? entry.intersectionRatio : 0);
+        });
+
+        let next: AgencyDistrictId | null = null;
+        let bestRatio = 0;
+        AGENCY_DISTRICTS.forEach((district) => {
+          const ratio = visibility.get(district.id) ?? 0;
+          if (ratio > bestRatio) {
+            next = district.id;
+            bestRatio = ratio;
+          }
+        });
+        const resolvedNext = next;
+        if (resolvedNext) {
+          setActiveDistrict((current) =>
+            current === resolvedNext ? current : resolvedNext
+          );
+        }
+      },
+      {
+        rootMargin: "-18% 0px -56% 0px",
+        threshold: [0, 0.01, 0.08, 0.24, 0.5],
+      }
+    );
+
+    sections.forEach((section) => observer.observe(section));
+    return () => observer.disconnect();
+  }, [arrivalSettled, fixtureState]);
+
+  useEffect(() => {
+    if (activeDistrict !== "kai-suite") {
+      setKaiContextDistrict(activeDistrict);
+    }
+  }, [activeDistrict]);
 
   useEffect(() => {
     if (resolution.tier !== "D") return;
@@ -317,7 +457,6 @@ export function AgencyCommandStage() {
       : fixtureState === "empty"
         ? { active: 0, limit: 15 }
         : { active: 12, limit: 15 };
-
   const visibleQueue = useMemo(() => {
     const source =
       fixtureState === "unavailable" || fixtureState === "error"
@@ -390,8 +529,19 @@ export function AgencyCommandStage() {
     );
   };
 
-  const applyOperatingModel = (next: OperatingModel) => {
+  const clearKaiSession = () => {
+    setKaiCommand("");
+    setKaiTurns([]);
+    setEditingKaiTurnId(null);
+    setKaiCommandReceipt(
+      "ROUTE SESSION EMPTY · Nothing is prepared and no production action is connected."
+    );
+    kaiTurnSequenceRef.current = 0;
+  };
+
+  const applyOperatingModel = (next: AgencyOperatingModel) => {
     setOperatingModel(next);
+    clearKaiSession();
     closeDirectorAndRestoreFocus(
       next === "team"
         ? "Synthetic Team Specimen selected."
@@ -404,45 +554,107 @@ export function AgencyCommandStage() {
     setQueueFilter("all");
     setExpandedQueueId(null);
     setIntakeOpen(false);
-    setActiveKaiWorkflow(DEFAULT_KAI_WORKFLOW);
-    setPreparedKaiWorkflow(DEFAULT_KAI_WORKFLOW);
-    setKaiNoteDraft(AGENCY_KAI_NOTE_SEED);
+    clearKaiSession();
     closeDirectorAndRestoreFocus(`${stateLabel(next)} fixture state selected.`);
   };
 
-  const selectKaiWorkflow = (next: KaiWorkflowId) => {
-    setActiveKaiWorkflow(next);
-    setPreparedKaiWorkflow(null);
-    const workflow = AGENCY_KAI_WORKFLOWS.find((item) => item.id === next);
+  const prepareKaiCommand = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (kaiSubmitLockedRef.current) return;
+    kaiSubmitLockedRef.current = true;
+    window.requestAnimationFrame(() => {
+      kaiSubmitLockedRef.current = false;
+    });
+    const sourceCommand = kaiCommand.slice(0, 240);
+    const resolutionResult = resolveAgencyKaiIntent(sourceCommand);
+    if (resolutionResult.status === "empty") {
+      setAnnouncement("Enter one supported synthetic fixture command.");
+      kaiInputRef.current?.focus();
+      return;
+    }
+
+    const nextTurn: KaiConversationTurn = {
+      id:
+        editingKaiTurnId ??
+        `kai-turn-${String(++kaiTurnSequenceRef.current).padStart(2, "0")}`,
+      command: sourceCommand.trim(),
+      districtId: kaiContextDistrict,
+      resolution: resolutionResult,
+    };
+    setKaiTurns((current) => {
+      const withoutEdited = editingKaiTurnId
+        ? current.filter((turn) => turn.id !== editingKaiTurnId)
+        : current;
+      return [...withoutEdited, nextTurn].slice(-8);
+    });
+    setKaiCommand("");
+    setEditingKaiTurnId(null);
+    setKaiCommandReceipt(
+      resolutionResult.status === "supported"
+        ? `PREVIEW PREPARED · ${AGENCY_KAI_NO_ACTION_RECEIPT}`
+        : `NOT PREPARED · ${AGENCY_KAI_NO_ACTION_RECEIPT}`
+    );
     setAnnouncement(
-      `${workflow?.label ?? next} synthetic workflow selected. No action has been prepared or saved.`
+      resolutionResult.status === "supported"
+        ? `${resolutionResult.headline} matched locally. ${AGENCY_KAI_NO_ACTION_RECEIPT}`
+        : `Request not prepared. ${AGENCY_KAI_NO_ACTION_RECEIPT}`
     );
   };
 
-  const prepareKaiWorkflow = () => {
-    setPreparedKaiWorkflow(activeKaiWorkflow);
-    const workflow = AGENCY_KAI_WORKFLOWS.find(
-      (item) => item.id === activeKaiWorkflow
+  const reviseKaiTurn = (turn: KaiConversationTurn) => {
+    setKaiTurns((current) => current.filter((item) => item.id !== turn.id));
+    setEditingKaiTurnId(turn.id);
+    setKaiCommand(turn.command);
+    setKaiCommandReceipt(
+      `COMMAND REVISED · The prior synthetic preview was cleared. Prepare again. ${AGENCY_KAI_NO_ACTION_RECEIPT}`
     );
+    window.requestAnimationFrame(() => kaiInputRef.current?.focus());
     setAnnouncement(
-      `${workflow?.label ?? activeKaiWorkflow} preview prepared. Nothing was saved, sent, scheduled, assigned, or changed.`
-    );
-  };
-
-  const updateKaiNoteDraft = (value: string) => {
-    setKaiNoteDraft(value);
-    setPreparedKaiWorkflow(null);
-    setAnnouncement(
-      "Synthetic note draft changed in this route instance. Nothing was saved."
+      `Command revised. The prior synthetic preview was cleared. ${AGENCY_KAI_NO_ACTION_RECEIPT}`
     );
   };
 
-  const resetKaiWorkbench = () => {
-    setActiveKaiWorkflow(DEFAULT_KAI_WORKFLOW);
-    setPreparedKaiWorkflow(DEFAULT_KAI_WORKFLOW);
-    setKaiNoteDraft(AGENCY_KAI_NOTE_SEED);
+  const cancelKaiTurn = (id: string) => {
+    setKaiTurns((current) => current.filter((turn) => turn.id !== id));
+    setKaiCommandReceipt(
+      `PREVIEW CANCELED · The route-local preview was cleared. ${AGENCY_KAI_NO_ACTION_RECEIPT}`
+    );
     setAnnouncement(
-      "Synthetic Kai workbench reset to the deterministic activity summary."
+      `Preview canceled. The route-local preview was cleared. ${AGENCY_KAI_NO_ACTION_RECEIPT}`
+    );
+  };
+
+  const clearKaiCommand = () => {
+    clearKaiSession();
+    setKaiCommandReceipt(
+      `COMMAND CLEARED · Command text and previews were removed from this page. ${AGENCY_KAI_NO_ACTION_RECEIPT}`
+    );
+    setAnnouncement(
+      `Command cleared. Command text and previews were removed from this page. ${AGENCY_KAI_NO_ACTION_RECEIPT}`
+    );
+  };
+
+  const moveToDistrict = (districtId: AgencyDistrictId) => {
+    setActiveDistrict(districtId);
+    const heading = document.getElementById(`${districtId}-heading`);
+    const district = document.getElementById(districtId);
+    heading?.focus({ preventScroll: true });
+    if (district) scrollElementImmediately(district);
+  };
+
+  const stageKaiSuggestion = (suggestion: string) => {
+    if (activeDistrict !== "kai-suite") {
+      setKaiContextDistrict(activeDistrict);
+    }
+    setKaiCommand(suggestion);
+    setEditingKaiTurnId(null);
+    setKaiCommandReceipt(
+      `COMMAND STAGED · Prepare the fixed local preview. ${AGENCY_KAI_NO_ACTION_RECEIPT}`
+    );
+    moveToDistrict("kai-suite");
+    window.requestAnimationFrame(() => kaiInputRef.current?.focus());
+    setAnnouncement(
+      "Contextual synthetic command staged. Prepare the preview to run the fixed local match."
     );
   };
 
@@ -488,6 +700,29 @@ export function AgencyCommandStage() {
     if (!arrivalSettled) setArrivalSettled(true);
   };
 
+  const completeArrival = () => {
+    settleArrival();
+    window.requestAnimationFrame(() => {
+      roomHeadingRef.current?.focus({ preventScroll: true });
+      setAnnouncement(
+        `Agency Command settled. ${personalization.greeting}`
+      );
+    });
+  };
+
+  const skipArrival = () => {
+    settleArrival();
+    window.requestAnimationFrame(() => {
+      const heading = document.getElementById("central-command-heading");
+      const district = document.getElementById("central-command");
+      heading?.focus({ preventScroll: true });
+      if (district) scrollElementImmediately(district);
+      setAnnouncement(
+        "Agency Command arrival skipped. Central Command is ready."
+      );
+    });
+  };
+
   const focusResponseQueue = () => {
     setQueueFilter("responses");
     setExpandedQueueId("response-014");
@@ -518,9 +753,7 @@ export function AgencyCommandStage() {
     setFixtureState("populated");
     setQueueFilter("all");
     setExpandedQueueId(null);
-    setActiveKaiWorkflow(DEFAULT_KAI_WORKFLOW);
-    setPreparedKaiWorkflow(DEFAULT_KAI_WORKFLOW);
-    setKaiNoteDraft(AGENCY_KAI_NOTE_SEED);
+    clearKaiSession();
     closeDirectorAndRestoreFocus("Populated synthetic fixture restored.");
   };
 
@@ -537,8 +770,19 @@ export function AgencyCommandStage() {
   const beginMissionControlReturn = (
     event: React.MouseEvent<HTMLAnchorElement>
   ) => {
+    if (
+      event.button !== 0 ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey
+    ) {
+      return;
+    }
+    clearKaiSession();
     if (resolution.tier === "C" || resolution.tier === "D") return;
     event.preventDefault();
+    if (departureCommittedRef.current) return;
     departureCommittedRef.current = true;
     setDeparting(true);
     directorRef.current?.removeAttribute("open");
@@ -599,19 +843,29 @@ export function AgencyCommandStage() {
       data-hidden={documentHidden ? "true" : "false"}
       data-departing={departing ? "true" : "false"}
       data-arrival-settled={arrivalSettled ? "true" : "false"}
+      data-active-district={activeDistrict}
+      data-scroll-ready={
+        arrivalSettled && (resolution.tier === "A" || resolution.tier === "B")
+          ? "true"
+          : "false"
+      }
       data-motion-override={
         reducedMotionOverride && projection === "cinematic" ? "true" : "false"
       }
-      onKeyDown={settleArrival}
-      onPointerDown={settleArrival}
-      onTouchStart={settleArrival}
-      onWheel={settleArrival}
     >
       <div aria-hidden className={styles.gridField} />
       <div aria-hidden className={styles.overheadLight} />
       <div aria-hidden className={styles.horizon} />
       <div aria-hidden className={styles.ambientSweep} />
       <div aria-hidden className={styles.roomBreath} />
+      <div aria-hidden className={styles.facilityPulse}>
+        <span data-channel="capacity"><i /></span>
+        <span data-channel="client-flow"><i /></span>
+        <span data-channel="queue-pressure"><i /></span>
+        <span data-channel="evidence"><i /></span>
+        <span data-channel="bottleneck"><i /></span>
+        <span data-channel="kai"><i /></span>
+      </div>
       <div
         aria-hidden
         className={styles.departureHandoff}
@@ -626,55 +880,79 @@ export function AgencyCommandStage() {
       </p>
 
       <div key={arrivalKey} className={styles.arrival}>
-        <div
-          aria-hidden
-          className={styles.arrivalClock}
-          onAnimationEnd={settleArrival}
-        />
-        <header className={styles.identity}>
-          <div>
-            <p className={styles.eyebrow}>
-              Founder Review · CXOS Phase 6.1
-            </p>
-            <h1
-              ref={roomHeadingRef}
-              tabIndex={-1}
-              className={styles.roomTitle}
-            >
-              Agency Command
-            </h1>
-            {fixtureState !== "permission" && (
-              <p className={styles.identityLine}>
-                Founder review agency ·{" "}
-                {operatingModel === "solo"
-                  ? "Solo Agency projection"
-                  : "Team Specimen projection"}{" "}
-                ·{" "}
-                {fixtureState === "loading"
-                  ? "capacity unresolved"
-                  : `${capacity.active} / ${capacity.limit} illustrative workspaces`}
+        <section className={styles.arrivalThreshold} aria-labelledby="agency-command-title">
+          <div
+            aria-hidden
+            className={styles.arrivalClock}
+            onAnimationEnd={completeArrival}
+          />
+          <p className={styles.arrivalOrigin}>
+            MISSION CONTROL ORIGIN · FACILITY TRANSFER · AGENCY COMMAND
+          </p>
+          <header className={styles.identity}>
+            <div>
+              <p className={styles.eyebrow}>
+                Founder Review · CXOS Phase 6.2
               </p>
-            )}
+              <h1
+                id="agency-command-title"
+                ref={roomHeadingRef}
+                tabIndex={-1}
+                className={styles.roomTitle}
+              >
+                Agency Command
+              </h1>
+              {fixtureState !== "permission" && (
+                <p className={styles.identityLine}>
+                  {personalization.operatorRole} · {personalization.agencyName} ·{" "}
+                  {fixtureState === "loading"
+                    ? "capacity unresolved"
+                    : `${capacity.active} / ${capacity.limit} illustrative positions`}
+                </p>
+              )}
+            </div>
+            <div className={styles.reviewIdentity}>
+              <span>FACILITY 06</span>
+              <span>AGENCY HEADQUARTERS</span>
+            </div>
+          </header>
+
+          {fixtureState !== "permission" ? (
+            <>
+              <ActivationRail state={fixtureState} />
+              <div className={styles.arrivalGreeting}>
+                <p>KAI EXECUTIVE CHANNEL · SYNTHETIC FIXTURE</p>
+                <strong>{personalization.greeting}</strong>
+                <span>
+                  Recommended first destination · {personalization.recommendedDestination}
+                </span>
+              </div>
+            </>
+          ) : (
+            <p className={styles.arrivalBoundary}>
+              Authority could not be projected. No agency identity or operating metadata is shown.
+            </p>
+          )}
+
+          <div className={styles.arrivalActions}>
+            <button type="button" onClick={skipArrival}>
+              Skip arrival
+            </button>
+            <span>Escape also settles the complete static facility.</span>
           </div>
-          <div className={styles.reviewIdentity}>
-            <span>FACILITY 06</span>
-            <span>AGENCY OPERATIONS</span>
-          </div>
-        </header>
+        </section>
 
         <div className={styles.disclosure} role="note">
           <strong>SYNTHETIC FOUNDER REVIEW</strong>
           <span>
-            Illustrative data only. No customer records, live agency operations,
-            billing, revenue, legal deadlines, or automated actions are
-            connected.
+            Illustrative deterministic data only. No customer records, live AI,
+            Agency APIs, billing, revenue, legal deadlines, command-text
+            persistence, or automated actions are connected to this review
+            surface.
           </span>
         </div>
 
-        <section
-          className={styles.stateBand}
-          aria-labelledby="fixture-state-heading"
-        >
+        <section className={styles.stateBand} aria-labelledby="fixture-state-heading">
           <h2
             id="fixture-state-heading"
             ref={stateHeadingRef}
@@ -684,24 +962,44 @@ export function AgencyCommandStage() {
             Fixture state · {fixtureLabel}
           </h2>
           <p>
-            Director controls change this display only. They do not change a
-            browser setting, customer record, subscription, or product state.
+            Director controls alter only this deterministic projection. Browser,
+            customer, subscription, and production state remain unchanged.
           </p>
         </section>
 
         {fixtureState !== "permission" && (
-          <ActivationRail state={fixtureState} />
+          <FacilityDirectory
+            activeDistrict={activeDistrict}
+            onNavigate={moveToDistrict}
+          />
         )}
 
         {fixtureState === "permission" ? (
-          <PermissionState />
+          <>
+            <PermissionState />
+            <footer className={styles.footer}>
+              <p>
+                Permission-denied fixture · no agency identity or operating data
+                is disclosed.
+              </p>
+              <nav aria-label="Founder review navigation">
+                <a href="/review">All rooms</a>
+                <a href="/review/mission-control">Return to Mission Control</a>
+              </nav>
+            </footer>
+          </>
         ) : (
           <>
-            <section
-              className={styles.commandWall}
-              aria-label="Agency operating wall"
-              aria-busy={fixtureState === "loading"}
+            <AgencyDistrictShell
+              district={AGENCY_DISTRICTS[0]}
+              activeDistrict={activeDistrict}
+              onNavigate={moveToDistrict}
+              onStageKai={stageKaiSuggestion}
             >
+              <PersonalizationProjection
+                personalization={personalization}
+                fixtureState={fixtureState}
+              />
               <article
                 className={styles.kaiBrief}
                 aria-labelledby="kai-brief-heading"
@@ -724,26 +1022,27 @@ export function AgencyCommandStage() {
                   advice.
                 </p>
               </article>
+              <div className={styles.centralCondition}>
+                <span>AGENCY CONDITION</span>
+                <strong>{healthStatus}</strong>
+                <p>{personalization.priorityCondition}</p>
+                <small>
+                  Fixed fixture interpretation · not a financial-health assessment.
+                </small>
+              </div>
+            </AgencyDistrictShell>
 
+            <AgencyDistrictShell
+              district={AGENCY_DISTRICTS[1]}
+              activeDistrict={activeDistrict}
+              onNavigate={moveToDistrict}
+              onStageKai={stageKaiSuggestion}
+            >
               <OperationalHeartbeat
                 state={fixtureState}
                 active={capacity.active}
                 limit={capacity.limit}
               />
-
-              {(fixtureState === "populated" ||
-                fixtureState === "capacity") && (
-                <KaiOperatingDesk
-                  activeWorkflow={activeKaiWorkflow}
-                  preparedWorkflow={preparedKaiWorkflow}
-                  noteDraft={kaiNoteDraft}
-                  onSelect={selectKaiWorkflow}
-                  onPrepare={prepareKaiWorkflow}
-                  onReset={resetKaiWorkbench}
-                  onNoteChange={updateKaiNoteDraft}
-                />
-              )}
-
               {fixtureState === "loading" ? (
                 <LoadingState />
               ) : fixtureState === "empty" ? (
@@ -793,121 +1092,117 @@ export function AgencyCommandStage() {
                   />
                 </>
               )}
+            </AgencyDistrictShell>
 
-              <aside
-                className={styles.healthBank}
-                aria-labelledby="agency-health-heading"
-              >
-                <InstrumentHeader
-                  eyebrow="SYNTHETIC FIXTURE"
-                  title="Agency health"
-                  id="agency-health-heading"
-                />
-                <p className={styles.healthState}>{healthStatus}</p>
-                {fixtureState === "loading" ? (
-                  <StaticSkeleton rows={4} />
-                ) : (
-                  <dl className={styles.driverList}>
-                    {AGENCY_HEALTH_DRIVERS[fixtureState].map((driver) => (
-                      <div key={driver.label}>
-                        <dt>{driver.label}</dt>
-                        <dd>
-                          <span>{driver.value}</span>
-                          <small>{driver.note}</small>
-                        </dd>
-                      </div>
-                    ))}
-                  </dl>
-                )}
-                <p className={styles.instrumentFootnote}>
-                  Qualitative review specimen. No production scoring formula,
-                  financial-health assessment, or compliance certification.
-                </p>
-              </aside>
+            <AgencyDistrictShell
+              district={AGENCY_DISTRICTS[2]}
+              activeDistrict={activeDistrict}
+              onNavigate={moveToDistrict}
+              onStageKai={stageKaiSuggestion}
+            >
+              <TeamOperationsRoom operatingModel={operatingModel} />
+            </AgencyDistrictShell>
 
-              <aside
-                className={styles.scopeBank}
-                aria-labelledby="portfolio-scope-heading"
-              >
-                <InstrumentHeader
-                  eyebrow="ILLUSTRATIVE SCOPE"
-                  title="Portfolio scope"
-                  id="portfolio-scope-heading"
-                />
-                {fixtureState === "loading" ? (
-                  <StaticSkeleton rows={4} />
-                ) : (
-                  <dl className={styles.scopeList}>
-                    <div>
-                      <dt>Aggregate workspaces</dt>
-                      <dd>{capacity.active}</dd>
-                    </div>
-                    <div>
-                      <dt>Portfolio rows shown</dt>
-                      <dd>{visiblePortfolio.length}</dd>
-                    </div>
-                    <div>
-                      <dt>Capacity remaining</dt>
-                      <dd>{Math.max(0, capacity.limit - capacity.active)}</dd>
-                    </div>
-                    <div>
-                      <dt>Coverage</dt>
-                      <dd>
-                        {fixtureState === "unavailable"
-                          ? "2 of 5 · partial"
-                          : fixtureState === "error"
-                            ? "2 of 5 · preserved"
-                            : fixtureState === "empty"
-                              ? "0 of 0 · empty"
-                              : "5 of 5 · specimen"}
-                      </dd>
-                    </div>
-                  </dl>
-                )}
-                {fixtureState === "capacity" && (
-                  <p className={styles.capacityNotice}>
-                    Capacity specimen reached. Existing illustrative work remains
-                    available; synthetic intake is disabled.
-                  </p>
-                )}
-                <CapacityHorizon
-                  active={capacity.active}
-                  limit={capacity.limit}
-                  state={fixtureState}
-                />
-              </aside>
-            </section>
+            <AgencyDistrictShell
+              district={AGENCY_DISTRICTS[3]}
+              activeDistrict={activeDistrict}
+              onNavigate={moveToDistrict}
+              onStageKai={stageKaiSuggestion}
+            >
+              <div className={styles.observatoryGrid}>
+                <AgencyHealthBank state={fixtureState} healthStatus={healthStatus} />
+                <BusinessSignals />
+              </div>
+            </AgencyDistrictShell>
 
-            {fixtureState !== "loading" && fixtureState !== "empty" && (
-              <>
+            <AgencyDistrictShell
+              district={AGENCY_DISTRICTS[4]}
+              activeDistrict={activeDistrict}
+              onNavigate={moveToDistrict}
+              onStageKai={stageKaiSuggestion}
+            >
+              {fixtureState === "loading" ? (
+                <ArchiveBoundaryState state="loading" />
+              ) : fixtureState === "empty" ? (
+                <ArchiveBoundaryState state="empty" />
+              ) : (
                 <PortfolioLedger
                   items={visiblePortfolio}
                   capacityReached={fixtureState === "capacity"}
                 />
+              )}
+              <EvidenceArchive state={fixtureState} />
+            </AgencyDistrictShell>
 
-                <OperationsStation operatingModel={operatingModel} />
-              </>
-            )}
+            <AgencyDistrictShell
+              district={AGENCY_DISTRICTS[5]}
+              activeDistrict={activeDistrict}
+              onNavigate={moveToDistrict}
+              onStageKai={stageKaiSuggestion}
+            >
+              <KaiExecutiveSuite
+                enabled={fixtureState === "populated" || fixtureState === "capacity"}
+                command={kaiCommand}
+                turns={kaiTurns}
+                editingTurnId={editingKaiTurnId}
+                commandReceipt={kaiCommandReceipt}
+                inputRef={kaiInputRef}
+                suggestions={AGENCY_DISTRICTS.find(
+                  (district) => district.id === kaiContextDistrict
+                )?.suggestions ?? AGENCY_DISTRICTS[5].suggestions}
+                onCommandChange={(value) => {
+                  setKaiCommand(value);
+                  if (editingKaiTurnId) {
+                    setKaiCommandReceipt(
+                      `COMMAND REVISED · The prior synthetic preview remains cleared. Prepare again. ${AGENCY_KAI_NO_ACTION_RECEIPT}`
+                    );
+                    setAnnouncement(
+                      `Command revised. Prepare again to match the revised text. ${AGENCY_KAI_NO_ACTION_RECEIPT}`
+                    );
+                  }
+                }}
+                onSubmit={prepareKaiCommand}
+                onSuggestion={stageKaiSuggestion}
+                onRevise={reviseKaiTurn}
+                onCancel={cancelKaiTurn}
+                onClear={clearKaiCommand}
+              />
+            </AgencyDistrictShell>
+
+            <AgencyDistrictShell
+              district={AGENCY_DISTRICTS[6]}
+              activeDistrict={activeDistrict}
+              onNavigate={moveToDistrict}
+              onStageKai={stageKaiSuggestion}
+            >
+              <AgencyScopeBank
+                state={fixtureState}
+                active={capacity.active}
+                limit={capacity.limit}
+                portfolioRows={visiblePortfolio.length}
+              />
+              <AuthorizedSourceMap />
+              <footer className={styles.footer}>
+                <p>
+                  Phase 6.2 is presentation-only. The live <code>/agency</code>{" "}
+                  surface and its APIs are unchanged. Returning clears this
+                  route-local Kai session.
+                </p>
+                <nav aria-label="Founder review navigation">
+                  <a href="/review" onClick={clearKaiSession}>All rooms</a>
+                  <a
+                    className={styles.returnThreshold}
+                    href="/review/mission-control"
+                    onClick={beginMissionControlReturn}
+                  >
+                    <span>Operating state acknowledged · route session clears</span>
+                    <strong>Return to Mission Control</strong>
+                  </a>
+                </nav>
+              </footer>
+            </AgencyDistrictShell>
           </>
         )}
-
-        <footer className={styles.footer}>
-          <p>
-            Phase 6.1 source is presentation-only. The live{" "}
-            <code>/agency</code> surface and its APIs are unchanged.
-          </p>
-          <nav aria-label="Founder review navigation">
-            <a href="/review">All rooms</a>
-            <a
-              className={styles.returnThreshold}
-              href="/review/mission-control"
-              onClick={beginMissionControlReturn}
-            >
-              <span>Return handoff</span>
-              <strong>Mission Control</strong>
-            </a>
-          </nav>
-        </footer>
       </div>
 
       <details
@@ -1006,12 +1301,190 @@ export function AgencyCommandStage() {
             type="button"
             className={styles.replay}
             onClick={replayArrival}
+            disabled={departing}
           >
-            Replay room settle
+            Replay grand arrival
           </button>
         </div>
       </details>
     </main>
+  );
+}
+
+function FacilityDirectory({
+  activeDistrict,
+  onNavigate,
+}: {
+  activeDistrict: AgencyDistrictId;
+  onNavigate: (districtId: AgencyDistrictId) => void;
+}) {
+  return (
+    <nav className={styles.facilityDirectory} aria-label="Agency Command facility map">
+      <div className={styles.directoryAxis}>
+        <span>MISSION CONTROL</span>
+        <strong>AGENCY COMMAND · 7 DISTRICTS</strong>
+      </div>
+      <ol>
+        {AGENCY_DISTRICTS.map((district) => (
+          <li key={district.id} data-current={activeDistrict === district.id ? "true" : "false"}>
+            <a
+              href={`#${district.id}`}
+              aria-current={activeDistrict === district.id ? "location" : undefined}
+              onClick={(event) => {
+                if (
+                  event.button !== 0 ||
+                  event.metaKey ||
+                  event.ctrlKey ||
+                  event.shiftKey ||
+                  event.altKey
+                ) {
+                  return;
+                }
+                event.preventDefault();
+                onNavigate(district.id);
+              }}
+            >
+              <span>{district.index}</span>
+              <strong>{district.shortName}</strong>
+            </a>
+          </li>
+        ))}
+      </ol>
+    </nav>
+  );
+}
+
+function AgencyDistrictShell({
+  district,
+  activeDistrict,
+  onNavigate,
+  onStageKai,
+  children,
+}: {
+  district: AgencyDistrict;
+  activeDistrict: AgencyDistrictId;
+  onNavigate: (districtId: AgencyDistrictId) => void;
+  onStageKai: (suggestion: string) => void;
+  children: React.ReactNode;
+}) {
+  const districtIndex = AGENCY_DISTRICTS.findIndex((item) => item.id === district.id);
+  const nextDistrict = AGENCY_DISTRICTS[districtIndex + 1];
+
+  return (
+    <section
+      id={district.id}
+      className={styles.district}
+      data-agency-district={district.id}
+      data-current={activeDistrict === district.id ? "true" : "false"}
+      aria-labelledby={`${district.id}-heading`}
+    >
+      <header className={styles.districtHeader}>
+        <div>
+          <p>DISTRICT {district.index} / 07</p>
+          <h2 id={`${district.id}-heading`} tabIndex={-1}>
+            {district.name}
+          </h2>
+        </div>
+        <p>{district.purpose}</p>
+      </header>
+
+      <div className={styles.districtTruth} role="note">
+        <span>TRUTH BOUNDARY</span>
+        <p>{district.truthBoundary}</p>
+      </div>
+
+      {district.id !== "kai-suite" && (
+        <aside className={styles.kaiContext} aria-label={`Kai context for ${district.name}`}>
+          <div>
+            <span>KAI · CONTEXTUAL CHANNEL</span>
+            <p>{district.kaiContext}</p>
+          </div>
+          <button type="button" onClick={() => onStageKai(district.suggestions[0])}>
+            Stage with Kai
+          </button>
+        </aside>
+      )}
+
+      <div className={styles.districtBody}>{children}</div>
+
+      <nav className={styles.districtHandoff} aria-label={`${district.name} facility navigation`}>
+        {district.id !== "central-command" && (
+          <a
+            href="#central-command"
+            onClick={(event) => {
+              event.preventDefault();
+              onNavigate("central-command");
+            }}
+          >
+            Return to Central Command
+          </a>
+        )}
+        {nextDistrict && (
+          <a
+            href={`#${nextDistrict.id}`}
+            onClick={(event) => {
+              event.preventDefault();
+              onNavigate(nextDistrict.id);
+            }}
+          >
+            Continue to {nextDistrict.name}
+          </a>
+        )}
+      </nav>
+    </section>
+  );
+}
+
+function PersonalizationProjection({
+  personalization,
+  fixtureState,
+}: {
+  personalization: (typeof AGENCY_PERSONALIZATIONS)[AgencyOperatingModel];
+  fixtureState: AgencyFixtureState;
+}) {
+  const capacityCondition =
+    fixtureState === "loading"
+      ? "Unresolved · no occupancy inferred"
+      : fixtureState === "empty"
+        ? "0 of 15 illustrative positions occupied"
+        : fixtureState === "capacity"
+          ? "15 of 15 illustrative positions occupied"
+          : personalization.capacityCondition;
+
+  return (
+    <article className={styles.personalizationProjection} aria-labelledby="personalization-heading">
+      <div>
+        <p>DETERMINISTIC OPERATOR PROJECTION</p>
+        <h3 id="personalization-heading">{personalization.agencyName}</h3>
+        <span>SYNTHETIC · NOT AUTH / NOT CUSTOMER DATA</span>
+      </div>
+      <dl>
+        <div>
+          <dt>Operator</dt>
+          <dd>{personalization.operatorDisplay} · {personalization.operatorRole}</dd>
+        </div>
+        <div>
+          <dt>Agency</dt>
+          <dd>{personalization.agencyType}</dd>
+        </div>
+        <div>
+          <dt>Tier</dt>
+          <dd>{personalization.agencyTier}</dd>
+        </div>
+        <div>
+          <dt>Capacity</dt>
+          <dd>{capacityCondition}</dd>
+        </div>
+        <div>
+          <dt>Scope</dt>
+          <dd>{fixtureState === "loading" ? "Unresolved fixture scope" : personalization.displayedWorkspaces}</dd>
+        </div>
+        <div>
+          <dt>Emphasis</dt>
+          <dd>{personalization.recommendedDestination}</dd>
+        </div>
+      </dl>
+    </article>
   );
 }
 
@@ -1045,24 +1518,26 @@ function ActivationRail({ state }: { state: AgencyFixtureState }) {
   const steps =
     state === "loading"
       ? [
-          ["01", "Review identity set", "Synthetic agency scope"],
-          ["02", "Fixture sources unresolved", "No live connection"],
-          ["03", "Capacity horizon held", "No occupancy inferred"],
-          ["04", "Ledgers held", "No records asserted"],
-          ["05", "Kai fixture held", "Awaiting displayed sources"],
+          ["01", "Origin acknowledged", "Mission Control transfer"],
+          ["02", "Authority recognized", "Synthetic operator only"],
+          ["03", "Facility acquisition", "Fixture scope unresolved"],
+          ["04", "Systems held", "No occupancy inferred"],
+          ["05", "Kai channel held", "Awaiting displayed sources"],
+          ["06", "Command settlement", "Complete static state available"],
         ]
       : [
-    ["01", "Review identity set", "Synthetic agency scope"],
-    ["02", "Fixture sources present", "No live connection"],
-    ["03", "Capacity horizon formed", "Fixed aggregate"],
-    ["04", "Ledgers ready", "Five displayed records"],
-    ["05", "Kai fixture ready", "Route-instance only"],
+          ["01", "Origin acknowledged", "Mission Control transfer"],
+          ["02", "Authority recognized", "Synthetic operator only"],
+          ["03", "Facility acquired", "Agency scope resolved"],
+          ["04", "Systems online", "Fixed horizon and ledgers"],
+          ["05", "Kai greeting", "Deterministic channel ready"],
+          ["06", "Command settled", "Seven districts available"],
         ];
 
   return (
     <ol
       className={styles.activationRail}
-      aria-label="Agency Command settled activation sequence"
+      aria-label="Agency Command arrival sequence"
     >
       {steps.map(([index, label, detail]) => (
         <li key={index}>
@@ -1327,168 +1802,199 @@ function OperationalHeartbeat({
   );
 }
 
-function KaiOperatingDesk({
-  activeWorkflow,
-  preparedWorkflow,
-  noteDraft,
-  onSelect,
-  onPrepare,
-  onReset,
-  onNoteChange,
+function KaiExecutiveSuite({
+  enabled,
+  command,
+  turns,
+  editingTurnId,
+  commandReceipt,
+  inputRef,
+  suggestions,
+  onCommandChange,
+  onSubmit,
+  onSuggestion,
+  onRevise,
+  onCancel,
+  onClear,
 }: {
-  activeWorkflow: KaiWorkflowId;
-  preparedWorkflow: KaiWorkflowId | null;
-  noteDraft: string;
-  onSelect: (next: KaiWorkflowId) => void;
-  onPrepare: () => void;
-  onReset: () => void;
-  onNoteChange: (value: string) => void;
+  enabled: boolean;
+  command: string;
+  turns: KaiConversationTurn[];
+  editingTurnId: string | null;
+  commandReceipt: string;
+  inputRef: React.RefObject<HTMLInputElement>;
+  suggestions: readonly string[];
+  onCommandChange: (value: string) => void;
+  onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
+  onSuggestion: (suggestion: string) => void;
+  onRevise: (turn: KaiConversationTurn) => void;
+  onCancel: (id: string) => void;
+  onClear: () => void;
 }) {
-  const workflow =
-    AGENCY_KAI_WORKFLOWS.find((item) => item.id === activeWorkflow) ??
-    AGENCY_KAI_WORKFLOWS[0];
-  const prepared = preparedWorkflow === activeWorkflow;
-  const atBaseline =
-    activeWorkflow === DEFAULT_KAI_WORKFLOW &&
-    preparedWorkflow === DEFAULT_KAI_WORKFLOW &&
-    noteDraft === AGENCY_KAI_NOTE_SEED;
-
   return (
-    <section
-      className={styles.kaiDesk}
-      aria-labelledby="kai-operating-heading"
-    >
+    <section className={styles.kaiDesk} aria-labelledby="kai-operating-heading">
       <div className={styles.sectionHeading}>
         <div>
-          <p className={styles.stationIndex}>KAI OPERATING PRESENCE</p>
-          <h2 id="kai-operating-heading">Executive delegation console</h2>
+          <p className={styles.stationIndex}>KAI EXECUTIVE RUNTIME EXPERIENCE</p>
+          <h3 id="kai-operating-heading">One continuous executive channel</h3>
         </div>
-        <p>LOCAL SYNTHETIC PREVIEWS · OPERATOR RETAINS CONTROL</p>
+        <p>FIXED LOCAL MATCHING · OPERATOR RETAINS CONTROL</p>
       </div>
 
       <div className={styles.kaiPresenceRail}>
-        <span>MODE · SYNTHETIC</span>
-        <span>SOURCES · FIXTURE LEDGERS</span>
-        <span>PERSISTENCE · OFF</span>
-        <span>PRODUCTION WRITES · 0</span>
+        <span>COMMAND PROCESSING · LOCAL / NO MODEL</span>
+        <span>SOURCES · FICTIONAL FIXTURES</span>
+        <span>COMMAND DATA PERSISTENCE · OFF</span>
+        <span>COMMAND-SURFACE PRODUCTION WRITES · 0</span>
       </div>
 
       <div className={styles.kaiWorkbenchDisclosure} role="note">
-        <strong>SYNTHETIC KAI WORKBENCH · ROUTE-INSTANCE ONLY</strong>
+        <strong>SYNTHETIC COMMAND PREVIEW · DETERMINISTIC AND ROUTE-LOCAL</strong>
         <p>
-          Every option below uses deterministic fictional fixtures. Selections
-          and draft text remain only in this open page and are discarded on
-          refresh or exit. This interface does not save notes, create reminders
-          or tasks, write calendars, change customer records, contact anyone, or
-          trigger production action. Do not enter real customer information.
+          This command surface matches only a fixed set of fictional fixture
+          commands. No live AI or model reads this text. It does not call an
+          Agency API, save command text, create notes, reminders, or tasks, write
+          a calendar, contact anyone, or change a customer record. Command text
+          and previews are discarded on refresh or exit. Do not enter real
+          customer information.
         </p>
       </div>
 
-      <div className={styles.kaiWorkbench}>
-        <fieldset className={styles.workflowSelector}>
-          <legend>Delegate a synthetic workflow</legend>
-          <div>
-            {AGENCY_KAI_WORKFLOWS.map((option) => (
-              <button
-                key={option.id}
-                type="button"
-                aria-pressed={activeWorkflow === option.id}
-                aria-controls="kai-workflow-preview"
-                onClick={() => onSelect(option.id)}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-        </fieldset>
-
-        <article
-          id="kai-workflow-preview"
-          className={styles.workflowPreview}
-          aria-labelledby="kai-workflow-heading"
-        >
-          <p className={styles.workflowClassification}>
-            {workflow.classification}
+      <form className={styles.kaiCommandForm} onSubmit={onSubmit}>
+        <label htmlFor="kai-synthetic-command">
+          Type one synthetic fixture command
+        </label>
+        <span className={styles.kaiCommandMode}>
+          FIXED SYNTHETIC EXAMPLES ONLY · NOT OPEN-ENDED AI
+        </span>
+        <div>
+          <input
+            ref={inputRef}
+            id="kai-synthetic-command"
+            type="text"
+            value={command}
+            maxLength={240}
+            autoComplete="off"
+            spellCheck={false}
+            disabled={!enabled}
+            aria-describedby="kai-command-boundary"
+            placeholder="Ask Kai to handle something…"
+            onChange={(event) => onCommandChange(event.target.value)}
+          />
+          <button type="submit" disabled={!enabled || command.trim().length === 0}>
+            {editingTurnId ? "Prepare revised preview" : "Prepare synthetic preview"}
+          </button>
+        </div>
+        <small id="kai-command-boundary">
+          Use only displayed synthetic client labels. Do not enter names, account
+          numbers, report text, or real customer information. This fixed parser
+          does not understand open-ended requests. {command.length} / 240.
+        </small>
+        {!enabled && (
+          <p className={styles.kaiDisabledBoundary} role="status">
+            The command surface is held in this fixture state. Select Populated or
+            Capacity reached to review deterministic matching.
           </p>
-          <h3 id="kai-workflow-heading">{workflow.label}</h3>
-          <p className={styles.workflowPurpose}>{workflow.purpose}</p>
-          <dl className={styles.workflowSources}>
-            <div>
-              <dt>Fixture sources</dt>
-              <dd>{workflow.sources}</dd>
-            </div>
-            <div>
-              <dt>Authority</dt>
-              <dd>Preview only · operator review required</dd>
-            </div>
-          </dl>
+        )}
+      </form>
 
-          {activeWorkflow === "note-taking" && (
-            <div className={styles.noteDraft}>
-              <label htmlFor="kai-synthetic-note">
-                Synthetic operator note
-              </label>
-              <textarea
-                id="kai-synthetic-note"
-                aria-describedby="kai-synthetic-note-boundary"
-                value={noteDraft}
-                maxLength={280}
-                spellCheck={false}
-                autoComplete="off"
-                onChange={(event) => onNoteChange(event.target.value)}
-              />
-              <small id="kai-synthetic-note-boundary">
-                Fixture text only · {noteDraft.length} / 280 · do not enter real
-                customer information.
-              </small>
-            </div>
-          )}
+      <p className={styles.kaiRouteReceipt} role="status">
+        {commandReceipt}
+      </p>
 
-          <div className={styles.workflowActions}>
-            <button
-              type="button"
-              onClick={onPrepare}
-              disabled={prepared}
-            >
-              {prepared ? "Preview prepared" : workflow.actionLabel}
+      <div className={styles.kaiSuggestions}>
+        <p>Contextual fixture examples</p>
+        <div>
+          {suggestions.map((suggestion) => (
+            <button key={suggestion} type="button" disabled={!enabled} onClick={() => onSuggestion(suggestion)}>
+              {suggestion}
             </button>
-            <button type="button" onClick={onReset} disabled={atBaseline}>
-              {atBaseline ? "Workbench at baseline" : "Reset workbench"}
-            </button>
-          </div>
-
-          <div
-            className={styles.preparedArtifact}
-            data-prepared={prepared ? "true" : "false"}
-          >
-            {prepared ? (
-              <>
-                <p>PREPARED SYNTHETIC ARTIFACT</p>
-                {activeWorkflow === "note-taking" ? (
-                  <blockquote>{noteDraft}</blockquote>
-                ) : (
-                  <ul>
-                    {workflow.previewLines.map((line) => (
-                      <li key={line}>{line}</li>
-                    ))}
-                  </ul>
-                )}
-                <p className={styles.workflowReceipt}>{workflow.receipt}</p>
-                <strong>
-                  PREVIEW PREPARED · Nothing was saved, sent, scheduled, assigned,
-                  or changed. Kai recommends; the operator reviews. Educational
-                  information, not legal advice.
-                </strong>
-              </>
-            ) : (
-              <p>
-                READY TO PREPARE · Review the fixture sources and activate the
-                preview control. No external action is available.
-              </p>
-            )}
-          </div>
-        </article>
+          ))}
+        </div>
       </div>
+
+      <div className={styles.kaiConversation} aria-label="Route-local Kai preview continuity">
+        {turns.length === 0 ? (
+          <div className={styles.kaiConversationEmpty}>
+            <strong>READY · NOTHING PREPARED</strong>
+            <p>
+              Submit one supported fixture command. No default intent, hidden
+              action, model call, or production connection is active.
+            </p>
+          </div>
+        ) : (
+          <ol>
+            {turns.map((turn) => {
+              const district = AGENCY_DISTRICTS.find((item) => item.id === turn.districtId);
+              const supported = turn.resolution.status === "supported";
+              const noteDraft = turn.resolution.workflowId === "note-taking";
+              return (
+                <li key={turn.id} data-result={turn.resolution.status}>
+                  <div className={styles.kaiOperatorCommand}>
+                    <span>OPERATOR · ROUTE-LOCAL INPUT</span>
+                    <p>{turn.command}</p>
+                    <small>Context · {district?.name ?? "Agency Command"}</small>
+                  </div>
+                  <article className={styles.kaiResponse}>
+                    <p className={styles.workflowClassification}>
+                      {supported
+                        ? `MATCHED LOCALLY · ${turn.resolution.workflowId?.replaceAll("-", " ").toUpperCase()} · ${turn.resolution.classification}`
+                        : `NOT PREPARED · ${turn.resolution.classification}`}
+                    </p>
+                    <h4>{turn.resolution.headline}</h4>
+                    {noteDraft && (
+                      <p className={styles.operatorDraftLabel}>
+                        OPERATOR DRAFT · USER-ENTERED · NOT VERIFIED BY KAI
+                      </p>
+                    )}
+                    <p>
+                      {supported
+                        ? "This fixed command matched one fixture intent. No model or external service was used."
+                        : "No synthetic artifact was prepared."}
+                    </p>
+                    <ul>
+                      {turn.resolution.responseLines.map((line) => (
+                        <li key={line}>{line}</li>
+                      ))}
+                    </ul>
+                    <dl className={styles.workflowSources}>
+                      <div>
+                        <dt>Fixture sources</dt>
+                        <dd>{turn.resolution.sources}</dd>
+                      </div>
+                      <div>
+                        <dt>Authority</dt>
+                        <dd>Preview only · operator review and decision required</dd>
+                      </div>
+                    </dl>
+                    <strong className={styles.workflowReceipt}>
+                      {supported
+                        ? "PREVIEW PREPARED · Matched locally to deterministic fictional fixtures. No live AI/model or external service was used."
+                        : "NOT PREPARED · The fixed local parser produced no artifact and used no live AI/model or external service."}{" "}
+                      {turn.resolution.receipt} Kai recommends; the operator reviews
+                      and decides. Educational information, not legal advice.
+                    </strong>
+                    <div className={styles.workflowActions}>
+                      <button type="button" onClick={() => onRevise(turn)}>
+                        Revise command
+                      </button>
+                      <button type="button" onClick={() => onCancel(turn.id)}>
+                        Cancel synthetic preview
+                      </button>
+                    </div>
+                  </article>
+                </li>
+              );
+            })}
+          </ol>
+        )}
+      </div>
+
+      {(turns.length > 0 || command.length > 0) && (
+        <button type="button" className={styles.clearKaiSession} onClick={onClear}>
+          Clear route-local Kai session
+        </button>
+      )}
     </section>
   );
 }
@@ -1832,90 +2338,259 @@ function PortfolioLedger({
   );
 }
 
-function OperationsStation({
+function TeamOperationsRoom({
   operatingModel,
 }: {
-  operatingModel: OperatingModel;
+  operatingModel: AgencyOperatingModel;
 }) {
   return (
     <section
       className={styles.operationsStation}
-      aria-labelledby="operations-heading"
+      aria-labelledby="team-load-heading"
     >
       <div className={styles.sectionHeading}>
         <div>
-          <p className={styles.stationIndex}>OPERATING HORIZON</p>
-          <h2 id="operations-heading">Team load and business signals</h2>
+          <p className={styles.stationIndex}>TEAM COVERAGE HORIZON</p>
+          <h3 id="team-load-heading">Roles, workload, and availability</h3>
         </div>
-        <p>UNCONNECTED CAPABILITIES STAY UNCONNECTED</p>
+        <p>SOLO TRUTH · TEAM SPECIMEN · NO LIVE PRESENCE</p>
       </div>
 
-      <div className={styles.operationsGrid}>
-        <article aria-labelledby="team-load-heading">
-          <p className={styles.miniEyebrow}>TEAM LOAD</p>
-          <h3 id="team-load-heading">
-            {operatingModel === "solo"
-              ? "Unavailable in Solo Agency"
-              : "Synthetic Team Specimen"}
-          </h3>
-          {operatingModel === "solo" ? (
-            <div className={styles.unavailablePanel}>
-              <strong>NOT CONNECTED</strong>
-              <p>
-                Solo operator projection. No assignment, invitation, role, staff
-                seat, presence, or workload system is being simulated.
-              </p>
-            </div>
-          ) : (
-            <>
-              <p className={styles.teamDisclosure}>
-                SYNTHETIC TEAM PROJECTION · NOT A LIVE CAPABILITY
-              </p>
-              <ul className={styles.teamList}>
-                {AGENCY_TEAM_SPECIMEN.map((seat) => (
-                  <li key={seat.id}>
-                    <div>
-                      <strong>{seat.role}</strong>
-                      <span>{seat.note}</span>
-                    </div>
-                    <div>
-                      <span>{seat.assigned}</span>
-                      <strong>{seat.load}</strong>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
-        </article>
-
-        <article aria-labelledby="business-signals-heading">
-          <p className={styles.miniEyebrow}>BUSINESS SIGNALS</p>
-          <h3 id="business-signals-heading">Coverage before claims</h3>
-          <dl className={styles.businessList}>
-            <div>
-              <dt>Client-service revenue</dt>
-              <dd>Not instrumented</dd>
-            </div>
-            <div>
-              <dt>Agency billing</dt>
-              <dd>Not connected to this prototype</dd>
-            </div>
-            <div>
-              <dt>Activity history</dt>
-              <dd>Fixture only · not an audit trail</dd>
-            </div>
-            <div>
-              <dt>Automated actions</dt>
-              <dd>None</dd>
-            </div>
-          </dl>
-          <p className={styles.instrumentFootnote}>
-            Platform revenue is not agency revenue. Missing business inputs are
-            never estimated.
+      {operatingModel === "solo" ? (
+        <div className={styles.unavailablePanel}>
+          <strong>NOT CONNECTED IN SOLO AGENCY</strong>
+          <p>
+            Solo operator projection. No assignment, invitation, team role,
+            staff seat, presence, availability, or workload system is connected.
           </p>
-        </article>
+        </div>
+      ) : (
+        <>
+          <p className={styles.teamDisclosure}>
+            SYNTHETIC TEAM PROJECTION · NOT A LIVE CAPABILITY
+          </p>
+          <ul className={styles.teamList}>
+            {AGENCY_TEAM_SPECIMEN.map((seat) => (
+              <li key={seat.id}>
+                <div>
+                  <strong>{seat.role}</strong>
+                  <span>{seat.note}</span>
+                </div>
+                <div>
+                  <span>{seat.assigned}</span>
+                  <strong>{seat.load}</strong>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </section>
+  );
+}
+
+function BusinessSignals() {
+  return (
+    <article className={styles.businessSignals} aria-labelledby="business-signals-heading">
+      <p className={styles.miniEyebrow}>BUSINESS INPUTS</p>
+      <h3 id="business-signals-heading">Coverage before claims</h3>
+      <dl className={styles.businessList}>
+        <div>
+          <dt>Client-service revenue</dt>
+          <dd>Not instrumented</dd>
+        </div>
+        <div>
+          <dt>Agency billing</dt>
+          <dd>Not connected to this review</dd>
+        </div>
+        <div>
+          <dt>Activity history</dt>
+          <dd>Fixture only · not an audit trail</dd>
+        </div>
+        <div>
+          <dt>Automated actions</dt>
+          <dd>None</dd>
+        </div>
+      </dl>
+      <p className={styles.instrumentFootnote}>
+        Platform revenue is not agency revenue. Missing financial or business
+        inputs are never estimated.
+      </p>
+    </article>
+  );
+}
+
+function AgencyHealthBank({
+  state,
+  healthStatus,
+}: {
+  state: AgencyFixtureState;
+  healthStatus: string;
+}) {
+  return (
+    <aside className={styles.healthBank} aria-labelledby="agency-health-heading">
+      <InstrumentHeader
+        eyebrow="SYNTHETIC QUALITATIVE FIXTURE"
+        title="Agency health drivers"
+        id="agency-health-heading"
+      />
+      <p className={styles.healthState}>{healthStatus}</p>
+      {state === "loading" ? (
+        <StaticSkeleton rows={4} />
+      ) : (
+        <dl className={styles.driverList}>
+          {AGENCY_HEALTH_DRIVERS[state].map((driver) => (
+            <div key={driver.label}>
+              <dt>{driver.label}</dt>
+              <dd>
+                <span>{driver.value}</span>
+                <small>{driver.note}</small>
+              </dd>
+            </div>
+          ))}
+        </dl>
+      )}
+      <p className={styles.instrumentFootnote}>
+        No production scoring formula, financial-health assessment, prediction,
+        or compliance certification.
+      </p>
+    </aside>
+  );
+}
+
+function AgencyScopeBank({
+  state,
+  active,
+  limit,
+  portfolioRows,
+}: {
+  state: AgencyFixtureState;
+  active: number;
+  limit: number;
+  portfolioRows: number;
+}) {
+  const coverage =
+    state === "unavailable"
+      ? "2 of 5 · partial"
+      : state === "error"
+        ? "2 of 5 · preserved"
+        : state === "empty"
+          ? "0 of 0 · empty"
+          : "5 of 5 · specimen";
+
+  return (
+    <aside className={styles.scopeBank} aria-labelledby="portfolio-scope-heading">
+      <InstrumentHeader
+        eyebrow="GROWTH / CAPACITY THRESHOLD"
+        title="Portfolio scope and reserve"
+        id="portfolio-scope-heading"
+      />
+      {state === "loading" ? (
+        <StaticSkeleton rows={4} />
+      ) : (
+        <dl className={styles.scopeList}>
+          <div>
+            <dt>Aggregate workspaces</dt>
+            <dd>{active}</dd>
+          </div>
+          <div>
+            <dt>Portfolio rows shown</dt>
+            <dd>{portfolioRows}</dd>
+          </div>
+          <div>
+            <dt>Capacity remaining</dt>
+            <dd>{Math.max(0, limit - active)}</dd>
+          </div>
+          <div>
+            <dt>Coverage</dt>
+            <dd>{coverage}</dd>
+          </div>
+        </dl>
+      )}
+      {state === "capacity" && (
+        <p className={styles.capacityNotice}>
+          Capacity fixture reached. Existing illustrative work remains visible;
+          no billing or expansion action is connected.
+        </p>
+      )}
+      <CapacityHorizon active={active} limit={limit} state={state} />
+    </aside>
+  );
+}
+
+function ArchiveBoundaryState({ state }: { state: "loading" | "empty" }) {
+  return (
+    <div className={styles.archiveBoundary} role="status">
+      <strong>{state === "loading" ? "ARCHIVE HELD" : "ARCHIVE EMPTY"}</strong>
+      <p>
+        {state === "loading"
+          ? "Fixture sources are unresolved. No receipt, document state, or history is asserted."
+          : "No illustrative portfolio or evidence history is staged in this fixture."}
+      </p>
+    </div>
+  );
+}
+
+function EvidenceArchive({ state }: { state: AgencyFixtureState }) {
+  const evidence =
+    state === "loading" || state === "empty"
+      ? []
+      : state === "unavailable" || state === "error"
+        ? AGENCY_EVIDENCE_FIELD.slice(0, 2)
+        : AGENCY_EVIDENCE_FIELD;
+
+  return (
+    <section className={styles.archiveLedger} aria-labelledby="archive-ledger-heading">
+      <div className={styles.sectionHeading}>
+        <div>
+          <p className={styles.stationIndex}>EVIDENCE COVERAGE LEDGER</p>
+          <h3 id="archive-ledger-heading">Displayed source receipts</h3>
+        </div>
+        <p>FIXTURE PROJECTION · NOT A PRODUCTION AUDIT TRAIL</p>
       </div>
+      {evidence.length === 0 ? (
+        <p className={styles.noResults}>No evidence receipt is asserted in this fixture state.</p>
+      ) : (
+        <ol className={styles.archiveEvidenceList}>
+          {evidence.map((item) => (
+            <li key={item.id} data-evidence-state={item.state}>
+              <span aria-hidden />
+              <strong>{item.workspace}</strong>
+              <p>{item.state} · {item.detail}</p>
+            </li>
+          ))}
+        </ol>
+      )}
+    </section>
+  );
+}
+
+function AuthorizedSourceMap() {
+  return (
+    <section className={styles.sourceMap} aria-labelledby="authorized-source-heading">
+      <div className={styles.sectionHeading}>
+        <div>
+          <p className={styles.stationIndex}>FUTURE AUTHORIZED SOURCES</p>
+          <h3 id="authorized-source-heading">Ownership remains distributed</h3>
+        </div>
+        <p>DOCUMENTED FUTURE CONTRACT · NOTHING CONNECTED</p>
+      </div>
+      <p>
+        A future authorized projection may read from owning systems. Agency
+        Command orchestrates their display; it does not take ownership of their
+        canonical records. Kai interprets and prepares through authorized owners.
+      </p>
+      <dl>
+        {AGENCY_AUTHORIZED_SOURCES.map((source) => (
+          <div key={source.owner}>
+            <dt>{source.owner}</dt>
+            <dd>
+              <strong>{source.futureSource}</strong>
+              <span>{source.reviewState}</span>
+            </dd>
+          </div>
+        ))}
+      </dl>
     </section>
   );
 }

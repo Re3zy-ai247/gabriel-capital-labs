@@ -1,4 +1,4 @@
-// CXOS Phase 6.1 — Living Agency Command Founder Review fixtures.
+// CXOS Phase 6.2 — Agency Headquarters Founder Review fixtures.
 //
 // Every value in this module is invented, deterministic, and presentation-only.
 // The fixtures do not correspond to a person, customer, agency, subscription,
@@ -125,6 +125,235 @@ export interface AgencyKaiWorkflow {
   previewLines: string[];
   receipt: string;
 }
+
+export type AgencyOperatingModel = "solo" | "team";
+
+export type AgencyDistrictId =
+  | "central-command"
+  | "client-operations"
+  | "team-operations"
+  | "business-health"
+  | "evidence-archive"
+  | "kai-suite"
+  | "growth-threshold";
+
+export interface AgencyDistrict {
+  id: AgencyDistrictId;
+  index: string;
+  name: string;
+  shortName: string;
+  purpose: string;
+  kaiContext: string;
+  truthBoundary: string;
+  suggestions: readonly string[];
+}
+
+export interface AgencyPersonalization {
+  operatingModel: AgencyOperatingModel;
+  operatorDisplay: string;
+  operatorRole: string;
+  agencyName: string;
+  agencyType: string;
+  agencyTier: string;
+  capacityCondition: string;
+  displayedWorkspaces: string;
+  priorityCondition: string;
+  emphasizedDistrict: AgencyDistrictId;
+  greeting: string;
+  recommendedDestination: string;
+}
+
+export interface AgencyAuthorizedSource {
+  owner: "Identity" | "Organizations" | "Membership" | "Agency" | "Billing" | "Kai";
+  futureSource: string;
+  reviewState: string;
+}
+
+export type AgencyKaiResolutionStatus = "supported" | "unsupported" | "empty";
+
+export interface AgencyKaiResolution {
+  status: AgencyKaiResolutionStatus;
+  workflowId: KaiWorkflowId | null;
+  normalizedCommand: string;
+  headline: string;
+  responseLines: readonly string[];
+  sources: string;
+  classification: AgencyKaiWorkflow["classification"] | "BOUNDARY";
+  receipt: string;
+}
+
+export const AGENCY_DISTRICTS: readonly AgencyDistrict[] = [
+  {
+    id: "central-command",
+    index: "01",
+    name: "Central Command",
+    shortName: "Central",
+    purpose: "Agency condition, immediate attention, and cross-business orientation.",
+    kaiContext: "Kai is framing the top displayed priority and operating condition.",
+    truthBoundary: "Cross-business overview uses only labeled synthetic fixture values.",
+    suggestions: [
+      "Prepare my morning priorities",
+      "Explain the current agency condition",
+      "Suggest what I should do next",
+    ],
+  },
+  {
+    id: "client-operations",
+    index: "02",
+    name: "Client Operations Floor",
+    shortName: "Clients",
+    purpose: "Portfolio movement, response work, follow-ups, evidence, and blocked flow.",
+    kaiContext: "Kai can organize the displayed client-work lanes without changing them.",
+    truthBoundary: "Client labels and work states are fictional; no customer system is connected.",
+    suggestions: [
+      "Organize today's client work",
+      "Create a follow-up plan",
+      "Take a note about Client 014",
+    ],
+  },
+  {
+    id: "team-operations",
+    index: "03",
+    name: "Team Operations Room",
+    shortName: "Team",
+    purpose: "Roles, illustrative assignments, workload, and coverage boundaries.",
+    kaiContext: "Kai can prepare a synthetic operating brief for the selected model.",
+    truthBoundary: "Solo is unconnected truth; Team is an explicitly synthetic specimen.",
+    suggestions: [
+      "Prepare my team meeting",
+      "Build my schedule for today",
+      "Identify current bottlenecks",
+    ],
+  },
+  {
+    id: "business-health",
+    index: "04",
+    name: "Business Health Observatory",
+    shortName: "Health",
+    purpose: "Capacity, utilization, qualitative health, and missing business inputs.",
+    kaiContext: "Kai can explain disclosed drivers without inventing revenue or a score.",
+    truthBoundary: "Revenue and agency billing remain uninstrumented and unestimated.",
+    suggestions: [
+      "Explain the current agency condition",
+      "Identify current bottlenecks",
+      "Summarize agency activity",
+    ],
+  },
+  {
+    id: "evidence-archive",
+    index: "05",
+    name: "Activity and Evidence Archive",
+    shortName: "Evidence",
+    purpose: "Displayed receipts, source coverage, document state, and fixture history.",
+    kaiContext: "Kai can summarize displayed evidence while preserving every coverage gap.",
+    truthBoundary: "This fixture ledger is not a production audit trail.",
+    suggestions: [
+      "Summarize agency activity",
+      "Take a note about Client 014",
+      "Create a follow-up plan",
+    ],
+  },
+  {
+    id: "kai-suite",
+    index: "06",
+    name: "Kai Executive Suite",
+    shortName: "Kai",
+    purpose: "Route-local conversation, delegation previews, and recommendations.",
+    kaiContext: "Kai interprets and prepares; the operator verifies and decides.",
+    truthBoundary: "No model, persistence, calendar, task, notification, or production action.",
+    suggestions: [
+      "Prepare my morning priorities",
+      "Remind me to review this response tomorrow",
+      "Suggest what I should do next",
+    ],
+  },
+  {
+    id: "growth-threshold",
+    index: "07",
+    name: "Growth / Capacity Threshold",
+    shortName: "Capacity",
+    purpose: "Occupied positions, reserve, limitations, and the next operating constraint.",
+    kaiContext: "Kai can identify the next displayed constraint without offering a billing action.",
+    truthBoundary: "Capacity is a fixed fixture; plan and billing systems are not connected.",
+    suggestions: [
+      "Identify current bottlenecks",
+      "Explain the current agency condition",
+      "Suggest what I should do next",
+    ],
+  },
+] as const;
+
+export const AGENCY_PERSONALIZATIONS: Record<
+  AgencyOperatingModel,
+  AgencyPersonalization
+> = {
+  solo: {
+    operatingModel: "solo",
+    operatorDisplay: "Founder specimen",
+    operatorRole: "Owner-operator",
+    agencyName: "Northstar Advisory",
+    agencyType: "Solo education agency",
+    agencyTier: "Founder review tier",
+    capacityCondition: "12 of 15 illustrative positions occupied",
+    displayedWorkspaces: "5 fictional workspaces displayed",
+    priorityCondition: "One displayed response decision requires review",
+    emphasizedDistrict: "client-operations",
+    greeting:
+      "Agency Command is ready. One displayed response decision requires your review.",
+    recommendedDestination: "Client Operations Floor",
+  },
+  team: {
+    operatingModel: "team",
+    operatorDisplay: "Executive specimen",
+    operatorRole: "Agency principal",
+    agencyName: "Meridian Client Education",
+    agencyType: "Synthetic team agency",
+    agencyTier: "Team specimen tier",
+    capacityCondition: "12 of 15 illustrative positions occupied",
+    displayedWorkspaces: "5 fictional workspaces displayed",
+    priorityCondition: "Coverage and response decisions lead the operating review",
+    emphasizedDistrict: "team-operations",
+    greeting:
+      "Agency Command is ready. Team coverage and one displayed response decision lead the review.",
+    recommendedDestination: "Team Operations Room",
+  },
+};
+
+export const AGENCY_AUTHORIZED_SOURCES: readonly AgencyAuthorizedSource[] = [
+  {
+    owner: "Identity",
+    futureSource: "Authorized operator display and role projection",
+    reviewState: "Deterministic fixture only · not connected",
+  },
+  {
+    owner: "Organizations",
+    futureSource: "Agency identity and operating entity",
+    reviewState: "Deterministic fixture only · not connected",
+  },
+  {
+    owner: "Membership",
+    futureSource: "Scoped team role and access context",
+    reviewState: "Solo truth / synthetic team specimen",
+  },
+  {
+    owner: "Agency",
+    futureSource: "Authorized workspace, queue, evidence, and capacity projections",
+    reviewState: "Fictional presentation fixtures only",
+  },
+  {
+    owner: "Billing",
+    futureSource: "Plan entitlement and capacity limit",
+    reviewState: "Disconnected · no billing action or estimate",
+  },
+  {
+    owner: "Kai",
+    futureSource: "Contextual interpretation, preparation, and recommendations",
+    reviewState: "Deterministic resolver · no model or invocation",
+  },
+] as const;
+
+export const AGENCY_KAI_NO_ACTION_RECEIPT =
+  "Nothing was saved, sent, scheduled, assigned, created, contacted, or changed.";
 
 export const AGENCY_FIXTURE_STATES: {
   key: AgencyFixtureState;
@@ -714,3 +943,196 @@ export const AGENCY_KAI_WORKFLOWS: AgencyKaiWorkflow[] = [
     receipt: "No automated production action or customer mutation is available.",
   },
 ];
+
+const KAI_INTENT_RULES: readonly {
+  workflowId: KaiWorkflowId;
+  patterns: readonly RegExp[];
+  signals: readonly RegExp[];
+}[] = [
+  {
+    workflowId: "meeting-preparation",
+    patterns: [
+      /^(?:please )?prepare (?:my |a |the )?(?:team )?meeting(?: brief)?[.!?]*$/,
+    ],
+    signals: [/\bmeeting\b/, /\bteam brief\b/],
+  },
+  {
+    workflowId: "follow-up-planning",
+    patterns: [
+      /^(?:please )?(?:create|prepare|build) (?:a |the )?follow[ -]?up plan[.!?]*$/,
+    ],
+    signals: [/\bfollow[ -]?up\b/],
+  },
+  {
+    workflowId: "bottleneck-identification",
+    patterns: [
+      /^(?:please )?(?:identify|explain|show) (?:the |our )?current bottlenecks?[.!?]*$/,
+      /^(?:please )?identify (?:the |our )?(?:blocked|blocking) (?:work|flow)[.!?]*$/,
+    ],
+    signals: [/\bbottleneck/, /\bblock(?:ed|ing)?\b/, /\bconstraint/],
+  },
+  {
+    workflowId: "client-work-organization",
+    patterns: [
+      /^(?:please )?organ(?:ize|ise) (?:today(?:'s|’s)? |the )?client work[.!?]*$/,
+    ],
+    signals: [/\borgan(?:ize|ise|izing|ising)\b/, /\bclient work\b/],
+  },
+  {
+    workflowId: "activity-summary",
+    patterns: [
+      /^(?:please )?summari[sz]e (?:the |our )?agency activity[.!?]*$/,
+      /^(?:please )?prepare (?:the |an )?activity summary[.!?]*$/,
+    ],
+    signals: [/\bsummari[sz]e\b/, /\bactivity summary\b/, /\bagency activity\b/],
+  },
+  {
+    workflowId: "operational-explanation",
+    patterns: [
+      /^(?:please )?explain (?:the |our )?current agency condition[.!?]*$/,
+      /^(?:please )?explain why (?:the )?agency condition is watch[.!?]*$/,
+    ],
+    signals: [/\bexplain\b/, /\bagency condition\b/, /\bwhy.*watch\b/],
+  },
+  {
+    workflowId: "suggested-next-actions",
+    patterns: [
+      /^(?:please )?suggest what i should do next[.!?]*$/,
+      /^(?:please )?what should i do next[.!?]*$/,
+    ],
+    signals: [/\bwhat should i\b/, /\bdo next\b/, /\bsuggest.*next\b/],
+  },
+  {
+    workflowId: "reminders",
+    patterns: [
+      /^(?:please )?remind me to review (?:this|the) response tomorrow[.!?]*$/,
+      /^(?:please )?prepare (?:a |the )?reminder preview[.!?]*$/,
+    ],
+    signals: [/\bremind(?:er)?\b/, /\btomorrow\b/],
+  },
+  {
+    workflowId: "scheduling",
+    patterns: [
+      /^(?:please )?build my schedule for today[.!?]*$/,
+      /^(?:please )?prepare (?:my |an )?agenda for today[.!?]*$/,
+      /^(?:please )?plan my day[.!?]*$/,
+    ],
+    signals: [/\bschedul/, /\bagenda for today\b/, /\bplan my day\b/],
+  },
+  {
+    workflowId: "note-taking",
+    patterns: [
+      /^(?:please )?take a note about client 014[.!?]*$/,
+      /^(?:please )?prepare (?:a |the )?note preview for client 014[.!?]*$/,
+    ],
+    signals: [/\btake (?:a )?note\b/, /\bnote about\b/, /\bnote preview\b/],
+  },
+  {
+    workflowId: "task-preparation",
+    patterns: [
+      /^(?:please )?prepare my morning priorities[.!?]*$/,
+      /^(?:please )?prepare (?:the |a )?task preview[.!?]*$/,
+    ],
+    signals: [/\bprepare.*priorit/, /\bmorning priorit/, /\btask (?:preview|preparation)\b/],
+  },
+] as const;
+
+export function resolveAgencyKaiIntent(command: string): AgencyKaiResolution {
+  const normalizedCommand = command
+    .normalize("NFKC")
+    .toLocaleLowerCase("en-US")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 240);
+
+  if (!normalizedCommand) {
+    return {
+      status: "empty",
+      workflowId: null,
+      normalizedCommand,
+      headline: "Kai needs a review-safe request",
+      responseLines: [
+        "Ask for one of the displayed synthetic workflows or choose a contextual example.",
+      ],
+      sources: "No fixture source selected",
+      classification: "BOUNDARY",
+      receipt: AGENCY_KAI_NO_ACTION_RECEIPT,
+    };
+  }
+
+  const unavailableAction =
+    /\b(?:approve|book|cancel|close|complete|delete|edit|escalate|file|mark|remove|reject|reschedule|save|send|submit|update|assign|invite|contact|email|text|notify|call|use live|live customer|customer record|production|calendar)\b/.test(
+      normalizedCommand
+    ) ||
+    /\bcreate (?:a |an )?(?:reminder|task|calendar|event|note|meeting)\b/.test(
+      normalizedCommand
+    );
+  const legalOrOutcomeRequest =
+    /(?:§|\b(?:fcra|fdcpa|croa|statute|law|legal|violate|violation|rights|attorney|lawsuit|dispute|challenge|bureau|guarantee|guaranteed|delete accurate|score increase|credit score|raise.*score|legal advice|act for|deadline)\b)/.test(
+      normalizedCommand
+    );
+  const matchingRules = KAI_INTENT_RULES.filter((candidate) =>
+    candidate.patterns.some((pattern) => pattern.test(normalizedCommand))
+  );
+  const signalMatches = KAI_INTENT_RULES.filter((candidate) =>
+    candidate.signals.some((pattern) => pattern.test(normalizedCommand))
+  );
+  const rule =
+    matchingRules.length === 1 && signalMatches.length === 1
+      ? matchingRules[0]
+      : null;
+  const workflow = rule
+    ? AGENCY_KAI_WORKFLOWS.find((candidate) => candidate.id === rule.workflowId)
+    : null;
+
+  if (unavailableAction || legalOrOutcomeRequest) {
+    return {
+      status: "unsupported",
+      workflowId: null,
+      normalizedCommand,
+      headline: "Unavailable in this review",
+      responseLines: [
+        "Kai can prepare a synthetic preview, but cannot save, send, schedule an external event, assign, invite, contact anyone, use live customer data, provide case-specific legal advice, promise an outcome, or change a record.",
+        "No model, external service, or owning system was invoked.",
+      ],
+      sources: "Request crossed the synthetic review boundary",
+      classification: "BOUNDARY",
+      receipt: AGENCY_KAI_NO_ACTION_RECEIPT,
+    };
+  }
+
+  if (!workflow || matchingRules.length !== 1 || signalMatches.length !== 1) {
+    return {
+      status: "unsupported",
+      workflowId: null,
+      normalizedCommand,
+      headline:
+        signalMatches.length > 1
+          ? "Enter one synthetic command at a time"
+          : "That command is unavailable in this review",
+      responseLines: [
+        signalMatches.length > 1
+          ? "This fixed local parser matched more than one fixture intent, so it prepared nothing."
+          : "This fixed local parser did not match one supported synthetic command.",
+        "No model, external system, customer record, calendar, task, message, or production action was invoked.",
+      ],
+      sources:
+        signalMatches.length > 1
+          ? "Multiple fixture intents matched · no artifact prepared"
+          : "No authorized fixture intent matched",
+      classification: "BOUNDARY",
+      receipt: AGENCY_KAI_NO_ACTION_RECEIPT,
+    };
+  }
+
+  return {
+    status: "supported",
+    workflowId: workflow.id,
+    normalizedCommand,
+    headline: workflow.label,
+    responseLines: workflow.previewLines,
+    sources: workflow.sources,
+    classification: workflow.classification,
+    receipt: `${workflow.receipt} ${AGENCY_KAI_NO_ACTION_RECEIPT}`,
+  };
+}

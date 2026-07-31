@@ -6,7 +6,7 @@
 **Date:** 2026-07-31
 **Status:** Working specification for design, implementation planning, review, and QA
 
-> This document is not a constitution, architecture approval, merge approval, or production authorization. It organizes the current CXOS foundation, the Founder-approved Phase 5.2 and Phase 5.3 experience direction, and the Founder-directed Phase 6.1 Living Agency Command refinement into one usable review standard. Canonical repository governance and separate release approvals still control.
+> This document is not a constitution, architecture approval, merge approval, or production authorization. It organizes the current CXOS foundation, the Founder-approved Phase 5.2 and Phase 5.3 experience direction, and the Founder-directed Phase 6.2 Agency Command contextual-intelligence refinement into one usable review standard. Canonical repository governance and separate release approvals still control.
 
 ## 1. Truth labels and boundary
 
@@ -24,6 +24,7 @@ Source set:
 - `CXOS_PHASE_5_3_REPORT.md`
 - Phase 6 Agency Command design-plan audit
 - Founder Phase 6.1 Living Agency Command refinement directive (2026-07-31)
+- Founder Phase 6.2 contextual Kai command-surface directive (2026-07-31)
 
 This specification does not authorize:
 
@@ -121,18 +122,52 @@ Every operating room distinguishes:
 
 Primary truth and action define the center of gravity. Evidence and status substantiate it. Secondary instrumentation, observation, explanation, and escalation remain subordinate and may never manufacture urgency.
 
-### 2.6 Observable operational heartbeat
+### 2.6 Five governing experience laws
 
-**APPROVED DIRECTION · PROPOSED PHASE 6.1 APPLICATION**
+**APPROVED DIRECTION · PROPOSED PHASE 6.2 APPLICATION**
 
-> Every operating room must possess an observable operational heartbeat. Motion, rhythm, and ambient state must express that room’s actual purpose without changing canonical facts or fabricating live activity.
+These five laws govern Agency Command’s Phase 6.2 language release and every later operating-room proposal. They do not claim that Mission Control or any future room has already been modified.
+
+#### 2.6.1 Observable heartbeat
+
+> Every operating room requires an observable heartbeat. Motion, rhythm, and ambient state must express that room’s actual purpose without changing canonical facts or fabricating live activity.
 
 An operational heartbeat is purpose-bound information behavior, not decorative motion and not fake telemetry. It may express fixed states such as entering, advancing, waiting, blocking, resolving, capacity consumption, evidence coverage, or decision pressure only when the room can name the deterministic fact or specimen behind the expression.
 
-- Agency Command applies this law through deterministic client-flow positions, capacity horizons, workload pressure, response-aging markers, evidence coverage, disclosed bottlenecks, and explicitly non-persistent Kai delegation.
-- Mission Control will later apply the law to system readiness, evidence availability, and decision pressure under a separately reviewed assignment. Phase 6.1 does not modify Mission Control.
-- Every future operating room must name its own purpose-bound heartbeat, its canonical facts, its maximum continuous-motion channels, and its complete static equivalent before implementation.
-- A heartbeat never changes a metric, rank, label, record, deadline, assignment, or outcome merely to appear alive.
+#### 2.6.2 Deliberate arrival and exit
+
+> Every major room requires a deliberate arrival and exit. Arrival establishes identity, scope, source readiness, and the room’s settled truth; exit preserves orientation, names the destination, returns control, and never disguises navigation, error, or mutation.
+
+Deliberate does not mean cinematic. Tier C, Tier D, reduced-motion, and static projections carry the same acknowledgment through immediate structure, focus, status, and destination truth with zero required motion. Entry and exit may never delay an urgent control, hide a failure, or imply that an external action completed.
+
+#### 2.6.3 Spatial internal operating districts
+
+> Every major room must express its internal operating districts spatially. Their position expresses purpose, ownership, sequence, evidence, and authority.
+
+Districts use the facility vocabulary—banks, rails, ledgers, stations, horizons, consoles, and thresholds—rather than disconnected cards or decorative zones. Responsive projections may linearize the architecture, but they preserve each district’s semantic relationship, source boundary, reading order, and ownership.
+
+#### 2.6.4 Continuous contextual Kai, not disconnected tools
+
+> Kai must appear as a continuous contextual executive channel, not a disconnected list of tools. It connects the current district’s source, interpretation, recommendation, and safe next action rather than appearing as disconnected assistants, workflow buttons, or chat widgets.
+
+Continuity does not authorize memory, inference, or action that the surface does not possess. Kai may carry only the context truthfully available and authorized for that surface; missing context remains missing, and the operator retains decision authority.
+
+#### 2.6.5 Deterministic, authorized, truthfully sourced personalization
+
+> Personalization must be deterministic, authorized, and truthfully sourced. Every personalized fact, interpretation, recommendation, draft, or boundary names its source class, stays within the current user, tenant, role, capability, and consent boundary, and never exceeds the evidence.
+
+The source domain owns canonical facts. Kai interprets and prepares; the operator reviews and decides; an execution system may act only after separate explicit authorization. The Phase 6.2 command surface uses fictional fixtures and route-instance state only—no live AI or model, customer data, API call, storage destination, calendar or task system, contact action, or customer mutation. Missing, unsupported, ambiguous, or unauthorized requests fail visibly without a fabricated answer or completion claim.
+
+### 2.7 Phase 6.2 application and future governance
+
+- Agency Command applies **observable heartbeat** through deterministic client-flow positions, capacity horizons, workload pressure, response-aging markers, evidence coverage, and disclosed bottlenecks. Phase 6.1 established this application; Phase 6.2 preserves it.
+- Agency Command applies **deliberate arrival and exit** through its bounded identity-to-Kai settle and its acknowledged Mission Control return, with immediate complete Tier C/D and reduced-motion alternatives.
+- Agency Command applies **spatial internal operating districts** through the Executive Brief, heartbeat field, priority ledger, portfolio ledger, health/capacity banks, and contextual Kai command district.
+- Agency Command applies **continuous contextual Kai** through one bounded natural-language command surface that maps to the eleven deterministic fixture capabilities instead of presenting eleven disconnected workflow controls.
+- Agency Command applies **deterministic, authorized, truthfully sourced personalization** through fixed fictional fixtures, disclosed classifications and sources, supported/unsupported outcomes, revise/cancel control, and a no-action receipt. Command text and previews remain route-instance-only and clear on refresh or exit.
+- Mission Control and future operating rooms are governed by these five laws only when separately scoped, reviewed, and implemented. Phase 6.2 changes no Mission Control or future-room runtime, data source, interaction, or release status.
+- Every future room must document its five-law mapping, canonical sources, ownership boundary, maximum continuous-motion channels, complete static equivalent, authorization model, and failure behavior before implementation.
+- No governing law changes a metric, rank, label, record, deadline, assignment, ownership boundary, or outcome merely to create atmosphere or personalization.
 
 ## 3. Room matrix
 
@@ -142,7 +177,7 @@ An operational heartbeat is purpose-bound information behavior, not decorative m
 | Mission Control | APPROVED DIRECTION | Observe the current case and transfer command | Rectilinear command chamber; asymmetric instrument banks; central axis and threshold | Analytical blue/teal; light from above | Execution, systems, Kai brief, clearance, one next action | Dashboard-card mosaic |
 | The Passage | APPROVED DIRECTION | Move from Mission Control to the Arena | Converging hallway; distant aperture; rectilinear-to-radial conversion | Cool origin; late ceremonial warmth; no early destination grant | Power-down, clearance, anticipation, conversion, threshold | Black interruption, reticle-only tunnel, or loading screen |
 | The Arena | APPROVED DIRECTION | Recognize evidenced standing and let the operator walk the record | Inhabited ceremonial chamber; arrival monument; station-by-station floor | Warm metal-like neutrals and restrained amber; light from below | Standing, evidence, milestones, planned threshold, Kai observation | Casino, game lobby, title screen followed by cards |
-| Agency Command | PROPOSED EXTENSION | Coordinate work across a client portfolio | Wide command wall; health and capacity banks; central Kai brief and delegation console; purpose-bound heartbeat field; ranked work ledger; portfolio ledger | Mission Control’s analytical family, widened in scale; no Arena gold language | Agency health drivers, client flow, workload, evidence coverage, portfolio priorities, capacity, and Kai delegation | Generic executive dashboard, chart wall, fake live feed, or AI-copilot chat |
+| Agency Command | PROPOSED EXTENSION | Coordinate work across a client portfolio | Wide command wall; spatial operating districts; health and capacity banks; central Kai brief; contextual command surface; purpose-bound heartbeat field; ranked work ledger; portfolio ledger | Mission Control’s analytical family, widened in scale; no Arena gold language | Agency health drivers, client flow, workload, evidence coverage, portfolio priorities, capacity, and deterministic contextual Kai | Generic executive dashboard, chart wall, fake live feed, disconnected workflow-button bank, or AI-copilot chat |
 | Founder Review Control | APPROVED REVIEW PATTERN | Inspect projections, fixture states, timing, and safety behavior | One collapsed Director pill opening a contained bottom sheet | Neutral technical instrument outside room hierarchy | Projection, reason, tier, fixture, replay/jump controls | Product navigation, hidden override, or fake modal |
 
 ## 4. Mission Control laws
@@ -243,10 +278,12 @@ Desktop may place health and capacity in narrow banks around the Kai brief, but 
 - One visible receipt naming the deterministic synthetic inputs.
 - No chatbot frame, avatar, mascot, or multiple competing recommendations in the brief.
 - The brief must answer: what changed, what needs attention, and what should happen next.
-- A separate bounded Kai operating console may demonstrate deterministic route-instance workflows after the brief. It is an executive instrument, not a chat surface.
-- Notes, reminders, schedule outlines, summaries, task preparation, bottleneck interpretation, follow-up planning, organization, meeting preparation, explanation, and suggested actions remain visibly synthetic, non-persistent, and operator-reviewed.
-- A fixture-only note field must warn against real customer information and may not have a form, name, network destination, storage destination, or production action.
-- Every prepared output ends with a truthful no-action receipt naming what was not saved, sent, scheduled, assigned, or changed.
+- One bounded contextual Kai command surface may demonstrate deterministic route-instance capabilities after the brief. It replaces disconnected workflow controls without becoming an open-ended chat or live-AI surface.
+- Notes, reminders, schedule outlines, summaries, task preparation, bottleneck interpretation, follow-up planning, organization, meeting preparation, explanation, and suggested actions remain visibly synthetic, deterministic, non-persistent, truthfully sourced, and operator-reviewed.
+- The command field must warn against real customer information. It may use a local no-destination form solely for keyboard submission; the form and field must not declare a name, action, method, form action, model destination, network destination, storage destination, calendar, task system, customer mutation, or production action.
+- Supported and unsupported commands are explicit. Ambiguous, multi-intent, live-data, legal-outcome, and effect-seeking requests prepare nothing and fail visibly.
+- Revising command text invalidates the prior preview. Cancel and clear affect route-instance preview state only and never imply cancellation of an external action.
+- Every prepared, unsupported, revised, canceled, or cleared outcome ends with a truthful no-action receipt naming what was not saved, sent, scheduled, assigned, created, contacted, or changed.
 
 ### 7.4 Portfolio and client work
 
@@ -283,6 +320,19 @@ Desktop may place health and capacity in narrow banks around the Kai brief, but 
 - Bottlenecks name the waiting decision or missing evidence and the safe review step.
 - Throughput may be shown only when a time-bounded source model exists. Phase 6.1 states `Not instrumented` rather than inferring a rate from queue rank.
 - Motion may replay the fixed semantics of entering, advancing, waiting, blocked, and resolving while every displayed value remains unchanged.
+
+### 7.8 Phase 6.2 contextual Kai command surface
+
+- The surface accepts one bounded synthetic fixture command at a time and maps it through a fixed deterministic intent table. It does not use fuzzy inference, live AI, a model, an API, a clock, randomness, customer data, or production memory.
+- The supported capability set remains exactly: note, reminder preview, schedule preview, activity summary, task preparation, bottleneck explanation, follow-up plan, client-work organization, meeting brief, operational explanation, and suggested next actions.
+- A supported response states the matched intent, classification, fixture sources, prepared preview, and exact no-action receipt. It never says that Kai saved, sent, scheduled, assigned, created, contacted, or changed anything.
+- An unsupported or ambiguous response states that nothing was prepared and points only to the fixed supported set. It may not silently fall back to another intent or fabricate understanding.
+- User-entered note text remains labeled `OPERATOR DRAFT · USER-ENTERED · NOT VERIFIED BY KAI`; it never becomes displayed fact, interpretation, or recommendation.
+- Revision clears the stale preview and requires a new explicit preparation. `Cancel synthetic preview` and clear/reset controls remove only local preview state and report that no external action existed or changed.
+- Command text and previews are discarded on refresh or exit. The interface may describe only command-surface persistence and effects; it may not make a broader route-level storage or network claim without matching evidence.
+- Reduced-motion and static projections provide the identical command, classification, source, preview, supported/unsupported, revise/cancel, and receipt information without depending on animation.
+- The operator owns the command and decision. Fixture domains own the displayed facts. Kai owns neither customer records nor execution and cannot act for the operator or a client.
+- All wording remains educational and process-bound: no guaranteed deletion, removal, score improvement, legal conclusion, absolute deadline, compliance certification, or credit-repair outcome.
 
 ## 8. Visual language
 
@@ -424,6 +474,8 @@ The complete transition language is:
 13. Capacity gates only the action that exceeds capacity; existing work remains accessible.
 14. Proposed capabilities such as numeric Agency Health, Team Load, pipeline stages, revenue, and automation carry explicit specimen treatment until implemented.
 15. Outcome language remains educational and evidence-bound. No guaranteed deletion, score, or credit-repair outcome.
+16. Personalization is deterministic, permission-valid, tenant-scoped, consent-aware where applicable, and sourced from an owning domain; synthetic review does not claim a real authorization or customer-data read.
+17. Kai remains contextual but does not own canonical facts, infer unavailable context, or perform execution.
 
 ## 12. Interaction-state language
 
@@ -440,6 +492,7 @@ Interaction laws:
 7. **Deterministic return** is required: the established focus target, native scroll position, inert state, and settled room state are restored.
 8. Native scroll remains authoritative; scroll hijacking and section snapping are forbidden.
 9. No user trap is permitted. Cancel, skip, Escape, and safe return remain available wherever choreography could otherwise delay control.
+10. Natural-language command surfaces disclose deterministic matching, distinguish supported from unsupported intent, invalidate stale previews on revision, and report no action after prepare, cancel, or clear.
 
 Every new room must specify at least:
 
@@ -522,6 +575,7 @@ Rules:
 12. Projection controls may lock during an active journey, with a visible reason.
 13. Fixture controls change only local synthetic state.
 14. Review instruments must not send data, mutate live systems, or expose credentials.
+15. A synthetic command surface uses route-instance state only, warns against real customer information, and never claims route-wide network or storage isolation unless the full route evidence supports that claim.
 
 ## 16. Performance laws
 
@@ -558,17 +612,19 @@ Reject:
 9. faux terminal microtype for essential content;
 10. chart walls, decorative donuts, and animated counters;
 11. Kai rendered as a chat widget or mascot inside operational rooms;
-12. synthetic metrics presented without a permanent disclosure;
-13. team, revenue, pipeline, automation, or outcome data implied to be live;
-14. Arena gamification, scarcity, countdown, casino, or jackpot language;
-15. Mission Control or Agency Command reduced to a dashboard mosaic;
-16. black-screen interruption used as a substitute for a Passage;
-17. scroll-jacking, section snapping, cursor-following motion, or zoom-through;
-18. hover-only actions or color-only status;
-19. placeholder-only form labels;
-20. false modal semantics;
-21. hidden review overrides, stored motion consent, or nonessential write requests;
-22. claiming zero errors, zero long tasks, certification, or production readiness without current evidence.
+12. Kai capabilities presented as disconnected tools or a wall of workflow buttons;
+13. synthetic metrics presented without a permanent disclosure;
+14. team, revenue, pipeline, automation, or outcome data implied to be live;
+15. natural-language UI that implies live AI, open-ended understanding, personalization, memory, authorization, or execution it does not possess;
+16. Arena gamification, scarcity, countdown, casino, or jackpot language;
+17. Mission Control or Agency Command reduced to a dashboard mosaic;
+18. black-screen interruption used as a substitute for a Passage;
+19. scroll-jacking, section snapping, cursor-following motion, or zoom-through;
+20. hover-only actions or color-only status;
+21. placeholder-only form labels;
+22. false modal semantics;
+23. hidden review overrides, stored motion consent, or nonessential write requests;
+24. claiming zero errors, zero long tasks, certification, or production readiness without current evidence.
 
 ## 18. Release gates
 
@@ -634,6 +690,10 @@ Before a room can be called CXOS:
 
 - [ ] The room has one operational purpose and one protagonist.
 - [ ] The room names an observable, purpose-bound operational heartbeat and its complete static equivalent.
+- [ ] Arrival and exit are deliberate, orientation-preserving, truthful, and complete without motion.
+- [ ] Internal operating districts express purpose, ownership, sequence, evidence, and authority at every viewport.
+- [ ] Kai remains one continuous contextual presence rather than disconnected tools, assistants, buttons, or chat widgets.
+- [ ] Personalization is deterministic, authorized, truthfully sourced, uncertainty-aware, and bounded by owning domains and user control.
 - [ ] Its spatial grammar differs by purpose without breaking facility continuity.
 - [ ] Its light source and palette roles are explicit.
 - [ ] It uses architecture before containers.
