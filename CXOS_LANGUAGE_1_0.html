@@ -1,0 +1,1327 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark light">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
+  <title>CreditVector CXOS Language 1.0 — Working Specification</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --ground: #050914;
+      --surface: #0a1221;
+      --surface-2: #101b2d;
+      --line: #26354a;
+      --line-strong: #3d526e;
+      --text: #e8eef7;
+      --muted: #a7b4c6;
+      --quiet: #74849b;
+      --brand: #49c6d5;
+      --ocean: #6da8f2;
+      --success: #5fd09b;
+      --warning: #e8bd68;
+      --danger: #f18b98;
+      --ink-on-accent: #03151a;
+      --radius: 12px;
+      --measure: 78rem;
+      --shadow: 0 24px 70px rgba(0, 0, 0, .28);
+    }
+
+    @media (prefers-color-scheme: light) {
+      :root {
+        color-scheme: light;
+        --ground: #eef3f8;
+        --surface: #ffffff;
+        --surface-2: #e7eef6;
+        --line: #c5d0dd;
+        --line-strong: #8799ae;
+        --text: #101c2b;
+        --muted: #42546a;
+        --quiet: #64748b;
+        --brand: #087c8d;
+        --ocean: #245f9f;
+        --success: #14754e;
+        --warning: #815914;
+        --danger: #a22c3d;
+        --ink-on-accent: #ffffff;
+        --shadow: 0 18px 55px rgba(24, 45, 72, .12);
+      }
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at 18% 0%, color-mix(in srgb, var(--ocean) 10%, transparent), transparent 34rem),
+        linear-gradient(180deg, var(--ground), color-mix(in srgb, var(--ground) 92%, #000));
+      color: var(--text);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 16px;
+      line-height: 1.62;
+    }
+    a { color: var(--brand); text-underline-offset: .18em; }
+    a:visited { color: color-mix(in srgb, var(--ocean) 70%, var(--muted)); }
+    a:focus-visible, summary:focus-visible {
+      outline: 2px solid var(--text);
+      outline-offset: 4px;
+      border-radius: 3px;
+    }
+    code {
+      padding: .08rem .32rem;
+      border: 1px solid var(--line);
+      border-radius: 5px;
+      background: var(--surface-2);
+      color: var(--text);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: .9em;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+    h1, h2, h3 { line-height: 1.16; letter-spacing: -.025em; }
+    h1 { max-width: 18ch; margin: .55rem 0 1rem; font-size: clamp(2.35rem, 7vw, 5.1rem); }
+    h2 { margin: 0 0 1rem; font-size: clamp(1.55rem, 3vw, 2.35rem); }
+    h3 { margin: 1.65rem 0 .65rem; font-size: 1.08rem; }
+    p { max-width: 76ch; }
+    ul, ol { padding-left: 1.3rem; }
+    li + li { margin-top: .38rem; }
+    strong { color: var(--text); }
+
+    .skip {
+      position: absolute;
+      top: -5rem;
+      left: 1rem;
+      z-index: 20;
+      padding: .65rem .9rem;
+      border-radius: 8px;
+      background: var(--brand);
+      color: var(--ink-on-accent);
+      font-weight: 750;
+    }
+    .skip:focus { top: 1rem; }
+    .wrap { width: min(calc(100% - 2rem), var(--measure)); margin-inline: auto; }
+    .hero {
+      min-height: 72vh;
+      display: grid;
+      align-items: end;
+      padding: clamp(4rem, 10vw, 8rem) 0 3.25rem;
+      border-bottom: 1px solid var(--line);
+    }
+    .eyebrow {
+      margin: 0;
+      color: var(--brand);
+      font-size: .74rem;
+      font-weight: 800;
+      letter-spacing: .22em;
+      text-transform: uppercase;
+    }
+    .lede { max-width: 68ch; color: var(--muted); font-size: clamp(1.02rem, 2vw, 1.24rem); }
+    .status {
+      display: inline-flex;
+      margin-top: 1rem;
+      padding: .55rem .8rem;
+      border: 1px solid color-mix(in srgb, var(--warning) 55%, var(--line));
+      background: color-mix(in srgb, var(--warning) 9%, transparent);
+      color: var(--warning);
+      font-size: .78rem;
+      font-weight: 800;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .6rem 1.4rem;
+      margin-top: 2rem;
+      color: var(--quiet);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: .78rem;
+    }
+    .toc {
+      border-bottom: 1px solid var(--line);
+      background: color-mix(in srgb, var(--surface) 88%, transparent);
+    }
+    .toc nav {
+      display: flex;
+      gap: .5rem 1rem;
+      overflow-x: auto;
+      padding: .8rem 0;
+      scrollbar-width: thin;
+    }
+    .toc a {
+      flex: 0 0 auto;
+      color: var(--muted);
+      font-size: .78rem;
+      font-weight: 700;
+      text-decoration: none;
+    }
+    .toc a:hover { color: var(--text); }
+    main { padding: 3.25rem 0 6rem; }
+    section {
+      padding: clamp(2.4rem, 6vw, 4.8rem) 0;
+      border-bottom: 1px solid var(--line);
+    }
+    section:last-child { border-bottom: 0; }
+    .section-head {
+      display: grid;
+      grid-template-columns: minmax(10rem, 1fr) minmax(0, 3fr);
+      gap: 1rem 3rem;
+      align-items: start;
+      margin-bottom: 2rem;
+    }
+    .section-head p { margin: .25rem 0 0; color: var(--muted); }
+    .tag {
+      display: inline-block;
+      margin-bottom: .65rem;
+      color: var(--quiet);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: .68rem;
+      font-weight: 800;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+    }
+    .notice {
+      padding: 1.15rem 1.25rem;
+      border-left: 3px solid var(--warning);
+      background: color-mix(in srgb, var(--warning) 7%, var(--surface));
+    }
+    .notice p { margin: 0; }
+    .notice + .notice { margin-top: 1rem; }
+    .taxonomy {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1px;
+      margin: 1rem 0 2rem;
+      border: 1px solid var(--line);
+      background: var(--line);
+    }
+    .taxonomy > div {
+      min-width: 0;
+      padding: 1rem 1.1rem;
+      background: var(--surface);
+    }
+    .taxonomy dt {
+      color: var(--brand);
+      font-weight: 800;
+    }
+    .taxonomy dd {
+      margin: .25rem 0 0;
+      color: var(--muted);
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1px;
+      border: 1px solid var(--line);
+      background: var(--line);
+    }
+    .law {
+      min-width: 0;
+      padding: 1.2rem;
+      background: var(--surface);
+    }
+    .law h3 { margin-top: 0; }
+    .law p:last-child, .law ul:last-child { margin-bottom: 0; }
+    .command-wall {
+      display: grid;
+      grid-template-columns: 1fr 2.2fr 1fr;
+      margin: 2rem 0;
+      border: 1px solid var(--line-strong);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+    .command-wall > div { padding: 1.25rem; border-right: 1px solid var(--line); }
+    .command-wall > div:last-child { border-right: 0; }
+    .command-wall .primary { background: color-mix(in srgb, var(--brand) 4%, var(--surface)); }
+    .specimen-disclosure {
+      display: inline-block;
+      margin: 1.5rem 0 -1rem;
+      padding: .45rem .65rem;
+      border: 1px solid color-mix(in srgb, var(--warning) 55%, var(--line));
+      background: color-mix(in srgb, var(--warning) 8%, var(--surface));
+      color: var(--warning);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: .72rem;
+      font-weight: 850;
+      letter-spacing: .08em;
+    }
+    .instrument {
+      display: block;
+      margin-bottom: .5rem;
+      color: var(--quiet);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: .68rem;
+      font-weight: 800;
+      letter-spacing: .15em;
+      text-transform: uppercase;
+    }
+    .value { margin: 0; font-size: 1.05rem; font-weight: 750; }
+    .sub { margin: .4rem 0 0; color: var(--muted); font-size: .88rem; }
+    .table-wrap {
+      max-width: 100%;
+      overflow-x: auto;
+      border: 1px solid var(--line);
+    }
+    table {
+      width: 100%;
+      min-width: 48rem;
+      border-collapse: collapse;
+      background: var(--surface);
+      font-size: .9rem;
+    }
+    th, td {
+      padding: .8rem .85rem;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      color: var(--quiet);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: .68rem;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+    }
+    tbody tr:last-child td { border-bottom: 0; }
+    .primitive {
+      display: grid;
+      grid-template-columns: 7rem 1fr auto;
+      gap: 1rem;
+      align-items: baseline;
+      padding: .78rem 0;
+      border-bottom: 1px solid var(--line);
+    }
+    .primitive:last-child { border-bottom: 0; }
+    .primitive strong { color: var(--brand); }
+    .primitive time {
+      color: var(--quiet);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: .78rem;
+    }
+    .anti {
+      columns: 2;
+      column-gap: 3rem;
+    }
+    .anti li { break-inside: avoid; padding-right: 1rem; }
+    .checklist { list-style: none; padding: 0; }
+    .checklist li {
+      position: relative;
+      padding: .65rem 0 .65rem 2rem;
+      border-bottom: 1px solid var(--line);
+    }
+    .checklist li::before {
+      content: "";
+      position: absolute;
+      left: .15rem;
+      top: 1rem;
+      width: .85rem;
+      height: .85rem;
+      border: 1px solid var(--line-strong);
+    }
+    .copy-block {
+      margin-top: 1.5rem;
+      border: 1px solid var(--line-strong);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+    .copy-instruction {
+      margin: 0;
+      padding: .85rem 1rem;
+      border-bottom: 1px solid var(--line);
+      color: var(--muted);
+      font-size: .88rem;
+    }
+    .copy-block pre {
+      max-height: 34rem;
+      margin: 0;
+      overflow: auto;
+      padding: 1.15rem;
+      background: transparent;
+      color: var(--text);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: .78rem;
+      line-height: 1.55;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      user-select: text;
+    }
+    .copy-block pre:focus-visible {
+      outline: 2px solid var(--brand);
+      outline-offset: -4px;
+    }
+    footer {
+      padding: 2.2rem 0 3rem;
+      border-top: 1px solid var(--line);
+      color: var(--quiet);
+      font-size: .82rem;
+    }
+
+    @media (max-width: 760px) {
+      .hero { min-height: auto; padding-top: 5rem; }
+      .section-head { grid-template-columns: 1fr; gap: .2rem; }
+      .grid { grid-template-columns: 1fr; }
+      .taxonomy { grid-template-columns: 1fr; }
+      .command-wall { grid-template-columns: 1fr; }
+      .command-wall > div { border-right: 0; border-bottom: 1px solid var(--line); }
+      .command-wall > div:last-child { border-bottom: 0; }
+      .command-wall .primary { order: -1; }
+      .anti { columns: 1; }
+      .primitive { grid-template-columns: 6rem 1fr; }
+      .primitive time { grid-column: 2; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+    }
+
+    @media print {
+      :root {
+        color-scheme: light;
+        --ground: #fff;
+        --surface: #fff;
+        --surface-2: #f4f6f8;
+        --line: #c9d0d8;
+        --line-strong: #7b8794;
+        --text: #111827;
+        --muted: #374151;
+        --quiet: #4b5563;
+        --brand: #075f6d;
+        --ocean: #245f9f;
+        --success: #11613f;
+        --warning: #724c0d;
+        --danger: #922f3e;
+        --shadow: none;
+      }
+      body { background: #fff; }
+      .hero { min-height: auto; padding-top: 2rem; }
+      .toc { display: none; }
+      section { break-inside: avoid; }
+      .table-wrap { overflow: visible; }
+      table { min-width: 0; font-size: .72rem; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to specification</a>
+
+  <header class="hero">
+    <div class="wrap">
+      <p class="eyebrow">Gabriel Capital Labs · CreditVector™ Experience OS</p>
+      <h1>CXOS Language 1.0</h1>
+      <p class="lede">A working specification for one coherent spatial facility, the Founder-approved Agency Headquarters reference room, and the shared CXOS Core Runtime inherited by future major rooms.</p>
+      <p class="status">Phase 6.2 + Core Runtime isolated RC1 authorized · protected Preview only · not production approval</p>
+      <div class="meta" aria-label="Document metadata">
+        <span>VERSION 1.0</span>
+        <span>2026-07-31</span>
+        <span>STANDALONE · NO NETWORK REQUESTS</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="toc">
+    <div class="wrap">
+      <nav aria-label="Specification sections">
+        <a href="#boundary">Boundary</a>
+        <a href="#facility">Facility</a>
+        <a href="#runtime">Core Runtime</a>
+        <a href="#matrix">Room matrix</a>
+        <a href="#passage">Passage</a>
+        <a href="#agency">Agency Command</a>
+        <a href="#visual">Visual</a>
+        <a href="#motion">Motion</a>
+        <a href="#truth">Data truth</a>
+        <a href="#access">Accessibility</a>
+        <a href="#responsive">Responsive</a>
+        <a href="#performance">Performance</a>
+        <a href="#controls">Review controls</a>
+        <a href="#antipatterns">Anti-patterns</a>
+        <a href="#gates">Release gates</a>
+        <a href="#copy">Copy summary</a>
+      </nav>
+    </div>
+  </div>
+
+  <main id="main">
+    <div class="wrap">
+      <section id="boundary">
+        <div class="section-head">
+          <div>
+            <span class="tag">01 · Boundary</span>
+            <h2>Truth before atmosphere</h2>
+          </div>
+          <p>This artifact organizes the CXOS foundation, the Founder-approved Phase 5.2, Phase 5.3, and Phase 6.2 experience direction, and the Founder-authorized CXOS Core Runtime architecture. It is not merge approval or production authorization.</p>
+        </div>
+        <div class="grid">
+          <article class="law">
+            <h3>Truth labels</h3>
+            <ul>
+              <li><strong>Foundation:</strong> established design grammar.</li>
+              <li><strong>Approved direction:</strong> reviewed Phase 5.2/5.3/6.2 experience.</li>
+              <li><strong>Proposed extension:</strong> synthetic prototype language only.</li>
+              <li><strong>Runtime contract:</strong> approved shared presentation lifecycle; no room facts or effects.</li>
+              <li><strong>Release gate:</strong> evidence required before a later authorized action.</li>
+            </ul>
+          </article>
+          <article class="law">
+            <h3>Not authorized</h3>
+            <ul>
+              <li>Wholesale feature-branch merge.</li>
+              <li>Any push or deployment beyond the single isolated RC1 review-branch push and protected Preview.</li>
+              <li>Production deploy, promotion, or alias change.</li>
+              <li>Database, Prisma, migration, backend, auth, billing, or environment change.</li>
+              <li>Dependency addition or migration of any unrelated room.</li>
+              <li>Claiming a specimen or review control is a live capability.</li>
+            </ul>
+          </article>
+        </div>
+        <div class="notice">
+          <p><strong>Source set:</strong> <code>CXOS_FOUNDATION.md</code>, <code>CXOS_PHASE_5_2_REPORT.md</code>, <code>CXOS_PHASE_5_3_REPORT.md</code>, the Phase 6 Agency Command design-plan audit, the Founder Phase 6.1 and Phase 6.2 directives, the Founder’s Phase 6.2 architecture approval and Core Runtime authorization dated 2026-07-31, and <code>.ai/ADR/ADR-0040-cxos-core-runtime.md</code>.</p>
+        </div>
+        <div class="notice">
+          <p><strong>Branch lineage:</strong> Founder review of the Phase 6.2 room baseline at <code>a40a41c5a76028ad5cae2ff655c5bf168fb86a4a</code> is complete. That historical branch remains 63 commits ahead of the production baseline and must not be merged wholesale. The authorized RC1 is reconstructed on <code>review/cxos-core-runtime-isolated-rc1</code> from production baseline <code>f449c35d0eca9463c15e86f8cbd4cd7f4e948d03</code>; it contains only the approved Phase 6.2 room, Core Runtime delta, and individually justified review prerequisites. Its protected Preview is not production integration approval.</p>
+        </div>
+      </section>
+
+      <section id="facility">
+        <div class="section-head">
+          <div>
+            <span class="tag">02 · Facility grammar</span>
+            <h2>One institution, distinct rooms</h2>
+          </div>
+          <p>The rooms share a ground, palette, typographic discipline, motion vocabulary, and truth bar. They differ through purpose, light direction, geometry, density, and the kind of authority they express.</p>
+        </div>
+        <div class="grid">
+          <article class="law">
+            <h3>Shared facility laws</h3>
+            <ul>
+              <li>Ink ground; navy, ocean, brand teal, status colors, and verified-success green.</li>
+              <li>Plus Jakarta Sans in production; tabular numerals for operational values.</li>
+              <li>One light source per room and three visual planes at most.</li>
+              <li>Semantic content remains complete in motion, static, constrained, and reduced projections.</li>
+            </ul>
+          </article>
+          <article class="law">
+            <h3>One protagonist</h3>
+            <ul>
+              <li>Mission Control: command threshold.</li>
+              <li>Passage: destination aperture.</li>
+              <li>Arena arrival: recognition register.</li>
+              <li>Agency Command: Kai brief and its single ranked action.</li>
+            </ul>
+          </article>
+          <article class="law">
+            <h3>Architecture before containers</h3>
+            <p>Build with axes, banks, rails, ledgers, thresholds, planes, and stations. Cards are allowed only when the card itself is the interaction.</p>
+          </article>
+          <article class="law">
+            <h3>Room purpose</h3>
+            <p>Mission Control observes. The Passage transfers. The Arena recognizes. Agency Command coordinates. Founder instrumentation inspects without becoming part of the room.</p>
+          </article>
+        </div>
+
+        <h3>Spatial vocabulary</h3>
+        <dl class="taxonomy">
+          <div><dt>Room</dt><dd>A complete operating environment with one purpose, protagonist, and settled truth.</dd></div>
+          <div><dt>Chamber</dt><dd>The bounded volume that gives a room its authority and light logic.</dd></div>
+          <div><dt>Floor</dt><dd>The native-scroll document plane through which the operator inspects stations.</dd></div>
+          <div><dt>Threshold</dt><dd>An explicit boundary where authority, state, or environment changes.</dd></div>
+          <div><dt>Station</dt><dd>One semantic stop responsible for one class of evidence or operation.</dd></div>
+          <div><dt>Console</dt><dd>A contained interactive instrument with a truthful state, control, and destination.</dd></div>
+          <div><dt>Horizon</dt><dd>A stable depth or capacity reference that orients without becoming a fake live chart.</dd></div>
+          <div><dt>Axis</dt><dd>The directional line connecting the protagonist, supporting instruments, and threshold.</dd></div>
+        </dl>
+        <p>Meaningful asymmetry replaces equal-card grids. Content is embedded in shared planes, ledgers, banks, stations, and consoles. Meaningful negative space clarifies authority, travel, and hierarchy. The operational center of gravity remains visible at every viewport.</p>
+
+        <h3>Information architecture</h3>
+        <dl class="taxonomy">
+          <div><dt>Primary operational truth</dt><dd>The dominant verified fact answering what is happening now.</dd></div>
+          <div><dt>Secondary instrumentation</dt><dd>Supporting measures that explain without competing.</dd></div>
+          <div><dt>Evidence</dt><dd>The source, receipt, ledger entry, or deterministic input behind a claim.</dd></div>
+          <div><dt>Status</dt><dd>The current state expressed in text and structure, never color alone.</dd></div>
+          <div><dt>Action</dt><dd>One explicit, permission-valid control with a truthful destination and outcome.</dd></div>
+          <div><dt>Observation</dt><dd>A bounded interpretation visually distinct from canonical fact.</dd></div>
+          <div><dt>Explanation</dt><dd>Why a state exists, using disclosed drivers rather than invented causality.</dd></div>
+          <div><dt>Escalation</dt><dd>An issue needing authority or attention, with reason, destination, and safe next step.</dd></div>
+        </dl>
+        <p>Primary truth and action define the center of gravity. Evidence and status substantiate it. Secondary instrumentation, observation, explanation, and escalation remain subordinate and may not manufacture urgency.</p>
+        <h3>Five governing experience laws</h3>
+        <p><strong>Approved direction.</strong> These five laws govern the Founder-approved Agency Headquarters reference room and every later operating-room proposal. They do not claim that Mission Control or any future room has already been migrated.</p>
+        <div class="grid">
+          <article class="law">
+            <h3>Observable heartbeat</h3>
+            <p>Every operating room requires an observable heartbeat. Motion, rhythm, and ambient state must express that room’s actual purpose without changing canonical facts or fabricating live activity.</p>
+          </article>
+          <article class="law">
+            <h3>Deliberate arrival and exit</h3>
+            <p>Every major room requires a deliberate arrival and exit. Arrival establishes identity, scope, source readiness, and settled truth; exit preserves orientation, names the destination, returns control, and never disguises navigation, error, or mutation. Tier C/D, reduced-motion, and static projections carry the same truth without required motion.</p>
+          </article>
+          <article class="law">
+            <h3>Spatial internal operating districts</h3>
+            <p>Every major room must express its internal operating districts spatially. Their position expresses purpose, ownership, sequence, evidence, and authority. Banks, rails, ledgers, stations, horizons, consoles, and thresholds replace disconnected cards; responsive order preserves the relationships.</p>
+          </article>
+          <article class="law">
+            <h3>Continuous contextual Kai, not disconnected tools</h3>
+            <p>Kai must appear as a continuous contextual executive channel, not a disconnected list of tools. It connects the current district’s source, interpretation, recommendation, and safe next action rather than appearing as disconnected assistants, workflow buttons, or chat widgets. Continuity never invents memory, context, or authority.</p>
+          </article>
+          <article class="law">
+            <h3>Deterministic, authorized, truthfully sourced personalization</h3>
+            <p>Every personalized fact, interpretation, recommendation, draft, or boundary names its source class, stays within the current user, tenant, role, capability, and consent boundary, and never exceeds the evidence. Source domains own facts; Kai interprets and prepares; the operator reviews and decides; execution requires separate explicit authorization.</p>
+          </article>
+        </div>
+        <div class="notice">
+          <p><strong>Phase 6.2 Agency Headquarters application:</strong> architecture approved and frozen as the first Core Runtime reference consumer; deterministic heartbeat; bounded arrival and Mission Control return; Executive Brief, heartbeat, queue, portfolio, health/capacity, and command districts; one contextual command surface mapped to eleven fixed fixture capabilities; and deterministic supported/unsupported, revise/cancel, and no-action outcomes. Command state is route-instance-only and clears on refresh or exit.</p>
+          <p><strong>Future governance:</strong> Mission Control and future rooms must separately document their five-law mapping, canonical sources, ownership, motion budget, static equivalent, authorization, and failure behavior before migration. Phase 6.2 changes no other room’s runtime, data source, interaction, or release status.</p>
+          <p><strong>Boundary:</strong> the Phase 6.2 command surface uses fictional fixtures only—no live AI or model, customer data, API call, storage destination, calendar or task system, contact action, customer mutation, or fabricated completion.</p>
+        </div>
+      </section>
+
+      <section id="runtime">
+        <div class="section-head">
+          <div>
+            <span class="tag">Core Runtime · ADR-0040</span>
+            <h2>Shared lifecycle, room-owned truth</h2>
+          </div>
+          <p>When separately authorized, major operating rooms must inherit one headless CXOS Core Runtime rather than independently rebuilding arrival, departure, heartbeat, district, environmental, Kai-presence, motion, and accessibility mechanics.</p>
+        </div>
+        <div class="grid">
+          <article class="law">
+            <h3>Runtime owns</h3>
+            <ul>
+              <li>Arrival, settled-operation, and departure phase.</li>
+              <li>Environmental heartbeat, lighting, atmosphere, and Kai-presence state tokens.</li>
+              <li>Spatial transition, district activation, native-scroll observation, and focus handoff.</li>
+              <li>Capability fail-down, hidden-document pause, reduced motion, static equivalence, Escape, replay, and native-navigation preservation.</li>
+            </ul>
+          </article>
+          <article class="law">
+            <h3>Room owns</h3>
+            <ul>
+              <li>Canonical facts, calculations, receipts, permissions, and outcomes.</li>
+              <li>Semantic DOM, visual architecture, district purpose/order, copy, CSS, instruments, and atmospheric rendering.</li>
+              <li>Kai intent, recommendations, commands, persistence boundaries, and any authorized actions.</li>
+              <li>Destination and route semantics, APIs, storage, authentication, billing, and owning-system integrations.</li>
+            </ul>
+          </article>
+          <article class="law">
+            <h3>Fail-closed law</h3>
+            <p><strong>Truth and motion fail closed to the complete static document. Navigation fails open to the real local destination. The runtime may project state; it may never own facts or effects.</strong></p>
+          </article>
+          <article class="law">
+            <h3>Kai Presence boundary</h3>
+            <p>Kai Presence Runtime conveys bounded presentation presence and district context only. It grants no memory, model access, customer fact, inference, authorization, persistence, or action authority.</p>
+          </article>
+          <article class="law">
+            <h3>Motion budget</h3>
+            <p>A motion-capable room declares one to three continuous transform/opacity channels; Tier C, Tier D, reduced-motion, and invalid projections activate zero. Semantic heartbeat signals never mutate canonical values for appearance. Missing capability and constrained conditions remain complete and static.</p>
+          </article>
+          <article class="law">
+            <h3>No effect authority</h3>
+            <p>Core Runtime performs no network, storage, cookie, database, model, telemetry, calendar, task, customer, auth, billing, or environment-variable/deployment-config action. No Canvas, WebGL, video, audio, external animation dependency, scroll hijack, or self-running JavaScript frame loop belongs in it.</p>
+          </article>
+        </div>
+        <div class="notice">
+          <p><strong>Adoption boundary:</strong> Agency Headquarters is the only reference consumer migrated in this phase. Mission Control, the Passage, the Arena, the landing journey, Consumer Workspace, Marketplace, Community, Growth Network, and future rooms require separate authorization and regression evidence.</p>
+        </div>
+      </section>
+
+      <section id="matrix">
+        <div class="section-head">
+          <div>
+            <span class="tag">03 · Room matrix</span>
+            <h2>Purpose creates the room</h2>
+          </div>
+          <p>A room earns a distinct atmosphere only when the atmosphere expresses a distinct operational job.</p>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Surface</th>
+                <th>Status</th>
+                <th>Purpose</th>
+                <th>Spatial grammar</th>
+                <th>Primary information</th>
+                <th>Forbidden reading</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Public Arrival</td>
+                <td>Foundation</td>
+                <td>Introduce and establish trust</td>
+                <td>Full-bleed, one focal claim or product frame</td>
+                <td>Promise, evidence, next action</td>
+                <td>Generic SaaS hero</td>
+              </tr>
+              <tr>
+                <td>Mission Control</td>
+                <td>Approved direction</td>
+                <td>Observe and decide</td>
+                <td>Rectilinear chamber, banks, command axis</td>
+                <td>Execution, systems, Kai, clearance</td>
+                <td>Dashboard mosaic</td>
+              </tr>
+              <tr>
+                <td>The Passage</td>
+                <td>Approved direction</td>
+                <td>Transfer authority</td>
+                <td>Converging hallway and geometry conversion</td>
+                <td>Power-down, anticipation, threshold</td>
+                <td>Black interruption or loading screen</td>
+              </tr>
+              <tr>
+                <td>The Arena</td>
+                <td>Approved direction</td>
+                <td>Recognize evidenced standing</td>
+                <td>Ceremonial arrival and station floor</td>
+                <td>Standing, evidence, milestones, Kai</td>
+                <td>Casino, game lobby, card stack</td>
+              </tr>
+              <tr>
+                <td>Agency Command</td>
+                <td>Approved direction · Core Runtime reference</td>
+                <td>Coordinate a client portfolio</td>
+                <td>Wide command wall, spatial operating districts, purpose-bound heartbeat field, contextual Kai command surface, and ranked ledgers</td>
+                <td>Health drivers, client flow, workload, evidence coverage, priorities, capacity, and deterministic contextual Kai</td>
+                <td>Chart wall, fake live feed, disconnected workflow-button bank, or AI-copilot chat</td>
+              </tr>
+              <tr>
+                <td>Founder Review Control</td>
+                <td>Approved review pattern</td>
+                <td>Inspect projection and safety</td>
+                <td>Collapsed Director pill and bounded sheet</td>
+                <td>Tier, reason, projection, fixture, replay</td>
+                <td>Product navigation or hidden override</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="passage">
+        <div class="section-head">
+          <div>
+            <span class="tag">04 · Passage grammar</span>
+            <h2>Departure must be earned</h2>
+          </div>
+          <p>The Passage is not an interstitial. It is a deterministic transfer from a visible origin to a semantic destination.</p>
+        </div>
+        <div class="grid">
+          <article class="law">
+            <h3>Origin and power-down</h3>
+            <p>The origin stays legible while instruments recede and the axis contracts. Early input cancels to the visible origin; later input settles forward. An unexplained black screen is forbidden.</p>
+          </article>
+          <article class="law">
+            <h3>Hallway and anticipation</h3>
+            <p>Filled cool planes converge toward a distant aperture. Warmth arrives late. No HUD, marketing slogan, or data card competes with the corridor.</p>
+          </article>
+          <article class="law">
+            <h3>Conversion and threshold</h3>
+            <p>Rectilinear blue becomes radial ceremonial architecture. The final Passage frame and settled Arena frame share focal position, scale, geometry, and light.</p>
+          </article>
+          <article class="law">
+            <h3>Settlement and return</h3>
+            <p>Focus moves to the visible destination before the overlay unmounts. Static projection scrolls to real content. Return restores focus, scroll, inert state, timers, and one settled origin.</p>
+          </article>
+        </div>
+        <h3>Complete transition language</h3>
+        <ol>
+          <li><strong>Acknowledgment:</strong> confirm the initiating action without implying an unperformed write or outcome.</li>
+          <li><strong>Departure:</strong> recede the origin while preserving orientation.</li>
+          <li><strong>Travel:</strong> establish legible depth and movement through one facility.</li>
+          <li><strong>Anticipation:</strong> withhold destination authority until the intended beat.</li>
+          <li><strong>Conversion:</strong> transform origin geometry into destination grammar.</li>
+          <li><strong>Threshold:</strong> make the boundary and destination undeniable.</li>
+          <li><strong>Arrival:</strong> settle into the same semantic destination already beneath the cinematic layer.</li>
+          <li><strong>Operation:</strong> return control to the native document with no residual lock, timer, or cinematic state.</li>
+          <li><strong>Return:</strong> restore focus, scroll, inert state, timers, and the origin’s settled truth deterministically.</li>
+        </ol>
+      </section>
+
+      <section id="arena">
+        <div class="section-head">
+          <div>
+            <span class="tag">05 · Arena grammar</span>
+            <h2>Recognition, not gamification</h2>
+          </div>
+          <p>The Arena is one inhabited ceremonial room whose authority comes from evidence, not scarcity or spectacle.</p>
+        </div>
+        <ol>
+          <li>Station A reserves a full-viewport final composition before recognition appears.</li>
+          <li>Clearance, standing, evidence, lifetime record, and Kai truth remain in normal document flow.</li>
+          <li>Evidence is an engraved ledger; milestones are earned seals.</li>
+          <li>Native scroll walks stations II–V. No scroll lock or mobile pinned stage.</li>
+          <li>Viewport-bound atmosphere unifies the chamber without reducing readability.</li>
+          <li>Competition remains planned until real policy and data exist.</li>
+          <li>Reduced motion receives the same complete ceremony at rest.</li>
+        </ol>
+      </section>
+
+      <section id="agency">
+        <div class="section-head">
+          <div>
+            <span class="tag">06 · Approved reference room</span>
+            <h2>Agency Command</h2>
+          </div>
+          <p>Agency Headquarters is the Founder-approved architectural term. Agency Command remains the concise in-room label and current review-route identity. Agency Command Center remains the formal Phase 6 program and artifact title. This mapping records usage; it does not rename routes or globally deprecate any term. The approved architecture is frozen in this phase; shared lifecycle refinement belongs in Core Runtime.</p>
+        </div>
+
+        <p class="specimen-disclosure" id="agency-specimen-disclosure">SYNTHETIC REVIEW · NO LIVE DATA</p>
+        <div class="command-wall" aria-label="Agency Command hierarchy specimen" aria-describedby="agency-specimen-disclosure">
+          <div>
+            <span class="instrument">Agency health</span>
+            <p class="value">WATCH</p>
+            <p class="sub">Three disclosed drivers. No unratified numeric score.</p>
+          </div>
+          <div class="primary">
+            <span class="instrument">Kai · Executive Morning Brief</span>
+            <p class="value">One displayed response record needs a decision.</p>
+            <p class="sub">One ranked next action and one deterministic receipt.</p>
+          </div>
+          <div>
+            <span class="instrument">Portfolio scope</span>
+            <p class="value">12 / 15</p>
+            <p class="sub">Existing work remains accessible at capacity.</p>
+          </div>
+        </div>
+
+        <div class="grid">
+          <article class="law">
+            <h3>Hierarchy</h3>
+            <ol>
+              <li>Identity, scope, synthetic disclosure.</li>
+              <li>Kai brief and one action.</li>
+              <li>Health drivers and capacity.</li>
+              <li>Ranked work queue.</li>
+              <li>Client portfolio ledger.</li>
+              <li>Team/load truth.</li>
+            </ol>
+          </article>
+          <article class="law">
+            <h3>Agency Health</h3>
+            <p>Use HEALTHY, WATCH, or AT RISK with response attention, oldest queue age, capacity, and source coverage. A 0–100 value remains a labeled specimen until its formula is ratified.</p>
+          </article>
+          <article class="law">
+            <h3>Kai brief</h3>
+            <p>Two short sentences, one ranked action, one receipt. No chatbot, avatar, mascot, or recommendation stack. One bounded contextual command surface maps to route-instance note, reminder, scheduling, summary, task-preparation, bottleneck, follow-up, organization, meeting, explanation, and suggested-action previews. Every output remains deterministic, truthfully sourced, non-persistent, operator-reviewed, and ends with a no-action receipt.</p>
+          </article>
+          <article class="law">
+            <h3>Portfolio work</h3>
+            <p>Use an ordered priority ledger and border-row client ledger. Inline inspection is local and reversible; a review route never opens a real customer workspace.</p>
+          </article>
+          <article class="law">
+            <h3>Team/load truth</h3>
+            <p>Solo projection shows unavailable. Only an explicit Team Specimen may show synthetic seats and load, under a second permanent disclosure and with no fake management action.</p>
+          </article>
+          <article class="law">
+            <h3>Minimum arrival threshold</h3>
+            <p>Tier A: at most 1.5 seconds for review identity → fixture systems → capacity horizon → ledger activation → Kai focus → settled heartbeat. Tier B: at most 700 ms on one plane. Mission Control return: 360–480 ms acknowledgment and departure, then ordinary review-route navigation. Tier C/D and reduced/static: zero. Content paints before motion; any input completes the settle in under 100 ms.</p>
+          </article>
+          <article class="law">
+            <h3>Living instruments</h3>
+            <p>Client flow is a fixed-position rail; capacity is an occupied/reserve horizon; workload is disclosed queue composition; response aging is illustrative and not a legal deadline; evidence coverage preserves unlike source states; and bottlenecks name the waiting decision or evidence gate. Throughput stays “Not instrumented” until a time-bounded source model exists.</p>
+          </article>
+          <article class="law">
+            <h3>Kai workbench boundary</h3>
+            <p>Fixture-only commands warn against real customer information. A local no-destination form may provide keyboard submission, but the form and field declare no name, action, method, form action, model, API, storage, calendar, notification, task, customer, assignment, or production destination. It never claims that anything was saved, sent, scheduled, assigned, created, contacted, or changed.</p>
+          </article>
+          <article class="law">
+            <h3>Phase 6.2 contextual command law</h3>
+            <p>One bounded command is matched through a fixed deterministic intent table. Supported results name intent, classification, fixture sources, preview, and receipt. Unsupported, ambiguous, multi-intent, live-data, legal-outcome, and effect-seeking requests prepare nothing and never fall back silently.</p>
+          </article>
+          <article class="law">
+            <h3>Revision, cancellation, and ownership</h3>
+            <p>Revision invalidates stale preview state and requires explicit re-preparation. Cancel and clear remove route-instance preview state only. User-entered notes remain <strong>OPERATOR DRAFT · USER-ENTERED · NOT VERIFIED BY KAI</strong>. Fixture domains own facts; the operator owns the command and decision; Kai owns neither customer records nor execution.</p>
+          </article>
+          <article class="law">
+            <h3>Static parity and compliance</h3>
+            <p>Reduced-motion and static projections preserve identical command, source, classification, supported/unsupported, revise/cancel, and receipt information. Wording remains educational and process-bound: no guaranteed deletion, removal, score improvement, legal conclusion, absolute deadline, compliance certification, or credit-repair outcome.</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="visual">
+        <div class="section-head">
+          <div>
+            <span class="tag">07 · Visual language</span>
+            <h2>Density signals authority</h2>
+          </div>
+          <p>Specific operational hierarchy replaces generic polish. Data earns the pixels; decoration never substitutes for meaning.</p>
+        </div>
+        <div class="grid">
+          <article class="law">
+            <h3>Hierarchy and scale</h3>
+            <p>Room identity is largest; primary operational truth follows; action, status, evidence, observation, explanation, and metadata descend in that order. Secondary instrumentation may not compete with the protagonist.</p>
+          </article>
+          <article class="law">
+            <h3>Typography</h3>
+            <p>Plus Jakarta Sans in production. Display voice only for room identity. Tabular numerals for money, dates, scores, XP, counts, durations, and capacity. Mono only for instruments and receipts.</p>
+          </article>
+          <article class="law">
+            <h3>Color</h3>
+            <p>Ink is ground. Ocean is process. Restrained cyan means the approved brand blue/teal operational role, not a new raw hue. Ceremonial gold means restrained existing amber and metal-like recognition tokens in the Arena, not Agency decoration. Success green is verified-positive only; amber/red are honest status.</p>
+          </article>
+          <article class="law">
+            <h3>Depth and light</h3>
+            <p>Three planes maximum. Text never floats. Mission Control and Agency Command receive analytical light from above; Arena light rises from below.</p>
+          </article>
+          <article class="law">
+            <h3>Opacity, lines, and framing</h3>
+            <p>Low opacity denotes atmosphere or subordinate instrumentation, never uncertain truth by itself. Lines express ownership, sequence, connection, or boundary. Rectilinear operational framing and radial recognition framing convert coherently at thresholds; atmospheric depth stays behind content.</p>
+          </article>
+          <article class="law">
+            <h3>Data</h3>
+            <p>Prefer ledgers, queues, definition lists, and banks. Reject decorative donuts, animated counters, unlabelled sparklines, truncated deadlines, and color-only status.</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="motion">
+        <div class="section-head">
+          <div>
+            <span class="tag">08 · Motion language</span>
+            <h2>Six primitives, one ease</h2>
+          </div>
+          <p>Motion communicates state, system presence, spatial travel, recognition, and attention. It does not perform for its own sake.</p>
+        </div>
+        <div class="grid">
+          <article class="law">
+            <h3>State and ambient motion</h3>
+            <p>State motion represents truthful power, focus, availability, or room-state change. Ambient motion represents bounded system presence and never implies changing data, team presence, or live activity.</p>
+          </article>
+          <article class="law">
+            <h3>Transition and recognition motion</h3>
+            <p>Transition motion represents travel between an identified origin and destination. Recognition motion reveals existing evidence or status and never changes the canonical fact.</p>
+          </article>
+        </div>
+        <div aria-label="Motion primitives">
+          <div class="primitive"><strong>Settle</strong><span>An object takes its place.</span><time>400 ms</time></div>
+          <div class="primitive"><strong>Reveal</strong><span>Content earns visibility.</span><time>600 ms</time></div>
+          <div class="primitive"><strong>Draw</strong><span>Evidence or a connection is traced.</span><time>1.8 s</time></div>
+          <div class="primitive"><strong>Drift</strong><span>Atmosphere breathes behind content.</span><time>18 s+</time></div>
+          <div class="primitive"><strong>Shine</strong><span>An interactive machined surface responds.</span><time>hover/focus</time></div>
+          <div class="primitive"><strong>Focus</strong><span>Attention transfers between planes.</span><time>350 ms</time></div>
+        </div>
+        <div class="notice">
+          <p><strong>Heartbeat law:</strong> Every operating room must possess an observable operational heartbeat. Motion, rhythm, and ambient state must express that room’s actual purpose without changing canonical facts or fabricating live activity.</p>
+          <p>Transform and opacity only. Layout never animates. A motion-capable room declares one to three ambient channels; they pause while hidden and disappear in static/reduced projections. Core Runtime projects the arriving / operating / departing lifecycle family and the active / paused / static motion family, plus bounded derived lighting, atmosphere, heartbeat, and Kai-presence tokens; room CSS renders them. Phase 6.1 uses one room breath, one operational sweep, and one client-flow state channel. Purpose-bound heartbeat motion carries a permanent source or synthetic disclosure whenever it could resemble live activity. Decorative spectacle, false live-data behavior, and animation that changes canonical facts are forbidden. No cursor chasing, zoom-through, autoplay audio, Canvas loop, WebGL, or runtime JavaScript animation loop.</p>
+        </div>
+      </section>
+
+      <section id="truth">
+        <div class="section-head">
+          <div>
+            <span class="tag">09 · Data-truth language</span>
+            <h2>No atmosphere outranks truth</h2>
+          </div>
+          <p>Synthetic review data must remain unmistakably synthetic to sighted visitors and assistive technology.</p>
+        </div>
+        <div class="grid">
+          <article class="law">
+            <h3>Synthetic disclosure</h3>
+            <p>Visible: <strong>SYNTHETIC REVIEW · NO LIVE DATA</strong>. Complete assistive disclosure: no real account, database, customer record, reputation read, or reputation write.</p>
+          </article>
+          <article class="law">
+            <h3>Claims and receipts</h3>
+            <p>Kai may interpret deterministic truth, but may not invent counts, deadlines, health, outcomes, or confidence. Every operational claim can name its source.</p>
+          </article>
+          <article class="law">
+            <h3>Personalization and ownership</h3>
+            <p>Personalization is deterministic, permission-valid, tenant-scoped, consent-aware where applicable, and sourced from an owning domain. Synthetic review claims no real authorization or customer-data read. Kai does not own canonical facts, infer unavailable context, or perform execution.</p>
+          </article>
+          <article class="law">
+            <h3>State truth</h3>
+            <p>Empty means no evidence. Unavailable means absent source or capability. Error states preserve what remains known. Permission states reveal no protected metadata.</p>
+          </article>
+          <article class="law">
+            <h3>Specimen truth</h3>
+            <p>Numeric Agency Health, Team Load, pipeline, revenue, assignment, and automation remain visibly specimen-only until implemented and separately approved.</p>
+          </article>
+        </div>
+        <div class="notice">
+          <p><strong>Evidence law:</strong> repository facts are authoritative and status must be evidence-backed. Fake live metrics, popularity ratings, decorative rankings, and invented operational outcomes are forbidden. Every claim must resolve to a source or deterministic receipt.</p>
+        </div>
+        <h3>Required interaction states</h3>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>State</th><th>Visitor-facing requirement</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Populated</td><td>Full hierarchy, deterministic values, and one primary action.</td></tr>
+              <tr><td>Empty</td><td>A briefing: what belongs here, what evidence creates it, and one next action.</td></tr>
+              <tr><td>Loading</td><td>A skeleton matching final geometry plus truthful status; no fake progress.</td></tr>
+              <tr><td>Unavailable</td><td>The absent source or capability named; no guessed replacement.</td></tr>
+              <tr><td>Error</td><td>What failed, what remains known, and one recovery action.</td></tr>
+              <tr><td>Permission denied</td><td>Minimal tenant-safe refusal with no protected metadata.</td></tr>
+              <tr><td>Capacity reached</td><td>Existing work preserved; only the exceeding action unavailable.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <h3>Interaction laws</h3>
+        <ol>
+          <li>Actions name their destination and supported effect; dead controls and decorative action labels are forbidden.</li>
+          <li>Controls truthfully expose availability, pressed, loading, disabled, unavailable, error, and success states.</li>
+          <li>Non-modal surfaces make no false modal claim.</li>
+          <li>No interaction performs a hidden state mutation, storage write, network write, or data mutation.</li>
+          <li>Keyboard operation follows the same semantic order as touch and pointer operation.</li>
+          <li>Focus continuity survives open, close, departure, arrival, projection change, and return.</li>
+          <li>Return deterministically restores the focus target, native scroll, inert state, and settled room state.</li>
+          <li>Native scroll remains authoritative; scroll hijacking and section snapping are forbidden.</li>
+          <li>No user trap: cancel, skip, Escape, and safe return remain available wherever choreography could delay control.</li>
+          <li>Natural-language command surfaces disclose deterministic matching, distinguish supported from unsupported intent, invalidate stale previews on revision, and report no action after prepare, cancel, or clear.</li>
+        </ol>
+      </section>
+
+      <section id="access">
+        <div class="section-head">
+          <div>
+            <span class="tag">10 · Accessibility</span>
+            <h2>The semantic room is the room</h2>
+          </div>
+          <p>The cinematic layer decorates a complete document. It never carries information that disappears for keyboard, screen-reader, reduced-motion, or constrained users.</p>
+        </div>
+        <ul>
+          <li>WCAG 2.2 AA target across every scene.</li>
+          <li>A visible skip-navigation link moves directly to the main landmark.</li>
+          <li>One main and one h1, with headings and landmarks matching visual hierarchy.</li>
+          <li>Cinematic world aria-hidden; semantic content remains in DOM order.</li>
+          <li>Live-region restraint: one polite status region for projection, journey, and fixture announcements, without duplication.</li>
+          <li>Visible focus; destination focus moves before overlay removal; focus never falls to body.</li>
+          <li>Director close returns focus to its pill; a non-modal instrument never claims modal semantics.</li>
+          <li>Touch/coarse controls are at least 44 px.</li>
+          <li>Pressed state and status use text/structure in addition to color.</li>
+          <li>Text and essential controls maintain readable WCAG contrast across atmospheric and interaction states.</li>
+          <li>Reduced motion retains information parity; the complete static alternative preserves every fact, action, disclosure, and destination.</li>
+          <li>Automated Axe evidence is necessary but does not replace manual assistive-technology review.</li>
+        </ul>
+      </section>
+
+      <section id="responsive">
+        <div class="section-head">
+          <div>
+            <span class="tag">11 · Responsive and capability</span>
+            <h2>Intentional at every tier</h2>
+          </div>
+          <p>Mobile is not a stack of desktop cards. It has its own priority order, touch behavior, pacing, and geometry.</p>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Projection</th><th>Typical context</th><th>Experience law</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Tier A</td><td>Capable desktop/tablet</td><td>Full approved cinematic depth.</td></tr>
+              <tr><td>Tier B</td><td>Mobile or coarse pointer</td><td>Single-plane cinema, shorter pacing, no pinned stage.</td></tr>
+              <tr><td>Tier C</td><td>Data Saver, low memory, detection failure</td><td>Complete conservative/static experience.</td></tr>
+              <tr><td>Tier D</td><td>Explicit static or reduced final frame</td><td>Complete document with no cinematic motion.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Use stable viewport units, safe-area-aware review controls, reserved geometry, and zero horizontal overflow. Preserve approved typography and hierarchy at every tier without reducing essential content to microtype. Mobile order is identity, Kai brief, disclosed heartbeat and Kai delegation, priority, health/capacity, full ledger, then secondary context. Data Saver, low-memory safety, and failed capability detection are never overridden.</p>
+      </section>
+
+      <section id="performance">
+        <div class="section-head">
+          <div>
+            <span class="tag">12 · Performance</span>
+            <h2>Measure the actual room</h2>
+          </div>
+          <p>Functional success does not erase a long task, and a clean screenshot does not prove stability.</p>
+        </div>
+        <div class="grid">
+          <article class="law">
+            <h3>Budgets</h3>
+            <ul>
+              <li>Marketing LCP target 1.8 s; budget 2.5 s at mobile P75.</li>
+              <li>INP below 200 ms.</li>
+              <li>Skip/settle response below 100 ms.</li>
+              <li>General CLS below 0.1; CXOS room-swap target 0.</li>
+              <li>Cinematic above-fold assets at most 300 kB.</li>
+            </ul>
+          </article>
+          <article class="law">
+            <h3>Technology boundary</h3>
+            <ul>
+              <li>Semantic HTML and CSS are the complete foundation.</li>
+              <li>No new dependency for effects covered by CSS or platform APIs.</li>
+              <li>No autoplay video/audio, WebGL, Three.js, GSAP, Rive, or Lottie in core unless separately approved.</li>
+              <li>No video dependency, Canvas loop, continuous expensive JavaScript loop, or runtime asset spectacle.</li>
+              <li>The experience remains readable if every enhancement fails.</li>
+              <li>Core Runtime contract failure is exercised as a complete Tier D static projection.</li>
+            </ul>
+          </article>
+        </div>
+        <div class="notice">
+          <p><strong>Long-task gate:</strong> motion is CSS/compositor-first and never animates layout. No sustained application-attributable long task is acceptable while ambient state is settled; repeated tasks above 50 ms during a transition block release.</p>
+        </div>
+      </section>
+
+      <section id="controls">
+        <div class="section-head">
+          <div>
+            <span class="tag">13 · Founder review control</span>
+            <h2>Visible, local, and non-mutating</h2>
+          </div>
+          <p>Review instrumentation explains why an experience is static or cinematic and lets the Founder inspect states without changing browser, account, or production truth.</p>
+        </div>
+        <ol>
+          <li>Review controls exist only in review builds and are hard-off in production.</li>
+          <li>One safe-area-aware Director pill opens a bounded, independently scrollable sheet.</li>
+          <li>Escape closes the Director before journey Escape behavior and returns focus to the pill.</li>
+          <li>Auto, Cinematic, and Static expose pressed state and the resolved tier/reason.</li>
+          <li>Reduced-motion override requires explicit confirmation and changes no system setting.</li>
+          <li>Data Saver, low-memory safety, and detection failure cannot be overridden.</li>
+          <li>Projection choice and fixture state are separate fieldsets.</li>
+          <li>Projection changes settle timers, pause, focus, scroll, inert state, and environment to one truth.</li>
+          <li>Fixture changes are local and synthetic.</li>
+          <li>The Director sends no data, stores no consent, and exposes no credential.</li>
+        </ol>
+      </section>
+
+      <section id="antipatterns">
+        <div class="section-head">
+          <div>
+            <span class="tag">14 · Anti-patterns</span>
+            <h2>Reject on sight</h2>
+          </div>
+          <p>These patterns break facility continuity, operational clarity, trust, or accessibility.</p>
+        </div>
+        <ol class="anti">
+          <li>Equal grids of rounded information cards.</li>
+          <li>Title screen followed by unrelated widgets.</li>
+          <li>Generic “clean modern dashboard” styling.</li>
+          <li>Purple/indigo SaaS gradients.</li>
+          <li>Glow on every border and control.</li>
+          <li>Decorative icon circles and blobs.</li>
+          <li>Centered-everything composition.</li>
+          <li>Faux-terminal microtype for essential content.</li>
+          <li>Decorative donuts and animated counters.</li>
+          <li>Kai as chatbot or mascot in an operational room.</li>
+          <li>Synthetic metrics without permanent disclosure.</li>
+          <li>Team, revenue, pipeline, automation, or outcomes implied live.</li>
+          <li>Arena scarcity, countdown, casino, or jackpot language.</li>
+          <li>Mission Control or Agency Command as a card mosaic.</li>
+          <li>Black-screen interruption used as a Passage.</li>
+          <li>Scroll-jacking, snapping, cursor chasing, or zoom-through.</li>
+          <li>Hover-only action or color-only status.</li>
+          <li>Placeholder-only form labels.</li>
+          <li>False modal semantics.</li>
+          <li>Stored review override or hidden write request.</li>
+          <li>Popularity rating, decorative ranking, or invented operational outcome.</li>
+          <li>Unsupported claims of zero long tasks or certification.</li>
+        </ol>
+      </section>
+
+      <section id="gates">
+        <div class="section-head">
+          <div>
+            <span class="tag">15 · Release gates</span>
+            <h2>Experience approval is not integration approval</h2>
+          </div>
+          <p>A room may be approved as a direction while production, architecture, data, and merge authority remain untouched.</p>
+        </div>
+        <div class="grid">
+          <article class="law">
+            <h3>Scope and public safety</h3>
+            <ul>
+              <li>Exact commit range and file allowlist recorded.</li>
+              <li>Specimen capability visibly labeled.</li>
+              <li>No secrets, local paths, usernames, tokens, environment values, or private evidence locations.</li>
+              <li>No unrelated agent infrastructure.</li>
+            </ul>
+          </article>
+          <article class="law">
+            <h3>Static validation</h3>
+            <ul>
+              <li>Typecheck, touched-file lint, diff check, and CXOS guards pass.</li>
+              <li>Optimized review build passes without database mutation.</li>
+              <li>Manifests and lockfiles stay unchanged unless authorized.</li>
+            </ul>
+          </article>
+          <article class="law">
+            <h3>Experience matrix</h3>
+            <ul>
+              <li>Desktop, tablet, mobile, coarse, and reduced/static.</li>
+              <li>Constrained fail-closed behavior.</li>
+              <li>Populated, empty, loading, unavailable, error, permission, and capacity.</li>
+              <li>Forward, cancel, skip, return, replay, projection, and preference changes.</li>
+            </ul>
+          </article>
+          <article class="law">
+            <h3>Accessibility and stability</h3>
+            <ul>
+              <li>Axe, keyboard, focus transfer, Escape ordering, and touch target checks.</li>
+              <li>Overflow, off-screen focus, false-modal, and hidden-content checks.</li>
+              <li>CLS, long-task, console, page, and request observations.</li>
+              <li>Manual AT review complete or carried as a visible caveat.</li>
+            </ul>
+          </article>
+          <article class="law">
+            <h3>Production isolation</h3>
+            <ul>
+              <li>Preview and production identity remain distinct.</li>
+              <li>No wholesale historical branch merge.</li>
+              <li>Approved delta is reconciled against a clean production baseline.</li>
+              <li>Rollback is defined before production action.</li>
+              <li>Merge and production deployment require separate Founder authorization.</li>
+            </ul>
+          </article>
+          <article class="law">
+            <h3>Terminal status</h3>
+            <p><strong>LANGUAGE 1.0 · PHASE 6.2 + CORE RUNTIME DIRECTION APPROVED · LOCAL REFERENCE IMPLEMENTATION VALIDATED · UNCOMMITTED · UNPUSHED · NOT PREVIEW OR PRODUCTION APPROVAL</strong></p>
+          </article>
+        </div>
+      </section>
+
+      <section id="checklist">
+        <div class="section-head">
+          <div>
+            <span class="tag">16 · New-room checklist</span>
+            <h2>Before calling it CXOS</h2>
+          </div>
+          <p>A room is ready for review when its purpose, truth, interaction, responsive behavior, and integration boundary are inspectable.</p>
+        </div>
+        <ul class="checklist">
+          <li>One operational purpose and one protagonist.</li>
+          <li>An observable, purpose-bound operational heartbeat and complete static equivalent.</li>
+          <li>Deliberate, orientation-preserving, truthful arrival and exit that remain complete without motion.</li>
+          <li>Internal operating districts expressing purpose, ownership, sequence, evidence, and authority.</li>
+          <li>One continuous contextual Kai presence rather than disconnected tools, assistants, buttons, or chat widgets.</li>
+          <li>Deterministic, authorized, truthfully sourced, uncertainty-aware personalization bounded by owning domains and user control.</li>
+          <li>Distinct spatial grammar without facility fragmentation.</li>
+          <li>Explicit light source, palette role, and density.</li>
+          <li>Architecture before containers.</li>
+          <li>Truthful data, empty, unavailable, error, permission, and capacity states.</li>
+          <li>Permanent synthetic/specimen disclosure where required.</li>
+          <li>Only approved motion primitives with a complete static final frame.</li>
+          <li>Specified focus, scroll, inert, and Escape behavior.</li>
+          <li>Intentional desktop, tablet, mobile, coarse, and reduced projections.</li>
+          <li>Keyboard, touch, and screen-reader complete controls.</li>
+          <li>Current performance evidence and visible caveats.</li>
+          <li>Non-mutating, isolated Founder review instrumentation.</li>
+          <li>An exact patch that does not require a wholesale historical merge.</li>
+          <li>Separate Founder decisions for experience approval and production authorization.</li>
+          <li>Core Runtime is consumed for shared mechanics, or a reviewed exception is documented; lifecycle infrastructure is not duplicated silently.</li>
+        </ul>
+      </section>
+
+      <section id="copy">
+        <div class="section-head">
+          <div>
+            <span class="tag">17 · Copyable summary</span>
+            <h2>Transfer the working specification</h2>
+          </div>
+          <p>This summary is intentionally selectable without JavaScript. It carries the governing language, lineage boundary, and terminal status without exposing private machine data.</p>
+        </div>
+        <div class="copy-block">
+          <p class="copy-instruction">Select inside the block and copy manually. This Language artifact contains no script; the one-click clipboard control is reserved for the final Phase 6 handoff HTML.</p>
+          <pre tabindex="0" aria-label="Copyable CXOS Language 1.0 specification summary">CREDITVECTOR CXOS LANGUAGE 1.0 — WORKING SPECIFICATION SUMMARY
+
+STATUS
+LANGUAGE 1.0 · PHASE 6.2 + CORE RUNTIME ISOLATED RC1 AUTHORIZED · PROTECTED PREVIEW ONLY · NOT PRODUCTION APPROVAL
+
+BOUNDARY
+- Derived from the CXOS Foundation and the Founder-approved Phase 5.2/5.3 experience direction.
+- Incorporates the Founder-approved Phase 6.2 Agency Headquarters experience and preserves the historical Phase 6.1 heartbeat record.
+- Incorporates ADR-0040 and the Founder-authorized CXOS Core Runtime architecture.
+- Agency Headquarters is the approved first reference consumer; its room architecture is frozen in this phase.
+- Only the isolated RC1 commit, review-branch push, and protected Preview are authorized; no merge, production, database, backend, auth, billing, environment, dependency, or unrelated-room authority is granted.
+
+BRANCH LINEAGE
+- Founder review of the Phase 6.2 room baseline a40a41c5a76028ad5cae2ff655c5bf168fb86a4a is complete.
+- feat/cxos-phase3 remains a 63-commit historical branch and must not be merged wholesale.
+- RC1 is reconstructed from production baseline f449c35d0eca9463c15e86f8cbd4cd7f4e948d03 on review/cxos-core-runtime-isolated-rc1 and includes only the approved Phase 6.2/Core Runtime delta plus justified review prerequisites.
+- A protected RC1 Preview is not production integration approval.
+- The branch must not be merged wholesale.
+
+FACILITY AND SPATIAL LAW
+- One facility; distinct rooms; one protagonist and one settled truth per viewport.
+- Room, chamber, floor, threshold, station, console, horizon, and axis have explicit semantic roles.
+- Prefer meaningful asymmetry, embedded content, useful negative space, and a visible operational center of gravity.
+
+FIVE GOVERNING EXPERIENCE LAWS
+- Every operating room requires an observable heartbeat: purpose-bound motion, rhythm, and ambient state never change facts or fabricate live activity.
+- Every major room requires a deliberate arrival and exit: establish identity, scope, source readiness, orientation, destination, and returned control; static/reduced projections preserve the same truth.
+- Every major room must express its internal operating districts spatially: position expresses purpose, ownership, sequence, evidence, and authority across responsive projections.
+- Kai must appear as a continuous contextual executive channel, not a disconnected list of tools: one intelligence connects source, interpretation, recommendation, and safe next action without inventing context or authority.
+- Personalization must be deterministic, authorized, and truthfully sourced: source domains own facts; Kai interprets and prepares; the operator decides; execution requires separate explicit authorization.
+- Agency Command applies all five in Phase 6.2. Mission Control and future rooms are governed only after separate scope, review, and implementation; Phase 6.2 does not claim they changed.
+
+CXOS CORE RUNTIME
+- Shared capabilities: arrival, departure, environmental heartbeat, spatial transition, district, scroll activation, environmental lighting, atmosphere, Kai presence, motion, and accessibility.
+- Runtime owns deterministic lifecycle and state projection only; each room owns facts, semantic DOM, visual architecture, CSS, copy, instruments, Kai behavior, destinations, and effects.
+- Truth and motion fail closed to the complete static document. Local navigation fails open to the real semantic destination.
+- Invalid configuration, constrained capability, reduced motion, hidden documents, and missing browser enhancement never invent data or upgrade motion.
+- Kai Presence Runtime conveys bounded presentation presence/context only—no memory, model, customer fact, authorization, persistence, or action.
+- No network, storage, cookie, database, model, telemetry, calendar, task, customer, auth, billing, or environment-variable/deployment-config action.
+- Agency Headquarters is the only migrated consumer in this phase. All other rooms require separate authorization and regression evidence.
+
+INFORMATION HIERARCHY
+- Primary operational truth and one explicit action define the center.
+- Evidence and status substantiate it.
+- Secondary instrumentation, observation, explanation, and escalation remain subordinate and evidence-bound.
+
+MOTION AND TRANSITION
+- Every operating room must possess an observable operational heartbeat. Motion, rhythm, and ambient state must express that room’s actual purpose without changing canonical facts or fabricating live activity.
+- State motion represents truthful state.
+- Ambient motion represents bounded system presence.
+- Transition motion represents spatial travel.
+- Recognition motion reveals existing evidence or status.
+- Ordered grammar: acknowledgment, departure, travel, anticipation, conversion, threshold, arrival, operation, return.
+- Decorative spectacle, false live behavior, and animation that changes facts are forbidden.
+
+LIVING AGENCY COMMAND
+- The Agency Headquarters architecture and experience direction are Founder-approved.
+- Fixed client-flow positions express entering, advancing, waiting, blocked, and resolving without changing canonical values.
+- Capacity, workload, response aging, evidence coverage, and bottlenecks remain source-disclosed spatial instruments.
+- Throughput remains Not instrumented until a time-bounded model exists.
+- One contextual Kai command surface maps to eleven fixed deterministic route-instance capabilities instead of disconnected workflow controls.
+- Supported and unsupported responses are explicit; revision invalidates stale preview state; cancel and clear affect only route-instance preview state.
+- No live AI/model, customer data, API call, storage destination, calendar/task system, contact action, or customer mutation. Nothing is saved, sent, scheduled, assigned, created, contacted, or changed.
+- Command state clears on refresh or exit; reduced-motion and static projections preserve complete information and user control.
+
+VISUAL LAW
+- Typography and scale follow room identity, primary truth, action, status, evidence, observation, explanation, then metadata.
+- Restrained cyan is the approved blue/teal operational role; ceremonial gold is restrained existing Arena recognition language.
+- Opacity, line systems, geometric framing, and atmospheric depth communicate hierarchy without replacing truth.
+
+INTERACTION LAW
+- Controls are explicit, truthful, keyboard-complete, and non-mutating.
+- Focus continuity and deterministic return are required.
+- Native scroll remains authoritative; no hijacking, false modal claim, hidden mutation, or user trap.
+
+RESPONSIVE AND ACCESSIBILITY
+- Desktop/tablet Tier A; mobile/coarse Tier B; constrained Tier C; reduced/static Tier D.
+- Preserve 44 px touch targets, typography, safe-area behavior, and zero horizontal overflow.
+- Provide skip navigation, semantic landmarks, heading order, readable contrast, restrained live regions, visible disclosure, and a complete static alternative.
+
+PERFORMANCE
+- CSS/compositor-first transform and opacity; no layout animation.
+- No continuous expensive JavaScript loop, Canvas loop, WebGL, video dependency, or runtime asset spectacle.
+- CXOS CLS target 0.
+- No sustained application-attributable long task in settled ambient state; repeated tasks above 50 ms during transition block release.
+
+EVIDENCE AND DATA TRUTH
+- Repository facts only; status is evidence-backed.
+- Synthetic data is permanently labeled SYNTHETIC REVIEW · NO LIVE DATA.
+- No fake live metrics, popularity ratings, decorative rankings, or invented operational outcomes.
+
+RELEASE GATE
+- Exact commit range and file allowlist.
+- Typecheck, touched-file lint, diff check, Core Runtime and room guards, optimized builds, browser matrix, accessibility, performance, and production-isolation evidence.
+- Preview experience approval remains separate from production integration and requires separate Founder authorization.</pre>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <strong>CXOS Language 1.0</strong><br>
+      Working specification assembled from approved experience direction and the Founder-authorized Core Runtime contract. This standalone file includes all styles inline, uses no scripts or external assets, and makes no network request.
+    </div>
+  </footer>
+</body>
+</html>

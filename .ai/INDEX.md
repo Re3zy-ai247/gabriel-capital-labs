@@ -1,6 +1,6 @@
 # .ai Knowledge Index — read THIS to decide what else to read
 
-Default context budget per task: root `CLAUDE.md` + this file + `CURRENT-STATE.md` + task files. Everything below is read **only when the task matches**. All docs canonical unless marked otherwise. Last verified: 2026-07-26.
+Default context budget per task: root `CLAUDE.md` + this file + `CURRENT-STATE.md` + task files. Everything below is read **only when the task matches**. All docs canonical unless marked otherwise. Last verified: 2026-07-31.
 
 > **Two apex constitutions govern everything below.** Both state the *why*; the docs below own the *how* (tokens, statutes, prompts). Where a detailed doc conflicts with an apex constitution, the constitution wins.
 > 1. **Read `CREDITVECTOR-OS.md` before implementing anything** — the company + product constitution (mission, design, copy, compliance philosophy, engineering + founder principles, the North Star).
@@ -30,6 +30,7 @@ Default context budget per task: root `CLAUDE.md` + this file + `CURRENT-STATE.m
 | `IDENTITY-CONSTITUTION-AUDIT.md` | Historical independent review evidence that preceded ratification. Retained for traceability; not current semantic authority. |
 | `PLATFORM-OWNERSHIP-MAP.md` | **The one-owner-per-capability registry** (2026-07-21, clarified by ratified Identity v1.0). Read before adding or moving ownership. Consumer-management owns `managedByAgencyId`; Membership owns `OrganizationMembership`; neither succeeds or authorizes the other. |
 | `DECISIONS.md` → `ADR/` | Before changing anything architectural — check if a decision already governs it; add an ADR when you make one. |
+| `ADR/ADR-0040-cxos-core-runtime.md` + `CXOS_FOUNDATION.md` + `CXOS_LANGUAGE_1_0.md` | CXOS room lifecycle, arrivals/departures, heartbeat, districts, atmosphere, lighting, Kai presence, motion, accessibility, or the Agency Headquarters reference integration. ADR-0040 authorizes only the isolated RC1 and protected Preview; production integration remains separately gated. |
 | `ASSET-REGISTRY.md` | Before generating/using ANY visual asset (logo rules live here). |
 | `PROMPT-REGISTRY.md` | Before writing/editing ANY AI prompt or doing paid media generation. |
 | `GIOS-PLATFORM.md` (FROZEN v1.0) → `ADR/ADR-0034` | **THE platform constitution — read first, ten minutes.** Immutable layer model (L0–L7), canonical dependency graph, ownership registry (one owner per thing), dependency + 26 architecture laws, the 10 Platform Contracts every vertical implements, the GIOS plugin model, Kai's permanent charter, the 100-products answer. Every future ADR derives from and cites it. FROZEN (L0–L3 + laws amendable only by superseding ADR + founder). |

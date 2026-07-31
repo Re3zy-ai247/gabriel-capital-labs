@@ -251,6 +251,29 @@ a.card:hover, button.card:hover, .card-interactive:hover { transform: translateY
 /* Staggered entrance — apply with inline animation-delay. */
 .animate-rise-stagger { animation: rise 0.5s cubic-bezier(0.16,1,0.3,1) both; }
 
+/* CXOS isolated RC1 · exact Mission Control return-route prerequisites.
+   Agency Headquarters owns its room styling in its CSS module; these additive
+   rules preserve the already-reviewed Phase 4 destination without importing
+   the feature branch's unrelated global CXOS room styles. */
+:root {
+  --ease-vector: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-settle: 0.4s;
+  --aurora-app: 0.15;
+}
+.aurora-app { opacity: var(--aurora-app); animation-duration: 36s; }
+@keyframes cx-nav-open-out {
+  from { opacity: 1; }
+  to { opacity: 0; visibility: hidden; }
+}
+@keyframes cx-mc-safety { to { opacity: 0; visibility: hidden; } }
+.cx-mc-veil {
+  animation:
+    fadein 0.35s var(--ease-vector) both,
+    cx-mc-safety 0.5s ease 12s forwards;
+}
+.cx-mc-leave { animation: cx-nav-open-out 0.5s var(--ease-vector) forwards; }
+.cx-mc-line { animation: rise var(--dur-settle) var(--ease-vector) both; }
+
 /* Respect users who prefer less motion. */
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
@@ -259,4 +282,6 @@ a.card:hover, button.card:hover, .card-interactive:hover { transform: translateY
   .reveal { opacity: 1; transform: none; transition: none; }
   .animate-draw { stroke-dashoffset: 0 !important; }
   .shine::after { display: none; }
+  .cx-mc-veil, .cx-mc-leave { animation: none !important; display: none !important; }
+  .cx-mc-line { animation: none !important; }
 }
