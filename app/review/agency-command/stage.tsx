@@ -3,21 +3,30 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import styles from "./agency-command.module.css";
 import {
+  AGENCY_BOTTLENECKS,
+  AGENCY_EVIDENCE_FIELD,
   AGENCY_FIXTURE_STATES,
+  AGENCY_HEARTBEAT_SIGNALS,
   AGENCY_HEALTH_DRIVERS,
+  AGENCY_KAI_NOTE_SEED,
+  AGENCY_KAI_WORKFLOWS,
   AGENCY_PORTFOLIO,
   AGENCY_QUEUE,
   AGENCY_QUEUE_FILTERS,
   AGENCY_TEAM_SPECIMEN,
+  AGENCY_WORKLOAD_FIELD,
   type AgencyFixtureState,
   type AgencyQueueItem,
   type AgencyQueueKind,
+  type KaiWorkflowId,
 } from "./fixtures";
 
 type ExperienceProjection = "auto" | "cinematic" | "static";
 type OperatingModel = "solo" | "team";
 type ExperienceTier = "A" | "B" | "C" | "D";
 type QueueFilter = "all" | AgencyQueueKind;
+
+const DEFAULT_KAI_WORKFLOW: KaiWorkflowId = "activity-summary";
 
 interface ReviewCapabilities {
   browserReduced: boolean;
@@ -173,6 +182,13 @@ export function AgencyCommandStage() {
   const [expandedQueueId, setExpandedQueueId] = useState<string | null>(null);
   const [intakeOpen, setIntakeOpen] = useState(false);
   const [arrivalKey, setArrivalKey] = useState(0);
+  const [arrivalSettled, setArrivalSettled] = useState(false);
+  const [activeKaiWorkflow, setActiveKaiWorkflow] =
+    useState<KaiWorkflowId>(DEFAULT_KAI_WORKFLOW);
+  const [preparedKaiWorkflow, setPreparedKaiWorkflow] =
+    useState<KaiWorkflowId | null>(DEFAULT_KAI_WORKFLOW);
+  const [kaiNoteDraft, setKaiNoteDraft] = useState(AGENCY_KAI_NOTE_SEED);
+  const [departing, setDeparting] = useState(false);
   const [capabilities, setCapabilities] = useState<ReviewCapabilities>(
     CONSERVATIVE_CAPABILITIES
   );
@@ -190,6 +206,8 @@ export function AgencyCommandStage() {
   const replayFocusPendingRef = useRef(false);
   const capabilitiesHydratedRef = useRef(false);
   const previousReducedMotionRef = useRef<boolean | null>(null);
+  const departureCommittedRef = useRef(false);
+  const returnFallbackRef = useRef<number | null>(null);
 
   useEffect(() => {
     const update = () => setCapabilities(readReviewCapabilities());
@@ -211,6 +229,15 @@ export function AgencyCommandStage() {
     document.addEventListener("visibilitychange", update);
     return () => document.removeEventListener("visibilitychange", update);
   }, []);
+
+  useEffect(
+    () => () => {
+      if (returnFallbackRef.current !== null) {
+        window.clearTimeout(returnFallbackRef.current);
+      }
+    },
+    []
+  );
 
   useEffect(() => {
     if (capabilities.detectionFailed) return;
@@ -377,7 +404,46 @@ export function AgencyCommandStage() {
     setQueueFilter("all");
     setExpandedQueueId(null);
     setIntakeOpen(false);
+    setActiveKaiWorkflow(DEFAULT_KAI_WORKFLOW);
+    setPreparedKaiWorkflow(DEFAULT_KAI_WORKFLOW);
+    setKaiNoteDraft(AGENCY_KAI_NOTE_SEED);
     closeDirectorAndRestoreFocus(`${stateLabel(next)} fixture state selected.`);
+  };
+
+  const selectKaiWorkflow = (next: KaiWorkflowId) => {
+    setActiveKaiWorkflow(next);
+    setPreparedKaiWorkflow(null);
+    const workflow = AGENCY_KAI_WORKFLOWS.find((item) => item.id === next);
+    setAnnouncement(
+      `${workflow?.label ?? next} synthetic workflow selected. No action has been prepared or saved.`
+    );
+  };
+
+  const prepareKaiWorkflow = () => {
+    setPreparedKaiWorkflow(activeKaiWorkflow);
+    const workflow = AGENCY_KAI_WORKFLOWS.find(
+      (item) => item.id === activeKaiWorkflow
+    );
+    setAnnouncement(
+      `${workflow?.label ?? activeKaiWorkflow} preview prepared. Nothing was saved, sent, scheduled, assigned, or changed.`
+    );
+  };
+
+  const updateKaiNoteDraft = (value: string) => {
+    setKaiNoteDraft(value);
+    setPreparedKaiWorkflow(null);
+    setAnnouncement(
+      "Synthetic note draft changed in this route instance. Nothing was saved."
+    );
+  };
+
+  const resetKaiWorkbench = () => {
+    setActiveKaiWorkflow(DEFAULT_KAI_WORKFLOW);
+    setPreparedKaiWorkflow(DEFAULT_KAI_WORKFLOW);
+    setKaiNoteDraft(AGENCY_KAI_NOTE_SEED);
+    setAnnouncement(
+      "Synthetic Kai workbench reset to the deterministic activity summary."
+    );
   };
 
   const toggleIntakeHandoff = () => {
@@ -413,8 +479,13 @@ export function AgencyCommandStage() {
 
   const replayArrival = () => {
     replayFocusPendingRef.current = true;
+    setArrivalSettled(false);
     setArrivalKey((key) => key + 1);
     directorRef.current?.removeAttribute("open");
+  };
+
+  const settleArrival = () => {
+    if (!arrivalSettled) setArrivalSettled(true);
   };
 
   const focusResponseQueue = () => {
@@ -447,7 +518,52 @@ export function AgencyCommandStage() {
     setFixtureState("populated");
     setQueueFilter("all");
     setExpandedQueueId(null);
+    setActiveKaiWorkflow(DEFAULT_KAI_WORKFLOW);
+    setPreparedKaiWorkflow(DEFAULT_KAI_WORKFLOW);
+    setKaiNoteDraft(AGENCY_KAI_NOTE_SEED);
     closeDirectorAndRestoreFocus("Populated synthetic fixture restored.");
+  };
+
+  const commitMissionControlReturn = () => {
+    if (!departureCommittedRef.current) return;
+    departureCommittedRef.current = false;
+    if (returnFallbackRef.current !== null) {
+      window.clearTimeout(returnFallbackRef.current);
+      returnFallbackRef.current = null;
+    }
+    window.location.assign("/review/mission-control");
+  };
+
+  const beginMissionControlReturn = (
+    event: React.MouseEvent<HTMLAnchorElement>
+  ) => {
+    if (resolution.tier === "C" || resolution.tier === "D") return;
+    event.preventDefault();
+    departureCommittedRef.current = true;
+    setDeparting(true);
+    directorRef.current?.removeAttribute("open");
+    if (returnFallbackRef.current !== null) {
+      window.clearTimeout(returnFallbackRef.current);
+    }
+    returnFallbackRef.current = window.setTimeout(
+      commitMissionControlReturn,
+      800
+    );
+    setAnnouncement(
+      "Return acknowledged. Agency instruments are receding toward Mission Control."
+    );
+  };
+
+  const completeMissionControlReturn = (
+    event: React.AnimationEvent<HTMLDivElement>
+  ) => {
+    if (
+      event.currentTarget !== event.target ||
+      !departureCommittedRef.current
+    ) {
+      return;
+    }
+    commitMissionControlReturn();
   };
 
   const handleDirectorKeyDown = (
@@ -481,24 +597,44 @@ export function AgencyCommandStage() {
       data-tier={resolution.tier}
       data-fixture={fixtureState}
       data-hidden={documentHidden ? "true" : "false"}
+      data-departing={departing ? "true" : "false"}
+      data-arrival-settled={arrivalSettled ? "true" : "false"}
       data-motion-override={
         reducedMotionOverride && projection === "cinematic" ? "true" : "false"
       }
+      onKeyDown={settleArrival}
+      onPointerDown={settleArrival}
+      onTouchStart={settleArrival}
+      onWheel={settleArrival}
     >
       <div aria-hidden className={styles.gridField} />
       <div aria-hidden className={styles.overheadLight} />
       <div aria-hidden className={styles.horizon} />
       <div aria-hidden className={styles.ambientSweep} />
+      <div aria-hidden className={styles.roomBreath} />
+      <div
+        aria-hidden
+        className={styles.departureHandoff}
+        onAnimationEnd={completeMissionControlReturn}
+      >
+        <span>MISSION CONTROL</span>
+        <i />
+      </div>
 
       <p className={styles.srOnly} aria-live="polite" aria-atomic="true">
         {announcement}
       </p>
 
       <div key={arrivalKey} className={styles.arrival}>
+        <div
+          aria-hidden
+          className={styles.arrivalClock}
+          onAnimationEnd={settleArrival}
+        />
         <header className={styles.identity}>
           <div>
             <p className={styles.eyebrow}>
-              Founder Review · CXOS Phase 6
+              Founder Review · CXOS Phase 6.1
             </p>
             <h1
               ref={roomHeadingRef}
@@ -513,7 +649,10 @@ export function AgencyCommandStage() {
                 {operatingModel === "solo"
                   ? "Solo Agency projection"
                   : "Team Specimen projection"}{" "}
-                · {capacity.active} / {capacity.limit} illustrative workspaces
+                ·{" "}
+                {fixtureState === "loading"
+                  ? "capacity unresolved"
+                  : `${capacity.active} / ${capacity.limit} illustrative workspaces`}
               </p>
             )}
           </div>
@@ -550,13 +689,17 @@ export function AgencyCommandStage() {
           </p>
         </section>
 
+        {fixtureState !== "permission" && (
+          <ActivationRail state={fixtureState} />
+        )}
+
         {fixtureState === "permission" ? (
           <PermissionState />
         ) : (
           <>
             <section
               className={styles.commandWall}
-              aria-label="Executive morning brief"
+              aria-label="Agency operating wall"
               aria-busy={fixtureState === "loading"}
             >
               <article
@@ -581,6 +724,75 @@ export function AgencyCommandStage() {
                   advice.
                 </p>
               </article>
+
+              <OperationalHeartbeat
+                state={fixtureState}
+                active={capacity.active}
+                limit={capacity.limit}
+              />
+
+              {(fixtureState === "populated" ||
+                fixtureState === "capacity") && (
+                <KaiOperatingDesk
+                  activeWorkflow={activeKaiWorkflow}
+                  preparedWorkflow={preparedKaiWorkflow}
+                  noteDraft={kaiNoteDraft}
+                  onSelect={selectKaiWorkflow}
+                  onPrepare={prepareKaiWorkflow}
+                  onReset={resetKaiWorkbench}
+                  onNoteChange={updateKaiNoteDraft}
+                />
+              )}
+
+              {fixtureState === "loading" ? (
+                <LoadingState />
+              ) : fixtureState === "empty" ? (
+                <EmptyState
+                  intakeOpen={intakeOpen}
+                  onStageIntake={toggleIntakeHandoff}
+                />
+              ) : (
+                <>
+                  {fixtureState === "unavailable" && (
+                    <div className={styles.statusNotice} role="status">
+                      One illustrative source is unavailable. The room preserves
+                      displayed records and labels the coverage gap; it does not
+                      replace missing facts with zero.
+                    </div>
+                  )}
+                  {fixtureState === "error" && (
+                    <div className={styles.errorNotice} role="alert">
+                      The portfolio specimen was interrupted. Two previously
+                      displayed rows remain available; no missing value is
+                      guessed.
+                      <button type="button" onClick={restorePopulatedFixture}>
+                        Restore populated specimen
+                      </button>
+                    </div>
+                  )}
+
+                  <PriorityQueue
+                    items={visibleQueue}
+                    filter={queueFilter}
+                    expandedId={expandedQueueId}
+                    onFilter={(next) => {
+                      setQueueFilter(next);
+                      setExpandedQueueId(null);
+                      setAnnouncement(
+                        `${AGENCY_QUEUE_FILTERS.find((item) => item.key === next)?.label ?? next} queue filter selected.`
+                      );
+                    }}
+                    onExpand={(id) => {
+                      setExpandedQueueId((current) =>
+                        current === id ? null : id
+                      );
+                      setAnnouncement(
+                        currentExpansionMessage(expandedQueueId, id)
+                      );
+                    }}
+                  />
+                </>
+              )}
 
               <aside
                 className={styles.healthBank}
@@ -658,56 +870,16 @@ export function AgencyCommandStage() {
                     available; synthetic intake is disabled.
                   </p>
                 )}
+                <CapacityHorizon
+                  active={capacity.active}
+                  limit={capacity.limit}
+                  state={fixtureState}
+                />
               </aside>
             </section>
 
-            {fixtureState === "loading" ? (
-              <LoadingState />
-            ) : fixtureState === "empty" ? (
-              <EmptyState
-                intakeOpen={intakeOpen}
-                onStageIntake={toggleIntakeHandoff}
-              />
-            ) : (
+            {fixtureState !== "loading" && fixtureState !== "empty" && (
               <>
-                {fixtureState === "unavailable" && (
-                  <div className={styles.statusNotice} role="status">
-                    One illustrative source is unavailable. The room preserves
-                    displayed records and labels the coverage gap; it does not
-                    replace missing facts with zero.
-                  </div>
-                )}
-                {fixtureState === "error" && (
-                  <div className={styles.errorNotice} role="alert">
-                    The portfolio specimen was interrupted. Two previously
-                    displayed rows remain available; no missing value is guessed.
-                    <button type="button" onClick={restorePopulatedFixture}>
-                      Restore populated specimen
-                    </button>
-                  </div>
-                )}
-
-                <PriorityQueue
-                  items={visibleQueue}
-                  filter={queueFilter}
-                  expandedId={expandedQueueId}
-                  onFilter={(next) => {
-                    setQueueFilter(next);
-                    setExpandedQueueId(null);
-                    setAnnouncement(
-                      `${AGENCY_QUEUE_FILTERS.find((item) => item.key === next)?.label ?? next} queue filter selected.`
-                    );
-                  }}
-                  onExpand={(id) => {
-                    setExpandedQueueId((current) =>
-                      current === id ? null : id
-                    );
-                    setAnnouncement(
-                      currentExpansionMessage(expandedQueueId, id)
-                    );
-                  }}
-                />
-
                 <PortfolioLedger
                   items={visiblePortfolio}
                   capacityReached={fixtureState === "capacity"}
@@ -721,12 +893,19 @@ export function AgencyCommandStage() {
 
         <footer className={styles.footer}>
           <p>
-            Phase 6 source is presentation-only. The live{" "}
+            Phase 6.1 source is presentation-only. The live{" "}
             <code>/agency</code> surface and its APIs are unchanged.
           </p>
           <nav aria-label="Founder review navigation">
             <a href="/review">All rooms</a>
-            <a href="/review/mission-control">Mission Control</a>
+            <a
+              className={styles.returnThreshold}
+              href="/review/mission-control"
+              onClick={beginMissionControlReturn}
+            >
+              <span>Return handoff</span>
+              <strong>Mission Control</strong>
+            </a>
           </nav>
         </footer>
       </div>
@@ -859,6 +1038,458 @@ function InstrumentHeader({
       <p>{eyebrow}</p>
       <h2 id={id}>{title}</h2>
     </div>
+  );
+}
+
+function ActivationRail({ state }: { state: AgencyFixtureState }) {
+  const steps =
+    state === "loading"
+      ? [
+          ["01", "Review identity set", "Synthetic agency scope"],
+          ["02", "Fixture sources unresolved", "No live connection"],
+          ["03", "Capacity horizon held", "No occupancy inferred"],
+          ["04", "Ledgers held", "No records asserted"],
+          ["05", "Kai fixture held", "Awaiting displayed sources"],
+        ]
+      : [
+    ["01", "Review identity set", "Synthetic agency scope"],
+    ["02", "Fixture sources present", "No live connection"],
+    ["03", "Capacity horizon formed", "Fixed aggregate"],
+    ["04", "Ledgers ready", "Five displayed records"],
+    ["05", "Kai fixture ready", "Route-instance only"],
+        ];
+
+  return (
+    <ol
+      className={styles.activationRail}
+      aria-label="Agency Command settled activation sequence"
+    >
+      {steps.map(([index, label, detail]) => (
+        <li key={index}>
+          <span>{index}</span>
+          <strong>{label}</strong>
+          <small>{detail}</small>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+function CapacityHorizon({
+  active,
+  limit,
+  state,
+}: {
+  active: number;
+  limit: number;
+  state: AgencyFixtureState;
+}) {
+  const unresolved = state === "loading";
+
+  return (
+    <div className={styles.capacityHorizonBlock}>
+      <div className={styles.capacityHorizonHeading}>
+        <span>CAPACITY HORIZON</span>
+        <strong>
+          {unresolved
+            ? "Unresolved · no occupancy inferred"
+            : `${active} occupied · ${Math.max(0, limit - active)} reserve`}
+        </strong>
+      </div>
+      <div
+        aria-hidden
+        className={styles.capacityHorizon}
+        data-capacity-state={state}
+      >
+        {!unresolved &&
+          Array.from({ length: limit }, (_, index) => (
+            <i key={index} data-occupied={index < active ? "true" : "false"} />
+          ))}
+        <b />
+      </div>
+      <p>
+        {unresolved
+          ? "Fixture sources are unresolved. The rail is held and displays no capacity value."
+          : "Fifteen deterministic fixture positions. The rail does not count or mutate live workspaces."}
+      </p>
+    </div>
+  );
+}
+
+function OperationalHeartbeat({
+  state,
+  active,
+  limit,
+}: {
+  state: AgencyFixtureState;
+  active: number;
+  limit: number;
+}) {
+  const boundary =
+    state === "loading"
+      ? "The heartbeat is manually held while fixture sources are unresolved. No timer or simulated completion runs."
+      : state === "empty"
+        ? "The room is truthfully idle: no illustrative work is staged and no synthetic activity is fabricated."
+        : state === "unavailable"
+          ? "The available source boundary remains visible. Missing flow positions and evidence are not inferred."
+          : state === "error"
+            ? "The heartbeat is held at the disclosed display-error boundary. Preserved records remain readable; missing movement is not guessed."
+            : null;
+
+  return (
+    <section
+      className={styles.heartbeatStation}
+      data-heartbeat-state={state}
+      aria-labelledby="heartbeat-heading"
+    >
+      <div className={styles.sectionHeading}>
+        <div>
+          <p className={styles.stationIndex}>OPERATING HEARTBEAT</p>
+          <h2 id="heartbeat-heading">The agency is breathing</h2>
+        </div>
+        <p>FIXED CHOREOGRAPHY · VALUES NEVER CHANGE</p>
+      </div>
+
+      <p className={styles.heartbeatDisclosure} role="note">
+        DETERMINISTIC FIXTURE RHYTHM · NOT LIVE. Motion replays fixed work
+        states—entering, advancing, waiting, blocked, and resolving—without
+        changing a count, rank, label, record, or canonical fact.
+      </p>
+
+      {boundary ? (
+        <div className={styles.heartbeatBoundary} role="status">
+          <strong>{state.toUpperCase()} FIXTURE</strong>
+          <p>{boundary}</p>
+        </div>
+      ) : (
+        <div className={styles.heartbeatGrid}>
+          <article
+            className={styles.flowInstrument}
+            aria-labelledby="client-flow-heading"
+          >
+            <div className={styles.instrumentTitle}>
+              <div>
+                <p>CLIENT FLOW RAIL</p>
+                <h3 id="client-flow-heading">Five fixed work positions</h3>
+              </div>
+              <dl>
+                <div>
+                  <dt>Packets</dt>
+                  <dd>5 staged</dd>
+                </div>
+                <div>
+                  <dt>Motion-bearing</dt>
+                  <dd>3 states</dd>
+                </div>
+                <div>
+                  <dt>Throughput rate</dt>
+                  <dd>Not instrumented</dd>
+                </div>
+              </dl>
+            </div>
+            <ol className={styles.flowList}>
+              {AGENCY_HEARTBEAT_SIGNALS.map((signal) => (
+                <li
+                  key={signal.id}
+                  data-motion={signal.motion}
+                  data-position={signal.position}
+                >
+                  <div>
+                    <strong>{signal.workspace}</strong>
+                    <span>{signal.lane}</span>
+                  </div>
+                  <div className={styles.flowTrack} aria-hidden>
+                    <i />
+                    <b />
+                  </div>
+                  <div>
+                    <strong>{signal.motion}</strong>
+                    <span>{signal.detail}</span>
+                  </div>
+                </li>
+              ))}
+            </ol>
+            <p className={styles.instrumentFootnote}>
+              Positions describe this fixed specimen, not historical volume or
+              a live rate.
+            </p>
+          </article>
+
+          <article
+            className={styles.ageInstrument}
+            aria-labelledby="response-age-heading"
+          >
+            <div className={styles.instrumentTitle}>
+              <div>
+                <p>RESPONSE AGING RULER</p>
+                <h3 id="response-age-heading">Oldest displayed marker</h3>
+              </div>
+              <strong>2 illustrative days</strong>
+            </div>
+            <div
+              className={styles.ageRuler}
+              role="img"
+              aria-label="Illustrative response-age marker at two days on a zero to three-plus day ruler; this is not a legal deadline"
+            >
+              <span>0</span>
+              <span>1</span>
+              <span data-current="true">2</span>
+              <span>3+</span>
+              <i aria-hidden />
+            </div>
+            <p className={styles.instrumentFootnote}>
+              Estimated fixture marker · not a legal deadline.
+            </p>
+          </article>
+
+          <article
+            className={styles.workloadInstrument}
+            aria-labelledby="workload-heading"
+          >
+            <div className={styles.instrumentTitle}>
+              <div>
+                <p>WORK PRESSURE FIELD</p>
+                <h3 id="workload-heading">Displayed queue composition</h3>
+              </div>
+            </div>
+            <ul className={styles.workloadField}>
+              {AGENCY_WORKLOAD_FIELD.map((band) => (
+                <li key={band.id} data-pressure={band.pressure}>
+                  <div>
+                    <strong>{band.label}</strong>
+                    <span>{band.detail}</span>
+                  </div>
+                  <div aria-hidden>
+                    <i />
+                  </div>
+                  <small>{band.count}</small>
+                </li>
+              ))}
+            </ul>
+            <p className={styles.instrumentFootnote}>
+              Queue composition, not an urgency score or team-performance rank.
+            </p>
+          </article>
+
+          <article
+            className={styles.evidenceInstrument}
+            aria-labelledby="evidence-field-heading"
+          >
+            <div className={styles.instrumentTitle}>
+              <div>
+                <p>EVIDENCE COVERAGE RAIL</p>
+                <h3 id="evidence-field-heading">Five disclosed source states</h3>
+              </div>
+            </div>
+            <ol className={styles.evidenceField}>
+              {AGENCY_EVIDENCE_FIELD.map((item) => (
+                <li key={item.id} data-evidence-state={item.state}>
+                  <span aria-hidden />
+                  <strong>{item.workspace}</strong>
+                  <small>
+                    {item.state} · {item.detail}
+                  </small>
+                </li>
+              ))}
+            </ol>
+          </article>
+
+          <article
+            className={styles.bottleneckInstrument}
+            aria-labelledby="bottleneck-heading"
+          >
+            <div className={styles.instrumentTitle}>
+              <div>
+                <p>BOTTLENECK GATES</p>
+                <h3 id="bottleneck-heading">Decisions and evidence holding flow</h3>
+              </div>
+              <strong>
+                {active} / {limit} capacity
+              </strong>
+            </div>
+            <ol className={styles.bottleneckList}>
+              {AGENCY_BOTTLENECKS.map((item) => (
+                <li key={item.id}>
+                  <span>{item.state}</span>
+                  <div>
+                    <strong>
+                      {item.label} · {item.workspace}
+                    </strong>
+                    <small>{item.safeReview}</small>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </article>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function KaiOperatingDesk({
+  activeWorkflow,
+  preparedWorkflow,
+  noteDraft,
+  onSelect,
+  onPrepare,
+  onReset,
+  onNoteChange,
+}: {
+  activeWorkflow: KaiWorkflowId;
+  preparedWorkflow: KaiWorkflowId | null;
+  noteDraft: string;
+  onSelect: (next: KaiWorkflowId) => void;
+  onPrepare: () => void;
+  onReset: () => void;
+  onNoteChange: (value: string) => void;
+}) {
+  const workflow =
+    AGENCY_KAI_WORKFLOWS.find((item) => item.id === activeWorkflow) ??
+    AGENCY_KAI_WORKFLOWS[0];
+  const prepared = preparedWorkflow === activeWorkflow;
+  const atBaseline =
+    activeWorkflow === DEFAULT_KAI_WORKFLOW &&
+    preparedWorkflow === DEFAULT_KAI_WORKFLOW &&
+    noteDraft === AGENCY_KAI_NOTE_SEED;
+
+  return (
+    <section
+      className={styles.kaiDesk}
+      aria-labelledby="kai-operating-heading"
+    >
+      <div className={styles.sectionHeading}>
+        <div>
+          <p className={styles.stationIndex}>KAI OPERATING PRESENCE</p>
+          <h2 id="kai-operating-heading">Executive delegation console</h2>
+        </div>
+        <p>LOCAL SYNTHETIC PREVIEWS · OPERATOR RETAINS CONTROL</p>
+      </div>
+
+      <div className={styles.kaiPresenceRail}>
+        <span>MODE · SYNTHETIC</span>
+        <span>SOURCES · FIXTURE LEDGERS</span>
+        <span>PERSISTENCE · OFF</span>
+        <span>PRODUCTION WRITES · 0</span>
+      </div>
+
+      <div className={styles.kaiWorkbenchDisclosure} role="note">
+        <strong>SYNTHETIC KAI WORKBENCH · ROUTE-INSTANCE ONLY</strong>
+        <p>
+          Every option below uses deterministic fictional fixtures. Selections
+          and draft text remain only in this open page and are discarded on
+          refresh or exit. This interface does not save notes, create reminders
+          or tasks, write calendars, change customer records, contact anyone, or
+          trigger production action. Do not enter real customer information.
+        </p>
+      </div>
+
+      <div className={styles.kaiWorkbench}>
+        <fieldset className={styles.workflowSelector}>
+          <legend>Delegate a synthetic workflow</legend>
+          <div>
+            {AGENCY_KAI_WORKFLOWS.map((option) => (
+              <button
+                key={option.id}
+                type="button"
+                aria-pressed={activeWorkflow === option.id}
+                aria-controls="kai-workflow-preview"
+                onClick={() => onSelect(option.id)}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </fieldset>
+
+        <article
+          id="kai-workflow-preview"
+          className={styles.workflowPreview}
+          aria-labelledby="kai-workflow-heading"
+        >
+          <p className={styles.workflowClassification}>
+            {workflow.classification}
+          </p>
+          <h3 id="kai-workflow-heading">{workflow.label}</h3>
+          <p className={styles.workflowPurpose}>{workflow.purpose}</p>
+          <dl className={styles.workflowSources}>
+            <div>
+              <dt>Fixture sources</dt>
+              <dd>{workflow.sources}</dd>
+            </div>
+            <div>
+              <dt>Authority</dt>
+              <dd>Preview only · operator review required</dd>
+            </div>
+          </dl>
+
+          {activeWorkflow === "note-taking" && (
+            <div className={styles.noteDraft}>
+              <label htmlFor="kai-synthetic-note">
+                Synthetic operator note
+              </label>
+              <textarea
+                id="kai-synthetic-note"
+                aria-describedby="kai-synthetic-note-boundary"
+                value={noteDraft}
+                maxLength={280}
+                spellCheck={false}
+                autoComplete="off"
+                onChange={(event) => onNoteChange(event.target.value)}
+              />
+              <small id="kai-synthetic-note-boundary">
+                Fixture text only · {noteDraft.length} / 280 · do not enter real
+                customer information.
+              </small>
+            </div>
+          )}
+
+          <div className={styles.workflowActions}>
+            <button
+              type="button"
+              onClick={onPrepare}
+              disabled={prepared}
+            >
+              {prepared ? "Preview prepared" : workflow.actionLabel}
+            </button>
+            <button type="button" onClick={onReset} disabled={atBaseline}>
+              {atBaseline ? "Workbench at baseline" : "Reset workbench"}
+            </button>
+          </div>
+
+          <div
+            className={styles.preparedArtifact}
+            data-prepared={prepared ? "true" : "false"}
+          >
+            {prepared ? (
+              <>
+                <p>PREPARED SYNTHETIC ARTIFACT</p>
+                {activeWorkflow === "note-taking" ? (
+                  <blockquote>{noteDraft}</blockquote>
+                ) : (
+                  <ul>
+                    {workflow.previewLines.map((line) => (
+                      <li key={line}>{line}</li>
+                    ))}
+                  </ul>
+                )}
+                <p className={styles.workflowReceipt}>{workflow.receipt}</p>
+                <strong>
+                  PREVIEW PREPARED · Nothing was saved, sent, scheduled, assigned,
+                  or changed. Kai recommends; the operator reviews. Educational
+                  information, not legal advice.
+                </strong>
+              </>
+            ) : (
+              <p>
+                READY TO PREPARE · Review the fixture sources and activate the
+                preview control. No external action is available.
+              </p>
+            )}
+          </div>
+        </article>
+      </div>
+    </section>
   );
 }
 

@@ -3,10 +3,10 @@
 **Working specification · Gabriel Capital Labs · CreditVector™ Experience OS**
 
 **Version:** 1.0
-**Date:** 2026-07-30
+**Date:** 2026-07-31
 **Status:** Working specification for design, implementation planning, review, and QA
 
-> This document is not a constitution, architecture approval, merge approval, or production authorization. It organizes the current CXOS foundation, the Founder-approved Phase 5.2 and Phase 5.3 experience direction, and the proposed Agency Command language into one usable review standard. Canonical repository governance and separate release approvals still control.
+> This document is not a constitution, architecture approval, merge approval, or production authorization. It organizes the current CXOS foundation, the Founder-approved Phase 5.2 and Phase 5.3 experience direction, and the Founder-directed Phase 6.1 Living Agency Command refinement into one usable review standard. Canonical repository governance and separate release approvals still control.
 
 ## 1. Truth labels and boundary
 
@@ -23,6 +23,7 @@ Source set:
 - `CXOS_PHASE_5_2_REPORT.md`
 - `CXOS_PHASE_5_3_REPORT.md`
 - Phase 6 Agency Command design-plan audit
+- Founder Phase 6.1 Living Agency Command refinement directive (2026-07-31)
 
 This specification does not authorize:
 
@@ -120,6 +121,19 @@ Every operating room distinguishes:
 
 Primary truth and action define the center of gravity. Evidence and status substantiate it. Secondary instrumentation, observation, explanation, and escalation remain subordinate and may never manufacture urgency.
 
+### 2.6 Observable operational heartbeat
+
+**APPROVED DIRECTION · PROPOSED PHASE 6.1 APPLICATION**
+
+> Every operating room must possess an observable operational heartbeat. Motion, rhythm, and ambient state must express that room’s actual purpose without changing canonical facts or fabricating live activity.
+
+An operational heartbeat is purpose-bound information behavior, not decorative motion and not fake telemetry. It may express fixed states such as entering, advancing, waiting, blocking, resolving, capacity consumption, evidence coverage, or decision pressure only when the room can name the deterministic fact or specimen behind the expression.
+
+- Agency Command applies this law through deterministic client-flow positions, capacity horizons, workload pressure, response-aging markers, evidence coverage, disclosed bottlenecks, and explicitly non-persistent Kai delegation.
+- Mission Control will later apply the law to system readiness, evidence availability, and decision pressure under a separately reviewed assignment. Phase 6.1 does not modify Mission Control.
+- Every future operating room must name its own purpose-bound heartbeat, its canonical facts, its maximum continuous-motion channels, and its complete static equivalent before implementation.
+- A heartbeat never changes a metric, rank, label, record, deadline, assignment, or outcome merely to appear alive.
+
 ## 3. Room matrix
 
 | Surface | Status | Operational purpose | Spatial grammar | Light and color | Primary information | Forbidden reading |
@@ -128,7 +142,7 @@ Primary truth and action define the center of gravity. Evidence and status subst
 | Mission Control | APPROVED DIRECTION | Observe the current case and transfer command | Rectilinear command chamber; asymmetric instrument banks; central axis and threshold | Analytical blue/teal; light from above | Execution, systems, Kai brief, clearance, one next action | Dashboard-card mosaic |
 | The Passage | APPROVED DIRECTION | Move from Mission Control to the Arena | Converging hallway; distant aperture; rectilinear-to-radial conversion | Cool origin; late ceremonial warmth; no early destination grant | Power-down, clearance, anticipation, conversion, threshold | Black interruption, reticle-only tunnel, or loading screen |
 | The Arena | APPROVED DIRECTION | Recognize evidenced standing and let the operator walk the record | Inhabited ceremonial chamber; arrival monument; station-by-station floor | Warm metal-like neutrals and restrained amber; light from below | Standing, evidence, milestones, planned threshold, Kai observation | Casino, game lobby, title screen followed by cards |
-| Agency Command | PROPOSED EXTENSION | Coordinate work across a client portfolio | Wide command wall; health and capacity banks; central Kai brief; ranked work ledger; portfolio ledger | Mission Control’s analytical family, widened in scale; no Arena gold language | Agency health drivers, portfolio priorities, client work queues, capacity, team truth | Generic executive dashboard, chart wall, or AI-copilot chat |
+| Agency Command | PROPOSED EXTENSION | Coordinate work across a client portfolio | Wide command wall; health and capacity banks; central Kai brief and delegation console; purpose-bound heartbeat field; ranked work ledger; portfolio ledger | Mission Control’s analytical family, widened in scale; no Arena gold language | Agency health drivers, client flow, workload, evidence coverage, portfolio priorities, capacity, and Kai delegation | Generic executive dashboard, chart wall, fake live feed, or AI-copilot chat |
 | Founder Review Control | APPROVED REVIEW PATTERN | Inspect projections, fixture states, timing, and safety behavior | One collapsed Director pill opening a contained bottom sheet | Neutral technical instrument outside room hierarchy | Projection, reason, tier, fixture, replay/jump controls | Product navigation, hidden override, or fake modal |
 
 ## 4. Mission Control laws
@@ -227,8 +241,12 @@ Desktop may place health and capacity in narrow banks around the Kai brief, but 
 - Two short sentences maximum.
 - One ranked next action.
 - One visible receipt naming the deterministic synthetic inputs.
-- No chatbot frame, text box, avatar, mascot, or multiple competing recommendations.
+- No chatbot frame, avatar, mascot, or multiple competing recommendations in the brief.
 - The brief must answer: what changed, what needs attention, and what should happen next.
+- A separate bounded Kai operating console may demonstrate deterministic route-instance workflows after the brief. It is an executive instrument, not a chat surface.
+- Notes, reminders, schedule outlines, summaries, task preparation, bottleneck interpretation, follow-up planning, organization, meeting preparation, explanation, and suggested actions remain visibly synthetic, non-persistent, and operator-reviewed.
+- A fixture-only note field must warn against real customer information and may not have a form, name, network destination, storage destination, or production action.
+- Every prepared output ends with a truthful no-action receipt naming what was not saved, sent, scheduled, assigned, or changed.
 
 ### 7.4 Portfolio and client work
 
@@ -247,13 +265,24 @@ Desktop may place health and capacity in narrow banks around the Kai brief, but 
 
 ### 7.6 Minimum arrival threshold
 
-- Tier A: one 600 ms nonblocking Settle + Focus sequence.
-- Tier B: one 400 ms single-plane settle.
-- Returning: 240 ms settle.
+- Tier A: one nonblocking sequence lasting at most 1.5 seconds: review identity → fixture systems → capacity horizon → ledger activation → Kai focus → settled heartbeat.
+- Tier B: one single-plane sequence lasting at most 700 ms.
+- Returning to Mission Control: a 360–480 ms acknowledgment and departure handoff, followed by ordinary review-route navigation.
 - Tier C/D and reduced/static: zero motion; the final room is immediately present.
 - Semantic content paints before the settle and remains interactive.
 - Any key, tap, click, scroll, or Escape completes the settle in under 100 ms.
 - The route writes no first-entry marker. Founder review may replay from the Director.
+
+### 7.7 Living Agency Command instruments
+
+- Client flow is a rail of fixed work positions, not a live feed.
+- Capacity is a horizon with explicit occupied and reserve positions, not an animated counter.
+- Workload is a pressure field derived from disclosed fixture composition, not a worker score or performance ranking.
+- Response aging is an illustrative ruler and remains explicitly not a legal deadline.
+- Evidence coverage preserves each source state; it may not collapse unlike states into a misleading percentage.
+- Bottlenecks name the waiting decision or missing evidence and the safe review step.
+- Throughput may be shown only when a time-bounded source model exists. Phase 6.1 states `Not instrumented` rather than inferring a rate from queue rank.
+- Motion may replay the fixed semantics of entering, advancing, waiting, blocked, and resolving while every displayed value remains unchanged.
 
 ## 8. Visual language
 
@@ -342,13 +371,14 @@ Motion laws:
 1. Use the house vector ease.
 2. Content motion is transform/opacity only.
 3. Layout is never animated.
-4. Ambient channels are bounded; Phase 5.3 establishes no more than three transform/opacity channels per environment.
+4. Ambient channels are bounded; Phase 5.3 establishes no more than three transform/opacity channels per environment. Phase 6.1 uses one room breath, one operational sweep, and one client-flow state channel.
 5. Ambient motion pauses while the document is hidden.
 6. No object moves toward the cursor.
 7. No zoom-through, dolly zoom, autoplay audio, Canvas loop, WebGL, or runtime JavaScript animation loop.
 8. Every sequence has a deterministic final-frame safety path.
 9. User input outranks choreography.
 10. Reduced motion removes motion, not meaning.
+11. Purpose-bound heartbeat motion must carry a permanent synthetic or source disclosure whenever it could otherwise resemble live activity.
 
 ## 10. Transition language
 
@@ -463,7 +493,7 @@ Partial-source failure should preserve valid surfaces and locate the error at th
 Rules:
 
 - Mobile is designed intentionally, not produced by stacking desktop cards.
-- Mobile reorders content by urgency: identity, Kai brief, priority, health/capacity, full ledger, secondary context.
+- Mobile reorders content by urgency: identity, Kai brief, disclosed heartbeat and Kai delegation, priority, health/capacity, full ledger, secondary context.
 - Preserve the approved typographic voice and hierarchy at every tier; adapt scale without reducing essential content to microtype.
 - No pinned stage or parallax on mobile.
 - Use stable viewport units and safe-area-aware fixed review controls.
@@ -603,6 +633,7 @@ Reject:
 Before a room can be called CXOS:
 
 - [ ] The room has one operational purpose and one protagonist.
+- [ ] The room names an observable, purpose-bound operational heartbeat and its complete static equivalent.
 - [ ] Its spatial grammar differs by purpose without breaking facility continuity.
 - [ ] Its light source and palette roles are explicit.
 - [ ] It uses architecture before containers.

@@ -80,8 +80,8 @@ export const CXOS_ROOMS: CxosRoom[] = [
     name: "Agency Command",
     href: "/review/agency-command",
     status: "PROTOTYPE",
-    phase: "Phase 6",
-    line: "Kai's Executive Morning Brief → agency operations specimen. Synthetic Founder-review fixtures only; no live agency data, team system, billing, or actions are connected.",
+    phase: "Phase 6.1",
+    line: "Kai's Executive Morning Brief → deterministic operating heartbeat → synthetic delegation console. No live agency data, persistence, team system, billing, calendar, customer mutation, or production action is connected.",
   },
   {
     key: "academy",

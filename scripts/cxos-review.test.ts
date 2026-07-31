@@ -89,12 +89,13 @@ check("the review stage LOOPS instead of finishing (Escape exits)",
   check("PLANNED rooms exist and are never given a fake live entry",
     /status: "PLANNED"/.test(rooms) && /no entry yet/.test(hub));
   const agencyCommand = rooms.match(/\{\s*key: "agency-command"[\s\S]*?\n  \},/)?.[0] ?? "";
-  check("Agency Command is an honest Phase 6 review prototype at its isolated route",
+  check("Agency Command is an honest Phase 6.1 review prototype at its isolated route",
     /name: "Agency Command"/.test(agencyCommand) &&
     /href: "\/review\/agency-command"/.test(agencyCommand) &&
     /status: "PROTOTYPE"/.test(agencyCommand) &&
-    /phase: "Phase 6"/.test(agencyCommand) &&
-    /Synthetic Founder-review fixtures only/.test(agencyCommand));
+    /phase: "Phase 6\.1"/.test(agencyCommand) &&
+    /deterministic operating heartbeat/.test(agencyCommand) &&
+    /No live agency data, persistence/.test(agencyCommand));
   const academy = rooms.match(/\{\s*key: "academy"[\s\S]*?\n  \},/)?.[0] ?? "";
   check("Academy is unscheduled pending D-5 (no invented Phase 7)",
     /phase: "Unscheduled \(needs product definition D-5\)"/.test(academy) &&

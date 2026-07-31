@@ -1,12 +1,13 @@
 import { reviewBuildAllowed } from "@/lib/cxos/reviewMode";
 import { AgencyCommandStage } from "./stage";
 
-// CXOS Phase 6 — Agency Command Founder Review.
+// CXOS Phase 6.1 — Living Agency Command Founder Review.
 //
 // This route is a synthetic experience prototype. The stage imports no Agency
 // API, session helper, Prisma client, billing module, or live product component.
 // The root application still supplies its existing global providers; the Phase 6
 // source itself performs no network request, storage access, or data mutation.
+// Kai workflow demonstrations use deterministic route-instance state only.
 //
 // The production guarantee is precise: the review stage is not renderable when
 // reviewBuildAllowed() is false. This does not claim a 404 or bundle exclusion.
