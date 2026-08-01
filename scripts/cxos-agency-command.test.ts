@@ -1243,6 +1243,12 @@ check(
     /aria-live="polite"/.test(stage) &&
     /:focus-visible/.test(css),
 );
+check(
+  "the labelled Kai continuity container exposes a permitted landmark role",
+  /className=\{styles\.kaiConversation\}[\s\S]{0,120}role="region"[\s\S]{0,120}aria-label="Route-local Kai preview continuity"/.test(
+    stage,
+  ),
+);
 const inspectionPlaneSource = sourceBetween(
   stageCode,
   "function InspectionPlane",

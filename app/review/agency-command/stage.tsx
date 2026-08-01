@@ -2517,7 +2517,11 @@ function KaiExecutiveSuite({
         </div>
       </InspectionPlane>
 
-      <div className={styles.kaiConversation} aria-label="Route-local Kai preview continuity">
+      <div
+        className={styles.kaiConversation}
+        role="region"
+        aria-label="Route-local Kai preview continuity"
+      >
         {turns.length === 0 ? (
           <div className={styles.kaiConversationEmpty}>
             <strong>READY · NOTHING PREPARED</strong>
