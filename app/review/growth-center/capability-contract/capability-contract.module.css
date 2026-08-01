@@ -1320,6 +1320,10 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  :global(.skip-link):has(~ .room) {
+    transition: none !important;
+  }
+
   .room *,
   .room *::before,
   .room *::after {
