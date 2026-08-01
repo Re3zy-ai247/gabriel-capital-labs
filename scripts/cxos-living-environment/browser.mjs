@@ -17,9 +17,9 @@ import { basename, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const EXPECTED = Object.freeze({
-  playwrightVersion: "1.61.1",
+  playwrightVersion: "1.62.0",
   playwrightPackageSha256:
-    "6b840268612656f0639fb7d68782e8353bdf11518589d30ddf66f283c2670ed5",
+    "638ab746b40d3986e16e13b08418beaa2262c47e8bc843b745589af15dead35b",
   axeVersion: "4.12.1",
   axeScriptSha256:
     "66a8aaa95a8b044a7fd74a5435873bf04ff65a1ca75567c921b7509742085a14",
