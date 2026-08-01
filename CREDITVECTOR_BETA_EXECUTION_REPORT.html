@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <meta name="robots" content="noindex, nofollow, noarchive">
+  <meta name="description" content="CreditVector Beta Readiness RC1 Execution Report. CreditVector beta release-readiness review artifact.">
+  <title>CreditVector Beta Readiness RC1 Execution Report</title>
+  <style>
+:root {
+  color-scheme: dark;
+  --bg: #071014;
+  --surface: #0c181e;
+  --surface-strong: #102229;
+  --text: #ecf8f8;
+  --muted: #9bb1b6;
+  --line: #27434b;
+  --accent: #55e6de;
+  --accent-soft: rgba(85, 230, 222, 0.12);
+  --warning: #ffd27d;
+  --danger: #ff9e9e;
+  --shadow: 0 22px 70px rgba(0, 0, 0, 0.34);
+}
+* { box-sizing: border-box; }
+html { background: var(--bg); scroll-behavior: smooth; }
+body {
+  margin: 0;
+  min-width: 0;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(85, 230, 222, 0.11), transparent 30rem),
+    linear-gradient(180deg, #081318 0%, var(--bg) 38rem);
+  color: var(--text);
+  font: 16px/1.65 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  text-rendering: optimizeLegibility;
+}
+a { color: var(--accent); text-underline-offset: 0.18em; overflow-wrap: anywhere; }
+a:hover { text-decoration-thickness: 0.14em; }
+a:focus-visible, button:focus-visible, [tabindex="0"]:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+}
+.shell { width: min(100% - 2rem, 1180px); margin: 0 auto; padding: 2.25rem 0 5rem; }
+.masthead {
+  margin-bottom: 1.25rem;
+  padding: 1.15rem 1.35rem;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: rgba(12, 24, 30, 0.88);
+  box-shadow: var(--shadow);
+}
+.eyebrow { margin: 0; color: var(--accent); font-size: 0.76rem; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; }
+.masthead p:last-child { margin-bottom: 0; color: var(--muted); }
+.status-badge {
+  display: inline-flex;
+  margin: 0.7rem 0 0;
+  padding: 0.28rem 0.62rem;
+  border: 1px solid rgba(255, 158, 158, 0.58);
+  border-radius: 999px;
+  background: rgba(255, 158, 158, 0.1);
+  color: #ffd1d1 !important;
+  font-size: 0.78rem;
+  font-weight: 850;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+}
+main {
+  min-width: 0;
+  padding: clamp(1.15rem, 3.5vw, 3rem);
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: linear-gradient(145deg, rgba(16, 34, 41, 0.96), rgba(8, 19, 24, 0.98));
+  box-shadow: var(--shadow);
+}
+h1, h2, h3, h4, h5, h6 { line-height: 1.18; letter-spacing: -0.018em; text-wrap: balance; scroll-margin-top: 1rem; }
+h1 { margin: 0 0 1.4rem; font-size: clamp(2rem, 6vw, 4.1rem); }
+h2 { margin: 3rem 0 1rem; padding-top: 1rem; border-top: 1px solid var(--line); font-size: clamp(1.45rem, 3vw, 2.3rem); }
+h3 { margin: 2rem 0 0.7rem; color: #c9fbf7; font-size: clamp(1.16rem, 2vw, 1.55rem); }
+h4, h5, h6 { margin: 1.5rem 0 0.5rem; }
+p, li { max-width: 82ch; }
+p { margin: 0.7rem 0 1rem; }
+ul, ol { margin: 0.75rem 0 1.25rem; padding-left: 1.35rem; }
+li { margin: 0.35rem 0; padding-left: 0.25rem; }
+.task-item { list-style: none; margin-left: -1.3rem; display: flex; gap: 0.55rem; align-items: baseline; }
+.task-item input { accent-color: var(--accent); }
+strong { color: #fff; }
+code {
+  padding: 0.12em 0.36em;
+  border: 1px solid rgba(85, 230, 222, 0.22);
+  border-radius: 0.38rem;
+  background: rgba(0, 0, 0, 0.28);
+  color: #bdfbf6;
+  font: 0.9em/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  overflow-wrap: anywhere;
+}
+pre {
+  max-width: 100%;
+  overflow: auto;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #050b0e;
+  color: #dcf7f5;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+pre code { padding: 0; border: 0; background: transparent; color: inherit; }
+blockquote { margin: 1.25rem 0; padding: 0.7rem 1rem; border-left: 4px solid var(--accent); background: var(--accent-soft); color: #d5efed; }
+blockquote p { margin: 0; }
+hr { margin: 2.3rem 0; border: 0; border-top: 1px solid var(--line); }
+.table-wrap { max-width: 100%; margin: 1rem 0 1.75rem; overflow-x: auto; border: 1px solid var(--line); border-radius: 14px; }
+table { width: 100%; min-width: 720px; border-collapse: collapse; font-size: 0.9rem; }
+th, td { padding: 0.8rem 0.85rem; border-bottom: 1px solid var(--line); border-right: 1px solid rgba(39, 67, 75, 0.65); text-align: left; vertical-align: top; overflow-wrap: anywhere; }
+th { position: sticky; top: 0; z-index: 1; background: #12262d; color: #d8fffb; font-size: 0.76rem; letter-spacing: 0.055em; text-transform: uppercase; }
+tr:nth-child(even) td { background: rgba(255, 255, 255, 0.018); }
+tr:last-child td { border-bottom: 0; }
+th:last-child, td:last-child { border-right: 0; }
+.handoff-actions { display: flex; flex-wrap: wrap; gap: 0.85rem; align-items: center; margin: 1.4rem 0 1rem; }
+button {
+  min-height: 44px;
+  padding: 0.7rem 1rem;
+  border: 1px solid #82fff7;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #03211f;
+  font: inherit;
+  font-weight: 850;
+  cursor: pointer;
+}
+button:hover { filter: brightness(1.08); }
+.copy-status { min-height: 1.65em; margin: 0; color: var(--muted); font-weight: 700; }
+.fallback { color: var(--muted); font-size: 0.93rem; }
+.handoff-text { max-height: none; margin-top: 1rem; white-space: pre-wrap; user-select: text; -webkit-user-select: text; }
+footer { padding: 1.2rem 0; color: var(--muted); font-size: 0.82rem; text-align: center; }
+@media (max-width: 620px) {
+  .shell { width: min(100% - 1rem, 1180px); padding-top: 0.5rem; }
+  .masthead, main { border-radius: 14px; }
+  .masthead { padding: 0.9rem 1rem; }
+  main { padding: 1rem; }
+  h1 { font-size: clamp(1.75rem, 10vw, 2.6rem); overflow-wrap: anywhere; }
+  h2 { margin-top: 2.2rem; }
+  th, td { padding: 0.65rem; }
+  .handoff-actions { align-items: stretch; }
+  .handoff-actions button { width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+}
+@media print {
+  :root { color-scheme: light; --bg: #fff; --surface: #fff; --surface-strong: #fff; --text: #111; --muted: #444; --line: #bbb; --accent: #006d68; }
+  body { background: #fff; color: #111; }
+  .shell { width: 100%; padding: 0; }
+  .masthead, main { border: 0; box-shadow: none; background: #fff; }
+  .masthead { padding: 0 0 0.5rem; }
+  main { padding: 0; }
+  .handoff-actions { display: none; }
+  .table-wrap { overflow: visible; }
+  table { min-width: 0; font-size: 8pt; }
+  a { color: #111; }
+}
+</style>
+</head>
+<body>
+  <div class="shell">
+    <header class="masthead">
+      <p class="eyebrow">CreditVector Beta Readiness · Founder Review Artifact</p>
+      <p>Standalone, sanitized, and network-independent. This artifact does not grant production approval.</p>
+      <p class="status-badge">No-Go · External Beta Blocked</p>
+    </header>
+    <main id="main-content"><article aria-labelledby="document-title"><h1 id="document-title">CreditVector Beta Readiness RC1 Execution Report</h1>
+<p><strong>Execution status:</strong> COMPLETE FOR AUTHORIZED SOURCE/READINESS WORK · NO-GO FOR EXTERNAL BETA</p>
+<p><strong>Evidence date:</strong> 2026-08-01</p>
+<p><strong>Repository:</strong> <code>gabriel-capital-labs</code></p>
+<p><strong>Authoritative production/main baseline:</strong> <code>f449c35d0eca9463c15e86f8cbd4cd7f4e948d03</code></p>
+<p><strong>Readiness branch:</strong> <code>review/creditvector-beta-readiness-rc1</code></p>
+<blockquote><p>This report distinguishes source, branch, Preview, production, provider, and legal evidence. It grants no merge, production deployment, payment activation, schema action, provider change, participant invitation, or counsel approval.</p></blockquote>
+<h2 id="executive-result">Executive result</h2>
+<p>The authorized work produced a clean legal-identity candidate, an isolated registration password-policy candidate, a dedicated Auth.js security candidate, and an evidence-backed Beta RC1 readiness package. Each implementation family began from exact <code>origin/main</code>; the dirty historical CXOS worktree was never used as a release branch. Existing Growth review evidence was verified without duplication.</p>
+<p>CreditVector is <strong>not ready for external beta invitations</strong>. Exact-main source controls are substantial, but nine P0 gates and sixteen P1 backlog items remain applicable to the Beta RC1 lineage. Prepared source candidates do not close main, production, Founder, counsel, provider, or authenticated-experience gates.</p>
+<h2 id="baseline-and-production-reconstruction">Baseline and production reconstruction</h2>
+<div class="table-wrap" role="region" aria-label="Scrollable data table" tabindex="0"><table>
+<thead><tr><th scope="col">Identity</th><th scope="col">Verified result</th></tr></thead>
+<tbody>
+<tr><td>Fresh <code>origin/main</code></td><td><code>f449c35d0eca9463c15e86f8cbd4cd7f4e948d03</code>; no drift from the recorded baseline</td></tr>
+<tr><td>Public production</td><td><code>https://www.creditvector.app</code>; HTTP 200; <code>x-cv-release: f449c35d0eca</code> observed before and after review-candidate activity</td></tr>
+<tr><td>Production deployment</td><td>GitHub deployment <code>5656031294</code>; commit-bound URL <code>https://gabriel-capital-labs-od93icz7b-rey-gabriel-s-projects.vercel.app</code>; production/main SHA matched</td></tr>
+<tr><td>Historical source</td><td><code>feat/cxos-phase3</code> at <code>a40a41c5a76028ad5cae2ff655c5bf168fb86a4a</code>; dirty, multi-stream, and ineligible for wholesale commit/merge/deploy</td></tr>
+<tr><td>Schema baseline</td><td>Six committed migration directories; schema-safety guard passes; exact production migration state remains unverified</td></tr>
+<tr><td>Build mutation boundary</td><td>Current Vercel build is <code>prisma generate &amp;&amp; next build</code>, with no database mutation; Docker startup still contains <code>prisma db push</code> and is a separate P1 cleanup</td></tr>
+</tbody></table></div>
+<h2 id="workstream-a-legal-identity-isolation">Workstream A — legal identity isolation</h2>
+<h3 id="result">Result</h3>
+<p><strong>COMMITTED AND PUSHED.</strong> The exact Founder-provided identity was reconstructed on current main:</p>
+<pre><code class="language-text">Gabriel Capital Labs, LLC
+30 Montgomery St.
+Suite 1200
+Jersey City, NJ 07302</code></pre>
+<p>Public branding remains <code>Gabriel Capital Labs</code>; the product remains <code>CreditVector</code>. The postal address is not exposed through <code>NEXT_PUBLIC_*</code>, ordinary product UI, or client JavaScript.</p>
+<div class="table-wrap" role="region" aria-label="Scrollable data table" tabindex="0"><table>
+<thead><tr><th scope="col">Field</th><th scope="col">Identity</th></tr></thead>
+<tbody>
+<tr><td>Branch</td><td><code>fix/company-legal-identity-isolated-rc1</code></td></tr>
+<tr><td>Parent</td><td><code>f449c35d0eca9463c15e86f8cbd4cd7f4e948d03</code></td></tr>
+<tr><td>Commit / remote SHA</td><td><code>73483c9db40031f39023320bd4f6bef61c6e00eb</code></td></tr>
+<tr><td>Commit count</td><td>1</td></tr>
+<tr><td>Diff</td><td>26 files · 282 insertions · 55 deletions</td></tr>
+<tr><td>Protected Preview</td><td><code>https://gabriel-capital-labs-5drkr6w93-rey-gabriel-s-projects.vercel.app</code></td></tr>
+<tr><td>GitHub deployment</td><td><code>5707811905</code> · Preview · exact candidate SHA</td></tr>
+<tr><td>Protection proof</td><td>Anonymous <code>/</code>, <code>/legal/terms</code>, and <code>/legal/privacy</code> returned Vercel SSO redirects, <code>no-store</code>, and <code>noindex</code></td></tr>
+<tr><td>CI</td><td>Gate D preflight PASS · verify PASS · Vercel Preview Comments PASS</td></tr>
+</tbody></table></div>
+<h3 id="exact-legal-allowlist">Exact legal allowlist</h3>
+<ul><li>Canonical runtime and guards: <code>lib/companyIdentity.server.ts</code>, <code>scripts/company-identity.test.ts</code>, <code>scripts/company-identity-runtime.test.ts</code>.</li><li>Legal/UI consumers: <code>app/legal/terms/page.tsx</code>, <code>app/legal/privacy/page.tsx</code>, <code>components/marketing/SiteFooter.tsx</code>.</li><li>Brief/legal-email consumers: <code>lib/briefDigest.ts</code>, <code>app/api/cron/brief-digest/route.ts</code>, <code>app/api/admin/brief/digest-test/route.ts</code>, <code>app/api/admin/diagnostics/route.ts</code>.</li><li>Exact governance/config references: <code>.env.example</code>, <code>CREDITVECTOR_RC1.md</code>, <code>CREDITVECTOR_RC1_EXECUTION.md</code>, <code>.ai/COMPLIANCE.md</code>, <code>.ai/CURRENT-STATE.md</code>, <code>.ai/INTEGRATIONS.md</code>, <code>.ai/KAI-EXPERIENCE.md</code>, <code>.ai/PRODUCT.md</code>, <code>.ai/ROADMAP.md</code>, <code>.ai/ROADMAP-V2.md</code>, <code>.ai/RUNBOOKS/admin-actions.md</code>, <code>.ai/TASKS.md</code>, <code>.ai/executive/CEO.md</code>, <code>.ai/improvement/ENGINE.md</code>, <code>.ai/marketing/CAMPAIGN-LIBRARY.md</code>, <code>.ai/marketing/README.md</code>.</li></ul>
+<h3 id="legal-validation">Legal validation</h3>
+<ul><li>Company source guard: 28/28 PASS.</li><li>Runtime Terms/Privacy/footer/Brief renderer: 20/20 PASS.</li><li>Brief digest guard: 7/7 PASS.</li><li>Letter/compliance, checkout-consent, and billing-identity guards: PASS.</li><li>TypeScript, touched-file ESLint, <code>git diff --check</code>, optimized build: PASS.</li><li>Client-chunk scan: no legal address, LLC string, or server module name.</li><li>Secret/local-path scan: CLEAN.</li><li><code>package.json</code>, <code>package-lock.json</code>, <code>prisma/schema.prisma</code>, <code>vercel.json</code>, and all six migration directories: byte-identical to parent.</li></ul>
+<h3 id="legal-caveats">Legal caveats</h3>
+<ul><li>Terms and Privacy display August 1, 2026, but exact main has no durable Terms-version/reacceptance enforcement path. No acceptance was backfilled and no reacceptance was triggered.</li><li>The candidate removes the postal-address environment gate from the opt-in Brief path. A later integration could allow an otherwise correctly configured, opted-in digest to send; received-email rendering still requires an authorized test.</li><li>Compliance engineering verdict: <strong>GO-WITH-CHANGES for review only</strong>. Counsel and durable consent remain Beta gates.</li></ul>
+<h2 id="workstream-b-beta-readiness-execution">Workstream B — Beta readiness execution</h2>
+<h3 id="safe-engineering-candidate-1-registration-password-parity">Safe engineering candidate 1 — registration password parity</h3>
+<div class="table-wrap" role="region" aria-label="Scrollable data table" tabindex="0"><table>
+<thead><tr><th scope="col">Field</th><th scope="col">Result</th></tr></thead>
+<tbody>
+<tr><td>Disposition</td><td>COMMITTED AND PUSHED; not merged</td></tr>
+<tr><td>Branch</td><td><code>fix/beta-auth-security-password-policy-rc1</code></td></tr>
+<tr><td>Parent</td><td><code>f449c35d0eca9463c15e86f8cbd4cd7f4e948d03</code></td></tr>
+<tr><td>Commit / remote SHA</td><td><code>e1ded00768ea483afe1f8447fa647fe1a5640773</code></td></tr>
+<tr><td>Diff</td><td>3 files · 69 insertions · 5 deletions</td></tr>
+<tr><td>Files</td><td><code>app/api/register/route.ts</code>, <code>app/register/page.tsx</code>, <code>scripts/register-password-policy.test.ts</code></td></tr>
+<tr><td>Correction</td><td>UI and API consume the existing client-safe <code>lib/password.ts</code> policy; the divergent 8-character path is removed</td></tr>
+<tr><td>Validation</td><td>New guard 13/13; session security 11/11; Gate D 105/105; critical paths 33/33; typecheck, touched lint, diff-check, optimized build PASS</td></tr>
+<tr><td>Integrity</td><td>package, lockfile, Prisma schema, and Vercel config unchanged</td></tr>
+<tr><td>Rollback</td><td>Revert this single commit; no data/schema/provider action is involved</td></tr>
+</tbody></table></div>
+<p>This prepares P1-01 at source-candidate level only. It does not resolve session revocation, reset-token atomicity, post-registration routing, or production integration.</p>
+<h3 id="safe-engineering-candidate-2-auth-js-malformed-bearer-handling">Safe engineering candidate 2 — Auth.js malformed-Bearer handling</h3>
+<div class="table-wrap" role="region" aria-label="Scrollable data table" tabindex="0"><table>
+<thead><tr><th scope="col">Field</th><th scope="col">Result</th></tr></thead>
+<tbody>
+<tr><td>Disposition</td><td>COMMITTED AND PUSHED; not merged</td></tr>
+<tr><td>Branch</td><td><code>fix/beta-auth-security-nextauth-dos-rc1</code></td></tr>
+<tr><td>Parent</td><td><code>f449c35d0eca9463c15e86f8cbd4cd7f4e948d03</code></td></tr>
+<tr><td>Commit / remote SHA</td><td><code>5f2931e81810c5078cd894d8ec9a90c66d47bac4</code></td></tr>
+<tr><td>Diff / files</td><td>3 files · 101 insertions · 11 deletions: <code>package.json</code>, <code>package-lock.json</code>, <code>scripts/next-auth-malformed-bearer.test.ts</code></td></tr>
+<tr><td>Correction</td><td>Pin <code>next-auth</code> to patched <code>4.24.15</code>; lock moves only its required <code>uuid</code> transitive dependency from 8.3.2 to 11.1.1; add real <code>getToken()</code> and landing-middleware malformed-header regression</td></tr>
+<tr><td>Validation</td><td>Exact <code>npm ci</code>; dependency tree; new runtime guard 14/14; typecheck; touched lint; session 11/11; critical paths 33/33; attachments 17/17; diff-check; optimized build; remote SHA PASS</td></tr>
+<tr><td>Rollback</td><td>Revert the one exact candidate commit; no schema, environment, provider, or production action is involved</td></tr>
+</tbody></table></div>
+<p>Official evidence: GHSA-xmf8-cvqr-rfgj rates the issue High, affects <code>next-auth</code> 4.0.6 through 4.24.14, and patches it in 4.24.15. Exact main resolves 4.24.14 and directly invokes <code>getToken()</code> without a catch in <code>middleware.ts</code>, so applicability is verified. The impact is per-request availability; the advisory does not claim session disclosure or authorization bypass.</p>
+<h3 id="main-baseline-verification-ledger">Main-baseline verification ledger</h3>
+<p>The following ran in a clean exact-main worktree. They establish source-harness truth, not production/provider truth.</p>
+<div class="table-wrap" role="region" aria-label="Scrollable data table" tabindex="0"><table>
+<thead><tr><th scope="col">Check</th><th scope="col">Result</th></tr></thead>
+<tbody>
+<tr><td>TypeScript</td><td>PASS</td></tr>
+<tr><td>Session security</td><td>11 passed, 0 failed; guard explicitly preserves the unresolved token-revocation gap</td></tr>
+<tr><td>Stripe lifecycle</td><td>84 passed, 0 failed</td></tr>
+<tr><td>Billing identity</td><td>39 passed, 0 failed</td></tr>
+<tr><td>Billing integrity</td><td>31 passed, 0 failed</td></tr>
+<tr><td>Checkout guard</td><td>21 passed, 0 failed</td></tr>
+<tr><td>Checkout consent</td><td>11 passed, 0 failed</td></tr>
+<tr><td>Schema safety</td><td>17 passed, 0 failed</td></tr>
+<tr><td>Attachment authorization</td><td>17 passed, 0 failed</td></tr>
+<tr><td>Network authorization</td><td>36 passed, 0 failed</td></tr>
+<tr><td>Critical paths</td><td>33 passed, 0 failed</td></tr>
+<tr><td>Quality ledger</td><td>10 passed, 0 failed</td></tr>
+<tr><td>Real-handler runtime guards</td><td>4 suites PASS: invoice shapes 52/52; webhook claim 36/36; reorder convergence 44/44; unknown-price source writes 29/29</td></tr>
+</tbody></table></div>
+<p>Important limitation: the unknown-price runtime guard proves no plan field is written, but it does not prove that <code>isPremium</code> cannot infer premium from an active status. That end-to-end entitlement gap remains P1.</p>
+<h2 id="feature-completeness-conclusion">Feature-completeness conclusion</h2>
+<p>The detailed feature matrix supports only a <strong>consumer-only, invite-only, self-mail beta</strong> after every P0 gate closes and the external-user P1 criteria pass.</p>
+<ul><li><strong>Beta Required:</strong> secure account/recovery; Founder-approved noncharging entitlement or consent-complete billing; own-data report intake; encryption and backfill proof; user-controlled letter/response/task workflow; advisory-only Kai; monitoring/recovery/support; legal/consent; authenticated cross-device acceptance.</li><li><strong>Beta Allowed Dormant:</strong> Agency/CXOS rooms, Operator platform contracts, Community, Arena, Growth, Marketplace, physical mail, Event Fabric, Growth economics, payouts, credits, and autonomous Kai actions.</li><li><strong>Post-Beta:</strong> public acquisition, ecosystem economics, public identity/reputation, Marketplace transactions, autonomous delegation, and scale expansion.</li></ul>
+<p>Backlog: <strong>P0 9 · P1 16 · P2 8 · P3 6.</strong> A prepared branch remains counted until it is independently reviewed, integrated into the exact Beta lineage, and revalidated; provider/counsel gates remain open regardless of source work.</p>
+<h2 id="security-compliance-billing-and-ux-findings">Security, compliance, billing, and UX findings</h2>
+<h3 id="security">Security</h3>
+<ul><li>Next.js 14 is unsupported. Exact main is within the RSC cache-poisoning advisory range; a supported-version modernization remains a separate high-risk candidate, not part of either narrow auth fix.</li><li>The directly applicable Auth.js advisory was isolated into its own patch candidate.</li><li>Immutable user-ID session resolution, disabled-account rechecks, route authorization, webhook claim/retry/reorder controls, attachment ownership, encryption-before-write, and migration-safety guards are verified in source/harnesses.</li><li>Session revocation after password rotation, reset-token atomicity, Stripe-customer concurrency, unknown-price entitlement, prompt fencing parity, file signatures, and complete CSP/MFA/penetration evidence remain open.</li></ul>
+<h3 id="compliance">Compliance</h3>
+<ul><li>The product retains an education-first, no-guarantee posture and deterministic letter scrubbing.</li><li>No counsel sign-off was found for the exact beta, paid-upgrade assent, state CSO posture, public outcomes/testimonials, or beta participant terms.</li><li>User-set <code>RESOLVED</code> must not be represented as a verified credit outcome.</li><li>External Agency, Growth, Community, Marketplace, public reputation, and economic programs stay outside Beta RC1.</li></ul>
+<h3 id="billing-and-stripe">Billing and Stripe</h3>
+<ul><li>Webhook signature/idempotency/claim/reorder and subscription replacement source controls pass existing guards.</li><li>Provider catalog, legal URLs, consent flag, tax/invoice identity, dunning, receipts, webhook delivery, refunds/disputes, and live reconciliation were not mutated or fully verified.</li><li>Paid beta remains blocked. No Stripe product, price, customer, subscription, webhook, tax, invoice, refund, or environment setting changed.</li></ul>
+<h3 id="ux-mobile-accessibility">UX/mobile/accessibility</h3>
+<ul><li>Global skip/focus styles and primary 44 px navigation controls exist.</li><li>Exact main also contains a 32 px theme toggle and a mobile drawer without proved Escape, focus containment/restoration, or body-scroll handling.</li><li>No authenticated Axe/device/200%-reflow/reduced-motion/CLS/long-task matrix exists for the Beta lineage. This remains a release gate, not a report-only caveat.</li></ul>
+<h2 id="recovery-monitoring-schema-and-production-truth">Recovery, monitoring, schema, and production truth</h2>
+<ul><li><code>OPERATIONS.md</code> contains a restore-drill procedure; the prior claim “no DR runbook” is false. Actual provider identity, backup retention/PITR, key recovery, restore result, and RPO/RTO remain blocked.</li><li>Monitoring code, scheduled health verification, and an optional webhook exist; a human-received alert drill is not proved, and the webhook dispatch is fire-and-forget.</li><li>Six migration directories and migration-first governance exist. Vercel build performs no database mutation. The production migration relationship is unverified and Docker startup drift remains open.</li><li>Production environment facts such as <code>SETUP_SECRET</code> absence, hard-off flags, cron liveness, Stripe settings, encryption backfills, and schema state require authorized presence-only verification. No values should enter evidence.</li></ul>
+<h2 id="candidate-and-stream-consolidation">Candidate and stream consolidation</h2>
+<div class="table-wrap" role="region" aria-label="Scrollable data table" tabindex="0"><table>
+<thead><tr><th scope="col">Stream</th><th scope="col">Disposition</th><th scope="col">Source</th><th scope="col">Clean target</th><th scope="col">Parent</th><th scope="col">Commit / remote</th><th scope="col">Files</th><th scope="col">Validation</th><th scope="col">Preview</th><th scope="col">Merge status</th><th scope="col">Exact remaining gate</th></tr></thead>
+<tbody>
+<tr><td>Company legal identity</td><td>COMMITTED AND PUSHED</td><td>dirty <code>feat/cxos-phase3</code> hunks, reconstructed</td><td><code>fix/company-legal-identity-isolated-rc1</code></td><td><code>f449c35d…</code></td><td><code>73483c9d…</code></td><td>26</td><td>Full legal/runtime/build + CI PASS</td><td>Protected legal Preview</td><td>Not merged</td><td>Founder integration + counsel + durable consent + received-email check</td></tr>
+<tr><td>Registration password parity</td><td>COMMITTED AND PUSHED</td><td>exact-main defect</td><td><code>fix/beta-auth-security-password-policy-rc1</code></td><td><code>f449c35d…</code></td><td><code>e1ded007…</code></td><td>3</td><td>Focused/auth/Gate-D/build + GitHub CI PASS</td><td>Protected <code>https://gabriel-capital-labs-gpph0y5lt-rey-gabriel-s-projects.vercel.app</code></td><td>Not merged</td><td>Independent review and later Beta-lineage integration</td></tr>
+<tr><td>Auth.js malformed Bearer</td><td>COMMITTED AND PUSHED</td><td>exact-main dependency/source applicability</td><td><code>fix/beta-auth-security-nextauth-dos-rc1</code></td><td><code>f449c35d…</code></td><td><code>5f2931e8…</code></td><td>3</td><td>Exact install, focused runtime/auth/build + GitHub CI PASS</td><td>Protected <code>https://gabriel-capital-labs-4kov4ploi-rey-gabriel-s-projects.vercel.app</code></td><td>Not merged</td><td>Independent review and later Beta-lineage integration</td></tr>
+<tr><td>Beta readiness package</td><td>COMMITTED AND PUSHED AT DELIVERY</td><td>exact-main + read-only production/remote evidence</td><td><code>review/creditvector-beta-readiness-rc1</code></td><td><code>f449c35d…</code></td><td>Exact content-addressed SHA is recorded in the accompanying handoff/chat manifest</td><td>9 canonical report/renderer files</td><td>Renderer, sanitization, hashes, diff-check and GitHub CI required</td><td>Protected branch Preview; standalone Founder package remains a release artifact</td><td>Not merged</td><td>Founder accepts scope/order; gates remain open</td></tr>
+<tr><td>Growth Experience Phase 1B remediation</td><td>ALREADY PUSHED AND VERIFIED</td><td>historical review lineage</td><td><code>review/growth-experience-phase-1b-remediation-rc1</code></td><td>first remediation parent <code>a40a41c…</code></td><td><code>b913e50f…</code></td><td>199 cumulative from main; final commit 2</td><td>Remote checks PASS</td><td>Protected <code>gabriel-capital-labs-2dxyiuje0…</code></td><td>Not merged</td><td>Reconstruct from current main; branch is 67 commits ahead and never mergeable wholesale</td></tr>
+<tr><td>Agency Headquarters RC5</td><td>READY BUT BLOCKED</td><td>dirty RC5 artifacts/approved blobs</td><td>future <code>review/cxos-agency-headquarters-integration-rc1</code></td><td>future current main</td><td>none</td><td>maximum 25-path plan after blockers</td><td>Prior simulation passed most gates; cold-load long-task contradiction remains</td><td>Existing RC5 evidence only</td><td>Not merged</td><td>Auth/Next dependency lane, centralized review hard-off, governance reconstruction, repeatable cold/warm performance gate, separate Founder integration authorization</td></tr>
+<tr><td>Growth Network/Foundation and Growth Center source</td><td>NOT ELIGIBLE</td><td>dirty historical worktree</td><td>none authorized</td><td>n/a</td><td>none</td><td>mixed</td><td>Not a CreditVector Beta Required stream</td><td>Preview/report evidence varies</td><td>Not merged</td><td>Separate Founder scope, clean-main lineage, legal/economic/privacy gates</td></tr>
+<tr><td>Business-model/economic decision artifacts</td><td>NOT ELIGIBLE</td><td>dirty historical worktree</td><td>none</td><td>n/a</td><td>none</td><td>report-only mixed set</td><td>No implementation authority</td><td>none created here</td><td>Not merged</td><td>Founder/counsel economic decision; no activation authorized</td></tr>
+<tr><td>Agent infrastructure, private evidence, ZIPs, screenshots</td><td>NOT ELIGIBLE</td><td>untracked dirty worktree</td><td>none</td><td>n/a</td><td>none</td><td>many</td><td>Intentionally excluded</td><td>none</td><td>Not merged</td><td>Never treat as product source; sanitize release artifacts only</td></tr>
+</tbody></table></div>
+<h2 id="uncommitted-work-inventory-and-disposition">Uncommitted-work inventory and disposition</h2>
+<p>The dirty historical worktree still contains these categories; none was silently discarded or committed wholesale:</p>
+<ol><li><strong>CXOS Core Runtime / Agency Headquarters / RC5 reports and evidence.</strong> Founder-approved experience evidence exists, but integration is blocked by inherited Auth.js/Next security work, centralized review hard-off/governance reconstruction, and a repeated cold-load long-task contradiction. It requires a new current-main reconstruction after those gates, not an RC-chain merge.</li><li><strong>Growth Network, Growth Center, economic models, and decision packages.</strong> These are outside Beta Required scope and require separate Founder/counsel/economic authority. The already-pushed Growth remediation branch was inventoried, not copied.</li><li><strong>Historical Phase 5/6 reports, screenshots/evidence directories, handoff ZIPs, render scripts, agent infrastructure, and skill files.</strong> These are local/reporting/infrastructure artifacts, not eligible product commits.</li><li><strong>Mixed legal-identity edits in the dirty tree.</strong> Their authorized substance is now isolated on <code>73483c9d…</code>; the dirty copies remain user-owned and were not cleaned or reset.</li><li><strong>Readiness artifacts.</strong> These are authored only in the clean readiness worktree and will be committed as canonical Markdown/HTML plus the reproducible renderer; the generated Founder ZIP remains local release output.</li></ol>
+<h2 id="authority-still-required">Authority still required</h2>
+<h3 id="founder">Founder</h3>
+<ul><li>Approve the narrow consumer-only, invite-only, self-mail Beta RC1 scope and explicitly exclude paid acquisition unless the money/legal gates close.</li><li>Choose the integration order for the legal and two security candidates.</li><li>Name support, incident, alert, rollback, and beta-cohort owners.</li><li>Authorize read-only production/provider verification and later authenticated synthetic acceptance.</li></ul>
+<h3 id="counsel">Counsel</h3>
+<ul><li>Exact beta participant terms, Terms/Privacy changes, durable assent/reacceptance policy, CROA/FCRA/state-CSO posture, paid upgrade/advance-fee model, data processing/retention, and claims/outcomes posture.</li></ul>
+<h3 id="provider-production-access">Provider / production access</h3>
+<ul><li>Presence-only environment ledger; Stripe catalog/legal/consent/tax/invoice/dunning/webhook reconciliation; alert drill; backup/PITR/restore/key drill; encryption backfill proof; migration/schema preflight; cron liveness; required GitHub checks.</li></ul>
+<h2 id="rollback-and-next-action">Rollback and next action</h2>
+<p>Every implementation is one bounded, main-based review commit. Rollback is a normal revert of that candidate; none needs schema reversal or provider repair. The readiness commit is documentation/renderer only and the ZIP is not committed.</p>
+<p>Recommended next authorized action:</p>
+<ol><li>Founder reviews the legal, password-policy, Auth.js, and readiness branches independently.</li><li>Counsel resolves legal/assent/beta terms.</li><li>Engineering opens a separate supported-Next modernization candidate and the higher-risk auth/billing branches; no cross-family merge.</li><li>With separate authority, execute production-presence, alert, backfill, and restore drills.</li><li>Assemble a new exact-main Beta candidate only after required candidates are approved, then run authenticated acceptance before any invitation.</li></ol>
+<h2 id="final-verdict">Final verdict</h2>
+<p><strong>NO-GO — CREDITVECTOR BETA RELEASE CANDIDATE 1 IS NOT AUTHORIZED FOR EXTERNAL USERS.</strong> Internal protected engineering review may continue using synthetic data with billing and participant access off. <code>origin/main</code>, the production alias, production deployment, database, schema, migrations, Stripe, environments, and provider configuration remained untouched.</p></article></main>
+    <footer>CreditVector by Gabriel Capital Labs · Review artifact</footer>
+  </div>
+</body>
+</html>

@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <meta name="robots" content="noindex, nofollow, noarchive">
+  <meta name="description" content="CreditVector Beta Blocker Backlog. CreditVector beta release-readiness review artifact.">
+  <title>CreditVector Beta Blocker Backlog</title>
+  <style>
+:root {
+  color-scheme: dark;
+  --bg: #071014;
+  --surface: #0c181e;
+  --surface-strong: #102229;
+  --text: #ecf8f8;
+  --muted: #9bb1b6;
+  --line: #27434b;
+  --accent: #55e6de;
+  --accent-soft: rgba(85, 230, 222, 0.12);
+  --warning: #ffd27d;
+  --danger: #ff9e9e;
+  --shadow: 0 22px 70px rgba(0, 0, 0, 0.34);
+}
+* { box-sizing: border-box; }
+html { background: var(--bg); scroll-behavior: smooth; }
+body {
+  margin: 0;
+  min-width: 0;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(85, 230, 222, 0.11), transparent 30rem),
+    linear-gradient(180deg, #081318 0%, var(--bg) 38rem);
+  color: var(--text);
+  font: 16px/1.65 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  text-rendering: optimizeLegibility;
+}
+a { color: var(--accent); text-underline-offset: 0.18em; overflow-wrap: anywhere; }
+a:hover { text-decoration-thickness: 0.14em; }
+a:focus-visible, button:focus-visible, [tabindex="0"]:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+}
+.shell { width: min(100% - 2rem, 1180px); margin: 0 auto; padding: 2.25rem 0 5rem; }
+.masthead {
+  margin-bottom: 1.25rem;
+  padding: 1.15rem 1.35rem;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: rgba(12, 24, 30, 0.88);
+  box-shadow: var(--shadow);
+}
+.eyebrow { margin: 0; color: var(--accent); font-size: 0.76rem; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; }
+.masthead p:last-child { margin-bottom: 0; color: var(--muted); }
+.status-badge {
+  display: inline-flex;
+  margin: 0.7rem 0 0;
+  padding: 0.28rem 0.62rem;
+  border: 1px solid rgba(255, 158, 158, 0.58);
+  border-radius: 999px;
+  background: rgba(255, 158, 158, 0.1);
+  color: #ffd1d1 !important;
+  font-size: 0.78rem;
+  font-weight: 850;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+}
+main {
+  min-width: 0;
+  padding: clamp(1.15rem, 3.5vw, 3rem);
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: linear-gradient(145deg, rgba(16, 34, 41, 0.96), rgba(8, 19, 24, 0.98));
+  box-shadow: var(--shadow);
+}
+h1, h2, h3, h4, h5, h6 { line-height: 1.18; letter-spacing: -0.018em; text-wrap: balance; scroll-margin-top: 1rem; }
+h1 { margin: 0 0 1.4rem; font-size: clamp(2rem, 6vw, 4.1rem); }
+h2 { margin: 3rem 0 1rem; padding-top: 1rem; border-top: 1px solid var(--line); font-size: clamp(1.45rem, 3vw, 2.3rem); }
+h3 { margin: 2rem 0 0.7rem; color: #c9fbf7; font-size: clamp(1.16rem, 2vw, 1.55rem); }
+h4, h5, h6 { margin: 1.5rem 0 0.5rem; }
+p, li { max-width: 82ch; }
+p { margin: 0.7rem 0 1rem; }
+ul, ol { margin: 0.75rem 0 1.25rem; padding-left: 1.35rem; }
+li { margin: 0.35rem 0; padding-left: 0.25rem; }
+.task-item { list-style: none; margin-left: -1.3rem; display: flex; gap: 0.55rem; align-items: baseline; }
+.task-item input { accent-color: var(--accent); }
+strong { color: #fff; }
+code {
+  padding: 0.12em 0.36em;
+  border: 1px solid rgba(85, 230, 222, 0.22);
+  border-radius: 0.38rem;
+  background: rgba(0, 0, 0, 0.28);
+  color: #bdfbf6;
+  font: 0.9em/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  overflow-wrap: anywhere;
+}
+pre {
+  max-width: 100%;
+  overflow: auto;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #050b0e;
+  color: #dcf7f5;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+pre code { padding: 0; border: 0; background: transparent; color: inherit; }
+blockquote { margin: 1.25rem 0; padding: 0.7rem 1rem; border-left: 4px solid var(--accent); background: var(--accent-soft); color: #d5efed; }
+blockquote p { margin: 0; }
+hr { margin: 2.3rem 0; border: 0; border-top: 1px solid var(--line); }
+.table-wrap { max-width: 100%; margin: 1rem 0 1.75rem; overflow-x: auto; border: 1px solid var(--line); border-radius: 14px; }
+table { width: 100%; min-width: 720px; border-collapse: collapse; font-size: 0.9rem; }
+th, td { padding: 0.8rem 0.85rem; border-bottom: 1px solid var(--line); border-right: 1px solid rgba(39, 67, 75, 0.65); text-align: left; vertical-align: top; overflow-wrap: anywhere; }
+th { position: sticky; top: 0; z-index: 1; background: #12262d; color: #d8fffb; font-size: 0.76rem; letter-spacing: 0.055em; text-transform: uppercase; }
+tr:nth-child(even) td { background: rgba(255, 255, 255, 0.018); }
+tr:last-child td { border-bottom: 0; }
+th:last-child, td:last-child { border-right: 0; }
+.handoff-actions { display: flex; flex-wrap: wrap; gap: 0.85rem; align-items: center; margin: 1.4rem 0 1rem; }
+button {
+  min-height: 44px;
+  padding: 0.7rem 1rem;
+  border: 1px solid #82fff7;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #03211f;
+  font: inherit;
+  font-weight: 850;
+  cursor: pointer;
+}
+button:hover { filter: brightness(1.08); }
+.copy-status { min-height: 1.65em; margin: 0; color: var(--muted); font-weight: 700; }
+.fallback { color: var(--muted); font-size: 0.93rem; }
+.handoff-text { max-height: none; margin-top: 1rem; white-space: pre-wrap; user-select: text; -webkit-user-select: text; }
+footer { padding: 1.2rem 0; color: var(--muted); font-size: 0.82rem; text-align: center; }
+@media (max-width: 620px) {
+  .shell { width: min(100% - 1rem, 1180px); padding-top: 0.5rem; }
+  .masthead, main { border-radius: 14px; }
+  .masthead { padding: 0.9rem 1rem; }
+  main { padding: 1rem; }
+  h1 { font-size: clamp(1.75rem, 10vw, 2.6rem); overflow-wrap: anywhere; }
+  h2 { margin-top: 2.2rem; }
+  th, td { padding: 0.65rem; }
+  .handoff-actions { align-items: stretch; }
+  .handoff-actions button { width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+}
+@media print {
+  :root { color-scheme: light; --bg: #fff; --surface: #fff; --surface-strong: #fff; --text: #111; --muted: #444; --line: #bbb; --accent: #006d68; }
+  body { background: #fff; color: #111; }
+  .shell { width: 100%; padding: 0; }
+  .masthead, main { border: 0; box-shadow: none; background: #fff; }
+  .masthead { padding: 0 0 0.5rem; }
+  main { padding: 0; }
+  .handoff-actions { display: none; }
+  .table-wrap { overflow: visible; }
+  table { min-width: 0; font-size: 8pt; }
+  a { color: #111; }
+}
+</style>
+</head>
+<body>
+  <div class="shell">
+    <header class="masthead">
+      <p class="eyebrow">CreditVector Beta Readiness · Founder Review Artifact</p>
+      <p>Standalone, sanitized, and network-independent. This artifact does not grant production approval.</p>
+      <p class="status-badge">No-Go · External Beta Blocked</p>
+    </header>
+    <main id="main-content"><article aria-labelledby="document-title"><h1 id="document-title">CreditVector Beta Blocker Backlog</h1>
+<p><strong>Status:</strong> NO-GO — Beta RC1 gates remain open</p>
+<p><strong>Evidence date:</strong> 2026-08-01</p>
+<p><strong>Repository baseline:</strong> <code>origin/main</code> at <code>f449c35d0eca9463c15e86f8cbd4cd7f4e948d03</code></p>
+<p><strong>Backlog counts:</strong> P0 9 · P1 16 · P2 8 · P3 6</p>
+<blockquote><p>Priority means launch consequence, not implementation order. A Preview, pushed review branch, or passing source guard does not close a blocker on production. Counsel and provider gates cannot be closed by an engineering report.</p></blockquote>
+<h2 id="p0-prevents-a-protected-external-beta-candidate">P0 — prevents a protected external beta candidate</h2>
+<div class="table-wrap" role="region" aria-label="Scrollable data table" tabindex="0"><table>
+<thead><tr><th scope="col">ID</th><th scope="col">Blocker and evidence</th><th scope="col">Exit evidence</th><th scope="col">Owner / authority</th><th scope="col">Rollback or fail-closed rule</th></tr></thead>
+<tbody>
+<tr><td>P0-01</td><td><strong>Counsel and beta legal posture.</strong> No recorded attorney approval covers the exact consumer beta, CROA/FCRA/state CSO posture, subscription/advance-fee treatment, data disclosures, or participant terms.</td><td>Written counsel decision tied to the exact beta scope, terms, privacy notice, acquisition model, claims, and cohort.</td><td>Counsel + Founder</td><td>Invite nobody; keep paid acquisition and excluded programs off.</td></tr>
+<tr><td>P0-02</td><td><strong>Legal identity and durable consent.</strong> Exact main lacks the Founder-approved LLC/address. The isolated legal candidate exists, but registration has no durable versioned assent; Checkout consent is configuration-dependent; in-place paid upgrades bypass Checkout assent.</td><td>Founder-approved legal integration plus counsel-approved, versioned acceptance on every enabled acquisition/upgrade path. No inferred or backfilled assent.</td><td>Counsel + Founder + Engineering</td><td>Keep legal candidate isolated and charging disabled; revert only the bounded candidate if rejected.</td></tr>
+<tr><td>P0-03</td><td><strong>Supported framework/security baseline.</strong> Exact main pins <code>next@14.2.18</code>, an unsupported major in the affected range of GHSA-wfc6-r584-vfw7. No production CDN mitigation was proved.</td><td>Dedicated supported-version candidate passes build, auth, cache, PWA, browser, accessibility, dependency, and rollback tests; production mitigation is independently verified if relied upon.</td><td>Engineering + Founder</td><td>Do not invite external users on an unsupported affected baseline; roll back exact dependency candidate if regressions appear.</td></tr>
+<tr><td>P0-04</td><td><strong>Applicable Auth.js availability advisory.</strong> Exact main resolves vulnerable <code>next-auth@4.24.14</code> and calls <code>getToken()</code> without a catch. Source candidate <code>fix/beta-auth-security-nextauth-dos-rc1</code> at <code>5f2931e8…</code> pins 4.24.15 and adds the malformed-header regression; it is pushed, not integrated.</td><td>Independently approve and integrate the isolated candidate into the exact Beta lineage; repeat auth/session/build/browser tests and exact lock review.</td><td>Engineering</td><td>Revert the one candidate commit if auth behavior regresses; main remains blocked until integration.</td></tr>
+<tr><td>P0-05</td><td><strong>Human alert delivery.</strong> Structured error reporting exists, but a monitored sink and successful human acknowledgement drill are unproved.</td><td>Trigger a non-customer synthetic failure; record delivery, acknowledgement time, owner, escalation, and no secret/PII leakage.</td><td>Founder + Provider + Operations</td><td>Stop invitations when material errors can be silent.</td></tr>
+<tr><td>P0-06</td><td><strong>Backup, restore, key recovery, RPO/RTO.</strong> Provider guarantees, recoverable backup, isolated restore, encryption-key recovery, and measured RPO/RTO are unproved.</td><td>Identify provider and retention/PITR; restore into an isolated target; decrypt representative synthetic protected records; record RPO/RTO and key escrow owner.</td><td>Founder + Provider + Engineering</td><td>No beta data intake until recovery is proved; never test by mutating production.</td></tr>
+<tr><td>P0-07</td><td><strong>Legacy protected-data backfills.</strong> Crypto is fail-closed for new data, but dual-read remains and production report/letter backfill completion is unknown.</td><td>Authorized dry-run/run evidence followed by a repeat run returning zero newly encrypted rows; exception count is zero or explicitly resolved.</td><td>Founder + Production access</td><td>Do not assume legacy plaintext is gone; do not alter schema as part of verification.</td></tr>
+<tr><td>P0-08</td><td><strong>Exact production configuration and schema truth.</strong> Current migration relationship, hard-off flags, <code>SETUP_SECRET</code> absence, cron liveness, Stripe legal settings, webhook health, and branch protection are incomplete.</td><td>Presence/status-only signed ledger for every environment and provider; read-only migration preflight; exact SHA/check protection; no values or customer data in evidence.</td><td>Founder + Production/Provider access</td><td>Treat unknown as blocked; no environment, schema, Stripe, or alias mutation during verification.</td></tr>
+<tr><td>P0-09</td><td><strong>Authenticated release acceptance.</strong> No exact-main, authenticated end-to-end desktop/mobile/Axe/reflow/performance matrix exists.</td><td>Controlled synthetic accounts complete signup/login/report/letter/response/support/recovery; zero Critical/High defects; accessibility, keyboard, mobile, reduced-motion, overflow, CLS, and long-task budgets pass.</td><td>Engineering + Founder</td><td>Do not substitute source inspection or anonymous probes for customer-journey evidence.</td></tr>
+</tbody></table></div>
+<h2 id="p1-required-before-inviting-external-beta-users">P1 — required before inviting external beta users</h2>
+<div class="table-wrap" role="region" aria-label="Scrollable data table" tabindex="0"><table>
+<thead><tr><th scope="col">ID</th><th scope="col">Engineering blocker</th><th scope="col">Current truth</th><th scope="col">Acceptance / tests</th><th scope="col">Branch family</th></tr></thead>
+<tbody>
+<tr><td>P1-01</td><td>Canonical registration password policy</td><td>Exact main accepts 8 characters. Source candidate <code>fix/beta-auth-security-password-policy-rc1</code> at <code>e1ded007…</code> reuses <code>lib/password.ts</code>; it is pushed, not integrated.</td><td>Independently approve/integrate into the Beta lineage; weak cases fail, valid case passes, auth/browser guards pass.</td><td><code>fix/beta-auth-security-password-policy-rc1</code></td></tr>
+<tr><td>P1-02</td><td>Session and reset hardening</td><td>Password reset/change does not revoke existing JWTs; reset-token read/consume is non-atomic; profile email password verification lacks a dedicated throttle.</td><td>Threat model, migration design if needed, concurrency test, session-revocation test, rate-limit test, rollback sequence.</td><td><code>fix/beta-auth-security-*</code></td></tr>
+<tr><td>P1-03</td><td>Registration destination and onboarding truth</td><td>Pricing supplies <code>next</code>, registration ignores it, and onboarding emits completion before the journey is complete.</td><td>Allowlisted redirect; real completion event; browser Back and malicious redirect tests.</td><td><code>fix/beta-ux-*</code></td></tr>
+<tr><td>P1-04</td><td>Upload and identity-file validation</td><td>Report and identity uploads trust incomplete MIME/extension signals; identity raw serving lacks attachment-equivalent sandbox/DENY controls.</td><td>Magic-byte validation before parsing/storage; safe disposition/headers; malformed/polyglot/oversize/ownership tests.</td><td><code>fix/beta-credit-workflow-*</code></td></tr>
+<tr><td>P1-05</td><td>Report prompt trust boundary</td><td>Raw report text lacks the repository&#39;s explicit untrusted-content fence.</td><td>Injection fixtures cannot override system instructions; structured source-only output and fallback remain.</td><td><code>fix/beta-credit-workflow-*</code></td></tr>
+<tr><td>P1-06</td><td>Response/strategist safety parity</td><td>Round-two and strategist paths lack consistent fencing and output compliance scrubbing.</td><td>Shared fence/scrubber contract; unsupported-claim fixtures; manual fallback; no data expansion.</td><td><code>fix/beta-credit-workflow-*</code></td></tr>
+<tr><td>P1-07</td><td>User-reported outcome truth</td><td>A user can set <code>RESOLVED</code>, affecting resolution views/metrics without evidence semantics.</td><td>Founder/compliance-approved label or transition/evidence rule; all derived metrics preserve “user-reported.”</td><td><code>fix/beta-credit-workflow-*</code></td></tr>
+<tr><td>P1-08</td><td>First-checkout Stripe-customer race</td><td>Concurrent customer creation can leave an unmapped Stripe customer/subscription.</td><td>Idempotent/keyed ownership strategy; concurrent integration test; repair and rollback runbook.</td><td><code>fix/beta-billing-lifecycle-*</code></td></tr>
+<tr><td>P1-09</td><td>Unknown-price fail-closed entitlement</td><td>Unknown active price can retain/receive premium via active subscription status.</td><td>Unknown price yields no paid entitlement, pages an operator, and preserves reconciliation evidence.</td><td><code>fix/beta-billing-lifecycle-*</code></td></tr>
+<tr><td>P1-10</td><td>Orphan subscription retry/repair</td><td>Missing User mapping is reported, then the webhook event can complete and stop retrying.</td><td>Event remains retryable or enters a durable repair state; test duplicate/reorder/recovery.</td><td><code>fix/beta-billing-lifecycle-*</code></td></tr>
+<tr><td>P1-11</td><td>Support attachment atomicity</td><td>Ticket/message can succeed after attachment storage fails, creating an undisclosed partial result.</td><td>All-or-explicit-partial contract; customer-visible receipt; rollback/orphan cleanup tests.</td><td><code>fix/beta-support-*</code></td></tr>
+<tr><td>P1-12</td><td>Product-health and logging honesty</td><td>Some query errors collapse to zero; centralized reporting is not universal.</td><td>Unknown/error is distinguishable from zero; material paths reach structured reporting without PII.</td><td><code>fix/beta-recovery-monitoring-*</code></td></tr>
+<tr><td>P1-13</td><td>Lifecycle notification and support SLA</td><td>No complete report/deadline/response/support lifecycle delivery exists; support response target is undefined.</td><td>Founder adopts in-app/manual beta agreement or implements bounded notifications; drill and owner rota pass.</td><td>Operations policy / <code>fix/beta-notifications-*</code></td></tr>
+<tr><td>P1-14</td><td>Mobile and keyboard shell acceptance</td><td>32 px controls and drawer Escape/focus/restoration gaps exist; authenticated device evidence is absent.</td><td>44 px targets, deterministic drawer focus, Escape/restoration, 200% reflow, screen-reader and device matrix.</td><td><code>fix/beta-mobile-accessibility-*</code></td></tr>
+<tr><td>P1-15</td><td>Privacy rights and retention operation</td><td>Privacy points deletion requests to support, but no accepted DSAR/erasure/retention procedure is proved.</td><td>Counsel-approved procedure, identity verification, data map, exceptions, audit evidence, and response owner.</td><td>Counsel + Operations</td></tr>
+<tr><td>P1-16</td><td>Migration-first recovery-path drift</td><td>Vercel build is safe, but the Docker path runs <code>prisma db push</code>; governance docs retain stale no-op/self-heal statements.</td><td>Remove unsafe startup mutation; update canonical docs; container/build guards prove no DB mutation.</td><td><code>fix/beta-schema-safety-*</code></td></tr>
+</tbody></table></div>
+<h2 id="p2-required-before-expanding-the-beta">P2 — required before expanding the beta</h2>
+<div class="table-wrap" role="region" aria-label="Scrollable data table" tabindex="0"><table>
+<thead><tr><th scope="col">ID</th><th scope="col">Item</th><th scope="col">Expansion gate</th></tr></thead>
+<tbody>
+<tr><td>P2-01</td><td>Complete lifecycle notifications beyond the agreed manual/private-beta cadence</td><td>Delivery, unsubscribe, retry, privacy, and operator escalation are accepted.</td></tr>
+<tr><td>P2-02</td><td>Formal account/device/role policy</td><td>Concurrent-device and shared-account policy is measurable and supportable.</td></tr>
+<tr><td>P2-03</td><td>Product analytics and funnel instrumentation</td><td>Consent, minimization, data definitions, and error/unknown semantics are approved.</td></tr>
+<tr><td>P2-04</td><td>Wider noncritical route/device/accessibility regression suite</td><td>Representative authenticated coverage runs in required CI.</td></tr>
+<tr><td>P2-05</td><td>Application-wide CSP and formal penetration test</td><td>CSP rollout is compatible with Stripe/Next/PWA; independent findings are remediated.</td></tr>
+<tr><td>P2-06</td><td>MFA or equivalent step-up for privileged operators</td><td>Admin-risk model and recovery process are accepted.</td></tr>
+<tr><td>P2-07</td><td>Automated support tooling and measured SLA reporting</td><td>Automation cannot expose report contents or make unauthorized account changes.</td></tr>
+<tr><td>P2-08</td><td>Live billing lifecycle and customer communications, if charging expands</td><td>Dunning, receipts, tax/invoice identity, refunds, disputes, and notification ownership are provider-tested.</td></tr>
+</tbody></table></div>
+<h2 id="p3-post-beta-product-expansion">P3 — post-beta product expansion</h2>
+<div class="table-wrap" role="region" aria-label="Scrollable data table" tabindex="0"><table>
+<thead><tr><th scope="col">ID</th><th scope="col">Item</th><th scope="col">Boundary</th></tr></thead>
+<tbody>
+<tr><td>P3-01</td><td>External Agency onboarding and Agency Headquarters integration</td><td>Separate production-isolation and legal/authority review.</td></tr>
+<tr><td>P3-02</td><td>Community, Arena, and public professional identity/reputation</td><td>Separate privacy, moderation, reputation, and claims approval.</td></tr>
+<tr><td>P3-03</td><td>Growth Center, Growth Network, distribution, affiliates, credits, payouts</td><td>Separate economic constitution, counsel, provider, and production authorization.</td></tr>
+<tr><td>P3-04</td><td>Marketplace transactions</td><td>Separate seller/buyer, tax, refund, dispute, and provider architecture.</td></tr>
+<tr><td>P3-05</td><td>Autonomous Kai delegation or persistent external actions</td><td>Separate tool authority, confirmation, receipts, reversal, and audit architecture.</td></tr>
+<tr><td>P3-06</td><td>Public beta and scale expansion</td><td>Only after protected-cohort evidence, support capacity, incident history, and Founder authorization.</td></tr>
+</tbody></table></div>
+<h2 id="closure-rules">Closure rules</h2>
+<ol><li>A blocker closes only on the branch or environment where its evidence applies.</li><li>A pushed candidate is <strong>prepared</strong>, not integrated; exact main and production remain blocked until separately authorized.</li><li>Provider, production, Founder, and counsel actions must retain their authority labels; engineering cannot mark them complete by inference.</li><li>Every code closure needs an exact parent/commit, bounded diff, tests, rollback note, and independent review.</li><li>No P0 may be waived silently. A Founder risk acceptance must be explicit, dated, bounded, and cannot substitute for counsel on a legal decision.</li></ol>
+<h2 id="current-decision">Current decision</h2>
+<p><strong>P0 9 · P1 16 · P2 8 · P3 6. NO-GO.</strong> The first safe source-only candidates are registration password-policy parity and the narrow Auth.js patch. Higher-risk auth, billing, schema, provider, consent, and legal closures remain separate workstreams.</p></article></main>
+    <footer>CreditVector by Gabriel Capital Labs · Review artifact</footer>
+  </div>
+</body>
+</html>

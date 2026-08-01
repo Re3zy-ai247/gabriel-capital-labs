@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <meta name="robots" content="noindex, nofollow, noarchive">
+  <meta name="description" content="CreditVector Beta Feature Matrix. CreditVector beta release-readiness review artifact.">
+  <title>CreditVector Beta Feature Matrix</title>
+  <style>
+:root {
+  color-scheme: dark;
+  --bg: #071014;
+  --surface: #0c181e;
+  --surface-strong: #102229;
+  --text: #ecf8f8;
+  --muted: #9bb1b6;
+  --line: #27434b;
+  --accent: #55e6de;
+  --accent-soft: rgba(85, 230, 222, 0.12);
+  --warning: #ffd27d;
+  --danger: #ff9e9e;
+  --shadow: 0 22px 70px rgba(0, 0, 0, 0.34);
+}
+* { box-sizing: border-box; }
+html { background: var(--bg); scroll-behavior: smooth; }
+body {
+  margin: 0;
+  min-width: 0;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(85, 230, 222, 0.11), transparent 30rem),
+    linear-gradient(180deg, #081318 0%, var(--bg) 38rem);
+  color: var(--text);
+  font: 16px/1.65 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  text-rendering: optimizeLegibility;
+}
+a { color: var(--accent); text-underline-offset: 0.18em; overflow-wrap: anywhere; }
+a:hover { text-decoration-thickness: 0.14em; }
+a:focus-visible, button:focus-visible, [tabindex="0"]:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+}
+.shell { width: min(100% - 2rem, 1180px); margin: 0 auto; padding: 2.25rem 0 5rem; }
+.masthead {
+  margin-bottom: 1.25rem;
+  padding: 1.15rem 1.35rem;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: rgba(12, 24, 30, 0.88);
+  box-shadow: var(--shadow);
+}
+.eyebrow { margin: 0; color: var(--accent); font-size: 0.76rem; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; }
+.masthead p:last-child { margin-bottom: 0; color: var(--muted); }
+.status-badge {
+  display: inline-flex;
+  margin: 0.7rem 0 0;
+  padding: 0.28rem 0.62rem;
+  border: 1px solid rgba(255, 158, 158, 0.58);
+  border-radius: 999px;
+  background: rgba(255, 158, 158, 0.1);
+  color: #ffd1d1 !important;
+  font-size: 0.78rem;
+  font-weight: 850;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+}
+main {
+  min-width: 0;
+  padding: clamp(1.15rem, 3.5vw, 3rem);
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: linear-gradient(145deg, rgba(16, 34, 41, 0.96), rgba(8, 19, 24, 0.98));
+  box-shadow: var(--shadow);
+}
+h1, h2, h3, h4, h5, h6 { line-height: 1.18; letter-spacing: -0.018em; text-wrap: balance; scroll-margin-top: 1rem; }
+h1 { margin: 0 0 1.4rem; font-size: clamp(2rem, 6vw, 4.1rem); }
+h2 { margin: 3rem 0 1rem; padding-top: 1rem; border-top: 1px solid var(--line); font-size: clamp(1.45rem, 3vw, 2.3rem); }
+h3 { margin: 2rem 0 0.7rem; color: #c9fbf7; font-size: clamp(1.16rem, 2vw, 1.55rem); }
+h4, h5, h6 { margin: 1.5rem 0 0.5rem; }
+p, li { max-width: 82ch; }
+p { margin: 0.7rem 0 1rem; }
+ul, ol { margin: 0.75rem 0 1.25rem; padding-left: 1.35rem; }
+li { margin: 0.35rem 0; padding-left: 0.25rem; }
+.task-item { list-style: none; margin-left: -1.3rem; display: flex; gap: 0.55rem; align-items: baseline; }
+.task-item input { accent-color: var(--accent); }
+strong { color: #fff; }
+code {
+  padding: 0.12em 0.36em;
+  border: 1px solid rgba(85, 230, 222, 0.22);
+  border-radius: 0.38rem;
+  background: rgba(0, 0, 0, 0.28);
+  color: #bdfbf6;
+  font: 0.9em/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  overflow-wrap: anywhere;
+}
+pre {
+  max-width: 100%;
+  overflow: auto;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #050b0e;
+  color: #dcf7f5;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+pre code { padding: 0; border: 0; background: transparent; color: inherit; }
+blockquote { margin: 1.25rem 0; padding: 0.7rem 1rem; border-left: 4px solid var(--accent); background: var(--accent-soft); color: #d5efed; }
+blockquote p { margin: 0; }
+hr { margin: 2.3rem 0; border: 0; border-top: 1px solid var(--line); }
+.table-wrap { max-width: 100%; margin: 1rem 0 1.75rem; overflow-x: auto; border: 1px solid var(--line); border-radius: 14px; }
+table { width: 100%; min-width: 720px; border-collapse: collapse; font-size: 0.9rem; }
+th, td { padding: 0.8rem 0.85rem; border-bottom: 1px solid var(--line); border-right: 1px solid rgba(39, 67, 75, 0.65); text-align: left; vertical-align: top; overflow-wrap: anywhere; }
+th { position: sticky; top: 0; z-index: 1; background: #12262d; color: #d8fffb; font-size: 0.76rem; letter-spacing: 0.055em; text-transform: uppercase; }
+tr:nth-child(even) td { background: rgba(255, 255, 255, 0.018); }
+tr:last-child td { border-bottom: 0; }
+th:last-child, td:last-child { border-right: 0; }
+.handoff-actions { display: flex; flex-wrap: wrap; gap: 0.85rem; align-items: center; margin: 1.4rem 0 1rem; }
+button {
+  min-height: 44px;
+  padding: 0.7rem 1rem;
+  border: 1px solid #82fff7;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #03211f;
+  font: inherit;
+  font-weight: 850;
+  cursor: pointer;
+}
+button:hover { filter: brightness(1.08); }
+.copy-status { min-height: 1.65em; margin: 0; color: var(--muted); font-weight: 700; }
+.fallback { color: var(--muted); font-size: 0.93rem; }
+.handoff-text { max-height: none; margin-top: 1rem; white-space: pre-wrap; user-select: text; -webkit-user-select: text; }
+footer { padding: 1.2rem 0; color: var(--muted); font-size: 0.82rem; text-align: center; }
+@media (max-width: 620px) {
+  .shell { width: min(100% - 1rem, 1180px); padding-top: 0.5rem; }
+  .masthead, main { border-radius: 14px; }
+  .masthead { padding: 0.9rem 1rem; }
+  main { padding: 1rem; }
+  h1 { font-size: clamp(1.75rem, 10vw, 2.6rem); overflow-wrap: anywhere; }
+  h2 { margin-top: 2.2rem; }
+  th, td { padding: 0.65rem; }
+  .handoff-actions { align-items: stretch; }
+  .handoff-actions button { width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+}
+@media print {
+  :root { color-scheme: light; --bg: #fff; --surface: #fff; --surface-strong: #fff; --text: #111; --muted: #444; --line: #bbb; --accent: #006d68; }
+  body { background: #fff; color: #111; }
+  .shell { width: 100%; padding: 0; }
+  .masthead, main { border: 0; box-shadow: none; background: #fff; }
+  .masthead { padding: 0 0 0.5rem; }
+  main { padding: 0; }
+  .handoff-actions { display: none; }
+  .table-wrap { overflow: visible; }
+  table { min-width: 0; font-size: 8pt; }
+  a { color: #111; }
+}
+</style>
+</head>
+<body>
+  <div class="shell">
+    <header class="masthead">
+      <p class="eyebrow">CreditVector Beta Readiness · Founder Review Artifact</p>
+      <p>Standalone, sanitized, and network-independent. This artifact does not grant production approval.</p>
+      <p class="status-badge">No-Go · External Beta Blocked</p>
+    </header>
+    <main id="main-content"><article aria-labelledby="document-title"><h1 id="document-title">CreditVector Beta Feature Matrix</h1>
+<p><strong>Baseline:</strong> <code>origin/main</code> <code>f449c35d0eca9463c15e86f8cbd4cd7f4e948d03</code></p>
+<p><strong>Evidence date:</strong> 2026-08-01</p>
+<p><strong>Status vocabulary:</strong> VERIFIED · PARTIAL · BLOCKED · DORMANT/UNINTEGRATED · NOT VERIFIED</p>
+<p><strong>Beta class:</strong> REQUIRED · ALLOWED DORMANT · POST-BETA</p>
+<p>Production evidence is explicitly separated from repository evidence. “Implemented” never means deployed, configured, exercised with a provider, or counsel-approved.</p>
+<h2 id="matrix">Matrix</h2>
+<div class="table-wrap" role="region" aria-label="Scrollable data table" tabindex="0"><table>
+<thead><tr><th scope="col">Domain</th><th scope="col">Capability</th><th scope="col">Beta class</th><th scope="col">Repository evidence</th><th scope="col">Production evidence</th><th scope="col">Status and missing acceptance</th><th scope="col">Failure/security/rollback</th><th scope="col">Risk · blocker · authority</th></tr></thead>
+<tbody>
+<tr><td>Core</td><td>Authentication</td><td>REQUIRED</td><td><code>lib/auth.ts</code>; identifier/IP throttles; generic failures; disabled sign-in refused. Exact main resolves vulnerable <code>next-auth@4.24.14</code>; pushed source candidate <code>5f2931e8…</code> pins 4.24.15 and adds a 14-case runtime regression</td><td>Public login route responds; authenticated journey not sampled in this audit</td><td>PARTIAL; candidate needs independent review and Beta-lineage integration; broader browser matrix remains</td><td>Unauthenticated per-request availability failure on main; revert only exact patch candidate, never relax gates</td><td>Critical · Yes (P0 until integrated) · Engineering</td></tr>
+<tr><td>Core</td><td>Registration</td><td>REQUIRED</td><td>Exact main has bcrypt/IP limits but divergent 8-char schema. Pushed source candidate <code>e1ded007…</code> makes UI/API consume <code>lib/password.ts</code></td><td>NOT VERIFIED with new account</td><td>PARTIAL; candidate needs review/integration; intended post-register destination remains open</td><td>Weak-password acceptance on main; one-commit candidate rollback</td><td>High · Yes (P1 until integrated) · Engineering</td></tr>
+<tr><td>Core</td><td>Session security</td><td>REQUIRED</td><td><code>lib/session.ts</code>; immutable user ID and disabled recheck</td><td>NOT VERIFIED across two devices</td><td>PARTIAL; password change/reset does not revoke 30-day JWTs</td><td>Stolen session survives password reset; schema-backed revocation requires migration sequence</td><td>High · Yes (P1) · Founder + Engineering</td></tr>
+<tr><td>Core</td><td>Authorization</td><td>REQUIRED</td><td>Admin/agency/own-data gates; attachment/network/authz guards</td><td>Public unauthenticated probes only</td><td>VERIFIED structurally; authenticated cross-tenant negative matrix still required</td><td>Cross-tenant disclosure/mutation is stop-ship; roll back exact candidate</td><td>Critical · Yes until E2E · Engineering</td></tr>
+<tr><td>Core</td><td>Organizations and Membership</td><td>ALLOWED DORMANT</td><td>Contracts/schema-era work exist; no exact-main external setup journey is accepted</td><td>NOT VERIFIED active</td><td>DORMANT/UNINTEGRATED for Beta RC1; consumer cohort must not depend on it</td><td>Partial authority model could mis-scope data; keep inaccessible</td><td>High · No if dormant · Founder + Engineering</td></tr>
+<tr><td>Core</td><td>Operator Identity/Profile</td><td>ALLOWED DORMANT</td><td>Identity policies and guards exist; current-state records staged/unmerged slices</td><td>NOT VERIFIED active</td><td>DORMANT/UNINTEGRATED; ordinary consumer profile only</td><td>Identity/consent drift; do not activate</td><td>High · No if dormant · Founder + Counsel</td></tr>
+<tr><td>Core</td><td>Operator Reputation / Vector XP</td><td>ALLOWED DORMANT</td><td>Dormant contracts/guards; no accepted beta journey</td><td>NOT VERIFIED active</td><td>DORMANT/UNINTEGRATED</td><td>False reputation/economic consequences; hard-off</td><td>High · No if dormant · Founder + Counsel</td></tr>
+<tr><td>Core</td><td>Roles and device limits</td><td>POST-BETA</td><td>USER/ADMIN plus agency flags; no proven device-limit policy</td><td>NOT VERIFIED</td><td>PARTIAL; not required for narrow consumer cohort</td><td>Shared-account/seat abuse; monitor manually in small cohort</td><td>Medium · No · Founder</td></tr>
+<tr><td>Core</td><td>Disablement and recovery</td><td>REQUIRED</td><td>Disabled account rechecked; reset tokens hashed/single-use; session-revocation gap pinned by guard</td><td>NOT VERIFIED in production</td><td>PARTIAL; disablement passes source guard, reset revocation blocked on schema</td><td>Compromised session remains; rollback cannot revoke token</td><td>High · Yes (P1) · Founder + Engineering</td></tr>
+<tr><td>Money</td><td>Stripe catalog and checkout allowlist</td><td>REQUIRED only if charging</td><td><code>app/api/stripe/checkout</code>; plan allowlist; hosted Checkout</td><td>LIVE account reported historically; current settings NOT VERIFIED</td><td>PARTIAL; exact test-mode catalog and live configuration must be recorded</td><td>Wrong product/price; stop charges and roll back candidate</td><td>Critical · Yes if charging · Founder + Provider</td></tr>
+<tr><td>Money</td><td>Subscription creation</td><td>REQUIRED only if charging</td><td>Checkout session path and webhook guards</td><td>Provider delivery NOT VERIFIED current</td><td>PARTIAL; first-customer race can create duplicate Stripe customers</td><td>Orphan subscription/customer mapping; dedicated billing repair</td><td>Critical · Yes if charging · Engineering + Provider</td></tr>
+<tr><td>Money</td><td>Subscription replacement / upgrade</td><td>REQUIRED only if charging</td><td>In-place <code>subscriptions.update</code>; second-subscription defect fixed; source records Terms gap</td><td>NOT VERIFIED against test/live Stripe</td><td>BLOCKED for beta charging until consent-complete replacement is provider-tested</td><td>Unconsented charge or wrong entitlement; no automatic merge</td><td>Critical · Yes (P0) · Counsel + Founder + Engineering</td></tr>
+<tr><td>Money</td><td>Downgrade / renewal / cancellation</td><td>REQUIRED only if charging</td><td>Portal/self-cancel and webhook current-state retrieval exist</td><td>Current dunning/renewal/cancel behavior NOT VERIFIED</td><td>PARTIAL; test-mode lifecycle matrix required</td><td>Access/billing mismatch; provider rollback and entitlement reconciliation</td><td>High · Yes if charging · Founder + Provider</td></tr>
+<tr><td>Money</td><td>Failed payment</td><td>REQUIRED only if charging</td><td>Webhook handles failure/status; runtime guards exist</td><td>Dunning configuration and customer emails NOT VERIFIED</td><td>PARTIAL</td><td>Paid access may persist or disappear incorrectly; reconcile from Stripe current state</td><td>High · Yes if charging · Founder + Provider</td></tr>
+<tr><td>Money</td><td>Client capacity enforcement</td><td>POST-BETA for consumer cohort</td><td><code>lib/entitlements.ts</code>, agency capacity guards</td><td>NOT VERIFIED</td><td>DORMANT for consumer beta; Agency external beta excluded</td><td>Overselling or locking clients; do not activate Agency</td><td>High · No if excluded · Founder</td></tr>
+<tr><td>Money</td><td>Letter-pack purchases</td><td>ALLOWED DORMANT</td><td>One-time Checkout and idempotent credit ledger guards</td><td>Provider state NOT VERIFIED</td><td>Keep unavailable to beta unless separately accepted</td><td>Double credit/charge; refund and ledger reconciliation required</td><td>High · No if dormant · Founder + Provider</td></tr>
+<tr><td>Money</td><td>Terms acceptance</td><td>REQUIRED</td><td>New Checkout consent is opt-in; no durable registration acceptance; in-place upgrade bypass</td><td>Stripe legal URLs/flag NOT VERIFIED</td><td>BLOCKED; versioned durable evidence must cover every paid path</td><td>Unproved assent; do not backfill or infer</td><td>Critical · Yes (P0) · Counsel + Founder + Engineering</td></tr>
+<tr><td>Money</td><td>Webhook idempotency and claim window</td><td>REQUIRED only if charging</td><td>Source + real-handler runtime guards cover claim/in-flight/stale/completed/reorder</td><td>Current webhook deliveries NOT VERIFIED</td><td>VERIFIED in harness; provider/concurrency integration remains required</td><td>Lost/duplicate effects; retry from provider only after ledger assessment</td><td>High · Yes if charging · Engineering + Provider</td></tr>
+<tr><td>Money</td><td>Unknown-price mapping</td><td>REQUIRED only if charging</td><td>Unknown price omits plan, but active status can still grant premium through <code>isPremium</code></td><td>NOT VERIFIED</td><td>PARTIAL; not fail-closed end to end</td><td>Free premium or plan ambiguity; dedicated billing fix with negative runtime guard</td><td>High · Yes (P1) · Engineering</td></tr>
+<tr><td>Money</td><td>Refunds, disputes, tax, invoice identity</td><td>REQUIRED only if charging</td><td>Admin refund route exists; no complete beta policy/evidence; legal identity candidate is not provider metadata</td><td>NOT VERIFIED</td><td>BLOCKED for live beta charging until policy, provider display, and support handling are accepted</td><td>Money/legal harm; manual provider rollback with audit</td><td>Critical · Yes if charging · Counsel + Founder + Provider</td></tr>
+<tr><td>Credit</td><td>Client creation</td><td>POST-BETA for consumer cohort</td><td>Agency client routes and capacity checks exist</td><td>NOT VERIFIED external</td><td>Agency cohort excluded; consumer account is own-data only</td><td>Cross-tenant/client authority risk</td><td>High · No if excluded · Founder + Counsel</td></tr>
+<tr><td>Credit</td><td>Report upload</td><td>REQUIRED</td><td>Auth, ownership, 15 MB cap, encryption-before-write, rollback on analysis failure</td><td>NOT VERIFIED with beta account</td><td>PARTIAL; PDF magic-byte/MIME validation missing</td><td>Parser abuse/malformed content; reject before parse and preserve no-write failure</td><td>High · Yes (P1) · Engineering</td></tr>
+<tr><td>Credit</td><td>Report parsing</td><td>REQUIRED</td><td>Structured extraction and source-only instructions in <code>lib/aiParse.ts</code></td><td>Model/provider behavior NOT VERIFIED current</td><td>PARTIAL; raw report prompt lacks explicit untrusted-content fence</td><td>Prompt injection/data misinterpretation; deterministic fallback and safe retry</td><td>High · Yes (P1) · Engineering + Compliance</td></tr>
+<tr><td>Credit</td><td>Encryption and backfill</td><td>REQUIRED</td><td>AES-256-GCM, fail-closed key gate, legacy dual-read</td><td>Backfill and key escrow NOT VERIFIED</td><td>BLOCKED until repeated backfill shows zero new rows and key recovery is proved</td><td>Plaintext legacy rows or unrecoverable ciphertext</td><td>Critical · Yes (P0) · Founder + Production access</td></tr>
+<tr><td>Credit</td><td>Bureau data handling</td><td>REQUIRED</td><td>Per-bureau presence/conflict rules and guards</td><td>Authenticated real journey NOT VERIFIED</td><td>VERIFIED structurally; synthetic fixture matrix required</td><td>Fabricated cross-bureau claims; fail unknown</td><td>High · Yes until E2E · Engineering + Compliance</td></tr>
+<tr><td>Credit</td><td>Dispute workflow and furnisher addresses</td><td>REQUIRED</td><td>Own-data generation, rate/entitlement gates, stored recipient fallback, incomplete warnings</td><td>NOT VERIFIED end to end</td><td>PARTIAL; synthetic mail-ready journey required</td><td>Wrong recipient/claim; user review remains mandatory</td><td>High · Yes (P1) · Engineering + Compliance</td></tr>
+<tr><td>Credit</td><td>Letter generation and limits</td><td>REQUIRED</td><td>Deterministic draft + optional LLM; compliance scrub; encrypted storage</td><td>Provider/model and exact entitlement behavior NOT VERIFIED</td><td>PARTIAL; acceptance across free beta entitlement required</td><td>Unsupported claim/limit bypass; disable model refinement and preserve deterministic draft</td><td>Critical · Yes until E2E · Engineering + Compliance</td></tr>
+<tr><td>Credit</td><td>Response Intelligence</td><td>REQUIRED</td><td>Ownership/encryption; round-two analysis exists</td><td>NOT VERIFIED</td><td>PARTIAL; response prompt fencing and output compliance parity missing</td><td>Model-driven legal overstatement; fall back to manual review</td><td>High · Yes (P1) · Engineering + Compliance</td></tr>
+<tr><td>Credit</td><td>Response status truth</td><td>REQUIRED</td><td>User can directly set allowed status including <code>RESOLVED</code></td><td>NOT VERIFIED</td><td>PARTIAL; label as user-reported or add transition/evidence rules</td><td>False outcomes/metrics; never market as verified result</td><td>High · Yes (P1) · Founder + Compliance</td></tr>
+<tr><td>Credit</td><td>Evidence and mail records</td><td>REQUIRED for self-mail records; provider mail dormant</td><td>Print/response/mail records exist; <code>MAIL_LIVE</code> off</td><td>MAIL_LIVE status requires production verification</td><td>PARTIAL; self-mail only, no provider execution</td><td>Unauthorized send; hard-off and immediate navigation rollback</td><td>Critical · No if hard-off · Founder</td></tr>
+<tr><td>Credit</td><td>Tasks and follow-ups</td><td>REQUIRED</td><td>Mission/execution/task-like surfaces exist</td><td>Authenticated journey NOT VERIFIED</td><td>PARTIAL; beta can use in-app deterministic follow-up only</td><td>Missed deadlines; manual support fallback</td><td>Medium · Yes (P1) · Engineering + Support</td></tr>
+<tr><td>Credit</td><td>Notifications</td><td>REQUIRED operating agreement</td><td>Password reset, opt-in digest, push plumbing; no complete lifecycle notifications</td><td>Delivery/cron/push NOT VERIFIED</td><td>PARTIAL; define in-app/manual beta cadence</td><td>Silent deadline/support event; manual support escalation</td><td>High · Yes (P1) · Founder + Support</td></tr>
+<tr><td>Credit</td><td>Error recovery</td><td>REQUIRED</td><td>Upload rollback and calm retry states documented</td><td>Browser failure matrix NOT VERIFIED</td><td>PARTIAL</td><td>Partial writes/lost evidence; require deterministic retry/idempotency evidence</td><td>High · Yes (P1) · Engineering</td></tr>
+<tr><td>Kai</td><td>Authority boundary</td><td>REQUIRED</td><td>Kai has no tools and existing community scope contract</td><td>Model/provider behavior NOT VERIFIED</td><td>VERIFIED for community; other AI surfaces inconsistent</td><td>Unauthorized legal/customer action; hard no-action boundary</td><td>Critical · Yes until E2E · Engineering + Compliance</td></tr>
+<tr><td>Kai</td><td>Deterministic vs model-backed</td><td>REQUIRED</td><td>Deterministic mission/recommendation paths and model-backed parsing/advice coexist</td><td>NOT VERIFIED</td><td>PARTIAL; every beta surface must label source and fallback</td><td>Hallucinated fact; deterministic/static fallback</td><td>High · Yes (P1) · Engineering + Compliance</td></tr>
+<tr><td>Kai</td><td>Customer-data access</td><td>REQUIRED</td><td>Server-side own-data paths; prompts use scoped content</td><td>Cross-surface audit incomplete</td><td>PARTIAL</td><td>Secret/PII leakage; no secret in prompt, minimum context</td><td>Critical · Yes (P1) · Security</td></tr>
+<tr><td>Kai</td><td>Prompt/output safety</td><td>REQUIRED</td><td>Community fencing/sanitization/scrubbing; report/round2/strategist parity gaps</td><td>NOT VERIFIED</td><td>PARTIAL</td><td>Prompt injection or unsupported legal conclusion; reject/scrub/fallback</td><td>Critical · Yes (P1) · Security + Compliance</td></tr>
+<tr><td>Kai</td><td>Notes/reminders/scheduling/actions</td><td>ALLOWED DORMANT</td><td>No authorized persistent autonomous action contract</td><td>NOT VERIFIED</td><td>Must remain advisory/non-persistent</td><td>False execution or write; no controls implying success</td><td>Critical · No if dormant · Founder</td></tr>
+<tr><td>Kai</td><td>Auditability/fail-closed</td><td>REQUIRED</td><td>Some metering/events/logging; model failures have fallbacks</td><td>Production evidence incomplete</td><td>PARTIAL</td><td>No receipt for consequential recommendation; retain source/basis safely</td><td>High · Yes (P1) · Engineering</td></tr>
+<tr><td>Experience</td><td>Landing, pricing, legal navigation</td><td>REQUIRED</td><td>Public routes and shared chrome exist</td><td>Public production 200; legal candidate Preview protected</td><td>PARTIAL; legal identity separate; unsupported CFPB copy is tracked</td><td>Misleading claim; revert exact copy/candidate</td><td>High · Yes (P1 counsel) · Counsel + Founder</td></tr>
+<tr><td>Experience</td><td>Consumer dashboard / Mission Control</td><td>REQUIRED</td><td>Main dashboard, next-action systems, loading/error states</td><td>Authenticated journey NOT VERIFIED</td><td>PARTIAL; exact baseline browser acceptance required</td><td>Dead end/conflicting next action; hide non-required modules</td><td>High · Yes (P1) · Engineering + Founder</td></tr>
+<tr><td>Experience</td><td>Agency Headquarters / Agency dashboard</td><td>ALLOWED DORMANT</td><td>Agency product exists; CXOS candidates are separate review history</td><td>Production integration NOT VERIFIED</td><td>Excluded from consumer Beta RC1</td><td>Historical branch contamination; do not merge wholesale</td><td>High · No if excluded · Founder</td></tr>
+<tr><td>Experience</td><td>Arena, Community, Growth, Marketplace, profile ecosystem</td><td>ALLOWED DORMANT</td><td>Mixed main/Preview/dormant implementations</td><td>Exact production visibility varies and is not fully audited</td><td>Exclude or hard-gate from beta cohort</td><td>Privacy/economic/reputation exposure</td><td>Critical · Yes if accessible · Founder + Counsel</td></tr>
+<tr><td>Experience</td><td>Empty/loading/failure/offline</td><td>REQUIRED</td><td>Some strong retry/empty states; PWA present</td><td>Exact browser matrix NOT VERIFIED</td><td>PARTIAL</td><td>User cannot tell whether data saved; preserve truthful retry</td><td>High · Yes (P1) · Engineering</td></tr>
+<tr><td>Experience</td><td>Mobile/tablet/reflow/keyboard</td><td>REQUIRED</td><td>Responsive styles, skip link, focus-visible; concrete 32px controls/drawer gaps found</td><td>No exact-main device/Axe evidence</td><td>BLOCKED on acceptance matrix</td><td>Obstruction, focus loss, unusable controls; CSS-first rollback</td><td>High · Yes (P0 acceptance) · Engineering</td></tr>
+<tr><td>Experience</td><td>Reduced motion/performance/CLS</td><td>REQUIRED</td><td>Global motion controls exist; no exact-main measurements</td><td>NOT VERIFIED</td><td>BLOCKED on measured acceptance</td><td>Motion harm/jank/layout shift; disable nonessential motion</td><td>High · Yes (P0 acceptance) · Engineering</td></tr>
+<tr><td>Ops</td><td>Structured logging and alerting</td><td>REQUIRED</td><td><code>lib/log.ts</code>, <code>lib/observability.ts</code>; selected call sites</td><td>Alert sink/delivery unproved</td><td>BLOCKED</td><td>Silent security/payment/data incident; stop invitations</td><td>Critical · Yes (P0) · Founder + Provider</td></tr>
+<tr><td>Ops</td><td>Health/readiness/diagnostics</td><td>REQUIRED</td><td><code>/api/health</code>, <code>/api/ready</code>, admin diagnostics</td><td>Public probes partial</td><td>PARTIAL; diagnostics must not expose values</td><td>False green or secret leak; least-data evidence</td><td>High · Yes (P1) · Engineering</td></tr>
+<tr><td>Ops</td><td>Backup/restore/RPO/RTO</td><td>REQUIRED</td><td>Runbook identifies unknown provider and no drill</td><td>NOT VERIFIED</td><td>BLOCKED</td><td>Irrecoverable customer data; no beta</td><td>Critical · Yes (P0) · Founder + Provider</td></tr>
+<tr><td>Ops</td><td>Encryption-key recovery</td><td>REQUIRED</td><td>Key required by crypto code</td><td>Escrow/recovery NOT VERIFIED</td><td>BLOCKED</td><td>Restored DB remains unreadable</td><td>Critical · Yes (P0) · Founder</td></tr>
+<tr><td>Ops</td><td>Deployment/rollback</td><td>REQUIRED</td><td>SHA header and rollback runbook; CI build avoids DB mutation</td><td>Production release SHA verified</td><td>PARTIAL; branch protection/current required checks and rollback drill need evidence</td><td>Wrong SHA/alias; roll back exact deployment</td><td>High · Yes (P1) · Founder + Engineering</td></tr>
+<tr><td>Ops</td><td>Environment and secret handling</td><td>REQUIRED</td><td>Client env scan limited; diagnostics report booleans</td><td><code>SETUP_SECRET</code> and flag absence NOT VERIFIED current</td><td>BLOCKED on presence-only ledger</td><td>Privileged secret re-arms legacy routes</td><td>Critical · Yes (P0) · Founder + Production access</td></tr>
+<tr><td>Ops</td><td>Migration/schema safety</td><td>REQUIRED</td><td>Six migrations; schema guard; Vercel build no DB mutation</td><td>Production schema/history NOT VERIFIED</td><td>BLOCKED on read-only preflight; Docker still runs <code>db push</code></td><td>Destructive drift/data loss; never apply from beta verification</td><td>Critical · Yes (P0) · Founder + Engineering</td></tr>
+<tr><td>Ops</td><td>Rate limiting and abuse</td><td>REQUIRED</td><td>DB limiter on selected routes, fails open; profile email verification unthrottled</td><td>NOT VERIFIED under load</td><td>PARTIAL</td><td>Credential/AI/storage abuse; dedicated limits and telemetry</td><td>High · Yes (P1) · Engineering</td></tr>
+<tr><td>Ops</td><td>Privacy, retention, DSAR</td><td>REQUIRED</td><td>Privacy promises support deletion; no complete erasure/retention runtime</td><td>NOT VERIFIED</td><td>BLOCKED on policy and operating procedure</td><td>Unfulfilled rights request/data over-retention</td><td>Critical · Yes (P0 counsel) · Counsel + Founder</td></tr>
+<tr><td>Ops</td><td>Security headers / file isolation</td><td>REQUIRED</td><td>Attachments hardened; identity document raw route lacks equivalent sandbox/DENY; no app CSP</td><td>Production headers partial</td><td>PARTIAL</td><td>Active content/framing; standardize file response controls</td><td>High · Yes (P1) · Engineering</td></tr>
+<tr><td>Ops</td><td>Dependency security</td><td>REQUIRED</td><td><code>next@14.2.18</code>; exact lockfile; <code>next-auth@4.24.14</code> directly matches applicable malformed-Bearer advisory</td><td>CDN/provider mitigations NOT VERIFIED</td><td>BLOCKED; supported Next candidate and narrow Auth.js patch must remain separate review branches</td><td>Cache poisoning/unsupported stack or per-request auth failure; exact candidate rollback</td><td>Critical · Yes (P0) · Engineering</td></tr>
+<tr><td>Legal</td><td>Terms, Privacy, company identity</td><td>REQUIRED</td><td>Baseline lacks LLC/address; isolated legal commit <code>73483c9d…</code> corrects source</td><td>Production remains baseline; protected Preview only</td><td>PARTIAL; integration, counsel, and delivery verification open</td><td>Wrong entity/notice; revert legal candidate only</td><td>Critical · Yes (P0) · Counsel + Founder</td></tr>
+<tr><td>Legal</td><td>CROA/CSO/FCRA claims</td><td>REQUIRED</td><td>Scrubber and education posture; no counsel sign-off</td><td>NOT VERIFIED by counsel</td><td>BLOCKED</td><td>Regulatory/processor harm; no external cohort</td><td>Critical · Yes (P0) · Counsel</td></tr>
+<tr><td>Legal</td><td>Testimonials/outcomes/business opportunity</td><td>ALLOWED DORMANT</td><td>No beta approval; user-set resolution metrics are not verified outcomes</td><td>NOT VERIFIED</td><td>Keep out of beta marketing</td><td>Deceptive result claim; remove immediately</td><td>Critical · No if absent · Counsel + Founder</td></tr>
+<tr><td>Legal</td><td>Consent and beta participant terms</td><td>REQUIRED</td><td>No durable registration acceptance; Checkout consent incomplete</td><td>Provider flags/legal URLs NOT VERIFIED</td><td>BLOCKED</td><td>Unproved assent/material omission</td><td>Critical · Yes (P0) · Counsel + Founder</td></tr>
+<tr><td>Legal</td><td>Data-processing disclosures</td><td>REQUIRED</td><td>Privacy covers core collection/provider at a high level; Operator Network/retention gaps tracked</td><td>NOT VERIFIED</td><td>BLOCKED on exact beta data map and counsel review</td><td>Undisclosed processing/cross-user display</td><td>Critical · Yes (P0) · Counsel</td></tr>
+</tbody></table></div>
+<h2 id="scope-decision">Scope decision</h2>
+<p>The feature matrix supports a <strong>consumer-only, self-mail, invite-only beta</strong> after the P0 gates close. External Agency onboarding, paid live acquisition, Community, Arena, Growth, Marketplace, public profiles, physical mail, and autonomous Kai actions remain excluded unless separately reviewed and gated.</p>
+<h2 id="verdict">Verdict</h2>
+<p><strong>NO-GO.</strong> Repository strength does not substitute for production, provider, counsel, restore, alert, and authenticated browser evidence.</p></article></main>
+    <footer>CreditVector by Gabriel Capital Labs · Review artifact</footer>
+  </div>
+</body>
+</html>
