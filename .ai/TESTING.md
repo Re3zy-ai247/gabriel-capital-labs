@@ -29,6 +29,12 @@ npx --no-install tsx scripts/<name>.test.ts   # lockfile-local guard scripts (be
 | `forecast.test.ts` | Engine 3 Tier A own-data latency + §611 window forecast | 12/12 |
 | `explain.test.ts` | Kai Explainability Layer — structured "why" from real data, uncertainty never hidden | 14/14 |
 | `stripe-lifecycle.test.ts` | RC1 money-path guard — pins the SOURCE TEXT of the webhook claim contract, current-state retrieval, and fail-closed price mapping. It matches shape; it does not execute a handler. The runtime proof is in the table below | 84/84 |
+| `growth-network-foundation.test.ts` | Dormant Growth Foundation flags, payout hard-off, pure contract vocabulary, and effect isolation | Run for Phase 1B-R; record exact output in evidence |
+| `growth-center-foundation.test.ts` | Phase 1A parent Preview, subordinate gating, deterministic fixtures, accessibility/copy, and effect isolation | Run for Phase 1B-R; record exact output in evidence |
+| `cxos-core-runtime.test.ts` | Headless presentation lifecycle reused by Growth Center | Run for Phase 1B-R; record exact output in evidence |
+| `growth-capability-contract.test.ts` | Phase 1B-R 7 × 10 decision table, rationales, owner maturity, semantic laws, strict resolver, Kai boundary, history/copy, and effect isolation | Run for Phase 1B-R; record exact output in evidence |
+| `growth-capability-preview-env-matrix.test.ts` | Adversarial hosted/local identity matrix; production and unknown identity cannot be defeated by flags or overrides | Run for Phase 1B-R; record exact output in evidence |
+| `validate-growth-experience-phase-1b-r-package.mjs` | Immutable candidate/remote binding, evidence statuses, sanitization, exact nine members, hashes, modes, metadata, and deterministic ZIP parity | Post-commit only; result belongs in the external evidence index |
 
 ### `scripts/runtime/` — the money-path RUNTIME guards
 

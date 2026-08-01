@@ -29,19 +29,39 @@ function check(label: string, cond: boolean) {
   else { fail++; console.error(`FAIL: ${label}`); }
 }
 
-// ── 1 · production is HARD OFF, and the check is FIRST ───────────────────────
+// ── 1 · hosted identity is server-authoritative and fail-closed ──────────────
 {
-  const fn = mode.slice(mode.indexOf("export function reviewBuildAllowed"));
-  const firstReturn = fn.indexOf("return");
-  check("reviewBuildAllowed's FIRST statement is the production hard-off",
-    /if \(process\.env\.NEXT_PUBLIC_VERCEL_ENV === "production"\) return false;/.test(
-      fn.slice(0, firstReturn + 60)));
-  check("the manual override cannot beat the hard-off (it is checked after)",
-    fn.indexOf('NEXT_PUBLIC_VERCEL_ENV === "production"') <
-    fn.indexOf('NEXT_PUBLIC_CXOS_REVIEW'));
+  const policyStart = mode.indexOf("export function resolveReviewBuildDecision");
+  const policyEnd = mode.indexOf("export function reviewServerBuildAllowed");
+  const serverPolicy = mode.slice(policyStart, policyEnd);
+  check("review mode exposes a pure server-authoritative policy",
+    policyStart >= 0 && policyEnd > policyStart);
+  check("the server gate reads canonical VERCEL_ENV before public/manual hints",
+    serverPolicy.indexOf("environment.VERCEL_ENV") >= 0 &&
+    serverPolicy.indexOf("environment.VERCEL_ENV") < serverPolicy.indexOf("environment.NEXT_PUBLIC_VERCEL_ENV") &&
+    serverPolicy.indexOf("environment.VERCEL_ENV") < serverPolicy.indexOf("environment.NEXT_PUBLIC_CXOS_REVIEW"));
+  check("only exact canonical preview may authorize a hosted build",
+    /hostedIdentity !== "preview"/.test(serverPolicy) &&
+    /publicIdentity === undefined \|\| publicIdentity === "preview"/.test(serverPolicy));
+  check("a Vercel-hosted build with missing canonical identity fails closed",
+    /if \(vercelMarkerPresent\)[\s\S]{0,180}allowed: false[\s\S]{0,120}HOSTED_UNKNOWN/.test(serverPolicy));
+  check("a malformed Vercel marker fails closed before any identity can authorize review",
+    /vercelMarkerPresent && environment\.VERCEL !== "1"/.test(serverPolicy) &&
+    /Vercel hosting marker is malformed or unknown/.test(serverPolicy));
+  check("public identity cannot substitute for canonical server identity",
+    /if \(publicIdentity !== undefined\)[\s\S]{0,180}allowed: false/.test(serverPolicy));
+  check("local capture override is evaluated only after hosted/public denial",
+    serverPolicy.indexOf("if (vercelMarkerPresent)") <
+      serverPolicy.indexOf("NEXT_PUBLIC_CXOS_REVIEW") &&
+    serverPolicy.indexOf("if (publicIdentity !== undefined)") <
+      serverPolicy.indexOf("NEXT_PUBLIC_CXOS_REVIEW"));
+  check("server wrapper delegates process.env only to the pure policy",
+    /reviewServerBuildAllowed\(\): boolean \{[\s\S]{0,100}resolveReviewBuildDecision\(process\.env\)\.allowed/.test(mode));
+  check("client presentation consumes a server-stamped document bit, not a public env authority",
+    /document\.documentElement\.dataset\.cxosReviewAllowed === "true"/.test(mode));
 }
-check("previews are review-enabled automatically (protected by Vercel Authentication)",
-  /NEXT_PUBLIC_VERCEL_ENV === "preview"\) return true/.test(mode));
+check("reviewBuildAllowed delegates server authorization separately from client presentation",
+  /typeof window === "undefined"[\s\S]{0,100}reviewServerBuildAllowed\(\)[\s\S]{0,100}reviewClientPresentationAllowed\(\)/.test(mode));
 check("every review surface gates through reviewBuildAllowed",
   [hub, stage].every((f) => /reviewBuildAllowed\(\)/.test(f)) && /reviewBuildAllowed\(\)/.test(page));
 

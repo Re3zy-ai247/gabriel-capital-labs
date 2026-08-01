@@ -3,6 +3,7 @@ import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
 import { TransitionShell } from "@/components/cxos/transitions/TransitionShell";
+import { reviewServerBuildAllowed } from "@/lib/cxos/reviewMode";
 
 // Plus Jakarta Sans — a modern grotesk with more character than Inter, tuned for
 // both display headlines (heavier weights) and dense data UI. Exposed as --font-sans.
@@ -55,8 +56,17 @@ export const viewport: Viewport = {
 const noFlashTheme = `(function(){try{var t=localStorage.getItem('theme');if(t==='light'){document.documentElement.classList.add('light');}}catch(e){}})();`;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  // Server-authoritative, non-secret presentation stamp. Client code may read
+  // this decision; public environment variables never grant review access.
+  const reviewAllowed = reviewServerBuildAllowed();
+
   return (
-    <html lang="en" className={sans.variable} suppressHydrationWarning>
+    <html
+      lang="en"
+      className={sans.variable}
+      data-cxos-review-allowed={reviewAllowed ? "true" : "false"}
+      suppressHydrationWarning
+    >
       <head>
         <script dangerouslySetInnerHTML={{ __html: noFlashTheme }} />
       </head>
