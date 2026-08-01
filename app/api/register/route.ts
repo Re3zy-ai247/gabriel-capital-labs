@@ -2,9 +2,10 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
+import { validatePassword } from "@/lib/password";
 import { clientIp, enforceRateLimit } from "@/lib/rateLimit";
 
-const schema = z.object({ email: z.string().email(), password: z.string().min(8), name: z.string().optional() });
+const schema = z.object({ email: z.string().email(), password: z.string(), name: z.string().optional() });
 
 export async function POST(req: Request) {
   // Per-IP cap on account creation to blunt automated signup abuse.
@@ -14,6 +15,8 @@ export async function POST(req: Request) {
   const parsed = schema.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) return NextResponse.json({ error: "Invalid input" }, { status: 400 });
   const { email, password, name } = parsed.data;
+  const passwordError = validatePassword(password);
+  if (passwordError) return NextResponse.json({ error: passwordError }, { status: 400 });
   const existing = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
   if (existing) return NextResponse.json({ error: "Account already exists" }, { status: 409 });
   const user = await prisma.user.create({
