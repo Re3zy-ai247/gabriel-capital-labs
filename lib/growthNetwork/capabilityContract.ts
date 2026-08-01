@@ -327,8 +327,8 @@ export const CAPABILITY_CONTRACTS = deepFreeze([
     shortLabel: "Mentorship",
     purpose:
       "Define a future B2B operator-development boundary while keeping matching, participation, and service delivery unavailable.",
-    ownerReference: "OPERATOR_NETWORK",
-    ownerMaturity: "PROPOSED",
+    ownerReference: "OWNER_UNRESOLVED",
+    ownerMaturity: "OWNER_UNRESOLVED",
     candidateOwnerReference: "MENTORSHIP",
     registryEvidence:
       "The frozen registry resolves Operator Network messaging only; mentorship relationship and service truth require a future ownership decision.",
@@ -341,7 +341,7 @@ export const CAPABILITY_CONTRACTS = deepFreeze([
       "Match, screen, book, schedule, contract, pay, host, assess, or complete a mentorship relationship.",
     participationBoundary:
       "Future B2B operator professional development only. No live mentorship, consumer/client/file/case guidance, credit recommendation, dispute execution, representation, legal, tax, financial, employment, advance-fee, or business-opportunity advice is available.",
-    evidenceOwner: "OPERATOR_NETWORK",
+    evidenceOwner: "OWNER_UNRESOLVED",
     evidenceRequirements: [
       "Professional-development goal and explicit scope boundary",
       "Future consent and role authority from the owning contexts",
@@ -349,10 +349,10 @@ export const CAPABILITY_CONTRACTS = deepFreeze([
       "Human review for any future participation dispute",
     ],
     refusedShortcuts: ["Reciprocal acknowledgment", "Collusive confirmation", "Attendance alone", "Recruiting"],
-    completionOwner: "OPERATOR_NETWORK",
-    reviewOwner: "OPERATOR_NETWORK",
-    visibilityOwner: "OPERATOR_NETWORK",
-    correctionOwner: "OPERATOR_NETWORK",
+    completionOwner: "OWNER_UNRESOLVED",
+    reviewOwner: "OWNER_UNRESOLVED",
+    visibilityOwner: "OWNER_UNRESOLVED",
+    correctionOwner: "OWNER_UNRESOLVED",
     appealOwner: "OWNER_UNRESOLVED",
     privacyBoundary:
       "No mentor, operator, meeting, message, presence, note, protected attribute, or customer detail exists.",
@@ -557,19 +557,58 @@ export const CAPABILITY_SEMANTIC_LAWS = deepFreeze([
   "Submission is not acceptance.",
   "Supported synthetic review is not authorization.",
   "Synthetic is not live.",
+  "Visible is not public.",
+  "Reviewable is not ratified.",
+  "Evidence-present is not verified.",
+  "Qualification is not eligibility.",
   "Proposed ownership is not canonical ownership.",
 ] as const);
 
-export interface CapabilityFixtureDecision {
-  kind: CapabilityKnownDecisionKind;
+export type CapabilityFailClosedResult =
+  | "UNSUPPORTED"
+  | "OWNER_UNRESOLVED"
+  | "INSUFFICIENT_EVIDENCE"
+  | "CONFLICTING_STATE"
+  | "MALFORMED"
+  | "NOT_AUTHORIZED";
+
+export interface CapabilitySupportedCompatibilityContract {
+  requiredOwnerState: string;
+  requiredEvidenceState: string;
+  allowedPresentationBehavior: string;
+  prohibitedInference: string;
+  correctionSemantics: string;
+  appealSemantics: string;
+  failClosedResult: CapabilityFailClosedResult;
+}
+
+export interface CapabilitySupportedFixtureDecision {
+  kind: "SUPPORTED_SYNTHETIC_REVIEW";
+  rationale: string;
+  compatibility: CapabilitySupportedCompatibilityContract;
+}
+
+export interface CapabilityClosedFixtureDecision {
+  kind: Exclude<CapabilityKnownDecisionKind, "SUPPORTED_SYNTHETIC_REVIEW">;
   rationale: string;
 }
 
+export type CapabilityFixtureDecision =
+  | CapabilitySupportedFixtureDecision
+  | CapabilityClosedFixtureDecision;
+
 function decision(
-  kind: CapabilityKnownDecisionKind,
+  kind: CapabilityClosedFixtureDecision["kind"],
   rationale: string,
-): CapabilityFixtureDecision {
+): CapabilityClosedFixtureDecision {
   return { kind, rationale };
+}
+
+function supportedDecision(
+  rationale: string,
+  compatibility: CapabilitySupportedCompatibilityContract,
+): CapabilitySupportedFixtureDecision {
+  return { kind: "SUPPORTED_SYNTHETIC_REVIEW", rationale, compatibility };
 }
 
 // Literal 7 × 10 policy table. Every known pair is classified. Nothing falls
@@ -649,15 +688,83 @@ export const CAPABILITY_FIXTURE_DECISIONS = deepFreeze({
     unsupported: decision("UNSUPPORTED", "The explicit unsupported fixture always renders the generic closed state."),
   },
   "organizational-stewardship": {
-    overview: decision("SUPPORTED_SYNTHETIC_REVIEW", "The frozen registry supports Organization scope, so a boundary-only synthetic orientation is reviewable."),
-    empty: decision("SUPPORTED_SYNTHETIC_REVIEW", "A synthetic empty Organization-scope state asserts no stewardship assessment or health fact."),
-    preparing: decision("SUPPORTED_SYNTHETIC_REVIEW", "A preparation checklist may explain Organization scope while all assessment meaning stays unavailable."),
+    overview: supportedDecision(
+      "The frozen registry supports Organization scope, so a boundary-only synthetic orientation is reviewable.",
+      {
+        requiredOwnerState:
+          "Organizations remains the registry-resolved scope owner; stewardship and Performance Intelligence meaning remain proposed.",
+        requiredEvidenceState:
+          "Fixed fictional orientation fixture only; no organization, worker, participant, customer, health, or performance record exists.",
+        allowedPresentationBehavior:
+          "Show route-local orientation copy, independent state lanes, owner labels, and the synthetic evidence-requirement preview.",
+        prohibitedInference:
+          "Do not infer organization health, stewardship quality, qualification, eligibility, authority, reputation, or an operational program.",
+        correctionSemantics:
+          "No source fact exists to correct; the Preview may explain a future source-owner route but cannot open or resolve it.",
+        appealSemantics:
+          "No review decision exists to appeal; an independent appeal owner remains unresolved.",
+        failClosedResult: "NOT_AUTHORIZED",
+      },
+    ),
+    empty: supportedDecision(
+      "A synthetic empty Organization-scope state asserts no stewardship assessment or health fact.",
+      {
+        requiredOwnerState:
+          "Organizations remains the registry-resolved scope owner; no stewardship assessment owner is inferred.",
+        requiredEvidenceState:
+          "Explicit fixed synthetic absence only; evidence-present, verification, completion, and review are all false.",
+        allowedPresentationBehavior:
+          "Show an empty boundary state and the requirements that a separately authorized future source would need.",
+        prohibitedInference:
+          "Do not infer missing performance, failed stewardship, inactivity, qualification, eligibility, or public visibility.",
+        correctionSemantics:
+          "There is no source fact to correct; correction remains unavailable.",
+        appealSemantics:
+          "There is no review disposition to appeal; appeal remains unavailable.",
+        failClosedResult: "INSUFFICIENT_EVIDENCE",
+      },
+    ),
+    preparing: supportedDecision(
+      "A preparation checklist may explain Organization scope while all assessment meaning stays unavailable.",
+      {
+        requiredOwnerState:
+          "Organizations remains the registry-resolved scope owner; preparation grants no Performance Intelligence authority.",
+        requiredEvidenceState:
+          "Fixed synthetic preparation checklist only; no submission, occurrence, completion, review, or verification exists.",
+        allowedPresentationBehavior:
+          "Show inert preparation guidance and future evidence requirements without accepting, assigning, or scheduling work.",
+        prohibitedInference:
+          "Do not infer participation, completion, approval, qualification, eligibility, organization health, or authorization.",
+        correctionSemantics:
+          "Only a future source fact could be corrected; no correction route is opened by preparation.",
+        appealSemantics:
+          "Preparation creates no decision and therefore no appeal.",
+        failClosedResult: "INSUFFICIENT_EVIDENCE",
+      },
+    ),
     "completed-unreviewed": decision("PROPOSED", "Completion would depend on unratified stewardship and Performance Intelligence semantics."),
     "in-review": decision("PROPOSED", "Review would depend on a proposed Performance Intelligence reviewer and policy."),
     "changes-requested": decision("PROPOSED", "Source correction would depend on a proposed Performance Intelligence source owner."),
     "source-corrected": decision("PROPOSED", "Supersession would depend on a proposed Performance Intelligence source fact."),
     "appeal-in-review": decision("OWNER_UNRESOLVED", "No independent stewardship appeal owner is registry-resolved."),
-    "privacy-restricted": decision("SUPPORTED_SYNTHETIC_REVIEW", "A deny-by-default Organization-scope summary can be reviewed without organization or worker data."),
+    "privacy-restricted": supportedDecision(
+      "A deny-by-default Organization-scope summary can be reviewed without organization or worker data.",
+      {
+        requiredOwnerState:
+          "Organizations remains the registry-resolved scope owner and visibility remains deny-by-default.",
+        requiredEvidenceState:
+          "Fixed synthetic restriction state only; no private organization, worker, participant, customer, or protected-attribute data exists.",
+        allowedPresentationBehavior:
+          "Show only the restriction, owner boundary, and unavailable state without revealing or implying hidden content.",
+        prohibitedInference:
+          "Do not infer that private data exists, that any named party was assessed, or that restricted visibility is public authorization.",
+        correctionSemantics:
+          "A restriction is not a source correction and does not open a correction workflow.",
+        appealSemantics:
+          "A restriction is not a review decision and does not create an appeal right in this Preview.",
+        failClosedResult: "NOT_AUTHORIZED",
+      },
+    ),
     unsupported: decision("UNSUPPORTED", "The explicit unsupported fixture always renders the generic closed state."),
   },
 } as const satisfies Readonly<Record<CapabilityContractId, Readonly<Record<CapabilityFixtureId, CapabilityFixtureDecision>>>>);
@@ -858,6 +965,7 @@ interface CapabilityProjectionBase {
 export interface SupportedSyntheticCapabilityProjection
   extends CapabilityProjectionBase {
   kind: "SUPPORTED_SYNTHETIC_REVIEW";
+  compatibilityContract: CapabilitySupportedCompatibilityContract;
   evidenceContract: readonly CapabilityEvidenceItem[];
 }
 
@@ -1090,23 +1198,19 @@ export function resolveCapabilityReviewRequest(
   contractInput?: RawReviewParameter,
   fixtureInput?: RawReviewParameter,
 ): CapabilityReviewProjection {
-  const bothMissing = contractInput === undefined && fixtureInput === undefined;
-  if (!bothMissing && (contractInput === undefined || fixtureInput === undefined)) {
+  if (contractInput === undefined || fixtureInput === undefined) {
     return invalidProjection();
   }
 
-  const contractValue = bothMissing ? CAPABILITY_CONTRACT_IDS[0] : contractInput;
-  const fixtureValue = bothMissing ? CAPABILITY_FIXTURE_IDS[0] : fixtureInput;
-
   if (
-    !isSingleAllowed(contractValue, CAPABILITY_CONTRACT_IDS) ||
-    !isSingleAllowed(fixtureValue, CAPABILITY_FIXTURE_IDS)
+    !isSingleAllowed(contractInput, CAPABILITY_CONTRACT_IDS) ||
+    !isSingleAllowed(fixtureInput, CAPABILITY_FIXTURE_IDS)
   ) {
     return invalidProjection();
   }
 
-  const contract = CAPABILITY_CONTRACTS.find((item) => item.id === contractValue);
-  const fixture = CAPABILITY_FIXTURES.find((item) => item.id === fixtureValue);
+  const contract = CAPABILITY_CONTRACTS.find((item) => item.id === contractInput);
+  const fixture = CAPABILITY_FIXTURES.find((item) => item.id === fixtureInput);
   if (!contract || !fixture) return invalidProjection();
 
   const fixtureDecision = CAPABILITY_FIXTURE_DECISIONS[contract.id][fixture.id];
@@ -1119,6 +1223,7 @@ export function resolveCapabilityReviewRequest(
       lanes: lanesFor(contract, fixture),
       ownerMaturity: contract.ownerMaturity,
       decisionRationale: fixtureDecision.rationale,
+      compatibilityContract: fixtureDecision.compatibility,
       evidenceContract: evidenceContractFor(contract),
     });
   }

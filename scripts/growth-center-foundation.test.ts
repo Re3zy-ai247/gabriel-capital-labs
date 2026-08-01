@@ -6,14 +6,14 @@
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { extname, join, relative, sep } from "node:path";
 import {
-  GROWTH_ADVISOR_INTENT_IDS,
+  GROWTH_EXPLANATION_INTENT_IDS,
   GROWTH_CENTER_DISTRICTS,
   GROWTH_CENTER_DISTRICT_IDS,
   GROWTH_CENTER_HEARTBEAT,
   GROWTH_CENTER_KAI_NO_ACTION_RECEIPT,
   GROWTH_CENTER_LENS_IDS,
   GROWTH_CENTER_REVIEW_DISCLOSURE,
-  resolveGrowthAdvisorPlan,
+  resolveGrowthExplanationPlan,
 } from "../lib/growthNetwork/experience";
 import { growthPayoutExecutionEnabled } from "../lib/growthNetwork/flags";
 import { growthCenterPreviewEnabled } from "../lib/growthNetwork/previewFlags";
@@ -83,9 +83,9 @@ check("persistent disclosure says synthetic and no live program", /Synthetic/.te
 check("Kai no-action receipt is exact and explicit", GROWTH_CENTER_KAI_NO_ACTION_RECEIPT === "Preview only. No model was called. Nothing was saved, sent, assigned, scheduled, purchased, or changed.");
 
 for (const lensId of GROWTH_CENTER_LENS_IDS) {
-  for (const intentId of GROWTH_ADVISOR_INTENT_IDS) {
-    const first = resolveGrowthAdvisorPlan(lensId, intentId);
-    const second = resolveGrowthAdvisorPlan(lensId, intentId);
+  for (const intentId of GROWTH_EXPLANATION_INTENT_IDS) {
+    const first = resolveGrowthExplanationPlan(lensId, intentId);
+    const second = resolveGrowthExplanationPlan(lensId, intentId);
     check(`${lensId}/${intentId} resolves deterministically`, equal(first, second));
     check(`${lensId}/${intentId} resolves to an approved district`, GROWTH_CENTER_DISTRICT_IDS.includes(first.districtId));
     check(`${lensId}/${intentId} cites its fictional fixture source`, /fictional operator review fixture/.test(first.source));
@@ -213,7 +213,10 @@ check("director truth scopes storage and network claims to Growth-owned behavior
   && /inherited shell session\/theme/.test(stage)
   && !/no storage · no network/i.test(stage));
 check("first frame refuses recruiting", stage.includes("Recruiting is not rewarded."));
-check("Kai keeps canonical identity and route-local role", stage.includes("Kai · Credit Intelligence Officer · route-local review mode") && stage.includes("Growth Advisor"));
+check("Kai keeps canonical identity and boundary-safe route-local role",
+  stage.includes("Kai · Credit Intelligence Officer · route-local review mode")
+  && stage.includes("Deterministic Growth Explanation Mode")
+  && !stage.includes("Growth Advisor"));
 check("Kai offers fixed buttons, not an open prompt", !/<input|<textarea|contentEditable/.test(stage));
 check("first and return visits are explicit controls", stage.includes('"first"') && stage.includes('"return"') && stage.includes("never detected"));
 check("district navigation uses real hash links", stage.includes('href={`#${district.id}`}') && stage.includes('aria-current='));

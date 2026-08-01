@@ -26,10 +26,10 @@ Phase 1B defines how a protected synthetic review may represent future professio
 
 1. Keep the capability contract in a separately gated nested Founder-review route.
 2. Keep seven pathways, ten fixed fixtures, and eight independent semantic lanes.
-3. Classify all seventy pathway/fixture pairs explicitly. Each pair has one written rationale and one result: `SUPPORTED_SYNTHETIC_REVIEW`, `PROPOSED`, `OWNER_UNRESOLVED`, `UNSUPPORTED`, or `INVALID`.
+3. Classify all seventy pathway/fixture pairs explicitly. Each pair has one written rationale and one result: `SUPPORTED_SYNTHETIC_REVIEW`, `PROPOSED`, `OWNER_UNRESOLVED`, `UNSUPPORTED`, or `INVALID`. Every supported pair additionally records its required owner state, required evidence state, allowed presentation, prohibited inference, correction semantics, appeal semantics, and fail-closed result.
 4. Favorable review meaning exists only for positively listed `SUPPORTED_SYNTHETIC_REVIEW` pairs. Unknown, omitted, duplicate, partial, malformed, conflicting, impossible, and owner-unresolved inputs fail closed. Raw rejected input is never echoed.
-5. Reconcile owner references against the frozen ownership registry without amending it. Learning, Mentorship, Meetings, Documents, Community policy, certifications, and other unratified domains remain proposed, future-owned, or owner-unresolved. Owner-unresolved pathways are non-operational.
-6. Keep completion distinct from approval, correction from appeal, submission from acceptance, support from authorization, synthetic from live, and proposed ownership from canonical ownership.
+5. Reconcile owner references against the frozen ownership registry without amending it. Learning, Mentorship, Meetings, Documents, Community policy, certifications, and other unratified domains remain proposed, future-owned, or owner-unresolved. Operator Network retains messaging ownership only and owns no mentorship relationship, evidence, completion, review, visibility, correction, or appeal fact. Owner-unresolved pathways are non-operational.
+6. Keep completion distinct from approval, correction from appeal, submission from acceptance, support from authorization, synthetic from live, visible from public, reviewable from ratified, evidence-present from verified, qualification from eligibility, and proposed ownership from canonical ownership.
 7. Represent canonical Kai only through a deterministic route-local synthetic explanation mode. It has no separate identity, model, memory, persistence, authority, tool, or action capability.
 8. Use server-authoritative hosted identity for the production hard-off. Hosted production and unknown or contradictory hosted identity fail closed; a public signal or manual override cannot defeat the server gate.
 9. Use a new browser history entry for every contract or fixture change. Native Back and Forward restore every changed pair through the strict resolver.
@@ -45,7 +45,7 @@ This ADR does not create or move canonical ownership. Registry-resolved Organiza
 
 Every material claim must be backed by preserved raw evidence and one of `PASS`, `FAIL`, `NOT RUN`, `NOT APPLICABLE`, or `BLOCKED`. Human comprehension remains **NOT HUMAN-VALIDATED** unless a human test actually occurs.
 
-The Founder package is a deterministic post-commit derivative. It contains exactly nine flat regular files, no source or screenshots, and no private host metadata. The candidate commit cannot contain a package that names its own SHA; therefore the immutable candidate is committed and pushed first, then the package is generated from that exact candidate and evidence. The ZIP hash is published externally to avoid recursive hashing.
+The Founder package is a deterministic post-commit derivative. It contains exactly the nine Founder-specified flat regular files, no source dump or screenshots, and no private host metadata. The candidate commit cannot contain a package that names its own SHA; therefore the immutable candidate is committed and pushed first, then the package is generated from that exact candidate and evidence. The evidence manifest carries the deployment BOM; the ZIP hash is published externally to avoid recursive hashing.
 
 ## Consequences and rollback
 

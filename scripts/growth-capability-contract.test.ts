@@ -148,7 +148,20 @@ const expectedSemanticLaws = [
   "Submission is not acceptance.",
   "Supported synthetic review is not authorization.",
   "Synthetic is not live.",
+  "Visible is not public.",
+  "Reviewable is not ratified.",
+  "Evidence-present is not verified.",
+  "Qualification is not eligibility.",
   "Proposed ownership is not canonical ownership.",
+] as const;
+const expectedCompatibilityContractKeys = [
+  "requiredOwnerState",
+  "requiredEvidenceState",
+  "allowedPresentationBehavior",
+  "prohibitedInference",
+  "correctionSemantics",
+  "appealSemantics",
+  "failClosedResult",
 ] as const;
 const expectedStatuses = [
   "CGN ECONOMIC PHASE 1A — BLOCKED",
@@ -196,7 +209,17 @@ check("fixture and Kai registries are exact and deeply frozen",
   CAPABILITY_FIXTURES.every(Object.isFrozen) &&
   equal(CAPABILITY_KAI_QUESTIONS.map((question) => question.id), expectedQuestionIds) &&
   CAPABILITY_KAI_QUESTIONS.every(Object.isFrozen));
-check("exact six semantic separation laws", equal(CAPABILITY_SEMANTIC_LAWS, expectedSemanticLaws));
+check("exact ten semantic separation laws", equal(CAPABILITY_SEMANTIC_LAWS, expectedSemanticLaws));
+const mentorshipContract = CAPABILITY_CONTRACTS.find((contract) => contract.id === "mentorship")!;
+check("mentorship does not expand Operator Network beyond messaging ownership",
+  mentorshipContract.ownerReference === "OWNER_UNRESOLVED"
+  && mentorshipContract.ownerMaturity === "OWNER_UNRESOLVED"
+  && mentorshipContract.evidenceOwner === "OWNER_UNRESOLVED"
+  && mentorshipContract.completionOwner === "OWNER_UNRESOLVED"
+  && mentorshipContract.reviewOwner === "OWNER_UNRESOLVED"
+  && mentorshipContract.visibilityOwner === "OWNER_UNRESOLVED"
+  && mentorshipContract.correctionOwner === "OWNER_UNRESOLVED"
+  && mentorshipContract.appealOwner === "OWNER_UNRESOLVED");
 check("exact seven controlling statuses", equal([
   CGN_ECONOMIC_PHASE_1A_STATUS,
   GROWTH_EXPERIENCE_PHASE_1A_STATUS,
@@ -253,6 +276,12 @@ for (const { contractId, fixtureId, pair, decision } of decisionPairs) {
   if (first.kind === "SUPPORTED_SYNTHETIC_REVIEW") {
     observedSupportedPairs.push(pair);
     check(`${pair} is explicitly whitelisted`, supportedPairAllowlist.has(pair));
+    check(`${pair} has the exact reasoned compatibility contract`,
+      decision.kind === "SUPPORTED_SYNTHETIC_REVIEW"
+      && equal(Object.keys(decision.compatibility), expectedCompatibilityContractKeys)
+      && equal(first.compatibilityContract, decision.compatibility)
+      && Object.isFrozen(first.compatibilityContract)
+      && Object.values(first.compatibilityContract).every((value) => value.trim().length > 0));
     check(`${pair} uses the fixed fictional source`, first.header.synthetic
       && first.header.source.kind === "SYNTHETIC_FIXTURE"
       && first.header.source.ref === GROWTH_CAPABILITY_FIXTURE_SOURCE);
@@ -268,6 +297,7 @@ for (const { contractId, fixtureId, pair, decision } of decisionPairs) {
     }
   } else {
     check(`${pair} exposes no favorable evidence contract`, !("evidenceContract" in first));
+    check(`${pair} exposes no favorable compatibility contract`, !("compatibilityContract" in first));
     check(`${pair} is not marked registry-resolved active`, first.ownerMaturity !== "RATIFIED_ACTIVE");
     for (const questionId of CAPABILITY_KAI_QUESTION_IDS) {
       const explanation = resolveCapabilityKaiExplanation(first, questionId);
@@ -312,7 +342,12 @@ for (const [label, contractInput, fixtureInput] of invalidInputs) {
 check("all five result types are exercised", equal([...observedKinds].sort(), [...expectedResultKinds].sort()));
 
 const missingBoth = resolveCapabilityReviewRequest();
-check("all-absent query cannot default to a favorable state", missingBoth.kind !== "SUPPORTED_SYNTHETIC_REVIEW");
+check("all-absent query resolves INVALID", missingBoth.kind === "INVALID");
+check("all-absent query has no contract authority", missingBoth.contract === null && !("evidenceContract" in missingBoth));
+check(
+  "all-absent query returns only generic closed lanes",
+  missingBoth.lanes.every((lane) => /invalid|unsupported|unavailable|no state inferred|owner unresolved/i.test(lane.value)),
+);
 const unknownKai = resolveCapabilityKaiExplanation(
   resolveCapabilityReviewRequest("organizational-stewardship", "overview"),
   rawMarker,
@@ -399,9 +434,11 @@ check("Back and Forward restore the deterministic projection",
 check("the stage has exactly one polite live region",
   (stage.match(/aria-live=/g) ?? []).length === 1
   && (stage.match(/role="status"/g) ?? []).length <= 1);
-check("the exact six semantic laws are rendered from the canonical registry",
+check("the exact ten semantic laws are rendered from the canonical registry",
   stage.includes("CAPABILITY_SEMANTIC_LAWS")
   && /CAPABILITY_SEMANTIC_LAWS\.map/.test(stageCode));
+check("the human-comprehension boundary states review-only is not public",
+  stage.includes("Founder review only is not public access."));
 check("all seven statuses are rendered from canonical constants", [
   "CGN_ECONOMIC_PHASE_1A_STATUS",
   "GROWTH_EXPERIENCE_PHASE_1A_STATUS",
@@ -413,6 +450,12 @@ check("all seven statuses are rendered from canonical constants", [
 ].every((symbol) => stage.includes(symbol)));
 check("privacy wording is scoped to Growth-owned behavior",
   stage.includes("No Growth Experience-owned cookies, storage, analytics, or telemetry.")
+  && stage.includes("Route selectors read only fixed allowlisted review IDs")
+  && stage.includes("recorded in the URL and browser history for reversible Back and Forward navigation")
+  && stage.includes("but they are not participant facts")
+  && !stage.includes("they are not participant facts and are not persisted")
+  && stage.includes("No participant, organization, customer, PII, or free-text input is read or saved by Growth Experience.")
+  && !stage.includes("user input is read or saved")
   && /inherited application shell/i.test(stage)
   && /auth|session/i.test(stage)
   && /theme|presentation/i.test(stage)
@@ -435,6 +478,16 @@ check("Kai is canonical, route-local, deterministic, and actionless",
   stage.includes("GROWTH_CAPABILITY_KAI_RECEIPT")
   && contractSource.includes("deterministic route-local synthetic explanation mode")
   && !/<input|<textarea|contentEditable/.test(stage));
+check("supported UI renders every required compatibility field",
+  [
+    "Required owner state",
+    "Required evidence state",
+    "Allowed presentation",
+    "Prohibited inference",
+    "Correction semantics",
+    "Appeal semantics",
+    "Fail-closed result",
+  ].every((label) => stage.includes(label)));
 check("review disclosure and economic boundary remain visible",
   stage.includes("GROWTH_CAPABILITY_REVIEW_DISCLOSURE")
   && stage.includes("GROWTH_CAPABILITY_AGENCY_BOUNDARY")

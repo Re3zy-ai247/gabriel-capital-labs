@@ -33,7 +33,7 @@ export const ZIP_NAME =
 export const EVIDENCE_ROOT_NAME =
   "GROWTH_EXPERIENCE_PHASE_1B_R_EVIDENCE";
 export const EVIDENCE_ROOT = join(REPOSITORY_ROOT, EVIDENCE_ROOT_NAME);
-export const EVIDENCE_SCHEMA_VERSION = 3;
+export const EVIDENCE_SCHEMA_VERSION = 4;
 const MAX_OBSERVED_CLOCK_SKEW_MS = 5 * 60 * 1000;
 
 export const AUTHORIZED_CANDIDATE_CHANGES = Object.freeze({
@@ -85,9 +85,14 @@ export const PACKAGE_MEMBERS = Object.freeze([
   "GROWTH_EXPERIENCE_PHASE_1B_R_REPORT.html",
   "GROWTH_EXPERIENCE_PHASE_1B_R_HANDOFF.txt",
   "GROWTH_EXPERIENCE_PHASE_1B_R_HANDOFF.html",
+  "GROWTH_EXPERIENCE_PHASE_1B_R_CAPABILITY_CONTRACT.md",
   "GROWTH_EXPERIENCE_PHASE_1B_R_VALIDATION_LEDGER.html",
   "GROWTH_EXPERIENCE_PHASE_1B_R_BROWSER_MATRIX.html",
   "GROWTH_EXPERIENCE_PHASE_1B_R_EVIDENCE_MANIFEST.txt",
+  "GROWTH_EXPERIENCE_PHASE_1B_R_FOUNDER_DECISION_RECEIPT.md",
+]);
+
+export const RETIRED_PACKAGE_ARTIFACTS = Object.freeze([
   "GROWTH_EXPERIENCE_PHASE_1B_R_DEPLOYMENT_BOM.txt",
   "GROWTH_EXPERIENCE_PHASE_1B_R_FOUNDER_DECISION_RECEIPT.html",
 ]);
@@ -105,6 +110,7 @@ export const EVIDENCE_RESULTS = Object.freeze([
   "NOT RUN",
   "NOT APPLICABLE",
   "BLOCKED",
+  "NOT BROWSER-REPRODUCED",
 ]);
 
 export const RAW_EVIDENCE_KINDS = Object.freeze([
@@ -162,7 +168,10 @@ export const REQUIRED_VALIDATION_IDS = Object.freeze([
   "git-diff-check",
   "typecheck",
   "touched-file-lint",
+  "dependency-lock-integrity",
   "phase-1b-guard",
+  "complete-7x10-matrix",
+  "unsupported-owner-unresolved-fail-closed",
   "growth-foundation-guard",
   "growth-center-guard",
   "core-runtime-guard",
@@ -180,28 +189,41 @@ export const REQUIRED_VALIDATION_IDS = Object.freeze([
   "protected-surface-regression",
   "optimized-review-build",
   "production-identity-build",
+  "production-route-hard-off",
   "secrets-and-private-metadata-scan",
-  "exact-nine-package-integrity",
+  "network-write-ledger",
+  "growth-owned-state-ledger",
+  "evidence-manifest-verification",
   "deployment-bom-verification",
   "preview-commit-binding",
 ]);
 
 export const REQUIRED_BROWSER_IDS = Object.freeze([
-  "desktop-settled",
-  "tablet-settled",
-  "mobile-portrait-settled",
-  "compact-landscape-settled",
-  "dark-mode",
-  "light-mode",
+  "width-320",
+  "width-360",
+  "width-390",
+  "width-768",
+  "width-1024",
+  "width-1440",
+  "dark-theme",
+  "light-theme",
   "reduced-motion",
   "text-reflow-200",
   "horizontal-overflow",
   "keyboard-and-focus",
-  "back-and-forward",
-  "first-frame-disclosure",
+  "back-and-forward-history",
+  "touch-targets-44",
+  "landmarks",
+  "heading-order",
+  "live-region",
+  "first-frame-arrival",
+  "settled-state",
   "completion-not-approval",
   "correction-not-appeal",
   "synthetic-not-live",
+  "supported-not-authorized",
+  "review-only-not-public",
+  "evidence-present-not-verified",
   "axe",
   "manual-contrast",
 ]);
@@ -213,6 +235,19 @@ export const REQUIRED_SOURCE_CATEGORIES = Object.freeze([
   "CXOS_RUNTIME",
   "PHASE_1B_R",
   "BUILD_CONFIG",
+]);
+
+export const TRACKED_SOURCE_CATEGORIES = Object.freeze([
+  ...REQUIRED_SOURCE_CATEGORIES,
+  "TRACKED_APP_SOURCE",
+  "TRACKED_COMPONENT_SOURCE",
+  "TRACKED_LIBRARY_SOURCE",
+  "TRACKED_PUBLIC_ASSET",
+  "TRACKED_GOVERNANCE",
+  "TRACKED_TEST_OR_TOOL",
+  "TRACKED_SCHEMA",
+  "TRACKED_DOCUMENTATION",
+  "TRACKED_REPOSITORY_FILE",
 ]);
 
 export const REQUIRED_SOURCE_PATHS = Object.freeze({
@@ -270,15 +305,47 @@ const STATUS_LINES = Object.freeze([
   "PUBLIC, PARTICIPANT, PAID, OR PRODUCTION ACTIVATION — NOT AUTHORIZED",
 ]);
 
-const REQUIRED_COMPREHENSION_CHECKLIST = Object.freeze([
+export const REQUIRED_COMPREHENSION_CHECKLIST = Object.freeze([
   "Completion is not approval.",
   "Correction is not appeal.",
   "Submission is not acceptance.",
   "Supported is not authorized.",
   "Synthetic is not live.",
+  "Review-only is not public.",
+  "Evidence-present is not verified.",
   "Proposed ownership is not canonical ownership.",
   "No public, participant, paid, production, or economic activation is included.",
 ]);
+
+export const REQUIRED_COMPREHENSION_PROMPTS = Object.freeze([
+  Object.freeze({
+    id: "completion-versus-approval",
+    prompt: "In your own words, how is completion different from approval?",
+  }),
+  Object.freeze({
+    id: "correction-versus-appeal",
+    prompt: "In your own words, how is correction different from appeal?",
+  }),
+  Object.freeze({
+    id: "synthetic-versus-live",
+    prompt: "In your own words, how is synthetic different from live?",
+  }),
+  Object.freeze({
+    id: "supported-versus-authorized",
+    prompt: "In your own words, how is supported different from authorized?",
+  }),
+  Object.freeze({
+    id: "review-only-versus-public",
+    prompt: "In your own words, how is review-only different from public?",
+  }),
+  Object.freeze({
+    id: "evidence-present-versus-verified",
+    prompt: "In your own words, how is evidence-present different from verified?",
+  }),
+]);
+
+export const EVALUATOR_BASIS =
+  "INDEPENDENT AI EVALUATOR; NO HUMAN PARTICIPANTS";
 
 const REQUIRED_DEPLOYMENT_ASSERTION_KEYS = Object.freeze([
   "protection",
@@ -295,6 +362,28 @@ const REQUIRED_BUILD_ASSERTION_KEYS = Object.freeze([
   "candidateBinding",
 ]);
 
+export const REQUIRED_BUILD_COMMANDS = Object.freeze([
+  Object.freeze({
+    id: "optimized-review-build",
+    sanitizedCommand:
+      "VERCEL_ENV→<PREVIEW> NEXT_PUBLIC_VERCEL_ENV→<PREVIEW> NEXT_PUBLIC_CXOS_REVIEW→<ENABLED> GROWTH_CENTER_PREVIEW_ENABLED→<ENABLED> GROWTH_CAPABILITY_CONTRACT_PREVIEW_ENABLED→<ENABLED> npx next build",
+  }),
+  Object.freeze({
+    id: "production-identity-build",
+    sanitizedCommand:
+      "VERCEL_ENV→<PRODUCTION> NEXT_PUBLIC_VERCEL_ENV→<PREVIEW-SPOOF> NEXT_PUBLIC_CXOS_REVIEW→<ENABLED-SPOOF> GROWTH_CENTER_PREVIEW_ENABLED→<ENABLED-SPOOF> GROWTH_CAPABILITY_CONTRACT_PREVIEW_ENABLED→<ENABLED-SPOOF> npx next build",
+  }),
+]);
+
+export const REQUIRED_BUILD_LOG_CLAIM_COMMAND_IDS = Object.freeze({
+  "build:candidateBinding": "production-identity-build",
+  "build:identity": "production-identity-build",
+  "build:optimizedReview": "optimized-review-build",
+  "validation:optimized-review-build": "optimized-review-build",
+  "validation:production-identity-build": "production-identity-build",
+  "validation:production-route-hard-off": "production-identity-build",
+});
+
 const VALIDATION_EVIDENCE_KINDS = Object.freeze({
   "clean-worktree-reproducibility": "GIT_PROVENANCE",
   "lineage-and-sha": "GIT_PROVENANCE",
@@ -302,7 +391,10 @@ const VALIDATION_EVIDENCE_KINDS = Object.freeze({
   "git-diff-check": "GIT_PROVENANCE",
   typecheck: "COMMAND_LOG",
   "touched-file-lint": "COMMAND_LOG",
+  "dependency-lock-integrity": "COMMAND_LOG",
   "phase-1b-guard": "COMMAND_LOG",
+  "complete-7x10-matrix": "COMMAND_LOG",
+  "unsupported-owner-unresolved-fail-closed": "COMMAND_LOG",
   "growth-foundation-guard": "COMMAND_LOG",
   "growth-center-guard": "COMMAND_LOG",
   "core-runtime-guard": "COMMAND_LOG",
@@ -320,8 +412,11 @@ const VALIDATION_EVIDENCE_KINDS = Object.freeze({
   "protected-surface-regression": "COMMAND_LOG",
   "optimized-review-build": "BUILD_LOG",
   "production-identity-build": "BUILD_LOG",
+  "production-route-hard-off": "BUILD_LOG",
   "secrets-and-private-metadata-scan": "SECURITY_SCAN",
-  "exact-nine-package-integrity": "PACKAGE_ASSERTION",
+  "network-write-ledger": "BROWSER_TRACE",
+  "growth-owned-state-ledger": "BROWSER_TRACE",
+  "evidence-manifest-verification": "PACKAGE_ASSERTION",
   "deployment-bom-verification": "PACKAGE_ASSERTION",
   "preview-commit-binding": "DEPLOYMENT_ASSERTION",
 });
@@ -330,7 +425,7 @@ const BROWSER_EVIDENCE_KINDS = Object.freeze(
   Object.fromEntries(
     REQUIRED_BROWSER_IDS.map((id) => [
       id,
-      id === "axe" || id === "manual-contrast"
+      ["axe", "manual-contrast", "touch-targets-44", "landmarks", "heading-order"].includes(id)
         ? "ACCESSIBILITY_REPORT"
         : "BROWSER_TRACE",
     ]),
@@ -349,6 +444,38 @@ function check(condition, message) {
   if (!condition) throw new Error(message);
 }
 
+export function assertExactBuildCommands(commands) {
+  check(
+    JSON.stringify(commands) === JSON.stringify(REQUIRED_BUILD_COMMANDS),
+    "build commands must equal the exact canonical sanitized command list",
+  );
+}
+
+export function assertBuildLogExecutedBinding(entry, label = "BUILD_LOG envelope") {
+  if (entry.evidenceKind !== "BUILD_LOG") return;
+  check(
+    Array.isArray(entry.claimIds) && entry.claimIds.length > 0,
+    `${label} requires command-bound claimIds`,
+  );
+  const commandIds = new Set();
+  for (const claimId of entry.claimIds) {
+    const commandId = REQUIRED_BUILD_LOG_CLAIM_COMMAND_IDS[claimId];
+    check(commandId, `${label} contains BUILD_LOG claim without an exact command binding: ${claimId}`);
+    commandIds.add(commandId);
+  }
+  check(
+    commandIds.size === 1,
+    `${label} cannot combine claims from different exact build commands`,
+  );
+  const [commandId] = commandIds;
+  const expected = REQUIRED_BUILD_COMMANDS.find((item) => item.id === commandId);
+  check(expected, `${label} resolves to an unknown exact build command`);
+  check(
+    entry.executed === expected.sanitizedCommand,
+    `${label} executed must exactly equal ${commandId}'s canonical sanitized command`,
+  );
+}
+
 export function sha256(value) {
   return createHash("sha256").update(value).digest("hex");
 }
@@ -362,6 +489,7 @@ function command(name, args, options = {}) {
     cwd: options.cwd ?? REPOSITORY_ROOT,
     encoding: options.encoding === undefined ? "utf8" : options.encoding,
     env: options.env ?? process.env,
+    input: options.input,
     maxBuffer: 64 * 1024 * 1024,
   });
   check(
@@ -383,11 +511,90 @@ function assertSafeRelativePath(value, label, options = {}) {
   check(typeof value === "string" && value.length > 0, `${label} must be a non-empty path`);
   check(!value.startsWith("/"), `${label} must not be absolute`);
   check(!value.includes("\\"), `${label} must use repository-relative POSIX separators`);
+  check(!/[\0\r\n\t]/u.test(value), `${label} must not contain control separators`);
   const segments = value.split("/");
   check(segments.every((segment) => segment.length > 0 && segment !== "." && segment !== ".."), `${label} must not contain empty or traversal segments`);
   if (!options.allowHidden) {
     check(segments.every((segment) => !segment.startsWith(".")), `${label} must not contain hidden segments`);
   }
+}
+
+function sourceCategoryForPath(path) {
+  if (Object.hasOwn(REQUIRED_SOURCE_PATHS, path)) {
+    return REQUIRED_SOURCE_PATHS[path];
+  }
+  if (path.startsWith("app/")) return "TRACKED_APP_SOURCE";
+  if (path.startsWith("components/")) return "TRACKED_COMPONENT_SOURCE";
+  if (path.startsWith("lib/")) return "TRACKED_LIBRARY_SOURCE";
+  if (path.startsWith("public/")) return "TRACKED_PUBLIC_ASSET";
+  if (path.startsWith(".ai/") || path === "AGENTS.md") return "TRACKED_GOVERNANCE";
+  if (path.startsWith("scripts/") || /(?:^|\/)__tests__\//u.test(path) || /\.(?:test|spec)\.[^.]+$/u.test(path)) {
+    return "TRACKED_TEST_OR_TOOL";
+  }
+  if (path.startsWith("prisma/")) return "TRACKED_SCHEMA";
+  if (/\.(?:md|mdx|txt)$/iu.test(path) || path.startsWith("architecture/")) {
+    return "TRACKED_DOCUMENTATION";
+  }
+  return "TRACKED_REPOSITORY_FILE";
+}
+
+export function collectTrackedRepositoryBom(candidateSha) {
+  check(/^[0-9a-f]{40}$/u.test(candidateSha), "tracked BOM candidate SHA must be a full Git object ID");
+  const treeBytes = gitBytes([
+    "ls-tree",
+    "-r",
+    "-z",
+    "--full-tree",
+    candidateSha,
+  ]);
+  const entries = treeBytes
+    .toString("utf8")
+    .split("\0")
+    .filter(Boolean)
+    .map((record, index) => {
+      const match = /^(\d{6}) (\S+) ([0-9a-f]{40})\t([\s\S]+)$/u.exec(record);
+      check(match, `could not parse tracked tree entry ${index + 1}`);
+      const [, mode, type, objectId, path] = match;
+      check(type === "blob", `tracked tree entry is not a blob: ${path}`);
+      check(mode === "100644" || mode === "100755", `tracked tree contains unsupported mode ${mode}: ${path}`);
+      assertSafeRelativePath(path, "tracked BOM path", { allowHidden: true });
+      return { mode, objectId, path };
+    });
+  check(entries.length > 0, "tracked repository BOM cannot be empty");
+  const uniqueObjectIds = [...new Set(entries.map((entry) => entry.objectId))];
+  const batch = command("git", ["cat-file", "--batch"], {
+    encoding: null,
+    input: Buffer.from(`${uniqueObjectIds.join("\n")}\n`),
+  });
+  const objectBytes = new Map();
+  let offset = 0;
+  for (const requestedObjectId of uniqueObjectIds) {
+    const newline = batch.indexOf(0x0a, offset);
+    check(newline >= 0, `missing cat-file header for ${requestedObjectId}`);
+    const header = batch.subarray(offset, newline).toString("utf8");
+    const headerMatch = /^([0-9a-f]{40}) blob (\d+)$/u.exec(header);
+    check(headerMatch, `invalid cat-file header for ${requestedObjectId}`);
+    check(headerMatch[1] === requestedObjectId, `cat-file object order mismatch for ${requestedObjectId}`);
+    const byteLength = Number(headerMatch[2]);
+    check(Number.isSafeInteger(byteLength) && byteLength >= 0, `invalid blob size for ${requestedObjectId}`);
+    const start = newline + 1;
+    const end = start + byteLength;
+    check(end < batch.byteLength && batch[end] === 0x0a, `truncated cat-file body for ${requestedObjectId}`);
+    objectBytes.set(requestedObjectId, batch.subarray(start, end));
+    offset = end + 1;
+  }
+  check(offset === batch.byteLength, "cat-file batch contained trailing bytes");
+  return entries.map(({ mode, objectId, path }) => {
+    const bytes = objectBytes.get(objectId);
+    check(bytes, `tracked BOM blob bytes are missing for ${path}`);
+    return Object.freeze({
+      category: sourceCategoryForPath(path),
+      mode,
+      path,
+      bytes: bytes.byteLength,
+      sha256: sha256(bytes),
+    });
+  });
 }
 
 function pathIsWithin(root, candidate) {
@@ -506,7 +713,11 @@ function assertAuthorizedCandidateDelta(changedFiles) {
 function assertAllowedUntracked(candidateSha) {
   const status = git(["status", "--porcelain=v1", "--untracked-files=all"]);
   if (!status) return;
-  const allowedOutputs = new Set([...PACKAGE_MEMBERS, ZIP_NAME]);
+  const allowedOutputs = new Set([
+    ...PACKAGE_MEMBERS,
+    ...RETIRED_PACKAGE_ARTIFACTS,
+    ZIP_NAME,
+  ]);
   const failures = [];
   for (const line of status.split("\n")) {
     const code = line.slice(0, 2);
@@ -546,7 +757,7 @@ export function collectProvenance() {
   const verifiedRemoteSha = remoteBranchSha(branch);
   check(verifiedRemoteSha === candidateSha, "exact remote review branch does not match candidate SHA");
 
-  for (const name of [...PACKAGE_MEMBERS, ZIP_NAME]) {
+  for (const name of [...PACKAGE_MEMBERS, ...RETIRED_PACKAGE_ARTIFACTS, ZIP_NAME]) {
     const tracked = spawnSync("git", ["ls-files", "--error-unmatch", "--", name], {
       cwd: REPOSITORY_ROOT,
       encoding: "utf8",
@@ -561,9 +772,22 @@ export function collectProvenance() {
     .split("\n")
     .filter(Boolean);
   check(commits.length > 0, "candidate commit range is empty");
+  let expectedParent = EXPECTED_BASELINE_SHA;
+  for (const commit of commits) {
+    const commitParents = git(["show", "-s", "--format=%P", commit])
+      .split(/\s+/u)
+      .filter(Boolean);
+    check(commitParents.length === 1, `candidate range contains a merge or root commit: ${commit}`);
+    check(
+      commitParents[0] === expectedParent,
+      `candidate range is not a contiguous first-parent line at ${commit}`,
+    );
+    expectedParent = commit;
+  }
+  check(expectedParent === candidateSha, "candidate range does not terminate at HEAD");
   check(
-    commits.length === 1 && parents.length === 1 && parents[0] === EXPECTED_BASELINE_SHA,
-    "candidate must be one commit whose direct parent is the verified baseline",
+    parents.length === 1 && parents[0] === (commits.at(-2) ?? EXPECTED_BASELINE_SHA),
+    "candidate HEAD parent does not match the verified linear range",
   );
 
   const changedFiles = parseChangedFiles(EXPECTED_BASELINE_SHA, candidateSha);
@@ -613,6 +837,7 @@ function aggregateEvidenceResults(results) {
   if (results.includes("FAIL")) return "FAIL";
   if (results.includes("BLOCKED")) return "BLOCKED";
   if (results.includes("NOT RUN")) return "NOT RUN";
+  if (results.includes("NOT BROWSER-REPRODUCED")) return "NOT BROWSER-REPRODUCED";
   if (results.includes("NOT APPLICABLE")) return "NOT APPLICABLE";
   return "PASS";
 }
@@ -657,6 +882,7 @@ function validateRawEvidenceIndex(entries, provenance, observedAtMs) {
         !/[\r\n]/u.test(entry.executed),
       `${label} executed command/assertion must be a non-empty single-line summary`,
     );
+    assertBuildLogExecutedBinding(entry, label);
     scanText(entry.executed, `${label} executed command/assertion`);
     check(isResult(entry.result) && entry.result !== "NOT RUN", `${label} has invalid captured result`);
     check(
@@ -798,18 +1024,10 @@ function assertEvidenceRows(rows, requiredIds, label, rawEvidence, evidenceKinds
     ids.size === requiredIds.length,
     `${label} must contain exactly the ${requiredIds.length} authorized evidence rows`,
   );
-
-  if (label === "validation") {
-    const exactNine = rows.find((row) => row.id === "exact-nine-package-integrity");
-    check(
-      exactNine?.result === "NOT RUN" || exactNine?.result === "NOT APPLICABLE",
-      "exact-nine-package-integrity must remain NOT RUN or NOT APPLICABLE inside the package",
-    );
-    check(
-      exactNine?.rawEvidenceSha256 === null || exactNine?.rawEvidenceSha256 === undefined,
-      "exact-nine-package-integrity cannot embed a self-referential raw-evidence digest",
-    );
-  }
+  check(
+    JSON.stringify(rows.map((row) => row.id)) === JSON.stringify(requiredIds),
+    `${label} rows must preserve the required canonical order`,
+  );
 }
 
 function commitBytes(candidateSha, path) {
@@ -874,20 +1092,83 @@ export function validateEvidence(evidence, provenance) {
 
   assertExactObjectKeys(
     evidence.humanComprehension,
-    ["status", "checklist", "rawEvidenceSha256"],
+    [
+      "status",
+      "method",
+      "evaluatorBasis",
+      "prompts",
+      "resultingCopyChanges",
+      "checklist",
+      "rawEvidenceSha256",
+    ],
     "humanComprehension",
   );
   check(
     evidence.humanComprehension.status === "NOT HUMAN-VALIDATED" ||
-      evidence.humanComprehension.status === "HUMAN-VALIDATED",
+      evidence.humanComprehension.status ===
+        "EVALUATOR-BASIS-VALIDATED; NOT HUMAN-PARTICIPANT-TESTED",
     "humanComprehension status is invalid",
+  );
+  for (const key of ["method", "evaluatorBasis"]) {
+    check(
+      typeof evidence.humanComprehension[key] === "string" &&
+        evidence.humanComprehension[key].length > 0 &&
+        !/[\r\n]/u.test(evidence.humanComprehension[key]),
+      `humanComprehension ${key} must be a non-empty single-line value`,
+    );
+  }
+  check(
+    Array.isArray(evidence.humanComprehension.prompts) &&
+      evidence.humanComprehension.prompts.length ===
+        REQUIRED_COMPREHENSION_PROMPTS.length,
+    `humanComprehension must contain exactly ${REQUIRED_COMPREHENSION_PROMPTS.length} prompt outcomes`,
+  );
+  for (const [index, requiredPrompt] of REQUIRED_COMPREHENSION_PROMPTS.entries()) {
+    const prompt = evidence.humanComprehension.prompts[index];
+    assertExactObjectKeys(prompt, ["id", "prompt", "outcome"], `humanComprehension prompt ${index + 1}`);
+    check(prompt.id === requiredPrompt.id, `humanComprehension prompt ${index + 1} id mismatch`);
+    check(prompt.prompt === requiredPrompt.prompt, `humanComprehension prompt ${index + 1} text mismatch`);
+    check(
+      typeof prompt.outcome === "string" &&
+        prompt.outcome.length > 0 &&
+        !/[\r\n]/u.test(prompt.outcome),
+      `humanComprehension prompt ${index + 1} requires a single-line outcome`,
+    );
+  }
+  check(
+    Array.isArray(evidence.humanComprehension.resultingCopyChanges) &&
+      evidence.humanComprehension.resultingCopyChanges.length > 0 &&
+      evidence.humanComprehension.resultingCopyChanges.every(
+        (item) => typeof item === "string" && item.length > 0 && !/[\r\n]/u.test(item),
+      ),
+    "humanComprehension resultingCopyChanges must be a non-empty array of single-line dispositions",
   );
   check(
     JSON.stringify(evidence.humanComprehension.checklist) ===
       JSON.stringify(REQUIRED_COMPREHENSION_CHECKLIST),
     "humanComprehension checklist must preserve the exact semantic laws and activation boundary",
   );
-  if (evidence.humanComprehension.status === "HUMAN-VALIDATED") {
+  if (evidence.humanComprehension.status !== "NOT HUMAN-VALIDATED") {
+    check(
+      evidence.humanComprehension.method !== "NOT RUN",
+      "evaluator-basis validation requires a completed method",
+    );
+    check(
+      evidence.humanComprehension.evaluatorBasis === EVALUATOR_BASIS,
+      `evaluator-basis validation must use the exact non-human basis: ${EVALUATOR_BASIS}`,
+    );
+    check(
+      evidence.humanComprehension.prompts.every(
+        (prompt) => prompt.outcome !== "NOT RUN",
+      ),
+      "evaluator-basis validation requires an outcome for every mandated prompt",
+    );
+    check(
+      evidence.humanComprehension.resultingCopyChanges.every(
+        (item) => item !== "NOT RUN",
+      ),
+      "evaluator-basis validation requires a resulting copy-change disposition",
+    );
     assertRawEvidenceReference(
       {
         result: "PASS",
@@ -899,6 +1180,16 @@ export function validateEvidence(evidence, provenance) {
       "humanComprehension:status",
     );
   } else {
+    check(
+      evidence.humanComprehension.method === "NOT RUN" &&
+        evidence.humanComprehension.evaluatorBasis === "NO EVALUATION PERFORMED" &&
+        evidence.humanComprehension.prompts.every(
+          (prompt) => prompt.outcome === "NOT RUN",
+        ) &&
+        JSON.stringify(evidence.humanComprehension.resultingCopyChanges) ===
+          JSON.stringify(["NOT RUN"]),
+      "NOT HUMAN-VALIDATED must use exact non-evaluation placeholders",
+    );
     check(
       evidence.humanComprehension.rawEvidenceSha256 === null ||
         evidence.humanComprehension.rawEvidenceSha256 === undefined,
@@ -956,11 +1247,11 @@ export function validateEvidence(evidence, provenance) {
 
   assertExactObjectKeys(
     evidence.build,
-    ["result", "commandSummary", "gitBindingSha", "assertions"],
+    ["result", "commands", "gitBindingSha", "assertions"],
     "build",
   );
   check(isResult(evidence.build.result), "build result is invalid");
-  check(typeof evidence.build.commandSummary === "string" && evidence.build.commandSummary.length > 0, "build command summary is required");
+  assertExactBuildCommands(evidence.build.commands);
   assertExactAssertionKeys(
     evidence.build.assertions,
     REQUIRED_BUILD_ASSERTION_KEYS,
@@ -1010,30 +1301,18 @@ export function validateEvidence(evidence, provenance) {
   );
 
   check(Array.isArray(evidence.sourceClosure) && evidence.sourceClosure.length > 0, "sourceClosure must be non-empty");
-  const sourcePaths = new Set();
-  const sourceCategories = new Set();
   for (const item of evidence.sourceClosure) {
-    assertExactObjectKeys(item, ["category", "path", "bytes", "sha256"], "sourceClosure entry");
-    assertSafeRelativePath(item.path, "sourceClosure path");
-    check(!sourcePaths.has(item.path), `duplicate sourceClosure path ${item.path}`);
-    sourcePaths.add(item.path);
-    check(REQUIRED_SOURCE_CATEGORIES.includes(item.category), `invalid source category ${item.category}`);
-    sourceCategories.add(item.category);
-    const bytes = commitBytes(provenance.candidateSha, item.path);
-    check(item.sha256 === sha256(bytes), `sourceClosure hash mismatch for ${item.path}`);
-    check(item.bytes === bytes.byteLength, `sourceClosure byte count mismatch for ${item.path}`);
+    assertExactObjectKeys(item, ["category", "mode", "path", "bytes", "sha256"], "sourceClosure entry");
+    assertSafeRelativePath(item.path, "sourceClosure path", { allowHidden: true });
+    check(TRACKED_SOURCE_CATEGORIES.includes(item.category), `invalid source category ${item.category}`);
+    check(item.mode === "100644" || item.mode === "100755", `invalid tracked mode for ${item.path}`);
+    check(Number.isSafeInteger(item.bytes) && item.bytes >= 0, `invalid tracked byte count for ${item.path}`);
+    check(/^[0-9a-f]{64}$/u.test(item.sha256), `invalid tracked SHA-256 for ${item.path}`);
   }
-  for (const category of REQUIRED_SOURCE_CATEGORIES) {
-    check(sourceCategories.has(category), `sourceClosure is missing category ${category}`);
-  }
-  for (const [path, category] of Object.entries(REQUIRED_SOURCE_PATHS)) {
-    check(sourcePaths.has(path), `sourceClosure is missing required transitive path ${path}`);
-    const item = evidence.sourceClosure.find((candidate) => candidate.path === path);
-    check(item?.category === category, `sourceClosure category mismatch for ${path}; expected ${category}`);
-  }
+  const expectedSourceClosure = collectTrackedRepositoryBom(provenance.candidateSha);
   check(
-    sourcePaths.size === Object.keys(REQUIRED_SOURCE_PATHS).length,
-    `sourceClosure must contain exactly the ${Object.keys(REQUIRED_SOURCE_PATHS).length} authorized paths`,
+    JSON.stringify(evidence.sourceClosure) === JSON.stringify(expectedSourceClosure),
+    "sourceClosure must exactly equal the complete tracked-repository Git-object BOM in canonical tree order",
   );
 
   check(
@@ -1145,7 +1424,7 @@ export function forbiddenPatterns() {
   const currentUser = userInfo().username;
   return [
     ["repository absolute path", new RegExp(escapeRegExp(REPOSITORY_ROOT), "iu")],
-    ["macOS user path", /\/Users\//iu],
+    ["macOS user path", /\/Users\//u],
     ["Linux user path", /\/home\//iu],
     ["private temporary path", /\/private\/(?:tmp|var)\//iu],
     ["temporary path", /\/tmp(?:\/|\b)/iu],
@@ -1204,11 +1483,27 @@ export function scanText(text, label) {
   }
 }
 
+export const COPY_CONTROL_SCRIPT = `(()=>{"use strict";const b=document.querySelector("[data-phase1br-copy-control]");const a=document.querySelector("[data-phase1br-document]");if(!b||!a)return;const fallback=()=>{const r=document.createRange();r.selectNodeContents(a);const s=window.getSelection();s.removeAllRanges();s.addRange(r);const ok=document.execCommand("copy");s.removeAllRanges();return ok};b.addEventListener("click",async()=>{let ok=false;try{if(navigator.clipboard&&navigator.clipboard.writeText){await navigator.clipboard.writeText(a.innerText);ok=true}else{ok=fallback()}}catch{ok=fallback()}b.textContent=ok?"Copied":"Copy failed";});})();`;
+
 export function scanHtml(html, label) {
   scanText(html, label);
   check(/^<!doctype html>/iu.test(html), `${label} is not standalone HTML`);
   check(/<meta name="viewport"/iu.test(html), `${label} lacks viewport metadata`);
   check(/<meta name="robots" content="noindex,nofollow,noarchive">/iu.test(html), `${label} lacks noindex metadata`);
+  const exactScript = `<script id="phase1br-copy-script">${COPY_CONTROL_SCRIPT}</script>`;
+  check(
+    (html.match(/<script\b/giu) ?? []).length === 1 && html.includes(exactScript),
+    `${label} must contain exactly the authorized embedded copy-control script`,
+  );
+  check(
+    (html.match(/<button type="button" data-phase1br-copy-control class="copy-control">/gu) ?? []).length === 1,
+    `${label} must contain exactly one copy-document control`,
+  );
+  check(
+    (html.match(/<article data-phase1br-document>/gu) ?? []).length === 1,
+    `${label} must contain exactly one copyable document region`,
+  );
+  const passiveHtml = html.replace(exactScript, "");
   const external = [
     /<script\b/iu,
     /<link\b/iu,
@@ -1228,7 +1523,7 @@ export function scanHtml(html, label) {
     /(?:fetch|XMLHttpRequest|WebSocket|EventSource)\s*\(/u,
     /data:[^\s"']+;base64,/iu,
   ];
-  for (const pattern of external) check(!pattern.test(html), `${label} contains external or active HTML: ${pattern}`);
+  for (const pattern of external) check(!pattern.test(passiveHtml), `${label} contains external or active HTML: ${pattern}`);
 }
 
 function escapeHtml(value) {
@@ -1328,7 +1623,7 @@ function markdownBody(markdown) {
 }
 
 const HTML_STYLE = `
-:root{color-scheme:light dark;--bg:#07131f;--panel:#0d2030;--line:#315269;--text:#effaff;--muted:#bed0da;--accent:#74e4d6;--focus:#ffd27a;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}*{box-sizing:border-box}html{background:var(--bg);color:var(--text);line-height:1.6}body{margin:0;background:var(--bg)}main{width:min(100% - 2rem,72rem);margin:auto;padding:2rem 0 5rem}article{padding:clamp(1rem,4vw,2.5rem);border:1px solid var(--line);border-radius:1rem;background:var(--panel)}h1{font-size:clamp(1.8rem,7vw,3.4rem);line-height:1.08}h2{margin-top:2.5rem;font-size:clamp(1.35rem,4vw,2rem)}h3{margin-top:1.75rem}p,li,td,th{overflow-wrap:anywhere}p,li{color:var(--muted)}strong{color:var(--text)}code{padding:.1rem .35rem;border:1px solid var(--line);border-radius:.3rem;background:#061019;color:#d7fbf6}.table-wrap{overflow-x:auto;margin:1rem 0;border:1px solid var(--line);border-radius:.75rem}.table-wrap:focus-visible,input:focus-visible{outline:3px solid var(--focus);outline-offset:3px}table{width:100%;min-width:42rem;border-collapse:collapse}th,td{padding:.7rem;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}th{color:var(--text)}blockquote{margin:1rem 0;padding:.8rem 1rem;border-left:.3rem solid var(--accent);background:#081925}.decision{display:flex;gap:.7rem;align-items:flex-start;min-height:44px;padding:.75rem 0}.decision input{width:1.25rem;height:1.25rem;margin-top:.25rem}@media(prefers-color-scheme:light){:root{--bg:#f4f8fb;--panel:#fff;--line:#abc1cf;--text:#102333;--muted:#405868;--accent:#006d68;--focus:#7a4900}code{background:#edf4f7;color:#143f4b}blockquote{background:#edf6f5}}@media(max-width:520px){main{width:min(100% - 1rem,72rem);padding-top:.5rem}article{border-radius:.75rem;padding:1rem}table{min-width:36rem}}@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+:root{color-scheme:light dark;--bg:#07131f;--panel:#0d2030;--line:#315269;--text:#effaff;--muted:#bed0da;--accent:#74e4d6;--focus:#ffd27a;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}*{box-sizing:border-box}html{background:var(--bg);color:var(--text);line-height:1.6}body{margin:0;background:var(--bg)}main{width:min(100% - 2rem,72rem);margin:auto;padding:2rem 0 5rem}article{padding:clamp(1rem,4vw,2.5rem);border:1px solid var(--line);border-radius:1rem;background:var(--panel)}h1{font-size:clamp(1.8rem,7vw,3.4rem);line-height:1.08}h2{margin-top:2.5rem;font-size:clamp(1.35rem,4vw,2rem)}h3{margin-top:1.75rem}p,li,td,th{overflow-wrap:anywhere}p,li{color:var(--muted)}strong{color:var(--text)}code{padding:.1rem .35rem;border:1px solid var(--line);border-radius:.3rem;background:#061019;color:#d7fbf6}.copy-control{min-height:44px;margin:.25rem 0 1rem;padding:.65rem 1rem;border:1px solid var(--line);border-radius:.5rem;background:var(--panel);color:var(--text);font:inherit;font-weight:700;cursor:pointer}.table-wrap{overflow-x:auto;margin:1rem 0;border:1px solid var(--line);border-radius:.75rem}.table-wrap:focus-visible,input:focus-visible,button:focus-visible{outline:3px solid var(--focus);outline-offset:3px}table{width:100%;min-width:42rem;border-collapse:collapse}th,td{padding:.7rem;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}th{color:var(--text)}blockquote{margin:1rem 0;padding:.8rem 1rem;border-left:.3rem solid var(--accent);background:#081925}.decision{display:flex;gap:.7rem;align-items:flex-start;min-height:44px;padding:.75rem 0}.decision input{width:1.25rem;height:1.25rem;margin-top:.25rem}@media(prefers-color-scheme:light){:root{--bg:#f4f8fb;--panel:#fff;--line:#abc1cf;--text:#102333;--muted:#405868;--accent:#006d68;--focus:#7a4900}code{background:#edf4f7;color:#143f4b}blockquote{background:#edf6f5}}@media(max-width:520px){main{width:min(100% - 1rem,72rem);padding-top:.5rem}article{border-radius:.75rem;padding:1rem}table{min-width:36rem}}@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 `;
 
 function standaloneHtml(title, contentHtml, eyebrow) {
@@ -1345,8 +1640,10 @@ function standaloneHtml(title, contentHtml, eyebrow) {
 <body>
   <main>
     <p>${escapeHtml(eyebrow)}</p>
-    <article>${contentHtml}</article>
+    <button type="button" data-phase1br-copy-control class="copy-control">Copy document</button>
+    <article data-phase1br-document>${contentHtml}</article>
   </main>
+  <script id="phase1br-copy-script">${COPY_CONTROL_SCRIPT}</script>
 </body>
 </html>`);
 }
@@ -1365,6 +1662,32 @@ function resultSummary(rows) {
   return EVIDENCE_RESULTS.map((result) => `${result}: ${counts[result]}`).join(" · ");
 }
 
+export function finalStatusLine(evidence) {
+  const blockers = [
+    ...evidence.validation
+      .filter((row) => row.result !== "PASS")
+      .map((row) => `validation:${row.id}=${row.result}`),
+    ...evidence.browser
+      .filter((row) => row.result !== "PASS")
+      .map((row) => `browser:${row.id}=${row.result}`),
+  ];
+  if (
+    evidence.humanComprehension.status !==
+    "EVALUATOR-BASIS-VALIDATED; NOT HUMAN-PARTICIPANT-TESTED"
+  ) {
+    blockers.push(`humanComprehension=${evidence.humanComprehension.status}`);
+  }
+  if (evidence.deployment.result !== "PASS") {
+    blockers.push(`deployment=${evidence.deployment.result}`);
+  }
+  if (evidence.build.result !== "PASS") {
+    blockers.push(`build=${evidence.build.result}`);
+  }
+  return blockers.length === 0
+    ? "PHASE 1B-R COMPLETE — READY FOR FOUNDER REVIEW"
+    : `PHASE 1B-R BLOCKED — ${blockers.join("; ")}`;
+}
+
 function markdownTable(headers, rows) {
   return [
     `| ${headers.join(" | ")} |`,
@@ -1375,9 +1698,9 @@ function markdownTable(headers, rows) {
 
 function privatePreviewSummary(evidence) {
   if (evidence.deployment.result === "PASS") {
-    return "Work authorized. Protected Preview completed. Contract ratification pending.";
+    return "Work authorized; protected Preview completed; contract ratification pending.";
   }
-  return `Work authorized. Protected Preview evidence is ${evidence.deployment.result}; completion is not verified. Contract ratification pending.`;
+  return `Work authorized; protected Preview evidence is ${evidence.deployment.result}; completion is incomplete and blocking; contract ratification pending.`;
 }
 
 function verifiedBinding(record, assertionKey) {
@@ -1394,12 +1717,12 @@ function privatePreviewCoordinatesSummary(evidence) {
 }
 
 function browserBehaviorSummary(evidence) {
-  const history = evidence.browser.find((row) => row.id === "back-and-forward");
+  const history = evidence.browser.find((row) => row.id === "back-and-forward-history");
   const firstFrame = evidence.browser.find(
-    (row) => row.id === "first-frame-disclosure",
+    (row) => row.id === "first-frame-arrival",
   );
-  const liveRegion = evidence.validation.find(
-    (row) => row.id === "phase-1b-guard",
+  const liveRegion = evidence.browser.find(
+    (row) => row.id === "live-region",
   );
   const allPassed = [history, firstFrame, liveRegion].every(
     (row) => row.result === "PASS",
@@ -1424,11 +1747,57 @@ function assertionSummary(assertion) {
   return `${assertion.result}: ${assertion.detail} Raw evidence SHA-256: ${assertion.rawEvidenceSha256 ?? "No raw digest claimed"}.`;
 }
 
+function comprehensionMarkdown(evidence) {
+  const record = evidence.humanComprehension;
+  return normalizeText(`Status: **${record.status}**
+
+Method: ${record.method}
+
+Evaluator basis: ${record.evaluatorBasis}
+
+${markdownTable(
+    ["Mandated prompt", "Recorded outcome"],
+    record.prompts.map((item) => [item.prompt, item.outcome]),
+  )}
+
+Resulting copy changes:
+
+${record.resultingCopyChanges.map((item) => `- ${item}`).join("\n")}
+
+No human-participant testing is claimed. An AI evaluator is not labeled as human.`);
+}
+
+function comprehensionText(evidence) {
+  const record = evidence.humanComprehension;
+  return normalizeText(`Status: ${record.status}
+Method: ${record.method}
+Evaluator basis: ${record.evaluatorBasis}
+Prompt outcomes:
+${record.prompts.map((item) => `- ${item.prompt} => ${item.outcome}`).join("\n")}
+Resulting copy changes:
+${record.resultingCopyChanges.map((item) => `- ${item}`).join("\n")}
+No human-participant testing is claimed. An AI evaluator is not labeled as human.`);
+}
+
+function comprehensionHtml(evidence) {
+  const record = evidence.humanComprehension;
+  const promptRows = record.prompts
+    .map((item) => `<tr><td>${escapeHtml(item.prompt)}</td><td>${escapeHtml(item.outcome)}</td></tr>`)
+    .join("");
+  const copyChanges = record.resultingCopyChanges
+    .map((item) => `<li>${escapeHtml(item)}</li>`)
+    .join("");
+  return `<p><strong>${escapeHtml(record.status)}</strong></p><p>Method: ${escapeHtml(record.method)}</p><p>Evaluator basis: ${escapeHtml(record.evaluatorBasis)}</p><div class="table-wrap" role="region" aria-label="Comprehension prompt outcomes" tabindex="0"><table><thead><tr><th scope="col">Mandated prompt</th><th scope="col">Recorded outcome</th></tr></thead><tbody>${promptRows}</tbody></table></div><h3>Resulting copy changes</h3><ul>${copyChanges}</ul><p>No human-participant testing is claimed. An AI evaluator is not labeled as human.</p>`;
+}
+
 function reportMarkdown(provenance, evidence) {
   const changedRows = provenance.changedFiles.map((item) => [item.status, item.path, item.bytes, item.sha256]);
   const validationRows = evidence.validation.map((item) => [item.id, item.result, item.detail]);
   const browserRows = evidence.browser.map((item) => [item.id, item.result, item.detail]);
+  const finalStatus = finalStatusLine(evidence);
   return normalizeText(`# CreditVector Growth Experience Phase 1B-R — Founder Report
+
+**${finalStatus}**
 
 ${privatePreviewSummary(evidence)}
 
@@ -1480,9 +1849,16 @@ All seventy known pathway/fixture pairs are explicitly classified with pair-spec
 
 ${evidence.validation.find((row) => row.id === "production-hard-off-matrix").result}: ${evidence.validation.find((row) => row.id === "production-hard-off-matrix").detail}
 
-## 11. Deployment BOM
+## 11. Deployment and repository BOM
 
-The separate BOM records complete lineage, exact delta, categorized transitive source closure, hashes, Git binding, build identity, exclusions, artifact identity, protection, production safety, and platform HTML mutation disposition.
+The evidence manifest records complete lineage, the exact candidate delta, every tracked Git blob with category/mode/bytes/SHA-256/path, Git binding, build identity, exclusions, artifact identity, protection, production safety, platform HTML mutation disposition, network/write evidence, Growth-owned state evidence, and raw-evidence digests.
+
+Exact sanitized build commands:
+
+${markdownTable(
+    ["Build", "Sanitized exact command"],
+    evidence.build.commands.map((item) => [item.id, item.sanitizedCommand]),
+  )}
 
 ## 12. Validation ledger
 
@@ -1494,13 +1870,21 @@ ${markdownTable(["Evidence", "Result", "Detail"], browserRows)}
 
 ${browserBehaviorSummary(evidence)}
 
-Human comprehension is **${evidence.humanComprehension.status}**. Mechanical assertions do not prove that a person understood the distinctions.
+### Structured comprehension review
+
+${comprehensionMarkdown(evidence)}
+
+An **EVALUATOR-BASIS-VALIDATED; NOT HUMAN-PARTICIPANT-TESTED** result is backed by preserved HUMAN_REVIEW-kind evidence recording the independent evaluator method, exact prompts, outcomes, and resulting copy changes. It is sufficient for this package gate but does not claim human-participant testing or label an AI evaluator as human.
 
 ## 14. Exact nine-file package and SHA-256
 
+Archive filename: ${ZIP_NAME}
+
+Exact member count: ${PACKAGE_MEMBERS.length}
+
 ${PACKAGE_MEMBERS.map((name, index) => `${index + 1}. ${name}`).join("\n")}
 
-The evidence manifest hashes the eight non-manifest members. The manifest itself and the ZIP are hashed in the external package-integrity record after the archive exists; the ZIP hash is deliberately not embedded recursively.
+The evidence manifest hashes the eight non-manifest members. Final archive byte size, archive SHA-256, and the manifest member hash are published only by the external package-integrity record after the archive exists; these facts are deliberately not embedded recursively.
 
 ## 15. Protected Preview identity
 
@@ -1539,11 +1923,16 @@ ${evidence.humanComprehension.checklist.map((item) => `- [ ] ${item}`).join("\n"
 - [ ] HOLD GROWTH EXPERIENCE PHASE 1B-R — [exact blockers]
 - [ ] REJECT GROWTH EXPERIENCE PHASE 1B-R — [reason]
 
-No decision exists until the Founder explicitly records one.`);
+No decision exists until the Founder explicitly records one.
+
+**${finalStatus}**`);
 }
 
 function handoffText(provenance, evidence) {
+  const finalStatus = finalStatusLine(evidence);
   return normalizeText(`CREDITVECTOR GROWTH EXPERIENCE PHASE 1B-R — FOUNDER HANDOFF
+
+${finalStatus}
 
 ${privatePreviewSummary(evidence)}
 
@@ -1575,6 +1964,12 @@ Human comprehension: ${evidence.humanComprehension.status}
 Preview: ${evidence.deployment.result} / ${evidence.deployment.state}
 ${privatePreviewCoordinatesSummary(evidence)}
 
+SANITIZED EXACT BUILD COMMANDS
+${evidence.build.commands.map((item) => `- ${item.id}: ${item.sanitizedCommand}`).join("\n")}
+
+COMPREHENSION REVIEW
+${comprehensionText(evidence)}
+
 FOUNDER CHECKLIST
 ${evidence.humanComprehension.checklist.map((item) => `[ ] ${item}`).join("\n")}
 
@@ -1584,7 +1979,9 @@ FOUNDER DECISION — ALL UNCHECKED
 [ ] HOLD
 [ ] REJECT
 
-No decision exists until the Founder explicitly records one. No merge or production deployment is authorized by this handoff.`);
+No decision exists until the Founder explicitly records one. No merge or production deployment is authorized by this handoff.
+
+${finalStatus}`);
 }
 
 function validationLedgerHtml(evidence) {
@@ -1593,7 +1990,7 @@ function validationLedgerHtml(evidence) {
     .join("");
   return standaloneHtml(
     "Growth Experience Phase 1B-R — Validation Ledger",
-    `<h1>Growth Experience Phase 1B-R — Validation Ledger</h1><p>Evidence observed at ${escapeHtml(evidence.observedAt)}. Results are limited to PASS, FAIL, NOT RUN, NOT APPLICABLE, or BLOCKED. A PASS requires a preserved raw-evidence digest.</p><div class="table-wrap" role="region" aria-label="Validation ledger" tabindex="0"><table><thead><tr><th scope="col">Evidence</th><th scope="col">Result</th><th scope="col">Detail</th><th scope="col">Raw evidence SHA-256</th></tr></thead><tbody>${rows}</tbody></table></div>`,
+    `<h1>Growth Experience Phase 1B-R — Validation Ledger</h1><p><strong>${escapeHtml(finalStatusLine(evidence))}</strong></p><p>Evidence observed at ${escapeHtml(evidence.observedAt)}. Results are limited to PASS, FAIL, NOT RUN, NOT APPLICABLE, BLOCKED, or NOT BROWSER-REPRODUCED. A PASS requires a preserved raw-evidence digest.</p><div class="table-wrap" role="region" aria-label="Validation ledger" tabindex="0"><table><thead><tr><th scope="col">Evidence</th><th scope="col">Result</th><th scope="col">Detail</th><th scope="col">Raw evidence SHA-256</th></tr></thead><tbody>${rows}</tbody></table></div>`,
     "Protected Founder evidence · package-safe ledger",
   );
 }
@@ -1607,19 +2004,19 @@ function browserMatrixHtml(evidence) {
     .join("");
   return standaloneHtml(
     "Growth Experience Phase 1B-R — Browser Matrix",
-    `<h1>Growth Experience Phase 1B-R — Browser Matrix</h1><p>Evidence observed at ${escapeHtml(evidence.observedAt)}. Arrival-settled evidence is separate from first-frame disclosure evidence. Local optimized-build and protected-Preview claims remain distinct.</p><div class="table-wrap" role="region" aria-label="Browser matrix" tabindex="0"><table><thead><tr><th scope="col">Evidence</th><th scope="col">Result</th><th scope="col">Detail</th><th scope="col">Raw evidence SHA-256</th></tr></thead><tbody>${rows}</tbody></table></div><h2>Human comprehension</h2><p><strong>${escapeHtml(evidence.humanComprehension.status)}</strong></p><ul>${checklist}</ul>`,
+    `<h1>Growth Experience Phase 1B-R — Browser Matrix</h1><p><strong>${escapeHtml(finalStatusLine(evidence))}</strong></p><p>Evidence observed at ${escapeHtml(evidence.observedAt)}. Arrival-settled evidence is separate from first-frame disclosure evidence. Local optimized-build and protected-Preview claims remain distinct. NOT BROWSER-REPRODUCED is an explicit blocking result, never an implicit pass.</p><div class="table-wrap" role="region" aria-label="Browser matrix" tabindex="0"><table><thead><tr><th scope="col">Evidence</th><th scope="col">Result</th><th scope="col">Detail</th><th scope="col">Raw evidence SHA-256</th></tr></thead><tbody>${rows}</tbody></table></div><h2>Structured comprehension review</h2>${comprehensionHtml(evidence)}<h3>Founder checklist</h3><ul>${checklist}</ul>`,
     "Protected Founder evidence · browser and accessibility",
   );
 }
 
-function deploymentBom(provenance, evidence) {
+function deploymentAndRepositoryBom(provenance, evidence) {
   const delta = provenance.changedFiles
     .map((item) => `${item.status}\t${item.bytes}\t${item.sha256}\t${item.path}`)
     .join("\n");
   const closure = evidence.sourceClosure
-    .map((item) => `${item.category}\t${item.bytes}\t${item.sha256}\t${item.path}`)
+    .map((item) => `${item.category}\t${item.mode}\t${item.bytes}\t${item.sha256}\t${item.path}`)
     .join("\n");
-  return normalizeText(`CREDITVECTOR GROWTH EXPERIENCE PHASE 1B-R — DEPLOYMENT BILL OF MATERIALS
+  return normalizeText(`CREDITVECTOR GROWTH EXPERIENCE PHASE 1B-R — EMBEDDED DEPLOYMENT AND REPOSITORY BILL OF MATERIALS
 
 SCHEMA VERSION
 ${EVIDENCE_SCHEMA_VERSION}
@@ -1642,8 +2039,9 @@ EXACT CANDIDATE DELTA
 STATUS\tBYTES\tSHA-256\tREPOSITORY-RELATIVE PATH
 ${delta}
 
-TRANSITIVE SOURCE CLOSURE
-CATEGORY\tBYTES\tSHA-256\tREPOSITORY-RELATIVE PATH
+COMPLETE TRACKED-REPOSITORY SOURCE CLOSURE
+Tracked blob count: ${evidence.sourceClosure.length}
+CATEGORY\tMODE\tBYTES\tSHA-256\tREPOSITORY-RELATIVE PATH
 ${closure}
 
 DEPLOYMENT IDENTITY
@@ -1660,11 +2058,16 @@ ${privatePreviewCoordinatesSummary(evidence)}
 
 BUILD IDENTITY
 Result: ${evidence.build.result}
-Command summary: ${evidence.build.commandSummary}
+Exact sanitized commands:
+${evidence.build.commands.map((item) => `- ${item.id}: ${item.sanitizedCommand}`).join("\n")}
 Git binding: ${verifiedBinding(evidence.build, "candidateBinding")}
 Optimized review: ${assertionSummary(evidence.build.assertions.optimizedReview)}
 Identity: ${assertionSummary(evidence.build.assertions.identity)}
 Candidate binding: ${assertionSummary(evidence.build.assertions.candidateBinding)}
+
+STRUCTURED COMPREHENSION REVIEW
+${comprehensionText(evidence)}
+Raw HUMAN_REVIEW evidence SHA-256: ${evidence.humanComprehension.rawEvidenceSha256 ?? "No raw digest claimed"}
 
 RAW EVIDENCE INDEX
 Verified files: ${evidence.rawEvidence.length}
@@ -1681,38 +2084,75 @@ Generator candidate: ${provenance.candidateSha}
 Package: ${ZIP_NAME}
 Members, in exact order:
 ${PACKAGE_MEMBERS.map((name, index) => `${index + 1}. ${name}`).join("\n")}
-The evidence manifest records hashes for the eight non-manifest members. The external package-integrity record hashes all nine members, including the manifest, plus the ZIP. The ZIP hash is external because an archive cannot contain its own final hash without recursion.
+The evidence manifest records hashes for the eight non-manifest members. The external package-integrity record hashes all nine members, including the manifest, plus the ZIP. Final ZIP byte size and hash are external because an archive cannot contain its own final identity without recursion.
 
 ROLLBACK
 ${evidence.rollback.map((item) => `- ${item}`).join("\n")}`);
 }
 
-function decisionReceiptHtml() {
-  const choices = [
-    "APPROVE",
-    "APPROVE WITH AMENDMENTS",
-    "HOLD",
-    "REJECT",
-  ];
-  return standaloneHtml(
-    "Growth Experience Phase 1B-R — Founder Decision Receipt",
-    `<h1>Growth Experience Phase 1B-R — Founder Decision Receipt</h1><p><strong>No decision exists until the Founder explicitly records one.</strong></p><p>Every choice below is intentionally unchecked. This static receipt does not submit, save, or infer a decision.</p>${choices.map((choice, index) => `<label class="decision" for="decision-${index}"><input id="decision-${index}" type="checkbox" disabled><span><strong>${escapeHtml(choice)}</strong></span></label>`).join("")}<h2>Decision boundary</h2><p>Approval would apply only to the proposed Phase 1B-R contract for a separately authorized next gate. It would not authorize merge, production deployment, public or participant access, paid activation, source integration, schema, runtime AI, commerce, billing, payout, or economics.</p>`,
-    "Protected Founder review · static unchecked receipt",
-  );
+function capabilityContractMarkdown(provenance) {
+  const sourcePath = "GROWTH_EXPERIENCE_PHASE_1B_CAPABILITY_CONTRACT.md";
+  const sourceBytes = commitBytes(provenance.candidateSha, sourcePath);
+  const sourceText = sourceBytes.toString("utf8");
+  check(Buffer.from(sourceText, "utf8").equals(sourceBytes), "canonical capability contract is not valid UTF-8");
+  const preamble = normalizeText(`# CreditVector Growth Experience Phase 1B-R — Packaged Capability Contract
+
+This package member is generated only from the committed canonical capability contract named below. The canonical contract remains not Founder-ratified; packaging does not approve or amend it.
+
+- Canonical source: ${sourcePath}
+- Candidate SHA: ${provenance.candidateSha}
+- Canonical source bytes: ${sourceBytes.byteLength}
+- Canonical source SHA-256: ${sha256(sourceBytes)}
+
+---
+`);
+  return Buffer.concat([
+    Buffer.from(preamble),
+    sourceBytes,
+    sourceBytes.at(-1) === 0x0a ? Buffer.alloc(0) : Buffer.from("\n"),
+  ]);
 }
 
-function evidenceManifest(payloads, provenance) {
+function decisionReceiptMarkdown() {
+  return normalizeText(`# CreditVector Growth Experience Phase 1B-R — Founder Decision Receipt
+
+No decision exists until the Founder explicitly records one. Every choice is intentionally unchecked.
+
+- [ ] APPROVE
+- [ ] APPROVE WITH AMENDMENTS
+- [ ] HOLD
+- [ ] REJECT
+
+Approval, if explicitly recorded, applies only to the proposed Phase 1B-R contract for a separately authorized next gate. It does not authorize merge, production deployment, public or participant access, paid activation, source integration, schema, runtime AI, commerce, billing, payout, or economics.`);
+}
+
+function evidenceManifest(payloads, provenance, evidence) {
   const records = HASHED_MEMBERS.map((name) => {
     const bytes = payloads.get(name);
     check(bytes, `manifest source is missing ${name}`);
     return `${sha256(bytes)}  ${bytes.byteLength}  ${name}`;
   });
+  const rawEvidenceRecords = evidence.rawEvidence.map((entry) =>
+    `${entry.evidenceKind}\t${entry.result}\t${entry.bytes}\t${entry.sha256}\t${entry.claimIds.join(",")}`,
+  );
   return normalizeText([
     "# CreditVector Growth Experience Phase 1B-R — evidence manifest",
+    `# Final status: ${finalStatusLine(evidence)}`,
     `# Candidate SHA: ${provenance.candidateSha}`,
-    "# SHA-256 and byte counts cover the eight non-manifest members.",
-    "# The manifest hash and ZIP hash are published externally to avoid recursive hashing.",
+    `# Archive filename: ${ZIP_NAME}`,
+    `# Exact archive member count: ${PACKAGE_MEMBERS.length}`,
+    "# SHA-256 and byte counts below cover the eight non-manifest members.",
+    "# The manifest member hash and final ZIP byte size/SHA-256 are published externally after archive validation to avoid recursion.",
+    "",
+    "NON-MANIFEST PACKAGE MEMBER HASHES",
+    "SHA-256  BYTES  MEMBER",
     ...records,
+    "",
+    deploymentAndRepositoryBom(provenance, evidence).trimEnd(),
+    "",
+    "PACKAGE-SAFE RAW EVIDENCE DIGEST LEDGER",
+    "KIND\tRESULT\tBYTES\tSHA-256\tNAMESPACED CLAIM IDS",
+    ...rawEvidenceRecords,
   ].join("\n"));
 }
 
@@ -1724,11 +2164,12 @@ export function generatePayloads(provenance, evidence) {
   const handoff = handoffText(provenance, evidence);
   payloads.set(PACKAGE_MEMBERS[2], Buffer.from(handoff));
   payloads.set(PACKAGE_MEMBERS[3], Buffer.from(markdownHtml("Growth Experience Phase 1B-R — Founder Handoff", handoff, "Protected Founder review · sanitized handoff")));
-  payloads.set(PACKAGE_MEMBERS[4], Buffer.from(validationLedgerHtml(evidence)));
-  payloads.set(PACKAGE_MEMBERS[5], Buffer.from(browserMatrixHtml(evidence)));
-  payloads.set(PACKAGE_MEMBERS[7], Buffer.from(deploymentBom(provenance, evidence)));
-  payloads.set(PACKAGE_MEMBERS[8], Buffer.from(decisionReceiptHtml()));
-  payloads.set(PACKAGE_MEMBERS[6], Buffer.from(evidenceManifest(payloads, provenance)));
+  payloads.set(PACKAGE_MEMBERS[4], capabilityContractMarkdown(provenance));
+  payloads.set(PACKAGE_MEMBERS[5], Buffer.from(validationLedgerHtml(evidence)));
+  payloads.set(PACKAGE_MEMBERS[6], Buffer.from(browserMatrixHtml(evidence)));
+  payloads.set(PACKAGE_MEMBERS[7], null);
+  payloads.set(PACKAGE_MEMBERS[8], Buffer.from(decisionReceiptMarkdown()));
+  payloads.set(PACKAGE_MEMBERS[7], Buffer.from(evidenceManifest(payloads, provenance, evidence)));
 
   for (const name of PACKAGE_MEMBERS) {
     const bytes = payloads.get(name);
@@ -1788,6 +2229,13 @@ function installArtifacts(stageRoot, provenance) {
     utimesSync(temporary, timestamp, timestamp);
     renameSync(temporary, target);
   }
+  for (const name of RETIRED_PACKAGE_ARTIFACTS) {
+    const retiredPath = join(REPOSITORY_ROOT, name);
+    if (!existsSync(retiredPath)) continue;
+    const info = lstatSync(retiredPath);
+    check(info.isFile() || info.isSymbolicLink(), `retired package artifact is not a removable file: ${name}`);
+    rmSync(retiredPath);
+  }
 }
 
 function parseArgument(name) {
@@ -1809,8 +2257,6 @@ export function evidenceTemplate() {
     rawEvidenceSha256: null,
   });
   const validation = notRunRows(REQUIRED_VALIDATION_IDS);
-  const exactNine = validation.find((row) => row.id === "exact-nine-package-integrity");
-  exactNine.detail = "External package-integrity.json is authoritative and is created only after package validation.";
   return {
     schemaVersion: EVIDENCE_SCHEMA_VERSION,
     observedAt: "REPLACE WITH ISO TIMESTAMP",
@@ -1823,6 +2269,14 @@ export function evidenceTemplate() {
     browser: notRunRows(REQUIRED_BROWSER_IDS),
     humanComprehension: {
       status: "NOT HUMAN-VALIDATED",
+      method: "NOT RUN",
+      evaluatorBasis: "NO EVALUATION PERFORMED",
+      prompts: REQUIRED_COMPREHENSION_PROMPTS.map(({ id, prompt }) => ({
+        id,
+        prompt,
+        outcome: "NOT RUN",
+      })),
+      resultingCopyChanges: ["NOT RUN"],
       checklist: [...REQUIRED_COMPREHENSION_CHECKLIST],
       rawEvidenceSha256: null,
     },
@@ -1847,7 +2301,7 @@ export function evidenceTemplate() {
     },
     build: {
       result: "NOT RUN",
-      commandSummary: "NOT RUN",
+      commands: REQUIRED_BUILD_COMMANDS.map((item) => ({ ...item })),
       gitBindingSha: null,
       assertions: {
         optimizedReview: notRunAssertion(),
@@ -1855,12 +2309,7 @@ export function evidenceTemplate() {
         candidateBinding: notRunAssertion(),
       },
     },
-    sourceClosure: Object.entries(REQUIRED_SOURCE_PATHS).map(([path, category]) => ({
-      category,
-      path,
-      bytes: 0,
-      sha256: "REPLACE WITH SHA-256",
-    })),
+    sourceClosure: [],
     exclusions: [...CANONICAL_EXCLUSIONS],
     knownCaveats: ["Human comprehension is not validated."],
     rollback: ["Retire the protected Preview and revert the bounded candidate commit."],

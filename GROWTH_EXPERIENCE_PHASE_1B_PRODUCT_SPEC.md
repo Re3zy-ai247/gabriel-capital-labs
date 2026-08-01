@@ -25,7 +25,7 @@ The experience displays the seven controlling statuses from the canonical contra
 
 Required summary wording after evidence exists:
 
-> Work authorized. Protected Preview completed. Contract ratification pending.
+> Work authorized; protected Preview completed; contract ratification pending.
 
 Before protected-Preview evidence exists, the Preview statement must remain `NOT RUN` or `BLOCKED` rather than being projected as complete.
 
@@ -57,6 +57,10 @@ Every selection displays its pair-specific rationale in plain language.
 - Correction copy says it challenges source-fact accuracy, provenance, scope, or currency.
 - Appeal copy says it challenges a review decision and requires an underlying decision.
 - Supported copy says synthetic review support is not authorization.
+- Visible copy says review visibility is not public access.
+- Reviewable copy says a review surface is not a ratified contract.
+- Evidence copy says evidence-present is not verified.
+- Qualification copy says qualification is not eligibility.
 - Proposed owner copy says the frozen registry does not resolve that owner.
 - No fixture may imply credential, certification, expert status, employment outcome, reputation, access, compensation, credit result, or business result.
 
@@ -127,6 +131,10 @@ The Founder should confirm:
 - [ ] Submission is not acceptance.
 - [ ] Supported is not authorized.
 - [ ] Synthetic is not live.
+- [ ] Visible is not public.
+- [ ] Reviewable is not ratified.
+- [ ] Evidence-present is not verified.
+- [ ] Qualification is not eligibility.
 - [ ] Proposed ownership is not canonical ownership.
 - [ ] I understand no participant, economic, public, paid, or production activation is included.
 

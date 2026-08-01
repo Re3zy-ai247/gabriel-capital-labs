@@ -539,6 +539,7 @@ export function GrowthCapabilityContractStage({
             Availability, participation, evidence, completion, review,
             correction, appeal, and visibility remain independent. Completion
             never implies approval, qualification, reputation, or economics.
+            Founder review only is not public access.
           </span>
         </div>
 
@@ -639,6 +640,41 @@ export function GrowthCapabilityContractStage({
             )}
           </article>
         </div>
+        {supportedSyntheticReview && contractProjection.compatibilityContract ? (
+          <dl
+            className={styles.evidenceContract}
+            aria-label="Supported pathway and fixture compatibility contract"
+          >
+            <div>
+              <dt>Required owner state</dt>
+              <dd>{contractProjection.compatibilityContract.requiredOwnerState}</dd>
+            </div>
+            <div>
+              <dt>Required evidence state</dt>
+              <dd>{contractProjection.compatibilityContract.requiredEvidenceState}</dd>
+            </div>
+            <div>
+              <dt>Allowed presentation</dt>
+              <dd>{contractProjection.compatibilityContract.allowedPresentationBehavior}</dd>
+            </div>
+            <div>
+              <dt>Prohibited inference</dt>
+              <dd>{contractProjection.compatibilityContract.prohibitedInference}</dd>
+            </div>
+            <div>
+              <dt>Correction semantics</dt>
+              <dd>{contractProjection.compatibilityContract.correctionSemantics}</dd>
+            </div>
+            <div>
+              <dt>Appeal semantics</dt>
+              <dd>{contractProjection.compatibilityContract.appealSemantics}</dd>
+            </div>
+            <div>
+              <dt>Fail-closed result</dt>
+              <dd>{contractProjection.compatibilityContract.failClosedResult}</dd>
+            </div>
+          </dl>
+        ) : null}
         {supportedSyntheticReview && contractProjection.evidenceContract ? (
           <dl
             className={styles.evidenceContract}
@@ -684,7 +720,8 @@ export function GrowthCapabilityContractStage({
             </strong>
           </div>
           <ul>
-            <li>No Growth Experience participant, organization, customer, or user input is read or saved.</li>
+            <li>No participant, organization, customer, PII, or free-text input is read or saved by Growth Experience.</li>
+            <li>Route selectors read only fixed allowlisted review IDs; they are recorded in the URL and browser history for reversible Back and Forward navigation, but they are not participant facts.</li>
             <li>No Growth Experience-owned cookies, storage, analytics, or telemetry.</li>
             <li>The inherited application shell may read authentication/session, theme, and presentation state. Growth Experience does not consume those reads.</li>
             <li>No realistic names, presence, protected attributes, or worker evaluation.</li>

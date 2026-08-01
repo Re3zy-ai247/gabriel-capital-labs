@@ -15,7 +15,7 @@ import type {
   CxosRoomRuntimeDefinition,
 } from "@/lib/cxos/runtime";
 import {
-  GROWTH_ADVISOR_INTENTS,
+  GROWTH_EXPLANATION_INTENTS,
   GROWTH_CENTER_DISTRICTS,
   GROWTH_CENTER_DISTRICT_IDS,
   GROWTH_CENTER_EXPERIENCE_VERSION,
@@ -28,8 +28,8 @@ import {
   GROWTH_CENTER_REVIEW_SUMMARY,
   GROWTH_CENTER_VALUES,
   GROWTH_CENTER_VISIT_FIXTURES,
-  resolveGrowthAdvisorPlan,
-  type GrowthAdvisorIntentId,
+  resolveGrowthExplanationPlan,
+  type GrowthExplanationIntentId,
   type GrowthCenterDistrict,
   type GrowthCenterDistrictId,
   type GrowthCenterLensId,
@@ -179,8 +179,8 @@ export function GrowthCenterStage() {
   const [projection, setProjection] =
     useState<CxosExperienceProjection>("auto");
   const [lensId, setLensId] = useState<GrowthCenterLensId>("building");
-  const [advisorIntentId, setAdvisorIntentId] =
-    useState<GrowthAdvisorIntentId>("BUILD_NEXT");
+  const [explanationIntentId, setExplanationIntentId] =
+    useState<GrowthExplanationIntentId>("BUILD_NEXT");
   const [visitFixture, setVisitFixture] =
     useState<GrowthCenterVisitFixture>("first");
   const [announcement, setAnnouncement] = useState(
@@ -192,7 +192,7 @@ export function GrowthCenterStage() {
 
   const resetRouteFixture = useCallback(() => {
     setLensId("building");
-    setAdvisorIntentId("BUILD_NEXT");
+    setExplanationIntentId("BUILD_NEXT");
     setVisitFixture("first");
   }, []);
 
@@ -250,9 +250,9 @@ export function GrowthCenterStage() {
     };
   }, [moveToDistrict]);
 
-  const advisorPlan = useMemo(
-    () => resolveGrowthAdvisorPlan(lensId, advisorIntentId),
-    [advisorIntentId, lensId],
+  const explanationPlan = useMemo(
+    () => resolveGrowthExplanationPlan(lensId, explanationIntentId),
+    [explanationIntentId, lensId],
   );
   const activeDistrictDefinition = GROWTH_CENTER_DISTRICTS.find(
     (district) => district.id === runtime.activeDistrict,
@@ -504,13 +504,13 @@ export function GrowthCenterStage() {
             </p>
             <a
               className={styles.nextContributionLink}
-              href={`#${advisorPlan.districtId}`}
+              href={`#${explanationPlan.districtId}`}
               onClick={(event) =>
-                navigateToDistrict(event, advisorPlan.districtId)
+                navigateToDistrict(event, explanationPlan.districtId)
               }
             >
               <span>Fixed next contribution</span>
-              <strong>{advisorPlan.title}</strong>
+              <strong>{explanationPlan.title}</strong>
             </a>
           </div>
           <h1 id="growth-center-heading" ref={roomHeadingRef} tabIndex={-1}>
@@ -681,7 +681,7 @@ export function GrowthCenterStage() {
         <div className={styles.kaiIdentity}>
           <span className={styles.kaiBeacon} aria-hidden="true" />
           <p>Kai · Credit Intelligence Officer · route-local review mode</p>
-          <h2 id="kai-heading">Growth Advisor</h2>
+          <h2 id="kai-heading">Deterministic Growth Explanation Mode</h2>
           <p>{GROWTH_CENTER_KAI_DISCLOSURE}</p>
         </div>
 
@@ -689,17 +689,17 @@ export function GrowthCenterStage() {
           <div
             className={styles.intentList}
             role="group"
-            aria-label="Fixed Growth Advisor questions"
+            aria-label="Fixed deterministic Growth explanation questions"
           >
-            {GROWTH_ADVISOR_INTENTS.map((intent) => (
+            {GROWTH_EXPLANATION_INTENTS.map((intent) => (
               <button
                 key={intent.id}
                 type="button"
-                aria-pressed={advisorIntentId === intent.id}
+                aria-pressed={explanationIntentId === intent.id}
                 onClick={() => {
-                  setAdvisorIntentId(intent.id);
+                  setExplanationIntentId(intent.id);
                   setAnnouncement(
-                    `${intent.label} Fixed synthetic guidance prepared.`,
+                    `${intent.label}. Fixed synthetic explanation selected.`,
                   );
                 }}
               >
@@ -708,22 +708,22 @@ export function GrowthCenterStage() {
             ))}
           </div>
 
-          <article className={styles.advisorPlan}>
-            <p>Fixed guidance · {GROWTH_CENTER_LENSES[lensId].label}</p>
-            <h3>{advisorPlan.title}</h3>
-            <p>{advisorPlan.rationale}</p>
+          <article className={styles.explanationPlan}>
+            <p>Fixed synthetic explanation · {GROWTH_CENTER_LENSES[lensId].label}</p>
+            <h3>{explanationPlan.title}</h3>
+            <p>{explanationPlan.rationale}</p>
             <ol>
-              {advisorPlan.steps.map((step) => (
+              {explanationPlan.steps.map((step) => (
                 <li key={step}>{step}</li>
               ))}
             </ol>
             <p className={styles.fixtureSource}>
-              Source: {advisorPlan.source}. Active room context: {runtime.kaiContextDistrict}.
+              Source: {explanationPlan.source}. Active room context: {runtime.kaiContextDistrict}.
             </p>
             <a
-              href={`#${advisorPlan.districtId}`}
+              href={`#${explanationPlan.districtId}`}
               onClick={(event) =>
-                navigateToDistrict(event, advisorPlan.districtId)
+                navigateToDistrict(event, explanationPlan.districtId)
               }
             >
               Review referenced district <span aria-hidden="true">→</span>

@@ -32,7 +32,7 @@ An owner-unresolved pathway is non-operational. Proposed vocabulary may be displ
 
 ## Positive decision architecture
 
-The policy is a literal 7 × 10 table, not a blacklist. Each known pair contains one result and one written rationale. Only an exact `SUPPORTED_SYNTHETIC_REVIEW` entry may render the supported synthetic path. `PROPOSED` remains visibly proposed. `OWNER_UNRESOLVED`, `UNSUPPORTED`, and `INVALID` fail closed.
+The policy is a literal 7 × 10 table, not a blacklist. Each known pair contains one result and one written rationale. Every supported pair additionally carries its required owner state, required evidence state, allowed presentation behavior, prohibited inference, correction semantics, appeal semantics, and fail-closed result. Only an exact `SUPPORTED_SYNTHETIC_REVIEW` entry may render the supported synthetic path. `PROPOSED` remains visibly proposed. `OWNER_UNRESOLVED`, `UNSUPPORTED`, and `INVALID` fail closed.
 
 The resolver accepts exactly one known contract and one known fixture, or the all-absent default orientation defined by the contract. Unknown keys, duplicate values, partial pairs, malformed arrays, conflicts, and impossible combinations return the generic invalid projection. Rejected text is never interpolated into UI copy.
 
@@ -49,6 +49,10 @@ The following laws are guard-pinned:
 - Submission is not acceptance.
 - Supported is not authorized.
 - Synthetic is not live.
+- Visible is not public.
+- Reviewable is not ratified.
+- Evidence-present is not verified.
+- Qualification is not eligibility.
 - Proposed ownership is not canonical ownership.
 
 Correction routes conceptually to the source-fact owner. Appeal requires an underlying review decision and a distinct future human-review authority. Nothing is filed, stored, routed, or resolved.
@@ -79,7 +83,7 @@ The stage offers deterministic explanations authored inside the fixed contract. 
 
 ## Privacy architecture
 
-The annex creates no Growth Experience-owned cookies, storage, analytics, or telemetry. It contains no input, upload, free text, realistic PII, participant record, identity lookup, organization lookup, customer data, or private URL state.
+The annex creates no Growth Experience-owned cookies, Web Storage, analytics, or telemetry. It reads only fixed allowlisted route selectors and button selections. Contract and fixture selectors are recorded in the URL and browser history solely to make Back and Forward reversible; they are not participant facts or private state. The annex contains no participant, customer, organization, PII, upload, free-text, source-record, identity lookup, or organization lookup.
 
 The application shell may perform inherited authentication/session or theme behavior. Browser/network evidence separates those inherited requests from Growth-owned behavior and proves the annex has no write path.
 
@@ -93,7 +97,7 @@ Acceptance covers desktop, tablet, mobile portrait, compact landscape, dark mode
 
 Every claim uses one result: `PASS`, `FAIL`, `NOT RUN`, `NOT APPLICABLE`, or `BLOCKED`. Each `PASS` links to a preserved raw-evidence digest. Browser rows distinguish local optimized-build evidence from authenticated protected-Preview evidence. Human comprehension is labeled **NOT HUMAN-VALIDATED** unless a human test occurred.
 
-The deployment bill of materials records baseline/candidate lineage, parentage, commit range, exact delta allowlist, transitive source closure with hashes and categories, Git binding, build identity, exclusions, artifact identity, protection, production-unchanged proof, and any platform HTML mutation. The closure includes the root layout, global styles, providers, review layout and identity policy, inherited transition shell and registry, CXOS capability/runtime inputs, Growth modules, middleware, and framework styling/build configuration.
+The deployment bill of materials records baseline/candidate lineage, parentage, commit range, exact delta allowlist, Git binding, build identity, exclusions, artifact identity, protection, production-unchanged proof, and any platform HTML mutation. To avoid understating a full-app Next.js build, the closure hashes every tracked repository input at the candidate commit and separately labels the route-critical Phase 1A, Growth Foundation, review-shell, CXOS Runtime, Phase 1B-R, and build-configuration subset. Emitted build assets are bound by the preserved normalized build-output manifest and deployment identity.
 
 ## Deterministic Founder package
 

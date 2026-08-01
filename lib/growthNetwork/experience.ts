@@ -2,7 +2,7 @@
 //
 // This client-safe module contains review vocabulary only. It owns no participant,
 // organization, Community, Marketplace, reputation, qualification, economic, or
-// Kai runtime truth. Every recommendation is deterministic and explicitly fictional.
+// Kai runtime truth. Every explanation is deterministic and explicitly fictional.
 
 export const GROWTH_CENTER_EXPERIENCE_VERSION = "1.0.0-preview" as const;
 export const GROWTH_CENTER_FIXTURE_SOURCE =
@@ -15,7 +15,7 @@ export const GROWTH_CENTER_REVIEW_SUMMARY =
   "Internal Founder review · Synthetic · No live program. Enrollment, qualification, live mentorship, courses, listings, purchases, sales, compensation, Growth Distributions, and payouts are unavailable." as const;
 
 export const GROWTH_CENTER_KAI_DISCLOSURE =
-  "I can help you explore what to build, learn, teach, or contribute in this synthetic preview. I am not analyzing your organization or eligibility. I do not provide legal, tax, financial, employment, or business-opportunity advice, promise earnings or results, create records, enroll you, or take action." as const;
+  "I can explain fixed fictional examples of what an operator might build, learn, teach, or contribute in this synthetic preview. I am not analyzing your organization or eligibility. I do not provide legal, tax, financial, employment, or business-opportunity advice, promise earnings or results, create records, enroll you, or take action." as const;
 
 export const GROWTH_CENTER_KAI_NO_ACTION_RECEIPT =
   "Preview only. No model was called. Nothing was saved, sent, assigned, scheduled, purchased, or changed." as const;
@@ -227,7 +227,7 @@ export const GROWTH_CENTER_LENSES = Object.freeze({
   },
 } as const);
 
-export const GROWTH_ADVISOR_INTENT_IDS = Object.freeze([
+export const GROWTH_EXPLANATION_INTENT_IDS = Object.freeze([
   "BUILD_NEXT",
   "BECOME_BETTER",
   "FIND_OPPORTUNITIES",
@@ -235,27 +235,27 @@ export const GROWTH_ADVISOR_INTENT_IDS = Object.freeze([
   "EDUCATE_OTHERS",
   "CONTRIBUTE",
 ] as const);
-export type GrowthAdvisorIntentId =
-  (typeof GROWTH_ADVISOR_INTENT_IDS)[number];
+export type GrowthExplanationIntentId =
+  (typeof GROWTH_EXPLANATION_INTENT_IDS)[number];
 
-export const GROWTH_ADVISOR_INTENTS = Object.freeze([
-  { id: "BUILD_NEXT", label: "What should I build next?" },
-  { id: "BECOME_BETTER", label: "How do I become a better operator?" },
-  { id: "FIND_OPPORTUNITIES", label: "What opportunities could I explore?" },
-  { id: "LEARN_SKILLS", label: "What skills should I learn?" },
-  { id: "EDUCATE_OTHERS", label: "What should I teach?" },
-  { id: "CONTRIBUTE", label: "Where could I contribute?" },
-] as const satisfies readonly { id: GrowthAdvisorIntentId; label: string }[]);
+export const GROWTH_EXPLANATION_INTENTS = Object.freeze([
+  { id: "BUILD_NEXT", label: "Explain a build-next example" },
+  { id: "BECOME_BETTER", label: "Explain a practice-development example" },
+  { id: "FIND_OPPORTUNITIES", label: "Explain an opportunity-exploration example" },
+  { id: "LEARN_SKILLS", label: "Explain a skill-learning example" },
+  { id: "EDUCATE_OTHERS", label: "Explain an education example" },
+  { id: "CONTRIBUTE", label: "Explain a contribution example" },
+] as const satisfies readonly { id: GrowthExplanationIntentId; label: string }[]);
 
-interface GrowthAdvisorIntentPlan {
+interface GrowthExplanationIntentPlan {
   districtId: GrowthCenterDistrictId;
   title: string;
   rationale: string;
   steps: readonly [string, string];
 }
 
-const GROWTH_ADVISOR_INTENT_PLANS: Readonly<
-  Record<GrowthAdvisorIntentId, GrowthAdvisorIntentPlan>
+const GROWTH_EXPLANATION_INTENT_PLANS: Readonly<
+  Record<GrowthExplanationIntentId, GrowthExplanationIntentPlan>
 > = Object.freeze({
   BUILD_NEXT: {
     districtId: "growth-center",
@@ -319,9 +319,9 @@ const GROWTH_ADVISOR_INTENT_PLANS: Readonly<
   },
 });
 
-export interface GrowthAdvisorPlan {
+export interface GrowthExplanationPlan {
   lensId: GrowthCenterLensId;
-  intentId: GrowthAdvisorIntentId;
+  intentId: GrowthExplanationIntentId;
   districtId: GrowthCenterDistrictId;
   title: string;
   rationale: string;
@@ -329,12 +329,12 @@ export interface GrowthAdvisorPlan {
   steps: readonly [string, string, string];
 }
 
-export function resolveGrowthAdvisorPlan(
+export function resolveGrowthExplanationPlan(
   lensId: GrowthCenterLensId,
-  intentId: GrowthAdvisorIntentId,
-): GrowthAdvisorPlan {
+  intentId: GrowthExplanationIntentId,
+): GrowthExplanationPlan {
   const lens = GROWTH_CENTER_LENSES[lensId];
-  const plan = GROWTH_ADVISOR_INTENT_PLANS[intentId];
+  const plan = GROWTH_EXPLANATION_INTENT_PLANS[intentId];
   return Object.freeze({
     lensId,
     intentId,

@@ -14,7 +14,7 @@ Document type: internal product representation contract; not participant terms, 
 - **LIVE ECONOMICS — NO-GO**
 - **PUBLIC, PARTICIPANT, PAID, OR PRODUCTION ACTIVATION — NOT AUTHORIZED**
 
-Work is authorized. Contract ratification is pending. A protected Preview is review evidence only.
+Work authorized; protected Preview pending; contract ratification pending. A protected Preview is review evidence only.
 
 ## Proposed contract laws
 
@@ -25,13 +25,17 @@ These laws are proposed and do not become permanent or ratified until the Founde
 3. Submission is not acceptance.
 4. Supported is not authorized.
 5. Synthetic is not live.
-6. Proposed ownership is not canonical ownership.
-7. Completion also does not imply qualification, certification, publication, recognition, reputation, access, employment, or economic eligibility.
-8. Correction challenges a source fact; appeal challenges a review decision. Neither changes anything in this Preview.
-9. A missing, unknown, duplicate, partial, malformed, conflicting, impossible, unauthorized, or owner-unresolved state fails closed.
-10. Rejected raw input is never echoed, stored, inferred, or mapped to a favorable neighbor.
-11. Growth Experience owns route-local review grammar, fixtures, and presentation only. It owns no participant or source truth.
-12. No lane implies another and no lane creates a consequential state.
+6. Visible is not public.
+7. Reviewable is not ratified.
+8. Evidence-present is not verified.
+9. Qualification is not eligibility.
+10. Proposed ownership is not canonical ownership.
+11. Completion also does not imply qualification, certification, publication, recognition, reputation, access, employment, or economic eligibility.
+12. Correction challenges a source fact; appeal challenges a review decision. Neither changes anything in this Preview.
+13. A missing, unknown, duplicate, partial, malformed, conflicting, impossible, unauthorized, or owner-unresolved state fails closed.
+14. Rejected raw input is never echoed, stored, inferred, or mapped to a favorable neighbor.
+15. Growth Experience owns route-local review grammar, fixtures, and presentation only. It owns no participant or source truth.
+16. No lane implies another and no lane creates a consequential state.
 
 ## Ownership reconciliation
 
@@ -41,7 +45,7 @@ The frozen ownership registry is unchanged by Phase 1B-R.
 |---|---|---|
 | Professional capability | `OWNER_UNRESOLVED`; Learning is only a candidate | Non-operational; all ordinary fixtures fail closed |
 | Professional-development pathway | `OWNER_UNRESOLVED`; Learning is only a candidate | Non-operational; no enrollment, assessment, completion, or credential meaning |
-| Mentorship | `PROPOSED`; Operator Network messaging does not establish mentorship ownership | Boundary-only proposed orientation, preparation, and privacy examples; no relationship or service |
+| Mentorship | `OWNER_UNRESOLVED`; Mentorship is only a proposed context and Operator Network messaging does not establish relationship, evidence, completion, review, visibility, correction, or appeal ownership | Boundary-only proposed orientation, preparation, and privacy examples; no relationship or service |
 | Education | `OWNER_UNRESOLVED`; Learning, Meetings, Documents, and certification authority are absent | Non-operational |
 | Operator-created contribution | `OWNER_UNRESOLVED`; no destination owner may be inferred | Non-operational |
 | Community contribution | `PROPOSED`; Community policy authority is not ratified here | Proposed synthetic states only; no submission, acceptance, publication, or moderation |
@@ -75,12 +79,14 @@ Result abbreviations: `SR` supported synthetic review · `PR` proposed · `OR` o
 | Community contribution | PR | PR | PR | PR | PR | PR | PR | PR | PR | UN |
 | Organizational stewardship | SR | SR | SR | PR | PR | PR | PR | OR | SR | UN |
 
-Every one of the seventy code entries carries a pair-specific rationale. The four supported entries are justified as follows:
+Every one of the seventy code entries carries a pair-specific rationale. Each supported entry also carries the required owner state, evidence state, allowed presentation, prohibited inference, correction semantics, appeal semantics, and fail-closed result:
 
-- Organizational stewardship + overview: registry-resolved Organization scope supports a boundary-only orientation.
-- Organizational stewardship + empty: absence can be represented without asserting stewardship or health truth.
-- Organizational stewardship + preparing: preparation may be explained while assessment and consequential meaning remain unavailable.
-- Organizational stewardship + privacy-restricted: deny-by-default Organization scope can be shown without organization or worker data.
+| Supported pair | Rationale | Required owner state | Required evidence state | Allowed presentation | Prohibited inference | Correction | Appeal | Fail-closed result |
+|---|---|---|---|---|---|---|---|---|
+| Organizational stewardship + overview | Registry-resolved Organization scope supports a boundary-only orientation. | Organizations remains the scope owner; stewardship and Performance Intelligence meaning remain proposed. | Fixed fictional orientation only; no organization, worker, participant, customer, health, or performance record. | Route-local orientation, separate lanes, owner labels, and synthetic evidence requirements. | No health, stewardship quality, qualification, eligibility, authority, reputation, or live-program inference. | No source fact exists; explanation only, with no opened route. | No decision exists; independent appeal ownership remains unresolved. | `NOT_AUTHORIZED` |
+| Organizational stewardship + empty | Absence can be represented without asserting stewardship or health truth. | Organizations remains the scope owner; no stewardship assessment owner is inferred. | Explicit synthetic absence; evidence-present, verification, completion, and review are false. | Empty boundary plus separately authorized future requirements. | No failed stewardship, inactivity, qualification, eligibility, or public-visibility inference. | No source fact exists; correction unavailable. | No disposition exists; appeal unavailable. | `INSUFFICIENT_EVIDENCE` |
+| Organizational stewardship + preparing | Preparation may be explained while assessment and consequential meaning remain unavailable. | Organizations remains the scope owner; preparation grants no Performance Intelligence authority. | Fixed synthetic checklist only; no submission, occurrence, completion, review, or verification. | Inert guidance and future requirements; no acceptance, assignment, or scheduling. | No participation, completion, approval, qualification, eligibility, health, or authorization inference. | A future source fact would be required; no correction route is opened. | Preparation creates no decision and therefore no appeal. | `INSUFFICIENT_EVIDENCE` |
+| Organizational stewardship + privacy-restricted | Deny-by-default Organization scope can be shown without organization or worker data. | Organizations remains the scope owner; visibility remains deny-by-default. | Fixed synthetic restriction only; no private organization, worker, participant, customer, or protected-attribute data. | Restriction, owner boundary, and unavailable state only. | No inference that private data exists, a named party was assessed, or restriction grants public authority. | Restriction is not a source correction. | Restriction is not a review decision. | `NOT_AUTHORIZED` |
 
 All unlisted inputs are `INVALID`; there is no favorable default.
 

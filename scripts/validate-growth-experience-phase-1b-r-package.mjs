@@ -10,16 +10,22 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import {
+  EVIDENCE_SCHEMA_VERSION,
   EVIDENCE_ROOT_NAME,
   HASHED_MEMBERS,
   PACKAGE_MEMBERS,
   REPOSITORY_ROOT,
+  RETIRED_PACKAGE_ARTIFACTS,
   ZIP_NAME,
+  assertBuildLogExecutedBinding,
   buildStagedPackage,
   collectProvenance,
+  collectTrackedRepositoryBom,
+  finalStatusLine,
   generatePayloads,
   resolveEvidenceIndexPath,
   scanHtml,
@@ -28,7 +34,125 @@ import {
   validateEvidence,
 } from "./build-growth-experience-phase-1b-r-package.mjs";
 
+const VALIDATOR_SCRIPT_PATH = fileURLToPath(import.meta.url);
 const failures = [];
+const EXACT_PACKAGE_MEMBERS = Object.freeze([
+  "GROWTH_EXPERIENCE_PHASE_1B_R_REPORT.md",
+  "GROWTH_EXPERIENCE_PHASE_1B_R_REPORT.html",
+  "GROWTH_EXPERIENCE_PHASE_1B_R_HANDOFF.txt",
+  "GROWTH_EXPERIENCE_PHASE_1B_R_HANDOFF.html",
+  "GROWTH_EXPERIENCE_PHASE_1B_R_CAPABILITY_CONTRACT.md",
+  "GROWTH_EXPERIENCE_PHASE_1B_R_VALIDATION_LEDGER.html",
+  "GROWTH_EXPERIENCE_PHASE_1B_R_BROWSER_MATRIX.html",
+  "GROWTH_EXPERIENCE_PHASE_1B_R_EVIDENCE_MANIFEST.txt",
+  "GROWTH_EXPERIENCE_PHASE_1B_R_FOUNDER_DECISION_RECEIPT.md",
+]);
+const EXACT_RECEIPT_CHOICES = Object.freeze([
+  "- [ ] APPROVE",
+  "- [ ] APPROVE WITH AMENDMENTS",
+  "- [ ] HOLD",
+  "- [ ] REJECT",
+]);
+const VALIDATOR_EXACT_BUILD_COMMANDS = Object.freeze([
+  Object.freeze({
+    id: "optimized-review-build",
+    sanitizedCommand:
+      "VERCEL_ENV→<PREVIEW> NEXT_PUBLIC_VERCEL_ENV→<PREVIEW> NEXT_PUBLIC_CXOS_REVIEW→<ENABLED> GROWTH_CENTER_PREVIEW_ENABLED→<ENABLED> GROWTH_CAPABILITY_CONTRACT_PREVIEW_ENABLED→<ENABLED> npx next build",
+  }),
+  Object.freeze({
+    id: "production-identity-build",
+    sanitizedCommand:
+      "VERCEL_ENV→<PRODUCTION> NEXT_PUBLIC_VERCEL_ENV→<PREVIEW-SPOOF> NEXT_PUBLIC_CXOS_REVIEW→<ENABLED-SPOOF> GROWTH_CENTER_PREVIEW_ENABLED→<ENABLED-SPOOF> GROWTH_CAPABILITY_CONTRACT_PREVIEW_ENABLED→<ENABLED-SPOOF> npx next build",
+  }),
+]);
+
+export function assertValidatorExactBuildCommands(commands) {
+  if (
+    JSON.stringify(commands) !== JSON.stringify(VALIDATOR_EXACT_BUILD_COMMANDS)
+  ) {
+    throw new Error(
+      "validator rejected missing, extra, reordered, or altered exact build commands",
+    );
+  }
+}
+
+function expectContractRejection(label, action) {
+  try {
+    action();
+  } catch {
+    return label;
+  }
+  throw new Error(`negative contract self-test was not rejected: ${label}`);
+}
+
+export function runContractSelfTests() {
+  const exact = structuredClone(VALIDATOR_EXACT_BUILD_COMMANDS);
+  assertValidatorExactBuildCommands(exact);
+  assertBuildLogExecutedBinding({
+    evidenceKind: "BUILD_LOG",
+    claimIds: [
+      "build:optimizedReview",
+      "validation:optimized-review-build",
+    ],
+    executed: exact[0].sanitizedCommand,
+  });
+  const rejected = [];
+  rejected.push(
+    expectContractRejection("unrelated BUILD_LOG executed value", () =>
+      assertBuildLogExecutedBinding({
+        evidenceKind: "BUILD_LOG",
+        claimIds: [
+          "build:optimizedReview",
+          "validation:optimized-review-build",
+        ],
+        executed: "echo unrelated",
+      }),
+    ),
+  );
+  rejected.push(
+    expectContractRejection("mixed build-command claim groups", () =>
+      assertBuildLogExecutedBinding({
+        evidenceKind: "BUILD_LOG",
+        claimIds: ["build:identity", "build:optimizedReview"],
+        executed: exact[0].sanitizedCommand,
+      }),
+    ),
+  );
+  rejected.push(
+    expectContractRejection("altered BUILD_LOG executed value", () =>
+      assertBuildLogExecutedBinding({
+        evidenceKind: "BUILD_LOG",
+        claimIds: [
+          "build:optimizedReview",
+          "validation:optimized-review-build",
+        ],
+        executed: `${exact[0].sanitizedCommand} --altered`,
+      }),
+    ),
+  );
+  const altered = structuredClone(exact);
+  altered[0].sanitizedCommand += " --altered";
+  for (const [label, commands] of [
+    ["missing exact build command", exact.slice(0, 1)],
+    [
+      "extra exact build command",
+      [...exact, { id: "extra", sanitizedCommand: "npx next build" }],
+    ],
+    ["reordered exact build commands", [...exact].reverse()],
+    ["altered exact build command", altered],
+  ]) {
+    rejected.push(
+      expectContractRejection(label, () =>
+        assertValidatorExactBuildCommands(commands),
+      ),
+    );
+  }
+  return Object.freeze({
+    result: "PASS",
+    exactAccepted: true,
+    rejected,
+  });
+}
 
 function check(condition, message) {
   if (!condition) failures.push(message);
@@ -49,7 +173,53 @@ function parseArgument(name) {
   return index >= 0 ? process.argv[index + 1] : undefined;
 }
 
+function escapeHtmlForVerification(value) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function verifyExactBuildCommandEvidence(evidence, observed) {
+  try {
+    assertValidatorExactBuildCommands(evidence.build.commands);
+  } catch (error) {
+    check(false, error.message);
+  }
+  const targets = [
+    "GROWTH_EXPERIENCE_PHASE_1B_R_REPORT.md",
+    "GROWTH_EXPERIENCE_PHASE_1B_R_REPORT.html",
+    "GROWTH_EXPERIENCE_PHASE_1B_R_HANDOFF.txt",
+    "GROWTH_EXPERIENCE_PHASE_1B_R_HANDOFF.html",
+    "GROWTH_EXPERIENCE_PHASE_1B_R_EVIDENCE_MANIFEST.txt",
+  ];
+  for (const name of targets) {
+    const rendered = observed.get(name)?.toString("utf8") ?? "";
+    let priorIndex = -1;
+    for (const commandRecord of VALIDATOR_EXACT_BUILD_COMMANDS) {
+      const exactCommand = name.endsWith(".html")
+        ? escapeHtmlForVerification(commandRecord.sanitizedCommand)
+        : commandRecord.sanitizedCommand;
+      const index = rendered.indexOf(exactCommand);
+      check(index >= 0, `${name} omits exact build command ${commandRecord.id}`);
+      check(index > priorIndex, `${name} reorders exact build command ${commandRecord.id}`);
+      priorIndex = index;
+    }
+    check(
+      (rendered.match(/npx next build/gu) ?? []).length ===
+        VALIDATOR_EXACT_BUILD_COMMANDS.length,
+      `${name} contains a missing or extra rendered build command`,
+    );
+  }
+}
+
 function verifyFiles(provenance, evidence) {
+  check(
+    JSON.stringify(PACKAGE_MEMBERS) === JSON.stringify(EXACT_PACKAGE_MEMBERS),
+    "builder package member contract does not equal the exact mandated nine names/order",
+  );
   const expected = generatePayloads(provenance, evidence);
   const observed = new Map();
   const expectedTime = provenance.commitEpoch * 1000;
@@ -76,6 +246,11 @@ function verifyFiles(provenance, evidence) {
     }
   }
 
+  for (const name of RETIRED_PACKAGE_ARTIFACTS) {
+    check(!existsSync(join(REPOSITORY_ROOT, name)), `retired package artifact still exists: ${name}`);
+  }
+  verifyExactBuildCommandEvidence(evidence, observed);
+
   const manifestName = "GROWTH_EXPERIENCE_PHASE_1B_R_EVIDENCE_MANIFEST.txt";
   const manifestText = observed.get(manifestName)?.toString("utf8") ?? "";
   const records = manifestText
@@ -91,13 +266,46 @@ function verifyFiles(provenance, evidence) {
     check(Number(byteText) === bytes.byteLength, `manifest byte count mismatch for ${name}`);
   });
 
-  const receiptName = "GROWTH_EXPERIENCE_PHASE_1B_R_FOUNDER_DECISION_RECEIPT.html";
-  const receipt = observed.get(receiptName)?.toString("utf8") ?? "";
-  check((receipt.match(/type="checkbox" disabled/gu) ?? []).length === 4, "Founder receipt must contain exactly four disabled checkboxes");
-  check(!/type="checkbox"[^>]*\schecked(?:\s|>)/iu.test(receipt), "Founder receipt contains a checked choice");
-  for (const choice of ["APPROVE", "APPROVE WITH AMENDMENTS", "HOLD", "REJECT"]) {
-    check(receipt.includes(choice), `Founder receipt is missing ${choice}`);
+  const expectedBom = collectTrackedRepositoryBom(provenance.candidateSha);
+  check(
+    manifestText.includes(`Tracked blob count: ${expectedBom.length}`),
+    "evidence manifest omits the complete tracked-blob count",
+  );
+  for (const item of expectedBom) {
+    const record = `${item.category}\t${item.mode}\t${item.bytes}\t${item.sha256}\t${item.path}`;
+    check(manifestText.includes(record), `evidence manifest omits tracked BOM record ${item.path}`);
   }
+  for (const item of provenance.changedFiles) {
+    const record = `${item.status}\t${item.bytes}\t${item.sha256}\t${item.path}`;
+    check(manifestText.includes(record), `evidence manifest omits candidate delta record ${item.path}`);
+  }
+  for (const value of [
+    provenance.baselineSha,
+    provenance.candidateSha,
+    provenance.remoteSha,
+    provenance.branch,
+    provenance.mergeBase,
+    provenance.commitRange,
+    ...provenance.parents,
+    ...provenance.commits,
+  ]) {
+    check(manifestText.includes(value), `evidence manifest omits provenance value ${value}`);
+  }
+  for (const raw of evidence.rawEvidence) {
+    check(manifestText.includes(raw.sha256), `evidence manifest omits raw-evidence digest ${raw.sha256}`);
+  }
+  check(manifestText.includes(finalStatusLine(evidence)), "evidence manifest omits the dynamic final status");
+  check(!/Final ZIP byte size:\s*\d/iu.test(manifestText), "evidence manifest recursively embeds final ZIP byte size");
+  check(!/Final ZIP SHA-256:\s*[0-9a-f]{64}/iu.test(manifestText), "evidence manifest recursively embeds final ZIP SHA-256");
+
+  const receiptName = "GROWTH_EXPERIENCE_PHASE_1B_R_FOUNDER_DECISION_RECEIPT.md";
+  const receipt = observed.get(receiptName)?.toString("utf8") ?? "";
+  const receiptChoices = receipt.split("\n").filter((line) => /^- \[[^\]]*\] /u.test(line));
+  check(
+    JSON.stringify(receiptChoices) === JSON.stringify(EXACT_RECEIPT_CHOICES),
+    "Founder receipt must contain exactly four canonical unchecked Markdown choices in order",
+  );
+  check(!/^- \[[xX]\] /mu.test(receipt), "Founder receipt contains a checked choice");
   check(receipt.includes("No decision exists until the Founder explicitly records one."), "Founder receipt lacks no-decision statement");
 
   for (const reportName of [
@@ -107,6 +315,32 @@ function verifyFiles(provenance, evidence) {
     const report = observed.get(reportName)?.toString("utf8") ?? "";
     for (const member of PACKAGE_MEMBERS) {
       check(report.includes(member), `${reportName} omits package member ${member}`);
+    }
+    check(report.includes(`Archive filename: ${ZIP_NAME}`), `${reportName} omits archive filename`);
+    check(report.includes(`Exact member count: ${EXACT_PACKAGE_MEMBERS.length}`), `${reportName} omits exact member count`);
+    check(report.includes(finalStatusLine(evidence)), `${reportName} omits dynamic final status`);
+    check(!/ZIP SHA-256:\s*[0-9a-f]{64}/iu.test(report), `${reportName} recursively embeds final ZIP SHA-256`);
+    check(!/ZIP (?:byte size|bytes):\s*\d/iu.test(report), `${reportName} recursively embeds final ZIP byte size`);
+  }
+
+  for (const handoffName of [
+    "GROWTH_EXPERIENCE_PHASE_1B_R_HANDOFF.txt",
+    "GROWTH_EXPERIENCE_PHASE_1B_R_HANDOFF.html",
+  ]) {
+    const handoff = observed.get(handoffName)?.toString("utf8") ?? "";
+    check(handoff.includes(finalStatusLine(evidence)), `${handoffName} omits dynamic final status`);
+    check(handoff.includes(evidence.humanComprehension.evaluatorBasis), `${handoffName} omits evaluator basis`);
+    if (handoffName.endsWith(".html")) {
+      check(handoff.includes("COMPREHENSION REVIEW"), `${handoffName} omits comprehension review section`);
+      continue;
+    }
+    check(handoff.includes(evidence.humanComprehension.method), `${handoffName} omits comprehension method`);
+    for (const prompt of evidence.humanComprehension.prompts) {
+      check(handoff.includes(prompt.prompt), `${handoffName} omits comprehension prompt ${prompt.id}`);
+      check(handoff.includes(prompt.outcome), `${handoffName} omits comprehension outcome ${prompt.id}`);
+    }
+    for (const change of evidence.humanComprehension.resultingCopyChanges) {
+      check(handoff.includes(change), `${handoffName} omits comprehension copy-change disposition`);
     }
   }
 
@@ -128,7 +362,7 @@ function verifyZip(provenance, observed) {
     .trim()
     .split("\n")
     .filter(Boolean);
-  check(JSON.stringify(listed) === JSON.stringify(PACKAGE_MEMBERS), `ZIP member allowlist/order mismatch: ${JSON.stringify(listed)}`);
+  check(JSON.stringify(listed) === JSON.stringify(EXACT_PACKAGE_MEMBERS), `ZIP member allowlist/order mismatch: ${JSON.stringify(listed)}`);
 
   for (const name of listed) {
     check(!name.startsWith("/"), `ZIP member is absolute: ${name}`);
@@ -173,15 +407,17 @@ function verifyDeterministicRebuild(provenance, evidence, rootZipBytes) {
   }
 }
 
-function writeIntegrityEvidence(evidencePath, provenance, zipBytes, observed) {
+function writeIntegrityEvidence(evidencePath, provenance, evidence, zipBytes, observed) {
   const integrity = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     result: "PASS",
+    readinessStatus: finalStatusLine(evidence),
     candidateSha: provenance.candidateSha,
     remoteSha: provenance.remoteSha,
     zip: ZIP_NAME,
     zipBytes: zipBytes.byteLength,
     zipSha256: sha256(zipBytes),
+    memberCount: EXACT_PACKAGE_MEMBERS.length,
     members: PACKAGE_MEMBERS.map((name) => ({
       name,
       bytes: observed.get(name).byteLength,
@@ -193,16 +429,17 @@ function writeIntegrityEvidence(evidencePath, provenance, zipBytes, observed) {
       "no traversal, hidden metadata, encryption, or extra fields",
       "member bytes equal deterministic generation",
       "two independent package builds are byte-identical",
-      "sanitization and standalone HTML scans pass",
-      "schema-v3 evidence envelopes bind candidate, exact kind, exact namespaced claimIds, execution, exit/result, capture time, and verified file identity",
+      "sanitization and strict standalone HTML scans pass with only the exact embedded local copy-control script",
+      `schema-v${EVIDENCE_SCHEMA_VERSION} evidence envelopes bind candidate, exact kind, exact namespaced claimIds, execution, exit/result, capture time, and verified file identity`,
       "executable PASS receipts require exitCode 0",
       "package-safe evidence resolves every PASS digest to a matching preserved PASS envelope that names its referencing claim",
       "validation rows, structured deployment/build assertions, aggregates, and assertion-based Git bindings agree",
       "canonical exclusions are exact and complete",
-      "transitive source closure contains the exact 42-path canonical set",
+      "source closure exactly matches every tracked Git blob with category, mode, byte count, digest, and path",
       "both Founder report formats enumerate all nine package members",
-      "embedded exact-nine status remains non-self-referential",
-      "Founder decision receipt has four unchecked choices",
+      "embedded artifacts do not recursively claim final ZIP byte size or SHA-256",
+      "Founder decision receipt is Markdown with exactly four canonical unchecked choices",
+      "structured evaluator-basis comprehension records method, non-human basis, six exact prompts, outcomes, copy-change disposition, and a PASS HUMAN_REVIEW digest",
     ],
     note: "This external evidence is intentionally not embedded in the ZIP it verifies.",
   };
@@ -246,8 +483,14 @@ function main() {
     process.exit(1);
   }
 
-  const { integrity } = writeIntegrityEvidence(evidencePath, provenance, zipBytes, observed);
+  const { integrity } = writeIntegrityEvidence(evidencePath, provenance, evidence, zipBytes, observed);
   process.stdout.write(`${JSON.stringify(integrity, null, 2)}\n`);
 }
 
-main();
+if (resolve(process.argv[1] ?? "") === VALIDATOR_SCRIPT_PATH) {
+  if (process.argv.includes("--self-test-contracts")) {
+    process.stdout.write(`${JSON.stringify(runContractSelfTests(), null, 2)}\n`);
+  } else {
+    main();
+  }
+}
