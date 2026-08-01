@@ -373,6 +373,20 @@ check(
     /style\.visibility === "hidden"/.test(browserHarness),
 );
 check(
+  "A-tier scroll choreography preserves its ViewTimeline and is behavior-gated",
+  /animation-duration:\s*auto\s*!important/.test(css) &&
+    /animation-timeline:\s*view\(\)\s*!important/.test(css) &&
+    /animation-range:\s*cover 8% cover 92%\s*!important/.test(css) &&
+    /\.districtEnvironment\s*\{[\s\S]{0,160}overflow:\s*clip/.test(css) &&
+    /async function measureScrollLinkedChoreography/.test(browserHarness) &&
+    /genuineViewTimeline/.test(browserHarness) &&
+    /timelineSubjectMatches/.test(browserHarness) &&
+    /timelineSourceIsDocumentScroller/.test(browserHarness) &&
+    /endpointResponsive/.test(browserHarness) &&
+    /renderedTransformResponsive/.test(browserHarness) &&
+    /coverage:scroll-linked-choreography/.test(browserHarness),
+);
+check(
   "finite arrival threshold beats are not charged to the ambient environment budget",
   /agencyThresholdBeat/.test(css) &&
     !/DistrictOperatingMoment\|ThresholdBeat\|FacilityChannel/.test(browserHarness),

@@ -8,8 +8,8 @@
   --agency-blue-strong: #38bdf8;
   --agency-text: #eef6ff;
   --agency-copy: #c7d6e6;
-  --agency-muted: #91a4b8;
-  --agency-dim: #6f8296;
+  --agency-muted: #b8c8d8;
+  --agency-dim: #a9bbcc;
   --agency-watch: #f4c76d;
   --agency-danger: #fda4af;
   --agency-positive: #7dd3b0;
@@ -3877,6 +3877,7 @@
   inset: 0;
   z-index: -1;
   overflow: hidden;
+  overflow: clip;
   opacity: 0.3;
   transform: translate3d(0, 6px, 0);
   transition:
@@ -7636,9 +7637,13 @@
       [data-cxos-profile="evidence-archive"],
       [data-cxos-profile="growth-threshold"]
     ) [data-plane="depth"] {
-    animation: agencyLivingScroll linear both !important;
-    animation-timeline: view();
-    animation-range: cover 8% cover 92%;
+    animation-name: agencyLivingScroll !important;
+    animation-duration: auto !important;
+    animation-timing-function: linear !important;
+    animation-fill-mode: both !important;
+    animation-iteration-count: 1 !important;
+    animation-timeline: view() !important;
+    animation-range: cover 8% cover 92% !important;
   }
 }
 

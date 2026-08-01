@@ -864,6 +864,19 @@ async function snapshot(page, phaseCursor, options = {}) {
         .filter(Boolean),
     );
     const allAnimations = document.getAnimations({ subtree: true });
+    const describeAnimationTime = (value) => {
+      if (typeof value === "number" && Number.isFinite(value)) {
+        return { value, unit: "ms", text: `${value}ms` };
+      }
+      if (value && typeof value.value === "number" && Number.isFinite(value.value)) {
+        return {
+          value: value.value,
+          unit: typeof value.unit === "string" ? value.unit : null,
+          text: String(value),
+        };
+      }
+      return null;
+    };
     const describeElement = (element) => {
       if (!(element instanceof Element)) return null;
       const href = element.getAttribute("href");
@@ -921,7 +934,12 @@ async function snapshot(page, phaseCursor, options = {}) {
         pending: animation.pending,
         playbackRate: animation.playbackRate,
         currentTime: typeof animation.currentTime === "number" ? animation.currentTime : null,
-        duration: timing.duration ?? null,
+        currentTimeValue: describeAnimationTime(animation.currentTime),
+        duration: typeof timing.duration === "number" ? timing.duration : null,
+        durationValue: describeAnimationTime(timing.duration),
+        progress: typeof timing.progress === "number" ? timing.progress : null,
+        timelineType: animation.timeline?.constructor?.name ?? null,
+        timelineCurrentTimeValue: describeAnimationTime(animation.timeline?.currentTime),
         iterations: timing.iterations ?? null,
       };
     });
@@ -1146,6 +1164,153 @@ async function waitForUiCommit(page) {
   await page.evaluate(() => new Promise((resolve) =>
     requestAnimationFrame(() => requestAnimationFrame(resolve)),
   ));
+}
+
+async function measureScrollLinkedChoreography(page) {
+  const read = () => page.evaluate(() => {
+    const describeTime = (value) => {
+      if (typeof value === "number" && Number.isFinite(value)) {
+        return { value, unit: "ms", text: `${value}ms` };
+      }
+      if (value && typeof value.value === "number" && Number.isFinite(value.value)) {
+        return {
+          value: value.value,
+          unit: typeof value.unit === "string" ? value.unit : null,
+          text: String(value),
+        };
+      }
+      return null;
+    };
+    const root = document.querySelector("main[data-cxos-runtime]");
+    const target = root?.querySelector(
+      "section[data-current='true']:not([hidden]) [data-plane='depth']",
+    ) ?? null;
+    const animation = target?.getAnimations().find((candidate) =>
+      /agencyLivingScroll/.test(candidate.animationName ?? "")
+    ) ?? null;
+    const timing = animation?.effect?.getComputedTiming?.() ?? null;
+    const computedTransform = target ? getComputedStyle(target).transform : null;
+    let transform = null;
+    if (computedTransform) {
+      try {
+        const matrix = new DOMMatrixReadOnly(
+          computedTransform === "none" ? undefined : computedTransform,
+        );
+        transform = {
+          text: computedTransform,
+          translateX: matrix.m41,
+          translateY: matrix.m42,
+        };
+      } catch {
+        transform = { text: computedTransform, translateX: null, translateY: null };
+      }
+    }
+    return {
+      supported: CSS.supports("animation-timeline: view()"),
+      rootProfile: root?.getAttribute("data-cxos-profile") ?? null,
+      targetFound: Boolean(target),
+      animationFound: Boolean(animation),
+      animationName: animation?.animationName ?? null,
+      playState: animation?.playState ?? null,
+      timelineType: animation?.timeline?.constructor?.name ?? null,
+      timelineSubjectMatches: animation?.timeline?.subject === target,
+      timelineSourceIsDocumentScroller:
+        animation?.timeline?.source === document.scrollingElement,
+      timelineCurrentTime: describeTime(animation?.timeline?.currentTime),
+      currentTime: describeTime(animation?.currentTime),
+      duration: describeTime(timing?.duration),
+      progress: typeof timing?.progress === "number" ? timing.progress : null,
+      transform,
+      scrollY,
+      maxScrollY: Math.max(0, document.documentElement.scrollHeight - innerHeight),
+    };
+  });
+
+  const scrollSetup = await page.evaluate(() => {
+    const priorInlineScrollBehavior = document.documentElement.style.scrollBehavior;
+    document.documentElement.style.scrollBehavior = "auto";
+    return { originalScrollY: scrollY, priorInlineScrollBehavior };
+  });
+  const originalScrollY = scrollSetup.originalScrollY;
+  await page.evaluate(() => scrollTo({ top: 0, left: 0, behavior: "auto" }));
+  await waitForUiCommit(page);
+  const start = await read();
+  const endY = Math.max(0, start.maxScrollY);
+  await page.evaluate(
+    (nextY) => scrollTo({ top: nextY, left: 0, behavior: "auto" }),
+    endY,
+  );
+  await waitForUiCommit(page);
+  const end = await read();
+  await page.evaluate(
+    ({ nextY, priorInlineScrollBehavior }) => {
+      scrollTo({ top: nextY, left: 0, behavior: "auto" });
+      document.documentElement.style.scrollBehavior = priorInlineScrollBehavior;
+    },
+    { nextY: originalScrollY, priorInlineScrollBehavior: scrollSetup.priorInlineScrollBehavior },
+  );
+  await waitForUiCommit(page);
+
+  const progressDelta =
+    typeof start.progress === "number" && typeof end.progress === "number"
+      ? Math.abs(end.progress - start.progress)
+      : null;
+  const currentTimeDelta =
+    start.currentTime?.unit === end.currentTime?.unit &&
+      typeof start.currentTime?.value === "number" &&
+      typeof end.currentTime?.value === "number"
+      ? Math.abs(end.currentTime.value - start.currentTime.value)
+      : null;
+  const endpointResponsive =
+    (progressDelta !== null && progressDelta >= 0.05) ||
+    (currentTimeDelta !== null && currentTimeDelta >= 5);
+  const genuineViewTimeline =
+    start.timelineType === "ViewTimeline" &&
+    end.timelineType === "ViewTimeline" &&
+    start.timelineSubjectMatches &&
+    end.timelineSubjectMatches &&
+    start.timelineSourceIsDocumentScroller &&
+    end.timelineSourceIsDocumentScroller;
+  const nonzeroDuration =
+    typeof start.duration?.value === "number" && start.duration.value > 0 &&
+    typeof end.duration?.value === "number" && end.duration.value > 0;
+  const transformDelta =
+    typeof start.transform?.translateX === "number" &&
+      typeof start.transform?.translateY === "number" &&
+      typeof end.transform?.translateX === "number" &&
+      typeof end.transform?.translateY === "number"
+      ? Math.hypot(
+          end.transform.translateX - start.transform.translateX,
+          end.transform.translateY - start.transform.translateY,
+        )
+      : null;
+  const renderedTransformResponsive = transformDelta !== null && transformDelta >= 4;
+  const traversedScrollDistance = Math.abs(end.scrollY - start.scrollY);
+
+  return {
+    supported: start.supported && end.supported,
+    originalScrollY,
+    start,
+    end,
+    progressDelta,
+    currentTimeDelta,
+    endpointResponsive,
+    transformDelta,
+    renderedTransformResponsive,
+    traversedScrollDistance,
+    genuineViewTimeline,
+    nonzeroDuration,
+    passed:
+      start.supported &&
+      start.rootProfile === "client-operations" &&
+      start.animationFound &&
+      end.animationFound &&
+      genuineViewTimeline &&
+      nonzeroDuration &&
+      endpointResponsive &&
+      renderedTransformResponsive &&
+      traversedScrollDistance > 1,
+  };
 }
 
 async function activate(locator, mode) {
@@ -1535,6 +1700,20 @@ function evaluateCaseAcceptance(result) {
     }
   }
 
+  if (result.spec.id === "desktop-large") {
+    const choreography = result.states.find(
+      (state) => state.step === "choreography:scroll-linked",
+    )?.scrollLinkedChoreography;
+    if (choreography?.passed !== true) {
+      add(
+        "scroll-linked-choreography",
+        "choreography:scroll-linked",
+        "The A-tier reference chamber did not prove a visible-subject, document-scroller ViewTimeline with nonzero timing and rendered endpoint response.",
+        choreography ?? { evidence: "unavailable" },
+      );
+    }
+  }
+
   const measuredCycles = result.states.filter(
     (state) => state.step.startsWith("chamber:cycle-") && state.measured === true,
   ).length;
@@ -1843,6 +2022,20 @@ async function runCase(spec) {
         method: "direct",
       });
     }
+  }
+
+  if (spec.id === "desktop-large") {
+    const cursor = await beginCasePhase("choreography:scroll-linked");
+    await navigateToDistrict(page, "client-operations", {
+      activation: spec.activation,
+      method: "direct",
+    });
+    const scrollLinkedChoreography = await measureScrollLinkedChoreography(page);
+    await capture("choreography:scroll-linked", cursor, {
+      activation: spec.activation,
+      method: "native-scroll",
+      scrollLinkedChoreography,
+    });
   }
 
   await navigateToDistrict(page, "kai-suite", {
@@ -2526,7 +2719,16 @@ function evaluateReportAcceptance(results, javaScriptDisabled) {
           state.animations.motionBudget?.runningEnvironmentAnimationCount,
         ),
       ),
-    "Per-animation name, pseudo-element, source, and motion-budget evidence is present.",
+    "Per-animation identity, structural ownership, play state, timing/progress, timeline type, and motion-budget evidence is present.",
+  );
+  const scrollLinkedState = allStates.find(
+    (state) => state.step === "choreography:scroll-linked",
+  );
+  addCoverage(
+    "coverage:scroll-linked-choreography",
+    scrollLinkedState?.scrollLinkedChoreography?.passed === true,
+    "Desktop Tier A proves a genuine, nonzero ViewTimeline animation that responds across native scroll endpoints.",
+    scrollLinkedState?.scrollLinkedChoreography ?? { evidence: "unavailable" },
   );
   addCoverage(
     "coverage:target-size",
@@ -2666,7 +2868,7 @@ try {
       networkPrivacy:
         "Request and response URLs omit query strings and credentials; methods, resource types, status codes, and failure text are recorded, never request or response bodies.",
       animationLedger:
-        "Every snapshot records animation name, source kind, pseudo-element, structural target, owning declared motion channel, and play state. Known legacy environmental signatures fail as unowned. Tier A <=2, Tier B <=1, and every quiet/static state =0 running environment animations and declared channels.",
+        "Every snapshot records animation name, source kind, pseudo-element, structural target, declared motion channel, play state, normalized current time/duration, computed progress, timeline type, and timeline time. Known legacy environmental signatures fail as unowned. Tier A <=2, Tier B <=1, and every quiet/static state =0 running environment animations and declared channels. A dedicated native-scroll probe separately proves visible-subject ViewTimeline wiring to the document scroller plus nonzero timing and rendered transform response.",
       syntheticLifecycle:
         "Synthetic visibility and PageTransitionEvent phases are explicitly labeled, record isTrusted=false, and are diagnostic only—never BFCache proof. Trusted BFCache proof requires a real history.back traversal, reused document ID, and isTrusted=true pageshow.persisted=true; CDP not-used reasons are recorded where available.",
       reflow200:
