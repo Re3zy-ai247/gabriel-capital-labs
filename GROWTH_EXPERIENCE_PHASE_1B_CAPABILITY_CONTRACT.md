@@ -1,7 +1,7 @@
 # CreditVector Growth Experience Phase 1B — Proposed Non-Monetary Capability Contract
 
 Status: **CONTRACT NOT FOUNDER-RATIFIED**
-Remediation: **GROWTH EXPERIENCE PHASE 1B-R — AUTHORIZED REMEDIATION IN PROGRESS**
+Remediation: **GROWTH EXPERIENCE PHASE 1B-R — REMEDIATION IMPLEMENTATION COMPLETE; FOUNDER_DECISION_PENDING**
 Document type: internal product representation contract; not participant terms, a credential policy, an entitlement, an economic policy, or legal approval
 
 ## Controlling status
@@ -10,11 +10,11 @@ Document type: internal product representation contract; not participant terms, 
 - **GROWTH EXPERIENCE PHASE 1A — APPROVED FOUNDER PREVIEW ONLY**
 - **GROWTH EXPERIENCE PHASE 1B WORK — AUTHORIZED NON-MONETARY CONTRACT WORK**
 - **GROWTH EXPERIENCE PHASE 1B CONTRACT — NOT FOUNDER-RATIFIED**
-- **GROWTH EXPERIENCE PHASE 1B-R — AUTHORIZED REMEDIATION IN PROGRESS**
+- **GROWTH EXPERIENCE PHASE 1B-R — REMEDIATION IMPLEMENTATION COMPLETE; FOUNDER_DECISION_PENDING**
 - **LIVE ECONOMICS — NO-GO**
 - **PUBLIC, PARTICIPANT, PAID, OR PRODUCTION ACTIVATION — NOT AUTHORIZED**
 
-Work authorized; protected Preview pending; contract ratification pending. A protected Preview is review evidence only.
+Work authorized; protected Preview completed; contract ratification pending. A protected Preview is review evidence only.
 
 ## Proposed contract laws
 

@@ -4,7 +4,7 @@ Status: **PROPOSED — CONTRACT NOT FOUNDER-RATIFIED**
 Date: 2026-07-31
 Decision owner: Founder
 Work authorization: **AUTHORIZED NON-MONETARY CONTRACT WORK**
-Remediation authorization: **GROWTH EXPERIENCE PHASE 1B-R — AUTHORIZED REMEDIATION IN PROGRESS**
+Remediation implementation: **COMPLETE; FOUNDER_DECISION_PENDING**
 
 ## Controlling status
 
@@ -12,11 +12,11 @@ Remediation authorization: **GROWTH EXPERIENCE PHASE 1B-R — AUTHORIZED REMEDIA
 2. **GROWTH EXPERIENCE PHASE 1A — APPROVED FOUNDER PREVIEW ONLY**
 3. **GROWTH EXPERIENCE PHASE 1B WORK — AUTHORIZED NON-MONETARY CONTRACT WORK**
 4. **GROWTH EXPERIENCE PHASE 1B CONTRACT — NOT FOUNDER-RATIFIED**
-5. **GROWTH EXPERIENCE PHASE 1B-R — AUTHORIZED REMEDIATION IN PROGRESS**
+5. **GROWTH EXPERIENCE PHASE 1B-R — REMEDIATION IMPLEMENTATION COMPLETE; FOUNDER_DECISION_PENDING**
 6. **LIVE ECONOMICS — NO-GO**
 7. **PUBLIC, PARTICIPANT, PAID, OR PRODUCTION ACTIVATION — NOT AUTHORIZED**
 
-Work is authorized. Contract ratification is pending. A protected Preview is review evidence only and never ratification.
+Work authorized; protected Preview completed; contract ratification pending. A protected Preview is review evidence only and never ratification.
 
 ## Context
 

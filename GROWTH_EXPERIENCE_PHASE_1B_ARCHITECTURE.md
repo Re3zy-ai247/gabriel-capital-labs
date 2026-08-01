@@ -1,6 +1,6 @@
 # CreditVector Growth Experience Phase 1B — Remediated Preview Architecture
 
-Status: **AUTHORIZED REMEDIATION IN PROGRESS; CONTRACT NOT FOUNDER-RATIFIED**
+Status: **REMEDIATION IMPLEMENTATION COMPLETE; FOUNDER_DECISION_PENDING; CONTRACT NOT FOUNDER-RATIFIED**
 Scope: protected, synthetic, non-monetary Founder review only
 
 ## Architecture decision

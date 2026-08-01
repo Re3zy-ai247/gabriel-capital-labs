@@ -350,7 +350,7 @@ export function GrowthCapabilityContractStage({
           <strong>
             {GROWTH_CAPABILITY_REVIEW_SUMMARY}
             <span>
-              Work authorized. Protected Preview evidence: NOT RUN. Contract ratification pending.
+              Work authorized; protected Preview completed; contract ratification pending.
             </span>
           </strong>
           <a href="#full-review-boundary">Full boundary</a>

@@ -168,7 +168,7 @@ const expectedStatuses = [
   "GROWTH EXPERIENCE PHASE 1A — APPROVED FOUNDER PREVIEW ONLY",
   "GROWTH EXPERIENCE PHASE 1B WORK — AUTHORIZED NON-MONETARY CONTRACT WORK",
   "GROWTH EXPERIENCE PHASE 1B CONTRACT — NOT FOUNDER-RATIFIED",
-  "GROWTH EXPERIENCE PHASE 1B-R — AUTHORIZED REMEDIATION IN PROGRESS",
+  "GROWTH EXPERIENCE PHASE 1B-R — REMEDIATION IMPLEMENTATION COMPLETE; FOUNDER_DECISION_PENDING",
   "LIVE ECONOMICS — NO-GO",
   "PUBLIC, PARTICIPANT, PAID, OR PRODUCTION ACTIVATION — NOT AUTHORIZED",
 ] as const;
@@ -493,9 +493,10 @@ check("review disclosure and economic boundary remain visible",
   && stage.includes("GROWTH_CAPABILITY_AGENCY_BOUNDARY")
   && GROWTH_CAPABILITY_REVIEW_SUMMARY.includes("Production hard-off")
   && GROWTH_CAPABILITY_INTERNAL_CONTRACT_NOTICE.includes("not a participant agreement"));
-check("the pre-evidence UI does not claim a completed protected Preview",
-  stage.includes("Work authorized. Protected Preview evidence: NOT RUN. Contract ratification pending.")
-  && !stage.includes("Protected Preview completed"));
+check("the post-evidence UI uses the exact bounded completion status without stale progress copy",
+  stage.includes("Work authorized; protected Preview completed; contract ratification pending.")
+  && !stage.includes("Protected Preview evidence: NOT RUN")
+  && !`${stage}\n${contractSource}`.includes("AUTHORIZED REMEDIATION IN PROGRESS"));
 check("main, focus, reduced motion, and target floors remain present",
   /<main[\s\S]*?id="main"[\s\S]*?tabIndex=\{-1\}/.test(stage)
   && /:focus-visible/.test(css)
