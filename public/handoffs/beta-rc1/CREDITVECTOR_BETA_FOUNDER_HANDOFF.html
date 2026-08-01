@@ -416,6 +416,9 @@ COMMITTED AND PUSHED on fix/beta-auth-security-nextauth-dos-rc1 at 5f2931e8. Not
 Beta readiness package:
 COMMITTED AND PUSHED on review/creditvector-beta-readiness-rc1 at 69533e0cb571831b4f0483535777dd5ab6a358a2. Not merged. Founder scope and all release gates remain.
 
+Mobile delivery package:
+MIRRORED ONLY on non-merge branch codex/creditvector-beta-readiness-mobile-delivery-rc1 under public/handoffs/beta-rc1 for protected Preview and immutable raw download. The delivery branch is not a product integration candidate and must not be merged.
+
 Growth Experience Phase 1B remediation:
 ALREADY PUSHED AND VERIFIED at b913e50f3f2f4c5268c878505aaa31c1882cf92a. Protected Preview: https://gabriel-capital-labs-2dxyiuje0-rey-gabriel-s-projects.vercel.app. Its first remediation parent is a40a41c; it is 67 commits and 199 cumulative files ahead of main. Review evidence only; never merge wholesale.
 
@@ -457,7 +460,7 @@ ARTIFACTS
 - CREDITVECTOR_BETA_BLOCKER_BACKLOG.md / .html
 - CREDITVECTOR_BETA_EXECUTION_REPORT.md / .html
 - CREDITVECTOR_BETA_FOUNDER_HANDOFF.txt / .html
-- CREDITVECTOR_BETA_FOUNDER_PACKAGE.zip (sanitized release artifact, not committed)
+- CREDITVECTOR_BETA_FOUNDER_PACKAGE.zip (not in the product/readiness commit; mirrored only on the non-merge delivery branch)
 - Reproducible renderer: scripts/render-beta-readiness-docs.ts
 
 ARTIFACT HASHES
@@ -475,7 +478,7 @@ PRODUCTION SAFETY
 - Production deployment unchanged: YES, release header still f449c35d0eca.
 - Database touched: NO.
 - Schema or migrations changed/applied: NO.
-- Stripe/provider changed: NO.
+- Stripe or provider configuration changed: NO; protected Preview deployments only.
 - Environment values read or changed: NO values read; no changes.
 - Public or participant access enabled: NO.
 - Payments/economics/mail activated: NO.
