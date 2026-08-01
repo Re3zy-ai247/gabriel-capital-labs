@@ -43,7 +43,7 @@ weighted 3 (launch-critical) / 2 (important) / 1 (standard); score = Σ(weight×
 | **Authentication** | NextAuth JWT (email/username), password reset live, rate-limited. **No MFA, no account lockout, no session revocation.** | 72 | Credential attacks; no MFA | High | — | 2–3 d | P1 |
 | **Billing** | Stripe **LIVE**, webhooks verified, idempotent credits, real MRR. **Only 3/7 tiers have live checkout; dunning/failed-payment partial.** | 80 | Revenue leakage on edge cases | Med | Stripe dunning config | 2–3 d | P1 |
 | **Subscription management** | Checkout/portal/cancel, agency tiers. **Self-serve up/downgrade + refund automation partial.** | 70 | Support load; involuntary churn | Med | Billing | 2–3 d | P2 |
-| **Email deliverability** | Resend, domain verified, sends live. **"Warming"; no DMARC/bounce/complaint loop; `COMPANY_POSTAL_ADDRESS` unset (digest blocked).** | 55 | Deliverability collapse at volume | High | DNS (DMARC), owner env | 1–2 d | P1 |
+| **Email deliverability** | Resend, domain verified, sends live. **"Warming"; no DMARC/bounce/complaint loop. G-01 legal identity is isolated but not integrated or delivery-tested.** | 55 | Deliverability collapse at volume | High | DNS (DMARC), authorized integration + received test | 1–2 d | P1 |
 | **Physical mail** | `lib/mail/` pipeline built, **dry-run only, MAIL_LIVE OFF, LetterStream not wired, no CSO/CCO sign-off.** | 25 | N/A if RC1 = self-mail | Low | **defer post-launch** | — | P3 |
 | **Audit trail** | Admin `AdminAuditLog` + `KaiEvents`; GIOS durable audit **dormant**. **Not comprehensive/tamper-proof.** | 60 | Forensic/compliance gaps | Med | — | 2–3 d | P2 |
 | **AI engine** | Opus 4.8, cost metering (`aiMeter`), injection-hardened, fail-open. **No eval suite, no output monitoring, cost caps partial.** | 72 | Bad output / runaway cost | Med | eval harness | 3–5 d | P2 |
@@ -88,7 +88,7 @@ This removes ~2 heavy categories from the launch path.
 | 2 | **Production monitoring + error tracking + alerting** (APM/Sentry-class) | High | Low | Very high | Enables safe ops | Indirect | Fewer silent failures | 1–2 d | infra |
 | 3 | **CI gate** (guards+typecheck+build on push) **+ Vercel Pro** (skew protection) | High | Low | High | Prevents bad-push outage | Indirect | Uptime | 1 d + owner $20/mo | GitHub Actions |
 | 4 | **Verified backup + tested restore + DR runbook** (confirm provider, do a restore drill, document RPO/RTO) | High | Low | Very high | Prevents catastrophic loss | Protects | Data safety | 1–2 d | **confirm DB provider** |
-| 5 | **Owner actions**: `COMPANY_POSTAL_ADDRESS`, run encrypt backfills, enable Stripe customer receipts | Med | ~0 | Med | Unblocks digest + receipts | Small | Comms | <1 d | owner |
+| 5 | **Owner verification/actions**: G-01 legal identity **RESOLVED BY FOUNDER**; authorize integration and inspect received digest; run encrypt backfills; enable Stripe customer receipts | Med | ~0 | Med | Verifies digest + receipts | Small | Comms | <1 d | owner |
 
 ### P1 — Launch-hardening (strongly recommended before commercial scale)
 | Task | Duration | Why |

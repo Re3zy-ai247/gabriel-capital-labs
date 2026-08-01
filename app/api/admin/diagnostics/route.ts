@@ -8,10 +8,10 @@ const RELEASE = (process.env.VERCEL_GIT_COMMIT_SHA || "dev").slice(0, 12);
 
 // Production configuration diagnostics (RC1 P0-2), ADMIN-ONLY. Reports env-var PRESENCE
 // (booleans only — a value is NEVER returned), the release SHA, node version, and DB reachability.
-// Lets the founder verify prod config (e.g. is COMPANY_POSTAL_ADDRESS set?) without exposing secrets.
+// Lets the founder verify production configuration without exposing secrets.
 const EXPECTED_ENV = [
   "DATABASE_URL", "NEXTAUTH_SECRET", "NEXTAUTH_URL", "STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET",
-  "ANTHROPIC_API_KEY", "RESEND_API_KEY", "RESEND_FROM", "CRON_SECRET", "COMPANY_POSTAL_ADDRESS",
+  "ANTHROPIC_API_KEY", "RESEND_API_KEY", "RESEND_FROM", "CRON_SECRET",
   "DOCUMENT_ENCRYPTION_KEY", "VAPID_PRIVATE_KEY", "NEXT_PUBLIC_VAPID_PUBLIC_KEY",
   "ALERT_WEBHOOK_URL", "MAIL_LIVE", "KERNEL_DURABLE",
   // Surfaced so the founder can detect a lingering god-mode secret in prod (presence only):

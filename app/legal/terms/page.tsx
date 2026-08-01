@@ -1,4 +1,8 @@
 import { LegalShell } from "@/components/marketing/LegalShell";
+import {
+  COMPANY_LEGAL_NAME,
+  COMPANY_POSTAL_ADDRESS_LINES,
+} from "@/lib/companyIdentity.server";
 
 export const metadata = {
   title: "Terms — CreditVector™",
@@ -7,7 +11,7 @@ export const metadata = {
 
 export default function TermsPage() {
   return (
-    <LegalShell title="Terms of Service" updated="June 18, 2026">
+    <LegalShell title="Terms of Service" updated="August 1, 2026">
       <section>
         <h2>What CreditVector is</h2>
         <p>
@@ -52,6 +56,16 @@ export default function TermsPage() {
           warrant uninterrupted availability or that every analysis will be error-free. Please verify important details
           against your official credit reports.
         </p>
+      </section>
+
+      <section>
+        <h2>Company identity</h2>
+        <p>CreditVector is operated by {COMPANY_LEGAL_NAME}.</p>
+        <address className="mt-3 text-sm not-italic leading-relaxed text-slate-400">
+          {COMPANY_POSTAL_ADDRESS_LINES.map((line) => (
+            <span key={line} className="block">{line}</span>
+          ))}
+        </address>
       </section>
 
       <section>

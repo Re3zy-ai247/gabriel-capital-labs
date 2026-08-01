@@ -25,7 +25,7 @@ estimates.* *Parallelizable = can run concurrently with other tasks without a bl
 | P0-3 | **CI gate** — GitHub Actions runs guards + typecheck + build on push; block merge on red | Eng | 1 d | none (guards exist) | High | Prevents bad-push outage | Uptime | **Yes** |
 | P0-4 | **Vercel Pro + Skew Protection** on | Founder (buy) + Eng (enable) | 0.5 d | owner $20/mo | Med | Deploy-skew safety | No stale-deploy errors | **Yes** |
 | P0-5 | **Backup verify + restore drill + DR runbook** (confirm provider, restore once, doc RPO/RTO) | Eng + Founder | 1–2 d | **confirm DB provider** | Critical (data loss) | Provable recoverability | Data safety | Partial (after confirm) |
-| P0-6 | **Owner env actions** — `COMPANY_POSTAL_ADDRESS`, run encrypt backfills, enable Stripe customer receipts | Founder | <1 d | none | Med | Unblocks digest + receipts | Comms/receipts | **Yes** |
+| P0-6 | **Owner verification/actions** — G-01 legal identity **RESOLVED BY FOUNDER**; authorize integration and inspect received digest; run encrypt backfills; enable Stripe customer receipts | Founder | <1 d | deployment authority | Med | Verifies digest + receipts | Comms/receipts | **Yes** |
 
 ### P1 — Launch Critical (before commercial scale; strongly recommended in the counsel window)
 | # | Task | Owner | Effort | Dependencies | Risk | Business impact | Customer impact | Parallel |
@@ -94,8 +94,8 @@ E2E smoke green in CI · no open Critical/High compliance finding.
 ---
 
 ## Immediate next moves
-- **Founder (today, the real critical path):** engage counsel (P0-1); buy Vercel Pro (P0-4); set
-  `COMPANY_POSTAL_ADDRESS` + run encrypt backfills + enable Stripe receipts (P0-6); tell me the **DB
+- **Founder (today, the real critical path):** engage counsel (P0-1); buy Vercel Pro (P0-4); separately
+  authorize legal-identity integration/delivery testing + run encrypt backfills + enable Stripe receipts (P0-6); tell me the **DB
   provider** so P0-5 can start.
 - **Eng (Claude) — ready on your go, in ROI order, all flag-safe and non-behavioral:** **P0-3 CI
   gate** first (1 day, zero external deps, stops bad pushes immediately), then **P0-2 observability**,

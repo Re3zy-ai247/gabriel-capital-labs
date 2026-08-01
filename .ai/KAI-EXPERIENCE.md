@@ -103,7 +103,7 @@ Reuses the existing push (`lib/push.ts`) + email (`lib/email.ts`) plumbing and S
 | Digest | Channel | Content | Infra |
 |---|---|---|---|
 | **Morning** | in-app (Kai Home) on first visit of day | §4 overnight delta | event queries only |
-| **Weekly** | email, opt-in | personal progress (letters, responses, deadlines) + Brief highlights | extends the BUILT Brief digest sender (`lib/briefDigest.ts`) — same CAN-SPAM gates: `COMPANY_POSTAL_ADDRESS` + unsubscribe; CCO pass on template |
+| **Weekly** | email, opt-in | personal progress (letters, responses, deadlines) + Brief highlights | extends the BUILT Brief digest sender (`lib/briefDigest.ts`) — canonical server-scoped LLC postal footer + unsubscribe; CCO pass on template; received delivery still requires verification |
 | **Monthly** | email, opt-in | month-in-review: funnel movement, score log trend, milestones | same sender, monthly cron |
 | **Agency** | email/in-app to agency owners | client-health rollup, SLA risks, follow-ups due | agency data + events |
 | **Executive** | in-app `/admin` (+ optional email) | rides the four live admin dashboards; adds week-over-week deltas | existing admin APIs |
@@ -128,7 +128,7 @@ Named after the founder's Shiba Inu. **Feel:** helpful · calm · professional �
 |---|---|---|
 | **E1** | Event engine (`KaiEvent` + producers) + Timeline page | nothing (pure passive) |
 | **E2** | Kai Home (dashboard evolution) + recommendation rules + notification voice | E1 |
-| **E3** | Digests (weekly personal → monthly → agency) | E1 + `COMPANY_POSTAL_ADDRESS` (G-01) |
+| **E3** | Digests (weekly personal → monthly → agency) | E1 + legal-footer integration/delivery verification (G-01 source fact resolved) |
 | **E4** | Agency intelligence board + support deflection + community smart search (layers 2–5) | E1 + KaiAnswer/KnowledgePack stores |
 | **E5** | Active-mode integration (⚡ asks wired to credits + metering) | ADR-0006 approval + BI-COST-01 live |
 | **E6** | Mascot/brand rollout (owner artwork) + Kai-framed marketing | owner asset |

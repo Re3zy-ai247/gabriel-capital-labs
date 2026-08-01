@@ -1,5 +1,7 @@
 # Current State
 
+**🟢 COMPANY_POSTAL_ADDRESS — RESOLVED BY FOUNDER (2026-08-01; isolated review candidate; production unchanged).** The Founder-approved legal identity is `Gabriel Capital Labs, LLC`, `30 Montgomery St.`, `Suite 1200`, `Jersey City, NJ 07302`; public display branding remains `Gabriel Capital Labs`. Branch `fix/company-legal-identity-isolated-rc1`, based directly on production baseline `f449c35d0eca9463c15e86f8cbd4cd7f4e948d03`, owns the postal block once in server-scoped `lib/companyIdentity.server.ts` and consumes it only on Terms, Privacy, the legal copyright notice, and the opt-in Brief footer. Ordinary product disclaimers and bylines retain display branding. The street address is absent from ordinary product UI and client bundles. Terms/Privacy display `August 1, 2026`; current `origin/main` has no durable Terms-version or reacceptance runtime, so this candidate neither backfills nor forces acceptance. A separate production integration decision must define any reacceptance policy. Source validation and a protected Preview may prove rendering; neither proves a received email, Stripe invoice metadata, provider configuration, or production deployment. No merge, production deployment, provider/env mutation, database action, schema/migration, dependency, billing, auth, or CXOS change is authorized by this candidate.
+
 **🟢 Implementation Slice 2 — Enrollment Runtime COMPLETE in repository source, persistence deferred by design (2026-07-26; branch `feat/operator-enrollment-runtime` from `origin/main` `3612cf7`).** `lib/identity/enrollment.ts` implements §2.8/§5.1/§5.2/§5.5/§15.9: states INVITED · REQUESTED · ACCEPTED · EXPIRED · REVOKED (no ACTIVE; the last three terminal), two entry modes with one terminus, and the §5.5 self-approval bar in both directions. **Enrollment never creates authority** — every payload pins `authorityClass: "NONE"` as a contract literal, so a payload asserting any other authority is rejected by validation. §15.9 expiry and revocation are re-evaluated AT REDEMPTION. Consent is append-only evidence (purpose · scope · mechanism · policy version · actor · effective time · grant, referenced by digest); a withdrawal is a NEW episode and never an overwrite. New subordinate flag `OPERATOR_IDENTITY_ENROLLMENT_ENABLED` (§14.6, §22 #31) — both flags OFF. Four refs-only contracts registered (ENROLLMENT_REQUESTED/ACCEPTED/EXPIRED/REVOKED). **⚠️ Persistence stops at an interface on purpose:** no enrollment/invitation/consent table exists, a 7th migration directory would be rejected by Gate D until §13.3 governance lands in **Slice 7**, so the store is a port whose only adapter is fail-closed unavailable (it REJECTS rather than returning null). The invitation verifier is likewise absent — binding needs a purpose-dedicated key; unreviewed secret reuse is not accepted. This is the ratified plan's Slice 2 exit gate, not a shortfall. Proof: `scripts/identity-enrollment.test.ts` **77/77**, exhaustive over 4,800 decision combinations, negative-controlled five ways. **No schema change, no migration (6 Gate D directories unchanged), no flag change, no route, no production access, no Gate D/Gate F.** Release state **L0/L1** — not merged, not deployed.
 
 **🟡 Implementation Slice 1 — Operator Lifecycle policy and dormant execution boundary (2026-07-26; branch `feat/operator-lifecycle-runtime` from `origin/main` `a54266c`).** `lib/identity/lifecycle.ts` is the one lifecycle door: pure total `decideTransition` preserves the four ratified states, six legal edges, terminal `DEACTIVATED`, bounded authority/basis coherence, and the pure §4.7 owner-invariant rule. **No tracked ICAP-1 or Identity Semantic Baseline artifact exists; neither is claimed as authority.** `PENDING→ACTIVE` remains Platform-Identity-Review-only absent a ratified deterministic eligibility policy; `SUSPENDED→ACTIVE` remains a documented fail-closed platform-only choice. The executable command is stricter than its pure policy while prerequisite owners are absent: it hard-denies caller-asserted Platform Authority, all deactivation without an Authentication-owned verifier, and suspension/deactivation until Organizations supplies an atomic owner-control resolver. Consequently no legal lifecycle mutation can execute even if the master flag is accidentally enabled. New evidence uses `OPERATOR_STATE_CHANGED@2` while `@1` remains replay-compatible; future writes share one transaction with evidence, strict duplicate handling rolls back state, and replay compares sealed material inputs before returning the original transition result. `service.ts` delegates, leaving one implementation path and no raw-`ADMIN` lifecycle shortcut. **No schema change, migration, flag change, route, production access, Gate D, or Gate F.** Release state remains **L0/L1** — not merged or deployed; production and schema state are UNKNOWN. Platform Authority issuance, Authentication step-up, atomic Organization control, Enrollment, Membership, Evidence Runtime, erasure, and retention remain unimplemented activation prerequisites.
@@ -138,9 +140,10 @@ Web Push · Password reset · Mail Center + Campaign engine (self-mail today; `l
 pipeline dry-run, MAIL_LIVE off).
 
 ## ⏰ Pending OWNER actions (raise at session start — PRESERVED)
-1. **`COMPANY_POSTAL_ADDRESS` env var** — weekly Brief digest is built & live (`e699eb6`) but sends
-   NOTHING until this is set in Vercel prod (CAN-SPAM footer). Then: owner subscribes in Settings →
-   "Send test digest" from `/admin/brief` → verify.
+1. **Legal-footer delivery verification** — **COMPANY_POSTAL_ADDRESS — RESOLVED BY FOUNDER** in the
+   isolated source candidate. After separately authorized integration/deployment: owner subscribes
+   in Settings → "Send test digest" from `/admin/brief` → inspect the received LLC postal block,
+   unsubscribe link/headers, and sender identity. Source presence is not delivery proof.
 2. **One-time backfills** — admin console: `fetch('/api/admin/encrypt-letters',{method:'POST'})`
    (encrypts pre-existing plaintext Letter rows; idempotent). Also `/api/admin/encrypt-reports` if
    never run. Status: NEEDS CONFIRMATION whether either has run.
@@ -156,7 +159,8 @@ pipeline dry-run, MAIL_LIVE off).
 
 ## Known issues / debt
 - Favicon/OG images still the pre-de-shadow shield render (on-brand; regen pending).
-- `.env.example` drift: still lists deleted `SETUP_SECRET`; missing `COMPANY_POSTAL_ADDRESS`.
+- `.env.example` still documents legacy bootstrap configuration; the company postal identity is
+  intentionally no longer an environment variable in the isolated candidate.
 - `tsconfig.tsbuildinfo` tracked in git (build artifact) — confirm untracked.
 - GIOS kernel debt (D-07/D-08 effect-safety, D-02 perf) → FOUNDER-CONTEXT §10.
 
@@ -195,7 +199,7 @@ pipeline dry-run, MAIL_LIVE off).
    (`lib/intelligence/reasoning.ts:78`); do NOT mint a 7th confidence ladder.
 2. **GIOS Sprint 3**: ADR-0028 + #11 Durable Audit → D-02 perf harness → route flips.
    Ranked plan: **FOUNDER-CONTEXT §11**.
-2. Owner: unblock the digest (`COMPANY_POSTAL_ADDRESS`); run/confirm the encrypt backfills.
+2. Owner: after separately authorized integration, verify the received digest legal footer; run/confirm the encrypt backfills.
 3. CreditVector app backlog: deferred perf items (Sidebar context provider, letters/upload
    server-prefetch); `#16` KaiAnswer store blocked on ADR-0006 founder approval.
 
