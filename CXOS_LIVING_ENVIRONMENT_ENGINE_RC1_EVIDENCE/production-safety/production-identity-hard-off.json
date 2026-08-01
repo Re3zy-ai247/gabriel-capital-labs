@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "status": "passed",
+  "validatedAt": "2026-08-01T22:51:43Z",
+  "sourceSha": "188aa78cf60d1565a35ac20710724dc7e1e32724",
+  "buildId": "lHw-8Tsk0ZhXJNjvlRrAE",
+  "buildCommand": "npx next build",
+  "identity": {
+    "VERCEL": "1",
+    "VERCEL_ENV": "production",
+    "VERCEL_TARGET_ENV": "production",
+    "NEXT_PUBLIC_VERCEL_ENV": "production",
+    "NEXT_PUBLIC_VERCEL_TARGET_ENV": "production",
+    "NEXT_PUBLIC_CXOS_REVIEW": "1"
+  },
+  "assertion": "Authoritative production identity defeats every contradictory public review flag.",
+  "probes": [
+    {
+      "method": "GET",
+      "path": "/review?director=1&cxos=1&review=1",
+      "expectedStatus": 404,
+      "actualStatus": 404,
+      "passed": true
+    },
+    {
+      "method": "GET",
+      "path": "/review/agency-command?director=1&cxos=1&review=1",
+      "expectedStatus": 404,
+      "actualStatus": 404,
+      "passed": true
+    },
+    {
+      "method": "GET",
+      "path": "/review/mission-control?director=1&cxos=1&review=1",
+      "expectedStatus": 404,
+      "actualStatus": 404,
+      "passed": true
+    }
+  ],
+  "mutations": {
+    "productionDeployment": false,
+    "productionAlias": false,
+    "projectSettings": false,
+    "environmentVariables": false,
+    "database": false
+  },
+  "scope": "Local production-identity build and local HTTP response probes only."
+}

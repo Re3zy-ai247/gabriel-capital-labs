@@ -1,0 +1,355 @@
+{
+  "schemaVersion": "2.1.0",
+  "evidenceType": "cxos-living-environment-engine-rc1-candidate-build-metrics",
+  "capturedAt": "2026-08-01T22:43:48Z",
+  "candidateBuild": {
+    "framework": "Next.js 14.2.18",
+    "buildId": "iO4wrRp0PmFrLQpR176tX",
+    "route": "/review/agency-command",
+    "appBuildManifestKey": "/review/agency-command/page",
+    "renderMode": "static-prerendered",
+    "dataRoute": "/review/agency-command.rsc",
+    "reviewMode": "review-enabled optimized local production build",
+    "sourceIdentity": {
+      "branch": "feat/cxos-living-environment-engine-rc1",
+      "headAtBuild": "188aa78cf60d1565a35ac20710724dc7e1e32724",
+      "implementationCommitSha": "188aa78cf60d1565a35ac20710724dc7e1e32724",
+      "status": "COMMITTED",
+      "binding": "The clean review-enabled optimized build and exact emitted bytes below were produced after implementationCommitSha was committed, with Git HEAD at that exact source revision."
+    },
+    "buildProvenance": {
+      "buildCommand": "NEXT_PUBLIC_CXOS_REVIEW=1 npx next build",
+      "reviewEnvironment": {
+        "NEXT_PUBLIC_CXOS_REVIEW": "1"
+      },
+      "sourceCommitAtBuild": "188aa78cf60d1565a35ac20710724dc7e1e32724",
+      "trackedWorkingTreeAtBuild": "CLEAN",
+      "buildIdModifiedAt": "2026-08-01T22:39:04.972Z"
+    },
+    "manifestSources": [
+      {
+        "path": "BUILD_ID",
+        "rawBytes": 21,
+        "sha256": "b0ef4fd05ebd341f0e756e9225474670aaf2a94fce821858e8fa9db16a06654d"
+      },
+      {
+        "path": "app-build-manifest.json",
+        "rawBytes": 31036,
+        "sha256": "179fe90db0a23e502664e372a125323778b3ee3414ae7089371ad0c04d997be9"
+      },
+      {
+        "path": "prerender-manifest.json",
+        "rawBytes": 6640,
+        "sha256": "706621c2ba52842888b56512ca8ea9539f17e12ee5725ee4ab460b11eb94d729"
+      },
+      {
+        "path": "server/app-paths-manifest.json",
+        "rawBytes": 11396,
+        "sha256": "b8cf45e2883f4c709f8b65b1ac7cf731b4879ad79cc4352fe31400196028e237"
+      },
+      {
+        "path": "server/app/review/agency-command/page_client-reference-manifest.js",
+        "rawBytes": 17109,
+        "sha256": "d9265a8f99b76bb960f98f6a098f4d4c1ce4074aec405a911a86853db24d203d"
+      }
+    ]
+  },
+  "measurement": {
+    "assetPathBase": ".next/",
+    "rawBytes": "exact emitted file length",
+    "gzipBytes": "Node.js zlib gzip level 9 without a filename header",
+    "digest": "SHA-256 over exact emitted bytes",
+    "routeOwnership": "route-owned when an asset occurs in exactly one app-build-manifest route entry",
+    "comparisonMethod": "direct byte measurement of the current candidate build and the preserved exact RC5 baseline build",
+    "sourceCssMethod": "direct byte measurement of committed Git blobs at candidate implementationCommitSha and baselineCommit",
+    "measurementRuntime": {
+      "nodeVersion": "v26.3.0",
+      "zlibVersion": "1.2.12",
+      "nextVersion": "14.2.18",
+      "packageLockVersion": 3
+    },
+    "packageIntegrity": {
+      "packageJsonSha256": "fd78b398d3356905e9c72b36a7eb591433f998a2c1b51433f360fea4bcb25edd",
+      "packageLockSha256": "bf7f8abc9146b72d5b281aad40c13a2f7ea1259342a3e779af950f8c9b61b8c9",
+      "baselinePackageJsonSha256": "fd78b398d3356905e9c72b36a7eb591433f998a2c1b51433f360fea4bcb25edd",
+      "baselinePackageLockSha256": "bf7f8abc9146b72d5b281aad40c13a2f7ea1259342a3e779af950f8c9b61b8c9",
+      "unchangedFromBaseline": true
+    }
+  },
+  "candidateClientAssets": [
+    {
+      "path": "static/chunks/webpack-c29fc69527d5dd49.js",
+      "type": "js",
+      "scope": "shared-runtime",
+      "appRouteReferenceCount": 70,
+      "rawBytes": 3770,
+      "gzipBytes": 1758,
+      "sha256": "ed644f12ca4807fa1cee6620509b5c174eaac83de29171e3e2d520fe6e52994f"
+    },
+    {
+      "path": "static/chunks/570c80f1-1e7556e43282b8a8.js",
+      "type": "js",
+      "scope": "shared-runtime",
+      "appRouteReferenceCount": 70,
+      "rawBytes": 172830,
+      "gzipBytes": 53657,
+      "sha256": "f860e6fdd1383c3e263a9abe1f4e06c7469a4207538fea940b44fa870cf3f251"
+    },
+    {
+      "path": "static/chunks/3460-461802197dcc2383.js",
+      "type": "js",
+      "scope": "shared-runtime",
+      "appRouteReferenceCount": 70,
+      "rawBytes": 123515,
+      "gzipBytes": 31596,
+      "sha256": "8b03c0fbd21e86b992643b355b3fca7a74ff1a070383e74fc15df75763bf9846"
+    },
+    {
+      "path": "static/chunks/main-app-b9dd3090cd41a633.js",
+      "type": "js",
+      "scope": "shared-runtime",
+      "appRouteReferenceCount": 70,
+      "rawBytes": 465,
+      "gzipBytes": 222,
+      "sha256": "9a86274e4f08c53183af58f4ff7128f9ef07bfcba700375b760cf121e5ea2c75"
+    },
+    {
+      "path": "static/css/e2053998dd4a6a8e.css",
+      "type": "css",
+      "scope": "route-owned",
+      "appRouteReferenceCount": 1,
+      "rawBytes": 197053,
+      "gzipBytes": 27875,
+      "sha256": "38938a5387a80240e4b84064ed902a318b65aec9abe67f1ee1e400f6e136bcb4"
+    },
+    {
+      "path": "static/chunks/app/review/agency-command/page-103693ec89185d1f.js",
+      "type": "js",
+      "scope": "route-owned",
+      "appRouteReferenceCount": 1,
+      "rawBytes": 127418,
+      "gzipBytes": 32639,
+      "sha256": "a55159b2fb1a2f8749c5b9239e6eeb0c115ef706368b210112ed7fef16c70155"
+    }
+  ],
+  "candidateServerRouteJs": {
+    "path": "server/app/review/agency-command/page.js",
+    "scope": "server-route-entry",
+    "rawBytes": 119627,
+    "gzipBytes": 31504,
+    "sha256": "86c4beea893f3e3944b289025960de3f67fbdc7e32f6effe726fa9305f00e13f"
+  },
+  "candidateAggregates": {
+    "routeOwnedClientAssets": {
+      "assetCount": 2,
+      "rawBytes": 324471,
+      "gzipBytes": 60514
+    },
+    "routeOwnedJs": {
+      "assetCount": 1,
+      "rawBytes": 127418,
+      "gzipBytes": 32639
+    },
+    "routeOwnedCss": {
+      "assetCount": 1,
+      "rawBytes": 197053,
+      "gzipBytes": 27875
+    },
+    "sharedFirstLoadJs": {
+      "assetCount": 4,
+      "rawBytes": 300580,
+      "gzipBytes": 87233
+    },
+    "allRouteManifestJs": {
+      "assetCount": 5,
+      "rawBytes": 427998,
+      "gzipBytes": 119872
+    },
+    "allRouteManifestClientAssets": {
+      "assetCount": 6,
+      "rawBytes": 625051,
+      "gzipBytes": 147747
+    }
+  },
+  "baselineBuild": {
+    "baselineCommit": "29260fddfc59d71e3d963d2ec791657ea57084af",
+    "sourceIdentity": {
+      "status": "COMMITTED",
+      "commitSha": "29260fddfc59d71e3d963d2ec791657ea57084af"
+    },
+    "framework": "Next.js 14.2.18",
+    "buildId": "t-ufz-GyQCngypFuPluyu",
+    "route": "/review/agency-command",
+    "appBuildManifestKey": "/review/agency-command/page",
+    "renderMode": "static-prerendered",
+    "dataRoute": "/review/agency-command.rsc",
+    "reviewMode": "review-enabled optimized exact RC5 baseline build",
+    "method": "direct measurement of the preserved exact RC5 build artifact",
+    "manifestSources": [
+      {
+        "path": "BUILD_ID",
+        "rawBytes": 21,
+        "sha256": "9408f034378742de38bb75a90092d9025e625c89caca072c11e0bf7419e2b76e"
+      },
+      {
+        "path": "app-build-manifest.json",
+        "rawBytes": 31036,
+        "sha256": "5932194ebc1c8f11fa1e9cc01d3e7b8cbaa8dc37fced5b9435c2eb68ead54761"
+      },
+      {
+        "path": "prerender-manifest.json",
+        "rawBytes": 6640,
+        "sha256": "ac95c87833182199bfc1f98802d81d6643d480051f4e5da20eee6366933ab727"
+      },
+      {
+        "path": "server/app-paths-manifest.json",
+        "rawBytes": 11396,
+        "sha256": "465849944d683b5086ceb0e298b4db44e6e06b3e326200e6933f87583bbe512d"
+      },
+      {
+        "path": "server/app/review/agency-command/page_client-reference-manifest.js",
+        "rawBytes": 16815,
+        "sha256": "953ab29c076d85546bc4ecba7986356c7fac73672985541c994cad413ec99134"
+      }
+    ],
+    "routeOwnedAssets": [
+      {
+        "path": "static/css/5dde9d7fa43bdb14.css",
+        "type": "css",
+        "appRouteReferenceCount": 1,
+        "rawBytes": 175463,
+        "gzipBytes": 24442,
+        "sha256": "6b0e8d303170de820361562166fafb20a81846a216fb018835ca7b675536a715"
+      },
+      {
+        "path": "static/chunks/app/review/agency-command/page-a131f6be1d8fc022.js",
+        "type": "js",
+        "appRouteReferenceCount": 1,
+        "rawBytes": 118198,
+        "gzipBytes": 30152,
+        "sha256": "fc59be4ce81968a55343bf342d53848be54feed85214ba34a486764a6bc33149"
+      }
+    ],
+    "serverRouteJs": {
+      "path": "server/app/review/agency-command/page.js",
+      "rawBytes": 109428,
+      "gzipBytes": 28832,
+      "sha256": "9f85031905cb25e1fdfe80699ceb1e42bba71dfd2aa37783502f368be8e59cd4"
+    },
+    "aggregates": {
+      "routeOwnedClientAssets": {
+        "assetCount": 2,
+        "rawBytes": 293661,
+        "gzipBytes": 54594
+      },
+      "routeOwnedJs": {
+        "assetCount": 1,
+        "rawBytes": 118198,
+        "gzipBytes": 30152
+      },
+      "routeOwnedCss": {
+        "assetCount": 1,
+        "rawBytes": 175463,
+        "gzipBytes": 24442
+      },
+      "sharedFirstLoadJs": {
+        "assetCount": 4,
+        "rawBytes": 300580,
+        "gzipBytes": 87233
+      },
+      "allRouteManifestJs": {
+        "assetCount": 5,
+        "rawBytes": 418778,
+        "gzipBytes": 117385
+      },
+      "allRouteManifestClientAssets": {
+        "assetCount": 6,
+        "rawBytes": 594241,
+        "gzipBytes": 141827
+      }
+    }
+  },
+  "incrementalComparison": {
+    "routeOwnedClientAssets": {
+      "baselineRawBytes": 293661,
+      "candidateRawBytes": 324471,
+      "deltaRawBytes": 30810,
+      "baselineGzipBytes": 54594,
+      "candidateGzipBytes": 60514,
+      "deltaGzipBytes": 5920
+    },
+    "routeOwnedJs": {
+      "baselineMethod": "preserved exact RC5 optimized build",
+      "baselineRawBytes": 118198,
+      "candidateRawBytes": 127418,
+      "deltaRawBytes": 9220,
+      "baselineGzipBytes": 30152,
+      "candidateGzipBytes": 32639,
+      "deltaGzipBytes": 2487,
+      "gzipLimitBytes": 15360,
+      "gzipHeadroomBytes": 12873,
+      "withinTarget": true
+    },
+    "allRouteManifestJs": {
+      "baselineRawBytes": 418778,
+      "candidateRawBytes": 427998,
+      "deltaRawBytes": 9220,
+      "baselineGzipBytes": 117385,
+      "candidateGzipBytes": 119872,
+      "deltaGzipBytes": 2487,
+      "gzipLimitBytes": 15360,
+      "gzipHeadroomBytes": 12873,
+      "withinTarget": true,
+      "budgetScope": "all incremental client JavaScript referenced by the route manifest"
+    },
+    "emittedRouteOwnedCss": {
+      "baselineRawBytes": 175463,
+      "candidateRawBytes": 197053,
+      "deltaRawBytes": 21590,
+      "baselineGzipBytes": 24442,
+      "candidateGzipBytes": 27875,
+      "deltaGzipBytes": 3433,
+      "rawLimitBytes": 24576,
+      "rawHeadroomBytes": 2986,
+      "withinTarget": true
+    },
+    "sourceCss": {
+      "path": "app/review/agency-command/agency-command.module.css",
+      "baselineCommit": "29260fddfc59d71e3d963d2ec791657ea57084af",
+      "candidateCommit": "188aa78cf60d1565a35ac20710724dc7e1e32724",
+      "baseline": {
+        "rawBytes": 159925,
+        "gzipBytes": 25056,
+        "sha256": "8e63a05f5a094906e47eaec8cd75d82caaa816abf13708c12e002aa7e952ef1a"
+      },
+      "candidate": {
+        "rawBytes": 181755,
+        "gzipBytes": 28988,
+        "sha256": "c7f7e282faef603ea99be391e8df8130391fa1b1fc7d76d38831663f8c7765fe"
+      },
+      "delta": {
+        "rawBytes": 21830,
+        "gzipBytes": 3932,
+        "rawLimitBytes": 24576,
+        "rawHeadroomBytes": 2746,
+        "withinTarget": true
+      }
+    }
+  },
+  "reporterSummary": {
+    "candidate": {
+      "source": "derived from exact emitted candidate assets",
+      "routeJsBytes": 32639,
+      "routeJsDisplayApprox": "32.6 kB",
+      "firstLoadJsBytes": 119872,
+      "firstLoadJsDisplayApprox": "120 kB"
+    },
+    "baseline": {
+      "source": "derived from exact emitted RC5 baseline assets",
+      "routeJsBytes": 30152,
+      "routeJsDisplayApprox": "30.2 kB",
+      "firstLoadJsBytes": 117385,
+      "firstLoadJsDisplayApprox": "117 kB"
+    }
+  }
+}

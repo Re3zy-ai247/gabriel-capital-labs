@@ -10,6 +10,34 @@ npx next build           # REQUIRED for risky/structural changes
 npx --no-install tsx scripts/<name>.test.ts   # lockfile-local guard scripts (below)
 ```
 
+## CXOS Living Environment Engine isolated review
+
+Run the presentation-policy guards with the repository-local toolchain:
+
+```bash
+npx --no-install tsx scripts/cxos-core-runtime.test.ts
+npx --no-install tsx scripts/cxos-living-environment.test.ts
+npx --no-install tsx scripts/cxos-agency-command.test.ts
+npx --no-install tsx scripts/cxos-isolated-review.test.ts
+node scripts/cxos-living-environment/handoff.mjs self-test
+```
+
+Last exact-source RC1 result (`188aa78`, 2026-08-01): Core **76/76**, Living
+Environment **35/35**, Agency **185/185**, isolated review **25/25**, and handoff
+self-test **7/7 negative controls**. The optimized review build and a separate Vercel
+production-identity build passed. Under forced production identity plus contradictory
+public review flags, `GET /review`, `/review/agency-command`, and
+`/review/mission-control` each returned **404**.
+
+The dependency-free browser harness is
+`scripts/cxos-living-environment/browser.mjs`. It requires explicit absolute paths for
+Playwright 1.62.0, Chrome 151.0.7922.72, and Axe 4.12.1, verifies pinned tool hashes
+before capture, and requires `CXOS_SOURCE_REVISION` to be an exact 40-character SHA in
+strict mode. Its declared matrix covers 1728×1000, 1440×900, tablet, 390/360/320 px
+mobile, compact landscape, reduced motion, constrained capability, 200% reflow, and a
+separate JavaScript-disabled snapshot. A baseline missing-feature ledger is
+observational and must never be reported as a passing candidate run.
+
 ## Guard scripts (`scripts/`) — run the ones touching your area
 | Guard | Covers | Last known |
 |---|---|---|

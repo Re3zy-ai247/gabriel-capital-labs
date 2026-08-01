@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 1,
+  "status": "ready-with-disclosed-caveats",
+  "baselineSha": "29260fddfc59d71e3d963d2ec791657ea57084af",
+  "implementationSha": "188aa78cf60d1565a35ac20710724dc7e1e32724",
+  "toolchain": {
+    "harnessSha256": "317652c96c4d06112c2f2e7334d4b1ee69a6ac31473b7fc921f49d25d9ebbea6",
+    "playwright": "1.62.0",
+    "axe": "4.12.1",
+    "chrome": "151.0.7922.72"
+  },
+  "sourceArtifacts": [
+    {
+      "name": "candidate-browser-ledger",
+      "sha256": "4a07581e10c7f23464a52e36c273499c3c8e8dcfdb7e901d33d34f609c7a9477",
+      "includedInSanitizedPackage": false,
+      "reason": "The full machine ledger retains local capture endpoints; the package carries this digest, the validation report, and settled screenshots instead."
+    },
+    {
+      "name": "baseline-browser-ledger",
+      "sha256": "c66aae7a56b5d971107c4ee036f4dfe11623118c78a737481d830b7e7fab44ff",
+      "includedInSanitizedPackage": false,
+      "reason": "The full machine ledger retains local capture endpoints; the package carries this digest and the baseline comparison summary instead."
+    },
+    {
+      "name": "candidate-build-metrics",
+      "sha256": "a09d95d0b4fa43ca723b94ca2263295c7f54e1026d9a890d0e3c520f430c1542",
+      "includedInSanitizedPackage": true
+    },
+    {
+      "name": "production-hard-off-proof",
+      "sha256": "89c5fff44755756c12413f65f5c19cc699ac92a13a2edae9135ed56241bd1907",
+      "includedInSanitizedPackage": true
+    },
+    {
+      "name": "implementation-source-allowlist",
+      "sha256": "77b13d945c70e8de7bb62a138774fb2177b3a0f2613908bb019a1369b5589244",
+      "includedInSanitizedPackage": true
+    }
+  ],
+  "acceptance": {
+    "browserCasesPassed": 10,
+    "browserCasesTotal": 10,
+    "states": 152,
+    "coverageGatesPassed": 17,
+    "coverageGatesTotal": 17,
+    "candidateFindings": 0,
+    "candidateObservations": 0,
+    "maxCls": 0,
+    "maxHorizontalOverflowPx": 0,
+    "idleWindows": 4,
+    "idleWindowsWithSustainedWork": 0,
+    "axeConfirmedViolations": 0,
+    "targetMeasurements": 141,
+    "targetSizingFailures": 0,
+    "obstructionHitTests": 63,
+    "obstructionFailures": 0,
+    "trustedBfCacheTraversals": 1,
+    "genuineScrollTimelineProofs": 1,
+    "productionHardOffRoutesPassed": 3,
+    "productionHardOffRoutesTotal": 3
+  },
+  "bundleDelta": {
+    "javascriptRawBytes": 9220,
+    "javascriptGzipBytes": 2487,
+    "emittedCssRawBytes": 21590,
+    "emittedCssGzipBytes": 3433,
+    "sharedFirstLoadJavascriptChanged": false,
+    "allDeclaredBudgetsPassed": true
+  },
+  "disclosedCaveats": [
+    "Axe retained 511 color-contrast nodes for manual review because layered backgrounds could not be determined automatically.",
+    "Mobile, compact-landscape, and reflow cases did not receive comprehensive center-point obstruction sampling.",
+    "Trusted BFCache and genuine scroll choreography each have one bounded automated proof.",
+    "One mixed landscape long-animation frame measured 51.9 milliseconds of blocking time.",
+    "No physical-device, screen-reader, switch-control, voice-control, or physical low-power-device validation is claimed."
+  ]
+}

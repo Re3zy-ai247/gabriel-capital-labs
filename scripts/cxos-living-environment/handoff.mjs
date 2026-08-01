@@ -67,6 +67,7 @@ import {
   sep,
 } from "node:path";
 import process from "node:process";
+import { inflateSync } from "node:zlib";
 
 const MANIFEST_VERSION = 1;
 const MAX_MANIFEST_BYTES = 1024 * 1024;
@@ -644,8 +645,7 @@ function looksLikeLuhnNumber(raw) {
   return sum % 10 === 0;
 }
 
-function scanSensitiveContent(label, buffer, policy) {
-  const text = buffer.toString("utf8");
+function scanSensitiveText(label, text, policy) {
   const patterns = [
     ["a local Unix path", /(?:^|[\s("'`])\/(?:Users|root|workspace|Volumes|private\/(?:tmp|var)|var\/folders|tmp)\/[A-Za-z0-9._-]+/m],
     ["a local Linux home path", /(?:^|[\s("'`])\/home\/[A-Za-z0-9._-]+\//m],
@@ -684,6 +684,104 @@ function scanSensitiveContent(label, buffer, policy) {
     const pattern = new RegExp(`(^|[^A-Za-z0-9])${regexEscape(term)}([^A-Za-z0-9]|$)`, "i");
     if (pattern.test(text)) fail(`${label} contains a forbidden identity term`);
   }
+}
+
+const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+const MAX_PNG_TEXT_BYTES = 1024 * 1024;
+
+function inflatePngText(buffer, label) {
+  try {
+    return inflateSync(buffer, { maxOutputLength: MAX_PNG_TEXT_BYTES });
+  } catch {
+    fail(`${label} contains invalid or excessive compressed PNG text metadata`);
+  }
+}
+
+function pngTextMetadata(buffer, label) {
+  if (buffer.length < PNG_SIGNATURE.length || !buffer.subarray(0, 8).equals(PNG_SIGNATURE)) {
+    return null;
+  }
+
+  const metadata = [];
+  let offset = PNG_SIGNATURE.length;
+  let sawEnd = false;
+  while (offset < buffer.length) {
+    if (offset + 12 > buffer.length) fail(`${label} contains a truncated PNG chunk`);
+    const length = buffer.readUInt32BE(offset);
+    const type = buffer.subarray(offset + 4, offset + 8).toString("ascii");
+    if (!/^[A-Za-z]{4}$/.test(type)) fail(`${label} contains an invalid PNG chunk type`);
+    const dataStart = offset + 8;
+    const dataEnd = dataStart + length;
+    const chunkEnd = dataEnd + 4;
+    if (dataEnd < dataStart || chunkEnd > buffer.length) {
+      fail(`${label} contains an invalid PNG chunk length`);
+    }
+    const data = buffer.subarray(dataStart, dataEnd);
+
+    if (type === "tEXt") {
+      metadata.push({ type, buffer: data });
+    } else if (type === "zTXt") {
+      const separator = data.indexOf(0);
+      if (separator < 1 || separator + 2 > data.length || data[separator + 1] !== 0) {
+        fail(`${label} contains malformed zTXt metadata`);
+      }
+      metadata.push({
+        type,
+        buffer: Buffer.concat([
+          data.subarray(0, separator),
+          Buffer.from("\n"),
+          inflatePngText(data.subarray(separator + 2), label),
+        ]),
+      });
+    } else if (type === "iTXt") {
+      const keywordEnd = data.indexOf(0);
+      if (keywordEnd < 1 || keywordEnd + 3 > data.length) {
+        fail(`${label} contains malformed iTXt metadata`);
+      }
+      const compressionFlag = data[keywordEnd + 1];
+      const compressionMethod = data[keywordEnd + 2];
+      const languageEnd = data.indexOf(0, keywordEnd + 3);
+      const translatedEnd = languageEnd < 0 ? -1 : data.indexOf(0, languageEnd + 1);
+      if (
+        (compressionFlag !== 0 && compressionFlag !== 1) ||
+        compressionMethod !== 0 ||
+        languageEnd < 0 ||
+        translatedEnd < 0
+      ) {
+        fail(`${label} contains malformed iTXt metadata`);
+      }
+      const text = data.subarray(translatedEnd + 1);
+      metadata.push({
+        type,
+        buffer: Buffer.concat([
+          data.subarray(0, keywordEnd),
+          Buffer.from("\n"),
+          compressionFlag === 1 ? inflatePngText(text, label) : text,
+        ]),
+      });
+    } else if (type === "eXIf") {
+      metadata.push({ type, buffer: data });
+    }
+
+    offset = chunkEnd;
+    if (type === "IEND") {
+      sawEnd = true;
+      break;
+    }
+  }
+  if (!sawEnd || offset !== buffer.length) fail(`${label} contains an invalid PNG structure`);
+  return metadata;
+}
+
+function scanSensitiveContent(label, buffer, policy) {
+  const pngMetadata = pngTextMetadata(buffer, label);
+  if (pngMetadata) {
+    for (const entry of pngMetadata) {
+      scanSensitiveText(`${label} ${entry.type} metadata`, entry.buffer.toString("utf8"), policy);
+    }
+    return;
+  }
+  scanSensitiveText(label, buffer.toString("utf8"), policy);
 }
 
 function validateOfflineHtml(html, label, { requireGeneratedContract }) {

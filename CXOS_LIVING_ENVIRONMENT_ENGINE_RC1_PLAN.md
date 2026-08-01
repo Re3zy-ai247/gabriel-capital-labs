@@ -1,6 +1,6 @@
 # CXOS Living Environment Engine RC1 — implementation plan
 
-Status: **IMPLEMENTED · VALIDATION IN PROGRESS**
+Status: **LOCAL VALIDATION COMPLETE · PROTECTED PREVIEW PENDING**
 Date: 2026-08-01
 Decision owner: Founder
 Candidate branch: `feat/cxos-living-environment-engine-rc1`
@@ -590,14 +590,14 @@ cold long-task evidence remains a candidate acceptance risk, not a waived baseli
 
 #### Implementation tasks
 
-- [ ] **T1 (P1)** — Evidence — Build the pinned, fail-closed browser harness and capture untouched RC5. *(Harness complete; final comparable RC5 capture pending.)*
+- [x] **T1 (P1)** — Evidence — Build the pinned, fail-closed browser harness and capture untouched RC5.
 - [x] **T2 (P1)** — Governance — Amend Foundation, Language, and ADR-0040 without creating a second owner.
 - [x] **T3 (P1)** — Policy — Add and negatively test closed chamber profiles, tier projection, and static fail-down.
 - [x] **T4 (P1)** — Lifecycle — Add explicit attention/Kai signals and cleanup-safe idle settlement to the sole adapter.
 - [x] **T5 (P1)** — Agency — Wire seven profiles without changing fixtures, semantic strings, ids, order, or destinations.
-- [ ] **T6 (P1)** — Motion — Consolidate perpetual loops, render seven shots, and prove active/idle/static animation budgets. *(Source complete; rebuilt browser proof pending.)*
+- [x] **T6 (P1)** — Motion — Consolidate perpetual loops, render seven shots, and prove active/idle/static animation budgets.
 - [x] **T7 (P1)** — Isolation — Change review hard-off to server 404 and gate before stage load.
-- [ ] **T8 (P1)** — Validation — Pass guards, builds, browser matrix, adversarial review, exact binding, and protected Preview.
+- [ ] **T8 (P1)** — Validation — Guards, builds, browser matrix, adversarial review, and local exact binding pass; protected Preview verification remains.
 - [ ] **T9 (P2)** — Handoff — Generate and validate the curated Markdown/HTML/evidence/ZIP package.
 
 `T1 → T2 → T3 → T4 → T5 → T6 → T7 → T8 → T9` is deliberately sequential because
