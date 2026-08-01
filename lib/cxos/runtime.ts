@@ -27,6 +27,16 @@ export type CxosCoreRuntimeCapability =
   (typeof CXOS_CORE_RUNTIME_CAPABILITIES)[number];
 
 export type CxosExperienceProjection = "auto" | "cinematic" | "static";
+export type CxosDistrictMode = "flow" | "chamber";
+export type CxosDistrictTransitionDirection =
+  | "forward"
+  | "backward"
+  | "same";
+
+export const DEFAULT_CXOS_DISTRICT_TRANSITION_MS = {
+  A: 620,
+  B: 460,
+} as const;
 
 export interface CxosRuntimeCapabilities {
   browserReduced: boolean;
@@ -59,6 +69,11 @@ export interface CxosRoomRuntimeDefinition<DistrictId extends string> {
   roomId: string;
   districts: readonly DistrictId[];
   initialDistrict: DistrictId;
+  districtMode?: CxosDistrictMode;
+  districtTransitionMs?: {
+    A: number;
+    B: number;
+  };
   arrivalBeats: readonly string[];
   arrivalDurationMs: {
     A: number;
@@ -132,6 +147,23 @@ export function validateCxosRoomRuntime<DistrictId extends string>(
   if (!districts.includes(definition.initialDistrict)) {
     reasons.push("initial-district");
   }
+  const districtMode = definition.districtMode ?? "flow";
+  if (districtMode !== "flow" && districtMode !== "chamber") {
+    reasons.push("district-mode");
+  }
+  if (districtMode === "chamber" && definition.districtTransitionMs) {
+    const timing = definition.districtTransitionMs;
+    if (
+      !Number.isInteger(timing.A) ||
+      !Number.isInteger(timing.B) ||
+      timing.A < 450 ||
+      timing.A > 900 ||
+      timing.B < 450 ||
+      timing.B > timing.A
+    ) {
+      reasons.push("district-transition-duration");
+    }
+  }
   if (
     heldDistricts.some(
       (district) => !districts.includes(district) || !RUNTIME_ID.test(district),
@@ -184,12 +216,13 @@ export function resolveCxosRuntimeProjection(
   capabilities: CxosRuntimeCapabilities,
   reducedMotionOverride: boolean,
   contractValid = true,
+  districtMode: CxosDistrictMode = "flow",
 ): CxosProjectionResolution {
   const constrained =
     capabilities.detectionFailed ||
     capabilities.saveData ||
     capabilities.lowMemory ||
-    !capabilities.intersectionObserver;
+    (districtMode === "flow" && !capabilities.intersectionObserver);
 
   if (!contractValid) {
     return {
@@ -257,6 +290,41 @@ export function resolveCxosRuntimeProjection(
     cinematicAvailable: true,
     static: false,
   };
+}
+
+export function resolveCxosDistrictTransitionDuration<
+  DistrictId extends string,
+>(
+  definition: CxosRoomRuntimeDefinition<DistrictId>,
+  tier: CxTier,
+  contractValid = true,
+): number {
+  if (
+    !contractValid ||
+    definition.districtMode !== "chamber" ||
+    tier === "C" ||
+    tier === "D"
+  ) {
+    return 0;
+  }
+
+  const timing =
+    definition.districtTransitionMs ?? DEFAULT_CXOS_DISTRICT_TRANSITION_MS;
+  return tier === "A" ? timing.A : timing.B;
+}
+
+export function resolveCxosDistrictTransitionDirection<
+  DistrictId extends string,
+>(
+  districtOrder: readonly DistrictId[],
+  source: DistrictId,
+  target: DistrictId,
+): CxosDistrictTransitionDirection {
+  if (source === target) return "same";
+  const sourceIndex = districtOrder.indexOf(source);
+  const targetIndex = districtOrder.indexOf(target);
+  if (sourceIndex < 0 || targetIndex < 0) return "same";
+  return targetIndex > sourceIndex ? "forward" : "backward";
 }
 
 export function deriveCxosRuntimeEnvironment(input: {

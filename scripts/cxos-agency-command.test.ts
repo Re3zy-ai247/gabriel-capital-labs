@@ -1,7 +1,7 @@
 // Run: npx --no-install tsx scripts/cxos-agency-command.test.ts
 //
-// SOURCE + PURE-BEHAVIOUR guard for the CXOS Phase 6.2 Agency Headquarters
-// Founder Review. Browser and visual evidence still belongs in the Phase 6.2 QA
+// SOURCE + PURE-BEHAVIOUR guard for the CXOS Agency Headquarters spatial-
+// chambers Founder Review. Browser and visual evidence still belongs in the RC4 QA
 // ledger; this guard holds the architectural boundary:
 //
 //   deterministic local fixtures -> one bounded local command resolver
@@ -214,23 +214,36 @@ check(
   /AGENCY_DISTRICTS\.map\(\(district\)\s*=>/.test(stageCode) &&
     /data-agency-district=\{district\.id\}/.test(stage) &&
     /aria-labelledby=\{`\$\{district\.id\}-heading`\}/.test(stage) &&
+    /CHAMBER \{district\.index\} \/ 07/.test(stage) &&
     /DISTRICT \{district\.index\} \/ 07/.test(stage) &&
     /\{district\.truthBoundary\}/.test(stage) &&
-    /\{district\.kaiContext\}/.test(stage) &&
+    /contextDistrict\.kaiContext/.test(stage) &&
     /Continue to \{nextDistrict\.name\}/.test(stage),
 );
 check(
-  "RC3 preserves the RC2 canonical fixture source byte-for-byte",
+  "RC4 preserves the RC2/RC3 canonical fixture source byte-for-byte",
   fixturesSha256 === "9f212d3ae6db92e05b8ea50e4df3a0141f0688720e627b4ba08b140b97332146",
 );
 check(
-  "district journey state is derived only from canonical order and active district",
-  /const activeDistrictIndex = AGENCY_DISTRICTS\.findIndex/.test(stageCode) &&
-    /!journeyActive[\s\S]{0,80}"static"[\s\S]{0,180}districtIndex === activeDistrictIndex[\s\S]{0,180}"operating"[\s\S]{0,180}districtIndex > activeDistrictIndex[\s\S]{0,180}"queued"[\s\S]{0,80}"cleared"/.test(
+  "valid hydrated chamber mode contributes exactly one active district while fail-closed markup remains complete",
+  /districtMode:\s*"chamber"/.test(stageCode) &&
+    /const chamberManaged = capabilitiesReady && validation\.valid/.test(
       stageCode,
     ) &&
-    /data-journey-state=\{journeyState\}/.test(stage) &&
+    /const current = activeDistrict === district\.id/.test(stageCode) &&
+    /hidden=\{chamberManaged && !current\}/.test(stage) &&
+    (stage.match(/chamberManaged=\{chamberManaged\}/g) ?? []).length === 7 &&
+    /chamberManaged \? \(current \? "operating" : "queued"\) : "static"/.test(
+      stageCode,
+    ) &&
+    /data-current=\{current \? "true" : "false"\}/.test(stage) &&
     (stage.match(/data-environment=\{district\.id\}/g) ?? []).length === 1,
+);
+check(
+  "pre-hydration and failed-hydration markup keep all seven districts reachable until native hidden attributes apply",
+  !/\.room:not\(\[data-chamber-ready="true"\]\)[\s\S]{0,180}\.district:not\(\[data-current="true"\]\)[\s\S]{0,80}display:\s*none/.test(
+    css,
+  ),
 );
 check(
   "each district exposes one pointer-inert measurable rail and decorative spatial field",
@@ -615,14 +628,16 @@ check(
     /Clear route-local Kai session/.test(stage),
 );
 check(
-  "contextual staging carries the clicked district instead of observer-lag context",
+  "continuous Kai staging carries the explicit active-chamber context",
   /const stageKaiSuggestion = \([\s\S]{0,120}sourceDistrict: AgencyDistrictId/.test(
     stageCode,
   ) &&
     /sourceDistrict !== "kai-suite"[\s\S]{0,100}setKaiContextDistrict\(sourceDistrict\)/.test(
       stageCode,
     ) &&
-    /onStageKai\(district\.suggestions\[0\], district\.id\)/.test(stageCode) &&
+    /onStage\(activeDistrict\.suggestions\[0\], activeDistrict\.id\)/.test(
+      stageCode,
+    ) &&
     /stageKaiSuggestion\(suggestion, kaiContextDistrict\)/.test(stageCode),
 );
 check(
@@ -652,12 +667,15 @@ check(
     !/Nothing was saved or changed|No production data changed/.test(stageCode),
 );
 check(
-  "Kai district staging is available only in operating fixtures and boundary states expose no dead control",
+  "Kai remains continuously contextual but actionable only in operating fixtures",
   /const kaiWorkflowAvailable =\s*fixtureState === "populated" \|\| fixtureState === "capacity"/.test(
     stage,
   ) &&
-    (stage.match(/kaiAvailable=\{kaiWorkflowAvailable\}/g) ?? []).length === 7 &&
-    /\{kaiAvailable \? \([\s\S]{0,260}Stage with Kai[\s\S]{0,220}Kai held · fixture boundary/.test(
+    /<KaiContextSpine[\s\S]{0,220}available=\{kaiWorkflowAvailable\}/.test(
+      stage,
+    ) &&
+    /KAI · CONTINUOUS EXECUTIVE CHANNEL/.test(stage) &&
+    /\{activeDistrict\.id === "kai-suite" \? \([\s\S]{0,260}Kai command chamber active[\s\S]{0,400}available \? \([\s\S]{0,320}Stage \{activeDistrict\.shortName\} with Kai[\s\S]{0,360}Kai held · fixture boundary/.test(
       stage,
     ) &&
     /\.kaiContext \.kaiBoundary\s*\{/.test(css),
@@ -706,15 +724,18 @@ check(
     /const restorePopulatedFixture[\s\S]{0,240}clearKaiSession\(\)/.test(stageCode),
 );
 
-// -- 9 · passive district observation; no scroll hijack ---------------------
+// -- 9 · deterministic chamber navigation; no scroll hijack -----------------
 const observerSource = sourceBetween(
   runtimeAdapterCode,
   "const visibility = new Map<DistrictId, number>()",
   "useEffect(() => {\n    if (!(definition.kaiContextHoldDistricts",
 );
 check(
-  "active district is derived by one shared passive IntersectionObserver",
+  "flow mode retains one passive observer while Agency chamber mode installs none",
   (runtimeAdapterCode.match(/new IntersectionObserver\(/g) ?? []).length === 1 &&
+    /if \(districtMode === "chamber" \|\| !environment\.scrollActivation\) return/.test(
+      runtimeAdapterCode,
+    ) &&
     /querySelectorAll<HTMLElement>\("\[data-cxos-district\]"\)/.test(
       observerSource,
     ) &&
@@ -722,16 +743,91 @@ check(
     /selectCxosActiveDistrict\(definition\.districts/.test(observerSource) &&
     /observer\.observe\(section\)/.test(observerSource) &&
     /observer\.disconnect\(\)/.test(observerSource) &&
+    /districtMode:\s*"chamber"/.test(stageCode) &&
     /data-cxos-district=\{district\.id\}/.test(stage),
 );
 check(
-  "the observer activates tall districts at their first intersection",
-  /threshold:\s*\[0,\s*0\.01,\s*0\.08,\s*0\.24,\s*0\.5\]/.test(
-    observerSource,
-  ),
+  "facility navigation exposes a full map plus compact previous/current/next controls",
+  /function FacilityDirectory/.test(stageCode) &&
+    /<nav className=\{styles\.facilityDirectory\} aria-label="Agency Command facility map">/.test(
+      stage,
+    ) &&
+    /<ol className=\{styles\.facilitySpine\}>\{renderLinks\(\)\}<\/ol>/.test(
+      stage,
+    ) &&
+    /className=\{styles\.mobileFacilityCurrent\}/.test(stage) &&
+    /<span>PREVIOUS<\/span>/.test(stage) &&
+    /<span>CURRENT CHAMBER<\/span>/.test(stage) &&
+    /<span>NEXT<\/span>/.test(stage) &&
+    /<details className=\{styles\.mobileFacilityMap\} data-agency-inspection>/.test(
+      stage,
+    ) &&
+    /Choose one of seven chambers/.test(stage),
 );
 check(
-  "district navigation defeats inherited smooth scroll and preserves the CSS offset",
+  "facility links preserve modified native anchors and intercept only plain primary navigation",
+  /href=\{`#\$\{district\.id\}`\}/.test(stage) &&
+    /event\.button !== 0 \|\|[\s\S]{0,180}event\.metaKey[\s\S]{0,120}event\.ctrlKey[\s\S]{0,120}event\.shiftKey[\s\S]{0,120}event\.altKey[\s\S]{0,120}return;[\s\S]{0,100}event\.preventDefault\(\);[\s\S]{0,100}onNavigate\(district\.id\)/.test(
+      stageCode,
+    ),
+);
+check(
+  "bounded passage is sequence-keyed and consumes only validated runtime timing",
+  /districtTransitionMs:\s*\{ A: 620, B: 460 \}/.test(stageCode) &&
+    /"--cxos-district-transition-duration": `\$\{districtTransitionDurationMs\}ms`/.test(
+      stageCode,
+    ) &&
+    /key=\{chamberTransition\.sequence\}/.test(stage) &&
+    /sequence=\{chamberTransition\.sequence\}/.test(stage) &&
+    /data-cxos-transition-sequence=\{sequence\}/.test(stage) &&
+    /onAnimationEnd=\{completeDistrictTransition\}/.test(stage) &&
+    /timing\.A < 450[\s\S]{0,120}timing\.A > 900[\s\S]{0,120}timing\.B < 450[\s\S]{0,120}timing\.B > timing\.A/.test(
+      runtimePolicyCode,
+    ),
+);
+const hashParserSource = sourceBetween(
+  stageCode,
+  "function agencyDistrictFromHash",
+  "function stateLabel",
+);
+check(
+  "hash parsing and Back/Forward restoration are deterministic and invalid hashes fail to Central Command",
+  /try\s*\{[\s\S]{0,240}decodeURIComponent/.test(hashParserSource) &&
+    /catch\s*\{[\s\S]{0,120}return null/.test(hashParserSource) &&
+    /AGENCY_DISTRICTS\.some\(\(district\) => district\.id === candidate\)/.test(
+      hashParserSource,
+    ) &&
+    /const destination = fromHash \?\? "central-command"/.test(stageCode) &&
+    /window\.location\.hash && !fromHash[\s\S]{0,180}window\.history\.replaceState\(null, "", "#central-command"\)/.test(
+      stageCode,
+    ) &&
+    /window\.history\.pushState\(null, "", `#\$\{activeDistrict\}`\)/.test(
+      stageCode,
+    ) &&
+    /addEventListener\("popstate", restoreHistoryDistrict\)/.test(stageCode) &&
+    /addEventListener\("hashchange", restoreHistoryDistrict\)/.test(stageCode) &&
+    /removeEventListener\("popstate", restoreHistoryDistrict\)/.test(stageCode) &&
+    /removeEventListener\("hashchange", restoreHistoryDistrict\)/.test(
+      stageCode,
+    ) &&
+    !/history\.(?:pushState|replaceState)|location\.hash|hashchange|popstate/.test(
+      runtimeAdapterCode,
+    ),
+);
+check(
+  "destination reveal precedes heading or requested-control focus",
+  /setActiveDistrict\(destination\);[\s\S]{0,120}setChamberTransition\(settled\);[\s\S]{0,120}scheduleDistrictFocus\(destination\)/.test(
+    runtimeAdapterCode,
+  ) &&
+    /findCxosElementById\(root, `\$\{districtId\}-heading`\)/.test(
+      runtimeAdapterCode,
+    ) &&
+    /if \(pending\.inspectionId\)[\s\S]{0,220}inspection\.open = true[\s\S]{0,260}target\?\.focus\(\{ preventScroll: true \}\)/.test(
+      stageCode,
+    ),
+);
+check(
+  "focus framing defeats inherited smooth scroll and preserves the CSS offset",
   /function scrollCxosElementImmediately[\s\S]{0,420}scrollMarginTop[\s\S]{0,260}scrollCxosWindowImmediately/.test(
     runtimeAdapterCode,
   ) &&
@@ -743,9 +839,10 @@ check(
     ),
 );
 check(
-  "district state is exposed without installing a scroll/wheel/touchmove listener",
+  "chamber state is explicit without installing a scroll/wheel/touchmove listener",
   /data-active-district=\{activeDistrict\}/.test(stage) &&
-    /data-scroll-ready=/.test(stage) &&
+    /data-chamber-ready=\{chamberManaged \? "true" : "false"\}/.test(stage) &&
+    /data-chamber-phase=\{chamberTransition\.phase\}/.test(stage) &&
     !/addEventListener\(\s*["'](?:scroll|wheel|touchmove)["']/.test(
       `${stageCode}\n${runtimeAdapterCode}`,
     ) &&
@@ -799,10 +896,16 @@ for (const [label, pattern] of nondeterministic) {
   check(`determinism: no ${label}`, !pattern.test(presentationCode));
 }
 check(
-  "the room owns no timer and the runtime owns one bounded return fallback",
+  "the room owns no timer and the runtime owns only bounded passage and return fallbacks",
   (presentationCode.match(/\bsetTimeout\b/g) ?? []).length === 0 &&
-    (runtimeAdapterCode.match(/\bsetTimeout\b/g) ?? []).length === 1 &&
+    (runtimeAdapterCode.match(/\bsetTimeout\b/g) ?? []).length === 2 &&
+    /districtTransitionFallbackRef\.current = window\.setTimeout\([\s\S]{0,300}districtTransitionDurationMs[\s\S]{0,80}sequence/.test(
+      runtimeAdapterCode,
+    ) &&
     /window\.setTimeout\([\s\S]{0,120}definition\.departure\.fallbackMs/.test(
+      runtimeAdapterCode,
+    ) &&
+    /window\.clearTimeout\(districtTransitionFallbackRef\.current\)/.test(
       runtimeAdapterCode,
     ) &&
     /fallbackMs:\s*800/.test(stageCode) &&
@@ -827,10 +930,13 @@ check(
   ),
 );
 check(
-  "the only imperative navigation is the runtime's validated local departure",
-  !/\b(?:router\.(?:push|replace)|location\.(?:assign|replace)|window\.location)\b/.test(
+  "History API owns only chamber metadata and the runtime owns the sole route departure",
+  !/\brouter\.(?:push|replace)\b|\blocation\.(?:assign|replace)\s*\(/.test(
     stageCode,
   ) &&
+    (stageCode.match(/window\.history\.pushState\(/g) ?? []).length === 1 &&
+    (stageCode.match(/window\.history\.replaceState\(/g) ?? []).length === 1 &&
+    !/window\.location\.(?:hash|href)\s*=/.test(stageCode) &&
     /href:\s*"\/review\/mission-control"/.test(stageCode) &&
     (runtimeAdapterCode.match(/window\.location\.assign\(definition\.departure\.href\)/g) ?? [])
       .length === 1 &&
@@ -873,12 +979,28 @@ const allowedContinuousAnimations = new Set([
   "agencyFlowBlocked",
   "agencyFlowResolving",
   "agencyFacilityChannel",
+  "agencyClientFloorSweep",
+  "agencyTeamRecognition",
+  "agencyObservatoryScan",
+  "agencyEvidenceRecognition",
+  "agencyKaiRecognition",
+  "agencyCapacityScan",
 ]);
+const requiredContinuousAnimations = [
+  "agencySweep",
+  "agencyBreath",
+  "agencyFlowEntering",
+  "agencyFlowAdvancing",
+  "agencyFlowWaiting",
+  "agencyFlowBlocked",
+  "agencyFlowResolving",
+  "agencyFacilityChannel",
+];
 check(
-  "continuous motion is limited to ambient presence and fixed flow-state channels",
+  "continuous motion is limited to ambient presence, fixed flow states, and purpose-bound chamber instruments",
   continuousAnimations.length > 0 &&
     continuousAnimations.every((name) => allowedContinuousAnimations.has(name)) &&
-    [...allowedContinuousAnimations].every((name) =>
+    requiredContinuousAnimations.every((name) =>
       continuousAnimations.includes(name),
     ),
 );
@@ -958,22 +1080,64 @@ check(
     /aria-live="polite"/.test(stage) &&
     /:focus-visible/.test(css),
 );
+const inspectionPlaneSource = sourceBetween(
+  stageCode,
+  "function InspectionPlane",
+  "function AgencyDistrictShell",
+);
+const districtShellSource = sourceBetween(
+  stageCode,
+  "function AgencyDistrictShell",
+  "function ActivationRail",
+);
 check(
-  "journey state is capability-stable and static tiers expose no false current district",
-  /const journeyCapable = resolution\.tier === "A" \|\| resolution\.tier === "B"/.test(
+  "each chamber stages secondary evidence in a closed native inspection disclosure",
+  (stage.match(/<InspectionPlane\b/g) ?? []).length === 7 &&
+    /<details[\s\S]{0,160}data-agency-inspection/.test(inspectionPlaneSource) &&
+    !/<details[^>]*\sopen(?:\s|=|>)/.test(inspectionPlaneSource) &&
+    /<summary>[\s\S]{0,180}INSPECTION PLANE/.test(inspectionPlaneSource) &&
+    /querySelectorAll<HTMLDetailsElement>[\s\S]{0,180}details\[data-agency-inspection\]\[open\]/.test(
+      inspectionPlaneSource,
+    ) &&
+    /className=\{styles\.districtTruth\}[\s\S]{0,360}className=\{styles\.districtBody\}/.test(
+      districtShellSource,
+    ),
+);
+check(
+  "Escape closes only the top local inspection and restores its trigger",
+  /const closeLocalLayerOnEscape/.test(stageCode) &&
+    /directorRef\.current\?\.open/.test(stageCode) &&
+    /details\[data-agency-inspection\]\[open\]/.test(stageCode) &&
+    /openInspection\.removeAttribute\("open"\)/.test(stageCode) &&
+    /summary\?\.focus\(\{ preventScroll: true \}\)/.test(stageCode) &&
+    /addEventListener\("keydown", closeLocalLayerOnEscape, true\)/.test(
+      stageCode,
+    ) &&
+    /removeEventListener\("keydown", closeLocalLayerOnEscape, true\)/.test(
+      stageCode,
+    ),
+);
+check(
+  "chamber capability fails downward and Tier C/D navigation is immediate",
+  /const chamberManaged = capabilitiesReady && validation\.valid/.test(
     stage,
   ) &&
-    /intersectionObserver:\s*typeof window\.IntersectionObserver === "function"/.test(
+    /hidden=\{chamberManaged && !current\}/.test(stage) &&
+    /districtMode === "chamber" \|\| !environment\.scrollActivation/.test(
       runtimeAdapterCode,
     ) &&
-    /!capabilities\.intersectionObserver/.test(runtimePolicyCode) &&
-    /activeDistrict=\{journeyCapable \? activeDistrict : null\}/.test(stage) &&
-    (stage.match(/journeyActive=\{journeyCapable\}/g) ?? []).length === 7 &&
-    /const journeyState = !journeyActive\s*\? "static"/.test(stage) &&
-    /data-current=\{journeyActive && activeDistrict === district\.id \? "true" : "false"\}/.test(
-      stage,
+    /districtMode === "flow" && !capabilities\.intersectionObserver/.test(
+      runtimePolicyCode,
     ) &&
-    !/journeyActive=\{environment\.scrollActivation\}/.test(stage),
+    /definition\.districtMode !== "chamber"[\s\S]{0,120}tier === "C"[\s\S]{0,80}tier === "D"[\s\S]{0,100}return 0/.test(
+      runtimePolicyCode,
+    ) &&
+    /resolution\.tier === "C" \|\|[\s\S]{0,80}resolution\.tier === "D" \|\|[\s\S]{0,120}documentHidden \|\|[\s\S]{0,80}document\.hidden/.test(
+      runtimeAdapterCode,
+    ) &&
+    /if \(immediate\)[\s\S]{0,420}phase: "settled"[\s\S]{0,320}setActiveDistrict\(districtId\)/.test(
+      runtimeAdapterCode,
+    ),
 );
 const reducedMotionAt = css.search(
   /@media\s*\(\s*prefers-reduced-motion\s*:\s*reduce\s*\)/,
@@ -1081,9 +1245,19 @@ check(
     ),
 );
 check(
-  "queue and empty-state handoffs focus the revealed controls without smooth scrolling",
-  (stageCode.match(/scrollIntoView\(\{ block: "center", behavior: "auto" \}\)/g) ?? [])
-    .length >= 4 &&
+  "cross-chamber queue and intake handoffs reveal their inspection before focusing controls",
+  /const focusPendingChamberTarget/.test(stageCode) &&
+    /inspection\.open = true/.test(stageCode) &&
+    /target\?\.focus\(\{ preventScroll: true \}\)/.test(stageCode) &&
+    /target\?\.scrollIntoView\(\{ block: "center", behavior: "auto" \}\)/.test(
+      stageCode,
+    ) &&
+    /navigateToChamber\("client-operations", \{[\s\S]{0,180}elementId: "queue-inspect-response-014"[\s\S]{0,180}inspectionId: "client-operations-inspection"/.test(
+      stageCode,
+    ) &&
+    /navigateToChamber\("client-operations", \{[\s\S]{0,180}elementId: "synthetic-intake-handoff-control"[\s\S]{0,180}inspectionId: "client-operations-inspection"/.test(
+      stageCode,
+    ) &&
     /id="synthetic-intake-handoff-control"/.test(stage) &&
     /aria-expanded=\{intakeOpen\}/.test(stage) &&
     /aria-controls="synthetic-intake-handoff"/.test(stage) &&
@@ -1126,6 +1300,11 @@ const extremeReflowCss = sourceBetween(
   "@media (max-width: 260px)",
   "@media (pointer: coarse)",
 );
+const passageEnvironmentSource = sourceBetween(
+  runtimeAdapterCode,
+  "const environment = useMemo",
+  "const districtTransitionDurationMs",
+);
 check(
   "one logical environmental gutter separates every measurable district rail from content",
   /--agency-district-rail-gutter:\s*1\.25rem/.test(baseDistrictRule) &&
@@ -1167,6 +1346,12 @@ check(
     ),
 );
 check(
+  "the route-level skip control preserves a 44px-plus focused touch target",
+  /:global\(body\):has\(\.room\)\s*>\s*:global\(\.skip-link\):focus-visible\s*\{[\s\S]{0,140}min-height:\s*3rem/.test(
+    css,
+  ),
+);
+check(
   "journey motion never transforms the observed district box or pins mobile semantics",
   !/\btransform\s*:/.test(baseDistrictRule) &&
     !/\.district\[data-current="true"\]\s*\{[\s\S]{0,120}\btransform\s*:/.test(
@@ -1178,15 +1363,28 @@ check(
     !/scroll-snap-type|scroll-snap-align/.test(css),
 );
 check(
-  "district scroll progression is a single desktop fine-pointer progressive enhancement",
-  /@media \(min-width:\s*768px\) and \(pointer:\s*fine\)/.test(css) &&
-    /@supports \(animation-timeline:\s*view\(\)\)/.test(css) &&
-    /\.room\[data-arrival-settled="true"\]\[data-tier="A"\] \.districtEnvironment,[\s\S]{0,140}\.room\[data-arrival-settled="true"\]\[data-tier="B"\] \.districtEnvironment\s*\{[^}]*animation-timeline:\s*view\(\)/.test(
+  "facility passage is viewport-local, safe-area aware, pointer-inert, bounded by the runtime variable, and never creates a blank stage",
+  /\.facilityPassage\s*\{[\s\S]{0,420}pointer-events:\s*none[\s\S]{0,120}position:\s*fixed/.test(css) &&
+    /\.facilityPassage\s*\{[\s\S]{0,520}safe-area-inset-top[\s\S]{0,120}safe-area-inset-right[\s\S]{0,120}safe-area-inset-bottom[\s\S]{0,120}safe-area-inset-left/.test(
       css,
     ) &&
+    /\.facilityPassage\[data-active="true"\]\s*\{[\s\S]{0,260}animation:[^;]*var\(--cxos-district-transition-duration/.test(
+      css,
+    ) &&
+    !/\.chamberStage \.district\[data-current="true"\]\s*\{[\s\S]{0,160}animation:/.test(
+      css,
+    ) &&
+    !/@keyframes agencyChamberAcquire/.test(css) &&
+    /\.district\[hidden\]\s*\{[\s\S]{0,80}display:\s*none/.test(css) &&
+    /chamberTransition\.phase === "passage"/.test(stageCode) &&
+    /source=\{activeDistrictRecord\}/.test(stage) &&
+    /target=\{passageTargetRecord\}/.test(stage) &&
     /"data-cxos-motion": environment\.motion/.test(runtimeAdapterCode) &&
-    /"data-cxos-heartbeat": environment\.heartbeat/.test(runtimeAdapterCode) &&
-    (css.match(/^\s*animation-timeline:\s*view\(\)/gm) ?? []).length >= 3,
+    /chamberTransition\.phase !== "passage"/.test(passageEnvironmentSource) &&
+    /motion:[\s\S]{0,120}"paused"/.test(passageEnvironmentSource) &&
+    /heartbeat:[\s\S]{0,140}"paused"/.test(passageEnvironmentSource) &&
+    /atmosphere:[\s\S]{0,140}"paused"/.test(passageEnvironmentSource) &&
+    /scrollActivation:\s*false/.test(passageEnvironmentSource),
 );
 check(
   "inactive, paused, hidden, departing, and static projections stop district heartbeat work",
@@ -1222,22 +1420,27 @@ check(
     ),
 );
 check(
-  "district operating moments are scroll-bound after settlement and pause without declaration churn",
-  /\}\s*@supports \(animation-timeline:\s*view\(\)\)\s*\{[\s\S]{0,220}\.room\[data-arrival-settled="true"\]\[data-tier="A"\] \.districtTruth::after/.test(
-    css,
+  "the seven chambers expose distinct spatial protagonists instead of one repeated document template",
+  [
+    "centralVista",
+    "clientFlowMoment",
+    "teamCoverageMoment",
+    "observatoryGrid",
+    "archiveLedger",
+    "kaiDesk",
+    "capacityHorizonBlock",
+  ].every(
+    (hook) =>
+      stage.includes(`styles.${hook}`) &&
+      new RegExp(`\\.${hook}\\s*\\{`).test(css),
   ) &&
-  /\.room\[data-arrival-settled="true"\]\[data-tier="A"\] \.districtTruth::after,[\s\S]{0,140}\.room\[data-arrival-settled="true"\]\[data-tier="B"\] \.districtTruth::after/.test(
-    css,
-  ) &&
-    /\.room\[data-arrival-settled="true"\]\[data-tier="A"\] \.districtBody > \*,[\s\S]{0,140}\.room\[data-arrival-settled="true"\]\[data-tier="B"\] \.districtBody > \*/.test(
-      css,
+    AGENCY_DISTRICTS.every((district) =>
+      css.includes(`.district[data-agency-district="${district.id}"]`),
     ) &&
-    /animation-range:\s*entry 4% entry 46%/.test(css) &&
-    /animation-range:\s*entry 18% entry 54%/.test(css) &&
-    !/\.room\[data-(?:cxos-motion|arrival-settled)="(?:active|true)"\] \.district\[data-current="true"\] \.district(?:Truth|Body)/.test(
-      css,
-    ) &&
-    /\.district:focus-within \.districtTruth::after,[\s\S]{0,100}animation-play-state:\s*paused !important/.test(
+    /\.facilityShell\s*\{/.test(css) &&
+    /\.chamberStage\s*\{/.test(css) &&
+    /\.inspectionPlane\s*\{/.test(css) &&
+    !/\.district\s*\{[^}]*grid-template-areas:[^}]*"threshold"[^}]*"header"[^}]*"truth"[^}]*"body"[^}]*"handoff"[^}]*\}/.test(
       css,
     ),
 );
@@ -1314,11 +1517,14 @@ check(
   ),
 );
 check(
-  "new district, Kai, arrival, and Founder-navigation targets retain the 44px floor",
-  /\.arrivalActions button,[\s\S]{0,320}\.facilityDirectory a,[\s\S]{0,120}\.districtHandoff a[\s\S]{0,120}min-height:\s*2\.75rem/.test(
+  "chamber, disclosure, Kai, arrival, and Founder-navigation targets retain the 44px floor",
+  /\.arrivalActions button,[\s\S]{0,420}\.facilityDirectory a,[\s\S]{0,220}\.districtHandoff a\s*\{[\s\S]{0,100}min-height:\s*2\.75rem/.test(
     css,
   ) &&
-    /@media \(pointer: coarse\)[\s\S]{0,500}\.facilityDirectory a,[\s\S]{0,120}\.districtHandoff a[\s\S]{0,120}min-height:\s*3rem/.test(
+    /\.inspectionPlane summary,[\s\S]{0,80}\.mobileFacilityMap summary\s*\{[\s\S]{0,100}min-height:\s*3\.25rem/.test(
+      css,
+    ) &&
+    /@media \(pointer: coarse\)[\s\S]{0,180}\.mobileFacilityCurrent > a,[\s\S]{0,180}\.mobileFacilityMap summary,[\s\S]{0,180}\.mobileFacilityMap a,[\s\S]{0,180}\.inspectionPlane summary\s*\{[\s\S]{0,100}min-height:\s*3rem/.test(
       css,
     ) &&
     /\.footer a\s*\{[\s\S]{0,160}min-height:\s*2\.75rem/.test(css),
@@ -1387,7 +1593,9 @@ check(
 );
 const complianceClaims = presentationCode
   .replace(/\bnot a legal deadline\b/gi, "")
-  .replace(/\bno [^.\n]{0,120}\blegal deadlines?\b/gi, "");
+  .replace(/\bnot [^.]{0,180}\blegal deadlines?\b/gi, "")
+  .replace(/\bno [^.\n]{0,180}\blegal deadlines?\b/gi, "")
+  .replace(/\bwithout [^.\n]{0,180}\blegal deadlines?\b/gi, "");
 const forbiddenCopy: Array<[string, RegExp]> = [
   ["guaranteed outcome", /\bguaranteed?\s+(?:deletion|removal|result|outcome|score|improvement)\b/i],
   ["promised deletion/removal", /\b(?:will|shall)\s+(?:be\s+)?(?:delete|deleted|remove|removed)\b/i],

@@ -10,7 +10,10 @@ import {
   CONSERVATIVE_CXOS_RUNTIME_CAPABILITIES,
   CXOS_CORE_RUNTIME_CAPABILITIES,
   CXOS_CORE_RUNTIME_VERSION,
+  DEFAULT_CXOS_DISTRICT_TRANSITION_MS,
   deriveCxosRuntimeEnvironment,
+  resolveCxosDistrictTransitionDirection,
+  resolveCxosDistrictTransitionDuration,
   resolveCxosRuntimeProjection,
   selectCxosActiveDistrict,
   validateCxosRoomRuntime,
@@ -75,11 +78,50 @@ check(
 );
 check("a bounded reference definition validates", validateCxosRoomRuntime(definition).valid);
 
+const chamberDefinition = {
+  ...definition,
+  districtMode: "chamber",
+  districtTransitionMs: { A: 620, B: 460 },
+} satisfies CxosRoomRuntimeDefinition<"central" | "operations" | "kai-suite">;
+
+check(
+  "a bounded chamber definition validates",
+  validateCxosRoomRuntime(chamberDefinition).valid,
+);
+
 const invalidDefinitions: Array<[string, CxosRoomRuntimeDefinition<string>]> = [
   ["room id", { ...definition, roomId: "Bad room" }],
+  [
+    "district mode",
+    {
+      ...definition,
+      districtMode: "carousel" as "flow",
+    },
+  ],
   ["empty districts", { ...definition, districts: [] }],
   ["duplicate districts", { ...definition, districts: ["central", "central"] }],
   ["unknown initial district", { ...definition, initialDistrict: "unknown" }],
+  [
+    "short chamber transition",
+    {
+      ...chamberDefinition,
+      districtTransitionMs: { A: 449, B: 449 },
+    },
+  ],
+  [
+    "inverted chamber transition",
+    {
+      ...chamberDefinition,
+      districtTransitionMs: { A: 600, B: 601 },
+    },
+  ],
+  [
+    "long chamber transition",
+    {
+      ...chamberDefinition,
+      districtTransitionMs: { A: 901, B: 460 },
+    },
+  ],
   ["unknown Kai hold district", { ...definition, kaiContextHoldDistricts: ["unknown"] }],
   ["empty arrival", { ...definition, arrivalBeats: [] }],
   ["duplicate arrival", { ...definition, arrivalBeats: ["identity", "identity"] }],
@@ -98,6 +140,14 @@ for (const [label, candidate] of invalidDefinitions) {
   const result = validateCxosRoomRuntime(candidate);
   check(`${label} fails closed without throwing`, !result.valid && result.reasons.length > 0);
 }
+
+check(
+  "flow mode ignores chamber-only transition timing",
+  validateCxosRoomRuntime({
+    ...definition,
+    districtTransitionMs: { A: 1, B: 9999 },
+  }).valid,
+);
 
 const desktop = {
   ...CONSERVATIVE_CXOS_RUNTIME_CAPABILITIES,
@@ -133,6 +183,16 @@ check(
     ).tier === "C",
 );
 check(
+  "chamber mode does not require IntersectionObserver",
+  resolveCxosRuntimeProjection(
+    "auto",
+    missingDistrictObservation,
+    false,
+    true,
+    "chamber",
+  ).tier === "A",
+);
+check(
   "reduced motion and explicit Static resolve Tier D",
   resolveCxosRuntimeProjection("auto", reduced, false).tier === "D" &&
     resolveCxosRuntimeProjection("static", desktop, false).tier === "D",
@@ -147,6 +207,41 @@ check(
   resolveCxosRuntimeProjection("cinematic", desktop, true, false).tier === "D" &&
     !resolveCxosRuntimeProjection("cinematic", desktop, true, false)
       .cinematicAvailable,
+);
+
+check(
+  "chamber timing is bounded by tier with complete static fallback",
+  DEFAULT_CXOS_DISTRICT_TRANSITION_MS.A === 620 &&
+    DEFAULT_CXOS_DISTRICT_TRANSITION_MS.B === 460 &&
+    resolveCxosDistrictTransitionDuration(chamberDefinition, "A") === 620 &&
+    resolveCxosDistrictTransitionDuration(chamberDefinition, "B") === 460 &&
+    resolveCxosDistrictTransitionDuration(chamberDefinition, "C") === 0 &&
+    resolveCxosDistrictTransitionDuration(chamberDefinition, "D") === 0 &&
+    resolveCxosDistrictTransitionDuration(chamberDefinition, "A", false) === 0 &&
+    resolveCxosDistrictTransitionDuration(definition, "A") === 0,
+);
+check(
+  "district direction is canonical, deterministic, and safe for unknown input",
+  resolveCxosDistrictTransitionDirection(
+    definition.districts,
+    "central",
+    "operations",
+  ) === "forward" &&
+    resolveCxosDistrictTransitionDirection(
+      definition.districts,
+      "kai-suite",
+      "operations",
+    ) === "backward" &&
+    resolveCxosDistrictTransitionDirection(
+      definition.districts,
+      "central",
+      "central",
+    ) === "same" &&
+    resolveCxosDistrictTransitionDirection(
+      definition.districts,
+      "central",
+      "unknown" as "central",
+    ) === "same",
 );
 
 const arriving = deriveCxosRuntimeEnvironment({
@@ -297,8 +392,11 @@ check(
     ),
 );
 check(
-  "one passive IntersectionObserver owns district activation and cleans up",
+  "flow mode owns one passive observer while chamber mode installs none",
   (adapter.match(/new IntersectionObserver\(/g) ?? []).length === 1 &&
+    /districtMode === "chamber" \|\| !environment\.scrollActivation/.test(
+      adapter,
+    ) &&
     /root\.querySelectorAll<HTMLElement>\("\[data-cxos-district\]"\)/.test(adapter) &&
     /entry\.intersectionRatio/.test(adapter) &&
     /observer\.observe\(section\)/.test(adapter) &&
@@ -308,7 +406,91 @@ check(
   "native scroll is never intercepted or animated continuously",
   !/addEventListener\(\s*["'](?:scroll|wheel|touchmove)["']/.test(adapter) &&
     !/\bonScroll\s*=|\bonWheel\s*=|setInterval|requestIdleCallback/.test(adapter) &&
-    (adapter.match(/requestAnimationFrame\(/g) ?? []).length <= 4,
+    (adapter.match(/requestAnimationFrame\(/g) ?? []).length <= 5,
+);
+check(
+  "chamber transitions are explicit, latest-intent-wins, and keep source active until settlement",
+  /phase: "settled" \| "passage"/.test(adapter) &&
+    /sourceDistrict: DistrictId/.test(adapter) &&
+    /targetDistrict: DistrictId \| null/.test(adapter) &&
+    /sequence: number/.test(adapter) &&
+    /clearDistrictTransitionFallback\(\);[\s\S]{0,220}const sourceDistrict = activeDistrictRef\.current/.test(
+      adapterCode,
+    ) &&
+    /const passage:[\s\S]{0,180}phase: "passage"[\s\S]{0,180}setChamberTransition\(passage\)/.test(
+      adapterCode,
+    ) &&
+    /setActiveDistrict\(destination\);[\s\S]{0,100}setChamberTransition\(settled\)/.test(
+      adapterCode,
+    ),
+);
+check(
+  "same-district and static navigation settle without passage",
+  /if \(districtId === sourceDistrict\)[\s\S]{0,760}phase: "settled"[\s\S]{0,760}scheduleDistrictFocus\(sourceDistrict\)/.test(
+    adapterCode,
+  ) &&
+    /options\?\.immediate === true[\s\S]{0,260}resolution\.tier === "C"[\s\S]{0,120}resolution\.tier === "D"[\s\S]{0,200}document\.hidden/.test(
+      adapterCode,
+    ) &&
+    /if \(immediate\)[\s\S]{0,760}phase: "settled"[\s\S]{0,760}scheduleDistrictFocus\(districtId\)/.test(
+      adapterCode,
+    ),
+);
+check(
+  "hidden-tab chamber settlement restores destination focus when visibility returns",
+  /const visibilityFocusPendingRef = useRef\(false\)/.test(adapterCode) &&
+    /if \(documentHidden \|\| document\.hidden\)[\s\S]{0,180}visibilityFocusPendingRef\.current = true/.test(
+      adapterCode,
+    ) &&
+    /if \(documentHidden\)[\s\S]{0,180}visibilityFocusPendingRef\.current = true[\s\S]{0,180}settlePendingDistrictTransition\(false\)/.test(
+      adapterCode,
+    ) &&
+    /if \(!documentHidden && visibilityFocusPendingRef\.current\)[\s\S]{0,240}scheduleDistrictFocus\(activeDistrictRef\.current\)/.test(
+      adapterCode,
+    ) &&
+    /const reset = \(\) => \{[\s\S]{0,520}visibilityFocusPendingRef\.current = false/.test(
+      adapterCode,
+    ),
+);
+check(
+  "one bounded passage fallback and symmetric focus cleanup exist",
+  (adapter.match(/districtTransitionFallbackRef\.current = window\.setTimeout\(/g) ?? [])
+    .length === 1 &&
+    /districtTransitionDurationMs,[\s\S]{0,40}sequence/.test(adapterCode) &&
+    /expectedSequence[\s\S]{0,100}chamberTransitionRef\.current\.sequence/.test(
+      adapterCode,
+    ) &&
+    /window\.clearTimeout\(districtTransitionFallbackRef\.current\)/.test(
+      adapter,
+    ) &&
+    /window\.cancelAnimationFrame\(districtFocusFrameRef\.current\)/.test(
+      adapter,
+    ) &&
+    /clearDistrictTransitionFallback\(\);[\s\S]{0,80}cancelDistrictFocus\(\)/.test(
+      adapterCode,
+    ),
+);
+check(
+  "stale passage completions cannot settle the latest operator intent",
+  /expectedSequence !== undefined[\s\S]{0,120}expectedSequence !== pending\.sequence/.test(
+    adapterCode,
+  ) &&
+    /dataset\.cxosTransitionSequence/.test(adapterCode) &&
+    /renderedSequence !== String\(pending\.sequence\)/.test(adapterCode),
+);
+check(
+  "passage pauses ambient channels without changing runtime authority",
+  /chamberTransition\.phase !== "passage"/.test(adapter) &&
+    /motion:[\s\S]{0,100}"paused"/.test(adapterCode) &&
+    /heartbeat:[\s\S]{0,120}"paused"/.test(adapterCode) &&
+    /atmosphere:[\s\S]{0,120}"paused"/.test(adapterCode) &&
+    /scrollActivation: false/.test(adapterCode),
+);
+check(
+  "runtime leaves route history and hashes to the room consumer",
+  !/history\.(?:pushState|replaceState)|location\.hash|hashchange|popstate/.test(
+    adapterCode,
+  ),
 );
 check(
   "scroll helpers preserve CSS offset and restore inherited behavior",
@@ -339,10 +521,13 @@ check(
 );
 check(
   "pagehide and BFCache restoration clear every route-local departure state",
-  /const reset = \(\) => \{[\s\S]{0,120}departureCommittedRef\.current = false/.test(
+  /const reset = \(\) => \{[\s\S]{0,180}departureCommittedRef\.current = false/.test(
     adapterCode,
   ) &&
-    /const reset = \(\) => \{[\s\S]{0,280}window\.clearTimeout\(departureFallbackRef\.current\)[\s\S]{0,160}setDeparting\(false\)/.test(
+    /const reset = \(\) => \{[\s\S]{0,400}window\.clearTimeout\(departureFallbackRef\.current\)/.test(
+      adapterCode,
+    ) &&
+    /clearDistrictTransitionFallback\(\);[\s\S]{0,900}setDeparting\(false\)/.test(
       adapterCode,
     ) &&
     /if \(event\.persisted\) reset\(\)/.test(adapterCode),
@@ -372,6 +557,10 @@ check(
     "data-cxos-runtime",
     "data-cxos-runtime-version",
     "data-cxos-room",
+    "data-cxos-district-mode",
+    "data-cxos-district-transition",
+    "data-cxos-district-direction",
+    "data-cxos-district-transition-ms",
     "data-cxos-arrival-beats",
     "data-cxos-arrival-duration-ms",
     "data-cxos-motion-channels",

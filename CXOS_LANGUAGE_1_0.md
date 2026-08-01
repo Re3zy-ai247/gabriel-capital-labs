@@ -6,7 +6,7 @@
 **Date:** 2026-07-31
 **Status:** Working specification for design, implementation planning, review, and QA
 
-> This document is not merge approval or production authorization. It organizes the current CXOS foundation, the Founder-approved Phase 5.2, Phase 5.3, and Phase 6.2 experience direction, plus the Founder-authorized CXOS Core Runtime architecture, into one usable review standard. Canonical repository governance and separate release approvals still control.
+> This document is not merge approval or production authorization. It organizes the current CXOS foundation, the Founder-approved Phase 5.2, Phase 5.3, and Phase 6.2 experience direction, the Founder-authorized CXOS Core Runtime architecture, and the Founder-authorized RC4 Spatial District Chambers presentation amendment into one usable review standard. Canonical repository governance and separate release approvals still control.
 
 ## 1. Truth labels and boundary
 
@@ -15,7 +15,7 @@ Every law in this document carries one of four meanings:
 - **FOUNDATION** — established by `CXOS_FOUNDATION.md`.
 - **APPROVED DIRECTION** — reviewed and approved through the Phase 5.2, Phase 5.3, and Phase 6.2 Founder experience reviews.
 - **PROPOSED EXTENSION** — a design direction suitable for a synthetic Founder prototype, but not yet production-approved.
-- **RUNTIME CONTRACT** — shared deterministic presentation infrastructure approved for this isolated RC1 and protected Preview; it owns lifecycle state, never room facts or effects.
+- **RUNTIME CONTRACT** — shared deterministic presentation infrastructure approved for the isolated Core Runtime review lineage; RC4 adds an optional chamber-presentation lifecycle while preserving the law that runtime owns presentation state, never room facts or effects.
 - **RELEASE GATE** — evidence required before a reviewed delta may proceed to a separately authorized integration or deployment step.
 
 Source set:
@@ -27,19 +27,20 @@ Source set:
 - Founder Phase 6.1 Living Agency Command refinement directive (2026-07-31)
 - Founder Phase 6.2 contextual Kai command-surface directive (2026-07-31)
 - Founder approval of the Phase 6.2 Agency Headquarters architecture and authorization of CXOS Core Runtime (2026-07-31)
+- Founder authorization of the RC4 Spatial District Chambers isolated review candidate (2026-07-31)
 - `.ai/ADR/ADR-0040-cxos-core-runtime.md`
 
 This specification does not authorize:
 
 - a wholesale merge of a historical feature branch;
-- any push or deployment other than the single isolated RC1 review-branch push and its protected Preview;
+- any push or deployment outside a separately authorized isolated review branch and protected Preview gate;
 - production deployment, promotion, or alias changes;
 - database, Prisma, migration, backend, auth, billing, or environment changes;
 - dependency additions;
 - migration of Mission Control, the Passage, the Arena, the landing journey, or any future room;
 - claims that synthetic fixtures, proposed rooms, or review controls are live product capabilities.
 
-**Branch-lineage disclosure:** Founder review of the Phase 6.2 room baseline at `a40a41c5a76028ad5cae2ff655c5bf168fb86a4a` is complete. That historical branch remains 63 commits ahead of the production baseline and must not be merged wholesale. The authorized RC1 is reconstructed on `review/cxos-core-runtime-isolated-rc1` from production baseline `f449c35d0eca9463c15e86f8cbd4cd7f4e948d03`; it contains only the approved Phase 6.2 room, Core Runtime delta, and individually justified review prerequisites. A protected Preview of that isolated candidate is not production integration approval.
+**Branch-lineage disclosure:** Founder review of the Phase 6.2 room baseline at `a40a41c5a76028ad5cae2ff655c5bf168fb86a4a` is complete. That historical branch remains outside the isolated release-candidate lineage and must not be merged wholesale. RC1 was reconstructed from production baseline `f449c35d0eca9463c15e86f8cbd4cd7f4e948d03`. RC4 is authorized only as a bounded descendant of the verified RC3 candidate `ace7e9bfb352c4b83e6371a9e30cd14c5edcc844` on `review/cxos-agency-spatial-chambers-rc4`. A protected Preview of an isolated candidate is not production integration approval.
 
 ## 2. The facility model
 
@@ -77,7 +78,7 @@ Every viewport has one focal object. Supporting instruments may flank it, but ma
 - In Mission Control, the command threshold is the protagonist.
 - In the Passage, the destination aperture is the protagonist.
 - At Arena arrival, the room’s recognition register is the protagonist.
-- In Agency Command, Kai’s Executive Morning Brief and its single ranked action are the protagonist.
+- In Agency Command, the active district’s primary truth and one action are the protagonist; Central Command retains Kai’s Executive Morning Brief as its center.
 
 If two headlines, controls, charts, or illuminated surfaces demand equal attention, the composition has failed.
 
@@ -165,10 +166,10 @@ The source domain owns canonical facts. Kai interprets and prepares; the operato
 
 ### 2.7 Phase 6.2 application and future governance
 
-- Agency Headquarters Phase 6.2 is architecturally approved and serves as the first Core Runtime reference consumer. This approval freezes its room architecture; it does not authorize continued Agency-specific visual redesign.
+- Agency Headquarters Phase 6.2 is architecturally approved and serves as the first Core Runtime reference consumer. Its seven-district business architecture, canonical fixtures, truth boundaries, and ownership boundaries remain frozen. RC4 separately authorizes only the presentation of those same districts as spatial chambers; it does not authorize Agency-specific product expansion or visual redesign outside that correction.
 - Agency Command applies **observable heartbeat** through deterministic client-flow positions, capacity horizons, workload pressure, response-aging markers, evidence coverage, and disclosed bottlenecks. Phase 6.1 established this application; Phase 6.2 preserves it.
 - Agency Command applies **deliberate arrival and exit** through its bounded identity-to-Kai settle and its acknowledged Mission Control return, with immediate complete Tier C/D and reduced-motion alternatives.
-- Agency Command applies **spatial internal operating districts** through the Executive Brief, heartbeat field, priority ledger, portfolio ledger, health/capacity banks, and contextual Kai command district.
+- Agency Command applies **spatial internal operating districts** through seven preserved semantic chambers reached by an actual facility navigator and a bounded passage. Each chamber presents its primary truth first while subordinate detail remains locally and progressively available.
 - Agency Command applies **continuous contextual Kai** through one bounded natural-language command surface that maps to the eleven deterministic fixture capabilities instead of presenting eleven disconnected workflow controls.
 - Agency Command applies **deterministic, authorized, truthfully sourced personalization** through fixed fictional fixtures, disclosed classifications and sources, supported/unsupported outcomes, revise/cancel control, and a no-action receipt. Command text and previews remain route-instance-only and clear on refresh or exit.
 - Mission Control and future operating rooms are governed by these five laws only when separately scoped, reviewed, and implemented. Phase 6.2 changes no Mission Control or future-room runtime, data source, interaction, or release status.
@@ -185,8 +186,8 @@ The runtime owns:
 
 - arrival, settled-operation, and departure phase;
 - bounded environmental-heartbeat state;
-- spatial transition and district activation state;
-- native-scroll observation and focus handoff;
+- spatial transition and district activation state, including an optional active-chamber presentation lifecycle when a room declares it;
+- native-scroll observation within the active semantic floor, plus deterministic local-history and focus handoff;
 - environmental-lighting and atmospheric state tokens;
 - Kai-presence and district-context state only;
 - shared motion-tier, hidden-document, reduced-motion, and static-equivalence policy;
@@ -202,13 +203,30 @@ The room owns:
 Runtime inheritance laws:
 
 1. The runtime is headless and may never render a generic room or centralize room-specific visuals.
-2. Invalid contracts resolve to a complete Tier D static document with no active heartbeat, atmosphere, scroll choreography, or claimed Kai availability.
+2. Invalid contracts resolve to a complete Tier D static experience with no active heartbeat, atmosphere, scroll choreography, or claimed Kai availability. In optional chamber mode, this means one complete active chamber plus direct access to every chamber through the facility navigator; no fact, truth boundary, or action depends on motion.
 3. Truth and motion fail closed; local navigation fails open to the real semantic destination.
 4. A motion-capable room declares one to three continuous transform/opacity motion channels; Tier C, Tier D, reduced-motion, and invalid projections activate zero. Semantic signals never mutate canonical values for appearance.
 5. Missing browser capabilities preserve the complete document and explicit navigation.
 6. Kai Presence Runtime conveys bounded presence/context only. It owns no memory, model, customer fact, authorization, or effect.
 7. Core Runtime performs no network, storage, cookie, database, model, telemetry, calendar, task, customer, auth, billing, or environment-variable/deployment-config action.
 8. Agency Headquarters is the only consumer migrated in this phase. Mission Control, the Passage, the Arena, the landing journey, Consumer Workspace, Marketplace, Community, Growth Network, and future rooms require separate migration authorization and regression evidence.
+9. Optional chamber mode may project one active semantic district, a bounded passage phase, destination context, and settled focus. It is presentation infrastructure only and does not make chamber navigation mandatory for another room.
+10. Chamber location is deterministic: the room declares valid identifiers, semantic content, and route meaning; the runtime may coordinate local hash/history and focus state without storage, persistence, network, telemetry, data mutation, or AI authority. Invalid locations fail closed to the declared default chamber.
+
+### 2.9 Optional spatial chamber presentation
+
+**RUNTIME CONTRACT · AGENCY RC4 REFERENCE AMENDMENT**
+
+The optional spatial chamber mode exists for rooms whose approved district architecture requires facility-scale movement rather than one accumulated document floor. Agency Headquarters is the sole reference consumer authorized in RC4; this amendment does not migrate or prescribe the mode for any other room.
+
+1. Exactly one primary semantic chamber is active at a time. Inactive districts remain real, named destinations in the facility navigator and do not accumulate as full-height page sections.
+2. The facility navigator performs actual district navigation. It is not a tab strip, dashboard filter, or substitute for semantic headings.
+3. A capable projection may show one bounded passage between the visible origin and destination. The passage never represents loading, a write, new evidence, or changed business state.
+4. Each active chamber presents its current condition, dominant instrument, Kai interpretation, one truthful action, and always-visible truth boundary before subordinate detail. Secondary ledgers, evidence, explanations, and controls may use local progressive disclosure without hiding required disclosures or canonical facts.
+5. Native scroll remains authoritative inside the active chamber. It is not the Agency facility-movement mechanism; district travel occurs only through explicit facility navigation, deterministic Back/Forward history, or an equivalent semantic destination control.
+6. Hash/history and focus are deterministic. A settled destination has one valid district identifier, browser Back/Forward restores the corresponding chamber, and focus moves to the destination heading without falling to the document body.
+7. Tier C, Tier D, reduced-motion, invalid, and constrained projections replace chambers immediately with the complete static destination. They retain identical facts, controls, disclosures, navigator access, and focus behavior with zero required motion.
+8. The mode grants no data, network, storage, cookie, persistence, telemetry, model, AI, authorization, or execution authority. The room continues to own every fact, semantic element, instrument, Kai intent, and destination.
 
 ## 3. Room matrix
 
@@ -218,7 +236,7 @@ Runtime inheritance laws:
 | Mission Control | APPROVED DIRECTION | Observe the current case and transfer command | Rectilinear command chamber; asymmetric instrument banks; central axis and threshold | Analytical blue/teal; light from above | Execution, systems, Kai brief, clearance, one next action | Dashboard-card mosaic |
 | The Passage | APPROVED DIRECTION | Move from Mission Control to the Arena | Converging hallway; distant aperture; rectilinear-to-radial conversion | Cool origin; late ceremonial warmth; no early destination grant | Power-down, clearance, anticipation, conversion, threshold | Black interruption, reticle-only tunnel, or loading screen |
 | The Arena | APPROVED DIRECTION | Recognize evidenced standing and let the operator walk the record | Inhabited ceremonial chamber; arrival monument; station-by-station floor | Warm metal-like neutrals and restrained amber; light from below | Standing, evidence, milestones, planned threshold, Kai observation | Casino, game lobby, title screen followed by cards |
-| Agency Command | APPROVED DIRECTION · CORE RUNTIME REFERENCE | Coordinate work across a client portfolio | Wide command wall; spatial operating districts; health and capacity banks; central Kai brief; contextual command surface; purpose-bound heartbeat field; ranked work ledger; portfolio ledger | Mission Control’s analytical family, widened in scale; no Arena gold language | Agency health drivers, client flow, workload, evidence coverage, portfolio priorities, capacity, and deterministic contextual Kai | Generic executive dashboard, chart wall, fake live feed, disconnected workflow-button bank, or AI-copilot chat |
+| Agency Command | APPROVED DIRECTION · CORE RUNTIME REFERENCE | Coordinate work across a client portfolio | Seven distinct spatial chambers; actual facility navigator; bounded passage; chamber-specific banks, rails, ledgers, horizons, and contextual Kai presence | Mission Control’s analytical family, widened in scale; no Arena gold language | The active district’s primary truth, action, source boundary, and progressively disclosed supporting evidence | Generic executive dashboard, accumulated long-form command wall, tab-panel skin, fake live feed, disconnected workflow-button bank, or AI-copilot chat |
 | Founder Review Control | APPROVED REVIEW PATTERN | Inspect projections, fixture states, timing, and safety behavior | One collapsed Director pill opening a contained bottom sheet | Neutral technical instrument outside room hierarchy | Projection, reason, tier, fixture, replay/jump controls | Product navigation, hidden override, or fake modal |
 
 ## 4. Mission Control laws
@@ -289,20 +307,20 @@ Runtime inheritance laws:
 
 **APPROVED DIRECTION · CORE RUNTIME REFERENCE**
 
-**Agency Headquarters** is the Founder-approved architectural term. **Agency Command** remains the concise in-room label and current review-route identity. **Agency Command Center** remains the formal Phase 6 program and artifact title. This mapping records usage; it does not rename routes or globally deprecate any term. The approved room architecture is frozen in this phase; shared lifecycle refinement belongs in Core Runtime.
+**Agency Headquarters** is the Founder-approved architectural term. **Agency Command** remains the concise in-room label and current review-route identity. **Agency Command Center** remains the formal Phase 6 program and artifact title. This mapping records usage; it does not rename routes or globally deprecate any term. The approved seven-district business architecture, canonical fixtures, truth boundaries, and ownership boundaries remain frozen. RC4 authorizes their spatial-chamber presentation through the shared Core Runtime contract; it does not reopen the room’s business architecture.
 
 ### 7.1 Command hierarchy
 
-The first screen follows this order:
+The Central Command entry chamber follows this order:
 
 1. room identity, agency scope, and synthetic disclosure;
 2. Kai Executive Morning Brief with one ranked action and one receipt;
 3. Agency Health as a qualitative band with disclosed drivers;
-4. ranked cross-client work queue;
-5. client portfolio ledger;
-6. capacity and team/load truth.
+4. one current condition and one truthful action;
+5. one always-visible truth boundary;
+6. local access to subordinate health, capacity, queue, or evidence detail.
 
-Desktop may place health and capacity in narrow banks around the Kai brief, but the command wall remains one continuous composition.
+Desktop may place health and capacity in narrow banks around the Kai brief within Central Command. Ranked queue, portfolio, team, health, evidence, Kai workbench, and growth/capacity detail remain in their purpose-specific chambers instead of accumulating into one continuous command wall.
 
 ### 7.2 Agency Health
 
@@ -374,6 +392,27 @@ Desktop may place health and capacity in narrow banks around the Kai brief, but 
 - Reduced-motion and static projections provide the identical command, classification, source, preview, supported/unsupported, revise/cancel, and receipt information without depending on animation.
 - The operator owns the command and decision. Fixture domains own the displayed facts. Kai owns neither customer records nor execution and cannot act for the operator or a client.
 - All wording remains educational and process-bound: no guaranteed deletion, removal, score improvement, legal conclusion, absolute deadline, compliance certification, or credit-repair outcome.
+
+### 7.9 RC4 Spatial District Chambers
+
+The seven approved districts remain exactly:
+
+1. Central Command
+2. Client Operations Floor
+3. Team Operations
+4. Business Health Observatory
+5. Evidence Archive
+6. Kai Executive Suite
+7. Growth and Capacity Threshold
+
+- Only one district is the primary semantic chamber at a time. The facility navigator names all seven destinations and changes facility location; it does not behave or present itself as a dashboard tab set.
+- A capable projection uses one bounded, deterministic passage between districts. Destination selection never mutates a fixture, record, metric, status, recommendation, or receipt.
+- The active chamber exposes its current condition, dominant purpose-specific instrument, contextual Kai interpretation, one truthful action, and permanent truth boundary before secondary detail.
+- Secondary evidence and controls remain available through local progressive disclosure. Required synthetic, source, availability, and no-action disclosures stay visible without expansion.
+- The settled chamber identifier is reflected in deterministic local hash/history. Back and Forward restore chamber state, and completed navigation moves focus to the destination heading.
+- Native scroll is limited to reading the active chamber. It does not traverse the seven-district facility.
+- Tier C, Tier D, constrained, invalid, and reduced-motion states replace the active chamber immediately and preserve the complete static destination and facility navigation.
+- Chamber presentation owns no data, persistence, network, model, AI, customer, task, calendar, billing, authorization, or execution capability.
 
 ## 8. Visual language
 
@@ -536,6 +575,7 @@ Interaction laws:
 8. Native scroll remains authoritative; scroll hijacking and section snapping are forbidden.
 9. No user trap is permitted. Cancel, skip, Escape, and safe return remain available wherever choreography could otherwise delay control.
 10. Natural-language command surfaces disclose deterministic matching, distinguish supported from unsupported intent, invalidate stale previews on revision, and report no action after prepare, cancel, or clear.
+11. A room using optional chamber mode keeps native scroll inside the active chamber, exposes every district through semantic facility navigation, restores deterministic Back/Forward state, and focuses the settled destination heading. Tier C/D perform the same replacement immediately.
 
 Every new room must specify at least:
 
@@ -572,6 +612,7 @@ Partial-source failure should preserve valid surfaces and locate the error at th
 - Text and essential controls maintain readable WCAG contrast across every atmospheric and interaction state.
 - Reduced motion has information parity.
 - The complete static alternative preserves every fact, action, disclosure, and destination.
+- Optional chamber navigation remains keyboard- and history-complete: each destination is named, the active location is exposed semantically, and focus moves to the settled destination heading in motion and static projections.
 - Focus order follows visual order at every viewport.
 - Manual screen-reader, switch-control, and voice-control review remains prudent before production integration; automated Axe results are necessary but not certification.
 
@@ -589,7 +630,7 @@ Partial-source failure should preserve valid surfaces and locate the error at th
 Rules:
 
 - Mobile is designed intentionally, not produced by stacking desktop cards.
-- Mobile reorders content by urgency: identity, Kai brief, disclosed heartbeat and Kai delegation, priority, health/capacity, full ledger, secondary context.
+- Agency mobile presents one complete active chamber at a time. Central Command orders identity, Kai brief, disclosed heartbeat, one action, and its truth boundary; the facility navigator provides direct access to the other six chambers.
 - Preserve the approved typographic voice and hierarchy at every tier; adapt scale without reducing essential content to microtype.
 - No pinned stage or parallax on mobile.
 - Use stable viewport units and safe-area-aware fixed review controls.
@@ -752,6 +793,7 @@ Before a room can be called CXOS:
 - [ ] The exact patch can be integrated without a wholesale historical merge.
 - [ ] Founder experience approval and production authorization remain separate decisions.
 - [ ] The room consumes Core Runtime for shared mechanics or documents a reviewed exception; it does not duplicate lifecycle infrastructure silently.
+- [ ] If optional chamber mode is used, one active semantic chamber, facility navigation, progressive disclosure, hash/history, focus, immediate Tier C/D replacement, and always-visible truth boundaries are verified without granting effect authority.
 
 ## 20. Change control
 
@@ -764,4 +806,4 @@ Language 1.0 is a working specification. A future revision should:
 5. update the room matrix, anti-patterns, and release gates when the change affects them;
 6. receive the appropriate design, engineering, compliance, accessibility, performance, and Founder review before production use.
 
-**Current terminal status:** LANGUAGE 1.0 · PHASE 6.2 + CORE RUNTIME DIRECTION APPROVED · LOCAL REFERENCE IMPLEMENTATION VALIDATED · UNCOMMITTED · UNPUSHED · NOT PREVIEW OR PRODUCTION APPROVAL
+**Current terminal status:** LANGUAGE 1.0 · RC4 SPATIAL DISTRICT CHAMBERS AMENDMENT AUTHORIZED FOR ISOLATED REVIEW · NOT MERGE OR PRODUCTION APPROVAL

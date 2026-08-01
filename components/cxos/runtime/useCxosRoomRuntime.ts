@@ -14,9 +14,12 @@ import {
   CONSERVATIVE_CXOS_RUNTIME_CAPABILITIES,
   CXOS_CORE_RUNTIME_VERSION,
   deriveCxosRuntimeEnvironment,
+  resolveCxosDistrictTransitionDirection,
+  resolveCxosDistrictTransitionDuration,
   resolveCxosRuntimeProjection,
   selectCxosActiveDistrict,
   validateCxosRoomRuntime,
+  type CxosDistrictTransitionDirection,
   type CxosExperienceProjection,
   type CxosRoomRuntimeDefinition,
   type CxosRuntimeCapabilities,
@@ -44,6 +47,14 @@ export interface UseCxosRoomRuntimeOptions<DistrictId extends string> {
   messages: CxosRoomRuntimeMessages;
   announce: (message: string) => void;
   onRouteReset?: () => void;
+}
+
+export interface CxosChamberTransition<DistrictId extends string> {
+  phase: "settled" | "passage";
+  sourceDistrict: DistrictId;
+  targetDistrict: DistrictId | null;
+  direction: CxosDistrictTransitionDirection;
+  sequence: number;
 }
 
 interface CxosRootScrollSnapshot {
@@ -198,6 +209,15 @@ export function useCxosRoomRuntime<DistrictId extends string>({
   const [activeDistrict, setActiveDistrict] = useState<DistrictId>(
     definition.initialDistrict,
   );
+  const [chamberTransition, setChamberTransition] = useState<
+    CxosChamberTransition<DistrictId>
+  >({
+    phase: "settled",
+    sourceDistrict: definition.initialDistrict,
+    targetDistrict: null,
+    direction: "same",
+    sequence: 0,
+  });
   const [kaiContextDistrict, setKaiContextDistrict] = useState<DistrictId>(
     definition.initialDistrict,
   );
@@ -208,8 +228,16 @@ export function useCxosRoomRuntime<DistrictId extends string>({
   const staticArrivalFocusRef = useRef(false);
   const departureCommittedRef = useRef(false);
   const departureFallbackRef = useRef<number | null>(null);
+  const activeDistrictRef = useRef<DistrictId>(definition.initialDistrict);
+  const chamberTransitionRef = useRef<CxosChamberTransition<DistrictId>>(
+    chamberTransition,
+  );
+  const districtTransitionFallbackRef = useRef<number | null>(null);
+  const districtFocusFrameRef = useRef<number | null>(null);
+  const visibilityFocusPendingRef = useRef(false);
   const announceRef = useRef(announce);
   const routeResetRef = useRef(onRouteReset);
+  const districtMode = definition.districtMode ?? "flow";
 
   useEffect(() => {
     announceRef.current = announce;
@@ -226,11 +254,18 @@ export function useCxosRoomRuntime<DistrictId extends string>({
         capabilities,
         reducedMotionOverride,
         validation.valid,
+        districtMode,
       ),
-    [capabilities, projection, reducedMotionOverride, validation.valid],
+    [
+      capabilities,
+      districtMode,
+      projection,
+      reducedMotionOverride,
+      validation.valid,
+    ],
   );
 
-  const environment = useMemo(
+  const baseEnvironment = useMemo(
     () =>
       deriveCxosRuntimeEnvironment({
         contractValid: validation.valid,
@@ -248,6 +283,39 @@ export function useCxosRoomRuntime<DistrictId extends string>({
     ],
   );
 
+  const environment = useMemo(() => {
+    if (chamberTransition.phase !== "passage") return baseEnvironment;
+    return {
+      ...baseEnvironment,
+      motion:
+        baseEnvironment.motion === "static" ? "static" : ("paused" as const),
+      heartbeat:
+        baseEnvironment.heartbeat === "static"
+          ? "static"
+          : ("paused" as const),
+      atmosphere:
+        baseEnvironment.atmosphere === "static"
+          ? "static"
+          : ("paused" as const),
+      kaiPresence:
+        baseEnvironment.kaiPresence === "unavailable" ||
+        baseEnvironment.kaiPresence === "static"
+          ? baseEnvironment.kaiPresence
+          : ("paused" as const),
+      scrollActivation: false,
+    };
+  }, [baseEnvironment, chamberTransition.phase]);
+
+  const districtTransitionDurationMs = useMemo(
+    () =>
+      resolveCxosDistrictTransitionDuration(
+        definition,
+        resolution.tier,
+        validation.valid,
+      ),
+    [definition, resolution.tier, validation.valid],
+  );
+
   const focusRoom = useCallback(() => {
     roomHeadingRef.current?.focus({ preventScroll: true });
   }, [roomHeadingRef]);
@@ -262,6 +330,72 @@ export function useCxosRoomRuntime<DistrictId extends string>({
       if (district) scrollCxosElementImmediately(district);
     },
     [roomRootRef],
+  );
+
+  const clearDistrictTransitionFallback = useCallback(() => {
+    if (districtTransitionFallbackRef.current === null) return;
+    window.clearTimeout(districtTransitionFallbackRef.current);
+    districtTransitionFallbackRef.current = null;
+  }, []);
+
+  const cancelDistrictFocus = useCallback(() => {
+    if (districtFocusFrameRef.current === null) return;
+    window.cancelAnimationFrame(districtFocusFrameRef.current);
+    districtFocusFrameRef.current = null;
+  }, []);
+
+  const scheduleDistrictFocus = useCallback(
+    (districtId: DistrictId) => {
+      cancelDistrictFocus();
+      districtFocusFrameRef.current = window.requestAnimationFrame(() => {
+        districtFocusFrameRef.current = null;
+        focusDistrict(districtId);
+      });
+    },
+    [cancelDistrictFocus, focusDistrict],
+  );
+
+  const settlePendingDistrictTransition = useCallback(
+    (focusDestination: boolean) => {
+      const pending = chamberTransitionRef.current;
+      if (pending.phase !== "passage" || !pending.targetDistrict) return;
+      clearDistrictTransitionFallback();
+      const destination = pending.targetDistrict;
+      const settled: CxosChamberTransition<DistrictId> = {
+        phase: "settled",
+        sourceDistrict: destination,
+        targetDistrict: null,
+        direction: pending.direction,
+        sequence: pending.sequence,
+      };
+      activeDistrictRef.current = destination;
+      chamberTransitionRef.current = settled;
+      setActiveDistrict(destination);
+      setChamberTransition(settled);
+      if (focusDestination) scheduleDistrictFocus(destination);
+    },
+    [clearDistrictTransitionFallback, scheduleDistrictFocus],
+  );
+
+  const completeDistrictTransition = useCallback(
+    (
+      event?: ReactAnimationEvent<HTMLElement>,
+      expectedSequence?: number,
+    ) => {
+      if (event && event.currentTarget !== event.target) return;
+      const pending = chamberTransitionRef.current;
+      const renderedSequence = event?.currentTarget.dataset.cxosTransitionSequence;
+      if (
+        (expectedSequence !== undefined &&
+          expectedSequence !== pending.sequence) ||
+        (renderedSequence !== undefined &&
+          renderedSequence !== String(pending.sequence))
+      ) {
+        return;
+      }
+      settlePendingDistrictTransition(true);
+    },
+    [settlePendingDistrictTransition],
   );
 
   useEffect(() => {
@@ -313,6 +447,21 @@ export function useCxosRoomRuntime<DistrictId extends string>({
         window.clearTimeout(departureFallbackRef.current);
         departureFallbackRef.current = null;
       }
+      clearDistrictTransitionFallback();
+      cancelDistrictFocus();
+      visibilityFocusPendingRef.current = false;
+      const sequence = chamberTransitionRef.current.sequence + 1;
+      const settled: CxosChamberTransition<DistrictId> = {
+        phase: "settled",
+        sourceDistrict: definition.initialDistrict,
+        targetDistrict: null,
+        direction: "same",
+        sequence,
+      };
+      activeDistrictRef.current = definition.initialDistrict;
+      chamberTransitionRef.current = settled;
+      setActiveDistrict(definition.initialDistrict);
+      setChamberTransition(settled);
       setDeparting(false);
       setKaiContextDistrict(definition.initialDistrict);
       routeResetRef.current?.();
@@ -326,7 +475,11 @@ export function useCxosRoomRuntime<DistrictId extends string>({
       window.removeEventListener("pagehide", reset);
       window.removeEventListener("pageshow", resetRestoredPage);
     };
-  }, [definition.initialDistrict]);
+  }, [
+    cancelDistrictFocus,
+    clearDistrictTransitionFallback,
+    definition.initialDistrict,
+  ]);
 
   useEffect(() => {
     if ((!capabilitiesReady && validation.valid) || arrivalSettled) return;
@@ -364,7 +517,7 @@ export function useCxosRoomRuntime<DistrictId extends string>({
   }, [arrivalSettled, focusRoom, messages.escapeArrival]);
 
   useEffect(() => {
-    if (!environment.scrollActivation) return;
+    if (districtMode === "chamber" || !environment.scrollActivation) return;
     const root = roomRootRef.current;
     if (!root) return;
     const visibility = new Map<DistrictId, number>();
@@ -405,7 +558,17 @@ export function useCxosRoomRuntime<DistrictId extends string>({
 
     sections.forEach((section) => observer.observe(section));
     return () => observer.disconnect();
-  }, [definition.districts, environment.scrollActivation, observerKey, roomRootRef]);
+  }, [
+    definition.districts,
+    districtMode,
+    environment.scrollActivation,
+    observerKey,
+    roomRootRef,
+  ]);
+
+  useEffect(() => {
+    activeDistrictRef.current = activeDistrict;
+  }, [activeDistrict]);
 
   useEffect(() => {
     if (!(definition.kaiContextHoldDistricts ?? []).includes(activeDistrict)) {
@@ -450,13 +613,136 @@ export function useCxosRoomRuntime<DistrictId extends string>({
   }, []);
 
   const moveToDistrict = useCallback(
-    (districtId: DistrictId) => {
+    (districtId: DistrictId, options?: { immediate?: boolean }) => {
       if (!definition.districts.includes(districtId)) return;
-      setActiveDistrict(districtId);
-      focusDistrict(districtId);
+
+      if (districtMode === "flow") {
+        activeDistrictRef.current = districtId;
+        setActiveDistrict(districtId);
+        focusDistrict(districtId);
+        return;
+      }
+
+      clearDistrictTransitionFallback();
+      cancelDistrictFocus();
+      const sourceDistrict = activeDistrictRef.current;
+      const sequence = chamberTransitionRef.current.sequence + 1;
+      const direction = resolveCxosDistrictTransitionDirection(
+        definition.districts,
+        sourceDistrict,
+        districtId,
+      );
+
+      if (districtId === sourceDistrict) {
+        const settled: CxosChamberTransition<DistrictId> = {
+          phase: "settled",
+          sourceDistrict,
+          targetDistrict: null,
+          direction: "same",
+          sequence,
+        };
+        chamberTransitionRef.current = settled;
+        setChamberTransition(settled);
+        if (documentHidden || document.hidden) {
+          visibilityFocusPendingRef.current = true;
+        } else {
+          scheduleDistrictFocus(sourceDistrict);
+        }
+        return;
+      }
+
+      const immediate =
+        options?.immediate === true ||
+        !capabilitiesReady ||
+        !validation.valid ||
+        resolution.tier === "C" ||
+        resolution.tier === "D" ||
+        documentHidden ||
+        document.hidden;
+
+      if (immediate) {
+        const settled: CxosChamberTransition<DistrictId> = {
+          phase: "settled",
+          sourceDistrict: districtId,
+          targetDistrict: null,
+          direction,
+          sequence,
+        };
+        activeDistrictRef.current = districtId;
+        chamberTransitionRef.current = settled;
+        setActiveDistrict(districtId);
+        setChamberTransition(settled);
+        if (documentHidden || document.hidden) {
+          visibilityFocusPendingRef.current = true;
+        } else {
+          scheduleDistrictFocus(districtId);
+        }
+        return;
+      }
+
+      const passage: CxosChamberTransition<DistrictId> = {
+        phase: "passage",
+        sourceDistrict,
+        targetDistrict: districtId,
+        direction,
+        sequence,
+      };
+      chamberTransitionRef.current = passage;
+      setChamberTransition(passage);
+      districtTransitionFallbackRef.current = window.setTimeout(
+        (expectedSequence: number) => {
+          if (chamberTransitionRef.current.sequence !== expectedSequence) return;
+          settlePendingDistrictTransition(true);
+        },
+        districtTransitionDurationMs,
+        sequence,
+      );
     },
-    [definition.districts, focusDistrict],
+    [
+      cancelDistrictFocus,
+      capabilitiesReady,
+      clearDistrictTransitionFallback,
+      definition.districts,
+      districtMode,
+      districtTransitionDurationMs,
+      documentHidden,
+      focusDistrict,
+      resolution.tier,
+      scheduleDistrictFocus,
+      settlePendingDistrictTransition,
+      validation.valid,
+    ],
   );
+
+  useEffect(() => {
+    if (districtMode !== "chamber") return;
+    if (!documentHidden && visibilityFocusPendingRef.current) {
+      visibilityFocusPendingRef.current = false;
+      scheduleDistrictFocus(activeDistrictRef.current);
+      return;
+    }
+    if (chamberTransition.phase !== "passage") return;
+    if (documentHidden) {
+      visibilityFocusPendingRef.current = true;
+      settlePendingDistrictTransition(false);
+      return;
+    }
+    if (
+      !validation.valid ||
+      resolution.tier === "C" ||
+      resolution.tier === "D"
+    ) {
+      settlePendingDistrictTransition(true);
+    }
+  }, [
+    chamberTransition.phase,
+    districtMode,
+    documentHidden,
+    resolution.tier,
+    scheduleDistrictFocus,
+    settlePendingDistrictTransition,
+    validation.valid,
+  ]);
 
   const commitDeparture = useCallback(() => {
     if (!departureCommittedRef.current) return;
@@ -480,6 +766,20 @@ export function useCxosRoomRuntime<DistrictId extends string>({
       }
       event.preventDefault();
       if (departureCommittedRef.current) return true;
+      clearDistrictTransitionFallback();
+      cancelDistrictFocus();
+      const pending = chamberTransitionRef.current;
+      if (pending.phase === "passage") {
+        const settled: CxosChamberTransition<DistrictId> = {
+          phase: "settled",
+          sourceDistrict: pending.sourceDistrict,
+          targetDistrict: null,
+          direction: "same",
+          sequence: pending.sequence + 1,
+        };
+        chamberTransitionRef.current = settled;
+        setChamberTransition(settled);
+      }
       departureCommittedRef.current = true;
       setDeparting(true);
       if (departureFallbackRef.current !== null) {
@@ -493,6 +793,8 @@ export function useCxosRoomRuntime<DistrictId extends string>({
       return true;
     },
     [
+      cancelDistrictFocus,
+      clearDistrictTransitionFallback,
       commitDeparture,
       definition.departure.fallbackMs,
       messages.departure,
@@ -514,8 +816,10 @@ export function useCxosRoomRuntime<DistrictId extends string>({
       if (departureFallbackRef.current !== null) {
         window.clearTimeout(departureFallbackRef.current);
       }
+      clearDistrictTransitionFallback();
+      cancelDistrictFocus();
     },
-    [],
+    [cancelDistrictFocus, clearDistrictTransitionFallback],
   );
 
   const arrivalDurationMs =
@@ -529,6 +833,10 @@ export function useCxosRoomRuntime<DistrictId extends string>({
     "data-cxos-runtime": environment.contract,
     "data-cxos-runtime-version": CXOS_CORE_RUNTIME_VERSION,
     "data-cxos-room": definition.roomId,
+    "data-cxos-district-mode": districtMode,
+    "data-cxos-district-transition": chamberTransition.phase,
+    "data-cxos-district-direction": chamberTransition.direction,
+    "data-cxos-district-transition-ms": districtTransitionDurationMs,
     "data-cxos-arrival-beats": definition.arrivalBeats.join(" "),
     "data-cxos-arrival-duration-ms": arrivalDurationMs,
     "data-cxos-motion-channels": definition.motionChannels.join(" "),
@@ -553,6 +861,8 @@ export function useCxosRoomRuntime<DistrictId extends string>({
     arrivalKey,
     arrivalSettled,
     activeDistrict,
+    chamberTransition,
+    districtTransitionDurationMs,
     kaiContextDistrict,
     documentHidden,
     departing,
@@ -560,6 +870,7 @@ export function useCxosRoomRuntime<DistrictId extends string>({
     settleArrival,
     replayArrival,
     moveToDistrict,
+    completeDistrictTransition,
     beginDeparture,
     completeDeparture,
   };

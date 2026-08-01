@@ -106,6 +106,8 @@ const AGENCY_CORE_RUNTIME = {
   roomId: "agency-command",
   districts: AGENCY_DISTRICTS.map((district) => district.id),
   initialDistrict: "central-command",
+  districtMode: "chamber",
+  districtTransitionMs: { A: 620, B: 460 },
   arrivalBeats: AGENCY_ARRIVAL_BEATS,
   arrivalDurationMs: { A: 1500, B: 700 },
   motionChannels: AGENCY_MOTION_CHANNELS,
@@ -115,6 +117,24 @@ const AGENCY_CORE_RUNTIME = {
     fallbackMs: 800,
   },
 } satisfies CxosRoomRuntimeDefinition<AgencyDistrictId>;
+
+interface PendingChamberFocus {
+  districtId: AgencyDistrictId;
+  elementId: string;
+  inspectionId?: string;
+  announcement: string;
+}
+
+function agencyDistrictFromHash(hash: string): AgencyDistrictId | null {
+  try {
+    const candidate = decodeURIComponent(hash.replace(/^#/, ""));
+    return AGENCY_DISTRICTS.some((district) => district.id === candidate)
+      ? (candidate as AgencyDistrictId)
+      : null;
+  } catch {
+    return null;
+  }
+}
 
 function stateLabel(state: AgencyFixtureState): string {
   return (
@@ -149,6 +169,10 @@ export function AgencyCommandStage() {
   const roomHeadingRef = useRef<HTMLHeadingElement>(null);
   const directorRef = useRef<HTMLDetailsElement>(null);
   const directorSummaryRef = useRef<HTMLElement>(null);
+  const historyReadyRef = useRef(false);
+  const handledHistoryHrefRef = useRef<string | null>(null);
+  const pendingHistoryDistrictRef = useRef<AgencyDistrictId | null>(null);
+  const pendingChamberFocusRef = useRef<PendingChamberFocus | null>(null);
   const capabilitiesHydratedRef = useRef(false);
   const previousReducedMotionRef = useRef<boolean | null>(null);
   const kaiTurnSequenceRef = useRef(0);
@@ -190,7 +214,9 @@ export function AgencyCommandStage() {
   });
 
   const {
+    validation,
     capabilities,
+    capabilitiesReady,
     resolution,
     environment,
     arrivalKey,
@@ -199,14 +225,167 @@ export function AgencyCommandStage() {
     kaiContextDistrict,
     documentHidden,
     departing,
+    chamberTransition,
+    districtTransitionDurationMs,
     setKaiContextDistrict,
     settleArrival: settleRuntimeArrival,
     replayArrival: replayRuntimeArrival,
     moveToDistrict,
+    completeDistrictTransition,
     beginDeparture,
     completeDeparture,
   } = runtime;
-  const journeyCapable = resolution.tier === "A" || resolution.tier === "B";
+  const chamberManaged = capabilitiesReady && validation.valid;
+  const passageTarget = chamberTransition.targetDistrict ?? activeDistrict;
+  const activeDistrictRecord =
+    AGENCY_DISTRICTS.find((district) => district.id === activeDistrict) ??
+    AGENCY_DISTRICTS[0];
+  const kaiContextRecord =
+    AGENCY_DISTRICTS.find((district) => district.id === kaiContextDistrict) ??
+    activeDistrictRecord;
+  const passageTargetRecord =
+    AGENCY_DISTRICTS.find((district) => district.id === passageTarget) ??
+    activeDistrictRecord;
+
+  const focusPendingChamberTarget = useCallback(
+    (pending: PendingChamberFocus) => {
+      window.requestAnimationFrame(() => {
+        if (pending.inspectionId) {
+          const inspection = document.getElementById(
+            pending.inspectionId,
+          ) as HTMLDetailsElement | null;
+          if (inspection) inspection.open = true;
+        }
+        window.requestAnimationFrame(() => {
+          const target = document.getElementById(pending.elementId);
+          target?.focus({ preventScroll: true });
+          target?.scrollIntoView({ block: "center", behavior: "auto" });
+          setAnnouncement(pending.announcement);
+        });
+      });
+    },
+    [],
+  );
+
+  const navigateToChamber = useCallback(
+    (
+      districtId: AgencyDistrictId,
+      pendingFocus?: Omit<PendingChamberFocus, "districtId">,
+      historyMode: "push" | "none" = "push",
+      immediate = false,
+    ) => {
+      if (!AGENCY_DISTRICTS.some((district) => district.id === districtId)) {
+        return;
+      }
+
+      roomRootRef.current
+        ?.querySelectorAll<HTMLDetailsElement>(
+          "details[data-agency-inspection][open]",
+        )
+        .forEach((inspection) => inspection.removeAttribute("open"));
+
+      if (pendingFocus) {
+        pendingChamberFocusRef.current = { districtId, ...pendingFocus };
+      }
+
+      if (
+        districtId === activeDistrict &&
+        chamberTransition.phase === "settled"
+      ) {
+        moveToDistrict(districtId, { immediate: true });
+        const pending = pendingChamberFocusRef.current;
+        if (pending?.districtId === districtId) {
+          pendingChamberFocusRef.current = null;
+          focusPendingChamberTarget(pending);
+        }
+        return;
+      }
+
+      pendingHistoryDistrictRef.current =
+        historyMode === "push" ? districtId : null;
+      moveToDistrict(districtId, { immediate });
+    },
+    [
+      activeDistrict,
+      chamberTransition.phase,
+      focusPendingChamberTarget,
+      moveToDistrict,
+    ],
+  );
+
+  useEffect(() => {
+    if (arrivalSettled) return;
+    historyReadyRef.current = false;
+    handledHistoryHrefRef.current = null;
+  }, [arrivalSettled]);
+
+  useEffect(() => {
+    if (!arrivalSettled || !chamberManaged || historyReadyRef.current) return;
+    historyReadyRef.current = true;
+
+    const restoreHistoryDistrict = (event?: Event) => {
+      if (
+        event?.type !== "pageshow" &&
+        handledHistoryHrefRef.current === window.location.href
+      ) return;
+      handledHistoryHrefRef.current = window.location.href;
+      const fromHash = agencyDistrictFromHash(window.location.hash);
+      const destination = fromHash ?? "central-command";
+      if (window.location.hash && !fromHash) {
+        try {
+          window.history.replaceState(null, "", "#central-command");
+          handledHistoryHrefRef.current = window.location.href;
+        } catch {
+          // Invalid presentation metadata fails down to the declared chamber.
+        }
+      }
+      pendingHistoryDistrictRef.current = null;
+      moveToDistrict(destination, { immediate: true });
+      const district = AGENCY_DISTRICTS.find((item) => item.id === destination);
+      setAnnouncement(
+        `${district?.name ?? "Central Command"} restored from facility history.`,
+      );
+    };
+
+    restoreHistoryDistrict();
+    window.addEventListener("popstate", restoreHistoryDistrict);
+    window.addEventListener("hashchange", restoreHistoryDistrict);
+    window.addEventListener("pageshow", restoreHistoryDistrict);
+    return () => {
+      window.removeEventListener("popstate", restoreHistoryDistrict);
+      window.removeEventListener("hashchange", restoreHistoryDistrict);
+      window.removeEventListener("pageshow", restoreHistoryDistrict);
+    };
+  }, [arrivalSettled, chamberManaged, moveToDistrict]);
+
+  useEffect(() => {
+    if (!chamberManaged || chamberTransition.phase !== "settled") return;
+
+    const pendingHistory = pendingHistoryDistrictRef.current;
+    if (pendingHistory === activeDistrict) {
+      pendingHistoryDistrictRef.current = null;
+      try {
+        window.history.pushState(null, "", `#${activeDistrict}`);
+        handledHistoryHrefRef.current = window.location.href;
+      } catch {
+        // History is presentation metadata only. The chamber remains complete.
+      }
+      setAnnouncement(`${activeDistrictRecord.name} acquired. Kai context updated.`);
+    }
+
+    const pendingFocus = pendingChamberFocusRef.current;
+    if (pendingFocus?.districtId === activeDistrict) {
+      pendingChamberFocusRef.current = null;
+      focusPendingChamberTarget(pendingFocus);
+    }
+  }, [
+    activeDistrict,
+    chamberManaged,
+    chamberTransition.phase,
+    chamberTransition.sequence,
+    activeDistrictRecord.name,
+    focusPendingChamberTarget,
+  ]);
 
   useEffect(() => {
     const closeDirectorOnEscape = (event: KeyboardEvent) => {
@@ -226,6 +405,59 @@ export function AgencyCommandStage() {
     return () =>
       window.removeEventListener("keydown", closeDirectorOnEscape, true);
   }, []);
+
+  useEffect(() => {
+    const closeLocalLayerOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || directorRef.current?.open) return;
+
+      if (activeDistrict === "client-operations" && expandedQueueId) {
+        const trigger = document.getElementById(
+          `queue-inspect-${expandedQueueId}`,
+        );
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        setExpandedQueueId(null);
+        window.requestAnimationFrame(() =>
+          trigger?.focus({ preventScroll: true }),
+        );
+        setAnnouncement("Queue evidence closed.");
+        return;
+      }
+
+      if (activeDistrict === "client-operations" && intakeOpen) {
+        const trigger = document.getElementById(
+          "synthetic-intake-handoff-control",
+        );
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        setIntakeOpen(false);
+        window.requestAnimationFrame(() =>
+          trigger?.focus({ preventScroll: true }),
+        );
+        setAnnouncement("Synthetic intake handoff closed.");
+        return;
+      }
+
+      const openInspection = Array.from(
+        roomRootRef.current?.querySelectorAll<HTMLDetailsElement>(
+          "details[data-agency-inspection][open]",
+        ) ?? [],
+      ).find((inspection) => inspection.getClientRects().length > 0);
+      if (!openInspection) return;
+      const summary = openInspection.querySelector<HTMLElement>(":scope > summary");
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      openInspection.removeAttribute("open");
+      window.requestAnimationFrame(() =>
+        summary?.focus({ preventScroll: true }),
+      );
+      setAnnouncement("Inspection plane closed.");
+    };
+
+    window.addEventListener("keydown", closeLocalLayerOnEscape, true);
+    return () =>
+      window.removeEventListener("keydown", closeLocalLayerOnEscape, true);
+  }, [activeDistrict, expandedQueueId, intakeOpen]);
 
   useEffect(() => {
     if (capabilities.detectionFailed) return;
@@ -446,10 +678,13 @@ export function AgencyCommandStage() {
     setKaiCommandReceipt(
       `COMMAND STAGED · Prepare the fixed local preview. ${AGENCY_KAI_NO_ACTION_RECEIPT}`
     );
-    moveToDistrict("kai-suite");
-    window.requestAnimationFrame(() => kaiInputRef.current?.focus());
-    setAnnouncement(
-      "Contextual synthetic command staged. Prepare the preview to run the fixed local match."
+    navigateToChamber(
+      "kai-suite",
+      {
+        elementId: "kai-synthetic-command",
+        announcement:
+          "Kai Executive Suite acquired. Contextual synthetic command staged; prepare the preview to run the fixed local match.",
+      },
     );
   };
 
@@ -472,15 +707,11 @@ export function AgencyCommandStage() {
   };
 
   const focusIntakeHandoffControl = () => {
-    window.requestAnimationFrame(() => {
-      const control = document.getElementById(
-        "synthetic-intake-handoff-control"
-      );
-      control?.focus({ preventScroll: true });
-      control?.scrollIntoView({ block: "center", behavior: "auto" });
-      setAnnouncement(
-        "Synthetic intake handoff control focused. No information is collected."
-      );
+    navigateToChamber("client-operations", {
+      elementId: "synthetic-intake-handoff-control",
+      inspectionId: "client-operations-inspection",
+      announcement:
+        "Client Operations Floor acquired. Synthetic intake handoff control focused; no information is collected.",
     });
   };
 
@@ -516,26 +747,22 @@ export function AgencyCommandStage() {
   const focusResponseQueue = () => {
     setQueueFilter("responses");
     setExpandedQueueId("response-014");
-    window.requestAnimationFrame(() => {
-      const control = document.getElementById("queue-inspect-response-014");
-      control?.focus({ preventScroll: true });
-      control?.scrollIntoView({ block: "center", behavior: "auto" });
-      setAnnouncement(
-        "Response queue focused. One synthetic response specimen is expanded."
-      );
+    navigateToChamber("client-operations", {
+      elementId: "queue-inspect-response-014",
+      inspectionId: "client-operations-inspection",
+      announcement:
+        "Client Operations Floor acquired. Response queue focused; one synthetic response specimen is expanded.",
     });
   };
 
   const focusAvailableQueue = () => {
     setQueueFilter("all");
     setExpandedQueueId("response-014");
-    window.requestAnimationFrame(() => {
-      const control = document.getElementById("queue-inspect-response-014");
-      control?.focus({ preventScroll: true });
-      control?.scrollIntoView({ block: "center", behavior: "auto" });
-      setAnnouncement(
-        "Available synthetic source focused. Unavailable sources remain labeled."
-      );
+    navigateToChamber("client-operations", {
+      elementId: "queue-inspect-response-014",
+      inspectionId: "client-operations-inspection",
+      announcement:
+        "Client Operations Floor acquired. Available synthetic source focused; unavailable sources remain labeled.",
     });
   };
 
@@ -593,6 +820,7 @@ export function AgencyCommandStage() {
       style={
         {
           "--cxos-arrival-duration": `${runtime.arrivalDurationMs}ms`,
+          "--cxos-district-transition-duration": `${districtTransitionDurationMs}ms`,
         } as CSSProperties
       }
       data-tier={resolution.tier}
@@ -601,6 +829,9 @@ export function AgencyCommandStage() {
       data-departing={departing ? "true" : "false"}
       data-arrival-settled={arrivalSettled ? "true" : "false"}
       data-active-district={activeDistrict}
+      data-chamber-ready={chamberManaged ? "true" : "false"}
+      data-chamber-phase={chamberTransition.phase}
+      data-chamber-target={passageTarget}
       data-scroll-ready={environment.scrollActivation ? "true" : "false"}
       data-motion-override={
         reducedMotionOverride && projection === "cinematic" ? "true" : "false"
@@ -843,13 +1074,6 @@ export function AgencyCommandStage() {
           </div>
         </details>
 
-        {fixtureState !== "permission" && (
-          <FacilityDirectory
-            activeDistrict={journeyCapable ? activeDistrict : null}
-            onNavigate={moveToDistrict}
-          />
-        )}
-
         {fixtureState === "permission" ? (
           <>
             <PermissionState />
@@ -865,235 +1089,291 @@ export function AgencyCommandStage() {
             </footer>
           </>
         ) : (
-          <>
-            <AgencyDistrictShell
-              district={AGENCY_DISTRICTS[0]}
+          <div className={styles.facilityShell}>
+            <FacilityDirectory
               activeDistrict={activeDistrict}
-              journeyActive={journeyCapable}
-              kaiAvailable={kaiWorkflowAvailable}
-              onNavigate={moveToDistrict}
-              onStageKai={stageKaiSuggestion}
+              targetDistrict={chamberTransition.targetDistrict}
+              onNavigate={navigateToChamber}
+            />
+
+            <div
+              className={styles.chamberStage}
+              data-chamber-phase={chamberTransition.phase}
+              data-chamber-direction={chamberTransition.direction}
             >
-              <PersonalizationProjection
-                personalization={personalization}
-                fixtureState={fixtureState}
+              <FacilityPassage
+                key={chamberTransition.sequence}
+                active={chamberTransition.phase === "passage"}
+                sequence={chamberTransition.sequence}
+                source={activeDistrictRecord}
+                target={passageTargetRecord}
+                onAnimationEnd={completeDistrictTransition}
               />
-              <article
-                className={styles.kaiBrief}
-                aria-labelledby="kai-brief-heading"
+
+              <KaiContextSpine
+                activeDistrict={activeDistrictRecord}
+                contextDistrict={kaiContextRecord}
+                available={kaiWorkflowAvailable}
+                onStage={stageKaiSuggestion}
+              />
+
+              <AgencyDistrictShell
+                district={AGENCY_DISTRICTS[0]}
+                activeDistrict={activeDistrict}
+                chamberManaged={chamberManaged}
+                onNavigate={navigateToChamber}
               >
-                <InstrumentHeader
-                  eyebrow="KAI · EXECUTIVE CHANNEL"
-                  title="Executive morning brief"
-                  id="kai-brief-heading"
-                />
-                <KaiBrief
-                  state={fixtureState}
-                  onFocusResponses={focusResponseQueue}
-                  onFocusAvailable={focusAvailableQueue}
-                  onStageIntake={focusIntakeHandoffControl}
-                  onRestore={restorePopulatedFixture}
-                />
-                <p className={styles.receipt}>
-                  SYNTHETIC FIXTURE · Suggested review only. Verify the displayed
-                  source record before acting. Educational information, not legal
-                  advice.
-                </p>
-              </article>
-              <div className={styles.centralCondition}>
-                <span>AGENCY CONDITION</span>
-                <strong>{healthStatus}</strong>
-                <p>{personalization.priorityCondition}</p>
-                <small>
-                  Fixed fixture interpretation · not a financial-health assessment.
-                </small>
-              </div>
-            </AgencyDistrictShell>
-
-            <AgencyDistrictShell
-              district={AGENCY_DISTRICTS[1]}
-              activeDistrict={activeDistrict}
-              journeyActive={journeyCapable}
-              kaiAvailable={kaiWorkflowAvailable}
-              onNavigate={moveToDistrict}
-              onStageKai={stageKaiSuggestion}
-            >
-              <OperationalHeartbeat
-                state={fixtureState}
-                active={capacity.active}
-                limit={capacity.limit}
-              />
-              {fixtureState === "loading" ? (
-                <LoadingState />
-              ) : fixtureState === "empty" ? (
-                <EmptyState
-                  intakeOpen={intakeOpen}
-                  onStageIntake={toggleIntakeHandoff}
-                />
-              ) : (
-                <>
-                  {fixtureState === "unavailable" && (
-                    <div className={styles.statusNotice} role="status">
-                      One illustrative source is unavailable. The room preserves
-                      displayed records and labels the coverage gap; it does not
-                      replace missing facts with zero.
-                    </div>
-                  )}
-                  {fixtureState === "error" && (
-                    <div className={styles.errorNotice} role="alert">
-                      The portfolio specimen was interrupted. Two previously
-                      displayed rows remain available; no missing value is
-                      guessed.
-                      <button type="button" onClick={restorePopulatedFixture}>
-                        Restore populated specimen
-                      </button>
-                    </div>
-                  )}
-
-                  <PriorityQueue
-                    items={visibleQueue}
-                    filter={queueFilter}
-                    expandedId={expandedQueueId}
-                    onFilter={(next) => {
-                      setQueueFilter(next);
-                      setExpandedQueueId(null);
-                      setAnnouncement(
-                        `${AGENCY_QUEUE_FILTERS.find((item) => item.key === next)?.label ?? next} queue filter selected.`
-                      );
-                    }}
-                    onExpand={(id) => {
-                      setExpandedQueueId((current) =>
-                        current === id ? null : id
-                      );
-                      setAnnouncement(
-                        currentExpansionMessage(expandedQueueId, id)
-                      );
-                    }}
-                  />
-                </>
-              )}
-            </AgencyDistrictShell>
-
-            <AgencyDistrictShell
-              district={AGENCY_DISTRICTS[2]}
-              activeDistrict={activeDistrict}
-              journeyActive={journeyCapable}
-              kaiAvailable={kaiWorkflowAvailable}
-              onNavigate={moveToDistrict}
-              onStageKai={stageKaiSuggestion}
-            >
-              <TeamOperationsRoom operatingModel={operatingModel} />
-            </AgencyDistrictShell>
-
-            <AgencyDistrictShell
-              district={AGENCY_DISTRICTS[3]}
-              activeDistrict={activeDistrict}
-              journeyActive={journeyCapable}
-              kaiAvailable={kaiWorkflowAvailable}
-              onNavigate={moveToDistrict}
-              onStageKai={stageKaiSuggestion}
-            >
-              <div className={styles.observatoryGrid}>
-                <AgencyHealthBank state={fixtureState} healthStatus={healthStatus} />
-                <BusinessSignals />
-              </div>
-            </AgencyDistrictShell>
-
-            <AgencyDistrictShell
-              district={AGENCY_DISTRICTS[4]}
-              activeDistrict={activeDistrict}
-              journeyActive={journeyCapable}
-              kaiAvailable={kaiWorkflowAvailable}
-              onNavigate={moveToDistrict}
-              onStageKai={stageKaiSuggestion}
-            >
-              {fixtureState === "loading" ? (
-                <ArchiveBoundaryState state="loading" />
-              ) : fixtureState === "empty" ? (
-                <ArchiveBoundaryState state="empty" />
-              ) : (
-                <PortfolioLedger
-                  items={visiblePortfolio}
-                  capacityReached={fixtureState === "capacity"}
-                />
-              )}
-              <EvidenceArchive state={fixtureState} />
-            </AgencyDistrictShell>
-
-            <AgencyDistrictShell
-              district={AGENCY_DISTRICTS[5]}
-              activeDistrict={activeDistrict}
-              journeyActive={journeyCapable}
-              kaiAvailable={kaiWorkflowAvailable}
-              onNavigate={moveToDistrict}
-              onStageKai={stageKaiSuggestion}
-            >
-              <KaiExecutiveSuite
-                enabled={fixtureState === "populated" || fixtureState === "capacity"}
-                command={kaiCommand}
-                turns={kaiTurns}
-                editingTurnId={editingKaiTurnId}
-                commandReceipt={kaiCommandReceipt}
-                inputRef={kaiInputRef}
-                suggestions={AGENCY_DISTRICTS.find(
-                  (district) => district.id === kaiContextDistrict
-                )?.suggestions ?? AGENCY_DISTRICTS[5].suggestions}
-                onCommandChange={(value) => {
-                  setKaiCommand(value);
-                  if (editingKaiTurnId) {
-                    setKaiCommandReceipt(
-                      `COMMAND REVISED · The prior synthetic preview remains cleared. Prepare again. ${AGENCY_KAI_NO_ACTION_RECEIPT}`
-                    );
-                    setAnnouncement(
-                      `Command revised. Prepare again to match the revised text. ${AGENCY_KAI_NO_ACTION_RECEIPT}`
-                    );
-                  }
-                }}
-                onSubmit={prepareKaiCommand}
-                onSuggestion={(suggestion) =>
-                  stageKaiSuggestion(suggestion, kaiContextDistrict)
-                }
-                onRevise={reviseKaiTurn}
-                onCancel={cancelKaiTurn}
-                onClear={clearKaiCommand}
-              />
-            </AgencyDistrictShell>
-
-            <AgencyDistrictShell
-              district={AGENCY_DISTRICTS[6]}
-              activeDistrict={activeDistrict}
-              journeyActive={journeyCapable}
-              kaiAvailable={kaiWorkflowAvailable}
-              onNavigate={moveToDistrict}
-              onStageKai={stageKaiSuggestion}
-            >
-              <AgencyScopeBank
-                state={fixtureState}
-                active={capacity.active}
-                limit={capacity.limit}
-                portfolioRows={visiblePortfolio.length}
-              />
-              <AuthorizedSourceMap />
-              <footer className={styles.footer}>
-                <p>
-                  Phase 6.2 is presentation-only. The live <code>/agency</code>{" "}
-                  surface and its APIs are unchanged. Returning clears this
-                  route-local Kai session.
-                </p>
-                <nav aria-label="Founder review navigation">
-                  <a href="/review" onClick={clearKaiSession}>All rooms</a>
-                  <a
-                    className={styles.returnThreshold}
-                    href="/review/mission-control"
-                    onClick={beginMissionControlReturn}
+                <div className={styles.centralVista}>
+                  <div className={styles.centralCondition}>
+                    <span>AGENCY CONDITION</span>
+                    <strong>{healthStatus}</strong>
+                    <p>{personalization.priorityCondition}</p>
+                    <small>
+                      Fixed fixture interpretation · not a financial-health assessment.
+                    </small>
+                  </div>
+                  <article
+                    className={styles.kaiBrief}
+                    aria-labelledby="kai-brief-heading"
                   >
-                    <span>Kai confirms Mission Control handoff · route session clears</span>
-                    <strong>Return to Mission Control</strong>
-                  </a>
-                </nav>
-              </footer>
-            </AgencyDistrictShell>
-          </>
+                    <InstrumentHeader
+                      eyebrow="KAI · EXECUTIVE CHANNEL"
+                      title="Executive morning brief"
+                      id="kai-brief-heading"
+                    />
+                    <KaiBrief
+                      state={fixtureState}
+                      onFocusResponses={focusResponseQueue}
+                      onFocusAvailable={focusAvailableQueue}
+                      onStageIntake={focusIntakeHandoffControl}
+                      onRestore={restorePopulatedFixture}
+                    />
+                    <p className={styles.receipt}>
+                      SYNTHETIC FIXTURE · Suggested review only. Verify the displayed
+                      source record before acting. Educational information, not legal
+                      advice.
+                    </p>
+                  </article>
+                </div>
+                <InspectionPlane
+                  id="central-command-inspection"
+                  label="Inspect agency identity and operating projection"
+                >
+                  <PersonalizationProjection
+                    personalization={personalization}
+                    fixtureState={fixtureState}
+                  />
+                </InspectionPlane>
+              </AgencyDistrictShell>
+
+              <AgencyDistrictShell
+                district={AGENCY_DISTRICTS[1]}
+                activeDistrict={activeDistrict}
+                chamberManaged={chamberManaged}
+                onNavigate={navigateToChamber}
+              >
+                <ClientFlowMoment state={fixtureState} />
+                <InspectionPlane
+                  id="client-operations-inspection"
+                  label="Inspect queue and supporting instruments"
+                >
+                  <OperationalHeartbeat
+                    state={fixtureState}
+                    active={capacity.active}
+                    limit={capacity.limit}
+                    showFlow={false}
+                  />
+                  {fixtureState === "loading" ? (
+                    <LoadingState />
+                  ) : fixtureState === "empty" ? (
+                    <EmptyState
+                      intakeOpen={intakeOpen}
+                      onStageIntake={toggleIntakeHandoff}
+                    />
+                  ) : (
+                    <>
+                      {fixtureState === "unavailable" && (
+                        <div className={styles.statusNotice} role="status">
+                          One illustrative source is unavailable. The room preserves
+                          displayed records and labels the coverage gap; it does not
+                          replace missing facts with zero.
+                        </div>
+                      )}
+                      {fixtureState === "error" && (
+                        <div className={styles.errorNotice} role="alert">
+                          The portfolio specimen was interrupted. Two previously
+                          displayed rows remain available; no missing value is guessed.
+                          <button type="button" onClick={restorePopulatedFixture}>
+                            Restore populated specimen
+                          </button>
+                        </div>
+                      )}
+                      <PriorityQueue
+                        items={visibleQueue}
+                        filter={queueFilter}
+                        expandedId={expandedQueueId}
+                        onFilter={(next) => {
+                          setQueueFilter(next);
+                          setExpandedQueueId(null);
+                          setAnnouncement(
+                            `${AGENCY_QUEUE_FILTERS.find((item) => item.key === next)?.label ?? next} queue filter selected.`
+                          );
+                        }}
+                        onExpand={(id) => {
+                          setExpandedQueueId((current) =>
+                            current === id ? null : id
+                          );
+                          setAnnouncement(
+                            currentExpansionMessage(expandedQueueId, id)
+                          );
+                        }}
+                      />
+                    </>
+                  )}
+                </InspectionPlane>
+              </AgencyDistrictShell>
+
+              <AgencyDistrictShell
+                district={AGENCY_DISTRICTS[2]}
+                activeDistrict={activeDistrict}
+                chamberManaged={chamberManaged}
+                onNavigate={navigateToChamber}
+              >
+                <TeamCoverageMoment operatingModel={operatingModel} />
+                <InspectionPlane
+                  id="team-operations-inspection"
+                  label="Inspect role and workload evidence"
+                >
+                  <TeamOperationsRoom operatingModel={operatingModel} />
+                </InspectionPlane>
+              </AgencyDistrictShell>
+
+              <AgencyDistrictShell
+                district={AGENCY_DISTRICTS[3]}
+                activeDistrict={activeDistrict}
+                chamberManaged={chamberManaged}
+                onNavigate={navigateToChamber}
+              >
+                <div className={styles.observatoryGrid}>
+                  <AgencyHealthBank state={fixtureState} healthStatus={healthStatus} />
+                </div>
+                <InspectionPlane
+                  id="business-health-inspection"
+                  label="Inspect missing business inputs and limits"
+                >
+                  <BusinessSignals />
+                </InspectionPlane>
+              </AgencyDistrictShell>
+
+              <AgencyDistrictShell
+                district={AGENCY_DISTRICTS[4]}
+                activeDistrict={activeDistrict}
+                chamberManaged={chamberManaged}
+                onNavigate={navigateToChamber}
+              >
+                {fixtureState === "loading" ? (
+                  <ArchiveBoundaryState state="loading" />
+                ) : fixtureState === "empty" ? (
+                  <ArchiveBoundaryState state="empty" />
+                ) : null}
+                <EvidenceArchive state={fixtureState} />
+                <InspectionPlane
+                  id="evidence-archive-inspection"
+                  label="Open client evidence ledgers"
+                >
+                  {fixtureState === "loading" ? (
+                    <ArchiveBoundaryState state="loading" />
+                  ) : fixtureState === "empty" ? (
+                    <ArchiveBoundaryState state="empty" />
+                  ) : (
+                    <PortfolioLedger
+                      items={visiblePortfolio}
+                      capacityReached={fixtureState === "capacity"}
+                    />
+                  )}
+                </InspectionPlane>
+              </AgencyDistrictShell>
+
+              <AgencyDistrictShell
+                district={AGENCY_DISTRICTS[5]}
+                activeDistrict={activeDistrict}
+                chamberManaged={chamberManaged}
+                onNavigate={navigateToChamber}
+              >
+                <KaiExecutiveSuite
+                  enabled={fixtureState === "populated" || fixtureState === "capacity"}
+                  command={kaiCommand}
+                  turns={kaiTurns}
+                  editingTurnId={editingKaiTurnId}
+                  commandReceipt={kaiCommandReceipt}
+                  inputRef={kaiInputRef}
+                  suggestions={kaiContextRecord.suggestions}
+                  onCommandChange={(value) => {
+                    setKaiCommand(value);
+                    if (editingKaiTurnId) {
+                      setKaiCommandReceipt(
+                        `COMMAND REVISED · The prior synthetic preview remains cleared. Prepare again. ${AGENCY_KAI_NO_ACTION_RECEIPT}`
+                      );
+                      setAnnouncement(
+                        `Command revised. Prepare again to match the revised text. ${AGENCY_KAI_NO_ACTION_RECEIPT}`
+                      );
+                    }
+                  }}
+                  onSubmit={prepareKaiCommand}
+                  onSuggestion={(suggestion) =>
+                    stageKaiSuggestion(suggestion, kaiContextDistrict)
+                  }
+                  onRevise={reviseKaiTurn}
+                  onCancel={cancelKaiTurn}
+                  onClear={clearKaiCommand}
+                />
+              </AgencyDistrictShell>
+
+              <AgencyDistrictShell
+                district={AGENCY_DISTRICTS[6]}
+                activeDistrict={activeDistrict}
+                chamberManaged={chamberManaged}
+                onNavigate={navigateToChamber}
+              >
+                <CapacityHorizon
+                  state={fixtureState}
+                  active={capacity.active}
+                  limit={capacity.limit}
+                />
+                <InspectionPlane
+                  id="growth-threshold-inspection"
+                  label="Inspect scope and future authorized sources"
+                >
+                  <AgencyScopeBank
+                    state={fixtureState}
+                    active={capacity.active}
+                    limit={capacity.limit}
+                    portfolioRows={visiblePortfolio.length}
+                    showHorizon={false}
+                  />
+                  <AuthorizedSourceMap />
+                </InspectionPlane>
+                <footer className={styles.footer}>
+                  <p>
+                    Phase 6.2 is presentation-only. The live <code>/agency</code>{" "}
+                    surface and its APIs are unchanged. Returning clears this
+                    route-local Kai session.
+                  </p>
+                  <nav aria-label="Founder review navigation">
+                    <a href="/review" onClick={clearKaiSession}>All rooms</a>
+                    <a
+                      className={styles.returnThreshold}
+                      href="/review/mission-control"
+                      onClick={beginMissionControlReturn}
+                    >
+                      <span>Kai confirms Mission Control handoff · route session clears</span>
+                      <strong>Return to Mission Control</strong>
+                    </a>
+                  </nav>
+                </footer>
+              </AgencyDistrictShell>
+            </div>
+          </div>
         )}
       </div>
     </main>
@@ -1102,88 +1382,248 @@ export function AgencyCommandStage() {
 
 function FacilityDirectory({
   activeDistrict,
+  targetDistrict,
   onNavigate,
 }: {
-  activeDistrict: AgencyDistrictId | null;
+  activeDistrict: AgencyDistrictId;
+  targetDistrict: AgencyDistrictId | null;
   onNavigate: (districtId: AgencyDistrictId) => void;
 }) {
+  const activeIndex = AGENCY_DISTRICTS.findIndex(
+    (district) => district.id === activeDistrict,
+  );
+  const previousDistrict = AGENCY_DISTRICTS[activeIndex - 1];
+  const nextDistrict = AGENCY_DISTRICTS[activeIndex + 1];
+
+  const renderLinks = () =>
+    AGENCY_DISTRICTS.map((district) => (
+      <li
+        key={district.id}
+        data-current={activeDistrict === district.id ? "true" : "false"}
+        data-target={targetDistrict === district.id ? "true" : "false"}
+      >
+        <a
+          href={`#${district.id}`}
+          aria-current={activeDistrict === district.id ? "location" : undefined}
+          onClick={(event) => {
+            if (
+              event.button !== 0 ||
+              event.metaKey ||
+              event.ctrlKey ||
+              event.shiftKey ||
+              event.altKey
+            ) return;
+            event.preventDefault();
+            onNavigate(district.id);
+          }}
+        >
+          <span>{district.index}</span>
+          <strong>{district.shortName}</strong>
+        </a>
+      </li>
+    ));
+
   return (
     <nav className={styles.facilityDirectory} aria-label="Agency Command facility map">
       <div className={styles.directoryAxis}>
         <span>MISSION CONTROL</span>
         <strong>AGENCY COMMAND · 7 DISTRICTS</strong>
       </div>
-      <ol>
-        {AGENCY_DISTRICTS.map((district) => (
-          <li key={district.id} data-current={activeDistrict === district.id ? "true" : "false"}>
-            <a
-              href={`#${district.id}`}
-              aria-current={activeDistrict === district.id ? "location" : undefined}
-              onClick={(event) => {
-                if (
-                  event.button !== 0 ||
-                  event.metaKey ||
-                  event.ctrlKey ||
-                  event.shiftKey ||
-                  event.altKey
-                ) {
-                  return;
-                }
-                event.preventDefault();
-                onNavigate(district.id);
-              }}
-            >
-              <span>{district.index}</span>
-              <strong>{district.shortName}</strong>
-            </a>
-          </li>
-        ))}
-      </ol>
+      <ol className={styles.facilitySpine}>{renderLinks()}</ol>
+      <div className={styles.mobileFacilityCurrent}>
+        {previousDistrict ? (
+          <a
+            href={`#${previousDistrict.id}`}
+            onClick={(event) => {
+              if (
+                event.button !== 0 || event.metaKey || event.ctrlKey ||
+                event.shiftKey || event.altKey
+              ) return;
+              event.preventDefault();
+              onNavigate(previousDistrict.id);
+            }}
+          >
+            <span>PREVIOUS</span>
+            <strong>{previousDistrict.shortName}</strong>
+          </a>
+        ) : (
+          <span className={styles.facilityEdge}>MISSION CONTROL ORIGIN</span>
+        )}
+        <div>
+          <span>CURRENT CHAMBER</span>
+          <strong>{AGENCY_DISTRICTS[activeIndex]?.shortName}</strong>
+        </div>
+        {nextDistrict ? (
+          <a
+            href={`#${nextDistrict.id}`}
+            onClick={(event) => {
+              if (
+                event.button !== 0 || event.metaKey || event.ctrlKey ||
+                event.shiftKey || event.altKey
+              ) return;
+              event.preventDefault();
+              onNavigate(nextDistrict.id);
+            }}
+          >
+            <span>NEXT</span>
+            <strong>{nextDistrict.shortName}</strong>
+          </a>
+        ) : (
+          <span className={styles.facilityEdge}>MISSION CONTROL RETURN</span>
+        )}
+      </div>
+      <details className={styles.mobileFacilityMap} data-agency-inspection>
+        <summary>
+          <span>FACILITY MAP</span>
+          <strong>Choose one of seven chambers</strong>
+        </summary>
+        <ol>
+          {renderLinks()}
+        </ol>
+      </details>
     </nav>
+  );
+}
+
+function FacilityPassage({
+  active,
+  sequence,
+  source,
+  target,
+  onAnimationEnd,
+}: {
+  active: boolean;
+  sequence: number;
+  source: AgencyDistrict;
+  target: AgencyDistrict;
+  onAnimationEnd: (event: React.AnimationEvent<HTMLDivElement>) => void;
+}) {
+  return (
+    <div
+      aria-hidden="true"
+      className={styles.facilityPassage}
+      data-active={active ? "true" : "false"}
+      data-cxos-transition-sequence={sequence}
+      onAnimationEnd={onAnimationEnd}
+    >
+      <div className={styles.passageAxis}>
+        <span>{source.index} · {source.shortName}</span>
+        <i />
+        <span>{target.index} · {target.shortName}</span>
+      </div>
+      <div className={styles.passageThreshold}>
+        <span>FACILITY TRANSFER</span>
+        <strong>{target.name}</strong>
+        <small>KAI CONTEXT HANDOFF · DESTINATION ACQUIRING</small>
+      </div>
+    </div>
+  );
+}
+
+function KaiContextSpine({
+  activeDistrict,
+  contextDistrict,
+  available,
+  onStage,
+}: {
+  activeDistrict: AgencyDistrict;
+  contextDistrict: AgencyDistrict;
+  available: boolean;
+  onStage: (suggestion: string, sourceDistrict: AgencyDistrictId) => void;
+}) {
+  return (
+    <aside
+      className={styles.kaiContext}
+      aria-label={`Kai context for ${activeDistrict.name}`}
+    >
+      <div>
+        <span>KAI · CONTINUOUS EXECUTIVE CHANNEL</span>
+        <p>{contextDistrict.kaiContext}</p>
+      </div>
+      {activeDistrict.id === "kai-suite" ? (
+        <span className={styles.kaiBoundary}>Kai command chamber active</span>
+      ) : available ? (
+        <button
+          type="button"
+          onClick={() =>
+            onStage(activeDistrict.suggestions[0], activeDistrict.id)
+          }
+        >
+          Stage {activeDistrict.shortName} with Kai
+        </button>
+      ) : (
+        <span className={styles.kaiBoundary}>Kai held · fixture boundary</span>
+      )}
+    </aside>
+  );
+}
+
+function InspectionPlane({
+  id,
+  label,
+  children,
+}: {
+  id: string;
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <details
+      id={id}
+      className={styles.inspectionPlane}
+      data-agency-inspection
+      onToggle={(event) => {
+        if (!event.currentTarget.open) return;
+        event.currentTarget
+          .closest("main")
+          ?.querySelectorAll<HTMLDetailsElement>(
+            "details[data-agency-inspection][open]",
+          )
+          .forEach((inspection) => {
+            if (inspection !== event.currentTarget) {
+              inspection.removeAttribute("open");
+            }
+          });
+      }}
+    >
+      <summary>
+        <span>INSPECTION PLANE</span>
+        <strong>{label}</strong>
+      </summary>
+      <div className={styles.inspectionBody}>{children}</div>
+    </details>
   );
 }
 
 function AgencyDistrictShell({
   district,
   activeDistrict,
-  journeyActive,
-  kaiAvailable,
+  chamberManaged,
   onNavigate,
-  onStageKai,
   children,
 }: {
   district: AgencyDistrict;
   activeDistrict: AgencyDistrictId;
-  journeyActive: boolean;
-  kaiAvailable: boolean;
+  chamberManaged: boolean;
   onNavigate: (districtId: AgencyDistrictId) => void;
-  onStageKai: (
-    suggestion: string,
-    sourceDistrict: AgencyDistrictId
-  ) => void;
   children: React.ReactNode;
 }) {
   const districtIndex = AGENCY_DISTRICTS.findIndex((item) => item.id === district.id);
-  const activeDistrictIndex = AGENCY_DISTRICTS.findIndex(
-    (item) => item.id === activeDistrict
-  );
+  const previousDistrict = AGENCY_DISTRICTS[districtIndex - 1];
   const nextDistrict = AGENCY_DISTRICTS[districtIndex + 1];
-  const journeyState = !journeyActive
-    ? "static"
-    : districtIndex === activeDistrictIndex
-      ? "operating"
-      : districtIndex > activeDistrictIndex
-        ? "queued"
-        : "cleared";
+  const current = activeDistrict === district.id;
 
   return (
     <section
       id={district.id}
+      hidden={chamberManaged && !current}
       className={styles.district}
       data-agency-district={district.id}
       data-cxos-district={district.id}
-      data-current={journeyActive && activeDistrict === district.id ? "true" : "false"}
-      data-journey-state={journeyState}
+      data-current={current ? "true" : "false"}
+      data-journey-state={
+        chamberManaged ? (current ? "operating" : "queued") : "static"
+      }
       aria-labelledby={`${district.id}-heading`}
     >
       <div
@@ -1199,13 +1639,13 @@ function AgencyDistrictShell({
         <i />
       </div>
       <div aria-hidden="true" className={styles.districtThreshold}>
-        <span>THRESHOLD {district.index}</span>
+        <span>CHAMBER {district.index} / 07</span>
         <i />
         <strong>
           <span data-threshold-state="static">static</span>
-          <span data-threshold-state="queued">queued</span>
-          <span data-threshold-state="operating">operating</span>
-          <span data-threshold-state="cleared">cleared</span>
+          <span data-threshold-state="queued">held</span>
+          <span data-threshold-state="operating">acquired</span>
+          <span data-threshold-state="cleared">released</span>
         </strong>
       </div>
 
@@ -1224,51 +1664,42 @@ function AgencyDistrictShell({
         <p>{district.truthBoundary}</p>
       </div>
 
-      {district.id !== "kai-suite" && (
-        <aside className={styles.kaiContext} aria-label={`Kai context for ${district.name}`}>
-          <div>
-            <span>KAI · CONTEXTUAL CHANNEL</span>
-            <p>{district.kaiContext}</p>
-          </div>
-          {kaiAvailable ? (
-            <button
-              type="button"
-              onClick={() => onStageKai(district.suggestions[0], district.id)}
-            >
-              Stage with Kai
-            </button>
-          ) : (
-            <span className={styles.kaiBoundary}>
-              Kai held · fixture boundary
-            </span>
-          )}
-        </aside>
-      )}
-
       <div className={styles.districtBody}>{children}</div>
 
       <nav className={styles.districtHandoff} aria-label={`${district.name} facility navigation`}>
-        {district.id !== "central-command" && (
+        {previousDistrict ? (
           <a
-            href="#central-command"
+            href={`#${previousDistrict.id}`}
             onClick={(event) => {
+              if (
+                event.button !== 0 || event.metaKey || event.ctrlKey ||
+                event.shiftKey || event.altKey
+              ) return;
               event.preventDefault();
-              onNavigate("central-command");
+              onNavigate(previousDistrict.id);
             }}
           >
-            Return to Central Command
+            Previous chamber · {previousDistrict.name}
           </a>
+        ) : (
+          <span>Mission Control origin acknowledged</span>
         )}
-        {nextDistrict && (
+        {nextDistrict ? (
           <a
             href={`#${nextDistrict.id}`}
             onClick={(event) => {
+              if (
+                event.button !== 0 || event.metaKey || event.ctrlKey ||
+                event.shiftKey || event.altKey
+              ) return;
               event.preventDefault();
               onNavigate(nextDistrict.id);
             }}
           >
             Continue to {nextDistrict.name}
           </a>
+        ) : (
+          <span>Mission Control handoff ready</span>
         )}
       </nav>
     </section>
@@ -1474,14 +1905,120 @@ function CapacityHorizon({
   );
 }
 
+function ClientFlowMoment({ state }: { state: AgencyFixtureState }) {
+  const boundary =
+    state === "loading"
+      ? "Fixture sources are unresolved. Work positions remain held; no completion timer runs."
+      : state === "empty"
+        ? "No illustrative work is staged. The operating floor remains truthfully idle."
+        : state === "unavailable"
+          ? "Only source-backed positions remain visible. Missing flow is not inferred."
+          : state === "error"
+            ? "Preserved records remain available at the disclosed display-error boundary."
+            : null;
+
+  return (
+    <section className={styles.clientFlowMoment} aria-labelledby="client-flow-moment-heading">
+      <div className={styles.instrumentTitle}>
+        <div>
+          <p>CLIENT FLOW FLOOR</p>
+          <h3 id="client-flow-moment-heading">Five fixed work positions</h3>
+        </div>
+        <strong>VALUES NEVER CHANGE</strong>
+      </div>
+      <p className={styles.heartbeatDisclosure} role="note">
+        DETERMINISTIC FIXTURE RHYTHM · NOT LIVE. Position, status, count,
+        rank, label, and evidence remain fixed through every movement cycle.
+      </p>
+      {boundary ? (
+        <div className={styles.heartbeatBoundary} role="status">
+          <strong>{state.toUpperCase()} FIXTURE</strong>
+          <p>{boundary}</p>
+        </div>
+      ) : (
+        <ol className={styles.flowList}>
+          {AGENCY_HEARTBEAT_SIGNALS.map((signal) => (
+            <li
+              key={signal.id}
+              data-motion={signal.motion}
+              data-position={signal.position}
+            >
+              <div>
+                <strong>{signal.workspace}</strong>
+                <span>{signal.lane}</span>
+              </div>
+              <div className={styles.flowTrack} aria-hidden>
+                <i />
+                <b />
+              </div>
+              <div>
+                <strong>{signal.motion}</strong>
+                <span>{signal.detail}</span>
+              </div>
+            </li>
+          ))}
+        </ol>
+      )}
+      <p className={styles.instrumentFootnote}>
+        Fixed specimen positions, not historical volume, live throughput, or a
+        legal deadline.
+      </p>
+    </section>
+  );
+}
+
+function TeamCoverageMoment({
+  operatingModel,
+}: {
+  operatingModel: AgencyOperatingModel;
+}) {
+  return (
+    <section className={styles.teamCoverageMoment} aria-labelledby="team-coverage-moment-heading">
+      <div className={styles.instrumentTitle}>
+        <div>
+          <p>RELATIONAL OPERATING TABLE</p>
+          <h3 id="team-coverage-moment-heading">Coverage geometry</h3>
+        </div>
+        <strong>{operatingModel === "solo" ? "SOLO TRUTH" : "SYNTHETIC SPECIMEN"}</strong>
+      </div>
+      {operatingModel === "solo" ? (
+        <div className={styles.teamSoloCore}>
+          <span aria-hidden />
+          <strong>SOLO OPERATOR</strong>
+          <p>
+            No assignment, staff seat, invitation, presence, availability, or
+            workload system is connected.
+          </p>
+        </div>
+      ) : (
+        <ol className={styles.teamOrbit}>
+          {AGENCY_TEAM_SPECIMEN.map((seat) => (
+            <li key={seat.id}>
+              <span aria-hidden />
+              <strong>{seat.role}</strong>
+              <small>{seat.assigned}</small>
+            </li>
+          ))}
+        </ol>
+      )}
+      <p className={styles.instrumentFootnote}>
+        Team Specimen is illustrative only. No live colleague or presence is
+        inferred.
+      </p>
+    </section>
+  );
+}
+
 function OperationalHeartbeat({
   state,
   active,
   limit,
+  showFlow = true,
 }: {
   state: AgencyFixtureState;
   active: number;
   limit: number;
+  showFlow?: boolean;
 }) {
   const boundary =
     state === "loading"
@@ -1521,7 +2058,7 @@ function OperationalHeartbeat({
         </div>
       ) : (
         <div className={styles.heartbeatGrid}>
-          <article
+          {showFlow && <article
             className={styles.flowInstrument}
             aria-labelledby="client-flow-heading"
           >
@@ -1571,7 +2108,7 @@ function OperationalHeartbeat({
               Positions describe this fixed specimen, not historical volume or
               a live rate.
             </p>
-          </article>
+          </article>}
 
           <article
             className={styles.ageInstrument}
@@ -1785,16 +2322,26 @@ function KaiExecutiveSuite({
         {commandReceipt}
       </p>
 
-      <div className={styles.kaiSuggestions}>
-        <p>Contextual fixture examples</p>
-        <div>
-          {suggestions.map((suggestion) => (
-            <button key={suggestion} type="button" disabled={!enabled} onClick={() => onSuggestion(suggestion)}>
-              {suggestion}
-            </button>
-          ))}
+      <InspectionPlane
+        id="kai-suite-inspection"
+        label="Inspect deterministic command examples"
+      >
+        <div className={styles.kaiSuggestions}>
+          <p>Contextual fixture examples</p>
+          <div>
+            {suggestions.map((suggestion) => (
+              <button
+                key={suggestion}
+                type="button"
+                disabled={!enabled}
+                onClick={() => onSuggestion(suggestion)}
+              >
+                {suggestion}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      </InspectionPlane>
 
       <div className={styles.kaiConversation} aria-label="Route-local Kai preview continuity">
         {turns.length === 0 ? (
@@ -2346,11 +2893,13 @@ function AgencyScopeBank({
   active,
   limit,
   portfolioRows,
+  showHorizon = true,
 }: {
   state: AgencyFixtureState;
   active: number;
   limit: number;
   portfolioRows: number;
+  showHorizon?: boolean;
 }) {
   const coverage =
     state === "unavailable"
@@ -2396,7 +2945,9 @@ function AgencyScopeBank({
           no billing or expansion action is connected.
         </p>
       )}
-      <CapacityHorizon active={active} limit={limit} state={state} />
+      {showHorizon && (
+        <CapacityHorizon active={active} limit={limit} state={state} />
+      )}
     </aside>
   );
 }

@@ -3017,6 +3017,14 @@
   outline-offset: 3px;
 }
 
+/* The global skip link is outside the room subtree, so bind its touch target
+ * to this route through :has() without changing application-wide chrome. */
+:global(body):has(.room) > :global(.skip-link):focus-visible {
+  display: flex;
+  min-height: 3rem;
+  align-items: center;
+}
+
 .room[data-arrival-settled="false"] .arrivalOrigin {
   animation: agencyThresholdBeat 320ms 0ms cubic-bezier(0.2, 0.74, 0.2, 1) both;
 }
@@ -5346,5 +5354,1560 @@
 @media (prefers-reduced-motion: reduce) {
   .room:not([data-motion-override="true"]) .facilityPulse {
     display: none !important;
+  }
+}
+
+/* CXOS RC4 — Spatial district chambers
+ *
+ * This final layer converts the RC3 axial document into one in-flow chamber
+ * stage. The facility spine, passage, inspection planes, and room-specific
+ * fields are presentation only: no value, label, or fixture state moves with
+ * them. Inactive districts use the native hidden contract and therefore add
+ * no height to the primary document.
+ */
+
+.room {
+  --agency-chamber-edge: rgba(134, 215, 255, 0.32);
+  --agency-chamber-surface: rgba(4, 14, 28, 0.82);
+  --agency-chamber-ease: cubic-bezier(0.2, 0.74, 0.2, 1);
+}
+
+.room[data-arrival-settled="true"] .arrival {
+  padding-top: max(1rem, env(safe-area-inset-top));
+  padding-bottom: max(2rem, calc(env(safe-area-inset-bottom) + 1.25rem));
+}
+
+.room[data-arrival-settled="true"] .arrivalThreshold {
+  min-height: 0;
+  gap: 0.7rem;
+  border-top: 0;
+  padding: 0.65rem 0 0.85rem;
+}
+
+.room[data-arrival-settled="true"] .arrivalThreshold::before {
+  background:
+    linear-gradient(90deg, rgba(56, 189, 248, 0.07), transparent 34% 66%, rgba(56, 189, 248, 0.04)),
+    rgba(6, 19, 36, 0.34);
+}
+
+.room[data-arrival-settled="true"] .arrivalThreshold::after {
+  right: 0;
+  bottom: 0;
+  left: 0;
+  box-shadow: none;
+}
+
+.room[data-arrival-settled="true"] .arrivalOrigin,
+.room[data-arrival-settled="true"] .arrivalGreeting,
+.room[data-arrival-settled="true"] .arrivalActions,
+.room[data-arrival-settled="true"] .arrivalThreshold .activationRail {
+  display: none;
+}
+
+.room[data-arrival-settled="true"] .arrivalThreshold .identity {
+  align-items: center;
+  gap: clamp(1rem, 3vw, 3rem);
+  padding: 0;
+}
+
+.room[data-arrival-settled="true"] .arrivalThreshold .roomTitle {
+  margin-top: 0.2rem;
+  font-size: clamp(1.7rem, 3vw, 3rem);
+  line-height: 1;
+}
+
+.room[data-arrival-settled="true"] .arrivalThreshold .identityLine {
+  max-width: 56rem;
+  margin-top: 0.45rem;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+.room[data-arrival-settled="true"] .arrivalThreshold .reviewIdentity {
+  padding-top: 0;
+}
+
+.room[data-arrival-settled="true"] .disclosure {
+  margin-top: 0.35rem;
+}
+
+.facilityPulse {
+  display: none;
+}
+
+.facilityShell {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(11.5rem, 14rem) minmax(0, 1fr);
+  gap: clamp(1rem, 2.4vw, 2.75rem);
+  align-items: start;
+  margin-top: clamp(1.25rem, 3vw, 2.5rem);
+}
+
+.facilityDirectory {
+  top: max(0.75rem, env(safe-area-inset-top));
+  align-self: start;
+  overflow: visible;
+  border: 1px solid var(--agency-line-strong);
+  background:
+    linear-gradient(180deg, rgba(10, 34, 57, 0.72), transparent 11rem),
+    rgba(3, 10, 22, 0.96);
+  box-shadow:
+    0 1.5rem 4rem rgba(0, 0, 0, 0.32),
+    inset 1px 0 rgba(134, 215, 255, 0.08);
+  backdrop-filter: blur(14px);
+}
+
+.directoryAxis {
+  display: grid;
+  gap: 0.3rem;
+  align-items: start;
+  padding: 0.85rem;
+}
+
+.directoryAxis strong {
+  text-align: left;
+}
+
+.facilityDirectory .facilitySpine {
+  display: grid;
+  grid-template-columns: 1fr;
+  border-top: 1px solid var(--agency-line);
+}
+
+.facilityDirectory .facilitySpine li {
+  position: relative;
+  border-right: 0;
+  border-bottom: 1px solid var(--agency-line);
+}
+
+.facilityDirectory .facilitySpine li:last-child {
+  border-bottom: 0;
+}
+
+.facilityDirectory .facilitySpine a {
+  grid-template-columns: 2.15rem minmax(0, 1fr);
+  gap: 0.7rem;
+  min-height: 3.15rem;
+  align-items: center;
+  padding: 0.55rem 0.7rem;
+}
+
+.facilityDirectory .facilitySpine a::after {
+  inset: 0 auto 0 0;
+  width: 2px;
+  height: auto;
+  transform: scaleY(0.16);
+}
+
+.facilityDirectory .facilitySpine li[data-current="true"] a::after,
+.facilityDirectory .facilitySpine a[aria-current="location"]::after {
+  transform: scaleY(1);
+}
+
+.facilityDirectory .facilitySpine li[data-target="true"] a {
+  color: var(--agency-blue);
+}
+
+.facilityDirectory .facilitySpine li[data-target="true"]::after {
+  position: absolute;
+  top: 50%;
+  right: 0.65rem;
+  width: 0.3rem;
+  height: 0.3rem;
+  border: 1px solid var(--agency-blue);
+  border-radius: 50%;
+  content: "";
+  transform: translateY(-50%);
+}
+
+.mobileFacilityCurrent,
+.mobileFacilityMap {
+  display: none;
+}
+
+.chamberStage {
+  position: relative;
+  min-width: 0;
+  min-height: min(54rem, calc(100svh - 2rem));
+  isolation: isolate;
+}
+
+.district[hidden] {
+  display: none !important;
+}
+
+.chamberStage .district {
+  --agency-district-rail-gutter: 1.25rem;
+  min-height: min(54rem, calc(100svh - 2rem));
+  scroll-margin-top: 1rem;
+  border: 1px solid var(--agency-chamber-edge);
+  padding:
+    clamp(3.5rem, 6vw, 5.75rem)
+    clamp(1rem, 2.2vw, 2.25rem)
+    clamp(2.25rem, 4vw, 4rem)
+    calc(var(--agency-district-rail-gutter) + clamp(0.75rem, 1.8vw, 1.6rem));
+  background:
+    linear-gradient(180deg, rgba(10, 34, 58, 0.4), transparent 22rem),
+    var(--agency-chamber-surface);
+  box-shadow:
+    0 2rem 5rem rgba(0, 0, 0, 0.28),
+    inset 0 1px rgba(238, 246, 255, 0.035);
+}
+
+.chamberStage[data-chamber-phase="passage"][data-chamber-direction="forward"] > .district {
+  animation: agencyChamberRecedeForward var(--cxos-district-transition-duration, 620ms)
+    var(--agency-chamber-ease) both;
+}
+
+.chamberStage[data-chamber-phase="passage"][data-chamber-direction="backward"] > .district {
+  animation: agencyChamberRecedeBackward var(--cxos-district-transition-duration, 620ms)
+    var(--agency-chamber-ease) both;
+}
+
+.room[data-chamber-ready="true"] .chamberStage .districtEnvironment,
+.room[data-chamber-ready="true"] .chamberStage .districtTruth::after,
+.room[data-chamber-ready="true"] .chamberStage .districtBody > * {
+  animation-timeline: auto;
+  animation-range: normal;
+}
+
+.room[data-chamber-ready="true"] .chamberStage .districtEnvironment,
+.room[data-chamber-ready="true"] .chamberStage .districtTruth::after {
+  animation-name: none;
+}
+
+.room[data-chamber-ready="true"] .chamberStage .districtBody > * {
+  animation: none;
+}
+
+.chamberStage .districtRail {
+  inset-block: clamp(3.5rem, 6vw, 5.75rem) clamp(2.25rem, 4vw, 4rem);
+  inset-inline-start: 1.25rem;
+}
+
+.chamberStage .districtThreshold {
+  inset-inline:
+    calc(var(--agency-district-rail-gutter) + clamp(0.75rem, 1.8vw, 1.6rem))
+    clamp(1rem, 2.2vw, 2.25rem);
+}
+
+.chamberStage .districtHeader {
+  min-height: clamp(7.5rem, 15vh, 10.5rem);
+  align-items: center;
+}
+
+.chamberStage .districtHeader h2 {
+  max-width: 14ch;
+  font-size: clamp(2.35rem, 4.5vw, 4.8rem);
+}
+
+.chamberStage .districtTruth {
+  background: rgba(3, 13, 26, 0.46);
+  padding-inline: 0.8rem;
+}
+
+.chamberStage .districtBody {
+  padding-block: clamp(1.75rem, 4vw, 3.75rem);
+}
+
+.chamberStage .districtHandoff {
+  min-height: 4rem;
+  align-items: center;
+}
+
+.chamberStage .districtHandoff > span {
+  color: var(--agency-dim);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  text-transform: uppercase;
+}
+
+.facilityPassage {
+  pointer-events: none;
+  position: fixed;
+  inset:
+    max(0px, env(safe-area-inset-top))
+    max(0px, env(safe-area-inset-right))
+    max(0px, env(safe-area-inset-bottom))
+    max(0px, env(safe-area-inset-left));
+  z-index: 24;
+  display: grid;
+  min-width: 0;
+  place-content: center;
+  overflow: hidden;
+  border: 1px solid rgba(134, 215, 255, 0.34);
+  background:
+    linear-gradient(90deg, transparent 0 12%, rgba(56, 189, 248, 0.08) 12.1% 12.3%, transparent 12.4% 87.6%, rgba(56, 189, 248, 0.08) 87.7% 87.9%, transparent 88%),
+    radial-gradient(circle at 50% 50%, rgba(21, 96, 137, 0.25), transparent 27rem),
+    rgba(3, 9, 20, 0.96);
+  opacity: 0;
+  visibility: hidden;
+}
+
+.facilityPassage[data-active="true"] {
+  visibility: visible;
+  animation: agencyFacilityPassage var(--cxos-district-transition-duration, 620ms)
+    var(--agency-chamber-ease) both;
+}
+
+.passageAxis {
+  display: grid;
+  width: min(72vw, 46rem);
+  grid-template-columns: minmax(0, auto) minmax(4rem, 1fr) minmax(0, auto);
+  gap: 1rem;
+  align-items: center;
+  color: var(--agency-dim);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.75rem;
+  font-weight: 720;
+  letter-spacing: 0.08em;
+}
+
+.passageAxis span:last-child {
+  color: var(--agency-blue);
+  text-align: right;
+}
+
+.passageAxis i {
+  height: 1px;
+  background: linear-gradient(90deg, rgba(111, 147, 184, 0.24), var(--agency-blue), rgba(111, 147, 184, 0.24));
+  transform: scaleX(0.12);
+}
+
+.facilityPassage[data-active="true"] .passageAxis i {
+  animation: agencyPassageAxis var(--cxos-district-transition-duration, 620ms)
+    var(--agency-chamber-ease) both;
+}
+
+.passageThreshold {
+  display: grid;
+  max-width: 46rem;
+  justify-items: center;
+  margin-top: 1.5rem;
+  text-align: center;
+}
+
+.passageThreshold span,
+.passageThreshold small {
+  color: var(--agency-blue);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.75rem;
+  font-weight: 720;
+  letter-spacing: 0.15em;
+  line-height: 1.5;
+}
+
+.passageThreshold strong {
+  margin: 0.45rem 0 0.55rem;
+  color: var(--agency-text);
+  font-size: clamp(1.9rem, 4.2vw, 4rem);
+  font-weight: 620;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  text-wrap: balance;
+}
+
+.passageThreshold small {
+  color: var(--agency-muted);
+  letter-spacing: 0.08em;
+}
+
+.chamberStage > .kaiContext {
+  position: relative;
+  z-index: 4;
+  margin: 0 0 1rem;
+  border: 1px solid rgba(134, 215, 255, 0.25);
+  padding: 0.75rem 0.85rem;
+  background:
+    linear-gradient(90deg, rgba(14, 116, 144, 0.16), transparent 68%),
+    rgba(3, 12, 25, 0.8);
+  box-shadow: inset 2px 0 rgba(56, 189, 248, 0.58);
+}
+
+.chamberStage > .kaiContext > div {
+  grid-template-columns: minmax(12rem, 0.75fr) minmax(0, 2fr);
+}
+
+.inspectionPlane {
+  margin-top: clamp(1.35rem, 3vw, 2.5rem);
+  border: 1px solid var(--agency-line);
+  background: rgba(3, 12, 25, 0.58);
+}
+
+.inspectionPlane summary,
+.mobileFacilityMap summary {
+  position: relative;
+  display: grid;
+  min-height: 3.25rem;
+  cursor: pointer;
+  grid-template-columns: minmax(8rem, 0.55fr) minmax(0, 2fr) auto;
+  gap: 1rem;
+  align-items: center;
+  padding: 0.7rem 2.8rem 0.7rem 0.85rem;
+  color: var(--agency-text);
+  list-style: none;
+}
+
+.inspectionPlane summary::-webkit-details-marker,
+.mobileFacilityMap summary::-webkit-details-marker {
+  display: none;
+}
+
+.inspectionPlane summary::after,
+.mobileFacilityMap summary::after {
+  position: absolute;
+  right: 0.9rem;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-right: 1px solid var(--agency-blue);
+  border-bottom: 1px solid var(--agency-blue);
+  content: "";
+  transform: rotate(45deg) translateY(-0.15rem);
+  transition: transform 180ms ease;
+}
+
+.inspectionPlane[open] summary::after,
+.mobileFacilityMap[open] summary::after {
+  transform: rotate(225deg) translate(-0.1rem, -0.1rem);
+}
+
+.inspectionPlane summary span,
+.mobileFacilityMap summary span {
+  color: var(--agency-blue);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.75rem;
+  font-weight: 740;
+  letter-spacing: 0.11em;
+}
+
+.inspectionPlane summary strong,
+.mobileFacilityMap summary strong {
+  min-width: 0;
+  font-size: 0.8125rem;
+  font-weight: 640;
+  line-height: 1.45;
+}
+
+.inspectionPlane summary:hover,
+.mobileFacilityMap summary:hover {
+  background: rgba(14, 116, 144, 0.13);
+}
+
+.inspectionPlane summary:focus-visible,
+.mobileFacilityMap summary:focus-visible {
+  outline: 2px solid var(--agency-blue);
+  outline-offset: 3px;
+}
+
+.inspectionPlane[open] {
+  border-color: rgba(134, 215, 255, 0.42);
+  background: rgba(5, 18, 34, 0.78);
+}
+
+.inspectionBody {
+  min-width: 0;
+  border-top: 1px solid var(--agency-line);
+  padding: clamp(1rem, 2.4vw, 2rem);
+  animation: agencyInspectionAcquire 260ms var(--agency-chamber-ease) both;
+}
+
+/* 01 · Central Command — panoramic authority and a centered condition. */
+.district[data-agency-district="central-command"] {
+  --agency-chamber-edge: rgba(134, 215, 255, 0.38);
+  background:
+    radial-gradient(ellipse at 48% 28%, rgba(56, 189, 248, 0.17), transparent 34rem),
+    linear-gradient(90deg, rgba(8, 30, 55, 0.7), rgba(3, 11, 23, 0.82) 45% 55%, rgba(8, 30, 55, 0.48)),
+    var(--agency-ink);
+}
+
+.district[data-agency-district="central-command"] .districtBody {
+  display: block;
+}
+
+.centralVista {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(15rem, 0.72fr) minmax(0, 1.28fr);
+  border-block: 1px solid var(--agency-line-strong);
+  background: rgba(3, 12, 25, 0.34);
+}
+
+/* The RC3 command-wall assigned Kai to a named `brief` grid area. Inside the
+ * RC4 chamber vista that inherited name would create implicit zero-width
+ * tracks and collapse the condition field, so the local chamber owns placement. */
+.centralVista .kaiBrief {
+  grid-area: auto;
+}
+
+.centralVista .centralCondition {
+  position: relative;
+  overflow: hidden;
+  place-content: center;
+  min-height: 25rem;
+  padding: clamp(1.5rem, 3vw, 2.75rem);
+  text-align: center;
+}
+
+.centralVista .centralCondition::before,
+.centralVista .centralCondition::after {
+  pointer-events: none;
+  position: absolute;
+  inset: 50% auto auto 50%;
+  width: min(24vw, 14rem);
+  aspect-ratio: 1;
+  border: 1px solid rgba(134, 215, 255, 0.14);
+  border-radius: 50%;
+  content: "";
+  transform: translate(-50%, -50%);
+}
+
+.centralVista .centralCondition::after {
+  width: min(15vw, 8rem);
+  border-color: rgba(134, 215, 255, 0.25);
+}
+
+.centralVista .centralCondition > * {
+  position: relative;
+  z-index: 1;
+}
+
+.centralVista .centralCondition strong {
+  font-size: clamp(2.4rem, 5vw, 4.75rem);
+}
+
+.district[data-agency-district="central-command"] .centralVista .kaiBrief {
+  min-width: 0;
+  min-height: 25rem;
+  border: 0;
+  border-left: 1px solid var(--agency-line-strong);
+  padding: clamp(1.5rem, 3vw, 2.75rem);
+  background: linear-gradient(135deg, rgba(14, 116, 144, 0.08), transparent 65%);
+}
+
+/* 02 · Client Operations — directional lanes and fixed work positions. */
+.district[data-agency-district="client-operations"] {
+  background:
+    repeating-linear-gradient(180deg, transparent 0 4.3rem, rgba(134, 215, 255, 0.035) 4.3rem calc(4.3rem + 1px)),
+    linear-gradient(105deg, rgba(6, 36, 57, 0.82), rgba(3, 11, 23, 0.88) 62%),
+    var(--agency-ink);
+}
+
+.clientFlowMoment {
+  position: relative;
+  overflow: hidden;
+  border-block: 1px solid rgba(134, 215, 255, 0.36);
+  padding: clamp(1.25rem, 2.8vw, 2.35rem);
+  background:
+    linear-gradient(90deg, rgba(14, 116, 144, 0.18), transparent 58%),
+    rgba(3, 13, 27, 0.62);
+}
+
+.clientFlowMoment::after {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(134, 215, 255, 0.05), transparent);
+  content: "";
+  transform: translate3d(-100%, 0, 0);
+}
+
+.room[data-cxos-motion="active"]
+  .district[data-current="true"][data-agency-district="client-operations"]
+  .clientFlowMoment::after {
+  animation: agencyClientFloorSweep 960ms var(--agency-chamber-ease) both;
+}
+
+.clientFlowMoment .flowList {
+  position: relative;
+  z-index: 1;
+}
+
+/* 03 · Team Operations — relational geometry, never simulated presence. */
+.district[data-agency-district="team-operations"] {
+  background:
+    radial-gradient(circle at 50% 54%, rgba(56, 189, 248, 0.12), transparent 23rem),
+    linear-gradient(135deg, rgba(7, 25, 47, 0.86), rgba(3, 10, 22, 0.92)),
+    var(--agency-ink);
+}
+
+.teamCoverageMoment {
+  position: relative;
+  display: grid;
+  min-height: 27rem;
+  align-content: center;
+  overflow: hidden;
+  border: 1px solid rgba(134, 215, 255, 0.25);
+  padding: clamp(1.4rem, 3vw, 2.75rem);
+  background:
+    linear-gradient(90deg, transparent 49.9%, rgba(134, 215, 255, 0.07) 50%, transparent 50.1%),
+    linear-gradient(180deg, transparent 49.9%, rgba(134, 215, 255, 0.07) 50%, transparent 50.1%),
+    rgba(3, 13, 26, 0.54);
+}
+
+.teamSoloCore {
+  position: relative;
+  display: grid;
+  width: min(100%, 34rem);
+  justify-items: center;
+  gap: 0.7rem;
+  margin: 3rem auto 1rem;
+  text-align: center;
+}
+
+.teamSoloCore > span {
+  display: block;
+  width: 4.5rem;
+  height: 4.5rem;
+  border: 1px solid var(--agency-blue);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(56, 189, 248, 0.28), transparent 68%);
+  box-shadow: 0 0 0 1.5rem rgba(56, 189, 248, 0.025);
+}
+
+.teamSoloCore strong,
+.teamOrbit strong {
+  color: var(--agency-text);
+  font-size: 0.8125rem;
+  letter-spacing: 0.08em;
+}
+
+.teamSoloCore p {
+  max-width: 32rem;
+  margin: 0;
+  color: var(--agency-muted);
+  line-height: 1.6;
+}
+
+.teamOrbit {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(0.75rem, 2vw, 1.5rem);
+  margin: 3rem 0 1rem;
+  padding: 0;
+  list-style: none;
+}
+
+.teamOrbit li {
+  display: grid;
+  min-width: 0;
+  justify-items: center;
+  gap: 0.45rem;
+  border: 1px solid var(--agency-line);
+  padding: 1.25rem;
+  background: rgba(5, 19, 35, 0.68);
+  text-align: center;
+}
+
+.teamOrbit li > span {
+  display: block;
+  width: 1.25rem;
+  height: 1.25rem;
+  border: 1px solid var(--agency-blue);
+  border-radius: 50%;
+  background: rgba(56, 189, 248, 0.13);
+}
+
+.teamOrbit small {
+  color: var(--agency-dim);
+  line-height: 1.45;
+}
+
+.room[data-cxos-motion="active"]
+  .district[data-current="true"][data-agency-district="team-operations"]
+  .teamOrbit li > span {
+  animation: agencyTeamRecognition 860ms var(--agency-chamber-ease) both;
+}
+
+.teamOrbit li:nth-child(2) > span {
+  animation-delay: 90ms !important;
+}
+
+.teamOrbit li:nth-child(3) > span {
+  animation-delay: 180ms !important;
+}
+
+/* 04 · Business Health — slower, elevated analytical observatory. */
+.district[data-agency-district="business-health"] {
+  background:
+    radial-gradient(circle at 68% 43%, transparent 0 8rem, rgba(244, 199, 109, 0.08) 8.05rem 8.15rem, transparent 8.2rem 14rem, rgba(134, 215, 255, 0.05) 14.05rem 14.15rem, transparent 14.2rem),
+    linear-gradient(180deg, rgba(9, 28, 50, 0.92), rgba(3, 10, 22, 0.9)),
+    var(--agency-ink);
+}
+
+.district[data-agency-district="business-health"] .observatoryGrid {
+  width: min(100%, 56rem);
+  margin-left: auto;
+  grid-template-columns: minmax(0, 1fr);
+  border: 1px solid rgba(244, 199, 109, 0.24);
+  background: rgba(3, 13, 27, 0.68);
+}
+
+.district[data-agency-district="business-health"] .observatoryGrid > * {
+  border: 0;
+  padding: clamp(1.5rem, 4vw, 3.5rem);
+}
+
+.district[data-agency-district="business-health"] .healthState {
+  font-size: clamp(2.5rem, 6vw, 5.5rem);
+  letter-spacing: 0.12em;
+}
+
+.district[data-agency-district="business-health"] .healthBank::after {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  border: 1px solid transparent;
+  background: linear-gradient(180deg, transparent, rgba(244, 199, 109, 0.04), transparent);
+  content: "";
+  transform: translate3d(0, -65%, 0);
+}
+
+.room[data-cxos-motion="active"]
+  .district[data-current="true"][data-agency-district="business-health"]
+  .healthBank::after {
+  animation: agencyObservatoryScan 1400ms var(--agency-chamber-ease) both;
+}
+
+/* 05 · Evidence Archive — a quiet retrieval stack, dense only on request. */
+.district[data-agency-district="evidence-archive"] {
+  background:
+    repeating-linear-gradient(90deg, transparent 0 12%, rgba(134, 215, 255, 0.035) 12% calc(12% + 1px)),
+    linear-gradient(180deg, rgba(5, 26, 45, 0.88), rgba(3, 9, 20, 0.94)),
+    var(--agency-ink);
+}
+
+.district[data-agency-district="evidence-archive"] .archiveLedger {
+  position: relative;
+  width: min(100%, 68rem);
+  margin-inline: auto;
+  border: 1px solid var(--agency-line-strong);
+  padding: clamp(1.25rem, 3vw, 2.5rem);
+  background: rgba(3, 14, 27, 0.76);
+  box-shadow:
+    0.65rem 0.65rem 0 -0.35rem rgba(56, 189, 248, 0.08),
+    1.2rem 1.2rem 0 -0.7rem rgba(56, 189, 248, 0.04);
+}
+
+.district[data-agency-district="evidence-archive"] .archiveEvidenceList li {
+  background: rgba(7, 25, 44, 0.5);
+}
+
+.room[data-cxos-motion="active"]
+  .district[data-current="true"][data-agency-district="evidence-archive"]
+  .archiveEvidenceList li > span {
+  animation: agencyEvidenceRecognition 900ms var(--agency-chamber-ease) both;
+}
+
+.archiveEvidenceList li:nth-child(2) > span {
+  animation-delay: 80ms !important;
+}
+
+.archiveEvidenceList li:nth-child(3) > span {
+  animation-delay: 160ms !important;
+}
+
+.archiveEvidenceList li:nth-child(4) > span {
+  animation-delay: 240ms !important;
+}
+
+/* 06 · Kai Executive Suite — intimate, centered command chamber. */
+.district[data-agency-district="kai-suite"] {
+  background:
+    radial-gradient(ellipse at 50% 35%, rgba(56, 189, 248, 0.2), transparent 30rem),
+    linear-gradient(90deg, rgba(3, 10, 22, 0.94), rgba(7, 31, 53, 0.76) 50%, rgba(3, 10, 22, 0.94)),
+    var(--agency-ink);
+}
+
+.district[data-agency-district="kai-suite"] .kaiDesk {
+  position: relative;
+  width: min(100%, 64rem);
+  margin-inline: auto;
+  border: 1px solid rgba(134, 215, 255, 0.4);
+  padding: clamp(1.25rem, 3vw, 2.75rem);
+  background:
+    linear-gradient(180deg, rgba(14, 116, 144, 0.12), transparent 18rem),
+    rgba(3, 13, 27, 0.84);
+  box-shadow: 0 2rem 6rem rgba(0, 0, 0, 0.34);
+}
+
+.district[data-agency-district="kai-suite"] .kaiDesk::before {
+  pointer-events: none;
+  position: absolute;
+  inset: -1px 15% auto;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--agency-blue), transparent);
+  content: "";
+  opacity: 0.65;
+}
+
+.room[data-cxos-motion="active"]
+  .district[data-current="true"][data-agency-district="kai-suite"]
+  .kaiDesk::before {
+  animation: agencyKaiRecognition 1200ms var(--agency-chamber-ease) both;
+}
+
+/* 07 · Growth / Capacity — expansive final horizon and executive handoff. */
+.district[data-agency-district="growth-threshold"] {
+  background:
+    linear-gradient(180deg, rgba(5, 19, 35, 0.48), transparent 52%),
+    radial-gradient(ellipse at 50% 82%, rgba(56, 189, 248, 0.15), transparent 36rem),
+    linear-gradient(90deg, rgba(3, 10, 22, 0.94), rgba(7, 27, 47, 0.76), rgba(3, 10, 22, 0.94)),
+    var(--agency-ink);
+}
+
+.district[data-agency-district="growth-threshold"] .capacityHorizonBlock {
+  display: grid;
+  min-height: clamp(22rem, 48vh, 34rem);
+  align-content: center;
+  border-block: 1px solid rgba(134, 215, 255, 0.32);
+  padding: clamp(2rem, 5vw, 4.5rem) 0;
+}
+
+.district[data-agency-district="growth-threshold"] .capacityHorizonHeading {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+}
+
+.district[data-agency-district="growth-threshold"] .capacityHorizonHeading strong {
+  text-align: right;
+}
+
+.district[data-agency-district="growth-threshold"] .capacityHorizon {
+  gap: clamp(0.2rem, 0.65vw, 0.6rem);
+  margin-top: clamp(1.5rem, 4vw, 3rem);
+}
+
+.district[data-agency-district="growth-threshold"] .capacityHorizon i {
+  height: clamp(2.5rem, 8vh, 6rem);
+}
+
+.room[data-cxos-motion="active"]
+  .district[data-current="true"][data-agency-district="growth-threshold"]
+  .capacityHorizon b {
+  animation: agencyCapacityScan 1100ms var(--agency-chamber-ease) both;
+}
+
+@keyframes agencyChamberRecedeForward {
+  from {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+
+  to {
+    opacity: 0.16;
+    transform: translate3d(-1.25rem, 0, 0) scale(0.985);
+  }
+}
+
+@keyframes agencyChamberRecedeBackward {
+  from {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+
+  to {
+    opacity: 0.16;
+    transform: translate3d(1.25rem, 0, 0) scale(0.985);
+  }
+}
+
+@keyframes agencyFacilityPassage {
+  0% {
+    opacity: 0;
+  }
+
+  16%,
+  78% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes agencyPassageAxis {
+  0% {
+    opacity: 0.2;
+    transform: scaleX(0.12);
+  }
+
+  55% {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+
+  100% {
+    opacity: 0.42;
+    transform: scaleX(0.72);
+  }
+}
+
+@keyframes agencyInspectionAcquire {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 0.35rem, 0);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes agencyClientFloorSweep {
+  0%,
+  12% {
+    opacity: 0;
+    transform: translate3d(-100%, 0, 0);
+  }
+
+  42%,
+  58% {
+    opacity: 0.65;
+  }
+
+  88%,
+  100% {
+    opacity: 0;
+    transform: translate3d(100%, 0, 0);
+  }
+}
+
+@keyframes agencyTeamRecognition {
+  0% {
+    box-shadow: 0 0 0 0 rgba(56, 189, 248, 0);
+    opacity: 0.62;
+  }
+
+  62% {
+    box-shadow: 0 0 0 0.65rem rgba(56, 189, 248, 0.05);
+    opacity: 1;
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(56, 189, 248, 0);
+    opacity: 0.78;
+  }
+}
+
+@keyframes agencyObservatoryScan {
+  0%,
+  18% {
+    opacity: 0;
+    transform: translate3d(0, -65%, 0);
+  }
+
+  50% {
+    opacity: 0.65;
+  }
+
+  82%,
+  100% {
+    opacity: 0;
+    transform: translate3d(0, 65%, 0);
+  }
+}
+
+@keyframes agencyEvidenceRecognition {
+  0% {
+    box-shadow: 0 0 0 0 rgba(56, 189, 248, 0);
+    opacity: 0.48;
+  }
+
+  62% {
+    box-shadow: 0 0 0 0.35rem rgba(56, 189, 248, 0.06);
+    opacity: 1;
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(56, 189, 248, 0);
+    opacity: 1;
+  }
+}
+
+@keyframes agencyKaiRecognition {
+  0% {
+    opacity: 0.34;
+    transform: scaleX(0.38);
+  }
+
+  62% {
+    opacity: 0.9;
+    transform: scaleX(1);
+  }
+
+  100% {
+    opacity: 0.65;
+    transform: scaleX(1);
+  }
+}
+
+@keyframes agencyCapacityScan {
+  0% {
+    opacity: 0;
+    transform: translate3d(-8%, 0, 0) scaleX(0.14);
+  }
+
+  58% {
+    opacity: 0.78;
+    transform: translate3d(0, 0, 0) scaleX(1);
+  }
+
+  100% {
+    opacity: 0.52;
+    transform: translate3d(0, 0, 0) scaleX(1);
+  }
+}
+
+@media (max-width: 1180px) {
+  .facilityShell {
+    grid-template-columns: minmax(10.5rem, 12rem) minmax(0, 1fr);
+    gap: 1rem;
+  }
+
+  .facilityDirectory .facilitySpine a {
+    grid-template-columns: 1.8rem minmax(0, 1fr);
+    padding-inline: 0.55rem;
+  }
+
+  .chamberStage .district {
+    padding-right: 1rem;
+    padding-left: calc(var(--agency-district-rail-gutter) + 0.8rem);
+  }
+
+  .chamberStage .districtThreshold {
+    right: 1rem;
+    left: calc(var(--agency-district-rail-gutter) + 0.8rem);
+  }
+}
+
+@media (max-width: 860px) {
+  .room[data-arrival-settled="true"] .arrivalThreshold .identity {
+    display: grid;
+    gap: 0.55rem;
+  }
+
+  .room[data-arrival-settled="true"] .arrivalThreshold .reviewIdentity {
+    justify-items: start;
+  }
+
+  .facilityShell {
+    display: block;
+    margin-top: 1rem;
+  }
+
+  .facilityDirectory {
+    position: relative;
+    top: auto;
+    margin-bottom: 0.85rem;
+    background: rgba(3, 10, 22, 0.94);
+    box-shadow: none;
+    backdrop-filter: none;
+  }
+
+  .directoryAxis,
+  .facilityDirectory .facilitySpine {
+    display: none;
+  }
+
+  .mobileFacilityCurrent {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(7rem, 1.15fr) minmax(0, 1fr);
+    border-bottom: 1px solid var(--agency-line);
+  }
+
+  .mobileFacilityCurrent > a,
+  .mobileFacilityCurrent > div,
+  .mobileFacilityCurrent > .facilityEdge {
+    display: grid;
+    min-width: 0;
+    min-height: 3rem;
+    align-content: center;
+    gap: 0.15rem;
+    border-right: 1px solid var(--agency-line);
+    padding: 0.5rem 0.65rem;
+    color: var(--agency-muted);
+    text-decoration: none;
+  }
+
+  .mobileFacilityCurrent > :last-child {
+    border-right: 0;
+    text-align: right;
+  }
+
+  .mobileFacilityCurrent > div {
+    background: rgba(14, 116, 144, 0.15);
+    text-align: center;
+  }
+
+  .mobileFacilityCurrent span,
+  .mobileFacilityCurrent strong {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.75rem;
+    line-height: 1.35;
+  }
+
+  .mobileFacilityCurrent span {
+    color: var(--agency-dim);
+    font-weight: 700;
+    letter-spacing: 0.07em;
+  }
+
+  .mobileFacilityCurrent strong {
+    color: var(--agency-text);
+  }
+
+  .mobileFacilityCurrent > div strong {
+    color: var(--agency-blue);
+  }
+
+  .mobileFacilityMap {
+    display: block;
+  }
+
+  .mobileFacilityMap summary {
+    grid-template-columns: minmax(6.5rem, 0.7fr) minmax(0, 1.3fr) auto;
+  }
+
+  .mobileFacilityMap ol {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    margin: 0;
+    border-top: 1px solid var(--agency-line);
+    padding: 0;
+    list-style: none;
+  }
+
+  .mobileFacilityMap li {
+    min-width: 0;
+    border-right: 1px solid var(--agency-line);
+    border-bottom: 1px solid var(--agency-line);
+  }
+
+  .mobileFacilityMap li:nth-child(2n),
+  .mobileFacilityMap li:last-child {
+    border-right: 0;
+  }
+
+  .mobileFacilityMap li:last-child {
+    grid-column: 1 / -1;
+    border-bottom: 0;
+  }
+
+  .mobileFacilityMap a {
+    grid-template-columns: 2rem minmax(0, 1fr);
+    min-height: 3rem;
+    align-items: center;
+  }
+
+  .chamberStage {
+    min-height: 0;
+  }
+
+  .chamberStage .district {
+    min-height: max(34rem, calc(100svh - 10rem));
+    padding:
+      3.4rem 0.75rem 2.5rem
+      calc(var(--agency-district-rail-gutter) + 0.75rem);
+  }
+
+  .chamberStage .districtRail {
+    inset-block: 3.4rem 2.5rem;
+    inset-inline-start: 1.25rem;
+  }
+
+  .chamberStage .districtThreshold {
+    right: 0.75rem;
+    left: calc(var(--agency-district-rail-gutter) + 0.75rem);
+  }
+
+  .chamberStage .districtHeader {
+    min-height: 0;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.8rem;
+    align-items: start;
+  }
+
+  .chamberStage .districtHeader h2 {
+    max-width: 18ch;
+    font-size: clamp(2rem, 9.5vw, 3.35rem);
+  }
+
+  .chamberStage .districtHeader > p {
+    text-align: left;
+  }
+
+  .chamberStage .districtTruth {
+    padding-inline: 0.65rem;
+  }
+
+  .chamberStage > .kaiContext,
+  .chamberStage > .kaiContext > div,
+  .inspectionPlane summary {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .chamberStage > .kaiContext {
+    align-items: stretch;
+  }
+
+  .chamberStage > .kaiContext button,
+  .chamberStage > .kaiContext .kaiBoundary {
+    width: 100%;
+  }
+
+  .inspectionPlane summary {
+    gap: 0.3rem;
+    padding-right: 2.8rem;
+  }
+
+  .inspectionBody {
+    padding: 1rem 0.75rem;
+  }
+
+  .centralVista {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .centralVista .centralCondition,
+  .centralVista .kaiBrief {
+    min-height: 0;
+    padding: 1.35rem 0;
+  }
+
+  .centralVista .centralCondition {
+    min-height: 16rem;
+  }
+
+  .centralVista .kaiBrief {
+    border-left: 0;
+    border-top: 1px solid var(--agency-line-strong);
+  }
+
+  .centralVista .centralCondition::before {
+    width: 9rem;
+  }
+
+  .centralVista .centralCondition::after {
+    width: 5rem;
+  }
+
+  .clientFlowMoment,
+  .teamCoverageMoment {
+    padding: 1.1rem 0.75rem;
+  }
+
+  .teamCoverageMoment {
+    min-height: 22rem;
+  }
+
+  .teamOrbit {
+    grid-template-columns: 1fr;
+    margin-top: 1.5rem;
+  }
+
+  .teamOrbit li {
+    grid-template-columns: 1.5rem minmax(0, 1fr);
+    justify-items: start;
+    text-align: left;
+  }
+
+  .teamOrbit small {
+    grid-column: 2;
+  }
+
+  .district[data-agency-district="business-health"] .observatoryGrid {
+    width: 100%;
+  }
+
+  .district[data-agency-district="business-health"] .observatoryGrid > *,
+  .district[data-agency-district="kai-suite"] .kaiDesk,
+  .district[data-agency-district="evidence-archive"] .archiveLedger {
+    padding: 1.1rem 0.75rem;
+  }
+
+  .district[data-agency-district="business-health"] .healthState {
+    font-size: clamp(2rem, 12vw, 4rem);
+  }
+
+  .district[data-agency-district="growth-threshold"] .capacityHorizonBlock {
+    min-height: 20rem;
+    padding-block: 2rem;
+  }
+
+  .district[data-agency-district="growth-threshold"] .capacityHorizonHeading {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.35rem;
+  }
+
+  .district[data-agency-district="growth-threshold"] .capacityHorizonHeading strong {
+    text-align: left;
+  }
+
+  .passageAxis {
+    width: min(82vw, 32rem);
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.6rem;
+    justify-items: center;
+    text-align: center;
+  }
+
+  .passageAxis i {
+    width: 70%;
+  }
+
+  .passageAxis span:last-child {
+    text-align: center;
+  }
+
+  .passageThreshold {
+    width: min(82vw, 32rem);
+    margin-top: 1rem;
+  }
+
+  .passageThreshold strong {
+    font-size: clamp(1.65rem, 8vw, 2.8rem);
+  }
+}
+
+@media (max-width: 430px) {
+  .room[data-arrival-settled="true"] .arrivalThreshold .roomTitle {
+    font-size: clamp(1.55rem, 8vw, 2.1rem);
+  }
+
+  .mobileFacilityCurrent > a,
+  .mobileFacilityCurrent > div,
+  .mobileFacilityCurrent > .facilityEdge {
+    padding-inline: 0.45rem;
+  }
+
+  .mobileFacilityCurrent span,
+  .mobileFacilityCurrent strong {
+    font-size: 0.7rem;
+  }
+
+  .mobileFacilityMap ol {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .mobileFacilityMap li,
+  .mobileFacilityMap li:nth-child(2n),
+  .mobileFacilityMap li:last-child {
+    grid-column: auto;
+    border-right: 0;
+    border-bottom: 1px solid var(--agency-line);
+  }
+
+  .mobileFacilityMap li:last-child {
+    border-bottom: 0;
+  }
+
+  .chamberStage .district {
+    padding-right: 0.65rem;
+  }
+
+  .chamberStage .districtThreshold {
+    right: 0.65rem;
+  }
+
+  .chamberStage .districtHeader h2 {
+    font-size: clamp(1.9rem, 10vw, 2.75rem);
+    overflow-wrap: anywhere;
+  }
+
+  .chamberStage .districtHandoff {
+    display: grid;
+    gap: 0.6rem;
+  }
+
+  .chamberStage .districtHandoff a,
+  .chamberStage .districtHandoff a:last-child {
+    width: 100%;
+    margin: 0;
+    justify-content: flex-start;
+    text-align: left;
+  }
+}
+
+@media (max-width: 260px) {
+  .mobileFacilityCurrent {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .mobileFacilityCurrent > a,
+  .mobileFacilityCurrent > div,
+  .mobileFacilityCurrent > .facilityEdge,
+  .mobileFacilityCurrent > :last-child {
+    border-right: 0;
+    border-bottom: 1px solid var(--agency-line);
+    text-align: left;
+  }
+
+  .mobileFacilityCurrent > :last-child {
+    border-bottom: 0;
+  }
+
+  .mobileFacilityMap summary {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.2rem;
+  }
+
+  .chamberStage .district {
+    min-height: 0;
+    padding-left: calc(var(--agency-district-rail-gutter) + 0.65rem);
+  }
+
+  .chamberStage .districtThreshold {
+    left: calc(var(--agency-district-rail-gutter) + 0.65rem);
+  }
+
+  .passageThreshold strong,
+  .passageThreshold small,
+  .passageAxis span {
+    overflow-wrap: anywhere;
+  }
+}
+
+@media (max-height: 500px) and (orientation: landscape) {
+  .room[data-arrival-settled="true"] .arrival {
+    padding-top: 0.5rem;
+  }
+
+  .room[data-arrival-settled="true"] .arrivalThreshold .identityLine,
+  .room[data-arrival-settled="true"] .arrivalThreshold .reviewIdentity {
+    display: none;
+  }
+
+  .room[data-arrival-settled="true"] .arrivalThreshold {
+    padding-block: 0.45rem;
+  }
+
+  .mobileFacilityCurrent > a,
+  .mobileFacilityCurrent > div,
+  .mobileFacilityCurrent > .facilityEdge {
+    min-height: 2.75rem;
+  }
+
+  .chamberStage .district {
+    min-height: 0;
+    padding-top: 3.1rem;
+  }
+
+  .chamberStage .districtHeader {
+    grid-template-columns: minmax(0, 1.2fr) minmax(12rem, 0.8fr);
+    align-items: end;
+  }
+
+  .chamberStage .districtHeader h2 {
+    font-size: clamp(1.8rem, 6vw, 2.55rem);
+  }
+
+  .chamberStage .districtHeader > p {
+    font-size: 0.8125rem;
+    text-align: right;
+  }
+
+  .chamberStage > .kaiContext {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .chamberStage > .kaiContext > div {
+    grid-template-columns: minmax(9rem, 0.55fr) minmax(0, 1.45fr);
+  }
+
+  .teamCoverageMoment,
+  .district[data-agency-district="growth-threshold"] .capacityHorizonBlock {
+    min-height: 18rem;
+  }
+}
+
+@media (pointer: coarse) {
+  .mobileFacilityCurrent > a,
+  .mobileFacilityMap summary,
+  .mobileFacilityMap a,
+  .inspectionPlane summary {
+    min-height: 3rem;
+  }
+}
+
+/* Keep every RC4 chamber control on the established CXOS control floor. */
+.arrivalActions button,
+.facilityDirectory a,
+.districtHandoff a,
+.inspectionPlane summary {
+  min-height: 2.75rem;
+}
+
+@media (pointer: coarse) {
+  .facilityDirectory a,
+  .mobileFacilityCurrent a,
+  .mobileFacilityMap summary,
+  .inspectionPlane summary {
+    min-height: 3rem;
+  }
+}
+
+.room[data-hidden="true"] .facilityPassage,
+.room[data-hidden="true"] .inspectionBody,
+.room[data-hidden="true"] .clientFlowMoment::after,
+.room[data-hidden="true"] .teamOrbit li > span,
+.room[data-hidden="true"] .healthBank::after,
+.room[data-hidden="true"] .archiveEvidenceList li > span,
+.room[data-hidden="true"] .kaiDesk::before,
+.room[data-hidden="true"] .capacityHorizon b,
+.room[data-departing="true"] .clientFlowMoment::after,
+.room[data-departing="true"] .teamOrbit li > span,
+.room[data-departing="true"] .healthBank::after,
+.room[data-departing="true"] .archiveEvidenceList li > span,
+.room[data-departing="true"] .kaiDesk::before,
+.room[data-departing="true"] .capacityHorizon b {
+  animation-play-state: paused !important;
+}
+
+.room[data-tier="C"] .facilityPassage,
+.room[data-tier="D"] .facilityPassage {
+  display: none !important;
+}
+
+.room[data-tier="C"] .chamberStage .district,
+.room[data-tier="D"] .chamberStage .district,
+.room[data-tier="C"] .inspectionBody,
+.room[data-tier="D"] .inspectionBody,
+.room[data-tier="C"] .clientFlowMoment::after,
+.room[data-tier="D"] .clientFlowMoment::after,
+.room[data-tier="C"] .teamOrbit li > span,
+.room[data-tier="D"] .teamOrbit li > span,
+.room[data-tier="C"] .healthBank::after,
+.room[data-tier="D"] .healthBank::after,
+.room[data-tier="C"] .archiveEvidenceList li > span,
+.room[data-tier="D"] .archiveEvidenceList li > span,
+.room[data-tier="C"] .kaiDesk::before,
+.room[data-tier="D"] .kaiDesk::before,
+.room[data-tier="C"] .capacityHorizon b,
+.room[data-tier="D"] .capacityHorizon b {
+  animation: none !important;
+  transition: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .room:not([data-motion-override="true"]) .facilityPassage {
+    display: none !important;
+  }
+
+  .room:not([data-motion-override="true"]) .chamberStage .district,
+  .room:not([data-motion-override="true"]) .inspectionBody,
+  .room:not([data-motion-override="true"]) .clientFlowMoment::after,
+  .room:not([data-motion-override="true"]) .teamOrbit li > span,
+  .room:not([data-motion-override="true"]) .healthBank::after,
+  .room:not([data-motion-override="true"]) .archiveEvidenceList li > span,
+  .room:not([data-motion-override="true"]) .kaiDesk::before,
+  .room:not([data-motion-override="true"]) .capacityHorizon b {
+    animation: none !important;
+    transition: none !important;
   }
 }
