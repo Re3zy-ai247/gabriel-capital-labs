@@ -199,6 +199,7 @@ const playwright = await import(pathToFileURL(join(playwrightRoot, "index.mjs"))
 const browser = await playwright.chromium.launch({
   executablePath: chromePath,
   headless: true,
+  ignoreDefaultArgs: ["--disable-back-forward-cache"],
   args: ["--disable-background-networking", "--disable-component-update"],
 });
 
