@@ -3019,10 +3019,18 @@
 
 /* The global skip link is outside the room subtree, so bind its touch target
  * to this route through :has() without changing application-wide chrome. */
-:global(body):has(.room) > :global(.skip-link):focus-visible {
+:global(body):has(.room) > :global(.skip-link) {
   display: flex;
   min-height: 3rem;
   align-items: center;
+  top: max(1rem, calc(env(safe-area-inset-top) + 0.5rem));
+  left: max(1rem, calc(env(safe-area-inset-left) + 0.5rem));
+  transform: translateY(calc(-100% - env(safe-area-inset-top) - 1rem));
+  transition: none;
+}
+
+:global(body):has(.room) > :global(.skip-link):focus-visible {
+  transform: translateY(0);
 }
 
 .room[data-arrival-settled="false"] .arrivalOrigin {
@@ -3126,11 +3134,11 @@
   animation-delay: 500ms;
 }
 
-.room[data-arrival-settled="true"] .arrivalOrigin,
-.room[data-arrival-settled="true"] .arrivalThreshold .identity,
-.room[data-arrival-settled="true"] .arrivalThreshold .activationRail li,
-.room[data-arrival-settled="true"] .arrivalGreeting,
-.room[data-arrival-settled="true"] .arrivalActions {
+.room[data-arrival-settled="true"] .facilityIdentity .arrivalOrigin,
+.room[data-arrival-settled="true"] .facilityIdentity .identity,
+.room[data-arrival-settled="true"] .facilityIdentity .activationRail li,
+.room[data-arrival-settled="true"] .facilityIdentity .arrivalGreeting,
+.room[data-arrival-settled="true"] .facilityIdentity .arrivalActions {
   animation: none;
 }
 
@@ -4948,7 +4956,7 @@
     align-items: stretch;
   }
 
-  .room[data-arrival-settled="false"] .arrivalActions {
+  .arrivalGate .arrivalActions {
     position: fixed;
     right: 0.65rem;
     bottom: max(5rem, calc(env(safe-area-inset-bottom) + 5rem));
@@ -4959,9 +4967,9 @@
     background: rgba(3, 10, 22, 0.94);
   }
 
-  /* Preserve the in-flow action slot while the skip control is fixed so the
-   * settled handoff cannot shift the disclosure content below it. */
-  .room[data-arrival-settled="false"] .arrivalThreshold {
+  /* Preserve the gate action slot through its complete visibility handoff so
+   * settlement cannot resize the cinematic threshold or its horizon line. */
+  .arrivalGate .arrivalThreshold {
     padding-bottom: calc(1.5rem + 4.25rem);
   }
 
@@ -5377,53 +5385,53 @@
   padding-bottom: max(2rem, calc(env(safe-area-inset-bottom) + 1.25rem));
 }
 
-.room[data-arrival-settled="true"] .arrivalThreshold {
+.room[data-arrival-settled="true"] .facilityIdentity {
   min-height: 0;
   gap: 0.7rem;
   border-top: 0;
   padding: 0.65rem 0 0.85rem;
 }
 
-.room[data-arrival-settled="true"] .arrivalThreshold::before {
+.room[data-arrival-settled="true"] .facilityIdentity::before {
   background:
     linear-gradient(90deg, rgba(56, 189, 248, 0.07), transparent 34% 66%, rgba(56, 189, 248, 0.04)),
     rgba(6, 19, 36, 0.34);
 }
 
-.room[data-arrival-settled="true"] .arrivalThreshold::after {
+.room[data-arrival-settled="true"] .facilityIdentity::after {
   right: 0;
   bottom: 0;
   left: 0;
   box-shadow: none;
 }
 
-.room[data-arrival-settled="true"] .arrivalOrigin,
-.room[data-arrival-settled="true"] .arrivalGreeting,
-.room[data-arrival-settled="true"] .arrivalActions,
-.room[data-arrival-settled="true"] .arrivalThreshold .activationRail {
+.room[data-arrival-settled="true"] .facilityIdentity .arrivalOrigin,
+.room[data-arrival-settled="true"] .facilityIdentity .arrivalGreeting,
+.room[data-arrival-settled="true"] .facilityIdentity .arrivalActions,
+.room[data-arrival-settled="true"] .facilityIdentity .activationRail {
   display: none;
 }
 
-.room[data-arrival-settled="true"] .arrivalThreshold .identity {
+.room[data-arrival-settled="true"] .facilityIdentity .identity {
   align-items: center;
   gap: clamp(1rem, 3vw, 3rem);
   padding: 0;
 }
 
-.room[data-arrival-settled="true"] .arrivalThreshold .roomTitle {
+.room[data-arrival-settled="true"] .facilityIdentity .roomTitle {
   margin-top: 0.2rem;
   font-size: clamp(1.7rem, 3vw, 3rem);
   line-height: 1;
 }
 
-.room[data-arrival-settled="true"] .arrivalThreshold .identityLine {
+.room[data-arrival-settled="true"] .facilityIdentity .identityLine {
   max-width: 56rem;
   margin-top: 0.45rem;
   font-size: 0.8125rem;
   line-height: 1.5;
 }
 
-.room[data-arrival-settled="true"] .arrivalThreshold .reviewIdentity {
+.room[data-arrival-settled="true"] .facilityIdentity .reviewIdentity {
   padding-top: 0;
 }
 
@@ -6385,12 +6393,12 @@
 }
 
 @media (max-width: 860px) {
-  .room[data-arrival-settled="true"] .arrivalThreshold .identity {
+  .room[data-arrival-settled="true"] .facilityIdentity .identity {
     display: grid;
     gap: 0.55rem;
   }
 
-  .room[data-arrival-settled="true"] .arrivalThreshold .reviewIdentity {
+  .room[data-arrival-settled="true"] .facilityIdentity .reviewIdentity {
     justify-items: start;
   }
 
@@ -6676,7 +6684,7 @@
 }
 
 @media (max-width: 430px) {
-  .room[data-arrival-settled="true"] .arrivalThreshold .roomTitle {
+  .room[data-arrival-settled="true"] .facilityIdentity .roomTitle {
     font-size: clamp(1.55rem, 8vw, 2.1rem);
   }
 
@@ -6778,12 +6786,12 @@
     padding-top: 0.5rem;
   }
 
-  .room[data-arrival-settled="true"] .arrivalThreshold .identityLine,
-  .room[data-arrival-settled="true"] .arrivalThreshold .reviewIdentity {
+  .room[data-arrival-settled="true"] .facilityIdentity .identityLine,
+  .room[data-arrival-settled="true"] .facilityIdentity .reviewIdentity {
     display: none;
   }
 
-  .room[data-arrival-settled="true"] .arrivalThreshold {
+  .room[data-arrival-settled="true"] .facilityIdentity {
     padding-block: 0.45rem;
   }
 
@@ -6909,5 +6917,225 @@
   .room:not([data-motion-override="true"]) .capacityHorizon b {
     animation: none !important;
     transition: none !important;
+  }
+}
+
+/* CXOS RC5 — stable arrival and chamber geometry
+ *
+ * The final facility frame owns normal-flow geometry from the first hydrated
+ * frame. The cinematic gate is layered inside that reserved frame and leaves
+ * through opacity only. Mobile wayfinding reserves the largest measured RC4
+ * navigator row while retaining intrinsic growth for zoom and reflow.
+ */
+
+.room .arrival {
+  padding-top: max(1rem, env(safe-area-inset-top));
+  padding-bottom: max(2rem, calc(env(safe-area-inset-bottom) + 1.25rem));
+}
+
+.arrivalGate {
+  pointer-events: none;
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 20;
+  min-height: max(42rem, 100svh);
+  overflow: clip;
+  padding:
+    max(2rem, calc(env(safe-area-inset-top) + 1rem))
+    max(clamp(1rem, 3vw, 3rem), env(safe-area-inset-right))
+    max(2rem, calc(env(safe-area-inset-bottom) + 1.25rem))
+    max(clamp(1rem, 3vw, 3rem), env(safe-area-inset-left));
+  background:
+    linear-gradient(180deg, rgba(7, 19, 38, 0.72), transparent 32rem),
+    radial-gradient(circle at 50% -18rem, rgba(30, 142, 201, 0.24), transparent 38rem),
+    var(--agency-ink);
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 220ms var(--agency-chamber-ease),
+    visibility 0s linear 220ms;
+}
+
+.arrivalGate[data-active="true"] {
+  pointer-events: auto;
+  opacity: 1;
+  visibility: visible;
+  transition-delay: 0s;
+}
+
+.arrivalGate:not([data-active="true"]) .arrivalClock {
+  animation: none !important;
+}
+
+.arrivalGate .arrivalThreshold {
+  width: min(100%, 94rem);
+  margin: 0 auto;
+}
+
+.arrivalTitle {
+  margin: 0.4rem 0 0;
+  color: var(--agency-text);
+  font-size: clamp(2.15rem, 4.5vw, 4.5rem);
+  font-weight: 650;
+  letter-spacing: -0.045em;
+  line-height: 0.98;
+}
+
+.facilityFrame {
+  min-width: 0;
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 220ms var(--agency-chamber-ease);
+}
+
+.facilityFrame[data-arrival-active="true"] {
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+}
+
+.room[data-arrival-settled="false"] .facilityFrame *,
+.room[data-arrival-settled="false"] .facilityFrame *::before,
+.room[data-arrival-settled="false"] .facilityFrame *::after {
+  animation: none !important;
+}
+
+.facilityIdentity,
+.room[data-arrival-settled="false"] .facilityIdentity,
+.room[data-arrival-settled="true"] .facilityIdentity {
+  min-height: 0;
+  align-content: stretch;
+  gap: 0.7rem;
+  border-top: 0;
+  padding: 0.65rem 0 0.85rem;
+}
+
+.facilityIdentity::before,
+.room[data-arrival-settled="false"] .facilityIdentity::before,
+.room[data-arrival-settled="true"] .facilityIdentity::before {
+  background:
+    linear-gradient(90deg, rgba(56, 189, 248, 0.07), transparent 34% 66%, rgba(56, 189, 248, 0.04)),
+    rgba(6, 19, 36, 0.34);
+}
+
+.facilityIdentity::after,
+.room[data-arrival-settled="false"] .facilityIdentity::after,
+.room[data-arrival-settled="true"] .facilityIdentity::after {
+  right: 0;
+  bottom: 0;
+  left: 0;
+  box-shadow: none;
+}
+
+.facilityIdentity .identity,
+.room[data-arrival-settled="false"] .facilityIdentity .identity,
+.room[data-arrival-settled="true"] .facilityIdentity .identity {
+  align-items: center;
+  gap: clamp(1rem, 3vw, 3rem);
+  padding: 0;
+}
+
+.facilityIdentity .roomTitle,
+.room[data-arrival-settled="false"] .facilityIdentity .roomTitle,
+.room[data-arrival-settled="true"] .facilityIdentity .roomTitle {
+  margin-top: 0.2rem;
+  font-size: clamp(1.7rem, 3vw, 3rem);
+  line-height: 1;
+}
+
+.facilityIdentity .identityLine,
+.room[data-arrival-settled="false"] .facilityIdentity .identityLine,
+.room[data-arrival-settled="true"] .facilityIdentity .identityLine {
+  max-width: 56rem;
+  margin-top: 0.45rem;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+.facilityIdentity .reviewIdentity,
+.room[data-arrival-settled="false"] .facilityIdentity .reviewIdentity,
+.room[data-arrival-settled="true"] .facilityIdentity .reviewIdentity {
+  padding-top: 0;
+}
+
+.facilityFrame .disclosure {
+  margin-top: 0.35rem;
+}
+
+@media (max-width: 860px) {
+  .facilityIdentity .identity,
+  .room[data-arrival-settled="false"] .facilityIdentity .identity,
+  .room[data-arrival-settled="true"] .facilityIdentity .identity {
+    display: grid;
+    gap: 0.55rem;
+  }
+
+  .facilityIdentity .reviewIdentity,
+  .room[data-arrival-settled="false"] .facilityIdentity .reviewIdentity,
+  .room[data-arrival-settled="true"] .facilityIdentity .reviewIdentity {
+    justify-items: start;
+  }
+
+  .mobileFacilityCurrent {
+    min-block-size: 3.9rem;
+    grid-auto-rows: minmax(3.9rem, auto);
+  }
+
+  .mobileFacilityCurrent > a,
+  .mobileFacilityCurrent > div,
+  .mobileFacilityCurrent > .facilityEdge {
+    min-block-size: 3.9rem;
+  }
+}
+
+@media (max-width: 430px) {
+  .facilityIdentity .roomTitle,
+  .room[data-arrival-settled="false"] .facilityIdentity .roomTitle,
+  .room[data-arrival-settled="true"] .facilityIdentity .roomTitle {
+    font-size: clamp(1.55rem, 8vw, 2.1rem);
+  }
+
+  /*
+   * The continuous Kai spine sits above the active chamber. Reserve its
+   * largest measured narrow-mobile footprint so district-specific wrapping
+   * cannot move the incoming chamber before focus and scroll settle. This is
+   * a minimum, not a fixed height: text zoom and reflow may still grow it.
+   */
+  .chamberStage > .kaiContext {
+    box-sizing: border-box;
+    min-block-size: 202px;
+  }
+}
+
+@media (max-width: 260px) {
+  .chamberStage > .kaiContext {
+    min-block-size: 310px;
+  }
+}
+
+@media (max-height: 500px) and (orientation: landscape) {
+  .facilityIdentity .identityLine,
+  .facilityIdentity .reviewIdentity {
+    display: none;
+  }
+
+  .facilityIdentity,
+  .room[data-arrival-settled="false"] .facilityIdentity,
+  .room[data-arrival-settled="true"] .facilityIdentity {
+    padding-block: 0.45rem;
+  }
+}
+
+.room[data-tier="C"] .arrivalGate,
+.room[data-tier="D"] .arrivalGate,
+.room[data-tier="C"] .facilityFrame,
+.room[data-tier="D"] .facilityFrame {
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .room:not([data-motion-override="true"]) .arrivalGate,
+  .room:not([data-motion-override="true"]) .facilityFrame {
+    transition: none;
   }
 }

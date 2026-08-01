@@ -1,7 +1,7 @@
 // Run: npx --no-install tsx scripts/cxos-agency-command.test.ts
 //
 // SOURCE + PURE-BEHAVIOUR guard for the CXOS Agency Headquarters spatial-
-// chambers Founder Review. Browser and visual evidence still belongs in the RC4 QA
+// chambers Founder Review. Browser and visual evidence still belongs in the RC5 QA
 // ledger; this guard holds the architectural boundary:
 //
 //   deterministic local fixtures -> one bounded local command resolver
@@ -314,6 +314,7 @@ check(
 check(
   "arrival is sequenced through the shared runtime, replayable, skippable, and Escape-settled",
   /data-arrival-settled=\{arrivalSettled \? "true" : "false"\}/.test(stage) &&
+    /data-arrival-active=\{arrivalActive \? "true" : "false"\}/.test(stage) &&
     /definition: AGENCY_CORE_RUNTIME/.test(stageCode) &&
     /replayRuntimeArrival\(`Arrival replayed in Tier \$\{resolution\.tier\}\."?/.test(
       stageCode,
@@ -330,6 +331,118 @@ check(
     /agencyKaiArrive/.test(css) &&
     /agencyArrivalRecognition/.test(css) &&
     /\.room\[data-arrival-settled="false"\] \.arrivalThreshold \.activationRail li::before/.test(
+      css,
+    ),
+);
+check(
+  "arrival cinema uses a non-fixed gate over a permanently laid-out facility frame",
+  /const arrivalActive =\s*[\s\S]{0,240}capabilitiesReady[\s\S]{0,120}validation\.valid[\s\S]{0,120}!arrivalSettled[\s\S]{0,160}resolution\.tier === "A"[\s\S]{0,80}resolution\.tier === "B"/.test(
+    stageCode,
+  ) &&
+    /key=\{arrivalKey\}[\s\S]{0,120}className=\{styles\.arrivalGate\}[\s\S]{0,160}data-active=\{arrivalActive \? "true" : "false"\}/.test(
+      stage,
+    ) &&
+    /className=\{styles\.facilityFrame\}[\s\S]{0,180}data-arrival-active=\{arrivalActive \? "true" : "false"\}[\s\S]{0,160}aria-hidden=\{arrivalActive \? "true" : undefined\}[\s\S]{0,120}inert=\{arrivalActive \? true : undefined\}/.test(
+      stage,
+    ) &&
+    /className=\{`\$\{styles\.arrivalThreshold\} \$\{styles\.facilityIdentity\}`\}/.test(
+      stage,
+    ) &&
+    /\.arrivalGate\s*\{[\s\S]{0,120}position:\s*absolute[\s\S]{0,1200}opacity:\s*0[\s\S]{0,100}visibility:\s*hidden/.test(
+      css,
+    ) &&
+    !/\.arrivalGate\s*\{[\s\S]{0,220}position:\s*fixed/.test(css) &&
+    !/\.arrivalGate(?:\[data-active="true"\])?\s*\{[^}]*\btransform:/.test(
+      css,
+    ) &&
+    /\.facilityFrame\s*\{[\s\S]{0,180}opacity:\s*1[\s\S]{0,180}transition:\s*opacity/.test(
+      css,
+    ) &&
+    !/\.facilityFrame(?:\[[^\]]+\])?\s*\{[^}]*\btransform:/.test(css) &&
+    /\.facilityIdentity,[\s\S]{0,140}\.facilityIdentity\s*\{[\s\S]{0,100}min-height:\s*0/.test(
+      css,
+    ) &&
+    /\.room \.arrival\s*\{[\s\S]{0,180}padding-top:[\s\S]{0,120}padding-bottom:/.test(
+      css,
+    ) &&
+    !/\.facilityFrame(?:\[[^\]]+\])?\s*\{[^}]*\b(?:height|max-height|display):/.test(
+      css,
+    ),
+);
+check(
+  "natural, Skip, Escape, and static arrival focus wait for the visible facility commit",
+  /const arrivalCommitFocusRef = useRef<[\s\S]{0,260}key: number[\s\S]{0,240}announcement: string/.test(
+    runtimeAdapterCode,
+  ) &&
+    /queueArrivalCommitFocus\(options\);[\s\S]{0,80}setArrivalSettled\(true\)/.test(
+      runtimeAdapterCode,
+    ) &&
+    /announcement: messages\.escapeArrival[\s\S]{0,100}\}\);[\s\S]{0,80}setArrivalSettled\(true\)/.test(
+      runtimeAdapterCode,
+    ) &&
+    /announcement: messages\.staticArrival[\s\S]{0,100}\}\);[\s\S]{0,80}setArrivalSettled\(true\)/.test(
+      runtimeAdapterCode,
+    ) &&
+    /useLayoutEffect\(\(\) => \{[\s\S]{0,180}!arrivalSettled[\s\S]{0,140}pending\.key !== arrivalKey[\s\S]{0,1000}focusDistrict\(pending\.focus\.districtId\)/.test(
+      runtimeAdapterCode,
+    ) &&
+    !/setArrivalSettled\(true\);[\s\S]{0,120}requestAnimationFrame/.test(
+      runtimeAdapterCode,
+    ),
+);
+check(
+  "arrival replay moves focus out of the inert facility and into the visible gate before settlement",
+  /const arrivalSkipRef = useRef<HTMLButtonElement>\(null\)/.test(stageCode) &&
+    /const replayGateFocusPendingRef = useRef\(false\)/.test(stageCode) &&
+    /if \(!arrivalActive\)[\s\S]{0,140}arrivalSettled[\s\S]{0,180}if \(!replayGateFocusPendingRef\.current\) return;[\s\S]{0,220}arrivalSkipRef\.current\?\.focus\(\{ preventScroll: true \}\)/.test(
+      stageCode,
+    ) &&
+    /const replayArrival = \(\) => \{[\s\S]{0,140}directorRef\.current\?\.removeAttribute\("open"\);[\s\S]{0,140}roomRootRef\.current\?\.focus\(\{ preventScroll: true \}\);[\s\S]{0,120}replayGateFocusPendingRef\.current = true;[\s\S]{0,140}replayRuntimeArrival/.test(
+      stageCode,
+    ) &&
+    /<button ref=\{arrivalSkipRef\} type="button" onClick=\{skipArrival\}>/.test(
+      stage,
+    ),
+);
+check(
+  "arrival description preserves permission-state truth equivalence for assistive technology",
+  /id="agency-arrival-summary"[\s\S]{0,180}fixtureState === "permission"[\s\S]{0,220}Authority could not be projected\. No agency identity or operating metadata is shown\./.test(
+    stage,
+  ) &&
+    /fixtureState !== "permission"[\s\S]{0,820}Authority could not be projected\. No agency identity or operating metadata is shown\./.test(
+      stage,
+    ),
+);
+check(
+  "route skip focus is immediately visible and arrival settlement preserves explicit operator focus",
+  /:global\(body\):has\(\.room\) > :global\(\.skip-link\)\s*\{[\s\S]{0,220}min-height:\s*3rem[\s\S]{0,220}top:\s*max\(1rem,[\s\S]{0,160}left:\s*max\(1rem,[\s\S]{0,180}transform:\s*translateY\(calc\(-100%[\s\S]{0,180}transition:\s*none/.test(
+    css,
+  ) &&
+    /:global\(body\):has\(\.room\) > :global\(\.skip-link\):focus-visible\s*\{[\s\S]{0,100}transform:\s*translateY\(0\)/.test(
+      css,
+    ) &&
+    /const operatorMovedFocus =[\s\S]{0,260}activeElement === roomRootRef\.current[\s\S]{0,120}!roomRootRef\.current\?\.contains\(activeElement\)[\s\S]{0,140}if \(!operatorMovedFocus\)/.test(
+      runtimeAdapterCode,
+    ),
+);
+check(
+  "facility identity geometry is identical before and after every arrival settlement",
+  (css.match(/\.room\[data-arrival-settled="false"\] \.facilityIdentity/g) ?? [])
+    .length >= 7 &&
+    (css.match(/\.room\[data-arrival-settled="true"\] \.facilityIdentity/g) ?? [])
+      .length >= 7 &&
+    /\.facilityIdentity,[\s\S]{0,180}\.room\[data-arrival-settled="false"\] \.facilityIdentity,[\s\S]{0,180}\.room\[data-arrival-settled="true"\] \.facilityIdentity\s*\{[\s\S]{0,120}min-height:\s*0/.test(
+      css,
+    ) &&
+    !/\.room\[data-arrival-settled="true"\] \.arrivalThreshold/.test(css) &&
+    !/\.room\[data-arrival-settled="true"\] \.(?:arrivalOrigin|arrivalGreeting|arrivalActions)/.test(
+      css,
+    ) &&
+    /\.arrivalGate \.arrivalActions\s*\{[\s\S]{0,180}position:\s*fixed/.test(css) &&
+    /\.arrivalGate \.arrivalThreshold\s*\{[\s\S]{0,120}padding-bottom:\s*calc\(1\.5rem \+ 4\.25rem\)/.test(
+      css,
+    ) &&
+    !/\.room\[data-arrival-settled="false"\] \.arrivalActions\s*\{[\s\S]{0,180}position:\s*fixed/.test(
       css,
     ),
 );
@@ -815,10 +928,35 @@ check(
     ),
 );
 check(
-  "destination reveal precedes heading or requested-control focus",
-  /setActiveDistrict\(destination\);[\s\S]{0,120}setChamberTransition\(settled\);[\s\S]{0,120}scheduleDistrictFocus\(destination\)/.test(
+  "hashchange reasserts committed chamber focus after native fragment restoration",
+  /const fromHash = agencyDistrictFromHash\(window\.location\.hash\);[\s\S]{0,100}const destination = fromHash \?\? "central-command";[\s\S]{0,260}handledHistoryHrefRef\.current === window\.location\.href[\s\S]{0,260}event\?\.type === "hashchange"[\s\S]{0,140}moveToDistrict\(destination, \{ immediate: true \}\)/.test(
+    stageCode,
+  ) &&
+    !/event\?\.type === "hashchange"[\s\S]{0,180}setTimeout/.test(stageCode),
+);
+check(
+  "same-district history reassertion focuses synchronously without a paint-frame gap",
+  /if \(districtId === sourceDistrict\)[\s\S]{0,760}phase: "settled"[\s\S]{0,760}document\.hidden[\s\S]{0,180}visibilityFocusPendingRef\.current = true[\s\S]{0,120}else \{[\s\S]{0,100}focusDistrict\(sourceDistrict\)/.test(
     runtimeAdapterCode,
   ) &&
+    !/if \(districtId === sourceDistrict\)[\s\S]{0,900}scheduleDistrictFocus\(sourceDistrict\)/.test(
+      runtimeAdapterCode,
+    ),
+);
+check(
+  "history initialization does not refocus an already rendered replay chamber",
+  /const renderedDistrict = roomRootRef\.current\?\.dataset\.activeDistrict;[\s\S]{0,120}if \(event \|\| renderedDistrict !== destination\)[\s\S]{0,100}moveToDistrict\(destination, \{ immediate: true \}\)/.test(
+    stageCode,
+  ),
+);
+check(
+  "destination commit precedes paint-time heading or requested-control focus",
+  /queueDistrictCommitFocus\(destination, pending\.sequence\);[\s\S]{0,260}startTransition\(\(\) => \{[\s\S]{0,100}setActiveDistrict\(destination\);[\s\S]{0,120}setChamberTransition\(settled\)/.test(
+    runtimeAdapterCode,
+  ) &&
+    /useLayoutEffect\(\(\) => \{[\s\S]{0,420}pending\.districtId !== activeDistrict[\s\S]{0,180}pending\.sequence !== chamberTransition\.sequence[\s\S]{0,500}focusDistrict\(pending\.districtId\)/.test(
+      runtimeAdapterCode,
+    ) &&
     /findCxosElementById\(root, `\$\{districtId\}-heading`\)/.test(
       runtimeAdapterCode,
     ) &&
@@ -827,11 +965,14 @@ check(
     ),
 );
 check(
-  "focus framing defeats inherited smooth scroll and preserves the CSS offset",
+  "focus framing preserves the CSS offset and focuses after a settled layout frame",
   /function scrollCxosElementImmediately[\s\S]{0,420}scrollMarginTop[\s\S]{0,260}scrollCxosWindowImmediately/.test(
     runtimeAdapterCode,
   ) &&
-    /if \(district\) scrollCxosElementImmediately\(district\)/.test(
+    /const scheduleDistrictScroll = useCallback\([\s\S]{0,260}const focusOrigin = document\.activeElement[\s\S]{0,220}requestAnimationFrame\(\(\) => \{[\s\S]{0,220}requestAnimationFrame\(\(\) => \{[\s\S]{0,600}if \(operatorMovedFocus\) return[\s\S]{0,580}scrollCxosElementImmediately\(district\);[\s\S]{0,100}heading\?\.focus\(\{ preventScroll: true \}\)/.test(
+      runtimeAdapterCode,
+    ) &&
+    /const focusDistrict = useCallback\([\s\S]{0,120}scheduleDistrictScroll\(districtId\)/.test(
       runtimeAdapterCode,
     ) &&
     /scrollCxosWindowImmediately\(0\)[\s\S]{0,160}const update/.test(
@@ -899,7 +1040,7 @@ check(
   "the room owns no timer and the runtime owns only bounded passage and return fallbacks",
   (presentationCode.match(/\bsetTimeout\b/g) ?? []).length === 0 &&
     (runtimeAdapterCode.match(/\bsetTimeout\b/g) ?? []).length === 2 &&
-    /districtTransitionFallbackRef\.current = window\.setTimeout\([\s\S]{0,300}districtTransitionDurationMs[\s\S]{0,80}sequence/.test(
+    /const expectedSequence = chamberTransition\.sequence[\s\S]{0,180}districtTransitionFallbackRef\.current = window\.setTimeout\([\s\S]{0,300}districtTransitionDurationMs/.test(
       runtimeAdapterCode,
     ) &&
     /window\.setTimeout\([\s\S]{0,120}definition\.departure\.fallbackMs/.test(
@@ -1135,7 +1276,7 @@ check(
     /resolution\.tier === "C" \|\|[\s\S]{0,80}resolution\.tier === "D" \|\|[\s\S]{0,120}documentHidden \|\|[\s\S]{0,80}document\.hidden/.test(
       runtimeAdapterCode,
     ) &&
-    /if \(immediate\)[\s\S]{0,420}phase: "settled"[\s\S]{0,320}setActiveDistrict\(districtId\)/.test(
+    /if \(immediate\)[\s\S]{0,520}phase: "settled"[\s\S]{0,520}queueDistrictCommitFocus\(districtId, sequence\)[\s\S]{0,320}setActiveDistrict\(districtId\)/.test(
       runtimeAdapterCode,
     ),
 );
@@ -1200,15 +1341,12 @@ check(
     ),
 );
 check(
-  "Director closes to its summary and replay restores heading focus plus scroll zero",
+  "Director closes to its summary and runtime replay preserves the scroll-zero reset",
   /directorSummaryRef\.current\?\.focus\(\{ preventScroll: true \}\)/.test(
     stageCode,
   ) &&
     /replayRuntimeArrival/.test(stageCode) &&
     /replayFocusPendingRef\.current = true/.test(runtimeAdapterCode) &&
-    /roomHeadingRef\.current\?\.focus\(\{ preventScroll: true \}\)/.test(
-      runtimeAdapterCode,
-    ) &&
     /scrollCxosWindowImmediately\(0\)/.test(runtimeAdapterCode) &&
     /event\.key !== "Escape" \|\| !director\?\.open/.test(stageCode),
 );
@@ -1347,9 +1485,12 @@ check(
 );
 check(
   "the route-level skip control preserves a 44px-plus focused touch target",
-  /:global\(body\):has\(\.room\)\s*>\s*:global\(\.skip-link\):focus-visible\s*\{[\s\S]{0,140}min-height:\s*3rem/.test(
+  /:global\(body\):has\(\.room\)\s*>\s*:global\(\.skip-link\)\s*\{[\s\S]{0,140}min-height:\s*3rem/.test(
     css,
-  ),
+  ) &&
+    /:global\(body\):has\(\.room\)\s*>\s*:global\(\.skip-link\):focus-visible\s*\{[\s\S]{0,100}transform:\s*translateY\(0\)/.test(
+      css,
+    ),
 );
 check(
   "journey motion never transforms the observed district box or pins mobile semantics",
@@ -1511,10 +1652,29 @@ check(
     !/\bon(?:Scroll|Resize|Wheel|TouchMove)\s*=/.test(stage),
 );
 check(
-  "mobile arrival reserves the fixed action slot to prevent settled-state layout shift",
-  /@media \(max-width:\s*767px\)[\s\S]{0,1600}\.room\[data-arrival-settled="false"\] \.arrivalThreshold\s*\{[\s\S]{0,100}padding-bottom:\s*calc\(1\.5rem \+ 4\.25rem\)/.test(
+  "mobile facility navigation reserves the largest measured RC4 row without clipping intrinsic reflow",
+  /@media \(max-width:\s*860px\)[\s\S]{0,1200}\.mobileFacilityCurrent\s*\{[\s\S]{0,120}min-block-size:\s*3\.9rem[\s\S]{0,120}grid-auto-rows:\s*minmax\(3\.9rem, auto\)/.test(
     css,
-  ),
+  ) &&
+    /\.mobileFacilityCurrent > a,[\s\S]{0,180}\.mobileFacilityCurrent > \.facilityEdge\s*\{[\s\S]{0,100}min-block-size:\s*3\.9rem/.test(
+      css,
+    ) &&
+    !/\.mobileFacilityCurrent(?:\s*>[^,{]+)?\s*\{[^}]*(?:^|;)\s*(?:height|block-size):/.test(
+      css,
+    ),
+);
+check(
+  "narrow projections reserve the measured Kai context footprint without fixing or clipping reflow",
+  /@media \(max-width:\s*430px\)[\s\S]{0,700}\.chamberStage > \.kaiContext\s*\{[\s\S]{0,120}box-sizing:\s*border-box[\s\S]{0,120}min-block-size:\s*202px/.test(
+    css,
+  ) &&
+    /@media \(max-width:\s*260px\)[\s\S]{0,220}\.chamberStage > \.kaiContext\s*\{[\s\S]{0,100}min-block-size:\s*310px/.test(
+      css,
+    ) &&
+    !/\.chamberStage > \.kaiContext\s*\{[^}]*(?:^|;)\s*(?:height|block-size):/.test(
+      css,
+    ) &&
+    !/\.chamberStage > \.kaiContext\s*\{[^}]*overflow:\s*hidden/.test(css),
 );
 check(
   "chamber, disclosure, Kai, arrival, and Founder-navigation targets retain the 44px floor",

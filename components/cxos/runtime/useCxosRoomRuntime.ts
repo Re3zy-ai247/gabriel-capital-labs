@@ -1,8 +1,10 @@
 "use client";
 
 import {
+  startTransition,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -226,6 +228,13 @@ export function useCxosRoomRuntime<DistrictId extends string>({
 
   const replayFocusPendingRef = useRef(false);
   const staticArrivalFocusRef = useRef(false);
+  const arrivalCommitFocusRef = useRef<{
+    key: number;
+    focus:
+      | { kind: "room" }
+      | { kind: "district"; districtId: DistrictId };
+    announcement: string;
+  } | null>(null);
   const departureCommittedRef = useRef(false);
   const departureFallbackRef = useRef<number | null>(null);
   const activeDistrictRef = useRef<DistrictId>(definition.initialDistrict);
@@ -234,6 +243,12 @@ export function useCxosRoomRuntime<DistrictId extends string>({
   );
   const districtTransitionFallbackRef = useRef<number | null>(null);
   const districtFocusFrameRef = useRef<number | null>(null);
+  const districtScrollFrameRef = useRef<number | null>(null);
+  const districtScrollSettleFrameRef = useRef<number | null>(null);
+  const districtCommitFocusRef = useRef<{
+    districtId: DistrictId;
+    sequence: number;
+  } | null>(null);
   const visibilityFocusPendingRef = useRef(false);
   const announceRef = useRef(announce);
   const routeResetRef = useRef(onRouteReset);
@@ -320,17 +335,93 @@ export function useCxosRoomRuntime<DistrictId extends string>({
     roomHeadingRef.current?.focus({ preventScroll: true });
   }, [roomHeadingRef]);
 
+  const cancelDistrictScroll = useCallback(() => {
+    if (districtScrollFrameRef.current !== null) {
+      window.cancelAnimationFrame(districtScrollFrameRef.current);
+      districtScrollFrameRef.current = null;
+    }
+    if (districtScrollSettleFrameRef.current !== null) {
+      window.cancelAnimationFrame(districtScrollSettleFrameRef.current);
+      districtScrollSettleFrameRef.current = null;
+    }
+  }, []);
+
+  const scheduleDistrictScroll = useCallback(
+    (districtId: DistrictId) => {
+      cancelDistrictScroll();
+      const focusOrigin = document.activeElement;
+      districtScrollFrameRef.current = window.requestAnimationFrame(() => {
+        districtScrollFrameRef.current = null;
+        districtScrollSettleFrameRef.current = window.requestAnimationFrame(() => {
+          districtScrollSettleFrameRef.current = null;
+          if (activeDistrictRef.current !== districtId) return;
+          const activeElement = document.activeElement;
+          const operatorMovedFocus =
+            activeElement !== focusOrigin &&
+            activeElement instanceof HTMLElement &&
+            activeElement !== document.body &&
+            activeElement !== document.documentElement;
+          if (operatorMovedFocus) return;
+          const root = roomRootRef.current;
+          if (!root) return;
+          const district = findCxosDistrict(root, districtId);
+          if (!district?.isConnected) return;
+          const heading = findCxosElementById(root, `${districtId}-heading`);
+          scrollCxosElementImmediately(district);
+          heading?.focus({ preventScroll: true });
+        });
+      });
+    },
+    [cancelDistrictScroll, roomRootRef],
+  );
+
   const focusDistrict = useCallback(
     (districtId: DistrictId) => {
-      const root = roomRootRef.current;
-      if (!root) return;
-      const district = findCxosDistrict(root, districtId);
-      const heading = findCxosElementById(root, `${districtId}-heading`);
-      heading?.focus({ preventScroll: true });
-      if (district) scrollCxosElementImmediately(district);
+      scheduleDistrictScroll(districtId);
     },
-    [roomRootRef],
+    [scheduleDistrictScroll],
   );
+
+  const queueArrivalCommitFocus = useCallback(
+    (options: {
+      focus:
+        | { kind: "room" }
+        | { kind: "district"; districtId: DistrictId };
+      announcement: string;
+    }) => {
+      arrivalCommitFocusRef.current = { key: arrivalKey, ...options };
+    },
+    [arrivalKey],
+  );
+
+  useLayoutEffect(() => {
+    const pending = arrivalCommitFocusRef.current;
+    if (!arrivalSettled || !pending || pending.key !== arrivalKey) return;
+
+    arrivalCommitFocusRef.current = null;
+    if (!documentHidden && !document.hidden) {
+      const activeElement = document.activeElement;
+      const operatorMovedFocus =
+        activeElement instanceof HTMLElement &&
+        activeElement !== document.body &&
+        activeElement !== document.documentElement &&
+        (activeElement === roomRootRef.current ||
+          !roomRootRef.current?.contains(activeElement));
+
+      if (!operatorMovedFocus) {
+        if (pending.focus.kind === "room") focusRoom();
+        else focusDistrict(pending.focus.districtId);
+      }
+    }
+    announceRef.current(pending.announcement);
+  }, [
+    arrivalKey,
+    arrivalSettled,
+    documentHidden,
+    focusDistrict,
+    focusRoom,
+    roomRootRef,
+  ]);
 
   const clearDistrictTransitionFallback = useCallback(() => {
     if (districtTransitionFallbackRef.current === null) return;
@@ -339,10 +430,13 @@ export function useCxosRoomRuntime<DistrictId extends string>({
   }, []);
 
   const cancelDistrictFocus = useCallback(() => {
-    if (districtFocusFrameRef.current === null) return;
-    window.cancelAnimationFrame(districtFocusFrameRef.current);
-    districtFocusFrameRef.current = null;
-  }, []);
+    districtCommitFocusRef.current = null;
+    cancelDistrictScroll();
+    if (districtFocusFrameRef.current !== null) {
+      window.cancelAnimationFrame(districtFocusFrameRef.current);
+      districtFocusFrameRef.current = null;
+    }
+  }, [cancelDistrictScroll]);
 
   const scheduleDistrictFocus = useCallback(
     (districtId: DistrictId) => {
@@ -354,6 +448,41 @@ export function useCxosRoomRuntime<DistrictId extends string>({
     },
     [cancelDistrictFocus, focusDistrict],
   );
+
+  const queueDistrictCommitFocus = useCallback(
+    (districtId: DistrictId, sequence: number) => {
+      cancelDistrictFocus();
+      districtCommitFocusRef.current = { districtId, sequence };
+    },
+    [cancelDistrictFocus],
+  );
+
+  useLayoutEffect(() => {
+    const pending = districtCommitFocusRef.current;
+    if (
+      districtMode !== "chamber" ||
+      chamberTransition.phase !== "settled" ||
+      !pending ||
+      pending.districtId !== activeDistrict ||
+      pending.sequence !== chamberTransition.sequence
+    ) {
+      return;
+    }
+
+    districtCommitFocusRef.current = null;
+    if (documentHidden || document.hidden) {
+      visibilityFocusPendingRef.current = true;
+      return;
+    }
+    focusDistrict(pending.districtId);
+  }, [
+    activeDistrict,
+    chamberTransition.phase,
+    chamberTransition.sequence,
+    districtMode,
+    documentHidden,
+    focusDistrict,
+  ]);
 
   const settlePendingDistrictTransition = useCallback(
     (focusDestination: boolean) => {
@@ -368,13 +497,17 @@ export function useCxosRoomRuntime<DistrictId extends string>({
         direction: pending.direction,
         sequence: pending.sequence,
       };
+      if (focusDestination) {
+        queueDistrictCommitFocus(destination, pending.sequence);
+      }
       activeDistrictRef.current = destination;
       chamberTransitionRef.current = settled;
-      setActiveDistrict(destination);
-      setChamberTransition(settled);
-      if (focusDestination) scheduleDistrictFocus(destination);
+      startTransition(() => {
+        setActiveDistrict(destination);
+        setChamberTransition(settled);
+      });
     },
-    [clearDistrictTransitionFallback, scheduleDistrictFocus],
+    [clearDistrictTransitionFallback, queueDistrictCommitFocus],
   );
 
   const completeDistrictTransition = useCallback(
@@ -397,6 +530,33 @@ export function useCxosRoomRuntime<DistrictId extends string>({
     },
     [settlePendingDistrictTransition],
   );
+
+  useLayoutEffect(() => {
+    if (
+      districtMode !== "chamber" ||
+      chamberTransition.phase !== "passage" ||
+      !chamberTransition.targetDistrict
+    ) {
+      return;
+    }
+
+    clearDistrictTransitionFallback();
+    const expectedSequence = chamberTransition.sequence;
+    districtTransitionFallbackRef.current = window.setTimeout(() => {
+      if (chamberTransitionRef.current.sequence !== expectedSequence) return;
+      settlePendingDistrictTransition(true);
+    }, districtTransitionDurationMs);
+
+    return clearDistrictTransitionFallback;
+  }, [
+    chamberTransition.phase,
+    chamberTransition.sequence,
+    chamberTransition.targetDistrict,
+    clearDistrictTransitionFallback,
+    districtMode,
+    districtTransitionDurationMs,
+    settlePendingDistrictTransition,
+  ]);
 
   useEffect(() => {
     scrollCxosWindowImmediately(0);
@@ -449,6 +609,7 @@ export function useCxosRoomRuntime<DistrictId extends string>({
       }
       clearDistrictTransitionFallback();
       cancelDistrictFocus();
+      arrivalCommitFocusRef.current = null;
       visibilityFocusPendingRef.current = false;
       const sequence = chamberTransitionRef.current.sequence + 1;
       const settled: CxosChamberTransition<DistrictId> = {
@@ -485,19 +646,19 @@ export function useCxosRoomRuntime<DistrictId extends string>({
     if ((!capabilitiesReady && validation.valid) || arrivalSettled) return;
     if (resolution.tier !== "C" && resolution.tier !== "D") return;
 
-    setArrivalSettled(true);
     if (!staticArrivalFocusRef.current) {
       staticArrivalFocusRef.current = true;
-      window.requestAnimationFrame(() => {
-        focusRoom();
-        announceRef.current(messages.staticArrival);
+      queueArrivalCommitFocus({
+        focus: { kind: "room" },
+        announcement: messages.staticArrival,
       });
     }
+    setArrivalSettled(true);
   }, [
     arrivalSettled,
     capabilitiesReady,
-    focusRoom,
     messages.staticArrival,
+    queueArrivalCommitFocus,
     resolution.tier,
     validation.valid,
   ]);
@@ -506,15 +667,15 @@ export function useCxosRoomRuntime<DistrictId extends string>({
     if (arrivalSettled) return;
     const skipOnEscape = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
-      setArrivalSettled(true);
-      window.requestAnimationFrame(() => {
-        focusRoom();
-        announceRef.current(messages.escapeArrival);
+      queueArrivalCommitFocus({
+        focus: { kind: "room" },
+        announcement: messages.escapeArrival,
       });
+      setArrivalSettled(true);
     };
     window.addEventListener("keydown", skipOnEscape);
     return () => window.removeEventListener("keydown", skipOnEscape);
-  }, [arrivalSettled, focusRoom, messages.escapeArrival]);
+  }, [arrivalSettled, messages.escapeArrival, queueArrivalCommitFocus]);
 
   useEffect(() => {
     if (districtMode === "chamber" || !environment.scrollActivation) return;
@@ -595,17 +756,14 @@ export function useCxosRoomRuntime<DistrictId extends string>({
         | { kind: "district"; districtId: DistrictId };
       announcement: string;
     }) => {
+      queueArrivalCommitFocus(options);
       setArrivalSettled(true);
-      window.requestAnimationFrame(() => {
-        if (options.focus.kind === "room") focusRoom();
-        else focusDistrict(options.focus.districtId);
-        announceRef.current(options.announcement);
-      });
     },
-    [focusDistrict, focusRoom],
+    [queueArrivalCommitFocus],
   );
 
   const replayArrival = useCallback((announcement: string) => {
+    arrivalCommitFocusRef.current = null;
     replayFocusPendingRef.current = true;
     setArrivalSettled(false);
     setArrivalKey((key) => key + 1);
@@ -646,7 +804,7 @@ export function useCxosRoomRuntime<DistrictId extends string>({
         if (documentHidden || document.hidden) {
           visibilityFocusPendingRef.current = true;
         } else {
-          scheduleDistrictFocus(sourceDistrict);
+          focusDistrict(sourceDistrict);
         }
         return;
       }
@@ -668,15 +826,15 @@ export function useCxosRoomRuntime<DistrictId extends string>({
           direction,
           sequence,
         };
+        if (documentHidden || document.hidden) {
+          visibilityFocusPendingRef.current = true;
+        } else {
+          queueDistrictCommitFocus(districtId, sequence);
+        }
         activeDistrictRef.current = districtId;
         chamberTransitionRef.current = settled;
         setActiveDistrict(districtId);
         setChamberTransition(settled);
-        if (documentHidden || document.hidden) {
-          visibilityFocusPendingRef.current = true;
-        } else {
-          scheduleDistrictFocus(districtId);
-        }
         return;
       }
 
@@ -688,15 +846,9 @@ export function useCxosRoomRuntime<DistrictId extends string>({
         sequence,
       };
       chamberTransitionRef.current = passage;
-      setChamberTransition(passage);
-      districtTransitionFallbackRef.current = window.setTimeout(
-        (expectedSequence: number) => {
-          if (chamberTransitionRef.current.sequence !== expectedSequence) return;
-          settlePendingDistrictTransition(true);
-        },
-        districtTransitionDurationMs,
-        sequence,
-      );
+      startTransition(() => {
+        setChamberTransition(passage);
+      });
     },
     [
       cancelDistrictFocus,
@@ -704,12 +856,10 @@ export function useCxosRoomRuntime<DistrictId extends string>({
       clearDistrictTransitionFallback,
       definition.districts,
       districtMode,
-      districtTransitionDurationMs,
       documentHidden,
       focusDistrict,
+      queueDistrictCommitFocus,
       resolution.tier,
-      scheduleDistrictFocus,
-      settlePendingDistrictTransition,
       validation.valid,
     ],
   );
@@ -816,6 +966,7 @@ export function useCxosRoomRuntime<DistrictId extends string>({
       if (departureFallbackRef.current !== null) {
         window.clearTimeout(departureFallbackRef.current);
       }
+      arrivalCommitFocusRef.current = null;
       clearDistrictTransitionFallback();
       cancelDistrictFocus();
     },

@@ -417,22 +417,104 @@ check(
     /clearDistrictTransitionFallback\(\);[\s\S]{0,220}const sourceDistrict = activeDistrictRef\.current/.test(
       adapterCode,
     ) &&
-    /const passage:[\s\S]{0,180}phase: "passage"[\s\S]{0,180}setChamberTransition\(passage\)/.test(
+    /const passage:[\s\S]{0,180}phase: "passage"[\s\S]{0,240}startTransition\(\(\) => \{[\s\S]{0,100}setChamberTransition\(passage\)/.test(
       adapterCode,
     ) &&
-    /setActiveDistrict\(destination\);[\s\S]{0,100}setChamberTransition\(settled\)/.test(
+    /startTransition\(\(\) => \{[\s\S]{0,100}setActiveDistrict\(destination\);[\s\S]{0,100}setChamberTransition\(settled\)/.test(
       adapterCode,
     ),
 );
 check(
   "same-district and static navigation settle without passage",
-  /if \(districtId === sourceDistrict\)[\s\S]{0,760}phase: "settled"[\s\S]{0,760}scheduleDistrictFocus\(sourceDistrict\)/.test(
+  /if \(districtId === sourceDistrict\)[\s\S]{0,760}phase: "settled"[\s\S]{0,760}focusDistrict\(sourceDistrict\)/.test(
     adapterCode,
   ) &&
     /options\?\.immediate === true[\s\S]{0,260}resolution\.tier === "C"[\s\S]{0,120}resolution\.tier === "D"[\s\S]{0,200}document\.hidden/.test(
       adapterCode,
     ) &&
-    /if \(immediate\)[\s\S]{0,760}phase: "settled"[\s\S]{0,760}scheduleDistrictFocus\(districtId\)/.test(
+    /if \(immediate\)[\s\S]{0,760}phase: "settled"[\s\S]{0,760}queueDistrictCommitFocus\(districtId, sequence\)/.test(
+      adapterCode,
+    ),
+);
+check(
+  "changed chambers defer geometry and destination focus until after a settled frame",
+  /useLayoutEffect/.test(adapter) &&
+    /const districtCommitFocusRef = useRef<\{[\s\S]{0,120}districtId: DistrictId;[\s\S]{0,80}sequence: number;[\s\S]{0,80}\} \| null>\(null\)/.test(
+      adapterCode,
+    ) &&
+    /queueDistrictCommitFocus\(destination, pending\.sequence\);[\s\S]{0,260}startTransition\(\(\) => \{[\s\S]{0,100}setActiveDistrict\(destination\);[\s\S]{0,100}setChamberTransition\(settled\)/.test(
+      adapterCode,
+    ) &&
+    /queueDistrictCommitFocus\(districtId, sequence\);[\s\S]{0,260}setActiveDistrict\(districtId\);[\s\S]{0,100}setChamberTransition\(settled\)/.test(
+      adapterCode,
+    ) &&
+    /useLayoutEffect\(\(\) => \{[\s\S]{0,260}pending\.districtId !== activeDistrict[\s\S]{0,120}pending\.sequence !== chamberTransition\.sequence[\s\S]{0,220}districtCommitFocusRef\.current = null;[\s\S]{0,180}document\.hidden[\s\S]{0,160}visibilityFocusPendingRef\.current = true[\s\S]{0,180}focusDistrict\(pending\.districtId\)/.test(
+      adapterCode,
+    ) &&
+    /const scheduleDistrictScroll = useCallback\([\s\S]{0,260}const focusOrigin = document\.activeElement[\s\S]{0,220}requestAnimationFrame\(\(\) => \{[\s\S]{0,220}requestAnimationFrame\(\(\) => \{[\s\S]{0,360}activeDistrictRef\.current !== districtId[\s\S]{0,300}activeElement !== focusOrigin[\s\S]{0,260}if \(operatorMovedFocus\) return[\s\S]{0,220}district\?\.isConnected[\s\S]{0,180}findCxosElementById\(root, `\$\{districtId\}-heading`\)[\s\S]{0,100}scrollCxosElementImmediately\(district\);[\s\S]{0,100}heading\?\.focus\(\{ preventScroll: true \}\)/.test(
+      adapterCode,
+    ) &&
+    /const focusDistrict = useCallback\([\s\S]{0,120}scheduleDistrictScroll\(districtId\)/.test(
+      adapterCode,
+    ) &&
+    /const cancelDistrictFocus = useCallback\(\(\) => \{[\s\S]{0,100}districtCommitFocusRef\.current = null/.test(
+      adapterCode,
+    ) &&
+    /const cancelDistrictFocus = useCallback\(\(\) => \{[\s\S]{0,140}cancelDistrictScroll\(\)/.test(
+      adapterCode,
+    ) &&
+    /const reset = \(\) => \{[\s\S]{0,480}cancelDistrictFocus\(\)/.test(
+      adapterCode,
+    ) &&
+    /const beginDeparture = useCallback[\s\S]{0,520}cancelDistrictFocus\(\)/.test(
+      adapterCode,
+    ) &&
+    /useEffect\([\s\S]{0,120}\(\) => \(\) => \{[\s\S]{0,320}cancelDistrictFocus\(\)/.test(
+      adapterCode,
+    ),
+);
+check(
+  "animated passage fallback begins only after the matching passage commit",
+  /useLayoutEffect\(\(\) => \{[\s\S]{0,200}chamberTransition\.phase !== "passage"[\s\S]{0,160}!chamberTransition\.targetDistrict[\s\S]{0,220}const expectedSequence = chamberTransition\.sequence[\s\S]{0,160}window\.setTimeout\(\(\) => \{[\s\S]{0,180}chamberTransitionRef\.current\.sequence !== expectedSequence[\s\S]{0,120}settlePendingDistrictTransition\(true\)[\s\S]{0,120}districtTransitionDurationMs/.test(
+    adapterCode,
+  ) &&
+    !/setChamberTransition\(passage\);[\s\S]{0,180}districtTransitionFallbackRef\.current = window\.setTimeout/.test(
+      adapterCode,
+    ),
+);
+check(
+  "arrival completion focuses only after the matching visible facility commits",
+  /const arrivalCommitFocusRef = useRef<\{[\s\S]{0,100}key: number;[\s\S]{0,180}kind: "district"; districtId: DistrictId[\s\S]{0,100}announcement: string;[\s\S]{0,80}\} \| null>\(null\)/.test(
+    adapterCode,
+  ) &&
+    /arrivalCommitFocusRef\.current = \{ key: arrivalKey, \.\.\.options \}/.test(
+      adapterCode,
+    ) &&
+    /useLayoutEffect\(\(\) => \{[\s\S]{0,180}!arrivalSettled[\s\S]{0,120}pending\.key !== arrivalKey[\s\S]{0,160}arrivalCommitFocusRef\.current = null[\s\S]{0,180}document\.hidden[\s\S]{0,700}pending\.focus\.kind === "room"[\s\S]{0,180}focusDistrict\(pending\.focus\.districtId\)[\s\S]{0,180}announceRef\.current\(pending\.announcement\)/.test(
+      adapterCode,
+    ) &&
+    /const operatorMovedFocus =[\s\S]{0,260}activeElement === roomRootRef\.current[\s\S]{0,120}!roomRootRef\.current\?\.contains\(activeElement\)[\s\S]{0,140}if \(!operatorMovedFocus\)/.test(
+      adapterCode,
+    ) &&
+    /queueArrivalCommitFocus\(\{[\s\S]{0,160}announcement: messages\.staticArrival[\s\S]{0,100}\}\);[\s\S]{0,80}setArrivalSettled\(true\)/.test(
+      adapterCode,
+    ) &&
+    /queueArrivalCommitFocus\(\{[\s\S]{0,160}announcement: messages\.escapeArrival[\s\S]{0,100}\}\);[\s\S]{0,80}setArrivalSettled\(true\)/.test(
+      adapterCode,
+    ) &&
+    /queueArrivalCommitFocus\(options\);[\s\S]{0,80}setArrivalSettled\(true\)/.test(
+      adapterCode,
+    ) &&
+    /const replayArrival = useCallback[\s\S]{0,160}arrivalCommitFocusRef\.current = null/.test(
+      adapterCode,
+    ) &&
+    /const reset = \(\) => \{[\s\S]{0,520}arrivalCommitFocusRef\.current = null/.test(
+      adapterCode,
+    ) &&
+    /useEffect\([\s\S]{0,160}\(\) => \(\) => \{[\s\S]{0,320}arrivalCommitFocusRef\.current = null/.test(
+      adapterCode,
+    ) &&
+    !/setArrivalSettled\(true\);[\s\S]{0,120}requestAnimationFrame/.test(
       adapterCode,
     ),
 );
@@ -456,8 +538,10 @@ check(
   "one bounded passage fallback and symmetric focus cleanup exist",
   (adapter.match(/districtTransitionFallbackRef\.current = window\.setTimeout\(/g) ?? [])
     .length === 1 &&
-    /districtTransitionDurationMs,[\s\S]{0,40}sequence/.test(adapterCode) &&
-    /expectedSequence[\s\S]{0,100}chamberTransitionRef\.current\.sequence/.test(
+    /const expectedSequence = chamberTransition\.sequence[\s\S]{0,180}districtTransitionFallbackRef\.current = window\.setTimeout[\s\S]{0,260}districtTransitionDurationMs/.test(
+      adapterCode,
+    ) &&
+    /chamberTransitionRef\.current\.sequence !== expectedSequence/.test(
       adapterCode,
     ) &&
     /window\.clearTimeout\(districtTransitionFallbackRef\.current\)/.test(

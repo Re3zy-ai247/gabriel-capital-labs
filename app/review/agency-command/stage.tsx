@@ -167,6 +167,8 @@ export function AgencyCommandStage() {
 
   const roomRootRef = useRef<HTMLElement>(null);
   const roomHeadingRef = useRef<HTMLHeadingElement>(null);
+  const arrivalSkipRef = useRef<HTMLButtonElement>(null);
+  const replayGateFocusPendingRef = useRef(false);
   const directorRef = useRef<HTMLDetailsElement>(null);
   const directorSummaryRef = useRef<HTMLElement>(null);
   const historyReadyRef = useRef(false);
@@ -236,6 +238,11 @@ export function AgencyCommandStage() {
     completeDeparture,
   } = runtime;
   const chamberManaged = capabilitiesReady && validation.valid;
+  const arrivalActive =
+    capabilitiesReady &&
+    validation.valid &&
+    !arrivalSettled &&
+    (resolution.tier === "A" || resolution.tier === "B");
   const passageTarget = chamberTransition.targetDistrict ?? activeDistrict;
   const activeDistrictRecord =
     AGENCY_DISTRICTS.find((district) => district.id === activeDistrict) ??
@@ -246,6 +253,20 @@ export function AgencyCommandStage() {
   const passageTargetRecord =
     AGENCY_DISTRICTS.find((district) => district.id === passageTarget) ??
     activeDistrictRecord;
+
+  useEffect(() => {
+    if (!arrivalActive) {
+      if (arrivalSettled) replayGateFocusPendingRef.current = false;
+      return;
+    }
+    if (!replayGateFocusPendingRef.current) return;
+
+    replayGateFocusPendingRef.current = false;
+    const focusFrame = window.requestAnimationFrame(() => {
+      arrivalSkipRef.current?.focus({ preventScroll: true });
+    });
+    return () => window.cancelAnimationFrame(focusFrame);
+  }, [arrivalActive, arrivalKey, arrivalSettled]);
 
   const focusPendingChamberTarget = useCallback(
     (pending: PendingChamberFocus) => {
@@ -324,13 +345,21 @@ export function AgencyCommandStage() {
     historyReadyRef.current = true;
 
     const restoreHistoryDistrict = (event?: Event) => {
+      const fromHash = agencyDistrictFromHash(window.location.hash);
+      const destination = fromHash ?? "central-command";
       if (
         event?.type !== "pageshow" &&
         handledHistoryHrefRef.current === window.location.href
-      ) return;
+      ) {
+        // Browser fragment restoration runs after popstate. Reassert the
+        // already-committed chamber focus on hashchange so native fragment
+        // handling cannot leave the document body focused.
+        if (event?.type === "hashchange") {
+          moveToDistrict(destination, { immediate: true });
+        }
+        return;
+      }
       handledHistoryHrefRef.current = window.location.href;
-      const fromHash = agencyDistrictFromHash(window.location.hash);
-      const destination = fromHash ?? "central-command";
       if (window.location.hash && !fromHash) {
         try {
           window.history.replaceState(null, "", "#central-command");
@@ -340,7 +369,10 @@ export function AgencyCommandStage() {
         }
       }
       pendingHistoryDistrictRef.current = null;
-      moveToDistrict(destination, { immediate: true });
+      const renderedDistrict = roomRootRef.current?.dataset.activeDistrict;
+      if (event || renderedDistrict !== destination) {
+        moveToDistrict(destination, { immediate: true });
+      }
       const district = AGENCY_DISTRICTS.find((item) => item.id === destination);
       setAnnouncement(
         `${district?.name ?? "Central Command"} restored from facility history.`,
@@ -716,8 +748,10 @@ export function AgencyCommandStage() {
   };
 
   const replayArrival = () => {
-    replayRuntimeArrival(`Arrival replayed in Tier ${resolution.tier}.`);
     directorRef.current?.removeAttribute("open");
+    roomRootRef.current?.focus({ preventScroll: true });
+    replayGateFocusPendingRef.current = true;
+    replayRuntimeArrival(`Arrival replayed in Tier ${resolution.tier}.`);
   };
 
   const completeArrival = () => {
@@ -828,6 +862,7 @@ export function AgencyCommandStage() {
       data-hidden={documentHidden ? "true" : "false"}
       data-departing={departing ? "true" : "false"}
       data-arrival-settled={arrivalSettled ? "true" : "false"}
+      data-arrival-active={arrivalActive ? "true" : "false"}
       data-active-district={activeDistrict}
       data-chamber-ready={chamberManaged ? "true" : "false"}
       data-chamber-phase={chamberTransition.phase}
@@ -876,74 +911,124 @@ export function AgencyCommandStage() {
         {announcement}
       </p>
 
-      <div key={arrivalKey} className={styles.arrival}>
-        <section className={styles.arrivalThreshold} aria-labelledby="agency-command-title">
-          <div
-            aria-hidden
-            className={styles.arrivalClock}
-            onAnimationEnd={completeArrival}
-          />
-          <p className={styles.arrivalOrigin}>
-            MISSION CONTROL ORIGIN · FACILITY TRANSFER · AGENCY COMMAND
-          </p>
-          <header className={styles.identity}>
-            <div>
-              <p className={styles.eyebrow}>
-                Founder Review · CXOS Phase 6.2
+      <div className={styles.arrival}>
+        <div
+          key={arrivalKey}
+          className={styles.arrivalGate}
+          data-active={arrivalActive ? "true" : "false"}
+          aria-hidden={arrivalActive ? undefined : "true"}
+        >
+          <section
+            className={styles.arrivalThreshold}
+            aria-label="Agency Command arrival"
+            aria-describedby="agency-arrival-summary"
+          >
+            <p id="agency-arrival-summary" className={styles.srOnly}>
+              {fixtureState === "permission"
+                ? "Mission Control origin acknowledged. Authority could not be projected. No agency identity or operating metadata is shown."
+                : "Mission Control origin acknowledged. Agency identity, systems readiness, Kai recognition, and destination acquisition are being presented from deterministic synthetic fixtures."}
+            </p>
+            <div
+              aria-hidden
+              className={styles.arrivalClock}
+              onAnimationEnd={completeArrival}
+            />
+            <div aria-hidden="true">
+              <p className={styles.arrivalOrigin}>
+                MISSION CONTROL ORIGIN · FACILITY TRANSFER · AGENCY COMMAND
               </p>
-              <h1
-                id="agency-command-title"
-                ref={roomHeadingRef}
-                tabIndex={-1}
-                className={styles.roomTitle}
-              >
-                Agency Command
-              </h1>
-              {fixtureState !== "permission" && (
-                <p className={styles.identityLine}>
-                  {personalization.operatorRole} · {personalization.agencyName} ·{" "}
-                  {fixtureState === "loading"
-                    ? "capacity unresolved"
-                    : `${capacity.active} / ${capacity.limit} illustrative positions`}
+              <header className={styles.identity}>
+                <div>
+                  <p className={styles.eyebrow}>
+                    Founder Review · CXOS Phase 6.2
+                  </p>
+                  <p className={styles.arrivalTitle}>Agency Command</p>
+                  {fixtureState !== "permission" && (
+                    <p className={styles.identityLine}>
+                      {personalization.operatorRole} · {personalization.agencyName} ·{" "}
+                      {fixtureState === "loading"
+                        ? "capacity unresolved"
+                        : `${capacity.active} / ${capacity.limit} illustrative positions`}
+                    </p>
+                  )}
+                </div>
+                <div className={styles.reviewIdentity}>
+                  <span>FACILITY 06</span>
+                  <span>AGENCY HEADQUARTERS</span>
+                </div>
+              </header>
+
+              {fixtureState !== "permission" ? (
+                <>
+                  <ActivationRail
+                    state={fixtureState}
+                    beatOrder={runtime.arrivalBeats}
+                    recommendedDestination={arrivalProjection.destination}
+                  />
+                  <div className={styles.arrivalGreeting}>
+                    <p>KAI EXECUTIVE CHANNEL · SYNTHETIC FIXTURE</p>
+                    <strong>{arrivalProjection.greeting}</strong>
+                    <span>
+                      {arrivalProjection.destinationLabel} · {arrivalProjection.destination}
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <p className={styles.arrivalBoundary}>
+                  Authority could not be projected. No agency identity or operating metadata is shown.
                 </p>
               )}
             </div>
-            <div className={styles.reviewIdentity}>
-              <span>FACILITY 06</span>
-              <span>AGENCY HEADQUARTERS</span>
+
+            <div className={styles.arrivalActions}>
+              <button ref={arrivalSkipRef} type="button" onClick={skipArrival}>
+                Skip arrival
+              </button>
+              <span>Escape also settles the complete static facility.</span>
             </div>
-          </header>
+          </section>
+        </div>
 
-          {fixtureState !== "permission" ? (
-            <>
-              <ActivationRail
-                state={fixtureState}
-                beatOrder={runtime.arrivalBeats}
-                recommendedDestination={arrivalProjection.destination}
-              />
-              <div className={styles.arrivalGreeting}>
-                <p>KAI EXECUTIVE CHANNEL · SYNTHETIC FIXTURE</p>
-                <strong>{arrivalProjection.greeting}</strong>
-                <span>
-                  {arrivalProjection.destinationLabel} · {arrivalProjection.destination}
-                </span>
+        <div
+          className={styles.facilityFrame}
+          data-arrival-active={arrivalActive ? "true" : "false"}
+          aria-hidden={arrivalActive ? "true" : undefined}
+          inert={arrivalActive ? true : undefined}
+        >
+          <section
+            className={`${styles.arrivalThreshold} ${styles.facilityIdentity}`}
+            aria-labelledby="agency-command-title"
+          >
+            <header className={styles.identity}>
+              <div>
+                <p className={styles.eyebrow}>
+                  Founder Review · CXOS Phase 6.2
+                </p>
+                <h1
+                  id="agency-command-title"
+                  ref={roomHeadingRef}
+                  tabIndex={-1}
+                  className={styles.roomTitle}
+                >
+                  Agency Command
+                </h1>
+                {fixtureState !== "permission" && (
+                  <p className={styles.identityLine}>
+                    {personalization.operatorRole} · {personalization.agencyName} ·{" "}
+                    {fixtureState === "loading"
+                      ? "capacity unresolved"
+                      : `${capacity.active} / ${capacity.limit} illustrative positions`}
+                  </p>
+                )}
               </div>
-            </>
-          ) : (
-            <p className={styles.arrivalBoundary}>
-              Authority could not be projected. No agency identity or operating metadata is shown.
-            </p>
-          )}
+              <div className={styles.reviewIdentity}>
+                <span>FACILITY 06</span>
+                <span>AGENCY HEADQUARTERS</span>
+              </div>
+            </header>
+          </section>
 
-          <div className={styles.arrivalActions}>
-            <button type="button" onClick={skipArrival}>
-              Skip arrival
-            </button>
-            <span>Escape also settles the complete static facility.</span>
-          </div>
-        </section>
-
-        <div className={styles.disclosure} role="note">
+          <div className={styles.disclosure} role="note">
           <strong>SYNTHETIC FOUNDER REVIEW</strong>
           <span>
             Illustrative deterministic data only. No customer records, live AI,
@@ -951,7 +1036,7 @@ export function AgencyCommandStage() {
             persistence, or automated actions are connected to this review
             surface.
           </span>
-        </div>
+          </div>
 
         <section className={styles.stateBand} aria-labelledby="fixture-state-heading">
           <h2
@@ -1074,7 +1159,7 @@ export function AgencyCommandStage() {
           </div>
         </details>
 
-        {fixtureState === "permission" ? (
+          {fixtureState === "permission" ? (
           <>
             <PermissionState />
             <footer className={styles.footer}>
@@ -1374,7 +1459,8 @@ export function AgencyCommandStage() {
               </AgencyDistrictShell>
             </div>
           </div>
-        )}
+          )}
+        </div>
       </div>
     </main>
   );
