@@ -2137,14 +2137,14 @@ async function runCase(spec) {
       });
 
       nodePhase = "departure:return";
-      const agencyReturnPromise = page.waitForURL((url) =>
-        url.origin === new URL(baseUrl).origin && url.pathname === route,
-      );
       const historyBackInvocation = await page.evaluate(() => {
         history.back();
         return "history.back()";
       });
-      await agencyReturnPromise;
+      await page.waitForFunction(
+        (expectedPath) => location.pathname === expectedPath,
+        route,
+      );
       await page.waitForSelector("main[data-cxos-runtime]");
       if (
         (await page.locator("main").getAttribute("data-arrival-settled")) !== "true"
