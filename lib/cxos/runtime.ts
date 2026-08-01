@@ -1,13 +1,13 @@
 import type { CxTier } from "./capability";
 
-// CXOS Core Runtime 1.0 — pure room contracts and policy.
+// CXOS Core Runtime 1.1 — pure room contracts and policy.
 //
 // This module owns presentation state only. It never owns room data, canonical
 // values, navigation authority, Kai intent, persistence, or effects. A room
 // supplies a small immutable definition; the client adapter projects that
 // definition onto the room's existing semantic document and CSS.
 
-export const CXOS_CORE_RUNTIME_VERSION = "1.0.0" as const;
+export const CXOS_CORE_RUNTIME_VERSION = "1.1.0" as const;
 
 export const CXOS_CORE_RUNTIME_CAPABILITIES = [
   "arrival",
@@ -21,6 +21,15 @@ export const CXOS_CORE_RUNTIME_CAPABILITIES = [
   "kai-presence",
   "shared-motion",
   "shared-accessibility",
+  "cinematic-framing",
+  "depth-projection",
+  "focus-attention",
+  "idle-settlement",
+  "computation-presence",
+  "progressive-disclosure",
+  "chamber-motion-signature",
+  "capability-projection",
+  "deterministic-replay",
 ] as const;
 
 export type CxosCoreRuntimeCapability =
@@ -37,6 +46,140 @@ export const DEFAULT_CXOS_DISTRICT_TRANSITION_MS = {
   A: 620,
   B: 460,
 } as const;
+
+export const CXOS_EMOTIONAL_MODES = [
+  "command-authority",
+  "operational-flow",
+  "human-coordination",
+  "diagnostic-awareness",
+  "evidentiary-trust",
+  "calm-intelligence",
+  "strategic-expansion",
+] as const;
+
+export const CXOS_CAMERA_PRESETS = [
+  "command-wide",
+  "operational-oblique",
+  "relational-eye-level",
+  "diagnostic-elevated",
+  "archive-perspective",
+  "executive-portrait",
+  "capacity-horizon",
+] as const;
+
+export const CXOS_LIGHTING_PRESETS = [
+  "command-aperture",
+  "directional-rail",
+  "relational-pool",
+  "analytical-overhead",
+  "provenance-slot",
+  "executive-key",
+  "horizon-wedge",
+] as const;
+
+export const CXOS_DEPTH_PRESETS = [
+  "long",
+  "diagonal",
+  "medium",
+  "compressed",
+  "longitudinal",
+  "shallow",
+  "maximum",
+] as const;
+
+export const CXOS_MOTION_SIGNATURES = [
+  "center-out",
+  "lane-travel",
+  "relational-acquire",
+  "diagnostic-draw",
+  "tray-align",
+  "inward-converge",
+  "horizon-expand",
+] as const;
+
+export const CXOS_FOCUS_PRESETS = [
+  "priority-instrument",
+  "operating-floor",
+  "operator-core",
+  "missing-inputs",
+  "evidence-ledger",
+  "executive-response",
+  "capacity-boundary",
+] as const;
+
+export const CXOS_IDLE_PRESETS = [
+  "command-hold",
+  "parked",
+  "solo-steady",
+  "diagnostic-hold",
+  "archive-aligned",
+  "executive-still",
+  "reserve-dark",
+] as const;
+
+export const CXOS_KAI_RESPONSE_PRESETS = [
+  "executive-context",
+  "operational-context",
+  "human-context",
+  "diagnostic-context",
+  "evidence-context",
+  "focused-channel",
+  "strategy-context",
+] as const;
+
+export type CxosEmotionalMode = (typeof CXOS_EMOTIONAL_MODES)[number];
+export type CxosCameraPreset = (typeof CXOS_CAMERA_PRESETS)[number];
+export type CxosLightingPreset = (typeof CXOS_LIGHTING_PRESETS)[number];
+export type CxosDepthPreset = (typeof CXOS_DEPTH_PRESETS)[number];
+export type CxosMotionSignature = (typeof CXOS_MOTION_SIGNATURES)[number];
+export type CxosFocusPreset = (typeof CXOS_FOCUS_PRESETS)[number];
+export type CxosIdlePreset = (typeof CXOS_IDLE_PRESETS)[number];
+export type CxosKaiResponsePreset =
+  (typeof CXOS_KAI_RESPONSE_PRESETS)[number];
+
+export type CxosAttentionState = "ambient" | "reading" | "inspecting";
+export type CxosKaiResponseState =
+  | "quiet"
+  | "staged"
+  | "preparing"
+  | "resolved";
+export type CxosIdlePresentationState = "engaged" | "settling" | "settled";
+
+export interface CxosChamberPresentation<DistrictId extends string> {
+  id: DistrictId;
+  emotion: CxosEmotionalMode;
+  camera: CxosCameraPreset;
+  lighting: CxosLightingPreset;
+  depth: CxosDepthPreset;
+  motion: CxosMotionSignature;
+  focus: CxosFocusPreset;
+  idle: CxosIdlePreset;
+  kai: CxosKaiResponsePreset;
+}
+
+export type CxosChamberEnvironmentProfile<DistrictId extends string> =
+  CxosChamberPresentation<DistrictId>;
+
+export interface CxosLivingEnvironmentDefinition<
+  DistrictId extends string,
+> {
+  profileId: string;
+  idleAfterMs: { A: number; B: number };
+  chambers: readonly CxosChamberPresentation<DistrictId>[];
+}
+
+export interface CxosLivingEnvironmentProjection<
+  DistrictId extends string,
+> {
+  profileId: string;
+  chamber: CxosChamberPresentation<DistrictId>;
+  attention: CxosAttentionState;
+  kai: CxosKaiResponseState;
+  idle: CxosIdlePresentationState;
+  motion: "active" | "quiet" | "static";
+  continuousAnimationBudget: 0 | 1 | 2;
+  static: boolean;
+}
 
 export interface CxosRuntimeCapabilities {
   browserReduced: boolean;
@@ -80,6 +223,7 @@ export interface CxosRoomRuntimeDefinition<DistrictId extends string> {
     B: number;
   };
   motionChannels: readonly string[];
+  livingEnvironment?: CxosLivingEnvironmentDefinition<DistrictId>;
   kaiContextHoldDistricts?: readonly DistrictId[];
   departure: {
     href: string;
@@ -127,7 +271,14 @@ function unique(values: readonly string[]): boolean {
   return new Set(values).size === values.length;
 }
 
-export function validateCxosRoomRuntime<DistrictId extends string>(
+function includesToken<T extends string>(
+  registry: readonly T[],
+  value: string,
+): value is T {
+  return registry.includes(value as T);
+}
+
+function validateCxosRoomRuntimeUnsafe<DistrictId extends string>(
   definition: CxosRoomRuntimeDefinition<DistrictId>,
 ): CxosRuntimeValidation {
   const reasons: string[] = [];
@@ -197,6 +348,46 @@ export function validateCxosRoomRuntime<DistrictId extends string>(
   ) {
     reasons.push("motion-budget");
   }
+  const livingEnvironment = definition.livingEnvironment;
+  if (livingEnvironment) {
+    const chambers = livingEnvironment.chambers;
+    const chamberIds = chambers.map((chamber) => chamber.id) as readonly string[];
+    if (!RUNTIME_ID.test(livingEnvironment.profileId)) {
+      reasons.push("living-environment-id");
+    }
+    if (
+      !Number.isInteger(livingEnvironment.idleAfterMs.A) ||
+      !Number.isInteger(livingEnvironment.idleAfterMs.B) ||
+      livingEnvironment.idleAfterMs.A < 1000 ||
+      livingEnvironment.idleAfterMs.A > 30000 ||
+      livingEnvironment.idleAfterMs.B < 1000 ||
+      livingEnvironment.idleAfterMs.B > livingEnvironment.idleAfterMs.A
+    ) {
+      reasons.push("living-environment-idle-duration");
+    }
+    if (
+      chamberIds.length !== districts.length ||
+      !unique(chamberIds) ||
+      chamberIds.some((id, index) => id !== districts[index])
+    ) {
+      reasons.push("living-environment-chambers");
+    }
+    if (
+      chambers.some(
+        (chamber) =>
+          !includesToken(CXOS_EMOTIONAL_MODES, chamber.emotion) ||
+          !includesToken(CXOS_CAMERA_PRESETS, chamber.camera) ||
+          !includesToken(CXOS_LIGHTING_PRESETS, chamber.lighting) ||
+          !includesToken(CXOS_DEPTH_PRESETS, chamber.depth) ||
+          !includesToken(CXOS_MOTION_SIGNATURES, chamber.motion) ||
+          !includesToken(CXOS_FOCUS_PRESETS, chamber.focus) ||
+          !includesToken(CXOS_IDLE_PRESETS, chamber.idle) ||
+          !includesToken(CXOS_KAI_RESPONSE_PRESETS, chamber.kai),
+      )
+    ) {
+      reasons.push("living-environment-token");
+    }
+  }
   if (!SAFE_LOCAL_ROUTE.test(definition.departure.href)) {
     reasons.push("departure-route");
   }
@@ -209,6 +400,16 @@ export function validateCxosRoomRuntime<DistrictId extends string>(
   }
 
   return { valid: reasons.length === 0, reasons };
+}
+
+export function validateCxosRoomRuntime<DistrictId extends string>(
+  definition: CxosRoomRuntimeDefinition<DistrictId>,
+): CxosRuntimeValidation {
+  try {
+    return validateCxosRoomRuntimeUnsafe(definition);
+  } catch {
+    return { valid: false, reasons: ["runtime-shape"] };
+  }
 }
 
 export function resolveCxosRuntimeProjection(
@@ -325,6 +526,55 @@ export function resolveCxosDistrictTransitionDirection<
   const targetIndex = districtOrder.indexOf(target);
   if (sourceIndex < 0 || targetIndex < 0) return "same";
   return targetIndex > sourceIndex ? "forward" : "backward";
+}
+
+export function resolveCxosLivingEnvironmentProjection<
+  DistrictId extends string,
+>(
+  definition: CxosRoomRuntimeDefinition<DistrictId>,
+  activeDistrict: DistrictId,
+  input: {
+    contractValid: boolean;
+    tier: CxTier;
+    phase: CxosRoomPhase;
+    documentHidden: boolean;
+    passage: boolean;
+    attention: CxosAttentionState;
+    kai: CxosKaiResponseState;
+    idle: CxosIdlePresentationState;
+  },
+): CxosLivingEnvironmentProjection<DistrictId> | null {
+  const environment = definition.livingEnvironment;
+  if (!environment || !input.contractValid) return null;
+  const chamber = environment.chambers.find(
+    (candidate) => candidate.id === activeDistrict,
+  );
+  if (!chamber) return null;
+
+  const staticProjection = input.tier === "C" || input.tier === "D";
+  const focusQuiet =
+    input.attention !== "ambient" || input.kai !== "quiet";
+  const lifecycleQuiet =
+    input.phase !== "operating" || input.documentHidden || input.passage;
+  const quiet =
+    staticProjection ||
+    focusQuiet ||
+    lifecycleQuiet ||
+    input.idle !== "engaged";
+  const idle =
+    staticProjection || focusQuiet || lifecycleQuiet ? "settled" : input.idle;
+
+  return {
+    profileId: environment.profileId,
+    chamber,
+    attention: input.attention,
+    kai: input.kai,
+    idle,
+    motion: staticProjection ? "static" : quiet ? "quiet" : "active",
+    continuousAnimationBudget:
+      staticProjection || quiet ? 0 : input.tier === "A" ? 2 : 1,
+    static: staticProjection,
+  };
 }
 
 export function deriveCxosRuntimeEnvironment(input: {

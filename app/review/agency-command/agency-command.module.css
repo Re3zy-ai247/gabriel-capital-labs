@@ -67,7 +67,7 @@
   opacity: 0.28;
   transform: translate3d(0, 0, 0);
   background: linear-gradient(90deg, transparent, rgba(56, 189, 248, 0.09), transparent);
-  animation: agencySweep 18s ease-in-out infinite alternate;
+  animation: agencySweep var(--cxos-dur-drift, 18s) ease-in-out 1 alternate both;
 }
 
 .roomBreath {
@@ -76,7 +76,7 @@
     linear-gradient(180deg, rgba(20, 69, 106, 0.04), transparent 42rem);
   opacity: 0.46;
   transform: translate3d(0, 0, 0);
-  animation: agencyBreath 22s ease-in-out infinite alternate;
+  animation: agencyBreath var(--cxos-dur-drift, 18s) ease-in-out 1 alternate both;
 }
 
 .departureHandoff {
@@ -988,24 +988,24 @@
 }
 
 .flowList > li[data-motion="entering"] .flowTrack b {
-  animation: agencyFlowEntering 7.2s cubic-bezier(0.2, 0.74, 0.2, 1) infinite;
+  animation: agencyFlowEntering var(--cxos-dur-draw, 1.8s) var(--cxos-ease-vector, cubic-bezier(0.16, 1, 0.3, 1)) both;
 }
 
 .flowList > li[data-motion="advancing"] .flowTrack b {
-  animation: agencyFlowAdvancing 6.8s cubic-bezier(0.2, 0.74, 0.2, 1) infinite;
+  animation: agencyFlowAdvancing var(--cxos-dur-draw, 1.8s) var(--cxos-ease-vector, cubic-bezier(0.16, 1, 0.3, 1)) both;
 }
 
 .flowList > li[data-motion="waiting"] .flowTrack b {
-  animation: agencyFlowWaiting 5.8s ease-in-out infinite;
+  animation: agencyFlowWaiting var(--cxos-dur-reveal, 600ms) var(--cxos-ease-vector, cubic-bezier(0.16, 1, 0.3, 1)) both;
 }
 
 .flowList > li[data-motion="blocked"] .flowTrack b {
   border-color: var(--agency-watch);
-  animation: agencyFlowBlocked 6.4s ease-in-out infinite;
+  animation: agencyFlowBlocked var(--cxos-dur-reveal, 600ms) var(--cxos-ease-vector, cubic-bezier(0.16, 1, 0.3, 1)) both;
 }
 
 .flowList > li[data-motion="resolving"] .flowTrack b {
-  animation: agencyFlowResolving 7.6s cubic-bezier(0.2, 0.74, 0.2, 1) infinite;
+  animation: agencyFlowResolving var(--cxos-dur-draw, 1.8s) var(--cxos-ease-vector, cubic-bezier(0.16, 1, 0.3, 1)) both;
 }
 
 .ageRuler {
@@ -2831,6 +2831,422 @@
   }
 }
 
+/* Seven immutable shot profiles; static geometry stays distinct even at Tier D. */
+.room[data-cxos-environment] .district[data-current="true"] .districtEnvironment {
+  opacity: 0.82;
+  transform: none;
+  transition: opacity var(--cxos-dur-settle) var(--cxos-ease-vector);
+}
+
+/* 01 · Command-wide aperture and long centered deck. */
+.room[data-cxos-signature="center-out"] {
+  --cxos-entry-x: 0;
+  --cxos-entry-y: 8px;
+  --cxos-entry-scale: 1;
+}
+
+.room[data-cxos-profile="central-command"] [data-current="true"][data-agency-district="central-command"] {
+  --agency-chamber-edge: rgba(134, 215, 255, 0.42);
+  background:
+    linear-gradient(90deg, rgba(5, 24, 45, 0.9), rgba(3, 10, 22, 0.76) 38% 62%, rgba(5, 24, 45, 0.9)),
+    radial-gradient(ellipse at 50% 8%, rgba(56, 189, 248, 0.18), transparent 34rem),
+    var(--agency-ink);
+}
+
+.room[data-cxos-profile="central-command"] .centralVista {
+  grid-template-columns: minmax(15rem, 0.82fr) minmax(0, 1.18fr);
+  background: linear-gradient(90deg, rgba(5, 20, 38, 0.82), rgba(3, 12, 25, 0.42));
+}
+
+.room[data-cxos-profile="central-command"] .districtEnvironment [data-plane="depth"] {
+  background:
+    linear-gradient(112deg, transparent 29%, rgba(134, 215, 255, 0.06) 29.2%, transparent 29.4% 70.6%, rgba(134, 215, 255, 0.06) 70.8%, transparent 71%),
+    radial-gradient(ellipse at 50% 18%, rgba(56, 189, 248, 0.16), transparent 28rem);
+}
+
+.room[data-cxos-profile="central-command"] .districtEnvironment [data-plane="horizon"] {
+  inset: 35% 8% auto;
+  opacity: 0.7;
+  transform: scaleX(0.92);
+}
+
+.room[data-cxos-profile="central-command"] .districtEnvironment [data-plane="signal"] {
+  right: 24%;
+  bottom: 12%;
+  left: 24%;
+  width: auto;
+  height: 5rem;
+  border: 0;
+  border-block: 1px solid rgba(134, 215, 255, 0.18);
+  border-radius: 0;
+  transform: none;
+}
+
+/* 02 · Operational-oblique lanes and diagonal floor. */
+.room[data-cxos-signature="lane-travel"] {
+  --cxos-entry-x: -8px;
+  --cxos-entry-y: 0;
+  --cxos-entry-scale: 1;
+  --cxos-scroll-x: 8px;
+  --cxos-scroll-y: 0px;
+}
+
+.room[data-cxos-profile="client-operations"] [data-current="true"][data-agency-district="client-operations"] {
+  background:
+    repeating-linear-gradient(168deg, transparent 0 4.3rem, rgba(134, 215, 255, 0.045) 4.3rem calc(4.3rem + 1px)),
+    linear-gradient(112deg, rgba(7, 38, 59, 0.9), rgba(3, 11, 23, 0.9) 64%);
+}
+
+.room[data-cxos-profile="client-operations"] .clientFlowMoment {
+  border-block-color: rgba(134, 215, 255, 0.42);
+  background: linear-gradient(104deg, rgba(14, 116, 144, 0.22), transparent 54%), rgba(3, 13, 27, 0.68);
+}
+
+.room[data-cxos-profile="client-operations"] .districtEnvironment [data-plane="depth"] {
+  inset: 3rem -4% 1rem;
+  background:
+    repeating-linear-gradient(168deg, transparent 0 12%, rgba(134, 215, 255, 0.05) 12.1% 12.3%, transparent 12.4% 24%),
+    linear-gradient(105deg, rgba(56, 189, 248, 0.12), transparent 52%);
+}
+
+.room[data-cxos-profile="client-operations"] .districtEnvironment [data-plane="horizon"] {
+  inset: 38% 5% auto;
+  height: 7rem;
+  opacity: 0.64;
+  transform: skewY(-4deg) scaleX(0.88);
+}
+
+.room[data-cxos-profile="client-operations"] .districtEnvironment [data-plane="signal"] {
+  right: 4%;
+  bottom: 10%;
+  width: clamp(8rem, 18vw, 15rem);
+  height: 2rem;
+  border-radius: 0;
+  transform: none;
+}
+
+.room[data-cxos-profile="client-operations"] [data-plane="signal"] :is(i, b) {
+  inset: calc(50% - 1px) 8% auto;
+  height: 2px;
+  border: 0;
+  border-radius: 0;
+  background: linear-gradient(90deg, transparent, var(--agency-blue), transparent);
+}
+
+.room[data-cxos-profile="client-operations"] [data-plane="signal"] em {
+  display: none;
+}
+
+/* 03 · Relational eye-level pool around the honest solo operator. */
+.room[data-cxos-signature="relational-acquire"] {
+  --cxos-entry-x: 0;
+  --cxos-entry-y: 0;
+  --cxos-entry-scale: 1.012;
+}
+
+.room[data-cxos-profile="team-operations"] [data-current="true"][data-agency-district="team-operations"] {
+  background:
+    radial-gradient(circle at 50% 48%, rgba(56, 189, 248, 0.15), transparent 20rem),
+    linear-gradient(135deg, rgba(6, 23, 44, 0.9), rgba(3, 10, 22, 0.94));
+}
+
+.room[data-cxos-profile="team-operations"] .teamCoverageMoment {
+  width: min(100%, 58rem);
+  margin-inline: auto;
+  background:
+    linear-gradient(90deg, transparent 49.9%, rgba(134, 215, 255, 0.08) 50%, transparent 50.1%),
+    linear-gradient(180deg, transparent 49.9%, rgba(134, 215, 255, 0.08) 50%, transparent 50.1%),
+    radial-gradient(circle at 50% 52%, rgba(56, 189, 248, 0.09), transparent 17rem),
+    rgba(3, 13, 26, 0.58);
+}
+
+.room[data-cxos-profile="team-operations"] .districtEnvironment [data-plane="depth"] {
+  background:
+    radial-gradient(circle at 50% 50%, transparent 8rem, rgba(134, 215, 255, 0.06) 8.1rem, transparent 8.2rem 15rem, rgba(134, 215, 255, 0.035) 15.1rem, transparent 15.2rem),
+    radial-gradient(circle at 50% 50%, rgba(56, 189, 248, 0.08), transparent 24rem);
+}
+
+.room[data-cxos-profile="team-operations"] .districtEnvironment [data-plane="horizon"] {
+  inset: 50% 18% auto;
+  opacity: 0.38;
+  transform: scaleX(0.72);
+}
+
+.room[data-cxos-profile="team-operations"] .districtEnvironment [data-plane="signal"] {
+  right: auto;
+  bottom: 10%;
+  left: 50%;
+  border-radius: 50%;
+  transform: translate3d(-50%, 0, 0) scale(0.82);
+}
+
+.room[data-cxos-profile="team-operations"] [data-plane="signal"] :is(i, b) {
+  border-radius: 50%;
+}
+
+/* 04 · Elevated diagnostic observatory with a single amber draw. */
+.room[data-cxos-signature="diagnostic-draw"] {
+  --cxos-entry-x: 0;
+  --cxos-entry-y: -4px;
+  --cxos-entry-scale: 1;
+}
+
+.room[data-cxos-profile="business-health"] [data-current="true"][data-agency-district="business-health"] {
+  --agency-chamber-edge: rgba(244, 199, 109, 0.3);
+  background:
+    radial-gradient(circle at 72% 38%, transparent 8rem, rgba(244, 199, 109, 0.1) 8.1rem, transparent 8.2rem 14rem, rgba(134, 215, 255, 0.05) 14.1rem, transparent 14.2rem),
+    linear-gradient(180deg, rgba(9, 28, 50, 0.94), rgba(3, 10, 22, 0.92));
+}
+
+.room[data-cxos-profile="business-health"] .observatoryGrid {
+  margin-right: clamp(0rem, 3vw, 3rem);
+  margin-left: auto;
+  border-color: rgba(244, 199, 109, 0.3);
+  background: linear-gradient(180deg, rgba(244, 199, 109, 0.035), transparent 18rem), rgba(3, 13, 27, 0.72);
+}
+
+.room[data-cxos-profile="business-health"] .districtEnvironment [data-plane="depth"] {
+  background:
+    radial-gradient(circle at 72% 42%, transparent 6rem, rgba(244, 199, 109, 0.1) 6.1rem, transparent 6.2rem 12rem, rgba(134, 215, 255, 0.05) 12.1rem, transparent 12.2rem 18rem),
+    linear-gradient(180deg, rgba(8, 31, 56, 0.18), transparent 72%);
+}
+
+.room[data-cxos-profile="business-health"] .districtEnvironment [data-plane="horizon"] {
+  inset: 24% 8% auto 42%;
+  background: linear-gradient(90deg, transparent, rgba(244, 199, 109, 0.5), transparent);
+  opacity: 0.56;
+  transform: scaleX(0.78);
+}
+
+.room[data-cxos-profile="business-health"] .districtEnvironment [data-plane="signal"] {
+  right: auto;
+  bottom: 12%;
+  left: clamp(2rem, 7vw, 7rem);
+  border-color: rgba(244, 199, 109, 0.24);
+  transform: scale(0.86);
+}
+
+.room[data-cxos-profile="business-health"] [data-plane="signal"] :is(i, b) {
+  border-color: rgba(244, 199, 109, 0.28);
+}
+
+.room[data-cxos-profile="business-health"] [data-plane="signal"] em {
+  background: linear-gradient(transparent, rgba(244, 199, 109, 0.66), transparent);
+}
+
+/* 05 · Longitudinal archive shelves and aligned evidence tray. */
+.room[data-cxos-signature="tray-align"] {
+  --cxos-entry-x: 0;
+  --cxos-entry-y: 8px;
+  --cxos-entry-scale: 1;
+  --cxos-scroll-x: 0px;
+  --cxos-scroll-y: -8px;
+}
+
+.room[data-cxos-profile="evidence-archive"] [data-current="true"][data-agency-district="evidence-archive"] {
+  background:
+    repeating-linear-gradient(90deg, transparent 0 11%, rgba(134, 215, 255, 0.04) 11% calc(11% + 1px)),
+    linear-gradient(180deg, rgba(5, 25, 44, 0.9), rgba(3, 9, 20, 0.96));
+}
+
+.room[data-cxos-profile="evidence-archive"] .archiveLedger {
+  width: min(100%, 64rem);
+  box-shadow:
+    0.45rem 0.55rem 0 -0.2rem rgba(56, 189, 248, 0.09),
+    0.9rem 1.05rem 0 -0.45rem rgba(56, 189, 248, 0.055),
+    1.35rem 1.55rem 0 -0.7rem rgba(56, 189, 248, 0.03);
+}
+
+.room[data-cxos-profile="evidence-archive"] .districtEnvironment [data-plane="depth"] {
+  inset: 2.5rem 0 1rem;
+  background:
+    repeating-linear-gradient(90deg, transparent 0 11%, rgba(134, 215, 255, 0.055) 11% calc(11% + 1px)),
+    repeating-linear-gradient(180deg, transparent 0 5rem, rgba(134, 215, 255, 0.035) 5rem calc(5rem + 1px));
+}
+
+.room[data-cxos-profile="evidence-archive"] .districtEnvironment [data-plane="horizon"] {
+  inset: 18% 16% auto;
+  opacity: 0.42;
+  transform: scaleX(0.64);
+}
+
+.room[data-cxos-profile="evidence-archive"] .districtEnvironment [data-plane="signal"] {
+  right: 6%;
+  bottom: 9%;
+  width: clamp(5rem, 10vw, 8rem);
+  height: clamp(7rem, 14vw, 11rem);
+  border-radius: 0;
+  transform: none;
+}
+
+/* 06 · Executive portrait with a shallow, narrow key. */
+.room[data-cxos-signature="inward-converge"] {
+  --cxos-entry-x: 0;
+  --cxos-entry-y: 0;
+  --cxos-entry-scale: 1.018;
+}
+
+.room[data-cxos-profile="kai-suite"] [data-current="true"][data-agency-district="kai-suite"] {
+  background:
+    radial-gradient(ellipse at 50% 28%, rgba(56, 189, 248, 0.22), transparent 25rem),
+    linear-gradient(90deg, rgba(3, 10, 22, 0.97), rgba(7, 31, 53, 0.74) 50%, rgba(3, 10, 22, 0.97));
+}
+
+.room[data-cxos-profile="kai-suite"] .kaiDesk {
+  width: min(100%, 58rem);
+  background: linear-gradient(180deg, rgba(14, 116, 144, 0.14), transparent 15rem), rgba(3, 13, 27, 0.9);
+  box-shadow: 0 2.25rem 7rem rgba(0, 0, 0, 0.4);
+}
+
+.room[data-cxos-profile="kai-suite"] .districtEnvironment [data-plane="depth"] {
+  inset: 3rem 12% 1rem;
+  background:
+    radial-gradient(ellipse at 50% 30%, rgba(56, 189, 248, 0.2), transparent 21rem),
+    linear-gradient(90deg, transparent 36%, rgba(134, 215, 255, 0.055) 50%, transparent 64%);
+}
+
+.room[data-cxos-profile="kai-suite"] .districtEnvironment [data-plane="horizon"] {
+  inset: 32% 32% auto;
+  opacity: 0.62;
+  transform: scaleX(0.76);
+}
+
+.room[data-cxos-profile="kai-suite"] .districtEnvironment [data-plane="signal"] {
+  inset: 15% calc(50% - 1px) 10% auto;
+  width: 2px;
+  height: auto;
+  border: 0;
+  border-radius: 0;
+  background: linear-gradient(transparent, rgba(134, 215, 255, 0.64), transparent);
+  transform: none;
+}
+
+.room[data-cxos-profile="kai-suite"] [data-plane="signal"] :is(i, b, em) {
+  display: none;
+}
+
+.room[data-cxos-profile="kai-suite"]:is([data-cxos-kai="staged"], [data-cxos-kai="preparing"], [data-cxos-kai="resolved"]) .kaiDesk {
+  border-color: rgba(134, 215, 255, 0.58);
+  box-shadow: 0 2.5rem 7rem rgba(0, 0, 0, 0.46);
+}
+
+/* 07 · Lowest horizon and maximum reserve depth. */
+.room[data-cxos-signature="horizon-expand"] {
+  --cxos-entry-x: 8px;
+  --cxos-entry-y: 0;
+  --cxos-entry-scale: 1;
+  --cxos-scroll-x: -8px;
+  --cxos-scroll-y: 0px;
+}
+
+.room[data-cxos-profile="growth-threshold"] [data-current="true"][data-agency-district="growth-threshold"] {
+  background:
+    linear-gradient(180deg, rgba(5, 19, 35, 0.46), transparent 48%),
+    radial-gradient(ellipse at 50% 86%, rgba(56, 189, 248, 0.2), transparent 36rem),
+    linear-gradient(90deg, rgba(3, 10, 22, 0.96), rgba(7, 27, 47, 0.74), rgba(3, 10, 22, 0.96));
+}
+
+.room[data-cxos-profile="growth-threshold"] .capacityHorizonBlock {
+  width: min(100%, 70rem);
+  margin-inline: auto;
+  background: linear-gradient(180deg, transparent, rgba(14, 116, 144, 0.055));
+}
+
+.room[data-cxos-profile="growth-threshold"] .districtEnvironment [data-plane="depth"] {
+  inset: 8rem -2% 0;
+  background:
+    linear-gradient(112deg, transparent 47%, rgba(134, 215, 255, 0.045) 47.2%, transparent 47.4%),
+    radial-gradient(ellipse at 50% 88%, rgba(56, 189, 248, 0.18), transparent 34rem);
+}
+
+.room[data-cxos-profile="growth-threshold"] .districtEnvironment [data-plane="horizon"] {
+  inset: auto 4% 18%;
+  opacity: 0.74;
+  transform: scaleX(0.94);
+}
+
+.room[data-cxos-profile="growth-threshold"] .districtEnvironment [data-plane="signal"] {
+  right: 8%;
+  bottom: 8%;
+  width: clamp(10rem, 24vw, 20rem);
+  height: clamp(3rem, 8vw, 6rem);
+  border-radius: 0;
+  border-block-color: rgba(244, 199, 109, 0.24);
+  transform: none;
+}
+
+/* Seven passage atmospheres use the same bounded transition machine. */
+.facilityPassage[data-cxos-passage-target] {
+  --cxos-passage-signal: rgba(134, 215, 255, 0.7);
+}
+
+.facilityPassage[data-cxos-passage-target] .passageAxis i {
+  background: linear-gradient(90deg, transparent, var(--cxos-passage-signal), transparent);
+}
+
+.facilityPassage[data-cxos-passage-target="central-command"] {
+  background:
+    linear-gradient(112deg, transparent 30%, rgba(134, 215, 255, 0.06) 30.2%, transparent 30.4% 69.6%, rgba(134, 215, 255, 0.06) 69.8%, transparent 70%),
+    radial-gradient(ellipse at 50% 20%, rgba(21, 96, 137, 0.28), transparent 30rem),
+    rgba(3, 9, 20, 0.97);
+}
+
+.facilityPassage[data-cxos-passage-target="client-operations"] {
+  background:
+    repeating-linear-gradient(168deg, transparent 0 5rem, rgba(134, 215, 255, 0.055) 5rem calc(5rem + 1px)),
+    linear-gradient(105deg, rgba(14, 116, 144, 0.18), transparent 58%),
+    rgba(3, 9, 20, 0.97);
+}
+
+.facilityPassage[data-cxos-passage-target="team-operations"] {
+  background: radial-gradient(circle at 50% 50%, transparent 7rem, rgba(134, 215, 255, 0.08) 7.1rem, transparent 7.2rem 15rem, rgba(134, 215, 255, 0.04) 15.1rem, transparent 15.2rem), rgba(3, 9, 20, 0.97);
+}
+
+.facilityPassage[data-cxos-passage-target="business-health"] {
+  --cxos-passage-signal: rgba(244, 199, 109, 0.76);
+  background:
+    radial-gradient(circle at 68% 44%, transparent 8rem, rgba(244, 199, 109, 0.11) 8.1rem, transparent 8.2rem 14rem, rgba(134, 215, 255, 0.05) 14.1rem, transparent 14.2rem),
+    linear-gradient(180deg, rgba(9, 28, 50, 0.94), rgba(3, 9, 20, 0.97));
+}
+
+.facilityPassage[data-cxos-passage-target="evidence-archive"] {
+  background:
+    repeating-linear-gradient(90deg, transparent 0 12%, rgba(134, 215, 255, 0.05) 12% calc(12% + 1px)),
+    linear-gradient(180deg, rgba(5, 26, 45, 0.86), rgba(3, 9, 20, 0.98));
+}
+
+.facilityPassage[data-cxos-passage-target="kai-suite"] {
+  background:
+    radial-gradient(ellipse at 50% 38%, rgba(56, 189, 248, 0.24), transparent 24rem),
+    linear-gradient(90deg, rgba(3, 9, 20, 0.98), rgba(7, 31, 53, 0.82) 50%, rgba(3, 9, 20, 0.98));
+}
+
+.facilityPassage[data-cxos-passage-target="growth-threshold"] {
+  background:
+    linear-gradient(180deg, transparent 62%, rgba(56, 189, 248, 0.08) 62.2%, transparent 62.4%),
+    radial-gradient(ellipse at 50% 82%, rgba(56, 189, 248, 0.22), transparent 34rem),
+    rgba(3, 9, 20, 0.97);
+}
+
+@media (max-width: 860px) {
+  .room[data-cxos-environment] :is(.districtEnvironment, .districtEnvironment > span) {
+    filter: none;
+  }
+
+  .room :is(.centralVista, .observatoryGrid, .kaiDesk, .archiveLedger, .capacityHorizonBlock) {
+    width: 100%;
+    margin-inline: 0;
+  }
+
+  .room[data-cxos-profile="central-command"] .centralVista {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .facilityPassage[data-cxos-passage-target] {
+    background: rgba(3, 9, 20, 0.98);
+  }
+}
+
 /* CXOS Phase 6.2 — Spatial Agency Headquarters
  *
  * This layer deliberately extends the approved Phase 6.1 instruments instead
@@ -3359,7 +3775,7 @@
   transform: scaleY(0.28);
   transform-origin: var(--agency-district-rail-origin);
   animation: agencyFacilityChannel var(--agency-district-rail-duration)
-    var(--agency-district-rail-easing) infinite;
+    var(--agency-district-rail-easing) 1 both;
   animation-play-state: paused;
 }
 
@@ -4559,7 +4975,7 @@
   transform: scaleY(0.36);
   transform-origin: center bottom;
   will-change: transform, opacity;
-  animation: agencyFacilityChannel 8.4s ease-in-out infinite;
+  animation: agencyFacilityChannel 8.4s ease-in-out 1 both;
 }
 
 .facilityPulse span[data-channel="queue-pressure"] i,
@@ -6696,7 +7112,7 @@
 
   .mobileFacilityCurrent span,
   .mobileFacilityCurrent strong {
-    font-size: 0.7rem;
+    font-size: 0.75rem;
   }
 
   .mobileFacilityMap ol {
@@ -7137,5 +7553,212 @@
   .room:not([data-motion-override="true"]) .arrivalGate,
   .room:not([data-motion-override="true"]) .facilityFrame {
     transition: none;
+  }
+}
+
+/* CXOS Living Environment Engine RC1 — presentation-only motion policy. */
+.room {
+  --cxos-ease-vector: cubic-bezier(0.16, 1, 0.3, 1);
+  --cxos-dur-response: 150ms;
+  --cxos-dur-settle: 400ms;
+  --cxos-dur-reveal: 520ms;
+  --cxos-dur-heartbeat: 2400ms;
+  --cxos-dur-draw: 1800ms;
+  --cxos-dur-drift: 18000ms;
+  --cxos-depth-near: 8px;
+  --cxos-depth-middle: 4px;
+  --cxos-light-rest: 0.08;
+  --cxos-light-active: 0.14;
+  --cxos-light-focus: 0.2;
+  --agency-chamber-ease: var(--cxos-ease-vector);
+}
+
+/* Living mode retires every legacy decorative lane before opting in to two. */
+.room[data-cxos-environment] :is(
+    .ambientSweep,
+    .roomBreath,
+    .districtRail i,
+    .facilityPulse i,
+    .flowTrack b,
+    .districtEnvironment,
+    .districtEnvironment *,
+    .districtBody > *,
+    .inspectionBody,
+    .preparedArtifact,
+    .teamOrbit li > span,
+    .archiveEvidenceList li > span,
+    .capacityHorizon b
+  ) {
+  animation: none !important;
+}
+
+.room[data-cxos-environment] .districtTruth::after,
+.room[data-cxos-environment] .clientFlowMoment::after,
+.room[data-cxos-environment] .healthBank::after,
+.room[data-cxos-environment] .kaiDesk::before {
+  animation: none !important;
+}
+
+/* Budget 2 opts into ambient + profile; budget 1 opts into profile only. */
+.room[data-cxos-environment][data-cxos-animation-budget="2"] .ambientSweep {
+  animation: agencyLivingHeartbeat var(--cxos-dur-heartbeat) var(--cxos-ease-vector) 1 both !important;
+}
+
+.room[data-cxos-environment][data-cxos-animation-budget="2"] [data-plane="depth"] {
+  animation: agencyLivingAcquire var(--cxos-dur-reveal) var(--cxos-ease-vector) both !important;
+}
+
+.room[data-cxos-environment][data-cxos-animation-budget="1"] [data-plane="depth"] {
+  animation: agencyLivingAcquireB var(--cxos-dur-heartbeat) var(--cxos-ease-vector) both !important;
+}
+
+.room:is([data-tier="B"], [data-cxos-tier="B"]) {
+  --cxos-dur-reveal: 340ms;
+  --cxos-dur-heartbeat: 3200ms;
+  --cxos-dur-settle: 300ms;
+  --cxos-entry-x: 0;
+  --cxos-entry-y: 0;
+  --cxos-entry-scale: 1;
+}
+
+.room:is([data-tier="B"], [data-cxos-tier="B"]) .facilityDirectory {
+  backdrop-filter: none;
+}
+
+.room:is([data-tier="B"], [data-cxos-tier="B"]) :is(.districtEnvironment, .districtEnvironment *, .overheadLight, .roomBreath) {
+  filter: none !important;
+}
+
+/* A-only progressive parallax replaces, rather than adds to, the profile channel. */
+@supports (animation-timeline: view()) {
+  .room[data-cxos-environment][data-cxos-animation-budget="2"]:is(
+      [data-cxos-profile="client-operations"],
+      [data-cxos-profile="evidence-archive"],
+      [data-cxos-profile="growth-threshold"]
+    ) [data-plane="depth"] {
+    animation: agencyLivingScroll linear both !important;
+    animation-timeline: view();
+    animation-range: cover 8% cover 92%;
+  }
+}
+
+.room:is([data-cxos-kai="staged"], [data-cxos-kai="preparing"], [data-cxos-kai="resolved"]) .overheadLight {
+  opacity: 0.72;
+  transform: scaleX(0.72);
+  transform-origin: center top;
+}
+
+.room:is([data-cxos-kai="staged"], [data-cxos-kai="preparing"], [data-cxos-kai="resolved"]) .ambientSweep {
+  animation: none !important;
+}
+
+.room[data-cxos-kai="resolved"] .kaiContext {
+  border-color: rgba(134, 215, 255, 0.48);
+  background: linear-gradient(90deg, rgba(14, 116, 144, 0.2), transparent 68%), rgba(3, 12, 25, 0.88);
+}
+
+.room[data-cxos-attention="inspecting"] .inspectionPlane[open] {
+  border-color: rgba(134, 215, 255, 0.56);
+  box-shadow: 0 1.5rem 4rem rgba(0, 0, 0, 0.18);
+}
+
+.room[data-cxos-environment]:is([data-cxos-attention="reading"], [data-cxos-attention="inspecting"]) .districtEnvironment {
+  opacity: 0.3 !important;
+  transform: none !important;
+}
+
+.room[data-cxos-environment]:is([data-cxos-idle="settling"], [data-cxos-idle="settled"]) :is(.districtEnvironment, .overheadLight, .horizon) {
+  opacity: 0.46 !important;
+  transform: none !important;
+}
+
+.room[data-cxos-environment]:is([data-tier="C"], [data-tier="D"], [data-cxos-tier="C"], [data-cxos-tier="D"]) .districtEnvironment {
+  opacity: 0.38 !important;
+  transform: none !important;
+}
+
+.room:is([data-tier="C"], [data-tier="D"], [data-cxos-tier="C"], [data-cxos-tier="D"]) .facilityPassage {
+  display: none !important;
+}
+
+/* Idle, close attention, and static tiers override both opt-in channels. */
+.room[data-cxos-environment][data-cxos-profile]:is(
+    [data-cxos-idle="settling"],
+    [data-cxos-idle="settled"],
+    [data-cxos-attention="reading"],
+    [data-cxos-attention="inspecting"],
+    [data-cxos-kai="staged"],
+    [data-cxos-kai="preparing"],
+    [data-cxos-kai="resolved"],
+    [data-cxos-environment-motion="quiet"],
+    [data-cxos-environment-motion="static"],
+    [data-tier="C"],
+    [data-tier="D"],
+    [data-cxos-tier="C"],
+    [data-cxos-tier="D"]
+  ) :is(.ambientSweep, .districtEnvironment *) {
+  animation: none !important;
+  transition: none !important;
+}
+
+@keyframes agencyLivingAcquire {
+  from {
+    opacity: 0.3;
+    transform: translate3d(var(--cxos-entry-x, 0), var(--cxos-entry-y, 0), 0) scale(var(--cxos-entry-scale, 1));
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes agencyLivingAcquireB {
+  0% {
+    opacity: 0.3;
+    transform: translate3d(var(--cxos-entry-x, 0), var(--cxos-entry-y, 0), 0) scale(var(--cxos-entry-scale, 1));
+  }
+  10.625%,
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+  52% {
+    opacity: 0.82;
+    transform: none;
+  }
+}
+
+@keyframes agencyLivingHeartbeat {
+  0%,
+  100% {
+    opacity: 0.18;
+    transform: translate3d(52vw, 0, 0);
+  }
+  46% {
+    opacity: 0.28;
+    transform: translate3d(52vw, 0, 0);
+  }
+}
+
+@keyframes agencyLivingScroll {
+  from {
+    transform: translate3d(calc(-1 * var(--cxos-scroll-x, 0px)), calc(-1 * var(--cxos-scroll-y, 0px)), 0);
+  }
+  to {
+    transform: translate3d(var(--cxos-scroll-x, 0px), var(--cxos-scroll-y, 0px), 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .room[data-cxos-environment][data-cxos-profile]:not([data-motion-override="true"]) :is(.ambientSweep, .districtEnvironment *) {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+@media (max-width: 860px) {
+  .room :is(button, summary) {
+    min-inline-size: 44px;
+    min-block-size: 44px;
   }
 }

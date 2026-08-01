@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+import { reviewBuildAllowed } from "@/lib/cxos/reviewMode";
 
 // CXOS Founder Review — never indexed, never linked from the public site.
 // Availability is a BUILD property (lib/cxos/reviewMode.ts): production builds
@@ -10,5 +12,6 @@ export const metadata: Metadata = {
 };
 
 export default function ReviewLayout({ children }: { children: React.ReactNode }) {
+  if (!reviewBuildAllowed()) notFound();
   return children;
 }

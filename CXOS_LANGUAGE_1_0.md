@@ -3,10 +3,10 @@
 **Working specification · Gabriel Capital Labs · CreditVector™ Experience OS**
 
 **Version:** 1.0
-**Date:** 2026-07-31
+**Date:** 2026-07-31 · amended 2026-08-01
 **Status:** Working specification for design, implementation planning, review, and QA
 
-> This document is not merge approval or production authorization. It organizes the current CXOS foundation, the Founder-approved Phase 5.2, Phase 5.3, and Phase 6.2 experience direction, the Founder-authorized CXOS Core Runtime architecture, and the Founder-authorized RC4 Spatial District Chambers presentation amendment into one usable review standard. Canonical repository governance and separate release approvals still control.
+> This document is not merge approval or production authorization. It organizes the current CXOS foundation, the Founder-approved Phase 5.2, Phase 5.3, and Phase 6.2 experience direction, the Founder-authorized CXOS Core Runtime architecture, the Founder-authorized RC4 Spatial District Chambers presentation amendment, and the Founder-authorized Core Runtime 1.1 Living Environment extension into one usable review standard. Canonical repository governance and separate release approvals still control.
 
 ## 1. Truth labels and boundary
 
@@ -15,7 +15,7 @@ Every law in this document carries one of four meanings:
 - **FOUNDATION** — established by `CXOS_FOUNDATION.md`.
 - **APPROVED DIRECTION** — reviewed and approved through the Phase 5.2, Phase 5.3, and Phase 6.2 Founder experience reviews.
 - **PROPOSED EXTENSION** — a design direction suitable for a synthetic Founder prototype, but not yet production-approved.
-- **RUNTIME CONTRACT** — shared deterministic presentation infrastructure approved for the isolated Core Runtime review lineage; RC4 adds an optional chamber-presentation lifecycle while preserving the law that runtime owns presentation state, never room facts or effects.
+- **RUNTIME CONTRACT** — shared deterministic presentation infrastructure approved for the isolated Core Runtime review lineage; RC4 adds an optional chamber-presentation lifecycle and Core Runtime 1.1 adds the Living Environment presentation grammar while preserving the law that one runtime owns presentation state, never room facts or effects.
 - **RELEASE GATE** — evidence required before a reviewed delta may proceed to a separately authorized integration or deployment step.
 
 Source set:
@@ -28,6 +28,7 @@ Source set:
 - Founder Phase 6.2 contextual Kai command-surface directive (2026-07-31)
 - Founder approval of the Phase 6.2 Agency Headquarters architecture and authorization of CXOS Core Runtime (2026-07-31)
 - Founder authorization of the RC4 Spatial District Chambers isolated review candidate (2026-07-31)
+- Founder authorization of the Core Runtime 1.1 Living Environment isolated review extension (2026-08-01)
 - `.ai/ADR/ADR-0040-cxos-core-runtime.md`
 
 This specification does not authorize:
@@ -40,7 +41,7 @@ This specification does not authorize:
 - migration of Mission Control, the Passage, the Arena, the landing journey, or any future room;
 - claims that synthetic fixtures, proposed rooms, or review controls are live product capabilities.
 
-**Branch-lineage disclosure:** Founder review of the Phase 6.2 room baseline at `a40a41c5a76028ad5cae2ff655c5bf168fb86a4a` is complete. That historical branch remains outside the isolated release-candidate lineage and must not be merged wholesale. RC1 was reconstructed from production baseline `f449c35d0eca9463c15e86f8cbd4cd7f4e948d03`. RC4 is authorized only as a bounded descendant of the verified RC3 candidate `ace7e9bfb352c4b83e6371a9e30cd14c5edcc844` on `review/cxos-agency-spatial-chambers-rc4`. A protected Preview of an isolated candidate is not production integration approval.
+**Branch-lineage disclosure:** Founder review of the Phase 6.2 room baseline at `a40a41c5a76028ad5cae2ff655c5bf168fb86a4a` is complete. That historical branch remains outside the isolated release-candidate lineage and must not be merged wholesale. RC1 was reconstructed from production baseline `f449c35d0eca9463c15e86f8cbd4cd7f4e948d03`. RC4 was authorized only as a bounded descendant of the verified RC3 candidate `ace7e9bfb352c4b83e6371a9e30cd14c5edcc844`; the approved Agency Headquarters RC5 baseline is `29260fddfc59d71e3d963d2ec791657ea57084af`. Core Runtime 1.1 is authorized only as a bounded isolated candidate descended from that exact RC5 baseline. A protected Preview of an isolated candidate is not production integration approval.
 
 ## 2. The facility model
 
@@ -178,7 +179,7 @@ The source domain owns canonical facts. Kai interprets and prepares; the operato
 
 ### 2.8 CXOS Core Runtime inheritance
 
-**RUNTIME CONTRACT · FOUNDER-AUTHORIZED 2026-07-31 · ADR-0040**
+**RUNTIME CONTRACT · FOUNDER-AUTHORIZED 2026-07-31 · AMENDED 2026-08-01 · CORE RUNTIME 1.1 · ADR-0040**
 
 When separately authorized, major operating rooms must inherit one headless CXOS Core Runtime rather than reimplementing facility mechanics independently.
 
@@ -227,6 +228,36 @@ The optional spatial chamber mode exists for rooms whose approved district archi
 6. Hash/history and focus are deterministic. A settled destination has one valid district identifier, browser Back/Forward restores the corresponding chamber, and focus moves to the destination heading without falling to the document body.
 7. Tier C, Tier D, reduced-motion, invalid, and constrained projections replace chambers immediately with the complete static destination. They retain identical facts, controls, disclosures, navigator access, and focus behavior with zero required motion.
 8. The mode grants no data, network, storage, cookie, persistence, telemetry, model, AI, authorization, or execution authority. The room continues to own every fact, semantic element, instrument, Kai intent, and destination.
+
+### 2.10 Living Environment vocabulary and grammar
+
+**RUNTIME CONTRACT · FOUNDER-AUTHORIZED 2026-08-01 · CORE RUNTIME 1.1**
+
+Living Environment is an optional presentation profile of the same headless Core Runtime. It is not a sibling engine, global provider, rendered scene framework, second lifecycle, or claim that a room is live, autonomous, conscious, or performing work.
+
+Vocabulary:
+
+- **Living Environment** — a semantic room whose presentation responds to declared, deterministic state without changing facts, actions, or meaning.
+- **Environment profile** — the room-owned declaration of permitted presentation presets and their complete static equivalent.
+- **Camera/framing preset** — a compositional point of view expressed through bounded CSS state; never a literal camera, Canvas, WebGL scene, or scroll capture.
+- **Depth preset** — the relationship among at most three visual planes: atmosphere, semantic content, and instrument.
+- **Lighting preset** — a semantic light token tied to room state and rendered by room CSS, not a global runtime effect.
+- **Heartbeat/idle preset** — the bounded rhythm of a real disclosed condition and its settled idle posture; never fabricated telemetry or synthetic work.
+- **Focus/concentration state** — presentation emphasis around the current semantic target while visible focus and the complete reading order remain intact.
+- **Kai presentation phase** — bounded presence and context styling only; it grants no model, memory, inference, customer knowledge, intent, or action authority.
+- **Capability projection** — the runtime's deterministic selection of presentation behavior from validated declarations, device capability, visibility, motion preference, and safety constraints.
+- **Static projection** — the stable, complete, zero-required-motion experience used whenever enhancement is unavailable, invalid, reduced, constrained, or skipped.
+
+Grammar:
+
+1. Core Runtime remains one engine and one ownership boundary. Living Environment extends its contracts and projections; it does not create another provider, renderer, observer system, or navigation authority.
+2. A room declares semantic targets, allowed presets, transition meaning, channel budget, and the complete static result. Core Runtime validates and projects state/tokens only; room CSS owns the visible treatment.
+3. Every presentation change maps to an existing lifecycle phase, capability, visibility condition, semantic target, or disclosed room state. No random, decorative, or simulated activity may stand in for meaning.
+4. Camera, depth, lighting, heartbeat, focus, concentration, and Kai presentation never change a canonical value, invent a status, conceal a required disclosure, imply model activity, or claim an effect.
+5. Only the active semantic room—and, in optional chamber mode, only the active chamber—may run its declared bounded presentation channels. Idle settles; hidden documents pause nonessential motion; reduced-motion, constrained, Tier C, Tier D, invalid, and skipped projections require zero continuous motion.
+6. User input, visible focus, Escape, native scroll, native local navigation, and the room's real destination always outrank ambient presentation. Runtime enhancement may never trap, delay, or override them beyond an already authorized bounded transition.
+7. An invalid profile, target, preset, transition, or capability resolves deterministically to the room's complete declared static projection. In optional chamber mode, the stable active chamber and direct facility-navigator access to every chamber remain available.
+8. Agency Headquarters is the sole Living Environment reference consumer in this release lineage. No other room inherits the profile without separate scope, regression evidence, the required reviews, and explicit Founder authorization.
 
 ## 3. Room matrix
 
@@ -794,6 +825,7 @@ Before a room can be called CXOS:
 - [ ] Founder experience approval and production authorization remain separate decisions.
 - [ ] The room consumes Core Runtime for shared mechanics or documents a reviewed exception; it does not duplicate lifecycle infrastructure silently.
 - [ ] If optional chamber mode is used, one active semantic chamber, facility navigation, progressive disclosure, hash/history, focus, immediate Tier C/D replacement, and always-visible truth boundaries are verified without granting effect authority.
+- [ ] If the Living Environment profile is used, every preset has a semantic reason, bounded channel budget, deterministic static fail-down, and no fact, effect, navigation, or Kai-authority expansion.
 
 ## 20. Change control
 
@@ -806,4 +838,4 @@ Language 1.0 is a working specification. A future revision should:
 5. update the room matrix, anti-patterns, and release gates when the change affects them;
 6. receive the appropriate design, engineering, compliance, accessibility, performance, and Founder review before production use.
 
-**Current terminal status:** LANGUAGE 1.0 · RC4 SPATIAL DISTRICT CHAMBERS AMENDMENT AUTHORIZED FOR ISOLATED REVIEW · NOT MERGE OR PRODUCTION APPROVAL
+**Current terminal status:** LANGUAGE 1.0 · CORE RUNTIME 1.1 LIVING ENVIRONMENT EXTENSION FOUNDER-AUTHORIZED FOR AN ISOLATED AGENCY HEADQUARTERS CANDIDATE AND PROTECTED PREVIEW · AGENCY HEADQUARTERS REMAINS THE SOLE REFERENCE CONSUMER · NOT MERGE OR PRODUCTION APPROVAL

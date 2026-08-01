@@ -2,16 +2,11 @@ import Link from "next/link";
 import { BRAND } from "@/lib/brand";
 import { CXOS_ROOMS } from "@/lib/cxos/rooms";
 import { reviewBuildAllowed } from "@/lib/cxos/reviewMode";
+import { notFound } from "next/navigation";
 
 // Isolated RC1 review index. Only routes present in this candidate are listed.
 export default function ReviewHub() {
-  if (!reviewBuildAllowed()) {
-    return (
-      <main className="flex min-h-screen items-center justify-center bg-ink-950 p-8 text-slate-400">
-        <p className="text-sm">Founder Review is not enabled in this build.</p>
-      </main>
-    );
-  }
+  if (!reviewBuildAllowed()) notFound();
 
   return (
     <main className="min-h-screen bg-ink-950 px-6 py-14 text-white">

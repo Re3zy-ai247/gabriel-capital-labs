@@ -1,9 +1,11 @@
 # CXOS — CreditVector Experience OS · Founding Design Constitution
 
-**Program:** Experience Architecture · **Phase:** Founding record + Core Runtime amendment · **Date:** 2026-07-29 · amended 2026-07-31
-**Status: FOUNDING RECORD · PHASE 6.2 EXPERIENCE APPROVED · CORE RUNTIME AUTHORIZED LOCALLY**
+**Program:** Experience Architecture · **Phase:** Founding record + Core Runtime amendment · **Date:** 2026-07-29 · amended 2026-08-01
+**Status: FOUNDING RECORD · PHASE 6.2 EXPERIENCE APPROVED · CORE RUNTIME 1.1 LIVING ENVIRONMENT EXTENSION AUTHORIZED FOR ISOLATED REVIEW**
 
 > **Amendment note (2026-07-31).** The Phase 1 planning language below is retained as the historical founding record. Subsequent Founder reviews approved the CXOS experience direction through Agency Headquarters Phase 6.2. Section 17 now records the Founder-authorized reusable Core Runtime decision. The current gate authorizes only an isolated candidate commit, isolated review-branch push, and protected Preview from the exact production baseline; it does not authorize merge, production integration or promotion, dependency changes, database, auth, billing, or unrelated-room changes.
+
+> **Amendment note (2026-08-01).** Core Runtime 1.1 extends that same headless engine with the Living Environment presentation contract recorded in §17.7. The extension is Founder-authorized only for an isolated Agency Headquarters candidate and protected Preview. It does not create a sibling engine, migrate another room, or authorize merge or production use.
 
 > This document is the constitution: assessment, references, skills, tools, and the Experience
 > Grammar, plus the technology recommendation, budgets, plans, risks and roadmap.
@@ -537,3 +539,18 @@ The runtime is not GIOS, the Kai Kernel, a router, an application service, an ev
 Agency Headquarters is the first reference consumer because it contains the complete approved lifecycle without requiring a visual redesign. Its semantic structure, room-specific CSS and visual output, fixtures, Kai resolver, instruments, and production hard-off remain room-owned.
 
 Mission Control, the Passage, the Arena, the landing journey, Consumer Workspace, Marketplace, Community, Growth Network, and future rooms remain unchanged in this phase. A later room may adopt Core Runtime only through a separately scoped migration that preserves its architecture, reruns its existing regression guard, adds current browser evidence, and receives the required reviews. No wholesale room rewrite or historical-branch merge follows from this amendment.
+
+### 17.7 Core Runtime 1.1 Living Environment contract
+
+**APPROVED DIRECTION · FOUNDER-AUTHORIZED 2026-08-01 · ADR-0040 AMENDMENT**
+
+Core Runtime 1.1 is an additive contract on the one Core Runtime defined above. A Living Environment is a room whose presentation responds to declared, deterministic room state while preserving the complete semantic experience. “Living” describes bounded, purpose-linked presentation response; it does not mean live data, autonomous behavior, simulated computation, random activity, consciousness, or effect authority.
+
+- The room may declare compositional camera/framing, no more than three depth planes, lighting, purpose-bound heartbeat/idle, focus/concentration, Kai presentation phase, and transition profiles. These are semantic presentation inputs, not a literal 3D camera or a globally rendered scene.
+- Core Runtime validates those declarations and projects capability, lifecycle, visibility, motion-budget, focus, Kai-presence, and static-equivalence state. Room CSS may consume the resulting tokens; the runtime still renders no room UI.
+- The room continues to own canonical facts, copy, semantic DOM, destinations, fixtures, instruments, CSS, actions, permissions, persistence, APIs, and every Kai intent or effect. No presentation profile may change or imply any of them.
+- Motion must make an existing condition, transition, or hierarchy easier to understand. It may not fabricate work, urgency, system activity, customer state, model activity, or a changing metric merely to make the room appear alive.
+- Invalid profiles or targets resolve deterministically to the room's complete declared static projection. Reduced-motion and constrained tiers use that same complete projection; hidden documents pause nonessential motion. User input, visible focus, native scrolling, and native navigation always outrank ambient presentation.
+- Agency Headquarters remains the sole reference consumer for this extension. Every other room remains unchanged unless separately scoped, reviewed, evidenced, and Founder-authorized.
+
+The normative vocabulary and grammar live in `CXOS_LANGUAGE_1_0.md`; the architectural decision and release boundary live in ADR-0040. This amendment authorizes an isolated candidate, isolated review-branch push, and protected Preview only. It is not merge, production integration, promotion, or platform-wide migration approval.

@@ -31,6 +31,7 @@ const root = join(__dirname, "..");
 const routeDir = join(root, "app/review/agency-command");
 const expectedRouteFiles = [
   "agency-command.module.css",
+  "environment.ts",
   "fixtures.ts",
   "page.tsx",
   "stage.tsx",
@@ -73,6 +74,7 @@ function sourceBetween(source: string, start: string, end: string): string {
 
 const page = read("app/review/agency-command/page.tsx");
 const stage = read("app/review/agency-command/stage.tsx");
+const environmentDefinition = read("app/review/agency-command/environment.ts");
 const fixtures = read("app/review/agency-command/fixtures.ts");
 const css = read("app/review/agency-command/agency-command.module.css");
 const runtimePolicy = read("lib/cxos/runtime.ts");
@@ -82,7 +84,7 @@ const stageCode = codeOf(stage);
 const fixtureCode = codeOf(fixtures);
 const runtimePolicyCode = codeOf(runtimePolicy);
 const runtimeAdapterCode = codeOf(runtimeAdapter);
-const presentationCode = `${stageCode}\n${fixtureCode}`;
+const presentationCode = `${stageCode}\n${fixtureCode}\n${environmentDefinition}`;
 const fixturesSha256 = createHash("sha256").update(fixtures).digest("hex");
 
 // -- 1 · exact, isolated Phase 6.2 route surface -----------------------------
@@ -96,7 +98,7 @@ const actualRouteFiles = existsSync(routeDir)
       .sort()
   : [];
 check(
-  "the Phase 6.2 route contains exactly the four reviewed source files",
+  "the Phase 6.2 route contains exactly the five reviewed source files",
   JSON.stringify(actualRouteFiles) === JSON.stringify(expectedRouteFiles),
 );
 check(
@@ -116,15 +118,14 @@ check(
   page.length > 0 &&
     !/^["']use client["'];/m.test(page) &&
     /from ["']@\/lib\/cxos\/reviewMode["']/.test(page) &&
+    /from ["']next\/navigation["']/.test(page) &&
     gateAt !== -1 &&
     stageAt !== -1 &&
     gateAt < stageAt,
 );
 check(
-  "review-disabled branch renders the established truthful fallback",
-  /if\s*\(\s*!reviewBuildAllowed\(\)\s*\)\s*\{[\s\S]*<main[\s\S]{0,180}id="main"[\s\S]*Founder Review is not enabled in this build\./.test(
-    page,
-  ),
+  "review-disabled branch resolves to the ordinary 404 boundary",
+  /if\s*\(\s*!reviewBuildAllowed\(\)\s*\)\s*notFound\(\)/.test(page),
 );
 check(
   "allowed branch renders only the local Agency Command stage",
@@ -132,9 +133,9 @@ check(
 );
 
 const pageImports = importSources(page);
-const allowedPageImports = new Set(["@/lib/cxos/reviewMode", "./stage"]);
+const allowedPageImports = new Set(["@/lib/cxos/reviewMode", "next/navigation"]);
 check(
-  "page imports only the review gate and local stage",
+  "page statically imports only the review gate and 404 boundary",
   pageImports.length === allowedPageImports.size &&
     pageImports.every((source) => allowedPageImports.has(source)) &&
     [...allowedPageImports].every((source) => pageImports.includes(source)),
@@ -146,6 +147,7 @@ const allowedStageImports = new Set([
   "react",
   "@/components/cxos/runtime/useCxosRoomRuntime",
   "@/lib/cxos/runtime",
+  "./environment",
   "./fixtures",
   "./agency-command.module.css",
 ]);
@@ -811,13 +813,32 @@ check(
   "pagehide and BFCache restoration delegate to the complete route-local reset",
   /onRouteReset: clearKaiSession/.test(stageCode) &&
     /routeResetRef\.current\?\.\(\)/.test(runtimeAdapterCode) &&
-    /if \(event\.persisted\) reset\(\)/.test(runtimeAdapterCode) &&
-    /addEventListener\("pagehide", reset\)/.test(runtimeAdapterCode) &&
+    /if \(!event\.persisted\) return;[\s\S]{0,120}reset\(\)/.test(
+      runtimeAdapterCode,
+    ) &&
+    /addEventListener\("pagehide", resetHiddenPage\)/.test(runtimeAdapterCode) &&
     /addEventListener\("pageshow", resetRestoredPage\)/.test(runtimeAdapterCode) &&
-    /removeEventListener\("pagehide", reset\)/.test(runtimeAdapterCode) &&
+    /removeEventListener\("pagehide", resetHiddenPage\)/.test(
+      runtimeAdapterCode,
+    ) &&
     /removeEventListener\("pageshow", resetRestoredPage\)/.test(
       runtimeAdapterCode,
     ),
+);
+check(
+  "pending chamber focus is latest-intent, lifecycle-cancelable, and district-bound",
+  /const cancelPendingChamberFocus = useCallback/.test(stageCode) &&
+    /pendingChamberFocusSequenceRef\.current \+= 1/.test(stageCode) &&
+    /window\.cancelAnimationFrame\(pendingChamberFocusFrameRef\.current\)/.test(
+      stageCode,
+    ) &&
+    /window\.cancelAnimationFrame\(pendingChamberFocusSettleFrameRef\.current\)/.test(
+      stageCode,
+    ) &&
+    /focusSequence === pendingChamberFocusSequenceRef\.current/.test(stageCode) &&
+    /dataset\.activeDistrict === pending\.districtId/.test(stageCode) &&
+    /pendingChamberFocusRef\.current = pendingFocus\s*\?/.test(stageCode) &&
+    /addEventListener\("pagehide", cancelForPageHide\)/.test(stageCode),
 );
 const exitSource = sourceBetween(
   stageCode,
@@ -872,7 +893,7 @@ check(
     /<span>PREVIOUS<\/span>/.test(stage) &&
     /<span>CURRENT CHAMBER<\/span>/.test(stage) &&
     /<span>NEXT<\/span>/.test(stage) &&
-    /<details className=\{styles\.mobileFacilityMap\} data-agency-inspection>/.test(
+    /<details[\s\S]{0,160}className=\{styles\.mobileFacilityMap\}[\s\S]{0,120}data-agency-inspection[\s\S]{0,80}data-cxos-inspection/.test(
       stage,
     ) &&
     /Choose one of seven chambers/.test(stage),
@@ -960,7 +981,7 @@ check(
     /findCxosElementById\(root, `\$\{districtId\}-heading`\)/.test(
       runtimeAdapterCode,
     ) &&
-    /if \(pending\.inspectionId\)[\s\S]{0,220}inspection\.open = true[\s\S]{0,260}target\?\.focus\(\{ preventScroll: true \}\)/.test(
+    /if \(pending\.inspectionId\)[\s\S]{0,320}inspection\.open = true[\s\S]{0,760}target\.focus\(\{ preventScroll: true \}\)/.test(
       stageCode,
     ),
 );
@@ -1037,9 +1058,12 @@ for (const [label, pattern] of nondeterministic) {
   check(`determinism: no ${label}`, !pattern.test(presentationCode));
 }
 check(
-  "the room owns no timer and the runtime owns only bounded passage and return fallbacks",
+  "the room owns no timer and the runtime owns bounded idle, passage, and return fallbacks",
   (presentationCode.match(/\bsetTimeout\b/g) ?? []).length === 0 &&
-    (runtimeAdapterCode.match(/\bsetTimeout\b/g) ?? []).length === 2 &&
+    (runtimeAdapterCode.match(/\bsetTimeout\b/g) ?? []).length === 4 &&
+    /idleTimerRef\.current = window\.setTimeout\([\s\S]{0,180}setIdleState\("settling"\)[\s\S]{0,180}setIdleState\("settled"\)/.test(
+      runtimeAdapterCode,
+    ) &&
     /const expectedSequence = chamberTransition\.sequence[\s\S]{0,180}districtTransitionFallbackRef\.current = window\.setTimeout\([\s\S]{0,300}districtTransitionDurationMs/.test(
       runtimeAdapterCode,
     ) &&
@@ -1138,12 +1162,10 @@ const requiredContinuousAnimations = [
   "agencyFacilityChannel",
 ];
 check(
-  "continuous motion is limited to ambient presence, fixed flow states, and purpose-bound chamber instruments",
-  continuousAnimations.length > 0 &&
-    continuousAnimations.every((name) => allowedContinuousAnimations.has(name)) &&
-    requiredContinuousAnimations.every((name) =>
-      continuousAnimations.includes(name),
-    ),
+  "all ambient, flow, rail, and chamber motion is finite rather than perpetual",
+  continuousAnimations.length === 0 &&
+    [...allowedContinuousAnimations].every((name) => css.includes(name)) &&
+    requiredContinuousAnimations.every((name) => css.includes(name)),
 );
 check(
   "heartbeat has no Canvas, WebGL, video, external animation runtime, or JavaScript loop",
@@ -1383,11 +1405,11 @@ check(
     ),
 );
 check(
-  "cross-chamber queue and intake handoffs reveal their inspection before focusing controls",
-  /const focusPendingChamberTarget/.test(stageCode) &&
+    "cross-chamber queue and intake handoffs reveal their inspection before focusing controls",
+    /const focusPendingChamberTarget/.test(stageCode) &&
     /inspection\.open = true/.test(stageCode) &&
-    /target\?\.focus\(\{ preventScroll: true \}\)/.test(stageCode) &&
-    /target\?\.scrollIntoView\(\{ block: "center", behavior: "auto" \}\)/.test(
+    /target\.focus\(\{ preventScroll: true \}\)/.test(stageCode) &&
+    /target\.scrollIntoView\(\{ block: "center", behavior: "auto" \}\)/.test(
       stageCode,
     ) &&
     /navigateToChamber\("client-operations", \{[\s\S]{0,180}elementId: "queue-inspect-response-014"[\s\S]{0,180}inspectionId: "client-operations-inspection"/.test(
@@ -1556,7 +1578,7 @@ check(
   "all seven districts project a distinct purpose-paced rail rhythm from one bounded channel",
   districtRhythmDurations.every(Boolean) &&
     new Set(districtRhythmDurations).size === AGENCY_DISTRICTS.length &&
-    /animation:\s*agencyFacilityChannel var\(--agency-district-rail-duration\)[\s\S]{0,100}var\(--agency-district-rail-easing\) infinite/.test(
+    /animation:\s*agencyFacilityChannel var\(--agency-district-rail-duration\)[\s\S]{0,100}var\(--agency-district-rail-easing\) 1 both/.test(
       css,
     ),
 );

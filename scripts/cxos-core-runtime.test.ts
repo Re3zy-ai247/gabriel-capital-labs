@@ -1,6 +1,6 @@
 // Run: npx --no-install tsx scripts/cxos-core-runtime.test.ts
 //
-// DB-free executable + source guard for CXOS Core Runtime 1.0. The runtime is
+// DB-free executable + source guard for CXOS Core Runtime 1.1. The runtime is
 // presentation infrastructure only: deterministic state in, data attributes
 // and lifecycle callbacks out. It may never acquire canonical facts or effect
 // authority.
@@ -58,9 +58,9 @@ const definition = {
   departure: { href: "/review/origin", fallbackMs: 800 },
 } satisfies CxosRoomRuntimeDefinition<"central" | "operations" | "kai-suite">;
 
-check("runtime version is explicit", CXOS_CORE_RUNTIME_VERSION === "1.0.0");
+check("runtime version is explicit", CXOS_CORE_RUNTIME_VERSION === "1.1.0");
 check(
-  "runtime exposes the exact eleven Founder-authorized capabilities",
+  "runtime exposes the exact twenty Founder-authorized capabilities",
   JSON.stringify(CXOS_CORE_RUNTIME_CAPABILITIES) ===
     JSON.stringify([
       "arrival",
@@ -74,6 +74,15 @@ check(
       "kai-presence",
       "shared-motion",
       "shared-accessibility",
+      "cinematic-framing",
+      "depth-projection",
+      "focus-attention",
+      "idle-settlement",
+      "computation-presence",
+      "progressive-disclosure",
+      "chamber-motion-signature",
+      "capability-projection",
+      "deterministic-replay",
     ]),
 );
 check("a bounded reference definition validates", validateCxosRoomRuntime(definition).valid);
@@ -598,8 +607,8 @@ check(
     /removeEventListener\("visibilitychange", update\)/.test(adapter) &&
     /addEventListener\("keydown", skipOnEscape\)/.test(adapter) &&
     /removeEventListener\("keydown", skipOnEscape\)/.test(adapter) &&
-    /addEventListener\("pagehide", reset\)/.test(adapter) &&
-    /removeEventListener\("pagehide", reset\)/.test(adapter) &&
+    /addEventListener\("pagehide", resetHiddenPage\)/.test(adapter) &&
+    /removeEventListener\("pagehide", resetHiddenPage\)/.test(adapter) &&
     /addEventListener\("pageshow", resetRestoredPage\)/.test(adapter) &&
     /removeEventListener\("pageshow", resetRestoredPage\)/.test(adapter),
 );
@@ -611,10 +620,11 @@ check(
     /const reset = \(\) => \{[\s\S]{0,400}window\.clearTimeout\(departureFallbackRef\.current\)/.test(
       adapterCode,
     ) &&
-    /clearDistrictTransitionFallback\(\);[\s\S]{0,900}setDeparting\(false\)/.test(
+    /clearDistrictTransitionFallback\(\);[\s\S]{0,1400}setDeparting\(false\)/.test(
       adapterCode,
     ) &&
-    /if \(event\.persisted\) reset\(\)/.test(adapterCode),
+    /if \(!event\.persisted\) return;[\s\S]{0,120}reset\(\)/.test(adapterCode) &&
+    /setDocumentHidden\(true\);[\s\S]{0,80}reset\(\)/.test(adapterCode),
 );
 check(
   "departure preserves modified/native clicks and intercepts only eligible cinema",

@@ -18,11 +18,15 @@ import {
   deriveCxosRuntimeEnvironment,
   resolveCxosDistrictTransitionDirection,
   resolveCxosDistrictTransitionDuration,
+  resolveCxosLivingEnvironmentProjection,
   resolveCxosRuntimeProjection,
   selectCxosActiveDistrict,
   validateCxosRoomRuntime,
   type CxosDistrictTransitionDirection,
+  type CxosAttentionState,
   type CxosExperienceProjection,
+  type CxosIdlePresentationState,
+  type CxosKaiResponseState,
   type CxosRoomRuntimeDefinition,
   type CxosRuntimeCapabilities,
 } from "@/lib/cxos/runtime";
@@ -49,6 +53,10 @@ export interface UseCxosRoomRuntimeOptions<DistrictId extends string> {
   messages: CxosRoomRuntimeMessages;
   announce: (message: string) => void;
   onRouteReset?: () => void;
+  presentationSignals?: {
+    attention?: CxosAttentionState;
+    kai?: CxosKaiResponseState;
+  };
 }
 
 export interface CxosChamberTransition<DistrictId extends string> {
@@ -197,6 +205,7 @@ export function useCxosRoomRuntime<DistrictId extends string>({
   messages,
   announce,
   onRouteReset,
+  presentationSignals,
 }: UseCxosRoomRuntimeOptions<DistrictId>) {
   const validation = useMemo(
     () => validateCxosRoomRuntime(definition),
@@ -225,6 +234,11 @@ export function useCxosRoomRuntime<DistrictId extends string>({
   );
   const [documentHidden, setDocumentHidden] = useState(false);
   const [departing, setDeparting] = useState(false);
+  const [detectedAttention, setDetectedAttention] =
+    useState<CxosAttentionState>("ambient");
+  const [activitySequence, setActivitySequence] = useState(0);
+  const [idleState, setIdleState] =
+    useState<CxosIdlePresentationState>("engaged");
 
   const replayFocusPendingRef = useRef(false);
   const staticArrivalFocusRef = useRef(false);
@@ -250,9 +264,18 @@ export function useCxosRoomRuntime<DistrictId extends string>({
     sequence: number;
   } | null>(null);
   const visibilityFocusPendingRef = useRef(false);
+  const idleTimerRef = useRef<number | null>(null);
   const announceRef = useRef(announce);
   const routeResetRef = useRef(onRouteReset);
   const districtMode = definition.districtMode ?? "flow";
+  const requestedAttention = presentationSignals?.attention ?? "ambient";
+  const requestedKai = presentationSignals?.kai ?? "quiet";
+  const attention: CxosAttentionState =
+    detectedAttention === "inspecting"
+      ? "inspecting"
+      : requestedAttention !== "ambient"
+        ? requestedAttention
+        : detectedAttention;
 
   useEffect(() => {
     announceRef.current = announce;
@@ -320,6 +343,146 @@ export function useCxosRoomRuntime<DistrictId extends string>({
       scrollActivation: false,
     };
   }, [baseEnvironment, chamberTransition.phase]);
+
+  useEffect(() => {
+    const root = roomRootRef.current;
+    if (!root || !definition.livingEnvironment) return;
+
+    const readAttention = () => {
+      if (!root.isConnected) return;
+      const inspecting = root.querySelector(
+        "details[data-cxos-inspection][open]",
+      );
+      if (inspecting) {
+        setDetectedAttention("inspecting");
+        return;
+      }
+      const focused = document.activeElement;
+      const interactiveFocus =
+        focused instanceof HTMLElement &&
+        focused.closest(
+          'a[href], button, input:not([type="hidden"]), textarea, select, summary, [role="button"], [role="link"], [role="checkbox"], [role="menuitem"], [role="option"], [role="radio"], [role="switch"], [role="tab"], [role="textbox"]',
+        );
+      setDetectedAttention(
+        focused instanceof HTMLElement &&
+          root.contains(focused) &&
+          focused !== root &&
+          (focused.closest("[data-cxos-focus-zone]") || interactiveFocus)
+          ? "reading"
+          : "ambient",
+      );
+    };
+    const registerActivity = () => setActivitySequence((value) => value + 1);
+    const settleAttentionAfterEvent = () => queueMicrotask(readAttention);
+    const onFocus = () => {
+      registerActivity();
+      settleAttentionAfterEvent();
+    };
+
+    root.addEventListener("pointerdown", registerActivity, true);
+    root.addEventListener("click", registerActivity, true);
+    root.addEventListener("keydown", registerActivity, true);
+    root.addEventListener("input", registerActivity, true);
+    root.addEventListener("focusin", onFocus, true);
+    root.addEventListener("focusout", settleAttentionAfterEvent, true);
+    root.addEventListener("toggle", settleAttentionAfterEvent, true);
+    readAttention();
+
+    return () => {
+      root.removeEventListener("pointerdown", registerActivity, true);
+      root.removeEventListener("click", registerActivity, true);
+      root.removeEventListener("keydown", registerActivity, true);
+      root.removeEventListener("input", registerActivity, true);
+      root.removeEventListener("focusin", onFocus, true);
+      root.removeEventListener("focusout", settleAttentionAfterEvent, true);
+      root.removeEventListener("toggle", settleAttentionAfterEvent, true);
+    };
+  }, [definition.livingEnvironment, roomRootRef]);
+
+  useEffect(() => {
+    if (idleTimerRef.current !== null) {
+      window.clearTimeout(idleTimerRef.current);
+      idleTimerRef.current = null;
+    }
+    const livingEnvironment = definition.livingEnvironment;
+    if (!livingEnvironment) {
+      setIdleState("engaged");
+      return;
+    }
+
+    const hardSettle =
+      !validation.valid ||
+      resolution.tier === "C" ||
+      resolution.tier === "D" ||
+      environment.phase !== "operating" ||
+      documentHidden ||
+      chamberTransition.phase === "passage" ||
+      attention !== "ambient" ||
+      requestedKai !== "quiet";
+    if (hardSettle) {
+      setIdleState("settled");
+      return;
+    }
+
+    setIdleState("engaged");
+    const idleAfterMs =
+      resolution.tier === "A"
+        ? livingEnvironment.idleAfterMs.A
+        : livingEnvironment.idleAfterMs.B;
+    const settleAfterMs = resolution.tier === "A" ? 400 : 300;
+    idleTimerRef.current = window.setTimeout(() => {
+      setIdleState("settling");
+      idleTimerRef.current = window.setTimeout(() => {
+        idleTimerRef.current = null;
+        setIdleState("settled");
+      }, settleAfterMs);
+    }, idleAfterMs);
+
+    return () => {
+      if (idleTimerRef.current !== null) {
+        window.clearTimeout(idleTimerRef.current);
+        idleTimerRef.current = null;
+      }
+    };
+  }, [
+    activeDistrict,
+    activitySequence,
+    arrivalKey,
+    attention,
+    chamberTransition.phase,
+    definition.livingEnvironment,
+    documentHidden,
+    environment.phase,
+    requestedKai,
+    resolution.tier,
+    validation.valid,
+  ]);
+
+  const livingEnvironment = useMemo(
+    () =>
+      resolveCxosLivingEnvironmentProjection(definition, activeDistrict, {
+        contractValid: validation.valid,
+        tier: resolution.tier,
+        phase: environment.phase,
+        documentHidden,
+        passage: chamberTransition.phase === "passage",
+        attention,
+        kai: requestedKai,
+        idle: idleState,
+      }),
+    [
+      activeDistrict,
+      attention,
+      chamberTransition.phase,
+      definition,
+      documentHidden,
+      environment.phase,
+      idleState,
+      requestedKai,
+      resolution.tier,
+      validation.valid,
+    ],
+  );
 
   const districtTransitionDurationMs = useMemo(
     () =>
@@ -607,10 +770,20 @@ export function useCxosRoomRuntime<DistrictId extends string>({
         window.clearTimeout(departureFallbackRef.current);
         departureFallbackRef.current = null;
       }
+      if (idleTimerRef.current !== null) {
+        window.clearTimeout(idleTimerRef.current);
+        idleTimerRef.current = null;
+      }
       clearDistrictTransitionFallback();
       cancelDistrictFocus();
       arrivalCommitFocusRef.current = null;
+      replayFocusPendingRef.current = false;
       visibilityFocusPendingRef.current = false;
+      roomRootRef.current
+        ?.querySelectorAll<HTMLDetailsElement>(
+          "details[data-cxos-inspection][open]",
+        )
+        .forEach((inspection) => inspection.removeAttribute("open"));
       const sequence = chamberTransitionRef.current.sequence + 1;
       const settled: CxosChamberTransition<DistrictId> = {
         phase: "settled",
@@ -625,21 +798,31 @@ export function useCxosRoomRuntime<DistrictId extends string>({
       setChamberTransition(settled);
       setDeparting(false);
       setKaiContextDistrict(definition.initialDistrict);
+      setDetectedAttention("ambient");
+      setIdleState("settled");
+      setActivitySequence((value) => value + 1);
       routeResetRef.current?.();
     };
-    const resetRestoredPage = (event: PageTransitionEvent) => {
-      if (event.persisted) reset();
+    const resetHiddenPage = () => {
+      setDocumentHidden(true);
+      reset();
     };
-    window.addEventListener("pagehide", reset);
+    const resetRestoredPage = (event: PageTransitionEvent) => {
+      if (!event.persisted) return;
+      setDocumentHidden(document.hidden);
+      reset();
+    };
+    window.addEventListener("pagehide", resetHiddenPage);
     window.addEventListener("pageshow", resetRestoredPage);
     return () => {
-      window.removeEventListener("pagehide", reset);
+      window.removeEventListener("pagehide", resetHiddenPage);
       window.removeEventListener("pageshow", resetRestoredPage);
     };
   }, [
     cancelDistrictFocus,
     clearDistrictTransitionFallback,
     definition.initialDistrict,
+    roomRootRef,
   ]);
 
   useEffect(() => {
@@ -969,6 +1152,10 @@ export function useCxosRoomRuntime<DistrictId extends string>({
       arrivalCommitFocusRef.current = null;
       clearDistrictTransitionFallback();
       cancelDistrictFocus();
+      if (idleTimerRef.current !== null) {
+        window.clearTimeout(idleTimerRef.current);
+        idleTimerRef.current = null;
+      }
     },
     [cancelDistrictFocus, clearDistrictTransitionFallback],
   );
@@ -997,6 +1184,21 @@ export function useCxosRoomRuntime<DistrictId extends string>({
     "data-cxos-lighting": environment.lighting,
     "data-cxos-atmosphere": environment.atmosphere,
     "data-cxos-kai-presence": environment.kaiPresence,
+    "data-cxos-tier": resolution.tier,
+    // Undefined optional values are omitted by React. Invalid or legacy room
+    // contracts therefore cannot accidentally opt into Living Environment CSS.
+    "data-cxos-environment": livingEnvironment?.profileId,
+    "data-cxos-profile": livingEnvironment?.chamber.id,
+    "data-cxos-camera": livingEnvironment?.chamber.camera,
+    "data-cxos-light": livingEnvironment?.chamber.lighting,
+    "data-cxos-depth": livingEnvironment?.chamber.depth,
+    "data-cxos-signature": livingEnvironment?.chamber.motion,
+    "data-cxos-focus": livingEnvironment?.chamber.focus,
+    "data-cxos-attention": livingEnvironment?.attention,
+    "data-cxos-kai": livingEnvironment?.kai,
+    "data-cxos-idle": livingEnvironment?.idle,
+    "data-cxos-environment-motion": livingEnvironment?.motion,
+    "data-cxos-animation-budget": livingEnvironment?.continuousAnimationBudget,
   } as const;
 
   return {
@@ -1005,6 +1207,9 @@ export function useCxosRoomRuntime<DistrictId extends string>({
     capabilitiesReady,
     resolution,
     environment,
+    livingEnvironment,
+    attention,
+    idleState: livingEnvironment?.idle ?? "settled",
     attributes,
     arrivalBeats: definition.arrivalBeats,
     arrivalDurationMs,

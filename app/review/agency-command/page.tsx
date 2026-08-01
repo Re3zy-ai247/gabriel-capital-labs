@@ -1,5 +1,5 @@
 import { reviewBuildAllowed } from "@/lib/cxos/reviewMode";
-import { AgencyCommandStage } from "./stage";
+import { notFound } from "next/navigation";
 
 // CXOS Phase 6.2 — Agency Headquarters Founder Review.
 //
@@ -9,20 +9,11 @@ import { AgencyCommandStage } from "./stage";
 // source itself performs no network request, storage access, or data mutation.
 // Kai commands use a fixed local resolver and deterministic route-instance state.
 //
-// The production guarantee is precise: the review stage is not renderable when
-// reviewBuildAllowed() is false. This does not claim a 404 or bundle exclusion.
-export default function AgencyCommandReview() {
-  if (!reviewBuildAllowed()) {
-    return (
-      <main
-        id="main"
-        tabIndex={-1}
-        className="flex min-h-screen items-center justify-center bg-ink-950 p-8 text-slate-400"
-      >
-        <p className="text-sm">Founder Review is not enabled in this build.</p>
-      </main>
-    );
-  }
+// The server gate runs before the client stage is imported. Production and
+// unknown Vercel identities resolve to the ordinary 404 boundary.
+export default async function AgencyCommandReview() {
+  if (!reviewBuildAllowed()) notFound();
 
+  const { AgencyCommandStage } = await import("./stage");
   return <AgencyCommandStage />;
 }

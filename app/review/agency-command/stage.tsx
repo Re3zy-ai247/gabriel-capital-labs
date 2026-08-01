@@ -14,9 +14,11 @@ import {
 } from "@/components/cxos/runtime/useCxosRoomRuntime";
 import type {
   CxosExperienceProjection,
+  CxosKaiResponseState,
   CxosRoomRuntimeDefinition,
 } from "@/lib/cxos/runtime";
 import styles from "./agency-command.module.css";
+import { AGENCY_LIVING_ENVIRONMENT } from "./environment";
 import {
   AGENCY_AUTHORIZED_SOURCES,
   AGENCY_BOTTLENECKS,
@@ -111,6 +113,7 @@ const AGENCY_CORE_RUNTIME = {
   arrivalBeats: AGENCY_ARRIVAL_BEATS,
   arrivalDurationMs: { A: 1500, B: 700 },
   motionChannels: AGENCY_MOTION_CHANNELS,
+  livingEnvironment: AGENCY_LIVING_ENVIRONMENT,
   kaiContextHoldDistricts: ["kai-suite"],
   departure: {
     href: "/review/mission-control",
@@ -175,6 +178,9 @@ export function AgencyCommandStage() {
   const handledHistoryHrefRef = useRef<string | null>(null);
   const pendingHistoryDistrictRef = useRef<AgencyDistrictId | null>(null);
   const pendingChamberFocusRef = useRef<PendingChamberFocus | null>(null);
+  const pendingChamberFocusSequenceRef = useRef(0);
+  const pendingChamberFocusFrameRef = useRef<number | null>(null);
+  const pendingChamberFocusSettleFrameRef = useRef<number | null>(null);
   const capabilitiesHydratedRef = useRef(false);
   const previousReducedMotionRef = useRef<boolean | null>(null);
   const kaiTurnSequenceRef = useRef(0);
@@ -187,16 +193,48 @@ export function AgencyCommandStage() {
   );
   const kaiWorkflowAvailable =
     fixtureState === "populated" || fixtureState === "capacity";
+  const kaiPresentationState: CxosKaiResponseState =
+    kaiCommand.trim().length > 0 || editingKaiTurnId
+      ? "staged"
+      : kaiTurns.length > 0
+        ? "resolved"
+        : "quiet";
+
+  const cancelPendingChamberFocus = useCallback(() => {
+    pendingChamberFocusRef.current = null;
+    pendingChamberFocusSequenceRef.current += 1;
+    if (pendingChamberFocusFrameRef.current !== null) {
+      window.cancelAnimationFrame(pendingChamberFocusFrameRef.current);
+      pendingChamberFocusFrameRef.current = null;
+    }
+    if (pendingChamberFocusSettleFrameRef.current !== null) {
+      window.cancelAnimationFrame(pendingChamberFocusSettleFrameRef.current);
+      pendingChamberFocusSettleFrameRef.current = null;
+    }
+  }, []);
 
   const clearKaiSession = useCallback(() => {
     setKaiCommand("");
     setKaiTurns([]);
     setEditingKaiTurnId(null);
+    setExpandedQueueId(null);
+    setIntakeOpen(false);
+    setCinematicPromptOpen(false);
     setKaiCommandReceipt(
       "ROUTE SESSION EMPTY · Nothing is prepared and no production action is connected."
     );
     kaiTurnSequenceRef.current = 0;
-  }, []);
+    kaiSubmitLockedRef.current = false;
+    replayGateFocusPendingRef.current = false;
+    pendingHistoryDistrictRef.current = null;
+    cancelPendingChamberFocus();
+    directorRef.current?.removeAttribute("open");
+    roomRootRef.current
+      ?.querySelectorAll<HTMLDetailsElement>(
+        "details[data-agency-inspection][open]",
+      )
+      .forEach((inspection) => inspection.removeAttribute("open"));
+  }, [cancelPendingChamberFocus]);
 
   const runtime = useCxosRoomRuntime({
     definition: AGENCY_CORE_RUNTIME,
@@ -213,6 +251,10 @@ export function AgencyCommandStage() {
     },
     announce: setAnnouncement,
     onRouteReset: clearKaiSession,
+    presentationSignals: {
+      attention: "ambient",
+      kai: kaiPresentationState,
+    },
   });
 
   const {
@@ -270,23 +312,52 @@ export function AgencyCommandStage() {
 
   const focusPendingChamberTarget = useCallback(
     (pending: PendingChamberFocus) => {
-      window.requestAnimationFrame(() => {
+      cancelPendingChamberFocus();
+      const focusSequence = pendingChamberFocusSequenceRef.current;
+      const canCommitFocus = () =>
+        focusSequence === pendingChamberFocusSequenceRef.current &&
+        !document.hidden &&
+        roomRootRef.current?.isConnected === true &&
+        roomRootRef.current.dataset.activeDistrict === pending.districtId;
+
+      pendingChamberFocusFrameRef.current = window.requestAnimationFrame(() => {
+        pendingChamberFocusFrameRef.current = null;
+        if (!canCommitFocus()) return;
         if (pending.inspectionId) {
           const inspection = document.getElementById(
             pending.inspectionId,
           ) as HTMLDetailsElement | null;
-          if (inspection) inspection.open = true;
+          if (inspection && roomRootRef.current?.contains(inspection)) {
+            inspection.open = true;
+          }
         }
-        window.requestAnimationFrame(() => {
+        pendingChamberFocusSettleFrameRef.current = window.requestAnimationFrame(() => {
+          pendingChamberFocusSettleFrameRef.current = null;
+          if (!canCommitFocus()) return;
           const target = document.getElementById(pending.elementId);
-          target?.focus({ preventScroll: true });
-          target?.scrollIntoView({ block: "center", behavior: "auto" });
+          if (!target || !roomRootRef.current?.contains(target)) return;
+          target.focus({ preventScroll: true });
+          target.scrollIntoView({ block: "center", behavior: "auto" });
           setAnnouncement(pending.announcement);
         });
       });
     },
-    [],
+    [cancelPendingChamberFocus],
   );
+
+  useEffect(() => {
+    const cancelForHiddenLifecycle = () => {
+      if (document.hidden) cancelPendingChamberFocus();
+    };
+    const cancelForPageHide = () => cancelPendingChamberFocus();
+    document.addEventListener("visibilitychange", cancelForHiddenLifecycle);
+    window.addEventListener("pagehide", cancelForPageHide);
+    return () => {
+      document.removeEventListener("visibilitychange", cancelForHiddenLifecycle);
+      window.removeEventListener("pagehide", cancelForPageHide);
+      cancelPendingChamberFocus();
+    };
+  }, [cancelPendingChamberFocus]);
 
   const navigateToChamber = useCallback(
     (
@@ -299,15 +370,16 @@ export function AgencyCommandStage() {
         return;
       }
 
+      cancelPendingChamberFocus();
       roomRootRef.current
         ?.querySelectorAll<HTMLDetailsElement>(
           "details[data-agency-inspection][open]",
         )
         .forEach((inspection) => inspection.removeAttribute("open"));
 
-      if (pendingFocus) {
-        pendingChamberFocusRef.current = { districtId, ...pendingFocus };
-      }
+      pendingChamberFocusRef.current = pendingFocus
+        ? { districtId, ...pendingFocus }
+        : null;
 
       if (
         districtId === activeDistrict &&
@@ -328,6 +400,7 @@ export function AgencyCommandStage() {
     },
     [
       activeDistrict,
+      cancelPendingChamberFocus,
       chamberTransition.phase,
       focusPendingChamberTarget,
       moveToDistrict,
@@ -341,7 +414,8 @@ export function AgencyCommandStage() {
   }, [arrivalSettled]);
 
   useEffect(() => {
-    if (!arrivalSettled || !chamberManaged || historyReadyRef.current) return;
+    if (!arrivalSettled || !chamberManaged) return;
+    const shouldRestoreInitialHistory = !historyReadyRef.current;
     historyReadyRef.current = true;
 
     const restoreHistoryDistrict = (event?: Event) => {
@@ -379,7 +453,7 @@ export function AgencyCommandStage() {
       );
     };
 
-    restoreHistoryDistrict();
+    if (shouldRestoreInitialHistory) restoreHistoryDistrict();
     window.addEventListener("popstate", restoreHistoryDistrict);
     window.addEventListener("hashchange", restoreHistoryDistrict);
     window.addEventListener("pageshow", restoreHistoryDistrict);
@@ -748,6 +822,7 @@ export function AgencyCommandStage() {
   };
 
   const replayArrival = () => {
+    cancelPendingChamberFocus();
     directorRef.current?.removeAttribute("open");
     roomRootRef.current?.focus({ preventScroll: true });
     replayGateFocusPendingRef.current = true;
@@ -867,6 +942,7 @@ export function AgencyCommandStage() {
       data-chamber-ready={chamberManaged ? "true" : "false"}
       data-chamber-phase={chamberTransition.phase}
       data-chamber-target={passageTarget}
+      data-cxos-passage-target={passageTarget}
       data-scroll-ready={environment.scrollActivation ? "true" : "false"}
       data-motion-override={
         reducedMotionOverride && projection === "cinematic" ? "true" : "false"
@@ -1558,7 +1634,11 @@ function FacilityDirectory({
           <span className={styles.facilityEdge}>MISSION CONTROL RETURN</span>
         )}
       </div>
-      <details className={styles.mobileFacilityMap} data-agency-inspection>
+      <details
+        className={styles.mobileFacilityMap}
+        data-agency-inspection
+        data-cxos-inspection
+      >
         <summary>
           <span>FACILITY MAP</span>
           <strong>Choose one of seven chambers</strong>
@@ -1590,6 +1670,7 @@ function FacilityPassage({
       className={styles.facilityPassage}
       data-active={active ? "true" : "false"}
       data-cxos-transition-sequence={sequence}
+      data-cxos-passage-target={target.id}
       onAnimationEnd={onAnimationEnd}
     >
       <div className={styles.passageAxis}>
@@ -1658,6 +1739,7 @@ function InspectionPlane({
       id={id}
       className={styles.inspectionPlane}
       data-agency-inspection
+      data-cxos-inspection
       onToggle={(event) => {
         if (!event.currentTarget.open) return;
         event.currentTarget
@@ -1706,6 +1788,7 @@ function AgencyDistrictShell({
       className={styles.district}
       data-agency-district={district.id}
       data-cxos-district={district.id}
+      data-cxos-profile={district.id}
       data-current={current ? "true" : "false"}
       data-journey-state={
         chamberManaged ? (current ? "operating" : "queued") : "static"
@@ -1717,7 +1800,10 @@ function AgencyDistrictShell({
         className={styles.districtEnvironment}
         data-environment={district.id}
       >
-        <span data-plane="depth" />
+        <span
+          data-plane="depth"
+          data-cxos-motion-channel={AGENCY_MOTION_CHANNELS[0]}
+        />
         <span data-plane="horizon" />
         <span data-plane="signal"><i /><b /><em /></span>
       </div>
@@ -1750,7 +1836,9 @@ function AgencyDistrictShell({
         <p>{district.truthBoundary}</p>
       </div>
 
-      <div className={styles.districtBody}>{children}</div>
+      <div className={styles.districtBody} data-cxos-focus-zone>
+        {children}
+      </div>
 
       <nav className={styles.districtHandoff} aria-label={`${district.name} facility navigation`}>
         {previousDistrict ? (

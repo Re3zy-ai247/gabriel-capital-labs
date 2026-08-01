@@ -17,6 +17,7 @@ const layout = read("app/review/layout.tsx");
 const hub = read("app/review/page.tsx");
 const agencyPage = read("app/review/agency-command/page.tsx");
 const agencyStage = read("app/review/agency-command/stage.tsx");
+const agencyEnvironment = read("app/review/agency-command/environment.ts");
 const agencyFixtures = read("app/review/agency-command/fixtures.ts");
 const missionPage = read("app/review/mission-control/page.tsx");
 const missionStage = read("app/review/mission-control/stage.tsx");
@@ -144,14 +145,25 @@ check(
 );
 
 for (const [label, source] of [
+  ["review layout", layout],
   ["review hub", hub],
   ["Agency page", agencyPage],
   ["Mission Control page", missionPage],
 ] as const) {
   check(`${label} is server-gated through reviewBuildAllowed`,
     /reviewBuildAllowed\(\)/.test(source) &&
-      /Founder Review is not enabled in this build\./.test(source));
+      /notFound\(\)/.test(source));
 }
+
+check(
+  "client review stages are imported only after their server page gates",
+  /if \(!reviewBuildAllowed\(\)\) notFound\(\);[\s\S]*await import\("\.\/stage"\)/.test(
+    agencyPage,
+  ) &&
+    /if \(!reviewBuildAllowed\(\)\) notFound\(\);[\s\S]*await import\("\.\/stage"\)/.test(
+      missionPage,
+    ),
+);
 
 const roomKeys = [...rooms.matchAll(/^ {4}key: "([a-z-]+)"/gm)].map(
   (match) => match[1],
@@ -191,7 +203,7 @@ check(
 check(
   "review route sources have no network, API, database, auth, or live dashboard import",
   !/\bfetch\s*\(|XMLHttpRequest|WebSocket|EventSource|sendBeacon|@\/app\/api|@\/lib\/prisma|next-auth|@\/lib\/auth|@\/lib\/session|app\/dashboard/.test(
-    `${hub}\n${agencyPage}\n${agencyStage}\n${agencyFixtures}\n${missionPage}\n${missionStage}\n${missionEntry}\n${missionHeader}`,
+    `${hub}\n${agencyPage}\n${agencyStage}\n${agencyEnvironment}\n${agencyFixtures}\n${missionPage}\n${missionStage}\n${missionEntry}\n${missionHeader}`,
   ),
 );
 check(
