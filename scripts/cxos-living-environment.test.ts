@@ -373,6 +373,11 @@ check(
     /style\.visibility === "hidden"/.test(browserHarness),
 );
 check(
+  "finite arrival threshold beats are not charged to the ambient environment budget",
+  /agencyThresholdBeat/.test(css) &&
+    !/DistrictOperatingMoment\|ThresholdBeat\|FacilityChannel/.test(browserHarness),
+);
+check(
   "Core policy remains pure and room-agnostic",
   !/\bwindow\.|\bdocument\.|\bnavigator\.|Agency Command|Central Command|Kai Executive Suite/.test(
     policy,

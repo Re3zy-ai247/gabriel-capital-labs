@@ -897,7 +897,7 @@ async function snapshot(page, phaseCursor, options = {}) {
         : null;
       const motionChannel = motionOwner?.getAttribute("data-cxos-motion-channel") ?? null;
       const livingAnimation = Boolean(root?.hasAttribute("data-cxos-environment")) && (
-        /agency(?:Sweep|Breath|FlowEntering|FlowAdvancing|FlowWaiting|FlowBlocked|FlowResolving|ArtifactReveal|DistrictTruthDraw|DistrictOperatingMoment|ThresholdBeat|FacilityChannel|ClientFloorSweep|TeamRecognition|ObservatoryScan|EvidenceRecognition|KaiRecognition|CapacityScan|LivingAcquire|LivingHeartbeat|LivingScroll)/.test(animationName ?? "") ||
+        /agency(?:Sweep|Breath|FlowEntering|FlowAdvancing|FlowWaiting|FlowBlocked|FlowResolving|ArtifactReveal|DistrictTruthDraw|DistrictOperatingMoment|FacilityChannel|ClientFloorSweep|TeamRecognition|ObservatoryScan|EvidenceRecognition|KaiRecognition|CapacityScan|LivingAcquire|LivingHeartbeat|LivingScroll)/.test(animationName ?? "") ||
         (target instanceof Element && target.matches("[data-plane='depth']"))
       );
       return {
