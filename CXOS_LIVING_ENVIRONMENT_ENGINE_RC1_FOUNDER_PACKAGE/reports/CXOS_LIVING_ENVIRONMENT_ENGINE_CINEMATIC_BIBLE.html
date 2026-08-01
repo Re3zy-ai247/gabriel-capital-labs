@@ -1,0 +1,754 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src 'none'; font-src 'none'; connect-src 'none'; script-src 'none'; media-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>CXOS Living Environment Engine — Cinematic Experience Bible</title>
+  <style>
+    :root { color-scheme: dark light; --page:#07111d; --surface:#0d1c2c; --surface-2:#12263a; --text:#eef6fa; --muted:#b4c6d2; --line:#315069; --brand:#65e0d8; --amber:#ffd184; --shadow:0 18px 42px rgba(0,0,0,.25); }
+    * { box-sizing:border-box; }
+    html { scroll-behavior:smooth; }
+    body { margin:0; background:var(--page); color:var(--text); font:16px/1.65 ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    a { color:var(--brand); text-underline-offset:.18em; }
+    a:focus-visible, textarea:focus-visible, [tabindex]:focus-visible { outline:3px solid var(--amber); outline-offset:3px; }
+    .skip-link { position:fixed; z-index:10; top:1rem; left:1rem; transform:translateY(-180%); padding:.7rem 1rem; border-radius:.5rem; background:var(--amber); color:#111; }
+    .skip-link:focus { transform:translateY(0); }
+    .shell { width:min(1080px,calc(100% - 2rem)); margin-inline:auto; }
+    header { padding:3.75rem 0 2rem; border-bottom:1px solid var(--line); }
+    .eyebrow { color:var(--brand); font-size:.76rem; font-weight:800; letter-spacing:.12em; text-transform:uppercase; }
+    h1 { max-width:25ch; margin:.45rem 0 1rem; font-size:clamp(2.2rem,6vw,4.5rem); line-height:1.04; letter-spacing:-.04em; }
+    h2,h3,h4,h5,h6 { scroll-margin-top:1rem; line-height:1.22; letter-spacing:-.02em; }
+    h2 { margin-top:3rem; font-size:clamp(1.6rem,3vw,2.35rem); }
+    h3 { margin-top:2rem; }
+    p,li { max-width:88ch; }
+    .status-badge { display:inline-block; padding:.28rem .66rem; border:1px solid var(--amber); border-radius:999px; color:var(--amber); font-size:.82rem; font-weight:800; }
+    .boundary { max-width:82ch; color:var(--muted); }
+    nav { padding:1rem 0; border-bottom:1px solid var(--line); background:var(--surface); }
+    nav h2 { margin:0 0 .45rem; font-size:1rem; }
+    nav ul { display:flex; flex-wrap:wrap; gap:.35rem 1rem; margin:0; padding:0; list-style:none; }
+    nav a { display:inline-block; min-height:44px; padding:.55rem 0; }
+    .toc-level-3 { padding-left:.65rem; }
+    main { padding:2rem 0 4rem; }
+    blockquote { margin:1.4rem 0; padding:.8rem 1rem; border-left:4px solid var(--brand); background:var(--surface); color:var(--muted); }
+    blockquote p { margin:0; }
+    hr { margin:2.5rem 0; border:0; border-top:1px solid var(--line); }
+    pre { overflow:auto; padding:1rem; border:1px solid var(--line); border-radius:.75rem; background:#050b12; color:#edf7fa; }
+    code { border:1px solid var(--line); border-radius:.3rem; padding:.08em .3em; background:var(--surface-2); color:var(--brand); }
+    pre code { border:0; padding:0; background:transparent; color:inherit; }
+    .table-wrap { overflow-x:auto; margin:1.25rem 0; border:1px solid var(--line); border-radius:.85rem; }
+    table { width:100%; min-width:620px; border-collapse:collapse; background:var(--surface); }
+    th,td { padding:.72rem .82rem; border-top:1px solid var(--line); text-align:left; vertical-align:top; }
+    thead th { border-top:0; background:var(--surface-2); color:var(--brand); }
+    .sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; }
+    .task { list-style:none; margin-left:-1.5rem; }
+    .task-mark { display:inline-block; width:1.6rem; color:var(--brand); }
+    .reference,.image-reference { color:var(--muted); text-decoration:underline dotted; }
+    .copy-panel { margin-top:4rem; padding:1rem; border:1px solid var(--line); border-radius:1rem; background:var(--surface); box-shadow:var(--shadow); }
+    .copy-panel h2 { margin-top:0; font-size:1.35rem; }
+    .copy-panel p { color:var(--muted); }
+    textarea { width:100%; min-height:20rem; resize:vertical; padding:1rem; border:1px solid var(--line); border-radius:.75rem; background:var(--page); color:var(--text); font:13px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace; }
+    footer { padding:2rem 0 3rem; border-top:1px solid var(--line); color:var(--muted); }
+    @media (prefers-color-scheme: light) { :root { --page:#fff; --surface:#f4f8fa; --surface-2:#e9f2f5; --text:#14202b; --muted:#4c6070; --line:#9eb0bc; --brand:#07666b; --amber:#7a4b00; --shadow:none; } pre { background:#eef4f7; color:#14202b; } }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior:auto; } }
+    @media (max-width:680px) { header { padding-top:2.5rem; } nav ul { display:block; } table { min-width:560px; } .shell { width:min(100% - 1.1rem,1080px); } }
+    @page { size:auto; margin:16mm; }
+    @media print { :root { color-scheme:light; --page:#fff; --surface:#fff; --surface-2:#eef4f7; --text:#111827; --muted:#425466; --line:#93a4b2; --brand:#075e63; --amber:#7a4b00; --shadow:none; } body { font-size:10.5pt; } .shell { width:100%; } header { padding-top:0; } nav,.skip-link,.copy-panel { display:none; } main { padding-bottom:0; } h1 { font-size:28pt; } h2 { font-size:18pt; break-after:avoid; } h3 { font-size:13pt; break-after:avoid; } .table-wrap { overflow:visible; border:0; } table { min-width:0; font-size:8.5pt; } thead { display:table-header-group; } tr,pre,blockquote { break-inside:avoid; } a { color:inherit; text-decoration:none; } }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#content">Skip to report</a>
+  <header>
+    <div class="shell">
+      <div class="eyebrow">CreditVector Experience OS · deterministic handoff</div>
+      <h1>CXOS Living Environment Engine — Cinematic Experience Bible</h1>
+      <p><span class="status-badge">Core Runtime 1.1 direction implemented</span></p>
+      <p class="boundary">Offline report mirror. It loads no external asset, script, font, frame, or network resource.</p>
+    </div>
+  </header>
+  <nav aria-label="Report contents"><div class="shell"><h2>Contents</h2><ul><li class="toc-level-2"><a href="#1-authority-and-use">1. Authority and use</a></li><li class="toc-level-2"><a href="#2-directing-philosophy">2. Directing philosophy</a></li><li class="toc-level-3"><a href="#2-1-the-environment-serves-truth">2.1 The environment serves truth</a></li><li class="toc-level-3"><a href="#2-2-one-facility-seven-distinct-shots">2.2 One facility, seven distinct shots</a></li><li class="toc-level-3"><a href="#2-3-the-camera-is-compositional-language">2.3 The camera is compositional language</a></li><li class="toc-level-3"><a href="#2-4-finite-first-still-by-default">2.4 Finite first, still by default</a></li><li class="toc-level-3"><a href="#2-5-native-behavior-has-priority">2.5 Native behavior has priority</a></li><li class="toc-level-2"><a href="#3-ownership-and-truth-boundary">3. Ownership and truth boundary</a></li><li class="toc-level-2"><a href="#4-closed-token-system">4. Closed token system</a></li><li class="toc-level-3"><a href="#4-1-closed-timing-limits">4.1 Closed timing limits</a></li><li class="toc-level-3"><a href="#4-2-real-easing-definitions">4.2 Real easing definitions</a></li><li class="toc-level-3"><a href="#4-3-drift-scroll-and-chamber-acquire-values">4.3 Drift, scroll, and chamber-acquire values</a></li><li class="toc-level-3"><a href="#4-4-spatial-blur-light-and-animation-limits">4.4 Spatial, blur, light, and animation limits</a></li><li class="toc-level-3"><a href="#4-5-closed-chamber-profile-vocabulary">4.5 Closed chamber-profile vocabulary</a></li><li class="toc-level-3"><a href="#4-6-explicit-presentation-signals">4.6 Explicit presentation signals</a></li><li class="toc-level-3"><a href="#4-7-source-code-map-and-target-implementation-budgets">4.7 Source-code map and target implementation budgets</a></li><li class="toc-level-2"><a href="#5-lifecycle-grammar">5. Lifecycle grammar</a></li><li class="toc-level-3"><a href="#5-1-arrival">5.1 Arrival</a></li><li class="toc-level-3"><a href="#5-2-operating-and-attention">5.2 Operating and attention</a></li><li class="toc-level-3"><a href="#5-3-idle-settlement">5.3 Idle settlement</a></li><li class="toc-level-3"><a href="#5-4-chamber-passage">5.4 Chamber passage</a></li><li class="toc-level-3"><a href="#5-5-hidden-reduced-constrained-and-invalid-states">5.5 Hidden, reduced, constrained, and invalid states</a></li><li class="toc-level-3"><a href="#5-6-departure">5.6 Departure</a></li><li class="toc-level-2"><a href="#6-seven-chamber-shot-profiles">6. Seven-chamber shot profiles</a></li><li class="toc-level-3"><a href="#6-1-central-command">6.1 Central Command</a></li><li class="toc-level-3"><a href="#6-2-client-operations-floor">6.2 Client Operations Floor</a></li><li class="toc-level-3"><a href="#6-3-team-operations-room">6.3 Team Operations Room</a></li><li class="toc-level-3"><a href="#6-4-business-health-observatory">6.4 Business Health Observatory</a></li><li class="toc-level-3"><a href="#6-5-activity-and-evidence-archive">6.5 Activity and Evidence Archive</a></li><li class="toc-level-3"><a href="#6-6-kai-executive-suite">6.6 Kai Executive Suite</a></li><li class="toc-level-3"><a href="#6-7-growth-capacity-threshold">6.7 Growth / Capacity Threshold</a></li><li class="toc-level-2"><a href="#7-mobile-reduced-motion-and-static-direction">7. Mobile, reduced-motion, and static direction</a></li><li class="toc-level-3"><a href="#7-1-mobile">7.1 Mobile</a></li><li class="toc-level-3"><a href="#7-2-tier-b">7.2 Tier B</a></li><li class="toc-level-3"><a href="#7-3-reduced-motion-and-tier-d">7.3 Reduced motion and Tier D</a></li><li class="toc-level-3"><a href="#7-4-tier-c-constrained-capability-and-no-javascript">7.4 Tier C, constrained capability, and no JavaScript</a></li><li class="toc-level-2"><a href="#8-kai-presentation-truth">8. Kai presentation truth</a></li><li class="toc-level-2"><a href="#9-forbidden-patterns">9. Forbidden patterns</a></li><li class="toc-level-3"><a href="#9-1-fabricated-truth">9.1 Fabricated truth</a></li><li class="toc-level-3"><a href="#9-2-spectacle-without-meaning">9.2 Spectacle without meaning</a></li><li class="toc-level-3"><a href="#9-3-input-and-accessibility-violations">9.3 Input and accessibility violations</a></li><li class="toc-level-3"><a href="#9-4-performance-and-architecture-violations">9.4 Performance and architecture violations</a></li><li class="toc-level-2"><a href="#10-review-checks">10. Review checks</a></li><li class="toc-level-2"><a href="#11-terminal-boundary">11. Terminal boundary</a></li></ul></div></nav>
+  <main id="content" class="shell">
+    <article>
+<ul><li><strong>Status:</strong> REFERENCE SPECIFICATION · ISOLATED CANDIDATE ONLY</li><li><strong>Date:</strong> 2026-08-01</li><li><strong>Architectural identity:</strong> CXOS Core Runtime 1.1 Living Environment profile — not a separate engine</li><li><strong>Reference consumer:</strong> Agency Headquarters — implemented only in the isolated RC1 candidate</li><li><strong>Release authority:</strong> No merge, production integration, promotion, alias, or broad-adoption authorization</li></ul>
+<h2 id="1-authority-and-use">1. Authority and use</h2>
+<p>This bible translates the already-approved RC1 plan into a compact directing reference for the Agency Headquarters implementation and its review evidence. It introduces no new product, architecture, adoption, or release decision.</p>
+<p>Its governing sources are:</p>
+<ol><li><code>CXOS_LIVING_ENVIRONMENT_ENGINE_RC1_PLAN.md</code>, especially §§4–5, 8–12;</li><li><code>CXOS_FOUNDATION.md</code> §17, including the Core Runtime 1.1 Living Environment contract;</li><li><code>CXOS_LANGUAGE_1_0.md</code> §§2.8–2.10 and §§9–18; and</li><li><code>.ai/ADR/ADR-0040-cxos-core-runtime.md</code>.</li></ol>
+<p>The delivery title retains “Living Environment Engine” because that is the assignment name. Architecturally there is one engine: the existing headless CXOS Core Runtime. Living Environment is an optional 1.1 presentation profile projected through the existing pure policy layer and sole browser adapter. Room-owned CSS renders the result.</p>
+<p>“Implemented reference” means the Agency profile exists in the isolated RC1 candidate. It does not mean the candidate has passed its evidence gates, received Founder acceptance, merged, or reached production.</p>
+<p>Truth labels in this document follow <code>.ai/CONSTITUTION.md</code>: <strong>VERIFIED</strong> means directly present in the isolated candidate or its controlling specification, not production-live; <strong>PROPOSED</strong> means a directing or adoption constraint awaiting its stated gate; <strong>NEEDS CONFIRMATION</strong> means only measured evidence or an owner decision can close the claim. No isolated-candidate fact is labeled as a production fact.</p>
+<h2 id="2-directing-philosophy">2. Directing philosophy</h2>
+<h3 id="2-1-the-environment-serves-truth">2.1 The environment serves truth</h3>
+<p>A Living Environment makes an already-disclosed condition, transition, hierarchy, or focus state easier to understand. It never invents activity so that the interface appears busy.</p>
+<p>Motion may communicate:</p>
+<ul><li>acquisition;</li><li>flow;</li><li>diagnostic attention;</li><li>provenance;</li><li>constrained capacity; or</li><li>presentation readiness.</li></ul>
+<p>Motion may not communicate a fact, operation, result, urgency, person, entitlement, or capability that the room does not actually own and disclose.</p>
+<h3 id="2-2-one-facility-seven-distinct-shots">2.2 One facility, seven distinct shots</h3>
+<p>Agency Headquarters remains one operating facility with seven semantic chambers. Distinction comes from composition, light source, movement axis, depth relationship, and finite motion signature—not seven independent lifecycle systems and not seven times more animation.</p>
+<p>Each chamber keeps:</p>
+<ul><li>one operational purpose;</li><li>one protagonist;</li><li>one truthful action;</li><li>one always-visible truth boundary;</li><li>no more than three visual planes; and</li><li>the same complete facts, controls, disclosures, headings, and destinations in enhanced and static projections.</li></ul>
+<h3 id="2-3-the-camera-is-compositional-language">2.3 The camera is compositional language</h3>
+<p>“Camera” means bounded CSS framing, transform, clipping, depth separation, light fields, and hierarchy. There is no literal camera, 3D scene, Canvas, WebGL layer, cursor-following view, zoom-through, or captured scroll.</p>
+<p>The three permitted planes are:</p>
+<ol><li>foreground threshold;</li><li>middle-ground semantic content and instruments; and</li><li>background environment.</li></ol>
+<p>Text, controls, focus targets, and truth disclosures remain outside decorative blur, dimming, clipping, and motion.</p>
+<h3 id="2-4-finite-first-still-by-default">2.4 Finite first, still by default</h3>
+<p>Presentation establishes, communicates, and settles. Capable tiers may use bounded environmental activity while the operator is engaged, but sustained environmental work reaches zero after the declared idle window. Inspection and focused Kai presence quiet the environment immediately.</p>
+<h3 id="2-5-native-behavior-has-priority">2.5 Native behavior has priority</h3>
+<p>User input, visible focus, Escape, native scrolling, native local navigation, browser Back/Forward, and real destinations outrank ambient presentation. Enhancement may acknowledge a transition; it may not trap, replace, or silently reinterpret an interaction.</p>
+<h2 id="3-ownership-and-truth-boundary">3. Ownership and truth boundary</h2>
+<div class="table-wrap" role="region" aria-label="Table: 3. Ownership and truth boundary" tabindex="0">
+<table>
+<caption class="sr-only">Table associated with 3. Ownership and truth boundary</caption>
+<thead><tr><th scope="col">Core Runtime 1.1 projects</th><th scope="col">Agency Headquarters continues to own</th></tr></thead>
+<tbody><tr><th scope="row">validated presentation profile and capability tier</th><td>canonical synthetic fixtures and source disclosures</td></tr><tr><th scope="row">arrival, operating, passage, hidden, and departure lifecycle</th><td>semantic DOM, chamber ids, headings, order, and destinations</td></tr><tr><th scope="row">attention, idle, lighting, depth, camera, focus, and Kai-presence tokens</th><td>CSS geometry, light fields, instruments, and visible composition</td></tr><tr><th scope="row">deterministic static-equivalence state</th><td>copy, truth boundaries, controls, permissions, and no-action receipts</td></tr><tr><th scope="row">one bounded idle timer and cleanup policy</th><td>Kai intent classification and fixed route-local command state</td></tr></tbody>
+</table>
+</div>
+<p>The runtime performs no fetch, API call, storage or cookie access, persistence, telemetry, database operation, model call, customer mutation, notification, calendar/task action, billing operation, or entitlement decision. A visual state is never evidence that any such operation occurred.</p>
+<h2 id="4-closed-token-system">4. Closed token system</h2>
+<h3 id="4-1-closed-timing-limits">4.1 Closed timing limits</h3>
+<p><strong>VERIFIED — controlling RC1 contract.</strong> These are the closed tier limits in the approved plan and runtime definition. A chamber profile cannot supply a raw duration or easing.</p>
+<div class="table-wrap" role="region" aria-label="Table: 4.1 Closed timing limits" tabindex="0">
+<table>
+<caption class="sr-only">Table associated with 4.1 Closed timing limits</caption>
+<thead><tr><th scope="col">Token family</th><th scope="col">Tier A</th><th scope="col">Tier B</th><th scope="col">Tier C</th><th scope="col">Tier D</th><th scope="col">Executable source</th></tr></thead>
+<tbody><tr><th scope="row">Arrival lifecycle</th><td>1500 ms</td><td>700 ms</td><td>0</td><td>0</td><td><code>app/review/agency-command/stage.tsx</code> (<code>AGENCY_CORE_RUNTIME.arrivalDurationMs</code>)</td></tr><tr><th scope="row">Chamber passage</th><td>620 ms</td><td>460 ms</td><td>0</td><td>0</td><td><code>lib/cxos/runtime.ts</code> (<code>DEFAULT_CXOS_DISTRICT_TRANSITION_MS</code>) and <code>stage.tsx</code></td></tr><tr><th scope="row">Camera-settle ceiling</th><td>520 ms</td><td>340 ms</td><td>0</td><td>0</td><td><code>CXOS_LIVING_ENVIRONMENT_ENGINE_RC1_PLAN.md</code> §5.2; not a chamber-supplied value</td></tr><tr><th scope="row">Focus-acquire ceiling</th><td>260 ms</td><td>180 ms</td><td>0</td><td>0</td><td>plan §5.2; current inspection acquire is 260 ms and its disclosure chevron is 180 ms in the route CSS</td></tr><tr><th scope="row">Finite heartbeat</th><td>2400 ms</td><td>3200 ms</td><td>none</td><td>none</td><td><code>agencyLivingHeartbeat</code> on the Tier A ambient channel; <code>agencyLivingAcquireB</code> combines Tier B acquire and restrained opacity respiration on its sole profile channel</td></tr><tr><th scope="row">Idle threshold</th><td>6000 ms</td><td>4500 ms</td><td>immediate</td><td>immediate</td><td><code>app/review/agency-command/environment.ts</code> (<code>idleAfterMs</code>)</td></tr><tr><th scope="row">Idle settle</th><td>400 ms</td><td>300 ms</td><td>0</td><td>0</td><td><code>components/cxos/runtime/useCxosRoomRuntime.ts</code> (<code>settleAfterMs</code>)</td></tr></tbody>
+</table>
+</div>
+<p>Tier A uses a 520 ms one-shot profile acquire plus a 2400 ms finite ambient heartbeat. Tier B has one 3200 ms profile animation: its transform is fully settled at <code>10.625%</code> (<code>340 ms</code>), then a restrained opacity respiration completes the finite heartbeat without adding a second channel. With no new operator activity, the idle policy stops environmental work after 6000 ms on Tier A or 4500 ms on Tier B; discrete activity may re-arm that one timeout, but both heartbeat forms have one iteration and never loop. Quiet/static states stop them immediately.</p>
+<p>For completeness, the final Living CSS declaration block contains these exact values. “Declared only” means the variable currently has no Living selector consumer and therefore must not be described as active behavior.</p>
+<div class="table-wrap" role="region" aria-label="Table: 4.1 Closed timing limits" tabindex="0">
+<table>
+<caption class="sr-only">Table associated with 4.1 Closed timing limits</caption>
+<thead><tr><th scope="col">CSS declaration</th><th scope="col">Exact value</th><th scope="col">RC1 execution status</th></tr></thead>
+<tbody><tr><th scope="row"><code>--cxos-dur-response</code></th><td>150 ms</td><td>declared only</td></tr><tr><th scope="row"><code>--cxos-dur-settle</code></th><td>400 ms A / 300 ms B</td><td>current-profile opacity transition and adapter idle settlement match by tier</td></tr><tr><th scope="row"><code>--cxos-dur-reveal</code></th><td>520 ms A / 340 ms B</td><td>Tier A Living depth-plane acquire; Tier B&#39;s 340 ms transform-settle point is encoded at <code>10.625%</code> of its 3200 ms profile heartbeat</td></tr><tr><th scope="row"><code>--cxos-dur-heartbeat</code></th><td>2400 ms A / 3200 ms B</td><td>Tier A ambient heartbeat; Tier B combined profile acquire/opacity respiration</td></tr><tr><th scope="row"><code>--cxos-dur-draw</code></th><td>1800 ms</td><td>legacy flow rules only; those lanes are disabled by Living mode</td></tr><tr><th scope="row"><code>--cxos-dur-drift</code></th><td>18,000 ms</td><td>retained solely for legacy <code>agencySweep</code> / room-breath consumers; both are hard-disabled in Living, and no Living animation consumes this duration</td></tr><tr><th scope="row"><code>--cxos-depth-near</code> / <code>--cxos-depth-middle</code></th><td>8 px / 4 px</td><td>declared reference only; executable entry/scroll offsets are listed in §4.3</td></tr><tr><th scope="row"><code>--cxos-light-rest</code> / <code>--cxos-light-active</code> / <code>--cxos-light-focus</code></th><td>0.08 / 0.14 / 0.20</td><td>declared reference only; applied profile/state light values are described in §4.4</td></tr></tbody>
+</table>
+</div>
+<h3 id="4-2-real-easing-definitions">4.2 Real easing definitions</h3>
+<p><strong>VERIFIED — candidate CSS.</strong> The five approved semantic curve names remain closed governance vocabulary; they are not an exported TypeScript enum and chambers cannot choose arbitrary curves. RC1 realizes them with the following concrete CSS only:</p>
+<div class="table-wrap" role="region" aria-label="Table: 4.2 Real easing definitions" tabindex="0">
+<table>
+<caption class="sr-only">Table associated with 4.2 Real easing definitions</caption>
+<thead><tr><th scope="col">Semantic use</th><th scope="col">Real CSS easing</th><th scope="col">Where it is used</th></tr></thead>
+<tbody><tr><th scope="row">Living profile <code>acquire</code>, finite heartbeat, <code>passage</code>, and opacity <code>settle</code></th><td><code>cubic-bezier(0.16, 1, 0.3, 1)</code> (<code>--cxos-ease-vector</code>)</td><td><code>agencyLivingAcquire</code>, <code>agencyLivingAcquireB</code>, <code>agencyLivingHeartbeat</code>; final Living alias for <code>--agency-chamber-ease</code>; current-profile opacity settle</td></tr><tr><th scope="row">Existing bounded arrival beats (<code>establish</code>)</th><td><code>cubic-bezier(0.2, 0.74, 0.2, 1)</code></td><td>existing Agency arrival identity/system/Kai beat selectors; no new Living loop</td></tr><tr><th scope="row"><code>linear-signal</code></th><td>CSS <code>linear</code></td><td>invisible arrival clock and the optional view-timeline depth interpolation</td></tr><tr><th scope="row">Legacy environmental sweep (non-Living behavior)</th><td>CSS <code>ease-in-out</code></td><td><code>agencySweep</code> remains in inherited Agency CSS but is hard-disabled by Living mode and is not a Living channel</td></tr></tbody>
+</table>
+</div>
+<p><code>establish</code>, <code>acquire</code>, <code>passage</code>, <code>settle</code>, and <code>linear-signal</code> describe permitted intent; the table above records the actual realization. It would be false to claim that the five names are currently five independently exported easing variables.</p>
+<h3 id="4-3-drift-scroll-and-chamber-acquire-values">4.3 Drift, scroll, and chamber-acquire values</h3>
+<p><strong>VERIFIED — candidate CSS.</strong> These values are finite and presentation-only:</p>
+<div class="table-wrap" role="region" aria-label="Table: 4.3 Drift, scroll, and chamber-acquire values" tabindex="0">
+<table>
+<caption class="sr-only">Table associated with 4.3 Drift, scroll, and chamber-acquire values</caption>
+<thead><tr><th scope="col">Mechanism</th><th scope="col">Exact value and direction</th><th scope="col">Eligibility and hard stop</th></tr></thead>
+<tbody><tr><th scope="row">Tier A ambient heartbeat</th><td><code>agencyLivingHeartbeat</code> keeps the field at <code>translateX(52vw)</code> while opacity moves <code>0.18 → 0.28 → 0.18</code> over 2400 ms, one iteration</td><td>Tier A budget <code>2</code> only; removed on attention, non-quiet Kai, idle settling/settled, hidden/passage/static projection, Tier C/D, and reduced motion</td></tr><tr><th scope="row">Tier B profile heartbeat</th><td><code>agencyLivingAcquireB</code> settles transform and initial opacity by <code>10.625%</code> (<code>340 ms</code>), eases opacity to <code>0.82</code> at <code>52%</code>, then returns it to <code>1</code> at 3200 ms</td><td>Tier B budget <code>1</code>; no ambient channel and no profile offset/scale travel</td></tr><tr><th scope="row">Central depth acquire</th><td>Tier A <code>translateY(8px) scale(1.000) → none</code> over 520 ms</td><td>signature <code>center-out</code>; no scroll timeline</td></tr><tr><th scope="row">Client depth acquire / scroll</th><td>Tier A acquire from <code>translateX(-8px) scale(1.000)</code> over 520 ms; where CSS view timelines are supported, the same channel is replaced by <code>translateX(-8px → 8px)</code> across <code>cover 8% → cover 92%</code></td><td>signature <code>lane-travel</code>; native scroll remains authoritative</td></tr><tr><th scope="row">Team depth acquire</th><td>Tier A <code>scale(1.012) → none</code> over 520 ms</td><td>signature <code>relational-acquire</code>; no scroll timeline</td></tr><tr><th scope="row">Business Health depth acquire</th><td>Tier A <code>translateY(-4px) scale(1.000) → none</code> over 520 ms</td><td>signature <code>diagnostic-draw</code>; no scroll timeline</td></tr><tr><th scope="row">Evidence Archive depth acquire / scroll</th><td>Tier A acquire from <code>translateY(8px) scale(1.000)</code> over 520 ms; optional view timeline replaces it with <code>translateY(8px → -8px)</code> across <code>cover 8% → cover 92%</code></td><td>signature <code>tray-align</code>; vertical archive depth</td></tr><tr><th scope="row">Kai depth acquire</th><td>Tier A <code>scale(1.018) → none</code> over 520 ms</td><td>signature <code>inward-converge</code>; decorative depth plane only; no scroll timeline</td></tr><tr><th scope="row">Growth depth acquire / scroll</th><td>Tier A acquire from <code>translateX(8px) scale(1.000)</code> over 520 ms; <code>--cxos-scroll-x: -8px</code> yields optional <code>translateX(8px → -8px)</code> across <code>cover 8% → cover 92%</code></td><td>signature <code>horizon-expand</code>; horizontal and intentionally distinct from Archive</td></tr></tbody>
+</table>
+</div>
+<p>The <code>16px</code> end-to-end view-timeline traversals above are expressed as endpoints no farther than <code>8px</code> from rest: Client and Growth move horizontally; Archive moves vertically. They do not capture wheel, touch, or scrollbar input. Tier B resets chamber entry translation/scale to rest and receives only its combined profile acquire/opacity heartbeat, with transform settled by 340 ms. Tier C/D, reduced, invalid, hidden, passage, inspection, reading, non-quiet Kai, and settled idle receive none.</p>
+<p>The exact acquire poses stay inside the approved Tier A <code>1.000–1.018</code> scale envelope. Tier B resets every entry offset and scale to rest (<code>1.000</code>), which is stricter than its <code>1.000–1.008</code> ceiling.</p>
+<h3 id="4-4-spatial-blur-light-and-animation-limits">4.4 Spatial, blur, light, and animation limits</h3>
+<div class="table-wrap" role="region" aria-label="Table: 4.4 Spatial, blur, light, and animation limits" tabindex="0">
+<table>
+<caption class="sr-only">Table associated with 4.4 Spatial, blur, light, and animation limits</caption>
+<thead><tr><th scope="col">Token family</th><th scope="col">Tier A</th><th scope="col">Tier B</th><th scope="col">Tier C</th><th scope="col">Tier D</th></tr></thead>
+<tbody><tr><th scope="row">Near / mid / far camera-offset maximum</th><td>8 / 4 / 2 px</td><td>4 / 2 / 0 px</td><td>0</td><td>0</td></tr><tr><th scope="row">Approved camera scale</th><td>1.000–1.018</td><td>1.000–1.008</td><td>1.000</td><td>1.000</td></tr><tr><th scope="row">Environmental blur</th><td>0–6 px, decorative only</td><td>0–3 px</td><td>0</td><td>0</td></tr><tr><th scope="row">Decorative light-intensity envelope</th><td>0.30–0.82</td><td>0.24–0.62</td><td>static</td><td>static</td></tr><tr><th scope="row">Running environmental animations</th><td>at most 2, active room/chamber only</td><td>at most 1, active room/chamber only</td><td>0</td><td>0</td></tr><tr><th scope="row">Sustained animations after idle</th><td>0</td><td>0</td><td>0</td><td>0</td></tr></tbody>
+</table>
+</div>
+<p>The Living decorative planes apply no CSS blur in RC1; mobile and Tier B explicitly remove filters from those planes. The pre-existing facility-directory <code>backdrop-filter: blur(14px)</code> is static navigation chrome, not a moving environmental plane, and is removed at Tier B/mobile. The CSS declares reference light values <code>--cxos-light-rest: 0.08</code>, <code>--cxos-light-active: 0.14</code>, and <code>--cxos-light-focus: 0.2</code>, but current selectors use profile-specific gradient alpha and state overrides rather than consuming those declarations. Therefore they are not claimed as measured applied intensity. Kai-focused presence sets the existing overhead light to <code>opacity: 0.72</code>; attention and idle reduce environmental-plane opacity to <code>0.30</code> and <code>0.46</code> respectively. All light remains decorative and cannot encode status alone.</p>
+<p>Continuous capable-tier motion stays within the route&#39;s three declared transform/opacity channels and the projected Tier A/Tier B running budgets above. Any bounded filter or clip-path use is subordinate, measured, and equivalent in its final static frame.</p>
+<h3 id="4-5-closed-chamber-profile-vocabulary">4.5 Closed chamber-profile vocabulary</h3>
+<p><strong>VERIFIED — <code>lib/cxos/runtime.ts</code>.</strong> A valid profile uses exactly one value from each closed family; unknown values fail the whole Living profile to static. Agency&#39;s exact seven mappings live in <code>app/review/agency-command/environment.ts</code>. The adapter projects the selected motion value as the root <code>data-cxos-signature</code> attribute; seven signature selectors in the route CSS directly own the corresponding entry and scroll variables. This makes the closed signature—not a duplicated profile-id switch—the executable motion-variable authority.</p>
+<div class="table-wrap" role="region" aria-label="Table: 4.5 Closed chamber-profile vocabulary" tabindex="0">
+<table>
+<caption class="sr-only">Table associated with 4.5 Closed chamber-profile vocabulary</caption>
+<thead><tr><th scope="col">Family</th><th scope="col">Closed values</th></tr></thead>
+<tbody><tr><th scope="row">Emotion</th><td><code>command-authority</code>, <code>operational-flow</code>, <code>human-coordination</code>, <code>diagnostic-awareness</code>, <code>evidentiary-trust</code>, <code>calm-intelligence</code>, <code>strategic-expansion</code></td></tr><tr><th scope="row">Camera</th><td><code>command-wide</code>, <code>operational-oblique</code>, <code>relational-eye-level</code>, <code>diagnostic-elevated</code>, <code>archive-perspective</code>, <code>executive-portrait</code>, <code>capacity-horizon</code></td></tr><tr><th scope="row">Lighting</th><td><code>command-aperture</code>, <code>directional-rail</code>, <code>relational-pool</code>, <code>analytical-overhead</code>, <code>provenance-slot</code>, <code>executive-key</code>, <code>horizon-wedge</code></td></tr><tr><th scope="row">Depth</th><td><code>long</code>, <code>diagonal</code>, <code>medium</code>, <code>compressed</code>, <code>longitudinal</code>, <code>shallow</code>, <code>maximum</code></td></tr><tr><th scope="row">Motion</th><td><code>center-out</code>, <code>lane-travel</code>, <code>relational-acquire</code>, <code>diagnostic-draw</code>, <code>tray-align</code>, <code>inward-converge</code>, <code>horizon-expand</code></td></tr><tr><th scope="row">Focus</th><td><code>priority-instrument</code>, <code>operating-floor</code>, <code>operator-core</code>, <code>missing-inputs</code>, <code>evidence-ledger</code>, <code>executive-response</code>, <code>capacity-boundary</code></td></tr><tr><th scope="row">Idle</th><td><code>command-hold</code>, <code>parked</code>, <code>solo-steady</code>, <code>diagnostic-hold</code>, <code>archive-aligned</code>, <code>executive-still</code>, <code>reserve-dark</code></td></tr><tr><th scope="row">Kai context</th><td><code>executive-context</code>, <code>operational-context</code>, <code>human-context</code>, <code>diagnostic-context</code>, <code>evidence-context</code>, <code>focused-channel</code>, <code>strategy-context</code></td></tr></tbody>
+</table>
+</div>
+<h3 id="4-6-explicit-presentation-signals">4.6 Explicit presentation signals</h3>
+<div class="table-wrap" role="region" aria-label="Table: 4.6 Explicit presentation signals" tabindex="0">
+<table>
+<caption class="sr-only">Table associated with 4.6 Explicit presentation signals</caption>
+<thead><tr><th scope="col">Signal</th><th scope="col">Closed states</th><th scope="col">Owner and meaning</th></tr></thead>
+<tbody><tr><th scope="row">Attention</th><td><code>ambient</code>, <code>reading</code>, <code>inspecting</code></td><td>Agency supplies current semantic attention; Core Runtime projects presentation only</td></tr><tr><th scope="row">Kai presentation</th><td><code>quiet</code>, <code>staged</code>, <code>preparing</code>, <code>resolved</code></td><td>Agency derives an explicit visual phase from existing deterministic route state</td></tr><tr><th scope="row">Idle</th><td><code>engaged</code>, <code>settling</code>, <code>settled</code></td><td>The sole browser adapter owns the bounded presentation timer</td></tr><tr><th scope="row">Lifecycle</th><td>arrival, operating, passage, hidden, departure</td><td>Existing Core Runtime lifecycle remains authoritative</td></tr></tbody>
+</table>
+</div>
+<p>The engine never infers attention or Kai intent from command text. <code>preparing</code> is reserved for a truthful future in-progress operation; the Agency specimen does not invent a delay to use it.</p>
+<h3 id="4-7-source-code-map-and-target-implementation-budgets">4.7 Source-code map and target implementation budgets</h3>
+<div class="table-wrap" role="region" aria-label="Table: 4.7 Source-code map and target implementation budgets" tabindex="0">
+<table>
+<caption class="sr-only">Table associated with 4.7 Source-code map and target implementation budgets</caption>
+<thead><tr><th scope="col">Concern</th><th scope="col">Candidate source of truth</th></tr></thead>
+<tbody><tr><th scope="row">Closed profile types, validation, tier budget, hard-quiet/static policy</th><td><code>lib/cxos/runtime.ts</code></td></tr><tr><th scope="row">One adapter, attention detection, idle timer, lifecycle cleanup, projected data attributes</th><td><code>components/cxos/runtime/useCxosRoomRuntime.ts</code></td></tr><tr><th scope="row">Agency&#39;s seven immutable profile mappings and idle thresholds</th><td><code>app/review/agency-command/environment.ts</code></td></tr><tr><th scope="row">Agency lifecycle durations, channel ownership, explicit Kai-state derivation</th><td><code>app/review/agency-command/stage.tsx</code></td></tr><tr><th scope="row">Shot geometry, signature-root entry/scroll variables, passage atmospheres, easing/duration declarations, keyframes, view-timeline replacement, and hard-off selectors</th><td><code>app/review/agency-command/agency-command.module.css</code></td></tr><tr><th scope="row">Contract ceilings and review boundary</th><td><code>CXOS_LIVING_ENVIRONMENT_ENGINE_RC1_PLAN.md</code> §§4–5</td></tr></tbody>
+</table>
+</div>
+<p>The RC1 plan sets targets of no more than 15 KiB gzip incremental client JavaScript and 24 KiB raw incremental route CSS relative to RC5. These are targets, not measured claims. Candidate evidence must replace estimates with actual deltas, and any larger increase requires simplification before Preview.</p>
+<h2 id="5-lifecycle-grammar">5. Lifecycle grammar</h2>
+<h3 id="5-1-arrival">5.1 Arrival</h3>
+<p>Arrival establishes facility identity, scope, source readiness, and the initial settled truth. It never gates access to the semantic document. Skip and Escape settle to the same truthful final frame, with focus preserved.</p>
+<h3 id="5-2-operating-and-attention">5.2 Operating and attention</h3>
+<p>The active room—and in chamber mode, the active chamber—may express only its declared bounded channels. Reading reduces distraction. Opening an inspection or giving Kai focused presence clears the idle timer and immediately quiets or settles ambient motion so evidence remains primary.</p>
+<h3 id="5-3-idle-settlement">5.3 Idle settlement</h3>
+<p>Discrete pointer, keyboard, focus, and inspection activity at the room root may re-arm one validated timeout. There is no interval, global pointer tracker, uncontrolled animation frame loop, randomness, or continuously measured activity.</p>
+<p>At the idle threshold:</p>
+<ol><li>state moves from <code>engaged</code> to <code>settling</code>;</li><li>the declared settle token completes; and</li><li>state becomes <code>settled</code>, with zero sustained environmental animation.</li></ol>
+<p>Replay, route reset, active-chamber change, projection change, pagehide, visibility change, and BFCache restoration deterministically clear or restore the presentation state. A stale timeout may never settle a new chamber.</p>
+<h3 id="5-4-chamber-passage">5.4 Chamber passage</h3>
+<p>One existing passage lifecycle serves all seven shots. The source and destination profiles may direct axis and light; they do not create another overlay or state machine.</p>
+<p>Every passage has five finite beats:</p>
+<ol><li>release source;</li><li>cross threshold;</li><li>identify destination;</li><li>acquire destination; and</li><li>settle focus.</li></ol>
+<p>Forward and backward travel have directional geometry but equal authority and duration. Direct selection uses the same grammar. Latest intent wins. There is no auto-advance.</p>
+<p>Static and constrained projections replace the chamber immediately, move focus after layout, and announce only the acquired chamber.</p>
+<h3 id="5-5-hidden-reduced-constrained-and-invalid-states">5.5 Hidden, reduced, constrained, and invalid states</h3>
+<ul><li>Hidden documents pause nonessential motion and clear presentation timers.</li><li>Tier C, Tier D, reduced-motion, constrained, skipped, and invalid projections run zero continuous environmental motion.</li><li>Invalid profile ids, tokens, timing, chamber ids, order, or targets fail the entire enhanced profile to the complete declared static projection.</li><li>Native navigation fails open to the room&#39;s real local destination.</li></ul>
+<h3 id="5-6-departure">5.6 Departure</h3>
+<p>Departure acknowledges the origin, preserves orientation, and hands off to the real destination. It commits at most once and retains the existing bounded local-navigation fallback. Modified clicks, new-tab behavior, downloads, and static projections remain native.</p>
+<h2 id="6-seven-chamber-shot-profiles">6. Seven-chamber shot profiles</h2>
+<p><strong>VERIFIED — candidate direction and source.</strong> Every table below names the same eight directing dimensions so that “distinct” is reviewable rather than impressionistic. The profile-token row is executable in <code>environment.ts</code>; the adapter projects its motion token as <code>data-cxos-signature</code>, and the route CSS assigns that signature&#39;s exact entry/scroll variables. A motion-signature token does not dispatch JavaScript or grant another animation. Tier A may run the finite ambient heartbeat plus the current depth plane; Tier B uses only the depth plane for its combined acquire/opacity heartbeat. “Kai” always means presentation of explicit route-owned state. It never means inferred intent, computation, memory, or action.</p>
+<h3 id="6-1-central-command">6.1 Central Command</h3>
+<div class="table-wrap" role="region" aria-label="Table: 6.1 Central Command" tabindex="0">
+<table>
+<caption class="sr-only">Table associated with 6.1 Central Command</caption>
+<thead><tr><th scope="col">Direction</th><th scope="col">Profile</th></tr></thead>
+<tbody><tr><th scope="row">Emotional intention</th><td><code>command-authority</code>: authority, orientation, confidence, and facility scale without urgency theater</td></tr><tr><th scope="row">Operator POV</th><td>Wide <code>command-wide</code> establishing view from the command rail, high-neutral and centered on the acknowledged operator</td></tr><tr><th scope="row">Foreground / midground / background</th><td>Foreground: the threshold/rail; midground: priority instrument and semantic command banks; background: long centered horizon and command aperture. No more than these three planes</td></tr><tr><th scope="row">Active composition</th><td>Symmetric command deck with the priority brief held inside the middle-ground focus field; surrounding operational instruments establish scope without becoming a dashboard mosaic</td></tr><tr><th scope="row">Light direction / source</th><td><code>command-aperture</code>: cool analytical light descends from the centered overhead aperture; restrained cyan emphasis terminates at the priority instrument</td></tr><tr><th scope="row">Movement direction</th><td><code>center-out</code>: the decorative depth plane acquires from <code>+8px</code> vertical offset at <code>1.000</code> scale to rest; the priority treatment converges on the disclosed brief, never on a changing queue</td></tr><tr><th scope="row">Transition rhythm</th><td>Common five-beat 620/460 ms passage; centered target atmosphere, 520 ms Tier A vector acquire or 340 ms Tier B transform settle within its finite profile heartbeat, then focus settlement. The outgoing stage uses the common direction-aware lateral recede; Tier C/D replace immediately</td></tr><tr><th scope="row">Focus / idle / Kai states</th><td><code>priority-instrument</code> focus; reading/inspection quiets the field; <code>command-hold</code> settles to zero sustained motion; Kai uses <code>executive-context</code>, and any explicit non-<code>quiet</code> Kai phase hard-quiets ambient motion rather than adding a second signal</td></tr><tr><th scope="row">Truth guard</th><td>Priority movement may emphasize only the already-disclosed fixed brief; it cannot imply live work or a changing queue</td></tr></tbody>
+</table>
+</div>
+<h3 id="6-2-client-operations-floor">6.2 Client Operations Floor</h3>
+<div class="table-wrap" role="region" aria-label="Table: 6.2 Client Operations Floor" tabindex="0">
+<table>
+<caption class="sr-only">Table associated with 6.2 Client Operations Floor</caption>
+<thead><tr><th scope="col">Direction</th><th scope="col">Profile</th></tr></thead>
+<tbody><tr><th scope="row">Emotional intention</th><td><code>operational-flow</code>: flow, throughput, pressure, and coordination, bounded by the disclosed synthetic fixtures</td></tr><tr><th scope="row">Operator POV</th><td><code>operational-oblique</code> runway view at working height, looking along rather than down on the floor</td></tr><tr><th scope="row">Foreground / midground / background</th><td>Foreground: queue threshold; midground: fixed packet lanes and blocked/waiting fixtures; background: diagonal floor depth and rail horizon</td></tr><tr><th scope="row">Active composition</th><td>Oblique left-to-right operating lanes keep fixed positions legible; the amber block is an interruption inside the disclosed lane, not a global alert</td></tr><tr><th scope="row">Light direction / source</th><td><code>directional-rail</code>: cool rail light travels along the lane axis; amber originates only at the disclosed blocked fixture</td></tr><tr><th scope="row">Movement direction</th><td><code>lane-travel</code>: one profile acquire begins <code>8px</code> left of rest; optional Tier A view interpolation replaces that channel with <code>-8px → +8px</code> horizontal travel. Fixture-state motion remains deterministic and cannot advance work</td></tr><tr><th scope="row">Transition rhythm</th><td>Common five-beat 620/460 ms passage with an oblique rail target; 520 ms Tier A acquire or 340 ms Tier B transform settle and the lateral common recede reinforce runway direction. Inspection cancels the active lane channel immediately</td></tr><tr><th scope="row">Focus / idle / Kai states</th><td><code>operating-floor</code> focus; reading/inspection quiets the floor; <code>parked</code> holds packets at honest positions with zero sustained motion; Kai uses <code>operational-context</code> and any explicit staged/resolved phase hard-quiets ambient motion</td></tr><tr><th scope="row">Truth guard</th><td>Packet movement never claims a task advanced, a person acted, or a live queue changed</td></tr></tbody>
+</table>
+</div>
+<h3 id="6-3-team-operations-room">6.3 Team Operations Room</h3>
+<div class="table-wrap" role="region" aria-label="Table: 6.3 Team Operations Room" tabindex="0">
+<table>
+<caption class="sr-only">Table associated with 6.3 Team Operations Room</caption>
+<thead><tr><th scope="col">Direction</th><th scope="col">Profile</th></tr></thead>
+<tbody><tr><th scope="row">Emotional intention</th><td><code>human-coordination</code>: responsibility and intentional solitude, never fake attendance or ambient “people”</td></tr><tr><th scope="row">Operator POV</th><td><code>relational-eye-level</code> tableau at eye level with the solo operator occupying the deliberate center</td></tr><tr><th scope="row">Foreground / midground / background</th><td>Foreground: occupied operator threshold; midground: radial coverage geometry and owned role position; background: unlit coverage horizon with absent links remaining absent</td></tr><tr><th scope="row">Active composition</th><td>A centered relational field gives the one represented operator visual weight; future positions remain architecture, not silhouettes, dots, or presence claims</td></tr><tr><th scope="row">Light direction / source</th><td><code>relational-pool</code>: soft perimeter light pools inward around the occupied role; unowned coverage remains dark</td></tr><tr><th scope="row">Movement direction</th><td><code>relational-acquire</code>: the decorative radial plane scales from <code>1.012</code> to rest; any finite coverage recognition resolves toward the occupied core rather than populating empty positions</td></tr><tr><th scope="row">Transition rhythm</th><td>Common five-beat 620/460 ms passage with a concentric target atmosphere; 520 ms Tier A scale acquire or 340 ms Tier B transform settle, then stable eye-level frame. Common forward/back recede preserves navigation direction</td></tr><tr><th scope="row">Focus / idle / Kai states</th><td><code>operator-core</code> focus; inspection may expose disclosed coverage while hard-quieting the environment; <code>solo-steady</code> holds the intentional solo state; Kai uses <code>human-context</code>, and any non-<code>quiet</code> phase quiets rather than simulates another presence</td></tr><tr><th scope="row">Truth guard</th><td>No dot, pulse, silhouette, or motion may imply an unrepresented teammate or live presence</td></tr></tbody>
+</table>
+</div>
+<h3 id="6-4-business-health-observatory">6.4 Business Health Observatory</h3>
+<div class="table-wrap" role="region" aria-label="Table: 6.4 Business Health Observatory" tabindex="0">
+<table>
+<caption class="sr-only">Table associated with 6.4 Business Health Observatory</caption>
+<thead><tr><th scope="col">Direction</th><th scope="col">Profile</th></tr></thead>
+<tbody><tr><th scope="row">Emotional intention</th><td><code>diagnostic-awareness</code>: monitoring, uncertainty, and strategic attention without numerical certainty</td></tr><tr><th scope="row">Operator POV</th><td><code>diagnostic-elevated</code> observatory view facing the right-biased instrument horizon from a slightly elevated analytical position</td></tr><tr><th scope="row">Foreground / midground / background</th><td>Foreground: disclosed qualitative state; midground: diagnostic instruments and missing-input bank; background: compressed concentric rings around the upper-right analytical locus</td></tr><tr><th scope="row">Active composition</th><td>The observatory bank is biased toward the diagnostic locus, leaving missing inputs visibly unlit and the qualitative <code>WATCH</code> state adjacent to its source boundary</td></tr><tr><th scope="row">Light direction / source</th><td><code>analytical-overhead</code>: cool light descends from above; controlled amber originates only at the <code>WATCH</code> instrument/ring locus</td></tr><tr><th scope="row">Movement direction</th><td><code>diagnostic-draw</code>: the decorative plane acquires from <code>-4px</code> vertical offset at <code>1.000</code> scale; finite concentric attention draws around the disclosed locus and settles, without a score needle or progress arc</td></tr><tr><th scope="row">Transition rhythm</th><td>Common five-beat 620/460 ms passage with an amber analytical target; 520 ms Tier A vector acquire closes the small elevated offset, while Tier B settles transform in 340 ms, then focus lands on the disclosed driver. Tier C/D cut directly to the same reading</td></tr><tr><th scope="row">Focus / idle / Kai states</th><td><code>missing-inputs</code> focus keeps absent sources primary; reading/inspection stops ambient work; <code>diagnostic-hold</code> freezes the qualitative reading; Kai uses <code>diagnostic-context</code> and non-<code>quiet</code> presentation hard-quiets the observatory</td></tr><tr><th scope="row">Truth guard</th><td>Qualitative state remains qualitative; missing inputs stay visibly missing and no numeric score is invented</td></tr></tbody>
+</table>
+</div>
+<h3 id="6-5-activity-and-evidence-archive">6.5 Activity and Evidence Archive</h3>
+<div class="table-wrap" role="region" aria-label="Table: 6.5 Activity and Evidence Archive" tabindex="0">
+<table>
+<caption class="sr-only">Table associated with 6.5 Activity and Evidence Archive</caption>
+<thead><tr><th scope="col">Direction</th><th scope="col">Profile</th></tr></thead>
+<tbody><tr><th scope="row">Emotional intention</th><td><code>evidentiary-trust</code>: provenance, preservation, and traceability without implying a production audit trail</td></tr><tr><th scope="row">Operator POV</th><td><code>archive-perspective</code> aisle view from a slightly low position, looking through ordered longitudinal shelves</td></tr><tr><th scope="row">Foreground / midground / background</th><td>Foreground: archive threshold/nearest tray; midground: semantic evidence ledger and inspected receipt; background: longitudinal shelf grid and visibly absent record positions</td></tr><tr><th scope="row">Active composition</th><td>A centered ledger sits inside layered, ordered shelf geometry; stacked depth shadows suggest filing order while all source labels remain semantic and readable</td></tr><tr><th scope="row">Light direction / source</th><td><code>provenance-slot</code>: narrow slot light originates at the inspected source category and crosses only its aligned evidence layer</td></tr><tr><th scope="row">Movement direction</th><td><code>tray-align</code>: acquire begins <code>8px</code> below rest; optional Tier A view interpolation replaces it with <code>+8px → -8px</code> vertical shelf travel, so archive depth reveals along the aisle rather than toward the operator</td></tr><tr><th scope="row">Transition rhythm</th><td>Common five-beat 620/460 ms passage with a longitudinal shelf target; 520 ms Tier A vector acquire or its optional bounded vertical scroll replacement, while Tier B settles transform in 340 ms, then stable ledger focus. Departure uses the common directional recede while layers visually reseal</td></tr><tr><th scope="row">Focus / idle / Kai states</th><td><code>evidence-ledger</code> focus; inspection brings the real disclosed layer forward and hard-quiets decoration; <code>archive-aligned</code> preserves stable order; Kai uses <code>evidence-context</code>, with all non-<code>quiet</code> phases quieting rather than generating provenance</td></tr><tr><th scope="row">Truth guard</th><td>Missing records remain visibly absent; decorative provenance never creates a source or receipt</td></tr></tbody>
+</table>
+</div>
+<h3 id="6-6-kai-executive-suite">6.6 Kai Executive Suite</h3>
+<div class="table-wrap" role="region" aria-label="Table: 6.6 Kai Executive Suite" tabindex="0">
+<table>
+<caption class="sr-only">Table associated with 6.6 Kai Executive Suite</caption>
+<thead><tr><th scope="col">Direction</th><th scope="col">Profile</th></tr></thead>
+<tbody><tr><th scope="row">Emotional intention</th><td><code>calm-intelligence</code>: presence, intimacy, and precision without personhood, omniscience, or autonomy</td></tr><tr><th scope="row">Operator POV</th><td><code>executive-portrait</code> eye-level close environment; operator and the one contextual Kai channel share a restrained central field</td></tr><tr><th scope="row">Foreground / midground / background</th><td>Foreground: operator command boundary and no-action disclosure; midground: executive response/workbench; background: shallow decorative key field and narrow horizon</td></tr><tr><th scope="row">Active composition</th><td>A centered executive desk contains the fixed local command and deterministic response; surrounding room geometry is quieter, but disclosures and controls never dim</td></tr><tr><th scope="row">Light direction / source</th><td><code>executive-key</code>: focused top-center key light falls into the executive desk; surrounding light narrows when explicit Kai state is present</td></tr><tr><th scope="row">Movement direction</th><td><code>inward-converge</code>: decorative depth begins at the Tier A ceiling of <code>1.018</code> and settles inward to rest. Explicit <code>staged</code>/<code>resolved</code> state changes styling, but the runtime immediately removes ambient/profile animation instead of simulating thinking</td></tr><tr><th scope="row">Transition rhythm</th><td>Common five-beat 620/460 ms passage with a centered portrait target; 520 ms Tier A vector scale-down acquire creates a restrained widening-to-context settle, while Tier B settles transform in 340 ms. C/D and reduced motion render the final portrait immediately</td></tr><tr><th scope="row">Focus / idle / Kai states</th><td><code>executive-response</code> focus and <code>focused-channel</code> Kai context; command text yields explicit <code>staged</code>, an existing deterministic local response yields <code>resolved</code>, and this specimen never emits fake <code>preparing</code>; inspection/focus and <code>executive-still</code> both enforce zero sustained environmental motion</td></tr><tr><th scope="row">Truth guard</th><td>No motion implies consciousness, observation, memory, open-ended model work, a fake preparing delay, or an executed action</td></tr></tbody>
+</table>
+</div>
+<h3 id="6-7-growth-capacity-threshold">6.7 Growth / Capacity Threshold</h3>
+<div class="table-wrap" role="region" aria-label="Table: 6.7 Growth / Capacity Threshold" tabindex="0">
+<table>
+<caption class="sr-only">Table associated with 6.7 Growth / Capacity Threshold</caption>
+<thead><tr><th scope="col">Direction</th><th scope="col">Profile</th></tr></thead>
+<tbody><tr><th scope="row">Emotional intention</th><td><code>strategic-expansion</code>: scale, possibility, and constraint without scarcity, upsell pressure, or entitlement</td></tr><tr><th scope="row">Operator POV</th><td><code>capacity-horizon</code> wide view from a low-neutral position looking across occupied capacity toward dormant reserve</td></tr><tr><th scope="row">Foreground / midground / background</th><td>Foreground: disclosed capacity boundary; midground: occupied cells and constraint architecture; background: maximum-depth future horizon with reserve kept dark</td></tr><tr><th scope="row">Active composition</th><td>A broad centered horizon separates evidenced occupied cells from dormant reserve; the boundary, not a purchase action, is the protagonist</td></tr><tr><th scope="row">Light direction / source</th><td><code>horizon-wedge</code>: cool light rises from the low future horizon; only occupied cells receive restrained illumination and reserve remains unlit</td></tr><tr><th scope="row">Movement direction</th><td><code>horizon-expand</code>: acquire begins <code>8px</code> right of rest at <code>1.000</code> scale; <code>--cxos-scroll-x: -8px</code> makes the optional Tier A view interpolation travel <code>+8px → -8px</code> horizontally, deliberately distinct from Archive&#39;s vertical aisle</td></tr><tr><th scope="row">Transition rhythm</th><td>Common five-beat 620/460 ms passage with the lowest target horizon; 520 ms Tier A vector acquire or its optional bounded horizontal scroll replacement, while Tier B settles transform in 340 ms, then capacity-boundary focus. The real room departure remains the existing Mission Control handoff</td></tr><tr><th scope="row">Focus / idle / Kai states</th><td><code>capacity-boundary</code> focus; inspection may expand disclosed context but hard-quiets motion; <code>reserve-dark</code> leaves future capacity still; Kai uses <code>strategy-context</code>, and any explicit non-<code>quiet</code> phase removes ambient motion rather than making an offer</td></tr><tr><th scope="row">Truth guard</th><td>No scarcity, countdown, upgrade availability, billing entitlement, automatic expansion, or purchase implication</td></tr></tbody>
+</table>
+</div>
+<h2 id="7-mobile-reduced-motion-and-static-direction">7. Mobile, reduced-motion, and static direction</h2>
+<h3 id="7-1-mobile">7.1 Mobile</h3>
+<ul><li>Present one chamber at a time.</li><li>Preserve compact previous/current/next controls and a native expandable facility map.</li><li>Keep every target at least 44 px and all navigation keyboard-, touch-, and screen-reader-complete.</li><li>Recompose to one visual plane where necessary; halve capable parallax and shorten finite signatures.</li><li>Capture no horizontal gesture, wheel, or touch travel.</li><li>Keep browser Back/Forward as the chamber-history mechanism.</li><li>Prevent horizontal overflow at 320 px and in landscape.</li></ul>
+<h3 id="7-2-tier-b">7.2 Tier B</h3>
+<p>Tier B keeps the composition and one bounded environmental channel while reducing camera travel, blur, parallax, and depth. Translation stays at or below 4 px, camera scale at or below 1.008, and passage remains the approved 460 ms. It is a deliberate projection, not a degraded Tier A.</p>
+<h3 id="7-3-reduced-motion-and-tier-d">7.3 Reduced motion and Tier D</h3>
+<p>Reduced motion and Tier D use composition, light, border weight, scale hierarchy, spacing, and static depth. They do not use passage overlays, parallax, animated light, draw sequences, or running environmental animation.</p>
+<p>All seven chambers remain distinct, complete, directly reachable, and truth-equivalent. Static does not mean empty, disabled-looking, or stripped of hierarchy.</p>
+<h3 id="7-4-tier-c-constrained-capability-and-no-javascript">7.4 Tier C, constrained capability, and no JavaScript</h3>
+<p>Tier C and constrained capability settle immediately with zero continuous motion. If enhancement is unavailable or invalid, the complete semantic document and explicit navigation remain available. No-JavaScript preserves headings, facts, controls, disclosures, reading order, and real destinations.</p>
+<h2 id="8-kai-presentation-truth">8. Kai presentation truth</h2>
+<p>Kai is CreditVector&#39;s one Credit Intelligence Officer. The Living Environment profile presents explicit state; it does not create Kai intelligence.</p>
+<div class="table-wrap" role="region" aria-label="Table: 8. Kai presentation truth" tabindex="0">
+<table>
+<caption class="sr-only">Table associated with 8. Kai presentation truth</caption>
+<thead><tr><th scope="col">Phase</th><th scope="col">Permitted presentation meaning</th><th scope="col">Forbidden reading</th></tr></thead>
+<tbody><tr><th scope="row"><code>quiet</code></th><td>Contextual availability without attention capture</td><td>watching the operator, background work, or live presence</td></tr><tr><th scope="row"><code>staged</code></th><td>The operator staged an existing fixed local command</td><td>intent inferred by the runtime or an action already underway</td></tr><tr><th scope="row"><code>preparing</code></th><td>A truthful future operation is actually in progress</td><td>synthetic delay, fake thinking, or model activity in this specimen</td></tr><tr><th scope="row"><code>resolved</code></th><td>The existing deterministic local response is visible</td><td>an external effect completed, a customer record changed, or Kai acted</td></tr></tbody>
+</table>
+</div>
+<p>The existing no-action receipt remains visible. Kai presentation owns no model call, memory, customer fact, inference, recommendation, consent, authorization, persistence, or effect. Hidden, passage, static, invalid, and inspection states pause or quiet presentation according to the deterministic contract.</p>
+<p>Kai may feel calm and attentive. It may not feel conscious, omniscient, autonomous, theatrical, or eager for engagement.</p>
+<h2 id="9-forbidden-patterns">9. Forbidden patterns</h2>
+<h3 id="9-1-fabricated-truth">9.1 Fabricated truth</h3>
+<ul><li>random particles or event-like signals;</li><li>counters, fake telemetry, changing synthetic metrics, or fake progress;</li><li>fake people, presence, queue movement, system breathing, or background work;</li><li>manufactured urgency, pressure, scarcity, or entitlement;</li><li>fake Kai thinking, memory, observation, preparation, or completion.</li></ul>
+<h3 id="9-2-spectacle-without-meaning">9.2 Spectacle without meaning</h3>
+<ul><li>casino pulse, celebratory churn, excessive glow, cyberpunk HUD treatment, or decorative reticles;</li><li>autoplay media, sound, vibration, video, or runtime-generated assets;</li><li>infinite engagement loops or motion whose only purpose is to keep the surface active;</li><li>seven unrelated transition systems or chamber-local lifecycle engines.</li></ul>
+<h3 id="9-3-input-and-accessibility-violations">9.3 Input and accessibility violations</h3>
+<ul><li>scroll capture, scroll hijack, wheel navigation, swipe chamber travel, or cursor tracking;</li><li>focus hidden by dimming, clipping, blur, overlay, or inactive geometry;</li><li>color-only meaning, sub-44 px controls, inaccessible inactive chambers, or motion-required facts;</li><li>delaying or replacing a real destination for cinematic effect.</li></ul>
+<h3 id="9-4-performance-and-architecture-violations">9.4 Performance and architecture violations</h3>
+<ul><li>layout animation, uncontrolled <code>requestAnimationFrame</code>, intervals, continuous DOM measurement, or global pointer tracking;</li><li>Canvas, WebGL, a 3D or motion dependency, generic scene renderer, global visual provider, or second observer/lifecycle system;</li><li>external runtime assets, scripts, network requests, telemetry, persistence, or storage writes;</li><li>more than two Tier A or one Tier B running environmental animations, any running environmental animation after idle, or any Tier C/D/reduced animation.</li></ul>
+<h2 id="10-review-checks">10. Review checks</h2>
+<p>Before the cinematic profile can be presented as candidate-complete, evidence must show:</p>
+<ul><li class="task"><span class="task-mark" aria-hidden="true">☐</span>one existing Core Runtime and one browser adapter remain the only lifecycle owners;</li><li class="task"><span class="task-mark" aria-hidden="true">☐</span>every profile id, chamber id/order, token, and timing value validates or fails wholly to static;</li><li class="task"><span class="task-mark" aria-hidden="true">☐</span>all seven shots preserve their semantic protagonist, facts, disclosures, controls, and destinations;</li><li class="task"><span class="task-mark" aria-hidden="true">☐</span>Tier A/B active and idle animation counts meet the closed budgets;</li><li class="task"><span class="task-mark" aria-hidden="true">☐</span>Tier C, Tier D, reduced, invalid, hidden, inspection, and settled-idle states show zero prohibited work;</li><li class="task"><span class="task-mark" aria-hidden="true">☐</span>keyboard, touch, focus, Escape, Back/Forward, resize, visibility, and BFCache behavior remain deterministic;</li><li class="task"><span class="task-mark" aria-hidden="true">☐</span>mobile, 200% reflow, landscape, 320 px, coarse pointer, reduced motion, constrained, and JavaScript-disabled projections remain complete;</li><li class="task"><span class="task-mark" aria-hidden="true">☐</span>Kai has no fake <code>preparing</code> delay and every staged/resolved result retains its fixed-local/no-action truth;</li><li class="task"><span class="task-mark" aria-hidden="true">☐</span>no candidate-owned network, storage, cookie, cache, service-worker, database, model, billing, or production effect exists; and</li><li class="task"><span class="task-mark" aria-hidden="true">☐</span>the exact isolated commit, evidence, protected Preview identity, and production 404 hard-off are separately verified.</li></ul>
+<h2 id="11-terminal-boundary">11. Terminal boundary</h2>
+<p>This bible governs the presentation language of the isolated Agency Headquarters RC1 candidate. It is not an implementation-validation report, Founder acceptance, merge approval, production authorization, award claim, accessibility certification, or permission to adopt Living Environment on another surface.</p>
+    </article>
+    <section class="copy-panel" aria-labelledby="copy-ready-title">
+      <h2 id="copy-ready-title">Copy-ready Markdown</h2>
+      <p id="copy-ready-help">This native read-only field performs no clipboard action. Select the text and use your platform’s normal copy command.</p>
+      <textarea readonly spellcheck="false" aria-describedby="copy-ready-help" aria-label="Copy-ready Markdown source"># CXOS Living Environment Engine RC1 — Cinematic Bible
+
+- **Status:** REFERENCE SPECIFICATION · ISOLATED CANDIDATE ONLY
+- **Date:** 2026-08-01
+- **Architectural identity:** CXOS Core Runtime 1.1 Living Environment profile — not a separate engine
+- **Reference consumer:** Agency Headquarters — implemented only in the isolated RC1 candidate
+- **Release authority:** No merge, production integration, promotion, alias, or broad-adoption authorization
+
+## 1. Authority and use
+
+This bible translates the already-approved RC1 plan into a compact directing reference for the Agency Headquarters implementation and its review evidence. It introduces no new product, architecture, adoption, or release decision.
+
+Its governing sources are:
+
+1. `CXOS_LIVING_ENVIRONMENT_ENGINE_RC1_PLAN.md`, especially §§4–5, 8–12;
+2. `CXOS_FOUNDATION.md` §17, including the Core Runtime 1.1 Living Environment contract;
+3. `CXOS_LANGUAGE_1_0.md` §§2.8–2.10 and §§9–18; and
+4. `.ai/ADR/ADR-0040-cxos-core-runtime.md`.
+
+The delivery title retains “Living Environment Engine” because that is the assignment name. Architecturally there is one engine: the existing headless CXOS Core Runtime. Living Environment is an optional 1.1 presentation profile projected through the existing pure policy layer and sole browser adapter. Room-owned CSS renders the result.
+
+“Implemented reference” means the Agency profile exists in the isolated RC1 candidate. It does not mean the candidate has passed its evidence gates, received Founder acceptance, merged, or reached production.
+
+Truth labels in this document follow `.ai/CONSTITUTION.md`: **VERIFIED** means directly present in the isolated candidate or its controlling specification, not production-live; **PROPOSED** means a directing or adoption constraint awaiting its stated gate; **NEEDS CONFIRMATION** means only measured evidence or an owner decision can close the claim. No isolated-candidate fact is labeled as a production fact.
+
+## 2. Directing philosophy
+
+### 2.1 The environment serves truth
+
+A Living Environment makes an already-disclosed condition, transition, hierarchy, or focus state easier to understand. It never invents activity so that the interface appears busy.
+
+Motion may communicate:
+
+- acquisition;
+- flow;
+- diagnostic attention;
+- provenance;
+- constrained capacity; or
+- presentation readiness.
+
+Motion may not communicate a fact, operation, result, urgency, person, entitlement, or capability that the room does not actually own and disclose.
+
+### 2.2 One facility, seven distinct shots
+
+Agency Headquarters remains one operating facility with seven semantic chambers. Distinction comes from composition, light source, movement axis, depth relationship, and finite motion signature—not seven independent lifecycle systems and not seven times more animation.
+
+Each chamber keeps:
+
+- one operational purpose;
+- one protagonist;
+- one truthful action;
+- one always-visible truth boundary;
+- no more than three visual planes; and
+- the same complete facts, controls, disclosures, headings, and destinations in enhanced and static projections.
+
+### 2.3 The camera is compositional language
+
+“Camera” means bounded CSS framing, transform, clipping, depth separation, light fields, and hierarchy. There is no literal camera, 3D scene, Canvas, WebGL layer, cursor-following view, zoom-through, or captured scroll.
+
+The three permitted planes are:
+
+1. foreground threshold;
+2. middle-ground semantic content and instruments; and
+3. background environment.
+
+Text, controls, focus targets, and truth disclosures remain outside decorative blur, dimming, clipping, and motion.
+
+### 2.4 Finite first, still by default
+
+Presentation establishes, communicates, and settles. Capable tiers may use bounded environmental activity while the operator is engaged, but sustained environmental work reaches zero after the declared idle window. Inspection and focused Kai presence quiet the environment immediately.
+
+### 2.5 Native behavior has priority
+
+User input, visible focus, Escape, native scrolling, native local navigation, browser Back/Forward, and real destinations outrank ambient presentation. Enhancement may acknowledge a transition; it may not trap, replace, or silently reinterpret an interaction.
+
+## 3. Ownership and truth boundary
+
+| Core Runtime 1.1 projects | Agency Headquarters continues to own |
+|---|---|
+| validated presentation profile and capability tier | canonical synthetic fixtures and source disclosures |
+| arrival, operating, passage, hidden, and departure lifecycle | semantic DOM, chamber ids, headings, order, and destinations |
+| attention, idle, lighting, depth, camera, focus, and Kai-presence tokens | CSS geometry, light fields, instruments, and visible composition |
+| deterministic static-equivalence state | copy, truth boundaries, controls, permissions, and no-action receipts |
+| one bounded idle timer and cleanup policy | Kai intent classification and fixed route-local command state |
+
+The runtime performs no fetch, API call, storage or cookie access, persistence, telemetry, database operation, model call, customer mutation, notification, calendar/task action, billing operation, or entitlement decision. A visual state is never evidence that any such operation occurred.
+
+## 4. Closed token system
+
+### 4.1 Closed timing limits
+
+**VERIFIED — controlling RC1 contract.** These are the closed tier limits in the approved plan and runtime definition. A chamber profile cannot supply a raw duration or easing.
+
+| Token family | Tier A | Tier B | Tier C | Tier D | Executable source |
+|---|---:|---:|---:|---:|---|
+| Arrival lifecycle | 1500 ms | 700 ms | 0 | 0 | `app/review/agency-command/stage.tsx` (`AGENCY_CORE_RUNTIME.arrivalDurationMs`) |
+| Chamber passage | 620 ms | 460 ms | 0 | 0 | `lib/cxos/runtime.ts` (`DEFAULT_CXOS_DISTRICT_TRANSITION_MS`) and `stage.tsx` |
+| Camera-settle ceiling | 520 ms | 340 ms | 0 | 0 | `CXOS_LIVING_ENVIRONMENT_ENGINE_RC1_PLAN.md` §5.2; not a chamber-supplied value |
+| Focus-acquire ceiling | 260 ms | 180 ms | 0 | 0 | plan §5.2; current inspection acquire is 260 ms and its disclosure chevron is 180 ms in the route CSS |
+| Finite heartbeat | 2400 ms | 3200 ms | none | none | `agencyLivingHeartbeat` on the Tier A ambient channel; `agencyLivingAcquireB` combines Tier B acquire and restrained opacity respiration on its sole profile channel |
+| Idle threshold | 6000 ms | 4500 ms | immediate | immediate | `app/review/agency-command/environment.ts` (`idleAfterMs`) |
+| Idle settle | 400 ms | 300 ms | 0 | 0 | `components/cxos/runtime/useCxosRoomRuntime.ts` (`settleAfterMs`) |
+
+Tier A uses a 520 ms one-shot profile acquire plus a 2400 ms finite ambient heartbeat. Tier B has one 3200 ms profile animation: its transform is fully settled at `10.625%` (`340 ms`), then a restrained opacity respiration completes the finite heartbeat without adding a second channel. With no new operator activity, the idle policy stops environmental work after 6000 ms on Tier A or 4500 ms on Tier B; discrete activity may re-arm that one timeout, but both heartbeat forms have one iteration and never loop. Quiet/static states stop them immediately.
+
+For completeness, the final Living CSS declaration block contains these exact values. “Declared only” means the variable currently has no Living selector consumer and therefore must not be described as active behavior.
+
+| CSS declaration | Exact value | RC1 execution status |
+|---|---:|---|
+| `--cxos-dur-response` | 150 ms | declared only |
+| `--cxos-dur-settle` | 400 ms A / 300 ms B | current-profile opacity transition and adapter idle settlement match by tier |
+| `--cxos-dur-reveal` | 520 ms A / 340 ms B | Tier A Living depth-plane acquire; Tier B&#39;s 340 ms transform-settle point is encoded at `10.625%` of its 3200 ms profile heartbeat |
+| `--cxos-dur-heartbeat` | 2400 ms A / 3200 ms B | Tier A ambient heartbeat; Tier B combined profile acquire/opacity respiration |
+| `--cxos-dur-draw` | 1800 ms | legacy flow rules only; those lanes are disabled by Living mode |
+| `--cxos-dur-drift` | 18,000 ms | retained solely for legacy `agencySweep` / room-breath consumers; both are hard-disabled in Living, and no Living animation consumes this duration |
+| `--cxos-depth-near` / `--cxos-depth-middle` | 8 px / 4 px | declared reference only; executable entry/scroll offsets are listed in §4.3 |
+| `--cxos-light-rest` / `--cxos-light-active` / `--cxos-light-focus` | 0.08 / 0.14 / 0.20 | declared reference only; applied profile/state light values are described in §4.4 |
+
+### 4.2 Real easing definitions
+
+**VERIFIED — candidate CSS.** The five approved semantic curve names remain closed governance vocabulary; they are not an exported TypeScript enum and chambers cannot choose arbitrary curves. RC1 realizes them with the following concrete CSS only:
+
+| Semantic use | Real CSS easing | Where it is used |
+|---|---|---|
+| Living profile `acquire`, finite heartbeat, `passage`, and opacity `settle` | `cubic-bezier(0.16, 1, 0.3, 1)` (`--cxos-ease-vector`) | `agencyLivingAcquire`, `agencyLivingAcquireB`, `agencyLivingHeartbeat`; final Living alias for `--agency-chamber-ease`; current-profile opacity settle |
+| Existing bounded arrival beats (`establish`) | `cubic-bezier(0.2, 0.74, 0.2, 1)` | existing Agency arrival identity/system/Kai beat selectors; no new Living loop |
+| `linear-signal` | CSS `linear` | invisible arrival clock and the optional view-timeline depth interpolation |
+| Legacy environmental sweep (non-Living behavior) | CSS `ease-in-out` | `agencySweep` remains in inherited Agency CSS but is hard-disabled by Living mode and is not a Living channel |
+
+`establish`, `acquire`, `passage`, `settle`, and `linear-signal` describe permitted intent; the table above records the actual realization. It would be false to claim that the five names are currently five independently exported easing variables.
+
+### 4.3 Drift, scroll, and chamber-acquire values
+
+**VERIFIED — candidate CSS.** These values are finite and presentation-only:
+
+| Mechanism | Exact value and direction | Eligibility and hard stop |
+|---|---|---|
+| Tier A ambient heartbeat | `agencyLivingHeartbeat` keeps the field at `translateX(52vw)` while opacity moves `0.18 → 0.28 → 0.18` over 2400 ms, one iteration | Tier A budget `2` only; removed on attention, non-quiet Kai, idle settling/settled, hidden/passage/static projection, Tier C/D, and reduced motion |
+| Tier B profile heartbeat | `agencyLivingAcquireB` settles transform and initial opacity by `10.625%` (`340 ms`), eases opacity to `0.82` at `52%`, then returns it to `1` at 3200 ms | Tier B budget `1`; no ambient channel and no profile offset/scale travel |
+| Central depth acquire | Tier A `translateY(8px) scale(1.000) → none` over 520 ms | signature `center-out`; no scroll timeline |
+| Client depth acquire / scroll | Tier A acquire from `translateX(-8px) scale(1.000)` over 520 ms; where CSS view timelines are supported, the same channel is replaced by `translateX(-8px → 8px)` across `cover 8% → cover 92%` | signature `lane-travel`; native scroll remains authoritative |
+| Team depth acquire | Tier A `scale(1.012) → none` over 520 ms | signature `relational-acquire`; no scroll timeline |
+| Business Health depth acquire | Tier A `translateY(-4px) scale(1.000) → none` over 520 ms | signature `diagnostic-draw`; no scroll timeline |
+| Evidence Archive depth acquire / scroll | Tier A acquire from `translateY(8px) scale(1.000)` over 520 ms; optional view timeline replaces it with `translateY(8px → -8px)` across `cover 8% → cover 92%` | signature `tray-align`; vertical archive depth |
+| Kai depth acquire | Tier A `scale(1.018) → none` over 520 ms | signature `inward-converge`; decorative depth plane only; no scroll timeline |
+| Growth depth acquire / scroll | Tier A acquire from `translateX(8px) scale(1.000)` over 520 ms; `--cxos-scroll-x: -8px` yields optional `translateX(8px → -8px)` across `cover 8% → cover 92%` | signature `horizon-expand`; horizontal and intentionally distinct from Archive |
+
+The `16px` end-to-end view-timeline traversals above are expressed as endpoints no farther than `8px` from rest: Client and Growth move horizontally; Archive moves vertically. They do not capture wheel, touch, or scrollbar input. Tier B resets chamber entry translation/scale to rest and receives only its combined profile acquire/opacity heartbeat, with transform settled by 340 ms. Tier C/D, reduced, invalid, hidden, passage, inspection, reading, non-quiet Kai, and settled idle receive none.
+
+The exact acquire poses stay inside the approved Tier A `1.000–1.018` scale envelope. Tier B resets every entry offset and scale to rest (`1.000`), which is stricter than its `1.000–1.008` ceiling.
+
+### 4.4 Spatial, blur, light, and animation limits
+
+| Token family | Tier A | Tier B | Tier C | Tier D |
+|---|---:|---:|---:|---:|
+| Near / mid / far camera-offset maximum | 8 / 4 / 2 px | 4 / 2 / 0 px | 0 | 0 |
+| Approved camera scale | 1.000–1.018 | 1.000–1.008 | 1.000 | 1.000 |
+| Environmental blur | 0–6 px, decorative only | 0–3 px | 0 | 0 |
+| Decorative light-intensity envelope | 0.30–0.82 | 0.24–0.62 | static | static |
+| Running environmental animations | at most 2, active room/chamber only | at most 1, active room/chamber only | 0 | 0 |
+| Sustained animations after idle | 0 | 0 | 0 | 0 |
+
+The Living decorative planes apply no CSS blur in RC1; mobile and Tier B explicitly remove filters from those planes. The pre-existing facility-directory `backdrop-filter: blur(14px)` is static navigation chrome, not a moving environmental plane, and is removed at Tier B/mobile. The CSS declares reference light values `--cxos-light-rest: 0.08`, `--cxos-light-active: 0.14`, and `--cxos-light-focus: 0.2`, but current selectors use profile-specific gradient alpha and state overrides rather than consuming those declarations. Therefore they are not claimed as measured applied intensity. Kai-focused presence sets the existing overhead light to `opacity: 0.72`; attention and idle reduce environmental-plane opacity to `0.30` and `0.46` respectively. All light remains decorative and cannot encode status alone.
+
+Continuous capable-tier motion stays within the route&#39;s three declared transform/opacity channels and the projected Tier A/Tier B running budgets above. Any bounded filter or clip-path use is subordinate, measured, and equivalent in its final static frame.
+
+### 4.5 Closed chamber-profile vocabulary
+
+**VERIFIED — `lib/cxos/runtime.ts`.** A valid profile uses exactly one value from each closed family; unknown values fail the whole Living profile to static. Agency&#39;s exact seven mappings live in `app/review/agency-command/environment.ts`. The adapter projects the selected motion value as the root `data-cxos-signature` attribute; seven signature selectors in the route CSS directly own the corresponding entry and scroll variables. This makes the closed signature—not a duplicated profile-id switch—the executable motion-variable authority.
+
+| Family | Closed values |
+|---|---|
+| Emotion | `command-authority`, `operational-flow`, `human-coordination`, `diagnostic-awareness`, `evidentiary-trust`, `calm-intelligence`, `strategic-expansion` |
+| Camera | `command-wide`, `operational-oblique`, `relational-eye-level`, `diagnostic-elevated`, `archive-perspective`, `executive-portrait`, `capacity-horizon` |
+| Lighting | `command-aperture`, `directional-rail`, `relational-pool`, `analytical-overhead`, `provenance-slot`, `executive-key`, `horizon-wedge` |
+| Depth | `long`, `diagonal`, `medium`, `compressed`, `longitudinal`, `shallow`, `maximum` |
+| Motion | `center-out`, `lane-travel`, `relational-acquire`, `diagnostic-draw`, `tray-align`, `inward-converge`, `horizon-expand` |
+| Focus | `priority-instrument`, `operating-floor`, `operator-core`, `missing-inputs`, `evidence-ledger`, `executive-response`, `capacity-boundary` |
+| Idle | `command-hold`, `parked`, `solo-steady`, `diagnostic-hold`, `archive-aligned`, `executive-still`, `reserve-dark` |
+| Kai context | `executive-context`, `operational-context`, `human-context`, `diagnostic-context`, `evidence-context`, `focused-channel`, `strategy-context` |
+
+### 4.6 Explicit presentation signals
+
+| Signal | Closed states | Owner and meaning |
+|---|---|---|
+| Attention | `ambient`, `reading`, `inspecting` | Agency supplies current semantic attention; Core Runtime projects presentation only |
+| Kai presentation | `quiet`, `staged`, `preparing`, `resolved` | Agency derives an explicit visual phase from existing deterministic route state |
+| Idle | `engaged`, `settling`, `settled` | The sole browser adapter owns the bounded presentation timer |
+| Lifecycle | arrival, operating, passage, hidden, departure | Existing Core Runtime lifecycle remains authoritative |
+
+The engine never infers attention or Kai intent from command text. `preparing` is reserved for a truthful future in-progress operation; the Agency specimen does not invent a delay to use it.
+
+### 4.7 Source-code map and target implementation budgets
+
+| Concern | Candidate source of truth |
+|---|---|
+| Closed profile types, validation, tier budget, hard-quiet/static policy | `lib/cxos/runtime.ts` |
+| One adapter, attention detection, idle timer, lifecycle cleanup, projected data attributes | `components/cxos/runtime/useCxosRoomRuntime.ts` |
+| Agency&#39;s seven immutable profile mappings and idle thresholds | `app/review/agency-command/environment.ts` |
+| Agency lifecycle durations, channel ownership, explicit Kai-state derivation | `app/review/agency-command/stage.tsx` |
+| Shot geometry, signature-root entry/scroll variables, passage atmospheres, easing/duration declarations, keyframes, view-timeline replacement, and hard-off selectors | `app/review/agency-command/agency-command.module.css` |
+| Contract ceilings and review boundary | `CXOS_LIVING_ENVIRONMENT_ENGINE_RC1_PLAN.md` §§4–5 |
+
+The RC1 plan sets targets of no more than 15 KiB gzip incremental client JavaScript and 24 KiB raw incremental route CSS relative to RC5. These are targets, not measured claims. Candidate evidence must replace estimates with actual deltas, and any larger increase requires simplification before Preview.
+
+## 5. Lifecycle grammar
+
+### 5.1 Arrival
+
+Arrival establishes facility identity, scope, source readiness, and the initial settled truth. It never gates access to the semantic document. Skip and Escape settle to the same truthful final frame, with focus preserved.
+
+### 5.2 Operating and attention
+
+The active room—and in chamber mode, the active chamber—may express only its declared bounded channels. Reading reduces distraction. Opening an inspection or giving Kai focused presence clears the idle timer and immediately quiets or settles ambient motion so evidence remains primary.
+
+### 5.3 Idle settlement
+
+Discrete pointer, keyboard, focus, and inspection activity at the room root may re-arm one validated timeout. There is no interval, global pointer tracker, uncontrolled animation frame loop, randomness, or continuously measured activity.
+
+At the idle threshold:
+
+1. state moves from `engaged` to `settling`;
+2. the declared settle token completes; and
+3. state becomes `settled`, with zero sustained environmental animation.
+
+Replay, route reset, active-chamber change, projection change, pagehide, visibility change, and BFCache restoration deterministically clear or restore the presentation state. A stale timeout may never settle a new chamber.
+
+### 5.4 Chamber passage
+
+One existing passage lifecycle serves all seven shots. The source and destination profiles may direct axis and light; they do not create another overlay or state machine.
+
+Every passage has five finite beats:
+
+1. release source;
+2. cross threshold;
+3. identify destination;
+4. acquire destination; and
+5. settle focus.
+
+Forward and backward travel have directional geometry but equal authority and duration. Direct selection uses the same grammar. Latest intent wins. There is no auto-advance.
+
+Static and constrained projections replace the chamber immediately, move focus after layout, and announce only the acquired chamber.
+
+### 5.5 Hidden, reduced, constrained, and invalid states
+
+- Hidden documents pause nonessential motion and clear presentation timers.
+- Tier C, Tier D, reduced-motion, constrained, skipped, and invalid projections run zero continuous environmental motion.
+- Invalid profile ids, tokens, timing, chamber ids, order, or targets fail the entire enhanced profile to the complete declared static projection.
+- Native navigation fails open to the room&#39;s real local destination.
+
+### 5.6 Departure
+
+Departure acknowledges the origin, preserves orientation, and hands off to the real destination. It commits at most once and retains the existing bounded local-navigation fallback. Modified clicks, new-tab behavior, downloads, and static projections remain native.
+
+## 6. Seven-chamber shot profiles
+
+**VERIFIED — candidate direction and source.** Every table below names the same eight directing dimensions so that “distinct” is reviewable rather than impressionistic. The profile-token row is executable in `environment.ts`; the adapter projects its motion token as `data-cxos-signature`, and the route CSS assigns that signature&#39;s exact entry/scroll variables. A motion-signature token does not dispatch JavaScript or grant another animation. Tier A may run the finite ambient heartbeat plus the current depth plane; Tier B uses only the depth plane for its combined acquire/opacity heartbeat. “Kai” always means presentation of explicit route-owned state. It never means inferred intent, computation, memory, or action.
+
+### 6.1 Central Command
+
+| Direction | Profile |
+|---|---|
+| Emotional intention | `command-authority`: authority, orientation, confidence, and facility scale without urgency theater |
+| Operator POV | Wide `command-wide` establishing view from the command rail, high-neutral and centered on the acknowledged operator |
+| Foreground / midground / background | Foreground: the threshold/rail; midground: priority instrument and semantic command banks; background: long centered horizon and command aperture. No more than these three planes |
+| Active composition | Symmetric command deck with the priority brief held inside the middle-ground focus field; surrounding operational instruments establish scope without becoming a dashboard mosaic |
+| Light direction / source | `command-aperture`: cool analytical light descends from the centered overhead aperture; restrained cyan emphasis terminates at the priority instrument |
+| Movement direction | `center-out`: the decorative depth plane acquires from `+8px` vertical offset at `1.000` scale to rest; the priority treatment converges on the disclosed brief, never on a changing queue |
+| Transition rhythm | Common five-beat 620/460 ms passage; centered target atmosphere, 520 ms Tier A vector acquire or 340 ms Tier B transform settle within its finite profile heartbeat, then focus settlement. The outgoing stage uses the common direction-aware lateral recede; Tier C/D replace immediately |
+| Focus / idle / Kai states | `priority-instrument` focus; reading/inspection quiets the field; `command-hold` settles to zero sustained motion; Kai uses `executive-context`, and any explicit non-`quiet` Kai phase hard-quiets ambient motion rather than adding a second signal |
+| Truth guard | Priority movement may emphasize only the already-disclosed fixed brief; it cannot imply live work or a changing queue |
+
+### 6.2 Client Operations Floor
+
+| Direction | Profile |
+|---|---|
+| Emotional intention | `operational-flow`: flow, throughput, pressure, and coordination, bounded by the disclosed synthetic fixtures |
+| Operator POV | `operational-oblique` runway view at working height, looking along rather than down on the floor |
+| Foreground / midground / background | Foreground: queue threshold; midground: fixed packet lanes and blocked/waiting fixtures; background: diagonal floor depth and rail horizon |
+| Active composition | Oblique left-to-right operating lanes keep fixed positions legible; the amber block is an interruption inside the disclosed lane, not a global alert |
+| Light direction / source | `directional-rail`: cool rail light travels along the lane axis; amber originates only at the disclosed blocked fixture |
+| Movement direction | `lane-travel`: one profile acquire begins `8px` left of rest; optional Tier A view interpolation replaces that channel with `-8px → +8px` horizontal travel. Fixture-state motion remains deterministic and cannot advance work |
+| Transition rhythm | Common five-beat 620/460 ms passage with an oblique rail target; 520 ms Tier A acquire or 340 ms Tier B transform settle and the lateral common recede reinforce runway direction. Inspection cancels the active lane channel immediately |
+| Focus / idle / Kai states | `operating-floor` focus; reading/inspection quiets the floor; `parked` holds packets at honest positions with zero sustained motion; Kai uses `operational-context` and any explicit staged/resolved phase hard-quiets ambient motion |
+| Truth guard | Packet movement never claims a task advanced, a person acted, or a live queue changed |
+
+### 6.3 Team Operations Room
+
+| Direction | Profile |
+|---|---|
+| Emotional intention | `human-coordination`: responsibility and intentional solitude, never fake attendance or ambient “people” |
+| Operator POV | `relational-eye-level` tableau at eye level with the solo operator occupying the deliberate center |
+| Foreground / midground / background | Foreground: occupied operator threshold; midground: radial coverage geometry and owned role position; background: unlit coverage horizon with absent links remaining absent |
+| Active composition | A centered relational field gives the one represented operator visual weight; future positions remain architecture, not silhouettes, dots, or presence claims |
+| Light direction / source | `relational-pool`: soft perimeter light pools inward around the occupied role; unowned coverage remains dark |
+| Movement direction | `relational-acquire`: the decorative radial plane scales from `1.012` to rest; any finite coverage recognition resolves toward the occupied core rather than populating empty positions |
+| Transition rhythm | Common five-beat 620/460 ms passage with a concentric target atmosphere; 520 ms Tier A scale acquire or 340 ms Tier B transform settle, then stable eye-level frame. Common forward/back recede preserves navigation direction |
+| Focus / idle / Kai states | `operator-core` focus; inspection may expose disclosed coverage while hard-quieting the environment; `solo-steady` holds the intentional solo state; Kai uses `human-context`, and any non-`quiet` phase quiets rather than simulates another presence |
+| Truth guard | No dot, pulse, silhouette, or motion may imply an unrepresented teammate or live presence |
+
+### 6.4 Business Health Observatory
+
+| Direction | Profile |
+|---|---|
+| Emotional intention | `diagnostic-awareness`: monitoring, uncertainty, and strategic attention without numerical certainty |
+| Operator POV | `diagnostic-elevated` observatory view facing the right-biased instrument horizon from a slightly elevated analytical position |
+| Foreground / midground / background | Foreground: disclosed qualitative state; midground: diagnostic instruments and missing-input bank; background: compressed concentric rings around the upper-right analytical locus |
+| Active composition | The observatory bank is biased toward the diagnostic locus, leaving missing inputs visibly unlit and the qualitative `WATCH` state adjacent to its source boundary |
+| Light direction / source | `analytical-overhead`: cool light descends from above; controlled amber originates only at the `WATCH` instrument/ring locus |
+| Movement direction | `diagnostic-draw`: the decorative plane acquires from `-4px` vertical offset at `1.000` scale; finite concentric attention draws around the disclosed locus and settles, without a score needle or progress arc |
+| Transition rhythm | Common five-beat 620/460 ms passage with an amber analytical target; 520 ms Tier A vector acquire closes the small elevated offset, while Tier B settles transform in 340 ms, then focus lands on the disclosed driver. Tier C/D cut directly to the same reading |
+| Focus / idle / Kai states | `missing-inputs` focus keeps absent sources primary; reading/inspection stops ambient work; `diagnostic-hold` freezes the qualitative reading; Kai uses `diagnostic-context` and non-`quiet` presentation hard-quiets the observatory |
+| Truth guard | Qualitative state remains qualitative; missing inputs stay visibly missing and no numeric score is invented |
+
+### 6.5 Activity and Evidence Archive
+
+| Direction | Profile |
+|---|---|
+| Emotional intention | `evidentiary-trust`: provenance, preservation, and traceability without implying a production audit trail |
+| Operator POV | `archive-perspective` aisle view from a slightly low position, looking through ordered longitudinal shelves |
+| Foreground / midground / background | Foreground: archive threshold/nearest tray; midground: semantic evidence ledger and inspected receipt; background: longitudinal shelf grid and visibly absent record positions |
+| Active composition | A centered ledger sits inside layered, ordered shelf geometry; stacked depth shadows suggest filing order while all source labels remain semantic and readable |
+| Light direction / source | `provenance-slot`: narrow slot light originates at the inspected source category and crosses only its aligned evidence layer |
+| Movement direction | `tray-align`: acquire begins `8px` below rest; optional Tier A view interpolation replaces it with `+8px → -8px` vertical shelf travel, so archive depth reveals along the aisle rather than toward the operator |
+| Transition rhythm | Common five-beat 620/460 ms passage with a longitudinal shelf target; 520 ms Tier A vector acquire or its optional bounded vertical scroll replacement, while Tier B settles transform in 340 ms, then stable ledger focus. Departure uses the common directional recede while layers visually reseal |
+| Focus / idle / Kai states | `evidence-ledger` focus; inspection brings the real disclosed layer forward and hard-quiets decoration; `archive-aligned` preserves stable order; Kai uses `evidence-context`, with all non-`quiet` phases quieting rather than generating provenance |
+| Truth guard | Missing records remain visibly absent; decorative provenance never creates a source or receipt |
+
+### 6.6 Kai Executive Suite
+
+| Direction | Profile |
+|---|---|
+| Emotional intention | `calm-intelligence`: presence, intimacy, and precision without personhood, omniscience, or autonomy |
+| Operator POV | `executive-portrait` eye-level close environment; operator and the one contextual Kai channel share a restrained central field |
+| Foreground / midground / background | Foreground: operator command boundary and no-action disclosure; midground: executive response/workbench; background: shallow decorative key field and narrow horizon |
+| Active composition | A centered executive desk contains the fixed local command and deterministic response; surrounding room geometry is quieter, but disclosures and controls never dim |
+| Light direction / source | `executive-key`: focused top-center key light falls into the executive desk; surrounding light narrows when explicit Kai state is present |
+| Movement direction | `inward-converge`: decorative depth begins at the Tier A ceiling of `1.018` and settles inward to rest. Explicit `staged`/`resolved` state changes styling, but the runtime immediately removes ambient/profile animation instead of simulating thinking |
+| Transition rhythm | Common five-beat 620/460 ms passage with a centered portrait target; 520 ms Tier A vector scale-down acquire creates a restrained widening-to-context settle, while Tier B settles transform in 340 ms. C/D and reduced motion render the final portrait immediately |
+| Focus / idle / Kai states | `executive-response` focus and `focused-channel` Kai context; command text yields explicit `staged`, an existing deterministic local response yields `resolved`, and this specimen never emits fake `preparing`; inspection/focus and `executive-still` both enforce zero sustained environmental motion |
+| Truth guard | No motion implies consciousness, observation, memory, open-ended model work, a fake preparing delay, or an executed action |
+
+### 6.7 Growth / Capacity Threshold
+
+| Direction | Profile |
+|---|---|
+| Emotional intention | `strategic-expansion`: scale, possibility, and constraint without scarcity, upsell pressure, or entitlement |
+| Operator POV | `capacity-horizon` wide view from a low-neutral position looking across occupied capacity toward dormant reserve |
+| Foreground / midground / background | Foreground: disclosed capacity boundary; midground: occupied cells and constraint architecture; background: maximum-depth future horizon with reserve kept dark |
+| Active composition | A broad centered horizon separates evidenced occupied cells from dormant reserve; the boundary, not a purchase action, is the protagonist |
+| Light direction / source | `horizon-wedge`: cool light rises from the low future horizon; only occupied cells receive restrained illumination and reserve remains unlit |
+| Movement direction | `horizon-expand`: acquire begins `8px` right of rest at `1.000` scale; `--cxos-scroll-x: -8px` makes the optional Tier A view interpolation travel `+8px → -8px` horizontally, deliberately distinct from Archive&#39;s vertical aisle |
+| Transition rhythm | Common five-beat 620/460 ms passage with the lowest target horizon; 520 ms Tier A vector acquire or its optional bounded horizontal scroll replacement, while Tier B settles transform in 340 ms, then capacity-boundary focus. The real room departure remains the existing Mission Control handoff |
+| Focus / idle / Kai states | `capacity-boundary` focus; inspection may expand disclosed context but hard-quiets motion; `reserve-dark` leaves future capacity still; Kai uses `strategy-context`, and any explicit non-`quiet` phase removes ambient motion rather than making an offer |
+| Truth guard | No scarcity, countdown, upgrade availability, billing entitlement, automatic expansion, or purchase implication |
+
+## 7. Mobile, reduced-motion, and static direction
+
+### 7.1 Mobile
+
+- Present one chamber at a time.
+- Preserve compact previous/current/next controls and a native expandable facility map.
+- Keep every target at least 44 px and all navigation keyboard-, touch-, and screen-reader-complete.
+- Recompose to one visual plane where necessary; halve capable parallax and shorten finite signatures.
+- Capture no horizontal gesture, wheel, or touch travel.
+- Keep browser Back/Forward as the chamber-history mechanism.
+- Prevent horizontal overflow at 320 px and in landscape.
+
+### 7.2 Tier B
+
+Tier B keeps the composition and one bounded environmental channel while reducing camera travel, blur, parallax, and depth. Translation stays at or below 4 px, camera scale at or below 1.008, and passage remains the approved 460 ms. It is a deliberate projection, not a degraded Tier A.
+
+### 7.3 Reduced motion and Tier D
+
+Reduced motion and Tier D use composition, light, border weight, scale hierarchy, spacing, and static depth. They do not use passage overlays, parallax, animated light, draw sequences, or running environmental animation.
+
+All seven chambers remain distinct, complete, directly reachable, and truth-equivalent. Static does not mean empty, disabled-looking, or stripped of hierarchy.
+
+### 7.4 Tier C, constrained capability, and no JavaScript
+
+Tier C and constrained capability settle immediately with zero continuous motion. If enhancement is unavailable or invalid, the complete semantic document and explicit navigation remain available. No-JavaScript preserves headings, facts, controls, disclosures, reading order, and real destinations.
+
+## 8. Kai presentation truth
+
+Kai is CreditVector&#39;s one Credit Intelligence Officer. The Living Environment profile presents explicit state; it does not create Kai intelligence.
+
+| Phase | Permitted presentation meaning | Forbidden reading |
+|---|---|---|
+| `quiet` | Contextual availability without attention capture | watching the operator, background work, or live presence |
+| `staged` | The operator staged an existing fixed local command | intent inferred by the runtime or an action already underway |
+| `preparing` | A truthful future operation is actually in progress | synthetic delay, fake thinking, or model activity in this specimen |
+| `resolved` | The existing deterministic local response is visible | an external effect completed, a customer record changed, or Kai acted |
+
+The existing no-action receipt remains visible. Kai presentation owns no model call, memory, customer fact, inference, recommendation, consent, authorization, persistence, or effect. Hidden, passage, static, invalid, and inspection states pause or quiet presentation according to the deterministic contract.
+
+Kai may feel calm and attentive. It may not feel conscious, omniscient, autonomous, theatrical, or eager for engagement.
+
+## 9. Forbidden patterns
+
+### 9.1 Fabricated truth
+
+- random particles or event-like signals;
+- counters, fake telemetry, changing synthetic metrics, or fake progress;
+- fake people, presence, queue movement, system breathing, or background work;
+- manufactured urgency, pressure, scarcity, or entitlement;
+- fake Kai thinking, memory, observation, preparation, or completion.
+
+### 9.2 Spectacle without meaning
+
+- casino pulse, celebratory churn, excessive glow, cyberpunk HUD treatment, or decorative reticles;
+- autoplay media, sound, vibration, video, or runtime-generated assets;
+- infinite engagement loops or motion whose only purpose is to keep the surface active;
+- seven unrelated transition systems or chamber-local lifecycle engines.
+
+### 9.3 Input and accessibility violations
+
+- scroll capture, scroll hijack, wheel navigation, swipe chamber travel, or cursor tracking;
+- focus hidden by dimming, clipping, blur, overlay, or inactive geometry;
+- color-only meaning, sub-44 px controls, inaccessible inactive chambers, or motion-required facts;
+- delaying or replacing a real destination for cinematic effect.
+
+### 9.4 Performance and architecture violations
+
+- layout animation, uncontrolled `requestAnimationFrame`, intervals, continuous DOM measurement, or global pointer tracking;
+- Canvas, WebGL, a 3D or motion dependency, generic scene renderer, global visual provider, or second observer/lifecycle system;
+- external runtime assets, scripts, network requests, telemetry, persistence, or storage writes;
+- more than two Tier A or one Tier B running environmental animations, any running environmental animation after idle, or any Tier C/D/reduced animation.
+
+## 10. Review checks
+
+Before the cinematic profile can be presented as candidate-complete, evidence must show:
+
+- [ ] one existing Core Runtime and one browser adapter remain the only lifecycle owners;
+- [ ] every profile id, chamber id/order, token, and timing value validates or fails wholly to static;
+- [ ] all seven shots preserve their semantic protagonist, facts, disclosures, controls, and destinations;
+- [ ] Tier A/B active and idle animation counts meet the closed budgets;
+- [ ] Tier C, Tier D, reduced, invalid, hidden, inspection, and settled-idle states show zero prohibited work;
+- [ ] keyboard, touch, focus, Escape, Back/Forward, resize, visibility, and BFCache behavior remain deterministic;
+- [ ] mobile, 200% reflow, landscape, 320 px, coarse pointer, reduced motion, constrained, and JavaScript-disabled projections remain complete;
+- [ ] Kai has no fake `preparing` delay and every staged/resolved result retains its fixed-local/no-action truth;
+- [ ] no candidate-owned network, storage, cookie, cache, service-worker, database, model, billing, or production effect exists; and
+- [ ] the exact isolated commit, evidence, protected Preview identity, and production 404 hard-off are separately verified.
+
+## 11. Terminal boundary
+
+This bible governs the presentation language of the isolated Agency Headquarters RC1 candidate. It is not an implementation-validation report, Founder acceptance, merge approval, production authorization, award claim, accessibility certification, or permission to adopt Living Environment on another surface.
+</textarea>
+    </section>
+  </main>
+  <footer><div class="shell">Generated deterministically from the declared Markdown source. No release authority is implied.</div></footer>
+</body>
+</html>

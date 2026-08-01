@@ -12,7 +12,7 @@ Decision boundary: protected Founder review only; no merge, production integrati
 
 **REVIEW JUDGMENT — READY WITH DISCLOSED CAVEATS.** The exact local candidate clears the adversarial implementation gate. No open P0 or P1 implementation defect was found after closure of the scroll-choreography proof gap and the sampled contrast failure. The experience reads as one coherent operating facility with seven distinguishable chambers, a native chamber-navigation model, bounded state-bearing motion, complete static fail-down, explicit synthetic truth, and no business or execution authority.
 
-One P1 delivery gate remains outside this local verdict: **protected Preview exact binding is pending until the root agent verifies it**. The definitive browser ledger targets a local review build; it does not prove that a protected Preview serves the same committed bytes, remains authenticated, or leaves production aliases unchanged. Until that check is recorded, this report is not a Preview-approval, merge, or production-release record.
+The protected Preview delivery gate is now independently closed. Vercel metadata returns one Ready Preview for exact delivery commit `b2ba206aade2d41aa7b718fdb3c352bbc27edb59`; the only changes after browser-bound implementation source `188aa78cf60d1565a35ac20710724dc7e1e32724` are documentation, curated evidence, and the dependency-free handoff scanner. Anonymous access redirects to Vercel SSO without exposing content. An authenticated read returns 200, release header `b2ba206aade2`, `noindex`, and `noindex, nofollow` metadata. No production alias is attached to the Preview, and the existing production target remains unchanged. This closes Founder delivery only; it is not merge or production approval.
 
 This is an engineering, product-truth, accessibility, motion, and internal compliance review. It is not counsel approval, a legal-compliance certification, a production security attestation, or user-research evidence.
 
@@ -26,7 +26,7 @@ This is an engineering, product-truth, accessibility, motion, and internal compl
 | Definitive browser ledger | SHA-256 `4a07581e10c7f23464a52e36c273499c3c8e8dcfdb7e901d33d34f609c7a9477` | **VERIFIED** — hash recomputed over `CXOS_LIVING_ENVIRONMENT_ENGINE_RC1_EVIDENCE/candidate/final/candidate-final-browser-evidence.json` |
 | Candidate build metrics | `CXOS_LIVING_ENVIRONMENT_ENGINE_RC1_EVIDENCE/candidate/candidate-build-metrics.json` | **VERIFIED** — clean post-commit optimized review build identifies the exact candidate source |
 | Static Living Environment guard | `scripts/cxos-living-environment.test.ts` | **VERIFIED** — 35 passed, 0 failed at the bound source |
-| Protected Preview | Exact candidate binding and protection | **PENDING** — root-agent verification required |
+| Protected Preview | Delivery commit `b2ba206aade2d41aa7b718fdb3c352bbc27edb59`; sanitized proof SHA-256 `2cc53e9db3cfe174b59dba0d50ccf8da0e8a8359b9bf530662e29a0eb0e3cd0d` | **VERIFIED** — Ready Preview, exact Git metadata match, SSO protection, authenticated 200, release header match, noindex/nofollow, no production alias |
 
 The definitive ledger reports strict candidate acceptance with 0 findings and 0 observations. All 10 matrix cases pass: desktop-large, desktop, tablet, mobile, mobile-360, mobile-narrow, landscape, reduced, constrained, and reflow-200.
 
@@ -36,7 +36,7 @@ All 17 coverage gates pass: required viewports, 200% reflow projection, arrival 
 
 | Defect or proof gap | Adversarial risk | Candidate correction | Exact closure evidence | Disposition |
 |---|---|---|---|---|
-| Scroll-linked choreography was declared but not sufficiently proved as a real, visible, document-scroller response | A CSS declaration or running-animation count could pass while the intended subject had a zero-duration, detached, or visually inert timeline | The bound source uses explicit ViewTimeline longhands, a nonzero automatic duration, bounded range, clipped environmental containment, and a dedicated native-scroll endpoint probe | Active profile `client-operations`; target and animation found; `ViewTimeline`; subject matches; source is the document scroller; duration `83.99969426609967%`; progress `0.16771583849647198 → 0.591774272266294`; current-time delta `35.62077878762612`; native scroll `0 → 801`; rendered X transform `-5.31655 → 1.46839` for a `6.78494 px` delta; all choreography predicates pass | **CLOSED for the exact local candidate.** Preview replay remains part of the pending binding gate |
+| Scroll-linked choreography was declared but not sufficiently proved as a real, visible, document-scroller response | A CSS declaration or running-animation count could pass while the intended subject had a zero-duration, detached, or visually inert timeline | The bound source uses explicit ViewTimeline longhands, a nonzero automatic duration, bounded range, clipped environmental containment, and a dedicated native-scroll endpoint probe | Active profile `client-operations`; target and animation found; `ViewTimeline`; subject matches; source is the document scroller; duration `83.99969426609967%`; progress `0.16771583849647198 → 0.591774272266294`; current-time delta `35.62077878762612`; native scroll `0 → 801`; rendered X transform `-5.31655 → 1.46839` for a `6.78494 px` delta; all choreography predicates pass | **CLOSED for the exact browser-bound implementation source.** The protected Preview release header proves the delivery commit containing those unchanged runtime files |
 | The inherited dim-text sample failed WCAG AA normal-text contrast | Low-emphasis operational copy could become unreadable in the dark lighting state even while automated Axe marked contrast incomplete | The shared dim token changed from `#6f8296` to `#a9bbcc` | At the same deterministic desktop sample coordinate, the RC5 baseline is foreground `(111, 130, 150)` over `(12, 33, 49)`, ratio `4.155969:1`; the candidate is `(169, 187, 204)` over `(12, 34, 50)`, ratio `8.265826:1` | **CLOSED for the known sample.** Not an exhaustive closure of all 511 Axe-incomplete contrast nodes |
 
 ## 4. Chamber distinction
@@ -90,7 +90,7 @@ No horizontal overflow is recorded. The JavaScript-disabled document retains all
 | Performance engineer | CLS is zero in measured phases, idle quiescence and motion budgets pass, client-JS and CSS deltas remain within declared budgets, and there is no repeated candidate-owned long task. Two candidate-owned long animation frames are disclosed below. | **PASS WITH DISCLOSURE** |
 | Compliance reviewer | The experience repeatedly labels fixtures, lacks credit-repair promises, preserves no-score/no-outcome/no-legal-deadline boundaries, and connects no billing or expansion action. This review does not replace the CCO gate or counsel. | **PASS FOR PROTECTED REVIEW ONLY** |
 | Product-truth reviewer | Kai and all operational states are deterministic fixtures. Values remain fixed through motion; missing data stays missing; no synthetic state is promoted to live truth. | **PASS** |
-| Production-safety reviewer | Server review gates fail closed for production and unknown Vercel identity before any public flag can enable the stage. Candidate code has no business write path. Actual protected Preview identity and protection remain unverified locally. | **SOURCE PASS; DELIVERY BINDING PENDING** |
+| Production-safety reviewer | Server review gates fail closed for production and unknown Vercel identity before any public flag can enable the stage. Candidate code has no business write path. The exact Ready Preview is SSO-protected, index-blocked, and has no production alias. | **SOURCE AND DELIVERY PASS** |
 
 ## 8. Mobile, reduced-motion, accessibility, and performance detail
 
@@ -132,9 +132,9 @@ The phrase “continuous executive channel” is product-shaped language and mus
 
 ### Production safety
 
-**VERIFIED IN SOURCE — LIVE BINDING PENDING.** `reviewBuildAllowed()` returns false for authoritative production Vercel identity before evaluating the local review override. An unknown Vercel deployment also fails closed. Review layout and route pages call `notFound()` before loading the Agency client stage when the build is not allowed. Thus, under the inspected policy, no query parameter or public review flag can expose the candidate in a production-identified build.
+**VERIFIED IN SOURCE AND PREVIEW DELIVERY.** `reviewBuildAllowed()` returns false for authoritative production Vercel identity before evaluating the local review override. An unknown Vercel deployment also fails closed. Review layout and route pages call `notFound()` before loading the Agency client stage when the build is not allowed. Thus, under the inspected policy, no query parameter or public review flag can expose the candidate in a production-identified build.
 
-That source conclusion does not prove external deployment configuration. The root agent must verify the protected Preview, exact source identity, access protection, and unchanged production aliases before Founder delivery.
+The separately verified Preview is Ready at exact delivery commit `b2ba206aade2d41aa7b718fdb3c352bbc27edb59`, redirects anonymous access to SSO, returns the matching release header only after authenticated access, declares noindex/nofollow, and has no production alias. The existing production target and aliases remain on the prior four-day-old production deployment.
 
 ## 10. Explicit answers to the twelve adversarial questions
 
@@ -150,12 +150,12 @@ That source conclusion does not prove external deployment configuration. The roo
 | 8 | Is mobile a real spatial experience or merely stacked desktop content? | **It is a real one-chamber spatial projection.** Mobile does not stack all seven chambers; it exposes one active chamber with compact spatial navigation. Individual chambers can still scroll vertically. |
 | 9 | Does reduced motion remain premium? | **Yes.** It preserves the full hierarchy, lighting, depth composition, controls, facts, and chamber distinction with zero running environmental animation. |
 | 10 | Are any synthetic states mistaken for live truth? | **No material ambiguity was found.** Synthetic-fixture, truth-boundary, fixed-value, unavailable-input, and no-action disclosures remain visible. Those disclosures are a release invariant. |
-| 11 | Can any review flag expose the experience in production? | **Not under the inspected server policy.** Production identity wins over every review flag and resolves to `notFound()`. Live deployment and protected Preview verification remain pending with the root agent. |
+| 11 | Can any review flag expose the experience in production? | **No under the verified policy and delivery boundary.** Production identity wins over every review flag and resolves to `notFound()`. The exact Preview is separately SSO-protected and carries no production alias. |
 | 12 | Did the engine accidentally acquire business authority? | **No.** It projects presentation state only and has no fact, effect, write, data, billing, auth, schema, AI, or entitlement authority. |
 
 ## 11. Exact disclosed caveats and required next gate
 
-1. **Protected Preview binding — P1 delivery gate.** The root agent must verify that the protected Preview serves source `188aa78cf60d1565a35ac20710724dc7e1e32724`, requires authentication, preserves the production hard-off, and changes no production alias. Local evidence cannot close this gate.
+1. **Protected Preview binding — CLOSED.** Exact delivery commit `b2ba206aade2d41aa7b718fdb3c352bbc27edb59` is Ready, SSO-protected, release-header-bound, index-blocked, and carries no production alias. Runtime product files are unchanged from browser-bound implementation source `188aa78cf60d1565a35ac20710724dc7e1e32724`.
 2. **Contrast automation remains incomplete.** Axe leaves 511 serious `color-contrast` node occurrences for manual review across the ten cases. The known `4.155969:1` defect is repaired to `8.265826:1`, but that sampled closure is not an exhaustive all-node contrast certification.
 3. **Five obstruction samples are non-comprehensive.** Mobile, mobile-360, mobile-narrow, landscape, and reflow-200 each record zero center points eligible for obstruction testing. Size compliance and interaction success mitigate but do not replace in-viewport center-point coverage.
 4. **Performance has isolated outliers and incomplete attribution.** Two candidate-owned long animation frames occur once each with 0 ms blocking; 10 long tasks are first-party-unattributed rather than candidate-exonerating. No production RUM or broad low-end-device sample is claimed.
@@ -168,4 +168,4 @@ That source conclusion does not prove external deployment configuration. The roo
 
 **CXOS LIVING ENVIRONMENT ENGINE RC1 — READY WITH DISCLOSED CAVEATS**
 
-The exact local implementation is ready to proceed to the separately controlled, protected Founder Preview check. It is not ready to merge or ship to production. Protected Preview binding remains pending until the root agent verifies it.
+The exact implementation and its separately controlled protected Preview are ready for Founder review with the disclosed measurement caveats. They are not ready to merge or ship to production; those gates remain explicitly unauthorized.

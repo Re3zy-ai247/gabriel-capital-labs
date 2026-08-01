@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src 'none'; font-src 'none'; connect-src 'none'; script-src 'none'; media-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>CXOS Living Environment Engine — Cross-Site Adoption Matrix</title>
+  <style>
+    :root { color-scheme: dark light; --page:#07111d; --surface:#0d1c2c; --surface-2:#12263a; --text:#eef6fa; --muted:#b4c6d2; --line:#315069; --brand:#65e0d8; --amber:#ffd184; --shadow:0 18px 42px rgba(0,0,0,.25); }
+    * { box-sizing:border-box; }
+    html { scroll-behavior:smooth; }
+    body { margin:0; background:var(--page); color:var(--text); font:16px/1.65 ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    a { color:var(--brand); text-underline-offset:.18em; }
+    a:focus-visible, textarea:focus-visible, [tabindex]:focus-visible { outline:3px solid var(--amber); outline-offset:3px; }
+    .skip-link { position:fixed; z-index:10; top:1rem; left:1rem; transform:translateY(-180%); padding:.7rem 1rem; border-radius:.5rem; background:var(--amber); color:#111; }
+    .skip-link:focus { transform:translateY(0); }
+    .shell { width:min(1080px,calc(100% - 2rem)); margin-inline:auto; }
+    header { padding:3.75rem 0 2rem; border-bottom:1px solid var(--line); }
+    .eyebrow { color:var(--brand); font-size:.76rem; font-weight:800; letter-spacing:.12em; text-transform:uppercase; }
+    h1 { max-width:25ch; margin:.45rem 0 1rem; font-size:clamp(2.2rem,6vw,4.5rem); line-height:1.04; letter-spacing:-.04em; }
+    h2,h3,h4,h5,h6 { scroll-margin-top:1rem; line-height:1.22; letter-spacing:-.02em; }
+    h2 { margin-top:3rem; font-size:clamp(1.6rem,3vw,2.35rem); }
+    h3 { margin-top:2rem; }
+    p,li { max-width:88ch; }
+    .status-badge { display:inline-block; padding:.28rem .66rem; border:1px solid var(--amber); border-radius:999px; color:var(--amber); font-size:.82rem; font-weight:800; }
+    .boundary { max-width:82ch; color:var(--muted); }
+    nav { padding:1rem 0; border-bottom:1px solid var(--line); background:var(--surface); }
+    nav h2 { margin:0 0 .45rem; font-size:1rem; }
+    nav ul { display:flex; flex-wrap:wrap; gap:.35rem 1rem; margin:0; padding:0; list-style:none; }
+    nav a { display:inline-block; min-height:44px; padding:.55rem 0; }
+    .toc-level-3 { padding-left:.65rem; }
+    main { padding:2rem 0 4rem; }
+    blockquote { margin:1.4rem 0; padding:.8rem 1rem; border-left:4px solid var(--brand); background:var(--surface); color:var(--muted); }
+    blockquote p { margin:0; }
+    hr { margin:2.5rem 0; border:0; border-top:1px solid var(--line); }
+    pre { overflow:auto; padding:1rem; border:1px solid var(--line); border-radius:.75rem; background:#050b12; color:#edf7fa; }
+    code { border:1px solid var(--line); border-radius:.3rem; padding:.08em .3em; background:var(--surface-2); color:var(--brand); }
+    pre code { border:0; padding:0; background:transparent; color:inherit; }
+    .table-wrap { overflow-x:auto; margin:1.25rem 0; border:1px solid var(--line); border-radius:.85rem; }
+    table { width:100%; min-width:620px; border-collapse:collapse; background:var(--surface); }
+    th,td { padding:.72rem .82rem; border-top:1px solid var(--line); text-align:left; vertical-align:top; }
+    thead th { border-top:0; background:var(--surface-2); color:var(--brand); }
+    .sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; }
+    .task { list-style:none; margin-left:-1.5rem; }
+    .task-mark { display:inline-block; width:1.6rem; color:var(--brand); }
+    .reference,.image-reference { color:var(--muted); text-decoration:underline dotted; }
+    .copy-panel { margin-top:4rem; padding:1rem; border:1px solid var(--line); border-radius:1rem; background:var(--surface); box-shadow:var(--shadow); }
+    .copy-panel h2 { margin-top:0; font-size:1.35rem; }
+    .copy-panel p { color:var(--muted); }
+    textarea { width:100%; min-height:20rem; resize:vertical; padding:1rem; border:1px solid var(--line); border-radius:.75rem; background:var(--page); color:var(--text); font:13px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace; }
+    footer { padding:2rem 0 3rem; border-top:1px solid var(--line); color:var(--muted); }
+    @media (prefers-color-scheme: light) { :root { --page:#fff; --surface:#f4f8fa; --surface-2:#e9f2f5; --text:#14202b; --muted:#4c6070; --line:#9eb0bc; --brand:#07666b; --amber:#7a4b00; --shadow:none; } pre { background:#eef4f7; color:#14202b; } }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior:auto; } }
+    @media (max-width:680px) { header { padding-top:2.5rem; } nav ul { display:block; } table { min-width:560px; } .shell { width:min(100% - 1.1rem,1080px); } }
+    @page { size:auto; margin:16mm; }
+    @media print { :root { color-scheme:light; --page:#fff; --surface:#fff; --surface-2:#eef4f7; --text:#111827; --muted:#425466; --line:#93a4b2; --brand:#075e63; --amber:#7a4b00; --shadow:none; } body { font-size:10.5pt; } .shell { width:100%; } header { padding-top:0; } nav,.skip-link,.copy-panel { display:none; } main { padding-bottom:0; } h1 { font-size:28pt; } h2 { font-size:18pt; break-after:avoid; } h3 { font-size:13pt; break-after:avoid; } .table-wrap { overflow:visible; border:0; } table { min-width:0; font-size:8.5pt; } thead { display:table-header-group; } tr,pre,blockquote { break-inside:avoid; } a { color:inherit; text-decoration:none; } }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#content">Skip to report</a>
+  <header>
+    <div class="shell">
+      <div class="eyebrow">CreditVector Experience OS · deterministic handoff</div>
+      <h1>CXOS Living Environment Engine — Cross-Site Adoption Matrix</h1>
+      <p><span class="status-badge">Agency reference only; broader adoption remains gated</span></p>
+      <p class="boundary">Offline report mirror. It loads no external asset, script, font, frame, or network resource.</p>
+    </div>
+  </header>
+  <nav aria-label="Report contents"><div class="shell"><h2>Contents</h2><ul><li class="toc-level-2"><a href="#1-purpose-and-authority">1. Purpose and authority</a></li><li class="toc-level-2"><a href="#2-classification-legend">2. Classification legend</a></li><li class="toc-level-3"><a href="#2-1-exact-assignment-classifications">2.1 Exact assignment classifications</a></li><li class="toc-level-3"><a href="#2-2-adoption-horizons">2.2 Adoption horizons</a></li><li class="toc-level-2"><a href="#3-non-adoption-law">3. Non-adoption law</a></li><li class="toc-level-2"><a href="#4-surface-adoption-matrix">4. Surface adoption matrix</a></li><li class="toc-level-3"><a href="#4-1-classification-horizon-and-owner-gate">4.1 Classification, horizon, and owner gate</a></li><li class="toc-level-3"><a href="#4-2-reuse-required-extension-and-forbidden-duplication">4.2 Reuse, required extension, and forbidden duplication</a></li><li class="toc-level-2"><a href="#5-common-future-adoption-gate">5. Common future-adoption gate</a></li><li class="toc-level-3"><a href="#5-1-product-and-truth">5.1 Product and truth</a></li><li class="toc-level-3"><a href="#5-2-architecture">5.2 Architecture</a></li><li class="toc-level-3"><a href="#5-3-design-motion-and-accessibility">5.3 Design, motion, and accessibility</a></li><li class="toc-level-3"><a href="#5-4-truth-compliance-and-kai">5.4 Truth, compliance, and Kai</a></li><li class="toc-level-3"><a href="#5-5-evidence-and-authority">5.5 Evidence and authority</a></li><li class="toc-level-2"><a href="#6-agency-integration-boundary">6. Agency integration boundary</a></li><li class="toc-level-2"><a href="#7-decision-queue">7. Decision queue</a></li><li class="toc-level-2"><a href="#8-terminal-boundary">8. Terminal boundary</a></li></ul></div></nav>
+  <main id="content" class="shell">
+    <article>
+<ul><li><strong>Status:</strong> GOVERNANCE REFERENCE · NO BROAD ADOPTION AUTHORIZED</li><li><strong>Date:</strong> 2026-08-01</li><li><strong>Architectural identity:</strong> CXOS Core Runtime 1.1 Living Environment profile — not a separate engine</li><li><strong>Current adopter:</strong> Agency Headquarters only, as the isolated implemented reference candidate</li><li><strong>Release authority:</strong> No merge, production integration, promotion, alias, or additional-room authorization</li></ul>
+<h2 id="1-purpose-and-authority">1. Purpose and authority</h2>
+<p>This matrix records the adoption boundary already established by <code>CXOS_LIVING_ENVIRONMENT_ENGINE_RC1_PLAN.md</code>, <code>CXOS_FOUNDATION.md</code> §17, <code>CXOS_LANGUAGE_1_0.md</code> §§2.8–2.10, and ADR-0040. It does not select a next adopter, assign new product ownership, or authorize work.</p>
+<p>The delivery title retains “Living Environment Engine” as the assignment name. The architecture remains one CXOS Core Runtime. Living Environment is an optional 1.1 presentation profile on that engine.</p>
+<p>“Implemented reference” means the Agency profile exists in the isolated RC1 candidate. It does not mean validated, Founder-accepted, merged, production-live, generally reusable without further work, or approved for any other room.</p>
+<p>Truth labels follow <code>.ai/CONSTITUTION.md</code>: <strong>VERIFIED</strong> means the boundary is present in the assignment, controlling plan, or isolated source; <strong>PROPOSED</strong> means a future scoped adoption package; <strong>NEEDS CONFIRMATION</strong> means a named owner or Founder decision is still required. No candidate fact is labeled as production truth.</p>
+<h2 id="2-classification-legend">2. Classification legend</h2>
+<h3 id="2-1-exact-assignment-classifications">2.1 Exact assignment classifications</h3>
+<p>The <strong>Current classification</strong> column uses only the assignment&#39;s seven exact values. None is a release authorization.</p>
+<div class="table-wrap" role="region" aria-label="Table: 2.1 Exact assignment classifications" tabindex="0">
+<table>
+<caption class="sr-only">Table associated with 2.1 Exact assignment classifications</caption>
+<thead><tr><th scope="col">Exact classification</th><th scope="col">Meaning in this matrix</th></tr></thead>
+<tbody><tr><th scope="row"><strong>ready for engine adoption</strong></th><td>The surface may enter a separately scoped adoption review without first resolving a known product/owner/data blocker; implementation still requires the complete gate and Founder authorization</td></tr><tr><th scope="row"><strong>requires product decision</strong></th><td>Product meaning, positioning, or economics must be decided before architecture or presentation work begins</td></tr><tr><th scope="row"><strong>requires architecture work</strong></th><td>Product fit may exist, but the surface&#39;s data, authorization, effect, lifecycle, or integration seam must be mapped and approved first</td></tr><tr><th scope="row"><strong>blocked by missing canonical owner</strong></th><td>No authorized owner presently exists for a presentation-critical truth such as presence or a not-yet-defined room</td></tr><tr><th scope="row"><strong>blocked by live-data integration</strong></th><td>Canonical live transaction/data/entitlement truth and its failure/permission states must exist before presentation can project it</td></tr><tr><th scope="row"><strong>protected-review-only</strong></th><td>Code may exist only behind the isolated protected review boundary; no production integration or precedent follows</td></tr><tr><th scope="row"><strong>not appropriate</strong></th><td>Applying the Living profile would duplicate another system&#39;s purpose or create a forbidden architecture; no adoption proposal is open</td></tr></tbody>
+</table>
+</div>
+<h3 id="2-2-adoption-horizons">2.2 Adoption horizons</h3>
+<div class="table-wrap" role="region" aria-label="Table: 2.2 Adoption horizons" tabindex="0">
+<table>
+<caption class="sr-only">Table associated with 2.2 Adoption horizons</caption>
+<thead><tr><th scope="col">Horizon</th><th scope="col">Meaning</th></tr></thead>
+<tbody><tr><th scope="row"><strong>NOW — isolated candidate</strong></th><td>Agency Headquarters is the sole implemented reference under protected review</td></tr><tr><th scope="row"><strong>NEXT — review-eligible, not selected</strong></th><td>A separate proposal could be opened only after Founder selection; no next adopter or implementation is authorized by this label</td></tr><tr><th scope="row"><strong>LATER — prerequisite first</strong></th><td>Product, architecture, canonical-owner, or live-data work must be resolved before an adoption proposal</td></tr><tr><th scope="row"><strong>DO NOT APPLY</strong></th><td>Living Environment is the wrong boundary for the named system; only a new Founder decision may reopen the question</td></tr></tbody>
+</table>
+</div>
+<p>The “accountable functions” below identify the functions that would have to participate in a future scoped review. They do not reassign canonical ownership.</p>
+<h2 id="3-non-adoption-law">3. Non-adoption law</h2>
+<p>No surface inherits Living Environment merely because:</p>
+<ul><li>it is a CXOS room;</li><li>Agency Headquarters implements the reference profile;</li><li>it could reuse the camera, lighting, or motion tokens;</li><li>a visual prototype appears compatible;</li><li>its current animation could be consolidated; or</li><li>Agency candidate evidence later passes.</li></ul>
+<p>Every future adopter requires a separately bounded proposal, a named truth and surface owner, a complete static baseline, contract/profile validation, proportional engineering/design/compliance/QA review, regression evidence, and explicit Founder authorization. No historical review branch is merged wholesale.</p>
+<h2 id="4-surface-adoption-matrix">4. Surface adoption matrix</h2>
+<h3 id="4-1-classification-horizon-and-owner-gate">4.1 Classification, horizon, and owner gate</h3>
+<p><strong>VERIFIED</strong> classifications reflect the assignment taxonomy and the controlling RC1 plan. <strong>PROPOSED</strong> future gates remain unopened until the named owner and Founder act.</p>
+<div class="table-wrap" role="region" aria-label="Table: 4.1 Classification, horizon, and owner gate" tabindex="0">
+<table>
+<caption class="sr-only">Table associated with 4.1 Classification, horizon, and owner gate</caption>
+<thead><tr><th scope="col">Surface</th><th scope="col">Current classification</th><th scope="col">Horizon</th><th scope="col">Why this is the boundary</th><th scope="col">Owner gate before any implementation</th><th scope="col">Explicitly not authorized now</th></tr></thead>
+<tbody><tr><th scope="row"><strong>Agency Headquarters</strong></th><td><strong>protected-review-only</strong></td><td><strong>NOW — isolated candidate</strong></td><td>Mandatory RC1 consumer; seven approved semantic chambers exercise the profile without granting new facts or effects</td><td>Agency surface owner + Core Runtime owner; CEO, engineering, design, CCO, and QA/accessibility gates; Founder release judgment after exact-SHA evidence</td><td>Merge, production deployment/alias, public access, or automatic precedent for another room</td></tr><tr><th scope="row"><strong>Mission Control</strong></th><td><strong>ready for engine adoption</strong></td><td><strong>NEXT — review-eligible, not selected</strong></td><td>Compatible facility semantics and a complete existing room make it eligible for a separately scoped review; its architecture and regression contract remain independently owned</td><td>Mission Control surface/truth owner + Runtime owner; full five-review gate; Founder must select and authorize the scoped candidate</td><td>Migration, redesign, stacked arrival/passage, or a claim that Mission Control already consumes Living Environment</td></tr><tr><th scope="row"><strong>The Passage</strong></th><td><strong>not appropriate</strong></td><td><strong>DO NOT APPLY</strong></td><td>The Passage already is the deliberate cross-room transfer system; wrapping it in a room Living profile would duplicate its purpose</td><td>No standing adoption gate. Only a new Founder decision after Passage design/architecture owners prove a non-duplicative need could reopen it</td><td>Living profile wiring, second passage/overlay, or changed transfer timing under this matrix</td></tr><tr><th scope="row"><strong>Growth Center / Growth Network</strong></th><td><strong>requires product decision</strong></td><td><strong>LATER — prerequisite first</strong></td><td>Parallel Growth work, economics, and live Growth truth are outside RC1; capacity presentation cannot decide monetization</td><td>Growth product/truth owners; billing/entitlement owners where implicated; Runtime/design, engineering, CCO, QA, and Founder gates</td><td>Migration, monetization cue, reserve/upgrade claim, purchase CTA, or Agency capacity imagery treated as Growth truth</td></tr><tr><th scope="row"><strong>Arena</strong></th><td><strong>requires product decision</strong></td><td><strong>LATER — prerequisite first</strong></td><td>High-energy recognition must be bounded to evidenced standing and must not create fake competition or gambling language</td><td>Arena product/evidence owner; CCO and design decision first; Runtime/engineering/QA and Founder gates afterward</td><td>Adoption, scoring/reward changes, competition effects, casino pulse, or copied Agency motion</td></tr><tr><th scope="row"><strong>Community</strong></th><td><strong>blocked by missing canonical owner</strong></td><td><strong>LATER — prerequisite first</strong></td><td>No authorized canonical owner currently supplies privacy-safe live presence/activity truth</td><td>Community product/data owner and authorized presence owner; privacy/security and CCO; Runtime/design/engineering/QA; Founder</td><td>Presence dots, activity pulses, fake people, inferred availability, new telemetry, or adoption work</td></tr><tr><th scope="row"><strong>Marketplace</strong></th><td><strong>blocked by live-data integration</strong></td><td><strong>LATER — prerequisite first</strong></td><td>Canonical commerce, availability, transaction, billing, and entitlement states must precede their presentation</td><td>Marketplace product + transaction/billing/entitlement owners; Stripe/security and CCO gates; Runtime/design/engineering/QA; Founder</td><td>Checkout/entitlement implications, inventory/scarcity motion, or presentation-owned transaction state</td></tr><tr><th scope="row"><strong>Consumer Workspace</strong></th><td><strong>requires architecture work</strong></td><td><strong>LATER — prerequisite first</strong></td><td>User-scoped live data, authorization, tasks, effects, privacy, and Kai/credit-content boundaries require a separate integration map</td><td>Consumer product/data + auth/action owners; security/privacy and CCO; Runtime/design/engineering/QA; Founder</td><td>Migration, customer-data projection, new task/effect behavior, credit recommendation, or presentation authority</td></tr><tr><th scope="row"><strong>Landing journey</strong></th><td><strong>ready for engine adoption</strong></td><td><strong>NEXT — review-eligible, not selected</strong></td><td>It may be evaluated only as a separate public-performance experiment; authenticated-room evidence and assumptions do not transfer</td><td>Marketing/Growth owner; SEO/Core Web Vitals, accessibility, design, engineering, CCO, QA, and Founder gates</td><td>Public rollout, autoplay/cinematic layer, SEO-affecting change, or reuse of Agency geometry without an experiment</td></tr><tr><th scope="row"><strong>Generic “Kai environments”</strong></th><td><strong>not appropriate</strong></td><td><strong>DO NOT APPLY</strong></td><td>Living Environment may present explicit Kai phases inside an owned room; it may not become a second Kai behavior, computation, or intelligence system</td><td>No generic adoption gate. A qualifying room must use its own surface owner plus KAI-OS/intelligence owner, CCO/security, the five reviews, and Founder authorization</td><td>Generic Kai room/profile, inferred thinking or presence, fake <code>preparing</code>, model calls, memory, recommendations, or actions owned by presentation</td></tr><tr><th scope="row"><strong>Future rooms</strong></th><td><strong>blocked by missing canonical owner</strong></td><td><strong>LATER — prerequisite first</strong></td><td>An undefined room has no approved purpose, protagonist, truth source, or accountable owners to validate</td><td>Proposed room/product/truth owners must first be named; then Runtime/design, engineering, CCO, QA/accessibility/performance, and Founder gates</td><td>Roadmap placement, default inheritance, generic renderer, or pre-approval of an undefined surface</td></tr></tbody>
+</table>
+</div>
+<p>The <strong>NEXT</strong> horizon identifies review eligibility only. It does not choose Mission Control, the landing journey, or any other surface as the next adopter.</p>
+<h3 id="4-2-reuse-required-extension-and-forbidden-duplication">4.2 Reuse, required extension, and forbidden duplication</h3>
+<div class="table-wrap" role="region" aria-label="Table: 4.2 Reuse, required extension, and forbidden duplication" tabindex="0">
+<table>
+<caption class="sr-only">Table associated with 4.2 Reuse, required extension, and forbidden duplication</caption>
+<thead><tr><th scope="col">Surface</th><th scope="col">Reuse if its gate later opens</th><th scope="col">Surface-owned extension required</th><th scope="col">Forbidden duplication</th></tr></thead>
+<tbody><tr><th scope="row"><strong>Agency Headquarters</strong></th><td>Existing Core Runtime 1.1 policy, sole adapter, closed seven-profile contract, and Agency CSS</td><td>No scope extension in RC1; only evidence, handoff, and a separately authorized future integration reconstruction</td><td>Another provider/adapter, generic scene renderer, second passage, or Agency profile copied to another room</td></tr><tr><th scope="row"><strong>Mission Control</strong></th><td>Pure validation, tier projection, lifecycle/focus/history cleanup, and closed presentation vocabulary</td><td>Its own protagonist, truth/source map, static document, profile, CSS composition, and unchanged regression guard</td><td>Reimplementing arrival/departure/passage or stacking Living observers on the existing room</td></tr><tr><th scope="row"><strong>The Passage</strong></th><td>None from the Living room profile; it remains the existing shared transfer language</td><td>Only its already-owned origin/destination, focus, fallback, and reduced-motion contract</td><td>A Living arrival/idle/chamber lifecycle around the Passage or a second transfer overlay</td></tr><tr><th scope="row"><strong>Growth Center / Network</strong></th><td>Shared validator/policy only after the product decision</td><td>Canonical Growth state, economic meaning, entitlement boundaries, static states, and Growth-specific composition</td><td>Agency capacity threshold treated as monetization truth; duplicated billing/entitlement logic</td></tr><tr><th scope="row"><strong>Arena</strong></th><td>Shared lifecycle/accessibility primitives only after the product/CCO decision</td><td>Arena-owned evidence/standing states, ceremonial composition, static equivalence, and Arena regression proof</td><td>Agency camera/motion clone, fake competition, casino language, or a second recognition policy</td></tr><tr><th scope="row"><strong>Community</strong></th><td>Static fail-down, attention/idle policy, and validation only after a canonical presence owner exists</td><td>Privacy-safe presence/activity contract, moderation/empty/unavailable states, and Community-specific composition</td><td>Presentation-owned presence, fake people/dots, inferred activity, or a parallel telemetry owner</td></tr><tr><th scope="row"><strong>Marketplace</strong></th><td>Lifecycle and static projection only after live commerce truth is established</td><td>Transaction/availability/entitlement/error/permission states owned by commerce systems</td><td>Presentation deciding checkout, entitlement, scarcity, inventory, price, or completion</td></tr><tr><th scope="row"><strong>Consumer Workspace</strong></th><td>Pure projection and adapter seam only after architecture review</td><td>User-scoped data/auth/task/effect ownership, consent/privacy, static equivalence, and consumer-specific Kai/credit review</td><td>A second data/action runtime, client-side authority, copied Agency fixtures, or presentation-owned recommendations</td></tr><tr><th scope="row"><strong>Landing journey</strong></th><td>Closed motion vocabulary, reduced/static fail-down, and no-JS discipline</td><td>Public narrative/profile, SEO/static rendering, motion consent, conversion truth, performance budget, and rollback experiment</td><td>Authenticated-room arrival assumptions, Agency geometry, scroll capture, or a second global motion provider</td></tr><tr><th scope="row"><strong>Generic “Kai environments”</strong></th><td>Only explicit <code>quiet/staged/preparing/resolved</code> presentation signals inside another otherwise-approved room</td><td>Room-owned mapping to the one Kai intelligence contract; no standalone Living/Kai extension</td><td>Second Kai system, inferred intent, fake computation, memory/effect ownership, or a generic Kai scene</td></tr><tr><th scope="row"><strong>Future rooms</strong></th><td>Existing Runtime and ordinary adoption checklist after purpose/owners exist</td><td>Room-owned semantic registry, truth boundaries, closed profile, static projection, CSS, guards, and rollback</td><td>Default inheritance, generic room renderer, Agency clone, or prebuilt profile before ownership</td></tr></tbody>
+</table>
+</div>
+<h2 id="5-common-future-adoption-gate">5. Common future-adoption gate</h2>
+<p>A future surface may not begin implementation until its scoped review package contains all of the following.</p>
+<h3 id="5-1-product-and-truth">5.1 Product and truth</h3>
+<ul><li>one operational purpose and one protagonist;</li><li>canonical facts, status, action, destination, and effect owners;</li><li>explicit unavailable, empty, error, and static states;</li><li>a statement of what “living” means for that surface without fabricated activity; and</li><li>proof that the profile solves a real comprehension or continuity problem rather than an engagement goal.</li></ul>
+<h3 id="5-2-architecture">5.2 Architecture</h3>
+<ul><li>reuse of the existing Core Runtime and sole browser adapter;</li><li>no provider, second lifecycle, generic renderer, scene graph, event bus, or dependency;</li><li>a closed room-owned profile whose ids and order match the semantic registry;</li><li>explicit attention and Kai signals supplied by owning product state, never inferred by presentation;</li><li>complete static fail-down and native-navigation behavior; and</li><li>an allowlist and rollback plan that protect unrelated surfaces.</li></ul>
+<h3 id="5-3-design-motion-and-accessibility">5.3 Design, motion, and accessibility</h3>
+<ul><li>one-to-three bounded transform/opacity channels for a capable projection;</li><li>zero continuous motion for Tier C, Tier D, reduced, invalid, hidden, inspection, and settled idle states;</li><li>mobile, coarse-pointer, 200% reflow, landscape, 320 px, keyboard, screen-reader, and no-JavaScript designs;</li><li>visible focus, at least 44 px controls, native scrolling, and real Back/Forward destinations; and</li><li>a room-specific shot profile that preserves the facility language without copying Agency geometry.</li></ul>
+<h3 id="5-4-truth-compliance-and-kai">5.4 Truth, compliance, and Kai</h3>
+<ul><li>no fabricated telemetry, people, activity, computation, urgency, scarcity, entitlement, result, or completion;</li><li>no canonical value or status changed merely to create atmosphere;</li><li>any Kai phase mapped to explicit truthful state with no inferred intent, fake delay, model implication, memory, or effect;</li><li>CCO review for every user-facing, credit-content, commerce, Agency, Community, Marketplace, or Kai-sensitive adoption; and</li><li>counsel escalation where the owning domain&#39;s existing governance requires it.</li></ul>
+<h3 id="5-5-evidence-and-authority">5.5 Evidence and authority</h3>
+<ul><li>current pure, integration, isolation, regression, schema-safety, and compliance guards;</li><li>optimized and adversarial-identity builds;</li><li>browser, accessibility, performance, network/write, history/focus, reduced/static, and mobile evidence;</li><li>exact commit, baseline, branch, Preview protection, production hard-off, and sanitized handoff identity; and</li><li>explicit Founder authorization for the scoped candidate, followed by a separate integration/production decision if requested.</li></ul>
+<p>Passing Agency RC1 evidence does not satisfy another surface&#39;s gate. Evidence transfers only for unchanged shared-runtime behavior; room truth, composition, regression, compliance, accessibility, and performance must be proved again.</p>
+<h2 id="6-agency-integration-boundary">6. Agency integration boundary</h2>
+<p>Agency Headquarters is the only implemented reference in this lineage. Even if the isolated candidate later receives favorable Founder review:</p>
+<ol><li>no other surface becomes approved;</li><li>no production change occurs automatically;</li><li>the historical RC5/RC1 lineage is not merged wholesale;</li><li>any approved integration is reconstructed as bounded blobs on a freshly reverified production baseline;</li><li>production identity, schema, auth, billing, Stripe, environment, APIs, Growth work, and unrelated rooms remain untouched unless separately authorized; and</li><li>rollback before integration remains no action: leave the candidate unmerged and retire its Preview.</li></ol>
+<h2 id="7-decision-queue">7. Decision queue</h2>
+<p>No next adopter is selected by this matrix. <strong>NOW</strong> remains Agency&#39;s protected candidate only; <strong>NEXT</strong> means review-eligible but unselected; <strong>LATER</strong> means the row&#39;s product, architecture, canonical-owner, or live-data prerequisite comes first; and <strong>DO NOT APPLY</strong> remains closed. A later Founder directive may open one separately scoped adoption review, but none is opened here.</p>
+<h2 id="8-terminal-boundary">8. Terminal boundary</h2>
+<p>This matrix is a governance aid for the isolated RC1 handoff. It is not a roadmap, migration plan, product commitment, implementation authorization, Founder acceptance, merge approval, production authorization, or permission for broad CXOS adoption.</p>
+    </article>
+    <section class="copy-panel" aria-labelledby="copy-ready-title">
+      <h2 id="copy-ready-title">Copy-ready Markdown</h2>
+      <p id="copy-ready-help">This native read-only field performs no clipboard action. Select the text and use your platform’s normal copy command.</p>
+      <textarea readonly spellcheck="false" aria-describedby="copy-ready-help" aria-label="Copy-ready Markdown source"># CXOS Living Environment Engine RC1 — Adoption Matrix
+
+- **Status:** GOVERNANCE REFERENCE · NO BROAD ADOPTION AUTHORIZED
+- **Date:** 2026-08-01
+- **Architectural identity:** CXOS Core Runtime 1.1 Living Environment profile — not a separate engine
+- **Current adopter:** Agency Headquarters only, as the isolated implemented reference candidate
+- **Release authority:** No merge, production integration, promotion, alias, or additional-room authorization
+
+## 1. Purpose and authority
+
+This matrix records the adoption boundary already established by `CXOS_LIVING_ENVIRONMENT_ENGINE_RC1_PLAN.md`, `CXOS_FOUNDATION.md` §17, `CXOS_LANGUAGE_1_0.md` §§2.8–2.10, and ADR-0040. It does not select a next adopter, assign new product ownership, or authorize work.
+
+The delivery title retains “Living Environment Engine” as the assignment name. The architecture remains one CXOS Core Runtime. Living Environment is an optional 1.1 presentation profile on that engine.
+
+“Implemented reference” means the Agency profile exists in the isolated RC1 candidate. It does not mean validated, Founder-accepted, merged, production-live, generally reusable without further work, or approved for any other room.
+
+Truth labels follow `.ai/CONSTITUTION.md`: **VERIFIED** means the boundary is present in the assignment, controlling plan, or isolated source; **PROPOSED** means a future scoped adoption package; **NEEDS CONFIRMATION** means a named owner or Founder decision is still required. No candidate fact is labeled as production truth.
+
+## 2. Classification legend
+
+### 2.1 Exact assignment classifications
+
+The **Current classification** column uses only the assignment&#39;s seven exact values. None is a release authorization.
+
+| Exact classification | Meaning in this matrix |
+|---|---|
+| **ready for engine adoption** | The surface may enter a separately scoped adoption review without first resolving a known product/owner/data blocker; implementation still requires the complete gate and Founder authorization |
+| **requires product decision** | Product meaning, positioning, or economics must be decided before architecture or presentation work begins |
+| **requires architecture work** | Product fit may exist, but the surface&#39;s data, authorization, effect, lifecycle, or integration seam must be mapped and approved first |
+| **blocked by missing canonical owner** | No authorized owner presently exists for a presentation-critical truth such as presence or a not-yet-defined room |
+| **blocked by live-data integration** | Canonical live transaction/data/entitlement truth and its failure/permission states must exist before presentation can project it |
+| **protected-review-only** | Code may exist only behind the isolated protected review boundary; no production integration or precedent follows |
+| **not appropriate** | Applying the Living profile would duplicate another system&#39;s purpose or create a forbidden architecture; no adoption proposal is open |
+
+### 2.2 Adoption horizons
+
+| Horizon | Meaning |
+|---|---|
+| **NOW — isolated candidate** | Agency Headquarters is the sole implemented reference under protected review |
+| **NEXT — review-eligible, not selected** | A separate proposal could be opened only after Founder selection; no next adopter or implementation is authorized by this label |
+| **LATER — prerequisite first** | Product, architecture, canonical-owner, or live-data work must be resolved before an adoption proposal |
+| **DO NOT APPLY** | Living Environment is the wrong boundary for the named system; only a new Founder decision may reopen the question |
+
+The “accountable functions” below identify the functions that would have to participate in a future scoped review. They do not reassign canonical ownership.
+
+## 3. Non-adoption law
+
+No surface inherits Living Environment merely because:
+
+- it is a CXOS room;
+- Agency Headquarters implements the reference profile;
+- it could reuse the camera, lighting, or motion tokens;
+- a visual prototype appears compatible;
+- its current animation could be consolidated; or
+- Agency candidate evidence later passes.
+
+Every future adopter requires a separately bounded proposal, a named truth and surface owner, a complete static baseline, contract/profile validation, proportional engineering/design/compliance/QA review, regression evidence, and explicit Founder authorization. No historical review branch is merged wholesale.
+
+## 4. Surface adoption matrix
+
+### 4.1 Classification, horizon, and owner gate
+
+**VERIFIED** classifications reflect the assignment taxonomy and the controlling RC1 plan. **PROPOSED** future gates remain unopened until the named owner and Founder act.
+
+| Surface | Current classification | Horizon | Why this is the boundary | Owner gate before any implementation | Explicitly not authorized now |
+|---|---|---|---|---|---|
+| **Agency Headquarters** | **protected-review-only** | **NOW — isolated candidate** | Mandatory RC1 consumer; seven approved semantic chambers exercise the profile without granting new facts or effects | Agency surface owner + Core Runtime owner; CEO, engineering, design, CCO, and QA/accessibility gates; Founder release judgment after exact-SHA evidence | Merge, production deployment/alias, public access, or automatic precedent for another room |
+| **Mission Control** | **ready for engine adoption** | **NEXT — review-eligible, not selected** | Compatible facility semantics and a complete existing room make it eligible for a separately scoped review; its architecture and regression contract remain independently owned | Mission Control surface/truth owner + Runtime owner; full five-review gate; Founder must select and authorize the scoped candidate | Migration, redesign, stacked arrival/passage, or a claim that Mission Control already consumes Living Environment |
+| **The Passage** | **not appropriate** | **DO NOT APPLY** | The Passage already is the deliberate cross-room transfer system; wrapping it in a room Living profile would duplicate its purpose | No standing adoption gate. Only a new Founder decision after Passage design/architecture owners prove a non-duplicative need could reopen it | Living profile wiring, second passage/overlay, or changed transfer timing under this matrix |
+| **Growth Center / Growth Network** | **requires product decision** | **LATER — prerequisite first** | Parallel Growth work, economics, and live Growth truth are outside RC1; capacity presentation cannot decide monetization | Growth product/truth owners; billing/entitlement owners where implicated; Runtime/design, engineering, CCO, QA, and Founder gates | Migration, monetization cue, reserve/upgrade claim, purchase CTA, or Agency capacity imagery treated as Growth truth |
+| **Arena** | **requires product decision** | **LATER — prerequisite first** | High-energy recognition must be bounded to evidenced standing and must not create fake competition or gambling language | Arena product/evidence owner; CCO and design decision first; Runtime/engineering/QA and Founder gates afterward | Adoption, scoring/reward changes, competition effects, casino pulse, or copied Agency motion |
+| **Community** | **blocked by missing canonical owner** | **LATER — prerequisite first** | No authorized canonical owner currently supplies privacy-safe live presence/activity truth | Community product/data owner and authorized presence owner; privacy/security and CCO; Runtime/design/engineering/QA; Founder | Presence dots, activity pulses, fake people, inferred availability, new telemetry, or adoption work |
+| **Marketplace** | **blocked by live-data integration** | **LATER — prerequisite first** | Canonical commerce, availability, transaction, billing, and entitlement states must precede their presentation | Marketplace product + transaction/billing/entitlement owners; Stripe/security and CCO gates; Runtime/design/engineering/QA; Founder | Checkout/entitlement implications, inventory/scarcity motion, or presentation-owned transaction state |
+| **Consumer Workspace** | **requires architecture work** | **LATER — prerequisite first** | User-scoped live data, authorization, tasks, effects, privacy, and Kai/credit-content boundaries require a separate integration map | Consumer product/data + auth/action owners; security/privacy and CCO; Runtime/design/engineering/QA; Founder | Migration, customer-data projection, new task/effect behavior, credit recommendation, or presentation authority |
+| **Landing journey** | **ready for engine adoption** | **NEXT — review-eligible, not selected** | It may be evaluated only as a separate public-performance experiment; authenticated-room evidence and assumptions do not transfer | Marketing/Growth owner; SEO/Core Web Vitals, accessibility, design, engineering, CCO, QA, and Founder gates | Public rollout, autoplay/cinematic layer, SEO-affecting change, or reuse of Agency geometry without an experiment |
+| **Generic “Kai environments”** | **not appropriate** | **DO NOT APPLY** | Living Environment may present explicit Kai phases inside an owned room; it may not become a second Kai behavior, computation, or intelligence system | No generic adoption gate. A qualifying room must use its own surface owner plus KAI-OS/intelligence owner, CCO/security, the five reviews, and Founder authorization | Generic Kai room/profile, inferred thinking or presence, fake `preparing`, model calls, memory, recommendations, or actions owned by presentation |
+| **Future rooms** | **blocked by missing canonical owner** | **LATER — prerequisite first** | An undefined room has no approved purpose, protagonist, truth source, or accountable owners to validate | Proposed room/product/truth owners must first be named; then Runtime/design, engineering, CCO, QA/accessibility/performance, and Founder gates | Roadmap placement, default inheritance, generic renderer, or pre-approval of an undefined surface |
+
+The **NEXT** horizon identifies review eligibility only. It does not choose Mission Control, the landing journey, or any other surface as the next adopter.
+
+### 4.2 Reuse, required extension, and forbidden duplication
+
+| Surface | Reuse if its gate later opens | Surface-owned extension required | Forbidden duplication |
+|---|---|---|---|
+| **Agency Headquarters** | Existing Core Runtime 1.1 policy, sole adapter, closed seven-profile contract, and Agency CSS | No scope extension in RC1; only evidence, handoff, and a separately authorized future integration reconstruction | Another provider/adapter, generic scene renderer, second passage, or Agency profile copied to another room |
+| **Mission Control** | Pure validation, tier projection, lifecycle/focus/history cleanup, and closed presentation vocabulary | Its own protagonist, truth/source map, static document, profile, CSS composition, and unchanged regression guard | Reimplementing arrival/departure/passage or stacking Living observers on the existing room |
+| **The Passage** | None from the Living room profile; it remains the existing shared transfer language | Only its already-owned origin/destination, focus, fallback, and reduced-motion contract | A Living arrival/idle/chamber lifecycle around the Passage or a second transfer overlay |
+| **Growth Center / Network** | Shared validator/policy only after the product decision | Canonical Growth state, economic meaning, entitlement boundaries, static states, and Growth-specific composition | Agency capacity threshold treated as monetization truth; duplicated billing/entitlement logic |
+| **Arena** | Shared lifecycle/accessibility primitives only after the product/CCO decision | Arena-owned evidence/standing states, ceremonial composition, static equivalence, and Arena regression proof | Agency camera/motion clone, fake competition, casino language, or a second recognition policy |
+| **Community** | Static fail-down, attention/idle policy, and validation only after a canonical presence owner exists | Privacy-safe presence/activity contract, moderation/empty/unavailable states, and Community-specific composition | Presentation-owned presence, fake people/dots, inferred activity, or a parallel telemetry owner |
+| **Marketplace** | Lifecycle and static projection only after live commerce truth is established | Transaction/availability/entitlement/error/permission states owned by commerce systems | Presentation deciding checkout, entitlement, scarcity, inventory, price, or completion |
+| **Consumer Workspace** | Pure projection and adapter seam only after architecture review | User-scoped data/auth/task/effect ownership, consent/privacy, static equivalence, and consumer-specific Kai/credit review | A second data/action runtime, client-side authority, copied Agency fixtures, or presentation-owned recommendations |
+| **Landing journey** | Closed motion vocabulary, reduced/static fail-down, and no-JS discipline | Public narrative/profile, SEO/static rendering, motion consent, conversion truth, performance budget, and rollback experiment | Authenticated-room arrival assumptions, Agency geometry, scroll capture, or a second global motion provider |
+| **Generic “Kai environments”** | Only explicit `quiet/staged/preparing/resolved` presentation signals inside another otherwise-approved room | Room-owned mapping to the one Kai intelligence contract; no standalone Living/Kai extension | Second Kai system, inferred intent, fake computation, memory/effect ownership, or a generic Kai scene |
+| **Future rooms** | Existing Runtime and ordinary adoption checklist after purpose/owners exist | Room-owned semantic registry, truth boundaries, closed profile, static projection, CSS, guards, and rollback | Default inheritance, generic room renderer, Agency clone, or prebuilt profile before ownership |
+
+## 5. Common future-adoption gate
+
+A future surface may not begin implementation until its scoped review package contains all of the following.
+
+### 5.1 Product and truth
+
+- one operational purpose and one protagonist;
+- canonical facts, status, action, destination, and effect owners;
+- explicit unavailable, empty, error, and static states;
+- a statement of what “living” means for that surface without fabricated activity; and
+- proof that the profile solves a real comprehension or continuity problem rather than an engagement goal.
+
+### 5.2 Architecture
+
+- reuse of the existing Core Runtime and sole browser adapter;
+- no provider, second lifecycle, generic renderer, scene graph, event bus, or dependency;
+- a closed room-owned profile whose ids and order match the semantic registry;
+- explicit attention and Kai signals supplied by owning product state, never inferred by presentation;
+- complete static fail-down and native-navigation behavior; and
+- an allowlist and rollback plan that protect unrelated surfaces.
+
+### 5.3 Design, motion, and accessibility
+
+- one-to-three bounded transform/opacity channels for a capable projection;
+- zero continuous motion for Tier C, Tier D, reduced, invalid, hidden, inspection, and settled idle states;
+- mobile, coarse-pointer, 200% reflow, landscape, 320 px, keyboard, screen-reader, and no-JavaScript designs;
+- visible focus, at least 44 px controls, native scrolling, and real Back/Forward destinations; and
+- a room-specific shot profile that preserves the facility language without copying Agency geometry.
+
+### 5.4 Truth, compliance, and Kai
+
+- no fabricated telemetry, people, activity, computation, urgency, scarcity, entitlement, result, or completion;
+- no canonical value or status changed merely to create atmosphere;
+- any Kai phase mapped to explicit truthful state with no inferred intent, fake delay, model implication, memory, or effect;
+- CCO review for every user-facing, credit-content, commerce, Agency, Community, Marketplace, or Kai-sensitive adoption; and
+- counsel escalation where the owning domain&#39;s existing governance requires it.
+
+### 5.5 Evidence and authority
+
+- current pure, integration, isolation, regression, schema-safety, and compliance guards;
+- optimized and adversarial-identity builds;
+- browser, accessibility, performance, network/write, history/focus, reduced/static, and mobile evidence;
+- exact commit, baseline, branch, Preview protection, production hard-off, and sanitized handoff identity; and
+- explicit Founder authorization for the scoped candidate, followed by a separate integration/production decision if requested.
+
+Passing Agency RC1 evidence does not satisfy another surface&#39;s gate. Evidence transfers only for unchanged shared-runtime behavior; room truth, composition, regression, compliance, accessibility, and performance must be proved again.
+
+## 6. Agency integration boundary
+
+Agency Headquarters is the only implemented reference in this lineage. Even if the isolated candidate later receives favorable Founder review:
+
+1. no other surface becomes approved;
+2. no production change occurs automatically;
+3. the historical RC5/RC1 lineage is not merged wholesale;
+4. any approved integration is reconstructed as bounded blobs on a freshly reverified production baseline;
+5. production identity, schema, auth, billing, Stripe, environment, APIs, Growth work, and unrelated rooms remain untouched unless separately authorized; and
+6. rollback before integration remains no action: leave the candidate unmerged and retire its Preview.
+
+## 7. Decision queue
+
+No next adopter is selected by this matrix. **NOW** remains Agency&#39;s protected candidate only; **NEXT** means review-eligible but unselected; **LATER** means the row&#39;s product, architecture, canonical-owner, or live-data prerequisite comes first; and **DO NOT APPLY** remains closed. A later Founder directive may open one separately scoped adoption review, but none is opened here.
+
+## 8. Terminal boundary
+
+This matrix is a governance aid for the isolated RC1 handoff. It is not a roadmap, migration plan, product commitment, implementation authorization, Founder acceptance, merge approval, production authorization, or permission for broad CXOS adoption.
+</textarea>
+    </section>
+  </main>
+  <footer><div class="shell">Generated deterministically from the declared Markdown source. No release authority is implied.</div></footer>
+</body>
+</html>

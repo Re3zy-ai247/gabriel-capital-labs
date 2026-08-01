@@ -2,33 +2,36 @@
 
 **Status:** **READY WITH DISCLOSED CAVEATS**
 
-**Protected Preview:** `PROTECTED_PREVIEW_PENDING_ROOT_VERIFICATION`
+**Protected Preview:** **VERIFIED · private URL delivered in the authenticated chat**
 
 **Exact review route:** `/review/agency-command?director=1`
 
 **Candidate branch:** `feat/cxos-living-environment-engine-rc1`
 
 **Implementation source:** `188aa78cf60d1565a35ac20710724dc7e1e32724`
+
+**Preview delivery commit:** `b2ba206aade2d41aa7b718fdb3c352bbc27edb59`
+
 **Approved RC5 baseline:** `29260fddfc59d71e3d963d2ec791657ea57084af`
 
-This is the short, route-first Founder review guide. The implementation has cleared local review with disclosed caveats and the local production-identity hard-off returns 404 on all three review routes. Do not begin the external review or forward a URL until the root verification card below is complete.
+This is the short, route-first Founder review guide. The implementation has cleared exact-source local review with disclosed caveats, the production-identity hard-off returns 404 on all three review routes, and the exact delivery commit is Ready behind Vercel SSO. The private hostname is intentionally excluded from every offline artifact and appears only in the authenticated handoff chat.
 
-## 1. Root verification card — must be completed first
+## 1. Protected Preview verification card
 
-**Gate status:** `PROTECTED_PREVIEW_PENDING_ROOT_VERIFICATION`
+**Gate status:** `PROTECTED_PREVIEW_VERIFIED`
 
 | Required root check | Required value | Recorded value |
 | --- | --- | --- |
-| Protected Preview URL or deployment identifier | A protected non-production Preview only | `[PENDING_ROOT_INSERTION]` |
-| Exact source served | `188aa78cf60d1565a35ac20710724dc7e1e32724` | `[PENDING_ROOT_VERIFICATION]` |
-| Access protection | Authentication or deployment protection blocks unauthenticated access | `[PENDING_ROOT_VERIFICATION]` |
-| Review route | `/review/agency-command?director=1` loads after authorized access | `[PENDING_ROOT_VERIFICATION]` |
-| Search controls | `noindex` and `nofollow` remain effective | `[PENDING_ROOT_VERIFICATION]` |
-| Production alias | Unchanged; Preview has no production alias | `[PENDING_ROOT_VERIFICATION]` |
-| Production hard-off replay | Production identity still returns 404 despite contradictory review flags | `[PENDING_ROOT_VERIFICATION]` |
-| Preview evidence replay | Desktop, mobile emulation, and reduced-motion smoke checks match the bound candidate | `[PENDING_ROOT_VERIFICATION]` |
+| Protected Preview URL or deployment identifier | A protected non-production Preview only | **VERIFIED — delivered separately; omitted from sanitized artifacts** |
+| Exact source served | Delivery commit plus browser-bound runtime source | **VERIFIED — `b2ba206aade2d41aa7b718fdb3c352bbc27edb59`; product runtime unchanged from `188aa78cf60d1565a35ac20710724dc7e1e32724`** |
+| Access protection | Authentication or deployment protection blocks unauthenticated access | **VERIFIED — anonymous request redirects to Vercel SSO and exposes no content** |
+| Review route | `/review/agency-command?director=1` loads after authorized access | **VERIFIED — 200, matched route, release header `b2ba206aade2`** |
+| Search controls | `noindex` and `nofollow` remain effective | **VERIFIED — `x-robots-tag: noindex` plus `noindex, nofollow` metadata** |
+| Production alias | Unchanged; Preview has no production alias | **VERIFIED — one branch alias, zero production aliases; prior production target unchanged** |
+| Production hard-off replay | Production identity still returns 404 despite contradictory review flags | **VERIFIED — 3/3 routes returned 404** |
+| Preview evidence replay | Protected route matches the locally validated runtime | **VERIFIED — exact Git metadata and release header bind the unchanged product runtime; no separate remote physical-device claim** |
 
-**Stop condition:** any source mismatch, missing protection, public accessibility, search-indexability, production alias, or production-identity 200 response changes the status to **HOLD**. Do not substitute a branch name for exact deployment-SHA verification.
+**Continuing stop condition:** any later source mismatch, missing protection, public accessibility, search-indexability, production alias, or production-identity 200 response changes the status to **HOLD**. The verification used exact Git metadata rather than a branch-name inference.
 
 ## 2. What you are reviewing
 
@@ -138,12 +141,13 @@ All paths below are repository-relative under `CXOS_LIVING_ENVIRONMENT_ENGINE_RC
 | `CXOS_LIVING_ENVIRONMENT_ENGINE_RC1_EVIDENCE/baseline/final/rc5-baseline-final-browser-evidence.json` | Same-harness RC5 comparison ledger | `c66aae7a56b5d971107c4ee036f4dfe11623118c78a737481d830b7e7fab44ff` |
 | `CXOS_LIVING_ENVIRONMENT_ENGINE_RC1_EVIDENCE/candidate/candidate-build-metrics.json` | Exact optimized build and RC5 bundle comparison | `a09d95d0b4fa43ca723b94ca2263295c7f54e1026d9a890d0e3c520f430c1542` |
 | `CXOS_LIVING_ENVIRONMENT_ENGINE_RC1_EVIDENCE/production-safety/production-identity-hard-off.json` | Local production identity plus contradictory flags; 3/3 404 | `89c5fff44755756c12413f65f5c19cc699ac92a13a2edae9135ed56241bd1907` |
+| `CXOS_LIVING_ENVIRONMENT_ENGINE_RC1_EVIDENCE/preview/protected-preview-binding.json` | Sanitized exact-commit, SSO, route, robots, and alias proof | `2cc53e9db3cfe174b59dba0d50ccf8da0e8a8359b9bf530662e29a0eb0e3cd0d` |
 | `scripts/cxos-living-environment/browser.mjs` | Pinned, fail-closed browser harness | `317652c96c4d06112c2f2e7334d4b1ee69a6ac31473b7fc921f49d25d9ebbea6` |
 | `CXOS_LIVING_ENVIRONMENT_ENGINE_CINEMATIC_BIBLE.md` | Motion vocabulary and seven-shot direction | `70f8f04558be7d024ed8b523561fd709f92c6e243d9a604edcee1e513095a13d` |
 | `.ai/ADR/ADR-0040-cxos-core-runtime.md` | Accepted Core Runtime 1.1 architecture boundary | `bd144f4112111dc2d9c4e83390f3488e0871ea985050ce7997dac9b19b43fefd` |
 | `CXOS_LIVING_ENVIRONMENT_ENGINE_ADOPTION_MATRIX.md` | Cross-site classification and non-adoption law | `b1ef750568e30f7359afd71f357931385930f2af46636d33a4ac9cb116de8d23` |
-| `CXOS_LIVING_ENVIRONMENT_ENGINE_RC1_ADVERSARIAL_REVIEW.md` | Nine-perspective adversarial decision | `65665608bcf7b35b1402d2de8003094850bee82324eec0c75b304346053e963d` |
-| `CXOS_LIVING_ENVIRONMENT_ENGINE_RC1_VALIDATION_REPORT.md` | Detailed static/build/browser results and caveats | `1b6a504e6279dff70e40f60bc25b56138edf5216ac5537cb45a4c2c0761a7e8e` |
+| `CXOS_LIVING_ENVIRONMENT_ENGINE_RC1_ADVERSARIAL_REVIEW.md` | Nine-perspective adversarial decision | `75402656ef70afb80f4d7462805d9cc8ec906a8884f9b55e0458c5420b940d15` |
+| `CXOS_LIVING_ENVIRONMENT_ENGINE_RC1_VALIDATION_REPORT.md` | Detailed static/build/browser results and caveats | `8acaff07bb37b8ac7663143339b233180e174f661294b07a859821bd6716d854` |
 | `CXOS_LIVING_ENVIRONMENT_ENGINE_RC1_FINAL_REPORT.md` | Final decision, 20 criteria, five gates, craft, hashes, and boundary | Hash intentionally omitted from itself |
 
 ## 7. Exact implementation allowlist
@@ -196,29 +200,28 @@ Check each item against the protected Preview. Local evidence status is supplied
 - [ ] **12 — No live data/service.** Every operational state remains disclosed fixture truth with no customer or production service connection. _Local: PASS._
 - [ ] **13 — No unauthorized runtime AI.** Kai remains deterministic local presentation with no model call, memory, persistence, or action. _Local: PASS._
 - [ ] **14 — No unauthorized dependency.** Package and lockfile bytes match baseline. _Local: PASS._
-- [ ] **15 — No production surface.** Review code remains isolated and authoritative production identity returns 404. _Local: PASS; EXTERNAL ALIAS CHECK PENDING ROOT._
-- [ ] **16 — No production alias/environment mutation.** No deployment, alias, settings, environment, or database mutation occurred locally. _Local: PASS; EXTERNAL STATE PENDING ROOT._
-- [ ] **17 — Exact protected Preview binding.** The Preview is protected and serves exactly `188aa78cf60d1565a35ac20710724dc7e1e32724`. _PENDING ROOT VERIFICATION — MUST PASS BEFORE FOUNDER SIGN-OFF._
-- [ ] **18 — Reproducible evidence.** Hashes, pinned toolchain, baseline, browser ledger, build metrics, screenshots, and production proof reproduce the conclusion. _Local: PASS; PREVIEW REPLAY AND ZIP PENDING._
+- [ ] **15 — No production surface.** Review code remains isolated and authoritative production identity returns 404. _ENGINEERING PASS; FOUNDER REVIEW REMAINS._
+- [ ] **16 — No production alias/environment mutation.** The Preview has zero production aliases; the prior production target and aliases are unchanged. _ENGINEERING PASS; FOUNDER REVIEW REMAINS._
+- [ ] **17 — Exact protected Preview binding.** Exact delivery commit `b2ba206aade2d41aa7b718fdb3c352bbc27edb59` is SSO-protected, release-header-bound, and contains unchanged runtime files from `188aa78cf60d1565a35ac20710724dc7e1e32724`. _ENGINEERING PASS; FOUNDER REVIEW REMAINS._
+- [ ] **18 — Reproducible evidence.** Hashes, pinned toolchain, baseline, browser ledger, build metrics, screenshots, production proof, sanitized Preview proof, and a deterministic 41-member package reproduce the conclusion. _ENGINEERING PASS; FINAL ARCHIVE HASH AND DOWNLOAD REPLAY ARE DELIVERED ALONGSIDE._
 - [ ] **19 — Credible award-caliber craft.** The experience demonstrates authored restraint, distinct places, meaningful choreography, and premium static equivalence—not transition accumulation. _Local: PASS AS EXPERT JUDGMENT; NO AWARD CLAIM._
-- [ ] **20 — Reviewable without a giant document.** This route-first handoff and indexed evidence are sufficient to decide on desktop, mobile, and reduced motion. _READY; REMOTE EXERCISE PENDING PREVIEW._
+- [ ] **20 — Reviewable without a giant document.** This route-first handoff and indexed evidence are sufficient to decide on desktop, mobile, and reduced motion. _READY FOR FOUNDER REVIEW._
 
 ## 9. Disclosed caveats to keep visible during review
 
-1. Protected Preview exact binding and protection are pending root verification.
-2. Axe reports 0 violations but leaves 511 serious color-contrast nodes incomplete; sampled chamber ratios pass, but exhaustive manual contrast certification is not claimed.
-3. Five responsive cases have no eligible in-viewport center points in the obstruction sample. Target sizing and touch flows pass, but the obstruction ledger is not comprehensive there.
-4. One landscape mixed Long Animation Frame measures 113.5 ms with 51.9 ms blocking. Ten Long Tasks are first-party-unattributed; no candidate-owned Long Task is recorded.
-5. Local inherited framework noise remains in the ledger: 24 NextAuth HTTP 500 responses, 39 console errors, and 9 `nextauth.message` localStorage writes; candidate-owned failure/persistence counts are zero.
-6. Trusted BFCache proof covers one real desktop history traversal.
-7. Mobile/tablet evidence is browser emulation. No physical-device, screen-reader, switch-control, voice-control, or assistive-technology lab test is claimed.
-8. Emotional memorability, navigation discoverability, motion comfort, and award-caliber craft are expert judgments without external user research or award recognition.
-9. Full-repository lint retains four inherited findings outside the touched-file pass.
-10. No production RUM or broad low-end-hardware sample is claimed.
+1. Axe reports 0 violations but leaves 511 serious color-contrast nodes incomplete; sampled chamber ratios pass, but exhaustive manual contrast certification is not claimed.
+2. Five responsive cases have no eligible in-viewport center points in the obstruction sample. Target sizing and touch flows pass, but the obstruction ledger is not comprehensive there.
+3. One landscape mixed Long Animation Frame measures 113.5 ms with 51.9 ms blocking. Ten Long Tasks are first-party-unattributed; no candidate-owned Long Task is recorded.
+4. Local inherited framework noise remains in the ledger: 24 NextAuth HTTP 500 responses, 39 console errors, and 9 `nextauth.message` localStorage writes; candidate-owned failure/persistence counts are zero.
+5. Trusted BFCache proof covers one real desktop history traversal.
+6. Mobile/tablet evidence is browser emulation. No physical-device, screen-reader, switch-control, voice-control, or assistive-technology lab test is claimed.
+7. Emotional memorability, navigation discoverability, motion comfort, and award-caliber craft are expert judgments without external user research or award recognition.
+8. Full-repository lint retains four inherited findings outside the touched-file pass.
+9. No production RUM or broad low-end-hardware sample is claimed.
 
 ## 10. Decisions requested from the Founder
 
-After root verification and the route review, record one decision for each item:
+After the route review, record one decision for each item:
 
 1. **Candidate craft:** `ACCEPT AS ISOLATED RC1 REFERENCE` / `REQUEST CHANGES` / `HOLD`.
 2. **Disclosed caveats:** `ACCEPT FOR THIS PROTECTED REVIEW RECORD` / `REQUIRE SPECIFIC CLOSURE BEFORE ACCEPTANCE`.
@@ -250,31 +253,35 @@ Before integration, rollback is intentionally simple:
 5. No schema, data, environment, billing, Stripe, auth, or production rollback is required because none was changed.
 6. If a future integration is authorized, reconstruct only the approved blobs on a freshly reverified production base. Do not merge the historical review lineage wholesale.
 
-## 13. ZIP, HTML, and download-verification placeholders
+## 13. ZIP, HTML, and download verification
 
 | Delivery item | Status |
 | --- | --- |
-| Standalone HTML reports | `NOT_CREATED_PER_CURRENT_MARKDOWN_ONLY_INSTRUCTION` |
-| Curated Founder ZIP | `[PENDING — NOT GENERATED IN THIS HANDOFF STEP]` |
-| Curated ZIP SHA-256 | `[PENDING]` |
-| Curated ZIP manifest/member validation | `[PENDING]` |
-| Secret/local-path/symlink/traversal scan | `[PENDING FOR FINAL ZIP]` |
-| Desktop download verification | `[PENDING — DO NOT CLAIM]` |
-| Mobile download verification | `[PENDING — DO NOT CLAIM; NO PHYSICAL DOWNLOAD TEST PERFORMED]` |
-| Preview URL/deployment identifier inside package | `[PENDING ROOT VERIFICATION]` |
-| Exact Preview-to-source binding inside package | `[PENDING ROOT VERIFICATION]` |
+| Standalone HTML reports | `VERIFIED — 7 deterministic, mobile-friendly, dark/light, script-free offline reports` |
+| Curated Founder ZIP | `VERIFIED — deterministic 41-member archive` |
+| Curated ZIP SHA-256 | `DELIVERED ALONGSIDE AFTER ARCHIVE FREEZE TO AVOID SELF-REFERENCE` |
+| Curated ZIP manifest/member validation | `VERIFIED — SHA256SUMS.json plus full archive member and CRC validation` |
+| Secret/local-path/symlink/traversal scan | `VERIFIED — generator fails closed; no forbidden content or undeclared member` |
+| Desktop download verification | `POST-FREEZE RESULT DELIVERED ALONGSIDE THE ARCHIVE` |
+| Mobile download verification | `POST-FREEZE MOBILE-EMULATED CHROMIUM RESULT DELIVERED ALONGSIDE; NO PHYSICAL DEVICE CLAIM` |
+| Preview URL/deployment identifier inside package | `INTENTIONALLY OMITTED — DELIVERED ONLY IN AUTHENTICATED CHAT` |
+| Exact Preview-to-source binding inside package | `VERIFIED IN SANITIZED PROOF; DELIVERY b2ba206 / IMPLEMENTATION 188aa78` |
 
-No ZIP or download-success claim is made by this handoff.
+Because an archive cannot carry its own stable ZIP digest or a proof generated after it
+is frozen, the exact ZIP SHA-256 and the final desktop/mobile-emulated download result
+are supplied next to the archive in the authenticated delivery channel. The internal
+integrity manifest covers every package member.
 
 ## 14. Copy-ready Founder handoff block
 
 ```text
 CXOS LIVING ENVIRONMENT ENGINE RC1 — READY WITH DISCLOSED CAVEATS
 
-Protected Preview: PROTECTED_PREVIEW_PENDING_ROOT_VERIFICATION
+Protected Preview: VERIFIED — PRIVATE URL DELIVERED IN AUTHENTICATED CHAT
 Review route: /review/agency-command?director=1
 Branch: feat/cxos-living-environment-engine-rc1
 Implementation source: 188aa78cf60d1565a35ac20710724dc7e1e32724
+Preview delivery commit: b2ba206aade2d41aa7b718fdb3c352bbc27edb59
 Approved baseline: 29260fddfc59d71e3d963d2ec791657ea57084af
 
 Local result:
@@ -289,13 +296,12 @@ Local result:
 Production hard-off proof SHA-256:
 89c5fff44755756c12413f65f5c19cc699ac92a13a2edae9135ed56241bd1907
 
-Root must verify before review:
-- protected access
-- exact Preview source SHA
-- noindex/nofollow
-- exact route response
-- no production alias
-- production 404 hard-off
+Protected delivery proof:
+- anonymous access redirects to Vercel SSO without exposing content
+- authenticated route returns 200 with release header b2ba206aade2
+- noindex header and noindex/nofollow metadata are present
+- Preview has no production alias; prior production target is unchanged
+- production identity hard-off remains 3/3 expected 404 responses
 
 Disclosed caveats:
 - 511 Axe color-contrast nodes remain incomplete for manual review; targeted samples pass
@@ -305,7 +311,9 @@ Disclosed caveats:
 - trusted BFCache proof is one desktop traversal
 - mobile results are browser emulation; no physical-device or screen-reader test is claimed
 - qualitative craft findings are expert judgment, not award or user-research evidence
-- ZIP and download verification remain pending; no HTML was created under the current instruction
+- seven standalone HTML reports and a deterministic 41-member sanitized ZIP are included
+- final ZIP hash and post-freeze desktop/mobile-emulated download proof are delivered alongside
+- no physical-device download is claimed
 
 Founder decisions requested:
 1. Accept isolated RC1 / Request changes / Hold
@@ -319,4 +327,4 @@ customer-data connection, another-room adoption, or any certification/award clai
 
 ## 15. Final handoff state
 
-**READY WITH DISCLOSED CAVEATS.** Local implementation and production-hard-off evidence are accepted at source `188aa78cf60d1565a35ac20710724dc7e1e32724`. Founder review remains gated by `PROTECTED_PREVIEW_PENDING_ROOT_VERIFICATION`. No production authorization is granted.
+**READY WITH DISCLOSED CAVEATS.** Implementation source `188aa78cf60d1565a35ac20710724dc7e1e32724`, delivery commit `b2ba206aade2d41aa7b718fdb3c352bbc27edb59`, production hard-off, and protected Preview boundary are accepted for Founder review. No production authorization is granted.

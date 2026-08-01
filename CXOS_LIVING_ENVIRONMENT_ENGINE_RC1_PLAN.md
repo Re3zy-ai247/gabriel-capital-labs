@@ -1,6 +1,6 @@
 # CXOS Living Environment Engine RC1 — implementation plan
 
-Status: **LOCAL VALIDATION COMPLETE · PROTECTED PREVIEW PENDING**
+Status: **READY WITH DISCLOSED CAVEATS · FOUNDER HANDOFF PACKAGED**
 Date: 2026-08-01
 Decision owner: Founder
 Candidate branch: `feat/cxos-living-environment-engine-rc1`
@@ -597,8 +597,8 @@ cold long-task evidence remains a candidate acceptance risk, not a waived baseli
 - [x] **T5 (P1)** — Agency — Wire seven profiles without changing fixtures, semantic strings, ids, order, or destinations.
 - [x] **T6 (P1)** — Motion — Consolidate perpetual loops, render seven shots, and prove active/idle/static animation budgets.
 - [x] **T7 (P1)** — Isolation — Change review hard-off to server 404 and gate before stage load.
-- [ ] **T8 (P1)** — Validation — Guards, builds, browser matrix, adversarial review, and local exact binding pass; protected Preview verification remains.
-- [ ] **T9 (P2)** — Handoff — Generate and validate the curated Markdown/HTML/evidence/ZIP package.
+- [x] **T8 (P1)** — Validation — Guards, builds, browser matrix, adversarial review, exact binding, production hard-off, and protected Preview pass.
+- [x] **T9 (P2)** — Handoff — Generate and validate the curated Markdown/HTML/evidence/ZIP package.
 
 `T1 → T2 → T3 → T4 → T5 → T6 → T7 → T8 → T9` is deliberately sequential because
 the policy, adapter, stage, and stylesheet share the same state contract. There is no

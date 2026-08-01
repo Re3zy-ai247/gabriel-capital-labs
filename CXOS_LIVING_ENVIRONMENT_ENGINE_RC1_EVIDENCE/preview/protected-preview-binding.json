@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "status": "passed",
+  "validatedAt": "2026-08-01T23:11:00Z",
+  "implementationSha": "188aa78cf60d1565a35ac20710724dc7e1e32724",
+  "deliveryCommitSha": "b2ba206aade2d41aa7b718fdb3c352bbc27edb59",
+  "branch": "feat/cxos-living-environment-engine-rc1",
+  "environment": "preview",
+  "deploymentState": "READY",
+  "exactCommitFilter": {
+    "metadataKey": "githubCommitSha",
+    "resultCount": 1,
+    "matchedExactDeliveryCommit": true
+  },
+  "anonymousBoundary": {
+    "route": "/review/agency-command?director=1",
+    "status": 302,
+    "redirectClass": "vercel-sso",
+    "cacheControl": "no-store, max-age=0",
+    "robotsHeader": "noindex",
+    "publicContentExposed": false,
+    "passed": true
+  },
+  "authenticatedBoundary": {
+    "route": "/review/agency-command?director=1",
+    "status": 200,
+    "matchedPath": "/review/agency-command",
+    "releaseHeader": "b2ba206aade2",
+    "robotsHeader": "noindex",
+    "robotsMeta": "noindex, nofollow",
+    "passed": true
+  },
+  "aliases": {
+    "previewBranchAliasCount": 1,
+    "productionAliasesOnPreview": 0,
+    "existingProductionTargetState": "READY",
+    "existingProductionTargetAgeAtCheck": "4 days",
+    "productionAliasUnchanged": true
+  },
+  "mutations": {
+    "mainBranch": false,
+    "productionDeployment": false,
+    "productionAlias": false,
+    "projectSettings": false,
+    "environmentVariables": false,
+    "database": false
+  },
+  "sanitization": "The private Preview hostname and deployment identifiers are intentionally omitted from this artifact and delivered only in the authenticated handoff channel."
+}

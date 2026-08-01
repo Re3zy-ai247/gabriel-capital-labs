@@ -6,7 +6,7 @@
       "source": "CXOS_LIVING_ENVIRONMENT_ENGINE_RC1_PLAN.md",
       "html": "reports/CXOS_LIVING_ENVIRONMENT_ENGINE_RC1_PLAN.html",
       "title": "CXOS Living Environment Engine RC1 — Implementation Plan",
-      "status": "Local validation complete; protected Preview pending"
+      "status": "Ready with disclosed caveats; Founder handoff packaged"
     },
     {
       "source": "CXOS_LIVING_ENVIRONMENT_ENGINE_CINEMATIC_BIBLE.md",
@@ -30,7 +30,7 @@
       "source": "CXOS_LIVING_ENVIRONMENT_ENGINE_RC1_VALIDATION_REPORT.md",
       "html": "reports/CXOS_LIVING_ENVIRONMENT_ENGINE_RC1_VALIDATION_REPORT.html",
       "title": "CXOS Living Environment Engine RC1 — Validation Report",
-      "status": "Local candidate accepted with disclosed caveats"
+      "status": "Protected candidate accepted with disclosed caveats"
     },
     {
       "source": "CXOS_LIVING_ENVIRONMENT_ENGINE_RC1_ADVERSARIAL_REVIEW.md",
@@ -42,7 +42,7 @@
       "source": "CXOS_LIVING_ENVIRONMENT_ENGINE_RC1_FOUNDER_HANDOFF.md",
       "html": "reports/CXOS_LIVING_ENVIRONMENT_ENGINE_RC1_FOUNDER_HANDOFF.html",
       "title": "CXOS Living Environment Engine RC1 — Founder Handoff",
-      "status": "Protected Preview pending root verification"
+      "status": "Protected Preview verified; ready with disclosed caveats"
     }
   ],
   "files": [
@@ -101,6 +101,10 @@
     {
       "source": "CXOS_LIVING_ENVIRONMENT_ENGINE_RC1_EVIDENCE/production-safety/production-identity-hard-off.json",
       "archive": "evidence/production-identity-hard-off.json"
+    },
+    {
+      "source": "CXOS_LIVING_ENVIRONMENT_ENGINE_RC1_EVIDENCE/preview/protected-preview-binding.json",
+      "archive": "evidence/protected-preview-binding.json"
     },
     {
       "source": "CXOS_LIVING_ENVIRONMENT_ENGINE_RC1_EVIDENCE/candidate/final/candidate-final-desktop-large-settled.png",

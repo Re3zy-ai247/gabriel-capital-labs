@@ -4,7 +4,7 @@
 
 **Local candidate status:** **ACCEPTED WITH DISCLOSED CAVEATS**
 
-**Delivery status:** **PRODUCTION HARD-OFF VERIFIED · PROTECTED PREVIEW PENDING**
+**Delivery status:** **PRODUCTION HARD-OFF VERIFIED · PROTECTED PREVIEW VERIFIED**
 
 This report records the local, review-enabled validation of the isolated CXOS Living Environment Engine RC1 candidate. It is not production authorization, a merge approval, or evidence of a production deployment.
 
@@ -12,7 +12,7 @@ Truth labels used below:
 
 - **VERIFIED** — directly supported by the bound source revision, emitted build artifacts, browser ledger, screenshots, or recorded command result.
 - **DISCLOSED CAVEAT** — a known limitation, inherited local condition, or measurement boundary that remains visible in the evidence.
-- **PENDING ROOT VERIFICATION** — intentionally incomplete until the root reviewer inserts separately verified evidence.
+- **DELIVERY VERIFIED** — independently confirmed against the external protected Preview and its exact Git metadata.
 
 ## 1. Identity and evidence binding
 
@@ -228,15 +228,14 @@ The 24 inherited HTTP 500 responses, 39 inherited console errors, and 9 inherite
 
 The local candidate has no remaining implementation P0/P1 finding in the final strict ledger. The following limitations remain explicit:
 
-1. Exact protected-Preview binding is not completed in this draft report.
-2. Axe leaves 511 serious color-contrast nodes incomplete; targeted manual samples pass, but sampling is not exhaustive.
-3. Five responsive cases recorded no center-point obstruction samples, so the zero-obstruction result is not comprehensive for those cases.
-4. One landscape mixed Long Animation Frame measured 113.5 ms with 51.9 ms blocking; four other candidate/mixed frames had zero blocking.
-5. Ten Long Tasks occurred and were first-party-unattributed; none was candidate-owned.
-6. Local NextAuth noise remains visible: 24 inherited HTTP 500 responses, 39 inherited console errors, and 9 inherited storage writes.
-7. Trusted BFCache proof covers one desktop traversal.
-8. Full-repository lint retains the four inherited findings listed in Section 3.
-9. Testing used automated Chromium. No physical-device, assistive-technology, or screen-reader validation is claimed.
+1. Axe leaves 511 serious color-contrast nodes incomplete; targeted manual samples pass, but sampling is not exhaustive.
+2. Five responsive cases recorded no center-point obstruction samples, so the zero-obstruction result is not comprehensive for those cases.
+3. One landscape mixed Long Animation Frame measured 113.5 ms with 51.9 ms blocking; four other candidate/mixed frames had zero blocking.
+4. Ten Long Tasks occurred and were first-party-unattributed; none was candidate-owned.
+5. Local NextAuth noise remains visible: 24 inherited HTTP 500 responses, 39 inherited console errors, and 9 inherited storage writes.
+6. Trusted BFCache proof covers one desktop traversal.
+7. Full-repository lint retains the four inherited findings listed in Section 3.
+8. Testing used automated Chromium. No physical-device, assistive-technology, or screen-reader validation is claimed.
 
 This assignment does not authorize a merge to `main`, production deployment or promotion, production alias change, database action, migration, schema change, auth change, billing change, force-push, or activation of another CXOS room.
 
@@ -256,14 +255,30 @@ This was a local production-identity build and response probe only. It created n
 production deployment, alias, project-setting change, environment-variable change, or
 database action.
 
-## 13. Protected Preview — PENDING ROOT VERIFICATION
+## 13. Protected Preview
 
-**Status: PENDING ROOT VERIFICATION**
+**Status: VERIFIED**
 
-No protected-Preview conclusion is asserted here. Root must insert the protected Preview URL or deployment identifier, exact source revision binding, deployment-protection result, review-route result, and any remaining delivery caveat after independently verifying them.
+Vercel’s exact `githubCommitSha` metadata filter returns one Ready Preview for delivery
+commit `b2ba206aade2d41aa7b718fdb3c352bbc27edb59`. The product runtime files in that
+delivery commit are unchanged from browser-bound implementation source
+`188aa78cf60d1565a35ac20710724dc7e1e32724`; only documentation, curated evidence,
+and the handoff scanner follow it.
+
+An anonymous request to `/review/agency-command?director=1` returns a 302 Vercel SSO
+redirect with `no-store` and `x-robots-tag: noindex`, exposing no candidate content. An
+authenticated protection-aware GET returns 200, matches `/review/agency-command`,
+reports release header `b2ba206aade2`, carries `x-robots-tag: noindex`, and renders
+`noindex, nofollow` metadata. The Preview has one branch alias and no production alias.
+The existing production target remains Ready and four days old with its aliases
+unchanged. Sanitized proof SHA-256:
+`2cc53e9db3cfe174b59dba0d50ccf8da0e8a8359b9bf530662e29a0eb0e3cd0d`.
+
+The private Preview hostname is intentionally omitted from this offline report and is
+delivered through the authenticated handoff channel.
 
 ## 14. Local validation decision
 
 **LOCAL RC1 DECISION: ACCEPTED WITH DISCLOSED CAVEATS.**
 
-The candidate is exact-source-bound locally, passes its static and scoped guard suite, stays within every declared incremental bundle budget, passes all 10 strict browser cases and all 17 coverage gates, proves functional native scroll-linked choreography, preserves deterministic reduced/static projections, records zero candidate findings or observations, and fails closed under a contradictory production identity. It may advance to protected-Preview verification. It is not approved for production integration by this report.
+The candidate is exact-source-bound locally, passes its static and scoped guard suite, stays within every declared incremental bundle budget, passes all 10 strict browser cases and all 17 coverage gates, proves functional native scroll-linked choreography, preserves deterministic reduced/static projections, records zero candidate findings or observations, fails closed under a contradictory production identity, and is served from an exact-commit-bound protected Preview. It is ready for Founder review with the disclosed caveats. It is not approved for production integration by this report.

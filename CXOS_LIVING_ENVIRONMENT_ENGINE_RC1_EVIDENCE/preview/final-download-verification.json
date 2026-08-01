@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "status": "passed",
+  "capturedAt": "2026-08-01T23:24:24.731Z",
+  "endpointClass": "local-http",
+  "archiveName": "CXOS_LIVING_ENVIRONMENT_ENGINE_RC1_FOUNDER_HANDOFF.zip",
+  "expectedSha256": "e769a7ae0f25289c7e8845a1daefed15daae5ecac0cc5679a2d61ae5bce3b154",
+  "browserVersion": "151.0.7922.72",
+  "cases": [
+    {
+      "id": "desktop-chromium",
+      "emulatedMobile": false,
+      "physicalDevice": false,
+      "suggestedFilename": "CXOS_LIVING_ENVIRONMENT_ENGINE_RC1_FOUNDER_HANDOFF.zip",
+      "bytes": 23296634,
+      "sha256": "e769a7ae0f25289c7e8845a1daefed15daae5ecac0cc5679a2d61ae5bce3b154",
+      "passed": true
+    },
+    {
+      "id": "mobile-390-chromium",
+      "emulatedMobile": true,
+      "physicalDevice": false,
+      "suggestedFilename": "CXOS_LIVING_ENVIRONMENT_ENGINE_RC1_FOUNDER_HANDOFF.zip",
+      "bytes": 23296634,
+      "sha256": "e769a7ae0f25289c7e8845a1daefed15daae5ecac0cc5679a2d61ae5bce3b154",
+      "passed": true
+    }
+  ],
+  "claimBoundary": "Desktop Chromium and mobile-emulated Chromium downloads were reproduced. No physical-device download is claimed."
+}

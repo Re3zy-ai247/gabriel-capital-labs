@@ -33,6 +33,11 @@
       "includedInSanitizedPackage": true
     },
     {
+      "name": "protected-preview-binding-proof",
+      "sha256": "2cc53e9db3cfe174b59dba0d50ccf8da0e8a8359b9bf530662e29a0eb0e3cd0d",
+      "includedInSanitizedPackage": true
+    },
+    {
       "name": "implementation-source-allowlist",
       "sha256": "77b13d945c70e8de7bb62a138774fb2177b3a0f2613908bb019a1369b5589244",
       "includedInSanitizedPackage": true
@@ -58,7 +63,12 @@
     "trustedBfCacheTraversals": 1,
     "genuineScrollTimelineProofs": 1,
     "productionHardOffRoutesPassed": 3,
-    "productionHardOffRoutesTotal": 3
+    "productionHardOffRoutesTotal": 3,
+    "protectedPreviewReady": true,
+    "protectedPreviewExactCommitMatch": true,
+    "protectedPreviewAnonymousContentExposed": false,
+    "protectedPreviewAuthenticatedRouteStatus": 200,
+    "protectedPreviewProductionAliases": 0
   },
   "bundleDelta": {
     "javascriptRawBytes": 9220,

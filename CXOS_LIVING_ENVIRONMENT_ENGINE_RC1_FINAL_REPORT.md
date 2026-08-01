@@ -13,15 +13,18 @@
 **Approved RC5 baseline:** `29260fddfc59d71e3d963d2ec791657ea57084af`
 
 **Founder route:** `/review/agency-command?director=1`
-**Delivery gate:** `PROTECTED_PREVIEW_PENDING_ROOT_VERIFICATION`
 
-This report is bound to the implementation source and baseline above. It records an accepted local candidate, a verified local production-identity hard-off, and a separately pending protected-Preview delivery check. It does not authorize a merge, production integration, production deployment, public access, or another-room adoption.
+**Preview delivery commit:** `b2ba206aade2d41aa7b718fdb3c352bbc27edb59`
+
+**Delivery gate:** `PROTECTED_PREVIEW_VERIFIED`
+
+This report is bound to the implementation source, delivery commit, and baseline above. It records an accepted candidate, a verified production-identity hard-off, and an exact-commit-bound protected Preview. It does not authorize a merge, production integration, production deployment, public access, or another-room adoption.
 
 Truth labels used below:
 
 - **VERIFIED** — directly supported by the bound source, emitted build, deterministic browser ledger, screenshot, or recorded guard result.
 - **PASS WITH DISCLOSURE** — the local acceptance bar is met while a stated qualitative or measurement limitation remains.
-- **PENDING ROOT VERIFICATION** — no completion claim is made until the protected deployment is independently checked.
+- **DELIVERY VERIFIED** — independently confirmed against the protected Preview’s Git metadata, access boundary, release header, indexing policy, and alias state.
 
 ## 1. Decision
 
@@ -31,7 +34,7 @@ The candidate extends CXOS Core Runtime 1.0 in place as the optional Core Runtim
 
 The strict candidate ledger passes 10/10 browser cases and 17/17 coverage gates with 0 candidate findings and 0 candidate observations across 152 measured states. Static guards, the optimized review build, declared bundle budgets, semantic/static equivalence, production hard-off, and adversarial review pass at the exact source revision.
 
-The remaining P1 delivery condition is not an implementation defect: a protected Preview must still be independently shown to serve the exact source revision, require protection, retain noindex/nofollow behavior, expose the review route only inside that protected context, and leave production aliases unchanged. Until that record exists, this candidate is ready to advance to Founder Preview verification but is not a completed Preview delivery.
+The protected Preview delivery condition is closed. Vercel’s exact Git metadata filter returns one Ready Preview for delivery commit `b2ba206aade2d41aa7b718fdb3c352bbc27edb59`. Anonymous access redirects to Vercel SSO without exposing content; an authenticated read returns 200 with release header `b2ba206aade2`, `noindex`, and `noindex, nofollow`. The Preview has no production alias, and the existing production target remains unchanged. Product runtime files in the delivery commit are byte-identical to browser-bound implementation source `188aa78cf60d1565a35ac20710724dc7e1e32724`.
 
 ## 2. Architecture and outcome
 
@@ -73,25 +76,25 @@ The implementation does **not** create a second provider, scene graph, generic r
 | 13 | No runtime AI is added without authorization. | **PASS** | Kai uses explicit route-local deterministic states. No model call, prompt, memory, inference, fake preparing delay, or execution path was added. |
 | 14 | No dependency is added without explicit authorization. | **PASS** | Candidate and baseline package manifests are byte-identical. `package.json` SHA-256 is `fd78b398d3356905e9c72b36a7eb591433f998a2c1b51433f360fea4bcb25edd`; lockfile SHA-256 is `bf7f8abc9146b72d5b281aad40c13a2f7ea1259342a3e779af950f8c9b61b8c9`. |
 | 15 | No production surface is activated. | **PASS** | Work remains inside the isolated review subtree. A local production-identity build returns 404 for all three review probes, even with contradictory public review flags. No production deployment occurred. |
-| 16 | No production alias or environment is modified. | **PASS** | The production-safety ledger records no deployment, alias, project-setting, environment-variable, or database mutation. External alias state must also be reconfirmed during protected-Preview verification. |
-| 17 | The candidate is exact-commit bound to a protected Preview. | **PENDING ROOT VERIFICATION** | Local build and ledgers bind to `188aa78cf60d1565a35ac20710724dc7e1e32724`; a protected external Preview URL/deployment, source binding, access protection, noindex/nofollow, and unchanged aliases are not yet asserted. |
-| 18 | All required validation evidence is reproducible. | **PASS LOCALLY** | Pinned harness/tool hashes, same-harness RC5 baseline, exact build metrics, deterministic screenshots, strict browser ledger, static guards, negative controls, and SHA-256 evidence are present. Protected-Preview replay and curated ZIP verification remain delivery tasks. |
+| 16 | No production alias or environment is modified. | **PASS** | The production-safety ledger records no alias, project-setting, environment-variable, or database mutation. External inspection confirms the Preview has no production alias and the existing production target remains Ready and four days old with its aliases unchanged. |
+| 17 | The candidate is exact-commit bound to a protected Preview. | **PASS** | One Ready Preview matches exact delivery commit `b2ba206aade2d41aa7b718fdb3c352bbc27edb59`; runtime files are unchanged from implementation source `188aa78cf60d1565a35ac20710724dc7e1e32724`. Anonymous SSO protection, authenticated 200, release header, noindex/nofollow, and alias isolation all pass. |
+| 18 | All required validation evidence is reproducible. | **PASS** | Pinned harness/tool hashes, same-harness RC5 baseline, exact build metrics, deterministic screenshots, strict browser ledger, static guards, negative controls, sanitized Preview proof, and a deterministic 41-member handoff manifest are present. The final archive hash and post-freeze download replay are delivered alongside the archive to avoid self-reference. |
 | 19 | The final experience reaches a credible award-caliber standard rather than merely adding more transitions. | **PASS WITH DISCLOSURE** | Adversarial craft review found a coherent facility, seven distinct final frames, disciplined shared grammar, meaningful motion, premium static equivalence, and no generic scene-engine treatment. This is an expert craft judgment—not an award, benchmark result, or user-research claim. |
-| 20 | The Founder can review it on desktop and mobile without reading through one giant document. | **READY LOCALLY · REMOTE EXERCISE PENDING** | The separate Founder handoff provides a short route-first review, 18-image index, 20-gate checklist, decisions, and copy-ready block. Remote exercise waits on protected-Preview verification. |
+| 20 | The Founder can review it on desktop and mobile without reading through one giant document. | **READY FOR FOUNDER REVIEW** | The protected route is available after SSO; the separate handoff provides a route-first review, 18-image desktop/mobile/reduced index, 20-gate checklist, decisions, and copy-ready block. |
 
-**Acceptance conclusion:** 19 criteria clear locally, with disclosed measurement/qualitative limits; criterion 17 and the remote part of criterion 20 remain pending on the same protected-Preview verification event. This is why the status is **READY WITH DISCLOSED CAVEATS**, not “complete,” “production ready,” or “shipped.”
+**Acceptance conclusion:** all 20 criteria are accounted for and the protected-delivery gate passes, with the measurement and qualitative limits below still disclosed. This is why the status is **READY WITH DISCLOSED CAVEATS**, not “production ready,” “integrated,” or “shipped.”
 
 ## 4. Five review gates
 
 | Gate | Review record | Candidate result | Remaining boundary |
 | --- | --- | --- | --- |
 | CEO / Founder scope | Pre-build review: **CLEAR WITH SCOPE REDUCTION** | **PASS FOR ISOLATED CANDIDATE.** Core Runtime 1.1 extends in place; Agency only; no second engine, cross-site rollout, wheel/swipe travel, or award-achieved claim. | Founder must judge the protected Preview and separately decide whether any integration proposal should open. |
-| Engineering | Pre-build review: **CLEAR**, with three P1 plan gaps folded | **PASS.** Pure closed contract, sole adapter, static fail-down, no dependency, cleanup-safe idle, exact-source build, guards, bundle budgets, browser evidence, and production hard-off pass. | Protected deployment identity/protection is an external delivery check. |
+| Engineering | Pre-build review: **CLEAR**, with three P1 plan gaps folded | **PASS.** Pure closed contract, sole adapter, static fail-down, no dependency, cleanup-safe idle, exact-source build, guards, bundle budgets, browser evidence, production hard-off, and exact protected delivery pass. | Production integration remains a separate architecture and release review. |
 | Design / cinematic | Pre-build: **CLEAR FOR BUILD**; post-build adversarial craft review | **PASS WITH DISCLOSURE.** Seven shots are materially distinct in static final frames; one facility grammar preserves continuity; mobile and reduced projections remain intentional. | Emotional memorability, discoverability, and motion comfort are expert judgments without external user research. |
-| Compliance / product truth | CCO pre-build: **GO-WITH-CHANGES** | **PASS FOR PROTECTED REVIEW ONLY.** Synthetic/live separation, fixed values, Kai no-action truth, dormant reserve/no purchase cue, and contradictory-production 404 are implemented and tested. | Protected access, exact Preview binding, noindex/nofollow, and no production alias must be verified before delivery. No legal certification is claimed. |
+| Compliance / product truth | CCO pre-build: **GO-WITH-CHANGES** | **PASS FOR PROTECTED REVIEW ONLY.** Synthetic/live separation, fixed values, Kai no-action truth, dormant reserve/no purchase cue, contradictory-production 404, protected access, exact binding, noindex/nofollow, and alias isolation are verified. | No legal certification or public/production release approval is claimed. |
 | QA / accessibility / performance | Built-candidate strict ledger and adversarial review | **PASS WITH DISCLOSED CAVEATS.** 10/10 cases, 17/17 gates, 0 findings/observations, 0 CLS, all motion budgets, 141/141 targets, JavaScript-off completeness, and guards pass. | Manual contrast breadth, five obstruction sampling gaps, isolated performance outliers, one BFCache path, and browser-emulation limits remain disclosed. |
 
-**Five-gate conclusion:** the local implementation gate is clear for a protected Founder Preview. The release/delivery gate remains `PROTECTED_PREVIEW_PENDING_ROOT_VERIFICATION`.
+**Five-gate conclusion:** the implementation and protected-delivery gates are clear for Founder review. Merge, integration, production, public access, and cross-site adoption remain separate unauthorized gates.
 
 ## 5. Seven-chamber craft result
 
@@ -175,9 +178,10 @@ The baseline is an ancestor of the candidate. The candidate contains seven commi
 | Cinematic Experience Bible | `70f8f04558be7d024ed8b523561fd709f92c6e243d9a604edcee1e513095a13d` |
 | Cross-site adoption matrix | `b1ef750568e30f7359afd71f357931385930f2af46636d33a4ac9cb116de8d23` |
 | ADR-0040 | `bd144f4112111dc2d9c4e83390f3488e0871ea985050ce7997dac9b19b43fefd` |
-| RC1 implementation plan | `0e002e68fd029d90d912b4f36634c4446065b192d8d027db629540198e27f0f0` |
-| Adversarial review | `65665608bcf7b35b1402d2de8003094850bee82324eec0c75b304346053e963d` |
-| Validation report | `1b6a504e6279dff70e40f60bc25b56138edf5216ac5537cb45a4c2c0761a7e8e` |
+| RC1 implementation plan | `1e5322de3448263338931744a5dee8b9d78818ac2205e0530af0134915fbd15c` |
+| Protected Preview binding proof | `2cc53e9db3cfe174b59dba0d50ccf8da0e8a8359b9bf530662e29a0eb0e3cd0d` |
+| Adversarial review | `75402656ef70afb80f4d7462805d9cc8ec906a8884f9b55e0458c5420b940d15` |
+| Validation report | `8acaff07bb37b8ac7663143339b233180e174f661294b07a859821bd6716d854` |
 
 The candidate browser ledger pins Playwright `1.62.0`, Chromium `151.0.7922.72`, Axe `4.12.1`, and browser evidence schema `5`.
 
@@ -203,28 +207,27 @@ The public review flag was deliberately contradictory: `NEXT_PUBLIC_CXOS_REVIEW=
 
 Proof SHA-256: `89c5fff44755756c12413f65f5c19cc699ac92a13a2edae9135ed56241bd1907`.
 
-This was a local production-identity build and local HTTP response test only. It created no production deployment, production alias, project-setting change, environment-variable change, or database action. It proves the bound source fails closed under contradictory flags; it does not substitute for checking external Preview protection and alias state.
+This was a local production-identity build and local HTTP response test only. It created no production deployment, production alias, project-setting change, environment-variable change, or database action. The separate protected-Preview proof closes external protection and alias state without changing production.
 
 ## 9. Remaining caveats and debt
 
-1. **Protected Preview — P1 delivery gate.** Exact deployment binding, authentication/protection, noindex/nofollow, review-route response, and unchanged production aliases remain `PROTECTED_PREVIEW_PENDING_ROOT_VERIFICATION`.
-2. **Contrast breadth.** Axe reports 0 violations but cannot resolve 511 serious color-contrast nodes because of gradients, pseudo-elements, or overlap. The known failure and seven representative chamber samples pass manual numeric sampling; no exhaustive 511-node manual certification is claimed.
-3. **Obstruction sampling.** Mobile, mobile-360, mobile-narrow, landscape, and reflow cases record no eligible in-viewport center points at the sampled state. Successful touch paths, 44 px sizing, and screenshots mitigate this but do not make those five center-point ledgers comprehensive.
-4. **Performance outliers.** One landscape mixed Long Animation Frame is 113.5 ms with 51.9 ms blocking. Four other candidate/mixed frames have 0 ms blocking. Ten Long Tasks are first-party-unattributed; none is classified candidate-owned, but attribution does not fully exonerate the candidate.
-5. **Inherited local shell noise.** The browser ledger retains 24 inherited NextAuth HTTP 500 responses, 39 inherited console errors, and 9 inherited `nextauth.message` localStorage writes. Candidate-owned failure and persistence counts remain zero.
-6. **BFCache breadth.** Trusted BFCache proof is one real desktop `history.back()` traversal, not a cross-browser or cross-viewport certification.
-7. **Scroll-proof breadth.** All three eligible profiles expose a nonzero ViewTimeline, but the detailed endpoint/rendered-response probe covers one Client Operations desktop-large sample.
-8. **Repository lint debt.** Touched-file ESLint passes. Full-repository lint retains four inherited findings outside the candidate’s scoped validation.
-9. **Test-method boundary.** Mobile/tablet results are automated Chromium emulation. No physical-device, manual screen-reader, switch-control, voice-control, or assistive-technology lab result is claimed.
-10. **Qualitative craft boundary.** “Operating environment,” “emotionally memorable,” “clear,” and “credible award-caliber” are expert review conclusions without external usability research, motion-sensitivity research, or award recognition.
-11. **Packaging boundary.** This finalization creates Markdown only. No standalone HTML is created under the current instruction. Curated ZIP generation, ZIP hash/manifest checks, and desktop/mobile download verification remain pending and must not be claimed.
-12. **No production RUM.** Local performance evidence is broad and deterministic but is not production Real User Monitoring or a broad low-end-hardware sample.
+1. **Contrast breadth.** Axe reports 0 violations but cannot resolve 511 serious color-contrast nodes because of gradients, pseudo-elements, or overlap. The known failure and seven representative chamber samples pass manual numeric sampling; no exhaustive 511-node manual certification is claimed.
+2. **Obstruction sampling.** Mobile, mobile-360, mobile-narrow, landscape, and reflow cases record no eligible in-viewport center points at the sampled state. Successful touch paths, 44 px sizing, and screenshots mitigate this but do not make those five center-point ledgers comprehensive.
+3. **Performance outliers.** One landscape mixed Long Animation Frame is 113.5 ms with 51.9 ms blocking. Four other candidate/mixed frames have 0 ms blocking. Ten Long Tasks are first-party-unattributed; none is classified candidate-owned, but attribution does not fully exonerate the candidate.
+4. **Inherited local shell noise.** The browser ledger retains 24 inherited NextAuth HTTP 500 responses, 39 console errors, and 9 inherited `nextauth.message` localStorage writes. Candidate-owned failure and persistence counts remain zero.
+5. **BFCache breadth.** Trusted BFCache proof is one real desktop `history.back()` traversal, not a cross-browser or cross-viewport certification.
+6. **Scroll-proof breadth.** All three eligible profiles expose a nonzero ViewTimeline, but the detailed endpoint/rendered-response probe covers one Client Operations desktop-large sample.
+7. **Repository lint debt.** Touched-file ESLint passes. Full-repository lint retains four inherited findings outside the candidate’s scoped validation.
+8. **Test-method boundary.** Mobile/tablet results are automated Chromium emulation. No physical-device, manual screen-reader, switch-control, voice-control, or assistive-technology lab result is claimed.
+9. **Qualitative craft boundary.** “Operating environment,” “emotionally memorable,” “clear,” and “credible award-caliber” are expert review conclusions without external usability research, motion-sensitivity research, or award recognition.
+10. **Package self-reference boundary.** The sanitized package contains seven standalone offline HTML reports, their Markdown sources, architecture references, curated evidence, an integrity manifest, and 18 settled screenshots. Its final ZIP hash and post-freeze desktop/mobile-emulated download proof are necessarily delivered alongside the ZIP rather than embedded inside it. No physical-device download is claimed.
+11. **No production RUM.** Local performance evidence is broad and deterministic but is not production Real User Monitoring or a broad low-end-hardware sample.
 
 ## 10. Release boundary
 
 ### Authorized next step
 
-The candidate may advance only to root verification of a protected Preview serving the exact source revision. After that record exists, the Founder may review the isolated candidate at `/review/agency-command?director=1` and accept it, request changes, or hold it.
+The Founder may now review the isolated protected candidate at `/review/agency-command?director=1` and accept it, request changes, or hold it. The private Preview hostname is delivered only through the authenticated handoff channel and is intentionally omitted from offline artifacts.
 
 ### Not authorized by this report
 
@@ -244,4 +247,4 @@ Rollback is a no-action release decision: do not merge or promote the candidate,
 
 **CXOS LIVING ENVIRONMENT ENGINE RC1 — READY WITH DISCLOSED CAVEATS**
 
-The exact local candidate is accepted for the separately controlled protected Founder Preview gate. Production hard-off is verified locally. Protected Preview binding remains `PROTECTED_PREVIEW_PENDING_ROOT_VERIFICATION`. No merge or production authorization is granted.
+The exact implementation and protected delivery are accepted for Founder review. Production hard-off, SSO protection, release binding, noindex/nofollow, and production-alias isolation are verified. No merge or production authorization is granted.

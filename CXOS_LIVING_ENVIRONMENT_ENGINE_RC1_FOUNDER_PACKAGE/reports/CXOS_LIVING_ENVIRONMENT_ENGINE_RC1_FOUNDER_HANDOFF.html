@@ -1,0 +1,559 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src 'none'; font-src 'none'; connect-src 'none'; script-src 'none'; media-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>CXOS Living Environment Engine RC1 — Founder Handoff</title>
+  <style>
+    :root { color-scheme: dark light; --page:#07111d; --surface:#0d1c2c; --surface-2:#12263a; --text:#eef6fa; --muted:#b4c6d2; --line:#315069; --brand:#65e0d8; --amber:#ffd184; --shadow:0 18px 42px rgba(0,0,0,.25); }
+    * { box-sizing:border-box; }
+    html { scroll-behavior:smooth; }
+    body { margin:0; background:var(--page); color:var(--text); font:16px/1.65 ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    a { color:var(--brand); text-underline-offset:.18em; }
+    a:focus-visible, textarea:focus-visible, [tabindex]:focus-visible { outline:3px solid var(--amber); outline-offset:3px; }
+    .skip-link { position:fixed; z-index:10; top:1rem; left:1rem; transform:translateY(-180%); padding:.7rem 1rem; border-radius:.5rem; background:var(--amber); color:#111; }
+    .skip-link:focus { transform:translateY(0); }
+    .shell { width:min(1080px,calc(100% - 2rem)); margin-inline:auto; }
+    header { padding:3.75rem 0 2rem; border-bottom:1px solid var(--line); }
+    .eyebrow { color:var(--brand); font-size:.76rem; font-weight:800; letter-spacing:.12em; text-transform:uppercase; }
+    h1 { max-width:25ch; margin:.45rem 0 1rem; font-size:clamp(2.2rem,6vw,4.5rem); line-height:1.04; letter-spacing:-.04em; }
+    h2,h3,h4,h5,h6 { scroll-margin-top:1rem; line-height:1.22; letter-spacing:-.02em; }
+    h2 { margin-top:3rem; font-size:clamp(1.6rem,3vw,2.35rem); }
+    h3 { margin-top:2rem; }
+    p,li { max-width:88ch; }
+    .status-badge { display:inline-block; padding:.28rem .66rem; border:1px solid var(--amber); border-radius:999px; color:var(--amber); font-size:.82rem; font-weight:800; }
+    .boundary { max-width:82ch; color:var(--muted); }
+    nav { padding:1rem 0; border-bottom:1px solid var(--line); background:var(--surface); }
+    nav h2 { margin:0 0 .45rem; font-size:1rem; }
+    nav ul { display:flex; flex-wrap:wrap; gap:.35rem 1rem; margin:0; padding:0; list-style:none; }
+    nav a { display:inline-block; min-height:44px; padding:.55rem 0; }
+    .toc-level-3 { padding-left:.65rem; }
+    main { padding:2rem 0 4rem; }
+    blockquote { margin:1.4rem 0; padding:.8rem 1rem; border-left:4px solid var(--brand); background:var(--surface); color:var(--muted); }
+    blockquote p { margin:0; }
+    hr { margin:2.5rem 0; border:0; border-top:1px solid var(--line); }
+    pre { overflow:auto; padding:1rem; border:1px solid var(--line); border-radius:.75rem; background:#050b12; color:#edf7fa; }
+    code { border:1px solid var(--line); border-radius:.3rem; padding:.08em .3em; background:var(--surface-2); color:var(--brand); }
+    pre code { border:0; padding:0; background:transparent; color:inherit; }
+    .table-wrap { overflow-x:auto; margin:1.25rem 0; border:1px solid var(--line); border-radius:.85rem; }
+    table { width:100%; min-width:620px; border-collapse:collapse; background:var(--surface); }
+    th,td { padding:.72rem .82rem; border-top:1px solid var(--line); text-align:left; vertical-align:top; }
+    thead th { border-top:0; background:var(--surface-2); color:var(--brand); }
+    .sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; }
+    .task { list-style:none; margin-left:-1.5rem; }
+    .task-mark { display:inline-block; width:1.6rem; color:var(--brand); }
+    .reference,.image-reference { color:var(--muted); text-decoration:underline dotted; }
+    .copy-panel { margin-top:4rem; padding:1rem; border:1px solid var(--line); border-radius:1rem; background:var(--surface); box-shadow:var(--shadow); }
+    .copy-panel h2 { margin-top:0; font-size:1.35rem; }
+    .copy-panel p { color:var(--muted); }
+    textarea { width:100%; min-height:20rem; resize:vertical; padding:1rem; border:1px solid var(--line); border-radius:.75rem; background:var(--page); color:var(--text); font:13px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace; }
+    footer { padding:2rem 0 3rem; border-top:1px solid var(--line); color:var(--muted); }
+    @media (prefers-color-scheme: light) { :root { --page:#fff; --surface:#f4f8fa; --surface-2:#e9f2f5; --text:#14202b; --muted:#4c6070; --line:#9eb0bc; --brand:#07666b; --amber:#7a4b00; --shadow:none; } pre { background:#eef4f7; color:#14202b; } }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior:auto; } }
+    @media (max-width:680px) { header { padding-top:2.5rem; } nav ul { display:block; } table { min-width:560px; } .shell { width:min(100% - 1.1rem,1080px); } }
+    @page { size:auto; margin:16mm; }
+    @media print { :root { color-scheme:light; --page:#fff; --surface:#fff; --surface-2:#eef4f7; --text:#111827; --muted:#425466; --line:#93a4b2; --brand:#075e63; --amber:#7a4b00; --shadow:none; } body { font-size:10.5pt; } .shell { width:100%; } header { padding-top:0; } nav,.skip-link,.copy-panel { display:none; } main { padding-bottom:0; } h1 { font-size:28pt; } h2 { font-size:18pt; break-after:avoid; } h3 { font-size:13pt; break-after:avoid; } .table-wrap { overflow:visible; border:0; } table { min-width:0; font-size:8.5pt; } thead { display:table-header-group; } tr,pre,blockquote { break-inside:avoid; } a { color:inherit; text-decoration:none; } }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#content">Skip to report</a>
+  <header>
+    <div class="shell">
+      <div class="eyebrow">CreditVector Experience OS · deterministic handoff</div>
+      <h1>CXOS Living Environment Engine RC1 — Founder Handoff</h1>
+      <p><span class="status-badge">Protected Preview verified; ready with disclosed caveats</span></p>
+      <p class="boundary">Offline report mirror. It loads no external asset, script, font, frame, or network resource.</p>
+    </div>
+  </header>
+  <nav aria-label="Report contents"><div class="shell"><h2>Contents</h2><ul><li class="toc-level-2"><a href="#1-protected-preview-verification-card">1. Protected Preview verification card</a></li><li class="toc-level-2"><a href="#2-what-you-are-reviewing">2. What you are reviewing</a></li><li class="toc-level-2"><a href="#3-founder-review-path">3. Founder review path</a></li><li class="toc-level-3"><a href="#a-desktop-review-1728-1000-then-1440-900">A. Desktop review — 1728×1000, then 1440×900</a></li><li class="toc-level-3"><a href="#b-mobile-directed-review-browser-viewports-390-844-and-320-800">B. Mobile-directed review — browser viewports 390×844 and 320×800</a></li><li class="toc-level-3"><a href="#c-reduced-motion-review-1440-900">C. Reduced-motion review — 1440×900</a></li><li class="toc-level-2"><a href="#4-seven-chamber-directing-card">4. Seven-chamber directing card</a></li><li class="toc-level-2"><a href="#5-screenshot-index">5. Screenshot index</a></li><li class="toc-level-3"><a href="#responsive-reduced-constrained-reflow-and-no-javascript-views">Responsive, reduced, constrained, reflow, and no-JavaScript views</a></li><li class="toc-level-3"><a href="#seven-deterministic-chamber-final-frames">Seven deterministic chamber final frames</a></li><li class="toc-level-2"><a href="#6-evidence-and-reference-index">6. Evidence and reference index</a></li><li class="toc-level-2"><a href="#7-exact-implementation-allowlist">7. Exact implementation allowlist</a></li><li class="toc-level-2"><a href="#8-founder-20-gate-checklist">8. Founder 20-gate checklist</a></li><li class="toc-level-2"><a href="#9-disclosed-caveats-to-keep-visible-during-review">9. Disclosed caveats to keep visible during review</a></li><li class="toc-level-2"><a href="#10-decisions-requested-from-the-founder">10. Decisions requested from the Founder</a></li><li class="toc-level-2"><a href="#11-what-founder-approval-does-not-authorize">11. What Founder approval does not authorize</a></li><li class="toc-level-2"><a href="#12-rollback-and-preview-retirement">12. Rollback and Preview retirement</a></li><li class="toc-level-2"><a href="#13-zip-html-and-download-verification">13. ZIP, HTML, and download verification</a></li><li class="toc-level-2"><a href="#14-copy-ready-founder-handoff-block">14. Copy-ready Founder handoff block</a></li><li class="toc-level-2"><a href="#15-final-handoff-state">15. Final handoff state</a></li></ul></div></nav>
+  <main id="content" class="shell">
+    <article>
+<p><strong>Status:</strong> <strong>READY WITH DISCLOSED CAVEATS</strong></p>
+<p><strong>Protected Preview:</strong> <strong>VERIFIED · private URL delivered in the authenticated chat</strong></p>
+<p><strong>Exact review route:</strong> <code>/review/agency-command?director=1</code></p>
+<p><strong>Candidate branch:</strong> <code>feat/cxos-living-environment-engine-rc1</code></p>
+<p><strong>Implementation source:</strong> <code>188aa78cf60d1565a35ac20710724dc7e1e32724</code></p>
+<p><strong>Preview delivery commit:</strong> <code>b2ba206aade2d41aa7b718fdb3c352bbc27edb59</code></p>
+<p><strong>Approved RC5 baseline:</strong> <code>29260fddfc59d71e3d963d2ec791657ea57084af</code></p>
+<p>This is the short, route-first Founder review guide. The implementation has cleared exact-source local review with disclosed caveats, the production-identity hard-off returns 404 on all three review routes, and the exact delivery commit is Ready behind Vercel SSO. The private hostname is intentionally excluded from every offline artifact and appears only in the authenticated handoff chat.</p>
+<h2 id="1-protected-preview-verification-card">1. Protected Preview verification card</h2>
+<p><strong>Gate status:</strong> <code>PROTECTED_PREVIEW_VERIFIED</code></p>
+<div class="table-wrap" role="region" aria-label="Table: 1. Protected Preview verification card" tabindex="0">
+<table>
+<caption class="sr-only">Table associated with 1. Protected Preview verification card</caption>
+<thead><tr><th scope="col">Required root check</th><th scope="col">Required value</th><th scope="col">Recorded value</th></tr></thead>
+<tbody><tr><th scope="row">Protected Preview URL or deployment identifier</th><td>A protected non-production Preview only</td><td><strong>VERIFIED — delivered separately; omitted from sanitized artifacts</strong></td></tr><tr><th scope="row">Exact source served</th><td>Delivery commit plus browser-bound runtime source</td><td><strong>VERIFIED — <code>b2ba206aade2d41aa7b718fdb3c352bbc27edb59</code>; product runtime unchanged from <code>188aa78cf60d1565a35ac20710724dc7e1e32724</code></strong></td></tr><tr><th scope="row">Access protection</th><td>Authentication or deployment protection blocks unauthenticated access</td><td><strong>VERIFIED — anonymous request redirects to Vercel SSO and exposes no content</strong></td></tr><tr><th scope="row">Review route</th><td><code>/review/agency-command?director=1</code> loads after authorized access</td><td><strong>VERIFIED — 200, matched route, release header <code>b2ba206aade2</code></strong></td></tr><tr><th scope="row">Search controls</th><td><code>noindex</code> and <code>nofollow</code> remain effective</td><td><strong>VERIFIED — <code>x-robots-tag: noindex</code> plus <code>noindex, nofollow</code> metadata</strong></td></tr><tr><th scope="row">Production alias</th><td>Unchanged; Preview has no production alias</td><td><strong>VERIFIED — one branch alias, zero production aliases; prior production target unchanged</strong></td></tr><tr><th scope="row">Production hard-off replay</th><td>Production identity still returns 404 despite contradictory review flags</td><td><strong>VERIFIED — 3/3 routes returned 404</strong></td></tr><tr><th scope="row">Preview evidence replay</th><td>Protected route matches the locally validated runtime</td><td><strong>VERIFIED — exact Git metadata and release header bind the unchanged product runtime; no separate remote physical-device claim</strong></td></tr></tbody>
+</table>
+</div>
+<p><strong>Continuing stop condition:</strong> any later source mismatch, missing protection, public accessibility, search-indexability, production alias, or production-identity 200 response changes the status to <strong>HOLD</strong>. The verification used exact Git metadata rather than a branch-name inference.</p>
+<h2 id="2-what-you-are-reviewing">2. What you are reviewing</h2>
+<p>The candidate turns Agency Headquarters from a long seven-section experience into one directed operating facility with one active chamber at a time. The seven chambers retain the same semantic facts, disclosures, controls, order, and destinations while gaining distinct camera/framing, light, depth, motion, focus, idle, and Kai presentation profiles.</p>
+<p>Core Runtime 1.1 is a presentation-only extension of the existing headless runtime. It validates closed room profiles and projects deterministic state through the sole browser adapter. Agency-owned CSS renders the facility. The engine owns no fact, model, customer data, action, entitlement, billing state, or effect.</p>
+<p>Local evidence reports:</p>
+<ul><li>10/10 browser cases and 17/17 coverage gates passed;</li><li>152 measured candidate states with 0 findings and 0 observations;</li><li>seven distinct deterministic settled chamber screenshots;</li><li>zero CLS and zero sustained environmental animation after idle;</li><li>all measured controls at least 44 px and no horizontal overflow;</li><li>complete reduced-motion, constrained, reflow, and JavaScript-disabled projections;</li><li>package manifests unchanged and no dependency added; and</li><li>local production identity plus contradictory review flags returning 404 on 3/3 review probes.</li></ul>
+<h2 id="3-founder-review-path">3. Founder review path</h2>
+<p>Use the exact route <code>/review/agency-command?director=1</code> on the root-verified protected Preview origin.</p>
+<h3 id="a-desktop-review-1728-1000-then-1440-900">A. Desktop review — 1728×1000, then 1440×900</h3>
+<ol><li>Confirm the protected-access challenge appears before the route. If the route is public, stop.</li><li>Open <code>/review/agency-command?director=1</code>; confirm the synthetic-fixture and no-action boundaries are visible.</li><li>Let the natural arrival settle. Replay it once, then verify Skip and Escape both settle cleanly without losing content or focus.</li><li>Use the persistent facility rail to visit all seven chambers directly. Then use Previous and Next. Confirm only one primary chamber is active and each change feels directional, finite, and settled—not like scrolling to the next card.</li><li>In each chamber, judge the final frame before judging motion: distinct information geometry, light source, depth, operational protagonist, and truth boundary must remain obvious at rest.</li><li>Open and close an inspection by toggle and Escape. Confirm focus returns to the invoking control and ambient activity quiets while reading.</li><li>In Kai Executive Suite, stage, resolve, and clear the fixed local command. Confirm atmosphere changes but the no-model/no-persistence/no-production-action disclosures remain legible and credible.</li><li>Stop interacting for at least 6 seconds in a Tier-A desktop view. Confirm the environment settles to stillness while facts and controls remain complete.</li><li>Use browser Back/Forward after chamber changes. Confirm chamber/hash restoration and focus settlement.</li><li>Use the Mission Control return path, then return to Agency and confirm bounded departure/return behavior.</li></ol>
+<h3 id="b-mobile-directed-review-browser-viewports-390-844-and-320-800">B. Mobile-directed review — browser viewports 390×844 and 320×800</h3>
+<ol><li>Review the same protected route in responsive browser mode at 390×844, then 320×800.</li><li>Confirm one chamber—not all seven stacked chambers—is primary.</li><li>Use origin/current/next controls and the native expandable facility map. Activate controls through touch emulation.</li><li>Visit Central, Client Operations, Kai, and Growth at minimum; confirm each still reads as a different place rather than a compressed desktop card.</li><li>Scroll naturally inside a chamber. Confirm there is no horizontal overflow, wheel/touch capture, swipe-only navigation, clipped disclosure, or obscured control.</li><li>Open/close an inspection and run Kai stage/resolve/clear. Confirm the keyboard/focus model remains coherent when returning to desktop width.</li></ol>
+<p>These steps are a Founder browser review. The preserved automated mobile evidence is browser emulation; this handoff does not claim physical-device testing.</p>
+<h3 id="c-reduced-motion-review-1440-900">C. Reduced-motion review — 1440×900</h3>
+<ol><li>Enable <code>prefers-reduced-motion: reduce</code> through the operating system or browser developer tools before opening the route.</li><li>Reload <code>/review/agency-command?director=1</code> and confirm arrival is complete without a required animated sequence.</li><li>Visit all seven chambers. Confirm composition, hierarchy, lighting, borders, controls, facts, and truth boundaries remain distinct and premium.</li><li>Confirm chamber changes do not use a passage overlay, parallax, animated light, or motion-required information.</li><li>Stage/resolve/clear Kai and open an inspection. Confirm state remains understandable through static treatment.</li><li>Leave the view idle. There should be no running environmental animation.</li></ol>
+<p>Reduced-motion evidence is automated Chromium plus this requested Founder exercise. No screen-reader or assistive-technology certification is claimed.</p>
+<h2 id="4-seven-chamber-directing-card">4. Seven-chamber directing card</h2>
+<div class="table-wrap" role="region" aria-label="Table: 4. Seven-chamber directing card" tabindex="0">
+<table>
+<caption class="sr-only">Table associated with 4. Seven-chamber directing card</caption>
+<thead><tr><th scope="col">Chamber</th><th scope="col">What should be immediately legible</th><th scope="col">What must never be implied</th></tr></thead>
+<tbody><tr><th scope="row">Central Command</th><td>Centered command aperture, long horizon, priority instrument, command authority</td><td>Live financial-health assessment</td></tr><tr><th scope="row">Client Operations Floor</th><td>Lateral lanes, operating rhythm, directional rail light, disclosed interruption</td><td>Live customer throughput or connected work system</td></tr><tr><th scope="row">Team Operations Room</th><td>Eye-level relational tableau, intentional solo operator, quiet coverage geometry</td><td>Fake staff presence, availability, or invitation state</td></tr><tr><th scope="row">Business Health Observatory</th><td>Compressed diagnostic field, amber WATCH source, missing-input emphasis</td><td>Score, forecast, certification, or connected billing/revenue truth</td></tr><tr><th scope="row">Activity and Evidence Archive</th><td>Longitudinal trays, provenance light, layered evidence focus</td><td>Production audit trail or records that do not exist</td></tr><tr><th scope="row">Kai Executive Suite</th><td>Calm portrait focus, staged/resolved attention, still executive field</td><td>Consciousness, live model work, memory, persistence, or successful action</td></tr><tr><th scope="row">Growth / Capacity Threshold</th><td>Wide horizon, occupied cells, dormant reserve, visible fixed constraint</td><td>Scarcity, entitlement, purchase, billing, or automatic expansion</td></tr></tbody>
+</table>
+</div>
+<h2 id="5-screenshot-index">5. Screenshot index</h2>
+<p>All paths below are repository-relative under <code>CXOS_LIVING_ENVIRONMENT_ENGINE_RC1_EVIDENCE/candidate/final/</code>. Each file has a distinct SHA-256 digest.</p>
+<h3 id="responsive-reduced-constrained-reflow-and-no-javascript-views">Responsive, reduced, constrained, reflow, and no-JavaScript views</h3>
+<div class="table-wrap" role="region" aria-label="Table: Responsive, reduced, constrained, reflow, and no-JavaScript views" tabindex="0">
+<table>
+<caption class="sr-only">Table associated with Responsive, reduced, constrained, reflow, and no-JavaScript views</caption>
+<thead><tr><th scope="col">Screenshot</th><th scope="col">Review purpose</th><th scope="col">SHA-256</th></tr></thead>
+<tbody><tr><th scope="row"><code>candidate-final-desktop-large-settled.png</code></th><td>1728×1000 settled facility</td><td><code>d4c648dabc9208d37a4489af128a380bb02436fe460394330ae2aeb40e7af347</code></td></tr><tr><th scope="row"><code>candidate-final-desktop-settled.png</code></th><td>1440×900 settled desktop</td><td><code>25726b7e764929330afc949561a6c24a8ae6d45632f57212cc767b7cb5512728</code></td></tr><tr><th scope="row"><code>candidate-final-tablet-settled.png</code></th><td>1024×768 tablet projection</td><td><code>3976588b34e75958b913faeb2d1772e7028c75598674a14262c5c999efe1af8d</code></td></tr><tr><th scope="row"><code>candidate-final-mobile-settled.png</code></th><td>390×844 directed mobile</td><td><code>62e2151d6befe7489b4511df0d02ed951974a99fc857ac2b0822dc1dffc405af</code></td></tr><tr><th scope="row"><code>candidate-final-mobile-360-settled.png</code></th><td>360×800 directed mobile</td><td><code>638f67728dc3a209c9f070fee4707e028ac856317e5ead3f5f5792d1cefa2771</code></td></tr><tr><th scope="row"><code>candidate-final-mobile-narrow-settled.png</code></th><td>320×800 narrow mobile</td><td><code>a71959ee6aceb9dd2a5e047c77df23f43eb1190e7a28b9b47a7df9374834981f</code></td></tr><tr><th scope="row"><code>candidate-final-landscape-settled.png</code></th><td>740×390 compact landscape</td><td><code>e209d8a4bf8b4b2dc4223e803a75079cdb71551bab7547edd60252a00e68bc60</code></td></tr><tr><th scope="row"><code>candidate-final-reduced-settled.png</code></th><td>1440×900 reduced-motion final frame</td><td><code>9f59c938a8b3b44b1772d320f9f70d1afb88835e389e5ec6c39657983286756f</code></td></tr><tr><th scope="row"><code>candidate-final-constrained-settled.png</code></th><td>1024×768 constrained/static projection</td><td><code>909ba1edea8700380d94fc5ae761424fd611df1578685b1e7a834f04af4159e6</code></td></tr><tr><th scope="row"><code>candidate-final-reflow-200-settled.png</code></th><td>200% reflow model: 720×450 CSS at DPR 2</td><td><code>08a1442e05ed0ed491f9c5ee9ed4a813b58a8e1bdff25005e7c7cf12dc7bbb3e</code></td></tr><tr><th scope="row"><code>candidate-final-javascript-disabled.png</code></th><td>Complete no-JavaScript document</td><td><code>564fe81f1c9d57bb2233a024671e4f99cefd038fc0ddad652c965124664518c3</code></td></tr></tbody>
+</table>
+</div>
+<h3 id="seven-deterministic-chamber-final-frames">Seven deterministic chamber final frames</h3>
+<div class="table-wrap" role="region" aria-label="Table: Seven deterministic chamber final frames" tabindex="0">
+<table>
+<caption class="sr-only">Table associated with Seven deterministic chamber final frames</caption>
+<thead><tr><th scope="col">Screenshot</th><th scope="col">Chamber</th><th scope="col">SHA-256</th></tr></thead>
+<tbody><tr><th scope="row"><code>candidate-final-desktop-large-chamber-central-command-settled.png</code></th><td>Central Command</td><td><code>f8036457ddfdb70f16a93343f239a8ee863acc9def08b936cf206f6bee2b6027</code></td></tr><tr><th scope="row"><code>candidate-final-desktop-large-chamber-client-operations-settled.png</code></th><td>Client Operations Floor</td><td><code>d3a8d43e40dfe08eb17e591f32013a5ddd3425f3b3705a0e300803291c8eea7f</code></td></tr><tr><th scope="row"><code>candidate-final-desktop-large-chamber-team-operations-settled.png</code></th><td>Team Operations Room</td><td><code>63398a725e583f25ef734227a98b8b72091791edebdf9b581fa66f80cdbaf0f4</code></td></tr><tr><th scope="row"><code>candidate-final-desktop-large-chamber-business-health-settled.png</code></th><td>Business Health Observatory</td><td><code>743cee9cc8b535b67959f4f01df6038bdee9226bfadab8460698ebd90539b07f</code></td></tr><tr><th scope="row"><code>candidate-final-desktop-large-chamber-evidence-archive-settled.png</code></th><td>Activity and Evidence Archive</td><td><code>1e3c38b4a1e2bc54eccf29412dfd3354ac7578f7aae4cd38c0c43fd62730227e</code></td></tr><tr><th scope="row"><code>candidate-final-desktop-large-chamber-kai-suite-settled.png</code></th><td>Kai Executive Suite</td><td><code>7a818b07f827e4f35cb474524ed11b6f334189b467f30cca9dbb9423a6ad8259</code></td></tr><tr><th scope="row"><code>candidate-final-desktop-large-chamber-growth-threshold-settled.png</code></th><td>Growth / Capacity Threshold</td><td><code>4f0a21213a5d32c811b8b87802b704dc32d195270876eef4a3cc95708e8b4cdc</code></td></tr></tbody>
+</table>
+</div>
+<h2 id="6-evidence-and-reference-index">6. Evidence and reference index</h2>
+<div class="table-wrap" role="region" aria-label="Table: 6. Evidence and reference index" tabindex="0">
+<table>
+<caption class="sr-only">Table associated with 6. Evidence and reference index</caption>
+<thead><tr><th scope="col">Artifact</th><th scope="col">Purpose</th><th scope="col">SHA-256</th></tr></thead>
+<tbody><tr><th scope="row"><code>CXOS_LIVING_ENVIRONMENT_ENGINE_RC1_EVIDENCE/candidate/final/candidate-final-browser-evidence.json</code></th><td>Strict 10-case, 17-gate browser ledger</td><td><code>4a07581e10c7f23464a52e36c273499c3c8e8dcfdb7e901d33d34f609c7a9477</code></td></tr><tr><th scope="row"><code>CXOS_LIVING_ENVIRONMENT_ENGINE_RC1_EVIDENCE/baseline/final/rc5-baseline-final-browser-evidence.json</code></th><td>Same-harness RC5 comparison ledger</td><td><code>c66aae7a56b5d971107c4ee036f4dfe11623118c78a737481d830b7e7fab44ff</code></td></tr><tr><th scope="row"><code>CXOS_LIVING_ENVIRONMENT_ENGINE_RC1_EVIDENCE/candidate/candidate-build-metrics.json</code></th><td>Exact optimized build and RC5 bundle comparison</td><td><code>a09d95d0b4fa43ca723b94ca2263295c7f54e1026d9a890d0e3c520f430c1542</code></td></tr><tr><th scope="row"><code>CXOS_LIVING_ENVIRONMENT_ENGINE_RC1_EVIDENCE/production-safety/production-identity-hard-off.json</code></th><td>Local production identity plus contradictory flags; 3/3 404</td><td><code>89c5fff44755756c12413f65f5c19cc699ac92a13a2edae9135ed56241bd1907</code></td></tr><tr><th scope="row"><code>CXOS_LIVING_ENVIRONMENT_ENGINE_RC1_EVIDENCE/preview/protected-preview-binding.json</code></th><td>Sanitized exact-commit, SSO, route, robots, and alias proof</td><td><code>2cc53e9db3cfe174b59dba0d50ccf8da0e8a8359b9bf530662e29a0eb0e3cd0d</code></td></tr><tr><th scope="row"><code>scripts/cxos-living-environment/browser.mjs</code></th><td>Pinned, fail-closed browser harness</td><td><code>317652c96c4d06112c2f2e7334d4b1ee69a6ac31473b7fc921f49d25d9ebbea6</code></td></tr><tr><th scope="row"><code>CXOS_LIVING_ENVIRONMENT_ENGINE_CINEMATIC_BIBLE.md</code></th><td>Motion vocabulary and seven-shot direction</td><td><code>70f8f04558be7d024ed8b523561fd709f92c6e243d9a604edcee1e513095a13d</code></td></tr><tr><th scope="row"><code>.ai/ADR/ADR-0040-cxos-core-runtime.md</code></th><td>Accepted Core Runtime 1.1 architecture boundary</td><td><code>bd144f4112111dc2d9c4e83390f3488e0871ea985050ce7997dac9b19b43fefd</code></td></tr><tr><th scope="row"><code>CXOS_LIVING_ENVIRONMENT_ENGINE_ADOPTION_MATRIX.md</code></th><td>Cross-site classification and non-adoption law</td><td><code>b1ef750568e30f7359afd71f357931385930f2af46636d33a4ac9cb116de8d23</code></td></tr><tr><th scope="row"><code>CXOS_LIVING_ENVIRONMENT_ENGINE_RC1_ADVERSARIAL_REVIEW.md</code></th><td>Nine-perspective adversarial decision</td><td><code>75402656ef70afb80f4d7462805d9cc8ec906a8884f9b55e0458c5420b940d15</code></td></tr><tr><th scope="row"><code>CXOS_LIVING_ENVIRONMENT_ENGINE_RC1_VALIDATION_REPORT.md</code></th><td>Detailed static/build/browser results and caveats</td><td><code>8acaff07bb37b8ac7663143339b233180e174f661294b07a859821bd6716d854</code></td></tr><tr><th scope="row"><code>CXOS_LIVING_ENVIRONMENT_ENGINE_RC1_FINAL_REPORT.md</code></th><td>Final decision, 20 criteria, five gates, craft, hashes, and boundary</td><td>Hash intentionally omitted from itself</td></tr></tbody>
+</table>
+</div>
+<h2 id="7-exact-implementation-allowlist">7. Exact implementation allowlist</h2>
+<p>The candidate source delta from the approved baseline is limited to these 25 paths:</p>
+<ul><li><code>.ai/ADR/ADR-0040-cxos-core-runtime.md</code></li><li><code>.ai/DECISIONS.md</code></li><li><code>.gitignore</code></li><li><code>CXOS_FOUNDATION.md</code></li><li><code>CXOS_LANGUAGE_1_0.md</code></li><li><code>CXOS_LIVING_ENVIRONMENT_ENGINE_ADOPTION_MATRIX.html</code></li><li><code>CXOS_LIVING_ENVIRONMENT_ENGINE_ADOPTION_MATRIX.md</code></li><li><code>CXOS_LIVING_ENVIRONMENT_ENGINE_CINEMATIC_BIBLE.html</code></li><li><code>CXOS_LIVING_ENVIRONMENT_ENGINE_CINEMATIC_BIBLE.md</code></li><li><code>CXOS_LIVING_ENVIRONMENT_ENGINE_RC1_PLAN.md</code></li><li><code>app/review/agency-command/agency-command.module.css</code></li><li><code>app/review/agency-command/environment.ts</code></li><li><code>app/review/agency-command/page.tsx</code></li><li><code>app/review/agency-command/stage.tsx</code></li><li><code>app/review/layout.tsx</code></li><li><code>app/review/mission-control/page.tsx</code></li><li><code>app/review/page.tsx</code></li><li><code>components/cxos/runtime/useCxosRoomRuntime.ts</code></li><li><code>lib/cxos/runtime.ts</code></li><li><code>scripts/cxos-agency-command.test.ts</code></li><li><code>scripts/cxos-core-runtime.test.ts</code></li><li><code>scripts/cxos-isolated-review.test.ts</code></li><li><code>scripts/cxos-living-environment.test.ts</code></li><li><code>scripts/cxos-living-environment/browser.mjs</code></li><li><code>scripts/cxos-living-environment/handoff.mjs</code></li></ul>
+<p>The final reports and curated evidence are handoff artifacts generated around that exact implementation; they are not part of the implementation commit identity.</p>
+<h2 id="8-founder-20-gate-checklist">8. Founder 20-gate checklist</h2>
+<p>Check each item against the protected Preview. Local evidence status is supplied so the remaining Founder judgment is explicit.</p>
+<ul><li class="task"><span class="task-mark" aria-hidden="true">☐</span><strong>1 — Not a long page.</strong> One primary chamber, direct/previous/next navigation, facility location, and browser history feel like a room. <em>Local: PASS WITH EXPERT-REVIEW DISCLOSURE.</em></li><li class="task"><span class="task-mark" aria-hidden="true">☐</span><strong>2 — Seven distinct chambers.</strong> Each chamber is recognizably different at rest, not merely a color-swapped panel. <em>Local: PASS.</em></li><li class="task"><span class="task-mark" aria-hidden="true">☐</span><strong>3 — Spatial/cinematic passage.</strong> Changes release, cross, acquire, and settle without disorientation or flourish for its own sake. <em>Local: PASS WITH QUALITATIVE DISCLOSURE.</em></li><li class="task"><span class="task-mark" aria-hidden="true">☐</span><strong>4 — Wake/breathe/focus/settle.</strong> Arrival, engaged operation, concentration, and idle stillness are perceptible and bounded. <em>Local: PASS.</em></li><li class="task"><span class="task-mark" aria-hidden="true">☐</span><strong>5 — Kai atmosphere.</strong> Kai focus changes the room while fixed-local/no-model/no-action truth stays unmistakable. <em>Local: PASS.</em></li><li class="task"><span class="task-mark" aria-hidden="true">☐</span><strong>6 — Meaningful motion.</strong> Movement communicates state, direction, attention, provenance, capacity, or settlement; no fact requires animation. <em>Local: PASS WITH DISCLOSURE.</em></li><li class="task"><span class="task-mark" aria-hidden="true">☐</span><strong>7 — Desktop operating environment.</strong> The 1728 and 1440 layouts feel like a coherent command facility. <em>Local: PASS WITH EXPERT-REVIEW DISCLOSURE.</em></li><li class="task"><span class="task-mark" aria-hidden="true">☐</span><strong>8 — Intentionally directed mobile.</strong> 390 and 320 layouts remain one-chamber spatial projections with clear touch navigation. <em>Local: PASS IN BROWSER EMULATION; PHYSICAL DEVICE NOT CLAIMED.</em></li><li class="task"><span class="task-mark" aria-hidden="true">☐</span><strong>9 — Premium reduced motion.</strong> All seven chambers remain complete and distinct with zero required environment animation. <em>Local: PASS.</em></li><li class="task"><span class="task-mark" aria-hidden="true">☐</span><strong>10 — Clear and fast navigation.</strong> Direct, previous/next, map, keyboard/touch, Back/Forward, focus, and departure remain obvious and responsive. <em>Local: PASS WITH DISCOVERABILITY DISCLOSURE.</em></li><li class="task"><span class="task-mark" aria-hidden="true">☐</span><strong>11 — Semantic preservation.</strong> Facts, disclosures, headings, ids/order, controls, and destinations remain intact; only verified accessibility/contrast corrections are present. <em>Local: PASS.</em></li><li class="task"><span class="task-mark" aria-hidden="true">☐</span><strong>12 — No live data/service.</strong> Every operational state remains disclosed fixture truth with no customer or production service connection. <em>Local: PASS.</em></li><li class="task"><span class="task-mark" aria-hidden="true">☐</span><strong>13 — No unauthorized runtime AI.</strong> Kai remains deterministic local presentation with no model call, memory, persistence, or action. <em>Local: PASS.</em></li><li class="task"><span class="task-mark" aria-hidden="true">☐</span><strong>14 — No unauthorized dependency.</strong> Package and lockfile bytes match baseline. <em>Local: PASS.</em></li><li class="task"><span class="task-mark" aria-hidden="true">☐</span><strong>15 — No production surface.</strong> Review code remains isolated and authoritative production identity returns 404. <em>ENGINEERING PASS; FOUNDER REVIEW REMAINS.</em></li><li class="task"><span class="task-mark" aria-hidden="true">☐</span><strong>16 — No production alias/environment mutation.</strong> The Preview has zero production aliases; the prior production target and aliases are unchanged. <em>ENGINEERING PASS; FOUNDER REVIEW REMAINS.</em></li><li class="task"><span class="task-mark" aria-hidden="true">☐</span><strong>17 — Exact protected Preview binding.</strong> Exact delivery commit <code>b2ba206aade2d41aa7b718fdb3c352bbc27edb59</code> is SSO-protected, release-header-bound, and contains unchanged runtime files from <code>188aa78cf60d1565a35ac20710724dc7e1e32724</code>. <em>ENGINEERING PASS; FOUNDER REVIEW REMAINS.</em></li><li class="task"><span class="task-mark" aria-hidden="true">☐</span><strong>18 — Reproducible evidence.</strong> Hashes, pinned toolchain, baseline, browser ledger, build metrics, screenshots, production proof, sanitized Preview proof, and a deterministic 41-member package reproduce the conclusion. <em>ENGINEERING PASS; FINAL ARCHIVE HASH AND DOWNLOAD REPLAY ARE DELIVERED ALONGSIDE.</em></li><li class="task"><span class="task-mark" aria-hidden="true">☐</span><strong>19 — Credible award-caliber craft.</strong> The experience demonstrates authored restraint, distinct places, meaningful choreography, and premium static equivalence—not transition accumulation. <em>Local: PASS AS EXPERT JUDGMENT; NO AWARD CLAIM.</em></li><li class="task"><span class="task-mark" aria-hidden="true">☐</span><strong>20 — Reviewable without a giant document.</strong> This route-first handoff and indexed evidence are sufficient to decide on desktop, mobile, and reduced motion. <em>READY FOR FOUNDER REVIEW.</em></li></ul>
+<h2 id="9-disclosed-caveats-to-keep-visible-during-review">9. Disclosed caveats to keep visible during review</h2>
+<ol><li>Axe reports 0 violations but leaves 511 serious color-contrast nodes incomplete; sampled chamber ratios pass, but exhaustive manual contrast certification is not claimed.</li><li>Five responsive cases have no eligible in-viewport center points in the obstruction sample. Target sizing and touch flows pass, but the obstruction ledger is not comprehensive there.</li><li>One landscape mixed Long Animation Frame measures 113.5 ms with 51.9 ms blocking. Ten Long Tasks are first-party-unattributed; no candidate-owned Long Task is recorded.</li><li>Local inherited framework noise remains in the ledger: 24 NextAuth HTTP 500 responses, 39 console errors, and 9 <code>nextauth.message</code> localStorage writes; candidate-owned failure/persistence counts are zero.</li><li>Trusted BFCache proof covers one real desktop history traversal.</li><li>Mobile/tablet evidence is browser emulation. No physical-device, screen-reader, switch-control, voice-control, or assistive-technology lab test is claimed.</li><li>Emotional memorability, navigation discoverability, motion comfort, and award-caliber craft are expert judgments without external user research or award recognition.</li><li>Full-repository lint retains four inherited findings outside the touched-file pass.</li><li>No production RUM or broad low-end-hardware sample is claimed.</li></ol>
+<h2 id="10-decisions-requested-from-the-founder">10. Decisions requested from the Founder</h2>
+<p>After the route review, record one decision for each item:</p>
+<ol><li><strong>Candidate craft:</strong> <code>ACCEPT AS ISOLATED RC1 REFERENCE</code> / <code>REQUEST CHANGES</code> / <code>HOLD</code>.</li><li><strong>Disclosed caveats:</strong> <code>ACCEPT FOR THIS PROTECTED REVIEW RECORD</code> / <code>REQUIRE SPECIFIC CLOSURE BEFORE ACCEPTANCE</code>.</li><li><strong>Next gate:</strong> <code>AUTHORIZE A SEPARATE PRODUCTION-INTEGRATION PROPOSAL</code> / <code>KEEP AS REVIEW REFERENCE ONLY</code> / <code>RETIRE</code>.</li></ol>
+<p>If changes are requested, identify the exact chamber, viewport, state, truth boundary, or evidence gap. Acceptance of this isolated artifact does not itself open the next gate.</p>
+<h2 id="11-what-founder-approval-does-not-authorize">11. What Founder approval does not authorize</h2>
+<p>Even a Founder acceptance of RC1 does <strong>not</strong> authorize:</p>
+<ul><li>merging to <code>main</code> or wholesale merging the historical RC5 review lineage;</li><li>production integration, deployment, promotion, public access, or production alias change;</li><li>changes to project settings, environment values, auth, schema, migrations, database, billing, Stripe, entitlements, economics, or payouts;</li><li>production/customer data, live Agency services, persistence, telemetry, notifications, tasks, calendar actions, runtime AI, model calls, or business effects;</li><li>activating or migrating Mission Control, Growth, Arena, Marketplace, Community, Consumer Workspace, the landing journey, generic Kai environments, or any future room;</li><li>claiming legal certification, production readiness, accessibility certification, physical-device coverage, user-research validation, or award recognition.</li></ul>
+<p>A separately scoped, reviewed, exact-base integration proposal is required before any of those actions.</p>
+<h2 id="12-rollback-and-preview-retirement">12. Rollback and Preview retirement</h2>
+<p>Before integration, rollback is intentionally simple:</p>
+<ol><li>Do not merge or promote the review branch.</li><li>Retire the protected Preview when review is complete, rejected, superseded, or found misconfigured.</li><li>If protection or source binding fails, revoke access/retire the Preview immediately and record <strong>HOLD</strong>; do not repair it by adding a production alias or weakening protection.</li><li>Retain or archive the SHA-bound evidence according to repository policy; do not treat a retained branch as a live product surface.</li><li>No schema, data, environment, billing, Stripe, auth, or production rollback is required because none was changed.</li><li>If a future integration is authorized, reconstruct only the approved blobs on a freshly reverified production base. Do not merge the historical review lineage wholesale.</li></ol>
+<h2 id="13-zip-html-and-download-verification">13. ZIP, HTML, and download verification</h2>
+<div class="table-wrap" role="region" aria-label="Table: 13. ZIP, HTML, and download verification" tabindex="0">
+<table>
+<caption class="sr-only">Table associated with 13. ZIP, HTML, and download verification</caption>
+<thead><tr><th scope="col">Delivery item</th><th scope="col">Status</th></tr></thead>
+<tbody><tr><th scope="row">Standalone HTML reports</th><td><code>VERIFIED — 7 deterministic, mobile-friendly, dark/light, script-free offline reports</code></td></tr><tr><th scope="row">Curated Founder ZIP</th><td><code>VERIFIED — deterministic 41-member archive</code></td></tr><tr><th scope="row">Curated ZIP SHA-256</th><td><code>DELIVERED ALONGSIDE AFTER ARCHIVE FREEZE TO AVOID SELF-REFERENCE</code></td></tr><tr><th scope="row">Curated ZIP manifest/member validation</th><td><code>VERIFIED — SHA256SUMS.json plus full archive member and CRC validation</code></td></tr><tr><th scope="row">Secret/local-path/symlink/traversal scan</th><td><code>VERIFIED — generator fails closed; no forbidden content or undeclared member</code></td></tr><tr><th scope="row">Desktop download verification</th><td><code>POST-FREEZE RESULT DELIVERED ALONGSIDE THE ARCHIVE</code></td></tr><tr><th scope="row">Mobile download verification</th><td><code>POST-FREEZE MOBILE-EMULATED CHROMIUM RESULT DELIVERED ALONGSIDE; NO PHYSICAL DEVICE CLAIM</code></td></tr><tr><th scope="row">Preview URL/deployment identifier inside package</th><td><code>INTENTIONALLY OMITTED — DELIVERED ONLY IN AUTHENTICATED CHAT</code></td></tr><tr><th scope="row">Exact Preview-to-source binding inside package</th><td><code>VERIFIED IN SANITIZED PROOF; DELIVERY b2ba206 / IMPLEMENTATION 188aa78</code></td></tr></tbody>
+</table>
+</div>
+<p>Because an archive cannot carry its own stable ZIP digest or a proof generated after it is frozen, the exact ZIP SHA-256 and the final desktop/mobile-emulated download result are supplied next to the archive in the authenticated delivery channel. The internal integrity manifest covers every package member.</p>
+<h2 id="14-copy-ready-founder-handoff-block">14. Copy-ready Founder handoff block</h2>
+<pre><code class="language-text">CXOS LIVING ENVIRONMENT ENGINE RC1 — READY WITH DISCLOSED CAVEATS
+
+Protected Preview: VERIFIED — PRIVATE URL DELIVERED IN AUTHENTICATED CHAT
+Review route: /review/agency-command?director=1
+Branch: feat/cxos-living-environment-engine-rc1
+Implementation source: 188aa78cf60d1565a35ac20710724dc7e1e32724
+Preview delivery commit: b2ba206aade2d41aa7b718fdb3c352bbc27edb59
+Approved baseline: 29260fddfc59d71e3d963d2ec791657ea57084af
+
+Local result:
+- 10/10 browser cases and 17/17 coverage gates passed
+- 152 candidate states; 0 findings and 0 observations
+- seven distinct settled chamber final frames
+- zero CLS; motion budgets and idle quiescence passed
+- reduced, constrained, 200% reflow, and JavaScript-disabled projections complete
+- no dependency, runtime AI, live data, business write, or production activation added
+- local production identity defeated contradictory review flags: 3/3 routes returned 404
+
+Production hard-off proof SHA-256:
+89c5fff44755756c12413f65f5c19cc699ac92a13a2edae9135ed56241bd1907
+
+Protected delivery proof:
+- anonymous access redirects to Vercel SSO without exposing content
+- authenticated route returns 200 with release header b2ba206aade2
+- noindex header and noindex/nofollow metadata are present
+- Preview has no production alias; prior production target is unchanged
+- production identity hard-off remains 3/3 expected 404 responses
+
+Disclosed caveats:
+- 511 Axe color-contrast nodes remain incomplete for manual review; targeted samples pass
+- five responsive obstruction ledgers are non-comprehensive
+- one landscape mixed long-animation frame has 51.9 ms blocking
+- inherited local NextAuth noise remains visible
+- trusted BFCache proof is one desktop traversal
+- mobile results are browser emulation; no physical-device or screen-reader test is claimed
+- qualitative craft findings are expert judgment, not award or user-research evidence
+- seven standalone HTML reports and a deterministic 41-member sanitized ZIP are included
+- final ZIP hash and post-freeze desktop/mobile-emulated download proof are delivered alongside
+- no physical-device download is claimed
+
+Founder decisions requested:
+1. Accept isolated RC1 / Request changes / Hold
+2. Accept disclosed caveats for protected review / Require exact closure
+3. Authorize a separate integration proposal / Keep as reference / Retire
+
+Approval does not authorize merge, production integration/deployment, public access,
+alias or environment changes, schema/data/auth/billing/Stripe work, runtime AI,
+customer-data connection, another-room adoption, or any certification/award claim.</code></pre>
+<h2 id="15-final-handoff-state">15. Final handoff state</h2>
+<p><strong>READY WITH DISCLOSED CAVEATS.</strong> Implementation source <code>188aa78cf60d1565a35ac20710724dc7e1e32724</code>, delivery commit <code>b2ba206aade2d41aa7b718fdb3c352bbc27edb59</code>, production hard-off, and protected Preview boundary are accepted for Founder review. No production authorization is granted.</p>
+    </article>
+    <section class="copy-panel" aria-labelledby="copy-ready-title">
+      <h2 id="copy-ready-title">Copy-ready Markdown</h2>
+      <p id="copy-ready-help">This native read-only field performs no clipboard action. Select the text and use your platform’s normal copy command.</p>
+      <textarea readonly spellcheck="false" aria-describedby="copy-ready-help" aria-label="Copy-ready Markdown source"># CXOS Living Environment Engine RC1 — Founder Handoff
+
+**Status:** **READY WITH DISCLOSED CAVEATS**
+
+**Protected Preview:** **VERIFIED · private URL delivered in the authenticated chat**
+
+**Exact review route:** `/review/agency-command?director=1`
+
+**Candidate branch:** `feat/cxos-living-environment-engine-rc1`
+
+**Implementation source:** `188aa78cf60d1565a35ac20710724dc7e1e32724`
+
+**Preview delivery commit:** `b2ba206aade2d41aa7b718fdb3c352bbc27edb59`
+
+**Approved RC5 baseline:** `29260fddfc59d71e3d963d2ec791657ea57084af`
+
+This is the short, route-first Founder review guide. The implementation has cleared exact-source local review with disclosed caveats, the production-identity hard-off returns 404 on all three review routes, and the exact delivery commit is Ready behind Vercel SSO. The private hostname is intentionally excluded from every offline artifact and appears only in the authenticated handoff chat.
+
+## 1. Protected Preview verification card
+
+**Gate status:** `PROTECTED_PREVIEW_VERIFIED`
+
+| Required root check | Required value | Recorded value |
+| --- | --- | --- |
+| Protected Preview URL or deployment identifier | A protected non-production Preview only | **VERIFIED — delivered separately; omitted from sanitized artifacts** |
+| Exact source served | Delivery commit plus browser-bound runtime source | **VERIFIED — `b2ba206aade2d41aa7b718fdb3c352bbc27edb59`; product runtime unchanged from `188aa78cf60d1565a35ac20710724dc7e1e32724`** |
+| Access protection | Authentication or deployment protection blocks unauthenticated access | **VERIFIED — anonymous request redirects to Vercel SSO and exposes no content** |
+| Review route | `/review/agency-command?director=1` loads after authorized access | **VERIFIED — 200, matched route, release header `b2ba206aade2`** |
+| Search controls | `noindex` and `nofollow` remain effective | **VERIFIED — `x-robots-tag: noindex` plus `noindex, nofollow` metadata** |
+| Production alias | Unchanged; Preview has no production alias | **VERIFIED — one branch alias, zero production aliases; prior production target unchanged** |
+| Production hard-off replay | Production identity still returns 404 despite contradictory review flags | **VERIFIED — 3/3 routes returned 404** |
+| Preview evidence replay | Protected route matches the locally validated runtime | **VERIFIED — exact Git metadata and release header bind the unchanged product runtime; no separate remote physical-device claim** |
+
+**Continuing stop condition:** any later source mismatch, missing protection, public accessibility, search-indexability, production alias, or production-identity 200 response changes the status to **HOLD**. The verification used exact Git metadata rather than a branch-name inference.
+
+## 2. What you are reviewing
+
+The candidate turns Agency Headquarters from a long seven-section experience into one directed operating facility with one active chamber at a time. The seven chambers retain the same semantic facts, disclosures, controls, order, and destinations while gaining distinct camera/framing, light, depth, motion, focus, idle, and Kai presentation profiles.
+
+Core Runtime 1.1 is a presentation-only extension of the existing headless runtime. It validates closed room profiles and projects deterministic state through the sole browser adapter. Agency-owned CSS renders the facility. The engine owns no fact, model, customer data, action, entitlement, billing state, or effect.
+
+Local evidence reports:
+
+- 10/10 browser cases and 17/17 coverage gates passed;
+- 152 measured candidate states with 0 findings and 0 observations;
+- seven distinct deterministic settled chamber screenshots;
+- zero CLS and zero sustained environmental animation after idle;
+- all measured controls at least 44 px and no horizontal overflow;
+- complete reduced-motion, constrained, reflow, and JavaScript-disabled projections;
+- package manifests unchanged and no dependency added; and
+- local production identity plus contradictory review flags returning 404 on 3/3 review probes.
+
+## 3. Founder review path
+
+Use the exact route `/review/agency-command?director=1` on the root-verified protected Preview origin.
+
+### A. Desktop review — 1728×1000, then 1440×900
+
+1. Confirm the protected-access challenge appears before the route. If the route is public, stop.
+2. Open `/review/agency-command?director=1`; confirm the synthetic-fixture and no-action boundaries are visible.
+3. Let the natural arrival settle. Replay it once, then verify Skip and Escape both settle cleanly without losing content or focus.
+4. Use the persistent facility rail to visit all seven chambers directly. Then use Previous and Next. Confirm only one primary chamber is active and each change feels directional, finite, and settled—not like scrolling to the next card.
+5. In each chamber, judge the final frame before judging motion: distinct information geometry, light source, depth, operational protagonist, and truth boundary must remain obvious at rest.
+6. Open and close an inspection by toggle and Escape. Confirm focus returns to the invoking control and ambient activity quiets while reading.
+7. In Kai Executive Suite, stage, resolve, and clear the fixed local command. Confirm atmosphere changes but the no-model/no-persistence/no-production-action disclosures remain legible and credible.
+8. Stop interacting for at least 6 seconds in a Tier-A desktop view. Confirm the environment settles to stillness while facts and controls remain complete.
+9. Use browser Back/Forward after chamber changes. Confirm chamber/hash restoration and focus settlement.
+10. Use the Mission Control return path, then return to Agency and confirm bounded departure/return behavior.
+
+### B. Mobile-directed review — browser viewports 390×844 and 320×800
+
+1. Review the same protected route in responsive browser mode at 390×844, then 320×800.
+2. Confirm one chamber—not all seven stacked chambers—is primary.
+3. Use origin/current/next controls and the native expandable facility map. Activate controls through touch emulation.
+4. Visit Central, Client Operations, Kai, and Growth at minimum; confirm each still reads as a different place rather than a compressed desktop card.
+5. Scroll naturally inside a chamber. Confirm there is no horizontal overflow, wheel/touch capture, swipe-only navigation, clipped disclosure, or obscured control.
+6. Open/close an inspection and run Kai stage/resolve/clear. Confirm the keyboard/focus model remains coherent when returning to desktop width.
+
+These steps are a Founder browser review. The preserved automated mobile evidence is browser emulation; this handoff does not claim physical-device testing.
+
+### C. Reduced-motion review — 1440×900
+
+1. Enable `prefers-reduced-motion: reduce` through the operating system or browser developer tools before opening the route.
+2. Reload `/review/agency-command?director=1` and confirm arrival is complete without a required animated sequence.
+3. Visit all seven chambers. Confirm composition, hierarchy, lighting, borders, controls, facts, and truth boundaries remain distinct and premium.
+4. Confirm chamber changes do not use a passage overlay, parallax, animated light, or motion-required information.
+5. Stage/resolve/clear Kai and open an inspection. Confirm state remains understandable through static treatment.
+6. Leave the view idle. There should be no running environmental animation.
+
+Reduced-motion evidence is automated Chromium plus this requested Founder exercise. No screen-reader or assistive-technology certification is claimed.
+
+## 4. Seven-chamber directing card
+
+| Chamber | What should be immediately legible | What must never be implied |
+| --- | --- | --- |
+| Central Command | Centered command aperture, long horizon, priority instrument, command authority | Live financial-health assessment |
+| Client Operations Floor | Lateral lanes, operating rhythm, directional rail light, disclosed interruption | Live customer throughput or connected work system |
+| Team Operations Room | Eye-level relational tableau, intentional solo operator, quiet coverage geometry | Fake staff presence, availability, or invitation state |
+| Business Health Observatory | Compressed diagnostic field, amber WATCH source, missing-input emphasis | Score, forecast, certification, or connected billing/revenue truth |
+| Activity and Evidence Archive | Longitudinal trays, provenance light, layered evidence focus | Production audit trail or records that do not exist |
+| Kai Executive Suite | Calm portrait focus, staged/resolved attention, still executive field | Consciousness, live model work, memory, persistence, or successful action |
+| Growth / Capacity Threshold | Wide horizon, occupied cells, dormant reserve, visible fixed constraint | Scarcity, entitlement, purchase, billing, or automatic expansion |
+
+## 5. Screenshot index
+
+All paths below are repository-relative under `CXOS_LIVING_ENVIRONMENT_ENGINE_RC1_EVIDENCE/candidate/final/`. Each file has a distinct SHA-256 digest.
+
+### Responsive, reduced, constrained, reflow, and no-JavaScript views
+
+| Screenshot | Review purpose | SHA-256 |
+| --- | --- | --- |
+| `candidate-final-desktop-large-settled.png` | 1728×1000 settled facility | `d4c648dabc9208d37a4489af128a380bb02436fe460394330ae2aeb40e7af347` |
+| `candidate-final-desktop-settled.png` | 1440×900 settled desktop | `25726b7e764929330afc949561a6c24a8ae6d45632f57212cc767b7cb5512728` |
+| `candidate-final-tablet-settled.png` | 1024×768 tablet projection | `3976588b34e75958b913faeb2d1772e7028c75598674a14262c5c999efe1af8d` |
+| `candidate-final-mobile-settled.png` | 390×844 directed mobile | `62e2151d6befe7489b4511df0d02ed951974a99fc857ac2b0822dc1dffc405af` |
+| `candidate-final-mobile-360-settled.png` | 360×800 directed mobile | `638f67728dc3a209c9f070fee4707e028ac856317e5ead3f5f5792d1cefa2771` |
+| `candidate-final-mobile-narrow-settled.png` | 320×800 narrow mobile | `a71959ee6aceb9dd2a5e047c77df23f43eb1190e7a28b9b47a7df9374834981f` |
+| `candidate-final-landscape-settled.png` | 740×390 compact landscape | `e209d8a4bf8b4b2dc4223e803a75079cdb71551bab7547edd60252a00e68bc60` |
+| `candidate-final-reduced-settled.png` | 1440×900 reduced-motion final frame | `9f59c938a8b3b44b1772d320f9f70d1afb88835e389e5ec6c39657983286756f` |
+| `candidate-final-constrained-settled.png` | 1024×768 constrained/static projection | `909ba1edea8700380d94fc5ae761424fd611df1578685b1e7a834f04af4159e6` |
+| `candidate-final-reflow-200-settled.png` | 200% reflow model: 720×450 CSS at DPR 2 | `08a1442e05ed0ed491f9c5ee9ed4a813b58a8e1bdff25005e7c7cf12dc7bbb3e` |
+| `candidate-final-javascript-disabled.png` | Complete no-JavaScript document | `564fe81f1c9d57bb2233a024671e4f99cefd038fc0ddad652c965124664518c3` |
+
+### Seven deterministic chamber final frames
+
+| Screenshot | Chamber | SHA-256 |
+| --- | --- | --- |
+| `candidate-final-desktop-large-chamber-central-command-settled.png` | Central Command | `f8036457ddfdb70f16a93343f239a8ee863acc9def08b936cf206f6bee2b6027` |
+| `candidate-final-desktop-large-chamber-client-operations-settled.png` | Client Operations Floor | `d3a8d43e40dfe08eb17e591f32013a5ddd3425f3b3705a0e300803291c8eea7f` |
+| `candidate-final-desktop-large-chamber-team-operations-settled.png` | Team Operations Room | `63398a725e583f25ef734227a98b8b72091791edebdf9b581fa66f80cdbaf0f4` |
+| `candidate-final-desktop-large-chamber-business-health-settled.png` | Business Health Observatory | `743cee9cc8b535b67959f4f01df6038bdee9226bfadab8460698ebd90539b07f` |
+| `candidate-final-desktop-large-chamber-evidence-archive-settled.png` | Activity and Evidence Archive | `1e3c38b4a1e2bc54eccf29412dfd3354ac7578f7aae4cd38c0c43fd62730227e` |
+| `candidate-final-desktop-large-chamber-kai-suite-settled.png` | Kai Executive Suite | `7a818b07f827e4f35cb474524ed11b6f334189b467f30cca9dbb9423a6ad8259` |
+| `candidate-final-desktop-large-chamber-growth-threshold-settled.png` | Growth / Capacity Threshold | `4f0a21213a5d32c811b8b87802b704dc32d195270876eef4a3cc95708e8b4cdc` |
+
+## 6. Evidence and reference index
+
+| Artifact | Purpose | SHA-256 |
+| --- | --- | --- |
+| `CXOS_LIVING_ENVIRONMENT_ENGINE_RC1_EVIDENCE/candidate/final/candidate-final-browser-evidence.json` | Strict 10-case, 17-gate browser ledger | `4a07581e10c7f23464a52e36c273499c3c8e8dcfdb7e901d33d34f609c7a9477` |
+| `CXOS_LIVING_ENVIRONMENT_ENGINE_RC1_EVIDENCE/baseline/final/rc5-baseline-final-browser-evidence.json` | Same-harness RC5 comparison ledger | `c66aae7a56b5d971107c4ee036f4dfe11623118c78a737481d830b7e7fab44ff` |
+| `CXOS_LIVING_ENVIRONMENT_ENGINE_RC1_EVIDENCE/candidate/candidate-build-metrics.json` | Exact optimized build and RC5 bundle comparison | `a09d95d0b4fa43ca723b94ca2263295c7f54e1026d9a890d0e3c520f430c1542` |
+| `CXOS_LIVING_ENVIRONMENT_ENGINE_RC1_EVIDENCE/production-safety/production-identity-hard-off.json` | Local production identity plus contradictory flags; 3/3 404 | `89c5fff44755756c12413f65f5c19cc699ac92a13a2edae9135ed56241bd1907` |
+| `CXOS_LIVING_ENVIRONMENT_ENGINE_RC1_EVIDENCE/preview/protected-preview-binding.json` | Sanitized exact-commit, SSO, route, robots, and alias proof | `2cc53e9db3cfe174b59dba0d50ccf8da0e8a8359b9bf530662e29a0eb0e3cd0d` |
+| `scripts/cxos-living-environment/browser.mjs` | Pinned, fail-closed browser harness | `317652c96c4d06112c2f2e7334d4b1ee69a6ac31473b7fc921f49d25d9ebbea6` |
+| `CXOS_LIVING_ENVIRONMENT_ENGINE_CINEMATIC_BIBLE.md` | Motion vocabulary and seven-shot direction | `70f8f04558be7d024ed8b523561fd709f92c6e243d9a604edcee1e513095a13d` |
+| `.ai/ADR/ADR-0040-cxos-core-runtime.md` | Accepted Core Runtime 1.1 architecture boundary | `bd144f4112111dc2d9c4e83390f3488e0871ea985050ce7997dac9b19b43fefd` |
+| `CXOS_LIVING_ENVIRONMENT_ENGINE_ADOPTION_MATRIX.md` | Cross-site classification and non-adoption law | `b1ef750568e30f7359afd71f357931385930f2af46636d33a4ac9cb116de8d23` |
+| `CXOS_LIVING_ENVIRONMENT_ENGINE_RC1_ADVERSARIAL_REVIEW.md` | Nine-perspective adversarial decision | `75402656ef70afb80f4d7462805d9cc8ec906a8884f9b55e0458c5420b940d15` |
+| `CXOS_LIVING_ENVIRONMENT_ENGINE_RC1_VALIDATION_REPORT.md` | Detailed static/build/browser results and caveats | `8acaff07bb37b8ac7663143339b233180e174f661294b07a859821bd6716d854` |
+| `CXOS_LIVING_ENVIRONMENT_ENGINE_RC1_FINAL_REPORT.md` | Final decision, 20 criteria, five gates, craft, hashes, and boundary | Hash intentionally omitted from itself |
+
+## 7. Exact implementation allowlist
+
+The candidate source delta from the approved baseline is limited to these 25 paths:
+
+- `.ai/ADR/ADR-0040-cxos-core-runtime.md`
+- `.ai/DECISIONS.md`
+- `.gitignore`
+- `CXOS_FOUNDATION.md`
+- `CXOS_LANGUAGE_1_0.md`
+- `CXOS_LIVING_ENVIRONMENT_ENGINE_ADOPTION_MATRIX.html`
+- `CXOS_LIVING_ENVIRONMENT_ENGINE_ADOPTION_MATRIX.md`
+- `CXOS_LIVING_ENVIRONMENT_ENGINE_CINEMATIC_BIBLE.html`
+- `CXOS_LIVING_ENVIRONMENT_ENGINE_CINEMATIC_BIBLE.md`
+- `CXOS_LIVING_ENVIRONMENT_ENGINE_RC1_PLAN.md`
+- `app/review/agency-command/agency-command.module.css`
+- `app/review/agency-command/environment.ts`
+- `app/review/agency-command/page.tsx`
+- `app/review/agency-command/stage.tsx`
+- `app/review/layout.tsx`
+- `app/review/mission-control/page.tsx`
+- `app/review/page.tsx`
+- `components/cxos/runtime/useCxosRoomRuntime.ts`
+- `lib/cxos/runtime.ts`
+- `scripts/cxos-agency-command.test.ts`
+- `scripts/cxos-core-runtime.test.ts`
+- `scripts/cxos-isolated-review.test.ts`
+- `scripts/cxos-living-environment.test.ts`
+- `scripts/cxos-living-environment/browser.mjs`
+- `scripts/cxos-living-environment/handoff.mjs`
+
+The final reports and curated evidence are handoff artifacts generated around that exact implementation; they are not part of the implementation commit identity.
+
+## 8. Founder 20-gate checklist
+
+Check each item against the protected Preview. Local evidence status is supplied so the remaining Founder judgment is explicit.
+
+- [ ] **1 — Not a long page.** One primary chamber, direct/previous/next navigation, facility location, and browser history feel like a room. _Local: PASS WITH EXPERT-REVIEW DISCLOSURE._
+- [ ] **2 — Seven distinct chambers.** Each chamber is recognizably different at rest, not merely a color-swapped panel. _Local: PASS._
+- [ ] **3 — Spatial/cinematic passage.** Changes release, cross, acquire, and settle without disorientation or flourish for its own sake. _Local: PASS WITH QUALITATIVE DISCLOSURE._
+- [ ] **4 — Wake/breathe/focus/settle.** Arrival, engaged operation, concentration, and idle stillness are perceptible and bounded. _Local: PASS._
+- [ ] **5 — Kai atmosphere.** Kai focus changes the room while fixed-local/no-model/no-action truth stays unmistakable. _Local: PASS._
+- [ ] **6 — Meaningful motion.** Movement communicates state, direction, attention, provenance, capacity, or settlement; no fact requires animation. _Local: PASS WITH DISCLOSURE._
+- [ ] **7 — Desktop operating environment.** The 1728 and 1440 layouts feel like a coherent command facility. _Local: PASS WITH EXPERT-REVIEW DISCLOSURE._
+- [ ] **8 — Intentionally directed mobile.** 390 and 320 layouts remain one-chamber spatial projections with clear touch navigation. _Local: PASS IN BROWSER EMULATION; PHYSICAL DEVICE NOT CLAIMED._
+- [ ] **9 — Premium reduced motion.** All seven chambers remain complete and distinct with zero required environment animation. _Local: PASS._
+- [ ] **10 — Clear and fast navigation.** Direct, previous/next, map, keyboard/touch, Back/Forward, focus, and departure remain obvious and responsive. _Local: PASS WITH DISCOVERABILITY DISCLOSURE._
+- [ ] **11 — Semantic preservation.** Facts, disclosures, headings, ids/order, controls, and destinations remain intact; only verified accessibility/contrast corrections are present. _Local: PASS._
+- [ ] **12 — No live data/service.** Every operational state remains disclosed fixture truth with no customer or production service connection. _Local: PASS._
+- [ ] **13 — No unauthorized runtime AI.** Kai remains deterministic local presentation with no model call, memory, persistence, or action. _Local: PASS._
+- [ ] **14 — No unauthorized dependency.** Package and lockfile bytes match baseline. _Local: PASS._
+- [ ] **15 — No production surface.** Review code remains isolated and authoritative production identity returns 404. _ENGINEERING PASS; FOUNDER REVIEW REMAINS._
+- [ ] **16 — No production alias/environment mutation.** The Preview has zero production aliases; the prior production target and aliases are unchanged. _ENGINEERING PASS; FOUNDER REVIEW REMAINS._
+- [ ] **17 — Exact protected Preview binding.** Exact delivery commit `b2ba206aade2d41aa7b718fdb3c352bbc27edb59` is SSO-protected, release-header-bound, and contains unchanged runtime files from `188aa78cf60d1565a35ac20710724dc7e1e32724`. _ENGINEERING PASS; FOUNDER REVIEW REMAINS._
+- [ ] **18 — Reproducible evidence.** Hashes, pinned toolchain, baseline, browser ledger, build metrics, screenshots, production proof, sanitized Preview proof, and a deterministic 41-member package reproduce the conclusion. _ENGINEERING PASS; FINAL ARCHIVE HASH AND DOWNLOAD REPLAY ARE DELIVERED ALONGSIDE._
+- [ ] **19 — Credible award-caliber craft.** The experience demonstrates authored restraint, distinct places, meaningful choreography, and premium static equivalence—not transition accumulation. _Local: PASS AS EXPERT JUDGMENT; NO AWARD CLAIM._
+- [ ] **20 — Reviewable without a giant document.** This route-first handoff and indexed evidence are sufficient to decide on desktop, mobile, and reduced motion. _READY FOR FOUNDER REVIEW._
+
+## 9. Disclosed caveats to keep visible during review
+
+1. Axe reports 0 violations but leaves 511 serious color-contrast nodes incomplete; sampled chamber ratios pass, but exhaustive manual contrast certification is not claimed.
+2. Five responsive cases have no eligible in-viewport center points in the obstruction sample. Target sizing and touch flows pass, but the obstruction ledger is not comprehensive there.
+3. One landscape mixed Long Animation Frame measures 113.5 ms with 51.9 ms blocking. Ten Long Tasks are first-party-unattributed; no candidate-owned Long Task is recorded.
+4. Local inherited framework noise remains in the ledger: 24 NextAuth HTTP 500 responses, 39 console errors, and 9 `nextauth.message` localStorage writes; candidate-owned failure/persistence counts are zero.
+5. Trusted BFCache proof covers one real desktop history traversal.
+6. Mobile/tablet evidence is browser emulation. No physical-device, screen-reader, switch-control, voice-control, or assistive-technology lab test is claimed.
+7. Emotional memorability, navigation discoverability, motion comfort, and award-caliber craft are expert judgments without external user research or award recognition.
+8. Full-repository lint retains four inherited findings outside the touched-file pass.
+9. No production RUM or broad low-end-hardware sample is claimed.
+
+## 10. Decisions requested from the Founder
+
+After the route review, record one decision for each item:
+
+1. **Candidate craft:** `ACCEPT AS ISOLATED RC1 REFERENCE` / `REQUEST CHANGES` / `HOLD`.
+2. **Disclosed caveats:** `ACCEPT FOR THIS PROTECTED REVIEW RECORD` / `REQUIRE SPECIFIC CLOSURE BEFORE ACCEPTANCE`.
+3. **Next gate:** `AUTHORIZE A SEPARATE PRODUCTION-INTEGRATION PROPOSAL` / `KEEP AS REVIEW REFERENCE ONLY` / `RETIRE`.
+
+If changes are requested, identify the exact chamber, viewport, state, truth boundary, or evidence gap. Acceptance of this isolated artifact does not itself open the next gate.
+
+## 11. What Founder approval does not authorize
+
+Even a Founder acceptance of RC1 does **not** authorize:
+
+- merging to `main` or wholesale merging the historical RC5 review lineage;
+- production integration, deployment, promotion, public access, or production alias change;
+- changes to project settings, environment values, auth, schema, migrations, database, billing, Stripe, entitlements, economics, or payouts;
+- production/customer data, live Agency services, persistence, telemetry, notifications, tasks, calendar actions, runtime AI, model calls, or business effects;
+- activating or migrating Mission Control, Growth, Arena, Marketplace, Community, Consumer Workspace, the landing journey, generic Kai environments, or any future room;
+- claiming legal certification, production readiness, accessibility certification, physical-device coverage, user-research validation, or award recognition.
+
+A separately scoped, reviewed, exact-base integration proposal is required before any of those actions.
+
+## 12. Rollback and Preview retirement
+
+Before integration, rollback is intentionally simple:
+
+1. Do not merge or promote the review branch.
+2. Retire the protected Preview when review is complete, rejected, superseded, or found misconfigured.
+3. If protection or source binding fails, revoke access/retire the Preview immediately and record **HOLD**; do not repair it by adding a production alias or weakening protection.
+4. Retain or archive the SHA-bound evidence according to repository policy; do not treat a retained branch as a live product surface.
+5. No schema, data, environment, billing, Stripe, auth, or production rollback is required because none was changed.
+6. If a future integration is authorized, reconstruct only the approved blobs on a freshly reverified production base. Do not merge the historical review lineage wholesale.
+
+## 13. ZIP, HTML, and download verification
+
+| Delivery item | Status |
+| --- | --- |
+| Standalone HTML reports | `VERIFIED — 7 deterministic, mobile-friendly, dark/light, script-free offline reports` |
+| Curated Founder ZIP | `VERIFIED — deterministic 41-member archive` |
+| Curated ZIP SHA-256 | `DELIVERED ALONGSIDE AFTER ARCHIVE FREEZE TO AVOID SELF-REFERENCE` |
+| Curated ZIP manifest/member validation | `VERIFIED — SHA256SUMS.json plus full archive member and CRC validation` |
+| Secret/local-path/symlink/traversal scan | `VERIFIED — generator fails closed; no forbidden content or undeclared member` |
+| Desktop download verification | `POST-FREEZE RESULT DELIVERED ALONGSIDE THE ARCHIVE` |
+| Mobile download verification | `POST-FREEZE MOBILE-EMULATED CHROMIUM RESULT DELIVERED ALONGSIDE; NO PHYSICAL DEVICE CLAIM` |
+| Preview URL/deployment identifier inside package | `INTENTIONALLY OMITTED — DELIVERED ONLY IN AUTHENTICATED CHAT` |
+| Exact Preview-to-source binding inside package | `VERIFIED IN SANITIZED PROOF; DELIVERY b2ba206 / IMPLEMENTATION 188aa78` |
+
+Because an archive cannot carry its own stable ZIP digest or a proof generated after it
+is frozen, the exact ZIP SHA-256 and the final desktop/mobile-emulated download result
+are supplied next to the archive in the authenticated delivery channel. The internal
+integrity manifest covers every package member.
+
+## 14. Copy-ready Founder handoff block
+
+```text
+CXOS LIVING ENVIRONMENT ENGINE RC1 — READY WITH DISCLOSED CAVEATS
+
+Protected Preview: VERIFIED — PRIVATE URL DELIVERED IN AUTHENTICATED CHAT
+Review route: /review/agency-command?director=1
+Branch: feat/cxos-living-environment-engine-rc1
+Implementation source: 188aa78cf60d1565a35ac20710724dc7e1e32724
+Preview delivery commit: b2ba206aade2d41aa7b718fdb3c352bbc27edb59
+Approved baseline: 29260fddfc59d71e3d963d2ec791657ea57084af
+
+Local result:
+- 10/10 browser cases and 17/17 coverage gates passed
+- 152 candidate states; 0 findings and 0 observations
+- seven distinct settled chamber final frames
+- zero CLS; motion budgets and idle quiescence passed
+- reduced, constrained, 200% reflow, and JavaScript-disabled projections complete
+- no dependency, runtime AI, live data, business write, or production activation added
+- local production identity defeated contradictory review flags: 3/3 routes returned 404
+
+Production hard-off proof SHA-256:
+89c5fff44755756c12413f65f5c19cc699ac92a13a2edae9135ed56241bd1907
+
+Protected delivery proof:
+- anonymous access redirects to Vercel SSO without exposing content
+- authenticated route returns 200 with release header b2ba206aade2
+- noindex header and noindex/nofollow metadata are present
+- Preview has no production alias; prior production target is unchanged
+- production identity hard-off remains 3/3 expected 404 responses
+
+Disclosed caveats:
+- 511 Axe color-contrast nodes remain incomplete for manual review; targeted samples pass
+- five responsive obstruction ledgers are non-comprehensive
+- one landscape mixed long-animation frame has 51.9 ms blocking
+- inherited local NextAuth noise remains visible
+- trusted BFCache proof is one desktop traversal
+- mobile results are browser emulation; no physical-device or screen-reader test is claimed
+- qualitative craft findings are expert judgment, not award or user-research evidence
+- seven standalone HTML reports and a deterministic 41-member sanitized ZIP are included
+- final ZIP hash and post-freeze desktop/mobile-emulated download proof are delivered alongside
+- no physical-device download is claimed
+
+Founder decisions requested:
+1. Accept isolated RC1 / Request changes / Hold
+2. Accept disclosed caveats for protected review / Require exact closure
+3. Authorize a separate integration proposal / Keep as reference / Retire
+
+Approval does not authorize merge, production integration/deployment, public access,
+alias or environment changes, schema/data/auth/billing/Stripe work, runtime AI,
+customer-data connection, another-room adoption, or any certification/award claim.
+```
+
+## 15. Final handoff state
+
+**READY WITH DISCLOSED CAVEATS.** Implementation source `188aa78cf60d1565a35ac20710724dc7e1e32724`, delivery commit `b2ba206aade2d41aa7b718fdb3c352bbc27edb59`, production hard-off, and protected Preview boundary are accepted for Founder review. No production authorization is granted.
+</textarea>
+    </section>
+  </main>
+  <footer><div class="shell">Generated deterministically from the declared Markdown source. No release authority is implied.</div></footer>
+</body>
+</html>

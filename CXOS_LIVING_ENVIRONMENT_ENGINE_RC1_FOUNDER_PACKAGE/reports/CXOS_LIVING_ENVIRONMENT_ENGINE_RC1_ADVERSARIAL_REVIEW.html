@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src 'none'; font-src 'none'; connect-src 'none'; script-src 'none'; media-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>CXOS Living Environment Engine RC1 — Adversarial Review</title>
+  <style>
+    :root { color-scheme: dark light; --page:#07111d; --surface:#0d1c2c; --surface-2:#12263a; --text:#eef6fa; --muted:#b4c6d2; --line:#315069; --brand:#65e0d8; --amber:#ffd184; --shadow:0 18px 42px rgba(0,0,0,.25); }
+    * { box-sizing:border-box; }
+    html { scroll-behavior:smooth; }
+    body { margin:0; background:var(--page); color:var(--text); font:16px/1.65 ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    a { color:var(--brand); text-underline-offset:.18em; }
+    a:focus-visible, textarea:focus-visible, [tabindex]:focus-visible { outline:3px solid var(--amber); outline-offset:3px; }
+    .skip-link { position:fixed; z-index:10; top:1rem; left:1rem; transform:translateY(-180%); padding:.7rem 1rem; border-radius:.5rem; background:var(--amber); color:#111; }
+    .skip-link:focus { transform:translateY(0); }
+    .shell { width:min(1080px,calc(100% - 2rem)); margin-inline:auto; }
+    header { padding:3.75rem 0 2rem; border-bottom:1px solid var(--line); }
+    .eyebrow { color:var(--brand); font-size:.76rem; font-weight:800; letter-spacing:.12em; text-transform:uppercase; }
+    h1 { max-width:25ch; margin:.45rem 0 1rem; font-size:clamp(2.2rem,6vw,4.5rem); line-height:1.04; letter-spacing:-.04em; }
+    h2,h3,h4,h5,h6 { scroll-margin-top:1rem; line-height:1.22; letter-spacing:-.02em; }
+    h2 { margin-top:3rem; font-size:clamp(1.6rem,3vw,2.35rem); }
+    h3 { margin-top:2rem; }
+    p,li { max-width:88ch; }
+    .status-badge { display:inline-block; padding:.28rem .66rem; border:1px solid var(--amber); border-radius:999px; color:var(--amber); font-size:.82rem; font-weight:800; }
+    .boundary { max-width:82ch; color:var(--muted); }
+    nav { padding:1rem 0; border-bottom:1px solid var(--line); background:var(--surface); }
+    nav h2 { margin:0 0 .45rem; font-size:1rem; }
+    nav ul { display:flex; flex-wrap:wrap; gap:.35rem 1rem; margin:0; padding:0; list-style:none; }
+    nav a { display:inline-block; min-height:44px; padding:.55rem 0; }
+    .toc-level-3 { padding-left:.65rem; }
+    main { padding:2rem 0 4rem; }
+    blockquote { margin:1.4rem 0; padding:.8rem 1rem; border-left:4px solid var(--brand); background:var(--surface); color:var(--muted); }
+    blockquote p { margin:0; }
+    hr { margin:2.5rem 0; border:0; border-top:1px solid var(--line); }
+    pre { overflow:auto; padding:1rem; border:1px solid var(--line); border-radius:.75rem; background:#050b12; color:#edf7fa; }
+    code { border:1px solid var(--line); border-radius:.3rem; padding:.08em .3em; background:var(--surface-2); color:var(--brand); }
+    pre code { border:0; padding:0; background:transparent; color:inherit; }
+    .table-wrap { overflow-x:auto; margin:1.25rem 0; border:1px solid var(--line); border-radius:.85rem; }
+    table { width:100%; min-width:620px; border-collapse:collapse; background:var(--surface); }
+    th,td { padding:.72rem .82rem; border-top:1px solid var(--line); text-align:left; vertical-align:top; }
+    thead th { border-top:0; background:var(--surface-2); color:var(--brand); }
+    .sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; }
+    .task { list-style:none; margin-left:-1.5rem; }
+    .task-mark { display:inline-block; width:1.6rem; color:var(--brand); }
+    .reference,.image-reference { color:var(--muted); text-decoration:underline dotted; }
+    .copy-panel { margin-top:4rem; padding:1rem; border:1px solid var(--line); border-radius:1rem; background:var(--surface); box-shadow:var(--shadow); }
+    .copy-panel h2 { margin-top:0; font-size:1.35rem; }
+    .copy-panel p { color:var(--muted); }
+    textarea { width:100%; min-height:20rem; resize:vertical; padding:1rem; border:1px solid var(--line); border-radius:.75rem; background:var(--page); color:var(--text); font:13px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace; }
+    footer { padding:2rem 0 3rem; border-top:1px solid var(--line); color:var(--muted); }
+    @media (prefers-color-scheme: light) { :root { --page:#fff; --surface:#f4f8fa; --surface-2:#e9f2f5; --text:#14202b; --muted:#4c6070; --line:#9eb0bc; --brand:#07666b; --amber:#7a4b00; --shadow:none; } pre { background:#eef4f7; color:#14202b; } }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior:auto; } }
+    @media (max-width:680px) { header { padding-top:2.5rem; } nav ul { display:block; } table { min-width:560px; } .shell { width:min(100% - 1.1rem,1080px); } }
+    @page { size:auto; margin:16mm; }
+    @media print { :root { color-scheme:light; --page:#fff; --surface:#fff; --surface-2:#eef4f7; --text:#111827; --muted:#425466; --line:#93a4b2; --brand:#075e63; --amber:#7a4b00; --shadow:none; } body { font-size:10.5pt; } .shell { width:100%; } header { padding-top:0; } nav,.skip-link,.copy-panel { display:none; } main { padding-bottom:0; } h1 { font-size:28pt; } h2 { font-size:18pt; break-after:avoid; } h3 { font-size:13pt; break-after:avoid; } .table-wrap { overflow:visible; border:0; } table { min-width:0; font-size:8.5pt; } thead { display:table-header-group; } tr,pre,blockquote { break-inside:avoid; } a { color:inherit; text-decoration:none; } }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#content">Skip to report</a>
+  <header>
+    <div class="shell">
+      <div class="eyebrow">CreditVector Experience OS · deterministic handoff</div>
+      <h1>CXOS Living Environment Engine RC1 — Adversarial Review</h1>
+      <p><span class="status-badge">Ready with disclosed caveats</span></p>
+      <p class="boundary">Offline report mirror. It loads no external asset, script, font, frame, or network resource.</p>
+    </div>
+  </header>
+  <nav aria-label="Report contents"><div class="shell"><h2>Contents</h2><ul><li class="toc-level-2"><a href="#1-decision">1. Decision</a></li><li class="toc-level-2"><a href="#2-exact-evidence-binding">2. Exact evidence binding</a></li><li class="toc-level-2"><a href="#3-defect-and-closure-matrix">3. Defect and closure matrix</a></li><li class="toc-level-2"><a href="#4-chamber-distinction">4. Chamber distinction</a></li><li class="toc-level-2"><a href="#5-meaningful-motion-versus-decorative-noise">5. Meaningful motion versus decorative noise</a></li><li class="toc-level-2"><a href="#6-navigation-lifecycle-and-spatial-continuity">6. Navigation, lifecycle, and spatial continuity</a></li><li class="toc-level-2"><a href="#7-nine-reviewer-perspectives">7. Nine reviewer perspectives</a></li><li class="toc-level-2"><a href="#8-mobile-reduced-motion-accessibility-and-performance-detail">8. Mobile, reduced-motion, accessibility, and performance detail</a></li><li class="toc-level-3"><a href="#mobile-and-reduced-motion">Mobile and reduced motion</a></li><li class="toc-level-3"><a href="#accessibility">Accessibility</a></li><li class="toc-level-3"><a href="#performance-and-runtime-isolation">Performance and runtime isolation</a></li><li class="toc-level-2"><a href="#9-kai-truth-compliance-business-authority-and-production-safety">9. Kai truth, compliance, business authority, and production safety</a></li><li class="toc-level-3"><a href="#kai-truth">Kai truth</a></li><li class="toc-level-3"><a href="#internal-compliance-review">Internal compliance review</a></li><li class="toc-level-3"><a href="#business-authority">Business authority</a></li><li class="toc-level-3"><a href="#production-safety">Production safety</a></li><li class="toc-level-2"><a href="#10-explicit-answers-to-the-twelve-adversarial-questions">10. Explicit answers to the twelve adversarial questions</a></li><li class="toc-level-2"><a href="#11-exact-disclosed-caveats-and-required-next-gate">11. Exact disclosed caveats and required next gate</a></li><li class="toc-level-2"><a href="#12-terminal-verdict">12. Terminal verdict</a></li></ul></div></nav>
+  <main id="content" class="shell">
+    <article>
+<p><strong>CXOS LIVING ENVIRONMENT ENGINE RC1 — READY WITH DISCLOSED CAVEATS</strong></p>
+<p>Date: 2026-08-01</p>
+<p>Review scope: isolated Agency Headquarters reference candidate only</p>
+<p>Decision boundary: protected Founder review only; no merge, production integration, production deployment, public exposure, data connection, schema action, billing action, runtime AI, or business-authority grant</p>
+<h2 id="1-decision">1. Decision</h2>
+<p><strong>REVIEW JUDGMENT — READY WITH DISCLOSED CAVEATS.</strong> The exact local candidate clears the adversarial implementation gate. No open P0 or P1 implementation defect was found after closure of the scroll-choreography proof gap and the sampled contrast failure. The experience reads as one coherent operating facility with seven distinguishable chambers, a native chamber-navigation model, bounded state-bearing motion, complete static fail-down, explicit synthetic truth, and no business or execution authority.</p>
+<p>The protected Preview delivery gate is now independently closed. Vercel metadata returns one Ready Preview for exact delivery commit <code>b2ba206aade2d41aa7b718fdb3c352bbc27edb59</code>; the only changes after browser-bound implementation source <code>188aa78cf60d1565a35ac20710724dc7e1e32724</code> are documentation, curated evidence, and the dependency-free handoff scanner. Anonymous access redirects to Vercel SSO without exposing content. An authenticated read returns 200, release header <code>b2ba206aade2</code>, <code>noindex</code>, and <code>noindex, nofollow</code> metadata. No production alias is attached to the Preview, and the existing production target remains unchanged. This closes Founder delivery only; it is not merge or production approval.</p>
+<p>This is an engineering, product-truth, accessibility, motion, and internal compliance review. It is not counsel approval, a legal-compliance certification, a production security attestation, or user-research evidence.</p>
+<h2 id="2-exact-evidence-binding">2. Exact evidence binding</h2>
+<div class="table-wrap" role="region" aria-label="Table: 2. Exact evidence binding" tabindex="0">
+<table>
+<caption class="sr-only">Table associated with 2. Exact evidence binding</caption>
+<thead><tr><th scope="col">Artifact</th><th scope="col">Bound identity</th><th scope="col">Review disposition</th></tr></thead>
+<tbody><tr><th scope="row">Candidate source</th><td><code>188aa78cf60d1565a35ac20710724dc7e1e32724</code></td><td><strong>VERIFIED</strong> — current source revision and definitive ledger <code>sourceRevision</code> match</td></tr><tr><th scope="row">Approved RC5 baseline</th><td><code>29260fddfc59d71e3d963d2ec791657ea57084af</code></td><td><strong>VERIFIED</strong> — commit exists and is an ancestor of the candidate</td></tr><tr><th scope="row">Browser harness</th><td>SHA-256 <code>317652c96c4d06112c2f2e7334d4b1ee69a6ac31473b7fc921f49d25d9ebbea6</code></td><td><strong>VERIFIED</strong> — pinned in the definitive ledger toolchain record</td></tr><tr><th scope="row">Definitive browser ledger</th><td>SHA-256 <code>4a07581e10c7f23464a52e36c273499c3c8e8dcfdb7e901d33d34f609c7a9477</code></td><td><strong>VERIFIED</strong> — hash recomputed over <code>CXOS_LIVING_ENVIRONMENT_ENGINE_RC1_EVIDENCE/candidate/final/candidate-final-browser-evidence.json</code></td></tr><tr><th scope="row">Candidate build metrics</th><td><code>CXOS_LIVING_ENVIRONMENT_ENGINE_RC1_EVIDENCE/candidate/candidate-build-metrics.json</code></td><td><strong>VERIFIED</strong> — clean post-commit optimized review build identifies the exact candidate source</td></tr><tr><th scope="row">Static Living Environment guard</th><td><code>scripts/cxos-living-environment.test.ts</code></td><td><strong>VERIFIED</strong> — 35 passed, 0 failed at the bound source</td></tr><tr><th scope="row">Protected Preview</th><td>Delivery commit <code>b2ba206aade2d41aa7b718fdb3c352bbc27edb59</code>; sanitized proof SHA-256 <code>2cc53e9db3cfe174b59dba0d50ccf8da0e8a8359b9bf530662e29a0eb0e3cd0d</code></td><td><strong>VERIFIED</strong> — Ready Preview, exact Git metadata match, SSO protection, authenticated 200, release header match, noindex/nofollow, no production alias</td></tr></tbody>
+</table>
+</div>
+<p>The definitive ledger reports strict candidate acceptance with 0 findings and 0 observations. All 10 matrix cases pass: desktop-large, desktop, tablet, mobile, mobile-360, mobile-narrow, landscape, reduced, constrained, and reflow-200.</p>
+<p>All 17 coverage gates pass: required viewports, 200% reflow projection, arrival paths, keyboard and touch activation, inspection lifecycle, Kai lifecycle, page lifecycle, history/resize/departure, trusted BFCache, seven chamber screenshots, repeated chamber cycles, animation ledger, scroll-linked choreography, target-size ledger, network-failure ledger, detailed Axe ledger, and JavaScript-disabled equivalence.</p>
+<h2 id="3-defect-and-closure-matrix">3. Defect and closure matrix</h2>
+<div class="table-wrap" role="region" aria-label="Table: 3. Defect and closure matrix" tabindex="0">
+<table>
+<caption class="sr-only">Table associated with 3. Defect and closure matrix</caption>
+<thead><tr><th scope="col">Defect or proof gap</th><th scope="col">Adversarial risk</th><th scope="col">Candidate correction</th><th scope="col">Exact closure evidence</th><th scope="col">Disposition</th></tr></thead>
+<tbody><tr><th scope="row">Scroll-linked choreography was declared but not sufficiently proved as a real, visible, document-scroller response</th><td>A CSS declaration or running-animation count could pass while the intended subject had a zero-duration, detached, or visually inert timeline</td><td>The bound source uses explicit ViewTimeline longhands, a nonzero automatic duration, bounded range, clipped environmental containment, and a dedicated native-scroll endpoint probe</td><td>Active profile <code>client-operations</code>; target and animation found; <code>ViewTimeline</code>; subject matches; source is the document scroller; duration <code>83.99969426609967%</code>; progress <code>0.16771583849647198 → 0.591774272266294</code>; current-time delta <code>35.62077878762612</code>; native scroll <code>0 → 801</code>; rendered X transform <code>-5.31655 → 1.46839</code> for a <code>6.78494 px</code> delta; all choreography predicates pass</td><td><strong>CLOSED for the exact browser-bound implementation source.</strong> The protected Preview release header proves the delivery commit containing those unchanged runtime files</td></tr><tr><th scope="row">The inherited dim-text sample failed WCAG AA normal-text contrast</th><td>Low-emphasis operational copy could become unreadable in the dark lighting state even while automated Axe marked contrast incomplete</td><td>The shared dim token changed from <code>#6f8296</code> to <code>#a9bbcc</code></td><td>At the same deterministic desktop sample coordinate, the RC5 baseline is foreground <code>(111, 130, 150)</code> over <code>(12, 33, 49)</code>, ratio <code>4.155969:1</code>; the candidate is <code>(169, 187, 204)</code> over <code>(12, 34, 50)</code>, ratio <code>8.265826:1</code></td><td><strong>CLOSED for the known sample.</strong> Not an exhaustive closure of all 511 Axe-incomplete contrast nodes</td></tr></tbody>
+</table>
+</div>
+<h2 id="4-chamber-distinction">4. Chamber distinction</h2>
+<p><strong>REVIEW JUDGMENT — PASS.</strong> The seven chambers share one facility grammar but do not collapse into one reskinned panel. The source registry assigns every chamber a unique emotion, camera, lighting, depth, motion, focus, idle, and Kai tuple. The seven deterministic settled screenshots show materially different information geometry and environmental framing.</p>
+<div class="table-wrap" role="region" aria-label="Table: 4. Chamber distinction" tabindex="0">
+<table>
+<caption class="sr-only">Table associated with 4. Chamber distinction</caption>
+<thead><tr><th scope="col">Chamber</th><th scope="col">Distinct visual and behavioral identity</th><th scope="col">Truth boundary preserved</th></tr></thead>
+<tbody><tr><th scope="row">Central Command</th><td>Wide command aperture, centered priority instrument, command-hold posture</td><td>Cross-business summary is explicitly synthetic and not a financial-health assessment</td></tr><tr><th scope="row">Client Operations Floor</th><td>Lateral operating lanes, directional rail light, packet-position rhythm</td><td>Work positions and states are fixed fixtures; no customer system or live throughput is implied</td></tr><tr><th scope="row">Team Operations Room</th><td>Relational eye-level tableau centered on one solo operator</td><td>No staff seat, invitation, presence, availability, or workload system is connected</td></tr><tr><th scope="row">Business Health Observatory</th><td>Compressed diagnostic field, amber WATCH source, missing-input focus</td><td>Revenue and billing remain uninstrumented; no score, prediction, or certification is asserted</td></tr><tr><th scope="row">Activity and Evidence Archive</th><td>Longitudinal provenance grid and aligned evidence trays</td><td>The fixture ledger is explicitly not a production audit trail</td></tr><tr><th scope="row">Kai Executive Suite</th><td>Focused portrait field and quiet executive-response composition</td><td>Fixed local matching only; no model, persistence, calendar, task, notification, or production action</td></tr><tr><th scope="row">Growth / Capacity Threshold</th><td>Long capacity horizon with occupied cells and dormant reserve</td><td>Capacity is fixed fixture data; no plan, entitlement, purchase, or billing action is connected</td></tr></tbody>
+</table>
+</div>
+<p>The distinction comes from information architecture as well as lighting and motion. That matters: when all animation is disabled for deterministic screenshots, each chamber remains recognizable and complete.</p>
+<h2 id="5-meaningful-motion-versus-decorative-noise">5. Meaningful motion versus decorative noise</h2>
+<p><strong>REVIEW JUDGMENT — PASS WITH A NARROW PERFORMANCE CAVEAT.</strong> Motion represents arrival, chamber acquisition, operating flow, attention, Kai state, native scroll depth, departure, and bounded idle settlement. It does not carry a business fact or required instruction.</p>
+<div class="table-wrap" role="region" aria-label="Table: 5. Meaningful motion versus decorative noise" tabindex="0">
+<table>
+<caption class="sr-only">Table associated with 5. Meaningful motion versus decorative noise</caption>
+<thead><tr><th scope="col">Motion class</th><th scope="col">Meaning</th><th scope="col">Adversarial disposition</th></tr></thead>
+<tbody><tr><th scope="row">Arrival and replay</th><td>Establishes facility acquisition and gives the operator an explicit skip path</td><td>Finite, skippable, and static in reduced/constrained projections</td></tr><tr><th scope="row">Chamber passage</th><td>Releases the source, moves directionally, acquires the destination, then settles focus</td><td>Latest intent wins; no auto-advance and no wheel or touch capture</td></tr><tr><th scope="row">Chamber signatures</th><td>Distinguish command, lane flow, relational coverage, diagnosis, provenance, Kai focus, and capacity horizon</td><td>Active-chamber only and held within the declared animation budget</td></tr><tr><th scope="row">Scroll-linked depth cue</th><td>Reinforces spatial depth while native document scroll remains authoritative</td><td>Decorative and <code>aria-hidden</code>, but not meaningless noise; it is bounded and now has rendered-response proof</td></tr><tr><th scope="row">Kai staged/resolved treatment</th><td>Narrows and releases attention only when explicit route-local state changes</td><td>Presentation state only; no fake preparing delay or model activity</td></tr><tr><th scope="row">Reading, inspection, idle, hidden, Tier C/D, and reduced motion</th><td>Quiet or static concentration state</td><td>Zero sustained environmental animation where the contract requires zero</td></tr></tbody>
+</table>
+</div>
+<p>Some environmental movement is deliberately decorative. No material decorative noise was found in the measured sequence: there is no random particle field, cursor tracking, scroll hijack, uncontrolled animation loop, fake activity, or perpetual motion after idle. This is a reviewer assessment, not a motion-sensitivity user study.</p>
+<h2 id="6-navigation-lifecycle-and-spatial-continuity">6. Navigation, lifecycle, and spatial continuity</h2>
+<p><strong>VERIFIED — PASS.</strong> Desktop presents a persistent seven-chamber rail, direct selection, previous/next passage, explicit current state, and a real Mission Control return destination. Mobile presents origin/current/next controls plus a native expandable facility map. Only one primary chamber is active; users do not have to scroll through all seven chambers to reach the last one. Vertical scrolling remains available inside a chamber for readable content.</p>
+<p>The ledger exercises natural, Escape, skipped, replayed, reduced/static, keyboard, and touch arrivals; direct, next, and previous chamber movement; inspection open/toggle-close/Escape-close with focus restoration; Kai stage/resolve/clear; hidden/visible state; idle settlement; resize projection; departure/return; hash Back/Forward; and BFCache restoration. One real desktop <code>history.back()</code> traversal records the same document identity and trusted <code>pageshow.persisted=true</code>.</p>
+<p>No horizontal overflow is recorded. The JavaScript-disabled document retains all seven chamber headings and has zero horizontal overflow.</p>
+<h2 id="7-nine-reviewer-perspectives">7. Nine reviewer perspectives</h2>
+<div class="table-wrap" role="region" aria-label="Table: 7. Nine reviewer perspectives" tabindex="0">
+<table>
+<caption class="sr-only">Table associated with 7. Nine reviewer perspectives</caption>
+<thead><tr><th scope="col">Reviewer perspective</th><th scope="col">Adversarial finding</th><th scope="col">Disposition</th></tr></thead>
+<tbody><tr><th scope="row">Skeptical Founder</th><td>The candidate now feels like a directed command facility rather than seven sections with extra transitions. Shared chrome keeps continuity; chamber composition supplies distinction. Emotional memorability is a reviewer judgment, not measured user research.</td><td><strong>PASS WITH DISCLOSURE</strong></td></tr><tr><th scope="row">Accessibility reviewer</th><td>Keyboard/touch paths, focus restoration, Back/Forward, static equivalence, JavaScript-disabled completeness, 200% reflow projection, 44 px targets, and zero recorded overflow pass. Axe reports 0 violations but leaves 511 serious color-contrast nodes incomplete.</td><td><strong>PASS WITH REQUIRED MANUAL CONTRAST DISCLOSURE</strong></td></tr><tr><th scope="row">Motion-sensitivity reviewer</th><td>Reduced mode and Tier D retain the full composition while running zero environmental animations. Arrival becomes static, no meaning depends on motion, and no auto-advance exists.</td><td><strong>PASS</strong></td></tr><tr><th scope="row">Mobile user</th><td>Mobile is one chamber at a time with origin/current/next controls and a facility map, not a seven-chamber desktop stack. The active chamber remains vertically scrollable and readable. Center-point obstruction sampling is non-comprehensive in the mobile cases.</td><td><strong>PASS WITH MEASUREMENT CAVEAT</strong></td></tr><tr><th scope="row">Low-power-device user</th><td>Constrained projection reaches premium static state with zero environmental animation; package manifests are unchanged and no new dependency is present. One candidate-attributed, zero-blocking long animation frame occurs in the constrained arrival sample.</td><td><strong>PASS WITH PERFORMANCE CAVEAT</strong></td></tr><tr><th scope="row">Performance engineer</th><td>CLS is zero in measured phases, idle quiescence and motion budgets pass, client-JS and CSS deltas remain within declared budgets, and there is no repeated candidate-owned long task. Two candidate-owned long animation frames are disclosed below.</td><td><strong>PASS WITH DISCLOSURE</strong></td></tr><tr><th scope="row">Compliance reviewer</th><td>The experience repeatedly labels fixtures, lacks credit-repair promises, preserves no-score/no-outcome/no-legal-deadline boundaries, and connects no billing or expansion action. This review does not replace the CCO gate or counsel.</td><td><strong>PASS FOR PROTECTED REVIEW ONLY</strong></td></tr><tr><th scope="row">Product-truth reviewer</th><td>Kai and all operational states are deterministic fixtures. Values remain fixed through motion; missing data stays missing; no synthetic state is promoted to live truth.</td><td><strong>PASS</strong></td></tr><tr><th scope="row">Production-safety reviewer</th><td>Server review gates fail closed for production and unknown Vercel identity before any public flag can enable the stage. Candidate code has no business write path. The exact Ready Preview is SSO-protected, index-blocked, and has no production alias.</td><td><strong>SOURCE AND DELIVERY PASS</strong></td></tr></tbody>
+</table>
+</div>
+<h2 id="8-mobile-reduced-motion-accessibility-and-performance-detail">8. Mobile, reduced-motion, accessibility, and performance detail</h2>
+<h3 id="mobile-and-reduced-motion">Mobile and reduced motion</h3>
+<p>The mobile, 360 px, 320 px, and compact-landscape cases all pass with one active chamber, zero horizontal overflow, complete navigation, and measured controls at or above 44 px. The reduced and constrained cases project Tier D/static arrival and zero running environmental animations. The reduced settled screenshot retains facility hierarchy, lighting, borders, chamber navigation, truth boundaries, and the complete active chamber; it does not appear empty or disabled.</p>
+<h3 id="accessibility">Accessibility</h3>
+<p>Axe reports 0 violations in every matrix case. It also reports one serious <code>color-contrast</code> rule as incomplete in every case, totaling 511 node occurrences. The recorded reasons are inability to determine the background because of gradients, pseudo-elements, or partial overlap. The repaired sample clears AA at <code>8.265826:1</code>, and representative visual review did not expose another material defect, but neither fact converts the 511 incomplete nodes into automated passes.</p>
+<p>Target-size measurement reports 0 size failures in every sampled state. Center-point obstruction testing measured visible centers on desktop-large, desktop, tablet, reduced, and constrained. It measured zero centers on mobile, mobile-360, mobile-narrow, landscape, and reflow-200 because the sampled target centers were outside the current viewport; therefore <code>obstructionFailures=0</code> in those five cases is not comprehensive proof of zero obstruction. Successful activation paths and screenshot review mitigate the risk but do not erase this limitation.</p>
+<p>No manual screen-reader session or external assistive-technology lab is claimed by this report.</p>
+<h3 id="performance-and-runtime-isolation">Performance and runtime isolation</h3>
+<p>The exact build metrics report an incremental route JavaScript increase of 2,487 gzip bytes against a 15,360-byte limit and an emitted route-owned CSS increase of 21,590 raw bytes against a 24,576-byte limit. <code>package.json</code> and the lockfile are byte-identical to baseline.</p>
+<p>The ledger attributes no long task to candidate-owned code. It does record 10 first-party-unattributed long tasks, with a maximum duration of 109 ms, so attribution cannot fully exonerate the candidate. It records two candidate-owned long animation frames: 275.5 ms during the desktop-large Kai chamber sample and 66.7 ms during constrained static arrival; both report 0 ms blocking duration and each occurs once in the measured run. These are disclosed rather than treated as repeated blocking regressions. Production RUM and broad low-end hardware coverage are not claimed.</p>
+<p>The local global shell also produces inherited framework noise: 24 HTTP 500 responses, 39 console errors, and 9 <code>nextauth.message</code> local-storage writes. All are classified as inherited framework behavior by the ledger. The ledger records 0 cookie writes, 0 external requests, and 0 candidate-owned non-GET requests. Candidate-owned network activity is limited to the review document and its route script in the measured run.</p>
+<h2 id="9-kai-truth-compliance-business-authority-and-production-safety">9. Kai truth, compliance, business authority, and production safety</h2>
+<h3 id="kai-truth">Kai truth</h3>
+<p><strong>VERIFIED — PASS.</strong> Kai state is explicit <code>quiet</code>, <code>staged</code>, or <code>resolved</code> presentation state derived from route-local deterministic input. The specimen does not invoke an open-ended model, fake a preparing delay, persist command text, read customer data, or execute a task. The interface repeatedly states that matching is fixed and local and that no production action is connected. Kai feels present through focus and continuity, but its adjacent disclosures prevent a reasonable inference of consciousness, live observation, autonomous work, or successful execution.</p>
+<p>The phrase “continuous executive channel” is product-shaped language and must remain paired with the fixed-local/no-model/no-production disclosures. Removing or obscuring those disclosures would reopen the product-truth gate.</p>
+<h3 id="internal-compliance-review">Internal compliance review</h3>
+<p><strong>INTERNAL REVIEW — PASS FOR THIS PROTECTED SYNTHETIC CANDIDATE.</strong> No guaranteed deletion, score improvement, credit outcome, live legal deadline, unverified financial-health score, fake revenue, fake billing state, automatic expansion, or consumer action is introduced. The display preserves education/no-legal-advice and synthetic-fixture boundaries where relevant. No legal conclusion or counsel approval is claimed.</p>
+<h3 id="business-authority">Business authority</h3>
+<p><strong>VERIFIED — NONE ACQUIRED.</strong> The Living Environment contract contains presentation declarations and deterministic lifecycle state. It does not own a fact, metric, recommendation, entitlement, customer record, destination authority, payment, model operation, or effect. The candidate diff adds no API route, schema, migration, auth change, billing change, Stripe path, environment mutation, or dependency. The browser adapter projects attributes, focus, history, bounded timers, and local navigation only.</p>
+<h3 id="production-safety">Production safety</h3>
+<p><strong>VERIFIED IN SOURCE AND PREVIEW DELIVERY.</strong> <code>reviewBuildAllowed()</code> returns false for authoritative production Vercel identity before evaluating the local review override. An unknown Vercel deployment also fails closed. Review layout and route pages call <code>notFound()</code> before loading the Agency client stage when the build is not allowed. Thus, under the inspected policy, no query parameter or public review flag can expose the candidate in a production-identified build.</p>
+<p>The separately verified Preview is Ready at exact delivery commit <code>b2ba206aade2d41aa7b718fdb3c352bbc27edb59</code>, redirects anonymous access to SSO, returns the matching release header only after authenticated access, declares noindex/nofollow, and has no production alias. The existing production target and aliases remain on the prior four-day-old production deployment.</p>
+<h2 id="10-explicit-answers-to-the-twelve-adversarial-questions">10. Explicit answers to the twelve adversarial questions</h2>
+<div class="table-wrap" role="region" aria-label="Table: 10. Explicit answers to the twelve adversarial questions" tabindex="0">
+<table>
+<caption class="sr-only">Table associated with 10. Explicit answers to the twelve adversarial questions</caption>
+<thead><tr><th scope="col">#</th><th scope="col">Assignment question</th><th scope="col">Answer</th></tr></thead>
+<tbody><tr><th scope="row">1</th><td>Does it still feel like a webpage?</td><td><strong>No at the room level.</strong> One active chamber, persistent spatial controls, directional passage, and location memory create an operating-environment model. It intentionally remains web-native inside each chamber so reading and scrolling stay reliable.</td></tr><tr><th scope="row">2</th><td>Does every chamber genuinely feel different?</td><td><strong>Yes, within one facility language.</strong> All seven have unique profile tuples and visibly different settled composition, instruments, lighting, depth, and truth focus.</td></tr><tr><th scope="row">3</th><td>Is the movement meaningful?</td><td><strong>Yes.</strong> Measured motion maps to acquisition, passage, operational flow, attention, Kai state, depth response, departure, or idle settlement. No business meaning depends on animation.</td></tr><tr><th scope="row">4</th><td>Is any movement decorative noise?</td><td><strong>No material noise was found.</strong> Some depth and atmosphere are decorative, but they are bounded, hidden from assistive semantics, subordinate to content, and stop under idle/reduced/constrained conditions.</td></tr><tr><th scope="row">5</th><td>Is navigation obvious?</td><td><strong>Yes in expert review.</strong> Desktop rail, mobile origin/current/next controls, facility map, previous/next links, direct selection, focus restoration, and browser history are visible and measured. No user-study claim is made.</td></tr><tr><th scope="row">6</th><td>Is the experience emotionally memorable?</td><td><strong>Yes as a reviewer judgment.</strong> The coherent command-facility identity and seven distinct operational moods are memorable without casino effects or fabricated urgency. This is not an empirically measured outcome.</td></tr><tr><th scope="row">7</th><td>Is Kai present without becoming deceptive?</td><td><strong>Yes.</strong> Atmosphere responds to explicit Kai state, while fixed-local, no-model, no-persistence, no-action disclosures remain adjacent and clear.</td></tr><tr><th scope="row">8</th><td>Is mobile a real spatial experience or merely stacked desktop content?</td><td><strong>It is a real one-chamber spatial projection.</strong> Mobile does not stack all seven chambers; it exposes one active chamber with compact spatial navigation. Individual chambers can still scroll vertically.</td></tr><tr><th scope="row">9</th><td>Does reduced motion remain premium?</td><td><strong>Yes.</strong> It preserves the full hierarchy, lighting, depth composition, controls, facts, and chamber distinction with zero running environmental animation.</td></tr><tr><th scope="row">10</th><td>Are any synthetic states mistaken for live truth?</td><td><strong>No material ambiguity was found.</strong> Synthetic-fixture, truth-boundary, fixed-value, unavailable-input, and no-action disclosures remain visible. Those disclosures are a release invariant.</td></tr><tr><th scope="row">11</th><td>Can any review flag expose the experience in production?</td><td><strong>No under the verified policy and delivery boundary.</strong> Production identity wins over every review flag and resolves to <code>notFound()</code>. The exact Preview is separately SSO-protected and carries no production alias.</td></tr><tr><th scope="row">12</th><td>Did the engine accidentally acquire business authority?</td><td><strong>No.</strong> It projects presentation state only and has no fact, effect, write, data, billing, auth, schema, AI, or entitlement authority.</td></tr></tbody>
+</table>
+</div>
+<h2 id="11-exact-disclosed-caveats-and-required-next-gate">11. Exact disclosed caveats and required next gate</h2>
+<ol><li><strong>Protected Preview binding — CLOSED.</strong> Exact delivery commit <code>b2ba206aade2d41aa7b718fdb3c352bbc27edb59</code> is Ready, SSO-protected, release-header-bound, index-blocked, and carries no production alias. Runtime product files are unchanged from browser-bound implementation source <code>188aa78cf60d1565a35ac20710724dc7e1e32724</code>.</li><li><strong>Contrast automation remains incomplete.</strong> Axe leaves 511 serious <code>color-contrast</code> node occurrences for manual review across the ten cases. The known <code>4.155969:1</code> defect is repaired to <code>8.265826:1</code>, but that sampled closure is not an exhaustive all-node contrast certification.</li><li><strong>Five obstruction samples are non-comprehensive.</strong> Mobile, mobile-360, mobile-narrow, landscape, and reflow-200 each record zero center points eligible for obstruction testing. Size compliance and interaction success mitigate but do not replace in-viewport center-point coverage.</li><li><strong>Performance has isolated outliers and incomplete attribution.</strong> Two candidate-owned long animation frames occur once each with 0 ms blocking; 10 long tasks are first-party-unattributed rather than candidate-exonerating. No production RUM or broad low-end-device sample is claimed.</li><li><strong>Local inherited framework noise remains visible.</strong> The ledger contains 24 inherited HTTP 500 responses, 39 inherited console errors, and 9 inherited local-storage writes. They do not originate from candidate-owned requests, but the local capture is not a clean-console environment.</li><li><strong>Trusted BFCache proof is narrow.</strong> One real desktop <code>history.back()</code> traversal proves restoration for that measured path; it is not a cross-browser BFCache certification.</li><li><strong>Qualitative experience claims are expert judgment.</strong> “Emotionally memorable,” navigation discoverability, and motion comfort were adversarially reviewed but not validated through external usability or motion-sensitivity research.</li><li><strong>No counsel or production authorization is implied.</strong> Internal compliance review found no new prohibited claim, but ordinary CCO/counsel and production gates remain independent.</li></ol>
+<h2 id="12-terminal-verdict">12. Terminal verdict</h2>
+<p><strong>CXOS LIVING ENVIRONMENT ENGINE RC1 — READY WITH DISCLOSED CAVEATS</strong></p>
+<p>The exact implementation and its separately controlled protected Preview are ready for Founder review with the disclosed measurement caveats. They are not ready to merge or ship to production; those gates remain explicitly unauthorized.</p>
+    </article>
+    <section class="copy-panel" aria-labelledby="copy-ready-title">
+      <h2 id="copy-ready-title">Copy-ready Markdown</h2>
+      <p id="copy-ready-help">This native read-only field performs no clipboard action. Select the text and use your platform’s normal copy command.</p>
+      <textarea readonly spellcheck="false" aria-describedby="copy-ready-help" aria-label="Copy-ready Markdown source"># CXOS Living Environment Engine RC1 — adversarial review
+
+**CXOS LIVING ENVIRONMENT ENGINE RC1 — READY WITH DISCLOSED CAVEATS**
+
+Date: 2026-08-01
+
+Review scope: isolated Agency Headquarters reference candidate only
+
+Decision boundary: protected Founder review only; no merge, production integration, production deployment, public exposure, data connection, schema action, billing action, runtime AI, or business-authority grant
+
+## 1. Decision
+
+**REVIEW JUDGMENT — READY WITH DISCLOSED CAVEATS.** The exact local candidate clears the adversarial implementation gate. No open P0 or P1 implementation defect was found after closure of the scroll-choreography proof gap and the sampled contrast failure. The experience reads as one coherent operating facility with seven distinguishable chambers, a native chamber-navigation model, bounded state-bearing motion, complete static fail-down, explicit synthetic truth, and no business or execution authority.
+
+The protected Preview delivery gate is now independently closed. Vercel metadata returns one Ready Preview for exact delivery commit `b2ba206aade2d41aa7b718fdb3c352bbc27edb59`; the only changes after browser-bound implementation source `188aa78cf60d1565a35ac20710724dc7e1e32724` are documentation, curated evidence, and the dependency-free handoff scanner. Anonymous access redirects to Vercel SSO without exposing content. An authenticated read returns 200, release header `b2ba206aade2`, `noindex`, and `noindex, nofollow` metadata. No production alias is attached to the Preview, and the existing production target remains unchanged. This closes Founder delivery only; it is not merge or production approval.
+
+This is an engineering, product-truth, accessibility, motion, and internal compliance review. It is not counsel approval, a legal-compliance certification, a production security attestation, or user-research evidence.
+
+## 2. Exact evidence binding
+
+| Artifact | Bound identity | Review disposition |
+|---|---|---|
+| Candidate source | `188aa78cf60d1565a35ac20710724dc7e1e32724` | **VERIFIED** — current source revision and definitive ledger `sourceRevision` match |
+| Approved RC5 baseline | `29260fddfc59d71e3d963d2ec791657ea57084af` | **VERIFIED** — commit exists and is an ancestor of the candidate |
+| Browser harness | SHA-256 `317652c96c4d06112c2f2e7334d4b1ee69a6ac31473b7fc921f49d25d9ebbea6` | **VERIFIED** — pinned in the definitive ledger toolchain record |
+| Definitive browser ledger | SHA-256 `4a07581e10c7f23464a52e36c273499c3c8e8dcfdb7e901d33d34f609c7a9477` | **VERIFIED** — hash recomputed over `CXOS_LIVING_ENVIRONMENT_ENGINE_RC1_EVIDENCE/candidate/final/candidate-final-browser-evidence.json` |
+| Candidate build metrics | `CXOS_LIVING_ENVIRONMENT_ENGINE_RC1_EVIDENCE/candidate/candidate-build-metrics.json` | **VERIFIED** — clean post-commit optimized review build identifies the exact candidate source |
+| Static Living Environment guard | `scripts/cxos-living-environment.test.ts` | **VERIFIED** — 35 passed, 0 failed at the bound source |
+| Protected Preview | Delivery commit `b2ba206aade2d41aa7b718fdb3c352bbc27edb59`; sanitized proof SHA-256 `2cc53e9db3cfe174b59dba0d50ccf8da0e8a8359b9bf530662e29a0eb0e3cd0d` | **VERIFIED** — Ready Preview, exact Git metadata match, SSO protection, authenticated 200, release header match, noindex/nofollow, no production alias |
+
+The definitive ledger reports strict candidate acceptance with 0 findings and 0 observations. All 10 matrix cases pass: desktop-large, desktop, tablet, mobile, mobile-360, mobile-narrow, landscape, reduced, constrained, and reflow-200.
+
+All 17 coverage gates pass: required viewports, 200% reflow projection, arrival paths, keyboard and touch activation, inspection lifecycle, Kai lifecycle, page lifecycle, history/resize/departure, trusted BFCache, seven chamber screenshots, repeated chamber cycles, animation ledger, scroll-linked choreography, target-size ledger, network-failure ledger, detailed Axe ledger, and JavaScript-disabled equivalence.
+
+## 3. Defect and closure matrix
+
+| Defect or proof gap | Adversarial risk | Candidate correction | Exact closure evidence | Disposition |
+|---|---|---|---|---|
+| Scroll-linked choreography was declared but not sufficiently proved as a real, visible, document-scroller response | A CSS declaration or running-animation count could pass while the intended subject had a zero-duration, detached, or visually inert timeline | The bound source uses explicit ViewTimeline longhands, a nonzero automatic duration, bounded range, clipped environmental containment, and a dedicated native-scroll endpoint probe | Active profile `client-operations`; target and animation found; `ViewTimeline`; subject matches; source is the document scroller; duration `83.99969426609967%`; progress `0.16771583849647198 → 0.591774272266294`; current-time delta `35.62077878762612`; native scroll `0 → 801`; rendered X transform `-5.31655 → 1.46839` for a `6.78494 px` delta; all choreography predicates pass | **CLOSED for the exact browser-bound implementation source.** The protected Preview release header proves the delivery commit containing those unchanged runtime files |
+| The inherited dim-text sample failed WCAG AA normal-text contrast | Low-emphasis operational copy could become unreadable in the dark lighting state even while automated Axe marked contrast incomplete | The shared dim token changed from `#6f8296` to `#a9bbcc` | At the same deterministic desktop sample coordinate, the RC5 baseline is foreground `(111, 130, 150)` over `(12, 33, 49)`, ratio `4.155969:1`; the candidate is `(169, 187, 204)` over `(12, 34, 50)`, ratio `8.265826:1` | **CLOSED for the known sample.** Not an exhaustive closure of all 511 Axe-incomplete contrast nodes |
+
+## 4. Chamber distinction
+
+**REVIEW JUDGMENT — PASS.** The seven chambers share one facility grammar but do not collapse into one reskinned panel. The source registry assigns every chamber a unique emotion, camera, lighting, depth, motion, focus, idle, and Kai tuple. The seven deterministic settled screenshots show materially different information geometry and environmental framing.
+
+| Chamber | Distinct visual and behavioral identity | Truth boundary preserved |
+|---|---|---|
+| Central Command | Wide command aperture, centered priority instrument, command-hold posture | Cross-business summary is explicitly synthetic and not a financial-health assessment |
+| Client Operations Floor | Lateral operating lanes, directional rail light, packet-position rhythm | Work positions and states are fixed fixtures; no customer system or live throughput is implied |
+| Team Operations Room | Relational eye-level tableau centered on one solo operator | No staff seat, invitation, presence, availability, or workload system is connected |
+| Business Health Observatory | Compressed diagnostic field, amber WATCH source, missing-input focus | Revenue and billing remain uninstrumented; no score, prediction, or certification is asserted |
+| Activity and Evidence Archive | Longitudinal provenance grid and aligned evidence trays | The fixture ledger is explicitly not a production audit trail |
+| Kai Executive Suite | Focused portrait field and quiet executive-response composition | Fixed local matching only; no model, persistence, calendar, task, notification, or production action |
+| Growth / Capacity Threshold | Long capacity horizon with occupied cells and dormant reserve | Capacity is fixed fixture data; no plan, entitlement, purchase, or billing action is connected |
+
+The distinction comes from information architecture as well as lighting and motion. That matters: when all animation is disabled for deterministic screenshots, each chamber remains recognizable and complete.
+
+## 5. Meaningful motion versus decorative noise
+
+**REVIEW JUDGMENT — PASS WITH A NARROW PERFORMANCE CAVEAT.** Motion represents arrival, chamber acquisition, operating flow, attention, Kai state, native scroll depth, departure, and bounded idle settlement. It does not carry a business fact or required instruction.
+
+| Motion class | Meaning | Adversarial disposition |
+|---|---|---|
+| Arrival and replay | Establishes facility acquisition and gives the operator an explicit skip path | Finite, skippable, and static in reduced/constrained projections |
+| Chamber passage | Releases the source, moves directionally, acquires the destination, then settles focus | Latest intent wins; no auto-advance and no wheel or touch capture |
+| Chamber signatures | Distinguish command, lane flow, relational coverage, diagnosis, provenance, Kai focus, and capacity horizon | Active-chamber only and held within the declared animation budget |
+| Scroll-linked depth cue | Reinforces spatial depth while native document scroll remains authoritative | Decorative and `aria-hidden`, but not meaningless noise; it is bounded and now has rendered-response proof |
+| Kai staged/resolved treatment | Narrows and releases attention only when explicit route-local state changes | Presentation state only; no fake preparing delay or model activity |
+| Reading, inspection, idle, hidden, Tier C/D, and reduced motion | Quiet or static concentration state | Zero sustained environmental animation where the contract requires zero |
+
+Some environmental movement is deliberately decorative. No material decorative noise was found in the measured sequence: there is no random particle field, cursor tracking, scroll hijack, uncontrolled animation loop, fake activity, or perpetual motion after idle. This is a reviewer assessment, not a motion-sensitivity user study.
+
+## 6. Navigation, lifecycle, and spatial continuity
+
+**VERIFIED — PASS.** Desktop presents a persistent seven-chamber rail, direct selection, previous/next passage, explicit current state, and a real Mission Control return destination. Mobile presents origin/current/next controls plus a native expandable facility map. Only one primary chamber is active; users do not have to scroll through all seven chambers to reach the last one. Vertical scrolling remains available inside a chamber for readable content.
+
+The ledger exercises natural, Escape, skipped, replayed, reduced/static, keyboard, and touch arrivals; direct, next, and previous chamber movement; inspection open/toggle-close/Escape-close with focus restoration; Kai stage/resolve/clear; hidden/visible state; idle settlement; resize projection; departure/return; hash Back/Forward; and BFCache restoration. One real desktop `history.back()` traversal records the same document identity and trusted `pageshow.persisted=true`.
+
+No horizontal overflow is recorded. The JavaScript-disabled document retains all seven chamber headings and has zero horizontal overflow.
+
+## 7. Nine reviewer perspectives
+
+| Reviewer perspective | Adversarial finding | Disposition |
+|---|---|---|
+| Skeptical Founder | The candidate now feels like a directed command facility rather than seven sections with extra transitions. Shared chrome keeps continuity; chamber composition supplies distinction. Emotional memorability is a reviewer judgment, not measured user research. | **PASS WITH DISCLOSURE** |
+| Accessibility reviewer | Keyboard/touch paths, focus restoration, Back/Forward, static equivalence, JavaScript-disabled completeness, 200% reflow projection, 44 px targets, and zero recorded overflow pass. Axe reports 0 violations but leaves 511 serious color-contrast nodes incomplete. | **PASS WITH REQUIRED MANUAL CONTRAST DISCLOSURE** |
+| Motion-sensitivity reviewer | Reduced mode and Tier D retain the full composition while running zero environmental animations. Arrival becomes static, no meaning depends on motion, and no auto-advance exists. | **PASS** |
+| Mobile user | Mobile is one chamber at a time with origin/current/next controls and a facility map, not a seven-chamber desktop stack. The active chamber remains vertically scrollable and readable. Center-point obstruction sampling is non-comprehensive in the mobile cases. | **PASS WITH MEASUREMENT CAVEAT** |
+| Low-power-device user | Constrained projection reaches premium static state with zero environmental animation; package manifests are unchanged and no new dependency is present. One candidate-attributed, zero-blocking long animation frame occurs in the constrained arrival sample. | **PASS WITH PERFORMANCE CAVEAT** |
+| Performance engineer | CLS is zero in measured phases, idle quiescence and motion budgets pass, client-JS and CSS deltas remain within declared budgets, and there is no repeated candidate-owned long task. Two candidate-owned long animation frames are disclosed below. | **PASS WITH DISCLOSURE** |
+| Compliance reviewer | The experience repeatedly labels fixtures, lacks credit-repair promises, preserves no-score/no-outcome/no-legal-deadline boundaries, and connects no billing or expansion action. This review does not replace the CCO gate or counsel. | **PASS FOR PROTECTED REVIEW ONLY** |
+| Product-truth reviewer | Kai and all operational states are deterministic fixtures. Values remain fixed through motion; missing data stays missing; no synthetic state is promoted to live truth. | **PASS** |
+| Production-safety reviewer | Server review gates fail closed for production and unknown Vercel identity before any public flag can enable the stage. Candidate code has no business write path. The exact Ready Preview is SSO-protected, index-blocked, and has no production alias. | **SOURCE AND DELIVERY PASS** |
+
+## 8. Mobile, reduced-motion, accessibility, and performance detail
+
+### Mobile and reduced motion
+
+The mobile, 360 px, 320 px, and compact-landscape cases all pass with one active chamber, zero horizontal overflow, complete navigation, and measured controls at or above 44 px. The reduced and constrained cases project Tier D/static arrival and zero running environmental animations. The reduced settled screenshot retains facility hierarchy, lighting, borders, chamber navigation, truth boundaries, and the complete active chamber; it does not appear empty or disabled.
+
+### Accessibility
+
+Axe reports 0 violations in every matrix case. It also reports one serious `color-contrast` rule as incomplete in every case, totaling 511 node occurrences. The recorded reasons are inability to determine the background because of gradients, pseudo-elements, or partial overlap. The repaired sample clears AA at `8.265826:1`, and representative visual review did not expose another material defect, but neither fact converts the 511 incomplete nodes into automated passes.
+
+Target-size measurement reports 0 size failures in every sampled state. Center-point obstruction testing measured visible centers on desktop-large, desktop, tablet, reduced, and constrained. It measured zero centers on mobile, mobile-360, mobile-narrow, landscape, and reflow-200 because the sampled target centers were outside the current viewport; therefore `obstructionFailures=0` in those five cases is not comprehensive proof of zero obstruction. Successful activation paths and screenshot review mitigate the risk but do not erase this limitation.
+
+No manual screen-reader session or external assistive-technology lab is claimed by this report.
+
+### Performance and runtime isolation
+
+The exact build metrics report an incremental route JavaScript increase of 2,487 gzip bytes against a 15,360-byte limit and an emitted route-owned CSS increase of 21,590 raw bytes against a 24,576-byte limit. `package.json` and the lockfile are byte-identical to baseline.
+
+The ledger attributes no long task to candidate-owned code. It does record 10 first-party-unattributed long tasks, with a maximum duration of 109 ms, so attribution cannot fully exonerate the candidate. It records two candidate-owned long animation frames: 275.5 ms during the desktop-large Kai chamber sample and 66.7 ms during constrained static arrival; both report 0 ms blocking duration and each occurs once in the measured run. These are disclosed rather than treated as repeated blocking regressions. Production RUM and broad low-end hardware coverage are not claimed.
+
+The local global shell also produces inherited framework noise: 24 HTTP 500 responses, 39 console errors, and 9 `nextauth.message` local-storage writes. All are classified as inherited framework behavior by the ledger. The ledger records 0 cookie writes, 0 external requests, and 0 candidate-owned non-GET requests. Candidate-owned network activity is limited to the review document and its route script in the measured run.
+
+## 9. Kai truth, compliance, business authority, and production safety
+
+### Kai truth
+
+**VERIFIED — PASS.** Kai state is explicit `quiet`, `staged`, or `resolved` presentation state derived from route-local deterministic input. The specimen does not invoke an open-ended model, fake a preparing delay, persist command text, read customer data, or execute a task. The interface repeatedly states that matching is fixed and local and that no production action is connected. Kai feels present through focus and continuity, but its adjacent disclosures prevent a reasonable inference of consciousness, live observation, autonomous work, or successful execution.
+
+The phrase “continuous executive channel” is product-shaped language and must remain paired with the fixed-local/no-model/no-production disclosures. Removing or obscuring those disclosures would reopen the product-truth gate.
+
+### Internal compliance review
+
+**INTERNAL REVIEW — PASS FOR THIS PROTECTED SYNTHETIC CANDIDATE.** No guaranteed deletion, score improvement, credit outcome, live legal deadline, unverified financial-health score, fake revenue, fake billing state, automatic expansion, or consumer action is introduced. The display preserves education/no-legal-advice and synthetic-fixture boundaries where relevant. No legal conclusion or counsel approval is claimed.
+
+### Business authority
+
+**VERIFIED — NONE ACQUIRED.** The Living Environment contract contains presentation declarations and deterministic lifecycle state. It does not own a fact, metric, recommendation, entitlement, customer record, destination authority, payment, model operation, or effect. The candidate diff adds no API route, schema, migration, auth change, billing change, Stripe path, environment mutation, or dependency. The browser adapter projects attributes, focus, history, bounded timers, and local navigation only.
+
+### Production safety
+
+**VERIFIED IN SOURCE AND PREVIEW DELIVERY.** `reviewBuildAllowed()` returns false for authoritative production Vercel identity before evaluating the local review override. An unknown Vercel deployment also fails closed. Review layout and route pages call `notFound()` before loading the Agency client stage when the build is not allowed. Thus, under the inspected policy, no query parameter or public review flag can expose the candidate in a production-identified build.
+
+The separately verified Preview is Ready at exact delivery commit `b2ba206aade2d41aa7b718fdb3c352bbc27edb59`, redirects anonymous access to SSO, returns the matching release header only after authenticated access, declares noindex/nofollow, and has no production alias. The existing production target and aliases remain on the prior four-day-old production deployment.
+
+## 10. Explicit answers to the twelve adversarial questions
+
+| # | Assignment question | Answer |
+|---:|---|---|
+| 1 | Does it still feel like a webpage? | **No at the room level.** One active chamber, persistent spatial controls, directional passage, and location memory create an operating-environment model. It intentionally remains web-native inside each chamber so reading and scrolling stay reliable. |
+| 2 | Does every chamber genuinely feel different? | **Yes, within one facility language.** All seven have unique profile tuples and visibly different settled composition, instruments, lighting, depth, and truth focus. |
+| 3 | Is the movement meaningful? | **Yes.** Measured motion maps to acquisition, passage, operational flow, attention, Kai state, depth response, departure, or idle settlement. No business meaning depends on animation. |
+| 4 | Is any movement decorative noise? | **No material noise was found.** Some depth and atmosphere are decorative, but they are bounded, hidden from assistive semantics, subordinate to content, and stop under idle/reduced/constrained conditions. |
+| 5 | Is navigation obvious? | **Yes in expert review.** Desktop rail, mobile origin/current/next controls, facility map, previous/next links, direct selection, focus restoration, and browser history are visible and measured. No user-study claim is made. |
+| 6 | Is the experience emotionally memorable? | **Yes as a reviewer judgment.** The coherent command-facility identity and seven distinct operational moods are memorable without casino effects or fabricated urgency. This is not an empirically measured outcome. |
+| 7 | Is Kai present without becoming deceptive? | **Yes.** Atmosphere responds to explicit Kai state, while fixed-local, no-model, no-persistence, no-action disclosures remain adjacent and clear. |
+| 8 | Is mobile a real spatial experience or merely stacked desktop content? | **It is a real one-chamber spatial projection.** Mobile does not stack all seven chambers; it exposes one active chamber with compact spatial navigation. Individual chambers can still scroll vertically. |
+| 9 | Does reduced motion remain premium? | **Yes.** It preserves the full hierarchy, lighting, depth composition, controls, facts, and chamber distinction with zero running environmental animation. |
+| 10 | Are any synthetic states mistaken for live truth? | **No material ambiguity was found.** Synthetic-fixture, truth-boundary, fixed-value, unavailable-input, and no-action disclosures remain visible. Those disclosures are a release invariant. |
+| 11 | Can any review flag expose the experience in production? | **No under the verified policy and delivery boundary.** Production identity wins over every review flag and resolves to `notFound()`. The exact Preview is separately SSO-protected and carries no production alias. |
+| 12 | Did the engine accidentally acquire business authority? | **No.** It projects presentation state only and has no fact, effect, write, data, billing, auth, schema, AI, or entitlement authority. |
+
+## 11. Exact disclosed caveats and required next gate
+
+1. **Protected Preview binding — CLOSED.** Exact delivery commit `b2ba206aade2d41aa7b718fdb3c352bbc27edb59` is Ready, SSO-protected, release-header-bound, index-blocked, and carries no production alias. Runtime product files are unchanged from browser-bound implementation source `188aa78cf60d1565a35ac20710724dc7e1e32724`.
+2. **Contrast automation remains incomplete.** Axe leaves 511 serious `color-contrast` node occurrences for manual review across the ten cases. The known `4.155969:1` defect is repaired to `8.265826:1`, but that sampled closure is not an exhaustive all-node contrast certification.
+3. **Five obstruction samples are non-comprehensive.** Mobile, mobile-360, mobile-narrow, landscape, and reflow-200 each record zero center points eligible for obstruction testing. Size compliance and interaction success mitigate but do not replace in-viewport center-point coverage.
+4. **Performance has isolated outliers and incomplete attribution.** Two candidate-owned long animation frames occur once each with 0 ms blocking; 10 long tasks are first-party-unattributed rather than candidate-exonerating. No production RUM or broad low-end-device sample is claimed.
+5. **Local inherited framework noise remains visible.** The ledger contains 24 inherited HTTP 500 responses, 39 inherited console errors, and 9 inherited local-storage writes. They do not originate from candidate-owned requests, but the local capture is not a clean-console environment.
+6. **Trusted BFCache proof is narrow.** One real desktop `history.back()` traversal proves restoration for that measured path; it is not a cross-browser BFCache certification.
+7. **Qualitative experience claims are expert judgment.** “Emotionally memorable,” navigation discoverability, and motion comfort were adversarially reviewed but not validated through external usability or motion-sensitivity research.
+8. **No counsel or production authorization is implied.** Internal compliance review found no new prohibited claim, but ordinary CCO/counsel and production gates remain independent.
+
+## 12. Terminal verdict
+
+**CXOS LIVING ENVIRONMENT ENGINE RC1 — READY WITH DISCLOSED CAVEATS**
+
+The exact implementation and its separately controlled protected Preview are ready for Founder review with the disclosed measurement caveats. They are not ready to merge or ship to production; those gates remain explicitly unauthorized.
+</textarea>
+    </section>
+  </main>
+  <footer><div class="shell">Generated deterministically from the declared Markdown source. No release authority is implied.</div></footer>
+</body>
+</html>
