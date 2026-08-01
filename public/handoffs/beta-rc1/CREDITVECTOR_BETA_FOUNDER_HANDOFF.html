@@ -1,0 +1,545 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <meta name="robots" content="noindex, nofollow, noarchive">
+  <meta name="description" content="Complete copy-and-paste CreditVector beta Founder handoff.">
+  <title>CreditVector Beta Founder Handoff</title>
+  <style>
+:root {
+  color-scheme: dark;
+  --bg: #071014;
+  --surface: #0c181e;
+  --surface-strong: #102229;
+  --text: #ecf8f8;
+  --muted: #9bb1b6;
+  --line: #27434b;
+  --accent: #55e6de;
+  --accent-soft: rgba(85, 230, 222, 0.12);
+  --warning: #ffd27d;
+  --danger: #ff9e9e;
+  --shadow: 0 22px 70px rgba(0, 0, 0, 0.34);
+}
+* { box-sizing: border-box; }
+html { background: var(--bg); scroll-behavior: smooth; }
+body {
+  margin: 0;
+  min-width: 0;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(85, 230, 222, 0.11), transparent 30rem),
+    linear-gradient(180deg, #081318 0%, var(--bg) 38rem);
+  color: var(--text);
+  font: 16px/1.65 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  text-rendering: optimizeLegibility;
+}
+a { color: var(--accent); text-underline-offset: 0.18em; overflow-wrap: anywhere; }
+a:hover { text-decoration-thickness: 0.14em; }
+a:focus-visible, button:focus-visible, [tabindex="0"]:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+}
+.shell { width: min(100% - 2rem, 1180px); margin: 0 auto; padding: 2.25rem 0 5rem; }
+.masthead {
+  margin-bottom: 1.25rem;
+  padding: 1.15rem 1.35rem;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: rgba(12, 24, 30, 0.88);
+  box-shadow: var(--shadow);
+}
+.eyebrow { margin: 0; color: var(--accent); font-size: 0.76rem; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; }
+.masthead p:last-child { margin-bottom: 0; color: var(--muted); }
+.status-badge {
+  display: inline-flex;
+  margin: 0.7rem 0 0;
+  padding: 0.28rem 0.62rem;
+  border: 1px solid rgba(255, 158, 158, 0.58);
+  border-radius: 999px;
+  background: rgba(255, 158, 158, 0.1);
+  color: #ffd1d1 !important;
+  font-size: 0.78rem;
+  font-weight: 850;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+}
+main {
+  min-width: 0;
+  padding: clamp(1.15rem, 3.5vw, 3rem);
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: linear-gradient(145deg, rgba(16, 34, 41, 0.96), rgba(8, 19, 24, 0.98));
+  box-shadow: var(--shadow);
+}
+h1, h2, h3, h4, h5, h6 { line-height: 1.18; letter-spacing: -0.018em; text-wrap: balance; scroll-margin-top: 1rem; }
+h1 { margin: 0 0 1.4rem; font-size: clamp(2rem, 6vw, 4.1rem); }
+h2 { margin: 3rem 0 1rem; padding-top: 1rem; border-top: 1px solid var(--line); font-size: clamp(1.45rem, 3vw, 2.3rem); }
+h3 { margin: 2rem 0 0.7rem; color: #c9fbf7; font-size: clamp(1.16rem, 2vw, 1.55rem); }
+h4, h5, h6 { margin: 1.5rem 0 0.5rem; }
+p, li { max-width: 82ch; }
+p { margin: 0.7rem 0 1rem; }
+ul, ol { margin: 0.75rem 0 1.25rem; padding-left: 1.35rem; }
+li { margin: 0.35rem 0; padding-left: 0.25rem; }
+.task-item { list-style: none; margin-left: -1.3rem; display: flex; gap: 0.55rem; align-items: baseline; }
+.task-item input { accent-color: var(--accent); }
+strong { color: #fff; }
+code {
+  padding: 0.12em 0.36em;
+  border: 1px solid rgba(85, 230, 222, 0.22);
+  border-radius: 0.38rem;
+  background: rgba(0, 0, 0, 0.28);
+  color: #bdfbf6;
+  font: 0.9em/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  overflow-wrap: anywhere;
+}
+pre {
+  max-width: 100%;
+  overflow: auto;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #050b0e;
+  color: #dcf7f5;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+pre code { padding: 0; border: 0; background: transparent; color: inherit; }
+blockquote { margin: 1.25rem 0; padding: 0.7rem 1rem; border-left: 4px solid var(--accent); background: var(--accent-soft); color: #d5efed; }
+blockquote p { margin: 0; }
+hr { margin: 2.3rem 0; border: 0; border-top: 1px solid var(--line); }
+.table-wrap { max-width: 100%; margin: 1rem 0 1.75rem; overflow-x: auto; border: 1px solid var(--line); border-radius: 14px; }
+table { width: 100%; min-width: 720px; border-collapse: collapse; font-size: 0.9rem; }
+th, td { padding: 0.8rem 0.85rem; border-bottom: 1px solid var(--line); border-right: 1px solid rgba(39, 67, 75, 0.65); text-align: left; vertical-align: top; overflow-wrap: anywhere; }
+th { position: sticky; top: 0; z-index: 1; background: #12262d; color: #d8fffb; font-size: 0.76rem; letter-spacing: 0.055em; text-transform: uppercase; }
+tr:nth-child(even) td { background: rgba(255, 255, 255, 0.018); }
+tr:last-child td { border-bottom: 0; }
+th:last-child, td:last-child { border-right: 0; }
+.handoff-actions { display: flex; flex-wrap: wrap; gap: 0.85rem; align-items: center; margin: 1.4rem 0 1rem; }
+button {
+  min-height: 44px;
+  padding: 0.7rem 1rem;
+  border: 1px solid #82fff7;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #03211f;
+  font: inherit;
+  font-weight: 850;
+  cursor: pointer;
+}
+button:hover { filter: brightness(1.08); }
+.copy-status { min-height: 1.65em; margin: 0; color: var(--muted); font-weight: 700; }
+.fallback { color: var(--muted); font-size: 0.93rem; }
+.handoff-text { max-height: none; margin-top: 1rem; white-space: pre-wrap; user-select: text; -webkit-user-select: text; }
+footer { padding: 1.2rem 0; color: var(--muted); font-size: 0.82rem; text-align: center; }
+@media (max-width: 620px) {
+  .shell { width: min(100% - 1rem, 1180px); padding-top: 0.5rem; }
+  .masthead, main { border-radius: 14px; }
+  .masthead { padding: 0.9rem 1rem; }
+  main { padding: 1rem; }
+  h1 { font-size: clamp(1.75rem, 10vw, 2.6rem); overflow-wrap: anywhere; }
+  h2 { margin-top: 2.2rem; }
+  th, td { padding: 0.65rem; }
+  .handoff-actions { align-items: stretch; }
+  .handoff-actions button { width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+}
+@media print {
+  :root { color-scheme: light; --bg: #fff; --surface: #fff; --surface-strong: #fff; --text: #111; --muted: #444; --line: #bbb; --accent: #006d68; }
+  body { background: #fff; color: #111; }
+  .shell { width: 100%; padding: 0; }
+  .masthead, main { border: 0; box-shadow: none; background: #fff; }
+  .masthead { padding: 0 0 0.5rem; }
+  main { padding: 0; }
+  .handoff-actions { display: none; }
+  .table-wrap { overflow: visible; }
+  table { min-width: 0; font-size: 8pt; }
+  a { color: #111; }
+}
+</style>
+</head>
+<body>
+  <div class="shell">
+    <header class="masthead">
+      <p class="eyebrow">CreditVector Beta Readiness · Founder Review Artifact</p>
+      <p>Standalone, sanitized, and network-independent. This artifact does not grant production approval.</p>
+      <p class="status-badge">No-Go · External Beta Blocked</p>
+    </header>
+    <main id="main-content">
+      <article aria-labelledby="document-title">
+        <h1 id="document-title">CreditVector Beta Founder Handoff</h1>
+        <p>This page contains the complete plain-text Founder handoff. Use the button once to copy the full text.</p>
+        <div class="handoff-actions">
+          <button id="copy-handoff" type="button">Copy complete handoff</button>
+          <p id="copy-status" class="copy-status" role="status" aria-live="polite"></p>
+        </div>
+        <p class="fallback">If browser clipboard access is blocked—common when opening a downloaded file directly—the handoff will be selected. Choose Copy from the browser or device menu.</p>
+        <pre id="handoff-text" class="handoff-text" tabindex="0" aria-label="Complete plain-text Founder handoff">CREDITVECTOR BETA RELEASE CANDIDATE 1 — FOUNDER HANDOFF
+
+EVIDENCE DATE
+2026-08-01
+
+EXECUTIVE VERDICT
+NO-GO for external Beta RC1 invitations.
+
+CreditVector has a substantial consumer product and strong source-level controls, but protected external beta is blocked by legal/consent, dependency security, recovery, alerting, encryption-backfill proof, exact production/provider truth, and authenticated acceptance. A protected internal engineering Preview with synthetic data, billing off, and no participants may continue. Beta readiness is not beta-launch authorization.
+
+REPOSITORY AND PRODUCTION IDENTITY
+Repository: gabriel-capital-labs
+Current origin/main: f449c35d0eca9463c15e86f8cbd4cd7f4e948d03
+Recorded baseline drift: none after fresh fetch
+Production URL: https://www.creditvector.app
+Production release header: f449c35d0eca
+Production GitHub deployment ID: 5656031294
+Production commit-bound URL: https://gabriel-capital-labs-od93icz7b-rey-gabriel-s-projects.vercel.app
+Historical dirty branch: feat/cxos-phase3
+Historical dirty HEAD: a40a41c5a76028ad5cae2ff655c5bf168fb86a4a
+Historical branch policy: do not commit, merge, cherry-pick, or deploy wholesale
+
+WORKSTREAM A — LEGAL IDENTITY RESULT
+Disposition: COMMITTED AND PUSHED; not merged
+Branch: fix/company-legal-identity-isolated-rc1
+Parent: f449c35d0eca9463c15e86f8cbd4cd7f4e948d03
+Commit: 73483c9db40031f39023320bd4f6bef61c6e00eb
+Remote SHA: 73483c9db40031f39023320bd4f6bef61c6e00eb
+Commit range: f449c35d0eca9463c15e86f8cbd4cd7f4e948d03..73483c9db40031f39023320bd4f6bef61c6e00eb
+Diff: 26 files, 282 insertions, 55 deletions
+Commit message: fix(legal): isolate canonical company identity
+
+Canonical legal identity:
+Gabriel Capital Labs, LLC
+30 Montgomery St.
+Suite 1200
+Jersey City, NJ 07302
+
+Brand policy:
+- Product remains CreditVector.
+- Public company display remains Gabriel Capital Labs.
+- LLC name and address are used only where the legal/company-identity contract requires them.
+- The address is server-scoped and absent from NEXT_PUBLIC_* and normal product UI.
+
+Legal implementation:
+- One canonical source: lib/companyIdentity.server.ts.
+- Terms and Privacy render the exact identity.
+- The legal footer and appropriate Brief legal identity consume it.
+- COMPANY_POSTAL_ADDRESS environment gating was removed from this repository contract.
+- No schema, migration, dependency, billing, auth, Stripe, provider, or environment change.
+
+Legal Preview:
+URL: https://gabriel-capital-labs-5drkr6w93-rey-gabriel-s-projects.vercel.app
+GitHub deployment ID: 5707811905
+Target: Preview
+Protection: anonymous root, Terms, and Privacy requests redirect to Vercel SSO; no-store and noindex observed
+SHA binding: exact candidate commit
+CI: Gate D preflight PASS; verify PASS; Vercel Preview Comments PASS
+
+Legal validation:
+- Company identity guard 28/28 PASS.
+- Runtime Terms/Privacy/footer/Brief guard 20/20 PASS.
+- Brief digest guard 7/7 PASS.
+- Compliance/letter, checkout-consent, billing-identity guards PASS.
+- TypeScript PASS.
+- Touched-file ESLint PASS.
+- git diff --check PASS.
+- Optimized build PASS.
+- Client-bundle address/legal-module scan CLEAN.
+- Secret and local-path scans CLEAN.
+- package.json, package-lock.json, prisma/schema.prisma, vercel.json, and all migrations byte-identical to parent.
+
+Legal caveats:
+- Terms/Privacy display August 1, 2026.
+- Main has no durable versioned Terms reacceptance path. No assent was inferred, backfilled, or triggered.
+- Founder and counsel must decide later integration and reacceptance/paid-path enforcement.
+- Brief received-email proof still requires an authorized delivery test.
+- Compliance result is GO-WITH-CHANGES for review, not counsel or production approval.
+
+WORKSTREAM B — BETA SCOPE
+
+BETA REQUIRED
+- Invite-only consumer account creation, secure login, recovery, disablement, and support.
+- Founder-approved noncharging beta entitlement or consent-complete billing.
+- Own-data-only report intake, safe parsing, encryption, and verified backfill completion.
+- User-controlled dispute letter, response, task, and follow-up workflow.
+- Kai remains advisory; no customer, calendar, task, billing, mail, or legal action.
+- Terms, Privacy, legal identity, durable assent, monitoring, human alerting, restore/key recovery, incident and rollback proof.
+- Authenticated desktop/mobile/keyboard/reflow/reduced-motion/accessibility/performance acceptance.
+- Exact production SHA, schema/migration, environment-presence, Stripe/webhook, cron, and hard-off verification.
+
+BETA ALLOWED DORMANT
+- Agency Headquarters/CXOS and historical review branches.
+- Operator Identity, Organization, Membership, and Reputation contracts not integrated into production.
+- Community, Arena, Growth Center, Growth Network, Marketplace, advanced meetings.
+- Physical mail provider execution.
+- Event Fabric, Growth economics, credits, payouts, affiliates, referrals, distribution.
+- Autonomous or persistent Kai action.
+
+POST-BETA
+- Public beta/acquisition, external Agency onboarding, ecosystem economics, public professional profiles/reputation, Marketplace transactions, autonomous delegation, and scale expansion.
+
+FEATURE-COMPLETENESS SUMMARY
+
+Verified strengths:
+- Immutable user-ID session resolution and disabled-account rechecks.
+- Explicit admin/agency/own-data authorization gates.
+- Report and letter encryption before persistence; ownership checks.
+- Deterministic compliance scrubbing and education-first claim posture.
+- Stripe signature, idempotency, claim-window, retry, reorder, and current-state guards.
+- Vercel builds do not mutate the database.
+- Six migrations and a migration-first schema-safety guard.
+- Health/readiness, diagnostics, structured logging, optional alert dispatch, and a concrete restore-drill runbook.
+
+Important limits:
+- Repository implementation is not proof of production configuration, provider delivery, counsel approval, or customer experience.
+- No exact-main authenticated device/Axe/performance journey was available.
+- No restore, key-recovery, alert-delivery, or backfill-completion drill was proved.
+- Paid beta remains blocked.
+
+BLOCKER COUNTS
+P0: 9
+P1: 16
+P2: 8
+P3: 6
+
+P0 GATES
+1. Counsel and exact beta legal posture.
+2. Legal identity integration plus durable consent on every enabled paid/acquisition path.
+3. Supported Next.js/security baseline.
+4. Applicable Auth.js malformed-Bearer vulnerability patched and regressed.
+5. Human alert delivery and acknowledgement drill.
+6. Provider backup/restore, key recovery, measured RPO/RTO.
+7. Report and letter encryption backfills proved complete.
+8. Exact production configuration/schema/Stripe/cron/flag/branch-protection truth.
+9. Authenticated end-to-end mobile/desktop/accessibility/performance acceptance.
+
+SAFE P1 CANDIDATE — REGISTRATION PASSWORD POLICY
+Disposition: COMMITTED AND PUSHED; not merged
+Branch: fix/beta-auth-security-password-policy-rc1
+Parent: f449c35d0eca9463c15e86f8cbd4cd7f4e948d03
+Commit: e1ded00768ea483afe1f8447fa647fe1a5640773
+Remote SHA: e1ded00768ea483afe1f8447fa647fe1a5640773
+Commit range: f449c35d0eca9463c15e86f8cbd4cd7f4e948d03..e1ded00768ea483afe1f8447fa647fe1a5640773
+Files: app/api/register/route.ts; app/register/page.tsx; scripts/register-password-policy.test.ts
+Diff: 3 files, 69 insertions, 5 deletions
+Correction: UI and API now reuse lib/password.ts; divergent 8-character acceptance is removed.
+Validation: focused guard 13/13; session security 11/11; Gate D 105/105; critical paths 33/33; TypeScript, touched lint, diff-check, optimized build PASS.
+Integrity: package, lockfile, schema, migrations, and Vercel config unchanged.
+Protected Preview: https://gabriel-capital-labs-gpph0y5lt-rey-gabriel-s-projects.vercel.app
+Production effect: none.
+
+SAFE SECURITY CANDIDATE — AUTH.JS MALFORMED BEARER
+Disposition: COMMITTED AND PUSHED; not merged
+Branch: fix/beta-auth-security-nextauth-dos-rc1
+Parent: f449c35d0eca9463c15e86f8cbd4cd7f4e948d03
+Commit: 5f2931e81810c5078cd894d8ec9a90c66d47bac4
+Remote SHA: 5f2931e81810c5078cd894d8ec9a90c66d47bac4
+Commit range: f449c35d0eca9463c15e86f8cbd4cd7f4e948d03..5f2931e81810c5078cd894d8ec9a90c66d47bac4
+Files/diff: package.json; package-lock.json; scripts/next-auth-malformed-bearer.test.ts. 3 files, 101 insertions, 11 deletions.
+Correction: pin next-auth to patched 4.24.15; lock moves only its required uuid transitive dependency from 8.3.2 to 11.1.1; add real getToken() and landing-middleware malformed-header regression.
+Validation: exact npm ci; dependency tree; new runtime guard 14/14; TypeScript; touched lint; session 11/11; critical paths 33/33; attachments 17/17; diff-check; optimized build; remote SHA PASS. GitHub Gate D, verify, and Vercel Preview Comments PASS.
+Protected Preview: https://gabriel-capital-labs-4kov4ploi-rey-gabriel-s-projects.vercel.app
+Production effect: none.
+Advisory: GHSA-xmf8-cvqr-rfgj; High; affected next-auth 4.0.6 through 4.24.14; patched 4.24.15.
+Applicability: exact lock resolves 4.24.14 and middleware.ts invokes getToken() without exception handling.
+Impact boundary: unauthenticated per-request availability failure; no advisory claim of token disclosure or auth bypass.
+
+EXACT-MAIN SOURCE VALIDATION
+- TypeScript PASS.
+- Session security 11/11.
+- Stripe lifecycle 84/84.
+- Billing identity 39/39.
+- Billing integrity 31/31.
+- Checkout guard 21/21.
+- Checkout consent 11/11.
+- Schema safety 17/17.
+- Attachment authorization 17/17.
+- Network authorization 36/36.
+- Critical paths 33/33.
+- Quality ledger 10/10.
+- Runtime invoice shapes 52/52.
+- Runtime webhook claim 36/36.
+- Runtime reorder convergence 44/44.
+- Runtime unknown-price source writes 29/29.
+
+Validation limitation:
+The unknown-price guard proves no plan field is written, but active subscriptionStatus may still influence isPremium. End-to-end unknown-price entitlement remains P1.
+
+SECURITY FINDINGS
+- Next 14.2.18 is unsupported and within a credible App Router/RSC cache advisory range. It needs a separate supported-version candidate.
+- Auth.js 4.24.14 has a directly applicable High malformed-Bearer advisory; the exact patch candidate is listed above.
+- Password change/reset does not revoke existing JWTs; reset consumption is non-atomic; profile email password verification lacks dedicated throttling.
+- First-checkout Stripe customer creation can race; orphan subscription handling and unknown-price entitlement require dedicated billing branches.
+- Report/identity file signatures, AI prompt fencing/output scrubbing parity, application CSP, MFA, and formal penetration evidence remain incomplete.
+
+COMPLIANCE FINDINGS
+- CreditVector remains education/software first and does not promise deletions, score changes, or removal of accurate information.
+- Counsel approval is absent for the exact beta, paid-upgrade assent, state CSO posture, participant terms, retention/DSAR, and public claims/outcomes.
+- User-set RESOLVED is user-reported, not a verified credit outcome.
+- Agency, Community, Growth, Marketplace, reputation, economic, and public-outcome surfaces are excluded.
+
+UX / MOBILE / ACCESSIBILITY
+- Skip and focus-visible foundations exist; primary navigation targets are generally 44 px.
+- Theme toggle is 32 px and the mobile drawer lacks proved Escape/focus containment/restoration/body-scroll behavior.
+- Authenticated Axe, keyboard, mobile device, 200% reflow, reduced motion, screen-reader, CLS, long-task, failure-state, and horizontal-overflow evidence is still required.
+
+RECOVERY AND MONITORING
+- A restore-drill runbook exists; no completed provider-backed restore/key/RPO/RTO proof exists.
+- Logging, health jobs, and optional alert dispatch exist; no human-received alert drill is proved and dispatch is fire-and-forget.
+- Exact production backfill completion remains unverified.
+
+SCHEMA AND MIGRATIONS
+- Six migration directories are present.
+- Migration-first governance and schema-safety guards are current.
+- Vercel build performs no database mutation.
+- Docker startup still runs prisma db push and must be corrected before that path is trusted.
+- Production schema/migration relationship was not inspected and no database action occurred.
+
+BILLING AND STRIPE
+- Existing source/runtime guards pass for signature, claim, idempotency, retries, reordered events, and subscription replacement.
+- Live catalog, legal URLs, consent flag, tax/invoice identity, dunning, receipts, refunds/disputes, webhook health, and reconciliation require provider verification.
+- No Stripe or provider state changed. Paid beta remains blocked.
+
+STREAM CONSOLIDATION
+
+Company legal identity:
+COMMITTED AND PUSHED on fix/company-legal-identity-isolated-rc1 at 73483c9d. Not merged. Founder/counsel/integration gate remains.
+
+Registration password parity:
+COMMITTED AND PUSHED on fix/beta-auth-security-password-policy-rc1 at e1ded007. Not merged. Independent review/integration gate remains.
+
+Auth.js malformed Bearer:
+COMMITTED AND PUSHED on fix/beta-auth-security-nextauth-dos-rc1 at 5f2931e8. Not merged. Independent review/integration gate remains.
+
+Beta readiness package:
+COMMITTED AND PUSHED on review/creditvector-beta-readiness-rc1 at 69533e0cb571831b4f0483535777dd5ab6a358a2. Not merged. Founder scope and all release gates remain.
+
+Growth Experience Phase 1B remediation:
+ALREADY PUSHED AND VERIFIED at b913e50f3f2f4c5268c878505aaa31c1882cf92a. Protected Preview: https://gabriel-capital-labs-2dxyiuje0-rey-gabriel-s-projects.vercel.app. Its first remediation parent is a40a41c; it is 67 commits and 199 cumulative files ahead of main. Review evidence only; never merge wholesale.
+
+Agency Headquarters RC5:
+READY BUT BLOCKED. Founder-approved experience evidence exists, but a clean integration candidate must wait for Auth.js/Next dependency work, centralized review hard-off and governance reconstruction, repeatable cold/warm performance evidence, and separate Founder authorization.
+
+Growth Network, Growth Center, economic packages:
+NOT ELIGIBLE in this stream. They remain dirty-worktree evidence pending separate Founder/counsel/economic scope and clean-main lineage.
+
+Historical reports, evidence directories, ZIPs, screenshots, agent infrastructure, skills:
+NOT ELIGIBLE product source. They remain user-owned local artifacts and were excluded from candidate commits.
+
+FOUNDER DECISIONS REQUIRED
+1. Approve or change the consumer-only, invite-only, self-mail Beta RC1 scope.
+2. Review the legal, password-policy, Auth.js, and readiness branches independently.
+3. Choose integration order; no branch is merged by this authorization.
+4. Name support, incident, alert, rollback, and cohort owners.
+5. Authorize later read-only production/provider verification and authenticated synthetic acceptance.
+
+COUNSEL DECISIONS REQUIRED
+1. Exact beta participant terms and notices.
+2. Terms/Privacy integration and versioned assent/reacceptance policy.
+3. CROA/FCRA/state-CSO and subscription/advance-fee posture.
+4. Claims, testimonials/outcomes, data processing, retention, and DSAR procedure.
+
+PROVIDER / PRODUCTION ACTIONS REQUIRED — NOT EXECUTED
+1. Presence-only environment and hard-off ledger, including SETUP_SECRET absence.
+2. Stripe catalog/legal/consent/tax/invoice/dunning/receipt/webhook reconciliation.
+3. Monitored alert delivery and acknowledgement drill.
+4. Backup/PITR restore, key recovery, RPO/RTO drill.
+5. Encryption backfill completion proof.
+6. Read-only schema/migration preflight and cron liveness.
+7. Required GitHub branch-protection checks.
+8. Authenticated synthetic browser/device/accessibility/performance matrix.
+
+ARTIFACTS
+- CREDITVECTOR_BETA_RELEASE_CRITERIA_RC1.md / .html
+- CREDITVECTOR_BETA_FEATURE_MATRIX.md / .html
+- CREDITVECTOR_BETA_BLOCKER_BACKLOG.md / .html
+- CREDITVECTOR_BETA_EXECUTION_REPORT.md / .html
+- CREDITVECTOR_BETA_FOUNDER_HANDOFF.txt / .html
+- CREDITVECTOR_BETA_FOUNDER_PACKAGE.zip (sanitized release artifact, not committed)
+- Reproducible renderer: scripts/render-beta-readiness-docs.ts
+
+ARTIFACT HASHES
+The exact SHA-256 manifest is supplied alongside this handoff in the Codex delivery response. It is intentionally not embedded here because an artifact cannot contain its own stable digest without changing that digest.
+
+SANITIZATION
+- No secrets, credentials, tokens, cookies, environment values, customer data, usernames, absolute local paths, or private evidence directories are included.
+- Standalone HTML uses embedded CSS; no external fonts, images, stylesheets, or network requests.
+- Handoff HTML contains the complete TXT and a truthful Clipboard API/manual-selection fallback.
+- ZIP contains only curated final artifacts and excludes source code, screenshots, browser traces, and private evidence.
+
+PRODUCTION SAFETY
+- origin/main unchanged: YES, still f449c35d0eca9463c15e86f8cbd4cd7f4e948d03.
+- Production alias unchanged: YES.
+- Production deployment unchanged: YES, release header still f449c35d0eca.
+- Database touched: NO.
+- Schema or migrations changed/applied: NO.
+- Stripe/provider changed: NO.
+- Environment values read or changed: NO values read; no changes.
+- Public or participant access enabled: NO.
+- Payments/economics/mail activated: NO.
+- Merge, force-push, history rewrite, or branch deletion: NO.
+
+GO / CONDITIONAL GO / NO-GO
+NO-GO for Beta RC1 external users.
+
+EXACT NEXT AUTHORIZED ACTION
+Founder reviews the four independent branches and the scope/backlog. Counsel resolves the legal/assent gates. Engineering then prepares a separate supported-Next candidate and higher-risk auth/billing branches. With separate authorization, operations performs presence-only production/provider checks, alert/backfill/restore drills, and authenticated acceptance. No invitation occurs until every required gate is evidenced.
+
+FINAL BOUNDARY
+Preview approval is not merge approval.
+Preview approval is not production approval.
+Beta readiness is not beta-launch authorization.
+No historical feature or Growth branch may be merged wholesale.
+
+FINAL STATUS
+CREDITVECTOR BETA RC1 — NO-GO — SOURCE CANDIDATES READY FOR FOUNDER REVIEW
+</pre>
+      </article>
+    </main>
+    <footer>CreditVector by Gabriel Capital Labs · Review artifact</footer>
+  </div>
+  <script>
+(() => {
+  "use strict";
+  const button = document.getElementById("copy-handoff");
+  const source = document.getElementById("handoff-text");
+  const status = document.getElementById("copy-status");
+  if (!button || !source || !status) return;
+
+  const selectHandoff = () => {
+    const selection = window.getSelection();
+    const range = document.createRange();
+    range.selectNodeContents(source);
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+  };
+
+  button.addEventListener("click", async () => {
+    const text = source.textContent || "";
+    status.textContent = "Copying…";
+    if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+      try {
+        await navigator.clipboard.writeText(text);
+        status.textContent = "Complete handoff copied.";
+        return;
+      } catch {
+        // File-backed pages may deny the async Clipboard API; use the explicit fallback below.
+      }
+    }
+
+    selectHandoff();
+    let copied = false;
+    try {
+      copied = typeof document.execCommand === "function" && document.execCommand("copy");
+    } catch {
+      copied = false;
+    }
+    status.textContent = copied
+      ? "Complete handoff copied using the browser fallback."
+      : "Clipboard access was blocked. The full handoff is selected; choose Copy from the browser or device menu.";
+  });
+})();</script>
+</body>
+</html>
