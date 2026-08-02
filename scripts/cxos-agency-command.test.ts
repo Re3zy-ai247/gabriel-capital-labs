@@ -212,12 +212,12 @@ check(
   JSON.stringify(renderedDistrictIndexes) === JSON.stringify([0, 1, 2, 3, 4, 5, 6]),
 );
 check(
-  "the directory and district shell share canonical district metadata",
+  "the directory and district shell share canonical district metadata, and the threshold/header pair render one unified chamber noun",
   /AGENCY_DISTRICTS\.map\(\(district\)\s*=>/.test(stageCode) &&
     /data-agency-district=\{district\.id\}/.test(stage) &&
     /aria-labelledby=\{`\$\{district\.id\}-heading`\}/.test(stage) &&
-    /CHAMBER \{district\.index\} \/ 07/.test(stage) &&
-    /DISTRICT \{district\.index\} \/ 07/.test(stage) &&
+    (stage.match(/CHAMBER \{district\.index\} \/ 07/g) ?? []).length === 2 &&
+    !/DISTRICT \{district\.index\} \/ 07/.test(stage) &&
     /\{district\.truthBoundary\}/.test(stage) &&
     /contextDistrict\.kaiContext/.test(stage) &&
     /Continue to \{nextDistrict\.name\}/.test(stage),

@@ -813,5 +813,117 @@ check(
     /KAI · CONTINUOUS EXECUTIVE CHANNEL/.test(stage),
 );
 
+// -- RC2 WP5: destination-aware passage and arrival compression -------------
+const passageBlocks = new Map(
+  districtIds.map((id) => [
+    id,
+    extractRuleBody(css, `.facilityPassage[data-cxos-passage-target="${id}"] {`),
+  ]),
+);
+check(
+  "all seven chambers declare an explicit, distinct --cxos-passage-signal on their destination passage block",
+  [...passageBlocks.values()].every((block) => block.length > 0) &&
+    districtIds.every(
+      (id) =>
+        readCustomProp(passageBlocks.get(id) ?? "", "--cxos-passage-signal") !==
+        null,
+    ) &&
+    new Set(
+      districtIds.map((id) =>
+        readCustomProp(passageBlocks.get(id) ?? "", "--cxos-passage-signal"),
+      ),
+    ).size === districtIds.length,
+);
+check(
+  "all seven chambers declare a --cxos-passage-origin, consumed by the passage axis line's transform-origin",
+  districtIds.every(
+    (id) =>
+      readCustomProp(passageBlocks.get(id) ?? "", "--cxos-passage-origin") !==
+      null,
+  ) &&
+    /\.facilityPassage\[data-cxos-passage-target\] \.passageAxis i\s*\{[\s\S]{0,220}transform-origin:\s*var\(--cxos-passage-origin\)/.test(
+      css,
+    ),
+);
+
+const facilityPassageKeyframeBody = css.slice(
+  css.indexOf("@keyframes agencyFacilityPassage {"),
+  css.indexOf("@keyframes agencyPassageAxis {"),
+);
+const passageHoldMatch = facilityPassageKeyframeBody.match(
+  /([\d.]+)%,\s*([\d.]+)%\s*\{\s*opacity:\s*1;/,
+);
+const passageHoldStart = passageHoldMatch ? Number(passageHoldMatch[1]) : null;
+const passageHoldEnd = passageHoldMatch ? Number(passageHoldMatch[2]) : null;
+check(
+  "the facility passage fades in from 0% and its opaque hold is <=40% of the transition, bracketing the true (100%-of-duration) district swap instead of an early window",
+  facilityPassageKeyframeBody.length > 0 &&
+    /0%\s*\{\s*opacity:\s*0;/.test(facilityPassageKeyframeBody) &&
+    passageHoldStart !== null &&
+    passageHoldEnd === 100 &&
+    passageHoldEnd - (passageHoldStart as number) > 0 &&
+    passageHoldEnd - (passageHoldStart as number) <= 40,
+);
+check(
+  "the district swap fires only from the passage element's own animationend (not a mid-passage timeout), and the passage fallback timer is armed for the same full duration",
+  /completeDistrictTransition = useCallback\(/.test(adapter) &&
+    /if \(event && event\.currentTarget !== event\.target\) return;/.test(
+      adapter,
+    ) &&
+    /onAnimationEnd=\{completeDistrictTransition\}/.test(stage) &&
+    /districtTransitionFallbackRef\.current = window\.setTimeout\(\(\) => \{[\s\S]{0,160}\}, districtTransitionDurationMs\);/.test(
+      adapter,
+    ),
+);
+
+const settledMastheadIdentityBlock = extractRuleBody(
+  css,
+  '.room[data-arrival-settled="true"] .facilityIdentity .identity {',
+);
+const passageMastheadIdentityBlock = extractRuleBody(
+  css,
+  '.room[data-arrival-settled="true"][data-chamber-phase="passage"] .facilityIdentity .identity {',
+);
+check(
+  "the settled masthead declares a bounded, transitioning max-height/opacity that a chamber-phase=passage rule compresses, and the compression never targets the disclosure",
+  settledMastheadIdentityBlock.length > 0 &&
+    /overflow:\s*hidden/.test(settledMastheadIdentityBlock) &&
+    /max-height:\s*20rem/.test(settledMastheadIdentityBlock) &&
+    /transition:[\s\S]{0,40}max-height var\(--cxos-dur-settle\)[\s\S]{0,80}opacity var\(--cxos-dur-settle\)/.test(
+      settledMastheadIdentityBlock,
+    ) &&
+    passageMastheadIdentityBlock.length > 0 &&
+    /max-height:\s*4\.5rem/.test(passageMastheadIdentityBlock) &&
+    /opacity:\s*0\.4\b/.test(passageMastheadIdentityBlock) &&
+    !/\[data-chamber-phase="passage"\][^{]*\.disclosure/.test(css) &&
+    !/\.disclosure[^{]*\[data-chamber-phase="passage"\]/.test(css),
+);
+check(
+  "the FIXTURE STATE band and DIRECTOR pill share one flex row, both preserved as their own elements with their touch targets intact",
+  /\.facilityControlRow\s*\{[\s\S]{0,120}display:\s*flex[\s\S]{0,160}flex-wrap:\s*wrap/.test(
+    css,
+  ) &&
+    /\.facilityControlRow \.stateBand\s*\{/.test(css) &&
+    /\.facilityControlRow \.director\s*\{/.test(css) &&
+    /<div className=\{styles\.facilityControlRow\}>[\s\S]{0,80}<section className=\{styles\.stateBand\}/.test(
+      stage,
+    ) &&
+    /<\/section>[\s\S]{0,40}<details[\s\S]{0,4000}<\/details>\s*<\/div>/.test(
+      stage,
+    ) &&
+    /\.director summary\s*\{[\s\S]{0,120}min-height:\s*3rem/.test(css),
+);
+check(
+  "chamber noun unification: the district header and facility rail render CHAMBER/CHAMBERS, not DISTRICT/DISTRICTS, in rendered copy",
+  /CHAMBER \{district\.index\} \/ 07/.test(stage) &&
+    !/>DISTRICT \{district\.index\}/.test(stage) &&
+    /7 CHAMBERS/.test(stage) &&
+    !/7 DISTRICTS/.test(stage) &&
+    /Seven chambers available/.test(stage) &&
+    !/Seven districts available/.test(stage) &&
+    /className=\{styles\.districtHeader\}/.test(stage) &&
+    /className=\{styles\.district\}/.test(stage),
+);
+
 console.log(`\ncxos-living-environment.test.ts: ${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);

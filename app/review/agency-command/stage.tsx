@@ -1114,6 +1114,7 @@ export function AgencyCommandStage() {
           </span>
           </div>
 
+        <div className={styles.facilityControlRow}>
         <section className={styles.stateBand} aria-labelledby="fixture-state-heading">
           <h2
             id="fixture-state-heading"
@@ -1234,6 +1235,7 @@ export function AgencyCommandStage() {
             </button>
           </div>
         </details>
+        </div>
 
           {fixtureState === "permission" ? (
           <>
@@ -1589,7 +1591,7 @@ function FacilityDirectory({
     <nav className={styles.facilityDirectory} aria-label="Agency Command facility map">
       <div className={styles.directoryAxis}>
         <span>MISSION CONTROL</span>
-        <strong>AGENCY COMMAND · 7 DISTRICTS</strong>
+        <strong>AGENCY COMMAND · 7 CHAMBERS</strong>
       </div>
       <ol className={styles.facilitySpine}>{renderLinks()}</ol>
       <div className={styles.mobileFacilityCurrent}>
@@ -1844,7 +1846,7 @@ function AgencyDistrictShell({
 
       <header className={styles.districtHeader}>
         <div>
-          <p>DISTRICT {district.index} / 07</p>
+          <p>CHAMBER {district.index} / 07</p>
           <h2 id={`${district.id}-heading`} tabIndex={-1}>
             {district.name}
           </h2>
@@ -2037,7 +2039,7 @@ function ActivationRail({
           ],
           "command-settlement": [
             "Command settled",
-            "Seven districts available",
+            "Seven chambers available",
           ],
         };
 

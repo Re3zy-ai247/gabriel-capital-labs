@@ -340,6 +340,38 @@
   text-align: right;
 }
 
+/* The FIXTURE STATE band and the DIRECTOR pill were two stacked full-width
+ * bands; this wraps them (markup unchanged inside each — same text, ids,
+ * and focusable elements) in one flex row so they read as one control
+ * strip instead of two. .stateBand's own border-bottom/padding move to the
+ * row so the divider spans both children instead of just the state text's
+ * own width; .director keeps its base rule (position/width/color) but its
+ * standalone vertical margins are zeroed here since the row now owns
+ * spacing, leaving only margin-left: auto to hold it at the row's trailing
+ * edge. Touch targets are unaffected: .director summary keeps its existing
+ * min-height: 3rem (and 3rem under (pointer: coarse)), both well above the
+ * 44px floor. */
+.facilityControlRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1.5rem;
+  padding: 0.85rem 0;
+  border-bottom: 1px solid var(--agency-line);
+}
+
+.facilityControlRow .stateBand {
+  flex: 1 1 20rem;
+  padding: 0;
+  border-bottom: 0;
+}
+
+.facilityControlRow .director {
+  flex: 0 0 auto;
+  margin: 0 0 0 auto;
+}
+
 .activationRail {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -3199,16 +3231,32 @@
   transform: none;
 }
 
-/* Seven passage atmospheres use the same bounded transition machine. */
+/* Seven passage atmospheres use the same bounded transition machine. Each
+ * destination's --cxos-passage-signal is a stronger reading of its own
+ * --agency-chamber-edge (WP3): the same rgb, alpha remapped from the
+ * edge's 0.30-0.42 band up to a 0.55-0.65 passage band (business-health's
+ * pre-existing 0.76 amber override is the reference point and stays as-is;
+ * growth-threshold is the second amber, mapped by the same rule). Each
+ * destination's --cxos-passage-origin sets the "FROM -- TO" axis line's
+ * transform-origin from that chamber's entry-vector sign (environment.ts):
+ * negative entry-x travels left so the line grows from the right;
+ * positive entry-x travels right so it grows from the left; negative
+ * entry-y chambers grow from the top; scale-x/aperture and uniform-converge
+ * chambers grow from the center. */
 .facilityPassage[data-cxos-passage-target] {
   --cxos-passage-signal: rgba(134, 215, 255, 0.7);
+  --cxos-passage-origin: center;
 }
 
 .facilityPassage[data-cxos-passage-target] .passageAxis i {
   background: linear-gradient(90deg, transparent, var(--cxos-passage-signal), transparent);
+  transform-origin: var(--cxos-passage-origin);
 }
 
 .facilityPassage[data-cxos-passage-target="central-command"] {
+  /* entry-x: 0, entry-y: 0, aperture scale-x -> origin center. */
+  --cxos-passage-signal: rgba(134, 215, 255, 0.65);
+  --cxos-passage-origin: center;
   background:
     linear-gradient(112deg, transparent 30%, rgba(134, 215, 255, 0.06) 30.2%, transparent 30.4% 69.6%, rgba(134, 215, 255, 0.06) 69.8%, transparent 70%),
     radial-gradient(ellipse at 50% 20%, rgba(21, 96, 137, 0.28), transparent 30rem),
@@ -3216,6 +3264,9 @@
 }
 
 .facilityPassage[data-cxos-passage-target="client-operations"] {
+  /* entry-x: -24px (travels left) -> origin right. */
+  --cxos-passage-signal: rgba(134, 215, 255, 0.62);
+  --cxos-passage-origin: right;
   background:
     repeating-linear-gradient(168deg, transparent 0 5rem, rgba(134, 215, 255, 0.055) 5rem calc(5rem + 1px)),
     linear-gradient(105deg, rgba(14, 116, 144, 0.18), transparent 58%),
@@ -3223,29 +3274,43 @@
 }
 
 .facilityPassage[data-cxos-passage-target="team-operations"] {
+  /* entry-x: 0, entry-y: 0, aperture scale-x -> origin center. */
+  --cxos-passage-signal: rgba(134, 215, 255, 0.55);
+  --cxos-passage-origin: center;
   background: radial-gradient(circle at 50% 50%, transparent 7rem, rgba(134, 215, 255, 0.08) 7.1rem, transparent 7.2rem 15rem, rgba(134, 215, 255, 0.04) 15.1rem, transparent 15.2rem), rgba(3, 9, 20, 0.97);
 }
 
 .facilityPassage[data-cxos-passage-target="business-health"] {
+  /* entry-y: -16px (negative) -> origin top. Amber reference point: kept. */
   --cxos-passage-signal: rgba(244, 199, 109, 0.76);
+  --cxos-passage-origin: top;
   background:
     radial-gradient(circle at 68% 44%, transparent 8rem, rgba(244, 199, 109, 0.11) 8.1rem, transparent 8.2rem 14rem, rgba(134, 215, 255, 0.05) 14.1rem, transparent 14.2rem),
     linear-gradient(180deg, rgba(9, 28, 50, 0.94), rgba(3, 9, 20, 0.97));
 }
 
 .facilityPassage[data-cxos-passage-target="evidence-archive"] {
+  /* entry-y: -24px (negative) -> origin top. */
+  --cxos-passage-signal: rgba(134, 215, 255, 0.6);
+  --cxos-passage-origin: top;
   background:
     repeating-linear-gradient(90deg, transparent 0 12%, rgba(134, 215, 255, 0.05) 12% calc(12% + 1px)),
     linear-gradient(180deg, rgba(5, 26, 45, 0.86), rgba(3, 9, 20, 0.98));
 }
 
 .facilityPassage[data-cxos-passage-target="kai-suite"] {
+  /* uniform 1.018 converge -> origin center. */
+  --cxos-passage-signal: rgba(134, 215, 255, 0.58);
+  --cxos-passage-origin: center;
   background:
     radial-gradient(ellipse at 50% 38%, rgba(56, 189, 248, 0.24), transparent 24rem),
     linear-gradient(90deg, rgba(3, 9, 20, 0.98), rgba(7, 31, 53, 0.82) 50%, rgba(3, 9, 20, 0.98));
 }
 
 .facilityPassage[data-cxos-passage-target="growth-threshold"] {
+  /* entry-x: +24px (travels right) -> origin left. Second amber. */
+  --cxos-passage-signal: rgba(244, 199, 109, 0.6);
+  --cxos-passage-origin: left;
   background:
     linear-gradient(180deg, transparent 62%, rgba(56, 189, 248, 0.08) 62.2%, transparent 62.4%),
     radial-gradient(ellipse at 50% 82%, rgba(56, 189, 248, 0.22), transparent 34rem),
@@ -5865,6 +5930,28 @@
   align-items: center;
   gap: clamp(1rem, 3vw, 3rem);
   padding: 0;
+  overflow: hidden;
+  max-height: 20rem;
+  opacity: 1;
+  transition:
+    max-height var(--cxos-dur-settle) var(--cxos-ease-vector),
+    opacity var(--cxos-dur-settle) var(--cxos-ease-vector);
+}
+
+/* Arrival compression: the masthead (eyebrow + room title — not the
+ * SYNTHETIC FOUNDER REVIEW disclosure, which is a sibling of .facilityIdentity
+ * and is never targeted here) collapses toward a single line while a chamber
+ * transition is in flight, keyed off the same data-chamber-phase the stage
+ * already sets on .room for the passage overlay and the chamber recede
+ * animations. It re-expands on its own once the phase returns to "settled"
+ * (arrival settle itself never re-enters "passage"). align-items shifts to
+ * flex-start so the clipped remainder is the top of the stack (eyebrow +
+ * room title) rather than a centered sliver; that shift is a discrete
+ * property change and is not part of the animated transition list above. */
+.room[data-arrival-settled="true"][data-chamber-phase="passage"] .facilityIdentity .identity {
+  align-items: flex-start;
+  max-height: 4.5rem;
+  opacity: 0.4;
 }
 
 .room[data-arrival-settled="true"] .facilityIdentity .roomTitle {
@@ -6670,18 +6757,29 @@
   }
 }
 
+/* The district swap is not a mid-passage timeout: stage.tsx's
+ * completeDistrictTransition only runs from this very element's own
+ * onAnimationEnd (guarded by event.currentTarget === event.target), so the
+ * hidden-flip that swaps the source chamber for the destination lands
+ * exactly at this keyframe's 100% mark (620ms, or the Tier B duration),
+ * matching the districtTransitionFallbackRef safety timeout, which is
+ * armed for the same full duration. A hold that ends before 100% would let
+ * the fade-out reveal the still-current source chamber right before the
+ * swap. So the opaque hold is shifted to bracket 100% instead of an early
+ * window: it fades in 0-68% (also the window the source chamber's own
+ * agencyChamberRecedeForward/Backward recede spends dimming to 0.16
+ * opacity) and holds fully opaque 68-100%, a 32% span — under the ~40%
+ * ceiling and bracketing the true swap point. There is no fade-out leg:
+ * opacity is only ever animated toward 1, so the veil cannot go
+ * transparent before the destination is already the rendered chamber. */
 @keyframes agencyFacilityPassage {
   0% {
     opacity: 0;
   }
 
-  16%,
-  78% {
-    opacity: 1;
-  }
-
+  68%,
   100% {
-    opacity: 0;
+    opacity: 1;
   }
 }
 
