@@ -35,6 +35,38 @@ const DISTRICTS = Object.freeze([
   "growth-threshold",
 ]);
 
+// The four "travel" chambers: the only profiles the CSS opts into the
+// ViewTimeline-driven agencyLivingScroll parallax (see the
+// `@supports (animation-timeline: view())` block in
+// agency-command.module.css that gates on exactly these four
+// data-cxos-profile values). Central Command, Team Operations, and Kai
+// Suite are documented "still" chambers and are deliberately excluded.
+const SCROLL_LINKED_DISTRICTS = Object.freeze([
+  "client-operations",
+  "evidence-archive",
+  "growth-threshold",
+  "business-health",
+]);
+
+// Mirrors the eligible-control selector used for 44px target-size and
+// obstruction sampling. Kept as a single source of truth so the post-CLS
+// scroll-restored obstruction probe re-derives the exact same candidate
+// list snapshot() already built for a given state.
+const TARGET_SIZE_SELECTOR =
+  "a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), summary, [role='button'], [tabindex]:not([tabindex='-1'])";
+
+// wcag22a/wcag22aa added for RC2 WP7 breadth; shared by the single
+// full-page audit and the per-chamber audits so both cover the same rule
+// set.
+const AXE_RUNONLY_TAGS = Object.freeze([
+  "wcag2a",
+  "wcag2aa",
+  "wcag21a",
+  "wcag21aa",
+  "wcag22a",
+  "wcag22aa",
+]);
+
 const MATRIX = Object.freeze([
   {
     id: "desktop-large",
@@ -67,6 +99,7 @@ const MATRIX = Object.freeze([
     mode: "full",
     arrival: "skip",
     activation: "touch",
+    departure: true,
   },
   {
     id: "mobile-360",
@@ -97,6 +130,7 @@ const MATRIX = Object.freeze([
     mode: "smoke",
     arrival: "skip",
     activation: "touch",
+    measuredCycles: 3,
   },
   {
     id: "reduced",
@@ -801,7 +835,7 @@ async function beginPhase(page, phase) {
 }
 
 async function snapshot(page, phaseCursor, options = {}) {
-  return page.evaluate(async ({ cursor, includeTargetSizes }) => {
+  return page.evaluate(async ({ cursor, includeTargetSizes, targetSizeSelector }) => {
     // Yield once so pending PerformanceObserver deliveries are present before slicing.
     await new Promise((resolve) => setTimeout(resolve, 0));
     const ledger = window.__cxosEvidence;
@@ -858,11 +892,43 @@ async function snapshot(page, phaseCursor, options = {}) {
     const phaseCls = clsFor(phaseEvidence.layoutShift);
     const cumulativeCls = clsFor(ledger.layoutShift);
     const root = document.querySelector("main[data-cxos-runtime]");
-    const declaredMotionChannels = new Set(
-      (root?.getAttribute("data-cxos-motion-channels") ?? "")
-        .split(/\s+/)
-        .filter(Boolean),
-    );
+    // RC2 WP7: motion classification is structural — a running animation's
+    // class (continuous/transient/scroll) and ownership are decided purely
+    // from its resolved data-cxos-motion-channel token(s), never from a
+    // keyframe-name regex. CHANNEL_TOKEN is the sole grammar.
+    const CHANNEL_TOKEN = /^(continuous|transient|scroll):[a-z-]+$/;
+    // Retained ONLY as a defense-in-depth safety net for detecting an
+    // unclassified environment-surface animation (rule (d) below) when a
+    // running animation has no ancestor-or-self data-cxos-motion-channel at
+    // all. It is NEVER consulted to decide an animation's class or
+    // ownership — that decision is 100% structural via CHANNEL_TOKEN. Kept
+    // broad (covering every legacy and current Living-mode keyframe name,
+    // including the WP2-introduced agencyLivingBreath/
+    // agencyLivingBlockedPulse the original RC1 regex omitted) so a future
+    // regression that reintroduces a motion-flavored keyframe without a
+    // channel token still gets flagged instead of silently passing.
+    const LEGACY_ENVIRONMENT_KEYFRAME_SAFETY_NET =
+      /agency(?:Sweep|Breath|FlowEntering|FlowAdvancing|FlowWaiting|FlowBlocked|FlowResolving|ArtifactReveal|DistrictTruthDraw|DistrictOperatingMoment|FacilityChannel|ClientFloorSweep|TeamRecognition|ObservatoryScan|EvidenceRecognition|KaiRecognition|CapacityScan|LivingAcquire|LivingHeartbeat|LivingBreath|LivingBlockedPulse|LivingScroll)/;
+    // Resolves the single token that applies to THIS running animation when
+    // its owner declares more than one (currently only .districtEnvironment,
+    // which carries "continuous:chamber-breath transient:chamber-acquire
+    // scroll:depth-parallax" for three physically-distinct animations: the
+    // breath on the owner itself, and the acquire/scroll pair on its
+    // [data-plane="depth"] child, which the CSS cascade makes mutually
+    // exclusive per chamber profile). Disambiguation uses only the
+    // animation's own computed characteristics — never its keyframe name:
+    // a ViewTimeline-backed animation is scroll; an infinite-iteration
+    // animation is continuous; anything else is transient.
+    const resolveMotionToken = (rawValue, timelineType, iterations) => {
+      if (!rawValue) return null;
+      const tokens = rawValue.split(/\s+/).filter((token) => CHANNEL_TOKEN.test(token));
+      if (tokens.length === 0) return null;
+      if (tokens.length === 1) return tokens[0];
+      const byPrefix = (prefix) => tokens.find((token) => token.startsWith(`${prefix}:`));
+      if (timelineType === "ViewTimeline") return byPrefix("scroll") ?? tokens[0];
+      if (iterations === Infinity) return byPrefix("continuous") ?? tokens[0];
+      return byPrefix("transient") ?? tokens[0];
+    };
     const allAnimations = document.getAnimations({ subtree: true });
     const describeAnimationTime = (value) => {
       if (typeof value === "number" && Number.isFinite(value)) {
@@ -909,10 +975,35 @@ async function snapshot(page, phaseCursor, options = {}) {
         ? animation.animationName
         : null;
       const motionChannel = motionOwner?.getAttribute("data-cxos-motion-channel") ?? null;
-      const livingAnimation = Boolean(root?.hasAttribute("data-cxos-environment")) && (
-        /agency(?:Sweep|Breath|FlowEntering|FlowAdvancing|FlowWaiting|FlowBlocked|FlowResolving|ArtifactReveal|DistrictTruthDraw|DistrictOperatingMoment|FacilityChannel|ClientFloorSweep|TeamRecognition|ObservatoryScan|EvidenceRecognition|KaiRecognition|CapacityScan|LivingAcquire|LivingHeartbeat|LivingScroll)/.test(animationName ?? "") ||
-        (target instanceof Element && target.matches("[data-plane='depth']"))
+      const timelineType = animation.timeline?.constructor?.name ?? null;
+      const iterations = timing.iterations ?? null;
+      // Transitions (animationName null — CSS transitions, not CSS
+      // animations) remain excluded from classification entirely: no
+      // resolved token, not an environment surface, never a candidate for
+      // the unclassified-environment-animation fail. Only genuine CSS
+      // animations (or other Web Animations with a name) are classified.
+      const resolvedMotionToken = animationName
+        ? resolveMotionToken(motionChannel, timelineType, iterations)
+        : null;
+      const resolvedMotionClass = resolvedMotionToken
+        ? resolvedMotionToken.slice(0, resolvedMotionToken.indexOf(":"))
+        : null;
+      // An "environment surface" animation is one that either already
+      // resolved to an owned channel token, or is running on a known
+      // decorative/environment structural marker ([data-plane] inside a
+      // chamber, [data-environment] on the chamber environment host
+      // itself), or matches the legacy-keyframe safety net above. Only
+      // animations with NO resolvable token are candidates for the
+      // unclassified-environment-animation fail; an owner that declares a
+      // channel attribute whose value fails to parse into any valid token
+      // is also a fail (a malformed/typo'd token is exactly as unowned as
+      // no token at all).
+      const environmentSurface = Boolean(animationName) && (
+        Boolean(motionOwner) ||
+        (target instanceof Element && Boolean(target.closest("[data-plane], [data-environment]"))) ||
+        LEGACY_ENVIRONMENT_KEYFRAME_SAFETY_NET.test(animationName)
       );
+      const unclassifiedEnvironmentAnimation = environmentSurface && !resolvedMotionToken;
       return {
         index,
         name: animationName,
@@ -921,15 +1012,10 @@ async function snapshot(page, phaseCursor, options = {}) {
         target: describeElement(target),
         motionOwner: describeElement(motionOwner),
         motionChannel,
-        motionOwnership: livingAnimation
-          ? motionChannel && declaredMotionChannels.has(motionChannel)
-            ? "declared"
-            : "unowned-living-animation"
-          : motionChannel
-            ? declaredMotionChannels.has(motionChannel)
-              ? "declared"
-              : "unknown-marker"
-            : "not-environment",
+        resolvedMotionToken,
+        resolvedMotionClass,
+        environmentSurface,
+        unclassifiedEnvironmentAnimation,
         playState: animation.playState,
         pending: animation.pending,
         playbackRate: animation.playbackRate,
@@ -938,27 +1024,58 @@ async function snapshot(page, phaseCursor, options = {}) {
         duration: typeof timing.duration === "number" ? timing.duration : null,
         durationValue: describeAnimationTime(timing.duration),
         progress: typeof timing.progress === "number" ? timing.progress : null,
-        timelineType: animation.timeline?.constructor?.name ?? null,
+        timelineType,
         timelineCurrentTimeValue: describeAnimationTime(animation.timeline?.currentTime),
-        iterations: timing.iterations ?? null,
+        iterations,
       };
     });
-    const runningMotionChannels = [...new Set(
-      animations
-        .filter((animation) => animation.playState === "running" && animation.motionChannel)
-        .map((animation) => animation.motionChannel),
+    const runningAnimations = animations.filter((animation) => animation.playState === "running");
+    // Rule (a): continuous:* is counted by DISTINCT running token.
+    const runningContinuousTokens = [...new Set(
+      runningAnimations
+        .filter((animation) => animation.resolvedMotionClass === "continuous")
+        .map((animation) => animation.resolvedMotionToken),
     )];
-    const runningEnvironmentAnimations = animations.filter(
-      (animation) =>
-        animation.playState === "running" &&
-        (animation.motionOwnership === "declared" ||
-          animation.motionOwnership === "unowned-living-animation"),
-    );
-    const unownedRunningEnvironmentAnimations = animations
+    // Rule (b): transient:* is grouped by full token, so staggered spans of
+    // one recognition beat (e.g. N staggered list-item spans sharing one
+    // ancestor token) count as ONE logical concurrent beat, not N.
+    const runningTransientTokens = [...new Set(
+      runningAnimations
+        .filter((animation) => animation.resolvedMotionClass === "transient")
+        .map((animation) => animation.resolvedMotionToken),
+    )];
+    // Rule (c): scroll:* is tracked for evidence but excluded from the
+    // continuous count above (formalizes existing behavior).
+    const runningScrollTokens = [...new Set(
+      runningAnimations
+        .filter((animation) => animation.resolvedMotionClass === "scroll")
+        .map((animation) => animation.resolvedMotionToken),
+    )];
+    // Rule (b) continued: every individual running transient:* animation
+    // instance (not just the distinct token) must be a single-iteration,
+    // <=1500ms beat.
+    const transientTimingViolations = runningAnimations
+      .filter((animation) => animation.resolvedMotionClass === "transient")
       .filter((animation) =>
-        animation.playState === "running" &&
-        animation.motionOwnership === "unowned-living-animation",
+        animation.iterations !== 1 ||
+        typeof animation.duration !== "number" ||
+        animation.duration > 1500,
       )
+      .map((animation) => ({
+        name: animation.name,
+        token: animation.resolvedMotionToken,
+        pseudoElement: animation.pseudoElement,
+        target: animation.target,
+        iterations: animation.iterations,
+        duration: animation.duration,
+      }));
+    // Rule (d): any running animation on an environment surface with no
+    // resolvable channel token — this is the budget-bypass hole the old
+    // regex-only classifier left open (a running motion-flavored animation
+    // whose token didn't match the legacy declared-channel list was
+    // silently invisible to the budget, never a fail).
+    const unclassifiedEnvironmentAnimations = runningAnimations
+      .filter((animation) => animation.unclassifiedEnvironmentAnimation)
       .map((animation) => ({
         name: animation.name,
         pseudoElement: animation.pseudoElement,
@@ -979,9 +1096,7 @@ async function snapshot(page, phaseCursor, options = {}) {
     if (root?.getAttribute("data-cxos-district-transition") === "passage") quietReasons.push("passage");
     const expectedMaximum = quietReasons.length > 0 ? 0 : tierMaximum;
     const targetSizeTargets = includeTargetSizes
-      ? [...document.querySelectorAll(
-          "a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), summary, [role='button'], [tabindex]:not([tabindex='-1'])",
-        )]
+      ? [...document.querySelectorAll(targetSizeSelector)]
           .filter((element) => {
             if (!(element instanceof HTMLElement)) return false;
             if (element.matches("[aria-disabled='true']")) return false;
@@ -1025,6 +1140,11 @@ async function snapshot(page, phaseCursor, options = {}) {
               centerInViewport,
               obstructed,
               occluder: obstructed ? describeElement(topmost) : null,
+              // sampleOffViewportObstruction() (Node-side, post-CLS) fills
+              // these in for every target whose center was off-viewport at
+              // rest; a naturally in-viewport target is already sampled.
+              sampled: centerInViewport,
+              skipReason: null,
             };
           })
       : [];
@@ -1056,15 +1176,29 @@ async function snapshot(page, phaseCursor, options = {}) {
           declaredBudget,
           expectedMaximum,
           quietReasons,
-          runningChannels: runningMotionChannels,
-          runningChannelCount: runningMotionChannels.length,
-          runningEnvironmentAnimationCount: runningEnvironmentAnimations.length,
-          unownedRunningEnvironmentAnimations,
+          // Structural (RC2 WP7) fields — the actual classification.
+          runningContinuousTokens,
+          runningTransientTokens,
+          runningScrollTokens,
+          transientTimingViolations,
+          unclassifiedEnvironmentAnimations,
+          // Backward-compatible fields other report/gate code still reads
+          // (scripts/cxos-living-environment/browser.mjs's own
+          // evaluateCaseAcceptance and evaluateReportAcceptance, plus the
+          // "idle-work" check). Their names are unchanged; their meaning is
+          // now the structural continuous-channel count/list and the
+          // structural unclassified-animation list, replacing the old
+          // regex+declared-list computation.
+          runningChannels: runningContinuousTokens,
+          runningChannelCount: runningContinuousTokens.length,
+          runningEnvironmentAnimationCount: runningContinuousTokens.length,
+          unownedRunningEnvironmentAnimations: unclassifiedEnvironmentAnimations,
           passes:
             declaredBudget <= expectedMaximum &&
-            runningMotionChannels.length <= expectedMaximum &&
-            runningEnvironmentAnimations.length <= expectedMaximum &&
-            unownedRunningEnvironmentAnimations.length === 0,
+            runningContinuousTokens.length <= expectedMaximum &&
+            runningTransientTokens.length <= 3 &&
+            transientTimingViolations.length === 0 &&
+            unclassifiedEnvironmentAnimations.length === 0,
         },
       },
       targetSize: includeTargetSizes
@@ -1147,6 +1281,7 @@ async function snapshot(page, phaseCursor, options = {}) {
   }, {
     cursor: phaseCursor,
     includeTargetSizes: options.includeTargetSizes === true,
+    targetSizeSelector: TARGET_SIZE_SELECTOR,
   });
 }
 
@@ -1166,7 +1301,7 @@ async function waitForUiCommit(page) {
   ));
 }
 
-async function measureScrollLinkedChoreography(page) {
+async function measureScrollLinkedChoreography(page, districtId) {
   const read = () => page.evaluate(() => {
     const describeTime = (value) => {
       if (typeof value === "number" && Number.isFinite(value)) {
@@ -1302,7 +1437,7 @@ async function measureScrollLinkedChoreography(page) {
     nonzeroDuration,
     passed:
       start.supported &&
-      start.rootProfile === "client-operations" &&
+      start.rootProfile === districtId &&
       start.animationFound &&
       end.animationFound &&
       genuineViewTimeline &&
@@ -1311,6 +1446,227 @@ async function measureScrollLinkedChoreography(page) {
       renderedTransformResponsive &&
       traversedScrollDistance > 1,
   };
+}
+
+// RC2 WP7: post-CLS scroll-restored obstruction probe. Runs strictly AFTER
+// the calling site's normal capture() for that state, so it never
+// contaminates the CLS/animation-sensitive numbers already recorded on
+// `state`. For every target whose center was off-viewport at rest, this
+// scrolls it to the viewport center, hit-tests its true center point, then
+// restores the exact prior scroll position before moving to the next
+// target. Mutates `state.targetSize` in place (additive: width/height/
+// meets44px from the original at-rest measurement are left untouched,
+// since element size does not depend on scroll position).
+async function sampleOffViewportObstruction(page, state) {
+  if (!state.targetSize) return;
+  const offViewportIndices = state.targetSize.targets
+    .filter((target) => !target.centerInViewport)
+    .map((target) => target.index);
+  const sampling = offViewportIndices.length > 0
+    ? await page.evaluate(async ({ selector, indices }) => {
+        const priorInlineScrollBehavior = document.documentElement.style.scrollBehavior;
+        document.documentElement.style.scrollBehavior = "auto";
+        const isEligible = (element) => {
+          if (!(element instanceof HTMLElement)) return false;
+          if (element.matches("[aria-disabled='true']")) return false;
+          if (element.closest("[hidden], [inert], [aria-hidden='true']")) return false;
+          const closedDetails = element.closest("details:not([open])");
+          if (closedDetails && !element.closest("summary")) return false;
+          const style = getComputedStyle(element);
+          return style.visibility !== "hidden" &&
+            style.display !== "none" &&
+            style.pointerEvents !== "none" &&
+            Number(style.opacity) > 0 &&
+            element.getClientRects().length > 0;
+        };
+        const describeElement = (element) => {
+          if (!(element instanceof Element)) return null;
+          const href = element.getAttribute("href");
+          let safeHref = null;
+          if (href) {
+            try {
+              const url = new URL(href, location.href);
+              safeHref = `${url.pathname}${url.hash}`;
+            } catch {
+              safeHref = "unavailable";
+            }
+          }
+          return {
+            tag: element.tagName.toLowerCase(),
+            id: element.id || null,
+            classes: [...element.classList].slice(0, 4),
+            role: element.getAttribute("role"),
+            type: element.getAttribute("type"),
+            href: safeHref,
+          };
+        };
+        // Re-derives the exact same ordered candidate list snapshot()
+        // built (same selector, same admission filter, same order); the
+        // DOM has not changed since that capture, so index correspondence
+        // holds.
+        const candidates = [...document.querySelectorAll(selector)];
+        const results = [];
+        for (const index of indices) {
+          const element = candidates[index];
+          if (!element || !element.isConnected) {
+            results.push({ index, sampled: false, skipReason: "detached" });
+            continue;
+          }
+          if (!isEligible(element)) {
+            results.push({ index, sampled: false, skipReason: "covered-by-definition" });
+            continue;
+          }
+          const originalScrollX = scrollX;
+          const originalScrollY = scrollY;
+          element.scrollIntoView({ block: "center" });
+          await new Promise((resolve) =>
+            requestAnimationFrame(() => requestAnimationFrame(resolve)),
+          );
+          const rect = element.getBoundingClientRect();
+          const width = Math.round(rect.width * 100) / 100;
+          const height = Math.round(rect.height * 100) / 100;
+          if (width <= 0 || height <= 0) {
+            scrollTo({ top: originalScrollY, left: originalScrollX, behavior: "auto" });
+            results.push({ index, sampled: false, skipReason: "zero-size", width, height });
+            continue;
+          }
+          const centerX = rect.left + rect.width / 2;
+          const centerY = rect.top + rect.height / 2;
+          const topmost = document.elementFromPoint(centerX, centerY);
+          const obstructed = Boolean(
+            topmost &&
+            topmost !== element &&
+            !element.contains(topmost) &&
+            !topmost.contains(element),
+          );
+          scrollTo({ top: originalScrollY, left: originalScrollX, behavior: "auto" });
+          results.push({
+            index,
+            sampled: true,
+            skipReason: null,
+            obstructed,
+            occluder: obstructed ? describeElement(topmost) : null,
+          });
+        }
+        document.documentElement.style.scrollBehavior = priorInlineScrollBehavior;
+        return results;
+      }, { selector: TARGET_SIZE_SELECTOR, indices: offViewportIndices })
+    : [];
+
+  const byIndex = new Map(sampling.map((entry) => [entry.index, entry]));
+  for (const target of state.targetSize.targets) {
+    if (target.centerInViewport) {
+      target.sampled = true;
+      target.skipReason = null;
+      continue;
+    }
+    const entry = byIndex.get(target.index);
+    if (!entry) {
+      target.sampled = false;
+      target.skipReason = "detached";
+      continue;
+    }
+    target.sampled = entry.sampled;
+    target.skipReason = entry.skipReason;
+    if (entry.sampled) {
+      target.obstructed = entry.obstructed;
+      target.occluder = entry.occluder ?? null;
+    }
+  }
+
+  const measured = state.targetSize.targets.filter((target) => target.sampled).length;
+  const skipped = state.targetSize.targets.filter((target) => !target.sampled).length;
+  const reasons = state.targetSize.targets.reduce((tally, target) => {
+    if (!target.sampled && target.skipReason) {
+      tally[target.skipReason] = (tally[target.skipReason] ?? 0) + 1;
+    }
+    return tally;
+  }, {});
+  state.targetSize.obstructionMeasured = measured;
+  state.targetSize.obstructionFailures = state.targetSize.targets.filter(
+    (target) => target.sampled && target.obstructed,
+  ).length;
+  state.targetSize.obstructionSampling = { measured, skipped, reasons };
+}
+
+// RC2 WP7 post-processing only: never mutates the raw browser-captured
+// longTask/longAnimationFrame entries themselves, only adds a sibling
+// `attributionResolved` field per long task. Long Tasks with no
+// script-attributed source (containerType "window", empty containerSrc —
+// the Long Task API's own ceiling; it cannot name a script) inherit the
+// script-derived ownership of a containing Long Animation Frame recorded in
+// the SAME case/step window when one exists.
+function resolveLongTaskAttribution(state) {
+  const longTasks = state.evidence?.longTask ?? [];
+  const longAnimationFrames = state.evidence?.longAnimationFrame ?? [];
+  for (const task of longTasks) {
+    const taskStart = task.startTime;
+    const taskEnd = task.startTime + (task.duration ?? 0);
+    const matchingLoaf = longAnimationFrames.find(
+      (loaf) =>
+        typeof loaf.startTime === "number" &&
+        typeof loaf.duration === "number" &&
+        loaf.startTime <= taskStart &&
+        loaf.startTime + loaf.duration >= taskEnd,
+    );
+    if (matchingLoaf) {
+      task.attributionResolved = {
+        source: "long-animation-frame-join",
+        ownership: matchingLoaf.ownership,
+        ownershipEvidence: `inherited from a containing Long Animation Frame: ${matchingLoaf.ownershipEvidence}`,
+        loafStartTime: matchingLoaf.startTime,
+        loafDuration: matchingLoaf.duration,
+      };
+      continue;
+    }
+    const rawAttribution = Array.isArray(task.attribution) ? task.attribution : [];
+    const windowContainerNoSrc =
+      rawAttribution.length > 0 &&
+      rawAttribution.every(
+        (item) => item?.containerType === "window" && !item?.containerSrc,
+      );
+    task.attributionResolved = windowContainerNoSrc
+      ? {
+          source: "long-task-api-unattributable",
+          ownership: "first-party-unattributed",
+          ownershipEvidence:
+            "long-task-api-unattributable: containerType window with no script source, and no containing Long Animation Frame recorded a script-derived owner",
+        }
+      : {
+          source: "long-task-attribution",
+          ownership: task.ownership,
+          ownershipEvidence: task.ownershipEvidence,
+        };
+  }
+}
+
+// Additive median/max aggregation across a case's repeated
+// chamber:cycle-N states (WP7 landscape breadth: n>=3 samples instead of a
+// single potentially-noisy data point).
+function summarizeBlockingDurations(values) {
+  const finite = values.filter((value) => typeof value === "number" && Number.isFinite(value));
+  if (finite.length === 0) return { samples: 0, median: null, max: null };
+  const sorted = [...finite].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  const median = sorted.length % 2 === 0
+    ? (sorted[mid - 1] + sorted[mid]) / 2
+    : sorted[mid];
+  return { samples: sorted.length, median, max: sorted[sorted.length - 1] };
+}
+
+// Idempotent: safe to call before every axe run (the single full-page audit
+// and each per-chamber audit) regardless of call order.
+async function ensureAxeLoaded(page) {
+  const loaded = await page.evaluate(() => typeof window.axe !== "undefined");
+  if (!loaded) await page.addScriptTag({ path: axePath });
+}
+
+async function runAxeAudit(page) {
+  return page.evaluate(
+    async (runOnlyValues) =>
+      window.axe.run(document, { runOnly: { type: "tag", values: runOnlyValues } }),
+    AXE_RUNONLY_TAGS,
+  );
 }
 
 async function activate(locator, mode) {
@@ -1519,7 +1875,7 @@ function evaluateCaseAcceptance(result) {
       add(
         "motion-budget",
         state.step,
-        "The environment motion budget or declared-channel ownership contract failed.",
+        "The structural continuous/transient/scroll motion-channel budget failed.",
         {
           tier: budget.tier,
           declaredBudget: budget.declaredBudget,
@@ -1529,8 +1885,19 @@ function evaluateCaseAcceptance(result) {
             budget.runningEnvironmentAnimationCount,
           unownedRunningEnvironmentAnimations:
             budget.unownedRunningEnvironmentAnimations,
+          runningTransientTokens: budget.runningTransientTokens,
+          runningScrollTokens: budget.runningScrollTokens,
+          transientTimingViolations: budget.transientTimingViolations,
           quietReasons: budget.quietReasons,
         },
+      );
+    }
+    if (budget.unclassifiedEnvironmentAnimations.length > 0) {
+      add(
+        "unclassified-environment-animation",
+        state.step,
+        "A running animation on an environment/decorative surface has no resolvable data-cxos-motion-channel token.",
+        { animations: budget.unclassifiedEnvironmentAnimations },
       );
     }
     if (state.overflowX > 0) {
@@ -1651,11 +2018,16 @@ function evaluateCaseAcceptance(result) {
     }
     if (
       state.step === "idle:quiescence" &&
-      (state.idleRafDelta !== 0 || budget.runningChannelCount !== 0)
+      (state.idleRafDelta !== 0 ||
+        budget.runningChannelCount !== 0 ||
+        budget.runningTransientTokens.length !== 0 ||
+        budget.runningScrollTokens.length !== 0)
     ) {
       add("idle-work", state.step, "The settled idle window retained app rAF work or running environment channels.", {
         rafCallbacks: state.idleRafDelta,
         runningChannels: budget.runningChannels,
+        runningTransientTokens: budget.runningTransientTokens,
+        runningScrollTokens: budget.runningScrollTokens,
       });
     }
     if (state.step.startsWith("history:")) {
@@ -1701,16 +2073,19 @@ function evaluateCaseAcceptance(result) {
   }
 
   if (result.spec.id === "desktop-large") {
-    const choreography = result.states.find(
-      (state) => state.step === "choreography:scroll-linked",
-    )?.scrollLinkedChoreography;
-    if (choreography?.passed !== true) {
-      add(
-        "scroll-linked-choreography",
-        "choreography:scroll-linked",
-        "The A-tier reference chamber did not prove a visible-subject, document-scroller ViewTimeline with nonzero timing and rendered endpoint response.",
-        choreography ?? { evidence: "unavailable" },
-      );
+    for (const districtId of SCROLL_LINKED_DISTRICTS) {
+      const step = `choreography:scroll-linked:${districtId}`;
+      const choreography = result.states.find(
+        (state) => state.step === step,
+      )?.scrollLinkedChoreography;
+      if (choreography?.passed !== true) {
+        add(
+          "scroll-linked-choreography",
+          step,
+          `The ${districtId} travel chamber did not prove a visible-subject, document-scroller ViewTimeline with nonzero timing and rendered endpoint response.`,
+          choreography ?? { evidence: "unavailable" },
+        );
+      }
     }
   }
 
@@ -1751,6 +2126,31 @@ function evaluateCaseAcceptance(result) {
       "The Axe audit could not run in missing-feature capture mode.",
       result.axe.manualReview.auditError,
     );
+  }
+  if (result.spec.id === "desktop-large" || result.spec.id === "mobile") {
+    for (const districtId of DISTRICTS) {
+      const districtAxe = result.perDistrictAxe?.[districtId];
+      const step = `district:${districtId}`;
+      if (!districtAxe) {
+        add(
+          "axe-district-missing",
+          step,
+          "The per-chamber Axe audit did not record a result for this chamber.",
+          { district: districtId },
+        );
+        continue;
+      }
+      for (const violation of districtAxe.violations.filter(
+        (item) => item.impact === "critical" || item.impact === "serious",
+      )) {
+        add(
+          "axe-blocking-district",
+          step,
+          `Axe reported a serious or critical violation for the ${districtId} chamber.`,
+          { district: districtId, ...violation },
+        );
+      }
+    }
   }
 
   const appLongWork = result.states.flatMap((state) => [
@@ -1922,12 +2322,68 @@ async function runCase(spec) {
     file: settledScreenshot,
     animations: "disabled",
   });
-  await capture(
+  const arrivalState = await capture(
     `arrival:${arrivalResult}`,
     settledCursor,
     { activation: spec.activation ?? "keyboard" },
     { includeTargetSizes: true },
   );
+  await sampleOffViewportObstruction(page, arrivalState);
+
+  // RC2 WP7 NEW-B: the <=860px mobile facility map is the primary
+  // small-screen navigation and was never opened in any measured state.
+  // spec.width <= 860 matches exactly the cases the CSS's second
+  // `@media (max-width: 860px)` block switches .mobileFacilityMap to
+  // display:block (mobile, mobile-360, mobile-narrow, landscape, and
+  // reflow-200's 720px CSS viewport) — data-driven off the declared
+  // viewport width rather than a hardcoded case-id list.
+  if (spec.width <= 860) {
+    const mobileFacilityMapSummary = page.locator(
+      "nav[aria-label='Agency Command facility map'] > details > summary",
+    );
+    const directoryOpenCursor = await beginCasePhase("directory:open");
+    await activate(mobileFacilityMapSummary, spec.activation);
+    await page.waitForFunction(() =>
+      document
+        .querySelector("nav[aria-label='Agency Command facility map'] > details")
+        ?.hasAttribute("open"),
+    );
+    await waitForUiCommit(page);
+    const directoryScreenshot = `${label}-${spec.id}-directory-open-settled.png`;
+    await page.screenshot({
+      path: join(evidenceDir, directoryScreenshot),
+      fullPage: true,
+      animations: "disabled",
+    });
+    screenshots.push({
+      kind: "directory-open-settled",
+      file: directoryScreenshot,
+      animations: "disabled",
+    });
+    // On landscape (390px CSS height) the open list is deliberately taller
+    // than the viewport; whatever target-size/obstruction/overflow the
+    // probe below finds there is measured DATA about that real geometry,
+    // not a harness failure — the case still only fails via the normal
+    // acceptance gates (e.g. genuine <44px targets or a true obstruction).
+    const directoryState = await capture(
+      "directory:open",
+      directoryOpenCursor,
+      { activation: spec.activation },
+      { includeTargetSizes: true },
+    );
+    await sampleOffViewportObstruction(page, directoryState);
+
+    const directoryCloseCursor = await beginCasePhase("directory:close");
+    await activate(mobileFacilityMapSummary, spec.activation);
+    await page.waitForFunction(() =>
+      !document
+        .querySelector("nav[aria-label='Agency Command facility map'] > details")
+        ?.hasAttribute("open"),
+    );
+    await capture("directory:close", directoryCloseCursor, {
+      activation: spec.activation,
+    });
+  }
 
   if (spec.replay) {
     const replayCursor = await beginCasePhase("arrival:replay:start");
@@ -1956,6 +2412,17 @@ async function runCase(spec) {
 
   const shouldExerciseAll = spec.mode === "full";
   const destinations = shouldExerciseAll ? DISTRICTS : ["client-operations", "kai-suite", "growth-threshold"];
+  // RC2 WP7: populated only for desktop-large and mobile (the two mode:full
+  // cases whose per-district loop below settles every one of the seven
+  // chambers), one independent Axe audit keyed by district id. Any audit
+  // error propagates uncaught (no try/catch here) so a per-chamber Axe
+  // failure FAILS the run instead of silently skipping a chamber.
+  const perDistrictAxe = {};
+  // RC2 WP7 landscape breadth: median/max blocking duration across the
+  // measured chamber cycles, additive alongside each cycle's own existing
+  // single-value performance.phase figures. Populated only when
+  // spec.measuredCycles reuses the warmup+cycles traversal below.
+  let cycleBlocking = null;
   if (spec.measuredCycles) {
     const warmupCursor = await beginCasePhase("chamber:warmup");
     for (const district of DISTRICTS) {
@@ -1994,6 +2461,20 @@ async function runCase(spec) {
         measured: true,
       });
     }
+
+    const measuredCycleStates = states.filter(
+      (state) => /^chamber:cycle-\d+$/.test(state.step) && state.measured === true,
+    );
+    cycleBlocking = {
+      longAnimationFrameBlockingDurationMs: summarizeBlockingDurations(
+        measuredCycleStates.map(
+          (state) => state.performance.phase.longAnimationFrameBlockingDurationMs,
+        ),
+      ),
+      longTaskDurationMs: summarizeBlockingDurations(
+        measuredCycleStates.map((state) => state.performance.phase.longTaskDurationMs),
+      ),
+    };
   } else {
     for (const district of destinations) {
       const step = `district:${district}`;
@@ -2017,6 +2498,15 @@ async function runCase(spec) {
           animations: "disabled",
         });
       }
+      if (spec.id === "desktop-large" || spec.id === "mobile") {
+        await ensureAxeLoaded(page);
+        const districtAxe = await runAxeAudit(page);
+        perDistrictAxe[district] = {
+          violations: districtAxe.violations.map(summarizeAxeRule),
+          incomplete: districtAxe.incomplete.map(summarizeAxeRule),
+          passes: districtAxe.passes.map((rule) => safeEvidenceText(rule?.id, 200)),
+        };
+      }
       await capture(step, cursor, {
         activation: spec.activation,
         method: "direct",
@@ -2025,17 +2515,21 @@ async function runCase(spec) {
   }
 
   if (spec.id === "desktop-large") {
-    const cursor = await beginCasePhase("choreography:scroll-linked");
-    await navigateToDistrict(page, "client-operations", {
-      activation: spec.activation,
-      method: "direct",
-    });
-    const scrollLinkedChoreography = await measureScrollLinkedChoreography(page);
-    await capture("choreography:scroll-linked", cursor, {
-      activation: spec.activation,
-      method: "native-scroll",
-      scrollLinkedChoreography,
-    });
+    for (const districtId of SCROLL_LINKED_DISTRICTS) {
+      const step = `choreography:scroll-linked:${districtId}`;
+      const cursor = await beginCasePhase(step);
+      await navigateToDistrict(page, districtId, {
+        activation: spec.activation,
+        method: "direct",
+      });
+      const scrollLinkedChoreography = await measureScrollLinkedChoreography(page, districtId);
+      await capture(step, cursor, {
+        activation: spec.activation,
+        method: "native-scroll",
+        district: districtId,
+        scrollLinkedChoreography,
+      });
+    }
   }
 
   await navigateToDistrict(page, "kai-suite", {
@@ -2165,12 +2659,13 @@ async function runCase(spec) {
         innerWidth === 760 &&
         document.querySelector("main")?.getAttribute("data-cxos-tier") === "B",
       );
-      await capture(
+      const resizeTierBState = await capture(
         "resize:tier-b",
         resizeCursor,
         { from: { width: spec.width, height: spec.height } },
         { includeTargetSizes: true },
       );
+      await sampleOffViewportObstruction(page, resizeTierBState);
 
       const resizeRestoreCursor = await beginCasePhase("resize:restore");
       await page.setViewportSize({ width: spec.width, height: spec.height });
@@ -2178,12 +2673,13 @@ async function runCase(spec) {
         ({ width, height }) => innerWidth === width && innerHeight === height,
         { width: spec.width, height: spec.height },
       );
-      await capture(
+      const resizeRestoreState = await capture(
         "resize:restore",
         resizeRestoreCursor,
         { restored: { width: spec.width, height: spec.height } },
         { includeTargetSizes: true },
       );
+      await sampleOffViewportObstruction(page, resizeRestoreState);
     }
 
     if (spec.lifecycle) {
@@ -2408,13 +2904,22 @@ async function runCase(spec) {
           active !== document.documentElement &&
           active !== root;
       });
-      await capture(
+      const departureReturnState = await capture(
         "departure:return",
         returnCursor,
         { focusRestored, trustedBfcache },
         { includeTargetSizes: true },
       );
+      await sampleOffViewportObstruction(page, departureReturnState);
     }
+  }
+
+  // RC2 WP7 post-processing only: joins each recorded Long Task to a
+  // containing Long Animation Frame in the same case/step window, additive
+  // (attributionResolved), never touching the raw captured longTask/
+  // longAnimationFrame entries.
+  for (const state of states) {
+    resolveLongTaskAttribution(state);
   }
 
   const persistenceEvents = states.flatMap((state) => [
@@ -2433,12 +2938,8 @@ async function runCase(spec) {
   let axeAuditError = null;
   let axe = { violations: [], passes: [], incomplete: [] };
   try {
-    await page.addScriptTag({ path: axePath });
-    axe = await page.evaluate(async () =>
-      window.axe.run(document, {
-        runOnly: { type: "tag", values: ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"] },
-      }),
-    );
+    await ensureAxeLoaded(page);
+    axe = await runAxeAudit(page);
   } catch (error) {
     if (!captureMissingFeatures) throw error;
     axeAuditError = safeErrorSummary(error);
@@ -2466,6 +2967,8 @@ async function runCase(spec) {
       responsesByStatus: summarizeBy(responses, "status"),
       failuresByOwnership: summarizeBy(requestFailures, "ownership"),
     },
+    perDistrictAxe,
+    cycleBlocking,
     persistence,
     cookies: cookies.map(({ name, domain, path, sameSite, secure, httpOnly }) => {
       const isNextAuth = /^(?:(?:__Secure-|__Host-)?next-auth\.|nextauth\.)/i.test(name);
@@ -2488,7 +2991,7 @@ async function runCase(spec) {
     pageErrors,
     axe: {
       violations: axeViolations,
-      passes: axe.passes.length,
+      passes: axe.passes.map((rule) => safeEvidenceText(rule?.id, 200)),
       incomplete: axeIncomplete,
       manualReview: {
         required: axeIncomplete.length > 0 || axeAuditError !== null,
@@ -2524,13 +3027,15 @@ function missingFeatureCaseResult(spec, error) {
       responsesByStatus: {},
       failuresByOwnership: {},
     },
+    perDistrictAxe: {},
+    cycleBlocking: null,
     persistence: { events: [], byMechanism: {}, byOwnership: {} },
     cookies: [],
     console: [],
     pageErrors: [],
     axe: {
       violations: [],
-      passes: 0,
+      passes: [],
       incomplete: [],
       manualReview: {
         required: true,
@@ -2614,7 +3119,7 @@ function evaluateReportAcceptance(results, javaScriptDisabled) {
   const chamberScreenshots = desktopLarge?.screenshots.filter(
     (screenshot) => screenshot.kind === "chamber-settled",
   ) ?? [];
-  const trustedBfcacheState = allStates.find(
+  const trustedBfcacheStates = allStates.filter(
     (state) => state.step === "departure:return",
   );
 
@@ -2688,10 +3193,23 @@ function evaluateReportAcceptance(results, javaScriptDisabled) {
   );
   addCoverage(
     "coverage:trusted-bfcache",
-    trustedBfcacheState?.trustedBfcache?.historyTraversal === "history.back()" &&
-      trustedBfcacheState.trustedBfcache.proven === true,
-    "A real history.back traversal proves BFCache restoration with document identity and trusted persisted pageshow evidence.",
-    trustedBfcacheState?.trustedBfcache ?? { evidence: "unavailable" },
+    // RC2 WP7: BFCache breadth now covers both the desktop AND mobile
+    // viewports (a second traversal, a second viewport) — require at
+    // least both and every recorded traversal proven, not just the first
+    // match found across the matrix.
+    trustedBfcacheStates.length >= 2 &&
+      trustedBfcacheStates.every(
+        (state) =>
+          state.trustedBfcache?.historyTraversal === "history.back()" &&
+          state.trustedBfcache.proven === true,
+      ),
+    "A real history.back traversal proves BFCache restoration with document identity and trusted persisted pageshow evidence, independently on both the desktop and mobile viewports.",
+    {
+      traversals: trustedBfcacheStates.map((state) => ({
+        caseId: state.caseId,
+        trustedBfcache: state.trustedBfcache ?? { evidence: "unavailable" },
+      })),
+    },
   );
   addCoverage(
     "coverage:desktop-large-chamber-screenshots",
@@ -2717,28 +3235,123 @@ function evaluateReportAcceptance(results, javaScriptDisabled) {
       allStates.every((state) =>
         Number.isInteger(
           state.animations.motionBudget?.runningEnvironmentAnimationCount,
-        ),
+        ) &&
+        Array.isArray(state.animations.motionBudget?.runningTransientTokens) &&
+        Array.isArray(state.animations.motionBudget?.runningScrollTokens) &&
+        Array.isArray(state.animations.motionBudget?.transientTimingViolations) &&
+        Array.isArray(state.animations.motionBudget?.unclassifiedEnvironmentAnimations),
       ),
-    "Per-animation identity, structural ownership, play state, timing/progress, timeline type, and motion-budget evidence is present.",
-  );
-  const scrollLinkedState = allStates.find(
-    (state) => state.step === "choreography:scroll-linked",
+    "Per-animation identity, a structurally-resolved continuous/transient/scroll channel token, play state, timing/progress, timeline type, and motion-budget evidence (including transient timing and unclassified-animation detection) is present.",
   );
   addCoverage(
     "coverage:scroll-linked-choreography",
-    scrollLinkedState?.scrollLinkedChoreography?.passed === true,
-    "Desktop Tier A proves a genuine, nonzero ViewTimeline animation that responds across native scroll endpoints.",
-    scrollLinkedState?.scrollLinkedChoreography ?? { evidence: "unavailable" },
-  );
-  addCoverage(
-    "coverage:target-size",
-    results.every((result) =>
-      result.states.some((state) =>
-        state.targetSize?.minimumPx === 44 &&
-        Number.isInteger(state.targetSize.obstructionFailures),
+    SCROLL_LINKED_DISTRICTS.every((districtId) =>
+      allStates.some(
+        (state) =>
+          state.step === `choreography:scroll-linked:${districtId}` &&
+          state.scrollLinkedChoreography?.passed === true,
       ),
     ),
-    "Every viewport includes 44px target-size and center-point obstruction measurements.",
+    "Desktop Tier A proves a genuine, nonzero ViewTimeline animation that responds across native scroll endpoints, independently in every one of the four scroll-linked travel chambers.",
+    {
+      chambers: SCROLL_LINKED_DISTRICTS.map((districtId) => ({
+        districtId,
+        scrollLinkedChoreography:
+          allStates.find((state) => state.step === `choreography:scroll-linked:${districtId}`)
+            ?.scrollLinkedChoreography ?? { evidence: "unavailable" },
+      })),
+    },
+  );
+  const targetSizeSamplingByCase = results.map((result) => {
+    const measuringStates = result.states.filter(
+      (state) => state.targetSize?.minimumPx === 44,
+    );
+    // The gate predicate below requires this to be true for every state
+    // that measures target sizes at all — a 0-sample state (obstruction
+    // never actually measured, e.g. every target off-viewport and
+    // unsampleable) must not silently satisfy the gate the way
+    // Number.isInteger(obstructionFailures) used to (0 is an integer too).
+    const anyStateActuallyMeasured = measuringStates.some(
+      (state) => state.targetSize.obstructionMeasured > 0,
+    );
+    const measured = measuringStates.reduce(
+      (sum, state) => sum + (state.targetSize.obstructionMeasured ?? 0),
+      0,
+    );
+    const skipped = measuringStates.reduce(
+      (sum, state) => sum + (state.targetSize.obstructionSampling?.skipped ?? 0),
+      0,
+    );
+    const reasons = measuringStates.reduce((tally, state) => {
+      for (const [reason, count] of Object.entries(
+        state.targetSize.obstructionSampling?.reasons ?? {},
+      )) {
+        tally[reason] = (tally[reason] ?? 0) + count;
+      }
+      return tally;
+    }, {});
+    return {
+      caseId: result.spec.id,
+      measuringStateCount: measuringStates.length,
+      anyStateActuallyMeasured,
+      measured,
+      skipped,
+      reasons,
+    };
+  });
+  addCoverage(
+    "coverage:target-size",
+    targetSizeSamplingByCase.every(
+      (entry) => entry.measuringStateCount > 0 && entry.anyStateActuallyMeasured,
+    ),
+    "Every viewport measures at least one 44px target and obtains at least one center-point obstruction sample (obstructionMeasured > 0) — either naturally in-viewport at rest, or scroll-restored (scrollIntoView to center, hit-tested, exact scroll position restored) in a dedicated post-CLS phase.",
+    { cases: targetSizeSamplingByCase },
+  );
+  const directoryOpenCases = results.filter((result) => result.spec.width <= 860);
+  addCoverage(
+    "coverage:mobile-facility-directory",
+    directoryOpenCases.length > 0 &&
+      directoryOpenCases.every(
+        (result) =>
+          result.states.some((state) => state.step === "directory:open") &&
+          result.states.some((state) => state.step === "directory:close"),
+      ),
+    "Every sub-860px viewport opens, measures (target-size and obstruction), and closes the mobile facility map — the primary small-screen navigation.",
+    {
+      cases: directoryOpenCases.map((result) => ({
+        caseId: result.spec.id,
+        opened: result.states.some((state) => state.step === "directory:open"),
+        closed: result.states.some((state) => state.step === "directory:close"),
+      })),
+    },
+  );
+  const perChamberAxeCaseIds = ["desktop-large", "mobile"];
+  addCoverage(
+    "coverage:per-chamber-axe",
+    perChamberAxeCaseIds.every((caseId) => {
+      const result = results.find((candidate) => candidate.spec.id === caseId);
+      return DISTRICTS.every((district) => {
+        const districtAxe = result?.perDistrictAxe?.[district];
+        return (
+          Array.isArray(districtAxe?.violations) &&
+          Array.isArray(districtAxe?.incomplete) &&
+          Array.isArray(districtAxe?.passes)
+        );
+      });
+    }),
+    "Both the desktop-large and mobile cases run an independent Axe audit against every one of the seven settled chambers (not just whichever chamber happened to be active for the single full-page audit).",
+    {
+      cases: perChamberAxeCaseIds.map((caseId) => {
+        const result = results.find((candidate) => candidate.spec.id === caseId);
+        return {
+          caseId,
+          districts: DISTRICTS.map((district) => ({
+            district,
+            measured: Boolean(result?.perDistrictAxe?.[district]),
+          })),
+        };
+      }),
+    },
   );
   addCoverage(
     "coverage:network-failures",
@@ -2754,10 +3367,11 @@ function evaluateReportAcceptance(results, javaScriptDisabled) {
     results.every((result) =>
       Array.isArray(result.axe?.violations) &&
       Array.isArray(result.axe?.incomplete) &&
+      Array.isArray(result.axe?.passes) &&
       typeof result.axe?.manualReview?.required === "boolean" &&
       result.axe?.manualReview?.auditError === null,
     ),
-    "Axe violations and incomplete rules retain privacy-safe rule/node detail, with incomplete results explicitly routed to manual review.",
+    "Axe violations and incomplete rules retain privacy-safe rule/node detail, passing rule ids are persisted as an array (not a count), with incomplete results explicitly routed to manual review.",
   );
   addCoverage(
     "coverage:javascript-disabled",
@@ -2862,23 +3476,25 @@ try {
         "first-party-unattributed": "Same-origin behavior without enough source evidence to assign ownership.",
         external: "Cross-origin source or request.",
         mixed: "A performance entry containing scripts from more than one ownership class.",
+        "long-task-api-unattributable":
+          "A Long Task whose own attribution is containerType \"window\" with no script source (the Long Task API's ceiling — it cannot name a script) AND no containing Long Animation Frame in the same case/step window recorded a script-derived owner. Resolved post-processing only, in attributionResolved; the raw longTask entry and its original attribution/ownership fields are never altered.",
       },
       persistencePrivacy:
         "Persistence keys, mechanisms, operation names, and value lengths are recorded; cookie/storage values and request bodies are never recorded.",
       networkPrivacy:
         "Request and response URLs omit query strings and credentials; methods, resource types, status codes, and failure text are recorded, never request or response bodies.",
       animationLedger:
-        "Every snapshot records animation name, source kind, pseudo-element, structural target, declared motion channel, play state, normalized current time/duration, computed progress, timeline type, and timeline time. Known legacy environmental signatures fail as unowned. Tier A <=2, Tier B <=1, and every quiet/static state =0 running environment animations and declared channels. A dedicated native-scroll probe separately proves visible-subject ViewTimeline wiring to the document scroller plus nonzero timing and rendered transform response.",
+        "Every snapshot records animation name, source kind, pseudo-element, structural target, the raw data-cxos-motion-channel attribute string, and a structurally-resolved single token/class (continuous, transient, or scroll — read from the token's own prefix; never from a keyframe name). For an owner that declares more than one token, the specific running animation's own computed timeline type and iteration count disambiguate which token applies. Continuous channels are counted by distinct running token: Tier A <=2, Tier B <=1, every quiet/static state =0. Transient channels are counted by distinct running token, grouping staggered instances of one recognition beat as one logical beat: <=3 concurrent, each individual running instance a single iteration and <=1500ms. Scroll channels are tracked but excluded from the continuous count. Any running animation on a decorative/environment surface (or matching a retained legacy-keyframe-name safety net, kept only as a backstop for animations with no ancestor-or-self channel attribute at all — never consulted to decide a class) with no resolvable token fails as unclassified-environment-animation. A dedicated native-scroll probe separately proves visible-subject ViewTimeline wiring to the document scroller plus nonzero timing and rendered transform response, independently for each of the four scroll-linked chambers (client-operations, evidence-archive, growth-threshold, business-health).",
       syntheticLifecycle:
-        "Synthetic visibility and PageTransitionEvent phases are explicitly labeled, record isTrusted=false, and are diagnostic only—never BFCache proof. Trusted BFCache proof requires a real history.back traversal, reused document ID, and isTrusted=true pageshow.persisted=true; CDP not-used reasons are recorded where available.",
+        "Synthetic visibility and PageTransitionEvent phases are explicitly labeled, record isTrusted=false, and are diagnostic only—never BFCache proof. Trusted BFCache proof requires a real history.back traversal, reused document ID, and isTrusted=true pageshow.persisted=true; CDP not-used reasons are recorded where available. Proven independently on both the desktop and mobile viewports.",
       reflow200:
         "The 200% reflow case uses a 720x450 CSS viewport at deviceScaleFactor 2, producing a 1440x900 physical surface. It does not modify the root font size.",
       axePrivacyAndManualReview:
-        "Axe violations and incomplete results retain sanitized rule, selector, check, and node detail. Raw node HTML and check data are omitted. Incomplete results are reported for manual review and are not automatically treated as violations.",
+        "Axe violations, incomplete results, and passing rule ids (an array, not a count) retain sanitized rule, selector, check, and node detail. Raw node HTML and check data are omitted. Incomplete results are reported for manual review and are not automatically treated as violations. runOnly covers wcag2a/wcag2aa/wcag21a/wcag21aa/wcag22a/wcag22aa. On the desktop-large and mobile cases, an additional independent audit runs once per chamber at that chamber's settled state, keyed by district id; an audit error on any chamber fails the run rather than skipping it.",
       deterministicScreenshots:
         "Each desktop-large chamber screenshot waits on the settled-shot gate and disables animations during capture for deterministic pixels.",
       targetSize:
-        "Settled and responsive snapshots measure visible enabled controls against the CXOS 44px minimum and hit-test in-viewport control centers for obstruction without recording labels or form values.",
+        "Settled and responsive snapshots measure visible enabled controls against the CXOS 44px minimum. A control already centered in the viewport is hit-tested for obstruction at rest. A control whose center is off-viewport is sampled in a dedicated post-CLS phase, strictly after that state's normal capture: its exact scroll position is recorded, it is scrolled to viewport center, its true center is hit-tested, then the exact prior scroll position is restored before the next target — so the probe never contaminates the CLS/animation-sensitive numbers already recorded for that state. A target that still cannot be resolved is recorded with an explicit skipReason (zero-size, covered-by-definition, or detached) instead of being silently omitted; obstructionMeasured counts only targets actually sampled, never a hollow 0-of-0 pass. No labels or form values are recorded.",
     },
     toolchain: {
       harness: {

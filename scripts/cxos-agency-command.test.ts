@@ -480,8 +480,16 @@ check(
     /arrivalDurationMs: \{ A: 1500, B: 700 \}/.test(stageCode) &&
     /motionChannels: AGENCY_MOTION_CHANNELS/.test(stageCode) &&
     /beatOrder=\{runtime\.arrivalBeats\}/.test(stage) &&
-    (stage.match(/data-cxos-motion-channel=\{runtime\.motionChannels\[[0-2]\]\}/g) ?? [])
-      .length === 3 &&
+    // RC2 WP7: the runtime contract's motionChannels field stays bound
+    // (validated above and by validateCxosRoomRuntimeUnsafe), but the three
+    // legacy DOM bindings are gone — .ambientSweep now carries the one
+    // literal structural token it actually runs, and .roomBreath/
+    // .facilityPulse (both retired/killed in Living mode, see
+    // agency-command.module.css's unconditional kill list) claim no channel.
+    /className=\{styles\.ambientSweep\}\s*\n\s*data-cxos-motion-channel="continuous:facility-sweep"/.test(
+      stage,
+    ) &&
+    (stage.match(/runtime\.motionChannels\[/g) ?? []).length === 0 &&
     /"--cxos-arrival-duration": `\$\{runtime\.arrivalDurationMs\}ms`/.test(
       stageCode,
     ) &&

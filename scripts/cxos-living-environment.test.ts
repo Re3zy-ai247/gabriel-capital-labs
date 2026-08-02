@@ -304,13 +304,23 @@ check(
     /data-cxos-passage-target/.test(stage),
 );
 check(
+  // RC2 WP7 taxonomy migration: the facility sweep carries the one literal
+  // structural token it actually runs (no more runtime.motionChannels[]
+  // indirection), and the per-chamber breath/acquire/scroll trio keeps its
+  // declared ownership marker.
   "the facility sweep and per-chamber breath channels have declared ownership markers",
-  /data-cxos-motion-channel=\{runtime\.motionChannels\[1\]\}/.test(stage) &&
+  /className=\{styles\.ambientSweep\}\s*\n\s*data-cxos-motion-channel="continuous:facility-sweep"/.test(
+    stage,
+  ) &&
     /className=\{styles\.districtEnvironment\}[\s\S]{0,160}data-cxos-motion-channel="continuous:chamber-breath transient:chamber-acquire scroll:depth-parallax"/.test(
       stage,
     ) &&
     /data-cxos-animation-budget="2"/.test(css) &&
     /data-cxos-animation-budget="1"/.test(css),
+);
+check(
+  "stage.tsx contains zero legacy runtime.motionChannels[ DOM bindings (the taxonomy migration is complete)",
+  (stage.match(/runtime\.motionChannels\[/g) ?? []).length === 0,
 );
 check(
   "Agency route reset clears transient overlays, pending focus, and Kai state",
@@ -378,25 +388,174 @@ check(
     !/:is\([^)]*\.healthBank::after/.test(css),
 );
 check(
-  "browser evidence counts known legacy signatures and waits for the settled shot",
+  // RC2 WP7 rewrite: the legacy keyframe-name list is retained ONLY as a
+  // defense-in-depth safety net feeding the unclassified-environment-
+  // animation fail (an animation with no ancestor-or-self channel
+  // attribute at all); it is no longer consulted to decide an animation's
+  // class or ownership, and runningEnvironmentAnimationCount is now a
+  // backward-compatible alias for the structural continuous-token count.
+  "browser evidence retains the legacy-keyframe safety net for the unclassified-animation backstop only, and still waits for the settled shot",
   /ObservatoryScan\|EvidenceRecognition\|KaiRecognition/.test(browserHarness) &&
+    /LEGACY_ENVIRONMENT_KEYFRAME_SAFETY_NET/.test(browserHarness) &&
     /runningEnvironmentAnimationCount/.test(browserHarness) &&
     /async function waitForSettledShot/.test(browserHarness) &&
     /style\.visibility === "hidden"/.test(browserHarness),
 );
 check(
-  "A-tier scroll choreography preserves its ViewTimeline and is behavior-gated",
+  // RC2 WP7: NO keyframe-name-regex classification remains. The retained
+  // safety-net regex above feeds only the unclassified-environment-
+  // animation fail; the actual class decision (continuous/transient/
+  // scroll) and ownership are 100% structural — resolveMotionToken reads
+  // only the token's own prefix, disambiguating a multi-token owner by the
+  // animation's own timeline type / iteration count, never its keyframe
+  // name. The old declared-channel-list ternary (motionOwnership /
+  // "declared" / "unowned-living-animation" / "unknown-marker" /
+  // declaredMotionChannels) is gone entirely.
+  "NO keyframe-name-regex classification remains: continuous/transient/scroll membership is decided purely by data-cxos-motion-channel token prefix",
+  /const resolveMotionToken = /.test(browserHarness) &&
+    /resolvedMotionClass === "continuous"/.test(browserHarness) &&
+    /resolvedMotionClass === "transient"/.test(browserHarness) &&
+    /resolvedMotionClass === "scroll"/.test(browserHarness) &&
+    !/motionOwnership/.test(browserHarness) &&
+    !/"unowned-living-animation"/.test(browserHarness) &&
+    !/"unknown-marker"/.test(browserHarness) &&
+    !/declaredMotionChannels/.test(browserHarness),
+);
+check(
+  "the structural classifier enforces a single iteration and a <=1500ms ceiling for every running transient:* animation instance",
+  /animation\.iterations !== 1/.test(browserHarness) &&
+    /animation\.duration > 1500/.test(browserHarness) &&
+    /transientTimingViolations/.test(browserHarness),
+);
+check(
+  "the unclassified-environment-animation fail code exists and closes the budget-bypass hole",
+  /"unclassified-environment-animation"/.test(browserHarness) &&
+    /unclassifiedEnvironmentAnimation/.test(browserHarness),
+);
+check(
+  "A-tier scroll choreography preserves its ViewTimeline and is behavior-gated across all four scroll-linked travel chambers",
   /animation-duration:\s*auto\s*!important/.test(css) &&
     /animation-timeline:\s*view\(\)\s*!important/.test(css) &&
     /animation-range:\s*cover 8% cover 92%\s*!important/.test(css) &&
     /\.districtEnvironment\s*\{[\s\S]{0,160}overflow:\s*clip/.test(css) &&
-    /async function measureScrollLinkedChoreography/.test(browserHarness) &&
+    /async function measureScrollLinkedChoreography\(page, districtId\)/.test(browserHarness) &&
     /genuineViewTimeline/.test(browserHarness) &&
     /timelineSubjectMatches/.test(browserHarness) &&
     /timelineSourceIsDocumentScroller/.test(browserHarness) &&
     /endpointResponsive/.test(browserHarness) &&
     /renderedTransformResponsive/.test(browserHarness) &&
     /coverage:scroll-linked-choreography/.test(browserHarness),
+);
+(() => {
+  // The harness's traversal list must match the CSS's own opt-in list —
+  // parse both independently and compare as sets so the two cannot drift.
+  // The data-cxos-profile list lives in the SELECTOR (the :is(...) before
+  // the opening brace), not the rule body, so this slices from the
+  // selector's start up to (not past) the brace — extractRuleBody would
+  // return the wrong half (the animation-name/... declarations).
+  const cssSelectorStart = css.indexOf(
+    '.room[data-cxos-environment][data-cxos-animation-budget="2"]:is(',
+  );
+  const cssSelectorText =
+    cssSelectorStart >= 0
+      ? css.slice(cssSelectorStart, css.indexOf("{", cssSelectorStart))
+      : "";
+  const cssScrollLinkedDistricts = [
+    ...cssSelectorText.matchAll(/data-cxos-profile="([a-z-]+)"/g),
+  ].map((match) => match[1]);
+  const harnessScrollLinkedDistrictsSource =
+    browserHarness.match(
+      /const SCROLL_LINKED_DISTRICTS = Object\.freeze\(\[([\s\S]*?)\]\);/,
+    )?.[1] ?? "";
+  const harnessScrollLinkedDistricts = [
+    ...harnessScrollLinkedDistrictsSource.matchAll(/"([a-z-]+)"/g),
+  ].map((match) => match[1]);
+  check(
+    "the four-district scroll-proof list in browser.mjs matches the CSS @supports (animation-timeline: view()) opt-in list, compared as sets",
+    cssScrollLinkedDistricts.length === 4 &&
+      harnessScrollLinkedDistricts.length === 4 &&
+      new Set([...cssScrollLinkedDistricts, ...harnessScrollLinkedDistricts]).size === 4,
+  );
+})();
+check(
+  "axe runOnly covers wcag22a and wcag22aa alongside the existing WCAG 2.0/2.1 tags, shared by the full-page and per-chamber audits",
+  /AXE_RUNONLY_TAGS/.test(browserHarness) &&
+    /"wcag22a"/.test(browserHarness) &&
+    /"wcag22aa"/.test(browserHarness) &&
+    /async function runAxeAudit/.test(browserHarness),
+);
+check(
+  "axe passing rule ids are persisted as an array via .map(), never as a bare .length count",
+  /passes:\s*axe\.passes\.map\(/.test(browserHarness) &&
+    !/passes:\s*axe\.passes\.length/.test(browserHarness) &&
+    !/passes:\s*0,/.test(browserHarness),
+);
+check(
+  "per-chamber Axe audits run on desktop-large and mobile, keyed by district id, and fail (not skip) on error",
+  /perDistrictAxe\[district\]/.test(browserHarness) &&
+    /coverage:per-chamber-axe/.test(browserHarness) &&
+    /axe-blocking-district/.test(browserHarness),
+);
+check(
+  "the target-size coverage gate predicate requires a real obstructionMeasured > 0 sample, not just an integer obstructionFailures field",
+  /state\.targetSize\.obstructionMeasured > 0/.test(browserHarness) &&
+    /coverage:target-size/.test(browserHarness) &&
+    !/Number\.isInteger\(state\.targetSize\.obstructionFailures\)/.test(browserHarness),
+);
+check(
+  "the post-CLS obstruction probe restores the exact prior scroll position and records a skip reason (zero-size, covered-by-definition, or detached) instead of silently omitting an unsampleable target",
+  /async function sampleOffViewportObstruction/.test(browserHarness) &&
+    /scrollIntoView\(\{ block: "center" \}\)/.test(browserHarness) &&
+    /"zero-size"/.test(browserHarness) &&
+    /"covered-by-definition"/.test(browserHarness) &&
+    /"detached"/.test(browserHarness) &&
+    /obstructionSampling/.test(browserHarness),
+);
+(() => {
+  const mobileSpecBlock = browserHarness.slice(
+    browserHarness.indexOf('id: "mobile",'),
+    browserHarness.indexOf("},", browserHarness.indexOf('id: "mobile",')),
+  );
+  check(
+    "the mobile spec declares departure: true (BFCache breadth: a second traversal, a second viewport)",
+    mobileSpecBlock.length > 0 && /departure: true/.test(mobileSpecBlock),
+  );
+})();
+check(
+  "the trusted-BFCache coverage gate requires proof on both the desktop and mobile viewports, not just the first traversal found",
+  /trustedBfcacheStates\.length >= 2/.test(browserHarness),
+);
+(() => {
+  const landscapeSpecBlock = browserHarness.slice(
+    browserHarness.indexOf('id: "landscape",'),
+    browserHarness.indexOf("},", browserHarness.indexOf('id: "landscape",')),
+  );
+  check(
+    "the landscape spec declares measuredCycles: 3, reusing the desktop warmup+cycles mechanism for n>=3 samples",
+    landscapeSpecBlock.length > 0 && /measuredCycles: 3/.test(landscapeSpecBlock),
+  );
+})();
+check(
+  "median + max blocking duration are reported additively across a case's measured chamber cycles",
+  /function summarizeBlockingDurations/.test(browserHarness) &&
+    /cycleBlocking = \{/.test(browserHarness) &&
+    /median/.test(browserHarness) &&
+    /\bmax\b/.test(browserHarness),
+);
+check(
+  "a directory:open step (with its directory:close counterpart) opens the <=860px mobile facility map, measuring target-size and obstruction there before closing it",
+  /"directory:open"/.test(browserHarness) &&
+    /"directory:close"/.test(browserHarness) &&
+    /spec\.width <= 860/.test(browserHarness) &&
+    /mobileFacilityMap/.test(browserHarness) &&
+    /coverage:mobile-facility-directory/.test(browserHarness),
+);
+check(
+  "the long-task-api-unattributable taxonomy term exists: a post-processing LoAF<->Long Task join, additive only, never mutating the raw capture",
+  /"long-task-api-unattributable"/.test(browserHarness) &&
+    /function resolveLongTaskAttribution/.test(browserHarness) &&
+    /attributionResolved/.test(browserHarness) &&
+    /long-animation-frame-join/.test(browserHarness),
 );
 check(
   "finite arrival threshold beats are not charged to the ambient environment budget",
@@ -525,10 +684,18 @@ const classifiedMotionChannelAttrs = [
   ...stage.matchAll(/data-cxos-motion-channel=(?:"[^"]*"|\{[^}]*\})/g),
 ]
   .map((match) => match[0])
+  // RC2 WP7: the taxonomy migration removed every runtime.motionChannels[]
+  // DOM binding (verified as its own zero-count check above), so this
+  // filter is now a no-op by construction — kept so this check still holds
+  // if a future change ever reintroduces a dynamic binding.
   .filter((attr) => !/runtime\.motionChannels\[/.test(attr));
 check(
+  // 13 pre-existing structural bindings + the migrated .ambientSweep
+  // literal ("continuous:facility-sweep") = 14. .roomBreath and
+  // .facilityPulse lost their attribute entirely (retired/killed in Living
+  // mode) rather than gaining a literal, so they add zero.
   "every newly classified data-cxos-motion-channel attribute in stage.tsx carries a conforming class:name token",
-  classifiedMotionChannelAttrs.length === 13 &&
+  classifiedMotionChannelAttrs.length === 14 &&
     classifiedMotionChannelAttrs.every((attr) =>
       [...attr.matchAll(/"([^"]+)"/g)].some((match) =>
         match[1].split(" ").every((token) => CHANNEL_TOKEN.test(token)),

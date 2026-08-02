@@ -954,18 +954,10 @@ export function AgencyCommandStage() {
       <div
         aria-hidden
         className={styles.ambientSweep}
-        data-cxos-motion-channel={runtime.motionChannels[1]}
+        data-cxos-motion-channel="continuous:facility-sweep"
       />
-      <div
-        aria-hidden
-        className={styles.roomBreath}
-        data-cxos-motion-channel={runtime.motionChannels[0]}
-      />
-      <div
-        aria-hidden
-        className={styles.facilityPulse}
-        data-cxos-motion-channel={runtime.motionChannels[2]}
-      >
+      <div aria-hidden className={styles.roomBreath} />
+      <div aria-hidden className={styles.facilityPulse}>
         <span data-channel="capacity"><i /></span>
         <span data-channel="client-flow"><i /></span>
         <span data-channel="queue-pressure"><i /></span>
