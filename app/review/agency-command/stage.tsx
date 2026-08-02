@@ -1698,13 +1698,27 @@ function KaiContextSpine({
   available: boolean;
   onStage: (suggestion: string, sourceDistrict: AgencyDistrictId) => void;
 }) {
+  // The held Kai context (see kaiContextHoldDistricts / setKaiContextDistrict
+  // in the runtime hook) keeps showing the source chamber's line while the
+  // operator is inside Kai Suite. When that source differs from the chamber
+  // actually on screen, label it as carried context instead of presenting it
+  // as this chamber's own line.
+  const carriedContext = contextDistrict.id !== activeDistrict.id;
   return (
     <aside
       className={styles.kaiContext}
       aria-label={`Kai context for ${activeDistrict.name}`}
     >
       <div>
-        <span>KAI · CONTINUOUS EXECUTIVE CHANNEL</span>
+        <span>
+          {carriedContext ? (
+            <>
+              CARRIED CONTEXT · {contextDistrict.name.toUpperCase()}
+              <br />
+            </>
+          ) : null}
+          KAI · CONTINUOUS EXECUTIVE CHANNEL
+        </span>
         <p>{contextDistrict.kaiContext}</p>
       </div>
       {activeDistrict.id === "kai-suite" ? (

@@ -155,6 +155,11 @@ export interface CxosChamberPresentation<DistrictId extends string> {
   focus: CxosFocusPreset;
   idle: CxosIdlePreset;
   kai: CxosKaiResponsePreset;
+  // Optional per-chamber override of the room-level idleAfterMs default; the
+  // active chamber's own identity can settle faster or hold longer than the
+  // rest of the facility while remaining backward-compatible with profiles
+  // that omit it.
+  idleAfterMs?: { A: number; B: number };
 }
 
 export type CxosChamberEnvironmentProfile<DistrictId extends string> =
@@ -278,6 +283,17 @@ function includesToken<T extends string>(
   return registry.includes(value as T);
 }
 
+function invalidIdleTiming(timing: { A: number; B: number }): boolean {
+  return (
+    !Number.isInteger(timing.A) ||
+    !Number.isInteger(timing.B) ||
+    timing.A < 1000 ||
+    timing.A > 30000 ||
+    timing.B < 1000 ||
+    timing.B > timing.A
+  );
+}
+
 function validateCxosRoomRuntimeUnsafe<DistrictId extends string>(
   definition: CxosRoomRuntimeDefinition<DistrictId>,
 ): CxosRuntimeValidation {
@@ -355,14 +371,7 @@ function validateCxosRoomRuntimeUnsafe<DistrictId extends string>(
     if (!RUNTIME_ID.test(livingEnvironment.profileId)) {
       reasons.push("living-environment-id");
     }
-    if (
-      !Number.isInteger(livingEnvironment.idleAfterMs.A) ||
-      !Number.isInteger(livingEnvironment.idleAfterMs.B) ||
-      livingEnvironment.idleAfterMs.A < 1000 ||
-      livingEnvironment.idleAfterMs.A > 30000 ||
-      livingEnvironment.idleAfterMs.B < 1000 ||
-      livingEnvironment.idleAfterMs.B > livingEnvironment.idleAfterMs.A
-    ) {
+    if (invalidIdleTiming(livingEnvironment.idleAfterMs)) {
       reasons.push("living-environment-idle-duration");
     }
     if (
@@ -386,6 +395,16 @@ function validateCxosRoomRuntimeUnsafe<DistrictId extends string>(
       )
     ) {
       reasons.push("living-environment-token");
+    }
+    // Per-chamber idleAfterMs is an optional registry extension (backward-
+    // compatible with profiles that omit it); when present it is validated
+    // against the same bounds as the room-level default.
+    if (
+      chambers.some(
+        (chamber) => chamber.idleAfterMs && invalidIdleTiming(chamber.idleAfterMs),
+      )
+    ) {
+      reasons.push("living-environment-chamber-idle-duration");
     }
   }
   if (!SAFE_LOCAL_ROUTE.test(definition.departure.href)) {

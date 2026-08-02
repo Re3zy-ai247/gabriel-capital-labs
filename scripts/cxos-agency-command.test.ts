@@ -1001,14 +1001,28 @@ check(
     ),
 );
 check(
-  "chamber state is explicit without installing a scroll/wheel/touchmove listener",
+  "chamber state is explicit and never driven by scroll; the runtime's scroll/wheel listeners only re-arm idle, and touchmove is still never installed",
   /data-active-district=\{activeDistrict\}/.test(stage) &&
     /data-chamber-ready=\{chamberManaged \? "true" : "false"\}/.test(stage) &&
     /data-chamber-phase=\{chamberTransition\.phase\}/.test(stage) &&
-    !/addEventListener\(\s*["'](?:scroll|wheel|touchmove)["']/.test(
+    !/addEventListener\(\s*["'](?:scroll|wheel)["']/.test(stageCode) &&
+    !/addEventListener\(\s*["']touchmove["']/.test(
       `${stageCode}\n${runtimeAdapterCode}`,
     ) &&
-    !/\bonScroll\s*=/.test(`${stageCode}\n${runtimeAdapterCode}`),
+    !/\bonScroll\s*=/.test(`${stageCode}\n${runtimeAdapterCode}`) &&
+    /root\.addEventListener\("scroll", registerScrollActivity, \{ passive: true \}\)/.test(
+      runtimeAdapterCode,
+    ) &&
+    /root\.addEventListener\("wheel", registerScrollActivity, \{ passive: true \}\)/.test(
+      runtimeAdapterCode,
+    ) &&
+    !/setActiveDistrict|moveToDistrict/.test(
+      sourceBetween(
+        runtimeAdapterCode,
+        "const registerScrollActivity",
+        "root.addEventListener(\"pointerdown\"",
+      ),
+    ),
 );
 check(
   "arrival never captures wheel input or prevents scrolling",
@@ -1058,9 +1072,15 @@ for (const [label, pattern] of nondeterministic) {
   check(`determinism: no ${label}`, !pattern.test(presentationCode));
 }
 check(
-  "the room owns no timer and the runtime owns bounded idle, passage, return, and scroll-release fallbacks",
+  "the room owns no timer and the runtime owns bounded idle, passage, return, scroll-release, and scroll-activity-throttle fallbacks",
   (presentationCode.match(/\bsetTimeout\b/g) ?? []).length === 0 &&
-    (runtimeAdapterCode.match(/\bsetTimeout\b/g) ?? []).length === 5 &&
+    // 5 pre-existing (release race, idle settling, idle settled, district
+    // transition fallback, departure fallback) + 1 new: the trailing-
+    // throttled scroll/wheel activity re-arm added in RC2 WP4.
+    (runtimeAdapterCode.match(/\bsetTimeout\b/g) ?? []).length === 6 &&
+    /scrollActivityThrottle = window\.setTimeout\([\s\S]{0,120}registerActivity\(\)/.test(
+      runtimeAdapterCode,
+    ) &&
     /idleTimerRef\.current = window\.setTimeout\([\s\S]{0,180}setIdleState\("settling"\)[\s\S]{0,180}setIdleState\("settled"\)/.test(
       runtimeAdapterCode,
     ) &&

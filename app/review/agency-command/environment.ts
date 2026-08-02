@@ -19,6 +19,7 @@ const AGENCY_CHAMBER_ENVIRONMENTS = [
     focus: "priority-instrument",
     idle: "command-hold",
     kai: "executive-context",
+    idleAfterMs: { A: 7000, B: 5000 },
   },
   {
     id: AGENCY_DISTRICTS[1].id,
@@ -30,6 +31,7 @@ const AGENCY_CHAMBER_ENVIRONMENTS = [
     focus: "operating-floor",
     idle: "parked",
     kai: "operational-context",
+    idleAfterMs: { A: 8000, B: 6000 },
   },
   {
     id: AGENCY_DISTRICTS[2].id,
@@ -41,6 +43,7 @@ const AGENCY_CHAMBER_ENVIRONMENTS = [
     focus: "operator-core",
     idle: "solo-steady",
     kai: "human-context",
+    idleAfterMs: { A: 6000, B: 4500 },
   },
   {
     id: AGENCY_DISTRICTS[3].id,
@@ -52,6 +55,7 @@ const AGENCY_CHAMBER_ENVIRONMENTS = [
     focus: "missing-inputs",
     idle: "diagnostic-hold",
     kai: "diagnostic-context",
+    idleAfterMs: { A: 6000, B: 4500 },
   },
   {
     id: AGENCY_DISTRICTS[4].id,
@@ -63,6 +67,7 @@ const AGENCY_CHAMBER_ENVIRONMENTS = [
     focus: "evidence-ledger",
     idle: "archive-aligned",
     kai: "evidence-context",
+    idleAfterMs: { A: 5000, B: 4000 },
   },
   {
     id: AGENCY_DISTRICTS[5].id,
@@ -74,6 +79,7 @@ const AGENCY_CHAMBER_ENVIRONMENTS = [
     focus: "executive-response",
     idle: "executive-still",
     kai: "focused-channel",
+    idleAfterMs: { A: 5000, B: 4000 },
   },
   {
     id: AGENCY_DISTRICTS[6].id,
@@ -85,6 +91,7 @@ const AGENCY_CHAMBER_ENVIRONMENTS = [
     focus: "capacity-boundary",
     idle: "reserve-dark",
     kai: "strategy-context",
+    idleAfterMs: { A: 8000, B: 6000 },
   },
 ] as const satisfies readonly CxosChamberEnvironmentProfile<AgencyDistrictId>[];
 

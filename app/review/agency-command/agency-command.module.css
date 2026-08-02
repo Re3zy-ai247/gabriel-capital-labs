@@ -2846,6 +2846,7 @@
   --cxos-entry-scale: 1;
   --cxos-entry-scale-x: 0.92;
   --cxos-breath-period: 5000ms;
+  --cxos-settle-opacity: 0.5;
 }
 
 .room[data-cxos-profile="central-command"] [data-current="true"][data-agency-district="central-command"] {
@@ -2893,6 +2894,7 @@
   --cxos-scroll-x: 36px;
   --cxos-scroll-y: 0px;
   --cxos-breath-period: 4600ms;
+  --cxos-settle-opacity: 0.54;
 }
 
 .room[data-cxos-profile="client-operations"] [data-current="true"][data-agency-district="client-operations"] {
@@ -2949,6 +2951,7 @@
   --cxos-entry-scale: 1;
   --cxos-entry-scale-x: 0.94;
   --cxos-breath-period: 5800ms;
+  --cxos-settle-opacity: 0.46;
 }
 
 .room[data-cxos-profile="team-operations"] [data-current="true"][data-agency-district="team-operations"] {
@@ -3000,6 +3003,7 @@
   --cxos-scroll-x: 0px;
   --cxos-scroll-y: 24px;
   --cxos-breath-period: 6400ms;
+  --cxos-settle-opacity: 0.48;
 }
 
 .room[data-cxos-profile="business-health"] [data-current="true"][data-agency-district="business-health"] {
@@ -3053,6 +3057,7 @@
   --cxos-scroll-x: 0px;
   --cxos-scroll-y: -36px;
   --cxos-breath-period: 6800ms;
+  --cxos-settle-opacity: 0.44;
 }
 
 .room[data-cxos-profile="evidence-archive"] [data-current="true"][data-agency-district="evidence-archive"] {
@@ -3098,6 +3103,7 @@
   --cxos-entry-y: 0;
   --cxos-entry-scale: 1.018;
   --cxos-breath-period: 7200ms;
+  --cxos-settle-opacity: 0.42;
 }
 
 .room[data-cxos-profile="kai-suite"] [data-current="true"][data-agency-district="kai-suite"] {
@@ -3153,6 +3159,7 @@
   --cxos-scroll-x: -36px;
   --cxos-scroll-y: 0px;
   --cxos-breath-period: 5600ms;
+  --cxos-settle-opacity: 0.52;
 }
 
 .room[data-cxos-profile="growth-threshold"] [data-current="true"][data-agency-district="growth-threshold"] {
@@ -7856,9 +7863,23 @@
   animation: agencyDistrictTruthDraw 260ms var(--agency-chamber-ease) both !important;
 }
 
-.room:is([data-cxos-kai="staged"], [data-cxos-kai="preparing"], [data-cxos-kai="resolved"]) .overheadLight {
+/* Kai activity dims every OTHER chamber's overhead light without erasing its
+ * pose: only opacity is set here, so each chamber's own
+ * .room[data-active-district="…"] .overheadLight transform (its translate +
+ * scaleX identity) keeps applying underneath — no cross-chamber bleed. */
+.room:not([data-cxos-profile="kai-suite"]):is([data-cxos-kai="staged"], [data-cxos-kai="preparing"], [data-cxos-kai="resolved"]) .overheadLight {
   opacity: 0.72;
-  transform: scaleX(0.72);
+  transform-origin: center top;
+}
+
+/* Kai Suite is scoped separately: its own rest pose already IS
+ * scaleX(0.72), so staged/preparing narrows it to scaleX(0.58) instead of
+ * merely dimming — a visible convergence in Kai's own chamber rather than
+ * the same treatment every other chamber gets. Resolved intentionally falls
+ * back to the chamber's native rest pose (the light opens back up once the
+ * response has landed). */
+.room[data-cxos-profile="kai-suite"]:is([data-cxos-kai="staged"], [data-cxos-kai="preparing"]) .overheadLight {
+  transform: translate3d(0, 0, 0) scaleX(0.58);
   transform-origin: center top;
 }
 
@@ -7866,9 +7887,37 @@
   animation: none !important;
 }
 
+/* Staged → preparing → resolved is a visible escalation on .kaiContext,
+ * using only the border-color/background-color pair already transitioned
+ * on .kaiContext (see the shared districtHeader/districtTruth/kaiContext
+ * transition rule above) — no new animation. */
+.room[data-cxos-kai="staged"] .kaiContext {
+  border-color: rgba(134, 215, 255, 0.5);
+  background: linear-gradient(90deg, rgba(14, 116, 144, 0.14), transparent 74%), rgba(3, 12, 25, 0.3);
+}
+
+.room[data-cxos-kai="preparing"] .kaiContext {
+  border-color: rgba(134, 215, 255, 0.62);
+  background: linear-gradient(90deg, rgba(14, 116, 144, 0.18), transparent 70%), rgba(3, 12, 25, 0.56);
+}
+
 .room[data-cxos-kai="resolved"] .kaiContext {
   border-color: rgba(134, 215, 255, 0.48);
   background: linear-gradient(90deg, rgba(14, 116, 144, 0.2), transparent 68%), rgba(3, 12, 25, 0.88);
+}
+
+/* data-cxos-kai-presence carries Kai's channel LIFECYCLE (acquiring /
+ * available / paused / suspended / static / unavailable) — a different axis
+ * than data-cxos-kai's per-turn staged/preparing/resolved above. "suspended"
+ * fires only while phase is "departing" (tier A/B, contract valid): Kai's
+ * presence is receding with the rest of the facility, matching the existing
+ * departure copy ("Kai instruments are receding"). .kaiContext is Kai's
+ * presence affordance in every chamber, so it is the meaningful consumer of
+ * this state; it is intentionally narrower than the other five presence
+ * states, which are already fully covered by data-tier/data-hidden. */
+.room[data-cxos-kai-presence="suspended"] .kaiContext {
+  border-color: var(--agency-line);
+  background: none;
 }
 
 .room[data-cxos-attention="inspecting"] .inspectionPlane[open] {
@@ -7877,12 +7926,36 @@
 }
 
 .room[data-cxos-environment]:is([data-cxos-attention="reading"], [data-cxos-attention="inspecting"]) .districtEnvironment {
-  opacity: 0.3 !important;
+  opacity: 0.42 !important;
   transform: none !important;
 }
 
-.room[data-cxos-environment]:is([data-cxos-idle="settling"], [data-cxos-idle="settled"]) :is(.districtEnvironment, .overheadLight, .horizon) {
+/* Settle keeps each chamber's overhead-light POSE (its per-district
+ * translate/scaleX identity, the one persistent lighting differentiator):
+ * .horizon still flattens fully, but .overheadLight only loses opacity here,
+ * never transform, so the seven per-chamber poses read even at rest.
+ * .districtEnvironment eases through a distinct intermediate while
+ * "settling" before landing on its own --cxos-settle-opacity identity (set
+ * per signature above, 0.40–0.58) once fully "settled" — both states reuse
+ * the transition already declared on the current-chamber districtEnvironment
+ * rule above (opacity var(--cxos-dur-settle) ...), so no new transition or
+ * animation is introduced here. */
+.room[data-cxos-environment]:is([data-cxos-idle="settling"], [data-cxos-idle="settled"]) .horizon {
   opacity: 0.46 !important;
+  transform: none !important;
+}
+
+.room[data-cxos-environment]:is([data-cxos-idle="settling"], [data-cxos-idle="settled"]) .overheadLight {
+  opacity: 0.46 !important;
+}
+
+.room[data-cxos-environment][data-cxos-idle="settling"] .districtEnvironment {
+  opacity: 0.72 !important;
+  transform: none !important;
+}
+
+.room[data-cxos-environment][data-cxos-idle="settled"] .districtEnvironment {
+  opacity: var(--cxos-settle-opacity, 0.46) !important;
   transform: none !important;
 }
 

@@ -393,17 +393,22 @@ export function useCxosRoomRuntime<DistrictId extends string>({
         setDetectedAttention("inspecting");
         return;
       }
+      // Reading is narrow on purpose: only an actual text-entry surface
+      // quiets the room on focus alone. Every other interactive element
+      // (links, buttons, summary disclosures, the facility rail) is ambient
+      // — focusing or activating them still registers activity below, but
+      // does not itself classify as "reading a document".
       const focused = document.activeElement;
-      const interactiveFocus =
+      const textEntryFocus =
         focused instanceof HTMLElement &&
         focused.closest(
-          'a[href], button, input:not([type="hidden"]), textarea, select, summary, [role="button"], [role="link"], [role="checkbox"], [role="menuitem"], [role="option"], [role="radio"], [role="switch"], [role="tab"], [role="textbox"]',
+          'input:not([type="button" i]):not([type="submit" i]), textarea, [contenteditable]',
         );
       setDetectedAttention(
         focused instanceof HTMLElement &&
           root.contains(focused) &&
           focused !== root &&
-          (focused.closest("[data-cxos-focus-zone]") || interactiveFocus)
+          textEntryFocus
           ? "reading"
           : "ambient",
       );
@@ -417,6 +422,18 @@ export function useCxosRoomRuntime<DistrictId extends string>({
       registerActivity();
       settleAttentionAfterEvent();
     };
+    // Scrolling and wheel input are operating the room, not idling in it, but
+    // both can fire at very high frequency — trailing-throttle to at most one
+    // activity arm per ~900ms so the idle timer is reset without a clear/set
+    // pair running on every frame of a fast scroll.
+    let scrollActivityThrottle: number | null = null;
+    const registerScrollActivity = () => {
+      if (scrollActivityThrottle !== null) return;
+      scrollActivityThrottle = window.setTimeout(() => {
+        scrollActivityThrottle = null;
+        registerActivity();
+      }, 900);
+    };
 
     root.addEventListener("pointerdown", registerActivity, true);
     root.addEventListener("click", registerActivity, true);
@@ -425,6 +442,13 @@ export function useCxosRoomRuntime<DistrictId extends string>({
     root.addEventListener("focusin", onFocus, true);
     root.addEventListener("focusout", settleAttentionAfterEvent, true);
     root.addEventListener("toggle", settleAttentionAfterEvent, true);
+    // Chamber content scrolls at the document/window level (the room itself
+    // is not a scroll container), so the window listener is the one that
+    // actually observes native scrolling; the root listener is kept too in
+    // case a chamber ever becomes independently scrollable.
+    root.addEventListener("scroll", registerScrollActivity, { passive: true });
+    root.addEventListener("wheel", registerScrollActivity, { passive: true });
+    window.addEventListener("scroll", registerScrollActivity, { passive: true });
     readAttention();
 
     return () => {
@@ -435,6 +459,13 @@ export function useCxosRoomRuntime<DistrictId extends string>({
       root.removeEventListener("focusin", onFocus, true);
       root.removeEventListener("focusout", settleAttentionAfterEvent, true);
       root.removeEventListener("toggle", settleAttentionAfterEvent, true);
+      root.removeEventListener("scroll", registerScrollActivity);
+      root.removeEventListener("wheel", registerScrollActivity);
+      window.removeEventListener("scroll", registerScrollActivity);
+      if (scrollActivityThrottle !== null) {
+        window.clearTimeout(scrollActivityThrottle);
+        scrollActivityThrottle = null;
+      }
     };
   }, [armIdleTimer, definition.livingEnvironment, observerKey, roomRootRef]);
 
@@ -466,11 +497,18 @@ export function useCxosRoomRuntime<DistrictId extends string>({
     }
 
     idleTrackingActiveRef.current = true;
+    // Each chamber may carry its own idleAfterMs identity (faster/slower to
+    // settle than the room-level default); resolve the ACTIVE chamber's
+    // timing here so re-arming below always uses the current district's
+    // value, falling back to the shared default when a chamber omits it.
+    const activeChamber = livingEnvironment.chambers.find(
+      (chamber) => chamber.id === activeDistrict,
+    );
+    const chamberIdleAfterMs =
+      activeChamber?.idleAfterMs ?? livingEnvironment.idleAfterMs;
     idleTimingRef.current = {
       idleAfterMs:
-        resolution.tier === "A"
-          ? livingEnvironment.idleAfterMs.A
-          : livingEnvironment.idleAfterMs.B,
+        resolution.tier === "A" ? chamberIdleAfterMs.A : chamberIdleAfterMs.B,
       settleAfterMs: resolution.tier === "A" ? 400 : 300,
     };
     armIdleTimer();

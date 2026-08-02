@@ -254,13 +254,22 @@ check(
     !/livingEnvironment\?\.chamber\.id \?\? "none"/.test(adapter),
 );
 check(
-  "activity is root-scoped and never captures native scroll, wheel, or touch",
+  "discrete activity is root-scoped, scroll/wheel re-arm idle passively and throttled, and touch is never captured",
   /root\.addEventListener\("pointerdown"/.test(adapter) &&
     /root\.addEventListener\("click"/.test(adapter) &&
     /root\.addEventListener\("keydown"/.test(adapter) &&
     /root\.addEventListener\("focusin"/.test(adapter) &&
     /root\.addEventListener\("toggle"/.test(adapter) &&
-    !/addEventListener\(\s*["'](?:scroll|wheel|touchmove)["']/.test(adapter),
+    /root\.addEventListener\("scroll", registerScrollActivity, \{ passive: true \}\)/.test(
+      adapter,
+    ) &&
+    /root\.addEventListener\("wheel", registerScrollActivity, \{ passive: true \}\)/.test(
+      adapter,
+    ) &&
+    /window\.addEventListener\("scroll", registerScrollActivity, \{ passive: true \}\)/.test(
+      adapter,
+    ) &&
+    !/addEventListener\(\s*["']touchmove["']/.test(adapter),
 );
 check(
   "all adapter listeners, lifecycle resets, and the idle timer have symmetric cleanup",
@@ -275,12 +284,15 @@ check(
     /details\[data-cxos-inspection\]\[open\]/.test(adapter),
 );
 check(
-  "visible interactive focus quiets every room surface, not only district bodies",
-  /const interactiveFocus =/.test(adapter) &&
+  "reading is scoped to text-entry focus, not bare interactive focus (rail links/buttons/summary are ambient)",
+  /const textEntryFocus =/.test(adapter) &&
     /focused !== root/.test(adapter) &&
-    /focused\.closest\("\[data-cxos-focus-zone\]"\) \|\| interactiveFocus/.test(
+    /input:not\(\[type="button" i\]\):not\(\[type="submit" i\]\), textarea, \[contenteditable\]/.test(
       adapter,
-    ),
+    ) &&
+    !/focused\.closest\("\[data-cxos-focus-zone\]"\)/.test(adapter) &&
+    !/'a\[href\], button,/.test(adapter) &&
+    !/const interactiveFocus =/.test(adapter),
 );
 check(
   "Agency wires explicit inspection, focus, Kai, profile, and passage signals",
@@ -353,10 +365,10 @@ check(
   districtIds.every((id) => css.includes(`data-cxos-profile=\"${id}\"`)),
 );
 check(
-  "no script implements scroll-driven measurement or input hijacking",
-  !/addEventListener\(\s*["'](?:scroll|wheel|touchmove)["']/.test(
-    `${adapter}\n${stage}`,
-  ) && !/scrollY\s*[*/+-]|getBoundingClientRect\(\).*transform/.test(stage),
+  "scroll/wheel only re-arm idle: no touchmove anywhere, no scroll/wheel listener in stage.tsx, and stage.tsx still does no scroll-driven measurement",
+  !/addEventListener\(\s*["']touchmove["']/.test(`${adapter}\n${stage}`) &&
+    !/addEventListener\(\s*["'](?:scroll|wheel)["']/.test(stage) &&
+    !/scrollY\s*[*/+-]|getBoundingClientRect\(\).*transform/.test(stage),
 );
 check(
   "Living mode hard-stops legacy pseudo-element signatures outside functional :is()",
@@ -658,6 +670,147 @@ check(
       scaleXPattern.test(acquireBBlock)
     );
   })(),
+);
+
+// -- RC2 WP4: phase-locked attention, idle, and Kai presence ------------------
+check(
+  "the idle-timing effect resolves the active chamber's idleAfterMs, falling back to the room default",
+  /const activeChamber = livingEnvironment\.chambers\.find\(/.test(adapter) &&
+    /const chamberIdleAfterMs =\s*activeChamber\?\.idleAfterMs \?\? livingEnvironment\.idleAfterMs/.test(
+      adapter,
+    ) &&
+    /resolution\.tier === "A" \? chamberIdleAfterMs\.A : chamberIdleAfterMs\.B/.test(
+      adapter,
+    ),
+);
+
+const expectedChamberIdleAfterMs: ReadonlyArray<
+  [AgencyDistrictId, number, number]
+> = [
+  ["kai-suite", 5000, 4000],
+  ["evidence-archive", 5000, 4000],
+  ["team-operations", 6000, 4500],
+  ["business-health", 6000, 4500],
+  ["central-command", 7000, 5000],
+  ["client-operations", 8000, 6000],
+  ["growth-threshold", 8000, 6000],
+];
+check(
+  "every chamber declares a per-chamber idleAfterMs identity and the room keeps a top-level default",
+  AGENCY_LIVING_ENVIRONMENT.idleAfterMs.A === 6000 &&
+    AGENCY_LIVING_ENVIRONMENT.idleAfterMs.B === 4500 &&
+    expectedChamberIdleAfterMs.length === districtIds.length &&
+    expectedChamberIdleAfterMs.every(([id, a, b]) => {
+      const chamber = AGENCY_LIVING_ENVIRONMENT.chambers.find(
+        (candidate) => candidate.id === id,
+      );
+      return chamber?.idleAfterMs?.A === a && chamber?.idleAfterMs?.B === b;
+    }),
+);
+
+const settledOverheadLightBlock = extractRuleBody(
+  css,
+  '.room[data-cxos-environment]:is([data-cxos-idle="settling"], [data-cxos-idle="settled"]) .overheadLight {',
+);
+const settlingDistrictEnvironmentBlock = extractRuleBody(
+  css,
+  '.room[data-cxos-environment][data-cxos-idle="settling"] .districtEnvironment {',
+);
+const settledDistrictEnvironmentBlock = extractRuleBody(
+  css,
+  '.room[data-cxos-environment][data-cxos-idle="settled"] .districtEnvironment {',
+);
+const settleOpacityValues = districtIds.map((id) =>
+  readCustomProp(signatureBlocks.get(id) ?? "", "--cxos-settle-opacity"),
+);
+check(
+  "settle preserves every chamber's overhead-light pose (opacity only, transform untouched) instead of flattening it",
+  !/:is\(\.districtEnvironment,\s*\.overheadLight,\s*\.horizon\)/.test(css) &&
+    settledOverheadLightBlock.length > 0 &&
+    !/transform/.test(settledOverheadLightBlock) &&
+    /opacity:\s*0\.46\s*!important/.test(settledOverheadLightBlock),
+);
+check(
+  "settling eases to a distinct intermediate opacity before settled lands on a per-signature value, reusing the existing transition",
+  settlingDistrictEnvironmentBlock.length > 0 &&
+    /opacity:\s*0\.72\s*!important/.test(settlingDistrictEnvironmentBlock) &&
+    settledDistrictEnvironmentBlock.length > 0 &&
+    /opacity:\s*var\(--cxos-settle-opacity,\s*0\.46\)\s*!important/.test(
+      settledDistrictEnvironmentBlock,
+    ) &&
+    !/@keyframes\s+agencySettle/.test(css) &&
+    settleOpacityValues.every((value) => value !== null) &&
+    new Set(settleOpacityValues).size === districtIds.length,
+);
+
+const readingDimBlock = extractRuleBody(
+  css,
+  '.room[data-cxos-environment]:is([data-cxos-attention="reading"], [data-cxos-attention="inspecting"]) .districtEnvironment {',
+);
+check(
+  "the reading/inspecting dim is quiet, not dead (0.42, was 0.3)",
+  readingDimBlock.length > 0 &&
+    /opacity:\s*0\.42\s*!important/.test(readingDimBlock) &&
+    !/opacity:\s*0\.3\s*!important/.test(readingDimBlock),
+);
+
+const kaiStagedNonSuiteBlock = extractRuleBody(
+  css,
+  '.room:not([data-cxos-profile="kai-suite"]):is([data-cxos-kai="staged"], [data-cxos-kai="preparing"], [data-cxos-kai="resolved"]) .overheadLight {',
+);
+const kaiSuiteNarrowBlock = extractRuleBody(
+  css,
+  '.room[data-cxos-profile="kai-suite"]:is([data-cxos-kai="staged"], [data-cxos-kai="preparing"]) .overheadLight {',
+);
+check(
+  "Kai activity dims every other chamber's overhead light without a transform, while Kai Suite's own rule narrows its pose and excludes resolved",
+  kaiStagedNonSuiteBlock.length > 0 &&
+    !/transform:/.test(kaiStagedNonSuiteBlock) &&
+    /opacity:\s*0\.72/.test(kaiStagedNonSuiteBlock) &&
+    kaiSuiteNarrowBlock.length > 0 &&
+    /transform:\s*translate3d\(0, 0, 0\) scaleX\(0\.58\)/.test(
+      kaiSuiteNarrowBlock,
+    ),
+);
+check(
+  "preparing is a visible escalation over staged on .kaiContext using only the already-transitioned border-color/background pair",
+  /\.room\[data-cxos-kai="staged"\] \.kaiContext \{/.test(css) &&
+    /\.room\[data-cxos-kai="preparing"\] \.kaiContext \{/.test(css) &&
+    (() => {
+      const staged = extractRuleBody(css, '.room[data-cxos-kai="staged"] .kaiContext {');
+      const preparing = extractRuleBody(
+        css,
+        '.room[data-cxos-kai="preparing"] .kaiContext {',
+      );
+      const stagedBorder = Number(readCustomProp(staged, "border-color")?.match(/[\d.]+(?=\))/)?.[0]);
+      const preparingBorder = Number(
+        readCustomProp(preparing, "border-color")?.match(/[\d.]+(?=\))/)?.[0],
+      );
+      return (
+        staged.length > 0 &&
+        preparing.length > 0 &&
+        Number.isFinite(stagedBorder) &&
+        Number.isFinite(preparingBorder) &&
+        preparingBorder > stagedBorder
+      );
+    })(),
+);
+check(
+  "data-cxos-kai-presence (Kai's channel lifecycle) gains a real CSS consumer distinct from data-cxos-kai's per-turn state",
+  /data-cxos-kai-presence="suspended"/.test(css) &&
+    /\.room\[data-cxos-kai-presence="suspended"\] \.kaiContext \{/.test(css),
+);
+
+check(
+  "the Kai context spine labels carried context when the held source chamber differs from the active chamber",
+  /const carriedContext = contextDistrict\.id !== activeDistrict\.id/.test(
+    stage,
+  ) &&
+    /\{carriedContext \? \(/.test(stage) &&
+    /CARRIED CONTEXT · \{contextDistrict\.name\.toUpperCase\(\)\}/.test(
+      stage,
+    ) &&
+    /KAI · CONTINUOUS EXECUTIVE CHANNEL/.test(stage),
 );
 
 console.log(`\ncxos-living-environment.test.ts: ${pass} passed, ${fail} failed`);

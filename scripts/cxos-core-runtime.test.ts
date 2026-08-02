@@ -412,9 +412,18 @@ check(
     /observer\.disconnect\(\)/.test(adapter),
 );
 check(
-  "native scroll is never intercepted or animated continuously",
-  !/addEventListener\(\s*["'](?:scroll|wheel|touchmove)["']/.test(adapter) &&
+  "native scroll is never animated continuously; scroll/wheel only passively re-arm the idle timer, and touch is never captured",
+  !/addEventListener\(\s*["']touchmove["']/.test(adapter) &&
     !/\bonScroll\s*=|\bonWheel\s*=|setInterval|requestIdleCallback/.test(adapter) &&
+    /root\.addEventListener\("scroll", registerScrollActivity, \{ passive: true \}\)/.test(
+      adapter,
+    ) &&
+    /root\.addEventListener\("wheel", registerScrollActivity, \{ passive: true \}\)/.test(
+      adapter,
+    ) &&
+    /window\.addEventListener\("scroll", registerScrollActivity, \{ passive: true \}\)/.test(
+      adapter,
+    ) &&
     (adapter.match(/requestAnimationFrame\(/g) ?? []).length <= 5,
 );
 check(
