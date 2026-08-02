@@ -925,5 +925,90 @@ check(
     /className=\{styles\.district\}/.test(stage),
 );
 
+// -- RC2 WP6: accessibility and state-legibility hardening ------------------
+// `.chamberStage .district` at (0,2,0) specificity is the ONLY selector that
+// matches the live district markup at every viewport (districts are always
+// rendered as `.chamberStage`'s children), so it is the rule that must carry
+// scroll-margin-top for it to have any effect; the (0,1,0) `.district`
+// media rules (base 6.75rem, 1023px 9rem, 767px 0.75rem) are all structurally
+// defeated regardless of source order. Isolate the second
+// `@media (max-width: 860px)` block specifically (the first, ~3320, is an
+// unrelated environment-filter block) so this guard fails if the fix ever
+// lands outside the mobile facility-bar breakpoint it targets.
+const secondMobile860At = css.indexOf(
+  "@media (max-width: 860px)",
+  css.indexOf("@media (max-width: 860px)") + 1,
+);
+const mobile860Block =
+  secondMobile860At >= 0
+    ? css.slice(
+        secondMobile860At,
+        css.indexOf("@media (max-width: 430px)", secondMobile860At),
+      )
+    : "";
+check(
+  "under the <=860px mobile facility bar, .chamberStage .district wins the scroll-margin-top specificity defeat, and Tab-reached links/buttons/summaries inside a district carry the same clearance",
+  mobile860Block.length > 0 &&
+    /\.chamberStage \.district \{[\s\S]{0,650}scroll-margin-top:\s*9rem/.test(
+      mobile860Block,
+    ) &&
+    /\.chamberStage \.district :is\(a, button, summary\)\s*\{\s*\n\s*scroll-margin-top:\s*9rem/.test(
+      mobile860Block,
+    ),
+);
+check(
+  "the Evidence Archive's five states each get a distinct border-inline-start weight/style so absence is a shape, not just a swatch hue",
+  /\.archiveEvidenceList li\[data-evidence-state="complete"\]\s*\{\s*\n\s*border-inline-start:\s*2px solid var\(--agency-chamber-edge\)/.test(
+    css,
+  ) &&
+    /\.archiveEvidenceList li\[data-evidence-state="verify"\]\s*\{\s*\n\s*border-inline-start:\s*2px solid rgba\(244, 199, 109,/.test(
+      css,
+    ) &&
+    /\.archiveEvidenceList li\[data-evidence-state="partial"\]\s*\{\s*\n\s*border-inline-start:\s*2px dashed rgba\(244, 199, 109,/.test(
+      css,
+    ) &&
+    /\.archiveEvidenceList li\[data-evidence-state="gap"\]\s*\{\s*\n\s*border-inline-start:\s*3px dashed rgba\(244, 199, 109,/.test(
+      css,
+    ) &&
+    /\.archiveEvidenceList li\[data-evidence-state="unavailable"\]\s*\{\s*\n\s*border-inline-start:\s*2px dotted var\(--agency-dim\)/.test(
+      css,
+    ) &&
+    new Set(
+      [
+        ...css.matchAll(
+          /\.archiveEvidenceList li\[data-evidence-state="[^"]+"\]\s*\{\s*\n\s*border-inline-start:\s*([^;]+);/g,
+        ),
+      ].map((match) => match[1]),
+    ).size === 5,
+);
+check(
+  "occupied and reserve capacity cells get a static (no animation) two-token opacity step so the 12/15 boundary reads as a light step, and the capacity-state amber border is untouched",
+  /\.capacityHorizon i\[data-occupied="true"\]\s*\{\s*\n\s*opacity:\s*calc\(0\.86 \+ var\(--cxos-light-active\)\)/.test(
+    css,
+  ) &&
+    /\.capacityHorizon i\[data-occupied="false"\]\s*\{\s*\n\s*opacity:\s*calc\(0\.86 - var\(--cxos-light-rest\)\)/.test(
+      css,
+    ) &&
+    !/@keyframes[\s\S]{0,80}capacityHorizon i\[data-occupied/.test(css) &&
+    /\.capacityHorizon\[data-capacity-state="capacity"\] i\[data-occupied="true"\]\s*\{[\s\S]{0,80}border-color:\s*rgba\(244, 199, 109/.test(
+      css,
+    ),
+);
+check(
+  "the blocked lane row carries amber border-inline-start emphasis, and client-operations' signal em is re-enabled with amber (no longer display:none)",
+  /\.flowList > li\[data-motion="blocked"\]\s*\{\s*\n\s*border-inline-start:\s*3px dashed var\(--agency-watch\)/.test(
+    css,
+  ) &&
+    !/\.room\[data-cxos-profile="client-operations"\] \[data-plane="signal"\] em\s*\{\s*\n\s*display:\s*none/.test(
+      css,
+    ) &&
+    /\.room\[data-cxos-profile="client-operations"\] \[data-plane="signal"\] em\s*\{\s*\n\s*background:\s*linear-gradient\(90deg, transparent, var\(--agency-watch\), transparent\)/.test(
+      css,
+    ) &&
+    /\.room\[data-cxos-profile="client-operations"\] \[data-plane="signal"\] :is\(i, b, em\)/.test(
+      css,
+    ),
+);
+
 console.log(`\ncxos-living-environment.test.ts: ${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);

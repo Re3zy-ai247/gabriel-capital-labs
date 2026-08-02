@@ -515,6 +515,21 @@
   padding: 0.85rem 0;
 }
 
+/* WP6 D-F6: the declared missing-inputs focus of this chamber was reachable
+ * only behind the inspection disclosure while every settled row showed a
+ * populated value. Dashed edge + the .healthState amber recolor already used
+ * a few lines up give the marker row a shape distinct from the populated
+ * rows around it, not just a caption. */
+.driverList > [data-driver-state="missing"] {
+  border-inline-start: 2px dashed rgba(244, 199, 109, 0.5);
+  padding-inline-start: 0.75rem;
+}
+
+.driverList > [data-driver-state="missing"] dt,
+.driverList > [data-driver-state="missing"] dd span {
+  color: var(--agency-watch);
+}
+
 .driverList dt,
 .scopeList dt,
 .portfolioList dt,
@@ -736,6 +751,20 @@
 .capacityHorizon[data-capacity-state="capacity"] i[data-occupied="true"] {
   border-color: rgba(244, 199, 109, 0.54);
   background: rgba(244, 199, 109, 0.2);
+}
+
+/* WP6 D-F6: occupied and reserve cells were both low-alpha fills, reading
+ * as near-uniform with only the caption carrying the 12/15 distinction.
+ * Static (no animation) opacity pair built from the same
+ * --cxos-light-active/--cxos-light-rest tokens the per-chamber breath
+ * channel consumes (WP2), so the 12->13 boundary itself reads as a light
+ * step. The amber capacity-state border above is untouched. */
+.capacityHorizon i[data-occupied="true"] {
+  opacity: calc(0.86 + var(--cxos-light-active));
+}
+
+.capacityHorizon i[data-occupied="false"] {
+  opacity: calc(0.86 - var(--cxos-light-rest));
 }
 
 .capacityHorizon[data-capacity-state="loading"] {
@@ -1034,6 +1063,15 @@
 .flowList > li[data-motion="blocked"] .flowTrack b {
   border-color: var(--agency-watch);
   animation: agencyFlowBlocked var(--cxos-dur-reveal, 600ms) var(--cxos-ease-vector, cubic-bezier(0.16, 1, 0.3, 1)) both;
+}
+
+/* WP6 D-F6: the blocked lane is the one truthful pressure signal in this
+ * chamber (fixture data-motion="blocked", the sole continuous WP2 pulse
+ * target) but was the least emphasized row. Same dashed/amber grammar as
+ * the Evidence Archive gap treatment above the other four lane states. */
+.flowList > li[data-motion="blocked"] {
+  border-inline-start: 3px dashed var(--agency-watch);
+  padding-inline-start: 0.75rem;
 }
 
 .flowList > li[data-motion="resolving"] .flowTrack b {
@@ -2964,16 +3002,24 @@
   transform: none;
 }
 
-.room[data-cxos-profile="client-operations"] [data-plane="signal"] :is(i, b) {
+.room[data-cxos-profile="client-operations"] [data-plane="signal"] :is(i, b, em) {
   inset: calc(50% - 1px) 8% auto;
   height: 2px;
   border: 0;
   border-radius: 0;
   background: linear-gradient(90deg, transparent, var(--agency-blue), transparent);
+  transform: none;
 }
 
+/* WP6 D-F6: re-enabled. The base em (width:1px; height:126%; rotate(38deg))
+ * is a diagonal signal-badge ray sized for the circular signal plane every
+ * other chamber keeps; client-operations already flattens that plane to a
+ * wide rectangular lane above, so em now shares the lane geometry of i/b
+ * (grouped :is() above) and carries the truthful pressure signal's amber in
+ * place of the plain blue, leading the two lane lines instead of hiding
+ * behind them. */
 .room[data-cxos-profile="client-operations"] [data-plane="signal"] em {
-  display: none;
+  background: linear-gradient(90deg, transparent, var(--agency-watch), transparent);
 }
 
 /* 03 · Relational eye-level pool around the honest solo operator. */
@@ -4705,6 +4751,30 @@
 .archiveEvidenceList li[data-evidence-state="gap"] > span {
   border-color: var(--agency-watch);
   background: rgba(244, 199, 109, 0.16);
+}
+
+/* WP6 D-F6: absence gets a shape, not just a hue. The swatch above is a
+ * ~0.8rem color-only signal; these five per-card edge treatments carry the
+ * same distinction through weight and line style so it survives color-vision
+ * deficiency and grayscale rendering alike. */
+.archiveEvidenceList li[data-evidence-state="complete"] {
+  border-inline-start: 2px solid var(--agency-chamber-edge);
+}
+
+.archiveEvidenceList li[data-evidence-state="verify"] {
+  border-inline-start: 2px solid rgba(244, 199, 109, 0.34);
+}
+
+.archiveEvidenceList li[data-evidence-state="partial"] {
+  border-inline-start: 2px dashed rgba(244, 199, 109, 0.5);
+}
+
+.archiveEvidenceList li[data-evidence-state="gap"] {
+  border-inline-start: 3px dashed rgba(244, 199, 109, 0.66);
+}
+
+.archiveEvidenceList li[data-evidence-state="unavailable"] {
+  border-inline-start: 2px dotted var(--agency-dim);
 }
 
 .archiveEvidenceList strong {
@@ -7069,6 +7139,20 @@
     padding:
       3.4rem 0.75rem 2.5rem
       calc(var(--agency-district-rail-gutter) + 0.75rem);
+    /* WP6 F1: the (0,2,0) specificity of this selector otherwise defeats the
+     * (0,1,0) `.district { scroll-margin-top }` rules at every width (no
+     * media variant of `.chamberStage .district` previously set this
+     * property), leaving 1rem in effect under the ~7.15rem two-row mobile
+     * facility bar. Restored here at winning specificity, matching the
+     * existing 1023px rule's 9rem value. */
+    scroll-margin-top: 9rem;
+  }
+
+  /* Tab-reached controls inside a district scroll themselves into view, not
+   * the district container — give them the same clearance so focus never
+   * settles directly under the mobile facility bar. */
+  .chamberStage .district :is(a, button, summary) {
+    scroll-margin-top: 9rem;
   }
 
   .chamberStage .districtRail {

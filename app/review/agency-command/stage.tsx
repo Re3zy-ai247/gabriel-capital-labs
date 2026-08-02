@@ -993,6 +993,7 @@ export function AgencyCommandStage() {
           className={styles.arrivalGate}
           data-active={arrivalActive ? "true" : "false"}
           aria-hidden={arrivalActive ? undefined : "true"}
+          inert={arrivalActive ? undefined : true}
         >
           <section
             className={styles.arrivalThreshold}
@@ -3115,6 +3116,19 @@ function AgencyHealthBank({
               </dd>
             </div>
           ))}
+          {/* WP6 D-F6: AgencyHealthDriver has no field marking a row
+              unmeasured, so this is not fixture data — it surfaces the
+              business-health inspection plane's own disclosure (verbatim,
+              see BusinessSignals below) as a compact, always-visible marker
+              instead of leaving "missing inputs" reachable only behind the
+              inspection disclosure. */}
+          <div data-driver-state="missing">
+            <dt>Client-service revenue</dt>
+            <dd>
+              <span>Not instrumented</span>
+              <small>Missing financial or business inputs are never estimated.</small>
+            </dd>
+          </div>
         </dl>
       )}
       <p className={styles.instrumentFootnote}>
