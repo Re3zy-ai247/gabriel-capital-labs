@@ -524,5 +524,141 @@ check(
     ),
 );
 
+// -- RC2 WP3: deepened chamber signature identity ----------------------------
+function extractRuleBody(source: string, selectorText: string): string {
+  const start = source.indexOf(selectorText);
+  if (start === -1) return "";
+  const braceStart = source.indexOf("{", start);
+  const braceEnd = source.indexOf("}", braceStart);
+  if (braceStart === -1 || braceEnd === -1) return "";
+  return source.slice(braceStart + 1, braceEnd);
+}
+function readCustomProp(block: string, name: string): string | null {
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const match = block.match(new RegExp(`${escaped}:\\s*([^;]+);`));
+  return match ? match[1].trim() : null;
+}
+
+const signatureBlocks = new Map(
+  AGENCY_LIVING_ENVIRONMENT.chambers.map((chamber) => [
+    chamber.id,
+    extractRuleBody(css, `.room[data-cxos-signature="${chamber.motion}"] {`),
+  ]),
+);
+const chamberEdgeBlocks = new Map(
+  AGENCY_LIVING_ENVIRONMENT.chambers.map((chamber) => [
+    chamber.id,
+    extractRuleBody(
+      css,
+      `.room[data-cxos-profile="${chamber.id}"] [data-current="true"][data-agency-district="${chamber.id}"] {`,
+    ),
+  ]),
+);
+check(
+  "every chamber's signature block and current-state block are locatable by their motion and profile tokens",
+  [...signatureBlocks.values()].every((block) => block.length > 0) &&
+    [...chamberEdgeBlocks.values()].every((block) => block.length > 0),
+);
+
+const entryTuples = districtIds.map((id) =>
+  [
+    readCustomProp(signatureBlocks.get(id) ?? "", "--cxos-entry-x") ?? "0",
+    readCustomProp(signatureBlocks.get(id) ?? "", "--cxos-entry-y") ?? "0",
+    readCustomProp(signatureBlocks.get(id) ?? "", "--cxos-entry-scale") ?? "1",
+    readCustomProp(signatureBlocks.get(id) ?? "", "--cxos-entry-scale-x") ?? "1",
+  ].join("|"),
+);
+check(
+  "no two of the seven chamber signatures declare an identical entry-x/entry-y/entry-scale/entry-scale-x tuple",
+  new Set(entryTuples).size === districtIds.length,
+);
+
+const SCROLL_CHAMBERS: AgencyDistrictId[] = [
+  "client-operations",
+  "evidence-archive",
+  "growth-threshold",
+  "business-health",
+];
+const STILL_CHAMBERS: AgencyDistrictId[] = [
+  "central-command",
+  "team-operations",
+  "kai-suite",
+];
+check(
+  "the four travel chambers each declare a complete scroll-x/scroll-y pair and the three still chambers declare neither",
+  SCROLL_CHAMBERS.length + STILL_CHAMBERS.length === districtIds.length &&
+    SCROLL_CHAMBERS.every((id) => {
+      const block = signatureBlocks.get(id) ?? "";
+      return (
+        readCustomProp(block, "--cxos-scroll-x") !== null &&
+        readCustomProp(block, "--cxos-scroll-y") !== null
+      );
+    }) &&
+    STILL_CHAMBERS.every((id) => {
+      const block = signatureBlocks.get(id) ?? "";
+      return (
+        readCustomProp(block, "--cxos-scroll-x") === null &&
+        readCustomProp(block, "--cxos-scroll-y") === null
+      );
+    }),
+);
+
+check(
+  "all seven chambers declare an explicit --agency-chamber-edge",
+  districtIds.every(
+    (id) =>
+      readCustomProp(chamberEdgeBlocks.get(id) ?? "", "--agency-chamber-edge") !==
+      null,
+  ),
+);
+
+const tierBBaseBlock = extractRuleBody(
+  css,
+  '.room:is([data-tier="B"], [data-cxos-tier="B"]) {',
+);
+check(
+  "Tier B no longer applies a blanket entry-vector reset shared by every profile",
+  tierBBaseBlock.length > 0 &&
+    readCustomProp(tierBBaseBlock, "--cxos-entry-x") === null &&
+    readCustomProp(tierBBaseBlock, "--cxos-entry-y") === null &&
+    readCustomProp(tierBBaseBlock, "--cxos-entry-scale") === null,
+);
+check(
+  "Tier B instead declares a non-identity entry value scoped to each of the seven profiles",
+  districtIds.every((id) => {
+    const block = extractRuleBody(
+      css,
+      `.room:is([data-tier="B"], [data-cxos-tier="B"])[data-cxos-profile="${id}"] {`,
+    );
+    if (block.length === 0) return false;
+    const x = readCustomProp(block, "--cxos-entry-x") ?? "0";
+    const y = readCustomProp(block, "--cxos-entry-y") ?? "0";
+    const scale = readCustomProp(block, "--cxos-entry-scale") ?? "1";
+    const scaleX = readCustomProp(block, "--cxos-entry-scale-x") ?? "1";
+    return x !== "0" || y !== "0" || scale !== "1" || scaleX !== "1";
+  }),
+);
+
+check(
+  "agencyLivingAcquire and agencyLivingAcquireB both consume --cxos-entry-scale-x with a default of 1",
+  (() => {
+    const acquireBlock = css.slice(
+      css.indexOf("@keyframes agencyLivingAcquire {"),
+      css.indexOf("@keyframes agencyLivingAcquireB {"),
+    );
+    const acquireBBlock = css.slice(
+      css.indexOf("@keyframes agencyLivingAcquireB {"),
+      css.indexOf("@keyframes agencyLivingHeartbeat {"),
+    );
+    const scaleXPattern = /scaleX\(var\(--cxos-entry-scale-x,\s*1\)\)/;
+    return (
+      acquireBlock.length > 0 &&
+      acquireBBlock.length > 0 &&
+      scaleXPattern.test(acquireBlock) &&
+      scaleXPattern.test(acquireBBlock)
+    );
+  })(),
+);
+
 console.log(`\ncxos-living-environment.test.ts: ${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);

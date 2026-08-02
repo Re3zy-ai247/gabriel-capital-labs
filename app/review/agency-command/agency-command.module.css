@@ -2842,8 +2842,9 @@
 /* 01 · Command-wide aperture and long centered deck. */
 .room[data-cxos-signature="center-out"] {
   --cxos-entry-x: 0;
-  --cxos-entry-y: 8px;
+  --cxos-entry-y: 0px;
   --cxos-entry-scale: 1;
+  --cxos-entry-scale-x: 0.92;
   --cxos-breath-period: 5000ms;
 }
 
@@ -2886,15 +2887,16 @@
 
 /* 02 · Operational-oblique lanes and diagonal floor. */
 .room[data-cxos-signature="lane-travel"] {
-  --cxos-entry-x: -8px;
+  --cxos-entry-x: -24px;
   --cxos-entry-y: 0;
   --cxos-entry-scale: 1;
-  --cxos-scroll-x: 8px;
+  --cxos-scroll-x: 36px;
   --cxos-scroll-y: 0px;
   --cxos-breath-period: 4600ms;
 }
 
 .room[data-cxos-profile="client-operations"] [data-current="true"][data-agency-district="client-operations"] {
+  --agency-chamber-edge: rgba(134, 215, 255, 0.38);
   background:
     repeating-linear-gradient(168deg, transparent 0 4.3rem, rgba(134, 215, 255, 0.045) 4.3rem calc(4.3rem + 1px)),
     linear-gradient(112deg, rgba(7, 38, 59, 0.9), rgba(3, 11, 23, 0.9) 64%);
@@ -2944,11 +2946,13 @@
 .room[data-cxos-signature="relational-acquire"] {
   --cxos-entry-x: 0;
   --cxos-entry-y: 0;
-  --cxos-entry-scale: 1.012;
+  --cxos-entry-scale: 1;
+  --cxos-entry-scale-x: 0.94;
   --cxos-breath-period: 5800ms;
 }
 
 .room[data-cxos-profile="team-operations"] [data-current="true"][data-agency-district="team-operations"] {
+  --agency-chamber-edge: rgba(134, 215, 255, 0.3);
   background:
     radial-gradient(circle at 50% 48%, rgba(56, 189, 248, 0.15), transparent 20rem),
     linear-gradient(135deg, rgba(6, 23, 44, 0.9), rgba(3, 10, 22, 0.94));
@@ -2991,8 +2995,10 @@
 /* 04 · Elevated diagnostic observatory with a single amber draw. */
 .room[data-cxos-signature="diagnostic-draw"] {
   --cxos-entry-x: 0;
-  --cxos-entry-y: -4px;
+  --cxos-entry-y: -16px;
   --cxos-entry-scale: 1;
+  --cxos-scroll-x: 0px;
+  --cxos-scroll-y: 24px;
   --cxos-breath-period: 6400ms;
 }
 
@@ -3042,14 +3048,15 @@
 /* 05 · Longitudinal archive shelves and aligned evidence tray. */
 .room[data-cxos-signature="tray-align"] {
   --cxos-entry-x: 0;
-  --cxos-entry-y: 8px;
+  --cxos-entry-y: -24px;
   --cxos-entry-scale: 1;
   --cxos-scroll-x: 0px;
-  --cxos-scroll-y: -8px;
+  --cxos-scroll-y: -36px;
   --cxos-breath-period: 6800ms;
 }
 
 .room[data-cxos-profile="evidence-archive"] [data-current="true"][data-agency-district="evidence-archive"] {
+  --agency-chamber-edge: rgba(134, 215, 255, 0.36);
   background:
     repeating-linear-gradient(90deg, transparent 0 11%, rgba(134, 215, 255, 0.04) 11% calc(11% + 1px)),
     linear-gradient(180deg, rgba(5, 25, 44, 0.9), rgba(3, 9, 20, 0.96));
@@ -3094,6 +3101,7 @@
 }
 
 .room[data-cxos-profile="kai-suite"] [data-current="true"][data-agency-district="kai-suite"] {
+  --agency-chamber-edge: rgba(134, 215, 255, 0.34);
   background:
     radial-gradient(ellipse at 50% 28%, rgba(56, 189, 248, 0.22), transparent 25rem),
     linear-gradient(90deg, rgba(3, 10, 22, 0.97), rgba(7, 31, 53, 0.74) 50%, rgba(3, 10, 22, 0.97));
@@ -3139,15 +3147,16 @@
 
 /* 07 · Lowest horizon and maximum reserve depth. */
 .room[data-cxos-signature="horizon-expand"] {
-  --cxos-entry-x: 8px;
+  --cxos-entry-x: 24px;
   --cxos-entry-y: 0;
   --cxos-entry-scale: 1;
-  --cxos-scroll-x: -8px;
+  --cxos-scroll-x: -36px;
   --cxos-scroll-y: 0px;
   --cxos-breath-period: 5600ms;
 }
 
 .room[data-cxos-profile="growth-threshold"] [data-current="true"][data-agency-district="growth-threshold"] {
+  --agency-chamber-edge: rgba(244, 199, 109, 0.36);
   background:
     linear-gradient(180deg, rgba(5, 19, 35, 0.46), transparent 48%),
     radial-gradient(ellipse at 50% 86%, rgba(56, 189, 248, 0.2), transparent 36rem),
@@ -7636,7 +7645,52 @@
   --cxos-dur-reveal: 340ms;
   --cxos-dur-heartbeat: 3200ms;
   --cxos-dur-settle: 300ms;
+}
+
+/* Tier B halves each chamber's Tier-A entry signature instead of flattening
+ * every profile to one shared identity vector; agencyLivingAcquireB still
+ * consumes these same custom properties, so no separate Tier-B keyframe
+ * exists. Every rule below carries at least one non-identity value. */
+.room:is([data-tier="B"], [data-cxos-tier="B"])[data-cxos-profile="central-command"] {
   --cxos-entry-x: 0;
+  --cxos-entry-y: 0;
+  --cxos-entry-scale: 1;
+  --cxos-entry-scale-x: 0.96;
+}
+
+.room:is([data-tier="B"], [data-cxos-tier="B"])[data-cxos-profile="client-operations"] {
+  --cxos-entry-x: -12px;
+  --cxos-entry-y: 0;
+  --cxos-entry-scale: 1;
+}
+
+.room:is([data-tier="B"], [data-cxos-tier="B"])[data-cxos-profile="team-operations"] {
+  --cxos-entry-x: 0;
+  --cxos-entry-y: 0;
+  --cxos-entry-scale: 1;
+  --cxos-entry-scale-x: 0.97;
+}
+
+.room:is([data-tier="B"], [data-cxos-tier="B"])[data-cxos-profile="business-health"] {
+  --cxos-entry-x: 0;
+  --cxos-entry-y: -8px;
+  --cxos-entry-scale: 1;
+}
+
+.room:is([data-tier="B"], [data-cxos-tier="B"])[data-cxos-profile="evidence-archive"] {
+  --cxos-entry-x: 0;
+  --cxos-entry-y: -12px;
+  --cxos-entry-scale: 1;
+}
+
+.room:is([data-tier="B"], [data-cxos-tier="B"])[data-cxos-profile="kai-suite"] {
+  --cxos-entry-x: 0;
+  --cxos-entry-y: 0;
+  --cxos-entry-scale: 1.009;
+}
+
+.room:is([data-tier="B"], [data-cxos-tier="B"])[data-cxos-profile="growth-threshold"] {
+  --cxos-entry-x: 12px;
   --cxos-entry-y: 0;
   --cxos-entry-scale: 1;
 }
@@ -7654,7 +7708,8 @@
   .room[data-cxos-environment][data-cxos-animation-budget="2"]:is(
       [data-cxos-profile="client-operations"],
       [data-cxos-profile="evidence-archive"],
-      [data-cxos-profile="growth-threshold"]
+      [data-cxos-profile="growth-threshold"],
+      [data-cxos-profile="business-health"]
     ) [data-plane="depth"] {
     animation-name: agencyLivingScroll !important;
     animation-duration: auto !important;
@@ -7863,7 +7918,7 @@
 @keyframes agencyLivingAcquire {
   from {
     opacity: 0.3;
-    transform: translate3d(var(--cxos-entry-x, 0), var(--cxos-entry-y, 0), 0) scale(var(--cxos-entry-scale, 1));
+    transform: translate3d(var(--cxos-entry-x, 0), var(--cxos-entry-y, 0), 0) scale(var(--cxos-entry-scale, 1)) scaleX(var(--cxos-entry-scale-x, 1));
   }
   to {
     opacity: 1;
@@ -7874,7 +7929,7 @@
 @keyframes agencyLivingAcquireB {
   0% {
     opacity: 0.3;
-    transform: translate3d(var(--cxos-entry-x, 0), var(--cxos-entry-y, 0), 0) scale(var(--cxos-entry-scale, 1));
+    transform: translate3d(var(--cxos-entry-x, 0), var(--cxos-entry-y, 0), 0) scale(var(--cxos-entry-scale, 1)) scaleX(var(--cxos-entry-scale-x, 1));
   }
   10.625%,
   100% {
