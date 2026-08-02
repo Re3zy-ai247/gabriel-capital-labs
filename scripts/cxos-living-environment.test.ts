@@ -292,9 +292,9 @@ check(
     /data-cxos-passage-target/.test(stage),
 );
 check(
-  "both opt-in Living Environment channels have declared ownership markers",
+  "the facility sweep and per-chamber breath channels have declared ownership markers",
   /data-cxos-motion-channel=\{runtime\.motionChannels\[1\]\}/.test(stage) &&
-    /data-plane="depth"[\s\S]{0,120}data-cxos-motion-channel=\{AGENCY_MOTION_CHANNELS\[0\]\}/.test(
+    /className=\{styles\.districtEnvironment\}[\s\S]{0,160}data-cxos-motion-channel="continuous:chamber-breath transient:chamber-acquire scroll:depth-parallax"/.test(
       stage,
     ) &&
     /data-cxos-animation-budget="2"/.test(css) &&
@@ -396,6 +396,132 @@ check(
   !/\bwindow\.|\bdocument\.|\bnavigator\.|Agency Command|Central Command|Kai Executive Suite/.test(
     policy,
   ),
+);
+
+// -- RC2 WP2: restored state-bearing chamber motion -------------------------
+const killListBlock = css.slice(
+  css.indexOf("Living mode retires every legacy decorative lane"),
+  css.indexOf("Budget 2 opts into ambient"),
+);
+check(
+  "the unconditional Living-mode kill list still retires every legacy motion surface verbatim",
+  killListBlock.length > 0 &&
+    [
+      ".ambientSweep",
+      ".roomBreath",
+      ".districtRail i",
+      ".facilityPulse i",
+      ".flowTrack b",
+      ".districtEnvironment,",
+      ".districtEnvironment *",
+      ".districtBody > *",
+      ".inspectionBody",
+      ".preparedArtifact",
+      ".teamOrbit li > span",
+      ".archiveEvidenceList li > span",
+      ".capacityHorizon b",
+      ".districtTruth::after",
+      ".clientFlowMoment::after",
+      ".healthBank::after",
+      ".kaiDesk::before",
+    ].every((selector) => killListBlock.includes(selector)) &&
+    (killListBlock.match(/animation:\s*none\s*!important/g) ?? []).length === 2,
+);
+check(
+  "the facility sweep keyframe now travels instead of blinking in place",
+  (() => {
+    const heartbeatKeyframe = css.slice(
+      css.indexOf("@keyframes agencyLivingHeartbeat"),
+      css.indexOf("@keyframes agencyLivingBreath"),
+    );
+    return (
+      heartbeatKeyframe.length > 0 &&
+      /translate3d\(-8vw, 0, 0\)/.test(heartbeatKeyframe) &&
+      /translate3d\(108vw, 0, 0\)/.test(heartbeatKeyframe) &&
+      !/translate3d\(52vw/.test(heartbeatKeyframe) &&
+      /animation:\s*agencyLivingHeartbeat var\(--cxos-dur-drift\) linear infinite !important/.test(
+        css,
+      )
+    );
+  })(),
+);
+check(
+  "the per-chamber breath channel derives its amplitude from the light tokens and consumes a per-signature period",
+  /--cxos-breath-lo:\s*calc\([^)]*--cxos-light-rest/.test(css) &&
+    /--cxos-breath-hi:\s*calc\([^)]*--cxos-light-active/.test(css) &&
+    /@keyframes agencyLivingBreath\s*\{[\s\S]{0,40}--cxos-breath-lo[\s\S]{0,80}--cxos-breath-hi/.test(
+      css,
+    ) &&
+    (css.match(/--cxos-breath-period:\s*\d+ms/g) ?? []).length === 8 &&
+    new Set(css.match(/--cxos-breath-period:\s*(\d+)ms/g)).size === 8,
+);
+check(
+  "the blocked-lane pulse is scoped to client operations Tier A and targets only the fixed blocked fixture lane",
+  /\[data-cxos-animation-budget="2"\]\[data-cxos-profile="client-operations"\]\s*\n\s*\.flowList\s*\n\s*> li\[data-motion="blocked"\]\s*\n\s*\.flowTrack\s*\n\s*b\s*\{\s*\n\s*animation:\s*agencyLivingBlockedPulse/.test(
+    css,
+  ),
+);
+check(
+  "all six chamber recognitions restore their exact original keyframe, duration, and easing as budget-gated transients",
+  [
+    ["client-operations", ".clientFlowMoment::after", "agencyClientFloorSweep 960ms"],
+    ["team-operations", ".teamOrbit li > span", "agencyTeamRecognition 860ms"],
+    ["business-health", ".healthBank::after", "agencyObservatoryScan 1400ms"],
+    ["evidence-archive", ".archiveEvidenceList li > span", "agencyEvidenceRecognition 900ms"],
+    ["kai-suite", ".kaiDesk::before", "agencyKaiRecognition 1200ms"],
+    ["growth-threshold", ".capacityHorizon b", "agencyCapacityScan 1100ms"],
+  ].every(([districtId, selector, animation]) => {
+    const escapedSelector = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return new RegExp(
+      `data-cxos-animation-budget="1"\\], \\[data-cxos-animation-budget="2"\\]\\)\\s*\\n\\s*\\.district\\[data-current="true"\\]\\[data-agency-district="${districtId}"\\]\\s*\\n\\s*${escapedSelector}\\s*\\{\\s*\\n\\s*animation:\\s*${animation.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`,
+    ).test(css);
+  }),
+);
+check(
+  "the Kai response reveal and both discovery beats have Living-mode opt-ins over the kill list",
+  /\.kaiResponse\[data-prepared="true"\]\s*\{\s*\n\s*animation:\s*agencyArtifactReveal/.test(
+    css,
+  ) &&
+    /\[data-cxos-attention="inspecting"\]:not\(\[data-cxos-environment-motion="static"\]\)\s*\n\s*\.inspectionBody\s*\{\s*\n\s*animation:\s*agencyInspectionAcquire/.test(
+      css,
+    ) &&
+    /\[data-cxos-attention="inspecting"\]:not\(\[data-cxos-environment-motion="static"\]\)\s*\n\s*\.districtTruth::after\s*\{\s*\n\s*animation:\s*agencyDistrictTruthDraw/.test(
+      css,
+    ),
+);
+check(
+  "the Kai response element mounts with a prepared marker computed from the existing resolution state",
+  /const supported = turn\.resolution\.status === "supported";/.test(stage) &&
+    /className=\{styles\.kaiResponse\}\s*\n\s*data-prepared=\{supported \? "true" : "false"\}/.test(
+      stage,
+    ),
+);
+const livingPolicySection = css.slice(
+  css.indexOf(
+    "CXOS Living Environment Engine RC1 — presentation-only motion policy",
+  ),
+);
+check(
+  "the five retired flow-lane loops are never re-opted into Living mode",
+  livingPolicySection.length > 0 &&
+    !/agencyFlowEntering|agencyFlowAdvancing|agencyFlowWaiting|agencyFlowBlocked|agencyFlowResolving/.test(
+      livingPolicySection,
+    ),
+);
+const CHANNEL_TOKEN = /^(?:continuous|transient|scroll):[a-z-]+$/;
+const classifiedMotionChannelAttrs = [
+  ...stage.matchAll(/data-cxos-motion-channel=(?:"[^"]*"|\{[^}]*\})/g),
+]
+  .map((match) => match[0])
+  .filter((attr) => !/runtime\.motionChannels\[/.test(attr));
+check(
+  "every newly classified data-cxos-motion-channel attribute in stage.tsx carries a conforming class:name token",
+  classifiedMotionChannelAttrs.length === 13 &&
+    classifiedMotionChannelAttrs.every((attr) =>
+      [...attr.matchAll(/"([^"]+)"/g)].some((match) =>
+        match[1].split(" ").every((token) => CHANNEL_TOKEN.test(token)),
+      ),
+    ),
 );
 
 console.log(`\ncxos-living-environment.test.ts: ${pass} passed, ${fail} failed`);

@@ -1758,7 +1758,12 @@ function InspectionPlane({
         <span>INSPECTION PLANE</span>
         <strong>{label}</strong>
       </summary>
-      <div className={styles.inspectionBody}>{children}</div>
+      <div
+        className={styles.inspectionBody}
+        data-cxos-motion-channel="transient:inspection-acquire"
+      >
+        {children}
+      </div>
     </details>
   );
 }
@@ -1799,18 +1804,20 @@ function AgencyDistrictShell({
         aria-hidden="true"
         className={styles.districtEnvironment}
         data-environment={district.id}
+        data-cxos-motion-channel="continuous:chamber-breath transient:chamber-acquire scroll:depth-parallax"
       >
-        <span
-          data-plane="depth"
-          data-cxos-motion-channel={AGENCY_MOTION_CHANNELS[0]}
-        />
+        <span data-plane="depth" />
         <span data-plane="horizon" />
         <span data-plane="signal"><i /><b /><em /></span>
       </div>
       <div aria-hidden="true" className={styles.districtRail}>
         <i />
       </div>
-      <div aria-hidden="true" className={styles.districtThreshold}>
+      <div
+        aria-hidden="true"
+        className={styles.districtThreshold}
+        data-cxos-motion-channel="transient:threshold-beat"
+      >
         <span>CHAMBER {district.index} / 07</span>
         <i />
         <strong>
@@ -1831,7 +1838,11 @@ function AgencyDistrictShell({
         <p>{district.purpose}</p>
       </header>
 
-      <div className={styles.districtTruth} role="note">
+      <div
+        className={styles.districtTruth}
+        role="note"
+        data-cxos-motion-channel="transient:provenance-trace"
+      >
         <span>TRUTH BOUNDARY</span>
         <p>{district.truthBoundary}</p>
       </div>
@@ -2063,6 +2074,7 @@ function CapacityHorizon({
         aria-hidden
         className={styles.capacityHorizon}
         data-capacity-state={state}
+        data-cxos-motion-channel="transient:capacity-recognition"
       >
         {!unresolved &&
           Array.from({ length: limit }, (_, index) => (
@@ -2092,7 +2104,11 @@ function ClientFlowMoment({ state }: { state: AgencyFixtureState }) {
             : null;
 
   return (
-    <section className={styles.clientFlowMoment} aria-labelledby="client-flow-moment-heading">
+    <section
+      className={styles.clientFlowMoment}
+      aria-labelledby="client-flow-moment-heading"
+      data-cxos-motion-channel="transient:client-recognition"
+    >
       <div className={styles.instrumentTitle}>
         <div>
           <p>CLIENT FLOW FLOOR</p>
@@ -2111,26 +2127,32 @@ function ClientFlowMoment({ state }: { state: AgencyFixtureState }) {
         </div>
       ) : (
         <ol className={styles.flowList}>
-          {AGENCY_HEARTBEAT_SIGNALS.map((signal) => (
-            <li
-              key={signal.id}
-              data-motion={signal.motion}
-              data-position={signal.position}
-            >
-              <div>
-                <strong>{signal.workspace}</strong>
-                <span>{signal.lane}</span>
-              </div>
-              <div className={styles.flowTrack} aria-hidden>
-                <i />
-                <b />
-              </div>
-              <div>
-                <strong>{signal.motion}</strong>
-                <span>{signal.detail}</span>
-              </div>
-            </li>
-          ))}
+          {AGENCY_HEARTBEAT_SIGNALS.map((signal) => {
+            const isBlockedLane = signal.motion === "blocked";
+            return (
+              <li
+                key={signal.id}
+                data-motion={signal.motion}
+                data-position={signal.position}
+                data-cxos-motion-channel={
+                  isBlockedLane ? "continuous:blocked-pulse" : undefined
+                }
+              >
+                <div>
+                  <strong>{signal.workspace}</strong>
+                  <span>{signal.lane}</span>
+                </div>
+                <div className={styles.flowTrack} aria-hidden>
+                  <i />
+                  <b />
+                </div>
+                <div>
+                  <strong>{signal.motion}</strong>
+                  <span>{signal.detail}</span>
+                </div>
+              </li>
+            );
+          })}
         </ol>
       )}
       <p className={styles.instrumentFootnote}>
@@ -2165,7 +2187,10 @@ function TeamCoverageMoment({
           </p>
         </div>
       ) : (
-        <ol className={styles.teamOrbit}>
+        <ol
+          className={styles.teamOrbit}
+          data-cxos-motion-channel="transient:team-recognition"
+        >
           {AGENCY_TEAM_SPECIMEN.map((seat) => (
             <li key={seat.id}>
               <span aria-hidden />
@@ -2257,26 +2282,32 @@ function OperationalHeartbeat({
               </dl>
             </div>
             <ol className={styles.flowList}>
-              {AGENCY_HEARTBEAT_SIGNALS.map((signal) => (
-                <li
-                  key={signal.id}
-                  data-motion={signal.motion}
-                  data-position={signal.position}
-                >
-                  <div>
-                    <strong>{signal.workspace}</strong>
-                    <span>{signal.lane}</span>
-                  </div>
-                  <div className={styles.flowTrack} aria-hidden>
-                    <i />
-                    <b />
-                  </div>
-                  <div>
-                    <strong>{signal.motion}</strong>
-                    <span>{signal.detail}</span>
-                  </div>
-                </li>
-              ))}
+              {AGENCY_HEARTBEAT_SIGNALS.map((signal) => {
+                const isBlockedLane = signal.motion === "blocked";
+                return (
+                  <li
+                    key={signal.id}
+                    data-motion={signal.motion}
+                    data-position={signal.position}
+                    data-cxos-motion-channel={
+                      isBlockedLane ? "continuous:blocked-pulse" : undefined
+                    }
+                  >
+                    <div>
+                      <strong>{signal.workspace}</strong>
+                      <span>{signal.lane}</span>
+                    </div>
+                    <div className={styles.flowTrack} aria-hidden>
+                      <i />
+                      <b />
+                    </div>
+                    <div>
+                      <strong>{signal.motion}</strong>
+                      <span>{signal.detail}</span>
+                    </div>
+                  </li>
+                );
+              })}
             </ol>
             <p className={styles.instrumentFootnote}>
               Positions describe this fixed specimen, not historical volume or
@@ -2426,7 +2457,11 @@ function KaiExecutiveSuite({
   onClear: () => void;
 }) {
   return (
-    <section className={styles.kaiDesk} aria-labelledby="kai-operating-heading">
+    <section
+      className={styles.kaiDesk}
+      aria-labelledby="kai-operating-heading"
+      data-cxos-motion-channel="transient:kai-recognition"
+    >
       <div className={styles.sectionHeading}>
         <div>
           <p className={styles.stationIndex}>KAI EXECUTIVE RUNTIME EXPERIENCE</p>
@@ -2543,7 +2578,11 @@ function KaiExecutiveSuite({
                     <p>{turn.command}</p>
                     <small>Context · {district?.name ?? "Agency Command"}</small>
                   </div>
-                  <article className={styles.kaiResponse}>
+                  <article
+                    className={styles.kaiResponse}
+                    data-prepared={supported ? "true" : "false"}
+                    data-cxos-motion-channel="transient:kai-response"
+                  >
                     <p className={styles.workflowClassification}>
                       {supported
                         ? `MATCHED LOCALLY · ${turn.resolution.workflowId?.replaceAll("-", " ").toUpperCase()} · ${turn.resolution.classification}`
@@ -3036,7 +3075,11 @@ function AgencyHealthBank({
   healthStatus: string;
 }) {
   return (
-    <aside className={styles.healthBank} aria-labelledby="agency-health-heading">
+    <aside
+      className={styles.healthBank}
+      aria-labelledby="agency-health-heading"
+      data-cxos-motion-channel="transient:observatory-recognition"
+    >
       <InstrumentHeader
         eyebrow="SYNTHETIC QUALITATIVE FIXTURE"
         title="Agency health drivers"
@@ -3163,7 +3206,10 @@ function EvidenceArchive({ state }: { state: AgencyFixtureState }) {
       {evidence.length === 0 ? (
         <p className={styles.noResults}>No evidence receipt is asserted in this fixture state.</p>
       ) : (
-        <ol className={styles.archiveEvidenceList}>
+        <ol
+          className={styles.archiveEvidenceList}
+          data-cxos-motion-channel="transient:evidence-recognition"
+        >
           {evidence.map((item) => (
             <li key={item.id} data-evidence-state={item.state}>
               <span aria-hidden />

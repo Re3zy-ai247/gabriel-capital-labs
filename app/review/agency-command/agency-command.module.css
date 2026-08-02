@@ -2844,6 +2844,7 @@
   --cxos-entry-x: 0;
   --cxos-entry-y: 8px;
   --cxos-entry-scale: 1;
+  --cxos-breath-period: 5000ms;
 }
 
 .room[data-cxos-profile="central-command"] [data-current="true"][data-agency-district="central-command"] {
@@ -2890,6 +2891,7 @@
   --cxos-entry-scale: 1;
   --cxos-scroll-x: 8px;
   --cxos-scroll-y: 0px;
+  --cxos-breath-period: 4600ms;
 }
 
 .room[data-cxos-profile="client-operations"] [data-current="true"][data-agency-district="client-operations"] {
@@ -2943,6 +2945,7 @@
   --cxos-entry-x: 0;
   --cxos-entry-y: 0;
   --cxos-entry-scale: 1.012;
+  --cxos-breath-period: 5800ms;
 }
 
 .room[data-cxos-profile="team-operations"] [data-current="true"][data-agency-district="team-operations"] {
@@ -2990,6 +2993,7 @@
   --cxos-entry-x: 0;
   --cxos-entry-y: -4px;
   --cxos-entry-scale: 1;
+  --cxos-breath-period: 6400ms;
 }
 
 .room[data-cxos-profile="business-health"] [data-current="true"][data-agency-district="business-health"] {
@@ -3042,6 +3046,7 @@
   --cxos-entry-scale: 1;
   --cxos-scroll-x: 0px;
   --cxos-scroll-y: -8px;
+  --cxos-breath-period: 6800ms;
 }
 
 .room[data-cxos-profile="evidence-archive"] [data-current="true"][data-agency-district="evidence-archive"] {
@@ -3085,6 +3090,7 @@
   --cxos-entry-x: 0;
   --cxos-entry-y: 0;
   --cxos-entry-scale: 1.018;
+  --cxos-breath-period: 7200ms;
 }
 
 .room[data-cxos-profile="kai-suite"] [data-current="true"][data-agency-district="kai-suite"] {
@@ -3138,6 +3144,7 @@
   --cxos-entry-scale: 1;
   --cxos-scroll-x: -8px;
   --cxos-scroll-y: 0px;
+  --cxos-breath-period: 5600ms;
 }
 
 .room[data-cxos-profile="growth-threshold"] [data-current="true"][data-agency-district="growth-threshold"] {
@@ -7580,6 +7587,9 @@
   --cxos-light-rest: 0.08;
   --cxos-light-active: 0.14;
   --cxos-light-focus: 0.2;
+  --cxos-breath-period: 5200ms;
+  --cxos-breath-lo: calc(0.82 - var(--cxos-light-rest));
+  --cxos-breath-hi: calc(0.82 + var(--cxos-light-active));
   --agency-chamber-ease: var(--cxos-ease-vector);
 }
 
@@ -7611,7 +7621,7 @@
 
 /* Budget 2 opts into ambient + profile; budget 1 opts into profile only. */
 .room[data-cxos-environment][data-cxos-animation-budget="2"] .ambientSweep {
-  animation: agencyLivingHeartbeat var(--cxos-dur-heartbeat) var(--cxos-ease-vector) 1 both !important;
+  animation: agencyLivingHeartbeat var(--cxos-dur-drift) linear infinite !important;
 }
 
 .room[data-cxos-environment][data-cxos-animation-budget="2"] [data-plane="depth"] {
@@ -7654,6 +7664,141 @@
     animation-timeline: view() !important;
     animation-range: cover 8% cover 92% !important;
   }
+}
+
+/* RC2 WP2 — state-bearing chamber motion restored as fail-closed opt-ins.
+ * Every rule below is a MORE SPECIFIC override layered on top of the
+ * unconditional kill list above; the kill list itself is untouched. All
+ * continuous channels are gated by the animation budget, which is already 0
+ * at settled/reading/inspecting/Kai-staged/tier C-D/reduced-motion (see
+ * resolveCxosLivingEnvironmentProjection), so they are inert everywhere the
+ * kill list needs to win without contesting the universal stops below. */
+
+/* Continuous slot 2: per-chamber breath. Tier A budget-2 (alongside the
+ * facility sweep, two continuous channels total) excludes client-operations,
+ * which substitutes the blocked-lane pulse instead. Tier B budget-1 carries
+ * the breath for every profile, client-operations included — Tier B has no
+ * second continuous channel to spare for a substitution there. */
+.room[data-cxos-environment][data-cxos-animation-budget="2"]:not([data-cxos-profile="client-operations"]) .districtEnvironment {
+  animation: agencyLivingBreath var(--cxos-breath-period) var(--cxos-ease-vector) infinite alternate !important;
+}
+
+.room[data-cxos-environment][data-cxos-animation-budget="1"] .districtEnvironment {
+  animation: agencyLivingBreath var(--cxos-breath-period) var(--cxos-ease-vector) infinite alternate !important;
+}
+
+/* Client Operations Tier-A exception: the one fixed "blocked" fixture lane
+ * pulses instead of the chamber breathing. The other four agencyFlow* lane
+ * loops stay retired; only this lane's element gains a Living channel. */
+.room[data-cxos-environment][data-cxos-animation-budget="2"][data-cxos-profile="client-operations"]
+  .flowList
+  > li[data-motion="blocked"]
+  .flowTrack
+  b {
+  animation: agencyLivingBlockedPulse 2400ms var(--cxos-ease-vector) infinite alternate !important;
+}
+
+/* Six chamber recognitions — transient, iteration 1, fire once per chamber
+ * acquisition. Non-current .district sections carry the native [hidden]
+ * attribute (display: none !important, see .district[hidden] above), so the
+ * incoming chamber's subtree is not rendered at all until the moment it
+ * gains [data-current="true"] and [hidden] is removed together; that is a
+ * remount-equivalent event for CSS animations (nothing to run while
+ * display: none, a fresh start the instant display resumes), which is why
+ * gating on [data-current="true"] alone is sufficient for a once-per-entry
+ * fire, matching the existing agencyLivingAcquire/agencyLivingAcquireB and
+ * .districtThreshold transition-based threshold beat on the same event. */
+.room[data-cxos-environment]:is([data-cxos-animation-budget="1"], [data-cxos-animation-budget="2"])
+  .district[data-current="true"][data-agency-district="client-operations"]
+  .clientFlowMoment::after {
+  animation: agencyClientFloorSweep 960ms var(--agency-chamber-ease) both !important;
+}
+
+.room[data-cxos-environment]:is([data-cxos-animation-budget="1"], [data-cxos-animation-budget="2"])
+  .district[data-current="true"][data-agency-district="team-operations"]
+  .teamOrbit li > span {
+  animation: agencyTeamRecognition 860ms var(--agency-chamber-ease) both !important;
+}
+
+.room[data-cxos-environment]:is([data-cxos-animation-budget="1"], [data-cxos-animation-budget="2"])
+  .district[data-current="true"][data-agency-district="team-operations"]
+  .teamOrbit li:nth-child(2) > span {
+  animation-delay: 90ms !important;
+}
+
+.room[data-cxos-environment]:is([data-cxos-animation-budget="1"], [data-cxos-animation-budget="2"])
+  .district[data-current="true"][data-agency-district="team-operations"]
+  .teamOrbit li:nth-child(3) > span {
+  animation-delay: 180ms !important;
+}
+
+.room[data-cxos-environment]:is([data-cxos-animation-budget="1"], [data-cxos-animation-budget="2"])
+  .district[data-current="true"][data-agency-district="business-health"]
+  .healthBank::after {
+  animation: agencyObservatoryScan 1400ms var(--agency-chamber-ease) both !important;
+}
+
+.room[data-cxos-environment]:is([data-cxos-animation-budget="1"], [data-cxos-animation-budget="2"])
+  .district[data-current="true"][data-agency-district="evidence-archive"]
+  .archiveEvidenceList li > span {
+  animation: agencyEvidenceRecognition 900ms var(--agency-chamber-ease) both !important;
+}
+
+.room[data-cxos-environment]:is([data-cxos-animation-budget="1"], [data-cxos-animation-budget="2"])
+  .district[data-current="true"][data-agency-district="evidence-archive"]
+  .archiveEvidenceList li:nth-child(2) > span {
+  animation-delay: 80ms !important;
+}
+
+.room[data-cxos-environment]:is([data-cxos-animation-budget="1"], [data-cxos-animation-budget="2"])
+  .district[data-current="true"][data-agency-district="evidence-archive"]
+  .archiveEvidenceList li:nth-child(3) > span {
+  animation-delay: 160ms !important;
+}
+
+.room[data-cxos-environment]:is([data-cxos-animation-budget="1"], [data-cxos-animation-budget="2"])
+  .district[data-current="true"][data-agency-district="evidence-archive"]
+  .archiveEvidenceList li:nth-child(4) > span {
+  animation-delay: 240ms !important;
+}
+
+.room[data-cxos-environment]:is([data-cxos-animation-budget="1"], [data-cxos-animation-budget="2"])
+  .district[data-current="true"][data-agency-district="kai-suite"]
+  .kaiDesk::before {
+  animation: agencyKaiRecognition 1200ms var(--agency-chamber-ease) both !important;
+}
+
+.room[data-cxos-environment]:is([data-cxos-animation-budget="1"], [data-cxos-animation-budget="2"])
+  .district[data-current="true"][data-agency-district="growth-threshold"]
+  .capacityHorizon b {
+  animation: agencyCapacityScan 1100ms var(--agency-chamber-ease) both !important;
+}
+
+/* Kai response reveal — transient, not budget-gated (fixed per the three-
+ * class model). .kaiResponse is the live "prepared artifact" element (the
+ * .preparedArtifact class below is orphaned CSS with no JSX consumer); each
+ * submitted command mounts a new .kaiResponse article keyed by a fresh
+ * turn.id, so the reveal fires once on mount and is not re-armed by chamber
+ * navigation, which neither remounts nor re-hides this element. */
+.room[data-cxos-environment] .kaiResponse[data-prepared="true"] {
+  animation: agencyArtifactReveal 420ms cubic-bezier(0.2, 0.74, 0.2, 1) both;
+}
+
+/* Discovery beats — transient, play on inspection-open even in a settled or
+ * reading room. Attention "inspecting" forces the ambient budget to 0 (see
+ * resolveCxosLivingEnvironmentProjection's focusQuiet), so these cannot use
+ * the budget gate the way the channels above do; they opt in directly off
+ * the attention state instead, excluding only the frozen static projection
+ * (tier C/D, or reduced motion without the explicit cinematic override —
+ * both always present as data-cxos-environment-motion="static" here). */
+.room[data-cxos-environment][data-cxos-attention="inspecting"]:not([data-cxos-environment-motion="static"])
+  .inspectionBody {
+  animation: agencyInspectionAcquire 260ms var(--agency-chamber-ease) both !important;
+}
+
+.room[data-cxos-environment][data-cxos-attention="inspecting"]:not([data-cxos-environment-motion="static"])
+  .districtTruth::after {
+  animation: agencyDistrictTruthDraw 260ms var(--agency-chamber-ease) both !important;
 }
 
 .room:is([data-cxos-kai="staged"], [data-cxos-kai="preparing"], [data-cxos-kai="resolved"]) .overheadLight {
@@ -7743,14 +7888,36 @@
 }
 
 @keyframes agencyLivingHeartbeat {
-  0%,
+  0% {
+    opacity: 0.18;
+    transform: translate3d(-8vw, 0, 0);
+  }
+  50% {
+    opacity: 0.3;
+  }
   100% {
     opacity: 0.18;
-    transform: translate3d(52vw, 0, 0);
+    transform: translate3d(108vw, 0, 0);
   }
-  46% {
-    opacity: 0.28;
-    transform: translate3d(52vw, 0, 0);
+}
+
+@keyframes agencyLivingBreath {
+  from {
+    opacity: var(--cxos-breath-lo);
+  }
+  to {
+    opacity: var(--cxos-breath-hi);
+  }
+}
+
+@keyframes agencyLivingBlockedPulse {
+  from {
+    opacity: 0.7;
+    box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.08);
+  }
+  to {
+    opacity: 1;
+    box-shadow: 0 0 0 7px rgba(244, 199, 109, 0.2);
   }
 }
 

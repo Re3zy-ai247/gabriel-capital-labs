@@ -1153,6 +1153,11 @@ const allowedContinuousAnimations = new Set([
   "agencyEvidenceRecognition",
   "agencyKaiRecognition",
   "agencyCapacityScan",
+  // RC2 WP2 — deliberate, budget-gated Living Environment continuous
+  // channels (facility sweep, per-chamber breath, blocked-lane pulse).
+  "agencyLivingHeartbeat",
+  "agencyLivingBreath",
+  "agencyLivingBlockedPulse",
 ]);
 const requiredContinuousAnimations = [
   "agencySweep",
@@ -1165,8 +1170,13 @@ const requiredContinuousAnimations = [
   "agencyFacilityChannel",
 ];
 check(
-  "all ambient, flow, rail, and chamber motion is finite rather than perpetual",
-  continuousAnimations.length === 0 &&
+  "ambient, flow, and rail motion is finite; only the budget-gated RC2 Living Environment channels are deliberately perpetual",
+  // RC1 shipped zero infinite animations. RC2 WP2 deliberately introduces
+  // three (facility sweep, per-chamber breath, blocked-lane pulse), each
+  // counted against the published continuous-animation budget instead of
+  // being iteration-count-limited — see allowedContinuousAnimations. Any
+  // `infinite` usage outside that reviewed allowlist still fails this check.
+  continuousAnimations.every((name) => allowedContinuousAnimations.has(name)) &&
     [...allowedContinuousAnimations].every((name) => css.includes(name)) &&
     requiredContinuousAnimations.every((name) => css.includes(name)),
 );
