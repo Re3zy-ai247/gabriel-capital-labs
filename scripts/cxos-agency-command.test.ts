@@ -1058,9 +1058,9 @@ for (const [label, pattern] of nondeterministic) {
   check(`determinism: no ${label}`, !pattern.test(presentationCode));
 }
 check(
-  "the room owns no timer and the runtime owns bounded idle, passage, and return fallbacks",
+  "the room owns no timer and the runtime owns bounded idle, passage, return, and scroll-release fallbacks",
   (presentationCode.match(/\bsetTimeout\b/g) ?? []).length === 0 &&
-    (runtimeAdapterCode.match(/\bsetTimeout\b/g) ?? []).length === 4 &&
+    (runtimeAdapterCode.match(/\bsetTimeout\b/g) ?? []).length === 5 &&
     /idleTimerRef\.current = window\.setTimeout\([\s\S]{0,180}setIdleState\("settling"\)[\s\S]{0,180}setIdleState\("settled"\)/.test(
       runtimeAdapterCode,
     ) &&
@@ -1071,6 +1071,9 @@ check(
       runtimeAdapterCode,
     ) &&
     /window\.clearTimeout\(districtTransitionFallbackRef\.current\)/.test(
+      runtimeAdapterCode,
+    ) &&
+    /window\.requestAnimationFrame\(release\);[\s\S]{0,80}window\.setTimeout\(release, 0\)/.test(
       runtimeAdapterCode,
     ) &&
     /fallbackMs:\s*800/.test(stageCode) &&

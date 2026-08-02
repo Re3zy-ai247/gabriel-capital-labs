@@ -2411,6 +2411,7 @@
 .room[data-hidden="true"] .roomBreath,
 .room[data-hidden="true"] .flowTrack b {
   animation-play-state: paused;
+  transition: none !important;
 }
 
 @media (max-width: 1023px) {
@@ -5044,6 +5045,14 @@
 .room[data-departing="true"] .districtTruth::after,
 .room[data-departing="true"] .districtBody > * {
   animation-play-state: paused !important;
+}
+
+.room[data-hidden="true"] .facilityPulse i,
+.room[data-hidden="true"] .districtRail i,
+.room[data-hidden="true"] .districtEnvironment,
+.room[data-hidden="true"] .districtTruth::after,
+.room[data-hidden="true"] .districtBody > * {
+  transition: none !important;
 }
 
 .room[data-hidden="true"] .arrivalThreshold *,

@@ -116,7 +116,9 @@ export function scrollCxosWindowImmediately(top: number, left = 0) {
     return;
   }
   if (typeof window.requestAnimationFrame === "function") {
+    // rAF is paused while hidden; race a timeout so release cannot get stuck.
     window.requestAnimationFrame(release);
+    window.setTimeout(release, 0);
   } else {
     release();
   }
@@ -153,6 +155,21 @@ function readCxosRuntimeCapabilities(): CxosRuntimeCapabilities {
   } catch {
     return CONSERVATIVE_CXOS_RUNTIME_CAPABILITIES;
   }
+}
+
+function sameCxosRuntimeCapabilities(
+  a: CxosRuntimeCapabilities,
+  b: CxosRuntimeCapabilities,
+): boolean {
+  return (
+    a.browserReduced === b.browserReduced &&
+    a.saveData === b.saveData &&
+    a.lowMemory === b.lowMemory &&
+    a.mobile === b.mobile &&
+    a.coarsePointer === b.coarsePointer &&
+    a.intersectionObserver === b.intersectionObserver &&
+    a.detectionFailed === b.detectionFailed
+  );
 }
 
 function subscribeCxosMediaQuery(
@@ -236,7 +253,6 @@ export function useCxosRoomRuntime<DistrictId extends string>({
   const [departing, setDeparting] = useState(false);
   const [detectedAttention, setDetectedAttention] =
     useState<CxosAttentionState>("ambient");
-  const [activitySequence, setActivitySequence] = useState(0);
   const [idleState, setIdleState] =
     useState<CxosIdlePresentationState>("engaged");
 
@@ -264,6 +280,9 @@ export function useCxosRoomRuntime<DistrictId extends string>({
     sequence: number;
   } | null>(null);
   const visibilityFocusPendingRef = useRef(false);
+  const activitySequenceRef = useRef(0);
+  const idleTrackingActiveRef = useRef(false);
+  const idleTimingRef = useRef({ idleAfterMs: 0, settleAfterMs: 0 });
   const idleTimerRef = useRef<number | null>(null);
   const announceRef = useRef(announce);
   const routeResetRef = useRef(onRouteReset);
@@ -344,6 +363,23 @@ export function useCxosRoomRuntime<DistrictId extends string>({
     };
   }, [baseEnvironment, chamberTransition.phase]);
 
+  const armIdleTimer = useCallback(() => {
+    if (idleTimerRef.current !== null) {
+      window.clearTimeout(idleTimerRef.current);
+      idleTimerRef.current = null;
+    }
+    if (!idleTrackingActiveRef.current) return;
+    setIdleState("engaged");
+    const { idleAfterMs, settleAfterMs } = idleTimingRef.current;
+    idleTimerRef.current = window.setTimeout(() => {
+      setIdleState("settling");
+      idleTimerRef.current = window.setTimeout(() => {
+        idleTimerRef.current = null;
+        setIdleState("settled");
+      }, settleAfterMs);
+    }, idleAfterMs);
+  }, []);
+
   useEffect(() => {
     const root = roomRootRef.current;
     if (!root || !definition.livingEnvironment) return;
@@ -372,7 +408,10 @@ export function useCxosRoomRuntime<DistrictId extends string>({
           : "ambient",
       );
     };
-    const registerActivity = () => setActivitySequence((value) => value + 1);
+    const registerActivity = () => {
+      activitySequenceRef.current += 1;
+      armIdleTimer();
+    };
     const settleAttentionAfterEvent = () => queueMicrotask(readAttention);
     const onFocus = () => {
       registerActivity();
@@ -397,7 +436,7 @@ export function useCxosRoomRuntime<DistrictId extends string>({
       root.removeEventListener("focusout", settleAttentionAfterEvent, true);
       root.removeEventListener("toggle", settleAttentionAfterEvent, true);
     };
-  }, [definition.livingEnvironment, roomRootRef]);
+  }, [armIdleTimer, definition.livingEnvironment, observerKey, roomRootRef]);
 
   useEffect(() => {
     if (idleTimerRef.current !== null) {
@@ -406,6 +445,7 @@ export function useCxosRoomRuntime<DistrictId extends string>({
     }
     const livingEnvironment = definition.livingEnvironment;
     if (!livingEnvironment) {
+      idleTrackingActiveRef.current = false;
       setIdleState("engaged");
       return;
     }
@@ -420,25 +460,23 @@ export function useCxosRoomRuntime<DistrictId extends string>({
       attention !== "ambient" ||
       requestedKai !== "quiet";
     if (hardSettle) {
+      idleTrackingActiveRef.current = false;
       setIdleState("settled");
       return;
     }
 
-    setIdleState("engaged");
-    const idleAfterMs =
-      resolution.tier === "A"
-        ? livingEnvironment.idleAfterMs.A
-        : livingEnvironment.idleAfterMs.B;
-    const settleAfterMs = resolution.tier === "A" ? 400 : 300;
-    idleTimerRef.current = window.setTimeout(() => {
-      setIdleState("settling");
-      idleTimerRef.current = window.setTimeout(() => {
-        idleTimerRef.current = null;
-        setIdleState("settled");
-      }, settleAfterMs);
-    }, idleAfterMs);
+    idleTrackingActiveRef.current = true;
+    idleTimingRef.current = {
+      idleAfterMs:
+        resolution.tier === "A"
+          ? livingEnvironment.idleAfterMs.A
+          : livingEnvironment.idleAfterMs.B,
+      settleAfterMs: resolution.tier === "A" ? 400 : 300,
+    };
+    armIdleTimer();
 
     return () => {
+      idleTrackingActiveRef.current = false;
       if (idleTimerRef.current !== null) {
         window.clearTimeout(idleTimerRef.current);
         idleTimerRef.current = null;
@@ -446,8 +484,8 @@ export function useCxosRoomRuntime<DistrictId extends string>({
     };
   }, [
     activeDistrict,
-    activitySequence,
     arrivalKey,
+    armIdleTimer,
     attention,
     chamberTransition.phase,
     definition.livingEnvironment,
@@ -517,6 +555,10 @@ export function useCxosRoomRuntime<DistrictId extends string>({
         districtScrollFrameRef.current = null;
         districtScrollSettleFrameRef.current = window.requestAnimationFrame(() => {
           districtScrollSettleFrameRef.current = null;
+          if (document.hidden) {
+            visibilityFocusPendingRef.current = true;
+            return;
+          }
           if (activeDistrictRef.current !== districtId) return;
           const activeElement = document.activeElement;
           const operatorMovedFocus =
@@ -724,7 +766,10 @@ export function useCxosRoomRuntime<DistrictId extends string>({
   useEffect(() => {
     scrollCxosWindowImmediately(0);
     const update = () => {
-      setCapabilities(readCxosRuntimeCapabilities());
+      const next = readCxosRuntimeCapabilities();
+      setCapabilities((prev) =>
+        sameCxosRuntimeCapabilities(prev, next) ? prev : next,
+      );
       setCapabilitiesReady(true);
     };
     const cleanups: Array<() => void> = [];
@@ -784,23 +829,23 @@ export function useCxosRoomRuntime<DistrictId extends string>({
           "details[data-cxos-inspection][open]",
         )
         .forEach((inspection) => inspection.removeAttribute("open"));
-      const sequence = chamberTransitionRef.current.sequence + 1;
+      const pending = chamberTransitionRef.current;
       const settled: CxosChamberTransition<DistrictId> = {
         phase: "settled",
-        sourceDistrict: definition.initialDistrict,
+        sourceDistrict: pending.sourceDistrict,
         targetDistrict: null,
         direction: "same",
-        sequence,
+        sequence: pending.sequence + 1,
       };
-      activeDistrictRef.current = definition.initialDistrict;
       chamberTransitionRef.current = settled;
-      setActiveDistrict(definition.initialDistrict);
       setChamberTransition(settled);
       setDeparting(false);
-      setKaiContextDistrict(definition.initialDistrict);
       setDetectedAttention("ambient");
+      idleTrackingActiveRef.current = false;
       setIdleState("settled");
-      setActivitySequence((value) => value + 1);
+      activitySequenceRef.current += 1;
+      // District identity is room-owned history, not a runtime default;
+      // routeResetRef restores it instead of asserting initialDistrict here.
       routeResetRef.current?.();
     };
     const resetHiddenPage = () => {
@@ -818,12 +863,7 @@ export function useCxosRoomRuntime<DistrictId extends string>({
       window.removeEventListener("pagehide", resetHiddenPage);
       window.removeEventListener("pageshow", resetRestoredPage);
     };
-  }, [
-    cancelDistrictFocus,
-    clearDistrictTransitionFallback,
-    definition.initialDistrict,
-    roomRootRef,
-  ]);
+  }, [cancelDistrictFocus, clearDistrictTransitionFallback, roomRootRef]);
 
   useEffect(() => {
     if ((!capabilitiesReady && validation.valid) || arrivalSettled) return;
