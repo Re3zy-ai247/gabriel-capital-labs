@@ -1,0 +1,96 @@
+CXOS LIVING ENVIRONMENT ENGINE — CLAUDE RESUME PROMPT
+
+STATUS: SAFE CHECKPOINT RECOVERED — READY FOR CLAUDE CONTINUATION
+
+DO NOT START FROM SCRATCH.
+DO NOT REDESIGN THE ACCEPTED EXPERIENCE.
+DO NOT REPEAT FULL REPOSITORY DISCOVERY.
+DO NOT MODIFY MAIN OR PRODUCTION.
+USE DELTA ANALYSIS.
+REUSE THE EXISTING EVIDENCE.
+
+Repository:
+gabriel-capital-labs-to-upload
+
+Recovered source worktree:
+cxos-living-environment-engine-rc1
+Locate it with: git worktree list --porcelain
+
+Recovered implementation branch:
+feat/cxos-living-environment-engine-rc1
+
+Final handoff SHA:
+9129fefdd2263091f8f029bf60da3fa8986bf7fe
+
+Last product-behavior implementation SHA:
+188aa78cf60d1565a35ac20710724dc7e1e32724
+
+Evidence / protected Preview delivery SHA:
+b2ba206aade2d41aa7b718fdb3c352bbc27edb59
+
+Founder-approved RC5 base:
+29260fddfc59d71e3d963d2ec791657ea57084af
+
+origin/main:
+f449c35d0eca9463c15e86f8cbd4cd7f4e948d03
+
+Checkpoint branch:
+codex/cxos-living-environment-engine-rc1-checkpoint
+
+Checkpoint commit:
+Resolve after fetch with:
+git rev-parse origin/codex/cxos-living-environment-engine-rc1-checkpoint
+
+Important lineage:
+RC5 29260fdd → implementation 188aa78 → evidence/Preview delivery b2ba206 → final handoff 9129fef → checkpoint branch.
+
+The protected Preview is verified for b2ba206 only. Its private hostname and deployment identifier are intentionally absent from sanitized artifacts. Look it up only through authenticated Vercel metadata for the exact branch/SHA. Do not create a new Preview merely to replace this evidence: 188aa78..9129fef contains no app/, components/, or lib/ product-source change.
+
+Completed work verified in source:
+- Core Runtime 1.1 presentation-only extension.
+- Seven deterministic Agency chamber profiles.
+- Root-scoped attention, native-scroll district activation, deterministic idle settlement, bounded motion, Kai presentation phases, inspection planes, lifecycle/focus/history/BFCache protections, and static fail-down.
+- Review route server guard and production hard-off.
+- No canonical fact, product action, request, persistence, model call, API, schema, auth, billing, Stripe, environment, Vercel, package, or lockfile change.
+
+Recovered validation:
+- Rerun during recovery: TypeScript PASS; touched ESLint PASS; diff check PASS; Living Environment 35/35; Agency 185/185; Core Runtime 76/76; isolated review 25/25; schema 17/17; network authz 36/36; event-bus isolation 43/43; session security 11/11; optimized review build PASS.
+- Retained, source-bound: production-identity hard-off 3/3 404; protected Preview bound to b2ba206; browser ledger 10/10 cases and 17/17 coverage gates; zero CLS; 141/141 measured 44px targets.
+- Production header observed during recovery: x-cv-release f449c35d0eca.
+
+Founder ZIP:
+CXOS_LIVING_ENVIRONMENT_ENGINE_RC1_FOUNDER_HANDOFF.zip
+23,296,634 bytes
+SHA-256 e769a7ae0f25289c7e8845a1daefed15daae5ecac0cc5679a2d61ae5bce3b154
+40 entries; archive test PASS.
+
+First commands:
+git fetch --prune origin
+git worktree list --porcelain
+git -C <recovered-worktree> status --short --branch
+git -C <recovered-worktree> rev-parse HEAD '@{upstream}' origin/main
+git -C <recovered-worktree> diff --name-status 188aa78cf60d1565a35ac20710724dc7e1e32724..9129fefdd2263091f8f029bf60da3fa8986bf7fe
+git -C <checkpoint-worktree> diff --name-status 9129fefdd2263091f8f029bf60da3fa8986bf7fe..HEAD
+
+Interpretation:
+- The recovered source worktree is tracked/staged clean but preserves 52 untracked generated remnants: 18 RC5 baseline captures plus 34 unpacked Founder-package source files.
+- Do not delete, alter, broad-stage, or repackage those remnants.
+- The committed ZIP is the authoritative downloadable Founder package.
+- Raw browser ledgers retain local-capture endpoint notation and are excluded from the sanitized ZIP/checkpoint package. Do not expose them as public downloadable artifacts.
+
+Known caveats:
+- 511 Axe contrast nodes require broader manual review.
+- Five responsive cases lack comprehensive center-point obstruction sampling.
+- One landscape mixed animation frame had 51.9 ms blocking.
+- BFCache proof is one desktop traversal.
+- Scroll endpoint proof is one Client Operations desktop-large sample.
+- No physical-device, screen-reader, assistive-technology, or production-RUM claim.
+- Full lint retains four inherited out-of-scope findings.
+
+Prohibited actions:
+- Do not change main, production, aliases, project settings, or environments.
+- Do not merge, rebase, amend recovered commits, force-push, deploy, or promote.
+- Do not modify schema, migration, API, backend, auth, billing, Stripe, dependencies, or lockfiles.
+- Do not begin another room or import unrelated CXOS/Growth/GIOS history.
+
+Begin by verifying exact branch/SHA truth and reviewing only the delta after this checkpoint. Any future implementation work requires separate Founder authorization.
