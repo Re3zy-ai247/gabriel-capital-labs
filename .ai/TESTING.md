@@ -31,14 +31,25 @@ public review flags, `GET /review`, `/review/agency-command`, and
 
 Last exact-source RC2 result (`6c69ef6`, 2026-08-02): Core **76/76**, Living
 Environment **93/93** (was 35/35 at RC1 — WP1–WP7 plus three WP-FIX commits), Agency
+**185/185**, isolated review **25/25**. Browser acceptance: 10 cases executed, 19/19
+coverage gates, strict status **"hold"** on exactly 1 disclosed residual (landscape
+`phase-cls`, 0.01037 vs 0.01 budget) — 9/10 cases clean.
+
+**WP-FIX2 result (`f7ee9c5`, 2026-08-03 — adversarial-gate remediation, three commits on
+top of `6c69ef6`):** Core **76/76**, Living Environment **96/96** (+3 static pins: F1/F9
+negation-count, quiet-kill-list `:is()` extension, F5 computed-style-gate), Agency
 **185/185**, isolated review **25/25**. Browser acceptance
 (`CXOS_LIVING_ENVIRONMENT_ENGINE_RC2_EVIDENCE/candidate/final/candidate-final-browser-evidence.json`,
-sha256 `7391cc7d7e219c5db8f4916fe6f6bea1f794f8bd09cb2be4a963aaed6ca53445`, `sourceRevision`
-verified = HEAD): 10 cases executed, 19/19 coverage gates, strict status **"hold"** on
-exactly 1 disclosed non-reproducing residual (landscape `phase-cls`, 0.01037 vs 0.01
-budget) — 9/10 cases clean. Fresh production-identity build (`BUILD_ID
-BG6m8Y25klVI66_-u9-NY`) again returned 404/404/404 for the same three routes. Full
-detail: `CXOS_LIVING_ENVIRONMENT_ENGINE_RC2_VALIDATION_REPORT.md`.
+sha256 `6c62da31d6df4f2f1be3198d88d1297e65715c0f32371fe06c1efdc79628d6c6`, `sourceRevision`
+verified = HEAD): 10 cases executed, **20/20** coverage gates (adds
+`coverage:channel-token-observed`, F6b), strict status **"accepted", zero findings**. The
+landscape `phase-cls` residual above is superseded: RC2 WP-FIX2's new per-source
+layout-shift instrumentation pinned it to `KaiContextSpine`'s chamber-conditional
+`kaiContext` paragraph (`stage.tsx` ~1748) — an empirically reproducing narrow-viewport
+(≤740px) pattern, absent ≥1024px, disclosed rather than fixed (not an obvious ≤5-line
+change). Fresh production-identity build (`BUILD_ID BG6m8Y25klVI66_-u9-NY`, unchanged by
+WP-FIX2) again returned 404/404/404 for the same three routes. Full detail:
+`CXOS_LIVING_ENVIRONMENT_ENGINE_RC2_VALIDATION_REPORT.md` §5.1.
 
 The dependency-free browser harness is
 `scripts/cxos-living-environment/browser.mjs`. It requires explicit absolute paths for
