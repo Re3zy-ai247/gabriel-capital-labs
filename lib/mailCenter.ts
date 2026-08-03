@@ -82,6 +82,13 @@ export interface MailCenterRow {
 }
 
 const RESERVED = "Available after live mail integration.";
+// SIM-REVIEW finding 11: the true "still tracking this" line that already
+// exists on Mission Control (lib/missionControl.ts's waiting-state nextAction,
+// "Kai is watching the clock[s]") — exported so every surface that renders a
+// genuinely live §611 window (this file's WAITING_NORMALLY row, app/journey's
+// waiting entries) reuses the exact same sentence instead of inventing a
+// parallel one.
+export const WATCHING_CLOCK_LINE = "Kai is watching the clock.";
 const OUTCOME_LABEL: Record<string, string> = {
   deleted: "Removed on this bureau", verified: "Kept as reported", updated: "Updated",
   no_response: "No substantive response", unknown: "Logged",
@@ -268,6 +275,11 @@ export function buildMailCenter(letters: MailLetter[], now: number = Date.now())
       kaiIntel.push(`You mailed this ${daysElapsed === 0 ? "today" : `${daysElapsed} day${daysElapsed === 1 ? "" : "s"} ago`}.`);
     }
     kaiIntel.push(win);
+    // Only for a genuinely live window: WAITING_NORMALLY, within `rows` (built
+    // from `inMail` below), always means mailed + unanswered + not past window
+    // — the same gate NEEDS_ATTENTION already carves out. Never claimed once
+    // the window lapses or a response lands.
+    if (health === "WAITING_NORMALLY") kaiIntel.push(WATCHING_CLOCK_LINE);
     if (ownHistoryText) kaiIntel.push(ownHistoryText);
     kaiIntel.push(recommendation);
 

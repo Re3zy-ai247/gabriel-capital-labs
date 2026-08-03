@@ -1,6 +1,6 @@
 // Guards for the Mail Center projection (Sprint IX). Pure, deterministic — no DB,
 // no AI. Run: npx tsx scripts/mailCenter.test.ts
-import { buildMailCenter, mailHealth, type MailLetter } from "../lib/mailCenter";
+import { buildMailCenter, mailHealth, WATCHING_CLOCK_LINE, type MailLetter } from "../lib/mailCenter";
 
 let failures = 0;
 function ok(label: string, cond: boolean) {
@@ -96,6 +96,21 @@ ok("furnisher window label cites §623", /§623/.test(furnWindow.label));
 ok("collector letter is framed FDCPA §1692g, not §611", /1692g/.test(collWindow.description + coll.recommendation) && !/§611/.test(collWindow.description));
 ok("collector window label cites §1692g", /1692g/.test(collWindow.label));
 ok("bureau letter still cites §611", /§611/.test(center.rows.find((r) => r.letterId === "waiting")!.timeline.find((s) => s.key === "window")!.description));
+
+// ---- Phase 1A / SIM-REVIEW finding 11: "Kai is watching the clock" — reused
+// verbatim from Mission Control, rendered ONLY for a genuinely live window ----
+const clockCenter = buildMailCenter([
+  L({ id: "live", status: "MAILED", mailedAt: daysAgo(10) }),  // WAITING_NORMALLY — a real, still-running window
+  L({ id: "late", status: "MAILED", mailedAt: daysAgo(40) }),  // NEEDS_ATTENTION — window already passed
+  L({ id: "done", status: "RESOLVED" }),                        // COMPLETED
+], now);
+const liveRow = clockCenter.rows.find((r) => r.letterId === "live")!;
+const lateRow = clockCenter.rows.find((r) => r.letterId === "late")!;
+const doneRow = clockCenter.rows.find((r) => r.letterId === "done")!;
+ok("live window (WAITING_NORMALLY) → kaiIntel includes the watching-the-clock line", liveRow.kaiIntel.includes(WATCHING_CLOCK_LINE));
+ok("past window (NEEDS_ATTENTION) → the line is NOT shown (no longer true)", !lateRow.kaiIntel.includes(WATCHING_CLOCK_LINE));
+ok("resolved (COMPLETED) → the line is NOT shown", !doneRow.kaiIntel.includes(WATCHING_CLOCK_LINE));
+ok("the exact exported constant is the literal shown (single source of truth)", WATCHING_CLOCK_LINE === "Kai is watching the clock." && liveRow.kaiIntel.includes("Kai is watching the clock."));
 
 console.log(failures === 0 ? "\nALL PASS" : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);
