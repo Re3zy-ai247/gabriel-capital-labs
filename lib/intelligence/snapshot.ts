@@ -7,7 +7,7 @@
 import type { AccountType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { yearsSince } from "@/lib/utils";
-import { REINVESTIGATION_DAYS } from "@/lib/forecast";
+import { REINVESTIGATION_DAYS, daysElapsedSinceEstimatedReceipt } from "@/lib/forecast";
 import { fallOffInsight } from "@/lib/tradelineInsights";
 import { ownOutcomeTrack, ownHistorySummary, type OwnTrack } from "@/lib/outcomeLedger";
 import { listKaiEvents } from "@/lib/kaiEvents";
@@ -82,7 +82,11 @@ export async function loadSnapshot(userId: string): Promise<IntelSnapshot> {
   const openWindows: OpenWindow[] = letters
     .filter((l) => l.status === "MAILED" && l.mailedAt && !l.responseAt)
     .map((l) => {
-      const elapsed = Math.floor((now - new Date(l.mailedAt as Date).getTime()) / 86_400_000);
+      // Receipt-anchored (lib/forecast.ts), not mailing-anchored — this feeds
+      // operator-visible copy across modules.ts/academy.ts/portfolio.ts/
+      // ExecutionRisk.ts, so it has to agree with every other §611 estimate
+      // in the app (Phase 1A honesty-triple reconcile).
+      const elapsed = daysElapsedSinceEstimatedReceipt(new Date(l.mailedAt as Date).getTime(), now);
       return { recipient: l.recipientName, daysElapsed: elapsed, daysLeft: REINVESTIGATION_DAYS - elapsed, letterId: l.id };
     })
     .sort((a, b) => a.daysLeft - b.daysLeft);

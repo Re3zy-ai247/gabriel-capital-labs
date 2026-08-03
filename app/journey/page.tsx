@@ -4,8 +4,9 @@ import { Disclaimer, EduBanner } from "@/components/Disclaimer";
 import { prisma } from "@/lib/prisma";
 import { currentUserOrDemo } from "@/lib/session";
 import { listKaiEvents } from "@/lib/kaiEvents";
-import { getKaiHomeData, REINVESTIGATION_DAYS } from "@/lib/kaiHome";
+import { getKaiHomeData } from "@/lib/kaiHome";
 import { WATCHING_CLOCK_LINE } from "@/lib/mailCenter";
+import { REINVESTIGATION_DAYS, daysElapsedSinceEstimatedReceipt } from "@/lib/forecast";
 import { CheckCircle2, Circle, FileText, Mail, MailOpen, Search, Sparkles, Upload } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -153,7 +154,9 @@ export default async function JourneyPage() {
   const upcoming = letters
     .filter((l) => l.mailedAt && !l.responseAt)
     .map((l) => {
-      const daysElapsed = Math.floor((now - new Date(l.mailedAt as Date).getTime()) / 86_400_000);
+      // Receipt-anchored (lib/forecast.ts), not a bare mailedAt diff — matches
+      // the Mail Center/Mission Control estimate for the same letter.
+      const daysElapsed = daysElapsedSinceEstimatedReceipt(new Date(l.mailedAt as Date).getTime(), now);
       return { l, daysLeft: REINVESTIGATION_DAYS - daysElapsed };
     })
     .sort((a, b) => a.daysLeft - b.daysLeft)
@@ -211,7 +214,10 @@ export default async function JourneyPage() {
     : (() => {
         const nearest = upcoming[0];
         if (nearest.daysLeft <= 0) return `Now — the ${nearest.l.recipientName} window has already closed.`;
-        const closeAt = new Date(new Date(nearest.l.mailedAt as Date).getTime() + REINVESTIGATION_DAYS * 86_400_000);
+        // From today + the same receipt-anchored daysLeft `upcoming` already
+        // computed above — never re-derived from raw mailedAt (that was the
+        // exact mailedAt-anchored math this reconcile removes).
+        const closeAt = new Date(now + nearest.daysLeft * 86_400_000);
         const closeStr = closeAt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
         return `Around ${closeStr} — when the ${nearest.l.recipientName} window closes.`;
       })();

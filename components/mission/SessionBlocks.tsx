@@ -29,8 +29,11 @@ export function SessionHeader({ identity }: { identity: OperatorIdentity }) {
       <div className="flex items-baseline gap-2.5">
         <span className="rounded bg-brand-500/15 px-1.5 py-0.5 text-[10px] font-bold tracking-widest text-brand-300">KAI</span>
         <h2 className={`${gxl.record} text-2xl text-slate-100`}>
-          Good morning, {identity.greetingName}
-          {identity.onBehalfOf ? <> — in {identity.onBehalfOf.clientName}&apos;s workspace</> : null}.
+          Good {identity.timeOfDay}, {identity.greetingName}
+          {/* Everyday on-behalf-of register (SIM-REVIEW minimum-set item 3) — the
+              consumer/agency-owner variant stays plain; only a workspace altitude
+              names whose case this is, in the same sentence, not a second line. */}
+          {identity.onBehalfOf ? <> — you&apos;re in {identity.onBehalfOf.clientName}&apos;s workspace</> : null}.
         </h2>
       </div>
     </div>
@@ -144,8 +147,13 @@ export function SessionCloseBlock({ close }: { close: SessionCloseSummary }) {
     <div className="card mb-2 mt-2 p-3">
       <p className={gxl.colophon}>
         {quiet
-          ? "Nothing done, nothing pending — a quiet session."
-          : `Done today: ${close.doneToday.count} · Remaining: ${close.remaining.count}`}
+          // "Quiet is allowed" is this codebase's own established idiom for a
+          // no-action state (lib/kaiHome.ts, app/journey/page.tsx) — reused
+          // here rather than a fresh phrase, in Kai's register: pleased and
+          // bounded, never celebratory (no work existing isn't a win to
+          // announce, KAI-STATE emotional-range law).
+          ? "Quiet is allowed — nothing needed you today."
+          : `Done today: ${close.doneToday.count} · Still open: ${close.remaining.count}`}
       </p>
     </div>
   );

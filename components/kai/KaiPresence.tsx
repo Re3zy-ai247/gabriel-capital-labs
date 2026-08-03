@@ -19,6 +19,33 @@ const CACHE_KEY = "kai-presence-ctx-v1";
 const DISMISS_KEY = "kai-presence-dismissed";
 const CACHE_TTL_MS = 5 * 60 * 1000;
 
+// Kai Home (/dashboard) and the Kai-narrated Timeline (/journey) ARE Kai — a
+// floating presence there would be a second, redundant Kai.
+const EXCLUDED_PATHS = new Set(["/dashboard", "/journey"]);
+
+// Phase 1A cache fix (SIM-REVIEW finding 4 — live defect): sessionStorage has
+// no user/workspace scope of its own. KaiPresence is mounted by AppShell,
+// which every page.tsx calls directly (not the persistent root layout), so it
+// remounts on each navigation — the cache exists purely to skip a redundant
+// fetch within CACHE_TTL_MS, not to hold state across a remount. That window
+// is exactly where it bled: an agency operator opening or exiting a client
+// workspace, or signing out, changes WHO the next fetch is for without
+// unmounting anything, so a fresh mount could still read the previous
+// subject's cached recommendation. The workspace cookie is httpOnly (by
+// design, unreadable here), so this component cannot itself detect "the
+// subject changed" — every place that CHANGES it calls this instead, so the
+// next mount fetches fresh rather than trusting a stale entry. Exported so
+// those switch paths (app/agency/page.tsx openClient, components/AgencyBar.tsx
+// exit, components/Sidebar.tsx sign-out) never hardcode the key name.
+export function clearKaiPresenceCache(): void {
+  try {
+    if (typeof window === "undefined") return;
+    sessionStorage.removeItem(CACHE_KEY);
+  } catch {
+    /* cache is best-effort */
+  }
+}
+
 export function KaiPresence() {
   const pathname = usePathname();
   const [ctx, setCtx] = useState<KaiContext | null>(null);
@@ -31,6 +58,15 @@ export function KaiPresence() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+    // Excluded routes neither fetch nor cache. This must run BEFORE the cache
+    // read and the fetch below — the render-time guard further down isn't
+    // enough on its own, because hooks always run regardless of what a later
+    // return in the render body skips, so a guard placed only there still let
+    // every visit here write a fresh (soon-to-be-stale-elsewhere) entry. That
+    // was the exact mechanism finding 4 names: "openClient() lands on
+    // /dashboard, so every ordinary [workspace] switch populates the
+    // unscoped cache."
+    if (EXCLUDED_PATHS.has(pathname)) return;
     if (sessionStorage.getItem(DISMISS_KEY)) return; // stays dismissed all session
 
     try {
@@ -60,7 +96,7 @@ export function KaiPresence() {
       }
     }, 400); // let the page render first — Kai is never the LCP
     return () => clearTimeout(t);
-  }, []);
+  }, [pathname]);
 
   // Close the panel on navigation WITHOUT the focus-return (the user is going
   // somewhere — yanking focus back to the pill on the destination page would
@@ -98,7 +134,10 @@ export function KaiPresence() {
   }, [open]);
 
   if (hidden || !ctx) return null;
-  if (pathname === "/dashboard" || pathname === "/journey") return null; // Kai Home and the Kai-narrated timeline ARE Kai — no double presence
+  // Belt-and-suspenders — the mount effect above already skips fetch/cache
+  // here entirely, so ctx can only be non-null from a still-fresh cache
+  // written on a still-included route before a client-side navigation.
+  if (EXCLUDED_PATHS.has(pathname)) return null;
 
   const hasSomething = Boolean(ctx.recommendation || ctx.deadline || ctx.overnightCount > 0);
   const contextLine = ctx.deadline

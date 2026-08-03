@@ -17,6 +17,7 @@ import {
   forecastFor, ownResponseLatencyDays, REINVESTIGATION_DAYS, MAIL_TRANSIT_DAYS,
   daysElapsedSinceEstimatedReceipt, type ForecastLetterInput,
 } from "@/lib/forecast";
+import { STRATEGY_BY_ID } from "@/lib/strategies";
 
 const DAY = 86_400_000;
 
@@ -600,4 +601,64 @@ export function buildMailCenter(letters: MailLetter[], now: number = Date.now())
       roundDistribution,
     },
   };
+}
+
+// ---- Kai Package Summary (Phase 1A, Agent E — fills the Download page's
+// reserved Kai Summary slot) --------------------------------------------------
+// Zero AI, kaiHome idiom: deterministic branches, every line a receipt off the
+// package's own letters. Re-derives no rule already owned elsewhere — the
+// strategy line reads lib/strategies.ts's existing table verbatim (the SAME
+// copy the letter builder already shows for this strategyId), and the window
+// line reuses THIS file's own windowText() (the identical function the
+// per-letter timeline stage above already calls), fed with
+// lib/forecast.ts's receipt-anchored elapsed-days helper — never a
+// re-authored variant of either.
+export interface PackageSummary {
+  contains: string;
+  strategyBasis: string;
+  afterMailing: string;
+}
+
+export function buildPackageSummary(members: MailLetter[], now: number = Date.now()): PackageSummary {
+  if (members.length === 0) {
+    const none = "This package has no letters on file.";
+    return { contains: none, strategyBasis: none, afterMailing: none };
+  }
+
+  // A package's grouping key is tradeline+strategy+round (packageKeyFor,
+  // above), so every member shares one strategy and one recipient kind — read
+  // once from the first member, not re-derived per letter.
+  const first = members[0];
+  const kind = recipientKind(first);
+  const strategy = STRATEGY_BY_ID[first.strategy];
+  const recipients = [...new Set(members.map((m) => m.recipientName))];
+  const mailedCount = members.filter((m) => Boolean(m.mailedAt)).length;
+  const allMailed = mailedCount === members.length;
+
+  const contains =
+    `${members.length} letter${members.length === 1 ? "" : "s"} — to ${recipients.join(", ")} — ` +
+    `Round ${first.round}${mailedCount > 0 && !allMailed ? ` (${mailedCount} of ${members.length} already mailed)` : ""}.`;
+
+  const strategyBasis = strategy
+    ? `${strategy.label}. ${strategy.blurb}`
+    : "This package's strategy basis isn't on file.";
+
+  // "What happens after mailing" is the applicable RULE, not a live status
+  // read (Mail Center's rows already own live status) — so an already-mailed
+  // package states its real, receipt-anchored clock (the member nearest its
+  // window closing, kaiHome's own nearest-first convention); a
+  // not-yet-fully-mailed package states the rule that applies once it is.
+  let afterMailing: string;
+  if (allMailed) {
+    const daysElapsed = Math.max(
+      ...members
+        .filter((m) => m.mailedAt)
+        .map((m) => daysElapsedSinceEstimatedReceipt(new Date(m.mailedAt as Date).getTime(), now))
+    );
+    afterMailing = windowText(kind, true, daysElapsed, daysElapsed >= REINVESTIGATION_DAYS);
+  } else {
+    afterMailing = windowText(kind, false, 0, false);
+  }
+
+  return { contains, strategyBasis, afterMailing };
 }

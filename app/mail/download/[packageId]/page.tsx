@@ -3,7 +3,7 @@ import { AppShell } from "@/components/AppShell";
 import { Disclaimer } from "@/components/Disclaimer";
 import { prisma } from "@/lib/prisma";
 import { currentUserOrDemo } from "@/lib/session";
-import { buildMailCenter, HEALTH_LABEL, HEALTH_TONE, type MailLetter } from "@/lib/mailCenter";
+import { buildMailCenter, buildPackageSummary, HEALTH_LABEL, HEALTH_TONE, type MailLetter } from "@/lib/mailCenter";
 import { FileText, ShieldCheck } from "lucide-react";
 import { DownloadApproval } from "./DownloadApproval";
 
@@ -64,6 +64,12 @@ export default async function DownloadPackagePage({ params }: { params: { packag
     );
   }
 
+  // The Kai Summary digest (Phase 1A, Agent E) — the SAME MailLetter rows this
+  // page already loaded, scoped to this package's members. Zero AI, zero new
+  // query.
+  const memberIds = new Set(pkg.members.map((m) => m.letterId));
+  const summary = buildPackageSummary(letters.filter((l) => memberIds.has(l.id)));
+
   return (
     <AppShell title="/ Download package">
       <div className="mx-auto max-w-2xl">
@@ -105,17 +111,37 @@ export default async function DownloadPackagePage({ params }: { params: { packag
           </ul>
         </div>
 
-        {/* Step 2 — Kai Summary slot: a clearly-bounded, Kai-labeled panel.
-            Structural placeholder only — no fake Kai content until a real
-            summary is wired (Agent E's territory). */}
+        {/* Step 2 — Kai Summary: a deterministic digest of this package (Phase
+            1A, Agent E fills D's reserved slot) — zero AI, every line a
+            receipt off the package's own letters (lib/mailCenter.ts
+            buildPackageSummary). Clearly Kai-labeled; the Approve control
+            further down stays outside this panel (see the boundary marker
+            below it). */}
         <div className="card mt-4 p-5">
           <div className="mb-2 flex items-center gap-2">
             <span className="rounded bg-brand-500/15 px-1.5 py-0.5 text-[10px] font-bold tracking-widest text-brand-300">KAI</span>
             <h3 className="text-sm font-semibold">Package summary</h3>
           </div>
-          <p className="text-sm text-slate-400">
-            A summary of this package isn&apos;t generated yet — review the letters above before downloading.
-          </p>
+          <dl className="space-y-2.5 text-sm">
+            <div>
+              <dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">This package contains</dt>
+              <dd className="text-slate-200">{summary.contains}</dd>
+            </div>
+            <div>
+              <dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Strategy</dt>
+              <dd className="text-slate-300">{summary.strategyBasis}</dd>
+            </div>
+            <div>
+              <dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">After mailing</dt>
+              <dd className="text-slate-300">{summary.afterMailing}</dd>
+            </div>
+            {pkg.evidence.selfMailNote && (
+              <div>
+                <dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Evidence</dt>
+                <dd className="text-slate-300">{pkg.evidence.selfMailNote}</dd>
+              </div>
+            )}
+          </dl>
         </div>
 
         {/* KAI-PANEL-BOUNDARY: everything below is deliberately OUTSIDE the

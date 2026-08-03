@@ -39,9 +39,25 @@ const DAY_MS = 86_400_000;
 
 export type Altitude = "consumer" | "agency-owner" | "workspace";
 
+// The everyday greeting register (Phase 1A, Agent E — SIM-REVIEW minimum-set
+// item 3: "an on-behalf-of variant for the everyday register"). UTC-anchored,
+// same convention as dayWindow below — CreditVector doesn't collect a
+// per-user timezone (no schema change this phase), so this is the same
+// documented approximation the rest of the app already makes for "today,"
+// never a claim of the operator's actual local time.
+export type GreetingPeriod = "morning" | "afternoon" | "evening";
+
+export function greetingPeriod(now: number): GreetingPeriod {
+  const hour = new Date(now).getUTCHours();
+  if (hour < 12) return "morning";
+  if (hour < 18) return "afternoon";
+  return "evening";
+}
+
 export interface OperatorIdentity {
   greetingName: string;
   altitude: Altitude;
+  timeOfDay: GreetingPeriod;
   // Present only at "workspace" altitude — an agency operator acting inside a
   // client's case. Everywhere the static "Welcome back" text sits today, this is
   // the on-behalf-of register (SIM-REVIEW minimum-set item 3).
@@ -170,18 +186,20 @@ function firstNameOf(a: { fullName?: string | null; name?: string | null }): str
 
 function identityOf(
   account: OperatorAccount,
-  client: WorkspaceClient | null
+  client: WorkspaceClient | null,
+  now: number
 ): { identity: OperatorIdentity; altitude: Altitude } {
   const greetingName = firstNameOf(account);
+  const timeOfDay = greetingPeriod(now);
   if (client) {
     const altitude: Altitude = "workspace";
     return {
       altitude,
-      identity: { greetingName, altitude, onBehalfOf: { clientName: client.fullName || client.name || "this client" } },
+      identity: { greetingName, altitude, timeOfDay, onBehalfOf: { clientName: client.fullName || client.name || "this client" } },
     };
   }
   const altitude: Altitude = account.isAgency ? "agency-owner" : "consumer";
-  return { altitude, identity: { greetingName, altitude } };
+  return { altitude, identity: { greetingName, altitude, timeOfDay } };
 }
 
 // ===== day windows ====================================================================
@@ -353,7 +371,7 @@ function sessionCloseOf(today: CappedList<AccomplishmentEntry>, priorities: Prio
 // omitted. This is what scripts/operator-session.test.ts exercises directly.
 export function assembleOperatorSession(x: OperatorSessionInputs): OperatorSession {
   const now = x.now ?? Date.now();
-  const { identity, altitude } = identityOf(x.account, x.client);
+  const { identity, altitude } = identityOf(x.account, x.client, now);
 
   const today = dayWindow(now, 0);
   const yesterday = dayWindow(now, 1);

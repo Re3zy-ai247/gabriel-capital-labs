@@ -39,7 +39,9 @@ export default function RegisterPage() {
     setBusy(false);
     if (!s) { setErr("Your account is ready — please sign in."); return; }
     if (s?.error) setErr("Your account is ready — please sign in.");
-    else router.push("/dashboard");
+    // New accounts land on the real front door — five steps, each one honestly
+    // marked as it's actually completed (Phase 1A, ROOM-RECOMMENDATIONS row 7).
+    else router.push("/onboarding");
   }
 
   return (
