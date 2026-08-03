@@ -272,12 +272,23 @@ check(
     !/addEventListener\(\s*["']touchmove["']/.test(adapter),
 );
 check(
+  // RC2 WP-FIX2 (F12): extended to the three scroll/wheel listeners and the
+  // trailing-throttle timer added alongside them — previously only the
+  // discrete-activity listeners (pointerdown/click/keydown/focusin/toggle)
+  // were pinned for symmetric cleanup, leaving the scroll-activity path
+  // unchecked even though the "has" check above already required it to
+  // exist.
   "all adapter listeners, lifecycle resets, and the idle timer have symmetric cleanup",
   /removeEventListener\("pointerdown"/.test(adapter) &&
     /removeEventListener\("click"/.test(adapter) &&
     /removeEventListener\("keydown"/.test(adapter) &&
     /removeEventListener\("focusin"/.test(adapter) &&
     /removeEventListener\("toggle"/.test(adapter) &&
+    /root\.removeEventListener\("scroll", registerScrollActivity\)/.test(adapter) &&
+    /root\.removeEventListener\("wheel", registerScrollActivity\)/.test(adapter) &&
+    /window\.removeEventListener\("scroll", registerScrollActivity\)/.test(adapter) &&
+    /window\.clearTimeout\(scrollActivityThrottle\)/.test(adapter) &&
+    /scrollActivityThrottle = null/.test(adapter) &&
     /idleTimerRef\.current = null/.test(adapter) &&
     /setDocumentHidden\(true\)/.test(adapter) &&
     /setDetectedAttention\("ambient"\)/.test(adapter) &&
@@ -321,6 +332,56 @@ check(
 check(
   "stage.tsx contains zero legacy runtime.motionChannels[ DOM bindings (the taxonomy migration is complete)",
   (stage.match(/runtime\.motionChannels\[/g) ?? []).length === 0,
+);
+// RC2 WP-FIX2 (F1/F9): the facility sweep already restated the 13-way
+// quiet-state negation on its own selector; the two chamber-breath rules and
+// the blocked-lane pulse now restate the IDENTICAL block verbatim on theirs
+// too (the scroll opt-in also carries it, but at @supports-nested
+// indentation, so it is a separate string and not counted by this exact
+// top-level-indentation match) -- Bible §11.2's "every RC2 continuous
+// opt-in restates the negation on its own selector" is only literally true
+// once all four of these match.
+const rc2QuietStateNegationBlock = `:not(:is(
+    [data-cxos-idle="settling"],
+    [data-cxos-idle="settled"],
+    [data-cxos-attention="reading"],
+    [data-cxos-attention="inspecting"],
+    [data-cxos-kai="staged"],
+    [data-cxos-kai="preparing"],
+    [data-cxos-kai="resolved"],
+    [data-cxos-environment-motion="quiet"],
+    [data-cxos-environment-motion="static"],
+    [data-tier="C"],
+    [data-tier="D"],
+    [data-cxos-tier="C"],
+    [data-cxos-tier="D"]
+  ))`;
+const rc2QuietStateNegationCount = css.split(rc2QuietStateNegationBlock).length - 1;
+check(
+  "F1/F9 — the facility sweep and both new chamber-breath opt-ins and the blocked-lane pulse all restate the identical 13-way quiet-state negation on their own selector",
+  rc2QuietStateNegationCount === 4,
+);
+check(
+  "F1 — the RC2 quiet kill list's element :is() also stops .districtEnvironment itself and .flowTrack b, not only .ambientSweep and .districtEnvironment's descendants",
+  /:is\(\.ambientSweep, \.districtEnvironment, \.districtEnvironment \*, \.flowTrack b\)/.test(
+    css,
+  ),
+);
+check(
+  // RC2 WP-FIX2 (F5): static pin for the per-animation-name, per-OWN-target
+  // computed-style gate that replaced the owner-string "contains
+  // continuous:" check -- the adversarial-confirmed fix for over-reach onto
+  // a sibling transient:chamber-acquire/scroll:depth-parallax animation
+  // that merely shared a multi-token owner with continuous:chamber-breath.
+  "F5 — the WAAPI safety net gates cancellation per animation name on that animation's own target, never on the shared owner's raw channel string alone",
+  /if \(!animationName\) continue;/.test(adapter) &&
+    /if \(!isDeclaredContinuous\) continue;/.test(adapter) &&
+    /const computedNames = getComputedStyle\(target, pseudoElement\)/.test(
+      adapter,
+    ) &&
+    /if \(!computedNames\.includes\(animationName\)\) {\s*\n\s*animation\.cancel\(\);/.test(
+      adapter,
+    ),
 );
 check(
   "Agency route reset clears transient overlays, pending focus, and Kai state",
@@ -422,9 +483,16 @@ check(
     !/declaredMotionChannels/.test(browserHarness),
 );
 check(
-  "the structural classifier enforces a single iteration and a <=1500ms ceiling for every running transient:* animation instance",
+  // RC2 WP-FIX2 (F10): the ceiling is now measured delay-inclusive
+  // (effectiveEndMs = getComputedTiming().endTime = delay + duration for a
+  // single-iteration beat), not duration alone -- a staggered beat does not
+  // finish until its delay has also elapsed.
+  "the structural classifier enforces a single iteration and a delay-inclusive <=1500ms ceiling for every running transient:* animation instance",
   /animation\.iterations !== 1/.test(browserHarness) &&
-    /animation\.duration > 1500/.test(browserHarness) &&
+    /animation\.effectiveEndMs > 1500/.test(browserHarness) &&
+    /effectiveEndMs: typeof timing\.endTime === "number" \? timing\.endTime : null/.test(
+      browserHarness,
+    ) &&
     /transientTimingViolations/.test(browserHarness),
 );
 check(
@@ -712,9 +780,13 @@ check(
     new Set(css.match(/--cxos-breath-period:\s*(\d+)ms/g)).size === 8,
 );
 check(
-  "the blocked-lane pulse is scoped to client operations Tier A and targets only the fixed blocked fixture lane",
-  /\[data-cxos-animation-budget="2"\]\[data-cxos-profile="client-operations"\]\s*\n\s*\.flowList\s*\n\s*> li\[data-motion="blocked"\]\s*\n\s*\.flowTrack\s*\n\s*b\s*\{\s*\n\s*animation:\s*agencyLivingBlockedPulse/.test(
-    css,
+  // RC2 WP-FIX2 (F1/F9): now also restates the quiet-state negation
+  // (rc2QuietStateNegationBlock, defined above) directly between the
+  // budget/profile attributes and .flowList, exactly like the two
+  // chamber-breath rules.
+  "the blocked-lane pulse is scoped to client operations Tier A, restates the quiet-state negation, and targets only the fixed blocked fixture lane",
+  css.includes(
+    `[data-cxos-animation-budget="2"][data-cxos-profile="client-operations"]${rc2QuietStateNegationBlock}\n  .flowList\n  > li[data-motion="blocked"]\n  .flowTrack\n  b {\n  animation: agencyLivingBlockedPulse`,
   ),
 );
 check(
@@ -949,8 +1021,9 @@ check(
   // the transient agencyLivingAcquireB beat (`animation: agencyLivingAcquireB
   // var(--cxos-dur-heartbeat) ...`) -- and despite its name is NOT a
   // continuous cadence, so it is bound by the structural transient budget in
-  // browser.mjs (iteration 1, <=1500ms; see "animation.duration > 1500"
-  // above). The Tier B override used to be 3200ms (root default 2400ms),
+  // browser.mjs (iteration 1, delay-inclusive <=1500ms; see
+  // "animation.effectiveEndMs > 1500" above). The Tier B override used to be
+  // 3200ms (root default 2400ms),
   // both over the ceiling, which the harness caught as a
   // transientTimingViolation on every Tier B chamber-acquire. Every declared
   // value must stay <=1500ms and there must be exactly the two expected

@@ -70,6 +70,36 @@ const AGENCY_MOTION_CHANNELS = [
   "client-flow",
 ] as const;
 
+// RC2 WP-FIX2 (F7): the real per-surface data-cxos-motion-channel token
+// vocabulary, one entry per distinct "<class>:<name>" token declared
+// anywhere in this file's JSX (grep `data-cxos-motion-channel` -- an owner
+// that declares more than one token on one attribute, like
+// .districtEnvironment's continuous:chamber-breath transient:chamber-acquire
+// scroll:depth-parallax trio, contributes each of its tokens once here).
+// This is what the room root's data-cxos-motion-channels attribute now
+// binds (see AGENCY_CORE_RUNTIME.rootMotionChannels below); it is a
+// DIFFERENT list from AGENCY_MOTION_CHANNELS above, which stays exactly as
+// it was (a <=3-item, RUNTIME_ID-shaped legacy contract value validated
+// elsewhere) precisely because "<class>:<name>" tokens cannot pass that
+// validation and were never meant to.
+const AGENCY_LIVING_MOTION_CHANNELS = [
+  "continuous:facility-sweep",
+  "continuous:chamber-breath",
+  "continuous:blocked-pulse",
+  "transient:chamber-acquire",
+  "transient:threshold-beat",
+  "transient:client-recognition",
+  "transient:team-recognition",
+  "transient:observatory-recognition",
+  "transient:evidence-recognition",
+  "transient:kai-recognition",
+  "transient:capacity-recognition",
+  "transient:kai-response",
+  "transient:inspection-acquire",
+  "transient:provenance-trace",
+  "scroll:depth-parallax",
+] as const;
+
 function resolveAgencyArrivalProjection(
   state: AgencyFixtureState,
   personalization: AgencyPersonalization
@@ -113,6 +143,7 @@ const AGENCY_CORE_RUNTIME = {
   arrivalBeats: AGENCY_ARRIVAL_BEATS,
   arrivalDurationMs: { A: 1500, B: 700 },
   motionChannels: AGENCY_MOTION_CHANNELS,
+  rootMotionChannels: AGENCY_LIVING_MOTION_CHANNELS,
   livingEnvironment: AGENCY_LIVING_ENVIRONMENT,
   kaiContextHoldDistricts: ["kai-suite"],
   departure: {

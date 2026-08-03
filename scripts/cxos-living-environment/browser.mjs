@@ -788,8 +788,63 @@ const probeInit = ({ candidateRoute, constrained, coarse }) => {
               ownershipEvidence: "layout-shift entries do not expose script ownership",
             };
           }
+          // RC2 WP-FIX2 (F2): pin WHICH element moved, not just how much.
+          // sources[].node is a live DOM reference that cannot cross the
+          // Playwright evaluate() return-value boundary, so it is resolved
+          // to a selector path plus its own previous/current rect HERE, at
+          // observation time (the technique used ad hoc to diagnose the
+          // narrow-viewport growth-threshold shift at 6c69ef6, now a
+          // permanent part of the ledger instead of a one-off script).
+          let shiftSources;
+          if (type === "layout-shift") {
+            const describeRect = (rect) =>
+              rect
+                ? {
+                    x: rect.x,
+                    y: rect.y,
+                    width: rect.width,
+                    height: rect.height,
+                    top: rect.top,
+                    right: rect.right,
+                    bottom: rect.bottom,
+                    left: rect.left,
+                  }
+                : null;
+            shiftSources = (entry.sources ?? []).map((source) => {
+              const node = source.node;
+              if (!(node instanceof Element)) {
+                return {
+                  node: node ? `non-element (nodeType ${node.nodeType})` : "unattributed",
+                  attribute: null,
+                  previousRect: describeRect(source.previousRect),
+                  currentRect: describeRect(source.currentRect),
+                };
+              }
+              const path = [];
+              let current = node;
+              let depth = 0;
+              while (current instanceof Element && depth < 6) {
+                const id = current.id ? `#${current.id}` : "";
+                const classes = [...current.classList]
+                  .slice(0, 3)
+                  .map((name) => `.${name}`)
+                  .join("");
+                path.unshift(`${current.tagName.toLowerCase()}${id}${classes}`);
+                if (current.id || current.tagName === "BODY") break;
+                current = current.parentElement;
+                depth += 1;
+              }
+              return {
+                node: path.join(" > "),
+                attribute: node.getAttribute?.("data-cxos-motion-channel") ?? null,
+                previousRect: describeRect(source.previousRect),
+                currentRect: describeRect(source.currentRect),
+              };
+            });
+          }
           sink.push({
             ...serialized,
+            ...(shiftSources ? { shiftSources } : {}),
             recordedPhase: ledger.currentPhase,
             observedAt: performance.now(),
             ...attribution,
@@ -835,7 +890,7 @@ async function beginPhase(page, phase) {
 }
 
 async function snapshot(page, phaseCursor, options = {}) {
-  return page.evaluate(async ({ cursor, includeTargetSizes, targetSizeSelector }) => {
+  return page.evaluate(async ({ cursor, includeTargetSizes, targetSizeSelector, scrollLinkedDistricts }) => {
     // Yield once so pending PerformanceObserver deliveries are present before slicing.
     await new Promise((resolve) => setTimeout(resolve, 0));
     const ledger = window.__cxosEvidence;
@@ -974,6 +1029,19 @@ async function snapshot(page, phaseCursor, options = {}) {
       const animationName = typeof animation.animationName === "string"
         ? animation.animationName
         : null;
+      // RC2 WP-FIX2: decisive computed-style-vs-getAnimations measurement,
+      // recorded beside every running entry so the disclosed cascade-escape
+      // residual (an animation WAAPI reports as "running" after the CSS
+      // cascade has already moved on) is directly diagnosable from the
+      // ledger instead of requiring a fresh repro. Read on this animation's
+      // OWN target/pseudo-element -- never the (possibly multi-token)
+      // motionOwner -- matching the runtime net's per-animation gate.
+      const computedAnimationName = target instanceof Element
+        ? getComputedStyle(
+            target,
+            effect && "pseudoElement" in effect ? effect.pseudoElement ?? undefined : undefined,
+          ).animationName
+        : null;
       const motionChannel = motionOwner?.getAttribute("data-cxos-motion-channel") ?? null;
       const timelineType = animation.timeline?.constructor?.name ?? null;
       const iterations = timing.iterations ?? null;
@@ -1007,6 +1075,7 @@ async function snapshot(page, phaseCursor, options = {}) {
       return {
         index,
         name: animationName,
+        computedAnimationName,
         source: animationName ? "css-animation" : animation.constructor?.name ?? "animation",
         pseudoElement: effect && "pseudoElement" in effect ? effect.pseudoElement : null,
         target: describeElement(target),
@@ -1021,8 +1090,14 @@ async function snapshot(page, phaseCursor, options = {}) {
         playbackRate: animation.playbackRate,
         currentTime: typeof animation.currentTime === "number" ? animation.currentTime : null,
         currentTimeValue: describeAnimationTime(animation.currentTime),
+        delay: typeof timing.delay === "number" ? timing.delay : null,
         duration: typeof timing.duration === "number" ? timing.duration : null,
         durationValue: describeAnimationTime(timing.duration),
+        // RC2 WP-FIX2 (F10): the delay-inclusive effective end -- getComputedTiming()'s
+        // own endTime is delay + (duration * iterations) + endDelay, exactly the
+        // "when does this beat actually finish" measure the transient ceiling
+        // needs; duration alone (above) undercounts a staggered/delayed beat.
+        effectiveEndMs: typeof timing.endTime === "number" ? timing.endTime : null,
         progress: typeof timing.progress === "number" ? timing.progress : null,
         timelineType,
         timelineCurrentTimeValue: describeAnimationTime(animation.timeline?.currentTime),
@@ -1053,13 +1128,17 @@ async function snapshot(page, phaseCursor, options = {}) {
     )];
     // Rule (b) continued: every individual running transient:* animation
     // instance (not just the distinct token) must be a single-iteration,
-    // <=1500ms beat.
+    // <=1500ms beat. RC2 WP-FIX2 (F10): measured delay-inclusive (effective
+    // end = delay + duration, via getComputedTiming().endTime) rather than
+    // duration alone -- a staggered beat (e.g. the team/evidence recognition
+    // stagger delays) does not actually finish until its delay has also
+    // elapsed, so duration-only underrepresented how long it visibly runs.
     const transientTimingViolations = runningAnimations
       .filter((animation) => animation.resolvedMotionClass === "transient")
       .filter((animation) =>
         animation.iterations !== 1 ||
-        typeof animation.duration !== "number" ||
-        animation.duration > 1500,
+        typeof animation.effectiveEndMs !== "number" ||
+        animation.effectiveEndMs > 1500,
       )
       .map((animation) => ({
         name: animation.name,
@@ -1067,7 +1146,9 @@ async function snapshot(page, phaseCursor, options = {}) {
         pseudoElement: animation.pseudoElement,
         target: animation.target,
         iterations: animation.iterations,
+        delay: animation.delay,
         duration: animation.duration,
+        effectiveEndMs: animation.effectiveEndMs,
       }));
     // Rule (d): any running animation on an environment surface with no
     // resolvable channel token — this is the budget-bypass hole the old
@@ -1095,6 +1176,22 @@ async function snapshot(page, phaseCursor, options = {}) {
     if (root?.getAttribute("data-hidden") === "true") quietReasons.push("hidden");
     if (root?.getAttribute("data-cxos-district-transition") === "passage") quietReasons.push("passage");
     const expectedMaximum = quietReasons.length > 0 ? 0 : tierMaximum;
+    // RC2 WP-FIX2 (F8): scroll:* is excluded from the continuous budget
+    // (rule (c) above) but was previously uncapped entirely. The honest cap
+    // is the number of scroll channels the active chamber actually
+    // declares: the four "travel" chambers opt into exactly one
+    // (scroll:depth-parallax); the three scroll-still-by-design chambers
+    // declare none. Quiet states use a looser <=1 ceiling rather than 0,
+    // because a ViewTimeline-driven animation is not part of the
+    // idle/settled/reading motion-state machine the continuous budget reads
+    // -- ViewTimeline playback tracks scroll position independent of
+    // "active"/"quiet", so it can legitimately still report as running at
+    // rest; the cap only guards against MORE than the single declared
+    // channel ever running at once, in any state.
+    const activeProfile = root?.getAttribute("data-cxos-profile") ?? null;
+    const declaredScrollChannels =
+      activeProfile && scrollLinkedDistricts.includes(activeProfile) ? 1 : 0;
+    const scrollTokenCap = quietReasons.length > 0 ? 1 : declaredScrollChannels;
     const targetSizeTargets = includeTargetSizes
       ? [...document.querySelectorAll(targetSizeSelector)]
           .filter((element) => {
@@ -1180,6 +1277,10 @@ async function snapshot(page, phaseCursor, options = {}) {
           runningContinuousTokens,
           runningTransientTokens,
           runningScrollTokens,
+          // RC2 WP-FIX2 (F8) — the honest scroll cap for the active chamber.
+          activeProfile,
+          declaredScrollChannels,
+          scrollTokenCap,
           transientTimingViolations,
           unclassifiedEnvironmentAnimations,
           // Backward-compatible fields other report/gate code still reads
@@ -1197,6 +1298,7 @@ async function snapshot(page, phaseCursor, options = {}) {
             declaredBudget <= expectedMaximum &&
             runningContinuousTokens.length <= expectedMaximum &&
             runningTransientTokens.length <= 3 &&
+            runningScrollTokens.length <= scrollTokenCap &&
             transientTimingViolations.length === 0 &&
             unclassifiedEnvironmentAnimations.length === 0,
         },
@@ -1282,6 +1384,7 @@ async function snapshot(page, phaseCursor, options = {}) {
     cursor: phaseCursor,
     includeTargetSizes: options.includeTargetSizes === true,
     targetSizeSelector: TARGET_SIZE_SELECTOR,
+    scrollLinkedDistricts: SCROLL_LINKED_DISTRICTS,
   });
 }
 
@@ -1875,7 +1978,14 @@ function evaluateCaseAcceptance(result) {
       add(
         "motion-budget",
         state.step,
-        "The structural continuous/transient/scroll motion-channel budget failed.",
+        // RC2 WP-FIX2 (F8): scroll:* now has an honest cap too -- the
+        // declared scroll-channel count for the active chamber (1 for the
+        // four travel chambers, 0 for the three scroll-still chambers),
+        // loosened to <=1 in any quiet state (ViewTimeline playback is not
+        // gated by the idle/settled/reading state machine, so it may
+        // legitimately still read as running at rest; the cap only forbids
+        // MORE than the one declared channel).
+        "The structural continuous/transient/scroll motion-channel budget failed (continuous <= tier budget, transient <= 3 concurrent beats each <=1500ms delay-inclusive, scroll <= the active chamber's declared scroll-channel count, or <=1 in a quiet state).",
         {
           tier: budget.tier,
           declaredBudget: budget.declaredBudget,
@@ -1887,6 +1997,9 @@ function evaluateCaseAcceptance(result) {
             budget.unownedRunningEnvironmentAnimations,
           runningTransientTokens: budget.runningTransientTokens,
           runningScrollTokens: budget.runningScrollTokens,
+          activeProfile: budget.activeProfile,
+          declaredScrollChannels: budget.declaredScrollChannels,
+          scrollTokenCap: budget.scrollTokenCap,
           transientTimingViolations: budget.transientTimingViolations,
           quietReasons: budget.quietReasons,
         },
@@ -1898,6 +2011,33 @@ function evaluateCaseAcceptance(result) {
         state.step,
         "A running animation on an environment/decorative surface has no resolvable data-cxos-motion-channel token.",
         { animations: budget.unclassifiedEnvironmentAnimations },
+      );
+    }
+    // RC2 WP-FIX2 (F7, gate half): every running animation's resolved
+    // channel token must be a member of the room root's OWN declared
+    // data-cxos-motion-channels vocabulary for this state -- restores RC1's
+    // ownership contract (a running channel must be one the room itself
+    // claims) in the RC2 "<class>:<name>" token grammar. This is
+    // membership, not grammar: a token can be perfectly well-formed and
+    // correctly resolved (see unclassified-environment-animation above) and
+    // still fail here if it is not one the root actually declared.
+    const declaredRootChannels = new Set(
+      (state.root?.["data-cxos-motion-channels"] ?? "").split(/\s+/).filter(Boolean),
+    );
+    const unmemberedRunningTokens = [
+      ...budget.runningContinuousTokens,
+      ...budget.runningTransientTokens,
+      ...budget.runningScrollTokens,
+    ].filter((token) => !declaredRootChannels.has(token));
+    if (unmemberedRunningTokens.length > 0) {
+      add(
+        "channel-membership",
+        state.step,
+        "A running animation's resolved motion-channel token is not a member of the room root's declared data-cxos-motion-channels vocabulary.",
+        {
+          unmemberedRunningTokens,
+          declaredRootChannels: [...declaredRootChannels],
+        },
       );
     }
     if (state.overflowX > 0) {
@@ -2090,6 +2230,26 @@ function evaluateCaseAcceptance(result) {
         state.trustedBfcache ?? { evidence: "unavailable" },
       );
     }
+  }
+
+  // RC2 WP-FIX2 (F3): a new, deliberately provisional case-level gate on top
+  // of the existing near-zero PER-PHASE cls budget above (unchanged). The
+  // per-phase budget catches a single bad transition; it says nothing about
+  // many small, individually-compliant phase shifts accumulating over a
+  // whole case. 0.05 is a loose bar chosen pending a real phase-vs-
+  // cumulative CLS attribution mechanism (a disclosed residual, not solved
+  // here) -- observed maxima across all ten matrix cases in the prior bound
+  // run were ~0.02, comfortably under both this gate and the 0.1 web-vitals
+  // "needs improvement" threshold.
+  const finalState = result.states.at(-1);
+  const finalCumulativeCls = finalState?.performance?.cumulative?.cls ?? null;
+  if (typeof finalCumulativeCls !== "number" || finalCumulativeCls > 0.05) {
+    add(
+      "cumulative-cls",
+      finalState?.step ?? "case",
+      "Final cumulative non-input CLS for the case exceeded the provisional 0.05 budget (a loose bar pending a real phase-vs-cumulative CLS attribution mechanism; the unchanged near-zero 0.01 per-phase budget above is the primary guard).",
+      { finalCumulativeCls, maximum: 0.05 },
+    );
   }
 
   if (result.spec.id === "desktop-large") {
@@ -2550,6 +2710,53 @@ async function runCase(spec) {
         scrollLinkedChoreography,
       });
     }
+  }
+
+  if (spec.id === "desktop-large") {
+    // RC2 WP-FIX2 (F6): transient:team-recognition is structurally inert in
+    // the default "solo" room -- TeamCoverageMoment renders .teamSoloCore,
+    // not .teamOrbit, until the operator switches the DIRECTOR's Operating
+    // model to "Team Specimen" (stage.tsx applyOperatingModel). Simply
+    // entering team-operations, as the main per-chamber loop above already
+    // does, never observes this beat. Toggling the model while team-
+    // operations is already the current chamber makes .teamOrbit mount
+    // fresh inside that already-current district (a genuine React mount,
+    // not merely an [hidden] flip), which is what actually fires
+    // agencyTeamRecognition -- capture happens the instant that animation is
+    // confirmed running, then Solo Agency is restored immediately so no
+    // later step in this case observes a non-default operating model.
+    const step = "director:team-recognition";
+    const cursor = await beginCasePhase(step);
+    await navigateToDistrict(page, "team-operations", {
+      activation: spec.activation,
+      method: "direct",
+    });
+    const directorSummary = await visibleLocator(page, "summary:has-text('DIRECTOR')");
+    await activate(directorSummary, spec.activation);
+    const teamSpecimenButton = page.getByRole("button", { name: "Team Specimen" });
+    await activate(teamSpecimenButton, spec.activation);
+    await page.waitForFunction(() => {
+      const owner = document.querySelector(
+        "section[data-current='true'][data-agency-district='team-operations'] [data-cxos-motion-channel='transient:team-recognition']",
+      );
+      return Boolean(
+        owner &&
+          owner
+            .getAnimations({ subtree: true })
+            .some((animation) => animation.playState === "running"),
+      );
+    });
+    await capture(step, cursor, {
+      activation: spec.activation,
+      method: "operating-model-toggle",
+      district: "team-operations",
+    });
+    const soloAgencyButton = page.getByRole("button", { name: "Solo Agency" });
+    await activate(soloAgencyButton, spec.activation);
+    await page.waitForFunction(
+      () => !document.querySelector("[data-cxos-motion-channel='transient:team-recognition']"),
+    );
+    await waitForUiCommit(page);
   }
 
   await navigateToDistrict(page, "kai-suite", {
@@ -3288,6 +3495,45 @@ function evaluateReportAcceptance(results, javaScriptDisabled) {
       })),
     },
   );
+  // RC2 WP-FIX2 (F6b): every token the room root ever declares across the
+  // run must be observed running in at least one state's running list --
+  // otherwise a channel could exist in the DOM/CSS with no evidence it ever
+  // actually plays (the exact gap that made transient:team-recognition
+  // invisible before the director:team-recognition step above was added).
+  // transient:threshold-beat is a CSS *transition* (a color/opacity
+  // transition on .districtThreshold's state spans, not a @keyframes
+  // animation), so it has no animationName and document.getAnimations()
+  // never reports it as "running" the way every other declared token is --
+  // it is structurally excluded here rather than treated as a coverage gap.
+  const TRANSITION_DRIVEN_CHANNEL_TOKENS = Object.freeze(["transient:threshold-beat"]);
+  const rootDeclaredChannelTokens = new Set(
+    allStates.flatMap((state) =>
+      (state.root?.["data-cxos-motion-channels"] ?? "").split(/\s+/).filter(Boolean),
+    ),
+  );
+  const observedRunningChannelTokens = new Set(
+    allStates.flatMap((state) => [
+      ...(state.animations.motionBudget?.runningContinuousTokens ?? []),
+      ...(state.animations.motionBudget?.runningTransientTokens ?? []),
+      ...(state.animations.motionBudget?.runningScrollTokens ?? []),
+    ]),
+  );
+  const uncoveredChannelTokens = [...rootDeclaredChannelTokens].filter(
+    (token) =>
+      !TRANSITION_DRIVEN_CHANNEL_TOKENS.includes(token) &&
+      !observedRunningChannelTokens.has(token),
+  );
+  addCoverage(
+    "coverage:channel-token-observed",
+    rootDeclaredChannelTokens.size > 0 && uncoveredChannelTokens.length === 0,
+    "Every data-cxos-motion-channel token the room root declares (data-cxos-motion-channels) is observed running in at least one matrix state, except tokens explicitly documented as transition-driven (never a CSS @keyframes animation, so never \"running\" per document.getAnimations()).",
+    {
+      declaredChannelTokens: [...rootDeclaredChannelTokens],
+      transitionDrivenExclusions: TRANSITION_DRIVEN_CHANNEL_TOKENS,
+      observedRunningChannelTokens: [...observedRunningChannelTokens],
+      uncoveredChannelTokens,
+    },
+  );
   const targetSizeSamplingByCase = results.map((result) => {
     const measuringStates = result.states.filter(
       (state) => state.targetSize?.minimumPx === 44,
@@ -3402,8 +3648,10 @@ function evaluateReportAcceptance(results, javaScriptDisabled) {
   addCoverage(
     "coverage:javascript-disabled",
     javaScriptDisabled.districtCount === DISTRICTS.length &&
-      javaScriptDisabled.overflowX === 0,
-    "The JavaScript-disabled document remains complete and has no horizontal overflow.",
+      javaScriptDisabled.overflowX === 0 &&
+      javaScriptDisabled.animationCount === 0 &&
+      javaScriptDisabled.livingEnvironmentAttributePresent === false,
+    "The JavaScript-disabled document remains complete, has no horizontal overflow, runs zero Web Animations, and carries no data-cxos-environment Living opt-in attribute.",
     javaScriptDisabled,
   );
 
@@ -3449,6 +3697,14 @@ try {
       overflowX: await jsDisabledPage.evaluate(
         () => Math.max(0, document.documentElement.scrollWidth - document.documentElement.clientWidth),
       ),
+      // RC2 WP-FIX2 (item 10): with JavaScript disabled, the Living
+      // Environment enhancement layer must never partially activate --
+      // zero Web Animations and no Living opt-in attribute at all, not just
+      // "no visible motion".
+      animationCount: await jsDisabledPage.evaluate(() => document.getAnimations().length),
+      livingEnvironmentAttributePresent: await jsDisabledPage.evaluate(
+        () => document.querySelector("[data-cxos-environment]") !== null,
+      ),
       captureError: null,
     };
     await jsDisabledPage.screenshot({
@@ -3462,6 +3718,8 @@ try {
       districtCount: null,
       headings: [],
       overflowX: null,
+      animationCount: null,
+      livingEnvironmentAttributePresent: null,
       captureError: safeErrorSummary(error),
     };
   } finally {
@@ -3510,7 +3768,7 @@ try {
       networkPrivacy:
         "Request and response URLs omit query strings and credentials; methods, resource types, status codes, and failure text are recorded, never request or response bodies.",
       animationLedger:
-        "Every snapshot records animation name, source kind, pseudo-element, structural target, the raw data-cxos-motion-channel attribute string, and a structurally-resolved single token/class (continuous, transient, or scroll — read from the token's own prefix; never from a keyframe name). For an owner that declares more than one token, the specific running animation's own computed timeline type and iteration count disambiguate which token applies. Continuous channels are counted by distinct running token: Tier A <=2, Tier B <=1, every quiet/static state =0. Transient channels are counted by distinct running token, grouping staggered instances of one recognition beat as one logical beat: <=3 concurrent, each individual running instance a single iteration and <=1500ms. Scroll channels are tracked but excluded from the continuous count. Any running animation on a decorative/environment surface (or matching a retained legacy-keyframe-name safety net, kept only as a backstop for animations with no ancestor-or-self channel attribute at all — never consulted to decide a class) with no resolvable token fails as unclassified-environment-animation. A dedicated native-scroll probe separately proves visible-subject ViewTimeline wiring to the document scroller plus nonzero timing and rendered transform response, independently for each of the four scroll-linked chambers (client-operations, evidence-archive, growth-threshold, business-health).",
+        "Every snapshot records animation name, a computed-style animationName read from that animation's own target/pseudo-element (a decisive computed-style-vs-getAnimations measurement, diagnostic for the disclosed cascade-escape residual), source kind, pseudo-element, structural target, the raw data-cxos-motion-channel attribute string, and a structurally-resolved single token/class (continuous, transient, or scroll — read from the token's own prefix; never from a keyframe name). For an owner that declares more than one token, the specific running animation's own computed timeline type and iteration count disambiguate which token applies. Continuous channels are counted by distinct running token: Tier A <=2, Tier B <=1, every quiet/static state =0. Transient channels are counted by distinct running token, grouping staggered instances of one recognition beat as one logical beat: <=3 concurrent, each individual running instance a single iteration and a delay-inclusive effective end (delay + duration, via getComputedTiming().endTime) <=1500ms. Scroll channels are excluded from the continuous count but are capped at the active chamber's own declared scroll-channel count (1 for the four travel chambers, 0 for the three scroll-still chambers), loosened to <=1 in any quiet state. Every running animation's resolved token must also be a member of the room root's own declared data-cxos-motion-channels vocabulary (channel-membership) — restoring RC1's ownership contract in the RC2 token grammar — and, across the whole run, every token the root ever declares must be observed running at least once (coverage:channel-token-observed), except tokens documented as transition-driven (transient:threshold-beat, a CSS transition with no animationName, never \"running\" per getAnimations()). Any running animation on a decorative/environment surface (or matching a retained legacy-keyframe-name safety net, kept only as a backstop for animations with no ancestor-or-self channel attribute at all — never consulted to decide a class) with no resolvable token fails as unclassified-environment-animation. A dedicated native-scroll probe separately proves visible-subject ViewTimeline wiring to the document scroller plus nonzero timing and rendered transform response, independently for each of the four scroll-linked chambers (client-operations, evidence-archive, growth-threshold, business-health). Final cumulative non-input CLS per case is separately gated at a provisional <=0.05 (cumulative-cls), on top of the unchanged near-zero 0.01 per-phase budget.",
       syntheticLifecycle:
         "Synthetic visibility and PageTransitionEvent phases are explicitly labeled, record isTrusted=false, and are diagnostic only—never BFCache proof. Trusted BFCache proof requires a real history.back traversal, reused document ID, and isTrusted=true pageshow.persisted=true; CDP not-used reasons are recorded where available. Proven independently on both the desktop and mobile viewports.",
       reflow200:

@@ -228,6 +228,17 @@ export interface CxosRoomRuntimeDefinition<DistrictId extends string> {
     B: number;
   };
   motionChannels: readonly string[];
+  // RC2 WP-FIX2 (F7): the validated, <=3-item, RUNTIME_ID-shaped legacy
+  // vocabulary above stays load-bearing wherever it already was (its shape
+  // is enforced below); it is not the real per-surface channel grammar
+  // ("<class>:<name>", see §11.1) and was never meant to be, so it cannot
+  // simply be widened to hold that grammar. rootMotionChannels is the
+  // OPTIONAL, unvalidated list a room may supply specifically for the root
+  // "data-cxos-motion-channels" attribute, so that attribute can truthfully
+  // enumerate the real declared token vocabulary instead of the legacy
+  // stand-in. Falls back to motionChannels when a room (or an older
+  // contract) does not supply it.
+  rootMotionChannels?: readonly string[];
   livingEnvironment?: CxosLivingEnvironmentDefinition<DistrictId>;
   kaiContextHoldDistricts?: readonly DistrictId[];
   departure: {

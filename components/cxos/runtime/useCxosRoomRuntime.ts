@@ -585,24 +585,74 @@ export function useCxosRoomRuntime<DistrictId extends string>({
   // token grammar the CSS and the acceptance harness already use as the
   // single source of truth -- no new concept, no room-specific knowledge.
   // useLayoutEffect (not useEffect) so this runs before the next paint.
+  //
+  // RC2 WP-FIX2 (F5, adversarial-confirmed over-reach): an owner can declare
+  // more than one token on ONE attribute (.districtEnvironment carries
+  // "continuous:chamber-breath transient:chamber-acquire scroll:depth-
+  // parallax" for 3 physically distinct animations -- the breath on the
+  // owner itself, and the acquire/scroll pair on its [data-plane="depth"]
+  // child). The original net used target.closest("[data-cxos-motion-channel]")
+  // to find the OWNER, then cancelled whenever the OWNER's raw attribute
+  // STRING merely contained a "continuous:" substring -- true for all of the
+  // animations sharing that owner, so leaving "active" force-cancelled a
+  // still-in-flight transient:chamber-acquire entry or the scroll:depth-
+  // parallax ViewTimeline animation too, neither of which is continuous.
+  // The fix scopes both the classification and the computed-style gate to
+  // THIS animation alone: cancel only when (a) this specific animation's own
+  // token resolves to continuous: (never scroll, never transient), AND (b)
+  // this animation's own animationName is absent from getComputedStyle of
+  // its OWN target/pseudo-element (never the shared owner) -- i.e. the
+  // cascade has already disowned THIS animation specifically. In the normal
+  // quiet path the CSS negation has already flipped that element's
+  // animation-name to none and this is a no-op; it exists only for the rare
+  // long-running-animation residual documented above. Gating per animation
+  // name on the animation's own target means a still-CSS-owned animation
+  // (acquire/scroll on the depth child) is never force-cancelled just
+  // because it shares an owner with a continuous channel, so it stays free
+  // to run to completion / restart on re-engage. Cheap: only runs on quiet
+  // transitions, and getComputedStyle is read only for owner-declared
+  // continuous candidates, never for every running animation in the room.
   useLayoutEffect(() => {
     const root = roomRootRef.current;
     if (!root || !livingEnvironment || livingEnvironment.motion === "active") {
       return;
     }
     for (const animation of root.getAnimations({ subtree: true })) {
-      const target =
-        animation.effect && "target" in animation.effect
-          ? animation.effect.target
-          : null;
+      const effect = animation.effect;
+      // KeyframeEffect is the only AnimationEffect subtype with a target or
+      // a pseudoElement (spec-accurate; also narrows the TypeScript types
+      // cleanly, unlike a bare "in" check against the base AnimationEffect
+      // interface). CSSAnimation is the only Animation subtype with a
+      // spec'd animationName.
+      const target = effect instanceof KeyframeEffect ? effect.target : null;
       if (!(target instanceof Element)) continue;
+      const animationName =
+        animation instanceof CSSAnimation ? animation.animationName : null;
+      // Only a genuine named CSS animation can be "CSS-orphaned" -- there is
+      // no computed animation-name to compare a nameless Web Animation
+      // against, so it is never a candidate for this net.
+      if (!animationName) continue;
       const owner = target.closest("[data-cxos-motion-channel]");
       const channel = owner?.getAttribute("data-cxos-motion-channel") ?? "";
-      if (
-        channel
-          .split(/\s+/)
-          .some((token) => token.startsWith("continuous:"))
-      ) {
+      const isDeclaredContinuous = channel
+        .split(/\s+/)
+        .some((token) => token.startsWith("continuous:"));
+      if (!isDeclaredContinuous) continue;
+      const pseudoElement =
+        effect instanceof KeyframeEffect
+          ? effect.pseudoElement ?? undefined
+          : undefined;
+      const computedNames = getComputedStyle(target, pseudoElement)
+        .animationName.split(",")
+        .map((name) => name.trim());
+      // Per-animation-name, per-OWN-target gate: this is what keeps the net
+      // from over-reaching onto a sibling transient/scroll animation that
+      // merely shares a multi-token owner -- getComputedStyle is read on
+      // THIS animation's own target (the depth child for acquire/scroll,
+      // the owner itself for breath), never on the shared owner element, so
+      // a rule that never applied to this target in the first place cannot
+      // spuriously "still own" it.
+      if (!computedNames.includes(animationName)) {
         animation.cancel();
       }
     }
@@ -1323,7 +1373,13 @@ export function useCxosRoomRuntime<DistrictId extends string>({
     "data-cxos-district-transition-ms": districtTransitionDurationMs,
     "data-cxos-arrival-beats": definition.arrivalBeats.join(" "),
     "data-cxos-arrival-duration-ms": arrivalDurationMs,
-    "data-cxos-motion-channels": definition.motionChannels.join(" "),
+    // RC2 WP-FIX2 (F7): rootMotionChannels, when a room supplies it, is the
+    // real per-surface "<class>:<name>" token vocabulary (see lib/cxos/
+    // runtime.ts's CxosRoomRuntimeDefinition comment); motionChannels
+    // remains the fallback for a room that omits it.
+    "data-cxos-motion-channels": (
+      definition.rootMotionChannels ?? definition.motionChannels
+    ).join(" "),
     "data-cxos-phase": environment.phase,
     "data-cxos-motion": environment.motion,
     "data-cxos-heartbeat": environment.heartbeat,

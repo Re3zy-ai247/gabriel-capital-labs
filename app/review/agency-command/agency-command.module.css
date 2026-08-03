@@ -7991,19 +7991,68 @@
  * facility sweep, two continuous channels total) excludes client-operations,
  * which substitutes the blocked-lane pulse instead. Tier B budget-1 carries
  * the breath for every profile, client-operations included — Tier B has no
- * second continuous channel to spare for a substitution there. */
-.room[data-cxos-environment][data-cxos-animation-budget="2"]:not([data-cxos-profile="client-operations"]) .districtEnvironment {
+ * second continuous channel to spare for a substitution there.
+ *
+ * Both opt-ins below restate the identical quiet-state negation the facility
+ * sweep and scroll opt-ins above carry (verbatim, on their own selector),
+ * rather than relying solely on the animation budget having already flipped
+ * away, so each rule stays structurally mutually exclusive with the RC2
+ * quiet kill list below instead of trusting cascade precedence. */
+.room[data-cxos-environment][data-cxos-animation-budget="2"]:not([data-cxos-profile="client-operations"]):not(:is(
+    [data-cxos-idle="settling"],
+    [data-cxos-idle="settled"],
+    [data-cxos-attention="reading"],
+    [data-cxos-attention="inspecting"],
+    [data-cxos-kai="staged"],
+    [data-cxos-kai="preparing"],
+    [data-cxos-kai="resolved"],
+    [data-cxos-environment-motion="quiet"],
+    [data-cxos-environment-motion="static"],
+    [data-tier="C"],
+    [data-tier="D"],
+    [data-cxos-tier="C"],
+    [data-cxos-tier="D"]
+  )) .districtEnvironment {
   animation: agencyLivingBreath var(--cxos-breath-period) var(--cxos-ease-vector) infinite alternate !important;
 }
 
-.room[data-cxos-environment][data-cxos-animation-budget="1"] .districtEnvironment {
+.room[data-cxos-environment][data-cxos-animation-budget="1"]:not(:is(
+    [data-cxos-idle="settling"],
+    [data-cxos-idle="settled"],
+    [data-cxos-attention="reading"],
+    [data-cxos-attention="inspecting"],
+    [data-cxos-kai="staged"],
+    [data-cxos-kai="preparing"],
+    [data-cxos-kai="resolved"],
+    [data-cxos-environment-motion="quiet"],
+    [data-cxos-environment-motion="static"],
+    [data-tier="C"],
+    [data-tier="D"],
+    [data-cxos-tier="C"],
+    [data-cxos-tier="D"]
+  )) .districtEnvironment {
   animation: agencyLivingBreath var(--cxos-breath-period) var(--cxos-ease-vector) infinite alternate !important;
 }
 
 /* Client Operations Tier-A exception: the one fixed "blocked" fixture lane
  * pulses instead of the chamber breathing. The other four agencyFlow* lane
- * loops stay retired; only this lane's element gains a Living channel. */
-.room[data-cxos-environment][data-cxos-animation-budget="2"][data-cxos-profile="client-operations"]
+ * loops stay retired; only this lane's element gains a Living channel.
+ * Carries the same quiet-state negation as the other continuous opt-ins. */
+.room[data-cxos-environment][data-cxos-animation-budget="2"][data-cxos-profile="client-operations"]:not(:is(
+    [data-cxos-idle="settling"],
+    [data-cxos-idle="settled"],
+    [data-cxos-attention="reading"],
+    [data-cxos-attention="inspecting"],
+    [data-cxos-kai="staged"],
+    [data-cxos-kai="preparing"],
+    [data-cxos-kai="resolved"],
+    [data-cxos-environment-motion="quiet"],
+    [data-cxos-environment-motion="static"],
+    [data-tier="C"],
+    [data-tier="D"],
+    [data-cxos-tier="C"],
+    [data-cxos-tier="D"]
+  ))
   .flowList
   > li[data-motion="blocked"]
   .flowTrack
@@ -8091,8 +8140,13 @@
  * class model). .kaiResponse is the live "prepared artifact" element (the
  * .preparedArtifact class below is orphaned CSS with no JSX consumer); each
  * submitted command mounts a new .kaiResponse article keyed by a fresh
- * turn.id, so the reveal fires once on mount and is not re-armed by chamber
- * navigation, which neither remounts nor re-hides this element. */
+ * turn.id. .kaiResponse lives inside the Kai Suite district shell, which
+ * carries the native [hidden] attribute whenever it is not the current
+ * chamber (see .district[hidden] above, display: none !important) — so
+ * leaving and returning to Kai Suite is a remount-equivalent event for this
+ * element exactly like the six chamber recognitions below, and the reveal
+ * re-fires on every return to Kai Suite while a prepared turn exists, not
+ * only once on the turn's original mount. */
 .room[data-cxos-environment] .kaiResponse[data-prepared="true"] {
   animation: agencyArtifactReveal 420ms cubic-bezier(0.2, 0.74, 0.2, 1) both;
 }
@@ -8187,7 +8241,7 @@
  * never transform, so the seven per-chamber poses read even at rest.
  * .districtEnvironment eases through a distinct intermediate while
  * "settling" before landing on its own --cxos-settle-opacity identity (set
- * per signature above, 0.40–0.58) once fully "settled" — both states reuse
+ * per signature above, 0.42–0.54) once fully "settled" — both states reuse
  * the transition already declared on the current-chamber districtEnvironment
  * rule above (opacity var(--cxos-dur-settle) ...), so no new transition or
  * animation is introduced here. */
@@ -8234,7 +8288,7 @@
     [data-tier="D"],
     [data-cxos-tier="C"],
     [data-cxos-tier="D"]
-  ) :is(.ambientSweep, .districtEnvironment *) {
+  ) :is(.ambientSweep, .districtEnvironment, .districtEnvironment *, .flowTrack b) {
   animation: none !important;
   transition: none !important;
 }
