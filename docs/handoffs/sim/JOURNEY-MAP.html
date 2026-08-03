@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Journey Map — Phase -0 Canonical Map</title>
+<style>
+  :root { color-scheme: light dark;
+    --bg:#f7f9fb; --fg:#15222e; --mut:#5a6b7a; --card:#fff; --line:#d7e0e8;
+    --ok:#0a7d40; --okbg:#e2f5ea; --warn:#8a5a00; --warnbg:#fdf1d8; --bad:#a12626; --badbg:#fbe4e4; --acc:#0b5f8a; --mono:ui-monospace,SFMono-Regular,Menlo,monospace; }
+  @media (prefers-color-scheme: dark){ :root{
+    --bg:#0d141b; --fg:#dbe7f1; --mut:#8fa1b0; --card:#131e28; --line:#263646;
+    --ok:#5fd394; --okbg:#10301f; --warn:#f2c46b; --warnbg:#33260a; --bad:#f08f8f; --badbg:#3a1414; --acc:#7cc4ea; }}
+  *{box-sizing:border-box} body{margin:0;padding:1.25rem;background:var(--bg);color:var(--fg);font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:58rem;margin:0 auto} h1{font-size:1.3rem;margin:.2rem 0 .3rem} h2{font-size:1.02rem;margin:1.4rem 0 .5rem;color:var(--acc)}
+  .sub{color:var(--mut);font-size:.85rem;margin-bottom:1rem} code{font-family:var(--mono);font-size:.82em;background:color-mix(in srgb,var(--line) 40%,transparent);padding:.08em .35em;border-radius:4px}
+  ul,ol{padding-left:1.25rem} li{margin:.28rem 0}
+  .wrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px;margin:.5rem 0}
+  table{width:100%;border-collapse:collapse;font-size:.8rem;background:var(--card)} th,td{text-align:left;padding:.4rem .55rem;border-bottom:1px solid var(--line);vertical-align:top} th{color:var(--mut);white-space:nowrap} tr:last-child td{border-bottom:none}
+  pre{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:.8rem 1rem;overflow-x:auto;font-family:var(--mono);font-size:.76rem;line-height:1.55}
+  footer{color:var(--mut);font-size:.78rem;margin-top:1.5rem;padding-top:.6rem;border-top:1px solid var(--line)}
+</style>
+</head>
+<body>
+<main>
+<h1>Journey Map — CreditVector Case Journey, Canonical Map (Phase -0)</h1>
+<p class="sub">2026-08-03 · branch <code>docs/fulfillment-engine-v1</code> · HEAD (base) <code>871d420</code> · source: <code>docs/fulfillment/simulation/JOURNEY-MAP.md</code>, faithful copy</p>
+
+<p>The full operator-visible journey, every canonical node: what the operator sees, Kai's register, the wallet effect, the evidence produced, the room, and the sim scene that storyboards it. <code>TARGET STATE</code> = designed, not yet built. On-behalf-of voice applies wherever an agency pays for a managed client.</p>
+
+<h2>Node graph (Mermaid source, preformatted)</h2>
+<pre>graph TD
+  N1[Client Added] --> N2[Report Uploaded] --> N3[Kai Analysis] --> N4[Recommendations] --> N5[Dispute Package]
+  N5 --> N6[Review] --> N7[Approval]
+  N7 -->|Download sub-journey| D1[Print / PDF] --> D2[Self-mail certified] --> D3[Mark mailed]
+  N7 -->|Send sub-journey| W1[Wallet Reservation - hold] --> W2[FINAL REVIEW - irreversibility gate] --> W3[Submit]
+  W3 --> P1[Provider Acceptance - IRREVERSIBLE - settlement] --> P2[Production] --> P3[Tracking] --> P4[Delivered] --> P5[Return Receipt Archived]
+  D3 --> WP[Waiting Period - §611 from receipt]
+  P5 --> WP
+  WP --> R1[Response Received] --> R2{Outcome}
+  R2 -->|verified / partial| N9[Next Recommendation → Round 2] --> N5
+  R2 -->|deleted / corrected| DONE[Item complete + evidence file]
+  WP -->|window lapses unlogged| STALE[⚠ recommendation deadlock — found by SIM-A]</pre>
+
+<h2>Node table</h2>
+<div class="wrap"><table>
+<tr><th>#</th><th>Node</th><th>Operator sees</th><th>Kai register</th><th>Wallet effect</th><th>Evidence</th><th>Room</th><th>Sim ref</th></tr>
+<tr><td>1</td><td>Client Added</td><td>New workspace, empty case anchor</td><td>quiet</td><td>—</td><td>—</td><td>Agency → Client</td><td>C§1</td></tr>
+<tr><td>2</td><td>Report Uploaded</td><td>Parse progress → tradeline grid</td><td>attentive</td><td>—</td><td>raw report retained</td><td>Upload/Tradelines</td><td>A§6, C§2</td></tr>
+<tr><td>3</td><td>Kai Analysis</td><td>Per-item KaiWhy evidence panels; myth-corrections on request</td><td>teaching</td><td>—</td><td>analysis basis</td><td>Tradelines</td><td>A§7-9, C§3</td></tr>
+<tr><td>4</td><td>Recommendations</td><td>ONE primary + alternatives (RecommendationIntel)</td><td>focused</td><td>—</td><td>basis recorded</td><td>Mission Control/Client</td><td>A§10, C§4</td></tr>
+<tr><td>5</td><td>Dispute Package</td><td>Multi-letter assembly (bureau + furnisher)</td><td>explaining</td><td>—</td><td>draft letters (encrypted)</td><td>Package chain 1–4</td><td>C§5</td></tr>
+<tr><td>6</td><td>Review</td><td>Letter + PDF preview; compliance-scrubbed text</td><td>reviewing</td><td>—</td><td>content hash</td><td>Package chain 5–6</td><td>A§12, C§6</td></tr>
+<tr><td>7</td><td>Approval</td><td>Non-Kai approval control (split from Kai panel)</td><td>steps back</td><td>—</td><td>approval audit (⚠ actor identity GAP for agencies)</td><td>Package chain 7</td><td>C§7, B§14</td></tr>
+<tr><td>7a</td><td>Download path</td><td>Print/PDF + certified self-mail guide → "mark mailed"</td><td>supportive</td><td><strong>none</strong></td><td>operator-attested mailing</td><td>Letters/Print</td><td>A§13-15</td></tr>
+<tr><td>8</td><td>Wallet Reservation</td><td>Line-item price; "a hold, not a charge" (on-behalf-of: "Meridian placed a hold…")</td><td>precise</td><td><strong>authorize (hold)</strong></td><td>ledger entry</td><td>⚠ no Wallet room (SIM-E seam #1)</td><td>A§18, C§8</td></tr>
+<tr><td>9</td><td>FINAL REVIEW</td><td>Four unchecked assertions + prominent irreversibility warning; server-bound token</td><td>serious, calm</td><td>—</td><td>FinalReviewConfirmation (⚠ who-clicked GAP)</td><td>Pre-Submit gate</td><td>A§19, B§20, C§9</td></tr>
+<tr><td>10</td><td>Submit → Provider Acceptance</td><td>Stage advances; settlement narrated at the boundary</td><td>matter-of-fact</td><td><strong>settle (permanent)</strong></td><td>acceptance record</td><td>Mail Center</td><td>C§10-11</td></tr>
+<tr><td>11</td><td>Production → Tracking</td><td>Truthful per-letter stages; USPS consumer language only</td><td>quiet</td><td>—</td><td>tracking events</td><td>Mail Center/Timeline</td><td>C§12-13</td></tr>
+<tr><td>12</td><td>Delivered (per-letter)</td><td>Partial delivery rendered honestly (2-of-3 → 3-of-3)</td><td>pleased</td><td>—</td><td>delivery events</td><td>Mail Center/Timeline</td><td>C§14</td></tr>
+<tr><td>13</td><td>Return Receipt Archived</td><td>Evidence artifact attached to the package</td><td>pleased</td><td>—</td><td><strong>the certified receipt</strong></td><td>Timeline/Evidence</td><td>C§15</td></tr>
+<tr><td>14</td><td>Waiting Period</td><td>§611 clock <strong>from receipt</strong>; day-5/20/28 states; quiet is allowed</td><td>quiet</td><td>—</td><td>clock derivation</td><td>Timeline</td><td>A§21, C§16</td></tr>
+<tr><td>15</td><td>Response Received</td><td>Outcome logged (verified/deleted/updated); analysis</td><td>concerned-but-forward or pleased</td><td>—</td><td>response + analysis</td><td>Letters/Timeline</td><td>C§17,19</td></tr>
+<tr><td>16</td><td>Next Recommendation / Round 2</td><td>ONE next action; escalation letter at round+1</td><td>focused</td><td>(new cycle)</td><td>round lineage</td><td>Mission Control</td><td>C§18</td></tr>
+<tr><td>17</td><td>Completion (per item)</td><td>Resolved state + evidence file</td><td>pleased, bounded</td><td>—</td><td>full evidence bundle (⚠ no client-facing export GAP)</td><td>Timeline</td><td>C§20-22</td></tr>
+<tr><td>⚠</td><td>Failure branches</td><td>Rejection → translation → correction → retry (new attempt, new hold); release restores balance</td><td>concerned, dignified</td><td><strong>release</strong> / re-authorize a+1</td><td>audit preserved</td><td>Recovery via Mail Center</td><td>B§16-18, E Part 2</td></tr>
+</table></div>
+
+<p><strong>Structural annotations (the phase's findings):</strong> the deadlock at STALE (SIM-A); no Wallet room for nodes 8/W (SIM-E); actor-identity gap at nodes 7/9 for agencies (SIM-B/D); no client-facing view of any node (SIM-C); no completion moment at day/client/week altitude despite node 17 (all sims).</p>
+
+<footer>Source: <code>docs/fulfillment/simulation/JOURNEY-MAP.md</code> (unmodified). Part of the Phase -0 Founder package.</footer>
+</main>
+</body>
+</html>

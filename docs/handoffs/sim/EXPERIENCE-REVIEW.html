@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Experience Review — Phase -0 Adversarial Verdict</title>
+<style>
+  :root { color-scheme: light dark;
+    --bg:#f7f9fb; --fg:#15222e; --mut:#5a6b7a; --card:#fff; --line:#d7e0e8;
+    --ok:#0a7d40; --okbg:#e2f5ea; --warn:#8a5a00; --warnbg:#fdf1d8; --bad:#a12626; --badbg:#fbe4e4; --acc:#0b5f8a; --mono:ui-monospace,SFMono-Regular,Menlo,monospace; }
+  @media (prefers-color-scheme: dark){ :root{
+    --bg:#0d141b; --fg:#dbe7f1; --mut:#8fa1b0; --card:#131e28; --line:#263646;
+    --ok:#5fd394; --okbg:#10301f; --warn:#f2c46b; --warnbg:#33260a; --bad:#f08f8f; --badbg:#3a1414; --acc:#7cc4ea; }}
+  *{box-sizing:border-box} body{margin:0;padding:1.25rem;background:var(--bg);color:var(--fg);font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:60rem;margin:0 auto} h1{font-size:1.3rem;margin:.2rem 0 .3rem} h2{font-size:1.02rem;margin:1.4rem 0 .5rem;color:var(--acc)} h3{font-size:.9rem;margin:1rem 0 .35rem}
+  .sub{color:var(--mut);font-size:.85rem;margin-bottom:1rem} code{font-family:var(--mono);font-size:.82em;background:color-mix(in srgb,var(--line) 40%,transparent);padding:.08em .35em;border-radius:4px}
+  .badge{display:inline-block;padding:.15rem .55rem;border-radius:99px;font-weight:600;font-size:.8rem;margin:.1rem .15rem} .ok{background:var(--okbg);color:var(--ok)}
+  ul,ol{padding-left:1.25rem} li{margin:.32rem 0}
+  .wrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px;margin:.5rem 0}
+  table{width:100%;border-collapse:collapse;font-size:.8rem;background:var(--card)} th,td{text-align:left;padding:.4rem .55rem;border-bottom:1px solid var(--line);vertical-align:top} th{color:var(--mut)} tr:last-child td{border-bottom:none}
+  dt{font-weight:600;margin-top:.5rem} dd{margin:.15rem 0 .15rem 0;color:var(--fg)}
+  footer{color:var(--mut);font-size:.78rem;margin-top:1.5rem;padding-top:.6rem;border-top:1px solid var(--line)}
+</style>
+</head>
+<body>
+<main>
+<h1>Experience Review — Phase -0 Adversarial Verdict of Record</h1>
+<p class="sub">2026-08-03 · branch <code>docs/fulfillment-engine-v1</code> · HEAD (base) <code>871d420</code> · source: <code>docs/fulfillment/simulation/SIM-REVIEW.md</code> (the Opus adversarial experience review), faithful condensation</p>
+<p><span class="badge ok">READY-WITH-DISCLOSURES</span></p>
+
+<p>Read for this review: all five sims in full (2,192 lines) + the merged Founder Walkthrough + KAI-FULFILLMENT-UX + Room Constitution + EXECUTION-PLAN + FEATURE-FLAG-STRATEGY. 13 load-bearing sim claims verified against source; 3 came back PARTIAL; 1 finding no sim made.</p>
+
+<h2>Gate verdict: READY-WITH-DISCLOSURES</h2>
+<p>Phase 1 begins at P0 → P1a/P1b → P5 → P6a. Nothing blocks the start. Findings 3 and 5 (below) are live production defects independent of Phase 1; finding 2 clears inside P6a before P9a/P10a.</p>
+
+<h2>The frame that reorders everything</h2>
+<p>The five sims, per their brief, depict the <strong>last</strong> flag state — Send live (P10b, behind external CROA counsel). The <strong>first</strong> shipped state is Download-only (<code>FULFILLMENT_PACKAGE_UI_ENABLED=true, WALLET_ENABLED=false</code>; Send visibly present, disabled). The corpus's five most-praised moments (Wallet, FINAL REVIEW, hold/settle, tracking, receipts) are absent from what actually ships first — the launch experience got roughly one simulated hour of coverage. Two interim questions remain unsimulated: how a long-disabled "Send" reads, and whether the chain renders as 9-with-2-dead or 7. A bounded 6-scene interim simulation before P9a is recommended, not required.</p>
+
+<h2>Ranked findings (14, launch-experience severity)</h2>
+<div class="wrap"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Resolution / lands in</th></tr>
+<tr><td>1</td><td>CRITICAL — gate integrity</td><td>The evidence base is the last flag state, not the first; the Download-only launch is approved on ~one simulated hour.</td><td>Interim copy/presentation decisions — B-MAIL-CENTER-EVOLUTION §3.4 / MAIL-CENTER-EVOLUTION-PLAN §1.3</td></tr>
+<tr><td>2</td><td>CRITICAL — launch-blocking, clears at P6a</td><td>The Download path (the only live fulfillment at launch) is clock-wrong (6 copy sites say "from receipt," all math anchors <code>mailedAt</code>), evidence-free vs. Send, and consent-light (one unconfirmed click starts a statutory clock vs. four checkboxes for a $9 hold).</td><td>KAI-FULFILLMENT-UX §3.5 + B-MAIL-CENTER-EVOLUTION §3.4; the §611 CCO gate is a Download-path question at launch</td></tr>
+<tr><td>3</td><td>CRITICAL — live today, every new user; found by the review, no sim made it</td><td>The first recommendation is UNRANKED — <code>kaiHome</code>'s branch 5 is <code>tradelines.find(!resolved &amp;&amp; !disputed)</code> over a <code>findMany</code> with no <code>orderBy</code>; score/probability exist one room away and are ignored.</td><td>D-KAI-EXPERIENCE §2.2</td></tr>
+<tr><td>4</td><td>HIGH — live</td><td>Kai context cache bleeds across client workspaces — <code>sessionStorage</code> key <code>kai-presence-ctx-v1</code> (no user/workspace scope, 5-min TTL, never cleared on switch); the <code>/dashboard</code> exclusion guard sits after the fetch.</td><td>B-MAIL-CENTER-EVOLUTION §5 (scope or clear on switch)</td></tr>
+<tr><td>5</td><td>HIGH</td><td>Recommendation starvation — narrower than SIM-A claimed (branches 4/5 are mutually exclusive with branch 2; only branch 3/§605 is starved) but sharper: §605 is the only branch that becomes true by time alone.</td><td>Aging/escalation qualifier — D-KAI-EXPERIENCE §1/§2.2</td></tr>
+<tr><td>6</td><td>HIGH</td><td>FINAL REVIEW habituation-resistance asserted on N=1 while the same sim shows the same operator skipping the education step unread; ✓1/✓4 have no server binding.</td><td>Bind ✓1 to a real preview-open event; recipient name inline — KAI-FULFILLMENT-UX §1.2/§1.3</td></tr>
+<tr><td>7</td><td>HIGH — moot pre-WALLET, critical once it flips</td><td>No balance at the point of spend — <code>availableCents</code> exists only as an error payload; a healthy wallet's only state is silence.</td><td>WALLET-COMMITMENT-MODEL §8.5 UI addendum + Room Constitution candidate-room table</td></tr>
+<tr><td>8</td><td>HIGH — disclosure, no experience fix</td><td>The FINAL REVIEW audit record cannot name a human — <code>actorUserId</code> resolves to the agency's one User.</td><td>Label the field "account," never "operator," until Operator Identity activates — KAI-FULFILLMENT-UX §1.6</td></tr>
+<tr><td>9</td><td>MED-HIGH</td><td>Deficit no-shame framing degrades into a wall — one calm owner read; N per-client refusals for the operator with no roll-up/impact list.</td><td>Make deficit ambient at roster altitude — KAI-FULFILLMENT-UX §3.4/§4.1</td></tr>
+<tr><td>10</td><td>MED-HIGH</td><td>Per-letter narration vs. package mental model — "Delivered" ×3 over 4 days while the rollup reads not-delivered.</td><td>Render the fraction ("2 of 3 delivered") — KAI-FULFILLMENT-UX §4.1 + B-MAIL-CENTER-EVOLUTION §2.2</td></tr>
+<tr><td>11</td><td>MED</td><td>Waiting period can't distinguish confidently-quiet from unwatched; "Kai is watching the clock" already exists on Mission Control but never reaches the Mail Center row or Timeline.</td><td>Distribute the line — D-KAI-EXPERIENCE §4.1</td></tr>
+<tr><td>12</td><td>MED</td><td>One four-beat template × ~50 classes (money leads, defect trails; repetition trains skipping); the most common money failure — positive-but-insufficient balance at Approve — has no class at all.</td><td>Add the 20th class; information-order rule (defect → money → correction) + repetition budget — KAI-FULFILLMENT-UX §2.1.2/§2.2</td></tr>
+<tr><td>13</td><td>MED</td><td>Two rooms say "Do this first" from two independently specified ladders (kaiHome's 5 branches vs. the Mail Center's 6-state health ladder); non-disagreement asserted, unenforced.</td><td>Scope-label or make one defer — MAIL-CENTER-EVOLUTION-PLAN §3.1</td></tr>
+<tr><td>14</td><td>MED-LOW</td><td>No de-escalation register for a hostile human anywhere in the 16-state catalog; one shipped range-law breach (<code>round2/route.ts:40</code>, the only emoji in the swept surface — celebration energy in an error response).</td><td>KAI-FULFILLMENT-UX §2.4</td></tr>
+</table></div>
+
+<h2>The six questions (moments named)</h2>
+<dl>
+<dt>CONFUSED</dt><dd>Mission Control at agency altitude (zero <code>isAgency</code> awareness in the room or its engine — the home tells an owner to upload her own report; Marcus types <code>/agency</code> and never opens the front door) · Billing-vs-Wallet vocabulary collision · the duplicated empty-state instruction · the alternatives panel structurally unable to show the bureau-vs-furnisher judgment.</dd>
+<dt>FRICTION</dt><dd>No expert path through the 9-step chain (the education step is a fixed per-package tax, no "seen this" memory) · the wallet-low handoff leaves the product entirely (Slack is the system of record) · <code>/agency</code> as a mandatory gateway with no recently-opened memory · resumability works but is narratively silent.</dd>
+<dt>KAI OVER-TALK</dt><dd>The education step; per-letter repetition; the money amount stated three times per package; boilerplate beat 4 trains operators to skip the specific cause.</dd>
+<dt>KAI UNDER-TALK</dt><dd>Day-28 silence; the first-ever mailing marked like the tenth; a healthy wallet's silence; the missing insufficient-funds line; the ring closing saying nothing; and systemically — the whole fulfillment voice is Send-only, so at launch Kai's fulfillment register is largely inert.</dd>
+<dt>COGNITIVE LOAD</dt><dd>Marcus's Tuesday — highest-leverage client, funding-blocked packages, resumed-package context, pipeline-stuck detection: all held in his own head (the roster is a sort, not a basis-carrying recommendation; roster fulfillment-blindness is a post-P5 obligation, not a today-fix — <code>DisputePackage</code>/<code>Wallet</code> have zero schema hits today).</dd>
+<dt>DASHBOARD ROOMS</dt><dd>Only Mission-Control-at-agency-altitude fails as a room outright (0 of 6 Room Constitution presentations load-bearing); Wallet and Marketplace are absences wearing room names; the strongest room (Agency) is visited last, the weakest first.</dd>
+<dt>PAGE TRANSITIONS</dt><dd>3 of 8 are genuinely OS-grade (the identity-swap no-op, the cookie mechanism, Mail Center's interruption resilience); the illusion breaks at exactly four named places (the unmarked <code>/dashboard</code> identity swap; arriving at the Timeline with no anchor to the package you just left; Timeline→Wallet dead-end with no signage; the ring closing on the face it opened with).</dd>
+</dl>
+
+<h2>Kai verdict</h2>
+<p>One character, verified across ~150 lines by five independent authors — no tonal outlier, no urgency, no vendor leak, no outcome promise; the character holds under narrative pull (it even withholds a §611 clock mid-celebration for a furnisher). But it has exactly one move: a four-beat template with a repetition problem, a money-first information order, a missing 20th class, no de-escalation register, and one shipped celebration-emoji breach. All fixes are copy-level.</p>
+
+<h2>Sim-integrity audit</h2>
+<p>The five sims: HIGH integrity overall (no fabricated mechanism; guesses labeled; risks not dramatized). Three mechanism defects found (SIM-A overstated the deadlock's scope 3×; SIM-A invented a "HIGH item" filter that concealed finding 3; "roster blind" implied ignored data that doesn't exist yet), one convenient conclusion (FINAL REVIEW exempted from habituation on N=1), one unflagged quote of the celebration-emoji violation. The merge's <strong>first version</strong> carried four further defects — a §611 inversion presenting SIM-A's #2 finding as a virtue, a fabricated Case-Memory opening scene, a GAP (no real Kai greeting) presented as a delight, a suppressed waiting-period disagreement. All four are corrected in <code>WALKTHROUGH.html</code> (⟲ marks) after this review.</p>
+
+<h2>Convergence adjudication</h2>
+<p>Completion-2 was REAL but CONFLATED — fixed as session/day closure (a); REFUSED as case/arc closure (b), which is honest FCRA modeling. Structural absences re-ranked: balance-at-point-of-spend is the higher-value half of the Wallet-room gap; staff identity is an audit-integrity DISCLOSURE, not an experience fix; the client view's actionable half is that roughly half the on-behalf-of corpus is unreachable dead copy. The recommendation deadlock: real, narrowed, sharpened. Onboarding: MIS-PRESCRIBED — wiring it as-is would ship the product's only fabricated-progress surface; fix the semantics first, or delete it. OS-vs-pages: affirmed but too blunt — three transitions are already OS-grade; the break is at four specifically named places.</p>
+
+<h2>THE ANSWER</h2>
+<p><strong>Not yet — and the reason is one absence, not five.</strong> The rooms are OS-grade and so are the mechanisms between them. What's missing: <strong>the operator's own session is not a first-class object anywhere</strong> — every room knows the case; no room knows the person doing the work or the work itself as a unit. Five sims found five faces of one absence (first-mailing unmarked; no cross-client do-this-first; every fact operator-mediated; who-did-what unattributable; the ring closing carrying no memory). The tell: the product never once addresses the human using it.</p>
+<p><strong>Minimum set that makes the answer yes</strong> (all reuse/placement; none reopens architecture):</p>
+<ol>
+<li>An altitude-aware Mission Control (Executive-Queue idiom over the roster's priority ladder when <code>isAgency</code> + no workspace; closes seams 1/3/4 and completion-(a)). → Room Constitution §4 + CASE-JOURNEY-RUNTIME-PLAN §1.6.</li>
+<li>A balance at the point of spend (before, or instead of, a Wallet room). → WALLET-COMMITMENT-MODEL §8.5 addendum.</li>
+<li>An on-behalf-of variant for the everyday register (money already has one). → KAI-FULFILLMENT-UX §2.2.</li>
+<li>A starvation guard + an <code>orderBy</code> at branch 5. → D-KAI-EXPERIENCE §2.2.</li>
+<li>The Download-path honesty triple (the one launch-blocking item; clears at P6a). → KAI-FULFILLMENT-UX §3.5 + B-MAIL-CENTER-EVOLUTION §3.4.</li>
+</ol>
+
+<h2>Disclosures the Founder accepts by approving</h2>
+<ol>
+<li>The evidence base is the last flag state; the Download-only launch is approved on ~one simulated hour (a bounded 6-scene interim sim is recommended before P9a).</li>
+<li>The §611 CCO gate is a Download-path question at launch and must clear before P9a/P10a — the one disclosure that is really a condition.</li>
+<li>Findings 3 and 5 are shipped today, flag-independent.</li>
+<li>Staff identity has no experience-level remedy — the FINAL REVIEW record names an account, not a human, and must say so.</li>
+<li>FINAL REVIEW habituation is an untested assumption.</li>
+<li>The merge's first version was not a faithful index of the sims; corrected with ⟲ marks — the sims are the evidence.</li>
+</ol>
+
+<footer>Source: <code>docs/fulfillment/simulation/SIM-REVIEW.md</code> (unmodified). Part of the Phase -0 Founder package.</footer>
+</main>
+</body>
+</html>
