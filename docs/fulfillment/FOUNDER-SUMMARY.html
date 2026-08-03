@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Fulfillment Engine v1.0 — Founder Summary</title>
+<style>
+  :root { color-scheme: light dark;
+    --bg:#f7f9fb; --fg:#15222e; --mut:#5a6b7a; --card:#fff; --line:#d7e0e8;
+    --ok:#0a7d40; --okbg:#e2f5ea; --warn:#8a5a00; --warnbg:#fdf1d8; --bad:#a12626; --badbg:#fbe4e4; --acc:#0b5f8a;
+    --mono:ui-monospace,SFMono-Regular,Menlo,monospace; }
+  @media (prefers-color-scheme: dark){ :root{
+    --bg:#0d141b; --fg:#dbe7f1; --mut:#8fa1b0; --card:#131e28; --line:#263646;
+    --ok:#5fd394; --okbg:#10301f; --warn:#f2c46b; --warnbg:#33260a; --bad:#f08f8f; --badbg:#3a1414; --acc:#7cc4ea; }}
+  *{box-sizing:border-box} body{margin:0;padding:1.25rem;background:var(--bg);color:var(--fg);
+    font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:56rem;margin:0 auto}
+  h1{font-size:1.3rem;margin:.2rem 0 .3rem} h2{font-size:1.02rem;margin:1.5rem 0 .5rem;color:var(--acc)}
+  .sub{color:var(--mut);font-size:.85rem;margin-bottom:1rem}
+  .badge{display:inline-block;padding:.15rem .55rem;border-radius:99px;font-weight:600;font-size:.8rem;margin:.1rem .15rem .1rem 0}
+  .ok{background:var(--okbg);color:var(--ok)} .warn{background:var(--warnbg);color:var(--warn)} .bad{background:var(--badbg);color:var(--bad)}
+  .wrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px;margin:.4rem 0}
+  table{width:100%;border-collapse:collapse;background:var(--card);font-size:.85rem}
+  th,td{text-align:left;padding:.45rem .6rem;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--mut);font-weight:600;white-space:nowrap} tr:last-child td{border-bottom:none}
+  code{font-family:var(--mono);font-size:.82em;background:color-mix(in srgb,var(--line) 40%,transparent);padding:.08em .35em;border-radius:4px}
+  ol,ul{padding-left:1.3rem} li{margin:.3rem 0}
+  .note{border-left:3px solid var(--warn);background:var(--warnbg);padding:.55rem .8rem;border-radius:0 6px 6px 0;font-size:.88rem;margin:.6rem 0}
+  .crit{border-left:3px solid var(--bad);background:var(--badbg);padding:.55rem .8rem;border-radius:0 6px 6px 0;font-size:.88rem;margin:.6rem 0}
+</style>
+</head>
+<body>
+<main>
+<h1>CreditVector Fulfillment Engine v1.0 — Founder Summary</h1>
+<p class="sub">Architecture-only program · branch <code>docs/fulfillment-engine-v1</code> · production untouched (<code>origin/main f449c35</code>) · 2026-08-03</p>
+
+<p>
+<span class="badge bad">OPUS GATE: NOT READY AS IMPLEMENTABLE</span>
+<span class="badge ok">READY AS A DECISION PACKAGE</span>
+<span class="badge ok">12 ARTIFACTS COMMITTED</span>
+<span class="badge warn">3 FOUNDER DECISIONS PENDING</span>
+</p>
+
+<p>The reviewers rated the domain model, provider abstraction, Kai boundary laws, and Room Constitution <strong>genuinely strong</strong>. The failures concentrate in the wallet's money mechanics, one sequencing blocker, and one unanalyzed legal question. Nothing was implemented; per your execution model, nothing proceeds without your approval.</p>
+
+<h2>Load-bearing discovery</h2>
+<p><strong>The fulfillment engine already half-exists.</strong> <code>lib/mail/*</code> ships a 16-state manifest machine, your exact five provider IDs (LetterStream coded, dry-run-only, fail-closed), composed pricing, an append-only audit trail, and a 3-step send wizard deliberately stopped at QUEUED (<code>dispatch()</code> has zero callers). This is a wiring-and-evolution program, not a build.</p>
+
+<h2>The three decisions only you can make</h2>
+<div class="crit"><strong>1 · CROA §404 advance-fee (CRITICAL).</strong> The prepaid wallet is the most legally adverse charging shape available for this service: money received at top-up, captured before printing, with a $0.99 fee + 15% markup applied even to the certified surcharge. Educational-tool positioning is not a statutory exclusion. A fully-formulated outside-counsel question is in the adversarial review (§3.4), including a named compliant alternative — <strong>Stripe manual-capture: authorize at Approval, capture at Delivered / Receipt-Archived</strong> — which may obsolete the prepaid wallet entirely. Decision requested before any Phase 3 authorization.</div>
+<div class="crit"><strong>2 · Gate D first (CRITICAL).</strong> The sequence's Phase 1 migrations are blocked by ratified canon: Gate D has never executed, production has no migration history (baseline resolve was preview-only), and the preflight rejects any seventh migration directory (ID-B02). A Phase −1 — execute Gate D + land the versioned manifest extension — must precede everything.</div>
+<div class="crit"><strong>3 · Wallet mechanics rework (2×CRITICAL + 3×HIGH).</strong> Independent of CROA: the overdraft guard doesn't lock (concurrent authorizes overdraw), consume-after-void yields free fulfillment, partial package failure has no settlement path, top-ups credit promo-discounted metadata instead of captured amounts, and there is no payer model (an agency or impersonating admin spends the consumer's wallet, recorded as the consumer's own act). If counsel approves any prepaid shape, these get a bounded redesign + re-review.</div>
+
+<h2>Document corrections (no new decisions needed)</h2>
+<ul>
+<li>Single §611 clock anchor — the proposed "clock started at mailing" copy is legally wrong (FCRA runs from CRA <em>receipt</em>).</li>
+<li>Restore the binding <strong>9-step</strong> Package Review chain (the merge drifted to 12).</li>
+<li>Policy Engine input gap (<code>CostEstimate</code> supplied by the route, preserving the no-network law).</li>
+<li>Cascade-policy reconciliation — removes two new destructive <code>User</code> cascades the Identity Constitution is mid-remediation on.</li>
+<li>Quarantine/retry paths made real against the shipped transition table; evidence storage promoted to a Phase-1 decision bound to the <code>docCrypto</code> encryption floor; ADR-0046/0047 added to your review list; vendor-opacity control moved from a source regex to the runtime DTO.</li>
+</ul>
+
+<h2>Package inventory (docs/fulfillment/, commit-pinned)</h2>
+<div class="wrap"><table>
+<tr><th>Artifact</th><th>What it is</th></tr>
+<tr><td><code>PROGRAM-BRIEF.md</code></td><td>Your ten decisions + scout-verified repository truth (the agents' binding contract)</td></tr>
+<tr><td><code>A-DOMAIN-MODEL / A-STATE-MACHINE / A-POLICY-ENGINE / A-PROVIDER-ABSTRACTION</code></td><td>Case + Dispute Package domain, unified 12-stage machine, deterministic Policy Engine, provider adapter contract</td></tr>
+<tr><td><code>B-MAIL-CENTER-EVOLUTION.md</code></td><td>/mail → Case Journey workspace; 9-step Package Review over the existing wizard; file-by-file evolution map</td></tr>
+<tr><td><code>C-WALLET-INTEGRATION.md</code></td><td>Wallet integration points, ledger design, funding, Event Bus contracts (943 lines)</td></tr>
+<tr><td><code>D-KAI-EXPERIENCE.md</code></td><td>Kai narration, guided review, notifications, boundary-law table</td></tr>
+<tr><td><code>CREDITVECTOR-FULFILLMENT-ENGINE-V1.md</code></td><td>Unified architecture + 17-item resolved docket + risk register</td></tr>
+<tr><td><code>OPERATIONAL-ROOM-CONSTITUTION-PROPOSAL.md</code></td><td>Your §1.8 proposal formalized as a constitutional amendment (PROPOSED)</td></tr>
+<tr><td><code>ADR-PROPOSALS.md</code></td><td>ADR-0041…0047 (renumbered past the CXOS branch's 0040)</td></tr>
+<tr><td><code>IMPLEMENTATION-SEQUENCE.md</code></td><td>Phased, flag-gated, September-1-aligned (pending the Gate-D resequence)</td></tr>
+<tr><td><code>ADVERSARIAL-REVIEW.md</code></td><td>The full Opus gate: 14 findings, disposition verdicts, CROA analysis + counsel question, must-fix list</td></tr>
+<tr><td><code>FOUNDER-SUMMARY.md / .html</code></td><td>This summary</td></tr>
+</table></div>
+
+<h2>Your options</h2>
+<ol>
+<li><strong>A (recommended):</strong> route the counsel question now; in parallel authorize one bounded documentation-correction cycle (review items 10–15 + wallet redesign contingent on counsel) and the Gate-D-first resequence; re-gate; then implement.</li>
+<li><strong>B:</strong> accept the package as a decision record; run counsel; defer corrections until its answer reshapes the wallet.</li>
+<li><strong>C:</strong> direct a charge-at-completion restructure immediately (drop the prepaid premise) — collapses most wallet findings — then correct and re-gate.</li>
+</ol>
+
+<p class="note">RC2 remains accepted and frozen at its checkpoint; its Founder package and the Claude↔ChatGPT bridge remain queued per your sequencing. Nothing in this program touched product code, schema, dependencies, flags, or production.</p>
+</main>
+</body>
+</html>
