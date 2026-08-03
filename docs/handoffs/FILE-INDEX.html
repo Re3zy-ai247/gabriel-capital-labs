@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Fulfillment Engine v1.0 — File Index</title>
+<style>
+  :root { color-scheme: light dark;
+    --bg:#f7f9fb; --fg:#15222e; --mut:#5a6b7a; --card:#fff; --line:#d7e0e8;
+    --ok:#0a7d40; --okbg:#e2f5ea; --warn:#8a5a00; --warnbg:#fdf1d8; --bad:#a12626; --badbg:#fbe4e4; --acc:#0b5f8a;
+    --mono:ui-monospace,SFMono-Regular,Menlo,monospace; }
+  @media (prefers-color-scheme: dark){ :root{
+    --bg:#0d141b; --fg:#dbe7f1; --mut:#8fa1b0; --card:#131e28; --line:#263646;
+    --ok:#5fd394; --okbg:#10301f; --warn:#f2c46b; --warnbg:#33260a; --bad:#f08f8f; --badbg:#3a1414; --acc:#7cc4ea; }}
+  *{box-sizing:border-box} body{margin:0;padding:1.25rem;background:var(--bg);color:var(--fg);
+    font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:56rem;margin:0 auto}
+  h1{font-size:1.3rem;margin:.2rem 0 .3rem} h2{font-size:1.02rem;margin:1.5rem 0 .5rem;color:var(--acc);scroll-margin-top:1rem}
+  h3{font-size:.92rem;margin:1.1rem 0 .4rem;scroll-margin-top:1rem}
+  .sub{color:var(--mut);font-size:.85rem;margin-bottom:1rem}
+  .badge{display:inline-block;padding:.15rem .55rem;border-radius:99px;font-weight:600;font-size:.8rem;margin:.1rem .15rem .1rem 0}
+  .ok{background:var(--okbg);color:var(--ok)} .warn{background:var(--warnbg);color:var(--warn)} .bad{background:var(--badbg);color:var(--bad)}
+  .wrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px;margin:.4rem 0}
+  table{width:100%;border-collapse:collapse;background:var(--card);font-size:.85rem}
+  th,td{text-align:left;padding:.45rem .6rem;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--mut);font-weight:600;white-space:nowrap} tr:last-child td{border-bottom:none}
+  td:nth-child(2){white-space:nowrap;text-align:right;color:var(--mut)}
+  code{font-family:var(--mono);font-size:.82em;background:color-mix(in srgb,var(--line) 40%,transparent);padding:.08em .35em;border-radius:4px}
+  ol,ul{padding-left:1.3rem} li{margin:.3rem 0}
+  .note{border-left:3px solid var(--warn);background:var(--warnbg);padding:.55rem .8rem;border-radius:0 6px 6px 0;font-size:.88rem;margin:.6rem 0}
+  .crit{border-left:3px solid var(--bad);background:var(--badbg);padding:.55rem .8rem;border-radius:0 6px 6px 0;font-size:.88rem;margin:.6rem 0}
+  .okbox{border-left:3px solid var(--ok);background:var(--okbg);padding:.55rem .8rem;border-radius:0 6px 6px 0;font-size:.88rem;margin:.6rem 0}
+  .toc{border:1px solid var(--line);border-radius:8px;padding:.7rem 1rem;background:var(--card);font-size:.85rem;margin:1rem 0}
+  .toc strong{display:block;margin-bottom:.3rem;color:var(--mut);font-weight:600;font-size:.78rem;text-transform:uppercase;letter-spacing:.04em}
+  .toc ol{margin:0;padding-left:1.1rem} .toc li{margin:.15rem 0}
+  a{color:var(--acc)}
+  footer{margin-top:2rem;padding-top:1rem;border-top:1px solid var(--line);color:var(--mut);font-size:.78rem}
+</style>
+</head>
+<body>
+<main>
+<h1>File Index — CreditVector Fulfillment Engine v1.0</h1>
+<p class="sub">Every file under <code>docs/fulfillment/</code> and <code>docs/handoffs/</code>, grouped by the cycle that produced it, with a one-line description and current line count (<code>wc -l</code>)</p>
+
+<div class="note">Four documents were revised across two cycles (noted in their own row) — each appears once, under the cycle it originated in, not twice.</div>
+
+<nav class="toc"><strong>Contents</strong><ol>
+<li><a href="#arch">Architecture cycle</a></li>
+<li><a href="#ref1">Refinement cycle 1</a></li>
+<li><a href="#ref2">Refinement cycle 2</a></li>
+<li><a href="#handoff">Handoff cycle</a></li>
+<li><a href="#totals">Totals</a></li>
+</ol></nav>
+
+<h2 id="arch">Architecture cycle <span style="font-weight:400;color:var(--mut);font-size:.85rem">(commits 0d66e80, f211f33, e223e51)</span></h2>
+<div class="wrap"><table>
+<tr><th>File</th><th>Lines</th><th>Description</th></tr>
+<tr><td><code>PROGRAM-BRIEF.md</code></td><td>81</td><td>Founder's 10 authoritative decisions + scout-verified repository-truth digest; the binding contract</td></tr>
+<tr><td><code>A-DOMAIN-MODEL.md</code></td><td>270</td><td>Agent A — the <code>Case</code>+<code>DisputePackage</code> domain model</td></tr>
+<tr><td><code>A-STATE-MACHINE.md</code></td><td>218</td><td>Agent A — the unified fulfillment state machine, 16+6→12-stage mapping</td></tr>
+<tr><td><code>A-POLICY-ENGINE.md</code></td><td>150</td><td>Agent A — the deterministic Fulfillment Policy Engine spec</td></tr>
+<tr><td><code>A-PROVIDER-ABSTRACTION.md</code></td><td>192</td><td>Agent A — the provider adapter contract + Vendor Opacity law</td></tr>
+<tr><td><code>B-MAIL-CENTER-EVOLUTION.md</code></td><td>310</td><td>Agent B — <code>/mail</code> evolved into the Case Journey operational workspace</td></tr>
+<tr><td><code>C-WALLET-INTEGRATION.md</code></td><td>943</td><td>Agent C — the original Wallet integration architecture; <strong>selectively superseded</strong> by <code>WALLET-COMMITMENT-MODEL.md</code> §13</td></tr>
+<tr><td><code>D-KAI-EXPERIENCE.md</code></td><td>275</td><td>Agent D — Kai as operational guide across the Case Journey; <strong>selectively superseded</strong> by <code>KAI-FULFILLMENT-UX.md</code> §5</td></tr>
+<tr><td><code>CREDITVECTOR-FULFILLMENT-ENGINE-V1.md</code></td><td>356</td><td>Agent E — the unified architecture merge: 17-item docket, risk register</td></tr>
+<tr><td><code>OPERATIONAL-ROOM-CONSTITUTION-PROPOSAL.md</code></td><td>88</td><td>Agent E — the six-mandatory-presentations Room Constitution proposal</td></tr>
+<tr><td><code>ADR-PROPOSALS.md</code></td><td>252</td><td>Agent E — ADR-0041 through ADR-0047, full text</td></tr>
+<tr><td><code>IMPLEMENTATION-SEQUENCE.md</code></td><td>189</td><td>Agent E — the phased, flag-gated, September-1-aligned rollout sequence</td></tr>
+<tr><td><code>ADVERSARIAL-REVIEW.md</code></td><td>131</td><td>Opus gate — 14 findings, CROA analysis, must-fix list. Verdict: NOT READY</td></tr>
+<tr><td><code>FOUNDER-SUMMARY.md</code></td><td>27</td><td>One-page Founder brief distilling the gate verdict</td></tr>
+<tr><td><code>FOUNDER-SUMMARY.html</code></td><td>90</td><td>Self-contained HTML twin (the visual precedent this handoff follows)</td></tr>
+</table></div>
+
+<h2 id="ref1">Refinement cycle 1 <span style="font-weight:400;color:var(--mut);font-size:.85rem">(commits f8cfb92, c61f2c8, 7578705)</span></h2>
+<div class="wrap"><table>
+<tr><th>File</th><th>Lines</th><th>Description</th></tr>
+<tr><td><code>COMMITMENT-REFINEMENT-BRIEF.md</code></td><td>39</td><td>Founder ruling (keep the Wallet) + S1–S8 mechanics spine + W1–W3 assignments</td></tr>
+<tr><td><code>WALLET-COMMITMENT-MODEL.md</code> <em>(revised again in refinement-2)</em></td><td>1,799</td><td>W1 — full wallet mechanics: anchor-lock schema, per-letter/attempt-keyed ledger, Wallet Constitution Amendment</td></tr>
+<tr><td><code>FULFILLMENT-COMMITMENT-BOUNDARY.md</code> <em>(revised again in refinement-2)</em></td><td>377</td><td>W2 — the two-layer commitment boundary, the 11-question vendor list, the state-machine delta</td></tr>
+<tr><td><code>RECOVERY-ENGINE.md</code> <em>(revised again in refinement-2)</em></td><td>184</td><td>W2 — the new Fulfillment Recovery Engine subsystem: 17(+1)-scenario matrix</td></tr>
+<tr><td><code>KAI-FULFILLMENT-UX.md</code> <em>(revised again in refinement-2)</em></td><td>553</td><td>W3 — the FINAL REVIEW interaction, the Kai failure-translation catalog, money narration</td></tr>
+<tr><td><code>COMMITMENT-RESOLUTION.md</code> <em>(reconciled again in refinement-2, final register)</em></td><td>57</td><td>Program Director merge — the authoritative, continuously-reconciled verdict register. Current: READY-WITH-DISCLOSURES</td></tr>
+<tr><td><code>COMMITMENT-REGATE.md</code></td><td>46</td><td>Cycle-1 re-gate — 14 findings, 10 bounded must-fixes. Verdict: NOT READY</td></tr>
+</table></div>
+
+<h2 id="ref2">Refinement cycle 2 <span style="font-weight:400;color:var(--mut);font-size:.85rem">(commits e70ad8f, 44a6789, 326a1d7)</span></h2>
+<div class="wrap"><table>
+<tr><th>File</th><th>Lines</th><th>Description</th></tr>
+<tr><td><code>REFINEMENT-2-DIRECTIVE.md</code></td><td>39</td><td>The Founder's decision on the re-gate + the 4 pre-decided cross-document rulings + agent assignments</td></tr>
+</table></div>
+<p class="sub"><em>(The four W1/W2/W3 documents and <code>COMMITMENT-RESOLUTION.md</code> this cycle revised are listed once each, above, under refinement cycle 1 where they originated.)</em></p>
+
+<h2 id="handoff">Handoff cycle <span style="font-weight:400;color:var(--mut);font-size:.85rem">(this package, docs/handoffs/)</span></h2>
+<div class="wrap"><table>
+<tr><th>File</th><th>Lines</th><th>Description</th></tr>
+<tr><td><code>EXECUTIVE-SUMMARY.md</code> / <code>.html</code></td><td>71</td><td>The full arc in Founder-readable form; the READY-WITH-DISCLOSURES verdict; the three headline disclosures</td></tr>
+<tr><td><code>AGENT-REPORTS.md</code> / <code>.html</code></td><td>68</td><td>Per-agent/per-gate summary of the entire program, scouts through the final re-gate</td></tr>
+<tr><td><code>ARCHITECTURE-DECISIONS.md</code> / <code>.html</code></td><td>37</td><td>The 13 durable design decisions + the ADR-0041–0047 map, in table form</td></tr>
+<tr><td><code>ROADMAP.md</code> / <code>.html</code></td><td>41</td><td>The Founder's Execution-Era priority order, this package's readiness against it</td></tr>
+<tr><td><code>NEXT-SPRINT.md</code> / <code>.html</code></td><td>62</td><td>The single recommended next sprint — 4 bounded, non-implementation items</td></tr>
+<tr><td><code>CHANGELOG.md</code> / <code>.html</code></td><td>63</td><td>Commit-by-commit history of <code>docs/fulfillment-engine-v1</code>, f449c35..326a1d7</td></tr>
+<tr><td><code>FILE-INDEX.md</code> / <code>.html</code></td><td>67</td><td>This index</td></tr>
+</table></div>
+
+<h2 id="totals">Totals</h2>
+<div class="wrap"><table>
+<tr><th>Group</th><th>Files</th><th>Lines</th></tr>
+<tr><td>Architecture cycle</td><td>15</td><td>3,572</td></tr>
+<tr><td>Refinement cycle 1 (current content)</td><td>7</td><td>3,055</td></tr>
+<tr><td>Refinement cycle 2</td><td>1</td><td>39</td></tr>
+<tr><td><strong><code>docs/fulfillment/</code> total</strong></td><td><strong>23</strong> <span style="color:var(--mut);font-weight:400">(22 .md + 1 .html)</span></td><td><strong>6,666</strong></td></tr>
+<tr><td><code>docs/handoffs/</code> (7 .md files)</td><td>7</td><td>409</td></tr>
+</table></div>
+<p class="sub">Counts are <code>wc -l</code> against the current worktree at commit <code>326a1d7</code> (<code>docs/fulfillment/</code>) and at handoff-package build time (<code>docs/handoffs/</code>).</p>
+
+<footer>CreditVector Fulfillment Engine v1.0 · Execution-Era handoff · branch <code>docs/fulfillment-engine-v1</code> @ <code>326a1d7</code> · production untouched</footer>
+</main>
+</body>
+</html>

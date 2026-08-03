@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Fulfillment Engine v1.0 — Executive Summary</title>
+<style>
+  :root { color-scheme: light dark;
+    --bg:#f7f9fb; --fg:#15222e; --mut:#5a6b7a; --card:#fff; --line:#d7e0e8;
+    --ok:#0a7d40; --okbg:#e2f5ea; --warn:#8a5a00; --warnbg:#fdf1d8; --bad:#a12626; --badbg:#fbe4e4; --acc:#0b5f8a;
+    --mono:ui-monospace,SFMono-Regular,Menlo,monospace; }
+  @media (prefers-color-scheme: dark){ :root{
+    --bg:#0d141b; --fg:#dbe7f1; --mut:#8fa1b0; --card:#131e28; --line:#263646;
+    --ok:#5fd394; --okbg:#10301f; --warn:#f2c46b; --warnbg:#33260a; --bad:#f08f8f; --badbg:#3a1414; --acc:#7cc4ea; }}
+  *{box-sizing:border-box} body{margin:0;padding:1.25rem;background:var(--bg);color:var(--fg);
+    font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:56rem;margin:0 auto}
+  h1{font-size:1.3rem;margin:.2rem 0 .3rem} h2{font-size:1.02rem;margin:1.5rem 0 .5rem;color:var(--acc);scroll-margin-top:1rem}
+  h3{font-size:.92rem;margin:1.1rem 0 .4rem;scroll-margin-top:1rem}
+  .sub{color:var(--mut);font-size:.85rem;margin-bottom:1rem}
+  .badge{display:inline-block;padding:.15rem .55rem;border-radius:99px;font-weight:600;font-size:.8rem;margin:.1rem .15rem .1rem 0}
+  .ok{background:var(--okbg);color:var(--ok)} .warn{background:var(--warnbg);color:var(--warn)} .bad{background:var(--badbg);color:var(--bad)}
+  .wrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px;margin:.4rem 0}
+  table{width:100%;border-collapse:collapse;background:var(--card);font-size:.85rem}
+  th,td{text-align:left;padding:.45rem .6rem;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--mut);font-weight:600;white-space:nowrap} tr:last-child td{border-bottom:none}
+  code{font-family:var(--mono);font-size:.82em;background:color-mix(in srgb,var(--line) 40%,transparent);padding:.08em .35em;border-radius:4px}
+  ol,ul{padding-left:1.3rem} li{margin:.3rem 0}
+  .note{border-left:3px solid var(--warn);background:var(--warnbg);padding:.55rem .8rem;border-radius:0 6px 6px 0;font-size:.88rem;margin:.6rem 0}
+  .crit{border-left:3px solid var(--bad);background:var(--badbg);padding:.55rem .8rem;border-radius:0 6px 6px 0;font-size:.88rem;margin:.6rem 0}
+  .okbox{border-left:3px solid var(--ok);background:var(--okbg);padding:.55rem .8rem;border-radius:0 6px 6px 0;font-size:.88rem;margin:.6rem 0}
+  .toc{border:1px solid var(--line);border-radius:8px;padding:.7rem 1rem;background:var(--card);font-size:.85rem;margin:1rem 0}
+  .toc strong{display:block;margin-bottom:.3rem;color:var(--mut);font-weight:600;font-size:.78rem;text-transform:uppercase;letter-spacing:.04em}
+  .toc ol{margin:0;padding-left:1.1rem} .toc li{margin:.15rem 0}
+  a{color:var(--acc)}
+  footer{margin-top:2rem;padding-top:1rem;border-top:1px solid var(--line);color:var(--mut);font-size:.78rem}
+</style>
+</head>
+<body>
+<main>
+<h1>CreditVector Fulfillment Engine v1.0 — Executive Summary</h1>
+<p class="sub">Handoff package · Execution-Era cycle · branch <code>docs/fulfillment-engine-v1</code> · base <code>origin/main@f449c35</code> · HEAD <code>326a1d7</code> · 2026-08-03</p>
+
+<div class="note"><strong>Architecture-only program.</strong> Nothing described below has been implemented. No product code, schema, dependency, environment variable, or feature flag changed at any point in this cycle. <code>MAIL_LIVE</code> stays OFF, <code>dispatch()</code> still has zero callers, and <code>origin/main</code> is unchanged at <code>f449c35</code>. Every claim cites its source document under <code>docs/fulfillment/</code>.</p></div>
+
+<nav class="toc"><strong>Contents</strong><ol>
+<li><a href="#verdict">Verdict</a></li>
+<li><a href="#arc">The arc, in order</a></li>
+<li><a href="#exists">What exists now</a></li>
+<li><a href="#decisions">The two Founder decisions</a></li>
+<li><a href="#disclosures">Three headline residual disclosures</a></li>
+<li><a href="#nothing">Nothing implemented</a></li>
+<li><a href="#contents">Package contents</a></li>
+</ol></nav>
+
+<h2 id="verdict">Verdict</h2>
+<p><span class="badge ok">READY-WITH-DISCLOSURES</span></p>
+<p>The final, reconciled position recorded in <code>docs/fulfillment/COMMITMENT-RESOLUTION.md</code> (updated in commit <code>326a1d7</code>, "reconcile register to re-gate cycle-2 verdict"). All 10 bounded must-fixes from the cycle-1 re-gate are resolved; the free-fulfillment defect (F4) is <strong>permanently eliminated with a traced proof</strong>; no blocking defect survives the second adversarial pass. Three LOW-severity documentation-fidelity residuals and a fixed set of carried preconditions remain as disclosures — they gate specific future phases, not this handoff.</p>
+
+<div class="wrap"><table>
+<tr><th>Pass</th><th>Verdict</th><th>Source</th></tr>
+<tr><td>1. Architecture gate (Opus)</td><td><span class="badge bad">NOT READY</span> as implementable — 14 findings</td><td><code>ADVERSARIAL-REVIEW.md</code></td></tr>
+<tr><td>2. Re-gate, cycle 1</td><td><span class="badge bad">NOT READY</span> — foundations sound, one cross-doc contradiction, 10 bounded must-fixes</td><td><code>COMMITMENT-REGATE.md</code></td></tr>
+<tr><td>3. Re-gate, cycle 2 (final)</td><td><span class="badge ok">READY-WITH-DISCLOSURES</span> — all 10 must-fixes resolved, F4 permanently closed</td><td><code>COMMITMENT-RESOLUTION.md</code> (326a1d7)</td></tr>
+</table></div>
+
+<h2 id="arc">The arc, in order</h2>
+<ol>
+<li><strong>Design (Agents A–E).</strong> Over the accepted CXOS RC2 baseline, five agents designed the CreditVector Fulfillment Platform: domain model, unified state machine, deterministic Policy Engine, provider abstraction (Agent A, 4 docs); the evolved Mail Center / Case Journey workspace (Agent B); the Wallet integration architecture (Agent C); the Kai experience model (Agent D); and the merge (Agent E). See <code>PROGRAM-BRIEF.md</code> for the Founder's 10 authoritative decisions.</li>
+<li><strong>Adversarial gate — NOT READY.</strong> A single bounded Opus pass (<code>ADVERSARIAL-REVIEW.md</code>) rated the domain model, provider abstraction, Kai boundary laws, and Room Constitution "genuinely strong," but found 14 ranked findings concentrated in the Wallet's money mechanics plus one unanalyzed legal question: CROA §404 advance-fee exposure.</li>
+<li><strong>Founder ruling.</strong> Keep the prepaid Wallet and the authorize-hold → settle-at-provider-acceptance model; commission a bounded refinement, not a redesign (<code>COMMITMENT-REFINEMENT-BRIEF.md</code>).</li>
+<li><strong>Refinement cycle 1 (W1–W3).</strong> Built the commitment model: a real serialization anchor lock, per-letter/attempt-scoped settlement grain, the payer-principal model, the Fulfillment Recovery Engine, and the FINAL REVIEW interface. Merged in <code>COMMITMENT-RESOLUTION.md</code> (original).</li>
+<li><strong>Re-gate, cycle 1 — NOT READY.</strong> <code>COMMITMENT-REGATE.md</code> found the foundations sound but one cross-document seam broken: W1 minted a new <code>attempt+1</code> on every re-authorization after a release, while W2 mandated "same attempt reused" — no value of <code>attempt</code> satisfied both, restoring F4 (free fulfillment) through the seam. 10 bounded must-fixes issued; none reopened the model.</li>
+<li><strong>Refinement cycle 2 (pre-decided rulings).</strong> <code>REFINEMENT-2-DIRECTIVE.md</code> pre-decided four cross-document rulings: unified attempt lifecycle; one canonical claim-key registry; provider acceptance is irreversible (post-acceptance remediation is accounting-only); FINAL REVIEW sits after the hold, before Submit, bound to a server-issued token.</li>
+<li><strong>Re-gate, cycle 2 (final) — READY-WITH-DISCLOSURES.</strong> The coordinator reconciled <code>COMMITMENT-RESOLUTION.md</code> (<code>326a1d7</code>): F4 <strong>permanently eliminated, traced proof</strong>; F3/F5/F6/F7/F9 at <strong>RESOLVED-WITH-RESIDUALS</strong> (honest, not overclaimed); F1 (Gate D) and F2 (CROA) <strong>STAND</strong> unchanged.</li>
+</ol>
+
+<h2 id="exists">What exists now — a wiring-and-evolution program, not a build</h2>
+<p>The single most load-bearing fact in this package: <strong>the fulfillment engine already half-exists.</strong> Nothing below is new infrastructure — the architecture evolves it.</p>
+<div class="wrap"><table>
+<tr><th>Already shipped (verified against source)</th><th>File</th></tr>
+<tr><td>16-state manifest state machine</td><td><code>lib/mail/MailStatus.ts</code></td></tr>
+<tr><td>Five provider IDs registered (letterstream, lob, postgrid, click2mail, postalmethods)</td><td><code>lib/mail/MailProvider.ts</code></td></tr>
+<tr><td>LetterStream adapter — interface-conformant, rate card built, dry-run only; throws <code>not_wired</code> even live</td><td><code>lib/mail/providers/LetterStreamProvider.ts</code></td></tr>
+<tr><td>Composed, itemizable pricing</td><td><code>lib/mail/MailPricing.ts</code></td></tr>
+<tr><td>Append-only audit trail, enforced at the store boundary</td><td><code>lib/mail/MailAudit.ts</code>, <code>lib/mail/MailStore.ts</code></td></tr>
+<tr><td>3-step send wizard, resumable, stopped at <code>QUEUED</code></td><td><code>app/mail/send/[letterId]/page.tsx</code></td></tr>
+<tr><td><code>MailService.dispatch()</code> — built, wired to nothing (zero callers)</td><td><code>lib/mail/MailService.ts</code></td></tr>
+<tr><td>Mail Center — deterministic, zero-AI, zero-network; 6-state health pill; 12-stage timeline</td><td><code>app/mail/page.tsx</code>, <code>lib/mailCenter.ts</code></td></tr>
+</table></div>
+<p>The architecture package formalizes this into the <strong>CreditVector Fulfillment Platform</strong>: the Dispute Package as the primary object, the Case Journey as the primary workflow, a deterministic Policy Engine, a prepaid Wallet with a real commitment boundary, and Kai as narrator-never-decider — layered over the existing spine, never a parallel system. Full detail: <code>docs/handoffs/ARCHITECTURE-DECISIONS.html</code>.</p>
+
+<h2 id="decisions">The two decisions only the Founder can make</h2>
+<p>These are hard preconditions, not softened by the READY-WITH-DISCLOSURES verdict. No Wallet implementation work should start before both are addressed.</p>
+<div class="crit"><strong>1 · CROA §404 advance-fee counsel question (CRITICAL, unresolved).</strong> The prepaid Wallet is, on the review's own analysis, the most legally adverse charging shape available: money received at top-up — potentially weeks before any package exists — and captured at provider acceptance, before printing. <strong>Keeping the Wallet does not moot this question.</strong> Every refinement document carries the identical header note: settlement-at-acceptance is stronger than capture-at-top-up but "does NOT moot the counsel question — funds are still received in advance at top-up... the hard precondition before any wallet implementation phase." The six-part counsel question, including the named compliant alternative (<strong>Stripe manual-capture: authorize at Approval, capture at Delivered / Return-Receipt-Archived</strong>), is in <code>ADVERSARIAL-REVIEW.md</code> §3.4.</div>
+<div class="crit"><strong>2 · Gate D Phase −1 (CRITICAL, unresolved).</strong> Every new migration this program proposes (<code>Case</code>, <code>DisputePackage</code>, <code>DisputePackageLetter</code>, <code>Claim</code>, <code>WalletLedger</code>) is blocked by ratified canon: Gate D has never executed, production carries no <code>_prisma_migrations</code> history, and the schema-safety preflight rejects a seventh migration directory outright. A Phase −1 must precede any Phase 1 migration work (<code>ADVERSARIAL-REVIEW.md</code> F1) — unchanged through every refinement cycle.</div>
+
+<h2 id="disclosures">The three headline residual disclosures</h2>
+<ol>
+<li><strong>The vendor-confirmation question set (11 questions, unanswered).</strong> LetterStream's actual cancellation window is not in the repository and has never been asked. Until answered, the architecture assumes the worst case everywhere, including operator-facing warning copy. Full list: <code>FULFILLMENT-COMMITMENT-BOUNDARY.md</code> §2.1–§2.2 (the same 11 questions apply independently to every future adapter).</li>
+<li><strong>The §611-clock-without-a-receipt question (counsel/CCO-pending).</strong> The clock now anchors at a single point, <code>RETURN_RECEIPT_ARCHIVED</code> (correcting a three-way legal conflict). Whether <code>DELIVERED</code> alone, absent an actual receipt artifact, may ever start that clock is named for counsel/CCO, not resolved by fiat (<code>COMMITMENT-RESOLUTION.md</code> §1 F8; <code>RECOVERY-ENGINE.md</code> §4 scenario 11).</li>
+<li><strong>Implementation-discipline dependency.</strong> Every "eliminated" verdict (the overdraft lock, the free-fulfillment closure, the partial-settlement grain) is a property of the specified guard contracts, not of the architecture in the abstract — <code>COMMITMENT-RESOLUTION.md</code> states these mechanisms "eliminate defects only if built as specified." This is why <code>docs/handoffs/NEXT-SPRINT.html</code> recommends design-only conformance-test work before implementation.</li>
+</ol>
+
+<h2 id="nothing">Nothing implemented — the explicit statement</h2>
+<ul>
+<li>No file under <code>app/</code>, <code>lib/</code>, <code>components/</code>, or <code>prisma/</code> was touched.</li>
+<li>No dependency added; no environment variable introduced; no feature flag changed state.</li>
+<li><code>MAIL_LIVE</code> remains OFF. <code>EVENT_BUS_ENABLED</code> remains OFF (pre-existing). <code>dispatch()</code> remains uncalled.</li>
+<li><code>origin/main</code> is unchanged at <code>f449c35</code>. Phase 0 (Founder ratification) is the next gate, and it produces no code.</li>
+<li>Every artifact under <code>docs/fulfillment/</code> is labeled <code>PROPOSED</code>, <code>FOUNDER-GATE</code>, or <code>VENDOR-CONFIRMATION-REQUIRED</code> per the Program Brief's own discipline.</li>
+</ul>
+
+<h2 id="contents">What this handoff package contains</h2>
+<p>This directory is a Founder-readable index and synthesis layer over the 22 architecture documents in <code>docs/fulfillment/</code> (6,666 lines across 21 Markdown files + 1 HTML twin). It does not replace them — every claim here traces to one of them.</p>
+<div class="wrap"><table>
+<tr><th>File</th><th>Purpose</th></tr>
+<tr><td><code>FILE-INDEX.html</code></td><td>Complete inventory of every document</td></tr>
+<tr><td><code>AGENT-REPORTS.html</code></td><td>What each agent/gate produced</td></tr>
+<tr><td><code>ARCHITECTURE-DECISIONS.html</code></td><td>The durable design decisions + ADR map</td></tr>
+<tr><td><code>ROADMAP.html</code></td><td>Where this fits in the Execution Era</td></tr>
+<tr><td><code>NEXT-SPRINT.html</code></td><td>The single recommended next step</td></tr>
+<tr><td><code>CHANGELOG.html</code></td><td>Commit-by-commit history of this branch</td></tr>
+</table></div>
+
+<footer>CreditVector Fulfillment Engine v1.0 · Execution-Era handoff · branch <code>docs/fulfillment-engine-v1</code> @ <code>326a1d7</code> · production untouched</footer>
+</main>
+</body>
+</html>

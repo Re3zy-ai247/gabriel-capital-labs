@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Fulfillment Engine v1.0 — Next Sprint</title>
+<style>
+  :root { color-scheme: light dark;
+    --bg:#f7f9fb; --fg:#15222e; --mut:#5a6b7a; --card:#fff; --line:#d7e0e8;
+    --ok:#0a7d40; --okbg:#e2f5ea; --warn:#8a5a00; --warnbg:#fdf1d8; --bad:#a12626; --badbg:#fbe4e4; --acc:#0b5f8a;
+    --mono:ui-monospace,SFMono-Regular,Menlo,monospace; }
+  @media (prefers-color-scheme: dark){ :root{
+    --bg:#0d141b; --fg:#dbe7f1; --mut:#8fa1b0; --card:#131e28; --line:#263646;
+    --ok:#5fd394; --okbg:#10301f; --warn:#f2c46b; --warnbg:#33260a; --bad:#f08f8f; --badbg:#3a1414; --acc:#7cc4ea; }}
+  *{box-sizing:border-box} body{margin:0;padding:1.25rem;background:var(--bg);color:var(--fg);
+    font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:56rem;margin:0 auto}
+  h1{font-size:1.3rem;margin:.2rem 0 .3rem} h2{font-size:1.02rem;margin:1.5rem 0 .5rem;color:var(--acc);scroll-margin-top:1rem}
+  h3{font-size:.92rem;margin:1.1rem 0 .4rem;scroll-margin-top:1rem}
+  .sub{color:var(--mut);font-size:.85rem;margin-bottom:1rem}
+  .badge{display:inline-block;padding:.15rem .55rem;border-radius:99px;font-weight:600;font-size:.8rem;margin:.1rem .15rem .1rem 0}
+  .ok{background:var(--okbg);color:var(--ok)} .warn{background:var(--warnbg);color:var(--warn)} .bad{background:var(--badbg);color:var(--bad)}
+  .wrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px;margin:.4rem 0}
+  table{width:100%;border-collapse:collapse;background:var(--card);font-size:.85rem}
+  th,td{text-align:left;padding:.45rem .6rem;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--mut);font-weight:600;white-space:nowrap} tr:last-child td{border-bottom:none}
+  code{font-family:var(--mono);font-size:.82em;background:color-mix(in srgb,var(--line) 40%,transparent);padding:.08em .35em;border-radius:4px}
+  ol,ul{padding-left:1.3rem} li{margin:.3rem 0}
+  .note{border-left:3px solid var(--warn);background:var(--warnbg);padding:.55rem .8rem;border-radius:0 6px 6px 0;font-size:.88rem;margin:.6rem 0}
+  .crit{border-left:3px solid var(--bad);background:var(--badbg);padding:.55rem .8rem;border-radius:0 6px 6px 0;font-size:.88rem;margin:.6rem 0}
+  .okbox{border-left:3px solid var(--ok);background:var(--okbg);padding:.55rem .8rem;border-radius:0 6px 6px 0;font-size:.88rem;margin:.6rem 0}
+  .toc{border:1px solid var(--line);border-radius:8px;padding:.7rem 1rem;background:var(--card);font-size:.85rem;margin:1rem 0}
+  .toc strong{display:block;margin-bottom:.3rem;color:var(--mut);font-weight:600;font-size:.78rem;text-transform:uppercase;letter-spacing:.04em}
+  .toc ol{margin:0;padding-left:1.1rem} .toc li{margin:.15rem 0}
+  a{color:var(--acc)}
+  footer{margin-top:2rem;padding-top:1rem;border-top:1px solid var(--line);color:var(--mut);font-size:.78rem}
+</style>
+</head>
+<body>
+<main>
+<h1>Next Sprint Recommendation — CreditVector Fulfillment Engine v1.0</h1>
+<p class="sub">The single recommended next sprint, and what stays gated behind it</p>
+
+<nav class="toc"><strong>Contents</strong><ol>
+<li><a href="#rec">The recommendation</a></li>
+<li><a href="#a">(a) Route the CROA counsel question</a></li>
+<li><a href="#b">(b) Execute Gate D Phase −1</a></li>
+<li><a href="#c">(c) A tiny documentation-correction pass</a></li>
+<li><a href="#d">(d) Design-only LetterStream conformance tests</a></li>
+<li><a href="#summary">Summary table</a></li>
+</ol></nav>
+
+<h2 id="rec">The recommendation</h2>
+<div class="crit"><strong>The next sprint is not Wallet implementation.</strong> Implementation is blocked on two hard preconditions that no amount of additional architecture work resolves: the CROA §404 counsel question and Gate D Phase −1. Starting Phase 1 migrations or Phase 3 wallet code before either clears would put working code behind decisions that could still reshape or invalidate it — specifically, a counsel answer requiring a charge-at-completion restructure (Stripe manual-capture) would obsolete the prepaid Wallet mechanics this entire refinement cycle just spent two rounds hardening.</div>
+<p>Instead, the next sprint is four small, bounded, non-implementation items — none touches product code, and all four can run in parallel.</p>
+
+<h2 id="a">(a) Route the CROA §404 counsel question</h2>
+<p><strong>What:</strong> Send the fully-formulated six-part outside-counsel question in <code>ADVERSARIAL-REVIEW.md</code> §3.4 to outside consumer-finance counsel. The question is already written, cites the exact facts, and names the compliant alternative (Stripe manual-capture) so counsel can rule on either path.</p>
+<div class="wrap"><table>
+<tr><th>Entry criteria</th><td>None — the question is finished and ready to send today.</td></tr>
+<tr><th>Exit criteria</th><td>A written counsel opinion on: CRO status under §1679a(3); §1679b(b) advance-fee compliance; whether Stripe manual-capture at Delivered/Receipt-Archived is compliant; §1679c/d/e/f obligations; state CSO statute exposure; §611 clock framing confirmation.</td></tr>
+<tr><th>What stays gated</th><td>Every Wallet implementation phase (Phase 3 onward), and any UI showing a wallet balance or authorization screen to a real operator.</td></tr>
+</table></div>
+
+<h2 id="b">(b) Execute Gate D Phase −1</h2>
+<p><strong>What:</strong> Run Gate D's mandated baseline resolve and land the versioned manifest extension, exactly as <code>ADVERSARIAL-REVIEW.md</code> F1 specifies. This is infrastructure work already named and already blocking — it does not wait on the CROA answer.</p>
+<div class="wrap"><table>
+<tr><th>Entry criteria</th><td>The existing Gate D runbook plus confirmation production still has no <code>_prisma_migrations</code> history.</td></tr>
+<tr><th>Exit criteria</th><td>Gate D executed; production migration history exists; the schema-safety preflight accepts a seventh migration directory.</td></tr>
+<tr><th>What stays gated</th><td>All five Phase 1 migrations (<code>Case</code>, <code>DisputePackage</code>, <code>DisputePackageLetter</code>, <code>Claim</code>, <code>WalletLedger</code>) remain unqueued until this completes.</td></tr>
+</table></div>
+
+<h2 id="c">(c) A tiny documentation-correction pass</h2>
+<p>Two distinct groups of pending corrections, neither reopening the model nor requiring a new Founder decision.</p>
+<h3>3 LOW-severity doc-fidelity items</h3>
+<p>Named explicitly in <code>ADVERSARIAL-REVIEW.md</code>'s closing "Below the cut" paragraph, never yet applied:</p>
+<ol>
+<li><code>IMPLEMENTATION-SEQUENCE.md</code> §1(b) asks the Founder to rule on "ADR-0041–0045," omitting ADR-0046/0047 even though Phase 5 requires ADR-0046 accepted and 0047 is a constitutional amendment.</li>
+<li><code>C-WALLET-INTEGRATION.md</code> §7 (FI-2) claims "every transition wrapped in a claim key," but §3.6 omits <code>fund</code>.</li>
+<li><code>ADR-PROPOSALS.md</code>'s header rationale contradicts its own (correct) closing numbering note.</li>
+</ol>
+<h3>Pending base-package document corrections</h3>
+<p>Recorded but not yet applied, per <code>COMMITMENT-RESOLUTION.md</code> §4:</p>
+<ul>
+<li><strong>F11</strong> — amend <code>A-POLICY-ENGINE.md</code> §2: add <code>PolicyInput.estimate: CostEstimate</code>, supplied by the calling route, preserving the engine's no-network law.</li>
+<li><strong>F13</strong> — restore the binding 9-step Package Review chain wherever the merge drifted to 12; repoint the cross-reference to <code>B-MAIL-CENTER-EVOLUTION.md</code> §3.1.</li>
+<li><strong>F14</strong> — reconcile <code>A-DOMAIN-MODEL.md</code> §1.6/§2.6: remove the two new destructive <code>User</code> cascades, align to <code>Restrict</code> everywhere, add <code>@@unique([letterId, attempt])</code>.</li>
+<li><strong>ADR-0044 supersession</strong> — apply <code>WALLET-COMMITMENT-MODEL.md</code> §13's supersession map into the ADR-0044 file itself.</li>
+<li>Plus: add ADR-0046/0047 to the Phase-0 Founder review list, restate the vendor-opacity control as the runtime DTO, map <code>D-KAI-EXPERIENCE.md</code>'s superseded sections.</li>
+</ul>
+<div class="wrap"><table>
+<tr><th>Entry criteria</th><td>None — every correction is fully specified in an existing document; this is transcription and reconciliation, not design.</td></tr>
+<tr><th>Exit criteria</th><td>All seven items applied as direct edits to the named documents; no other content changes.</td></tr>
+<tr><th>What stays gated</th><td>Nothing new — this pass changes no decision.</td></tr>
+</table></div>
+
+<h2 id="d">(d) Design-only LetterStream conformance tests</h2>
+<p><strong>What:</strong> Build out the adapter conformance test <em>design</em> (never live wiring) specified in <code>A-PROVIDER-ABSTRACTION.md</code> §8 and extended by <code>FULFILLMENT-COMMITMENT-BOUNDARY.md</code> §2.2: interface completeness, dry-run/live symmetry, status-mapping totality, rate-card containment, error-code fidelity, no vendor-name leakage — plus the rule that no <code>MailProviderId</code> may be selected for a live job until its own 11-question vendor-confirmation set exists.</p>
+<div class="wrap"><table>
+<tr><th>Entry criteria</th><td><code>A-PROVIDER-ABSTRACTION.md</code> §8's conformance contract and <code>FULFILLMENT-COMMITMENT-BOUNDARY.md</code> §2.1's 11-question list (both already written).</td></tr>
+<tr><th>Exit criteria</th><td>A written test-plan document naming every conformance case and every question as a named gate — no code written, no vendor contacted.</td></tr>
+<tr><th>What stays gated</th><td><code>MAIL_LIVE</code> stays OFF regardless of how this design work concludes — Order 5 in the flag activation sequence, its own separately-gated runbook.</td></tr>
+</table></div>
+
+<h2 id="summary">Summary table</h2>
+<div class="wrap"><table>
+<tr><th>Item</th><th>Blocks</th><th>Blocked by</th><th>This sprint's deliverable</th></tr>
+<tr><td>(a) CROA counsel question</td><td>All Wallet implementation (Phase 3+)</td><td>Nothing — ready today</td><td>A sent question; a received opinion</td></tr>
+<tr><td>(b) Gate D Phase −1</td><td>All 5 new migrations (Phase 1)</td><td>Nothing — ready today</td><td>An executed gate; a restored migration path</td></tr>
+<tr><td>(c) Doc-correction pass</td><td>Nothing new</td><td>Nothing</td><td>7 small edits across 6 documents</td></tr>
+<tr><td>(d) LetterStream conformance design</td><td><code>MAIL_LIVE</code> activation (far downstream)</td><td>Nothing — design only</td><td>A written test-plan document, no code</td></tr>
+</table></div>
+<p>None of these four items requires implementation, a new Founder decision beyond what's already been ruled, or touches product code, schema, or flags. All four can proceed in parallel starting immediately.</p>
+
+<footer>CreditVector Fulfillment Engine v1.0 · Execution-Era handoff · branch <code>docs/fulfillment-engine-v1</code> @ <code>326a1d7</code> · production untouched</footer>
+</main>
+</body>
+</html>

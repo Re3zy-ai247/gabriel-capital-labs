@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Fulfillment Engine v1.0 — Agent Reports</title>
+<style>
+  :root { color-scheme: light dark;
+    --bg:#f7f9fb; --fg:#15222e; --mut:#5a6b7a; --card:#fff; --line:#d7e0e8;
+    --ok:#0a7d40; --okbg:#e2f5ea; --warn:#8a5a00; --warnbg:#fdf1d8; --bad:#a12626; --badbg:#fbe4e4; --acc:#0b5f8a;
+    --mono:ui-monospace,SFMono-Regular,Menlo,monospace; }
+  @media (prefers-color-scheme: dark){ :root{
+    --bg:#0d141b; --fg:#dbe7f1; --mut:#8fa1b0; --card:#131e28; --line:#263646;
+    --ok:#5fd394; --okbg:#10301f; --warn:#f2c46b; --warnbg:#33260a; --bad:#f08f8f; --badbg:#3a1414; --acc:#7cc4ea; }}
+  *{box-sizing:border-box} body{margin:0;padding:1.25rem;background:var(--bg);color:var(--fg);
+    font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:56rem;margin:0 auto}
+  h1{font-size:1.3rem;margin:.2rem 0 .3rem} h2{font-size:1.02rem;margin:1.5rem 0 .5rem;color:var(--acc);scroll-margin-top:1rem}
+  h3{font-size:.92rem;margin:1.1rem 0 .4rem;scroll-margin-top:1rem}
+  .sub{color:var(--mut);font-size:.85rem;margin-bottom:1rem}
+  .badge{display:inline-block;padding:.15rem .55rem;border-radius:99px;font-weight:600;font-size:.8rem;margin:.1rem .15rem .1rem 0}
+  .ok{background:var(--okbg);color:var(--ok)} .warn{background:var(--warnbg);color:var(--warn)} .bad{background:var(--badbg);color:var(--bad)}
+  .wrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px;margin:.4rem 0}
+  table{width:100%;border-collapse:collapse;background:var(--card);font-size:.85rem}
+  th,td{text-align:left;padding:.45rem .6rem;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--mut);font-weight:600;white-space:nowrap} tr:last-child td{border-bottom:none}
+  code{font-family:var(--mono);font-size:.82em;background:color-mix(in srgb,var(--line) 40%,transparent);padding:.08em .35em;border-radius:4px}
+  ol,ul{padding-left:1.3rem} li{margin:.3rem 0}
+  .note{border-left:3px solid var(--warn);background:var(--warnbg);padding:.55rem .8rem;border-radius:0 6px 6px 0;font-size:.88rem;margin:.6rem 0}
+  .crit{border-left:3px solid var(--bad);background:var(--badbg);padding:.55rem .8rem;border-radius:0 6px 6px 0;font-size:.88rem;margin:.6rem 0}
+  .okbox{border-left:3px solid var(--ok);background:var(--okbg);padding:.55rem .8rem;border-radius:0 6px 6px 0;font-size:.88rem;margin:.6rem 0}
+  .toc{border:1px solid var(--line);border-radius:8px;padding:.7rem 1rem;background:var(--card);font-size:.85rem;margin:1rem 0}
+  .toc strong{display:block;margin-bottom:.3rem;color:var(--mut);font-weight:600;font-size:.78rem;text-transform:uppercase;letter-spacing:.04em}
+  .toc ol{margin:0;padding-left:1.1rem} .toc li{margin:.15rem 0}
+  a{color:var(--acc)}
+  footer{margin-top:2rem;padding-top:1rem;border-top:1px solid var(--line);color:var(--mut);font-size:.78rem}
+</style>
+</head>
+<body>
+<main>
+<h1>Agent Reports — CreditVector Fulfillment Engine v1.0</h1>
+<p class="sub">Per-agent/per-gate summary of the entire program, in execution order · every row cites the document(s) it produced</p>
+
+<nav class="toc"><strong>Contents</strong><ol>
+<li><a href="#scouts">0. Scouts</a></li>
+<li><a href="#arch">1. Architecture agents A–E</a></li>
+<li><a href="#gate1">2. Architecture Opus gate</a></li>
+<li><a href="#ref1">3. Founder ruling + Refinement cycle 1</a></li>
+<li><a href="#regate1">4. Re-gate, cycle 1</a></li>
+<li><a href="#ref2">5. Refinement cycle 2</a></li>
+<li><a href="#regate2">6. Re-gate, cycle 2 (final)</a></li>
+</ol></nav>
+
+<h2 id="scouts">0. Scouts (repository truth digest)</h2>
+<p>Before any design work began, the Program Director's brief digested the existing repository into a scout-verified truth baseline that no agent was permitted to contradict or re-derive (<code>PROGRAM-BRIEF.md</code> §2). Two of the three digest sections are explicitly attributed by name; the third is not, and is presented here as inferred, not invented.</p>
+<div class="wrap"><table>
+<tr><th>Scout</th><th>Territory</th><th>Source</th></tr>
+<tr><td>Scout A <em>(inferred — §2.1–§2.3 not attributed to a lettered scout in the Brief's text; presented by elimination against Scout B/C's named territory)</em></td><td>The existing fulfillment spine (<code>lib/mail/*</code>), the Letters domain, and the three timeline/audit mechanisms (<code>KaiEvent</code>, <code>DecisionRegistry</code>, the Platform Event Bus)</td><td><code>PROGRAM-BRIEF.md</code> §2.1–§2.3</td></tr>
+<tr><td><strong>Scout B</strong> (named)</td><td>Kai machinery + the accepted RC2 room grammar (UX direction for September)</td><td><code>PROGRAM-BRIEF.md</code> §2.5–§2.6</td></tr>
+<tr><td><strong>Scout C</strong> (named)</td><td>Financial primitives — <code>letterCredits</code>, the Stripe claim ledger, the <code>XpAward</code> precedent, the five-instruments law, and the closing 10 inherited financial invariants ("binding law for the wallet architecture")</td><td><code>PROGRAM-BRIEF.md</code> §2.4</td></tr>
+</table></div>
+<p>This digest is the load-bearing discovery of the whole program: the fulfillment engine already half-exists. Every agent below built against this baseline, not from scratch.</p>
+
+<h2 id="arch">1. Architecture agents A–E</h2>
+<div class="wrap"><table>
+<tr><th>Agent</th><th>Artifact(s)</th><th>What it produced</th><th>Verdict / status</th></tr>
+<tr><td><strong>A</strong></td><td><code>A-DOMAIN-MODEL.md</code>, <code>A-STATE-MACHINE.md</code>, <code>A-POLICY-ENGINE.md</code>, <code>A-PROVIDER-ABSTRACTION.md</code></td><td>The <code>Case</code>+<code>DisputePackage</code> domain; the unified state machine (16+6 states → 12-stage timeline); the deterministic Policy Engine spec; the provider adapter contract</td><td>"Genuinely strong and unusually well-grounded in real source" — one confirmed gap (F11)</td></tr>
+<tr><td><strong>B</strong></td><td><code>B-MAIL-CENTER-EVOLUTION.md</code></td><td>Evolved <code>/mail</code> into the Case Journey workspace: work-queue reorder, "Do this first" band, evidence drawer, metrics demotion, 9-step Package Review, Approval-card split</td><td>"Sound — best-executed item after the Room Constitution"</td></tr>
+<tr><td><strong>C</strong></td><td><code>C-WALLET-INTEGRATION.md</code> (943 lines)</td><td>Original Wallet architecture: authorize→consume→settle/void, <code>WalletLedger</code> design, funding, 10 inherited invariants, reserved future surfaces</td><td>Aim affirmed; concrete mechanics held the 5 wallet-specific CRITICAL/HIGH defects (F3–F7)</td></tr>
+<tr><td><strong>D</strong></td><td><code>D-KAI-EXPERIENCE.md</code></td><td>Kai as operational guide: narration model, guided Package Review, notification model, boundary-law table, waiting-period companionship</td><td>"Honored — strongest work"; only defect was the shared §611 copy issue (F8)</td></tr>
+<tr><td><strong>E</strong></td><td><code>CREDITVECTOR-FULFILLMENT-ENGINE-V1.md</code>, <code>OPERATIONAL-ROOM-CONSTITUTION-PROPOSAL.md</code>, <code>ADR-PROPOSALS.md</code>, <code>IMPLEMENTATION-SEQUENCE.md</code></td><td>Merged A–D, resolved a 17-item conflict docket, re-verified disputed facts against source, produced the phased sequence</td><td>Most resolutions held; F4's "eliminated" framing and the 12-step vs 9-step drift did not survive the gate</td></tr>
+</table></div>
+
+<h2 id="gate1">2. Architecture Opus gate</h2>
+<p><strong>Artifact:</strong> <code>ADVERSARIAL-REVIEW.md</code> · <span class="badge bad">NOT READY for Founder delivery as implementable</span></p>
+<p>A single bounded, read-only adversarial pass against the A–E package at commit <code>f211f33</code>. Found 14 ranked findings (F1–F14): 2 CRITICAL beyond the wallet (F1 Gate D; F2 CROA §404), 2 CRITICAL inside the wallet (F3 overdraft, F4 free fulfillment), 5 HIGH (F5–F9), 1 more HIGH (F10 evidence-failure states), and 4 MED/MED-HIGH (F11–F14). Produced the full CROA §404 legal analysis (§3) with the six-part outside-counsel question, and a per-Founder-decision completeness table (§4). Closing note: <em>"the domain model, Kai boundary laws, provider abstraction, and Room Constitution proposal are of a genuinely high standard... the failures concentrate in the wallet's concrete money mechanics."</em></p>
+
+<h2 id="ref1">3. Founder ruling + Refinement cycle 1 (W1–W3)</h2>
+<p><strong>Ruling</strong> (<code>COMMITMENT-REFINEMENT-BRIEF.md</code>): keep the prepaid Wallet and the authorize-hold → settle-at-acceptance model; commission a bounded refinement, not a redesign. The brief pre-specified the mechanics spine (S1–S8) all three agents had to build on.</p>
+<div class="wrap"><table>
+<tr><th>Agent</th><th>Artifact(s)</th><th>What it produced</th></tr>
+<tr><td><strong>W1</strong></td><td><code>WALLET-COMMITMENT-MODEL.md</code></td><td>Full wallet mechanics: anchor-lock schema, per-letter/attempt-keyed ledger, transaction pseudocode, concurrency proof, funding integrity, payer model, Wallet Constitution Amendment, F3–F7 disposition</td></tr>
+<tr><td><strong>W2</strong></td><td><code>FULFILLMENT-COMMITMENT-BOUNDARY.md</code> + <code>RECOVERY-ENGINE.md</code></td><td>The two-layer commitment boundary, the 11-question vendor-confirmation list, the state-machine delta, the new Recovery Engine: 17-scenario matrix, reconciliation sweep, Recovery Constitution</td></tr>
+<tr><td><strong>W3</strong></td><td><code>KAI-FULFILLMENT-UX.md</code></td><td>The FINAL REVIEW interaction, the Kai failure-translation catalog, release/settlement narration, deficit-posture copy, supersession map over <code>D-KAI-EXPERIENCE.md</code></td></tr>
+</table></div>
+<p><strong>Merge:</strong> <code>COMMITMENT-RESOLUTION.md</code> (original) answered the Founder's critical question — <em>would this boundary eliminate or materially reduce the wallet failures?</em> — "yes, materially, and structurally for the mechanical findings," while noting the boundary concept was already present; what needed rebuilding was the machinery underneath it.</p>
+
+<h2 id="regate1">4. Re-gate, cycle 1</h2>
+<p><strong>Artifact:</strong> <code>COMMITMENT-REGATE.md</code> · <span class="badge bad">NOT READY</span> — foundations sound, one cross-document contradiction restored F4, 10 bounded must-fixes.</p>
+<p>The "14 findings" for this pass: a per-defect re-test table covering F3, F4, F5, F6, F7, F9 (6 items), plus 8 new findings (N1–N8). Headline: W1 minted <code>attempt+1</code> on every re-authorization after a release; W2 mandated "same attempt reused" for the identical event — no value of <code>attempt</code> satisfied both, so a released hold could be silently re-authorized for zero net debit. F4 was restored through the seam between two internally-correct documents. The re-gate's own honesty audit flagged that the prior merge had mislabeled F4 "ELIMINATED," misstated the claim-key grammar as unified when it was three incompatible forms, and wrongly called a Kai-copy join "rename-only" when ~6 of ~19 copy classes had no copy at all. Must-fixes grouped: <strong>A</strong> — money safety (5 items, blocking), <strong>B</strong> — correctness (4 items), <strong>C</strong> — register honesty (1 item).</p>
+
+<h2 id="ref2">5. Refinement cycle 2 (pre-decided rulings)</h2>
+<p><strong>Directive:</strong> <code>REFINEMENT-2-DIRECTIVE.md</code> — scope strictly the 10 must-fixes, no redesign, no scope expansion. Four rulings pre-decided by the coordinator:</p>
+<ul>
+<li><strong>Ruling 1</strong> — unified attempt lifecycle: release always terminal; every re-authorization mints <code>attempt+1</code>, no exceptions.</li>
+<li><strong>Ruling 2</strong> — one canonical claim-key registry, cited (never re-derived): <code>wallet:&lt;subjectId&gt;:&lt;attempt&gt;:&lt;entryKind&gt;</code> and <code>mail:&lt;subjectId&gt;:&lt;attempt&gt;:&lt;toStage&gt;</code>.</li>
+<li><strong>Ruling 3</strong> — provider acceptance is irreversible; <code>PROVIDER_ACCEPTED → CANCELED</code> forbidden; post-acceptance remediation is <code>adjust</code>-only.</li>
+<li><strong>Ruling 4</strong> — FINAL REVIEW sits after the hold, before Submit, bound to a server-issued single-use expiring token.</li>
+</ul>
+<div class="wrap"><table>
+<tr><th>Agent</th><th>Artifact(s) updated</th><th>What it applied</th></tr>
+<tr><td><strong>Refinement-2 A</strong></td><td><code>WALLET-COMMITMENT-MODEL.md</code></td><td>Ruling 1 (two-pass replay classifier), Ruling 2, Ruling 4, B6 (nullable actorId/actorKind, onBehalfOf propagation), B7/N7 (funding assertions), N4 (per-refund clawback + won-dispute adjust)</td></tr>
+<tr><td><strong>Refinement-2 B</strong></td><td><code>FULFILLMENT-COMMITMENT-BOUNDARY.md</code> + <code>RECOVERY-ENGINE.md</code></td><td>Ruling 1 (§4 row 12 + diagram rewrite), A3/N3 (sweep gating, new scenario 18), Ruling 3/N2 (irreversibility model), B8/N5 (attention/cancelRequest storage re-plan), Ruling 2</td></tr>
+<tr><td><strong>Refinement-2 C</strong></td><td><code>KAI-FULFILLMENT-UX.md</code></td><td>Ruling 4 (token design, three-render restructure), ~6 missing kaiCopyClass classes (19/19 total), the <code>CANCEL_CONFIRMED_RARE</code> settled-stays-settled fix, on-behalf-of voice everywhere, <code>basis</code> closed union</td></tr>
+</table></div>
+
+<h2 id="regate2">6. Re-gate, cycle 2 (final)</h2>
+<p><strong>Recorded in:</strong> <code>COMMITMENT-RESOLUTION.md</code>, reconciled by commit <code>326a1d7</code>. Note: unlike cycle 1, this final re-gate's verdict was folded directly into the reconciled register rather than shipped as its own standalone gate document — there is no separate <code>COMMITMENT-REGATE-2.md</code> file in the corpus.</p>
+<p><span class="badge ok">READY-WITH-DISCLOSURES</span> — F4 moved from "still present" to <strong>RESOLVED — permanently eliminated, with a traced proof</strong>; F3/F5/F6/F7/F9 set honestly to <strong>RESOLVED-WITH-RESIDUALS</strong>; F1 (Gate D) and F2 (CROA) <strong>stand</strong>, unchanged.</p>
+
+<footer>CreditVector Fulfillment Engine v1.0 · Execution-Era handoff · branch <code>docs/fulfillment-engine-v1</code> @ <code>326a1d7</code> · production untouched</footer>
+</main>
+</body>
+</html>

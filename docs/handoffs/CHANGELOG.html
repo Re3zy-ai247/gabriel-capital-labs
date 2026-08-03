@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Fulfillment Engine v1.0 — Changelog</title>
+<style>
+  :root { color-scheme: light dark;
+    --bg:#f7f9fb; --fg:#15222e; --mut:#5a6b7a; --card:#fff; --line:#d7e0e8;
+    --ok:#0a7d40; --okbg:#e2f5ea; --warn:#8a5a00; --warnbg:#fdf1d8; --bad:#a12626; --badbg:#fbe4e4; --acc:#0b5f8a;
+    --mono:ui-monospace,SFMono-Regular,Menlo,monospace; }
+  @media (prefers-color-scheme: dark){ :root{
+    --bg:#0d141b; --fg:#dbe7f1; --mut:#8fa1b0; --card:#131e28; --line:#263646;
+    --ok:#5fd394; --okbg:#10301f; --warn:#f2c46b; --warnbg:#33260a; --bad:#f08f8f; --badbg:#3a1414; --acc:#7cc4ea; }}
+  *{box-sizing:border-box} body{margin:0;padding:1.25rem;background:var(--bg);color:var(--fg);
+    font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:56rem;margin:0 auto}
+  h1{font-size:1.3rem;margin:.2rem 0 .3rem} h2{font-size:1.02rem;margin:1.5rem 0 .5rem;color:var(--acc);scroll-margin-top:1rem}
+  h3{font-size:.92rem;margin:1.1rem 0 .4rem;scroll-margin-top:1rem;font-family:var(--mono)}
+  .sub{color:var(--mut);font-size:.85rem;margin-bottom:1rem}
+  .badge{display:inline-block;padding:.15rem .55rem;border-radius:99px;font-weight:600;font-size:.8rem;margin:.1rem .15rem .1rem 0}
+  .ok{background:var(--okbg);color:var(--ok)} .warn{background:var(--warnbg);color:var(--warn)} .bad{background:var(--badbg);color:var(--bad)}
+  .wrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px;margin:.4rem 0}
+  table{width:100%;border-collapse:collapse;background:var(--card);font-size:.85rem}
+  th,td{text-align:left;padding:.45rem .6rem;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--mut);font-weight:600;white-space:nowrap} tr:last-child td{border-bottom:none}
+  code{font-family:var(--mono);font-size:.82em;background:color-mix(in srgb,var(--line) 40%,transparent);padding:.08em .35em;border-radius:4px}
+  ol,ul{padding-left:1.3rem} li{margin:.3rem 0}
+  .note{border-left:3px solid var(--warn);background:var(--warnbg);padding:.55rem .8rem;border-radius:0 6px 6px 0;font-size:.88rem;margin:.6rem 0}
+  .crit{border-left:3px solid var(--bad);background:var(--badbg);padding:.55rem .8rem;border-radius:0 6px 6px 0;font-size:.88rem;margin:.6rem 0}
+  .okbox{border-left:3px solid var(--ok);background:var(--okbg);padding:.55rem .8rem;border-radius:0 6px 6px 0;font-size:.88rem;margin:.6rem 0}
+  .toc{border:1px solid var(--line);border-radius:8px;padding:.7rem 1rem;background:var(--card);font-size:.85rem;margin:1rem 0}
+  .toc strong{display:block;margin-bottom:.3rem;color:var(--mut);font-weight:600;font-size:.78rem;text-transform:uppercase;letter-spacing:.04em}
+  .toc ol{margin:0;padding-left:1.1rem} .toc li{margin:.15rem 0}
+  .commit{font-family:var(--mono);color:var(--acc)}
+  .meta{color:var(--mut);font-size:.8rem;margin:0 0 .5rem}
+  a{color:var(--acc)}
+  footer{margin-top:2rem;padding-top:1rem;border-top:1px solid var(--line);color:var(--mut);font-size:.78rem}
+</style>
+</head>
+<body>
+<main>
+<h1>Changelog — <code>docs/fulfillment-engine-v1</code></h1>
+<p class="sub">Branch <code>docs/fulfillment-engine-v1</code> · Base <code>origin/main@f449c35</code> (unchanged throughout) · HEAD <code>326a1d7</code> · 9 commits, all <code>docs(fulfillment):</code> scoped · from <code>git log --oneline f449c35..HEAD</code></p>
+
+<div class="note">Every commit in this branch touches only files under <code>docs/fulfillment/</code>. No commit changed product code, schema, dependencies, or configuration.</div>
+
+<nav class="toc"><strong>Contents</strong><ol>
+<li><a href="#c1">0d66e80 — program brief</a></li>
+<li><a href="#c2">f211f33 — architecture package</a></li>
+<li><a href="#c3">e223e51 — adversarial gate</a></li>
+<li><a href="#c4">f8cfb92 — refinement brief</a></li>
+<li><a href="#c5">c61f2c8 — refinement 1 merge</a></li>
+<li><a href="#c6">7578705 — re-gate 1</a></li>
+<li><a href="#c7">e70ad8f — refinement-2 directive</a></li>
+<li><a href="#c8">44a6789 — refinement-2 applied</a></li>
+<li><a href="#c9">326a1d7 — final reconciliation (HEAD)</a></li>
+<li><a href="#totals">Cumulative</a></li>
+</ol></nav>
+
+<h2 id="c1"><span class="commit">0d66e80</span> — docs(fulfillment): add program brief for Fulfillment Engine v1.0 architecture</h2>
+<p class="meta">2026-08-03 07:18:29 -0400 · 1 file changed, 81 insertions(+)</p>
+<p>Establishes the program's binding contract: the Founder's 10 authoritative decisions (<code>PROGRAM-BRIEF.md</code> §1), the scout-verified repository-truth digest no later agent may contradict (§2), the five architecture agents' assignments (§3), the compliance constitution (§4), the hard boundaries (§5). This is the file every other document cites as its source of truth for "what the Founder already decided."</p>
+
+<h2 id="c2"><span class="commit">f211f33</span> — docs(fulfillment): fulfillment engine v1.0 architecture package</h2>
+<p class="meta">2026-08-03 · 12 files changed, 3,244 insertions(+), 1 deletion(-)</p>
+<p>The full architecture design pass: Agent A's four documents, Agent B's, Agent C's (943 lines — the largest single artifact of this first pass), Agent D's, and Agent E's merge deliverables. A 2-line edit to <code>PROGRAM-BRIEF.md</code> is folded into this commit. This is the package the adversarial gate reviewed next.</p>
+
+<h2 id="c3"><span class="commit">e223e51</span> — docs(fulfillment): adversarial gate verdict and founder summary</h2>
+<p class="meta">2026-08-03 · 3 files changed, 248 insertions(+)</p>
+<p>The single bounded Opus adversarial pass (<code>ADVERSARIAL-REVIEW.md</code>): <span class="badge bad">NOT READY for Founder delivery as implementable</span>, 14 ranked findings, the CROA §404 legal analysis with the six-part counsel question, the completeness table. <code>FOUNDER-SUMMARY.md</code>/<code>.html</code> translate the gate into a one-page brief with three decisions and three options.</p>
+
+<h2 id="c4"><span class="commit">f8cfb92</span> — docs(fulfillment): wallet commitment refinement brief (adversarial resolution spine)</h2>
+<p class="meta">2026-08-03 08:43:09 -0400 · 1 file changed, 39 insertions(+)</p>
+<p>The Founder's ruling, recorded: keep the prepaid Wallet and the authorize-hold → settle-at-acceptance model; commission a bounded refinement, not a redesign. Pre-specifies the S1–S8 mechanics spine the next three agents (W1–W3) had to build against, plus their assignments.</p>
+
+<h2 id="c5"><span class="commit">c61f2c8</span> — docs(fulfillment): wallet commitment model, recovery engine, and resolution merge</h2>
+<p class="meta">2026-08-03 09:27:37 -0400 · 5 files changed, 2,271 insertions(+)</p>
+<p>The refinement cycle 1 output, all in one commit: <code>WALLET-COMMITMENT-MODEL.md</code> (W1, 1,391 lines in this commit alone), <code>FULFILLMENT-COMMITMENT-BOUNDARY.md</code>+<code>RECOVERY-ENGINE.md</code> (W2), <code>KAI-FULFILLMENT-UX.md</code> (W3), and the Program Director's merge (<code>COMMITMENT-RESOLUTION.md</code>, original, 57 lines). Per the commit body: "F3/F4/F6/F7 eliminated structurally, F5 eliminated for the money mechanism, F9 i-iii eliminated with named contingencies; CROA counsel gate and Gate D Phase -1 stand." <em>(Note: the "eliminated" framing for F4 here is exactly what the next commit's re-gate found overstated.)</em></p>
+
+<h2 id="c6"><span class="commit">7578705</span> — docs(fulfillment): wallet commitment re-gate verdict (NOT READY, 8 bounded fixes)</h2>
+<p class="meta">2026-08-03 09:43:11 -0400 · 1 file changed, 46 insertions(+)</p>
+<p>The cycle-1 re-gate (<code>COMMITMENT-REGATE.md</code>): <span class="badge bad">NOT READY</span> — foundations sound, but a cross-document contradiction between W1 (mints <code>attempt+1</code>) and W2 ("same attempt reused") restored the free-fulfillment defect (F4) through the seam. Groups corrections into money-safety (A1–A5), correctness (B6–B9), register-honesty (C10) — 10 total bounded items, referred to in the commit subject as "8 bounded fixes." Its own honesty audit is self-critical about the prior commit's overclaims.</p>
+
+<h2 id="c7"><span class="commit">e70ad8f</span> — docs(fulfillment): refinement-2 directive + honest register corrections</h2>
+<p class="meta">2026-08-03 10:20:09 -0400 · 2 files changed, 42 insertions(+), 3 deletions(-)</p>
+<p>Records the Founder's authoritative decision, verbatim: acceptance is the irreversible boundary; post-acceptance remediation is accounting <code>adjust</code>, never a reversal. Pre-decides the four cross-document rulings (<code>REFINEMENT-2-DIRECTIVE.md</code>) so the next three agents cannot diverge again. Corrects three overstated rows in <code>COMMITMENT-RESOLUTION.md</code> (F4, F9-iii, the "rename-only" join ruling).</p>
+
+<h2 id="c8"><span class="commit">44a6789</span> — docs(fulfillment): refinement-2 must-fixes applied (F4 attempt lifecycle + 9 more)</h2>
+<p class="meta">2026-08-03 11:01:51 -0400 · 4 files changed, 990 insertions(+), 291 deletions(-)</p>
+<p>The refinement cycle 2 output — the largest single-commit diff in the branch. Applies all 10 must-fixes: <code>FULFILLMENT-COMMITMENT-BOUNDARY.md</code> (+115 net), <code>KAI-FULFILLMENT-UX.md</code> (+498 net — the largest single-document change), <code>RECOVERY-ENGINE.md</code> (+40 net, including new scenario 18), <code>WALLET-COMMITMENT-MODEL.md</code> (+628 net, including the two-pass replay classifier that closes F4). Per the commit body: unified attempt+1 across W1/W2; canonical claim-key registry; N2 acceptance-irreversible; nullable <code>actorId</code>+<code>onBehalfOf</code>; funding assertions; per-refund clawback; <code>MailManifestFlags</code> storage decision; FINAL REVIEW token gate; settled-stays-settled cancel copy; 19/19 Kai classes; <code>basis</code> closed union.</p>
+
+<h2 id="c9"><span class="commit">326a1d7</span> — docs(fulfillment): reconcile register to re-gate cycle-2 verdict (READY-WITH-DISCLOSURES) <em>(HEAD)</em></h2>
+<p class="meta">2026-08-03 11:37:24 -0400 · 1 file changed, 8 insertions(+), 8 deletions(-)</p>
+<p>The final reconciliation: <code>COMMITMENT-RESOLUTION.md</code>'s verdict table updated to the coordinator's cycle-2 re-gate findings — F4 permanently eliminated (traced proof); F3/F5/F6/F7/F9 set to the honest <code>RESOLVED-WITH-RESIDUALS</code> disposition. The smallest commit in the branch by line count, and the one that sets the program's final verdict: <span class="badge ok">READY-WITH-DISCLOSURES</span>.</p>
+
+<h2 id="totals">Cumulative</h2>
+<div class="wrap"><table>
+<tr><th>Metric</th><th>Value</th></tr>
+<tr><td>Commits</td><td>9</td></tr>
+<tr><td>Files created</td><td>22 (21 <code>.md</code> + 1 <code>.html</code>)</td></tr>
+<tr><td>Lines of documentation (current, <code>docs/fulfillment/</code>)</td><td>6,666</td></tr>
+<tr><td>Product/schema/dependency/config files touched</td><td>0</td></tr>
+<tr><td>Base commit</td><td><code>f449c35</code> (<code>origin/main</code>, unchanged)</td></tr>
+<tr><td>HEAD</td><td><code>326a1d7</code></td></tr>
+</table></div>
+
+<footer>CreditVector Fulfillment Engine v1.0 · Execution-Era handoff · branch <code>docs/fulfillment-engine-v1</code> @ <code>326a1d7</code> · production untouched</footer>
+</main>
+</body>
+</html>

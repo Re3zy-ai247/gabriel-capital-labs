@@ -1,0 +1,68 @@
+# Agent Reports — CreditVector Fulfillment Engine v1.0
+
+Per-agent/per-gate summary of the entire program, in execution order. Every row cites the document(s) it produced. Verdicts are quoted, not paraphrased into something stronger or weaker than the source states.
+
+## 0. Scouts (repository truth digest)
+
+Before any design work began, the Program Director's brief digested the existing repository into a scout-verified truth baseline that no agent was permitted to contradict or re-derive (`docs/fulfillment/PROGRAM-BRIEF.md` §2). Two of the three digest sections are explicitly attributed by name in the source text; the third is not attributed to a lettered scout and is presented here as inferred, not invented:
+
+| Scout | Territory | Source section |
+|---|---|---|
+| Scout A *(inferred — §2.1–§2.3 are not attributed to a lettered scout in the Brief's own text; presented here by elimination against Scout B/C's named territory, not asserted as fact)* | The existing fulfillment spine (`lib/mail/*`), the Letters domain (Prisma models, generation, response loop), and the three timeline/audit mechanisms (`KaiEvent`, `DecisionRegistry`, the Platform Event Bus) | `PROGRAM-BRIEF.md` §2.1–§2.3 |
+| **Scout B** (named) | Kai machinery (`askKai()`, deterministic intelligence, ADR-0006 persistence gate, notifications) and the accepted RC2 room grammar (UX direction for September) | `PROGRAM-BRIEF.md` §2.5–§2.6 |
+| **Scout C** (named) | Financial primitives — `User.letterCredits`, the `StripeWebhookEvent` 3-state claim ledger, the `XpAward` append-only ledger precedent, the five-instruments-never-converted law, and the closing list of 10 inherited financial invariants that the Brief states is "binding law for the wallet architecture" | `PROGRAM-BRIEF.md` §2.4 |
+
+This digest is the load-bearing discovery of the whole program: the fulfillment engine already half-exists (16-state manifest machine, 5 provider IDs, a dry-run LetterStream adapter, an append-only audit trail, a 3-step wizard stopped at `QUEUED`). Every agent below built against this baseline, not from scratch.
+
+## 1. Architecture agents A–E (`docs/fulfillment/PROGRAM-BRIEF.md` §3 assignments)
+
+| Agent | Artifact(s) | What it produced | Verdict / status |
+|---|---|---|---|
+| **A** | `A-DOMAIN-MODEL.md`, `A-STATE-MACHINE.md`, `A-POLICY-ENGINE.md`, `A-PROVIDER-ABSTRACTION.md` | The `Case` + `DisputePackage` domain over existing `Tradeline`/`Letter`/`MailManifest` truth (additive migrations only); the unified state machine mapping the 16 manifest states + 6 `Letter.status` states onto the canonical 12-stage operator timeline; the deterministic Policy Engine spec (typed inputs/decisions, 6 laws); the provider adapter contract formalizing the existing `MailProvider` interface | Rated by the Opus gate as "genuinely strong and unusually well-grounded in real source" — the domain model, provider abstraction, and state-machine vocabulary survived the gate essentially intact; the Policy Engine had one confirmed gap (F11, `PolicyInput` couldn't compute its own settlement amount) |
+| **B** | `B-MAIL-CENTER-EVOLUTION.md` | Evolved `/mail` + the send wizard into the Case Journey operational workspace: work-queue reordering, the "Do this first" recommendation band, the evidence drawer (first UI consumer of `TrackingInfo`/`ProofArtifact`), metrics demoted to a context strip, the 9-step Package Review chain, the Approval-card split (Kai-labeled explanation vs. non-Kai operator-chrome), file-by-file evolution map | Rated "Sound — best-executed item after the Room Constitution" by the gate's disposition table |
+| **C** | `C-WALLET-INTEGRATION.md` (943 lines) | The original Wallet architecture: authorization → consume → settle/void mapped to the Policy Engine, `WalletLedger` design (append-only, `XpAward`-precedented), funding via Stripe top-up, the 10 inherited financial invariants restated as the Wallet's constitution, reserved future surfaces (marketplace, growth network, payouts) | This is the document the Opus gate found the 5 wallet-specific CRITICAL/HIGH defects in (F3–F7) — its *aim* (authorize/consume/settle boundary) was affirmed; its *concrete mechanics* (the lockless guard, the one-shot key, metadata-trusted funding) were not |
+| **D** | `D-KAI-EXPERIENCE.md` | Kai as operational guide: narration model (`KaiEventType` extensions), the guided Package Review (Kai Summary → Recommended Disputes → Educational Explanation), notification model, boundary-law table, waiting-period companionship | Rated "Honored — strongest work" by the gate; its only defect was the §611 clock copy (F8), shared with the shipped product code, not unique to this document |
+| **E** | `CREDITVECTOR-FULFILLMENT-ENGINE-V1.md`, `OPERATIONAL-ROOM-CONSTITUTION-PROPOSAL.md`, `ADR-PROPOSALS.md` (ADR-0041–0047), `IMPLEMENTATION-SEQUENCE.md` | Merged A–D against the Program Brief, resolved a 17-item cross-agent conflict docket, re-verified disputed facts directly against source rather than trusting the artifacts, produced the phased/flag-gated implementation sequence | The merge's own conflict resolution (docket #9, settlement moment; docket #12, unified claim ledger; docket #14, derive-on-read waiting events) held up; two of its dispositions (F4's "eliminated" framing, the 12-step vs. 9-step drift) did not survive the gate and are named as findings (F4, F13) against the merge itself, not against A–D |
+
+## 2. Architecture Opus gate
+
+**Artifact:** `docs/fulfillment/ADVERSARIAL-REVIEW.md` · **Verdict: NOT READY for Founder delivery as implementable.**
+
+A single bounded, read-only adversarial pass against the A–E package at commit `f211f33`. Found 14 ranked findings (F1–F14): 2 CRITICAL beyond the wallet (F1 Gate D sequencing; F2 CROA §404, unanalyzed), 2 CRITICAL inside the wallet (F3 overdraft, F4 free fulfillment), 5 HIGH (F5 partial-package settlement, F6 metadata funding, F7 no payer model, F8 §611 anchor conflict, F9 quarantine/retry impossibility), 1 more HIGH (F10 evidence-failure states), and 4 MED/MED-HIGH (F11 PolicyInput gap, F12 thin webhook ingestion, F13 9-step vs. 12-step drift, F14 cascade contradiction). It also produced the full CROA §404 advance-fee legal analysis (§3) with the six-part outside-counsel question, and a per-Founder-decision completeness table (§4). Its closing note is the fairest single sentence in the program: *"the domain model, Kai boundary laws, provider abstraction, and Room Constitution proposal are of a genuinely high standard... the failures concentrate in the wallet's concrete money mechanics."*
+
+## 3. Founder ruling + Refinement cycle 1 (W1–W3)
+
+**Ruling (`docs/fulfillment/COMMITMENT-REFINEMENT-BRIEF.md`):** keep the prepaid Wallet and the authorize-hold → settle-at-acceptance transaction model; commission a bounded refinement, not a redesign. The Program Director's brief pre-specified the mechanics spine (S1–S8: the serialization anchor, entry vocabulary, funding integrity, payer model, the two-layer commitment boundary, the Recovery Engine, the CROA posture note, and vocabulary retirement) that all three agents had to build on.
+
+| Agent | Artifact(s) | What it produced |
+|---|---|---|
+| **W1** | `WALLET-COMMITMENT-MODEL.md` | Full wallet mechanics: `Wallet` anchor-lock schema, revised per-letter/attempt-keyed `WalletLedger`, transaction pseudocode for every operation under the lock, the authorization-group lifecycle, a line-by-line concurrency proof that F3/F4 are closed, funding integrity, the payer/spend-authority model, the Wallet Constitution Amendment, and the finding-by-finding F3–F7 disposition |
+| **W2** | `FULFILLMENT-COMMITMENT-BOUNDARY.md` + `RECOVERY-ENGINE.md` | The two-layer commitment boundary (financial vs. operational-irreversibility), the 11-question vendor-confirmation list, the state-machine delta (per-letter settlement hooks, the `attention` flag replacing the impossible in-machine quarantine, real retry paths, cancellation states), and the new Recovery Engine subsystem: the 17-scenario deterministic matrix, the reconciliation sweep spec, duplicate/concurrency defense, the Recovery Constitution |
+| **W3** | `KAI-FULFILLMENT-UX.md` | The FINAL REVIEW irreversible-confirmation interaction architected from the Founder's copy skeleton, the Kai failure-translation catalog (vendor-error taxonomy → CROA-clean copy), release/settlement narration, deficit-posture copy, notification moments, and the supersession map over `D-KAI-EXPERIENCE.md` |
+
+**Merge:** `docs/fulfillment/COMMITMENT-RESOLUTION.md` (original version) answered the Founder's critical question — *"would this commitment boundary eliminate or materially reduce the wallet failures?"* — **yes, materially, and structurally for the mechanical findings** — while stating plainly that the boundary *concept* was already present in the reviewed architecture; what needed rebuilding was the machinery underneath it.
+
+## 4. Re-gate, cycle 1
+
+**Artifact:** `docs/fulfillment/COMMITMENT-REGATE.md` · **Verdict: NOT READY** — foundations sound, one cross-document contradiction restored F4, 10 bounded must-fixes, none reopening the model.
+
+This is the "14 findings" the program brief refers to for this pass: a **per-defect re-test table** covering F3, F4, F5, F6, F7, and F9 (6 items — 5 resolved-with-residuals, 1 *still present*), plus **8 new findings** (N1–N8) surfaced by the re-gate itself. The headline finding: W1 minted `attempt+1` on every re-authorization after a release; W2 mandated "same attempt reused" for the identical event. No value of `attempt` satisfied both documents, so a released hold could be silently re-authorized for zero net debit — F4 restored through the seam between two internally-correct documents, not through either one's own logic (traced in full as "Surviving F4 path" in the source). The re-gate's own honesty audit is unusually self-critical: it flags that its *own* prior merge had mislabeled F4 "ELIMINATED," misstated the mail/wallet claim-key grammar as identical when it was three incompatible forms, and wrongly called a Kai-copy join "rename-only" when ~6 of ~19 copy classes had no copy at all. The must-fix list groups into three bounded classes: **A** — money safety (5 items, blocking), **B** — correctness (4 items), **C** — register honesty (1 item, with sub-parts).
+
+## 5. Refinement cycle 2 (pre-decided rulings)
+
+**Directive:** `docs/fulfillment/REFINEMENT-2-DIRECTIVE.md` — scope strictly the 10 must-fixes above, no redesign, no scope expansion (Founder ruling). Four cross-document rulings were pre-decided by the coordinator so the three doc-owning agents could not diverge a second time:
+
+- **Ruling 1** — unified attempt lifecycle: release is always terminal; every re-authorization after any release mints `attempt+1`, no exceptions, no "same attempt reused" path.
+- **Ruling 2** — one canonical claim-key registry, stated once, cited (never re-derived) by both documents: `wallet:<subjectId>:<attempt>:<entryKind>` and `mail:<subjectId>:<attempt>:<toStage>`.
+- **Ruling 3** — provider acceptance is irreversible; `PROVIDER_ACCEPTED → CANCELED` is forbidden; post-acceptance remediation is `adjust`-only, never a state implying the mailing didn't happen.
+- **Ruling 4** — FINAL REVIEW sits after the authorization hold, immediately before Submit, bound to a server-issued single-use expiring token.
+
+| Agent | Artifact(s) updated | What it applied |
+|---|---|---|
+| **Refinement-2 Agent A** | `WALLET-COMMITMENT-MODEL.md` | Ruling 1 (the two-pass replay classifier — `attempt_already_resolved` refusal), Ruling 2 (cites the registry rather than restating it), Ruling 4 (FINAL REVIEW sequencing), must-fix B6 (nullable `actorId` + `actorKind`, `onBehalfOfId` propagation), B7/N7 (funding: `payment_status==="paid"`, currency assertion, PaymentIntent-keyed), N4 (per-refund clawback + won-dispute compensating `adjust`) |
+| **Refinement-2 Agent B** | `FULFILLMENT-COMMITMENT-BOUNDARY.md` + `RECOVERY-ENGINE.md` | Ruling 1 (§4 row 12 + the diagram rewritten to attempt+1), A3/N3 (sweep release gated on manifest state, the new scenario 18 "acceptance after release" row), Ruling 3/N2 (the `attention`-flag/cancellation model corrected for post-acceptance irreversibility), B8/N5 (`attention`/`cancelRequest` storage re-planned against the self-heal-DDL prohibition), Ruling 2 (cites the mail-transition key) |
+| **Refinement-2 Agent C** | `KAI-FULFILLMENT-UX.md` | Ruling 4 (the FINAL REVIEW token design, three-render restructure), the ~6 missing `kaiCopyClass` copy classes (bringing the catalog to all 19 handles `RECOVERY-ENGINE.md` names), the `CANCEL_CONFIRMED_RARE` settled-stays-settled copy fix (the single most consequential line in the document — never again "nothing was charged" post-acceptance), on-behalf-of voice added to every money-narration line, `RecoveryVerdict.basis` closed to an enumerated union |
+
+## 6. Re-gate, cycle 2 (final)
+
+**Recorded in:** `docs/fulfillment/COMMITMENT-RESOLUTION.md`, reconciled by commit `326a1d7` ("reconcile register to re-gate cycle-2 verdict (READY-WITH-DISCLOSURES)"). Note for the record: unlike cycle 1, this final re-gate's verdict was folded directly into the reconciled `COMMITMENT-RESOLUTION.md` register rather than shipped as its own standalone gate document — there is no separate `COMMITMENT-REGATE-2.md` file in the corpus. **Verdict: READY-WITH-DISCLOSURES.** F4 moved from "still present" to **RESOLVED — permanently eliminated, with a traced proof**; F3/F5/F6/F7/F9 were set honestly to **RESOLVED-WITH-RESIDUALS** (not over-claimed as "eliminated"); F1 (Gate D) and F2 (CROA) **stand**, unchanged, exactly as findings, not disclosures softened by the passage of two refinement cycles.

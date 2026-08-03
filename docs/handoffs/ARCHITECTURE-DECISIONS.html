@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Fulfillment Engine v1.0 — Architecture Decisions</title>
+<style>
+  :root { color-scheme: light dark;
+    --bg:#f7f9fb; --fg:#15222e; --mut:#5a6b7a; --card:#fff; --line:#d7e0e8;
+    --ok:#0a7d40; --okbg:#e2f5ea; --warn:#8a5a00; --warnbg:#fdf1d8; --bad:#a12626; --badbg:#fbe4e4; --acc:#0b5f8a;
+    --mono:ui-monospace,SFMono-Regular,Menlo,monospace; }
+  @media (prefers-color-scheme: dark){ :root{
+    --bg:#0d141b; --fg:#dbe7f1; --mut:#8fa1b0; --card:#131e28; --line:#263646;
+    --ok:#5fd394; --okbg:#10301f; --warn:#f2c46b; --warnbg:#33260a; --bad:#f08f8f; --badbg:#3a1414; --acc:#7cc4ea; }}
+  *{box-sizing:border-box} body{margin:0;padding:1.25rem;background:var(--bg);color:var(--fg);
+    font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:56rem;margin:0 auto}
+  h1{font-size:1.3rem;margin:.2rem 0 .3rem} h2{font-size:1.02rem;margin:1.5rem 0 .5rem;color:var(--acc);scroll-margin-top:1rem}
+  h3{font-size:.92rem;margin:1.1rem 0 .4rem;scroll-margin-top:1rem}
+  .sub{color:var(--mut);font-size:.85rem;margin-bottom:1rem}
+  .badge{display:inline-block;padding:.15rem .55rem;border-radius:99px;font-weight:600;font-size:.8rem;margin:.1rem .15rem .1rem 0}
+  .ok{background:var(--okbg);color:var(--ok)} .warn{background:var(--warnbg);color:var(--warn)} .bad{background:var(--badbg);color:var(--bad)}
+  .wrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px;margin:.4rem 0}
+  table{width:100%;border-collapse:collapse;background:var(--card);font-size:.85rem}
+  th,td{text-align:left;padding:.45rem .6rem;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--mut);font-weight:600;white-space:nowrap} tr:last-child td{border-bottom:none}
+  code{font-family:var(--mono);font-size:.82em;background:color-mix(in srgb,var(--line) 40%,transparent);padding:.08em .35em;border-radius:4px}
+  ol,ul{padding-left:1.3rem} li{margin:.3rem 0}
+  .note{border-left:3px solid var(--warn);background:var(--warnbg);padding:.55rem .8rem;border-radius:0 6px 6px 0;font-size:.88rem;margin:.6rem 0}
+  .crit{border-left:3px solid var(--bad);background:var(--badbg);padding:.55rem .8rem;border-radius:0 6px 6px 0;font-size:.88rem;margin:.6rem 0}
+  .okbox{border-left:3px solid var(--ok);background:var(--okbg);padding:.55rem .8rem;border-radius:0 6px 6px 0;font-size:.88rem;margin:.6rem 0}
+  .toc{border:1px solid var(--line);border-radius:8px;padding:.7rem 1rem;background:var(--card);font-size:.85rem;margin:1rem 0}
+  .toc strong{display:block;margin-bottom:.3rem;color:var(--mut);font-weight:600;font-size:.78rem;text-transform:uppercase;letter-spacing:.04em}
+  .toc ol{margin:0;padding-left:1.1rem} .toc li{margin:.15rem 0}
+  a{color:var(--acc)}
+  footer{margin-top:2rem;padding-top:1rem;border-top:1px solid var(--line);color:var(--mut);font-size:.78rem}
+</style>
+</head>
+<body>
+<main>
+<h1>Architecture Decisions — CreditVector Fulfillment Engine v1.0</h1>
+<p class="sub">The durable design decisions this program produced, independent of which refinement cycle last touched them · every decision is <code>PROPOSED</code> — none ratified, none implemented</p>
+
+<nav class="toc"><strong>Contents</strong><ol>
+<li><a href="#durable">Durable decisions (13)</a></li>
+<li><a href="#adrs">ADR map (ADR-0041–0047)</a></li>
+</ol></nav>
+
+<h2 id="durable">Durable decisions</h2>
+<div class="wrap"><table>
+<tr><th>#</th><th>Decision</th><th>What it is</th><th>Status</th><th>Source</th></tr>
+<tr><td>1</td><td><strong>Dispute Package / Case domain</strong></td><td>Two new, thin, migration-backed models: <code>Case</code> (durable identity) and <code>DisputePackage</code>+<code>DisputePackageLetter</code> (the primary object). <code>campaignId</code> is a plain unenforced string; <code>letterId</code> is <code>onDelete: Restrict</code> — a deliberate behavior change.</td><td>PROPOSED, additive migration, FOUNDER-GATE (Gate D)</td><td><code>A-DOMAIN-MODEL.md</code>; ADR-0041</td></tr>
+<tr><td>2</td><td><strong>Deterministic Policy Engine</strong></td><td>A pure, server-only module owning delivery policy, certified-mail enforcement (a constant), provider routing, wallet-authorization requirements, retries, duplicate prevention. Fail-closed on unknowns; every decision carries a <code>basis</code>; never touches the network.</td><td>PROPOSED, code-only</td><td><code>A-POLICY-ENGINE.md</code>; ADR-0042</td></tr>
+<tr><td>3</td><td><strong>Provider abstraction + Vendor Opacity</strong></td><td>Formalizes the existing <code>MailProvider</code> interface. Adds an honest <code>validateAddress</code> contract (never fabricated), a response-boundary DTO stripping vendor names, and fail-closed status mapping (<code>UNKNOWN_PROVIDER_STATUS</code>).</td><td>PROPOSED; live CASS/USPS is a separate FOUNDER-GATE</td><td><code>A-PROVIDER-ABSTRACTION.md</code>; ADR-0043</td></tr>
+<tr><td>4</td><td><strong>Prepaid Wallet — authorization ≠ settlement</strong></td><td>A <code>Wallet</code> anchor row (one per payer, no balance, a lock target) makes every money-moving op a real <code>SELECT…FOR UPDATE</code> transaction. Balance derived by fold, no zero-floor. Entry kinds: fund/authorize/settle/release/clawback/adjust.</td><td>PROPOSED, additive migration, FOUNDER-GATE (CROA + Gate D)</td><td><code>WALLET-COMMITMENT-MODEL.md</code>; ADR-0044</td></tr>
+<tr><td>5</td><td><strong>Anchor-lock serialization</strong></td><td>The concrete fix for the overdraft defect (F3): a real row lock on the payer's <code>Wallet</code> anchor before folding the ledger and verifying the invariant.</td><td>PROPOSED; cost disclosed for scale</td><td><code>WALLET-COMMITMENT-MODEL.md</code> §4, §7</td></tr>
+<tr><td>6</td><td><strong>Per-letter / attempt-scoped settlement grain</strong></td><td>Settlement fires per letter, not per package — dissolving the partial-package money hole (F5). Every hold carries an <code>attempt</code> integer; once resolved, that attempt is terminal forever — the permanent closure of the free-fulfillment defect (F4).</td><td>PROPOSED — most re-verified mechanism in the program</td><td><code>FULFILLMENT-COMMITMENT-BOUNDARY.md</code> §3; <code>WALLET-COMMITMENT-MODEL.md</code> §12 inv. 8</td></tr>
+<tr><td>7</td><td><strong>Unified claim ledger</strong></td><td>One shared, <code>domain</code>-tagged <code>Claim</code> table rather than two structurally-identical tables — the concrete stand-in for ADR-0028's dormant <code>IdempotencyStore</code> port.</td><td>PROPOSED, additive migration</td><td><code>CREDITVECTOR-FULFILLMENT-ENGINE-V1.md</code> §5.3; ADR-0045</td></tr>
+<tr><td>8</td><td><strong>Fulfillment Recovery Engine</strong></td><td>A new deterministic subsystem: something already happened — what state, what money, what does the operator see? Owns the 17(+1) Founder-named scenarios as one matrix. Every wallet effect is one of exactly 5 kinds or explicitly <code>founder_gate_pending</code>.</td><td>PROPOSED, new subsystem</td><td><code>RECOVERY-ENGINE.md</code></td></tr>
+<tr><td>9</td><td><strong>Payer-principal model</strong></td><td>Money moves against whoever is financially responsible, stamped with the real operator identity — never a generic "user." Admin impersonation is money-blocked.</td><td>PROPOSED — agency-staff granularity residual</td><td><code>WALLET-COMMITMENT-MODEL.md</code> §9</td></tr>
+<tr><td>10</td><td><strong>Fulfillment Commitment Constitution</strong></td><td>No irreversible settlement before acceptance; authorization ≠ settlement; the irreversibility boundary is a vendor fact, not an assumption; the Recovery Constitution; Kai translates, never decides.</td><td>PROPOSED constitutional text</td><td><code>COMMITMENT-RESOLUTION.md</code> §2</td></tr>
+<tr><td>11</td><td><strong>Two-layer commitment boundary</strong></td><td>Separates the financial boundary (CreditVector's own law) from operational irreversibility (a vendor fact not yet known) — the conflation that caused the original settlement-moment disagreement.</td><td>PROPOSED</td><td><code>FULFILLMENT-COMMITMENT-BOUNDARY.md</code> §1</td></tr>
+<tr><td>12</td><td><strong>Operational Room Constitution</strong></td><td>Every primary room presents six elements: current work, current state, one recommended action, Kai guidance, evidence, timeline. Metrics as context only, never first-on-page.</td><td>PROPOSED, Founder ratification required</td><td><code>OPERATIONAL-ROOM-CONSTITUTION-PROPOSAL.md</code>; ADR-0047</td></tr>
+<tr><td>13</td><td><strong>FINAL REVIEW — two consent moments</strong></td><td>Approve (price shown, triggers the reversible hold) and FINAL REVIEW (immediately before Submit — the point of no return, bound to a server-issued single-use expiring token) are two distinct renders.</td><td>PROPOSED</td><td><code>KAI-FULFILLMENT-UX.md</code> §1; Ruling 4</td></tr>
+</table></div>
+
+<h2 id="adrs">ADR map (ADR-0041–0047)</h2>
+<p>All seven are <code>Status: Proposed</code>, numbered sequentially past the last present file in <code>.ai/ADR/</code> (<code>ADR-0038</code>), with 0039/0040 reserved for cross-branch safety. Full text: <code>ADR-PROPOSALS.md</code>.</p>
+<div class="wrap"><table>
+<tr><th>ADR</th><th>Title</th><th>Decision owners</th><th>Blast radius</th></tr>
+<tr><td>0041</td><td>Fulfillment Platform — Case + Dispute Package Domain</td><td>Founder + Chief Architect</td><td>New migration; letter-delete behavior change</td></tr>
+<tr><td>0042</td><td>Fulfillment Policy Engine</td><td>Founder + Chief Architect</td><td>Code-only; fixes a live Founder-decision violation</td></tr>
+<tr><td>0043</td><td>Provider Adapter Contract + Vendor Opacity</td><td>Founder + Chief Architect</td><td>Code-only for the mapping fix; webhook secret is a new env var, FOUNDER-GATE</td></tr>
+<tr><td>0044</td><td>CreditVector Wallet + WalletLedger</td><td>Founder + Chief Architect, <strong>CCO co-review required</strong></td><td>New migration; largest blast radius — money movement</td></tr>
+<tr><td>0045</td><td>Unified Claim Ledger Pattern</td><td>Chief Architect (resolves an A/C merge conflict)</td><td>New migration, structural consolidation only</td></tr>
+<tr><td>0046</td><td>Kai Fulfillment Narration + Notification Posture</td><td>Founder + Chief Architect</td><td>Additive contracts, no schema change; email/push stay FOUNDER-GATE</td></tr>
+<tr><td>0047</td><td>Operational Room Constitution</td><td><strong>Founder ratification required — constitutional amendment</strong></td><td>Pointer ADR only</td></tr>
+</table></div>
+<div class="note"><strong>Carried forward, unresolved by this program:</strong> ADR-0044's <code>Decision</code>/<code>Security implications</code> clauses are <strong>selectively superseded</strong> by <code>WALLET-COMMITMENT-MODEL.md</code> §13's supersession map. Applying that supersession into the ADR file itself is one of the pending base-package document corrections named in <code>docs/handoffs/NEXT-SPRINT.html</code>, not yet done as of this handoff.</div>
+
+<footer>CreditVector Fulfillment Engine v1.0 · Execution-Era handoff · branch <code>docs/fulfillment-engine-v1</code> @ <code>326a1d7</code> · production untouched</footer>
+</main>
+</body>
+</html>
