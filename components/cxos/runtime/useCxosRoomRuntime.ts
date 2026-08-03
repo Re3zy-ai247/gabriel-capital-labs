@@ -249,6 +249,10 @@ export function useCxosRoomRuntime<DistrictId extends string>({
   const [kaiContextDistrict, setKaiContextDistrict] = useState<DistrictId>(
     definition.initialDistrict,
   );
+  // Render-time-adjustment tracker for kaiContextDistrict below (not an
+  // effect dependency) -- see the render-time adjustment for why this
+  // isn't a useEffect.
+  const lastActiveDistrictForKaiContextRef = useRef(definition.initialDistrict);
   const [documentHidden, setDocumentHidden] = useState(false);
   const [departing, setDeparting] = useState(false);
   const [detectedAttention, setDetectedAttention] =
@@ -1036,11 +1040,31 @@ export function useCxosRoomRuntime<DistrictId extends string>({
     activeDistrictRef.current = activeDistrict;
   }, [activeDistrict]);
 
-  useEffect(() => {
-    if (!(definition.kaiContextHoldDistricts ?? []).includes(activeDistrict)) {
-      setKaiContextDistrict(activeDistrict);
-    }
-  }, [activeDistrict, definition.kaiContextHoldDistricts]);
+  // Adjusted during rendering (React's documented pattern for deriving state
+  // from a prop change without a visible lag: see "Storing information from
+  // previous renders" in the useState docs), NOT via a useEffect. An effect
+  // runs after commit/paint, so for exactly one already-painted frame on
+  // EVERY district change (not only entry into a held district)
+  // kaiContextDistrict still held the PREVIOUS chamber while activeDistrict
+  // had already moved to the new one, making KaiContextSpine's
+  // carriedContext read true and render an extra "CARRIED CONTEXT ·
+  // [previous chamber]" line -- a real, painted, then-reverted height
+  // change on .kaiContext, observed as a genuine (if small) per-navigation
+  // layout shift once the larger passage/masthead max-height shift (fixed
+  // separately) stopped dominating every phase's CLS budget on its own.
+  // Adjusting synchronously here means React redoes the render with the
+  // correct value before anything commits, so the incorrect intermediate
+  // state is never painted. kaiContextHoldDistricts' actual behavior
+  // (kai-suite intentionally keeps showing the prior chamber's line) is
+  // unchanged -- this only removes the one-frame lag for every OTHER
+  // transition, which was never supposed to carry context at all.
+  if (
+    lastActiveDistrictForKaiContextRef.current !== activeDistrict &&
+    !(definition.kaiContextHoldDistricts ?? []).includes(activeDistrict)
+  ) {
+    lastActiveDistrictForKaiContextRef.current = activeDistrict;
+    setKaiContextDistrict(activeDistrict);
+  }
 
   useEffect(() => {
     if (resolution.tier !== "D") return;

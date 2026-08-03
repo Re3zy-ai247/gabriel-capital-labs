@@ -1209,6 +1209,31 @@ check(
     !/overflow\s*:/.test(passageMastheadIdentityBlock),
 );
 check(
+  // Regression pin for the second phase-CLS contributor: kaiContextDistrict
+  // used to sync to activeDistrict via a useEffect, which runs after
+  // commit/paint -- so on EVERY district change (not just entry into a
+  // kaiContextHoldDistricts chamber) there was one already-painted render
+  // where kaiContextDistrict still lagged activeDistrict, making
+  // KaiContextSpine's carriedContext read true and paint an extra "CARRIED
+  // CONTEXT · [previous chamber]" line on .kaiContext before reverting --
+  // a real, if small, per-navigation layout shift once the larger
+  // passage/masthead max-height shift (fixed separately, see above)
+  // stopped dominating every phase's CLS budget on its own. Adjusting
+  // kaiContextDistrict during rendering (not in an effect) means React
+  // redoes the render with the correct value before anything commits, so
+  // the incorrect intermediate state is never painted.
+  "kaiContextDistrict is adjusted during rendering (not via a useEffect) to avoid a one-frame carriedContext flash on every district change",
+  /const lastActiveDistrictForKaiContextRef = useRef\(definition\.initialDistrict\);/.test(
+    adapter,
+  ) &&
+    /if \(\s*\n\s*lastActiveDistrictForKaiContextRef\.current !== activeDistrict &&\s*\n\s*!\(definition\.kaiContextHoldDistricts \?\? \[\]\)\.includes\(activeDistrict\)\s*\n\s*\)\s*\{\s*\n\s*lastActiveDistrictForKaiContextRef\.current = activeDistrict;\s*\n\s*setKaiContextDistrict\(activeDistrict\);\s*\n\s*\}/.test(
+      adapter,
+    ) &&
+    !/useEffect\(\(\) => \{\s*\n\s*if \(!\(definition\.kaiContextHoldDistricts/.test(
+      adapter,
+    ),
+);
+check(
   "the FIXTURE STATE band and DIRECTOR pill share one flex row, both preserved as their own elements with their touch targets intact",
   /\.facilityControlRow\s*\{[\s\S]{0,120}display:\s*flex[\s\S]{0,160}flex-wrap:\s*wrap/.test(
     css,
