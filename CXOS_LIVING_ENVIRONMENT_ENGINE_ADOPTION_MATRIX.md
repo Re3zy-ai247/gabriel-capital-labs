@@ -1,7 +1,7 @@
-# CXOS Living Environment Engine RC1 — Adoption Matrix
+# CXOS Living Environment Engine — Adoption Matrix
 
-- **Status:** GOVERNANCE REFERENCE · NO BROAD ADOPTION AUTHORIZED
-- **Date:** 2026-08-01
+- **Status:** GOVERNANCE REFERENCE · NO BROAD ADOPTION AUTHORIZED · RC1 base + RC2 capability-consumption update (§4.3)
+- **Date:** 2026-08-01 (RC1 base) · updated 2026-08-02 (RC2)
 - **Architectural identity:** CXOS Core Runtime 1.1 Living Environment profile — not a separate engine
 - **Current adopter:** Agency Headquarters only, as the isolated implemented reference candidate
 - **Release authority:** No merge, production integration, promotion, alias, or additional-room authorization
@@ -93,6 +93,23 @@ The **NEXT** horizon identifies review eligibility only. It does not choose Miss
 | **Landing journey** | Closed motion vocabulary, reduced/static fail-down, and no-JS discipline | Public narrative/profile, SEO/static rendering, motion consent, conversion truth, performance budget, and rollback experiment | Authenticated-room arrival assumptions, Agency geometry, scroll capture, or a second global motion provider |
 | **Generic “Kai environments”** | Only explicit `quiet/staged/preparing/resolved` presentation signals inside another otherwise-approved room | Room-owned mapping to the one Kai intelligence contract; no standalone Living/Kai extension | Second Kai system, inferred intent, fake computation, memory/effect ownership, or a generic Kai scene |
 | **Future rooms** | Existing Runtime and ordinary adoption checklist after purpose/owners exist | Room-owned semantic registry, truth boundaries, closed profile, static projection, CSS, guards, and rollback | Default inheritance, generic room renderer, Agency clone, or prebuilt profile before ownership |
+
+### 4.3 RC2 capability consumption (Agency Headquarters)
+
+Agency Headquarters is still the only implemented reference (§6); nothing in this subsection changes that boundary, opens a new adoption gate, or reclassifies any row in §4.1. It records which previously-declared-only Core Runtime tokens and channels now have a working, guard-verified consumption pattern inside Agency's isolated RC2 candidate. This is precedent for **how** a token can be consumed, not evidence that the token is proven safe or appropriate for another room's product meaning — §5 still requires every future surface to prove its own regression, compliance, and accessibility case from a static baseline.
+
+| Token / channel | RC1 status | RC2 status (Agency Headquarters) |
+|---|---|---|
+| `--cxos-light-rest` / `--cxos-light-active` | Declared reference only; zero consumers | Consumed twice: (a) `--cxos-breath-lo`/`--cxos-breath-hi` derive the per-chamber continuous breath channel's opacity envelope; (b) Growth Threshold's occupied/reserve capacity cells use a static (non-animated) opacity pair built from the same two tokens, so the 12/15 capacity boundary reads as a light step instead of only a caption |
+| `--cxos-dur-drift` | Declared only; RC1 stated no Living animation consumed this duration | Consumed by `agencyLivingHeartbeat`, Tier A's continuous facility-sweep (18,000 ms, full-width travel) |
+| `data-cxos-kai-presence` | Projected by the runtime with no CSS/JSX consumer | First real consumer: `suspended` (departure phase only, Tier A/B, valid contract) resets `.kaiContext` to its neutral border/background baseline |
+| Per-chamber `idleAfterMs` | Registry field did not exist; one room-level pair applied uniformly to all districts | All seven chambers declare their own `idleAfterMs` (validated against the same bounds as the room default); the runtime resolves the active chamber's own value each time the idle timer arms |
+| `--cxos-settle-opacity` | Did not exist; one flat `0.46` idle-settled opacity applied to every chamber | New per-signature custom property (`0.42`–`0.54`), declared in each of the seven signature blocks, read by the settled-idle rule with a `0.46` fallback |
+| `--cxos-entry-scale-x` | Did not exist | New custom property consumed by both acquire keyframes as a `scaleX()` term (default `1`); non-default on two chambers (Central Command `0.92`, Team Operations `0.94`) plus their Tier B halves (`0.96`, `0.97`) |
+| `--cxos-breath-*` (`--cxos-breath-period`, `--cxos-breath-lo`, `--cxos-breath-hi`) | Did not exist | `--cxos-breath-period` declared per-signature (4600–7200 ms), consumed as `agencyLivingBreath`'s animation duration; `--cxos-breath-lo`/`-hi` are room-level `calc()` derivations of `--cxos-light-rest`/`-active` (row 1), consumed as that same keyframe's opacity envelope |
+| Passage signal/origin per chamber | Only Business Health carried a distinct passage tint; the other six shared one default | All seven destinations declare their own `--cxos-passage-signal` (a stronger reading of that chamber's own `--agency-chamber-edge`) and `--cxos-passage-origin` (derived from that chamber's own entry-vector sign) |
+
+Consistent with §5's closing line — "passing Agency RC1 evidence does not satisfy another surface's gate" — the same holds here: a token having a second, more developed consumption pattern inside Agency does not pre-approve its use elsewhere. Full mechanism detail for all eight rows is in `CXOS_LIVING_ENVIRONMENT_ENGINE_CINEMATIC_BIBLE.md` §11 (RC2 Amendments).
 
 ## 5. Common future-adoption gate
 

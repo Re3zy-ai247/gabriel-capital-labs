@@ -29,6 +29,17 @@ production-identity build passed. Under forced production identity plus contradi
 public review flags, `GET /review`, `/review/agency-command`, and
 `/review/mission-control` each returned **404**.
 
+Last exact-source RC2 result (`6c69ef6`, 2026-08-02): Core **76/76**, Living
+Environment **93/93** (was 35/35 at RC1 — WP1–WP7 plus three WP-FIX commits), Agency
+**185/185**, isolated review **25/25**. Browser acceptance
+(`CXOS_LIVING_ENVIRONMENT_ENGINE_RC2_EVIDENCE/candidate/final/candidate-final-browser-evidence.json`,
+sha256 `7391cc7d7e219c5db8f4916fe6f6bea1f794f8bd09cb2be4a963aaed6ca53445`, `sourceRevision`
+verified = HEAD): 10 cases executed, 19/19 coverage gates, strict status **"hold"** on
+exactly 1 disclosed non-reproducing residual (landscape `phase-cls`, 0.01037 vs 0.01
+budget) — 9/10 cases clean. Fresh production-identity build (`BUILD_ID
+BG6m8Y25klVI66_-u9-NY`) again returned 404/404/404 for the same three routes. Full
+detail: `CXOS_LIVING_ENVIRONMENT_ENGINE_RC2_VALIDATION_REPORT.md`.
+
 The dependency-free browser harness is
 `scripts/cxos-living-environment/browser.mjs`. It requires explicit absolute paths for
 Playwright 1.62.0, Chrome 151.0.7922.72, and Axe 4.12.1, verifies pinned tool hashes
