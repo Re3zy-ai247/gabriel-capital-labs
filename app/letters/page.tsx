@@ -8,7 +8,10 @@ import {
   Mails, Loader2, AlertTriangle, Copy, Check, Printer, Sparkles, Send, Trash2,
   Upload, ArrowUpRight, ShieldCheck,
 } from "lucide-react";
-import { ownResponseLatencyDays, forecastFor, POSSIBLE_RESPONSES } from "@/lib/forecast";
+import {
+  ownResponseLatencyDays, forecastFor, POSSIBLE_RESPONSES,
+  REINVESTIGATION_DAYS, MAIL_TRANSIT_DAYS, daysElapsedSinceEstimatedReceipt,
+} from "@/lib/forecast";
 
 interface Tradeline {
   id: string; creditorName: string; balance: number; accountType: string;
@@ -58,7 +61,7 @@ function LettersInner() {
   const [bureausSel, setBureausSel] = useState<string[]>([]);
   const [recipientName, setRecipientName] = useState("");
   const [recipientAddress, setRecipientAddress] = useState("");
-  const [letter, setLetter] = useState<{ id: string; body: string } | null>(null);
+  const [letter, setLetter] = useState<{ id: string; body: string; createdAt: string } | null>(null);
   const [genCount, setGenCount] = useState(0);
   const [aiRefined, setAiRefined] = useState(false);
   const [remaining, setRemaining] = useState<number | null>(null);
@@ -142,7 +145,7 @@ function LettersInner() {
       const j = await res.json();
       if (res.status === 402) { setError(j.error); setUpgrade(true); return; }
       if (!res.ok) { setError(j.error || "That letter didn't generate. Try again in a moment."); return; }
-      setLetter({ id: j.letter.id, body: j.letter.body });
+      setLetter({ id: j.letter.id, body: j.letter.body, createdAt: j.letter.createdAt });
       setGenCount(j.count || 1);
       setAiRefined(Boolean(j.aiRefined));
       setWarning(j.warning);
@@ -154,12 +157,22 @@ function LettersInner() {
     } finally { setBusy(false); }
   }
 
-  async function setStatus(id: string, status: string) {
-    await fetch(`/api/letters/${id}`, {
+  // Phase 1A honesty triple (part c): an optional `mailedAt` ("YYYY-MM-DD")
+  // captures the ACTUAL mailing date instead of letting the server silently
+  // stamp "now" — used by MarkMailedControl below. Returns an error string on
+  // failure (e.g. a rejected date) so the control can show it inline, or null
+  // on success.
+  async function setStatus(id: string, status: string, mailedAt?: string): Promise<string | null> {
+    const res = await fetch(`/api/letters/${id}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status }),
+      body: JSON.stringify({ status, ...(mailedAt ? { mailedAt } : {}) }),
     });
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      return j.error || "That didn't go through. Try again in a moment.";
+    }
     loadSaved();
+    return null;
   }
 
   async function deleteLetter(id: string) {
@@ -378,9 +391,11 @@ function LettersInner() {
                     <Link href={`/letters/print/${letter.id}`} target="_blank" className="btn-primary !py-1.5 text-xs">
                       <Printer className="h-3.5 w-3.5" /> Print / PDF
                     </Link>
-                    <button onClick={() => setStatus(letter.id, "MAILED")} className="btn-ghost text-xs">
-                      Mark mailed myself
-                    </button>
+                    <MarkMailedControl
+                      onConfirm={(d) => setStatus(letter.id, "MAILED", d)}
+                      minDate={letter.createdAt?.slice(0, 10)}
+                      className="btn-ghost min-h-[44px] text-xs"
+                    />
                     {/* Live mailing (MAIL_LIVE) is off during beta — this is a queue-for-later flow, honestly
                         labeled and de-emphasized so it's never mistaken for a letter that's already been sent. */}
                     <Link href={`/mail/send/${letter.id}`} className="btn-ghost text-xs text-slate-400" title="Queue this dispute for CreditVector to mail once live mailing is switched on — nothing is charged or sent yet.">
@@ -388,6 +403,12 @@ function LettersInner() {
                     </Link>
                   </div>
                 </div>
+                {/* Evidence-asymmetry disclosure (Phase 1A honesty triple, part b) —
+                    wherever Download and Send are both presented. */}
+                <p className="mb-3 text-[11px] text-slate-500">
+                  Evidence differs by path: self-mail leaves your own mailing record as proof. CreditVector Fulfillment
+                  (soon) adds a certified-mail receipt and tracking evidence once it&apos;s live.
+                </p>
                 {warning && (
                   <div className="mb-4 flex gap-2 rounded-lg border border-gold-500/30 bg-gold-500/10 p-3 text-xs text-gold-400">
                     <AlertTriangle className="h-4 w-4 shrink-0" /> {warning}
@@ -414,7 +435,14 @@ function LettersInner() {
       {/* Saved letters */}
       {saved.length > 0 && (
         <div className="mt-8">
-          <h3 className="mb-3 text-lg font-semibold">Your Letters</h3>
+          <h3 className="mb-1 text-lg font-semibold">Your Letters</h3>
+          {/* Evidence-asymmetry disclosure (Phase 1A honesty triple, part b) —
+              wherever Download and Send are both presented; shown once for the
+              whole list rather than per row. */}
+          <p className="mb-3 text-[11px] text-slate-500">
+            Evidence differs by path: self-mail leaves your own mailing record as proof. CreditVector Fulfillment
+            (soon) adds a certified-mail receipt and tracking evidence once it&apos;s live.
+          </p>
           <div className="card divide-y divide-ink-700/50">
             {saved.map((l) => (
               <LetterRow
@@ -441,15 +469,21 @@ function LettersInner() {
 function letterStoryline(l: SavedLetter): string | null {
   if (l.hasResponse) return null; // the Kai Response Card takes over from here
   if (l.status === "MAILED" && l.mailedAt) {
-    const day = Math.floor((Date.now() - new Date(l.mailedAt).getTime()) / 86400000);
+    const daySinceMailed = Math.floor((Date.now() - new Date(l.mailedAt).getTime()) / 86400000);
     if (!l.targetBureau) {
-      return day <= 0
+      return daySinceMailed <= 0
         ? "Mailed today — I'm watching for their response."
-        : `Day ${day} since mailing — I'm watching for their response.`;
+        : `Day ${daySinceMailed} since mailing — I'm watching for their response.`;
     }
-    if (day <= 0) return "Mailed today — the ~30-day §611 reinvestigation window just opened. I'm watching it.";
-    if (day > 30) return `Day ${day} — the ~30-day §611 window has passed. If nothing arrived, log that; a non-response is worth escalating.`;
-    return `Day ${day} of 30 — I'm watching the reinvestigation window.`;
+    // Phase 1A honesty triple: §611's clock is receipt-anchored, not mailing-
+    // anchored — the day count below uses the same shared transit-allowance
+    // estimate lib/mailCenter.ts uses, never the raw mailing date.
+    const day = daysElapsedSinceEstimatedReceipt(new Date(l.mailedAt).getTime(), Date.now());
+    if (daySinceMailed < MAIL_TRANSIT_DAYS) {
+      return `Mailed ${daySinceMailed <= 0 ? "today" : `${daySinceMailed} day${daySinceMailed === 1 ? "" : "s"} ago`} — the §611 clock starts once the bureau receives it (estimating ~${MAIL_TRANSIT_DAYS} days for delivery). I'm watching for it.`;
+    }
+    if (day >= REINVESTIGATION_DAYS) return `Estimating from receipt, day ${day} of the ~${REINVESTIGATION_DAYS}-day §611 window — it's likely passed. If nothing arrived, log that; a non-response is worth escalating.`;
+    return `Day ${day} of ~${REINVESTIGATION_DAYS} on my receipt estimate — I'm watching the reinvestigation window.`;
   }
   if (l.status === "GENERATED" || l.status === "PRINTED" || l.status === "DRAFT") {
     return l.targetBureau
@@ -459,13 +493,76 @@ function letterStoryline(l: SavedLetter): string | null {
   return null;
 }
 
+function todayIso(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+// Phase 1A honesty triple (part c): the mark-mailed action prompts for the
+// ACTUAL mailing date (defaulting to today) instead of silently stamping
+// "now" — every §611 estimate anchors on this date. Shared by both places
+// "Mark mailed myself" renders on this page (the freshly-generated letter
+// panel and each saved-letter row).
+function MarkMailedControl({
+  onConfirm, minDate, className = "btn-primary min-h-[44px] !py-1.5 text-xs",
+}: {
+  onConfirm: (dateStr: string) => Promise<string | null>;
+  minDate?: string;
+  className?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [date, setDate] = useState(todayIso);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  if (!open) {
+    return (
+      <button
+        onClick={() => { setOpen(true); setErr(null); setDate(todayIso()); }}
+        className={className}
+        title="Printed and mailed it yourself? Mark it mailed to start the response clock."
+      >
+        Mark mailed myself
+      </button>
+    );
+  }
+  return (
+    <span className="inline-flex flex-wrap items-center gap-1.5">
+      <input
+        type="date"
+        aria-label="Date you mailed this"
+        value={date}
+        min={minDate}
+        max={todayIso()}
+        onChange={(e) => setDate(e.target.value)}
+        className="min-h-[44px] rounded-lg border border-ink-600 bg-ink-900 px-2 text-xs text-slate-200"
+      />
+      <button
+        onClick={async () => {
+          setBusy(true); setErr(null);
+          const result = await onConfirm(date);
+          setBusy(false);
+          if (result) setErr(result); else setOpen(false);
+        }}
+        disabled={busy}
+        className="btn-primary min-h-[44px] !py-1.5 text-xs"
+      >
+        {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> : "Confirm"}
+      </button>
+      <button onClick={() => setOpen(false)} disabled={busy} className="min-h-[44px] px-1 text-xs text-slate-400 hover:text-slate-200">
+        Cancel
+      </button>
+      {err && <span className="basis-full text-[11px] text-rose-400" role="alert">{err}</span>}
+    </span>
+  );
+}
+
 // A single saved-letter row with the Round 2 response flow.
 function LetterRow({
   l, ownLatency, onStatus, onDelete, confirming, onConfirmDelete, onCancelDelete, onChanged,
 }: {
   l: SavedLetter;
   ownLatency: { medianDays: number; sample: number } | null;
-  onStatus: (id: string, s: string) => void;
+  onStatus: (id: string, s: string, mailedAt?: string) => Promise<string | null>;
   onDelete: () => void;
   confirming: boolean;
   onConfirmDelete: () => void;
@@ -482,11 +579,13 @@ function LetterRow({
   const storyline = letterStoryline(l);
   // §611 window progress — same visual grammar as the Kai Home radar, so the
   // clock reads identically everywhere. Only for mailed rows still waiting.
+  // Phase 1A honesty triple: receipt-anchored (the shared transit-allowance
+  // estimate), not the raw mailing date — see lib/forecast.ts.
   const windowDay =
     l.status === "MAILED" && l.mailedAt && !l.hasResponse
-      ? Math.max(0, Math.floor((Date.now() - new Date(l.mailedAt).getTime()) / 86400000))
+      ? daysElapsedSinceEstimatedReceipt(new Date(l.mailedAt).getTime(), Date.now())
       : null;
-  const windowOverdue = windowDay != null && windowDay > 30;
+  const windowOverdue = windowDay != null && windowDay >= REINVESTIGATION_DAYS;
   // Engine 3 Tier A — the forecast for this mailed-waiting dispute, from statute
   // + this user's own history. Predictive of timeline/options, never of result.
   const forecast = forecastFor(l, ownLatency);
@@ -540,17 +639,17 @@ function LetterRow({
                 className="h-1.5 w-32 overflow-hidden rounded-full bg-ink-700"
                 role="progressbar"
                 aria-valuemin={0}
-                aria-valuemax={30}
-                aria-valuenow={Math.min(windowDay, 30)}
-                aria-label={`Day ${windowDay} of the 30-day reinvestigation window`}
+                aria-valuemax={REINVESTIGATION_DAYS}
+                aria-valuenow={Math.min(windowDay, REINVESTIGATION_DAYS)}
+                aria-label={`Estimating from receipt, day ${windowDay} of the ~${REINVESTIGATION_DAYS}-day reinvestigation window`}
               >
                 <div
                   className={`h-full transition-[width] duration-700 ${windowOverdue ? "bg-rose-500" : "bg-gold-500"}`}
-                  style={{ width: `${Math.min(100, (windowDay / 30) * 100)}%` }}
+                  style={{ width: `${Math.min(100, (windowDay / REINVESTIGATION_DAYS) * 100)}%` }}
                 />
               </div>
               <span className={`text-[10px] ${windowOverdue ? "font-semibold text-rose-300" : "text-slate-500"}`}>
-                {windowOverdue ? "window passed" : `${Math.max(0, 30 - windowDay)}d left`}
+                {windowOverdue ? "window likely passed" : `~${Math.max(0, REINVESTIGATION_DAYS - windowDay)}d left`}
               </span>
               {forecast && (
                 <button
@@ -608,9 +707,7 @@ function LetterRow({
             <Link href={`/letters/print/${l.id}`} target="_blank" className="btn-ghost min-h-[44px] min-w-[44px] justify-center text-xs" aria-label="Print letter"><Printer className="h-3.5 w-3.5" aria-hidden /></Link>
             {l.status !== "MAILED" && l.status !== "RESOLVED" && l.status !== "RESPONSE_RECEIVED" && (
               <>
-                <button onClick={() => onStatus(l.id, "MAILED")} className="btn-primary min-h-[44px] !py-1.5 text-xs" title="Printed and mailed it yourself? Mark it mailed to start the response clock.">
-                  Mark mailed myself
-                </button>
+                <MarkMailedControl onConfirm={(d) => onStatus(l.id, "MAILED", d)} minDate={l.createdAt?.slice(0, 10)} />
                 {/* MAIL_LIVE off during beta — queue-for-later, de-emphasized so it never reads as already 'sent'. */}
                 <Link href={`/mail/send/${l.id}`} className="btn-ghost min-h-[44px] text-xs text-slate-400" title="Queue this dispute for CreditVector to mail once live mailing is switched on — nothing is charged or sent yet.">
                   <Send className="h-3.5 w-3.5" aria-hidden /> Mail via CreditVector (soon)
@@ -697,7 +794,7 @@ function LetterRow({
               <Link href="/journey" className="btn-ghost !py-1.5 text-xs">See it on your timeline →</Link>
             )}
             <span className="text-[10px] text-slate-500">
-              ● Kai's analysis — based only on the response text you logged, nothing invented.
+              ● Kai&apos;s analysis — based only on the response text you logged, nothing invented.
             </span>
           </div>
         </div>

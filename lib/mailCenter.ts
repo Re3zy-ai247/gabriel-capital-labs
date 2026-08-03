@@ -11,8 +11,12 @@
 // the CORRECT statute per recipient — bureau letters cite §611 (reinvestigation),
 // furnisher letters §623, collector letters FDCPA §1692g. Nothing implies a
 // deletion, a guaranteed outcome, or predicted bureau behavior.
+import type { KaiHomeData } from "@/lib/kaiHome";
 import { MAIL_STATUS_LABEL, type MailStatus } from "@/lib/mail";
-import { forecastFor, ownResponseLatencyDays, REINVESTIGATION_DAYS, type ForecastLetterInput } from "@/lib/forecast";
+import {
+  forecastFor, ownResponseLatencyDays, REINVESTIGATION_DAYS, MAIL_TRANSIT_DAYS,
+  daysElapsedSinceEstimatedReceipt, type ForecastLetterInput,
+} from "@/lib/forecast";
 
 const DAY = 86_400_000;
 
@@ -24,6 +28,10 @@ export interface MailLetter extends ForecastLetterInput {
   createdAt: Date | string;
   hasResponse: boolean;
   responseOutcome: string | null;
+  // Phase 1A Dispute Packages (schema-free) — both fields already persisted on
+  // Letter, just not previously read by this projection.
+  tradelineId: string | null;
+  strategy: string;
 }
 
 const BUREAU_SHORT: Record<string, string> = { EQUIFAX: "EQ", EXPERIAN: "EX", TRANSUNION: "TU" };
@@ -135,12 +143,18 @@ export function mailHealth(l: MailLetter, pastWindow: boolean): MailHealth {
 
 // Recipient-correct window text (the §611 bureau clock only applies to bureau
 // letters). Furnisher/collector letters get their own statutory framing.
+//
+// Phase 1A honesty triple (SIM-REVIEW finding 2): the bureau branch is
+// RECEIPT-anchored, not mailing-anchored. `daysElapsed` is already computed
+// against the estimated receipt date (lib/forecast.ts's
+// daysElapsedSinceEstimatedReceipt) by every caller below — this function
+// only renders it, never re-derives it from mailedAt directly.
 function windowText(kind: RecipientKind, mailed: boolean, daysElapsed: number, pastWindow: boolean): string {
   if (kind === "bureau") {
-    if (!mailed) return `Once mailed, the bureau owes a reinvestigation within ~${REINVESTIGATION_DAYS} days (§611).`;
+    if (!mailed) return `Once the bureau receives it, it owes a reinvestigation within ~${REINVESTIGATION_DAYS} days (§611).`;
     return pastWindow
-      ? `The ~${REINVESTIGATION_DAYS}-day §611 window has passed. If nothing substantive arrived, that's grounds to follow up or escalate.`
-      : `The bureau owes a §611 reinvestigation within ~${REINVESTIGATION_DAYS} days of receiving this — about ${REINVESTIGATION_DAYS - daysElapsed} day(s) left on the statutory clock.`;
+      ? `The §611 window starts when the bureau receives your dispute, not when you mail it — estimating ~${MAIL_TRANSIT_DAYS} days for delivery, the ~${REINVESTIGATION_DAYS}-day window has likely passed. If nothing substantive arrived, that's grounds to follow up or escalate.`
+      : `The §611 window starts when the bureau receives your dispute, not when you mail it — estimating ~${MAIL_TRANSIT_DAYS} days for delivery, about ${REINVESTIGATION_DAYS - daysElapsed} day(s) are left on the statutory clock. This is an estimate; self-mailed letters aren't tracked.`;
   }
   if (kind === "furnisher") {
     return mailed
@@ -249,7 +263,258 @@ export interface MailDashboardStats {
   roundDistribution: { round: number; count: number }[];
 }
 
-export interface MailCenter { rows: MailCenterRow[]; stats: MailDashboardStats; }
+// ---- Dispute Packages (Phase 1A, schema-free) ---------------------------------
+// Groups the letters that belong to ONE dispute action into a derived
+// "package" — no table, no persisted id, recomputed on every read.
+//
+// Grouping key: same tradeline + same strategy + same round. This is chosen
+// over a fuzzy createdAt-proximity window because it is EXACT and matches
+// what one generate call actually produces: app/api/letters/generate/route.ts
+// creates one Letter row per targeted bureau, for one tradeline+strategy+
+// round, in a single request — the real unit an operator thinks in ("my
+// Capital One round-1 dispute, sent to 3 bureaus"), not "whatever happened to
+// be clicked around the same time" (which a time-window heuristic would also
+// wrongly merge across unrelated tradelines). A letter whose tradeline was
+// later deleted (Letter.tradelineId is SetNull on delete) falls back to its
+// own id, so an orphaned letter never merges with an unrelated one. A single
+// letter is a package of one, per spec.
+function packageKeyFor(l: MailLetter): string {
+  return l.tradelineId ? `tl:${l.tradelineId}:${l.strategy}:${l.round}` : `solo:${l.id}`;
+}
+
+export interface EvidenceItem {
+  label: string;
+  status: "available" | "unavailable";
+  detail: string;
+  href?: string;
+}
+
+// The evidence drawer (schema-free). Every item is either a real, already-
+// persisted fact (a letter, a self-attestation, a logged response) or an
+// honestly-labeled absence — never a fabricated receipt/tracking row. Mirrors
+// this file's own RESERVED placeholder discipline (see buildTimeline above).
+export interface PackageEvidence {
+  letters: EvidenceItem[];
+  mailingAttestations: EvidenceItem[];
+  responses: EvidenceItem[];
+  sendOnly: EvidenceItem[];
+  selfMailNote: string | null;
+}
+
+function buildPackageEvidence(members: MailLetter[]): PackageEvidence {
+  const dateLabel = (d: Date | string) => new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+
+  const letters: EvidenceItem[] = members.map((l) => ({
+    label: `Letter to ${l.recipientName}`,
+    status: "available",
+    detail: `Generated ${dateLabel(l.createdAt)}.`,
+    href: `/letters/print/${l.id}`,
+  }));
+  const mailingAttestations: EvidenceItem[] = members
+    .filter((l) => l.mailedAt)
+    .map((l) => ({
+      label: `Your mailing record — ${l.recipientName}`,
+      status: "available",
+      detail: `You marked this mailed on ${dateLabel(l.mailedAt!)}.`,
+    }));
+  const responses: EvidenceItem[] = members
+    .filter((l) => l.hasResponse)
+    .map((l) => ({
+      label: `Response — ${l.recipientName}`,
+      status: "available",
+      detail: `${l.responseAt ? `Logged ${dateLabel(l.responseAt)}` : "Logged"} — ${OUTCOME_LABEL[l.responseOutcome ?? "unknown"] ?? "logged"}.`,
+    }));
+  // Send-only artifacts — genuinely absent for a self-mailed package. Always
+  // rendered, always honestly unavailable, never faked (evidence-asymmetry
+  // disclosure, Phase 1A honesty triple part b).
+  const sendOnly: EvidenceItem[] = [
+    { label: "Certified-mail receipt", status: "unavailable", detail: "Available when you mail through CreditVector Fulfillment." },
+    { label: "Delivery tracking", status: "unavailable", detail: "Available when you mail through CreditVector Fulfillment." },
+  ];
+  const selfMailNote = mailingAttestations.length > 0
+    ? "For a self-mailed dispute, your own mailing record is the evidence — CreditVector doesn't hold a certified-mail receipt unless you mail through CreditVector."
+    : null;
+  return { letters, mailingAttestations, responses, sendOnly, selfMailNote };
+}
+
+export interface MailPackageMember {
+  letterId: string;
+  recipient: string;
+  mailed: boolean;
+  row: MailCenterRow | null; // present once in-mail (mailed/responded/resolved); null = generated, not yet mailed
+}
+
+export interface MailPackage {
+  packageId: string;
+  tradeline: string | null;
+  round: number;
+  recipientSummary: string;
+  createdAt: string;
+  members: MailPackageMember[];
+  health: MailHealth;
+  mailedFraction: { done: number; total: number }; // the "2 of 3 mailed" fraction (SIM-REVIEW finding 10)
+  evidence: PackageEvidence;
+}
+
+// Package rollup health = the LEAST-PROGRESSED member's health — never an
+// average, never the best-looking member (finding 10: a "Delivered" ×3
+// rollup while one sibling is stuck is dishonest). Rank 0 = wants a human now;
+// rank 5 = fully resolved. Ties keep the first member in stable row order.
+const HEALTH_PROGRESS_RANK: Record<MailHealth, number> = {
+  NEEDS_ATTENTION: 0,
+  WAITING_NORMALLY: 1,
+  RESPONSE_RECEIVED: 2,
+  ESCALATION_AVAILABLE: 3,
+  READY_FOR_ROUND_2: 4,
+  COMPLETED: 5,
+};
+
+// Groups letters into Dispute Packages and rolls each up to one health + an
+// honest mailed fraction. Only packages with at least one IN-MAIL member
+// render — a package that's 100% ungenerated-into-mail belongs on /letters,
+// not here (matches the existing "nothing mailed yet" empty-state law); a
+// still-unmailed sibling stays visible via the fraction and its own
+// `member.row === null`, never silently hidden.
+function groupIntoPackages(letters: MailLetter[], rows: MailCenterRow[]): MailPackage[] {
+  const rowByLetterId = new Map(rows.map((r) => [r.letterId, r]));
+  const groups = new Map<string, MailLetter[]>();
+  for (const l of letters) {
+    const key = packageKeyFor(l);
+    const arr = groups.get(key) ?? [];
+    arr.push(l);
+    groups.set(key, arr);
+  }
+
+  const packages: MailPackage[] = [];
+  for (const [packageId, members] of groups) {
+    const memberRows = members.map((l) => rowByLetterId.get(l.id)).filter((r): r is MailCenterRow => Boolean(r));
+    if (memberRows.length === 0) continue;
+
+    const worst = memberRows.reduce((w, r) => (HEALTH_PROGRESS_RANK[r.health] < HEALTH_PROGRESS_RANK[w.health] ? r : w));
+    const earliest = [...members].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())[0];
+    const recipients = [...new Set(members.map((l) => l.recipientName))];
+
+    packages.push({
+      packageId,
+      tradeline: earliest.creditorName,
+      round: earliest.round,
+      recipientSummary: recipients.length > 2 ? `${recipients.slice(0, 2).join(", ")} +${recipients.length - 2} more` : recipients.join(", "),
+      createdAt: iso(earliest.createdAt) as string,
+      members: members.map((l) => ({
+        letterId: l.id,
+        recipient: l.recipientName,
+        mailed: Boolean(l.mailedAt),
+        row: rowByLetterId.get(l.id) ?? null,
+      })),
+      health: worst.health,
+      mailedFraction: { done: members.filter((l) => Boolean(l.mailedAt)).length, total: members.length },
+      evidence: buildPackageEvidence(members),
+    });
+  }
+  // Recency order (most recently opened package first) — a DISPLAY ordering,
+  // mirroring the page's prior `orderBy: createdAt desc`. Not an urgency
+  // ladder: ranking by urgency is pickMailBand()'s job alone (below), which
+  // defers entirely to kaiHome rather than inventing a second ranking
+  // (SIM-REVIEW finding 13).
+  packages.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  return packages;
+}
+
+// ---- "Do this first" — the recommended-action band (Phase 1A) -----------------
+
+export interface MailRecommendationBand {
+  quiet: boolean;
+  scopeLabel: string | null; // "In the Mail Center:" — set only when this ISN'T kaiHome's own top-ranked pick
+  title: string;
+  sub: string;
+  cta: string;
+  href: string;
+  basis: string;
+}
+
+// SIM-REVIEW finding 13's law: two rooms may never each independently rank
+// "do this first" (kaiHome's 5 branches vs a hypothetical Mail-Center-only
+// ladder). This function computes NO ranking of its own — it only
+// re-presents fields getKaiHomeData already computed: `recommendation`
+// (pickRecommendation's single, fixed-priority pick) and `deadlines`
+// (deadlinesFrom's own nearest-first sort). Mirrors lib/operatorSession.ts's
+// consumerPriorities() — the same reuse pattern, shaped for a single band.
+export function pickMailBand(kai: Pick<KaiHomeData, "recommendation" | "deadlines">): MailRecommendationBand {
+  const rec = kai.recommendation;
+  // The two kaiHome branches whose action IS an existing mailed dispute (a
+  // verified response awaiting follow-up, or a lapsed §611 window) both
+  // return exactly this href, no query string — the one static signal, short
+  // of re-deriving kaiHome's own branch order, that the account-wide pick is
+  // already Mail Center subject matter. Render it unscoped: it already IS
+  // this room's own business.
+  if (rec && rec.href === "/letters") {
+    return { quiet: false, scopeLabel: null, title: rec.title, sub: rec.body, cta: rec.cta, href: rec.href, basis: rec.basis };
+  }
+  // The account-wide pick is about something else (a new dispute, an
+  // upload). Never compute a second ranking to replace it — fall back to the
+  // SAME engine's own secondary note (the starvation-guard demotion, when
+  // kaiHome had one) or its own already-sorted deadlines queue (nearest-
+  // window-first). Both are data kaiHome already produced, just not chosen
+  // as ITS primary pick this cycle.
+  if (rec?.secondary) {
+    return {
+      quiet: false,
+      scopeLabel: "In the Mail Center:",
+      title: rec.secondary.label,
+      sub: "Kai's top priority right now is elsewhere on your account — this is the next most-pressing fact already found in your mail.",
+      cta: "Review",
+      href: rec.secondary.href,
+      basis: "Rule: kaiHome's own starvation-guard demotion note (lib/kaiHome.ts) — not a second ranking.",
+    };
+  }
+  const nearest = kai.deadlines[0] ?? null;
+  if (nearest && nearest.daysLeft > 0) {
+    return {
+      quiet: false,
+      scopeLabel: "In the Mail Center:",
+      title: `${nearest.daysLeft} day${nearest.daysLeft === 1 ? "" : "s"} left on the ${nearest.recipient} window`,
+      sub: `Round ${nearest.round} — no action needed yet. ${WATCHING_CLOCK_LINE}`,
+      cta: "See it",
+      href: "/letters",
+      basis: "Rule: nearest open §611 window, already ranked by lib/kaiHome.ts's deadlinesFrom (nearest-first) — not re-sorted here.",
+    };
+  }
+  return { quiet: true, scopeLabel: null, title: "You're all caught up", sub: "No action waiting on you here.", cta: "", href: "", basis: "" };
+}
+
+// ---- Mark-mailed date capture (Phase 1A honesty triple, part c) ---------------
+
+export interface MailedAtValidation {
+  ok: boolean;
+  date: Date | null;
+  error: string | null;
+}
+
+// The mark-mailed action captures the ACTUAL mailing date instead of silently
+// stamping "now" — every §611 estimate above anchors on this date, so an
+// inaccurate stamp would propagate everywhere. Accepts a plain "YYYY-MM-DD"
+// (what an <input type="date"> sends); missing/empty defaults to today
+// (unchanged behavior for callers that don't send one). Compares CALENDAR
+// DAYS in UTC, not exact timestamps, so a same-day mailing is never rejected
+// just because the letter was generated later the same day (mirrors
+// lib/utils.ts's own UTC-day convention for calendar dates).
+export function validateMailedAtInput(raw: unknown, createdAt: Date | string, now: number = Date.now()): MailedAtValidation {
+  if (raw == null || raw === "") return { ok: true, date: new Date(now), error: null };
+  if (typeof raw !== "string") return { ok: false, date: null, error: "That mailing date isn't valid." };
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw.trim());
+  if (!m) return { ok: false, date: null, error: "That mailing date isn't valid." };
+  const parsed = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
+  if (isNaN(parsed.getTime())) return { ok: false, date: null, error: "That mailing date isn't valid." };
+
+  const utcDayStart = (d: Date) => Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+  const todayStart = utcDayStart(new Date(now));
+  const createdStart = utcDayStart(typeof createdAt === "string" ? new Date(createdAt) : createdAt);
+  if (parsed.getTime() > todayStart) return { ok: false, date: null, error: "The mailing date can't be in the future." };
+  if (parsed.getTime() < createdStart) return { ok: false, date: null, error: "The mailing date can't be before this letter was generated." };
+  return { ok: true, date: parsed, error: null };
+}
+
+export interface MailCenter { rows: MailCenterRow[]; stats: MailDashboardStats; packages: MailPackage[]; }
 
 export function buildMailCenter(letters: MailLetter[], now: number = Date.now()): MailCenter {
   const ownLatency = ownResponseLatencyDays(letters);
@@ -258,7 +523,14 @@ export function buildMailCenter(letters: MailLetter[], now: number = Date.now())
   const rows: MailCenterRow[] = inMail.map((l) => {
     const kind = recipientKind(l);
     const mailed = l.status === "MAILED" && Boolean(l.mailedAt);
-    const daysElapsed = l.mailedAt ? Math.max(0, Math.floor((now - new Date(l.mailedAt).getTime()) / DAY)) : 0;
+    // Two distinct facts, deliberately not conflated (Phase 1A honesty triple):
+    // daysSinceMailed is the user's own true action date, used only for the
+    // "you mailed this" fact below. daysElapsed is the RECEIPT-anchored §611
+    // clock (lib/forecast.ts's shared transit-allowance estimate) — every
+    // window/health/recommendation computation below uses this one, never the
+    // raw mailing date.
+    const daysSinceMailed = l.mailedAt ? Math.max(0, Math.floor((now - new Date(l.mailedAt).getTime()) / DAY)) : 0;
+    const daysElapsed = l.mailedAt ? daysElapsedSinceEstimatedReceipt(new Date(l.mailedAt).getTime(), now) : 0;
     const pastWindow = mailed && daysElapsed >= REINVESTIGATION_DAYS;
     const resolved = l.status === "RESOLVED" || l.responseOutcome === "deleted";
     const recommendation = recommendationFor(l, kind, pastWindow);
@@ -272,7 +544,7 @@ export function buildMailCenter(letters: MailLetter[], now: number = Date.now())
 
     const kaiIntel: string[] = [];
     if (mailed && !l.hasResponse) {
-      kaiIntel.push(`You mailed this ${daysElapsed === 0 ? "today" : `${daysElapsed} day${daysElapsed === 1 ? "" : "s"} ago`}.`);
+      kaiIntel.push(`You mailed this ${daysSinceMailed === 0 ? "today" : `${daysSinceMailed} day${daysSinceMailed === 1 ? "" : "s"} ago`}.`);
     }
     kaiIntel.push(win);
     // Only for a genuinely live window: WAITING_NORMALLY, within `rows` (built
@@ -321,6 +593,7 @@ export function buildMailCenter(letters: MailLetter[], now: number = Date.now())
 
   return {
     rows,
+    packages: groupIntoPackages(letters, rows),
     stats: {
       generated: letters.length, mailed, delivered: null, waiting, responses,
       avgResponseDays, totalSpendCents: 0,

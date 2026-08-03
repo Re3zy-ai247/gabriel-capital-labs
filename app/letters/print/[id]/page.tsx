@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { currentUserOrDemo } from "@/lib/session";
 import { decryptDocument, decryptText, docCryptoReady } from "@/lib/docCrypto";
+import { MAIL_TRANSIT_DAYS } from "@/lib/forecast";
 import { PrintActions } from "./PrintActions";
 
 export const dynamic = "force-dynamic";
@@ -151,7 +152,11 @@ export default async function LetterPrintPage({ params }: { params: { id: string
           <li>Print every page — the letter and any enclosures — then sign and date it.</li>
           <li>Mail it to the address shown at the top of the letter.</li>
           <li>First-class mail works. Certified mail with return receipt costs a little more but gives you proof of delivery and the date the response window starts — worth it for a dispute.</li>
-          <li>Keep a copy of everything you send, then mark the letter mailed in CreditVector so I can track the response window with you.</li>
+          <li>
+            Keep a copy of everything you send, then mark the letter mailed in CreditVector. I&apos;ll estimate your
+            response window from that date plus about {MAIL_TRANSIT_DAYS} days&apos; mailing time — the clock actually
+            starts once the bureau receives it, which only certified mail&apos;s return receipt (above) can confirm exactly.
+          </li>
         </ol>
         <p className="mt-3 text-xs text-slate-500">Educational guidance on exercising your own rights — not legal advice, and no outcome is guaranteed.</p>
       </aside>

@@ -18,7 +18,7 @@ function L(over: Partial<MailLetter>): MailLetter {
   return {
     id: "l", targetBureau: "EQUIFAX", mailedAt: null, responseAt: null, round: 1, status: "GENERATED",
     recipientName: "Equifax", recipientType: "bureau", creditorName: "Midland", createdAt: daysAgo(40),
-    hasResponse: false, responseOutcome: null, ...over,
+    hasResponse: false, responseOutcome: null, tradelineId: "t1", strategy: "fcra_611", ...over,
   };
 }
 
@@ -111,6 +111,84 @@ ok("live window (WAITING_NORMALLY) → kaiIntel includes the watching-the-clock 
 ok("past window (NEEDS_ATTENTION) → the line is NOT shown (no longer true)", !lateRow.kaiIntel.includes(WATCHING_CLOCK_LINE));
 ok("resolved (COMPLETED) → the line is NOT shown", !doneRow.kaiIntel.includes(WATCHING_CLOCK_LINE));
 ok("the exact exported constant is the literal shown (single source of truth)", WATCHING_CLOCK_LINE === "Kai is watching the clock." && liveRow.kaiIntel.includes("Kai is watching the clock."));
+
+// ---- Phase 1A: Dispute Package grouping (schema-free) -----------------------
+// Key: same tradelineId + strategy + round. A null tradelineId (orphaned
+// letter) falls back to its own id, so it never merges with an unrelated one.
+const pkgCenter = buildMailCenter([
+  L({ id: "p1a", tradelineId: "tlA", strategy: "fcra_611", round: 1, recipientName: "Equifax", status: "MAILED", mailedAt: daysAgo(10), createdAt: daysAgo(15) }),
+  L({ id: "p1b", tradelineId: "tlA", strategy: "fcra_611", round: 1, recipientName: "Experian", status: "MAILED", mailedAt: daysAgo(10), createdAt: daysAgo(15) }),
+  L({ id: "p1c", tradelineId: "tlA", strategy: "fcra_611", round: 1, recipientName: "TransUnion", status: "GENERATED", mailedAt: null, createdAt: daysAgo(15) }),
+  L({ id: "p2", tradelineId: "tlB", strategy: "fcra_611", round: 1, recipientName: "Capital One", status: "MAILED", mailedAt: daysAgo(5), createdAt: daysAgo(6) }),
+  L({ id: "p3", tradelineId: null, strategy: "fcra_611", round: 1, recipientName: "Chase", status: "MAILED", mailedAt: daysAgo(3), createdAt: daysAgo(4) }),
+  L({ id: "p4", tradelineId: null, strategy: "fcra_611", round: 1, recipientName: "Discover", status: "MAILED", mailedAt: daysAgo(3), createdAt: daysAgo(4) }),
+], now);
+eq("3 same-tradeline+strategy+round letters group to 1, + 1 other tradeline + 2 solo orphans → 4 packages", pkgCenter.packages.length, 4);
+const tlAPkg = pkgCenter.packages.find((p) => p.members.some((m) => m.letterId === "p1a"))!;
+ok("same tradeline+strategy+round letters group into ONE package", tlAPkg.members.length === 3 && tlAPkg.members.some((m) => m.letterId === "p1b") && tlAPkg.members.some((m) => m.letterId === "p1c"));
+ok("a different tradeline never merges into that package", !tlAPkg.members.some((m) => m.letterId === "p2"));
+ok("two orphaned (null tradelineId) letters never merge with each other — each is its own solo package", !pkgCenter.packages.some((p) => p.members.some((m) => m.letterId === "p3") && p.members.some((m) => m.letterId === "p4")));
+
+// Determinism — identical input, same clock, always yields the same package
+// id set (no randomness, no insertion-order artifact beyond a stable sort).
+const detA = buildMailCenter([L({ id: "d1", tradelineId: "tlD", status: "MAILED", mailedAt: daysAgo(5) }), L({ id: "d2", tradelineId: "tlE", status: "MAILED", mailedAt: daysAgo(5) })], now).packages.map((p) => p.packageId).sort();
+const detB = buildMailCenter([L({ id: "d1", tradelineId: "tlD", status: "MAILED", mailedAt: daysAgo(5) }), L({ id: "d2", tradelineId: "tlE", status: "MAILED", mailedAt: daysAgo(5) })], now).packages.map((p) => p.packageId).sort();
+eq("package grouping is deterministic across repeated calls with identical input", detA, detB);
+
+// A single letter is a package of one (spec).
+const soloCenter = buildMailCenter([L({ id: "solo1", tradelineId: "tlSolo", status: "MAILED", mailedAt: daysAgo(5) })], now);
+eq("a single letter forms a package of one", soloCenter.packages.length, 1);
+eq("...with exactly one member", soloCenter.packages[0].members.length, 1);
+
+// A package whose members are ALL still ungenerated-into-mail doesn't render
+// at all — that belongs on /letters, not the Mail Center queue.
+const allUnmailed = buildMailCenter([
+  L({ id: "au1", tradelineId: "tlAU", status: "GENERATED", mailedAt: null }),
+  L({ id: "au2", tradelineId: "tlAU", status: "GENERATED", mailedAt: null }),
+], now);
+eq("a package with zero in-mail members doesn't render", allUnmailed.packages.length, 0);
+
+// ---- Rollup honesty: health = LEAST-PROGRESSED member, mailed fraction ------
+const rollupCenter = buildMailCenter([
+  L({ id: "r1", tradelineId: "tlR", strategy: "fcra_611", round: 1, recipientName: "Equifax", status: "RESOLVED", mailedAt: daysAgo(60), createdAt: daysAgo(65) }),
+  L({ id: "r2", tradelineId: "tlR", strategy: "fcra_611", round: 1, recipientName: "Experian", status: "RESOLVED", mailedAt: daysAgo(60), createdAt: daysAgo(65) }),
+  L({ id: "r3", tradelineId: "tlR", strategy: "fcra_611", round: 1, recipientName: "TransUnion", status: "MAILED", mailedAt: daysAgo(50), createdAt: daysAgo(65) }),
+], now);
+const rollupPkg = rollupCenter.packages[0];
+eq("rollup health is the LEAST-PROGRESSED member (NEEDS_ATTENTION), never the 2 completed siblings' state", rollupPkg.health, "NEEDS_ATTENTION");
+eq("mailedFraction counts all 3 as mailed regardless of the health rollup", rollupPkg.mailedFraction, { done: 3, total: 3 });
+
+// The "2 of 3 mailed" fraction, rendered honestly when letters diverge
+// (SIM-REVIEW finding 10) — the still-unmailed sibling is a real member with
+// row === null, never silently hidden from the count.
+const fractionCenter = buildMailCenter([
+  L({ id: "f1", tradelineId: "tlF", strategy: "fcra_611", round: 1, recipientName: "Equifax", status: "MAILED", mailedAt: daysAgo(5), createdAt: daysAgo(6) }),
+  L({ id: "f2", tradelineId: "tlF", strategy: "fcra_611", round: 1, recipientName: "Experian", status: "MAILED", mailedAt: daysAgo(5), createdAt: daysAgo(6) }),
+  L({ id: "f3", tradelineId: "tlF", strategy: "fcra_611", round: 1, recipientName: "TransUnion", status: "GENERATED", mailedAt: null, createdAt: daysAgo(6) }),
+], now);
+const fractionPkg = fractionCenter.packages[0];
+eq("2 of 3 mailed — the fraction reflects reality, not the 1-member-of-3 that's actually built into a row", fractionPkg.mailedFraction, { done: 2, total: 3 });
+ok("the still-unmailed 3rd member is a real member (row=null, mailed=false), never dropped from the package", fractionPkg.members.some((m) => m.recipient === "TransUnion" && m.row === null && m.mailed === false));
+eq("exactly 2 members have a built row (the 2 that are in-mail)", fractionPkg.members.filter((m) => m.row !== null).length, 2);
+
+// ---- Evidence drawer truthfulness: no receipt/tracking claim on self-mail ---
+const evCenter = buildMailCenter([
+  L({ id: "e1", tradelineId: "tlE2", strategy: "fcra_611", round: 1, recipientName: "Equifax", status: "MAILED", mailedAt: daysAgo(5), createdAt: daysAgo(6) }),
+], now);
+const evPkg = evCenter.packages[0];
+ok("send-only evidence (certified receipt, tracking) is ALWAYS unavailable — never fabricated as present", evPkg.evidence.sendOnly.every((e) => e.status === "unavailable"));
+ok("send-only rows name exactly certified mail + tracking, honestly labeled", evPkg.evidence.sendOnly.some((e) => /certified/i.test(e.label)) && evPkg.evidence.sendOnly.some((e) => /tracking/i.test(e.label)));
+ok("no non-sendOnly evidence item ever claims 'certified' or 'tracking' (no accidental promotion to available)",
+  [...evPkg.evidence.letters, ...evPkg.evidence.mailingAttestations, ...evPkg.evidence.responses]
+    .every((e) => !/certified|tracking/i.test(e.label) && !/certified|tracking/i.test(e.detail)));
+ok("self-mail note appears once a member is mailed, and states the true limitation (no certified-mail receipt)", evPkg.evidence.selfMailNote !== null && /doesn't hold a certified-mail receipt/i.test(evPkg.evidence.selfMailNote!));
+eq("exactly one mailing attestation for the one mailed member", evPkg.evidence.mailingAttestations.length, 1);
+eq("exactly one letter-evidence row, linking to the existing print route", evPkg.evidence.letters[0].href, "/letters/print/e1");
+
+const evCenterUnmailed = buildMailCenter([
+  L({ id: "eu1", tradelineId: "tlEU", strategy: "fcra_611", round: 1, status: "MAILED", mailedAt: daysAgo(5), createdAt: daysAgo(6) }),
+], now);
+ok("mailingAttestations only lists letters actually marked mailed — never invents one for an unmailed sibling", evCenterUnmailed.packages[0].evidence.mailingAttestations.length === 1);
 
 console.log(failures === 0 ? "\nALL PASS" : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

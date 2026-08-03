@@ -5,6 +5,7 @@ import { currentUserOrDemo } from "@/lib/session";
 import { decryptText } from "@/lib/docCrypto";
 import { recordKaiEvent } from "@/lib/kaiEvents";
 import { track, PRODUCT_EVENTS } from "@/lib/events";
+import { validateMailedAtInput } from "@/lib/mailCenter";
 
 export const dynamic = "force-dynamic";
 
@@ -69,11 +70,24 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   const existing = await prisma.letter.findFirst({ where: { id: params.id, userId: user.id } });
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
+  // Phase 1A honesty triple (part c): capture the ACTUAL mailing date instead
+  // of silently stamping "now" — every §611 estimate (lib/forecast.ts,
+  // lib/mailCenter.ts) anchors on this date, so an inaccurate stamp would
+  // propagate into every downstream window calculation. Optional `mailedAt`
+  // ("YYYY-MM-DD", what the UI's date input sends) from the client; missing
+  // defaults to today, matching prior behavior for any other caller.
+  let mailedAtOverride: Date | null = null;
+  if (status === "MAILED" && !existing.mailedAt) {
+    const v = validateMailedAtInput(body?.mailedAt, existing.createdAt);
+    if (!v.ok) return NextResponse.json({ error: v.error }, { status: 400 });
+    mailedAtOverride = v.date;
+  }
+
   const letter = await prisma.letter.update({
     where: { id: existing.id },
     data: {
       status,
-      ...(status === "MAILED" && !existing.mailedAt ? { mailedAt: new Date() } : {}),
+      ...(status === "MAILED" && !existing.mailedAt ? { mailedAt: mailedAtOverride ?? new Date() } : {}),
     },
   });
 
