@@ -6010,17 +6010,25 @@
 
 /* Arrival compression: the masthead (eyebrow + room title — not the
  * SYNTHETIC FOUNDER REVIEW disclosure, which is a sibling of .facilityIdentity
- * and is never targeted here) collapses toward a single line while a chamber
- * transition is in flight, keyed off the same data-chamber-phase the stage
- * already sets on .room for the passage overlay and the chamber recede
- * animations. It re-expands on its own once the phase returns to "settled"
- * (arrival settle itself never re-enters "passage"). align-items shifts to
- * flex-start so the clipped remainder is the top of the stack (eyebrow +
- * room title) rather than a centered sliver; that shift is a discrete
- * property change and is not part of the animated transition list above. */
+ * and is never targeted here) dims while a chamber transition is in flight,
+ * keyed off the same data-chamber-phase the stage already sets on .room for
+ * the passage overlay and the chamber recede animations. It returns to full
+ * opacity on its own once the phase returns to "settled" (arrival settle
+ * itself never re-enters "passage").
+ *
+ * Opacity-only on purpose: this used to also carry max-height (20rem ->
+ * 4.5rem) and align-items (center -> flex-start, so the clipped remainder
+ * read as the top of the stack rather than a centered sliver). max-height is
+ * a real layout property, and the settled-state rule above transitions it
+ * (transition: max-height ...), so every passage collapsed and re-expanded
+ * the masthead's box -- real layout shift, once per chamber transition,
+ * accumulating into a nonzero phase/cumulative CLS the acceptance budget
+ * (near-zero per phase, ~0 cumulative) does not allow. Dropping max-height
+ * and its now-unneeded align-items partner leaves only opacity animating
+ * (compositor-only, zero layout impact); the settled-state merged control
+ * row (align-items: center, max-height: 20rem, overflow: hidden) is
+ * untouched static rest-state layout, not part of this per-transition rule. */
 .room[data-arrival-settled="true"][data-chamber-phase="passage"] .facilityIdentity .identity {
-  align-items: flex-start;
-  max-height: 4.5rem;
   opacity: 0.4;
 }
 
@@ -7777,7 +7785,12 @@
   --cxos-dur-response: 150ms;
   --cxos-dur-settle: 400ms;
   --cxos-dur-reveal: 520ms;
-  --cxos-dur-heartbeat: 2400ms;
+  /* Consumed solely by the transient agencyLivingAcquireB keyframe (Tier B's
+   * chamber-acquire entrance) below -- despite the name, this is NOT a
+   * continuous cadence and is bound by the same transient budget as every
+   * other recognition beat: iteration 1, <=1500ms. Keep both this and the
+   * Tier B override below under that cap. */
+  --cxos-dur-heartbeat: 1200ms;
   --cxos-dur-draw: 1800ms;
   --cxos-dur-drift: 18000ms;
   --cxos-depth-near: 8px;
@@ -7817,8 +7830,34 @@
   animation: none !important;
 }
 
-/* Budget 2 opts into ambient + profile; budget 1 opts into profile only. */
-.room[data-cxos-environment][data-cxos-animation-budget="2"] .ambientSweep {
+/* Budget 2 opts into ambient + profile; budget 1 opts into profile only.
+ *
+ * The opt-in also carries its own quiet-state negation (mirroring the
+ * settle/reading/quiet kill list's :is() below verbatim) rather than relying
+ * solely on data-cxos-animation-budget="2" to have already flipped away.
+ * Budget and these flags are set together from the same projection object,
+ * so this is defense-in-depth, not a second source of truth: it guarantees
+ * this rule and the kill list are structurally mutually exclusive (at most
+ * one of them can ever match a given element at once) instead of two
+ * separately-declared !important rules whose relative precedence has to be
+ * trusted. Without it .ambientSweep (continuous:facility-sweep) was
+ * observed still running at idle/attention/kai/hidden quiet states even
+ * though the kill list's specificity already wins on paper. */
+.room[data-cxos-environment][data-cxos-animation-budget="2"]:not(:is(
+    [data-cxos-idle="settling"],
+    [data-cxos-idle="settled"],
+    [data-cxos-attention="reading"],
+    [data-cxos-attention="inspecting"],
+    [data-cxos-kai="staged"],
+    [data-cxos-kai="preparing"],
+    [data-cxos-kai="resolved"],
+    [data-cxos-environment-motion="quiet"],
+    [data-cxos-environment-motion="static"],
+    [data-tier="C"],
+    [data-tier="D"],
+    [data-cxos-tier="C"],
+    [data-cxos-tier="D"]
+  )) .ambientSweep {
   animation: agencyLivingHeartbeat var(--cxos-dur-drift) linear infinite !important;
 }
 
@@ -7832,7 +7871,11 @@
 
 .room:is([data-tier="B"], [data-cxos-tier="B"]) {
   --cxos-dur-reveal: 340ms;
-  --cxos-dur-heartbeat: 3200ms;
+  /* Was 3200ms -- exceeded the transient budget's 1500ms ceiling for the
+   * agencyLivingAcquireB beat this drives (see the .room default above).
+   * Kept slightly slower than the 1200ms default to preserve Tier B's
+   * heavier entrance character, still comfortably under the cap. */
+  --cxos-dur-heartbeat: 1400ms;
   --cxos-dur-settle: 300ms;
 }
 
@@ -7892,9 +7935,35 @@
   filter: none !important;
 }
 
-/* A-only progressive parallax replaces, rather than adds to, the profile channel. */
+/* A-only progressive parallax replaces, rather than adds to, the profile
+ * channel. This opt-in sets animation-name (and friends) as longhands at
+ * the SAME selector specificity as the settle/reading/quiet kill list below
+ * (both resolve to five class/attribute components), which left the two
+ * !important declarations tied and resolved only by source order -- a
+ * fragile arrangement, and exactly the layering scroll:depth-parallax was
+ * observed escaping through at idle/attention/kai/tier quiet states even
+ * though the kill list (.districtEnvironment *, which [data-plane="depth"]
+ * is a descendant of) appears later in the file. The same quiet-state
+ * negation used for .ambientSweep above removes the tie by construction:
+ * this rule and the kill list can no longer both match the same element at
+ * once, so which one the cascade "prefers" on equal specificity no longer
+ * matters. */
 @supports (animation-timeline: view()) {
-  .room[data-cxos-environment][data-cxos-animation-budget="2"]:is(
+  .room[data-cxos-environment][data-cxos-animation-budget="2"]:not(:is(
+      [data-cxos-idle="settling"],
+      [data-cxos-idle="settled"],
+      [data-cxos-attention="reading"],
+      [data-cxos-attention="inspecting"],
+      [data-cxos-kai="staged"],
+      [data-cxos-kai="preparing"],
+      [data-cxos-kai="resolved"],
+      [data-cxos-environment-motion="quiet"],
+      [data-cxos-environment-motion="static"],
+      [data-tier="C"],
+      [data-tier="D"],
+      [data-cxos-tier="C"],
+      [data-cxos-tier="D"]
+    )):is(
       [data-cxos-profile="client-operations"],
       [data-cxos-profile="evidence-archive"],
       [data-cxos-profile="growth-threshold"],

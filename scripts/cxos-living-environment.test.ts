@@ -446,16 +446,88 @@ check(
     /renderedTransformResponsive/.test(browserHarness) &&
     /coverage:scroll-linked-choreography/.test(browserHarness),
 );
+// The full set of quiet/settled/reading/inspecting/kai-turn/static-tier
+// conditions the settle/reading/quiet kill list negates on. Every restored
+// WP2 continuous/scroll opt-in that can collide with the kill list for the
+// same element must carry this exact negation directly on its own selector
+// (not merely rely on data-cxos-animation-budget having already flipped to
+// 0) so the two !important rules are structurally mutually exclusive rather
+// than competing on specificity/order -- see the .ambientSweep and
+// @supports (animation-timeline: view()) rules for the full rationale.
+const QUIET_STATE_NEGATION_CONDITIONS = [
+  '[data-cxos-idle="settling"]',
+  '[data-cxos-idle="settled"]',
+  '[data-cxos-attention="reading"]',
+  '[data-cxos-attention="inspecting"]',
+  '[data-cxos-kai="staged"]',
+  '[data-cxos-kai="preparing"]',
+  '[data-cxos-kai="resolved"]',
+  '[data-cxos-environment-motion="quiet"]',
+  '[data-cxos-environment-motion="static"]',
+  '[data-tier="C"]',
+  '[data-tier="D"]',
+  '[data-cxos-tier="C"]',
+  '[data-cxos-tier="D"]',
+];
+function hasQuietStateNegation(selectorOrBlock: string): boolean {
+  const notIsStart = selectorOrBlock.indexOf(":not(:is(");
+  if (notIsStart === -1) return false;
+  const negationBlock = selectorOrBlock.slice(
+    notIsStart,
+    selectorOrBlock.indexOf("))", notIsStart) + 2,
+  );
+  return QUIET_STATE_NEGATION_CONDITIONS.every((condition) =>
+    negationBlock.includes(condition),
+  );
+}
+check(
+  // Regression pin for the two motion-budget quiet-state escapes: the
+  // continuous facility-sweep (.ambientSweep) was observed still running at
+  // idle/attention/kai/hidden quiet states (idle:quiescence and others)
+  // even though the kill list's specificity wins on paper. Scoping the
+  // opt-in with the same negation the kill list uses makes the two rules
+  // mutually exclusive by construction instead of trusting a cascade race.
+  "the .ambientSweep facility-sweep opt-in carries the full quiet-state negation, positioned between the budget=2 gate and the .ambientSweep target",
+  (() => {
+    const optInStart = css.indexOf(
+      '.room[data-cxos-environment][data-cxos-animation-budget="2"]:not(:is(',
+    );
+    if (optInStart === -1) return false;
+    const optInSelector = css.slice(optInStart, css.indexOf("{", optInStart));
+    return (
+      hasQuietStateNegation(optInSelector) &&
+      /\)\)\s*\.ambientSweep\s*\{/.test(
+        css.slice(optInStart, css.indexOf("{", optInStart) + 1),
+      ) &&
+      /animation:\s*agencyLivingHeartbeat var\(--cxos-dur-drift\) linear infinite !important/.test(
+        css.slice(optInStart, optInStart + 2000),
+      )
+    );
+  })(),
+);
 (() => {
   // The harness's traversal list must match the CSS's own opt-in list —
   // parse both independently and compare as sets so the two cannot drift.
-  // The data-cxos-profile list lives in the SELECTOR (the :is(...) before
-  // the opening brace), not the rule body, so this slices from the
-  // selector's start up to (not past) the brace — extractRuleBody would
-  // return the wrong half (the animation-name/... declarations).
-  const cssSelectorStart = css.indexOf(
-    '.room[data-cxos-environment][data-cxos-animation-budget="2"]:is(',
+  // The data-cxos-profile list lives in the SELECTOR (the :not(:is(quiet
+  // list)):is(profile list) before the opening brace), not the rule body,
+  // so this slices from the selector's start up to (not past) the brace —
+  // extractRuleBody would return the wrong half (the animation-name/...
+  // declarations). Scoped to start searching from the "A-only progressive
+  // parallax" comment (unique in the file) rather than a bare
+  // css.indexOf on the selector prefix: that prefix
+  // (.room[data-cxos-environment][data-cxos-animation-budget="2"]:not(:is()
+  // is now shared verbatim with the earlier .ambientSweep opt-in's own
+  // quiet-state negation, so an unscoped search would find THAT rule first.
+  const scrollBlockAnchor = css.indexOf(
+    "A-only progressive parallax replaces",
   );
+  const cssSelectorStart =
+    scrollBlockAnchor === -1
+      ? -1
+      : css.indexOf(
+          '.room[data-cxos-environment][data-cxos-animation-budget="2"]:not(:is(',
+          scrollBlockAnchor,
+        );
   const cssSelectorText =
     cssSelectorStart >= 0
       ? css.slice(cssSelectorStart, css.indexOf("{", cssSelectorStart))
@@ -475,6 +547,19 @@ check(
     cssScrollLinkedDistricts.length === 4 &&
       harnessScrollLinkedDistricts.length === 4 &&
       new Set([...cssScrollLinkedDistricts, ...harnessScrollLinkedDistricts]).size === 4,
+  );
+  check(
+    // Regression pin: scroll:depth-parallax was observed still running (as
+    // agencyLivingScroll) at quiet states alongside the facility sweep. This
+    // rule sets animation-name (and friends) as longhands at the SAME
+    // selector specificity as the kill list -- an exact five-component tie
+    // resolved only by source order -- which is exactly the kind of
+    // fragile-but-technically-correct-on-paper layering the sweep case also
+    // exhibited. The same quiet-state negation removes the tie by
+    // construction: this rule and the kill list can no longer both match
+    // the same element at once.
+    "the @supports (animation-timeline: view()) scroll opt-in carries the full quiet-state negation ahead of its four-district :is(...) profile gate",
+    cssSelectorStart !== -1 && hasQuietStateNegation(cssSelectorText),
   );
 })();
 check(
@@ -838,6 +923,29 @@ check(
     );
   })(),
 );
+check(
+  // Regression pin: --cxos-dur-heartbeat is consumed by exactly one thing --
+  // the transient agencyLivingAcquireB beat (`animation: agencyLivingAcquireB
+  // var(--cxos-dur-heartbeat) ...`) -- and despite its name is NOT a
+  // continuous cadence, so it is bound by the structural transient budget in
+  // browser.mjs (iteration 1, <=1500ms; see "animation.duration > 1500"
+  // above). The Tier B override used to be 3200ms (root default 2400ms),
+  // both over the ceiling, which the harness caught as a
+  // transientTimingViolation on every Tier B chamber-acquire. Every declared
+  // value must stay <=1500ms and there must be exactly the two expected
+  // declarations (the .room default and the Tier B override) -- a third
+  // declaration slipping in unchecked would be exactly this bug again.
+  "every --cxos-dur-heartbeat declaration (the agencyLivingAcquireB transient duration) is <=1500ms",
+  (() => {
+    const declarations = [
+      ...css.matchAll(/--cxos-dur-heartbeat:\s*(\d+)ms/g),
+    ].map((match) => Number(match[1]));
+    return (
+      declarations.length === 2 &&
+      declarations.every((value) => value > 0 && value <= 1500)
+    );
+  })(),
+);
 
 // -- RC2 WP4: phase-locked attention, idle, and Kai presence ------------------
 check(
@@ -1052,18 +1160,32 @@ const passageMastheadIdentityBlock = extractRuleBody(
   '.room[data-arrival-settled="true"][data-chamber-phase="passage"] .facilityIdentity .identity {',
 );
 check(
-  "the settled masthead declares a bounded, transitioning max-height/opacity that a chamber-phase=passage rule compresses, and the compression never targets the disclosure",
+  "the settled masthead declares a bounded, transitioning max-height/opacity as its static rest-state layout (unrelated to the opacity-only passage compression below), and the compression never targets the disclosure",
   settledMastheadIdentityBlock.length > 0 &&
     /overflow:\s*hidden/.test(settledMastheadIdentityBlock) &&
     /max-height:\s*20rem/.test(settledMastheadIdentityBlock) &&
     /transition:[\s\S]{0,40}max-height var\(--cxos-dur-settle\)[\s\S]{0,80}opacity var\(--cxos-dur-settle\)/.test(
       settledMastheadIdentityBlock,
     ) &&
-    passageMastheadIdentityBlock.length > 0 &&
-    /max-height:\s*4\.5rem/.test(passageMastheadIdentityBlock) &&
-    /opacity:\s*0\.4\b/.test(passageMastheadIdentityBlock) &&
     !/\[data-chamber-phase="passage"\][^{]*\.disclosure/.test(css) &&
     !/\.disclosure[^{]*\[data-chamber-phase="passage"\]/.test(css),
+);
+check(
+  // Regression pin for the phase-CLS fix: the passage-phase masthead
+  // compression must be opacity-only. max-height (and its former
+  // align-items partner, needed only to steer which edge a max-height clip
+  // exposed) are real layout properties, and the settled-state rule above
+  // already transitions max-height -- re-declaring it here at a different
+  // value animated real layout on every chamber passage (a collapse, then a
+  // re-expand back to settled), accumulating nonzero phase/cumulative CLS.
+  // Opacity alone is compositor-only and cannot shift layout.
+  "the chamber-phase=passage masthead compression is opacity-only (no max-height/align-items/height/overflow layout changes)",
+  passageMastheadIdentityBlock.length > 0 &&
+    /opacity:\s*0\.4\b/.test(passageMastheadIdentityBlock) &&
+    !/max-height/.test(passageMastheadIdentityBlock) &&
+    !/align-items/.test(passageMastheadIdentityBlock) &&
+    !/(?<!max-)height\s*:/.test(passageMastheadIdentityBlock) &&
+    !/overflow\s*:/.test(passageMastheadIdentityBlock),
 );
 check(
   "the FIXTURE STATE band and DIRECTOR pill share one flex row, both preserved as their own elements with their touch targets intact",

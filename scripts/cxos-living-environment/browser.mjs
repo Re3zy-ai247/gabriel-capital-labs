@@ -1981,18 +1981,38 @@ function evaluateCaseAcceptance(result) {
       const hasEvent = state.evidence.pageHide.some(
         (event) => event.persisted === true && event.trusted === false,
       );
+      // WP1-F8 contract (supersedes the RC1 forced-reset contract this check
+      // used to assert): a persisted pagehide/pageshow resets PRESENTATION
+      // state only -- idle, attention, kai turn, the chamber-transition
+      // phase, and any open inspection -- and leaves district restoration to
+      // the route. Forcing activeDistrict back to initialDistrict caused a
+      // wrong-chamber flash on restore; retained RC1 evidence showed the
+      // room winning the race anyway, so the reset no longer asserts
+      // initialDistrict (see useCxosRoomRuntime's reset(): "District
+      // identity is room-owned history, not a runtime default"). The test
+      // sequence navigates to and settles on kai-suite before triggering
+      // this synthetic pagehide, so asserting activeDistrict is still
+      // kai-suite (unchanged, not reset to central-command) is the positive
+      // version of that contract: proof the district was left alone rather
+      // than proof nothing was checked.
       if (
         !hasEvent ||
-        state.root?.["data-active-district"] !== "central-command" ||
+        state.root?.["data-active-district"] !== "kai-suite" ||
         state.root?.["data-cxos-idle"] !== "settled" ||
+        state.root?.["data-cxos-attention"] !== "ambient" ||
         state.root?.["data-cxos-kai"] !== "quiet" ||
+        state.root?.["data-cxos-district-transition"] !== "settled" ||
+        state.root?.["data-departing"] !== "false" ||
         state.inspection.openIds.length !== 0
       ) {
         add("pagehide-reset", state.step, "Synthetic persisted pagehide did not clear all route-local presentation state.", {
           eventRecorded: hasEvent,
           activeDistrict: state.root?.["data-active-district"],
           idle: state.root?.["data-cxos-idle"],
+          attention: state.root?.["data-cxos-attention"],
           kai: state.root?.["data-cxos-kai"],
+          districtTransition: state.root?.["data-cxos-district-transition"],
+          departing: state.root?.["data-departing"],
           openInspectionIds: state.inspection.openIds,
         });
       }
@@ -2707,10 +2727,16 @@ async function runCase(spec) {
       await dispatchSyntheticPageTransition(page, "pagehide", true);
       await capture("lifecycle:pagehide-persisted", pageHideCursor, {
         synthetic: true,
+        // WP1-F8: presentation state resets; activeDistrict is route-owned
+        // and stays put (kai-suite, unchanged from just before pagehide),
+        // not forced back to initialDistrict. See the pagehide-reset check.
         expectedReset: {
-          activeDistrict: "central-command",
+          activeDistrict: "kai-suite",
           idle: "settled",
+          attention: "ambient",
           kai: "quiet",
+          districtTransition: "settled",
+          departing: "false",
           openInspectionCount: 0,
         },
       });
