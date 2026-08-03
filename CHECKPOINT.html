@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>CXOS RC2 — Overnight Checkpoint (2026-08-03)</title>
+<style>
+  :root { color-scheme: light dark;
+    --bg:#f7f9fb; --fg:#15222e; --mut:#5a6b7a; --card:#ffffff; --line:#d7e0e8;
+    --ok:#0a7d40; --okbg:#e2f5ea; --warn:#8a5a00; --warnbg:#fdf1d8; --acc:#0b5f8a; --mono:ui-monospace,SFMono-Regular,Menlo,monospace; }
+  @media (prefers-color-scheme: dark) { :root {
+    --bg:#0d141b; --fg:#dbe7f1; --mut:#8fa1b0; --card:#131e28; --line:#263646;
+    --ok:#5fd394; --okbg:#10301f; --warn:#f2c46b; --warnbg:#33260a; --acc:#7cc4ea; } }
+  * { box-sizing:border-box }
+  body { margin:0; padding:1.25rem; background:var(--bg); color:var(--fg);
+    font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+  main { max-width:60rem; margin:0 auto }
+  h1 { font-size:1.35rem; margin:.2rem 0 .3rem } h2 { font-size:1.05rem; margin:1.6rem 0 .5rem; color:var(--acc) }
+  .sub { color:var(--mut); font-size:.85rem; margin-bottom:1rem }
+  .badge { display:inline-block; padding:.15rem .55rem; border-radius:99px; font-weight:600; font-size:.8rem }
+  .ok { background:var(--okbg); color:var(--ok) } .warn { background:var(--warnbg); color:var(--warn) }
+  table { width:100%; border-collapse:collapse; background:var(--card); font-size:.86rem; margin:.4rem 0 }
+  .wrap { overflow-x:auto; border:1px solid var(--line); border-radius:8px }
+  th,td { text-align:left; padding:.45rem .6rem; border-bottom:1px solid var(--line); vertical-align:top }
+  th { color:var(--mut); font-weight:600; white-space:nowrap } tr:last-child td { border-bottom:none }
+  code { font-family:var(--mono); font-size:.82em; background:color-mix(in srgb, var(--line) 40%, transparent); padding:.08em .35em; border-radius:4px }
+  pre { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:.7rem .9rem; overflow-x:auto; font-family:var(--mono); font-size:.8rem }
+  ol,ul { padding-left:1.3rem } li { margin:.25rem 0 }
+  .note { border-left:3px solid var(--warn); background:var(--warnbg); padding:.5rem .8rem; border-radius:0 6px 6px 0; font-size:.88rem }
+</style>
+</head>
+<body>
+<main>
+<h1>CXOS Living Environment Engine RC2 — Overnight Checkpoint</h1>
+<p class="sub">Generated 2026-08-03 after WP-FIX2 acceptance · pause checkpoint, not a release · repository evidence is authoritative</p>
+<p>
+<span class="badge ok">BROWSER ACCEPTANCE: ACCEPTED · 0 FINDINGS · 20/20 GATES · 10/10 CASES</span>
+<span class="badge ok">GUARDS 96 · 185 · 76 · 25</span>
+<span class="badge ok">PRODUCTION UNTOUCHED (f449c35)</span>
+<span class="badge warn">FOUNDER PACKAGE + BRIDGE: NOT STARTED (paused)</span>
+</p>
+
+<h2>Exact state</h2>
+<div class="wrap"><table>
+<tr><th>Branch</th><td><code>feat/cxos-living-environment-engine-rc2</code> — all commits pushed to origin</td></tr>
+<tr><th>Evidence commit</th><td><code>7b30cfb</code> — accepted candidate ledger + fresh RC5 baseline chamber captures</td></tr>
+<tr><th>Docs HEAD</th><td><code>3657057</code> (Bible §11 / validation-report truth pass)</td></tr>
+<tr><th>Product-behavior HEAD</th><td><code>f7ee9c5</code> — the SHA the accepted evidence is bound to (captured 2026-08-03T07:36Z)</td></tr>
+<tr><th>Worktree</th><td><code>~/Documents/worktrees/cxos-living-environment-engine-rc2</code> — clean · baseline worktree at <code>29260fd</code></td></tr>
+<tr><th>Lineage</th><td>RC1 handoff <code>9129fef</code> (untouched) · RC1 checkpoint <code>40047da</code> · production <code>origin/main</code> = <code>f449c35</code></td></tr>
+</table></div>
+<p class="note">Never place CXOS worktrees in <code>/private/tmp</code> — a reboot wiped them once this cycle; every commit survived because each work package was pushed on completion.</p>
+
+<h2>Completed work packages</h2>
+<div class="wrap"><table>
+<tr><th>WP</th><th>Commit</th><th>Content</th></tr>
+<tr><td>Plan</td><td><code>1eacac8</code></td><td>RC2 continuation plan (five-agent review verdict, bounded scope)</td></tr>
+<tr><td>WP1</td><td><code>3162133</code></td><td>Runtime lifecycle hardening — 7 fixes</td></tr>
+<tr><td>WP2</td><td><code>3144293</code></td><td>State-bearing motion restored (6 recognitions, Kai reveal, discovery beats, traveling sweep, per-chamber breath, blocked-lane pulse)</td></tr>
+<tr><td>WP3</td><td><code>cb68aed</code></td><td>Seven distinct signatures (entry tuples, scroll pairs, Tier B identity, 7 edges)</td></tr>
+<tr><td>WP4</td><td><code>fdfb940</code></td><td>Attention/idle/Kai phase-lock (reading narrowed, scroll re-arms, per-chamber idle + settle)</td></tr>
+<tr><td>WP5</td><td><code>497934b</code></td><td>Destination-tinted directional passage, arrival compression, CHAMBER noun</td></tr>
+<tr><td>WP6</td><td><code>1deaabd</code></td><td>A11y + state legibility (scroll-margin, inert, shapes, light-step, blocked emphasis)</td></tr>
+<tr><td>WP7</td><td><code>eb1afd4</code></td><td>Harness breadth + structural channel classification</td></tr>
+<tr><td>WP-FIX</td><td><code>e815c28·765e561·6c69ef6</code></td><td>Quiet-gating + CLS closure (81 findings → 1)</td></tr>
+<tr><td>WP8</td><td><code>12a1aee</code></td><td>Bible §11 amendments · adoption matrix · RC2 validation report · hard-off proof</td></tr>
+<tr><td>WP-FIX2</td><td><code>a5974aa·a3cca6e·f7ee9c5·3657057</code></td><td>Adversarial gate closure → <strong>accepted run, 0 findings</strong></td></tr>
+<tr><td>Evidence</td><td><code>7b30cfb</code></td><td>Accepted ledger + baseline captures committed</td></tr>
+</table></div>
+
+<h2>Validation status — accepted</h2>
+<ul>
+<li>Acceptance ledger: status <code>accepted</code>, passed <code>true</code>, <strong>0 findings</strong>, 20/20 coverage gates, 10/10 cases, 170 states.</li>
+<li>Engaged chambers <code>2/2/2/2/2/2/2</code> continuous channels · quiescence 0 running / CLS 0 · reduced-motion fully static (22/22) · JS-disabled: 0 animations, budget 0.</li>
+<li>Channel coverage 14/15 observed incl. <code>transient:team-recognition</code> (DIRECTOR Team-Specimen step); <code>threshold-beat</code> documented transition-driven; membership gate 0 violations.</li>
+<li>Guards: Living-Environment <strong>96/96</strong> · Agency <strong>185/185</strong> · Core <strong>76/76</strong> · Isolated Review <strong>25/25</strong> · schema 17/17 · network 36/36 · event-bus 43/43 · session 11/11 · handoff self-test 7/7 · typecheck clean.</li>
+<li>Production-hard-off 404/404/404 proven at <code>6c69ef6</code>; route guard untouched since — re-prove at final SHA during Phase 6.</li>
+<li>Adversarial gate (single Opus pass): <strong>READY-WITH-DISCLOSURES</strong>; all three must-fix items closed in WP-FIX2.</li>
+</ul>
+
+<h2>Open findings</h2>
+<p><strong>Blocking: none.</strong> Disclosed residuals:</p>
+<ol>
+<li>Narrow-viewport (≤740px) chamber-entry shift, source pinned: <code>&lt;p&gt;{contextDistrict.kaiContext}&lt;/p&gt;</code> (stage.tsx:1748) — copy-length wrap variance; under the 0.05 cumulative gate (max 0.0175). Next-cycle fix: copy-length normalization.</li>
+<li>One non-reproducing 0.19 CLS timing flake on a superseded run (absent from the accepted run).</li>
+<li>Cascade-escape mechanism attributed to Playwright screenshot cancel-and-replay; per-name-scoped WAAPI net retained; decisive measurement now in the ledger.</li>
+<li>Inherited NextAuth noise · device/AT/RUM deferred · 4 inherited lint findings.</li>
+<li>Next-cycle design items for Founder decision: graduated settle (facility keeps breathing at plain idle) · central/team scaleX proximity (0.92 vs 0.94).</li>
+</ol>
+
+<h2>Remaining work (in order)</h2>
+<ol>
+<li><strong>Phase 6 — Founder package:</strong> final report + handoff MD/HTML, sanitized ZIP + SHA-256 via <code>handoff.mjs build</code> (exclude raw browser JSONs / local paths), RC1 errata table, hard-off re-proof at final SHA, protected Vercel Preview (CLI absent — Vercel MCP or npx; protection stays on; no alias/production action), approval-boundary statement.</li>
+<li><strong>Claude ↔ ChatGPT Bridge:</strong> fresh branch from current origin/main; extend <code>handoff.mjs</code>; <code>docs/handoffs/bridge/</code> schema/templates/inbox; <code>npm run handoff:create</code>/<code>handoff:verify</code>; evidence-classed manifest; fail-closed sanitized ZIP; Opus adversarial pass; demonstration handoff for THIS checkpoint.</li>
+<li><strong>CreditVector Fulfillment Engine Architecture</strong> (after the bridge).</li>
+</ol>
+
+<h2>Resume</h2>
+<pre>cd ~/Documents/worktrees/cxos-living-environment-engine-rc2
+git fetch --prune origin &amp;&amp; git status --porcelain &amp;&amp; git log --oneline -3</pre>
+<p>Verify clean tree and HEAD = this checkpoint commit, then begin Phase 6. Product behavior is frozen at <code>f7ee9c5</code> pending Founder review.</p>
+</main>
+</body>
+</html>
