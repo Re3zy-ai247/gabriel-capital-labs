@@ -787,6 +787,27 @@ check(
       ),
     ),
 );
+check(
+  // Belt-and-suspenders enforcement, not a second policy: the CSS kill list
+  // and each WP2 opt-in's own quiet-state negation (checked above) already
+  // gate every continuous:* channel to zero the instant
+  // continuousAnimationBudget drops to 0. This was empirically observed to
+  // not always be enough for one specific long-running (18s, linear
+  // infinite) continuous animation across a long real interaction session
+  // -- the cascade's cancellation was not reliably picked up for that
+  // element. useCxosRoomRuntime explicitly cancels any still-running
+  // continuous:* animation via the Web Animations API, using the same
+  // data-cxos-motion-channel token grammar as the CSS and the acceptance
+  // harness, the moment livingEnvironment.motion stops being "active".
+  // useLayoutEffect (not useEffect) so it runs before the next paint.
+  "the runtime hook explicitly cancels any still-running continuous:* animation via WAAPI when motion is not active, as a cascade-timing safety net",
+  /useLayoutEffect\(\(\) => \{\s*\n\s*const root = roomRootRef\.current;\s*\n\s*if \(!root \|\| !livingEnvironment \|\| livingEnvironment\.motion === "active"\)/.test(
+    adapter,
+  ) &&
+    /root\.getAnimations\(\{ subtree: true \}\)/.test(adapter) &&
+    /token\.startsWith\("continuous:"\)/.test(adapter) &&
+    /animation\.cancel\(\)/.test(adapter),
+);
 
 // -- RC2 WP3: deepened chamber signature identity ----------------------------
 function extractRuleBody(source: string, selectorText: string): string {

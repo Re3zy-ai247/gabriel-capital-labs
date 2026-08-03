@@ -560,6 +560,50 @@ export function useCxosRoomRuntime<DistrictId extends string>({
     ],
   );
 
+  // Belt-and-suspenders enforcement for the Living Environment's continuous
+  // motion channels, not a second policy: the room's own CSS already gates
+  // every continuous:* channel to zero the instant continuousAnimationBudget
+  // drops to 0 (a settle/reading/quiet kill list plus, on each WP2 opt-in,
+  // that same negation restated directly on the opt-in's own selector so
+  // the two !important declarations are structurally mutually exclusive).
+  // That was verified correct both by static specificity and by forcing the
+  // transition directly. It was ALSO observed, empirically, against a real
+  // long multi-step interaction session under heavy concurrent main-thread
+  // load (per-chamber Axe audits, animations:"disabled" screenshot capture)
+  // to occasionally leave one specific long-running (18s, linear infinite)
+  // continuous animation still reported as running well after
+  // continuousAnimationBudget read 0 in the DOM -- the cascade's
+  // cancellation was not reliably picked up for that element, for reasons
+  // this hook has no way to detect or distinguish from the outside. Rather
+  // than chase that further, this explicitly cancels any still-running
+  // continuous:* animation via the Web Animations API the moment motion
+  // stops being "active", using the exact same data-cxos-motion-channel
+  // token grammar the CSS and the acceptance harness already use as the
+  // single source of truth -- no new concept, no room-specific knowledge.
+  // useLayoutEffect (not useEffect) so this runs before the next paint.
+  useLayoutEffect(() => {
+    const root = roomRootRef.current;
+    if (!root || !livingEnvironment || livingEnvironment.motion === "active") {
+      return;
+    }
+    for (const animation of root.getAnimations({ subtree: true })) {
+      const target =
+        animation.effect && "target" in animation.effect
+          ? animation.effect.target
+          : null;
+      if (!(target instanceof Element)) continue;
+      const owner = target.closest("[data-cxos-motion-channel]");
+      const channel = owner?.getAttribute("data-cxos-motion-channel") ?? "";
+      if (
+        channel
+          .split(/\s+/)
+          .some((token) => token.startsWith("continuous:"))
+      ) {
+        animation.cancel();
+      }
+    }
+  }, [livingEnvironment, roomRootRef]);
+
   const districtTransitionDurationMs = useMemo(
     () =>
       resolveCxosDistrictTransitionDuration(
