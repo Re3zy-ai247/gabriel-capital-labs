@@ -24,6 +24,20 @@ supersession map for exactly what replaced each. "Hold," "commitment boundary," 
 are used per the brief's vocabulary; "consume" appears nowhere below except inside a quoted
 citation of the prior package.
 
+> **Refinement Cycle 2 (this revision), per `REFINEMENT-2-DIRECTIVE.md` (coordinator rulings)
+> and `COMMITMENT-REGATE.md` (the must-fix source):** closes the re-gate's F4 restoration —
+> re-authorization silently no-op'ing against a resolved attempt, and the paired false
+> `insufficient_funds` — under Ruling 1 (§3.2, §3.3, §5.2, §7.3); cites the canonical wallet
+> claim-key registry rather than re-deriving it, under Ruling 2 (§3.3, §15); fixes the
+> `actorId` Restrict-FK failure mode for system-driven entries and propagates `onBehalfOfId`
+> onto every downstream entry, per must-fix B6 (§3.2, §5.1–§5.6, §8.2–§8.3, §9.1–§9.3); closes
+> the funding-integrity gaps at B7/N7 (§8.2); fixes the clawback over-count and adds the
+> missing won-dispute reversal at N4, disclosing the agency-wide deficit blast radius (§8.3,
+> §8.4); corrects the FINAL REVIEW consent-ordering conflation under Ruling 4 (§11, §15); and
+> restates the F3–F7 disposition table honestly as RESOLVED-WITH-RESIDUALS (§14). Every change
+> below is labeled with the must-fix or ruling it closes; everything not listed here is
+> unchanged from the prior revision.
+
 ---
 
 ## 1. Scope, method, reading order
@@ -67,8 +81,8 @@ document must not diverge from).
 | `authorize` | − | debit (a hold) | Approve → Wallet Authorized, one row per letter, inside one all-or-nothing group txn (§6) | Yes |
 | `settle` | **0** | none — converts the hold from voidable to permanent | Provider `Accepted` (has a `providerJobId`) | Yes (same attempt as its authorize) |
 | `release` | + | credit (restores the hold) | Pre-settle rejection / cancel / TTL sweep | Yes (same attempt as its authorize) |
-| `clawback` | − | debit, **no floor** — may drive the fold negative | Stripe `charge.refunded` / `charge.dispute.created` (account-level), or an operator/CCO post-settlement make-good (subject-level) | Yes for subject-level; fixed `1` for account-level |
-| `adjust` | ± | correction, paired with `AdminAuditLog` | Admin-only | No (fixed `1`) |
+| `clawback` | − | debit, **no floor** — may drive the fold negative | Stripe `refund.created` / `charge.dispute.created` (account-level — keyed on the refund/dispute's own id, §8.3, corrected from `charge.refunded`/event-id keying), or an operator/CCO post-settlement make-good (subject-level) | Yes for subject-level; fixed `1` for account-level |
+| `adjust` | ± | correction, paired with `AdminAuditLog` | Admin-vocabulary — human-triggered, OR a `charge.dispute.closed`(won) automated compensating entry (§8.3) that still logs through the same `AdminAuditLog` trail (a "system" sentinel actor is safe there specifically, never on `WalletLedger` itself — §3.2's B6 argument) | No (fixed `1`) |
 
 Renames from C-WALLET/ADR-0044: `consume` → `settle` (same zero-value-marker reasoning,
 §5.4 preserves it verbatim); `void` → `release` (same pre-settle-failure reasoning, §5.5); the
@@ -174,13 +188,27 @@ model WalletLedger {
   amountCents           Int
 
   // The stable business subject. authorize/settle/release/clawback
-  // (subject-level) → the manifest id, "mail_<letterId>"
-  // (A-DOMAIN-MODEL.md §2.2; app/api/mail/prepare/route.ts:52). fund →
-  // "topup:<eventId>". adjust → an admin correction id. clawback
-  // (account-level) → "chargeback:<eventId>". NEVER the bare per-emission
-  // webhook id alone (same law as XpAward.subjectId, prisma/schema.prisma
-  // :753-754 — this is a REPEAT of the exact discipline that table already
-  // enforces, not a new one).
+  // (subject-level) → the attempt-FREE base id, "mail_<letterId>" — constant
+  // across every attempt of one letter, because it is what ties them together
+  // under this table's own `attempt` column (below). fund → "topup:<PaymentIntent
+  // id>" (§8.2, corrected from an earlier `<eventId>` keying — B7/N7). adjust →
+  // an admin correction id. clawback (account-level) → "chargeback:<refund or
+  // dispute id>" (§8.3, corrected from `<eventId>` — N4). NEVER the bare
+  // per-emission webhook id alone (same law as XpAward.subjectId,
+  // prisma/schema.prisma:753-754 — this is a REPEAT of the exact discipline that
+  // table already enforces, not a new one).
+  //
+  // ⚠️ Corrected misnomer (per REFINEMENT-2-DIRECTIVE Ruling 1): a prior revision
+  // of this comment called subjectId itself "the manifest id" — accurate only
+  // for TODAY's shipped one-manifest-per-letter code (`mailId = mail_${letter.id}`,
+  // app/api/mail/prepare/route.ts:16,52), and no longer accurate once Ruling 1's
+  // attempt lifecycle lands: the per-ATTEMPT physical manifest becomes a
+  // DIFFERENT, additional string, `mail_<letterId>_a<n>`, minted fresh on every
+  // retry and owned by `DisputePackageLetter.attempt` (W2's schema,
+  // FULFILLMENT-COMMITMENT-BOUNDARY.md/RECOVERY-ENGINE.md) — one letter can then
+  // have N manifests (one per attempt) all sharing this ONE wallet subjectId.
+  // subjectId is the wallet's cross-attempt correlation key; it is never itself
+  // a manifest id once more than one attempt can exist.
   subjectId             String
 
   // Generation counter for THIS subject's authorize/settle/release chain
@@ -234,13 +262,47 @@ model WalletLedger {
   // client this action was performed FOR, when the actor is an agency
   // principal acting inside a client workspace (lib/session.ts
   // WORKSPACE_COOKIE, :8); null when the actor spends for themselves.
-  // Restrict on both: the permanent financial audit trail must never lose
-  // its attribution to a cascade delete (§9 has the full resolution
-  // mechanism, including why admin impersonation can never reach this far).
-  actor                 User     @relation("WalletLedgerActor", fields: [actorId], references: [id], onDelete: Restrict)
-  actorId               String
+  //
+  // ⚠️ NULLABLE, corrected from a non-null Restrict FK (must-fix B6, argued
+  // here). `fund` (Stripe top-up webhook) and `clawback` (Stripe
+  // chargeback/refund/dispute webhooks) fire from a webhook handler with no
+  // signed-in User anywhere in the call path; `settle` fires from the mail
+  // provider's async acceptance callback; `release` and `clawback` may fire
+  // from the reconciliation sweep or a won-dispute reversal (§8.3, §8.4) —
+  // none of these has a real User to point at. A non-null `Restrict` FK
+  // fails at the FIRST such insert, because there is no "system" row in
+  // `User` — exactly what a prior revision's literal `actorId: "system"`
+  // (§8.3) would have hit. `actorKind` is the closed, app-enforced String
+  // this table already uses for `entryKind` itself (§2) — not a Prisma
+  // `enum`, for the identical purely-additive-migration reason `principalType`
+  // (§3.1) gives — with values `"operator" | "agency" | "system"`: `actorId`
+  // is present (and FK-checked) whenever `actorKind` is `"operator"` or
+  // `"agency"`, and is null if and only if `actorKind` is `"system"` — an
+  // application-level pairing invariant (asserted by `wallet-runtime.test.ts`,
+  // mirroring §3.2's existing policyVersion non-null-per-kind discipline), not
+  // a DB CHECK constraint, to keep the migration purely additive.
+  //
+  // **The alternative considered and rejected: AdminAuditLog's own precedent**
+  // (`actorId String`, no FK at all — prisma/schema.prisma:112-124) is
+  // deliberately NOT adopted here. It is the safer default for a table whose
+  // actor is *always* an admin and whose only cost of a bad id is a broken
+  // report; it would be the wrong trade for `WalletLedger`, whose §9.3
+  // argument for a REAL FK ("not a documentation convention") is the
+  // structural fix for F7 — dropping the FK to accommodate the system-driven
+  // minority would silently drop that guarantee for every operator/agency
+  // row too. Nullable-Restrict keeps the FK's integrity check for every row
+  // that has a real actor and only relaxes it for the rows that provably do
+  // not. (`AdminAuditLog`'s own actorId, being a plain unconstrained String,
+  // already tolerates a "system" sentinel value with no FK to violate — see
+  // §8.3's won-dispute handler, which uses exactly that precedent for the
+  // audit-log row it writes, correctly, because THAT table never had this
+  // table's FK to begin with.)
+  actor                 User?    @relation("WalletLedgerActor", fields: [actorId], references: [id], onDelete: Restrict)
+  actorId               String?
+  actorKind             String   // "operator" | "agency" | "system" — closed, app-enforced (B6)
   onBehalfOf            User?    @relation("WalletLedgerOnBehalfOf", fields: [onBehalfOfId], references: [id], onDelete: Restrict)
-  onBehalfOfId          String?
+  onBehalfOfId          String?  // (B6) propagated onto settle/release/clawback from the authorize
+                                  // row they resolve or reverse — never only on authorize (§5.3-§5.5)
 
   createdAt             DateTime @default(now())
 
@@ -281,15 +343,23 @@ model Claim {
 }
 ```
 
-**⚠️ Load-bearing correction to the WALLET key convention, argued here.** C-WALLET §3.6 proposed
+**⚠️ Load-bearing correction to the WALLET key convention — now the canonical registry entry,
+cited not re-derived (per REFINEMENT-2-DIRECTIVE Ruling 2).** C-WALLET §3.6 proposed
 `wallet:<subjectId>:<transition>` — with no attempt dimension. Adopted as-is, this would
 silently reopen a variant of F4 through the claim layer even after §3.2's ledger fix: attempt
 2's claim-before-effect check for `wallet:mail_abc:authorize` would find attempt 1's *already-
 committed* claim under the identical key and treat attempt 2 as a duplicate, short-circuiting
-before the ledger is ever consulted. **This document's key convention is
-`wallet:<subjectId>:<attempt>:<entryKind>`** — extending, not replacing, ADR-0045's table.
-`fund`/`adjust`/account-level `clawback` key at `attempt=1` uniformly, consistent with §3.2's
-fixed-attempt convention for those kinds.
+before the ledger is ever consulted. This document first argued the fix in Refinement Cycle 1;
+the coordinator has since made it the **binding, single-source-of-truth registry** for the
+wallet-entry domain (Ruling 2, resolving must-fix C's three-grammar defect — the re-gate found
+W1 and W2 had drifted to two different spellings, `wallet:<subjectId>:<attempt>:<entryKind>`
+here versus `wallet:<subjectId>:<transition>:<attempt>` in W2). **The canonical Wallet-entry
+key, stated once and referenced everywhere else, is `wallet:<subjectId>:<attempt>:<entryKind>`**
+— extending, not replacing, ADR-0045's table. `fund`/`adjust`/account-level `clawback` key at
+`attempt=1` uniformly, consistent with §3.2's fixed-attempt convention for those kinds. Per
+Ruling 2, W2's mail-transition domain key (`mail:<subjectId>:<attempt>:<toStage>`) is the
+sibling half of this same registry — stated once, in the directive, not re-spelled by either
+document; neither key shape is this document's to re-argue further.
 
 **Why two layers (claim table + row lock), not one.** The `Claim` check is a **cheap, lock-free
 outer** dedup: an HTTP route or webhook handler consults it *before* ever opening a transaction
@@ -437,22 +507,34 @@ activation posture (§3.5) and its runtime guard remain exactly C-WALLET §8.1�
 | `wallet_in_deficit` | authorize-group | `availableCents < 0` at request time, **regardless of requested amount** | HTTP-409-shaped (§5.2, §7.5) |
 | `attempt_out_of_sequence` | authorize (per letter) | requested `attempt` ≠ priorTerminalCount + 1, or a gap | `{ok:false}`, no row inserted |
 | `prior_attempt_still_active` | authorize (per letter) | an earlier attempt for this subject has no settle/release yet | `{ok:false}`, no row inserted |
+| `attempt_already_resolved` | authorize (per letter) | an authorize row exists for `(subjectId, attempt)` **and** a settle/release sibling already exists for that same tuple — the attempt is TERMINAL | `{ok:false}`, no row inserted, rolls back the WHOLE group (§6.1) — **the direct F4/N1 refusal (Ruling 1); never a replay no-op** |
 | `no_active_hold` | settle, release | no authorize row for `(subjectId, attempt)` | `{ok:false}` |
 | `already_released` | settle | a release row already exists for `(subjectId, attempt)` — **settle-after-release** | `{ok:false}` (§7.3) |
 | `already_settled` | release | a settle row already exists for `(subjectId, attempt)` — **release-after-settle** | `{ok:false}` (§7.6) |
 | `missing_audit_log` | adjust | no paired `AdminAuditLog` id supplied | `{ok:false}`, no row inserted |
 
 Idempotent replays (NOT errors — `{ok:true, created:false, entryId:<original>}`): a repeated
-`fund`/`authorize`/`settle`/`release`/`clawback` for the identical key tuple. **Double-settle**
-is deliberately in this list, not the error table (§7.4) — this is an engineered distinction, not
-an oversight: unlike settle-after-release (a genuine business-fact conflict), a second `settle`
-call for the exact same `(subjectId, attempt)` asserts the same fact twice, harmlessly, because
-the unique key plus the zero-amount design make a second row both impossible and unnecessary.
+`fund`/`authorize`/`settle`/`release`/`clawback` for the identical key tuple. **An authorize
+replay is idempotent ONLY when the existing row for that tuple has no settle/release sibling
+(Ruling 1, §5.2, §7.3) — otherwise it is `attempt_already_resolved` (error table above), never a
+silent no-op.** This is the exact correction the re-gate's F4/N1 findings forced: a prior
+revision's replay branch returned `ok:true` for ANY existing `(subjectId, attempt)` row,
+resolved or not, which is precisely how a released attempt's re-authorization request could once
+be told "a hold exists" with no new debit ever written. **Double-settle** is deliberately in this
+list, not the error table (§7.4) — this is an engineered distinction, not an oversight: unlike
+settle-after-release (a genuine business-fact conflict) or a resolved-attempt authorize replay
+(a genuine attempt-lifecycle conflict), a second `settle` call for the exact same `(subjectId,
+attempt)` asserts the same fact twice, harmlessly, because the unique key plus the zero-amount
+design make a second row both impossible and unnecessary.
 
 ### 5.1 `fundWallet` (S3)
 
 ```typescript
-async function fundWallet(walletId: string, amountCents: number, subjectId: string, stripeRef: string, origin: "stripe_checkout" | "admin_grant", actorId: string) {
+async function fundWallet(
+  walletId: string, amountCents: number, subjectId: string, stripeRef: string,
+  origin: "stripe_checkout" | "admin_grant",
+  actorId: string | null, actorKind: "operator" | "agency" | "system",  // B6 — nullable/kinded, §3.2
+) {
   if (!Number.isInteger(amountCents) || amountCents <= 0) return { ok: false, code: "invalid_amount", error: "unrecognized or non-positive top-up amount" }; // F6 fix — fails CLOSED, never guesses (mirrors planForPrice, lib/stripe.ts:201-217)
   return prisma.$transaction(async (tx) => {
     await tx.$queryRawUnsafe('SELECT id FROM "Wallet" WHERE id = $1 FOR UPDATE', walletId);
@@ -460,7 +542,7 @@ async function fundWallet(walletId: string, amountCents: number, subjectId: stri
     if (existing) return { ok: true, created: false, entryId: existing.id }; // webhook replay — belt-and-braces alongside claimStripeEvent
     const row = await tx.walletLedger.create({ data: {
       walletId, entryKind: "fund", amountCents, subjectId, attempt: 1,
-      basis: origin, stripeRef, actorId,
+      basis: origin, stripeRef, actorId, actorKind,
     }});
     await tx.wallet.update({ where: { id: walletId }, data: { lockVersion: { increment: 1 } } });
     return { ok: true, created: true, entryId: row.id };
@@ -470,7 +552,9 @@ async function fundWallet(walletId: string, amountCents: number, subjectId: stri
 
 No fold-check invariant applies to `fund` — crediting the wallet can never overdraw it. The
 guard here is entirely the **fail-closed unknown-amount law** (F6), checked before the lock is
-even taken.
+even taken. `origin: "stripe_checkout"` calls (§8.2) pass `actorId: null, actorKind: "system"` —
+a Stripe webhook, not a signed-in User, credited this row (B6); `origin: "admin_grant"` calls
+pass the granting admin's real `User.id` and `actorKind: "operator"`.
 
 ### 5.2 `authorizeGroup` — THE canonical authorize operation (S1, S2, resolves F3/F4)
 
@@ -482,30 +566,64 @@ interface LetterHoldRequest { subjectId: string; attempt: number; amountCents: n
 
 async function authorizeGroup(
   walletId: string, authorizationGroupId: string, holds: LetterHoldRequest[],
-  actorId: string, onBehalfOfId: string | null,
+  actorId: string, actorKind: "operator" | "agency", onBehalfOfId: string | null,
 ) {
   return prisma.$transaction(async (tx) => {
     // ── the anchor lock — the ENTIRE fix for F3 ──
     await tx.$queryRawUnsafe('SELECT id FROM "Wallet" WHERE id = $1 FOR UPDATE', walletId);
 
-    // ── the fold-check invariant ──
+    // ── the fold — the amount-independent deficit guard runs BEFORE anything
+    // else, exactly as before (§7.5) ──
     const rows = await tx.walletLedger.findMany({ where: { walletId } });
     const { availableCents } = foldWalletBalance(rows);
     if (availableCents < 0) {
       return { ok: false, code: "wallet_in_deficit", error: "wallet is in a deficit posture; no new authorizations until cured", deficitCents: -availableCents };
     }
-    const requiredCents = holds.reduce((s, h) => s + h.amountCents, 0);
-    if (availableCents < requiredCents) {
-      return { ok: false, code: "insufficient_funds", availableCents, requiredCents, shortfallCents: requiredCents - availableCents };
-    }
 
-    // ── per-letter guard + insert, ALL inside this one locked transaction ──
-    const created: { subjectId: string; entryId: string }[] = [];
+    // ── PASS 1 — classify EVERY hold before pricing anything (per REFINEMENT-
+    // 2-DIRECTIVE Ruling 1 — the direct fix for the re-gate's F4 restoration
+    // and its N1 side-effect). A hold whose (subjectId, attempt) already has a
+    // settle/release sibling names a TERMINAL attempt — re-authorizing it is
+    // REFUSED, never a free replay. A hold whose (subjectId, attempt) has an
+    // authorize row with NO such sibling is a true in-flight duplicate (a UI
+    // double-click, a retried caller) and is returned as-is, WITHOUT being
+    // priced again — pricing it again was N1's false insufficient_funds. Only
+    // a hold with no existing row at all is "new" and belongs in the funds
+    // check below. This replaces the single unconditional "existing → return"
+    // branch a prior revision used, which is exactly what let a released
+    // attempt's re-authorization request be told "a hold exists" with no new
+    // debit ever written (the re-gate's surviving F4 path).
+    type Classified =
+      | { hold: LetterHoldRequest; kind: "replay"; entryId: string }
+      | { hold: LetterHoldRequest; kind: "new" };
+    const classified: Classified[] = [];
     for (const h of holds) {
       const existing = await tx.walletLedger.findFirst({ where: { walletId, subjectId: h.subjectId, entryKind: "authorize", attempt: h.attempt } });
-      if (existing) { created.push({ subjectId: h.subjectId, entryId: existing.id }); continue; } // replay of an in-flight/already-created attempt
+      if (existing) {
+        // An authorize row already occupies this EXACT (subjectId, attempt)
+        // tuple. Whether this is a harmless replay or a resolved attempt being
+        // asked to pay twice turns entirely on whether it has been settled or
+        // released — NEVER on merely "a row exists," which was the defect.
+        const resolved = await tx.walletLedger.findFirst({
+          where: { walletId, subjectId: h.subjectId, attempt: h.attempt, entryKind: { in: ["settle", "release"] } },
+        });
+        if (resolved) {
+          // THE Ruling 1 refusal. This attempt is TERMINAL — settled or
+          // released — and can never be re-held or re-settled. There is no
+          // "same-attempt re-authorization" (§7.3 restates this): the only
+          // legal retry is a fresh authorizeGroup call at attempt+1, a
+          // genuinely NEW tuple under the unique key.
+          throw new WalletGuardError("attempt_already_resolved", h.subjectId); // rolls back the WHOLE group — all-or-nothing
+        }
+        // No settle/release sibling — a true idempotent replay of an attempt
+        // still genuinely in flight. Return the ORIGINAL row; no new debit,
+        // and — the N1 fix — its amount never enters requiredCents below.
+        classified.push({ hold: h, kind: "replay", entryId: existing.id });
+        continue;
+      }
 
-      // sequence guard — attempt N must be exactly priorTerminalCount + 1
+      // No existing row at all for this tuple — sequence-guard it (unchanged
+      // from Refinement Cycle 1).
       const priorLatest = await tx.walletLedger.findFirst({
         where: { walletId, subjectId: h.subjectId, entryKind: "authorize" },
         orderBy: { attempt: "desc" },
@@ -524,13 +642,32 @@ async function authorizeGroup(
           throw new WalletGuardError("attempt_out_of_sequence", h.subjectId); // a gap
         }
       }
+      classified.push({ hold: h, kind: "new" });
+    }
 
+    // ── the funds check — over ONLY the holds that will actually debit
+    // (Ruling 1 / N1 fix). A replay's amount is already reflected in
+    // `availableCents` from its ORIGINAL insert; counting it again here is
+    // exactly N1's false insufficient_funds, which could fire whenever the
+    // wallet held less than 2× the group's cost on a genuine replay. ──
+    const requiredCents = classified
+      .filter((c): c is Extract<Classified, { kind: "new" }> => c.kind === "new")
+      .reduce((s, c) => s + c.hold.amountCents, 0);
+    if (availableCents < requiredCents) {
+      return { ok: false, code: "insufficient_funds", availableCents, requiredCents, shortfallCents: requiredCents - availableCents };
+    }
+
+    // ── PASS 2 — insert only the "new" holds, ALL inside this one locked
+    // transaction; replays contribute their original entryId with no write. ──
+    const created: { subjectId: string; entryId: string }[] = [];
+    for (const c of classified) {
+      if (c.kind === "replay") { created.push({ subjectId: c.hold.subjectId, entryId: c.entryId }); continue; }
       const row = await tx.walletLedger.create({ data: {
-        walletId, entryKind: "authorize", amountCents: -h.amountCents,
-        subjectId: h.subjectId, attempt: h.attempt, authorizationGroupId,
-        policyVersion: h.policyVersion, basis: h.basis, actorId, onBehalfOfId,
+        walletId, entryKind: "authorize", amountCents: -c.hold.amountCents,
+        subjectId: c.hold.subjectId, attempt: c.hold.attempt, authorizationGroupId,
+        policyVersion: c.hold.policyVersion, basis: c.hold.basis, actorId, actorKind, onBehalfOfId,
       }});
-      created.push({ subjectId: h.subjectId, entryId: row.id });
+      created.push({ subjectId: c.hold.subjectId, entryId: row.id });
     }
     await tx.wallet.update({ where: { id: walletId }, data: { lockVersion: { increment: 1 } } });
     return { ok: true, authorizationGroupId, entries: created };
@@ -546,7 +683,10 @@ The 402/409 shapes returned are the exact contracts §8.5 hands to W3's FINAL RE
 ### 5.3 `settleHold` (resolves F4's "consume-after-void unguarded" — the settle-after-release direction)
 
 ```typescript
-async function settleHold(walletId: string, subjectId: string, attempt: number, basis: string, actorId: string) {
+async function settleHold(
+  walletId: string, subjectId: string, attempt: number, basis: string,
+  actorId: null, actorKind: "system",  // B6 — settle fires ONLY from the provider's async acceptance callback (§2); never a signed-in User, so the type is narrowed, not just the practice
+) {
   return prisma.$transaction(async (tx) => {
     await tx.$queryRawUnsafe('SELECT id FROM "Wallet" WHERE id = $1 FOR UPDATE', walletId);
 
@@ -561,8 +701,12 @@ async function settleHold(walletId: string, subjectId: string, attempt: number, 
 
     const row = await tx.walletLedger.create({ data: {
       walletId, entryKind: "settle", amountCents: 0, subjectId, attempt,
-      reversesId: authorizeRow.id, policyVersion: authorizeRow.policyVersion, // COPIED, never re-read
-      basis, actorId,
+      reversesId: authorizeRow.id,
+      policyVersion: authorizeRow.policyVersion,   // COPIED, never re-read
+      onBehalfOfId: authorizeRow.onBehalfOfId,      // COPIED, never re-read (B6) — the permanent
+      // record of WHO a settled charge was for must survive on the entry that makes it
+      // PERMANENT, not only on the authorize row that preceded it.
+      basis, actorId, actorKind,
     }});
     await tx.wallet.update({ where: { id: walletId }, data: { lockVersion: { increment: 1 } } });
     return { ok: true, created: true, entryId: row.id };
@@ -575,7 +719,10 @@ async function settleHold(walletId: string, subjectId: string, attempt: number, 
 ### 5.4 `releaseHold` (the mirror-image refusal — release-after-settle)
 
 ```typescript
-async function releaseHold(walletId: string, subjectId: string, attempt: number, basis: string, actorId: string) {
+async function releaseHold(
+  walletId: string, subjectId: string, attempt: number, basis: string,
+  actorId: string | null, actorKind: "operator" | "agency" | "system",  // B6 — caller-supplied per basis: ("system", null) for provider_rejected/ttl_expired/policy_failed; the real canceler's identity for operator_canceled
+) {
   return prisma.$transaction(async (tx) => {
     await tx.$queryRawUnsafe('SELECT id FROM "Wallet" WHERE id = $1 FOR UPDATE', walletId);
 
@@ -590,8 +737,10 @@ async function releaseHold(walletId: string, subjectId: string, attempt: number,
 
     const row = await tx.walletLedger.create({ data: {
       walletId, entryKind: "release", amountCents: Math.abs(authorizeRow.amountCents), subjectId, attempt,
-      reversesId: authorizeRow.id, policyVersion: authorizeRow.policyVersion,
-      basis, actorId,
+      reversesId: authorizeRow.id,
+      policyVersion: authorizeRow.policyVersion,
+      onBehalfOfId: authorizeRow.onBehalfOfId,      // COPIED, never re-read (B6) — see §5.3's identical note
+      basis, actorId, actorKind,
     }});
     await tx.wallet.update({ where: { id: walletId }, data: { lockVersion: { increment: 1 } } });
     return { ok: true, created: true, entryId: row.id };
@@ -612,13 +761,29 @@ entry kind (§2's reasoning).
 async function clawback(
   walletId: string, subjectId: string, attempt: number, amountCents: number,
   basis: "chargeback" | "refund_reversal" | "operational_makegood",
-  stripeRef: string | null, reversesId: string | null, actorId: string,
+  stripeRef: string | null, reversesId: string | null,
+  actorId: string | null, actorKind: "operator" | "agency" | "system",  // B6 — ("system", null) for the account-level Stripe-webhook flavors; the make-good's real actor for operational_makegood
 ) {
   return prisma.$transaction(async (tx) => {
     await tx.$queryRawUnsafe('SELECT id FROM "Wallet" WHERE id = $1 FOR UPDATE', walletId);
 
     const existing = await tx.walletLedger.findFirst({ where: { walletId, subjectId, entryKind: "clawback", attempt } });
     if (existing) return { ok: true, created: false, entryId: existing.id };
+
+    // onBehalfOfId (B6, propagated). The subject-level `operational_makegood`
+    // flavor names the settle row it reverses via `reversesId` — that row
+    // already carries the real on-behalf-of attribution (itself copied
+    // forward from ITS authorize row, §5.3) — copy it again so the permanent
+    // record of WHO a settled charge was for survives on the clawback entry
+    // too, not only on authorize/settle. The two account-level flavors
+    // (`chargeback`/`refund_reversal`) have no `reversesId` and no single
+    // letter to attribute to — §9's model has nothing narrower than the
+    // account itself to name there, so `onBehalfOfId` stays null.
+    let onBehalfOfId: string | null = null;
+    if (reversesId) {
+      const reversed = await tx.walletLedger.findUnique({ where: { id: reversesId } });
+      onBehalfOfId = reversed?.onBehalfOfId ?? null;
+    }
 
     // NO fold-check here, deliberately. Clawback is the ONE entry kind exempt from the
     // "available >= requested" guard: it represents money ALREADY gone (Stripe already
@@ -628,7 +793,7 @@ async function clawback(
     const before = foldWalletBalance(await tx.walletLedger.findMany({ where: { walletId } }));
     const row = await tx.walletLedger.create({ data: {
       walletId, entryKind: "clawback", amountCents: -Math.abs(amountCents),
-      subjectId, attempt, reversesId, stripeRef, basis, actorId,
+      subjectId, attempt, reversesId, stripeRef, basis, actorId, actorKind, onBehalfOfId,
     }});
     await tx.wallet.update({ where: { id: walletId }, data: { lockVersion: { increment: 1 } } });
     const after = before.availableCents - Math.abs(amountCents);
@@ -646,14 +811,18 @@ attempt, and `reversesId` points at the `settle` row being made good.
 ### 5.6 `adjust`
 
 ```typescript
-async function adjust(walletId: string, subjectId: string, amountCents: number, basis: string, adminAuditLogId: string | null, actorId: string) {
+async function adjust(
+  walletId: string, subjectId: string, amountCents: number, basis: string,
+  adminAuditLogId: string | null,
+  actorId: string | null, actorKind: "operator" | "system",  // B6 — never "agency" (an agency principal never performs an admin-vocabulary correction); "system" is the ONE exception to "adjust is human-triggered" — an automated compensating entry (e.g. §8.3's won-dispute reversal) that still requires the paired AdminAuditLog row (enforced above), never a bare unsupervised write
+) {
   if (!adminAuditLogId) return { ok: false, code: "missing_audit_log", error: "adjust requires a paired AdminAuditLog row" };
   return prisma.$transaction(async (tx) => {
     await tx.$queryRawUnsafe('SELECT id FROM "Wallet" WHERE id = $1 FOR UPDATE', walletId);
     const existing = await tx.walletLedger.findFirst({ where: { walletId, subjectId, entryKind: "adjust", attempt: 1 } });
     if (existing) return { ok: true, created: false, entryId: existing.id };
     const row = await tx.walletLedger.create({ data: {
-      walletId, entryKind: "adjust", amountCents, subjectId, attempt: 1, basis, actorId,
+      walletId, entryKind: "adjust", amountCents, subjectId, attempt: 1, basis, actorId, actorKind,
     }});
     await tx.wallet.update({ where: { id: walletId }, data: { lockVersion: { increment: 1 } } });
     return { ok: true, created: true, entryId: row.id };
@@ -816,24 +985,69 @@ provider still mails the letter; the wallet never pays for it a second time.
 3. The fold for this subject now reads `authorize(−X, attempt 1) + release(+X, attempt 1) +
    authorize(−X, attempt 2) = −X` — a real, current hold — not zero.
 4. When attempt 2 settles (`settleHold(subjectId, attempt=2)`, §5.3), the wallet has paid `X`
-   exactly once, net, matching the one piece of mail that actually got sent under attempt 2
-   (attempt 1 was released pre-acceptance, per the state machine's own boundary — MailStatus.ts's
-   `CANCELABLE` list ends at `PROVIDER_ACCEPTED` — so attempt 1 corresponds to no physical
-   mailing at all).
+   exactly once, net, matching the one piece of mail that actually got sent under attempt 2.
+   Attempt 1's release corresponds to no physical mailing in the ordinary case — a synchronous
+   provider rejection, an operator cancel, or a TTL sweep, all of which fire before
+   `PROVIDER_ACCEPTED`. **Correction, per REFINEMENT-2-DIRECTIVE Ruling 3:** a prior revision of
+   this point attributed that to "MailStatus.ts's `CANCELABLE` list ends at `PROVIDER_ACCEPTED`"
+   — a misreading. The shipped array's LAST element IS `PROVIDER_ACCEPTED`
+   (`lib/mail/MailStatus.ts:43`: `CANCELABLE = [..., "PROVIDER_ACCEPTED"]`), so
+   `canTransition(PROVIDER_ACCEPTED, CANCELED)` evaluates `true` today and `MailService.cancel()`
+   could technically drive that transition at the mail-state-machine layer. This document's
+   guarantee never depended on that array excluding it: §5.4's `already_settled` check (§7.6)
+   makes release-after-settle structurally impossible regardless of what the mail state machine
+   permits, and Ruling 3 makes `PROVIDER_ACCEPTED → CANCELED` a FORBIDDEN transition at the
+   Fulfillment Commitment layer precisely BECAUSE the shipped array includes it — acceptance is
+   the irreversible boundary; once `settleHold(attempt)` has run, that hold stays settled
+   forever, and any "cancel" request arriving after acceptance can resolve only to an
+   `adjust`-vocabulary accounting reconciliation (§2, §12 invariants 2–3), never a `release`,
+   never a claim that nothing was charged.
 5. **Structural reason F4 is eliminated:** the unique key's grain now matches the real-world
    grain — "one fulfillment attempt, one possible debit" — instead of "one subject, ever, at most
    one debit," which was the root mismatch. There is no tuple space left in which a `release`
    permanently forecloses a subject's ability to ever be debited again, because a fresh attempt
    number is always an available, distinct key.
 
+**There is no "same-attempt re-authorization" — retired as a concept (Ruling 1).** The re-gate's
+root cause was a cross-document divergence: W2 described a rejected-then-retried letter as "the
+same attempt reused" while this document minted attempt+1 — no value of `attempt` satisfied
+both, and this document's own §5.2 replay branch (before this cycle's fix, §5.2/master guard
+table) resolved that ambiguity by silently treating ANY repeat of attempt 1 as an idempotent
+no-op — exactly how a released hold could be "re-authorized" for zero net debit. Ruling 1
+forecloses this permanently: **retry after ANY release mints a NEW attempt, full stop; there is
+no wallet-level distinction between WHY attempt 1 was released.** A `PAYMENT_VOID` retry (attempt
+1 released because the payment method itself failed) and a `REJECTED` retry (attempt 1 released
+because the provider declined the piece) are the IDENTICAL wallet path: both call
+`releaseHold(subjectId, 1, basis)` — differing only in `basis` — and both retries call
+`authorizeGroup([{ subjectId, attempt: 2, … }])`. The wallet does not know or care which
+mail-layer state produced the release; it only ever sees `release`, then a fresh `authorize` at
+the next integer. (W2's mail-layer state names are not otherwise part of this document's
+vocabulary, §1; they appear only in this paragraph, to foreclose the misreading that produced
+the original defect.)
+
+**If a caller — mistakenly, or under the now-retired "same attempt reused" framing — calls
+`authorizeGroup` with `attempt:1` again after `release(1)`:** §5.2's Pass 1 finds attempt 1's
+authorize row, finds its `release` sibling, and throws `attempt_already_resolved` — the WHOLE
+group rolls back (§6.1), nothing is inserted, and the caller receives an explicit refusal rather
+than a false "ok." This is the exact case the re-gate's surviving F4 path exploited; it is now a
+hard, tested refusal, never a silent success.
+
+**The directive's required proof, reproduced exactly:** after `release(mail_X, a1)`, `a1` is
+TERMINAL — no code path re-opens it. Retry mints `a2` (a genuinely new tuple, never a collision
+with `a1`). `authorize(a2)` debits the wallet for real (§5.2 Pass 2 — it is classified `"new"`,
+never `"replay"`). `settle(a2)` REQUIRES `authorize(a2)` to already exist (§5.3's `no_active_hold`
+guard) — there is no zero-net settlement path: every dollar the wallet ever pays out under `a2`
+was actually debited under `a2`, and `a1`'s reversed debit is never revisited.
+
 **A new adjacent guard this redesign requires (not itself part of F4, but necessary to avoid
 reopening a hole through the redesign):** without the `prior_attempt_still_active` /
 `attempt_out_of_sequence` checks (§5.2), nothing would stop a caller from opening attempt 2 while
 attempt 1 is still an active, unresolved hold — double-exposing the wallet to two simultaneous
-holds for what should be one in-flight fulfillment, or from skipping straight to attempt 5. This
-guard is this document's own addition, reasoned above, not lifted verbatim from the brief — flagged
-here per the header's "argue any deviation in-doc" instruction, though it is a completion of S2's
-mechanism rather than a deviation from it.
+holds for what should be one in-flight fulfillment, or from skipping straight to attempt 5. Both
+guards, and this cycle's `attempt_already_resolved` guard alongside them, are this document's own
+addition, reasoned above, not lifted verbatim from the brief — flagged here per the header's
+"argue any deviation in-doc" instruction, though all three are a completion of S2's mechanism
+rather than a deviation from it.
 
 ### 7.4 Double-settle — an idempotent replay, not a refusal (engineered distinction)
 
@@ -901,19 +1115,55 @@ amount fork (§16): whichever the Founder picks, `cs.amount_total` is always the
 captured amount, since a fixed Price and a dynamic `price_data.unit_amount` both flow through the
 same Stripe-computed total.
 
-### 8.2 Webhook grant — captures `amount_total`, never metadata
+### 8.2 Webhook grant — captures `amount_total`, never metadata (B7/N7, revised)
 
 ```typescript
 // PROPOSED — parallel to the letters_5 branch (app/api/stripe/webhook/route.ts:142-147).
+// Fires on checkout.session.completed. B7/N7 fix: three new preconditions gate the credit,
+// none of which exist in the shipped letters_5 branch today.
 } else if (cs.mode === "payment" && cs.metadata?.product === "wallet_topup") {
   const userId = cs.metadata.userId;
-  const amountCents = cs.amount_total;   // ← F6's fix: Stripe's own captured amount, NEVER metadata
-  if (userId && Number.isInteger(amountCents) && amountCents > 0) {
-    const wallet = await getOrCreateWallet("consumer" /* or "agency" per §9.1 */, userId);
-    await fundWallet(wallet.id, amountCents, `topup:${event.id}`, cs.payment_intent as string, "stripe_checkout", userId);
+  const paymentIntentId = typeof cs.payment_intent === "string" ? cs.payment_intent : cs.payment_intent?.id;
+
+  if (cs.payment_status !== "paid") {
+    // (1) N7 fix — `payment_status` (this exact string appears NOWHERE in the repo
+    // today) is the definitive signal, not "the session completed." checkout.session
+    // .completed also fires for delayed-notification payment methods (bank debits,
+    // some vouchers) BEFORE funds actually settle — cs.payment_status stays "unpaid"
+    // until they do. Crediting on session-completion alone would grant spendable
+    // balance for money that has not arrived and may never arrive. No-op, NOT an
+    // error: no WalletLedger row is written for this attempt, so there is nothing to
+    // release or compensate. See below for how the delayed methods eventually resolve.
+  } else if (cs.currency !== "usd") {
+    // (2) N7 fix — no currency assertion exists today. Adaptive Pricing is a Stripe
+    // Dashboard ACCOUNT-LEVEL toggle that can settle a session in the shopper's local
+    // currency with NO code change on this route — it silently changes what
+    // cs.amount_total/cs.currency mean. WalletLedger.amountCents is a bare Int with no
+    // currency column (S1's instrument is USD-denominated by design); crediting a
+    // non-USD total as if it were cents-of-USD would credit the wrong amount at the
+    // wrong exchange rate with no record of the mistake. Reject and surface it —
+    // never guess a conversion.
+    reportError(new Error("Wallet top-up settled in a non-USD currency"), {
+      scope: "wallet", phase: "fund", checkoutSessionId: cs.id, currency: cs.currency,
+    });
+  } else {
+    const amountCents = cs.amount_total;   // ← F6's fix, retained: Stripe's own captured amount, NEVER metadata
+    if (userId && paymentIntentId && Number.isInteger(amountCents) && amountCents > 0) {
+      const wallet = await getOrCreateWallet("consumer" /* or "agency" per §9.1 */, userId);
+      // (3) N7 fix — subject keyed on the PAYMENT (the PaymentIntent id), never the
+      // EVENT id. Stripe can and does deliver more than one event for one successful
+      // payment: a retried checkout.session.completed, plus — for delayed-notification
+      // methods — a distinct checkout.session.async_payment_succeeded firing LATER for
+      // the SAME session/PaymentIntent. Keying `topup:<eventId>` (a prior revision's
+      // text) would let that second, independent event double-credit the identical
+      // payment; `fundWallet`'s own `(walletId, subjectId, entryKind, attempt)` unique
+      // key (§3.2) is the actual dedupe boundary, so the subject must name the payment,
+      // not the delivery. Corrected to `topup:<paymentIntentId>` here and in §3.2/§8.3.
+      await fundWallet(wallet.id, amountCents, `topup:${paymentIntentId}`, paymentIntentId, "stripe_checkout", null, "system");
+    }
+    // else: reportError — credits NOTHING (§5.1's invalid_amount path), mirroring
+    // syncSubscriptionToUser's "money path just went nowhere" discipline (lib/billing.ts:56-67).
   }
-  // else: reportError — credits NOTHING (§5.1's invalid_amount path), mirroring
-  // syncSubscriptionToUser's "money path just went nowhere" discipline (lib/billing.ts:56-67).
 }
 ```
 
@@ -921,29 +1171,104 @@ same Stripe-computed total.
 a double-fund even if the webhook-level `claimStripeEvent` were somehow bypassed — the identical
 two-independent-locks redundancy `creditLetters` already relies on.
 
-### 8.3 Chargebacks and disputes — representable, not silently dropped (F6's second half)
+**`checkout.session.async_payment_failed` / `checkout.session.async_payment_expired` — a no-op,
+stated explicitly (N7).** Both fire only for the delayed-notification methods guard (1) above
+already protects against crediting early. Neither event needs a WalletLedger entry of ANY kind:
+because funding requires `payment_status === "paid"` (guard 1), a failed or expired delayed
+payment never had a `fund` row to begin with — there is nothing to release, clawback, or adjust.
+The handler's entire job is to acknowledge the webhook (200) so Stripe stops retrying it, and
+optionally to notify the user their top-up did not complete (a W3/UX concern, not a wallet one).
+Both event types should be added to `HANDLED_EVENT_TYPES`
+(`app/api/stripe/webhook/route.ts:23-30`) alongside `wallet_topup`'s activation — though the
+existing unhandled-default (`{received:true}`, no-op) already covers them silently either way;
+this document states the behavior so a future reader does not mistake silence for an oversight.
+
+### 8.3 Chargebacks and disputes — representable, not silently dropped (F6's second half; revised for N4)
 
 ```typescript
-// PROPOSED — new webhook branches; neither event type is currently handled at all.
-} else if (event.type === "charge.refunded") {
-  const charge = event.data.object as Stripe.Charge;
-  const pi = typeof charge.payment_intent === "string" ? charge.payment_intent : charge.payment_intent?.id;
+// PROPOSED — new webhook branches; none of these event types is currently handled at all.
+} else if (event.type === "refund.created") {
+  // N4 fix — keyed on the INDIVIDUAL refund, never the cumulative charge total, and
+  // on the refund's OWN id, never event.id. `charge.refunded`'s `amount_refunded` is
+  // CUMULATIVE across every refund issued against that charge; two partial refunds
+  // would each report a growing total, and clawing back that total a second time
+  // over-counts by the FIRST refund's amount. `refund.created`'s own `amount` is the
+  // individual refund's cents, and its own `id` is unique per refund — exactly the
+  // (amount, key) pair a clawback needs, whether the charge is refunded once, in
+  // full, or in several partials over time. (A prior revision used `charge.refunded`
+  // + `charge.amount_refunded` + `chargeback:<event.id>` — all three corrected here.)
+  const refund = event.data.object as Stripe.Refund;
+  const pi = typeof refund.payment_intent === "string" ? refund.payment_intent : refund.payment_intent?.id;
   const fundRow = await findWalletLedgerByStripeRef(pi);   // uses the new @@index([stripeRef]), §3.2
   if (fundRow) {
-    await clawback(fundRow.walletId, `chargeback:${event.id}`, 1, charge.amount_refunded, "refund_reversal", pi, null, "system");
+    await clawback(fundRow.walletId, `chargeback:${refund.id}`, 1, refund.amount, "refund_reversal", pi, null, null, "system");
   } else {
-    reportError(new Error("Stripe refund has no matching WalletLedger fund row"), { scope: "wallet", phase: "clawback", paymentIntentId: pi });
+    reportError(new Error("Stripe refund has no matching WalletLedger fund row"), { scope: "wallet", phase: "clawback", paymentIntentId: pi, refundId: refund.id });
   }
 } else if (event.type === "charge.dispute.created") {
+  // Disputes were already correctly singular (one dispute.created per dispute,
+  // dispute.amount is that dispute's own amount) — only the KEY is corrected, for the
+  // identical reason as refund.created: keying on the dispute's own id (not event.id)
+  // means a redelivered dispute.created for the same dispute can never mint a second
+  // clawback.
   const dispute = event.data.object as Stripe.Dispute;
   const fundRow = await findWalletLedgerByStripeRef(dispute.charge as string);
   if (fundRow) {
-    await clawback(fundRow.walletId, `chargeback:${event.id}`, 1, dispute.amount, "chargeback", dispute.charge as string, null, "system");
+    await clawback(fundRow.walletId, `chargeback:${dispute.id}`, 1, dispute.amount, "chargeback", dispute.charge as string, null, null, "system");
   } else {
-    reportError(new Error("Stripe dispute has no matching WalletLedger fund row"), { scope: "wallet", phase: "clawback", charge: dispute.charge });
+    reportError(new Error("Stripe dispute has no matching WalletLedger fund row"), { scope: "wallet", phase: "clawback", charge: dispute.charge, disputeId: dispute.id });
+  }
+} else if (event.type === "charge.dispute.closed") {
+  // N4 fix — the missing WON-dispute compensator. A dispute can resolve in
+  // CreditVector's favor (dispute.status === "won"); nothing in a prior revision
+  // reversed the clawback the branch above wrote when the SAME dispute was CREATED,
+  // so a won dispute left an innocent debit permanent forever — worse off than if the
+  // dispute had never happened.
+  const dispute = event.data.object as Stripe.Dispute;
+  if (dispute.status !== "won") {
+    // "lost" / "warning_closed" / etc. — the original clawback stands correctly; no action.
+  } else {
+    const fundRow = await findWalletLedgerByStripeRef(dispute.charge as string);
+    if (!fundRow) {
+      reportError(new Error("Won dispute has no matching WalletLedger fund row"), { scope: "wallet", phase: "adjust", charge: dispute.charge, disputeId: dispute.id });
+    } else {
+      // This is `adjust` (§5.6), never a second clawback and never a release — an
+      // accounting CORRECTION to a prior entry, structurally identical to any other
+      // manual make-good, requiring the same paired AdminAuditLog row every other
+      // adjust does (missing_audit_log guard). Reusing `chargeback:<dispute.id>` as
+      // the adjust's own subjectId is deliberate, not incidental: entryKind differs
+      // ("adjust" vs "clawback") so the unique key never collides with the original
+      // clawback row, AND it means a redelivered dispute.closed for the identical
+      // dispute is dedupe by `adjust`'s own existing-row check — no separate
+      // idempotency mechanism needed. actorId is a "system" sentinel — safe HERE
+      // specifically because AdminAuditLog's own actorId is a plain String with no FK
+      // to violate (prisma/schema.prisma:112-124) — the SAME precedent §3.2 weighs
+      // for WalletLedger and does NOT adopt there (see §3.2's argued B6 choice). An
+      // automated reversal is exactly the kind of unsupervised action that most needs
+      // a durable, admin-visible record, human-triggered or not.
+      const auditLog = await prisma.adminAuditLog.create({ data: {
+        actorId: "system", actorEmail: "system@internal",
+        action: "wallet.dispute_won_reversal", targetType: "wallet", targetId: fundRow.walletId,
+        summary: `Dispute ${dispute.id} won — reversing the clawback taken at dispute.created`,
+      }});
+      await adjust(fundRow.walletId, `chargeback:${dispute.id}`, dispute.amount, "dispute_won_reversal", auditLog.id, null, "system");
+    }
   }
 }
 ```
+
+**Disclosed risk, not eliminated (N4) — the agency-wide deficit blast radius.** `authorizeGroup`
+refuses ALL new authorizations against a wallet in deficit, unconditionally (§7.5) — and one
+`Wallet` anchors one PRINCIPAL, which for an agency is the entire agency, not any one managed
+client (§9.1: "there is no per-client Wallet for agency-managed packages"). A single chargeback
+or refund on ONE client's mailing therefore can push the AGENCY's one wallet into deficit, which
+then blocks new authorizations for EVERY client the agency manages — one bad dispute freezing an
+agency's whole book. This document does not scope deficit-blocking below agency-wide: doing so
+would require a genuinely new per-client sub-accounting mechanism inside one Wallet, which is a
+redesign of S1's one-anchor-per-principal model, not a bounded fix, and is out of this cycle's
+scope (Founder ruling: no redesign). The risk is disclosed here, and again in §8.4 and in F6's
+disposition (§14), rather than silently absorbed into "chargebacks representable" — representable
+is not the same claim as "narrowly contained."
 
 ### 8.4 Deficit posture — a derived two-state condition, not a stored column
 
@@ -975,6 +1300,16 @@ read, consistent with "balance derived by fold, never stored" applied one level 
 the **event** (the fund/adjust call that crosses the fold back to non-negative, detected by
 `cureDeficit`'s pre/post comparison, §5.7), not a resting state distinct from `normal`.
 
+**Disclosed residual (N4) — deficit is a per-Wallet condition, and one Wallet can be an entire
+agency.** The `deficit` state above blocks `authorizeGroup` unconditionally, for the WHOLE
+wallet, regardless of which single transaction caused it. Because one `Wallet` anchors one
+principal — and an agency's managed clients share their agency's one Wallet, never a per-client
+one (§9.1) — a single chargeback or refund tied to ONE client's mailing can push the agency's
+entire book into deficit and freeze new authorizations for every OTHER client the agency manages
+too. This is named here, in §8.3, and in F6's disposition (§14) as a disclosed risk, not a solved
+one: narrowing the blast radius would need per-client sub-accounting inside one Wallet, which is
+a redesign of S1's one-anchor-per-principal model and out of this cycle's bounded scope.
+
 ### 8.5 Operator / Kai handles (interface only, no UI — for W3)
 
 ```typescript
@@ -1004,7 +1339,11 @@ document does not word them.
 
 ```typescript
 // PROPOSED — resolved BEFORE any locked transaction is opened; the money-moving functions
-// in §5 receive an already-validated walletId/actorId/onBehalfOfId and are principal-agnostic.
+// in §5 receive an already-validated walletId/actorId/actorKind/onBehalfOfId and are
+// principal-agnostic. actorKind (B6) is always "operator" or "agency" here — never
+// "system" — because every path through this function that returns `ok:true` required a
+// real, signed-in, non-impersonating `currentAccount()`; "system" only ever appears at a
+// webhook/sweep call site that never goes through this resolver at all (§8.2, §8.3).
 async function resolveWalletTarget() {
   const account = await currentAccount();       // lib/session.ts:17-33 — the REAL signed-in account, NEVER the workspace client (session.ts's own doc comment, :16: "the agency (the payer) is the subject")
   if (!account) return { ok: false, code: "unauthenticated" };
@@ -1015,7 +1354,7 @@ async function resolveWalletTarget() {
   if (account.isAgency) {
     const { client } = await currentWorkspace();  // lib/session.ts:120-130
     const wallet = await getOrCreateWallet("agency", account.id);  // the AGENCY's own wallet — mirrors lib/entitlements.ts:190 ("a managed client inherits its agency's entitlement — the agency is the payer")
-    return { ok: true, walletId: wallet.id, actorId: account.id, onBehalfOfId: client?.id ?? null };
+    return { ok: true, walletId: wallet.id, actorId: account.id, actorKind: "agency" as const, onBehalfOfId: client?.id ?? null };
   }
 
   if (account.managedByAgencyId) {
@@ -1028,7 +1367,7 @@ async function resolveWalletTarget() {
   }
 
   const wallet = await getOrCreateWallet("consumer", account.id);
-  return { ok: true, walletId: wallet.id, actorId: account.id, onBehalfOfId: null };
+  return { ok: true, walletId: wallet.id, actorId: account.id, actorKind: "operator" as const, onBehalfOfId: null };
 }
 
 // PROPOSED — mirrors getOrCreateStripeCustomer (lib/billing.ts:19-48): verify-then-create,
@@ -1058,13 +1397,18 @@ never through `currentUser()`.
 
 ### 9.2 Spend-authority table
 
-| Actor role | Wallet targeted | Allowed? | `actorId` recorded | `onBehalfOfId` recorded |
-|---|---|---|---|---|
-| Consumer, spending for themselves | own consumer `Wallet` | **Yes** | the consumer's own `User.id` | `null` |
-| Agency owner, acting inside a client workspace | the **agency's** `Wallet` (never the client's) | **Yes** | the agency's `User.id` | the managed client's `User.id` |
-| Agency staff, acting inside a client workspace | the **agency's** `Wallet` | **Yes**, identically to "agency owner" — **see gap note below** | the agency's `User.id` | the managed client's `User.id` |
-| Managed client, spending directly on agency-managed fulfillment | — (no per-client wallet for agency-managed work) | **BLOCKED** — `managed_client_cannot_spend` | not recorded (refused pre-resolution) | not recorded |
-| Admin impersonating another account | whatever wallet the target would otherwise use | **BLOCKED** — `forbidden_impersonation`; read-only wallet view only | not recorded (refused pre-resolution) | not recorded |
+| Actor role | Wallet targeted | Allowed? | `actorId` recorded | `actorKind` recorded (B6) | `onBehalfOfId` recorded |
+|---|---|---|---|---|---|
+| Consumer, spending for themselves | own consumer `Wallet` | **Yes** | the consumer's own `User.id` | `"operator"` | `null` |
+| Agency owner, acting inside a client workspace | the **agency's** `Wallet` (never the client's) | **Yes** | the agency's `User.id` | `"agency"` | the managed client's `User.id` |
+| Agency staff, acting inside a client workspace | the **agency's** `Wallet` | **Yes**, identically to "agency owner" — **see gap note below** | the agency's `User.id` | `"agency"` | the managed client's `User.id` |
+| Managed client, spending directly on agency-managed fulfillment | — (no per-client wallet for agency-managed work) | **BLOCKED** — `managed_client_cannot_spend` | not recorded (refused pre-resolution) | not recorded | not recorded |
+| Admin impersonating another account | whatever wallet the target would otherwise use | **BLOCKED** — `forbidden_impersonation`; read-only wallet view only | not recorded (refused pre-resolution) | not recorded | not recorded |
+
+`actorKind: "system"` never appears in this table — it is reserved for the webhook/sweep call
+sites that never go through `resolveWalletTarget` at all (fund and clawback from a Stripe
+webhook, settle from the provider's acceptance callback, most `release` bases — §5.1–§5.5, §8.2,
+§8.3).
 
 **Named gap, not fabricated:** "agency staff" as a role **distinct** from "agency owner" is not a
 modeled identity concept anywhere in the current schema — `lib/session.ts`/`lib/entitlements.ts`
@@ -1079,11 +1423,15 @@ model inherits, not invented away.
 (`to: "APPROVED", actor: "user", event: "user.approved"`) — a free-text literal that cannot
 distinguish "the consumer approved their own mailing" from "an agency staffer approved it on a
 managed client's behalf" from "an impersonating admin triggered it." `WalletLedger.actorId` /
-`.onBehalfOfId` (§3.2) are real, `Restrict`-FK columns on the permanent financial ledger itself —
-not just an event-payload convention — so this distinction survives independent of whatever the
-Event Bus or `KaiEvent` layers separately do with the same fact, and independent of any future
-pruning/replay of the event log. This is the structural (schema-level) resolution of F7, not a
-documentation convention.
+`.onBehalfOfId` (§3.2) are real, `Restrict`-FK-when-present columns on the permanent financial
+ledger itself — not just an event-payload convention — so this distinction survives independent
+of whatever the Event Bus or `KaiEvent` layers separately do with the same fact, and independent
+of any future pruning/replay of the event log. This is the structural (schema-level) resolution
+of F7, not a documentation convention. (Nullable-with-`actorKind`, per B6 §3.2: the one case this
+schema does NOT try to force a real identity onto is a genuinely system-driven entry — a Stripe
+webhook, a reconciliation sweep — where `actorKind:"system"` says so honestly instead of
+inventing a fake actor, the same discipline `actor:"user"` violated, applied to the automated
+case too.)
 
 ---
 
@@ -1214,16 +1562,32 @@ old version stays registered for replay. No contract above is ever edited in pla
 
 ## 11. Wallet sequence diagram — the Founder's transaction model, rendered exactly (Founder ruling #2)
 
+**Two distinct consent moments, not one (per REFINEMENT-2-DIRECTIVE Ruling 4) — corrected
+ordering note, no UI designed here.** A prior framing risked reading as if operator consent were
+a single event that happens only once, late, after the hold — that implication is wrong and is
+retracted here. There are TWO real consent moments, and the diagram below marks both explicitly:
+**① Approve** (price + line-items shown; the operator consents to the REVERSIBLE authorization
+hold; `authorizeGroup` runs immediately after — this is a genuine consent event in its own right,
+not a formality FINAL REVIEW later "legitimizes") and **② FINAL REVIEW** (the prominent
+irreversible-warning gate, positioned AFTER the hold and BEFORE Submit — price is RE-SHOWN for
+confirmation, and the confirmation itself is bound to a server-issued, single-use, expiring token
+carrying `contentHash`/`warningVersion`/`estimatedTotalCentsShown`/`policyVersion`, validated
+server-side, never trusted from client booleans alone — Ruling 4's N8b fix, W3's mechanism to
+build, not this document's). This matches both the Founder's "warning before submission" and
+this document's own sequence placement from Refinement Cycle 1 — W3's earlier "before
+authorization" placement is superseded by Ruling 4, not this document's ordering.
+
 ```mermaid
 sequenceDiagram
     actor Operator as Operator (consumer or agency)
-    participant UI as Package Review — FINAL REVIEW (W3)
+    participant UI as Package Review UI (① Approve, ② FINAL REVIEW — W3)
     participant Policy as Policy Engine
     participant Wallet as Wallet (anchor-locked, §4)
     participant Provider as Mail Provider
     participant Kai as Kai (narration only)
 
-    Note over Operator,Kai: balance exists (funded via §8) → Approve →
+    Note over Operator,Kai: balance exists (funded via §8) →
+    Note over Operator,UI: ① Approve — consent moment ONE: price + line-items shown; consents to the REVERSIBLE hold (Ruling 4)
     Operator->>UI: Approve package (N letters)
     UI->>Policy: request rate decision per letter
     Policy-->>UI: walletAuthorization{amountCents, policyVersion, basis} × N
@@ -1242,7 +1606,8 @@ sequenceDiagram
     end
     deactivate Wallet
 
-    Note over UI,Operator: → CreditVector validation → Submit →
+    Note over UI,Operator: → CreditVector validation →
+    Note over UI,Operator: ② FINAL REVIEW — consent moment TWO, AFTER the hold, BEFORE Submit: price RE-SHOWN, the irreversible-warning gate, bound to a server-issued single-use expiring token (Ruling 4 — W3 designs the token + UI)
     UI-->>Operator: FINAL REVIEW confirmed (W3's irreversible-confirmation UX)
     UI->>Provider: createMailJob() per letter
 
@@ -1288,7 +1653,16 @@ Ratifiable text amending C-WALLET §7's ten inherited invariants (FI-1 through F
    per letter, thereafter (§6.2).
 7. **The payer principal, not the data subject, is who is charged.** Money moves against the
    `Wallet` of whoever is financially responsible — consumer self or agency (§9) — stamped with
-   the real acting operator's identity, never a generic `"user"` placeholder (§9.3).
+   the real acting operator's identity, never a generic `"user"` placeholder (§9.3), and, when no
+   operator exists at all (a webhook, a sweep), an honest `actorKind:"system"` rather than a
+   fabricated one (B6, §3.2).
+8. **An attempt, once resolved, is terminal forever.** *(New — Ruling 1, the amendment that
+   closes F4's restoration.)* Once an `authorize` has a `settle` or `release` sibling for its
+   exact `(subjectId, attempt)`, that attempt can never be re-held or re-settled under any
+   circumstance. There is no "same-attempt re-authorization": the only legal retry is a fresh
+   `authorizeGroup` call at attempt+1 — a genuinely new tuple, always a real debit, never a
+   zero-net replay. This holds regardless of why the prior attempt was released; the wallet does
+   not distinguish causes, only the fact of resolution.
 
 ---
 
@@ -1338,13 +1712,21 @@ Ratifiable text amending C-WALLET §7's ten inherited invariants (FI-1 through F
 
 ## 14. Finding disposition — F3, F4, F5, F6, F7
 
+**Revised to RESOLVED-WITH-RESIDUALS throughout (per the Refinement Cycle 2 re-gate,
+`COMMITMENT-REGATE.md` §"Per-defect re-test"), not ELIMINATED.** A prior revision's disposition
+table called all five ELIMINATED; the re-gate found that honest even for F3/F5/F6/F7 required a
+residuals column, and found F4 specifically STILL PRESENT (the surviving re-authorization-after-
+release path, §7.3). This revision closes F4's mechanism (Ruling 1, below) and restates every row
+with the residuals the re-gate identified — some newly closed by this cycle's other fixes, some
+honestly carried forward as still-open.
+
 | # | Defect (verbatim, one line) | Mechanism that now prevents it | Verdict |
 |---|---|---|---|
-| **F3** | "the atomic insert guard takes no lock... 'Negative balances are structurally impossible' is false" | `SELECT … FOR UPDATE` on the `Wallet` anchor row (§3.1, §4) serializes every money-moving transaction on that wallet under READ COMMITTED, at the one granularity (per-wallet) that matches a wallet-level sum invariant — proved line-by-line in §7.2. The old unlocked `INSERT…SELECT` is retracted entirely, not patched. | **ELIMINATED.** Conditional note, not a residual of the defect: correctness depends on every `WalletLedger` write path funneling through this shared, lock-first helper — the same discipline any guard design requires — asserted by `wallet-runtime.test.ts` (§4.2 point 3), not a metaphysical guarantee independent of implementation discipline. |
-| **F4** | "consume-after-void unguarded; re-authorize structurally impossible" | (a) `settleHold`'s explicit `released` check refuses settle-after-release (§5.3, §7.6); (b) the key redesign `(walletId, subjectId, entryKind, attempt)` makes re-authorization after release a **new** tuple (attempt N+1), never a collision with the reversed attempt N row (§3.2, §7.3). | **ELIMINATED.** The attempt-dimension redesign, taken alone, opens one adjacent hole (a caller opening attempt N+1 while attempt N is still active) — closed by this document's own `prior_attempt_still_active`/`attempt_out_of_sequence` guards (§5.2, §7.3's closing paragraph), which are this document's addition, not lifted from the brief, and are disclosed as such rather than silently folded into "the fix." |
-| **F5** | "N-letter package + one-consume-per-package = money hole... unique key permits exactly one consume and one void per package" | Settlement grain moved from package-level to **per-letter** (`subjectId = mail_<letterId>`, never `packageId`, §3.2, §6.2) — each letter gets its own independent authorize/settle/release triple; a 2-accepted/1-rejected package becomes 2 settles + 1 release with zero aggregation logic anywhere. | **ELIMINATED** for the money-hole mechanism specifically. Scope note, not a residual: the truthful "2 of 3 mailed" cross-letter **operator/UI surface** F5 also named is W2's (package-level `stage` rollup) and W3's (UI) territory — this document hands that need the `AuthorizationGroupView` read-model (§6.4) but does not itself build the surface. |
-| **F6** | "top-up credits metadata.amountCents with allow_promotion_codes:true; chargebacks unrepresentable" | (a) `allow_promotion_codes: false` on the wallet-topup Checkout Session (§8.1); (b) the webhook grant credits `cs.amount_total`, never metadata (§8.2); (c) `clawback` entry kind + new `charge.refunded`/`charge.dispute.created` webhook branches make chargebacks representable, including driving the fold negative into deficit posture (§5.5, §8.3, §8.4). | **ELIMINATED.** The still-open preset-vs-dynamic top-up amount fork (§4.2, carried forward, §16) is an orthogonal, unrelated product decision — not a residual of this fix (§8.1 states explicitly why the fix holds regardless of that fork's outcome). |
-| **F7** | "no payer/principal model... agency workspace and admin impersonation both spend the consumer's wallet as actor:'user'" | (a) `Wallet` is anchored to a principal (`principalType`), and agency-managed fulfillment resolves to the **agency's** wallet, never the managed client's, mirroring `lib/entitlements.ts:190` (§9.1); (b) `WalletLedger.actorId`/`.onBehalfOfId` are real, `Restrict`-FK schema columns superseding `MailService.approve`'s unconditional `actor:"user"` stamp (`lib/mail/MailService.ts:129`) (§3.2, §9.3); (c) admin impersonation is refused at the identity-resolution layer — `impersonationContext()` (`lib/session.ts:76-84`) checked and blocked **before** any `walletId` is resolved, never routed through `currentUser()`'s transparent impersonation resolution (§9.1). | **ELIMINATED.** Honest, non-fabricated residual: "agency staff" as a role distinct from "agency owner" is not a modeled identity concept in the current schema (one login, one `User` row) — the spend-authority table's staff row is necessarily identical to its owner row until a multi-seat identity model exists (§9.2). This is a named gap, not a claim of full coverage. |
+| **F3** | "the atomic insert guard takes no lock... 'Negative balances are structurally impossible' is false" | `SELECT … FOR UPDATE` on the `Wallet` anchor row (§3.1, §4) serializes every money-moving transaction on that wallet under READ COMMITTED, at the one granularity (per-wallet) that matches a wallet-level sum invariant — proved line-by-line in §7.2. The old unlocked `INSERT…SELECT` is retracted entirely, not patched. | **RESOLVED-WITH-RESIDUALS.** The lock mechanism is sound and proved; residuals are procedural, not a reopening of the overdraft hole: `cureDeficit` (§5.7) reads its before/after fold OUTSIDE the anchor lock — narration-only, but not a value to trust for anything beyond display under concurrency; the deadlock-freedom argument (§4.2 point 6) reasons about the `Wallet` row alone while `adjust`'s transaction (§5.6) also touches `AdminAuditLog` with no stated cross-table lock ordering; no lock-acquisition timeout is specified anywhere, so sustained contention on one wallet surfaces as an untyped 500, never a typed, catchable refusal. Correctness still depends on every `WalletLedger` write path funneling through this shared, lock-first helper — asserted by `wallet-runtime.test.ts` (§4.2 point 3), not a guarantee independent of implementation discipline. |
+| **F4** | "consume-after-void unguarded; re-authorize structurally impossible" | (a) `settleHold`'s explicit `released` check refuses settle-after-release (§5.3, §7.6); (b) the key redesign `(walletId, subjectId, entryKind, attempt)` makes re-authorization after release a **new** tuple (attempt N+1), never a collision with the reversed attempt N row (§3.2, §7.3); (c) **Refinement Cycle 2, Ruling 1:** `authorizeGroup`'s replay branch is rewritten as a two-pass classifier (§5.2) — an existing authorize row for `(subjectId, attempt)` is returned as a replay ONLY when it has no settle/release sibling; if one exists, the WHOLE group is refused `attempt_already_resolved`, never a silent `ok:true` (proof reproduced in §7.3). This closes the re-gate's surviving F4 path: (a)+(b) alone left a replay branch that checked only "does a row exist," not "is it resolved" — exactly how a released attempt could be "re-authorized" for zero net debit. | **RESOLVED-WITH-RESIDUALS, not ELIMINATED** — the honest posture the re-gate requires. The specific mechanism the re-gate found reopening F4 is now closed on the wallet side, proof reproduced in §7.3, and N1's paired false `insufficient_funds` is closed the same edit (`requiredCents` now sums only over holds classified `"new"`, §5.2). The residual is structural to the PROGRAM, not fixable by this document alone: F4's reopening was a cross-document seam failure — W2 described the same event as "the same attempt reused" while this document minted attempt+1 (§7.3) — and its permanent closure depends on W2 (`FULFILLMENT-COMMITMENT-BOUNDARY.md`/`RECOVERY-ENGINE.md`) implementing the IDENTICAL attempt+1 contract per Ruling 1. This document cannot verify the other document's content; that is the coordinator's cross-document re-gate to close, not this revision alone. |
+| **F5** | "N-letter package + one-consume-per-package = money hole... unique key permits exactly one consume and one void per package" | Settlement grain moved from package-level to **per-letter** (`subjectId = mail_<letterId>`, never `packageId`, §3.2, §6.2) — each letter gets its own independent authorize/settle/release triple; a 2-accepted/1-rejected package becomes 2 settles + 1 release with zero aggregation logic anywhere. | **RESOLVED-WITH-RESIDUAL, not ELIMINATED.** The money-hole mechanism itself is genuinely closed — this cycle did not touch and did not need to touch it. Residual (per the re-gate, not previously disclosed): `AuthorizationGroupView.groupStatus` (§6.4) is undefined for a letter that has been retried under a forwarded `authorizationGroupId` (§6.3) — a letter with two attempts (one terminal, one active) has TWO authorize rows sharing one group id, and §6.4's read-model does not specify how to collapse per-subject multi-attempt state into one per-letter status; a naive implementation could misreport "2 of 3" once a retried letter has actually resolved. A genuine gap in the read-model this document hands to W2/W3 (§15), not a money-safety defect, and not this document's must-fix to close this cycle. |
+| **F6** | "top-up credits metadata.amountCents with allow_promotion_codes:true; chargebacks unrepresentable" | (a) `allow_promotion_codes: false` on the wallet-topup Checkout Session (§8.1); (b) the webhook grant credits `cs.amount_total`, never metadata (§8.2); (c) `clawback` entry kind + new `refund.created`/`charge.dispute.created`/`charge.dispute.closed` webhook branches make chargebacks representable, including driving the fold negative into deficit posture (§5.5, §8.3, §8.4); (d) **Refinement Cycle 2:** N4 — clawback keyed on the individual refund/dispute id, never the cumulative charge total or the bare event id, plus a won-dispute compensating `adjust` (§8.3); N7 — `payment_status==="paid"` and `currency==="usd"` asserted before crediting, the fund subject keyed on the PaymentIntent id, never the event id, and `async_payment_failed`/`expired` stated as a no-op (§8.2). | **RESOLVED-WITH-RESIDUALS, not ELIMINATED.** Disclosed, not solved: the **agency-wide deficit blast radius** (N4, §8.3/§8.4) — one bad dispute or refund can still freeze an entire agency's authorizations, because deficit-blocking is per-`Wallet` and one Wallet can BE an agency, with no per-client sub-accounting; the top-up preset-vs-dynamic amount fork remains FOUNDER-GATE and orthogonal (§16, unchanged); a non-USD Checkout session is rejected outright rather than converted — a shopper gets no top-up rather than a mispriced one, a product-UX gap, not a money-safety one. |
+| **F7** | "no payer/principal model... agency workspace and admin impersonation both spend the consumer's wallet as actor:'user'" | (a) `Wallet` is anchored to a principal (`principalType`), and agency-managed fulfillment resolves to the **agency's** wallet, never the managed client's, mirroring `lib/entitlements.ts:190` (§9.1); (b) `WalletLedger.actorId`/`.onBehalfOfId` are real, schema columns superseding `MailService.approve`'s unconditional `actor:"user"` stamp (`lib/mail/MailService.ts:129`) (§3.2, §9.3); (c) admin impersonation is refused at the identity-resolution layer — `impersonationContext()` (`lib/session.ts:76-84`) checked and blocked **before** any `walletId` is resolved, never routed through `currentUser()`'s transparent impersonation resolution (§9.1); (d) **Refinement Cycle 2, must-fix B6:** `actorId` is now nullable with a closed `actorKind` discriminator (§3.2) instead of a non-null `Restrict` FK, so system-driven entries no longer attempt to insert a non-existent `"system"` User id against that FK (a prior revision's §8.3 did exactly that, and would have failed at the FIRST such insert — N6); `onBehalfOfId` now propagates from `authorize` onto its `settle`/`release`/`clawback` rows (§5.3–§5.5), so the on-behalf-of attribution survives on the entry that becomes PERMANENT, not only on the one that precedes it. | **RESOLVED-WITH-RESIDUALS, not ELIMINATED.** N6 is closed this cycle (above). Residuals carried forward from the re-gate, outside this cycle's assignment: the approve route's identity resolution needs both a payer identity AND a subject identity, and following "never `currentUser()`" (§9.1) literally would delete the only shipped cross-client ownership check elsewhere in the app — a tension this document does not resolve; "which wallet pays" for the managed-client-spending-directly edge case is answered by prohibition (`managed_client_cannot_spend`), not a positive resolution; `principalType` is stamped once at wallet-creation and deliberately never re-derived (§3.1) — a disclosed design choice, not a defect, but still worth a reader's attention; and the "agency staff" identity gap (§9.2) remains open pending a multi-seat model. |
 
 ---
 
@@ -1355,15 +1737,27 @@ Ratifiable text amending C-WALLET §7's ten inherited invariants (FI-1 through F
   exact calls the unified state machine's per-letter transitions and the Recovery Engine's
   17-scenario matrix drive. Wallet effects for that matrix map onto these five outcomes: hold
   released (`releaseHold`) / settled (`settleHold`) / none (a transition with no wallet
-  consequence) / clawback (`clawback`).
-- The `wallet:<subjectId>:<attempt>:<entryKind>` `Claim` key convention (§3.3) — W2's own
-  mail-transition claims share the `Claim` table (`domain: MAIL_TRANSITION`) but a different key
-  shape; no collision.
+  consequence) / clawback (`clawback`) / **refused `attempt_already_resolved`** (§5.2, Ruling 1)
+  — the fifth, previously-missing outcome: a retry request naming an ALREADY-terminal attempt is
+  never a wallet no-op. W2's retry/resubmission design must treat this as a hard refusal signal
+  to mint attempt+1 and call `authorizeGroup` again, never a "hold already exists, proceed" case.
+- The **canonical** `wallet:<subjectId>:<attempt>:<entryKind>` `Claim` key (§3.3, **per
+  REFINEMENT-2-DIRECTIVE Ruling 2** — stated once, cited here, never re-spelled) — W2's own
+  mail-transition claims share the `Claim` table (`domain: MAIL_TRANSITION`) under the sibling
+  key `mail:<subjectId>:<attempt>:<toStage>` (Ruling 2); no collision, and neither document
+  re-derives the other's shape.
 - The reconciliation-sweep contract (§5.4's `"ttl_expired"` basis, Constitution invariant 3,
   §12): a stale hold is **released**, paired with notification — never silently settled by
-  timeout. W2's sweep spec should call `releaseHold` directly.
+  timeout. W2's sweep spec should call `releaseHold` directly, passing `actorId: null,
+  actorKind: "system"` (B6, §5.4) — the sweep is not a signed-in User.
 - `attempt` sequencing rules (§5.2, §6.3): W2's retry/resubmission design must supply the correct
-  next `attempt` number; the Wallet enforces but does not compute it.
+  next `attempt` number; the Wallet enforces but does not compute it. `DisputePackageLetter
+  .attempt` (W2's schema) is the single owner of that integer (Ruling 1); this document only
+  ever receives it as an already-decided input.
+- `onBehalfOfId` (B6) is no longer authorize-only: it is copied forward onto every `settle`,
+  `release`, and (for the subject-level flavor) `clawback` row that resolves or reverses an
+  authorize (§5.3–§5.5). Any W2 read-model that surfaces "who this fulfillment was for" can read
+  it off the RESOLUTION entry directly, not only the original authorize row.
 
 **For W3 (`KAI-FULFILLMENT-UX.md`):**
 - `AuthorizationGroupView` / `LetterHoldView` (§6.4) — the FINAL REVIEW screen's data contract
@@ -1371,10 +1765,24 @@ Ratifiable text amending C-WALLET §7's ten inherited invariants (FI-1 through F
 - `InsufficientFundsResponse` (402) / `WalletDeficitResponse` (409) (§8.5) — two **distinct**
   copy paths; the deficit case is not "add more money for this," it needs its own explanation.
 - `WalletPostureView` (§8.5) — deficit/cure narration hook.
-- The sequence diagram (§11) marks exactly where FINAL REVIEW's irreversible-confirmation moment
-  sits relative to `authorizeGroup` (before Submit, after the hold is confirmed) and where the
-  settle/release narration fires (`WALLET_SETTLED@1`/`WALLET_RELEASED@1`, "your balance was
-  restored" is truthful precisely because `releaseHold` is a real, auditable credit, §5.4).
+- **Two distinct consent moments, per Ruling 4 (§11) — not one.** ① **Approve**: price +
+  line-items shown, consents to the REVERSIBLE hold, `authorizeGroup` runs immediately after —
+  itself a real consent event, not a formality. ② **FINAL REVIEW**: the prominent
+  irreversible-warning gate, positioned AFTER the hold and BEFORE Submit, price RE-SHOWN for
+  confirmation. This document's ordering was correct in Refinement Cycle 1 and is unchanged;
+  W3's earlier "before authorization" placement is the one superseded by Ruling 4. W3 owns the
+  UI and the confirmation mechanism — this document only fixes where in the sequence it sits.
+- The FINAL REVIEW confirmation must be bound to a server-issued, single-use, expiring token
+  carrying `contentHash`/`warningVersion`/`estimatedTotalCentsShown`/`policyVersion` (Ruling 4,
+  resolves N8b) — validated server-side, never trusted from client booleans alone. The token
+  itself is W3's to design; this document only states the requirement it must satisfy.
+- The settle/release narration fires off `WALLET_SETTLED@1`/`WALLET_RELEASED@1` ("your balance
+  was restored" is truthful precisely because `releaseHold` is a real, auditable credit, §5.4) —
+  and, per Ruling 3, a post-acceptance "cancel" request narrates the SETTLED-STAYS-SETTLED truth
+  (§7.3's corrected point 4; §12 invariant 2), never "nothing was charged."
+- `onBehalfOfId` now reaches W3 on settle/release/clawback, not only authorize (B6, above) — every
+  money-narration line has the on-behalf-of fact available regardless of which entry kind
+  triggered it, supporting the managed-client voice variant (W1 §9).
 
 ---
 

@@ -1,6 +1,6 @@
 # FULFILLMENT-COMMITMENT-BOUNDARY.md — The Two-Layer Commitment Boundary + State Machine Delta
 
-Agent W2 · Architecture only · Continuation of the accepted package (`e223e51`) refined per `COMMITMENT-REFINEMENT-BRIEF.md` (`f8cfb92`) · **DELTA document — does not restate `A-STATE-MACHINE.md`; every section below is either a supersession (`SUPERSEDES: <doc §>`) or a pure addition.** Labels **PROPOSED** / **FOUNDER-GATE** / **VENDOR-CONFIRMATION-REQUIRED** used rigorously and only where earned.
+Agent W2 · Architecture only · Continuation of the accepted package (`e223e51`) refined per `COMMITMENT-REFINEMENT-BRIEF.md` (`f8cfb92`) · **DELTA document — does not restate `A-STATE-MACHINE.md`; every section below is either a supersession (`SUPERSEDES: <doc §>`) or a pure addition.** Labels **PROPOSED** / **FOUNDER-GATE** / **VENDOR-CONFIRMATION-REQUIRED** used rigorously and only where earned. **Refinement-2 pass (this revision): implements `REFINEMENT-2-DIRECTIVE.md` Ruling 1 (§4.2, §5, §7), Ruling 2 (§4.3), Ruling 3 (§1.4, §4.4, §5, §6, §7), and `COMMITMENT-REGATE.md` must-fixes B8/N5 (§4.1) — each change cites its source inline.**
 
 > **CROA posture (unchanged, explicit — Brief S7, verbatim).** Settlement-at-acceptance strengthens the §1679b(b) posture versus capture-at-top-up but does NOT moot the counsel question — funds are still received in advance at top-up. The counsel question (`ADVERSARIAL-REVIEW.md` §3.4) remains the hard precondition before any wallet implementation phase. Every refinement doc carries this note verbatim in its header. F1 (Gate D Phase −1) also stands.
 
@@ -37,6 +37,14 @@ Source facts are re-verified directly against `lib/mail/*`, not re-derived from 
 ### 1.3 Why the two layers cannot be merged
 
 Layer (a) is a promise CreditVector makes to itself and its wallet ledger (a compliance- and accounting-grade boundary). Layer (b) is a physical/contractual fact about a third party CreditVector does not control and has not yet asked. Conflating them was the root of the original package's confidence: `C-WALLET-INTEGRATION.md` §3.3 and `A-STATE-MACHINE.md` §5.1 disagreed about *when settlement happens* (docket #9) precisely because "settlement" was being asked to do financial-boundary work and operational-irreversibility work at once. This document keeps them as two independently-answerable questions with two independently-sourced answers — one settled now (§1.1), one open pending vendor confirmation (§1.2, §2).
+
+### 1.4 Commitment Constitution Art. 1 — irreversibility is symmetric (Ruling 3)
+
+`COMMITMENT-RESOLUTION.md` §2's Fulfillment Commitment Constitution, point 1 (quoted verbatim, not restated as new text): **"No irreversible financial settlement occurs before provider acceptance. Authorization is a hold; settlement converts a hold; nothing else converts anything."**
+
+**Corollary, made explicit here per `REFINEMENT-2-DIRECTIVE.md` Ruling 3 (the Article already implied this; the re-gate found the implication had not been carried into this document's own mechanisms):** Art. 1 names exactly two conversions in this model — (i) authorization creates a hold, (ii) acceptance converts that hold to settlement — and states "nothing else converts anything." A settled hold therefore has no third, legal conversion. `PROVIDER_ACCEPTED → CANCELED` would be exactly such a third conversion (settlement → not-settled), and is FORBIDDEN by Art. 1's own terms, not by a new rule invented for this cycle. §4.4 below applies this explicitly, because the prior draft of §4.4 (and `RECOVERY-ENGINE.md` §4 scenario 9) modeled a `confirmed_cancelled` branch that DID drive the manifest to `CANCELED` post-acceptance — the exact conversion Art. 1 forbids. That branch is withdrawn below.
+
+**Once `PROVIDER_ACCEPTED`: the wallet hold is settled and stays settled forever.** Any later operator action, vendor confirmation, or data correction is an **accounting question** (a named `adjust` entry, `founder_gate_pending` until reviewed) — never a state, a release, or a clawback-as-unwind that would imply the mailing did not occur. This is the Founder's own framing, verbatim (`REFINEMENT-2-DIRECTIVE.md`, "Founder authoritative decision"): *"After provider acceptance: history is immutable, fulfillment is irreversible, financial reconciliation becomes an accounting problem, and the system never pretends the mailing did not occur."*
 
 ---
 
@@ -106,7 +114,42 @@ attention: {
 } | null
 ```
 
-**Storage:** additive column on the existing self-heal `MailManifest` table — the identical technique `MailStore.ts:100-105` already ships today (`ALTER TABLE "MailManifest" ADD COLUMN IF NOT EXISTS ...` for `pages`/`color`/`doubleSided`/`carrierAcceptedAt`, added after the table's initial ship). No migration, no new table, no change to `FORWARD`/`canTransition`/`pipelineIndex`/`MAIL_PIPELINE`.
+**Storage — re-planned per `COMMITMENT-REGATE.md` B8/N5 (the prior "additive column via `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`" plan is WITHDRAWN, not merely revised):** that plan was PROHIBITED, not just risky. `MailManifest` is a self-heal raw-SQL table (`MailStore.ts:73`'s `CREATE TABLE IF NOT EXISTS`, with `MailStore.ts:100-105`'s follow-on `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` block for four already-legacy columns); `CLAUDE.md` gotcha #1 (owner-ratified 2026-07-20) states plainly: **"No new feature may introduce or depend on runtime-created schema."** `attention`/`cancelRequest` are new-feature schema by any reading. The four existing self-heal `ALTER TABLE` lines predate that ratification and are grandfathered; adding a fifth and sixth line for THIS cycle's new feature is exactly the dependency the policy forbids — regardless of whether `scripts/schema-safety.test.ts`'s current pattern-match (`CREATE TABLE IF NOT EXISTS "([A-Za-z]+)"`, table-level only) happens to be blind to column-level `ALTER TABLE` additions today. The guard not yet catching it is a gap in the guard, not a license to use it.
+
+**Decision: a separate, additive, migration-governed table — `MailManifestFlags` — NOT new columns on `MailManifest`.** Two options were weighed (`REFINEMENT-2-DIRECTIVE.md` item 5):
+
+1. *Rejected: bring `MailManifest` itself under `schema.prisma` management* (declare the model, migrate its existing columns into Prisma's control, add `attention`/`cancelRequest` alongside). This is the heavier lift and carries the same class of risk already named elsewhere in this program's history for adopting a live, self-healed, production-data-bearing table into migration control: `scripts/schema-safety.test.ts`'s `EXPECTED_SELF_HEAL_ONLY` pins `MailManifest` as self-heal-only today (`scripts/schema-safety.test.ts:130-146`) — un-pinning it requires both a guard update AND a baseline-resolution step (the table already exists with live rows in production; a naive `migrate deploy` would attempt to `CREATE TABLE` against a table that is already there) — structurally the same precondition class as this program's own Gate D (`prisma migrate resolve --applied` before `migrate deploy`). Bundling that retirement with two unrelated new columns, under this cycle's time pressure, is not the disciplined way to retire a legacy self-heal table — gotcha #1 itself says legacy tables should "SHRINK over time... through reviewed migrations," implying a dedicated plan, not an opportunistic rider.
+2. **Picked: a brand-new table, declared in `schema.prisma` from birth, shipped via a normal additive migration.** `mailId String @id` — equal to `MailManifest.mailId` (`mail_<letterId>` / `mail_<letterId>_a<n>`, §4.2) — but **no `@relation`/DB foreign key**, because `MailManifest` is not (and remains not, under this decision) a Prisma model; this is an application-level reference only, mirroring the already-accepted `AdminAuditLog.actorId` no-FK precedent (`COMMITMENT-REGATE.md` N6). `attention Json?` and `cancelRequest Json?` carry the §4.1/§4.4 nested-object shapes verbatim, unchanged — only the storage location moves, not the design. This is the smaller, more reversible, zero-baseline-risk change: it never touches `MailStore.ts`, never touches the shipped self-heal mechanism, and requires **no update to any allowlist** — `MailManifestFlags` is declared in `schema.prisma`, so it is never matched by `schema-safety.test.ts`'s `CREATE TABLE IF NOT EXISTS` scan in the first place (`healed` never contains it; `newlySelfHealed`/`selfHealOnly` are both unaffected) — the guard stays green with no edit. As a side benefit, writes to it use normal Prisma client calls (upsert), not hand-written raw-SQL JSONB merges.
+
+```prisma
+// PROPOSED — FOUNDER-GATE (Gate-D-style precondition, below). A SEPARATE,
+// additive, migration-governed table — NOT new columns on MailManifest, which
+// stays exactly as shipped (self-heal raw SQL, MailStore.ts:73, untouched by
+// this decision). Declared in schema.prisma from birth; ships through the
+// normal reviewed-migration path CLAUDE.md gotcha #1 requires for all new schema.
+model MailManifestFlags {
+  // = MailManifest.mailId. Application-level reference ONLY — no @relation,
+  // no DB FK: MailManifest is not a Prisma model. Mirrors the AdminAuditLog
+  // .actorId no-FK precedent already accepted in this program (N6).
+  mailId        String    @id
+
+  // The §4.1 `attention` object, verbatim shape, or null. Ops queue query
+  // becomes: SELECT * FROM "MailManifestFlags"
+  //   WHERE attention->>'raised' = 'true' AND attention->>'resolvedAt' IS NULL
+  // — the identical predicate shape §4.1 always specified, now against a
+  // compliant table instead of a prohibited ALTER TABLE.
+  attention     Json?
+
+  // The §4.4 `cancelRequest` object, verbatim shape, or null.
+  cancelRequest Json?
+
+  updatedAt     DateTime  @updatedAt
+}
+```
+
+**FOUNDER-GATE (Gate-D-style precondition):** this table does not exist until a reviewed, additive Prisma migration creating it is authored, reviewed, and applied via `prisma migrate deploy` against the database's direct connection, as its own deliberate release step — never bundled into a routine deploy (gotcha #1's "no build step may mutate the database" law). Unlike Gate D's own migration (which adopts pre-existing production tables and therefore needs a `migrate resolve --applied` baseline step first), this is a brand-new table name with no prior existence anywhere — no baseline-adoption risk — but it still requires the same discipline: authored migration → preflight review → deliberate apply → post-apply verification (a smoke `SELECT` confirming the table exists and the JSONB predicate above returns zero rows on a clean table) → sign-off, before any code path writes to it. Until that sequence completes, `attention`/`cancelRequest` are a sound **design** with **no compliant place to live** — see the disposition update immediately below.
+
+No change to `FORWARD`/`canTransition`/`pipelineIndex`/`MAIL_PIPELINE`/`MailStatus` — this decision is entirely about where two off-machine facts are persisted, never about the state machine itself.
 
 **Lifecycle:**
 
@@ -117,13 +160,15 @@ attention: {
 - **Never a backward transition, by construction:** because `attention` never touches `status`, there is no transition to police in the first place — the forward-only law is not bent, worked around, or exception-cased; it simply never applies to this mechanism.
 - **Ops surface:** a manifest with `attention.raised === true` and no `resolvedAt` is the literal definition of a "needs attention" queue row — no new query shape beyond `WHERE attention->>'raised' = 'true' AND attention->>'resolvedAt' IS NULL` against the same JSONB-friendly column style `MailStore.ts` already uses for `recipient`/`cost`/`auditTrail`.
 
-**F9-i disposition: ELIMINATED.** The illegal mechanism is not repaired — it is retired and replaced by a mechanism that makes no claim on the transition table at all.
+**F9-i disposition: ELIMINATED (mechanism) / CONTINGENT (storage) — not a plain ELIMINATED, per `REFINEMENT-2-DIRECTIVE.md` item 6.** The illegal in-machine mechanism is retired for good, unconditionally — it is not repaired, and nothing about that half of the finding is contingent. But the off-machine flag's STORAGE was, until this cycle, itself a second policy violation (`COMMITMENT-REGATE.md` N5 — the prior `ALTER TABLE MailManifest ADD COLUMN` plan was prohibited, corrected above). `attention` is therefore only actually storable once the `MailManifestFlags` migration (above) ships as a FOUNDER-GATE release step — until then this disposition is sound in design and unimplementable in practice, the same honesty class as F9-ii/F9-iii's own "contingent on the migration" framing below. Do not read F9-i as fully closed independent of that migration landing.
 
 ### 4.2 Retry paths made real — resolves gate F9-ii
 
 **SUPERSEDES: `A-DOMAIN-MODEL.md` §2.6's `DisputePackageLetter` (schema delta only; the model's role is unchanged).**
 
-Both terminal retry triggers — `REJECTED` (pre-`ACCEPTED` provider refusal) and `RETURNED_TO_SENDER` (post-acceptance undeliverable) — resolve identically: **operator correction → a brand-new `MailManifest` row (a new `attempt`) → the old manifest stays, untouched, as historical evidence.** This is not optional: `applyTransition` (`lib/mail/MailJob.ts:46-48`) refuses any further transition once `isTerminal(m.status)` is true, and both `FAILED` and `RETURNED` are in `TERMINAL_STATUSES` (`MailStatus.ts:34-36`) — the *same* manifest row can never be walked forward again after either. `A-STATE-MACHINE.md` §6's claim that a rejected retry reuses "the same `mailId`" is corrected here: it cannot, for the reason just given; the document's own `RETURNED_TO_SENDER` handling (a fresh `mail_<letterId>_r2` id) was the structurally-necessary shape all along — this document generalizes it to both paths.
+**Three retry triggers, per `REFINEMENT-2-DIRECTIVE.md` Ruling 1 (not two)** — `REJECTED` (pre-`ACCEPTED` provider refusal), `RETURNED_TO_SENDER` (post-acceptance undeliverable), and **`PAYMENT_VOID` (a hold released unattempted, §5's diagram / `RECOVERY-ENGINE.md` §4 scenario 12)** — resolve IDENTICALLY: **operator (re-)action → a brand-new `MailManifest` row (a new `attempt`) → the old manifest stays, untouched, as historical evidence.** `PAYMENT_VOID` was NOT originally grouped with the other two — a prior draft of this document instead specified "same attempt reused" for it (§5's diagram, §7's interface handles, both corrected this cycle). Ruling 1 forecloses that exception: after ANY release, the released attempt is permanently terminal, and re-authorization always mints `attempt+1`, with no carve-out for the reason the release occurred. This was the exact seam `COMMITMENT-REGATE.md` found (F4/N1): W1 minted `attempt+1` unconditionally while this document carved out a same-attempt exception for `PAYMENT_VOID` alone, so the wallet no-op'd the re-authorization and certified mail shipped for zero net wallet effect. There is no such exception now.
+
+For `REJECTED`/`RETURNED_TO_SENDER` specifically, this is not optional even mechanically: `applyTransition` (`lib/mail/MailJob.ts:46-48`) refuses any further transition once `isTerminal(m.status)` is true, and both `FAILED` and `RETURNED` are in `TERMINAL_STATUSES` (`MailStatus.ts:34-36`) — the *same* manifest row can never be walked forward again after either. `A-STATE-MACHINE.md` §6's claim that a rejected retry reuses "the same `mailId`" is corrected here: it cannot, for the reason just given; the document's own `RETURNED_TO_SENDER` handling (a fresh `mail_<letterId>_r2` id) was the structurally-necessary shape all along — this document generalizes it to all three paths. `PAYMENT_VOID` has no equivalent `MailStatus`-level terminality forcing this (the underlying `MailManifest.status` was never advanced past its pre-submission value in the first place — nothing provider-side ever happened), so its new-attempt requirement is a **wallet/attempt-layer** rule, not a `MailStatus`-machine one — but it is a rule all the same, stated once, here, and never contradicted downstream (§5, §7).
 
 **Why the join table blocks it (F9-ii's actual finding):** `DisputePackageLetter` (`A-DOMAIN-MODEL.md` §2.6) carries `@@unique([letterId])` — at most one join row, ever, per letter. A retry needs a **second** `DisputePackageLetter` row for the same `letterId` (same package, new `mailId`) — categorically rejected by that constraint today.
 
@@ -150,6 +195,8 @@ model DisputePackageLetter {
 }
 ```
 
+**This same schema delta is also what makes Ruling 1's `PAYMENT_VOID` retry possible** — without `@@unique([letterId, attempt])`, a `PAYMENT_VOID` retry would hit the identical `@@unique([letterId])` wall F9-ii found for `REJECTED`/`RETURNED_TO_SENDER`; there is exactly one schema delta in this program serving all three retry triggers, not three separate ones. `DisputePackageLetter.attempt` (declared above) is confirmed here as the single owner of the attempt integer for every retry path, the mail-transition claim key (§4.3), and the wallet-ledger key (W1) alike.
+
 **mailId convention per attempt:** `mail_<letterId>` for `attempt = 1` (unchanged, matches `app/api/mail/prepare/route.ts:52` today); `mail_<letterId>_a<attempt>` for `attempt > 1` — a fresh `MailManifest` primary key each time (required, since `"mailId" TEXT PRIMARY KEY`, `MailStore.ts:74`, cannot be reused for a second row). `@@unique([mailId])` is satisfied automatically by this convention without further work.
 
 **Considered alternative, not picked:** an `active Boolean @default(true)` column plus a partial-unique index (`@@unique([letterId], where: active)`) instead of `[letterId, attempt]`. This would make "exactly one active attempt per letter" a hard DB invariant rather than an application-level "most recent attempt" read — genuinely stronger in one dimension. Not picked because it requires a partial index outside plain Prisma schema syntax (raw-SQL migration extension) for a guarantee this document does not believe is load-bearing: "which attempt is current" is already answerable as `MAX(attempt)` per `letterId`, a **derived** read consistent with `A-DOMAIN-MODEL.md` §5's single-owner/no-second-source-of-truth discipline, not a fact that needs its own stored flag. Named here so Agent E/the Founder can override this call; not silently decided.
@@ -162,13 +209,15 @@ model DisputePackageLetter {
 
 **F9-iii's finding, restated precisely:** the original key had no attempt dimension, so a retry's `mail_abc:SUBMITTED` claim would return `completed` (already-claimed by attempt 1's identical-looking key) and be silently deduped out of existence — attempt 2 never actually executes its own transition.
 
-**New key:** `` `${subjectId}:${toStage}:${attempt}` ``, where **`subjectId` is the stable per-letter key `mail_<letterId>`** (§4.2's attempt-1 form, unchanging across attempts) and `attempt` is the same integer §4.2 defines on `DisputePackageLetter`. This is a deliberate design choice, not an accident of phrasing: it mirrors the Wallet's own subjectId treatment exactly (Brief S2 — "`subjectId` = the manifest id (`mail_<letterId>`), with `attempt Int` ... in the key") so that **one shared per-letter identity (`mail_<letterId>`) plus one shared attempt integer** feeds both the `MAIL_TRANSITION` claim key and the `WALLET` domain's ledger uniqueness — a single owner (`DisputePackageLetter.attempt`), read identically by both consumers, never independently incremented in two places.
+**Canonical claim-key registry — per `REFINEMENT-2-DIRECTIVE.md` Ruling 2, cited verbatim here, never re-spelled.** Two distinct domains, each attempt-scoped, `Claim.key` the shared global primary key:
+- **Mail-transition domain (this document's domain):** `` `mail:${subjectId}:${attempt}:${toStage}` ``, where **`subjectId` is the stable per-letter key `mail_<letterId>`** (§4.2's attempt-1 form, unchanging across attempts) and `attempt` is the same integer §4.2 defines on `DisputePackageLetter`.
+- **Wallet-entry domain (W1's domain, cited here only for cross-reference, never re-derived):** `` `wallet:${subjectId}:${attempt}:${entryKind}` ``, `entryKind ∈ {fund,authorize,settle,release,clawback,adjust}`.
+
+This is a deliberate design choice, not an accident of phrasing: it mirrors the Wallet's own subjectId treatment exactly (Brief S2 — "`subjectId` = the manifest id (`mail_<letterId>`), with `attempt Int` ... in the key") so that **one shared per-letter identity (`mail_<letterId>`) plus one shared attempt integer** feeds both claim domains and the `WALLET` domain's ledger uniqueness — a single owner (`DisputePackageLetter.attempt`), read identically by both consumers, never independently incremented in two places. **Prior variant grammar retired:** an earlier draft of this document used `` `${subjectId}:${toStage}:${attempt}` `` (attempt last, no domain tag) while `C-WALLET-INTEGRATION.md` independently used `wallet:<subjectId>:<transition>:<attempt>` — two of the "three incompatible forms" `COMMITMENT-REGATE.md`'s register-honesty verdict found. Both are superseded by the registry above; there is exactly one grammar per domain now, and it is the coordinator's (Ruling 2's), not this document's own invention.
 
 **Why this is not the same as simply relying on the attempt-suffixed physical `mailId`:** the *manifest's own primary key* (`mail_<letterId>` vs. `mail_<letterId>_a2`, §4.2) already differs per attempt, which would incidentally also disambiguate a claim key built from it — but building the claim key from the stable `subjectId` instead keeps the claim grammar uniform and greppable by attempt number without parsing a suffix convention, and keeps it identical in shape to the Wallet's own key, which a future reader must be able to cross-reference by eye.
 
-**Extends `ADR-0045`'s `WALLET` domain too, for the same reason (naming only, not a redesign):** `C-WALLET-INTEGRATION.md` §3.6's `wallet:<subjectId>:<transition>` key gains the identical attempt segment — `wallet:<subjectId>:<transition>:<attempt>` — because claim-before-effect must wrap each attempt's authorize/settle/release independently too; a second authorize for a retried letter is not a duplicate of the first attempt's authorize, and the claim layer must agree. This is named here because it is the same gate (F9-iii generalizes past pure mail-transitions into wallet-transitions) but the ledger-side implementation is W1's.
-
-**F9-iii disposition: ELIMINATED**, contingent on the `Claim` table (`ADR-0045`) shipping with this key shape for both domains from the start.
+**F9-iii disposition: ELIMINATED**, contingent on the `Claim` table (`ADR-0045`) shipping with both registry key shapes exactly as cited above, from the start.
 
 ### 4.4 Cancellation states — CANCELLED (pre-submission) / CANCEL_REQUESTED (post-submission, best-effort)
 
@@ -176,10 +225,16 @@ model DisputePackageLetter {
 
 **Pre-submission (deterministic, unchanged mechanism, clarified scope):** From any of `APPROVED`, `WALLET_AUTHORIZED`(-span), or `SUBMITTED` (manifest `PAID`/`QUEUED`/`PDF_GENERATED`) — all already in `CANCELABLE` (`MailStatus.ts:43`) — cancellation is immediate and unconditional. Wallet effect, enumerated (not "depends"): if no hold exists yet (cancel fires before `WALLET_AUTHORIZED`), there is nothing to release. If a hold exists (`WALLET_AUTHORIZED` or later, pre-`ACCEPTED`), it releases synchronously in the same action. No vendor call is required to be *waited on* for this branch to complete, because nothing has been accepted yet.
 
-**Post-acceptance (`ACCEPTED` and later) — genuinely best-effort, modeled as an off-machine request, not a manifest state:**
+**Post-acceptance (`ACCEPTED` and later) — genuinely best-effort as an OPERATIONAL request, but FINANCIALLY closed the instant acceptance occurred (§1.4, Ruling 3):**
+
+**`PROVIDER_ACCEPTED → CANCELED` is real in the shipped code and GUARDED-FORBIDDEN in this architecture — both facts stated, neither hidden.** Honesty restored, per `REFINEMENT-2-DIRECTIVE.md` Ruling 3 (the re-gate's N2): `CANCELABLE` (`MailStatus.ts:43`) includes `PROVIDER_ACCEPTED` today, so `canTransition("PROVIDER_ACCEPTED", "CANCELED")` is `true` and `MailService.cancel()` (`MailService.ts:222-239`) would execute it without complaint — a prior draft of this section modeled post-acceptance cancellation as purely off-machine and never acknowledged this edge exists in the shipped machine at all, an omission `COMMITMENT-REGATE.md` N2 correctly named. §5's diagram and §6's mapping table below restore the edge. But restoring it to the diagram is not endorsing it: **this architecture's own rule (Commitment Constitution Art. 1, §1.4) forbids any Commitment-layer-driven caller — the Recovery Engine, an operator action, Kai — from ever invoking it.** The transition is "guarded-forbidden": legal in the raw `MailStatus` machine, prohibited by the layer this program builds on top of it — exactly the two-layer distinction §1 already draws between the financial boundary (ours to set) and vendor/operational facts. **Physically removing `PROVIDER_ACCEPTED` from `CANCELABLE`** would make the shipped machine match this rule exactly — that is a small, real product-code change, correctly flagged **FOUNDER-GATE (implementation phase)** and explicitly NOT made in this architecture-only cycle; until it ships, the guard lives at the call-site (no Commitment-layer code path may invoke `MailService.cancel()` once a manifest is `PROVIDER_ACCEPTED` or later), not in the enum.
 
 ```
-// PROPOSED — additive, off-machine, same storage technique as `attention` (§4.1).
+// PROPOSED — additive, off-machine, same storage technique as `attention`
+// (§4.1's storage decision, above). `outcome` is an EVIDENTIARY record of what
+// the VENDOR reports — it NEVER drives MailManifest.status. In particular,
+// "confirmed_cancelled" records a vendor-reported fact; it is NOT permission
+// to transition the manifest to CANCELED (forbidden post-acceptance, §1.4).
 cancelRequest: {
   requestedAt: string;
   requestedBy: string;         // operator id
@@ -191,14 +246,14 @@ cancelRequest: {
 } | null
 ```
 
-**Why off-machine, not a real state:** identical reasoning to `attention` (§4.1) — the manifest's real `status` must keep reflecting whatever the provider actually, currently reports; a request pending an external answer must not freeze or fork that truth. `CANCEL_REQUESTED` is therefore never a value in `FORWARD`; it is a flag that sits beside `status` while the real pipeline (webhooks/sweep-driven tracking updates) continues to move normally underneath it.
+**Why off-machine, not a real state:** identical reasoning to `attention` (§4.1) — the manifest's real `status` must keep reflecting whatever the provider actually, currently reports; a request pending an external answer must not freeze or fork that truth. `CANCEL_REQUESTED` is therefore never a value in `FORWARD`; it is a flag that sits beside `status` while the real pipeline (webhooks/sweep-driven tracking updates) continues to move normally underneath it — **and, post-acceptance, `status` may never become `CANCELED` regardless of what this flag records** (the guarded-forbidden rule above).
 
-**Resolution — two branches, enumerated, not "depends":**
+**Resolution — two branches, enumerated, not "depends" — NEITHER branch transitions `status` to `CANCELED`:**
 
 - **`proceeded`** (the overwhelming default once truly past `ACCEPTED` — "the provider owns the paper," `MailStatus.ts:40`): the vendor does not confirm a stop; the manifest's real status continues advancing (`PRINTING → MAILED → ...`) exactly as if no request had been made. **Wallet effect: none** — the wallet was already settled at `ACCEPTED` (§3) and stays settled; this is a normal, uninterrupted fulfillment.
-- **`confirmed_cancelled`** (rare, and only possible at all pending §2's vendor confirmation — this branch may not exist in practice for LetterStream): the vendor confirms the piece is stopped before printing. The manifest transitions to `CANCELED`. **Wallet effect, stated as the honest default, not resolved past that:** the wallet **stays settled** — no automatic release — because settlement legally/financially occurred at `ACCEPTED` (§1.1's boundary is final by design, not conditional on what happens afterward). This produces a real tension this document does not paper over: the consumer would have paid for a certified mailing that, per the vendor's own confirmation, never physically happened. **FOUNDER-GATE:** a manual `adjust`/credit reversal is the only path to correct this, requires explicit owner + CCO review of the specific facts, and is never automatic. This fork is surfaced, not silently resolved either direction — see `RECOVERY-ENGINE.md` scenario 9 for the full routing.
+- **`confirmed_cancelled`** (rare, and only possible at all pending §2's vendor confirmation — this branch may not exist in practice for LetterStream): the vendor confirms the piece is stopped before printing. **This is recorded ONLY on `cancelRequest.outcome` — the manifest's `status` is UNCHANGED by it** (it is never driven to `CANCELED`; per §1.4, that conversion is forbidden the instant `ACCEPTED` occurred, regardless of what happens afterward). `status` continues to reflect whatever the provider actually, currently reports going forward (which may simply stall short of `PRINTED`/`MAILED` if the piece truly never enters the physical stream — an honest fact for `attention`/`TRACKING_STALLED` to surface, §4.5, not a `CANCELED` label). **Wallet effect: the wallet stays settled — permanently, no automatic release, no clawback-as-unwind (§1.4).** This produces a real tension this document does not paper over: the consumer would have paid for a certified mailing that, per the vendor's own confirmation, never physically happened. **The ONLY remediation vocabulary is `adjust`** (an owner-gated accounting compensation, `founder_gate_pending` until reviewed) — never `release`, never a status implying the letter wasn't mailed, per Ruling 3 exactly. Owner + CCO review of the specific facts is required before any `adjust` fires; it is never automatic. This fork is surfaced, not silently resolved either direction — see `RECOVERY-ENGINE.md` scenario 9 for the full routing (also corrected this cycle to remove its own prior `→ CANCELED` branch).
 
-**Disposition:** this design directly answers two of the Founder's 17 named scenarios ("cancellation before provider acceptance" vs. "cancellation after provider acceptance") with two structurally different, deterministic outcomes rather than one mechanism awkwardly covering both.
+**Disposition:** this design directly answers two of the Founder's 17 named scenarios ("cancellation before provider acceptance" vs. "cancellation after provider acceptance") with two structurally different, deterministic outcomes rather than one mechanism awkwardly covering both — and, as of this cycle, both outcomes agree that `status` never re-enters `CANCELED` once `PROVIDER_ACCEPTED` has occurred (Ruling 3).
 
 ### 4.5 The four F10 money-touching evidence-failure states
 
@@ -210,6 +265,8 @@ All four are **derived `FulfillmentStage`-adjacent labels**, not new `MailManife
 | **`TRACKING_STALLED`** | No tracking movement for `staleAfterTracking` at any post-`ACCEPTED`, pre-`DELIVERED` stage | Raises `attention` (`reasonCode: "tracking_stalled"`) via the reconciliation sweep (`RECOVERY-ENGINE.md` §3) | None — settled, unaffected; operational-only. |
 | **Returned after Delivered** | `DELIVERED → RETURNED` — **already legal today** (`lib/mail/MailStatus.ts:56`: `DELIVERED: ["RESPONSE_RECEIVED", "CLOSED", "RETURNED"]` — verified directly; note the shipped line is **56**, not 57 as cited in `ADVERSARIAL-REVIEW.md`'s F10 text, a trivial one-line citation variance in that document, corrected here). This document's own Mermaid diagram (§5) and mapping table (§6) **include** this edge — the specific omission F10 named ("the zero information loss mapping drops a transition the shipped machine supports") is closed here. | No new clock/ops mechanism needed — it is a normal, already-guarded manifest transition; the manifest simply reaches a real terminal `RETURNED` state later than usual. | **None automatically** — the service (print, mail, deliver) was substantively performed; settlement (§3) is not reversed by a later data correction or recipient refusal. A **FOUNDER-GATE** manual adjustment exists only for the exceptional case where the facts suggest CreditVector/provider error rather than a recipient-side event — never automatic, never assumed. |
 | **Address-failure-after-settle** | An address defect surfaces after `ACCEPTED` (e.g. a live CASS check, once built per `A-PROVIDER-ABSTRACTION.md` §3.2's FOUNDER-GATE, rejects a previously-structural-only-valid address; or the piece is later returned undeliverable) | Standard retry path applies: corrected address → a new `attempt` (§4.2) → a fresh authorize+settle cycle for the retry. | **Default: none** — settlement is permanent per §1.1; the retry is a **new, separately-priced** authorization, not a free resend. A FOUNDER-GATE `adjust`/refund path exists only for the narrow case where the address defect is traceable to CreditVector's own error (not user-supplied bad data) — named, not designed, consistent with `A-DOMAIN-MODEL.md` §7 item 1's existing refusal to silently absorb a Founder-decision conflict. |
+
+**F10 disposition: REDUCED, not ELIMINATED** (`COMMITMENT-REGATE.md`'s register-honesty verdict, carried forward per `REFINEMENT-2-DIRECTIVE.md` item 6) — all four evidence-failure states above are now deterministic, with named triggers, clocks, and wallet effects where the prior package had none; but the disposition stays REDUCED because `RECEIPT_OVERDUE`'s hardest question (can `DELIVERED` alone start the §611 clock without the receipt?) is an open CCO/counsel question this document deliberately does not resolve by architectural fiat (see the table row above), and because `staleAfterReceipt`/`staleAfterTracking` remain named-but-untuned FOUNDER-GATE values. Closing F10 fully requires both answers, neither of which is an architecture decision.
 
 ---
 
@@ -237,12 +294,13 @@ stateDiagram-v2
     SUBMITTED --> REJECTED : provider rejects synchronously — hold RELEASES, per letter
     SUBMITTED --> PROVIDER_ERROR : transport/provider failure — hold RELEASES (pre-accept)
     ACCEPTED --> PROVIDER_ERROR : rare post-accept provider failure — settled; FOUNDER-GATE refund only
+    ACCEPTED --> CANCELED : shipped-legal (MailStatus.ts:43 CANCELABLE) — GUARDED-FORBIDDEN here, Commitment Constitution Art.1 (§1.4/§4.4); no Commitment-layer path ever invokes this edge (Ruling 3)
     USPS_ACCEPTED --> RETURNED_TO_SENDER : provider reports undeliverable
     WALLET_AUTHORIZED --> PAYMENT_VOID : hold expires unattempted — RELEASE, never settle-by-timeout (§6, RECOVERY-ENGINE.md §3)
 
     REJECTED --> PREPARED : operator corrects — NEW manifest attempt (new mailId, §4.2)
     RETURNED_TO_SENDER --> PREPARED : operator corrects address — NEW manifest attempt (new mailId, §4.2)
-    PAYMENT_VOID --> WALLET_AUTHORIZED : operator re-authorizes — SAME attempt (nothing was ever submitted)
+    PAYMENT_VOID --> PREPARED : operator retries — NEW manifest attempt (new mailId, §4.2); IDENTICAL shape to REJECTED/RETURNED_TO_SENDER retry (Ruling 1) — no "same attempt" edge exists any longer
 
     note right of WALLET_AUTHORIZED
       Hold placed here, per letter.
@@ -252,13 +310,19 @@ stateDiagram-v2
     note right of ACCEPTED
       SETTLEMENT — permanent, per letter,
       per S1/S2. Financial boundary (§1.1).
+      Commitment Constitution Art.1 (§1.4):
+      settled stays settled forever — no
+      third conversion. The ACCEPTED-->CANCELED
+      edge above is shipped-legal but
+      GUARDED-FORBIDDEN from here onward
+      (Ruling 3).
       A CANCEL_REQUESTED flag may be raised
-      from here onward (§4.4) — off-machine,
-      never a status value; resolves to
-      "proceeded" (default, no wallet effect)
-      or rare "confirmed_cancelled" (FOUNDER-GATE
-      manual adjust only — settlement does not
-      auto-reverse).
+      (§4.4) — off-machine, never drives
+      status; resolves to "proceeded"
+      (default, no wallet effect) or rare
+      "confirmed_cancelled" (status UNCHANGED;
+      FOUNDER-GATE adjust-only remediation,
+      never a release, never CANCELED).
     end note
     note right of DELIVERED
       RECEIPT_OVERDUE (§4.5) is an off-machine
@@ -283,6 +347,8 @@ stateDiagram-v2
 
 **What this diagram deliberately omits, and why:** no `UNKNOWN_PROVIDER_STATUS` node (§4.1 — off-machine only); no `CANCEL_REQUESTED` node (§4.4 — off-machine only); no `RECEIPT_OVERDUE`/`TRACKING_STALLED` nodes (§4.5 — off-machine only). Every one of these is real, tracked, and operator-visible — none of them is a value the `status` column ever takes, and none of them required a single new entry in `FORWARD`.
 
+**What this diagram now includes that a prior draft omitted:** the `ACCEPTED --> CANCELED` edge (Ruling 3 / N2) — restored for honesty (it is real and shipped, `MailStatus.ts:43`) but explicitly marked guarded-forbidden; no Commitment-layer path may exercise it, and doing so remains only a raw-`MailStatus`-machine possibility until a FOUNDER-GATE product change removes `PROVIDER_ACCEPTED` from `CANCELABLE`. Also corrected: `PAYMENT_VOID`'s retry edge now targets `PREPARED` (a new attempt), matching `REJECTED`/`RETURNED_TO_SENDER` exactly — the prior `PAYMENT_VOID --> WALLET_AUTHORIZED` "same attempt" edge is gone (Ruling 1).
+
 ---
 
 ## 6. Zero-information-loss mapping — delta table
@@ -295,6 +361,7 @@ Extends `A-STATE-MACHINE.md` §9 (only new/changed rows shown; every row not lis
 | `FAILED` (pre-`ACCEPTED`) | `REJECTED` | none | **Now the per-letter wallet RELEASE hook + mandatory new-attempt retry (§4.2)** — additive. |
 | `RETURNED` | `RETURNED_TO_SENDER` | none | **Now the mandatory new-attempt retry path (§4.2)**, and reachable from `DELIVERED` too (next row) — additive. |
 | `DELIVERED → RETURNED` | `DELIVERED → RETURNED_TO_SENDER` | **was a loss — now closed** | `MailStatus.ts:56` already permits this edge; `A-STATE-MACHINE.md` §9/§10 omitted it. This document's diagram (§5) and this row restore it. Wallet effect: none automatic (§4.5). |
+| `PROVIDER_ACCEPTED → CANCELED` | `ACCEPTED → CANCELED` | **shipped-legal, GUARDED-FORBIDDEN** | Restored for honesty (`MailStatus.ts:43`'s `CANCELABLE` includes `PROVIDER_ACCEPTED`; `COMMITMENT-REGATE.md` N2) — but forbidden in the Commitment layer by Ruling 3 / Commitment Constitution Art.1 (§1.4/§4.4). No Commitment-layer path ever exercises this edge; physically removing it from `CANCELABLE` is FOUNDER-GATE (implementation phase). |
 | *(no manifest value — new off-machine fact)* | `attention` flag (any stage `ACCEPTED`…`DELIVERED`) | **new fact, not a loss** | Replaces the illegal in-machine `UNKNOWN_PROVIDER_STATUS` (§4.1). |
 | *(no manifest value — new off-machine fact)* | `cancelRequest` (any stage `ACCEPTED`…`USPS_ACCEPTED`) | **new fact, not a loss** | §4.4. |
 | *(no manifest value — new off-machine fact)* | `RECEIPT_OVERDUE` label (post-`DELIVERED`) | **new fact, not a loss** | §4.5. |
@@ -305,6 +372,6 @@ Extends `A-STATE-MACHINE.md` §9 (only new/changed rows shown; every row not lis
 
 ## 7. Interface handles exposed downstream
 
-- **To W1 (Wallet):** `subjectId = mail_<letterId>` (stable, attempt-independent) as the wallet ledger's per-letter key; `attempt` sourced from `DisputePackageLetter.attempt` (single owner, §4.2/§4.3); settlement hook fires at manifest `PROVIDER_ACCEPTED` per letter (§3); release hook fires at pre-`ACCEPTED` `FAILED`/`CANCELED` per letter; `PAYMENT_VOID`'s re-authorize is same-attempt (no new manifest), while `REJECTED`/`RETURNED_TO_SENDER`'s retry is new-attempt (new manifest) — these are different re-entry shapes and must not be collapsed into one wallet-side "re-authorize" code path.
-- **To W3 (Kai UX):** the worst-case-assumption language requirement for FINAL REVIEW copy (§1.2); the `CANCEL_REQUESTED` two-branch honesty requirement — copy must never promise `confirmed_cancelled` (§4.4); `attention`/`cancelRequest`/`RECEIPT_OVERDUE`/`TRACKING_STALLED` as named, stable concepts W3 can hang notification moments and Kai copy classes on (full classes and copy are `RECOVERY-ENGINE.md`'s and W3's respectively — this document only names the triggers and states).
-- **To the Founder/CCO:** the eleven-question vendor list (§2) as the literal artifact to put to LetterStream; the `confirmed_cancelled` wallet-reversal fork (§4.4) and the returned-after-delivered / address-failure-after-settle remedy forks (§4.5) as explicit, unresolved FOUNDER-GATE decisions — none silently defaulted.
+- **To W1 (Wallet):** `subjectId = mail_<letterId>` (stable, attempt-independent) as the wallet ledger's per-letter key; `attempt` sourced from `DisputePackageLetter.attempt` (single owner, §4.2/§4.3); settlement hook fires at manifest `PROVIDER_ACCEPTED` per letter (§3), and is **permanent — no reversal path exists in this document once it fires** (§1.4, Ruling 3); release hook fires at pre-`ACCEPTED` `FAILED`/`CANCELED` per letter. **`PAYMENT_VOID`'s retry is now IDENTICAL in shape to `REJECTED`/`RETURNED_TO_SENDER`'s retry — new-attempt, new manifest, in all three cases** (`REFINEMENT-2-DIRECTIVE.md` Ruling 1). There is no "same-attempt re-authorization" code path anywhere in this program any longer; W1's wallet-side re-authorize op always mints a fresh attempt and a fresh debit against a fresh manifest, never a no-op reuse of a released hold's attempt number. (A prior draft of this document specified same-attempt reuse for `PAYMENT_VOID` alone — that was the exact seam `COMMITMENT-REGATE.md` F4/N1 found; Ruling 1 permanently closes it.)
+- **To W3 (Kai UX):** the worst-case-assumption language requirement for FINAL REVIEW copy (§1.2); the `CANCEL_REQUESTED` two-branch honesty requirement — copy must never promise the `confirmed_cancelled` outcome in advance, AND, critically, when `confirmed_cancelled` actually occurs, copy must state the settled-stays-settled truth (§1.4/§4.4, Ruling 3) — **NEVER "nothing was charged" or any phrase implying the wallet reversed** (the exact defect `COMMITMENT-REGATE.md`'s register-honesty verdict found in a prior W3 draft's `CANCELLATION_CONFIRMED` copy, re-keyed onto this document's `CANCEL_CONFIRMED_RARE`); `attention`/`cancelRequest`/`RECEIPT_OVERDUE`/`TRACKING_STALLED` as named, stable concepts W3 can hang notification moments and Kai copy classes on (full classes and copy are `RECOVERY-ENGINE.md`'s and W3's respectively — this document only names the triggers and states).
+- **To the Founder/CCO:** the eleven-question vendor list (§2) as the literal artifact to put to LetterStream; the `confirmed_cancelled` accounting-`adjust` fork (§4.4, no longer a "wallet-reversal" fork — Ruling 3 forecloses reversal entirely) and the returned-after-delivered / address-failure-after-settle remedy forks (§4.5) as explicit, unresolved FOUNDER-GATE decisions — none silently defaulted. Physically removing `PROVIDER_ACCEPTED` from `CANCELABLE` (§4.4) and the `MailManifestFlags` migration (§4.1) as two additional, explicitly named FOUNDER-GATE implementation-phase actions this cycle documents but does not perform.
