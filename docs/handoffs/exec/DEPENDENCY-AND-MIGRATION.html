@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Fulfillment Phase 1 Execution Plan — Dependency and Migration</title>
+<style>
+  :root { color-scheme: light dark;
+    --bg:#f7f9fb; --fg:#15222e; --mut:#5a6b7a; --card:#fff; --line:#d7e0e8;
+    --ok:#0a7d40; --okbg:#e2f5ea; --warn:#8a5a00; --warnbg:#fdf1d8; --bad:#a12626; --badbg:#fbe4e4; --acc:#0b5f8a; --mono:ui-monospace,SFMono-Regular,Menlo,monospace; }
+  @media (prefers-color-scheme: dark){ :root{
+    --bg:#0d141b; --fg:#dbe7f1; --mut:#8fa1b0; --card:#131e28; --line:#263646;
+    --ok:#5fd394; --okbg:#10301f; --warn:#f2c46b; --warnbg:#33260a; --bad:#f08f8f; --badbg:#3a1414; --acc:#7cc4ea; }}
+  *{box-sizing:border-box} body{margin:0;padding:1.25rem;background:var(--bg);color:var(--fg);font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:60rem;margin:0 auto} h1{font-size:1.4rem;margin:.2rem 0 .3rem} h2{font-size:1.1rem;margin:1.6rem 0 .5rem;color:var(--acc);scroll-margin-top:1rem}
+  .sub{color:var(--mut);font-size:.85rem;margin-bottom:1rem} code{font-family:var(--mono);font-size:.82em;background:color-mix(in srgb,var(--line) 40%,transparent);padding:.08em .35em;border-radius:4px}
+  .badge{display:inline-block;padding:.15rem .55rem;border-radius:99px;font-weight:600;font-size:.8rem;margin:.1rem .15rem}
+  ul,ol{padding-left:1.25rem} li{margin:.28rem 0}
+  table{width:100%;border-collapse:collapse;font-size:.8rem;background:var(--card);margin:.4rem 0} th,td{text-align:left;padding:.4rem .55rem;border-bottom:1px solid var(--line);vertical-align:top} th{color:var(--mut)}
+  .twrap{overflow-x:auto;margin:.6rem 0;border:1px solid var(--line);border-radius:8px} .twrap table{margin:0}
+  pre{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:.75rem;overflow-x:auto;font-size:.74rem;line-height:1.5} pre code{background:none;padding:0}
+  nav.toc{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:.75rem 1rem;margin:1rem 0;font-size:.88rem} nav.toc ol{margin:.3rem 0} nav.toc a{color:var(--acc);text-decoration:none} nav.toc a:hover{text-decoration:underline}
+  .swatch{display:inline-block;width:.8em;height:.8em;border-radius:3px;margin-right:.35em;vertical-align:middle;border:1px solid rgba(0,0,0,.25)}
+  footer{color:var(--mut);font-size:.78rem;margin-top:2rem;padding-top:.8rem;border-top:1px solid var(--line)}
+</style>
+</head>
+<body>
+<main>
+<h1>CreditVector Fulfillment Platform — Phase 1 Execution Plan — Dependency and Migration</h1>
+<p class="sub">2026-08-03 · branch <code>docs/fulfillment-engine-v1</code> · HEAD <code>fcfc5b6</code> · base <code>origin/main f449c35</code> (untouched)</p>
+<p>Base source: <code>docs/fulfillment/execution/DEPENDENCY-GRAPH.md</code> (unified graph + table) and <code>docs/fulfillment/execution/MIGRATION-PLAN.md</code> (additive migration order), corrected per <code>docs/fulfillment/execution/SEQUENCE-REVIEW.md</code>'s <strong>R-D5</strong> (Gate D P1a's mechanics) and <strong>R-D6</strong> (P1b is per-wave, not one-time).</p>
+
+<nav class="toc">
+<strong>Contents</strong>
+<ol>
+<li><a href="#the-unified-dependency-graph">The unified dependency graph</a></li>
+<li><a href="#dependency-table">Dependency table</a></li>
+<li><a href="#the-gate-d-prerequisite">The Gate D prerequisite — P1a and P1b, corrected</a></li>
+<li><a href="#additive-migration-order">Additive migration order</a></li>
+<li><a href="#schema-safety-allowlist-note">Schema-safety-allowlist note</a></li>
+</ol>
+</nav>
+
+<h2 id="the-unified-dependency-graph">1. The unified dependency graph</h2>
+<p>Per <code>DEPENDENCY-GRAPH.md</code> §1 (nodes/edges cited to <code>EXECUTION-PLAN.md</code> §3 as authoritative; finer intra-phase edges pulled from the five domain plans). Rendered as Mermaid source (preformatted — no diagram-rendering dependency required to read this document):</p>
+<pre><code>graph TD
+    P0["P0: Pre-build doc corrections + live vendor-leak fix (R-D2)"]
+    P1a["P1a: Execute Gate D six-migration baseline"]
+    P1b["P1b: ID-B02 manifest extension (Identity-program-owned, R-D1)"]
+    P2["P2: CROA legal gate (parallel, Day 0)"]
+    P3["P3: LetterStream conformance — 16 vendor Qs + dry-run suite"]
+    P4["P4: Provider Abstraction — MailManifestFlags migration"]
+    P5["P5: Fulfillment Engine — Case/DisputePackage/Policy/Recovery"]
+    P5acc["P5-accel: schema-free /mail evolution"]
+    P6a["P6a: Mail Center — Download workspace"]
+    P6b["P6b: Mail Center — Send path"]
+    P7["P7: Wallet Runtime + Purchased VC"]
+    P8a["P8a: Kai wallet-independent panels"]
+    P8b["P8b: Kai Recovery + money-narration"]
+    P3live["P3-live: MAIL_LIVE flip"]
+    P9a["P9a: Internal testing — Download"]
+    P9b["P9b: Internal testing — Send"]
+    P10a["P10a: Beta rollout — Download"]
+    P10b["P10b: Beta rollout — Send"]
+
+    P0 --> P1a
+    P1a --> P1b
+    P1b --> P4
+    P1b --> P5
+    P1b --> P5acc
+    P1b --> P7
+    P4 --> P5
+    P3 --> P3live
+    P4 --> P3live
+    P2 --> P7
+    P2 --> P6b
+    P5 --> P6a
+    P5 --> P8a
+    P7 --> P6b
+    P7 --> P8b
+    P6a --> P6b
+    P8b --> P6b
+    P6a --> P9a
+    P9a --> P10a
+    P6b --> P9b
+    P3live --> P9b
+    P9b --> P10b
+
+    classDef spine fill:#ff9966,stroke:#333,stroke-width:3px,color:#000;
+    classDef sendOnly fill:#f4a6a6,stroke:#333,stroke-width:2px,color:#000;
+    classDef walletFree fill:#8fd19e,stroke:#333,stroke-width:3px,color:#000;
+    classDef legalNode fill:#ffd966,stroke:#333,stroke-width:2px,color:#000;
+    classDef valueNode fill:#66ccff,stroke:#333,stroke-width:2px,color:#000;
+    classDef supportNode fill:#eeeeee,stroke:#999,stroke-width:1px,color:#000;
+
+    class P0,P1a,P1b,P4,P5,P6a spine;
+    class P7,P6b,P3live,P9b,P10b sendOnly;
+    class P9a,P10a walletFree;
+    class P2 legalNode;
+    class P5acc valueNode;
+    class P3,P8a,P8b supportNode;</code></pre>
+
+<p><strong>Legend:</strong></p>
+<ul>
+<li><span class="swatch" style="background:#ff9966"></span><strong>Orange, thick border</strong> — shared prefix of both the engineering critical path and the earliest wallet-free milestone: <code>P0, P1a, P1b, P4, P5, P6a</code>.</li>
+<li><span class="swatch" style="background:#f4a6a6"></span><strong>Pink</strong> — the Send-path-only continuation, all money-touching: <code>P7, P6b, P3-live, P9b, P10b</code>.</li>
+<li><span class="swatch" style="background:#8fd19e"></span><strong>Green, thick border</strong> — the Download-only continuation that reaches ship without ever touching money or a live provider: <code>P9a, P10a</code>.</li>
+<li><span class="swatch" style="background:#ffd966"></span><strong>Yellow</strong> — the CROA §404 legal gate, <code>P2</code>, running in parallel from Day 0.</li>
+<li><span class="swatch" style="background:#66ccff"></span><strong>Blue</strong> — <code>P5-accel</code>, the earliest operator-visible value of all, shipping on the shared spine's <code>P1b</code> alone.</li>
+<li><span class="swatch" style="background:#eeeeee"></span><strong>Grey</strong> — <code>P3</code>, <code>P8a</code>, <code>P8b</code>: necessary but on neither named path.</li>
+</ul>
+<p><strong>Not a node here, by design:</strong> the Case Journey Runtime and Mission Control. Per <code>CASE-JOURNEY-RUNTIME-PLAN.md</code> §1.4 ("Mission Control is not a tenth node — it has no single stage of its own") and its Method table ("no new engine... the Journey is a read-model"), the Journey is threaded through P5 (its anchor rows), P6a/P8a (rendering/narration), and P8b (money narration) — it earns no independent phase box (<code>DEPENDENCY-GRAPH.md</code> §1 note).</p>
+
+<h2 id="dependency-table">2. Dependency table</h2>
+<div class="twrap"><table>
+<tr><th>Node</th><th>Depends on</th><th>Blocks</th><th>Gate</th></tr>
+<tr><td>P0</td><td>—</td><td>P1a (transitively, everything)</td><td>Founder ADR ratification</td></tr>
+<tr><td>P1a</td><td>P0</td><td>P1b</td><td>Gate D runbook + Founder sign-off, owner-executed</td></tr>
+<tr><td>P1b</td><td>P1a</td><td>P4, P5, P5-accel, P7 — every new-schema phase</td><td>Gate D Phase −1, part b (ID-B02)</td></tr>
+<tr><td>P2</td><td>— (Day 0)</td><td>P7, and transitively P6b, P8b, P9b, P10b</td><td>CROA §404 counsel + Founder legal — <strong>LEGAL-GATE</strong></td></tr>
+<tr><td>P3</td><td>— (Day 0, Q&amp;A half); P4 (conformance-suite half)</td><td>P3-live</td><td>vendor answers to the 16-question set</td></tr>
+<tr><td>P4</td><td>P1b</td><td>P5, P3-live</td><td>Gate D Phase −1 (P1b)</td></tr>
+<tr><td>P5</td><td>P1b, P4</td><td>P6a, P8a</td><td>Gate D Phase −1</td></tr>
+<tr><td>P5-accel</td><td>P1b</td><td>none downstream</td><td>Gate D Phase −1</td></tr>
+<tr><td>P6a</td><td>P5</td><td>P6b, P9a</td><td>P5 exit</td></tr>
+<tr><td>P6b</td><td>P2, P7, P6a, P8b</td><td>P9b</td><td><strong>LEGAL-GATE</strong> (P2) + P7 exit</td></tr>
+<tr><td>P7</td><td>P1b, P2</td><td>P6b, P8b</td><td>Gate D Phase −1 <strong>and</strong> CROA/legal gate — both, independently</td></tr>
+<tr><td>P8a</td><td>P5</td><td>(feeds P6a's Package Review steps 1–4, non-blocking)</td><td>P5 exit</td></tr>
+<tr><td>P8b</td><td>P7</td><td>P6b</td><td>P7 exit</td></tr>
+<tr><td>P3-live</td><td>P3, P4</td><td>P9b</td><td>16 vendor Qs + conformance green + Vendor Opacity guard green + <code>MailManifestFlags</code> shipped + Founder sign-off</td></tr>
+<tr><td>P9a</td><td>P6a</td><td>P10a</td><td>full guard suite + <code>release-verify.sh</code> green; cohort-scoped</td></tr>
+<tr><td>P9b</td><td>P6b, P3-live</td><td>P10b</td><td>both P6b and P3-live exited</td></tr>
+<tr><td>P10a</td><td>P9a</td><td>—</td><td>beta cohort live</td></tr>
+<tr><td>P10b</td><td>P9b</td><td>—</td><td><code>MAIL_LIVE</code> stays its own separate, later Founder-gate runbook item</td></tr>
+</table></div>
+<p class="sub">Source: <code>DEPENDENCY-GRAPH.md</code> §2, citing <code>EXECUTION-PLAN.md</code> §3/§5 as primary and <code>EXEC-SEQUENCING.md</code> §2.1 for the pre-split Blocks column.</p>
+
+<h2 id="the-gate-d-prerequisite">3. The Gate D prerequisite — P1a and P1b, corrected</h2>
+<p><strong>Nothing in the migration order below exists until both of these clear, in order</strong> (<code>MIGRATION-PLAN.md</code> §0):</p>
+<p><strong>P1a — execute Gate D's six-migration baseline.</strong> Production has <strong>no <code>_prisma_migrations</code> history</strong> — the prior baseline-resolve was preview-only. The base plan's text described running <code>migrate resolve --applied 0_init</code> directly; <code>SEQUENCE-REVIEW.md</code>'s <strong>R-D5</strong> corrects this: P1a instead <strong>defers to the Gate-D runbook's own per-migration state taxonomy</strong> — a read-only preflight, then a per-migration state determination, then resolving only <code>SCHEMA_ONLY</code> migrations one at a time, re-running preflight after each. A <code>0_init = ALL_ABSENT</code> reading <strong>aborts</strong> as wrong-target evidence rather than proceeding with a flat resolve. Exit: all six migrations <code>ALL_PRESENT_AND_MATCHING</code>, <code>NO_PENDING_MIGRATIONS</code>, the 5 pre-existing platform flags still OFF.</p>
+<p><strong>P1b — land the ID-B02 manifest-extension mechanism.</strong> <code>scripts/gate-d-preflight.test.ts:366</code> and <code>gate-d-preflight-core.ts</code> accept <strong>exactly six</strong> migration directories today and reject a 7th (CRITICAL/CONFIRMED, <code>ADVERSARIAL-REVIEW.md</code> F1). P1b lands a versioned, owner-approved manifest mechanism proving byte-identical six-file coverage <strong>plus</strong> the new directory. <code>SEQUENCE-REVIEW.md</code>'s <strong>R-D1</strong> rules this is <strong>shared infrastructure the Identity Constitution program's own Implementation Slice 7 also needs</strong> — that program is the <strong>sole owner</strong>; Fulfillment consumes the mechanism, it does not re-implement it. Before P1b begins, the owner must pre-agree migration-directory numbering across both programs so both bump one shared manifest, not two competing ones — a Founder/owner cross-program coordination decision. <strong>R-D6</strong> further rules that P1b is a <strong>per-wave mechanism, not a one-time unlock</strong>: every subsequent migration wave (P4, P5, P7, and the Identity program's own tables) re-derives the pinned totals through it; the preflight tooling pins 34 tables / 304 columns / 21 FKs / 62 indexes / 11 enums today, and every wave bumps these.</p>
+<p><strong>No fulfillment migration exists until P1b lands</strong> (<code>EXECUTION-PLAN.md</code> P-1). Every row in §4 below queues behind both P1a and P1b.</p>
+
+<h2 id="additive-migration-order">4. Additive migration order</h2>
+<div class="twrap"><table>
+<tr><th>Order</th><th>Directory</th><th>Table / Enum</th><th>Tier</th><th>Applies in phase</th><th>Note</th></tr>
+<tr><td>—</td><td>(pre-existing)</td><td>the six already-committed Gate-D migrations</td><td>0</td><td>P1a</td><td>Pre-existing debt, not authored by this program</td></tr>
+<tr><td>1–7</td><td><code>fulfillment_domain_v1</code> (PROPOSED)</td><td><code>CaseState</code> enum, <code>Case</code>, <code>PackageState</code> enum, <code>DisputePackage</code>, <code>DisputePackageLetter</code>, <code>ClaimDomain</code> enum, <code>Claim</code></td><td>1</td><td>P5</td><td>One batched directory; <code>Case.userId</code>/<code>DisputePackage.userId</code> are <strong>Restrict</strong> (corrected from Cascade); <code>DisputePackageLetter</code> carries <code>@@unique([letterId, attempt])</code>, not <code>@@unique([letterId])</code></td></tr>
+<tr><td>8</td><td>own directory (reassigned)</td><td><code>MailManifestFlags</code></td><td>1</td><td><strong>P4</strong></td><td><code>mailId String @id</code>, <code>attention Json?</code>, <code>cancelRequest Json?</code> — a standalone table, not a self-heal <code>ALTER TABLE</code>. Ships ahead of rows 1–7's P5 deploy because P4 precedes P5</td></tr>
+<tr><td>9–10</td><td><code>wallet_purchased_vc_v1</code> (PROPOSED, separate directory)</td><td><code>Wallet</code> (anchor), <code>WalletLedger</code></td><td>2</td><td>P7</td><td><code>Wallet.principalId→User</code> Restrict, <code>@@unique([principalId])</code>; <code>WalletLedger.actorId→User</code> nullable Restrict (corrected from non-null); = the Purchased VC ledger</td></tr>
+<tr><td>11–13</td><td><strong>NOT SCHEDULED</strong></td><td><code>EarnedVcLedger</code>, <code>BonusVcLedger</code>, <code>PendingPayoutVcLedger</code></td><td>3</td><td>DEFERRED — counsel + CCO</td><td>Net-new Founder decisions; row 13 additionally requires Stripe Connect, absent today</td></tr>
+</table></div>
+
+<p><strong>Batching rationale:</strong> rows 1–7 batch as one directory to minimize how many times the P1b extension mechanism must be exercised. Row 8 (<code>MailManifestFlags</code>) ships in its own directory ahead of rows 1–7's deploy — a delta from the domain plan's original batching, corrected because P4 precedes P5 in the phase order. Rows 9–10 ship in their own, later directory — bundling them with rows 1–8 would force the non-money tables to wait on P2's legal answer too, which the "non-money precedes money" ruling exists to prevent (<code>MIGRATION-PLAN.md</code> §2).</p>
+<p><strong>Apply mechanics:</strong> rows 1–7 apply as one <code>prisma migrate deploy</code> once P1 (P1a and P1b) clears, Founder sign-off on that specific apply. Row 8 applies as its own deploy step, once P1 clears, preceding rows 1–7. Rows 9–10 apply as a separate, deliberate release step once <strong>P1 and P2 both</strong> clear — never bundled with rows 1–8's deploy. Rows 11–13 have no migration to apply until their own counsel + CCO gates clear. No step ever reorders: Gate D precedes the legal-gate check for Tier 2, migration precedes flag flip, always (<code>MIGRATION-PLAN.md</code> §3).</p>
+
+<h2 id="schema-safety-allowlist-note">5. Schema-safety-allowlist note</h2>
+<p>None of the rows above is ever added to <code>LEGACY_SELF_HEAL_ALLOWLIST</code> (<code>scripts/schema-safety.test.ts:106-114</code>, frozen at 32 legacy tables). <code>scripts/schema-safety.test.ts</code>'s <code>newlySelfHealed.length === 0</code> check must stay green <strong>unmodified</strong> — proving none of these new tables self-heals (<code>EXEC-SEQUENCING.md</code> §3.3; <code>MIGRATION-PLAN.md</code> §4). <code>MailManifestFlags</code> (row 8) is declared in <code>schema.prisma</code> from birth, so it is never even matched by the <code>CREATE TABLE IF NOT EXISTS</code> self-heal scan — that guard needs no edit at all for this row. Every migration in rows 9–13, if/when scheduled: additive only, zero <code>DROP</code>/<code>TRUNCATE</code>/<code>DELETE FROM</code>/<code>RENAME</code>.</p>
+
+<footer>CreditVector Fulfillment Platform · Phase 1 Execution Plan · Founder package · generated 2026-08-03 · planning only, nothing implemented</footer>
+</main>
+</body>
+</html>

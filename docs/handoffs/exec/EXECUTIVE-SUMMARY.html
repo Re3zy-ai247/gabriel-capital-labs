@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Fulfillment Phase 1 Execution Plan — Executive Summary</title>
+<style>
+  :root { color-scheme: light dark;
+    --bg:#f7f9fb; --fg:#15222e; --mut:#5a6b7a; --card:#fff; --line:#d7e0e8;
+    --ok:#0a7d40; --okbg:#e2f5ea; --warn:#8a5a00; --warnbg:#fdf1d8; --bad:#a12626; --badbg:#fbe4e4; --acc:#0b5f8a; --mono:ui-monospace,SFMono-Regular,Menlo,monospace; }
+  @media (prefers-color-scheme: dark){ :root{
+    --bg:#0d141b; --fg:#dbe7f1; --mut:#8fa1b0; --card:#131e28; --line:#263646;
+    --ok:#5fd394; --okbg:#10301f; --warn:#f2c46b; --warnbg:#33260a; --bad:#f08f8f; --badbg:#3a1414; --acc:#7cc4ea; }}
+  *{box-sizing:border-box} body{margin:0;padding:1.25rem;background:var(--bg);color:var(--fg);font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:56rem;margin:0 auto} h1{font-size:1.4rem;margin:.2rem 0 .3rem} h2{font-size:1.1rem;margin:1.6rem 0 .5rem;color:var(--acc);scroll-margin-top:1rem} h3{font-size:1rem;color:var(--acc);scroll-margin-top:1rem}
+  .sub{color:var(--mut);font-size:.85rem;margin-bottom:1rem} code{font-family:var(--mono);font-size:.82em;background:color-mix(in srgb,var(--line) 40%,transparent);padding:.08em .35em;border-radius:4px}
+  .badge{display:inline-block;padding:.15rem .55rem;border-radius:99px;font-weight:600;font-size:.8rem;margin:.1rem .15rem} .ok{background:var(--okbg);color:var(--ok)} .warn{background:var(--warnbg);color:var(--warn)} .bad{background:var(--badbg);color:var(--bad)}
+  .crit{border-left:3px solid var(--bad);background:var(--badbg);padding:.5rem .8rem;border-radius:0 6px 6px 0;font-size:.9rem;margin:.5rem 0}
+  ul,ol{padding-left:1.25rem} li{margin:.28rem 0}
+  table{width:100%;border-collapse:collapse;font-size:.83rem;background:var(--card);margin:.4rem 0} th,td{text-align:left;padding:.4rem .6rem;border-bottom:1px solid var(--line);vertical-align:top} th{color:var(--mut)}
+  .twrap{overflow-x:auto;margin:.6rem 0;border:1px solid var(--line);border-radius:8px} .twrap table{margin:0}
+  pre{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:.75rem;overflow-x:auto;font-size:.78rem;line-height:1.5} pre code{background:none;padding:0}
+  nav.toc{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:.75rem 1rem;margin:1rem 0;font-size:.88rem} nav.toc ol{margin:.3rem 0} nav.toc a{color:var(--acc);text-decoration:none} nav.toc a:hover{text-decoration:underline}
+  blockquote{margin:.5rem 0;padding:.5rem .9rem;border-left:3px solid var(--acc);background:var(--card);border-radius:0 6px 6px 0;color:var(--mut)}
+  hr{border:none;border-top:1px solid var(--line);margin:1.5rem 0}
+  footer{color:var(--mut);font-size:.78rem;margin-top:2rem;padding-top:.8rem;border-top:1px solid var(--line)}
+  a{color:var(--acc)}
+</style>
+</head>
+<body>
+<main>
+<h1>CreditVector Fulfillment Platform — Phase 1 Execution Plan — Executive Summary</h1>
+<p class="sub">Handoff package · Phase 1 Execution Planning · branch <code>docs/fulfillment-engine-v1</code> · base <code>origin/main@f449c35</code> (untouched) · HEAD <code>fcfc5b6</code> · 2026-08-03</p>
+
+<blockquote>This document summarizes a <strong>planning-only</strong> program. Nothing described below has been implemented. No product code, schema, dependency, environment variable, or feature flag changed at any point in this cycle. Production <code>origin/main</code> is unchanged at <code>f449c35</code>. Every claim below cites its source document under <code>docs/fulfillment/execution/</code>.</blockquote>
+
+<nav class="toc">
+<strong>Contents</strong>
+<ol>
+<li><a href="#what-this-is">What this is</a></li>
+<li><a href="#the-arc">The arc</a></li>
+<li><a href="#the-verdict">The verdict — READY-WITH-DISCLOSURES</a></li>
+<li><a href="#the-one-insight">The one insight that shapes everything</a></li>
+<li><a href="#the-corrected-critical-path">The corrected critical path and the earliest wallet-free milestone</a></li>
+<li><a href="#founder-decision-gates">Founder decision gates</a></li>
+<li><a href="#nothing-implemented">Nothing implemented — the explicit statement</a></li>
+<li><a href="#where-the-detail-lives">Where the detail lives</a></li>
+</ol>
+</nav>
+
+<h2 id="what-this-is">1. What this is</h2>
+<p>The CreditVector Fulfillment Platform <strong>architecture is ACCEPTED and LOCKED</strong> — it is not reopened by this package (<code>docs/fulfillment/execution/EXECUTION-PLANNING-BRIEF.md</code>: "Architecture is ACCEPTED and LOCKED. This is PLANNING ONLY — no implementation, no coding, no merge, no deploy, no schema change"). This package is <strong>Phase 1 Execution Planning</strong>: turning the accepted architecture into a sequenced, gated, testable build plan — dependency graph, migration order, feature-flag ladder, testing strategy, rollback strategy, risk register — synthesized by a Program Director from five parallel domain plans and then independently reviewed. Target public launch remains <strong>September 1, 2026</strong> (<code>EXECUTION-PLANNING-BRIEF.md</code>).</p>
+
+<h2 id="the-arc">2. The arc</h2>
+<div class="twrap"><table>
+<tr><th>Step</th><th>Output</th><th>Source</th></tr>
+<tr><td>1. Brief</td><td>Program Director issues the planning brief: locked architecture, gates, five agent assignments (A–E)</td><td><code>EXECUTION-PLANNING-BRIEF.md</code></td></tr>
+<tr><td>2. Five parallel domain plans</td><td>Agent A — master sequencing backbone; Agent B — LetterStream adapter; Agent C — Mail Center evolution; Agent D — Wallet Runtime + Vector Credits; Agent E — Case Journey Runtime</td><td><code>EXEC-SEQUENCING.md</code>, <code>LETTERSTREAM-ADAPTER-PLAN.md</code>, <code>MAIL-CENTER-EVOLUTION-PLAN.md</code>, <code>WALLET-VC-RUNTIME-PLAN.md</code>, <code>CASE-JOURNEY-RUNTIME-PLAN.md</code></td></tr>
+<tr><td>3. Program Director synthesis</td><td>Unified phased roadmap (P0–P10b), adjudicated rulings P-1..P-8 resolving cross-agent tensions, standing constraints</td><td><code>EXECUTION-PLAN.md</code></td></tr>
+<tr><td>4. Supporting consolidations</td><td>Dependency graph, migration plan, feature-flag strategy, testing strategy, rollback strategy, risk register</td><td><code>DEPENDENCY-GRAPH.md</code>, <code>MIGRATION-PLAN.md</code>, <code>FEATURE-FLAG-STRATEGY.md</code>, <code>TESTING-STRATEGY.md</code>, <code>ROLLBACK-STRATEGY.md</code>, <code>RISK-REGISTER.md</code></td></tr>
+<tr><td>5. Independent review</td><td>One bounded Opus adversarial review, scope limited to the <strong>sequence only</strong> (architecture not re-litigated); baseline <code>docs/fulfillment-engine-v1@63246ec</code>, read-only</td><td><code>SEQUENCE-REVIEW.md</code></td></tr>
+<tr><td>6. This package</td><td>Founder-readable synthesis of steps 3–5, for a go/no-go decision on Phase 1 execution</td><td><code>docs/handoffs/exec/</code> (this directory)</td></tr>
+</table></div>
+
+<h2 id="the-verdict">3. The verdict — READY-WITH-DISCLOSURES</h2>
+<p><span class="badge ok">READY-WITH-DISCLOSURES</span></p>
+<p><code>SEQUENCE-REVIEW.md</code> is the <strong>authoritative</strong> record of the sequence-review verdict, superseding any conflicting prose elsewhere for this specific question:</p>
+<blockquote>"The sequence is fundamentally sound. Verified holds: <strong>no money-moving code is scheduled before the CROA/legal gate (P2)</strong>; <strong>nothing live before the 16-question vendor gate</strong>; <strong>no premature migration</strong>... No architecture reopening; no scope violation. Rollout is fail-closed and staged only over already-gate-cleared features. No surviving blocker." (<code>SEQUENCE-REVIEW.md</code>, Verdict)</blockquote>
+<p>The review found <strong>8 findings</strong>, all "documentary/procedural, none breaches a hard invariant" (<code>SEQUENCE-REVIEW.md</code>), and issued 8 Program Director resolutions (<strong>R-D1..R-D8</strong>) that supersede conflicting earlier text. Two are substantive pre-phase corrections (R-D2, R-D5); one is a genuine cross-program Founder coordination gate (R-D1); the rest are documentary corrections. Full findings-to-resolutions table: <code>RISK-AND-GATES.html</code> in this package.</p>
+
+<h2 id="the-one-insight">4. The one insight that shapes everything</h2>
+<p>The <strong>two-option law forks the critical path</strong> (<code>EXECUTION-PLAN.md</code> §1). CreditVector's fulfillment UI always offers two terminal options: <strong>Download Package</strong> (self-mail) and <strong>Send with CreditVector Fulfillment</strong>. Download moves no money and calls no live provider; Send needs the Wallet (CROA/legal-gated, P2) and the live provider (vendor-gated, the 16-question set). Because these two paths have genuinely independent dependency chains, CreditVector can ship <strong>real fulfillment value — the Download path — while the CROA counsel review and LetterStream vendor Q&amp;A run in parallel</strong>, with zero money code and zero legal exposure crossed (<code>EXECUTION-PLAN.md</code> §1, §6). The wallet-free path is the launch's safety valve; the money path lands only after its own gates clear.</p>
+<p>This is not merely a sequencing convenience — it is structurally enforced: the Download path's dependency chain (<code>Case</code>/<code>DisputePackage</code>/<code>DisputePackageLetter</code>/<code>Claim</code> and the Journey read-model) "pull[s] no wallet field" (<code>SEQUENCE-REVIEW.md</code>, verified holds), so there is no code-level shortcut that could accidentally couple Download to Wallet or provider readiness.</p>
+
+<h2 id="the-corrected-critical-path">5. The corrected critical path and the earliest wallet-free milestone</h2>
+<p><code>EXECUTION-PLAN.md</code> §3's own prose statement of the critical path omitted <code>P4</code> even though its dependency column requires <code>P5</code> to wait on <code>P4</code> — flagged independently by both <code>DEPENDENCY-GRAPH.md</code> §5 (self-corrected before the review) and the Opus review's Finding 4. <code>SEQUENCE-REVIEW.md</code>'s <strong>R-D4</strong> is the authoritative correction:</p>
+<ul>
+<li><strong>Engineering critical path (Send), corrected:</strong> <code>P0 → P1a → P1b → P4 → P5 → P6a → P7(∥P2) → P6b → P3-live → P9b → P10b</code>. Bottleneck is <strong>P2's wall-clock</strong> (outside counsel), not engineering throughput (<code>EXECUTION-PLAN.md</code> §3; <code>SEQUENCE-REVIEW.md</code> R-D4).</li>
+<li><strong>Earliest shippable wallet-free milestone, corrected:</strong> <code>P0 → P1a → P1b → P4 → P5 → P6a → P9a → P10a</code> — <strong>Download Package live, zero wallet, zero live provider, decoupled from CROA and vendor Q&amp;A</strong> (<code>SEQUENCE-REVIEW.md</code> R-D4).</li>
+<li><strong>Even earlier operator-visible value:</strong> <code>P5-accel</code> — the evolved <code>/mail</code> work queue/band/drawer/metrics/timeline, over <strong>today's existing <code>Letter[]</code> data</strong>, needing no <code>DisputePackage</code> schema at all — ships the moment <code>P1b</code> clears, with one flag (<code>FULFILLMENT_PACKAGE_UI_ENABLED</code>). Per <code>MAIL-CENTER-EVOLUTION-PLAN.md</code> §1.4: "the cheapest, most visible pre-September win." (<code>EXECUTION-PLAN.md</code> §3; <code>DEPENDENCY-GRAPH.md</code> §3.)</li>
+</ul>
+<p>Full phase-by-phase detail (gate/flag/migration/money-touching per phase): <code>EXECUTION-ROADMAP.html</code> in this package. Full dependency graph and migration order: <code>DEPENDENCY-AND-MIGRATION.html</code> in this package.</p>
+
+<h2 id="founder-decision-gates">6. Founder decision gates</h2>
+<p>Nothing proceeds past a closed gate (<code>EXECUTION-PLAN.md</code> §5):</p>
+<ol>
+<li><strong>CROA §404 counsel</strong> — blocks all money code (P2 gates P6b/P7/P8b/P3-live-settlement). Keeping the prepaid wallet does not moot the question.</li>
+<li><strong>Gate D Phase −1</strong> (P1a <strong>and</strong> P1b) — blocks all fulfillment schema. Per <code>SEQUENCE-REVIEW.md</code> <strong>R-D1</strong>, the Identity Constitution program is the <strong>sole owner</strong> of P1b (shared infrastructure with that program's own Implementation Slice 7); this is itself a Founder/owner cross-program coordination gate.</li>
+<li><strong>16 LetterStream vendor questions</strong> (11 named + 5 adjacent, per <code>SEQUENCE-REVIEW.md</code> <strong>R-D3</strong> — the "defer 5 past go-live" option is withdrawn) — block live wiring (<code>MAIL_LIVE</code>).</li>
+<li><strong>Earned VC instrument classification</strong> (sixth ADR-0038 instrument vs. productized promotional credit) — CCO/Founder decision, gates the Earned VC ledger specifically.</li>
+<li><strong>§611-clock-without-receipt</strong> — a separate, smaller open CCO question.</li>
+<li><strong>Founder sign-offs</strong> — the <code>MAIL_LIVE</code> flip, each production migration apply, and each money-flag flip, each individually.</li>
+</ol>
+
+<h2 id="nothing-implemented">7. Nothing implemented — the explicit statement</h2>
+<p><span class="badge warn">ARCHITECTURE + PLANNING ONLY — NOTHING IMPLEMENTED</span></p>
+<ul>
+<li>No file under <code>app/</code>, <code>lib/</code>, <code>components/</code>, or <code>prisma/</code> was touched by this program.</li>
+<li>No dependency was added; no environment variable was introduced; no feature flag changed state.</li>
+<li>Production <code>origin/main</code> is unchanged at <code>f449c35</code>.</li>
+<li>Every artifact under <code>docs/fulfillment/execution/</code> is a planning Markdown document, labeled <code>PROPOSED</code>, <code>FOUNDER-GATE</code>, <code>LEGAL-GATE</code>, or <code>VENDOR-CONFIRMATION-REQUIRED</code> per the Brief's own labeling discipline (<code>EXECUTION-PLANNING-BRIEF.md</code>).</li>
+<li>This package (<code>docs/handoffs/exec/</code>) adds no new claim beyond what the committed execution docs already state — it is a synthesis and Founder-readability layer, not a new planning pass.</li>
+</ul>
+
+<h2 id="where-the-detail-lives">8. Where the detail lives</h2>
+<p><code>FOUNDER-SUMMARY</code> (one-page view) · <code>EXECUTION-ROADMAP</code> (the full P0–P10b phase table) · <code>DEPENDENCY-AND-MIGRATION</code> (dependency graph + migration order) · <code>RISK-AND-GATES</code> (risk register + the 8 sequence-review findings/resolutions) · <code>CONTINUE-IN-CHATGPT</code> (resume/bridge document) · <code>MANIFEST</code> + <code>SHA256SUMS.txt</code> (package integrity). Underlying committed source: <code>docs/fulfillment/execution/EXECUTION-PLAN.md</code>, <code>SEQUENCE-REVIEW.md</code>, <code>DEPENDENCY-GRAPH.md</code>, <code>MIGRATION-PLAN.md</code>, <code>FEATURE-FLAG-STRATEGY.md</code>, <code>TESTING-STRATEGY.md</code>, <code>ROLLBACK-STRATEGY.md</code>, <code>RISK-REGISTER.md</code>, and the five domain plans.</p>
+
+<footer>CreditVector Fulfillment Platform · Phase 1 Execution Plan · Founder package · generated 2026-08-03 · planning only, nothing implemented</footer>
+</main>
+</body>
+</html>

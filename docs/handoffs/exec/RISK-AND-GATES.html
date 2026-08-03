@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Fulfillment Phase 1 Execution Plan — Risk and Gates</title>
+<style>
+  :root { color-scheme: light dark;
+    --bg:#f7f9fb; --fg:#15222e; --mut:#5a6b7a; --card:#fff; --line:#d7e0e8;
+    --ok:#0a7d40; --okbg:#e2f5ea; --warn:#8a5a00; --warnbg:#fdf1d8; --bad:#a12626; --badbg:#fbe4e4; --acc:#0b5f8a; --mono:ui-monospace,SFMono-Regular,Menlo,monospace; }
+  @media (prefers-color-scheme: dark){ :root{
+    --bg:#0d141b; --fg:#dbe7f1; --mut:#8fa1b0; --card:#131e28; --line:#263646;
+    --ok:#5fd394; --okbg:#10301f; --warn:#f2c46b; --warnbg:#33260a; --bad:#f08f8f; --badbg:#3a1414; --acc:#7cc4ea; }}
+  *{box-sizing:border-box} body{margin:0;padding:1.25rem;background:var(--bg);color:var(--fg);font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:60rem;margin:0 auto} h1{font-size:1.4rem;margin:.2rem 0 .3rem} h2{font-size:1.1rem;margin:1.6rem 0 .5rem;color:var(--acc);scroll-margin-top:1rem}
+  .sub{color:var(--mut);font-size:.85rem;margin-bottom:1rem} code{font-family:var(--mono);font-size:.82em;background:color-mix(in srgb,var(--line) 40%,transparent);padding:.08em .35em;border-radius:4px}
+  .badge{display:inline-block;padding:.15rem .55rem;border-radius:99px;font-weight:600;font-size:.78rem;margin:.05rem} .a{background:var(--badbg);color:var(--bad)} .b{background:var(--warnbg);color:var(--warn)}
+  ul,ol{padding-left:1.25rem} li{margin:.28rem 0}
+  table{width:100%;border-collapse:collapse;font-size:.8rem;background:var(--card);margin:.4rem 0} th,td{text-align:left;padding:.4rem .55rem;border-bottom:1px solid var(--line);vertical-align:top} th{color:var(--mut)}
+  .twrap{overflow-x:auto;margin:.6rem 0;border:1px solid var(--line);border-radius:8px} .twrap table{margin:0}
+  blockquote{margin:.5rem 0;padding:.5rem .9rem;border-left:3px solid var(--acc);background:var(--card);border-radius:0 6px 6px 0;color:var(--mut)}
+  nav.toc{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:.75rem 1rem;margin:1rem 0;font-size:.88rem} nav.toc ol{margin:.3rem 0} nav.toc a{color:var(--acc);text-decoration:none} nav.toc a:hover{text-decoration:underline}
+  footer{color:var(--mut);font-size:.78rem;margin-top:2rem;padding-top:.8rem;border-top:1px solid var(--line)}
+</style>
+</head>
+<body>
+<main>
+<h1>CreditVector Fulfillment Platform — Phase 1 Execution Plan — Risk and Gates</h1>
+<p class="sub">2026-08-03 · branch <code>docs/fulfillment-engine-v1</code> · HEAD <code>fcfc5b6</code> · base <code>origin/main f449c35</code> (untouched)</p>
+<p>Base source: <code>docs/fulfillment/execution/RISK-REGISTER.md</code> (33 rows, severity-ranked) and <code>docs/fulfillment/execution/SEQUENCE-REVIEW.md</code> (8 findings, 8 resolutions R-D1..R-D8).</p>
+
+<nav class="toc">
+<strong>Contents</strong>
+<ol>
+<li><a href="#risk-register">Risk register — top 12 by severity</a></li>
+<li><a href="#sequence-review-findings">The 8 sequence-review findings and resolutions</a></li>
+<li><a href="#founder-decision-gates">Founder decision gates</a></li>
+</ol>
+</nav>
+
+<h2 id="risk-register">1. Risk register — top 12 by severity</h2>
+<p><code>RISK-REGISTER.md</code> grades <strong>A — BLOCKING</strong> (6 rows), <strong>B — HIGH</strong> (10 rows), <strong>C — MEDIUM</strong> (12 rows), <strong>D — LOW/DEFERRED</strong> (3 rows), <strong>E — INFORMATIONAL</strong> (1 row), plus 1 resolved-kept-for-record row (33 total). This section lists all 6 <strong>A</strong> rows plus the 6 <strong>B</strong> rows most directly load-bearing on the near-term phases (P0/P4/P6) and on the sequence-review's own findings — selection stated explicitly since the source register does not itself rank within a grade.</p>
+<div class="twrap"><table>
+<tr><th>ID</th><th>Grade</th><th>Risk</th><th>Phase</th><th>Mitigation / gate</th></tr>
+<tr><td>R-01</td><td><span class="badge a">A</span></td><td>Gate D P1a/P1b non-atomicity + ID-B02: prod has no <code>_prisma_migrations</code> history; the preflight tooling hard-codes "exactly six directories" and rejects a 7th</td><td>P1a/P1b</td><td><code>EXECUTION-PLAN.md</code> P-1 ruling adopts the split; <code>gate-d-preflight.test.ts</code> extended to prove byte-identical six-file coverage plus the new directory before any 7th migration is accepted</td></tr>
+<tr><td>R-02</td><td><span class="badge a">A</span></td><td>Strict-gate deferral of all wallet code behind P2: every P7 stage, schema included, waits on CROA §404 counsel + Founder legal — the wall-clock is outside engineering control</td><td>P7 (transitively P6b/P8b/P9b/P10b/P3-live-settlement)</td><td>No P7 work proceeds past schema-sketch-on-paper before counsel answers; engineering keeps building the wallet-free Download path in parallel</td></tr>
+<tr><td>R-03</td><td><span class="badge a">A</span></td><td>ADR-0044 vocabulary drift + F14 cascade-not-yet-applied in the base architecture docs — risks an implementer building against stale text</td><td>P0</td><td>P-8 ruling: a small, unconditional documentation pass fixes both before any code is written against them</td></tr>
+<tr><td>R-11</td><td><span class="badge a">A</span></td><td>The CROA §404 and §611 counsel gates (carried) — the top-level legal gate blocking all wallet money code, plus a separate open CCO question on §611-without-receipt</td><td>P2</td><td>No plan schedules money code before these clear; a compliant alternative (Stripe manual-capture at delivery) is on file if §404 rules unfavorably</td></tr>
+<tr><td>R-14</td><td><span class="badge a">A</span></td><td>Treating P2 as "just" a parallel track undersells that its answer may invalidate P7 entirely</td><td>P2/P7</td><td>No P7 work proceeds past schema-sketch-on-paper before counsel answers (same mitigation as R-02)</td></tr>
+<tr><td>R-17</td><td><span class="badge a">A</span></td><td>Shipping the Wallet/WalletLedger migration before <code>COMMITMENT-REGATE.md</code>'s must-fix items are proven <strong>in code</strong> (not just documented) would silently reintroduce a closed defect (F4)</td><td>P7</td><td><code>wallet-runtime.test.ts</code> executes every must-fix scenario as a negative-controlled case before <code>WALLET_ENABLED</code> is even proposed for flip</td></tr>
+<tr><td>R-04</td><td><span class="badge b">B</span></td><td>The live Vendor-Opacity leak — <code>app/api/mail/[mailId]/route.ts:13</code> serializes the entire, unfiltered <code>MailManifest</code> (including <code>provider:"letterstream"</code>) to any authenticated owner, today, live, in production</td><td>P0 (moved forward from P4 by R-D2)</td><td>DTO boundary strips/replaces <code>provider</code> before any HTTP response; static + executing vendor-name regex guard</td></tr>
+<tr><td>R-05</td><td><span class="badge b">B</span></td><td>The append-only audit-template ordering risk — <code>MailService.ts:186</code>'s <code>Accepted by ${provider.name}</code> template is dormant today but becomes permanent, unfixable, the instant <code>dispatch()</code> gets its first caller</td><td>P4</td><td>Template changed to platform-neutral phrasing in the <strong>same change</strong> that gives <code>dispatch()</code> its first caller — never after</td></tr>
+<tr><td>R-06</td><td><span class="badge b">B</span></td><td>The 16-question vendor set, including 5 adjacent gaps not among the named 11 (rate-card currency, CASS-endpoint existence, PDF delivery mechanism, metadata passthrough, health-check reality)</td><td>P3/P3-live</td><td>All 16 folded into the vendor Q&amp;A packet, flagged, not silently merged into the 11 or ignored</td></tr>
+<tr><td>R-12</td><td><span class="badge b">B</span></td><td>Rushing the ID-B02 manifest-extension under schedule pressure weakens the "exact six-file baseline equality" proof that makes Gate D auditable today</td><td>P1a/P1b</td><td>Extended preflight test proves coverage <strong>plus</strong> the new directory, not instead of it</td></tr>
+<tr><td>R-13</td><td><span class="badge b">B</span></td><td><code>certified: false</code>/<code>true</code> hardcode (<code>app/api/mail/prepare/route.ts:46</code>) ships un-fixed into a UI that now prominently displays price — tri-confirmed by three separate agents independently</td><td>P0/P6b</td><td>Block P6b's FINAL REVIEW price re-display on this fix landing first; CCO Gate 1 recorded before merge</td></tr>
+<tr><td>R-27</td><td><span class="badge b">B</span></td><td>Agency-wide deficit blast radius — one chargeback can freeze an entire agency's wallet authorizations, because deficit-blocking is per-<code>Wallet</code> and one <code>Wallet</code> can be an agency</td><td>P7</td><td>Carried forward verbatim, not scope-narrowed this cycle (Founder ruling: no redesign); test documents, does not fix, the residual</td></tr>
+</table></div>
+<p class="sub">Full 33-row register: <code>docs/fulfillment/execution/RISK-REGISTER.md</code> §1–§2.</p>
+
+<h2 id="sequence-review-findings">2. The 8 sequence-review findings and resolutions</h2>
+<p>Per <code>SEQUENCE-REVIEW.md</code> — "8 findings; all documentary/procedural, none breaches a hard invariant." Each finding's Program Director resolution <strong>supersedes conflicting earlier text</strong> in the base execution docs.</p>
+<div class="twrap"><table>
+<tr><th>#</th><th>Finding</th><th>Sev</th><th>Resolution</th></tr>
+<tr><td>1</td><td>P1b == Identity Constitution Slice 7 (same underlying files) with no sole owner named → collision risk</td><td>HIGH</td><td><strong>R-D1 — FOUNDER GATE + ruling.</strong> The Identity Constitution program is the sole owner of P1b / Gate-D Slice 7; Fulfillment consumes it, never re-implements it. Before P1b begins, the owner pre-agrees migration-directory numbering across both programs.</td></tr>
+<tr><td>2</td><td>The live vendor-leak fix (pure code) was demoted from an ungated Track-0 pass into Gate-D-gated P4</td><td>MED-HIGH</td><td><strong>R-D2 — ADOPTED.</strong> Split P4: the Vendor Opacity DTO + static guard + the live-leak fix ship in the P0 / Track-0 ungated pass — the leak is live in production today and must not wait behind Gate D. Only the <code>MailManifestFlags</code> migration remains at P4, behind P1b.</td></tr>
+<tr><td>3</td><td>Vendor-gate count: the adapter plan still says "11" with a defer-past-go-live option; the master plan says 16 hard</td><td>MED</td><td><strong>R-D3 — RULING.</strong> The vendor-confirmation set is 16 (11 named + 5 adjacent), all hard preconditions of the <code>MAIL_LIVE</code> flip; the "defer 5 past go-live" option is withdrawn. The adapter plan is corrected to 16 as a documentary follow-up; the master plan governs.</td></tr>
+<tr><td>4</td><td>Master critical-path prose drops P4 even though the dependency table has P5←P4 → the path is one node longer than stated</td><td>MED</td><td><strong>R-D4 — CORRECTED.</strong> Engineering critical path including P4: <code>P0→P1a→P1b→P4→P5→P6a→P7(∥P2)→P6b→P3-live→P9b→P10b</code>. Earliest wallet-free milestone including P4: <code>P0→P1a→P1b→P4→P5→P6a→P9a→P10a</code>.</td></tr>
+<tr><td>5</td><td>P1a prescribes a flat <code>resolve --applied 0_init</code> where the runbook says migration state is UNKNOWN until preflight</td><td>MED</td><td><strong>R-D5 — CORRECTED.</strong> P1a defers to the Gate-D runbook's per-migration state taxonomy (read-only preflight → per-migration state determination → resolve only <code>SCHEMA_ONLY</code> migrations one at a time, re-preflighting after each; a <code>0_init = ALL_ABSENT</code> reading ABORTS as wrong-target evidence). Not a flat <code>resolve 0_init</code>.</td></tr>
+<tr><td>6</td><td>P1b is heavier than "admit a 7th directory" — the preflight pins 34 tables/304 columns/21 FKs/62 indexes/11 enums; every wave bumps them</td><td>MED</td><td><strong>R-D6 — RULING.</strong> P1b is a per-wave manifest-derivation mechanism, not a one-time unlock: every subsequent migration wave (P4, P5, P7, and Identity's own tables) re-derives the pinned totals through it. Owner = the Identity Constitution program (R-D1).</td></tr>
+<tr><td>7</td><td>Flag-name drift (<code>WALLET_ENABLED</code> vs. <code>WALLET_RUNTIME_ENABLED</code>; <code>FULFILLMENT_ENGINE</code> vs. <code>_POLICY_ENGINE</code>) — fail-closed, but latent</td><td>LOW-MED</td><td><strong>R-D7 — PINNED.</strong> Canonical flag literals: <code>WALLET_ENABLED</code> (Send/money), <code>FULFILLMENT_ENGINE_ENABLED</code> (P5), <code>FULFILLMENT_PACKAGE_UI_ENABLED</code> (P6a Download UI), <code>MAIL_LIVE</code> (live provider). All default OFF via the exact <code>=== "true"</code> idiom. Domain-doc aliases are superseded.</td></tr>
+<tr><td>8</td><td>In-flight Send-hold rollback isn't clean (flag-off blocks new authorize, doesn't mass-release; post-acceptance is irreversible) — disclosed, architecture-accepted</td><td>LOW</td><td><strong>R-D8 — DISCLOSED, architecture-accepted.</strong> In-flight rollback is forward-recovery (Recovery Engine <code>adjust</code>), never undo; post-acceptance is irreversible by design. The rule "flip <code>WALLET_ENABLED</code> to production only after Download-only has ≥1 clean release cycle" is a manual runbook check, not CI-automated.</td></tr>
+</table></div>
+
+<blockquote><strong>Net verdict</strong> (<code>SEQUENCE-REVIEW.md</code> §Net): "Sequence READY-WITH-DISCLOSURES; R-D2 and R-D5 are the two substantive pre-phase corrections (both improve safety), R-D1 is the one genuine cross-program Founder coordination gate, the rest are documentary. Nothing money-moving before P2; nothing live before the 16-question vendor gate. No implementation follows without Founder approval."</blockquote>
+
+<h2 id="founder-decision-gates">3. Founder decision gates</h2>
+<p>Per <code>EXECUTION-PLAN.md</code> §5, unchanged in substance by the review — nothing proceeds past a closed gate:</p>
+<ol>
+<li><strong>CROA §404 counsel</strong> — blocks all money code (P2 gates P6b/P7/P8b/P3-live-settlement).</li>
+<li><strong>Gate D Phase −1</strong> (P1a <strong>and</strong> P1b) — blocks all fulfillment schema; P1b's ownership is itself now a Founder-gated cross-program decision (R-D1).</li>
+<li><strong>16 LetterStream vendor questions</strong> — block live wiring (R-D3 makes all 16 hard, no deferral).</li>
+<li><strong>Earned VC instrument classification</strong> (sixth ADR-0038 instrument vs. productized promotional credit) — a CCO/Founder decision, gates the Earned VC ledger specifically.</li>
+<li><strong>§611-clock-without-receipt</strong> — a separate, smaller open CCO question.</li>
+<li><strong>Founder sign-offs</strong> — the <code>MAIL_LIVE</code> flip, each production migration apply, and each money-flag flip, each individually. Keeping the prepaid wallet does not moot gate 1.</li>
+</ol>
+
+<footer>CreditVector Fulfillment Platform · Phase 1 Execution Plan · Founder package · generated 2026-08-03 · planning only, nothing implemented</footer>
+</main>
+</body>
+</html>
