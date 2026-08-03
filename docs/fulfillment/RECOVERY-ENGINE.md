@@ -1,0 +1,174 @@
+# RECOVERY-ENGINE.md — Fulfillment Recovery Engine
+
+Agent W2 · Architecture only · **PROPOSED** new subsystem (Founder ruling #5) · Continuation of the accepted package (`e223e51`) refined per `COMMITMENT-REFINEMENT-BRIEF.md` (`f8cfb92`) · Labels **PROPOSED** / **FOUNDER-GATE** / **VENDOR-CONFIRMATION-REQUIRED** used rigorously and only where earned. Companion document: `FULFILLMENT-COMMITMENT-BOUNDARY.md` (the state-machine delta this engine drives against).
+
+> **CROA posture (unchanged, explicit — Brief S7, verbatim).** Settlement-at-acceptance strengthens the §1679b(b) posture versus capture-at-top-up but does NOT moot the counsel question — funds are still received in advance at top-up. The counsel question (`ADVERSARIAL-REVIEW.md` §3.4) remains the hard precondition before any wallet implementation phase. Every refinement doc carries this note verbatim in its header. F1 (Gate D Phase −1) also stands.
+
+---
+
+## 0. What this engine is
+
+The Recovery Engine is the deterministic subsystem that answers one question, precisely: **something already happened — a provider outcome, a status-sync result, a reconciliation-sweep tick, or an operator action — what state does the system land in, what happens to money, and what does the operator/consumer see?** It is the fourth deterministic-decision module in the same lineage as `CampaignPolicy.ts`, `pickRecommendation`'s `basis` law, and the Fulfillment Policy Engine (`A-POLICY-ENGINE.md`): **zero AI, zero network in the core; effects live at the edges** (persistence, notification dispatch, the actual provider poll call). Every verdict it produces carries a `basis` — the specific rule that fired — exactly as `A-POLICY-ENGINE.md` §4 law 3 requires of its own decisions.
+
+It exists because the adversarial review's F9/F10/F12 findings share one root cause: the original package had failure *taxonomy* (`A-STATE-MACHINE.md` §6) but no failure *engine* — no single place that owns detection, routing, wallet consequence, and the operator workflow as one deterministic unit, for every one of the Founder's seventeen named failure/recovery scenarios.
+
+---
+
+## 1. Ownership boundary vs. the Policy Engine — no overlap
+
+Founder ruling #5 (Brief): *"policy decides pre-flight rules; recovery decides post-failure routing."* Stated as a test, not a slogan:
+
+| Question | Owner | Why |
+|---|---|---|
+| Is certified mail required for this piece? | **Policy** (`A-POLICY-ENGINE.md` §3, `delivery.certified: true`, a constant) | Decided before anything is attempted. |
+| Which provider should this attempt route to? | **Policy** (`providerRouting`, §3.1) | Pre-flight — nothing has happened yet. |
+| Is this submission a duplicate, *before* we act on it? | **Policy** (`duplicatePrevention.verdict`, consumed from the claim layer) | A pre-flight check gating whether to proceed at all. |
+| What's the bounded retry schedule for a submission that hasn't been attempted yet? | **Policy** (`retrySchedule`, §3.2) | Pre-flight scheduling parameters. |
+| The submission just failed (rejected/timed out/network error) — what state, what wallet effect, what does the operator do next? | **Recovery** (this document, §4) | Post-failure routing — something already happened. |
+| A hold sat unconsumed past `staleAfter` — what happens? | **Recovery** (§3) | Post-hoc discovery via the sweep, not a pre-flight rule. |
+| An operator wants to cancel/retry/resolve an `attention` flag — what's the deterministic outcome? | **Recovery** (§4, scenarios 7–9) | An action taken *against* an already-existing state. |
+| Two operators acted concurrently — who wins, what does the loser see? | **Recovery** (§6) | A conflict discovered after the fact, not prevented in advance. |
+
+**The one input Recovery consumes from Policy, never re-derives:** the `retrySchedule` decision (bounded exponential parameters, `A-POLICY-ENGINE.md` §3.2) for a submission that has not yet been attempted. Recovery owns everything that happens **after** that schedule's own attempts are exhausted, and everything that happens to an attempt that already occurred — it never invents its own competing retry-timing rule for the pre-flight case. Symmetrically, the Policy Engine never routes a *post*-failure decision — `A-POLICY-ENGINE.md` §4 law 5 ("the engine never calls a provider or the network") and this engine's own zero-network core (§0) are the same law applied to both sides of one boundary.
+
+---
+
+## 2. Typed inputs and verdicts (PROPOSED)
+
+```ts
+// PROPOSED — lib/fulfillment/RecoveryEngine.ts (illustrative path; not created)
+
+type RecoveryInput =
+  | { kind: "provider_outcome"; subjectId: string; attempt: number; manifestId: string;
+      result: { ok: true; providerJobId: string } | { ok: false; error: MailProviderErrorCode; detail: string } }
+  | { kind: "status_sync_result"; subjectId: string; attempt: number; manifestId: string;
+      tracking: NormalizedTracking }
+  | { kind: "reconciliation_tick"; scope: "wallet_holds" | "manifest_staleness" | "ledger_drift"; at: string }
+  | { kind: "operator_action"; action: "cancel_request" | "retry" | "resolve_attention" | "adjust_request";
+      subjectId: string; attempt: number; actor: string; detail?: string };
+
+interface RecoveryVerdict {
+  scenario: string;              // one of the 17 named scenarios (§4's table), or "unclassified"
+                                  // — never silently absorbed into a nearby row
+  resultingState: FulfillmentStage | "ATTENTION" | "CANCEL_REQUESTED" | "RECEIPT_OVERDUE"
+                | "TRACKING_STALLED" | "NO_CHANGE";
+  walletEffect: "hold_released" | "settled" | "none" | "clawback" | "founder_gate_pending";
+  recoveryWorkflow: string[];     // operator-step handles, machine-readable — copy is W3's job
+  notificationMoment: "immediate" | "on_threshold" | "on_resolution" | "none";
+  kaiCopyClass: string;           // a HANDLE only — the actual copy is W3's (KAI-FULFILLMENT-UX.md)
+  basis: string;                  // which row of §4's matrix fired — never omitted (law, §7)
+  auditRef: string;                // pointer to the audit/ledger entries this verdict produced
+}
+```
+
+Every `RecoveryInput` variant is exhaustively switched with a compile-time `never`-check default — a new input kind added later must fail `typecheck` until this engine is updated to route it, never silently fall through (mirrors `A-POLICY-ENGINE.md` §7's static-guard idiom, applied to inputs instead of decisions).
+
+---
+
+## 3. Reconciliation sweep spec
+
+**Core loop:** active holds past `staleAfter` → provider status query → settle/release per truth. **A hold NEVER converts to settlement by timeout** — this is Brief S6's law, verbatim, and it is absolute: the sweep either finds truth (settle, because the provider actually accepted) or it releases (because the provider never accepted and the window ran out); it never assumes settlement merely because time passed.
+
+- **Authorization expiration = release + notify + Kai explanation.** No branch of the sweep may release silently. Every release the sweep performs fires the same notification + Kai-explanation obligation a synchronous release would (scenario 12, §4).
+- **Sweep idempotency — attempt-scoped claims.** The sweep's own actions (a release, an `attention` raise) are themselves claimed before execution, using the same `MAIL_TRANSITION`/`WALLET` claim domains and the same `${subjectId}:${toStage}:${attempt}` / `wallet:<subjectId>:<transition>:<attempt>` key shapes `FULFILLMENT-COMMITMENT-BOUNDARY.md` §4.3 defines — a second, overlapping sweep invocation (two concurrent cron/serverless runs) claims the same key and no-ops on the loser, exactly like any other transition (§5, §6 below).
+- **Sweep cadence posture — poll-model reality, not an assumption.** `A-PROVIDER-ABSTRACTION.md` §3.5: LetterStream's integration is **entirely pull-model** (`retrieveStatus`/`retrieveTracking`; `MailService.syncTracking()` already walks the manifest forward from a pulled `TrackingInfo`, `MailService.ts:193-220`) — no push route exists today, and per `FULFILLMENT-COMMITMENT-BOUNDARY.md` §2.1 question 6, whether LetterStream offers webhooks **at all** is unconfirmed. **This resolves gate F12's driver gap directly: the reconciliation sweep is not a fallback for stages 5–10 (`ACCEPTED` through `RETURN_RECEIPT_ARCHIVED`) — until vendor confirmation says otherwise, it is the only guaranteed driver.** A future webhook route (`A-PROVIDER-ABSTRACTION.md` §5) is additive on top of the sweep, never a replacement for it — even once webhooks exist, the sweep continues running as the backstop for missed/failed/unconfirmed deliveries (the same "belt and braces" idiom the repository already applies to Stripe webhook dedup, `lib/billing.ts:242-246`).
+- **Cadence structure (banded, not a single flat interval — exact minute values are a FOUNDER-GATE business tuning, not fixed here):**
+
+  | Band | Manifests in scope | Relative cadence |
+  |---|---|---|
+  | Hot | `SUBMITTED`, `ACCEPTED`, `PRINTING`, `MAILED`, `USPS_ACCEPTED` (non-terminal, actively expected to move) | Most frequent — this is the only channel driving stages 5–10 absent a confirmed webhook. |
+  | Warm | `DELIVERED` awaiting `RETURN_RECEIPT_ARCHIVED` (candidate `RECEIPT_OVERDUE`) | Less frequent — receipts lag delivery by design. |
+  | Cold | Active wallet holds approaching `staleAfter` (candidate `PAYMENT_VOID`) | Business-window scale (hours/days), per `C-WALLET-INTEGRATION.md` §3.4's own framing — never confused with `STALE_CLAIM_MINUTES`'s 15-minute serverless-invocation scale (`lib/billing.ts:148`). |
+
+  Reuses the bounded-exponential idiom `A-POLICY-ENGINE.md` §3.2 already establishes for the Policy Engine's own pre-flight retry schedule — applied here to *poll* frequency, not submission retries; a stuck manifest reads as stuck (via `attention`), never as silently-still-being-checked-less-and-less-often forever.
+
+---
+
+## 4. The 17-scenario deterministic matrix
+
+The Founder's list, verbatim order. Every row is fully enumerated — no cell reads "depends" without naming its branch conditions inline.
+
+| # | Scenario | Detecting signal | Resulting state | Wallet effect | Recovery workflow | Notification moment | Kai copy class | Audit entries |
+|---|---|---|---|---|---|---|---|---|
+| 1 | **Invalid PDF** | PDF-generation step fails/throws before `createMailJob` is ever called | `FAILED`, new `reasonCode: "pdf_invalid"` (extends `A-STATE-MACHINE.md` §6's set) — pre-`ACCEPTED`, so a new `attempt` is required to retry (`FULFILLMENT-COMMITMENT-BOUNDARY.md` §4.2, since `FAILED` is terminal, `MailStatus.ts:34-36`) | Hold released (pre-settlement) | System/operator regenerates a corrected PDF; new attempt minted; original manifest stays as evidence | Immediate, inline | `RETRY_NEEDED_TECHNICAL` | `FAILED`/`reasonCode:pdf_invalid` (actor: system) |
+| 2 | **Invalid address** | (a) `validateAddress()` fails pre-manifest (before `/api/mail/prepare` creates anything), **or** (b) provider rejects synchronously at `createMailJob` (`MailProviderError` code `"rejected"`) | (a) no manifest ever created — nothing to transition; (b) `FAILED`/`reasonCode:"address_invalid"` (existing, `A-STATE-MACHINE.md` §6), pre-`ACCEPTED` | (a) none — nothing was ever authorized; (b) hold released | Operator corrects address; (a) re-submits `prepare`; (b) new attempt minted | Immediate, inline | `CORRECTION_NEEDED_ADDRESS` | (a) route-level rejection log only; (b) `FAILED`/`reasonCode:address_invalid` |
+| 3 | **Provider outage** | `healthCheck()` unhealthy, **or** a `network`-class `MailProviderError`, **or** the sweep's poll fails across N consecutive attempts | Pre-flight: Policy Engine refuses routing (`providerRouting.eligible = []`, fail-closed per `A-POLICY-ENGINE.md` §3.1) — package stays at `WALLET_AUTHORIZED`, `attention` raised (`reasonCode:"provider_outage"`); mid-flight: sweep poll failure alone does **not** change `status` — `attention` raises only after the sweep's own threshold, to avoid alarm on a single blip | None while retrying (hold intact, unconsumed); if the bounded retry schedule (Policy-owned) exhausts → `PROVIDER_ERROR`, pre-`ACCEPTED` → hold released | Automatic retry per Policy's schedule; if exhausted, operator manually re-attempts once health is confirmed restored (new attempt) | `attention` to ops queue after N consecutive failures; consumer-facing copy only fires if the schedule fully exhausts | `TEMPORARY_DELAY` (retrying) → `SUBMISSION_NOT_COMPLETED_YET` (exhausted) | Each retry logged (`event:"retry.attempted"`); exhaustion logged as `PROVIDER_ERROR`/`reasonCode:network` |
+| 4 | **Provider timeout** | A provider call (typically `createMailJob`) exceeds its own request timeout with **no definitive response** — neither a thrown `MailProviderError` nor a returned `providerJobId`. Genuinely ambiguous: did the vendor receive it or not? | The `MAIL_TRANSITION` claim for this attempt stays `pending`/claimed, never `committed`. **`attention`** raised (`reasonCode:"provider_timeout_ambiguous"`) once the claim ages past its window — never auto-resolved | Hold stays intact, **neither released nor settled**, until resolved — releasing risks masking a real duplicate job; settling risks capturing for a job that never existed | Ops-manual: resolve via a delayed status query surfacing a real `providerJobId` (→ proceeds to `ACCEPTED` normally, wallet settles per the normal rule) **or** confirmed-absent via vendor contact (→ `PROVIDER_ERROR`, hold released). **Never an automatic blind retry** absent `FULFILLMENT-COMMITMENT-BOUNDARY.md` §2.1 question 10's vendor confirmation on idempotent-key dedup | Ops attention immediately (not auto-recoverable); consumer sees an honest "still processing," never a false failure or false success | `PROCESSING_LONGER_THAN_USUAL` | Claim row stays `pending` with timestamps; resolution entry records which branch fired and the evidence |
+| 5 | **API rejection** | `createMailJob` throws `MailProviderError` code `"rejected"` synchronously — a definitive, immediate vendor refusal | `REJECTED` (existing side-state), pre-`ACCEPTED`, `reasonCode:"provider_rejected"` | Hold released — symmetric to Founder ruling #2 ("vendor rejects → hold released, balance restored") | Operator reviews the (translated, never raw) rejection detail, corrects what's correctable, new attempt minted | Immediate, inline | `CORRECTION_NEEDED_GENERAL` | `FAILED`/`reasonCode:provider_rejected`; raw vendor detail preserved internally, never surfaced verbatim (Kai translation law) |
+| 6 | **Duplicate submission** | The `MAIL_TRANSITION` claim for `${subjectId}:${toStage}:${attempt}` returns `completed` for what would otherwise be a second execution | **No state change** — acknowledged as already-done, per `A-STATE-MACHINE.md` §8's existing "completed → acknowledge without re-running" law, now attempt-scoped | None — the original transition's effect happened exactly once | None needed — this *is* the recovery | None (silent, correct no-op) | n/a — no user-facing event | Original committed entry stands; an internal (non-audit-trail) log line notes the deduped redelivery for ops observability only |
+| 7 | **Retry** | Operator-initiated re-attempt after `REJECTED`/`RETURNED_TO_SENDER`, or system-initiated after scenario 3's schedule exhausts | New manifest attempt (`attempt` N+1) minted per `FULFILLMENT-COMMITMENT-BOUNDARY.md` §4.2; old terminal manifest untouched, kept as evidence | A **new**, independent authorize hold for the new attempt — never a reuse of the old (already-released) hold; a full new cost commitment | Operator reviews what needs correcting, re-approves (a real, new user action — "Kai never approves" unchanged) | Inline (operator-initiated) or ops-queue-driven (system-escalated) | `RETRY_IN_PROGRESS` | Full new audit trail from `GENERATED`; new `DisputePackageLetter` row (`letterId`, `attempt` N+1, new `mailId`); "current attempt" is read as `MAX(attempt)`, never a second stored pointer |
+| 8 | **Cancellation before provider acceptance** | Operator cancel while status ∈ {`APPROVED`, `WALLET_AUTHORIZED`-span, `SUBMITTED`} | `CANCELED` (existing terminal state, reachable per today's `CANCELABLE`, `MailStatus.ts:43`) | If no hold exists yet: none. If a hold exists: released, synchronously, no vendor confirmation needed | None needed beyond the cancellation; a fresh attempt may be started later if desired (not automatic) | Immediate, in-app confirmation | `CANCELLED_CLEAN_RELEASE` | `CANCELED` (actor: user); paired `release` wallet entry if a hold existed |
+| 9 | **Cancellation after provider acceptance** | Operator cancel while status is confirmed at/after `ACCEPTED` | Off-machine `cancelRequest` raised (`outcome:"pending"`); manifest's real `status` unchanged by the request itself (`FULFILLMENT-COMMITMENT-BOUNDARY.md` §4.4) | **Branch A** (`outcome:"confirmed_cancelled"`, rare, pending vendor confirmation): manifest → `CANCELED`; wallet **stays settled** by default (settlement is final at `ACCEPTED`, §1.1 of the boundary doc) — a manual `adjust` reversal is **FOUNDER-GATE only**, never automatic, and the "paid for a service not rendered" tension is surfaced to CCO/counsel, not resolved here. **Branch B** (`outcome:"proceeded"`, the default): manifest continues normally; wallet stays settled, no effect at all | Branch A: owner/CCO-reviewed manual adjustment workflow, if invoked. Branch B: none — normal fulfillment continues | Immediate ack of the *request* (never promising success); a distinct notification once the outcome resolves | `CANCEL_REQUEST_ACKNOWLEDGED_PENDING` → `CANCEL_CONFIRMED_RARE` (A) or `CANCEL_NOT_POSSIBLE_PROCEEDING` (B) | `cancelRequest` raised (actor: user) + resolution entry (actor: provider/system); Branch A's wallet entry, if any, is a named `adjust`, never automatic |
+| 10 | **Partial bureau acceptance** | Within one package, per-letter manifest status diverges — some reach `ACCEPTED`, others `REJECTED`/`FAILED` | Per-letter: each letter's own state, independently (F5's fix, `FULFILLMENT-COMMITMENT-BOUNDARY.md` §3). Package rollup (`DisputePackage.stage`) stays least-progressed-child, unchanged mechanism — now paired with a truthful per-letter breakdown | Settled for accepted letters' subjects; released for rejected letters' subjects — independently, atomically, per letter | Each rejected letter follows its own retry (scenario 7) independently; accepted letters proceed to delivery on their own timeline | Per-letter (each letter's state change notifies independently), plus an optional package-level summary | `PACKAGE_PARTIAL_PROGRESS` | Each letter's manifest audit trail independent and complete; package level has no separate trail (rollup is derived) |
+| 11 | **Partial fulfillment** | A single letter's own pipeline stalls mid-flight — no forward movement for `staleAfterTracking` at any post-`ACCEPTED`, pre-`DELIVERED` stage (the general form of `TRACKING_STALLED`, `FULFILLMENT-COMMITMENT-BOUNDARY.md` §4.5, at any stage, not only post-carrier) | `attention` raised (`reasonCode:"fulfillment_stalled"`); `status` stays at its last confirmed stage — no fabricated forward progress (Room Constitution §9) | None — already settled at `ACCEPTED`; this is a post-settlement operational stall | Ops investigates (may require manual vendor contact, itself `VENDOR-CONFIRMATION-REQUIRED`-flavored); sweep either observes movement (auto-clears) or ops escalates to a FOUNDER-GATE "lost in transit" determination | `attention` to ops queue after threshold; consumer sees honest "taking longer than typical," never a fabricated status | `FULFILLMENT_STALLED_INVESTIGATING` | `attention` raised/resolved entries; a FOUNDER-GATE remedy, if it fires, is its own `adjust` entry with its own review trail |
+| 12 | **Wallet authorization expiration** | Sweep finds an `authorize` entry with no sibling `settle`/`release` older than `staleAfter` (§3) | `PAYMENT_VOID` (existing side-state) | **Release** — never settlement-by-timeout (Brief S6, absolute law) | Operator re-authorizes if still wanted. **Same attempt** reused (nothing was ever submitted — distinct from scenario 7's new-attempt requirement, which only applies after an actual terminal provider interaction) | Release notification + Kai explanation — both mandatory, no silent branch (Brief S6) | `HOLD_EXPIRED_RELEASED` | `release` wallet entry (`reversesId` → expired authorize, `basis:"expired"`); manifest `WALLET_AUTHORIZED → PAYMENT_VOID` (actor: system) |
+| 13 | **Double-click submissions** | Submission-token dedup layer (§5) catches a second HTTP request carrying the same `submissionToken` within its window | No state change — second request short-circuits at the token layer, before reaching the `MAIL_TRANSITION`/`WALLET` claim layer at all | None additional — exactly one authorize/settle sequence fires regardless of click count | None needed | None (transparent) | n/a | Exactly one set of entries exists; the duplicate click is logged at the token-dedup layer only, not on the manifest |
+| 14 | **Race conditions** | Two near-simultaneous events reach the same subject via different channels (e.g. a webhook and a sweep poll both reporting the same transition; an operator cancel racing an in-flight `createMailJob`) | The `MAIL_TRANSITION` claim table is the single arbiter — first claim wins (`claimed`); the other observes `in_flight` → `completed` and no-ops | Whatever the one winning transition's normal effect is — nothing additional from the race itself | None needed — this is the designed defense | None additional | n/a | Only the winning caller's actor is recorded on the manifest; the `Claim` row's own metadata (which caller/source claimed it) serves ops debugging without polluting the audit trail |
+| 15 | **Concurrent operator actions** | Two human operators issue overlapping actions on the same subject (e.g. both view one package; one clicks Approve, the other Cancel, moments apart) | Wallet-affecting actions: serialized by the S1 anchor lock (`SELECT ... FOR UPDATE`). Manifest-only actions: serialized by `MailStore.saveProgress`'s existing optimistic audit-length guard (`MailStore.ts:174-193`, "last-writer-lose (0 rows) instead of silently dropping an audit entry" — already shipped, unchanged) | Whatever the winning action's normal effect is | The losing operator is shown the **current actual state** ("already approved by X a moment ago" / "this action can't complete — state changed, review and retry") and must consciously act again against the new state — never auto-retried on their behalf | Immediate, to the losing operator only | `CONCURRENT_ACTION_LOST` | Only the winner's action lands on the manifest/ledger; the loser's attempt may be logged at an operator-activity level, distinct from the append-only fulfillment trail |
+| 16 | **Refund scenarios** | Enumerated by trigger, not "depends": (a) address-failure-after-settle (scenario/§4.5); (b) returned-after-delivered (§4.5); (c) post-acceptance cancellation confirmed stopped (scenario 9, Branch A); (d) a Stripe-side chargeback/dispute on the *original top-up funding* (Brief S3's `clawback` entry, W1's ledger); (e) a legal/compliance-directed reversal | (a)/(b)/(c): each a named **FOUNDER-GATE** `adjust`/refund-credit path, never automatic. (d): automatic `clawback` on the verified Stripe webhook signal — the one automatic branch in this family, because it is driven by an unambiguous, already-verified external signal, unlike (a)/(b)/(c) which all require human judgment. (e): owner-initiated `adjust`, manual, paired with `AdminAuditLog` (`C-WALLET-INTEGRATION.md` §2.5) | (a)/(b)/(c): `founder_gate_pending` until reviewed. (d): `clawback`, may drive the fold negative → deficit posture (W1's mechanism, Brief S3). (e): manual `adjust` | Per-branch, cross-referenced to each scenario's own row above (a/b/c) or to W1 (d/e) | Per-branch | `REFUND_UNDER_REVIEW` (a/b/c); `BALANCE_ADJUSTED_CHARGEBACK` (d); `BALANCE_CORRECTED_MANUAL` (e) | Every branch's entry carries `reversesId` back to the original authorize/settle entry for full traceability |
+| 17 | **Ledger reconciliation** | The sweep's own recurring, proactive housekeeping pass — re-folds the ledger, re-derives Event-Bus facts (`C-WALLET-INTEGRATION.md` §2.4's `reconcileWalletFacts`), and cross-checks every active hold against the manifest's actual current status | Drift matching a **known, pre-defined safe rule** (e.g. stale hold past TTL, scenario 12) is auto-resolved by that rule. Drift matching **no** pre-defined rule raises `attention` (`reasonCode:"ledger_drift"`) for manual review — the sweep never invents a financial correction | Per the matched rule (scenario 12's release), or none/pending-review for unmatched drift | Automatic for matched drift; ops-manual for unmatched drift, with the exact evidence attached (which side is ahead, and by which entries) | Internal/ops-only, unless a matched-rule resolution triggers a consumer-visible change (e.g. a release), in which case that scenario's own notification fires | n/a directly — any consumer-visible effect inherits whichever scenario actually fired as a result | A reconciliation-run log entry (started/completed, N holds checked, M drifts found, K auto-resolved, J flagged); read-only on the ledger itself except for the matched-rule writes it triggers |
+
+---
+
+## 5. Duplicate / double-click defense
+
+**Two layers, belt-and-braces** — the same idiom the repository already uses for `creditLetters()`'s dual dedup keys (`lib/billing.ts:242-246`):
+
+1. **Submission token (request-layer, catches the click before any business logic runs).** A `submissionToken` (server-issued or client-minted once per render of the FINAL REVIEW screen) accompanies the Approve/Submit request. The route's first action is an idempotent claim on that exact token — a lightweight, request-scoped dedup distinct from and prior to the `MAIL_TRANSITION`/`WALLET` claims. Catches the literal double-click / slow-network-double-tap case at the HTTP layer.
+2. **`MAIL_TRANSITION` + `WALLET` claims (business-layer, catches everything else).** Webhook redelivery, crash-recovery retry, concurrent tabs, a sweep re-processing the same subject — all caught by the attempt-scoped claim keys (`FULFILLMENT-COMMITMENT-BOUNDARY.md` §4.3), independent of whether a submission token was ever involved.
+
+A UI-level disabled-button-on-click is legitimate defense-in-depth but is **never** the authoritative guarantee — the server-side token claim is.
+
+---
+
+## 6. Concurrent-operator rules
+
+- **Anchor lock (wallet-affecting actions).** Per Brief S1, every money-moving operation runs inside one transaction that takes `SELECT ... FOR UPDATE` on the payer principal's `Wallet` anchor row. Two operators racing a wallet-affecting action on the same principal serialize through this lock; the second transaction observes the first's already-committed effect before proceeding.
+- **Optimistic audit-length guard (manifest-only actions).** `MailStore.saveProgress`'s existing guard (`MailStore.ts:174-193`) already serializes non-wallet manifest writes via an audit-trail-length-checked `UPDATE ... WHERE jsonb_array_length("auditTrail") = $prevLength` — `0` rows affected means a concurrent writer got there first. Unchanged, reused as-is.
+- **Explicit refusal semantics for the loser.** The losing request never silently overwrites, never silently merges, and is never blindly retried on the operator's behalf (a blind retry could apply a decision the operator no longer actually intends, against a state that has since changed). It receives a typed `CONCURRENT_MODIFICATION` result and is shown the **current actual state** before being asked to act again. UI state class: `CONCURRENT_ACTION_LOST` (§4, scenario 15) — handle only, W3 owns the literal copy.
+
+---
+
+## 7. Recovery Constitution (text, per Brief ruling #6)
+
+> **Every failure resolves to a deterministic state, with a preserved audit trail, a recoverable workflow, and a Kai explanation. No failure is ever silent, ever fabricated as progress, ever left to a guess, and no fix is ever applied to money without a named, traceable rule.**
+>
+> 1. Every `RecoveryInput` produces exactly one `RecoveryVerdict`, and every verdict carries a `basis` naming the specific rule that fired — a verdict with no `basis` is not valid output.
+> 2. The manifest's `status` field only ever reflects the last actually-known-legal pipeline position. It is never fabricated forward, never parked in a synthetic side-state, and never silently reset backward. Uncertainty is represented off-machine (`attention`, `cancelRequest`), never in-machine.
+> 3. A hold never converts to settlement by the passage of time. Settlement happens only at the financial boundary (provider acceptance), never earlier, never by default, never by timeout.
+> 4. Every wallet effect this engine produces is one of exactly four kinds — `hold_released` / `settled` / `none` / `clawback` — or is explicitly named `founder_gate_pending`. No fifth, ad hoc financial outcome is ever invented inline.
+> 5. Every automatic recovery action is reversible in the sense that its audit trail is preserved and traceable (`reversesId`, claim rows, `attention`/`cancelRequest` resolution records) — even where the underlying real-world event (a mailed letter) is not.
+> 6. No recovery action is ever taken twice for the same attempt. Claim-before-effect governs every transition this engine drives, with no exception carved out for "the sweep" or "an internal process."
+> 7. Every failure that reaches an operator is paired with a Kai explanation class — never a raw vendor error, never the word "Failed" bare, per the Founder's Kai boundary laws (ruling #4).
+
+---
+
+## 8. Guard strategy
+
+**Static:**
+
+- `npm run typecheck` — every `RecoveryInput`/`RecoveryVerdict` variant fully typed, no `any`; the exhaustive-switch-with-`never`-default shape (§2) makes an unhandled new input kind a compile error, not a silent fallthrough.
+- Every `RecoveryVerdict` has a non-empty `basis` and a `scenario` drawn from the 17-named-scenario set or the literal `"unclassified"` — never blank, never a free-text guess (mirrors `A-POLICY-ENGINE.md` §4 law 3).
+- A source-level import guard: the Recovery Engine's core module imports **zero** AI/LLM modules (`lib/kai*`, any Anthropic client) and **zero** network/HTTP client modules — mirrors the Wallet's own `lib/reputation/**` no-cross-import guard idiom (`C-WALLET-INTEGRATION.md` §1.2), applied here to enforce "zero AI, zero network in the core" as a compiled fact, not a convention.
+
+**Executing (named cases, mirroring `C-WALLET-INTEGRATION.md` §8.3's table style — every one of the 17 scenarios gets at least one fixture; representative cases named explicitly below):**
+
+| Case | Assertion |
+|---|---|
+| Double-click / duplicate submission (scenarios 6, 13) | Simulate two rapid calls sharing one `submissionToken`; assert exactly one manifest, one wallet effect, one audit entry. |
+| Concurrent operators (scenario 15) | Simulate two overlapping operator actions on one subject; assert exactly one commits and the other returns `CONCURRENT_MODIFICATION` with the current state attached. |
+| Ambiguous timeout (scenario 4) | Simulate a provider call that times out with no definitive response; assert the hold stays neither released nor settled, and that no automatic retry fires absent a resolved claim. |
+| Hold expiration (scenario 12) | Seed a stale `authorize` entry past `staleAfter`; assert `release` fires (never `settle`), paired with a notification and Kai-explanation record. |
+| Unmapped provider status (scenario, `attention` mechanism) | Feed an unrecognized raw status string; assert `attention` raises with `reasonCode:"unknown_provider_status"` and that `status` does **not** change. |
+| Ledger drift, matched vs. unmatched (scenario 17) | Seed a manifest/ledger pair in a known stale-hold-shaped drift; assert auto-release fires. Seed an unrecognized drift shape; assert `attention` raises instead of a silent correction. |
+| Retry attempt numbering (scenario 7) | Retry a `REJECTED` letter twice; assert two new manifests (`attempt` 2, 3), the original preserved, and `MAX(attempt)` resolving to the correct current row with no second stored pointer. |
+
+Both layers run before any route wiring, unit-testable with zero DB and zero network — identical discipline to `MailService`'s and the Policy Engine's own injectable dependencies.
+
+---
+
+## 9. Interface handles exposed downstream
+
+- **To W1 (Wallet):** the four wallet-effect vocabulary values (`hold_released` / `settled` / `none` / `clawback`, plus `founder_gate_pending` as an explicit fifth non-effect) as the **only** vocabulary this engine ever emits against the ledger — W1's entry kinds (`authorize`/`settle`/`release`/`clawback`/`adjust`, Brief S2) are the effects; this engine only ever names which one applies and why (`basis`). The reconciliation sweep's release-driving role (scenario 12/17) as a caller of W1's `release` operation, under the same anchor lock and attempt-scoped claim W1 already requires.
+- **To W3 (Kai UX):** every `kaiCopyClass` named in §4's matrix as a stable handle to write against — this document assigns no literal copy, per the Brief's own division of labor. The notification-moment vocabulary (`immediate` / `on_threshold` / `on_resolution` / `none`) as the timing contract W3's notification surfaces must honor.
+- **To the Founder/CCO:** every `founder_gate_pending` row in §4 (scenarios 9 Branch A, 11's lost-in-transit escalation, 16 a/b/c/e) as an explicit, named decision point — none silently defaulted to "keep the money" or "always refund." The cadence values in §3 (banded polling, `staleAfterReceipt`, `staleAfterTracking`, the wallet hold TTL) as named-but-untuned business parameters requiring sign-off before activation.
