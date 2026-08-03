@@ -2751,6 +2751,11 @@ async function runCase(spec) {
       method: "operating-model-toggle",
       district: "team-operations",
     });
+    // applyOperatingModel calls closeDirectorAndRestoreFocus on EVERY
+    // selection (Team Specimen included), so the panel is already closed
+    // again by this point -- it must be reopened before Solo Agency is
+    // reachable, exactly like the first activation above.
+    await activate(directorSummary, spec.activation);
     const soloAgencyButton = page.getByRole("button", { name: "Solo Agency" });
     await activate(soloAgencyButton, spec.activation);
     await page.waitForFunction(
