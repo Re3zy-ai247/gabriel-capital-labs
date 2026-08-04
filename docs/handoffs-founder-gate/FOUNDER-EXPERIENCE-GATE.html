@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CreditVector — Founder Experience Gate 1.0</title>
+<style>
+:root{--bg:#0b1220;--panel:#111a2c;--text:#e6edf7;--muted:#9fb0c9;--line:#22304a;--accent:#4cc3b0;--warn:#e0b34c;--bad:#e06c6c}
+@media (prefers-color-scheme: light){:root{--bg:#f7f9fc;--panel:#ffffff;--text:#16233a;--muted:#5a6b85;--line:#dbe4f0;--accent:#0e7c6e;--warn:#8a6410;--bad:#a33030}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;padding:0 16px 80px}
+main{max-width:860px;margin:0 auto}
+h1{font-size:1.7rem;line-height:1.25;margin:28px 0 8px;letter-spacing:-.01em}
+h2{font-size:1.25rem;margin:40px 0 12px;padding-top:18px;border-top:1px solid var(--line);letter-spacing:-.01em}
+h3{font-size:1.05rem;margin:26px 0 8px}
+p,li{color:var(--text)}
+strong{color:var(--text)}
+em{color:var(--muted)}
+a{color:var(--accent);text-decoration:none}
+blockquote{margin:16px 0;padding:10px 16px;border-left:3px solid var(--accent);background:var(--panel);color:var(--muted);border-radius:0 8px 8px 0}
+code{background:var(--panel);border:1px solid var(--line);border-radius:5px;padding:1px 5px;font-size:.86em;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+pre{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px;overflow-x:auto}
+pre code{border:0;background:none;padding:0}
+.tablewrap,table{max-width:100%}
+table{border-collapse:collapse;margin:16px 0;font-size:.92em;display:block;overflow-x:auto;white-space:normal}
+th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top;min-width:90px}
+th{background:var(--panel);color:var(--muted);font-weight:600;white-space:nowrap}
+hr{border:0;border-top:1px solid var(--line);margin:36px 0}
+li{margin:4px 0}
+</style>
+</head>
+<body><main>
+<h1>CreditVector — Founder Experience Gate — Release Gate 1.0</h1>
+<p><strong>Date:</strong> 2026-08-03 · <strong>Branch:</strong> <code>feat/experience-runtime-phase-1a</code> (Phase 1A @ <code>7df3d7b</code>, pushed; + local docs commit <code>3529271</code>, unpushed)
+<strong>Production:</strong> untouched (<code>origin/main</code> @ <code>f449c35</code>) · <strong>Stop conditions honored:</strong> no merge · no deploy · no production migration · no Phase 1B · no Wallet · no LetterStream
+<strong>Program Director:</strong> Claude Fable 5 · <strong>Experience walks:</strong> 5× Claude Sonnet 5 · <strong>Independent acceptance:</strong> Claude Opus 5 (blind, bounded)</p>
+<hr>
+<h2>1. Executive Review</h2>
+<p><strong>Release verdict: NOT READY — with a short, precisely-mapped path to READY.</strong></p>
+<p>Five Sonnet operators walked the implemented product as five different people (first-timer, returner, agency owner, mail-ops, Kai auditor) and independently returned the same shape of answer: <strong>QUALIFIED YES ×5</strong>. The independent Opus acceptance gate, run blind to their findings on both a cold account and a worked file, returned <strong>NOT READY</strong> — and its reasoning subsumes every qualification the five walks raised:</p>
+<blockquote>
+<p>&quot;An operating system is not a system that talks like one — it is a system whose picture of your file is the same in every room and is never wrong about what you already did. This one has the voice and roughly two-thirds of the fact base.&quot;</p>
+</blockquote>
+<p>The split is unusually clean:</p>
+<ul>
+<li><strong>What Phase 1A set out to fix, it fixed.</strong> Every §611 date claim found by a dedicated hunt is receipt-anchored (zero violations). The quiet state never lies — interrupted work is honestly promoted and counted. &quot;Continue where you left off&quot; deep-links to the exact interrupted step. Onboarding checkmarks mean <em>done</em>, not <em>visited</em>. The approve control sits structurally outside Kai&#39;s panel. The evidence asymmetry is disclosed at every fork with the &quot;(soon)&quot; line. Workspace switching leaks nothing. No emoji or exclamation mark exists anywhere in Kai&#39;s voice.</li>
+<li><strong>What breaks is one layer: cross-room / cross-action state coherence.</strong> The engine that says &quot;do this next&quot; doesn&#39;t know about letters that already exist. The Mail Center&#39;s headline band doesn&#39;t know about the ready-to-mail packages in its own room. The date picker can&#39;t accept the true mailing date. The download chain will walk you calmly into mailing a letter addressed from <code>[YOUR FULL NAME]</code>. Fixing a letter costs a letter. None of this is a redesign — all of it is state wiring and copy, and the three heaviest items now have confirmed file:line mechanisms.</li>
+</ul>
+<p>Every one of the six release blockers below is a bounded fix. Nothing found touches the locked architecture.</p>
+<h2>2. The Six Release Blockers</h2>
+<p>The union of the Opus gate&#39;s four blockers and the two blocker-class defects the walks confirmed with mechanism. These are the gate; close them and re-run a bounded verification pass.</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Blocker</th>
+<th>Evidence</th>
+<th>Mechanism (confirmed)</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>RB-1</strong></td>
+<td><strong>The OS orders work it already did.</strong> Demo file: three §605 Navient letters exist, generated and unmailed — Mission Control, the Kai dock (on the Letters page itself), and Timeline all still headline &quot;Navient … §605 … Review this item &amp; dispute.&quot; Under a footer that says &quot;no fabricated priorities,&quot; this is a fabricated priority.</td>
+<td>Opus (4 rooms); reproduces anywhere the §605 branch fires on a lettered item</td>
+<td><code>lib/kaiHome.ts:90</code> — the §605/obsolete branch (deliberately computed first for the Phase 1A starvation guard) filters only <code>!t.resolved</code>; it never checks the <code>disputedIds</code> set the general ladder already builds at <code>lib/kaiHome.ts:206</code>. One-condition fix.</td>
+</tr>
+<tr>
+<td><strong>RB-2</strong></td>
+<td><strong>Never-late accounts are counted as &quot;active negatives&quot; and staged for §611 dispute.</strong> &quot;6 active negatives&quot; on a file with two <code>Pays as agreed / Never late</code> accounts; Deferred queue stages Nelnet and Toyota for &quot;Bureau reinvestigation (§611)&quot;; clean tradelines get a nonzero &quot;dispute strength 18/100&quot; with no &quot;nothing to dispute here&quot; state. Proposing disputes of accurate accounts is the one thing this product must never quietly do — this is compliance surface, not just UX.</td>
+<td>Opus (both accounts); Agent A independently</td>
+<td>Counting/staging logic treats every unresolved tradeline as a dispute candidate; no clean-account carve-out state exists.</td>
+</tr>
+<tr>
+<td><strong>RB-3</strong></td>
+<td><strong>The Mail Center&#39;s own &quot;Do this first&quot; band is blind to its own room.</strong> &quot;You&#39;re all caught up — no action waiting on you here&quot; directly above two READY-TO-PREPARE packages; after mailing one, the band narrates the passive waiting window and stays silent on the still-actionable package — while Mission Control&#39;s queue, reading the same data at the same instant, points at it correctly.</td>
+<td>A, B, D, Opus — four independent reproductions across two states</td>
+<td><code>lib/mailCenter.ts:462</code> <code>pickMailBand</code> — by design it never computes a second ranking (one-ladder law); its fallback chain is kaiHome-primary → starvation-secondary → deadlines queue, and no rung represents READY_TO_PREPARE packages. The state F1 created is real in the section list but invisible to the band.</td>
+</tr>
+<tr>
+<td><strong>RB-4</strong></td>
+<td><strong>The download chain ships placeholder letters without a word.</strong> Card → Evidence → &quot;Ready to download?&quot; → &quot;Mark reviewed — ready to mail&quot; → &quot;Download &amp; print&quot; never mentions the artifact still reads <code>[YOUR FULL NAME] / [YOUR ADDRESS] / [CITY, STATE ZIP]</code> (and <code>[Furnisher mailing address]</code>). The only warning lives on <code>/letters</code>, which Mail Center never surfaces; completing the profile does NOT retro-fill already-generated letters; the letter card simultaneously says &quot;Ready to mail.&quot; An operator who trusts the room mails an unreturnable letter.</td>
+<td>D (DOM + API-confirmed), Opus, A</td>
+<td>Letter body/preview frozen at generation; no placeholder check anywhere on the download path.</td>
+</tr>
+<tr>
+<td><strong>RB-5</strong></td>
+<td><strong>The mailing date — the anchor of the §611 estimate — cannot be entered truthfully in a US evening.</strong> The picker renders <code>min = max = value =</code> server-UTC &quot;today&quot; (tomorrow, local); the true local date is rejected (&quot;The mailing date can&#39;t be before this letter was generated&quot;); the stored <code>mailedAt</code> (UTC midnight) then displays back as the <em>prior</em> local day — two timezone faults visually canceling tonight, in one timezone.</td>
+<td>B (live rejection), D (DOM <code>min=max</code> + stored-vs-displayed)</td>
+<td><code>lib/mailCenter.ts:521-534</code> <code>validateMailedAtInput</code> — floor/ceiling both computed in UTC days against a local calendar-date input.</td>
+</tr>
+<tr>
+<td><strong>RB-6</strong></td>
+<td><strong>Fixing a letter costs a letter; the planner re-sells what you just approved.</strong> Following the app&#39;s own banner (add the missing recipient address → Generate) creates a duplicate and burns a second credit; deleting the duplicate refunds nothing; on the free tier of 3, Day 1 ends 3/3 spent on 2 disputes. The direct trigger: the campaign planner re-recommends the just-approved campaign (same two creditors, live buttons) while silently renumbering.</td>
+<td>A (Billing-confirmed: &quot;Letters This Month 3 / 3 · 0 remaining&quot;)</td>
+<td>Generate is a naive insert (no draft identity/idempotency across a correction); planner&#39;s recommendation set doesn&#39;t exclude just-approved campaigns.</td>
+</tr>
+</tbody></table>
+<h2>3. Experience Review — the emotional register</h2>
+<p>Nine dimensions, five independent walkers (1–5). The two weak axes are exactly where the blockers live.</p>
+<table>
+<thead>
+<tr>
+<th>Dimension</th>
+<th>A</th>
+<th>B</th>
+<th>C</th>
+<th>D</th>
+<th>E</th>
+<th>Read</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Confidence</td>
+<td>4</td>
+<td>4</td>
+<td>4</td>
+<td>3</td>
+<td>4</td>
+<td>Statute-grounded reasoning carries it</td>
+</tr>
+<tr>
+<td>Momentum</td>
+<td>4</td>
+<td>4</td>
+<td>5</td>
+<td>3</td>
+<td>3</td>
+<td>Wizards + deep-linked resume keep motion</td>
+</tr>
+<tr>
+<td><strong>Trust</strong></td>
+<td>3</td>
+<td>2</td>
+<td>4</td>
+<td>2</td>
+<td>3</td>
+<td><strong>Weakest — every low score traces to a state contradiction</strong></td>
+</tr>
+<tr>
+<td>Professionalism</td>
+<td>4</td>
+<td>4</td>
+<td>4</td>
+<td>5</td>
+<td>3</td>
+<td>Letters + paper-styled print view are the peak</td>
+</tr>
+<tr>
+<td>Executive quality</td>
+<td>4</td>
+<td>3</td>
+<td>3</td>
+<td>3</td>
+<td>3</td>
+<td>The idiom is executive; Mission Control&#39;s volume isn&#39;t</td>
+</tr>
+<tr>
+<td>Calmness</td>
+<td>3</td>
+<td>4</td>
+<td>5</td>
+<td>5</td>
+<td>3</td>
+<td>&quot;Quiet is allowed&quot; is real and felt</td>
+</tr>
+<tr>
+<td>Progress</td>
+<td>4</td>
+<td>4</td>
+<td>4</td>
+<td>5</td>
+<td>4</td>
+<td>Steppers, roadmap %, honest counters</td>
+</tr>
+<tr>
+<td><strong>Completion</strong></td>
+<td>2</td>
+<td>3</td>
+<td>3</td>
+<td>3</td>
+<td>3</td>
+<td><strong>Weak — quota burn, owner&#39;s invisible day, perpetual readiness meters</strong></td>
+</tr>
+<tr>
+<td>Mastery</td>
+<td>3</td>
+<td>3</td>
+<td>4</td>
+<td>4</td>
+<td>3</td>
+<td>Teaches the law genuinely; template reads cap it</td>
+</tr>
+</tbody></table>
+<h2>4. Room-by-Room Findings</h2>
+<p><strong>Login / Register / Onboarding — PASS.</strong> Signup lands new accounts on onboarding (the front-door wiring works); five steps, one CTA each; checkmarks are truth (&quot;step 1 lit only after the profile actually had data&quot;). Gaps: the wizard never links Mission Control; registration name isn&#39;t carried into Settings; <strong>discrepancy to reproduce</strong> — E found /onboarding checkmarks truthful while Opus found a five-step &quot;Getting Started&quot; checklist with zero completion state after four steps were done (different account; possibly a different surface or a refresh fault).</p>
+<p><strong>Mission Control — the room that costs the most.</strong> The session header is the single best moment of the product (&quot;Welcome back, Marcus&quot; → yesterday/today/priorities/continue-where-you-left-off — B: &quot;the hardest part of the brief, and it worked&quot;). Below the fold it becomes the product&#39;s biggest liability: 7.6 screens; the same action restated in up to four idioms (&quot;one-list&quot; falsified by the list beneath it); 12 KAI badges per load, several on cards the page itself labels &quot;no AI&quot;; three different progress percentages, two both named &quot;journey&quot;; stale queue cards contradicting fresh ones; internal IDs (&quot;Cited from: Mission m_address · address_consistency&quot;); raw rule strings (&quot;Rule: no reports on file yet.&quot;). Agency owners get an altitude-aware composition (code-confirmed) whose <em>visible output</em> never says agency, roster, or role — indistinguishable from a consumer at 0 clients (C&#39;s blocker-leaning finding), and the owner&#39;s own day stays &quot;Quiet&quot; directly above priorities generated by that owner&#39;s client work (the disclosed F4 gap — C: &quot;it stings more here than in the abstract&quot;).</p>
+<p><strong>Upload Report — PASS with one fault line.</strong> Live narration during analysis, specific completion summary, one recommended next item. The fault: the deterministic fallback parser drops DOFD dates → &quot;First delinquency: Invalid Date&quot; rendered raw in three rows (A, B, E) → Kai then asserts &quot;No date of first delinquency is on file&quot; — a confidently wrong legal-adjacent claim about data the operator can see in their own report; the same parser typed an explicit <code>CHARGE-OFF</code> account as &quot;Revolving / Low&quot; (Opus). <em>Environment note:</em> production runs the AI parser first — but this fallback ships in production and runs on any AI failure; its fidelity and its &quot;Invalid Date&quot; rendering are real product surface.</p>
+<p><strong>Tradelines — the strongest analytical room.</strong> Progressive disclosure done right (one-line rows, statute-cited depth behind &quot;Kai&#39;s read ▾&quot;); real § text quoted; the Capital One → Midland resale caught as &quot;same debt ×2&quot; unprompted. Caps: byte-identical reads across structurally different accounts (&quot;Original-creditor account — accuracy of status/dates is disputable…&quot; on a charge-off, a current card, and a never-late auto loan), and the same debt-buyer paragraph appearing 7+ times across 5 rooms.</p>
+<p><strong>Dispute Package (Letters / Campaigns).</strong> The letter itself is the product&#39;s crown jewel — §809(b)/§611 statute text quoted correctly, itemized factual concerns, &quot;Nothing in this letter acknowledges the debt or waives any defense,&quot; honest placeholder banners on the builder page. Around it: RB-6 (credit burn + planner re-offer), the broken cross-screen promise (&quot;the letter builder pre-fills … the recipient&#39;s address&quot; — it doesn&#39;t), a quota-blind builder (0 remaining, no copy, four rooms still pushing you in), and government/statutory items that Tradelines says are &quot;excluded from the dispute queue&quot; still listed in the builder&#39;s dropdown.</p>
+<p><strong>Mail Center — decisively a workspace, not a statistics page.</strong> Package cards keyed by item+strategy+round; states migrate sections in real time; metrics literally demoted to an <code>aria-label=&quot;Context strip&quot;</code> footer; the Kai-advises/you-approve separation structurally enforced; the six locked fulfillment steps (&quot;Available after live mail integration&quot;) embedded honestly in the per-package stepper; §611 receipt-anchoring <strong>flawless across every surface a dedicated hunt could find</strong>. Its two failures are RB-3 (the band) and RB-4 (the placeholder-blind download chain), plus shallow <code>href=&quot;/letters&quot;</code> action links where deep links belong.</p>
+<p><strong>Timeline — the best-judged room.</strong> &quot;Nothing new to recommend right now — quiet is allowed.&quot; Distinct, non-boilerplate narration per event; Month 1/2/3 checklists that match reality; consistent with Mission Control&#39;s history. Faults: phantom &quot;Dispute letter generated&quot; events survive letter deletion (A), and three identical unlabeled rows where the adjacent block names the three bureaus.</p>
+<p><strong>Agency — the loop is real.</strong> Roster room with live capacity (&quot;Clients 2 / 15&quot;), commissioning-not-CRUD client creation (&quot;I checked every follow-up clock…&quot;), airtight on-behalf-of banners on every room tested, zero cross-client leakage, letters correctly voiced as the client&#39;s own. Faults: the front door doesn&#39;t know she&#39;s an owner (RB-adjacent, see Mission Control), Billing tells the $399 Agency tier to &quot;Upgrade to Professional to get started&quot; (a tier-blind template also shown to Professional accounts as an upsell of the plan they&#39;re on), Settings has no agency-identity fields.</p>
+<p><strong>Settings / Support / Identity / placeholders.</strong> Support is a real ticket form (&quot;No open tickets. If something&#39;s off, I&#39;m here.&quot;). Identity has sensible privacy defaults (SSN card off by default) and degraded honestly without an AI key. Placeholder surfaces are honest about being placeholders — except Brief (&quot;I read the CFPB and FTC wires every morning&quot; over &quot;No articles here yet&quot;) and Operator Network (six workspaces, all &quot;0 briefs&quot;), which claim habits they don&#39;t yet have; Brief also ejects an authenticated operator into logged-out marketing chrome.</p>
+<h2>5. Kai Review</h2>
+<p>Scorecard from the dedicated audit (E), corroborated by all walks: <strong>Over-talking FAIL · Repetition FAIL · Interruption PASS · Teaching MIXED · Register MIXED · Silence PASS.</strong></p>
+<ul>
+<li>The verdict in one line: <em>&quot;Kai sounds like a genuine Chief Intelligence Officer in the rooms where the stakes are highest — Tradelines&#39; legal reasoning, the generated letter, Timeline&#39;s restraint — but reverts to a badge-stamped template engine the moment you land on its own home screen.&quot;</em></li>
+<li>Zero emoji, zero exclamation marks, anywhere, across nine rooms — the Phase 1A register law held.</li>
+<li>Kai never interrupts (dismissible, non-modal, never gates work) and its silences are deliberate (&quot;quiet is allowed&quot;).</li>
+<li>The three moves that most advance the &quot;nearly invisible&quot; bar: (1) strip Mission Control — badge only what is actually Kai, one statement per fact, no internal IDs; (2) differentiate per-item reads by the account&#39;s actual facts or relabel them as category guidance; (3) give failure states Kai&#39;s voice and a fallback (&quot;Plan generation failed. Please try again.&quot; is the one place the persona vanishes).</li>
+</ul>
+<h2>6. Mission Control Review — see §4; the two-sentence version</h2>
+<p>The session runtime at the top is the most operating-system moment in the product, and it survived a deliberate interruption/return test with a perfect deep-linked resume. Everything below it needs an editor: one fact, one statement, one owner — today the room restates, contradicts itself, badges the inert, and leaks its internals, which is why every walker&#39;s &quot;web page tell&quot; list starts here.</p>
+<h2>7. Mail Center Review — see §4; the two-sentence version</h2>
+<p>Structurally the room the Founder asked for: a work-first operational workspace whose §611 language never lies and whose approval chain keeps the human holding the pen. Its own headline band (RB-3) and the placeholder-blind download chain (RB-4) are what stand between &quot;impressive&quot; and &quot;trustworthy.&quot;</p>
+<h2>8. Timeline Review — see §4; the one-sentence version</h2>
+<p>The room most at peace with itself — honest, restrained, narratively coherent — needing only event deduplication and per-event specificity.</p>
+<h2>9. Recommended Polish (after the six blockers)</h2>
+<p>Ranked by experience impact per unit of work:</p>
+<ol>
+<li><strong>Mission Control consolidation</strong> — one restatement per fact; KAI badge only on Kai; delete &quot;Rule: …&quot; and &quot;Cited from: …&quot; internals from operator view (keep them behind the Exhibit drawer, which is excellent); one progress number, or three clearly-differently-named ones.</li>
+<li><strong>Fallback-parser fidelity + honesty</strong> — parse <code>MM/YYYY</code> DOFD; never render <code>Invalid Date</code>; when a field genuinely fails to parse, Kai says &quot;I couldn&#39;t read the first-delinquency date,&quot; never &quot;none is on file&quot;; classify explicit <code>CHARGE-OFF</code> text as a charge-off.</li>
+<li><strong>Agency altitude visibility</strong> — the owner&#39;s Mission Control names the agency and roster state in its header line; the owner&#39;s day ledger credits work done inside client workspaces (or explicitly says &quot;logged under Elena&#39;s file — see her workspace&quot;).</li>
+<li><strong>Cross-room promise audit</strong> — kill or fulfill: &quot;pre-fills the recipient&#39;s address,&quot; &quot;Case health: no action needed&quot; beside &quot;DO NOW 3,&quot; Roadmap &quot;campaign underway&quot; vs Command Center &quot;0 campaigns,&quot; quota-blind builder vs Billing&#39;s 0-remaining.</li>
+<li><strong>Deep links everywhere an action names a specific object</strong> (&quot;Mail it →&quot; to the letter, not <code>/letters</code>).</li>
+<li><strong>Tier-aware billing/upsell copy</strong> (Agency told to upgrade to Professional; Professional upsold Professional).</li>
+<li><strong>Keep authenticated chrome in Brief; label it &quot;arrives with launch&quot; until the cron runs.</strong></li>
+<li><strong>Paywalls gate the button, not the click</strong> (Strategy Desk).</li>
+<li><strong>Reproduce and fix the Getting-Started discrepancy</strong> (truthful on one account, memoryless on another).</li>
+<li><strong>Campaigns hydration flash; double-period typo; band eyebrow consistency; unlabeled context-strip pill.</strong></li>
+</ol>
+<h2>10. What Held — the Phase 1A engineering fixes, validated experientially</h2>
+<table>
+<thead>
+<tr>
+<th>Phase 1A claim</th>
+<th>Gate result</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>§611 receipt-anchored everywhere (F2/F6)</td>
+<td><strong>HELD — zero violations found by a dedicated hunt</strong></td>
+</tr>
+<tr>
+<td>Honest quiet state; interrupted work counted (F3)</td>
+<td><strong>HELD — tested by deliberate interruption; passed exactly</strong></td>
+</tr>
+<tr>
+<td>READY_TO_PREPARE reachable pre-mail (F1)</td>
+<td><strong>HELD in the package sections</strong> — but invisible to the band (RB-3)</td>
+</tr>
+<tr>
+<td>Onboarding truth: visited ≠ done (F10)</td>
+<td><strong>HELD</strong> (with the Opus Getting-Started discrepancy to reproduce)</td>
+</tr>
+<tr>
+<td>Emoji/range-law fix</td>
+<td><strong>HELD — zero emoji/exclamations in nine rooms</strong></td>
+</tr>
+<tr>
+<td>Approve outside Kai&#39;s panel</td>
+<td><strong>HELD — structurally separate cards</strong></td>
+</tr>
+<tr>
+<td>Evidence asymmetry + &quot;(soon)&quot; disclosure</td>
+<td><strong>HELD — present at every fork, verbatim</strong></td>
+</tr>
+<tr>
+<td>Send path present, honestly gated</td>
+<td><strong>HELD — 3-step wizard, real prerequisites, always an escape hatch</strong></td>
+</tr>
+<tr>
+<td>Cache scoping across workspace switches (F8)</td>
+<td><strong>HELD — zero leakage, airtight on-behalf-of</strong></td>
+</tr>
+<tr>
+<td>Neutral greeting (F7)</td>
+<td><strong>HELD — &quot;Welcome back,&quot; no time-of-day guess</strong></td>
+</tr>
+</tbody></table>
+<h2>11. Multi-Agent Execution Workflow (second directive) — DONE</h2>
+<p><code>.ai/SOP/MULTI-AGENT-EXECUTION.md</code> + self-contained HTML twin + one INDEX routing line, commit <code>3529271</code> (local, unpushed). Sonnet implemented; Opus challenged once (ACCEPT-WITH-CORRECTIONS — 4 BLOCKER / 4 MAJOR / 2 MINOR / 1 ruling); every correction applied verbatim and parity-verified. The corrected SOP now binds <strong>all</strong> agents (Fable included) to the hard prohibitions, adds push/PR/DB-mutation to the prohibited list, floors every packet with a NEVER-ALLOWLIST (secrets, migrations, governance docs, the SOP itself), makes Opus review additive to — never a substitute for — the CCO/ADR/Gate D-F gates, restricts external publishing to Fable-after-secret-scan, and gives sub-agents a HALT-and-refuse path that Fable must surface verbatim. Full arc, including the two disclosed integrity events (a coordinator mis-route that a sub-agent correctly refused; an implementer judgment call correctly flagged instead of silently obeyed): Appendix G.</p>
+<h2>12. Methodology &amp; Environment (what this gate did and didn&#39;t test)</h2>
+<ul>
+<li>App run locally from the Phase 1A worktree against the <strong>isolated preview database</strong> (Vercel env-scoping proof; 6-user DB). Production untouched throughout.</li>
+<li><strong>No live AI key locally</strong> (Vercel redacts sensitive values on pull): the deterministic experience runtime — everything Phase 1A shipped — was fully exercised; free-form AI surfaces (ask-Kai, strategist plan, identity check, AI parse) ran in fallback/degraded mode and were graded only on degradation quality, tagged ENV-LIMITED. Production AI behavior was not tested.</li>
+<li><strong>ENV-ARTIFACT, not a defect:</strong> signed-out <code>/dashboard</code> rendering demo data is the documented dev-only fallback (<code>lib/session.ts:67-72</code>, disabled in production builds — which Vercel previews and prod both are).</li>
+<li>Five personas on five isolated accounts + one blind Opus pass on a cold account and a worked file; all walks headless-browser, UI-only, no source reading by experience agents; every blocker mechanism-verified against source afterward by the coordinator.</li>
+<li>Prior CCO items from the Phase 1A package (the &quot;(soon)&quot; line, residual &quot;clock started&quot; narrations in <code>lib/kaiSeen.ts</code> / journey, the &quot;Queued for CreditVector to mail&quot; accomplishment, the raw &quot;N/100&quot; score copy) remain open for the compliance-review gate; nothing in this gate closes or supersedes them, and RB-2 adds one more compliance-adjacent item to that docket.</li>
+</ul>
+<h2>13. Release Recommendation</h2>
+<ol>
+<li><strong>Do not merge Phase 1A to <code>main</code> yet.</strong> (It isn&#39;t merged; keep it that way.)</li>
+<li>Commission a bounded <strong>Phase 1A-R remediation slice</strong>: RB-1 through RB-6 only, under the new SOP&#39;s task-packet discipline. RB-1, RB-3 and RB-5 have confirmed file:line mechanisms and are small; RB-4 is a placeholder-check + one banner; RB-6 is draft-idempotency + planner exclusion; RB-2 needs a &quot;clean account&quot; state and a counting fix, and its copy should ride through the CCO gate.</li>
+<li>Re-run a <strong>short verification gate</strong> (one Sonnet regression walk on the six fixes + one bounded Opus re-check; hours, not days).</li>
+<li>Then the CCO pass (existing 4 items + RB-2&#39;s framing), then the merge decision, then the deploy decision — as separate approvals, per the standing gates.</li>
+<li>Mission-Control consolidation (Polish #1) is the highest-value non-blocker and can ride the same slice if you want the front door to match the rest before launch; it is not required to clear the gate.</li>
+</ol>
+<h2>14. Founder Summary</h2>
+<p>You asked one question: <strong>&quot;Would a first-time operator describe CreditVector as The Credit Operating System?&quot;</strong></p>
+<p><strong>Not yet — and the reason is narrow.</strong> Five simulated operators and one adversarial reviewer all landed on the same sentence: the product <em>talks</em> like an operating system everywhere, and in the rooms where law meets paper — Tradelines&#39; reasoning, the letters themselves, the Mail Center&#39;s package chain, the Timeline&#39;s restraint — it <em>is</em> one. The illusion breaks at exactly one layer: the system is sometimes wrong about what has already happened in it. It re-orders work it already did, calls clean accounts negatives, says &quot;all caught up&quot; over unmailed mail, marks placeholder letters &quot;ready,&quot; refuses the true mailing date, and charges a letter to fix a letter. Every one of those is state wiring, not architecture; three of the six now carry confirmed one-condition mechanisms. Close the six, re-walk once, and the answer to your question flips — because the hard parts (the voice, the honesty gates, the legal spine, the session runtime that remembers you) already survived five people trying to break them.</p>
+<p><strong>The final gate answer: NOT READY — six blockers from YES.</strong></p>
+<hr>
+<p><em>Appendices A–G carry the full verbatim agent reports (first-time, returning, agency, Mail Center, Kai audit, Opus acceptance gate, workflow arc).</em></p>
+
+</main></body></html>
