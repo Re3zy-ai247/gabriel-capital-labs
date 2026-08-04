@@ -87,3 +87,26 @@ Branch `feat/experience-runtime-phase-1a` @ `f81882c`, **[ahead 7] of origin, NO
 ## 10. Stop-Condition Confirmation
 
 No application code changed in this review. No push, no merge, no deploy, no production migration, no production-data access or modification, no flags, no Wallet Runtime, no Phase 1B, no LetterStream activation, no CROA policy design. This review is an internal compliance gate, **not outside counsel approval**.
+
+---
+
+## 11. ADDENDUM — Correction Slice Landed (Phase 1A-R-C, 2026-08-04)
+
+**The Founder authorized the §5 correction slice; it is implemented, verified, and committed as `ccb69fb`. The independent Opus verification returned PASS: every authorized finding closed as specified, no new wording concern, "launch risk strictly reduced."**
+
+### **CCO BLOCKER LIFTED.**
+
+**Executive verdict now: APPROVED WITH DISCLOSURES.** Merge blocker from the compliance side: **NO**. Deployment blocker from the compliance side: **NO**. No additional CCO review is required for this branch.
+
+What landed (10 files, 255+/15−):
+- **M1 (HIGH)** — branch-5 requires `isFactualNegative` and excludes `NOT_RECOMMENDED`; a clean-only file yields no dispute recommendation ("quiet is allowed"); verified **non-vacuous** (reverting the fix fails the new guard case; a lower-scored genuine negative still wins over a higher-scored clean/NOT_RECOMMENDED item). RB-2's fact model imported unmodified; no import cycle; no client-boundary change.
+- **M2/M3 + the M4 sweep** — every mailing-anchored §611/clock/window claim found by the generalized pattern is receipt-anchored: the new band string (verbatim per §5), the three legacy narrations, **five additional strings** the pattern surfaced (mailCenter ×3, kaiHome overnight, mail page), and **three more of the same class** in `lib/missionControl.ts` ×2 and the letters-page tooltip (coordinator stitches — risk-based scope per the challenge's own D2 ruling; guard coverage extended to both files).
+- **M4** — the §611 static is now a general negative pattern over **seven files** with a negative control proving it catches the old sentence; every exclusion is a structural rule (active-verb requirement, enum-literal strip, receipt/arrival synonyms, proximity-bounded negation), never a literal whitelist.
+- **M5** — "that's the dispute angle" gated `!clean`; the bureau-comparison table stays for clean rows.
+- **Rider** — the false "pre-fills … the recipient's address" claim removed; guard pins both the absence and the surviving true claim.
+
+Validation: typecheck clean · mail-download **78/78** · kai-recommendation **60/60** · missionControl, letter, mailCenter all pass · kai-experience **78/78** · schema-safety **17/17** · live: band, journey, and mail-page copy render receipt-anchored; the engine still recommends on files with real negatives.
+
+**Standing disclosures (unchanged from §4/§6):** M6 "(soon)" timing duty · M7 dormant queued-labels ride the LetterStream review · M11/M12 wording batch scheduled post-launch · Decision A (mailedAt back-rows: disclose, count pre-merge, never silently normalize). **Two new non-blocking residuals from the verification, added to the same post-launch batch:** (i) `lib/mailCenter.ts:196` "the §611 reinvestigation clock is running" keyed on MAILED status — anti-conservative only during the ~5-day transit window, invisible to the guard by the enum-strip rule; (ii) the guard's `;`-chunking means the corrected band sentence passes by splitting — a targeted hardening candidate.
+
+Branch: `feat/experience-runtime-phase-1a` **[ahead 9] of origin, NOT pushed**; production untouched. The branch now awaits the **Founder push/merge decision** with no open implementation work from any gate.

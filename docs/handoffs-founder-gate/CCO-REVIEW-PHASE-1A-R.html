@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>CreditVector — CCO Review, Phase 1A-R</title>
+<title>CreditVector — CCO Review, Phase 1A-R (blocker lifted)</title>
 <style>
 :root{--bg:#0b1220;--panel:#111a2c;--text:#e6edf7;--muted:#9fb0c9;--line:#22304a;--accent:#4cc3b0;--warn:#e0b34c;--bad:#e06c6c}
 @media (prefers-color-scheme: light){:root{--bg:#f7f9fc;--panel:#ffffff;--text:#16233a;--muted:#5a6b85;--line:#dbe4f0;--accent:#0e7c6e;--warn:#8a6410;--bad:#a33030}}
@@ -191,5 +191,21 @@ WHERE &quot;mailedAt&quot; IS NOT NULL
 <p>Branch <code>feat/experience-runtime-phase-1a</code> @ <code>f81882c</code>, <strong>[ahead 7] of origin, NOT pushed</strong>, working tree clean. Production <code>origin/main</code> @ <code>f449c35</code>, untouched.</p>
 <h2>10. Stop-Condition Confirmation</h2>
 <p>No application code changed in this review. No push, no merge, no deploy, no production migration, no production-data access or modification, no flags, no Wallet Runtime, no Phase 1B, no LetterStream activation, no CROA policy design. This review is an internal compliance gate, <strong>not outside counsel approval</strong>.</p>
+<hr>
+<h2>11. ADDENDUM — Correction Slice Landed (Phase 1A-R-C, 2026-08-04)</h2>
+<p><strong>The Founder authorized the §5 correction slice; it is implemented, verified, and committed as <code>ccb69fb</code>. The independent Opus verification returned PASS: every authorized finding closed as specified, no new wording concern, &quot;launch risk strictly reduced.&quot;</strong></p>
+<h3><strong>CCO BLOCKER LIFTED.</strong></h3>
+<p><strong>Executive verdict now: APPROVED WITH DISCLOSURES.</strong> Merge blocker from the compliance side: <strong>NO</strong>. Deployment blocker from the compliance side: <strong>NO</strong>. No additional CCO review is required for this branch.</p>
+<p>What landed (10 files, 255+/15−):</p>
+<ul>
+<li><strong>M1 (HIGH)</strong> — branch-5 requires <code>isFactualNegative</code> and excludes <code>NOT_RECOMMENDED</code>; a clean-only file yields no dispute recommendation (&quot;quiet is allowed&quot;); verified <strong>non-vacuous</strong> (reverting the fix fails the new guard case; a lower-scored genuine negative still wins over a higher-scored clean/NOT_RECOMMENDED item). RB-2&#39;s fact model imported unmodified; no import cycle; no client-boundary change.</li>
+<li><strong>M2/M3 + the M4 sweep</strong> — every mailing-anchored §611/clock/window claim found by the generalized pattern is receipt-anchored: the new band string (verbatim per §5), the three legacy narrations, <strong>five additional strings</strong> the pattern surfaced (mailCenter ×3, kaiHome overnight, mail page), and <strong>three more of the same class</strong> in <code>lib/missionControl.ts</code> ×2 and the letters-page tooltip (coordinator stitches — risk-based scope per the challenge&#39;s own D2 ruling; guard coverage extended to both files).</li>
+<li><strong>M4</strong> — the §611 static is now a general negative pattern over <strong>seven files</strong> with a negative control proving it catches the old sentence; every exclusion is a structural rule (active-verb requirement, enum-literal strip, receipt/arrival synonyms, proximity-bounded negation), never a literal whitelist.</li>
+<li><strong>M5</strong> — &quot;that&#39;s the dispute angle&quot; gated <code>!clean</code>; the bureau-comparison table stays for clean rows.</li>
+<li><strong>Rider</strong> — the false &quot;pre-fills … the recipient&#39;s address&quot; claim removed; guard pins both the absence and the surviving true claim.</li>
+</ul>
+<p>Validation: typecheck clean · mail-download <strong>78/78</strong> · kai-recommendation <strong>60/60</strong> · missionControl, letter, mailCenter all pass · kai-experience <strong>78/78</strong> · schema-safety <strong>17/17</strong> · live: band, journey, and mail-page copy render receipt-anchored; the engine still recommends on files with real negatives.</p>
+<p><strong>Standing disclosures (unchanged from §4/§6):</strong> M6 &quot;(soon)&quot; timing duty · M7 dormant queued-labels ride the LetterStream review · M11/M12 wording batch scheduled post-launch · Decision A (mailedAt back-rows: disclose, count pre-merge, never silently normalize). <strong>Two new non-blocking residuals from the verification, added to the same post-launch batch:</strong> (i) <code>lib/mailCenter.ts:196</code> &quot;the §611 reinvestigation clock is running&quot; keyed on MAILED status — anti-conservative only during the ~5-day transit window, invisible to the guard by the enum-strip rule; (ii) the guard&#39;s <code>;</code>-chunking means the corrected band sentence passes by splitting — a targeted hardening candidate.</p>
+<p>Branch: <code>feat/experience-runtime-phase-1a</code> <strong>[ahead 9] of origin, NOT pushed</strong>; production untouched. The branch now awaits the <strong>Founder push/merge decision</strong> with no open implementation work from any gate.</p>
 
 </main></body></html>
