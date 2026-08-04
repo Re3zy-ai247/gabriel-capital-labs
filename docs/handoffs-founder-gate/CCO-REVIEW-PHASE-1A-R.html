@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CreditVector — CCO Review, Phase 1A-R</title>
+<style>
+:root{--bg:#0b1220;--panel:#111a2c;--text:#e6edf7;--muted:#9fb0c9;--line:#22304a;--accent:#4cc3b0;--warn:#e0b34c;--bad:#e06c6c}
+@media (prefers-color-scheme: light){:root{--bg:#f7f9fc;--panel:#ffffff;--text:#16233a;--muted:#5a6b85;--line:#dbe4f0;--accent:#0e7c6e;--warn:#8a6410;--bad:#a33030}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;padding:0 16px 80px}
+main{max-width:860px;margin:0 auto}
+h1{font-size:1.7rem;line-height:1.25;margin:28px 0 8px;letter-spacing:-.01em}
+h2{font-size:1.25rem;margin:40px 0 12px;padding-top:18px;border-top:1px solid var(--line);letter-spacing:-.01em}
+h3{font-size:1.05rem;margin:26px 0 8px}
+p,li{color:var(--text)}
+strong{color:var(--text)}
+em{color:var(--muted)}
+a{color:var(--accent);text-decoration:none}
+blockquote{margin:16px 0;padding:10px 16px;border-left:3px solid var(--accent);background:var(--panel);color:var(--muted);border-radius:0 8px 8px 0}
+code{background:var(--panel);border:1px solid var(--line);border-radius:5px;padding:1px 5px;font-size:.86em;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+pre{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px;overflow-x:auto}
+pre code{border:0;background:none;padding:0}
+.tablewrap,table{max-width:100%}
+table{border-collapse:collapse;margin:16px 0;font-size:.92em;display:block;overflow-x:auto;white-space:normal}
+th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top;min-width:90px}
+th{background:var(--panel);color:var(--muted);font-weight:600;white-space:nowrap}
+hr{border:0;border-top:1px solid var(--line);margin:36px 0}
+li{margin:4px 0}
+</style>
+</head>
+<body><main>
+<h1>Compliance Review — Phase 1A-R (Founder Experience Remediation)</h1>
+<p><strong>Reviewer:</strong> CreditVector CCO (internal gate — not legal advice, not outside counsel) · <strong>Scope:</strong> Phase 1A-R diffs (<code>7750cba</code>, <code>ec8ad41</code>, <code>fd15988</code>, <code>18f0ea2</code>), RB-2 determination behavior, all new/modified user-facing language, the four standing docket items · <strong>Date:</strong> 2026-08-04
+<strong>Method:</strong> rulebook-anchored CCO pass over a verbatim evidence inventory (Sonnet), adversarially challenged by one narrow Opus review that confirmed 9 dispositions, refined 4, and found 1 missed defect — every challenge finding re-verified against source by the coordinator before adoption.</p>
+<hr>
+<h2>1. Executive CCO Verdict: <strong>CORRECTIONS REQUIRED</strong></h2>
+<p>Six enumerated corrections — one HIGH logic defect, four Medium copy lines, one Low gate — then this review converts to <strong>APPROVED WITH DISCLOSURES</strong> with no re-review needed beyond the targeted guards. <strong>Zero Critical findings. Zero items require outside counsel.</strong> Nothing found threatens the educational/not-a-CRO posture, the CROA bar, or Stripe standing; the money-path and billing language were re-confirmed clean.</p>
+<p><strong>2. Merge blocker: YES</strong> — until the correction slice lands on this branch.
+<strong>3. Deployment blocker: YES</strong> — same slice; nothing additional beyond it.</p>
+<p>The correction slice is bounded (~6 lines of copy/logic + 2 guard extensions) and is <strong>not authorized yet</strong> — per your stop conditions, no application code was modified in this review. Authorization request is at §7.</p>
+<hr>
+<h2>4. Compliance Matrix</h2>
+<p>Severity: per the CCO rulebook (Critical/High/Medium/Low). Basis key: LAW = legal requirement · BP = compliance best practice · CLARITY = product clarity · RISK = conservative risk reduction.</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Item</th>
+<th>Classification</th>
+<th>Severity / Basis</th>
+<th>Blocks merge / deploy</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>M1</td>
+<td><strong>kaiHome branch-5 selector ignores the RB-2 fact test</strong> — <code>lib/kaiHome.ts:217-223</code> filters only <code>!resolved &amp;&amp; !disputedIds</code>; no <code>isFactualNegative</code>, no <code>NOT_RECOMMENDED</code> exclusion. A first-time user with a clean (or government-debt) top-scored account is told <strong>&quot;{Creditor} is flagged on your file&quot;</strong> + &quot;Start with this item&quot; → the letter builder — an affirmative false statement about their file plus inducement to dispute accurate data, on the highest-traffic surface, while the Strategy Desk says &quot;Nothing to dispute&quot; on every row. FTC §5 deception / UDAAP / FCRA §611(a)(3) frivolous-dispute exposure. <em>(Found by the Opus challenge; missed by my draft and by RB-2&#39;s slice.)</em></td>
+<td><strong>LOGIC CORRECTION REQUIRED</strong></td>
+<td><strong>HIGH</strong> / LAW+RISK</td>
+<td><strong>YES / YES</strong></td>
+</tr>
+<tr>
+<td>M2</td>
+<td><strong>New Phase 1A-R band string is mailing-anchored</strong> — <code>lib/mailCenter.ts:522</code> &quot;…review, download, and mail <strong>to start the §611 clock</strong>.&quot; compresses to &quot;mailing starts the clock,&quot; violating the product&#39;s own ratified receipt-anchor law.</td>
+<td><strong>COPY CORRECTION REQUIRED</strong></td>
+<td>Medium / LAW-adjacent (FCRA process accuracy) + BP</td>
+<td><strong>YES / YES</strong></td>
+</tr>
+<tr>
+<td>M3</td>
+<td><strong>Three legacy mailing-anchored lines</strong> — <code>lib/kaiSeen.ts:34</code>, <code>app/journey/page.tsx:105</code>, <code>:144</code> (&quot;— §611 clock started&quot; upon mailing). Same false statement, same regime, same direction (anti-conservative: implies the clock started earlier than it did). Blocking status identical to M2 on risk, not provenance.</td>
+<td><strong>COPY CORRECTION REQUIRED</strong></td>
+<td>Medium / LAW-adjacent + BP</td>
+<td><strong>YES / YES</strong> (same slice)</td>
+</tr>
+<tr>
+<td>M4</td>
+<td><strong>Guard gap</strong> — <code>scripts/mail-download.test.ts</code>&#39;s §611 static is a phrase-specific list that read the very file and missed M2. Extending it with another literal reproduces the failure.</td>
+<td><strong>LOGIC CORRECTION REQUIRED</strong> (guard)</td>
+<td>Medium / RISK</td>
+<td><strong>YES / YES</strong> (same slice)</td>
+</tr>
+<tr>
+<td>M5</td>
+<td><strong>conflictLines on clean rows</strong> — <code>app/tradelines/page.tsx:280-285</code> &quot;…that&#39;s the dispute angle.&quot; renders inside the <code>hasDetail</code> block Phase 1A-R deliberately preserved for clean rows (this branch <em>increased</em> its reachability). Same-screen tension with &quot;nothing to dispute.&quot;</td>
+<td><strong>COPY CORRECTION REQUIRED</strong> (one-line <code>!clean</code> gate)</td>
+<td>Low / CLARITY+RISK</td>
+<td><strong>YES / YES</strong> (same slice — our own doing)</td>
+</tr>
+<tr>
+<td>M6</td>
+<td><strong>&quot;(soon)&quot; fulfillment line</strong> (6 sites, verbatim-identical) — conditional, non-purchase-driving, and it <em>is</em> the required evidence-asymmetry disclosure.</td>
+<td><strong>APPROVED WITH DISCLOSURE</strong> — Founder owns a timing-claim maintenance duty: revisit the &quot;(soon)&quot; if fulfillment slips materially</td>
+<td>Low / FTC §5 substantiation</td>
+<td>No / No</td>
+</tr>
+<tr>
+<td>M7</td>
+<td><strong>Dormant &quot;queued for CreditVector to mail&quot; labels</strong> — <code>lib/operatorSession.ts:244</code> AND <code>lib/kaiSeen.ts:38</code> (second site found in challenge). Unreachable while live mailing is off (send wizard hard-gates before queue). Would misstate the service if reachable.</td>
+<td><strong>APPROVED WITH DISCLOSURE</strong> — both labels ride the LetterStream/MAIL_LIVE activation review (already a standing gate; that review also owns the genuine counsel question of CRO posture when CreditVector performs mailing)</td>
+<td>Low / RISK</td>
+<td>No / No</td>
+</tr>
+<tr>
+<td>M8</td>
+<td><strong>&quot;dispute-priority score N/100&quot;</strong> — <code>lib/kaiHome.ts:233</code> basis line. Clearly labeled, deterministic, provenance-serving; approved <strong>as to wording only</strong> (its selector is M1).</td>
+<td><strong>APPROVED</strong> (optional post-launch rename to &quot;priority&quot;)</td>
+<td>Low / CLARITY</td>
+<td>No / No</td>
+</tr>
+<tr>
+<td>M9</td>
+<td><strong>RB-2 determination logic</strong> — <code>isFactualNegative</code> (derogatory type OR real DOFD), applied at counts, staging, and per-item surfaces. Materially improves CROA/FTC posture: accurate clean accounts are never counted, staged, or framed dispute-ready.</td>
+<td><strong>APPROVED</strong></td>
+<td>— / LAW+RISK improvement</td>
+<td>No / No</td>
+</tr>
+<tr>
+<td>M10</td>
+<td><strong>Clean-state strings</strong> — &quot;Clean&quot; · &quot;Nothing to dispute&quot; · &quot;Account in good standing — no derogatory history on file.&quot; · &quot;Status&quot; · &quot;Bureau detail&quot;. Receipt-backed, anti-overreach, register-consistent.</td>
+<td><strong>APPROVED</strong></td>
+<td>—</td>
+<td>No / No</td>
+</tr>
+<tr>
+<td>M11</td>
+<td><strong>Chase-style case</strong> (late history, currently positive, real DOFD → counted an &quot;active negative&quot;, dispute-framed). The derogatory ITEM genuinely exists on file and is score-suppressing; no removal/outcome claim is made; a consumer is not induced into a transaction they&#39;d otherwise avoid. Residual exposure correctly identified as FCRA §611(a)(3) frivolous-dispute risk (mitigated: dispute framing on such items targets <em>inaccuracy</em>, and the item is real data). Challenge note adopted: &quot;active negative&quot; is NOT defensible as a term-of-art meaning &quot;unresolved presence&quot; — a reasonable consumer reads &quot;currently delinquent&quot; — the claim survives because the underlying derogatory data is true.</td>
+<td><strong>APPROVED WITH DISCLOSURE</strong> — wording refinement <strong>scheduled</strong> (not indefinite): counter label toward &quot;negative items on file&quot; idiom, post-launch batch. <strong>No outside counsel required.</strong></td>
+<td>Medium→Low / LAW analysis + CLARITY</td>
+<td>No / No</td>
+</tr>
+<tr>
+<td>M12</td>
+<td><strong>Strategy Desk H/M/L tiles + per-row score bubble on clean rows</strong> — <code>app/strategist/page.tsx:19-24</code> tallies raw probability bands; <code>:69</code> renders the nonzero <code>{t.score}</code> bubble beside the &quot;Clean&quot; pill. Inconsistent with the row&#39;s own &quot;Nothing to dispute&quot;; not a dark pattern (no induced action, no obscured cost).</td>
+<td><strong>OUT OF SCOPE / POST-LAUNCH</strong> with disclosure — fold both (tiles + bubble) into the scheduled M11 wording batch</td>
+<td>Low / CLARITY</td>
+<td>No / No</td>
+</tr>
+<tr>
+<td>M13</td>
+<td><strong>RB-4 behavior</strong> — render-time sender substitution on unmailed only; mailed letters verbatim (record integrity); stored row/preview never mutated; warnings at every chain surface; <strong>no new AI surface bypasses <code>lib/compliance.ts</code></strong> (<code>updateOne</code> routes through the same <code>composeLetter</code> → <code>applyCompliance</code>).</td>
+<td><strong>APPROVED</strong></td>
+<td>— / LAW (scrubber law)</td>
+<td>No / No</td>
+</tr>
+<tr>
+<td>M14</td>
+<td><strong>RB-5 behavior</strong> — operator-local calendar date; ±14h shift-then-floor tolerance; UTC-noon storage; ≤1-day over-acceptance on a self-attested date; §611 figures remain labeled estimates. Recordkeeping: the stored value is the consumer&#39;s own attestation, deterministically anchored.</td>
+<td><strong>APPROVED</strong> (historical rows → Decision A)</td>
+<td>—</td>
+<td>No / No</td>
+</tr>
+<tr>
+<td>M15</td>
+<td><strong>RB-6 behavior + copy</strong> — idempotent regenerate; &quot;Regenerate Letter (updates your draft)&quot; accurate; <strong>zero billing/credit claims</strong> anywhere in the new copy; cancel-campaign two-step plain language (anti-dark-pattern); 402 message unchanged with a narrower, truer trigger; quota line unchanged and accurate.</td>
+<td><strong>APPROVED</strong> (optional post-launch clarity: quota line could note a regenerate uses no allowance — that is a billing claim, so route it through this gate if added)</td>
+<td>—</td>
+<td>No / No</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>5. The Correction Slice (exact, awaiting authorization)</h2>
+<ol>
+<li><strong>M1 (HIGH, logic):</strong> <code>lib/kaiHome.ts</code> branch-5 filter adds <code>isFactualNegative(t)</code> and excludes <code>probability === &quot;NOT_RECOMMENDED&quot;</code>; new guard case in <code>kai-recommendation.test.ts</code>: a clean-only file yields <strong>no</strong> dispute recommendation (and a government-debt-topped file never proposes it).</li>
+<li><strong>M2 (copy):</strong> <code>lib/mailCenter.ts:522</code> → &quot;Generated, not mailed yet — review, download, and mail; the §611 clock starts once the bureau receives it.&quot;</li>
+<li><strong>M3 (copy ×3):</strong> <code>lib/kaiSeen.ts:34</code>, <code>app/journey/page.tsx:105</code>, <code>:144</code> → mirror <code>lib/operatorSession.ts:225-230</code>&#39;s receipt-anchored phrasing (&quot;— the §611 clock starts once the bureau receives it&quot;).</li>
+<li><strong>M4 (guard):</strong> extend the §611 static from a phrase list to a general negative pattern (any §611/clock reference co-located with mail/mailed/mailing language lacking receipt anchoring), asserted against the current sources.</li>
+<li><strong>M5 (copy gate):</strong> <code>app/tradelines/page.tsx</code> conflictLines block gated <code>!clean</code> (one line).</li>
+<li><strong>Optional rider (Founder&#39;s call):</strong> the same branch-5 body sentence carries the gate&#39;s known false promise &quot;The letter builder pre-fills … the recipient&#39;s address&quot; (gate finding X9 — it doesn&#39;t). Two-word fix (&quot;the recommended strategy&quot;) while the line is open.</li>
+</ol>
+<p>Estimated diff: ~10 lines + 2 guard blocks. Validation: typecheck + kai-recommendation + mail-download + mailCenter + schema-safety guards. No schema, no architecture, no new surfaces.</p>
+<hr>
+<h2>6. Founder Decision Packages</h2>
+<p><strong>A. Historical mailed-date rows (pre-fix UTC-midnight <code>mailedAt</code>).</strong>
+<strong>CCO recommendation: Option 1 + a pre-merge count (Option 4-lite). Do NOT silently normalize (Option 2).</strong> A <code>mailedAt</code> is the consumer&#39;s own attestation of a legally meaningful date; rewriting it without consent is UDAAP-flavored even when well-intentioned, and the true date is unknowable post-hoc (the old picker <em>forced</em> a possibly-wrong day, so the stored day itself may be off — normalization would fix display coherence, not truth). Option 3 (user-confirmed correction) remains available post-launch if the count is material. <strong>Pre-merge count (owner-run, read-only, direct prod connection):</strong></p>
+<pre><code class="language-sql">SELECT count(*) FROM &quot;Letter&quot;
+WHERE &quot;mailedAt&quot; IS NOT NULL
+  AND to_char(&quot;mailedAt&quot; AT TIME ZONE &#39;UTC&#39;, &#39;HH24:MI:SS.MS&#39;) = &#39;00:00:00.000&#39;;
+</code></pre>
+<p>Zero or near-zero → disclose-and-move-on. Material → schedule Option 3.</p>
+<p><strong>B. Strategy Desk clean-account presentation (tiles + score bubble).</strong>
+<strong>CCO determination: (1) no compliance violation, mild consumer-confusion only; (2) does NOT block launch; (4) defer with disclosure</strong> — fold into the scheduled M11 wording batch (a 5th &quot;Clean&quot; tile or an NR-merge plus hiding the score bubble on clean rows). The per-row truth (&quot;Clean / Nothing to dispute&quot;) is already the operative claim a consumer acts on.</p>
+<p><strong>C. Chase-style historical delinquency.</strong>
+<strong>CCO determination: APPROVED with revised wording SCHEDULED (not indefinite), logic unchanged, no outside counsel.</strong> The count is defensible because the derogatory data is real and score-suppressing — not because &quot;active&quot; is a term of art. Keep the fact test; move counter labels toward &quot;negative items on file&quot; in the post-launch batch; dispute framing on such items already targets accuracy, which is the lawful frame.</p>
+<hr>
+<h2>7. Outside Counsel Questions</h2>
+<p><strong>None arising from this review.</strong> The one genuine counsel item in the vicinity — whether CreditVector performing mailing (MAIL_LIVE / LetterStream) disturbs the not-a-CRO posture under CROA / state CSO law — belongs to the LetterStream activation review where it already sits, and is untouched by Phase 1A-R.</p>
+<h2>8. Recommended Smallest Next Action</h2>
+<p>Authorize the §5 correction slice (one bounded Sonnet packet + targeted guards + coordinator commit). On green: this review converts to <strong>APPROVED WITH DISCLOSURES</strong> (M6 timing duty · M7 LetterStream rider · M11/M12 scheduled wording batch · Decision A disclosure), the merge blocker lifts from the compliance side, and the branch is ready for your push/merge decision.</p>
+<h2>9. Git Status Confirmation</h2>
+<p>Branch <code>feat/experience-runtime-phase-1a</code> @ <code>f81882c</code>, <strong>[ahead 7] of origin, NOT pushed</strong>, working tree clean. Production <code>origin/main</code> @ <code>f449c35</code>, untouched.</p>
+<h2>10. Stop-Condition Confirmation</h2>
+<p>No application code changed in this review. No push, no merge, no deploy, no production migration, no production-data access or modification, no flags, no Wallet Runtime, no Phase 1B, no LetterStream activation, no CROA policy design. This review is an internal compliance gate, <strong>not outside counsel approval</strong>.</p>
+
+</main></body></html>
