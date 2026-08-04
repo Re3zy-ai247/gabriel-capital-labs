@@ -62,4 +62,5 @@ Default context budget per task: root `CLAUDE.md` + this file + `CURRENT-STATE.m
 | `CX-REVIEW.md` | Screen-by-screen product audit (2026-07-12): verdicts per screen, journey friction fixes, conversational-workflow pattern, Agency Command, community-Premium economics, retention engine. New items = CX-IDs in ROADMAP-V2 Amendment 1. |
 | `RUNBOOKS/` | `deploy.md` (ship/env vars/preview) · `schema-change.md` (ADR-0001 procedure) · `admin-actions.md` (one-time owner actions). |
 | `SOP/ship-a-feature.md` | Shipping any feature — the 7-step workflow + five-review gate + definition of done. |
+| `SOP/MULTI-AGENT-EXECUTION.md` | Coordinating any task across more than one Claude Code agent — canonical Fable (Program Director) / Sonnet (implementer) / Opus (selective reviewer) roles, the 7-step routing sequence, Opus escalation checklist, task-packet + return templates, mobile handoff format. Read before delegating to a sub-agent. |
 | `ARCHIVE/` | Historical only — never load by default. Original pre-governance CLAUDE.md + 2026-06 QA traceability table live here. |
