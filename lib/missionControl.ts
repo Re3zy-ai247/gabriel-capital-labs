@@ -11,11 +11,16 @@
 // `assembleMission` is PURE (no DB) so the whole composition is unit-testable;
 // `getMissionControl` is the thin loader that feeds it real rows.
 import { prisma } from "@/lib/prisma";
-import type { Letter } from "@prisma/client";
+import type { AccountType, Letter } from "@prisma/client";
 import { getKaiHomeData, REINVESTIGATION_DAYS, type KaiHomeData, type KaiRecommendation, type OvernightItem } from "@/lib/kaiHome";
 import { caseMemorySince, type CaseMemory } from "@/lib/kaiSeen";
 import { campaignService, buildComposerItems } from "@/lib/campaignInput";
 import { ownOutcomeTrack, ownHistorySummary, type OwnTrack } from "@/lib/outcomeLedger";
+// RB-2 (Founder Experience Gate): the same fact test lib/intelligence/snapshot.ts
+// uses for the "active negatives" count — reused here so the Deferred Queue can
+// never stage a factually clean account (never the disputability `probability`
+// band the campaign composer ranks by).
+import { isFactualNegative } from "@/lib/intelligence/snapshot";
 import {
   resolveCampaignPolicy, includedItems, deferredItems, FAMILY_LABEL,
   type Campaign, type CampaignItem, type CampaignPolicy, type ComposedCampaign,
@@ -58,7 +63,10 @@ export interface MissionInputs {
   caseMemory: CaseMemory;
   campaigns: Campaign[];
   composed: ComposedCampaign;
-  tradelines: { id: string; resolved: boolean }[];
+  // accountType + dateOfFirstDelinquency: RB-2's isFactualNegative fact test,
+  // so the Deferred Queue below can tell a genuine negative from a factually
+  // clean account (e.g. "pays as agreed, never late").
+  tradelines: { id: string; resolved: boolean; accountType: AccountType; dateOfFirstDelinquency: Date | null }[];
   letters: Pick<Letter, "id" | "tradelineId" | "recipientName" | "parentLetterId" | "responseAt" | "responseOutcome" | "mailedAt">[];
   scoreEntries: { bureau: string; score: number; recordedAt: Date }[];
   nextSeq: number;
@@ -162,7 +170,17 @@ export function assembleMission(x: MissionInputs): MissionControlData {
 
   // ---- What's happening automatically ----
   const automatic: AutoItem[] = [];
-  const deferredComposed = deferredItems({ items: composed.items });
+  // RB-2 (Founder Experience Gate): the Deferred Queue must never stage an
+  // account with nothing to dispute (a "pays as agreed, never late" account
+  // has no business being staged for "a later campaign"). Every tradelineId
+  // in `composed.items` corresponds to an unresolved row in `tradelines`
+  // (buildComposerItems already skips resolved tradelines before the
+  // composer ever sees them), so the `?? true` fallback is defensive only —
+  // it never silently hides a genuine negative behind a missing lookup.
+  const negativeById = new Map(tradelines.map((t) => [t.id, isFactualNegative(t)]));
+  const deferredComposed = deferredItems({ items: composed.items }).filter(
+    (i) => negativeById.get(i.tradelineId) ?? true
+  );
   if (deferredComposed.length > 0) automatic.push({ text: `${deferredComposed.length} account${deferredComposed.length === 1 ? " is" : "s are"} staged for a later campaign — Kai unlocks them automatically.` });
   if (kai.deadlines.length > 0) automatic.push({ text: `Your response windows are tracked automatically against the ~${REINVESTIGATION_DAYS}-day §611 clock.` });
   if (composed.nextUnlock.length > 0 && tasks.some((t) => t.kind === "mail")) automatic.push({ text: "Your next campaign is staged and unlocks as the current one progresses." });
@@ -272,7 +290,7 @@ export async function getMissionControl(userId: string, user: { fullName?: strin
     caseMemorySince(userId),
     svc.list(userId, 50),
     buildComposerItems(userId),
-    prisma.tradeline.findMany({ where: { userId }, select: { id: true, resolved: true } }),
+    prisma.tradeline.findMany({ where: { userId }, select: { id: true, resolved: true, accountType: true, dateOfFirstDelinquency: true } }),
     prisma.letter.findMany({ where: { userId }, orderBy: { createdAt: "desc" }, select: { id: true, tradelineId: true, recipientName: true, parentLetterId: true, responseAt: true, responseOutcome: true, mailedAt: true } }),
     prisma.scoreEntry.findMany({ where: { userId }, select: { bureau: true, score: true, recordedAt: true }, orderBy: { recordedAt: "asc" } }),
     ownOutcomeTrack(userId),

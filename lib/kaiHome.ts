@@ -81,6 +81,15 @@ export function pickRecommendation(
   letters: Letter[],
   reports: Report[]
 ): KaiRecommendation | null {
+  // RB-1 (Founder Experience Gate): an item with a letter already generated —
+  // mailed or not — must never be re-offered as a fresh "review & dispute"
+  // pick anywhere below. Hoisted above branch 3's candidate (next) so BOTH
+  // the direct §605 pick and its starvation-guard secondary-note use
+  // (branches 1/2, further down) see the same exclusion — a single fix point
+  // rather than two. Branch 5 (undisputed ranking, further down) needs this
+  // identical set; it's built once here and reused there instead of rebuilt.
+  const disputedIds = new Set(letters.map((l) => l.tradelineId).filter(Boolean));
+
   // Branch 3's candidate is computed FIRST, out of priority order — the
   // starvation guard on branches 1/2 (below) needs to know whether §605 has
   // anything to say before it can decide whether to keep absorbing the
@@ -90,6 +99,7 @@ export function pickRecommendation(
   const obsolete = tradelines.find(
     (t) =>
       !t.resolved &&
+      !disputedIds.has(t.id) &&
       recommendStrategy({
         accountType: t.accountType,
         isDebtBuyer: t.isDebtBuyer,
@@ -202,8 +212,8 @@ export function pickRecommendation(
   //    finding 3 — a live defect independent of this phase). Deterministic
   //    tie-break: the item analyzed LONGEST ago wins (oldest createdAt first),
   //    so an equal-score item can never be starved forever by newer arrivals;
-  //    id breaks any remaining tie (identical timestamps).
-  const disputedIds = new Set(letters.map((l) => l.tradelineId).filter(Boolean));
+  //    id breaks any remaining tie (identical timestamps). `disputedIds` is
+  //    the same set hoisted above (RB-1) — built once, reused here.
   const undisputed = tradelines
     .filter((t) => !t.resolved && !disputedIds.has(t.id))
     .sort((a, b) =>

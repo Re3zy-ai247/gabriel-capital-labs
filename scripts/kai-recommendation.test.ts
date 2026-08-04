@@ -212,5 +212,43 @@ check("evidence count is derived via a real filter over `letters`, never a hardc
 check("the panel's watching-the-clock line is gated on a still-running window (daysLeft > 0), never unconditional",
   /upcoming\[0\]\.daysLeft > 0/.test(JOURNEY_SRC));
 
+// ============================================================================
+// 7. RB-1 (Founder Experience Gate) — an item with a letter ALREADY generated
+//    (mailed or not) is never re-offered as a fresh §605 "review & dispute"
+//    pick, including through the starvation-guard's secondary slot. Mechanism:
+//    lib/kaiHome.ts's `disputedIds` set is now hoisted above the §605
+//    candidate (`obsolete`) and excludes it there — the single fix point every
+//    consumer of `obsolete` (branches 1, 2, and 3) shares.
+// ============================================================================
+const letteredObsolete = tl({ id: "obs-lettered", creditorName: "Navient", accountType: "STUDENT_LOAN", dateOfFirstDelinquency: yearsAgo(8) });
+// Mirrors the demo account's exact repro shape: a GENERATED-but-unmailed
+// letter already exists for this tradeline.
+const existingLetter = lt({ id: "gen1", tradelineId: "obs-lettered", recipientName: "Navient", status: "GENERATED", responseOutcome: null, mailedAt: null });
+
+// (a) direct pick: with nothing else in play, an already-lettered §605 item
+// must never resurface as the primary pick.
+const letteredPick = pickRecommendation([letteredObsolete], [existingLetter], oneReport);
+check("RB-1: an item with a letter already generated is NOT re-offered as the §605 pick", !(letteredPick?.href.includes("strategy=fcra_605") ?? false));
+check("RB-1: ...(nothing else competes here, so the recommendation is honestly null, not a fabricated substitute)", letteredPick === null);
+
+// (b) un-lettered control: the IDENTICAL item shape with no letter on file
+// still fires normally — proves the exclusion is per-item, not a blanket
+// suppression of branch 3 (starvation guard preserved).
+const unletteredPick = pickRecommendation([letteredObsolete], [], oneReport);
+check("RB-1 control: the identical item with NO letter on file still fires the §605 pick (starvation guard alive)", unletteredPick?.href.includes("strategy=fcra_605") ?? false);
+
+// (c) starvation-guard secondary slot: a stale-verified OTHER letter would
+// normally yield the primary slot to §605 (see section 5 above) — but when
+// the only §605-eligible item is ITSELF already lettered, there is nothing
+// eligible to yield to, so branch 1's own copy stands with no `secondary`.
+const staleVerifiedOther = lt({ id: "lv-other", recipientName: "TransUnion", responseOutcome: "verified", responseAt: daysAgo(35), round: 1, mailedAt: daysAgo(70) });
+const guardWithLetteredObsolete = pickRecommendation([letteredObsolete], [staleVerifiedOther, existingLetter], oneReport);
+check("RB-1: starvation guard does NOT yield to an already-lettered §605 item", guardWithLetteredObsolete?.cta === "Review response & start Round 2");
+check("RB-1: ...and carries no `secondary` (nothing eligible to yield to)", guardWithLetteredObsolete?.secondary === undefined);
+
+// (d) positive control, reusing section 5's fixtures: the starvation guard
+// still yields normally when the §605 item is genuinely un-lettered.
+check("RB-1 control: starvation guard still yields to §605 when the item is genuinely un-lettered", staleVerifiedYield?.cta === "Review this item & dispute");
+
 console.log(`\nkai-recommendation.test.ts: ${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);

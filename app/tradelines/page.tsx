@@ -18,6 +18,10 @@ import { recommendStrategy } from "@/lib/recommend";
 import { KaiWhy } from "@/components/kai/KaiWhy";
 import { RecommendationIntelPanel } from "@/components/kai/RecommendationIntel";
 import { recommendationIntel } from "@/lib/recommendationIntel";
+// RB-2 (Founder Experience Gate): a factually clean account (e.g. "pays as
+// agreed, never late") must never be presented as a queued dispute
+// opportunity — see lib/intelligence/snapshot.ts for the fact test.
+import { isFactualNegative } from "@/lib/intelligence/snapshot";
 
 const BUREAU_ORDER: Bureau[] = ["EQUIFAX", "EXPERIAN", "TRANSUNION"];
 
@@ -132,7 +136,21 @@ export default async function TradelinesPage() {
             probability: t.probability, reasons: t.reasons, dateOfFirstDelinquency: t.dateOfFirstDelinquency,
             bureauData: t.bureauData, creditorName: t.creditorName, recommendedStrategy: strat.strategyId,
           }) : null;
-          const expandable = hasDetail || t.probability !== "NOT_RECOMMENDED";
+          // RB-2 (Founder Experience Gate): a factually clean account (no
+          // derogatory account type, no delinquency event on file) never
+          // expands into Kai's dispute read — there is nothing to explain.
+          // Gated on NOT_RECOMMENDED too so a government/statutory debt (which
+          // is also outside isFactualNegative's definition, for a DIFFERENT
+          // reason — it can't be effectively disputed off a report, not that
+          // it's in good standing) keeps its existing "set aside" treatment
+          // below instead of being mislabeled clean.
+          const clean = t.probability !== "NOT_RECOMMENDED" && !isFactualNegative(t);
+          // RB-2 RESIDUAL-2: `clean` gates only the dispute/Kai half below —
+          // a clean row with real per-bureau field data still expands to show
+          // it (restores the pre-RB-2 behavior for that half); it just never
+          // expands SOLELY because it has a strategy (the second disjunct is
+          // suppressed when clean).
+          const expandable = hasDetail || (t.probability !== "NOT_RECOMMENDED" && !clean);
           const wrapperClass = `block border-b border-ink-700/50 last:border-0 ${dupSize ? "border-l-2 border-l-ocean-500/50" : ""}`;
           const row = (
             <div className="grid grid-cols-12 items-center gap-2 px-4 py-3 text-sm">
@@ -169,7 +187,11 @@ export default async function TradelinesPage() {
                     )}
                   </div>
                 )}
-                {t.reasons[0] && (
+                {clean ? (
+                  <div className="truncate text-xs text-slate-500" title="Account in good standing — no derogatory history on file.">
+                    Account in good standing — no derogatory history on file.
+                  </div>
+                ) : t.reasons[0] && (
                   <div className="truncate text-xs text-slate-500" title={t.reasons[0]}>
                     {t.reasons[0]}
                     {/* Full, untruncated text for screen readers (title alone is unreliable). */}
@@ -183,12 +205,15 @@ export default async function TradelinesPage() {
                 <BureauBadges bureaus={present} />
                 {expandable && (
                   <div className="mt-0.5 text-[10px] font-medium text-brand-400">
-                    <span className="group-open:hidden">Kai&apos;s read ▾</span>
+                    {/* RB-2 RESIDUAL-2: a clean row can only expand into the
+                        per-bureau detail (never Kai's dispute read), so the
+                        affordance label says so honestly. */}
+                    <span className="group-open:hidden">{clean ? "Bureau detail ▾" : "Kai's read ▾"}</span>
                     <span className="hidden group-open:inline">close ▴</span>
                   </div>
                 )}
               </div>
-              <div className="col-span-1"><ProbabilityBadge p={t.probability} /></div>
+              <div className="col-span-1">{clean ? <span className="pill border border-ink-600 bg-ink-700/60 text-slate-400">Clean</span> : <ProbabilityBadge p={t.probability} />}</div>
               {/* Action lives OUTSIDE this grid (rendered as a sibling overlay) so
                   the interactive Dispute link is never nested inside <summary>. */}
               <div className="col-span-1" aria-hidden />
@@ -196,14 +221,7 @@ export default async function TradelinesPage() {
           );
 
           const action =
-            t.probability !== "NOT_RECOMMENDED" ? (
-              <Link
-                href={`/letters?tradeline=${t.id}`}
-                className="inline-flex min-h-[44px] items-center text-xs font-semibold text-brand-400 underline-offset-2 hover:text-brand-300 hover:underline"
-              >
-                Dispute →
-              </Link>
-            ) : (
+            t.probability === "NOT_RECOMMENDED" ? (
               <span
                 className="text-[11px] text-slate-500"
                 title={t.reasons[0] ?? "Government/statutory debt generally can't be disputed off a report — I've excluded it so you don't waste a round."}
@@ -211,6 +229,20 @@ export default async function TradelinesPage() {
                 set aside
                 <span className="sr-only">. {t.reasons[0] ?? "Government or statutory debt generally can't be disputed off a report, so it's excluded so you don't waste a round."}</span>
               </span>
+            ) : clean ? (
+              // RB-2: honest state for a factually clean account — never a
+              // live "Dispute" action presented next to a queued opportunity.
+              <span className="text-[11px] text-slate-500" title="Account in good standing — no derogatory history on file.">
+                nothing to dispute
+                <span className="sr-only">. Account in good standing — no derogatory history on file.</span>
+              </span>
+            ) : (
+              <Link
+                href={`/letters?tradeline=${t.id}`}
+                className="inline-flex min-h-[44px] items-center text-xs font-semibold text-brand-400 underline-offset-2 hover:text-brand-300 hover:underline"
+              >
+                Dispute →
+              </Link>
             );
 
           if (!expandable) {
@@ -230,9 +262,17 @@ export default async function TradelinesPage() {
                   interactive Dispute CTA out of the disclosure toggle. */}
               <div className="pointer-events-none absolute right-4 top-3 z-10 text-right [&_a]:pointer-events-auto">{action}</div>
               <div className="space-y-3 border-t border-ink-700/40 bg-ink-800/30 px-4 py-4">
-                {/* The structured "why" — always present for a disputable row. */}
-                <KaiWhy e={explanation} />
-                {intel && <RecommendationIntelPanel intel={intel} />}
+                {/* RB-2 RESIDUAL-2: the dispute/Kai recommendation half is
+                    gated on `!clean` — a factually clean account still gets
+                    the per-bureau comparison below (real data, no dispute
+                    read attached), but never Kai's dispute explanation. */}
+                {!clean && (
+                  <>
+                    {/* The structured "why" — always present for a disputable row. */}
+                    <KaiWhy e={explanation} />
+                    {intel && <RecommendationIntelPanel intel={intel} />}
+                  </>
+                )}
 
                 {/* Per-bureau side-by-side, only when we hold real field data. */}
                 {hasDetail && (
