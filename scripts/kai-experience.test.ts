@@ -18,7 +18,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { deriveOnboardingStatus, profileIsComplete, ONBOARDING_STEP_COUNT } from "../lib/onboarding";
-import { greetingPeriod, assembleOperatorSession, type OperatorSessionInputs, type OperatorAccount, type WorkspaceClient } from "../lib/operatorSession";
+import { assembleOperatorSession, type OperatorSessionInputs, type OperatorAccount, type WorkspaceClient } from "../lib/operatorSession";
 import { buildPackageSummary, type MailLetter } from "../lib/mailCenter";
 import type { KaiHomeData } from "../lib/kaiHome";
 
@@ -32,8 +32,9 @@ const read = (p: string) => readFileSync(join(root, p), "utf8");
 // Mechanism chosen (of the brief's two options): the workspace cookie is
 // httpOnly (unreadable client-side, by design), so this component cannot
 // itself derive a scope token without a network round trip that would defeat
-// the cache's purpose — clearing at the three known transition points is the
-// mechanism the component's data actually supports.
+// the cache's purpose — clearing at the four known transition points is the
+// mechanism the component's data actually supports (openClient, AgencyBar
+// exit, sign-out, and — Phase 1A F8 — admin "View as" impersonation).
 {
   const KAI_PRESENCE_SRC = read("components/kai/KaiPresence.tsx");
   ok("KaiPresence exports clearKaiPresenceCache for the switch paths to call", /export function clearKaiPresenceCache/.test(KAI_PRESENCE_SRC));
@@ -49,6 +50,13 @@ const read = (p: string) => readFileSync(join(root, p), "utf8");
   const signOutCalls = [...SIDEBAR_SRC.matchAll(/onClick=\{[^}]*signOut\(/g)];
   ok("both sign-out handlers exist (desktop Sidebar + MobileNav) — sanity, the check below isn't vacuous", signOutCalls.length === 2);
   ok("every sign-out handler clears the Kai cache first (a different account may sign in on the same tab)", signOutCalls.every((m) => /clearKaiPresenceCache\(\)/.test(m[0])));
+
+  // Phase 1A F8: admin impersonation ("View as") is the 4th subject-switch
+  // site — it lands on /dashboard exactly like openClient(), so it carries
+  // the identical cache-bleed risk (the admin's own, or a prior target's,
+  // cached Kai recommendation reading forward onto the newly-impersonated user).
+  const ADMIN_USERS_SRC = read("app/admin/users/page.tsx");
+  ok("admin impersonate() (View as) clears the Kai cache before navigating", /clearKaiPresenceCache\(\);\s*\n\s*clearOnboardingStatusCache\(\);\s*\n\s*router\.push\("\/dashboard"\)/.test(ADMIN_USERS_SRC));
 }
 
 // ==== 2. Excluded routes neither fetch nor cache (fetch-before-guard fix) ===
@@ -131,17 +139,14 @@ const read = (p: string) => readFileSync(join(root, p), "utf8");
   ok("an agency owner with no workspace open never reads 'incomplete' (no case of their own to onboard through — the same altitude law Mission Control applies)", /isAgency && !client/.test(STATUS_ROUTE_SRC));
 }
 
-// ==== 7. Greeting register — deterministic time-of-day (logic) ==============
+// ==== 7. Greeting register — F7 removal (UTC time-of-day was wrong 8h/day) ===
+// CreditVector has no per-user timezone, so a UTC-bucketed "Good morning/
+// afternoon/evening" was wrong for roughly 8 hours of every US user's day.
+// Fixed minimal + safe: dropped entirely, not patched with a fake timezone.
 {
-  const AT = (h: number) => Date.UTC(2026, 6, 20, h, 30, 0); // 2026-07-20, minute/second fixed
-  ok("00:00 UTC → morning", greetingPeriod(AT(0)) === "morning");
-  ok("11:59 UTC → still morning (upper boundary)", greetingPeriod(Date.UTC(2026, 6, 20, 11, 59, 59)) === "morning");
-  ok("12:00 UTC → afternoon (lower boundary)", greetingPeriod(AT(12)) === "afternoon");
-  ok("17:59 UTC → still afternoon (upper boundary)", greetingPeriod(Date.UTC(2026, 6, 20, 17, 59, 59)) === "afternoon");
-  ok("18:00 UTC → evening (lower boundary)", greetingPeriod(AT(18)) === "evening");
-  ok("23:59 UTC → still evening", greetingPeriod(Date.UTC(2026, 6, 20, 23, 59, 59)) === "evening");
-  // Same input, called twice → identical output (deterministic, no clock/randomness).
-  ok("pure function: identical `now` always yields identical output", greetingPeriod(AT(9)) === greetingPeriod(AT(9)));
+  const OPERATOR_SESSION_SRC = read("lib/operatorSession.ts");
+  ok("greetingPeriod is no longer exported (removed, not merely unused)", !/export function greetingPeriod/.test(OPERATOR_SESSION_SRC));
+  ok("the GreetingPeriod type is gone too", !/export type GreetingPeriod/.test(OPERATOR_SESSION_SRC));
 }
 
 // ==== 8. Greeting register — identity composition + on-behalf-of (logic) ====
@@ -154,18 +159,17 @@ const read = (p: string) => readFileSync(join(root, p), "utf8");
   });
 
   const consumer = assembleOperatorSession(base({ account: { ...ACCOUNT, isAgency: false } }));
-  ok("identity.timeOfDay is present and matches greetingPeriod(now)", consumer.identity.timeOfDay === "morning");
   ok("consumer altitude → no onBehalfOf (the 'plain' variant)", consumer.identity.onBehalfOf === undefined);
+  ok("F7: identity carries no timeOfDay field at all (dropped, not just unrendered)", !("timeOfDay" in consumer.identity));
 
   const workspace = assembleOperatorSession(base({ client: CLIENT }));
   ok("workspace altitude → onBehalfOf names the client, for the natural 'you're in X's workspace' phrasing", workspace.identity.onBehalfOf?.clientName === "Elena Ruiz");
-  ok("the SAME now, a different hour, yields a different timeOfDay (not hardcoded 'morning')", assembleOperatorSession(base({ now: Date.UTC(2026, 6, 20, 20, 0, 0) })).identity.timeOfDay === "evening");
 }
 
 // ==== 9. Greeting register — rendered copy (static) ==========================
 {
   const SESSION_BLOCKS_SRC = read("components/mission/SessionBlocks.tsx");
-  ok("SessionHeader renders the derived time-of-day, not a hardcoded 'Good morning'", /Good \{identity\.timeOfDay\}/.test(SESSION_BLOCKS_SRC) && !/Good morning, \{identity\.greetingName\}/.test(SESSION_BLOCKS_SRC));
+  ok("F7: SessionHeader renders the neutral 'Welcome back' form, not a time-of-day greeting", /Welcome back, \{identity\.greetingName\}/.test(SESSION_BLOCKS_SRC) && !/Good \{identity\.timeOfDay\}/.test(SESSION_BLOCKS_SRC) && !/Good morning, \{identity\.greetingName\}/.test(SESSION_BLOCKS_SRC));
   ok("the workspace variant reads naturally ('you're in', per the brief's own example) — the consumer variant stays plain (no change inside the ternary's null branch)", /you&apos;re in \{identity\.onBehalfOf\.clientName\}/.test(SESSION_BLOCKS_SRC));
   ok("the session-close block uses Kai's register ('Still open', 'Quiet is allowed') — the old bureaucratic 'Remaining:' wording is gone", /Still open: \$\{close\.remaining\.count\}/.test(SESSION_BLOCKS_SRC) && !/Remaining: \$\{close\.remaining\.count\}/.test(SESSION_BLOCKS_SRC));
   ok("the quiet-state line names no celebration — pleased-and-bounded, honest about nothing having happened", /Quiet is allowed — nothing needed you today\./.test(SESSION_BLOCKS_SRC));
@@ -249,6 +253,16 @@ const read = (p: string) => readFileSync(join(root, p), "utf8");
   // from the canonical file.
   ok("lib/missionEngine/engine.ts has no mailedAt reference of its own (nothing to reconcile locally)", !/mailedAt/.test(ENGINE_SRC));
   ok("lib/missionEngine/engine.ts sources REINVESTIGATION_DAYS from lib/forecast (the canonical constant), not a local literal 30", /import\s*\{\s*REINVESTIGATION_DAYS\s*\}\s*from\s*["']@\/lib\/forecast["']/.test(ENGINE_SRC));
+
+  // Phase 1A F2 (gate finding: this guard institutionalized the gap) —
+  // lib/kaiHome.ts's deadlinesFrom was the one caller still doing a bare
+  // mailedAt diff; the deadline day-counts flowing into operatorSession.ts
+  // and mailCenter.ts's pickMailBand come from here, so this was the actual
+  // source of the §611 split-brain.
+  const KAIHOME_SRC = read("lib/kaiHome.ts");
+  ok("lib/kaiHome.ts imports the receipt-anchored helper from lib/forecast", /import\s*\{[^}]*\bdaysElapsedSinceEstimatedReceipt\b[^}]*\}\s*from\s*["']@\/lib\/forecast["']/.test(KAIHOME_SRC));
+  ok("lib/kaiHome.ts's deadlinesFrom no longer does a bare mailedAt diff for daysElapsed", !/const daysElapsed = Math\.floor\(\(now - new Date\(l\.mailedAt as Date\)\.getTime\(\)\) \/ DAY\)/.test(KAIHOME_SRC));
+  ok("...it now calls the shared helper instead", /daysElapsed = daysElapsedSinceEstimatedReceipt\(new Date\(l\.mailedAt as Date\)\.getTime\(\), now\)/.test(KAIHOME_SRC));
 }
 
 console.log(`\nkai-experience.test.ts: ${pass} passed, ${fail} failed`);

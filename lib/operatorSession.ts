@@ -40,24 +40,20 @@ const DAY_MS = 86_400_000;
 export type Altitude = "consumer" | "agency-owner" | "workspace";
 
 // The everyday greeting register (Phase 1A, Agent E — SIM-REVIEW minimum-set
-// item 3: "an on-behalf-of variant for the everyday register"). UTC-anchored,
-// same convention as dayWindow below — CreditVector doesn't collect a
-// per-user timezone (no schema change this phase), so this is the same
-// documented approximation the rest of the app already makes for "today,"
-// never a claim of the operator's actual local time.
-export type GreetingPeriod = "morning" | "afternoon" | "evening";
-
-export function greetingPeriod(now: number): GreetingPeriod {
-  const hour = new Date(now).getUTCHours();
-  if (hour < 12) return "morning";
-  if (hour < 18) return "afternoon";
-  return "evening";
-}
-
+// item 3: "an on-behalf-of variant for the everyday register").
+//
+// Phase 1A F7: this used to also carry a UTC-bucketed time-of-day ("Good
+// morning/afternoon/evening") — CreditVector doesn't collect a per-user
+// timezone, so that bucketing was wrong for roughly 8 hours of every US
+// user's day (e.g. an Eastern-time user gets "Good morning" through 8am
+// local, "Good evening" from 2pm local onward). Rather than ship a
+// convincing-looking clock that's wrong most of the day, the greeting is now
+// the neutral, timezone-independent "Welcome back" form — see
+// components/mission/SessionBlocks.tsx's SessionHeader. greetingPeriod/
+// GreetingPeriod/timeOfDay are removed, not merely unused.
 export interface OperatorIdentity {
   greetingName: string;
   altitude: Altitude;
-  timeOfDay: GreetingPeriod;
   // Present only at "workspace" altitude — an agency operator acting inside a
   // client's case. Everywhere the static "Welcome back" text sits today, this is
   // the on-behalf-of register (SIM-REVIEW minimum-set item 3).
@@ -186,20 +182,18 @@ function firstNameOf(a: { fullName?: string | null; name?: string | null }): str
 
 function identityOf(
   account: OperatorAccount,
-  client: WorkspaceClient | null,
-  now: number
+  client: WorkspaceClient | null
 ): { identity: OperatorIdentity; altitude: Altitude } {
   const greetingName = firstNameOf(account);
-  const timeOfDay = greetingPeriod(now);
   if (client) {
     const altitude: Altitude = "workspace";
     return {
       altitude,
-      identity: { greetingName, altitude, timeOfDay, onBehalfOf: { clientName: client.fullName || client.name || "this client" } },
+      identity: { greetingName, altitude, onBehalfOf: { clientName: client.fullName || client.name || "this client" } },
     };
   }
   const altitude: Altitude = account.isAgency ? "agency-owner" : "consumer";
-  return { altitude, identity: { greetingName, altitude, timeOfDay } };
+  return { altitude, identity: { greetingName, altitude } };
 }
 
 // ===== day windows ====================================================================
@@ -228,9 +222,12 @@ function accomplishmentOf(e: KaiEventRow): AccomplishmentEntry | null {
     case "letter.generated":
       return { kind: "letter.generated", label: "Generated a dispute letter", at, refId: e.refId };
     case "letter.mailed":
+      // Phase 1A F6: receipt-anchored truth — the §611 clock starts when the
+      // bureau RECEIVES the dispute, not the moment it's mailed (matches D's
+      // shipped idiom, e.g. lib/mailCenter.ts's windowText).
       return {
         kind: "letter.mailed",
-        label: `Mailed Round ${String(p.round ?? "")} to ${String(p.recipient ?? "the bureau")} — the §611 clock started`,
+        label: `Mailed Round ${String(p.round ?? "")} to ${String(p.recipient ?? "the bureau")} — the §611 clock starts once the bureau receives it`,
         at, refId: e.refId,
       };
     case "response.received":
@@ -317,12 +314,29 @@ function interruptedWorkOf(manifests: ManifestSlice[], letters: LetterSlice[]): 
 
 const PRIORITY_CAP = 8;
 
+// F3's honest basis for promoting interruptedWork's own first entry to the
+// top priority slot below — one phrase per kind, paraphrasing
+// interruptedWorkOf's own label above (never inventing a new fact).
+const RESUME_BASIS: Record<InterruptedKind, string> = {
+  mail_in_review: "Ready for your review before it mails.",
+  mail_approved: "Approved — ready to confirm and queue.",
+  letter_unmailed: "Generated and ready to mail.",
+};
+
 // Consumer (and "workspace" — an agency operator sees the CLIENT's own case,
 // scoped by userId at the loader below, so the same composition applies).
-function consumerPriorities(kai: KaiHomeData): PriorityEntry[] {
+function consumerPriorities(kai: KaiHomeData, interruptedWork: InterruptedItem[]): PriorityEntry[] {
   const out: PriorityEntry[] = [];
   if (kai.recommendation) {
     out.push({ label: kai.recommendation.title, basis: kai.recommendation.basis, href: kai.recommendation.href });
+  } else if (interruptedWork.length > 0) {
+    // F3 (dishonest quiet state): the engine has nothing NEW to recommend
+    // this cycle, but real, unfinished work is sitting mid-flight — the
+    // honest top priority IS picking that back up, never silence. Composed
+    // from interruptedWorkOf's own first entry (already time-ordered by
+    // however manifests/letters were read), not a new ranking.
+    const resume = interruptedWork[0];
+    out.push({ label: resume.label, basis: RESUME_BASIS[resume.kind], href: resume.resumeHref });
   }
   const nearest = kai.deadlines[0] ?? null;
   // Only a STILL-RUNNING window is a distinct priority fact. An overdue window is
@@ -332,7 +346,10 @@ function consumerPriorities(kai: KaiHomeData): PriorityEntry[] {
   if (nearest && nearest.daysLeft > 0) {
     out.push({
       label: `${nearest.daysLeft} day${nearest.daysLeft === 1 ? "" : "s"} left on the ${nearest.recipient} window`,
-      basis: `Round ${nearest.round} mailed ${nearest.daysElapsed} day(s) ago — the ~${REINVESTIGATION_DAYS}-day §611 clock is running.`,
+      // Phase 1A F6: `nearest.daysElapsed` is RECEIPT-anchored (lib/kaiHome.ts's
+      // deadlinesFrom, F2) — an estimate of days since the bureau received it,
+      // never a bare "days since mailed" count.
+      basis: `An estimated ${nearest.daysElapsed} day(s) since the bureau received Round ${nearest.round} — the ~${REINVESTIGATION_DAYS}-day §611 clock is running.`,
       href: "/letters",
     });
   }
@@ -349,8 +366,13 @@ function agencyPriorities(roster: RosterEntry[]): PriorityEntry[] {
     .slice(0, PRIORITY_CAP)
     .map((c) => ({
       label: c.needsAttention ? `Follow up with ${c.name}` : `Send the first letter for ${c.name}`,
+      // Phase 1A F6: this module doesn't own `c.daysSince`'s computation (the
+      // roster engine's job, not re-derived here) — but the WORDING must not
+      // claim the §611 window is measured from mailing. Reworded to a
+      // receipt-anchored estimate, matching D's shipped idiom ("the window
+      // begins when they receive it").
       basis: c.needsAttention
-        ? `Day ${c.daysSince ?? "?"} since the last round — past the ~${REINVESTIGATION_DAYS}-day FCRA §611 window with no logged response.`
+        ? `Day ${c.daysSince ?? "?"} since the last round was mailed — the ~${REINVESTIGATION_DAYS}-day FCRA §611 window (which begins when the bureau receives it) has likely passed, with no logged response.`
         : "No letters mailed to this client yet.",
       href: "/agency",
     }));
@@ -358,10 +380,27 @@ function agencyPriorities(roster: RosterEntry[]): PriorityEntry[] {
 
 // ===== session close =======================================================================
 
-function sessionCloseOf(today: CappedList<AccomplishmentEntry>, priorities: PriorityEntry[]): SessionCloseSummary {
+function sessionCloseOf(
+  today: CappedList<AccomplishmentEntry>,
+  priorities: PriorityEntry[],
+  interruptedWork: InterruptedItem[]
+): SessionCloseSummary {
+  // F3 (dishonest quiet state): "remaining" must count every genuinely open
+  // item exactly once — it used to look at todaysPriorities alone, so a
+  // resumable letter/package with no account-wide recommendation attached
+  // could sit unmailed while the session close still read "Quiet is
+  // allowed." interruptedWork's first entry may already be showing as
+  // priorities[0] (the resume-as-priority fallback in consumerPriorities,
+  // above) — matched by href so it's never counted twice as the same piece
+  // of work.
+  const promotedHrefs = new Set(priorities.map((p) => p.href));
+  const extraInterrupted = interruptedWork.filter((w) => !promotedHrefs.has(w.resumeHref));
   return {
     doneToday: { count: today.items.length + today.moreCount, labels: today.items.map((i) => i.label) },
-    remaining: { count: priorities.length, labels: priorities.map((p) => p.label) },
+    remaining: {
+      count: priorities.length + extraInterrupted.length,
+      labels: [...priorities.map((p) => p.label), ...extraInterrupted.map((w) => w.label)],
+    },
   };
 }
 
@@ -371,7 +410,7 @@ function sessionCloseOf(today: CappedList<AccomplishmentEntry>, priorities: Prio
 // omitted. This is what scripts/operator-session.test.ts exercises directly.
 export function assembleOperatorSession(x: OperatorSessionInputs): OperatorSession {
   const now = x.now ?? Date.now();
-  const { identity, altitude } = identityOf(x.account, x.client, now);
+  const { identity, altitude } = identityOf(x.account, x.client);
 
   const today = dayWindow(now, 0);
   const yesterday = dayWindow(now, 1);
@@ -380,9 +419,9 @@ export function assembleOperatorSession(x: OperatorSessionInputs): OperatorSessi
 
   const interruptedWork = interruptedWorkOf(x.manifests, x.letters);
 
-  const todaysPriorities = altitude === "agency-owner" ? agencyPriorities(x.roster ?? []) : consumerPriorities(x.kai);
+  const todaysPriorities = altitude === "agency-owner" ? agencyPriorities(x.roster ?? []) : consumerPriorities(x.kai, interruptedWork);
 
-  const sessionClose = sessionCloseOf(todayCompleted, todaysPriorities);
+  const sessionClose = sessionCloseOf(todayCompleted, todaysPriorities, interruptedWork);
 
   return { identity, yesterdayCompleted, todayCompleted, interruptedWork, todaysPriorities, sessionClose };
 }

@@ -6,7 +6,7 @@ import { AppShell } from "@/components/AppShell";
 import { EduBanner } from "@/components/Disclaimer";
 import {
   Mails, Loader2, AlertTriangle, Copy, Check, Printer, Sparkles, Send, Trash2,
-  Upload, ArrowUpRight, ShieldCheck,
+  Upload, ArrowUpRight, ShieldCheck, Download,
 } from "lucide-react";
 import {
   ownResponseLatencyDays, forecastFor, POSSIBLE_RESPONSES,
@@ -24,7 +24,17 @@ interface SavedLetter {
   strategy: string; round: number; targetBureau: string | null;
   createdAt: string; mailedAt: string | null; responseAt: string | null; preview: string;
   hasResponse: boolean; responseOutcome: string | null; responseAnalysis: string | null;
-  parentLetterId: string | null;
+  parentLetterId: string | null; tradelineId: string | null;
+}
+
+// Phase 1A (F1): the SAME derived package-grouping key lib/mailCenter.ts's
+// packageKeyFor() computes — duplicated here (not imported) because that
+// module pulls in @/lib/mail, which imports prisma, and this is a "use
+// client" page (CLAUDE.md gotcha 2: client pages must not import
+// prisma-bearing modules). Keep in sync if the grouping key ever changes;
+// scripts/mailCenter.test.ts pins the literal format both sides rely on.
+function packageIdFor(l: Pick<SavedLetter, "id" | "tradelineId" | "strategy" | "round">): string {
+  return l.tradelineId ? `tl:${l.tradelineId}:${l.strategy}:${l.round}` : `solo:${l.id}`;
 }
 
 const BUREAU_LABEL: Record<string, string> = { EQUIFAX: "Equifax", EXPERIAN: "Experian", TRANSUNION: "TransUnion" };
@@ -707,6 +717,17 @@ function LetterRow({
             <Link href={`/letters/print/${l.id}`} target="_blank" className="btn-ghost min-h-[44px] min-w-[44px] justify-center text-xs" aria-label="Print letter"><Printer className="h-3.5 w-3.5" aria-hidden /></Link>
             {l.status !== "MAILED" && l.status !== "RESOLVED" && l.status !== "RESPONSE_RECEIVED" && (
               <>
+                {/* Phase 1A F1: the Download flow's reachable entry from the
+                    natural post-generation surface — before this fix, Download
+                    was only reachable AFTER something in the same package had
+                    already been mailed. */}
+                <Link
+                  href={`/mail/download/${encodeURIComponent(packageIdFor(l))}`}
+                  className="btn-ghost min-h-[44px] text-xs"
+                  title="Review this dispute and download it to print and mail."
+                >
+                  <Download className="h-3.5 w-3.5" aria-hidden /> Review &amp; download package
+                </Link>
                 <MarkMailedControl onConfirm={(d) => onStatus(l.id, "MAILED", d)} minDate={l.createdAt?.slice(0, 10)} />
                 {/* MAIL_LIVE off during beta — queue-for-later, de-emphasized so it never reads as already 'sent'. */}
                 <Link href={`/mail/send/${l.id}`} className="btn-ghost min-h-[44px] text-xs text-slate-400" title="Queue this dispute for CreditVector to mail once live mailing is switched on — nothing is charged or sent yet.">

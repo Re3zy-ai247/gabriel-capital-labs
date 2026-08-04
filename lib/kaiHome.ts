@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { listKaiEvents } from "@/lib/kaiEvents";
 import { recommendStrategy } from "@/lib/recommend";
 import { yearsSince } from "@/lib/utils";
+import { daysElapsedSinceEstimatedReceipt } from "@/lib/forecast";
 
 const DAY = 86_400_000;
 // FCRA §611(a)(1): the bureau's reinvestigation window after a dispute is
@@ -48,12 +49,18 @@ export type KaiHomeData = {
   lettersMailed: number;
 };
 
+// Phase 1A F2 (§611 split-brain): RECEIPT-anchored, matching lib/forecast.ts /
+// lib/mailCenter.ts / app/letters / app/journey / lib/intelligence/snapshot.ts
+// — never a bare mailedAt diff. `daysElapsed` here is genuinely "estimated
+// days since the bureau received it," so every consumer of this deadline
+// (operatorSession.ts, mailCenter.ts's pickMailBand, and branch 2 below) is
+// now looking at the same clock the row copy already shows.
 function deadlinesFrom(letters: Letter[]): KaiDeadline[] {
   const now = Date.now();
   return letters
     .filter((l) => l.mailedAt && !l.responseAt)
     .map((l) => {
-      const daysElapsed = Math.floor((now - new Date(l.mailedAt as Date).getTime()) / DAY);
+      const daysElapsed = daysElapsedSinceEstimatedReceipt(new Date(l.mailedAt as Date).getTime(), now);
       return {
         letterId: l.id,
         recipient: l.recipientName,
@@ -152,11 +159,15 @@ export function pickRecommendation(
       });
     }
     return {
+      // Phase 1A F2: `lapsed.daysElapsed` is now RECEIPT-anchored (deadlinesFrom
+      // above) — the copy must say so too, or a receipt-anchored number would
+      // read as a (wrong, larger) days-since-mailed count. Matches the
+      // "estimating from receipt" idiom app/letters/page.tsx already uses.
       title: `The ${lapsed.recipient} response window has passed.`,
-      body: `Day ${lapsed.daysElapsed} since Round ${lapsed.round} was mailed — past the ~${REINVESTIGATION_DAYS}-day FCRA §611 reinvestigation window. Log any response you received, or escalate.`,
+      body: `Estimating from receipt, day ${lapsed.daysElapsed} of the ~${REINVESTIGATION_DAYS}-day FCRA §611 reinvestigation window — it's likely passed. Log any response you received, or escalate.`,
       cta: "Log the response",
       href: "/letters",
-      basis: `Rule: mailed ${lapsed.daysElapsed} days ago with no response on file.`,
+      basis: `Rule: an estimated ${lapsed.daysElapsed} days since the bureau received it, past the ${REINVESTIGATION_DAYS}-day window, with no response on file.`,
     };
   }
 

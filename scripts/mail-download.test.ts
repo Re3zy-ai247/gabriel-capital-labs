@@ -184,5 +184,28 @@ const DOWNLOAD_APPROVAL_SRC = read("app/mail/download/[packageId]/DownloadApprov
   ok("the new package Download flow states the SAME disclosure", SENTENCE.test(read("app/mail/download/[packageId]/page.tsx")));
 }
 
+// ==== 7. Static: F1 — Download reachable before mailing (/letters entry) ====
+{
+  const LETTERS_PAGE_SRC = read("app/letters/page.tsx");
+  ok("app/letters/page.tsx exposes a 'Review & download package' action on generated letters", /Review &amp; download package|Review & download package/.test(LETTERS_PAGE_SRC));
+  ok("...routing to the package Download flow (/mail/download/[packageId])", /\/mail\/download\/\$\{encodeURIComponent\(/.test(LETTERS_PAGE_SRC));
+  ok("...computed with the SAME tl:{tradelineId}:{strategy}:{round} / solo:{id} package-key format lib/mailCenter.ts's packageKeyFor uses (mailCenter.test.ts pins the literal produced id)",
+    /`tl:\$\{[^}]*\.tradelineId\}:\$\{[^}]*\.strategy\}:\$\{[^}]*\.round\}`/.test(LETTERS_PAGE_SRC) && /`solo:\$\{[^}]*\.id\}`/.test(LETTERS_PAGE_SRC));
+  ok("the SavedLetter shape carries tradelineId (needed to compute the package id client-side)", /tradelineId:\s*string \| null/.test(LETTERS_PAGE_SRC));
+
+  const LETTERS_ROUTE_SRC = read("app/api/letters/route.ts");
+  ok("/api/letters exposes tradelineId (an already-persisted field, no schema change) for the client to compute the package id",
+    /tradelineId:\s*l\.tradelineId/.test(LETTERS_ROUTE_SRC));
+
+  const MAILCENTER_SRC2 = read("lib/mailCenter.ts");
+  ok("Phase 1A F1: groupIntoPackages no longer drops a package with zero in-mail members (the exact `if (memberRows.length === 0) continue;` early-return is gone)",
+    !/if \(memberRows\.length === 0\) continue;/.test(MAILCENTER_SRC2));
+  ok("...it renders such a package with the honest READY_TO_PREPARE health instead", /"READY_TO_PREPARE"/.test(MAILCENTER_SRC2));
+
+  const MAIL_PAGE_SRC = read("app/mail/page.tsx");
+  ok("/mail renders a distinct 'Ready to prepare' group, never mixed silently into the same list as in-mail packages", /Ready to prepare/.test(MAIL_PAGE_SRC));
+  ok("...partitioned by the READY_TO_PREPARE health (not a second, independently-computed grouping)", /p\.health === "READY_TO_PREPARE"/.test(MAIL_PAGE_SRC));
+}
+
 console.log(`\nmail-download.test.ts: ${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);

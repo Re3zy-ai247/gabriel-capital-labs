@@ -152,14 +152,31 @@ check("starvation: verified STALE but NO §605 candidate → branch 1 still wins
 check("...and no `secondary` (nothing was yielded)", staleVerifiedNoObsolete?.secondary === undefined);
 
 // -- branch 2 (lapsed window) --
-const freshLapsed = lt({ id: "ll1", recipientName: "Experian", mailedAt: daysAgo(32) }); // daysLeft = 30-32 = -2 (just lapsed, overdue 2d, below the 30d starvation threshold)
+// Phase 1A F2: deadlinesFrom is now RECEIPT-anchored (daysElapsed subtracts
+// the 5-day MAIL_TRANSIT_DAYS allowance before comparing to the 30-day §611
+// window) — so "days ago mailed" no longer equals "days on the clock". Fixture
+// day-counts below are chosen against the RECEIPT-anchored math.
+const freshLapsed = lt({ id: "ll1", recipientName: "Experian", mailedAt: daysAgo(37) }); // daysElapsed = 37-5 = 32, daysLeft = 30-32 = -2 (just lapsed, overdue 2d, below the 30d starvation threshold)
 const notStaleLapsed = pickRecommendation([obsoleteTl], [freshLapsed], oneReport);
 check("starvation: lapsed window just-overdue (2d) + §605 exists → branch 2 still wins", notStaleLapsed?.cta === "Log the response");
 check("...and carries no `secondary`", notStaleLapsed?.secondary === undefined);
 
-const staleLapsed = lt({ id: "ll2", recipientName: "Experian", mailedAt: daysAgo(65) }); // daysLeft = 30-65 = -35, overdue 35d ≥ 30d threshold
+const staleLapsed = lt({ id: "ll2", recipientName: "Experian", mailedAt: daysAgo(65) }); // daysElapsed = 65-5 = 60, daysLeft = 30-60 = -30, overdue 30d ≥ 30d threshold
 const staleLapsedYield = pickRecommendation([obsoleteTl], [staleLapsed], oneReport);
-check("starvation: lapsed window overdue 35d (≥30d further) + §605 exists → yields to §605", staleLapsedYield?.cta === "Review this item & dispute");
+check("starvation: lapsed window overdue 30d (≥30d further) + §605 exists → yields to §605", staleLapsedYield?.cta === "Review this item & dispute");
+
+// F2 boundary pin: at exactly 30 days since MAILING, the OLD (mailing-
+// anchored) math would already call the window lapsed (daysLeft = 30-30 = 0).
+// The fixed, RECEIPT-anchored math still has 5 days left (30 - (30-5) = 5) —
+// the transit allowance hasn't been used up yet. Only at 35 days since
+// mailing does the receipt-anchored window actually close (30 - (35-5) = 0).
+const day30 = lt({ id: "b30", recipientName: "Equifax", mailedAt: daysAgo(30) });
+const atDay30 = pickRecommendation([], [day30], oneReport);
+check("F2 boundary: mailed exactly 30 days ago is NOT past the receipt-anchored window (branch 2 does not fire)", atDay30?.cta !== "Log the response");
+
+const day35 = lt({ id: "b35", recipientName: "Equifax", mailedAt: daysAgo(35) });
+const atDay35 = pickRecommendation([], [day35], oneReport);
+check("F2 boundary: mailed exactly 35 days ago IS past the receipt-anchored window (branch 2 fires)", atDay35?.cta === "Log the response");
 check("...the lapsed item demotes to `secondary`", /Experian/.test(staleLapsedYield?.secondary?.label ?? ""));
 check("...secondary label passes scanForbiddenLanguage", scanForbiddenLanguage(staleLapsedYield?.secondary?.label ?? "") === null);
 

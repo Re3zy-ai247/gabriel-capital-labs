@@ -39,7 +39,12 @@ const BUREAU_SHORT: Record<string, string> = { EQUIFAX: "EQ", EXPERIAN: "EX", TR
 
 export type MailHealth =
   | "WAITING_NORMALLY" | "NEEDS_ATTENTION" | "RESPONSE_RECEIVED"
-  | "READY_FOR_ROUND_2" | "ESCALATION_AVAILABLE" | "COMPLETED";
+  | "READY_FOR_ROUND_2" | "ESCALATION_AVAILABLE" | "COMPLETED"
+  // Phase 1A F1: a package whose members are ALL still un-mailed — real,
+  // reachable work (a generated dispute waiting to be downloaded, printed,
+  // and mailed), never one of the six IN-MAIL reads above and never a §611
+  // window claim.
+  | "READY_TO_PREPARE";
 
 export const HEALTH_LABEL: Record<MailHealth, string> = {
   WAITING_NORMALLY: "Waiting normally",
@@ -48,6 +53,7 @@ export const HEALTH_LABEL: Record<MailHealth, string> = {
   READY_FOR_ROUND_2: "Ready for Round 2",
   ESCALATION_AVAILABLE: "Escalation available",
   COMPLETED: "Completed",
+  READY_TO_PREPARE: "Ready to prepare",
 };
 
 // Tone tokens (calm, evidence-first — success green only for genuine completion).
@@ -58,6 +64,7 @@ export const HEALTH_TONE: Record<MailHealth, string> = {
   READY_FOR_ROUND_2: "border-brand-500/30 bg-brand-500/10 text-brand-300",
   ESCALATION_AVAILABLE: "border-gold-500/30 bg-gold-500/10 text-gold-400",
   COMPLETED: "border-success-500/30 bg-success-500/10 text-success-300",
+  READY_TO_PREPARE: "border-slate-500/30 bg-slate-500/10 text-slate-300",
 };
 
 export type StageState = "done" | "current" | "pending" | "placeholder";
@@ -368,12 +375,24 @@ const HEALTH_PROGRESS_RANK: Record<MailHealth, number> = {
   ESCALATION_AVAILABLE: 3,
   READY_FOR_ROUND_2: 4,
   COMPLETED: 5,
+  // Never actually compared — a READY_TO_PREPARE package has zero in-mail
+  // members by construction, so the reduce() below (which reads this rank)
+  // never runs for one. Present only because this is a Record over the full
+  // MailHealth union.
+  READY_TO_PREPARE: -1,
 };
 
 // Groups letters into Dispute Packages and rolls each up to one health + an
-// honest mailed fraction. Only packages with at least one IN-MAIL member
-// render — a package that's 100% ungenerated-into-mail belongs on /letters,
-// not here (matches the existing "nothing mailed yet" empty-state law); a
+// honest mailed fraction.
+//
+// Phase 1A F1: a package with NO member yet in the mail stream is still real,
+// reachable work — a generated dispute waiting to be downloaded, printed, and
+// mailed — so it renders too, with the honest READY_TO_PREPARE health (never
+// one of the six in-mail reads, never a §611 window claim). Before this fix
+// such a package was silently dropped here, which made the Download flow
+// unreachable until AFTER something was mailed — backwards, since Download is
+// the step that produces the thing you mail. A partially-mailed package is
+// unaffected: it still renders with the worst-of-real-rows health, and its
 // still-unmailed sibling stays visible via the fraction and its own
 // `member.row === null`, never silently hidden.
 function groupIntoPackages(letters: MailLetter[], rows: MailCenterRow[]): MailPackage[] {
@@ -389,11 +408,11 @@ function groupIntoPackages(letters: MailLetter[], rows: MailCenterRow[]): MailPa
   const packages: MailPackage[] = [];
   for (const [packageId, members] of groups) {
     const memberRows = members.map((l) => rowByLetterId.get(l.id)).filter((r): r is MailCenterRow => Boolean(r));
-    if (memberRows.length === 0) continue;
-
-    const worst = memberRows.reduce((w, r) => (HEALTH_PROGRESS_RANK[r.health] < HEALTH_PROGRESS_RANK[w.health] ? r : w));
     const earliest = [...members].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())[0];
     const recipients = [...new Set(members.map((l) => l.recipientName))];
+    const health: MailHealth = memberRows.length === 0
+      ? "READY_TO_PREPARE"
+      : memberRows.reduce((w, r) => (HEALTH_PROGRESS_RANK[r.health] < HEALTH_PROGRESS_RANK[w.health] ? r : w)).health;
 
     packages.push({
       packageId,
@@ -407,7 +426,7 @@ function groupIntoPackages(letters: MailLetter[], rows: MailCenterRow[]): MailPa
         mailed: Boolean(l.mailedAt),
         row: rowByLetterId.get(l.id) ?? null,
       })),
-      health: worst.health,
+      health,
       mailedFraction: { done: members.filter((l) => Boolean(l.mailedAt)).length, total: members.length },
       evidence: buildPackageEvidence(members),
     });

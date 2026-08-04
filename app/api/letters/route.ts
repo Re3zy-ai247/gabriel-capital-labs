@@ -26,6 +26,12 @@ export async function GET() {
       status: l.status,
       round: l.round,
       creditorName: l.tradeline?.creditorName ?? null,
+      // Phase 1A F1: lets the client compute the SAME derived package id
+      // lib/mailCenter.ts's packageKeyFor uses (tl:{tradelineId}:{strategy}:
+      // {round}), so a "Review & download package" action can link straight
+      // to /mail/download/[packageId] — already-persisted field, no schema
+      // change, just newly exposed here.
+      tradelineId: l.tradelineId,
       complianceFlags: l.complianceFlags,
       createdAt: l.createdAt,
       mailedAt: l.mailedAt,

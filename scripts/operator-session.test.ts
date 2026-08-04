@@ -195,6 +195,30 @@ function DAY_MS_CONST() { return 86_400_000; }
   ok("workspace altitude reuses the consumer composition (on-behalf-of, not a 3rd ladder)", sWorkspace.todaysPriorities.length === 1);
 }
 
+// ==== 7b. F3 (dishonest quiet state): resume-as-priority fallback ================
+{
+  // No account-wide recommendation this cycle, but a real resumable letter
+  // exists — the honest top priority IS picking that back up, never silence.
+  const sResume = assembleOperatorSession(inputs({
+    kai: EMPTY_KAI,
+    letters: [letterRow({ id: "Lr", recipientName: "Experian", status: "GENERATED", mailedAt: null })],
+  }));
+  ok("recommendation null + interruptedWork non-empty → todaysPriorities is NOT empty (quiet would be dishonest here)", sResume.todaysPriorities.length > 0);
+  ok("...the top priority IS composed from interruptedWork's own first entry (same label, same href — not a new ranking)",
+    sResume.todaysPriorities[0].label === sResume.interruptedWork[0].label && sResume.todaysPriorities[0].href === sResume.interruptedWork[0].resumeHref);
+  ok("...basis matches the brief's example phrasing for a generated-unmailed letter", sResume.todaysPriorities[0].basis === "Generated and ready to mail.");
+
+  // A REAL recommendation still wins outright — the resume fallback only
+  // fires when there is truly nothing else to lead with.
+  const overdueRec2 = { title: "The Equifax window has passed.", body: "…", cta: "Log it", href: "/letters", basis: "Rule: overdue" };
+  const sBothExist = assembleOperatorSession(inputs({
+    kai: { ...EMPTY_KAI, recommendation: overdueRec2 },
+    letters: [letterRow({ id: "Lr2", recipientName: "Experian", status: "GENERATED", mailedAt: null })],
+  }));
+  ok("a real recommendation still wins over the resume fallback (never both, never resume-first)", sBothExist.todaysPriorities[0].label === overdueRec2.title);
+  ok("...the resumable letter still shows up in interruptedWork itself (not lost, just not double-promoted)", sBothExist.interruptedWork.length === 1);
+}
+
 // ==== 8. today's priorities — agency-owner roster ladder (trusts caller order) ===
 {
   const roster: RosterEntry[] = [
@@ -232,8 +256,55 @@ function DAY_MS_CONST() { return 86_400_000; }
   const s = assembleOperatorSession(inputs({ account: ACCOUNT_AGENCY, client: null, events: many, roster }));
   ok("sessionClose.doneToday.count is the TRUE total (capped items + moreCount), not just what's displayed", s.sessionClose.doneToday.count === 10);
   ok("sessionClose.doneToday.labels mirrors the capped, displayed items only", s.sessionClose.doneToday.labels.length === 8);
-  ok("sessionClose.remaining mirrors todaysPriorities exactly", s.sessionClose.remaining.count === s.todaysPriorities.length &&
+  // This fixture supplies no manifests/letters, so interruptedWork is empty —
+  // remaining mirrors todaysPriorities exactly here. See 9b below for the
+  // case where interruptedWork is non-empty (the F3 union/dedup behavior).
+  ok("sessionClose.remaining mirrors todaysPriorities exactly (interruptedWork empty in this fixture)", s.sessionClose.remaining.count === s.todaysPriorities.length &&
     JSON.stringify(s.sessionClose.remaining.labels) === JSON.stringify(s.todaysPriorities.map((p) => p.label)));
+}
+
+// ==== 9b. F3: sessionClose.remaining honestly includes interruptedWork ===========
+{
+  // Priorities would otherwise be empty (no recommendation, no running
+  // deadline) — but 7b's resume fallback promotes the one resumable letter
+  // into todaysPriorities[0], so it must be counted ONCE, never twice.
+  const sOpen = assembleOperatorSession(inputs({
+    kai: EMPTY_KAI,
+    letters: [letterRow({ id: "Lo1", recipientName: "Equifax", status: "GENERATED", mailedAt: null })],
+  }));
+  ok("a resume item promoted into priorities is counted once, not twice, in remaining", sOpen.sessionClose.remaining.count === 1 && sOpen.todaysPriorities.length === 1);
+  ok("...and this is NOT the quiet state (doneToday and remaining are not both zero)", !(sOpen.sessionClose.doneToday.count === 0 && sOpen.sessionClose.remaining.count === 0));
+
+  // Two resumable items: only the first is promoted to a priority — the
+  // SECOND must still be counted in remaining (the honest union, never
+  // silently dropped just because it wasn't the one chosen to lead with).
+  const sTwoOpen = assembleOperatorSession(inputs({
+    kai: EMPTY_KAI,
+    letters: [
+      letterRow({ id: "Lo2", recipientName: "Equifax", status: "GENERATED", mailedAt: null, createdAt: new Date("2026-07-09T00:00:00.000Z") }),
+      letterRow({ id: "Lo3", recipientName: "Experian", status: "GENERATED", mailedAt: null, createdAt: new Date("2026-07-10T00:00:00.000Z") }),
+    ],
+  }));
+  ok("a second, un-promoted interruptedWork item still counts in remaining (priorities + the ONE extra, not priorities alone)",
+    sTwoOpen.sessionClose.remaining.count === sTwoOpen.todaysPriorities.length + (sTwoOpen.interruptedWork.length - 1));
+
+  // Agency-owner altitude: agencyPriorities never touches interruptedWork
+  // (it only reads the roster) — so ALL of interruptedWork must land in
+  // remaining as pure addition, no dedup collision (the hrefs never match:
+  // roster priorities link to /agency, interruptedWork links to /mail/send/...).
+  const sAgencyOpen = assembleOperatorSession(inputs({
+    account: ACCOUNT_AGENCY, client: null, kai: EMPTY_KAI,
+    letters: [letterRow({ id: "Lo4", recipientName: "Equifax", status: "GENERATED", mailedAt: null })],
+  }));
+  ok("agency-owner altitude: interruptedWork is never promoted into the roster ladder, so remaining = priorities + ALL interruptedWork",
+    sAgencyOpen.sessionClose.remaining.count === sAgencyOpen.todaysPriorities.length + sAgencyOpen.interruptedWork.length);
+
+  // The genuinely empty fixture (section 5) is the ONLY case where the quiet
+  // line's precondition holds — priorities, interruptedWork, and
+  // todayCompleted all truly empty at once.
+  const sTrueQuiet = assembleOperatorSession(inputs());
+  ok("F3: remaining.count === 0 only when priorities AND interruptedWork are BOTH genuinely empty",
+    sTrueQuiet.sessionClose.remaining.count === 0 && sTrueQuiet.todaysPriorities.length === 0 && sTrueQuiet.interruptedWork.length === 0);
 }
 
 // ==== 10. engine-composition (static): reuses getKaiHomeData, never reimplements ==

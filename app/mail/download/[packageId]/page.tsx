@@ -48,6 +48,12 @@ export default async function DownloadPackagePage({ params }: { params: { packag
   }));
 
   const packageId = decodeURIComponent(params.packageId);
+  // Phase 1A F1: `packages` now includes a package whose members are ALL
+  // still un-mailed (lib/mailCenter.ts's groupIntoPackages renders it with
+  // health READY_TO_PREPARE instead of dropping it) — so this lookup already
+  // finds an unmailed package with no separate branch needed. The Download
+  // flow is reachable the moment a letter is generated, not only after it's
+  // mailed.
   const { packages } = buildMailCenter(letters);
   const pkg = packages.find((p) => p.packageId === packageId);
 

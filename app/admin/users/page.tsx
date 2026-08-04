@@ -4,6 +4,8 @@ import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
 import { AdminTabs } from "@/components/admin/AdminTabs";
 import { Loader2, Search, Shield, Eye, KeyRound, Ban, CircleCheck } from "lucide-react";
+import { clearKaiPresenceCache } from "@/components/kai/KaiPresence";
+import { clearOnboardingStatusCache } from "@/components/onboarding/useOnboardingStatus";
 
 interface Row {
   id: string;
@@ -96,6 +98,14 @@ export default function AdminUsersPage() {
     setBusy(true);
     const r = await fetch(`/api/admin/users/${id}/impersonate`, { method: "POST" }).catch(() => null);
     if (r?.ok) {
+      // The next page (/dashboard) mounts a fresh Kai presence for a
+      // DIFFERENT subject — never let it read the admin's own (or a prior
+      // target's) cached recommendation forward (Phase 1A F8, the same
+      // cache-bleed risk SIM-REVIEW finding 4 fixed at the other three
+      // switch points: app/agency/page.tsx openClient(), AgencyBar.exit(),
+      // and sign-out). Same reasoning for the onboarding probe.
+      clearKaiPresenceCache();
+      clearOnboardingStatusCache();
       router.push("/dashboard");
       router.refresh();
     } else {

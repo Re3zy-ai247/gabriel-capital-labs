@@ -1,6 +1,6 @@
 // Guards for the Mail Center projection (Sprint IX). Pure, deterministic — no DB,
 // no AI. Run: npx tsx scripts/mailCenter.test.ts
-import { buildMailCenter, mailHealth, WATCHING_CLOCK_LINE, type MailLetter } from "../lib/mailCenter";
+import { buildMailCenter, mailHealth, WATCHING_CLOCK_LINE, HEALTH_LABEL, type MailLetter } from "../lib/mailCenter";
 
 let failures = 0;
 function ok(label: string, cond: boolean) {
@@ -140,13 +140,32 @@ const soloCenter = buildMailCenter([L({ id: "solo1", tradelineId: "tlSolo", stat
 eq("a single letter forms a package of one", soloCenter.packages.length, 1);
 eq("...with exactly one member", soloCenter.packages[0].members.length, 1);
 
-// A package whose members are ALL still ungenerated-into-mail doesn't render
-// at all — that belongs on /letters, not the Mail Center queue.
+// Phase 1A F1: a package whose members are ALL still un-mailed is real,
+// reachable work — it renders as a "Ready to prepare" package (health
+// READY_TO_PREPARE, honest — nothing mailed, no §611 window claimed), which
+// is the ONLY path back to the Download flow before anything is mailed.
+// Before this fix the whole package was silently dropped here.
 const allUnmailed = buildMailCenter([
   L({ id: "au1", tradelineId: "tlAU", status: "GENERATED", mailedAt: null }),
   L({ id: "au2", tradelineId: "tlAU", status: "GENERATED", mailedAt: null }),
 ], now);
-eq("a package with zero in-mail members doesn't render", allUnmailed.packages.length, 0);
+eq("a package with zero in-mail members still renders — as exactly one package", allUnmailed.packages.length, 1);
+eq("...with both generated members present", allUnmailed.packages[0].members.length, 2);
+eq("...health is honestly READY_TO_PREPARE (never a §611 health reading with nothing mailed)", allUnmailed.packages[0].health, "READY_TO_PREPARE");
+eq("...mailedFraction is honestly 0 of 2", allUnmailed.packages[0].mailedFraction, { done: 0, total: 2 });
+eq("...the produced packageId matches the documented tl:{tradelineId}:{strategy}:{round} format (app/letters/page.tsx mirrors this exactly)",
+  allUnmailed.packages[0].packageId, "tl:tlAU:fcra_611:1");
+ok("...the download page's lookup finds it by packageId (F1: Download must be reachable before mailing)",
+  allUnmailed.packages.some((p) => p.packageId === allUnmailed.packages[0].packageId));
+eq("HEALTH_LABEL honestly reads 'Ready to prepare', never a mailed-state label", HEALTH_LABEL["READY_TO_PREPARE"], "Ready to prepare");
+
+// A package with SOME members in-mail and some not is unaffected — it still
+// renders with the worst-of-real-rows health, never READY_TO_PREPARE.
+const partiallyReady = buildMailCenter([
+  L({ id: "pr1", tradelineId: "tlPR", status: "MAILED", mailedAt: daysAgo(10) }),
+  L({ id: "pr2", tradelineId: "tlPR", status: "GENERATED", mailedAt: null }),
+], now);
+ok("a partially-mailed package's health is a real in-mail read, not READY_TO_PREPARE", partiallyReady.packages[0].health !== "READY_TO_PREPARE");
 
 // ---- Rollup honesty: health = LEAST-PROGRESSED member, mailed fraction ------
 const rollupCenter = buildMailCenter([

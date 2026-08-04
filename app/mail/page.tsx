@@ -58,6 +58,12 @@ export default async function MailCenterPage() {
 
   const { packages, stats } = buildMailCenter(letters);
   const band = pickMailBand(kai);
+  // Phase 1A F1: split into two honestly-distinct groups for rendering — a
+  // package that hasn't been mailed at all yet (READY_TO_PREPARE) never
+  // mixes with genuinely in-mail packages, so "ready to prepare" can never
+  // be mistaken for a live §611 health signal.
+  const readyPackages = packages.filter((p) => p.health === "READY_TO_PREPARE");
+  const inMailPackages = packages.filter((p) => p.health !== "READY_TO_PREPARE");
 
   const manifestByLetter = new Map<string, MailStatus>();
   for (const m of manifests) if (m.letterId) manifestByLetter.set(m.letterId, m.status);
@@ -91,8 +97,12 @@ export default async function MailCenterPage() {
         )}
       </div>
 
-      {/* The work queue, grouped into Dispute Packages. */}
-      <div className="space-y-3">
+      {/* The work queue, grouped into Dispute Packages. Phase 1A F1: a
+          package that hasn't been mailed at all yet renders in its own
+          "Ready to prepare" group — honest (nothing mailed, no §611 window
+          claimed) and the ONLY path back to the Download flow before
+          anything is mailed. The no-letters-at-all empty state is unchanged. */}
+      <div className="space-y-5">
         {packages.length === 0 ? (
           <div className="card p-8 text-center">
             <Mail className="mx-auto mb-2 h-7 w-7 text-slate-600" aria-hidden />
@@ -104,7 +114,30 @@ export default async function MailCenterPage() {
             <Link href="/letters" className="btn-primary mt-4 inline-flex min-h-[44px]">Go to Dispute Letters</Link>
           </div>
         ) : (
-          packages.map((pkg) => <PackageRow key={pkg.packageId} pkg={pkg} manifestByLetter={manifestByLetter} />)
+          <>
+            {readyPackages.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                  Ready to prepare
+                </div>
+                <p className="-mt-1.5 text-xs text-slate-500">
+                  Generated, not mailed yet — nothing&apos;s mailed and no §611 clock has started. Download to print
+                  and mail, then mark it mailed to start the window.
+                </p>
+                {readyPackages.map((pkg) => <PackageRow key={pkg.packageId} pkg={pkg} manifestByLetter={manifestByLetter} />)}
+              </div>
+            )}
+            {inMailPackages.length > 0 && (
+              <div className="space-y-3">
+                {readyPackages.length > 0 && (
+                  <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                    In the mail
+                  </div>
+                )}
+                {inMailPackages.map((pkg) => <PackageRow key={pkg.packageId} pkg={pkg} manifestByLetter={manifestByLetter} />)}
+              </div>
+            )}
+          </>
         )}
       </div>
 

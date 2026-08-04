@@ -29,7 +29,10 @@ export function SessionHeader({ identity }: { identity: OperatorIdentity }) {
       <div className="flex items-baseline gap-2.5">
         <span className="rounded bg-brand-500/15 px-1.5 py-0.5 text-[10px] font-bold tracking-widest text-brand-300">KAI</span>
         <h2 className={`${gxl.record} text-2xl text-slate-100`}>
-          Good {identity.timeOfDay}, {identity.greetingName}
+          {/* Phase 1A F7: the neutral, timezone-independent form — CreditVector
+              has no per-user timezone, so a UTC-bucketed "Good morning/
+              afternoon/evening" read wrong for ~8h/day for US users. */}
+          Welcome back, {identity.greetingName}
           {/* Everyday on-behalf-of register (SIM-REVIEW minimum-set item 3) — the
               consumer/agency-owner variant stays plain; only a workspace altitude
               names whose case this is, in the same sentence, not a second line. */}
