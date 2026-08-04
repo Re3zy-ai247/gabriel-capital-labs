@@ -158,7 +158,7 @@ export default function CampaignsPage() {
           />
         )}
 
-        {data.campaigns.length > 0 && <ExistingCampaigns campaigns={data.campaigns} />}
+        {data.campaigns.length > 0 && <ExistingCampaigns campaigns={data.campaigns} onChanged={load} />}
         <Disclaimer />
       </div>
     </AppShell>
@@ -389,20 +389,87 @@ function Customize({ caseItems, policy, seq, defaultSelected, onBack, onDone, on
   );
 }
 
-function ExistingCampaigns({ campaigns }: { campaigns: CampaignSummary[] }) {
+// Statuses a campaign can still be canceled FROM (every non-terminal status —
+// mirrors lib/campaign/CampaignModel.ts's CAMPAIGN_TERMINAL set verbatim,
+// re-declared rather than imported: this is a "use client" page, and
+// @/lib/campaign pulls in prisma via CampaignStore — the same client/prisma-
+// import gotcha this file's own packageIdFor() comment documents (CLAUDE.md
+// gotcha 2). Keep in sync if the terminal set ever changes.
+const CAMPAIGN_TERMINAL_STATUSES = new Set(["COMPLETED", "CANCELED", "SUPERSEDED"]);
+
+function ExistingCampaigns({ campaigns, onChanged }: { campaigns: CampaignSummary[]; onChanged: () => void }) {
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  // Phase 1A-R RB-6 Opus follow-up (FIX-C — planner dead-end): an APPROVED
+  // (or otherwise non-terminal) campaign that's abandoned shadow-blocks its
+  // own items from ever being recommended again — CAMPAIGN_PLANNED_STATUSES
+  // only releases them on COMPLETED/CANCELED/SUPERSEDED, and this page had no
+  // control that reaches any of those from here. The API already exposes
+  // action:"cancel" (CampaignService.cancel, PATCH /api/campaigns/[id]); this
+  // only surfaces the existing action — no new API logic, no redesign.
+  async function cancel(id: string) {
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/campaigns/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "cancel", reason: "Canceled by the user." }),
+      }).catch(() => null);
+      if (res?.ok) { setConfirmingId(null); onChanged(); }
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="mt-8">
       <h3 className="mb-3 text-lg font-semibold">Your campaigns</h3>
       <div className="card divide-y divide-ink-700/50">
-        {campaigns.map((c) => (
-          <div key={c.id} className="flex flex-wrap items-center gap-3 px-4 py-3 text-sm">
-            <div className="min-w-0 flex-1">
-              <div className="font-medium text-slate-200">Campaign {c.sequence} — {FAMILY_LABEL[c.strategyFamily]}</div>
-              <div className="truncate text-xs text-slate-500">{c.includedCount} item{c.includedCount === 1 ? "" : "s"} · {new Date(c.createdAt).toLocaleDateString()}</div>
+        {campaigns.map((c) => {
+          const cancellable = !CAMPAIGN_TERMINAL_STATUSES.has(c.status);
+          return (
+            <div key={c.id} className="flex flex-wrap items-center gap-3 px-4 py-3 text-sm">
+              <div className="min-w-0 flex-1">
+                <div className="font-medium text-slate-200">Campaign {c.sequence} — {FAMILY_LABEL[c.strategyFamily]}</div>
+                <div className="truncate text-xs text-slate-500">{c.includedCount} item{c.includedCount === 1 ? "" : "s"} · {new Date(c.createdAt).toLocaleDateString()}</div>
+              </div>
+              <span className={`pill ${STATUS_TONE[c.status] ?? "bg-slate-500/15 text-slate-300"}`}>{c.status.replace(/_/g, " ").toLowerCase()}</span>
+              {/* Quiet secondary action, two-step confirm — matches this
+                  app's existing delete-letter idiom (app/letters/page.tsx's
+                  confirming/onConfirmDelete/onCancelDelete pattern), not a
+                  browser-native confirm(). */}
+              {cancellable && (
+                confirmingId === c.id ? (
+                  <span className="flex items-center gap-2 text-xs">
+                    <span className="text-slate-400">Cancel this campaign?</span>
+                    <button
+                      onClick={() => cancel(c.id)}
+                      disabled={busy}
+                      className="rounded-md bg-rose-600 px-2 py-1 font-medium text-white keep-white hover:bg-rose-700"
+                    >
+                      {busy ? "…" : "Yes, cancel"}
+                    </button>
+                    <button
+                      onClick={() => setConfirmingId(null)}
+                      disabled={busy}
+                      className="rounded-md border border-ink-600 px-2 py-1 text-slate-300"
+                    >
+                      Never mind
+                    </button>
+                  </span>
+                ) : (
+                  <button
+                    onClick={() => setConfirmingId(c.id)}
+                    className="btn-ghost text-xs text-slate-400 hover:text-rose-400"
+                  >
+                    Cancel campaign
+                  </button>
+                )
+              )}
             </div>
-            <span className={`pill ${STATUS_TONE[c.status] ?? "bg-slate-500/15 text-slate-300"}`}>{c.status.replace(/_/g, " ").toLowerCase()}</span>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

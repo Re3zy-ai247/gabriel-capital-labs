@@ -1,5 +1,7 @@
 // Guards for Kai Campaign Intelligence (Sprint XII, ADR-0012). Pure — no DB, no
 // network. Run: npx tsx scripts/campaign.test.ts
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import {
   composeCampaign, reviewSelection, type ComposerItem,
   DEFAULT_CAMPAIGN_POLICY, assessCampaignSize,
@@ -7,6 +9,9 @@ import {
   plannedItemKeys, type Campaign, type CampaignItem,
   type LetterTarget,
 } from "../lib/campaign";
+
+const root = join(__dirname, "..");
+const read = (p: string) => readFileSync(join(root, p), "utf8");
 
 let failures = 0;
 function ok(label: string, cond: boolean) { if (!cond) { failures++; console.error(`✗ ${label}`); } else console.log(`✓ ${label}`); }
@@ -204,6 +209,24 @@ function item(over: Partial<ComposerItem> = {}): ComposerItem {
   // APPROVED-or-further campaign — see CampaignService.markQueued).
   const withQueued = [camp("ACTIVE", [ci({ tradelineId: "m", decision: "included", queued: true, letterId: "L1" })])];
   ok("RB-6: a queued item (the old signal) is still excluded under the new rule", plannedItemKeys(withQueued).has("m:bureau"));
+}
+
+// ---- Opus follow-up FIX-A (RB-1 relocation) — static: alreadyInFlight also
+// catches an unmailed letter that already exists for the item, not just a
+// planned campaign or a mailed one. lib/campaignInput.ts is NOT pure (it
+// calls prisma), so this pins the exact code shape rather than DB-driving it
+// — the same static-source pattern scripts/mail-download.test.ts and
+// scripts/billing-integrity.test.ts already use for non-pure route/lib files.
+{
+  const CAMPAIGN_INPUT_SRC = read("lib/campaignInput.ts");
+  ok(
+    "FIX-A: alreadyInFlight ORs in an unmailed-letter-exists check (history.some((l) => !l.mailedAt))",
+    /alreadyInFlight = plannedKeys\.has\(key\)[\s\S]{0,80}history\.some\(\(l\) => !l\.mailedAt\)/.test(CAMPAIGN_INPUT_SRC)
+  );
+  ok(
+    "FIX-A: the new disjunct is additive — the plannedKeys and MAILED checks are still both present",
+    /plannedKeys\.has\(key\)/.test(CAMPAIGN_INPUT_SRC) && /latest\?\.status === "MAILED"/.test(CAMPAIGN_INPUT_SRC)
+  );
 }
 
 // ---- service + gate + snapshot immutability + isolation ----

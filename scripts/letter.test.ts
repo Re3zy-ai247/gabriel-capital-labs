@@ -3,6 +3,8 @@
 // never asked for a §611 reinvestigation, a bureau is never asked to "validate"),
 // stays compliance-safe, and honors the cross-bureau + round-escalation rules.
 // Run: npx tsx scripts/letter.test.ts
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import {
   buildContext, renderTemplateLetter, buildSystemPrompt,
   resolveSenderPlaceholders, detectPlaceholders, planLetterRegeneration,
@@ -11,6 +13,9 @@ import {
 import { applyCompliance } from "../lib/compliance";
 import type { BureauData } from "../lib/bureauData";
 import type { Bureau } from "@prisma/client";
+
+const root = join(__dirname, "..");
+const read = (p: string) => readFileSync(join(root, p), "utf8");
 
 let failures = 0;
 function ok(label: string, cond: boolean) { if (!cond) { failures++; console.error(`✗ ${label}`); } else console.log(`✓ ${label}`); }
@@ -173,6 +178,23 @@ function gen(strategyId: string, round = 1, addr = true) {
     { id: "newer", targetBureau: "EQUIFAX" as Bureau, mailedAt: null },
   ]);
   ok("RB-6: with duplicate unmailed candidates, exactly one update is planned (deterministic, no double-update)", dup.toUpdate.length === 1);
+}
+
+// ---- Opus follow-up FIX-B (records integrity) — static: a MAILED letter's
+// print view renders VERBATIM and never shows the placeholder banner. The
+// print page is a Server Component (prisma + next/headers), so this pins the
+// exact code shape rather than DB-driving it — same static-source pattern as
+// scripts/mail-download.test.ts's own checks on this very file.
+{
+  const PRINT_PAGE_SRC = read("app/letters/print/[id]/page.tsx");
+  ok(
+    "FIX-B: renderedBody is verbatim letter.body when mailed, substituted only when not (letter.mailedAt ? letter.body : resolveSenderPlaceholders(...))",
+    /renderedBody = letter\.mailedAt \? letter\.body : resolveSenderPlaceholders\(/.test(PRINT_PAGE_SRC)
+  );
+  ok(
+    "FIX-B: the placeholder banner is gated on !letter.mailedAt (never shown for an already-mailed record)",
+    /\{!letter\.mailedAt && placeholders\.hasPlaceholder && \(/.test(PRINT_PAGE_SRC)
+  );
 }
 
 console.log(failures === 0 ? "\nAll letter-intelligence guards passed." : `\n${failures} guard(s) failed.`);

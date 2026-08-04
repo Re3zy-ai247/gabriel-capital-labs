@@ -78,7 +78,17 @@ export async function buildComposerItems(userId: string): Promise<ComposerItem[]
     const latest = history[0];
     const openMailed = history.some((l) => l.status === "MAILED" && !l.responseAt);
     const key = `${t.id}:${recipientType}`;
-    const alreadyInFlight = plannedKeys.has(key) || (latest?.status === "MAILED");
+    // Opus follow-up (RB-1 relocation, Phase 1A-R): a GENERATED-but-unmailed
+    // letter already on file for this item is ALSO in-flight — not just an
+    // approved-campaign plan or an already-mailed letter. Without this, an
+    // item with its own unmailed draft (generated directly, outside any
+    // campaign — exactly RB-6's own regenerate path) still looked "fresh"
+    // and the planner re-recommended it as a brand-new campaign candidate.
+    // Unscoped by recipientType, mirroring openMailed's own convention right
+    // above: this reads ALL of the tradeline's letter history, the same
+    // "does this account already have live work" signal, not a
+    // channel-specific one.
+    const alreadyInFlight = plannedKeys.has(key) || (latest?.status === "MAILED") || history.some((l) => !l.mailedAt);
 
     items.push({
       tradelineId: t.id,

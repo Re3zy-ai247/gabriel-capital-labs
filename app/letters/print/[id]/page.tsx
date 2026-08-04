@@ -51,6 +51,14 @@ export default async function LetterPrintPage({ params }: { params: { id: string
   // string replacement, no AI, no regeneration, no letter credit, no DB
   // write. `letter.body` (and therefore GET /api/letters' preview) is
   // untouched — only `renderedBody`, used below, reflects it.
+  //
+  // Opus follow-up — RECORDS INTEGRITY: this applies ONLY to a NOT-YET-MAILED
+  // letter, where the print view is still a draft the operator is about to
+  // act on. A MAILED letter's print view is the RECORD of what was actually
+  // sent — it renders VERBATIM (never rewritten with today's profile, which
+  // would show text that was never mailed) and never carries the "before you
+  // mail this" warning below (nothing about an already-mailed letter is
+  // still pending mailing).
   const consumerNow = {
     fullName: user.fullName,
     addressLine1: user.addressLine1,
@@ -58,7 +66,7 @@ export default async function LetterPrintPage({ params }: { params: { id: string
     state: user.state,
     zip: user.zip,
   };
-  const renderedBody = resolveSenderPlaceholders(letter.body, consumerNow);
+  const renderedBody = letter.mailedAt ? letter.body : resolveSenderPlaceholders(letter.body, consumerNow);
   const placeholders = detectPlaceholders(renderedBody);
 
   // Presentation-only line pass over the verbatim body: the first line of a
@@ -111,7 +119,7 @@ export default async function LetterPrintPage({ params }: { params: { id: string
           committing to mail it). Not a hard block — the founder ruled out a
           flow redesign — but it names exactly what's missing and links to fix
           it, matching the existing /letters builder-page warning idiom. */}
-      {placeholders.hasPlaceholder && (
+      {!letter.mailedAt && placeholders.hasPlaceholder && (
         <div className="mx-auto max-w-[8.5in] px-6 pt-4 print:hidden">
           <div className="flex gap-2 rounded-lg border border-gold-500/30 bg-gold-500/10 p-3 text-xs text-gold-400">
             <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden />
