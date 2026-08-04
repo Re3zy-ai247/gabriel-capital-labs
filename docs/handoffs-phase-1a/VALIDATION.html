@@ -1,0 +1,195 @@
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>CreditVector — Phase 1A Validation</title>
+<style>
+  :root{
+    color-scheme: light dark;
+    --bg:#f7fafc; --surface:#ffffff; --surface-2:#f1f5f9; --border:#e2e8f0;
+    --text:#0f172a; --text-dim:#475569; --text-faint:#64748b;
+    --brand:#0c83a3; --brand-strong:#0f6883; --brand-bg:#ecfeff; --brand-border:#a6ecf5;
+    --success:#0d9456; --success-bg:#ecfdf5; --success-border:#a7e8c8;
+    --gold:#946213; --gold-bg:#fffbeb; --gold-border:#f3dfa6;
+    --danger:#b91c1c; --danger-bg:#fef2f2; --danger-border:#f3b4b4;
+    --code-bg:#f1f5f9;
+    --shadow:0 1px 2px rgba(15,23,42,.06), 0 10px 28px -14px rgba(15,23,42,.16);
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#04121b; --surface:#0a1e2a; --surface-2:#0e2733; --border:#173e50;
+      --text:#e7f4f8; --text-dim:#a9c7d1; --text-faint:#7c9aa6;
+      --brand:#3fd0e6; --brand-strong:#8fe6f2; --brand-bg:rgba(14,165,196,.14); --brand-border:#175064;
+      --success:#3fe093; --success-bg:rgba(19,184,106,.14); --success-border:#155c3f;
+      --gold:#f2c14e; --gold-bg:rgba(227,169,46,.14); --gold-border:#5c481c;
+      --danger:#f87171; --danger-bg:rgba(239,68,68,.14); --danger-border:#5c2323;
+      --code-bg:#0e2733;
+      --shadow:0 1px 2px rgba(0,0,0,.35), 0 14px 36px -16px rgba(0,0,0,.65);
+    }
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; font-size:16px;
+  }
+  .shell{display:grid; grid-template-columns:260px minmax(0,1fr); gap:2.5rem; max-width:1180px; margin:0 auto; padding:2.5rem 1.5rem 6rem;}
+  @media (max-width:900px){ .shell{grid-template-columns:1fr; gap:1.25rem; padding:1.25rem 1rem 4rem;} }
+
+  .toc{position:sticky; top:1.5rem; align-self:start; background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:1.1rem; box-shadow:var(--shadow);}
+  @media (max-width:900px){ .toc{position:static;} }
+  .toc h2{font-size:.72rem; text-transform:uppercase; letter-spacing:.09em; color:var(--text-faint); margin:0 0 .7rem;}
+  .toc ol{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:.32rem;}
+  .toc a{color:var(--text-dim); text-decoration:none; font-size:.85rem; display:block; padding:.3rem .5rem; border-radius:8px;}
+  .toc a:hover{background:var(--surface-2); color:var(--brand-strong);}
+
+  main{min-width:0;}
+  .hero{background:linear-gradient(155deg, var(--success-bg), transparent 60%); border:1px solid var(--border); border-radius:20px; padding:2rem 2rem 1.6rem; box-shadow:var(--shadow); margin-bottom:2rem;}
+  .kicker{font-size:.76rem; font-weight:700; letter-spacing:.11em; text-transform:uppercase; color:var(--success);}
+  h1{font-size:1.85rem; line-height:1.25; margin:.4rem 0 .5rem; letter-spacing:-.01em;}
+  .sub{color:var(--text-dim); font-size:1rem; margin:0; max-width:72ch;}
+
+  section{margin:2.4rem 0;}
+  h2{font-size:1.3rem; margin:0 0 .9rem; border-top:1px solid var(--border); padding-top:1.6rem;}
+  section:first-of-type h2{border-top:none; padding-top:0;}
+  h3{font-size:1rem; margin:1.3rem 0 .5rem; color:var(--brand-strong);}
+  p{margin:.6rem 0;}
+  ul,ol{padding-left:1.3rem;}
+  li{margin:.4rem 0;}
+  strong{font-weight:700;}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; background:var(--code-bg); padding:.15em .4em; border-radius:5px; font-size:.85em;}
+  pre{background:var(--code-bg); border:1px solid var(--border); border-radius:12px; padding:1rem 1.1rem; overflow-x:auto; font-size:.82rem; line-height:1.6;}
+  pre code{background:none; padding:0;}
+
+  .pill{display:inline-flex; align-items:center; gap:.35em; font-size:.7rem; font-weight:700; padding:.28em .65em; border-radius:999px; border:1px solid; white-space:nowrap;}
+  .pill-brand{background:var(--brand-bg); color:var(--brand-strong); border-color:var(--brand-border);}
+  .pill-success{background:var(--success-bg); color:var(--success); border-color:var(--success-border);}
+  .pill-gold{background:var(--gold-bg); color:var(--gold); border-color:var(--gold-border);}
+  .pill-danger{background:var(--danger-bg); color:var(--danger); border-color:var(--danger-border);}
+
+  table{width:100%; border-collapse:collapse; font-size:.87rem;}
+  .table-wrap{overflow-x:auto; border:1px solid var(--border); border-radius:12px; box-shadow:var(--shadow); margin:1rem 0;}
+  th,td{text-align:left; padding:.62rem .8rem; border-bottom:1px solid var(--border); vertical-align:top;}
+  thead th{background:var(--surface-2); font-size:.7rem; text-transform:uppercase; letter-spacing:.06em; color:var(--text-faint); white-space:nowrap;}
+  tbody tr:last-child td{border-bottom:none;}
+  tbody tr:hover{background:var(--surface-2);}
+
+  .callout{border:1px solid var(--border); border-left-width:4px; background:var(--surface); border-radius:10px; padding:1rem 1.15rem; margin:1rem 0; box-shadow:var(--shadow);}
+  .callout.good{border-left-color:var(--success);}
+  .callout.note{border-left-color:var(--gold); background:var(--gold-bg);}
+
+  .foot{margin-top:3rem; padding-top:1.5rem; border-top:1px solid var(--border); color:var(--text-faint); font-size:.82rem;}
+  a{color:var(--brand-strong);}
+  ::selection{background:var(--brand-bg); color:var(--text);}
+</style>
+
+<div class="shell">
+  <nav class="toc">
+    <h2>On this page</h2>
+    <ol>
+      <li><a href="#static">1. Static validation</a></li>
+      <li><a href="#guards">2. Guard suite</a></li>
+      <li><a href="#schema">3. Zero-schema</a></li>
+      <li><a href="#money">4. Zero-money</a></li>
+      <li><a href="#branch">5. Branch state</a></li>
+      <li><a href="#gate">6. The acceptance gate</a></li>
+      <li><a href="#means">7. What "validated" doesn't mean</a></li>
+    </ol>
+  </nav>
+
+  <main>
+    <div class="hero">
+      <div class="kicker">CreditVector · Phase 1A · Founder Package</div>
+      <h1>Validation</h1>
+      <p class="sub">Every command below was re-run while building this package (2026-08-03), against <code>feat/experience-runtime-phase-1a</code> @ <code>486925e</code>, in the actual worktree — not copied from an earlier report. Where a fact is carried forward from the agents' own commit messages rather than independently re-run today, it's labeled as such.</p>
+    </div>
+
+    <section id="static">
+      <h2>1. Static validation</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Check</th><th>Command</th><th>Result</th></tr></thead>
+        <tbody>
+          <tr><td>Type safety</td><td><code>npm run typecheck</code></td><td><span class="pill pill-success">Clean</span> no output, exit 0</td></tr>
+          <tr><td>Structural build</td><td><code>npx next build</code></td><td><span class="pill pill-success">Clean</span> ✓ Compiled successfully, 61/61 static pages</td></tr>
+          <tr><td>Full-repo lint</td><td><code>npm run lint</code></td><td><span class="pill pill-gold">1 warning + 2 errors</span> — all outside the Phase 1A diff</td></tr>
+        </tbody>
+      </table></div>
+      <h3>Lint detail</h3>
+      <p><code>next lint</code> over the whole repo (not scoped to Phase 1A) surfaced:</p>
+      <ul>
+        <li><code>app/agency/page.tsx:123</code> — <code>react-hooks/exhaustive-deps</code> warning on a <code>useEffect</code>.</li>
+        <li><code>app/gxl/[room]/page.tsx:128</code> — <code>react/no-unescaped-entities</code> error.</li>
+        <li><code>lib/pdf.ts:6</code> — an ESLint config error (rule not found — a project config issue, not a code issue).</li>
+      </ul>
+      <p><code>app/gxl/[room]/page.tsx</code> and <code>lib/pdf.ts</code> are not in the 39-file Phase 1A diff at all. <code>app/agency/page.tsx</code> <strong>is</strong> touched by Phase 1A, so it was checked directly: <code>git show f449c35:app/agency/page.tsx | grep -n useEffect</code> confirms the flagged <code>useEffect</code> (the checkout-polling effect) is byte-identical to pre-Phase-1A baseline — Phase 1A's diff to this file touches a different function entirely.</p>
+      <div class="callout good"><p><strong>Zero lint issues introduced by Phase 1A.</strong></p></div>
+    </section>
+
+    <section id="guards">
+      <h2>2. Guard suite</h2>
+      <p>All scripts run via <code>npx --no-install tsx scripts/&lt;name&gt;.test.ts</code> directly against the current worktree.</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Guard</th><th>Result</th><th>Covers</th></tr></thead>
+        <tbody>
+          <tr><td><code>schema-safety.test.ts</code></td><td><span class="pill pill-success">17/17</span></td><td>No self-heal DDL outside the legacy allowlist — the zero-schema-change law</td></tr>
+          <tr><td><code>operator-session.test.ts</code></td><td><span class="pill pill-success">82/82</span></td><td>Agent A's session runtime, extended through the fix pass (72→82)</td></tr>
+          <tr><td><code>kai-recommendation.test.ts</code></td><td><span class="pill pill-success">45/45</span></td><td>Branch-5 ranking, starvation guard, watching-the-clock gating</td></tr>
+          <tr><td><code>kai-experience.test.ts</code></td><td><span class="pill pill-success">78/78</span></td><td>KaiPresence cache scoping, onboarding truth, greeting register, Package Summary</td></tr>
+          <tr><td><code>mail-download.test.ts</code></td><td><span class="pill pill-success">50/50</span></td><td><code>pickMailBand</code> ladder, <code>validateMailedAtInput</code>, one-ladder law, Approve-outside-Kai, §611 statics</td></tr>
+          <tr><td><code>mailCenter.test.ts</code></td><td><span class="pill pill-success">62 checks — ALL PASS</span></td><td>Package grouping, health rollup, mailed-fraction honesty, evidence drawer, READY_TO_PREPARE</td></tr>
+          <tr><td><code>forecast.test.ts</code></td><td><span class="pill pill-success">19 checks — ALL PASS</span></td><td>§611 receipt-anchored forecast math, MAIL_TRANSIT_DAYS</td></tr>
+          <tr><td><code>missionControl.test.ts</code></td><td><span class="pill pill-success">35 checks — ALL PASS</span></td><td>Case/response health agreement, altitude-aware rendering</td></tr>
+          <tr><td><strong>Full suite</strong></td><td><span class="pill pill-success">79 of 79 scripts pass, 0 failures</span></td><td>Every <code>scripts/*.test.ts</code> file in the repo, run individually</td></tr>
+        </tbody>
+      </table></div>
+      <p style="font-size:.85rem;color:var(--text-faint)">The 79-script count is exact — the non-recursive <code>scripts/*.test.ts</code> glob matches exactly 79 files in this repo today; <code>scripts/runtime/</code> guards and the <code>.sh</code> prod-probe scripts are separate CI steps, out of scope for a docs-only local validation pass.</p>
+    </section>
+
+    <section id="schema">
+      <h2>3. Zero-schema confirmation</h2>
+      <pre><code>git diff f449c35..HEAD -- prisma/</code></pre>
+      <div class="callout good"><p><strong>Returns no output — zero lines changed.</strong> No new table, column, enum, index, or migration exists anywhere in this branch's history. <code>schema-safety.test.ts</code> (17/17, above) independently confirms no runtime self-heal DDL was introduced either.</p></div>
+    </section>
+
+    <section id="money">
+      <h2>4. Zero-money / zero-provider-surface confirmation</h2>
+      <pre><code>git diff f449c35..HEAD --name-only | grep -iE "wallet|stripe|billing|vector-credit|letterstream|mail_live|provider"</code></pre>
+      <div class="callout good"><p><strong>Returns nothing.</strong> The only file under the Send/mail-provider surface touched anywhere in Phase 1A is <code>app/mail/send/[letterId]/page.tsx</code>, and its entire diff is <strong>+7 lines</strong> — the evidence-asymmetry disclosure sentence. No change to pricing, Stripe, the mail-provider adapter, <code>MAIL_LIVE</code>, or any settlement/payment code path.</p></div>
+    </section>
+
+    <section id="branch">
+      <h2>5. Branch / merge state</h2>
+      <pre><code>git rev-parse origin/main                                   → f449c35 (unchanged — still prod)
+git rev-parse origin/feat/experience-runtime-phase-1a        → 486925e (matches local HEAD — fully pushed)
+git rev-list --left-right --count origin/main...HEAD         → 0  7   (0 behind, 7 ahead)
+gh pr view feat/experience-runtime-phase-1a                  → no pull requests found</code></pre>
+      <p>Confirmed today: <code>origin/main</code> has not moved, the branch is fully pushed with nothing local unpushed, and no PR has been opened yet.</p>
+    </section>
+
+    <section id="gate">
+      <h2>6. The acceptance gate — the honest sequence</h2>
+      <p>This section distinguishes what happened during implementation (carried forward, as reported by the process that produced this branch) from what was independently re-checked while assembling this package.</p>
+
+      <div class="callout note">
+        <p><strong>Carried forward, not re-run today:</strong> the adversarial acceptance review itself (the "Opus gate") — its first-pass verdict of NOT READY, the specific framing of the 3 blockers (F1/F2/F3), the 7 non-blocking findings, and the 4 CCO items — is a record of a review process that already ran. This package does not re-run that adversarial review from scratch.</p>
+      </div>
+
+      <p><strong>Independently re-verified while building this package:</strong></p>
+      <ul>
+        <li>The actual code mechanism behind every one of F1, F2, F3, F6, F7, and F8 was read from <code>git show 486925e</code>'s real diff (not inferred from the commit's one-line subject, which carries no body). See <code>IMPLEMENTATION-REPORT.html</code>'s Fix Pass table for the line-level detail.</li>
+        <li>Every guard count in §2 was obtained by executing the scripts today, not by reading past commit messages.</li>
+        <li><code>typecheck</code> and <code>next build</code> were both executed today (§1).</li>
+        <li>The zero-schema and zero-money-surface claims were independently re-derived today via <code>git diff</code>/<code>grep</code> (§3, §4), not asserted from memory.</li>
+        <li>The specific CCO-flagged items were located by direct source search today: the "(soon)" disclosure sentence's 4 exact render sites, <code>lib/kaiSeen.ts:34</code>'s and <code>app/journey/page.tsx:105,144</code>'s un-fixed "§611 clock started" language, <code>lib/operatorSession.ts</code>'s <code>"mail.queued"</code> label, and <code>lib/kaiHome.ts:223</code>'s <code>dispute-priority score N/100</code> copy.</li>
+      </ul>
+
+      <p><strong>What this package does not claim:</strong> it does not claim to have re-run the original adversarial review's judgment calls (e.g., whether 3 issues really were launch-blocking, or whether the CCO items are actually violations) — those are compliance and product judgment calls belonging to the CCO review gate and the Founder, not to a documentation pass. It claims the <em>mechanical</em> facts above are true today, in this worktree, because they were executed today.</p>
+    </section>
+
+    <section id="means">
+      <h2>7. What "validated" does NOT mean here</h2>
+      <p>Per <code>.ai/TESTING.md</code>'s own standard: no local <code>DATABASE_URL</code> exists in this environment, so nothing above touched a real database. <code>schema-safety.test.ts</code> and the guard suite are static/logic checks against real <code>lib/</code> code, not integration tests against Postgres. Production behavior still depends on the standard post-deploy prod probes (<code>curl</code> against <code>https://www.creditvector.app</code> expecting 401/403 on protected routes, 400 on an unsigned Stripe webhook) — not run here, because nothing has been deployed. This package validates the code as it sits on the branch, not production behavior, which doesn't yet exist for this branch.</p>
+    </section>
+
+    <div class="foot">CreditVector™ · Gabriel Capital Labs — Phase 1A Founder Package · generated 2026-08-03 · see <a href="FOUNDER-SUMMARY.html">FOUNDER-SUMMARY.html</a> for the decision-level view</div>
+  </main>
+</div>

@@ -1,0 +1,275 @@
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>CreditVector — Phase 1A Founder Summary</title>
+<style>
+  :root{
+    color-scheme: light dark;
+    --bg:#f7fafc; --surface:#ffffff; --surface-2:#f1f5f9; --border:#e2e8f0;
+    --text:#0f172a; --text-dim:#475569; --text-faint:#64748b;
+    --brand:#0c83a3; --brand-strong:#0f6883; --brand-bg:#ecfeff; --brand-border:#a6ecf5;
+    --success:#0d9456; --success-bg:#ecfdf5; --success-border:#a7e8c8;
+    --gold:#946213; --gold-bg:#fffbeb; --gold-border:#f3dfa6;
+    --danger:#b91c1c; --danger-bg:#fef2f2; --danger-border:#f3b4b4;
+    --code-bg:#f1f5f9;
+    --shadow:0 1px 2px rgba(15,23,42,.06), 0 10px 28px -14px rgba(15,23,42,.16);
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#04121b; --surface:#0a1e2a; --surface-2:#0e2733; --border:#173e50;
+      --text:#e7f4f8; --text-dim:#a9c7d1; --text-faint:#7c9aa6;
+      --brand:#3fd0e6; --brand-strong:#8fe6f2; --brand-bg:rgba(14,165,196,.14); --brand-border:#175064;
+      --success:#3fe093; --success-bg:rgba(19,184,106,.14); --success-border:#155c3f;
+      --gold:#f2c14e; --gold-bg:rgba(227,169,46,.14); --gold-border:#5c481c;
+      --danger:#f87171; --danger-bg:rgba(239,68,68,.14); --danger-border:#5c2323;
+      --code-bg:#0e2733;
+      --shadow:0 1px 2px rgba(0,0,0,.35), 0 14px 36px -16px rgba(0,0,0,.65);
+    }
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; font-size:16px;
+  }
+  .shell{display:grid; grid-template-columns:260px minmax(0,1fr); gap:2.5rem; max-width:1180px; margin:0 auto; padding:2.5rem 1.5rem 6rem;}
+  @media (max-width:900px){ .shell{grid-template-columns:1fr; gap:1.25rem; padding:1.25rem 1rem 4rem;} }
+
+  .toc{position:sticky; top:1.5rem; align-self:start; background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:1.1rem 1.1rem; box-shadow:var(--shadow);}
+  @media (max-width:900px){ .toc{position:static;} }
+  .toc h2{font-size:.72rem; text-transform:uppercase; letter-spacing:.09em; color:var(--text-faint); margin:0 0 .7rem;}
+  .toc ol{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:.35rem;}
+  .toc a{color:var(--text-dim); text-decoration:none; font-size:.86rem; display:block; padding:.3rem .5rem; border-radius:8px;}
+  .toc a:hover{background:var(--surface-2); color:var(--brand-strong);}
+  .badge-row{display:flex; flex-wrap:wrap; gap:.4rem; margin-top:1rem;}
+
+  main{min-width:0;}
+  .hero{background:linear-gradient(155deg, var(--brand-bg), transparent 60%); border:1px solid var(--border); border-radius:20px; padding:2rem 2rem 1.6rem; box-shadow:var(--shadow); margin-bottom:2rem;}
+  .kicker{font-size:.76rem; font-weight:700; letter-spacing:.11em; text-transform:uppercase; color:var(--brand-strong);}
+  h1{font-size:1.9rem; line-height:1.25; margin:.4rem 0 .5rem; letter-spacing:-.01em;}
+  .sub{color:var(--text-dim); font-size:1.02rem; margin:0 0 1.1rem; max-width:60ch;}
+  .meta{display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:.6rem; margin-top:1rem;}
+  .meta div{background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:.6rem .8rem;}
+  .meta .k{font-size:.68rem; text-transform:uppercase; letter-spacing:.08em; color:var(--text-faint); margin-bottom:.15rem;}
+  .meta .v{font-size:.88rem; font-weight:600; font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;}
+
+  section{margin:2.4rem 0;}
+  h2{font-size:1.35rem; margin:0 0 .9rem; padding-top:.2rem; border-top:1px solid var(--border); padding-top:1.6rem; letter-spacing:-.005em;}
+  section:first-of-type h2{border-top:none; padding-top:0;}
+  h3{font-size:1.05rem; margin:1.4rem 0 .6rem;}
+  p{color:var(--text); margin:.6rem 0;}
+  ul,ol{padding-left:1.3rem;}
+  li{margin:.35rem 0;}
+  strong{color:var(--text); font-weight:700;}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; background:var(--code-bg); padding:.15em .4em; border-radius:5px; font-size:.86em;}
+
+  .pill{display:inline-flex; align-items:center; gap:.35em; font-size:.72rem; font-weight:700; padding:.3em .7em; border-radius:999px; border:1px solid; white-space:nowrap;}
+  .pill-brand{background:var(--brand-bg); color:var(--brand-strong); border-color:var(--brand-border);}
+  .pill-success{background:var(--success-bg); color:var(--success); border-color:var(--success-border);}
+  .pill-gold{background:var(--gold-bg); color:var(--gold); border-color:var(--gold-border);}
+  .pill-danger{background:var(--danger-bg); color:var(--danger); border-color:var(--danger-border);}
+
+  .callout{border:1px solid var(--border); border-left-width:4px; background:var(--surface); border-radius:10px; padding:1rem 1.15rem; margin:1rem 0; box-shadow:var(--shadow);}
+  .callout.verdict{border-left-color:var(--brand); background:var(--brand-bg);}
+  .callout.verdict p{margin:0; font-size:1.02rem;}
+
+  table{width:100%; border-collapse:collapse; font-size:.88rem;}
+  .table-wrap{overflow-x:auto; border:1px solid var(--border); border-radius:12px; box-shadow:var(--shadow); margin:1rem 0;}
+  th,td{text-align:left; padding:.62rem .8rem; border-bottom:1px solid var(--border); vertical-align:top;}
+  thead th{background:var(--surface-2); font-size:.72rem; text-transform:uppercase; letter-spacing:.06em; color:var(--text-faint); white-space:nowrap;}
+  tbody tr:last-child td{border-bottom:none;}
+  tbody tr:hover{background:var(--surface-2);}
+
+  .cards{display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:.9rem; margin:1rem 0;}
+  .card{background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:1rem 1.1rem; box-shadow:var(--shadow);}
+  .card .tag{margin-bottom:.5rem;}
+  .card h4{margin:.2rem 0 .4rem; font-size:.95rem;}
+  .card p{margin:0; font-size:.86rem; color:var(--text-dim);}
+
+  .foot{margin-top:3rem; padding-top:1.5rem; border-top:1px solid var(--border); color:var(--text-faint); font-size:.82rem;}
+  a{color:var(--brand-strong);}
+  ::selection{background:var(--brand-bg); color:var(--text);}
+</style>
+
+<div class="shell">
+  <nav class="toc">
+    <h2>On this page</h2>
+    <ol>
+      <li><a href="#verdict">1. Verdict</a></li>
+      <li><a href="#what-is">2. What Phase 1A Is</a></li>
+      <li><a href="#room-by-room">3. Room by Room</a></li>
+      <li><a href="#gate">4. The Gate</a></li>
+      <li><a href="#validation">5. Validation Snapshot</a></li>
+      <li><a href="#not-done">6. Not Done Yet</a></li>
+      <li><a href="#cco">7. CCO Ruling Needed</a></li>
+      <li><a href="#next">8. Next Decisions</a></li>
+      <li><a href="#lives">9. Where Things Live</a></li>
+    </ol>
+    <div class="badge-row">
+      <span class="pill pill-brand">Implemented</span>
+      <span class="pill pill-success">Gate-Hardened</span>
+      <span class="pill pill-gold">Not Merged</span>
+    </div>
+  </nav>
+
+  <main>
+    <div class="hero">
+      <div class="kicker">CreditVector · Gabriel Capital Labs · Founder Package</div>
+      <h1>Phase 1A — Experience Runtime</h1>
+      <p class="sub">Implemented and gate-hardened. Not yet merged, not yet deployed.</p>
+      <div class="meta">
+        <div><div class="k">Date</div><div class="v">2026-08-03</div></div>
+        <div><div class="k">Branch</div><div class="v">feat/experience-runtime-phase-1a</div></div>
+        <div><div class="k">HEAD</div><div class="v">486925e</div></div>
+        <div><div class="k">Base (unchanged)</div><div class="v">origin/main @ f449c35</div></div>
+        <div><div class="k">Commits</div><div class="v">7 pushed · 0 merged</div></div>
+        <div><div class="k">Money/Wallet/LetterStream</div><div class="v">OUT — confirmed empty</div></div>
+      </div>
+    </div>
+
+    <section id="verdict">
+      <h2>1. Verdict</h2>
+      <div class="callout verdict">
+        <p>Phase 1A — the <strong>Experience Runtime</strong> — is built. Every room an operator touches on login now runs on real, derived data instead of static copy, and it went through an adversarial acceptance review before this package was assembled.</p>
+      </div>
+      <p>That review's first verdict was <strong>NOT READY</strong> — it found 3 launch-blocking issues. A single bounded fix pass closed all three, plus three smaller riders the same review surfaced. The mechanisms behind every fix were independently re-verified while building this package (guard scripts re-run, <code>typecheck</code>/<code>next build</code> re-run clean, the actual code diffs read line-by-line — see <a href="VALIDATION.html">VALIDATION.html</a>).</p>
+      <p><strong>What's left is not more engineering — it's three decisions</strong>, listed in §8.</p>
+    </section>
+
+    <section id="what-is">
+      <h2>2. What Phase 1A Is</h2>
+      <p>The mission (from <code>.ai/PHASE-1A-BRIEF.md</code>): when an operator logs in, CreditVector should already feel like <strong>"The Credit Operating System"</strong> — not a form to fill out. Five serial agents (A→B→C→D→E) built:</p>
+      <ul>
+        <li>A <strong>Session Runtime</strong> that knows who you are, what altitude you're operating at (consumer / agency-owner / inside a client's workspace), what you did yesterday and today, what's mid-flight, and what matters most right now — computed fresh from real rows on every load, never stored.</li>
+        <li>A <strong>Mission Control</strong> that reads that session and renders the right thing for the right altitude — an agency owner with no case open gets an executive queue over their roster, not a consumer's "upload your report" prompt.</li>
+        <li>A <strong>Case Journey</strong> panel with ranked, honest recommendations and a starvation guard so a stale case doesn't sit invisible forever.</li>
+        <li>A <strong>Mail Center Download workflow</strong> — the actual missing path from "letter generated" to "printed and mailed," with every date and legal-window claim anchored to when the bureau receives the mail, not when it's dropped in a mailbox.</li>
+        <li>A <strong>Kai</strong> that greets you correctly, remembers nothing it shouldn't across account switches, and tells the truth about what "done" means during onboarding.</li>
+      </ul>
+      <p>Nothing above touches money, Stripe, the mail provider, or the database schema. That boundary was a hard constraint on every agent and is independently confirmed in <a href="VALIDATION.html">VALIDATION.html</a>.</p>
+    </section>
+
+    <section id="room-by-room">
+      <h2>3. What Changed, Room by Room</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Room</th><th>Agent</th><th>One-line result</th></tr></thead>
+        <tbody>
+          <tr><td>Session Runtime</td><td>A</td><td>New <code>lib/operatorSession.ts</code> — a pure, derived read-model of identity, altitude, yesterday/today accomplishments, resumable work, and today's priorities. Zero AI, zero network, zero persistence.</td></tr>
+          <tr><td>Mission Control</td><td>B</td><td>Altitude-aware: agency owners get an Executive Queue over one shared roster ladder (<code>lib/agencyRoster.ts</code>, now used by both the API and the dashboard); metrics demoted to context.</td></tr>
+          <tr><td>Case Journey</td><td>C</td><td>Ranked recommendations, a storage-free 30-day starvation guard, a new journey progression panel, "Kai is watching the clock" distributed to the Mail Center row and timeline.</td></tr>
+          <tr><td>Mail Center — Download</td><td>D</td><td>Derived Dispute Packages, a Download review-and-print workflow, and the §611 honesty triple: receipt-anchored dates/math, evidence-asymmetry disclosure, real mailing-date capture.</td></tr>
+          <tr><td>Kai Experience</td><td>E</td><td>Fixed a cross-account cache leak; removed a stray emoji; rebuilt onboarding so "complete" means a real signal; wired the front door; wrote the deterministic Kai Package Summary and session-close narration.</td></tr>
+        </tbody>
+      </table></div>
+      <p style="font-size:.85rem;color:var(--text-faint)">Full file-by-file detail, guard counts, and the exact mechanism behind every line above: <a href="IMPLEMENTATION-REPORT.html">IMPLEMENTATION-REPORT.html</a>.</p>
+    </section>
+
+    <section id="gate">
+      <h2>4. The Gate: Found, Fixed, Verified</h2>
+      <p>An adversarial acceptance review (the "Opus gate") ran against the five agents' work before anything was packaged for the Founder. Its first verdict:</p>
+      <div class="callout" style="border-left-color:var(--danger); background:var(--danger-bg);">
+        <p><strong>NOT READY</strong> — 3 blockers, 7 non-blocking findings, 4 items for a CCO ruling.</p>
+      </div>
+
+      <h3>The 3 blockers, and how they were closed (commit 486925e)</h3>
+      <div class="cards">
+        <div class="card">
+          <span class="pill pill-danger tag">F1 · Blocker</span>
+          <h4>Download unreachable before mailing</h4>
+          <p>The "print and mail this" path only opened up <em>after</em> something in the package was already mailed — backwards. Fixed with an honest new <code>READY_TO_PREPARE</code> state, reachable straight from the letter.</p>
+        </div>
+        <div class="card">
+          <span class="pill pill-danger tag">F2 · Blocker</span>
+          <h4>§611 split-brain</h4>
+          <p>Every date-math consumer had moved to receipt-anchored estimates except <code>lib/kaiHome.ts</code>'s deadline calc, which still used a bare mailed-date diff. Now calls the same shared function everything else uses.</p>
+        </div>
+        <div class="card">
+          <span class="pill pill-danger tag">F3 · Blocker</span>
+          <h4>Dishonest quiet state</h4>
+          <p>Session-close could say "nothing needed you today" while real unfinished work sat mid-flight. Interrupted work is now honestly promoted to the top priority and counted in "remaining."</p>
+        </div>
+      </div>
+
+      <h3>Three riders closed in the same pass</h3>
+      <div class="cards">
+        <div class="card">
+          <span class="pill pill-gold tag">F6 · Rider</span>
+          <h4>Receipt-anchor, distributed further</h4>
+          <p>Two more places the review found still saying "days since mailed" now match the F2 fix.</p>
+        </div>
+        <div class="card">
+          <span class="pill pill-gold tag">F7 · Rider</span>
+          <h4>Wrong-8-hours-a-day greeting</h4>
+          <p>A UTC-bucketed "Good morning/afternoon/evening" was silently wrong for ~8h of every US user's day. Replaced with neutral "Welcome back."</p>
+        </div>
+        <div class="card">
+          <span class="pill pill-gold tag">F8 · Rider</span>
+          <h4>4th cache-leak switch point</h4>
+          <p>Admin's "impersonate user" action now clears the same cache the original fix cleared at three other switch points.</p>
+        </div>
+      </div>
+      <p>Every one of these six fixes is guard-pinned — not just fixed, but pinned so it can't silently regress. See <a href="VALIDATION.html">VALIDATION.html</a> for exact guard counts and what was independently re-run while building this package.</p>
+    </section>
+
+    <section id="validation">
+      <h2>5. Validation Snapshot</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Check</th><th>Result</th></tr></thead>
+        <tbody>
+          <tr><td><code>npm run typecheck</code></td><td><span class="pill pill-success">Clean</span></td></tr>
+          <tr><td><code>npx next build</code></td><td><span class="pill pill-success">Clean</span> — compiled successfully, 61/61 static pages</td></tr>
+          <tr><td>Full guard suite</td><td><span class="pill pill-success">79 of 79 scripts pass</span> — 0 failures, re-run today</td></tr>
+          <tr><td>Schema diff vs. main</td><td><span class="pill pill-success">Empty</span> — zero schema changes</td></tr>
+          <tr><td>Money / provider surface</td><td><span class="pill pill-success">Empty</span> except 7 disclosure-copy lines in the Send wizard</td></tr>
+          <tr><td>Branch state</td><td>Pushed, 0 behind <code>origin/main</code>, no PR open yet</td></tr>
+        </tbody>
+      </table></div>
+      <p style="font-size:.85rem;color:var(--text-faint)">Full table, methodology, and what was independently re-verified today vs. carried forward: <a href="VALIDATION.html">VALIDATION.html</a>.</p>
+    </section>
+
+    <section id="not-done">
+      <h2>6. What's Honestly Not Done Yet</h2>
+      <p>Disclosed, not hidden, not fixed in this pass:</p>
+      <ul>
+        <li><strong>F4</strong> — An agency owner's own "yesterday/today" session blocks will show empty even on a genuinely active agency day, because client work is recorded under the client's account, not the owner's. Needs cross-client aggregation, explicitly out of scope for this phase.</li>
+        <li><strong>F5</strong> — A signal called <code>caseMemory</code> that used to inform multi-day catch-up framing is now unconsumed by the new engines.</li>
+        <li><strong>F9</strong> — No explicit floor for a dispute-priority score of exactly 0 in the new ranking — an edge case, not yet hit by real data.</li>
+        <li><strong>F10</strong> — Onboarding's step 5 only completes when a letter is actually mailed, not merely generated — worth your explicit sign-off that's the intended bar.</li>
+      </ul>
+    </section>
+
+    <section id="cco">
+      <h2>7. Items That Need a CCO Ruling</h2>
+      <p>Copy/exposure questions, not engineering defects — flagged for the Compliance skill gate before or at merge:</p>
+      <ol>
+        <li><strong>The "(soon)" forward-availability line</strong> — "CreditVector Fulfillment (soon) adds a certified-mail receipt and tracking evidence once it's live." Appears 4 times.</li>
+        <li><strong>A few remaining "the §611 clock started" narrations</strong> — <code>lib/kaiSeen.ts</code> and two spots in <code>app/journey/page.tsx</code> still describe the moment of mailing as when the clock "started."</li>
+        <li><strong>"Queued a dispute for CreditVector to mail"</strong> — worth confirming this reads as inert (live mailing is off).</li>
+        <li><strong>A raw internal score exposed as copy</strong> — <code>lib/kaiHome.ts</code> surfaces "dispute-priority score N/100" directly to the operator.</li>
+      </ol>
+    </section>
+
+    <section id="next">
+      <h2>8. Next Decisions</h2>
+      <ol>
+        <li><strong>CCO pass</strong> on the 4 items above (§7).</li>
+        <li><strong>Merge decision</strong> — <code>feat/experience-runtime-phase-1a</code> → <code>main</code>. No PR is open yet; branch is fully pushed and ready.</li>
+        <li><strong>Deploy decision</strong> — separate from merge, per the standing deploy runbook.</li>
+        <li><strong>Phase 1B (money/Wallet/LetterStream) stays gated.</strong> Nothing in this phase moves toward it. Continuation requires your explicit authorization, same as Phase 1A did.</li>
+      </ol>
+    </section>
+
+    <section id="lives">
+      <h2>9. Where Everything Lives</h2>
+      <ul>
+        <li>Full per-agent implementation detail: <a href="IMPLEMENTATION-REPORT.html">IMPLEMENTATION-REPORT.html</a></li>
+        <li>Full validation evidence: <a href="VALIDATION.html">VALIDATION.html</a></li>
+        <li>Portable context to resume in ChatGPT or with a fresh engineer: <a href="CONTINUE-IN-CHATGPT.html">CONTINUE-IN-CHATGPT.html</a></li>
+        <li>Package contents + integrity hashes: <code>MANIFEST.md</code>, <code>SHA256SUMS.txt</code></li>
+        <li>Working repo: <code>/Users/re3zy/Documents/worktrees/creditvector-phase-1a</code> (branch <code>feat/experience-runtime-phase-1a</code>)</li>
+      </ul>
+    </section>
+
+    <div class="foot">CreditVector™ · Gabriel Capital Labs — Phase 1A Founder Package · generated 2026-08-03</div>
+  </main>
+</div>
