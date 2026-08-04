@@ -4,12 +4,14 @@ import { Disclaimer, EduBanner } from "@/components/Disclaimer";
 import { prisma } from "@/lib/prisma";
 import { currentUserOrDemo } from "@/lib/session";
 import { getKaiHomeData } from "@/lib/kaiHome";
+import { decryptText } from "@/lib/docCrypto";
+import { resolveSenderPlaceholders, detectPlaceholders, type PlaceholderStatus } from "@/lib/letter";
 import {
   buildMailCenter, pickMailBand, HEALTH_LABEL, HEALTH_TONE, STAGE_STATE_LABEL,
-  type MailLetter, type MailPackage, type StageState,
+  type MailLetter, type MailPackage, type MailPackageMember, type StageState,
 } from "@/lib/mailCenter";
 import { PrismaMailStore, MAIL_STATUS_LABEL, type MailStatus } from "@/lib/mail";
-import { CheckCircle2, Circle, Clock, Download, Lock, Mail, Target } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Circle, Clock, Download, Lock, Mail, Target } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -55,6 +57,25 @@ export default async function MailCenterPage() {
     tradelineId: l.tradelineId,
     strategy: l.strategy,
   }));
+
+  // Phase 1A-R RB-4 — placeholder awareness on package cards/evidence. Same
+  // render-time resolution as the print/download surfaces: for every
+  // NOT-YET-MAILED letter, substitute the CURRENT profile into the sender
+  // block, then check what's still missing. Nothing here writes to the
+  // stored Letter row — this only decides what the card/evidence drawer show.
+  const consumerNow = {
+    fullName: user.fullName,
+    addressLine1: user.addressLine1,
+    city: user.city,
+    state: user.state,
+    zip: user.zip,
+  };
+  const placeholderByLetterId = new Map<string, PlaceholderStatus>();
+  for (const l of rawLetters) {
+    if (l.mailedAt) continue;
+    const rendered = resolveSenderPlaceholders(decryptText(l.body), consumerNow);
+    placeholderByLetterId.set(l.id, detectPlaceholders(rendered));
+  }
 
   const { packages, stats } = buildMailCenter(letters);
   // Phase 1A F1: split into two honestly-distinct groups for rendering — a
@@ -127,7 +148,7 @@ export default async function MailCenterPage() {
                   Generated, not mailed yet — nothing&apos;s mailed and no §611 clock has started. Download to print
                   and mail, then mark it mailed to start the window.
                 </p>
-                {readyPackages.map((pkg) => <PackageRow key={pkg.packageId} pkg={pkg} manifestByLetter={manifestByLetter} />)}
+                {readyPackages.map((pkg) => <PackageRow key={pkg.packageId} pkg={pkg} manifestByLetter={manifestByLetter} placeholderByLetterId={placeholderByLetterId} />)}
               </div>
             )}
             {inMailPackages.length > 0 && (
@@ -137,7 +158,7 @@ export default async function MailCenterPage() {
                     In the mail
                   </div>
                 )}
-                {inMailPackages.map((pkg) => <PackageRow key={pkg.packageId} pkg={pkg} manifestByLetter={manifestByLetter} />)}
+                {inMailPackages.map((pkg) => <PackageRow key={pkg.packageId} pkg={pkg} manifestByLetter={manifestByLetter} placeholderByLetterId={placeholderByLetterId} />)}
               </div>
             )}
           </>
@@ -177,8 +198,18 @@ function StatPill({ label, value }: { label: string; value: string | number }) {
   );
 }
 
-function PackageRow({ pkg, manifestByLetter }: { pkg: MailPackage; manifestByLetter: Map<string, MailStatus> }) {
+function PackageRow({
+  pkg, manifestByLetter, placeholderByLetterId,
+}: {
+  pkg: MailPackage; manifestByLetter: Map<string, MailStatus>; placeholderByLetterId: Map<string, PlaceholderStatus>;
+}) {
   const multi = pkg.members.length > 1;
+  // Phase 1A-R RB-4 — which of THIS package's not-yet-mailed members still
+  // carry a placeholder after render-time resolution (empty for a mailed
+  // member: placeholderByLetterId only has entries for unmailed letters).
+  const placeholderMembers = pkg.members
+    .map((m) => ({ m, status: placeholderByLetterId.get(m.letterId) }))
+    .filter((x): x is { m: MailPackageMember; status: PlaceholderStatus } => Boolean(x.status?.hasPlaceholder));
   return (
     <details className="card group overflow-hidden p-0">
       <summary className="flex cursor-pointer list-none flex-wrap items-center gap-x-4 gap-y-2 p-4 transition hover:bg-ink-800/40 focus-visible:bg-ink-800/40 [&::-webkit-details-marker]:hidden">
@@ -196,6 +227,16 @@ function PackageRow({ pkg, manifestByLetter }: { pkg: MailPackage; manifestByLet
             )}
           </div>
           {pkg.tradeline && <div className="mt-0.5 truncate text-xs text-slate-500">{pkg.tradeline}</div>}
+          {/* Phase 1A-R RB-4 — card-level placeholder warning: the package
+              can't honestly claim "ready to prepare" while a member's
+              rendered artifact still carries [YOUR FULL NAME] /
+              [Furnisher mailing address]. Named on the card, detailed in the
+              Evidence drawer below. */}
+          {placeholderMembers.length > 0 && (
+            <div className="mt-1 flex items-center gap-1 text-[11px] font-medium text-gold-400">
+              <AlertTriangle className="h-3 w-3 shrink-0" aria-hidden /> Needs your details before mailing
+            </div>
+          )}
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">
           <span className={`pill border ${HEALTH_TONE[pkg.health]}`}>{HEALTH_LABEL[pkg.health]}</span>
@@ -284,6 +325,29 @@ function PackageRow({ pkg, manifestByLetter }: { pkg: MailPackage; manifestByLet
             Evidence
           </summary>
           <div className="mt-2 space-y-3 text-xs">
+            {/* Phase 1A-R RB-4 — the evidence-drawer detail behind the card
+                badge above: exactly which letters, and what's missing. */}
+            {placeholderMembers.length > 0 && (
+              <div>
+                <div className="mb-1 flex items-center gap-1 font-semibold text-gold-400">
+                  <AlertTriangle className="h-3 w-3 shrink-0" aria-hidden /> Can&apos;t be mailed as printed
+                </div>
+                <ul className="space-y-1 text-slate-400">
+                  {placeholderMembers.map(({ m, status }) => (
+                    <li key={m.letterId}>
+                      <span className="font-medium text-slate-300">{m.recipient}:</span>{" "}
+                      {[
+                        status.senderIncomplete ? "sender name/address missing (Settings)" : null,
+                        status.recipientIncomplete ? "recipient address missing" : null,
+                      ].filter(Boolean).join("; ")}.{" "}
+                      <Link href={`/mail/download/${encodeURIComponent(pkg.packageId)}`} className="font-semibold text-brand-400 hover:underline">
+                        Review →
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
             {pkg.evidence.selfMailNote && <p className="text-slate-400">{pkg.evidence.selfMailNote}</p>}
             <div>
               <div className="mb-1 font-semibold text-slate-300">Letters</div>

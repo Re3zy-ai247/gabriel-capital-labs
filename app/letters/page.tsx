@@ -25,6 +25,10 @@ interface SavedLetter {
   createdAt: string; mailedAt: string | null; responseAt: string | null; preview: string;
   hasResponse: boolean; responseOutcome: string | null; responseAnalysis: string | null;
   parentLetterId: string | null; tradelineId: string | null;
+  // RB-4: server-computed on the RENDERED body (post render-time sender
+  // resolution) — true while the printable artifact still carries any
+  // placeholder. Optional so a stale cached response can't crash the page.
+  needsDetails?: boolean;
 }
 
 // Phase 1A (F1): the SAME derived package-grouping key lib/mailCenter.ts's
@@ -349,7 +353,20 @@ function LettersInner() {
 
             <button onClick={generate} disabled={busy} className="btn-primary w-full">
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mails className="h-4 w-4" />}
-              {busy ? "Kai is drafting your letter…" : isBureauStrategy && bureausSel.length > 1 ? `Generate ${bureausSel.length} Letters` : "Generate Letter"}
+              {busy
+                ? "Kai is drafting your letter…"
+                : (() => {
+                    // RB-6: when an unmailed draft already covers this item +
+                    // strategy, the server updates it in place (no new row, no
+                    // extra letter used) — the button says so instead of
+                    // reading like a fresh, charged generation.
+                    const willUpdate = saved.some(
+                      (sl) => sl.tradelineId === tradelineId && sl.strategy === strategyId && !sl.mailedAt && sl.round === 1
+                    );
+                    const n = isBureauStrategy && bureausSel.length > 1 ? bureausSel.length : 1;
+                    if (willUpdate) return n > 1 ? `Regenerate ${n} Letters (updates your drafts)` : "Regenerate Letter (updates your draft)";
+                    return n > 1 ? `Generate ${n} Letters` : "Generate Letter";
+                  })()}
             </button>
             {remaining !== null && (
               <p className="mt-2 text-center text-[11px] text-slate-500">{remaining} free letters left this month</p>
@@ -496,6 +513,12 @@ function letterStoryline(l: SavedLetter): string | null {
     return `Day ${day} of ~${REINVESTIGATION_DAYS} on my receipt estimate — I'm watching the reinvestigation window.`;
   }
   if (l.status === "GENERATED" || l.status === "PRINTED" || l.status === "DRAFT") {
+    // RB-4: never claim "Ready to mail" while the rendered artifact still
+    // carries a placeholder — the server computes this on the SAME rendered
+    // body the print/download surfaces produce, so card and artifact agree.
+    if (l.needsDetails) {
+      return "Needs your details before mailing — open the letter to see what's missing.";
+    }
     return l.targetBureau
       ? "Ready to mail — the §611 clock starts when the bureau receives it."
       : "Ready to mail — the response clock starts once it arrives.";

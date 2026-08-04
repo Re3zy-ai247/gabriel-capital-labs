@@ -10,6 +10,7 @@ export {
   canCampaignTransition, isCampaignTerminal, strategyFamily,
   includedItems, deferredItems, excludedItems, packagePages, recipientKeys,
   expandIncludedToSnapshot, snapshotCovers,
+  CAMPAIGN_PLANNED_STATUSES, plannedItemKeys,
 } from "./CampaignModel";
 
 export {

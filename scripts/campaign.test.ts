@@ -4,6 +4,7 @@ import {
   composeCampaign, reviewSelection, type ComposerItem,
   DEFAULT_CAMPAIGN_POLICY, assessCampaignSize,
   CampaignService, InMemoryCampaignStore, snapshotCovers, includedItems, deferredItems, excludedItems, packagePages,
+  plannedItemKeys, type Campaign, type CampaignItem,
   type LetterTarget,
 } from "../lib/campaign";
 
@@ -154,6 +155,55 @@ function item(over: Partial<ComposerItem> = {}): ComposerItem {
     ...r.warnings.map((w) => w.text), ...r.conflicts, ...r.weakItems.map((w) => w.reason),
   ];
   ok("no forbidden outcome/frivolous claim in any composed string", !strings.some((s) => FORBIDDEN.test(s)));
+}
+
+// ---- Phase 1A-R RB-6: plannedItemKeys — planner exclusion (pure, DB-free) ----
+{
+  function ci(over: Partial<CampaignItem> & { tradelineId: string }): CampaignItem {
+    return {
+      creditorName: "Creditor", recipientType: "bureau", bureaus: ["EQUIFAX"],
+      strategyId: "fcra_611", strategyLabel: "FCRA §611", decision: "included", reason: "r",
+      pages: 2, letterId: null, queued: false, ...over,
+    };
+  }
+  const camp = (status: Campaign["status"], items: CampaignItem[]): Pick<Campaign, "status" | "items"> => ({ status, items });
+
+  const campaigns: Pick<Campaign, "status" | "items">[] = [
+    camp("APPROVED", [ci({ tradelineId: "a", decision: "included" }), ci({ tradelineId: "b", decision: "deferred" })]),
+    camp("ACTIVE", [ci({ tradelineId: "e", decision: "included" })]),
+    camp("WAITING", [ci({ tradelineId: "f", decision: "included" })]),
+    camp("RESPONSE_RECEIVED", [ci({ tradelineId: "g", decision: "included" })]),
+    camp("RECOMMENDED", [ci({ tradelineId: "c", decision: "included" })]),
+    camp("NEEDS_REVIEW", [ci({ tradelineId: "h", decision: "included" })]),
+    camp("COMPLETED", [ci({ tradelineId: "d", decision: "included" })]),
+    camp("CANCELED", [ci({ tradelineId: "i", decision: "included" })]),
+    camp("SUPERSEDED", [ci({ tradelineId: "j", decision: "included" })]),
+  ];
+  const keys = plannedItemKeys(campaigns);
+
+  ok("RB-6: an APPROVED campaign's INCLUDED item is excluded from the next recommendation", keys.has("a:bureau"));
+  ok("RB-6: that SAME campaign's DEFERRED item is NOT excluded — it stays a candidate for the next campaign (that's the whole point of deferral)", !keys.has("b:bureau"));
+  ok("RB-6: an ACTIVE campaign's included item is excluded", keys.has("e:bureau"));
+  ok("RB-6: a WAITING campaign's included item is excluded", keys.has("f:bureau"));
+  ok("RB-6: a RESPONSE_RECEIVED campaign's included item is excluded", keys.has("g:bureau"));
+  ok("RB-6: a RECOMMENDED (not yet approved) campaign's item is NOT excluded — pre-decision, must stay candidate-eligible", !keys.has("c:bureau"));
+  ok("RB-6: a NEEDS_REVIEW (not yet approved) campaign's item is NOT excluded either", !keys.has("h:bureau"));
+  ok("RB-6: a COMPLETED campaign's item is NOT excluded — terminal statuses release items back to the pool", !keys.has("d:bureau"));
+  ok("RB-6: a CANCELED campaign's item is NOT excluded", !keys.has("i:bureau"));
+  ok("RB-6: a SUPERSEDED campaign's item is NOT excluded", !keys.has("j:bureau"));
+
+  // The regression this whole fix targets: approving Campaign 1 must not leave
+  // its own just-included items eligible for Campaign 2's candidate set.
+  const justApproved = [camp("APPROVED", [ci({ tradelineId: "k", recipientType: "furnisher", decision: "included" }), ci({ tradelineId: "l", recipientType: "furnisher", decision: "included" })])];
+  const justApprovedKeys = plannedItemKeys(justApproved);
+  ok("RB-6 regression: BOTH items of a just-approved campaign are excluded immediately (before any letter is drafted/queued)",
+    justApprovedKeys.has("k:furnisher") && justApprovedKeys.has("l:furnisher"));
+
+  // Superset property: every item the OLD queued-only check would have caught
+  // is still caught (queued only ever appears on an included item of an
+  // APPROVED-or-further campaign — see CampaignService.markQueued).
+  const withQueued = [camp("ACTIVE", [ci({ tradelineId: "m", decision: "included", queued: true, letterId: "L1" })])];
+  ok("RB-6: a queued item (the old signal) is still excluded under the new rule", plannedItemKeys(withQueued).has("m:bureau"));
 }
 
 // ---- service + gate + snapshot immutability + isolation ----

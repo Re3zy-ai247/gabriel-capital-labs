@@ -3,6 +3,8 @@ import { AppShell } from "@/components/AppShell";
 import { Disclaimer } from "@/components/Disclaimer";
 import { prisma } from "@/lib/prisma";
 import { currentUserOrDemo } from "@/lib/session";
+import { decryptText } from "@/lib/docCrypto";
+import { resolveSenderPlaceholders, detectPlaceholders } from "@/lib/letter";
 import { buildMailCenter, buildPackageSummary, HEALTH_LABEL, HEALTH_TONE, type MailLetter } from "@/lib/mailCenter";
 import { FileText, ShieldCheck } from "lucide-react";
 import { DownloadApproval } from "./DownloadApproval";
@@ -75,6 +77,41 @@ export default async function DownloadPackagePage({ params }: { params: { packag
   // query.
   const memberIds = new Set(pkg.members.map((m) => m.letterId));
   const summary = buildPackageSummary(letters.filter((l) => memberIds.has(l.id)));
+
+  // Phase 1A-R RB-4 — PLACEHOLDER GATE on the download/review chain. Same
+  // render-time resolution as app/letters/print/[id]/page.tsx: decrypt each
+  // NOT-YET-MAILED member's body, substitute the CURRENT profile into the
+  // sender block, then check what's still missing. Mailed members are
+  // skipped — nothing prospective to warn about once a letter is already
+  // gone. Nothing here writes to the stored Letter row; this only decides
+  // whether to show the warning below.
+  const consumerNow = {
+    fullName: user.fullName,
+    addressLine1: user.addressLine1,
+    city: user.city,
+    state: user.state,
+    zip: user.zip,
+  };
+  const memberRaw = rawLetters.filter((l) => memberIds.has(l.id) && !l.mailedAt);
+  let senderIncomplete = false;
+  const recipientIncomplete: { letterId: string; recipient: string }[] = [];
+  for (const l of memberRaw) {
+    const rendered = resolveSenderPlaceholders(decryptText(l.body), consumerNow);
+    const status = detectPlaceholders(rendered);
+    if (status.senderIncomplete) senderIncomplete = true;
+    if (status.recipientIncomplete) recipientIncomplete.push({ letterId: l.id, recipient: l.recipientName });
+  }
+  // A package's members share one tradelineId+strategy by construction
+  // (lib/mailCenter.ts's packageKeyFor groups on exactly that key), so any
+  // member's tradelineId/strategy is the whole package's — reuse the existing
+  // /letters deep link (already wired for tradeline+strategy prefill) rather
+  // than inventing a new "fix the recipient" surface.
+  const fixRecipientHref = memberRaw[0]?.tradelineId
+    ? `/letters?tradeline=${encodeURIComponent(memberRaw[0].tradelineId)}&strategy=${encodeURIComponent(memberRaw[0].strategy)}`
+    : "/letters";
+  const placeholderWarning = senderIncomplete || recipientIncomplete.length > 0
+    ? { senderIncomplete, recipientIncomplete, fixRecipientHref }
+    : null;
 
   return (
     <AppShell title="/ Download package">
@@ -162,7 +199,10 @@ export default async function DownloadPackagePage({ params }: { params: { packag
           <p className="mb-3 text-sm text-slate-400">
             Review each letter above, then confirm you&apos;re ready — printing, signing, and mailing is still yours to do.
           </p>
-          <DownloadApproval members={pkg.members.map((m) => ({ letterId: m.letterId, recipient: m.recipient }))} />
+          <DownloadApproval
+            members={pkg.members.map((m) => ({ letterId: m.letterId, recipient: m.recipient }))}
+            placeholderWarning={placeholderWarning}
+          />
           <p className="mt-3 rounded-lg border border-ink-700 bg-ink-900/50 p-3 text-xs text-slate-400">
             <ShieldCheck className="mr-1 inline h-3.5 w-3.5 text-slate-500" aria-hidden />
             CreditVector is an educational tool, not a credit-repair organization or law firm, and this isn&apos;t

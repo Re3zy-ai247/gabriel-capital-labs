@@ -9,7 +9,7 @@ import { presentBureaus, getBureauData, crossBureauConflicts } from "@/lib/burea
 import { recommendStrategy } from "@/lib/recommend";
 import { STRATEGY_BY_ID, type RecipientType } from "@/lib/strategies";
 import { fallOffInsight } from "@/lib/tradelineInsights";
-import type { ComposerItem, LetterTarget } from "@/lib/campaign";
+import { plannedItemKeys, type ComposerItem, type LetterTarget } from "@/lib/campaign";
 import { PrismaCampaignStore, CampaignService } from "@/lib/campaign";
 import { recordKaiEvent, type KaiEventType } from "@/lib/kaiEvents";
 
@@ -53,12 +53,13 @@ export async function buildComposerItems(userId: string): Promise<ComposerItem[]
     arr.push(l); byTradeline.set(l.tradelineId, arr);
   }
 
-  // Tradelines already queued under a live (non-terminal) campaign — don't re-send.
-  const queuedKeys = new Set<string>();
-  for (const c of campaigns) {
-    if (["COMPLETED", "CANCELED", "SUPERSEDED"].includes(c.status)) continue;
-    for (const it of c.items) if (it.queued) queuedKeys.add(`${it.tradelineId}:${it.recipientType}`);
-  }
+  // Phase 1A-R RB-6: tradelines already covered by a live, APPROVED-or-further
+  // campaign — don't re-offer them. plannedItemKeys (lib/campaign) is a
+  // strict superset of the old queued-only check (see its own doc comment for
+  // why), so this closes the "approving Campaign 1 instantly re-recommends
+  // the same items as Campaign 2" gap without narrowing anything that was
+  // correctly excluded before.
+  const plannedKeys = plannedItemKeys(campaigns);
 
   const items: ComposerItem[] = [];
   for (const t of tradelines) {
@@ -77,7 +78,7 @@ export async function buildComposerItems(userId: string): Promise<ComposerItem[]
     const latest = history[0];
     const openMailed = history.some((l) => l.status === "MAILED" && !l.responseAt);
     const key = `${t.id}:${recipientType}`;
-    const alreadyInFlight = queuedKeys.has(key) || (latest?.status === "MAILED");
+    const alreadyInFlight = plannedKeys.has(key) || (latest?.status === "MAILED");
 
     items.push({
       tradelineId: t.id,

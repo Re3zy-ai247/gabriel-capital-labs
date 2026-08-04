@@ -5,7 +5,7 @@ import { meteredMessage } from "@/lib/aiMeter";
 import { recordKaiEvent } from "@/lib/kaiEvents";
 import { track, PRODUCT_EVENTS } from "@/lib/events";
 import { enforceRateLimit } from "@/lib/rateLimit";
-import { buildContext, renderTemplateLetter, buildSystemPrompt, buildUserPrompt } from "@/lib/letter";
+import { buildContext, renderTemplateLetter, buildSystemPrompt, buildUserPrompt, planLetterRegeneration } from "@/lib/letter";
 import { applyCompliance } from "@/lib/compliance";
 import { encryptText } from "@/lib/docCrypto";
 import { getEntitlement, spendLetterCredits } from "@/lib/entitlements";
@@ -17,9 +17,21 @@ export const maxDuration = 60;
 
 const VALID: Bureau[] = ["EQUIFAX", "EXPERIAN", "TRANSUNION"];
 
-// Build + AI-refine + compliance-check + persist a single letter for one bureau.
-async function generateOne(
-  user: { id: string; fullName: string | null; addressLine1: string | null; city: string | null; state: string | null; zip: string | null },
+type GenerateUser = {
+  id: string;
+  fullName: string | null;
+  addressLine1: string | null;
+  city: string | null;
+  state: string | null;
+  zip: string | null;
+};
+
+// Shared compose step (grounded draft + optional AI refinement + compliance
+// pass) for BOTH a brand-new letter and an RB-6 in-place regenerate — the only
+// difference between the two callers is whether they create or update the
+// Letter row afterward.
+async function composeLetter(
+  user: GenerateUser,
   tradeline: any,
   strategyId: string,
   targetBureau: Bureau | undefined,
@@ -58,6 +70,20 @@ async function generateOne(
   }
 
   const { text, flags } = applyCompliance(body);
+  return { ctx, text, flags, aiRefined };
+}
+
+// Build + AI-refine + compliance-check + persist a NEW letter for one bureau.
+async function generateOne(
+  user: GenerateUser,
+  tradeline: any,
+  strategyId: string,
+  targetBureau: Bureau | undefined,
+  useAI: boolean,
+  apiKey: string | undefined,
+  recipient?: { name?: string | null; address?: string | null }
+) {
+  const { ctx, text, flags, aiRefined } = await composeLetter(user, tradeline, strategyId, targetBureau, useAI, apiKey, recipient);
   const letter = await prisma.letter.create({
     data: {
       userId: user.id,
@@ -76,6 +102,48 @@ async function generateOne(
     payload: { strategy: ctx.strategy.id, recipient: ctx.recipientName, aiRefined },
   });
   // Persist ciphertext, but hand the caller/client the plaintext body it needs to render.
+  letter.body = text;
+  return { letter, aiRefined, consumerComplete: ctx.consumerComplete, recipientComplete: ctx.recipientComplete };
+}
+
+// RB-6 idempotent regenerate: UPDATE an existing UNMAILED letter in place —
+// fresh body composed from CURRENT inputs, same row id, createdAt untouched
+// (Letter has no updatedAt field to set either — see prisma/schema.prisma).
+// Only ever called for a target planLetterRegeneration matched to an unmailed
+// row (never a mailed one — see lib/letter.ts). No credit spend, no
+// dispute_created event here: the caller (POST below) only counts this
+// against `updated`, never `created`, so the monthly ledger and purchased
+// credits are untouched — the row was already counted once, at its original
+// creation.
+async function updateOne(
+  user: GenerateUser,
+  tradeline: any,
+  strategyId: string,
+  targetBureau: Bureau | undefined,
+  useAI: boolean,
+  apiKey: string | undefined,
+  recipient: { name?: string | null; address?: string | null } | undefined,
+  existingId: string
+) {
+  const { ctx, text, flags, aiRefined } = await composeLetter(user, tradeline, strategyId, targetBureau, useAI, apiKey, recipient);
+  const letter = await prisma.letter.update({
+    where: { id: existingId },
+    data: {
+      recipientType: ctx.strategy.recipient,
+      recipientName: ctx.recipientName,
+      targetBureau: ctx.targetBureau ?? null,
+      body: encryptText(text),
+      complianceFlags: flags,
+      // A stale PRINTED status would otherwise imply the printed page still
+      // matches this content; GENERATED is honest for a freshly-recomposed body.
+      status: "GENERATED",
+    },
+  });
+  await recordKaiEvent(user.id, "letter.generated", {
+    refType: "letter",
+    refId: letter.id,
+    payload: { strategy: ctx.strategy.id, recipient: ctx.recipientName, aiRefined, regenerated: true },
+  });
   letter.body = text;
   return { letter, aiRefined, consumerComplete: ctx.consumerComplete, recipientComplete: ctx.recipientComplete };
 }
@@ -133,9 +201,31 @@ export async function POST(req: Request) {
       targets = list;
     }
 
-    // Entitlement gate. Free tier: cap to the remaining monthly allowance.
+    // Phase 1A-R RB-6: idempotent regenerate. Match each requested target
+    // against any UNMAILED letter already on file for this exact tradeline +
+    // strategy + round (round is always 1 here — round 2+ is the dedicated
+    // /api/letters/[id]/round2 endpoint, untouched). A match means "the
+    // operator is correcting a draft" — update it in place, never insert a
+    // duplicate. planLetterRegeneration (lib/letter.ts, guard-tested) owns
+    // the matching rule, including why a MAILED letter is never matched.
+    const strategyKey = ctxProbe.strategy.id;
+    const existingRoundOne = await prisma.letter.findMany({
+      where: { userId: user.id, tradelineId: tradeline.id, strategy: strategyKey, round: 1 },
+      select: { id: true, targetBureau: true, mailedAt: true },
+    });
+    const { toUpdate, toCreate } = planLetterRegeneration(targets, existingRoundOne);
+
+    // Entitlement gate. Free tier: cap to the remaining monthly allowance —
+    // but ONLY against toCreate (net-new rows). An update never consumes
+    // quota (RB-6: fixing a letter must not cost a letter), so it is never
+    // blocked by the quota gate either — a pure correction goes through even
+    // at 0 remaining, as long as there's nothing NEW it also needs to create.
+    // The common case (nothing on file yet) is byte-identical to the prior
+    // gate: toCreate === targets and toUpdate is empty, so `!hasQuota` alone
+    // decides, exactly as the old unconditional check did.
     const entitlement = await getEntitlement(user);
-    if (entitlement.lettersRemaining !== null && entitlement.lettersRemaining <= 0) {
+    const hasQuota = entitlement.lettersRemaining === null || entitlement.lettersRemaining > 0;
+    if (toUpdate.length === 0 && toCreate.length > 0 && !hasQuota) {
       return NextResponse.json(
         {
           error: "You've used all 3 free dispute letters this month. Upgrade to Professional for unlimited letters and AI refinement.",
@@ -145,20 +235,28 @@ export async function POST(req: Request) {
         { status: 402 }
       );
     }
-    let allowed = targets.length;
+    let allowedNew = toCreate.length;
     let capped = false;
-    if (entitlement.lettersRemaining !== null && targets.length > entitlement.lettersRemaining) {
-      allowed = entitlement.lettersRemaining;
+    if (entitlement.lettersRemaining !== null && toCreate.length > entitlement.lettersRemaining) {
+      allowedNew = Math.max(0, entitlement.lettersRemaining);
       capped = true;
     }
-    const toGenerate = targets.slice(0, allowed);
+    const newTargets = toCreate.slice(0, allowedNew);
 
     const key = process.env.ANTHROPIC_API_KEY;
-    const created = [];
+    const updated: any[] = [];
+    const created: any[] = [];
     let anyAI = false;
     let consumerComplete = true;
     let recipientComplete = true;
-    for (const b of toGenerate) {
+    for (const { target: b, existingId } of toUpdate) {
+      const r = await updateOne(user, tradeline as any, strategyId, b, entitlement.aiRefinement, key, recipient, existingId);
+      updated.push(r.letter);
+      anyAI = anyAI || r.aiRefined;
+      consumerComplete = consumerComplete && r.consumerComplete;
+      recipientComplete = recipientComplete && r.recipientComplete;
+    }
+    for (const b of newTargets) {
       const r = await generateOne(user, tradeline as any, strategyId, b, entitlement.aiRefinement, key, recipient);
       created.push(r.letter);
       anyAI = anyAI || r.aiRefined;
@@ -169,16 +267,26 @@ export async function POST(req: Request) {
     // Spend purchased letter credits for anything beyond the free monthly allowance.
     // Clamped + conditionally guarded in lib/entitlements so the balance can never go
     // negative (a negative balance silently eats the next letter-pack purchase).
+    // Only NEW rows spend — an update is free (RB-6: the burn never happens; no
+    // refund logic needed because nothing was ever charged for it).
     await spendLetterCredits(user.id, entitlement, created.length);
 
-    await track(PRODUCT_EVENTS.disputeCreated, { userId: user.id, meta: { count: created.length, aiRefined: anyAI } });
+    // Same reasoning: the append-only monthly ledger only grows for NEW
+    // letters. Skipped entirely (not tracked-then-refunded) when a request is
+    // a pure regenerate — RB-6's "the burn never happens", not a credit-back.
+    if (created.length > 0) {
+      await track(PRODUCT_EVENTS.disputeCreated, { userId: user.id, meta: { count: created.length, aiRefined: anyAI } });
+    }
 
     const after = await getEntitlement(user);
+    const all = [...updated, ...created];
     return NextResponse.json({
       ok: true,
-      letters: created,
-      letter: created[0], // convenience for single-letter callers
-      count: created.length,
+      letters: all,
+      letter: all[0], // convenience for single-letter callers
+      count: all.length,
+      updatedCount: updated.length, // additive — how many were regenerated in place
+      createdCount: created.length, // additive — how many were brand-new rows
       aiRefined: anyAI,
       capped,
       upgrade: capped,
