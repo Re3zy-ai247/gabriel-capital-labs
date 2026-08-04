@@ -84,8 +84,8 @@ check("session memory is written on EVERY exit path (finish handles skip and com
 check("the overlay is a labelled dialog that names its escape hatch",
   /role="dialog"/.test(thr) && /Press Escape to skip/.test(thr));
 check("the skip control takes first focus", /skipRef\.current\?\.focus/.test(thr));
-check("Escape is the single exit path and the button reuses it",
-  /e\.key === "Escape"\) finish\(false\)/.test(thr) && /new KeyboardEvent\("keydown", \{ key: "Escape" \}\)/.test(thr));
+check("Escape is the single exit path and the button reuses it — and it hard-dismisses (true), not the fade-gated path",
+  /e\.key === "Escape"\) finish\(true\)/.test(thr) && /new KeyboardEvent\("keydown", \{ key: "Escape" \}\)/.test(thr));
 check("focus lands on the Hero's h1 after the opening", /querySelector<HTMLElement>\("#main h1"\)/.test(thr));
 check("the canvas and vignette are decoration to assistive tech",
   /<canvas[^>]*aria-hidden/.test(thr) && /cxt-vignette[^"]*"[^>]*\/>/.test(thr.replace(/\n/g, " ")) ? /aria-hidden className="cxt-vignette/.test(thr) : false);
@@ -104,6 +104,61 @@ check("input can only move the walk FORWARD (scroll never rewinds the entry)",
   /if \(dy > 0 && !paused\) target \+=/.test(thr) && !/target -=/.test(thr));
 check("no iOS permission wall — tilt only where it is free",
   /requestPermission/.test(thr) && /if \(!iosPermissionWall\) window\.addEventListener\("deviceorientation"/.test(thr));
+
+// ── 7 · context loss degrades to the landing, never freezes on it ───────────
+// A lost WebGL context (integrated-GPU memory pressure, tab backgrounding,
+// driver reset) must not be able to strand a visitor behind a frozen entry
+// with no working escape hatch. These checks hold the independent mechanisms
+// that make that true together, not any one of them alone.
+check("(a) the scene registers a webglcontextlost handler, calls preventDefault per the WebGL spec, and never registers a restore listener",
+  /addEventListener\("webglcontextlost"/.test(scn) &&
+  /e\.preventDefault\(\)/.test(scn) &&
+  !/addEventListener\("webglcontextrestored"/.test(scn));
+check("(a) Threshold wires that handler to its own hard-dismiss path when creating the scene",
+  /createThresholdScene\(canvas, mobile, \(\) => finish\(true\)\)/.test(thr));
+check("(a2) a context ALREADY dead at creation time is also caught — not just one that dies later — via a deferred post-creation liveness check",
+  /queueMicrotask\(\(\) => \{/.test(scn) && /isContextLost\(\)/.test(scn) && /onContextLost\(\)/.test(scn));
+check("(b) the skip/dismiss path does not require a live timeline: Escape hard-dismisses unconditionally",
+  /if \(e\.key === "Escape"\) finish\(true\)/.test(thr));
+check("(b) teardown is hard-cleanup-first: cleanup() is a standalone function, independently guarded, not nested inside finish()'s deferred fade",
+  /function cleanup\(\)/.test(thr) && /if \(cleanedUp\) return;/.test(thr));
+check("(b) the cosmetic fade-then-cleanup (finish(false)/onComplete) is reserved for the one call site that already proves the loop is healthy — natural completion",
+  /else finish\(false\)/.test(thr) && (thr.match(/finish\(false\)/g) ?? []).length === 1);
+check("(c) a watchdog exists with a bounded timeout (DUR + fixed grace) and calls cleanup() directly, bypassing finish()'s `done` gate",
+  /window\.setTimeout\(\(\) => \{[\s\S]{0,200}cleanup\(\);[\s\S]{0,20}\}, \(DUR \+ 2\) \* 1000\)/.test(thr));
+check("(c) the watchdog is exempt only in review mode — the Director HUD's intentional loop past DUR is not a freeze",
+  /const watchdog = review \? undefined : window\.setTimeout/.test(thr));
+check("(c) the watchdog timer is cleared on every real teardown path — no leaked timer survives a clean exit",
+  (thr.match(/window\.clearTimeout\(watchdog\)/g) ?? []).length >= 2);
+
+// ── 8 · React StrictMode-safe: no ref can poison a persisting mount ─────────
+// PROVEN root cause (live, gstack, dev StrictMode repro — not theoretical):
+// StrictMode's dev-only mount→unmount→mount replay reuses the same <canvas>
+// (one WebGL context per canvas, ever) AND, if the dismissal guard is a REF,
+// the first (simulated) unmount's legitimate cleanup poisons it for the
+// second (real, persisting) mount — every dismissal path silently becomes a
+// permanent no-op on the mount that actually matters. Confirmed live: the
+// synchronous scene-creation throw on the second mount is a real, observed
+// path, not a hypothetical one.
+check("(8a) no ref survives across the effect boundary to gate dismissal — doneRef is gone",
+  !/doneRef/.test(thr.replace(/\/\/.*doneRef.*/g, "")));
+check("(8b) `done`/`cleanedUp` are declared INSIDE the effect (plain `let`, fresh every invocation), not via useRef at component scope",
+  (() => {
+    const effectBody = thr.slice(thr.indexOf("useEffect(() => {"), thr.indexOf("}, []);"));
+    return /(^|\W)let done = false;/.test(effectBody) &&
+      /let cleanedUp = false;/.test(effectBody) &&
+      !/const doneRef = useRef/.test(thr);
+  })());
+check("(8c) the synchronous-throw catch path does its OWN minimal dismissal — it does not CALL finish()/cleanup(), which reference bindings (tl, raf, the listeners) that don't exist yet at that point in the function",
+  (() => {
+    const raw = thr.slice(thr.indexOf("} catch {"), thr.indexOf("onDone();\n      return;\n    }") + 40);
+    // Strip // comments first — the block's own explanatory prose legitimately
+    // mentions "finish()/cleanup()" as the thing it is NOT doing, which would
+    // otherwise false-positive a plain substring check.
+    const code = raw.replace(/\/\/[^\n]*/g, "");
+    return /done = true;/.test(code) && /cleanedUp = true;/.test(code) &&
+      !/finish\(/.test(code) && !/cleanup\(\)/.test(code);
+  })());
 
 console.log(`\ncxos-threshold.test.ts: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

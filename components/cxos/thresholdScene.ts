@@ -66,9 +66,28 @@ function glowTexture(inner: string, outer: string): CanvasTexture {
   return new CanvasTexture(c);
 }
 
-export function createThresholdScene(canvas: HTMLCanvasElement, mobile: boolean): ThresholdScene {
+export function createThresholdScene(
+  canvas: HTMLCanvasElement,
+  mobile: boolean,
+  onContextLost: () => void,
+): ThresholdScene {
   const renderer = new WebGLRenderer({ canvas, antialias: false, powerPreference: "high-performance" });
   renderer.setClearColor(INK, 1);
+
+  // Context loss (integrated-GPU memory pressure, tab backgrounding, driver
+  // reset) must degrade to the already-rendered static landing beneath, never
+  // freeze on it. preventDefault() is the WebGL-spec signal that WE handle the
+  // loss; we deliberately never listen for webglcontextrestored — a one-shot
+  // ten-second entrance has nothing worth resuming mid-scene, so falling
+  // through to the settled page is the correct outcome here, not a failure to
+  // recover from.
+  function handleContextLost(e: Event) {
+    console.warn("[Threshold] WebGL context lost — degrading to the static landing beneath");
+    e.preventDefault();
+    onContextLost();
+  }
+  canvas.addEventListener("webglcontextlost", handleContextLost, false);
+
   const scene = new Scene();
   const camera = new PerspectiveCamera(58, 1, 0.1, 220);
 
@@ -212,6 +231,7 @@ export function createThresholdScene(canvas: HTMLCanvasElement, mobile: boolean)
   }
 
   function dispose() {
+    canvas.removeEventListener("webglcontextlost", handleContextLost);
     pGeo.dispose(); pMat.dispose(); pTex.dispose();
     strip.dispose(); sMat.dispose();
     railGeo.dispose(); railMat.dispose();
@@ -222,5 +242,25 @@ export function createThresholdScene(canvas: HTMLCanvasElement, mobile: boolean)
   }
 
   resize();
+
+  // A <canvas> hands out exactly ONE WebGL context for its whole lifetime —
+  // once lost (forceContextLoss, above, in a PRIOR instance's dispose()),
+  // every later getContext() call on the SAME canvas returns that SAME dead
+  // context, never a fresh one. That matters here specifically because React
+  // StrictMode's dev-only mount→unmount→mount replay reuses the same canvas
+  // DOM node: the renderer just constructed above may already be wrapping a
+  // context whose loss transition happened in the PAST (during the sibling
+  // instance's disposal, before this instance's webglcontextlost listener
+  // even existed to hear it) — events fire on the transition, never on
+  // request, so that listener would wait forever for an event that already
+  // happened. Deferred one microtask so Threshold.tsx finishes assigning its
+  // own `scene` variable (this function returning) and the rest of its
+  // effect body (tl, listeners, the watchdog) before onContextLost can
+  // possibly run — same ordering guarantee the event listener gets for free
+  // by virtue of being async.
+  queueMicrotask(() => {
+    if (renderer.getContext().isContextLost()) onContextLost();
+  });
+
   return { setProgress, setParallax, setDensity, setIntensity, getCameraZ, tick, resize, dispose };
 }

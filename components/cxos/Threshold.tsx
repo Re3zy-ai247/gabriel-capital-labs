@@ -28,21 +28,56 @@ export function Threshold({ onDone, review = false }: { onDone: () => void; revi
   const rootRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const skipRef = useRef<HTMLButtonElement>(null);
-  const doneRef = useRef(false);
   const ctlRef = useRef<DirectorController | null>(null);
   const [hudReady, setHudReady] = useState(false);
   const [soundOn, setSoundOn] = useState(false);
   const audioRef = useRef<{ ctx: AudioContext; gain: GainNode } | null>(null);
 
   useEffect(() => {
+    // `done`/`cleanedUp` are LOCAL to this effect invocation — never refs.
+    // This is load-bearing under React StrictMode's dev-only
+    // mount→unmount→mount replay: a ref's VALUE persists across that whole
+    // cycle (the component instance is never actually torn down, only its
+    // effects re-run), so the first (StrictMode-simulated) unmount's
+    // legitimate `done = true` would otherwise poison the second, REAL,
+    // persisting mount — Escape, Skip, context-loss, the watchdog, and
+    // natural completion all gate on it, so a poisoned flag makes every one
+    // of them a silent, permanent no-op on the mount that actually matters.
+    // CONFIRMED root cause (live, gstack, StrictMode dev repro) of the prior
+    // report that this file's fix was "structurally present but ineffective
+    // live" — `done` used to be `doneRef.current`, a ref.
+    let done = false;
+    let cleanedUp = false;
+
     const root = rootRef.current!;
     const canvas = canvasRef.current!;
     const mobile = window.innerWidth < 768 || "ontouchstart" in window;
     let scene: ThresholdScene | null = null;
     try {
-      scene = createThresholdScene(canvas, mobile);
+      // onContextLost fires asynchronously, any time after creation succeeds —
+      // unlike this try/catch (which only guards synchronous creation
+      // failure), it is the recovery path for a context lost mid-scene.
+      // finish() is a hoisted function declaration below, safe to reference
+      // here; the callback itself only ever runs after the whole effect body
+      // (including finish's own definition) has finished executing once.
+      scene = createThresholdScene(canvas, mobile, () => finish(true));
     } catch {
-      finish(true); // any GL failure: straight to the landing, silently
+      // A synchronous throw here is a REAL, observed path (not theoretical):
+      // React StrictMode's dev-only mount→unmount→mount replay reuses the
+      // same <canvas>, and a canvas hands out exactly ONE WebGL context for
+      // its lifetime — if the sibling instance's dispose() already force-lost
+      // it, Three.js's WebGLRenderer constructor throws trying to query
+      // capabilities from that dead context. Nothing below this point has run
+      // yet on THIS invocation — no
+      // listeners, no rAF, no scroll-lock, no tl — so finish()/cleanup()
+      // (which assume that setup already happened, and reference bindings
+      // that don't exist yet at this point in the function) are the wrong
+      // tool here. This is its own minimal, self-contained, always-safe
+      // dismissal: straight to the landing, silently.
+      done = true;
+      cleanedUp = true;
+      if (!review) { try { sessionStorage.setItem("cx-threshold", "1"); } catch { /* private mode */ } }
+      onDone();
       return;
     }
 
@@ -107,7 +142,13 @@ export function Threshold({ onDone, review = false }: { onDone: () => void; revi
       scene?.setParallax(Math.max(-1, Math.min(1, e.gamma / 28)), Math.max(-1, Math.min(1, (e.beta - 40) / 32)));
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") finish(false);
+      // Escape (and the Skip button, which redispatches this same key) is the
+      // visitor's one guaranteed way out — it must not depend on the timeline
+      // advancing or the renderer being alive, so it hard-dismisses (true),
+      // same as the no-WebGL and context-lost paths. Natural completion below
+      // is the one call site that still asks for the cosmetic fade, because
+      // reaching it already proves the loop is healthy.
+      if (e.key === "Escape") finish(true);
       if (e.key === "ArrowDown" || e.key === " ") { e.preventDefault(); target += 0.06; }
     };
 
@@ -120,6 +161,21 @@ export function Threshold({ onDone, review = false }: { onDone: () => void; revi
 
     const onResize = () => scene?.resize();
     window.addEventListener("resize", onResize);
+
+    // Watchdog — cheap belt-and-suspenders for any freeze mode besides the
+    // named context-loss case, INCLUDING a stuck natural-completion fade (see
+    // cleanup's own comment above for why this calls cleanup() directly
+    // rather than finish()). DUR is the slower of the two auto-advance speeds
+    // (mobile is ~8s); +2s is grace, never a deadline a healthy run should
+    // ever approach. Exempt in review mode, where looping past DUR is the
+    // intended behavior, not a freeze — the Director HUD's own Escape still
+    // exits it on demand. Forward-referencing cleanup() here is safe: it is a
+    // hoisted function declaration, and this timer can only ever FIRE well
+    // after the whole effect body (including cleanup's definition) has run.
+    const watchdog = review ? undefined : window.setTimeout(() => {
+      console.warn("[Threshold] watchdog forced dismissal — entrance did not reach completion within DUR + grace");
+      cleanup();
+    }, (DUR + 2) * 1000);
 
     let raf = 0;
     let last = performance.now();
@@ -171,37 +227,53 @@ export function Threshold({ onDone, review = false }: { onDone: () => void; revi
       setHudReady(true);
     }
 
-    function finish(immediate: boolean) {
-      if (doneRef.current) return;
-      doneRef.current = true;
+    // cleanup is the ONE teardown path — hard-guarded on its OWN flag
+    // (cleanedUp), separate from `done` above. This is deliberate: `done`
+    // marks that a dismissal has been REQUESTED (so a second Escape press or
+    // the natural-completion check can't also request one), but a requested
+    // dismissal is not the same as a completed one — the non-immediate branch
+    // of finish() defers this call behind a GSAP fade's onComplete, and that
+    // fade runs on GSAP's own rAF-driven ticker, which can stall for the same
+    // reasons (backgrounding, context loss) the entrance itself can. The
+    // watchdog above calls cleanup() directly, bypassing finish()/`done`
+    // entirely, specifically so a stuck fade can never leave it stranded
+    // waiting on `done` being already (truthfully) true.
+    function cleanup() {
+      if (cleanedUp) return;
+      cleanedUp = true;
+      done = true;
+      if (watchdog !== undefined) window.clearTimeout(watchdog);
       // Review runs never consume the visitor's one first impression.
       if (!review) { try { sessionStorage.setItem("cx-threshold", "1"); } catch { /* private mode */ } }
-      const cleanup = () => {
-        cancelAnimationFrame(raf);
-        window.removeEventListener("wheel", onWheel);
-        window.removeEventListener("touchstart", onTouchStart);
-        window.removeEventListener("touchmove", onTouchMove);
-        window.removeEventListener("pointermove", onPointer);
-        window.removeEventListener("keydown", onKey);
-        window.removeEventListener("deviceorientation", onTilt);
-        window.removeEventListener("resize", onResize);
-        document.documentElement.style.overflow = prevOverflow;
-        tl.kill();
-        scene?.dispose();
-        if (audioRef.current) {
-          audioRef.current.gain.gain.setTargetAtTime(0, audioRef.current.ctx.currentTime, 0.05);
-          const ctx = audioRef.current.ctx;
-          setTimeout(() => void ctx.close(), 300);
-          audioRef.current = null;
-        }
-        document.querySelector<HTMLElement>("#main h1")?.focus?.();
-        onDone();
-      };
+      cancelAnimationFrame(raf);
+      window.removeEventListener("wheel", onWheel);
+      window.removeEventListener("touchstart", onTouchStart);
+      window.removeEventListener("touchmove", onTouchMove);
+      window.removeEventListener("pointermove", onPointer);
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("deviceorientation", onTilt);
+      window.removeEventListener("resize", onResize);
+      document.documentElement.style.overflow = prevOverflow;
+      tl.kill();
+      scene?.dispose();
+      if (audioRef.current) {
+        audioRef.current.gain.gain.setTargetAtTime(0, audioRef.current.ctx.currentTime, 0.05);
+        const ctx = audioRef.current.ctx;
+        setTimeout(() => void ctx.close(), 300);
+        audioRef.current = null;
+      }
+      document.querySelector<HTMLElement>("#main h1")?.focus?.();
+      onDone();
+    }
+
+    function finish(immediate: boolean) {
+      if (done) return;
+      done = true;
       if (immediate) cleanup();
       else gsap.to(root, { opacity: 0, duration: 0.55, ease: "power2.inOut", onComplete: cleanup });
     }
 
-    return () => { if (!doneRef.current) { doneRef.current = true; cancelAnimationFrame(raf); tl.kill(); scene?.dispose(); document.documentElement.style.overflow = prevOverflow; } };
+    return () => { if (!cleanedUp) { cleanedUp = true; done = true; if (watchdog !== undefined) window.clearTimeout(watchdog); cancelAnimationFrame(raf); tl.kill(); scene?.dispose(); document.documentElement.style.overflow = prevOverflow; } };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
