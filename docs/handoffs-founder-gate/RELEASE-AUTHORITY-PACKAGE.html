@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CreditVector — Release Authority Package</title>
+<style>
+:root{--bg:#0b1220;--panel:#111a2c;--text:#e6edf7;--muted:#9fb0c9;--line:#22304a;--accent:#4cc3b0;--warn:#e0b34c;--bad:#e06c6c}
+@media (prefers-color-scheme: light){:root{--bg:#f7f9fc;--panel:#ffffff;--text:#16233a;--muted:#5a6b85;--line:#dbe4f0;--accent:#0e7c6e;--warn:#8a6410;--bad:#a33030}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;padding:0 16px 80px}
+main{max-width:860px;margin:0 auto}
+h1{font-size:1.7rem;line-height:1.25;margin:28px 0 8px;letter-spacing:-.01em}
+h2{font-size:1.25rem;margin:40px 0 12px;padding-top:18px;border-top:1px solid var(--line);letter-spacing:-.01em}
+h3{font-size:1.05rem;margin:26px 0 8px}
+p,li{color:var(--text)}
+strong{color:var(--text)}
+em{color:var(--muted)}
+a{color:var(--accent);text-decoration:none}
+blockquote{margin:16px 0;padding:10px 16px;border-left:3px solid var(--accent);background:var(--panel);color:var(--muted);border-radius:0 8px 8px 0}
+code{background:var(--panel);border:1px solid var(--line);border-radius:5px;padding:1px 5px;font-size:.86em;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+pre{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px;overflow-x:auto}
+pre code{border:0;background:none;padding:0}
+.tablewrap,table{max-width:100%}
+table{border-collapse:collapse;margin:16px 0;font-size:.92em;display:block;overflow-x:auto;white-space:normal}
+th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top;min-width:90px}
+th{background:var(--panel);color:var(--muted);font-weight:600;white-space:nowrap}
+hr{border:0;border-top:1px solid var(--line);margin:36px 0}
+li{margin:4px 0}
+</style>
+</head>
+<body><main>
+<h1>CreditVector — Release Authority Package (RAP) — Phase 1A Promotion</h1>
+<p><strong>Date:</strong> 2026-08-04 · <strong>Branch:</strong> <code>feat/experience-runtime-phase-1a</code> @ <code>578a749</code> — <strong>[ahead 18 of <code>origin/main</code>], feature-branch pushed through <code>7df3d7b</code>, 11 gate-arc commits local-only</strong> · <strong>Production:</strong> <code>f449c35</code>, untouched
+<strong>Prepared by:</strong> Fable 5 (Program Director) for the Founder&#39;s release-authority decisions: push → merge → deploy.
+<strong>This package changes nothing. It is evidence.</strong></p>
+<hr>
+<h2>1. Executive Summary</h2>
+<p>Phase 1A — the Experience Runtime — is implemented, adversarially gated four times over, remediated, compliance-reviewed, corrected, and verified. Every gate that can pass without a Founder signature has passed:</p>
+<ul>
+<li><strong>Engineering acceptance:</strong> implemented + first adversarial gate (pre-package), blockers fixed (<code>486925e</code>).</li>
+<li><strong>Founder Experience Gate 1.0:</strong> five persona walks + blind Opus acceptance → <strong>NOT READY</strong>, six blockers, all mechanism-mapped.</li>
+<li><strong>Phase 1A-R:</strong> all six closed under the multi-agent SOP; bounded Opus review: money path <strong>PASS</strong>, launch risk <strong>not increased</strong>; its three SHOULD-FIX findings closed and click-tested.</li>
+<li><strong>CCO Compliance Gate:</strong> CORRECTIONS REQUIRED (6 items, <strong>0 Critical, 0 outside-counsel</strong>) → correction slice landed (incl. one HIGH the adversarial challenge caught) → independent verification <strong>PASS</strong> (&quot;launch risk strictly reduced&quot;) → <strong>CCO blocker lifted: APPROVED WITH DISCLOSURES.</strong></li>
+</ul>
+<p>The branch carries <strong>zero schema changes, zero migrations, zero flag changes, zero money-path modifications</strong> (billing-integrity guard pins the spend call byte-identical), and the architecture is unchanged — every fix was state wiring, an exclusion filter, or copy. <strong>Recommendation: READY TO PUSH</strong> (§16).</p>
+<h2>2. Gate Timeline</h2>
+<table>
+<thead>
+<tr>
+<th>Stage</th>
+<th>Verdict</th>
+<th>Artifact</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Founder Experience Gate 1.0 (5 Sonnet walks + blind Opus)</td>
+<td><strong>NOT READY</strong> — 6 blockers</td>
+<td><code>FOUNDER-EXPERIENCE-GATE.md</code> + appendices A–F</td>
+</tr>
+<tr>
+<td>↓ Phase 1A-R (3 Sonnet packets + bounded Opus review + fix pass)</td>
+<td>6/6 closed → <strong>READY-WITH-DISCLOSURES</strong></td>
+<td><code>PHASE-1A-R-REMEDIATION.md</code> + appendix H</td>
+</tr>
+<tr>
+<td>↓ CCO Review (evidence pass + CCO classification + Opus challenge)</td>
+<td><strong>CORRECTIONS REQUIRED</strong> (6 · 0 Critical · 0 counsel)</td>
+<td><code>CCO-REVIEW-PHASE-1A-R.md</code> §1–§10</td>
+</tr>
+<tr>
+<td>↓ Phase 1A-R-C (correction slice + Opus verification)</td>
+<td><strong>PASS</strong> → blocker lifted</td>
+<td><code>CCO-REVIEW-PHASE-1A-R.md</code> §11</td>
+</tr>
+<tr>
+<td><strong>= Current status</strong></td>
+<td><strong>APPROVED WITH DISCLOSURES</strong></td>
+<td>this package</td>
+</tr>
+</tbody></table>
+<h2>3. Final Implementation Summary</h2>
+<p><strong>Phase 1A (the product):</strong> Session Runtime (derived, never persisted) · altitude-aware Mission Control with Executive Queue · Case Journey with ranked, starvation-guarded recommendations · Mail Center Download workflow with §611 receipt-anchored honesty and the evidence-asymmetry disclosure · Kai context experience (truthful onboarding, scoped caches, deterministic narration).</p>
+<p><strong>Gate arc (the hardening):</strong> RB-1 letter-aware recommendations (engine + campaign planner) · RB-2 factual-negative model (<code>isFactualNegative</code>) with honest Clean states · RB-3 ready-to-prepare band rung · RB-4 render-time sender truth + placeholder gates + mailed-letter record integrity · RB-5 operator-local mailing dates (±14h shift-then-floor, UTC-noon storage) · RB-6 idempotent regenerate (no credit burn) + planner state + cancel release · CCO slice: clean-file truth on the highest-traffic surface, receipt-anchored §611 across <strong>nine</strong> corrected strings, a generalized 7-file compliance guard with a negative control.</p>
+<h2>4. Architectural Confirmation</h2>
+<ul>
+<li><strong>Zero schema changes</strong> across the entire branch (<code>git diff f449c35..HEAD -- prisma/</code> at the gate = empty; <code>schema-safety.test.ts</code> 17/17 at every slice).</li>
+<li><strong>Zero migrations, zero flags, zero env contract changes.</strong></li>
+<li><strong>Money path untouched:</strong> <code>lib/entitlements.ts</code> unmodified; <code>billing-integrity.test.ts</code> 31/31 pins <code>spendLetterCredits</code> literally; the one entitlement-gate branch change (net-new-only) was the explicit subject of an Opus §4 money-adjacent review → <strong>PASS</strong>, &quot;the bureau-widening bypass does not exist.&quot;</li>
+<li><strong>No frozen layer, ADR-governed structure, or accepted architecture altered.</strong> All fixes live at the consumption/presentation/state layer.</li>
+<li>New governance asset: <code>.ai/SOP/MULTI-AGENT-EXECUTION.md</code> (Opus-corrected; binds all agents, Fable included).</li>
+</ul>
+<h2>5. Repository Evidence</h2>
+<ul>
+<li>Working tree <strong>clean</strong>; branch <code>[ahead 18]</code> of <code>origin/main</code>; production commit <code>f449c35</code> unreachable-from-nothing-new (no push of the 11 gate-arc commits has occurred).</li>
+<li>Full report chain committed in-repo under <code>docs/handoffs-founder-gate/</code> (4 reports + 8 appendices + checksums + zips) and mirrored to the secret gist + <code>~/Desktop/HANDOFFS/mobile-export/</code>.</li>
+<li>Every blocker fix carries file:line mechanism citations in its report and a guard that fails on revert (spot-proven for M1 by revert analysis in the final Opus verification).</li>
+</ul>
+<h2>6. Validation Summary</h2>
+<table>
+<thead>
+<tr>
+<th>Gate</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>npm run typecheck</code></td>
+<td>Clean at every slice</td>
+</tr>
+<tr>
+<td><code>npx next build</code></td>
+<td>Clean (structural slices)</td>
+</tr>
+<tr>
+<td>Full guard suite</td>
+<td><strong>79/79 scripts</strong> after 1A-R; targeted suites green after 1A-R-C (mail-download <strong>78/78</strong>, kai-recommendation <strong>60/60</strong>, missionControl, letter, mailCenter, kai-experience <strong>78/78</strong>, schema-safety <strong>17/17</strong>)</td>
+</tr>
+<tr>
+<td>Adversarial reviews</td>
+<td>4 independent Opus passes: experience gate (blind), remediation review (money PASS), compliance challenge, slice verification (PASS)</td>
+</tr>
+<tr>
+<td>Live verification</td>
+<td>Every RB + every CCO correction verified on the running app against the isolated preview DB; click-tests on resume, regenerate, cancel, band, print-verbatim</td>
+</tr>
+</tbody></table>
+<h2>7. Remaining Disclosures (accepted at APPROVED WITH DISCLOSURES)</h2>
+<ol>
+<li><strong>&quot;(soon)&quot; fulfillment line</strong> — Founder owns a timing-claim maintenance duty if fulfillment slips.</li>
+<li><strong>Dormant &quot;queued for CreditVector to mail&quot; labels ×2</strong> — ride the LetterStream activation review (which also owns the genuine counsel question: CRO posture when CreditVector performs mailing).</li>
+<li><strong>Post-launch wording batch</strong> — &quot;active negatives&quot; → &quot;negative items on file&quot; idiom; Strategy Desk tiles + score bubble on clean rows; <code>mailCenter.ts:196</code> &quot;clock is running&quot; transit-window nuance; guard <code>;</code>-chunking hardening.</li>
+<li><strong>Decision A (mailedAt back-rows)</strong> — pre-fix rows store UTC midnight and can display a day early; <strong>do not silently normalize</strong>; owner runs the read-only count SQL (CCO report §6-A) against prod <strong>before merge</strong>; user-confirmed correction post-launch if material.</li>
+<li>Gate 1.0&#39;s non-blocker polish list (Mission Control consolidation first) — open, unchanged, post-launch.</li>
+</ol>
+<h2>8. Explicit Production Differences (what deploying this branch changes)</h2>
+<p>Production today runs <code>f449c35</code> — <strong>pre-Phase-1A</strong>. Promoting this branch deploys, in one step:</p>
+<ul>
+<li><strong>The entire Experience Runtime</strong> (7 Phase-1A commits: session runtime, Mission Control altitude, journey progression, Mail Center download workflow, Kai experience) — the majority of the delta: <strong>85 files, +8,946/−474</strong> overall.</li>
+<li><strong>The gate-arc hardening</strong> (5 fix commits: 26 code files, +1,481/−117).</li>
+<li><strong>Docs only otherwise</strong> (7 commits under <code>docs/</code> and <code>.ai/</code> — never bundled into the build).</li>
+<li><strong>No database difference:</strong> zero migrations; the build is <code>prisma generate &amp;&amp; next build</code>; the schema prod runs today is the schema this branch runs.</li>
+<li><strong>No dormant-subsystem difference:</strong> all platform flags remain absent → fail-closed OFF exactly as today.</li>
+</ul>
+<h2>9. Rollback Strategy</h2>
+<ul>
+<li><strong>Pre-merge:</strong> rollback = do nothing. The branch is isolated; production cannot see it.</li>
+<li><strong>Post-merge/deploy:</strong> revert = redeploy <code>f449c35</code> (Vercel instant-rollback or <code>git revert</code> of the merge). <strong>DB-independent by construction</strong> — zero migrations means no schema to unwind, the strongest rollback property a release can have. No flags to flip back. Rollback SHA of record: <strong><code>f449c35</code></strong>.</li>
+<li>Preview deployments (on push) are isolated (preview DB, RC1-proven scoping) and carry no production risk.</li>
+</ul>
+<h2>10. Branch Status</h2>
+<p><code>feat/experience-runtime-phase-1a</code> @ <code>578a749</code> · [ahead 18] of <code>origin/main</code> (<code>f449c35</code>) · origin copy of the branch ends at <code>7df3d7b</code> (the 7 Phase-1A commits are pushed; the 11 gate-arc commits are local-only) · working tree clean · no PR open.</p>
+<h2>11. Commit Chain (main-delta, oldest first)</h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Commit</th>
+<th>What</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td><code>6e4b9d4</code></td>
+<td>docs: Phase 1A implementation brief</td>
+</tr>
+<tr>
+<td>2–6</td>
+<td><code>add8cd4</code> <code>11b6b9b</code> <code>f9fa479</code> <code>9843aba</code> <code>42a9780</code></td>
+<td>feat: session runtime · Mission Control · journey · mail download · Kai experience</td>
+</tr>
+<tr>
+<td>7</td>
+<td><code>486925e</code></td>
+<td>fix: first-gate blockers (reachability, §611 anchor, honest quiet)</td>
+</tr>
+<tr>
+<td>8</td>
+<td><code>7df3d7b</code></td>
+<td>docs: Phase 1A founder package <em>(last commit on origin)</em></td>
+</tr>
+<tr>
+<td>9</td>
+<td><code>3529271</code></td>
+<td>docs(sop): multi-agent execution workflow (Opus-corrected)</td>
+</tr>
+<tr>
+<td>10</td>
+<td><code>50e97bc</code></td>
+<td>docs: Founder Experience Gate 1.0 (NOT READY, 6 blockers)</td>
+</tr>
+<tr>
+<td>11–14</td>
+<td><code>7750cba</code> <code>ec8ad41</code> <code>fd15988</code> <code>18f0ea2</code></td>
+<td>fix: RB-1+2 · RB-3+5 · RB-4+6 · Opus fix pass</td>
+</tr>
+<tr>
+<td>15</td>
+<td><code>f81882c</code></td>
+<td>docs: Phase 1A-R remediation report</td>
+</tr>
+<tr>
+<td>16</td>
+<td><code>caf3a28</code></td>
+<td>docs: CCO review (CORRECTIONS REQUIRED)</td>
+</tr>
+<tr>
+<td>17</td>
+<td><code>ccb69fb</code></td>
+<td>fix: CCO correction slice (M1–M5 + rider + sweep)</td>
+</tr>
+<tr>
+<td>18</td>
+<td><code>578a749</code></td>
+<td>docs: CCO addendum — blocker lifted</td>
+</tr>
+</tbody></table>
+<h2>12. Files Changed Summary</h2>
+<ul>
+<li><strong>Whole branch vs production:</strong> 85 files, +8,946/−474 (majority: the Phase 1A feature commits + reports).</li>
+<li><strong>Gate-arc code (commits 11–14, 17):</strong> 26 files, +1,481/−117 — concentrated in <code>lib/kaiHome.ts</code>, <code>lib/intelligence/snapshot.ts</code>, <code>lib/missionControl.ts</code>, <code>lib/mailCenter.ts</code>, <code>lib/letter.ts</code>, <code>lib/campaignInput.ts</code>, <code>lib/campaign/*</code>, <code>app/letters/*</code>, <code>app/mail/*</code>, <code>app/tradelines/page.tsx</code>, <code>app/strategist/page.tsx</code>, <code>app/journey/page.tsx</code>, <code>lib/kaiSeen.ts</code>, <code>app/api/letters/*</code>, plus their guard scripts.</li>
+<li><strong>Governance/docs:</strong> <code>.ai/SOP/</code> (2 files), <code>.ai/INDEX.md</code> (+1 line), <code>docs/handoffs-founder-gate/</code> (reports, appendices, zips, checksums).</li>
+</ul>
+<h2>13. Risks Accepted (with the evidence that bounded them)</h2>
+<ul>
+<li><strong>±14h mailing-date tolerance</strong> — ≤1-day over-acceptance on a self-attested date; UI blocks the evening-tomorrow entry; ruled the correct trade twice (remediation Opus, CCO).</li>
+<li><strong>UTC-noon anchor shifts day-counts conservatively</strong> — a window never reads closer to closing than reality.</li>
+<li><strong>Chase-style counting</strong> (late history, currently current → counted) — defensible because the derogatory data is real and score-suppressing; wording refinement scheduled, logic approved, no counsel.</li>
+<li><strong><code>PRINTED → GENERATED</code> reset on regenerate</strong> — deliberate, commented, guard-pinned.</li>
+<li><strong>Clean rows keep bureau detail without Kai&#39;s read</strong> — deliberate presentation split.</li>
+</ul>
+<h2>14. Risks Deferred (disclosed, scheduled, non-blocking)</h2>
+<p>The §7 items: wording batch (labels/tiles/bubble/<code>:196</code> nuance/guard hardening) · mailedAt back-rows decision · &quot;(soon)&quot; maintenance · queued-labels under LetterStream review · gate polish list (Mission Control consolidation first). None affects launch safety; each has an owner and a stage.</p>
+<h2>15. Post-Launch Roadmap (Founder-named; all gated, none started, none designed here)</h2>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Pulse Runtime foundation</strong></td>
+<td>Gated — Founder-named next foundation; no design work exists in this branch</td>
+</tr>
+<tr>
+<td><strong>Teams Chat foundation</strong></td>
+<td>Gated — same</td>
+</tr>
+<tr>
+<td><strong>Arena expansion</strong></td>
+<td>Gated (standing refusal register + event-feed prerequisites unchanged)</td>
+</tr>
+<tr>
+<td><strong>LetterStream integration</strong></td>
+<td>Gated — owns MAIL_LIVE, the queued-labels disclosure, and the CRO-posture counsel question</td>
+</tr>
+<tr>
+<td><strong>Wallet Runtime</strong></td>
+<td><strong>Still gated</strong> — untouched, per every stop condition since gate 1.0</td>
+</tr>
+<tr>
+<td><strong>Mission Control polish</strong></td>
+<td>First post-launch experience slice (gate 1.0 Polish #1: one-list consolidation, badge diet, internal-ID cleanup)</td>
+</tr>
+<tr>
+<td><strong>Kai enhancements</strong></td>
+<td>The E-report&#39;s CIO ladder: de-templatized per-item reads, voiced failure states, badge discipline</td>
+</tr>
+</tbody></table>
+<h2>16. Founder Release Recommendation</h2>
+<h3><strong>READY TO PUSH.</strong></h3>
+<p>Exactly one rung, on the evidence:</p>
+<ul>
+<li><strong>Push is fully cleared.</strong> Every gate on this branch&#39;s content has passed; a push publishes the 11 gate-arc commits to the existing feature branch and produces an <strong>isolated preview deployment only</strong> (RC1-proven preview-DB scoping; non-main pushes never touch production). It carries zero production risk and enables the two things that properly precede merge: your own click-through of the built preview, and CI/build verification on Vercel&#39;s infrastructure.</li>
+<li><strong>Merge is NOT yet the recommendation — by one owner-action, not by any defect:</strong> in this repository <strong>merge-to-main IS the production deploy</strong> (auto-deploy), so the merge decision inherits deploy&#39;s preconditions: (a) the Decision-A count SQL run against prod (owner-run, read-only, 30 seconds — in the CCO report §6-A); (b) your formal Founder Experience Acceptance declaration on the preview build (the permanent gate&#39;s final signature is yours, not mine); merge and deploy cannot be separated here, so recommending merge would silently recommend deploy.</li>
+<li><strong>Deploy accordingly follows merge automatically</strong> once you make that call — with the strongest rollback posture available (zero migrations; instant revert to <code>f449c35</code>).</li>
+<li><strong>DO NOT PROMOTE would require a defect no gate found:</strong> four adversarial reviews, 79/79 guards, and a compliance gate with zero Critical findings say otherwise.</li>
+</ul>
+<p><strong>Recommended sequence:</strong> ① authorize the push (preview build) → ② run the Decision-A SQL → ③ click through the preview as Founder Experience Acceptance → ④ declare merge (= deploy) → ⑤ post-deploy probes per the standing runbook.</p>
+<hr>
+<p><em>Stop conditions honored in preparing this package: no push, no merge, no deploy, no code change, no migration, no production access, no flag change. The only repository change is this document and its HTML twin.</em></p>
+
+</main></body></html>
