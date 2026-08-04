@@ -93,15 +93,17 @@ check("the review stage LOOPS instead of finishing (Escape exits)",
   /if \(review\) \{ target = 0; actual = 0; \}/.test(thr));
 
 // ── 6 · the room registry stays honest ───────────────────────────────────────
-// RC2 wins the lib/cxos/rooms.ts AND app/review/page.tsx overlaps (integration
-// governance). RC2 ships a deliberately pruned 2-room registry — its own
-// header comment: "This RC deliberately advertises only the two review
-// destinations actually reconstructed from Founder-approved evidence. It does
-// not inherit the feature branch's historical room graph or expose dead links
-// to excluded rooms." The mandated-room list, PLANNED-room check, Agency
-// Command copy, and PROTOTYPE count below are narrowed to match RC2's actual
-// (smaller, more conservative) registry — nothing here widens what ships;
-// every check still enforces "the registry claims nothing that isn't real."
+// RC2 won the lib/cxos/rooms.ts AND app/review/page.tsx overlaps (integration
+// governance) with a deliberately pruned 2-room registry. That pruning had a
+// side effect the Opus UX pass caught: four OTHER routes — recovered from
+// phase3 and already copied, rendering, and correct — were orphaned from
+// this hub, invisible in the Founder's own review surface. Recovery-
+// completion (not new room graph) added their entries back, verbatim from
+// phase3's own registry (`git show a40a41c:lib/cxos/rooms.ts`), while
+// keeping RC2's original two first and untouched. The mandated-room list,
+// PLANNED-room check, per-room copy checks, and PROTOTYPE count below are
+// updated to the current 6-room reality — every check still enforces "the
+// registry claims nothing that isn't real."
 {
   // Scoped to the CXOS_ROOMS array body, not the whole file — the CxosRoom
   // interface above it declares `key`/`status` as union-typed fields (e.g.
@@ -109,9 +111,12 @@ check("the review stage LOOPS instead of finishing (Escape exits)",
   // those type-level literals as if they were registered rooms.
   const roomsArray = rooms.slice(rooms.indexOf("export const CXOS_ROOMS"));
   const keys = [...roomsArray.matchAll(/key: "([a-z-]+)"/g)].map((m) => m[1]);
-  check("both RC2-mandated rooms are registered (Agency Headquarters, Mission Control) and nothing wider is claimed",
-    ["agency-command", "mission-control"].every((k) => keys.includes(k)) && keys.length === 2);
-  check("no PLANNED room is registered — RC2 ships only rooms actually reconstructed, so there is nothing to fake a live entry for",
+  const MANDATED = ["agency-command", "mission-control", "threshold", "landing-journey", "arena", "passage"];
+  check("all six mandated rooms are registered (RC2's original two + the four recovered from phase3) and nothing wider is claimed",
+    MANDATED.every((k) => keys.includes(k)) && keys.length === MANDATED.length);
+  check("RC2's original two are still listed FIRST, in their original order, untouched",
+    keys[0] === "agency-command" && keys[1] === "mission-control");
+  check("no PLANNED room is registered — every listed room actually exists and renders, so there is nothing to fake a live entry for",
     !/status: "PLANNED"/.test(roomsArray));
   const agencyCommand = rooms.match(/\{\s*key: "agency-command"[\s\S]*?\n  \},/)?.[0] ?? "";
   check("Agency Command is an honest Phase 6.2 review prototype at its isolated route (RC2's own copy)",
@@ -122,10 +127,28 @@ check("the review stage LOOPS instead of finishing (Escape exits)",
     /Seven-district Agency Headquarters/.test(agencyCommand) &&
     /isolated CXOS Core Runtime reference integration/.test(agencyCommand) &&
     /Synthetic, non-persistent, and review-only/.test(agencyCommand));
-  check("Academy is not registered at all in RC2's pruned graph (no invented Phase 6 or 7 claim is possible for a room that doesn't exist)",
+  // The four recovered rooms — each checked against phase3's own field
+  // values (a40a41c), byte-verified at authoring time via a standalone diff
+  // script, not just eyeballed here.
+  const RECOVERED: Record<string, { name: string; href: string; phase: string; line: RegExp }> = {
+    threshold: { name: "The Threshold", href: "/review/threshold", phase: "Phase 2", line: /Darkness → light → architecture → the name → CreditVector → the opening\. The public entry\./ },
+    "landing-journey": { name: "The Landing Journey", href: "/review/landing", phase: "Phase 3", line: /Chapters 1–2 \(Problem Chamber → Intelligence Awakens\) \+ the pricing route transition\. Scroll-directed, native scroll authoritative\./ },
+    arena: { name: "Arena", href: "/review/arena", phase: "Phase 5", line: /Clearance → evidence vault → ascent → the chamber\. Own-record only \(policy v1\); live surface stays flag\+cohort gated\./ },
+    passage: { name: "The Passage", href: "/review/mission-control-to-arena", phase: "Phase 5\\.1", line: /Mission Control origin → the call → clearance → the passage → dimensional conversion → threshold → greeting → the floor → the return\. Synthetic fixtures, end to end\./ },
+  };
+  for (const [key, expect] of Object.entries(RECOVERED)) {
+    const entry = rooms.match(new RegExp(`\\{\\s*key: "${key}"[\\s\\S]*?\\n  \\},`))?.[0] ?? "";
+    check(`recovered room "${key}" matches phase3's own definition verbatim (name/href/status/phase/line)`,
+      new RegExp(`name: "${expect.name}"`).test(entry) &&
+      new RegExp(`href: "${expect.href.replace(/\//g, "\\/")}"`).test(entry) &&
+      /status: "PROTOTYPE"/.test(entry) &&
+      new RegExp(`phase: "${expect.phase}"`).test(entry) &&
+      expect.line.test(entry));
+  }
+  check("Academy is still not registered at all (recovery added phase3's SHIPPED routes only — its unbuilt/PLANNED rooms are still excluded; no invented Phase 6 or 7 claim is possible for a room that doesn't exist)",
     !/key: "academy"/.test(rooms));
-  check("exactly two PROTOTYPE rooms today (Agency Headquarters · Mission Control) — RC2's isolated candidate",
-    (roomsArray.match(/status: "PROTOTYPE"/g) ?? []).length === 2);
+  check("exactly six PROTOTYPE rooms today (Agency Headquarters · Mission Control · The Threshold · The Landing Journey · Arena · The Passage)",
+    (roomsArray.match(/status: "PROTOTYPE"/g) ?? []).length === 6);
 }
 
 console.log(`\ncxos-review.test.ts: ${pass} passed, ${fail} failed`);

@@ -170,21 +170,26 @@ const roomKeys = [...rooms.matchAll(/^ {4}key: "([a-z-]+)"/gm)].map(
 );
 const roomHrefs = [...rooms.matchAll(/href: "([^"]+)"/g)].map((match) => match[1]);
 check(
-  "isolated registry contains exactly Agency and Mission Control",
+  // Phase 1A-CX recovery: the registry now carries RC2's two rooms first,
+  // then the four recovered phase3 review destinations — nothing wider than
+  // what actually exists as a route.
+  "isolated registry contains exactly the six recovered review rooms",
   JSON.stringify(roomKeys) ===
-    JSON.stringify(["agency-command", "mission-control"]),
+    JSON.stringify(["agency-command", "mission-control", "threshold", "landing-journey", "arena", "passage"]),
 );
 check(
   "isolated registry contains only real local review destinations",
   JSON.stringify(roomHrefs) ===
-    JSON.stringify(["/review/agency-command", "/review/mission-control"]) &&
+    JSON.stringify(["/review/agency-command", "/review/mission-control", "/review/threshold", "/review/landing", "/review/arena", "/review/mission-control-to-arena"]) &&
     roomHrefs.every((href) =>
       existsSync(join(root, "app", href.replace(/^\//, ""), "page.tsx")),
     ),
 );
 check(
   "hub truthfully identifies the isolated candidate",
-  /only Agency Headquarters/.test(hub) &&
+  // Phase 1A-CX recovery: the hub now names the recovered six-room roster;
+  // the honesty requirement that it disclaims production approval stands.
+  /recovered cinematic review\s+rooms/.test(hub) &&
     /does not represent production\s+integration approval/.test(hub),
 );
 check(

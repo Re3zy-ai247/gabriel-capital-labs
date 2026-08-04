@@ -18,9 +18,10 @@ export default function ReviewHub() {
           CXOS Core Runtime RC1
         </h1>
         <p className="mt-3 max-w-2xl text-sm leading-relaxed text-slate-400">
-          This protected candidate contains only Agency Headquarters, its
-          headless Core Runtime reference integration, and the reviewed Mission
-          Control return destination. It does not represent production
+          This protected candidate contains the recovered cinematic review
+          rooms — Agency Headquarters with its headless Core Runtime reference
+          integration, Mission Control, and the Threshold, Landing Journey,
+          Arena, and Passage prototypes. It does not represent production
           integration approval.
         </p>
         <div className="mt-8 grid gap-3 sm:grid-cols-2">
