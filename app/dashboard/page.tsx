@@ -14,6 +14,11 @@ import { buildAcademy } from "@/lib/academy";
 import { buildOperatorSession, type Altitude, type OperatorAccount, type WorkspaceClient } from "@/lib/operatorSession";
 import { getAgencyRoster } from "@/lib/agencyRoster";
 import { MissionControl } from "@/components/mission/MissionControl";
+import { MissionEntry } from "@/components/cxos/mission/MissionEntry";
+import { ArenaDoor } from "@/components/cxos/arena/ArenaDoor";
+import { arenaAccessible } from "@/lib/arena/cohort";
+import { readOwnProgress } from "@/lib/arena/ownProgress";
+import { CommandHeader } from "@/components/cxos/mission/CommandHeader";
 import { ExecutiveQueue } from "@/components/mission/ExecutiveQueue";
 import { CommandCenter } from "@/components/mission/CommandCenter";
 import { ReadinessStrip } from "@/components/mission/ReadinessStrip";
@@ -109,8 +114,41 @@ export default async function DashboardPage() {
     active: allItems.filter((i) => i.status === "in_progress" || i.status === "waiting").length,
   };
 
+  // CXOS presentation layer needs a few identity fields (role, isAgency,
+  // username, email) that the Operator Session runtime's OperatorAccount /
+  // WorkspaceClient types intentionally omit — lib/operatorSession.ts's own
+  // least-privilege view (frozen; not altered here). currentUser() /
+  // currentWorkspace() (lib/session.ts) resolve unselected Prisma User rows,
+  // so these fields are present on `user` at runtime; this reflects that real
+  // shape for the CX layer only — no new query, no change to what
+  // resolveDashboardPrincipal derives above.
+  const cxUser = user as unknown as { role: string; isAgency: boolean; username: string | null; email: string; plan: string };
+
+  // CXOS Phase 5 — the call: the Arena door renders ONLY when the real
+  // server-side gate passes (flag + cohort). Outside the cohort: nothing.
+  const cxArena = arenaAccessible(user) ? await readOwnProgress(user.id) : null;
+
+  // CXOS Phase 4 — the authenticated entry + command header run on REAL resolved
+  // state only: the user row, the deterministic health signals, queue aggregates,
+  // and Kai's actual computed next action. Auth already succeeded (this render IS
+  // the proof); the signed-out branch above renders with no overlay at all.
+  const cxRole = cxUser.role === "ADMIN" ? "ADMIN" : cxUser.isAgency ? "AGENCY" : "OPERATOR";
+  const cxIdentity = cxUser.username ?? cxUser.email.split("@")[0];
+  const cxHealth = data.health.map((h) => ({ label: h.label, status: h.status }));
+
   return (
     <AppShell title="/ Mission Control">
+      <MissionEntry
+        firstName={data.firstName}
+        identity={cxIdentity}
+        role={cxRole}
+        plan={cxUser.plan}
+        health={cxHealth}
+        tasksCount={data.tasks.length}
+        waitingCount={data.waiting.length}
+        hasReport={data.hasReport}
+        nextAction={data.nextAction ? data.nextAction.title : null}
+      />
       <div className={`${gxl.room} relative isolate -mx-5 -my-6 px-5 py-6`}>
         <GxlField state={fieldState} tint="from-ocean-500/[0.05]" />
         <GxlPull />
@@ -119,6 +157,16 @@ export default async function DashboardPage() {
         <AccomplishmentPanel yesterday={session.yesterdayCompleted} today={session.todayCompleted} />
         <ContinueWhereYouLeftOff items={session.interruptedWork} />
         <PriorityList heading="Today's priorities" priorities={session.todaysPriorities} />
+        <CommandHeader
+          firstName={data.firstName}
+          identity={cxIdentity}
+          role={cxRole}
+          plan={cxUser.plan}
+          health={cxHealth}
+          capacity={data.capacity}
+          isAgency={cxUser.isAgency}
+        />
+        {cxArena && <ArenaDoor totalXp={cxArena.standing.totalXp} level={cxArena.standing.level} />}
         <MissionControl data={data} />
         {/* The full operating-system summary appears once there's a case to summarize —
             a first-time user (no report yet) sees only the single upload mission. */}
