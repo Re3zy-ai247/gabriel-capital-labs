@@ -572,7 +572,7 @@ function MarkMailedControl({
       <button
         onClick={() => { setOpen(true); setErr(null); setDate(todayIso()); }}
         className={className}
-        title="Printed and mailed it yourself? Mark it mailed to start the response clock."
+        title="Printed and mailed it yourself? Mark it mailed — the response clock starts once it's received."
       >
         Mark mailed myself
       </button>

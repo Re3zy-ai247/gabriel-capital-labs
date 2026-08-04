@@ -250,5 +250,51 @@ check("RB-1: ...and carries no `secondary` (nothing eligible to yield to)", guar
 // still yields normally when the §605 item is genuinely un-lettered.
 check("RB-1 control: starvation guard still yields to §605 when the item is genuinely un-lettered", staleVerifiedYield?.cta === "Review this item & dispute");
 
+// ============================================================================
+// 8. M1 (Phase 1A-R CCO correction, HIGH) — branch-5's `undisputed` selector
+//    now applies the RB-2 fact test (isFactualNegative) AND excludes
+//    NOT_RECOMMENDED (government/statutory — the Strategy Desk already
+//    refuses these). Before this fix, a first-time user with a clean or
+//    government-debt top-scored account was told "{Creditor} is flagged on
+//    your file" and steered into the letter builder — an affirmative false
+//    statement plus an inducement to dispute accurate/undisputable data.
+//    A clean-only file must yield NO branch-5 recommendation (null); a
+//    NOT_RECOMMENDED-topped file must never propose that item; a genuine
+//    negative is still recommended exactly as before (regression pin).
+// ============================================================================
+
+// (a) Clean-only file: no factual negative anywhere on file, no letters, one
+// report on file (so branch 4 — "upload your report" — doesn't fire either).
+// Mirrors missionControl.test.ts's own "Nelnet"/"Toyota" clean fixtures.
+const cleanStudentLoan = tl({ id: "clean-sl", creditorName: "Clean Student Loan Co", accountType: "STUDENT_LOAN", dateOfFirstDelinquency: null, probability: "LOW", score: 25 });
+const cleanInstallment = tl({ id: "clean-inst", creditorName: "Clean Installment Co", accountType: "INSTALLMENT", dateOfFirstDelinquency: null, probability: "MEDIUM", score: 55 });
+const cleanOnlyPick = pickRecommendation([cleanStudentLoan, cleanInstallment], [], oneReport);
+check("M1: a clean-only file (no factual negative on file, no letters) → pickRecommendation yields NO dispute recommendation (quiet is allowed)", cleanOnlyPick === null);
+
+// (b) NOT_RECOMMENDED-topped file (government/statutory), nothing else on
+// file → also null, never proposed.
+const notRecommendedOnly = tl({ id: "notrec-only", creditorName: "Statutory Only Co", accountType: "COLLECTION", dateOfFirstDelinquency: yearsAgo(1), probability: "NOT_RECOMMENDED", score: 95 });
+const notRecOnlyPick = pickRecommendation([notRecommendedOnly], [], oneReport);
+check("M1: a NOT_RECOMMENDED-topped file (nothing else on file) → pickRecommendation yields NO dispute recommendation", notRecOnlyPick === null);
+
+// (c) Mixed file: a NOT_RECOMMENDED item AND a clean item both outscore a
+// genuine negative — branch 5 must skip both and still find the genuine one
+// (proves active exclusion, not coincidental absence), and the genuine
+// negative is recommended exactly as before (regression pin).
+const notRecommendedTop = tl({ id: "notrec-top", creditorName: "Statutory Co", accountType: "COLLECTION", dateOfFirstDelinquency: yearsAgo(1), probability: "NOT_RECOMMENDED", score: 95 });
+const genuineLower = tl({ id: "genuine-lower", creditorName: "Genuine Negative Co", accountType: "CHARGE_OFF", dateOfFirstDelinquency: yearsAgo(1), probability: "HIGH", score: 30 });
+const mixedPick = pickRecommendation([notRecommendedTop, cleanStudentLoan, genuineLower], [], oneReport);
+check("M1: a NOT_RECOMMENDED item never wins branch 5, even top-scored", !(mixedPick?.href.includes("tradeline=notrec-top") ?? false));
+check("M1: a clean item never wins branch 5 either", !(mixedPick?.href.includes("tradeline=clean-sl") ?? false));
+check("M1 regression: the genuine negative still wins branch 5 among the three — genuine negatives are unaffected by the correction", mixedPick?.href.includes("tradeline=genuine-lower") ?? false);
+check("M1: branch-5 basis still truthfully names the winning score", /30/.test(mixedPick?.basis ?? ""));
+check("M1: branch-5 copy still passes scanForbiddenLanguage after the correction", scanForbiddenLanguage(`${mixedPick?.title} ${mixedPick?.body} ${mixedPick?.basis}`) === null);
+
+// (d) Rider: the false "recipient's address" pre-fill claim is gone from the
+// branch-5 body — the letter builder pre-fills the strategy, never an
+// address (gate finding X9).
+check("M1 rider: branch-5 body no longer claims the letter builder pre-fills the recipient's address", !/recipient's address/i.test(mixedPick?.body ?? ""));
+check("M1 rider: branch-5 body still states the true claim (pre-fills the recommended strategy)", /pre-fills the recommended strategy/i.test(mixedPick?.body ?? ""));
+
 console.log(`\nkai-recommendation.test.ts: ${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);

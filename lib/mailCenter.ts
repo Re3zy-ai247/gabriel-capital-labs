@@ -194,7 +194,10 @@ function recommendationFor(l: MailLetter, kind: RecipientKind, pastWindow: boole
     if (l.hasResponse) return "Review the logged response and decide the next round.";
     if (l.status === "MAILED" && pastWindow) return "The statutory window has passed — log the bureau's response, or send a method-of-verification demand / escalate.";
     if (l.status === "MAILED") return "No action needed yet — the §611 reinvestigation clock is running.";
-    return "Print and mail this to start the §611 clock.";
+    // Phase 1A-R M4 (CCO adjudication): same mailing-anchored false claim as
+    // M2 ("mail to start the clock") — receipt-anchored to match the
+    // established idiom.
+    return "Print and mail this — the §611 clock starts once the bureau receives it.";
   }
   if (kind === "furnisher") {
     if (l.responseOutcome === "verified") return "The furnisher says it's accurate — you can dispute through the bureau, which forces a §623 reinvestigation, or request their records.";
@@ -234,11 +237,19 @@ function buildTimeline(l: MailLetter, ctx: RowContext): TimelineStage[] {
       description: "Kai drafted this letter, grounded in the statutes." },
     { key: "mailed", label: "Mailed", state: ctx.mailed ? "done" : underway ? "done" : "current",
       at: mailedAt,
+      // Phase 1A-R M4 (CCO adjudication): this stage used to assert the
+      // response window itself started/starts at mailing — the same
+      // mailing-anchored false claim as M2/M3, for the single most legally
+      // load-bearing recipient (bureau §611). The very next stage ("window",
+      // below) already states the window mechanics correctly and per-kind
+      // (windowText) — this stage now states only the mailing FACT and lets
+      // that stage own the window claim, rather than duplicating (and
+      // contradicting) it.
       description: ctx.mailed
-        ? "You mailed this — the response window started."
+        ? "You mailed this."
         : underway
           ? "This dispute is underway."
-          : "Print and mail this to start the response window." },
+          : "Print and mail this to send your dispute." },
     { key: "window", label: WINDOW_LABEL[ctx.kind],
       state: !ctx.mailed ? "pending" : (l.hasResponse || ctx.resolved) ? "done" : "current",
       at: null,
@@ -519,7 +530,11 @@ export function pickMailBand(
       quiet: false,
       scopeLabel: "In the Mail Center:",
       title: `${readyToPrepareCount} package${readyToPrepareCount === 1 ? "" : "s"} ready to prepare`,
-      sub: "Generated, not mailed yet — review, download, and mail to start the §611 clock.",
+      // Phase 1A-R M2 (CCO correction): was "...mail to start the §611
+      // clock" — mailing-anchored, violating the product's own receipt-
+      // anchor law (the clock starts when the bureau receives it, not when
+      // it's mailed).
+      sub: "Generated, not mailed yet — review, download, and mail; the §611 clock starts once the bureau receives it.",
       cta: "Review",
       href: "/letters",
       basis: "Rule: a package with zero mailed members (READY_TO_PREPARE, lib/mailCenter.ts's groupIntoPackages) is reachable work, ranked above the passive deadlines wait and the quiet state.",

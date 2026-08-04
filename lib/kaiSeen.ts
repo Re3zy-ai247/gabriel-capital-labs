@@ -31,7 +31,10 @@ const LABEL: Record<string, (p: Record<string, unknown>) => { text: string; href
   "report.uploaded": () => ({ text: "you uploaded a credit report", href: "/tradelines" }),
   "report.analyzed": (p) => ({ text: `I analyzed it — ${String(p.tradelines ?? "the")} accounts reviewed`, href: "/tradelines" }),
   "letter.generated": () => ({ text: "you generated a dispute letter", href: "/letters" }),
-  "letter.mailed": (p) => ({ text: `Round ${String(p.round ?? "")} went out to ${String(p.recipient ?? "the bureau")} — the §611 clock started`, href: "/letters" }),
+  // Phase 1A-R M3 (CCO correction): receipt-anchored, matching
+  // lib/operatorSession.ts's accomplishmentOf idiom — mailing itself never
+  // starts the §611 clock, the bureau's receipt does.
+  "letter.mailed": (p) => ({ text: `Round ${String(p.round ?? "")} went out to ${String(p.recipient ?? "the bureau")} — the §611 clock starts once the bureau receives it`, href: "/letters" }),
   "response.received": (p) => ({ text: `a bureau response came back (${String(p.outcome ?? "logged")})`, href: "/letters" }),
   "dispute.resolved": () => ({ text: "an item was marked resolved", href: "/journey" }),
   "mail.status": (p) => String(p.status) === "QUEUED"

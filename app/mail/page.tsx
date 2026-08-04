@@ -144,9 +144,13 @@ export default async function MailCenterPage() {
                 <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
                   Ready to prepare
                 </div>
+                {/* Phase 1A-R M4 (CCO adjudication, named candidate): "mark
+                    it mailed to start the window" was the same mailing-
+                    anchored false claim as M2/M3 — receipt-anchored to
+                    match the established idiom. */}
                 <p className="-mt-1.5 text-xs text-slate-500">
                   Generated, not mailed yet — nothing&apos;s mailed and no §611 clock has started. Download to print
-                  and mail, then mark it mailed to start the window.
+                  and mail, then mark it mailed — the §611 clock starts once the bureau receives it.
                 </p>
                 {readyPackages.map((pkg) => <PackageRow key={pkg.packageId} pkg={pkg} manifestByLetter={manifestByLetter} placeholderByLetterId={placeholderByLetterId} />)}
               </div>

@@ -102,7 +102,9 @@ export default async function JourneyPage() {
         entries.push({ ...base, icon: "file", text: `Dispute letter generated${p.strategy ? ` (${String(p.strategy)})` : ""}`, sub: meaningFor("file"), href: "/letters" });
         break;
       case "letter.mailed":
-        entries.push({ ...base, icon: "mail", text: `Round ${String(p.round ?? "")} mailed to ${String(p.recipient ?? "the bureau")} — §611 clock started`, sub: meaningFor("mail"), href: "/letters" });
+        // Phase 1A-R M3 (CCO correction): receipt-anchored, matching
+        // lib/operatorSession.ts's accomplishmentOf idiom.
+        entries.push({ ...base, icon: "mail", text: `Round ${String(p.round ?? "")} mailed to ${String(p.recipient ?? "the bureau")} — the §611 clock starts once the bureau receives it`, sub: meaningFor("mail"), href: "/letters" });
         break;
       case "response.received":
         entries.push({ ...base, icon: "mailopen", text: `Bureau response logged — outcome: ${String(p.outcome ?? "recorded")}`, sub: meaningFor("mailopen", String(p.outcome ?? "")), href: "/letters" });
@@ -141,7 +143,9 @@ export default async function JourneyPage() {
       entries.push({ key: `hist-lg-${l.id}`, ts: l.createdAt, icon: "file", text: `Round ${l.round} letter generated for ${l.recipientName}`, sub: meaningFor("file"), href: "/letters" });
     }
     if (l.mailedAt && !seen.has(`letter.mailed:${l.id}`)) {
-      entries.push({ key: `hist-lm-${l.id}`, ts: l.mailedAt, icon: "mail", text: `Round ${l.round} mailed to ${l.recipientName} — §611 clock started`, sub: meaningFor("mail"), href: "/letters" });
+      // Phase 1A-R M3 (CCO correction): receipt-anchored, matching the live
+      // letter.mailed case above and lib/operatorSession.ts's idiom.
+      entries.push({ key: `hist-lm-${l.id}`, ts: l.mailedAt, icon: "mail", text: `Round ${l.round} mailed to ${l.recipientName} — the §611 clock starts once the bureau receives it`, sub: meaningFor("mail"), href: "/letters" });
     }
     if (l.responseAt && !seen.has(`response.received:${l.id}`)) {
       entries.push({ key: `hist-lr-${l.id}`, ts: l.responseAt, icon: "mailopen", text: `${l.recipientName} responded — outcome: ${l.responseOutcome ?? "recorded"}`, sub: meaningFor("mailopen", l.responseOutcome ?? ""), href: "/letters" });

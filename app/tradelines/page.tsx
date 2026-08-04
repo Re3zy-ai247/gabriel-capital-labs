@@ -277,7 +277,12 @@ export default async function TradelinesPage() {
                 {/* Per-bureau side-by-side, only when we hold real field data. */}
                 {hasDetail && (
                 <div>
-                {conflictLines.length > 0 && (
+                {/* Phase 1A-R M5 (CCO correction): the "that's the dispute
+                    angle" framing never renders for a factually clean row —
+                    the per-bureau comparison table itself (below) still
+                    shows for clean rows with real field data; only this
+                    dispute-angle sentence is gated on `!clean`. */}
+                {conflictLines.length > 0 && !clean && (
                   <p className="mb-3 text-xs text-slate-300">
                     <span className="mr-2 rounded bg-brand-500/15 px-1.5 py-0.5 text-[10px] font-bold tracking-widest text-brand-300">KAI</span>
                     This account doesn&apos;t tell one story: {conflictLines.join(" ")} Inconsistent data can&apos;t all

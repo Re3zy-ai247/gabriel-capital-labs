@@ -196,7 +196,7 @@ export function assembleMission(x: MissionInputs): MissionControlData {
     nextAction = kai.recommendation;
   } else if (approvedUnmailed[0]) {
     const c = approvedUnmailed[0]; const n = unmailedCount(c);
-    nextAction = { title: `Mail Campaign ${c.sequence}`, body: `${n} approved dispute${n === 1 ? " is" : "s are"} ready to send. Mailing starts each item's response clock.`, cta: "Go to campaigns", href: "/campaigns", basis: `Rule: Campaign ${c.sequence} is approved with ${n} unmailed item${n === 1 ? "" : "s"}.` };
+    nextAction = { title: `Mail Campaign ${c.sequence}`, body: `${n} approved dispute${n === 1 ? " is" : "s are"} ready to send. Each item's response clock starts once its recipient receives it.`, cta: "Go to campaigns", href: "/campaigns", basis: `Rule: Campaign ${c.sequence} is approved with ${n} unmailed item${n === 1 ? "" : "s"}.` };
   } else if (kai.recommendation) {
     nextAction = kai.recommendation;
   } else if (pendingReview[0]) {
@@ -242,7 +242,7 @@ export function assembleMission(x: MissionInputs): MissionControlData {
 
   // ---- Health Dashboard ----
   const health: HealthSignal[] = [];
-  if (approvedUnmailed.length > 0) health.push({ key: "campaign", label: "Campaign health", status: "amber", message: "A campaign is approved but not yet mailed — send it to start the clock." });
+  if (approvedUnmailed.length > 0) health.push({ key: "campaign", label: "Campaign health", status: "amber", message: "A campaign is approved but not yet mailed — send it; the clock starts once the recipient receives it." });
   else if (pendingReview.length > 0) health.push({ key: "campaign", label: "Campaign health", status: "amber", message: "A campaign is waiting for your review." });
   else health.push({ key: "campaign", label: "Campaign health", status: "green", message: liveCampaigns.length > 0 ? "Your campaigns are progressing." : "Nothing stalled." });
 

@@ -266,5 +266,142 @@ const DOWNLOAD_APPROVAL_SRC = read("app/mail/download/[packageId]/DownloadApprov
   ok("...partitioned by the READY_TO_PREPARE health (not a second, independently-computed grouping)", /p\.health === "READY_TO_PREPARE"/.test(MAIL_PAGE_SRC));
 }
 
+// ==== 8. Static: §611 GENERAL negative pattern (Phase 1A-R M4) ==============
+// Section 5's checks above are PHRASE-specific (particular substrings
+// asserted present/absent) — that exact shape of guard read lib/mailCenter.ts
+// and still missed the Phase 1A-R M2 defect (a NEW sentence, "...mail to
+// start the §611 clock.", was simply never on any list — extending the list
+// with another literal would reproduce the same failure mode against the
+// next new sentence). Replaced here with a GENERAL pattern that needs no
+// update when the wording changes: strip comments (English contractions like
+// "doesn't"/"isn't" in comment prose would otherwise misread as string
+// delimiters) and quoted ALL-CAPS status/enum literals ("MAILED",
+// "GENERATED", ... — code, never prose), then scan for any sentence-ish
+// chunk that names mail/mailed/mailing in the same breath as an ACTIVE
+// §611/clock/window claim (starts/started/begins/is running — the "mailing
+// switched it on" shape), carrying no receipt/arrival anchor and no negation
+// governing the claim. File coverage: lib/mailCenter.ts (M2 + two M4
+// findings below), lib/kaiHome.ts (M1's file, one M4 finding), lib/kaiSeen.ts
+// and app/journey/page.tsx (the M3 files), and app/mail/page.tsx (the M4
+// review's named candidate) — every source this concern actually lived in.
+function stripCommentsAndEnumLiterals(src: string): string {
+  return src
+    .replace(/\/\*[\s\S]*?\*\//g, " ")
+    .replace(/\/\/[^\n]*/g, " ")
+    // Quoted ALL-CAPS tokens are status/enum literals in this codebase
+    // (Letter.status/MailStatus values: "MAILED", "GENERATED", "RESOLVED",
+    // "RESPONSE_RECEIVED", ...) — a general structural exclusion (prose
+    // never writes "MAILED" in caps), not a per-sentence whitelist. Without
+    // this, `if (l.status === "MAILED") return "...clock is running.";`
+    // falsely counts as "mailing language" next to an adjacent, unrelated
+    // §611 sentence.
+    .replace(/"[A-Z][A-Z_]{2,}"/g, '""');
+}
+const MAIL_RE = /\bmail(?:ed|ing)?\b/i;
+const CLOCKWORD_RE = /(§\s?611|\bclock\b|\bwindow\b)/i;
+// The defect is a CLAIM that the clock/window is already active as of
+// mailing — not any sentence that merely mentions both a mailing fact and a
+// clock/window noun (e.g. a package "lands here with its §611 clock" only
+// labels what's displayed, asserting nothing about timing). Requiring an
+// active/started verb targets the actual false statement, not bare topical
+// co-mention.
+const ACTIVE_RE = /\b(start(?:s|ed|ing)?|begins?|began|beginning|running|ticking)\b/i;
+// Anchored-safe: the clock/window is tied to receipt/arrival, not mailing.
+const RECEIPT_RE = /\breceiv(?:e[sd]?|ing)\b|\breceipt\b|\barriv(?:e[sd]?|ing)\b/i;
+// A negation governing the clock/window/active claim itself ("no §611 clock
+// has started") is a TRUE, honest statement this guard must leave alone —
+// only a negation within a few words of the clock-noun or the active-verb
+// counts, so an unrelated EARLIER negation in the same sentence ("not mailed
+// yet ... to start the clock") can't launder a real violation.
+const NEGATION_RE = /\b(no|not|never|isn't|hasn't|doesn't|didn't|wasn't|aren't)\b(?:\s+\S+){0,3}\s+(?:§\s?611|clock|window|started|starts|starting|begun|began|running)\b/i;
+
+function findUnanchoredMailClockClaims(rawSrc: string): string[] {
+  const noComments = stripCommentsAndEnumLiterals(rawSrc);
+  // Collapse whitespace (so a claim split across source LINES — JSX text
+  // wraps at the formatter's line width, e.g. app/mail/page.tsx's
+  // Ready-to-prepare paragraph — still reads as the one continuous sentence
+  // a user actually sees), then chunk on '.', '!', '?', ';' — plain-English
+  // sentence-enders AND JS statement terminators (adjacent `return "...";`
+  // statements must never bleed into each other). Deliberately NOT '{'/'}':
+  // those sit INSIDE template-literal interpolations (`${p.recipient}` sits
+  // between "went out to" and "clock started" in one real string in this
+  // codebase) and would fragment a single claim into unrelated pieces.
+  const norm = noComments.replace(/\s+/g, " ").trim();
+  const chunks = norm.split(/(?<=[.!?;])\s*/).map((x) => x.trim()).filter(Boolean);
+  const hits: string[] = [];
+  for (const s of chunks) {
+    if (MAIL_RE.test(s) && CLOCKWORD_RE.test(s) && ACTIVE_RE.test(s) && !RECEIPT_RE.test(s) && !NEGATION_RE.test(s)) {
+      hits.push(s);
+    }
+  }
+  return hits;
+}
+
+{
+  // (a) Negative control: the pattern must catch the OLD M2 sentence,
+  // verbatim, if it were ever reintroduced — proven directly against the
+  // sentence text, independent of any file on disk.
+  const OLD_M2_SENTENCE = "Generated, not mailed yet — review, download, and mail to start the §611 clock.";
+  ok("general §611 pattern: catches the OLD M2 sentence verbatim if reintroduced (negative control)",
+    findUnanchoredMailClockClaims(OLD_M2_SENTENCE).length === 1);
+
+  // (b) Must not cry wolf on legitimately receipt/arrival-anchored or
+  // honestly-negated copy already shipped elsewhere in the product (pulled
+  // from app/letters/page.tsx and lib/mailCenter.ts's furnisher branch,
+  // neither of which this slice touches).
+  const safeControls = [
+    "Ready to mail — the §611 clock starts when the bureau receives it.",
+    "Ready to mail — the response clock starts once it arrives.",
+    "There's no fixed bureau clock here — keep your proof of mailing and follow up if you don't hear back.",
+    "Generated, not mailed yet — nothing's mailed and no §611 clock has started.",
+  ];
+  for (const s of safeControls) {
+    ok(`general §611 pattern: no false positive on "${s}"`, findUnanchoredMailClockClaims(s).length === 0);
+  }
+
+  // (c) Applied to every corrected source this concern lives in — must come
+  // back clean on all of them.
+  const KAIHOME_SRC = read("lib/kaiHome.ts");
+  const KAISEEN_SRC = read("lib/kaiSeen.ts");
+  const JOURNEY_PAGE_SRC = read("app/journey/page.tsx");
+  const MAILPAGE_SRC2 = read("app/mail/page.tsx");
+  // Coordinator extension (1A-R-C): the generalized pattern surfaced the same
+  // defect class in two more files during the slice — cover them permanently
+  // so a future rewording there is caught the same way.
+  const MISSIONCONTROL_SRC = read("lib/missionControl.ts");
+  const LETTERS_PAGE_SRC = read("app/letters/page.tsx");
+
+  for (const [label, src] of [
+    ["lib/mailCenter.ts", MAILCENTER_SRC],
+    ["lib/kaiHome.ts", KAIHOME_SRC],
+    ["lib/kaiSeen.ts", KAISEEN_SRC],
+    ["app/journey/page.tsx", JOURNEY_PAGE_SRC],
+    ["app/mail/page.tsx", MAILPAGE_SRC2],
+    ["lib/missionControl.ts", MISSIONCONTROL_SRC],
+    ["app/letters/page.tsx", LETTERS_PAGE_SRC],
+  ] as const) {
+    const hits = findUnanchoredMailClockClaims(src);
+    ok(`general §611 pattern: ${label} carries no unanchored mail+clock claim${hits.length ? ` (found: ${hits.join(" || ")})` : ""}`, hits.length === 0);
+  }
+
+  // (d) Supplementary, targeted check for lib/kaiSeen.ts's own "letter.mailed"
+  // entry specifically: its idiom says "went out to X" rather than "mailed
+  // to X" (a domain-specific synonym the literal mail/mailed/mailing
+  // vocabulary above doesn't cover — every LABEL entry in that one file is
+  // inherently mail-lifecycle copy by construction). Rather than broaden the
+  // general pattern's core vocabulary for one file's word choice, this
+  // asserts the actual PROPERTY the general pattern enforces everywhere
+  // else — "an active clock/window claim must be receipt-anchored" —
+  // directly against that one entry.
+  const letterMailedEntry = /"letter\.mailed":[\s\S]*?href:\s*"\/letters"\s*\}\)/.exec(KAISEEN_SRC);
+  ok("kaiSeen.ts's letter.mailed entry is found (sanity — the check below isn't vacuous)", Boolean(letterMailedEntry));
+  if (letterMailedEntry) {
+    const entry = letterMailedEntry[0];
+    ok("kaiSeen.ts's letter.mailed entry does make a §611/clock claim (sanity — a claim exists to anchor)",
+      CLOCKWORD_RE.test(entry) && ACTIVE_RE.test(entry));
+    ok("kaiSeen.ts's letter.mailed entry: its §611/clock claim is receipt-anchored", RECEIPT_RE.test(entry));
+  }
+}
+
 console.log(`\nmail-download.test.ts: ${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);

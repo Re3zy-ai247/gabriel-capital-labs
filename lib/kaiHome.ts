@@ -7,6 +7,14 @@ import { listKaiEvents } from "@/lib/kaiEvents";
 import { recommendStrategy } from "@/lib/recommend";
 import { yearsSince } from "@/lib/utils";
 import { daysElapsedSinceEstimatedReceipt } from "@/lib/forecast";
+// Phase 1A-R M1 (CCO correction): the same RB-2 fact test every other
+// negative-count/negative-presentation surface already applies (this file's
+// own callers, app/tradelines/page.tsx, lib/missionControl.ts). No import
+// cycle: lib/intelligence/snapshot.ts's own dependency closure (prisma,
+// utils, forecast, tradelineInsights, outcomeLedger, kaiEvents, and THEIR
+// transitive deps) never reaches back to lib/kaiHome.ts, so this is a plain
+// import, not a shared-module extraction.
+import { isFactualNegative } from "@/lib/intelligence/snapshot";
 
 const DAY = 86_400_000;
 // FCRA §611(a)(1): the bureau's reinvestigation window after a dispute is
@@ -214,8 +222,19 @@ export function pickRecommendation(
   //    so an equal-score item can never be starved forever by newer arrivals;
   //    id breaks any remaining tie (identical timestamps). `disputedIds` is
   //    the same set hoisted above (RB-1) — built once, reused here.
+  //    Phase 1A-R M1 (CCO correction, HIGH): the candidate pool is ALSO
+  //    gated on the RB-2 fact test (isFactualNegative) and never
+  //    NOT_RECOMMENDED (government/statutory — the Strategy Desk already
+  //    refuses these). Without this, a first-time user with a clean or
+  //    government-debt top-scored account was told "{Creditor} is flagged on
+  //    your file" and steered into the letter builder — an affirmative false
+  //    statement plus an inducement to dispute accurate/undisputable data,
+  //    on the single highest-traffic surface in the product. A file with
+  //    nothing factually disputable now correctly falls through to `null` —
+  //    quiet is allowed, never a manufactured recommendation. The RB-2 fact
+  //    model itself is untouched; this only makes branch 5 honor it.
   const undisputed = tradelines
-    .filter((t) => !t.resolved && !disputedIds.has(t.id))
+    .filter((t) => !t.resolved && !disputedIds.has(t.id) && isFactualNegative(t) && t.probability !== "NOT_RECOMMENDED")
     .sort((a, b) =>
       b.score - a.score ||
       new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime() ||
@@ -224,7 +243,10 @@ export function pickRecommendation(
   if (undisputed && letters.length === 0) {
     return {
       title: "Your file is analyzed — ready to start the first dispute?",
-      body: `${undisputed.creditorName} is flagged on your file. The letter builder pre-fills the recommended strategy and the recipient's address.`,
+      // Phase 1A-R rider: dropped the false "and the recipient's address"
+      // claim — the letter builder pre-fills the recommended strategy only;
+      // it never pre-fills a recipient address (gate finding X9).
+      body: `${undisputed.creditorName} is flagged on your file. The letter builder pre-fills the recommended strategy.`,
       cta: "Start with this item",
       href: `/letters?tradeline=${undisputed.id}`,
       // "dispute-priority" (not bare "score") disambiguates this from a credit
@@ -248,7 +270,11 @@ function overnightFrom(events: KaiHomeData["recentEvents"]): OvernightItem[] {
         items.push({ text: `A bureau response was logged (outcome: ${String(p.outcome ?? "recorded")}).`, href: "/letters" });
         break;
       case "letter.mailed":
-        items.push({ text: `Round ${String(p.round ?? "")} to ${String(p.recipient ?? "the bureau")} is in the mail — the §611 clock is running.`, href: "/journey" });
+        // Phase 1A-R M4 (CCO adjudication): "is in the mail — the clock is
+        // running" made the same mailing-anchored false claim as M2/M3 (the
+        // clock starts on receipt, not mailing) — receipt-anchored to match
+        // the established idiom (lib/operatorSession.ts's accomplishmentOf).
+        items.push({ text: `Round ${String(p.round ?? "")} to ${String(p.recipient ?? "the bureau")} is in the mail — the §611 clock starts once the bureau receives it.`, href: "/journey" });
         break;
       case "letter.generated":
         items.push({ text: "A dispute letter was generated and is ready to mail.", href: "/letters" });
