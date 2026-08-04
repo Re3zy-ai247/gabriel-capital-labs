@@ -71,6 +71,38 @@ const read = (p: string) => readFileSync(join(root, p), "utf8");
   const quiet = pickMailBand(kai({}));
   ok("no recommendation, no deadlines → quiet, 'You're all caught up'", quiet.quiet === true && quiet.title === "You're all caught up");
   ok("quiet band carries no href/cta to click", quiet.href === "" && quiet.cta === "");
+
+  // F. Phase 1A-R RB-3: a READY_TO_PREPARE package (generated, zero members
+  // mailed) is reachable work — it must outrank the quiet fallback and the
+  // passive deadlines rung, but never override rung 1 (kaiHome's own
+  // /letters-subject pick) or rung 2 (kaiHome's own secondary note). This
+  // function still computes no ranking of its own — the count is data
+  // groupIntoPackages already produced.
+  const rtpOverQuiet = pickMailBand(kai({}), 2);
+  ok("RB-3: a READY_TO_PREPARE count > 0 overrides the quiet fallback", rtpOverQuiet.quiet === false && /ready to prepare/i.test(rtpOverQuiet.title));
+  ok("RB-3: 'You're all caught up' is impossible while READY_TO_PREPARE packages exist", rtpOverQuiet.title !== "You're all caught up");
+  ok("RB-3: the RTP rung names the count", /2/.test(rtpOverQuiet.title));
+  ok("RB-3: the RTP rung is basis-carrying, like every other rung", rtpOverQuiet.basis.length > 0);
+
+  const rtpOverDeadline = pickMailBand(kai({
+    recommendation: rec({ href: "/upload" }),
+    deadlines: [{ letterId: "l1", recipient: "Equifax", round: 1, daysElapsed: 10, daysLeft: 20 }],
+  }), 1);
+  ok("RB-3: RTP outranks the open-deadline rung (actionable-now beats watching-the-clock)",
+    /ready to prepare/i.test(rtpOverDeadline.title) && !/Equifax/.test(rtpOverDeadline.title));
+
+  const rtpUnderPrimary = pickMailBand(kai({ recommendation: rec({ title: "Escalate", body: "…", cta: "Go", href: "/letters", basis: "Rule: X" }) }), 3);
+  ok("RB-3: RTP never overrides rung 1 — kaiHome's own /letters-subject pick stays primary even with RTP packages waiting",
+    rtpUnderPrimary.title === "Escalate" && rtpUnderPrimary.scopeLabel === null);
+
+  const rtpUnderSecondary = pickMailBand(kai({
+    recommendation: rec({ href: "/upload", secondary: { label: "Still verified, no follow-up", href: "/letters" } }),
+  }), 4);
+  ok("RB-3 rung-order decision: kaiHome's own secondary/starvation note still outranks RTP (both are facts kaiHome's engine already computed; only the passive deadlines/quiet rungs are demoted)",
+    rtpUnderSecondary.title === "Still verified, no follow-up");
+
+  const rtpZero = pickMailBand(kai({}), 0);
+  ok("RB-3: zero READY_TO_PREPARE packages falls through exactly as before (quiet)", rtpZero.quiet === true && rtpZero.title === "You're all caught up");
 }
 
 // ==== 2. validateMailedAtInput — mark-mailed date capture (honesty triple c) =
@@ -105,6 +137,33 @@ const read = (p: string) => readFileSync(join(root, p), "utf8");
 
   const sameDayAsNow = validateMailedAtInput("2026-07-20", CREATED, NOW);
   ok("mailing 'today' (same calendar day as now) is accepted, not rejected as 'future'", sameDayAsNow.ok === true);
+
+  // Phase 1A-R RB-5 — the US-evening reproduction (Founder Experience Gate
+  // 1.0 §2): fixed `now`/`createdAt`, no Date.now(), deterministic. At
+  // 10:46pm EDT on Aug 3 (UTC-4), the wall clock reads Aug 4 02:46 UTC — the
+  // exact moment server-UTC "today" quietly becomes "tomorrow" for the
+  // operator. The letter was generated the same evening, also after the UTC
+  // midnight rollover (Aug 4 00:15 UTC = 8:15pm EDT) — the exact trap that
+  // made createdStart === todayStart and froze the old min=max picker.
+  const EVENING_NOW = Date.UTC(2026, 7, 4, 2, 46, 0);
+  const EVENING_CREATED = new Date(Date.UTC(2026, 7, 4, 0, 15, 0));
+
+  const trueLocalDate = validateMailedAtInput("2026-08-03", EVENING_CREATED, EVENING_NOW);
+  ok("RB-5: the operator's TRUE local date (Aug 3, 10:46pm EDT) is accepted even though the letter's createdAt fell on UTC Aug 4 — the exact reported defect",
+    trueLocalDate.ok === true);
+  ok("RB-5: an accepted date stores at UTC NOON of the entered calendar day, not midnight (display-safe in every US timezone)",
+    trueLocalDate.date?.toISOString() === "2026-08-03T12:00:00.000Z");
+
+  const utcTodayStillFine = validateMailedAtInput("2026-08-04", EVENING_CREATED, EVENING_NOW);
+  ok("RB-5: server-UTC 'today' (Aug 4) stays accepted too — tolerance only widens the window, it never narrows it", utcTodayStillFine.ok === true);
+
+  const genuineFuture = validateMailedAtInput("2026-08-05", EVENING_CREATED, EVENING_NOW);
+  ok("RB-5: a date no real timezone would call 'today' at this instant (Aug 5) is still rejected as future, even with tolerance",
+    genuineFuture.ok === false && /future/i.test(genuineFuture.error ?? ""));
+
+  const genuinePast = validateMailedAtInput("2026-08-02", EVENING_CREATED, EVENING_NOW);
+  ok("RB-5: a date before the letter's creation day, beyond tolerance, is still rejected",
+    genuinePast.ok === false && /generated/i.test(genuinePast.error ?? ""));
 }
 
 // ==== 3. Static: pickMailBand imports the shared engine, invents no ranking =

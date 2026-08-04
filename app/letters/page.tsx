@@ -403,7 +403,7 @@ function LettersInner() {
                     </Link>
                     <MarkMailedControl
                       onConfirm={(d) => setStatus(letter.id, "MAILED", d)}
-                      minDate={letter.createdAt?.slice(0, 10)}
+                      minDate={localDateOf(letter.createdAt)}
                       className="btn-ghost min-h-[44px] text-xs"
                     />
                     {/* Live mailing (MAIL_LIVE) is off during beta — this is a queue-for-later flow, honestly
@@ -503,8 +503,28 @@ function letterStoryline(l: SavedLetter): string | null {
   return null;
 }
 
+// Phase 1A-R RB-5: LOCAL calendar date, not UTC. `toISOString()` is always
+// UTC, so on a US evening (already past UTC midnight, still "today" for the
+// operator) it silently returns tomorrow's date — the exact bug that froze
+// the mark-mailed picker's min/max/value to one forced, un-editable value.
+// getFullYear/getMonth/getDate are local-time getters (unlike their UTC
+// counterparts), so this is the operator's own wall-clock calendar date.
+function localDateIso(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
 function todayIso(): string {
-  return new Date().toISOString().slice(0, 10);
+  return localDateIso(new Date());
+}
+// The letter's OWN creation day, in the OPERATOR's local timezone — mirrors
+// todayIso() above. `iso.slice(0, 10)` on the raw (UTC) timestamp string
+// would read the UTC calendar day, which is "tomorrow" for a US operator
+// working in the evening; that mismatch is what let min > the true local
+// today and froze the picker.
+function localDateOf(iso: string | null | undefined): string | undefined {
+  return iso ? localDateIso(new Date(iso)) : undefined;
 }
 
 // Phase 1A honesty triple (part c): the mark-mailed action prompts for the
@@ -728,7 +748,7 @@ function LetterRow({
                 >
                   <Download className="h-3.5 w-3.5" aria-hidden /> Review &amp; download package
                 </Link>
-                <MarkMailedControl onConfirm={(d) => onStatus(l.id, "MAILED", d)} minDate={l.createdAt?.slice(0, 10)} />
+                <MarkMailedControl onConfirm={(d) => onStatus(l.id, "MAILED", d)} minDate={localDateOf(l.createdAt)} />
                 {/* MAIL_LIVE off during beta — queue-for-later, de-emphasized so it never reads as already 'sent'. */}
                 <Link href={`/mail/send/${l.id}`} className="btn-ghost min-h-[44px] text-xs text-slate-400" title="Queue this dispute for CreditVector to mail once live mailing is switched on — nothing is charged or sent yet.">
                   <Send className="h-3.5 w-3.5" aria-hidden /> Mail via CreditVector (soon)

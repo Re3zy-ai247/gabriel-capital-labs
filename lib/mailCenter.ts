@@ -20,6 +20,12 @@ import {
 import { STRATEGY_BY_ID } from "@/lib/strategies";
 
 const DAY = 86_400_000;
+const HOUR = DAY / 24;
+// Phase 1A-R RB-5: the server never learns the operator's timezone, only a
+// "YYYY-MM-DD" string — so mailed-date validation tolerates the full
+// real-world UTC-offset span (Baker Island UTC-12 .. Kiribati UTC+14,
+// rounded out to ±14h) rather than assuming the server's own UTC "today".
+const TZ_TOLERANCE_MS = 14 * HOUR;
 
 // The subset of Letter fields the Mail Center reads (all already persisted).
 export interface MailLetter extends ForecastLetterInput {
@@ -457,9 +463,27 @@ export interface MailRecommendationBand {
 // ladder). This function computes NO ranking of its own — it only
 // re-presents fields getKaiHomeData already computed: `recommendation`
 // (pickRecommendation's single, fixed-priority pick) and `deadlines`
-// (deadlinesFrom's own nearest-first sort). Mirrors lib/operatorSession.ts's
-// consumerPriorities() — the same reuse pattern, shaped for a single band.
-export function pickMailBand(kai: Pick<KaiHomeData, "recommendation" | "deadlines">): MailRecommendationBand {
+// (deadlinesFrom's own nearest-first sort), plus (Phase 1A-R RB-3) a COUNT
+// groupIntoPackages already computed (READY_TO_PREPARE packages) — never a
+// re-ranking of which package matters most, just whether any exist. Mirrors
+// lib/operatorSession.ts's consumerPriorities() — the same reuse pattern,
+// shaped for a single band.
+//
+// RB-3 rung order (Founder Experience Gate 1.0 §2): a READY_TO_PREPARE
+// package — generated, zero members mailed — is reachable work a human can
+// act on RIGHT NOW (download, print, mail), so it must never be masked by
+// "You're all caught up" or by the passive, nothing-to-do-yet deadlines
+// rung below it. It is inserted between rung 2 (kaiHome's own secondary/
+// starvation note) and rung 3 (deadlines): rung 1 and rung 2 are both facts
+// kaiHome's OWN engine already ranked above everything else on the account
+// this cycle, so neither is demoted by a Mail-Center-local fact; the
+// deadlines queue and the quiet fallback are the two passive "nothing
+// needs you yet" states, and those are what actionable, ready-to-prepare
+// work correctly outranks.
+export function pickMailBand(
+  kai: Pick<KaiHomeData, "recommendation" | "deadlines">,
+  readyToPrepareCount = 0,
+): MailRecommendationBand {
   const rec = kai.recommendation;
   // The two kaiHome branches whose action IS an existing mailed dispute (a
   // verified response awaiting follow-up, or a lapsed §611 window) both
@@ -485,6 +509,20 @@ export function pickMailBand(kai: Pick<KaiHomeData, "recommendation" | "deadline
       cta: "Review",
       href: rec.secondary.href,
       basis: "Rule: kaiHome's own starvation-guard demotion note (lib/kaiHome.ts) — not a second ranking.",
+    };
+  }
+  // RB-3: reachable, actionable-now work this room already knows about
+  // (buildMailCenter's groupIntoPackages) — outranks the passive deadlines
+  // queue and the quiet fallback below, never rung 1 or rung 2 above.
+  if (readyToPrepareCount > 0) {
+    return {
+      quiet: false,
+      scopeLabel: "In the Mail Center:",
+      title: `${readyToPrepareCount} package${readyToPrepareCount === 1 ? "" : "s"} ready to prepare`,
+      sub: "Generated, not mailed yet — review, download, and mail to start the §611 clock.",
+      cta: "Review",
+      href: "/letters",
+      basis: "Rule: a package with zero mailed members (READY_TO_PREPARE, lib/mailCenter.ts's groupIntoPackages) is reachable work, ranked above the passive deadlines wait and the quiet state.",
     };
   }
   const nearest = kai.deadlines[0] ?? null;
@@ -514,10 +552,23 @@ export interface MailedAtValidation {
 // stamping "now" — every §611 estimate above anchors on this date, so an
 // inaccurate stamp would propagate everywhere. Accepts a plain "YYYY-MM-DD"
 // (what an <input type="date"> sends); missing/empty defaults to today
-// (unchanged behavior for callers that don't send one). Compares CALENDAR
-// DAYS in UTC, not exact timestamps, so a same-day mailing is never rejected
-// just because the letter was generated later the same day (mirrors
-// lib/utils.ts's own UTC-day convention for calendar dates).
+// (unchanged behavior for callers that don't send one).
+//
+// Phase 1A-R RB-5: the date is the OPERATOR's local calendar date — the
+// server sees only the "YYYY-MM-DD" string, never the operator's timezone.
+// Bounds are computed in UTC-day space with a ±14h timezone-tolerance
+// window (TZ_TOLERANCE_MS, the full real-world UTC-offset span) applied to
+// the RAW instant BEFORE flooring to a UTC day — not after. Flooring first
+// and then padding the already-floored day by a flat ±1 day would be wrong
+// in both directions: it can admit a date no real timezone would produce
+// when `now`/`createdAt` sits early in its own UTC day (the day-floor
+// already "used up" its slack), and it can still reject a date that's
+// honestly "today" or "the creation day" somewhere real when `now`/
+// `createdAt` sits late in its own UTC day. Shifting first and flooring
+// second is the exact reachable-calendar-day boundary for any offset in
+// [-14h, +14h], so it can't reject a date valid in some real timezone, and
+// can't accept one that's invalid in all of them.
+const utcDayStart = (d: Date) => Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
 export function validateMailedAtInput(raw: unknown, createdAt: Date | string, now: number = Date.now()): MailedAtValidation {
   if (raw == null || raw === "") return { ok: true, date: new Date(now), error: null };
   if (typeof raw !== "string") return { ok: false, date: null, error: "That mailing date isn't valid." };
@@ -526,12 +577,21 @@ export function validateMailedAtInput(raw: unknown, createdAt: Date | string, no
   const parsed = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
   if (isNaN(parsed.getTime())) return { ok: false, date: null, error: "That mailing date isn't valid." };
 
-  const utcDayStart = (d: Date) => Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
-  const todayStart = utcDayStart(new Date(now));
-  const createdStart = utcDayStart(typeof createdAt === "string" ? new Date(createdAt) : createdAt);
-  if (parsed.getTime() > todayStart) return { ok: false, date: null, error: "The mailing date can't be in the future." };
-  if (parsed.getTime() < createdStart) return { ok: false, date: null, error: "The mailing date can't be before this letter was generated." };
-  return { ok: true, date: parsed, error: null };
+  const createdAtDate = typeof createdAt === "string" ? new Date(createdAt) : createdAt;
+  const futureLimit = utcDayStart(new Date(now + TZ_TOLERANCE_MS));
+  const pastLimit = utcDayStart(new Date(createdAtDate.getTime() - TZ_TOLERANCE_MS));
+  if (parsed.getTime() > futureLimit) return { ok: false, date: null, error: "The mailing date can't be in the future." };
+  if (parsed.getTime() < pastLimit) return { ok: false, date: null, error: "The mailing date can't be before this letter was generated." };
+
+  // Store at UTC NOON of the entered calendar date, never UTC midnight.
+  // Every US timezone (UTC-4 EDT .. UTC-10 HST) is within 12h of UTC, so a
+  // noon-UTC instant always falls back on the SAME calendar date when a
+  // display formatter reads it with local (not UTC) getters — midnight-UTC
+  // is exactly what silently shifts a day backward in every US timezone
+  // (the RB-5 display defect). This is the storage-side fix; no display
+  // formatter needs to change (lib/mailCenter.ts's own dateLabel() and every
+  // other toLocaleDateString() caller already format in local time).
+  return { ok: true, date: new Date(parsed.getTime() + 12 * HOUR), error: null };
 }
 
 export interface MailCenter { rows: MailCenterRow[]; stats: MailDashboardStats; packages: MailPackage[]; }

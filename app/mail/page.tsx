@@ -57,13 +57,16 @@ export default async function MailCenterPage() {
   }));
 
   const { packages, stats } = buildMailCenter(letters);
-  const band = pickMailBand(kai);
   // Phase 1A F1: split into two honestly-distinct groups for rendering — a
   // package that hasn't been mailed at all yet (READY_TO_PREPARE) never
   // mixes with genuinely in-mail packages, so "ready to prepare" can never
   // be mistaken for a live §611 health signal.
   const readyPackages = packages.filter((p) => p.health === "READY_TO_PREPARE");
   const inMailPackages = packages.filter((p) => p.health !== "READY_TO_PREPARE");
+  // Phase 1A-R RB-3: the band gets the READY_TO_PREPARE count computed above
+  // (groupIntoPackages' own health, not a re-ranking) so it can never say
+  // "all caught up" while ready-to-prepare work sits in the very same room.
+  const band = pickMailBand(kai, readyPackages.length);
 
   const manifestByLetter = new Map<string, MailStatus>();
   for (const m of manifests) if (m.letterId) manifestByLetter.set(m.letterId, m.status);
