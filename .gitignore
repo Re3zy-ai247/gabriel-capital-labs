@@ -41,3 +41,4 @@ yarn-error.log*
 health-report.txt
 health-summary.txt
 audit.json
+.gstack/
