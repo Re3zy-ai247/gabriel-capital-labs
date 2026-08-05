@@ -1,0 +1,1094 @@
+/* ==========================================================================
+   Gabriel Capital Labs — global stylesheet
+   Design tokens + reset + section styles. Hand-rolled CSS, no framework.
+   ========================================================================== */
+
+:root {
+  /* Brand palette (locked — brand/web/gcl-brand-tokens.json) */
+  --gcl-deep-obsidian: #060608;
+  --gcl-obsidian: #0b0d10;
+  --gcl-charcoal: #0f1012;
+  --gcl-stone-silver: #b7b7b7;
+  --gcl-steel: #a7a9ac;
+  --gcl-platinum: #e6e6e6;
+  --gcl-gateway-gold: #d4a146;
+  --gcl-gateway-gold-dim: rgba(212, 161, 70, 0.35);
+
+  --gcl-font-display: var(--font-inter), "Helvetica Neue", Arial, sans-serif;
+
+  /* Layout */
+  --gcl-container-max: 1440px;
+  --gcl-gutter: clamp(1.25rem, 4vw, 4rem);
+  --gcl-section-pad-y: clamp(4rem, 12vw, 9rem);
+
+  /* Motion */
+  --gcl-ease-out: cubic-bezier(0.16, 0.84, 0.44, 1);
+  --gcl-ease-inout: cubic-bezier(0.65, 0, 0.35, 1);
+
+  color-scheme: dark;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--gcl-deep-obsidian);
+  scroll-behavior: auto;
+}
+
+body {
+  margin: 0;
+  background: var(--gcl-deep-obsidian);
+  color: var(--gcl-stone-silver);
+  font-family: var(--gcl-font-display);
+  font-weight: 400;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow-x: clip;
+}
+
+img,
+picture,
+video {
+  display: block;
+  max-width: 100%;
+}
+
+a {
+  color: inherit;
+}
+
+button {
+  font-family: inherit;
+  color: inherit;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Respect the platform */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ==========================================================================
+   Accessibility utilities
+   ========================================================================== */
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skip-link {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1000;
+  transform: translateY(-120%);
+  background: var(--gcl-gateway-gold);
+  color: var(--gcl-deep-obsidian);
+  font-weight: 500;
+  padding: 0.9rem 1.5rem;
+  text-decoration: none;
+  transition: transform 0.2s var(--gcl-ease-out);
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+}
+
+:focus-visible {
+  outline: 2px solid var(--gcl-gateway-gold);
+  outline-offset: 3px;
+}
+
+.container {
+  max-width: var(--gcl-container-max);
+  margin-inline: auto;
+  padding-inline: var(--gcl-gutter);
+}
+
+/* Offset anchor-nav scroll targets so the fixed nav never covers the
+   chapter mark at the top of a section. */
+main > section[id] {
+  scroll-margin-top: 84px;
+}
+
+/* ==========================================================================
+   Chapter mark system — shared across sections 2‑7 (Swiss grid, hairline rules)
+   ========================================================================== */
+
+.chapter-mark {
+  display: flex;
+  align-items: baseline;
+  gap: 1rem;
+  font-size: clamp(0.7rem, 1vw, 0.85rem);
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--gcl-steel);
+  font-weight: 400;
+}
+
+.chapter-mark::before {
+  content: "";
+  display: inline-block;
+  width: 2.5rem;
+  height: 1px;
+  background: var(--gcl-gateway-gold);
+}
+
+.hairline {
+  border: 0;
+  border-top: 1px solid rgba(183, 183, 183, 0.16);
+  margin: 0;
+}
+
+.hairline-v {
+  position: absolute;
+  top: 0;
+  width: 1px;
+  height: 0%;
+  background: rgba(212, 161, 70, 0.55);
+}
+
+/* ==========================================================================
+   Nav
+   ========================================================================== */
+
+.nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.1rem var(--gcl-gutter);
+  background: linear-gradient(to bottom, rgba(6, 6, 8, 0.92), rgba(6, 6, 8, 0));
+  opacity: 0;
+  transform: translateY(-12px);
+  pointer-events: none;
+  transition: opacity 0.6s var(--gcl-ease-out), transform 0.6s var(--gcl-ease-out);
+}
+
+.nav--visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.nav__brand {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  text-decoration: none;
+  min-height: 44px;
+}
+
+.nav__brand-mark {
+  width: 22px;
+  height: auto;
+}
+
+.nav__brand-word {
+  font-size: 0.72rem;
+  letter-spacing: 0.28em;
+  color: var(--gcl-platinum);
+  font-weight: 300;
+  text-transform: uppercase;
+}
+
+.nav__links {
+  display: none;
+  gap: clamp(1rem, 2.5vw, 2.25rem);
+}
+
+@media (min-width: 860px) {
+  .nav__links {
+    display: flex;
+  }
+}
+
+.nav__link {
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--gcl-steel);
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  transition: color 0.25s var(--gcl-ease-out);
+}
+
+.nav__link:hover,
+.nav__link:focus-visible {
+  color: var(--gcl-gateway-gold);
+}
+
+/* ==========================================================================
+   Chapter 1 — Arrival
+   ========================================================================== */
+
+.arrival {
+  position: relative;
+  min-height: 100svh;
+  background: var(--gcl-deep-obsidian);
+}
+
+.arrival__pin {
+  position: relative;
+  min-height: 100svh;
+  width: 100%;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.arrival__glow {
+  position: absolute;
+  left: 50%;
+  bottom: -10%;
+  width: min(90vw, 1100px);
+  height: 60%;
+  transform: translateX(-50%);
+  background: radial-gradient(
+    ellipse at center,
+    rgba(212, 161, 70, 0.34) 0%,
+    rgba(212, 161, 70, 0.14) 32%,
+    rgba(212, 161, 70, 0) 68%
+  );
+  opacity: 0;
+  pointer-events: none;
+}
+
+.arrival__stage {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: clamp(1.25rem, 3vw, 2.25rem);
+  padding: 0 var(--gcl-gutter);
+  max-width: 62rem;
+}
+
+.arrival__mark-wrap {
+  opacity: 0;
+  transform: translateY(18px) scale(1.04);
+  width: clamp(120px, 22vw, 220px);
+}
+
+.arrival__mark {
+  width: 100%;
+  height: auto;
+}
+
+.arrival__wordmark {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.arrival__wordmark-top {
+  opacity: 0;
+  font-size: clamp(1.9rem, 6.5vw, 4rem);
+  font-weight: 300;
+  letter-spacing: 0.32em;
+  color: var(--gcl-platinum);
+  text-transform: uppercase;
+  margin-inline-start: 0.32em; /* optical centering for letter-spacing */
+}
+
+.arrival__wordmark-bottom {
+  opacity: 0;
+  display: flex;
+  align-items: center;
+  gap: clamp(0.6rem, 2vw, 1.1rem);
+  font-size: clamp(0.85rem, 2.2vw, 1.15rem);
+  font-weight: 400;
+  letter-spacing: 0.34em;
+  color: var(--gcl-gateway-gold);
+  text-transform: uppercase;
+}
+
+.arrival__wordmark-bottom::before,
+.arrival__wordmark-bottom::after {
+  content: "";
+  width: clamp(1.25rem, 4vw, 3rem);
+  height: 1px;
+  background: var(--gcl-gateway-gold);
+}
+
+.arrival__tagline {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.arrival__tagline-line {
+  opacity: 0;
+  font-size: clamp(0.95rem, 2.3vw, 1.25rem);
+  font-weight: 300;
+  color: var(--gcl-steel);
+}
+
+.arrival__cue {
+  position: absolute;
+  bottom: clamp(1.5rem, 4vh, 3rem);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  opacity: 0;
+  color: var(--gcl-steel);
+}
+
+.arrival__cue-line {
+  width: 1px;
+  height: 34px;
+  background: linear-gradient(to bottom, rgba(183, 183, 183, 0), var(--gcl-steel));
+}
+
+.arrival__cue-label {
+  font-size: 0.62rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+}
+
+.arrival__skip {
+  position: absolute;
+  top: clamp(1rem, 3vh, 1.75rem);
+  right: clamp(1rem, 4vw, 2rem);
+  z-index: 20;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0.6rem 1.1rem;
+  background: transparent;
+  border: 1px solid rgba(183, 183, 183, 0.35);
+  color: var(--gcl-stone-silver);
+  font-size: 0.7rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: border-color 0.25s var(--gcl-ease-out), color 0.25s var(--gcl-ease-out);
+}
+
+.arrival__skip:hover,
+.arrival__skip:focus-visible {
+  border-color: var(--gcl-gateway-gold);
+  color: var(--gcl-gateway-gold);
+}
+
+.arrival__skip[hidden] {
+  display: none;
+}
+
+.arrival__replay {
+  position: absolute;
+  bottom: clamp(1rem, 3vh, 1.75rem);
+  left: clamp(1rem, 4vw, 2rem);
+  z-index: 20;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0.6rem 1.1rem;
+  background: transparent;
+  border: 1px solid rgba(183, 183, 183, 0.35);
+  color: var(--gcl-stone-silver);
+  font-size: 0.7rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transition: border-color 0.25s var(--gcl-ease-out), color 0.25s var(--gcl-ease-out),
+    opacity 0.4s var(--gcl-ease-out);
+}
+
+.arrival__replay--visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.arrival__replay:hover,
+.arrival__replay:focus-visible {
+  border-color: var(--gcl-gateway-gold);
+  color: var(--gcl-gateway-gold);
+}
+
+/* Reduced motion / already-seen / no-JS: everything simply visible, no transforms.
+   This CSS rule is the guarantee — it does not depend on JS running. */
+.arrival--static .arrival__glow,
+.arrival--static .arrival__mark-wrap,
+.arrival--static .arrival__wordmark-top,
+.arrival--static .arrival__wordmark-bottom,
+.arrival--static .arrival__tagline-line,
+.arrival--static .arrival__cue {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .arrival__glow,
+  .arrival__mark-wrap,
+  .arrival__wordmark-top,
+  .arrival__wordmark-bottom,
+  .arrival__tagline-line,
+  .arrival__cue {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
+/* ==========================================================================
+   Chapter 2 — The Institution
+   ========================================================================== */
+
+.institution {
+  position: relative;
+  background: linear-gradient(to bottom, var(--gcl-deep-obsidian), var(--gcl-charcoal));
+  padding-block: var(--gcl-section-pad-y);
+  overflow: hidden;
+}
+
+.institution__grid {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: var(--gcl-gutter);
+}
+
+.institution__mark {
+  grid-column: 1 / -1;
+  margin-bottom: clamp(2rem, 6vw, 4rem);
+}
+
+.institution__heading {
+  grid-column: 1 / -1;
+  font-size: clamp(1.6rem, 4.6vw, 3.4rem);
+  font-weight: 300;
+  line-height: 1.28;
+  color: var(--gcl-platinum);
+  max-width: 52rem;
+}
+
+@media (min-width: 960px) {
+  .institution__heading {
+    grid-column: 2 / span 9;
+  }
+  .institution__paragraphs {
+    grid-column: 6 / span 6;
+  }
+}
+
+.institution__heading-line {
+  display: block;
+  overflow: hidden;
+}
+
+.institution__heading-line span {
+  display: block;
+  transform: translateY(110%);
+}
+
+.institution__paragraphs {
+  grid-column: 1 / -1;
+  margin-top: clamp(2.5rem, 6vw, 4rem);
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  max-width: 34rem;
+}
+
+.institution__paragraphs p {
+  font-size: clamp(0.95rem, 1.4vw, 1.05rem);
+  color: var(--gcl-stone-silver);
+}
+
+.institution__rule-v {
+  position: absolute;
+  top: 0;
+  left: 4%;
+  width: 1px;
+  height: 100%;
+  background: rgba(183, 183, 183, 0.14);
+  display: none;
+}
+
+@media (min-width: 960px) {
+  .institution__rule-v {
+    display: block;
+  }
+}
+
+.institution__rule-v-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 0%;
+  background: var(--gcl-gateway-gold);
+}
+
+/* ==========================================================================
+   Chapter 3 — Mission Architecture
+   ========================================================================== */
+
+.mission {
+  position: relative;
+  background: var(--gcl-charcoal);
+  padding-block: var(--gcl-section-pad-y);
+}
+
+.mission__header {
+  margin-bottom: clamp(3rem, 8vw, 6rem);
+}
+
+.mission__body {
+  position: relative;
+}
+
+.mission__connector {
+  position: absolute;
+  left: 1.4rem;
+  top: 0;
+  width: 2px;
+  height: 100%;
+  pointer-events: none;
+}
+
+@media (min-width: 960px) {
+  .mission__connector {
+    left: 50%;
+    transform: translateX(-50%);
+  }
+}
+
+.mission__connector-path {
+  stroke: var(--gcl-gateway-gold);
+  stroke-width: 1.5;
+  fill: none;
+}
+
+.mission__pillar {
+  position: relative;
+  padding-block: clamp(2.5rem, 7vw, 5rem);
+  padding-left: 3.5rem;
+}
+
+@media (min-width: 960px) {
+  .mission__pillar {
+    width: 60%;
+    padding-left: 0;
+  }
+  .mission__pillar--right {
+    margin-left: 40%;
+  }
+}
+
+.mission__pillar-numeral {
+  font-size: 0.75rem;
+  letter-spacing: 0.2em;
+  color: var(--gcl-gateway-gold);
+  margin-bottom: 0.75rem;
+  display: block;
+}
+
+.mission__pillar-title {
+  font-size: clamp(1.6rem, 7vw, 3.75rem);
+  font-weight: 300;
+  letter-spacing: 0.04em;
+  color: var(--gcl-platinum);
+  margin-bottom: 1rem;
+}
+
+.mission__pillar-def {
+  max-width: 30rem;
+  color: var(--gcl-stone-silver);
+  font-size: clamp(0.95rem, 1.4vw, 1.1rem);
+}
+
+/* ==========================================================================
+   Chapter 4 — Ecosystem Architecture
+   ========================================================================== */
+
+.ecosystem {
+  position: relative;
+  background: var(--gcl-obsidian);
+  padding-block: var(--gcl-section-pad-y);
+}
+
+.ecosystem__header {
+  margin-bottom: clamp(2.5rem, 6vw, 4.5rem);
+}
+
+.ecosystem__intro {
+  font-size: clamp(1.1rem, 2vw, 1.4rem);
+  color: var(--gcl-platinum);
+  font-weight: 300;
+  margin-top: 1rem;
+}
+
+.ecosystem__wing {
+  position: relative;
+  padding-block: clamp(2.75rem, 7vw, 5rem);
+  border-top: 1px solid rgba(183, 183, 183, 0.14);
+  clip-path: inset(0 0 0 0);
+}
+
+.ecosystem__wing:first-of-type {
+  border-top: none;
+}
+
+.ecosystem__wing-top {
+  display: flex;
+  align-items: baseline;
+  gap: 1.25rem;
+  margin-bottom: 1rem;
+}
+
+.ecosystem__wing-numeral {
+  font-size: 0.8rem;
+  letter-spacing: 0.18em;
+  color: var(--gcl-steel);
+}
+
+.ecosystem__wing-name {
+  font-size: clamp(1.6rem, 6vw, 3.6rem);
+  font-weight: 300;
+  letter-spacing: 0.08em;
+  color: var(--gcl-platinum);
+  text-transform: uppercase;
+}
+
+.ecosystem__wing-designation {
+  font-size: clamp(0.95rem, 1.6vw, 1.15rem);
+  color: var(--gcl-stone-silver);
+  margin-bottom: 0.85rem;
+}
+
+.ecosystem__wing-status {
+  font-size: 0.7rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gcl-gateway-gold);
+  margin-bottom: 0.85rem;
+  display: inline-block;
+}
+
+.ecosystem__wing-desc {
+  max-width: 40rem;
+  color: var(--gcl-stone-silver);
+  font-size: 0.98rem;
+  margin-bottom: 0.75rem;
+}
+
+.ecosystem__wing-link {
+  color: var(--gcl-platinum);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  font-size: 0.95rem;
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+}
+
+.ecosystem__wing-link:hover,
+.ecosystem__wing-link:focus-visible {
+  color: var(--gcl-gateway-gold);
+}
+
+/* ==========================================================================
+   Chapter 5 — The Lab
+   ========================================================================== */
+
+.lab {
+  position: relative;
+  background: var(--gcl-charcoal);
+  padding-block: var(--gcl-section-pad-y);
+  overflow: hidden;
+}
+
+.lab__grid-bg {
+  position: absolute;
+  inset: 0;
+  opacity: 0.03;
+  background-image: linear-gradient(rgba(183, 183, 183, 1) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(183, 183, 183, 1) 1px, transparent 1px);
+  background-size: 64px 64px;
+  pointer-events: none;
+}
+
+.lab__header {
+  position: relative;
+  margin-bottom: clamp(2.5rem, 6vw, 4.5rem);
+}
+
+.lab__intro {
+  font-size: clamp(1.1rem, 2vw, 1.4rem);
+  color: var(--gcl-platinum);
+  font-weight: 300;
+  margin-top: 1rem;
+}
+
+.lab__index {
+  position: relative;
+}
+
+.lab__row {
+  display: grid;
+  grid-template-columns: 3.5rem 1fr;
+  align-items: baseline;
+  gap: 1.25rem;
+  padding-block: 1.25rem;
+  border-top: 1px solid rgba(183, 183, 183, 0.14);
+  opacity: 0;
+  transform: translateY(14px);
+}
+
+.lab__row:last-child {
+  border-bottom: 1px solid rgba(183, 183, 183, 0.14);
+}
+
+@media (min-width: 720px) {
+  .lab__row {
+    grid-template-columns: 5rem 1fr;
+  }
+}
+
+.lab__row-numeral {
+  font-size: 0.85rem;
+  color: var(--gcl-gateway-gold);
+  letter-spacing: 0.1em;
+}
+
+.lab__row-title {
+  font-size: clamp(1.15rem, 2.4vw, 1.7rem);
+  font-weight: 300;
+  color: var(--gcl-platinum);
+}
+
+/* ==========================================================================
+   Chapter 6 — Principles
+   ========================================================================== */
+
+.principles {
+  position: relative;
+  background: var(--gcl-deep-obsidian);
+}
+
+.principles__pin {
+  height: 100svh;
+  min-height: 520px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.principles__header {
+  position: absolute;
+  top: clamp(2rem, 6vh, 4rem);
+  left: 0;
+  right: 0;
+  text-align: center;
+}
+
+.principles__item {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 0 var(--gcl-gutter);
+  opacity: 0;
+  transition: opacity 0.5s var(--gcl-ease-out);
+}
+
+.principles__item--active {
+  opacity: 1;
+}
+
+.principles__item-numeral {
+  font-size: 0.8rem;
+  letter-spacing: 0.2em;
+  color: var(--gcl-steel);
+  margin-bottom: 1rem;
+}
+
+.principles__item-title {
+  font-size: clamp(1.9rem, 7vw, 5rem);
+  font-weight: 300;
+  color: var(--gcl-gateway-gold);
+  letter-spacing: 0.05em;
+  margin-bottom: 1rem;
+  text-transform: uppercase;
+}
+
+.principles__item-statement {
+  font-size: clamp(1.1rem, 2.6vw, 1.6rem);
+  font-weight: 300;
+  color: var(--gcl-platinum);
+}
+
+.principles__progress {
+  position: absolute;
+  bottom: clamp(2rem, 6vh, 3.5rem);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.principles__progress-track {
+  width: clamp(140px, 24vw, 240px);
+  height: 1px;
+  background: rgba(183, 183, 183, 0.24);
+  position: relative;
+}
+
+.principles__progress-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  background: var(--gcl-gateway-gold);
+  width: 20%;
+}
+
+.principles__progress-label {
+  font-size: 0.7rem;
+  letter-spacing: 0.14em;
+  color: var(--gcl-steel);
+  white-space: nowrap;
+}
+
+/* Reduced motion: static stacked list */
+.principles--static .principles__pin {
+  position: static;
+  height: auto;
+  display: block;
+  padding-block: var(--gcl-section-pad-y);
+}
+
+.principles--static .principles__item {
+  position: static;
+  opacity: 1;
+  padding-block: clamp(2rem, 6vw, 3.5rem);
+  border-top: 1px solid rgba(183, 183, 183, 0.14);
+}
+
+.principles--static .principles__progress {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .principles__pin {
+    position: static !important;
+    height: auto !important;
+    display: block !important;
+    padding-block: var(--gcl-section-pad-y);
+  }
+  .principles__item {
+    position: static !important;
+    opacity: 1 !important;
+    padding-block: clamp(2rem, 6vw, 3.5rem);
+    border-top: 1px solid rgba(183, 183, 183, 0.14);
+  }
+  .principles__progress {
+    display: none !important;
+  }
+}
+
+/* ==========================================================================
+   Chapter 7 — Engagement + Footer
+   ========================================================================== */
+
+.engagement {
+  position: relative;
+  background: var(--gcl-deep-obsidian);
+  padding-block: var(--gcl-section-pad-y);
+  overflow: hidden;
+  text-align: center;
+}
+
+.engagement__glow {
+  position: absolute;
+  left: 50%;
+  bottom: -20%;
+  width: min(80vw, 900px);
+  height: 50%;
+  transform: translateX(-50%);
+  background: radial-gradient(
+    ellipse at center,
+    rgba(212, 161, 70, 0.22) 0%,
+    rgba(212, 161, 70, 0.08) 40%,
+    rgba(212, 161, 70, 0) 70%
+  );
+  pointer-events: none;
+}
+
+.engagement__mark {
+  position: relative;
+  width: clamp(56px, 8vw, 96px);
+  margin: 0 auto clamp(1.5rem, 4vw, 2.5rem);
+}
+
+.engagement__heading {
+  position: relative;
+  font-size: clamp(2rem, 6vw, 3.75rem);
+  font-weight: 300;
+  color: var(--gcl-platinum);
+  max-width: 46rem;
+  margin: 0 auto clamp(2.5rem, 6vw, 4rem);
+}
+
+.engagement__categories {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  max-width: 34rem;
+  margin: 0 auto;
+}
+
+.engagement__category {
+  width: 100%;
+  border-top: 1px solid rgba(183, 183, 183, 0.14);
+}
+
+.engagement__category:last-child {
+  border-bottom: 1px solid rgba(183, 183, 183, 0.14);
+}
+
+.engagement__category-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.1rem 0.25rem;
+  min-height: 44px;
+  text-decoration: none;
+  color: var(--gcl-stone-silver);
+  font-size: clamp(0.95rem, 1.6vw, 1.1rem);
+  transition: color 0.25s var(--gcl-ease-out);
+}
+
+.engagement__category-link:hover,
+.engagement__category-link:focus-visible {
+  color: var(--gcl-gateway-gold);
+}
+
+.engagement__category-label {
+  color: var(--gcl-platinum);
+  font-weight: 400;
+}
+
+.engagement__category-desc {
+  font-size: 0.8rem;
+  color: var(--gcl-steel);
+  text-align: right;
+}
+
+.footer {
+  position: relative;
+  background: var(--gcl-deep-obsidian);
+  border-top: 1px solid rgba(183, 183, 183, 0.14);
+  padding-block: clamp(2.5rem, 6vw, 4rem);
+}
+
+.footer__inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+}
+
+.footer__lockup {
+  width: clamp(36px, 4vw, 48px);
+  height: auto;
+  opacity: 0.9;
+}
+
+.footer__legal {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-size: 0.78rem;
+  color: var(--gcl-steel);
+}
+
+.footer__legal strong {
+  color: var(--gcl-stone-silver);
+  font-weight: 400;
+}
+
+.footer__links {
+  display: flex;
+  align-items: center;
+  gap: clamp(1rem, 3vw, 2rem);
+  flex-wrap: wrap;
+}
+
+.footer__link {
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+  color: var(--gcl-steel);
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.footer__link:hover,
+.footer__link:focus-visible {
+  color: var(--gcl-gateway-gold);
+}
