@@ -6,15 +6,16 @@
 **Date:** 2026-07-31
 **Status:** Working specification for design, implementation planning, review, and QA
 
-> This document is not a constitution, architecture approval, merge approval, or production authorization. It organizes the current CXOS foundation, the Founder-approved Phase 5.2 and Phase 5.3 experience direction, and the Founder-directed Phase 6.2 Agency Command contextual-intelligence refinement into one usable review standard. Canonical repository governance and separate release approvals still control.
+> This document is not merge approval or production authorization. It organizes the current CXOS foundation, the Founder-approved Phase 5.2, Phase 5.3, and Phase 6.2 experience direction, plus the Founder-authorized CXOS Core Runtime architecture, into one usable review standard. Canonical repository governance and separate release approvals still control.
 
 ## 1. Truth labels and boundary
 
 Every law in this document carries one of four meanings:
 
 - **FOUNDATION** — established by `CXOS_FOUNDATION.md`.
-- **APPROVED DIRECTION** — reviewed and approved through the Phase 5.2 and Phase 5.3 Founder experience review.
+- **APPROVED DIRECTION** — reviewed and approved through the Phase 5.2, Phase 5.3, and Phase 6.2 Founder experience reviews.
 - **PROPOSED EXTENSION** — a design direction suitable for a synthetic Founder prototype, but not yet production-approved.
+- **RUNTIME CONTRACT** — shared deterministic presentation infrastructure approved for local implementation; it owns lifecycle state, never room facts or effects.
 - **RELEASE GATE** — evidence required before a reviewed delta may proceed to a separately authorized integration or deployment step.
 
 Source set:
@@ -25,16 +26,20 @@ Source set:
 - Phase 6 Agency Command design-plan audit
 - Founder Phase 6.1 Living Agency Command refinement directive (2026-07-31)
 - Founder Phase 6.2 contextual Kai command-surface directive (2026-07-31)
+- Founder approval of the Phase 6.2 Agency Headquarters architecture and authorization of CXOS Core Runtime (2026-07-31)
+- `.ai/ADR/ADR-0040-cxos-core-runtime.md`
 
 This specification does not authorize:
 
 - a wholesale merge of a historical feature branch;
+- a branch push or Vercel Preview deployment;
 - production deployment, promotion, or alias changes;
 - database, Prisma, migration, backend, auth, billing, or environment changes;
 - dependency additions;
+- migration of Mission Control, the Passage, the Arena, the landing journey, or any future room;
 - claims that synthetic fixtures, proposed rooms, or review controls are live product capabilities.
 
-**Branch-lineage disclosure:** current Phase 6 Founder-preview work is being prepared on `feat/cxos-phase3`. A Preview from that branch contains the branch’s full historical state, not an isolated production-integration patch. Neither this specification nor a Preview approval authorizes merging that branch wholesale.
+**Branch-lineage disclosure:** Founder review of the Phase 6.2 room baseline at `a40a41c5a76028ad5cae2ff655c5bf168fb86a4a` is complete. The Core Runtime extraction on `feat/cxos-phase3` is currently a local, uncommitted, unpushed delta and has not been Preview-deployed. Any later Preview from that branch would contain the branch’s full historical state, not an isolated production-integration patch. Neither this specification nor a later Preview approval would authorize merging that branch wholesale.
 
 ## 2. The facility model
 
@@ -124,7 +129,7 @@ Primary truth and action define the center of gravity. Evidence and status subst
 
 ### 2.6 Five governing experience laws
 
-**APPROVED DIRECTION · PROPOSED PHASE 6.2 APPLICATION**
+**APPROVED DIRECTION**
 
 These five laws govern Agency Command’s Phase 6.2 language release and every later operating-room proposal. They do not claim that Mission Control or any future room has already been modified.
 
@@ -160,6 +165,7 @@ The source domain owns canonical facts. Kai interprets and prepares; the operato
 
 ### 2.7 Phase 6.2 application and future governance
 
+- Agency Headquarters Phase 6.2 is architecturally approved and serves as the first Core Runtime reference consumer. This approval freezes its room architecture; it does not authorize continued Agency-specific visual redesign.
 - Agency Command applies **observable heartbeat** through deterministic client-flow positions, capacity horizons, workload pressure, response-aging markers, evidence coverage, and disclosed bottlenecks. Phase 6.1 established this application; Phase 6.2 preserves it.
 - Agency Command applies **deliberate arrival and exit** through its bounded identity-to-Kai settle and its acknowledged Mission Control return, with immediate complete Tier C/D and reduced-motion alternatives.
 - Agency Command applies **spatial internal operating districts** through the Executive Brief, heartbeat field, priority ledger, portfolio ledger, health/capacity banks, and contextual Kai command district.
@@ -169,6 +175,41 @@ The source domain owns canonical facts. Kai interprets and prepares; the operato
 - Every future room must document its five-law mapping, canonical sources, ownership boundary, maximum continuous-motion channels, complete static equivalent, authorization model, and failure behavior before implementation.
 - No governing law changes a metric, rank, label, record, deadline, assignment, ownership boundary, or outcome merely to create atmosphere or personalization.
 
+### 2.8 CXOS Core Runtime inheritance
+
+**RUNTIME CONTRACT · FOUNDER-AUTHORIZED 2026-07-31 · ADR-0040**
+
+When separately authorized, major operating rooms must inherit one headless CXOS Core Runtime rather than reimplementing facility mechanics independently.
+
+The runtime owns:
+
+- arrival, settled-operation, and departure phase;
+- bounded environmental-heartbeat state;
+- spatial transition and district activation state;
+- native-scroll observation and focus handoff;
+- environmental-lighting and atmospheric state tokens;
+- Kai-presence and district-context state only;
+- shared motion-tier, hidden-document, reduced-motion, and static-equivalence policy;
+- shared accessibility lifecycle behavior, including Escape, replay, focus, and native-navigation preservation.
+
+The room owns:
+
+- canonical data, calculations, receipts, permissions, and outcomes;
+- semantic DOM, district purpose and order, visual architecture, copy, CSS, instruments, and atmospheric rendering;
+- Kai intent, recommendations, commands, persistence boundaries, and any authorized actions;
+- destination and route semantics, APIs, storage, authentication, billing, and owning-system integration.
+
+Runtime inheritance laws:
+
+1. The runtime is headless and may never render a generic room or centralize room-specific visuals.
+2. Invalid contracts resolve to a complete Tier D static document with no active heartbeat, atmosphere, scroll choreography, or claimed Kai availability.
+3. Truth and motion fail closed; local navigation fails open to the real semantic destination.
+4. A motion-capable room declares one to three continuous transform/opacity motion channels; Tier C, Tier D, reduced-motion, and invalid projections activate zero. Semantic signals never mutate canonical values for appearance.
+5. Missing browser capabilities preserve the complete document and explicit navigation.
+6. Kai Presence Runtime conveys bounded presence/context only. It owns no memory, model, customer fact, authorization, or effect.
+7. Core Runtime performs no network, storage, cookie, database, model, telemetry, calendar, task, customer, auth, billing, or environment-variable/deployment-config action.
+8. Agency Headquarters is the only consumer migrated in this phase. Mission Control, the Passage, the Arena, the landing journey, Consumer Workspace, Marketplace, Community, Growth Network, and future rooms require separate migration authorization and regression evidence.
+
 ## 3. Room matrix
 
 | Surface | Status | Operational purpose | Spatial grammar | Light and color | Primary information | Forbidden reading |
@@ -177,7 +218,7 @@ The source domain owns canonical facts. Kai interprets and prepares; the operato
 | Mission Control | APPROVED DIRECTION | Observe the current case and transfer command | Rectilinear command chamber; asymmetric instrument banks; central axis and threshold | Analytical blue/teal; light from above | Execution, systems, Kai brief, clearance, one next action | Dashboard-card mosaic |
 | The Passage | APPROVED DIRECTION | Move from Mission Control to the Arena | Converging hallway; distant aperture; rectilinear-to-radial conversion | Cool origin; late ceremonial warmth; no early destination grant | Power-down, clearance, anticipation, conversion, threshold | Black interruption, reticle-only tunnel, or loading screen |
 | The Arena | APPROVED DIRECTION | Recognize evidenced standing and let the operator walk the record | Inhabited ceremonial chamber; arrival monument; station-by-station floor | Warm metal-like neutrals and restrained amber; light from below | Standing, evidence, milestones, planned threshold, Kai observation | Casino, game lobby, title screen followed by cards |
-| Agency Command | PROPOSED EXTENSION | Coordinate work across a client portfolio | Wide command wall; spatial operating districts; health and capacity banks; central Kai brief; contextual command surface; purpose-bound heartbeat field; ranked work ledger; portfolio ledger | Mission Control’s analytical family, widened in scale; no Arena gold language | Agency health drivers, client flow, workload, evidence coverage, portfolio priorities, capacity, and deterministic contextual Kai | Generic executive dashboard, chart wall, fake live feed, disconnected workflow-button bank, or AI-copilot chat |
+| Agency Command | APPROVED DIRECTION · CORE RUNTIME REFERENCE | Coordinate work across a client portfolio | Wide command wall; spatial operating districts; health and capacity banks; central Kai brief; contextual command surface; purpose-bound heartbeat field; ranked work ledger; portfolio ledger | Mission Control’s analytical family, widened in scale; no Arena gold language | Agency health drivers, client flow, workload, evidence coverage, portfolio priorities, capacity, and deterministic contextual Kai | Generic executive dashboard, chart wall, fake live feed, disconnected workflow-button bank, or AI-copilot chat |
 | Founder Review Control | APPROVED REVIEW PATTERN | Inspect projections, fixture states, timing, and safety behavior | One collapsed Director pill opening a contained bottom sheet | Neutral technical instrument outside room hierarchy | Projection, reason, tier, fixture, replay/jump controls | Product navigation, hidden override, or fake modal |
 
 ## 4. Mission Control laws
@@ -246,9 +287,9 @@ The source domain owns canonical facts. Kai interprets and prepares; the operato
 
 ## 7. Agency Command laws
 
-**PROPOSED EXTENSION**
+**APPROVED DIRECTION · CORE RUNTIME REFERENCE**
 
-Use **Agency Command** as the concise in-room label for the current Founder candidate. **Agency Command Center** remains acceptable as the formal Phase 6 program and artifact title. Neither term is globally deprecated without separate naming ratification.
+**Agency Headquarters** is the Founder-approved architectural term. **Agency Command** remains the concise in-room label and current review-route identity. **Agency Command Center** remains the formal Phase 6 program and artifact title. This mapping records usage; it does not rename routes or globally deprecate any term. The approved room architecture is frozen in this phase; shared lifecycle refinement belongs in Core Runtime.
 
 ### 7.1 Command hierarchy
 
@@ -429,6 +470,7 @@ Motion laws:
 9. User input outranks choreography.
 10. Reduced motion removes motion, not meaning.
 11. Purpose-bound heartbeat motion must carry a permanent synthetic or source disclosure whenever it could otherwise resemble live activity.
+12. Core Runtime projects the `arriving` / `operating` / `departing` lifecycle family and the `active` / `paused` / `static` motion family, plus bounded derived lighting, atmosphere, heartbeat, and Kai-presence tokens. Room CSS renders them; the runtime never changes facts or draws a generic environment.
 
 ## 10. Transition language
 
@@ -452,6 +494,7 @@ The complete transition language is:
 - A transition never hides an error, blocks a payment action, delays an urgent control, or mutates data.
 - The origin and destination each have one settled truth.
 - Route and room transitions preserve focus, scroll, inert state, and input priority.
+- Shared Core Runtime may coordinate those lifecycle states, but a room’s real anchor and semantic destination remain authoritative.
 - The semantic document exists without the cinematic layer.
 - No-JS, reduced-motion, constrained, and static projections must remain complete and navigable.
 
@@ -596,6 +639,7 @@ Rules:
 - QA uses an optimized build and includes a mid-tier mobile/coarse context.
 - Ambient effects are compositor-friendly, bounded, and absent in static/reduced projections.
 - The page remains readable and usable if every enhancement fails.
+- Core Runtime contract failure is tested as a first-class Tier D static projection, not treated as an unreachable exception.
 
 ## 17. Anti-patterns
 
@@ -707,6 +751,7 @@ Before a room can be called CXOS:
 - [ ] Review controls are isolated and non-mutating.
 - [ ] The exact patch can be integrated without a wholesale historical merge.
 - [ ] Founder experience approval and production authorization remain separate decisions.
+- [ ] The room consumes Core Runtime for shared mechanics or documents a reviewed exception; it does not duplicate lifecycle infrastructure silently.
 
 ## 20. Change control
 
@@ -719,4 +764,4 @@ Language 1.0 is a working specification. A future revision should:
 5. update the room matrix, anti-patterns, and release gates when the change affects them;
 6. receive the appropriate design, engineering, compliance, accessibility, performance, and Founder review before production use.
 
-**Current terminal status:** LANGUAGE 1.0 WORKING SPECIFICATION — NOT PRODUCTION APPROVAL
+**Current terminal status:** LANGUAGE 1.0 · PHASE 6.2 + CORE RUNTIME DIRECTION APPROVED · LOCAL REFERENCE IMPLEMENTATION VALIDATED · UNCOMMITTED · UNPUSHED · NOT PREVIEW OR PRODUCTION APPROVAL

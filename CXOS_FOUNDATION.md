@@ -1,7 +1,9 @@
 # CXOS — CreditVector Experience OS · Founding Design Constitution
 
-**Program:** Experience Architecture · **Phase:** 1 — Planning only · **Date:** 2026-07-29
-**Status: DRAFT — awaiting Founder approval. No implementation. No code was changed.**
+**Program:** Experience Architecture · **Phase:** Founding record + Core Runtime amendment · **Date:** 2026-07-29 · amended 2026-07-31
+**Status: FOUNDING RECORD · PHASE 6.2 EXPERIENCE APPROVED · CORE RUNTIME AUTHORIZED LOCALLY**
+
+> **Amendment note (2026-07-31).** The Phase 1 planning language below is retained as the historical founding record. Subsequent Founder reviews approved the CXOS experience direction through Agency Headquarters Phase 6.2. Section 17 now records the Founder-authorized reusable Core Runtime decision. This amendment authorizes local implementation and validation only; it does not authorize merge, push, Preview, production, dependency changes, database, auth, billing, or unrelated-room changes.
 
 > This document is the constitution: assessment, references, skills, tools, and the Experience
 > Grammar, plus the technology recommendation, budgets, plans, risks and roadmap.
@@ -14,7 +16,7 @@
 
 ## 1. Repository-grounded assessment
 
-Everything in this program builds on what is verifiably shipped at `origin/main` (`dfe7a3a`). CXOS
+Everything in this program began from what was verifiably shipped at the historical 2026-07-29 `origin/main` baseline (`dfe7a3a`). CXOS
 is an evolution of an existing, coherent system — not a blank page.
 
 **Already in production, and load-bearing for CXOS:**
@@ -462,5 +464,76 @@ Sequencing rule: **no phase begins until the prior phase's budgets and reviews a
 | D-7 | Storyboard fidelity | proceed from `CXOS_STORYBOARD.md` drafts / commission visual comps first | Proceed; boards are implementation-ready once D-1/D-2 approve |
 | D-8 | Reference capture | run §2.6 yourself / authorize a network-capable session | Either; required before Phase 3 |
 
-**Stop condition honored: nothing has been implemented, no product file was modified, and no
-implementation prompt will be generated until these decisions return.**
+**Historical Phase 1 stop condition:** at the time of this founding record, nothing had been implemented and implementation awaited the listed decisions. That condition was later superseded by explicit Founder approvals; it is not current release evidence.
+
+---
+
+## 17. CXOS Core Runtime amendment
+
+**APPROVED DIRECTION · FOUNDER-AUTHORIZED 2026-07-31 · ADR-0040**
+
+Agency Headquarters Phase 6.2 proved the facility model and is architecturally approved. Remaining platform-wide experience mechanics must be implemented once as shared infrastructure rather than independently recreated by each room.
+
+### 17.1 Runtime capability set
+
+CXOS Core Runtime owns exactly these presentation capabilities:
+
+1. Arrival Runtime
+2. Departure Runtime
+3. Environmental Heartbeat Runtime
+4. Spatial Transition Runtime
+5. District Runtime
+6. Scroll Activation Runtime
+7. Environmental Lighting Runtime
+8. Atmospheric Runtime
+9. Kai Presence Runtime
+10. Shared Motion Runtime
+11. Shared Accessibility Runtime
+
+The runtime is headless. It coordinates deterministic lifecycle and projects semantic state; it does not render a generic room, choose copy, draw charts, own fixtures, calculate metrics, or perform product actions.
+
+### 17.2 Ownership boundary
+
+| Core Runtime owns | Each room continues to own |
+|---|---|
+| Capability-tier fail-down and explicit static projection | Canonical data and source receipts |
+| Arrival, settled-operation, and departure phase | Semantic DOM and room composition |
+| Visibility pause and bounded motion state | CSS, light geometry, and atmosphere rendering |
+| Passive district activation and native-scroll focus movement | District purpose, order, headings, and instruments |
+| Environmental heartbeat, lighting, atmosphere, and Kai-presence state tokens | Heartbeat facts, displayed values, Kai wording, and command behavior |
+| Reduced-motion/static equivalence policy and bounded fail-open handoff mechanics | Destination and route semantics, actions, permissions, persistence, APIs, and owning services |
+
+The runtime is not GIOS, the Kai Kernel, a router, an application service, an event fabric, a data store, an auth layer, or an execution broker. Kai Presence Runtime means only bounded presentation presence and district context. It grants no memory, inference, model access, customer knowledge, or action authority.
+
+### 17.3 Fail-closed law
+
+> Truth and motion fail closed to the complete static document. Navigation fails open to the real local destination. The runtime may project state; it may never own facts or effects.
+
+- Invalid room, district, arrival, motion-budget, or departure definitions resolve to complete Tier D static state.
+- Capability detection failure, Data Saver, or low-memory safety never upgrades motion.
+- Reduced motion is automatic and complete. A Founder-review cinematic projection requires explicit route-instance consent and is never persisted.
+- Missing `IntersectionObserver` preserves the full native document and explicit district navigation.
+- Hidden documents pause nonessential motion.
+- A cinematic departure may intercept only an unmodified primary click, commit at most once, and use one bounded local-navigation fallback. Static, constrained, modified, new-tab, and download interactions remain native.
+- The runtime performs no fetch, API call, storage operation, cookie access, database read/write, model call, telemetry, calendar/task/customer mutation, or environment-variable/deployment-config read or write.
+
+### 17.4 Motion and performance law
+
+- A motion-capable room declares one to three continuous transform/opacity motion channels; Tier C, Tier D, reduced-motion, and invalid projections activate zero.
+- Semantic heartbeat signals may be numerous, but they never become changing canonical values merely to create motion.
+- No Canvas, WebGL, video, audio, external animation dependency, self-running JavaScript frame loop, layout animation, scroll hijack, or sustained settled-state CPU work belongs in the runtime.
+- `IntersectionObserver` may update the current semantic district. It may not capture wheel/touch input or replace native scrolling.
+- Lighting and atmosphere are bounded semantic tokens consumed by room CSS, not globally rendered effects.
+
+### 17.5 Accessibility law
+
+- The semantic document exists before and without runtime enhancement.
+- Arrival skip, Escape settlement, replay, district movement, departure, and review-control close preserve explicit focus targets.
+- Tier C, Tier D, reduced motion, invalid configuration, and enhancement failure preserve the complete facts, actions, disclosures, reading order, and destinations.
+- The runtime supplies state; each room remains responsible for one `<main>`, one `<h1>`, ordered headings, visible focus, ≥44 px controls, readable contrast, zero horizontal overflow, and truthful live-region copy.
+
+### 17.6 Adoption law
+
+Agency Headquarters is the first reference consumer because it contains the complete approved lifecycle without requiring a visual redesign. Its semantic structure, room-specific CSS and visual output, fixtures, Kai resolver, instruments, and production hard-off remain room-owned.
+
+Mission Control, the Passage, the Arena, the landing journey, Consumer Workspace, Marketplace, Community, Growth Network, and future rooms remain unchanged in this phase. A later room may adopt Core Runtime only through a separately scoped migration that preserves its architecture, reruns its existing regression guard, adds current browser evidence, and receives the required reviews. No wholesale room rewrite or historical-branch merge follows from this amendment.

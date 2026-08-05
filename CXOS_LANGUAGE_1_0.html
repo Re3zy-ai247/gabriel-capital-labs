@@ -76,6 +76,8 @@
       color: var(--text);
       font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
       font-size: .9em;
+      overflow-wrap: anywhere;
+      word-break: break-word;
     }
     h1, h2, h3 { line-height: 1.16; letter-spacing: -.025em; }
     h1 { max-width: 18ch; margin: .55rem 0 1rem; font-size: clamp(2.35rem, 7vw, 5.1rem); }
@@ -407,8 +409,8 @@
     <div class="wrap">
       <p class="eyebrow">Gabriel Capital Labs · CreditVector™ Experience OS</p>
       <h1>CXOS Language 1.0</h1>
-      <p class="lede">A working specification for building one coherent spatial facility across Mission Control, the Passage, the Arena, Agency Command, and Founder review instrumentation.</p>
-      <p class="status">Working specification · not production approval</p>
+      <p class="lede">A working specification for one coherent spatial facility, the Founder-approved Agency Headquarters reference room, and the shared CXOS Core Runtime inherited by future major rooms.</p>
+      <p class="status">Phase 6.2 + Core Runtime direction approved · local implementation only · not production approval</p>
       <div class="meta" aria-label="Document metadata">
         <span>VERSION 1.0</span>
         <span>2026-07-31</span>
@@ -422,6 +424,7 @@
       <nav aria-label="Specification sections">
         <a href="#boundary">Boundary</a>
         <a href="#facility">Facility</a>
+        <a href="#runtime">Core Runtime</a>
         <a href="#matrix">Room matrix</a>
         <a href="#passage">Passage</a>
         <a href="#agency">Agency Command</a>
@@ -447,15 +450,16 @@
             <span class="tag">01 · Boundary</span>
             <h2>Truth before atmosphere</h2>
           </div>
-          <p>This artifact organizes the CXOS foundation, the Founder-approved Phase 5.2 and Phase 5.3 direction, and the Founder-directed Phase 6.2 Agency Command contextual-intelligence refinement. It is not a constitution, architecture approval, merge approval, or production authorization.</p>
+          <p>This artifact organizes the CXOS foundation, the Founder-approved Phase 5.2, Phase 5.3, and Phase 6.2 experience direction, and the Founder-authorized CXOS Core Runtime architecture. It is not merge approval or production authorization.</p>
         </div>
         <div class="grid">
           <article class="law">
             <h3>Truth labels</h3>
             <ul>
               <li><strong>Foundation:</strong> established design grammar.</li>
-              <li><strong>Approved direction:</strong> reviewed Phase 5.2/5.3 experience.</li>
+              <li><strong>Approved direction:</strong> reviewed Phase 5.2/5.3/6.2 experience.</li>
               <li><strong>Proposed extension:</strong> synthetic prototype language only.</li>
+              <li><strong>Runtime contract:</strong> approved shared presentation lifecycle; no room facts or effects.</li>
               <li><strong>Release gate:</strong> evidence required before a later authorized action.</li>
             </ul>
           </article>
@@ -463,17 +467,19 @@
             <h3>Not authorized</h3>
             <ul>
               <li>Wholesale feature-branch merge.</li>
+              <li>Branch push or Vercel Preview deployment.</li>
               <li>Production deploy, promotion, or alias change.</li>
               <li>Database, Prisma, migration, backend, auth, billing, or environment change.</li>
+              <li>Dependency addition or migration of any unrelated room.</li>
               <li>Claiming a specimen or review control is a live capability.</li>
             </ul>
           </article>
         </div>
         <div class="notice">
-          <p><strong>Source set:</strong> <code>CXOS_FOUNDATION.md</code>, <code>CXOS_PHASE_5_2_REPORT.md</code>, <code>CXOS_PHASE_5_3_REPORT.md</code>, the Phase 6 Agency Command design-plan audit, the Founder Phase 6.1 Living Agency Command refinement directive, and the Founder Phase 6.2 contextual Kai command-surface directive dated 2026-07-31.</p>
+          <p><strong>Source set:</strong> <code>CXOS_FOUNDATION.md</code>, <code>CXOS_PHASE_5_2_REPORT.md</code>, <code>CXOS_PHASE_5_3_REPORT.md</code>, the Phase 6 Agency Command design-plan audit, the Founder Phase 6.1 and Phase 6.2 directives, the Founder’s Phase 6.2 architecture approval and Core Runtime authorization dated 2026-07-31, and <code>.ai/ADR/ADR-0040-cxos-core-runtime.md</code>.</p>
         </div>
         <div class="notice">
-          <p><strong>Branch lineage:</strong> current Phase 6 Founder-preview work is being prepared on <code>feat/cxos-phase3</code>. A Preview from that branch contains its full historical state, not an isolated production-integration patch. This specification and any Preview approval do not authorize a wholesale merge.</p>
+          <p><strong>Branch lineage:</strong> Founder review of the Phase 6.2 room baseline at <code>a40a41c5a76028ad5cae2ff655c5bf168fb86a4a</code> is complete. The Core Runtime extraction on <code>feat/cxos-phase3</code> is a local, uncommitted, unpushed delta and has not been Preview-deployed. Any later Preview from that branch would contain its full historical state, not an isolated production-integration patch. This specification and any later Preview approval do not authorize a wholesale merge.</p>
         </div>
       </section>
 
@@ -540,7 +546,7 @@
         </dl>
         <p>Primary truth and action define the center of gravity. Evidence and status substantiate it. Secondary instrumentation, observation, explanation, and escalation remain subordinate and may not manufacture urgency.</p>
         <h3>Five governing experience laws</h3>
-        <p><strong>Approved direction · proposed Phase 6.2 application.</strong> These five laws govern Agency Command’s Phase 6.2 language release and every later operating-room proposal. They do not claim that Mission Control or any future room has already been modified.</p>
+        <p><strong>Approved direction.</strong> These five laws govern the Founder-approved Agency Headquarters reference room and every later operating-room proposal. They do not claim that Mission Control or any future room has already been migrated.</p>
         <div class="grid">
           <article class="law">
             <h3>Observable heartbeat</h3>
@@ -564,9 +570,58 @@
           </article>
         </div>
         <div class="notice">
-          <p><strong>Phase 6.2 Agency Command application:</strong> deterministic heartbeat; bounded arrival and Mission Control return; Executive Brief, heartbeat, queue, portfolio, health/capacity, and command districts; one contextual command surface mapped to eleven fixed fixture capabilities; and deterministic supported/unsupported, revise/cancel, and no-action outcomes. Command state is route-instance-only and clears on refresh or exit.</p>
-          <p><strong>Future governance:</strong> Mission Control and future rooms must separately document their five-law mapping, canonical sources, ownership, motion budget, static equivalent, authorization, and failure behavior before implementation. Phase 6.2 changes no Mission Control or future-room runtime, data source, interaction, or release status.</p>
+          <p><strong>Phase 6.2 Agency Headquarters application:</strong> architecture approved and frozen as the first Core Runtime reference consumer; deterministic heartbeat; bounded arrival and Mission Control return; Executive Brief, heartbeat, queue, portfolio, health/capacity, and command districts; one contextual command surface mapped to eleven fixed fixture capabilities; and deterministic supported/unsupported, revise/cancel, and no-action outcomes. Command state is route-instance-only and clears on refresh or exit.</p>
+          <p><strong>Future governance:</strong> Mission Control and future rooms must separately document their five-law mapping, canonical sources, ownership, motion budget, static equivalent, authorization, and failure behavior before migration. Phase 6.2 changes no other room’s runtime, data source, interaction, or release status.</p>
           <p><strong>Boundary:</strong> the Phase 6.2 command surface uses fictional fixtures only—no live AI or model, customer data, API call, storage destination, calendar or task system, contact action, customer mutation, or fabricated completion.</p>
+        </div>
+      </section>
+
+      <section id="runtime">
+        <div class="section-head">
+          <div>
+            <span class="tag">Core Runtime · ADR-0040</span>
+            <h2>Shared lifecycle, room-owned truth</h2>
+          </div>
+          <p>When separately authorized, major operating rooms must inherit one headless CXOS Core Runtime rather than independently rebuilding arrival, departure, heartbeat, district, environmental, Kai-presence, motion, and accessibility mechanics.</p>
+        </div>
+        <div class="grid">
+          <article class="law">
+            <h3>Runtime owns</h3>
+            <ul>
+              <li>Arrival, settled-operation, and departure phase.</li>
+              <li>Environmental heartbeat, lighting, atmosphere, and Kai-presence state tokens.</li>
+              <li>Spatial transition, district activation, native-scroll observation, and focus handoff.</li>
+              <li>Capability fail-down, hidden-document pause, reduced motion, static equivalence, Escape, replay, and native-navigation preservation.</li>
+            </ul>
+          </article>
+          <article class="law">
+            <h3>Room owns</h3>
+            <ul>
+              <li>Canonical facts, calculations, receipts, permissions, and outcomes.</li>
+              <li>Semantic DOM, visual architecture, district purpose/order, copy, CSS, instruments, and atmospheric rendering.</li>
+              <li>Kai intent, recommendations, commands, persistence boundaries, and any authorized actions.</li>
+              <li>Destination and route semantics, APIs, storage, authentication, billing, and owning-system integrations.</li>
+            </ul>
+          </article>
+          <article class="law">
+            <h3>Fail-closed law</h3>
+            <p><strong>Truth and motion fail closed to the complete static document. Navigation fails open to the real local destination. The runtime may project state; it may never own facts or effects.</strong></p>
+          </article>
+          <article class="law">
+            <h3>Kai Presence boundary</h3>
+            <p>Kai Presence Runtime conveys bounded presentation presence and district context only. It grants no memory, model access, customer fact, inference, authorization, persistence, or action authority.</p>
+          </article>
+          <article class="law">
+            <h3>Motion budget</h3>
+            <p>A motion-capable room declares one to three continuous transform/opacity channels; Tier C, Tier D, reduced-motion, and invalid projections activate zero. Semantic heartbeat signals never mutate canonical values for appearance. Missing capability and constrained conditions remain complete and static.</p>
+          </article>
+          <article class="law">
+            <h3>No effect authority</h3>
+            <p>Core Runtime performs no network, storage, cookie, database, model, telemetry, calendar, task, customer, auth, billing, or environment-variable/deployment-config action. No Canvas, WebGL, video, audio, external animation dependency, scroll hijack, or self-running JavaScript frame loop belongs in it.</p>
+          </article>
+        </div>
+        <div class="notice">
+          <p><strong>Adoption boundary:</strong> Agency Headquarters is the only reference consumer migrated in this phase. Mission Control, the Passage, the Arena, the landing journey, Consumer Workspace, Marketplace, Community, Growth Network, and future rooms require separate authorization and regression evidence.</p>
         </div>
       </section>
 
@@ -625,7 +680,7 @@
               </tr>
               <tr>
                 <td>Agency Command</td>
-                <td>Proposed extension</td>
+                <td>Approved direction · Core Runtime reference</td>
                 <td>Coordinate a client portfolio</td>
                 <td>Wide command wall, spatial operating districts, purpose-bound heartbeat field, contextual Kai command surface, and ranked ledgers</td>
                 <td>Health drivers, client flow, workload, evidence coverage, priorities, capacity, and deterministic contextual Kai</td>
@@ -706,10 +761,10 @@
       <section id="agency">
         <div class="section-head">
           <div>
-            <span class="tag">06 · Proposed extension</span>
+            <span class="tag">06 · Approved reference room</span>
             <h2>Agency Command</h2>
           </div>
-          <p>Use Agency Command as the concise in-room label for the current Founder candidate. Agency Command Center remains acceptable as the formal Phase 6 program and artifact title. Neither term is globally deprecated without separate naming ratification.</p>
+          <p>Agency Headquarters is the Founder-approved architectural term. Agency Command remains the concise in-room label and current review-route identity. Agency Command Center remains the formal Phase 6 program and artifact title. This mapping records usage; it does not rename routes or globally deprecate any term. The approved architecture is frozen in this phase; shared lifecycle refinement belongs in Core Runtime.</p>
         </div>
 
         <p class="specimen-disclosure" id="agency-specimen-disclosure">SYNTHETIC REVIEW · NO LIVE DATA</p>
@@ -850,7 +905,7 @@
         </div>
         <div class="notice">
           <p><strong>Heartbeat law:</strong> Every operating room must possess an observable operational heartbeat. Motion, rhythm, and ambient state must express that room’s actual purpose without changing canonical facts or fabricating live activity.</p>
-          <p>Transform and opacity only. Layout never animates. Ambient channels are bounded to three per environment, pause while hidden, and disappear in static/reduced projections. Phase 6.1 uses one room breath, one operational sweep, and one client-flow state channel. Purpose-bound heartbeat motion carries a permanent source or synthetic disclosure whenever it could resemble live activity. Decorative spectacle, false live-data behavior, and animation that changes canonical facts are forbidden. No cursor chasing, zoom-through, autoplay audio, Canvas loop, WebGL, or runtime JavaScript animation loop.</p>
+          <p>Transform and opacity only. Layout never animates. A motion-capable room declares one to three ambient channels; they pause while hidden and disappear in static/reduced projections. Core Runtime projects the arriving / operating / departing lifecycle family and the active / paused / static motion family, plus bounded derived lighting, atmosphere, heartbeat, and Kai-presence tokens; room CSS renders them. Phase 6.1 uses one room breath, one operational sweep, and one client-flow state channel. Purpose-bound heartbeat motion carries a permanent source or synthetic disclosure whenever it could resemble live activity. Decorative spectacle, false live-data behavior, and animation that changes canonical facts are forbidden. No cursor chasing, zoom-through, autoplay audio, Canvas loop, WebGL, or runtime JavaScript animation loop.</p>
         </div>
       </section>
 
@@ -994,6 +1049,7 @@
               <li>No autoplay video/audio, WebGL, Three.js, GSAP, Rive, or Lottie in core unless separately approved.</li>
               <li>No video dependency, Canvas loop, continuous expensive JavaScript loop, or runtime asset spectacle.</li>
               <li>The experience remains readable if every enhancement fails.</li>
+              <li>Core Runtime contract failure is exercised as a complete Tier D static projection.</li>
             </ul>
           </article>
         </div>
@@ -1114,7 +1170,7 @@
           </article>
           <article class="law">
             <h3>Terminal status</h3>
-            <p><strong>LANGUAGE 1.0 WORKING SPECIFICATION — NOT PRODUCTION APPROVAL</strong></p>
+            <p><strong>LANGUAGE 1.0 · PHASE 6.2 + CORE RUNTIME DIRECTION APPROVED · LOCAL REFERENCE IMPLEMENTATION VALIDATED · UNCOMMITTED · UNPUSHED · NOT PREVIEW OR PRODUCTION APPROVAL</strong></p>
           </article>
         </div>
       </section>
@@ -1147,6 +1203,7 @@
           <li>Non-mutating, isolated Founder review instrumentation.</li>
           <li>An exact patch that does not require a wholesale historical merge.</li>
           <li>Separate Founder decisions for experience approval and production authorization.</li>
+          <li>Core Runtime is consumed for shared mechanics, or a reviewed exception is documented; lifecycle infrastructure is not duplicated silently.</li>
         </ul>
       </section>
 
@@ -1163,17 +1220,19 @@
           <pre tabindex="0" aria-label="Copyable CXOS Language 1.0 specification summary">CREDITVECTOR CXOS LANGUAGE 1.0 — WORKING SPECIFICATION SUMMARY
 
 STATUS
-LANGUAGE 1.0 WORKING SPECIFICATION — NOT PRODUCTION APPROVAL
+LANGUAGE 1.0 · PHASE 6.2 + CORE RUNTIME DIRECTION APPROVED · LOCAL REFERENCE IMPLEMENTATION VALIDATED · UNCOMMITTED · UNPUSHED · NOT PREVIEW OR PRODUCTION APPROVAL
 
 BOUNDARY
 - Derived from the CXOS Foundation and the Founder-approved Phase 5.2/5.3 experience direction.
-- Incorporates the Founder-directed Phase 6.2 Agency Command contextual-intelligence refinement while preserving the historical Phase 6.1 heartbeat record.
-- Agency Command remains a proposed extension until Founder review.
-- No architecture, merge, production, database, backend, auth, billing, environment, or dependency authority is granted.
+- Incorporates the Founder-approved Phase 6.2 Agency Headquarters experience and preserves the historical Phase 6.1 heartbeat record.
+- Incorporates ADR-0040 and the Founder-authorized CXOS Core Runtime architecture.
+- Agency Headquarters is the approved first reference consumer; its room architecture is frozen in this phase.
+- No merge, push, Preview, production, database, backend, auth, billing, environment, dependency, or unrelated-room authority is granted.
 
 BRANCH LINEAGE
-- Current Phase 6 Founder-preview work is on feat/cxos-phase3.
-- A Preview from that branch contains the branch’s full historical state, not an isolated production-integration patch.
+- Founder review of the Phase 6.2 room baseline a40a41c5a76028ad5cae2ff655c5bf168fb86a4a is complete.
+- The Core Runtime extraction on feat/cxos-phase3 is local, uncommitted, unpushed, and not Preview-deployed.
+- Any later Preview from that branch would contain the branch’s full historical state, not an isolated production-integration patch.
 - The branch must not be merged wholesale.
 
 FACILITY AND SPATIAL LAW
@@ -1188,6 +1247,15 @@ FIVE GOVERNING EXPERIENCE LAWS
 - Kai must appear as a continuous contextual executive channel, not a disconnected list of tools: one intelligence connects source, interpretation, recommendation, and safe next action without inventing context or authority.
 - Personalization must be deterministic, authorized, and truthfully sourced: source domains own facts; Kai interprets and prepares; the operator decides; execution requires separate explicit authorization.
 - Agency Command applies all five in Phase 6.2. Mission Control and future rooms are governed only after separate scope, review, and implementation; Phase 6.2 does not claim they changed.
+
+CXOS CORE RUNTIME
+- Shared capabilities: arrival, departure, environmental heartbeat, spatial transition, district, scroll activation, environmental lighting, atmosphere, Kai presence, motion, and accessibility.
+- Runtime owns deterministic lifecycle and state projection only; each room owns facts, semantic DOM, visual architecture, CSS, copy, instruments, Kai behavior, destinations, and effects.
+- Truth and motion fail closed to the complete static document. Local navigation fails open to the real semantic destination.
+- Invalid configuration, constrained capability, reduced motion, hidden documents, and missing browser enhancement never invent data or upgrade motion.
+- Kai Presence Runtime conveys bounded presentation presence/context only—no memory, model, customer fact, authorization, persistence, or action.
+- No network, storage, cookie, database, model, telemetry, calendar, task, customer, auth, billing, or environment-variable/deployment-config action.
+- Agency Headquarters is the only migrated consumer in this phase. All other rooms require separate authorization and regression evidence.
 
 INFORMATION HIERARCHY
 - Primary operational truth and one explicit action define the center.
@@ -1204,6 +1272,7 @@ MOTION AND TRANSITION
 - Decorative spectacle, false live behavior, and animation that changes facts are forbidden.
 
 LIVING AGENCY COMMAND
+- The Agency Headquarters architecture and experience direction are Founder-approved.
 - Fixed client-flow positions express entering, advancing, waiting, blocked, and resolving without changing canonical values.
 - Capacity, workload, response aging, evidence coverage, and bottlenecks remain source-disclosed spatial instruments.
 - Throughput remains Not instrumented until a time-bounded model exists.
@@ -1240,7 +1309,7 @@ EVIDENCE AND DATA TRUTH
 
 RELEASE GATE
 - Exact commit range and file allowlist.
-- Typecheck, touched-file lint, diff check, guards, optimized builds, browser matrix, accessibility, performance, and production-isolation evidence.
+- Typecheck, touched-file lint, diff check, Core Runtime and room guards, optimized builds, browser matrix, accessibility, performance, and production-isolation evidence.
 - Preview experience approval remains separate from production integration and requires separate Founder authorization.</pre>
         </div>
       </section>
@@ -1250,7 +1319,7 @@ RELEASE GATE
   <footer>
     <div class="wrap">
       <strong>CXOS Language 1.0</strong><br>
-      Working specification assembled from approved direction and proposed extensions. This standalone file includes all styles inline, uses no scripts or external assets, and makes no network request.
+      Working specification assembled from approved experience direction and the Founder-authorized Core Runtime contract. This standalone file includes all styles inline, uses no scripts or external assets, and makes no network request.
     </div>
   </footer>
 </body>

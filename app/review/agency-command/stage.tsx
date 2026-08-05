@@ -1,6 +1,18 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
+import { useCxosRoomRuntime } from "@/components/cxos/runtime/useCxosRoomRuntime";
+import type {
+  CxosExperienceProjection,
+  CxosRoomRuntimeDefinition,
+} from "@/lib/cxos/runtime";
 import styles from "./agency-command.module.css";
 import {
   AGENCY_AUTHORIZED_SOURCES,
@@ -27,8 +39,6 @@ import {
   type AgencyQueueKind,
 } from "./fixtures";
 
-type ExperienceProjection = "auto" | "cinematic" | "static";
-type ExperienceTier = "A" | "B" | "C" | "D";
 type QueueFilter = "all" | AgencyQueueKind;
 
 interface KaiConversationTurn {
@@ -38,117 +48,34 @@ interface KaiConversationTurn {
   resolution: AgencyKaiResolution;
 }
 
-interface ReviewCapabilities {
-  browserReduced: boolean;
-  saveData: boolean;
-  lowMemory: boolean;
-  mobile: boolean;
-  coarsePointer: boolean;
-  detectionFailed: boolean;
-}
+const AGENCY_ARRIVAL_BEATS = [
+  "origin-acknowledgment",
+  "authority-recognition",
+  "facility-acquisition",
+  "systems-online",
+  "kai-greeting",
+  "command-settlement",
+] as const;
 
-interface ProjectionResolution {
-  tier: ExperienceTier;
-  reason: string;
-  cinematicAvailable: boolean;
-}
+const AGENCY_MOTION_CHANNELS = [
+  "room-breath",
+  "operational-sweep",
+  "client-flow",
+] as const;
 
-const CONSERVATIVE_CAPABILITIES: ReviewCapabilities = {
-  browserReduced: false,
-  saveData: false,
-  lowMemory: false,
-  mobile: false,
-  coarsePointer: false,
-  detectionFailed: true,
-};
-
-function readReviewCapabilities(): ReviewCapabilities {
-  try {
-    const browserReduced = window.matchMedia(
-      "(prefers-reduced-motion: reduce)"
-    ).matches;
-    const mobile = window.matchMedia("(max-width: 767px)").matches;
-    const coarsePointer = window.matchMedia("(pointer: coarse)").matches;
-    const nav = navigator as Navigator & {
-      connection?: { saveData?: boolean };
-      deviceMemory?: number;
-    };
-
-    return {
-      browserReduced,
-      saveData: nav.connection?.saveData === true,
-      lowMemory:
-        typeof nav.deviceMemory === "number" && nav.deviceMemory < 4,
-      mobile,
-      coarsePointer,
-      detectionFailed: false,
-    };
-  } catch {
-    return CONSERVATIVE_CAPABILITIES;
-  }
-}
-
-function resolveProjection(
-  projection: ExperienceProjection,
-  capabilities: ReviewCapabilities,
-  reducedMotionOverride: boolean
-): ProjectionResolution {
-  const constrained =
-    capabilities.detectionFailed ||
-    capabilities.saveData ||
-    capabilities.lowMemory;
-
-  if (projection === "static") {
-    return {
-      tier: "D",
-      reason: "Complete static review document",
-      cinematicAvailable: !constrained,
-    };
-  }
-
-  if (constrained) {
-    return {
-      tier: "C",
-      reason: capabilities.detectionFailed
-        ? "Capability detection failed safely"
-        : capabilities.saveData
-          ? "Data Saver keeps the review conservative"
-          : "Low-memory safety keeps the review conservative",
-      cinematicAvailable: false,
-    };
-  }
-
-  if (
-    capabilities.browserReduced &&
-    !(projection === "cinematic" && reducedMotionOverride)
-  ) {
-    return {
-      tier: "D",
-      reason: "Browser requests reduced motion",
-      cinematicAvailable: true,
-    };
-  }
-
-  if (capabilities.mobile || capabilities.coarsePointer) {
-    return {
-      tier: "B",
-      reason:
-        projection === "cinematic"
-          ? "Explicit single-plane review cinema"
-          : "Single-plane mobile or coarse-pointer projection",
-      cinematicAvailable: true,
-    };
-  }
-
-  return {
-    tier: "A",
-    reason:
-      projection === "cinematic"
-        ? "Explicit full review cinema"
-        : "Full desktop or tablet projection",
-    cinematicAvailable: true,
-  };
-}
+const AGENCY_CORE_RUNTIME = {
+  roomId: "agency-command",
+  districts: AGENCY_DISTRICTS.map((district) => district.id),
+  initialDistrict: "central-command",
+  arrivalBeats: AGENCY_ARRIVAL_BEATS,
+  arrivalDurationMs: { A: 1500, B: 700 },
+  motionChannels: AGENCY_MOTION_CHANNELS,
+  kaiContextHoldDistricts: ["kai-suite"],
+  departure: {
+    href: "/review/mission-control",
+    fallbackMs: 800,
+  },
+} satisfies CxosRoomRuntimeDefinition<AgencyDistrictId>;
 
 function stateLabel(state: AgencyFixtureState): string {
   return (
@@ -157,44 +84,9 @@ function stateLabel(state: AgencyFixtureState): string {
   );
 }
 
-function scrollWindowImmediately(top: number, left = 0) {
-  const root = document.documentElement;
-  const previousValue = root.style.getPropertyValue("scroll-behavior");
-  const previousPriority = root.style.getPropertyPriority("scroll-behavior");
-  root.style.setProperty("scroll-behavior", "auto", "important");
-  window.scrollTo({
-    top: window.scrollY,
-    left: window.scrollX,
-    behavior: "instant",
-  });
-  window.scrollTo({ top, left, behavior: "instant" });
-  window.requestAnimationFrame(() => {
-    if (previousValue) {
-      root.style.setProperty(
-        "scroll-behavior",
-        previousValue,
-        previousPriority
-      );
-    } else {
-      root.style.removeProperty("scroll-behavior");
-    }
-  });
-}
-
-function scrollElementImmediately(element: HTMLElement) {
-  const scrollMarginTop = Number.parseFloat(
-    window.getComputedStyle(element).scrollMarginTop
-  );
-  const top =
-    window.scrollY +
-    element.getBoundingClientRect().top -
-    (Number.isFinite(scrollMarginTop) ? scrollMarginTop : 0);
-  scrollWindowImmediately(Math.max(0, top));
-}
-
 export function AgencyCommandStage() {
   const [projection, setProjection] =
-    useState<ExperienceProjection>("auto");
+    useState<CxosExperienceProjection>("auto");
   const [operatingModel, setOperatingModel] =
     useState<AgencyOperatingModel>("solo");
   const [fixtureState, setFixtureState] =
@@ -202,99 +94,74 @@ export function AgencyCommandStage() {
   const [queueFilter, setQueueFilter] = useState<QueueFilter>("all");
   const [expandedQueueId, setExpandedQueueId] = useState<string | null>(null);
   const [intakeOpen, setIntakeOpen] = useState(false);
-  const [arrivalKey, setArrivalKey] = useState(0);
-  const [arrivalSettled, setArrivalSettled] = useState(false);
-  const [activeDistrict, setActiveDistrict] =
-    useState<AgencyDistrictId>("central-command");
-  const [kaiContextDistrict, setKaiContextDistrict] =
-    useState<AgencyDistrictId>("central-command");
   const [kaiCommand, setKaiCommand] = useState("");
   const [kaiTurns, setKaiTurns] = useState<KaiConversationTurn[]>([]);
   const [editingKaiTurnId, setEditingKaiTurnId] = useState<string | null>(null);
   const [kaiCommandReceipt, setKaiCommandReceipt] = useState(
     "ROUTE SESSION EMPTY · Nothing is prepared and no production action is connected."
   );
-  const [departing, setDeparting] = useState(false);
-  const [capabilities, setCapabilities] = useState<ReviewCapabilities>(
-    CONSERVATIVE_CAPABILITIES
-  );
   const [reducedMotionOverride, setReducedMotionOverride] = useState(false);
   const [cinematicPromptOpen, setCinematicPromptOpen] = useState(false);
-  const [documentHidden, setDocumentHidden] = useState(false);
-  const [capabilitiesReady, setCapabilitiesReady] = useState(false);
   const [announcement, setAnnouncement] = useState(
     "Agency Command synthetic review loaded."
   );
 
+  const roomRootRef = useRef<HTMLElement>(null);
   const roomHeadingRef = useRef<HTMLHeadingElement>(null);
-  const stateHeadingRef = useRef<HTMLHeadingElement>(null);
   const directorRef = useRef<HTMLDetailsElement>(null);
   const directorSummaryRef = useRef<HTMLElement>(null);
-  const replayFocusPendingRef = useRef(false);
   const capabilitiesHydratedRef = useRef(false);
   const previousReducedMotionRef = useRef<boolean | null>(null);
-  const departureCommittedRef = useRef(false);
-  const returnFallbackRef = useRef<number | null>(null);
   const kaiTurnSequenceRef = useRef(0);
   const kaiSubmitLockedRef = useRef(false);
   const kaiInputRef = useRef<HTMLInputElement>(null);
-  const staticArrivalFocusRef = useRef(false);
+  const personalization = AGENCY_PERSONALIZATIONS[operatingModel];
 
-  useEffect(() => {
-    scrollWindowImmediately(0);
-    const update = () => {
-      setCapabilities(readReviewCapabilities());
-      setCapabilitiesReady(true);
-    };
-    const media = [
-      window.matchMedia("(prefers-reduced-motion: reduce)"),
-      window.matchMedia("(max-width: 767px)"),
-      window.matchMedia("(pointer: coarse)"),
-    ];
-
-    update();
-    media.forEach((query) => query.addEventListener("change", update));
-    return () =>
-      media.forEach((query) => query.removeEventListener("change", update));
+  const clearKaiSession = useCallback(() => {
+    setKaiCommand("");
+    setKaiTurns([]);
+    setEditingKaiTurnId(null);
+    setKaiCommandReceipt(
+      "ROUTE SESSION EMPTY · Nothing is prepared and no production action is connected."
+    );
+    kaiTurnSequenceRef.current = 0;
   }, []);
 
-  useEffect(() => {
-    const update = () => setDocumentHidden(document.hidden);
-    update();
-    document.addEventListener("visibilitychange", update);
-    return () => document.removeEventListener("visibilitychange", update);
-  }, []);
-
-  useEffect(() => {
-    const clearRouteState = () => {
-      setKaiCommand("");
-      setKaiTurns([]);
-      setEditingKaiTurnId(null);
-      setKaiCommandReceipt(
-        "ROUTE SESSION EMPTY · Nothing is prepared and no production action is connected."
-      );
-      kaiTurnSequenceRef.current = 0;
-    };
-    const clearRestoredRouteState = (event: PageTransitionEvent) => {
-      if (!event.persisted) return;
-      clearRouteState();
-    };
-    window.addEventListener("pagehide", clearRouteState);
-    window.addEventListener("pageshow", clearRestoredRouteState);
-    return () => {
-      window.removeEventListener("pagehide", clearRouteState);
-      window.removeEventListener("pageshow", clearRestoredRouteState);
-    };
-  }, []);
-
-  useEffect(
-    () => () => {
-      if (returnFallbackRef.current !== null) {
-        window.clearTimeout(returnFallbackRef.current);
-      }
+  const runtime = useCxosRoomRuntime({
+    definition: AGENCY_CORE_RUNTIME,
+    projection,
+    reducedMotionOverride,
+    roomRootRef,
+    roomHeadingRef,
+    observerKey: fixtureState,
+    messages: {
+      staticArrival: `Agency Command is available in complete static form. ${personalization.greeting}`,
+      escapeArrival:
+        "Agency Command arrival skipped. The complete facility is available.",
+      departure:
+        "Return acknowledged. Agency instruments are receding toward Mission Control.",
     },
-    []
-  );
+    announce: setAnnouncement,
+    onRouteReset: clearKaiSession,
+  });
+
+  const {
+    capabilities,
+    resolution,
+    environment,
+    arrivalKey,
+    arrivalSettled,
+    activeDistrict,
+    kaiContextDistrict,
+    documentHidden,
+    departing,
+    setKaiContextDistrict,
+    settleArrival: settleRuntimeArrival,
+    replayArrival: replayRuntimeArrival,
+    moveToDistrict,
+    beginDeparture,
+    completeDeparture,
+  } = runtime;
 
   useEffect(() => {
     if (capabilities.detectionFailed) return;
@@ -329,127 +196,6 @@ export function AgencyCommandStage() {
     projection,
   ]);
 
-  const resolution = useMemo(
-    () =>
-      resolveProjection(
-        projection,
-        capabilities,
-        reducedMotionOverride
-      ),
-    [capabilities, projection, reducedMotionOverride]
-  );
-  const personalization = AGENCY_PERSONALIZATIONS[operatingModel];
-
-  useEffect(() => {
-    if (!capabilitiesReady || arrivalSettled) return;
-    if (resolution.tier === "C" || resolution.tier === "D") {
-      setArrivalSettled(true);
-      if (!staticArrivalFocusRef.current) {
-        staticArrivalFocusRef.current = true;
-        window.requestAnimationFrame(() => {
-          roomHeadingRef.current?.focus({ preventScroll: true });
-          setAnnouncement(
-            `Agency Command is available in complete static form. ${personalization.greeting}`
-          );
-        });
-      }
-    }
-  }, [arrivalSettled, capabilitiesReady, personalization.greeting, resolution.tier]);
-
-  useEffect(() => {
-    if (arrivalSettled) return;
-    const skipOnEscape = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
-      setArrivalSettled(true);
-      window.requestAnimationFrame(() => {
-        roomHeadingRef.current?.focus({ preventScroll: true });
-        setAnnouncement("Agency Command arrival skipped. The complete facility is available.");
-      });
-    };
-    window.addEventListener("keydown", skipOnEscape);
-    return () => window.removeEventListener("keydown", skipOnEscape);
-  }, [arrivalSettled]);
-
-  useEffect(() => {
-    if (!arrivalSettled) return;
-    const visibility = new Map<AgencyDistrictId, number>();
-    const sections = Array.from(
-      document.querySelectorAll<HTMLElement>("[data-agency-district]")
-    );
-    if (sections.length === 0 || typeof IntersectionObserver === "undefined") {
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          const id = entry.target.getAttribute(
-            "data-agency-district"
-          ) as AgencyDistrictId | null;
-          if (!id) return;
-          visibility.set(id, entry.isIntersecting ? entry.intersectionRatio : 0);
-        });
-
-        let next: AgencyDistrictId | null = null;
-        let bestRatio = 0;
-        AGENCY_DISTRICTS.forEach((district) => {
-          const ratio = visibility.get(district.id) ?? 0;
-          if (ratio > bestRatio) {
-            next = district.id;
-            bestRatio = ratio;
-          }
-        });
-        const resolvedNext = next;
-        if (resolvedNext) {
-          setActiveDistrict((current) =>
-            current === resolvedNext ? current : resolvedNext
-          );
-        }
-      },
-      {
-        rootMargin: "-18% 0px -56% 0px",
-        threshold: [0, 0.01, 0.08, 0.24, 0.5],
-      }
-    );
-
-    sections.forEach((section) => observer.observe(section));
-    return () => observer.disconnect();
-  }, [arrivalSettled, fixtureState]);
-
-  useEffect(() => {
-    if (activeDistrict !== "kai-suite") {
-      setKaiContextDistrict(activeDistrict);
-    }
-  }, [activeDistrict]);
-
-  useEffect(() => {
-    if (resolution.tier !== "D") return;
-
-    const root = document.documentElement;
-    const previousValue = root.style.getPropertyValue("scroll-behavior");
-    const previousPriority = root.style.getPropertyPriority("scroll-behavior");
-    root.style.setProperty("scroll-behavior", "auto", "important");
-
-    return () => {
-      if (previousValue) {
-        root.style.setProperty(
-          "scroll-behavior",
-          previousValue,
-          previousPriority
-        );
-      } else {
-        root.style.removeProperty("scroll-behavior");
-      }
-    };
-  }, [resolution.tier]);
-
-  useEffect(() => {
-    if (!replayFocusPendingRef.current) return;
-    replayFocusPendingRef.current = false;
-    roomHeadingRef.current?.focus({ preventScroll: true });
-    scrollWindowImmediately(0);
-    setAnnouncement(`Arrival replayed in Tier ${resolution.tier}.`);
-  }, [arrivalKey, resolution.tier]);
 
   const capacity =
     fixtureState === "capacity"
@@ -484,7 +230,7 @@ export function AgencyCommandStage() {
     });
   };
 
-  const applyProjection = (next: ExperienceProjection) => {
+  const applyProjection = (next: CxosExperienceProjection) => {
     if (next === "cinematic" && !resolution.cinematicAvailable) {
       setCinematicPromptOpen(false);
       closeDirectorAndRestoreFocus(
@@ -527,16 +273,6 @@ export function AgencyCommandStage() {
     closeDirectorAndRestoreFocus(
       "Static projection retained. Browser settings were not changed."
     );
-  };
-
-  const clearKaiSession = () => {
-    setKaiCommand("");
-    setKaiTurns([]);
-    setEditingKaiTurnId(null);
-    setKaiCommandReceipt(
-      "ROUTE SESSION EMPTY · Nothing is prepared and no production action is connected."
-    );
-    kaiTurnSequenceRef.current = 0;
   };
 
   const applyOperatingModel = (next: AgencyOperatingModel) => {
@@ -634,14 +370,6 @@ export function AgencyCommandStage() {
     );
   };
 
-  const moveToDistrict = (districtId: AgencyDistrictId) => {
-    setActiveDistrict(districtId);
-    const heading = document.getElementById(`${districtId}-heading`);
-    const district = document.getElementById(districtId);
-    heading?.focus({ preventScroll: true });
-    if (district) scrollElementImmediately(district);
-  };
-
   const stageKaiSuggestion = (suggestion: string) => {
     if (activeDistrict !== "kai-suite") {
       setKaiContextDistrict(activeDistrict);
@@ -690,36 +418,22 @@ export function AgencyCommandStage() {
   };
 
   const replayArrival = () => {
-    replayFocusPendingRef.current = true;
-    setArrivalSettled(false);
-    setArrivalKey((key) => key + 1);
+    replayRuntimeArrival(`Arrival replayed in Tier ${resolution.tier}.`);
     directorRef.current?.removeAttribute("open");
   };
 
-  const settleArrival = () => {
-    if (!arrivalSettled) setArrivalSettled(true);
-  };
-
   const completeArrival = () => {
-    settleArrival();
-    window.requestAnimationFrame(() => {
-      roomHeadingRef.current?.focus({ preventScroll: true });
-      setAnnouncement(
-        `Agency Command settled. ${personalization.greeting}`
-      );
+    if (arrivalSettled) return;
+    settleRuntimeArrival({
+      focus: { kind: "room" },
+      announcement: `Agency Command settled. ${personalization.greeting}`,
     });
   };
 
   const skipArrival = () => {
-    settleArrival();
-    window.requestAnimationFrame(() => {
-      const heading = document.getElementById("central-command-heading");
-      const district = document.getElementById("central-command");
-      heading?.focus({ preventScroll: true });
-      if (district) scrollElementImmediately(district);
-      setAnnouncement(
-        "Agency Command arrival skipped. Central Command is ready."
-      );
+    settleRuntimeArrival({
+      focus: { kind: "district", districtId: "central-command" },
+      announcement: "Agency Command arrival skipped. Central Command is ready.",
     });
   };
 
@@ -757,16 +471,6 @@ export function AgencyCommandStage() {
     closeDirectorAndRestoreFocus("Populated synthetic fixture restored.");
   };
 
-  const commitMissionControlReturn = () => {
-    if (!departureCommittedRef.current) return;
-    departureCommittedRef.current = false;
-    if (returnFallbackRef.current !== null) {
-      window.clearTimeout(returnFallbackRef.current);
-      returnFallbackRef.current = null;
-    }
-    window.location.assign("/review/mission-control");
-  };
-
   const beginMissionControlReturn = (
     event: React.MouseEvent<HTMLAnchorElement>
   ) => {
@@ -780,34 +484,13 @@ export function AgencyCommandStage() {
       return;
     }
     clearKaiSession();
-    if (resolution.tier === "C" || resolution.tier === "D") return;
-    event.preventDefault();
-    if (departureCommittedRef.current) return;
-    departureCommittedRef.current = true;
-    setDeparting(true);
-    directorRef.current?.removeAttribute("open");
-    if (returnFallbackRef.current !== null) {
-      window.clearTimeout(returnFallbackRef.current);
-    }
-    returnFallbackRef.current = window.setTimeout(
-      commitMissionControlReturn,
-      800
-    );
-    setAnnouncement(
-      "Return acknowledged. Agency instruments are receding toward Mission Control."
-    );
+    if (beginDeparture(event)) directorRef.current?.removeAttribute("open");
   };
 
   const completeMissionControlReturn = (
     event: React.AnimationEvent<HTMLDivElement>
   ) => {
-    if (
-      event.currentTarget !== event.target ||
-      !departureCommittedRef.current
-    ) {
-      return;
-    }
-    commitMissionControlReturn();
+    completeDeparture(event);
   };
 
   const handleDirectorKeyDown = (
@@ -836,19 +519,22 @@ export function AgencyCommandStage() {
   return (
     <main
       id="main"
+      ref={roomRootRef}
       tabIndex={-1}
       className={styles.room}
+      {...runtime.attributes}
+      style={
+        {
+          "--cxos-arrival-duration": `${runtime.arrivalDurationMs}ms`,
+        } as CSSProperties
+      }
       data-tier={resolution.tier}
       data-fixture={fixtureState}
       data-hidden={documentHidden ? "true" : "false"}
       data-departing={departing ? "true" : "false"}
       data-arrival-settled={arrivalSettled ? "true" : "false"}
       data-active-district={activeDistrict}
-      data-scroll-ready={
-        arrivalSettled && (resolution.tier === "A" || resolution.tier === "B")
-          ? "true"
-          : "false"
-      }
+      data-scroll-ready={environment.scrollActivation ? "true" : "false"}
       data-motion-override={
         reducedMotionOverride && projection === "cinematic" ? "true" : "false"
       }
@@ -856,9 +542,21 @@ export function AgencyCommandStage() {
       <div aria-hidden className={styles.gridField} />
       <div aria-hidden className={styles.overheadLight} />
       <div aria-hidden className={styles.horizon} />
-      <div aria-hidden className={styles.ambientSweep} />
-      <div aria-hidden className={styles.roomBreath} />
-      <div aria-hidden className={styles.facilityPulse}>
+      <div
+        aria-hidden
+        className={styles.ambientSweep}
+        data-cxos-motion-channel={runtime.motionChannels[1]}
+      />
+      <div
+        aria-hidden
+        className={styles.roomBreath}
+        data-cxos-motion-channel={runtime.motionChannels[0]}
+      />
+      <div
+        aria-hidden
+        className={styles.facilityPulse}
+        data-cxos-motion-channel={runtime.motionChannels[2]}
+      >
         <span data-channel="capacity"><i /></span>
         <span data-channel="client-flow"><i /></span>
         <span data-channel="queue-pressure"><i /></span>
@@ -919,7 +617,10 @@ export function AgencyCommandStage() {
 
           {fixtureState !== "permission" ? (
             <>
-              <ActivationRail state={fixtureState} />
+              <ActivationRail
+                state={fixtureState}
+                beatOrder={runtime.arrivalBeats}
+              />
               <div className={styles.arrivalGreeting}>
                 <p>KAI EXECUTIVE CHANNEL · SYNTHETIC FIXTURE</p>
                 <strong>{personalization.greeting}</strong>
@@ -955,7 +656,6 @@ export function AgencyCommandStage() {
         <section className={styles.stateBand} aria-labelledby="fixture-state-heading">
           <h2
             id="fixture-state-heading"
-            ref={stateHeadingRef}
             tabIndex={-1}
             className={styles.stateHeading}
           >
@@ -1375,6 +1075,7 @@ function AgencyDistrictShell({
       id={district.id}
       className={styles.district}
       data-agency-district={district.id}
+      data-cxos-district={district.id}
       data-current={activeDistrict === district.id ? "true" : "false"}
       aria-labelledby={`${district.id}-heading`}
     >
@@ -1514,38 +1215,71 @@ function InstrumentHeader({
   );
 }
 
-function ActivationRail({ state }: { state: AgencyFixtureState }) {
-  const steps =
+function ActivationRail({
+  state,
+  beatOrder,
+}: {
+  state: AgencyFixtureState;
+  beatOrder: readonly string[];
+}) {
+  const steps: Record<string, readonly [label: string, detail: string]> =
     state === "loading"
-      ? [
-          ["01", "Origin acknowledged", "Mission Control transfer"],
-          ["02", "Authority recognized", "Synthetic operator only"],
-          ["03", "Facility acquisition", "Fixture scope unresolved"],
-          ["04", "Systems held", "No occupancy inferred"],
-          ["05", "Kai channel held", "Awaiting displayed sources"],
-          ["06", "Command settlement", "Complete static state available"],
-        ]
-      : [
-          ["01", "Origin acknowledged", "Mission Control transfer"],
-          ["02", "Authority recognized", "Synthetic operator only"],
-          ["03", "Facility acquired", "Agency scope resolved"],
-          ["04", "Systems online", "Fixed horizon and ledgers"],
-          ["05", "Kai greeting", "Deterministic channel ready"],
-          ["06", "Command settled", "Seven districts available"],
-        ];
+      ? {
+          "origin-acknowledgment": [
+            "Origin acknowledged",
+            "Mission Control transfer",
+          ],
+          "authority-recognition": [
+            "Authority recognized",
+            "Synthetic operator only",
+          ],
+          "facility-acquisition": [
+            "Facility acquisition",
+            "Fixture scope unresolved",
+          ],
+          "systems-online": ["Systems held", "No occupancy inferred"],
+          "kai-greeting": ["Kai channel held", "Awaiting displayed sources"],
+          "command-settlement": [
+            "Command settlement",
+            "Complete static state available",
+          ],
+        }
+      : {
+          "origin-acknowledgment": [
+            "Origin acknowledged",
+            "Mission Control transfer",
+          ],
+          "authority-recognition": [
+            "Authority recognized",
+            "Synthetic operator only",
+          ],
+          "facility-acquisition": ["Facility acquired", "Agency scope resolved"],
+          "systems-online": ["Systems online", "Fixed horizon and ledgers"],
+          "kai-greeting": ["Kai greeting", "Deterministic channel ready"],
+          "command-settlement": [
+            "Command settled",
+            "Seven districts available",
+          ],
+        };
 
   return (
     <ol
       className={styles.activationRail}
       aria-label="Agency Command arrival sequence"
     >
-      {steps.map(([index, label, detail]) => (
-        <li key={index}>
-          <span>{index}</span>
-          <strong>{label}</strong>
-          <small>{detail}</small>
-        </li>
-      ))}
+      {beatOrder.map((beatId, index) => {
+        const step = steps[beatId] ?? [
+          "Sequence unavailable",
+          "Runtime contract failed closed",
+        ];
+        return (
+          <li key={beatId} data-cxos-arrival-beat={beatId}>
+            <span>{String(index + 1).padStart(2, "0")}</span>
+            <strong>{step[0]}</strong>
+            <small>{step[1]}</small>
+          </li>
+        );
+      })}
     </ol>
   );
 }

@@ -73,9 +73,13 @@ const page = read("app/review/agency-command/page.tsx");
 const stage = read("app/review/agency-command/stage.tsx");
 const fixtures = read("app/review/agency-command/fixtures.ts");
 const css = read("app/review/agency-command/agency-command.module.css");
+const runtimePolicy = read("lib/cxos/runtime.ts");
+const runtimeAdapter = read("components/cxos/runtime/useCxosRoomRuntime.ts");
 const pageCode = codeOf(page);
 const stageCode = codeOf(stage);
 const fixtureCode = codeOf(fixtures);
+const runtimePolicyCode = codeOf(runtimePolicy);
+const runtimeAdapterCode = codeOf(runtimeAdapter);
 const presentationCode = `${stageCode}\n${fixtureCode}`;
 
 // -- 1 · exact, isolated Phase 6.2 route surface -----------------------------
@@ -137,11 +141,13 @@ check(
 const stageImports = importSources(stage);
 const allowedStageImports = new Set([
   "react",
+  "@/components/cxos/runtime/useCxosRoomRuntime",
+  "@/lib/cxos/runtime",
   "./fixtures",
   "./agency-command.module.css",
 ]);
 check(
-  "stage imports only React, local fixtures, and its CSS module",
+  "stage imports only React, the Core Runtime seam, local fixtures, and CSS",
   stageImports.length === allowedStageImports.size &&
     stageImports.every((source) => allowedStageImports.has(source)) &&
     [...allowedStageImports].every((source) => stageImports.includes(source)),
@@ -155,8 +161,9 @@ check(
   !/\bimport\s*\(|\brequire\s*\(/.test(stageCode),
 );
 check(
-  "stage cannot reach Next navigation, AppShell, or shared/live components",
-  !/next\/(?:link|navigation)|\bAppShell\b|@\/components|@\/lib/.test(stageCode),
+  "stage cannot reach Next navigation, AppShell, or any unapproved shared/live component",
+  !/next\/(?:link|navigation)|\bAppShell\b/.test(stageCode) &&
+    stageImports.every((source) => allowedStageImports.has(source)),
 );
 
 // -- 4 · seven exact districts, with no eighth source of room truth ----------
@@ -218,24 +225,24 @@ const activationRailSource = sourceBetween(
 );
 const activationTuples = [
   ...activationRailSource.matchAll(
-    /\[\s*"(0[1-6])",\s*"([^"]+)",\s*"([^"]+)"\s*\]/g,
+    /"([a-z-]+)":\s*\[\s*"([^"]+)",\s*"([^"]+)",?\s*\]/g,
   ),
 ].map((match) => match.slice(1));
 const expectedLoadingBeats = [
-  ["01", "Origin acknowledged", "Mission Control transfer"],
-  ["02", "Authority recognized", "Synthetic operator only"],
-  ["03", "Facility acquisition", "Fixture scope unresolved"],
-  ["04", "Systems held", "No occupancy inferred"],
-  ["05", "Kai channel held", "Awaiting displayed sources"],
-  ["06", "Command settlement", "Complete static state available"],
+  ["origin-acknowledgment", "Origin acknowledged", "Mission Control transfer"],
+  ["authority-recognition", "Authority recognized", "Synthetic operator only"],
+  ["facility-acquisition", "Facility acquisition", "Fixture scope unresolved"],
+  ["systems-online", "Systems held", "No occupancy inferred"],
+  ["kai-greeting", "Kai channel held", "Awaiting displayed sources"],
+  ["command-settlement", "Command settlement", "Complete static state available"],
 ];
 const expectedSettledBeats = [
-  ["01", "Origin acknowledged", "Mission Control transfer"],
-  ["02", "Authority recognized", "Synthetic operator only"],
-  ["03", "Facility acquired", "Agency scope resolved"],
-  ["04", "Systems online", "Fixed horizon and ledgers"],
-  ["05", "Kai greeting", "Deterministic channel ready"],
-  ["06", "Command settled", "Seven districts available"],
+  ["origin-acknowledgment", "Origin acknowledged", "Mission Control transfer"],
+  ["authority-recognition", "Authority recognized", "Synthetic operator only"],
+  ["facility-acquisition", "Facility acquired", "Agency scope resolved"],
+  ["systems-online", "Systems online", "Fixed horizon and ledgers"],
+  ["kai-greeting", "Kai greeting", "Deterministic channel ready"],
+  ["command-settlement", "Command settled", "Seven districts available"],
 ];
 check(
   "loading and resolved arrival projections each expose the exact six beats",
@@ -245,16 +252,61 @@ check(
       JSON.stringify(expectedSettledBeats),
 );
 check(
-  "arrival is sequenced, replayable, skippable, and Escape settles it",
+  "arrival is sequenced through the shared runtime, replayable, skippable, and Escape-settled",
   /data-arrival-settled=\{arrivalSettled \? "true" : "false"\}/.test(stage) &&
-    /setArrivalSettled\(false\)[\s\S]{0,120}setArrivalKey/.test(stageCode) &&
-    /event\.key !== "Escape"/.test(stageCode) &&
+    /definition: AGENCY_CORE_RUNTIME/.test(stageCode) &&
+    /replayRuntimeArrival\(`Arrival replayed in Tier \$\{resolution\.tier\}\."?/.test(
+      stageCode,
+    ) &&
+    /event\.key !== "Escape"/.test(runtimeAdapterCode) &&
+    /setArrivalSettled\(false\)[\s\S]{0,120}setArrivalKey/.test(
+      runtimeAdapterCode,
+    ) &&
     /Skip arrival/.test(stage) &&
     /agencyIdentityAcquire/.test(css) &&
     /agencySystemActivate/.test(css) &&
     /agencyCapacityForm/.test(css) &&
     /agencyLedgerActivate/.test(css) &&
     /agencyKaiArrive/.test(css),
+);
+const declaredArrivalBeats = [
+  ...sourceBetween(
+    stage,
+    "const AGENCY_ARRIVAL_BEATS = [",
+    "] as const;",
+  ).matchAll(/"([a-z-]+)"/g),
+].map((match) => match[1]);
+const declaredMotionChannels = [
+  ...sourceBetween(
+    stage,
+    "const AGENCY_MOTION_CHANNELS = [",
+    "] as const;",
+  ).matchAll(/"([a-z-]+)"/g),
+].map((match) => match[1]);
+check(
+  "Agency binds the exact approved arrival and motion contracts to rendered runtime output",
+  JSON.stringify(declaredArrivalBeats) ===
+    JSON.stringify([
+      "origin-acknowledgment",
+      "authority-recognition",
+      "facility-acquisition",
+      "systems-online",
+      "kai-greeting",
+      "command-settlement",
+    ]) &&
+    JSON.stringify(declaredMotionChannels) ===
+      JSON.stringify(["room-breath", "operational-sweep", "client-flow"]) &&
+    /arrivalBeats: AGENCY_ARRIVAL_BEATS/.test(stageCode) &&
+    /arrivalDurationMs: \{ A: 1500, B: 700 \}/.test(stageCode) &&
+    /motionChannels: AGENCY_MOTION_CHANNELS/.test(stageCode) &&
+    /beatOrder=\{runtime\.arrivalBeats\}/.test(stage) &&
+    (stage.match(/data-cxos-motion-channel=\{runtime\.motionChannels\[[0-2]\]\}/g) ?? [])
+      .length === 3 &&
+    /"--cxos-arrival-duration": `\$\{runtime\.arrivalDurationMs\}ms`/.test(
+      stageCode,
+    ) &&
+    /agencyArrivalClock var\(--cxos-arrival-duration, 1500ms\)/.test(css) &&
+    /animation-duration: var\(--cxos-arrival-duration, 700ms\)/.test(css),
 );
 check(
   "facility pulse names the six purpose-bound operating channels",
@@ -550,24 +602,17 @@ check(
     /setEditingKaiTurnId\(null\)/.test(clearSessionSource) &&
     /kaiTurnSequenceRef\.current = 0/.test(clearSessionSource),
 );
-const bfcacheSource = sourceBetween(
-  stageCode,
-  "useEffect(() => {\n    const clearRouteState",
-  "  }, []);",
-);
 check(
-  "pagehide and BFCache restoration clear every route-local command artifact",
-  /setKaiCommand\(""\)/.test(bfcacheSource) &&
-    /setKaiTurns\(\[\]\)/.test(bfcacheSource) &&
-    /setEditingKaiTurnId\(null\)/.test(bfcacheSource) &&
-    /kaiTurnSequenceRef\.current = 0/.test(bfcacheSource) &&
-    /if \(!event\.persisted\) return[\s\S]{0,100}clearRouteState\(\)/.test(
-      bfcacheSource,
-    ) &&
-    /addEventListener\("pagehide", clearRouteState\)/.test(stageCode) &&
-    /addEventListener\("pageshow", clearRestoredRouteState\)/.test(stageCode) &&
-    /removeEventListener\("pagehide", clearRouteState\)/.test(stageCode) &&
-    /removeEventListener\("pageshow", clearRestoredRouteState\)/.test(stageCode),
+  "pagehide and BFCache restoration delegate to the complete route-local reset",
+  /onRouteReset: clearKaiSession/.test(stageCode) &&
+    /routeResetRef\.current\?\.\(\)/.test(runtimeAdapterCode) &&
+    /if \(event\.persisted\) reset\(\)/.test(runtimeAdapterCode) &&
+    /addEventListener\("pagehide", reset\)/.test(runtimeAdapterCode) &&
+    /addEventListener\("pageshow", resetRestoredPage\)/.test(runtimeAdapterCode) &&
+    /removeEventListener\("pagehide", reset\)/.test(runtimeAdapterCode) &&
+    /removeEventListener\("pageshow", resetRestoredPage\)/.test(
+      runtimeAdapterCode,
+    ),
 );
 const exitSource = sourceBetween(
   stageCode,
@@ -578,7 +623,7 @@ check(
   "every unmodified Mission Control exit clears Kai before any static-tier return",
   exitSource.indexOf("clearKaiSession();") >= 0 &&
     exitSource.indexOf("clearKaiSession();") <
-      exitSource.indexOf('resolution.tier === "C"'),
+      exitSource.indexOf("beginDeparture(event)"),
 );
 check(
   "fixture and operating-model route resets also clear the Kai session",
@@ -589,20 +634,21 @@ check(
 
 // -- 9 · passive district observation; no scroll hijack ---------------------
 const observerSource = sourceBetween(
-  stageCode,
-  "const visibility = new Map<AgencyDistrictId, number>()",
-  "useEffect(() => {\n    if (activeDistrict",
+  runtimeAdapterCode,
+  "const visibility = new Map<DistrictId, number>()",
+  "useEffect(() => {\n    if (!(definition.kaiContextHoldDistricts",
 );
 check(
-  "active district is derived by one passive IntersectionObserver",
-  (stageCode.match(/new IntersectionObserver\(/g) ?? []).length === 1 &&
-    /querySelectorAll<HTMLElement>\("\[data-agency-district\]"\)/.test(
+  "active district is derived by one shared passive IntersectionObserver",
+  (runtimeAdapterCode.match(/new IntersectionObserver\(/g) ?? []).length === 1 &&
+    /querySelectorAll<HTMLElement>\("\[data-cxos-district\]"\)/.test(
       observerSource,
     ) &&
     /entry\.intersectionRatio/.test(observerSource) &&
-    /AGENCY_DISTRICTS\.forEach/.test(observerSource) &&
+    /selectCxosActiveDistrict\(definition\.districts/.test(observerSource) &&
     /observer\.observe\(section\)/.test(observerSource) &&
-    /observer\.disconnect\(\)/.test(observerSource),
+    /observer\.disconnect\(\)/.test(observerSource) &&
+    /data-cxos-district=\{district\.id\}/.test(stage),
 );
 check(
   "the observer activates tall districts at their first intersection",
@@ -612,18 +658,24 @@ check(
 );
 check(
   "district navigation defeats inherited smooth scroll and preserves the CSS offset",
-  /function scrollElementImmediately[\s\S]{0,420}scrollMarginTop[\s\S]{0,260}scrollWindowImmediately/.test(
-    stageCode,
+  /function scrollCxosElementImmediately[\s\S]{0,420}scrollMarginTop[\s\S]{0,260}scrollCxosWindowImmediately/.test(
+    runtimeAdapterCode,
   ) &&
-    /if \(district\) scrollElementImmediately\(district\)/.test(stageCode) &&
-    /scrollWindowImmediately\(0\)[\s\S]{0,160}const update/.test(stageCode),
+    /if \(district\) scrollCxosElementImmediately\(district\)/.test(
+      runtimeAdapterCode,
+    ) &&
+    /scrollCxosWindowImmediately\(0\)[\s\S]{0,160}const update/.test(
+      runtimeAdapterCode,
+    ),
 );
 check(
   "district state is exposed without installing a scroll/wheel/touchmove listener",
   /data-active-district=\{activeDistrict\}/.test(stage) &&
     /data-scroll-ready=/.test(stage) &&
-    !/addEventListener\(\s*["'](?:scroll|wheel|touchmove)["']/.test(stageCode) &&
-    !/\bonScroll\s*=/.test(stageCode),
+    !/addEventListener\(\s*["'](?:scroll|wheel|touchmove)["']/.test(
+      `${stageCode}\n${runtimeAdapterCode}`,
+    ) &&
+    !/\bonScroll\s*=/.test(`${stageCode}\n${runtimeAdapterCode}`),
 );
 check(
   "arrival never captures wheel input or prevents scrolling",
@@ -673,12 +725,16 @@ for (const [label, pattern] of nondeterministic) {
   check(`determinism: no ${label}`, !pattern.test(presentationCode));
 }
 check(
-  "the only timer is the bounded return-navigation fallback",
-  (presentationCode.match(/\bsetTimeout\b/g) ?? []).length === 1 &&
-    /returnFallbackRef\.current\s*=\s*window\.setTimeout\(\s*commitMissionControlReturn,\s*800\s*\)/.test(
-      stageCode,
+  "the room owns no timer and the runtime owns one bounded return fallback",
+  (presentationCode.match(/\bsetTimeout\b/g) ?? []).length === 0 &&
+    (runtimeAdapterCode.match(/\bsetTimeout\b/g) ?? []).length === 1 &&
+    /window\.setTimeout\([\s\S]{0,120}definition\.departure\.fallbackMs/.test(
+      runtimeAdapterCode,
     ) &&
-    !/\b(?:setInterval|requestIdleCallback)\b/.test(presentationCode),
+    /fallbackMs:\s*800/.test(stageCode) &&
+    !/\b(?:setInterval|requestIdleCallback)\b/.test(
+      `${presentationCode}\n${runtimeAdapterCode}`,
+    ),
 );
 
 const anchorTags = [...stage.matchAll(/<a\b[\s\S]*?>/g)].map((match) => match[0]);
@@ -696,15 +752,15 @@ check(
     stageCode,
   ),
 );
-const reviewReturnCall = 'window.location.assign("/review/mission-control")';
-const stageWithoutReviewReturn = stageCode.replace(reviewReturnCall, "");
 check(
-  "the only imperative navigation is the explicit Mission Control review return",
-  (stageCode.match(/window\.location\.assign\("\/review\/mission-control"\)/g) ?? [])
-    .length === 1 &&
-    !/\b(?:router\.(?:push|replace)|location\.(?:assign|replace)|window\.location)\b/.test(
-      stageWithoutReviewReturn,
-    ),
+  "the only imperative navigation is the runtime's validated local departure",
+  !/\b(?:router\.(?:push|replace)|location\.(?:assign|replace)|window\.location)\b/.test(
+    stageCode,
+  ) &&
+    /href:\s*"\/review\/mission-control"/.test(stageCode) &&
+    (runtimeAdapterCode.match(/window\.location\.assign\(definition\.departure\.href\)/g) ?? [])
+      .length === 1 &&
+    /SAFE_LOCAL_ROUTE/.test(runtimePolicyCode),
 );
 
 // -- 11 · purpose-bound heartbeat and distributed source ownership -----------
@@ -857,17 +913,25 @@ check(
 );
 check(
   "Tier D temporarily forces and then restores root auto scrolling",
-  /if \(resolution\.tier !== "D"\) return[\s\S]{0,460}setProperty\("scroll-behavior", "auto", "important"\)[\s\S]{0,700}removeProperty\("scroll-behavior"\)/.test(
-    stageCode,
-  ),
+  /if \(resolution\.tier !== "D"\) return;[\s\S]{0,100}return acquireCxosInstantScroll\(\)/.test(
+    runtimeAdapterCode,
+  ) &&
+    /cxosInstantScrollOwners[\s\S]{0,900}setProperty\("scroll-behavior", "auto", "important"\)[\s\S]{0,900}removeProperty\("scroll-behavior"\)/.test(
+      runtimeAdapterCode,
+    ),
 );
 check(
-  "Mission Control return uses one acknowledged departure and immediate static fallback",
+  "Mission Control return delegates one acknowledged departure with native static fallback",
   /const beginMissionControlReturn\s*=/.test(stageCode) &&
-    /const commitMissionControlReturn\s*=/.test(stageCode) &&
-    /resolution\.tier === "C" \|\| resolution\.tier === "D"/.test(stageCode) &&
+    /beginDeparture\(event\)/.test(stageCode) &&
+    /resolution\.tier === "C" \|\|[\s\S]{0,80}resolution\.tier === "D"/.test(
+      runtimeAdapterCode,
+    ) &&
     /onAnimationEnd=\{completeMissionControlReturn\}/.test(stage) &&
-    /window\.clearTimeout\(returnFallbackRef\.current\)/.test(stageCode) &&
+    /completeDeparture\(event\)/.test(stageCode) &&
+    /window\.clearTimeout\(departureFallbackRef\.current\)/.test(
+      runtimeAdapterCode,
+    ) &&
     /data-departing=\{departing \? "true" : "false"\}/.test(stage) &&
     /agencyReturnHandoff 460ms/.test(css),
 );
@@ -883,11 +947,12 @@ check(
   /directorSummaryRef\.current\?\.focus\(\{ preventScroll: true \}\)/.test(
     stageCode,
   ) &&
-    /replayFocusPendingRef\.current = true/.test(stageCode) &&
+    /replayRuntimeArrival/.test(stageCode) &&
+    /replayFocusPendingRef\.current = true/.test(runtimeAdapterCode) &&
     /roomHeadingRef\.current\?\.focus\(\{ preventScroll: true \}\)/.test(
-      stageCode,
+      runtimeAdapterCode,
     ) &&
-    /scrollWindowImmediately\(0\)/.test(stageCode) &&
+    /scrollCxosWindowImmediately\(0\)/.test(runtimeAdapterCode) &&
     /event\.key !== "Escape" \|\| !directorRef\.current\?\.open/.test(stageCode),
 );
 check(
@@ -910,7 +975,7 @@ check(
   "constrained capability keeps Cinematic unavailable and names the conservative reason",
   /option === "cinematic" && !resolution\.cinematicAvailable/.test(stageCode) &&
     /Cinematic projection is unavailable on this constrained device/.test(stage) &&
-    /Capability detection failed safely/.test(stage),
+    /Capability detection failed safely/.test(runtimePolicy),
 );
 check(
   "initial capability hydration cannot announce a false preference change",
@@ -968,14 +1033,17 @@ check(
   ),
 );
 check(
-  "language governs Mission Control and future rooms without claiming they changed",
+  "language governs future Core Runtime adoption without claiming other rooms changed",
   /Mission Control and future operating rooms are governed[\s\S]{0,240}separately scoped, reviewed, and implemented/.test(
     languageMarkdown,
   ) &&
     /Phase 6\.2 changes no Mission Control or future-room runtime/.test(
       languageMarkdown,
     ) &&
-    /Phase 6\.2 changes no Mission Control or future-room runtime/.test(languageHtml),
+    /Phase 6\.2 changes no other room’s runtime/.test(languageHtml) &&
+    /Agency Headquarters is the only (?:consumer migrated|reference consumer migrated) in this phase/.test(
+      languageHtml,
+    ),
 );
 
 // -- 13 · qualitative health and compliance-safe copy -----------------------

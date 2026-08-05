@@ -156,7 +156,7 @@
 }
 
 .room[data-arrival-settled="false"] .arrivalClock {
-  animation: agencyArrivalClock 1500ms linear both;
+  animation: agencyArrivalClock var(--cxos-arrival-duration, 1500ms) linear both;
 }
 
 .room[data-arrival-settled="false"] .identity {
@@ -2355,7 +2355,7 @@
 }
 
 .room[data-tier="B"][data-arrival-settled="false"] .arrivalClock {
-  animation-duration: 700ms;
+  animation-duration: var(--cxos-arrival-duration, 700ms);
 }
 
 .room[data-tier="B"][data-arrival-settled="false"] .identity,
