@@ -28,7 +28,7 @@ import { prisma } from "@/lib/prisma";
 // `updated` prop on app/legal/terms/page.tsx — scripts/terms-acceptance.test.ts
 // fails the build's guard suite if the two drift, because a stale constant would
 // let a NEW terms text be covered by an acceptance of the OLD one.
-export const CURRENT_TERMS_VERSION = "2026-06-18";
+export const CURRENT_TERMS_VERSION = "2026-08-01";
 
 // Where the user reads what they are accepting. Returned with every refusal so
 // the client can link to it rather than hard-coding a path.

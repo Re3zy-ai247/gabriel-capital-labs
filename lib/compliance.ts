@@ -1,3 +1,5 @@
+import { COMPANY_LEGAL_NAME } from "./companyIdentity.server";
+
 // Compliance Mode: scrub guarantees and illegal/over-promising language from any
 // generated letter. Runs on the FINAL letter text before it is saved or shown.
 //
@@ -326,4 +328,4 @@ export const COMPLIANCE_RULES = PROHIBITED.map(
 );
 
 export const DISCLAIMER =
-  "Educational Purpose Disclaimer: CreditVector™, a Gabriel Capital Labs platform, is an AI-powered educational tool that helps consumers understand their credit reports and dispute rights under the Fair Credit Reporting Act (FCRA). This platform does not provide legal advice, credit repair services, or guarantees of any outcome. No deletion, correction, or score improvement is guaranteed. Results vary based on individual circumstances and the accuracy of reported information. Consult a licensed attorney for legal guidance.";
+  `Educational Purpose Disclaimer: CreditVector™, a ${COMPANY_LEGAL_NAME} platform, is an AI-powered educational tool that helps consumers understand their credit reports and dispute rights under the Fair Credit Reporting Act (FCRA). This platform does not provide legal advice, credit repair services, or guarantees of any outcome. No deletion, correction, or score improvement is guaranteed. Results vary based on individual circumstances and the accuracy of reported information. Consult a licensed attorney for legal guidance.`;

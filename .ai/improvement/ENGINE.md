@@ -20,7 +20,7 @@ Standing process that turns observation into prioritized work. Proposing is 🟢
 ## Current prioritized opportunities (2026-07-12 — evidence-based, deduped against TASKS/backlog)
 | Pri | Opportunity | Why now | Route |
 |---|---|---|---|
-| P0 | Founder unblocks: G-01 postal address · encrypt backfills · G-02 counsel | launch gate; everything downstream waits | AIOS backlog (open) |
+| P0 | Founder unblocks: encrypt backfills · G-02 counsel; G-01 legal identity is resolved, with deployment/test verification pending | launch gate; everything downstream waits | AIOS backlog (open) |
 | P1 | BI-COST-01 AI-cost instrumentation | can't manage AI margin blind; pre-scale | new task (CAIO) |
 | P1 | G-14 real MRR + overview/stats dedupe | truthful revenue reporting; known duplication | AIOS backlog (open) |
 | P2 | BI-FEAT-01 usage events (privacy-clean) | unblocks questions 2, 8; retention truth | new task (CPO, needs CSO/CCO pass) |

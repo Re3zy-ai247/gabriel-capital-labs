@@ -10,7 +10,7 @@ Check here BEFORE creating any campaign asset (reuse-first). Entry format: ID ·
 
 ## CAMP-002 — Brief weekly digest (owned email)
 - **Assets:** digest template in `lib/briefDigest.ts` (code-canonical), branded covers via `app/api/brief/cover`.
-- **Status:** BUILT, gated on `COMPANY_POSTAL_ADDRESS` (G-01). CAN-SPAM: postal footer + one-click unsubscribe; add `List-Unsubscribe` header at go-live.
+- **Status:** BUILT. `COMPANY_POSTAL_ADDRESS — RESOLVED BY FOUNDER`; canonical LLC footer is local/uncommitted. Separately authorized deployment and received-test verification remain. CAN-SPAM: postal footer + one-click unsubscribe; `List-Unsubscribe` is already shipped.
 - **Approved use:** weekly, opted-in subscribers only.
 
 ## CAMP-003+ — (open)

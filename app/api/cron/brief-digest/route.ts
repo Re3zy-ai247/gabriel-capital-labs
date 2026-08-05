@@ -9,8 +9,8 @@ export const maxDuration = 60;
 
 // Weekly digest cron (scheduled in vercel.json). CRON_SECRET-gated like the ingest
 // cron — Vercel injects `Authorization: Bearer <CRON_SECRET>`; refuse (503) if unset.
-// sendWeeklyDigest itself refuses to send without a configured postal address and
-// skips when nothing was published in the last 7 days.
+// sendWeeklyDigest uses the canonical server-side legal postal address and skips
+// when nothing was published in the last 7 days.
 export async function GET(req: Request) {
   const secret = process.env.CRON_SECRET;
   if (!secret) return NextResponse.json({ error: "Cron not configured." }, { status: 503 });
@@ -19,9 +19,8 @@ export async function GET(req: Request) {
   }
   const rid = requestId(req);
   try {
-    // sendWeeklyDigest returns its own honest shape (it refuses without a postal
-    // address and skips an empty week) — pass it through unchanged rather than
-    // wrapping it in a second, competing success signal.
+    // sendWeeklyDigest returns its own honest shape (including an empty-week skip)
+    // — pass it through unchanged rather than wrapping it in a competing signal.
     const result = await sendWeeklyDigest();
     return NextResponse.json(result);
   } catch (e) {

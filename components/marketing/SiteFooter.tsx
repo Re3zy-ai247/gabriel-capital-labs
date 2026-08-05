@@ -3,6 +3,7 @@ import { BrandLogo } from "@/components/BrandLogo";
 import { BRAND } from "@/lib/brand";
 import { DISCLAIMER } from "@/lib/compliance";
 import { CinematicToggle } from "@/components/cxos/CinematicToggle";
+import { COMPANY_LEGAL_NAME } from "@/lib/companyIdentity.server";
 
 const COLS: { heading: string; links: { label: string; href: string }[] }[] = [
   {
@@ -61,7 +62,7 @@ export function SiteFooter() {
           <p className="max-w-4xl text-xs leading-relaxed text-slate-500 pretty">{DISCLAIMER}</p>
           <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-xs text-slate-500">
-              © {new Date().getFullYear()} {BRAND.parent}. All rights reserved.
+              © {new Date().getFullYear()} {COMPANY_LEGAL_NAME}. All rights reserved.
             </p>
             <div className="flex items-center gap-5 text-xs text-slate-500">
               <Link href="/legal/privacy" className="transition hover:text-slate-300">Privacy</Link>

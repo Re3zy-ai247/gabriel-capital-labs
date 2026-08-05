@@ -12,11 +12,14 @@ Actual services + env-var **names** only (never values). Server-side only unless
 | Web Push (VAPID) | PWA phone alerts | `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | `lib/push.ts` fails safe |
 | NextAuth | Auth | `NEXTAUTH_SECRET`, `NEXTAUTH_URL` | — |
 | Field encryption | At-rest crypto (ADR-0002) | `DOCUMENT_ENCRYPTION_KEY` | dual-read of legacy plaintext |
-| Brief digest (CAN-SPAM) | Weekly email footer address | `COMPANY_POSTAL_ADDRESS` — **NOT YET SET; digest sends nothing until it is** | gated, silent |
+| Brief digest (CAN-SPAM) | Weekly email footer legal identity | — (canonical server source: `lib/companyIdentity.server.ts`; Founder fact resolved 2026-08-01) | fails closed if canonical identity is unavailable; deployment/received test not yet verified |
 | Admin bootstrap | seed admin | `ADMIN_EMAIL`, `ADMIN_PASSWORD` | — |
 
-## Known drift (VERIFIED 2026-07-12)
-`.env.example` still lists **`SETUP_SECRET`** (deleted from prod 2026-06-16) and `STRIPE_PRICE_ID` (catalog is now lazily provisioned — Status: INFERRED unused); it's missing `COMPANY_POSTAL_ADDRESS` and `CRON_SECRET`. Fix candidate — see `TASKS.md`.
+## Known drift (updated 2026-08-01)
+Stable legal identity is version-controlled in `lib/companyIdentity.server.ts`, not an environment
+value. `.env.example` no longer carries a postal placeholder and already documents `CRON_SECRET`.
+Production deployment and received digest verification remain separate actions; no provider values
+were read or changed in the identity update.
 
 ## Env-var changes without code
 `npx vercel env add <NAME> production` then redeploy latest build: `npx vercel ls gabriel-capital-labs --prod` → `npx vercel redeploy <url>`. CLI only via `npx vercel` (auth'd as `re3zy-ai247`).

@@ -7,7 +7,7 @@ Owner: CMO (`../executive/ChiefMarketingOfficer.md`). Drafting arms: `/gcl-conte
 |---|---|---|
 | Website/landing | ✅ LIVE | `app/page.tsx` — compliance-reviewed copy is the approved-language baseline |
 | Brief (owned media) | ✅ LIVE | the content engine's spine — official-source news, human-published |
-| Email newsletter | 🟡 BUILT, gated | weekly digest — blocked on `COMPANY_POSTAL_ADDRESS` (G-01) |
+| Email newsletter | 🟡 BUILT, verification-gated | weekly digest — Founder legal identity resolved in local source; deployment + received test pending |
 | Web Push | ✅ LIVE | product alerts today; marketing use needs CCO pass |
 | SEO / Blog | ❌ post-launch | Brief articles already carry per-article SEO/OG metadata — extend, don't rebuild |
 | YouTube | ❌ planned | 60s master ad rendered (see library); channel not launched |

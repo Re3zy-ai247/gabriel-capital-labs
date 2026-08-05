@@ -6,7 +6,7 @@ Method: each opportunity scored on Impact, Engineering effort, Maintenance burde
 | # | Opportunity | Effort | Drivers |
 |---|---|---|---|
 | 1 | G-02: counsel sign-off (CROA posture + first auto-drafted Brief publish) | owner | T, launch gate |
-| 2 | G-01: set `COMPANY_POSTAL_ADDRESS` → digest live | owner | T, unblocks #20/71–73 |
+| 2 | G-01 RESOLVED BY FOUNDER: canonical LLC identity recorded server-side; deployment + received digest test remain | owner | T, unblocks #20/71–73 after verification |
 | 3 | Run encrypt-letters (+reports) backfills | owner, S | T, closes at-rest loop |
 | 4 | BI-COST-01: `lib/ai/meter.ts` + `AiUsage` (measure before pricing) | M | C, M12, gates economy |
 | 5 | E1: KaiEvent engine + producers + derived deadlines | M | M10, foundation of V2 |

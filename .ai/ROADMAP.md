@@ -8,7 +8,7 @@ Company-level backlog is OWNED elsewhere: `~/Documents/Gabriel-Capital-Labs-AIOS
 Core dispute engine · Community + Kai · Support · Attachments/identity vault · Agency · Stripe live · Brief Phases 1–3 complete (publish flow, engagement, comments, RSS+PDF automation, YouTube embeds) · weekly digest BUILT · admin dashboard suite (AIOS Phase 4) · Web Push · password reset · at-rest encryption sweep.
 
 ## Near-term (unblocked or owner-gated) — details in `CURRENT-STATE.md` / `TASKS.md`
-1. Digest go-live (`COMPANY_POSTAL_ADDRESS` + test + `List-Unsubscribe` header).
+1. Digest go-live verification (Founder legal identity resolved in source; separately authorized deployment + received admin test still required; `List-Unsubscribe` already shipped).
 2. Encryption backfills confirmation.
 3. G-14: real Stripe MRR (or honest "estimated" label) + de-dupe overview/stats.
 4. **Operator Identity Service** — the next platform-service implementation target (architecture done: [`OPERATOR-IDENTITY.md`]). PROPOSED; owner-gated. Prereqs before code: migration-first identity schema, durable identity event contracts, CCO/counsel pass on public-profile/handle/consent, RBAC-beyond-USER/ADMIN reconciled with the PEP. Cross-user surfaces stay under the CROA §1679b / FTC §5 counsel STOP.

@@ -13,7 +13,7 @@ Letter-pack credits purchasable via Stripe (idempotent webhook grants).
 ## Major workflows
 1. **Report → dispute:** upload credit report (PDF) → AI parse (`aiParse`, regex fallback) → tradelines with per-bureau presence, creditor classification, honest scoring → strategist plan → dispute letter builder (deterministic grounded draft + optional LLM refine, compliance-scrubbed, furnisher address pre-fill) → print/PDF → track responses → response analysis + round 2.
 2. **Community + Kai:** forum with post-moderation (reports queue), Kai AI answers (credit-only scope).
-3. **Brief:** consumer-credit news feed — automated official-source ingestion (CFPB/FTC RSS → AI draft), human publish gate, engagement (likes/bookmarks/shares/comments), weekly email digest (gated on `COMPANY_POSTAL_ADDRESS`).
+3. **Brief:** consumer-credit news feed — automated official-source ingestion (CFPB/FTC RSS → AI draft), human publish gate, engagement (likes/bookmarks/shares/comments), weekly email digest with canonical server-owned LLC postal footer (deployment/received test pending).
 4. **Support:** ticket center (all plans) with encrypted attachments.
 5. **Identity:** encrypted identity-document vault.
 6. **Agency:** multi-client workspaces for credit professionals.

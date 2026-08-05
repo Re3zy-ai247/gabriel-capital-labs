@@ -751,8 +751,9 @@ and deliberately **not** the effect, correctly gated behind the CCO.
 **Remaining.** **`app/settings/page.tsx:341` promises, in Kai's voice, to every user: "Turn this on and
 this device can receive my alerts when something on your account needs you."** No such alert path
 exists — `notify.plan` composes and does not send. **`:352-367` promises a weekly Brief digest** and the
-button reads "Subscribed — weekly digest on" once flipped, while the digest **sends nothing** until
-`COMPANY_POSTAL_ADDRESS` is set (CAN-SPAM footer). **Two live, user-facing false capability claims,
+button reads "Subscribed — weekly digest on" once flipped, while the Founder-resolved canonical
+LLC footer remains local/uncommitted and production delivery is **not verified**. **Two live,
+user-facing capability claims require end-to-end proof,
 shown to every user with no admin gate.** · `/api/push/subscribe` has an unhandled throw (malformed
 endpoint → unbranded 500) and **no rate limit**, so one account can insert unbounded rows ·
 `lib/email.ts:31` falls back to `onboarding@resend.dev`, which its own comment says **delivers only to
@@ -761,15 +762,17 @@ timeout inside a 60s function — it will truncate silently at modest list size 
 runs `ALTER TABLE` from three request paths.
 
 **Acceptance.** Every capability the settings page claims either works or is labeled "Coming soon" ·
-`COMPANY_POSTAL_ADDRESS` set and a test digest **received** · push subscribe is rate-limited and handles
+the canonical server LLC identity is deployed and a test digest **received** with the exact footer · push subscribe is rate-limited and handles
 malformed endpoints · `RESEND_FROM` is set in production · digest sends batched with a resume path.
 
-**Validation.** `npx vercel env ls production | grep -E "COMPANY_POSTAL_ADDRESS|RESEND_FROM"` → expect
-two rows · subscribe to the digest and confirm **receipt** · `POST /api/push/subscribe` with a
+**Validation.** `npx --no-install tsx scripts/company-identity.test.ts` · confirm the deployed
+release includes the validated identity source · verify `RESEND_FROM` presence without reading its
+value · subscribe to the digest and confirm **receipt** plus exact LLC footer · `POST /api/push/subscribe` with a
 malformed endpoint → expect 4xx, not 500.
 
-**Rollback.** Copy changes are trivial. Setting env vars **activates** sending — verify the CAN-SPAM
-footer renders before the first real send; that send is not reversible.
+**Rollback.** Copy changes are trivial. Deploying the canonical source may **activate** sending when
+the existing cron/email/recipient conditions are met — verify the CAN-SPAM footer before the first
+real send; that send is not reversible.
 
 ### 4.15 Community · Arena — PARTIAL / DORMANT · High / Medium · Blocker: **YES** (community)
 
@@ -856,7 +859,8 @@ members", "up to 40 workspaces", "Accounts Deleted". Each is individually small;
 exact posture `lib/compliance.ts` exists to prevent.
 
 **X-5 — Documentation drift.** `OPERATIONS.md` still describes the superseded self-heal schema model.
-`.env.example` lists a deleted `SETUP_SECRET` and omits `COMPANY_POSTAL_ADDRESS` and `LOG_LEVEL`.
+`.env.example` retains the deliberate `SETUP_SECRET` warning and now points stable legal identity to
+the server-owned canonical source rather than a postal placeholder; `LOG_LEVEL` is documented.
 `.ai/TESTING.md` tabulates 15 guards and CI advertises 31; **there are 70**. `.ai/CURRENT-STATE.md`'s
 "Pending OWNER actions" omits the backup drill — the repo's own P0.
 
@@ -879,7 +883,7 @@ decision-vs-effect discipline in `notify.plan`, and the honesty law in `lib/plat
 | V-03 | What is the origin DB provider behind Accelerate? (**B-09**) | Prisma Data Platform / Vercel Storage console (owner, ≤15 min) |
 | V-04 | What are the real RPO and RTO? | Measured in the restore drill — **not estimated** |
 | V-05 | Is `ALERT_WEBHOOK_URL` set, and has an alert ever fired? | Env check **plus** a live drill |
-| V-06 | Are `COMPANY_POSTAL_ADDRESS` and `RESEND_FROM` set? | `npx vercel env ls production` |
+| V-06 | Are the canonical LLC footer and `RESEND_FROM` delivery-verified? | Confirm deployed source SHA, check `RESEND_FROM` presence, then receive/inspect the admin digest test |
 | V-07 | Did today's crons actually run? | Query `BriefArticle` / digest rows for today's timestamps |
 | V-08 | Are all dormant flags OFF in production? | `npx vercel env ls production \| grep -E "ARENA\|OPERATOR_\|EVENT_BUS\|MAIL_LIVE\|KERNEL_DURABLE\|CAPABILITY_PLATFORM"` |
 | V-09 | Is GitHub branch protection requiring the CI check on `main`? | Repo settings — CI exists but **enforcement is owner-side** |
@@ -947,7 +951,7 @@ engineering work below fits inside that window.
 
 | Day | Work | Owner |
 |---|---|---|
-| **0** | Engage counsel (B-12) · confirm DB provider (V-03) · set `ALERT_WEBHOOK_URL`, `COMPANY_POSTAL_ADDRESS`, `RESEND_FROM` · buy Vercel Pro · enable branch protection · answer V-01, V-02, V-08 | **Founder** |
+| **0** | Engage counsel (B-12) · confirm DB provider (V-03) · set `ALERT_WEBHOOK_URL` and `RESEND_FROM` · schedule separately authorized identity deployment/received digest test · buy Vercel Pro · enable branch protection · answer V-01, V-02, V-08 | **Founder** |
 | **1** | **Gate 2 money defects** — B-01, B-02, B-03, credits, constants, `apiVersion`. Highest value per hour; each is small and independently revertable | Eng |
 | **1–2** | B-07 demo-seed · B-11 admin revocation · registration password policy · C-01 if V-01 says set | Eng |
 | **2–3** | **B-09 restore drill** (unblocked by V-03) · B-10 alert drill + cron liveness | Eng + Founder |

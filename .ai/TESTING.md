@@ -21,6 +21,7 @@ npx --no-install tsx scripts/<name>.test.ts   # lockfile-local guard scripts (be
 | `brief-comment.test.ts` | comment screening/moderation | 18/18 |
 | `brief-react.test.ts` | likes/bookmarks idempotency | 9/9 |
 | `brief-digest.test.ts` | weekly digest | green |
+| `company-identity.test.ts` | exact legal/display identity, rendered digest/legal-footer consumers, server-only ownership, no competing client/env address source | 24/24 |
 | `youtube.test.ts` | embed host-allowlist/spoof defense | 25/25 |
 | `obsolescence.test.ts` | §605 7yr/10yr windows | green |
 | `formatDate.test.ts` | date formatting | green |

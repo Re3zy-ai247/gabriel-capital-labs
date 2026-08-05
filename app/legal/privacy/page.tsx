@@ -1,4 +1,8 @@
 import { LegalShell } from "@/components/marketing/LegalShell";
+import {
+  COMPANY_LEGAL_NAME,
+  COMPANY_POSTAL_ADDRESS_LINES,
+} from "@/lib/companyIdentity.server";
 
 export const metadata = {
   title: "Privacy — CreditVector™",
@@ -7,7 +11,7 @@ export const metadata = {
 
 export default function PrivacyPage() {
   return (
-    <LegalShell title="Privacy" updated="June 18, 2026">
+    <LegalShell title="Privacy" updated="August 1, 2026">
       <section>
         <p>
           CreditVector helps you understand your credit reports and prepare disputes. Because that means handling
@@ -57,8 +61,14 @@ export default function PrivacyPage() {
       <section>
         <h2>Contact</h2>
         <p>
-          For any privacy question or request, reach us through <a href="/support">in-app support</a> and we&apos;ll respond promptly.
+          CreditVector is operated by {COMPANY_LEGAL_NAME}. For any privacy question or request, reach us through{" "}
+          <a href="/support">in-app support</a> and we&apos;ll respond promptly.
         </p>
+        <address className="mt-3 text-sm not-italic leading-relaxed text-slate-400">
+          {COMPANY_POSTAL_ADDRESS_LINES.map((line) => (
+            <span key={line} className="block">{line}</span>
+          ))}
+        </address>
       </section>
     </LegalShell>
   );
