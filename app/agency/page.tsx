@@ -6,6 +6,8 @@ import { AppShell } from "@/components/AppShell";
 import { Disclaimer } from "@/components/Disclaimer";
 import { openBillingPortal } from "@/lib/portalClient";
 import { WORKSPACE_BASE_V3 } from "@/lib/agencyCapacity";
+import { clearKaiPresenceCache } from "@/components/kai/KaiPresence";
+import { clearOnboardingStatusCache } from "@/components/onboarding/useOnboardingStatus";
 import { Building2, Loader2, UserPlus, FolderOpen, CircleHelp, Mails, AlertTriangle, Search } from "lucide-react";
 
 interface Client {
@@ -216,6 +218,12 @@ export default function AgencyPage() {
       setError("Could not open that client's workspace. Try again in a moment.");
       return;
     }
+    // The next page (/dashboard) mounts a fresh Kai presence for a DIFFERENT
+    // subject — never let it read this client's cached recommendation forward
+    // from the operator's own (or a prior client's) context (Phase 1A cache
+    // fix, SIM-REVIEW finding 4). Same reasoning for the onboarding probe.
+    clearKaiPresenceCache();
+    clearOnboardingStatusCache();
     router.push("/dashboard");
     router.refresh();
   }

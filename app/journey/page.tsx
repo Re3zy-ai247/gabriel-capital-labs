@@ -4,7 +4,9 @@ import { Disclaimer, EduBanner } from "@/components/Disclaimer";
 import { prisma } from "@/lib/prisma";
 import { currentUserOrDemo } from "@/lib/session";
 import { listKaiEvents } from "@/lib/kaiEvents";
-import { REINVESTIGATION_DAYS } from "@/lib/kaiHome";
+import { getKaiHomeData } from "@/lib/kaiHome";
+import { WATCHING_CLOCK_LINE } from "@/lib/mailCenter";
+import { REINVESTIGATION_DAYS, daysElapsedSinceEstimatedReceipt } from "@/lib/forecast";
 import { CheckCircle2, Circle, FileText, Mail, MailOpen, Search, Sparkles, Upload } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -71,11 +73,14 @@ export default async function JourneyPage() {
   const user = await currentUserOrDemo();
   if (!user) return <AppShell title="/ Timeline"><p className="text-slate-400">Please sign in.</p></AppShell>;
 
-  const [reports, tradelines, letters, events] = await Promise.all([
+  const [reports, tradelines, letters, events, kai] = await Promise.all([
     prisma.report.findMany({ where: { userId: user.id }, orderBy: { uploadedAt: "desc" } }),
     prisma.tradeline.count({ where: { userId: user.id } }),
     prisma.letter.findMany({ where: { userId: user.id }, orderBy: { createdAt: "desc" } }),
     listKaiEvents(user.id, 200),
+    // Reused verbatim (Phase 1A Case Journey panel, below) — the same engine
+    // Mission Control already composes with. Never a second, forked reader.
+    getKaiHomeData(user.id),
   ]);
 
   // --- Live events → entries -------------------------------------------------
@@ -97,7 +102,9 @@ export default async function JourneyPage() {
         entries.push({ ...base, icon: "file", text: `Dispute letter generated${p.strategy ? ` (${String(p.strategy)})` : ""}`, sub: meaningFor("file"), href: "/letters" });
         break;
       case "letter.mailed":
-        entries.push({ ...base, icon: "mail", text: `Round ${String(p.round ?? "")} mailed to ${String(p.recipient ?? "the bureau")} — §611 clock started`, sub: meaningFor("mail"), href: "/letters" });
+        // Phase 1A-R M3 (CCO correction): receipt-anchored, matching
+        // lib/operatorSession.ts's accomplishmentOf idiom.
+        entries.push({ ...base, icon: "mail", text: `Round ${String(p.round ?? "")} mailed to ${String(p.recipient ?? "the bureau")} — the §611 clock starts once the bureau receives it`, sub: meaningFor("mail"), href: "/letters" });
         break;
       case "response.received":
         entries.push({ ...base, icon: "mailopen", text: `Bureau response logged — outcome: ${String(p.outcome ?? "recorded")}`, sub: meaningFor("mailopen", String(p.outcome ?? "")), href: "/letters" });
@@ -136,7 +143,9 @@ export default async function JourneyPage() {
       entries.push({ key: `hist-lg-${l.id}`, ts: l.createdAt, icon: "file", text: `Round ${l.round} letter generated for ${l.recipientName}`, sub: meaningFor("file"), href: "/letters" });
     }
     if (l.mailedAt && !seen.has(`letter.mailed:${l.id}`)) {
-      entries.push({ key: `hist-lm-${l.id}`, ts: l.mailedAt, icon: "mail", text: `Round ${l.round} mailed to ${l.recipientName} — §611 clock started`, sub: meaningFor("mail"), href: "/letters" });
+      // Phase 1A-R M3 (CCO correction): receipt-anchored, matching the live
+      // letter.mailed case above and lib/operatorSession.ts's idiom.
+      entries.push({ key: `hist-lm-${l.id}`, ts: l.mailedAt, icon: "mail", text: `Round ${l.round} mailed to ${l.recipientName} — the §611 clock starts once the bureau receives it`, sub: meaningFor("mail"), href: "/letters" });
     }
     if (l.responseAt && !seen.has(`response.received:${l.id}`)) {
       entries.push({ key: `hist-lr-${l.id}`, ts: l.responseAt, icon: "mailopen", text: `${l.recipientName} responded — outcome: ${l.responseOutcome ?? "recorded"}`, sub: meaningFor("mailopen", l.responseOutcome ?? ""), href: "/letters" });
@@ -149,7 +158,9 @@ export default async function JourneyPage() {
   const upcoming = letters
     .filter((l) => l.mailedAt && !l.responseAt)
     .map((l) => {
-      const daysElapsed = Math.floor((now - new Date(l.mailedAt as Date).getTime()) / 86_400_000);
+      // Receipt-anchored (lib/forecast.ts), not a bare mailedAt diff — matches
+      // the Mail Center/Mission Control estimate for the same letter.
+      const daysElapsed = daysElapsedSinceEstimatedReceipt(new Date(l.mailedAt as Date).getTime(), now);
       return { l, daysLeft: REINVESTIGATION_DAYS - daysElapsed };
     })
     .sort((a, b) => a.daysLeft - b.daysLeft)
@@ -174,6 +185,51 @@ export default async function JourneyPage() {
   ];
   const allSteps = phases.flatMap((p) => p.steps);
   const completion = Math.round((allSteps.filter((s) => s.done).length / allSteps.length) * 100);
+
+  // --- Case Journey progression panel (Phase 1A) -------------------------------
+  // Composed entirely from facts already derived above — never a second,
+  // independently-computed ladder (SIM-REVIEW finding 13's exact antipattern).
+  // "Current step"/"next step" read the SAME allSteps checklist rendered below;
+  // "waiting period" reads the SAME `upcoming` array as the "Coming up" card;
+  // "Kai's recommendation" is `pickRecommendation()`'s own output, cited
+  // verbatim via getKaiHomeData — never recomputed.
+  const stepIndex = allSteps.findIndex((s) => !s.done);
+  const currentStep = stepIndex >= 0 ? allSteps[stepIndex] : null;
+  const nextStep = stepIndex >= 0 ? allSteps[stepIndex + 1] ?? null : null;
+
+  const mailedCount = letters.filter((l) => l.mailedAt).length;
+  const evidenceText = mailedCount === 0
+    ? "Nothing mailed yet — evidence begins with your first mailed letter."
+    : `${mailedCount} letter${mailedCount === 1 ? "" : "s"} marked mailed by you. For a self-mailed dispute, your own mailing record is the evidence — CreditVector doesn't hold a certified-mail receipt unless you mail through CreditVector.`;
+
+  const waitingText = upcoming.length === 0
+    ? "Nothing open right now."
+    : (() => {
+        const nearest = upcoming[0];
+        const when = nearest.daysLeft <= 0 ? "has closed" : `closes in ${nearest.daysLeft} day${nearest.daysLeft === 1 ? "" : "s"}`;
+        return `${upcoming.length} window${upcoming.length === 1 ? "" : "s"} open — nearest ${when}.`;
+      })();
+  // Reuse WATCHING_CLOCK_LINE verbatim (also rendered on the Mail Center row and
+  // below on "Coming up") — only when a window is genuinely still running.
+  const showWatchingClock = upcoming.length > 0 && upcoming[0].daysLeft > 0;
+
+  const nextReviewText = upcoming.length === 0
+    ? "Nothing scheduled right now — see your next step above."
+    : (() => {
+        const nearest = upcoming[0];
+        if (nearest.daysLeft <= 0) return `Now — the ${nearest.l.recipientName} window has already closed.`;
+        // From today + the same receipt-anchored daysLeft `upcoming` already
+        // computed above — never re-derived from raw mailedAt (that was the
+        // exact mailedAt-anchored math this reconcile removes).
+        const closeAt = new Date(now + nearest.daysLeft * 86_400_000);
+        const closeStr = closeAt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+        return `Around ${closeStr} — when the ${nearest.l.recipientName} window closes.`;
+      })();
+
+  const mostRecentEntry = entries[0] ?? null; // entries: already sorted newest-first, above
+  const timelineText = mostRecentEntry
+    ? `${entries.length} event${entries.length === 1 ? "" : "s"} logged. Most recent: ${mostRecentEntry.text} (${mostRecentEntry.ts.toLocaleDateString("en-US", { month: "short", day: "numeric" })}).`
+    : "Nothing logged yet.";
 
   // Group entries by day for rendering.
   const byDay = new Map<string, Entry[]>();
@@ -205,17 +261,84 @@ export default async function JourneyPage() {
         <div className="h-full bg-gradient-to-r from-brand-500 to-gold-400" style={{ width: `${completion}%` }} />
       </div>
 
+      {/* Case progression (Phase 1A) — one composed read of where the case
+          stands: every fact below is cited from data already loaded on this
+          page (the checklist, the upcoming-windows list, Kai Home's own
+          recommendation) — nothing here is a new engine. */}
+      <div className="card mb-5 p-4">
+        <div className="mb-3 flex items-center gap-2">
+          <span className="rounded bg-brand-500/15 px-1.5 py-0.5 text-[10px] font-bold tracking-widest text-brand-300">KAI</span>
+          <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">Case progression</div>
+        </div>
+        <dl className="space-y-2.5 text-sm">
+          <div>
+            <dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Current step</dt>
+            <dd className="text-slate-200">{currentStep ? currentStep.label : "All mapped steps are complete."}</dd>
+          </div>
+          <div>
+            <dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Next step</dt>
+            <dd className="text-slate-300">{nextStep ? nextStep.label : "Nothing further mapped yet."}</dd>
+          </div>
+          <div>
+            <dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Kai&apos;s recommendation</dt>
+            <dd className="text-slate-300">
+              {kai.recommendation ? (
+                <>
+                  {kai.recommendation.title}{" "}
+                  <Link href={kai.recommendation.href} className="font-semibold text-brand-400 hover:underline">{kai.recommendation.cta} →</Link>
+                </>
+              ) : "Nothing new to recommend right now — quiet is allowed."}
+            </dd>
+            {(() => {
+              // The starvation guard's demoted line (lib/kaiHome.ts) — the item
+              // that would have been primary never disappears, it moves here.
+              const secondary = kai.recommendation?.secondary;
+              if (!secondary) return null;
+              return (
+                <p className="mt-1 text-xs text-slate-500">
+                  Also waiting: <Link href={secondary.href} className="hover:underline">{secondary.label}</Link>
+                </p>
+              );
+            })()}
+          </div>
+          <div>
+            <dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Timeline</dt>
+            <dd className="text-slate-300">
+              {timelineText}{" "}
+              {entries.length > 0 && <a href="#timeline" className="font-semibold text-brand-400 hover:underline">See the full timeline ↓</a>}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Evidence</dt>
+            <dd className="text-slate-300">{evidenceText}</dd>
+          </div>
+          <div>
+            <dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Waiting period</dt>
+            <dd className="text-slate-300">{waitingText}{showWatchingClock ? ` ${WATCHING_CLOCK_LINE}` : ""}</dd>
+          </div>
+          <div>
+            <dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Next review</dt>
+            <dd className="text-slate-300">{nextReviewText}</dd>
+          </div>
+        </dl>
+      </div>
+
       {upcoming.length > 0 && (
         <div className="card mb-5 p-4">
           <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Coming up</div>
           <div className="space-y-2">
             {upcoming.map(({ l, daysLeft }) => (
-              <div key={l.id} className="flex items-center gap-3 text-sm">
-                <Circle className="h-4 w-4 shrink-0 text-gold-400" aria-hidden />
+              <div key={l.id} className="flex items-start gap-3 text-sm">
+                <Circle className="mt-0.5 h-4 w-4 shrink-0 text-gold-400" aria-hidden />
                 <span className="min-w-0 flex-1 text-slate-300">
                   {/* Hollow node = due, not done — say so for screen readers. */}
                   <span className="sr-only">Due: </span>
                   {l.recipientName} response window {daysLeft <= 0 ? "has closed" : `closes in ${daysLeft} day${daysLeft === 1 ? "" : "s"}`} (Round {l.round})
+                  {daysLeft > 0 && (
+                    // Finding 11 (SIM-REVIEW): distributes the same reassurance
+                    // Mission Control already shows for a live window.
+                    <span className="mt-0.5 block text-xs text-slate-500">{WATCHING_CLOCK_LINE}</span>
+                  )}
                 </span>
                 <Link href="/letters" className="shrink-0 text-xs font-semibold text-brand-400 hover:underline">
                   {daysLeft <= 0 ? "act →" : "view →"}
@@ -236,7 +359,7 @@ export default async function JourneyPage() {
           <Link href="/upload" className="btn-primary mt-4 inline-block">Upload your report</Link>
         </div>
       ) : (
-        <div className="space-y-5">
+        <div id="timeline" className="scroll-mt-16 space-y-5">
           {Array.from(byDay.entries()).map(([day, dayEntries], groupIndex) => (
             // Only the first day group animates in — one entrance per viewport, not a cascade.
             <div key={day} className={groupIndex === 0 ? "animate-rise" : undefined}>

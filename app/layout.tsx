@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
+import { TransitionShell } from "@/components/cxos/transitions/TransitionShell";
 
 // Plus Jakarta Sans — a modern grotesk with more character than Inter, tuned for
 // both display headlines (heavier weights) and dense data UI. Exposed as --font-sans.
@@ -62,6 +63,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="font-sans antialiased">
         <a href="#main" className="skip-link">Skip to content</a>
         <Providers>{children}</Providers>
+        {/* CXOS Phase 3 — the cinematic route-transition shell. Persists across
+            App Router navigations; renders null until a REGISTERED marketing
+            navigation happens (registry + CRITICAL_NEVER in lib/cxos/transitions).
+            Every product, billing, auth and legal route is untouched by law. */}
+        <TransitionShell />
       </body>
     </html>
   );

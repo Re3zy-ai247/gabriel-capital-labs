@@ -6,6 +6,10 @@ import { AiPlan } from "./AiPlan";
 import { prisma } from "@/lib/prisma";
 import { currentUserOrDemo } from "@/lib/session";
 import { formatCents } from "@/lib/utils";
+// RB-2 (Founder Experience Gate): a factually clean account (e.g. "pays as
+// agreed, never late") must never be presented as a queued dispute
+// opportunity — see lib/intelligence/snapshot.ts for the fact test.
+import { isFactualNegative } from "@/lib/intelligence/snapshot";
 
 export const dynamic = "force-dynamic";
 
@@ -55,21 +59,32 @@ export default async function StrategistPage() {
       )}
 
       <div className="space-y-2">
-        {queue.map((t, i) => (
-          <div key={t.id} className="card flex items-center gap-4 p-4">
-            <div className="grid h-9 w-9 place-items-center rounded-full border border-ink-600 text-xs font-semibold text-slate-300">#{i + 1}</div>
-            <div className="grid h-9 w-9 place-items-center rounded-full bg-ink-700 text-xs font-bold text-brand-300">{t.score}</div>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2 truncate font-medium">{t.creditorName} <ProbabilityBadge p={t.probability} /></div>
-              <div className="truncate text-xs text-slate-500">{t.reasons[0] || "—"} · {formatCents(t.balance)}</div>
+        {queue.map((t, i) => {
+          // RB-2: honest state for a factually clean account — never a
+          // nonzero "dispute strength" presented as a queued opportunity.
+          const clean = !isFactualNegative(t);
+          return (
+            <div key={t.id} className="card flex items-center gap-4 p-4">
+              <div className="grid h-9 w-9 place-items-center rounded-full border border-ink-600 text-xs font-semibold text-slate-300">#{i + 1}</div>
+              <div className="grid h-9 w-9 place-items-center rounded-full bg-ink-700 text-xs font-bold text-brand-300">{t.score}</div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 truncate font-medium">
+                  {t.creditorName} {clean ? <span className="pill border border-ink-600 bg-ink-700/60 text-slate-400">Clean</span> : <ProbabilityBadge p={t.probability} />}
+                </div>
+                <div className="truncate text-xs text-slate-500">
+                  {clean ? "Account in good standing — no derogatory history on file." : (t.reasons[0] || "—")} · {formatCents(t.balance)}
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="text-[10px] uppercase tracking-wide text-slate-500">{clean ? "Status" : "Dispute strength"}</div>
+                <div className="text-sm font-semibold text-brand-400">
+                  {clean ? "Nothing to dispute" : t.probability === "HIGH" ? "Strong" : t.probability === "MEDIUM" ? "Moderate" : "Limited"}
+                </div>
+              </div>
+              {!clean && <Link href={`/letters?tradeline=${t.id}`} className="btn-ghost shrink-0 text-xs">Dispute →</Link>}
             </div>
-            <div className="text-right">
-              <div className="text-[10px] uppercase tracking-wide text-slate-500">Dispute strength</div>
-              <div className="text-sm font-semibold text-brand-400">{t.probability === "HIGH" ? "Strong" : t.probability === "MEDIUM" ? "Moderate" : "Limited"}</div>
-            </div>
-            <Link href={`/letters?tradeline=${t.id}`} className="btn-ghost shrink-0 text-xs">Dispute →</Link>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {excluded.length > 0 && (

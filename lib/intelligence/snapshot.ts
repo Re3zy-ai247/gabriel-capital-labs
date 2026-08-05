@@ -7,12 +7,36 @@
 import type { AccountType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { yearsSince } from "@/lib/utils";
-import { REINVESTIGATION_DAYS } from "@/lib/forecast";
+import { REINVESTIGATION_DAYS, daysElapsedSinceEstimatedReceipt } from "@/lib/forecast";
 import { fallOffInsight } from "@/lib/tradelineInsights";
 import { ownOutcomeTrack, ownHistorySummary, type OwnTrack } from "@/lib/outcomeLedger";
 import { listKaiEvents } from "@/lib/kaiEvents";
 
 const DEROGATORY: ReadonlySet<AccountType> = new Set<AccountType>(["COLLECTION", "CHARGE_OFF", "PUBLIC_RECORD"]);
+
+// RB-2 (Founder Experience Gate): the single fact-test for "is this tradeline
+// an actual negative" — reused everywhere a per-item or aggregate negative
+// state is shown (the `negatives` count below, Mission Control's Deferred
+// Queue, and the Strategy Desk / Tradelines per-item presentation). NEVER the
+// disputability `probability`/`score` band: the scoring engine (lib/scoring.ts,
+// untouched here) gives every non-government account TYPE a nonzero baseline
+// "worth a look" score regardless of payment history, so a clean, never-late
+// account (e.g. a student loan or auto loan with no missed payment) still
+// scores > 0 and would be miscounted as a negative if `probability !==
+// NOT_RECOMMENDED` were the test — the bug this replaces. A derogatory
+// account TYPE (collection/charge-off/public-record) is always a negative;
+// otherwise a genuine derogatory EVENT in the account's own history — a
+// first-delinquency date actually on file (e.g. a late-payment history the
+// account has since cured, still current) — counts it too. An account with
+// neither (e.g. "Pays as agreed / Never late", no DOFD) has nothing to
+// dispute.
+export function isFactualNegative(t: { accountType: AccountType; dateOfFirstDelinquency: Date | string | null }): boolean {
+  return (
+    t.accountType !== "INQUIRY" &&
+    t.accountType !== "GOVERNMENT" &&
+    (DEROGATORY.has(t.accountType) || t.dateOfFirstDelinquency != null)
+  );
+}
 
 export interface OpenWindow { recipient: string; daysElapsed: number; daysLeft: number; letterId: string }
 
@@ -73,7 +97,7 @@ export async function loadSnapshot(userId: string): Promise<IntelSnapshot> {
 
   const count = (t: AccountType) => tradelines.filter((x) => x.accountType === t).length;               // all on file (for credit mix)
   const active = (t: AccountType) => tradelines.filter((x) => x.accountType === t && !x.resolved).length; // unresolved only
-  const derog = tradelines.filter((t) => DEROGATORY.has(t.accountType) || (t.probability !== "NOT_RECOMMENDED" && t.accountType !== "INQUIRY" && t.accountType !== "GOVERNMENT"));
+  const derog = tradelines.filter(isFactualNegative);
   const ages = tradelines.map((t) => yearsSince(t.dateOpened)).filter((n): n is number => n != null);
   const derogAges = tradelines.filter((t) => DEROGATORY.has(t.accountType)).map((t) => yearsSince(t.dateOfFirstDelinquency)).filter((n): n is number => n != null);
 
@@ -82,7 +106,11 @@ export async function loadSnapshot(userId: string): Promise<IntelSnapshot> {
   const openWindows: OpenWindow[] = letters
     .filter((l) => l.status === "MAILED" && l.mailedAt && !l.responseAt)
     .map((l) => {
-      const elapsed = Math.floor((now - new Date(l.mailedAt as Date).getTime()) / 86_400_000);
+      // Receipt-anchored (lib/forecast.ts), not mailing-anchored — this feeds
+      // operator-visible copy across modules.ts/academy.ts/portfolio.ts/
+      // ExecutionRisk.ts, so it has to agree with every other §611 estimate
+      // in the app (Phase 1A honesty-triple reconcile).
+      const elapsed = daysElapsedSinceEstimatedReceipt(new Date(l.mailedAt as Date).getTime(), now);
       return { recipient: l.recipientName, daysElapsed: elapsed, daysLeft: REINVESTIGATION_DAYS - elapsed, letterId: l.id };
     })
     .sort((a, b) => a.daysLeft - b.daysLeft);
@@ -117,7 +145,13 @@ export async function loadSnapshot(userId: string): Promise<IntelSnapshot> {
     mortgage: count("MORTGAGE"),
     studentLoans: count("STUDENT_LOAN"),
     positives: tradelines.filter((t) => !DEROGATORY.has(t.accountType) && t.accountType !== "INQUIRY" && t.resolved).length,
-    disputable: tradelines.filter((t) => !t.resolved && t.probability !== "NOT_RECOMMENDED" && t.accountType !== "INQUIRY" && t.accountType !== "GOVERNMENT").length,
+    // RB-2 RESIDUAL-1: same fact test as `negatives` above — a factually
+    // clean account (e.g. "pays as agreed, never late") is never disputable,
+    // regardless of the nonzero baseline the scoring engine's `probability`
+    // band would otherwise give it. Feeds "Plan a focused campaign for N
+    // disputable items" and "Campaign ready" (lib/intelligence/modules.ts)
+    // and the readiness timeline note — fixed once here, not per consumer.
+    disputable: tradelines.filter((t) => !t.resolved && isFactualNegative(t)).length,
     duplicateGroups: new Set(tradelines.map((t) => t.duplicateGroup).filter(Boolean)).size,
     avgAccountAgeYears: avg(ages),
     oldestDerogatoryYears: derogAges.length ? Math.max(...derogAges) : null,

@@ -5,6 +5,13 @@ import { arenaAccessible } from "@/lib/arena/cohort";
 import { readOwnProgress } from "@/lib/arena/ownProgress";
 import { REFUSED_V1 } from "@/lib/arena/policy";
 import { Trophy, ShieldCheck } from "lucide-react";
+import { ArenaEntry } from "@/components/cxos/arena/ArenaEntry";
+import {
+  StandingRing,
+  MilestoneSeals,
+  CompetitionAperture,
+  KaiArenaBrief,
+} from "@/components/cxos/arena/ArenaChamber";
 
 export const dynamic = "force-dynamic";
 
@@ -35,31 +42,46 @@ export default async function ArenaPage() {
   const p = await readOwnProgress(user!.id);
   const s = p.standing;
 
+  // CXOS Phase 5 — the entry plays over this REAL page and receives only the
+  // truth already loaded above. arenaAccessible() decided BEFORE this render;
+  // an ineligible account was redirected and no entry can ever mount for it.
+  const cxIdentity = user!.username ?? user!.email.split("@")[0];
+  const cxTopAwards = p.awards
+    .slice(0, 3)
+    .map((a) => ({ label: a.classLabel, xp: a.xp, cls: a.evidenceClass }));
+
   return (
     <AppShell title="/ Arena">
+      <ArenaEntry
+        identity={cxIdentity}
+        rank={s.rank}
+        level={s.level}
+        totalXp={s.totalXp}
+        awardCount={s.awardCount}
+        badges={s.badges}
+        topAwards={cxTopAwards}
+        policyVersion={p.policyVersion}
+      />
       <div className="mx-auto max-w-2xl space-y-6">
         <div className="card p-6">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-2">
-                <Trophy className="h-5 w-5 text-brand-300" aria-hidden />
-                <h1 className="text-lg font-semibold text-slate-100">Your progression</h1>
-              </div>
-              <p className="mt-1 text-sm capitalize text-slate-400">{s.rank} · Level {s.level}</p>
-            </div>
-            <div className="text-right">
-              <div className="text-3xl font-semibold tnum text-slate-100">{s.totalXp}</div>
-              <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500">total XP</div>
-            </div>
+          <div className="mb-4 flex items-center gap-2">
+            <Trophy className="h-5 w-5 text-amber-300" aria-hidden />
+            <h1 className="text-lg font-semibold text-slate-100">Your progression</h1>
           </div>
+          {/* the standing ring — level progress as architecture (ledger row) */}
+          <StandingRing
+            pct={p.xpForNextLevel > 0 ? (p.xpIntoLevel / p.xpForNextLevel) * 100 : 100}
+            rank={s.rank}
+            level={s.level}
+            totalXp={s.totalXp}
+          />
           <Meter into={p.xpIntoLevel} span={p.xpForNextLevel} />
-          {s.badges.length > 0 && (
-            <div className="mt-4 flex flex-wrap gap-2">
-              {s.badges.map((b) => (
-                <span key={b} className="rounded-full bg-brand-500/15 px-2.5 py-1 text-[11px] font-semibold text-brand-300">{b}</span>
-              ))}
-            </div>
-          )}
+          <MilestoneSeals badges={s.badges} />
+          <KaiArenaBrief
+            awardCount={s.awardCount}
+            level={s.level}
+            xpToNext={Math.max(0, p.xpForNextLevel - p.xpIntoLevel)}
+          />
         </div>
 
         <section className="card p-5">
@@ -86,6 +108,8 @@ export default async function ArenaPage() {
             </ul>
           )}
         </section>
+
+        <CompetitionAperture />
 
         <p className="text-[11px] leading-relaxed text-slate-500">
           Policy v{p.policyVersion}. XP is derived from your own verified evidence and updates automatically if an

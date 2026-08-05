@@ -158,6 +158,44 @@ export function excludedItems(c: Pick<Campaign, "items">): CampaignItem[] {
   return c.items.filter((i) => i.decision === "excluded");
 }
 
+// ---- planned-item exclusion (Phase 1A-R RB-6) -----------------------------
+// Statuses where the user has actually committed to a plan for these items —
+// APPROVED or further along. Deliberately EXCLUDES RECOMMENDED/NEEDS_REVIEW
+// (pre-decision; a not-yet-approved proposal must stay fully candidate-
+// eligible) and the terminal statuses (COMPLETED/CANCELED/SUPERSEDED release
+// their items back to the pool).
+export const CAMPAIGN_PLANNED_STATUSES: ReadonlySet<CampaignStatus> = new Set([
+  "APPROVED", "ACTIVE", "WAITING", "RESPONSE_RECEIVED",
+]);
+
+// The set of "tradelineId:recipientType" keys already covered by a live,
+// APPROVED-or-further campaign — items Kai already has a live plan for.
+// lib/campaignInput.ts's buildComposerItems consults this to keep a
+// freshly-approved item out of the VERY NEXT recommendation's candidate set
+// (mirrors lib/kaiHome.ts's disputedIds idiom: one exclusion Set, computed
+// once, consulted by every downstream decision — never a second ranking).
+//
+// Deliberately keyed on `decision === "included"`, not `queued` — `queued`
+// only flips true once a letter actually reaches the mail gate
+// (CampaignService.markQueued), which can be well after approval. Excluding
+// only queued items left an approved-but-undrafted item with
+// alreadyInFlight=false, so composeCampaign() re-offered it as the very next
+// campaign the moment the page reloaded (Founder Experience Gate 1.0 RB-6:
+// "Campaign 1 approved" instantly re-recommending the same items as
+// "Campaign 2"). This is a strict superset of the old queued-only check:
+// `queued` can only ever be true on an `included` item of an
+// APPROVED-or-further campaign (see CampaignService.markQueued — it never
+// sets queued on anything else), so nothing previously excluded becomes
+// newly includable; this only catches MORE true in-flight items, never fewer.
+export function plannedItemKeys(campaigns: Pick<Campaign, "status" | "items">[]): Set<string> {
+  const keys = new Set<string>();
+  for (const c of campaigns) {
+    if (!CAMPAIGN_PLANNED_STATUSES.has(c.status)) continue;
+    for (const it of includedItems(c)) keys.add(`${it.tradelineId}:${it.recipientType}`);
+  }
+  return keys;
+}
+
 // Total estimated document/page count for the INCLUDED package (Phase 4/5 —
 // package burden is a real campaign-size input).
 export function packagePages(c: Pick<Campaign, "items">): number {

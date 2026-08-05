@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CreditVector — Phase 1A-CX Reconciliation</title>
+<style>
+:root{--bg:#0b1220;--panel:#111a2c;--text:#e6edf7;--muted:#9fb0c9;--line:#22304a;--accent:#4cc3b0;--warn:#e0b34c;--bad:#e06c6c}
+@media (prefers-color-scheme: light){:root{--bg:#f7f9fc;--panel:#ffffff;--text:#16233a;--muted:#5a6b85;--line:#dbe4f0;--accent:#0e7c6e;--warn:#8a6410;--bad:#a33030}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;padding:0 16px 80px}
+main{max-width:860px;margin:0 auto}
+h1{font-size:1.7rem;line-height:1.25;margin:28px 0 8px;letter-spacing:-.01em}
+h2{font-size:1.25rem;margin:40px 0 12px;padding-top:18px;border-top:1px solid var(--line);letter-spacing:-.01em}
+h3{font-size:1.05rem;margin:26px 0 8px}
+p,li{color:var(--text)}
+strong{color:var(--text)}
+em{color:var(--muted)}
+a{color:var(--accent);text-decoration:none}
+blockquote{margin:16px 0;padding:10px 16px;border-left:3px solid var(--accent);background:var(--panel);color:var(--muted);border-radius:0 8px 8px 0}
+code{background:var(--panel);border:1px solid var(--line);border-radius:5px;padding:1px 5px;font-size:.86em;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+pre{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px;overflow-x:auto}
+pre code{border:0;background:none;padding:0}
+.tablewrap,table{max-width:100%}
+table{border-collapse:collapse;margin:16px 0;font-size:.92em;display:block;overflow-x:auto;white-space:normal}
+th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top;min-width:90px}
+th{background:var(--panel);color:var(--muted);font-weight:600;white-space:nowrap}
+hr{border:0;border-top:1px solid var(--line);margin:36px 0}
+li{margin:4px 0}
+</style>
+</head>
+<body><main>
+<h1>CreditVector — Phase 1A-CX — CXOS Reconciliation</h1>
+<p><strong>Date:</strong> 2026-08-04 · <strong>Branch:</strong> <code>feat/experience-runtime-phase-1a</code> @ <code>a488e96</code> — pushed; preview building
+<strong>Production:</strong> <code>f449c35</code>, untouched · <strong>Stop conditions honored:</strong> no merge · no deploy · no new branches · no schema · no migrations · no Wallet / LetterStream / Teams Chat / Pulse
+<strong>Execution:</strong> Sonnet A (archaeology) → Sonnet B (integration + 2 bounded fix passes) → Sonnet C (validation) → Opus (one bounded UX challenge) → coordinator commits, stitches, push.</p>
+<hr>
+<h2>1. Repository Evidence — what &quot;the approved CXOS work&quot; actually is</h2>
+<p>The archaeology settled a fact nobody had stated: <strong>there is no single CXOS baseline.</strong> Two sibling lineages fork from the same <code>main</code> tip (<code>f449c35</code>), neither an ancestor of the other, colliding at ten identical paths with independently-authored content:</p>
+<table>
+<thead>
+<tr>
+<th>Lineage</th>
+<th>Status (in-repo evidence)</th>
+<th>Carries</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>feat/cxos-living-environment-engine-rc2</code> @ <code>0e0f9be</code> (product HEAD <code>f7ee9c5</code>)</td>
+<td><strong>ACCEPTED</strong> — CHECKPOINT.md: browser acceptance 0 findings / 20 gates / 170 states; guards 96+185+76+25; adversarial gate READY-WITH-DISCLOSURES</td>
+<td>Agency HQ facility (7 chambers), three-class motion model, core runtime, review shell</td>
+</tr>
+<tr>
+<td><code>feat/cxos-phase3</code> @ <code>a40a41c</code></td>
+<td><strong>Founder-candidate</strong> — its own <code>.ai/CURRENT-STATE.md</code>: &quot;remote Founder review pending… must not be merged wholesale&quot;; ratified for this reconciliation by your directive</td>
+<td>Landing Threshold + Journey chapters, TransitionShell, THE PASSAGE (MC→Arena), Arena entry/chamber, Mission Control entry/header, dashboard wiring</td>
+</tr>
+</tbody></table>
+<p><strong>Resolution rule: RC2 wins every overlap</strong> (the accepted lineage, strictly more developed — its stage is 3,317 lines vs phase3&#39;s 2,606); phase3 supplies everything RC2 never built. Integration route: <strong>bounded file-copy of blobs</strong> — exactly what both lineages&#39; own governance documents mandate (&quot;reconstructed as bounded blobs… not merged wholesale&quot;). Explicitly excluded: phase3&#39;s interleaved terms-of-service business feature, ADR-0031, all gate/ops scripts — none of it cinematic.</p>
+<p>Also answered precisely: the &quot;landing experience&quot; you missed is real shipped code on <code>app/page.tsx</code> itself (Threshold WebGL arrival + JourneyRuntime + two chapter sections) — phase3-only, and Phase 1A never touched that file, which is why your preview showed a plain website: the branch was cut from <code>main</code>, which never had any of this.</p>
+<h2>2. Files Restored / Integrated</h2>
+<p><strong>Four commits:</strong> <code>1a5cdfe</code> (69 files, +36,120 — the reconciliation) · <code>e492229</code> (Threshold robustness) · <code>a488e96</code> (review-index recovery). Summary:</p>
+<ul>
+<li><strong>60 engine files copied verbatim</strong> (byte-verified at copy time): 16 from RC2 (facility, core runtime, review shell, mission entry/header), 30 from phase3 (Threshold/Journey/Passage/Arena/TransitionShell/review routes), 14 guard+harness files (both lineages — the motion law travels with the code).</li>
+<li><strong>5 files wired:</strong> <code>app/layout.tsx</code> (TransitionShell mount), <code>app/page.tsx</code> (arrival + chapters), <code>app/globals.css</code> (+1,281; RC2&#39;s 25-line subset verified subsumed, value-identical), <code>app/arena/page.tsx</code> (entry/chamber over real data), and the <strong>one true collision</strong> — <code>app/dashboard/page.tsx</code> — hand-reconciled so every line of Phase 1A session/altitude logic survives (a scoped, commented type-bridge; zero behavior change).</li>
+<li><strong><code>CXOS_LANGUAGE_1_0.md/.html</code></strong> — RC2&#39;s amended version wins per the accepted-lineage rule (closed the last two guard checks: agency-command 185/185).</li>
+<li><strong>Dependencies (disclosed):</strong> <code>gsap@3.15.0</code>, <code>three@0.185.1</code>, <code>@types/three</code> — phase3&#39;s exact pins, required by the ratified Threshold; three.js is lazy-loaded behind a WebGL probe + <code>requestIdleCallback</code> (&quot;not one cinematic byte competes with LCP&quot; — landing first-load stays 99.1 kB).</li>
+<li><strong>Two bounded fix passes during validation:</strong><ol>
+<li><strong>Threshold context-loss recovery</strong> (<code>e492229</code>) — validation found the entrance could freeze permanently on WebGL context loss with no recovery path and both escape hatches dead. Root cause, proven live with markers: a <code>useRef</code> dismissal gate poisoned by React StrictMode&#39;s dev replay, silently no-oping every dismissal path — plus a latent TDZ crash in the error path. Fixed with effect-local guards, an already-lost microtask check (an event listener structurally can&#39;t see a loss that already happened), an unconditional escape hatch, and a 12s watchdog. Live: 5/5 runs recover in ~150ms; guard 44/44 with StrictMode-safety pins. In production (no StrictMode) the event path is primary.</li>
+<li><strong>Review-index recovery</strong> (<code>a488e96</code>) — my own RC2-wins call had orphaned the four recovered phase3 review rooms (rendered, unlinked). All four registry entries recovered verbatim from phase3&#39;s own rooms.ts; <code>/review</code> now lists six rooms, every href 200; guards updated to the six-room reality (26/26, 25/25).</li>
+</ol>
+</li>
+</ul>
+<h2>3. Validation Summary</h2>
+<table>
+<thead>
+<tr>
+<th>Check</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>npm run typecheck</code> / <code>npx next build</code></td>
+<td>Clean · 68/68 pages; <code>/</code> 4.76 kB (99.1 kB first load) · <code>/dashboard</code> 5.15 kB · <code>/review/agency-command</code> 33.6 kB</td>
+</tr>
+<tr>
+<td>CXOS guard suites (11)</td>
+<td><strong>All green:</strong> agency-command 185 · living-environment 96 · core-runtime 76 · isolated-review 25 · grammar 164 · passage 117 · threshold 44 · journey 35 · mission 31 · arena 25 · review 26</td>
+</tr>
+<tr>
+<td><strong>Phase 1A regression suite</strong></td>
+<td><strong>ALL GREEN — zero disturbance proven:</strong> kai-recommendation 60 · missionControl · mail-download 78 · mailCenter · letter · kai-experience 78 · operator-session 82 · schema-safety 17/17</td>
+</tr>
+<tr>
+<td>Reduced-motion law</td>
+<td>Three-class model verified: comprehensive PRM CSS blocks null every channel into explicit rest states; ThresholdGate downloads zero WebGL bytes under PRM; tier-D toggle pass = 0 animations, fully readable</td>
+</tr>
+<tr>
+<td>Motion-ON (native observation)</td>
+<td>Landing: 43 live animations · Agency HQ: 15 channel tokens across all three classes, 35 tagged elements, 9 live animations</td>
+</tr>
+<tr>
+<td>Transition continuity</td>
+<td>Full room round-trip: scroll/focus correct, room state identical before/after, zero console errors (one benign post-login 401 race)</td>
+</tr>
+<tr>
+<td>Flag-off Passage</td>
+<td><code>/arena</code> → server-side 307 before any client paint; zero Arena traces in the DOM; no ghost door</td>
+</tr>
+<tr>
+<td>Phase 1A interactions through the cinematic wrappers</td>
+<td>Executive Queue links, continue-where-you-left-off deep link, Kai popover (on its allowed rooms), mark-mailed local date — all correct</td>
+</tr>
+</tbody></table>
+<h2>4. Mobile Performance Observations</h2>
+<p>375px and 768px: no horizontal scroll on landing or the facility; the RC2 pinned residual (≤740px kaiContext wrap) remains the only known sub-gate shift; the Phase 5.2 mobile-typography fix is present. Scroll-frame numbers from this machine are headless-software-rendering noise, not signal — real-device confirmation belongs to your preview walkthrough. Dev-only cosmetic: a React <code>inert</code> attribute warning (stripped in production builds).</p>
+<h2>5. Opus Bounded UX Verdict — reported unvarnished</h2>
+<blockquote>
+<p><strong>&quot;It is still a website — with three extraordinary rooms bolted onto it… roughly a third of the way.&quot;</strong></p>
+</blockquote>
+<ul>
+<li><strong>What genuinely lands (its words):</strong> the facility transfer (&quot;departure, transit, arrival — and Kai travelling with you&quot;), THE PASSAGE (&quot;four beats, one unbroken metaphor&quot;), and the Mission Control boot veil (&quot;you arrive into a place rather than wait on a loader&quot;).</li>
+<li><strong>Where the illusion still breaks (ranked):</strong> (1) room-to-room travel does not exist inside the product — structural proof: the recovered transition registry&#39;s own deny-list forbids <code>dashboard|letters|mail|…</code> and holds exactly one transition, <code>/</code> → <code>/pricing</code>; (2) 0.5–1.6s of unmasked dead air between rooms; (3) the agency owner gets no cinematic runtime (phase3&#39;s wiring predates Phase 1A&#39;s agency altitude — the wrapper never existed for that branch); (4) the &quot;persistent console&quot; renders on one route, fifth block down. Then: the two-versions-of-each-room seam, the flat login page, chapters covering 2 of 11 landing sections, the review-index orphans (fixed in <code>a488e96</code>), the facility&#39;s synthetic-data banner placement, silent <code>/arena</code> bounce, &quot;Timeline&quot;-vs-<code>/journey</code> naming.</li>
+<li><strong>Its walkthrough line:</strong> <em>&quot;Yes as &#39;here is the vocabulary and three proofs it works&#39; — no as &#39;does this feel like an operating system yet.&#39;&quot;</em></li>
+</ul>
+<p><strong>Coordinator&#39;s framing of that verdict — the honest boundary of this mission:</strong> the reconciliation recovered <strong>everything that exists</strong>. Findings 1–4 are not lost work; <strong>no accepted or candidate branch ever built in-app travel, agency-altitude cinematics, or a persistent console</strong> — phase3 deliberately scoped travel to the storefront and the review rooms. Making the product&#39;s interior speak the recovered vocabulary is <strong>net-new cinematic work</strong> — a Phase 1A-CX2 decision that is yours, not a recovery defect. The recovery itself is complete, guard-pinned, and regression-proven.</p>
+<h2>6. Updated Preview URL</h2>
+<p><strong><a href="https://gabriel-capital-labs-pec6a1tqr-rey-gabriel-s-projects.vercel.app">https://gabriel-capital-labs-pec6a1tqr-rey-gabriel-s-projects.vercel.app</a></strong> (stable branch alias: <a href="https://gabriel-capital-labs-git-feat-exp-931acd-rey-gabriel-s-projects.vercel.app">https://gabriel-capital-labs-git-feat-exp-931acd-rey-gabriel-s-projects.vercel.app</a>) — Vercel Preview build of <code>a488e96</code> (isolated preview DB; 401 to anonymous visitors — view logged into your Vercel account). Recommended walkthrough order: <code>/</code> (the arrival — production plays the full 10s entrance; dev auto-recovers instantly by design) → scroll the chapters → login → <code>/dashboard</code> (boot veil, entry, wrapped session runtime) → <code>/review</code> (all six rooms — the facility and THE PASSAGE are the proofs) → the room round-trip.</p>
+<h2>7. Riders &amp; Disclosures</h2>
+<ul>
+<li><strong>CCO rider:</strong> the landing chapters introduce marketing copy (ProblemChamber / IntelligenceAwakens — full verbatim list captured in the CX evidence). Initial read: educational framing, explicit &quot;Illustrative&quot; captions, decisions attributed to the bureaus, no outcome claims — but it is NEW user-facing marketing copy and rides the standing CCO docket before merge.</li>
+<li>The Founder-bootstrap review route and six review rooms ship review-gated (<code>reviewBuildAllowed()</code> — hard-off in production twice over, verified stricter than the original).</li>
+<li>The main repo&#39;s dirty working tree still holds uncommitted compliance-copy corrections that exist nowhere else (flagged earlier via task chip — untouched by this work, still needs protecting).</li>
+<li>Dev-environment <code>.next</code> build/dev cache collisions occurred twice during validation (infrastructure, not code); clean restarts resolved both.</li>
+</ul>
+<h2>8. Next Decisions (yours)</h2>
+<ol>
+<li><strong>Founder Experience Acceptance</strong> on the updated preview — the purpose of this gate.</li>
+<li><strong>Phase 1A-CX2 authorization decision</strong> — extend the recovered vocabulary into the product interior (in-app travel + dead-air masking, agency-altitude cinematics, persistent console). Opus&#39;s findings 1–4 are its scope, pre-ranked.</li>
+<li>The standing pre-merge items (Decision-A SQL, CCO docket incl. the new landing copy) — unchanged.</li>
+</ol>
+
+</main></body></html>

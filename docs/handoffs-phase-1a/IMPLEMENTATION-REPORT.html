@@ -1,0 +1,287 @@
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>CreditVector — Phase 1A Implementation Report</title>
+<style>
+  :root{
+    color-scheme: light dark;
+    --bg:#f7fafc; --surface:#ffffff; --surface-2:#f1f5f9; --border:#e2e8f0;
+    --text:#0f172a; --text-dim:#475569; --text-faint:#64748b;
+    --brand:#0c83a3; --brand-strong:#0f6883; --brand-bg:#ecfeff; --brand-border:#a6ecf5;
+    --success:#0d9456; --success-bg:#ecfdf5; --success-border:#a7e8c8;
+    --gold:#946213; --gold-bg:#fffbeb; --gold-border:#f3dfa6;
+    --danger:#b91c1c; --danger-bg:#fef2f2; --danger-border:#f3b4b4;
+    --code-bg:#f1f5f9;
+    --shadow:0 1px 2px rgba(15,23,42,.06), 0 10px 28px -14px rgba(15,23,42,.16);
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#04121b; --surface:#0a1e2a; --surface-2:#0e2733; --border:#173e50;
+      --text:#e7f4f8; --text-dim:#a9c7d1; --text-faint:#7c9aa6;
+      --brand:#3fd0e6; --brand-strong:#8fe6f2; --brand-bg:rgba(14,165,196,.14); --brand-border:#175064;
+      --success:#3fe093; --success-bg:rgba(19,184,106,.14); --success-border:#155c3f;
+      --gold:#f2c14e; --gold-bg:rgba(227,169,46,.14); --gold-border:#5c481c;
+      --danger:#f87171; --danger-bg:rgba(239,68,68,.14); --danger-border:#5c2323;
+      --code-bg:#0e2733;
+      --shadow:0 1px 2px rgba(0,0,0,.35), 0 14px 36px -16px rgba(0,0,0,.65);
+    }
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; font-size:16px;
+  }
+  .shell{display:grid; grid-template-columns:270px minmax(0,1fr); gap:2.5rem; max-width:1220px; margin:0 auto; padding:2.5rem 1.5rem 6rem;}
+  @media (max-width:900px){ .shell{grid-template-columns:1fr; gap:1.25rem; padding:1.25rem 1rem 4rem;} }
+
+  .toc{position:sticky; top:1.5rem; align-self:start; background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:1.1rem; box-shadow:var(--shadow); max-height:calc(100vh - 3rem); overflow-y:auto;}
+  @media (max-width:900px){ .toc{position:static; max-height:none;} }
+  .toc h2{font-size:.72rem; text-transform:uppercase; letter-spacing:.09em; color:var(--text-faint); margin:0 0 .7rem;}
+  .toc ol{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:.3rem;}
+  .toc a{color:var(--text-dim); text-decoration:none; font-size:.84rem; display:block; padding:.28rem .5rem; border-radius:8px;}
+  .toc a:hover{background:var(--surface-2); color:var(--brand-strong);}
+
+  main{min-width:0;}
+  .hero{background:linear-gradient(155deg, var(--brand-bg), transparent 60%); border:1px solid var(--border); border-radius:20px; padding:2rem 2rem 1.6rem; box-shadow:var(--shadow); margin-bottom:2rem;}
+  .kicker{font-size:.76rem; font-weight:700; letter-spacing:.11em; text-transform:uppercase; color:var(--brand-strong);}
+  h1{font-size:1.85rem; line-height:1.25; margin:.4rem 0 .5rem; letter-spacing:-.01em;}
+  .sub{color:var(--text-dim); font-size:1rem; margin:0; max-width:70ch;}
+
+  section{margin:2.4rem 0;}
+  h2{font-size:1.3rem; margin:0 0 .9rem; border-top:1px solid var(--border); padding-top:1.6rem; letter-spacing:-.005em;}
+  section:first-of-type h2{border-top:none; padding-top:0;}
+  h3{font-size:1.02rem; margin:1.5rem 0 .6rem; color:var(--brand-strong);}
+  h4{font-size:.92rem; margin:1.1rem 0 .4rem;}
+  p{margin:.6rem 0;}
+  ul,ol{padding-left:1.3rem;}
+  li{margin:.4rem 0;}
+  strong{font-weight:700;}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; background:var(--code-bg); padding:.15em .4em; border-radius:5px; font-size:.85em;}
+  pre{background:var(--code-bg); border:1px solid var(--border); border-radius:12px; padding:1rem 1.1rem; overflow-x:auto; font-size:.82rem; line-height:1.55;}
+  pre code{background:none; padding:0;}
+
+  .pill{display:inline-flex; align-items:center; gap:.35em; font-size:.7rem; font-weight:700; padding:.28em .65em; border-radius:999px; border:1px solid; white-space:nowrap;}
+  .pill-brand{background:var(--brand-bg); color:var(--brand-strong); border-color:var(--brand-border);}
+  .pill-success{background:var(--success-bg); color:var(--success); border-color:var(--success-border);}
+  .pill-gold{background:var(--gold-bg); color:var(--gold); border-color:var(--gold-border);}
+  .pill-danger{background:var(--danger-bg); color:var(--danger); border-color:var(--danger-border);}
+
+  .agent-card{background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:1.4rem 1.5rem; margin:1.1rem 0; box-shadow:var(--shadow);}
+  .agent-head{display:flex; align-items:center; gap:.6rem; flex-wrap:wrap; margin-bottom:.3rem;}
+  .agent-letter{display:inline-flex; align-items:center; justify-content:center; width:2rem; height:2rem; border-radius:9px; background:var(--brand); color:#04121b; font-weight:800; font-size:.95rem; flex:none;}
+  .agent-head h3{margin:0; color:var(--text); font-size:1.08rem;}
+  .agent-meta{font-size:.78rem; color:var(--text-faint); font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; margin:.3rem 0 .8rem;}
+
+  table{width:100%; border-collapse:collapse; font-size:.86rem;}
+  .table-wrap{overflow-x:auto; border:1px solid var(--border); border-radius:12px; box-shadow:var(--shadow); margin:1rem 0;}
+  th,td{text-align:left; padding:.6rem .78rem; border-bottom:1px solid var(--border); vertical-align:top;}
+  thead th{background:var(--surface-2); font-size:.7rem; text-transform:uppercase; letter-spacing:.06em; color:var(--text-faint); white-space:nowrap;}
+  tbody tr:last-child td{border-bottom:none;}
+  tbody tr:hover{background:var(--surface-2);}
+  td code{white-space:nowrap;}
+
+  .foot{margin-top:3rem; padding-top:1.5rem; border-top:1px solid var(--border); color:var(--text-faint); font-size:.82rem;}
+  a{color:var(--brand-strong);}
+  ::selection{background:var(--brand-bg); color:var(--text);}
+</style>
+
+<div class="shell">
+  <nav class="toc">
+    <h2>On this page</h2>
+    <ol>
+      <li><a href="#map">Commit map</a></li>
+      <li><a href="#a">Agent A — Session Runtime</a></li>
+      <li><a href="#b">Agent B — Mission Control</a></li>
+      <li><a href="#c">Agent C — Case Journey</a></li>
+      <li><a href="#d">Agent D — Mail Center Download</a></li>
+      <li><a href="#e">Agent E — Kai Experience</a></li>
+      <li><a href="#fix">Fix Pass — Gate Closure</a></li>
+      <li><a href="#files">Full file list</a></li>
+    </ol>
+  </nav>
+
+  <main>
+    <div class="hero">
+      <div class="kicker">CreditVector · Phase 1A · Founder Package</div>
+      <h1>Implementation Report</h1>
+      <p class="sub">Per-agent detail: files, mechanisms, guard counts. Branch <code>feat/experience-runtime-phase-1a</code> @ <code>486925e</code>, base <code>origin/main</code> @ <code>f449c35</code>. Governing brief: <code>.ai/PHASE-1A-BRIEF.md</code>.</p>
+    </div>
+
+    <p>Five serial agents (A→B→C→D→E), each committing its own bounded work, followed by one bounded fix pass closing the acceptance gate's blockers. <strong>39 files changed, +3,690 / -391 lines</strong> across the range, confirmed via <code>git diff f449c35..HEAD --stat</code>.</p>
+
+    <section id="map">
+      <h2>Commit map</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>#</th><th>Commit</th><th>Type</th><th>Files</th><th>Lines</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td><code>6e4b9d4a</code></td><td>docs</td><td>1</td><td>+27</td></tr>
+          <tr><td>2</td><td><code>add8cd44</code></td><td>feat(session) — Agent A</td><td>2</td><td>+701</td></tr>
+          <tr><td>3</td><td><code>11b6b9bc</code></td><td>feat(mission-control) — Agent B</td><td>6</td><td>+388 / -149</td></tr>
+          <tr><td>4</td><td><code>f9fa4792</code></td><td>feat(journey) — Agent C</td><td>5</td><td>+367 / -37</td></tr>
+          <tr><td>5</td><td><code>9843abac</code></td><td>feat(mail) — Agent D</td><td>12</td><td>+1,162 / -116</td></tr>
+          <tr><td>6</td><td><code>42a97800</code></td><td>feat(kai) — Agent E</td><td>18</td><td>+765 / -101</td></tr>
+          <tr><td>7</td><td><code>486925e</code></td><td>fix(experience) — gate blockers</td><td>14</td><td>+362 / -70</td></tr>
+        </tbody>
+      </table></div>
+      <p style="font-size:.85rem;color:var(--text-faint)">Per-commit file counts overlap — several files are touched by more than one agent. Net unique files touched across the whole range: 39.</p>
+    </section>
+
+    <section id="a">
+      <div class="agent-card">
+        <div class="agent-head"><span class="agent-letter">A</span><h3>Session Runtime</h3><span class="pill pill-brand">New files only</span></div>
+        <div class="agent-meta">commit add8cd44 · lib/operatorSession.ts (411 ln) · scripts/operator-session.test.ts (290 ln) · not wired into any page yet</div>
+        <p>A pure, fully-typed derived read-model. Zero AI, zero network, zero persistence, zero schema.</p>
+        <ul>
+          <li><strong><code>buildOperatorSession(user)</code> / <code>assembleOperatorSession(inputs)</code></strong> produces:
+            <ul>
+              <li><code>identity: OperatorIdentity</code> — <code>{ greetingName, altitude, onBehalfOf? }</code>. <code>altitude</code> is <code>"consumer" | "agency-owner" | "workspace"</code>, resolved from <code>account.isAgency</code> plus whether a client workspace cookie is present. <code>onBehalfOf</code> populates only at <code>workspace</code> altitude — the "in Elena's workspace" register.</li>
+              <li><code>yesterdayCompleted[]</code> / <code>todayCompleted[]</code> — typed, capped accomplishment lists derived from the <code>KaiEvent</code> stream via <code>dayWindow(now, offset)</code>, mapped through <code>accomplishmentOf()</code> (one case per real event kind — never synthetic).</li>
+              <li><code>interruptedWork[]</code> — resumable states from live server data: unmailed letters and in-flight mail manifests, each carrying a <code>resumeHref</code>.</li>
+              <li><code>todaysPriorities[]</code> — <strong>composes existing engines, forks neither</strong>: <code>pickRecommendation</code> / <code>getKaiHomeData</code> for consumer/workspace altitude, the agency roster ladder for agency-owner altitude.</li>
+              <li><code>sessionClose: { doneToday, remaining }</code> — an honest rollup (see Fix Pass F3 for the post-gate correction).</li>
+            </ul>
+          </li>
+        </ul>
+        <p>Guard: <code>scripts/operator-session.test.ts</code>, static + logic checks. Started at 290 lines; <strong>currently 82/82 passing</strong> (extended through the fix pass, +73 lines — see Validation).</p>
+      </div>
+    </section>
+
+    <section id="b">
+      <div class="agent-card">
+        <div class="agent-head"><span class="agent-letter">B</span><h3>Mission Control</h3></div>
+        <div class="agent-meta">commit 11b6b9bc · app/dashboard/page.tsx · lib/agencyRoster.ts (new) · components/mission/{SessionBlocks.tsx (new), CommandCenter.tsx, MissionControl.tsx} · app/api/agency/clients/route.ts</div>
+        <ul>
+          <li><strong><code>lib/agencyRoster.ts</code></strong> (new, 98 ln) — extracts the agency needs-attention-first ladder out of <code>app/api/agency/clients/route.ts</code> (shrank 76 lines) so <strong>the dashboard and the API read one shared ladder</strong>, not two independently maintained sorts.</li>
+          <li><strong><code>app/dashboard/page.tsx</code></strong> resolves altitude before rendering: <code>isAgency && no open workspace</code> → the Executive-Queue idiom over the roster ladder (basis-carrying rows, not a bare sort) instead of the consumer's own upload prompts.</li>
+          <li><strong><code>components/mission/SessionBlocks.tsx</code></strong> (new, 152 ln) — session-aware header consuming Agent A's <code>operatorSession</code>: greeting, yesterday/today completed, "continue where you left off," today's priorities, session-close.</li>
+          <li><strong><code>components/mission/CommandCenter.tsx</code></strong> — stat grid demoted to a compact context strip per the Operational Room Constitution proposal.</li>
+        </ul>
+        <p>No new recommendation/priority engine anywhere in this slice — everything composes <code>kaiHome</code> / <code>ExecutionEngine</code> / the new roster module.</p>
+      </div>
+    </section>
+
+    <section id="c">
+      <div class="agent-card">
+        <div class="agent-head"><span class="agent-letter">C</span><h3>Case Journey</h3></div>
+        <div class="agent-meta">commit f9fa4792 · lib/kaiHome.ts · lib/mailCenter.ts · app/journey/page.tsx · +guards (kai-recommendation +128 ln/33 checks, mailCenter +17 ln)</div>
+        <p>Fixes two live defects the original adversarial simulation review found (SIM-REVIEW.md findings 3 &amp; 5) and adds the Case Journey progression panel.</p>
+        <ul>
+          <li><strong>Branch-5 ranking</strong> (<code>lib/kaiHome.ts</code>) — undisputed-tradeline candidate selection ranks by <code>score</code>/<code>probability</code> with a deterministic tie-break (oldest <code>createdAt</code>, then <code>id</code>) instead of raw DB/array order.</li>
+          <li><strong>Storage-free starvation guard</strong> — branches 1/2 (verified-no-follow-up; lapsed window) track how long they've sat un-actioned. Once either sits a full extra §611 window (<code>REINVESTIGATION_DAYS</code> = 30 days), the primary slot yields to the §605 branch that cycle; the absorbed item demotes to an optional secondary field instead of vanishing. No new table — computed on read.</li>
+          <li><strong><code>WATCHING_CLOCK_LINE</code></strong> exported from <code>lib/mailCenter.ts</code>, rendered in any mailed/unanswered row with health <code>WAITING_NORMALLY</code> — reused verbatim, now reaching Mail Center rows and the Timeline.</li>
+          <li><strong><code>app/journey/page.tsx</code></strong> — new Case Progression panel: current step → next step → Kai's recommendation (+ starvation secondary) → timeline → evidence → waiting period → next review. Composed from data already loaded plus one reused <code>getKaiHomeData()</code> call — no new engine.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="d">
+      <div class="agent-card">
+        <div class="agent-head"><span class="agent-letter">D</span><h3>Mail Center — Download Workflow + §611 Honesty</h3><span class="pill pill-gold">Largest slice: 12 files, +1,162/-116</span></div>
+        <div class="agent-meta">commit 9843abac · app/letters/page.tsx · app/letters/print/[id]/page.tsx · app/mail/page.tsx · app/mail/send/[letterId]/page.tsx (+7 ln only) · app/mail/download/[packageId]/{page.tsx, DownloadApproval.tsx} (new) · lib/mailCenter.ts · lib/forecast.ts</div>
+
+        <h4>Derived Dispute Packages</h4>
+        <p>Letters group by <code>tl:{'{'}tradelineId{'}'}:{'{'}strategy{'}'}:{'{'}round{'}'}</code> — the exact unit one generate call produces (<code>packageKeyFor</code>); a single ungrouped letter falls back to <code>solo:{'{'}letterId{'}'}</code>. Rollup health is the <strong>least-progressed member</strong>, never the best-looking sibling, plus an honest "N of M mailed" fraction (<code>mailedFraction</code>) when a package's letters diverge (SIM-REVIEW finding 10).</p>
+
+        <h4>One recommended-action band</h4>
+        <p><code>pickMailBand</code> defers entirely to <code>getKaiHomeData</code>'s own recommendation — never a second, independently-ranked ladder (finding 13).</p>
+
+        <h4>Evidence drawer</h4>
+        <p>Real letters, self-attested mailing records, and responses render; send-only artifacts (certified-mail receipt, tracking) always render as labeled-unavailable, never faked.</p>
+
+        <h4>Download Package review flow</h4>
+        <p><code>app/mail/download/[packageId]/</code>: letters list + PDF preview → Kai Summary panel slot (filled by Agent E) → an Approve control rendered <strong>outside</strong> any Kai-labeled panel (<code>DownloadApproval.tsx</code>) → per-letter download checklist reusing the existing print route verbatim. Approve is a local, non-persisted confirmation — fixes, for the Download context, the conflation flagged at <code>app/mail/send/[letterId]/page.tsx:165-205</code>.</p>
+
+        <h4>The §611 honesty triple</h4>
+        <ol>
+          <li><strong>Receipt-anchored math.</strong> <code>lib/forecast.ts</code> adds <code>MAIL_TRANSIT_DAYS = 5</code> (documented USPS-upper-bound transit allowance) and <code>daysElapsedSinceEstimatedReceipt(mailedAtMs, now)</code> = <code>max(0, floor((now-mailedAtMs)/DAY) - MAIL_TRANSIT_DAYS)</code>. Applied consistently in <code>lib/forecast.ts</code>, <code>lib/mailCenter.ts</code>, <code>app/letters/page.tsx</code>; fixes the print page's instruction to state the estimate honestly: <em>"the window starts when the bureau receives it — typically N days after mailing."</em></li>
+          <li><strong>Evidence-asymmetry disclosure</strong> at every Download/Send fork: <em>"Evidence differs by path: self-mail leaves your own mailing record as proof. CreditVector Fulfillment (soon) adds a certified-mail receipt and tracking evidence once it's live."</em> — 4 render sites (<code>app/letters/page.tsx</code> ×2, <code>app/mail/send/[letterId]/page.tsx</code>, <code>app/mail/download/[packageId]/page.tsx</code>), confirmed by direct source search. Flagged for a CCO ruling on the "(soon)" framing.</li>
+          <li><strong>Real mailing-date capture.</strong> Marking mailed now prompts for the actual date (defaults to today, not silently assumed), validated server-side via <code>validateMailedAtInput</code> (rejects future dates and dates before generation).</li>
+        </ol>
+
+        <h4>Guards</h4>
+        <p><code>scripts/mailCenter.test.ts</code> +19 checks this commit (extended again in the fix pass; <strong>62 checks currently pass</strong>). New <code>scripts/mail-download.test.ts</code>, 188 ln / 41 checks this commit (<strong>currently 50/50</strong> after the fix pass added 23 more lines). <code>scripts/forecast.test.ts</code> +8 checks this commit (<strong>19 checks currently pass</strong>).</p>
+      </div>
+    </section>
+
+    <section id="e">
+      <div class="agent-card">
+        <div class="agent-head"><span class="agent-letter">E</span><h3>Kai Experience</h3><span class="pill pill-gold">Widest-reaching: 18 files, +765/-101</span></div>
+        <div class="agent-meta">commit 42a97800 · touches admin, agency, onboarding, register, sidebar, and Kai components</div>
+        <ol>
+          <li><strong>KaiPresence cache fix</strong> (SIM-REVIEW finding 4, live defect). <code>sessionStorage</code> key <code>kai-presence-ctx-v1</code> carried no user/workspace scope, and fetch-before-guard ordering let an excluded route (<code>/dashboard</code>, <code>/journey</code>) fetch and populate the cache <em>before</em> the render guard hid it. Fixed at the root (<code>components/kai/KaiPresence.tsx:18</code>): the excluded-route check now runs first, inside the fetch effect — no fetch, no cache write, full stop. Every workspace/account transition also clears the cache explicitly (the workspace cookie is <code>httpOnly</code>, unreadable client-side): <code>app/agency/page.tsx</code>'s <code>openClient()</code>, <code>components/AgencyBar.tsx</code>'s <code>exit()</code>, both sign-out paths in <code>components/Sidebar.tsx</code>. (A 4th switch point — admin impersonate — was still open at gate time; closed as F8.)</li>
+          <li><strong>Emoji / range-law fix.</strong> <code>app/api/letters/[id]/round2/route.ts:40</code> — party emoji removed from the deleted-item response; states the fact, then guidance, factually (finding 14).</li>
+          <li><strong>Onboarding truth.</strong> New <code>lib/onboarding.ts</code> (80 ln, pure derivation + thin loader, mirrors <code>kaiHome</code>'s split) — each of 5 steps now derives from the <strong>same real signal its own target page already uses</strong>. Wired the front door: <code>app/register/page.tsx</code> redirects new accounts to <code>/onboarding</code> (was <code>/dashboard</code>); a <code>Sidebar.tsx</code> nav entry appears only while genuinely incomplete, gated for agency-owners with no workspace open.</li>
+          <li><strong>Everyday on-behalf-of + greeting register.</strong> <code>SessionHeader</code> originally greeted by UTC time-bucket with a workspace on-behalf-of variant; the time-bucket half was later found wrong ~8h/day and removed in the fix pass (F7) — the on-behalf-of half shipped as designed. Session-close moved into Kai's own register.</li>
+          <li><strong>Kai Package Summary.</strong> Fills the Download page's reserved slot with a deterministic digest (<code>buildPackageSummary</code>): package contents, strategy basis (reused verbatim from <code>lib/strategies.ts</code>), receipt-anchored window rule (<code>windowText()</code>), canonical self-mail evidence line. Zero AI.</li>
+          <li><strong>Receipt-anchor reconcile.</strong> <code>app/journey/page.tsx</code> and <code>lib/intelligence/snapshot.ts</code>'s day-math now call <code>daysElapsedSinceEstimatedReceipt</code> instead of a bare diff. <code>lib/missionEngine/engine.ts</code> verified already clean.</li>
+        </ol>
+        <p>Guard: new <code>scripts/kai-experience.test.ts</code>, 255 ln / 80 checks this commit (<strong>currently 78/78</strong> — the fix pass both extended and adjusted this file, net -2 from the F7 greeting-copy change removing what it tested).</p>
+      </div>
+    </section>
+
+    <section id="fix">
+      <h2>Fix Pass — Closing the Acceptance Gate</h2>
+      <p>Commit <code>486925e</code>, <code>fix(experience): gate blockers — download reachability, §611 anchor, honest quiet state (phase 1a)</code>. 14 files, +362/-70. Closes blockers F1/F2/F3 plus riders F6/F7/F8. Every fix below was read from the actual diff while building this package — the commit carries no body beyond its subject line.</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Fix</th><th>Files</th><th>Mechanism</th></tr></thead>
+        <tbody>
+          <tr><td><span class="pill pill-danger">F1</span> Download unreachable before mailing</td><td><code>lib/mailCenter.ts</code>, <code>app/mail/page.tsx</code>, <code>app/letters/page.tsx</code>, <code>app/mail/download/[packageId]/page.tsx</code>, <code>app/api/letters/route.ts</code></td><td>New <code>MailHealth</code> value <code>READY_TO_PREPARE</code> for a package whose members are all still un-mailed (<code>groupIntoPackages</code> previously silently dropped it; rank <code>-1</code>, documented "never actually compared"). Mail page renders two honest groups: "Ready to prepare" / "In the mail." Letters page adds a direct link via a small duplicated <code>packageIdFor()</code> (not imported — client/server split). API newly exposes <code>tradelineId</code> (existing field).</td></tr>
+          <tr><td><span class="pill pill-danger">F2</span> §611 split-brain in <code>deadlinesFrom</code></td><td><code>lib/kaiHome.ts</code></td><td><code>deadlinesFrom()</code> now calls <code>daysElapsedSinceEstimatedReceipt()</code> instead of a bare mailedAt diff. <code>pickRecommendation</code>'s lapsed-window copy reworded to "Estimating from receipt, day N…"</td></tr>
+          <tr><td><span class="pill pill-danger">F3</span> Dishonest quiet state</td><td><code>lib/operatorSession.ts</code></td><td><code>consumerPriorities()</code> gained an <code>interruptedWork</code> param: when no new recommendation exists but real interrupted work does, its first entry is promoted to top priority (new <code>RESUME_BASIS</code> map). <code>sessionCloseOf()</code> counts interrupted-work items not already promoted, deduped by <code>href</code>.</td></tr>
+          <tr><td><span class="pill pill-gold">F6</span> Receipt-anchor, distributed further</td><td><code>lib/operatorSession.ts</code></td><td><code>accomplishmentOf</code>'s <code>letter.mailed</code> label: "the clock starts once the bureau receives it." <code>agencyPriorities</code>' basis reworded to name the receipt-anchor explicitly.</td></tr>
+          <tr><td><span class="pill pill-gold">F7</span> Wrong-8-hours-a-day greeting</td><td><code>lib/operatorSession.ts</code>, <code>components/mission/SessionBlocks.tsx</code></td><td><code>greetingPeriod()</code> / <code>GreetingPeriod</code> / <code>timeOfDay</code> removed entirely (not just unused) — no per-user timezone exists. <code>SessionHeader</code> now reads "Welcome back, {'{'}name{'}'}."</td></tr>
+          <tr><td><span class="pill pill-gold">F8</span> 4th cache-bleed switch point</td><td><code>app/admin/users/page.tsx</code></td><td>Admin "impersonate user" now calls <code>clearKaiPresenceCache()</code> + <code>clearOnboardingStatusCache()</code> before navigating — closing the same bug class E fixed at 3 other switch points.</td></tr>
+        </tbody>
+      </table></div>
+      <h3>Guard deltas in the fix pass</h3>
+      <p><code>scripts/operator-session.test.ts</code> +73 ln (72→82 passing), <code>scripts/kai-experience.test.ts</code> +46 ln net (→78), <code>scripts/kai-recommendation.test.ts</code> +23 ln (→45), <code>scripts/mail-download.test.ts</code> +23 ln (→50), <code>scripts/mailCenter.test.ts</code> +27 ln (→62). <code>scripts/schema-safety.test.ts</code> untouched, re-run green (17/17).</p>
+    </section>
+
+    <section id="files">
+      <h2>Files touched, full list (39)</h2>
+      <pre><code>.ai/PHASE-1A-BRIEF.md
+app/admin/users/page.tsx
+app/agency/page.tsx
+app/api/agency/clients/route.ts
+app/api/letters/[id]/round2/route.ts
+app/api/letters/[id]/route.ts
+app/api/letters/route.ts
+app/api/onboarding/status/route.ts
+app/dashboard/page.tsx
+app/journey/page.tsx
+app/letters/page.tsx
+app/letters/print/[id]/page.tsx
+app/mail/download/[packageId]/DownloadApproval.tsx
+app/mail/download/[packageId]/page.tsx
+app/mail/page.tsx
+app/mail/send/[letterId]/page.tsx
+app/onboarding/OnboardingSteps.tsx
+app/onboarding/page.tsx
+app/register/page.tsx
+components/AgencyBar.tsx
+components/Sidebar.tsx
+components/kai/KaiPresence.tsx
+components/mission/CommandCenter.tsx
+components/mission/MissionControl.tsx
+components/mission/SessionBlocks.tsx
+components/onboarding/useOnboardingStatus.ts
+lib/agencyRoster.ts
+lib/forecast.ts
+lib/intelligence/snapshot.ts
+lib/kaiHome.ts
+lib/mailCenter.ts
+lib/onboarding.ts
+lib/operatorSession.ts
+scripts/forecast.test.ts
+scripts/kai-experience.test.ts
+scripts/kai-recommendation.test.ts
+scripts/mail-download.test.ts
+scripts/mailCenter.test.ts
+scripts/operator-session.test.ts</code></pre>
+      <p>Zero files under <code>prisma/</code> appear in this list — confirmed by <code>git diff f449c35..HEAD -- prisma/</code> returning no output. No file under any money/billing/provider path appears except <code>app/mail/send/[letterId]/page.tsx</code>, whose entire change is the 7-line evidence-asymmetry disclosure described under Agent D — no functional change to the send/pay path itself.</p>
+    </section>
+
+    <div class="foot">CreditVector™ · Gabriel Capital Labs — Phase 1A Founder Package · generated 2026-08-03 · see <a href="FOUNDER-SUMMARY.html">FOUNDER-SUMMARY.html</a> for the decision-level view</div>
+  </main>
+</div>

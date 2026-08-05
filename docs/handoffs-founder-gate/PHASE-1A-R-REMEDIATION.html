@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CreditVector — Phase 1A-R Remediation</title>
+<style>
+:root{--bg:#0b1220;--panel:#111a2c;--text:#e6edf7;--muted:#9fb0c9;--line:#22304a;--accent:#4cc3b0;--warn:#e0b34c;--bad:#e06c6c}
+@media (prefers-color-scheme: light){:root{--bg:#f7f9fc;--panel:#ffffff;--text:#16233a;--muted:#5a6b85;--line:#dbe4f0;--accent:#0e7c6e;--warn:#8a6410;--bad:#a33030}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;padding:0 16px 80px}
+main{max-width:860px;margin:0 auto}
+h1{font-size:1.7rem;line-height:1.25;margin:28px 0 8px;letter-spacing:-.01em}
+h2{font-size:1.25rem;margin:40px 0 12px;padding-top:18px;border-top:1px solid var(--line);letter-spacing:-.01em}
+h3{font-size:1.05rem;margin:26px 0 8px}
+p,li{color:var(--text)}
+strong{color:var(--text)}
+em{color:var(--muted)}
+a{color:var(--accent);text-decoration:none}
+blockquote{margin:16px 0;padding:10px 16px;border-left:3px solid var(--accent);background:var(--panel);color:var(--muted);border-radius:0 8px 8px 0}
+code{background:var(--panel);border:1px solid var(--line);border-radius:5px;padding:1px 5px;font-size:.86em;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+pre{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px;overflow-x:auto}
+pre code{border:0;background:none;padding:0}
+.tablewrap,table{max-width:100%}
+table{border-collapse:collapse;margin:16px 0;font-size:.92em;display:block;overflow-x:auto;white-space:normal}
+th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top;min-width:90px}
+th{background:var(--panel);color:var(--muted);font-weight:600;white-space:nowrap}
+hr{border:0;border-top:1px solid var(--line);margin:36px 0}
+li{margin:4px 0}
+</style>
+</head>
+<body><main>
+<h1>CreditVector — Phase 1A-R — Founder Experience Remediation</h1>
+<p><strong>Date:</strong> 2026-08-04 · <strong>Branch:</strong> <code>feat/experience-runtime-phase-1a</code> — <strong>[ahead 6] of origin, NOT pushed</strong>
+<strong>Production:</strong> untouched (<code>origin/main</code> @ <code>f449c35</code>) · <strong>Architecture:</strong> unchanged — every fix is state wiring, copy, or an exclusion filter
+<strong>Stop conditions honored:</strong> no merge · no deploy · no push-main · no production migration · no feature flags · no Wallet · no Phase 1B · no LetterStream · no Arena expansion</p>
+<h2>1. Verdict</h2>
+<p><strong>All six release blockers are CLOSED, adversarially challenged, guard-pinned, and live-verified.</strong></p>
+<p><strong>The Founder Experience Gate moves: NOT READY → READY-WITH-DISCLOSURES.</strong></p>
+<p>The disclosures are not engineering gaps — they are (a) the standing CCO copy docket, which was always a separate gate, now carrying this slice&#39;s new strings; and (b) three accepted-with-note residuals recorded by the bounded Opus review (§6). The remediation Opus&#39;s own launch-risk line: <em>&quot;Nothing in these three commits increases risk versus the gate baseline… the money path is clean… compliance surface improves materially.&quot;</em> Unqualified READY is yours to declare after the CCO pass — per the standing engineering order, not per anything left unfixed here.</p>
+<h2>2. The Six Blockers — closed, with evidence</h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Blocker (gate 1.0)</th>
+<th>Fix</th>
+<th>Evidence</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>RB-1</strong></td>
+<td>The OS re-ordered work it already did (§605 pick blind to existing letters)</td>
+<td><code>disputedIds</code> hoisted above the §605 branch and applied there (<code>lib/kaiHome.ts:91,102</code>); <strong>and</strong> — caught by Opus as a relocation — the campaign planner&#39;s <code>alreadyInFlight</code> now counts a generated-but-unmailed letter as in flight (<code>lib/campaignInput.ts:91</code>)</td>
+<td>Live: demo&#39;s Navient (3 generated letters) is gone from the kaiHome pick on /dashboard, /letters, /journey <strong>and</strong> absent from the recommended campaign; a genuinely un-lettered §605 item still fires (starvation guard pinned by test)</td>
+</tr>
+<tr>
+<td><strong>RB-2</strong></td>
+<td>Never-late accounts counted as &quot;active negatives&quot;, staged for §611</td>
+<td><code>isFactualNegative</code> (derogatory type OR a real first-delinquency date on file) is now the single fact-test at the source (<code>lib/intelligence/snapshot.ts</code> — <code>negatives</code> AND <code>disputable</code>), the Deferred Queue, and both per-item surfaces, which render an honest <strong>Clean / &quot;nothing to dispute&quot;</strong> state; clean rows keep bureau detail behind a relabeled toggle</td>
+<td>Live: 3 clean rows render Clean pills; deferred staging excludes them; the negatives and disputable counters agree on the same account. Chase judgment (late history, now current → still counted, because a real DOFD is on file) documented for CCO</td>
+</tr>
+<tr>
+<td><strong>RB-3</strong></td>
+<td>Mail Center band blind to its own ready-to-prepare packages</td>
+<td><code>pickMailBand</code> gains a READY_TO_PREPARE rung — still zero independent ranking (reads the count <code>groupIntoPackages</code> already computes), above the passive deadlines/quiet states, below kaiHome&#39;s own picks (<code>lib/mailCenter.ts:517</code>)</td>
+<td>Live: gate-d&#39;s band reads &quot;1 package ready to prepare&quot;, never &quot;all caught up&quot;; rung order pinned both directions by tests</td>
+</tr>
+<tr>
+<td><strong>RB-4</strong></td>
+<td>Download chain shipped placeholder letters silently; profile completion didn&#39;t reach artifacts</td>
+<td>Render-time sender resolution (stored letter frozen as the record; the rendered artifact substitutes the CURRENT profile — <code>lib/letter.ts</code>); placeholder warnings at every chain surface; <code>needsDetails</code> computed server-side on the SAME rendered body so the card says <strong>&quot;Needs your details before mailing&quot;</strong> instead of &quot;Ready to mail&quot;; <strong>and</strong> — Opus records-integrity catch — a MAILED letter&#39;s print view renders <strong>verbatim</strong>, never substituted, no banner</td>
+<td>Live: placeholder letter rendered real profile after Settings completion while <code>GET /api/letters</code> preview stayed byte-identical; mailed letter prints verbatim placeholders with no banner (before/after captured)</td>
+</tr>
+<tr>
+<td><strong>RB-5</strong></td>
+<td>Mailed-date picker frozen to a wrong UTC day; true local date rejected; stored value displayed a day off</td>
+<td>The date is the operator&#39;s LOCAL calendar date end-to-end: local pre-fill/min/max (<code>app/letters/page.tsx</code>); server bounds shift the raw instant ±14h <strong>before</strong> flooring to a UTC day (the naive floor-then-pad fails both directions — derived and documented in-code); accepted dates store at <strong>UTC noon</strong> so every local formatter renders the entered date (<code>lib/mailCenter.ts:571-594</code>)</td>
+<td>Deterministic evening-scenario tests (fixed <code>now</code>); Opus ruling: correct construction, ≤1-day over-acceptance on a self-attested date &quot;strictly better than rejecting the operator&#39;s true date&quot;; no downstream consumer treats mailedAt as a midnight day-key</td>
+</tr>
+<tr>
+<td><strong>RB-6</strong></td>
+<td>Fixing a letter cost a letter; planner re-offered approved work</td>
+<td>Idempotent regenerate: an unmailed same-item+strategy letter is UPDATED in place — no new row, no ledger event, nothing charged (quota = MAX(rows, ledger); the update path writes neither); mailed letters still fall through to create; planner excludes items in APPROVED-or-further campaigns; the button says &quot;Regenerate (updates your draft)&quot;; <strong>and</strong> — Opus dead-end catch — the existing cancel action is now reachable from the campaign card, so an abandoned approval can&#39;t shadow-block items forever</td>
+<td>Live: same-id regenerate with quota flat 2→2; approved items absent from the next offer; approved→canceled click-tested end-to-end. <strong>No refund logic built — the burn now never happens</strong> (subscription logic untouched, <code>billing-integrity.test.ts</code> 31/31 pins <code>spendLetterCredits</code> literally intact)</td>
+</tr>
+</tbody></table>
+<h2>3. Execution &amp; delegation (per the approved model)</h2>
+<p>Fable coordinated only. Three serial Sonnet packets with disjoint file ownership under <code>.ai/SOP/MULTI-AGENT-EXECUTION.md</code> task-packet discipline (S1: RB-1+2 · S2: RB-3+5 · S3: RB-4+6), each leaving an unstaged diff for coordinator review; Fable committed per reviewed slice and stitched exactly two S2-owned lines S3 correctly refused to touch. Opus ran ONE bounded review (diffs + state consistency + launch risk + regressions; explicitly triggered by the money-adjacent generate-route change per SOP §4) — its three SHOULD-FIX findings went back to S3 as a bounded fix pass and were closed and click-tested. No agent pushed, merged, deployed, migrated, or touched a flag; the only DB writes were live app actions on the sanctioned test account.</p>
+<h2>4. Commits (all local; branch [ahead 6] including the two prior docs commits)</h2>
+<table>
+<thead>
+<tr>
+<th>Commit</th>
+<th>Content</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>7750cba</code></td>
+<td>RB-1 + RB-2 (7 files, 254+/38−)</td>
+</tr>
+<tr>
+<td><code>ec8ad41</code></td>
+<td>RB-3 + RB-5 (4 files, 159+/17−)</td>
+</tr>
+<tr>
+<td><code>fd15988</code></td>
+<td>RB-4 + RB-6 + coordinator stitches (14 files, 674+/38−)</td>
+</tr>
+<tr>
+<td><code>18f0ea2</code></td>
+<td>Opus fix pass: planner in-flight truth · mailed-letter record integrity · campaign cancel release (5 files, 143+/13−)</td>
+</tr>
+</tbody></table>
+<p>(Also on the branch, from the gate session: <code>3529271</code> multi-agent SOP · <code>50e97bc</code> gate 1.0 report.)</p>
+<h2>5. Validation record</h2>
+<table>
+<thead>
+<tr>
+<th>Check</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>npm run typecheck</code></td>
+<td>Clean — after every slice and the fix pass</td>
+</tr>
+<tr>
+<td><code>npx next build</code></td>
+<td>Clean (slices 1–3; fix pass is non-structural — typecheck + guards + live)</td>
+</tr>
+<tr>
+<td><strong>Full guard suite</strong></td>
+<td><strong>79 of 79 scripts pass</strong> — run after slice 3 AND re-run after the fix pass</td>
+</tr>
+<tr>
+<td>New guard checks added</td>
+<td>RB-1 (lettered-exclusion + starvation-alive), RB-2 (13 checks: predicate table, staging, counter consistency, disputable), RB-3 (rung order both directions), RB-5 (deterministic evening scenario, fixed <code>now</code>), RB-4 (placeholder detection, mailed-verbatim), RB-6 (regenerate plan, mailed-falls-through, planner keys, in-flight disjunct)</td>
+</tr>
+<tr>
+<td><code>scripts/schema-safety.test.ts</code></td>
+<td>17/17 — <strong>zero schema changes</strong> in the entire remediation</td>
+</tr>
+<tr>
+<td><code>billing-integrity.test.ts</code></td>
+<td>31/31 — <code>spendLetterCredits</code> call and single-source decrement literally intact</td>
+</tr>
+<tr>
+<td>Live verification</td>
+<td>Every blocker verified on the running app against the isolated preview DB (demo, gate-b, gate-d, gate-e accounts); FIX-B/FIX-C re-verified by the coordinator after a clean <code>.next</code> rebuild</td>
+</tr>
+</tbody></table>
+<p>Targeted regression only, per your instruction — no new experience walk was performed. Consistency across Mission Control / Mail Center / Kai / Planner / Letter Builder was the explicit subject of Opus attack #7 (finding: coherent; one wording note, accepted).</p>
+<h2>6. Opus bounded review (full text: appendix/OPUS-REMEDIATION-REVIEW.md)</h2>
+<p><strong>Verdict: REMAINING CONCERNS → all three SHOULD-FIX closed in <code>18f0ea2</code>; zero BLOCKING; launch-risk line: NO increased risk vs. the gate baseline.</strong></p>
+<ul>
+<li><strong>Money-adjacent ruling — PASS</strong>: the bureau-widening bypass &quot;does not exist&quot; (<code>allowedNew = Math.max(0, lettersRemaining)</code> caps creates independently of updates); strategy/tradeline switching cannot mint free letters; the ledger is never under-metered.</li>
+<li><strong>RB-5 tolerance ruling — ACCEPT</strong>: ±14h shift-then-floor is &quot;the correct construction&quot;; UI still blocks evening-tomorrow entry; ≤1-day over-acceptance on a self-attested date is the right trade.</li>
+<li>Closed in the fix pass: RB-1&#39;s campaign-planner relocation · mailed-letter print-view rewriting · the approved-campaign shadow-block dead-end.</li>
+<li><strong>Accepted-with-note (disclosed, not fixed):</strong> (D) RB-5 is forward-only — rows mailed before this fix keep UTC-midnight storage and still display a day early in US timezones; a one-time normalization (midnight→noon) is a data decision for you, relevant to production rows on merge. (E) The noon anchor makes day-counts read up to one day conservative — never closer to closing than reality. (F) A §611 window at exactly 1 day left sits in the deadlines rung below READY_TO_PREPARE; Mission Control&#39;s closing-window set still surfaces it. (G) Band/card wording coexistence (&quot;ready to prepare&quot; vs &quot;needs your details&quot;) judged coherent, tightened only if a future walk flags it.</li>
+</ul>
+<h2>7. Remaining risks &amp; open items</h2>
+<ol>
+<li><strong>CCO docket (blocking ship, per the standing engineering order — not this slice):</strong> the gate&#39;s 4 original items + RB-2&#39;s framing (incl. the Chase judgment: late-history-now-current counts as a negative) + new strings: Clean / &quot;nothing to dispute&quot; / &quot;Account in good standing — no derogatory history on file.&quot; / &quot;Bureau detail&quot; / band rung copy / placeholder warnings / &quot;Needs your details before mailing&quot; / &quot;Regenerate (updates your draft)&quot; / campaign-cancel copy.</li>
+<li><strong>RB-5 back-rows</strong> (Opus note D): decide whether to normalize pre-fix <code>mailedAt</code> values on merge.</li>
+<li>Strategy Desk H/M/L stat tiles still count clean accounts under &quot;Low&quot; (a 5th-tile layout change was out of bounds); the per-row Clean state already corrects the operator-facing claim.</li>
+<li>The gate&#39;s non-blocker polish list (Mission Control consolidation first) remains open and unchanged.</li>
+<li>Dev-note: the local dev server&#39;s <code>.next</code> cache corrupted once under heavy HMR churn mid-session (missing vendor chunk); a clean rebuild resolved it; no source defect involved.</li>
+</ol>
+<h2>8. Recommended next steps</h2>
+<ol>
+<li><strong>CCO <code>/compliance-review</code> pass</strong> over the docket above.</li>
+<li>Optional short verification walk (one Sonnet regression persona) if you want experiential re-confirmation before merge — engineering evidence above is complete without it.</li>
+<li><strong>Merge decision</strong> (yours; branch is 6 ahead, unpushed — say the word and it pushes for preview or PR).</li>
+<li><strong>Deploy decision</strong> (separate, per the standing runbook; note item 2 above for production rows).</li>
+<li>Phase 1B remains gated and untouched.</li>
+</ol>
+<h2>9. The gate question, answered</h2>
+<p><em>&quot;Would a first-time operator describe CreditVector as The Credit Operating System?&quot;</em> — The gate&#39;s answer was &quot;not yet — the system is sometimes wrong about what has already happened in it.&quot; Every one of those wrongs is now closed: it knows what it drafted, what&#39;s clean, what&#39;s ready, what date you mailed, what you already approved, and what it may never charge you twice for. On the evidence in this report: <strong>READY-WITH-DISCLOSURES</strong>, and the disclosures are yours to clear, not code to write.</p>
+
+</main></body></html>

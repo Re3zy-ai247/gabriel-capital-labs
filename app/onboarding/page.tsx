@@ -1,65 +1,71 @@
-'use client';
+import Link from "next/link";
+import { AppShell } from "@/components/AppShell";
+import { currentUserOrDemo } from "@/lib/session";
+import { loadOnboardingStatus } from "@/lib/onboarding";
+import { OnboardingSteps, type OnboardingStepDef } from "./OnboardingSteps";
 
-import { useState, useEffect } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { trackClient } from '@/lib/trackClient';
+export const dynamic = "force-dynamic";
 
 // Copy stays inside the CROA bar: process language only — no "fix your credit",
 // no absolute detection claims, no offers (free trial) that don't exist.
-const steps = [
+const STEPS: OnboardingStepDef[] = [
   {
     number: 1,
-    title: 'Complete Your Profile',
-    description: 'Add your name and address so your dispute letters are accurate and mail-ready.',
-    action: 'Go to Settings',
-    href: '/settings',
+    title: "Complete Your Profile",
+    description: "Add your name and address so your dispute letters are accurate and mail-ready.",
+    action: "Go to Settings",
+    href: "/settings",
   },
   {
     number: 2,
-    title: 'Upload Your Credit Reports',
-    description: 'Download your free reports from AnnualCreditReport.com and upload them here.',
-    action: 'Upload Reports',
-    href: '/upload',
+    title: "Upload Your Credit Reports",
+    description: "Download your free reports from AnnualCreditReport.com and upload them here.",
+    action: "Upload Reports",
+    href: "/upload",
   },
   {
     number: 3,
-    title: 'Review What Kai Found',
-    description: 'Your reports are analyzed account by account — what may be disputable, and why.',
-    action: 'View Tradelines',
-    href: '/tradelines',
+    title: "Review What Kai Found",
+    description: "Your reports are analyzed account by account — what may be disputable, and why.",
+    action: "View Tradelines",
+    href: "/tradelines",
   },
   {
     number: 4,
-    title: 'Generate Dispute Letters',
-    description: 'FCRA-grounded letters, drafted for you — review, print, and mail them yourself.',
-    action: 'Start Generator',
-    href: '/letters',
+    title: "Generate Dispute Letters",
+    description: "FCRA-grounded letters, drafted for you — review, print, and mail them yourself.",
+    action: "Start Generator",
+    href: "/letters",
   },
   {
     number: 5,
-    title: 'Track Your Progress',
-    description: 'Follow every dispute through the bureaus’ response windows on your timeline.',
-    action: 'View Timeline',
-    href: '/journey',
+    title: "Track Your Progress",
+    description: "Follow every dispute through the bureaus’ response windows on your timeline.",
+    action: "View Timeline",
+    href: "/journey",
   },
 ];
 
-export default function OnboardingPage() {
-  const router = useRouter();
-  const [completedSteps, setCompletedSteps] = useState<number[]>([]);
+// Onboarding (Phase 1A, Agent E — ROOM-RECOMMENDATIONS row 7). Was: five
+// steps whose "✓" meant only "you clicked this once" — fabricated progress
+// (SIM-REVIEW: "the product's only fabricated-progress surface"). Now: each
+// step's completion is a real row/field this account already has (see
+// lib/onboarding.ts) — the SAME facts /settings, /upload, /tradelines,
+// /letters, and /journey's own checklist already treat as done. A brand-new,
+// zero-data account renders every step honestly incomplete; nothing here is
+// ever a placeholder standing in for a fact that isn't there.
+export default async function OnboardingPage() {
+  const user = await currentUserOrDemo();
+  if (!user) {
+    return (
+      <AppShell title="/ Getting started">
+        <p className="text-slate-400">Please sign in.</p>
+      </AppShell>
+    );
+  }
 
-  // Private Alpha funnel: onboarding viewed.
-  useEffect(() => {
-    trackClient('onboarding_started');
-  }, []);
-
-  const handleStepClick = (step: number, href: string) => {
-    // First engagement with a step = entered the product from onboarding.
-    if (completedSteps.length === 0) trackClient('onboarding_completed');
-    setCompletedSteps([...completedSteps, step]);
-    router.push(href);
-  };
+  const { completedSteps } = await loadOnboardingStatus(user.id);
+  const completedCount = completedSteps.length;
 
   return (
     <div className="min-h-screen bg-ink-950 text-white">
@@ -74,51 +80,25 @@ export default function OnboardingPage() {
           Five steps and your file is under command. I&apos;ll be working at every one of them.
         </p>
 
-        {/* Progress Bar */}
+        {/* Progress Bar — real completion, not visits (row 7 fix). */}
         <div
           className="w-full bg-ink-700 rounded-full h-2 mb-4"
           role="progressbar"
           aria-valuemin={0}
-          aria-valuemax={steps.length}
-          aria-valuenow={completedSteps.length}
-          aria-label={`Onboarding: ${completedSteps.length} of ${steps.length} steps visited`}
+          aria-valuemax={STEPS.length}
+          aria-valuenow={completedCount}
+          aria-label={`Getting started: ${completedCount} of ${STEPS.length} steps completed`}
         >
           <div
             className="bg-brand-500 h-2 rounded-full transition-all duration-500"
-            style={{ width: `${(completedSteps.length / steps.length) * 100}%` }}
+            style={{ width: `${(completedCount / STEPS.length) * 100}%` }}
           ></div>
         </div>
       </div>
 
       {/* Steps */}
       <div className="max-w-6xl mx-auto px-6 pb-20">
-        <div className="space-y-6">
-          {steps.map((step) => (
-            <div key={step.number} className="card p-8">
-              <div className="flex items-start gap-6">
-                {/* Step Number */}
-                <div className="bg-gradient-to-br from-brand-500 to-ocean-600 w-16 h-16 rounded-full flex items-center justify-center flex-shrink-0">
-                  <span className="text-2xl font-bold text-white keep-white">{step.number}</span>
-                </div>
-
-                {/* Content */}
-                <div className="flex-1">
-                  <h3 className="text-2xl font-bold mb-2">{step.title}</h3>
-                  <p className="text-slate-400 mb-4">{step.description}</p>
-
-                  <button onClick={() => handleStepClick(step.number, step.href)} className="btn-primary">
-                    {step.action}
-                  </button>
-                </div>
-
-                {/* Completion Check */}
-                {completedSteps.includes(step.number) && (
-                  <div className="text-success-400 text-3xl" aria-label="Step visited">✓</div>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
+        <OnboardingSteps steps={STEPS} completedSteps={completedSteps} />
 
         {/* Bottom CTA */}
         <div className="mt-16 card p-8 text-center">

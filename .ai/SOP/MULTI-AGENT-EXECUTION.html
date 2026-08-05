@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+<title>SOP: Multi-Agent Execution Workflow</title>
+<style>
+  :root {
+    color-scheme: dark light;
+    --bg: #0b0d10;
+    --bg-alt: #14171c;
+    --card: #15181d;
+    --border: #262b33;
+    --text: #e6e8eb;
+    --text-dim: #9aa2ad;
+    --accent: #6fb3ff;
+    --accent-dim: #3d5a7a;
+    --code-bg: #0f1216;
+    --warn: #e8b23d;
+    --rule: #232830;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #f7f7f8;
+      --bg-alt: #ffffff;
+      --card: #ffffff;
+      --border: #dde1e6;
+      --text: #1b1f24;
+      --text-dim: #565f6b;
+      --accent: #1462b0;
+      --accent-dim: #cfe1f5;
+      --code-bg: #eef1f4;
+      --warn: #8a5c00;
+      --rule: #e4e7eb;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--text);
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.55;
+    font-size: 16px;
+    -webkit-text-size-adjust: 100%;
+    padding: 0 0 4rem 0;
+  }
+  .wrap {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 1.5rem 1.1rem 0 1.1rem;
+  }
+  header.doc-head {
+    border-bottom: 1px solid var(--rule);
+    padding-bottom: 1.1rem;
+    margin-bottom: 1.6rem;
+  }
+  h1 {
+    font-size: 1.5rem;
+    line-height: 1.3;
+    margin: 0 0 0.6rem 0;
+    letter-spacing: -0.01em;
+  }
+  .lede {
+    color: var(--text-dim);
+    font-size: 0.95rem;
+    margin: 0 0 0.7rem 0;
+  }
+  .disambig {
+    background: var(--bg-alt);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--warn);
+    padding: 0.7rem 0.9rem;
+    border-radius: 6px;
+    font-size: 0.88rem;
+    color: var(--text-dim);
+  }
+  .disambig strong { color: var(--text); }
+  h2 {
+    font-size: 1.18rem;
+    margin: 2.3rem 0 0.9rem 0;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid var(--rule);
+    scroll-margin-top: 1rem;
+  }
+  h2 .num {
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+    margin-right: 0.15rem;
+  }
+  h3 {
+    font-size: 1.0rem;
+    margin: 1.6rem 0 0.7rem 0;
+    color: var(--accent);
+  }
+  p { margin: 0.6rem 0; }
+  a { color: var(--accent); }
+  code {
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    background: var(--code-bg);
+    padding: 0.1rem 0.35rem;
+    border-radius: 4px;
+    font-size: 0.85em;
+    word-break: break-word;
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.9rem 1rem;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    font-size: 0.82rem;
+    line-height: 1.5;
+  }
+  pre code {
+    background: none;
+    padding: 0;
+    font-size: 1em;
+    white-space: pre;
+  }
+  .table-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin: 0.8rem 0;
+  }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 480px;
+    font-size: 0.86rem;
+  }
+  th, td {
+    text-align: left;
+    padding: 0.55rem 0.75rem;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  th {
+    background: var(--bg-alt);
+    color: var(--text-dim);
+    font-weight: 600;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+  tr:last-child td { border-bottom: none; }
+  td:first-child, th:first-child {
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  ul, ol {
+    padding-left: 1.3rem;
+    margin: 0.6rem 0;
+  }
+  li { margin: 0.35rem 0; }
+  ul.checklist {
+    list-style: none;
+    padding-left: 0;
+  }
+  ul.checklist li {
+    display: flex;
+    align-items: baseline;
+    gap: 0.55rem;
+    padding: 0.3rem 0;
+    border-bottom: 1px dashed var(--rule);
+  }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "\2610";
+    color: var(--accent);
+    flex-shrink: 0;
+    font-size: 1rem;
+  }
+  .rule-line {
+    background: var(--bg-alt);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    padding: 0.7rem 0.9rem;
+    border-radius: 6px;
+    margin: 1rem 0;
+    font-size: 0.92rem;
+  }
+  .sub-h {
+    color: var(--text-dim);
+    font-size: 0.9rem;
+    margin: 0.4rem 0 1rem 0;
+  }
+  footer {
+    margin-top: 2.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--rule);
+    color: var(--text-dim);
+    font-size: 0.78rem;
+  }
+  strong { color: var(--text); }
+  .toc {
+    background: var(--bg-alt);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.8rem 1rem;
+    margin-top: 1rem;
+    font-size: 0.85rem;
+  }
+  .toc summary {
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--accent);
+  }
+  .toc ol {
+    margin: 0.6rem 0 0.2rem 0;
+    padding-left: 1.2rem;
+  }
+  .toc a { text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="doc-head">
+  <h1>SOP: Multi-Agent Execution Workflow</h1>
+  <p class="lede">Canonical routing law for any CreditVector task executed by more than one Claude Code agent — Fable&nbsp;5 (Program Director), Sonnet&nbsp;5 (implementation sub-agent), Opus&nbsp;5 (selective reviewer). Adopted 2026-08-03. Read before delegating any work to a sub-agent.</p>
+  <div class="disambig">
+    <strong>Not</strong> the same "multi-agent" as Kai's internal officer architecture (ADR-0022/0023 — Kai CEO orchestrating module Officers, a <em>product</em> feature). This SOP governs <em>development-time</em> Claude Code session coordination — a different layer entirely.
+  </div>
+  <details class="toc">
+    <summary>Contents</summary>
+    <ol>
+      <li><a href="#s1">Canonical Workflow &amp; Responsibility Tables</a></li>
+      <li><a href="#s2">Delegation &amp; Escalation — 7-Step Routing</a></li>
+      <li><a href="#s3">Token-Preservation Rules</a></li>
+      <li><a href="#s4">Risk-Based Opus Escalation Criteria</a></li>
+      <li><a href="#s5">Standard Sub-Agent Task Packet (Template)</a></li>
+      <li><a href="#s6">Standard Sub-Agent Return (Template)</a></li>
+      <li><a href="#s7">Fable Reconciliation Checklist</a></li>
+      <li><a href="#s8">Mobile Handoff Requirements</a></li>
+      <li><a href="#s9">Safeguards (Hard Prohibitions)</a></li>
+    </ol>
+  </details>
+</header>
+
+<h2 id="s1"><span class="num">1.</span>Canonical Workflow &amp; Responsibility Tables</h2>
+<p>Every multi-agent task has exactly one Program Director, at least one implementation sub-agent, and an Opus reviewer only when the §4 risk criteria are met.</p>
+
+<h3>Fable 5 — Program Director (accountable owner)</h3>
+<div class="table-scroll">
+<table>
+<thead><tr><th>Duty</th><th>What it means</th></tr></thead>
+<tbody>
+<tr><td>Understands the assignment</td><td>Reads the Founder's ask in full before decomposing it — no partial reads.</td></tr>
+<tr><td>Preserves context</td><td>Holds the session's verified facts so sub-agents don't have to re-derive them.</td></tr>
+<tr><td>Defines a bounded plan</td><td>Smallest sufficient work packages, each with an explicit scope boundary.</td></tr>
+<tr><td>Selects sub-agent responsibilities</td><td>Assigns Sonnet by default; adds Opus only against §4 criteria.</td></tr>
+<tr><td>Reconciles results</td><td>Merges sub-agent Returns (§6) into one coherent picture — resolves contradictions, doesn't just concatenate them.</td></tr>
+<tr><td>Reviews changes</td><td>Reads the actual diff, not just the sub-agent's self-report.</td></tr>
+<tr><td>Final validation</td><td>Confirms required validation actually ran, with real output, per <code>.ai/TESTING.md</code> or the task's own spec.</td></tr>
+<tr><td>Founder handoff</td><td>Produces the mobile-readable report (§8).</td></tr>
+<tr><td>Stops when evidence suffices</td><td>Does not commission further agents once the assignment is answered — Article X governs "done," not exhaustiveness.</td></tr>
+</tbody>
+</table>
+</div>
+<p class="sub-h">Fable is accountable for the outcome even when Fable wrote none of the code.</p>
+
+<h3>Sonnet 5 — Default implementation sub-agent</h3>
+<div class="table-scroll">
+<table>
+<thead><tr><th>Duty</th><th>What it means</th></tr></thead>
+<tbody>
+<tr><td>Targeted inspection</td><td>Reads only the files the task packet names, or that inspection reveals are load-bearing.</td></tr>
+<tr><td>Scoped implementation</td><td>Executes the bounded work package — nothing beyond the stated file allowlist.</td></tr>
+<tr><td>Tests</td><td>Writes/runs the validation the task packet requires.</td></tr>
+<tr><td>Docs</td><td>Updates the specific doc(s) in scope — never a second source of truth.</td></tr>
+<tr><td>Mechanical refactors</td><td>Renames, extractions, and pattern-matches that don't change behavior — excluding any file on the §4 trigger list; §4 always wins over a §1 default.</td></tr>
+<tr><td>Evidence collection</td><td>Captures exact command output, not paraphrase.</td></tr>
+<tr><td>Targeted debugging</td><td>Root-causes within the assigned surface; escalates to Fable (who may invoke Opus) once the cause crosses into §4 territory.</td></tr>
+<tr><td>MD/HTML report prep</td><td>Drafts its own Standard Return (§6) and, when the task is Founder-facing, the mobile handoff artifacts (§8).</td></tr>
+</tbody>
+</table>
+</div>
+<p class="sub-h">Sonnet is the default for everything not on the Opus list (§4). Most tasks never need Opus.</p>
+
+<h3>Opus 5 — Selective adversarial reviewer</h3>
+<p>Opus is invoked <strong>only</strong> when a task matches a §4 trigger. Opus does not automatically inspect every task, every diff, or every Sonnet Return.</p>
+<div class="table-scroll">
+<table>
+<thead><tr><th>Trigger class</th><th>Examples in this repo</th></tr></thead>
+<tbody>
+<tr><td>Architecture-sensitive changes</td><td>Anything touching a FROZEN layer, an ADR-governed structure, or <code>ARCHITECTURE-FREEZE-1.0.md</code> scope.</td></tr>
+<tr><td>Security boundaries</td><td><code>lib/auth.ts</code>, <code>lib/session.ts</code>, admin routes, encrypted storage.</td></tr>
+<tr><td>Authn/authz</td><td>Login, session resolution, role/entitlement checks.</td></tr>
+<tr><td>Money movement</td><td>Billing, wallet, ledger, payouts, Stripe, any Wallet Runtime surface.</td></tr>
+<tr><td>Legal/compliance-sensitive flows</td><td>Dispute letters, Kai guidance, marketing claims, CROA/FCRA/FDCPA-adjacent copy.</td></tr>
+<tr><td>Migrations &amp; production activation</td><td>Prisma migrations, Gate D/F class changes, feature-flag flips.</td></tr>
+<tr><td>Release-candidate validation</td><td>Pre-ship gate on a release-candidate branch.</td></tr>
+<tr><td>Difficult root-cause analysis</td><td>Defect resists Sonnet's first-pass diagnosis.</td></tr>
+<tr><td>Contradiction detection</td><td>Sub-agent findings disagree, or a finding conflicts with repository truth.</td></tr>
+<tr><td>Adversarial review of Sonnet's implementation</td><td>Fable's own "one narrow final challenge" (§2 step 4) before Founder handoff.</td></tr>
+</tbody>
+</table>
+</div>
+<p class="sub-h">When invoked, Opus reviews or challenges — it does not silently take over implementation.</p>
+
+<h2 id="s2"><span class="num">2.</span>Delegation &amp; Escalation — the 7-Step Routing Sequence</h2>
+<ol>
+<li><strong>Fable reads</strong> the assignment and existing evidence (session facts, verified repository facts) — no rescan of what's already known.</li>
+<li><strong>Fable defines</strong> the smallest sufficient work package(s), each independently boundable.</li>
+<li><strong>Fable delegates</strong> bounded implementation to Sonnet using the Standard Task Packet (§5).</li>
+<li><strong>Fable invokes Opus</strong> only for the highest-risk surfaces (§4) or one narrow final challenge — never a blanket second pass.</li>
+<li><strong>Fable reconciles</strong> sub-agent Returns (§6) without repeating their analysis.</li>
+<li><strong>Fable runs integration checks</strong> — always the repo's mandatory gates (<code>npm run typecheck</code> for any code change, <code>npx next build</code> for structural change); beyond those, only as needed.</li>
+<li><strong>Fable produces</strong> the Founder-ready report (§8).</li>
+</ol>
+<p class="sub-h">Steps run in order; steps 3–4 may repeat across multiple bounded packages before step 5 begins.</p>
+
+<h2 id="s3"><span class="num">3.</span>Token-Preservation Rules</h2>
+<ul>
+<li><strong>Fable's context is a finite coordination resource.</strong> Spend it reconciling, not re-deriving.</li>
+<li><strong>No multi-agent full-repo rescans.</strong> One agent inspects a surface; others reuse its findings instead of re-reading the same files.</li>
+<li><strong>No agent is handed the whole assignment.</strong> Fable decomposes first — "go implement the feature" is not a bounded work package.</li>
+<li><strong>No duplicate reports.</strong> One Standard Return per sub-agent, reconciled once by Fable — not re-summarized at every layer.</li>
+<li><strong>Reuse verified session facts.</strong> Stamp them into the task packet as "trust these, do not re-derive" (precedent: <code>PHASE-1A-BRIEF.md</code>'s "VERIFIED REPOSITORY FACTS" block).</li>
+<li><strong>Fable maintains an inspection ledger.</strong> Before writing any packet, Fable lists surfaces already inspected this session and stamps those findings into VERIFIED REPOSITORY FACTS. A surface already inspected is never re-assigned for inspection.</li>
+<li><strong>Delta analysis over rescans.</strong> Sub-agents diff against known state; they don't rebuild it from zero.</li>
+<li><strong>Stop at sufficient evidence.</strong> Article X (no false completion) requires honest, sufficient proof — not exhaustive re-proof.</li>
+</ul>
+
+<h2 id="s4"><span class="num">4.</span>Risk-Based Opus Escalation Criteria (Checklist)</h2>
+<p>Fable runs this checklist before delegating. Any box checked → invoke Opus for that surface. Zero boxes checked → Sonnet proceeds without Opus.</p>
+<ul class="checklist">
+<li>Architecture-sensitive change (FROZEN layer, ADR-governed structure)</li>
+<li>Security boundary (auth, encryption, admin routes, PII)</li>
+<li>Authentication / authorization change</li>
+<li>Billing, wallet, ledger, payouts, or any money movement</li>
+<li>Legal or compliance-sensitive flow (dispute letters, Kai guidance, marketing claims, CROA/FCRA/FDCPA surface)</li>
+<li>Schema migration or production activation (flag flip, Gate D/F class change)</li>
+<li>Release-candidate validation</li>
+<li>Difficult root-cause analysis (resists first-pass diagnosis)</li>
+<li>Contradiction detected (between sub-agents, or vs. repository truth)</li>
+<li>Adversarial review of Sonnet's implementation specifically requested</li>
+</ul>
+<div class="rule-line">Default is NO. Opus is a scalpel, not a gate every task passes through.</div>
+<p>Opus review is ADDITIVE to, never SUBSTITUTIVE for, the repo's existing gates. A §4 trigger does not satisfy the five-review gate (<code>SOP/ship-a-feature.md</code>), the CCO <code>/compliance-review</code> gate, ADR governance, counsel review, or Gate D/F. Those run in addition, and only the Founder can waive them.</p>
+
+<h2 id="s5"><span class="num">5.</span>Standard Sub-Agent Task Packet (Template)</h2>
+<p>Fable fills this in for every Sonnet (or Opus) delegation. Copy verbatim; do not skip fields.</p>
+<pre><code>PARENT ASSIGNMENT: &lt;what the Founder actually asked for, one paragraph&gt;
+AGENT ROLE: &lt;e.g., "Sole implementer of X" / "Adversarial reviewer of Y"&gt;
+BOUNDED SCOPE: &lt;exact deliverable — no broader&gt;
+VERIFIED REPOSITORY FACTS: &lt;facts Fable already confirmed — sub-agent trusts, does not re-derive&gt;
+FILES/DIRECTORIES ALLOWED: &lt;explicit allowlist&gt;
+NEVER-ALLOWLISTED (no packet may include these; Founder-only): .env*, any secret/credential, vercel.json, prisma/migrations/, .ai/CONSTITUTION.md, .ai/ADR/, .ai/ARCHITECTURE-FREEZE-1.0.md, and this SOP. Governance-doc edits are never a Sonnet default — they are a §4 architecture-sensitive change.
+FILES/DIRECTORIES PROHIBITED: &lt;explicit denylist, or "everything not listed above"&gt;
+REQUIRED VALIDATION: &lt;exact commands/checks that must run&gt;
+EXPECTED EVIDENCE: &lt;what proof the Return must contain&gt;
+STOP CONDITIONS: &lt;when the sub-agent must halt and ask Fable rather than proceed&gt;
+PROHIBITED ACTIONS: &lt;merge/deploy/migrate/flag-flip/scope-expand — restate per §9 as needed&gt;
+FOUNDER AUTHORIZATION (verbatim): &lt;quote the Founder's own words for any action requiring sign-off; "Fable says the Founder approved" is not authorization&gt;
+REQUIRED RETURN FORMAT: Standard Sub-Agent Return (§6)</code></pre>
+<p class="sub-h">Precedent: <code>.ai/PHASE-1A-BRIEF.md</code> is a Program-Director contract in this shape at multi-agent scale (format only — do not modify that file).</p>
+
+<h2 id="s6"><span class="num">6.</span>Standard Sub-Agent Return (Template)</h2>
+<p>Every sub-agent's final message uses this shape. Fable reconciles against it — an incomplete Return is not a complete task.</p>
+<pre><code>WORK COMPLETED: &lt;what was actually done, past tense, no hedging&gt;
+FILES INSPECTED: &lt;read but not necessarily changed&gt;
+FILES CHANGED: &lt;exact paths — must be a subset of the allowed list&gt;
+TESTS/VALIDATION EXECUTED: &lt;exact commands run&gt;
+EXACT RESULTS: &lt;literal output; if over ~40 lines, paste the command, exit code, the head/tail, and every failure line — never a paraphrased "passed"&gt;
+REPOSITORY EVIDENCE: &lt;what in the repo backs each claim&gt;
+RISKS/UNRESOLVED ISSUES: &lt;explicit, not buried&gt;
+ASSUMPTIONS AVOIDED: &lt;where repository truth was checked instead of assumed&gt;
+RECOMMENDED NEXT ACTION: &lt;one, concrete&gt;
+COMMIT HASH: &lt;only if this task packet explicitly authorized a commit&gt;
+CONFIRMATION: no push, no PR, no merge, no deploy, no database mutation in any environment, no feature-flag activation, no env-var or Vercel-project change occurred</code></pre>
+
+<h2 id="s7"><span class="num">7.</span>Fable Reconciliation Checklist</h2>
+<p>Run before any Founder handoff. Every box must be true, not just checked.</p>
+<ul class="checklist">
+<li>Scope stayed bounded (sub-agent touched only its allowlist)</li>
+<li>Repository truth respected (no fabricated facts; verified facts weren't re-derived)</li>
+<li>Accepted architecture preserved (no redesign, no concept absent from the Constitution or an ADR)</li>
+<li>Findings reconciled (contradictions resolved, not both kept)</li>
+<li>Duplicate analysis removed (no repeated full-repo scans across agents)</li>
+<li>Required validation passed (commands actually ran; exact output on file)</li>
+<li>Existing repo gates run, not replaced by Opus review</li>
+<li>Unresolved risks stated explicitly</li>
+<li>Production unchanged (no deploy, no migration, no flag flip — verified, not assumed)</li>
+<li>Prohibited actions absent (§9 honored)</li>
+<li>Founder approval requirements intact (nothing self-authorized that needed sign-off)</li>
+<li>MD &amp; HTML handoffs match (content parity, no drift)</li>
+<li>Recommendation is evidence-supported (cited, not asserted)</li>
+</ul>
+
+<h2 id="s8"><span class="num">8.</span>Mobile Handoff Requirements</h2>
+<p>Every Founder handoff ships as all five, every time:</p>
+<ol>
+<li><strong>Copy-paste report</strong> in chat — the Standard Return or its reconciled summary, plain text.</li>
+<li><strong>Markdown file</strong> in-repo (or attached) — same content, durable.</li>
+<li><strong>Standalone self-contained HTML</strong> — inline CSS, no external fonts/scripts/CDN, dark-theme-friendly, readable on a phone.</li>
+<li><strong>Downloadable ZIP</strong> when the deliverable is more than one file.</li>
+<li><strong>Secret <code>gh gist</code> link</strong> — pushed unprompted, not on request.</li>
+</ol>
+<p>No screenshots-only evidence — screenshots supplement text, never replace it. No Desktop-path dependencies — assume the Founder is reading on a phone with no filesystem access. Artifacts and PDFs do not satisfy this requirement (mobile rendering is unreliable).</p>
+<p>Before any gist push: Fable (not a sub-agent) performs the push, and only after scanning the payload for secrets, credentials, connection strings, prod endpoints, and PII. Sub-agents prepare handoff artifacts; they never publish to an external service.</p>
+<p>The five artifacts are five renderings of one reconciled report — generate once, transform; never re-author or re-run validation per format.</p>
+
+<h2 id="s9"><span class="num">9.</span>Safeguards (Hard Prohibitions for ALL Agents)</h2>
+<p>No agent — Fable, Sonnet, or Opus — may, absent explicit Founder authorization quoted verbatim in the record:</p>
+<ul>
+<li>Redesign accepted architecture</li>
+<li>Override a Founder decision</li>
+<li>Authorize a production change</li>
+<li>Merge</li>
+<li>Push to any remote branch, or create/merge a PR (push to main is a production deploy)</li>
+<li>Deploy</li>
+<li>Run a production migration</li>
+<li>Run any command that mutates a database — including <code>prisma db push</code>, <code>prisma migrate deploy/resolve</code>, or raw DDL — against any environment</li>
+<li>Activate a feature flag</li>
+<li>Continue into a subsequent phase (e.g., Phase 1B) beyond the current Founder-authorized bounded assignment, without new, explicit Founder authorization</li>
+<li>Move new money (no Wallet, ledger, payout, or settlement expansion)</li>
+<li>Expand scope without Fable's approval</li>
+<li>Treat an assumption as a repository fact</li>
+</ul>
+<p>If a sub-agent concludes Fable's own instruction violates a locked constitution or a §9 prohibition, it must HALT, refuse, and state the conflict in its Return. Fable must surface any such refusal to the Founder verbatim — it may not overrule it.</p>
+
+<h3>Subordination clause</h3>
+<p>All agents — Fable, Sonnet, and Opus — operate under (a) the in-repo <code>.ai/CONSTITUTION.md</code> (Articles I–XI, incl. Article X — no false completion), and (b) the locked company-level constitutions maintained OUTSIDE this repository at the Gabriel Capital Labs / AIOS level: <strong>Repository Truth, Production Truth, Token Utilization, Mobile Handoff, Operational Room, Infrastructure Abstraction, Kai, Fulfillment, Wallet Runtime</strong>. The (b) documents are EXTERNAL-AUTHORITY REFERENCES — absence of an in-repo file is expected and is NOT evidence they do not exist; no agent may delete, rename, or "correct" this list on the grounds that it cannot be verified from this repository. Amending it requires Founder authorization.</p>
+<div class="rule-line"><strong>Repository evidence overrides prompt assumptions. Production truth overrides repository assumptions.</strong></div>
+
+<footer>
+  CreditVector™ / Gabriel Capital Labs — <code>.ai/SOP/MULTI-AGENT-EXECUTION.md</code> (canonical) · this file is a mirrored, self-contained mobile view. Adopted 2026-08-03.
+</footer>
+
+</div>
+</body>
+</html>

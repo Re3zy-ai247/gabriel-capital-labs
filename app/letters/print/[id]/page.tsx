@@ -1,7 +1,11 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
+import { AlertTriangle } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { currentUserOrDemo } from "@/lib/session";
 import { decryptDocument, decryptText, docCryptoReady } from "@/lib/docCrypto";
+import { MAIL_TRANSIT_DAYS } from "@/lib/forecast";
+import { resolveSenderPlaceholders, detectPlaceholders } from "@/lib/letter";
 import { PrintActions } from "./PrintActions";
 
 export const dynamic = "force-dynamic";
@@ -38,10 +42,37 @@ export default async function LetterPrintPage({ params }: { params: { id: string
   // body is encrypted at rest — decrypt for the printable packet.
   letter.body = decryptText(letter.body);
 
+  // Phase 1A-R RB-4 — RENDER-TIME SENDER RESOLUTION. The stored body above is
+  // frozen at generation time and stays that way (the dispute CONTENT must
+  // never silently change after the fact). But the sender block is not
+  // dispute content — it's the consumer's own CURRENT legal name/address, the
+  // same fields Settings already treats as live. This substitutes the
+  // signed-in user's CURRENT profile into the RENDERED copy only: plain
+  // string replacement, no AI, no regeneration, no letter credit, no DB
+  // write. `letter.body` (and therefore GET /api/letters' preview) is
+  // untouched — only `renderedBody`, used below, reflects it.
+  //
+  // Opus follow-up — RECORDS INTEGRITY: this applies ONLY to a NOT-YET-MAILED
+  // letter, where the print view is still a draft the operator is about to
+  // act on. A MAILED letter's print view is the RECORD of what was actually
+  // sent — it renders VERBATIM (never rewritten with today's profile, which
+  // would show text that was never mailed) and never carries the "before you
+  // mail this" warning below (nothing about an already-mailed letter is
+  // still pending mailing).
+  const consumerNow = {
+    fullName: user.fullName,
+    addressLine1: user.addressLine1,
+    city: user.city,
+    state: user.state,
+    zip: user.zip,
+  };
+  const renderedBody = letter.mailedAt ? letter.body : resolveSenderPlaceholders(letter.body, consumerNow);
+  const placeholders = detectPlaceholders(renderedBody);
+
   // Presentation-only line pass over the verbatim body: the first line of a
   // letter is the sender's name (letterhead) and the "RE:" line is its subject.
   // Weighting those two lines — text untouched — gives the page its hierarchy.
-  const bodyLines = letter.body.replace(/\r\n/g, "\n").split("\n");
+  const bodyLines = renderedBody.replace(/\r\n/g, "\n").split("\n");
   const letterheadIdx = bodyLines.findIndex((l) => l.trim().length > 0);
   const reIdx = bodyLines.findIndex((l) => l.trimStart().startsWith("RE:"));
 
@@ -81,6 +112,42 @@ export default async function LetterPrintPage({ params }: { params: { id: string
     <div className="min-h-screen bg-slate-100 font-sans text-black print:bg-white">
       <style dangerouslySetInnerHTML={{ __html: PRINT_CSS }} />
       <PrintActions />
+
+      {/* Phase 1A-R RB-4 — PLACEHOLDER GATE. Explicit, unmissable, screen-only
+          (never printed: if a token is still unresolved it's already visible,
+          honestly, on the printed page itself — this is the heads-up BEFORE
+          committing to mail it). Not a hard block — the founder ruled out a
+          flow redesign — but it names exactly what's missing and links to fix
+          it, matching the existing /letters builder-page warning idiom. */}
+      {!letter.mailedAt && placeholders.hasPlaceholder && (
+        <div className="mx-auto max-w-[8.5in] px-6 pt-4 print:hidden">
+          <div className="flex gap-2 rounded-lg border border-gold-500/30 bg-gold-500/10 p-3 text-xs text-gold-400">
+            <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden />
+            <div>
+              <p className="font-semibold">Before you mail this</p>
+              {placeholders.senderIncomplete && (
+                <p className="mt-1">
+                  Your sender details are incomplete — this letter still reads [YOUR FULL NAME] / [YOUR ADDRESS] /
+                  [CITY, STATE ZIP] instead of your real name and mailing address.{" "}
+                  <Link href="/settings" className="font-semibold underline">Complete your profile in Settings →</Link>
+                </p>
+              )}
+              {placeholders.recipientIncomplete && (
+                <p className="mt-1">
+                  The recipient&apos;s mailing address is missing — this letter still reads [Furnisher mailing
+                  address] and can&apos;t be mailed as printed.{" "}
+                  <Link
+                    href={`/letters?tradeline=${encodeURIComponent(letter.tradelineId ?? "")}&strategy=${encodeURIComponent(letter.strategy)}`}
+                    className="font-semibold underline"
+                  >
+                    Add it →
+                  </Link>
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Screen-only context strip — what this document is, before it prints. */}
       <div className="mx-auto flex max-w-[8.5in] flex-wrap items-baseline gap-x-5 gap-y-1 px-6 pt-6 text-[11px] uppercase tracking-widest text-slate-500 print:hidden">
@@ -151,7 +218,11 @@ export default async function LetterPrintPage({ params }: { params: { id: string
           <li>Print every page — the letter and any enclosures — then sign and date it.</li>
           <li>Mail it to the address shown at the top of the letter.</li>
           <li>First-class mail works. Certified mail with return receipt costs a little more but gives you proof of delivery and the date the response window starts — worth it for a dispute.</li>
-          <li>Keep a copy of everything you send, then mark the letter mailed in CreditVector so I can track the response window with you.</li>
+          <li>
+            Keep a copy of everything you send, then mark the letter mailed in CreditVector. I&apos;ll estimate your
+            response window from that date plus about {MAIL_TRANSIT_DAYS} days&apos; mailing time — the clock actually
+            starts once the bureau receives it, which only certified mail&apos;s return receipt (above) can confirm exactly.
+          </li>
         </ol>
         <p className="mt-3 text-xs text-slate-500">Educational guidance on exercising your own rights — not legal advice, and no outcome is guaranteed.</p>
       </aside>

@@ -485,6 +485,98 @@ function applicableStandards(ctx: LetterContext): string {
   }
 }
 
+// ---- Phase 1A-R RB-4 / RB-6: shared letter-lifecycle helpers -----------------
+// Both fixes below are deliberately DETERMINISTIC and DB-free — no AI, no
+// regeneration, no schema change — so they run identically from a Server
+// Component (render path) or a route handler (write path), and are
+// unit-testable in scripts/letter.test.ts with zero DB/network.
+
+// The exact literal tokens renderTemplateLetter/buildContext emit above when
+// sender or recipient data is missing at generation time. Every placeholder-
+// aware surface (print, download, Mail Center) keys off these SAME strings —
+// one source of truth, never re-derived per caller.
+export const SENDER_PLACEHOLDER_TOKENS = ["[YOUR FULL NAME]", "[YOUR ADDRESS]", "[CITY, STATE ZIP]"] as const;
+export const FURNISHER_PLACEHOLDER_TOKEN = "[Furnisher mailing address]";
+
+// RENDER-TIME SENDER RESOLUTION (RB-4). The stored Letter.body is frozen at
+// generation time — deliberately: the dispute CONTENT (findings, statutes,
+// requested action) must never silently change after the fact. But the
+// sender block is not dispute content — it is the consumer's own CURRENT
+// legal name/address, the same fields Settings already treats as live. When
+// the profile was incomplete at generation, the stored body carries literal
+// placeholder tokens; once the profile is completed, this substitutes the
+// CURRENT profile values into a RENDERED COPY ONLY — plain string
+// replacement, no AI, no regeneration, no letter credit, no DB write. The
+// stored row (and the `preview` field GET /api/letters returns) is never
+// touched. Each token substitutes independently, so a partially-filled
+// profile still gets whatever it has replaced rather than all-or-nothing.
+export function resolveSenderPlaceholders(body: string, consumer: LetterConsumer): string {
+  let out = body;
+  if (consumer.fullName?.trim()) out = out.replaceAll("[YOUR FULL NAME]", consumer.fullName.trim());
+  if (consumer.addressLine1?.trim()) out = out.replaceAll("[YOUR ADDRESS]", consumer.addressLine1.trim());
+  if (consumer.city?.trim() && consumer.state?.trim() && consumer.zip?.trim()) {
+    out = out.replaceAll("[CITY, STATE ZIP]", `${consumer.city.trim()}, ${consumer.state.trim()} ${consumer.zip.trim()}`);
+  }
+  return out;
+}
+
+export interface PlaceholderStatus {
+  senderIncomplete: boolean; // [YOUR FULL NAME] / [YOUR ADDRESS] / [CITY, STATE ZIP] still present
+  recipientIncomplete: boolean; // [Furnisher mailing address] still present — no live source to auto-resolve
+  hasPlaceholder: boolean;
+}
+
+// PLACEHOLDER GATE (RB-4): what the RENDERED artifact (post render-time
+// resolution) still carries. The furnisher/collector recipient address has no
+// "current profile" equivalent to pull from at render time — it's only ever
+// fixed by adding it on the letter's own recipient field and regenerating
+// (RB-6 made that regenerate free and idempotent), so this function only
+// DETECTS that placeholder; it never resolves it.
+export function detectPlaceholders(renderedBody: string): PlaceholderStatus {
+  const senderIncomplete = SENDER_PLACEHOLDER_TOKENS.some((t) => renderedBody.includes(t));
+  const recipientIncomplete = renderedBody.includes(FURNISHER_PLACEHOLDER_TOKEN);
+  return { senderIncomplete, recipientIncomplete, hasPlaceholder: senderIncomplete || recipientIncomplete };
+}
+
+// ---- RB-6: idempotent-regenerate matching (pure) -----------------------------
+export interface RegenerateCandidate {
+  id: string;
+  targetBureau: Bureau | null;
+  mailedAt: Date | string | null;
+}
+export interface RegeneratePlan {
+  toUpdate: { target: Bureau | undefined; existingId: string }[];
+  toCreate: (Bureau | undefined)[];
+}
+
+// For each requested target (a specific bureau, or undefined for a single-
+// recipient furnisher/collector letter), decide whether an UNMAILED existing
+// letter for the same tradeline+strategy+round already covers it (→ update in
+// place: no new row, no quota consumed) or whether a fresh row is genuinely
+// needed (→ create, quota-gated exactly as before). A MAILED letter is NEVER
+// matched for update — regenerating against a mailed target falls through to
+// create, the existing unchanged behavior; the real "next round" journey is
+// the dedicated /api/letters/[id]/round2 endpoint, untouched by this function.
+export function planLetterRegeneration(
+  targets: (Bureau | undefined)[],
+  candidates: RegenerateCandidate[]
+): RegeneratePlan {
+  const unmailedByBureau = new Map<string, RegenerateCandidate>();
+  for (const c of candidates) {
+    if (c.mailedAt) continue; // mailed rows are never regenerate-matched
+    const key = c.targetBureau ?? "__none__";
+    if (!unmailedByBureau.has(key)) unmailedByBureau.set(key, c); // first match wins, stable
+  }
+  const toUpdate: RegeneratePlan["toUpdate"] = [];
+  const toCreate: RegeneratePlan["toCreate"] = [];
+  for (const t of targets) {
+    const match = unmailedByBureau.get(t ?? "__none__");
+    if (match) toUpdate.push({ target: t, existingId: match.id });
+    else toCreate.push(t);
+  }
+  return { toUpdate, toCreate };
+}
+
 export function buildUserPrompt(t: LetterTradeline, ctx: LetterContext, draft: string): string {
   const statutes = ctx.strategy.statutes
     .map((k) => `${STATUTES[k].short} (${STATUTES[k].usc}) — ${STATUTES[k].desc}\n    Operative text: ${STATUTES[k].text}`)

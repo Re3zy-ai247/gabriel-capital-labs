@@ -7,9 +7,11 @@ import { cn } from "@/lib/utils";
 import { BRAND } from "@/lib/brand";
 import { useAdminContext } from "./admin/useAdminContext";
 import { useCommunityAccess } from "./community/useCommunityAccess";
+import { useOnboardingStatus, clearOnboardingStatusCache } from "./onboarding/useOnboardingStatus";
 import { BrandLogo } from "./BrandLogo";
+import { clearKaiPresenceCache } from "./kai/KaiPresence";
 import {
-  LayoutDashboard, Upload, ListTree, Mails, Target, CalendarRange, Settings, CreditCard, ScanSearch, LineChart, Building2, LogOut, Menu, X, ShieldCheck, MessagesSquare, LifeBuoy, Newspaper, Send, Layers, Sprout, GraduationCap,
+  LayoutDashboard, Upload, ListTree, Mails, Target, CalendarRange, Settings, CreditCard, ScanSearch, LineChart, Building2, LogOut, Menu, X, ShieldCheck, MessagesSquare, LifeBuoy, Newspaper, Send, Layers, Sprout, GraduationCap, ListChecks,
 } from "lucide-react";
 
 const NAV = [
@@ -42,6 +44,17 @@ const ADMIN_LINK = { href: "/admin", label: "Admin", icon: ShieldCheck };
 // visibility follows the server's /api/community/access probe (canAccessCommunity).
 const COMMUNITY_LINK = { href: "/community", label: "Operator Network", icon: MessagesSquare };
 
+// Getting Started appears only while onboarding is genuinely incomplete
+// (Phase 1A, Agent E — ROOM-RECOMMENDATIONS row 7); visibility follows the
+// server's /api/onboarding/status probe. Dismissible by completion only — no
+// manual dismiss control exists, it simply stops rendering once every real
+// signal is there. Inserted right after Mission Control so it stays visible
+// without displacing it.
+const ONBOARDING_LINK = { href: "/onboarding", label: "Getting Started", icon: ListChecks };
+function withOnboarding(nav: typeof NAV, incomplete: boolean | undefined): typeof NAV {
+  return incomplete ? [nav[0], ONBOARDING_LINK, ...nav.slice(1)] : nav;
+}
+
 // Primary destinations pinned to the mobile bottom bar; everything else (incl.
 // Agency, Settings, Billing) lives behind "More".
 const MOBILE_PRIMARY = ["/dashboard", "/upload", "/tradelines", "/letters"];
@@ -64,7 +77,8 @@ export function Sidebar() {
   const path = usePathname();
   const ctx = useAdminContext();
   const community = useCommunityAccess();
-  const mainNav = community?.canAccess ? [...NAV, COMMUNITY_LINK] : NAV;
+  const onboarding = useOnboardingStatus();
+  const mainNav = withOnboarding(community?.canAccess ? [...NAV, COMMUNITY_LINK] : NAV, onboarding?.incomplete);
   const accountNav = ctx?.isAdmin ? [ADMIN_LINK, ...ACCOUNT_NAV] : ACCOUNT_NAV;
   return (
     <aside className="hidden w-60 shrink-0 flex-col border-r border-ink-700/70 bg-ink-900/60 p-4 md:flex">
@@ -100,7 +114,7 @@ export function Sidebar() {
         </nav>
       </div>
       <button
-        onClick={() => signOut({ callbackUrl: "/login" })}
+        onClick={() => { clearKaiPresenceCache(); clearOnboardingStatusCache(); signOut({ callbackUrl: "/login" }); }}
         className="nav-item mt-4 w-full text-left text-slate-400 hover:text-rose-300"
       >
         <LogOut className="h-4 w-4" aria-hidden />
@@ -118,7 +132,8 @@ export function MobileNav() {
   const [open, setOpen] = useState(false);
   const ctx = useAdminContext();
   const community = useCommunityAccess();
-  const mainNav = community?.canAccess ? [...NAV, COMMUNITY_LINK] : NAV;
+  const onboarding = useOnboardingStatus();
+  const mainNav = withOnboarding(community?.canAccess ? [...NAV, COMMUNITY_LINK] : NAV, onboarding?.incomplete);
   const accountNav = ctx?.isAdmin ? [ADMIN_LINK, ...ACCOUNT_NAV] : ACCOUNT_NAV;
   const primary = MOBILE_PRIMARY.map((href) => NAV.find((n) => n.href === href)!).filter(Boolean);
   const isActive = (href: string) => path === href || path?.startsWith(href + "/");
@@ -161,7 +176,7 @@ export function MobileNav() {
               </nav>
             </div>
             <button
-              onClick={() => { setOpen(false); signOut({ callbackUrl: "/login" }); }}
+              onClick={() => { setOpen(false); clearKaiPresenceCache(); clearOnboardingStatusCache(); signOut({ callbackUrl: "/login" }); }}
               className="nav-item mt-4 min-h-[44px] w-full text-left text-slate-400 hover:text-rose-300"
             >
               <LogOut className="h-4 w-4" aria-hidden /> Log out

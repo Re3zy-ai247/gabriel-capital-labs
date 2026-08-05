@@ -2,6 +2,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Briefcase, LogOut } from "lucide-react";
+import { clearKaiPresenceCache } from "@/components/kai/KaiPresence";
+import { clearOnboardingStatusCache } from "@/components/onboarding/useOnboardingStatus";
 
 // Shown across the top of every page when an agency has a client workspace open,
 // so it's always obvious whose file you're working in (and easy to step out).
@@ -27,6 +29,10 @@ export function AgencyBar() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ clientId: null }),
     });
+    // Stepping back to the agency's own subject — the same cache-bleed risk
+    // as opening a client, in reverse (Phase 1A cache fix, SIM-REVIEW finding 4).
+    clearKaiPresenceCache();
+    clearOnboardingStatusCache();
     router.push("/agency");
     router.refresh();
   }

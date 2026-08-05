@@ -9,6 +9,29 @@
 const DAY = 86_400_000;
 export const REINVESTIGATION_DAYS = 30; // FCRA §611(a)(1)
 
+// Phase 1A honesty triple (SIM-REVIEW finding 2, launch-blocking): the §611
+// clock is RECEIPT-anchored by statute — it starts when the bureau gets the
+// dispute, not when it's mailed. A self-mailed letter has no delivery receipt
+// (that's Send-with-CreditVector-Fulfillment's certified-mail evidence, not
+// available here), so every window estimate below uses this conservative,
+// documented transit allowance instead of reading mailedAt as the clock start.
+// USPS's own published domestic First-Class Mail estimate is 1-5 business
+// days; using the upper end means the estimate never assumes the bureau
+// received it earlier than USPS's own stated worst case — so a window is
+// never reported as closer to closing (or already closed) than it plausibly
+// is. This is an ESTIMATE, not tracking: no delivery confirmation exists for
+// a self-mailed letter.
+export const MAIL_TRANSIT_DAYS = 5;
+
+// Days elapsed against the ESTIMATED receipt date (mailedAt + the transit
+// allowance), never against the mailing date itself. Floors at zero so a
+// letter mailed within the transit allowance reads as "0 days on the clock,"
+// not a negative number — the clock hasn't estimably started yet.
+export function daysElapsedSinceEstimatedReceipt(mailedAtMs: number, now: number = Date.now()): number {
+  const daysSinceMailed = Math.max(0, Math.floor((now - mailedAtMs) / DAY));
+  return Math.max(0, daysSinceMailed - MAIL_TRANSIT_DAYS);
+}
+
 export interface ForecastLetterInput {
   id: string;
   targetBureau: string | null;
@@ -75,13 +98,14 @@ export function forecastFor(
   const m = toTime(letter.mailedAt);
   if (m == null || letter.status !== "MAILED") return null;
 
-  const daysElapsed = Math.max(0, Math.floor((now - m) / DAY));
+  // Receipt-anchored, not mailing-anchored (see MAIL_TRANSIT_DAYS above).
+  const daysElapsed = daysElapsedSinceEstimatedReceipt(m, now);
   const daysLeft = REINVESTIGATION_DAYS - daysElapsed;
   const pastWindow = daysLeft <= 0;
 
   const windowText = pastWindow
-    ? `The ~${REINVESTIGATION_DAYS}-day §611 window has passed (bureaus can take up to 45 days if you sent more information mid-review). If nothing substantive arrived, that's grounds to follow up or escalate.`
-    : `The bureau owes a reinvestigation within ~${REINVESTIGATION_DAYS} days of receiving this — about ${daysLeft} day${daysLeft === 1 ? "" : "s"} left on the statutory clock.`;
+    ? `The §611 window starts when the bureau receives your dispute, not when you mail it — estimating ~${MAIL_TRANSIT_DAYS} days for it to arrive, the ~${REINVESTIGATION_DAYS}-day window has likely passed (bureaus can take up to 45 days if you sent more information mid-review). If nothing substantive arrived, that's grounds to follow up or escalate.`
+    : `The bureau owes a reinvestigation within ~${REINVESTIGATION_DAYS} days of RECEIVING this, not mailing it — estimating ~${MAIL_TRANSIT_DAYS} days for delivery, about ${daysLeft} day${daysLeft === 1 ? "" : "s"} are left on the statutory clock. This is an estimate; self-mailed letters aren't tracked.`;
 
   // Own-data note only when we have a real sample; framed as observed history,
   // never a prediction. "By day N of the window" is factual context, not a promise.

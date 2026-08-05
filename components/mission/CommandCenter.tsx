@@ -36,20 +36,19 @@ export function CommandCenter({ data }: { data: MissionControlData }) {
         </div>
       )}
 
-      {/* 8 deep-linked sections */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+      {/* 8 deep-linked sections, as a compact context strip (Room Constitution
+          §3, Metrics-Context-Only Law: "metrics provide context; they never
+          replace work") — same data, same hrefs, same tones as before; only the
+          presentation is smaller, so it reads as context, not a headline. */}
+      <div className="flex flex-wrap gap-1.5" role="list" aria-label="Context strip">
         {command.map((s) => (
-          <Link key={s.key} href={s.href}
-            className="card group p-4 transition-colors hover:border-brand-500/50">
-            <div className="flex items-center justify-between">
-              <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{s.title}</div>
-              <span className={`h-1.5 w-1.5 rounded-full ${TONE_DOT[s.tone]}`} aria-hidden />
-            </div>
-            <div className="mt-1.5 truncate text-lg font-bold text-slate-100">{s.stat}</div>
-            <div className="mt-0.5 flex items-center gap-1 text-[11px] text-slate-400">
-              <span className="min-w-0 truncate">{s.sub}</span>
-              <ArrowUpRight className="h-3 w-3 shrink-0 opacity-0 transition-opacity group-hover:opacity-100" aria-hidden />
-            </div>
+          <Link key={s.key} href={s.href} role="listitem"
+            className="group inline-flex items-center gap-1.5 rounded-full border border-ink-700/70 bg-ink-900/40 px-2.5 py-1 text-[11px] transition-colors hover:border-brand-500/50">
+            <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${TONE_DOT[s.tone]}`} aria-hidden />
+            <span className="font-semibold text-slate-300">{s.title}</span>
+            <span className="tnum font-semibold text-slate-100">{s.stat}</span>
+            <span className="max-w-[10rem] truncate text-slate-500">{s.sub}</span>
+            <ArrowUpRight className="h-3 w-3 shrink-0 text-slate-600 opacity-0 transition-opacity group-hover:opacity-100" aria-hidden />
           </Link>
         ))}
       </div>

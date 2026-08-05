@@ -200,6 +200,13 @@ function Approval({ prep, busy, error, onApprove, letterId }: { prep: Prep; busy
         </button>
         <Link href={`/letters/print/${letterId}`} target="_blank" className="btn-ghost min-h-[44px]">Or download &amp; mail it yourself</Link>
       </div>
+      {/* Evidence-asymmetry disclosure (Phase 1A honesty triple, part b) —
+          wherever Download and Send are both presented. Scoped to this one
+          sentence; the wizard itself is otherwise unchanged. */}
+      <p className="mt-2 text-[11px] text-slate-500">
+        Evidence differs by path: self-mail leaves your own mailing record as proof. CreditVector Fulfillment
+        (soon) adds a certified-mail receipt and tracking evidence once it&apos;s live.
+      </p>
     </div>
   );
 }

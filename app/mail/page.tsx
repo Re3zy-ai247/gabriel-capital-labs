@@ -1,29 +1,45 @@
 import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { Disclaimer, EduBanner } from "@/components/Disclaimer";
-import { StatCard } from "@/components/ui/StatCard";
 import { prisma } from "@/lib/prisma";
 import { currentUserOrDemo } from "@/lib/session";
+import { getKaiHomeData } from "@/lib/kaiHome";
 import { decryptText } from "@/lib/docCrypto";
-import { buildMailCenter, HEALTH_LABEL, HEALTH_TONE, STAGE_STATE_LABEL, type MailLetter, type StageState } from "@/lib/mailCenter";
+import { resolveSenderPlaceholders, detectPlaceholders, type PlaceholderStatus } from "@/lib/letter";
+import {
+  buildMailCenter, pickMailBand, HEALTH_LABEL, HEALTH_TONE, STAGE_STATE_LABEL,
+  type MailLetter, type MailPackage, type MailPackageMember, type StageState,
+} from "@/lib/mailCenter";
 import { PrismaMailStore, MAIL_STATUS_LABEL, type MailStatus } from "@/lib/mail";
-import { CheckCircle2, Circle, Clock, Lock, Mail } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Circle, Clock, Download, Lock, Mail, Target } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
-// Mail Center (Sprint IX) — the source of truth for "did my dispute go out, and
-// what happens next?" Server-rendered, deterministic, zero AI, zero network.
-// Reads real Letter data and renders it in the canonical mail vocabulary;
-// provider-mailed stages are honestly reserved until Sprint X.
+// Mail Center (Sprint IX; Dispute Packages + "Do this first" band, Phase 1A) —
+// the source of truth for "did my dispute go out, and what happens next?"
+// Server-rendered, deterministic, zero AI, zero network. Reads real Letter
+// data and renders it in the canonical mail vocabulary, grouped into derived
+// Dispute Packages (lib/mailCenter.ts's groupIntoPackages) — no schema change,
+// nothing persisted. Provider-mailed stages are honestly reserved until
+// Sprint X.
 export default async function MailCenterPage() {
   const user = await currentUserOrDemo();
   if (!user) return <AppShell title="/ Mail Center"><p className="text-slate-400">Please sign in.</p></AppShell>;
 
-  const rawLetters = await prisma.letter.findMany({
-    where: { userId: user.id },
-    orderBy: { createdAt: "desc" },
-    include: { tradeline: { select: { creditorName: true } } },
-  });
+  const [rawLetters, kai, manifests] = await Promise.all([
+    prisma.letter.findMany({
+      where: { userId: user.id },
+      orderBy: { createdAt: "desc" },
+      include: { tradeline: { select: { creditorName: true } } },
+    }),
+    // Reused, not recomputed — the "Do this first" band below defers entirely
+    // to this engine's own recommendation (SIM-REVIEW finding 13's law: never
+    // a second, independently-ranked ladder).
+    getKaiHomeData(user.id),
+    // Real CreditVector-Mail manifests (Sprint XI): join by mailId = mail_<letterId>
+    // so a queued "mail for me" dispute shows its manifest status honestly.
+    new PrismaMailStore().listByUser(user.id, 200).catch(() => []),
+  ]);
 
   const letters: MailLetter[] = rawLetters.map((l) => ({
     id: l.id,
@@ -38,13 +54,41 @@ export default async function MailCenterPage() {
     createdAt: l.createdAt,
     hasResponse: Boolean(l.responseText),
     responseOutcome: l.responseOutcome,
+    tradelineId: l.tradelineId,
+    strategy: l.strategy,
   }));
 
-  const { rows, stats } = buildMailCenter(letters);
+  // Phase 1A-R RB-4 — placeholder awareness on package cards/evidence. Same
+  // render-time resolution as the print/download surfaces: for every
+  // NOT-YET-MAILED letter, substitute the CURRENT profile into the sender
+  // block, then check what's still missing. Nothing here writes to the
+  // stored Letter row — this only decides what the card/evidence drawer show.
+  const consumerNow = {
+    fullName: user.fullName,
+    addressLine1: user.addressLine1,
+    city: user.city,
+    state: user.state,
+    zip: user.zip,
+  };
+  const placeholderByLetterId = new Map<string, PlaceholderStatus>();
+  for (const l of rawLetters) {
+    if (l.mailedAt) continue;
+    const rendered = resolveSenderPlaceholders(decryptText(l.body), consumerNow);
+    placeholderByLetterId.set(l.id, detectPlaceholders(rendered));
+  }
 
-  // Real CreditVector-Mail manifests (Sprint XI): join by mailId = mail_<letterId>
-  // so a queued "mail for me" dispute shows its manifest status honestly.
-  const manifests = await new PrismaMailStore().listByUser(user.id, 200).catch(() => []);
+  const { packages, stats } = buildMailCenter(letters);
+  // Phase 1A F1: split into two honestly-distinct groups for rendering — a
+  // package that hasn't been mailed at all yet (READY_TO_PREPARE) never
+  // mixes with genuinely in-mail packages, so "ready to prepare" can never
+  // be mistaken for a live §611 health signal.
+  const readyPackages = packages.filter((p) => p.health === "READY_TO_PREPARE");
+  const inMailPackages = packages.filter((p) => p.health !== "READY_TO_PREPARE");
+  // Phase 1A-R RB-3: the band gets the READY_TO_PREPARE count computed above
+  // (groupIntoPackages' own health, not a re-ranking) so it can never say
+  // "all caught up" while ready-to-prepare work sits in the very same room.
+  const band = pickMailBand(kai, readyPackages.length);
+
   const manifestByLetter = new Map<string, MailStatus>();
   for (const m of manifests) if (m.letterId) manifestByLetter.set(m.letterId, m.status);
 
@@ -60,25 +104,30 @@ export default async function MailCenterPage() {
         You mail your letters yourself today — send-on-your-behalf tracking arrives when provider mailing goes live.
       </p>
 
-      {/* Dashboard stats — real numbers, or explicitly reserved. */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-        <StatCard label="Generated" value={stats.generated} />
-        <StatCard label="Mailed" value={stats.mailed} accent="brand" />
-        <StatCard label="Waiting" value={stats.waiting} accent="gold" />
-        <StatCard label="Responses" value={stats.responses} accent="brand" />
-        <StatCard label="Avg response" value={stats.avgResponseDays != null ? `${stats.avgResponseDays}d` : "—"} hint={stats.avgResponseDays == null ? "once responses log" : "your logged history"} />
-        <StatCard label="Delivered" value="—" hint="after provider mailing" />
-      </div>
-      <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-        <StatCard label="Mail spend" value="$0.00" hint="self-mail today" />
-        {stats.roundDistribution.map((r) => (
-          <StatCard key={r.round} label={`Round ${r.round}`} value={r.count} />
-        ))}
+      {/* "Do this first" — ONE recommended-action band, deferring entirely to
+          the same engine Mission Control uses (getKaiHomeData recommendation).
+          Never a second ranking (SIM-REVIEW finding 13). */}
+      <div className="card mb-5 p-4">
+        <div className="mb-1.5 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+          <Target className="h-3.5 w-3.5 text-brand-300" aria-hidden />
+          {band.scopeLabel ? `${band.scopeLabel} Do this first` : "Do this first"}
+        </div>
+        <div className="text-base font-semibold text-slate-100">{band.title}</div>
+        {band.sub && <p className="mt-1 text-sm text-slate-400">{band.sub}</p>}
+        {!band.quiet && band.href && (
+          <Link href={band.href} className="btn-primary mt-3 inline-flex min-h-[44px] text-xs">
+            {band.cta || "Review"} →
+          </Link>
+        )}
       </div>
 
-      {/* The disputes. */}
-      <div className="mt-6 space-y-3">
-        {rows.length === 0 ? (
+      {/* The work queue, grouped into Dispute Packages. Phase 1A F1: a
+          package that hasn't been mailed at all yet renders in its own
+          "Ready to prepare" group — honest (nothing mailed, no §611 window
+          claimed) and the ONLY path back to the Download flow before
+          anything is mailed. The no-letters-at-all empty state is unchanged. */}
+      <div className="space-y-5">
+        {packages.length === 0 ? (
           <div className="card p-8 text-center">
             <Mail className="mx-auto mb-2 h-7 w-7 text-slate-600" aria-hidden />
             <div className="text-sm font-semibold text-slate-200">Nothing mailed yet.</div>
@@ -89,49 +138,157 @@ export default async function MailCenterPage() {
             <Link href="/letters" className="btn-primary mt-4 inline-flex min-h-[44px]">Go to Dispute Letters</Link>
           </div>
         ) : (
-          rows.map((row) => (
-            <details key={row.letterId} className="card group overflow-hidden p-0">
-              <summary className="flex cursor-pointer list-none flex-wrap items-center gap-x-4 gap-y-2 p-4 transition hover:bg-ink-800/40 focus-visible:bg-ink-800/40 [&::-webkit-details-marker]:hidden">
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="truncate font-medium">{row.recipient}</span>
-                    {row.bureau && <span className="pill border border-ink-600 bg-ink-700/60 text-slate-300">{row.bureau}</span>}
-                    <span className="pill border border-ink-600 bg-ink-700/60 text-slate-400">Round {row.round}</span>
-                    {row.selfMailed && <span className="pill border border-ink-600 bg-ink-700/60 text-slate-400">Self-mailed</span>}
-                  </div>
-                  {row.tradeline && <div className="mt-0.5 truncate text-xs text-slate-500">{row.tradeline}</div>}
+          <>
+            {readyPackages.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                  Ready to prepare
                 </div>
-                <div className="flex shrink-0 flex-col items-end gap-1">
-                  <span className={`pill border ${HEALTH_TONE[row.health]}`}>{HEALTH_LABEL[row.health]}</span>
-                  {manifestByLetter.has(row.letterId) ? (
-                    <span className="pill border border-ocean-500/30 bg-ocean-500/10 text-ocean-300">CreditVector Mail · {MAIL_STATUS_LABEL[manifestByLetter.get(row.letterId)!]}</span>
+                {/* Phase 1A-R M4 (CCO adjudication, named candidate): "mark
+                    it mailed to start the window" was the same mailing-
+                    anchored false claim as M2/M3 — receipt-anchored to
+                    match the established idiom. */}
+                <p className="-mt-1.5 text-xs text-slate-500">
+                  Generated, not mailed yet — nothing&apos;s mailed and no §611 clock has started. Download to print
+                  and mail, then mark it mailed — the §611 clock starts once the bureau receives it.
+                </p>
+                {readyPackages.map((pkg) => <PackageRow key={pkg.packageId} pkg={pkg} manifestByLetter={manifestByLetter} placeholderByLetterId={placeholderByLetterId} />)}
+              </div>
+            )}
+            {inMailPackages.length > 0 && (
+              <div className="space-y-3">
+                {readyPackages.length > 0 && (
+                  <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                    In the mail
+                  </div>
+                )}
+                {inMailPackages.map((pkg) => <PackageRow key={pkg.packageId} pkg={pkg} manifestByLetter={manifestByLetter} placeholderByLetterId={placeholderByLetterId} />)}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* Metrics — demoted to a compact context strip below the queue (Room
+          Constitution: metrics provide context, they never lead the room).
+          Same CommandCenter.tsx pill idiom, same underlying numbers. */}
+      <div className="mt-6 flex flex-wrap gap-1.5" role="list" aria-label="Context strip">
+        <StatPill label="Generated" value={stats.generated} />
+        <StatPill label="Mailed" value={stats.mailed} />
+        <StatPill label="Waiting" value={stats.waiting} />
+        <StatPill label="Responses" value={stats.responses} />
+        <StatPill label="Avg response" value={stats.avgResponseDays != null ? `${stats.avgResponseDays}d` : "—"} />
+        <StatPill label="Delivered" value="—" />
+        <StatPill label="Mail spend" value="$0.00" />
+        {stats.roundDistribution.map((r) => (
+          <StatPill key={r.round} label={`Round ${r.round}`} value={r.count} />
+        ))}
+      </div>
+
+      <Disclaimer />
+    </AppShell>
+  );
+}
+
+function StatPill({ label, value }: { label: string; value: string | number }) {
+  return (
+    <span
+      role="listitem"
+      className="inline-flex items-center gap-1.5 rounded-full border border-ink-700/70 bg-ink-900/40 px-2.5 py-1 text-[11px]"
+    >
+      <span className="font-semibold text-slate-300">{label}</span>
+      <span className="tnum font-semibold text-slate-100">{value}</span>
+    </span>
+  );
+}
+
+function PackageRow({
+  pkg, manifestByLetter, placeholderByLetterId,
+}: {
+  pkg: MailPackage; manifestByLetter: Map<string, MailStatus>; placeholderByLetterId: Map<string, PlaceholderStatus>;
+}) {
+  const multi = pkg.members.length > 1;
+  // Phase 1A-R RB-4 — which of THIS package's not-yet-mailed members still
+  // carry a placeholder after render-time resolution (empty for a mailed
+  // member: placeholderByLetterId only has entries for unmailed letters).
+  const placeholderMembers = pkg.members
+    .map((m) => ({ m, status: placeholderByLetterId.get(m.letterId) }))
+    .filter((x): x is { m: MailPackageMember; status: PlaceholderStatus } => Boolean(x.status?.hasPlaceholder));
+  return (
+    <details className="card group overflow-hidden p-0">
+      <summary className="flex cursor-pointer list-none flex-wrap items-center gap-x-4 gap-y-2 p-4 transition hover:bg-ink-800/40 focus-visible:bg-ink-800/40 [&::-webkit-details-marker]:hidden">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="truncate font-medium">{pkg.recipientSummary}</span>
+            <span className="pill border border-ink-600 bg-ink-700/60 text-slate-400">Round {pkg.round}</span>
+            {/* The "2 of 3 mailed" fraction — honest when a package's letters
+                diverge (SIM-REVIEW finding 10) — only shown when there is a
+                fraction to report (a solo package needs none). */}
+            {multi && (
+              <span className="pill border border-ink-600 bg-ink-700/60 text-slate-400">
+                {pkg.mailedFraction.done} of {pkg.mailedFraction.total} mailed
+              </span>
+            )}
+          </div>
+          {pkg.tradeline && <div className="mt-0.5 truncate text-xs text-slate-500">{pkg.tradeline}</div>}
+          {/* Phase 1A-R RB-4 — card-level placeholder warning: the package
+              can't honestly claim "ready to prepare" while a member's
+              rendered artifact still carries [YOUR FULL NAME] /
+              [Furnisher mailing address]. Named on the card, detailed in the
+              Evidence drawer below. */}
+          {placeholderMembers.length > 0 && (
+            <div className="mt-1 flex items-center gap-1 text-[11px] font-medium text-gold-400">
+              <AlertTriangle className="h-3 w-3 shrink-0" aria-hidden /> Needs your details before mailing
+            </div>
+          )}
+        </div>
+        <div className="flex shrink-0 flex-col items-end gap-1">
+          <span className={`pill border ${HEALTH_TONE[pkg.health]}`}>{HEALTH_LABEL[pkg.health]}</span>
+        </div>
+        <span className="ml-auto shrink-0 text-[10px] font-medium text-brand-400 sm:ml-0">
+          <span className="group-open:hidden">Details ▾</span>
+          <span className="hidden group-open:inline">Close ▴</span>
+        </span>
+      </summary>
+
+      <div className="border-t border-ink-700/60 p-4">
+        {/* Per-letter detail — every member of the package, expandable via this
+            one package-level disclosure. Kai's intel + the 12-stage timeline
+            are unchanged from the per-row rendering (C's watching-the-clock
+            line stays intact per row). */}
+        <div className="space-y-4">
+          {pkg.members.map((m) =>
+            m.row ? (
+              <div key={m.letterId} className="border-b border-ink-700/40 pb-4 last:border-0 last:pb-0">
+                <div className="mb-2 flex flex-wrap items-center gap-2">
+                  <span className="text-sm font-medium text-slate-200">{m.row.recipient}</span>
+                  {m.row.bureau && <span className="pill border border-ink-600 bg-ink-700/60 text-slate-300">{m.row.bureau}</span>}
+                  {multi && <span className={`pill border ${HEALTH_TONE[m.row.health]}`}>{HEALTH_LABEL[m.row.health]}</span>}
+                  {manifestByLetter.has(m.letterId) ? (
+                    <span className="pill border border-ocean-500/30 bg-ocean-500/10 text-ocean-300">
+                      CreditVector Mail · {MAIL_STATUS_LABEL[manifestByLetter.get(m.letterId)!]}
+                    </span>
                   ) : (
                     <span className="text-[11px] text-slate-500 tnum">
-                      {row.dateSent ? `Sent ${new Date(row.dateSent).toLocaleDateString("en-US", { month: "short", day: "numeric" })}` : "Not mailed"}
+                      {m.row.dateSent ? `Sent ${new Date(m.row.dateSent).toLocaleDateString("en-US", { month: "short", day: "numeric" })}` : "Not mailed"}
                     </span>
                   )}
                 </div>
-                <span className="ml-auto shrink-0 text-[10px] font-medium text-brand-400 sm:ml-0">
-                  <span className="group-open:hidden">Timeline ▾</span>
-                  <span className="hidden group-open:inline">Close ▴</span>
-                </span>
-              </summary>
 
-              <div className="border-t border-ink-700/60 p-4">
                 {/* Kai mail intelligence — deterministic, from the §611 clock + own history. */}
-                <div className="mb-4 rounded-lg border border-brand-500/25 bg-brand-500/[0.04] p-3">
+                <div className="mb-3 rounded-lg border border-brand-500/25 bg-brand-500/[0.04] p-3">
                   <div className="mb-1.5 flex items-center gap-1.5">
                     <span className="rounded bg-brand-500/15 px-1 py-px text-[9px] font-bold tracking-widest text-brand-300">KAI</span>
                     <span className="text-xs font-semibold text-slate-200">Where this stands</span>
                   </div>
                   <ul className="space-y-1 text-xs text-slate-400">
-                    {row.kaiIntel.map((line, i) => <li key={i}>{line}</li>)}
+                    {m.row.kaiIntel.map((line, i) => <li key={i}>{line}</li>)}
                   </ul>
                 </div>
 
                 {/* The timeline. */}
                 <ol className="relative ml-1 space-y-3 border-l border-ink-700 pl-5">
-                  {row.timeline.map((s) => (
+                  {m.row.timeline.map((s) => (
                     <li key={s.key} className="relative">
                       <span className="absolute -left-[26px] top-0.5 grid h-4 w-4 place-items-center rounded-full bg-ink-900 ring-1 ring-ink-600">
                         <StageIcon state={s.state} />
@@ -152,19 +309,97 @@ export default async function MailCenterPage() {
                     </li>
                   ))}
                 </ol>
-
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <Link href={`/letters`} className="btn-ghost min-h-[44px] text-xs">Open in Dispute Letters →</Link>
-                  <Link href={`/journey`} className="btn-ghost min-h-[44px] text-xs">See the full case timeline →</Link>
-                </div>
               </div>
-            </details>
-          ))
-        )}
-      </div>
+            ) : (
+              // A package member that hasn't been generated into mail yet — the
+              // still-open part of the "N of M mailed" fraction, never hidden.
+              <div key={m.letterId} className="rounded-lg border border-dashed border-ink-700 p-3 text-xs text-slate-400">
+                <span className="font-medium text-slate-300">{m.recipient}</span> — not mailed yet.{" "}
+                <Link href="/letters" className="font-semibold text-brand-400 hover:underline">Mail it →</Link>
+              </div>
+            )
+          )}
+        </div>
 
-      <Disclaimer />
-    </AppShell>
+        {/* Evidence drawer — what ACTUALLY exists for this package: generated
+            letters, self-attested mailing dates, logged responses. Send-only
+            artifacts render as labeled-unavailable, never faked. */}
+        <details className="mt-4 rounded-lg border border-ink-700 bg-ink-900/30 p-3">
+          <summary className="cursor-pointer list-none text-xs font-semibold text-slate-300 [&::-webkit-details-marker]:hidden">
+            Evidence
+          </summary>
+          <div className="mt-2 space-y-3 text-xs">
+            {/* Phase 1A-R RB-4 — the evidence-drawer detail behind the card
+                badge above: exactly which letters, and what's missing. */}
+            {placeholderMembers.length > 0 && (
+              <div>
+                <div className="mb-1 flex items-center gap-1 font-semibold text-gold-400">
+                  <AlertTriangle className="h-3 w-3 shrink-0" aria-hidden /> Can&apos;t be mailed as printed
+                </div>
+                <ul className="space-y-1 text-slate-400">
+                  {placeholderMembers.map(({ m, status }) => (
+                    <li key={m.letterId}>
+                      <span className="font-medium text-slate-300">{m.recipient}:</span>{" "}
+                      {[
+                        status.senderIncomplete ? "sender name/address missing (Settings)" : null,
+                        status.recipientIncomplete ? "recipient address missing" : null,
+                      ].filter(Boolean).join("; ")}.{" "}
+                      <Link href={`/mail/download/${encodeURIComponent(pkg.packageId)}`} className="font-semibold text-brand-400 hover:underline">
+                        Review →
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {pkg.evidence.selfMailNote && <p className="text-slate-400">{pkg.evidence.selfMailNote}</p>}
+            <div>
+              <div className="mb-1 font-semibold text-slate-300">Letters</div>
+              <ul className="space-y-1">
+                {pkg.evidence.letters.map((e, i) => (
+                  <li key={i} className="flex flex-wrap items-center justify-between gap-2 text-slate-400">
+                    <span>{e.label} — {e.detail}</span>
+                    {e.href && <Link href={e.href} target="_blank" className="shrink-0 font-semibold text-brand-400 hover:underline">Preview →</Link>}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            {pkg.evidence.mailingAttestations.length > 0 && (
+              <div>
+                <div className="mb-1 font-semibold text-slate-300">Your mailing record</div>
+                <ul className="space-y-1 text-slate-400">
+                  {pkg.evidence.mailingAttestations.map((e, i) => <li key={i}>{e.detail}</li>)}
+                </ul>
+              </div>
+            )}
+            {pkg.evidence.responses.length > 0 && (
+              <div>
+                <div className="mb-1 font-semibold text-slate-300">Responses logged</div>
+                <ul className="space-y-1 text-slate-400">
+                  {pkg.evidence.responses.map((e, i) => <li key={i}>{e.detail}</li>)}
+                </ul>
+              </div>
+            )}
+            <div>
+              <div className="mb-1 font-semibold text-slate-300">Send-only evidence</div>
+              <ul className="space-y-1 text-slate-500">
+                {pkg.evidence.sendOnly.map((e, i) => (
+                  <li key={i}><span className="font-medium">{e.label}:</span> <span className="italic">{e.detail}</span></li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </details>
+
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Link href={`/mail/download/${encodeURIComponent(pkg.packageId)}`} className="btn-primary min-h-[44px] text-xs">
+            <Download className="h-3.5 w-3.5" aria-hidden /> Download package
+          </Link>
+          <Link href="/letters" className="btn-ghost min-h-[44px] text-xs">Open in Dispute Letters →</Link>
+          <Link href="/journey" className="btn-ghost min-h-[44px] text-xs">See the full case timeline →</Link>
+        </div>
+      </div>
+    </details>
   );
 }
 

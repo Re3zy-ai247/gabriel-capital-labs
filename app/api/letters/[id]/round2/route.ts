@@ -37,7 +37,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   }
   if (parent.responseOutcome === "deleted") {
     return NextResponse.json(
-      { error: "This item was reported deleted — no escalation needed. 🎉" },
+      { error: "This item was already reported deleted — no escalation needed." },
       { status: 400 }
     );
   }

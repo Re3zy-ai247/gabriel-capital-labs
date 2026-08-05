@@ -1,0 +1,222 @@
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>CreditVector — Phase 1A — Continue in ChatGPT</title>
+<style>
+  :root{
+    color-scheme: light dark;
+    --bg:#f7fafc; --surface:#ffffff; --surface-2:#f1f5f9; --border:#e2e8f0;
+    --text:#0f172a; --text-dim:#475569; --text-faint:#64748b;
+    --brand:#0c83a3; --brand-strong:#0f6883; --brand-bg:#ecfeff; --brand-border:#a6ecf5;
+    --success:#0d9456; --success-bg:#ecfdf5; --success-border:#a7e8c8;
+    --gold:#946213; --gold-bg:#fffbeb; --gold-border:#f3dfa6;
+    --danger:#b91c1c; --danger-bg:#fef2f2; --danger-border:#f3b4b4;
+    --code-bg:#f1f5f9;
+    --shadow:0 1px 2px rgba(15,23,42,.06), 0 10px 28px -14px rgba(15,23,42,.16);
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#04121b; --surface:#0a1e2a; --surface-2:#0e2733; --border:#173e50;
+      --text:#e7f4f8; --text-dim:#a9c7d1; --text-faint:#7c9aa6;
+      --brand:#3fd0e6; --brand-strong:#8fe6f2; --brand-bg:rgba(14,165,196,.14); --brand-border:#175064;
+      --success:#3fe093; --success-bg:rgba(19,184,106,.14); --success-border:#155c3f;
+      --gold:#f2c14e; --gold-bg:rgba(227,169,46,.14); --gold-border:#5c481c;
+      --danger:#f87171; --danger-bg:rgba(239,68,68,.14); --danger-border:#5c2323;
+      --code-bg:#0e2733;
+      --shadow:0 1px 2px rgba(0,0,0,.35), 0 14px 36px -16px rgba(0,0,0,.65);
+    }
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; font-size:16px;
+  }
+  .shell{display:grid; grid-template-columns:260px minmax(0,1fr); gap:2.5rem; max-width:1180px; margin:0 auto; padding:2.5rem 1.5rem 6rem;}
+  @media (max-width:900px){ .shell{grid-template-columns:1fr; gap:1.25rem; padding:1.25rem 1rem 4rem;} }
+
+  .toc{position:sticky; top:1.5rem; align-self:start; background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:1.1rem; box-shadow:var(--shadow);}
+  @media (max-width:900px){ .toc{position:static;} }
+  .toc h2{font-size:.72rem; text-transform:uppercase; letter-spacing:.09em; color:var(--text-faint); margin:0 0 .7rem;}
+  .toc ol{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:.32rem;}
+  .toc a{color:var(--text-dim); text-decoration:none; font-size:.84rem; display:block; padding:.3rem .5rem; border-radius:8px;}
+  .toc a:hover{background:var(--surface-2); color:var(--brand-strong);}
+
+  main{min-width:0;}
+  .hero{background:linear-gradient(155deg, var(--brand-bg), transparent 60%); border:1px solid var(--border); border-radius:20px; padding:2rem 2rem 1.6rem; box-shadow:var(--shadow); margin-bottom:2rem;}
+  .kicker{font-size:.76rem; font-weight:700; letter-spacing:.11em; text-transform:uppercase; color:var(--brand-strong);}
+  h1{font-size:1.85rem; line-height:1.25; margin:.4rem 0 .5rem; letter-spacing:-.01em;}
+  .sub{color:var(--text-dim); font-size:1rem; margin:0; max-width:74ch;}
+
+  section{margin:2.4rem 0;}
+  h2{font-size:1.3rem; margin:0 0 .9rem; border-top:1px solid var(--border); padding-top:1.6rem;}
+  section:first-of-type h2{border-top:none; padding-top:0;}
+  h3{font-size:1rem; margin:1.3rem 0 .5rem; color:var(--brand-strong);}
+  p{margin:.6rem 0;}
+  ul,ol{padding-left:1.3rem;}
+  li{margin:.4rem 0;}
+  strong{font-weight:700;}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; background:var(--code-bg); padding:.15em .4em; border-radius:5px; font-size:.85em;}
+
+  .pill{display:inline-flex; align-items:center; gap:.35em; font-size:.7rem; font-weight:700; padding:.28em .65em; border-radius:999px; border:1px solid; white-space:nowrap;}
+  .pill-brand{background:var(--brand-bg); color:var(--brand-strong); border-color:var(--brand-border);}
+  .pill-success{background:var(--success-bg); color:var(--success); border-color:var(--success-border);}
+  .pill-gold{background:var(--gold-bg); color:var(--gold); border-color:var(--gold-border);}
+  .pill-danger{background:var(--danger-bg); color:var(--danger); border-color:var(--danger-border);}
+
+  table{width:100%; border-collapse:collapse; font-size:.87rem;}
+  .table-wrap{overflow-x:auto; border:1px solid var(--border); border-radius:12px; box-shadow:var(--shadow); margin:1rem 0;}
+  th,td{text-align:left; padding:.6rem .8rem; border-bottom:1px solid var(--border); vertical-align:top;}
+  thead th{background:var(--surface-2); font-size:.7rem; text-transform:uppercase; letter-spacing:.06em; color:var(--text-faint);}
+  tbody tr:last-child td{border-bottom:none;}
+
+  .donot{border:1px solid var(--danger-border); background:var(--danger-bg); border-radius:14px; padding:1.3rem 1.4rem; margin:1rem 0;}
+  .donot li{margin:.55rem 0;}
+  .donot li::marker{color:var(--danger);}
+
+  .callout{border:1px solid var(--border); border-left-width:4px; background:var(--surface); border-radius:10px; padding:1rem 1.15rem; margin:1rem 0; box-shadow:var(--shadow);}
+
+  .foot{margin-top:3rem; padding-top:1.5rem; border-top:1px solid var(--border); color:var(--text-faint); font-size:.82rem;}
+  a{color:var(--brand-strong);}
+  ::selection{background:var(--brand-bg); color:var(--text);}
+</style>
+
+<div class="shell">
+  <nav class="toc">
+    <h2>On this page</h2>
+    <ol>
+      <li><a href="#what">1. What this is</a></li>
+      <li><a href="#state">2. Exact state</a></li>
+      <li><a href="#live">3. What's live (plain-English)</a></li>
+      <li><a href="#gate">4. The acceptance gate</a></li>
+      <li><a href="#open">5. Honestly still open</a></li>
+      <li><a href="#cco">6. Needs a CCO ruling</a></li>
+      <li><a href="#next">7. Next decisions</a></li>
+      <li><a href="#donot">8. DO-NOT list</a></li>
+      <li><a href="#more">9. More detail</a></li>
+    </ol>
+  </nav>
+
+  <main>
+    <div class="hero">
+      <div class="kicker">CreditVector · Phase 1A · Portable Context</div>
+      <h1>Continue in ChatGPT</h1>
+      <p class="sub">A self-contained context transfer. You (the reader/assistant) likely have no access to the repo, so this document assumes none — every fact you need to reason about next steps is written out below, not referenced by path alone.</p>
+    </div>
+
+    <section id="what">
+      <h2>1. What this is</h2>
+      <p>CreditVector™ (Gabriel Capital Labs) is a live, production Next.js consumer-credit <strong>education</strong> SaaS with live Stripe billing. "Phase 1A — Experience Runtime" is a Founder-approved, scoped implementation project: make the app <em>feel</em> like an operating system when an operator logs in (session awareness, an executive-queue-style Mission Control, a real Case Journey, a working Mail Center Download path, and a Kai assistant experience that tells the truth about state) — <strong>without touching money, the mail provider, or the database schema.</strong></p>
+      <p>That work is done, implemented, and has passed an adversarial acceptance review after one fix pass. It is <strong>built and pushed to a feature branch, not yet merged to <code>main</code>, not yet deployed.</strong></p>
+    </section>
+
+    <section id="state">
+      <h2>2. Exact state (as of 2026-08-03)</h2>
+      <div class="table-wrap"><table>
+        <tbody>
+          <tr><td>Repo</td><td>CreditVector (Gabriel Capital Labs) — Next.js 14 / TypeScript / Prisma over Accelerate / NextAuth / Stripe-hosted Checkout</td></tr>
+          <tr><td>Branch</td><td><code>feat/experience-runtime-phase-1a</code></td></tr>
+          <tr><td>HEAD commit</td><td><code>486925e</code></td></tr>
+          <tr><td>Base</td><td><code>origin/main</code> @ <code>f449c35</code> — unchanged, still live production</td></tr>
+          <tr><td>Commits</td><td>7 ahead, 0 behind, fully pushed</td></tr>
+          <tr><td>Pull request</td><td>None open yet</td></tr>
+          <tr><td>Diff size</td><td>39 files, +3,690/-391 lines net</td></tr>
+          <tr><td>Schema changes</td><td>Zero — <code>prisma/</code> diff empty</td></tr>
+          <tr><td>Money/Stripe/provider changes</td><td>Zero except 7 lines of disclosure copy in the Send wizard</td></tr>
+        </tbody>
+      </table></div>
+      <h3>The 7 commits, oldest to newest</h3>
+      <ol>
+        <li><code>6e4b9d4a</code> — docs: the Phase 1A implementation brief itself</li>
+        <li><code>add8cd44</code> — feat(session): Agent A, the derived operator session runtime</li>
+        <li><code>11b6b9bc</code> — feat(mission-control): Agent B, altitude-aware executive queue</li>
+        <li><code>f9fa4792</code> — feat(journey): Agent C, ranked recommendations + starvation guard + journey panel</li>
+        <li><code>9843abac</code> — feat(mail): Agent D, Download package workflow + §611 honesty triple</li>
+        <li><code>42a97800</code> — feat(kai): Agent E, Kai context-aware experience + cache fix + onboarding truth</li>
+        <li><code>486925e</code> — fix(experience): closing 3 acceptance-gate blockers + 3 riders</li>
+      </ol>
+    </section>
+
+    <section id="live">
+      <h2>3. What's actually live on the branch (plain-English)</h2>
+      <ul>
+        <li><strong>Session Runtime.</strong> The app now derives, on every load, who's logged in, at what "altitude" (an ordinary consumer, an agency owner with no case open, or an agency operator working inside a specific client's case), what they finished yesterday and today, what they left mid-flight, and what matters most right now. Nothing here is stored — it's computed fresh from existing rows every time.</li>
+        <li><strong>Mission Control.</strong> The dashboard now renders differently depending on that altitude. An agency owner with nothing open sees an executive queue built from one shared prioritized client roster (previously the dashboard and the API each computed their own version of this list — now there's one).</li>
+        <li><strong>Case Journey.</strong> Recommendations are now ranked, not just listed, with a rule that prevents a stale case from silently falling off the radar for weeks. A new journey panel shows current step → next step → recommendation → timeline → evidence → waiting period → next review.</li>
+        <li><strong>Mail Center Download.</strong> The biggest piece. Previously, generated dispute letters had no clear "review it, then download and print it to mail yourself" path. That path now exists, and every date/legal-window claim tied to it is anchored to when the bureau <em>receives</em> the mail (estimated from a 5-day transit allowance after the mailing date), never to the mailing date itself — because the old copy conflated the two, a real legal-accuracy issue (FCRA §611's reinvestigation clock is receipt-anchored, not mailing-anchored).</li>
+        <li><strong>Kai (the AI assistant experience).</strong> Fixed a real bug where one user's cached AI recommendation could leak into what another user (or the same user, switched into a client's workspace) saw on their screen. Removed a mismatched celebratory emoji from a "this dispute was deleted" notice. Rebuilt onboarding so a step only shows "complete" when a real underlying fact is true — not just "the user visited that page once."</li>
+      </ul>
+    </section>
+
+    <section id="gate">
+      <h2>4. The acceptance gate (why this took an extra fix pass)</h2>
+      <p>Before this was packaged as a Founder-ready branch, an adversarial review ran against all five agents' work. Its verdict: <strong>NOT READY</strong>, citing 3 launch-blocking issues:</p>
+      <ol>
+        <li>The new "download and mail this" workflow was only reachable <em>after</em> something in the same batch of letters had already been mailed — backwards, since that workflow is what produces the thing you mail.</li>
+        <li>Two different parts of the app computed "how many days since this was mailed" two different ways — one still measured from the mailing date, the rest had already moved to a receipt-estimate. Same letter, two different day-counts shown in two places.</li>
+        <li>A "session complete" summary could tell the user "nothing needed you today" while a real, half-finished letter or package was sitting right there waiting to be picked back up — because the "what's left" count only looked at brand-new recommendations, not resumable in-progress work.</li>
+      </ol>
+      <div class="callout"><p><strong>All three were fixed in a single follow-up commit</strong>, along with three smaller riders: a greeting silently wrong for 8 hours of every US user's day (no timezone data), one more spot with the mailing-vs-receipt confusion from #2, and a 4th place — an admin "view as this user" feature — where the cache-leak bug from Kai's fix above hadn't been closed.</p></div>
+      <p>Every fix is pinned by an automated guard so it can't silently regress. Full technical detail: <a href="IMPLEMENTATION-REPORT.html">IMPLEMENTATION-REPORT.html</a>. Full re-verification of every claim in this section: <a href="VALIDATION.html">VALIDATION.html</a>.</p>
+    </section>
+
+    <section id="open">
+      <h2>5. What's honestly still open (disclosed, not fixed)</h2>
+      <ul>
+        <li>An agency owner's own "here's what you accomplished today" panel will show empty even on a busy day, because agency work is recorded under the <em>client's</em> account, not the owner's. Fixing that needs a cross-account rollup that doesn't exist yet — deliberately out of scope for this phase.</li>
+        <li>A returning-after-several-days-away user doesn't get distinct "welcome back after a gap" framing yet (an existing signal for this went unused by the new engines).</li>
+        <li>The new ranked-recommendation logic has no explicit handling for a priority score of exactly zero (an edge case, not yet hit by real data).</li>
+        <li>Onboarding's final step only marks "done" once a letter is actually mailed, not merely generated — worth an explicit sign-off that this is the intended bar, not a bug.</li>
+      </ul>
+    </section>
+
+    <section id="cco">
+      <h2>6. What needs a compliance (CCO) ruling before merge</h2>
+      <p>Four copy/exposure questions, not code defects:</p>
+      <ol>
+        <li>A disclosure sentence promises a "(soon)" future capability (certified-mail receipt/tracking) — appears 4 times across the mail/letters surfaces.</li>
+        <li>A couple of leftover spots still describe "the §611 clock started" at the moment of mailing rather than receipt — smaller siblings of blocker #2 above that the fix pass didn't reach.</li>
+        <li>An accomplishment-log line reads "Queued a dispute for CreditVector to mail" — worth confirming it can't be misread as live mailing (it isn't; live mailing is off).</li>
+        <li>The app now shows the user a raw internal ranking number ("dispute-priority score N/100") — worth confirming that doesn't read like a credit-score-style authority claim.</li>
+      </ol>
+    </section>
+
+    <section id="next">
+      <h2>7. Next decisions (in order)</h2>
+      <ol>
+        <li><strong>CCO/compliance pass</strong> on the 4 items in §6.</li>
+        <li><strong>Merge</strong> <code>feat/experience-runtime-phase-1a</code> into <code>main</code> (no PR exists yet — one needs to be opened).</li>
+        <li><strong>Deploy</strong> — a separate step from merge; CreditVector auto-deploys <code>main</code> to production via Vercel, but only after explicit Founder confirmation per standing policy.</li>
+        <li><strong>Phase 1B</strong> (money/Wallet/LetterStream — actually charging for and executing live mail delivery) remains <strong>gated</strong>. Nothing in Phase 1A moves toward it. Starting it requires a new, explicit Founder authorization — the same gate Phase 1A itself required.</li>
+      </ol>
+    </section>
+
+    <section id="donot">
+      <h2>8. DO-NOT list for anyone continuing this work</h2>
+      <ul class="donot">
+        <li><strong>Do not</strong> add any new database table, column, index, enum, or migration as part of "finishing" this phase — Phase 1A is schema-frozen by design, independently verified (empty <code>prisma/</code> diff).</li>
+        <li><strong>Do not</strong> touch Wallet, Vector Credits, LetterStream, <code>MAIL_LIVE</code>, any settlement/payment code, or any mail-provider adapter. The Send path stays exactly as shipped — a dry-run wizard, visibly present, honestly disabled — until Phase 1B is separately authorized.</li>
+        <li><strong>Do not</strong> fork or reimplement <code>pickRecommendation</code>, <code>getKaiHomeData</code>, or the agency roster ladder. Every new surface composes those existing engines; a second, independent ranking anywhere is exactly the bug pattern this phase fixed once already.</li>
+        <li><strong>Do not</strong> build cross-client recommendation aggregation to "fix" the agency-owner accomplishment-panel gap without Founder sign-off — it needs data that doesn't exist yet and was explicitly deferred.</li>
+        <li><strong>Do not</strong> merge this branch without the CCO ruling in §6 — the branch is compliance-reviewable but not yet compliance-reviewed.</li>
+        <li><strong>Do not</strong> deploy without explicit Founder confirmation, even after merge — standing policy for this codebase, not specific to Phase 1A.</li>
+        <li><strong>Do not</strong> promise credit-repair outcomes, guaranteed deletions, or score improvements in any new copy — CreditVector's compliance bar (CROA) applies to every string a user reads, including anything drafted while continuing this work.</li>
+        <li><strong>Do not</strong> treat this document, or any AI-drafted summary, as the compliance ruling itself. §6's items are flagged <em>for</em> review, not pre-cleared.</li>
+      </ul>
+    </section>
+
+    <section id="more">
+      <h2>9. Where to find more detail</h2>
+      <p>This document is one of five in the same handoff package:</p>
+      <ul>
+        <li><a href="FOUNDER-SUMMARY.html">FOUNDER-SUMMARY.html</a> — the Founder-facing verdict and next-decision framing</li>
+        <li><a href="IMPLEMENTATION-REPORT.html">IMPLEMENTATION-REPORT.html</a> — full per-agent technical detail: files, mechanisms, exact guard counts</li>
+        <li><a href="VALIDATION.html">VALIDATION.html</a> — the full validation table and the honest gate narrative</li>
+        <li><code>MANIFEST.md</code> / <code>SHA256SUMS.txt</code> — package contents and integrity hashes</li>
+      </ul>
+      <p>If you're picking this up without the package itself, the authoritative source is the repo at <code>feat/experience-runtime-phase-1a</code> (commit <code>486925e</code>), and the original scope contract is <code>.ai/PHASE-1A-BRIEF.md</code> in that repo.</p>
+    </section>
+
+    <div class="foot">CreditVector™ · Gabriel Capital Labs — Phase 1A Founder Package · generated 2026-08-03</div>
+  </main>
+</div>

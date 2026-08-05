@@ -15,44 +15,17 @@ const KIND_ICON: Record<string, React.ReactNode> = {
 };
 
 export function MissionControl({ data }: { data: MissionControlData }) {
-  const { firstName, caseMemory, overnight, tasks, waiting, automatic, nextAction, nextUnlock } = data;
+  const { tasks, waiting, automatic, nextAction, nextUnlock } = data;
   const onTrack = tasks.length === 0;
 
   return (
     <section aria-label="Mission Control">
-      {/* Greeting + returning-user catch-up (reused Case Memory / overnight).
-          GXL: no entrance animation — the room renders, it does not perform. */}
-      <div className="mb-4">
-        <div className="flex items-baseline gap-2.5">
-          <span className="rounded bg-brand-500/15 px-1.5 py-0.5 text-[10px] font-bold tracking-widest text-brand-300">KAI</span>
-          <h2 className={`${gxl.record} text-2xl text-slate-100`}>Welcome{caseMemory || overnight.length > 0 ? " back" : ""}, {firstName}.</h2>
-        </div>
-        {caseMemory ? (
-          <>
-            <p className="mt-1 text-sm text-slate-400">While you were away — since {new Date(caseMemory.since).toLocaleDateString("en-US", { month: "long", day: "numeric" })}:</p>
-            <ul className="mt-2 space-y-1">
-              {caseMemory.items.map((o, i) => (
-                <li key={i} className="text-sm text-slate-300">
-                  <span className="mr-2 inline-block h-1 w-1 rounded-full bg-brand-400 align-middle" aria-hidden />
-                  <Link href={o.href} className="underline decoration-ink-600 underline-offset-2 transition-colors hover:text-slate-100 hover:decoration-brand-400">{o.text}</Link>
-                </li>
-              ))}
-            </ul>
-          </>
-        ) : overnight.length > 0 ? (
-          <>
-            <p className="mt-1 text-sm text-slate-400">Here&apos;s what I logged in the last two days:</p>
-            <ul className="mt-2 space-y-1">
-              {overnight.map((o, i) => (
-                <li key={i} className="text-sm text-slate-300">
-                  <span className="mr-2 inline-block h-1 w-1 rounded-full bg-brand-400 align-middle" aria-hidden />
-                  <Link href={o.href} className="underline decoration-ink-600 underline-offset-2 transition-colors hover:text-slate-100 hover:decoration-brand-400">{o.text}</Link>
-                </li>
-              ))}
-            </ul>
-          </>
-        ) : null}
-      </div>
+      {/* The greeting + returning-user catch-up moved to the session-aware blocks
+          (components/mission/SessionBlocks.tsx, Phase 1A Agent B) — SessionHeader
+          + AccomplishmentPanel now own that copy, composed from
+          lib/operatorSession.ts rather than caseMemory/overnight, so the room
+          never shows the greeting twice. GXL: no entrance animation — the room
+          renders, it does not perform. */}
 
       {/* TODAY'S MISSION — the slab, under the room's one key pool. */}
       <div className={`card ${gxl.slab} mb-4 border-ink-600 p-5`}>
