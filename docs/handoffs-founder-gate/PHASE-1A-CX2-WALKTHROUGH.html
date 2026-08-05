@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CreditVector — Phase 1A-CX2 Walkthrough</title>
+<style>
+:root{--bg:#0b1220;--panel:#111a2c;--text:#e6edf7;--muted:#9fb0c9;--line:#22304a;--accent:#4cc3b0;--warn:#e0b34c;--bad:#e06c6c}
+@media (prefers-color-scheme: light){:root{--bg:#f7f9fc;--panel:#ffffff;--text:#16233a;--muted:#5a6b85;--line:#dbe4f0;--accent:#0e7c6e;--warn:#8a6410;--bad:#a33030}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;padding:0 16px 80px}
+main{max-width:860px;margin:0 auto}
+h1{font-size:1.7rem;line-height:1.25;margin:28px 0 8px;letter-spacing:-.01em}
+h2{font-size:1.25rem;margin:40px 0 12px;padding-top:18px;border-top:1px solid var(--line);letter-spacing:-.01em}
+h3{font-size:1.05rem;margin:26px 0 8px}
+p,li{color:var(--text)}
+strong{color:var(--text)}
+em{color:var(--muted)}
+a{color:var(--accent);text-decoration:none}
+blockquote{margin:16px 0;padding:10px 16px;border-left:3px solid var(--accent);background:var(--panel);color:var(--muted);border-radius:0 8px 8px 0}
+code{background:var(--panel);border:1px solid var(--line);border-radius:5px;padding:1px 5px;font-size:.86em;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+pre{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px;overflow-x:auto}
+pre code{border:0;background:none;padding:0}
+.tablewrap,table{max-width:100%}
+table{border-collapse:collapse;margin:16px 0;font-size:.92em;display:block;overflow-x:auto;white-space:normal}
+th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top;min-width:90px}
+th{background:var(--panel);color:var(--muted);font-weight:600;white-space:nowrap}
+hr{border:0;border-top:1px solid var(--line);margin:36px 0}
+li{margin:4px 0}
+</style>
+</head>
+<body><main>
+<h1>CreditVector — Phase 1A-CX2 — Continuous Cinematic Operating Experience</h1>
+<p><strong>Date:</strong> 2026-08-05 · <strong>Branch:</strong> <code>feat/experience-runtime-phase-1a</code> @ <code>4d48648</code> — pushed; preview building
+<strong>Baseline:</strong> CX2 began at <code>7e6941d</code> (the completed Phase 1A-CX reconciliation) · <strong>Production:</strong> <code>f449c35</code>, untouched
+<strong>Stop conditions honored:</strong> no merge · no production deploy · no push-main · no migrations · no env changes · no Wallet / Phase 1B / LetterStream / Teams Chat / Pulse · no Arena product expansion · no Mission Control business-logic rewrite · no compliance/billing changes · no fake activity</p>
+<hr>
+<h2>1. Executive Implementation Summary</h2>
+<p>Your three directives — cinematic by default, readable pacing, one assembled experience — plus the Arrival Runtime addendum are implemented, adversarially reviewed, corrected, and re-verified:</p>
+<ul>
+<li><strong>CINEMATIC is the default.</strong> The &quot;AUTO&quot; you saw was Agency Command&#39;s Director badge; the projection now defaults cinematic with a truth-telling badge, and the tier engine&#39;s precedence is documented as a safety order that only downgrades: reduced-motion always wins, your persisted opt-out second, Data-Saver/device floors next — otherwise the full experience. Deterministic across entry, refresh, replay, direct entry, and restart.</li>
+<li><strong>Pacing is deliberate and centralized.</strong> One new law file — <code>lib/cxos/pacing.ts</code> — owns every retuned duration. The facility-transfer arrival dwells 2200ms (was 1500), the settle crossfade 760ms (was 220), the departure ceremony 900ms (was 460) <strong>and gained an Escape skip it never had</strong>. The boot veil, THE PASSAGE, and the Threshold were measured against your criteria and deliberately left frozen — already right.</li>
+<li><strong>One URL assembles everything: <code>/review/cxos</code>.</strong> Both personas, composed purely from the existing vocabulary — no room interiors touched. The Arrival Runtime opens the returning-operator flow exactly as your addendum specified (the boot veil already <em>is</em> identity recognition + Kai acknowledgement — composed, not rebuilt).</li>
+</ul>
+<h2>2–4. Branch, Baseline, Commits, Files</h2>
+<table>
+<thead>
+<tr>
+<th>Commit</th>
+<th>Content</th>
+<th>Files</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>6625187</code></td>
+<td><strong>A</strong> — cinematic default + precedence + badge truth</td>
+<td>5 (+96/−9)</td>
+</tr>
+<tr>
+<td><code>6e01495</code></td>
+<td><strong>B</strong> — pacing centralized + retuned + departure skip + Passage default (PRM-safe)</td>
+<td>12 (+641/−27)</td>
+</tr>
+<tr>
+<td><code>261ab4d</code></td>
+<td><strong>C</strong> — the Founder Walkthrough + Arrival Runtime</td>
+<td>12 (+1,105/−13)</td>
+</tr>
+<tr>
+<td><code>96a35d4</code></td>
+<td><strong>R7</strong> — Mission Boot replay remounts (found by the evidence pass)</td>
+<td>2 (+8/−1)</td>
+</tr>
+<tr>
+<td><code>4d48648</code></td>
+<td><strong>Opus corrections</strong> — tier-D visibility (blocker), guarded exits, arrival reset, readable Kai line</td>
+<td>5 (+168/−15)</td>
+</tr>
+</tbody></table>
+<h2>5. Agent Delegation Map</h2>
+<p>Fable coordinated only. <strong>CX2-A</strong> (Sonnet): default-mode contract. <strong>CX2-B</strong> (Sonnet): pacing + inherited Passage fix. <strong>CX2-C</strong> (Sonnet): walkthrough + arrival + the Opus fix pass. <strong>CX2-D</strong> (Sonnet): 16-capture evidence sweep + 10 regression checks. <strong>Opus</strong>: one bounded adversarial review (verdict below). Coordinator: three stitches (guard reconciliations, the R7 key, the corrected Kai-line target), commits, push, this package.</p>
+<h2>6. Cinematic Default — implementation</h2>
+<p><code>lib/cxos/capability.ts</code> remains the single source of truth; its precedence is now documented law. Agency Command&#39;s Director projection defaults <code>&quot;cinematic&quot;</code> (was <code>&quot;auto&quot;</code>), with a derived badge that reports <strong>STATIC</strong> whenever the resolution is actually static — the label can no longer claim what the room isn&#39;t doing. The Passage&#39;s identical auto-default was fixed <strong>PRM-safely</strong> (upgrade-on-mount gated on <code>!browserReduced</code> — a bare default would have bypassed the reduced-motion consent gate; the literal instruction was refused for the safer shape, disclosed). The long-built-but-never-mounted <strong>CinematicToggle is now reachable</strong> (walkthrough rail&#39;s More panel). Discovery, disclosed: only real <code>prefers-reduced-motion</code> reaches Agency Command — the site-wide toggle deliberately doesn&#39;t (its no-storage law).</p>
+<h2>7. Transition Timing — before / after</h2>
+<table>
+<thead>
+<tr>
+<th>Surface</th>
+<th>Before</th>
+<th>After</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Facility-transfer arrival dwell (tier A / B)</td>
+<td>1500 / 700ms</td>
+<td><strong>2200 / 1000ms</strong></td>
+</tr>
+<tr>
+<td>Arrival settle crossfade</td>
+<td>220ms</td>
+<td><strong>760ms</strong></td>
+</tr>
+<tr>
+<td>Departure ceremony</td>
+<td>460ms, <strong>non-interruptible</strong></td>
+<td><strong>900ms + Escape skip</strong> (live-proven ~500-700ms short-circuit)</td>
+</tr>
+<tr>
+<td>Kai line on the arrival gate</td>
+<td>settled ~1.9s of 2.2s (~820ms legible)</td>
+<td><strong>settled ~1.5s (~doubled legibility)</strong></td>
+</tr>
+<tr>
+<td>Boot veil (7.8s) · THE PASSAGE (11.8s) · Threshold (10s)</td>
+<td>—</td>
+<td><strong>unchanged — deliberately frozen</strong> (measured, already right)</td>
+</tr>
+<tr>
+<td>Chamber-to-chamber micro-transitions</td>
+<td>620/460ms</td>
+<td>unchanged (not room transitions)</td>
+</tr>
+</tbody></table>
+<p>All values live in <code>lib/cxos/pacing.ts</code> (CSS pair mirrored as custom properties with a sync guard). Live A/B measured via stash on identical code.</p>
+<h2>8–10. The Walkthrough</h2>
+<p><strong>Entry point: <code>/review/cxos</code></strong> — synthetic-review banner, ordered overview, one BEGIN control, persona toggle, full room index beneath.</p>
+<p><strong>Returning operator (6 steps):</strong> 1 Arrival (Threshold) → 2 Mission Boot (the veil: IDENTITY → CLEARANCE → SYSTEMS → Kai&#39;s brief → &quot;Command is yours&quot;) → 3 Mission Control → 4 THE PASSAGE → 5 Arena → 6 Agency Headquarters.
+<strong>New visitor (8 steps):</strong> 1 Landing chapters → 2 SIMULATED SIGN-IN (labeled theatrical beat — zero forms, zero inputs) → then the same arrival spine.</p>
+<p>Next/Previous + persistent progress rail (STEP N OF M) · Replay-this-transition · Restart (clears the walkthrough&#39;s own namespaced session keys — never the production ones) · deep-linkable steps (<code>?persona=…&amp;step=N</code>) · refresh/back/forward deterministic · the arrival does not replay on ordinary room travel (your session-behavior rule).</p>
+<p><strong>Direct room URLs</strong> (all listed on <code>/review</code>, walkthrough first): <code>/review/cxos</code> · <code>/review/agency-command</code> · <code>/review/mission-control</code> · <code>/review/threshold</code> · <code>/review/landing</code> · <code>/review/arena</code> · <code>/review/mission-control-to-arena</code>.</p>
+<h2>11–12. Connected / Still Disconnected</h2>
+<p><strong>Connected:</strong> the full review-surface experience — arrival, boot, all six rooms, room-to-room travel inside the walkthrough, mode control, pacing law.
+<strong>Still disconnected (unchanged, by scope):</strong> the production product interior (dashboard↔letters↔mail room travel) remains non-cinematic — that is the standing CX2-interior decision from the CX report, untouched by this phase; the walkthrough&#39;s overview screen is deliberately an index (the tour begins at BEGIN); the marketing landing&#39;s chapters still cover 2 of 11 sections.</p>
+<h2>13. Validation</h2>
+<p>typecheck clean · <strong>production build clean (69/69 pages; <code>/review/cxos</code> 7.21 kB / 102 kB first-load)</strong> · <strong>13/13 CXOS guard suites green</strong> (walkthrough 43/43 incl. tier-D/exit-guard/reset pins; pacing 18/18; agency-command 191; passage 119; sweep total &gt;900 checks) · Phase-1A regression suite green (kai-experience 78, missionControl, operator-session 82, schema-safety 17/17) · 16 evidence captures + NOTES (cx2-evidence/) · live click-throughs of both personas, restart, replay, deep-link, refresh, back/forward, mobile 375/768.</p>
+<h2>14. Opus Verdict — and its resolution</h2>
+<p><strong>Initial verdict: NOT READY</strong> — one blocker + three ranked findings, every one closed in <code>4d48648</code> and live-re-verified:</p>
+<ol>
+<li><strong>BLOCKER — tier-D rendered blank</strong> (SSR <code>opacity:0</code> + React 18 hydration never removing server styles; the prescribed fix proved insufficient — the real fix moves tier detection fully post-mount with SSR-safe defaults). Hard-load verified visible, hydration warning gone. <em>Reduced-motion visitors now get the complete static experience.</em></li>
+<li><strong>HIGH — exit doors</strong> (in-world links, including a live <code>/pricing</code> link mid-tour, silently ended the walkthrough). Now inert inside the walkthrough via a scoped guard (the prescription missed 4 of 6 bare-<code>/review</code> anchors — caught and broadened; the rail&#39;s own link exempted after live testing caught the self-regression); direct routes untouched, real-click verified both ways.</li>
+<li><strong>MEDIUM — stale arrival state on Back</strong> — reset on leave; Back now shows the settled placeholder.</li>
+<li><strong>LOW — Kai-line legibility</strong> — the authorized line turned out to govern an invisible element; the correct rule (line 3651) pulled 1035→700ms; measured settle now ~1.5s of the 2.2s travel.</li>
+</ol>
+<p><strong>What Opus confirmed working:</strong> cinematic default deterministic (with the noted SSR-first-frame conservatism before hydration) · pacing &quot;readable and premium… calm and deliberate, not sluggish&quot; · the spine &quot;genuinely travels… each room&#39;s own ceremony plays in place&quot; · truth boundary &quot;holds on all seven items&quot; · the production gate correct (<code>reviewBuildAllowed()</code> hard-offs production before the stage ever imports).</p>
+<p><strong>The addendum&#39;s closing question — production-ready or review-only?</strong> <strong>Founder-review-only</strong>, per Opus and per my concurrence: the gate, fixtures, and truth labels are production-<em>safe</em>, but this composition is a review runtime. Making it the production arrival is the next authorization (it inherits the CX2-interior decision).</p>
+<h2>15. Remaining Risks</h2>
+<ul>
+<li>Headless-environment WebGL kills the Threshold instantly in local sandboxes (the recovery path firing correctly); the Vercel preview on a real GPU plays the full 10s arrival — judge it there.</li>
+<li>SSR&#39;s first paint is conservative tier-C for a few hundred ms before hydration upgrades to A — deterministic, disclosed.</li>
+<li>Root-layout <code>SessionProvider</code> pings <code>/api/auth/session</code> (empty <code>{}</code> bodies) site-wide — structural, no business data, pre-existing.</li>
+<li>The React <code>inert</code> dev-only warning in Agency Command — pre-existing, stripped in production.</li>
+<li>New synthetic-label copy (banner, sign-in beat, placeholder card) rides the standing CCO docket with the landing-chapter copy.</li>
+</ul>
+<h2>16–17. Git Status &amp; Confirmations</h2>
+<p>Branch <code>feat/experience-runtime-phase-1a</code> @ <code>4d48648</code>, local ≡ remote, tree clean. <code>origin/main</code> @ <code>f449c35</code> — untouched. <strong>Confirmed: no merge, no production deployment, no production migration, no env-var change, no flag activation, no schema change.</strong> The only push was the authorized same-branch preview refresh.</p>
+<h2>18. Recommended Founder Acceptance Decision</h2>
+<p><strong>Accept CX2 as the Founder review runtime</strong> — open the preview&#39;s <code>/review/cxos</code>, run both personas, and judge the three things this phase changed: the cinematic-first default, the pacing, the continuity. If it lands: your next decisions are (a) the CX2-interior authorization (extending travel into the product rooms — the standing decision from the CX report), and (b) whether this arrival composition graduates toward the production arrival runtime (a separate, gated authorization). The standing pre-merge items (Decision-A SQL, CCO docket) are unchanged.</p>
+<p><strong>Preview:</strong> <strong><a href="https://gabriel-capital-labs-mmaber194-rey-gabriel-s-projects.vercel.app/review/cxos">https://gabriel-capital-labs-mmaber194-rey-gabriel-s-projects.vercel.app/review/cxos</a></strong> — start at <code>/review/cxos</code>.</p>
+
+</main></body></html>
