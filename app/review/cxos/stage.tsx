@@ -105,7 +105,20 @@ export function FounderWalkthroughStage() {
   useEffect(() => {
     if (activeKey === "arrival") {
       setArrivalMode(hasSeenBeat("threshold") ? "settled" : "play");
-    } else if (activeKey === "mission-boot") {
+    } else {
+      // Opus bounded review (ranked #3/MEDIUM, evidence pass): without this
+      // reset, arrivalMode keeps whatever value it last held from the
+      // PREVIOUS visit to "arrival" for as long as any other step is active.
+      // Returning to "arrival" later then renders one commit with that
+      // stale value (e.g. "play") before this same effect corrects it —
+      // which is enough for Threshold to actually mount for a frame.
+      // Resetting to "pending" the moment we leave "arrival" means a later
+      // return visit always starts unresolved and re-derives fresh from
+      // hasSeenBeat() on its own next commit, never carrying a stale verdict
+      // across the gap.
+      setArrivalMode("pending");
+    }
+    if (activeKey === "mission-boot") {
       const seen = hasSeenBeat("mission-boot");
       // MissionEntry exposes no onDone (by design — it plays OVER an
       // already-rendered room and just dismisses itself). Marking "seen" at
@@ -181,7 +194,14 @@ export function FounderWalkthroughStage() {
   const fadeKey = `${persona}:${stepIndex}:${replayNonce}`;
 
   return (
-    <>
+    // Opus bounded review (ranked #2/HIGH, evidence pass): the composed
+    // rooms' OWN in-world links (built for their standalone review routes,
+    // where leaving the page is correct) silently end the walkthrough with
+    // no rail and no way back once composed here. data-walkthrough scopes
+    // the CSS guard in app/globals.css ("walkthrough exit-door guard") to
+    // exactly this subtree — direct visits to any room's own standalone
+    // route never carry this attribute, so those links stay fully live.
+    <div data-walkthrough="true">
       <ProgressRail
         persona={persona}
         stepIndex={stepIndex}
@@ -229,7 +249,7 @@ export function FounderWalkthroughStage() {
         {activeKey === "arena" && <ArenaStage />}
         {activeKey === "agency-hq" && <AgencyCommandStage />}
       </StepFade>
-    </>
+    </div>
   );
 }
 
@@ -263,29 +283,58 @@ function ThresholdSettledPlaceholder({ onReplay }: { onReplay: () => void }) {
 // The step-to-step hand-off crossfade. See lib/cxos/pacing.ts's
 // WALKTHROUGH_STEP_CROSSFADE_MS doc comment for why this number exists and
 // where it comes from. Under reduced motion / the cinematic-off toggle
-// (tier D), this adds NO inline style at all — full opacity, no transition
-// — so nothing new ever animates under PRM; every composed room's own tier-D
+// (tier D), this adds NO NEW MOTION — full opacity, no transition — so
+// nothing new ever animates under PRM; every composed room's own tier-D
 // static state is unaffected either way, this wrapper just stops adding its
 // OWN motion on top of it.
+//
+// Opus bounded review (ranked #1/BLOCKER, evidence pass): detectTier() runs
+// server-side too, and there it ALWAYS resolves "C" (lib/cxos/capability.ts
+// short-circuits to "C" whenever `typeof window === "undefined"`) — so SSR
+// unconditionally emitted the non-reduced branch's HTML, e.g.
+// style="opacity:0;transition:opacity 280ms ease", while a client whose
+// REAL tier is "D" computed `reduced` straight in the render body and
+// hydrated into the other branch on its very first pass. The originally
+// prescribed fix (never pass style={undefined}; assert an explicit
+// {opacity:1, transition:"none"} instead) turned out to be NECESSARY but
+// NOT SUFFICIENT — live-verified post-fix: the hydration-mismatch warning
+// still fired ("Server: opacity:0... Client: opacity:1...") and the DOM's
+// style attribute never actually flipped; getComputedStyle stayed
+// `opacity: 0` indefinitely. React does not reliably repair a *hydrated*
+// style-attribute mismatch even when both sides pass concrete values here —
+// only a state update AFTER mount goes through ordinary (non-hydration)
+// reconciliation, which does patch it correctly, every time.
+//
+// The actual fix: never let `reduced` (or `entered`) differ between server
+// and the FIRST client render at all — both start at the SSR-safe default
+// (matching production's own house pattern: Threshold/MissionEntry/
+// ArenaEntry all render a neutral default and only diverge inside a
+// useEffect, never in the render body). detectTier() now runs ONLY inside
+// the effect, so hydration never has anything to mismatch on — the tier-D
+// correction lands via a completely ordinary post-mount state update
+// instead of a hydration diff, and getComputedStyle now genuinely flips to
+// opacity: 1.
 function StepFade({ fadeKey, children }: { fadeKey: string; children: React.ReactNode }) {
-  const reduced = detectTier() === "D";
-  const [entered, setEntered] = useState(reduced);
+  const [reduced, setReduced] = useState(false); // SSR-safe default: matches detectTier()'s server-side "C"
+  const [entered, setEntered] = useState(false);
 
   useEffect(() => {
-    if (reduced) {
+    const isReduced = detectTier() === "D";
+    setReduced(isReduced);
+    if (isReduced) {
       setEntered(true);
       return;
     }
     setEntered(false);
     const raf = requestAnimationFrame(() => setEntered(true));
     return () => cancelAnimationFrame(raf);
-  }, [fadeKey, reduced]);
+  }, [fadeKey]);
 
   return (
     <div
       style={
         reduced
-          ? undefined
+          ? { opacity: 1, transition: "none" }
           : {
               opacity: entered ? 1 : 0,
               transition: `opacity ${WALKTHROUGH_STEP_CROSSFADE_MS}ms ease`,

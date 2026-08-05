@@ -52,6 +52,8 @@ const progressRail = codeOf(read("components/cxos/walkthrough/ProgressRail.tsx")
 const simulatedSignIn = codeOf(read("components/cxos/walkthrough/SimulatedSignIn.tsx"));
 const rooms = read("lib/cxos/rooms.ts");
 const pacing = read("lib/cxos/pacing.ts");
+const globals = read("app/globals.css");
+const agencyCss = read("app/review/agency-command/agency-command.module.css");
 
 const newFiles: [string, string][] = [
   ["page.tsx", page],
@@ -166,9 +168,52 @@ check("stage.tsx consumes the token from pacing.ts rather than inlining a raw ms
   !/transition: `opacity \d+ms/.test(stage));
 
 // ── 11 · reduced motion: the orchestrator's own crossfade adds nothing new ─
-check("the step crossfade checks detectTier() === \"D\" and adds no inline style at all in that branch",
-  /const reduced = detectTier\(\) === "D";/.test(stage) &&
-  /style=\{\s*\n?\s*reduced\s*\n?\s*\?\s*undefined/.test(stage));
+// (fixed post-evidence-pass, Opus bounded review ranked #1/BLOCKER, TWO
+// rounds). Round 1 (never pass style={undefined}; assert an explicit
+// {opacity:1, transition:"none"} instead) was live-verified INSUFFICIENT on
+// its own: detectTier() called in the render body still differs between
+// server (always "C") and a client whose real tier is "D" on the very
+// FIRST client render, and a hydrated style-attribute mismatch did not
+// self-repair even with two concrete values on each side — getComputedStyle
+// stayed opacity:0 indefinitely. Round 2 moved detectTier() out of the
+// render body entirely: `reduced`/`entered` both start at the SSR-safe
+// default (false, matching server), so hydration has nothing to mismatch
+// on, and the tier-D correction lands via an ordinary POST-MOUNT state
+// update inside the effect — which does patch the DOM correctly, ordinary
+// React reconciliation rather than a hydration diff.
+check("StepFade never calls detectTier() in the render body — reduced/entered both start at the SSR-safe default so hydration has nothing to mismatch on, and detectTier() only runs inside the post-mount effect",
+  !/const reduced = detectTier\(\) === "D";/.test(stage) &&
+  /const \[reduced, setReduced\] = useState\(false\);/.test(stage) &&
+  /const isReduced = detectTier\(\) === "D";/.test(stage) &&
+  /setReduced\(isReduced\);/.test(stage));
+check("StepFade never passes style={undefined} — tier D asserts an explicit, concrete resting style",
+  !/reduced\s*\n?\s*\?\s*undefined/.test(stage) &&
+  /reduced\s*\n?\s*\?\s*\{\s*opacity:\s*1,\s*transition:\s*"none"\s*\}/.test(stage));
+
+// ── 14 · the exit-door guard: composed rooms' own links go inert in-tour ──
+// (added post-evidence-pass, Opus bounded review ranked #2/HIGH). Scope
+// note pinned here too: the review's own prescribed selector
+// (a[href^="/review/"]) alone would catch only 2 of the 6 cited exit-door
+// anchors — five of the six point at the BARE "/review" (no trailing
+// slash). Both clauses must be present, or most of the cited anchors are
+// still live.
+check("the walkthrough shell scopes a data-walkthrough wrapper around its non-overview return",
+  /<div data-walkthrough="true">/.test(stage));
+check("app/globals.css carries the exit-door guard neutralizing composed rooms' own /review (bare AND prefixed) and /pricing links, scoped to [data-walkthrough]",
+  /\[data-walkthrough\] a\[href\^="\/review\/"\]:not\(\[data-walkthrough-nav\]\)/.test(globals) &&
+  /\[data-walkthrough\] a\[href="\/review"\]:not\(\[data-walkthrough-nav\]\)/.test(globals) &&
+  /\[data-walkthrough\] a\[href="\/pricing"\]/.test(globals) &&
+  /pointer-events:\s*none;/.test(globals));
+
+// ── 15 · arrivalMode resets on leave — no stale-value Threshold remount ──
+// (added post-evidence-pass, Opus bounded review ranked #3/MEDIUM). Without
+// the else-reset, arrivalMode keeps whatever it last held from the PREVIOUS
+// visit to "arrival" for as long as any other step is active — so returning
+// to "arrival" later renders one commit with the stale value (e.g. "play")
+// before this same effect corrects it, which is enough for Threshold to
+// actually mount for a frame.
+check("arrivalMode resets to \"pending\" whenever the active step is not \"arrival\" (the else-reset), so a later return to \"arrival\" always starts unresolved rather than replaying a stale prior verdict",
+  /if \(activeKey === "arrival"\) \{\s*setArrivalMode\(hasSeenBeat\("threshold"\) \? "settled" : "play"\);\s*\} else \{[\s\S]{0,400}setArrivalMode\("pending"\);\s*\}/.test(stage));
 
 // ── 12 · CinematicToggle is mounted exactly once, inside this shell ──────
 check("CinematicToggle is imported and rendered by ProgressRail.tsx",

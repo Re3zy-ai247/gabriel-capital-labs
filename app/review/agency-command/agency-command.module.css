@@ -236,7 +236,20 @@
 
 .room[data-arrival-settled="false"] .kaiBrief,
 .room[data-arrival-settled="false"] .kaiDesk {
-  animation: agencyKaiArrive 620ms 760ms cubic-bezier(0.2, 0.74, 0.2, 1) both;
+  /* Narrow authorized exception (Opus bounded review, ranked #4/LOW,
+     evidence pass; this ONE value at this ONE line only — the rest of this
+     room-interior file remains off-limits per the walkthrough task's file
+     allowlist). This is a standalone raw literal, not one of Phase 1A-CX2
+     (B)'s mirrored pacing custom properties (--cxos-arrival-settle-ms /
+     --cxos-arrival-duration are a DIFFERENT concern — the gate-to-room
+     crossfade and the overall travel dwell, consumed via var() elsewhere in
+     this file; checked before editing, per the review's own instruction).
+     Was 760ms: at tier A's 2200ms travel (lib/cxos/pacing.ts's
+     TRANSFER_TRAVEL_MS.A), the Kai line did not finish revealing until
+     760+620=1380ms, leaving too little of the window for it to actually be
+     read before the gate dissolves. Pulled earlier so the line settles
+     sooner and stays legible for materially longer of the travel window. */
+  animation: agencyKaiArrive 620ms 500ms cubic-bezier(0.2, 0.74, 0.2, 1) both;
 }
 
 .room[data-arrival-settled="true"] .arrival *,
@@ -3635,7 +3648,13 @@
 }
 
 .room[data-arrival-settled="false"] .arrivalGreeting {
-  animation: agencyThresholdBeat 400ms 1035ms cubic-bezier(0.2, 0.74, 0.2, 1) both;
+  /* CX2 Opus review (LOW, corrected target): the Kai line on the arrival
+     gate settled at ~1.9s of the 2200ms travel — ~820ms legible. Delay
+     1035ms -> 700ms lands completion at ~1100ms, leaving the line settled
+     for half the travel window. (The first authorized fix at line ~239
+     governed the pre-warmed facility content BEHIND the gate — invisible
+     during travel — not this, the element the review actually measured.) */
+  animation: agencyThresholdBeat 400ms 700ms cubic-bezier(0.2, 0.74, 0.2, 1) both;
 }
 
 .room[data-arrival-settled="false"] .arrivalActions {

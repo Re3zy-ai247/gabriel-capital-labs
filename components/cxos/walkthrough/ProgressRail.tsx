@@ -105,6 +105,7 @@ export function ProgressRail({
             </div>
             <Link
               href="/review"
+              data-walkthrough-nav="true"
               className="block font-sans text-brand-300 hover:text-brand-200"
             >
               ← All rooms

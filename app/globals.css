@@ -1550,3 +1550,42 @@ html[data-cxpassage="B"] .cx-p-depth {
     /* static final-frame treatment */
   }
 }
+
+/* ── Phase 1A-CX2 (C) evidence pass — the Founder Walkthrough's exit-door
+   guard (Opus bounded review, ranked #2/HIGH) ──
+   The composed rooms' OWN in-world navigation (mission-control/stage.tsx's
+   "See plans"/"All rooms", arena/stage.tsx's "All rooms",
+   PassageJourney.tsx's "All rooms", agency-command/stage.tsx's
+   "All rooms"/"Return to Mission Control") was built for those rooms' OWN
+   standalone review routes, where leaving the page is exactly right.
+   Composed inside app/review/cxos/stage.tsx, the SAME links silently end
+   the walkthrough with no rail and no way back — a real regression those
+   room interiors are prohibited from fixing themselves (composed via
+   public exports only, per that task's file allowlist).
+
+   Scoped ONLY to the walkthrough's own [data-walkthrough] wrapper (set
+   exclusively on app/review/cxos/stage.tsx's non-overview return, nowhere
+   else) — direct visits to any of these rooms' OWN standalone routes never
+   carry this attribute, so those links stay completely untouched.
+   :not([data-walkthrough-nav]) is the walkthrough shell's own escape hatch
+   for ITS OWN legitimate cross-room navigation (unused today — its one
+   /review link is covered below, and the shell has no /review/* links —
+   but reserved so a future one does not force a second review pass).
+
+   SCOPE NOTE: the review's own prescribed selector (a[href^="/review/"])
+   would by itself have caught only 2 of the 6 cited exit-door anchors —
+   five of the six actually point at the BARE "/review" (no trailing
+   slash), which a "^=" prefix requiring the slash does not match. Extended
+   with an exact a[href="/review"] clause below so every cited anchor is
+   actually neutralized, not only the ones whose href happens to end in a
+   slash. Caveat: pointer-events:none stops pointer activation; it does not
+   remove these anchors from the keyboard tab order (no public prop exists
+   on the composed rooms to add tabindex="-1" without touching their
+   prohibited internals) — flagged, not silently assumed solved. */
+[data-walkthrough] a[href^="/review/"]:not([data-walkthrough-nav]),
+[data-walkthrough] a[href="/review"]:not([data-walkthrough-nav]),
+[data-walkthrough] a[href="/pricing"] {
+  pointer-events: none;
+  opacity: 0.45;
+  cursor: not-allowed;
+}
