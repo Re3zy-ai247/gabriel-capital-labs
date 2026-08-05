@@ -359,11 +359,21 @@ function withoutMigration(
 }
 
 const reputation = "20260721160000_operator_reputation";
+// Test 18 means "every earlier migration is applied and the LAST one is not". That is a
+// property of the chain's tail, not of any named migration — reputation was simply the tail
+// when the test was written. Deriving it keeps the test honest as the chain grows: pinning
+// the old name turned a trailing-absence case into a mid-chain GAP, which is a different
+// state with a different decision, and the test failed for the right reason.
+const lastMigration = GATE_D_MIGRATION_CHAIN[GATE_D_MIGRATION_CHAIN.length - 1];
 const identityMigration = "20260721120000_operator_identity";
 
-// Manifest coverage is derived from the exact six SQL files.
+// Manifest coverage is derived from the exact SQL files in GATE_D_MIGRATION_CHAIN.
+// These totals are a drift tripwire: any schema change that is not a reviewed migration
+// moves them. Wave 2.1 raised them by exactly what 20260728000000_terms_acceptance adds —
+// +1 table, +5 columns, +1 primary key, +2 indexes, +1 foreign key — and by nothing else,
+// which is itself evidence the migration does only what it claims.
 const coverage = manifestCoverage(manifest);
-check("manifest covers exactly six migrations", coverage.migrations === 6);
+check("manifest covers exactly seven migrations", coverage.migrations === 7);
 check(
   "manifest directory set exactly matches the reviewed Gate D chain",
   manifest.migrations.map((item) => item.name).join(",") === GATE_D_MIGRATION_CHAIN.join(","),
@@ -392,10 +402,10 @@ check(
   }
 }
 check("manifest covers all 11 enum types / 48 values", coverage.enumTypes === 11 && coverage.enumValues === 48);
-check("manifest covers all 34 tables / 304 columns", coverage.tables === 34 && coverage.columns === 304);
-check("manifest covers all 34 primary keys", coverage.primaryKeys === 34);
-check("manifest covers all 62 explicit indexes", coverage.indexes === 62);
-check("manifest covers all 21 foreign keys", coverage.foreignKeys === 21);
+check("manifest covers all 35 tables / 309 columns", coverage.tables === 35 && coverage.columns === 309);
+check("manifest covers all 35 primary keys", coverage.primaryKeys === 35);
+check("manifest covers all 64 explicit indexes", coverage.indexes === 64);
+check("manifest covers all 22 foreign keys", coverage.foreignKeys === 22);
 check("manifest records zero SQL unique constraints/checks/extensions", coverage.uniqueConstraints === 0 && coverage.checkConstraints === 0 && coverage.extensions === 0);
 {
   const directUrl = "postgresql://gate:password@db.prisma.io:5432/gate_d?sslmode=require";
@@ -591,9 +601,9 @@ check("manifest records zero SQL unique constraints/checks/extensions", coverage
 
 // 18. Partial chain: earlier migrations complete, later migration absent.
 {
-  const report = reportFor(withoutMigration(fixture(), reputation));
+  const report = reportFor(withoutMigration(fixture(), lastMigration));
   check("18. earlier complete + later absent is coherent", report.decision === "READY_FOR_OWNER_APPROVAL");
-  check("18. exact pending list contains only the later migration", report.pendingDeployList.join(",") === reputation);
+  check("18. exact pending list contains only the later migration", report.pendingDeployList.join(",") === lastMigration);
 }
 
 // 19. Partial chain: a migration is half-applied.

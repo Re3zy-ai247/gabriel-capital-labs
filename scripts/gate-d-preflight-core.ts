@@ -9,6 +9,13 @@ export const GATE_D_MIGRATION_CHAIN = [
   "20260720231803_event_bus_agency_index",
   "20260721120000_operator_identity",
   "20260721160000_operator_reputation",
+  // RC1 B-06 durable terms acceptance. AUTHORED, NOT APPLIED — this entry declares the
+  // migration's place in the chain so the preflight can verify it; it asserts nothing about
+  // production, where the table does not exist and no _prisma_migrations history exists at all.
+  // The chain is a hard-coded manifest that loadGateDManifest() diffs against the migrations
+  // directory and THROWS on mismatch, so adding a migration without adding it here crashes the
+  // guard in CI rather than failing it — which is how this was missed until Wave 2.1.
+  "20260728000000_terms_acceptance",
 ] as const;
 
 export type MigrationState =
