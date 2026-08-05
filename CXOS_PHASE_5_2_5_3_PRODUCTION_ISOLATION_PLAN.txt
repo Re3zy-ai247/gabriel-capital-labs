@@ -1,0 +1,424 @@
+CREDITVECTOR CXOS PHASE 5.2 + 5.3 — PRODUCTION ISOLATION AND INTEGRATION PLAN
+
+PLAN STATUS
+- Founder experience direction: APPROVED.
+- Current task: planning and handoff only.
+- Current integration disposition: NO-GO under the present approval because the exact two-commit delta is not self-contained on production main.
+- No integration branch, patch application, staging, commit, push, merge, Preview deployment, production deployment, promotion, alias change, database action, environment change, or dependency change was executed.
+
+REPOSITORY AND RELEASE IDENTITY
+- Repository: gabriel-capital-labs
+- Source branch: feat/cxos-phase3
+- Source branch SHA: 21d6a0884861f46aeb9e85bb5597e93ffa234ba6
+- Clean production ref inspected: origin/main
+- Production baseline SHA: f449c35d0eca9463c15e86f8cbd4cd7f4e948d03
+- Merge base with source branch: f449c35d0eca9463c15e86f8cbd4cd7f4e948d03
+- RC baseline: 2736deae9831cd5a936b30de227f40bd6edd9b13
+- Phase 5.2 commit: dfbdf30ac59f762a21bc031d13d5150299616c62
+- Phase 5.3 commit: 21d6a0884861f46aeb9e85bb5597e93ffa234ba6
+- Lineage: RC baseline is 58 commits ahead of origin/main; Phase 5.3 is 60 ahead and 0 behind.
+- Existing reviewed Preview: https://gabriel-capital-labs-git-feat-cxo-06bc43-rey-gabriel-s-projects.vercel.app
+- Existing review route: /review/mission-control-to-arena
+- Existing Preview disclosure: it contains the feature branch’s full 60-commit historical state and is not an isolated production candidate.
+
+APPROVED EXPERIENCE DIRECTION
+- Mission Control, the Passage, and the Arena as one coherent spatial facility.
+- Mission Control command-chamber language.
+- Passage cinematic journey.
+- Arena ceremonial-room language.
+- Desktop Tier A.
+- Tablet Tier A.
+- Mobile Tier B.
+- Reduced-motion and static projection.
+- Founder projection controls on the synthetic review route.
+- Responsive, cinematic, accessibility, interaction, motion, atmosphere, and hierarchy direction.
+
+EXACT APPROVED COMMITS
+
+PHASE 5.2
+- Commit: dfbdf30ac59f762a21bc031d13d5150299616c62
+- Parent: 2736deae9831cd5a936b30de227f40bd6edd9b13
+- Subject: feat(cxos): complete phase 5.2 room release candidate
+- Diff: 11 files changed, 1,191 insertions, 514 deletions
+
+Files:
+- .ai/CURRENT-STATE.md
+- CXOS_PHASE_5_2_REPORT.html
+- CXOS_PHASE_5_2_REPORT.md
+- app/globals.css
+- components/cxos/passage/ArenaFloor.tsx
+- components/cxos/passage/MissionControlOrigin.tsx
+- components/cxos/passage/PassageJourney.tsx
+- components/cxos/passage/PassageOverlay.tsx
+- components/cxos/passage/PassageTray.tsx
+- lib/cxos/passageLedger.ts
+- scripts/cxos-passage.test.ts
+
+PHASE 5.3
+- Commit: 21d6a0884861f46aeb9e85bb5597e93ffa234ba6
+- Parent: dfbdf30ac59f762a21bc031d13d5150299616c62
+- Subject: feat(cxos): refine cinematic journey projection
+- Diff: 8 files changed, 1,258 insertions, 175 deletions
+
+Files:
+- .ai/CURRENT-STATE.md
+- app/globals.css
+- components/cxos/passage/ArenaFloor.tsx
+- components/cxos/passage/PassageJourney.tsx
+- components/cxos/passage/PassageTray.tsx
+- components/cxos/passage/projection.ts
+- lib/cxos/passageLedger.ts
+- scripts/cxos-passage.test.ts
+
+COMBINED APPROVED FILE ALLOWLIST
+- .ai/CURRENT-STATE.md
+- CXOS_PHASE_5_2_REPORT.html
+- CXOS_PHASE_5_2_REPORT.md
+- app/globals.css
+- components/cxos/passage/ArenaFloor.tsx
+- components/cxos/passage/MissionControlOrigin.tsx
+- components/cxos/passage/PassageJourney.tsx
+- components/cxos/passage/PassageOverlay.tsx
+- components/cxos/passage/PassageTray.tsx
+- components/cxos/passage/projection.ts
+- lib/cxos/passageLedger.ts
+- scripts/cxos-passage.test.ts
+
+Combined diff:
+- Exactly two contiguous, single-parent commits.
+- 12 files changed, 2,417 insertions, 657 deletions.
+- git diff --check: PASS for Phase 5.2, Phase 5.3, and the combined range.
+
+File classification:
+- Runtime: app/globals.css; the six passage component/helper files; lib/cxos/passageLedger.ts.
+- Test: scripts/cxos-passage.test.ts.
+- Reporting-only: CXOS_PHASE_5_2_REPORT.md and CXOS_PHASE_5_2_REPORT.html.
+- Governance/status: .ai/CURRENT-STATE.md.
+
+CLEAN PRODUCTION BASELINE
+- The clean production code baseline inspected is origin/main at f449c35d0eca9463c15e86f8cbd4cd7f4e948d03.
+- origin/main is an ancestor of the source branch; there is no newer main-side divergence in the local refs.
+- Before any authorized execution, origin/main must be freshly fetched, re-resolved, and pinned. If it moves, every overlap, allowlist, build, and Preview gate must be rerun against the new SHA.
+- The RC baseline 2736deae9831cd5a936b30de227f40bd6edd9b13 is not a production baseline. It already contains 58 feature-branch commits beyond production.
+
+HARD LINEAGE FINDING
+- The approved commits are refinements on top of unapproved historical CXOS code.
+- Only components/cxos/passage/projection.ts is created wholly inside the approved two-commit range.
+- Of the 12 approved paths, production main contains only .ai/CURRENT-STATE.md and app/globals.css.
+- Production main lacks both Phase 5.2 reports, all six approved Passage component/helper files, lib/cxos/passageLedger.ts, and scripts/cxos-passage.test.ts.
+- The approved commits modify files that were introduced before the RC baseline. Blind cherry-pick or patch application would encounter missing preimages and would not create a working review route.
+- Copying final files wholesale would silently import substantial Phase 5.1 and earlier content, violating the exact-delta approval.
+- The RC baseline follows an earlier Phase 5.2 implementation commit, e7d21523f22d8fa8909d8b5877e1ba91f13b5b6c. The approved Phase 5.2 RC commit is therefore not the complete standalone room implementation.
+
+VERIFIED DIRECT PREREQUISITES OUTSIDE THE CURRENT APPROVAL
+
+“Dependency closure” means every earlier file or stylesheet hunk the approved code needs in order to compile and behave correctly.
+
+- app/review/layout.tsx
+- app/review/mission-control-to-arena/page.tsx
+- The final Passage journey links back to /review, but the review hub is absent from production main. Importing that hub would also pull the unapproved room registry and links to other review rooms.
+- components/cxos/passage/fixtures.ts
+- lib/cxos/reviewMode.ts
+- lib/cxos/capability.ts
+- lib/cxos/passageTimeline.ts
+- Pre-RC baseline versions of the Passage components, ledger, guard, and Passage CSS.
+- Pre-Phase-5.2 CXOS CSS tokens used by the approved rules, including --dur-reveal and --ease-vector, are absent from production main.
+- components/cxos/arena/ArenaEntry.tsx is read by the current Passage guard, although it is not a runtime dependency of the synthetic route.
+- lib/arena/policy.ts and the existing lucide-react dependency are already present on production main.
+
+This list is a verified direct minimum, not authorization to integrate it. A full transitive file-and-hunk manifest must pass a separate scope gate before any repository write.
+
+SAFE EXTRACTION STRATEGY
+
+Current gate:
+- STOP. Do not merge feat/cxos-phase3.
+- Do not cherry-pick dfbdf30 or 21d6a08 directly onto main.
+- Do not copy final app/globals.css or the final Passage directory wholesale.
+- Do not treat the existing full-branch Preview as isolated-patch evidence.
+
+Recommended future path after separate Founder authorization:
+
+1. Refresh and pin production truth.
+   - Fetch origin read-only.
+   - Resolve the exact current origin/main SHA.
+   - Record the current production deployment identity and alias target.
+   - Stop if main moved until the overlap audit is refreshed.
+
+2. Create a clean dedicated worktree and integration branch from the freshly pinned origin/main.
+   - Proposed branch: codex/cxos-phase5-2-5-3-isolation
+   - Never branch from feat/cxos-phase3.
+   - Never merge the feature branch into the integration branch.
+   - Do not switch or clean the existing feature worktree; its untracked infrastructure and evidence remain outside the candidate.
+
+3. Freeze three manifests before applying code.
+   - Manifest A: the 12 approved Phase 5.2 and 5.3 paths and exact commit ranges.
+   - Manifest B: the minimum prerequisite foundation, with each file and CSS hunk justified.
+   - Manifest C: forbidden surfaces, including dependencies, lockfiles, Prisma, migrations, schema, APIs, backend, auth, Stripe, billing, environment, Vercel config, and production aliases.
+   - Any unlisted file or hunk is an automatic stop.
+
+4. Reconstruct the minimum prerequisite foundation only after it is explicitly approved.
+   - Prefer a route-scoped synthetic-review foundation from current main.
+   - Do not import unrelated Phase 1–5.1 pages, routes, backend work, or historical branch state.
+   - Scope Passage CSS to the review root and html[data-cxpassage] wherever technically possible.
+   - Prefer an explicitly approved route-scoped Passage stylesheet or a tightly extracted named-selector block over replacing app/globals.css.
+   - Remove or safely retarget the final /review footer link instead of importing the whole unapproved review hub; this is an integration adaptation and must be re-reviewed.
+   - If exact visual fidelity requires earlier CSS or component code, name it in Manifest B and obtain approval before adding it.
+   - If the guard must be adapted to avoid importing ArenaEntry.tsx solely as a test dependency, treat that adaptation as new review scope and revalidate it.
+
+5. Preserve exact provenance without pretending an adapted reconstruction is a direct replay.
+   - Phase 5.2 source range: 2736deae…dfbdf30.
+   - Phase 5.3 source range: dfbdf30…21d6a08.
+   - Record both ranges, every source blob, and every adapted hunk in the manifest.
+   - Recommended default: one reversible clean-room runtime/test commit containing the isolated final route, with both source SHAs in its commit body, followed by a separate reporting commit only if authorized.
+   - Alternative: if the Founder separately approves a byte-identical prerequisite baseline and the two diffs apply without adaptation, keep foundation, Phase 5.2, and Phase 5.3 as three separate commits.
+   - Compare every approved runtime file and approved hunk against the source commit.
+   - Document every integration adaptation; an adapted file is not automatically covered by the prior Founder approval and must be re-reviewed.
+
+6. Keep reporting separate from runtime.
+   - Do not copy .ai/CURRENT-STATE.md wholesale from the feature branch. Reconcile a new entry against current main only after the isolated candidate exists.
+   - Keep the historical Phase 5.2 reports out of the runtime commit by default. Add them only in a separate reporting commit if the Founder explicitly wants them in main.
+   - Keep this production-isolation handoff local-only unless separately authorized.
+
+7. Stop after the isolated Preview and Founder review.
+   - Preview authorization does not authorize main.
+   - Main merge and production deployment remain a later, separate one-way gate because a push to main auto-deploys production.
+
+CONFLICT AND LINEAGE RISKS
+- P0 — Non-self-contained patch: missing preimages and prerequisites make direct cherry-pick unsafe.
+- P0 — Auto-production boundary: merge or push to main triggers Vercel production deployment.
+- P1 — Global CSS blast radius: production app/globals.css is 262 lines, the RC baseline is 1,060 lines, and final Phase 5.3 is 1,539 lines. The pre-RC history added roughly 806 CSS lines before the approved patch; copying the final stylesheet would import unrelated history.
+- P1 — Review-route absence: the route and review-mode hard-off policy do not exist on production main.
+- P1 — Broken-link closure: the final Passage footer targets /review, but production main has no review hub; importing the hub would expand scope into other unapproved rooms.
+- P1 — CSS-token closure: approved Passage rules reference earlier CXOS timing and easing tokens that production main does not define.
+- P1 — Test lineage: the Passage guard reads earlier Arena code that is outside the approved delta.
+- P1 — Governance conflict: feature-branch CURRENT-STATE content describes many unmerged phases and cannot replace production truth.
+- P1 — Preview identity: the existing Preview proves the full branch experience, not a clean-main integration candidate.
+- P2 — Main freshness: the local origin/main ref must be refreshed before execution.
+- P2 — Vercel SSO: remote QA requires an authenticated Founder session; no bypass is permitted.
+- P2 — Global-regression risk: even route-prefixed CSS is globally delivered and must be checked against non-review routes.
+
+REQUIRED REGRESSION TESTS
+
+Scope and source integrity:
+- Fresh origin/main SHA recorded.
+- Clean tracked worktree before extraction.
+- Exact authorized file-and-hunk allowlist.
+- No untracked agent infrastructure or local evidence artifacts staged.
+- No package.json, lockfile, Prisma, migration, schema, API, backend, auth, Stripe, billing, environment, next.config, or vercel.json change.
+- Package and lockfile hashes unchanged.
+- git diff --check passes.
+- If a byte-identical replay is chosen, the final commit graph contains separate foundation, Phase 5.2, and Phase 5.3 layers.
+- If clean-room adaptation is required, the single runtime/test commit records both source ranges and the manifest records phase-level provenance instead of claiming false byte identity.
+
+Static and build validation:
+- npm run typecheck.
+- Touched-file lint with zero warnings.
+- Passage guard plus grammar, threshold, review, journey, Mission Control, and Arena guards.
+- Optimized production build with review surfaces hard-off.
+- Optimized review build with the synthetic route enabled.
+- Exact-lockfile npm ci in the clean worktree.
+- Current-main DB-free guard suite, runtime money-path guards, schema-safety guard, Gate D guards, and release-identity guards.
+- Confirm Vercel build command remains prisma generate && next build.
+- Scan build logs and confirm no prisma db push, migrate, seed, DDL, datasource action, database command, or mutating API request runs.
+
+Production-hard-off validation:
+- With production build identity, /review/mission-control-to-arena renders only the not-enabled fallback.
+- No Director control or synthetic fixtures are reachable on ordinary production routes.
+- Existing /arena gate and existing backend behavior remain unchanged.
+- No new network, storage, cookie, beacon, XHR, database, auth, or write path is introduced.
+- Production-mode hard-off still wins even if the manual local-review override is set.
+- No review-only JavaScript or CSS chunk is requested by /, /login, or /pricing.
+
+Non-review regression matrix because globals.css changes:
+- Landing page at desktop and mobile.
+- Login and authenticated shell at desktop and mobile.
+- Dashboard and existing Arena gate.
+- Pricing and PWA asset/precache behavior.
+- Focus indicators, skip link, typography, fixed trays, scroll behavior, and horizontal overflow.
+- No console errors, missing assets, or application-origin failures.
+
+Isolated review-route browser matrix:
+- Desktop 1440 × 900: Tier A.
+- Tablet 1024 × 768: Tier A.
+- Mobile 390 × 844: Tier B.
+- Coarse-pointer landscape.
+- Genuine prefers-reduced-motion Auto.
+- Explicit Reduced Motion / Static.
+- Effects-off and constrained-device projections.
+- Cinematic confirmation while reduced motion is active.
+- Operating-system preference flip during the route.
+- Hidden-document pause and resume.
+- All five Arena stations.
+- Skip, Escape cancel, forward settlement, and Return.
+- Return focus restored to Mission Control and scrollY equals 0.
+- Synthetic-review disclosure always visible.
+- Footer and back navigation resolve without a 404 and do not import the unapproved review hub.
+- Zero automated Axe violations.
+- Zero route console or page errors.
+- Zero broken application-origin responses.
+- Zero write requests.
+- Zero horizontal overflow.
+- Mobile CLS below 0.1, with 0 as the target.
+- No measured Passage long task above 50 ms in the clean observer window.
+
+TEST FLOW
+
+fresh origin/main
+  |
+  +-- approved prerequisite manifest? -- no --> STOP
+  |
+  +-- authorized prerequisite foundation
+        |
+        +-- isolated final review route
+              |
+              +-- Phase 5.2 + 5.3 provenance manifest
+                    |
+                    +-- scope, guards, typecheck, lint, builds
+                    |
+                    +-- non-review regression matrix
+                    |
+                    +-- isolated Vercel Preview
+                          |
+                          +-- Founder approval
+                                |
+                                +-- separate production authorization
+
+VERCEL PREVIEW STRATEGY
+- Create a new Preview from the clean-main integration branch only after Preview authorization.
+- Use the already-linked Vercel project gabriel-capital-labs.
+- Push only the isolated integration branch.
+- Never use --prod.
+- Never promote the Preview.
+- Never change project settings, environment variables, aliases, or production configuration.
+- Do not depend on Preview database isolation for safety. The synthetic route and its QA must remain DB-independent, and environment scoping must be re-verified without reading or changing secret values.
+- Vercel Preview identity should enable the synthetic review route through the existing reviewBuildAllowed policy; no custom environment change should be needed.
+- Verify the deployment target is Preview, the deployment SHA equals the isolated branch SHA, and the existing production alias points elsewhere.
+- Verify the immutable deployment URL and the mutable branch alias both remain protected from anonymous access.
+- Verify the authenticated x-cv-release equals the isolated branch SHA prefix.
+- Inspect build logs and confirm npm ci, prisma generate, and next build only.
+- Confirm no database mutation command runs.
+- Do not create or use an automation bypass token.
+- Record the new immutable Preview URL, branch alias, route, deployment identity, source SHA, and production deployment identity in a later deployment handoff.
+- Capture production deployment ID, URL, SHA, and alias before and after the Preview; all must remain unchanged.
+- Run the complete remote browser matrix against the isolated Preview, not the existing 60-commit Preview.
+- Treat the isolated Preview as integration-candidate evidence only. It is not production approval.
+
+ROLLBACK PLAN
+
+Before any future production action:
+- Capture the exact pre-release origin/main SHA.
+- Capture the current Ready production deployment identity and x-cv-release value.
+- Verify the fetched origin/main SHA matches the current production deployment SHA.
+- Confirm the prior production deployment remains promotable.
+- Keep the isolated runtime/test change as one ordinary reversible commit unless a byte-identical three-layer replay was separately approved.
+
+If the isolated Preview fails:
+- Do not merge.
+- Leave production untouched.
+- Fix only on the isolated branch or abandon the candidate.
+
+If a later separately authorized production release fails:
+- First restore service by rolling Vercel back to the captured prior Ready production deployment.
+- For the recommended clean-room candidate, create an ordinary revert of its single runtime/test commit, then revert any separately authorized reporting commit.
+- If a byte-identical three-layer replay was separately approved instead, create ordinary reverts in reverse order for Phase 5.3, Phase 5.2, and the prerequisite foundation.
+- Validate the revert and let the authorized main push produce the corrective deployment.
+- Never reset, force-push, rewrite main, or merge the 60-commit feature branch.
+- No database, migration, Prisma, environment, or data rollback is required for this scope because none may change.
+- Verify x-cv-release and distinguish deployment skew from a real current-release failure.
+
+GO / NO-GO GATES
+
+G0 — Experience approval
+- Status: GO.
+- Evidence: Founder approved the reviewed Phase 5.2 and Phase 5.3 experience direction.
+
+G1 — Exact delta identity
+- Status: GO.
+- Evidence: two contiguous commits, exact parents, exact 12-path union, clean diff checks.
+
+G2 — Self-contained production patch
+- Status: NO-GO.
+- Evidence: production main lacks the route, direct prerequisites, and 10 of the 12 approved paths.
+- To clear: Founder approves an exact prerequisite foundation or a newly reviewed clean-room reconstruction.
+
+G3 — Fresh production baseline
+- Status: PENDING EXECUTION AUTHORIZATION.
+- To clear: fetch and pin current origin/main; verify it matches the current production deployment SHA; rerun overlap and scope audit.
+
+G4 — Isolated candidate scope
+- Status: PENDING.
+- To clear: Manifest A, B, and C approved; no unauthorized file or hunk.
+
+G5 — Local validation
+- Status: PENDING.
+- To clear: all static, guard, build, accessibility, performance, and regression checks pass.
+
+G6 — Isolated Vercel Preview
+- Status: PENDING SEPARATE PREVIEW AUTHORIZATION.
+- To clear: exact SHA Preview is Ready, remote matrix passes, production identity remains distinct.
+
+G7 — Founder integration-candidate review
+- Status: PENDING.
+- To clear: Founder approves the clean-main isolated Preview, including any integration adaptations.
+
+G8 — Main merge and production deployment
+- Status: NOT AUTHORIZED.
+- To clear: a separate explicit Founder authorization that acknowledges main auto-deploys production.
+
+G9 — Post-deploy canary and rollback closure
+- Status: NOT AUTHORIZED.
+- To clear after a later production authorization: verify x-cv-release, public 200s, protected 401/403s, core route smoke checks, and the captured rollback target.
+
+Automatic NO-GO conditions:
+- Any attempt to merge feat/cxos-phase3 wholesale.
+- Any prerequisite without explicit approval.
+- Any file or hunk outside the approved manifests.
+- Any package, lockfile, Prisma, migration, schema, API, backend, auth, Stripe, billing, environment, Vercel-config, or production-alias change.
+- Any database mutation command.
+- Any failed required test, build, accessibility, performance, or remote-review check.
+- Any mismatch between isolated branch SHA and Vercel deployment SHA.
+- Any uncertainty about the production alias target or rollback deployment.
+
+PRODUCTION SAFETY CONFIRMATION
+- origin/main was not changed and remains locally resolved at f449c35d0eca9463c15e86f8cbd4cd7f4e948d03.
+- The production alias was not queried, changed, or promoted during this planning task.
+- The production deployment was not changed.
+- No integration branch was created.
+- No file was staged or committed.
+- No branch was pushed.
+- No merge, cherry-pick, patch application, rebase, reset, checkout, force-push, or destructive Git operation ran.
+- No Vercel deployment or project-setting action ran.
+- No database, migration, Prisma, backend, API, auth, Stripe, billing, environment, configuration, dependency, or lockfile action ran.
+- The only repository changes from this task are local-only, untracked planning artifacts.
+
+NOT IN SCOPE
+- Wholesale merge of feat/cxos-phase3.
+- Production deployment or promotion.
+- Production alias changes.
+- Main merge or push.
+- Database migration or data change.
+- Prisma or schema change.
+- Architecture or backend change.
+- API, auth, Stripe, billing, legal, or compliance expansion.
+- Environment or Vercel project-setting change.
+- Dependency or lockfile change.
+- Force-push, reset, rebase, history rewrite, or destructive Git operation.
+- Activating the synthetic review route for production users.
+
+AUTHORIZATION SEQUENCE
+
+Next authorization, if the Founder wants work to proceed:
+AUTHORIZE CXOS PHASE 5.2 + 5.3 CLEAN-MAIN ISOLATION CANDIDATE AND PREVIEW — require the exact prerequisite manifest before its commit; do not merge or deploy to production.
+
+Later authorization, only after the isolated Preview passes:
+AUTHORIZE CXOS ISOLATED INTEGRATION MERGE AND PRODUCTION DEPLOYMENT — acknowledge that pushing main auto-deploys production and require the captured rollback target.
+
+CURRENT DECISION
+- Experience direction: APPROVED.
+- Exact two-commit identity: VERIFIED.
+- Blind extraction or cherry-pick: REJECTED.
+- Wholesale feature-branch merge: PROHIBITED.
+- Executable integration under current approval: NO-GO.
+- Production state: UNTOUCHED BY THIS TASK.
+
+PRODUCTION ISOLATION PLAN READY — AWAITING FOUNDER AUTHORIZATION

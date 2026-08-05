@@ -1,0 +1,166 @@
+CREDITVECTOR GROWTH EXPERIENCE PHASE 1B
+MOBILE HANDOFF DELIVERY RC1
+
+STATUS
+BLOCKED — VERCEL PREVIEW TOOLBAR MUTATES EVERY HTML ATTACHMENT
+
+DO NOT BEGIN THE FOUNDER PHYSICAL-DEVICE TEST YET.
+
+CANONICAL BOUNDARIES
+CGN ECONOMIC PHASE 1A — BLOCKED
+GROWTH EXPERIENCE PHASE 1A — APPROVED FOUNDER PREVIEW
+GROWTH EXPERIENCE PHASE 1B — AUTHORIZED NON-MONETARY CONTRACT WORK
+Founder Economic Decision Matrix: UNRATIFIED
+Live economics: NO-GO
+Phase 1C: NOT AUTHORIZED
+
+OUTCOME
+The prior mobile defect was a local-only delivery architecture. Links pointed to
+Mac workspace artifacts instead of protected HTTP attachment endpoints. RC1 now
+provides ordinary anchors and ten real authenticated endpoints.
+
+Verified on the final Preview:
+- anonymous page and all ten artifacts return Vercel Authentication 302;
+- authenticated page loads without a login loop;
+- all ten artifact requests return HTTP 200;
+- every endpoint has the exact MIME, attachment disposition, and filename;
+- ZIP, HTML, and TXT each emit a native browser download event;
+- ZIP, TXT, Markdown, and manifest bytes match their local artifacts exactly.
+
+Release blocker:
+Vercel appends a 163-byte Preview Toolbar loader to every text/html attachment.
+All six HTML files therefore have different remote hashes and no Content-Length.
+This violates the Founder's byte-identity stop condition. Vercel's documented
+incoming x-vercel-skip-toolbar control cannot be added by a normal Android
+anchor. Response headers, gzip, and closed in-deployment middleware were tested
+and did not suppress the platform mutation. The ineffective middleware was
+removed before the final static-only deployment. Project/environment changes
+were not authorized.
+
+DELIVERY COORDINATES
+Delivery page:
+https://gabriel-capital-labs-g395eeqvi-rey-gabriel-s-projects.vercel.app/
+
+Direct ZIP:
+https://gabriel-capital-labs-g395eeqvi-rey-gabriel-s-projects.vercel.app/downloads/GROWTH_EXPERIENCE_PHASE_1B_FOUNDER_PACKAGE.zip
+
+Direct HTML:
+https://gabriel-capital-labs-g395eeqvi-rey-gabriel-s-projects.vercel.app/downloads/GROWTH_EXPERIENCE_PHASE_1B_FOUNDER_HANDOFF.html
+
+Direct TXT:
+https://gabriel-capital-labs-g395eeqvi-rey-gabriel-s-projects.vercel.app/downloads/GROWTH_EXPERIENCE_PHASE_1B_FOUNDER_HANDOFF.txt
+
+Deployment ID: dpl_6LgrDW4ZSsCXiyrWKJRwSzL9QKW6
+Target: Preview
+Vercel state: READY
+RC1 release state: BLOCKED
+Production: NOT DEPLOYED
+
+PRIMARY PACKAGE
+Filename: GROWTH_EXPERIENCE_PHASE_1B_FOUNDER_PACKAGE.zip
+Bytes: 93,059
+MIME: application/zip
+SHA-256: f85b5a8cbfa9894710039f3ea6f02d6bd93a5a31d97e43cfbc1c7b3bd903a9fb
+Authenticated remote byte identity: PASS
+Archive integrity: PASS
+Members: exactly nine flat regular files
+Secrets/PII/local paths/usernames/symlinks/traversal/macOS metadata: ABSENT
+
+ORIGINAL PACKAGE HASH
+The original package remains unchanged at:
+c3e6d3595945af18f63dafd87e5d681a863b3534663d6c5b2c42b7cd8ae77e88
+
+The final sanitized ZIP changed because 24 non-curated members were omitted,
+72 absolute-path/OS-username occurrences were removed, the Vercel account slug
+was redacted, two evidence sources became standalone HTML, the product-spec
+filename and evidence manifest were normalized, and ZIP CRC/compression/central
+directory bytes were regenerated.
+
+MOBILE EVIDENCE
+Local Android-equivalent acceptance passed at:
+- 390 × 844 coarse pointer
+- 360 × 800 coarse pointer
+- 320 × 800 coarse pointer
+
+Each had zero horizontal overflow, all visible controls at least 44 px, native
+ZIP events with the correct name/hash, no console or page errors, no external
+requests, no delivery-owned storage/cookies/service workers, and stable history.
+HTML/TXT native file events passed at 390 × 844. Axe reported zero WCAG A/AA
+violations. Reduced-motion and JavaScript-disabled ZIP download passed.
+
+On the superseded transport-equivalent diagnostic deployment, the authenticated
+in-app browser emitted ZIP, HTML, and TXT download events at 390 × 844 and
+remained on the delivery page. The final static-only deployment independently
+passed authenticated HTTP response and byte checks. This proves the
+server/browser event, not Android Files placement.
+
+AUTOMATED VERSUS PHYSICAL
+A. Verified: protection, authenticated 200, attachment headers, filenames,
+download events, mobile layout, and ZIP/TXT/MD/manifest byte identity.
+
+B. Not verified: a physical Android device placing the file in Files → Downloads
+and ChatGPT uploading that selected file. Do not overclaim this.
+
+FOUNDER PHYSICAL-DEVICE CHECKLIST
+1. Open the protected mobile delivery page.
+2. Sign in to Vercel if prompted.
+3. Tap “Download Complete Founder ZIP Package.”
+4. If the in-app browser does not show a download, tap “Open in Chrome.”
+5. In Chrome, tap the ZIP download again.
+6. Open Android Files.
+7. Open Downloads.
+8. Confirm:
+   GROWTH_EXPERIENCE_PHASE_1B_FOUNDER_PACKAGE.zip
+9. Return to ChatGPT.
+10. Tap the attachment button.
+11. Choose Files.
+12. Select the downloaded ZIP.
+13. Upload it into the conversation.
+
+Do not execute this checklist until the HTML mutation blocker is separately
+authorized and resolved.
+
+PRODUCTION SAFETY
+- no product Growth Center or capability-contract change;
+- no participant data, schema, Prisma, migration, runtime AI, enrollment,
+  Community, Marketplace, Identity, Organizations, billing, Stripe, tax,
+  ledger, payout, or economics;
+- no Mission Control, Agency Command, Arena, or CXOS room modification;
+- no public artifact exposure;
+- no production deployment;
+- no project environment/settings change;
+- no dependency or lockfile change;
+- final isolated Preview contains one routing config and eleven static files,
+  with no function, middleware, server runtime, or product source;
+- no commit;
+- shared dirty worktree was not deployed wholesale.
+
+REPOSITORY TRUTH
+Path: /Users/re3zy/Documents/gabriel-capital-labs-to-upload
+Branch: feat/cxos-phase3
+Baseline HEAD: a40a41c5a76028ad5cae2ff655c5bf168fb86a4a
+Phase 1B commit: NONE
+RC1 commit: NONE
+Phase 1B/RC1: local and uncommitted
+Shared worktree: DIRTY with parallel streams
+The baseline SHA does not contain Phase 1B or RC1.
+
+VALIDATION
+Sanitization, ZIP, secret/PII/path/username, static isolation, endpoint MIME,
+attachment disposition, anonymous protection, authenticated 200, mobile layout,
+focus, Axe, reduced motion, console, and no-write checks: PASS.
+Authenticated byte parity: FAIL for all six HTML files; PASS for the other four.
+Scoped ESLint: PASS.
+Typecheck: blocked only by pre-existing shared-worktree Prisma client drift in
+lib/terms.ts lines 57 and 76; no RC1 diagnostic.
+
+REQUIRED NEXT AUTHORIZATION
+Authorize either a Vercel Toolbar-off setting for this isolated delivery Preview
+or a separate protected documentation host/project, then rerun all ten byte
+checks. This is a delivery-infrastructure decision, not Phase 1C and not an
+economic authorization.
+
+FINAL
+BLOCKED — AUTHENTICATED ZIP AND TXT ATTACHMENT DOWNLOADS VERIFIED; ALL SIX HTML
+ATTACHMENTS ARE MUTATED BY VERCEL PREVIEW TOOLBAR INJECTION; FOUNDER
+PHYSICAL-DEVICE TEST NOT YET AUTHORIZED.
