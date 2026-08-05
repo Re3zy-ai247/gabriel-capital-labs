@@ -18,7 +18,9 @@ export async function POST() {
   await logAudit({
     actor: { id: admin.id, email: admin.email },
     action: "brief.digest.test",
-    summary: `Sent a test Brief digest to ${to} (${result.articles} articles)`,
+    summary: result.ok
+      ? `Sent a test Brief digest to ${to} (${result.articles} articles)`
+      : `Refused to send a test Brief digest to ${to}: ${result.error?.split(".")[0]}`,
     targetType: "brief",
     targetId: "digest-test",
   });

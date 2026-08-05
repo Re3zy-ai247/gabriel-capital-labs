@@ -20,6 +20,7 @@ const REQUIRED = [
   "invoice-shape.runtime.test.ts",
   "stripe-webhook-claim.runtime.test.ts",
   "stripe-webhook-reorder.runtime.test.ts",
+  "terms-acceptance.runtime.test.ts",
   "unknown-price-failclosed.runtime.test.ts",
 ];
 

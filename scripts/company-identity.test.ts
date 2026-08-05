@@ -4,7 +4,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { BRAND } from "../lib/brand";
-import { renderDigestEmail } from "../lib/briefDigest";
+import { renderDigestEmail, sendWeeklyDigest } from "../lib/briefDigest";
 import {
   COMPANY_DISPLAY_NAME,
   COMPANY_LEGAL_NAME,
@@ -63,6 +63,18 @@ check("digest still fails closed if canonical postal identity is unavailable", d
 check("digest send stays Founder-gated behind BRIEF_DIGEST_ENABLED", digest.includes("BRIEF_DIGEST_ENABLED"));
 check("digest keeps the public display byline", digest.includes("CreditVector by Gabriel Capital Labs"));
 
+// tsx runs this script under CommonJS output here (no "type": "module" in
+// package.json), where top-level await is not supported — wrap in a promise
+// chain instead and defer the final tally to its `.then()` so this check's
+// pass/fail is counted before the summary line prints.
+delete process.env.BRIEF_DIGEST_ENABLED;
+const digestGate = sendWeeklyDigest().then((gateResult) => {
+  check(
+    "digest send refuses with BRIEF_DIGEST_ENABLED unset (behavioral)",
+    gateResult.ok === false && gateResult.sent === 0,
+  );
+});
+
 const renderedDigest = renderDigestEmail(
   [{ slug: "identity-check", title: "Identity check", socialCaption: null, summary: "Static test." }],
   "https://www.creditvector.app/unsubscribe",
@@ -100,5 +112,7 @@ check(
   streetSources.length === 1 && streetSources[0].endsWith("/lib/companyIdentity.server.ts"),
 );
 
-console.log(`\ncompany-identity.test.ts: ${pass} passed, ${fail} failed`);
-if (fail > 0) process.exit(1);
+digestGate.then(() => {
+  console.log(`\ncompany-identity.test.ts: ${pass} passed, ${fail} failed`);
+  if (fail > 0) process.exit(1);
+});
