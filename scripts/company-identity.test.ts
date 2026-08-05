@@ -60,6 +60,7 @@ check("digest renders the legal multiline block", digest.includes("COMPANY_POSTA
 check("digest renders the legal inline block", digest.includes("escapeHtml(COMPANY_POSTAL_ADDRESS_INLINE)"));
 check("digest no longer reads a competing postal env value", !digest.includes("process.env.COMPANY_POSTAL_ADDRESS"));
 check("digest still fails closed if canonical postal identity is unavailable", digest.includes("!COMPANY_POSTAL_ADDRESS.trim() || !COMPANY_POSTAL_ADDRESS_INLINE.trim()"));
+check("digest send stays Founder-gated behind BRIEF_DIGEST_ENABLED", digest.includes("BRIEF_DIGEST_ENABLED"));
 check("digest keeps the public display byline", digest.includes("CreditVector by Gabriel Capital Labs"));
 
 const renderedDigest = renderDigestEmail(

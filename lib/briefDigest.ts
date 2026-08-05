@@ -134,6 +134,15 @@ export interface DigestResult {
 // postal footer is sourced from the canonical server-only company identity. Skips
 // (no send) when nothing was published in the last 7 days.
 export async function sendWeeklyDigest(opts: { testTo?: string } = {}): Promise<DigestResult> {
+  // Founder gate (D3, 2026-08-05, NOT-YET): digest send stays dormant until explicitly enabled.
+  if (process.env.BRIEF_DIGEST_ENABLED !== "true") {
+    return {
+      ok: false,
+      sent: 0,
+      articles: 0,
+      error: "Weekly digest disabled: BRIEF_DIGEST_ENABLED is not set. Founder authorization pending (D3 NOT-YET, 2026-08-05) — content + compliance review required before enablement.",
+    };
+  }
   if (!COMPANY_POSTAL_ADDRESS.trim() || !COMPANY_POSTAL_ADDRESS_INLINE.trim()) {
     return {
       ok: false,
