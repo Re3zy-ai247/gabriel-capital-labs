@@ -71,7 +71,13 @@ delete process.env.BRIEF_DIGEST_ENABLED;
 const digestGate = sendWeeklyDigest().then((gateResult) => {
   check(
     "digest send refuses with BRIEF_DIGEST_ENABLED unset (behavioral)",
-    gateResult.ok === false && gateResult.sent === 0,
+    gateResult.ok === false &&
+      gateResult.sent === 0 &&
+      // Discriminator: the refusal must be THIS gate's, not a downstream one
+      // (e.g. missing RESEND_API_KEY in CI) — without it, inverting or
+      // relocating the gate still passes on any refusal (Opus negative-control
+      // finding, 2026-08-05).
+      (gateResult.error ?? "").includes("BRIEF_DIGEST_ENABLED"),
   );
 });
 
