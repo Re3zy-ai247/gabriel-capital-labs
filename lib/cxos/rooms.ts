@@ -12,9 +12,17 @@
 // not new room graph: it still does not inherit phase3's WIDER registry
 // (hero, academy, kai, marketplace, operator-network, dashboard, enterprise)
 // or expose dead links to rooms this candidate excludes.
-
+//
+// Phase 1A-CX2 (C): "founder-walkthrough" is added as the FIRST entry per
+// the Founder's ask ("the Founder should not need to guess hidden URLs …
+// open one URL and follow the experience"). It is a director/orchestrator
+// over the six rooms below — no new room interior — so it is additive: the
+// six existing entries keep their original relative order, just preceded by
+// the one entry point. scripts/cxos-review.test.ts's registry checks are
+// updated for the new 7-room reality in the same pass that added this entry.
 export interface CxosRoom {
   key:
+    | "founder-walkthrough"
     | "agency-command"
     | "mission-control"
     | "threshold"
@@ -34,6 +42,14 @@ export interface CxosRoom {
 }
 
 export const CXOS_ROOMS: readonly CxosRoom[] = [
+  {
+    key: "founder-walkthrough",
+    name: "Founder Walkthrough",
+    href: "/review/cxos",
+    status: "PROTOTYPE",
+    phase: "Phase 1A-CX2 (C)",
+    line: "One coherent, orchestrated tour across every approved cinematic surface below — Threshold, Mission Boot, Mission Control, the Passage, Arena, and Agency Headquarters — for both the returning-operator and new-visitor flows. The entry point: open this one URL.",
+  },
   {
     key: "agency-command",
     name: "Agency Headquarters",

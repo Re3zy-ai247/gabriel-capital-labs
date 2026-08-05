@@ -111,13 +111,20 @@ check("the review stage LOOPS instead of finishing (Escape exits)",
   // those type-level literals as if they were registered rooms.
   const roomsArray = rooms.slice(rooms.indexOf("export const CXOS_ROOMS"));
   const keys = [...roomsArray.matchAll(/key: "([a-z-]+)"/g)].map((m) => m[1]);
-  const MANDATED = ["agency-command", "mission-control", "threshold", "landing-journey", "arena", "passage"];
-  check("all six mandated rooms are registered (RC2's original two + the four recovered from phase3) and nothing wider is claimed",
+  const MANDATED = ["founder-walkthrough", "agency-command", "mission-control", "threshold", "landing-journey", "arena", "passage"];
+  check("all seven mandated rooms are registered (the Phase 1A-CX2 (C) walkthrough entry + RC2's original two + the four recovered from phase3) and nothing wider is claimed",
     MANDATED.every((k) => keys.includes(k)) && keys.length === MANDATED.length);
-  check("RC2's original two are still listed FIRST, in their original order, untouched",
-    keys[0] === "agency-command" && keys[1] === "mission-control");
+  check("the Founder Walkthrough leads the registry, then RC2's original two follow in their original order, untouched",
+    keys[0] === "founder-walkthrough" && keys[1] === "agency-command" && keys[2] === "mission-control");
   check("no PLANNED room is registered — every listed room actually exists and renders, so there is nothing to fake a live entry for",
     !/status: "PLANNED"/.test(roomsArray));
+  const founderWalkthrough = rooms.match(/\{\s*key: "founder-walkthrough"[\s\S]*?\n  \},/)?.[0] ?? "";
+  check("the Founder Walkthrough is an honest Phase 1A-CX2 (C) entry point at its own route",
+    /name: "Founder Walkthrough"/.test(founderWalkthrough) &&
+    /href: "\/review\/cxos"/.test(founderWalkthrough) &&
+    /status: "PROTOTYPE"/.test(founderWalkthrough) &&
+    /phase: "Phase 1A-CX2 \(C\)"/.test(founderWalkthrough) &&
+    /orchestrated tour/.test(founderWalkthrough));
   const agencyCommand = rooms.match(/\{\s*key: "agency-command"[\s\S]*?\n  \},/)?.[0] ?? "";
   check("Agency Command is an honest Phase 6.2 review prototype at its isolated route (RC2's own copy)",
     /name: "Agency Headquarters"/.test(agencyCommand) &&
@@ -147,8 +154,8 @@ check("the review stage LOOPS instead of finishing (Escape exits)",
   }
   check("Academy is still not registered at all (recovery added phase3's SHIPPED routes only — its unbuilt/PLANNED rooms are still excluded; no invented Phase 6 or 7 claim is possible for a room that doesn't exist)",
     !/key: "academy"/.test(rooms));
-  check("exactly six PROTOTYPE rooms today (Agency Headquarters · Mission Control · The Threshold · The Landing Journey · Arena · The Passage)",
-    (roomsArray.match(/status: "PROTOTYPE"/g) ?? []).length === 6);
+  check("exactly seven PROTOTYPE rooms today (Founder Walkthrough · Agency Headquarters · Mission Control · The Threshold · The Landing Journey · Arena · The Passage)",
+    (roomsArray.match(/status: "PROTOTYPE"/g) ?? []).length === 7);
 }
 
 console.log(`\ncxos-review.test.ts: ${pass} passed, ${fail} failed`);

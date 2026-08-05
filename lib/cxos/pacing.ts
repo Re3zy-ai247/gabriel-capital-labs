@@ -118,3 +118,21 @@ export const DEPARTURE_FALLBACK_MS = 1400;
  * part of the Founder's "rooms" complaint.
  */
 export { TRANSITION_TIMEOUT_MS as MARKETING_TRANSITION_FAILOPEN_MS } from "./transitions/registry";
+
+/**
+ * Phase 1A-CX2 (C) — the Founder Walkthrough's OWN step-to-step hand-off:
+ * the crossfade the orchestrator shell (app/review/cxos/stage.tsx) plays
+ * between two composed rooms whenever it advances/rewinds/replays a step.
+ * Genuinely missing before this pass — no existing token covers "the
+ * orchestrator's own hop," as distinct from a room's own entry ceremony
+ * (Threshold, MissionEntry, ArenaEntry, Agency Command's arrival gate, The
+ * Passage's own call/clearance/passage sequence all keep playing exactly as
+ * they already do; this number only covers the hand-off around them, never
+ * a substitute for one). Deliberately the SAME number lib/cxos/capability.ts
+ * already documents as tier C's own "minimal crossfade" floor (see CxTier's
+ * doc comment) — this borrows that already-ratified value rather than
+ * inventing a new one. Applies only outside tier D (reduced motion / the
+ * cinematic-off toggle) — the walkthrough shell adds no inline style at all
+ * under tier D, so nothing new ever animates under PRM.
+ */
+export const WALKTHROUGH_STEP_CROSSFADE_MS = 280;

@@ -170,17 +170,17 @@ const roomKeys = [...rooms.matchAll(/^ {4}key: "([a-z-]+)"/gm)].map(
 );
 const roomHrefs = [...rooms.matchAll(/href: "([^"]+)"/g)].map((match) => match[1]);
 check(
-  // Phase 1A-CX recovery: the registry now carries RC2's two rooms first,
-  // then the four recovered phase3 review destinations — nothing wider than
-  // what actually exists as a route.
-  "isolated registry contains exactly the six recovered review rooms",
+  // Phase 1A-CX2: the Founder Walkthrough entry leads the registry, ahead of
+  // RC2's two rooms and the four recovered phase3 destinations — nothing
+  // wider than what actually exists as a route.
+  "isolated registry contains exactly the seven review rooms, walkthrough first",
   JSON.stringify(roomKeys) ===
-    JSON.stringify(["agency-command", "mission-control", "threshold", "landing-journey", "arena", "passage"]),
+    JSON.stringify(["founder-walkthrough", "agency-command", "mission-control", "threshold", "landing-journey", "arena", "passage"]),
 );
 check(
   "isolated registry contains only real local review destinations",
   JSON.stringify(roomHrefs) ===
-    JSON.stringify(["/review/agency-command", "/review/mission-control", "/review/threshold", "/review/landing", "/review/arena", "/review/mission-control-to-arena"]) &&
+    JSON.stringify(["/review/cxos", "/review/agency-command", "/review/mission-control", "/review/threshold", "/review/landing", "/review/arena", "/review/mission-control-to-arena"]) &&
     roomHrefs.every((href) =>
       existsSync(join(root, "app", href.replace(/^\//, ""), "page.tsx")),
     ),
