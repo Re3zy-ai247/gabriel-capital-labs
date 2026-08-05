@@ -1431,5 +1431,11 @@ export function useCxosRoomRuntime<DistrictId extends string>({
     completeDistrictTransition,
     beginDeparture,
     completeDeparture,
+    // Exposed so a room can wire its own skip/advance affordance (e.g. an
+    // Escape handler) onto a lengthened departure ceremony — see
+    // agency-command/stage.tsx's DEPARTURE_DWELL_MS skip handler. Already
+    // idempotent: a no-op unless beginDeparture actually committed one
+    // (departureCommittedRef guard above).
+    commitDeparture,
   };
 }

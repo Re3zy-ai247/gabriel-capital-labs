@@ -92,12 +92,16 @@ export function PassageTray({
   const pillRef = useRef<HTMLButtonElement>(null);
   const cinematicRef = useRef<HTMLButtonElement>(null);
   const previousPromptRef = useRef(projectionPrompt);
+  // Label truth (same idiom as agency-command/stage.tsx's projectionBadge,
+  // Phase 1A-CX2 A): now that Cinematic can be the default (Founder
+  // Decision 2026-08-04), this pill must not keep claiming CINEMATIC once
+  // tier has actually resolved static — reduced motion, Data Saver, low
+  // memory, or a failed capability read. "AUTO" and "STATIC" are already
+  // truthful as-is: neither claims a specific tier is active.
   const projectionLabel =
-    projection === "auto"
-      ? "AUTO"
-      : projection === "cinematic"
-        ? "CINEMATIC"
-        : "STATIC";
+    projection === "cinematic" && (tier === "C" || tier === "D")
+      ? "STATIC"
+      : projection.toUpperCase();
   // Closing always returns focus to the pill — never to body, from which the
   // next Escape would silently settle the journey (review finding).
   const close = useCallback(() => {

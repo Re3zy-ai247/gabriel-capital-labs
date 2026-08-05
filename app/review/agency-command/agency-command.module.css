@@ -119,19 +119,24 @@
   transform: scaleX(0.16);
 }
 
+/* The departure ceremony's dwell — lib/cxos/pacing.ts's DEPARTURE_DWELL_MS,
+   mirrored in app/globals.css as --cxos-departure-dwell-ms. All five
+   .departureHandoff-family animations below (this one plus its span/
+   strong/i children, and the ::before/::after pair further down this
+   file) fire together off the same "true" state and must stay in step. */
 .room[data-departing="true"] .departureHandoff {
   visibility: visible;
   background: rgba(3, 7, 17, 0.72);
-  animation: agencyReturnHandoff 460ms cubic-bezier(0.2, 0.74, 0.2, 1) both;
+  animation: agencyReturnHandoff var(--cxos-departure-dwell-ms, 900ms) cubic-bezier(0.2, 0.74, 0.2, 1) both;
 }
 
 .room[data-departing="true"] .departureHandoff span,
 .room[data-departing="true"] .departureHandoff strong {
-  animation: agencyReturnLabel 460ms cubic-bezier(0.2, 0.74, 0.2, 1) both;
+  animation: agencyReturnLabel var(--cxos-departure-dwell-ms, 900ms) cubic-bezier(0.2, 0.74, 0.2, 1) both;
 }
 
 .room[data-departing="true"] .departureHandoff i {
-  animation: agencyReturnAxis 460ms cubic-bezier(0.2, 0.74, 0.2, 1) both;
+  animation: agencyReturnAxis var(--cxos-departure-dwell-ms, 900ms) cubic-bezier(0.2, 0.74, 0.2, 1) both;
 }
 
 .room[data-departing="true"] .arrival,
@@ -166,7 +171,11 @@
 }
 
 .room[data-arrival-settled="false"] .arrivalClock {
-  animation: agencyArrivalClock var(--cxos-arrival-duration, 1500ms) linear both;
+  /* Fallback mirrors lib/cxos/pacing.ts's TRANSFER_TRAVEL_MS.A — the
+     inline --cxos-arrival-duration custom property (set per resolved tier
+     by useCxosRoomRuntime) always wins once React hydrates; this is the
+     pure-CSS default for the instant before that. */
+  animation: agencyArrivalClock var(--cxos-arrival-duration, 2200ms) linear both;
 }
 
 .room[data-arrival-settled="false"] .identity {
@@ -2435,7 +2444,8 @@
 }
 
 .room[data-tier="B"][data-arrival-settled="false"] .arrivalClock {
-  animation-duration: var(--cxos-arrival-duration, 700ms);
+  /* Fallback mirrors lib/cxos/pacing.ts's TRANSFER_TRAVEL_MS.B. */
+  animation-duration: var(--cxos-arrival-duration, 1000ms);
 }
 
 .room[data-tier="B"][data-arrival-settled="false"] .identity,
@@ -3632,7 +3642,9 @@
   animation: none;
 }
 
-/* Tier B preserves the seven disclosed beats inside the 700ms arrival budget. */
+/* Tier B preserves the seven disclosed beats inside the 1000ms arrival
+ * budget (the last beat, .arrivalActions, still finishes at 680ms — now
+ * with 320ms of dwell after it instead of 20ms). */
 .room[data-tier="B"][data-arrival-settled="false"] .arrivalOrigin {
   animation-duration: 180ms;
   animation-delay: 0ms;
@@ -5295,11 +5307,11 @@
 }
 
 .room[data-departing="true"] .departureHandoff::before {
-  animation: agencyExitArchitecture 460ms cubic-bezier(0.2, 0.74, 0.2, 1) both;
+  animation: agencyExitArchitecture var(--cxos-departure-dwell-ms, 900ms) cubic-bezier(0.2, 0.74, 0.2, 1) both;
 }
 
 .room[data-departing="true"] .departureHandoff::after {
-  animation: agencyExitThreshold 460ms cubic-bezier(0.2, 0.74, 0.2, 1) both;
+  animation: agencyExitThreshold var(--cxos-departure-dwell-ms, 900ms) cubic-bezier(0.2, 0.74, 0.2, 1) both;
 }
 
 .room[data-departing="true"] .arrival {
@@ -7590,9 +7602,12 @@
     var(--agency-ink);
   opacity: 0;
   visibility: hidden;
+  /* The "settle" half of facility-transfer pacing (lib/cxos/pacing.ts's
+     ARRIVAL_SETTLE_MS, mirrored in app/globals.css as
+     --cxos-arrival-settle-ms). Was 220ms — an abrupt cut. */
   transition:
-    opacity 220ms var(--agency-chamber-ease),
-    visibility 0s linear 220ms;
+    opacity var(--cxos-arrival-settle-ms, 760ms) var(--agency-chamber-ease),
+    visibility 0s linear var(--cxos-arrival-settle-ms, 760ms);
 }
 
 .arrivalGate[data-active="true"] {
@@ -7624,7 +7639,9 @@
   min-width: 0;
   opacity: 1;
   visibility: visible;
-  transition: opacity 220ms var(--agency-chamber-ease);
+  /* Mirrors .arrivalGate's transition above — the same crossfade, timed
+     together. See lib/cxos/pacing.ts's ARRIVAL_SETTLE_MS. */
+  transition: opacity var(--cxos-arrival-settle-ms, 760ms) var(--agency-chamber-ease);
 }
 
 .facilityFrame[data-arrival-active="true"] {

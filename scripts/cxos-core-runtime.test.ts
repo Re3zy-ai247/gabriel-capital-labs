@@ -682,6 +682,16 @@ check(
     /window\.location\.assign\(definition\.departure\.href\)/.test(adapter),
 );
 check(
+  // Phase 1A-CX2 (B): commitDeparture is now part of the adapter's public
+  // return, so a room can wire its own skip/advance affordance onto a
+  // lengthened departure ceremony (agency-command/stage.tsx's Escape
+  // handler) without reaching into the hook's internals. It stays the same
+  // one-shot, idempotent function — this only widens who may call it.
+  "commitDeparture is exposed for a room's own departure skip affordance",
+  /const commitDeparture = useCallback\(/.test(adapter) &&
+    /return \{[\s\S]{600,750}commitDeparture,[\s\S]{0,40}\};/.test(adapterCode),
+);
+check(
   "runtime exposes only bounded semantic projection attributes",
   [
     "data-cxos-runtime",

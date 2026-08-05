@@ -79,11 +79,13 @@ const fixtures = read("app/review/agency-command/fixtures.ts");
 const css = read("app/review/agency-command/agency-command.module.css");
 const runtimePolicy = read("lib/cxos/runtime.ts");
 const runtimeAdapter = read("components/cxos/runtime/useCxosRoomRuntime.ts");
+const pacing = read("lib/cxos/pacing.ts");
 const pageCode = codeOf(page);
 const stageCode = codeOf(stage);
 const fixtureCode = codeOf(fixtures);
 const runtimePolicyCode = codeOf(runtimePolicy);
 const runtimeAdapterCode = codeOf(runtimeAdapter);
+const pacingCode = codeOf(pacing);
 const presentationCode = `${stageCode}\n${fixtureCode}\n${environmentDefinition}`;
 const fixturesSha256 = createHash("sha256").update(fixtures).digest("hex");
 
@@ -147,12 +149,17 @@ const allowedStageImports = new Set([
   "react",
   "@/components/cxos/runtime/useCxosRoomRuntime",
   "@/lib/cxos/runtime",
+  // Phase 1A-CX2 (B): the pacing seam. Same kind of import as
+  // @/lib/cxos/runtime above — pure presentation-adjacent configuration
+  // (named duration tokens), no product logic, no DB, no auth, no effect
+  // authority. See lib/cxos/pacing.ts.
+  "@/lib/cxos/pacing",
   "./environment",
   "./fixtures",
   "./agency-command.module.css",
 ]);
 check(
-  "stage imports only React, the Core Runtime seam, local fixtures, and CSS",
+  "stage imports only React, the Core Runtime seam, the pacing seam, local fixtures, and CSS",
   stageImports.length === allowedStageImports.size &&
     stageImports.every((source) => allowedStageImports.has(source)) &&
     [...allowedStageImports].every((source) => stageImports.includes(source)),
@@ -477,7 +484,7 @@ check(
     JSON.stringify(declaredMotionChannels) ===
       JSON.stringify(["room-breath", "operational-sweep", "client-flow"]) &&
     /arrivalBeats: AGENCY_ARRIVAL_BEATS/.test(stageCode) &&
-    /arrivalDurationMs: \{ A: 1500, B: 700 \}/.test(stageCode) &&
+    /arrivalDurationMs: TRANSFER_TRAVEL_MS/.test(stageCode) &&
     /motionChannels: AGENCY_MOTION_CHANNELS/.test(stageCode) &&
     /beatOrder=\{runtime\.arrivalBeats\}/.test(stage) &&
     // RC2 WP7: the runtime contract's motionChannels field stays bound
@@ -493,8 +500,23 @@ check(
     /"--cxos-arrival-duration": `\$\{runtime\.arrivalDurationMs\}ms`/.test(
       stageCode,
     ) &&
-    /agencyArrivalClock var\(--cxos-arrival-duration, 1500ms\)/.test(css) &&
-    /animation-duration: var\(--cxos-arrival-duration, 700ms\)/.test(css),
+    /agencyArrivalClock var\(--cxos-arrival-duration, 2200ms\)/.test(css) &&
+    /animation-duration: var\(--cxos-arrival-duration, 1000ms\)/.test(css),
+);
+check(
+  // Phase 1A-CX2 (B, Founder Decision 2026-08-04 pacing law): the facility-
+  // transfer arrival gate's dwell is now centralized in lib/cxos/pacing.ts
+  // (TRANSFER_TRAVEL_MS) instead of a literal inline in this file — this is
+  // the guard that the room actually imports and uses that single source
+  // rather than re-introducing its own magic numbers alongside it.
+  "arrival dwell is imported from the one pacing source, not a local literal",
+  /import\s*\{[\s\S]{0,80}TRANSFER_TRAVEL_MS[\s\S]{0,80}\}\s*from\s*["']@\/lib\/cxos\/pacing["']/.test(
+    stageCode,
+  ) &&
+    /export const TRANSFER_TRAVEL_MS = \{ A: 2200, B: 1000 \} as const;/.test(
+      pacingCode,
+    ) &&
+    !/arrivalDurationMs: \{ A: \d+, B: \d+ \}/.test(stageCode),
 );
 check(
   "facility pulse names the six purpose-bound operating channels",
@@ -1104,10 +1126,31 @@ check(
     /window\.requestAnimationFrame\(release\);[\s\S]{0,80}window\.setTimeout\(release, 0\)/.test(
       runtimeAdapterCode,
     ) &&
-    /fallbackMs:\s*800/.test(stageCode) &&
+    /fallbackMs:\s*DEPARTURE_FALLBACK_MS/.test(stageCode) &&
     !/\b(?:setInterval|requestIdleCallback)\b/.test(
       `${presentationCode}\n${runtimeAdapterCode}`,
     ),
+);
+check(
+  // Phase 1A-CX2 (B): the departure fallback ceiling is centralized in
+  // lib/cxos/pacing.ts (DEPARTURE_FALLBACK_MS) rather than a literal, and
+  // it must stay a genuine safety margin ABOVE DEPARTURE_DWELL_MS (the CSS
+  // animation onAnimationEnd normally wins the race first) — never below
+  // it, or the fallback could preempt a healthy departure.
+  "the departure fallback is imported from pacing and stays above the CSS dwell it backstops",
+  /import\s*\{[\s\S]{0,80}DEPARTURE_FALLBACK_MS[\s\S]{0,80}\}\s*from\s*["']@\/lib\/cxos\/pacing["']/.test(
+    stageCode,
+  ) &&
+    !/fallbackMs:\s*\d+/.test(stageCode) &&
+    (() => {
+      const fallback = Number(
+        (pacingCode.match(/export const DEPARTURE_FALLBACK_MS = (\d+);/) ?? [])[1],
+      );
+      const dwell = Number(
+        (pacingCode.match(/export const DEPARTURE_DWELL_MS = (\d+);/) ?? [])[1],
+      );
+      return fallback > dwell && fallback <= 1800 && dwell > 0;
+    })(),
 );
 
 const anchorTags = [...stage.matchAll(/<a\b[\s\S]*?>/g)].map((match) => match[0]);
@@ -1422,7 +1465,61 @@ check(
     /data-departing=\{departing \? "true" : "false"\}/.test(stage) &&
     /Kai confirms the review-route handoff to Mission Control/.test(stage) &&
     /Kai confirms Mission Control handoff · route session clears/.test(stage) &&
-    /agencyReturnHandoff 460ms/.test(css),
+    /agencyReturnHandoff var\(--cxos-departure-dwell-ms, 900ms\)/.test(css),
+);
+check(
+  // Phase 1A-CX2 (B): all five departure-ceremony animations share one
+  // pacing token (lib/cxos/pacing.ts's DEPARTURE_DWELL_MS via
+  // --cxos-departure-dwell-ms) so they can never drift out of step with
+  // each other again.
+  "every departure-ceremony animation shares the one dwell token",
+  [
+    "agencyReturnHandoff",
+    "agencyReturnLabel",
+    "agencyReturnAxis",
+    "agencyExitArchitecture",
+    "agencyExitThreshold",
+  ].every((name) =>
+    new RegExp(
+      `${name} var\\(--cxos-departure-dwell-ms, 900ms\\)`,
+    ).test(css),
+  ) && !/460ms/.test(css),
+);
+check(
+  // Phase 1A-CX2 (B): "nothing becomes non-interruptible" — the departure
+  // ceremony was lengthened (DEPARTURE_DWELL_MS), so it must keep a skip
+  // affordance exactly like every other lengthened surface. Escape now
+  // short-circuits straight to the same commitDeparture the animation's
+  // own onAnimationEnd would eventually call.
+  //
+  // Gated on a REF (departingRef), not `departing` state directly, and the
+  // listener is registered unconditionally at mount (deps: [commitDeparture]
+  // only) — a state-keyed effect would only attach the listener after React
+  // commits the re-render beginDeparture's setDeparting(true) triggers,
+  // leaving a real window right after the click where a fast Escape reaches
+  // no departure-aware listener at all (live-verified: a synthetic Escape
+  // fired ~40ms after the click intermittently rode the ceremony to its
+  // natural 900ms end instead of skipping, before this fix). departingRef
+  // is set SYNCHRONOUSLY in beginMissionControlReturn, the same tick as the
+  // hook's own departureCommittedRef, closing that window entirely; a
+  // separate effect keeps it eventually consistent with `departing` state
+  // for the reset/bfcache direction.
+  "the lengthened departure ceremony is Escape-skippable without a click-to-listener race",
+  /const \{[\s\S]{0,600}commitDeparture,?\s*\n?\s*\} = runtime;/.test(
+    stageCode,
+  ) &&
+    /const departingRef = useRef\(false\);/.test(stageCode) &&
+    /if \(beginDeparture\(event\)\) \{[\s\S]{0,180}departingRef\.current = true;/.test(
+      stageCode,
+    ) &&
+    /departingRef\.current = departing;/.test(stageCode) &&
+    /const skipDepartureOnEscape = \(event: KeyboardEvent\) => \{[\s\S]{0,140}!departingRef\.current\) return;[\s\S]{0,220}commitDeparture\(\);/.test(
+      stageCode,
+    ) &&
+    /window\.addEventListener\("keydown", skipDepartureOnEscape, true\)/.test(
+      stageCode,
+    ) &&
+    /\}, \[commitDeparture\]\);/.test(stageCode),
 );
 check(
   "the departure handoff owns the exit layer above the disabled Director",

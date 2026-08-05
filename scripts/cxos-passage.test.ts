@@ -317,7 +317,7 @@ check("reduced motion remains static unless this review root has explicit Cinema
   /animation: none !important;\s*\n\s*display: none !important;/.test(css) &&
   /data-cxp-cinematic=\{[\s\S]{0,120}projection === "cinematic" && cinematic/.test(journey) &&
   !/html\[data-cxp-cinematic\]/.test(css));
-check("projection state begins Auto, stores no consent, and never autoplays on confirmation",
+check("projection state's markup default is Auto, stores no consent, and never autoplays on confirmation",
   /useState<PassageProjection>\("auto"\)/.test(journey) &&
   !/sessionStorage|document\.cookie|sendBeacon|XMLHttpRequest/.test(stripComments(bundle)) &&
   !/fetch\(/.test(bundle) &&
@@ -326,6 +326,42 @@ check("projection state begins Auto, stores no consent, and never autoplays on c
     const end = journey.indexOf("const cancelProjectionPrompt", start);
     const confirm = journey.slice(start, end);
     return start !== -1 && end !== -1 && !/beginJourney/.test(confirm);
+  })());
+// Phase 1A-CX2 (B, inherited from A's Founder Decision 2026-08-04): Cinematic
+// is the default posture. Passage cannot take A's literal
+// useState("cinematic") shortcut — resolvePassageProjection's "cinematic"
+// branch never reads browserReduced (unlike lib/cxos/runtime.ts's resolver,
+// which takes a separate reducedMotionOverride input), so a bare literal
+// default would skip requestProjection's own consent gate and silently
+// resolve full motion for a reduced-motion visitor on first paint. The fix
+// promotes "auto" -> "cinematic" once capabilities are read on mount, but
+// ONLY when the browser does not already request reduced motion — the one
+// gate that actually matters is preserved unconditionally.
+check("Cinematic is promoted on mount, but never over an already-active reduced-motion preference",
+  /if \(!latest\.browserReduced\)[\s\S]{0,120}projectionRef\.current = "cinematic";[\s\S]{0,60}setProjection\("cinematic"\);/.test(
+    stripComments(journey),
+  ) &&
+  // The promotion lives in the SAME effect that reads capabilities (not a
+  // separate one that could race a later render), and capabilities are read
+  // fresh (not stale/default) at that point.
+  /const latest = readPassageCapabilities\(\);[\s\S]{0,60}setCapabilities\(latest\);[\s\S]{0,260}if \(!latest\.browserReduced\)/.test(
+    stripComments(journey),
+  ) &&
+  // resolvePassageProjection's own "cinematic" branch is UNCHANGED — it
+  // still never reads browserReduced, which is exactly why the gate above
+  // has to live at the call site instead.
+  (() => {
+    const p = stripComments(projection);
+    const start = p.indexOf('if (projection === "cinematic") {');
+    const end = p.indexOf(
+      'reason: "Full desktop or tablet review cinema"',
+      start,
+    );
+    return (
+      start !== -1 &&
+      end !== -1 &&
+      !/browserReduced/.test(p.slice(start, end + 80))
+    );
   })());
 check("reduced Cinematic is pending until explicit confirmation",
   /if \(latest\.browserReduced\) \{\s*\n\s*setProjectionPrompt\("reduced"\)/.test(journey) &&
@@ -346,6 +382,17 @@ check("projection buttons are 44 px, non-color-only, and locked by raw cinematic
   /\{active && <span aria-hidden>▸ <\/span>\}/.test(tray) &&
   /capabilities === null \|\| CINEMATIC\.has\(phase\)/.test(journey) &&
   /disabled=\{\s*\n\s*projectionLocked \|\| projectionPrompt !== null/.test(tray));
+// Phase 1A-CX2 (B): same label-truth idiom as agency-command/stage.tsx's
+// projectionBadge (Phase 1A-CX2 A) — now that Cinematic can be promoted on
+// mount, the Director pill must not keep reading CINEMATIC once tier has
+// actually resolved static (reduced motion, Data Saver, low memory, or a
+// failed capability read).
+check("the Director pill reads the resolved truth, not the raw preference (never claims Cinematic once tier has gone static)",
+  /const projectionLabel =\s*\n\s*projection === "cinematic" && \(tier === "C" \|\| tier === "D"\)\s*\n\s*\? "STATIC"\s*\n\s*: projection\.toUpperCase\(\);/.test(
+    stripComments(tray),
+  ) &&
+  !/projection === "cinematic"\s*\n\s*\? "CINEMATIC"/.test(stripComments(tray)) &&
+  /DIRECTOR · \{projectionLabel\}/.test(tray));
 check("an OS reduced-motion flip revokes the scoped override and requires fresh confirmation",
   /mainRef\.current\?\.removeAttribute\("data-cxp-cinematic"\)/.test(journey) &&
   /projectionRef\.current = "auto"/.test(journey) &&

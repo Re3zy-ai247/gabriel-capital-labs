@@ -144,7 +144,30 @@ export function PassageJourney() {
 
   // ── capability snapshot + pre-paint document stamp ──────────────────
   useEffect(() => {
-    setCapabilities(readPassageCapabilities());
+    const latest = readPassageCapabilities();
+    setCapabilities(latest);
+    // Founder Decision (2026-08-04, inherited from Phase 1A-CX2 A's Agency
+    // Command fix): Cinematic is the default posture. Applied here as an
+    // UPGRADE-ON-MOUNT rather than a literal useState("cinematic") default,
+    // because resolvePassageProjection's shape differs from lib/cxos/
+    // runtime.ts's resolver in a way that matters: the Core Runtime
+    // resolver takes a separate reducedMotionOverride input, so a bare
+    // "cinematic" default is safe there (reduced motion still wins,
+    // core-runtime.test.ts pins it). resolvePassageProjection has no such
+    // input — its "cinematic" branch never reads browserReduced at all,
+    // because "cinematic" is only ever meant to be REACHED through
+    // requestProjection's own consent gate (the "reduced" confirmation
+    // prompt). A literal useState("cinematic") initializer would skip that
+    // gate on first paint and silently resolve full motion for a visitor
+    // whose browser already requests reduced motion. Promoting here
+    // instead — only once capabilities confirm motion is unconstrained —
+    // keeps that one consent path authoritative: a reduced-motion visitor's
+    // default stays Auto (still fully able to request Cinematic and get
+    // the same confirmation prompt a click would have shown).
+    if (!latest.browserReduced) {
+      projectionRef.current = "cinematic";
+      setProjection("cinematic");
+    }
     return () => {
       document.documentElement.removeAttribute("data-cxpassage");
       timers.current.forEach((id) => window.clearTimeout(id));

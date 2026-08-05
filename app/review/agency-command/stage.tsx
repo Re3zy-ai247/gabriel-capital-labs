@@ -17,6 +17,10 @@ import type {
   CxosKaiResponseState,
   CxosRoomRuntimeDefinition,
 } from "@/lib/cxos/runtime";
+import {
+  DEPARTURE_FALLBACK_MS,
+  TRANSFER_TRAVEL_MS,
+} from "@/lib/cxos/pacing";
 import styles from "./agency-command.module.css";
 import { AGENCY_LIVING_ENVIRONMENT } from "./environment";
 import {
@@ -139,16 +143,28 @@ const AGENCY_CORE_RUNTIME = {
   districts: AGENCY_DISTRICTS.map((district) => district.id),
   initialDistrict: "central-command",
   districtMode: "chamber",
+  // districtTransitionMs (chamber-to-chamber, INSIDE this one room) is
+  // deliberately untouched by the Phase 1A-CX2 (B) pacing pass: the
+  // Founder's complaint was room-to-room speed, this is intra-room panel
+  // navigation (the task's own "ignore micro-interactions" carve-out), and
+  // lib/cxos/runtime.ts's validator hard-caps it at 900ms regardless
+  // (validateCxosRoomRuntimeUnsafe's district-transition-duration check) —
+  // lengthening it would be an architecture change, not a pacing retune.
   districtTransitionMs: { A: 620, B: 460 },
   arrivalBeats: AGENCY_ARRIVAL_BEATS,
-  arrivalDurationMs: { A: 1500, B: 700 },
+  // The facility-transfer "travel" dwell — see lib/cxos/pacing.ts's
+  // TRANSFER_TRAVEL_MS doc comment for the reading-time math.
+  arrivalDurationMs: TRANSFER_TRAVEL_MS,
   motionChannels: AGENCY_MOTION_CHANNELS,
   rootMotionChannels: AGENCY_LIVING_MOTION_CHANNELS,
   livingEnvironment: AGENCY_LIVING_ENVIRONMENT,
   kaiContextHoldDistricts: ["kai-suite"],
   departure: {
     href: "/review/mission-control",
-    fallbackMs: 800,
+    // Safety-net ceiling only — the departure ceremony's actual pacing is
+    // DEPARTURE_DWELL_MS (CSS, agency-command.module.css), which always
+    // wins the race via onAnimationEnd first. See lib/cxos/pacing.ts.
+    fallbackMs: DEPARTURE_FALLBACK_MS,
   },
 } satisfies CxosRoomRuntimeDefinition<AgencyDistrictId>;
 
@@ -209,6 +225,16 @@ export function AgencyCommandStage() {
   const roomHeadingRef = useRef<HTMLHeadingElement>(null);
   const arrivalSkipRef = useRef<HTMLButtonElement>(null);
   const replayGateFocusPendingRef = useRef(false);
+  // Phase 1A-CX2 (B): mirrors `departing` for the Escape-skip handler below.
+  // Set SYNCHRONOUSLY at click time (same tick as the hook's own
+  // departureCommittedRef), not via a useEffect keyed on `departing` state —
+  // a state-keyed effect would attach the keydown listener only after
+  // React commits the re-render, leaving a real (if small) window right
+  // after the click where a fast Escape would fall through to the
+  // hook's OWN keydown listeners (all no-ops here) and reach nothing,
+  // instead of skipping. The listener below reads this ref and is
+  // registered once, unconditionally, at mount — no such window.
+  const departingRef = useRef(false);
   const directorRef = useRef<HTMLDetailsElement>(null);
   const directorSummaryRef = useRef<HTMLElement>(null);
   const historyReadyRef = useRef(false);
@@ -315,6 +341,7 @@ export function AgencyCommandStage() {
     completeDistrictTransition,
     beginDeparture,
     completeDeparture,
+    commitDeparture,
   } = runtime;
   const chamberManaged = capabilitiesReady && validation.valid;
   const arrivalActive =
@@ -539,6 +566,41 @@ export function AgencyCommandStage() {
     activeDistrictRecord.name,
     focusPendingChamberTarget,
   ]);
+
+  // Keeps departingRef eventually consistent with `departing` state for
+  // paths that don't go through beginMissionControlReturn's synchronous
+  // set below (e.g. the hook's own pagehide/bfcache reset() clearing it
+  // back to false). Not the primary defense against the click-to-listener
+  // race described on departingRef's declaration — that's the synchronous
+  // set at click time.
+  useEffect(() => {
+    departingRef.current = departing;
+  }, [departing]);
+
+  // Phase 1A-CX2 (B): DEPARTURE_DWELL_MS lengthened the return-to-Mission-
+  // Control ceremony (lib/cxos/pacing.ts). "Nothing becomes non-
+  // interruptible" — Escape short-circuits straight to the same
+  // commitDeparture the animation's own onAnimationEnd would eventually
+  // call, so the ceremony is always skippable, exactly like every other
+  // lengthened surface in this pass. Registered unconditionally at mount
+  // (like every other Escape handler in this room) and gated on
+  // departingRef rather than `departing` state directly — a state-keyed
+  // effect would only attach this listener after React commits the
+  // re-render `beginDeparture` triggers, leaving a real window right after
+  // the click where a fast Escape reaches no departure-aware listener at
+  // all. commitDeparture no-ops harmlessly if a departure was never begun
+  // (departureCommittedRef guard) or already completed.
+  useEffect(() => {
+    const skipDepartureOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || !departingRef.current) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      commitDeparture();
+    };
+    window.addEventListener("keydown", skipDepartureOnEscape, true);
+    return () =>
+      window.removeEventListener("keydown", skipDepartureOnEscape, true);
+  }, [commitDeparture]);
 
   useEffect(() => {
     const closeDirectorOnEscape = (event: KeyboardEvent) => {
@@ -943,7 +1005,13 @@ export function AgencyCommandStage() {
       return;
     }
     clearKaiSession();
-    if (beginDeparture(event)) directorRef.current?.removeAttribute("open");
+    if (beginDeparture(event)) {
+      directorRef.current?.removeAttribute("open");
+      // Synchronous, same tick as beginDeparture's own departureCommittedRef
+      // set — see departingRef's declaration for why this can't wait for
+      // the `departing` state update to commit and re-run an effect.
+      departingRef.current = true;
+    }
   };
 
   const completeMissionControlReturn = (

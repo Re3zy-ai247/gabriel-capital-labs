@@ -208,6 +208,19 @@ html.light .card { box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06), 0 8px 24px -10p
   --aurora-app: 0.15;      /* aurora amplitude, in-application  */
 }
 
+/* CXOS PACING (Phase 1A-CX2 B, Founder Decision 2026-08-04) — Agency
+   Command's facility-transfer settle + departure dwell. A CSS keyframe/
+   transition duration cannot read a TS import, so these two literals are
+   the CSS-side half of lib/cxos/pacing.ts's ARRIVAL_SETTLE_MS and
+   DEPARTURE_DWELL_MS — that file documents WHY these values are what they
+   are; keep both sides equal by hand when retuning either one.
+   scripts/cxos-pacing.test.ts greps both files and fails the sweep if they
+   diverge. Consumed by app/review/agency-command/agency-command.module.css. */
+:root {
+  --cxos-arrival-settle-ms: 760ms;   /* = ARRIVAL_SETTLE_MS  (gate -> room crossfade) */
+  --cxos-departure-dwell-ms: 900ms;  /* = DEPARTURE_DWELL_MS (return ceremony)        */
+}
+
 @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 @keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
 .animate-rise { animation: rise var(--dur-settle) var(--ease-vector) both; }
