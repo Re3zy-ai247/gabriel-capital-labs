@@ -57,10 +57,19 @@ check("the webhook reads consent off the completed session",
   /consent\?\.terms_of_service/.test(webhook));
 check("the checkout session id is recorded so the evidence is retrievable",
   /checkoutSessionId/.test(webhook));
-// A local column would be a second source of truth for a legal fact Stripe already
-// stores permanently; the pointer must not become an invented consent workflow.
-check("no parallel consent table/column was invented",
-  !/termsAcceptedAt|tosVersion|acceptedTerms/.test(route + webhook));
+// SCOPE (narrowed 2026-07-28, Wave 2): this rule is about the two Stripe CHECKOUT
+// SESSION paths only. There, Stripe stores consent.terms_of_service permanently and
+// is the system of record, so a local mirror would be a second source of truth.
+// It deliberately does NOT apply to the in-place upgrade path: that path never
+// touches Checkout, so Stripe records nothing and a durable local record is the only
+// possible evidence (B-06, prisma model TermsAcceptance). Before this narrowing the
+// assertion read as approval of the opposite of what it was written to enforce.
+const sessionPaths = route.slice(route.indexOf("CONSENT_COLLECTION"));
+const upgradeAt = sessionPaths.indexOf("subscriptions.update");
+const sessionOnly = upgradeAt > -1 ? sessionPaths.slice(0, upgradeAt) : sessionPaths;
+check("the Checkout-Session paths invent no parallel consent mirror",
+  !/termsAcceptedAt|tosVersion|acceptedTerms/.test(sessionOnly + webhook));
+check("the scope slice is real (the check is not vacuous)", sessionOnly.length > 0);
 
 console.log(`\ncheckout-consent.test.ts: ${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);

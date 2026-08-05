@@ -105,6 +105,12 @@ model User {
   // durable org an account owns. Dormant behind OPERATOR_IDENTITY_ENABLED.
   operatorIdentity   OperatorIdentity?
   ownedOrganizations Organization[]    @relation("OrganizationOwner")
+
+  // ---- Terms acceptance (B-06). Back-relation only; no new column on User.
+  // Acceptance is a VERSIONED EVENT, not a boolean on the account: a flag cannot
+  // say WHICH terms were agreed to, and re-publishing the terms would silently
+  // re-use an acceptance of the old text.
+  termsAcceptances TermsAcceptance[]
 }
 
 // Append-only record of privileged admin actions (discount codes created, plans
@@ -798,4 +804,49 @@ model ReputationMilestone {
 
   @@unique([operatorId, milestoneKey]) // latched: earned once, never re-earned/removed
   @@index([operatorId])
+}
+
+// ── Terms of Service acceptance (B-06) ───────────────────────────────────────
+// WHY THIS EXISTS: Stripe records `consent.terms_of_service` only on a Checkout
+// Session. The in-place plan upgrade uses `stripe.subscriptions.update` and never
+// opens Checkout, so on that path Stripe records nothing — there is no second
+// source of truth to conflict with, only an absent one. This table is the record
+// for paths Stripe cannot cover.
+//
+// It is an APPEND-ONLY, VERSIONED EVENT LOG, deliberately not a `termsAcceptedAt`
+// column on User:
+//   • version  — the exact terms text agreed to (the `updated` date shown on
+//                /legal/terms). Re-publishing the terms therefore does NOT
+//                inherit an old acceptance.
+//   • context  — which action the acceptance was given for (audit trail).
+//   • UNIQUE(userId, version) — idempotent: re-submitting the same acceptance is
+//                a no-op, never a duplicate row, so retries are safe.
+//
+// NO ROW IS EVER CREATED WITHOUT AN EXPLICIT USER ASSERTION. There is no backfill
+// in the migration and no default: an existing paid subscriber who never agreed to
+// anything must not be represented here as having agreed.
+//
+// onDelete: Restrict — NOT a retention decision, a refusal to let a foreign key make
+// one. Identity Constitution §12.3: erasure "is never a foreign-key cascade and never
+// an incidental consequence of deleting another principal"; §16 item 6: "Erasure and
+// retention are policy-driven commands, not cascades"; the §18 Authority Matrix names
+// "FK cascade" the forbidden mechanism for Execute erasure. §12.5 requires a consent store
+// to declare an erasure behavior, and §12.4 reserves durations to a counsel-ratified
+// schedule that does not exist yet — so Cascade would ALSO be an implementation
+// promising immediate total deletion, which §12.4 forbids until then. Restrict decides
+// nothing about how long consent evidence is kept; it only forces the explicit,
+// evidenced erasure command §12.3 requires. Same reasoning, same choice as XpAward and
+// ReputationMilestone; Organization.owner is the precedent for Restrict onto User.
+// No application path may hard-delete a User today (scripts/consumer-deletion-
+// containment.test.ts), so this changes no current runtime behaviour.
+model TermsAcceptance {
+  id         String   @id @default(cuid())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Restrict)
+  userId     String
+  version    String // terms revision agreed to, e.g. the /legal/terms `updated` date
+  context    String // where it was given, e.g. "stripe_subscription_upgrade"
+  acceptedAt DateTime @default(now())
+
+  @@unique([userId, version]) // idempotent; one acceptance per revision per user
+  @@index([userId, acceptedAt])
 }
