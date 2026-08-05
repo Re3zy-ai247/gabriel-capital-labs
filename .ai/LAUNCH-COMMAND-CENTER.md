@@ -35,6 +35,8 @@ _Last update: 2026-08-05 (Launch Operations phase) · Owner: Founder · Maintain
 
 ## Standing rules (do not re-litigate)
 
+- **🧊 MAIN FREEZE — no pushes to `main` of ANY kind (docs included) until Gate D §13 completes.** Precedent 2026-07-21: a docs-only merge skipped the Vercel build, leaving production serving an older SHA than `origin/main` — which makes Gate D's P1 (`HEAD == origin/main`) and P2 (prod header == reviewed SHA) **simultaneously unsatisfiable** with no legal resolution inside the runbook. Same freeze applies to Vercel redeploys/env changes (they move the active deployment and re-open the Activity Log window). Extraction-branch pushes are unaffected.
+
 - **Digest arming = one env var** (`BRIEF_DIGEST_ENABLED`): flipping it is a Founder decision (D3), never routine config. Negative-controlled guard pins the gate.
 - **Terms ordering law:** the additive `terms_acceptance` migration runs **before/with** the M2 deploy (fail-closed lib; inverted order = in-place upgrades refuse, no charges).
 - **Gate D before M2** (preflight manifest = the 6-chain; terms is the 7th under its own runbook).
