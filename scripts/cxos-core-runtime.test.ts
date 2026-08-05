@@ -212,6 +212,33 @@ check(
     reduced.browserReduced,
 );
 check(
+  // Phase 1A-CX2: the Director's default literal changed from "auto" to
+  // "cinematic" (app/review/agency-command/stage.tsx). This is the guard
+  // that matters most for that change: without explicit route-instance
+  // consent, reduced motion still wins even when the request IS "cinematic"
+  // — the new default can never silently become the override.
+  "cinematic — even as the new default — cannot override reduced motion without explicit consent",
+  resolveCxosRuntimeProjection("cinematic", reduced, false).tier === "D" &&
+    resolveCxosRuntimeProjection("cinematic", reduced, false).cinematicAvailable,
+);
+check(
+  "on a capable, unconstrained device cinematic resolves the same tier auto already did (no visible regression from the default change)",
+  resolveCxosRuntimeProjection("cinematic", desktop, false).tier ===
+    resolveCxosRuntimeProjection("auto", desktop, false).tier &&
+    resolveCxosRuntimeProjection("cinematic", mobile, false).tier ===
+      resolveCxosRuntimeProjection("auto", mobile, false).tier,
+);
+check(
+  "cinematic never overrides Data Saver, low memory, or detection failure — genuinely-protective downgrades still apply to the default",
+  resolveCxosRuntimeProjection("cinematic", saveData, false).tier === "C" &&
+    resolveCxosRuntimeProjection("cinematic", lowMemory, false).tier === "C" &&
+    resolveCxosRuntimeProjection(
+      "cinematic",
+      CONSERVATIVE_CXOS_RUNTIME_CAPABILITIES,
+      false,
+    ).tier === "C",
+);
+check(
   "an invalid contract is always complete static Tier D",
   resolveCxosRuntimeProjection("cinematic", desktop, true, false).tier === "D" &&
     !resolveCxosRuntimeProjection("cinematic", desktop, true, false)

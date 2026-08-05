@@ -1368,6 +1368,28 @@ check(
     /Force review cinema/.test(stage),
 );
 check(
+  // Founder Decision (2026-08-04): the first experience defaults to
+  // Cinematic, not conservative "auto" detection. "auto" and "static" stay
+  // full, still-selectable Director options — only the initial literal
+  // changed. See resolveCxosRuntimeProjection's own pure-input guards in
+  // cxos-core-runtime.test.ts for proof PRM and the protective downgrades
+  // still win over this default.
+  "the Director's first experience defaults to Cinematic, not Auto",
+  /useState<CxosExperienceProjection>\("cinematic"\)/.test(stageCode) &&
+    !/useState<CxosExperienceProjection>\("auto"\)/.test(stageCode) &&
+    /\(\["auto", "cinematic", "static"\] as const\)\.map/.test(stageCode),
+);
+check(
+  "the Director summary reads the resolved truth, not the raw preference (label truth: never claims Cinematic once resolution has gone static)",
+  /const projectionBadge =\s*\n\s*projection === "cinematic" && resolution\.static\s*\n\s*\? "STATIC"\s*\n\s*: projection\.toUpperCase\(\);/.test(
+    stageCode,
+  ) &&
+    /\{projectionBadge\} · \{operatingModel\.toUpperCase\(\)\}/.test(stage) &&
+    !/\{projection\.toUpperCase\(\)\} · \{operatingModel\.toUpperCase\(\)\}/.test(
+      stage,
+    ),
+);
+check(
   "Tier C, Tier D, and hidden documents stop nonessential motion",
   /\.room\[data-tier="C"\] \*[\s\S]{0,260}\.room\[data-tier="D"\] \*[\s\S]{0,220}animation:\s*none\s*!important/.test(
     css,

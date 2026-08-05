@@ -178,8 +178,14 @@ function stateLabel(state: AgencyFixtureState): string {
 }
 
 export function AgencyCommandStage() {
+  // Founder Decision (2026-08-04): the review room's first experience
+  // defaults to CINEMATIC, not conservative "auto" detection. Reduced
+  // motion and a constrained device still win absolutely —
+  // resolveCxosRuntimeProjection's precedence is unchanged; this literal
+  // only picks which of its three still-selectable Director options loads
+  // first.
   const [projection, setProjection] =
-    useState<CxosExperienceProjection>("auto");
+    useState<CxosExperienceProjection>("cinematic");
   const [operatingModel, setOperatingModel] =
     useState<AgencyOperatingModel>("solo");
   const [fixtureState, setFixtureState] =
@@ -316,6 +322,16 @@ export function AgencyCommandStage() {
     validation.valid &&
     !arrivalSettled &&
     (resolution.tier === "A" || resolution.tier === "B");
+  // Label truth: the Director summary is visible before the panel is even
+  // opened, so it must never read "CINEMATIC" once reduced motion or a
+  // constrained device has resolved the room to a static tier. resolution
+  // already carries that truth (it is the pure, tested resolver's output) —
+  // this reads it rather than re-deriving it. "auto" and "static" are
+  // already truthful as-is: neither claims a specific tier is active.
+  const projectionBadge =
+    projection === "cinematic" && resolution.static
+      ? "STATIC"
+      : projection.toUpperCase();
   const passageTarget = chamberTransition.targetDistrict ?? activeDistrict;
   const activeDistrictRecord =
     AGENCY_DISTRICTS.find((district) => district.id === activeDistrict) ??
@@ -1165,7 +1181,7 @@ export function AgencyCommandStage() {
           <summary ref={directorSummaryRef}>
             <span>DIRECTOR</span>
             <strong>
-              {projection.toUpperCase()} · {operatingModel.toUpperCase()} ·{" "}
+              {projectionBadge} · {operatingModel.toUpperCase()} ·{" "}
               {fixtureLabel.toUpperCase()}
             </strong>
           </summary>

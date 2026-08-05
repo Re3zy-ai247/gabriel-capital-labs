@@ -116,6 +116,20 @@ check("the veil ships in the sync bundle (no lazy chunk can strand a navigation)
     /if \(window\.matchMedia\("\(prefers-reduced-motion: reduce\)"\)\.matches\) return "D";/.test(fn));
   check("detection failure fails DOWNWARD (catch returns a conservative tier, never A)",
     /catch \{\s*return "C";\s*\}/.test(fn) && !/catch[\s\S]{0,40}return "A"/.test(fn));
+  // Phase 1A-CX2 (Founder Decision 2026-08-04): CINEMATIC is the default
+  // posture — these two guards pin the exact precedence that makes that
+  // safe: the persisted opt-out is honored before any device heuristic
+  // (rule b before the genuinely-protective downgrades), and the
+  // unconditional fallthrough really is the fullest tier, not a re-gated
+  // "bonus" (rule c) — a detection failure still fails downward per the
+  // check above, so this can only ever be reached by an honest all-clear.
+  check("the persisted footer choice is honored before any device heuristic",
+    fn.indexOf("cinematicDisabled") < fn.indexOf("saveData") &&
+    fn.indexOf("cinematicDisabled") < fn.indexOf("deviceMemory") &&
+    /if \(cinematicDisabled\(\)\) return "D";/.test(fn));
+  check("the unconditional fallthrough is Tier A — cinematic is the default, not a bonus tier",
+    /return "A"; \/\/ the default: nothing above earned a downgrade\./.test(fn) &&
+    fn.indexOf('return "A";') > fn.indexOf("max-width: 768px"));
 }
 check("the Director tier cycle cannot override a reduced-motion visitor",
   /baseTier\.current === "D" \? "D" :/.test(runtime));
