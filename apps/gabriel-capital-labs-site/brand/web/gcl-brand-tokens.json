@@ -1,0 +1,23 @@
+{
+  "brand": "Gabriel Capital Labs",
+  "mark": "Gateway G",
+  "version": "1.0.0",
+  "colors": {
+    "deepObsidian": "#060608",
+    "obsidian": "#0B0D10",
+    "charcoal": "#0F1012",
+    "stoneSilver": "#B7B7B7",
+    "steel": "#A7A9AC",
+    "platinum": "#E6E6E6",
+    "gatewayGold": "#D4A146"
+  },
+  "typography": {
+    "wordmark": "Inter Display Light or approved optical equivalent",
+    "secondary": "Inter Regular / Medium",
+    "tracking": "Wide and even"
+  },
+  "tagline": [
+    "Building Intelligent Infrastructure.",
+    "Engineering the Future of Intelligence."
+  ]
+}
