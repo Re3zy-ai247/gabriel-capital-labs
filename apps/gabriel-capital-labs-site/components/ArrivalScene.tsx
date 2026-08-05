@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ensureGsapRegistered, gsap, REDUCED_MOTION_QUERY } from "@/lib/gsap";
+import { ensureGsapRegistered, gsap, ScrollTrigger, REDUCED_MOTION_QUERY } from "@/lib/gsap";
 import { arrival, site } from "@/content/site";
 
 const SESSION_KEY = "gcl-arrival-seen";
@@ -22,6 +22,7 @@ export default function ArrivalScene() {
   const [isStatic, setIsStatic] = useState(false);
   const [showSkip, setShowSkip] = useState(true);
   const [showReplay, setShowReplay] = useState(false);
+  const [offscreen, setOffscreen] = useState(false);
 
   useEffect(() => {
     ensureGsapRegistered();
@@ -37,6 +38,33 @@ export default function ArrivalScene() {
       setShowSkip(false);
       setShowReplay(true);
     };
+
+    // D5 — ONE timeline owns the composition in every state. It is always
+    // built (paused), so replay always has something to restart: fresh visit
+    // plays it after the darkness beat; reduced-motion/already-seen jump it
+    // straight to progress(1) (no visible animation, but the same object).
+    const introCtx = gsap.context(() => {
+      const tl = gsap.timeline({ paused: true, delay: 0.4, onComplete: markComplete });
+      timelineRef.current = tl;
+      tl.to(glowRef.current, { opacity: 1, duration: 0.8, ease: "power2.out" })
+        .to(
+          markWrapRef.current,
+          { opacity: 1, scale: 1, y: 0, duration: 1.6, ease: "power3.out" },
+          "-=0.25"
+        )
+        .to(wordTopRef.current, { opacity: 1, duration: 0.6, ease: "power2.out" }, "-=0.6")
+        .to(wordBottomRef.current, { opacity: 1, duration: 0.6, ease: "power2.out" })
+        .to(tagline1Ref.current, { opacity: 1, duration: 0.5, ease: "power2.out" })
+        .to(tagline2Ref.current, { opacity: 1, duration: 0.5, ease: "power2.out" }, "-=0.15")
+        .to(cueRef.current, { opacity: 1, duration: 0.4, ease: "power2.out" });
+
+      if (reducedMotion || alreadySeen) {
+        setIsStatic(true);
+        tl.progress(1);
+      } else {
+        tl.play();
+      }
+    }, sectionRef);
 
     // The camera-pull-back on first scroll: short pin (~60vh), gated out
     // entirely under reduced motion (zero pins), per the motion constitution.
@@ -57,7 +85,7 @@ export default function ArrivalScene() {
         pullback
           .to(markWrapRef.current, { scale: 0.9, duration: 1, ease: "none" }, 0)
           .to(pinRef.current, { opacity: 0.72, duration: 1, ease: "none" }, 0)
-          .to(glowRef.current, { opacity: 0.3, duration: 1, ease: "none" }, 0);
+          .fromTo(glowRef.current, { opacity: 1 }, { opacity: 0.3, duration: 1, ease: "none" }, 0);
 
         return () => {
           pullback.scrollTrigger?.kill();
@@ -65,47 +93,26 @@ export default function ArrivalScene() {
       });
     }, sectionRef);
 
-    let introCtx: gsap.Context | undefined;
-
-    if (reducedMotion || alreadySeen) {
-      setIsStatic(true);
-      markComplete();
-    } else {
-      introCtx = gsap.context(() => {
-        const tl = gsap.timeline({ delay: 0.4, onComplete: markComplete });
-        timelineRef.current = tl;
-        tl.to(glowRef.current, { opacity: 1, duration: 0.8, ease: "power2.out" })
-          .to(
-            markWrapRef.current,
-            { opacity: 1, scale: 1, y: 0, duration: 1.6, ease: "power3.out" },
-            "-=0.25"
-          )
-          .to(wordTopRef.current, { opacity: 1, duration: 0.6, ease: "power2.out" }, "-=0.6")
-          .to(wordBottomRef.current, { opacity: 1, duration: 0.6, ease: "power2.out" })
-          .to(tagline1Ref.current, { opacity: 1, duration: 0.5, ease: "power2.out" })
-          .to(tagline2Ref.current, { opacity: 1, duration: 0.5, ease: "power2.out" }, "-=0.15")
-          .to(cueRef.current, { opacity: 1, duration: 0.4, ease: "power2.out" });
-      }, sectionRef);
-    }
+    // D12 — once the arrival scene has fully scrolled past, hide the
+    // scroll cue + replay chip so they never collide with the fixed nav or
+    // chapter 2's chrome; bring them back if the visitor scrolls back up.
+    const offscreenTrigger = ScrollTrigger.create({
+      trigger: sectionRef.current,
+      start: "top top",
+      end: "bottom top",
+      onLeave: () => setOffscreen(true),
+      onEnterBack: () => setOffscreen(false),
+    });
 
     return () => {
-      introCtx?.revert();
+      introCtx.revert();
       pinCtx.revert();
+      offscreenTrigger.kill();
     };
   }, []);
 
   const handleSkip = () => {
-    const tl = timelineRef.current;
-    if (tl) {
-      tl.progress(1, false);
-    } else {
-      setIsStatic(true);
-      completedRef.current = true;
-      sessionStorage.setItem(SESSION_KEY, "1");
-      window.dispatchEvent(new Event("gcl:arrival-complete"));
-      setShowSkip(false);
-      setShowReplay(true);
-    }
+    timelineRef.current?.progress(1, false);
   };
 
   const handleReplay = useCallback(() => {
@@ -119,8 +126,7 @@ export default function ArrivalScene() {
     setShowReplay(false);
     setShowSkip(true);
 
-    const tl = timelineRef.current;
-    tl?.restart();
+    timelineRef.current?.restart();
   }, []);
 
   // Allow the footer's "Replay arrival" control to trigger the same replay.
@@ -134,14 +140,18 @@ export default function ArrivalScene() {
     <section
       id="top"
       ref={sectionRef}
-      className={`arrival${isStatic ? " arrival--static" : ""}`}
+      className={`arrival${isStatic ? " arrival--static" : ""}${
+        offscreen ? " arrival--offscreen" : ""
+      }`}
       aria-labelledby="arrival-heading"
     >
-      <noscript>
-        <style>{`.arrival__glow,.arrival__mark-wrap,.arrival__wordmark-top,.arrival__wordmark-bottom,.arrival__tagline-line,.arrival__cue{opacity:1 !important;transform:none !important;}`}</style>
-      </noscript>
-
-      <button type="button" className="arrival__skip" onClick={handleSkip} hidden={!showSkip}>
+      <button
+        type="button"
+        className="arrival__skip"
+        onClick={handleSkip}
+        hidden={!showSkip}
+        aria-label="Skip introduction"
+      >
         {arrival.skipLabel}
       </button>
 
@@ -150,6 +160,7 @@ export default function ArrivalScene() {
         className={`arrival__replay${showReplay ? " arrival__replay--visible" : ""}`}
         onClick={handleReplay}
         aria-label={arrival.replayLabel}
+        tabIndex={showReplay ? 0 : -1}
       >
         {arrival.replayLabel}
       </button>

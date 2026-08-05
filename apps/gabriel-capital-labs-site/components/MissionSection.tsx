@@ -7,7 +7,7 @@ import { mission } from "@/content/site";
 export default function MissionSection() {
   const rootRef = useRef<HTMLElement | null>(null);
   const bodyRef = useRef<HTMLDivElement | null>(null);
-  const pathRef = useRef<SVGPathElement | null>(null);
+  const connectorRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     ensureGsapRegistered();
@@ -16,11 +16,10 @@ export default function MissionSection() {
       const mm = gsap.matchMedia();
 
       mm.add("(prefers-reduced-motion: no-preference)", () => {
-        if (pathRef.current) {
-          const length = pathRef.current.getTotalLength();
-          gsap.set(pathRef.current, { strokeDasharray: length, strokeDashoffset: length });
-          gsap.to(pathRef.current, {
-            strokeDashoffset: 0,
+        if (connectorRef.current) {
+          gsap.set(connectorRef.current, { scaleY: 0, transformOrigin: "top" });
+          gsap.to(connectorRef.current, {
+            scaleY: 1,
             ease: "none",
             scrollTrigger: {
               trigger: bodyRef.current,
@@ -53,8 +52,8 @@ export default function MissionSection() {
 
       mm.add("(prefers-reduced-motion: reduce)", () => {
         gsap.set(".mission__pillar", { opacity: 1, y: 0 });
-        if (pathRef.current) {
-          gsap.set(pathRef.current, { strokeDasharray: "none", strokeDashoffset: 0 });
+        if (connectorRef.current) {
+          gsap.set(connectorRef.current, { scaleY: 1 });
         }
       });
     }, rootRef);
@@ -72,16 +71,7 @@ export default function MissionSection() {
       </div>
 
       <div className="container mission__body" ref={bodyRef}>
-        <div className="mission__connector" aria-hidden="true">
-          <svg width="100%" height="100%" viewBox="0 0 4 100" preserveAspectRatio="none">
-            <path
-              ref={pathRef}
-              className="mission__connector-path"
-              d="M2 0 L2 100"
-              vectorEffect="non-scaling-stroke"
-            />
-          </svg>
-        </div>
+        <div ref={connectorRef} className="mission__connector" aria-hidden="true" />
 
         {mission.pillars.map((pillar, i) => (
           <div

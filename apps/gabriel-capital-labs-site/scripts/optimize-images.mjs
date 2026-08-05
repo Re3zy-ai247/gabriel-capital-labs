@@ -54,29 +54,22 @@ async function main() {
     }))
   );
 
-  // 2. Desktop heroes (from the 2560 master — highest quality source)
-  const heroDesktopSrc = path.join(brand, "web", "GCL_Web_Hero_2560x1440.jpg");
+  // 2. Footer lockup — the site never shows a full hero photograph (the
+  // arrival scene is built from CSS gradient + radial glow, not a hero
+  // still), so we do not generate unused hero variants. The footer lockup
+  // IS used, but only ever at ~36-48px — generate small WebP variants
+  // instead of shipping the 1000x1000 master into the page.
+  const footerLockupSrc = path.join(brand, "web", "GCL_Footer_Lockup_Dark_1000x1000.png");
   report.push(
     ...(await makeVariants({
-      src: heroDesktopSrc,
-      destBase: "hero-desktop",
-      widths: [960, 1440, 2560],
-      formats: ["webp"],
+      src: footerLockupSrc,
+      destBase: "footer-lockup",
+      widths: [96, 192],
+      formats: ["webp", "png"],
     }))
   );
 
-  // 3. Mobile portrait hero
-  const heroMobileSrc = path.join(brand, "web", "GCL_Web_Hero_Mobile_1080x1920.jpg");
-  report.push(
-    ...(await makeVariants({
-      src: heroMobileSrc,
-      destBase: "hero-mobile",
-      widths: [720, 1080],
-      formats: ["webp"],
-    }))
-  );
-
-  // 4. Copy favicons / OG / X-card / footer lockup as-is into public/
+  // 3. Copy favicons / OG / X-card as-is into public/
   const copies = [
     ["web/favicon.ico", "favicon.ico"],
     ["web/apple-touch-icon.png", "apple-touch-icon.png"],
@@ -84,7 +77,6 @@ async function main() {
     ["web/android-chrome-512x512.png", "android-chrome-512x512.png"],
     ["web/GCL_OpenGraph_1200x630.jpg", "og.jpg"],
     ["web/GCL_X_Card_1200x600.jpg", "x-card.jpg"],
-    ["web/GCL_Footer_Lockup_Dark_1000x1000.png", "footer-lockup.png"],
     ["web/GatewayG_Material_Transparent_512x512.png", "gateway-g-512.png"],
   ];
   for (const [from, to] of copies) {

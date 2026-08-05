@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build && node scripts/dedupe-preload.mjs",
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
@@ -24,6 +24,8 @@
     "eslint": "^8.57.1",
     "eslint-config-next": "14.2.18",
     "sharp": "^0.33.5",
-    "serve": "^14.2.4"
+    "serve": "^14.2.4",
+    "postcss": "^8.4.47",
+    "autoprefixer": "^10.4.20"
   }
 }

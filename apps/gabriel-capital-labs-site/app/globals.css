@@ -72,8 +72,14 @@ h2,
 h3,
 p {
   margin: 0;
-  overflow-wrap: break-word;
-  word-break: break-word;
+}
+
+/* D21 — overflow-wrap:anywhere is a targeted allowance for the one kind of
+   content that can actually overflow a narrow viewport (a bare URL token),
+   not a blanket permission to break arbitrary words mid-word everywhere. */
+.footer__link,
+.ecosystem__wing-link {
+  overflow-wrap: anywhere;
 }
 
 ul {
@@ -194,20 +200,32 @@ main > section[id] {
   top: 0;
   left: 0;
   right: 0;
-  z-index: 500;
+  z-index: 600;
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 1.1rem var(--gcl-gutter);
-  background: linear-gradient(to bottom, rgba(6, 6, 8, 0.92), rgba(6, 6, 8, 0));
+  /* D13 — first stop near-opaque with a taller ramp so page content never
+     reads through the header; blurred for the sliver where it does. */
+  background: linear-gradient(
+    to bottom,
+    rgba(6, 6, 8, 0.98) 0%,
+    rgba(6, 6, 8, 0.9) 55%,
+    rgba(6, 6, 8, 0) 100%
+  );
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
   opacity: 0;
+  visibility: hidden;
   transform: translateY(-12px);
   pointer-events: none;
-  transition: opacity 0.6s var(--gcl-ease-out), transform 0.6s var(--gcl-ease-out);
+  transition: opacity 0.6s var(--gcl-ease-out), transform 0.6s var(--gcl-ease-out),
+    visibility 0.6s var(--gcl-ease-out);
 }
 
 .nav--visible {
   opacity: 1;
+  visibility: visible;
   transform: translateY(0);
   pointer-events: auto;
 }
@@ -261,6 +279,119 @@ main > section[id] {
   color: var(--gcl-gateway-gold);
 }
 
+/* D7 — mobile substitute for the primary nav below 860px: a hairline
+   "Index" text button (not an icon-only hamburger) opening a full-bleed
+   editorial chapter list. */
+.nav__index-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0.5rem 0.9rem;
+  background: transparent;
+  border: 1px solid rgba(183, 183, 183, 0.35);
+  color: var(--gcl-stone-silver);
+  font-size: 0.7rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: border-color 0.25s var(--gcl-ease-out), color 0.25s var(--gcl-ease-out);
+}
+
+.nav__index-toggle:hover,
+.nav__index-toggle:focus-visible {
+  border-color: var(--gcl-gateway-gold);
+  color: var(--gcl-gateway-gold);
+}
+
+@media (min-width: 860px) {
+  .nav__index-toggle {
+    display: none;
+  }
+}
+
+.nav__overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 950;
+  display: flex;
+  flex-direction: column;
+  padding: clamp(1.25rem, 5vw, 2.5rem) var(--gcl-gutter);
+  background: var(--gcl-deep-obsidian);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.3s var(--gcl-ease-out), visibility 0.3s var(--gcl-ease-out);
+}
+
+@media (min-width: 860px) {
+  .nav__overlay {
+    display: none;
+  }
+}
+
+.nav__overlay--open {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.nav__overlay-close {
+  align-self: flex-end;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0.6rem 1.1rem;
+  background: transparent;
+  border: 1px solid rgba(183, 183, 183, 0.35);
+  color: var(--gcl-stone-silver);
+  font-size: 0.7rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: border-color 0.25s var(--gcl-ease-out), color 0.25s var(--gcl-ease-out);
+}
+
+.nav__overlay-close:hover,
+.nav__overlay-close:focus-visible {
+  border-color: var(--gcl-gateway-gold);
+  color: var(--gcl-gateway-gold);
+}
+
+.nav__overlay-list {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  margin-top: 2rem;
+}
+
+.nav__overlay-list li {
+  border-top: 1px solid rgba(183, 183, 183, 0.16);
+}
+
+.nav__overlay-list li:last-child {
+  border-bottom: 1px solid rgba(183, 183, 183, 0.16);
+}
+
+.nav__overlay-link {
+  display: flex;
+  align-items: center;
+  min-height: 64px;
+  font-size: clamp(1.6rem, 8vw, 2.75rem);
+  font-weight: 300;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--gcl-platinum);
+  text-decoration: none;
+  transition: color 0.25s var(--gcl-ease-out);
+}
+
+.nav__overlay-link:hover,
+.nav__overlay-link:focus-visible {
+  color: var(--gcl-gateway-gold);
+}
+
 /* ==========================================================================
    Chapter 1 — Arrival
    ========================================================================== */
@@ -288,14 +419,24 @@ main > section[id] {
   width: min(90vw, 1100px);
   height: 60%;
   transform: translateX(-50%);
+  /* D16 — registered to the mark's own base rather than a generic bloom:
+     tighter, warmer inner stop, radius keyed to the mark. */
   background: radial-gradient(
     ellipse at center,
-    rgba(212, 161, 70, 0.34) 0%,
-    rgba(212, 161, 70, 0.14) 32%,
-    rgba(212, 161, 70, 0) 68%
+    rgba(212, 161, 70, 0.5) 0%,
+    rgba(212, 161, 70, 0.22) 28%,
+    rgba(212, 161, 70, 0.08) 52%,
+    rgba(212, 161, 70, 0) 72%
   );
-  opacity: 0;
   pointer-events: none;
+}
+
+/* D9 — animation-initial (hidden) states only apply once we know JS is
+   running (see the beforeInteractive script in layout.tsx). Without it,
+   no-JS visitors get the fully visible, fully static composition — the
+   noscript patch this used to require is no longer needed. */
+html.js .arrival__glow {
+  opacity: 0;
 }
 
 .arrival__stage {
@@ -310,9 +451,12 @@ main > section[id] {
 }
 
 .arrival__mark-wrap {
+  width: clamp(120px, 22vw, 220px);
+}
+
+html.js .arrival__mark-wrap {
   opacity: 0;
   transform: translateY(18px) scale(1.04);
-  width: clamp(120px, 22vw, 220px);
 }
 
 .arrival__mark {
@@ -328,7 +472,6 @@ main > section[id] {
 }
 
 .arrival__wordmark-top {
-  opacity: 0;
   font-size: clamp(1.9rem, 6.5vw, 4rem);
   font-weight: 300;
   letter-spacing: 0.32em;
@@ -337,8 +480,11 @@ main > section[id] {
   margin-inline-start: 0.32em; /* optical centering for letter-spacing */
 }
 
-.arrival__wordmark-bottom {
+html.js .arrival__wordmark-top {
   opacity: 0;
+}
+
+.arrival__wordmark-bottom {
   display: flex;
   align-items: center;
   gap: clamp(0.6rem, 2vw, 1.1rem);
@@ -357,6 +503,10 @@ main > section[id] {
   background: var(--gcl-gateway-gold);
 }
 
+html.js .arrival__wordmark-bottom {
+  opacity: 0;
+}
+
 .arrival__tagline {
   display: flex;
   flex-direction: column;
@@ -364,10 +514,13 @@ main > section[id] {
 }
 
 .arrival__tagline-line {
-  opacity: 0;
   font-size: clamp(0.95rem, 2.3vw, 1.25rem);
   font-weight: 300;
   color: var(--gcl-steel);
+}
+
+html.js .arrival__tagline-line {
+  opacity: 0;
 }
 
 .arrival__cue {
@@ -379,8 +532,11 @@ main > section[id] {
   flex-direction: column;
   align-items: center;
   gap: 0.6rem;
-  opacity: 0;
   color: var(--gcl-steel);
+}
+
+html.js .arrival__cue {
+  opacity: 0;
 }
 
 .arrival__cue-line {
@@ -439,13 +595,17 @@ main > section[id] {
   text-transform: uppercase;
   cursor: pointer;
   opacity: 0;
+  visibility: hidden;
   pointer-events: none;
   transition: border-color 0.25s var(--gcl-ease-out), color 0.25s var(--gcl-ease-out),
-    opacity 0.4s var(--gcl-ease-out);
+    opacity 0.4s var(--gcl-ease-out), visibility 0.4s var(--gcl-ease-out);
 }
 
+/* D6 — visibility:hidden (not just opacity:0/pointer-events:none) so the
+   chip is excluded from tab order while it isn't shown yet. */
 .arrival__replay--visible {
   opacity: 1;
+  visibility: visible;
   pointer-events: auto;
 }
 
@@ -453,6 +613,17 @@ main > section[id] {
 .arrival__replay:focus-visible {
   border-color: var(--gcl-gateway-gold);
   color: var(--gcl-gateway-gold);
+}
+
+/* D12 — once the arrival scene has scrolled fully past, hide the scroll
+   cue + replay chip so neither ever collides with the fixed nav or
+   chapter 2's chrome. !important beats the GSAP-authored inline opacity
+   on the cue (animated by the intro timeline). */
+.arrival--offscreen .arrival__cue,
+.arrival--offscreen .arrival__replay {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
 }
 
 /* Reduced motion / already-seen / no-JS: everything simply visible, no transforms.
@@ -509,6 +680,7 @@ main > section[id] {
   line-height: 1.28;
   color: var(--gcl-platinum);
   max-width: 52rem;
+  text-wrap: balance;
 }
 
 @media (min-width: 960px) {
@@ -527,6 +699,9 @@ main > section[id] {
 
 .institution__heading-line span {
   display: block;
+}
+
+html.js .institution__heading-line span {
   transform: translateY(110%);
 }
 
@@ -544,10 +719,13 @@ main > section[id] {
   color: var(--gcl-stone-silver);
 }
 
+/* D18 — inset to the container gutter (not a raw viewport percentage) so
+   it reads as part of the grid rather than a stray line crossing the
+   chapter mark. */
 .institution__rule-v {
   position: absolute;
   top: 0;
-  left: 4%;
+  left: var(--gcl-gutter);
   width: 1px;
   height: 100%;
   background: rgba(183, 183, 183, 0.14);
@@ -566,7 +744,7 @@ main > section[id] {
   left: 0;
   width: 100%;
   height: 0%;
-  background: var(--gcl-gateway-gold);
+  background: rgba(212, 161, 70, 0.5);
 }
 
 /* ==========================================================================
@@ -587,41 +765,53 @@ main > section[id] {
   position: relative;
 }
 
+/* D3 — a plain div animated via scaleY (transform-origin:top) rather than
+   an SVG path: no viewBox/dasharray unit mismatch to get wrong, and no way
+   for it to render as disconnected dashes. Positioned at the seam between
+   the alternating pillar columns on desktop (left:44%, matching
+   .mission__pillar--right's margin-left below) so it runs right up to
+   where each column's text starts without ever running through it. */
 .mission__connector {
   position: absolute;
   left: 1.4rem;
   top: 0;
   width: 2px;
   height: 100%;
+  background: var(--gcl-gateway-gold);
+  transform-origin: top;
   pointer-events: none;
+}
+
+html.js .mission__connector {
+  transform: scaleY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.js .mission__connector {
+    transform: scaleY(1) !important;
+  }
 }
 
 @media (min-width: 960px) {
   .mission__connector {
-    left: 50%;
-    transform: translateX(-50%);
+    left: 44%;
   }
-}
-
-.mission__connector-path {
-  stroke: var(--gcl-gateway-gold);
-  stroke-width: 1.5;
-  fill: none;
 }
 
 .mission__pillar {
   position: relative;
-  padding-block: clamp(2.5rem, 7vw, 5rem);
+  padding-block: clamp(2.25rem, 6vw, 4.25rem);
   padding-left: 3.5rem;
 }
 
 @media (min-width: 960px) {
   .mission__pillar {
-    width: 60%;
+    width: 62%;
     padding-left: 0;
   }
   .mission__pillar--right {
-    margin-left: 40%;
+    width: 56%;
+    margin-left: 44%;
   }
 }
 
@@ -642,7 +832,7 @@ main > section[id] {
 }
 
 .mission__pillar-def {
-  max-width: 30rem;
+  max-width: 34rem;
   color: var(--gcl-stone-silver);
   font-size: clamp(0.95rem, 1.4vw, 1.1rem);
 }
@@ -737,6 +927,32 @@ main > section[id] {
   color: var(--gcl-gateway-gold);
 }
 
+/* D15 — per-wing variation, grid position/measure only, no ornament. */
+@media (min-width: 960px) {
+  .ecosystem__wing--offset .ecosystem__wing-top {
+    margin-left: clamp(2rem, 6vw, 5rem);
+  }
+}
+
+.ecosystem__wing--wide .ecosystem__wing-desc,
+.ecosystem__wing--wide .ecosystem__wing-designation {
+  max-width: none;
+}
+
+.ecosystem__wing--inset {
+  border-top: none;
+}
+
+.ecosystem__wing--inset::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 15%;
+  right: 0;
+  height: 1px;
+  background: rgba(183, 183, 183, 0.14);
+}
+
 /* ==========================================================================
    Chapter 5 — The Lab
    ========================================================================== */
@@ -781,6 +997,10 @@ main > section[id] {
   gap: 1.25rem;
   padding-block: 1.25rem;
   border-top: 1px solid rgba(183, 183, 183, 0.14);
+}
+
+/* D9 — without JS, all seven rows render visible immediately. */
+html.js .lab__row {
   opacity: 0;
   transform: translateY(14px);
 }
@@ -811,43 +1031,91 @@ main > section[id] {
    Chapter 6 — Principles
    ========================================================================== */
 
+/* D9 / D4 — the DEFAULT (no `.js`, or reduced motion) rendering is the
+   complete static editorial list: every principle its own block, nothing
+   pinned, nothing absolutely stacked. The pinned single-visible-at-a-time
+   interaction is an enhancement added only under `html.js`, and even then
+   GSAP (not a CSS transition) owns the actual cross-fade — see D4 in
+   PrinciplesSection.tsx (autoAlpha tweens with overwrite:'auto', so only
+   one item is ever mid-transition at a time). */
 .principles {
   position: relative;
   background: var(--gcl-deep-obsidian);
 }
 
 .principles__pin {
+  position: static;
+  height: auto;
+  display: block;
+  padding-block: var(--gcl-section-pad-y);
+}
+
+.principles__header {
+  position: relative;
+  text-align: center;
+  margin-bottom: clamp(2rem, 6vw, 3.5rem);
+}
+
+.principles__item {
+  position: static;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: clamp(2rem, 6vw, 3.5rem) var(--gcl-gutter);
+  border-top: 1px solid rgba(183, 183, 183, 0.14);
+  opacity: 1;
+  visibility: visible;
+}
+
+.principles__item:last-child {
+  border-bottom: 1px solid rgba(183, 183, 183, 0.14);
+}
+
+.principles__progress {
+  display: none;
+}
+
+html.js .principles__pin {
+  position: relative;
   height: 100svh;
   min-height: 520px;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
+  padding-block: 0;
 }
 
-.principles__header {
+html.js .principles__header {
   position: absolute;
   top: clamp(2rem, 6vh, 4rem);
   left: 0;
   right: 0;
-  text-align: center;
+  margin-bottom: 0;
 }
 
-.principles__item {
+html.js .principles__item {
   position: absolute;
   inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
   padding: 0 var(--gcl-gutter);
+  border-top: none;
   opacity: 0;
-  transition: opacity 0.5s var(--gcl-ease-out);
+  visibility: hidden;
 }
 
-.principles__item--active {
+html.js .principles__item:last-child {
+  border-bottom: none;
+}
+
+html.js .principles__item--active {
   opacity: 1;
+  visibility: visible;
+}
+
+html.js .principles__progress {
+  display: flex;
 }
 
 .principles__item-numeral {
@@ -877,7 +1145,6 @@ main > section[id] {
   bottom: clamp(2rem, 6vh, 3.5rem);
   left: 50%;
   transform: translateX(-50%);
-  display: flex;
   align-items: center;
   gap: 0.75rem;
 }
@@ -905,7 +1172,37 @@ main > section[id] {
   white-space: nowrap;
 }
 
-/* Reduced motion: static stacked list */
+/* Reduced motion (with JS running, `html.js` present) and the React
+   `.principles--static` class it sets both fall back to exactly the same
+   unconditional/no-JS static list — belt-and-suspenders, not two sources
+   of truth (the declarations are identical on purpose). */
+@media (prefers-reduced-motion: reduce) {
+  html.js .principles__pin {
+    position: static !important;
+    height: auto !important;
+    display: block !important;
+    padding-block: var(--gcl-section-pad-y) !important;
+  }
+  html.js .principles__header {
+    position: relative !important;
+    top: auto !important;
+    margin-bottom: clamp(2rem, 6vw, 3.5rem) !important;
+  }
+  html.js .principles__item {
+    position: static !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    padding: clamp(2rem, 6vw, 3.5rem) var(--gcl-gutter) !important;
+    border-top: 1px solid rgba(183, 183, 183, 0.14) !important;
+  }
+  html.js .principles__item:last-child {
+    border-bottom: 1px solid rgba(183, 183, 183, 0.14) !important;
+  }
+  html.js .principles__progress {
+    display: none !important;
+  }
+}
+
 .principles--static .principles__pin {
   position: static;
   height: auto;
@@ -913,33 +1210,26 @@ main > section[id] {
   padding-block: var(--gcl-section-pad-y);
 }
 
+.principles--static .principles__header {
+  position: relative;
+  top: auto;
+  margin-bottom: clamp(2rem, 6vw, 3.5rem);
+}
+
 .principles--static .principles__item {
   position: static;
   opacity: 1;
-  padding-block: clamp(2rem, 6vw, 3.5rem);
+  visibility: visible;
+  padding: clamp(2rem, 6vw, 3.5rem) var(--gcl-gutter);
   border-top: 1px solid rgba(183, 183, 183, 0.14);
+}
+
+.principles--static .principles__item:last-child {
+  border-bottom: 1px solid rgba(183, 183, 183, 0.14);
 }
 
 .principles--static .principles__progress {
   display: none;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .principles__pin {
-    position: static !important;
-    height: auto !important;
-    display: block !important;
-    padding-block: var(--gcl-section-pad-y);
-  }
-  .principles__item {
-    position: static !important;
-    opacity: 1 !important;
-    padding-block: clamp(2rem, 6vw, 3.5rem);
-    border-top: 1px solid rgba(183, 183, 183, 0.14);
-  }
-  .principles__progress {
-    display: none !important;
-  }
 }
 
 /* ==========================================================================
@@ -974,6 +1264,11 @@ main > section[id] {
   position: relative;
   width: clamp(56px, 8vw, 96px);
   margin: 0 auto clamp(1.5rem, 4vw, 2.5rem);
+}
+
+.engagement__mark img {
+  width: 100%;
+  height: auto;
 }
 
 .engagement__heading {
@@ -1031,6 +1326,25 @@ main > section[id] {
   font-size: 0.8rem;
   color: var(--gcl-steel);
   text-align: right;
+}
+
+.engagement__category-link--static {
+  cursor: default;
+}
+
+.engagement__category-link--static:hover,
+.engagement__category-link--static:focus-visible {
+  color: var(--gcl-stone-silver);
+}
+
+.engagement__placeholder-note {
+  position: relative;
+  margin: clamp(1.5rem, 4vw, 2.25rem) auto 0;
+  max-width: 34rem;
+  font-size: 0.8rem;
+  letter-spacing: 0.02em;
+  color: var(--gcl-steel);
+  font-style: italic;
 }
 
 .footer {

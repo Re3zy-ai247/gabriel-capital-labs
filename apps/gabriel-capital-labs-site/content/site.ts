@@ -81,9 +81,10 @@ export const institution = {
   // Verbatim statement, split into lines for the staggered scroll reveal —
   // concatenating headingLines with single spaces reproduces the statement exactly.
   headingLines: [
-    "Gabriel Capital Labs is the parent institution",
-    "behind intelligent infrastructure — operating systems",
-    "for credit, intelligence execution, and spatial computing.",
+    "Gabriel Capital Labs is the parent",
+    "institution behind intelligent infrastructure —",
+    "operating systems for credit, intelligence",
+    "execution, and spatial computing.",
   ],
   paragraphs: [
     "We operate on the timeline of institutions, not release cycles — building the foundational systems that intelligent industries will run on for decades, not the quarter.",
@@ -157,7 +158,7 @@ export const ecosystem = {
       designation: "Chief Intelligence presence across products",
       status: "Active within CreditVector; expanding across the ecosystem",
       description:
-        "The intelligence presence guiding users inside our live products today, extending to the rest of the ecosystem over time.",
+        "The intelligence presence guiding users inside CreditVector today, extending to the rest of the ecosystem over time.",
     },
   ] satisfies EcosystemDomain[],
 };
@@ -214,6 +215,10 @@ export const engagement = {
 
 export const footer = {
   legalLine: "Gabriel Capital Labs, LLC",
+  // Explicit constant rather than `new Date().getFullYear()` — this is a
+  // static export; a client-computed year would be baked in at build time
+  // and silently go stale. Update this value once a year.
+  copyrightYear: 2026,
   creditVectorLinkLabel: "www.creditvector.app",
   creditVectorLinkHref: "https://www.creditvector.app",
 };

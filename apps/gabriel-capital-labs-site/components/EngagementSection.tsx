@@ -76,14 +76,20 @@ export default function EngagementSection() {
         </p>
 
         <div className="engagement__mark">
-          <img
-            src="/gateway-g-512.png"
-            width={512}
-            height={512}
-            alt=""
-            aria-hidden="true"
-            loading="lazy"
-          />
+          <picture>
+            <source
+              type="image/webp"
+              srcSet="/img/gateway-g-480.webp"
+            />
+            <img
+              src="/img/gateway-g-480.png"
+              width={480}
+              height={520}
+              alt=""
+              aria-hidden="true"
+              loading="lazy"
+            />
+          </picture>
         </div>
 
         <h2 id="engagement-heading" className="engagement__heading">
@@ -91,17 +97,30 @@ export default function EngagementSection() {
         </h2>
 
         <ul className="engagement__categories">
-          {engagement.categories.map((category) => (
-            <li key={category.label} className="engagement__category">
-              <a className="engagement__category-link" href={contactHref}>
-                <span className="engagement__category-label">{category.label}</span>
-                <span className="engagement__category-desc">
-                  {contactIsPlaceholder ? "[contact email pending]" : category.description}
-                </span>
-              </a>
-            </li>
-          ))}
+          {engagement.categories.map((category) =>
+            contactIsPlaceholder ? (
+              <li key={category.label} className="engagement__category">
+                <div className="engagement__category-link engagement__category-link--static">
+                  <span className="engagement__category-label">{category.label}</span>
+                  <span className="engagement__category-desc">{category.description}</span>
+                </div>
+              </li>
+            ) : (
+              <li key={category.label} className="engagement__category">
+                <a className="engagement__category-link" href={contactHref}>
+                  <span className="engagement__category-label">{category.label}</span>
+                  <span className="engagement__category-desc">{category.description}</span>
+                </a>
+              </li>
+            )
+          )}
         </ul>
+
+        {contactIsPlaceholder ? (
+          <p className="engagement__placeholder-note">
+            Contact channels are being finalised.
+          </p>
+        ) : null}
       </div>
     </section>
   );

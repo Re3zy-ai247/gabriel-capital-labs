@@ -4,6 +4,12 @@ import { useEffect, useRef } from "react";
 import { ensureGsapRegistered, gsap } from "@/lib/gsap";
 import { ecosystem } from "@/content/site";
 
+// D15 — each wing gets its own restrained architectural identity rather
+// than four identical blocks: an alternating numeral gutter, one
+// full-measure wing, and a staggered hairline inset. No added ornament,
+// just grid position/measure variation, matched 1:1 to the four domains.
+const WING_VARIANTS = ["", "offset", "wide", "inset"];
+
 export default function EcosystemSection() {
   const rootRef = useRef<HTMLElement | null>(null);
 
@@ -16,12 +22,14 @@ export default function EcosystemSection() {
       mm.add("(prefers-reduced-motion: no-preference)", () => {
         const wings = gsap.utils.toArray<HTMLElement>(".ecosystem__wing");
         wings.forEach((wing) => {
+          // D22 — clip-path animated alone. Pairing it with opacity:0.001
+          // left a transient near-invisible-but-technically-painted frame;
+          // the clip-path reveal alone is a clean wipe with no such artifact.
           gsap.fromTo(
             wing,
-            { clipPath: "inset(0 0 100% 0)", opacity: 0.001 },
+            { clipPath: "inset(0 0 100% 0)" },
             {
               clipPath: "inset(0 0 0% 0)",
-              opacity: 1,
               duration: 0.9,
               ease: "power3.inOut",
               scrollTrigger: {
@@ -52,8 +60,11 @@ export default function EcosystemSection() {
       </div>
 
       <div>
-        {ecosystem.domains.map((domain) => (
-          <article key={domain.name} className="ecosystem__wing">
+        {ecosystem.domains.map((domain, i) => (
+          <article
+            key={domain.name}
+            className={`ecosystem__wing${WING_VARIANTS[i % WING_VARIANTS.length] ? ` ecosystem__wing--${WING_VARIANTS[i % WING_VARIANTS.length]}` : ""}`}
+          >
             <div className="container">
               <div className="ecosystem__wing-top">
                 <span className="ecosystem__wing-numeral">{domain.numeral}</span>

@@ -23,6 +23,14 @@ export default function PrinciplesSection() {
         setIsStatic(false);
         const items = gsap.utils.toArray<HTMLElement>(".principles__item");
 
+        // D4 — only one principle is ever mid-transition: each index change
+        // fires exactly two non-overlapping autoAlpha tweens (fade the
+        // outgoing item out, fade the incoming item in), each with
+        // overwrite:'auto' so a fast scrub can never leave two tweens
+        // fighting over the same item and both partially visible at once.
+        gsap.set(items, { autoAlpha: (i) => (i === 0 ? 1 : 0) });
+        let activeIndex = 0;
+
         const st = gsap.timeline({
           scrollTrigger: {
             trigger: rootRef.current,
@@ -33,9 +41,21 @@ export default function PrinciplesSection() {
             pinSpacing: true,
             onUpdate: (self) => {
               const idx = Math.min(total - 1, Math.floor(self.progress * total));
-              items.forEach((el, i) => {
-                el.classList.toggle("principles__item--active", i === idx);
-              });
+              if (idx !== activeIndex) {
+                gsap.to(items[activeIndex], {
+                  autoAlpha: 0,
+                  duration: 0.3,
+                  ease: "power1.out",
+                  overwrite: "auto",
+                });
+                gsap.to(items[idx], {
+                  autoAlpha: 1,
+                  duration: 0.3,
+                  ease: "power1.out",
+                  overwrite: "auto",
+                });
+                activeIndex = idx;
+              }
               if (progressFillRef.current) {
                 progressFillRef.current.style.width = `${((idx + 1) / total) * 100}%`;
               }
