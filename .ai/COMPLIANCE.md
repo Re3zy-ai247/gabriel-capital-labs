@@ -20,7 +20,7 @@ High-risk domain. Claude Code never declares legal compliance from its own inter
 | YouTube embeds host-allowlisted + publish confirm attests no guaranteed-deletion/score claims | `lib/briefShared.ts`, admin brief page |
 | Correct statutes (§611 reinvestigation, §623 furnisher, §605 obsolescence, FDCPA §809) | `lib/statutes.ts` |
 | Government/child-support debts flagged NOT_RECOMMENDED, excluded from dispute queue | `lib/classify.ts` |
-| CAN-SPAM: digest blocked until `COMPANY_POSTAL_ADDRESS` set (footer address) | `lib/briefDigest.ts` (Status: INFERRED from gate description; env var unset) |
+| CAN-SPAM: opt-in digest includes one-click unsubscribe plus Founder-approved LLC postal identity; send fails closed if the canonical server value is unavailable | `lib/companyIdentity.server.ts`, `lib/briefDigest.ts` (source VERIFIED locally 2026-08-01; deployment/received test NOT VERIFIED) |
 
 ## Counsel review REQUIRED (open — no attorney sign-off documented anywhere)
 1. CROA "educational, not credit-repair" positioning — overall product/marketing posture.

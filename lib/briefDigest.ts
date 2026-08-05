@@ -2,13 +2,17 @@ import { createHmac, timingSafeEqual } from "crypto";
 import { prisma } from "./prisma";
 import { ensureBriefTables } from "./brief";
 import { sendEmail, emailConfigured } from "./email";
+import {
+  COMPANY_POSTAL_ADDRESS,
+  COMPANY_POSTAL_ADDRESS_INLINE,
+} from "./companyIdentity.server";
 
 // Weekly CreditVector Brief email digest. Marketing-class email, so it is built to
 // be CAN-SPAM compliant: opt-in only (User.briefDigest, default false), accurate
 // from/subject, a one-click unsubscribe (link + List-Unsubscribe header), the
-// educational disclaimer, and a physical postal address. It REFUSES TO SEND if the
-// postal address isn't configured — we never put a non-compliant marketing email
-// on the wire. Fails safe everywhere (a bad recipient never aborts the batch).
+// educational disclaimer, and the Founder-approved physical postal address from
+// the canonical server-only company identity. Fails safe everywhere (a bad
+// recipient never aborts the batch).
 
 // Self-heal the opt-in column (User table; additive, idempotent).
 let digestColReady = false;
@@ -61,7 +65,7 @@ interface DigestArticle {
 
 // Build the digest email (plain text + branded HTML). Includes the disclaimer,
 // postal address, and unsubscribe — the CAN-SPAM essentials.
-function renderDigestEmail(articles: DigestArticle[], unsubUrl: string, base: string, postal: string) {
+export function renderDigestEmail(articles: DigestArticle[], unsubUrl: string, base: string) {
   const subject = "CreditVector Brief — this week in consumer-credit news";
   const intro = "Here are the educational consumer-credit news summaries we published this week.";
 
@@ -77,7 +81,7 @@ function renderDigestEmail(articles: DigestArticle[], unsubUrl: string, base: st
     "This is an educational news summary and does not constitute legal advice.",
     "",
     "CreditVector by Gabriel Capital Labs",
-    postal,
+    COMPANY_POSTAL_ADDRESS,
     `Unsubscribe: ${unsubUrl}`,
   ].join("\n");
 
@@ -107,7 +111,7 @@ function renderDigestEmail(articles: DigestArticle[], unsubUrl: string, base: st
         <tr><td style="padding:14px 28px 24px;border-top:1px solid #e2e8f0;">
           <div style="color:#94a3b8;font-size:12px;line-height:1.6;">
             This is an educational news summary and does not constitute legal advice.<br/>
-            CreditVector by Gabriel Capital Labs &middot; ${escapeHtml(postal)}<br/>
+            CreditVector by Gabriel Capital Labs &middot; ${escapeHtml(COMPANY_POSTAL_ADDRESS_INLINE)}<br/>
             You're receiving this because you subscribed to the CreditVector Brief digest. <a href="${unsubUrl}" style="color:#64748b;">Unsubscribe</a>.
           </div>
         </td></tr>
@@ -126,13 +130,17 @@ export interface DigestResult {
   error?: string;
 }
 
-// Send the weekly digest to every opted-in user (or one test recipient). Refuses to
-// send without a configured postal address. Skips (no send) when nothing was
-// published in the last 7 days.
+// Send the weekly digest to every opted-in user (or one test recipient). The legal
+// postal footer is sourced from the canonical server-only company identity. Skips
+// (no send) when nothing was published in the last 7 days.
 export async function sendWeeklyDigest(opts: { testTo?: string } = {}): Promise<DigestResult> {
-  const postal = (process.env.COMPANY_POSTAL_ADDRESS || "").trim();
-  if (!postal) {
-    return { ok: false, sent: 0, articles: 0, error: "COMPANY_POSTAL_ADDRESS is not set — refusing to send a marketing email without a CAN-SPAM postal address." };
+  if (!COMPANY_POSTAL_ADDRESS.trim() || !COMPANY_POSTAL_ADDRESS_INLINE.trim()) {
+    return {
+      ok: false,
+      sent: 0,
+      articles: 0,
+      error: "Canonical company postal address is unavailable — refusing to send a marketing email without a CAN-SPAM postal address.",
+    };
   }
   if (!emailConfigured()) {
     return { ok: false, sent: 0, articles: 0, error: "Email is not configured (RESEND_API_KEY)." };
@@ -158,7 +166,7 @@ export async function sendWeeklyDigest(opts: { testTo?: string } = {}): Promise<
   // Test send: one email to the admin so they can preview without a real list.
   if (opts.testTo) {
     const unsubUrl = `${base}/settings`;
-    const { subject, text, html } = renderDigestEmail(articles, unsubUrl, base, postal);
+    const { subject, text, html } = renderDigestEmail(articles, unsubUrl, base);
     const ok = await sendEmail({ to: opts.testTo, subject: `[TEST] ${subject}`, text, html, headers: { "List-Unsubscribe": `<${unsubUrl}>` } });
     return { ok, sent: ok ? 1 : 0, articles: articles.length };
   }
@@ -172,7 +180,7 @@ export async function sendWeeklyDigest(opts: { testTo?: string } = {}): Promise<
   let sent = 0;
   for (const r of recipients) {
     const unsubUrl = `${base}/api/brief/digest/unsubscribe?token=${encodeURIComponent(digestToken(r.id))}`;
-    const { subject, text, html } = renderDigestEmail(articles, unsubUrl, base, postal);
+    const { subject, text, html } = renderDigestEmail(articles, unsubUrl, base);
     const ok = await sendEmail({
       to: r.email,
       subject,

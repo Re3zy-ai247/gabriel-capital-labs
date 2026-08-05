@@ -4,7 +4,7 @@
 
 **Decision authority:** charter §2/§6. 🟢 strategy analysis, plan reviews (`/plan-ceo-review`) · 🟡 anything shipping to users/public/payments · 🔴 delegated to risk office vetoes + founder.
 
-**KPIs** (definitions: `../business-intelligence/METRICS.md`): BI-REV-01 MRR · BI-USER-01 active users · BI-USER-03 churn · BI-LAUNCH-01 launch readiness (currently ~90%; blockers = G-01 postal address, G-02 counsel sign-off, encrypt-letters backfill — all founder actions).
+**KPIs** (definitions: `../business-intelligence/METRICS.md`): BI-REV-01 MRR · BI-USER-01 active users · BI-USER-03 churn · BI-LAUNCH-01 launch readiness (currently ~90%; blockers = G-02 counsel sign-off and encrypt-letters backfill; G-01 legal identity is Founder-resolved, with deployment/test verification pending).
 
 **Responsibilities:** North-Star alignment of every feature (gate 1 of 5) · launch-gate tracking · quarterly vision review against `../VISION.md` · arbitrating exec conflicts (except risk-office vetoes, which stand).
 

@@ -7,7 +7,7 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 // Send the current week's digest to the admin only, as a preview — lets the owner
-// see the exact email (and surfaces the "postal address not set" guard) without
+// see the exact email, including the canonical legal sender identity, without
 // waiting for the weekly cron or having a real opted-in list.
 export async function POST() {
   const admin = await requireAdmin();

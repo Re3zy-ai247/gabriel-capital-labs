@@ -1,7 +1,17 @@
 # OPERATIONS — deployment protocol & incident triage
 
 > Owner-facing operations manual. Engineering how-to lives in `.ai/RUNBOOKS/deploy.md`;
-> this file is the protocol + incident playbook. Last verified: 2026-07-12.
+> this file is the protocol + incident playbook. Last verified: 2026-07-12; Backup & DR,
+> Cron liveness and the verification checklist revised 2026-07-28 (documentation only —
+> **no production state was observed or re-verified**; every unproven fact is marked
+> VERIFICATION REQUIRED with the command that answers it).
+>
+> **Executable procedures live in `.ai/RUNBOOKS/` — this file points at them, never duplicates them:**
+> restore/DR → [`restore-drill.md`](.ai/RUNBOOKS/restore-drill.md) (B-09, **OPEN** — no drill has been
+> run, RPO/RTO unmeasured) · alerting + cron liveness →
+> [`alert-activation.md`](.ai/RUNBOOKS/alert-activation.md) (B-10, **PARTIAL** — delivery unproven) ·
+> deploys → [`deploy.md`](.ai/RUNBOOKS/deploy.md) · schema →
+> [`schema-change.md`](.ai/RUNBOOKS/schema-change.md).
 
 ## Deployment protocol
 
@@ -82,26 +92,102 @@ store**. Encryption keys (`DOCUMENT_ENCRYPTION_KEY`, `NEXTAUTH_SECRET`) live onl
 DB restore is useless without them, so **the env-var set is part of the backup scope** (export the
 Vercel env inventory; store the key material in a password manager, never in the repo).
 
+**Backup-scope checklist (do these independently of the drill — none require the provider name):**
+
+- [ ] **Escrow `DOCUMENT_ENCRYPTION_KEY` outside Vercel.** VERIFICATION REQUIRED. Copy the live value
+      into the owner's password manager (1Password/Bitwarden item "CreditVector — prod key material"),
+      never into the repo, a ticket, or a chat. Without it every `Document`/`Attachment` blob and every
+      encrypted `Report.rawText` in a restored database is unreadable ciphertext — the restore succeeds
+      and the data is still lost. Read it with `npx vercel env pull` into a scratch file, copy, delete
+      the file.
+- [ ] **Escrow `NEXTAUTH_SECRET` the same way.** VERIFICATION REQUIRED. Losing it does not destroy data
+      but invalidates every issued JWT — every user is signed out at once, which during an incident is
+      a second incident. Restoring the same value keeps sessions valid across a rebuild.
+- [ ] **Export the full env inventory** (names only is not enough — values are the recovery input):
+      `npx vercel env pull .env.prod.backup --environment=production`, store it in the same password
+      manager entry, then `rm .env.prod.backup`. Re-do this after any env change.
+- [ ] **Record where the escrow lives** in the owner's own notes, so a recovery does not depend on one
+      person remembering. Nothing in this repository can verify any of the four items above.
+
 **Owner action to unblock (≤15 min):** confirm the origin provider in the **Prisma Data Platform /
 Accelerate** dashboard (or Vercel → Storage/Integrations). Typical origins: Neon, Supabase, Vercel
 Postgres, RDS — each has native automated backups + PITR; record the retention window it gives you.
 
-**Restore-validation drill (ready to run the moment the provider is known — this IS the proof):**
-1. In the provider console, create a **fresh throwaway database** from the latest automated
-   backup / a PITR snapshot (do NOT touch prod).
-2. Point a **local** `.env` `DATABASE_URL` at the restored copy (bypass Accelerate — use the direct
-   connection string).
-3. `npx prisma db pull` (schema present?) → run a read: `npx tsx -e "import {prisma} from './lib/prisma'; prisma.user.count().then(c=>{console.log('users',c);process.exit()})"`.
-4. Confirm row counts are sane vs prod and an encrypted `Report.rawText` decrypts with the prod
-   `DOCUMENT_ENCRYPTION_KEY` (proves the key + data restore together).
-5. Record: snapshot timestamp, restore wall-clock (**= measured RTO**), and the snapshot age
-   (**= measured RPO**). Tear down the throwaway DB.
+**Restore-validation drill — the full executable procedure lives in
+[`.ai/RUNBOOKS/restore-drill.md`](.ai/RUNBOOKS/restore-drill.md)** (single source of truth; do not
+re-describe the steps here). That runbook covers: provider identification (§1) · pre-drill safety
+rules incl. *never drill against production* (§2) · the provider-neutral drill (§3) · post-restore
+integrity verification, including decrypting one `Report.rawText` with the prod key — the only step
+that proves **data and key were recovered together** (§4) · the migration-history baseline/repair,
+which is itself unproven (§5) · the RPO/RTO measurement worksheet (§6) · failed-drill handling (§7) ·
+evidence capture (§8).
 
-**Targets (to establish after the drill — do not guess):** RPO ≤ provider's PITR granularity
-(commonly ≤5 min for Neon/Supabase); RTO = the measured restore time in step 5. **Fill these in
-with measured numbers; leave blank until proven.**
+**RPO / RTO: BLANK — not yet measured. Do not guess them.** They get filled in only from a completed
+§6 worksheet, quoted as *measured on <date>*. **B-09 stays OPEN until then.**
 
-**Schema-drift caveat (already known, ADR-0001):** prod schema is applied by runtime self-heal DDL,
-not migrations — a restored DB self-heals its tables on first request, so a restore does not need a
-separate migration step, but verify the self-heal `ensureXTable` gates ran (check for the expected
-tables) before declaring the restore complete.
+**Why the migration repair is part of the restore (not an afterthought):** schema is
+**MIGRATION-FIRST** (owner-ratified 2026-07-20, `CLAUDE.md` gotcha 1) — runtime self-heal is
+legacy-only, so **a restored database does not heal itself forward**. No deploy applies migrations
+(`vercel.json` build command is `prisma generate && next build`), and production has **no
+`_prisma_migrations` history** (`.ai/CURRENT-STATE.md`: the `resolve --applied 0_init` baseline was
+preview-only), so `migrate deploy` alone is expected to **fail on `0_init`** against a prod-derived
+copy. Baseline first, then deploy — procedure and evidence requirements in the runbook §5, Gate D
+rules in `.ai/RUNBOOKS/gate-d-production-migration.md`.
+
+## Cron liveness (VERIFICATION REQUIRED)
+
+`vercel.json` schedules two jobs: `/api/cron/brief-ingest` daily at **13:00 UTC** and
+`/api/cron/brief-digest` weekly **Mondays 14:00 UTC**. Both routes report only when they
+**execute and fail** — `reportError` on a throw or an unreachable feed. **A cron that never fires
+emits nothing at all.** Expired/absent `CRON_SECRET`, a dropped Vercel schedule, and a plan-limit
+change are all silent by construction, so cron liveness is a thing you go and check, not a thing
+that tells you.
+
+**What the automated probe already proves** (`scripts/prod-health.sh` check 6, unauthenticated,
+runs daily in `.github/workflows/daily-health.yml`): the cron routes still exist (404 = removed by a
+deploy → FAIL), `CRON_SECRET` is set so the routes *can* run (503 = unset → FAIL), and they refuse
+an unauthenticated caller (200 = FAIL). It does **not** prove a schedule fired.
+
+**What only production access proves — check weekly. Procedure:
+[`.ai/RUNBOOKS/alert-activation.md`](.ai/RUNBOOKS/alert-activation.md) §4** (single source of truth
+for the three checks and their escalation thresholds: Vercel → Settings → Cron Jobs last-run/status;
+runtime logs filtered by path; data-side corroboration, which can confirm but never clear).
+
+**Standing caveat:** while `ALERT_WEBHOOK_URL` is unset, a cron that runs and *fails* also reaches no
+human — it lands in Vercel logs only. Cron liveness and alert delivery are two separate unproven
+things.
+
+## Alerting (B-10 — PARTIAL)
+
+`lib/observability.ts` `reportError` always structured-logs and **additionally** POSTs to
+`ALERT_WEBHOOK_URL` when set. It is wired into 11 call sites across the Stripe webhook, Stripe
+checkout, `lib/billing.ts`, and both crons. **`ALERT_WEBHOOK_URL` is unset, so delivery is dormant
+and every one of those failures pages nobody.**
+
+Activation, the end-to-end **delivery drill** that proves an alert actually arrived (config presence
+is not proof), and failure triage:
+**[`.ai/RUNBOOKS/alert-activation.md`](.ai/RUNBOOKS/alert-activation.md)**. **B-10 stays PARTIAL
+until a message has been observed in a human-watched destination** and recorded in that runbook's
+§3.3. Note that `scripts/prod-health.sh` check 3 sends **no** `stripe-signature` header, so it
+short-circuits before `reportError` and does **not** generate an alert — its passing is not evidence
+of alerting.
+
+## Operational verification checklist — facts this repository cannot prove
+
+Every row below is **VERIFICATION REQUIRED**: it describes production state that no file in this
+repo can assert. Nothing here is a claim about the live environment — it is the exact command to
+find out. Record the answer and the date beside each row as it is verified; do not mark a row done
+from memory.
+
+| # | Question | Exact check | What a bad answer means |
+|---|---|---|---|
+| V-01 | Is `SETUP_SECRET` set in production? | `npx vercel env ls production \| grep SETUP_SECRET` → expect **zero rows**. Also GET `/api/admin/diagnostics` (ADMIN session) → `envPresent.SETUP_SECRET === false` | If set: a static shared secret in a **query string** unlocks raw DDL (`/api/admin/migrate`) and LIVE Stripe catalog mutation (`/api/admin/billing/provision`), with no rate limit and no audit log. Unset it immediately, then rotate anything it touched |
+| V-02 | Is the at-rest encryption backfill complete? | Signed in as ADMIN, in the browser console: `fetch('/api/admin/encrypt-reports',{method:'POST'}).then(r=>r.json()).then(console.log)` then the same for `/api/admin/encrypt-letters`. Both are idempotent — expect `{ok:true, encrypted:0, skipped:N}` | Any non-zero `encrypted` means raw credit-report / letter PII was still sitting in plaintext until that call. The call fixed it; investigate why the backfill had been missed |
+| V-03 | Which provider actually hosts the Postgres behind Accelerate? | `.ai/RUNBOOKS/restore-drill.md` §1 — the four places to look, and the block of facts to record | Until answered, **backup guarantees, RPO and RTO are unknown** and the restore drill cannot start. This is the single blocking input for Backup & DR |
+| V-04 | Is `ALERT_WEBHOOK_URL` set, and has a real alert ever landed? | `npx vercel env ls production \| grep ALERT_WEBHOOK_URL` → expect one row (presence only, never the value). **Then run the delivery drill:** `.ai/RUNBOOKS/alert-activation.md` §3 — a message observed in the destination channel is the only thing that answers this row | Env-set is not delivery-proven. While unset, `reportError` is dormant: every cron failure, Stripe webhook failure and handler throw is logged and **pages nobody** |
+| V-05 | Are the canonical legal footer and `RESEND_FROM` delivery-verified? | Confirm the deployed release contains `lib/companyIdentity.server.ts`; GET `/api/admin/diagnostics` → `envPresent.RESEND_FROM`; then send the admin Brief test and inspect the received LLC postal block + unsubscribe headers | Source presence is not delivery proof. Without a verified `RESEND_FROM`, email cannot leave the building; without a received legal-footer test, CAN-SPAM delivery behavior remains unverified |
+| V-06 | Did the crons actually run? | `.ai/RUNBOOKS/alert-activation.md` §4 — Vercel → Settings → Cron Jobs (last run + status), plus log and data-side corroboration | A dropped schedule is invisible: the Brief stops ingesting and the digest stops sending with no error anywhere |
+| V-07 | Are the dormant feature flags still off? | `npx vercel env ls production \| grep -E 'OPERATOR_\|ARENA_\|MAIL_LIVE\|KERNEL_DURABLE'` → expect **zero rows** (absent = fail-closed OFF) | Any row means a surface intended to be dormant is live in production without having gone through the five-review gate |
+| V-08 | Is `main` branch-protected? | `gh api repos/Re3zy-ai247/gabriel-capital-labs/branches/main/protection` → expect a protection object, **not** `404 Branch not protected` | A push to `main` **is** a production deploy. Unprotected means one mistaken push ships to live billing with no review and no required check |
+| V-09 | Is the team on Vercel Pro, and is Skew Protection enabled? | `npx vercel teams ls`; then GET `/v9/projects/prj_1SouMFFSQ5icOY9APDtiMqnSUCCJ` and read `skewProtectionMaxAge` (expect `43200`) | On Hobby the feature is unavailable. On Pro but unset, tabs open across a deploy keep the stale-asset failure mode described in "Deployment-skew posture" |
+| V-10 | Is the key material escrowed outside Vercel? | The four boxes in the Backup-scope checklist above | A database restore without `DOCUMENT_ENCRYPTION_KEY` returns unreadable ciphertext — the backup exists and the data is still gone |
