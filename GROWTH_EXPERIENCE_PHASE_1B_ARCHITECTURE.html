@@ -1,0 +1,593 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark"><meta name="robots" content="noindex,nofollow"><title>CreditVector Growth Experience Phase 1B — Capability Contract Architecture</title><style>
+:root{color-scheme:dark;--bg:#070b14;--panel:#0d1422;--panel2:#111b2c;--line:#293850;--text:#e7edf7;--muted:#a7b5c9;--accent:#9dd7c7;--gold:#e7c98d;--focus:#fff;--max:78rem;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+*{box-sizing:border-box}html{scroll-behavior:smooth;background:var(--bg)}body{margin:0;background:radial-gradient(circle at 82% 0,#142c36 0,transparent 32rem),var(--bg);color:var(--text);font-size:16px;line-height:1.65;overflow-wrap:anywhere}
+a{color:var(--accent);text-underline-offset:.2em}a:hover{text-decoration-thickness:2px}a:focus-visible,button:focus-visible,.table-wrap:focus-visible{outline:3px solid var(--focus);outline-offset:4px}
+.skip{position:fixed;left:1rem;top:1rem;z-index:9;transform:translateY(-180%);padding:.7rem 1rem;background:var(--panel);border:1px solid var(--line);border-radius:.5rem}.skip:focus{transform:none}
+.top{position:sticky;top:0;z-index:5;border-bottom:1px solid var(--line);background:rgb(7 11 20/.94);backdrop-filter:blur(14px)}.top-inner{width:min(calc(100% - 2rem),var(--max));min-height:4.5rem;margin:auto;display:flex;align-items:center;justify-content:space-between;gap:1rem}.brand{min-width:0}.brand strong,.brand span{display:block}.brand strong{font-size:.78rem;letter-spacing:.12em;text-transform:uppercase}.brand span{font-size:.75rem;color:var(--muted)}
+.copy{min-height:44px;padding:.65rem 1rem;border:1px solid var(--line);border-radius:999px;background:var(--panel2);color:var(--text);font:inherit;font-weight:750;cursor:pointer}.copy[data-state="copied"]{border-color:var(--accent);color:var(--accent)}
+.shell{width:min(calc(100% - 2rem),var(--max));margin:0 auto;display:grid;grid-template-columns:minmax(0,1fr) 15rem;gap:3rem;padding:3rem 0 5rem}.content{min-width:0}.toc{position:sticky;top:6rem;align-self:start;padding-left:1.25rem;border-left:1px solid var(--line)}.toc strong{display:block;margin-bottom:.7rem;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--gold)}.toc a{display:block;padding:.28rem 0;color:var(--muted);font-size:.8rem;text-decoration:none}.toc a:hover{color:var(--text)}
+h1,h2,h3,h4{line-height:1.16;letter-spacing:-.025em;scroll-margin-top:6rem}h1{max-width:20ch;margin:0 0 1.5rem;font-size:clamp(2.25rem,6vw,4.8rem)}h2{margin:4rem 0 1rem;padding-top:1rem;border-top:1px solid var(--line);font-size:clamp(1.55rem,3vw,2.3rem)}h3{margin:2.5rem 0 .75rem;font-size:1.35rem}h4{margin:2rem 0 .6rem;font-size:1.05rem;color:var(--gold)}.anchor{margin-left:.45rem;color:var(--muted);font-size:.7em;text-decoration:none;opacity:.45}h1:hover .anchor,h2:hover .anchor,h3:hover .anchor,h4:hover .anchor,.anchor:focus{opacity:1}
+p,li,td,th{max-width:76ch}strong{color:#fff}code{padding:.14em .34em;border:1px solid var(--line);border-radius:.3rem;background:#0a111d;color:#bce9dd;font-size:.88em}pre{overflow:auto;padding:1rem;border:1px solid var(--line);border-radius:.65rem;background:#050913}pre code{padding:0;border:0;background:none;color:#d8e2ef}.table-wrap{overflow-x:auto;margin:1.5rem 0;border:1px solid var(--line);border-radius:.65rem}table{width:100%;border-collapse:collapse;min-width:38rem}th,td{padding:.8rem .9rem;border-bottom:1px solid var(--line);vertical-align:top;text-align:left}th{background:var(--panel2);color:#fff;font-size:.76rem;letter-spacing:.04em}tr:last-child td{border-bottom:0}
+blockquote{margin:1.5rem 0;padding:1rem 1.1rem;border-left:3px solid var(--gold);background:var(--panel);color:#dbe4f0}ul,ol{padding-left:1.35rem}li{margin:.4rem 0}.task-list{padding:0;list-style:none}.task{display:flex;gap:.65rem;align-items:flex-start}.task input{width:1.1rem;height:1.1rem;margin-top:.35rem;accent-color:var(--accent)}hr{height:1px;margin:3rem 0;border:0;background:var(--line)}
+.footer{width:min(calc(100% - 2rem),var(--max));margin:auto;padding:1.25rem 0 3rem;border-top:1px solid var(--line);color:var(--muted);font-size:.75rem}.copy-source{display:none}
+@media(max-width:860px){.shell{display:block;padding-top:2rem}.toc{position:static;margin-top:3rem;padding:1.2rem;border:1px solid var(--line);border-radius:.65rem;background:var(--panel)}h1{font-size:clamp(2rem,11vw,3.3rem)}}
+@media(max-width:520px){.top-inner,.shell,.footer{width:min(calc(100% - 1.25rem),var(--max))}.top-inner{min-height:4rem}.brand span{display:none}.copy{padding:.55rem .75rem;font-size:.8rem}.shell{padding-bottom:3rem}h2{margin-top:3rem}.table-wrap{margin-inline:-.1rem}pre{font-size:.78rem}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+</style></head>
+<body><a class="skip" href="#report">Skip to report</a><header class="top"><div class="top-inner"><div class="brand"><strong>CreditVector Growth Network</strong><span>Protected Founder review · standalone report</span></div><button class="copy" id="copy" type="button">Copy Markdown</button></div></header>
+<div class="shell"><main class="content" id="report" tabindex="-1"><h1 id="creditvector-growth-experience-phase-1b-capability-contract-architecture">CreditVector Growth Experience Phase 1B — Capability Contract Architecture<a class="anchor" href="#creditvector-growth-experience-phase-1b-capability-contract-architecture" aria-label="Link to this section">#</a></h1>
+<p>Status: <strong>GROWTH EXPERIENCE PHASE 1B — AUTHORIZED NON-MONETARY CONTRACT WORK</strong> Package state: <strong>READY FOR FOUNDER REVIEW</strong> Architecture authority: <a href=".ai/ADR/ADR-0042-growth-experience-phase-1b-capability-contract.md">ADR-0042</a> Scope: protected, synthetic, participant-data-free Founder Preview Founder review metadata: see §18</p>
+<h2 id="1-executive-architecture-decision">1. Executive architecture decision<a class="anchor" href="#1-executive-architecture-decision" aria-label="Link to this section">#</a></h2>
+<p>Phase 1B is an isolated capability-contract annex beneath the approved Growth Center Founder Preview. It does not replace Phase 1A, create a second Growth room, or connect a live bounded context.</p>
+<p>The review route is:</p>
+<pre><code class="language-text">/review/growth-center/capability-contract</code></pre>
+<p>Its architecture has five deliberate properties:</p>
+<ol><li><strong>Subordinate:</strong> the route is nested under Growth Center and requires every parent review gate plus its own exact-string gate.</li><li><strong>Pure:</strong> all contract definitions, fixtures, and resolver behavior are immutable deterministic data with no effects.</li><li><strong>Compositional:</strong> Growth projects named canonical-owner responsibilities but owns none of their participant records.</li><li><strong>Fail-closed:</strong> unsupported values, combinations, owners, sources, and transitions render one bounded unavailable state without inference.</li><li><strong>Dormant:</strong> there is no schema, migration, API, event, enrollment, runtime AI, commerce, reputation effect, economic logic, or production activation.</li></ol>
+<p>This is an internal product contract, not a participant agreement, credential framework, compensation plan, or legal terms.</p>
+<h2 id="2-controlling-status-taxonomy">2. Controlling status taxonomy<a class="anchor" href="#2-controlling-status-taxonomy" aria-label="Link to this section">#</a></h2>
+<ul><li><strong>CGN ECONOMIC PHASE 1A — BLOCKED</strong></li><li><strong>GROWTH EXPERIENCE PHASE 1A — APPROVED FOUNDER PREVIEW</strong></li><li><strong>GROWTH EXPERIENCE PHASE 1B — AUTHORIZED NON-MONETARY CONTRACT WORK</strong></li></ul>
+<p>The Founder Economic Decision Matrix remains unratified. The economic master flag and payout execution boundary remain dormant. No Phase 1B object is an economic object.</p>
+<h2 id="3-placement-in-the-frozen-platform">3. Placement in the frozen platform<a class="anchor" href="#3-placement-in-the-frozen-platform" aria-label="Link to this section">#</a></h2>
+<p>Phase 1B is a review-only L6 experience projection over hypothetical future L4/L5 owner interfaces. It adds no source-of-truth context and does not amend frozen platform ownership.</p>
+<pre><code class="language-text">Founder review request
+        |
+        v
+Next.js review server boundary
+  - reviewBuildAllowed()
+  - GROWTH_CENTER_PREVIEW_ENABLED === &quot;true&quot;
+  - GROWTH_CAPABILITY_CONTRACT_PREVIEW_ENABLED === &quot;true&quot;
+        |
+        | all three pass
+        v
+Capability Contract Stage
+        |
+        +--&gt; pure pathway definitions
+        +--&gt; strict deterministic request resolver
+        +--&gt; fixed synthetic fixture projection
+        +--&gt; headless CXOS Core Runtime lifecycle only
+        |
+        v
+Complete semantic review document
+
+No branch reaches:
+database | API | model | Event Fabric | canonical owner | billing | money</code></pre>
+<p>Growth Center may state that a future canonical owner would supply a fact. It may not fetch, cache, copy, reconcile, or mutate that fact in Phase 1B.</p>
+<h2 id="4-bounded-ownership">4. Bounded ownership<a class="anchor" href="#4-bounded-ownership" aria-label="Link to this section">#</a></h2>
+<h3 id="4-1-growth-experience-owns">4.1 Growth Experience owns<a class="anchor" href="#4-1-growth-experience-owns" aria-label="Link to this section">#</a></h3>
+<ul><li>capability-contract vocabulary;</li><li>fixed synthetic pathway definitions;</li><li>fixed state-axis definitions;</li><li>deterministic fixture identifiers and safe review copy;</li><li>strict allowlist resolution;</li><li>presentation-only composition rules;</li><li>unsupported-state behavior; and</li><li>the protected review experience.</li></ul>
+<h3 id="4-2-growth-experience-does-not-own">4.2 Growth Experience does not own<a class="anchor" href="#4-2-growth-experience-does-not-own" aria-label="Link to this section">#</a></h3>
+<div class="table-wrap" role="region" aria-label="Scrollable table" tabindex="0"><table><thead><tr><th scope="col">Canonical owner</th><th scope="col">Reserved truth</th></tr></thead><tbody><tr><td>Identity</td><td>Person/operator identity and account truth</td></tr><tr><td>Organizations</td><td>Organization identity, control, scope, hierarchy, and stewardship facts</td></tr><tr><td>Membership</td><td>Role, authority, and relationship to an organization</td></tr><tr><td>Performance Intelligence</td><td>Organization health, retention, performance, and improvement projections</td></tr><tr><td>Learning</td><td>Pathways, curricula, assessments, completions, credentials, and certifications</td></tr><tr><td>Operator Network</td><td>Mentorship relationship, participation, screening, and matching</td></tr><tr><td>Meetings</td><td>Calendar, meeting, attendance, and session truth</td></tr><tr><td>Documents</td><td>Files, notes, artifacts, access, provenance, and retention</td></tr><tr><td>Community</td><td>Contribution submission, publication, moderation, and Community recognition</td></tr><tr><td>Marketplace</td><td>Listing, seller, order, delivery, refund, price, and transaction truth</td></tr><tr><td>Reputation</td><td>Trust, recognition, source integrity, score, badge, and rank</td></tr><tr><td>Agency Command</td><td>Agency task, assignment, workflow, and deadline truth</td></tr><tr><td>Kai</td><td>Deterministic preparation and explanation; never business-object ownership</td></tr></tbody></table></div>
+<p>Corrections belong to the canonical owner of the challenged source fact. Appeals belong to the owner of the challenged review decision. Growth can explain those routes but cannot open or adjudicate them.</p>
+<p>An unresolved owner becomes <code>OWNER_UNRESOLVED</code>; the associated projection is unavailable.</p>
+<h2 id="5-source-layout-and-isolation-seam">5. Source layout and isolation seam<a class="anchor" href="#5-source-layout-and-isolation-seam" aria-label="Link to this section">#</a></h2>
+<p>The authorized review slice is intentionally small:</p>
+<div class="table-wrap" role="region" aria-label="Scrollable table" tabindex="0"><table><thead><tr><th scope="col">Source</th><th scope="col">Responsibility</th><th scope="col">Forbidden responsibilities</th></tr></thead><tbody><tr><td><code>lib/growthNetwork/capabilityContract.ts</code></td><td>Pure types, pathways, state axes, fixtures, strict resolver, fixed Kai explanations</td><td>Environment, network, storage, model, canonical data, side effects</td></tr><tr><td><code>lib/growthNetwork/capabilityPreviewFlags.ts</code></td><td>Exact-string subordinate preview gate</td><td>Client export, general Growth activation, payout authority</td></tr><tr><td><code>app/review/growth-center/capability-contract/page.tsx</code></td><td>Server-side three-key gate and post-gate stage import</td><td>Data fetch, session decision, participant access, effect</td></tr><tr><td><code>app/review/growth-center/capability-contract/stage.tsx</code></td><td>Semantic contract workbench and explicit review controls</td><td>Free text, submission, enrollment, personalization, owner mutation</td></tr><tr><td><code>app/review/growth-center/capability-contract/capability-contract.module.css</code></td><td>Route-local responsive visual language and motion fail-down</td><td>Global design-system mutation, existing room redesign</td></tr><tr><td><code>scripts/growth-capability-contract.test.ts</code></td><td>Executable boundary, determinism, copy, ownership, and fail-closed guard</td><td>Production effects</td></tr><tr><td><code>.ai/ADR/ADR-0042-growth-experience-phase-1b-capability-contract.md</code></td><td>Decision and authorization boundary</td><td>Economic policy ratification</td></tr></tbody></table></div>
+<p>Phase 1A source remains an approved snapshot. Phase 1B is a nested consumer rather than a rewrite of the approved Growth Center. Existing Mission Control, Agency Command, Arena, Community, Billing, Authentication, Organizations, Identity, Marketplace backend, and Agency/CXOS isolation surfaces are outside the diff.</p>
+<h2 id="6-server-activation-boundary">6. Server activation boundary<a class="anchor" href="#6-server-activation-boundary" aria-label="Link to this section">#</a></h2>
+<p>The stage is reachable only when all conditions are explicitly true:</p>
+<ol><li>the current build identity is allowed by the existing Founder-review policy;</li><li><code>GROWTH_CENTER_PREVIEW_ENABLED</code> equals the exact string <code>true</code>; and</li><li><code>GROWTH_CAPABILITY_CONTRACT_PREVIEW_ENABLED</code> equals the exact string <code>true</code>.</li></ol>
+<p>Unknown, absent, malformed, mixed-case, or false values deny access. A Vercel production identity denies access regardless of environment values. The stage module is dynamically imported only after authorization, so review content is not part of the denied request path.</p>
+<p>The route remains:</p>
+<ul><li>under <code>/review</code>;</li><li>no-index;</li><li>direct-link-only;</li><li>absent from public and authenticated product navigation;</li><li>absent from the review hub, sitemap, and CXOS room registry; and</li><li>protected by Vercel Preview access controls when deployed.</li></ul>
+<p>A feature flag controls code reachability; it does not authorize a participant program, canonical integration, economics, or production use.</p>
+<h2 id="7-deterministic-projection-contract">7. Deterministic projection contract<a class="anchor" href="#7-deterministic-projection-contract" aria-label="Link to this section">#</a></h2>
+<h3 id="7-1-inputs">7.1 Inputs<a class="anchor" href="#7-1-inputs" aria-label="Link to this section">#</a></h3>
+<p>The only supported selection inputs are public, non-sensitive allowlisted review identifiers for:</p>
+<ul><li>one pathway; and</li><li>one synthetic fixture.</li></ul>
+<p>The route may accept them as query parameters to make review states linkable and browser history deterministic. It may not put person, organization, evidence, membership, customer, private workflow, or source-record state in a URL.</p>
+<h3 id="7-2-strict-resolver">7.2 Strict resolver<a class="anchor" href="#7-2-strict-resolver" aria-label="Link to this section">#</a></h3>
+<p>The resolver:</p>
+<ol><li>accepts no input or exactly one allowlisted value for each supported key;</li><li>normalizes nothing beyond the documented literal identifiers;</li><li>rejects arrays, duplicates, unknown keys that affect state, unknown values, incomplete dependent combinations, and impossible state combinations;</li><li>returns a sanitized supported projection or one generic unsupported projection;</li><li>never echoes raw input; and</li><li>never chooses a nearest, default, inferred, or personalized state after an invalid request.</li></ol>
+<p>The default no-query route renders a fixed orientation fixture. It is an explicit review state, not an inferred participant state.</p>
+<h3 id="7-3-determinism">7.3 Determinism<a class="anchor" href="#7-3-determinism" aria-label="Link to this section">#</a></h3>
+<p>For the same supported selection, the projection is byte-for-byte semantically stable. The contract module uses no:</p>
+<ul><li>clock or date derivation;</li><li>random value;</li><li>browser or server storage;</li><li>cookie or session;</li><li>identity or organization context;</li><li>database or API;</li><li>network request;</li><li>model or prompt;</li><li>analytics or telemetry; or</li><li>mutable singleton.</li></ul>
+<h2 id="8-state-architecture">8. State architecture<a class="anchor" href="#8-state-architecture" aria-label="Link to this section">#</a></h2>
+<p>The contract keeps eight independent state lanes:</p>
+<ol><li>availability and contract support;</li><li>preparation/participation;</li><li>evidence sufficiency;</li><li>completion;</li><li>source-review disposition;</li><li>correction;</li><li>appeal; and</li><li>visibility.</li></ol>
+<p>The rendered status panel must show that one axis cannot imply another. In particular:</p>
+<pre><code class="language-text">completion != source acceptance
+source acceptance != visibility
+visibility != publication or consent
+source confirmation != qualification
+any state != reputation, XP, Arena, credential, access, employment, or economics</code></pre>
+<p>The implementation exposes exactly ten selectable fixtures: <code>overview</code>, <code>empty</code>, <code>preparing</code>, <code>completed-unreviewed</code>, <code>in-review</code>, <code>changes-requested</code>, <code>source-corrected</code>, <code>appeal-in-review</code>, <code>privacy-restricted</code>, and <code>unsupported</code>. The default request is the explicit <code>overview</code> fixture. A request with only one selector, an unknown or duplicate value, an unknown key, or an invalid contract/fixture pair fails closed.</p>
+<p>Contract-specific refusals are explicit: mentorship refuses <code>completed-unreviewed</code> and <code>appeal-in-review</code>; organizational stewardship refuses <code>appeal-in-review</code>; operator-created contribution remains owner-unresolved and never projects a favorable state.</p>
+<p>The following is conceptual future state vocabulary, not a list of additional selectable fixtures or executable transitions:</p>
+<pre><code class="language-text">no-participation-represented example
+  -&gt; preparing example
+  -&gt; under-review example
+  -&gt; source-confirmed-state example
+
+under-review example
+  -&gt; changes-requested example
+  -&gt; preview correction path
+  -&gt; source-owner-review example
+
+not-accepted example
+  -&gt; preview appeal path
+  -&gt; human-review-required example
+  -&gt; resolved example | not-accepted example</code></pre>
+<p>No control performs a transition. It selects one of the exact fixed fixtures above. Terms such as not accepted, source conflict, source-owner review, and resolved appeal remain conceptual unless an exact fixture represents them.</p>
+<p>Unknown owner, policy, source, evidence category, reviewer, visibility, actor, scope, state, or transition fails closed. Completion without source confirmation, acceptance without reviewer authority, and appeal without an underlying decision are unsupported.</p>
+<h2 id="9-evidence-architecture">9. Evidence architecture<a class="anchor" href="#9-evidence-architecture" aria-label="Link to this section">#</a></h2>
+<p>Phase 1B stores no evidence and displays no realistic evidence content. Every supported projection now carries one deeply frozen, owner-labeled eleven-part synthetic evidence contract; the stage renders it only for an owner-resolved contract.</p>
+<p>The exact rendered items are:</p>
+<ul><li><strong>Professional purpose</strong> — canonical contract owner;</li><li><strong>Source owner</strong> — future evidence owner and explicit no-connection statement;</li><li><strong>Subject and scope</strong> — synthetic scope with no person, participant, organization, or customer;</li><li><strong>Evidence category</strong> — purpose-bound category with no artifact, submission, or verification;</li><li><strong>Occurrence / source confirmation</strong> — future confirmation requirement and refused substitutes;</li><li><strong>Reviewer role</strong> — future human review owner or unresolved-owner refusal;</li><li><strong>Policy / contract version</strong> — Growth review grammar version only;</li><li><strong>Visibility</strong> — deny-by-default privacy boundary and visibility owner;</li><li><strong>Correction route</strong> — source-fact owner and no-live-case boundary;</li><li><strong>Appeal route</strong> — decision owner or independent-owner refusal; and</li><li><strong>Expiry / supersession</strong> — future stale-state behavior with no live validity period.</li></ul>
+<p>The stage renders these items as a semantic definition list for an owner-resolved contract. For an owner-unresolved contract, every item resolves to the unsupported copy and the stage withholds the detailed list. This structure is a review projection, not evidence storage or a schema proposal.</p>
+<p>Evidence is purpose-bound. No accepted example can be replayed across pathways by inference. Conflicting sources resolve to <strong>Needs human review</strong>. Growth and Kai never decide which source wins.</p>
+<p>The separate review-rejection panel may illustrate self-review, reviewer conflict, collusion, replay, duplicate evidence, completion farming, popularity substitution, plagiarism, fabricated provenance, retaliation, PII inclusion, unauthorized visibility, supersession, and purpose misuse. These fixed examples are control education, not selectable fixtures, detection, or accusation.</p>
+<h2 id="10-privacy-architecture">10. Privacy architecture<a class="anchor" href="#10-privacy-architecture" aria-label="Link to this section">#</a></h2>
+<p>Privacy is deny-by-default:</p>
+<ul><li>synthetic generic labels only;</li><li>no PII, protected attributes, employment evaluation, consumer credit facts, customers, files, cases, or realistic identifiers;</li><li>no participant, session, organization, Membership, Learning, Operator Network, Meetings, Documents, Community, Marketplace, Reputation, Agency Command, or Kai runtime read;</li><li>no form, upload, free text, persistence, Growth-owned cookie, Growth-owned local storage, Growth-owned analytics, or Growth-owned telemetry;</li><li>unknown visibility resolves to hidden/unavailable; and</li><li>public, cross-organization, named-peer, customer, and broad workforce visibility are unsupported.</li></ul>
+<p>The application root may still provide inherited framework-level session/theme behavior. Growth does not consume it. Browser evidence must distinguish inherited reads from Growth-owned activity and prove there is no Growth write path.</p>
+<h2 id="11-kai-architecture">11. Kai architecture<a class="anchor" href="#11-kai-architecture" aria-label="Link to this section">#</a></h2>
+<p>Kai remains the canonical Credit Intelligence Officer. Growth Advisor is a route-local deterministic explanation mode.</p>
+<pre><code class="language-text">fixed reviewer control
+        |
+        v
+allowlisted intent + selected synthetic fixture
+        |
+        v
+pure lookup / fixed explanation
+        |
+        v
+owner + requirement + boundary + no-action receipt</code></pre>
+<p>No free text, model, prompt, network, memory, retrieval, tool, action, or source-system call exists. Kai cannot assess, verify, approve, match, enroll, publish, schedule, correct, appeal, adjudicate, or transact.</p>
+<p>Every explanation displays the exact receipt:</p>
+<blockquote>Kai is explaining fixed synthetic review fixtures. Kai did not analyze a person, organization, evidence, eligibility, or opportunity. No model was called. Nothing was saved, submitted, reviewed, corrected, appealed, assigned, scheduled, published, enrolled, purchased, or changed.</blockquote>
+<h2 id="12-experience-architecture">12. Experience architecture<a class="anchor" href="#12-experience-architecture" aria-label="Link to this section">#</a></h2>
+<p>The Phase 1B page is a <strong>capability-contract workbench</strong>, not a dashboard, referral page, statistics page, social feed, or second immersive headquarters.</p>
+<p>Recommended semantic order:</p>
+<ol><li>persistent Founder/synthetic/no-live disclosure;</li><li>purpose and contract boundary;</li><li>seven pathway spine;</li><li>selected synthetic fixture;</li><li>independent state-axis ledger;</li><li>evidence-requirement preview;</li><li>canonical ownership map;</li><li>correction and appeal explanation;</li><li>deterministic rejection examples;</li><li>Kai explanation; and</li><li>Agency Builder and global no-economic boundaries.</li></ol>
+<p>The DOM order is the visual, reading, and focus order. Mobile layouts must not use CSS reordering. Controls are native and at least 44 by 44 CSS pixels. A complete semantic document is available with JavaScript motion disabled, high zoom, static mode, and <code>prefers-reduced-motion</code>.</p>
+<p>CXOS Core Runtime may provide only presentation lifecycle mechanics already authorized by ADR-0040: capability projection, arrival settlement, visibility pause, district focus/activation, reduced-motion fail-down, and bounded local navigation. It receives no Growth truth and is not modified by this stream.</p>
+<h2 id="13-security-threat-model">13. Security threat model<a class="anchor" href="#13-security-threat-model" aria-label="Link to this section">#</a></h2>
+<div class="table-wrap" role="region" aria-label="Scrollable table" tabindex="0"><table><thead><tr><th scope="col">Threat</th><th scope="col">Architectural control</th></tr></thead><tbody><tr><td>Accidental production exposure</td><td>Production-hard-off server policy plus two exact-string subordinate flags; post-gate import; unregistered route</td></tr><tr><td>Participant-data leakage</td><td>No owner-system read, no input, generic fixtures, no raw query echo</td></tr><tr><td>Cross-tenant disclosure</td><td>No tenant context; unsupported cross-organization visibility</td></tr><tr><td>Injection through review selection</td><td>Literal allowlist and generic unsupported state</td></tr><tr><td>State forgery by query editing</td><td>Resolver validates complete combinations; displayed state remains synthetic and carries persistent disclosure</td></tr><tr><td>Silent ownership takeover</td><td>Every fact category names its canonical owner; unresolved owner fails closed</td></tr><tr><td>Model or tool action</td><td>No AI SDK, prompt, fetch, tool, or action seam</td></tr><tr><td>Hidden persistence</td><td>No schema, API, action, form, storage, cookie, analytics, telemetry, or event</td></tr><tr><td>Economic activation by vocabulary</td><td>No amount/rate/balance/entitlement; Agency and global no-economics disclosures; economic guards</td></tr><tr><td>Social/reputation gaming</td><td>No likes, followers, leaderboard, XP, Arena, score, rank, badge, or Reputation write</td></tr><tr><td>Misleading completion or approval</td><td>Separate axes, forbidden live-status labels, non-inference copy</td></tr><tr><td>Review-route discoverability</td><td>No navigation, review-hub, sitemap, registry, or public link</td></tr></tbody></table></div>
+<h2 id="14-compliance-architecture">14. Compliance architecture<a class="anchor" href="#14-compliance-architecture" aria-label="Link to this section">#</a></h2>
+<p>Persistent disclosure:</p>
+<blockquote><strong>Founder review · Synthetic capability-contract fixtures · No live Growth program. Nothing shown is a participant record, enrollment, mentor match, course, contribution, Community post, organization assessment, credential, certification, opportunity, qualification, Growth Reputation record, compensation, or promise of business or credit results. No participant data is read or saved, and no action is taken.</strong></blockquote>
+<p>Agency disclosure:</p>
+<blockquote><strong>No live Growth Distribution. These stewardship examples create no eligibility, allocation, obligation, or payment right. Recruiting is not rewarded.</strong></blockquote>
+<p>Unsupported-state copy:</p>
+<blockquote><strong>Unsupported review state · unavailable in this Preview. No status, eligibility, completion, review, or action has been inferred.</strong></blockquote>
+<p>Mentorship and education remain future B2B operator-development concepts. They exclude consumer-specific credit work, dispute execution, representation, legal/tax/financial/employment/business-opportunity advice, advance-fee guidance, matching, booking, contracting, payment, live sessions, enrollment, credentials, and outcome promises.</p>
+<h2 id="15-validation-architecture">15. Validation architecture<a class="anchor" href="#15-validation-architecture" aria-label="Link to this section">#</a></h2>
+<p>No validation result is claimed until commands and rendered checks actually run.</p>
+<p>Required evidence:</p>
+<ul><li>TypeScript typecheck;</li><li>targeted lint and repository lint disposition;</li><li>dedicated Phase 1B contract guard;</li><li>Growth Network, Growth Center, CXOS Core Runtime, schema-safety, compliance, and protected-room regression guards;</li><li>optimized Preview build with all gates enabled;</li><li>optimized production-identity build proving hard-off;</li><li>source scan for schema, APIs, effects, runtime AI, canonical-owner imports, economic shapes, secrets, and prohibited protected-surface changes;</li><li>desktop, tablet, mobile, 320-pixel, high-zoom, keyboard, focus, reduced-motion, static-equivalence, and browser-history checks;</li><li>accessibility scan and manual semantic review;</li><li>network/write observation distinguishing inherited root behavior from Growth behavior;</li><li>performance observation;</li><li>direct unauthenticated protection response and authenticated protected-preview response, if deployment occurs;</li><li>evidence checksums and curated-source manifest; and</li><li>exact repository branch/SHA/local-state warning.</li></ul>
+<p>Final validation, repository, Preview, and secret-review observations are recorded in §18 only after direct evidence exists.</p>
+<h2 id="16-rollback">16. Rollback<a class="anchor" href="#16-rollback" aria-label="Link to this section">#</a></h2>
+<p>Rollback removes the nested route, pure capability-contract module, subordinate flag, route-local CSS, dedicated guard, ADR, reports, generated HTML, text handoff, evidence, and package. It requires no database, participant, provider, billing, economic, or external-state reversal.</p>
+<p>If a protected Preview environment flag exists, remove that deployment-scoped flag or retire the Preview. No production flag is authorized.</p>
+<h2 id="17-implementation-readiness-and-next-gate">17. Implementation readiness and next gate<a class="anchor" href="#17-implementation-readiness-and-next-gate" aria-label="Link to this section">#</a></h2>
+<p>The architecture is ready for an isolated protected Founder Preview implementation only. That implementation must remain within this document and ADR-0042.</p>
+<p>The next decision after validated Preview evidence is a Founder choice to approve, approve with amendments, hold, or reject the Phase 1B capability contract. No source-system integration or later phase is implied.</p>
+<p>Only after a separate Founder authorization may the team consider a narrow source-owner interface specification. Participant data, enrollment, schema, APIs, events, runtime AI, public access, reputation effects, commerce, billing, payouts, and live economics remain independently blocked.</p>
+<p><strong>CGN ECONOMIC PHASE 1A — BLOCKED.</strong></p>
+<h2 id="18-founder-review-metadata-and-checklist">18. Founder review metadata and checklist<a class="anchor" href="#18-founder-review-metadata-and-checklist" aria-label="Link to this section">#</a></h2>
+<div class="table-wrap" role="region" aria-label="Scrollable table" tabindex="0"><table><thead><tr><th scope="col">Item</th><th scope="col">Status</th></tr></thead><tbody><tr><td>Local path</td><td><code>/Users/re3zy/Documents/gabriel-capital-labs-to-upload</code></td></tr><tr><td>Branch</td><td><strong>feat/cxos-phase3</strong></td></tr><tr><td>Verified baseline SHA</td><td><strong>a40a41c5a76028ad5cae2ff655c5bf168fb86a4a · does not contain Phase 1B</strong></td></tr><tr><td>Phase 1B commit status</td><td><strong>NONE · local/uncommitted</strong></td></tr><tr><td>Shared worktree</td><td><strong>DIRTY · parallel streams present; curated snapshot deployed</strong></td></tr><tr><td>Preview URL</td><td><strong>https://gabriel-capital-labs-ewbkldcd7-rey-gabriel-s-projects.vercel.app/review/growth-center/capability-contract</strong></td></tr><tr><td>Deployment ID and protection</td><td><strong>dpl_C6CD6RzWGkzegsAAxd1mnndycVS3 · READY · anonymous 302 SSO/noindex · authenticated CLI 200</strong></td></tr><tr><td>Validation</td><td><strong>PASS · typecheck, targeted ESLint, 3,438 guards, builds, hard-off, browser, accessibility, reduced motion, performance, protection</strong></td></tr><tr><td>Secret and PII review</td><td><strong>PASS · scoped patterns absent; screenshots synthetic and visually PII-free</strong></td></tr><tr><td>Production</td><td><strong>HARD OFF · NOT AUTHORIZED</strong></td></tr><tr><td>Decision Matrix</td><td><strong>UNRATIFIED</strong></td></tr><tr><td>Live economics</td><td><strong>NO-GO</strong></td></tr></tbody></table></div>
+<p>Branch warning: <strong>The verified SHA is baseline provenance only and does not contain the local/uncommitted Phase 1B files. The shared dirty worktree was not deployed; Vercel received a fresh baseline archive plus only explicit Growth and approved Core Runtime files.</strong></p>
+<p>Production safety remains structural: three server-side controls precede stage import; production identity always denies access; the route remains direct-link-only and unregistered; and no participant data, canonical owner, schema, API, model, event, commerce, billing, payout, or mutation path exists.</p>
+<p>Founder checklist:</p>
+<ul class="task-list"><li class="task"><input type="checkbox" disabled aria-label="Pending"><span>Confirm the exact three phase statuses remain separate.</span></li><li class="task"><input type="checkbox" disabled aria-label="Pending"><span>Confirm the nested annex preserves the approved Phase 1A snapshot.</span></li><li class="task"><input type="checkbox" disabled aria-label="Pending"><span>Confirm every future fact names one canonical owner or fails closed.</span></li><li class="task"><input type="checkbox" disabled aria-label="Pending"><span>Confirm all eight state lanes remain separate.</span></li><li class="task"><input type="checkbox" disabled aria-label="Pending"><span>Confirm the exact ten fixtures are distinguished from conceptual vocabulary and transitions.</span></li><li class="task"><input type="checkbox" disabled aria-label="Pending"><span>Confirm the eleven-part evidence preview is structured, owner-labeled, synthetic, and content-free.</span></li><li class="task"><input type="checkbox" disabled aria-label="Pending"><span>Confirm privacy, correction, appeal, and contract-specific unsupported combinations fail closed.</span></li><li class="task"><input type="checkbox" disabled aria-label="Pending"><span>Confirm Kai displays the exact no-model/no-action receipt.</span></li><li class="task"><input type="checkbox" disabled aria-label="Pending"><span>Confirm production identity, route registration, and no-effect boundaries from observed evidence.</span></li><li class="task"><input type="checkbox" disabled aria-label="Pending"><span>Review final repository, validation, secret-review, deployment, and artifact provenance.</span></li><li class="task"><input type="checkbox" disabled aria-label="Pending"><span>Approve, approve with amendments, hold, or reject the Phase 1B architecture and protected Preview.</span></li></ul></main><nav class="toc" aria-label="Report contents"><strong>Contents</strong><a href="#1-executive-architecture-decision">1. Executive architecture decision</a><a href="#2-controlling-status-taxonomy">2. Controlling status taxonomy</a><a href="#3-placement-in-the-frozen-platform">3. Placement in the frozen platform</a><a href="#4-bounded-ownership">4. Bounded ownership</a><a href="#4-1-growth-experience-owns">4.1 Growth Experience owns</a><a href="#4-2-growth-experience-does-not-own">4.2 Growth Experience does not own</a><a href="#5-source-layout-and-isolation-seam">5. Source layout and isolation seam</a><a href="#6-server-activation-boundary">6. Server activation boundary</a><a href="#7-deterministic-projection-contract">7. Deterministic projection contract</a><a href="#7-1-inputs">7.1 Inputs</a><a href="#7-2-strict-resolver">7.2 Strict resolver</a><a href="#7-3-determinism">7.3 Determinism</a><a href="#8-state-architecture">8. State architecture</a><a href="#9-evidence-architecture">9. Evidence architecture</a><a href="#10-privacy-architecture">10. Privacy architecture</a><a href="#11-kai-architecture">11. Kai architecture</a><a href="#12-experience-architecture">12. Experience architecture</a><a href="#13-security-threat-model">13. Security threat model</a><a href="#14-compliance-architecture">14. Compliance architecture</a><a href="#15-validation-architecture">15. Validation architecture</a><a href="#16-rollback">16. Rollback</a><a href="#17-implementation-readiness-and-next-gate">17. Implementation readiness and next gate</a><a href="#18-founder-review-metadata-and-checklist">18. Founder review metadata and checklist</a></nav></div>
+<footer class="footer">Standalone HTML · embedded CSS · no external assets · source GROWTH_EXPERIENCE_PHASE_1B_ARCHITECTURE.md · SHA-256 46e13fd914f97ff5e16ad37268d78540535cfcf0193623aca5c8daa585039bf7</footer>
+<textarea class="copy-source" id="copy-source" aria-hidden="true" tabindex="-1"># CreditVector Growth Experience Phase 1B — Capability Contract Architecture
+
+Status: **GROWTH EXPERIENCE PHASE 1B — AUTHORIZED NON-MONETARY CONTRACT WORK**  
+Package state: **READY FOR FOUNDER REVIEW**  
+Architecture authority: [ADR-0042](.ai/ADR/ADR-0042-growth-experience-phase-1b-capability-contract.md)  
+Scope: protected, synthetic, participant-data-free Founder Preview  
+Founder review metadata: see §18
+
+## 1. Executive architecture decision
+
+Phase 1B is an isolated capability-contract annex beneath the approved Growth Center Founder Preview. It does not replace Phase 1A, create a second Growth room, or connect a live bounded context.
+
+The review route is:
+
+```text
+/review/growth-center/capability-contract
+```
+
+Its architecture has five deliberate properties:
+
+1. **Subordinate:** the route is nested under Growth Center and requires every parent review gate plus its own exact-string gate.
+2. **Pure:** all contract definitions, fixtures, and resolver behavior are immutable deterministic data with no effects.
+3. **Compositional:** Growth projects named canonical-owner responsibilities but owns none of their participant records.
+4. **Fail-closed:** unsupported values, combinations, owners, sources, and transitions render one bounded unavailable state without inference.
+5. **Dormant:** there is no schema, migration, API, event, enrollment, runtime AI, commerce, reputation effect, economic logic, or production activation.
+
+This is an internal product contract, not a participant agreement, credential framework, compensation plan, or legal terms.
+
+## 2. Controlling status taxonomy
+
+- **CGN ECONOMIC PHASE 1A — BLOCKED**
+- **GROWTH EXPERIENCE PHASE 1A — APPROVED FOUNDER PREVIEW**
+- **GROWTH EXPERIENCE PHASE 1B — AUTHORIZED NON-MONETARY CONTRACT WORK**
+
+The Founder Economic Decision Matrix remains unratified. The economic master flag and payout execution boundary remain dormant. No Phase 1B object is an economic object.
+
+## 3. Placement in the frozen platform
+
+Phase 1B is a review-only L6 experience projection over hypothetical future L4/L5 owner interfaces. It adds no source-of-truth context and does not amend frozen platform ownership.
+
+```text
+Founder review request
+        |
+        v
+Next.js review server boundary
+  - reviewBuildAllowed()
+  - GROWTH_CENTER_PREVIEW_ENABLED === &quot;true&quot;
+  - GROWTH_CAPABILITY_CONTRACT_PREVIEW_ENABLED === &quot;true&quot;
+        |
+        | all three pass
+        v
+Capability Contract Stage
+        |
+        +--&gt; pure pathway definitions
+        +--&gt; strict deterministic request resolver
+        +--&gt; fixed synthetic fixture projection
+        +--&gt; headless CXOS Core Runtime lifecycle only
+        |
+        v
+Complete semantic review document
+
+No branch reaches:
+database | API | model | Event Fabric | canonical owner | billing | money
+```
+
+Growth Center may state that a future canonical owner would supply a fact. It may not fetch, cache, copy, reconcile, or mutate that fact in Phase 1B.
+
+## 4. Bounded ownership
+
+### 4.1 Growth Experience owns
+
+- capability-contract vocabulary;
+- fixed synthetic pathway definitions;
+- fixed state-axis definitions;
+- deterministic fixture identifiers and safe review copy;
+- strict allowlist resolution;
+- presentation-only composition rules;
+- unsupported-state behavior; and
+- the protected review experience.
+
+### 4.2 Growth Experience does not own
+
+| Canonical owner | Reserved truth |
+|---|---|
+| Identity | Person/operator identity and account truth |
+| Organizations | Organization identity, control, scope, hierarchy, and stewardship facts |
+| Membership | Role, authority, and relationship to an organization |
+| Performance Intelligence | Organization health, retention, performance, and improvement projections |
+| Learning | Pathways, curricula, assessments, completions, credentials, and certifications |
+| Operator Network | Mentorship relationship, participation, screening, and matching |
+| Meetings | Calendar, meeting, attendance, and session truth |
+| Documents | Files, notes, artifacts, access, provenance, and retention |
+| Community | Contribution submission, publication, moderation, and Community recognition |
+| Marketplace | Listing, seller, order, delivery, refund, price, and transaction truth |
+| Reputation | Trust, recognition, source integrity, score, badge, and rank |
+| Agency Command | Agency task, assignment, workflow, and deadline truth |
+| Kai | Deterministic preparation and explanation; never business-object ownership |
+
+Corrections belong to the canonical owner of the challenged source fact. Appeals belong to the owner of the challenged review decision. Growth can explain those routes but cannot open or adjudicate them.
+
+An unresolved owner becomes `OWNER_UNRESOLVED`; the associated projection is unavailable.
+
+## 5. Source layout and isolation seam
+
+The authorized review slice is intentionally small:
+
+| Source | Responsibility | Forbidden responsibilities |
+|---|---|---|
+| `lib/growthNetwork/capabilityContract.ts` | Pure types, pathways, state axes, fixtures, strict resolver, fixed Kai explanations | Environment, network, storage, model, canonical data, side effects |
+| `lib/growthNetwork/capabilityPreviewFlags.ts` | Exact-string subordinate preview gate | Client export, general Growth activation, payout authority |
+| `app/review/growth-center/capability-contract/page.tsx` | Server-side three-key gate and post-gate stage import | Data fetch, session decision, participant access, effect |
+| `app/review/growth-center/capability-contract/stage.tsx` | Semantic contract workbench and explicit review controls | Free text, submission, enrollment, personalization, owner mutation |
+| `app/review/growth-center/capability-contract/capability-contract.module.css` | Route-local responsive visual language and motion fail-down | Global design-system mutation, existing room redesign |
+| `scripts/growth-capability-contract.test.ts` | Executable boundary, determinism, copy, ownership, and fail-closed guard | Production effects |
+| `.ai/ADR/ADR-0042-growth-experience-phase-1b-capability-contract.md` | Decision and authorization boundary | Economic policy ratification |
+
+Phase 1A source remains an approved snapshot. Phase 1B is a nested consumer rather than a rewrite of the approved Growth Center. Existing Mission Control, Agency Command, Arena, Community, Billing, Authentication, Organizations, Identity, Marketplace backend, and Agency/CXOS isolation surfaces are outside the diff.
+
+## 6. Server activation boundary
+
+The stage is reachable only when all conditions are explicitly true:
+
+1. the current build identity is allowed by the existing Founder-review policy;
+2. `GROWTH_CENTER_PREVIEW_ENABLED` equals the exact string `true`; and
+3. `GROWTH_CAPABILITY_CONTRACT_PREVIEW_ENABLED` equals the exact string `true`.
+
+Unknown, absent, malformed, mixed-case, or false values deny access. A Vercel production identity denies access regardless of environment values. The stage module is dynamically imported only after authorization, so review content is not part of the denied request path.
+
+The route remains:
+
+- under `/review`;
+- no-index;
+- direct-link-only;
+- absent from public and authenticated product navigation;
+- absent from the review hub, sitemap, and CXOS room registry; and
+- protected by Vercel Preview access controls when deployed.
+
+A feature flag controls code reachability; it does not authorize a participant program, canonical integration, economics, or production use.
+
+## 7. Deterministic projection contract
+
+### 7.1 Inputs
+
+The only supported selection inputs are public, non-sensitive allowlisted review identifiers for:
+
+- one pathway; and
+- one synthetic fixture.
+
+The route may accept them as query parameters to make review states linkable and browser history deterministic. It may not put person, organization, evidence, membership, customer, private workflow, or source-record state in a URL.
+
+### 7.2 Strict resolver
+
+The resolver:
+
+1. accepts no input or exactly one allowlisted value for each supported key;
+2. normalizes nothing beyond the documented literal identifiers;
+3. rejects arrays, duplicates, unknown keys that affect state, unknown values, incomplete dependent combinations, and impossible state combinations;
+4. returns a sanitized supported projection or one generic unsupported projection;
+5. never echoes raw input; and
+6. never chooses a nearest, default, inferred, or personalized state after an invalid request.
+
+The default no-query route renders a fixed orientation fixture. It is an explicit review state, not an inferred participant state.
+
+### 7.3 Determinism
+
+For the same supported selection, the projection is byte-for-byte semantically stable. The contract module uses no:
+
+- clock or date derivation;
+- random value;
+- browser or server storage;
+- cookie or session;
+- identity or organization context;
+- database or API;
+- network request;
+- model or prompt;
+- analytics or telemetry; or
+- mutable singleton.
+
+## 8. State architecture
+
+The contract keeps eight independent state lanes:
+
+1. availability and contract support;
+2. preparation/participation;
+3. evidence sufficiency;
+4. completion;
+5. source-review disposition;
+6. correction;
+7. appeal; and
+8. visibility.
+
+The rendered status panel must show that one axis cannot imply another. In particular:
+
+```text
+completion != source acceptance
+source acceptance != visibility
+visibility != publication or consent
+source confirmation != qualification
+any state != reputation, XP, Arena, credential, access, employment, or economics
+```
+
+The implementation exposes exactly ten selectable fixtures: `overview`, `empty`, `preparing`, `completed-unreviewed`, `in-review`, `changes-requested`, `source-corrected`, `appeal-in-review`, `privacy-restricted`, and `unsupported`. The default request is the explicit `overview` fixture. A request with only one selector, an unknown or duplicate value, an unknown key, or an invalid contract/fixture pair fails closed.
+
+Contract-specific refusals are explicit: mentorship refuses `completed-unreviewed` and `appeal-in-review`; organizational stewardship refuses `appeal-in-review`; operator-created contribution remains owner-unresolved and never projects a favorable state.
+
+The following is conceptual future state vocabulary, not a list of additional selectable fixtures or executable transitions:
+
+```text
+no-participation-represented example
+  -&gt; preparing example
+  -&gt; under-review example
+  -&gt; source-confirmed-state example
+
+under-review example
+  -&gt; changes-requested example
+  -&gt; preview correction path
+  -&gt; source-owner-review example
+
+not-accepted example
+  -&gt; preview appeal path
+  -&gt; human-review-required example
+  -&gt; resolved example | not-accepted example
+```
+
+No control performs a transition. It selects one of the exact fixed fixtures above. Terms such as not accepted, source conflict, source-owner review, and resolved appeal remain conceptual unless an exact fixture represents them.
+
+Unknown owner, policy, source, evidence category, reviewer, visibility, actor, scope, state, or transition fails closed. Completion without source confirmation, acceptance without reviewer authority, and appeal without an underlying decision are unsupported.
+
+## 9. Evidence architecture
+
+Phase 1B stores no evidence and displays no realistic evidence content. Every supported projection now carries one deeply frozen, owner-labeled eleven-part synthetic evidence contract; the stage renders it only for an owner-resolved contract.
+
+The exact rendered items are:
+
+- **Professional purpose** — canonical contract owner;
+- **Source owner** — future evidence owner and explicit no-connection statement;
+- **Subject and scope** — synthetic scope with no person, participant, organization, or customer;
+- **Evidence category** — purpose-bound category with no artifact, submission, or verification;
+- **Occurrence / source confirmation** — future confirmation requirement and refused substitutes;
+- **Reviewer role** — future human review owner or unresolved-owner refusal;
+- **Policy / contract version** — Growth review grammar version only;
+- **Visibility** — deny-by-default privacy boundary and visibility owner;
+- **Correction route** — source-fact owner and no-live-case boundary;
+- **Appeal route** — decision owner or independent-owner refusal; and
+- **Expiry / supersession** — future stale-state behavior with no live validity period.
+
+The stage renders these items as a semantic definition list for an owner-resolved contract. For an owner-unresolved contract, every item resolves to the unsupported copy and the stage withholds the detailed list. This structure is a review projection, not evidence storage or a schema proposal.
+
+Evidence is purpose-bound. No accepted example can be replayed across pathways by inference. Conflicting sources resolve to **Needs human review**. Growth and Kai never decide which source wins.
+
+The separate review-rejection panel may illustrate self-review, reviewer conflict, collusion, replay, duplicate evidence, completion farming, popularity substitution, plagiarism, fabricated provenance, retaliation, PII inclusion, unauthorized visibility, supersession, and purpose misuse. These fixed examples are control education, not selectable fixtures, detection, or accusation.
+
+## 10. Privacy architecture
+
+Privacy is deny-by-default:
+
+- synthetic generic labels only;
+- no PII, protected attributes, employment evaluation, consumer credit facts, customers, files, cases, or realistic identifiers;
+- no participant, session, organization, Membership, Learning, Operator Network, Meetings, Documents, Community, Marketplace, Reputation, Agency Command, or Kai runtime read;
+- no form, upload, free text, persistence, Growth-owned cookie, Growth-owned local storage, Growth-owned analytics, or Growth-owned telemetry;
+- unknown visibility resolves to hidden/unavailable; and
+- public, cross-organization, named-peer, customer, and broad workforce visibility are unsupported.
+
+The application root may still provide inherited framework-level session/theme behavior. Growth does not consume it. Browser evidence must distinguish inherited reads from Growth-owned activity and prove there is no Growth write path.
+
+## 11. Kai architecture
+
+Kai remains the canonical Credit Intelligence Officer. Growth Advisor is a route-local deterministic explanation mode.
+
+```text
+fixed reviewer control
+        |
+        v
+allowlisted intent + selected synthetic fixture
+        |
+        v
+pure lookup / fixed explanation
+        |
+        v
+owner + requirement + boundary + no-action receipt
+```
+
+No free text, model, prompt, network, memory, retrieval, tool, action, or source-system call exists. Kai cannot assess, verify, approve, match, enroll, publish, schedule, correct, appeal, adjudicate, or transact.
+
+Every explanation displays the exact receipt:
+
+&gt; Kai is explaining fixed synthetic review fixtures. Kai did not analyze a person, organization, evidence, eligibility, or opportunity. No model was called. Nothing was saved, submitted, reviewed, corrected, appealed, assigned, scheduled, published, enrolled, purchased, or changed.
+
+## 12. Experience architecture
+
+The Phase 1B page is a **capability-contract workbench**, not a dashboard, referral page, statistics page, social feed, or second immersive headquarters.
+
+Recommended semantic order:
+
+1. persistent Founder/synthetic/no-live disclosure;
+2. purpose and contract boundary;
+3. seven pathway spine;
+4. selected synthetic fixture;
+5. independent state-axis ledger;
+6. evidence-requirement preview;
+7. canonical ownership map;
+8. correction and appeal explanation;
+9. deterministic rejection examples;
+10. Kai explanation; and
+11. Agency Builder and global no-economic boundaries.
+
+The DOM order is the visual, reading, and focus order. Mobile layouts must not use CSS reordering. Controls are native and at least 44 by 44 CSS pixels. A complete semantic document is available with JavaScript motion disabled, high zoom, static mode, and `prefers-reduced-motion`.
+
+CXOS Core Runtime may provide only presentation lifecycle mechanics already authorized by ADR-0040: capability projection, arrival settlement, visibility pause, district focus/activation, reduced-motion fail-down, and bounded local navigation. It receives no Growth truth and is not modified by this stream.
+
+## 13. Security threat model
+
+| Threat | Architectural control |
+|---|---|
+| Accidental production exposure | Production-hard-off server policy plus two exact-string subordinate flags; post-gate import; unregistered route |
+| Participant-data leakage | No owner-system read, no input, generic fixtures, no raw query echo |
+| Cross-tenant disclosure | No tenant context; unsupported cross-organization visibility |
+| Injection through review selection | Literal allowlist and generic unsupported state |
+| State forgery by query editing | Resolver validates complete combinations; displayed state remains synthetic and carries persistent disclosure |
+| Silent ownership takeover | Every fact category names its canonical owner; unresolved owner fails closed |
+| Model or tool action | No AI SDK, prompt, fetch, tool, or action seam |
+| Hidden persistence | No schema, API, action, form, storage, cookie, analytics, telemetry, or event |
+| Economic activation by vocabulary | No amount/rate/balance/entitlement; Agency and global no-economics disclosures; economic guards |
+| Social/reputation gaming | No likes, followers, leaderboard, XP, Arena, score, rank, badge, or Reputation write |
+| Misleading completion or approval | Separate axes, forbidden live-status labels, non-inference copy |
+| Review-route discoverability | No navigation, review-hub, sitemap, registry, or public link |
+
+## 14. Compliance architecture
+
+Persistent disclosure:
+
+&gt; **Founder review · Synthetic capability-contract fixtures · No live Growth program. Nothing shown is a participant record, enrollment, mentor match, course, contribution, Community post, organization assessment, credential, certification, opportunity, qualification, Growth Reputation record, compensation, or promise of business or credit results. No participant data is read or saved, and no action is taken.**
+
+Agency disclosure:
+
+&gt; **No live Growth Distribution. These stewardship examples create no eligibility, allocation, obligation, or payment right. Recruiting is not rewarded.**
+
+Unsupported-state copy:
+
+&gt; **Unsupported review state · unavailable in this Preview. No status, eligibility, completion, review, or action has been inferred.**
+
+Mentorship and education remain future B2B operator-development concepts. They exclude consumer-specific credit work, dispute execution, representation, legal/tax/financial/employment/business-opportunity advice, advance-fee guidance, matching, booking, contracting, payment, live sessions, enrollment, credentials, and outcome promises.
+
+## 15. Validation architecture
+
+No validation result is claimed until commands and rendered checks actually run.
+
+Required evidence:
+
+- TypeScript typecheck;
+- targeted lint and repository lint disposition;
+- dedicated Phase 1B contract guard;
+- Growth Network, Growth Center, CXOS Core Runtime, schema-safety, compliance, and protected-room regression guards;
+- optimized Preview build with all gates enabled;
+- optimized production-identity build proving hard-off;
+- source scan for schema, APIs, effects, runtime AI, canonical-owner imports, economic shapes, secrets, and prohibited protected-surface changes;
+- desktop, tablet, mobile, 320-pixel, high-zoom, keyboard, focus, reduced-motion, static-equivalence, and browser-history checks;
+- accessibility scan and manual semantic review;
+- network/write observation distinguishing inherited root behavior from Growth behavior;
+- performance observation;
+- direct unauthenticated protection response and authenticated protected-preview response, if deployment occurs;
+- evidence checksums and curated-source manifest; and
+- exact repository branch/SHA/local-state warning.
+
+Final validation, repository, Preview, and secret-review observations are recorded in §18 only after direct evidence exists.
+
+## 16. Rollback
+
+Rollback removes the nested route, pure capability-contract module, subordinate flag, route-local CSS, dedicated guard, ADR, reports, generated HTML, text handoff, evidence, and package. It requires no database, participant, provider, billing, economic, or external-state reversal.
+
+If a protected Preview environment flag exists, remove that deployment-scoped flag or retire the Preview. No production flag is authorized.
+
+## 17. Implementation readiness and next gate
+
+The architecture is ready for an isolated protected Founder Preview implementation only. That implementation must remain within this document and ADR-0042.
+
+The next decision after validated Preview evidence is a Founder choice to approve, approve with amendments, hold, or reject the Phase 1B capability contract. No source-system integration or later phase is implied.
+
+Only after a separate Founder authorization may the team consider a narrow source-owner interface specification. Participant data, enrollment, schema, APIs, events, runtime AI, public access, reputation effects, commerce, billing, payouts, and live economics remain independently blocked.
+
+**CGN ECONOMIC PHASE 1A — BLOCKED.**
+
+## 18. Founder review metadata and checklist
+
+| Item | Status |
+|---|---|
+| Local path | `/Users/re3zy/Documents/gabriel-capital-labs-to-upload` |
+| Branch | **feat/cxos-phase3** |
+| Verified baseline SHA | **a40a41c5a76028ad5cae2ff655c5bf168fb86a4a · does not contain Phase 1B** |
+| Phase 1B commit status | **NONE · local/uncommitted** |
+| Shared worktree | **DIRTY · parallel streams present; curated snapshot deployed** |
+| Preview URL | **https://gabriel-capital-labs-ewbkldcd7-rey-gabriel-s-projects.vercel.app/review/growth-center/capability-contract** |
+| Deployment ID and protection | **dpl_C6CD6RzWGkzegsAAxd1mnndycVS3 · READY · anonymous 302 SSO/noindex · authenticated CLI 200** |
+| Validation | **PASS · typecheck, targeted ESLint, 3,438 guards, builds, hard-off, browser, accessibility, reduced motion, performance, protection** |
+| Secret and PII review | **PASS · scoped patterns absent; screenshots synthetic and visually PII-free** |
+| Production | **HARD OFF · NOT AUTHORIZED** |
+| Decision Matrix | **UNRATIFIED** |
+| Live economics | **NO-GO** |
+
+Branch warning: **The verified SHA is baseline provenance only and does not contain the local/uncommitted Phase 1B files. The shared dirty worktree was not deployed; Vercel received a fresh baseline archive plus only explicit Growth and approved Core Runtime files.**
+
+Production safety remains structural: three server-side controls precede stage import; production identity always denies access; the route remains direct-link-only and unregistered; and no participant data, canonical owner, schema, API, model, event, commerce, billing, payout, or mutation path exists.
+
+Founder checklist:
+
+- [ ] Confirm the exact three phase statuses remain separate.
+- [ ] Confirm the nested annex preserves the approved Phase 1A snapshot.
+- [ ] Confirm every future fact names one canonical owner or fails closed.
+- [ ] Confirm all eight state lanes remain separate.
+- [ ] Confirm the exact ten fixtures are distinguished from conceptual vocabulary and transitions.
+- [ ] Confirm the eleven-part evidence preview is structured, owner-labeled, synthetic, and content-free.
+- [ ] Confirm privacy, correction, appeal, and contract-specific unsupported combinations fail closed.
+- [ ] Confirm Kai displays the exact no-model/no-action receipt.
+- [ ] Confirm production identity, route registration, and no-effect boundaries from observed evidence.
+- [ ] Review final repository, validation, secret-review, deployment, and artifact provenance.
+- [ ] Approve, approve with amendments, hold, or reject the Phase 1B architecture and protected Preview.
+</textarea>
+<script>(()=>{const b=document.getElementById('copy');const s=document.getElementById('copy-source');if(!b||!s)return;b.addEventListener('click',async()=>{try{await navigator.clipboard.writeText(s.value);b.textContent='Copied';b.dataset.state='copied';setTimeout(()=>{b.textContent='Copy Markdown';delete b.dataset.state},1800)}catch{b.textContent='Select Markdown';s.style.display='block';s.removeAttribute('aria-hidden');s.select()}})})()</script></body></html>

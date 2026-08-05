@@ -19,6 +19,7 @@
 | **Entitlement Service + Reward Claim** | ADR-0038 §5 (PROPOSED); seed `lib/entitlements.ts` | ABSENT | Resolves through the PEP as an additive source; not a parallel authz. |
 | **Arena** (progression presentation) | `lib/arena/*`, `app/arena` | PARTIAL (dormant) | Experience, not truth. Reads reputation; owns presentation only. |
 | **Marketplace** (commerce) | — | ABSENT (PROPOSED) | Will *consume* verified identity + membership; owns commerce, never identity. |
+| **Growth Network policy + distribution foundation** | `lib/growthNetwork/**` (pure contract only); ADR-0039 / root `GROWTH_NETWORK_*` docs | **BUILT (dormant, schema-free)** | Owns only CGn path/revenue-stream vocabulary, day-15 schedule contract, refused growth signals, and future versioned qualification/distribution boundaries. Growth Economic Ledger is a future module of Growth Distribution. Owns no identity, reputation, health, source commerce, billing, payout execution, tax filing, provider, task, calendar, messaging, or analytics truth. |
 | **Operator Network** | `lib/network/*`, `app/network` (dormant) + `/community` (LIVE forum) | PARTIAL | Two surfaces; do not conflate. Consumes identity; owns messaging. |
 | **Kai** (intelligence) | `lib/kai.ts`, `lib/intelligence/*` | SHIPPED | Owns reasoning; tool-less (ADR-0005). Reads identity context; owns none of it. |
 | **Knowledge Graph** | `lib/intelligence/graph.ts` | SHIPPED (index) | Kai-feed PROPOSED. |
@@ -41,5 +42,6 @@
 - Authentication is external to every domain; principal = `currentAccount().id`.
 - The Event Fabric transports; domains own meaning. Identity emits facts only.
 - Reputation owns trust; Arena owns presentation; Marketplace owns commerce; Kai owns intelligence; Billing owns money. Identity owns none of these — they *consume* identity.
+- Growth Policy owns economic qualification meaning; future Growth Distribution owns its obligation journal. Neither may reinterpret Reputation, Performance Intelligence, Billing, Marketplace, or provider facts.
 - Authorization enforces through the PEP; role/permission maps are additive sources, never parallel engines.
 - No capability has two ACTIVE owners. A migration may introduce a dormant successor; the predecessor stays the sole active owner until the gated cut-over.

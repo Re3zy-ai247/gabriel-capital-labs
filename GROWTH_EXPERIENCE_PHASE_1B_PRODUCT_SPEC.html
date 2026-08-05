@@ -1,0 +1,595 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark"><meta name="robots" content="noindex,nofollow"><title>CreditVector Growth Experience Phase 1B — Capability Contract Product Specification</title><style>
+:root{color-scheme:dark;--bg:#070b14;--panel:#0d1422;--panel2:#111b2c;--line:#293850;--text:#e7edf7;--muted:#a7b5c9;--accent:#9dd7c7;--gold:#e7c98d;--focus:#fff;--max:78rem;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+*{box-sizing:border-box}html{scroll-behavior:smooth;background:var(--bg)}body{margin:0;background:radial-gradient(circle at 82% 0,#142c36 0,transparent 32rem),var(--bg);color:var(--text);font-size:16px;line-height:1.65;overflow-wrap:anywhere}
+a{color:var(--accent);text-underline-offset:.2em}a:hover{text-decoration-thickness:2px}a:focus-visible,button:focus-visible,.table-wrap:focus-visible{outline:3px solid var(--focus);outline-offset:4px}
+.skip{position:fixed;left:1rem;top:1rem;z-index:9;transform:translateY(-180%);padding:.7rem 1rem;background:var(--panel);border:1px solid var(--line);border-radius:.5rem}.skip:focus{transform:none}
+.top{position:sticky;top:0;z-index:5;border-bottom:1px solid var(--line);background:rgb(7 11 20/.94);backdrop-filter:blur(14px)}.top-inner{width:min(calc(100% - 2rem),var(--max));min-height:4.5rem;margin:auto;display:flex;align-items:center;justify-content:space-between;gap:1rem}.brand{min-width:0}.brand strong,.brand span{display:block}.brand strong{font-size:.78rem;letter-spacing:.12em;text-transform:uppercase}.brand span{font-size:.75rem;color:var(--muted)}
+.copy{min-height:44px;padding:.65rem 1rem;border:1px solid var(--line);border-radius:999px;background:var(--panel2);color:var(--text);font:inherit;font-weight:750;cursor:pointer}.copy[data-state="copied"]{border-color:var(--accent);color:var(--accent)}
+.shell{width:min(calc(100% - 2rem),var(--max));margin:0 auto;display:grid;grid-template-columns:minmax(0,1fr) 15rem;gap:3rem;padding:3rem 0 5rem}.content{min-width:0}.toc{position:sticky;top:6rem;align-self:start;padding-left:1.25rem;border-left:1px solid var(--line)}.toc strong{display:block;margin-bottom:.7rem;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--gold)}.toc a{display:block;padding:.28rem 0;color:var(--muted);font-size:.8rem;text-decoration:none}.toc a:hover{color:var(--text)}
+h1,h2,h3,h4{line-height:1.16;letter-spacing:-.025em;scroll-margin-top:6rem}h1{max-width:20ch;margin:0 0 1.5rem;font-size:clamp(2.25rem,6vw,4.8rem)}h2{margin:4rem 0 1rem;padding-top:1rem;border-top:1px solid var(--line);font-size:clamp(1.55rem,3vw,2.3rem)}h3{margin:2.5rem 0 .75rem;font-size:1.35rem}h4{margin:2rem 0 .6rem;font-size:1.05rem;color:var(--gold)}.anchor{margin-left:.45rem;color:var(--muted);font-size:.7em;text-decoration:none;opacity:.45}h1:hover .anchor,h2:hover .anchor,h3:hover .anchor,h4:hover .anchor,.anchor:focus{opacity:1}
+p,li,td,th{max-width:76ch}strong{color:#fff}code{padding:.14em .34em;border:1px solid var(--line);border-radius:.3rem;background:#0a111d;color:#bce9dd;font-size:.88em}pre{overflow:auto;padding:1rem;border:1px solid var(--line);border-radius:.65rem;background:#050913}pre code{padding:0;border:0;background:none;color:#d8e2ef}.table-wrap{overflow-x:auto;margin:1.5rem 0;border:1px solid var(--line);border-radius:.65rem}table{width:100%;border-collapse:collapse;min-width:38rem}th,td{padding:.8rem .9rem;border-bottom:1px solid var(--line);vertical-align:top;text-align:left}th{background:var(--panel2);color:#fff;font-size:.76rem;letter-spacing:.04em}tr:last-child td{border-bottom:0}
+blockquote{margin:1.5rem 0;padding:1rem 1.1rem;border-left:3px solid var(--gold);background:var(--panel);color:#dbe4f0}ul,ol{padding-left:1.35rem}li{margin:.4rem 0}.task-list{padding:0;list-style:none}.task{display:flex;gap:.65rem;align-items:flex-start}.task input{width:1.1rem;height:1.1rem;margin-top:.35rem;accent-color:var(--accent)}hr{height:1px;margin:3rem 0;border:0;background:var(--line)}
+.footer{width:min(calc(100% - 2rem),var(--max));margin:auto;padding:1.25rem 0 3rem;border-top:1px solid var(--line);color:var(--muted);font-size:.75rem}.copy-source{display:none}
+@media(max-width:860px){.shell{display:block;padding-top:2rem}.toc{position:static;margin-top:3rem;padding:1.2rem;border:1px solid var(--line);border-radius:.65rem;background:var(--panel)}h1{font-size:clamp(2rem,11vw,3.3rem)}}
+@media(max-width:520px){.top-inner,.shell,.footer{width:min(calc(100% - 1.25rem),var(--max))}.top-inner{min-height:4rem}.brand span{display:none}.copy{padding:.55rem .75rem;font-size:.8rem}.shell{padding-bottom:3rem}h2{margin-top:3rem}.table-wrap{margin-inline:-.1rem}pre{font-size:.78rem}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+</style></head>
+<body><a class="skip" href="#report">Skip to report</a><header class="top"><div class="top-inner"><div class="brand"><strong>CreditVector Growth Network</strong><span>Protected Founder review · standalone report</span></div><button class="copy" id="copy" type="button">Copy Markdown</button></div></header>
+<div class="shell"><main class="content" id="report" tabindex="-1"><h1 id="creditvector-growth-experience-phase-1b-capability-contract-product-specification">CreditVector Growth Experience Phase 1B — Capability Contract Product Specification<a class="anchor" href="#creditvector-growth-experience-phase-1b-capability-contract-product-specification" aria-label="Link to this section">#</a></h1>
+<p>Status: <strong>GROWTH EXPERIENCE PHASE 1B — AUTHORIZED NON-MONETARY CONTRACT WORK</strong> Package state: <strong>READY FOR FOUNDER REVIEW</strong> Audience: Founder, Product, Design, Engineering, Security, Privacy, Compliance, Accessibility Product type: protected synthetic Founder Preview This is: <strong>an internal product specification, not a participant agreement or live program</strong></p>
+<h2 id="1-product-decision">1. Product decision<a class="anchor" href="#1-product-decision" aria-label="Link to this section">#</a></h2>
+<p>Build a nested Growth Center review experience that makes the future non-monetary capability model precise. A reviewer should understand:</p>
+<blockquote>CreditVector can help an operator become more capable, useful, and trusted without turning contribution into recruiting, popularity, or a compensation promise.</blockquote>
+<p>Phase 1B defines how capability pathways, source ownership, evidence requirements, independent states, privacy, corrections, appeals, and Kai explanations could work. It does not enroll anyone or connect a canonical source.</p>
+<h2 id="2-controlling-status-taxonomy">2. Controlling status taxonomy<a class="anchor" href="#2-controlling-status-taxonomy" aria-label="Link to this section">#</a></h2>
+<ol><li><strong>CGN ECONOMIC PHASE 1A — BLOCKED</strong></li><li><strong>GROWTH EXPERIENCE PHASE 1A — APPROVED FOUNDER PREVIEW</strong></li><li><strong>GROWTH EXPERIENCE PHASE 1B — AUTHORIZED NON-MONETARY CONTRACT WORK</strong></li></ol>
+<p>The Decision Matrix is unratified. Live economics is NO-GO.</p>
+<h2 id="3-goals">3. Goals<a class="anchor" href="#3-goals" aria-label="Link to this section">#</a></h2>
+<ul><li>Make every supported capability pathway answer <strong>How can I become more valuable?</strong></li><li>Show that capability and contribution can support a strong operator business without requiring agency ownership.</li><li>Define a legible contract between Growth presentation and canonical source owners.</li><li>Demonstrate separate, correctable, reviewable state axes without implying live status.</li><li>Show evidence requirements without collecting or inventing evidence.</li><li>Explain privacy and visibility before any participant experiment.</li><li>Let Kai explain fixed review fixtures while remaining deterministic and non-authoritative.</li><li>Fail closed on every unsupported or ambiguous state.</li><li>Preserve the approved Growth Center Phase 1A experience as the parent context.</li></ul>
+<h2 id="4-non-goals">4. Non-goals<a class="anchor" href="#4-non-goals" aria-label="Link to this section">#</a></h2>
+<p>Phase 1B does not provide:</p>
+<ul><li>a live Growth Network, participant program, account, profile, status, opportunity, enrollment, waitlist, application, mentor match, course, class, webinar, assessment, credential, certification, contribution submission, Community post, organization assessment, Marketplace listing, seller access, reputation, eligibility, qualification, or live Growth Distribution;</li><li>participant, customer, organization, Membership, Learning, Operator Network, Meetings, Documents, Community, Marketplace, Reputation, Agency Command, or Kai runtime data;</li><li>database schema, migration, API, server action, job, event, webhook, analytics, telemetry, storage, runtime model, prompt, personalization, or production mutation;</li><li>commerce, money, amount, rate, balance, wallet, commission, provider, billing, subscription, tax, ledger, settlement, payout, or payment; or</li><li>public launch, production route, marketing claim, participant terms, legal terms, or economic policy ratification.</li></ul>
+<h2 id="5-primary-reviewer-jobs">5. Primary reviewer jobs<a class="anchor" href="#5-primary-reviewer-jobs" aria-label="Link to this section">#</a></h2>
+<h3 id="founder">Founder<a class="anchor" href="#founder" aria-label="Link to this section">#</a></h3>
+<ul><li>Determine whether the capability model expresses the intended Growth philosophy.</li><li>Determine whether ownership is clear enough to prevent future platform duplication.</li><li>Determine whether state, evidence, privacy, correction, appeal, and Kai boundaries are trustworthy.</li><li>Approve, amend, hold, or reject the contract without authorizing live operation.</li></ul>
+<h3 id="product-and-architecture-reviewers">Product and architecture reviewers<a class="anchor" href="#product-and-architecture-reviewers" aria-label="Link to this section">#</a></h3>
+<ul><li>Trace every displayed concept to a canonical owner or <code>OWNER_UNRESOLVED</code>.</li><li>Confirm Growth owns presentation grammar only.</li><li>Confirm every unsupported combination fails closed.</li><li>Identify missing policy before any future owner integration.</li></ul>
+<h3 id="compliance-security-privacy-and-accessibility-reviewers">Compliance, security, privacy, and accessibility reviewers<a class="anchor" href="#compliance-security-privacy-and-accessibility-reviewers" aria-label="Link to this section">#</a></h3>
+<ul><li>Confirm disclosures prevent a synthetic fixture from being mistaken for a live program or outcome.</li><li>Confirm there is no participant data or effect path.</li><li>Confirm mentorship and education remain bounded B2B operator-development concepts.</li><li>Confirm complete semantic, keyboard, responsive, high-zoom, and reduced-motion access.</li></ul>
+<h2 id="6-experience-placement">6. Experience placement<a class="anchor" href="#6-experience-placement" aria-label="Link to this section">#</a></h2>
+<p>Route:</p>
+<pre><code class="language-text">/review/growth-center/capability-contract</code></pre>
+<p>The page is a nested <strong>capability-contract workbench</strong>. It is not a second headquarters, dashboard, referral page, statistics page, Marketplace, Community surface, course catalog, or agency workspace.</p>
+<p>It requires the parent Growth Center review boundary and a second subordinate capability-contract flag. It is direct-link-only, no-index, and absent from normal navigation and registries.</p>
+<h2 id="7-persistent-review-disclosure">7. Persistent review disclosure<a class="anchor" href="#7-persistent-review-disclosure" aria-label="Link to this section">#</a></h2>
+<p>The first viewport must display this compact boundary before any state or recommendation:</p>
+<blockquote><strong>Founder review · Synthetic · Non-monetary · Production hard-off</strong></blockquote>
+<p>It must link directly to a visible full boundary in the same semantic document containing:</p>
+<blockquote><strong>Founder review · Synthetic capability-contract fixtures · No live Growth program. Nothing shown is a participant record, enrollment, mentor match, course, contribution, Community post, organization assessment, credential, certification, opportunity, qualification, Growth Reputation record, compensation, or promise of business or credit results. No participant data is read or saved, and no action is taken.</strong></blockquote>
+<p>The compact boundary remains visible while the full disclosure remains available in the document. Neither may depend on a modal, tooltip, hover, animation, or collapsed control.</p>
+<h2 id="8-information-architecture">8. Information architecture<a class="anchor" href="#8-information-architecture" aria-label="Link to this section">#</a></h2>
+<p>The semantic document follows this order:</p>
+<ol><li>review boundary and return context;</li><li>capability-contract purpose;</li><li>pathway selector and pathway spine;</li><li>selected synthetic fixture;</li><li>independent state axes;</li><li>evidence-requirement preview;</li><li>canonical ownership map;</li><li>privacy and visibility;</li><li>correction and appeal preview;</li><li>deterministic rejection patterns;</li><li>Kai fixed explanation; and</li><li>Agency Builder and global non-economic boundary.</li></ol>
+<p>The visual order must match DOM, reading, keyboard, and assistive-technology order at every viewport.</p>
+<h2 id="9-capability-pathways">9. Capability pathways<a class="anchor" href="#9-capability-pathways" aria-label="Link to this section">#</a></h2>
+<h3 id="9-1-professional-capability">9.1 Professional capability<a class="anchor" href="#9-1-professional-capability" aria-label="Link to this section">#</a></h3>
+<p>Question: <strong>What should I practice next?</strong></p>
+<p>Shows a synthetic capability definition and the source-owner contract a future system would need. It does not assess an operator.</p>
+<h3 id="9-2-professional-development-pathway">9.2 Professional-development pathway<a class="anchor" href="#9-2-professional-development-pathway" aria-label="Link to this section">#</a></h3>
+<p>Question: <strong>How do I become a stronger operator?</strong></p>
+<p>Shows a learning-pathway preview for operations, compliance, accessibility, teaching, and platform use. Learning owns any future pathway, assessment, completion, credential, or certification. Phase 1B has no enrollment or outcome.</p>
+<h3 id="9-3-mentorship-preparation-and-participation">9.3 Mentorship preparation and participation<a class="anchor" href="#9-3-mentorship-preparation-and-participation" aria-label="Link to this section">#</a></h3>
+<p>Question: <strong>How should I prepare to learn from or support another operator?</strong></p>
+<p>Shows goals, questions, boundaries, evidence categories, feedback preparation, and follow-through as future B2B operator professional development. Operator Network would own the relationship; Meetings would own a session; Documents would own notes or artifacts.</p>
+<p>It offers no matching, screening, booking, contract, payment, live mentorship, consumer-specific credit work, dispute execution, representation, legal/tax/financial/employment/business-opportunity advice, advance-fee guidance, or promised result.</p>
+<h3 id="9-4-educational-program-and-learning-artifact">9.4 Educational program and learning artifact<a class="anchor" href="#9-4-educational-program-and-learning-artifact" aria-label="Link to this section">#</a></h3>
+<p>Question: <strong>What should I learn or teach?</strong></p>
+<p>Shows outcome-led learning and teaching requirements. Learning owns a future program and completion; Documents owns artifacts. There is no course, class, webinar, instructor status, credential, certification, enrollment, or promised result.</p>
+<h3 id="9-5-operator-created-contribution">9.5 Operator-created contribution<a class="anchor" href="#9-5-operator-created-contribution" aria-label="Link to this section">#</a></h3>
+<p>Question: <strong>What useful work could I create?</strong></p>
+<p>Shows requirements for a sourced template, operating note, educational outline, or reusable practice artifact. It does not create, upload, submit, publish, recognize, sell, or transfer anything.</p>
+<h3 id="9-6-community-contribution">9.6 Community contribution<a class="anchor" href="#9-6-community-contribution" aria-label="Link to this section">#</a></h3>
+<p>Question: <strong>Where could I share useful knowledge?</strong></p>
+<p>Shows a synthetic path from useful idea to provenance and future Community review. Community owns submission, moderation, and publication. Growth does not read or write Community and does not derive status from posts, likes, views, followers, attendance, referrals, or recruiting.</p>
+<h3 id="9-7-organizational-stewardship">9.7 Organizational stewardship<a class="anchor" href="#9-7-organizational-stewardship" aria-label="Link to this section">#</a></h3>
+<p>Question: <strong>How could responsible leadership help an organization become healthier?</strong></p>
+<p>Shows fictional stewardship requirements such as clear onboarding, useful mentoring, operational follow-through, and source-backed improvement. Organizations owns organizational truth; Membership owns authority; Performance Intelligence owns future organization-health and improvement projections; operational facts remain with their source owners.</p>
+<p>Always display:</p>
+<blockquote><strong>No live Growth Distribution. These stewardship examples create no eligibility, allocation, obligation, or payment right. Recruiting is not rewarded.</strong></blockquote>
+<h2 id="10-state-axis-experience">10. State-axis experience<a class="anchor" href="#10-state-axis-experience" aria-label="Link to this section">#</a></h2>
+<p>The reviewer can inspect eight visibly separate state lanes:</p>
+<div class="table-wrap" role="region" aria-label="Scrollable table" tabindex="0"><table><thead><tr><th scope="col">Axis</th><th scope="col">Product question</th><th scope="col">Must not imply</th></tr></thead><tbody><tr><td>Availability / contract support</td><td>Can this internal review concept be projected with a resolved owner?</td><td>Participation or approval</td></tr><tr><td>Preparation/participation</td><td>What fictional preparation or participation state is illustrated?</td><td>Completion, competence, employment</td></tr><tr><td>Evidence sufficiency</td><td>Are named fictional requirements present for one purpose?</td><td>Verification, acceptance, reuse</td></tr><tr><td>Completion</td><td>What fictional source-completion state is illustrated?</td><td>Review, credential, qualification, reputation</td></tr><tr><td>Source review</td><td>What fictional source-review disposition is illustrated?</td><td>Qualification, credential, reputation</td></tr><tr><td>Correction</td><td>How could a source fact be challenged?</td><td>Live filing or immediate fact change</td></tr><tr><td>Appeal</td><td>How could a review decision be challenged?</td><td>Live case, automatic reversal, Kai judgment</td></tr><tr><td>Visibility</td><td>Who could see the future source-owned fact under explicit policy?</td><td>Publication, consent, broad access</td></tr></tbody></table></div>
+<p>Required non-inference copy:</p>
+<blockquote>Completion is not approval, qualification, certification, publication, recognition, reputation, access, employment, or economic eligibility. Each state lane stands alone.</blockquote>
+<p>The UI must not use <strong>verified</strong>, <strong>approved</strong>, <strong>qualified</strong>, <strong>certified</strong>, <strong>recognized</strong>, <strong>expert</strong>, <strong>verified mentor</strong>, or <strong>approved instructor</strong> as a fixture status.</p>
+<h2 id="11-synthetic-fixtures">11. Synthetic fixtures<a class="anchor" href="#11-synthetic-fixtures" aria-label="Link to this section">#</a></h2>
+<p>The review controls select one explicit allowlisted pathway and one explicit allowlisted fixture. The exact ten implemented fixtures are:</p>
+<div class="table-wrap" role="region" aria-label="Scrollable table" tabindex="0"><table><thead><tr><th scope="col">ID</th><th scope="col">Label</th><th scope="col">Implemented review purpose</th></tr></thead><tbody><tr><td><code>overview</code></td><td>Contract anatomy</td><td>Orientation to ownership and state-lane separation.</td></tr><tr><td><code>empty</code></td><td>No source record</td><td>No source record and no favorable inference.</td></tr><tr><td><code>preparing</code></td><td>Preparation</td><td>Preparation separated from participation, completion, and review.</td></tr><tr><td><code>completed-unreviewed</code></td><td>Source completion / no review</td><td>Fictional completion without review or consequential meaning.</td></tr><tr><td><code>in-review</code></td><td>Human review</td><td>Fictional human review with no decision.</td></tr><tr><td><code>changes-requested</code></td><td>Correction needed</td><td>Fictional correction path without a live case.</td></tr><tr><td><code>source-corrected</code></td><td>Source corrected</td><td>A prior projection superseded without rewriting history.</td></tr><tr><td><code>appeal-in-review</code></td><td>Independent appeal review</td><td>Fictional appeal review distinct from source correction.</td></tr><tr><td><code>privacy-restricted</code></td><td>Privacy restricted</td><td>Only a permitted summary; restricted details are absent.</td></tr><tr><td><code>unsupported</code></td><td>Unsupported state</td><td>No status, eligibility, completion, review, or action inferred.</td></tr></tbody></table></div>
+<p>Not every contract/fixture pair is valid. Mentorship refuses <code>completed-unreviewed</code> and <code>appeal-in-review</code>; organizational stewardship refuses <code>appeal-in-review</code>; operator-created contribution remains owner-unresolved and cannot project a favorable state. Unknown, duplicate, partial, malformed, or impossible selections also fail closed.</p>
+<p>Required-evidence-missing, not-accepted, source-conflict, source-owner-review, and resolved-appeal terms remain conceptual future vocabulary unless one of the exact fixtures above represents them. The rejection-pattern panel is a separate fixed educational surface, not a selectable fixture, detector, accusation, or sanction.</p>
+<p>The no-query state is a fixed orientation fixture. Browser back and forward reproduce the selected supported fixture. The page does not infer history, remember a reviewer, or store selection state.</p>
+<p>Unknown, multiple, malformed, incomplete, or impossible selections render:</p>
+<blockquote><strong>Unsupported review state · unavailable in this Preview. No status, eligibility, completion, review, or action has been inferred.</strong></blockquote>
+<p>Raw unsupported input is never echoed.</p>
+<h2 id="12-evidence-requirement-view">12. Evidence-requirement view<a class="anchor" href="#12-evidence-requirement-view" aria-label="Link to this section">#</a></h2>
+<p>For every supported owner-resolved projection, the workbench now renders exactly eleven fictional, owner-labeled items:</p>
+<ol><li><strong>Professional purpose</strong>;</li><li><strong>Source owner</strong> and explicit no-connection statement;</li><li><strong>Subject and scope</strong> with no person, participant, organization, or customer represented;</li><li><strong>Evidence category</strong> with no artifact, submission, or verification;</li><li><strong>Occurrence / source confirmation</strong> and refused substitutes;</li><li><strong>Reviewer role</strong> or unresolved-owner refusal;</li><li><strong>Policy / contract version</strong> for the Growth review grammar only;</li><li><strong>Visibility</strong> and privacy boundary;</li><li><strong>Correction route</strong> to the source-fact owner;</li><li><strong>Appeal route</strong> to the decision owner or independent-owner refusal; and</li><li><strong>Expiry / supersession</strong> with no live validity period.</li></ol>
+<p>Each rendered item displays its canonical owner. Owner-unresolved contracts fail all eleven projection items to the unsupported copy and withhold the detailed list. The structure is immutable review projection data, not evidence storage or a schema proposal.</p>
+<p>It shows no uploaded file, real note, person, organization, source record, timestamped participant action, signature, customer, case, credit fact, or realistic identifier.</p>
+<p>Purpose-bound evidence cannot be reused across pathways by implication. Conflicting sources produce <strong>Needs human review</strong>.</p>
+<h2 id="13-ownership-view">13. Ownership view<a class="anchor" href="#13-ownership-view" aria-label="Link to this section">#</a></h2>
+<p>The page must make the following boundaries inspectable without suggesting integration:</p>
+<ul><li>Identity owns operator identity.</li><li>Organizations owns organization identity and scope.</li><li>Membership owns roles and authority.</li><li>Performance Intelligence owns future organization-health, retention, performance, and improvement projections.</li><li>Learning owns pathways, assessment, and completion.</li><li>Operator Network owns mentorship relationships and participation.</li><li>Meetings owns meetings and attendance.</li><li>Documents owns notes, files, and artifacts.</li><li>Community owns contribution submission, publication, and moderation.</li><li>Marketplace owns listings, orders, delivery, refunds, and commerce.</li><li>Reputation owns trust and recognition.</li><li>Agency Command owns agency tasks and operational routing.</li><li>Kai owns preparation and explanation only.</li><li>Growth Experience owns contract grammar, deterministic fixtures, and composition only.</li></ul>
+<p>If ownership is unresolved, the workbench says <code>OWNER_UNRESOLVED</code> and stops the projection.</p>
+<h2 id="14-correction-and-appeal-experience">14. Correction and appeal experience<a class="anchor" href="#14-correction-and-appeal-experience" aria-label="Link to this section">#</a></h2>
+<p>The interface may offer only fixed educational controls labeled:</p>
+<ul><li><strong>Preview correction path</strong>; and</li><li><strong>Preview appeal state</strong>.</li></ul>
+<p>It must not say submit, send, file, open case, assign, schedule, or contact reviewer.</p>
+<p>A correction explains how a source fact could be challenged with its owner. An appeal explains how a review decision could be challenged by an authorized human. The hypothetical appeal reviewer is distinct from the original reviewer where policy requires independence. Growth and Kai never decide either path.</p>
+<p>Every example states that it is fictional and no record exists.</p>
+<h2 id="15-deterministic-rejection-patterns">15. Deterministic rejection patterns<a class="anchor" href="#15-deterministic-rejection-patterns" aria-label="Link to this section">#</a></h2>
+<p>The reviewer can inspect fixed examples for:</p>
+<ul><li>self-review or reviewer conflict;</li><li>collusive or reciprocal review;</li><li>duplicate or replayed evidence;</li><li>completion farming or popularity substitution;</li><li>plagiarism or fabricated source provenance;</li><li>retaliatory review;</li><li>PII in a contribution;</li><li>unauthorized visibility;</li><li>expired, superseded, or conflicting evidence; and</li><li>using a source outside its stated purpose.</li></ul>
+<p>The page must describe these as rejection/control examples, not as detected fraud or an accusation about a person.</p>
+<h2 id="16-kai-growth-advisor">16. Kai Growth Advisor<a class="anchor" href="#16-kai-growth-advisor" aria-label="Link to this section">#</a></h2>
+<p>Kai remains <strong>Credit Intelligence Officer</strong>. Growth Advisor is a route-local review mode.</p>
+<p>The reviewer selects fixed questions such as:</p>
+<ul><li>What does this pathway help an operator practice?</li><li>Which canonical owner would hold the future source fact?</li><li>What evidence category would a future review require?</li><li>Why are completion and source review separate?</li><li>What happens when sources conflict?</li><li>Why is this state unsupported?</li></ul>
+<p>Kai returns a fixed explanation for the selected synthetic fixture and must display:</p>
+<blockquote>Kai is explaining fixed synthetic review fixtures. Kai did not analyze a person, organization, evidence, eligibility, or opportunity. No model was called. Nothing was saved, submitted, reviewed, corrected, appealed, assigned, scheduled, published, enrolled, purchased, or changed.</blockquote>
+<p>There is no free text, prompt, model, retrieval, memory, tool call, source-system call, or action.</p>
+<h2 id="17-privacy-and-visibility-requirements">17. Privacy and visibility requirements<a class="anchor" href="#17-privacy-and-visibility-requirements" aria-label="Link to this section">#</a></h2>
+<ul><li>Deny visibility unless the fixture defines a supported scope.</li><li>Unknown visibility is hidden/unavailable.</li><li>Public, cross-organization, named-peer, customer, and broad workforce visibility is unsupported.</li><li>Use generic synthetic labels only.</li><li>Do not use realistic names, emails, phone numbers, addresses, IDs, protected attributes, employment evaluations, consumer credit data, customers, cases, or files.</li><li>Do not read session, user, organization, or canonical-owner data.</li><li>Do not collect input, upload content, persist state, or emit Growth-owned analytics/telemetry.</li><li>Do not encode private state in route parameters.</li></ul>
+<h2 id="18-interaction-requirements">18. Interaction requirements<a class="anchor" href="#18-interaction-requirements" aria-label="Link to this section">#</a></h2>
+<ul><li>Complete semantic content exists without arrival animation.</li><li>Pathway and fixture controls are explicit and reversible through normal browser history.</li><li>Current selection has text, not color-only, indication.</li><li>Keyboard focus follows DOM order and remains visible.</li><li>Skip navigation reaches the contract content.</li><li>Escape settles any route-local presentation motion without hiding content.</li><li>Controls have a minimum 44-by-44 CSS-pixel target.</li><li>No drag-only, hover-only, pointer-only, timed, or gesture-only requirement.</li><li>No auto-advancing status or live region noise.</li><li>Motion is ornamental and never the only carrier of meaning.</li></ul>
+<h2 id="19-responsive-and-accessibility-acceptance">19. Responsive and accessibility acceptance<a class="anchor" href="#19-responsive-and-accessibility-acceptance" aria-label="Link to this section">#</a></h2>
+<p>The protected Preview must be reviewed at:</p>
+<ul><li>desktop;</li><li>tablet portrait and landscape;</li><li>common mobile widths;</li><li>320 CSS pixels;</li><li>200% text zoom;</li><li>keyboard-only use;</li><li>screen-reader-oriented semantic inspection;</li><li>light and dark themes;</li><li><code>prefers-reduced-motion</code>; and</li><li>static/constrained capability mode.</li></ul>
+<p>No horizontal content loss, CSS reading-order change, obscured focus, clipped disclosure, inaccessible control, or motion-only state is acceptable.</p>
+<h2 id="20-performance-budget">20. Performance budget<a class="anchor" href="#20-performance-budget" aria-label="Link to this section">#</a></h2>
+<p>Phase 1B introduces no external asset, font, image, analytics, model, network, or owner-system request. It should reuse the approved app and CXOS presentation foundations without modifying them.</p>
+<p>The page should:</p>
+<ul><li>keep the contract projection local and immutable;</li><li>avoid layout thrash and unbounded animation;</li><li>pause ornamental motion when hidden;</li><li>preserve a complete static projection; and</li><li>avoid increasing global application payload through a public barrel or navigation registration.</li></ul>
+<p>Measured performance must be recorded as evidence; no score is claimed in this draft.</p>
+<h2 id="21-security-and-production-safety-acceptance">21. Security and production-safety acceptance<a class="anchor" href="#21-security-and-production-safety-acceptance" aria-label="Link to this section">#</a></h2>
+<ul><li>Three-key server gate passes only for a permitted review build with both exact-string subordinate flags.</li><li>Production identity returns not found even if flags are present.</li><li>Stage imports only after authorization.</li><li>Route is unregistered and no-index.</li><li>Resolver is strict, deterministic, and does not echo raw invalid input.</li><li>No API, server action, database, schema, migration, event, job, webhook, network, model, prompt, form, storage, analytics, telemetry, or canonical-owner import.</li><li>No billing, provider, tax, ledger, wallet, payout, payment, balance, rate, amount, or economic obligation.</li><li>No Mission Control, Agency Command, Arena, Community, Billing, Authentication, Organizations, Identity, Marketplace backend, Core Runtime, or separate Agency/CXOS isolation-stream modification.</li><li>No secret, token, credential, private URL parameter, PII, or realistic participant record.</li></ul>
+<h2 id="22-validation-plan">22. Validation plan<a class="anchor" href="#22-validation-plan" aria-label="Link to this section">#</a></h2>
+<p>Before Founder handoff, record actual results for:</p>
+<ul><li>typecheck;</li><li>targeted and repository lint disposition;</li><li>Phase 1B and regression guards;</li><li>optimized Preview and production-identity hard-off builds;</li><li>responsive browser matrix;</li><li>keyboard, focus, accessibility, 200% text, and reduced motion;</li><li>route selection, browser back/forward, unsupported values, pathway navigation, Kai, correction/appeal, Agency boundary, and return;</li><li>performance and network/write observation;</li><li>secret and PII scan;</li><li>protected-surface diff review;</li><li>curated Preview deployment protection; and</li><li>evidence checksums and exact artifact provenance.</li></ul>
+<p>Final validation, repository, Preview, and secret-review observations are recorded in §23 only after direct evidence exists.</p>
+<h2 id="23-founder-review-metadata">23. Founder review metadata<a class="anchor" href="#23-founder-review-metadata" aria-label="Link to this section">#</a></h2>
+<div class="table-wrap" role="region" aria-label="Scrollable table" tabindex="0"><table><thead><tr><th scope="col">Item</th><th scope="col">Status</th></tr></thead><tbody><tr><td>Local path</td><td><code>/Users/re3zy/Documents/gabriel-capital-labs-to-upload</code></td></tr><tr><td>Branch</td><td><strong>feat/cxos-phase3</strong></td></tr><tr><td>Verified baseline SHA</td><td><strong>a40a41c5a76028ad5cae2ff655c5bf168fb86a4a · does not contain Phase 1B</strong></td></tr><tr><td>Phase 1B commit status</td><td><strong>NONE · local/uncommitted</strong></td></tr><tr><td>Shared worktree</td><td><strong>DIRTY · parallel streams present; curated snapshot deployed</strong></td></tr><tr><td>Preview URL</td><td><strong>https://gabriel-capital-labs-ewbkldcd7-rey-gabriel-s-projects.vercel.app/review/growth-center/capability-contract</strong></td></tr><tr><td>Deployment ID and protection</td><td><strong>dpl_C6CD6RzWGkzegsAAxd1mnndycVS3 · READY · anonymous 302 SSO/noindex · authenticated CLI 200</strong></td></tr><tr><td>Validation</td><td><strong>PASS · typecheck, targeted ESLint, 3,438 guards, builds, hard-off, browser, accessibility, reduced motion, performance, protection</strong></td></tr><tr><td>Secret and PII review</td><td><strong>PASS · scoped patterns absent; screenshots synthetic and visually PII-free</strong></td></tr><tr><td>Production</td><td><strong>HARD OFF · NOT AUTHORIZED</strong></td></tr><tr><td>Decision Matrix</td><td><strong>UNRATIFIED</strong></td></tr><tr><td>Live economics</td><td><strong>NO-GO</strong></td></tr></tbody></table></div>
+<p>Branch warning: <strong>The verified SHA is baseline provenance only and does not contain the local/uncommitted Phase 1B files. The shared dirty worktree was not deployed; Vercel received a fresh baseline archive plus only explicit Growth and approved Core Runtime files.</strong></p>
+<p>Production safety remains structural: three server-side controls precede stage import; production identity always denies access; the route is direct-link-only and unregistered; and no participant data, canonical owner, schema, API, model, event, storage, analytics, commerce, billing, payout, or mutation path exists.</p>
+<h2 id="24-founder-checklist">24. Founder checklist<a class="anchor" href="#24-founder-checklist" aria-label="Link to this section">#</a></h2>
+<ul class="task-list"><li class="task"><input type="checkbox" disabled aria-label="Pending"><span>The experience communicates capability and contribution, not compensation or recruiting.</span></li><li class="task"><input type="checkbox" disabled aria-label="Pending"><span>The seven pathways are complete enough for review and clearly non-live.</span></li><li class="task"><input type="checkbox" disabled aria-label="Pending"><span>Every concept has one named canonical owner or fails as <code>OWNER_UNRESOLVED</code>.</span></li><li class="task"><input type="checkbox" disabled aria-label="Pending"><span>The eight state lanes remain separate and the non-inference rule is obvious.</span></li><li class="task"><input type="checkbox" disabled aria-label="Pending"><span>The exact ten selectable fixtures are distinguished from conceptual future vocabulary.</span></li><li class="task"><input type="checkbox" disabled aria-label="Pending"><span>The eleven-part evidence preview is structured, owner-labeled, synthetic, and content-free.</span></li><li class="task"><input type="checkbox" disabled aria-label="Pending"><span>Evidence requirements are useful without becoming participant records.</span></li><li class="task"><input type="checkbox" disabled aria-label="Pending"><span>Privacy is deny-by-default and visibility is never inferred.</span></li><li class="task"><input type="checkbox" disabled aria-label="Pending"><span>Correction and appeal are distinct, human-governed future paths.</span></li><li class="task"><input type="checkbox" disabled aria-label="Pending"><span>Kai is deterministic, sourced to the fixture, non-authoritative, and actionless.</span></li><li class="task"><input type="checkbox" disabled aria-label="Pending"><span>Mentorship and education remain bounded B2B operator-development concepts.</span></li><li class="task"><input type="checkbox" disabled aria-label="Pending"><span>Agency Builder says <strong>No live Growth Distribution</strong> and <strong>Recruiting is not rewarded</strong>.</span></li><li class="task"><input type="checkbox" disabled aria-label="Pending"><span>Unsupported states fail closed without echo or silent default.</span></li><li class="task"><input type="checkbox" disabled aria-label="Pending"><span>Mobile, tablet, desktop, high-zoom, keyboard, reduced-motion, and static evidence is acceptable.</span></li><li class="task"><input type="checkbox" disabled aria-label="Pending"><span>Production identity remains hard off and the route remains protected/unregistered.</span></li><li class="task"><input type="checkbox" disabled aria-label="Pending"><span>Repository, validation, secret-review, deployment, and artifact provenance are supported by observed evidence.</span></li><li class="task"><input type="checkbox" disabled aria-label="Pending"><span>The Founder Economic Decision Matrix remains unratified and live economics remains NO-GO.</span></li><li class="task"><input type="checkbox" disabled aria-label="Pending"><span>I approve, approve with amendments, hold, or reject the Phase 1B contract and Preview.</span></li></ul>
+<h2 id="25-recommendation-and-next-gate">25. Recommendation and next gate<a class="anchor" href="#25-recommendation-and-next-gate" aria-label="Link to this section">#</a></h2>
+<p>Recommendation: approve the Phase 1B contract only if the Preview makes source ownership, state separation, evidence purpose, privacy, correction, appeal, and Kai limits understandable without implying a live program.</p>
+<p>The next gate is a Founder decision on this Phase 1B contract and its validated protected Preview. No later phase is authorized here.</p>
+<p>After that decision—and only through a separate explicit authorization—the Founder may consider a narrow non-economic source-owner interface specification. Participant data, canonical integration, enrollment, schema, APIs, events, runtime AI, public access, reputation effects, commerce, billing, payouts, and economics remain blocked.</p>
+<p><strong>CGN ECONOMIC PHASE 1A — BLOCKED.</strong></p></main><nav class="toc" aria-label="Report contents"><strong>Contents</strong><a href="#1-product-decision">1. Product decision</a><a href="#2-controlling-status-taxonomy">2. Controlling status taxonomy</a><a href="#3-goals">3. Goals</a><a href="#4-non-goals">4. Non-goals</a><a href="#5-primary-reviewer-jobs">5. Primary reviewer jobs</a><a href="#founder">Founder</a><a href="#product-and-architecture-reviewers">Product and architecture reviewers</a><a href="#compliance-security-privacy-and-accessibility-reviewers">Compliance, security, privacy, and accessibility reviewers</a><a href="#6-experience-placement">6. Experience placement</a><a href="#7-persistent-review-disclosure">7. Persistent review disclosure</a><a href="#8-information-architecture">8. Information architecture</a><a href="#9-capability-pathways">9. Capability pathways</a><a href="#9-1-professional-capability">9.1 Professional capability</a><a href="#9-2-professional-development-pathway">9.2 Professional-development pathway</a><a href="#9-3-mentorship-preparation-and-participation">9.3 Mentorship preparation and participation</a><a href="#9-4-educational-program-and-learning-artifact">9.4 Educational program and learning artifact</a><a href="#9-5-operator-created-contribution">9.5 Operator-created contribution</a><a href="#9-6-community-contribution">9.6 Community contribution</a><a href="#9-7-organizational-stewardship">9.7 Organizational stewardship</a><a href="#10-state-axis-experience">10. State-axis experience</a><a href="#11-synthetic-fixtures">11. Synthetic fixtures</a><a href="#12-evidence-requirement-view">12. Evidence-requirement view</a><a href="#13-ownership-view">13. Ownership view</a><a href="#14-correction-and-appeal-experience">14. Correction and appeal experience</a><a href="#15-deterministic-rejection-patterns">15. Deterministic rejection patterns</a><a href="#16-kai-growth-advisor">16. Kai Growth Advisor</a><a href="#17-privacy-and-visibility-requirements">17. Privacy and visibility requirements</a><a href="#18-interaction-requirements">18. Interaction requirements</a><a href="#19-responsive-and-accessibility-acceptance">19. Responsive and accessibility acceptance</a><a href="#20-performance-budget">20. Performance budget</a><a href="#21-security-and-production-safety-acceptance">21. Security and production-safety acceptance</a><a href="#22-validation-plan">22. Validation plan</a><a href="#23-founder-review-metadata">23. Founder review metadata</a><a href="#24-founder-checklist">24. Founder checklist</a><a href="#25-recommendation-and-next-gate">25. Recommendation and next gate</a></nav></div>
+<footer class="footer">Standalone HTML · embedded CSS · no external assets · source GROWTH_EXPERIENCE_PHASE_1B_PRODUCT_SPEC.md · SHA-256 5aa026853c448b62118cc41f91fbdbd5c5d73a459ccf547e2e3e4cf5cd58e9bd</footer>
+<textarea class="copy-source" id="copy-source" aria-hidden="true" tabindex="-1"># CreditVector Growth Experience Phase 1B — Capability Contract Product Specification
+
+Status: **GROWTH EXPERIENCE PHASE 1B — AUTHORIZED NON-MONETARY CONTRACT WORK**  
+Package state: **READY FOR FOUNDER REVIEW**  
+Audience: Founder, Product, Design, Engineering, Security, Privacy, Compliance, Accessibility  
+Product type: protected synthetic Founder Preview  
+This is: **an internal product specification, not a participant agreement or live program**
+
+## 1. Product decision
+
+Build a nested Growth Center review experience that makes the future non-monetary capability model precise. A reviewer should understand:
+
+&gt; CreditVector can help an operator become more capable, useful, and trusted without turning contribution into recruiting, popularity, or a compensation promise.
+
+Phase 1B defines how capability pathways, source ownership, evidence requirements, independent states, privacy, corrections, appeals, and Kai explanations could work. It does not enroll anyone or connect a canonical source.
+
+## 2. Controlling status taxonomy
+
+1. **CGN ECONOMIC PHASE 1A — BLOCKED**
+2. **GROWTH EXPERIENCE PHASE 1A — APPROVED FOUNDER PREVIEW**
+3. **GROWTH EXPERIENCE PHASE 1B — AUTHORIZED NON-MONETARY CONTRACT WORK**
+
+The Decision Matrix is unratified. Live economics is NO-GO.
+
+## 3. Goals
+
+- Make every supported capability pathway answer **How can I become more valuable?**
+- Show that capability and contribution can support a strong operator business without requiring agency ownership.
+- Define a legible contract between Growth presentation and canonical source owners.
+- Demonstrate separate, correctable, reviewable state axes without implying live status.
+- Show evidence requirements without collecting or inventing evidence.
+- Explain privacy and visibility before any participant experiment.
+- Let Kai explain fixed review fixtures while remaining deterministic and non-authoritative.
+- Fail closed on every unsupported or ambiguous state.
+- Preserve the approved Growth Center Phase 1A experience as the parent context.
+
+## 4. Non-goals
+
+Phase 1B does not provide:
+
+- a live Growth Network, participant program, account, profile, status, opportunity, enrollment, waitlist, application, mentor match, course, class, webinar, assessment, credential, certification, contribution submission, Community post, organization assessment, Marketplace listing, seller access, reputation, eligibility, qualification, or live Growth Distribution;
+- participant, customer, organization, Membership, Learning, Operator Network, Meetings, Documents, Community, Marketplace, Reputation, Agency Command, or Kai runtime data;
+- database schema, migration, API, server action, job, event, webhook, analytics, telemetry, storage, runtime model, prompt, personalization, or production mutation;
+- commerce, money, amount, rate, balance, wallet, commission, provider, billing, subscription, tax, ledger, settlement, payout, or payment; or
+- public launch, production route, marketing claim, participant terms, legal terms, or economic policy ratification.
+
+## 5. Primary reviewer jobs
+
+### Founder
+
+- Determine whether the capability model expresses the intended Growth philosophy.
+- Determine whether ownership is clear enough to prevent future platform duplication.
+- Determine whether state, evidence, privacy, correction, appeal, and Kai boundaries are trustworthy.
+- Approve, amend, hold, or reject the contract without authorizing live operation.
+
+### Product and architecture reviewers
+
+- Trace every displayed concept to a canonical owner or `OWNER_UNRESOLVED`.
+- Confirm Growth owns presentation grammar only.
+- Confirm every unsupported combination fails closed.
+- Identify missing policy before any future owner integration.
+
+### Compliance, security, privacy, and accessibility reviewers
+
+- Confirm disclosures prevent a synthetic fixture from being mistaken for a live program or outcome.
+- Confirm there is no participant data or effect path.
+- Confirm mentorship and education remain bounded B2B operator-development concepts.
+- Confirm complete semantic, keyboard, responsive, high-zoom, and reduced-motion access.
+
+## 6. Experience placement
+
+Route:
+
+```text
+/review/growth-center/capability-contract
+```
+
+The page is a nested **capability-contract workbench**. It is not a second headquarters, dashboard, referral page, statistics page, Marketplace, Community surface, course catalog, or agency workspace.
+
+It requires the parent Growth Center review boundary and a second subordinate capability-contract flag. It is direct-link-only, no-index, and absent from normal navigation and registries.
+
+## 7. Persistent review disclosure
+
+The first viewport must display this compact boundary before any state or recommendation:
+
+&gt; **Founder review · Synthetic · Non-monetary · Production hard-off**
+
+It must link directly to a visible full boundary in the same semantic document containing:
+
+&gt; **Founder review · Synthetic capability-contract fixtures · No live Growth program. Nothing shown is a participant record, enrollment, mentor match, course, contribution, Community post, organization assessment, credential, certification, opportunity, qualification, Growth Reputation record, compensation, or promise of business or credit results. No participant data is read or saved, and no action is taken.**
+
+The compact boundary remains visible while the full disclosure remains available in the document. Neither may depend on a modal, tooltip, hover, animation, or collapsed control.
+
+## 8. Information architecture
+
+The semantic document follows this order:
+
+1. review boundary and return context;
+2. capability-contract purpose;
+3. pathway selector and pathway spine;
+4. selected synthetic fixture;
+5. independent state axes;
+6. evidence-requirement preview;
+7. canonical ownership map;
+8. privacy and visibility;
+9. correction and appeal preview;
+10. deterministic rejection patterns;
+11. Kai fixed explanation; and
+12. Agency Builder and global non-economic boundary.
+
+The visual order must match DOM, reading, keyboard, and assistive-technology order at every viewport.
+
+## 9. Capability pathways
+
+### 9.1 Professional capability
+
+Question: **What should I practice next?**
+
+Shows a synthetic capability definition and the source-owner contract a future system would need. It does not assess an operator.
+
+### 9.2 Professional-development pathway
+
+Question: **How do I become a stronger operator?**
+
+Shows a learning-pathway preview for operations, compliance, accessibility, teaching, and platform use. Learning owns any future pathway, assessment, completion, credential, or certification. Phase 1B has no enrollment or outcome.
+
+### 9.3 Mentorship preparation and participation
+
+Question: **How should I prepare to learn from or support another operator?**
+
+Shows goals, questions, boundaries, evidence categories, feedback preparation, and follow-through as future B2B operator professional development. Operator Network would own the relationship; Meetings would own a session; Documents would own notes or artifacts.
+
+It offers no matching, screening, booking, contract, payment, live mentorship, consumer-specific credit work, dispute execution, representation, legal/tax/financial/employment/business-opportunity advice, advance-fee guidance, or promised result.
+
+### 9.4 Educational program and learning artifact
+
+Question: **What should I learn or teach?**
+
+Shows outcome-led learning and teaching requirements. Learning owns a future program and completion; Documents owns artifacts. There is no course, class, webinar, instructor status, credential, certification, enrollment, or promised result.
+
+### 9.5 Operator-created contribution
+
+Question: **What useful work could I create?**
+
+Shows requirements for a sourced template, operating note, educational outline, or reusable practice artifact. It does not create, upload, submit, publish, recognize, sell, or transfer anything.
+
+### 9.6 Community contribution
+
+Question: **Where could I share useful knowledge?**
+
+Shows a synthetic path from useful idea to provenance and future Community review. Community owns submission, moderation, and publication. Growth does not read or write Community and does not derive status from posts, likes, views, followers, attendance, referrals, or recruiting.
+
+### 9.7 Organizational stewardship
+
+Question: **How could responsible leadership help an organization become healthier?**
+
+Shows fictional stewardship requirements such as clear onboarding, useful mentoring, operational follow-through, and source-backed improvement. Organizations owns organizational truth; Membership owns authority; Performance Intelligence owns future organization-health and improvement projections; operational facts remain with their source owners.
+
+Always display:
+
+&gt; **No live Growth Distribution. These stewardship examples create no eligibility, allocation, obligation, or payment right. Recruiting is not rewarded.**
+
+## 10. State-axis experience
+
+The reviewer can inspect eight visibly separate state lanes:
+
+| Axis | Product question | Must not imply |
+|---|---|---|
+| Availability / contract support | Can this internal review concept be projected with a resolved owner? | Participation or approval |
+| Preparation/participation | What fictional preparation or participation state is illustrated? | Completion, competence, employment |
+| Evidence sufficiency | Are named fictional requirements present for one purpose? | Verification, acceptance, reuse |
+| Completion | What fictional source-completion state is illustrated? | Review, credential, qualification, reputation |
+| Source review | What fictional source-review disposition is illustrated? | Qualification, credential, reputation |
+| Correction | How could a source fact be challenged? | Live filing or immediate fact change |
+| Appeal | How could a review decision be challenged? | Live case, automatic reversal, Kai judgment |
+| Visibility | Who could see the future source-owned fact under explicit policy? | Publication, consent, broad access |
+
+Required non-inference copy:
+
+&gt; Completion is not approval, qualification, certification, publication, recognition, reputation, access, employment, or economic eligibility. Each state lane stands alone.
+
+The UI must not use **verified**, **approved**, **qualified**, **certified**, **recognized**, **expert**, **verified mentor**, or **approved instructor** as a fixture status.
+
+## 11. Synthetic fixtures
+
+The review controls select one explicit allowlisted pathway and one explicit allowlisted fixture. The exact ten implemented fixtures are:
+
+| ID | Label | Implemented review purpose |
+|---|---|---|
+| `overview` | Contract anatomy | Orientation to ownership and state-lane separation. |
+| `empty` | No source record | No source record and no favorable inference. |
+| `preparing` | Preparation | Preparation separated from participation, completion, and review. |
+| `completed-unreviewed` | Source completion / no review | Fictional completion without review or consequential meaning. |
+| `in-review` | Human review | Fictional human review with no decision. |
+| `changes-requested` | Correction needed | Fictional correction path without a live case. |
+| `source-corrected` | Source corrected | A prior projection superseded without rewriting history. |
+| `appeal-in-review` | Independent appeal review | Fictional appeal review distinct from source correction. |
+| `privacy-restricted` | Privacy restricted | Only a permitted summary; restricted details are absent. |
+| `unsupported` | Unsupported state | No status, eligibility, completion, review, or action inferred. |
+
+Not every contract/fixture pair is valid. Mentorship refuses `completed-unreviewed` and `appeal-in-review`; organizational stewardship refuses `appeal-in-review`; operator-created contribution remains owner-unresolved and cannot project a favorable state. Unknown, duplicate, partial, malformed, or impossible selections also fail closed.
+
+Required-evidence-missing, not-accepted, source-conflict, source-owner-review, and resolved-appeal terms remain conceptual future vocabulary unless one of the exact fixtures above represents them. The rejection-pattern panel is a separate fixed educational surface, not a selectable fixture, detector, accusation, or sanction.
+
+The no-query state is a fixed orientation fixture. Browser back and forward reproduce the selected supported fixture. The page does not infer history, remember a reviewer, or store selection state.
+
+Unknown, multiple, malformed, incomplete, or impossible selections render:
+
+&gt; **Unsupported review state · unavailable in this Preview. No status, eligibility, completion, review, or action has been inferred.**
+
+Raw unsupported input is never echoed.
+
+## 12. Evidence-requirement view
+
+For every supported owner-resolved projection, the workbench now renders exactly eleven fictional, owner-labeled items:
+
+1. **Professional purpose**;
+2. **Source owner** and explicit no-connection statement;
+3. **Subject and scope** with no person, participant, organization, or customer represented;
+4. **Evidence category** with no artifact, submission, or verification;
+5. **Occurrence / source confirmation** and refused substitutes;
+6. **Reviewer role** or unresolved-owner refusal;
+7. **Policy / contract version** for the Growth review grammar only;
+8. **Visibility** and privacy boundary;
+9. **Correction route** to the source-fact owner;
+10. **Appeal route** to the decision owner or independent-owner refusal; and
+11. **Expiry / supersession** with no live validity period.
+
+Each rendered item displays its canonical owner. Owner-unresolved contracts fail all eleven projection items to the unsupported copy and withhold the detailed list. The structure is immutable review projection data, not evidence storage or a schema proposal.
+
+It shows no uploaded file, real note, person, organization, source record, timestamped participant action, signature, customer, case, credit fact, or realistic identifier.
+
+Purpose-bound evidence cannot be reused across pathways by implication. Conflicting sources produce **Needs human review**.
+
+## 13. Ownership view
+
+The page must make the following boundaries inspectable without suggesting integration:
+
+- Identity owns operator identity.
+- Organizations owns organization identity and scope.
+- Membership owns roles and authority.
+- Performance Intelligence owns future organization-health, retention, performance, and improvement projections.
+- Learning owns pathways, assessment, and completion.
+- Operator Network owns mentorship relationships and participation.
+- Meetings owns meetings and attendance.
+- Documents owns notes, files, and artifacts.
+- Community owns contribution submission, publication, and moderation.
+- Marketplace owns listings, orders, delivery, refunds, and commerce.
+- Reputation owns trust and recognition.
+- Agency Command owns agency tasks and operational routing.
+- Kai owns preparation and explanation only.
+- Growth Experience owns contract grammar, deterministic fixtures, and composition only.
+
+If ownership is unresolved, the workbench says `OWNER_UNRESOLVED` and stops the projection.
+
+## 14. Correction and appeal experience
+
+The interface may offer only fixed educational controls labeled:
+
+- **Preview correction path**; and
+- **Preview appeal state**.
+
+It must not say submit, send, file, open case, assign, schedule, or contact reviewer.
+
+A correction explains how a source fact could be challenged with its owner. An appeal explains how a review decision could be challenged by an authorized human. The hypothetical appeal reviewer is distinct from the original reviewer where policy requires independence. Growth and Kai never decide either path.
+
+Every example states that it is fictional and no record exists.
+
+## 15. Deterministic rejection patterns
+
+The reviewer can inspect fixed examples for:
+
+- self-review or reviewer conflict;
+- collusive or reciprocal review;
+- duplicate or replayed evidence;
+- completion farming or popularity substitution;
+- plagiarism or fabricated source provenance;
+- retaliatory review;
+- PII in a contribution;
+- unauthorized visibility;
+- expired, superseded, or conflicting evidence; and
+- using a source outside its stated purpose.
+
+The page must describe these as rejection/control examples, not as detected fraud or an accusation about a person.
+
+## 16. Kai Growth Advisor
+
+Kai remains **Credit Intelligence Officer**. Growth Advisor is a route-local review mode.
+
+The reviewer selects fixed questions such as:
+
+- What does this pathway help an operator practice?
+- Which canonical owner would hold the future source fact?
+- What evidence category would a future review require?
+- Why are completion and source review separate?
+- What happens when sources conflict?
+- Why is this state unsupported?
+
+Kai returns a fixed explanation for the selected synthetic fixture and must display:
+
+&gt; Kai is explaining fixed synthetic review fixtures. Kai did not analyze a person, organization, evidence, eligibility, or opportunity. No model was called. Nothing was saved, submitted, reviewed, corrected, appealed, assigned, scheduled, published, enrolled, purchased, or changed.
+
+There is no free text, prompt, model, retrieval, memory, tool call, source-system call, or action.
+
+## 17. Privacy and visibility requirements
+
+- Deny visibility unless the fixture defines a supported scope.
+- Unknown visibility is hidden/unavailable.
+- Public, cross-organization, named-peer, customer, and broad workforce visibility is unsupported.
+- Use generic synthetic labels only.
+- Do not use realistic names, emails, phone numbers, addresses, IDs, protected attributes, employment evaluations, consumer credit data, customers, cases, or files.
+- Do not read session, user, organization, or canonical-owner data.
+- Do not collect input, upload content, persist state, or emit Growth-owned analytics/telemetry.
+- Do not encode private state in route parameters.
+
+## 18. Interaction requirements
+
+- Complete semantic content exists without arrival animation.
+- Pathway and fixture controls are explicit and reversible through normal browser history.
+- Current selection has text, not color-only, indication.
+- Keyboard focus follows DOM order and remains visible.
+- Skip navigation reaches the contract content.
+- Escape settles any route-local presentation motion without hiding content.
+- Controls have a minimum 44-by-44 CSS-pixel target.
+- No drag-only, hover-only, pointer-only, timed, or gesture-only requirement.
+- No auto-advancing status or live region noise.
+- Motion is ornamental and never the only carrier of meaning.
+
+## 19. Responsive and accessibility acceptance
+
+The protected Preview must be reviewed at:
+
+- desktop;
+- tablet portrait and landscape;
+- common mobile widths;
+- 320 CSS pixels;
+- 200% text zoom;
+- keyboard-only use;
+- screen-reader-oriented semantic inspection;
+- light and dark themes;
+- `prefers-reduced-motion`; and
+- static/constrained capability mode.
+
+No horizontal content loss, CSS reading-order change, obscured focus, clipped disclosure, inaccessible control, or motion-only state is acceptable.
+
+## 20. Performance budget
+
+Phase 1B introduces no external asset, font, image, analytics, model, network, or owner-system request. It should reuse the approved app and CXOS presentation foundations without modifying them.
+
+The page should:
+
+- keep the contract projection local and immutable;
+- avoid layout thrash and unbounded animation;
+- pause ornamental motion when hidden;
+- preserve a complete static projection; and
+- avoid increasing global application payload through a public barrel or navigation registration.
+
+Measured performance must be recorded as evidence; no score is claimed in this draft.
+
+## 21. Security and production-safety acceptance
+
+- Three-key server gate passes only for a permitted review build with both exact-string subordinate flags.
+- Production identity returns not found even if flags are present.
+- Stage imports only after authorization.
+- Route is unregistered and no-index.
+- Resolver is strict, deterministic, and does not echo raw invalid input.
+- No API, server action, database, schema, migration, event, job, webhook, network, model, prompt, form, storage, analytics, telemetry, or canonical-owner import.
+- No billing, provider, tax, ledger, wallet, payout, payment, balance, rate, amount, or economic obligation.
+- No Mission Control, Agency Command, Arena, Community, Billing, Authentication, Organizations, Identity, Marketplace backend, Core Runtime, or separate Agency/CXOS isolation-stream modification.
+- No secret, token, credential, private URL parameter, PII, or realistic participant record.
+
+## 22. Validation plan
+
+Before Founder handoff, record actual results for:
+
+- typecheck;
+- targeted and repository lint disposition;
+- Phase 1B and regression guards;
+- optimized Preview and production-identity hard-off builds;
+- responsive browser matrix;
+- keyboard, focus, accessibility, 200% text, and reduced motion;
+- route selection, browser back/forward, unsupported values, pathway navigation, Kai, correction/appeal, Agency boundary, and return;
+- performance and network/write observation;
+- secret and PII scan;
+- protected-surface diff review;
+- curated Preview deployment protection; and
+- evidence checksums and exact artifact provenance.
+
+Final validation, repository, Preview, and secret-review observations are recorded in §23 only after direct evidence exists.
+
+## 23. Founder review metadata
+
+| Item | Status |
+|---|---|
+| Local path | `/Users/re3zy/Documents/gabriel-capital-labs-to-upload` |
+| Branch | **feat/cxos-phase3** |
+| Verified baseline SHA | **a40a41c5a76028ad5cae2ff655c5bf168fb86a4a · does not contain Phase 1B** |
+| Phase 1B commit status | **NONE · local/uncommitted** |
+| Shared worktree | **DIRTY · parallel streams present; curated snapshot deployed** |
+| Preview URL | **https://gabriel-capital-labs-ewbkldcd7-rey-gabriel-s-projects.vercel.app/review/growth-center/capability-contract** |
+| Deployment ID and protection | **dpl_C6CD6RzWGkzegsAAxd1mnndycVS3 · READY · anonymous 302 SSO/noindex · authenticated CLI 200** |
+| Validation | **PASS · typecheck, targeted ESLint, 3,438 guards, builds, hard-off, browser, accessibility, reduced motion, performance, protection** |
+| Secret and PII review | **PASS · scoped patterns absent; screenshots synthetic and visually PII-free** |
+| Production | **HARD OFF · NOT AUTHORIZED** |
+| Decision Matrix | **UNRATIFIED** |
+| Live economics | **NO-GO** |
+
+Branch warning: **The verified SHA is baseline provenance only and does not contain the local/uncommitted Phase 1B files. The shared dirty worktree was not deployed; Vercel received a fresh baseline archive plus only explicit Growth and approved Core Runtime files.**
+
+Production safety remains structural: three server-side controls precede stage import; production identity always denies access; the route is direct-link-only and unregistered; and no participant data, canonical owner, schema, API, model, event, storage, analytics, commerce, billing, payout, or mutation path exists.
+
+## 24. Founder checklist
+
+- [ ] The experience communicates capability and contribution, not compensation or recruiting.
+- [ ] The seven pathways are complete enough for review and clearly non-live.
+- [ ] Every concept has one named canonical owner or fails as `OWNER_UNRESOLVED`.
+- [ ] The eight state lanes remain separate and the non-inference rule is obvious.
+- [ ] The exact ten selectable fixtures are distinguished from conceptual future vocabulary.
+- [ ] The eleven-part evidence preview is structured, owner-labeled, synthetic, and content-free.
+- [ ] Evidence requirements are useful without becoming participant records.
+- [ ] Privacy is deny-by-default and visibility is never inferred.
+- [ ] Correction and appeal are distinct, human-governed future paths.
+- [ ] Kai is deterministic, sourced to the fixture, non-authoritative, and actionless.
+- [ ] Mentorship and education remain bounded B2B operator-development concepts.
+- [ ] Agency Builder says **No live Growth Distribution** and **Recruiting is not rewarded**.
+- [ ] Unsupported states fail closed without echo or silent default.
+- [ ] Mobile, tablet, desktop, high-zoom, keyboard, reduced-motion, and static evidence is acceptable.
+- [ ] Production identity remains hard off and the route remains protected/unregistered.
+- [ ] Repository, validation, secret-review, deployment, and artifact provenance are supported by observed evidence.
+- [ ] The Founder Economic Decision Matrix remains unratified and live economics remains NO-GO.
+- [ ] I approve, approve with amendments, hold, or reject the Phase 1B contract and Preview.
+
+## 25. Recommendation and next gate
+
+Recommendation: approve the Phase 1B contract only if the Preview makes source ownership, state separation, evidence purpose, privacy, correction, appeal, and Kai limits understandable without implying a live program.
+
+The next gate is a Founder decision on this Phase 1B contract and its validated protected Preview. No later phase is authorized here.
+
+After that decision—and only through a separate explicit authorization—the Founder may consider a narrow non-economic source-owner interface specification. Participant data, canonical integration, enrollment, schema, APIs, events, runtime AI, public access, reputation effects, commerce, billing, payouts, and economics remain blocked.
+
+**CGN ECONOMIC PHASE 1A — BLOCKED.**
+</textarea>
+<script>(()=>{const b=document.getElementById('copy');const s=document.getElementById('copy-source');if(!b||!s)return;b.addEventListener('click',async()=>{try{await navigator.clipboard.writeText(s.value);b.textContent='Copied';b.dataset.state='copied';setTimeout(()=>{b.textContent='Copy Markdown';delete b.dataset.state},1800)}catch{b.textContent='Select Markdown';s.style.display='block';s.removeAttribute('aria-hidden');s.select()}})})()</script></body></html>
