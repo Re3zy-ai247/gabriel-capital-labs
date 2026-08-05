@@ -118,7 +118,9 @@ check("the simulated sign-in beat touches no real auth module and makes no netwo
 check("Threshold is mounted with review forced true, never left to isDirectorActive()'s own detection",
   /<Threshold\s+review\s+onDone=/.test(stage));
 check("MissionEntry is mounted with forceReview, never left to isDirectorActive()'s own detection",
-  /<MissionEntry[\s\S]{0,80}forceReview/.test(stage));
+  // window widened 80→200: the mount now carries key={fadeKey} (the R7 replay
+  // fix) before the spread; the invariant is forceReview ON THIS MOUNT.
+  /<MissionEntry[\s\S]{0,200}forceReview/.test(stage));
 
 // ── 7 · session isolation: the walkthrough never touches production keys ─
 check("no walkthrough file writes to the PRODUCTION cx-threshold/cx-mc/cx-arena session keys",

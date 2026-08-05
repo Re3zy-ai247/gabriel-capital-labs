@@ -211,7 +211,12 @@ export function FounderWalkthroughStage() {
           <>
             <MissionControlStage />
             {bootVariant && (
+              // key carries the replay nonce: after Replay clears the session
+              // key, the re-resolved variant can be VALUE-identical, so without
+              // a key change React reconciles in place and the veil never
+              // remounts (found live in the CX2-D evidence pass, R7).
               <MissionEntry
+                key={fadeKey}
                 {...MISSION_BOOT_FIXTURE}
                 forceReview
                 forceVariant={bootVariant}
