@@ -142,18 +142,22 @@ export default function InstitutionSection() {
             gsap.set(lines, { y: "110%" });
             gsap.set(paras, { opacity: 0, y: 16 });
 
+            // D13 — trimmed from +=110% to +=90% (pin-budget pass); D11 —
+            // the heading reveal window is tightened (duration/stagger
+            // reduced) so each line finishes its mask-reveal sooner,
+            // shrinking the scrub range in which a line sits mid-clip.
             const tl = gsap.timeline({
               scrollTrigger: {
                 trigger: rootRef.current,
                 start: "top top",
-                end: "+=110%",
+                end: "+=90%",
                 scrub: 0.6,
                 pin: pinRef.current,
                 pinSpacing: true,
               },
             });
 
-            tl.to(lines, { y: "0%", duration: 1, ease: "none", stagger: 0.25 }, 0);
+            tl.to(lines, { y: "0%", duration: 0.7, ease: "none", stagger: 0.15 }, 0);
 
             if (headingRef.current) {
               tl.to(headingRef.current, { x: "-4%", duration: 0.6, ease: "none" }, 0.55);

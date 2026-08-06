@@ -14,6 +14,7 @@ export default function LabSection() {
   const rootRef = useRef<HTMLElement | null>(null);
   const indexRef = useRef<HTMLDivElement | null>(null);
   const gridBgRef = useRef<HTMLDivElement | null>(null);
+  const introLineRef = useRef<HTMLSpanElement | null>(null);
 
   useEffect(() => {
     ensureGsapRegistered();
@@ -37,6 +38,8 @@ export default function LabSection() {
           if (isReduced) {
             gsap.set(".lab__row", { opacity: 1, y: 0 });
             gsap.set(".lab__row-rule", { scaleX: 1 });
+            if (introLineRef.current) gsap.set(introLineRef.current, { y: "0%" });
+            gsap.set(rootRef.current, { "--gcl-rule-scale": 1 } as any);
             return undefined;
           }
 
@@ -58,6 +61,34 @@ export default function LabSection() {
           }
 
           if (isDesktop) {
+            // D9 — the intro heading mask-reveals and the chapter-mark's
+            // hairline draws (via --gcl-rule-scale, see globals.css) as
+            // the header scrolls in — matches Ecosystem's treatment,
+            // removing a dead scroll zone before the row index reveals.
+            if (introLineRef.current) {
+              gsap.set(introLineRef.current, { y: "110%" });
+              gsap.fromTo(
+                introLineRef.current,
+                { y: "110%" },
+                {
+                  y: "0%",
+                  duration: 0.8,
+                  ease: "power3.out",
+                  scrollTrigger: { trigger: rootRef.current, start: "top 75%", once: true },
+                }
+              );
+            }
+            gsap.fromTo(
+              rootRef.current,
+              { "--gcl-rule-scale": 0 } as any,
+              {
+                "--gcl-rule-scale": 1,
+                duration: 0.6,
+                ease: "power2.out",
+                scrollTrigger: { trigger: rootRef.current, start: "top 80%", once: true },
+              } as gsap.TweenVars
+            );
+
             // R2 2.5 — keep the index reveal, but row hairlines now DRAW
             // (scaleX 0→1) instead of simply fading in with the row, and
             // the blueprint-grid gets a subtle parallax drift. The grid
@@ -111,7 +142,11 @@ export default function LabSection() {
       <div className="container lab__header">
         <p className="chapter-mark">{lab.chapterMark}</p>
         <h2 id="lab-heading" className="lab__intro">
-          {lab.intro}
+          <span className="lab__intro-mask">
+            <span ref={introLineRef} className="lab__intro-line">
+              {lab.intro}
+            </span>
+          </span>
         </h2>
       </div>
 

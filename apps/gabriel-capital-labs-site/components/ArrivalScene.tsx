@@ -66,6 +66,8 @@ export default function ArrivalScene() {
   const pinRef = useRef<HTMLDivElement | null>(null);
   const glowRef = useRef<HTMLDivElement | null>(null);
   const overlayRef = useRef<HTMLDivElement | null>(null);
+  const stageRef = useRef<HTMLDivElement | null>(null);
+  const replayButtonRef = useRef<HTMLButtonElement | null>(null);
   const markWrapRef = useRef<HTMLDivElement | null>(null);
   const wordTopRef = useRef<HTMLSpanElement | null>(null);
   const wordBottomRef = useRef<HTMLSpanElement | null>(null);
@@ -161,15 +163,25 @@ export default function ArrivalScene() {
           }
 
           if (isDesktop) {
-            // R2 2.1 — extended ~100vh handoff: the mark keeps pulling back
-            // and drifting up, the glow dims further, and a stage-darken
-            // overlay fades in — a longer, more dramatic camera move than
-            // the old bare 60% pullback. (Institution's own approach-drift,
-            // see InstitutionSection.tsx, picks up the handoff on the other
-            // side — tying it to Institution's own scrollTrigger rather
-            // than to this one, because layout math shows Institution
-            // stays fully below the viewport for this entire pin: any
-            // pre-animation driven from here would be invisible.)
+            // R2 2.1 — extended ~100vh handoff: the glow dims further and a
+            // stage-darken overlay fades in — a longer, more dramatic camera
+            // move than the old bare 60% pullback. (Institution's own
+            // approach-drift, see InstitutionSection.tsx, picks up the
+            // handoff on the other side — tying it to Institution's own
+            // scrollTrigger rather than to this one, because layout math
+            // shows Institution stays fully below the viewport for this
+            // entire pin: any pre-animation driven from here would be
+            // invisible.)
+            //
+            // D8 — the scale/drift targets `.arrival__stage` (mark +
+            // wordmark + taglines together), not just the mark, so the
+            // whole composition recedes as ONE rigid unit and the internal
+            // mark→wordmark gap only changes by the uniform scale factor
+            // (a small, predictable amount) instead of blowing out because
+            // the mark moved/shrank while the text stayed put. The ENTER
+            // cue fades out within the first 30% of the pin — it's a
+            // "keep scrolling" affordance that no longer applies once the
+            // handoff has begun.
             const pullback = gsap.timeline({
               scrollTrigger: {
                 trigger: sectionRef.current,
@@ -181,9 +193,10 @@ export default function ArrivalScene() {
               },
             });
             pullback
-              .to(markWrapRef.current, { scale: 0.82, y: -28, duration: 1, ease: "none" }, 0)
+              .to(stageRef.current, { scale: 0.92, y: -22, duration: 1, ease: "none" }, 0)
               .fromTo(glowRef.current, { opacity: 1 }, { opacity: 0.25, duration: 1, ease: "none" }, 0)
-              .fromTo(overlayRef.current, { opacity: 0 }, { opacity: 0.55, duration: 1, ease: "none" }, 0);
+              .fromTo(overlayRef.current, { opacity: 0 }, { opacity: 0.55, duration: 1, ease: "none" }, 0)
+              .to(cueRef.current, { opacity: 0, duration: 0.3, ease: "none" }, 0);
 
             return () => {
               pullback.scrollTrigger?.kill();
@@ -230,6 +243,23 @@ export default function ArrivalScene() {
   const handleReplay = useCallback(() => {
     if (isReplaying) return;
     setIsReplaying(true);
+
+    // D1 — a real mouse click focuses the button first (the browser's own
+    // default action, which happens before this handler runs), and on a
+    // chip that isn't visible at the current scroll position that default
+    // focus can trigger a native scroll-into-view a beat later — racing
+    // waitForScrollTop() below and yanking the page away from y=0 mid-
+    // intro. blur() immediately so the button holds no focus to scroll to,
+    // then re-assert scrollTo(0,0) across a couple of rAFs so any focus-
+    // scroll that was already in flight before the blur lands gets
+    // overridden once it settles. (Belt-and-braces on top of the CSS fix —
+    // the chip is now `position:fixed`, so it's always inside the
+    // viewport and should never need scrolling into view at all.)
+    replayButtonRef.current?.blur();
+    requestAnimationFrame(() => {
+      window.scrollTo(0, 0);
+      requestAnimationFrame(() => window.scrollTo(0, 0));
+    });
 
     const reducedMotion = window.matchMedia(REDUCED_MOTION_QUERY).matches;
 
@@ -296,6 +326,7 @@ export default function ArrivalScene() {
 
       <button
         type="button"
+        ref={replayButtonRef}
         className={`arrival__replay${showReplay ? " arrival__replay--visible" : ""}`}
         onClick={handleReplay}
         aria-label={arrival.replayLabel}
@@ -310,7 +341,7 @@ export default function ArrivalScene() {
         <div ref={glowRef} className="arrival__glow" aria-hidden="true" />
         <div ref={overlayRef} className="arrival__stage-overlay" aria-hidden="true" />
 
-        <div className="arrival__stage">
+        <div ref={stageRef} className="arrival__stage">
           <div ref={markWrapRef} className="arrival__mark-wrap">
             <picture>
               <source

@@ -1,6 +1,6 @@
 "use client";
 
-import { footer, arrival } from "@/content/site";
+import { footer, arrival, site } from "@/content/site";
 
 export default function Footer() {
   const handleReplayClick = () => {
@@ -10,22 +10,24 @@ export default function Footer() {
   return (
     <footer className="footer">
       <div className="container footer__inner">
-        <picture>
-          <source
-            type="image/webp"
-            srcSet="/img/footer-lockup-96.webp 1x, /img/footer-lockup-192.webp 2x"
-          />
+        {/* D14 — the nav's own treatment: the bare canonical mark at its
+            correct 480:520 aspect ratio (never a distorted 1:1 tile) at a
+            legible ~22px, plus the wide-tracked wordmark text — replaces
+            the old footer-lockup image, which read as an illegible grey
+            square at 48px. The lockup image assets stay on disk, just
+            unused here. */}
+        <div className="footer__brand">
           <img
-            className="footer__lockup"
-            src="/img/footer-lockup-96.png"
-            srcSet="/img/footer-lockup-96.png 1x, /img/footer-lockup-192.png 2x"
-            width={96}
-            height={96}
+            className="footer__brand-mark"
+            src="/img/gateway-g-480.webp"
+            width={480}
+            height={520}
             alt=""
             aria-hidden="true"
             loading="lazy"
           />
-        </picture>
+          <span className="footer__brand-word">{site.name}</span>
+        </div>
 
         <div className="footer__legal">
           <strong>{footer.legalLine}</strong>

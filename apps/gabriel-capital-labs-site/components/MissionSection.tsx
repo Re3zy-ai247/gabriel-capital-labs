@@ -16,6 +16,13 @@ import { mission } from "@/content/site";
 // once per transition, before any transform is applied to the pillars
 // (scale/opacity don't move their untransformed layout box), so the
 // numbers are stable for the life of the pinned scene.
+//
+// D6 — both segments snap to ONE shared optical y (the average of the two
+// pillars' own measured centers) instead of each keeping its own pillar's
+// center, which is what previously produced a ~12° rotation on segment 0
+// (the two pillars' content blocks don't sit at exactly the same y). The
+// return value carries no angle at all now — horizontal travel only, so
+// there is no rotation to accidentally reintroduce downstream.
 function measureConnectorSegment(fromEl: HTMLElement, toEl: HTMLElement, containerEl: HTMLElement) {
   const contentRect = (el: HTMLElement) => {
     const nodes = Array.from(
@@ -51,18 +58,16 @@ function measureConnectorSegment(fromEl: HTMLElement, toEl: HTMLElement, contain
 
   const clearance = 20; // px of protected gutter on each side — never touches text
   const x1 = leftRect.right - containerRect.left + clearance;
-  const y1 = leftRect.top + (leftRect.bottom - leftRect.top) / 2 - containerRect.top;
   const x2 = rightRect.left - containerRect.left - clearance;
-  const y2 = rightRect.top + (rightRect.bottom - rightRect.top) / 2 - containerRect.top;
 
   const dx = x2 - x1;
   if (dx <= 0) return null; // columns too close/overlapping — safety net, never render
 
-  const dy = y2 - y1;
-  const length = Math.hypot(dx, dy);
-  const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
+  const leftCenterY = leftRect.top + (leftRect.bottom - leftRect.top) / 2 - containerRect.top;
+  const rightCenterY = rightRect.top + (rightRect.bottom - rightRect.top) / 2 - containerRect.top;
+  const sharedY = (leftCenterY + rightCenterY) / 2;
 
-  return { x1, y1, length, angle };
+  return { x1, y: sharedY, length: dx };
 }
 
 export default function MissionSection() {
@@ -142,50 +147,82 @@ export default function MissionSection() {
             // alternating horizontal thirds via the existing
             // --pillar/--pillar--right widths — see globals.css): pillar 1
             // holds, then yields as pillar 2 enters with a depth cue
-            // (pillar 1 recedes to opacity 0.35 / scale 0.97, never fully
-            // vanishes), then pillar 3 likewise. A short gold connector
-            // segment — its geometry measured from the pillars' own
-            // rendered text edges, never a fixed viewport % — draws
-            // between each consecutive pair as the handoff happens, then
-            // settles to a faint (opacity 0.35) resting path. It is never
-            // a full-height center divider: each segment only spans the
-            // local gutter between the two pillars it connects.
+            // (pillar 1 recedes to opacity 0.35 / scale 0.97 as a
+            // transient mid-transition beat), then pillar 3 likewise. A
+            // short gold connector segment — its geometry measured from
+            // the pillars' own rendered text edges, never a fixed
+            // viewport % — draws between each consecutive pair as the
+            // handoff happens. It is never a full-height center divider:
+            // each segment only spans the local gutter between the two
+            // pillars it connects.
             const pillars = pillarRefs.current.filter((el): el is HTMLDivElement => Boolean(el));
             if (pillars.length !== 3 || !pinRef.current) return undefined;
 
             const numerals = pillars.map((p) => p.querySelector<HTMLElement>(".mission__pillar-numeral"));
-            const numeralTargets = numerals.map((el) => parseInt(el?.textContent || "0", 10));
+            // D7 — targets come from the content data (mission.pillars),
+            // never from the DOM: the count-up's own onUpdate overwrites
+            // the numeral's textContent, so re-parsing the DOM on a
+            // remount (matchMedia breakpoint cross, or Replay-style reset)
+            // can pick up an already-mutated value (observed: stuck at
+            // "00"). content/site.ts is the single source of truth for
+            // what each pillar's numeral actually is.
+            const numeralTargets = mission.pillars.map((p) => parseInt(p.numeral, 10));
 
             gsap.set(pillars[0], { opacity: 1, scale: 1, y: 0 });
             gsap.set([pillars[1], pillars[2]], { opacity: 0, scale: 0.96, y: 28 });
+            numerals.forEach((el) => {
+              if (el) el.textContent = "00";
+            });
 
             const segGeometry = [
               measureConnectorSegment(pillars[0], pillars[1], pinRef.current),
               measureConnectorSegment(pillars[1], pillars[2], pinRef.current),
             ];
 
-            segRefs.current.forEach((seg, i) => {
+            const segs = segRefs.current;
+            segs.forEach((seg, i) => {
               const geo = segGeometry[i];
               if (!seg || !geo) return;
+              // D6 — both segments snap to the SAME shared y (see
+              // measureConnectorSegment) and never receive a transform:
+              // rotate at all — horizontal travel only, structurally, not
+              // just numerically.
               seg.style.left = `${geo.x1}px`;
-              seg.style.top = `${geo.y1}px`;
+              seg.style.top = `${geo.y}px`;
               seg.style.width = `${geo.length}px`;
-              seg.style.transform = `rotate(${geo.angle}deg)`;
+              seg.style.transform = "none";
               seg.style.display = geo.length > 0 ? "block" : "none";
             });
             gsap.set(
-              segRefs.current.filter((el): el is HTMLDivElement => Boolean(el)),
-              { scaleX: 0, transformOrigin: "left center", opacity: 1 }
+              segs.filter((el): el is HTMLDivElement => Boolean(el)),
+              { scaleX: 0, transformOrigin: "left center", opacity: 0 }
             );
 
+            // D3 — the pin trigger IS the pin element itself (not the
+            // whole section, which still carries the chapter-mark's own
+            // leading margin/padding above the pin): pinning engages the
+            // instant the pin's own top reaches the viewport top, so the
+            // 100svh stage is always flush with the fold the moment it
+            // takes over — never offset down by whatever sits above it in
+            // the document. D13 — trimmed from +=180% to +=150%.
             const tl = gsap.timeline({
               scrollTrigger: {
-                trigger: rootRef.current,
+                trigger: pinRef.current,
                 start: "top top",
-                end: "+=180%",
+                end: "+=150%",
                 scrub: 0.6,
                 pin: pinRef.current,
                 pinSpacing: true,
+                onLeaveBack: () => {
+                  // D7 — belt-and-braces reset: scrubbing back above the
+                  // pin's start already re-renders the timeline at
+                  // progress 0 (all counters back to 0), but force the
+                  // displayed text too so nothing can read stale after a
+                  // fast scroll-up.
+                  numerals.forEach((el) => {
+                    if (el) el.textContent = "00";
+                  });
+                },
               },
             });
 
@@ -201,12 +238,39 @@ export default function MissionSection() {
                   duration: 0.5,
                   ease: "none",
                   onUpdate: () => {
-                    el.textContent = String(Math.round(counter.val)).padStart(2, "0");
+                    // D7 — clamp: never show more than the pillar's own
+                    // numeral, regardless of any easing overshoot.
+                    const clamped = Math.min(target, Math.max(0, Math.round(counter.val)));
+                    el.textContent = String(clamped).padStart(2, "0");
                   },
                 },
                 at
               );
             };
+
+            // D4/D6 — segment opacity is driven continuously off the
+            // ACTUAL rendered opacity of the two pillars it connects
+            // (never its own independent keyframes), capped at the 0.35
+            // resting ceiling once drawn: "segment opacity ≤ its source
+            // pillars' opacity at every sample" holds by construction,
+            // and a segment whose scaleX hasn't drawn yet stays at 0.
+            const applySegOpacity = (segIndex: number, pillarA: HTMLElement, pillarB: HTMLElement) => {
+              const seg = segs[segIndex];
+              if (!seg) return;
+              const scaleX = Number(gsap.getProperty(seg, "scaleX"));
+              if (scaleX <= 0) {
+                seg.style.opacity = "0";
+                return;
+              }
+              const opA = Number(gsap.getProperty(pillarA, "opacity"));
+              const opB = Number(gsap.getProperty(pillarB, "opacity"));
+              seg.style.opacity = String(Math.min(0.35, opA, opB));
+            };
+
+            tl.eventCallback("onUpdate", () => {
+              applySegOpacity(0, pillars[0], pillars[1]);
+              applySegOpacity(1, pillars[1], pillars[2]);
+            });
 
             // Beat 1 — pillar 1 holds, numeral counts up.
             countUp(0, 0.05);
@@ -215,12 +279,8 @@ export default function MissionSection() {
             // enters from the opposite third, connector segment 1 draws.
             tl.to(pillars[0], { opacity: 0.35, scale: 0.97, y: -12, duration: 0.4, ease: "none" }, 0.8)
               .to(pillars[1], { opacity: 1, scale: 1, y: 0, duration: 0.4, ease: "none" }, 0.8);
-            if (segRefs.current[0]) {
-              tl.to(segRefs.current[0], { scaleX: 1, duration: 0.3, ease: "none" }, 0.85).to(
-                segRefs.current[0],
-                { opacity: 0.35, duration: 0.2, ease: "none" },
-                1.15
-              );
+            if (segs[0]) {
+              tl.to(segs[0], { scaleX: 1, duration: 0.3, ease: "none" }, 0.85);
             }
 
             // Beat 2 — pillar 2 holds, numeral counts up.
@@ -232,23 +292,26 @@ export default function MissionSection() {
             // becoming legible there, or the two double-expose. Clear it
             // during beat 2 (while pillar 2 holds, no visual competition
             // for that slot), well ahead of transition 2→3 below —
-            // sequenced, not crossfaded with pillar 3's entrance.
+            // sequenced, not crossfaded with pillar 3's entrance. D4 — it
+            // fades fully to 0 (a replaced scene, not context), and
+            // connector segment 1 (bound to pillar 1's live opacity above)
+            // fades out with it automatically.
             tl.to(pillars[0], { opacity: 0, duration: 0.5, ease: "none" }, 1.2);
 
             // Transition 2→3 — pillar 2 recedes, pillar 3 enters,
             // connector segment 2 draws.
-            tl.to(pillars[1], { opacity: 0.35, scale: 0.97, y: -12, duration: 0.4, ease: "none" }, 1.9)
-              .to(pillars[2], { opacity: 1, scale: 1, y: 0, duration: 0.4, ease: "none" }, 1.9);
-            if (segRefs.current[1]) {
-              tl.to(segRefs.current[1], { scaleX: 1, duration: 0.3, ease: "none" }, 1.95).to(
-                segRefs.current[1],
-                { opacity: 0.35, duration: 0.2, ease: "none" },
-                2.25
-              );
+            tl.to(pillars[1], { opacity: 0.35, scale: 0.97, y: -12, duration: 0.4, ease: "none" }, 1.6)
+              .to(pillars[2], { opacity: 1, scale: 1, y: 0, duration: 0.4, ease: "none" }, 1.6);
+            if (segs[1]) {
+              tl.to(segs[1], { scaleX: 1, duration: 0.3, ease: "none" }, 1.65);
             }
 
-            // Beat 3 — pillar 3 holds, numeral counts up.
-            countUp(2, 2.2);
+            // Beat 3 — pillar 3 holds, numeral counts up. D4 — pillar 2's
+            // recede ghost fades fully to 0 once pillar 3 is settled
+            // (never rests at a permanent low-contrast 0.35); connector
+            // segment 2 fades out with it via the same live binding.
+            countUp(2, 1.9);
+            tl.to(pillars[1], { opacity: 0, duration: 0.5, ease: "none" }, 2.0);
 
             return () => {
               tl.scrollTrigger?.kill();
@@ -265,15 +328,22 @@ export default function MissionSection() {
 
   return (
     <section id="mission" ref={rootRef} className="mission" aria-labelledby="mission-heading">
-      <div className="container mission__header">
-        <p className="chapter-mark">{mission.chapterMark}</p>
-        <h2 id="mission-heading" className="visually-hidden">
-          Mission Architecture
-        </h2>
-      </div>
-
+      {/* D3 — the chapter-mark now lives INSIDE the pinned composition (as
+          a top band) rather than as a separate block before it, so it's
+          part of the same 100svh stage instead of scrolling past before
+          the pin (which aligns to its own top, see the scrollTrigger
+          below) ever engages. No "container" class here — the ancestor
+          `.mission__body` already supplies the shared max-width/gutter,
+          so this stays aligned with the pillars below it. */}
       <div className="container mission__body" ref={bodyRef}>
         <div className="mission__pin" ref={pinRef}>
+          <div className="mission__header">
+            <p className="chapter-mark">{mission.chapterMark}</p>
+            <h2 id="mission-heading" className="visually-hidden">
+              Mission Architecture
+            </h2>
+          </div>
+
           <div ref={connectorRef} className="mission__connector" aria-hidden="true" />
           <div ref={(el) => { segRefs.current[0] = el; }} className="mission__connector-seg" aria-hidden="true" />
           <div ref={(el) => { segRefs.current[1] = el; }} className="mission__connector-seg" aria-hidden="true" />

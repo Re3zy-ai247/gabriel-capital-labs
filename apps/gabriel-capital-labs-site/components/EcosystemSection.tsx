@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import {
   ensureGsapRegistered,
   gsap,
+  ScrollTrigger,
   REDUCED_MOTION_QUERY,
   DESKTOP_MOTION_QUERY,
   MOBILE_MOTION_QUERY,
@@ -18,6 +19,7 @@ const WING_VARIANTS = ["", "offset", "wide", "inset"];
 
 export default function EcosystemSection() {
   const rootRef = useRef<HTMLElement | null>(null);
+  const introLineRef = useRef<HTMLSpanElement | null>(null);
 
   useEffect(() => {
     ensureGsapRegistered();
@@ -47,6 +49,8 @@ export default function EcosystemSection() {
               ".ecosystem__wing-numeral, .ecosystem__wing-name, .ecosystem__wing-designation, .ecosystem__wing-status, .ecosystem__wing-desc, .ecosystem__wing-link",
               { opacity: 1, y: 0 }
             );
+            if (introLineRef.current) gsap.set(introLineRef.current, { y: "0%" });
+            gsap.set(rootRef.current, { "--gcl-rule-scale": 1 } as any);
             return undefined;
           }
 
@@ -72,12 +76,40 @@ export default function EcosystemSection() {
           }
 
           if (isDesktop) {
+            // D9 — the intro heading mask-reveals and the chapter-mark's
+            // hairline draws (via the --gcl-rule-scale custom property —
+            // see globals.css) as the header scrolls in, so that leading
+            // stretch of the section isn't a dead scroll zone before the
+            // first wing's own reveal threshold.
+            if (introLineRef.current) {
+              gsap.set(introLineRef.current, { y: "110%" });
+              gsap.fromTo(
+                introLineRef.current,
+                { y: "110%" },
+                {
+                  y: "0%",
+                  duration: 0.8,
+                  ease: "power3.out",
+                  scrollTrigger: { trigger: rootRef.current, start: "top 75%", once: true },
+                }
+              );
+            }
+            gsap.fromTo(
+              rootRef.current,
+              { "--gcl-rule-scale": 0 } as any,
+              {
+                "--gcl-rule-scale": 1,
+                duration: 0.6,
+                ease: "power2.out",
+                scrollTrigger: { trigger: rootRef.current, start: "top 80%", once: true },
+              } as gsap.TweenVars
+            );
+
             // R2 2.4 — each wing enters via a horizontal clip-path wipe
             // from alternating sides + a 60px translateX settle + a
             // hairline draw, with its content staggering in
             // (numeral → name → designation → status → description →
-            // link, 80ms steps). The previous wing dims to 0.5 as the
-            // next one enters — one room receding as the next opens.
+            // link, 80ms steps).
             wings.forEach((wing, i) => {
               const fromLeft = i % 2 === 0;
               const content = wing.querySelectorAll<HTMLElement>(
@@ -118,10 +150,37 @@ export default function EcosystemSection() {
                 { opacity: 1, y: 0, duration: 0.5, ease: "power2.out", stagger: 0.08 },
                 0.35
               );
+            });
 
-              if (i > 0) {
-                tl.to(wings[i - 1], { opacity: 0.5, duration: 0.6, ease: "power2.out" }, 0);
-              }
+            // D4 — the "previous wing recedes as the next opens" depth
+            // cue is now bidirectional and lives OUTSIDE the once:true
+            // entrance timelines above (which only ever fire forward): a
+            // dedicated ScrollTrigger per wing boundary dims the wing
+            // BEFORE it to 0.5 the moment this wing becomes current
+            // (onEnter), and restores it to full opacity the moment the
+            // visitor scrolls back up past that boundary (onLeaveBack) —
+            // so scrolling all the way down and back up always leaves
+            // every wing at full contrast again, never stuck dimmed.
+            wings.forEach((wing, i) => {
+              if (i === 0) return;
+              ScrollTrigger.create({
+                trigger: wing,
+                start: "top 82%",
+                onEnter: () =>
+                  gsap.to(wings[i - 1], {
+                    opacity: 0.5,
+                    duration: 0.6,
+                    ease: "power2.out",
+                    overwrite: "auto",
+                  }),
+                onLeaveBack: () =>
+                  gsap.to(wings[i - 1], {
+                    opacity: 1,
+                    duration: 0.6,
+                    ease: "power2.out",
+                    overwrite: "auto",
+                  }),
+              });
             });
 
             return undefined;
@@ -140,7 +199,11 @@ export default function EcosystemSection() {
       <div className="container ecosystem__header">
         <p className="chapter-mark">{ecosystem.chapterMark}</p>
         <h2 id="ecosystem-heading" className="ecosystem__intro">
-          {ecosystem.intro}
+          <span className="ecosystem__intro-mask">
+            <span ref={introLineRef} className="ecosystem__intro-line">
+              {ecosystem.intro}
+            </span>
+          </span>
         </h2>
       </div>
 

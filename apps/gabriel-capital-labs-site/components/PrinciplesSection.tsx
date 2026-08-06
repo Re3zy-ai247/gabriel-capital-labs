@@ -104,26 +104,43 @@ export default function PrinciplesSection() {
             gsap.set(items, { autoAlpha: (i) => (i === 0 ? 1 : 0), y: 0 });
             let activeIndex = 0;
 
+            // D13 — trimmed from +=250% to +=200% (pin-budget pass).
             const st = gsap.timeline({
               scrollTrigger: {
                 trigger: rootRef.current,
                 start: "top top",
-                end: "+=250%",
+                end: "+=200%",
                 scrub: true,
                 pin: pinRef.current,
                 pinSpacing: true,
                 onUpdate: (self) => {
                   const idx = Math.min(total - 1, Math.floor(self.progress * total));
                   if (idx !== activeIndex) {
+                    // D5 — the outgoing item finishes sinking/fading BEFORE
+                    // the incoming one rises past the point of legibility:
+                    // a same-duration, same-start, complementary-alpha
+                    // crossfade always has a window where both read
+                    // >0.25 simultaneously (their alphas sum to 1 for any
+                    // shared ease). Giving the outgoing tween a shorter
+                    // duration and the incoming one a start delay removes
+                    // that window — by the time incoming begins rising,
+                    // outgoing has already dropped under the threshold.
                     gsap.fromTo(
                       items[activeIndex],
                       { y: 0 },
-                      { autoAlpha: 0, y: 20, duration: 0.35, ease: "power1.out", overwrite: "auto" }
+                      { autoAlpha: 0, y: 20, duration: 0.3, ease: "power1.out", overwrite: "auto" }
                     );
                     gsap.fromTo(
                       items[idx],
                       { y: 24 },
-                      { autoAlpha: 1, y: 0, duration: 0.35, ease: "power1.out", overwrite: "auto" }
+                      {
+                        autoAlpha: 1,
+                        y: 0,
+                        duration: 0.35,
+                        delay: 0.18,
+                        ease: "power1.out",
+                        overwrite: "auto",
+                      }
                     );
                     activeIndex = idx;
 

@@ -174,12 +174,18 @@ main > section[id] {
   font-weight: 400;
 }
 
+/* D9 — the hairline can draw (scaleX 0→1) via this custom property.
+   Default/fallback is 1 (fully drawn, i.e. today's static line) so every
+   section that never sets --gcl-rule-scale is completely unaffected;
+   Ecosystem + Lab set it from 0→1 on desktop-motion scroll-in only. */
 .chapter-mark::before {
   content: "";
   display: inline-block;
   width: 2.5rem;
   height: 1px;
   background: var(--gcl-gateway-gold);
+  transform: scaleX(var(--gcl-rule-scale, 1));
+  transform-origin: left;
 }
 
 .hairline {
@@ -596,8 +602,15 @@ html.js .arrival__cue {
   display: none;
 }
 
+/* D1 — position:fixed, not absolute: the arrival section's own box grows
+   far taller than 100svh once its pin-spacer is inserted (the pull-back
+   pin adds ~100vh of scroll distance as real document height), which
+   pushed this chip's absolute-relative-to-`.arrival` "bottom" anchor deep
+   below the fold at scrollY 0. Fixed positioning is always relative to the
+   viewport, so the chip can never end up somewhere a browser's native
+   focus-scroll would need to scroll the page to reach. */
 .arrival__replay {
-  position: absolute;
+  position: fixed;
   bottom: clamp(1rem, 3vh, 1.75rem);
   left: clamp(1rem, 4vw, 2rem);
   z-index: 20;
@@ -728,13 +741,34 @@ html.js .arrival__cue {
   }
 }
 
-/* R2 2.2 — the pinned scene fills the viewport on desktop so the staged
-   reveal has room to play; below 1024 (no pin) this rule doesn't apply and
-   the section keeps its normal content-driven height. */
-@media (min-width: 1024px) {
+/* D2 — the pinned scene fills the viewport EXACTLY (not min-height, real
+   height, with an overflow:hidden guard) on desktop-motion only, scoped to
+   the same no-preference query the pin itself is gated behind — reduced
+   motion at a desktop width gets the plain static flow, no forced height.
+   `.institution`'s own padding-block is zeroed here too: it was the
+   leading offset that put the pinned box's top ~64–144px below the
+   viewport top once it went `position:fixed` (GSAP pins an element at
+   whatever on-screen position it already occupied) — that offset is what
+   pushed the second reveal beat below the fold. The mark/paragraphs' own
+   margins are zeroed in favor of the grid's own row-gap, so spacing isn't
+   double-counted, and the whole composition comfortably fits inside
+   100svh at every desktop-motion width down to 1024×768. */
+@media (min-width: 1024px) and (prefers-reduced-motion: no-preference) {
+  html.js .institution {
+    padding-block: 0;
+  }
   html.js .institution__grid {
+    height: 100svh;
     min-height: 100svh;
+    overflow: hidden;
     align-content: center;
+    row-gap: clamp(1.5rem, 3vw, 2.5rem);
+  }
+  html.js .institution__mark {
+    margin-bottom: 0;
+  }
+  html.js .institution__paragraphs {
+    margin-top: 0;
   }
 }
 
@@ -762,9 +796,16 @@ html.js .arrival__cue {
   }
 }
 
+/* D11 — the mask box is the line box PLUS a little descender padding, so
+   a letter like "g"/"y"/"p" translating up into view during the scrub
+   never gets its descender sliced by the overflow:hidden edge; the
+   negative margin-bottom cancels the padding's added space so line
+   spacing above/below is unaffected. */
 .institution__heading-line {
   display: block;
   overflow: hidden;
+  padding-bottom: 0.15em;
+  margin-bottom: -0.15em;
 }
 
 .institution__heading-line span {
@@ -910,6 +951,16 @@ html.js .mission__connector {
    viewport-height rect rather than three separate vertical bands, so one
    can recede (depth cue) while the next enters. Gated to desktop-motion
    only; mobile and reduced-motion keep the plain stacked layout. */
+/* D3 — the pin now aligns flush to the viewport top the instant it
+   engages (JS side: the scrollTrigger's own trigger IS the pin element,
+   start:"top top" — see MissionSection.tsx), so the chapter-mark is
+   brought INTO the pinned composition as a small absolute top band
+   instead of scrolling past separately above it. Pillar content no
+   longer centers in the FULL 100svh box (which put its vertical center
+   too low and left 34%+ empty space above it) — it top-aligns after a
+   fixed, viewport-height-relative offset instead, which keeps both the
+   empty-space-above and center-within-middle-50% acceptance bounds
+   satisfied at every desktop-motion height from 768 to 1080. */
 @media (min-width: 1024px) and (prefers-reduced-motion: no-preference) {
   html.js .mission__pin {
     position: relative;
@@ -917,6 +968,15 @@ html.js .mission__connector {
     min-height: 560px;
     overflow: hidden;
     display: block;
+  }
+  html.js .mission__header {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 2;
+    margin-bottom: 0;
+    padding-top: clamp(1.5rem, 3vh, 2.25rem);
   }
   /* R2 defect B — the 62% / 56%+44% widths above were sized for the
      mobile STACKED layout (one pillar per row, never sharing a viewport
@@ -935,8 +995,9 @@ html.js .mission__connector {
     margin-left: 0;
     display: flex;
     flex-direction: column;
-    justify-content: center;
-    padding-block: 0;
+    justify-content: flex-start;
+    padding-top: clamp(5rem, 20vh, 8rem);
+    padding-bottom: 0;
   }
   html.js .mission__pillar--right {
     left: auto;
@@ -987,6 +1048,24 @@ html.js .mission__connector {
   color: var(--gcl-platinum);
   font-weight: 300;
   margin-top: 1rem;
+}
+
+/* D9 — the mask wrapper for the desktop-motion line-reveal, same
+   technique as Institution's heading lines; on mobile/reduced-motion the
+   line just sits at rest, no visual change from the plain heading. */
+.ecosystem__intro-mask {
+  display: block;
+  overflow: hidden;
+}
+
+.ecosystem__intro-line {
+  display: block;
+}
+
+@media (min-width: 1024px) and (prefers-reduced-motion: no-preference) {
+  html.js .ecosystem__intro-line {
+    transform: translateY(110%);
+  }
 }
 
 .ecosystem__wing {
@@ -1060,7 +1139,8 @@ html.js .mission__connector {
 }
 
 .ecosystem__wing-desc {
-  max-width: 40rem;
+  /* D10 — body-copy measure capped at 38rem sitewide. */
+  max-width: 38rem;
   color: var(--gcl-stone-silver);
   font-size: 0.98rem;
   margin-bottom: 0.75rem;
@@ -1107,6 +1187,22 @@ html.js .mission__connector {
   background: rgba(183, 183, 183, 0.14);
 }
 
+/* D10 — at ultra-wide viewports each wing's content clustered at the top
+   of its own block with a large, unbalanced void below (500–810px at
+   1920). Give the wing a viewport-relative minimum height and vertically
+   center its content within it — balanced whitespace above/below instead
+   of a void underneath. */
+@media (min-width: 1680px) {
+  .ecosystem__wing {
+    min-height: 58vh;
+    display: flex;
+    align-items: center;
+  }
+  .ecosystem__wing > .container {
+    width: 100%;
+  }
+}
+
 /* ==========================================================================
    Chapter 5 — The Lab
    ========================================================================== */
@@ -1142,6 +1238,22 @@ html.js .mission__connector {
   color: var(--gcl-platinum);
   font-weight: 300;
   margin-top: 1rem;
+}
+
+/* D9 — same mask-reveal treatment as Ecosystem's intro heading. */
+.lab__intro-mask {
+  display: block;
+  overflow: hidden;
+}
+
+.lab__intro-line {
+  display: block;
+}
+
+@media (min-width: 1024px) and (prefers-reduced-motion: no-preference) {
+  html.js .lab__intro-line {
+    transform: translateY(110%);
+  }
 }
 
 .lab__index {
@@ -1460,6 +1572,20 @@ html.js .principles__progress {
   margin: 0 auto clamp(2.5rem, 6vw, 4rem);
 }
 
+/* D12 — the headline was centered as its own narrow 46rem column, so its
+   rendered left edge sat far deeper inset than Institution's own
+   heading (which starts right at the container's gutter). Left-align it
+   to the SAME container Institution uses (the outer `.container` this
+   heading already lives in) so both sections' text shares a left edge;
+   the mark + glow stay centered above it as the bookend, untouched. */
+@media (min-width: 1024px) {
+  .engagement__heading {
+    text-align: left;
+    margin-inline: 0;
+    max-width: 38rem;
+  }
+}
+
 /* R2 2.7 — the mask wrapper for the desktop-motion line-reveal; on
    mobile/reduced-motion the line just sits at rest inside it, no visual
    change from the plain heading of before. */
@@ -1615,10 +1741,26 @@ html.js .principles__progress {
   }
 }
 
-.footer__lockup {
-  width: clamp(36px, 4vw, 48px);
+/* D14 — the nav's own lockup treatment (bare mark at its true 480:520
+   aspect ratio + wide-tracked wordmark text), replacing the old 1:1
+   footer-lockup tile that read as an illegible grey square at 48px. */
+.footer__brand {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.footer__brand-mark {
+  width: 22px;
   height: auto;
-  opacity: 0.9;
+}
+
+.footer__brand-word {
+  font-size: 0.72rem;
+  letter-spacing: 0.28em;
+  color: var(--gcl-platinum);
+  font-weight: 300;
+  text-transform: uppercase;
 }
 
 .footer__legal {
@@ -1658,4 +1800,32 @@ html.js .principles__progress {
 .footer__link:hover,
 .footer__link:focus-visible {
   color: var(--gcl-gateway-gold);
+}
+
+/* ==========================================================================
+   D10 — ultra-wide display-type rebalance (≥1680px)
+   Display type gets ~15% more headroom at very wide viewports so it can
+   breathe into the extra space rather than reading small against a big
+   canvas; body copy (capped at 38rem elsewhere) is deliberately untouched
+   — this is display type only.
+   ========================================================================== */
+@media (min-width: 1680px) {
+  .arrival__wordmark-top {
+    font-size: clamp(1.9rem, 6.5vw, 4.6rem);
+  }
+  .institution__heading {
+    font-size: clamp(1.6rem, 4.6vw, 3.9rem);
+  }
+  .mission__pillar-title {
+    font-size: clamp(1.6rem, 7vw, 4.3rem);
+  }
+  .ecosystem__wing-name {
+    font-size: clamp(1.6rem, 6vw, 4.1rem);
+  }
+  .principles__item-title {
+    font-size: clamp(1.9rem, 7vw, 5.75rem);
+  }
+  .engagement__heading {
+    font-size: clamp(2rem, 6vw, 4.3rem);
+  }
 }
