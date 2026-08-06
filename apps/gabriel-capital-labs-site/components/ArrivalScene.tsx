@@ -11,22 +11,42 @@ import {
   DESKTOP_REDUCED_QUERY,
   MOBILE_MOTION_QUERY,
 } from "@/lib/gsap";
-import { reveal, pinEnd } from "@/lib/motion";
+import { reveal, revealFromTo, pinEnd } from "@/lib/motion";
 import { arrival, site } from "@/content/site";
 
 const SESSION_KEY = "gcl-arrival-seen";
 
-// R2 1.2 — the six (seven, counting the cue) composed-timeline targets,
-// and the exact hidden values the `html.js` CSS gate gives them before any
-// GSAP tween runs. Replay's belt-and-braces re-set uses this same table so
-// there is one place that has to stay truthful to globals.css, not two.
+// R4.2 — R-1/R-2: `window.__gclLockEpoch` is the shared invalidation token
+// between layout.tsx's pre-paint watchdog and this component's own
+// replay-session watchdog (see handleReplay below) — whichever one most
+// recently armed a `gcl-prologue` lock owns the current epoch number, so
+// an OLDER watchdog whose captured epoch no longer matches becomes a
+// harmless no-op instead of releasing a lock (and a session) it didn't
+// arm. Declared once, globally, so both the plain inline script and this
+// module agree on the same property without either importing the other.
+declare global {
+  interface Window {
+    __gclLockEpoch?: number;
+  }
+}
+
+// R2 1.2 — the composed-timeline targets, and the exact hidden values the
+// `html.js` CSS gate gives them before any GSAP tween runs. Replay's
+// belt-and-braces re-set uses this same table so there is one place that
+// has to stay truthful to globals.css, not two.
+// R4 — `tagline2` is gone (COPY RULING, content/site.ts): the arrival
+// composition now renders a single Founder-specified line. `atmosphere`
+// and `signal` are new — the Gateway G Institutional Prologue's P1/P2
+// sibling layers (never ancestors of the mark; see the Gateway G lock note
+// in ArrivalScene's JSX below).
 type ArrivalRefs = {
+  atmosphere: HTMLDivElement | null;
+  signal: HTMLDivElement | null;
   glow: HTMLDivElement | null;
   markWrap: HTMLDivElement | null;
   wordTop: HTMLSpanElement | null;
   wordBottom: HTMLSpanElement | null;
   tagline1: HTMLParagraphElement | null;
-  tagline2: HTMLParagraphElement | null;
   cue: HTMLDivElement | null;
 };
 
@@ -35,15 +55,40 @@ type ArrivalRefs = {
 // drops the y-drift/scale-overshoot and hides through opacity alone, per the
 // vestibular-safe channel policy in lib/motion.ts. Every other target here
 // was already opacity-only and needs no reduced twin.
-function setInitialHiddenStates(refs: ArrivalRefs, reduced: boolean) {
+// R4 — `desktop` gates the LCP floor on markWrap, mirroring the
+// `@media (min-width: 1024px)` rule in globals.css: Chrome's LCP heuristic
+// ignores an exactly-0 opacity candidate, so >=1024px needs a
+// nonzero-but-imperceptible starting value to keep the mark as a covered
+// LCP candidate through the dark P1/P2 phases. Mobile stays at a true 0 —
+// pixel-identical to R3.
+// R4.1 — F8/F10: the wordmark half of this floor is REMOVED (see the CSS
+// comment in globals.css). `wordTop` no longer takes `markFloor` at all —
+// it is a true 0 on every width, in every path, including a replay reset
+// (this function's own only caller). The mark's own floor is lowered from
+// 0.011 to 0.002 (still a covered LCP candidate, quarter the ghost).
+function setInitialHiddenStates(refs: ArrivalRefs, reduced: boolean, desktop: boolean) {
+  const markFloor = desktop ? 0.002 : 0;
+
+  if (refs.atmosphere) gsap.set(refs.atmosphere, { opacity: 0 });
+  if (refs.signal) {
+    // R4 — neutral-rest pattern (MissionSection's connector segments):
+    // under reduce the hairline is pre-seeded at full width (scaleX:1) and
+    // only ever cross-fades in opacity; under full motion it starts
+    // collapsed (scaleX:0) and draws outward.
+    gsap.set(refs.signal, reduced ? { opacity: 0, scaleX: 1 } : { opacity: 0, scaleX: 0 });
+  }
   if (refs.glow) gsap.set(refs.glow, { opacity: 0 });
   if (refs.markWrap) {
-    gsap.set(refs.markWrap, reduced ? { opacity: 0, y: 0, scale: 1 } : { opacity: 0, y: 18, scale: 1.04 });
+    gsap.set(
+      refs.markWrap,
+      reduced ? { opacity: markFloor, y: 0, scale: 1 } : { opacity: markFloor, y: 18, scale: 1.04 }
+    );
   }
+  // R4.1 — F8/F10: unconditional 0, never the mark's LCP floor. See the
+  // function-level comment above.
   if (refs.wordTop) gsap.set(refs.wordTop, { opacity: 0 });
   if (refs.wordBottom) gsap.set(refs.wordBottom, { opacity: 0 });
   if (refs.tagline1) gsap.set(refs.tagline1, { opacity: 0 });
-  if (refs.tagline2) gsap.set(refs.tagline2, { opacity: 0 });
   if (refs.cue) gsap.set(refs.cue, { opacity: 0 });
 }
 
@@ -70,18 +115,56 @@ function waitForScrollTop(behavior: ScrollBehavior): Promise<void> {
   });
 }
 
+// R4.1 — F2/F6: while the prologue withholds the rest of the page (P1's
+// "no UI"), `overflow:hidden` blocks wheel/key scrolling but NOT the
+// browser's own focus-driven scroll-into-view — a Tab press could still
+// walk into the nav or any section below Arrival, scrolling the locked
+// page out from under the visitor and force-revealing chrome early. Every
+// element that isn't the arrival section itself (the nav header, every
+// other `<main>` section, the footer) is made `inert` for the duration,
+// which removes it from both the tab order and hit-testing — the skip
+// chip and skip-link stay reachable because both live outside this set.
+// Idempotent in both directions (setAttribute/removeAttribute on an
+// element already in that state is a no-op), so it's safe to call from
+// every unlock path (awaken, skip, Esc, crossing-abort) without tracking
+// whether it was actually applied first.
+function setChromeInert(arrivalSection: HTMLElement | null, inert: boolean) {
+  const navEl = document.querySelector<HTMLElement>(".nav");
+  const footerEl = document.querySelector<HTMLElement>("footer");
+  const targets: HTMLElement[] = [];
+  if (navEl) targets.push(navEl);
+  if (footerEl) targets.push(footerEl);
+  const mainEl = arrivalSection?.parentElement;
+  if (mainEl) {
+    Array.from(mainEl.children).forEach((child) => {
+      if (child !== arrivalSection && child instanceof HTMLElement) {
+        targets.push(child);
+      }
+    });
+  }
+  targets.forEach((el) => {
+    if (inert) {
+      el.setAttribute("inert", "");
+    } else {
+      el.removeAttribute("inert");
+    }
+  });
+}
+
 export default function ArrivalScene() {
   const sectionRef = useRef<HTMLElement | null>(null);
   const pinRef = useRef<HTMLDivElement | null>(null);
+  const atmosphereRef = useRef<HTMLDivElement | null>(null);
+  const signalRef = useRef<HTMLDivElement | null>(null);
   const glowRef = useRef<HTMLDivElement | null>(null);
   const overlayRef = useRef<HTMLDivElement | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
+  const skipButtonRef = useRef<HTMLButtonElement | null>(null);
   const replayButtonRef = useRef<HTMLButtonElement | null>(null);
   const markWrapRef = useRef<HTMLDivElement | null>(null);
   const wordTopRef = useRef<HTMLSpanElement | null>(null);
   const wordBottomRef = useRef<HTMLSpanElement | null>(null);
   const tagline1Ref = useRef<HTMLParagraphElement | null>(null);
-  const tagline2Ref = useRef<HTMLParagraphElement | null>(null);
   const cueRef = useRef<HTMLDivElement | null>(null);
   const headingRef = useRef<HTMLHeadingElement | null>(null);
   const timelineRef = useRef<gsap.core.Timeline | null>(null);
@@ -95,6 +178,11 @@ export default function ArrivalScene() {
   // explicit desktop replay, as opposed to an ordinary fresh-visit
   // autoplay? markComplete reads this to decide whether to speak/refocus.
   const wasReplayRef = useRef(false);
+  // R4.2 — R-1: the replay-session dead-man watchdog id, so awaken() can
+  // cancel it on a normal completion instead of leaving a dangling timer
+  // that would otherwise fire ~22s later as a harmless no-op (see
+  // window.__gclLockEpoch below).
+  const replayWatchdogRef = useRef<number | null>(null);
 
   const [isStatic, setIsStatic] = useState(false);
   const [showSkip, setShowSkip] = useState(true);
@@ -109,9 +197,17 @@ export default function ArrivalScene() {
   const [isDesktopWidth, setIsDesktopWidth] = useState(false);
   // R3.1 / Finding 16 — the sole aria-live status text for this scene.
   const [announcement, setAnnouncement] = useState("");
+  // R4 — P6 "the institution awakens": drives `.arrival--awake`, which
+  // starts the atmosphere's slow CSS breathe (globals.css). Set once by
+  // awaken() and never unset — the institution, once awake, stays awake.
+  const [awake, setAwake] = useState(false);
 
   useEffect(() => {
     ensureGsapRegistered();
+
+    // R4.1 — F2/F6: captured once so the cleanup below (which can run after
+    // sectionRef.current has already changed) doesn't read the ref itself.
+    const arrivalSection = sectionRef.current;
 
     const reducedMotion = window.matchMedia(REDUCED_MOTION_QUERY).matches;
     // R3 — desktop-reduce (>=1024px, prefers-reduced-motion: reduce) is no
@@ -130,6 +226,35 @@ export default function ArrivalScene() {
     const isDesktopWidthNow = window.matchMedia("(min-width: 1024px)").matches;
     setIsDesktopWidth(isDesktopWidthNow);
 
+    // R4 — a hash means the visitor asked for a specific piece of content,
+    // not the front door; they bypass the prologue exactly like an
+    // already-seen visitor (landOnHash, scheduled below, still runs
+    // untouched).
+    const hasHash = Boolean(window.location.hash);
+    // R4.2 — R-2: the single source of truth for "is the lock actually
+    // active for THIS load" is the DOM class itself, read once, right
+    // here, at mount — never a recomputed predicate. layout.tsx's
+    // pre-paint script is the only thing that ever ADDS `gcl-prologue`
+    // (pathname '/', desktop width, no hash, not yet seen), and one of
+    // its two dead-man watchdogs (the inline `setTimeout`, or the
+    // pure-CSS keyframe in globals.css) may already have REMOVED it by
+    // the time this effect runs, on a sufficiently slow hydration.
+    // Reading the class instead of re-deriving the same predicate means
+    // this component can never disagree with either of those — not on
+    // pathname (a stray `/index.html` load never gets the class, so it
+    // never gets a prologue or `inert`, full stop, with no need to
+    // duplicate a pathname check here), and not on timing (a
+    // watchdog-released load never gets a prologue either, even if every
+    // OTHER condition below would otherwise say yes).
+    const lockPresent = document.documentElement.classList.contains("gcl-prologue");
+    // R4 — the single gate for "does this load actually run the
+    // six-phase prologue": desktop width, first visit this session, no
+    // hash, AND the pre-paint lock actually landed and is still present.
+    // Mobile is excluded by construction (isDesktopWidthNow), so every
+    // mobile path below is unreachable from here — the mobile ladder is
+    // built and played exactly as in R3.
+    const willRunPrologue = isDesktopWidthNow && !alreadySeen && !hasHash && lockPresent;
+
     // R3.1 / Finding 7 — desktop-reduce auto-plays the intro as a real
     // ~4.3s ladder (R3/D-3 above), but global chrome can't be gated behind
     // it: the intro is allowed to play OVER the nav and replay chip, it
@@ -137,11 +262,16 @@ export default function ArrivalScene() {
     // own reveal (Nav.tsx) listens for this exact event; firing it here at
     // mount — instead of only from markComplete — decouples "chrome is
     // reachable" from "the cinematic beat has finished," for this policy
-    // only. Full-motion desktop keeps the existing (pre-R3, accepted)
-    // cinematic withhold; mobile never reaches this branch at all
-    // (desktopReduced requires >=1024px, so it's false on every mobile
-    // width regardless of motion preference).
-    if (desktopReduced) {
+    // only.
+    //
+    // R4 — gated behind `!willRunPrologue`: under a FIRST-VISIT prologue,
+    // withholding nav until awaken() (P6, ~12.8s wall) is the Founder's
+    // explicit "no UI in P1" mission requirement, superseding Finding 7 for
+    // this one case (disclosed in every report — see the A11Y note). Every
+    // OTHER desktop-reduce load (already-seen, hash-bypass, or any
+    // desktop-reduce visit that isn't running the prologue) keeps Finding
+    // 7's original immediate-nav fix untouched.
+    if (desktopReduced && !willRunPrologue) {
       window.dispatchEvent(new Event("gcl:arrival-complete"));
       setShowReplay(true);
     }
@@ -155,68 +285,384 @@ export default function ArrivalScene() {
       setShowReplay(true);
       setIsReplaying(false);
 
-      // R3.1 / Finding 16 — only a desktop REPLAY moves focus and speaks;
-      // an ordinary fresh-visit completion (first load, wasReplayRef never
-      // set) must not suddenly steal focus or announce anything nobody
-      // asked for. Mobile is excluded by construction — wasReplayRef is
-      // only ever written true from the desktop-gated branch of
-      // handleReplay below.
-      if (wasReplayRef.current) {
+      // R3.1 / Finding 16 — only a desktop REPLAY moves focus; an ordinary
+      // fresh-visit completion must not suddenly steal focus nobody asked
+      // to give up.
+      //
+      // R4.1 — F12: the announcement itself is no longer gated to replay
+      // alone. `willRunPrologue` (closed over from mount) is true for
+      // every path that actually spoke the "Introduction playing" start
+      // announcement below — natural completion, Skip, Esc, and the
+      // breakpoint-crossing abort all funnel through this same
+      // markComplete — so every one of them now resolves it. The silent
+      // already-seen/hash-bypass jump never announced a start
+      // (willRunPrologue is false there), so it correctly still announces
+      // nothing here.
+      const isReplay = wasReplayRef.current;
+      if (isReplay || willRunPrologue) {
         wasReplayRef.current = false;
         setAnnouncement("Introduction complete");
-        replayButtonRef.current?.focus({ preventScroll: true });
+        if (isReplay) {
+          replayButtonRef.current?.focus({ preventScroll: true });
+        }
       }
+    };
+
+    // R4 — revealSkip (P2): the skip chip is kept invisible pre-paint by
+    // the html.gcl-prologue CSS gate (globals.css). This inline autoAlpha
+    // write beats that class rule by ordinary cascade priority — an inline
+    // style always outranks a stylesheet rule with no !important on either
+    // side — making the chip visible AND focusable at wall ~3.0s (0.4s
+    // outer delay + 2.6s timeline position), ahead of the Founder's ~3s
+    // a11y mitigation deadline. `pointerEvents: "auto"` is set alongside
+    // autoAlpha for the same reason: autoAlpha only ever writes opacity +
+    // visibility, never pointer-events — without this, the CSS gate's own
+    // `pointer-events: none` would keep outranking nothing (no inline
+    // pointer-events to beat it) and silently block every MOUSE click on
+    // an otherwise visible, focusable chip until awaken() removes the
+    // class at P6. Keyboard (Tab focus, Enter/Space, and the separate
+    // Esc-to-skip effect below) never depended on pointer-events, which is
+    // why this specific defect only ever affects a pointer/mouse skip.
+    // R4.1 — F9: resting reveal is dimmed (0.65, not 1) — measured at that
+    // target the chip's brightest pixel sits comfortably above the 4.5:1
+    // AA contrast floor against #060608 while no longer reading as the
+    // brightest element in P2 ("restrained gold signal, almost
+    // invisible"). Full weight (opacity:1) restores on :hover/:focus-
+    // visible via the `!important` CSS rule in globals.css.
+    const revealSkip = () => {
+      gsap.to(skipButtonRef.current, {
+        autoAlpha: 0.65,
+        pointerEvents: "auto",
+        duration: 0.4,
+        ease: "power2.out",
+      });
+    };
+
+    // R4 — awaken (P6): the CONTINUITY MECHANISM. The one moment the
+    // prologue becomes the site — release scroll, start the ambient
+    // breathe, reveal nav, and re-measure every pin against the
+    // post-scrollbar layout. Every action here is independently idempotent
+    // (classList.remove on an absent class, setState to an already-true
+    // value, a repeat Event dispatch, a repeat ScrollTrigger.refresh), so
+    // it is safe to reach more than once — which it will, since
+    // tl.progress(1) fires this tl.call inline on every seen/hash-bypass
+    // jump AND on the timeline's own forward playback to completion.
+    const awaken = () => {
+      document.documentElement.classList.remove("gcl-prologue");
+      // R4.1 — F4: also clears the replay-only chrome-withholding class
+      // (see globals.css `html.gcl-replaying`) — a harmless no-op on a
+      // first-visit play, where the class was never added.
+      document.documentElement.classList.remove("gcl-replaying");
+      // R4.1 — F2/F6: release the focus containment applied at prologue
+      // start (or replay start) — see `setChromeInert` above.
+      setChromeInert(arrivalSection, false);
+      // R4.2 — R-1: cancel this replay session's own dead-man watchdog
+      // (armed in handleReplay) on every normal exit path — natural
+      // completion, Skip, Esc, or a breakpoint-crossing abort all funnel
+      // through this same awaken() call. A harmless no-op on a
+      // first-visit play, which never arms this timer.
+      if (replayWatchdogRef.current !== null) {
+        window.clearTimeout(replayWatchdogRef.current);
+        replayWatchdogRef.current = null;
+      }
+      setAwake(true);
+      window.dispatchEvent(new Event("gcl:arrival-complete"));
+      // R4.1 — F5: the refresh-reclaim listener's whole job is protecting
+      // the prologue's own glow tween from a pre-P3 stomp; once the
+      // prologue is over, the R3 pull-back scrub is glow's sole owner, so
+      // this unregisters the listener at the exact moment that becomes
+      // true. `reclaimPrologueGlow` is declared further down this effect —
+      // referencing it here is safe because this callback only ever runs
+      // (via the timeline's P6 tl.call, or a jump) long after the whole
+      // effect body — including that declaration — has already executed.
+      ScrollTrigger.removeEventListener("refresh", reclaimPrologueGlow);
+      // R4 — the scroll lock's release can change viewport width (a
+      // Windows-style scrollbar reappearing), so every pin measured while
+      // locked needs one re-measure against the real, post-unlock layout.
+      // No new ScrollTrigger is created anywhere in the prologue — this is
+      // the one, single post-unlock refresh the beat table specifies.
+      requestAnimationFrame(() => ScrollTrigger.refresh());
     };
 
     // D5 — ONE timeline owns the composition in every state. It is always
     // built (paused), so replay always has something to restart: fresh visit
-    // plays it after the darkness beat; reduced-motion/already-seen jump it
-    // straight to progress(1) (no visible animation, but the same object).
+    // plays it after the darkness beat; reduced-motion/already-seen/hash
+    // jump it straight to progress(1) (no visible animation, but the same
+    // object).
+    //
+    // R4 — the timeline position (seconds) of P3's glow reveal, shared with
+    // the refresh-reclaim listener below (see `reclaimPrologueGlow`) so the
+    // two can never drift apart.
+    const GLOW_REVEAL_AT = 4.8;
+
+    // R4 — reclaim glow from the pull-back's forced refresh-render. The
+    // pull-back's own pinned ScrollTrigger (buildPullback below) renders
+    // its progress-0 frame on every ScrollTrigger.refresh() — necessary for
+    // GSAP to measure pin spacing correctly, but that forced render stamps
+    // glow to its fromTo "from" value (opacity:1, R3.1/Finding 3) almost
+    // immediately at page load, well before the prologue's own P3 beat
+    // (wall ~5.2s) is due to touch it. Invisible under R3's old mobile/
+    // desktop ladder (glow was ALSO an early beat there, so the stomp
+    // landed on the same value the ladder was heading to anyway) but a
+    // real defect under the prologue's P1 "darkness, silence" requirement.
+    // This global "refresh" event (same public ScrollTrigger API
+    // MissionSection.tsx already uses for its own post-refresh geometry
+    // re-apply) fires once every individual trigger — including the
+    // pull-back's — has already refreshed, so by the time this runs the
+    // stomp has already landed. Re-rendering the prologue timeline at its
+    // OWN current time only reclaims glow correctly once the prologue's
+    // own tween has actually started (GSAP doesn't touch a tween's target
+    // before the playhead reaches it); before that instant, the
+    // unambiguously correct value is a plain 0 — nothing else has
+    // legitimate authority over glow yet — so this positively re-asserts
+    // it instead. Both branches use `suppressEvents`/a direct `gsap.set`,
+    // never `.progress()`, so this can never re-fire revealSkip/awaken.
+    // Scoped to the desktop prologue only: the mobile ladder's pull-back
+    // has the identical characteristic, but it predates R4 and mobile must
+    // stay byte-identical to R3.
+    //
+    // R4.1 — F5/F0: declared and registered HERE, before `introCtx`
+    // (below) exists — NOT after it, where it used to live. The
+    // already-seen/hash-bypass branch inside `introCtx` calls
+    // `tl.progress(1)` SYNCHRONOUSLY during this same effect's execution,
+    // which fires `awaken()` inline, which in turn now unregisters this
+    // very listener — a `const` declared later in the same function is in
+    // the temporal dead zone until its own declaration runs, so awaken()
+    // referencing it from an earlier-defined closure invoked THIS
+    // synchronously would have thrown a ReferenceError on every
+    // already-seen/hash-bypass load. Declaring it before `introCtx` is
+    // built removes that ordering hazard entirely.
+    const reclaimPrologueGlow = () => {
+      // R4.1 — F5: scoped to prologue-active only. awaken() already
+      // unregisters this listener the moment the prologue ends, but a
+      // refresh event already queued at that exact instant could still
+      // reach this callback — this guard is the belt to that braces, so a
+      // later ScrollTrigger.refresh() (a plain resize, a devtools dock)
+      // can never re-stamp glow/cue over whatever the R3 pull-back scrub
+      // currently owns.
+      if (completedRef.current) return;
+      const tl = timelineRef.current;
+      if (!tl) return;
+      if (tl.time() < GLOW_REVEAL_AT) {
+        gsap.set(glowRef.current, { opacity: 0 });
+      } else {
+        tl.render(tl.time(), true, true);
+      }
+    };
+    if (isDesktopWidthNow) {
+      ScrollTrigger.addEventListener("refresh", reclaimPrologueGlow);
+    }
+
     const introCtx = gsap.context(() => {
       const tl = gsap.timeline({ paused: true, delay: 0.4, onComplete: markComplete });
       timelineRef.current = tl;
-      tl.to(glowRef.current, { opacity: 1, duration: 0.8, ease: "power2.out" })
-        .to(
+
+      if (isDesktopWidthNow) {
+        // R4 — Gateway G Institutional Prologue. Six phases, one timeline,
+        // built once regardless of which branch below actually plays it.
+        // Every numeric position argument is a timeline-local second
+        // (wall-clock = this value + the 0.4s outer delay) — see the
+        // beat-table math in the R4 report for the full derivation.
+
+        // P1 — darkness. Pure obsidian silence for the 0.4s outer delay,
+        // then the void breathes barely-visible. Opacity-only in both
+        // policies already, so no reveal() wrapper is needed.
+        tl.to(atmosphereRef.current, { opacity: 0.08, duration: 1.8, ease: "power1.inOut" }, 0);
+
+        // P2 — the gold signal. scaleX is the only spatial key here;
+        // revealFromTo strips it under reduce, leaving the pre-seeded
+        // scaleX:1 (setInitialHiddenStates) untouched and the hairline
+        // fading in at full width, opacity-only.
+        const [signalFrom, signalTo] = revealFromTo(
+          desktopReduced,
+          { opacity: 0, scaleX: 0 },
+          { opacity: 0.55, scaleX: 1, duration: 2.2, ease: "power2.inOut" }
+        );
+        tl.fromTo(signalRef.current, signalFrom, signalTo, 2.2);
+        // Skip becomes visible+focusable at wall ~3.0s — ahead of the
+        // Founder's ~3s a11y deadline, in both policies.
+        tl.call(revealSkip, [], 2.6);
+
+        // P3 — the Gateway G revealed. Light reveals the mark, never
+        // redraws it: the glow rises, markWrap runs the EXACT approved
+        // wrap-settle grammar (opacity + y:18->0 + scale:1.04->1, stripped
+        // to opacity-only under reduce by reveal() — WCAG C39 cross-fade),
+        // and the signal hands off into the glow.
+        tl.to(glowRef.current, { opacity: 1, duration: 2.4, ease: "power2.inOut" }, GLOW_REVEAL_AT);
+        tl.to(
           markWrapRef.current,
-          reveal(desktopReduced, { opacity: 1, scale: 1, y: 0, duration: 1.6, ease: "power3.out" }),
-          "-=0.25"
-        )
-        .to(wordTopRef.current, { opacity: 1, duration: 0.6, ease: "power2.out" }, "-=0.6")
-        .to(wordBottomRef.current, { opacity: 1, duration: 0.6, ease: "power2.out" })
-        .to(tagline1Ref.current, { opacity: 1, duration: 0.5, ease: "power2.out" })
-        .to(tagline2Ref.current, { opacity: 1, duration: 0.5, ease: "power2.out" }, "-=0.15")
+          reveal(desktopReduced, { opacity: 1, y: 0, scale: 1, duration: 1.6, ease: "power3.out" }),
+          5.6
+        );
+        tl.to(signalRef.current, { opacity: 0, duration: 1.2, ease: "power1.inOut" }, 5.6);
+
+        // P4 — hold. An empty dwell tween (same pattern as Mission's R3.1
+        // dwell filler): nothing moves. The G is remembered before the
+        // words arrive.
+        // R4.1 — LOW finding 13 (craft): the hold measured at 2.2s, the
+        // low end of a studio ident's typical 2-4s resolved-mark hold.
+        // Extended +0.7s (1.6 -> 2.3) and every downstream P5/P6 position
+        // shifted the same +0.7s so nothing else about the beat table
+        // changes shape — only the dwell gets more weight. New total
+        // ~15.1s wall, still inside the Founder's 12-16s window.
+        tl.to({}, { duration: 2.3 }, 8.0);
+
+        // P5 — the words. Sequential, no overlap — the symbol is
+        // remembered before the words. Single tagline line per the R4
+        // COPY RULING (content/site.ts) — the second <p>/tagline2Ref no
+        // longer exists. Opacity-only in both policies.
+        tl.to(wordTopRef.current, { opacity: 1, duration: 0.7, ease: "power2.out" }, 10.3);
+        tl.to(wordBottomRef.current, { opacity: 1, duration: 0.7, ease: "power2.out" }, 11.1);
+        tl.to(tagline1Ref.current, { opacity: 1, duration: 0.7, ease: "power2.out" }, 12.0);
+
+        // P6 — the institution awakens.
+        tl.call(awaken, [], 13.1);
         // R3.1 / Finding 15 — this step plays on the intro's own fixed
         // wall-clock ladder, independent of scroll. If the visitor has
         // already engaged the pull-back (scrolled, fading ENTER toward 0)
-        // by the time this step's turn comes up (~3.9s in), writing a flat
-        // `1` here would "win" as the last write and leave ENTER burned in
-        // at full opacity for the rest of the pin. The function-based
-        // value re-reads pullbackEngagedRef at the moment THIS step
-        // actually starts (not at timeline-build time) and, if the
-        // pull-back has already taken over, targets the cue's own current
-        // opacity instead — a no-op that leaves the pull-back's scrub
-        // tween as sole authority over this element.
-        .to(cueRef.current, {
-          opacity: () =>
-            pullbackEngagedRef.current
-              ? Number(gsap.getProperty(cueRef.current, "opacity"))
-              : 1,
-          duration: 0.4,
-          ease: "power2.out",
-        });
+        // by the time this step's turn comes up, writing a flat `1` here
+        // would "win" as the last write and leave ENTER burned in at full
+        // opacity for the rest of the pin. The function-based value
+        // re-reads pullbackEngagedRef at the moment THIS step actually
+        // starts (not at timeline-build time) and, if the pull-back has
+        // already taken over, targets the cue's own current opacity
+        // instead — a no-op that leaves the pull-back's scrub tween as
+        // sole authority over this element. Scroll only becomes possible
+        // once awaken() (above) releases the lock, so under a genuine
+        // first-visit play this guard is inert until P6 — it exists for
+        // replay and for the general safety of the shared step.
+        tl.to(
+          cueRef.current,
+          {
+            opacity: () =>
+              pullbackEngagedRef.current
+                ? Number(gsap.getProperty(cueRef.current, "opacity"))
+                : 1,
+            duration: 0.4,
+            ease: "power2.out",
+          },
+          13.5
+        );
+        tl.to({}, { duration: 0.6 }, 14.1);
+      } else {
+        // R3 (unchanged, verbatim) — the mobile arrival ladder. R4 only
+        // removes the second tagline tween (tagline2Ref no longer exists —
+        // R4 COPY RULING, content/site.ts); every remaining tween, offset,
+        // and ease is untouched. Prologue code above is unreachable here.
+        tl.to(glowRef.current, { opacity: 1, duration: 0.8, ease: "power2.out" })
+          .to(
+            markWrapRef.current,
+            reveal(desktopReduced, { opacity: 1, scale: 1, y: 0, duration: 1.6, ease: "power3.out" }),
+            "-=0.25"
+          )
+          .to(wordTopRef.current, { opacity: 1, duration: 0.6, ease: "power2.out" }, "-=0.6")
+          .to(wordBottomRef.current, { opacity: 1, duration: 0.6, ease: "power2.out" })
+          .to(tagline1Ref.current, { opacity: 1, duration: 0.5, ease: "power2.out" })
+          .to(cueRef.current, {
+            opacity: () =>
+              pullbackEngagedRef.current
+                ? Number(gsap.getProperty(cueRef.current, "opacity"))
+                : 1,
+            duration: 0.4,
+            ease: "power2.out",
+          });
+      }
 
-      // R3 / D-3 fix — `staticJump` (not raw `reducedMotion`) gates the jump-
-      // to-end shortcut. A fresh desktop-reduce visit now plays the intro as
-      // a real, scroll-independent opacity cross-fade ladder; already-seen
-      // still jumps straight to progress(1) in every motion policy; mobile-
-      // reduce is unaffected (staticJump === reducedMotion there).
-      if (staticJump || alreadySeen) {
+      // R3 / D-3 fix — `staticJump` (not raw `reducedMotion`) gates the
+      // jump-to-end shortcut. A fresh desktop-reduce visit plays the intro
+      // as a real, scroll-independent opacity cross-fade ladder;
+      // already-seen still jumps straight to progress(1) in every motion
+      // policy; mobile-reduce is unaffected (staticJump === reducedMotion
+      // there).
+      //
+      // R4 — `isDesktopWidthNow && hasHash` joins the jump condition: a
+      // hash visitor bypasses the prologue exactly like an already-seen
+      // one (fires awaken() inline via the forward render to progress 1,
+      // so unlock/nav-reveal/refresh all still happen — just with zero
+      // visible animation). Scoped to desktop-width on purpose — a mobile
+      // hash visit keeps playing its ladder exactly as it always has
+      // (mobile "byte-identical to R3" is the harder constraint here; the
+      // mobile ladder never had hash-awareness before, and it doesn't gain
+      // any now).
+      // R4.2 — R-2: `isDesktopWidthNow && !lockPresent` joins the jump
+      // condition — any desktop load where the pre-paint lock never
+      // landed (wrong pathname, or a dead-man watchdog already released
+      // it before this ever ran) must compose exactly like an
+      // already-seen visit: no lock, no inert, no prologue playback.
+      if (
+        staticJump ||
+        alreadySeen ||
+        (isDesktopWidthNow && hasHash) ||
+        (isDesktopWidthNow && !lockPresent)
+      ) {
         setIsStatic(true);
         tl.progress(1);
       } else {
         tl.play();
+        if (willRunPrologue) {
+          setAnnouncement("Introduction playing — press Escape to skip at any time.");
+          // R4.1 — F2/F6: contain focus to the arrival section (skip chip
+          // + skip-link only) for the duration of the real, first-visit
+          // prologue. Released by awaken() above on every exit path.
+          setChromeInert(arrivalSection, true);
+        }
       }
     }, sectionRef);
+
+    // R4.1 — F1/F3 (BLOCKER, breakpoint-crossing abort): the prologue's
+    // timeline is built once, keyed on `isDesktopWidthNow` at mount, and
+    // never re-evaluated — so resizing/rotating across the 1024px line
+    // mid-play used to leave the DESKTOP ladder (and its scroll lock)
+    // running over a now-mobile viewport with no escape. This listener
+    // only cares about LEAVING desktop while the prologue could still be
+    // holding the lock: `tl.progress(1, false)` seeks the timeline
+    // straight to its end WITHOUT suppressing events, so every intervening
+    // `tl.call` (revealSkip, awaken — unlock, nav event, session key) and
+    // the final `onComplete` (markComplete) fire exactly as a natural
+    // completion would. `completedRef` guards against firing on an already
+    // -finished timeline (nothing to abort). The desktop-only prologue
+    // siblings (atmosphere/signal) and the skip chip are then explicitly
+    // cleared of their inline styles so nothing prologue-only leaks into
+    // the mobile composition the visitor now sees.
+    const handleBreakpointChange = (event: MediaQueryListEvent) => {
+      if (event.matches || completedRef.current) return;
+      const tl = timelineRef.current;
+      if (!tl) return;
+      tl.progress(1, false);
+      // R4.2 — R-3: deferred one frame so this always runs AFTER the
+      // forced `progress(1)` render above AND after gsap.matchMedia's own
+      // synchronous rebuild of the mobile pull-back trigger — both fire
+      // off the same viewport `change` event, and the mobile trigger's
+      // own creation-time forced render (needed for GSAP's pin-spacing
+      // measurement) is what was stamping the stale desktop scale,
+      // captured before this abort ever ran, onto markWrap. Running one
+      // frame later means these corrections are always the last write,
+      // regardless of which listener the browser happens to fire first.
+      requestAnimationFrame(() => {
+        // Stop revealSkip's in-flight 0.4s reveal tween from writing a
+        // value AFTER this clear (R4.1 measured this exact race leaving a
+        // stale inline style on the skip chip post-abort).
+        gsap.killTweensOf(skipButtonRef.current);
+        gsap.set([atmosphereRef.current, signalRef.current], { clearProps: "all" });
+        gsap.set(skipButtonRef.current, { clearProps: "all" });
+        // markWrap is deliberately NOT clearProps'd: its only unscoped
+        // (every-width) CSS rule is the PRE-HIDDEN state
+        // (`html.js .arrival__mark-wrap { opacity:0; transform:
+        // translateY(18px) scale(1.04); }`) — clearing every inline style
+        // would revert it to THAT, not to the composed rest state, making
+        // the mark vanish. Explicitly re-assert the only two channels the
+        // mobile pull-back's own scrub tween can corrupt.
+        gsap.set(markWrapRef.current, { y: 0, scale: 1 });
+        // Force every ScrollTrigger — including the mobile pull-back
+        // trigger gsap.matchMedia just built — to re-measure pin spacing
+        // against this now-correct DOM state.
+        ScrollTrigger.refresh();
+      });
+    };
+    const desktopWidthQuery = window.matchMedia("(min-width: 1024px)");
+    if (isDesktopWidthNow) {
+      desktopWidthQuery.addEventListener("change", handleBreakpointChange);
+    }
 
     // R2 2.1 — the camera-pull-back on first scroll. Mobile/tablet (<1024)
     // keeps the exact pre-R2 short pin; desktop gets an extended pull-back
@@ -244,6 +690,12 @@ export default function ArrivalScene() {
           // beat with no vestibular-safe equivalent, so it's wrapped in
           // `if (!reduced)` and dropped under reduce — the overlay-darken +
           // glow-dim carry the "stage falling away" read on their own.
+          //
+          // R4 — unchanged. This pin is built at mount regardless of the
+          // prologue; while `html.gcl-prologue` locks scroll (P1-P5), no
+          // scroll event can reach it, so it simply arms and waits.
+          // awaken() releasing the lock (P6) is the only thing that lets a
+          // visitor actually engage it.
           const buildPullback = (reduced: boolean) => {
             const pullback = gsap.timeline({
               scrollTrigger: {
@@ -356,8 +808,26 @@ export default function ArrivalScene() {
                 pinSpacing: true,
               },
             });
+            // R4.2 — R-3: `.fromTo` with an explicit `{scale:1}` start
+            // (and `immediateRender:false`, same dodge as the desktop
+            // glow fix above) instead of a plain `.to()`. A plain `.to()`
+            // captures markWrap's CURRENT inline scale as its own implicit
+            // start the moment this trigger is created — on a mid-P1/P2
+            // 1024px crossing that value can still be the desktop LCP
+            // floor's 1.04, so the scrub used to recede from 1.04, not 1,
+            // leaving the Gateway G permanently 4% oversized. Hardcoding
+            // the start makes this tween immune to whatever stale value
+            // happens to be in markWrap's inline style at creation time,
+            // regardless of listener ordering — the same guarantee
+            // `handleBreakpointChange`'s own explicit reset (above)
+            // provides for the REST frame, this provides for the SCRUB.
             pullback
-              .to(markWrapRef.current, { scale: 0.9, duration: 1, ease: "none" }, 0)
+              .fromTo(
+                markWrapRef.current,
+                { scale: 1 },
+                { scale: 0.9, duration: 1, ease: "none", immediateRender: false },
+                0
+              )
               .to(pinRef.current, { opacity: 0.72, duration: 1, ease: "none" }, 0)
               .fromTo(glowRef.current, { opacity: 1 }, { opacity: 0.3, duration: 1, ease: "none" }, 0);
 
@@ -413,10 +883,81 @@ export default function ArrivalScene() {
       introCtx.revert();
       pinCtx.revert();
       offscreenTrigger.kill();
+      if (isDesktopWidthNow) {
+        ScrollTrigger.removeEventListener("refresh", reclaimPrologueGlow);
+        desktopWidthQuery.removeEventListener("change", handleBreakpointChange);
+      }
+      // R4.1 — F2/F6: never leave the rest of the page inert past this
+      // component's own lifetime.
+      setChromeInert(arrivalSection, false);
     };
   }, []);
 
+  // R4 — Esc-to-skip (Founder a11y mitigation): scoped to desktop width
+  // only, computed once at mount (same convention as every other
+  // motion-policy flag in this file). Mobile never had a keyboard skip
+  // path in R3 and doesn't gain one now — the "mobile byte-identical"
+  // constraint is stricter than the letter of the beat table here.
+  // `timelineRef.current?.isActive()` is what actually scopes this to "the
+  // prologue is genuinely playing" (true only during a real tl.play() run,
+  // never during/after a progress(1) jump) — `completedRef` is a
+  // belt-and-braces second guard against a double-fire race with a
+  // near-simultaneous natural completion.
+  useEffect(() => {
+    const isDesktopWidthNow = window.matchMedia("(min-width: 1024px)").matches;
+    if (!isDesktopWidthNow) return undefined;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !completedRef.current && timelineRef.current?.isActive()) {
+        timelineRef.current?.progress(1, false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
+  // R4.2 — R-5(b): the site-wide "Skip to content" link (layout.tsx,
+  // outside this component's own JSX — a plain `<a href="#content">`)
+  // used to be a genuine dead end for the whole prologue: with
+  // `html.gcl-prologue` holding `overflow:hidden`, the browser's native
+  // fragment jump has nowhere to scroll TO, and activating it left focus
+  // stranded on <body> with only a `#content` hash to show for it. A
+  // native `addEventListener` on the anchor (found by class, since it
+  // lives outside this tree) lets this component unlock the SAME way
+  // Skip/Esc do — `progress(1, false)`, which fires every intervening
+  // `tl.call` and `awaken()` exactly like a natural completion — before
+  // the browser's own default jump action runs for that same click.
+  useEffect(() => {
+    const skipLink = document.querySelector<HTMLAnchorElement>(".skip-link");
+    if (!skipLink) return undefined;
+
+    const handleSkipLinkActivate = () => {
+      if (!timelineRef.current || completedRef.current) return;
+      if (!document.documentElement.classList.contains("gcl-prologue")) return;
+      timelineRef.current.progress(1, false);
+      // Unlocking alone isn't enough: the browser's native fragment-focus
+      // algorithm only moves focus to `#content` if that target is
+      // itself programmatically focusable (a `tabIndex`), and
+      // `<main id="content">` (app/page.tsx) has none — outside this
+      // file's ownership to add. Land focus on the Arrival heading
+      // instead, the first focusable landmark inside `#content`, so
+      // activating the skip-link during the prologue never ends in a
+      // scroll-only, focus-nowhere dead end.
+      requestAnimationFrame(() => headingRef.current?.focus({ preventScroll: true }));
+    };
+
+    skipLink.addEventListener("click", handleSkipLinkActivate);
+    return () => skipLink.removeEventListener("click", handleSkipLinkActivate);
+  }, []);
+
   const handleSkip = () => {
+    // R4.2 — R-5(c): move focus to the (tabIndex=-1) heading BEFORE
+    // forcing the timeline to its end — markComplete (fired synchronously
+    // by progress(1) below) sets `showSkip` false, which removes this
+    // button via the `hidden` attribute; hiding a still-focused element
+    // is what dropped focus to <body> (same root cause R3.1/Finding 16
+    // fixed for the replay chip, never applied here for the skip chip).
+    headingRef.current?.focus({ preventScroll: true });
     timelineRef.current?.progress(1, false);
   };
 
@@ -483,7 +1024,11 @@ export default function ArrivalScene() {
       // silent exactly as before.
       wasReplayRef.current = isDesktopWidthNow;
       if (isDesktopWidthNow) {
-        setAnnouncement("Replaying introduction");
+        // R4.2 — R-1: matches the first-visit start announcement now that
+        // a replay re-applies the same P1 "no UI" containment a first
+        // visit does — Escape is a genuine, working way out of it here
+        // too, so the announcement says so.
+        setAnnouncement("Replaying introduction — press Escape to skip at any time.");
         // Move focus to a stable, always-focusable landing spot instead of
         // leaving it on the chip while the chip's own busy/disabled state
         // is about to change underneath it — the actual root cause of
@@ -527,24 +1072,108 @@ export default function ArrivalScene() {
         // `markComplete` (the timeline's onComplete) re-enables the control
         // and re-shows the chip on finish, so this is repeatable without a
         // page refresh in both policies.
+        //
+        // R4 — a desktop replay plays the FULL six-phase prologue from 0
+        // again.
+        //
+        // R4.2 — R-1 (the true sequence): a replay now re-applies the
+        // EXACT SAME state a first visit gets, not a lighter-weight
+        // imitation of it. R4.1's own fix only withheld the nav visually
+        // (`gcl-replaying`) and contained focus/hit-testing
+        // (`setChromeInert`) while leaving scroll itself unlocked — a gate
+        // review measured that as an incoherent trap: `inert` everywhere
+        // outside Arrival, but the page still scrollable, so a visitor who
+        // scrolled mid-replay landed on a dead page with the mandated skip
+        // chip 4900+px out of view (`.arrival__skip` is `position:
+        // absolute`, correct only because the page is never supposed to
+        // scroll while it's the sole reachable control). Re-adding
+        // `gcl-prologue` itself makes that state structurally
+        // unreachable: it re-arms `overflow:hidden` (so there is no scroll
+        // position for the skip chip to be "5000px above"), and it
+        // re-arms the SAME CSS gate that hides `.arrival__skip` until
+        // revealSkip's own inline write beats it at wall ~3s — a replay's
+        // P1/P2 chip timing now literally matches a first visit's, not a
+        // parallel hand-rolled copy of it. `gcl-replaying` still layers on
+        // top for the two things `gcl-prologue` doesn't cover on its own:
+        // visually hiding the nav (Nav.tsx's own `visible` state is a
+        // one-way ratchet that never resets) and — new here — the REPLAY
+        // chip itself (globals.css), so the mandated skip chip is the
+        // ONE interactive element for the sequence's duration, exactly as
+        // a first visit's P1 already is. `setChromeInert` still removes
+        // nav/other-sections/footer from the tab order and hit-testing.
+        // Esc already worked before this change (it calls the same
+        // `progress(1, false)` Skip does) and continues to; `awaken()`
+        // firing again at its usual timeline position releases every one
+        // of these — lock, inert, nav, replay chip, focus — on every exit
+        // path, a harmless idempotent re-run for whichever of these a
+        // first-visit play already cleared.
         setIsStatic(false);
         setShowSkip(true);
+        // R4.1 — F4(a): `awake` drives the CSS `.arrival--awake` breathe
+        // animation, which otherwise keeps outranking `setInitialHiddenStates`'
+        // plain inline `opacity:0` on the atmosphere (a CSS animation beats
+        // a non-!important inline style), making the P1 "void breathes
+        // barely-visible" beat a silent no-op on every replay.
+        setAwake(false);
+
+        if (isDesktopWidthNow) {
+          document.documentElement.classList.add("gcl-replaying");
+          document.documentElement.classList.add("gcl-prologue");
+          setChromeInert(sectionRef.current, true);
+          // R4.2 — R-1/R-2: bump the shared invalidation epoch BEFORE
+          // re-adding the lock, so any watchdog armed by an EARLIER lock
+          // holder (the original page-load script, or a previous replay)
+          // sees its own captured epoch go stale and no-ops instead of
+          // releasing a lock/session it didn't arm — then arm a fresh
+          // dead-man scoped to this replay, same 22s margin and same
+          // atomic (lock + inert) release as the page-load watchdog in
+          // layout.tsx. Cleared by awaken() above on every normal exit.
+          window.__gclLockEpoch = (window.__gclLockEpoch ?? 0) + 1;
+          const myEpoch = window.__gclLockEpoch;
+          replayWatchdogRef.current = window.setTimeout(() => {
+            if (window.__gclLockEpoch !== myEpoch) return;
+            document.documentElement.classList.remove("gcl-prologue");
+            document.documentElement.classList.remove("gcl-replaying");
+            document.querySelectorAll("[inert]").forEach((el) => el.removeAttribute("inert"));
+            replayWatchdogRef.current = null;
+          }, 22000);
+        }
 
         const tl = timelineRef.current;
         if (tl) {
           tl.pause(0).invalidate();
           setInitialHiddenStates(
             {
+              atmosphere: atmosphereRef.current,
+              signal: signalRef.current,
               glow: glowRef.current,
               markWrap: markWrapRef.current,
               wordTop: wordTopRef.current,
               wordBottom: wordBottomRef.current,
               tagline1: tagline1Ref.current,
-              tagline2: tagline2Ref.current,
               cue: cueRef.current,
             },
-            desktopReduced
+            desktopReduced,
+            isDesktopWidthNow
           );
+          // R4.1 — F4(b): the skip chip's own P2 reveal writes an inline
+          // `autoAlpha`/`pointerEvents` (see revealSkip above) that the
+          // shared `setInitialHiddenStates` table doesn't cover. Without
+          // this reset it stays at its first-play end value (visible,
+          // clickable) for the whole replay instead of P2 genuinely
+          // revealing it again.
+          // R4.2 — R-1: `revealSkip`'s own tween (fired via `tl.call`, not
+          // tracked as a timeline child GSAP would kill on its own) can
+          // still be mid-flight from whatever ended the PREVIOUS cycle
+          // (a natural completion, or Esc/Skip forcing `progress(1)`,
+          // which fires every intervening `tl.call` including this one)
+          // — measured this leftover tween overwriting THIS reset a beat
+          // later, leaving the chip visible through the very start of a
+          // fresh replay's own P1. Kill it first.
+          if (isDesktopWidthNow) {
+            gsap.killTweensOf(skipButtonRef.current);
+            gsap.set(skipButtonRef.current, { autoAlpha: 0, pointerEvents: "none" });
+          }
           tl.play(0);
         } else {
           setIsReplaying(false);
@@ -567,11 +1196,12 @@ export default function ArrivalScene() {
       ref={sectionRef}
       className={`arrival${isStatic ? " arrival--static" : ""}${
         offscreen ? " arrival--offscreen" : ""
-      }`}
+      }${awake ? " arrival--awake" : ""}`}
       aria-labelledby="arrival-heading"
     >
       <button
         type="button"
+        ref={skipButtonRef}
         className="arrival__skip"
         onClick={handleSkip}
         hidden={!showSkip}
@@ -607,7 +1237,9 @@ export default function ArrivalScene() {
           to anyone who couldn't see it: zero aria-live regions existed
           anywhere on the page. Visually hidden, scoped to this component
           since only the replay flow currently has anything worth
-          announcing; text is written by handleReplay/markComplete above. */}
+          announcing; text is written by handleReplay/markComplete above.
+          R4 — also carries the prologue-start announcement (see the
+          mount effect's `willRunPrologue` branch). */}
       <div className="visually-hidden" role="status" aria-live="polite">
         {announcement}
       </div>
@@ -615,6 +1247,14 @@ export default function ArrivalScene() {
       <div ref={pinRef} className="arrival__pin">
         <div ref={glowRef} className="arrival__glow" aria-hidden="true" />
         <div ref={overlayRef} className="arrival__stage-overlay" aria-hidden="true" />
+
+        {/* R4 — P1/P2 prologue siblings. Gateway G lock: these sit BEHIND
+            `.arrival__stage` in DOM/paint order and are never ancestors of
+            the mark — nothing here ever filters, dims, or wraps the mark
+            itself. Inert on mobile and on any path that never builds the
+            desktop prologue (rest opacity 0, untouched). */}
+        <div ref={atmosphereRef} className="arrival__atmosphere" aria-hidden="true" />
+        <div ref={signalRef} className="arrival__signal" aria-hidden="true" />
 
         <div ref={stageRef} className="arrival__stage">
           <div ref={markWrapRef} className="arrival__mark-wrap">
@@ -630,6 +1270,11 @@ export default function ArrivalScene() {
                 width={480}
                 height={520}
                 alt={arrival.markAlt}
+                // R4 — network/decode priority hint only; no pixel change
+                // on any viewport. Part of the LCP-floor strategy (see
+                // globals.css) that keeps this element (or the wordmark) a
+                // covered LCP candidate through the dark P1/P2 phases.
+                fetchPriority="high"
               />
             </picture>
           </div>
@@ -644,11 +1289,11 @@ export default function ArrivalScene() {
           </h1>
 
           <div className="arrival__tagline">
+            {/* R4 COPY RULING — single Founder-specified line replaces the
+                two-line pair; see content/site.ts for the full ruling and
+                the SEO-untouched disclosure. */}
             <p ref={tagline1Ref} className="arrival__tagline-line">
-              {site.tagline[0]}
-            </p>
-            <p ref={tagline2Ref} className="arrival__tagline-line">
-              {site.tagline[1]}
+              {arrival.tagline}
             </p>
           </div>
         </div>

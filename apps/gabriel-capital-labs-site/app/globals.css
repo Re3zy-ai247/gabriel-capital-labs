@@ -271,6 +271,41 @@ main > section[id] {
   pointer-events: auto;
 }
 
+/* R4.1 — F4: re-applies chrome withholding for the duration of a
+   user-initiated desktop REPLAY (an explicit act, so the R3
+   nav-availability concern does not apply — see ArrivalScene.tsx
+   handleReplay). ArrivalScene toggles `html.gcl-replaying` only for a
+   replay's own run and clears it inside awaken(); Nav's own `visible`
+   state/class is never touched, so Nav.tsx needs no change. `!important`
+   is required to beat `.nav--visible`'s equal-specificity class rule via
+   source order alone — this block must win regardless of where either
+   rule sits. */
+html.gcl-replaying .nav {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+/* R4.2 — R-1: the REPLAY chip must withhold itself too — measured on the
+   R4.1 build, the chip's own resting `.arrival__replay--visible` state
+   (opacity:1) stayed on-screen through every replay's P1, at full brand
+   gold, the brightest thing in a frame the beat table specifies as pure
+   obsidian. Visual-only hide (opacity/visibility, same mechanism as the
+   nav rule above) — the element stays in the DOM and keeps its
+   `aria-busy`/`aria-label` (R3.1 Finding 16), it just leaves the tab order
+   and hit-testing for the sequence's duration, same as the nav. Cleared
+   by the same `awaken()` call (ArrivalScene.tsx) that clears
+   `gcl-replaying` itself, on every exit path (natural completion, Skip,
+   Esc, the dead-man watchdogs). `!important` for the same reason as the
+   nav rule: beats `.arrival__replay--visible`'s equal-specificity class
+   rule via source order alone would be fragile if that rule is ever
+   reordered — this must win regardless. */
+html.gcl-replaying .arrival__replay {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
 .nav__brand {
   display: flex;
   align-items: center;
@@ -437,6 +472,42 @@ main > section[id] {
    Chapter 1 — Arrival
    ========================================================================== */
 
+/* R4 — pre-paint scroll lock for the Gateway G Institutional Prologue. Added
+   ONLY by the inline pre-paint script in layout.tsx (first-visit desktop,
+   no hash — the same predicate ArrivalScene's own `willRunPrologue` checks
+   at mount) and removed by the timeline's own awaken() call at P6. A no-JS
+   visitor never gets `html.js`, let alone this class, so the fully composed
+   static page guarantee is untouched. */
+html.gcl-prologue {
+  overflow: hidden;
+  /* R4.1 — F0 (BLOCKER, hydration dead-man): a pure-CSS failsafe that is
+     completely independent of React/the bundle ever hydrating. `overflow`
+     is a discrete-animatable property (no interpolation, it just flips at
+     a keyframe boundary), so this unconditionally releases the lock ~22s
+     after the class was added, in every failure mode — including a CSP or
+     bundle failure that would also prevent the inline setTimeout watchdog
+     in layout.tsx from ever having been reached. The two watchdogs are
+     deliberately redundant, not sequential: whichever fires first wins.
+     R4.2 — R-2: 18s -> 22s, same margin fix and same reasoning as the
+     inline setTimeout twin in layout.tsx — keep these two numbers equal.
+     Also doubles as the replay-session watchdog: because this class is
+     genuinely removed then re-added (not toggled within one frame) across
+     a desktop Replay (ArrivalScene.tsx handleReplay), the browser starts
+     this keyframe fresh from 0% on every reapplication with no extra code
+     needed here. */
+  animation: gcl-prologue-watchdog 22s linear forwards;
+}
+
+@keyframes gcl-prologue-watchdog {
+  0%,
+  99.99% {
+    overflow: hidden;
+  }
+  100% {
+    overflow: visible;
+  }
+}
+
 .arrival {
   position: relative;
   min-height: 100svh;
@@ -492,6 +563,44 @@ html.js .arrival__glow {
   pointer-events: none;
 }
 
+/* R4 — P1's ambient atmosphere. A prologue-transient sibling, never an
+   ancestor of the mark (Gateway G lock): stacked between the stage-overlay
+   and `.arrival__stage` in DOM order, so it always paints BEHIND the mark,
+   never above or through a filter on it. Rest state 0 in every path that
+   never builds the desktop prologue (mobile, any width once already
+   composed pre-R4) — it is not listed in `.arrival--static` or the
+   mobile-reduce !important block below, so it must stay invisible there by
+   construction, not by an extra override. */
+.arrival__atmosphere {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 60%, rgba(212, 161, 70, 0.05) 0%, rgba(6, 6, 8, 0) 60%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* R4 — P2's gold signal. Centered via inset-inline + margin-inline instead
+   of a transform, so GSAP's scaleX tween owns the transform channel
+   cleanly (no competing centering transform to interpolate against). Rest
+   state 0 — a prologue-transient layer, never present in the composed
+   page at rest. */
+.arrival__signal {
+  position: absolute;
+  top: 50%;
+  inset-inline: 0;
+  margin-inline: auto;
+  width: min(38vw, 340px);
+  height: 1px;
+  background: linear-gradient(
+    to right,
+    rgba(212, 161, 70, 0) 0%,
+    var(--gcl-gateway-gold) 50%,
+    rgba(212, 161, 70, 0) 100%
+  );
+  opacity: 0;
+  pointer-events: none;
+}
+
 .arrival__stage {
   position: relative;
   display: flex;
@@ -537,6 +646,27 @@ html.js .arrival__wordmark-top {
   opacity: 0;
 }
 
+/* R4 — LCP floor. Chrome's largest-contentful-paint heuristic ignores a
+   candidate at EXACTLY opacity:0, which would otherwise leave the
+   prologue's first-visit LCP stranded on the P3 mark reveal (~5-7s in).
+   Scoped to >=1024px (must come after the base opacity:0 rule above, same
+   specificity via a media query, so source order alone decides — see the
+   R3.1 comment further down this file for the precedent) — mobile stays
+   at a true 0, pixel-identical to R3.
+   R4.1 — F8/F10: the wordmark half of this floor is REMOVED. Measured
+   (R4 gate) it bought zero LCP benefit on its own (the mark alone is a
+   sufficient covered candidate) while it was the site's only axe
+   color-contrast violation for ~10.6s and put readable-but-unreadable
+   "GABRIEL" text on screen through P1 ("no UI, no text") and P4 ("the G
+   exists alone"). `.arrival__wordmark-top` now stays a true 0 at every
+   width, matching mobile. The mark's own floor is lowered from 0.011 to
+   0.002 — still a covered LCP candidate, quarter the residual ghost. */
+@media (min-width: 1024px) {
+  html.js .arrival__mark-wrap {
+    opacity: 0.002;
+  }
+}
+
 .arrival__wordmark-bottom {
   display: flex;
   align-items: center;
@@ -570,6 +700,21 @@ html.js .arrival__wordmark-bottom {
   font-size: clamp(0.95rem, 2.3vw, 1.25rem);
   font-weight: 300;
   color: var(--gcl-steel);
+  /* R4.1 — F7: the single line orphaned "Capital." on its own row at
+     320px. `text-wrap: balance` evens the wrap points instead of packing
+     every line but the last; unsupported browsers fall back to normal
+     wrap (today's behavior), so this is a pure enhancement.
+     R4.2 — R-4: `balance` only rebalances wraps that ALREADY exist — at
+     320-375px the flex column itself was narrow enough to force a wrap,
+     so balance had a wrap point to even out; from 393px up the full line
+     fit in one row (measured 335.7px at 393, 1.6x the GABRIEL wordmark),
+     so balance was a no-op and the tagline became the single widest
+     element in the composition, inverting the arrival's hierarchy. A
+     `max-inline-size` below the wordmark's own measure forces the SAME
+     two-line wrap at every phone width 320-430, ch-based so it tracks
+     the fluid clamp() font-size above instead of going stale against it. */
+  max-inline-size: 21ch;
+  text-wrap: balance;
 }
 
 html.js .arrival__tagline-line {
@@ -608,7 +753,11 @@ html.js .arrival__cue {
   position: absolute;
   top: clamp(1rem, 3vh, 1.75rem);
   right: clamp(1rem, 4vw, 2rem);
-  z-index: 20;
+  /* R4.1 — F4c: was 20, below the nav's z-index:600, so a visible nav
+     (post-prologue replay) sat on top of the chip and hijacked its clicks
+     via elementsFromPoint. Raised above the nav so the mandated skip
+     affordance is never occluded or click-hijacked in any state. */
+  z-index: 700;
   min-height: 44px;
   min-width: 44px;
   padding: 0.6rem 1.1rem;
@@ -619,17 +768,69 @@ html.js .arrival__cue {
   letter-spacing: 0.18em;
   text-transform: uppercase;
   cursor: pointer;
-  transition: border-color 0.25s var(--gcl-ease-out), color 0.25s var(--gcl-ease-out);
+  transition: border-color 0.25s var(--gcl-ease-out), color 0.25s var(--gcl-ease-out),
+    opacity 0.25s var(--gcl-ease-out);
 }
 
 .arrival__skip:hover,
 .arrival__skip:focus-visible {
-  border-color: var(--gcl-gateway-gold);
-  color: var(--gcl-gateway-gold);
+  /* R4.2 — R-5(a): `!important` on color/border-color too, not just
+     opacity. `html.gcl-prologue .arrival__skip` (a type + two classes,
+     specificity 0-2-1) is MORE specific than this hover/focus-visible
+     rule (two classes/pseudo-classes, 0-2-0) — without `!important` here,
+     that higher-specificity rule's resting bronze would keep winning even
+     while hovered/focused, regardless of source order, silently
+     defeating "full weight on hover/focus." */
+  border-color: var(--gcl-gateway-gold) !important;
+  color: var(--gcl-gateway-gold) !important;
+  /* R4.1 — F9: restores full weight on hover/focus over revealSkip()'s
+     restrained resting autoAlpha (see ArrivalScene.tsx). `!important` is
+     required to beat GSAP's inline opacity write — an ordinary rule can't. */
+  opacity: 1 !important;
 }
 
 .arrival__skip[hidden] {
   display: none;
+}
+
+/* R4 — P1's "no UI" withhold (Founder a11y ruling, superseding R3 Finding
+   7 for first-visit desktop only — see ArrivalScene.tsx). No !important on
+   either side: the timeline's own inline `autoAlpha` write (revealSkip(),
+   ~3.0s wall) always beats a plain stylesheet rule regardless of
+   specificity, so this only ever suppresses the chip BEFORE that write
+   runs — it can never re-suppress it afterward, and Esc/skip always land
+   on a chip GSAP has already made visible+focusable. */
+html.gcl-prologue .arrival__skip {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* R4.2 — R-5(a): the chip's resting reveal (revealSkip(), ArrivalScene.tsx)
+   used to keep the chip's default steel-gray (`--gcl-stone-silver`) at
+   opacity 0.65 — measured brightest composited pixel RGB(121,121,122),
+   simple-luma 121 (0.2126R+0.7152G+0.0722B), ABOVE the P2 gold signal's
+   own measured peak RGB(120,91,42), simple-luma ~94. A cool-gray control
+   read brighter than the phase's own "restrained gold signal, almost
+   invisible" hero element.
+   A straight alpha-blend of the brand `--gcl-gateway-gold` (212,161,70)
+   over the P1/P2 background can't fix this with real margin either way:
+   the composited luma needed to drop clearly below 94 crosses under the
+   >=3:1 WCAG contrast floor at almost exactly the same alpha (both
+   metrics are dominated by the same green channel), leaving a margin as
+   thin as the one this exact finding flagged as a defect. This is a
+   distinct, deliberately warmer/lower-green solid (a restrained bronze,
+   not the full brand gold — full brand gold is reserved for :hover/
+   :focus-visible below) chosen to clear BOTH floors with real headroom
+   instead of threading the same needle: computed simple-luma ~89 (5
+   points under the P2 signal, not a razor's edge) and WCAG contrast
+   ~3.7:1 against #060608 (23% above the 3:1 UI-control floor, not the
+   ~1% margin the gray chip had). Re-measure both numbers against real
+   rendered pixels if this color or the resting opacity target
+   (revealSkip, still 0.65) ever changes. */
+html.gcl-prologue .arrival__skip {
+  color: rgb(190, 65, 25);
+  border-color: rgb(190, 65, 25);
 }
 
 /* D1 — position:fixed, not absolute: the arrival section's own box grows
@@ -737,6 +938,45 @@ html.js .arrival__cue {
 
 .arrival--static .arrival__glow {
   animation: gcl-glow-breathe 8s ease-in-out infinite;
+}
+
+/* R4 — P6 "the institution awakens": once the prologue's `awaken()` call
+   fires (or the composed timeline is jumped straight there via
+   progress(1) on a seen/hash visit — same continuity mechanism either
+   way), the ambient atmosphere breathes almost imperceptibly.
+   R4.2 — R-3: the rule that starts this animation is now scoped to
+   `(min-width: 1024px) and (prefers-reduced-motion: no-preference)` —
+   TWO fixes in one gate, corrected after both were measured wrong:
+   (1) `.arrival--awake` never gets removed on a 1024px breakpoint-crossing
+   abort (ArrivalScene.tsx handleBreakpointChange plays the desktop
+   timeline to its end, which sets it), so without a width scope the
+   breathe kept running on the MOBILE composition a visitor lands on after
+   crossing down — a prologue-only layer bleeding into a page mobile never
+   otherwise builds. (2) the previous comment here claimed this was "the
+   same precedent as `.arrival--static .arrival__glow` above" as the
+   reason it was deliberately left OUT of the `prefers-reduced-motion:
+   reduce` guard block near the top of this file — that claim was false:
+   glow-breathe IS listed in that block (`.arrival--static .arrival__glow`
+   is right there in its selector list) and measured `animation-name: none`
+   under reduce; this rule, unscoped, kept running under reduce with a
+   measured non-zero opacity delta. Gating the animation declaration
+   itself behind `(prefers-reduced-motion: no-preference)` makes it
+   structurally impossible for the animation to ever start under reduce,
+   at any width — a stronger guarantee than adding a selector to the
+   freeze list further up, and it needed the width scope anyway for (1). */
+@keyframes gcl-atmosphere-breathe {
+  from {
+    opacity: 0.06;
+  }
+  to {
+    opacity: 0.1;
+  }
+}
+
+@media (min-width: 1024px) and (prefers-reduced-motion: no-preference) {
+  .arrival--awake .arrival__atmosphere {
+    animation: gcl-atmosphere-breathe 9s ease-in-out infinite alternate;
+  }
 }
 
 /* ==========================================================================

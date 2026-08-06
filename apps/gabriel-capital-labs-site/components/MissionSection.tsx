@@ -329,13 +329,32 @@ export default function MissionSection() {
             // instant the pin's own top reaches the viewport top, so the
             // 100svh stage is always flush with the fold the moment it
             // takes over — never offset down by whatever sits above it in
-            // the document. D13 — trimmed from +=180% to +=150%. R3 —
-            // pinEnd() applies the 0.6x reduced-hold budget (+=90%).
+            // the document. D13 — trimmed from +=180% to +=150%.
+            //
+            // R4 — the R3.1 dwell filler (see the tl.to({},{duration:1.0},2.5)
+            // below) stretched the timeline's total duration from 2.5 to 3.5
+            // units without touching this budget, which silently compressed
+            // every beat to 5/7 (~71.4%) of its e732ebe-approved scroll
+            // position — i.e. ~29% early — because the same 150% of scroll
+            // now had to cover 3.5 units instead of 2.5 (150/2.5=60%/unit
+            // approved vs 150/3.5≈42.857%/unit regressed). Restoring the
+            // approved 60%/unit density at the new 3.5-unit duration means
+            // scaling the budget by the SAME ratio the duration grew:
+            // 150% × (3.5/2.5) = 210%. At 210%, 210/3.5 = 60%/unit again, so
+            // every beat (0.8/0.85/1.2/1.6/1.65/2.0) lands at its original
+            // approved absolute scroll offset, and the dwell (2.5->3.5)
+            // now owns a genuine extra 60% of scroll (150%->210%) as a held
+            // resolved frame instead of cannibalizing the beats before it.
+            // R3 — pinEnd() applies the 0.6x reduced-hold budget on top of
+            // this: pinEnd(true,210) = +=126% (round(210*0.6)), which keeps
+            // the reduced path's per-unit density at exactly 0.6x the
+            // full-motion density (126/3.5=36%/unit vs 60%/unit), the same
+            // proportion REDUCED_PIN_SCALE has always encoded.
             const tl = gsap.timeline({
               scrollTrigger: {
                 trigger: pinRef.current,
                 start: "top top",
-                end: pinEnd(reduced, 150),
+                end: pinEnd(reduced, 210),
                 scrub: 0.6,
                 pin: pinRef.current,
                 pinSpacing: true,
@@ -498,13 +517,21 @@ export default function MissionSection() {
             // dwell time on the fully-resolved frame before handing off to
             // the unpinned tail below it. This filler tween adds nothing
             // visible; it only extends the timeline's total duration past
-            // the last real change, which — because ScrollTrigger maps the
-            // SAME fixed scroll budget (pinEnd above; unchanged by this)
-            // across whatever the timeline's total duration is — converts
-            // a meaningful share of that already-allocated scroll into a
+            // the last real change, converting a share of scroll into a
             // held, fully-inked "pillar 3 settled" frame instead of a
-            // razor-thin instant. It does not add scroll distance or
-            // change document height.
+            // razor-thin instant.
+            //
+            // R4 — at the time this landed, the pin budget above was still
+            // the old +=150%, so growing the timeline's total duration
+            // 2.5->3.5 units WITHOUT growing the budget silently shrank
+            // every beat's share of scroll (5/7 of approved — see the R4
+            // comment on the scrollTrigger `end` above). That budget is now
+            // 210% (150% x 3.5/2.5), which restores the approved 60%/unit
+            // density AND gives this dwell real, non-cannibalized scroll
+            // distance (2.5->3.5 units = the pin's final 60% of travel,
+            // 150%->210%) to hold the resolved frame in. Document height
+            // grows accordingly (+60vh full-motion / +36vh reduced) — this
+            // is the intended cost of restoring the density, not a leak.
             tl.to({}, { duration: 1.0 }, 2.5);
 
             return () => {
