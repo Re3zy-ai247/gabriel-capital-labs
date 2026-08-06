@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CreditVector — Continuation Handoff (post-Gate-D, pre-M2)</title>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--ink:#12161c;--muted:#5b6472;--line:#e3e7ee;
+    --ok:#0f7a44;--okbg:#e7f6ee;--warn:#8a5a00;--warnbg:#fff5e0;--crit:#a11c1c;--critbg:#fdeaea;--accent:#1f4fd8}
+  @media (prefers-color-scheme:dark){:root{--bg:#0d1117;--card:#161b22;--ink:#e8edf4;--muted:#9aa5b4;--line:#2a323d;
+    --ok:#4ddc93;--okbg:#0e2b1d;--warn:#f0c674;--warnbg:#2e2410;--crit:#ff8080;--critbg:#331616;--accent:#7aa2ff}}
+  *{box-sizing:border-box}
+  body{margin:0 auto;max-width:840px;padding:16px;background:var(--bg);color:var(--ink);
+    font:15.5px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;-webkit-text-size-adjust:100%}
+  header{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px;text-align:center;margin-bottom:14px}
+  h1{font-size:20px;margin:10px 0 4px}
+  .sub{color:var(--muted);font-size:12.5px;margin:0}
+  .badge{display:inline-block;padding:6px 14px;border-radius:999px;font-weight:700;font-size:13px}
+  .b-ok{background:var(--okbg);color:var(--ok)} .b-warn{background:var(--warnbg);color:var(--warn)} .b-crit{background:var(--critbg);color:var(--crit)}
+  section{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:12px}
+  h2{font-size:14px;margin:0 0 10px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted)}
+  .tw{overflow-x:auto}
+  table{border-collapse:collapse;width:100%;font-size:13.5px}
+  th,td{border:1px solid var(--line);padding:7px 9px;text-align:left;vertical-align:top}
+  th{background:var(--bg);font-size:12px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)}
+  code{font:12.5px ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--bg);border:1px solid var(--line);border-radius:5px;padding:1px 5px;word-break:break-all}
+  .note{border:1px solid;border-radius:11px;padding:11px 13px;margin:10px 0;font-size:14px}
+  .n-warn{background:var(--warnbg);border-color:var(--warn)} .n-crit{background:var(--critbg);border-color:var(--crit)}
+  ol,ul{margin:6px 0;padding-left:20px} li{margin:6px 0}
+  .foot{text-align:center;color:var(--muted);font-size:12px;padding:12px 0 22px}
+</style>
+</head>
+<body>
+
+<header>
+  <span class="badge b-ok">✅ GATE D COMPLETE &amp; CLOSED</span>
+  <span class="badge b-warn">M2 NEXT — plan needs v2</span>
+  <h1>CreditVector — Continuation Handoff</h1>
+  <p class="sub">2026-08-06 · post-Gate-D, pre-M2 · Launch Sep 1, 2026</p>
+</header>
+
+<section>
+  <h2>1 · Verified frozen state — do not re-derive</h2>
+  <div class="tw"><table>
+    <tr><th>Fact</th><th>Value</th></tr>
+    <tr><td>Gate D</td><td><b>COMPLETE 11:13Z · CLOSED 11:35Z</b> — last 100 runtime log lines all <code>info</code>, zero errors</td></tr>
+    <tr><td>Migrations</td><td><b>6/6 ALL_PRESENT_AND_MATCHING</b> · 466/466 components · NO_PENDING_MIGRATIONS · none rolled back</td></tr>
+    <tr><td>Production</td><td><code>x-cv-release: 3a9943040da5</code> unchanged · release-verify PASS</td></tr>
+    <tr><td>New tables</td><td>8 Operator tables, <b>0 rows each</b> (dormant) · public tables 31→40</td></tr>
+    <tr><td>Flags</td><td>All five <b>provably OFF</b> (/operator 404 · /reputation 404 · /arena 307)</td></tr>
+    <tr><td>Backup</td><td>P4 restore-proven — <b>but NOT valid for M2</b> (see §3)</td></tr>
+    <tr><td>Prisma</td><td><b>pinned 5.22.0</b> — ignore the 7.x upgrade nag until post-launch</td></tr>
+    <tr><td>Legacy tables</td><td>5 untouched, sanctioned (LEGACY_SELF_HEAL_ALLOWLIST), empty</td></tr>
+    <tr><td>Not started</td><td>Wallet · Pulse · Teams · LetterStream · Arena expansion · Interior CXOS</td></tr>
+    <tr><td>Main freeze</td><td><b>LIFTED</b> (re-arms for future Gate-D-class ops)</td></tr>
+  </table></div>
+  <div class="note n-crit">🔴 The Gate D dump in <code>gate-d-backups/20260806T012051Z/</code> holds <b>regulated consumer data</b> — never gist, commit, or cloud-sync it.</div>
+</section>
+
+<section>
+  <h2>2 · Repository state</h2>
+  <div class="tw"><table>
+    <tr><th>Item</th><th>Value</th></tr>
+    <tr><td>Branch</td><td><code>launch/extraction-wave-2</code> — in sync with origin; CI green (verify · preflight · preview)</td></tr>
+    <tr><td>origin/main</td><td><code>3a99430</code> (= production)</td></tr>
+    <tr><td>Merge</td><td>merge-base <b>is</b> origin/main → conflict-free by construction</td></tr>
+    <tr><td>§6 suite on tip</td><td>tsc 0 · build 0 · terms 78/0 · consent 12/0 · schema-safety 17/0 · preflight 105/0 · runtime 5/0</td></tr>
+    <tr><td>Lockstep</td><td><code>migrate diff</code> schema↔migrations: no difference</td></tr>
+    <tr><td>7-chain manifest</td><td>7 migrations · 35 tables · hash <code>95ca6532c3203c5b…</code></td></tr>
+    <tr><td><b>M2 worktree</b></td><td><code>~/Documents/worktrees/creditvector-m2-exec</code> — branch tip, deps installed, helpers staged. <b>Use this, not the Gate D worktree</b> (that one has no migration 7)</td></tr>
+    <tr><td>Terminals</td><td><b>Close every Gate D shell</b> — nothing survives for M2; next session re-pastes fresh</td></tr>
+  </table></div>
+</section>
+
+<section>
+  <h2>3 · M2 scope &amp; status</h2>
+  <p><b>M2</b> = Wave 2 item 5 (S2): merge <code>launch/extraction-wave-2</code> → <code>main</code>
+  (Terms B-06 + migration 7, legal/company-identity, Brief digest), <b>terms migration applied first</b>
+  per its runbook. Sequence: <b>terms migration → PR → merge (= deploy) → smoke</b>. Code reviews complete
+  (CCO applied · Opus READY — gates passed).</p>
+  <div class="note n-warn"><b>⚠️ Execution plan drafted, then ❌ BLOCKED by its own 33-finding Opus adversarial
+  review</b> (3 confirmed · 7 refuted · 23 unadjudicated). Register:
+  <code>.ai/M2-PLAN-REVIEW-FINDINGS-2026-08-06.md</code>; raw JSON in the evidence workspace.</div>
+  <p><b>Five mandatory corrections for plan v2:</b></p>
+  <ol>
+    <li><b>Fresh backup mandatory</b> — the Gate D dump predates the Gate D migrations; restoring it would erase Gate D. Proven procedure, ~2 min, at session time.</li>
+    <li><b>Database identity before the write</b> — fingerprint observation, programmatic compare to <code>e2e86da3…1685</code> (from the JSON artifact, never by eye), full 7-chain preflight expecting exactly <code>["20260728000000_terms_acceptance"]</code> pending, then <code>migrate status</code>.</li>
+    <li><b>D2 pre-session</b> — named test account with an active subscription BEFORE the session; smoke 8.3 gets its own mini-approval (mutates real Stripe).</li>
+    <li><b>F5 leaves the merge window</b> — <code>STRIPE_TOS_CONSENT=1</code> earliest +24h after a clean §10 window, Dashboard URLs verified first.</li>
+    <li><b>Validated commit = deployed commit</b> — fast-forward or re-validate on the merge SHA; regenerate diff numbers at session time; credential flow read → export → validate → seal; <code>DATABASE_URL="$GATE_D_DATABASE_URL"</code> + <code>npx --no-install</code> on every DB command.</li>
+  </ol>
+</section>
+
+<section>
+  <h2>4 · Exact next steps</h2>
+  <ol>
+    <li><b>Revise plan to v2</b> (fold the five corrections + register carry-ins). No credential needed.</li>
+    <li>Adjudicate or conservatively accept the 23 open findings.</li>
+    <li><b>Founder session</b> (~40 min): fresh dump → identity evidence → <b>AP-M2-1 approve apply</b> → <code>migrate deploy</code> (only the terms migration; <code>0_init</code> in output = STOP) → §5 validation (COUNT=0 · FK RESTRICT) → <b>AP-M2-2 approve merge</b> → PR → merge → release-verify on the new SHA → §8 smoke → §10 24h monitoring → §11 change log.</li>
+    <li>After a clean §10 window: F5 → Legal Review Packet → attorney outreach → Kai FTUE.</li>
+  </ol>
+  <div class="note n-warn"><b>Owner approval required for:</b> the terms apply · the merge · any flag · any env change · anything Stripe. <b>Never:</b> db push · migrate dev/reset · hand-DDL · Accelerate URL for migrations · TermsAcceptance backfill · dropping the table once it has rows.</div>
+</section>
+
+<p class="foot">Canonical: <code>.ai/CODEX-CONTINUATION-2026-08-06.md</code> · dashboard <code>.ai/LAUNCH-COMMAND-CENTER.md</code></p>
+
+</body>
+</html>
