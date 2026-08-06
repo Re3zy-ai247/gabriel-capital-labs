@@ -11,7 +11,7 @@ _Last update: 2026-08-05 (Launch Operations phase) · Owner: Founder · Maintain
 |---|---|---|---|
 | 1 | **Production Health** | 🟢 | `main` @ `3a99430` live as `x-cv-release 3a9943040da5`; release-verify PASS; watch 24–48h post-M1 (172-file UX surface); triage by `x-cv-release` per OPERATIONS.md |
 | 2 | **Experience Runtime** | 🟢 | LIVE in production (M1, PR #11); prod-inert review surfaces verified (`/review` 404, founder-bootstrap 404) |
-| 3 | **Gate D** | 🟡 | **LIVE SESSION IN PROGRESS — checkpointed at Group 2c, resumes at Group 3 (backup).** Done: environment + P1 worktree (`3a99430`, prisma 5.22.0), P2 re-verified at execution time (freeze held; release-verify PASS), P5 credential grammar-validated + sealed, read-only identity probe **PASS** (PG 17.2 · `postgres` · primary · 14 MB · 31 public tables · **operator tables = 0**). **Not started: F1 backup** (dump → checksum → isolated restore proof → P4 record), then approval points 1–4. Checkpoint: `Gabriel-Capital-Labs-AIOS/gate-d-backups/20260806T012051Z/GATE-D-SESSION-CHECKPOINT.md`. **Database unchanged; no writes.** Runs BEFORE M2 |
+| 3 | **Gate D** | 🟢 | **✅ COMPLETE 2026-08-06T11:13Z.** All 4 approvals granted; `resolve --applied 0_init` → `migrate deploy` (5 migrations) → §13 **`NO_PENDING_MIGRATIONS`**, all six `ALL_PRESENT_AND_MATCHING`, **466/466 components**, **18/18 privileges**. Post-deploy: 8 Operator tables live and **dormant (0 rows each)**, public tables 31→**40**, history **6 rows / 0 unfinished / 0 rolled back**. Production `x-cv-release 3a9943040da5` **unchanged**; `/operator` 404 · `/reputation` 404 · `/arena` 307 → **all five flags provably OFF**. **P4 backup proven restorable** (row-identical, 286 rows/31 tables). Report `.ai/GATE-D-COMPLETION-REPORT-2026-08-06.md`. **Open follow-ups:** remove `db push` from `Dockerfile:13`; encrypted offline copy + deletion date for the backup (holds regulated consumer data) |
 | 4 | **M2 (extraction merge)** | 🟡 | `launch/extraction-wave-2` @ `6479b60`, pushed, CI-green lineage, reviews complete (CCO GO-WITH-CHANGES→applied; Opus READY-PENDING-GATES), **NOT merged**; sequence: Gate D → terms migration (own runbook, same window as deploy) → PR → merge → smoke |
 | 5 | **Counsel (B-12)** | 🟡 | **THE LONG POLE.** External 1–3 wk. Package: CROA positioning · ToS/Privacy/refund · advance-fee vs subscription · state CSO · agency tier · Brief editorial posture · B-05 scrubber question. Founder to confirm engagement + ETA; go/no-go 8/29 is counsel-gated |
 | 6 | **Kai FTUE** | 🟡 | Implementation plan READY (evidence-based, zero schema, wizard-free; fixes dashboard split-brain, onboarding-blind Kai, missing banners on `/onboarding` + `/letters`, agency first-client priority). Starts after M2; S3 + S3c packets; CEO/Eng/Design + CCO copy gates; ~2 days |
@@ -23,10 +23,12 @@ _Last update: 2026-08-05 (Launch Operations phase) · Owner: Founder · Maintain
 
 | # | Action | Unblocks |
 |---|---|---|
-| F1 | Fresh **verified backup + evidence** (P4) | Gate D |
-| F2 | **Direct DB URL** at the session (own terminal; never into chat) | Gate D |
-| F3 | Sit the Gate D session (~60–75 min, 4 approvals) | Gate D → M2 |
-| F4 | M2 GO + terms-migration window | M2 merge |
+| ~~F1~~ | ~~Fresh verified backup + evidence (P4)~~ | ✅ **DONE 2026-08-06** — proven restorable, row-identical |
+| ~~F2~~ | ~~Direct DB URL at the session~~ | ✅ **DONE** — never exposed; close the shell to dispose |
+| ~~F3~~ | ~~Sit the Gate D session (4 approvals)~~ | ✅ **DONE 2026-08-06T11:13Z** |
+| F4 | M2 GO + terms-migration window | M2 merge — **now unblocked** |
+| F10 | Encrypted offline copy + deletion date for the Gate D backup (holds regulated consumer data) | backup hygiene |
+| F11 | Remove `prisma db push` from `Dockerfile:13` (prod unaffected; drift risk now that history exists) | schema-integrity follow-up |
 | F5 | Stripe Dashboard ToS/Privacy URLs → `STRIPE_TOS_CONSENT=1` | new-sub consent |
 | F6 | Decision A `mailedAt` census SQL (read-only) | disclosure wording |
 | F7 | Enable Vercel Skew Protection (team is Pro) | deploy hygiene |
@@ -35,7 +37,7 @@ _Last update: 2026-08-05 (Launch Operations phase) · Owner: Founder · Maintain
 
 ## Standing rules (do not re-litigate)
 
-- **🧊 MAIN FREEZE — no pushes to `main` of ANY kind (docs included) until Gate D §13 completes.** Precedent 2026-07-21: a docs-only merge skipped the Vercel build, leaving production serving an older SHA than `origin/main` — which makes Gate D's P1 (`HEAD == origin/main`) and P2 (prod header == reviewed SHA) **simultaneously unsatisfiable** with no legal resolution inside the runbook. Same freeze applies to Vercel redeploys/env changes (they move the active deployment and re-open the Activity Log window). Extraction-branch pushes are unaffected.
+- **🧊 MAIN FREEZE — ✅ LIFTED 2026-08-06T11:13Z (Gate D §13 complete).** Retained below as the standing rationale, and it **re-arms for any future Gate-D-class operation**. Original rule: no pushes to `main` of ANY kind (docs included) until Gate D §13 completes. Precedent 2026-07-21: a docs-only merge skipped the Vercel build, leaving production serving an older SHA than `origin/main` — which makes Gate D's P1 (`HEAD == origin/main`) and P2 (prod header == reviewed SHA) **simultaneously unsatisfiable** with no legal resolution inside the runbook. Same freeze applies to Vercel redeploys/env changes (they move the active deployment and re-open the Activity Log window). Extraction-branch pushes are unaffected.
 
 - **Digest arming = one env var** (`BRIEF_DIGEST_ENABLED`): flipping it is a Founder decision (D3), never routine config. Negative-controlled guard pins the gate.
 - **Terms ordering law:** the additive `terms_acceptance` migration runs **before/with** the M2 deploy (fail-closed lib; inverted order = in-place upgrades refuse, no charges).
