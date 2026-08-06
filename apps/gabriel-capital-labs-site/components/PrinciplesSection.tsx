@@ -1,7 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ensureGsapRegistered, gsap } from "@/lib/gsap";
+import {
+  ensureGsapRegistered,
+  gsap,
+  REDUCED_MOTION_QUERY,
+  DESKTOP_MOTION_QUERY,
+  MOBILE_MOTION_QUERY,
+} from "@/lib/gsap";
 import { principles } from "@/content/site";
 
 export default function PrinciplesSection() {
@@ -19,61 +25,134 @@ export default function PrinciplesSection() {
     const ctx = gsap.context(() => {
       const mm = gsap.matchMedia();
 
-      mm.add("(prefers-reduced-motion: no-preference)", () => {
-        setIsStatic(false);
-        const items = gsap.utils.toArray<HTMLElement>(".principles__item");
+      mm.add(
+        {
+          isReduced: REDUCED_MOTION_QUERY,
+          isMobile: MOBILE_MOTION_QUERY,
+          isDesktop: DESKTOP_MOTION_QUERY,
+        },
+        (context) => {
+          const { isReduced, isMobile, isDesktop } = context.conditions as {
+            isReduced: boolean;
+            isMobile: boolean;
+            isDesktop: boolean;
+          };
 
-        // D4 — only one principle is ever mid-transition: each index change
-        // fires exactly two non-overlapping autoAlpha tweens (fade the
-        // outgoing item out, fade the incoming item in), each with
-        // overwrite:'auto' so a fast scrub can never leave two tweens
-        // fighting over the same item and both partially visible at once.
-        gsap.set(items, { autoAlpha: (i) => (i === 0 ? 1 : 0) });
-        let activeIndex = 0;
+          if (isReduced) {
+            setIsStatic(true);
+            return undefined;
+          }
 
-        const st = gsap.timeline({
-          scrollTrigger: {
-            trigger: rootRef.current,
-            start: "top top",
-            end: "+=250%",
-            scrub: true,
-            pin: pinRef.current,
-            pinSpacing: true,
-            onUpdate: (self) => {
-              const idx = Math.min(total - 1, Math.floor(self.progress * total));
-              if (idx !== activeIndex) {
-                gsap.to(items[activeIndex], {
-                  autoAlpha: 0,
-                  duration: 0.3,
-                  ease: "power1.out",
-                  overwrite: "auto",
-                });
-                gsap.to(items[idx], {
-                  autoAlpha: 1,
-                  duration: 0.3,
-                  ease: "power1.out",
-                  overwrite: "auto",
-                });
-                activeIndex = idx;
-              }
-              if (progressFillRef.current) {
-                progressFillRef.current.style.width = `${((idx + 1) / total) * 100}%`;
-              }
-              if (progressLabelRef.current) {
-                progressLabelRef.current.textContent = `${idx + 1}/${total}`;
-              }
-            },
-          },
-        });
+          if (isMobile) {
+            // Exactly the pre-R2 behavior — untouched. See D4: only one
+            // principle is ever mid-transition (autoAlpha only, no
+            // y-motion), overwrite:'auto' guards a fast scrub.
+            setIsStatic(false);
+            const items = gsap.utils.toArray<HTMLElement>(".principles__item");
+            gsap.set(items, { autoAlpha: (i) => (i === 0 ? 1 : 0) });
+            let activeIndex = 0;
 
-        return () => {
-          st.scrollTrigger?.kill();
-        };
-      });
+            const st = gsap.timeline({
+              scrollTrigger: {
+                trigger: rootRef.current,
+                start: "top top",
+                end: "+=250%",
+                scrub: true,
+                pin: pinRef.current,
+                pinSpacing: true,
+                onUpdate: (self) => {
+                  const idx = Math.min(total - 1, Math.floor(self.progress * total));
+                  if (idx !== activeIndex) {
+                    gsap.to(items[activeIndex], {
+                      autoAlpha: 0,
+                      duration: 0.3,
+                      ease: "power1.out",
+                      overwrite: "auto",
+                    });
+                    gsap.to(items[idx], {
+                      autoAlpha: 1,
+                      duration: 0.3,
+                      ease: "power1.out",
+                      overwrite: "auto",
+                    });
+                    activeIndex = idx;
+                  }
+                  if (progressFillRef.current) {
+                    progressFillRef.current.style.width = `${((idx + 1) / total) * 100}%`;
+                  }
+                  if (progressLabelRef.current) {
+                    progressLabelRef.current.textContent = `${idx + 1}/${total}`;
+                  }
+                },
+              },
+            });
 
-      mm.add("(prefers-reduced-motion: reduce)", () => {
-        setIsStatic(true);
-      });
+            return () => {
+              st.scrollTrigger?.kill();
+            };
+          }
+
+          if (isDesktop) {
+            // R2 2.6 — same pin/mechanism ("no structural change"), refined
+            // pacing: the incoming principle rises 24px + settles while
+            // the outgoing one sinks, and the progress numeral gets a
+            // brief crossfade pulse rather than an instant text swap. The
+            // continuous gold fill (driven every onUpdate tick, same as
+            // mobile) already scrubs smoothly — unchanged.
+            setIsStatic(false);
+            const items = gsap.utils.toArray<HTMLElement>(".principles__item");
+            gsap.set(items, { autoAlpha: (i) => (i === 0 ? 1 : 0), y: 0 });
+            let activeIndex = 0;
+
+            const st = gsap.timeline({
+              scrollTrigger: {
+                trigger: rootRef.current,
+                start: "top top",
+                end: "+=250%",
+                scrub: true,
+                pin: pinRef.current,
+                pinSpacing: true,
+                onUpdate: (self) => {
+                  const idx = Math.min(total - 1, Math.floor(self.progress * total));
+                  if (idx !== activeIndex) {
+                    gsap.fromTo(
+                      items[activeIndex],
+                      { y: 0 },
+                      { autoAlpha: 0, y: 20, duration: 0.35, ease: "power1.out", overwrite: "auto" }
+                    );
+                    gsap.fromTo(
+                      items[idx],
+                      { y: 24 },
+                      { autoAlpha: 1, y: 0, duration: 0.35, ease: "power1.out", overwrite: "auto" }
+                    );
+                    activeIndex = idx;
+
+                    if (progressLabelRef.current) {
+                      gsap.fromTo(
+                        progressLabelRef.current,
+                        { opacity: 0.4 },
+                        { opacity: 1, duration: 0.3, ease: "power1.out", overwrite: "auto" }
+                      );
+                    }
+                  }
+                  if (progressFillRef.current) {
+                    progressFillRef.current.style.width = `${((idx + 1) / total) * 100}%`;
+                  }
+                  if (progressLabelRef.current) {
+                    progressLabelRef.current.textContent = `${idx + 1}/${total}`;
+                  }
+                },
+              },
+            });
+
+            return () => {
+              st.scrollTrigger?.kill();
+            };
+          }
+
+          return undefined;
+        }
+      );
     }, rootRef);
 
     return () => ctx.revert();

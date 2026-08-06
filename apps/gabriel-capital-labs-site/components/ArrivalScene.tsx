@@ -1,15 +1,71 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ensureGsapRegistered, gsap, ScrollTrigger, REDUCED_MOTION_QUERY } from "@/lib/gsap";
+import {
+  ensureGsapRegistered,
+  gsap,
+  ScrollTrigger,
+  scheduleScrollTriggerRefresh,
+  REDUCED_MOTION_QUERY,
+  DESKTOP_MOTION_QUERY,
+  MOBILE_MOTION_QUERY,
+} from "@/lib/gsap";
 import { arrival, site } from "@/content/site";
 
 const SESSION_KEY = "gcl-arrival-seen";
+
+// R2 1.2 — the six (seven, counting the cue) composed-timeline targets,
+// and the exact hidden values the `html.js` CSS gate gives them before any
+// GSAP tween runs. Replay's belt-and-braces re-set uses this same table so
+// there is one place that has to stay truthful to globals.css, not two.
+type ArrivalRefs = {
+  glow: HTMLDivElement | null;
+  markWrap: HTMLDivElement | null;
+  wordTop: HTMLSpanElement | null;
+  wordBottom: HTMLSpanElement | null;
+  tagline1: HTMLParagraphElement | null;
+  tagline2: HTMLParagraphElement | null;
+  cue: HTMLDivElement | null;
+};
+
+function setInitialHiddenStates(refs: ArrivalRefs) {
+  if (refs.glow) gsap.set(refs.glow, { opacity: 0 });
+  if (refs.markWrap) gsap.set(refs.markWrap, { opacity: 0, y: 18, scale: 1.04 });
+  if (refs.wordTop) gsap.set(refs.wordTop, { opacity: 0 });
+  if (refs.wordBottom) gsap.set(refs.wordBottom, { opacity: 0 });
+  if (refs.tagline1) gsap.set(refs.tagline1, { opacity: 0 });
+  if (refs.tagline2) gsap.set(refs.tagline2, { opacity: 0 });
+  if (refs.cue) gsap.set(refs.cue, { opacity: 0 });
+}
+
+// R2 1.2b — wait for the page to actually be scrolled to top before doing
+// anything else, rather than firing the reset mid-scroll. Resolves on
+// scrollY reaching 0 OR a 1.5s safety timeout (a smooth scroll that's
+// interrupted, or an already-at-top no-op, must never hang the control).
+function waitForScrollTop(behavior: ScrollBehavior): Promise<void> {
+  return new Promise((resolve) => {
+    window.scrollTo({ top: 0, behavior });
+    if (window.scrollY <= 0) {
+      resolve();
+      return;
+    }
+    const start = performance.now();
+    const tick = () => {
+      if (window.scrollY <= 0 || performance.now() - start > 1500) {
+        resolve();
+        return;
+      }
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  });
+}
 
 export default function ArrivalScene() {
   const sectionRef = useRef<HTMLElement | null>(null);
   const pinRef = useRef<HTMLDivElement | null>(null);
   const glowRef = useRef<HTMLDivElement | null>(null);
+  const overlayRef = useRef<HTMLDivElement | null>(null);
   const markWrapRef = useRef<HTMLDivElement | null>(null);
   const wordTopRef = useRef<HTMLSpanElement | null>(null);
   const wordBottomRef = useRef<HTMLSpanElement | null>(null);
@@ -23,6 +79,7 @@ export default function ArrivalScene() {
   const [showSkip, setShowSkip] = useState(true);
   const [showReplay, setShowReplay] = useState(false);
   const [offscreen, setOffscreen] = useState(false);
+  const [isReplaying, setIsReplaying] = useState(false);
 
   useEffect(() => {
     ensureGsapRegistered();
@@ -37,6 +94,7 @@ export default function ArrivalScene() {
       window.dispatchEvent(new Event("gcl:arrival-complete"));
       setShowSkip(false);
       setShowReplay(true);
+      setIsReplaying(false);
     };
 
     // D5 — ONE timeline owns the composition in every state. It is always
@@ -66,32 +124,78 @@ export default function ArrivalScene() {
       }
     }, sectionRef);
 
-    // The camera-pull-back on first scroll: short pin (~60vh), gated out
-    // entirely under reduced motion (zero pins), per the motion constitution.
+    // R2 2.1 — the camera-pull-back on first scroll. Mobile/tablet (<1024)
+    // keeps the exact pre-R2 short pin; desktop gets an extended pull-back
+    // with a stage-darken overlay, gated entirely out under reduced motion
+    // (zero pins) per the motion constitution either way.
     const pinCtx = gsap.context(() => {
       const mm = gsap.matchMedia();
-      mm.add("(prefers-reduced-motion: no-preference)", () => {
-        if (!sectionRef.current || !pinRef.current) return undefined;
-        const pullback = gsap.timeline({
-          scrollTrigger: {
-            trigger: sectionRef.current,
-            start: "top top",
-            end: "+=60%",
-            scrub: 0.4,
-            pin: pinRef.current,
-            pinSpacing: true,
-          },
-        });
-        pullback
-          .to(markWrapRef.current, { scale: 0.9, duration: 1, ease: "none" }, 0)
-          .to(pinRef.current, { opacity: 0.72, duration: 1, ease: "none" }, 0)
-          .fromTo(glowRef.current, { opacity: 1 }, { opacity: 0.3, duration: 1, ease: "none" }, 0);
+      mm.add(
+        { isMobile: MOBILE_MOTION_QUERY, isDesktop: DESKTOP_MOTION_QUERY },
+        (context) => {
+          const { isMobile, isDesktop } = context.conditions as {
+            isMobile: boolean;
+            isDesktop: boolean;
+          };
+          if (!sectionRef.current || !pinRef.current) return undefined;
 
-        return () => {
-          pullback.scrollTrigger?.kill();
-        };
-      });
+          if (isMobile) {
+            const pullback = gsap.timeline({
+              scrollTrigger: {
+                trigger: sectionRef.current,
+                start: "top top",
+                end: "+=60%",
+                scrub: 0.4,
+                pin: pinRef.current,
+                pinSpacing: true,
+              },
+            });
+            pullback
+              .to(markWrapRef.current, { scale: 0.9, duration: 1, ease: "none" }, 0)
+              .to(pinRef.current, { opacity: 0.72, duration: 1, ease: "none" }, 0)
+              .fromTo(glowRef.current, { opacity: 1 }, { opacity: 0.3, duration: 1, ease: "none" }, 0);
+
+            return () => {
+              pullback.scrollTrigger?.kill();
+            };
+          }
+
+          if (isDesktop) {
+            // R2 2.1 — extended ~100vh handoff: the mark keeps pulling back
+            // and drifting up, the glow dims further, and a stage-darken
+            // overlay fades in — a longer, more dramatic camera move than
+            // the old bare 60% pullback. (Institution's own approach-drift,
+            // see InstitutionSection.tsx, picks up the handoff on the other
+            // side — tying it to Institution's own scrollTrigger rather
+            // than to this one, because layout math shows Institution
+            // stays fully below the viewport for this entire pin: any
+            // pre-animation driven from here would be invisible.)
+            const pullback = gsap.timeline({
+              scrollTrigger: {
+                trigger: sectionRef.current,
+                start: "top top",
+                end: "+=100%",
+                scrub: 0.6,
+                pin: pinRef.current,
+                pinSpacing: true,
+              },
+            });
+            pullback
+              .to(markWrapRef.current, { scale: 0.82, y: -28, duration: 1, ease: "none" }, 0)
+              .fromTo(glowRef.current, { opacity: 1 }, { opacity: 0.25, duration: 1, ease: "none" }, 0)
+              .fromTo(overlayRef.current, { opacity: 0 }, { opacity: 0.55, duration: 1, ease: "none" }, 0);
+
+            return () => {
+              pullback.scrollTrigger?.kill();
+            };
+          }
+
+          return undefined;
+        }
+      );
     }, sectionRef);
+
+    scheduleScrollTriggerRefresh();
 
     // D12 — once the arrival scene has fully scrolled past, hide the
     // scroll cue + replay chip so they never collide with the fixed nav or
@@ -115,19 +219,54 @@ export default function ArrivalScene() {
     timelineRef.current?.progress(1, false);
   };
 
+  // R2 1.2 — deterministic in every state (desktop+mobile, fresh/seen/
+  // mid-scroll): disable the control immediately so it can't double-fire;
+  // scroll to top and WAIT for arrival before touching any timeline state;
+  // reset; re-capture tween start values (invalidate) AND belt-and-braces
+  // re-apply the exact `html.js` hidden values so a fast scrub or a stale
+  // captured value can never make the replay skip visibly; then play from 0.
+  // Reduced motion still "does something" — it scrolls up and composes the
+  // full static arrival rather than silently no-op'ing.
   const handleReplay = useCallback(() => {
+    if (isReplaying) return;
+    setIsReplaying(true);
+
     const reducedMotion = window.matchMedia(REDUCED_MOTION_QUERY).matches;
-    sectionRef.current?.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth" });
-    if (reducedMotion) return;
 
-    sessionStorage.removeItem(SESSION_KEY);
-    completedRef.current = false;
-    setIsStatic(false);
-    setShowReplay(false);
-    setShowSkip(true);
+    waitForScrollTop(reducedMotion ? "auto" : "smooth").then(() => {
+      sessionStorage.removeItem(SESSION_KEY);
+      completedRef.current = false;
+      setShowReplay(false);
 
-    timelineRef.current?.restart();
-  }, []);
+      if (reducedMotion) {
+        setIsStatic(true);
+        setShowSkip(false);
+        timelineRef.current?.progress(1);
+        setIsReplaying(false);
+        return;
+      }
+
+      setIsStatic(false);
+      setShowSkip(true);
+
+      const tl = timelineRef.current;
+      if (tl) {
+        tl.pause(0).invalidate();
+        setInitialHiddenStates({
+          glow: glowRef.current,
+          markWrap: markWrapRef.current,
+          wordTop: wordTopRef.current,
+          wordBottom: wordBottomRef.current,
+          tagline1: tagline1Ref.current,
+          tagline2: tagline2Ref.current,
+          cue: cueRef.current,
+        });
+        tl.play(0);
+      } else {
+        setIsReplaying(false);
+      }
+    });
+  }, [isReplaying]);
 
   // Allow the footer's "Replay arrival" control to trigger the same replay.
   useEffect(() => {
@@ -160,6 +299,8 @@ export default function ArrivalScene() {
         className={`arrival__replay${showReplay ? " arrival__replay--visible" : ""}`}
         onClick={handleReplay}
         aria-label={arrival.replayLabel}
+        aria-busy={isReplaying}
+        disabled={isReplaying}
         tabIndex={showReplay ? 0 : -1}
       >
         {arrival.replayLabel}
@@ -167,6 +308,7 @@ export default function ArrivalScene() {
 
       <div ref={pinRef} className="arrival__pin">
         <div ref={glowRef} className="arrival__glow" aria-hidden="true" />
+        <div ref={overlayRef} className="arrival__stage-overlay" aria-hidden="true" />
 
         <div className="arrival__stage">
           <div ref={markWrapRef} className="arrival__mark-wrap">

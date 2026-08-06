@@ -20,6 +20,11 @@
   --gcl-container-max: 1440px;
   --gcl-gutter: clamp(1.25rem, 4vw, 4rem);
   --gcl-section-pad-y: clamp(4rem, 12vw, 9rem);
+  /* R2 defect C — the shared measure between the engagement rows and the
+     footer, so both align to the same left/right edges on desktop
+     instead of the footer spanning the full site container while the
+     rows sit in a narrower centered column. */
+  --gcl-engagement-measure: 56rem;
 
   /* Motion */
   --gcl-ease-out: cubic-bezier(0.16, 0.84, 0.44, 1);
@@ -439,6 +444,18 @@ html.js .arrival__glow {
   opacity: 0;
 }
 
+/* R2 2.1 — the desktop-only stage-darken overlay for the extended
+   pull-back handoff. Opacity 0 by default so mobile/reduced-motion (which
+   never tween it) never see it; the desktop branch of ArrivalScene's pin
+   fades it to 0.55 across the scrub. */
+.arrival__stage-overlay {
+  position: absolute;
+  inset: 0;
+  background: var(--gcl-deep-obsidian);
+  opacity: 0;
+  pointer-events: none;
+}
+
 .arrival__stage {
   position: relative;
   display: flex;
@@ -650,6 +667,28 @@ html.js .arrival__cue {
   }
 }
 
+/* R2 1.3 — the ONE ambient animation permitted sitewide: on the seen-path
+   static arrival (repeat visits skip the intro and render it composed
+   immediately), an extremely slow glow breath keeps the hero from reading
+   as a dead screenshot. Compositor-cheap (opacity only); the global
+   prefers-reduced-motion rule above (animation-duration: 0.001ms !important)
+   already neutralizes it under reduced motion, and most browsers already
+   throttle/pause CSS animations in backgrounded tabs on their own — no
+   extra JS loop needed for either case. */
+@keyframes gcl-glow-breathe {
+  0%,
+  100% {
+    opacity: 0.85;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.arrival--static .arrival__glow {
+  animation: gcl-glow-breathe 8s ease-in-out infinite;
+}
+
 /* ==========================================================================
    Chapter 2 — The Institution
    ========================================================================== */
@@ -661,11 +700,42 @@ html.js .arrival__cue {
   overflow: hidden;
 }
 
+/* R2 defect A — a dedicated three-track frame (rule / gutter / content)
+   wraps the existing 12-col grid, so the vertical rule gets its own
+   column and can never share an x-position with any text. */
+.institution__frame {
+  position: relative;
+}
+
+@media (min-width: 960px) {
+  .institution__frame {
+    display: grid;
+    grid-template-columns: [line] 2px [gutter] clamp(2rem, 4vw, 4.5rem) [content] minmax(0, 1fr);
+    align-items: stretch;
+  }
+}
+
 .institution__grid {
   position: relative;
   display: grid;
   grid-template-columns: repeat(12, 1fr);
   gap: var(--gcl-gutter);
+}
+
+@media (min-width: 960px) {
+  .institution__grid {
+    grid-column: content;
+  }
+}
+
+/* R2 2.2 — the pinned scene fills the viewport on desktop so the staged
+   reveal has room to play; below 1024 (no pin) this rule doesn't apply and
+   the section keeps its normal content-driven height. */
+@media (min-width: 1024px) {
+  html.js .institution__grid {
+    min-height: 100svh;
+    align-content: center;
+  }
 }
 
 .institution__mark {
@@ -719,22 +789,22 @@ html.js .institution__heading-line span {
   color: var(--gcl-stone-silver);
 }
 
-/* D18 — inset to the container gutter (not a raw viewport percentage) so
-   it reads as part of the grid rather than a stray line crossing the
-   chapter mark. */
+/* R2 defect A — a real grid item in the [line] track (see
+   .institution__frame above) rather than an absolutely-positioned line
+   guessed to line up with the gutter: it is now structurally impossible
+   for this to overlap the chapter-mark or heading text at any width,
+   because grid tracks can't overlap by definition. */
 .institution__rule-v {
-  position: absolute;
-  top: 0;
-  left: var(--gcl-gutter);
-  width: 1px;
-  height: 100%;
-  background: rgba(183, 183, 183, 0.14);
   display: none;
+  position: relative;
+  width: 2px;
+  background: rgba(183, 183, 183, 0.14);
 }
 
 @media (min-width: 960px) {
   .institution__rule-v {
     display: block;
+    grid-column: line;
   }
 }
 
@@ -798,6 +868,26 @@ html.js .mission__connector {
   }
 }
 
+/* R2 2.3/defect B — on desktop-motion the old full-height single-center
+   connector is replaced by two short, measured connector segments (drawn
+   by MissionSection.tsx) that only ever span the local gutter between two
+   consecutive pillars — never a full-height center divider. */
+@media (min-width: 1024px) and (prefers-reduced-motion: no-preference) {
+  html.js .mission__connector {
+    display: none;
+  }
+}
+
+.mission__connector-seg {
+  position: absolute;
+  height: 2px;
+  width: 0;
+  background: var(--gcl-gateway-gold);
+  transform-origin: left center;
+  pointer-events: none;
+  display: none;
+}
+
 .mission__pillar {
   position: relative;
   padding-block: clamp(2.25rem, 6vw, 4.25rem);
@@ -812,6 +902,47 @@ html.js .mission__connector {
   .mission__pillar--right {
     width: 56%;
     margin-left: 44%;
+  }
+}
+
+/* R2 2.3 — pinned connected-scenes treatment: the three pillars occupy
+   alternating horizontal thirds (widths/margins above) of the SAME
+   viewport-height rect rather than three separate vertical bands, so one
+   can recede (depth cue) while the next enters. Gated to desktop-motion
+   only; mobile and reduced-motion keep the plain stacked layout. */
+@media (min-width: 1024px) and (prefers-reduced-motion: no-preference) {
+  html.js .mission__pin {
+    position: relative;
+    height: 100svh;
+    min-height: 560px;
+    overflow: hidden;
+    display: block;
+  }
+  /* R2 defect B — the 62% / 56%+44% widths above were sized for the
+     mobile STACKED layout (one pillar per row, never sharing a viewport
+     with another). Displayed simultaneously at this desktop-only
+     absolute-stack, that same width pair let the display-size titles
+     genuinely overlap (measured: INTELLIGENCE's own text ran past
+     INFRASTRUCTURE's own text start). A true non-overlapping split with
+     a real protected gutter between the two halves. */
+  html.js .mission__pillar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: auto;
+    width: 44%;
+    height: 100%;
+    margin-left: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding-block: 0;
+  }
+  html.js .mission__pillar--right {
+    left: auto;
+    right: 0;
+    width: 44%;
+    margin-left: 0;
   }
 }
 
@@ -867,6 +998,29 @@ html.js .mission__connector {
 
 .ecosystem__wing:first-of-type {
   border-top: none;
+}
+
+/* R2 2.4 — a real drawable hairline (desktop-motion only) layered over
+   the static border-top above, rather than trying to animate the border
+   itself; scaleX 0→1, transform-origin left. Invisible by default (the
+   static border already reads fine on mobile/reduced-motion). */
+.ecosystem__wing-rule {
+  position: absolute;
+  top: -1px;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--gcl-gateway-gold);
+  transform-origin: left;
+  transform: scaleX(0);
+  pointer-events: none;
+  display: none;
+}
+
+@media (min-width: 1024px) and (prefers-reduced-motion: no-preference) {
+  html.js .ecosystem__wing-rule {
+    display: block;
+  }
 }
 
 .ecosystem__wing-top {
@@ -966,7 +1120,11 @@ html.js .mission__connector {
 
 .lab__grid-bg {
   position: absolute;
-  inset: 0;
+  /* R2 2.5 — oversized headroom (inset beyond the section edges) so the
+     desktop parallax drift (±2% translate, transform-only) never reveals
+     a hard edge; a plain background-position tween would repaint on
+     every scroll frame, this is compositor-only. */
+  inset: -10% -10% -10% -10%;
   opacity: 0.03;
   background-image: linear-gradient(rgba(183, 183, 183, 1) 1px, transparent 1px),
     linear-gradient(90deg, rgba(183, 183, 183, 1) 1px, transparent 1px);
@@ -991,12 +1149,34 @@ html.js .mission__connector {
 }
 
 .lab__row {
+  position: relative;
   display: grid;
   grid-template-columns: 3.5rem 1fr;
   align-items: baseline;
   gap: 1.25rem;
   padding-block: 1.25rem;
   border-top: 1px solid rgba(183, 183, 183, 0.14);
+}
+
+/* R2 2.5 — a real drawable hairline layered over the static border-top,
+   desktop-motion only; scaleX 0→1 rather than fading in with the row. */
+.lab__row-rule {
+  position: absolute;
+  top: -1px;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--gcl-gateway-gold-dim);
+  transform-origin: left;
+  transform: scaleX(0);
+  pointer-events: none;
+  display: none;
+}
+
+@media (min-width: 1024px) and (prefers-reduced-motion: no-preference) {
+  html.js .lab__row-rule {
+    display: block;
+  }
 }
 
 /* D9 — without JS, all seven rows render visible immediately. */
@@ -1280,6 +1460,22 @@ html.js .principles__progress {
   margin: 0 auto clamp(2.5rem, 6vw, 4rem);
 }
 
+/* R2 2.7 — the mask wrapper for the desktop-motion line-reveal; on
+   mobile/reduced-motion the line just sits at rest inside it, no visual
+   change from the plain heading of before. */
+.engagement__heading-mask {
+  display: block;
+  overflow: hidden;
+}
+
+.engagement__heading-line {
+  display: block;
+}
+
+/* R2 defect C — a defined desktop grid (shared measure with the footer,
+   see .footer__inner below) instead of a narrow centered column, so
+   labels and descriptions line up and "Investment & strategic
+   relationships" gets enough measure not to wrap awkwardly. */
 .engagement__categories {
   position: relative;
   display: flex;
@@ -1288,6 +1484,13 @@ html.js .principles__progress {
   gap: 0.25rem;
   max-width: 34rem;
   margin: 0 auto;
+}
+
+@media (min-width: 1024px) {
+  .engagement__categories {
+    max-width: var(--gcl-engagement-measure);
+    align-items: stretch;
+  }
 }
 
 .engagement__category {
@@ -1328,6 +1531,32 @@ html.js .principles__progress {
   text-align: right;
 }
 
+/* R2 defect C — a real two-column grid at desktop: label gets a defined
+   measure wide enough that "Investment & strategic relationships" never
+   wraps awkwardly, description gets the remaining width, both
+   baseline-aligned, consistent row block padding, no centered/offset
+   rows. */
+@media (min-width: 1024px) {
+  .engagement__category-link {
+    display: grid;
+    grid-template-columns: [label] minmax(18rem, 28rem) [desc] minmax(0, 1fr);
+    justify-content: initial;
+    align-items: baseline;
+    gap: 1.5rem;
+    padding: 1.4rem 0;
+    text-align: left;
+  }
+
+  .engagement__category-label {
+    grid-column: label;
+  }
+
+  .engagement__category-desc {
+    grid-column: desc;
+    text-align: left;
+  }
+}
+
 .engagement__category-link--static {
   cursor: default;
 }
@@ -1337,6 +1566,10 @@ html.js .principles__progress {
   color: var(--gcl-stone-silver);
 }
 
+/* R2 defect C — one single-line note, always rendered once (never per
+   row); on desktop it takes the full engagement measure so it reads as
+   one consistent line under the list rather than looking like a stray
+   seventh row. */
 .engagement__placeholder-note {
   position: relative;
   margin: clamp(1.5rem, 4vw, 2.25rem) auto 0;
@@ -1345,6 +1578,13 @@ html.js .principles__progress {
   letter-spacing: 0.02em;
   color: var(--gcl-steel);
   font-style: italic;
+}
+
+@media (min-width: 1024px) {
+  .engagement__placeholder-note {
+    max-width: var(--gcl-engagement-measure);
+    text-align: right;
+  }
 }
 
 .footer {
@@ -1360,6 +1600,19 @@ html.js .principles__progress {
   align-items: center;
   justify-content: space-between;
   gap: 1.5rem;
+}
+
+/* R2 defect C — the footer aligns to the SAME measure as the engagement
+   rows above it (var(--gcl-engagement-measure)), not the full site
+   container, so their left/right edges match instead of the footer
+   spanning wider than the content it sits under. Desktop + tablet only;
+   mobile's full-width footer is unaffected and unflagged. */
+@media (min-width: 1024px) {
+  .footer__inner {
+    max-width: var(--gcl-engagement-measure);
+    margin-inline: auto;
+    padding-inline: 0;
+  }
 }
 
 .footer__lockup {

@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
-import Script from "next/script";
 import "./globals.css";
 import { site } from "@/content/site";
 
@@ -88,13 +87,26 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body>
-        {/* D9: mark JS as available before hydration so CSS can gate every
-            animation-initial (hidden) state behind `html.js` — without this
-            script running, no-JS visitors always get the fully visible,
-            fully static composition. */}
-        <Script id="gcl-js-class" strategy="beforeInteractive">
-          {"document.documentElement.classList.add('js');"}
-        </Script>
+        {/* D9 / R2 1.1 — mark JS as available before hydration so CSS can
+            gate every animation-initial (hidden) state behind `html.js`.
+            This MUST be a real, executable <script> tag emitted as the
+            first child of <body> — not next/script (even
+            strategy="beforeInteractive"), which in an App Router static
+            export rides Next's own `self.__next_s` loader array and only
+            actually runs at hydration, well after first paint. A plain
+            inline script here runs synchronously as the parser reaches it,
+            before any content below it is parsed or painted, in every
+            browser, with no framework loader in the path. Without it
+            running, no-JS visitors get the fully visible, fully static
+            composition — that fallback still holds, it just needs to
+            reliably NOT be the JS path's own experience too. */}
+        {/* eslint-disable-next-line react/no-danger */}
+        <script
+          id="gcl-js-class"
+          dangerouslySetInnerHTML={{
+            __html: "document.documentElement.classList.add('js');",
+          }}
+        />
         <a href="#content" className="skip-link">
           Skip to content
         </a>
