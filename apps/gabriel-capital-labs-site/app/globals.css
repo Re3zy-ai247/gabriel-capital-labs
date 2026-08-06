@@ -752,7 +752,20 @@ html.js .arrival__cue {
    pushed the second reveal beat below the fold. The mark/paragraphs' own
    margins are zeroed in favor of the grid's own row-gap, so spacing isn't
    double-counted, and the whole composition comfortably fits inside
-   100svh at every desktop-motion width down to 1024×768. */
+   100svh at every desktop-motion width down to 1024×768.
+
+   The heading also gets its OWN, smaller font-size clamp here (measured
+   empirically, not guessed): the site-wide clamp(1.6rem,4.6vw,3.4rem)
+   clamps to its 3.4rem ceiling by ~1183px viewport width, and from there
+   up the column it's laid out in (a fixed fraction of the viewport) grows
+   more slowly than the now-fixed font would need — at 1280px specifically
+   that mismatch was enough to force the longest authored line to wrap
+   into two visual lines, blowing the heading block from ~280px to 557px
+   tall and pushing the second reveal beat below the fold. A fixed, modest
+   clamp(1.6rem,3vw,1.9rem) never reaches a size that wraps any authored
+   line at any desktop-motion width 1024–1920 (verified live), with the
+   compression only applying to the pinned scene — the static/mobile/
+   reduced-motion heading keeps its original, larger display size. */
 @media (min-width: 1024px) and (prefers-reduced-motion: no-preference) {
   html.js .institution {
     padding-block: 0;
@@ -763,6 +776,9 @@ html.js .arrival__cue {
     overflow: hidden;
     align-content: center;
     row-gap: clamp(1.5rem, 3vw, 2.5rem);
+  }
+  html.js .institution__heading {
+    font-size: clamp(1.6rem, 3vw, 1.9rem);
   }
   html.js .institution__mark {
     margin-bottom: 0;

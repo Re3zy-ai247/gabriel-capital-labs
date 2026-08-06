@@ -192,9 +192,22 @@ export default function ArrivalScene() {
                 pinSpacing: true,
               },
             });
+            // Glow uses a plain `.to()`, not `.fromTo(el,{opacity:1},...)`:
+            // creating a scrubbed ScrollTrigger renders its progress-0
+            // frame synchronously, right at mount — a `fromTo` with an
+            // explicit `{opacity:1}` "from" stamps that value onto glow's
+            // inline style immediately, before the intro timeline's own
+            // 0→1 fade has ticked even once. The intro's fade is a plain
+            // `.to()` too, so it then reads glow's (already-stomped) "1"
+            // as its own start value and never visibly animates — the
+            // glow reads as "on" from frame one, the fade silently never
+            // plays. A plain `.to()` here only ever lazily captures
+            // whatever glow's real current value is when it first
+            // renders, so it can't stamp a competing value over the
+            // intro's own fade-in.
             pullback
               .to(stageRef.current, { scale: 0.92, y: -22, duration: 1, ease: "none" }, 0)
-              .fromTo(glowRef.current, { opacity: 1 }, { opacity: 0.25, duration: 1, ease: "none" }, 0)
+              .to(glowRef.current, { opacity: 0.25, duration: 1, ease: "none" }, 0)
               .fromTo(overlayRef.current, { opacity: 0 }, { opacity: 0.55, duration: 1, ease: "none" }, 0)
               .to(cueRef.current, { opacity: 0, duration: 0.3, ease: "none" }, 0);
 
