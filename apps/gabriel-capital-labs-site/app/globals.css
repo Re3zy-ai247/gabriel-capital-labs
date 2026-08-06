@@ -93,14 +93,39 @@ ul {
   list-style: none;
 }
 
-/* Respect the platform */
+/* Respect the platform
+   R3.1 (finding 18) — this used to match `*, *::before, *::after`, so every
+   element on the page paid a style-recalc cost on every scroll frame once R3
+   put real per-frame scroll-driven tweens on the desktop-reduce path (before
+   R3 nothing animated under reduce, so the universal matcher was free —
+   0.6ms for a whole scroll). Measured: desktop-reduce recalc cost was ~3.8x
+   the full-motion path per 1000px scrolled, and deleting this block dropped
+   it 78%, entirely attributable to selector-matching cost, not the four
+   declarations themselves. None of R3's GSAP-driven tweens are CSS
+   transitions/animations (GSAP writes inline styles directly, which this
+   block never touches), so the guard's actual job is narrow: freeze the
+   handful of things that ARE plain CSS transitions/animations — the nav
+   chrome's hover/show transitions, the skip/replay chips, and the ambient
+   glow-breathe keyframe. Listing them explicitly (instead of `*`) keeps the
+   same guarantee for the elements that need it while removing the tax from
+   every element that doesn't. If a future component adds its own CSS
+   transition/animation, add its selector here too — this list is meant to
+   be exhaustive, not representative. */
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
   }
-  *,
-  *::before,
-  *::after {
+  .skip-link,
+  .nav,
+  .nav__link,
+  .nav__index-toggle,
+  .nav__overlay,
+  .nav__overlay-close,
+  .nav__overlay-link,
+  .arrival__skip,
+  .arrival__replay,
+  .arrival--static .arrival__glow,
+  .engagement__category-link {
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
@@ -177,7 +202,11 @@ main > section[id] {
 /* D9 — the hairline can draw (scaleX 0→1) via this custom property.
    Default/fallback is 1 (fully drawn, i.e. today's static line) so every
    section that never sets --gcl-rule-scale is completely unaffected;
-   Ecosystem + Lab set it from 0→1 on desktop-motion scroll-in only. */
+   Ecosystem + Lab set it from 0→1 on desktop-motion scroll-in only.
+   R3 — the reduced twin of that draw: --gcl-rule-opacity fades the same
+   hairline in at full length instead of drawing it. Default/fallback is 1
+   (fully visible) so every consumer that never sets it is pixel-identical;
+   only the desktop-reduce scene builders in Ecosystem/Lab ever set it. */
 .chapter-mark::before {
   content: "";
   display: inline-block;
@@ -186,6 +215,7 @@ main > section[id] {
   background: var(--gcl-gateway-gold);
   transform: scaleX(var(--gcl-rule-scale, 1));
   transform-origin: left;
+  opacity: var(--gcl-rule-opacity, 1);
 }
 
 .hairline {
@@ -668,7 +698,13 @@ html.js .arrival__cue {
   transform: none;
 }
 
-@media (prefers-reduced-motion: reduce) {
+/* R3 — scoped to <1024px only. Below 1024, Arrival keeps the pre-R3
+   static-jump guarantee: everything simply visible, !important beating any
+   inline style. At >=1024 under reduce, Arrival now runs a real pinned
+   cinematic scene (opacity-only cross-fade ladder, see ArrivalScene.tsx) —
+   these !important declarations would beat GSAP's inline opacity tweens and
+   silently flatten that ladder back into a no-op, recreating D-3. */
+@media (max-width: 1023.98px) and (prefers-reduced-motion: reduce) {
   .arrival__glow,
   .arrival__mark-wrap,
   .arrival__wordmark-top,
@@ -679,6 +715,7 @@ html.js .arrival__cue {
     transform: none !important;
   }
 }
+
 
 /* R2 1.3 — the ONE ambient animation permitted sitewide: on the seen-path
    static arrival (repeat visits skip the intro and render it composed
@@ -764,9 +801,15 @@ html.js .arrival__cue {
    tall and pushing the second reveal beat below the fold. A fixed, modest
    clamp(1.6rem,3vw,1.9rem) never reaches a size that wraps any authored
    line at any desktop-motion width 1024–1920 (verified live), with the
-   compression only applying to the pinned scene — the static/mobile/
-   reduced-motion heading keeps its original, larger display size. */
-@media (min-width: 1024px) and (prefers-reduced-motion: no-preference) {
+   compression only applying to the pinned scene — the static/mobile
+   heading keeps its original, larger display size.
+
+   R3 — moved off the no-preference-only query to plain (min-width: 1024px).
+   This is pinned-STAGING geometry, not motion: the desktop-reduce path now
+   runs the same pinned scene (InstitutionSection.tsx buildScene(true)) and
+   needs the identical 100svh grid/typography to stand on. Only <1024px
+   (mobile, all motion preferences) is exempt now. */
+@media (min-width: 1024px) {
   html.js .institution {
     padding-block: 0;
   }
@@ -928,8 +971,19 @@ html.js .mission__connector {
 /* R2 2.3/defect B — on desktop-motion the old full-height single-center
    connector is replaced by two short, measured connector segments (drawn
    by MissionSection.tsx) that only ever span the local gutter between two
-   consecutive pillars — never a full-height center divider. */
-@media (min-width: 1024px) and (prefers-reduced-motion: no-preference) {
+   consecutive pillars — never a full-height center divider.
+
+   R3 / D-2 fix — moved off the no-preference-only query to plain
+   (min-width: 1024px). Desktop-reduce now runs the SAME pinned three-pillar
+   scene and measures the same segments (MissionSection.tsx buildScene(true)),
+   so it must never fall back to this full-height divider either — that was
+   the exact "center vertical line reads like a divider" defect (2px x
+   1170px at x=634 on a 1440 viewport, 80.2% of the section height). The
+   `prefers-reduced-motion: reduce` override above (transform: scaleY(1)
+   !important) stays untouched: below 1024 it's still the mobile-reduce
+   guarantee; at >=1024 the element is display:none so the override is
+   inert there regardless of motion preference. */
+@media (min-width: 1024px) {
   html.js .mission__connector {
     display: none;
   }
@@ -976,16 +1030,37 @@ html.js .mission__connector {
    too low and left 34%+ empty space above it) — it top-aligns after a
    fixed, viewport-height-relative offset instead, which keeps both the
    empty-space-above and center-within-middle-50% acceptance bounds
-   satisfied at every desktop-motion height from 768 to 1080. */
-@media (min-width: 1024px) and (prefers-reduced-motion: no-preference) {
-  html.js .mission__pin {
+   satisfied at every desktop-motion height from 768 to 1080.
+
+   R3 — moved off the no-preference-only query to plain (min-width: 1024px).
+   This absolute pillar-stack + pinned-header staging is layout correctness
+   BOTH motion policies need — desktop-reduce pins the identical stage
+   (MissionSection.tsx buildScene(true)), just with opacity/scale-neutral
+   transitions instead of recede/enter transforms. Only <1024px is exempt.
+
+   R3.1 (finding 10) — gated on `gsap-ready`, not `js`. `html.js` is set by a
+   blocking inline script in layout.tsx and is present even when the chunk
+   carrying MissionSection's own mount effect fails to load — verified: with
+   that chunk aborted, `html.js` still lands, this staging still applied
+   (two pillars absolutely stacked at the same left:0/width:44% with no JS
+   left to run to separate/animate them), and they rendered fully opaque,
+   directly on top of each other. `gsap-ready` is set from
+   InstitutionSection's mount effect (see InstitutionSection.tsx — same
+   pattern lib/gsap.ts already documents for scheduleScrollTriggerRefresh:
+   "call this once, from any single mounted component") immediately after
+   `ensureGsapRegistered()`, i.e. only once React has actually hydrated and a
+   GSAP-driving effect has actually run. If that never happens, this block
+   never applies and the pillars fall back to the plain, non-absolute
+   stacked flow below — degraded but readable, never overlapping. */
+@media (min-width: 1024px) {
+  html.gsap-ready .mission__pin {
     position: relative;
     height: 100svh;
     min-height: 560px;
     overflow: hidden;
     display: block;
   }
-  html.js .mission__header {
+  html.gsap-ready .mission__header {
     position: absolute;
     top: 0;
     left: 0;
@@ -1001,7 +1076,7 @@ html.js .mission__connector {
      genuinely overlap (measured: INTELLIGENCE's own text ran past
      INFRASTRUCTURE's own text start). A true non-overlapping split with
      a real protected gutter between the two halves. */
-  html.js .mission__pillar {
+  html.gsap-ready .mission__pillar {
     position: absolute;
     top: 0;
     left: 0;
@@ -1026,7 +1101,7 @@ html.js .mission__connector {
     padding-top: clamp(5rem, 20vh, 14rem);
     padding-bottom: 0;
   }
-  html.js .mission__pillar--right {
+  html.gsap-ready .mission__pillar--right {
     left: auto;
     right: 0;
     width: 44%;
@@ -1123,7 +1198,12 @@ html.js .mission__connector {
   display: none;
 }
 
-@media (min-width: 1024px) and (prefers-reduced-motion: no-preference) {
+/* R3 — moved off the no-preference-only query to plain (min-width: 1024px).
+   The desktop-reduce wing entrance also draws this rule (as an opacity
+   fade at a CSS-preset scaleX(1) rather than a scaleX draw — see ADD 2
+   below), so it must exist at this width regardless of motion preference.
+   Mobile keeps display:none in both cases. */
+@media (min-width: 1024px) {
   html.js .ecosystem__wing-rule {
     display: block;
   }
@@ -1312,7 +1392,11 @@ html.js .mission__connector {
   display: none;
 }
 
-@media (min-width: 1024px) and (prefers-reduced-motion: no-preference) {
+/* R3 — moved off the no-preference-only query to plain (min-width: 1024px).
+   Same reasoning as .ecosystem__wing-rule above: the desktop-reduce row
+   entrance also fades this rule in (at a CSS-preset scaleX(1)), so it must
+   exist at this width regardless of motion preference. */
+@media (min-width: 1024px) {
   html.js .lab__row-rule {
     display: block;
   }
@@ -1322,6 +1406,51 @@ html.js .mission__connector {
 html.js .lab__row {
   opacity: 0;
   transform: translateY(14px);
+}
+
+/* R3.1 (findings 21 + 23) — the desktop-reduce cinematic path's OWN
+   pre-hidden states. The no-preference path hides these elements with a
+   transform (translateY, scale) because the reveal itself IS the transform
+   settling to rest — that is exactly the motion forbidden under reduce. The
+   reduce path hides the same elements with opacity alone; the section's
+   buildScene(true) fades them in on the same scrub/trigger, never writing a
+   transform.
+
+   This block MUST come after every other rule targeting the same selectors
+   at the same specificity (html.js .institution__heading-line span above,
+   html.js .lab__row above) — media queries add zero specificity, so source
+   order alone decides the winner, and this block used to sit BEFORE both of
+   those, making its overrides dead CSS. Verified live under desktop-reduce:
+   before this move, computed transform was translateY(110%)/translateY(14px)
+   (the earlier, losing declarations never applied); after the move it is
+   `none` for both, matching what the comment always claimed. Move this block
+   again if a future edit adds another same-specificity rule for any of these
+   selectors later in the file. */
+@media (min-width: 1024px) and (prefers-reduced-motion: reduce) {
+  html.js .arrival__mark-wrap {
+    transform: none;
+  }
+  html.js .institution__heading-line span {
+    transform: none;
+    opacity: 0;
+  }
+  html.js .ecosystem__intro-line {
+    opacity: 0;
+  }
+  html.js .lab__intro-line {
+    opacity: 0;
+  }
+  html.js .lab__row {
+    transform: none;
+  }
+  html.js .ecosystem__wing-rule {
+    transform: scaleX(1);
+    opacity: 0;
+  }
+  html.js .lab__row-rule {
+    transform: scaleX(1);
+    opacity: 0;
+  }
 }
 
 .lab__row:last-child {
@@ -1396,45 +1525,105 @@ html.js .lab__row {
   display: none;
 }
 
-html.js .principles__pin {
-  position: relative;
-  height: 100svh;
-  min-height: 520px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  padding-block: 0;
+/* R3.1 (finding 10) — split in two, by width, instead of one unconditional
+   block. The original was a single `html.js`-gated block applying at every
+   width. `html.js` lands even when the chunk carrying PrinciplesSection's
+   own mount effect fails to load — with that effect never running, nothing
+   ever adds `principles__item--active` or drives the cross-fade, so under
+   the old gate `.principles__pin`/`.principles__item` still went absolute +
+   opacity:0, and 4 of 5 principles (everything but whichever one first
+   paint happens to leave inert) simply vanished. That failure mode was only
+   ever measured/fixed at desktop widths (>=1024px), so ONLY the desktop
+   copy below is regated to `gsap-ready` (set from InstitutionSection's
+   mount effect right after `ensureGsapRegistered()` — see the comment
+   there and in lib/gsap.ts on scheduleScrollTriggerRefresh for the
+   established one-shared-marker pattern). The <1024px copy keeps the
+   original `html.js` gate and declarations byte-for-byte, so mobile's pin
+   count/timing is provably untouched by this fix. */
+@media (max-width: 1023.98px) {
+  html.js .principles__pin {
+    position: relative;
+    height: 100svh;
+    min-height: 520px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    padding-block: 0;
+  }
+
+  html.js .principles__header {
+    position: absolute;
+    top: clamp(2rem, 6vh, 4rem);
+    left: 0;
+    right: 0;
+    margin-bottom: 0;
+  }
+
+  html.js .principles__item {
+    position: absolute;
+    inset: 0;
+    padding: 0 var(--gcl-gutter);
+    border-top: none;
+    opacity: 0;
+    visibility: hidden;
+  }
+
+  html.js .principles__item:last-child {
+    border-bottom: none;
+  }
+
+  html.js .principles__item--active {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  html.js .principles__progress {
+    display: flex;
+  }
 }
 
-html.js .principles__header {
-  position: absolute;
-  top: clamp(2rem, 6vh, 4rem);
-  left: 0;
-  right: 0;
-  margin-bottom: 0;
-}
+@media (min-width: 1024px) {
+  html.gsap-ready .principles__pin {
+    position: relative;
+    height: 100svh;
+    min-height: 520px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    padding-block: 0;
+  }
 
-html.js .principles__item {
-  position: absolute;
-  inset: 0;
-  padding: 0 var(--gcl-gutter);
-  border-top: none;
-  opacity: 0;
-  visibility: hidden;
-}
+  html.gsap-ready .principles__header {
+    position: absolute;
+    top: clamp(2rem, 6vh, 4rem);
+    left: 0;
+    right: 0;
+    margin-bottom: 0;
+  }
 
-html.js .principles__item:last-child {
-  border-bottom: none;
-}
+  html.gsap-ready .principles__item {
+    position: absolute;
+    inset: 0;
+    padding: 0 var(--gcl-gutter);
+    border-top: none;
+    opacity: 0;
+    visibility: hidden;
+  }
 
-html.js .principles__item--active {
-  opacity: 1;
-  visibility: visible;
-}
+  html.gsap-ready .principles__item:last-child {
+    border-bottom: none;
+  }
 
-html.js .principles__progress {
-  display: flex;
+  html.gsap-ready .principles__item--active {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  html.gsap-ready .principles__progress {
+    display: flex;
+  }
 }
 
 .principles__item-numeral {
@@ -1494,8 +1683,17 @@ html.js .principles__progress {
 /* Reduced motion (with JS running, `html.js` present) and the React
    `.principles--static` class it sets both fall back to exactly the same
    unconditional/no-JS static list — belt-and-suspenders, not two sources
-   of truth (the declarations are identical on purpose). */
-@media (prefers-reduced-motion: reduce) {
+   of truth (the declarations are identical on purpose).
+
+   R3 — scoped to <1024px only. Desktop-reduce now runs the SAME pinned
+   one-principle-at-a-time scene as the full-motion path (a pin-hold plus
+   pure opacity cross-fades — PrinciplesSection.tsx buildScene(true)), which
+   the Founder's ruling calls out as the most reduced-motion-friendly
+   chapter on the site. These !important declarations would force the
+   static list back on top of it, so they now apply only below 1024px
+   (mobile-reduce) and to the no-JS/`.principles--static` React fallback
+   below, which is unaffected by this scope change. */
+@media (max-width: 1023.98px) and (prefers-reduced-motion: reduce) {
   html.js .principles__pin {
     position: static !important;
     height: auto !important;
@@ -1601,15 +1799,26 @@ html.js .principles__progress {
 
 /* D12 — the headline was centered as its own narrow 46rem column, so its
    rendered left edge sat far deeper inset than Institution's own
-   heading (which starts right at the container's gutter). Left-align it
-   to the SAME container Institution uses (the outer `.container` this
-   heading already lives in) so both sections' text shares a left edge;
-   the mark + glow stay centered above it as the bookend, untouched. */
+   heading. Left-align it — the mark + glow stay centered above it as the
+   bookend, untouched.
+
+   R3.1 (finding 4) — D12's fix put the heading on a THIRD anchor
+   (margin-inline:0, i.e. flush to the container gutter) while
+   .engagement__categories and .footer__inner below it both sit on
+   var(--gcl-engagement-measure), centered. Three conflicting anchors in
+   one chapter (mark/G centered full-bleed, categories/footer centered at
+   the 56rem measure, heading flush to the gutter) meant the heading's left
+   edge landed 23–214px to the left of everything below it at every width
+   1280–1920, detaching the closing headline from the composition. Putting
+   the heading on the SAME measure + auto-centering as the categories/footer
+   collapses this back to one shared anchor for the whole lower composition
+   — the heading's left edge now lands exactly on the categories' and
+   footer's left edge, text-align:left preserved inside that column. */
 @media (min-width: 1024px) {
   .engagement__heading {
     text-align: left;
-    margin-inline: 0;
-    max-width: 38rem;
+    max-width: var(--gcl-engagement-measure);
+    margin-inline: auto;
   }
 }
 

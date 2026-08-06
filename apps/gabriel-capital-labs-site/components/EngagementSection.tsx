@@ -6,8 +6,10 @@ import {
   gsap,
   REDUCED_MOTION_QUERY,
   DESKTOP_MOTION_QUERY,
+  DESKTOP_REDUCED_QUERY,
   MOBILE_MOTION_QUERY,
 } from "@/lib/gsap";
+import { revealFromTo } from "@/lib/motion";
 import { engagement, contactHref, contactIsPlaceholder } from "@/content/site";
 
 export default function EngagementSection() {
@@ -25,13 +27,22 @@ export default function EngagementSection() {
           isReduced: REDUCED_MOTION_QUERY,
           isMobile: MOBILE_MOTION_QUERY,
           isDesktop: DESKTOP_MOTION_QUERY,
+          isDesktopReduced: DESKTOP_REDUCED_QUERY,
         },
         (context) => {
-          const { isReduced, isMobile, isDesktop } = context.conditions as {
+          const { isReduced, isMobile, isDesktop, isDesktopReduced } = context.conditions as {
             isReduced: boolean;
             isMobile: boolean;
             isDesktop: boolean;
+            isDesktopReduced: boolean;
           };
+
+          // R3 — isDesktopReduced MUST be checked before isReduced: see
+          // InstitutionSection for the branch-order rationale (identical
+          // hazard here).
+          if (isDesktopReduced) {
+            return buildScene(true);
+          }
 
           if (isReduced) {
             gsap.set(
@@ -81,43 +92,75 @@ export default function EngagementSection() {
             return undefined;
           }
 
-          if (isDesktop) {
-            // R2 2.7 — final resolve, in explicit sequence: mark + glow
-            // fade up first (the glow mirrors Arrival's — a bookend),
-            // then the headline mask-reveals (same technique as
-            // Institution's heading lines), then the engagement rows
-            // stagger in (defect C's grid, see globals.css).
+          // R3 — one shared scene builder for both desktop policies: same
+          // four-step final resolve sequence (glow, mark, headline,
+          // categories), same trigger and positions (0 / 0.15 / 0.5 / 1.1).
+          // Under reduce the mark and categories go opacity-only via
+          // revealFromTo(); the headline mask-reveal has no CSS pre-hide to
+          // rely on so it becomes a plain opacity fromTo, same as Ecosystem
+          // and Lab's intro lines. The Gateway mark itself (LOCKED) is
+          // never transformed beyond this settle in either policy.
+          function buildScene(reduced: boolean) {
             const tl = gsap.timeline({
               scrollTrigger: { trigger: rootRef.current, start: "top 70%", once: true },
             });
 
+            // Already opacity-only — shared verbatim between both policies.
+            const [markFrom, markTo] = revealFromTo(
+              reduced,
+              { opacity: 0, y: 18 },
+              { opacity: 1, y: 0, duration: 0.8, ease: "power2.out" }
+            );
             tl.fromTo(".engagement__glow", { opacity: 0 }, { opacity: 1, duration: 1, ease: "power2.out" }, 0)
-              .fromTo(
-                ".engagement__mark",
-                { opacity: 0, y: 18 },
-                { opacity: 1, y: 0, duration: 0.8, ease: "power2.out" },
-                0.15
-              );
+              .fromTo(".engagement__mark", markFrom, markTo, 0.15);
 
             if (headingLineRef.current) {
-              tl.fromTo(
-                headingLineRef.current,
-                { y: "110%" },
-                { y: "0%", duration: 0.8, ease: "power3.out" },
-                0.5
-              );
+              if (reduced) {
+                // R3.1 (finding 11) — opacity was the only channel this
+                // closing headline used under reduce, which is exactly the
+                // "scroll -> content fades -> scroll" read the Founder
+                // called out. Pair it with a genuine luminance sweep (steel
+                // -> platinum, the same two tokens most body/support text on
+                // the site moves between) so the chapter's final statement
+                // resolves into full brightness as it settles, rather than
+                // only fading into view — a second, non-spatial channel for
+                // the same beat, same allowed-list entry as Institution's
+                // rule-fill brighten above.
+                tl.fromTo(
+                  headingLineRef.current,
+                  { opacity: 0, color: "#a7a9ac" /* --gcl-steel */ },
+                  {
+                    opacity: 1,
+                    color: "#e6e6e6" /* --gcl-platinum */,
+                    duration: 0.8,
+                    ease: "power3.out",
+                  },
+                  0.5
+                );
+              } else {
+                tl.fromTo(
+                  headingLineRef.current,
+                  { y: "110%" },
+                  { y: "0%", duration: 0.8, ease: "power3.out" },
+                  0.5
+                );
+              }
             }
 
-            tl.fromTo(
-              ".engagement__category",
+            const [categoryFrom, categoryTo] = revealFromTo(
+              reduced,
               { opacity: 0, y: 14 },
-              { opacity: 1, y: 0, duration: 0.5, ease: "power2.out", stagger: 0.08 },
-              1.1
+              { opacity: 1, y: 0, duration: 0.5, ease: "power2.out", stagger: 0.08 }
             );
+            tl.fromTo(".engagement__category", categoryFrom, categoryTo, 1.1);
 
             return () => {
               tl.scrollTrigger?.kill();
             };
+          }
+
+          if (isDesktop) {
+            return buildScene(false);
           }
 
           return undefined;

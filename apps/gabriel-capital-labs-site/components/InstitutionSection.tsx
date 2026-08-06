@@ -6,9 +6,25 @@ import {
   gsap,
   REDUCED_MOTION_QUERY,
   DESKTOP_MOTION_QUERY,
+  DESKTOP_REDUCED_QUERY,
   MOBILE_MOTION_QUERY,
 } from "@/lib/gsap";
+import { reveal, pinEnd } from "@/lib/motion";
 import { institution } from "@/content/site";
+
+// R3.1 (finding 20) — lib/motion.ts's REDUCED_PIN_SCALE (0.6x) is a single
+// flat factor shared by every pinned chapter, which gives the institutional
+// thesis — five heading lines plus two support paragraphs, a genuinely
+// reading-bound chapter — the SHORTEST hold on the reduced-motion site
+// (measured: 360px of scroll vs 810px under full motion, a steeper cut than
+// motion-bound chapters that actually have transform-driven beats to strip).
+// Reading time is not a function of motion preference, so Institution's
+// pinned hold shouldn't be cut as hard as a chapter whose duration exists to
+// cover a parallax/recede beat. This overrides the shared scale locally
+// (rather than editing REDUCED_PIN_SCALE itself, which every other pinned
+// chapter also reads) to 0.85x — close to full-motion length — for this
+// chapter only.
+const INSTITUTION_REDUCED_PIN_SCALE = 0.85;
 
 export default function InstitutionSection() {
   const rootRef = useRef<HTMLElement | null>(null);
@@ -21,6 +37,22 @@ export default function InstitutionSection() {
   useEffect(() => {
     ensureGsapRegistered();
 
+    // R3.1 (finding 10) — `html.js` (set by a blocking inline script in
+    // layout.tsx) only proves the initial script tag ran; it is present
+    // even when the chunk carrying every section's own mount effect fails
+    // to load. Several desktop-reduce CSS states (the pinned Mission/
+    // Principles staging, the Institution heading pre-hide) are only safe
+    // to apply once a GSAP-driving effect has actually mounted — otherwise
+    // they degrade a "no JS ran" page into an unreadable one (overlapping
+    // Mission pillars, vanished Principles, an Institution heading stuck at
+    // opacity:0 with nothing left to reveal it). This marker is that proof.
+    // Set here, once, following the same "call from any single mounted
+    // component" convention lib/gsap.ts already documents for
+    // scheduleScrollTriggerRefresh — Institution mounts unconditionally on
+    // every load of this single-page site, so this always runs whenever
+    // any section's JS successfully initializes.
+    document.documentElement.classList.add("gsap-ready");
+
     const ctx = gsap.context(() => {
       const mm = gsap.matchMedia();
 
@@ -29,16 +61,26 @@ export default function InstitutionSection() {
           isReduced: REDUCED_MOTION_QUERY,
           isMobile: MOBILE_MOTION_QUERY,
           isDesktop: DESKTOP_MOTION_QUERY,
+          isDesktopReduced: DESKTOP_REDUCED_QUERY,
         },
         (context) => {
-          const { isReduced, isMobile, isDesktop } = context.conditions as {
+          const { isReduced, isMobile, isDesktop, isDesktopReduced } = context.conditions as {
             isReduced: boolean;
             isMobile: boolean;
             isDesktop: boolean;
+            isDesktopReduced: boolean;
           };
 
           const lines = gsap.utils.toArray<HTMLElement>(".institution__heading-line span");
           const paras = gsap.utils.toArray<HTMLElement>(".institution__paragraphs p");
+
+          // R3 — isDesktopReduced MUST be checked before isReduced:
+          // REDUCED_MOTION_QUERY also matches desktop widths, and if isReduced
+          // won here the pin would vanish again (the exact D-1 bug). The
+          // surviving isReduced branch below now only ever fires <1024px.
+          if (isDesktopReduced) {
+            return buildScene(true);
+          }
 
           if (isReduced) {
             gsap.set(lines, { y: "0%" });
@@ -97,7 +139,13 @@ export default function InstitutionSection() {
             return undefined;
           }
 
-          if (isDesktop) {
+          // R3 — one shared scene builder for both desktop policies: same
+          // structure (approach drift, pin, line-by-line reveal, statement
+          // shift, paragraph beat, rule draw), only the channel differs.
+          // Under reduce every spatial var is stripped via reveal()/pinEnd()
+          // (see lib/motion.ts) so the exact same beats run on
+          // opacity/rule-opacity/pin-hold alone.
+          function buildScene(reduced: boolean) {
             // R2 2.1/2.2 — the arrival→institution camera handoff.
             // Institution is provably fully below the viewport for the
             // entire duration of Arrival's extended pull-back pin (its
@@ -113,9 +161,31 @@ export default function InstitutionSection() {
             // so the two tweens never fight over one transform) drift up
             // into the lower third as the scene approaches — a real,
             // visible camera-handoff rather than an animation that
-            // completes off-screen.
-            if (markRef.current) gsap.set(markRef.current, { y: 32, opacity: 0.5 });
-            if (headingLine0Ref.current) gsap.set(headingLine0Ref.current, { y: 20, opacity: 0.6 });
+            // completes off-screen. Under reduce the drift is opacity-only
+            // (0.5→1 / 0.6→1) — the y-drift is stripped, same scrub.
+            if (markRef.current) {
+              // R3.1 (finding 11) — reduced gets an extra `color` key here
+              // that full-motion doesn't need (full-motion's approach drift
+              // already reads as motion via the y-offset). This bypasses
+              // reveal() rather than going through it: reveal() only ever
+              // STRIPS spatial keys from a shared vars object, it has no way
+              // to ADD a reduced-only key, and the chapter-mark's colour
+              // settling from steel to platinum as it approaches is exactly
+              // the "architecture resolving" read the reduced path was
+              // missing — a second, non-opacity channel for the SAME beat.
+              gsap.set(
+                markRef.current,
+                reduced
+                  ? { y: 0, opacity: 0.5, color: "#a7a9ac" /* --gcl-steel */ }
+                  : { y: 32, opacity: 0.5 }
+              );
+            }
+            if (headingLine0Ref.current) {
+              gsap.set(
+                headingLine0Ref.current,
+                reduced ? { y: 0, opacity: 0.6 } : { y: 20, opacity: 0.6 }
+              );
+            }
 
             const approach = gsap.timeline({
               scrollTrigger: {
@@ -126,10 +196,20 @@ export default function InstitutionSection() {
               },
             });
             if (markRef.current) {
-              approach.to(markRef.current, { y: 0, opacity: 1, duration: 1, ease: "none" }, 0);
+              approach.to(
+                markRef.current,
+                reduced
+                  ? { y: 0, opacity: 1, color: "#e6e6e6" /* --gcl-platinum */, duration: 1, ease: "none" }
+                  : reveal(reduced, { y: 0, opacity: 1, duration: 1, ease: "none" }),
+                0
+              );
             }
             if (headingLine0Ref.current) {
-              approach.to(headingLine0Ref.current, { y: 0, opacity: 1, duration: 1, ease: "none" }, 0);
+              approach.to(
+                headingLine0Ref.current,
+                reveal(reduced, { y: 0, opacity: 1, duration: 1, ease: "none" }),
+                0
+              );
             }
 
             // R2 2.2 — pinned scene: the statement mask-reveals line by
@@ -139,45 +219,104 @@ export default function InstitutionSection() {
             // support), and the vertical gold rule (now in its own
             // dedicated grid track — R2 defect A, see globals.css
             // .institution__frame) draws top-to-bottom on the same scrub.
-            gsap.set(lines, { y: "110%" });
-            gsap.set(paras, { opacity: 0, y: 16 });
+            // Under reduce, lines pre-hide via opacity (the reduce CSS
+            // twin), paras pre-hide via reveal() (opacity only, y
+            // stripped), and the heading's -4% shift is dropped entirely —
+            // see below.
+            if (reduced) {
+              gsap.set(lines, { y: 0, opacity: 0 });
+            } else {
+              gsap.set(lines, { y: "110%" });
+            }
+            gsap.set(paras, reveal(reduced, { opacity: 0, y: 16 }));
 
             // D13 — trimmed from +=110% to +=90% (pin-budget pass); D11 —
             // the heading reveal window is tightened (duration/stagger
             // reduced) so each line finishes its mask-reveal sooner,
             // shrinking the scrub range in which a line sits mid-clip.
+            // R3.1 (finding 20) — reduced end uses this chapter's own 0.85x
+            // budget (+=76.5%, rounded) instead of pinEnd()'s shared 0.6x
+            // (+=54%) — see INSTITUTION_REDUCED_PIN_SCALE above.
             const tl = gsap.timeline({
               scrollTrigger: {
                 trigger: rootRef.current,
                 start: "top top",
-                end: "+=90%",
+                end: reduced
+                  ? `+=${Math.round(90 * INSTITUTION_REDUCED_PIN_SCALE)}%`
+                  : pinEnd(false, 90),
                 scrub: 0.6,
                 pin: pinRef.current,
                 pinSpacing: true,
               },
             });
 
-            tl.to(lines, { y: "0%", duration: 0.7, ease: "none", stagger: 0.15 }, 0);
+            if (reduced) {
+              tl.to(lines, { opacity: 1, duration: 0.7, ease: "none", stagger: 0.15 }, 0);
+            } else {
+              tl.to(lines, { y: "0%", duration: 0.7, ease: "none", stagger: 0.15 }, 0);
+            }
 
-            if (headingRef.current) {
+            // R3 — untranslatable without movement, so it is DROPPED under
+            // reduce; the statement/support separation is instead carried
+            // by the paragraphs' fade beat arriving at position 0.6 while
+            // the statement is already at rest.
+            if (!reduced && headingRef.current) {
               tl.to(headingRef.current, { x: "-4%", duration: 0.6, ease: "none" }, 0.55);
             }
 
-            tl.to(paras, { opacity: 1, y: 0, duration: 0.6, ease: "none", stagger: 0.15 }, 0.6);
+            tl.to(
+              paras,
+              reveal(reduced, { opacity: 1, y: 0, duration: 0.6, ease: "none", stagger: 0.15 }),
+              0.6
+            );
 
             if (ruleFillRef.current) {
-              tl.fromTo(
-                ruleFillRef.current,
-                { height: "0%" },
-                { height: "100%", duration: 1.2, ease: "none" },
-                0
-              );
+              if (reduced) {
+                // R3 — the rule appears rather than travels: sit the fill
+                // at full height and fade its opacity in on the same scrub
+                // instead of drawing the height.
+                // R3.1 (finding 11) — opacity alone was the only channel any
+                // reduced-branch tween on the site used (a sitewide grep for
+                // colour/backgroundColor tween keys returned zero hits), so
+                // the reduced path read as "fade in" everywhere rather than
+                // "architecture resolving." Layer a genuine luminance
+                // channel on top of the opacity fade here: the fill's own
+                // colour brightens dim gold (--gcl-gateway-gold-dim, its
+                // static full-motion colour) to full gold
+                // (--gcl-gateway-gold) across the same scrub, so the rule
+                // doesn't just appear — it settles into full brightness,
+                // same as the physical draw does in the full-motion path.
+                // Colour/luminance is on the ruling's allowed list.
+                gsap.set(ruleFillRef.current, { height: "100%" });
+                tl.fromTo(
+                  ruleFillRef.current,
+                  { opacity: 0, backgroundColor: "rgba(212, 161, 70, 0.35)" },
+                  {
+                    opacity: 1,
+                    backgroundColor: "rgba(212, 161, 70, 1)",
+                    duration: 1.2,
+                    ease: "none",
+                  },
+                  0
+                );
+              } else {
+                tl.fromTo(
+                  ruleFillRef.current,
+                  { height: "0%" },
+                  { height: "100%", duration: 1.2, ease: "none" },
+                  0
+                );
+              }
             }
 
             return () => {
               approach.scrollTrigger?.kill();
               tl.scrollTrigger?.kill();
             };
+          }
+
+          if (isDesktop) {
+            return buildScene(false);
           }
 
           return undefined;

@@ -24,7 +24,96 @@ figcaption{font-size:.78rem;color:var(--mut);padding-top:.5rem;letter-spacing:.0
 @media print{body{background:#fff;color:#111}p,li{color:#333}}
 </style></head><body><main>
 <h1>Gabriel Capital Labs — Cinematic Institutional Website v1</h1>
-<p><strong>Build + adversarial-review handoff report</strong> · 2026-08-05 · Branch <code>claude/gcl-cinematic-institutional-site-6qx964</code> <strong>Revision R2 (2026-08-06): Desktop Cinematic Remediation — see §R2 at the top.</strong> The original v1 report follows unchanged as historical record.</p>
+<p><strong>Build + adversarial-review handoff report</strong> · 2026-08-05 · Branch <code>claude/gcl-cinematic-institutional-site-6qx964</code> <strong>Revision R3 (2026-08-06): The Third Motion Class — reduced-motion cinema, READY WITH DISCLOSURES — see §R3 at the top.</strong> R2 and v1 follow as historical record. The original v1 report follows unchanged as historical record.</p>
+<hr>
+<h2>R3 · The Third Motion Class — Reduced-Motion Cinema (Founder round 3, 2026-08-06)</h2>
+<p><strong>Founder verdict on R2:</strong> desktop still NOT Founder-ready — no cinematic feeling, Replay Arrival does not function, Mission centre line reads as a divider, desktop pacing uneven. Mobile excellent. <strong>R3 outcome: READY WITH DISCLOSURES</strong> (final adversarial gate, independently reproduced).</p>
+<h3>R3.1 Root cause — the desktop cinema was never reachable on the reviewing machine</h3>
+<p>R2 built a genuine cinematic desktop architecture and verified it against a local static export. It works. The Founder has never been able to see it.</p>
+<p>Every desktop scene R2 authored is gated behind <code>(min-width: 1024px) and (prefers-reduced-motion: no-preference)</code>. The reviewing Mac has <strong>macOS Reduce Motion switched on system-wide</strong>, so on that machine the query is <code>false</code> and <em>none</em> of the cinematic layer executes. Measured live on the deployed R2 preview (commit <code>e732ebe</code>) at 1440×900:</p>
+<div class="tw"><table>
+<tr><th>Condition</th><th>desktop motion query</th><th>ScrollTrigger pins</th><th>document height</th></tr>
+<tr><td><code>reduce</code> — <strong>what the Founder sees</strong></td><td><code>false</code></td><td><strong>0</strong></td><td>9,999px (11.11 viewports)</td></tr>
+<tr><td><code>no-preference</code></td><td><code>true</code></td><td><strong>4</strong></td><td>13,132px (14.59 viewports)</td></tr>
+</table></div>
+<p>Eleven viewports of uninterrupted linear scrolling with zero pinned scenes is precisely &quot;scroll → content → scroll → content&quot;. The desktop code was never the problem; its reachability was.</p>
+<p>This also explains the desktop/mobile split cleanly. Mobile was reviewed on a phone without Reduce Motion, so mobile ran its full motion path and felt smooth and premium. The Founder was not comparing two designs — they were comparing motion-on against motion-off.</p>
+<p>R2&#x27;s response to this (§R2.7) was a note asking the Founder to change an OS accessibility setting. That was the wrong remedy. An institutional site must be cinematic <em>for reduced-motion visitors too</em> — they are real visitors, and one of them is the Founder.</p>
+<h3>R3.2 Every remaining Founder defect traces to that one cause</h3>
+<p>Measured on the deployed R2 preview under <code>reduce</code> at 1024–1920:</p>
+<div class="tw"><table>
+<tr><th>Founder defect</th><th>Status under <code>reduce</code> at R2</th><th>Evidence</th></tr>
+<tr><td>Institution gold line crowds copy</td><td>Already fixed, both paths</td><td>Min clearance 58px @1440, 72px @1920; zero overlap</td></tr>
+<tr><td>Engagement rows / footer alignment</td><td>Already fixed, both paths</td><td>One shared label x at every width; row spread 1px; <code>.footer__inner</code> edges equal <code>.engagement__categories</code> exactly at all 5 widths</td></tr>
+<tr><td>Mission centre line reads as a divider</td><td><strong>Was still live</strong></td><td><code>.mission__connector</code> computed <code>display:block</code> under reduce — 2px × 1170px at dead centre, 80.2% of the section height. Hidden only inside the no-preference CSS block</td></tr>
+<tr><td>Desktop spacing: empty vs compressed</td><td><strong>Was still live</strong></td><td>Cinematic chapters collapsed to ~half their scroll budget (arrival 0.67 vs 1.56 viewports, mission 1.56 vs 2.67); list chapters unchanged — that uneven collapse is the pacing complaint</td></tr>
+<tr><td>Replay Arrival does not function</td><td><strong>Was still live</strong></td><td>The reduce branch ran <code>timeline.progress(1)</code> — a jump to the <em>finished</em> state, i.e. the state already on screen. A visible no-op</td></tr>
+</table></div>
+<h3>R3.3 The fix — a third motion class</h3>
+<p>Under <code>(min-width: 1024px) and (prefers-reduced-motion: reduce)</code> the site now runs <strong>the same scene architecture</strong> as the full path — same chapters, same 4 pins, same sequencing, staging, depth ordering and hand-off — expressed only through vestibular-safe channels:</p>
+<ul>
+<li><strong>Allowed:</strong> opacity, colour/luminance, rule opacity/weight, scroll-position hold (pinning) — all scroll-driven, therefore user-controlled.</li>
+<li><strong>Forbidden:</strong> translate, scale, rotate, skew, parallax, drift, clip-path wipes, autoplaying movement.</li>
+</ul>
+<p>This is a considered accessibility position (WCAG technique C39 recommends replacing motion with cross-fades; pinning <em>holds content still</em> while the user scrolls), not a loophole. The policy lives in one file — <code>lib/motion.ts</code> (<code>reveal()</code> strips spatial keys; <code>pinEnd()</code> scales pin budgets to ~0.6×) — so the two paths cannot drift apart structurally. Six of seven chapters animate a second channel beyond opacity (gold rule fills, pillar/heading luminance, hairline colour, border-weight crossfades), verified by a 20px-step sweep of the whole document.</p>
+<p>Replay Arrival now actually replays in both policies: session reset, initial opacities restored, awaited scroll-to-top, staged ladder replay, focus restored to the control, <code>role=status</code> announcements, repeatable indefinitely.</p>
+<h3>R3.4 Four adversarial waves — verdict trail</h3>
+<p>Per the engineering constitution (Sonnet implements, Opus reviews adversarially, verification reproduces reviewer checks), R3 took four waves to converge:</p>
+<div class="tw"><table>
+<tr><th>Wave</th><th>Outcome</th></tr>
+<tr><td>1 · Implementation</td><td>Third motion class built; first verification reported all-green — <strong>falsified by review</strong></td></tr>
+<tr><td>2 · Review round 1</td><td>3 reviewers: NOT_READY, 24 findings (3 blockers: Principles a11y-tree removal, <code>/#contact</code> blank page, Principles overlap pile-up)</td></tr>
+<tr><td>3 · Remediation + review round 2</td><td>Craft improved; <strong>2 new blockers introduced and caught</strong> (ENTER cue invisible, Gateway G dimmed by a stage <code>brightness</code> filter — reverted entirely), plus a mobile inline-style leak. NOT_READY</td></tr>
+<tr><td>4 · Surgical wave + final gates</td><td>ScrollTrigger crash root-caused in GSAP internals (sync-refresh triggers desyncing the <code>_triggers</code> walk-back on hash loads) — fixed via timeline hosting, 72/72 deep-link runs clean, then 60 more at 6× CPU throttle. Gate 1: NOT_READY (Mission connector regression + numeral leak). Exact patches applied. <strong>Gate 2: READY_WITH_DISCLOSURES, shippable</strong></td></tr>
+</table></div>
+<p>Key verified numbers from the final gate (all independently re-measured against a <code>git archive</code> baseline, never trusting fixer reports):</p>
+<ul>
+<li>Zero console errors across 36+ deep links (6 hashes × widths × both policies); landing accuracy 0.00–0.42px from the 84px nav offset (was 540–3891px short).</li>
+<li>Gateway G: <code>filter</code>/<code>backdrop-filter</code>/<code>mix-blend-mode</code> = none across the mark&#x27;s entire ancestor chain at 84 sampled states in 6 configurations; nav-mark luminance matches baseline to 0.6%.</li>
+<li>Mission: connector segments draw 0→1 through the pin on the full path and survive mid-pin resize; dominance invariant holds at 41/41 samples under reduce (no two pillars ever both &gt;0.45 opacity); numerals correct at 39/39 crossing samples — <strong>including a baseline bug on the no-preference crossing (39/39 &quot;00&quot; leaks at baseline) now clean</strong>.</li>
+<li>Mobile 320/390/768: pin counts 0 (reduce) / 2 (no-preference) — identical to baseline; fresh-load screenshots pixel-identical (residual 25px noise proven to be nondeterministic rasterisation by diffing the baseline against itself); zero inline-style leaks across 39-point crossing maps in both policies; focus listeners constant across 3 breakpoint round-trips.</li>
+<li>Full-motion parity vs the Founder-approved baseline: pixel-identical at rest except the four named divergences below.</li>
+<li><code>tsc</code> / <code>lint</code> / <code>build</code> clean.</li>
+</ul>
+<h3>R3.5 Founder-confirm items (the four full-motion divergences)</h3>
+<p>The full-motion desktop path differs from the R2-approved baseline in exactly four ways, each a deliberate fix, each awaiting Founder confirmation:</p>
+<ol>
+<li><strong>ENTER cue timing</strong> — the cue no longer pops back to full opacity if the visitor scrolls mid-intro; a visitor who nudges and returns to top still gets it.</li>
+<li><strong>Mission dwell</strong> — a held, fully-resolved frame before pin release (fixes the dead-scroll gap into Ecosystem); beats land ~29% earlier within the same pin budget. If the pacing feels wrong, the alternative is extending the pin rather than redistributing it.</li>
+<li><strong>Engagement headline measure</strong> — the closing headline now shares the categories/footer measure (one alignment anchor); at ≥1600px it rewraps from three lines to two.</li>
+<li><strong>Arrival glow curve</strong> — the glow now recedes 1.0→0.25 across the whole camera move; the baseline collapsed it to 0.017 within 60px of scroll. Surfaced by the final gate as previously unnamed; unambiguously the intended behaviour.</li>
+</ol>
+<h3>R3.6 Disclosed residuals (non-blocking)</h3>
+<ul>
+<li><strong>Pre-existing, both builds identical:</strong> full-motion Ecosystem wing dim (0.5) puts wing text at 2.8–3.2:1 contrast. The reduce path&#x27;s 0.82 floor proves recession reads fine at 6.0–7.0:1 — recommended as the next craft item on the primary path.</li>
+<li>Reduced-motion visitors on <em>phones</em> still get the flat path (0 pins) — deliberately out of scope to protect the approved mobile experience; recommended as its own reviewed change.</li>
+<li>PageDown paging skips principles mid-pin — <strong>pre-existing on the full path too</strong> (measured at baseline); scroll, arrows and trackpad behave correctly.</li>
+<li>Two inert GSAP transform stubs (<code>translate: none</code> etc.) remain inline on connector segments below 1024px after a desktop→mobile crossing — visually and functionally nil (element is <code>display:none</code> there).</li>
+<li>All browser evidence is Chromium; Safari/Firefox spot-check on the preview recommended.</li>
+</ul>
+<h3>R3.7 Files changed</h3>
+<p><code>lib/gsap.ts</code> (third query, <code>scrollTimeline()</code> helper, central <code>landOnHash()</code>) · <code>lib/motion.ts</code> (new — the channel policy) · <code>app/globals.css</code> (staging/motion split; connector suppressed at ≥1024px in <em>both</em> policies; Engagement anchor) · all seven scene components (shared scene-builders with <code>{ reduced }</code> channel policy; Replay state machine; cleanup correctness on breakpoint crossings).</p>
+<h3>R3.8 Founder review checklist (desktop, no settings changes needed)</h3>
+<ol>
+<li>Open the preview in a NEW tab at desktop size. The arrival should play (~5s staged ladder) — <strong>on your machine as-is</strong>, with Reduce Motion still on.</li>
+<li>Scroll: arrival should hold and recede; Institution statement resolves line-by-line beside its gold rule; Mission holds while three pillars hand off with gold segments drawing <em>between</em> them (no centre divider anywhere); Ecosystem wings resolve room-by-room; Principles present one at a time, legible at any scroll speed; Engagement resolves on one shared measure with the footer.</li>
+<li>Click <strong>Replay Arrival</strong> (hero chip or footer) from anywhere, several times in a row.</li>
+<li>Deep-link test: open <code>…/#contact</code> directly — it should land exactly on Engagement, no blank page, no console errors.</li>
+<li>Mobile: unchanged — please confirm nothing feels different there.</li>
+<li>The four §R3.5 items are yours to confirm or reverse.</li>
+</ol>
+<h3>R3 screenshot evidence — the reduced-motion desktop path (what the Founder will see)</h3>
+<p>Captured from the final built export at 1440×900 with <code>prefers-reduced-motion: reduce</code> emulated — the Founder's exact condition.</p>
+<figure><img src="assets/r3-reduce-arrival.webp" alt="Arrival, reduce path" loading="lazy"><figcaption>Arrival after the staged opacity ladder — Gateway G untouched.</figcaption></figure>
+<figure><img src="assets/r3-reduce-institution.webp" alt="Institution pinned scene, reduce path" loading="lazy"><figcaption>Institution pinned scene mid-reveal: statement resolved, paragraphs resolving, gold rule in its own track.</figcaption></figure>
+<figure><img src="assets/r3-reduce-mission-p1.webp" alt="Mission pillar, reduce path" loading="lazy"><figcaption>Mission under reduce — single-pillar dominance, no centre divider anywhere.</figcaption></figure>
+<figure><img src="assets/r3-reduce-mission-handoff.webp" alt="Mission pillar 3, reduce path" loading="lazy"><figcaption>Mission pillar 03 fully resolved.</figcaption></figure>
+<figure><img src="assets/r3-full-mission-segments.webp" alt="Mission on the full path" loading="lazy"><figcaption>Full-motion parity: gold connector segments drawing between pillars (the regression the gate caught, fixed and re-proven).</figcaption></figure>
+<figure><img src="assets/r3-reduce-ecosystem.webp" alt="Ecosystem, reduce path" loading="lazy"><figcaption>Ecosystem wings under reduce.</figcaption></figure>
+<figure><img src="assets/r3-reduce-principles.webp" alt="Principles, reduce path" loading="lazy"><figcaption>Principles — one principle presented at a time, legible at any scroll speed.</figcaption></figure>
+<figure><img src="assets/r3-reduce-engagement.webp" alt="Engagement, reduce path" loading="lazy"><figcaption>Engagement + footer on one shared measure.</figcaption></figure>
+<figure><img src="assets/r3-mobile-390-reduce.webp" alt="Mobile 390 reduce" style="max-width:280px" loading="lazy"><figcaption>Mobile regression proof: 390px, pixel-identical to baseline.</figcaption></figure>
+
 <hr>
 <h2>R2 · Desktop Cinematic Remediation (Founder round 2, 2026-08-06)</h2>
 <p><strong>Founder verdict on v1:</strong> mobile approved; desktop NOT founder-ready — read as a polished static landing page, Replay broken, layout defects (institution line crowding copy, arbitrary center mission line, misaligned engagement rows, unbalanced desktop scale).</p>
