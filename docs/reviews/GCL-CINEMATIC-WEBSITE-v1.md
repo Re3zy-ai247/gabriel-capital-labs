@@ -1,5 +1,141 @@
 # Gabriel Capital Labs — Cinematic Institutional Website v1
 **Build + adversarial-review handoff report** · 2026-08-05 · Branch `claude/gcl-cinematic-institutional-site-6qx964`
+**Revision R2 (2026-08-06): Desktop Cinematic Remediation — see §R2 at the top.** The original v1 report follows unchanged as historical record.
+
+---
+
+## R2 · Desktop Cinematic Remediation (Founder round 2, 2026-08-06)
+
+**Founder verdict on v1:** mobile approved; desktop NOT founder-ready — read as a polished static
+landing page, Replay broken, layout defects (institution line crowding copy, arbitrary center
+mission line, misaligned engagement rows, unbalanced desktop scale).
+
+### R2.1 Root cause of the desktop motion failure (verified, not assumed)
+1. **The `html.js` gate never executed before paint.** It shipped as `next/script strategy="beforeInteractive"`,
+   which in App Router **static export** emits no executable inline script — it rides the `self.__next_s`
+   queue and runs only at hydration (network-delayed by seconds, on real connections). Until then every
+   `.js`-gated hidden state was inactive → the page painted fully visible → every GSAP `.to()` reveal
+   tweened to values already applied → **zero visible motion**, exactly "a static landing page."
+   *(Local Chromium testing masked this: on localhost hydration lands in ~50ms.)*
+2. **The seen-path suppressed all arrival motion for the whole tab session** — the Vercel SSO bounce
+   guarantees a revisit, so the Founder essentially always landed on the static composition.
+3. **Reduced-motion ambiguity:** if the reviewing desktop has OS "Reduce Motion" enabled, the site
+   intentionally renders fully static and Replay (old behavior) silently no-opped — indistinguishable
+   from "broken." *(Diagnostic below at R2.7.)*
+4. **Even when firing, v1 desktop motion was too subtle** — small opacity fades; the round-1 review
+   itself had scored continuity "asserted, not delivered."
+
+### R2.2 Root cause of the Replay failure
+- Hero chip: the chip sat at document y≈1729 (absolute, below the fold); a real mouse click triggered
+  the browser's **native focus-scroll after the scroll-await had already resolved**, so the intro
+  played ~1,300px above the viewport ("does nothing"). Programmatic clicks (round-1 tests) don't
+  focus-scroll — which is why it passed earlier verification.
+- Old handler raced `scrollIntoView(smooth)` against `tl.restart()`, and under reduced motion
+  returned silently.
+- If hydration was late/never (root cause 1), no handler was attached at all.
+
+### R2.3 What changed (motion architecture)
+- **js-gate:** a real inline `<script>` is now the **first child of `<body>`** — executes before any
+  content paints, in every browser, no framework loader. (Verified in `out/index.html`.)
+- **Replay as a deterministic state machine:** button disables (`aria-busy`), scroll-to-top is awaited
+  (rAF-polled + double-rAF re-assert against native focus-scroll, chip now `position:fixed`, blur()
+  before start), state resets, timeline `pause(0).invalidate()` + explicit re-application of initial
+  states, `play(0)`, re-enable on complete. Works from any scroll position, any state, 3+ consecutive
+  times, keyboard included; under reduced motion it scrolls to the composed arrival (never a silent no-op).
+- **Desktop scene architecture** (all inside `matchMedia("(min-width:1024px) and (prefers-reduced-motion: no-preference)")`;
+  mobile <1024px byte-equivalent, still 2 pins):
+  - *Arrival:* pull-back extended to a 100vh camera move — the whole stage (mark+wordmark+taglines)
+    recedes as ONE unit, gateway glow dims, stage darkens, ENTER cue exits early.
+  - *Institution:* pinned 100svh scene (~0.9 viewport hold) — statement lines mask-reveal staggered
+    (descender-safe masks), then paragraphs rise while the statement shifts left; gold rule draws in a
+    **dedicated grid column** that cannot touch type.
+  - *Mission:* pinned three-scene sequence (~1.5 viewports) — pillars enter/hold/recede with depth
+    (scale, drift, full fade-out of retired scenes), numerals count up from content data; the gold
+    connector draws **horizontal grid-measured segments** between consecutive pillars (shared optical y,
+    segment opacity always ≤ its pillars', fades with them — never a center divider, never through text).
+  - *Ecosystem:* each wing wipes in via clip-path from alternating sides with staggered content and a
+    drawn hairline; the previous wing recedes and **restores to full opacity when scrolled back**
+    (bidirectional, contrast-safe); intro heading + chapter marks now reveal.
+  - *Lab:* hairlines draw (scaleX), blueprint grid parallaxes (transform-only).
+  - *Principles:* one-visible pinned sequence with real vertical hand-off (incoming rises, outgoing
+    sinks, overlap window shortened — no double-exposure).
+  - *Engagement:* staged resolve (glow+mark → headline mask → row stagger) bookending the arrival glow.
+- Pinned total: **5.4 viewports** (arrival 1.0 · institution 0.9 · mission 1.5 · principles 2.0).
+
+### R2.4 Layout corrections (Founder defects A–D — all measured)
+| Defect | Fix | Evidence |
+|---|---|---|
+| A · Institution line overlapped copy | Dedicated `[line] 2px [gutter] clamp(2rem,4vw,4.5rem) [content]` grid track | 0 overlaps at 1024/1280/1440/1680/1920 (min gap 41–72px) |
+| B · Mission center divider | Grid-measured horizontal segments, drawn between scenes, fade with their pillars; `display:none` after sequence | 0 text crossings across 7 scroll positions × 5 widths; no full-height divider |
+| C · Engagement misalignment | True 2-col grid `[label] minmax(18rem,28rem) [desc] 1fr`, baseline-aligned; footer shares the same container | Label x identical (all 6 rows), desc x identical, row-height spread 1.0px, at all 5 widths; "Investment & strategic relationships" single-line from 1024 up |
+| D · Empty/compressed scale | Pinned scenes fill the former voids; dead-zone scan (200px steps, luma/style deltas): **0 spans >1 viewport with no on-screen change** at 1440 & 1920; wings vertically centered ≥1680; display type +15% ≥1680 | Forward-only scans, both widths |
+
+### R2.5 Verification (all measured on the built static export in real Chromium)
+| Check | Result |
+|---|---|
+| Fresh-visit intro (1440/1920/390/320) | ✅ staged opacity ladder 0→1 over ~5s |
+| Hero Replay chip — **real mouse click** | ✅ scrollY stays 0 for the entire replay; intro completes on-screen |
+| Footer Replay from mid-page ×3 consecutive | ✅ scroll reaches top first (≤1.2s), full 1→0→1 cycle each time |
+| Double-fire + keyboard Replay | ✅ no wedge; full cycle via Tab+Enter |
+| Seen-path (reload) | ✅ static composition + 8s glow-breathe (the only ambient animation) |
+| Reduced motion | ✅ 0 pins, everything visible, Replay scrolls to composed arrival |
+| No-JS | ✅ all chapters fully visible |
+| Institution beat 2 in-viewport | ✅ 0 boundary violations at 4 widths (was: hidden at 3 of 4) |
+| Mission staging | ✅ empty space above content 20% (was 58–66%); pillar center at ~31% of viewport |
+| axe-core after full scroll + back | ✅ 0 violations (was 15 serious contrast) |
+| Console errors, idle mutations | ✅ 0 across all widths; 0 idle mutations at 4 positions |
+| Mobile regression 375/390/430 | ✅ pins = 2 (unchanged), intro plays, INDEX overlay works, 0 overflow at 320 |
+| typecheck · lint · build · root typecheck | ✅ all clean |
+| Gateway G aspect (arrival/nav/engagement) | ✅ 0.00–0.02% deviation; footer lockup replaced by bare mark + wordmark (was 1:1 tile) |
+
+### R2.6 Adversarial review verdict trail
+Round-2 Opus review (before fixes): **borderline** — architecture right, staging wrong; 15 defects
+(3 critical: hero-chip focus-scroll replay, institution pin overflowing the fold, mission pin void).
+All 15 fixed with measured acceptance gates (above). Per-chapter cinematic ratings at review time:
+arrival 4/5, ecosystem/lab/engagement 3/5, institution/mission/principles 2/5 — the 2/5s were all
+staging defects (D2/D3/D5), which are the ones fixed and re-measured.
+
+### R2.7 Diagnostic note for the Founder
+If desktop still appears static after this deploy, check the OS accessibility setting first:
+**macOS → System Settings → Accessibility → Display → "Reduce Motion"** (Windows: Settings →
+Accessibility → Visual effects → Animation effects). With Reduce Motion ON, the site intentionally
+presents the complete composition without animation — that is the accessible design, not a defect.
+
+### R2.8 Remaining risks (R2)
+1. Verified in Chromium only — Safari/Firefox/WebKit unavailable in the build container. The fixes
+   are standards-based (inline script, fixed positioning, blur+rAF), but a manual Safari pass on the
+   preview is recommended.
+2. At 1920, a receding mission pillar title can clip the right viewport edge mid-transition (low
+   opacity, transitional, ~0.5s) — cosmetic.
+3. Live-preview browser automation is impossible from the build environment (egress blocks
+   `*.vercel.app`; Vercel SSO); all browser evidence is from the byte-identical local static export,
+   tied to the deployed commit via Vercel build logs.
+4. Lighthouse was not re-run this round (motion code adds ~4KB gz; image weight unchanged) — spot-check
+   recommended after founder approval.
+
+### R2.9 Founder review checklist (desktop pass)
+1. Open the preview in a NEW tab (fresh session) at desktop size → the arrival should play automatically (~5s).
+2. Scroll slowly: arrival should hold and pull back as one object; Institution statement should
+   reveal line-by-line inside the frame; Mission should hold while three pillars hand off with the
+   gold thread drawing between them; Ecosystem wings should wipe in one room at a time; Principles
+   should show exactly one principle at a time; Engagement should resolve glow → headline → rows.
+3. Click **Replay arrival** (top control after the intro, or in the footer): the page should return
+   to the top and replay the full sequence — try it three times in a row.
+4. Reload the page: composition appears complete immediately (no forced replay), with a slow glow breathing.
+5. On your phone: confirm nothing changed from the version you approved.
+6. If desktop still looks static: see R2.7 (OS Reduce Motion), then report back.
+
+### R2 screenshots (`docs/reviews/assets/gcl-v1/r2-*.webp`)
+| File | Shows |
+|---|---|
+| `r2-arrival.webp` | Arrival composed, 1440 |
+| `r2-institution-pinned.webp` | Institution pinned scene mid-reveal, in-frame, 1440 |
+| `r2-mission-scene.webp` | Mission scene hand-off at 1920 — the review's "most damning frame," fixed |
+| `r2-ecosystem-wing.webp` | Ecosystem wing mid-wipe, 1440 |
+| `r2-principles.webp` | Principles single-visible transition, 1440 |
+| `r2-engagement.webp` | Engagement resolve + aligned grid, 1440 |
+| `r2-footer.webp` | Footer on the master grid with mark+wordmark treatment |
+| `r2-mobile-full.webp` | Mobile 390 full page (regression: unchanged) |
 
 ---
 

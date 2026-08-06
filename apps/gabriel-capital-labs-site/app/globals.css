@@ -1012,7 +1012,18 @@ html.js .mission__connector {
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
-    padding-top: clamp(5rem, 20vh, 8rem);
+    /* D3 — the ceiling here originally clamped out at 8rem, which bound
+       at viewport heights ≥~820px (20vh > 8rem past that point) — so the
+       padding stopped growing with the viewport while the viewport kept
+       growing, and the active pillar's measured center drifted below the
+       required middle-50% band by 1080px tall (0.224, need ≥0.25).
+       14rem never actually binds across the whole tested 768–1080px
+       range (20vh tops out at 216px there, under 14rem/224px), so the
+       offset keeps scaling with the viewport at every tested height —
+       verified live: center ratio 0.30 (768) / 0.32 (900) / 0.30 (1080),
+       empty-space-above 20–22% at all three (both comfortably inside the
+       required bounds, not just barely over the line). */
+    padding-top: clamp(5rem, 20vh, 14rem);
     padding-bottom: 0;
   }
   html.js .mission__pillar--right {
