@@ -1,0 +1,446 @@
+{
+  "fixtureVersion": 1,
+  "synthetic": true,
+  "containsConsumerPii": false,
+  "containsSourceReportContent": false,
+  "purpose": "P0 credit-truth, confirmation, packet, versioning, and artifact contract fixtures",
+  "tradelineCases": [
+    {
+      "id": "mixed-current-status",
+      "displayName": "Synthetic Installment A",
+      "accountType": "INSTALLMENT",
+      "bureauObservations": {
+        "EQUIFAX": {
+          "presence": "PRESENT",
+          "summaryStatus": "Collection Account",
+          "detailedStatus": "Collection Account",
+          "balanceCents": 432100,
+          "provenance": "synthetic://report-v1/equifax/tradeline-a/status"
+        },
+        "EXPERIAN": {
+          "presence": "PRESENT",
+          "summaryStatus": "Closed",
+          "detailedStatus": "Over 120 days past due",
+          "balanceCents": 432100,
+          "provenance": "synthetic://report-v1/experian/tradeline-a/status"
+        },
+        "TRANSUNION": {
+          "presence": "PRESENT",
+          "summaryStatus": "Closed",
+          "detailedStatus": "Collection Account",
+          "balanceCents": 432100,
+          "provenance": "synthetic://report-v1/transunion/tradeline-a/status"
+        }
+      },
+      "historicalEvidence": [
+        {
+          "kind": "MAJOR_DELINQUENCY",
+          "maxDelinquencyDays": 150,
+          "provenance": "synthetic://report-v1/history/tradeline-a/delinquency"
+        },
+        {
+          "kind": "CHARGE_OFF",
+          "provenance": "synthetic://report-v1/history/tradeline-a/charge-off"
+        }
+      ],
+      "expected": {
+        "accountCondition": "MIXED",
+        "reportedAdversity": "ADVERSE",
+        "cleanAllowed": false,
+        "bureauObservationsRemainIsolated": true,
+        "transunionMayClaimSummaryCollectionStatus": false,
+        "genericCollectionClaimRequiresFieldQualification": true
+      }
+    },
+    {
+      "id": "closed-zero-with-late-history",
+      "displayName": "Synthetic Revolving B",
+      "accountType": "REVOLVING",
+      "bureauObservations": {
+        "EXPERIAN": {
+          "presence": "PRESENT",
+          "summaryStatus": "Closed",
+          "detailedStatus": "Over 120 days past due",
+          "balanceCents": 0,
+          "provenance": "synthetic://report-v1/experian/tradeline-b/status"
+        }
+      },
+      "historicalEvidence": [
+        {
+          "kind": "LATE_PAYMENT",
+          "maxDelinquencyDays": 120,
+          "provenance": "synthetic://report-v1/history/tradeline-b/payment-grid"
+        }
+      ],
+      "expected": {
+        "accountCondition": "DEROGATORY",
+        "reportedAdversity": "ADVERSE",
+        "cleanAllowed": false,
+        "historicalEvidenceRemainsVisible": true
+      }
+    },
+    {
+      "id": "collection-with-chargeoff-history",
+      "displayName": "Synthetic Revolving C",
+      "accountType": "REVOLVING",
+      "bureauObservations": {
+        "EQUIFAX": {
+          "presence": "PRESENT",
+          "summaryStatus": "Collection Account",
+          "detailedStatus": "Collection Account",
+          "balanceCents": 176300,
+          "provenance": "synthetic://report-v1/equifax/tradeline-c/status"
+        },
+        "EXPERIAN": {
+          "presence": "ABSENT_CONFIRMED",
+          "provenance": "synthetic://report-v1/experian/tradeline-c/presence"
+        },
+        "TRANSUNION": {
+          "presence": "ABSENT_CONFIRMED",
+          "provenance": "synthetic://report-v1/transunion/tradeline-c/presence"
+        }
+      },
+      "historicalEvidence": [
+        {
+          "kind": "CHARGE_OFF",
+          "provenance": "synthetic://report-v1/history/tradeline-c/charge-off"
+        },
+        {
+          "kind": "CONSUMER_DISPUTE_ANNOTATION",
+          "provenance": "synthetic://report-v1/history/tradeline-c/comment"
+        }
+      ],
+      "expected": {
+        "accountCondition": "DEROGATORY",
+        "reportedAdversity": "ADVERSE",
+        "cleanAllowed": false
+      }
+    },
+    {
+      "id": "transferred-with-loss-history",
+      "displayName": "Synthetic Installment D",
+      "accountType": "INSTALLMENT",
+      "bureauObservations": {
+        "EQUIFAX": {
+          "presence": "ABSENT_CONFIRMED",
+          "provenance": "synthetic://report-v1/equifax/tradeline-d/presence"
+        },
+        "EXPERIAN": {
+          "presence": "PRESENT",
+          "summaryStatus": "Closed",
+          "detailedStatus": "Collection Account",
+          "balanceCents": 0,
+          "provenance": "synthetic://report-v1/experian/tradeline-d/status"
+        },
+        "TRANSUNION": {
+          "presence": "PRESENT",
+          "summaryStatus": "Closed",
+          "detailedStatus": "Transferred",
+          "balanceCents": 0,
+          "provenance": "synthetic://report-v1/transunion/tradeline-d/status"
+        }
+      },
+      "historicalEvidence": [
+        {
+          "kind": "LOSS_REPORTED",
+          "provenance": "synthetic://report-v1/history/tradeline-d/loss"
+        }
+      ],
+      "expected": {
+        "accountCondition": "DEROGATORY",
+        "reportedAdversity": "ADVERSE",
+        "cleanAllowed": false,
+        "requiresConsumerReviewBeforeDispute": true
+      }
+    },
+    {
+      "id": "paid-closed-good-standing-three-bureau",
+      "displayName": "Synthetic Student Loan E",
+      "accountType": "STUDENT_LOAN",
+      "bureauObservations": {
+        "EQUIFAX": {
+          "presence": "PRESENT",
+          "summaryStatus": "Paid; Closed; Never Late",
+          "detailedStatus": "Pays as Agreed",
+          "balanceCents": 0,
+          "provenance": "synthetic://report-v1/equifax/tradeline-e/status"
+        },
+        "EXPERIAN": {
+          "presence": "PRESENT",
+          "summaryStatus": "Paid; Closed; Never Late",
+          "detailedStatus": "Pays as Agreed",
+          "balanceCents": 0,
+          "provenance": "synthetic://report-v1/experian/tradeline-e/status"
+        },
+        "TRANSUNION": {
+          "presence": "PRESENT",
+          "summaryStatus": "Paid; Closed; Never Late",
+          "detailedStatus": "Pays as Agreed",
+          "balanceCents": 0,
+          "provenance": "synthetic://report-v1/transunion/tradeline-e/status"
+        }
+      },
+      "historicalEvidence": [],
+      "expected": {
+        "accountCondition": "CLEAN",
+        "reportedAdversity": "FAVORABLE",
+        "cleanAllowed": true,
+        "coveredSectionsComplete": true,
+        "disputeGrounds": "NONE_DETECTED"
+      }
+    },
+    {
+      "id": "paid-closed-good-standing-two-bureau",
+      "displayName": "Synthetic Retail F",
+      "accountType": "REVOLVING",
+      "bureauObservations": {
+        "EQUIFAX": {
+          "presence": "PRESENT",
+          "summaryStatus": "Paid; Closed; Never Late",
+          "detailedStatus": "Pays as Agreed",
+          "balanceCents": 0,
+          "provenance": "synthetic://report-v1/equifax/tradeline-f/status"
+        },
+        "EXPERIAN": {
+          "presence": "PRESENT",
+          "summaryStatus": "Paid; Closed; Never Late",
+          "detailedStatus": "Pays as Agreed",
+          "balanceCents": 0,
+          "provenance": "synthetic://report-v1/experian/tradeline-f/status"
+        },
+        "TRANSUNION": {
+          "presence": "ABSENT_CONFIRMED",
+          "provenance": "synthetic://report-v1/transunion/tradeline-f/presence"
+        }
+      },
+      "historicalEvidence": [],
+      "expected": {
+        "accountCondition": "CLEAN",
+        "cleanAllowed": true,
+        "coveredSectionsComplete": true,
+        "confirmedAbsenceDoesNotContaminateCoveredClean": true
+      }
+    },
+    {
+      "id": "paid-closed-good-standing-one-bureau",
+      "displayName": "Synthetic Builder G",
+      "accountType": "INSTALLMENT",
+      "bureauObservations": {
+        "EQUIFAX": {
+          "presence": "ABSENT_CONFIRMED",
+          "provenance": "synthetic://report-v1/equifax/tradeline-g/presence"
+        },
+        "EXPERIAN": {
+          "presence": "PRESENT",
+          "summaryStatus": "Paid; Closed; Never Late",
+          "detailedStatus": "Pays as Agreed",
+          "balanceCents": 0,
+          "provenance": "synthetic://report-v1/experian/tradeline-g/status"
+        },
+        "TRANSUNION": {
+          "presence": "ABSENT_CONFIRMED",
+          "provenance": "synthetic://report-v1/transunion/tradeline-g/presence"
+        }
+      },
+      "historicalEvidence": [],
+      "expected": {
+        "accountCondition": "CLEAN",
+        "cleanAllowed": true,
+        "coveredSectionsComplete": true,
+        "noCrossBureauInference": true
+      }
+    },
+    {
+      "id": "pays-as-agreed-one-bureau",
+      "displayName": "Synthetic Merchant H",
+      "accountType": "INSTALLMENT",
+      "bureauObservations": {
+        "EQUIFAX": {
+          "presence": "ABSENT_CONFIRMED",
+          "provenance": "synthetic://report-v1/equifax/tradeline-h/presence"
+        },
+        "EXPERIAN": {
+          "presence": "PRESENT",
+          "summaryStatus": "Pays as Agreed",
+          "detailedStatus": "Pays as Agreed",
+          "balanceCents": 246800,
+          "provenance": "synthetic://report-v1/experian/tradeline-h/status"
+        },
+        "TRANSUNION": {
+          "presence": "ABSENT_CONFIRMED",
+          "provenance": "synthetic://report-v1/transunion/tradeline-h/presence"
+        }
+      },
+      "historicalEvidence": [],
+      "expected": {
+        "accountCondition": "CLEAN",
+        "reportedAdversity": "FAVORABLE",
+        "cleanAllowed": true,
+        "coveredSectionsComplete": true,
+        "disputeGrounds": "NONE_DETECTED"
+      }
+    },
+    {
+      "id": "explicit-product-type-beats-name-rule",
+      "displayName": "Synthetic Merchant I",
+      "sourceProductType": "REVOLVING",
+      "bureauObservations": {
+        "EQUIFAX": {
+          "presence": "ABSENT_CONFIRMED",
+          "provenance": "synthetic://report-v1/equifax/tradeline-i/presence"
+        },
+        "EXPERIAN": {
+          "presence": "PRESENT",
+          "summaryStatus": "Pays as Agreed",
+          "detailedStatus": "Pays as Agreed",
+          "balanceCents": 219700,
+          "dateReported": "2026-01-13",
+          "provenance": "synthetic://report-v1/experian/tradeline-i/type"
+        },
+        "TRANSUNION": {
+          "presence": "ABSENT_CONFIRMED",
+          "provenance": "synthetic://report-v1/transunion/tradeline-i/presence"
+        }
+      },
+      "historicalEvidence": [],
+      "expected": {
+        "accountCondition": "CLEAN",
+        "reportedAdversity": "FAVORABLE",
+        "cleanAllowed": true,
+        "coveredSectionsComplete": true,
+        "derivedProductType": "REVOLVING",
+        "creditorNameRuleMayOverrideExplicitSourceType": false
+      }
+    },
+    {
+      "id": "incomplete-sections-block-clean",
+      "displayName": "Synthetic Incomplete J",
+      "accountType": "REVOLVING",
+      "bureauObservations": {
+        "EQUIFAX": {
+          "presence": "PRESENT",
+          "summaryStatus": "Paid; Closed; Never Late",
+          "detailedStatus": "Pays as Agreed",
+          "balanceCents": 0,
+          "provenance": "synthetic://report-v1/equifax/tradeline-j/status"
+        },
+        "EXPERIAN": {
+          "presence": "UNKNOWN",
+          "provenance": "synthetic://report-v1/experian/tradeline-j/presence"
+        },
+        "TRANSUNION": {
+          "presence": "ABSENT_CONFIRMED",
+          "provenance": "synthetic://report-v1/transunion/tradeline-j/presence"
+        }
+      },
+      "historicalEvidence": [],
+      "expected": {
+        "accountCondition": "NEEDS_REVIEW",
+        "reportedAdversity": "UNKNOWN",
+        "cleanAllowed": false,
+        "coveredSectionsComplete": false,
+        "unknownPresenceIsNotAbsence": true
+      }
+    }
+  ],
+  "confirmationCases": [
+    {
+      "id": "observed-but-unconfirmed",
+      "candidateIssue": {
+        "bureau": "EQUIFAX",
+        "field": "status",
+        "observedValue": "Collection Account",
+        "provenance": "synthetic://report-v1/equifax/tradeline-a/status"
+      },
+      "consumerConfirmation": null,
+      "expected": {
+        "mayExplainEvidence": true,
+        "mayGenerateInaccuracyAssertion": false,
+        "disputeGrounds": "CONSUMER_REVIEW_REQUIRED"
+      }
+    },
+    {
+      "id": "identity-former-address-confirmed-correct",
+      "candidateIssue": {
+        "bureau": "EXPERIAN",
+        "field": "formerAddress",
+        "observedValue": "SYNTHETIC_FORMER_ADDRESS",
+        "provenance": "synthetic://report-v1/experian/identity/former-address"
+      },
+      "consumerConfirmation": "CORRECT_FORMER",
+      "expected": {
+        "mayGenerateInaccuracyAssertion": false,
+        "identityClassification": "CORRECT_FORMER"
+      }
+    }
+  ],
+  "packetCases": [
+    {
+      "id": "one-cra-packet-three-items",
+      "items": [
+        { "id": "item-1", "recipientType": "CRA", "recipientId": "EQUIFAX", "strategy": "FCRA_611", "round": 1 },
+        { "id": "item-2", "recipientType": "CRA", "recipientId": "EQUIFAX", "strategy": "FCRA_611", "round": 1 },
+        { "id": "item-3", "recipientType": "CRA", "recipientId": "EQUIFAX", "strategy": "FCRA_611", "round": 1 }
+      ],
+      "expected": {
+        "packetCount": 1,
+        "accountSectionCount": 3
+      }
+    },
+    {
+      "id": "incompatible-recipient-types",
+      "items": [
+        { "id": "item-1", "recipientType": "CRA", "recipientId": "EQUIFAX", "strategy": "FCRA_611", "round": 1 },
+        { "id": "item-2", "recipientType": "COLLECTOR", "recipientId": "SYNTHETIC_COLLECTOR", "strategy": "FDCPA_809", "round": 1 }
+      ],
+      "expected": {
+        "packetCount": 2,
+        "recipientTypesRemainSeparate": true
+      }
+    }
+  ],
+  "artifactCases": [
+    {
+      "id": "canonical-pdf-contamination",
+      "canonicalContent": "SYNTHETIC LETTER BODY",
+      "forbiddenMetadataOrContent": [
+        "browser URL",
+        "browser timestamp",
+        "browser page title",
+        "browser page numbering",
+        "CreditVector promotional footer",
+        "educational-tool footer",
+        "UI-only instructions"
+      ],
+      "expected": {
+        "previewDownloadPrintBytesShareCanonicalArtifact": true,
+        "forbiddenMatches": 0
+      }
+    },
+    {
+      "id": "missing-recipient-address",
+      "recipient": {
+        "name": "Synthetic Recipient",
+        "address": null,
+        "verificationStatus": "UNVERIFIED"
+      },
+      "expected": {
+        "mailReadiness": "NOT_READY",
+        "operatorReviewRequired": true,
+        "mayApproveAsReady": false
+      }
+    },
+    {
+      "id": "immutable-regeneration",
+      "correspondenceVersions": [
+        { "version": 1, "contentHash": "synthetic-hash-v1", "immutable": true },
+        { "version": 2, "contentHash": "synthetic-hash-v2", "immutable": true }
+      ],
+      "expected": {
+        "currentVersion": 2,
+        "versionOneRetrievable": true,
+        "versionOneOverwritten": false
+      }
+    }
+  ]
+}

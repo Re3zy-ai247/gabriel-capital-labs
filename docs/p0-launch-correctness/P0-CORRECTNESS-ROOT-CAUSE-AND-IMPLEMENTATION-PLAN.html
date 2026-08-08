@@ -1,0 +1,1672 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark light">
+  <meta name="description" content="CreditVector P0 correctness root-cause analysis, implementation specification, compliance gate, and acceptance status.">
+  <title>CreditVector P0 Correctness — Root Cause &amp; Implementation Plan</title>
+  <style>
+:root {
+  color-scheme: dark light;
+  --canvas: #07111f;
+  --surface: #0d1929;
+  --surface-raised: #122238;
+  --surface-soft: #162a43;
+  --ink: #f4f7fb;
+  --ink-secondary: #c7d2e0;
+  --ink-muted: #92a4ba;
+  --line: #29415e;
+  --line-strong: #3a5878;
+  --accent: #43c8de;
+  --accent-soft: #0f3946;
+  --danger: #ff8d9b;
+  --danger-soft: #3c1923;
+  --warning: #f8cb63;
+  --warning-soft: #3b2e13;
+  --success: #7eddb2;
+  --success-soft: #14382b;
+  --code: #06101c;
+  --max: 1660px;
+  --radius-sm: .45rem;
+  --radius-md: .8rem;
+  --radius-lg: 1.1rem;
+  --shadow: 0 18px 50px rgb(0 0 0 / .22);
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 1rem; }
+body {
+  margin: 0;
+  min-width: 20rem;
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 1rem;
+  line-height: 1.65;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--accent); text-underline-offset: .18em; text-decoration-thickness: .08em; }
+a:hover { text-decoration-thickness: .14em; }
+a:focus-visible, summary:focus-visible, .table-wrap:focus-visible {
+  outline: .2rem solid var(--warning);
+  outline-offset: .2rem;
+  border-radius: var(--radius-sm);
+}
+.skip-link {
+  position: fixed;
+  z-index: 100;
+  inset: .75rem auto auto .75rem;
+  transform: translateY(-180%);
+  padding: .7rem 1rem;
+  background: var(--ink);
+  color: var(--canvas);
+  border-radius: var(--radius-sm);
+  font-weight: 800;
+}
+.skip-link:focus { transform: none; }
+
+.masthead {
+  border-bottom: 1px solid var(--line);
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
+}
+.masthead-inner {
+  width: min(var(--max), calc(100% - 2rem));
+  margin-inline: auto;
+  padding: 1rem 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  min-height: 2.75rem;
+}
+.brand-mark {
+  width: 2.5rem;
+  height: 2.5rem;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line-strong);
+  border-radius: .7rem;
+  color: var(--accent);
+  background: var(--surface-raised);
+  font-weight: 900;
+  letter-spacing: -.03em;
+}
+.brand-copy { display: grid; line-height: 1.2; }
+.brand-copy strong { font-size: .95rem; letter-spacing: .01em; }
+.brand-copy span { color: var(--ink-muted); font-size: .78rem; }
+.signal-row { display: flex; flex-wrap: wrap; gap: .5rem; }
+.signal {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.25rem;
+  padding: .35rem .7rem;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  color: var(--ink-secondary);
+  background: var(--surface-raised);
+  font-size: .78rem;
+  font-weight: 750;
+  letter-spacing: .02em;
+}
+.signal.is-danger { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 55%, var(--line)); background: var(--danger-soft); }
+.signal.is-safe { color: var(--success); border-color: color-mix(in srgb, var(--success) 45%, var(--line)); background: var(--success-soft); }
+
+.page-shell {
+  width: min(var(--max), calc(100% - 2rem));
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(13rem, 17rem) minmax(0, 1fr);
+  gap: clamp(1.25rem, 2.5vw, 2.75rem);
+  align-items: start;
+}
+.rail {
+  position: sticky;
+  top: 1rem;
+  max-height: calc(100vh - 2rem);
+  overflow: auto;
+  margin-block: 1.5rem;
+  scrollbar-width: thin;
+}
+.toc {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  overflow: clip;
+}
+.toc summary {
+  min-height: 2.75rem;
+  padding: .75rem .9rem;
+  cursor: pointer;
+  color: var(--ink);
+  font-size: .8rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+.toc nav { border-top: 1px solid var(--line); padding: .5rem; }
+.toc ol { list-style: none; padding: 0; margin: 0; display: grid; gap: .15rem; }
+.toc a {
+  display: block;
+  min-height: 2.5rem;
+  padding: .55rem .65rem;
+  border-radius: .45rem;
+  color: var(--ink-secondary);
+  text-decoration: none;
+  font-size: .82rem;
+  line-height: 1.25;
+}
+.toc a:hover { color: var(--ink); background: var(--surface-raised); }
+.rail-note {
+  margin: .9rem 0 0;
+  padding: .85rem;
+  border-left: .2rem solid var(--danger);
+  background: var(--danger-soft);
+  color: var(--ink-secondary);
+  font-size: .8rem;
+}
+
+main { min-width: 0; padding: 1.5rem 0 4rem; }
+article {
+  min-width: 0;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  padding: clamp(1.15rem, 3vw, 3rem);
+}
+h1, h2, h3, h4, h5, h6 {
+  color: var(--ink);
+  line-height: 1.18;
+  text-wrap: balance;
+  scroll-margin-top: 1rem;
+}
+h1 {
+  margin: 0 0 1.2rem;
+  max-width: 24ch;
+  font-size: clamp(2.1rem, 5vw, 4.8rem);
+  letter-spacing: -.05em;
+}
+h1:not(:first-child) {
+  max-width: none;
+  margin-top: 4rem;
+  padding: 1.4rem 0 .8rem;
+  border-top: .25rem solid var(--danger);
+  font-size: clamp(1.8rem, 3.5vw, 3rem);
+  color: var(--danger);
+}
+h2 {
+  margin: 3rem 0 1rem;
+  padding-top: .25rem;
+  font-size: clamp(1.45rem, 2.6vw, 2.1rem);
+  letter-spacing: -.025em;
+}
+h2::after {
+  content: "";
+  display: block;
+  width: 4rem;
+  height: .18rem;
+  margin-top: .65rem;
+  background: var(--accent);
+  border-radius: 999px;
+}
+h3 { margin: 2rem 0 .7rem; font-size: clamp(1.15rem, 2vw, 1.45rem); }
+h4 { margin: 1.5rem 0 .65rem; font-size: 1.05rem; }
+p, li { color: var(--ink-secondary); }
+p { margin: .7rem 0 1rem; }
+strong { color: var(--ink); }
+hr { border: 0; border-top: 1px solid var(--line); margin: 2.5rem 0; }
+ul, ol { padding-left: 1.35rem; }
+li { padding-left: .25rem; margin: .35rem 0; }
+li::marker { color: var(--accent); font-weight: 800; }
+
+article > p:first-of-type,
+article > p:nth-of-type(2),
+article > p:nth-of-type(3),
+article > p:nth-of-type(4),
+article > p:nth-of-type(5),
+article > p:nth-of-type(6),
+article > p:nth-of-type(7) {
+  font-size: .91rem;
+}
+.callout {
+  margin: 1.25rem 0 2rem;
+  padding: 1rem 1.15rem;
+  border: 1px solid color-mix(in srgb, var(--warning) 55%, var(--line));
+  border-left: .3rem solid var(--warning);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  background: var(--warning-soft);
+}
+.callout p { margin: 0; color: var(--ink); }
+
+.table-wrap {
+  width: 100%;
+  overflow: auto;
+  margin: 1rem 0 1.5rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--canvas);
+  scrollbar-color: var(--line-strong) transparent;
+}
+table {
+  width: 100%;
+  min-width: 48rem;
+  border-collapse: collapse;
+  font-size: .82rem;
+  line-height: 1.45;
+}
+th, td {
+  padding: .75rem .8rem;
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+  color: var(--ink-secondary);
+}
+th:last-child, td:last-child { border-right: 0; }
+tr:last-child td { border-bottom: 0; }
+th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface-soft);
+  color: var(--ink);
+  font-size: .74rem;
+  font-weight: 850;
+  letter-spacing: .045em;
+  text-transform: uppercase;
+}
+tbody tr:nth-child(even) td { background: color-mix(in srgb, var(--surface-raised) 65%, transparent); }
+tbody tr:hover td { background: var(--surface-raised); }
+
+code {
+  padding: .12em .34em;
+  border: 1px solid var(--line);
+  border-radius: .3rem;
+  background: var(--code);
+  color: #d9f5ff;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: .88em;
+  overflow-wrap: anywhere;
+}
+pre {
+  max-width: 100%;
+  overflow: auto;
+  margin: 1rem 0 1.5rem;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-left: .25rem solid var(--accent);
+  border-radius: var(--radius-md);
+  background: var(--code);
+  line-height: 1.55;
+  tab-size: 2;
+}
+pre code { padding: 0; border: 0; background: transparent; color: #d9f5ff; font-size: .82rem; overflow-wrap: normal; }
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.75rem;
+  padding: .15rem .5rem;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: .72rem;
+  line-height: 1.1;
+  letter-spacing: .025em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.status-no-go, .status-fail { color: var(--danger); background: var(--danger-soft); }
+.status-warn { color: var(--warning); background: var(--warning-soft); }
+.status-pass { color: var(--success); background: var(--success-soft); }
+
+.document-footer {
+  width: min(var(--max), calc(100% - 2rem));
+  margin: 0 auto;
+  padding: 0 0 2rem;
+  color: var(--ink-muted);
+  font-size: .78rem;
+  text-align: right;
+}
+
+@media (max-width: 68rem) {
+  .page-shell { grid-template-columns: 1fr; gap: 0; }
+  .rail { position: static; max-height: none; margin: 1rem 0 0; overflow: visible; }
+  .toc nav { max-height: 18rem; overflow: auto; }
+  .toc ol { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .rail-note { display: none; }
+  main { padding-top: 1rem; }
+}
+@media (max-width: 46rem) {
+  .masthead-inner, .page-shell, .document-footer { width: min(100% - 1rem, var(--max)); }
+  .masthead-inner { align-items: flex-start; }
+  .signal-row { width: 100%; }
+  .signal { flex: 1 1 auto; justify-content: center; }
+  .toc ol { grid-template-columns: 1fr; }
+  article { border-radius: var(--radius-md); padding: 1rem; }
+  h1 { font-size: clamp(2rem, 11vw, 3.1rem); }
+  h1:not(:first-child) { margin-top: 3rem; }
+  h2 { margin-top: 2.5rem; }
+  table { min-width: 42rem; font-size: .78rem; }
+  th, td { padding: .65rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}
+@media (prefers-color-scheme: light) {
+  :root {
+    --canvas: #edf2f7;
+    --surface: #ffffff;
+    --surface-raised: #f3f7fb;
+    --surface-soft: #e4edf6;
+    --ink: #102238;
+    --ink-secondary: #31475f;
+    --ink-muted: #5b7088;
+    --line: #c6d3df;
+    --line-strong: #9fb2c4;
+    --accent: #00687c;
+    --accent-soft: #d8f0f4;
+    --danger: #a82239;
+    --danger-soft: #fde7ea;
+    --warning: #795600;
+    --warning-soft: #fff2c7;
+    --success: #11633f;
+    --success-soft: #dcf4e7;
+    --code: #eff5fa;
+    --shadow: 0 18px 50px rgb(18 42 66 / .1);
+  }
+  code, pre code { color: #123b4e; }
+}
+@media print {
+  :root {
+    color-scheme: light;
+    --canvas: #fff;
+    --surface: #fff;
+    --surface-raised: #f5f5f5;
+    --surface-soft: #ececec;
+    --ink: #000;
+    --ink-secondary: #202020;
+    --ink-muted: #444;
+    --line: #b8b8b8;
+    --line-strong: #888;
+    --accent: #005c70;
+    --danger: #8a1026;
+    --danger-soft: #fff;
+    --warning: #665000;
+    --warning-soft: #fff;
+    --success: #155c3c;
+    --success-soft: #fff;
+    --code: #f5f5f5;
+  }
+  @page { size: letter; margin: .55in; }
+  body { font-size: 9pt; line-height: 1.42; }
+  .skip-link, .masthead, .rail, .document-footer { display: none !important; }
+  .page-shell { display: block; width: 100%; }
+  main { padding: 0; }
+  article { border: 0; box-shadow: none; padding: 0; }
+  h1 { font-size: 26pt; }
+  h1:not(:first-child) { font-size: 20pt; }
+  h2 { font-size: 16pt; break-after: avoid; }
+  h3 { font-size: 12pt; break-after: avoid; }
+  p, li { orphans: 3; widows: 3; }
+  pre, blockquote, tr { break-inside: avoid; }
+  .table-wrap { overflow: visible; border-radius: 0; }
+  table { min-width: 0; font-size: 6.5pt; }
+  th { position: static; }
+  a { color: inherit; text-decoration: none; }
+  a.external::after { content: " (" attr(href) ")"; font-size: .78em; overflow-wrap: anywhere; }
+  .status { white-space: normal; }
+}
+</style>
+</head>
+<body>
+  <a class="skip-link" href="#content">Skip to audit content</a>
+  <header class="masthead" aria-label="Document status">
+    <div class="masthead-inner">
+      <div class="brand" aria-label="CreditVector internal engineering handoff">
+        <span class="brand-mark" aria-hidden="true">CV</span>
+        <span class="brand-copy"><strong>CreditVector Correctness Gate</strong><span>Internal engineering &amp; compliance handoff</span></span>
+      </div>
+      <div class="signal-row" aria-label="Checkpoint signals">
+        <span class="signal is-danger">Launch: NO-GO</span>
+        <span class="signal">Analysis-only checkpoint</span>
+        <span class="signal is-safe">Production mutation: none</span>
+      </div>
+    </div>
+  </header>
+  <div class="page-shell">
+    <aside class="rail" aria-label="Document navigation and gate notice">
+      <details class="toc" open>
+        <summary>Checkpoint contents</summary>
+        <nav aria-label="Checkpoint sections"><ol><li><a href="#executive-decision">Executive decision</a></li>
+<li><a href="#1-resume-and-isolation-status">1. Resume and isolation</a></li>
+<li><a href="#2-privacy-boundary-and-evidence-handling">2. Privacy boundary</a></li>
+<li><a href="#3-source-of-truth-evidence-matrix">3. Evidence matrix</a></li>
+<li><a href="#4-earliest-truth-loss-analysis">4. Truth-loss analysis</a></li>
+<li><a href="#5-current-source-file-map-and-ownership">5. Source map</a></li>
+<li><a href="#6-canonical-credit-truth-model">6. Truth model</a></li>
+<li><a href="#7-classification-and-strategy-desk-specification">7. Classification</a></li>
+<li><a href="#8-round-0-consumer-identity-baseline">8. Identity baseline</a></li>
+<li><a href="#9-correspondence-strategy-specification">9. Strategy matrix</a></li>
+<li><a href="#10-case-recipient-and-packet-model">10. Packet model</a></li>
+<li><a href="#11-canonical-artifact-fulfillment-and-evidence-ledger">11. Artifact &amp; ledger</a></li>
+<li><a href="#12-migration-backfill-and-implementation-sequence">12. Migration sequence</a></li>
+<li><a href="#13-regression-fixtures-and-verification-plan">13. Verification</a></li>
+<li><a href="#14-responsive-ux-theme-and-accessibility-plan">14. UX &amp; accessibility</a></li>
+<li><a href="#compliance-review-creditvector-p0-correctness-plan">Compliance review</a></li>
+<li><a href="#16-adversarial-review-and-unresolved-risks">16. Adversarial review</a></li>
+<li><a href="#17-final-acceptance-gate-status">17. Acceptance gate</a></li>
+<li><a href="#18-decisions-owner-checkpoint-and-next-actions">18. Owner checkpoint</a></li></ol></nav>
+      </details>
+      <p class="rail-note"><strong>P0 remains closed.</strong><br>Implementation stops before schema or production mutation pending Founder and counsel approvals.</p>
+    </aside>
+    <main id="content">
+      <article aria-label="CreditVector P0 correctness plan">
+<h1 id="creditvector-p0-correctness-root-cause-implementation-plan">CreditVector P0 Correctness — Root Cause &amp; Implementation Plan</h1>
+<p><strong>Program:</strong> Credit Intelligence &amp; Correspondence Integrity Gate<br>
+<strong>Date:</strong> 2026-08-08<br>
+<strong>Repository baseline:</strong> <code>origin/main</code> at <code>3a9943040da5648f1ae68fa9b8e0f06a276f75b1</code><br>
+<strong>P0 branch/worktree:</strong> <code>codex/p0-launch-correctness</code> at <code>/private/tmp/creditvector-p0-launch-correctness</code><br>
+<strong>Phase:</strong> Analysis-only checkpoint<br>
+<strong>Launch verdict:</strong> <strong class="status status-no-go">NO-GO</strong><br>
+<strong>Production access:</strong> <strong>NOT REQUIRED</strong><br>
+<strong>Production mutation:</strong> None  </p>
+<blockquote class="callout">
+<p>This is an internal engineering and compliance review, not legal advice. Any Critical finding and the final recipient-specific correspondence rules require outside-counsel review before public launch.</p>
+</blockquote>
+<h2 id="executive-decision">Executive decision</h2>
+<p>The current P0 gate does not pass. The earliest confirmed loss of report truth is the structured extraction contract, not PDF text extraction. The report text is available to the parser, but the parser schema has one account-level status, balance, delinquency date, and reported date, then copies those values to every reported bureau. It cannot represent bureau-specific summary/detail differences, payment-history grids, collection-section evidence, historical derogatory markers, or field provenance.</p>
+<p>Downstream code then compounds that loss:</p>
+<ol>
+<li><code>AccountType</code> is used as if it were account condition.</li>
+<li><code>isFactualNegative</code> ignores bureau observations and historical evidence.</li>
+<li>Strategy Desk treats every non-government score band as a queue candidate.</li>
+<li>letter generation requires neither a source-bound disputed field nor consumer confirmation.</li>
+<li>packet grouping is tradeline-first and may group different bureau recipients together.</li>
+<li>recipient edits, enclosures, correspondence content, and responses are mutable.</li>
+<li>browser printing is treated as the PDF artifact.</li>
+<li>Mail Center evidence is derived from current mutable rows rather than an append-only record.</li>
+</ol>
+<p>The parser/classification truth projection could initially shadow-write a typed JSON v2, but the complete P0 program requires durable correspondence versions, consumer assertions, recipient revisions, canonical artifacts, and an evidence ledger. Those require an owner-approved additive migration. Repository migration governance therefore triggers the P0 stop condition: analysis, specifications, and synthetic contracts may proceed; production-sensitive implementation must wait.</p>
+<h2 id="1-resume-and-isolation-status">1. Resume and isolation status</h2>
+<div class="table-wrap" role="region" aria-label="Scrollable data table" tabindex="0"><table>
+<thead>
+<tr>
+<th scope="col">Check</th>
+<th scope="col">Result</th>
+<th scope="col">Evidence / decision</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Current repository</td>
+<td>Verified</td>
+<td><code>/Users/re3zy/Documents/gabriel-capital-labs-to-upload</code></td>
+</tr>
+<tr>
+<td>Original working branch</td>
+<td>Preserved</td>
+<td><code>launch/extraction-wave-2</code>; no edits made there</td>
+</tr>
+<tr>
+<td>Production baseline</td>
+<td>Verified</td>
+<td><code>origin/main</code> at <code>3a9943040da5</code></td>
+</tr>
+<tr>
+<td>P0 isolation</td>
+<td>Verified</td>
+<td>Separate worktree and branch <code>codex/p0-launch-correctness</code></td>
+</tr>
+<tr>
+<td>Gate D</td>
+<td>Closed</td>
+<td>Not reopened</td>
+</tr>
+<tr>
+<td>M2</td>
+<td><strong class="status status-fail">Blocked</strong></td>
+<td>M2 execution plan says failed adversarial review; no execution authorized</td>
+</tr>
+<tr>
+<td>M2 worktree</td>
+<td>Preserved</td>
+<td>Detached at <code>4d842e7</code>; its untracked local probes were not touched</td>
+</tr>
+<tr>
+<td>Credentials</td>
+<td>Not requested</td>
+<td>No production credential shell opened</td>
+</tr>
+<tr>
+<td>Production writes</td>
+<td>None</td>
+<td>No migration, merge, deploy, backfill, or remote mutation</td>
+</tr>
+<tr>
+<td>Schema change likely</td>
+<td><strong class="status status-warn">Yes</strong></td>
+<td>Required for full case/version/artifact/evidence integrity</td>
+</tr>
+<tr>
+<td>Production access required now</td>
+<td><strong class="status status-pass">No</strong></td>
+<td>Repository + local evidence were sufficient for this checkpoint</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="stop-decision">Stop decision</h3>
+<p>The P0 program must stop after this checkpoint because:</p>
+<ul>
+<li>M2 remains separately blocked and must not be disturbed.</li>
+<li>the full P0 durable model requires an additive schema migration.</li>
+<li>migration application and any reanalysis/backfill are production mutations requiring owner authorization.</li>
+<li>Critical and High correctness findings remain unresolved in current code.</li>
+</ul>
+<h2 id="2-privacy-boundary-and-evidence-handling">2. Privacy boundary and evidence handling</h2>
+<p>The Founder-provided source report, generated consumer letter PDF, and screenshots were treated as local, read-only evidence.</p>
+<ul>
+<li>No source report, consumer letter, screenshot, source text, address, account number, DOB, SSN, or consumer identity was copied into the repository.</li>
+<li>No source-report content was placed in fixture values, logs, Markdown, or HTML.</li>
+<li>The evidence matrix below contains only creditor labels and structural observations necessary to explain the defect.</li>
+<li>Regression data in <code>scripts/fixtures/p0-credit-truth.synthetic.json</code> is explicitly synthetic and contains no account-number field.</li>
+<li>Before any commit, staged paths must be enumerated and checked against the sensitive-evidence denylist.</li>
+</ul>
+<h2 id="3-source-of-truth-evidence-matrix">3. Source-of-truth evidence matrix</h2>
+<p>Notation: <strong>S</strong> = summary field; <strong>D</strong> = detailed account field; <strong>H</strong> = payment-history grid; <strong>C</strong> = collection section. Dollar amounts, dates, account numbers, addresses, and consumer identity are intentionally omitted.</p>
+<div class="table-wrap" role="region" aria-label="Scrollable data table" tabindex="0"><table>
+<thead>
+<tr>
+<th scope="col">Account</th>
+<th scope="col">Bureau-specific source observations</th>
+<th scope="col">Historical derogatory evidence</th>
+<th scope="col">Current CreditVector projection</th>
+<th scope="col">Source truth preserved?</th>
+<th scope="col">Verdict</th>
+<th scope="col">Suspected loss point</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Extra</td>
+<td>EQ absent; EX S=Closed and D=over 120 days past due; TU absent</td>
+<td>EX H includes escalating late-payment markers through 120 days</td>
+<td>EX-only, Closed, <code>Clean</code>, “no derogatory history”</td>
+<td>No</td>
+<td><strong class="status status-fail">FAIL</strong></td>
+<td>Extraction has no payment-history/detailed-status representation; no DOFD survives; clean predicate sees neither derogatory type nor DOFD</td>
+</tr>
+<tr>
+<td>Upgrade</td>
+<td>All three S=Closed; all three D=Collection Account; C evidence across reporting bureaus</td>
+<td>Late and charge-off markers; transfer/sale, loss, and prior-dispute annotations</td>
+<td>INSTALLMENT; Collection detail displayed; still <code>Clean</code></td>
+<td>No</td>
+<td><strong class="status status-fail">FAIL</strong></td>
+<td>Historical/account evidence dropped; entity/product classification later substituted for condition</td>
+</tr>
+<tr>
+<td>Discover</td>
+<td>EQ S/D=Collection; EX S=Closed and D=over 120 days past due; TU S=Closed and D=Collection</td>
+<td>Charge-off, loss, severe delinquency, and prior-dispute evidence</td>
+<td>REVOLVING; present on all three; <code>Clean</code></td>
+<td>No</td>
+<td><strong class="status status-fail">FAIL</strong></td>
+<td>Per-bureau summary/detail and history cannot survive extraction; classification ignores surviving bureau evidence</td>
+</tr>
+<tr>
+<td>OneMain</td>
+<td>EQ S/D=Collection; EX S=Closed and D=over 120 days past due; TU S=Closed and D=Collection</td>
+<td>Major delinquency, charge-off, and loss evidence</td>
+<td>INSTALLMENT; one Collection value copied to all bureaus; <code>Clean</code></td>
+<td>No</td>
+<td><strong class="status status-fail">FAIL</strong></td>
+<td>Direct proof of cross-bureau value smearing plus false Clean projection</td>
+</tr>
+<tr>
+<td>Seed / Cross River</td>
+<td>EQ absent; EX/TU S=Closed and D=Collection; C evidence for reporting bureaus</td>
+<td>Late/charge-off grid plus transfer/loss evidence</td>
+<td>EX/TU Collection with one date copied; <code>Clean</code></td>
+<td>No</td>
+<td><strong class="status status-fail">FAIL</strong></td>
+<td>History, collection-section facts, and bureau-specific dates lost</td>
+</tr>
+<tr>
+<td>Navient</td>
+<td>Two paid/closed, Pays-as-Agreed controls; bureau coverage differs by row; bureau dates differ</td>
+<td>None detected</td>
+<td>Two STUDENT_LOAN rows; both <code>Clean</code>; one global date copied within each row</td>
+<td>Condition only</td>
+<td><strong class="status status-warn">PASS condition / FAIL fidelity</strong></td>
+<td>Clean is reasonable; bureau-specific dates are not preserved</td>
+</tr>
+<tr>
+<td>Fingerhut / WebBank</td>
+<td>All reporting bureaus paid/closed and Pays as Agreed; one bureau date differs</td>
+<td>None detected</td>
+<td>REVOLVING; <code>Clean</code>; one bureau date copied to another</td>
+<td>Condition only</td>
+<td><strong class="status status-warn">PASS condition / FAIL fidelity</strong></td>
+<td>Correct control classification, incorrect per-bureau field projection</td>
+</tr>
+<tr>
+<td>Austin Capital</td>
+<td>All reporting bureaus paid/closed and Pays as Agreed; bureau dates differ</td>
+<td>None detected</td>
+<td>INSTALLMENT; <code>Clean</code>; one date copied across bureaus</td>
+<td>Condition only</td>
+<td><strong class="status status-warn">PASS condition / FAIL fidelity</strong></td>
+<td>Correct control classification, incorrect per-bureau field projection</td>
+</tr>
+<tr>
+<td>MDG US</td>
+<td>EX only; explicit source product type Revolving; Pays as Agreed</td>
+<td>None detected</td>
+<td>EX only; <code>Clean</code>; product type INSTALLMENT</td>
+<td>Partly</td>
+<td><strong class="status status-warn">PASS condition / FAIL type</strong></td>
+<td>Hardcoded creditor-name classification overrides explicit source product type</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="evidence-conclusion">Evidence conclusion</h3>
+<p>The correct fix is not “make everything disputable.” The control accounts show that Clean must remain possible. The required rule is narrower:</p>
+<blockquote class="callout">
+<p>An account may be Clean only when all covered, successfully parsed relevant sections provide affirmative non-adverse evidence and no authoritative adverse observation exists. Missing, incomplete, conflicting, or unattributed evidence produces <code>NEEDS_REVIEW</code>, not Clean.</p>
+</blockquote>
+<h2 id="4-earliest-truth-loss-analysis">4. Earliest truth-loss analysis</h2>
+<h3 id="4-1-pdf-extraction-is-not-the-loss-point">4.1 PDF extraction is not the loss point</h3>
+<p>The source report was extracted locally in full enough to remain below the upload and model cutoffs. The structural loss starts when report text is converted into the parser’s account schema.</p>
+<h3 id="4-2-first-confirmed-loss-extraction-contract">4.2 First confirmed loss: extraction contract</h3>
+<div class="table-wrap" role="region" aria-label="Scrollable data table" tabindex="0"><table>
+<thead>
+<tr>
+<th scope="col">File</th>
+<th scope="col">Current behavior</th>
+<th scope="col">Consequence</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>lib/aiParse.ts:18-36</code></td>
+<td>One account-level <code>status</code>, <code>balanceCents</code>, <code>dofd</code>, <code>dateReported</code>, plus a bureau list</td>
+<td>Cannot express distinct bureau values, summary vs detail, payment grids, collection sections, or history</td>
+</tr>
+<tr>
+<td><code>lib/aiParse.ts:166-183</code></td>
+<td>Copies one value set into every bureau listed; empty list falls back to every covered bureau</td>
+<td>Cross-bureau fact smearing and possible fabricated presence</td>
+</tr>
+<tr>
+<td><code>lib/parse.ts:145-175</code></td>
+<td>Regex fallback also derives one status/balance/DOFD and copies it to all covered bureaus</td>
+<td>Same defect when AI extraction is unavailable</td>
+</tr>
+<tr>
+<td><code>lib/bureauData.ts:6-15</code></td>
+<td>Stores current status/balance/date/DOFD/remarks only</td>
+<td>Historical evidence and field-level provenance are unrepresentable</td>
+</tr>
+<tr>
+<td><code>lib/analyze.ts:85-98</code></td>
+<td>Scores from global type, balance, DOFD, and narrow bureau JSON</td>
+<td>Derivation starts from incomplete evidence</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="4-3-second-loss-product-type-is-treated-as-condition">4.3 Second loss: product type is treated as condition</h3>
+<p><code>lib/classify.ts</code> answers “what kind of account/entity is this?” It does not answer “is this account adverse?” Original-creditor overrides are reasonable for product type, but downstream code treats the result as condition. The MDG control additionally proves that explicit report product type must outrank a creditor-name rule.</p>
+<h3 id="4-4-third-loss-false-clean-projection">4.4 Third loss: false Clean projection</h3>
+<p><code>lib/intelligence/snapshot.ts:15-39</code> defines a factual negative as:</p>
+<ul>
+<li>product type <code>COLLECTION</code>, <code>CHARGE_OFF</code>, or <code>PUBLIC_RECORD</code>; or</li>
+<li>any non-null global DOFD.</li>
+</ul>
+<p>It does not inspect bureau status, detailed status, payment history, charge-off markers, collection-section evidence, loss reporting, or parser completeness. <code>app/tradelines/page.tsx</code> and <code>app/strategist/page.tsx</code> then render the result as “Clean,” “no derogatory history,” and “nothing to dispute.” Existing Mission Control tests explicitly pin the incomplete predicate.</p>
+<h3 id="4-5-fourth-loss-score-is-presented-as-dispute-intelligence">4.5 Fourth loss: score is presented as dispute intelligence</h3>
+<p><code>lib/scoring.ts</code> gives every non-government account type a baseline score. <code>app/strategist/page.tsx:25</code> and <code>app/api/strategist/plan/route.ts:44</code> admit every row except <code>NOT_RECOMMENDED</code> into the queue, while only the page presentation attempts to hide actions for rows it calls Clean. The AI plan endpoint still describes the full non-government queue as disputable and defaults a missing angle to “standard reinvestigation.”</p>
+<h3 id="4-6-fifth-loss-outbound-claims-have-no-confirmation-boundary">4.6 Fifth loss: outbound claims have no confirmation boundary</h3>
+<p>The letter builder submits a tradeline, strategy, bureau targets, and optional address. It never submits exact disputed fields or consumer assertions. <code>lib/letter.ts</code> then:</p>
+<ul>
+<li>creates a generic status concern when the field is absent;</li>
+<li>uses all-bureau values for a target letter;</li>
+<li>falls back to global balance/DOFD;</li>
+<li>always emits a payment-history concern;</li>
+<li>states that the consumer cannot reconcile fields without asking the consumer.</li>
+</ul>
+<p>The phrase scrubber in <code>lib/compliance.ts</code> cannot enforce source provenance, consumer confirmation, bureau scope, legal trigger, or recipient compatibility.</p>
+<h3 id="root-cause-statement">Root-cause statement</h3>
+<p><strong>Primary root cause:</strong> the parser and normalized truth contract flatten bureau- and history-specific report facts into one mutable account projection.<br>
+<strong>Compounding root cause:</strong> condition, grounds, and score impact are not separate domains.<br>
+<strong>Correspondence root cause:</strong> generation starts from a tradeline and strategy rather than immutable source observations plus consumer-confirmed assertions.<br>
+<strong>Fulfillment root cause:</strong> recipient, packet, letter, PDF, enclosure, response, and evidence states are current projections rather than versioned records.</p>
+<h2 id="5-current-source-file-map-and-ownership">5. Current source-file map and ownership</h2>
+<div class="table-wrap" role="region" aria-label="Scrollable data table" tabindex="0"><table>
+<thead>
+<tr>
+<th scope="col">Subsystem</th>
+<th scope="col">Principal files</th>
+<th scope="col">Analysis owner</th>
+<th scope="col">Future single-writer boundary</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Source extraction / normalization</td>
+<td><code>lib/aiParse.ts</code>, <code>lib/parse.ts</code>, <code>lib/analyze.ts</code>, <code>lib/bureauData.ts</code>, <code>lib/classify.ts</code></td>
+<td>Agent A</td>
+<td>Parser/domain engineer only</td>
+</tr>
+<tr>
+<td>Classification / Strategy Desk</td>
+<td><code>lib/intelligence/snapshot.ts</code>, <code>lib/scoring.ts</code>, <code>lib/recommend.ts</code>, <code>app/tradelines/page.tsx</code>, <code>app/strategist/*</code>, strategist API</td>
+<td>Coordinator</td>
+<td>Classification/Strategy writer only</td>
+</tr>
+<tr>
+<td>Identity Round 0</td>
+<td>identity discrepancy/letter APIs, <code>app/identity/page.tsx</code>, new baseline domain</td>
+<td>Coordinator</td>
+<td>Identity writer only</td>
+</tr>
+<tr>
+<td>Strategy / factual claim builder</td>
+<td><code>lib/strategies.ts</code>, <code>lib/letter.ts</code>, letter generation/round2 APIs</td>
+<td>Agent D</td>
+<td>Correspondence writer only</td>
+</tr>
+<tr>
+<td>Case / packet model</td>
+<td><code>lib/mailCenter.ts</code>, campaign seams, new case/packet models</td>
+<td>Agent D</td>
+<td>Case architecture writer only</td>
+</tr>
+<tr>
+<td>Recipient / address</td>
+<td><code>lib/furnisher.ts</code>, tradeline API, mail prepare/resolver paths</td>
+<td>Agent D</td>
+<td>Recipient-data writer only</td>
+</tr>
+<tr>
+<td>PDF / canonical artifact</td>
+<td>print route, download route, new artifact renderer/storage</td>
+<td>Agent G</td>
+<td>Document writer only</td>
+</tr>
+<tr>
+<td>Mail Center / evidence</td>
+<td><code>lib/mailCenter.ts</code>, MailManifest/MailStore, mail pages, new ledger</td>
+<td>Agent G</td>
+<td>Lifecycle/ledger writer only</td>
+</tr>
+<tr>
+<td>Theme / responsive / accessibility</td>
+<td><code>app/globals.css</code>, shell/sidebar/header/Kai, affected pages</td>
+<td>Agent G</td>
+<td>UX writer only</td>
+</tr>
+<tr>
+<td>Adversarial verification</td>
+<td>tests and read-only review</td>
+<td>Agent J</td>
+<td>Separate test files only when assigned</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="6-canonical-credit-truth-model">6. Canonical credit-truth model</h2>
+<h3 id="6-1-durable-entities">6.1 Durable entities</h3>
+<div class="table-wrap" role="region" aria-label="Scrollable data table" tabindex="0"><table>
+<thead>
+<tr>
+<th scope="col">Entity</th>
+<th scope="col">Purpose</th>
+<th scope="col">Immutability / boundary</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ReportVersion</code></td>
+<td>One uploaded source report and its covered bureaus/sections</td>
+<td>Immutable; encrypted source reference, content digest, report date, tenant, consumer scope</td>
+</tr>
+<tr>
+<td><code>ExtractionRun</code></td>
+<td>Parser/model/rules version, completion map, errors, confidence, and input digest</td>
+<td>Append-only; a retry creates a new run</td>
+</tr>
+<tr>
+<td><code>Account</code></td>
+<td>Stable account identity inside the consumer case</td>
+<td>Contains no bureau-specific mutable truth; links report observations across versions</td>
+</tr>
+<tr>
+<td><code>FieldObservation</code></td>
+<td>Bureau + report version + section + account + field + raw/normalized value + source locator</td>
+<td>Immutable and field-scoped; encrypted when value-bearing</td>
+</tr>
+<tr>
+<td><code>HistoricalEvidence</code></td>
+<td>Bureau-scoped payment history, charge-off, loss, collection, transfer, dispute annotation, and relevant dates</td>
+<td>Immutable; never discarded because a current status becomes closed or paid</td>
+</tr>
+<tr>
+<td><code>DerivedAccountAssessment</code></td>
+<td>Versioned condition, grounds, reported-adversity label, reasons, completeness, classifier/policy versions, input digest</td>
+<td>Derived and replaceable only by a new version; never source truth</td>
+</tr>
+<tr>
+<td><code>ConsumerAssertion</code></td>
+<td>Consumer-confirmed account, bureau, exact field, observed value/version, claimed correction, basis, confirmation time</td>
+<td>Immutable after use; changes create a new assertion/version</td>
+</tr>
+</tbody>
+</table></div>
+<p>An additive <code>BureauData v2</code> JSON projection may be used for a shadow-read rollout, but it may not become another mutable source of truth. The normalized observation and history records above are the authoritative model; JSON is a cached projection with an input digest and version.</p>
+<h3 id="6-2-observation-shape">6.2 Observation shape</h3>
+<p>Every source-derived fact must retain:</p>
+<pre><code class="language-text">tenant/case -&gt; reportVersion -&gt; extractionRun -&gt; account
+            -&gt; bureau -&gt; report section -&gt; field -&gt; observed value
+            -&gt; source locator -&gt; normalization rule/version
+</code></pre>
+<p>Presence is tri-state: <code>PRESENT</code>, <code>ABSENT_CONFIRMED</code>, or <code>UNKNOWN</code>. Parser silence is <code>UNKNOWN</code>, never absence. Summary status, detailed status, payment history, collections, remarks, balance, dates, and product type are distinct fields. A value observed at one bureau can never populate another bureau's field.</p>
+<h3 id="6-3-truth-invariants">6.3 Truth invariants</h3>
+<ol>
+<li>No derived assessment may introduce a fact not reachable through its input observations.</li>
+<li>An observation is addressable by report version, bureau, section, field, and source locator.</li>
+<li>Historical adverse evidence is monotonic within a report version: a current closed/zero balance does not erase it.</li>
+<li>Explicit source product type outranks creditor-name heuristics; heuristics are tagged inference, not observation.</li>
+<li><code>UNKNOWN</code> completeness or presence cannot be coerced to <code>ABSENT_CONFIRMED</code> or affirmative good standing.</li>
+<li>Conflicting summary/detail values remain separate and produce a reasoned assessment; they are not overwritten.</li>
+<li>A new parse or consumer report creates a new version and never silently changes the old one.</li>
+<li>Legacy flattened rows are labeled <code>LEGACY_UNVERIFIED</code>; they cannot be promoted to authoritative v2 evidence without reanalysis.</li>
+</ol>
+<h2 id="7-classification-and-strategy-desk-specification">7. Classification and Strategy Desk specification</h2>
+<h3 id="7-1-separate-domains">7.1 Separate domains</h3>
+<div class="table-wrap" role="region" aria-label="Scrollable data table" tabindex="0"><table>
+<thead>
+<tr>
+<th scope="col">Domain</th>
+<th scope="col">Values</th>
+<th scope="col">Meaning and safe use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>AccountCondition</code></td>
+<td><code>CLEAN</code>, <code>DEROGATORY</code>, <code>MIXED</code>, <code>NEEDS_REVIEW</code></td>
+<td>Evidence condition only. <code>CLEAN</code> requires complete affirmative non-adverse evidence and no adverse observation. <code>MIXED</code> preserves conflicting or bureau-varying evidence.</td>
+</tr>
+<tr>
+<td><code>DisputeGrounds</code></td>
+<td><code>STRONG</code>, <code>MODERATE</code>, <code>LIMITED</code>, <code>NONE_DETECTED</code>, <code>CONSUMER_REVIEW_REQUIRED</code></td>
+<td>Quality of a potential, field-specific basis; never an assertion that information is inaccurate and never an outcome prediction.</td>
+</tr>
+<tr>
+<td><code>ReportedAdversity</code></td>
+<td><code>ADVERSE</code>, <code>POTENTIALLY_ADVERSE</code>, <code>NEUTRAL</code>, <code>FAVORABLE</code>, <code>UNKNOWN</code></td>
+<td>Describes what the report appears to show, not a promised score effect. This is the safer internal replacement for the requested <code>ReportImpact</code> labels.</td>
+</tr>
+</tbody>
+</table></div>
+<p><code>High / Medium / Low</code> remains presentation-only prioritization and must be computed only after condition, field grounds, confirmation, eligibility, and readiness. It must not stand in for truth or predict deletion/score improvement.</p>
+<h3 id="7-2-deterministic-rules">7.2 Deterministic rules</h3>
+<div class="table-wrap" role="region" aria-label="Scrollable data table" tabindex="0"><table>
+<thead>
+<tr>
+<th scope="col">Evidence state</th>
+<th scope="col">Condition</th>
+<th scope="col">Grounds default</th>
+<th scope="col">UI action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Complete, affirmative good standing; no adverse history or conflict</td>
+<td><code>CLEAN</code></td>
+<td><code>NONE_DETECTED</code></td>
+<td>“Looks correct” and “Explain why no dispute basis is detected”</td>
+</tr>
+<tr>
+<td>Any authoritative current or historical adverse evidence, no material conflict</td>
+<td><code>DEROGATORY</code></td>
+<td><code>CONSUMER_REVIEW_REQUIRED</code> until exact field review</td>
+<td>“Review for inaccuracies”</td>
+</tr>
+<tr>
+<td>Bureau or section conflict, or adverse and favorable evidence coexist</td>
+<td><code>MIXED</code></td>
+<td><code>CONSUMER_REVIEW_REQUIRED</code></td>
+<td>Show each source field separately; ask the consumer</td>
+</tr>
+<tr>
+<td>Required section missing, parse failed, presence unknown, or provenance incomplete</td>
+<td><code>NEEDS_REVIEW</code></td>
+<td><code>CONSUMER_REVIEW_REQUIRED</code></td>
+<td>“I'm not sure — help me review”; no Clean claim</td>
+</tr>
+</tbody>
+</table></div>
+<p>Negative/adverse reporting is not itself a dispute. The product must ask whether a specific observed field is accurate, record the consumer response, and generate no dispute assertion until confirmation exists.</p>
+<h3 id="7-3-strategy-desk-correction">7.3 Strategy Desk correction</h3>
+<ul>
+<li>Build the queue from eligible, consumer-reviewed <code>ConsumerAssertion</code> records, not every non-government tradeline.</li>
+<li>Show source bureau, section, exact field, current observed value, history, completeness, and reason for the classification.</li>
+<li>Keep bureau observations visually and structurally isolated.</li>
+<li>Replace “nothing to dispute” with “no issue detected from the evidence parsed” when completeness is affirmative; otherwise show review-needed language.</li>
+<li>Replace dispute-strength outcome framing with grounds quality and explain its evidence inputs.</li>
+<li>The AI plan may organize confirmed items; it may not invent a fallback angle or turn an unconfirmed observation into a claim.</li>
+</ul>
+<h2 id="8-round-0-consumer-identity-baseline">8. Round 0 — Consumer Identity Baseline</h2>
+<h3 id="8-1-domain-and-persistence">8.1 Domain and persistence</h3>
+<p>Create an immutable, versioned <code>IdentityBaseline</code> scoped to tenant, managed consumer, and report version. Each <code>IdentityFact</code> records:</p>
+<ul>
+<li>category: legal name, alias/name variant, current/former address, DOB, SSN last four, phone, employment, mixed-file indicator, or account ownership;</li>
+<li>bureau and report-version provenance;</li>
+<li>encrypted observed value and normalized comparison value;</li>
+<li>consumer classification: <code>CORRECT_CURRENT</code>, <code>CORRECT_FORMER</code>, <code>INCORRECT</code>, <code>NEVER_MINE</code>, <code>OUTDATED_UPDATE_REQUESTED</code>, or <code>REVIEW_NEEDED</code>;</li>
+<li>consumer-confirmed replacement/correction when applicable;</li>
+<li>confirmation actor, timestamp, baseline version, and superseded fact reference.</li>
+</ul>
+<p>Later correspondence must pin <code>identityBaselineVersionId</code>; it must not re-read a mutable profile and silently change a previously approved letter.</p>
+<h3 id="8-2-ux-flow">8.2 UX flow</h3>
+<ol>
+<li>Present one field at a time, grouped by bureau and source section.</li>
+<li>Ask the consumer to classify it; do not preselect “incorrect.”</li>
+<li>Explain that former addresses and employment can be legitimate report data and should be disputed only when the consumer identifies a specific inaccuracy or update need.</li>
+<li>Elevate <code>NEVER_MINE</code>, conflicting core identifiers, and consumer-identified unknown accounts to mixed-file/identity review without declaring identity theft.</li>
+<li>Require a review screen showing exact claims and recipients before correspondence generation.</li>
+<li>Persist a new baseline version on edits; retain every version used by correspondence.</li>
+</ol>
+<h3 id="8-3-privacy-and-safety">8.3 Privacy and safety</h3>
+<p>Encrypt sensitive values and confirmation payloads; display masked values by default; authorize tenant and managed-client scope before decrypting; exclude values from logs, analytics, URLs, support telemetry, and ledger event bodies. Never hash low-entropy identifiers such as SSN last four as a substitute for encryption. Define retention, access audit, export, erasure, and tombstone behavior before migration approval.</p>
+<h2 id="9-correspondence-strategy-specification">9. Correspondence strategy specification</h2>
+<p>Every permitted claim follows:</p>
+<pre><code class="language-text">claim -&gt; reportVersion -&gt; bureau -&gt; account -&gt; section -&gt; field -&gt; observation
+      -&gt; consumerAssertion -&gt; correspondenceVersion
+</code></pre>
+<p>No provenance means no factual claim. No consumer-confirmed disputed field means no dispute assertion.</p>
+<div class="table-wrap" role="region" aria-label="Scrollable data table" tabindex="0"><table>
+<thead>
+<tr>
+<th scope="col">Strategy</th>
+<th scope="col">Recipient and applicability</th>
+<th scope="col">Required evidence / confirmation</th>
+<th scope="col">Permitted request and authority</th>
+<th scope="col">Prohibited / round and grouping controls</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>FCRA §611 Bureau Reinvestigation</td>
+<td>CRA reporting the exact field</td>
+<td>Bureau-scoped observation, consumer assertion, recipient address version</td>
+<td>Concise identification of the field and request for reasonable reinvestigation/correction or deletion if unverifiable; FCRA §611</td>
+<td>No other-bureau values, generic “everything is inaccurate,” or outcome promise; CRA-compatible items may consolidate by recipient/round</td>
+</tr>
+<tr>
+<td>§609/§611 File Disclosure &amp; Dispute</td>
+<td>CRA where the consumer needs file/source disclosure and separately has a confirmed §611 dispute</td>
+<td>Exact disclosure sought; separate confirmed disputed field for any accuracy claim</td>
+<td>Request relevant file/source disclosure and, where supported, §611 reinvestigation</td>
+<td>No “§609 deletion loophole,” unsupported certification demand, or conflation of disclosure with automatic deletion</td>
+</tr>
+<tr>
+<td>Debt Validation</td>
+<td>Verified collector/debt buyer recipient</td>
+<td>Collection role, address, account link; initial-notice and written-dispute timing if invoking statutory cease duty; consumer election</td>
+<td>Request validation and supporting account/authority information; FDCPA §809/15 U.S.C. §1692g where its trigger is established</td>
+<td>No unconditional “must cease” statement when timing is unknown; never send to CRA; no bureau-clock claim</td>
+</tr>
+<tr>
+<td>FCRA + Metro 2 Inconsistency</td>
+<td>CRA or furnisher path separately selected</td>
+<td>Exact, verified field inconsistency and confirmation; applicable recipient basis</td>
+<td>Request investigation/correction; Metro 2 may explain data-format context</td>
+<td>Metro 2 is not an independent consumer cause of action or deletion guarantee; no cross-recipient packet</td>
+</tr>
+<tr>
+<td>FCRA §605 Obsolete Item</td>
+<td>CRA reporting an item whose reporting-period inputs are complete</td>
+<td>Relevant adverse-event dates, item type, policy/rule version, exact consumer confirmation</td>
+<td>Ask CRA to review/remove information that is demonstrably obsolete under the applicable rule</td>
+<td>No age conclusion from missing DOFD/date; unknown inputs block this strategy</td>
+</tr>
+<tr>
+<td>FCRA §623 Direct Furnisher Dispute</td>
+<td>Verified furnisher and direct-dispute address, with counsel-approved legal rule</td>
+<td>Furnisher-specific observation, exact field/basis, address, confirmation, applicability rule</td>
+<td>Direct factual dispute and request to investigate/correct using counsel-approved authority</td>
+<td>Do not cite §611 to a furnisher; do not present §1681s-2(b) as triggered by a direct consumer letter absent CRA notice; no collector-only demands</td>
+</tr>
+<tr>
+<td>FDCPA + FCRA Collection Agency</td>
+<td>Recipient is verified as both collector and furnisher; both paths independently qualify</td>
+<td>Collector-role and furnisher-role facts, timing if §1692g duty claimed, bureau field, confirmation</td>
+<td>Keep validation request and furnishing-accuracy request as distinct sections</td>
+<td>Do not use when either role is unverified; no incompatible CRA content</td>
+</tr>
+<tr>
+<td>Round 2 Demand</td>
+<td>Same recipient and unresolved Round 1 case</td>
+<td>Immutable parent version, delivery evidence, response or elapsed eligible window, response findings, unresolved confirmed fields, new evidence, explicit approval</td>
+<td>Targeted follow-up on unresolved facts and documented chronology</td>
+<td>No automatic strategy switch, repetitive generic letter, regulator threat, or new assertion without confirmation</td>
+</tr>
+<tr>
+<td>Goodwill Adjustment</td>
+<td>Appropriate creditor/furnisher contact; accurate adverse information acknowledged</td>
+<td>Consumer acknowledges accuracy; actual adverse field; consumer-provided context; explicit election</td>
+<td>Courtesy request for discretionary adjustment</td>
+<td>Not a dispute; no accusation, statutory duty, or promise; standalone strategy</td>
+</tr>
+<tr>
+<td>Pay-for-Delete</td>
+<td>Verified collector with authority; policy permits; explicit consumer authorization</td>
+<td>Ownership/authority, amount/settlement terms, risk disclosure, address</td>
+<td>Conditional negotiation proposal</td>
+<td>No representation that deletion is required or assured; no bundling with factual dispute; standalone</td>
+</tr>
+<tr>
+<td>Cease &amp; Desist</td>
+<td>Verified collector; explicit consumer instruction after consequences disclosed</td>
+<td>Collector role/address and durable consumer authorization</td>
+<td>Narrow communication request consistent with approved policy</td>
+<td>No automatic selection; no CRA/furnisher packet; do not obscure that stopping communication does not resolve the underlying account</td>
+</tr>
+<tr>
+<td>CFPB / State AG escalation</td>
+<td>Separate regulator workflow after supported prior history</td>
+<td>Prior correspondence versions, mailing/delivery/response chronology, unresolved issue, evidence, consumer intent and approval</td>
+<td>Prepare a factual complaint draft and evidence index</td>
+<td>No Round 1 auto-threat, fabricated nonresponse, or automatic submission; regulator packets remain separate</td>
+</tr>
+</tbody>
+</table></div>
+<p>All statute text and strategy rules must be versioned and approved by compliance/counsel. Model memory is never the legal source. A §611 reinvestigation is triggered when the consumer disputes completeness or accuracy and the CRA receives notice; the statute supplies timing and reinvestigation duties (<a class="external" rel="noreferrer" href="https://uscode.house.gov/view.xhtml?req=%28title%3A15+section%3A1681i%28c%29+edition%3Aprelim%29">15 U.S.C. §1681i</a>). The §1692g cease-collection-until-verification rule is tied to a written dispute within the statutory validation period, so timing cannot be assumed (<a class="external" rel="noreferrer" href="https://uscode.house.gov/view.xhtml?req=%28title%3A15+section%3A1692g%28b%29+edition%3Aprelim%29">15 U.S.C. §1692g</a>).</p>
+<h2 id="10-case-recipient-and-packet-model">10. Case, recipient, and packet model</h2>
+<h3 id="10-1-required-entities">10.1 Required entities</h3>
+<div class="table-wrap" role="region" aria-label="Scrollable data table" tabindex="0"><table>
+<thead>
+<tr>
+<th scope="col">Entity</th>
+<th scope="col">Required fields / rule</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>DisputeCase</code></td>
+<td>tenant, managed consumer, source report version, identity baseline version, state, policy version</td>
+</tr>
+<tr>
+<td><code>Recipient</code></td>
+<td>canonical party identity and recipient type: CRA, furnisher, collector, goodwill, cease-and-desist, regulator</td>
+</tr>
+<tr>
+<td><code>RecipientAddressVersion</code></td>
+<td>normalized address, source, verification status/method, edited-by/at, effective window; immutable once referenced</td>
+</tr>
+<tr>
+<td><code>Correspondence</code></td>
+<td>logical recipient communication inside a case, strategy family, round, state</td>
+</tr>
+<tr>
+<td><code>CorrespondenceItem</code></td>
+<td>exact account, bureau, field observation, consumer assertion, requested action, evidence refs</td>
+</tr>
+<tr>
+<td><code>CorrespondenceVersion</code></td>
+<td>append-only rendered content/specification, parent version, policy/template versions, approval state</td>
+</tr>
+<tr>
+<td><code>Packet</code></td>
+<td>one recipient/address/version-compatible mailing unit with one or more correspondence items</td>
+</tr>
+<tr>
+<td><code>PacketEnclosure</code></td>
+<td>recipient-specific artifact reference, disclosure class, order, and manifest digest</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="10-2-packetization-key">10.2 Packetization key</h3>
+<p>Default grouping is:</p>
+<pre><code class="language-text">tenant + case + canonical recipient + recipient type + recipient address version
++ compatible strategy/policy version + round + claim class + enclosure-manifest compatibility
+= one packet
+</code></pre>
+<p>The result is recipient-first, not tradeline-first. Three confirmed Equifax §611 items in the same round become one Equifax packet with three clearly separated account sections. An Equifax dispute and a collector validation request always remain two packets. “Same underlying debt” is a relationship hint, never proof of improper duplicate reporting.</p>
+<h3 id="10-3-address-readiness">10.3 Address readiness</h3>
+<p>Resolve the address required by the selected strategy, pin its immutable version, and record its source/verification. A report address, authoritative CRA dispute address, consumer-reviewed override, or verified party record may be a candidate according to policy. Any missing or incomplete required component, failed validation, recipient/type mismatch, or unreviewed override produces <code>RECIPIENT_ADDRESS_REVIEW_REQUIRED</code> and <code>NOT_READY_TO_MAIL</code>. The UI and fulfillment service must read the same pinned address version.</p>
+<h2 id="11-canonical-artifact-fulfillment-and-evidence-ledger">11. Canonical artifact, fulfillment, and evidence ledger</h2>
+<h3 id="11-1-one-artifact-contract">11.1 One artifact contract</h3>
+<p>Preview, download, print, and future CreditVector fulfillment must return the same immutable PDF bytes and hash. Replace browser print with a deterministic server-side renderer using a pinned renderer version, embedded versioned fonts, explicit page sizing/margins, controlled line breaking, and deterministic pagination.</p>
+<p>Each canonical <code>Artifact</code> stores or references encrypted immutable bytes plus:</p>
+<ul>
+<li>SHA-256 digest, MIME type, byte length, and page count;</li>
+<li>renderer, template, correspondence, policy, address, and identity-baseline versions;</li>
+<li>packet/enclosure manifest digest;</li>
+<li>creation actor/time and tenant/case authorization scope.</li>
+</ul>
+<p>Part A contains intentional consumer correspondence. Part B contains only pinned, recipient-specific consumer-selected enclosures. A separate Part C is the CreditVector mailing guide, visibly marked <code>DO NOT MAIL THIS PAGE</code>; it is never silently included in the provider payload. Current-profile changes and globally enabled documents cannot alter an approved artifact.</p>
+<p>The current generated evidence PDF fails this contract: it is a three-page browser print containing Chrome/Skia headers and footers, the app title, timestamp, print URL, browser page counters, unstable flow, and a mostly blank trailing page. That artifact is unsuitable for mailing.</p>
+<h3 id="11-2-approval-and-fulfillment-state-machine">11.2 Approval and fulfillment state machine</h3>
+<pre><code class="language-text">DRAFT -&gt; REVIEW_REQUIRED -&gt; APPROVED_VERSION -&gt; PACKET_READY
+      -&gt; DISPATCHED -&gt; DELIVERED -&gt; RESPONSE_RECEIVED -&gt; RESOLVED / FOLLOW_UP_ELIGIBLE
+</code></pre>
+<ul>
+<li>Editing/regeneration creates <code>CorrespondenceVersion v2</code>; v1 remains retrievable.</li>
+<li>Approval pins the correspondence version, recipient address version, artifact hash, and enclosure manifest.</li>
+<li>Fulfillment accepts only the approved canonical artifact reference; it may not accept arbitrary caller PDF bytes or re-resolve current mutable data.</li>
+<li>Concurrency uses transactional state transitions/idempotency keys so two approvals or dispatches cannot fork the record.</li>
+<li>Deletion is a governed retention/tombstone operation, never silent destruction of correspondence history.</li>
+</ul>
+<h3 id="11-3-append-only-evidence-ledger">11.3 Append-only evidence ledger</h3>
+<p>Ledger events contain identifiers and integrity metadata, not PII-bearing prose. Project the lifecycle from append-only events recording case/report/baseline/recipient/round/item/assertion/evidence references, strategy/statute policy versions, correspondence version, PDF/enclosure hashes, approval, provider, tracking, mailing/delivery dates, due-window rule/version, response artifact/result, report changes, and next action. Response ingestion appends a response artifact/event; it never overwrites the outgoing letter.</p>
+<p>The CFPB advises consumers to identify the exact error and why it is wrong, include supporting copies rather than originals, keep copies, and use the dispute address associated with the report/source; these are checklist inputs, not universal enclosure mandates (<a class="external" rel="noreferrer" href="https://www.consumerfinance.gov/ask-cfpb/how-do-i-dispute-an-error-on-my-credit-report-en-314/">CFPB dispute guidance</a>).</p>
+<h2 id="12-migration-backfill-and-implementation-sequence">12. Migration, backfill, and implementation sequence</h2>
+<h3 id="12-1-migration-impact">12.1 Migration impact</h3>
+<p>The full P0 design cannot be represented safely by the current mutable <code>Tradeline</code>, <code>Letter</code>, and <code>MailManifest</code> records. It requires an additive, owner-approved migration for normalized observation/history records, identity-baseline versions, consumer assertions, recipients/address versions, cases/items, append-only correspondence versions, packet/enclosure manifests, canonical artifact metadata/storage references, and evidence events.</p>
+<p>Migration requirements:</p>
+<ul>
+<li>additive tables/columns first; no destructive rename/drop in the initial rollout;</li>
+<li>explicit tenant and managed-consumer foreign keys on every sensitive row;</li>
+<li>encrypted value-bearing columns and artifacts with key-rotation metadata;</li>
+<li>database constraints for version uniqueness, recipient compatibility, packet ownership, and append-only records;</li>
+<li>transactional/idempotent approval and dispatch transitions;</li>
+<li>indexes for authorized case projections without storing PII in searchable telemetry;</li>
+<li>retention, deletion/tombstone, access-audit, and orphan-artifact cleanup rules;</li>
+<li>a reversible read-path feature flag and rollback that does not erase v2 truth.</li>
+</ul>
+<h3 id="12-2-legacy-policy-and-backfill">12.2 Legacy policy and backfill</h3>
+<p>Current flattened bureau JSON has already lost distinctions, so migration must not manufacture them. Label migrated rows <code>LEGACY_UNVERIFIED</code>, retain their original value/digest, and default assessments to <code>NEEDS_REVIEW</code> where completeness cannot be proved. Do not infer history, confirmed absence, consumer confirmation, recipient verification, correspondence provenance, enclosure composition, or canonical artifact identity.</p>
+<p>Reanalysis must:</p>
+<ol>
+<li>require authorized access to the original encrypted report;</li>
+<li>create a new <code>ReportVersion</code>/<code>ExtractionRun</code>, never rewrite the legacy version;</li>
+<li>compare v1/v2 projections with field-level, PII-safe counters and mismatch categories;</li>
+<li>require consumer reconfirmation if the observation/version underlying an assertion changes;</li>
+<li>preserve prior correspondence and its legacy status without claiming it meets the v2 artifact contract;</li>
+<li>support pause/rollback before any v2 correspondence is enabled.</li>
+</ol>
+<h3 id="12-3-dependency-ordered-implementation">12.3 Dependency-ordered implementation</h3>
+<div class="table-wrap" role="region" aria-label="Scrollable data table" tabindex="0"><table>
+<thead>
+<tr>
+<th scope="col">Phase</th>
+<th scope="col">Scope</th>
+<th scope="col">Dependency / gate</th>
+<th scope="col">Parallelism after gate</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>Owner approves migration design; counsel approves strategy trigger policy; threat model and retention decisions</td>
+<td><strong>Current stop point</strong></td>
+<td>None before approval</td>
+</tr>
+<tr>
+<td>1</td>
+<td>Add durable truth/version/recipient/case/artifact/ledger schema and authorization policies</td>
+<td>Disposable-DB migration validation; owner authorizes application</td>
+<td>Schema writer only</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Parser v2 shadow-write and source-completeness map</td>
+<td>Phase 1; no read-path switch</td>
+<td>AI parser and regex parser may use separate files with shared contract tests</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Assessment engine and Strategy Desk read-only v2 projection</td>
+<td>Verified parser invariants and positive controls</td>
+<td>Classifier and Round 0 identity slices can proceed in parallel</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Identity baseline, exact-field review, consumer assertions, recipient/address resolution</td>
+<td>Versioned truth and authz</td>
+<td>Identity and recipient writers in parallel</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Policy-driven claim builder, correspondence versions, recipient-first packetizer</td>
+<td>Counsel policy + assertions + pinned addresses</td>
+<td>Strategy and packet writers in assigned files</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Canonical PDF, enclosure manifests, artifact store, fulfillment pinning, append-only ledger</td>
+<td>Immutable correspondence/packet versions</td>
+<td>Renderer and lifecycle writers in assigned files</td>
+</tr>
+<tr>
+<td>7</td>
+<td>Responsive/theme/accessibility projections</td>
+<td>Stable domain/API contracts</td>
+<td>UX work independently mergeable; no correctness logic changes</td>
+</tr>
+<tr>
+<td>8</td>
+<td>Shadow comparison, authorized reanalysis/backfill, canary cohort, rollback drill</td>
+<td>All Critical/High tests green; compliance and red-team re-review</td>
+<td>Controlled rollout only; M2 regression check required</td>
+</tr>
+</tbody>
+</table></div>
+<p>No production access, migration application, source-report reanalysis, or deployment is authorized by this checkpoint.</p>
+<h2 id="13-regression-fixtures-and-verification-plan">13. Regression fixtures and verification plan</h2>
+<h3 id="13-1-sanitized-fixtures">13.1 Sanitized fixtures</h3>
+<p><code>scripts/fixtures/p0-credit-truth.synthetic.json</code> contains synthetic structural cases for:</p>
+<ul>
+<li>conflicting bureau summary/detail observations and historical adversity;</li>
+<li>closed/zero balance with severe historical delinquency;</li>
+<li>collection plus charge-off history;</li>
+<li>transfer/loss history;</li>
+<li>four affirmative good-standing controls with varied bureau coverage;</li>
+<li>explicit source product type outranking a creditor-name heuristic;</li>
+<li>observed-but-unconfirmed facts;</li>
+<li>compatible CRA packet consolidation and incompatible recipient separation;</li>
+<li>forbidden PDF chrome, missing-address readiness, and immutable regeneration.</li>
+</ul>
+<p><code>scripts/p0-credit-truth-fixture.test.ts</code> currently verifies 23 fixture-contract assertions, including an incomplete-section negative control. It intentionally imports no production classifier, packetizer, generator, or renderer because those components cannot yet represent the contract. This is a design guard, not evidence that the product is fixed.</p>
+<h3 id="13-2-required-ten-invariant-status">13.2 Required ten-invariant status</h3>
+<div class="table-wrap" role="region" aria-label="Scrollable data table" tabindex="0"><table>
+<thead>
+<tr>
+<th scope="col">Test</th>
+<th scope="col">Current result</th>
+<th scope="col">Evidence / required closure</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1. Mixed bureau values remain isolated; no false TU Collection claim</td>
+<td><strong class="status status-fail">FAIL</strong></td>
+<td>Parser copies one status to all bureaus; source example is falsely Clean. Production property test must prove field A at bureau X is never used for bureau Y.</td>
+</tr>
+<tr>
+<td>2. Collection + charge-off history is not Clean</td>
+<td><strong class="status status-fail">FAIL</strong></td>
+<td>Historical charge-off is unrepresented/ignored.</td>
+</tr>
+<tr>
+<td>3. Closed/zero plus 120-day history retains adversity</td>
+<td><strong class="status status-fail">FAIL</strong></td>
+<td>Payment grid is lost; current UI says no derogatory history.</td>
+</tr>
+<tr>
+<td>4. Paid/closed good-standing control may be Clean</td>
+<td><strong class="status status-warn">CONDITIONAL</strong></td>
+<td>Observed controls are Clean, but completeness and bureau-date isolation are not enforced; add positive-control and incomplete-parse tests.</td>
+</tr>
+<tr>
+<td>5. Three compatible Equifax items become one packet</td>
+<td><strong class="status status-fail">FAIL</strong></td>
+<td>Current system emits one letter per tradeline/bureau.</td>
+</tr>
+<tr>
+<td>6. CRA dispute and collector validation remain separate</td>
+<td><strong class="status status-warn">CONDITIONAL / accidental</strong></td>
+<td>Strategy-based grouping may separate this example, but recipient type/address compatibility is not a durable invariant.</td>
+</tr>
+<tr>
+<td>7. Canonical PDF contains no browser/product chrome</td>
+<td><strong class="status status-fail">FAIL</strong></td>
+<td>Evidence PDF contains browser title, URL, timestamp, page counters, app footer, and unstable pagination.</td>
+</tr>
+<tr>
+<td>8. Missing recipient address blocks readiness</td>
+<td><strong class="status status-fail">FAIL</strong></td>
+<td>Completeness/warnings are soft; approval/download can proceed and fulfillment may re-resolve a different address.</td>
+</tr>
+<tr>
+<td>9. Unconfirmed field cannot produce inaccuracy assertion</td>
+<td><strong class="status status-fail">FAIL</strong></td>
+<td>Consumer confirmation is absent from the generation contract; generic claims are invented.</td>
+</tr>
+<tr>
+<td>10. Regeneration creates immutable v2 and retains v1</td>
+<td><strong class="status status-fail">FAIL</strong></td>
+<td>Unmailed regeneration overwrites the existing row in place.</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="13-3-baseline-verification-executed">13.3 Baseline verification executed</h3>
+<div class="table-wrap" role="region" aria-label="Scrollable data table" tabindex="0"><table>
+<thead>
+<tr>
+<th scope="col">Check</th>
+<th scope="col">Result</th>
+<th scope="col">Interpretation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>npm run typecheck</code></td>
+<td>PASS</td>
+<td>Baseline compiles; does not test P0 truth</td>
+</tr>
+<tr>
+<td>Existing Mission Control, classification, letter, mail, Mail Center/download/execution, obsolescence, and campaign scripts</td>
+<td>PASS</td>
+<td>Several tests pin the obsolete flattening, grouping, overwrite, and soft-warning behavior; green is not launch approval</td>
+</tr>
+<tr>
+<td>Synthetic P0 fixture contract</td>
+<td>23 PASS / 0 FAIL</td>
+<td>Sanitized target behavior is internally consistent; no production enforcement yet</td>
+</tr>
+<tr>
+<td>Red-team invariant audit</td>
+<td>8 FAIL, 1 conditional control, 1 conditional/accidental</td>
+<td>Confirms P0 no-go</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="13-4-production-enforcing-test-suite-required">13.4 Production-enforcing test suite required</h3>
+<ul>
+<li>Parser golden tests for each bureau/section/field plus failures, truncation, missing sections, conflicting values, and duplicate-looking obligations.</li>
+<li>Property tests: a value sourced from bureau A can never appear in bureau B output without an independent bureau B observation.</li>
+<li>Assessment tests for adverse-history monotonicity, completeness, conflicts, unknown presence, explicit product type, and positive controls.</li>
+<li>Identity tests for all six classifications, version pinning, staleness/reconfirmation, masking, authorization, and no automatic dispute.</li>
+<li>Claim-builder tests requiring a reachable observation and matching consumer assertion for every factual inaccuracy sentence.</li>
+<li>Strategy eligibility tests for recipient role, address, statute trigger, confirmation, enclosures, consolidation, and round prerequisites.</li>
+<li>Packet tests for multi-item CRA consolidation, recipient/type/address/policy/enclosure separation, tenant isolation, and deterministic ordering.</li>
+<li>Disposable-database migration/rollback tests, constraints, row-level authorization, concurrent version/approval/dispatch attempts, and legacy-unverified behavior.</li>
+<li>Canonical binary artifact tests: preview/download/print/fulfillment byte/hash equality, actual page count, font embedding, pagination, forbidden tokens, recipient-specific enclosures, tamper rejection, and stable rerender behavior.</li>
+<li>Security tests for cross-tenant/managed-client IDOR, decrypt-before-authorize failures, PII-free logs/events/analytics, signed artifact access, retention/erasure/tombstones, and orphan cleanup.</li>
+<li>Responsive/accessibility automation plus manual keyboard, screen-reader, zoom, dark/light, tablet, and mobile QA.</li>
+</ul>
+<h2 id="14-responsive-ux-theme-and-accessibility-plan">14. Responsive UX, theme, and accessibility plan</h2>
+<h3 id="14-1-current-risks">14.1 Current risks</h3>
+<ul>
+<li>Small secondary text in the dark theme measures roughly 3.75–3.93:1 in affected views, below the project target for normal text; nested navy surfaces obscure hierarchy.</li>
+<li>Several light-theme brand/status combinations measure roughly 1.26–3.68:1, and mapping multiple dark ink tokens to white collapses surface depth.</li>
+<li>At tablet widths the fixed sidebar consumes about 240 px while dense rows, non-wrapping headers/actions, three-column bureau evidence, and fixed Kai controls compete for the remainder.</li>
+<li>Many controls are around 32 px, long Strategy/Tradeline panels remain desktop tables, and the letter builder keeps a fixed left column near the tablet breakpoint.</li>
+<li>The generated/print preview is not a faithful preview of the mailed artifact.</li>
+</ul>
+<h3 id="14-2-remediation-contract">14.2 Remediation contract</h3>
+<ul>
+<li>Replace palette aliases with semantic tokens for canvas, surface levels, text primary/secondary/muted, border, action, focus, danger, warning, and success; validate each theme independently.</li>
+<li>Target at least 4.5:1 for normal text, visible focus, non-color status cues, and 44 px primary touch targets.</li>
+<li>Below the large breakpoint, render tradelines, bureau evidence, mail packets, and letter actions as stacked cards with progressive disclosure; do not compress desktop tables.</li>
+<li>Give 768/820 px widths an intentional tablet layout, collapsible navigation, wrapping actions, and stable Kai placement; respect safe areas and 200% zoom.</li>
+<li>Separate dense legal explanation from primary facts/actions and preserve a clear “why flagged / what is uncertain / what you can do” hierarchy.</li>
+<li>Make artifact preview a view of the immutable canonical PDF, not a screen-only HTML approximation.</li>
+</ul>
+<p>Acceptance matrix: 320, 375, 768, 820, 1024, and 1440 px; dark and light themes; keyboard-only; reduced motion; 200% zoom; automated accessibility scan; manual overflow, focus, screen-reader naming, and touch-target review.</p>
+<h1 id="compliance-review-creditvector-p0-correctness-plan">Compliance Review — CreditVector P0 Correctness Plan</h1>
+<p><strong>Reviewer:</strong> AI-assisted internal compliance gate; outside counsel remains authoritative<br>
+<strong>Scope:</strong> Credit intelligence projections, identity review, Strategy Desk, consumer correspondence, PDFs, packets, recipient resolution, fulfillment, and Mail Center evidence<br>
+<strong>Date:</strong> 2026-08-08</p>
+<h2 id="verdict-no-go">Verdict: NO-GO</h2>
+<h2 id="findings">Findings</h2>
+<h3 id="critical-source-truth-is-flattened-and-can-produce-false-bureau-claims-fcra-ftc-act-5-cfpb-udaap">[CRITICAL] Source truth is flattened and can produce false bureau claims — FCRA; FTC Act §5; CFPB UDAAP</h3>
+<ul>
+<li><strong>Risk:</strong> One bureau's status/date can be attributed to another, historical adverse evidence can disappear, and the UI can state Clean/no derogatory history despite contrary report evidence.</li>
+<li><strong>Required change:</strong> Preserve immutable bureau/section/field observations and history; require completeness-aware assessments; prohibit cross-bureau fallback.</li>
+<li><strong>Compliant alternative:</strong> Until v2 is verified, show <code>NEEDS_REVIEW</code>, bureau-scoped source fields, and no auto-generated factual claim.</li>
+</ul>
+<h3 id="critical-dispute-assertions-lack-source-bound-consumer-confirmation-fcra-croa-ftc-act-5-state-cso-udap">[CRITICAL] Dispute assertions lack source-bound consumer confirmation — FCRA; CROA; FTC Act §5; state CSO/UDAP</h3>
+<ul>
+<li><strong>Risk:</strong> The system can turn an observed negative, parser default, or model inference into an allegation of inaccuracy without the consumer adopting that exact claim.</li>
+<li><strong>Required change:</strong> Require an immutable <code>ConsumerAssertion</code> bound to report version, bureau, account, field, observed value, and stated basis before generation.</li>
+<li><strong>Compliant alternative:</strong> Kai may explain evidence and ask the consumer to review it, but must generate no inaccuracy assertion.</li>
+</ul>
+<h3 id="critical-approved-content-recipient-and-mailing-artifact-can-drift-fcra-operational-integrity-ftc-act-5-cfpb-udaap">[CRITICAL] Approved content, recipient, and mailing artifact can drift — FCRA operational integrity; FTC Act §5; CFPB UDAAP</h3>
+<ul>
+<li><strong>Risk:</strong> Regeneration overwrites drafts, profile/enclosure changes affect output, and fulfillment may resolve an address different from the one reviewed. The evidence record cannot prove exactly what was sent where.</li>
+<li><strong>Required change:</strong> Append-only correspondence versions; immutable address and enclosure versions; canonical PDF/enclosure hashes pinned in an approved manifest; fulfillment uses only that manifest.</li>
+<li><strong>Compliant alternative:</strong> Block mailing and label the package <code>NOT_READY</code> until a single reviewed version, recipient address, and artifact hash are fixed.</li>
+</ul>
+<h3 id="critical-current-pdf-is-not-a-canonical-mailing-artifact-ftc-act-5-cfpb-udaap">[CRITICAL] Current PDF is not a canonical mailing artifact — FTC Act §5; CFPB UDAAP</h3>
+<ul>
+<li><strong>Risk:</strong> Browser metadata, app branding/footer content, unstable pagination, and a blank page can reach the recipient and differ across preview, download, print, and fulfillment.</li>
+<li><strong>Required change:</strong> Deterministic server-generated PDF bytes, recipient-specific enclosure manifest, separate non-mailed guide, and hash equality across all delivery paths.</li>
+<li><strong>Compliant alternative:</strong> Disable mailing/download-as-ready and expose a clearly marked draft preview until the canonical renderer passes artifact tests.</li>
+</ul>
+<h3 id="high-recipient-first-packetization-and-address-gating-are-not-enforced-fcra-fdcpa-ftc-act-5">[HIGH] Recipient-first packetization and address gating are not enforced — FCRA; FDCPA; FTC Act §5</h3>
+<ul>
+<li><strong>Risk:</strong> Current tradeline-first grouping can combine bureau recipients incorrectly, duplicate correspondence, or route a strategy to an unverified/missing address.</li>
+<li><strong>Required change:</strong> Packetize by canonical recipient/type/address version/compatible policy/round/claim/enclosures; block incomplete addresses.</li>
+<li><strong>Compliant alternative:</strong> Generate separate review-only drafts per verified recipient until the packetizer and resolver are authoritative.</li>
+</ul>
+<h3 id="high-strategy-eligibility-and-statutory-triggers-are-not-encoded-fcra-fdcpa">[HIGH] Strategy eligibility and statutory triggers are not encoded — FCRA; FDCPA</h3>
+<ul>
+<li><strong>Risk:</strong> Collector text asserts a cease-collection duty without proof of a timely written dispute, and the direct-furnisher path can cite duties whose trigger is CRA notice. Round 2 can introduce generic escalation or regulator threats without chronology.</li>
+<li><strong>Required change:</strong> Versioned, counsel-approved eligibility/claim rules with required evidence and trigger facts per strategy. Section 1681s-2 distinguishes furnisher duties and CRA-notice investigation duties; direct-consumer rules must be modeled separately (<a class="external" rel="noreferrer" href="https://uscode.house.gov/view.xhtml?edition=prelim&amp;num=0&amp;req=granuleid%3AUSC-prelim-title15-section1681s-2">15 U.S.C. §1681s-2</a>).</li>
+<li><strong>Compliant alternative:</strong> Use a neutral factual information request where a trigger is unknown, or block the strategy pending review.</li>
+</ul>
+<h3 id="high-identity-discrepancies-are-auto-framed-as-disputes-fcra-ftc-act-5-cfpb-udaap">[HIGH] Identity discrepancies are auto-framed as disputes — FCRA; FTC Act §5; CFPB UDAAP</h3>
+<ul>
+<li><strong>Risk:</strong> Accurate former addresses, name variants, and employment can be presented as incorrect or “easy” disputes, encouraging unsupported claims.</li>
+<li><strong>Required change:</strong> Consumer-classified, versioned identity baseline with no preselected inaccuracy and mixed-file escalation only when evidence/consumer input supports it.</li>
+<li><strong>Compliant alternative:</strong> Present each fact neutrally as current, former, unknown, or review needed and ask the consumer.</li>
+</ul>
+<h3 id="high-evidence-lifecycle-and-privacy-controls-are-insufficiently-durable-fcra-data-security-ftc-safeguards-act-5-state-privacy-duties">[HIGH] Evidence lifecycle and privacy controls are insufficiently durable — FCRA data security; FTC Safeguards/Act §5; state privacy duties</h3>
+<ul>
+<li><strong>Risk:</strong> Mutable/deletable records, PII-bearing bodies, derived mail status, and incomplete tenant/artifact controls undermine auditability and create exposure risk.</li>
+<li><strong>Required change:</strong> Append-only refs-only ledger, encrypted artifacts/values, authorize-before-decrypt, tenant/client isolation, signed access, retention/erasure/tombstone policy, and concurrency controls.</li>
+<li><strong>Compliant alternative:</strong> Keep fulfillment disabled and retain only the minimum encrypted, access-controlled review data until the durable model is approved.</li>
+</ul>
+<h2 id="launch-recommendation">Launch recommendation</h2>
+<p>Do not launch the affected Credit Intelligence, Strategy Desk dispute-generation, identity-dispute, mailing-package, or fulfillment flows as correctness-certified. Keep the P0 gate closed. Resume implementation only after the additive migration and policy design are approved, then require parser/classifier, correspondence, artifact, security, accessibility, compliance, and adversarial gates to pass. Do not market the fixture guard or baseline green tests as remediation.</p>
+<h2 id="counsel-escalation">Counsel escalation</h2>
+<p>Outside counsel should approve: (1) direct-furnisher eligibility and authority, including the distinction between direct disputes and CRA-notice duties; (2) FDCPA validation/cease language and timing evidence; (3) combined/multi-item correspondence and consumer-confirmation language; (4) goodwill, pay-for-delete, cease-and-desist, and regulator escalation policy; and (5) broader CROA and state Credit Services Organization registration, contract, fee-timing, disclosure, marketing, and cancellation posture before launch.</p>
+<h2 id="16-adversarial-review-and-unresolved-risks">16. Adversarial review and unresolved risks</h2>
+<p>Agent J independently reviewed current production seams and the sanitized contract. The contract fixture is useful but cannot prove enforcement because it imports no production code. Existing tests remain green while explicitly pinning several wrong behaviors: a Clean predicate without history/completeness, tradeline-first mail grouping, in-place draft overwrite, and soft missing-address warnings.</p>
+<div class="table-wrap" role="region" aria-label="Scrollable data table" tabindex="0"><table>
+<thead>
+<tr>
+<th scope="col">Severity</th>
+<th scope="col">Unresolved risk</th>
+<th scope="col">Closure evidence required</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Critical</td>
+<td>Bureau A value leaks into bureau B claim</td>
+<td>Production property tests plus source-to-letter trace for every emitted factual clause</td>
+</tr>
+<tr>
+<td>Critical</td>
+<td>Historical adverse evidence collapses to Clean</td>
+<td>Parser and assessment tests using normalized history/completeness, including positive controls</td>
+</tr>
+<tr>
+<td>Critical</td>
+<td>Unconfirmed/model-generated assertion reaches a letter</td>
+<td>Schema constraint/API authorization and negative generation tests</td>
+</tr>
+<tr>
+<td>Critical</td>
+<td>Reviewed recipient/content differs from fulfilled artifact</td>
+<td>Immutable version/address/artifact/enclosure manifest and binary-hash dispatch test</td>
+</tr>
+<tr>
+<td>High</td>
+<td>JSON v2 becomes another mutable blob</td>
+<td>Normalized immutable records authoritative; projection digest/version tests</td>
+</tr>
+<tr>
+<td>High</td>
+<td><code>CLEAN</code> is inferred from parser silence</td>
+<td>Section-completeness state and failure/unknown tests</td>
+</tr>
+<tr>
+<td>High</td>
+<td>Packet key permits cross-tenant, cross-address, or incompatible grouping</td>
+<td>Full key, database constraints, authorization and deterministic packet tests</td>
+</tr>
+<tr>
+<td>High</td>
+<td>Strategy legal triggers remain prose-only</td>
+<td>Executable, policy-versioned eligibility rules and counsel approval</td>
+</tr>
+<tr>
+<td>High</td>
+<td>Migration/backfill creates invented truth or destroys v1</td>
+<td>Disposable-DB forward/rollback and legacy-unverified/reanalysis tests</td>
+</tr>
+<tr>
+<td>High</td>
+<td>PII leaks through logs, ledger, artifacts, or IDOR</td>
+<td>Encryption, authorize-before-decrypt, refs-only events, cross-tenant and retention tests</td>
+</tr>
+<tr>
+<td>High</td>
+<td>Responsive/theme changes hide or distort correctness states</td>
+<td>Viewport/theme/zoom/accessibility matrix with exact domain-state assertions</td>
+</tr>
+</tbody>
+</table></div>
+<p>Red-team verdict: <strong class="status status-no-go">NO-GO</strong>. No Critical or High item is closed by this analysis-only checkpoint.</p>
+<h2 id="17-final-acceptance-gate-status">17. Final acceptance gate status</h2>
+<div class="table-wrap" role="region" aria-label="Scrollable data table" tabindex="0"><table>
+<thead>
+<tr>
+<th style="text-align: right;">#</th>
+<th scope="col">Acceptance condition</th>
+<th scope="col">Current status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: right;">1</td>
+<td>Known report-vs-CreditVector regressions fixed</td>
+<td><strong class="status status-fail">NOT MET</strong></td>
+</tr>
+<tr>
+<td style="text-align: right;">2</td>
+<td>Historical derogatory evidence survives normalization</td>
+<td><strong class="status status-fail">NOT MET</strong></td>
+</tr>
+<tr>
+<td style="text-align: right;">3</td>
+<td>Clean classification is evidence-correct</td>
+<td><strong class="status status-fail">NOT MET</strong></td>
+</tr>
+<tr>
+<td style="text-align: right;">4</td>
+<td>Bureau isolation enforced</td>
+<td><strong class="status status-fail">NOT MET</strong></td>
+</tr>
+<tr>
+<td style="text-align: right;">5</td>
+<td>Consumer-confirmed dispute basis required</td>
+<td><strong class="status status-fail">NOT MET</strong></td>
+</tr>
+<tr>
+<td style="text-align: right;">6</td>
+<td>Consolidated bureau packets work</td>
+<td><strong class="status status-fail">NOT MET</strong></td>
+</tr>
+<tr>
+<td style="text-align: right;">7</td>
+<td>Incompatible recipients remain separate</td>
+<td><strong class="status status-fail">NOT DURABLY ENFORCED</strong></td>
+</tr>
+<tr>
+<td style="text-align: right;">8</td>
+<td>Addresses auto-resolve or block mailing readiness</td>
+<td><strong class="status status-fail">NOT MET</strong></td>
+</tr>
+<tr>
+<td style="text-align: right;">9</td>
+<td>Canonical PDFs are mailing-ready</td>
+<td><strong class="status status-fail">NOT MET</strong></td>
+</tr>
+<tr>
+<td style="text-align: right;">10</td>
+<td>CreditVector-only guidance is outside consumer correspondence</td>
+<td><strong class="status status-fail">NOT MET</strong></td>
+</tr>
+<tr>
+<td style="text-align: right;">11</td>
+<td>Packet checklist/enclosures are recipient-aware</td>
+<td><strong class="status status-fail">NOT MET</strong></td>
+</tr>
+<tr>
+<td style="text-align: right;">12</td>
+<td>Correspondence versions are preserved</td>
+<td><strong class="status status-fail">NOT MET</strong></td>
+</tr>
+<tr>
+<td style="text-align: right;">13</td>
+<td>Evidence ledger is auditable</td>
+<td><strong class="status status-fail">NOT MET</strong></td>
+</tr>
+<tr>
+<td style="text-align: right;">14</td>
+<td>Mail Center is recipient/round aware</td>
+<td><strong class="status status-fail">NOT MET</strong></td>
+</tr>
+<tr>
+<td style="text-align: right;">15</td>
+<td>Mobile/iPad layout is usable without overlap</td>
+<td><strong class="status status-fail">NOT MET</strong></td>
+</tr>
+<tr>
+<td style="text-align: right;">16</td>
+<td>Dark-theme readability improves</td>
+<td><strong class="status status-fail">NOT MET</strong></td>
+</tr>
+<tr>
+<td style="text-align: right;">17</td>
+<td>Light theme passes its own usability review</td>
+<td><strong class="status status-fail">NOT MET</strong></td>
+</tr>
+<tr>
+<td style="text-align: right;">18</td>
+<td>All Critical/High red-team findings closed</td>
+<td><strong class="status status-fail">NOT MET</strong></td>
+</tr>
+<tr>
+<td style="text-align: right;">19</td>
+<td>Existing M2/production behavior unaffected</td>
+<td><strong class="status status-pass">VERIFIED FOR THIS CHECKPOINT ONLY</strong>; must be rerun after implementation</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Gate result: 0 launch-complete, 1 checkpoint-only preservation control, 18 unmet. P0 remains NO-GO.</strong></p>
+<h2 id="18-decisions-owner-checkpoint-and-next-actions">18. Decisions, owner checkpoint, and next actions</h2>
+<h3 id="decisions-made-in-this-checkpoint">Decisions made in this checkpoint</h3>
+<ol>
+<li>Preserve source truth in immutable normalized observations/history; use JSON v2 only as a versioned shadow projection.</li>
+<li>Separate <code>AccountCondition</code>, <code>DisputeGrounds</code>, and <code>ReportedAdversity</code>; do not imply a score outcome.</li>
+<li>Require exact-field consumer confirmation for every dispute assertion.</li>
+<li>Introduce versioned Round 0 identity baseline and pin it to correspondence.</li>
+<li>Group recipient-first with a complete compatibility key; never use underlying debt identity as proof of duplicate reporting.</li>
+<li>Make correspondence, addresses, artifacts, enclosure manifests, and ledger events immutable/versioned.</li>
+<li>Replace browser print with one deterministic canonical PDF.</li>
+<li>Treat current baseline tests as regression visibility, not correctness certification.</li>
+<li>Keep M2 isolated and stop before schema or production mutation.</li>
+</ol>
+<h3 id="founder-approvals-required-to-resume">Founder approvals required to resume</h3>
+<ul>
+<li>Approve the additive migration design and a disposable-database implementation slice; this does not authorize production application.</li>
+<li>Authorize outside-counsel review of the strategy matrix and consumer-confirmation language.</li>
+<li>Select/approve the encrypted canonical artifact storage and deterministic renderer approach.</li>
+<li>Approve the legacy <code>LEGACY_UNVERIFIED</code> and source-report reanalysis/backfill policy before any production reprocessing.</li>
+<li>Confirm rollout ownership and the requirement that all Critical/High gates pass before enabling correspondence or fulfillment.</li>
+</ul>
+<h3 id="immediate-next-checkpoint-after-approval">Immediate next checkpoint after approval</h3>
+<p>Produce the additive migration/schema, threat model, executable strategy-policy schema, and parser-v2 shadow contract in isolated files; validate on a disposable database; rerun the ten production-linked invariants; then return for Founder, compliance, and red-team review before any production access, backfill, merge, deploy, or M2 interaction.</p>
+      </article>
+    </main>
+  </div>
+  <footer class="document-footer">Standalone, script-free checkpoint · Generated from the paired Markdown source · 2026-08-08</footer>
+</body>
+</html>
