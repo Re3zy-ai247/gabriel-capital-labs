@@ -105,6 +105,13 @@ model User {
   // durable org an account owns. Dormant behind OPERATOR_IDENTITY_ENABLED.
   operatorIdentity   OperatorIdentity?
   ownedOrganizations Organization[]    @relation("OrganizationOwner")
+
+  // P0 credit-truth ownership. A direct consumer uses the same User id for both
+  // sides; an agency workspace uses the agency as tenant and its managed User as
+  // consumer. CreditTruthScope creation is authorization-gated in application
+  // code, and every sensitive P0 row repeats this pair for tenant-safe joins.
+  creditTruthTenantScopes   CreditTruthScope[] @relation("CreditTruthTenant")
+  creditTruthConsumerScopes CreditTruthScope[] @relation("CreditTruthConsumer")
 }
 
 // Append-only record of privileged admin actions (discount codes created, plans
@@ -193,16 +200,20 @@ model ScoreEntry {
 }
 
 model Report {
-  id         String      @id @default(cuid())
-  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id         String          @id @default(cuid())
+  user       User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId     String
   fileName   String
   // Which bureaus this uploaded report actually covered.
   bureaus    Bureau[]
-  rawText    String?     @db.Text // stored so a report can be re-analyzed
-  uploadedAt DateTime    @default(now())
+  rawText    String?         @db.Text // stored so a report can be re-analyzed
+  uploadedAt DateTime        @default(now())
   analyzedAt DateTime?
   tradelines Tradeline[]
+  p0Versions ReportVersion[]
+
+  // Additive composite key used only by P0 same-consumer provenance FKs.
+  @@unique([userId, id], map: "Report_userId_id_p0_key")
 }
 
 model Tradeline {
@@ -236,9 +247,13 @@ model Tradeline {
   // Duplicate grouping — tradelines representing the same underlying debt share a key
   duplicateGroup String?
 
-  resolved  Boolean  @default(false)
-  letters   Letter[]
-  createdAt DateTime @default(now())
+  resolved   Boolean   @default(false)
+  letters    Letter[]
+  p0Accounts Account[]
+  createdAt  DateTime  @default(now())
+
+  // Additive composite key used only by P0 same-consumer provenance FKs.
+  @@unique([userId, id], map: "Tradeline_userId_id_p0_key")
 }
 
 model Letter {
@@ -798,4 +813,1655 @@ model ReputationMilestone {
 
   @@unique([operatorId, milestoneKey]) // latched: earned once, never re-earned/removed
   @@index([operatorId])
+}
+
+// ── P0 credit truth + immutable correspondence foundation ───────────────────
+// Phase 1 is additive and SHADOW-WRITE ONLY. No existing Report/Tradeline row is
+// promoted to authoritative truth. Value-bearing consumer data is ciphertext;
+// searchable keys are bounded machine values or opaque server-generated ids.
+
+enum TruthAuthorityStatus {
+  LEGACY_UNVERIFIED
+  SHADOW_V2
+  AUTHORITATIVE_V2
+}
+
+enum ReportVersionOrigin {
+  LEGACY_IMPORT
+  NEW_UPLOAD
+  AUTHORIZED_REANALYSIS
+  SYNTHETIC_TEST
+}
+
+// Upload time is never substituted for the date printed by the report source.
+enum ReportDateProvenance {
+  SOURCE_REPORTED
+  EXPLICIT_NOT_PROVIDED
+  UNKNOWN
+}
+
+enum ExtractionEngine {
+  AI_V2
+  REGEX_V2
+  HYBRID_V2
+}
+
+enum ExtractionRunStatus {
+  SUCCEEDED
+  PARTIAL
+  FAILED
+}
+
+enum ObservationPresence {
+  PRESENT
+  ABSENT_CONFIRMED
+  UNKNOWN
+}
+
+// Exact durable mirror of parser-v2 SectionCompletenessState.
+enum SectionExtractionStatus {
+  COMPLETE
+  PARTIAL
+  FAILED
+  NOT_PROVIDED
+  UNKNOWN
+}
+
+// Exact durable mirror of parser-v2 CREDIT_TRUTH_SECTIONS.
+enum CreditReportSection {
+  ACCOUNT_INDEX
+  ACCOUNT_SUMMARY
+  ACCOUNT_DETAIL
+  PAYMENT_HISTORY
+  COLLECTIONS
+  REMARKS
+}
+
+// Mirrors parser-v2's explicit source-coverage boundary. A row is required for
+// every supported bureau, including bureaus outside the uploaded source.
+enum BureauCoverageStatus {
+  COVERED
+  OUTSIDE_COVERAGE
+}
+
+enum ReportAccountMembershipOrigin {
+  SOURCE_LISTED
+  COMPARISON_CARRY_FORWARD
+}
+
+// Bounded semantic metadata derived by the versioned classifier. Consumer values
+// remain encrypted; CLEAN requires an affirmative signal, not absence of adversity.
+enum ObservationAssessmentSignal {
+  ADVERSE
+  AFFIRMATIVE_NON_ADVERSE
+  NEUTRAL
+  CONTEXT_ONLY
+  UNCLASSIFIED
+}
+
+enum EncryptionAlgorithm {
+  AES_256_GCM
+}
+
+enum ObservationValueType {
+  TEXT
+  MONEY_CENTS
+  DATE
+  BOOLEAN
+  INTEGER
+  ENUM_CODE
+  JSON
+}
+
+enum HistoricalEvidenceType {
+  COLLECTION
+  CHARGE_OFF
+  DELINQUENCY
+  SEVERE_DELINQUENCY
+  LOSS
+  TRANSFER_OR_SALE
+  CONSUMER_DISPUTE_REMARK
+  OTHER_ADVERSE
+  OTHER_NON_ADVERSE
+}
+
+enum AccountCondition {
+  CLEAN
+  DEROGATORY
+  MIXED
+  NEEDS_REVIEW
+}
+
+enum DisputeGrounds {
+  STRONG
+  MODERATE
+  LIMITED
+  NONE_DETECTED
+  CONSUMER_REVIEW_REQUIRED
+}
+
+enum ReportedAdversity {
+  ADVERSE
+  POTENTIALLY_ADVERSE
+  NEUTRAL
+  FAVORABLE
+  UNKNOWN
+}
+
+enum AssessmentEvidenceCompleteness {
+  COMPLETE
+  INCOMPLETE
+  UNKNOWN
+}
+
+enum CreditScoreSourceType {
+  REPORT_DERIVED
+  MANUAL_ENTRY
+}
+
+enum CreditScoreEvidenceRole {
+  PRIMARY_REPORT_EVIDENCE
+  SECONDARY_MANUAL_CONTEXT
+}
+
+enum CreditScorePresence {
+  SCORE_REPORTED
+  SCORE_NOT_PROVIDED
+  UNKNOWN
+}
+
+enum CreditScoreEvidenceCompleteness {
+  COMPLETE
+  PARTIAL
+  NOT_PROVIDED
+  UNKNOWN
+  MANUAL_UNVERIFIED
+}
+
+enum ScoreModelMetadataCompleteness {
+  COMPLETE
+  PARTIAL
+  UNKNOWN
+}
+
+enum ReportComparisonPurpose {
+  EXTRACTION_RECONCILIATION
+  TEMPORAL_REPORT_CHANGE
+}
+
+enum ComparisonChronologyBasis {
+  SAME_SERIES_VERSION_ORDER
+  NOT_ESTABLISHED
+}
+
+enum ReportComparisonState {
+  PENDING_EVIDENCE
+  COMPARABLE
+  PARTIALLY_COMPARABLE
+  NOT_COMPARABLE
+}
+
+enum ComparisonEvidenceCompleteness {
+  COMPLETE
+  PARTIAL
+  INCOMPLETE
+  UNKNOWN
+}
+
+enum ComparisonSourcePolicy {
+  REPORT_DERIVED_ONLY
+}
+
+enum ReportDifferenceScope {
+  ACCOUNT_PRESENCE
+  FIELD_VALUE
+  CREDIT_SCORE
+  BUREAU_COVERAGE
+  IDENTITY_FACT
+}
+
+enum ReportDifferenceChangeKind {
+  NEW_ITEM
+  NO_LONGER_REPORTED
+  STATUS_CHANGED
+  BALANCE_CHANGED
+  PAYMENT_HISTORY_CHANGED
+  REMARK_CHANGED
+  DISPUTE_NOTATION_CHANGED
+  BUREAU_COVERAGE_CHANGED
+  IDENTITY_INFORMATION_CHANGED
+  SCORE_CHANGED
+  OTHER_FIELD_CHANGED
+  UNCHANGED
+  UNABLE_TO_DETERMINE
+}
+
+enum DifferenceComparability {
+  COMPARABLE
+  PARTIAL
+  NOT_COMPARABLE
+  UNKNOWN
+}
+
+enum ReportDifferenceState {
+  CHANGED
+  UNCHANGED
+  NOT_COMPARABLE
+  REVIEW_REQUIRED
+}
+
+enum DeletionInferenceState {
+  NOT_APPLICABLE
+  ABSENT_CONFIRMED_ON_CURRENT_REPORT
+  PRESENT_ON_CURRENT_REPORT
+  UNKNOWN_INCOMPLETE
+}
+
+enum DisputeOutcomeState {
+  PENDING_EVIDENCE
+  CORRECTED
+  DELETED
+  UNCHANGED
+  CHANGED_DIFFERENTLY
+  NO_LONGER_REPORTED
+  NEW_CONFLICT
+  UNABLE_TO_DETERMINE
+}
+
+enum OutcomeCausalityState {
+  NO_CAUSAL_CLAIM
+  TEMPORAL_ASSOCIATION_ONLY
+  INSUFFICIENT_EVIDENCE
+}
+
+enum OutcomeDecisionSource {
+  SYSTEM_DERIVED
+  HUMAN_CONFIRMED
+}
+
+enum ConsumerAssertionDisposition {
+  CONFIRMED_ACCURATE
+  CONFIRMED_INACCURATE
+  NOT_MINE
+  OUTDATED_UPDATE_REQUESTED
+  REVIEW_NEEDED
+  REVOKED
+}
+
+enum IdentityBaselineStatus {
+  DRAFT
+  CONFIRMED
+  SUPERSEDED
+}
+
+enum IdentityFactType {
+  NAME
+  ADDRESS
+  EMPLOYMENT
+  IDENTIFIER
+  OTHER
+}
+
+enum IdentityFactClassification {
+  CORRECT_CURRENT
+  CORRECT_FORMER
+  INCORRECT
+  NEVER_MINE
+  OUTDATED_UPDATE_REQUESTED
+  REVIEW_NEEDED
+}
+
+enum RecipientType {
+  CREDIT_REPORTING_AGENCY
+  FURNISHER
+  COLLECTOR
+  REGULATOR
+  CONSUMER
+  OTHER
+}
+
+enum RecipientAddressStatus {
+  UNVERIFIED
+  VALIDATED
+  REJECTED
+  RETIRED
+}
+
+enum DisputeCaseStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  CLOSED
+}
+
+enum CorrespondenceStatus {
+  DRAFT
+  READY_FOR_REVIEW
+  APPROVED
+  VOID
+}
+
+enum PacketStatus {
+  DRAFT
+  APPROVED
+  SUPERSEDED
+  VOID
+}
+
+enum ArtifactKind {
+  REPORT_SOURCE
+  CANONICAL_PACKET_PDF
+  ENCLOSURE
+  RESPONSE
+  OTHER
+}
+
+enum PacketEnclosureKind {
+  IDENTITY_PROOF
+  ADDRESS_PROOF
+  REPORT_EXCERPT
+  SUPPORTING_DOCUMENT
+  OTHER
+}
+
+enum EvidenceEventType {
+  REPORT_VERSION_CREATED
+  EXTRACTION_COMPLETED
+  OBSERVATION_RECORDED
+  ASSESSMENT_CREATED
+  ASSERTION_RECORDED
+  IDENTITY_BASELINE_CREATED
+  CASE_STATUS_CHANGED
+  CORRESPONDENCE_CREATED
+  CORRESPONDENCE_VERSION_CREATED
+  PACKET_CREATED
+  PACKET_APPROVED
+  ARTIFACT_CREATED
+  ARTIFACT_TOMBSTONED
+  MAIL_STATUS_RECORDED
+  CREDIT_SCORE_OBSERVED
+  REPORT_COMPARISON_CREATED
+  REPORT_DIFFERENCE_CREATED
+  DISPUTE_OUTCOME_RECORDED
+}
+
+enum EvidenceSubjectType {
+  REPORT_VERSION
+  EXTRACTION_RUN
+  ACCOUNT
+  ACCOUNT_PRESENCE_OBSERVATION
+  FIELD_OBSERVATION
+  HISTORICAL_EVIDENCE
+  DERIVED_ACCOUNT_ASSESSMENT
+  CONSUMER_ASSERTION
+  IDENTITY_BASELINE
+  DISPUTE_CASE
+  CORRESPONDENCE
+  CORRESPONDENCE_VERSION
+  PACKET
+  ARTIFACT
+  CREDIT_SCORE_OBSERVATION
+  REPORT_COMPARISON
+  REPORT_DIFFERENCE
+  DISPUTE_OUTCOME
+}
+
+// The explicit ownership pair for the P0 bounded context. Scope creation must
+// validate either tenantId == consumerId or the tenant's managed-client grant.
+// Every child repeats both ids and joins through composite keys.
+model CreditTruthScope {
+  tenantId   String
+  consumerId String
+  tenant     User     @relation("CreditTruthTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  consumer   User     @relation("CreditTruthConsumer", fields: [consumerId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  createdAt  DateTime @default(now())
+
+  reportVersions          ReportVersion[]
+  accounts                Account[]
+  recipients              Recipient[]
+  artifacts               Artifact[]
+  evidenceEvents          EvidenceEvent[]
+  creditScoreObservations CreditScoreObservation[]
+  reportComparisons       ReportComparison[]
+  reportDifferences       ReportDifference[]
+  disputeOutcomes         DisputeOutcome[]
+
+  @@id([tenantId, consumerId])
+  @@index([consumerId, tenantId])
+}
+
+// Immutable version header. The safe defaults deliberately classify an omitted
+// origin/authority as legacy and unverified. Reanalysis is a separately authorized
+// future operation; Phase 1 may only create synthetic or SHADOW_V2 rows locally.
+model ReportVersion {
+  id                         String               @id @default(cuid())
+  tenantId                   String
+  consumerId                 String
+  scope                      CreditTruthScope     @relation(fields: [tenantId, consumerId], references: [tenantId, consumerId], onDelete: Restrict, onUpdate: Restrict)
+  sourceReportId             String?
+  sourceReport               Report?              @relation(fields: [consumerId, sourceReportId], references: [userId, id], onDelete: Restrict, onUpdate: Restrict)
+  reportSeriesKey            String
+  version                    Int
+  origin                     ReportVersionOrigin  @default(LEGACY_IMPORT)
+  authorityStatus            TruthAuthorityStatus @default(LEGACY_UNVERIFIED)
+  schemaVersion              String
+  inputSha256                String               @db.VarChar(64)
+  reportDateProvenance       ReportDateProvenance @default(UNKNOWN)
+  reportDate                 DateTime?            @db.Date
+  reportDateSourceLocator    String?
+  reportDateRuleKey          String?
+  reportDateRuleVersion      String?
+  reanalysisAuthorizationRef String?
+  createdByActorId           String
+  createdAt                  DateTime             @default(now())
+
+  extractionRuns          ExtractionRun[]
+  bureauCoverage          ExtractionBureauCoverage[]
+  reportAccounts          ReportVersionAccount[]
+  identityBaselines       IdentityBaseline[]
+  disputeCases            DisputeCase[]
+  artifacts               Artifact[]                 @relation("ArtifactReportVersion")
+  creditScoreObservations CreditScoreObservation[]
+  priorComparisons        ReportComparison[]         @relation("ReportComparisonPriorReport")
+  currentComparisons      ReportComparison[]         @relation("ReportComparisonCurrentReport")
+
+  @@unique([tenantId, consumerId, id])
+  @@unique([tenantId, consumerId, reportSeriesKey, version])
+  @@index([tenantId, consumerId, sourceReportId])
+  @@index([tenantId, consumerId, authorityStatus, createdAt])
+}
+
+// A run is inserted as a completed immutable record; retries append a new attempt.
+model ExtractionRun {
+  id                   String              @id @default(cuid())
+  tenantId             String
+  consumerId           String
+  reportVersionId      String
+  reportVersion        ReportVersion       @relation(fields: [tenantId, consumerId, reportVersionId], references: [tenantId, consumerId, id], onDelete: Restrict, onUpdate: Restrict)
+  runKey               String
+  attempt              Int
+  engine               ExtractionEngine
+  engineVersion        String
+  schemaVersion        String
+  normalizationVersion String
+  status               ExtractionRunStatus
+  errorCodes           String[]            @default([])
+  startedAt            DateTime
+  completedAt          DateTime
+  createdAt            DateTime            @default(now())
+
+  observations            FieldObservation[]
+  accountPresence         AccountPresenceObservation[]
+  bureauCoverage          ExtractionBureauCoverage[]
+  sectionCompleteness     SectionCompleteness[]
+  historicalEvidence      HistoricalEvidence[]
+  assessments             DerivedAccountAssessment[]
+  creditScoreObservations CreditScoreObservation[]
+  priorComparisons        ReportComparison[]           @relation("ReportComparisonPriorRun")
+  currentComparisons      ReportComparison[]           @relation("ReportComparisonCurrentRun")
+
+  @@unique([tenantId, consumerId, id])
+  @@unique([tenantId, consumerId, reportVersionId, id])
+  @@unique([tenantId, consumerId, reportVersionId, runKey, attempt])
+  @@index([tenantId, consumerId, reportVersionId, createdAt])
+}
+
+// Exact parser-v2 coveredBureaus snapshot for one immutable extraction. Exactly
+// one row per supported bureau records either COVERED or OUTSIDE_COVERAGE.
+model ExtractionBureauCoverage {
+  id              String               @id @default(cuid())
+  tenantId        String
+  consumerId      String
+  reportVersionId String
+  extractionRunId String
+  reportVersion   ReportVersion        @relation(fields: [tenantId, consumerId, reportVersionId], references: [tenantId, consumerId, id], onDelete: Restrict, onUpdate: Restrict, map: "extraction_bureau_coverage_report_fkey")
+  extractionRun   ExtractionRun        @relation(fields: [tenantId, consumerId, reportVersionId, extractionRunId], references: [tenantId, consumerId, reportVersionId, id], onDelete: Restrict, onUpdate: Restrict, map: "extraction_bureau_coverage_run_fkey")
+  bureau          Bureau
+  coverageStatus  BureauCoverageStatus
+  createdAt       DateTime             @default(now())
+
+  accountPresence         AccountPresenceObservation[]
+  observations            FieldObservation[]
+  sectionCompleteness     SectionCompleteness[]
+  historicalEvidence      HistoricalEvidence[]
+  creditScoreObservations CreditScoreObservation[]
+  priorDifferences        ReportDifference[]           @relation("ReportDifferencePriorCoverage")
+  currentDifferences      ReportDifference[]           @relation("ReportDifferenceCurrentCoverage")
+
+  @@unique([tenantId, consumerId, id])
+  @@unique([tenantId, consumerId, reportVersionId, extractionRunId, bureau])
+  @@unique([tenantId, consumerId, reportVersionId, extractionRunId, bureau, id], map: "extraction_bureau_coverage_difference_pin_key")
+  @@unique([tenantId, consumerId, reportVersionId, extractionRunId, bureau, coverageStatus, id], map: "extraction_bureau_coverage_pin_key")
+  @@index([tenantId, consumerId, reportVersionId, extractionRunId, coverageStatus])
+}
+
+// Stable account identity within a consumer scope. stableKey is random/opaque,
+// never a hash of an account number. Names, numbers and balances belong only in
+// encrypted observations. A legacy link does not confer v2 authority.
+model Account {
+  id                String               @id @default(cuid())
+  tenantId          String
+  consumerId        String
+  scope             CreditTruthScope     @relation(fields: [tenantId, consumerId], references: [tenantId, consumerId], onDelete: Restrict, onUpdate: Restrict)
+  stableKey         String
+  legacyTradelineId String?
+  legacyTradeline   Tradeline?           @relation(fields: [consumerId, legacyTradelineId], references: [userId, id], onDelete: Restrict, onUpdate: Restrict)
+  authorityStatus   TruthAuthorityStatus @default(LEGACY_UNVERIFIED)
+  createdAt         DateTime             @default(now())
+
+  reportVersions ReportVersionAccount[]
+
+  @@unique([tenantId, consumerId, id])
+  @@unique([tenantId, consumerId, stableKey])
+  @@index([tenantId, consumerId, legacyTradelineId])
+}
+
+// Immutable account subject in one ReportVersion. SOURCE_LISTED means the report
+// actually listed the account and carries a source ordinal. COMPARISON_CARRY_FORWARD
+// has no ordinal and exists only to evaluate a previously source-listed stable
+// account against a later report's COMPLETE ACCOUNT_INDEX; it is not source truth.
+model ReportVersionAccount {
+  id                   String                        @id @default(cuid())
+  tenantId             String
+  consumerId           String
+  reportVersionId      String
+  accountId            String
+  reportVersion        ReportVersion                 @relation(fields: [tenantId, consumerId, reportVersionId], references: [tenantId, consumerId, id], onDelete: Restrict, onUpdate: Restrict)
+  account              Account                       @relation(fields: [tenantId, consumerId, accountId], references: [tenantId, consumerId, id], onDelete: Restrict, onUpdate: Restrict)
+  sourceAccountOrdinal Int?
+  membershipOrigin     ReportAccountMembershipOrigin
+  authorityStatus      TruthAuthorityStatus          @default(LEGACY_UNVERIFIED)
+  createdAt            DateTime                      @default(now())
+
+  observations        FieldObservation[]
+  accountPresence     AccountPresenceObservation[]
+  sectionCompleteness SectionCompleteness[]
+  historicalEvidence  HistoricalEvidence[]
+  assessments         DerivedAccountAssessment[]
+
+  @@unique([tenantId, consumerId, id])
+  @@unique([tenantId, consumerId, reportVersionId, accountId])
+  @@unique([tenantId, consumerId, reportVersionId, sourceAccountOrdinal])
+  @@index([tenantId, consumerId, accountId, reportVersionId])
+}
+
+// Typed, bureau-scoped parser-v2 accountPresence observation. Confirmed absence
+// pins the exact COMPLETE ACCOUNT_INDEX row that supports that conclusion.
+model AccountPresenceObservation {
+  id                         String                   @id @default(cuid())
+  tenantId                   String
+  consumerId                 String
+  reportVersionId            String
+  accountId                  String
+  extractionRunId            String
+  reportAccount              ReportVersionAccount     @relation(fields: [tenantId, consumerId, reportVersionId, accountId], references: [tenantId, consumerId, reportVersionId, accountId], onDelete: Restrict, onUpdate: Restrict, map: "account_presence_account_fkey")
+  extractionRun              ExtractionRun            @relation(fields: [tenantId, consumerId, reportVersionId, extractionRunId], references: [tenantId, consumerId, reportVersionId, id], onDelete: Restrict, onUpdate: Restrict, map: "account_presence_run_fkey")
+  bureau                     Bureau
+  bureauCoverageId           String
+  coverageStatus             BureauCoverageStatus
+  bureauCoverage             ExtractionBureauCoverage @relation(fields: [tenantId, consumerId, reportVersionId, extractionRunId, bureau, coverageStatus, bureauCoverageId], references: [tenantId, consumerId, reportVersionId, extractionRunId, bureau, coverageStatus, id], onDelete: Restrict, onUpdate: Restrict, map: "account_presence_coverage_fkey")
+  presence                   ObservationPresence
+  observationSeriesKey       String
+  revision                   Int                      @default(1)
+  integritySha256            String                   @db.VarChar(64)
+  sourceLocatorToken         String?
+  parserConfidence           Decimal?                 @db.Decimal(5, 4)
+  errorCodes                 String[]                 @default([])
+  accountIndexReportSection  CreditReportSection      @default(ACCOUNT_INDEX)
+  accountIndexStatus         SectionExtractionStatus?
+  accountIndexCompletenessId String?
+  accountIndexCompleteness   SectionCompleteness?     @relation(fields: [tenantId, consumerId, reportVersionId, accountId, extractionRunId, bureau, accountIndexReportSection, accountIndexStatus, accountIndexCompletenessId], references: [tenantId, consumerId, reportVersionId, accountId, extractionRunId, bureau, reportSection, status, id], onDelete: Restrict, onUpdate: Restrict, map: "account_presence_index_fkey")
+  observedAt                 DateTime                 @default(now())
+
+  priorDifferences   ReportDifference[] @relation("ReportDifferencePriorPresence")
+  currentDifferences ReportDifference[] @relation("ReportDifferenceCurrentPresence")
+
+  @@unique([tenantId, consumerId, id])
+  @@unique([tenantId, consumerId, observationSeriesKey, revision])
+  @@unique([tenantId, consumerId, extractionRunId, accountId, bureau])
+  @@unique([tenantId, consumerId, reportVersionId, extractionRunId, bureau, accountId, id], map: "account_presence_difference_pin_key")
+  @@index([tenantId, consumerId, reportVersionId, accountId, bureau, presence])
+}
+
+// One bureau/section/field/occurrence per row, pinned to its exact parser-v2
+// SectionCompleteness record. PRESENT values may come from COMPLETE or PARTIAL
+// sections; ABSENT_CONFIRMED requires COMPLETE; UNKNOWN retains the actual parser
+// state. The locator is an opaque token plus numeric coordinates, never copied
+// source text. integritySha256 covers the authenticated ciphertext envelope +
+// machine metadata; it is never a hash of plaintext or a low-entropy consumer value.
+model FieldObservation {
+  id                        String                      @id @default(cuid())
+  tenantId                  String
+  consumerId                String
+  reportVersionId           String
+  accountId                 String
+  extractionRunId           String
+  reportAccount             ReportVersionAccount        @relation(fields: [tenantId, consumerId, reportVersionId, accountId], references: [tenantId, consumerId, reportVersionId, accountId], onDelete: Restrict, onUpdate: Restrict)
+  extractionRun             ExtractionRun               @relation(fields: [tenantId, consumerId, reportVersionId, extractionRunId], references: [tenantId, consumerId, reportVersionId, id], onDelete: Restrict, onUpdate: Restrict)
+  bureauCoverageId          String
+  coverageStatus            BureauCoverageStatus
+  observationSeriesKey      String
+  revision                  Int                         @default(1)
+  integritySha256           String                      @db.VarChar(64)
+  bureau                    Bureau
+  bureauCoverage            ExtractionBureauCoverage    @relation(fields: [tenantId, consumerId, reportVersionId, extractionRunId, bureau, coverageStatus, bureauCoverageId], references: [tenantId, consumerId, reportVersionId, extractionRunId, bureau, coverageStatus, id], onDelete: Restrict, onUpdate: Restrict, map: "field_observation_coverage_fkey")
+  reportSection             CreditReportSection
+  sectionStatus             SectionExtractionStatus
+  sectionCompletenessId     String
+  sectionCompleteness       SectionCompleteness         @relation(fields: [tenantId, consumerId, reportVersionId, accountId, extractionRunId, bureau, reportSection, sectionStatus, sectionCompletenessId], references: [tenantId, consumerId, reportVersionId, accountId, extractionRunId, bureau, reportSection, status, id], onDelete: Restrict, onUpdate: Restrict, map: "field_observation_section_fkey")
+  fieldKey                  String
+  occurrence                Int                         @default(0)
+  presence                  ObservationPresence
+  valueType                 ObservationValueType
+  valueCiphertext           Bytes?
+  valueIv                   Bytes?
+  valueAuthTag              Bytes?
+  valueKeyVersion           String?
+  valueAlgorithm            EncryptionAlgorithm?
+  valueEnvelopeVersion      String?
+  valueAadVersion           String?
+  normalizedCiphertext      Bytes?
+  normalizedIv              Bytes?
+  normalizedAuthTag         Bytes?
+  normalizedKeyVersion      String?
+  normalizedAlgorithm       EncryptionAlgorithm?
+  normalizedEnvelopeVersion String?
+  normalizedAadVersion      String?
+  assessmentSignal          ObservationAssessmentSignal @default(UNCLASSIFIED)
+  sourceLocatorToken        String
+  pageNumber                Int?
+  sectionOrdinal            Int?
+  recordOrdinal             Int?
+  fieldOrdinal              Int?
+  normalizationRuleKey      String
+  normalizationRuleVersion  String
+  parserConfidence          Decimal?                    @db.Decimal(5, 4)
+  errorCodes                String[]                    @default([])
+  observedAt                DateTime                    @default(now())
+
+  assertions          ConsumerAssertion[]
+  correspondenceItems CorrespondenceItem[]
+  priorDifferences    ReportDifference[]   @relation("ReportDifferencePriorField")
+  currentDifferences  ReportDifference[]   @relation("ReportDifferenceCurrentField")
+
+  @@unique([tenantId, consumerId, id])
+  @@unique([tenantId, consumerId, reportVersionId, accountId, id])
+  @@unique([tenantId, consumerId, reportVersionId, accountId, extractionRunId, bureau, fieldKey, observationSeriesKey, revision, integritySha256, id], map: "field_observation_assertion_pin_key")
+  @@unique([tenantId, consumerId, observationSeriesKey, revision])
+  @@unique([tenantId, consumerId, extractionRunId, accountId, bureau, reportSection, fieldKey, occurrence])
+  @@unique([tenantId, consumerId, reportVersionId, extractionRunId, bureau, accountId, fieldKey, id], map: "field_observation_difference_pin_key")
+  @@index([tenantId, consumerId, reportVersionId, accountId, bureau, reportSection])
+  @@index([tenantId, consumerId, extractionRunId, presence])
+}
+
+// Explicit coverage record so a wholly missing section is UNKNOWN, never silently
+// treated as absent or complete. Field-name arrays are bounded machine keys only.
+model SectionCompleteness {
+  id                       String                   @id @default(cuid())
+  tenantId                 String
+  consumerId               String
+  reportVersionId          String
+  accountId                String
+  extractionRunId          String
+  reportAccount            ReportVersionAccount     @relation(fields: [tenantId, consumerId, reportVersionId, accountId], references: [tenantId, consumerId, reportVersionId, accountId], onDelete: Restrict, onUpdate: Restrict, map: "section_completeness_account_fkey")
+  extractionRun            ExtractionRun            @relation(fields: [tenantId, consumerId, reportVersionId, extractionRunId], references: [tenantId, consumerId, reportVersionId, id], onDelete: Restrict, onUpdate: Restrict, map: "section_completeness_run_fkey")
+  bureau                   Bureau
+  bureauCoverageId         String
+  coverageStatus           BureauCoverageStatus
+  bureauCoverage           ExtractionBureauCoverage @relation(fields: [tenantId, consumerId, reportVersionId, extractionRunId, bureau, coverageStatus, bureauCoverageId], references: [tenantId, consumerId, reportVersionId, extractionRunId, bureau, coverageStatus, id], onDelete: Restrict, onUpdate: Restrict, map: "section_completeness_coverage_fkey")
+  reportSection            CreditReportSection
+  status                   SectionExtractionStatus
+  requiredFieldKeys        String[]                 @default([])
+  observedFieldKeys        String[]                 @default([])
+  errorCodes               String[]                 @default([])
+  normalizationRuleKey     String
+  normalizationRuleVersion String
+  createdAt                DateTime                 @default(now())
+
+  accountPresenceObservations AccountPresenceObservation[]
+  fieldObservations           FieldObservation[]
+  historicalEvidence          HistoricalEvidence[]
+
+  @@unique([tenantId, consumerId, id])
+  @@unique([tenantId, consumerId, extractionRunId, accountId, bureau, reportSection])
+  @@unique([tenantId, consumerId, reportVersionId, accountId, extractionRunId, bureau, reportSection, status, id], map: "section_completeness_presence_pin_key")
+  @@index([tenantId, consumerId, reportVersionId, accountId, bureau, status])
+}
+
+// Historical facts are first-class and cannot be erased by a later Closed/Paid/$0
+// observation. Each fact pins the exact parser-v2 SectionCompleteness provenance;
+// a confirmed absence is only authoritative from COMPLETE. Evidence details remain
+// encrypted; evidenceType is a bounded domain fact used by the assessment engine.
+model HistoricalEvidence {
+  id                       String                   @id @default(cuid())
+  tenantId                 String
+  consumerId               String
+  reportVersionId          String
+  accountId                String
+  extractionRunId          String
+  reportAccount            ReportVersionAccount     @relation(fields: [tenantId, consumerId, reportVersionId, accountId], references: [tenantId, consumerId, reportVersionId, accountId], onDelete: Restrict, onUpdate: Restrict)
+  extractionRun            ExtractionRun            @relation(fields: [tenantId, consumerId, reportVersionId, extractionRunId], references: [tenantId, consumerId, reportVersionId, id], onDelete: Restrict, onUpdate: Restrict)
+  bureau                   Bureau
+  bureauCoverageId         String
+  coverageStatus           BureauCoverageStatus
+  bureauCoverage           ExtractionBureauCoverage @relation(fields: [tenantId, consumerId, reportVersionId, extractionRunId, bureau, coverageStatus, bureauCoverageId], references: [tenantId, consumerId, reportVersionId, extractionRunId, bureau, coverageStatus, id], onDelete: Restrict, onUpdate: Restrict, map: "historical_evidence_coverage_fkey")
+  reportSection            CreditReportSection
+  sectionStatus            SectionExtractionStatus
+  sectionCompletenessId    String
+  sectionCompleteness      SectionCompleteness      @relation(fields: [tenantId, consumerId, reportVersionId, accountId, extractionRunId, bureau, reportSection, sectionStatus, sectionCompletenessId], references: [tenantId, consumerId, reportVersionId, accountId, extractionRunId, bureau, reportSection, status, id], onDelete: Restrict, onUpdate: Restrict, map: "historical_evidence_section_fkey")
+  evidenceType             HistoricalEvidenceType
+  occurrence               Int                      @default(0)
+  presence                 ObservationPresence
+  detailCiphertext         Bytes?
+  detailIv                 Bytes?
+  detailAuthTag            Bytes?
+  detailKeyVersion         String?
+  detailAlgorithm          EncryptionAlgorithm?
+  detailEnvelopeVersion    String?
+  detailAadVersion         String?
+  sourceLocatorToken       String
+  normalizationRuleKey     String
+  normalizationRuleVersion String
+  parserConfidence         Decimal?                 @db.Decimal(5, 4)
+  observedAt               DateTime                 @default(now())
+
+  correspondenceItems CorrespondenceItem[]
+
+  @@unique([tenantId, consumerId, id])
+  @@unique([tenantId, consumerId, reportVersionId, accountId, id])
+  @@unique([tenantId, consumerId, reportVersionId, accountId, extractionRunId, bureau, id], map: "historical_evidence_chain_key")
+  @@unique([tenantId, consumerId, extractionRunId, accountId, bureau, reportSection, evidenceType, occurrence])
+  @@index([tenantId, consumerId, reportVersionId, accountId, bureau, evidenceType])
+}
+
+// Immutable assessment version over one exact extraction run and input digest.
+model DerivedAccountAssessment {
+  id                   String                         @id @default(cuid())
+  tenantId             String
+  consumerId           String
+  reportVersionId      String
+  accountId            String
+  extractionRunId      String
+  reportAccount        ReportVersionAccount           @relation(fields: [tenantId, consumerId, reportVersionId, accountId], references: [tenantId, consumerId, reportVersionId, accountId], onDelete: Restrict, onUpdate: Restrict, map: "daa_report_account_fkey")
+  extractionRun        ExtractionRun                  @relation(fields: [tenantId, consumerId, reportVersionId, extractionRunId], references: [tenantId, consumerId, reportVersionId, id], onDelete: Restrict, onUpdate: Restrict, map: "daa_extraction_run_fkey")
+  assessmentVersion    Int
+  classifierVersion    String
+  policyVersion        String
+  inputSetSha256       String                         @db.VarChar(64)
+  evidenceCompleteness AssessmentEvidenceCompleteness
+  accountCondition     AccountCondition
+  disputeGrounds       DisputeGrounds
+  reportedAdversity    ReportedAdversity
+  rationaleCodes       String[]                       @default([])
+  createdAt            DateTime                       @default(now())
+
+  assertions          ConsumerAssertion[]
+  correspondenceItems CorrespondenceItem[]
+
+  @@unique([tenantId, consumerId, id])
+  @@unique([tenantId, consumerId, reportVersionId, accountId, id], map: "daa_scope_report_account_id_key")
+  @@unique([tenantId, consumerId, reportVersionId, accountId, extractionRunId, id], map: "daa_assertion_chain_key")
+  @@unique([tenantId, consumerId, reportVersionId, accountId, assessmentVersion], map: "daa_scope_account_version_key")
+  @@index([tenantId, consumerId, reportVersionId, accountCondition, reportedAdversity])
+}
+
+// Consumer confirmation is bound to one exact immutable observation AND one exact
+// assessment version. A later report/observation cannot reuse it; reconfirmation
+// appends a new series version. Free text is encrypted, never indexed.
+model ConsumerAssertion {
+  id                         String                       @id @default(cuid())
+  tenantId                   String
+  consumerId                 String
+  reportVersionId            String
+  accountId                  String
+  extractionRunId            String
+  bureau                     Bureau
+  fieldKey                   String
+  observationId              String
+  observationSeriesKey       String
+  observationRevision        Int
+  observationIntegritySha256 String                       @db.VarChar(64)
+  assessmentId               String
+  observation                FieldObservation             @relation(fields: [tenantId, consumerId, reportVersionId, accountId, extractionRunId, bureau, fieldKey, observationSeriesKey, observationRevision, observationIntegritySha256, observationId], references: [tenantId, consumerId, reportVersionId, accountId, extractionRunId, bureau, fieldKey, observationSeriesKey, revision, integritySha256, id], onDelete: Restrict, onUpdate: Restrict, map: "consumer_assertion_observation_fkey")
+  assessment                 DerivedAccountAssessment     @relation(fields: [tenantId, consumerId, reportVersionId, accountId, extractionRunId, assessmentId], references: [tenantId, consumerId, reportVersionId, accountId, extractionRunId, id], onDelete: Restrict, onUpdate: Restrict, map: "consumer_assertion_assessment_fkey")
+  assertionSeriesKey         String
+  version                    Int
+  disposition                ConsumerAssertionDisposition
+  statementCiphertext        Bytes?
+  statementIv                Bytes?
+  statementAuthTag           Bytes?
+  statementKeyVersion        String?
+  statementAlgorithm         EncryptionAlgorithm?
+  statementEnvelopeVersion   String?
+  statementAadVersion        String?
+  confirmedByActorId         String
+  confirmedAt                DateTime
+  expiresAt                  DateTime?
+  supersedesAssertionId      String?
+  supersedes                 ConsumerAssertion?           @relation("ConsumerAssertionSupersession", fields: [tenantId, consumerId, assertionSeriesKey, supersedesAssertionId], references: [tenantId, consumerId, assertionSeriesKey, id], onDelete: Restrict, onUpdate: Restrict, map: "consumer_assertion_supersession_fkey")
+  supersededBy               ConsumerAssertion[]          @relation("ConsumerAssertionSupersession")
+  createdAt                  DateTime                     @default(now())
+
+  correspondenceItems CorrespondenceItem[]
+
+  @@unique([tenantId, consumerId, id])
+  @@unique([tenantId, consumerId, reportVersionId, accountId, id])
+  @@unique([tenantId, consumerId, reportVersionId, accountId, extractionRunId, bureau, fieldKey, observationSeriesKey, observationRevision, observationIntegritySha256, observationId, assessmentId, id], map: "consumer_assertion_chain_key")
+  @@unique([tenantId, consumerId, assertionSeriesKey, id], map: "consumer_assertion_supersession_key")
+  @@unique([tenantId, consumerId, assertionSeriesKey, version])
+  @@unique([tenantId, consumerId, reportVersionId, extractionRunId, bureau, accountId, fieldKey, id], map: "consumer_assertion_difference_pin_key")
+  @@index([tenantId, consumerId, observationId, confirmedAt])
+  @@index([tenantId, consumerId, assessmentId])
+}
+
+// Immutable bureau score evidence. occurrence is the score slot within one exact
+// report/run/bureau; revisions append corrections inside that same source context.
+// A later report or extraction run starts a new observation series at revision 1.
+// Report-derived rows are primary and pin one exact extraction coverage row.
+// Manually entered scores are explicitly secondary, unverified context and cannot
+// be used as authoritative comparison inputs. The consumer score itself is
+// ciphertext only; model/scale/source fields are bounded non-PII metadata.
+// SCORE_NOT_PROVIDED never stores an invented numeric value.
+model CreditScoreObservation {
+  id                        String                          @id @default(cuid())
+  tenantId                  String
+  consumerId                String
+  scope                     CreditTruthScope                @relation(fields: [tenantId, consumerId], references: [tenantId, consumerId], onDelete: Restrict, onUpdate: Restrict)
+  reportVersionId           String?
+  reportVersion             ReportVersion?                  @relation(fields: [tenantId, consumerId, reportVersionId], references: [tenantId, consumerId, id], onDelete: Restrict, onUpdate: Restrict, map: "credit_score_report_fkey")
+  extractionRunId           String?
+  extractionRun             ExtractionRun?                  @relation(fields: [tenantId, consumerId, reportVersionId, extractionRunId], references: [tenantId, consumerId, reportVersionId, id], onDelete: Restrict, onUpdate: Restrict, map: "credit_score_run_fkey")
+  bureau                    Bureau
+  coverageStatus            BureauCoverageStatus?
+  bureauCoverageId          String?
+  bureauCoverage            ExtractionBureauCoverage?       @relation(fields: [tenantId, consumerId, reportVersionId, extractionRunId, bureau, coverageStatus, bureauCoverageId], references: [tenantId, consumerId, reportVersionId, extractionRunId, bureau, coverageStatus, id], onDelete: Restrict, onUpdate: Restrict, map: "credit_score_coverage_fkey")
+  sourceType                CreditScoreSourceType
+  evidenceRole              CreditScoreEvidenceRole
+  presence                  CreditScorePresence
+  evidenceCompleteness      CreditScoreEvidenceCompleteness
+  observationSeriesKey      String
+  revision                  Int                             @default(1)
+  occurrence                Int                             @default(0)
+  idempotencyKey            String
+  integritySha256           String                          @db.VarChar(64)
+  scoreCiphertext           Bytes?
+  scoreIv                   Bytes?
+  scoreAuthTag              Bytes?
+  scoreKeyVersion           String?
+  scoreAlgorithm            EncryptionAlgorithm?
+  scoreEnvelopeVersion      String?
+  scoreAadVersion           String?
+  scoreModelKey             String?
+  scoreModelVersion         String?
+  scoreScaleMin             Int?
+  scoreScaleMax             Int?
+  modelMetadataCompleteness ScoreModelMetadataCompleteness
+  sourceMethodKey           String
+  sourceMethodVersion       String
+  sourceLocatorToken        String?
+  pageNumber                Int?
+  sectionOrdinal            Int?
+  normalizationRuleKey      String?
+  normalizationRuleVersion  String?
+  parserConfidence          Decimal?                        @db.Decimal(5, 4)
+  errorCodes                String[]                        @default([])
+  enteredByActorId          String?
+  enteredAt                 DateTime?
+  supersedesObservationId   String?
+  supersedes                CreditScoreObservation?         @relation("CreditScoreSupersession", fields: [tenantId, consumerId, observationSeriesKey, supersedesObservationId], references: [tenantId, consumerId, observationSeriesKey, id], onDelete: Restrict, onUpdate: Restrict, map: "credit_score_supersession_fkey")
+  supersededBy              CreditScoreObservation[]        @relation("CreditScoreSupersession")
+  observedAt                DateTime
+  createdAt                 DateTime                        @default(now())
+
+  priorDifferences   ReportDifference[] @relation("ReportDifferencePriorScore")
+  currentDifferences ReportDifference[] @relation("ReportDifferenceCurrentScore")
+
+  @@unique([tenantId, consumerId, id])
+  @@unique([tenantId, consumerId, observationSeriesKey, id], map: "credit_score_supersession_key")
+  @@unique([tenantId, consumerId, observationSeriesKey, revision])
+  @@unique([tenantId, consumerId, idempotencyKey])
+  @@unique([tenantId, consumerId, reportVersionId, extractionRunId, bureau, sourceMethodKey, sourceMethodVersion, occurrence, id], map: "credit_score_difference_pin_key")
+  @@unique([tenantId, consumerId, reportVersionId, extractionRunId, bureau, sourceType, sourceMethodKey, sourceMethodVersion, occurrence, revision], map: "credit_score_run_bureau_occurrence_revision_key")
+  @@index([tenantId, consumerId, reportVersionId, bureau, sourceType, presence])
+}
+
+// Immutable comparison decision over two exact report/extraction snapshots.
+// The source digest identifies the selected immutable observations; it is never a
+// digest of plaintext consumer values. Recalculation appends a series version.
+model ReportComparison {
+  id                     String                         @id @default(cuid())
+  tenantId               String
+  consumerId             String
+  scope                  CreditTruthScope               @relation(fields: [tenantId, consumerId], references: [tenantId, consumerId], onDelete: Restrict, onUpdate: Restrict)
+  priorReportVersionId   String
+  priorReportVersion     ReportVersion                  @relation("ReportComparisonPriorReport", fields: [tenantId, consumerId, priorReportVersionId], references: [tenantId, consumerId, id], onDelete: Restrict, onUpdate: Restrict, map: "report_comparison_prior_report_fkey")
+  priorExtractionRunId   String
+  priorExtractionRun     ExtractionRun                  @relation("ReportComparisonPriorRun", fields: [tenantId, consumerId, priorReportVersionId, priorExtractionRunId], references: [tenantId, consumerId, reportVersionId, id], onDelete: Restrict, onUpdate: Restrict, map: "report_comparison_prior_run_fkey")
+  currentReportVersionId String
+  currentReportVersion   ReportVersion                  @relation("ReportComparisonCurrentReport", fields: [tenantId, consumerId, currentReportVersionId], references: [tenantId, consumerId, id], onDelete: Restrict, onUpdate: Restrict, map: "report_comparison_current_report_fkey")
+  currentExtractionRunId String
+  currentExtractionRun   ExtractionRun                  @relation("ReportComparisonCurrentRun", fields: [tenantId, consumerId, currentReportVersionId, currentExtractionRunId], references: [tenantId, consumerId, reportVersionId, id], onDelete: Restrict, onUpdate: Restrict, map: "report_comparison_current_run_fkey")
+  comparisonSeriesKey    String
+  version                Int
+  idempotencyKey         String
+  state                  ReportComparisonState
+  evidenceCompleteness   ComparisonEvidenceCompleteness
+  sourcePolicy           ComparisonSourcePolicy         @default(REPORT_DERIVED_ONLY)
+  purpose                ReportComparisonPurpose
+  chronologyBasis        ComparisonChronologyBasis
+  chronologyRuleKey      String
+  chronologyRuleVersion  String
+  comparisonModelKey     String
+  comparisonModelVersion String
+  sourceSetSha256        String                         @db.VarChar(64)
+  integritySha256        String                         @db.VarChar(64)
+  differenceCount        Int
+  reasonCodes            String[]                       @default([])
+  supersedesComparisonId String?
+  supersedes             ReportComparison?              @relation("ReportComparisonSupersession", fields: [tenantId, consumerId, comparisonSeriesKey, supersedesComparisonId], references: [tenantId, consumerId, comparisonSeriesKey, id], onDelete: Restrict, onUpdate: Restrict, map: "report_comparison_supersession_fkey")
+  supersededBy           ReportComparison[]             @relation("ReportComparisonSupersession")
+  createdByActorId       String
+  createdAt              DateTime                       @default(now())
+
+  differences     ReportDifference[]
+  disputeOutcomes DisputeOutcome[]
+
+  @@unique([tenantId, consumerId, id])
+  @@unique([tenantId, consumerId, comparisonSeriesKey, id], map: "report_comparison_supersession_key")
+  @@unique([tenantId, consumerId, comparisonSeriesKey, version])
+  @@unique([tenantId, consumerId, idempotencyKey])
+  @@unique([tenantId, consumerId, priorReportVersionId, priorExtractionRunId, currentReportVersionId, currentExtractionRunId, id], map: "report_comparison_difference_pin_key")
+  @@index([tenantId, consumerId, currentReportVersionId, state, createdAt])
+}
+
+// A versioned, source-row-pinned difference. Comparable states require both exact
+// source observations. Confirmed current-report absence is limited to a COMPLETE current
+// ACCOUNT_INDEX observation that explicitly says ABSENT_CONFIRMED; a missing row
+// or incomplete extraction can only produce UNKNOWN_INCOMPLETE/NOT_COMPARABLE.
+model ReportDifference {
+  id                              String                         @id @default(cuid())
+  tenantId                        String
+  consumerId                      String
+  scope                           CreditTruthScope               @relation(fields: [tenantId, consumerId], references: [tenantId, consumerId], onDelete: Restrict, onUpdate: Restrict)
+  priorReportVersionId            String
+  priorExtractionRunId            String
+  currentReportVersionId          String
+  currentExtractionRunId          String
+  comparisonId                    String
+  comparison                      ReportComparison               @relation(fields: [tenantId, consumerId, priorReportVersionId, priorExtractionRunId, currentReportVersionId, currentExtractionRunId, comparisonId], references: [tenantId, consumerId, priorReportVersionId, priorExtractionRunId, currentReportVersionId, currentExtractionRunId, id], onDelete: Restrict, onUpdate: Restrict, map: "report_difference_comparison_fkey")
+  scopeType                       ReportDifferenceScope
+  bureau                          Bureau?
+  accountId                       String?
+  fieldKey                        String?
+  scoreOccurrence                 Int?
+  priorScoreSourceMethodKey       String?
+  priorScoreSourceMethodVersion   String?
+  currentScoreSourceMethodKey     String?
+  currentScoreSourceMethodVersion String?
+  priorPresenceObservationId      String?
+  priorPresenceObservation        AccountPresenceObservation?    @relation("ReportDifferencePriorPresence", fields: [tenantId, consumerId, priorReportVersionId, priorExtractionRunId, bureau, accountId, priorPresenceObservationId], references: [tenantId, consumerId, reportVersionId, extractionRunId, bureau, accountId, id], onDelete: Restrict, onUpdate: Restrict, map: "report_difference_prior_presence_fkey")
+  currentPresenceObservationId    String?
+  currentPresenceObservation      AccountPresenceObservation?    @relation("ReportDifferenceCurrentPresence", fields: [tenantId, consumerId, currentReportVersionId, currentExtractionRunId, bureau, accountId, currentPresenceObservationId], references: [tenantId, consumerId, reportVersionId, extractionRunId, bureau, accountId, id], onDelete: Restrict, onUpdate: Restrict, map: "report_difference_current_presence_fkey")
+  priorFieldObservationId         String?
+  priorFieldObservation           FieldObservation?              @relation("ReportDifferencePriorField", fields: [tenantId, consumerId, priorReportVersionId, priorExtractionRunId, bureau, accountId, fieldKey, priorFieldObservationId], references: [tenantId, consumerId, reportVersionId, extractionRunId, bureau, accountId, fieldKey, id], onDelete: Restrict, onUpdate: Restrict, map: "report_difference_prior_field_fkey")
+  currentFieldObservationId       String?
+  currentFieldObservation         FieldObservation?              @relation("ReportDifferenceCurrentField", fields: [tenantId, consumerId, currentReportVersionId, currentExtractionRunId, bureau, accountId, fieldKey, currentFieldObservationId], references: [tenantId, consumerId, reportVersionId, extractionRunId, bureau, accountId, fieldKey, id], onDelete: Restrict, onUpdate: Restrict, map: "report_difference_current_field_fkey")
+  priorScoreObservationId         String?
+  priorScoreObservation           CreditScoreObservation?        @relation("ReportDifferencePriorScore", fields: [tenantId, consumerId, priorReportVersionId, priorExtractionRunId, bureau, priorScoreSourceMethodKey, priorScoreSourceMethodVersion, scoreOccurrence, priorScoreObservationId], references: [tenantId, consumerId, reportVersionId, extractionRunId, bureau, sourceMethodKey, sourceMethodVersion, occurrence, id], onDelete: Restrict, onUpdate: Restrict, map: "report_difference_prior_score_fkey")
+  currentScoreObservationId       String?
+  currentScoreObservation         CreditScoreObservation?        @relation("ReportDifferenceCurrentScore", fields: [tenantId, consumerId, currentReportVersionId, currentExtractionRunId, bureau, currentScoreSourceMethodKey, currentScoreSourceMethodVersion, scoreOccurrence, currentScoreObservationId], references: [tenantId, consumerId, reportVersionId, extractionRunId, bureau, sourceMethodKey, sourceMethodVersion, occurrence, id], onDelete: Restrict, onUpdate: Restrict, map: "report_difference_current_score_fkey")
+  priorCoverageObservationId      String?
+  priorCoverageObservation        ExtractionBureauCoverage?      @relation("ReportDifferencePriorCoverage", fields: [tenantId, consumerId, priorReportVersionId, priorExtractionRunId, bureau, priorCoverageObservationId], references: [tenantId, consumerId, reportVersionId, extractionRunId, bureau, id], onDelete: Restrict, onUpdate: Restrict, map: "report_difference_prior_coverage_fkey")
+  currentCoverageObservationId    String?
+  currentCoverageObservation      ExtractionBureauCoverage?      @relation("ReportDifferenceCurrentCoverage", fields: [tenantId, consumerId, currentReportVersionId, currentExtractionRunId, bureau, currentCoverageObservationId], references: [tenantId, consumerId, reportVersionId, extractionRunId, bureau, id], onDelete: Restrict, onUpdate: Restrict, map: "report_difference_current_coverage_fkey")
+  identityFactSeriesKey           String?
+  priorIdentityBaselineId         String?
+  priorIdentityFactId             String?
+  priorIdentityFact               IdentityFact?                  @relation("ReportDifferencePriorIdentityFact", fields: [tenantId, consumerId, priorReportVersionId, priorIdentityBaselineId, identityFactSeriesKey, priorIdentityFactId], references: [tenantId, consumerId, reportVersionId, identityBaselineId, factSeriesKey, id], onDelete: Restrict, onUpdate: Restrict, map: "report_difference_prior_identity_fact_fkey")
+  currentIdentityBaselineId       String?
+  currentIdentityFactId           String?
+  currentIdentityFact             IdentityFact?                  @relation("ReportDifferenceCurrentIdentityFact", fields: [tenantId, consumerId, currentReportVersionId, currentIdentityBaselineId, identityFactSeriesKey, currentIdentityFactId], references: [tenantId, consumerId, reportVersionId, identityBaselineId, factSeriesKey, id], onDelete: Restrict, onUpdate: Restrict, map: "report_difference_current_identity_fact_fkey")
+  priorCompleteness               ComparisonEvidenceCompleteness
+  currentCompleteness             ComparisonEvidenceCompleteness
+  comparability                   DifferenceComparability
+  differenceState                 ReportDifferenceState
+  changeKind                      ReportDifferenceChangeKind
+  deletionState                   DeletionInferenceState         @default(NOT_APPLICABLE)
+  differenceSeriesKey             String
+  version                         Int
+  idempotencyKey                  String
+  comparisonRuleKey               String
+  comparisonRuleVersion           String
+  sourceSetSha256                 String                         @db.VarChar(64)
+  integritySha256                 String                         @db.VarChar(64)
+  reasonCodes                     String[]                       @default([])
+  supersedesDifferenceId          String?
+  supersedes                      ReportDifference?              @relation("ReportDifferenceSupersession", fields: [tenantId, consumerId, differenceSeriesKey, supersedesDifferenceId], references: [tenantId, consumerId, differenceSeriesKey, id], onDelete: Restrict, onUpdate: Restrict, map: "report_difference_supersession_fkey")
+  supersededBy                    ReportDifference[]             @relation("ReportDifferenceSupersession")
+  createdByActorId                String
+  createdAt                       DateTime                       @default(now())
+
+  disputeOutcomes DisputeOutcome[]
+
+  @@unique([tenantId, consumerId, id])
+  @@unique([tenantId, consumerId, comparisonId, id])
+  @@unique([tenantId, consumerId, priorReportVersionId, currentReportVersionId, comparisonId, id], map: "report_difference_outcome_pin_key")
+  @@unique([tenantId, consumerId, differenceSeriesKey, id], map: "report_difference_supersession_key")
+  @@unique([tenantId, consumerId, differenceSeriesKey, version])
+  @@unique([tenantId, consumerId, comparisonId, differenceSeriesKey], map: "report_difference_comparison_series_key")
+  @@unique([tenantId, consumerId, idempotencyKey])
+  @@index([tenantId, consumerId, comparisonId, scopeType, bureau, priorScoreSourceMethodKey, priorScoreSourceMethodVersion, currentScoreSourceMethodKey, currentScoreSourceMethodVersion, scoreOccurrence, differenceState])
+}
+
+// Immutable fact decision over one exact comparison difference and originating
+// dispute case. States describe observed report evidence only; the closed causality
+// enum cannot claim that a dispute caused a change or deletion. Pending rows have
+// no decision source; system-derived report facts and human-confirmed judgment
+// states are structurally separated by migration-owned checks/triggers.
+model DisputeOutcome {
+  id                            String                         @id @default(cuid())
+  tenantId                      String
+  consumerId                    String
+  scope                         CreditTruthScope               @relation(fields: [tenantId, consumerId], references: [tenantId, consumerId], onDelete: Restrict, onUpdate: Restrict)
+  priorReportVersionId          String
+  priorExtractionRunId          String
+  currentReportVersionId        String
+  currentExtractionRunId        String
+  caseId                        String
+  disputeCase                   DisputeCase                    @relation(fields: [tenantId, consumerId, priorReportVersionId, caseId], references: [tenantId, consumerId, reportVersionId, id], onDelete: Restrict, onUpdate: Restrict)
+  comparisonId                  String
+  comparison                    ReportComparison               @relation(fields: [tenantId, consumerId, priorReportVersionId, priorExtractionRunId, currentReportVersionId, currentExtractionRunId, comparisonId], references: [tenantId, consumerId, priorReportVersionId, priorExtractionRunId, currentReportVersionId, currentExtractionRunId, id], onDelete: Restrict, onUpdate: Restrict, map: "dispute_outcome_comparison_fkey")
+  differenceId                  String
+  difference                    ReportDifference               @relation(fields: [tenantId, consumerId, priorReportVersionId, currentReportVersionId, comparisonId, differenceId], references: [tenantId, consumerId, priorReportVersionId, currentReportVersionId, comparisonId, id], onDelete: Restrict, onUpdate: Restrict, map: "dispute_outcome_difference_fkey")
+  bureau                        Bureau
+  accountId                     String
+  targetFieldKey                String
+  targetConsumerAssertionId     String
+  targetCorrespondenceId        String
+  targetCorrespondenceItemId    String
+  targetCorrespondenceItem      CorrespondenceItem             @relation(fields: [tenantId, consumerId, priorReportVersionId, caseId, targetCorrespondenceId, accountId, bureau, targetFieldKey, targetConsumerAssertionId, targetCorrespondenceItemId], references: [tenantId, consumerId, reportVersionId, caseId, correspondenceId, accountId, bureau, fieldKey, consumerAssertionId, id], onDelete: Restrict, onUpdate: Restrict, map: "dispute_outcome_target_item_fkey")
+  targetCorrespondenceVersionId String
+  targetVersionMembershipId     String
+  targetVersionMembership       CorrespondenceVersionItem      @relation(fields: [tenantId, consumerId, priorReportVersionId, caseId, targetCorrespondenceId, targetCorrespondenceVersionId, targetCorrespondenceItemId, targetVersionMembershipId], references: [tenantId, consumerId, reportVersionId, caseId, correspondenceId, correspondenceVersionId, correspondenceItemId, id], onDelete: Restrict, onUpdate: Restrict, map: "dispute_outcome_target_membership_fkey")
+  priorCompleteness             ComparisonEvidenceCompleteness
+  currentCompleteness           ComparisonEvidenceCompleteness
+  outcomeState                  DisputeOutcomeState
+  causalityState                OutcomeCausalityState          @default(NO_CAUSAL_CLAIM)
+  decisionSource                OutcomeDecisionSource?
+  outcomeSeriesKey              String
+  version                       Int
+  idempotencyKey                String
+  decisionModelKey              String
+  decisionModelVersion          String
+  sourceSetSha256               String                         @db.VarChar(64)
+  integritySha256               String                         @db.VarChar(64)
+  reasonCodes                   String[]                       @default([])
+  decidedByActorId              String?
+  decidedAt                     DateTime?
+  supersedesOutcomeId           String?
+  supersedes                    DisputeOutcome?                @relation("DisputeOutcomeSupersession", fields: [tenantId, consumerId, outcomeSeriesKey, supersedesOutcomeId], references: [tenantId, consumerId, outcomeSeriesKey, id], onDelete: Restrict, onUpdate: Restrict, map: "dispute_outcome_supersession_fkey")
+  supersededBy                  DisputeOutcome[]               @relation("DisputeOutcomeSupersession")
+  createdAt                     DateTime                       @default(now())
+
+  @@unique([tenantId, consumerId, id])
+  @@unique([tenantId, consumerId, outcomeSeriesKey, id], map: "dispute_outcome_supersession_key")
+  @@unique([tenantId, consumerId, outcomeSeriesKey, version])
+  @@unique([tenantId, consumerId, idempotencyKey])
+  @@index([tenantId, consumerId, caseId, outcomeState, createdAt])
+  @@index([tenantId, consumerId, comparisonId, differenceId])
+}
+
+// Versioned Round-0 identity baseline. CONFIRMED is a new immutable row/version,
+// not an in-place rewrite of a draft.
+model IdentityBaseline {
+  id                 String                 @id @default(cuid())
+  tenantId           String
+  consumerId         String
+  reportVersionId    String
+  reportVersion      ReportVersion          @relation(fields: [tenantId, consumerId, reportVersionId], references: [tenantId, consumerId, id], onDelete: Restrict, onUpdate: Restrict)
+  baselineSeriesKey  String
+  version            Int
+  status             IdentityBaselineStatus
+  policyVersion      String
+  inputSetSha256     String                 @db.VarChar(64)
+  confirmedByActorId String?
+  confirmedAt        DateTime?
+  createdByActorId   String
+  createdAt          DateTime               @default(now())
+
+  facts                  IdentityFact[]
+  correspondences        Correspondence[]
+  correspondenceVersions CorrespondenceVersion[]
+  packets                Packet[]
+  artifacts              Artifact[]
+
+  @@unique([tenantId, consumerId, id])
+  @@unique([tenantId, consumerId, reportVersionId, id])
+  @@unique([tenantId, consumerId, baselineSeriesKey, version])
+  @@index([tenantId, consumerId, reportVersionId, status])
+}
+
+model IdentityFact {
+  id                       String                     @id @default(cuid())
+  tenantId                 String
+  consumerId               String
+  reportVersionId          String
+  identityBaselineId       String
+  baseline                 IdentityBaseline           @relation(fields: [tenantId, consumerId, reportVersionId, identityBaselineId], references: [tenantId, consumerId, reportVersionId, id], onDelete: Restrict, onUpdate: Restrict)
+  factSeriesKey            String
+  factOrdinal              Int
+  bureau                   Bureau?
+  factType                 IdentityFactType
+  classification           IdentityFactClassification
+  presence                 ObservationPresence
+  valueCiphertext          Bytes?
+  valueIv                  Bytes?
+  valueAuthTag             Bytes?
+  valueKeyVersion          String?
+  valueAlgorithm           EncryptionAlgorithm?
+  valueEnvelopeVersion     String?
+  valueAadVersion          String?
+  sourceLocatorToken       String
+  normalizationRuleKey     String
+  normalizationRuleVersion String
+  createdAt                DateTime                   @default(now())
+
+  priorDifferences   ReportDifference[] @relation("ReportDifferencePriorIdentityFact")
+  currentDifferences ReportDifference[] @relation("ReportDifferenceCurrentIdentityFact")
+
+  @@unique([tenantId, consumerId, id])
+  @@unique([tenantId, consumerId, identityBaselineId, factOrdinal])
+  @@unique([tenantId, consumerId, identityBaselineId, factSeriesKey])
+  @@unique([tenantId, consumerId, reportVersionId, identityBaselineId, factSeriesKey, id], map: "identity_fact_difference_pin_key")
+  @@index([tenantId, consumerId, identityBaselineId, factType, classification])
+}
+
+// Recipient identity is stable; consumer/personally identifying display data is
+// encrypted. Public routing policy is keyed by recipientType/stableKey.
+model Recipient {
+  id                         String               @id @default(cuid())
+  tenantId                   String
+  consumerId                 String
+  scope                      CreditTruthScope     @relation(fields: [tenantId, consumerId], references: [tenantId, consumerId], onDelete: Restrict, onUpdate: Restrict)
+  stableKey                  String
+  recipientType              RecipientType
+  displayNameCiphertext      Bytes?
+  displayNameIv              Bytes?
+  displayNameAuthTag         Bytes?
+  displayNameKeyVersion      String?
+  displayNameAlgorithm       EncryptionAlgorithm?
+  displayNameEnvelopeVersion String?
+  displayNameAadVersion      String?
+  createdAt                  DateTime             @default(now())
+
+  addressVersions RecipientAddressVersion[]
+  correspondences Correspondence[]
+  packets         Packet[]
+  artifacts       Artifact[]
+
+  @@unique([tenantId, consumerId, id])
+  @@unique([tenantId, consumerId, stableKey])
+  @@index([tenantId, consumerId, recipientType])
+}
+
+// The entire postal address is one authenticated encrypted envelope. No postal
+// component, recipient name, or address hash is indexed.
+model RecipientAddressVersion {
+  id                     String                 @id @default(cuid())
+  tenantId               String
+  consumerId             String
+  recipientId            String
+  recipient              Recipient              @relation(fields: [tenantId, consumerId, recipientId], references: [tenantId, consumerId, id], onDelete: Restrict, onUpdate: Restrict)
+  addressSeriesKey       String
+  version                Int
+  status                 RecipientAddressStatus
+  addressCiphertext      Bytes
+  addressIv              Bytes
+  addressAuthTag         Bytes
+  addressKeyVersion      String
+  addressAlgorithm       EncryptionAlgorithm
+  addressEnvelopeVersion String
+  addressAadVersion      String
+  validationRuleKey      String
+  validationRuleVersion  String
+  validationResultCode   String?
+  effectiveAt            DateTime
+  createdByActorId       String
+  createdAt              DateTime               @default(now())
+
+  correspondences        Correspondence[]
+  correspondenceVersions CorrespondenceVersion[]
+  packets                Packet[]
+  artifacts              Artifact[]
+
+  @@unique([tenantId, consumerId, id])
+  @@unique([tenantId, consumerId, recipientId, id])
+  @@unique([tenantId, consumerId, recipientId, addressSeriesKey, version])
+  @@index([tenantId, consumerId, recipientId, status, effectiveAt])
+}
+
+model DisputeCase {
+  id               String            @id @default(cuid())
+  tenantId         String
+  consumerId       String
+  reportVersionId  String
+  reportVersion    ReportVersion     @relation(fields: [tenantId, consumerId, reportVersionId], references: [tenantId, consumerId, id], onDelete: Restrict, onUpdate: Restrict)
+  caseKey          String
+  status           DisputeCaseStatus @default(DRAFT)
+  policyVersion    String
+  openedAt         DateTime          @default(now())
+  closedAt         DateTime?
+  createdByActorId String
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  correspondences Correspondence[]
+  packets         Packet[]
+  artifacts       Artifact[]
+  evidenceEvents  EvidenceEvent[]
+  disputeOutcomes DisputeOutcome[]
+
+  @@unique([tenantId, consumerId, id])
+  @@unique([tenantId, consumerId, reportVersionId, id])
+  @@unique([tenantId, consumerId, caseKey])
+  @@index([tenantId, consumerId, status, createdAt])
+}
+
+// Mutable aggregate header only. Approved content, addresses, items and artifacts
+// are pinned in immutable version rows below.
+model Correspondence {
+  id                        String                  @id @default(cuid())
+  tenantId                  String
+  consumerId                String
+  reportVersionId           String
+  caseId                    String
+  disputeCase               DisputeCase             @relation(fields: [tenantId, consumerId, reportVersionId, caseId], references: [tenantId, consumerId, reportVersionId, id], onDelete: Restrict, onUpdate: Restrict)
+  recipientId               String
+  recipient                 Recipient               @relation(fields: [tenantId, consumerId, recipientId], references: [tenantId, consumerId, id], onDelete: Restrict, onUpdate: Restrict)
+  recipientAddressVersionId String
+  recipientAddressVersion   RecipientAddressVersion @relation(fields: [tenantId, consumerId, recipientId, recipientAddressVersionId], references: [tenantId, consumerId, recipientId, id], onDelete: Restrict, onUpdate: Restrict)
+  identityBaselineId        String
+  identityBaseline          IdentityBaseline        @relation(fields: [tenantId, consumerId, reportVersionId, identityBaselineId], references: [tenantId, consumerId, reportVersionId, id], onDelete: Restrict, onUpdate: Restrict)
+  strategyKey               String
+  claimClass                String
+  policyVersion             String
+  round                     Int
+  status                    CorrespondenceStatus    @default(DRAFT)
+  idempotencyKey            String
+  parentCorrespondenceId    String?
+  parentRound               Int?
+  parentLineageRef          String
+  parentCorrespondence      Correspondence?         @relation("CorrespondenceRounds", fields: [tenantId, consumerId, reportVersionId, caseId, recipientId, identityBaselineId, policyVersion, claimClass, parentRound, parentCorrespondenceId], references: [tenantId, consumerId, reportVersionId, caseId, recipientId, identityBaselineId, policyVersion, claimClass, round, id], onDelete: Restrict, onUpdate: Restrict)
+  childCorrespondence       Correspondence[]        @relation("CorrespondenceRounds")
+  createdByActorId          String
+  createdAt                 DateTime                @default(now())
+  updatedAt                 DateTime                @updatedAt
+
+  items    CorrespondenceItem[]
+  versions CorrespondenceVersion[]
+
+  @@unique([tenantId, consumerId, id])
+  @@unique([tenantId, consumerId, reportVersionId, caseId, id])
+  @@unique([tenantId, consumerId, reportVersionId, caseId, recipientId, recipientAddressVersionId, identityBaselineId, strategyKey, claimClass, policyVersion, round, parentLineageRef, id], map: "correspondence_version_pin_key")
+  @@unique([tenantId, consumerId, reportVersionId, caseId, recipientId, identityBaselineId, policyVersion, claimClass, round, id], map: "correspondence_parent_pin_key")
+  @@unique([tenantId, consumerId, idempotencyKey])
+  @@index([tenantId, consumerId, caseId, recipientId, round])
+}
+
+// Immutable exact-field claim. It cannot exist without a same-report observation,
+// assessment and consumer assertion; historical evidence is optionally pinned.
+model CorrespondenceItem {
+  id                         String                   @id @default(cuid())
+  tenantId                   String
+  consumerId                 String
+  reportVersionId            String
+  caseId                     String
+  correspondenceId           String
+  correspondence             Correspondence           @relation(fields: [tenantId, consumerId, reportVersionId, caseId, correspondenceId], references: [tenantId, consumerId, reportVersionId, caseId, id], onDelete: Restrict, onUpdate: Restrict)
+  accountId                  String
+  extractionRunId            String
+  bureau                     Bureau
+  fieldKey                   String
+  observationId              String
+  observationSeriesKey       String
+  observationRevision        Int
+  observationIntegritySha256 String                   @db.VarChar(64)
+  observation                FieldObservation         @relation(fields: [tenantId, consumerId, reportVersionId, accountId, extractionRunId, bureau, fieldKey, observationSeriesKey, observationRevision, observationIntegritySha256, observationId], references: [tenantId, consumerId, reportVersionId, accountId, extractionRunId, bureau, fieldKey, observationSeriesKey, revision, integritySha256, id], onDelete: Restrict, onUpdate: Restrict, map: "correspondence_item_observation_fkey")
+  historicalEvidenceId       String?
+  historicalEvidence         HistoricalEvidence?      @relation(fields: [tenantId, consumerId, reportVersionId, accountId, extractionRunId, bureau, historicalEvidenceId], references: [tenantId, consumerId, reportVersionId, accountId, extractionRunId, bureau, id], onDelete: Restrict, onUpdate: Restrict, map: "correspondence_item_history_fkey")
+  assessmentId               String
+  assessment                 DerivedAccountAssessment @relation(fields: [tenantId, consumerId, reportVersionId, accountId, extractionRunId, assessmentId], references: [tenantId, consumerId, reportVersionId, accountId, extractionRunId, id], onDelete: Restrict, onUpdate: Restrict, map: "correspondence_item_assessment_fkey")
+  consumerAssertionId        String
+  consumerAssertion          ConsumerAssertion        @relation(fields: [tenantId, consumerId, reportVersionId, accountId, extractionRunId, bureau, fieldKey, observationSeriesKey, observationRevision, observationIntegritySha256, observationId, assessmentId, consumerAssertionId], references: [tenantId, consumerId, reportVersionId, accountId, extractionRunId, bureau, fieldKey, observationSeriesKey, observationRevision, observationIntegritySha256, observationId, assessmentId, id], onDelete: Restrict, onUpdate: Restrict, map: "correspondence_item_assertion_fkey")
+  itemKey                    String
+  ordinal                    Int
+  claimType                  String
+  createdAt                  DateTime                 @default(now())
+
+  versionMemberships CorrespondenceVersionItem[]
+  disputeOutcomes    DisputeOutcome[]
+
+  @@unique([tenantId, consumerId, id])
+  @@unique([tenantId, consumerId, reportVersionId, caseId, correspondenceId, id])
+  @@unique([tenantId, consumerId, reportVersionId, caseId, correspondenceId, accountId, bureau, fieldKey, consumerAssertionId, id], map: "correspondence_item_outcome_pin_key")
+  @@unique([tenantId, consumerId, correspondenceId, itemKey])
+  @@unique([tenantId, consumerId, correspondenceId, ordinal])
+  @@index([tenantId, consumerId, observationId])
+  @@index([tenantId, consumerId, consumerAssertionId])
+}
+
+// Approved/draft content versions are always appended. Approval is a property of
+// the inserted version, not a later in-place status mutation.
+model CorrespondenceVersion {
+  id                        String                  @id @default(cuid())
+  tenantId                  String
+  consumerId                String
+  reportVersionId           String
+  caseId                    String
+  correspondenceId          String
+  correspondence            Correspondence          @relation(fields: [tenantId, consumerId, reportVersionId, caseId, recipientId, recipientAddressVersionId, identityBaselineId, strategyKey, claimClass, policyVersion, round, parentLineageRef, correspondenceId], references: [tenantId, consumerId, reportVersionId, caseId, recipientId, recipientAddressVersionId, identityBaselineId, strategyKey, claimClass, policyVersion, round, parentLineageRef, id], onDelete: Restrict, onUpdate: Restrict, map: "correspondence_version_correspondence_fkey")
+  version                   Int
+  status                    CorrespondenceStatus
+  strategyKey               String
+  claimClass                String
+  policyVersion             String
+  round                     Int
+  parentLineageRef          String
+  templateVersion           String
+  recipientId               String
+  recipientAddressVersionId String
+  recipientAddressVersion   RecipientAddressVersion @relation(fields: [tenantId, consumerId, recipientId, recipientAddressVersionId], references: [tenantId, consumerId, recipientId, id], onDelete: Restrict, onUpdate: Restrict)
+  identityBaselineId        String
+  identityBaseline          IdentityBaseline        @relation(fields: [tenantId, consumerId, reportVersionId, identityBaselineId], references: [tenantId, consumerId, reportVersionId, id], onDelete: Restrict, onUpdate: Restrict, map: "correspondence_version_identity_fkey")
+  bodyCiphertext            Bytes
+  bodyIv                    Bytes
+  bodyAuthTag               Bytes
+  bodyKeyVersion            String
+  bodyAlgorithm             EncryptionAlgorithm
+  bodyEnvelopeVersion       String
+  bodyAadVersion            String
+  bodySha256                String                  @db.VarChar(64)
+  itemSetSha256             String                  @db.VarChar(64)
+  itemCount                 Int                     @default(0)
+  supersedesVersionId       String?
+  supersedesVersion         CorrespondenceVersion?  @relation("CorrespondenceVersionSupersession", fields: [tenantId, consumerId, reportVersionId, caseId, correspondenceId, supersedesVersionId], references: [tenantId, consumerId, reportVersionId, caseId, correspondenceId, id], onDelete: Restrict, onUpdate: Restrict)
+  supersededBy              CorrespondenceVersion[] @relation("CorrespondenceVersionSupersession")
+  approvedByActorId         String?
+  approvedAt                DateTime?
+  createdByActorId          String
+  createdAt                 DateTime                @default(now())
+
+  itemMemberships     CorrespondenceVersionItem[]
+  packetMemberships   PacketCorrespondenceVersion[]
+  primaryArtifacts    Artifact[]                      @relation("ArtifactPrimaryCorrespondenceVersion")
+  artifactMemberships ArtifactCorrespondenceVersion[]
+
+  @@unique([tenantId, consumerId, id])
+  @@unique([tenantId, consumerId, reportVersionId, caseId, correspondenceId, id])
+  @@unique([tenantId, consumerId, reportVersionId, caseId, correspondenceId, recipientId, recipientAddressVersionId, identityBaselineId, policyVersion, round, claimClass, id], map: "correspondence_version_packet_pin_key")
+  @@unique([tenantId, consumerId, correspondenceId, version])
+  @@index([tenantId, consumerId, caseId, status, createdAt])
+}
+
+model CorrespondenceVersionItem {
+  id                      String                @id @default(cuid())
+  tenantId                String
+  consumerId              String
+  reportVersionId         String
+  caseId                  String
+  correspondenceId        String
+  correspondenceVersionId String
+  correspondenceVersion   CorrespondenceVersion @relation(fields: [tenantId, consumerId, reportVersionId, caseId, correspondenceId, correspondenceVersionId], references: [tenantId, consumerId, reportVersionId, caseId, correspondenceId, id], onDelete: Restrict, onUpdate: Restrict, map: "cvi_version_fkey")
+  correspondenceItemId    String
+  correspondenceItem      CorrespondenceItem    @relation(fields: [tenantId, consumerId, reportVersionId, caseId, correspondenceId, correspondenceItemId], references: [tenantId, consumerId, reportVersionId, caseId, correspondenceId, id], onDelete: Restrict, onUpdate: Restrict, map: "cvi_item_fkey")
+  ordinal                 Int
+  createdAt               DateTime              @default(now())
+
+  disputeOutcomes DisputeOutcome[]
+
+  @@unique([tenantId, consumerId, id])
+  @@unique([tenantId, consumerId, correspondenceVersionId, correspondenceItemId], map: "cvi_version_item_key")
+  @@unique([tenantId, consumerId, correspondenceVersionId, ordinal], map: "cvi_version_ordinal_key")
+  @@unique([tenantId, consumerId, reportVersionId, caseId, correspondenceId, correspondenceVersionId, correspondenceItemId, id], map: "cvi_outcome_pin_key")
+}
+
+// One immutable recipient-first packet version; multiple correspondence versions
+// may be consolidated only through the explicit membership table.
+model Packet {
+  id                         String                  @id @default(cuid())
+  tenantId                   String
+  consumerId                 String
+  reportVersionId            String
+  caseId                     String
+  disputeCase                DisputeCase             @relation(fields: [tenantId, consumerId, reportVersionId, caseId], references: [tenantId, consumerId, reportVersionId, id], onDelete: Restrict, onUpdate: Restrict)
+  recipientId                String
+  recipient                  Recipient               @relation(fields: [tenantId, consumerId, recipientId], references: [tenantId, consumerId, id], onDelete: Restrict, onUpdate: Restrict)
+  recipientAddressVersionId  String
+  recipientAddressVersion    RecipientAddressVersion @relation(fields: [tenantId, consumerId, recipientId, recipientAddressVersionId], references: [tenantId, consumerId, recipientId, id], onDelete: Restrict, onUpdate: Restrict)
+  identityBaselineId         String
+  identityBaseline           IdentityBaseline        @relation(fields: [tenantId, consumerId, reportVersionId, identityBaselineId], references: [tenantId, consumerId, reportVersionId, id], onDelete: Restrict, onUpdate: Restrict)
+  packetSeriesKey            String
+  version                    Int
+  round                      Int
+  claimClass                 String
+  policyVersion              String
+  enclosureManifestSha256    String                  @db.VarChar(64)
+  correspondenceVersionCount Int                     @default(0)
+  enclosureCount             Int                     @default(0)
+  status                     PacketStatus
+  approvedByActorId          String?
+  approvedAt                 DateTime?
+  createdByActorId           String
+  createdAt                  DateTime                @default(now())
+
+  correspondenceVersions PacketCorrespondenceVersion[]
+  enclosures             PacketEnclosure[]
+  artifacts              Artifact[]
+
+  @@unique([tenantId, consumerId, id])
+  @@unique([tenantId, consumerId, reportVersionId, caseId, id])
+  @@unique([tenantId, consumerId, reportVersionId, caseId, recipientId, recipientAddressVersionId, identityBaselineId, policyVersion, round, claimClass, id], map: "packet_artifact_pin_key")
+  @@unique([tenantId, consumerId, packetSeriesKey, version])
+  @@index([tenantId, consumerId, caseId, recipientId, round])
+}
+
+model PacketCorrespondenceVersion {
+  id                        String                @id @default(cuid())
+  tenantId                  String
+  consumerId                String
+  reportVersionId           String
+  caseId                    String
+  recipientId               String
+  recipientAddressVersionId String
+  identityBaselineId        String
+  policyVersion             String
+  round                     Int
+  claimClass                String
+  packetId                  String
+  packet                    Packet                @relation(fields: [tenantId, consumerId, reportVersionId, caseId, recipientId, recipientAddressVersionId, identityBaselineId, policyVersion, round, claimClass, packetId], references: [tenantId, consumerId, reportVersionId, caseId, recipientId, recipientAddressVersionId, identityBaselineId, policyVersion, round, claimClass, id], onDelete: Restrict, onUpdate: Restrict, map: "pcv_packet_fkey")
+  correspondenceId          String
+  correspondenceVersionId   String
+  correspondenceVersion     CorrespondenceVersion @relation(fields: [tenantId, consumerId, reportVersionId, caseId, correspondenceId, recipientId, recipientAddressVersionId, identityBaselineId, policyVersion, round, claimClass, correspondenceVersionId], references: [tenantId, consumerId, reportVersionId, caseId, correspondenceId, recipientId, recipientAddressVersionId, identityBaselineId, policyVersion, round, claimClass, id], onDelete: Restrict, onUpdate: Restrict, map: "pcv_correspondence_version_fkey")
+  ordinal                   Int
+  createdAt                 DateTime              @default(now())
+
+  primaryArtifacts               Artifact[]                      @relation("ArtifactPrimaryPacketMembership")
+  artifactCorrespondenceVersions ArtifactCorrespondenceVersion[] @relation("ArtifactCorrespondencePacketMembership")
+
+  @@unique([tenantId, consumerId, id])
+  @@unique([tenantId, consumerId, packetId, correspondenceVersionId])
+  @@unique([tenantId, consumerId, reportVersionId, caseId, packetId, correspondenceId, correspondenceVersionId], map: "pcv_artifact_membership_key")
+  @@unique([tenantId, consumerId, packetId, ordinal])
+}
+
+// One exact packet-bound enclosure membership. Artifact metadata must carry the
+// same packet, recipient/address, identity, policy, round and claim pins; reusable
+// storage bytes require a separate immutable Artifact row for each packet context.
+model PacketEnclosure {
+  id                        String              @id @default(cuid())
+  tenantId                  String
+  consumerId                String
+  reportVersionId           String
+  caseId                    String
+  recipientId               String
+  recipientAddressVersionId String
+  identityBaselineId        String
+  policyVersion             String
+  round                     Int
+  claimClass                String
+  packetId                  String
+  packet                    Packet              @relation(fields: [tenantId, consumerId, reportVersionId, caseId, recipientId, recipientAddressVersionId, identityBaselineId, policyVersion, round, claimClass, packetId], references: [tenantId, consumerId, reportVersionId, caseId, recipientId, recipientAddressVersionId, identityBaselineId, policyVersion, round, claimClass, id], onDelete: Restrict, onUpdate: Restrict, map: "packet_enclosure_packet_fkey")
+  artifactId                String
+  artifactKind              ArtifactKind
+  artifact                  Artifact            @relation(fields: [tenantId, consumerId, reportVersionId, caseId, packetId, recipientId, recipientAddressVersionId, identityBaselineId, policyVersion, round, claimClass, artifactKind, artifactId], references: [tenantId, consumerId, reportVersionId, caseId, packetId, recipientId, recipientAddressVersionId, identityBaselineId, policyVersion, round, claimClass, kind, id], onDelete: Restrict, onUpdate: Restrict, map: "packet_enclosure_artifact_fkey")
+  ordinal                   Int
+  kind                      PacketEnclosureKind
+  labelCode                 String
+  required                  Boolean             @default(false)
+  createdAt                 DateTime            @default(now())
+
+  @@unique([tenantId, consumerId, id])
+  @@unique([tenantId, consumerId, packetId, artifactId])
+  @@unique([tenantId, consumerId, packetId, ordinal])
+}
+
+// Vendor-neutral immutable object metadata. The provider key is configuration,
+// while the provider locator is encrypted. No public URL is stored. Packet and
+// correspondence joins pin domain versions without binding storage to a vendor.
+model Artifact {
+  id                             String                       @id @default(cuid())
+  tenantId                       String
+  consumerId                     String
+  scope                          CreditTruthScope             @relation(fields: [tenantId, consumerId], references: [tenantId, consumerId], onDelete: Restrict, onUpdate: Restrict)
+  artifactSeriesKey              String
+  version                        Int
+  kind                           ArtifactKind
+  reportVersionId                String?
+  reportVersion                  ReportVersion?               @relation("ArtifactReportVersion", fields: [tenantId, consumerId, reportVersionId], references: [tenantId, consumerId, id], onDelete: Restrict, onUpdate: Restrict)
+  caseId                         String?
+  disputeCase                    DisputeCase?                 @relation(fields: [tenantId, consumerId, reportVersionId, caseId], references: [tenantId, consumerId, reportVersionId, id], onDelete: Restrict, onUpdate: Restrict)
+  packetId                       String?
+  packet                         Packet?                      @relation(fields: [tenantId, consumerId, reportVersionId, caseId, recipientId, recipientAddressVersionId, identityBaselineId, policyVersion, round, claimClass, packetId], references: [tenantId, consumerId, reportVersionId, caseId, recipientId, recipientAddressVersionId, identityBaselineId, policyVersion, round, claimClass, id], onDelete: Restrict, onUpdate: Restrict)
+  primaryCorrespondenceId        String?
+  primaryCorrespondenceVersionId String?
+  primaryCorrespondenceVersion   CorrespondenceVersion?       @relation("ArtifactPrimaryCorrespondenceVersion", fields: [tenantId, consumerId, reportVersionId, caseId, primaryCorrespondenceId, recipientId, recipientAddressVersionId, identityBaselineId, policyVersion, round, claimClass, primaryCorrespondenceVersionId], references: [tenantId, consumerId, reportVersionId, caseId, correspondenceId, recipientId, recipientAddressVersionId, identityBaselineId, policyVersion, round, claimClass, id], onDelete: Restrict, onUpdate: Restrict)
+  primaryPacketMembership        PacketCorrespondenceVersion? @relation("ArtifactPrimaryPacketMembership", fields: [tenantId, consumerId, reportVersionId, caseId, packetId, primaryCorrespondenceId, primaryCorrespondenceVersionId], references: [tenantId, consumerId, reportVersionId, caseId, packetId, correspondenceId, correspondenceVersionId], onDelete: Restrict, onUpdate: Restrict, map: "artifact_primary_packet_membership_fkey")
+  recipientId                    String?
+  recipient                      Recipient?                   @relation(fields: [tenantId, consumerId, recipientId], references: [tenantId, consumerId, id], onDelete: Restrict, onUpdate: Restrict)
+  recipientAddressVersionId      String?
+  recipientAddressVersion        RecipientAddressVersion?     @relation(fields: [tenantId, consumerId, recipientId, recipientAddressVersionId], references: [tenantId, consumerId, recipientId, id], onDelete: Restrict, onUpdate: Restrict)
+  identityBaselineId             String?
+  identityBaseline               IdentityBaseline?            @relation(fields: [tenantId, consumerId, reportVersionId, identityBaselineId], references: [tenantId, consumerId, reportVersionId, id], onDelete: Restrict, onUpdate: Restrict)
+  storageProviderKey             String
+  storageLocatorCiphertext       Bytes
+  storageLocatorIv               Bytes
+  storageLocatorAuthTag          Bytes
+  storageLocatorKeyVersion       String
+  storageLocatorAlgorithm        EncryptionAlgorithm
+  storageLocatorEnvelopeVersion  String
+  storageLocatorAadVersion       String
+  sha256                         String                       @db.VarChar(64)
+  mimeType                       String
+  byteLength                     BigInt
+  pageCount                      Int?
+  rendererVersion                String?
+  templateVersion                String?
+  policyVersion                  String?
+  round                          Int?
+  claimClass                     String?
+  enclosureManifestSha256        String?                      @db.VarChar(64)
+  correspondenceVersionCount     Int                          @default(0)
+  createdByActorId               String
+  createdAt                      DateTime                     @default(now())
+
+  enclosureMemberships   PacketEnclosure[]
+  correspondenceVersions ArtifactCorrespondenceVersion[]
+  tombstones             ArtifactTombstone[]
+
+  @@unique([tenantId, consumerId, id])
+  @@unique([tenantId, consumerId, reportVersionId, caseId, id])
+  @@unique([tenantId, consumerId, reportVersionId, caseId, kind, id], map: "artifact_enclosure_pin_key")
+  @@unique([tenantId, consumerId, reportVersionId, caseId, packetId, recipientId, recipientAddressVersionId, identityBaselineId, policyVersion, round, claimClass, kind, id], map: "artifact_packet_enclosure_pin_key")
+  @@unique([tenantId, consumerId, reportVersionId, caseId, recipientId, recipientAddressVersionId, identityBaselineId, policyVersion, round, claimClass, id], map: "artifact_correspondence_pin_key")
+  @@unique([tenantId, consumerId, artifactSeriesKey, version])
+  @@index([tenantId, consumerId, kind, createdAt])
+  @@index([tenantId, consumerId, sha256])
+  @@index([tenantId, consumerId, packetId])
+}
+
+model ArtifactCorrespondenceVersion {
+  id                        String                       @id @default(cuid())
+  tenantId                  String
+  consumerId                String
+  reportVersionId           String
+  caseId                    String
+  recipientId               String
+  recipientAddressVersionId String
+  identityBaselineId        String
+  policyVersion             String
+  round                     Int
+  claimClass                String
+  packetId                  String?
+  packetMembership          PacketCorrespondenceVersion? @relation("ArtifactCorrespondencePacketMembership", fields: [tenantId, consumerId, reportVersionId, caseId, packetId, correspondenceId, correspondenceVersionId], references: [tenantId, consumerId, reportVersionId, caseId, packetId, correspondenceId, correspondenceVersionId], onDelete: Restrict, onUpdate: Restrict, map: "acv_packet_membership_fkey")
+  artifactId                String
+  artifact                  Artifact                     @relation(fields: [tenantId, consumerId, reportVersionId, caseId, recipientId, recipientAddressVersionId, identityBaselineId, policyVersion, round, claimClass, artifactId], references: [tenantId, consumerId, reportVersionId, caseId, recipientId, recipientAddressVersionId, identityBaselineId, policyVersion, round, claimClass, id], onDelete: Restrict, onUpdate: Restrict, map: "acv_artifact_fkey")
+  correspondenceId          String
+  correspondenceVersionId   String
+  correspondenceVersion     CorrespondenceVersion        @relation(fields: [tenantId, consumerId, reportVersionId, caseId, correspondenceId, recipientId, recipientAddressVersionId, identityBaselineId, policyVersion, round, claimClass, correspondenceVersionId], references: [tenantId, consumerId, reportVersionId, caseId, correspondenceId, recipientId, recipientAddressVersionId, identityBaselineId, policyVersion, round, claimClass, id], onDelete: Restrict, onUpdate: Restrict, map: "acv_correspondence_version_fkey")
+  ordinal                   Int
+  createdAt                 DateTime                     @default(now())
+
+  @@unique([tenantId, consumerId, id])
+  @@unique([tenantId, consumerId, artifactId, correspondenceVersionId], map: "acv_artifact_version_key")
+  @@unique([tenantId, consumerId, artifactId, ordinal], map: "acv_artifact_ordinal_key")
+}
+
+// Artifact erasure/retention is an appended request/result record. The immutable
+// Artifact stays as digest evidence while its encrypted object/key may be destroyed.
+model ArtifactTombstone {
+  id                 String   @id @default(cuid())
+  tenantId           String
+  consumerId         String
+  artifactId         String
+  artifact           Artifact @relation(fields: [tenantId, consumerId, artifactId], references: [tenantId, consumerId, id], onDelete: Restrict, onUpdate: Restrict)
+  eventKey           String
+  eventType          String // TOMBSTONE_REQUESTED | OBJECT_DELETED | CRYPTO_SHREDDED | FAILED
+  reasonCode         String
+  storageDeletionRef String?
+  actorId            String
+  occurredAt         DateTime
+  createdAt          DateTime @default(now())
+
+  @@unique([tenantId, consumerId, id])
+  @@unique([tenantId, consumerId, eventKey])
+  @@index([tenantId, consumerId, artifactId, createdAt])
+}
+
+// PII-safe append-only ledger: internal refs and bounded machine keys only. There
+// is deliberately no free-text or JSON value payload.
+model EvidenceEvent {
+  id             String               @id @default(cuid())
+  tenantId       String
+  consumerId     String
+  scope          CreditTruthScope     @relation(fields: [tenantId, consumerId], references: [tenantId, consumerId], onDelete: Restrict, onUpdate: Restrict)
+  caseId         String?
+  disputeCase    DisputeCase?         @relation(fields: [tenantId, consumerId, caseId], references: [tenantId, consumerId, id], onDelete: Restrict, onUpdate: Restrict)
+  eventKey       String
+  eventType      EvidenceEventType
+  eventVersion   Int
+  subjectType    EvidenceSubjectType
+  subjectId      String
+  relatedRefType EvidenceSubjectType?
+  relatedRefId   String?
+  actorId        String
+  correlationId  String
+  occurredAt     DateTime
+  createdAt      DateTime             @default(now())
+
+  @@unique([tenantId, consumerId, id])
+  @@unique([tenantId, consumerId, eventKey])
+  @@index([tenantId, consumerId, occurredAt, id])
+  @@index([tenantId, consumerId, caseId, occurredAt, id])
+  @@index([tenantId, consumerId, subjectType, subjectId])
+  @@index([tenantId, consumerId, correlationId])
 }

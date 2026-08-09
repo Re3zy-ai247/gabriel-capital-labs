@@ -206,3 +206,13 @@ export function toBureauData(
   }
   return data;
 }
+
+// Phase 1 shadow-only export. The legacy regex parser and BureauData projection
+// above remain byte-for-byte behaviorally unchanged.
+export {
+  extractRegexParserV2Shadow,
+  type RegexParserV2AccountInput,
+  type RegexParserV2BureauInput,
+  type RegexParserV2SectionInput,
+  type RegexParserV2ShadowOutput,
+} from "./creditTruth/parserRegexV2";

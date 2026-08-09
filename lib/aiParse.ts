@@ -211,3 +211,11 @@ export async function aiExtractTradelines(
       } satisfies ExtractedTradeline;
     });
 }
+
+// Phase 1 shadow-only export. The current aiExtractTradelines read path above
+// remains unchanged; callers must opt into the bureau-scoped v2 adapter.
+export {
+  AI_PARSER_V2_SHADOW_RULES,
+  adaptAiParserV2ShadowOutput,
+  type AiParserV2ShadowOutput,
+} from "./creditTruth/parserAiV2";

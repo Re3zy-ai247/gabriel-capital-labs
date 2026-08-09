@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark light">
+  <meta name="description" content="CreditVector P0 Phase 1 build-only Founder checkpoint.">
+  <title>CreditVector P0 Phase 1 — Founder Checkpoint</title>
+  <style>
+    :root {
+      color-scheme: dark light;
+      --bg: #07111f;
+      --panel: #0d1929;
+      --raised: #13233a;
+      --ink: #f5f8fc;
+      --muted: #b7c5d6;
+      --dim: #8395ac;
+      --line: #29425f;
+      --cyan: #48cfe3;
+      --green: #82dfb6;
+      --yellow: #f4ca67;
+      --red: #ff94a0;
+      --max: 88rem;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      min-width: 20rem;
+      background: var(--bg);
+      color: var(--ink);
+      font: 1rem/1.62 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      text-rendering: optimizeLegibility;
+    }
+    header, main, footer { width: min(var(--max), calc(100% - 2rem)); margin-inline: auto; }
+    header { padding: clamp(2rem, 7vw, 5rem) 0 2rem; }
+    main { padding-bottom: 4rem; }
+    section { border-top: 1px solid var(--line); padding-top: .25rem; }
+    h1 { margin: .45rem 0 1rem; max-width: 17ch; font-size: clamp(2.25rem, 7vw, 5.25rem); line-height: .98; letter-spacing: -.045em; }
+    h2 { margin: 3rem 0 1rem; font-size: clamp(1.45rem, 4vw, 2.15rem); line-height: 1.16; }
+    h3 { margin: 1.7rem 0 .55rem; font-size: 1.08rem; }
+    p, li, td { color: var(--muted); }
+    strong, th { color: var(--ink); }
+    a { color: var(--cyan); text-underline-offset: .18em; }
+    a:focus-visible, .scroll:focus-visible { outline: .2rem solid var(--yellow); outline-offset: .2rem; }
+    .eyebrow { color: var(--cyan); font-size: .78rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+    .signals { display: flex; flex-wrap: wrap; gap: .55rem; margin: 1.35rem 0; }
+    .badge { display: inline-flex; align-items: center; min-height: 2rem; padding: .3rem .7rem; border: 1px solid var(--line); border-radius: 999px; font-size: .78rem; font-weight: 800; }
+    .pass { color: var(--green); background: #12382a; }
+    .warn { color: var(--yellow); background: #382d13; }
+    .nogo { color: var(--red); background: #3b1922; }
+    .callout { margin: 1.2rem 0; padding: 1rem 1.1rem; border: 1px solid var(--line); border-left: .3rem solid var(--cyan); border-radius: .7rem; background: var(--panel); }
+    .stop { border-left-color: var(--red); }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr)); gap: 1rem; }
+    .card { padding: 1rem; border: 1px solid var(--line); border-radius: .8rem; background: var(--panel); }
+    .card h3 { margin-top: 0; }
+    .scroll { width: 100%; overflow-x: auto; border: 1px solid var(--line); border-radius: .75rem; background: var(--panel); -webkit-overflow-scrolling: touch; }
+    table { width: 100%; min-width: 44rem; border-collapse: collapse; }
+    th, td { padding: .72rem .8rem; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    tr:last-child td { border-bottom: 0; }
+    th { background: var(--raised); font-size: .76rem; letter-spacing: .04em; text-transform: uppercase; }
+    code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    code { color: var(--cyan); overflow-wrap: anywhere; }
+    pre { margin: 1rem 0; padding: 1rem; overflow-x: auto; border: 1px solid var(--line); border-radius: .75rem; background: #050d18; color: var(--muted); font-size: .82rem; }
+    ul { padding-left: 1.3rem; }
+    li { margin: .35rem 0; }
+    .toc { padding: 1rem; border: 1px solid var(--line); border-radius: .75rem; background: var(--panel); }
+    .toc ol { columns: 2; column-gap: 2rem; margin-bottom: 0; }
+    .toc li { break-inside: avoid; }
+    footer { padding: 2rem 0 4rem; border-top: 1px solid var(--line); color: var(--dim); font-size: .85rem; }
+    @media (max-width: 44rem) {
+      header, main, footer { width: min(100% - 1rem, var(--max)); }
+      .toc ol { columns: 1; }
+      h1 { font-size: clamp(2.1rem, 14vw, 3.8rem); }
+      .card { padding: .9rem; }
+    }
+    @media print {
+      :root { color-scheme: light; --bg: #fff; --panel: #fff; --raised: #eef4f8; --ink: #102033; --muted: #30445b; --dim: #566b80; --line: #bdcbd8; }
+      body { font-size: 10pt; }
+      .card, .scroll, pre, .callout { break-inside: avoid; }
+      a { color: inherit; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="eyebrow">Founder checkpoint · 2026-08-09</div>
+    <h1>CreditVector P0 Phase 1</h1>
+    <p>Dormant, isolated, additive correctness foundation.</p>
+    <div class="signals" aria-label="Decision status">
+      <span class="badge pass">PHASE 1 CHECKPOINT: GO</span>
+      <span class="badge pass">CRITICAL 0 · HIGH 0</span>
+      <span class="badge nogo">PRODUCTION: NO-GO</span>
+      <span class="badge pass">M2: UNTOUCHED</span>
+    </div>
+    <div class="callout stop"><strong>Authority boundary.</strong> This checkpoint permits a Git commit of dormant Phase 1 work only. It does not authorize production migration, backfill, reanalysis, read activation, UI/Kai output, correspondence, fulfillment, deployment, push, or merge to <code>main</code>.</div>
+    <nav class="toc" aria-label="Contents">
+      <strong>Contents</strong>
+      <ol>
+        <li><a href="#verdict">Verdict</a></li>
+        <li><a href="#closure">Four High closures</a></li>
+        <li><a href="#tests">Verification matrix</a></li>
+        <li><a href="#schema">Schema and migration</a></li>
+        <li><a href="#progress">Progress Intelligence</a></li>
+        <li><a href="#foundation">Credit truth</a></li>
+        <li><a href="#security">Security and privacy</a></li>
+        <li><a href="#repo">Repository state</a></li>
+        <li><a href="#isolation">Production and M2</a></li>
+        <li><a href="#residuals">Remaining findings</a></li>
+        <li><a href="#next">Next decision</a></li>
+      </ol>
+    </nav>
+  </header>
+
+  <main>
+    <section id="verdict">
+      <h2>1. Final verdict</h2>
+      <p><strong>GO FOR PHASE 1 CHECKPOINT.</strong> The four authoritative final-red-team High findings were repaired, independently persisted on disposable PostgreSQL, and attacked again against the exact repaired state. Final closure severity is <strong>0 Critical / 0 High</strong>.</p>
+      <p>Production remains <span class="badge nogo">NO-GO</span>. The new domain, parsers, policies, storage contract, and progress engine are dormant and have no production consumer.</p>
+    </section>
+
+    <section id="closure">
+      <h2>2. Red-team closure</h2>
+      <div class="scroll" tabindex="0"><table>
+        <thead><tr><th>Finding</th><th>Root cause</th><th>Repair</th><th>Protection</th><th>Result</th></tr></thead>
+        <tbody>
+          <tr><td>No-longer-reported mismatch</td><td>A field transition borrowed whole-account disappearance vocabulary.</td><td>Only complete account P/A yields <code>NO_LONGER_REPORTED</code>. Field P/A stays field-specific with <code>NOT_APPLICABLE</code>; neither proves deletion.</td><td>Runtime RED TEAM 3, SQL truth table, static guard, committed positive chain.</td><td><span class="badge pass">PASS</span></td></tr>
+          <tr><td>Incomplete account transitions</td><td>Some prior/current pairs could be relabeled; A/A was unrepresentable.</td><td>P/P, P/A, A/P, and A/A are exhaustive. Incomplete or unknown input fails closed.</td><td>Runtime RED TEAM 2, direct-writer negatives, persisted P/A path.</td><td><span class="badge pass">PASS</span></td></tr>
+          <tr><td>Score comparability gaps</td><td>Durable checks omitted method/version, occurrence, report chronology, and aligned revision semantics.</td><td>Exact report/run/bureau, role, model/scale, method/version, occurrence, source date, and same-slot revision pins.</td><td>Runtime RED TEAM 6–8, composite constraints, persisted score path.</td><td><span class="badge pass">PASS</span></td></tr>
+          <tr><td>Causal-language bypass</td><td>A regex denylist accepted unsupported phrasing.</td><td>Only frozen, module-registered, exact generated templates are accepted.</td><td>Runtime RED TEAM 1 and five extra causal/tamper probes.</td><td><span class="badge pass">PASS</span></td></tr>
+        </tbody>
+      </table></div>
+      <p>Outcome provenance is also state-exact: comparison-only absence is <code>NO_LONGER_REPORTED</code>, <code>DELETED</code> is unavailable in Phase 1, and <code>CORRECTED</code>/<code>NEW_CONFLICT</code> require exact human confirmation.</p>
+    </section>
+
+    <section id="tests">
+      <h2>3. Test and verification matrix</h2>
+      <div class="scroll" tabindex="0"><table>
+        <thead><tr><th>Suite</th><th>Result</th><th>Suite</th><th>Result</th></tr></thead>
+        <tbody>
+          <tr><td>Sanitized fixture</td><td>23 / 23</td><td>Parser-v2</td><td>69 / 69</td></tr>
+          <tr><td>Assessment/assertions</td><td>79 / 79</td><td>Strategy policy</td><td>85 / 85</td></tr>
+          <tr><td>Artifact storage</td><td>71 / 71</td><td>Progress Intelligence</td><td>30 / 30</td></tr>
+          <tr><td>Classification regression</td><td>29 / 29</td><td>Migration static guard</td><td>48 / 48</td></tr>
+          <tr><td>Disposable migration</td><td>3 positive / 47 negative</td><td>TypeScript + Prisma</td><td>PASS</td></tr>
+          <tr><td>Parity, no-op, rollback, rebuild</td><td>PASS</td><td>Both-order assessment races</td><td><code>1|0</code>, <code>0|1</code>, stale <code>0</code></td></tr>
+          <tr><td>Sealed-packet concurrency</td><td>Fail-closed, zero commits</td><td>Teardown</td><td>No disposable container</td></tr>
+        </tbody>
+      </table></div>
+      <p>The independent progress proof commits and reads back <code>2|1|3|2|2</code>: two compatible scores, one comparable temporal comparison, three differences, two outcomes, and two approved memberships.</p>
+    </section>
+
+    <section id="schema">
+      <h2>4. Schema and migration state</h2>
+      <div class="grid">
+        <article class="card"><h3>Schema SHA-256</h3><p><code>ea1665d6708e8b170e486b69ae8bd734f62ca548fa20ab3f7685aa3ddb1c531a</code></p></article>
+        <article class="card"><h3>Migration SHA-256</h3><p><code>95e18c20735e152baad6e8a995a951dab792e999469b7cf77dbc973148ad426a</code></p></article>
+      </div>
+      <p>Inventory: 49 enums, 32 additive tables, 122 unique indexes, 38 secondary indexes, 106 restrictive foreign keys, 127 checks, 72 triggers, and 29 functions. Prisma database-to-schema diff was empty after forward apply and rebuild. The rollback contains no <code>CASCADE</code> and preserves legacy sentinels.</p>
+      <p>Verification used loopback-only disposable PostgreSQL 16 for the independent verifier and PostgreSQL 17 for the schema-owner harness. The ordinary application database URL and production credentials were not used.</p>
+    </section>
+
+    <section id="progress">
+      <h2>5. Progress Intelligence state</h2>
+      <div class="grid">
+        <article class="card"><h3>ReportVersion</h3><p>Immutable measurement checkpoints; reanalysis appends a run. Report date is source-reported, explicit not-provided, or unknown—never upload time.</p></article>
+        <article class="card"><h3>Score provenance</h3><p>Encrypted report scores retain exact bureau/report/run, locator, method/version, occurrence, model/scale, confidence/errors, and integrity pins. Missing scores are never invented.</p></article>
+        <article class="card"><h3>Comparability</h3><p>A delta requires compatible model, method, occurrence, coverage, primary report role, and ordered source dates. Manual entries remain secondary.</p></article>
+        <article class="card"><h3>Differences</h3><p>Account, field, score, coverage, and identity changes stay bureau- and source-exact. Parser uncertainty cannot become absence or deletion.</p></article>
+        <article class="card"><h3>Account transitions</h3><p>P/P unchanged-present; P/A no longer reported; A/P new item; A/A unchanged non-deletion.</p></article>
+        <article class="card"><h3>Outcomes and language</h3><p>Exact approved membership is required. Deletion is rejected. Correction/conflict requires human confirmation. Causal copy uses a closed noncausal template set.</p></article>
+      </div>
+      <p>No production route, UI, Score Tracker, Kai, or read path imports this module.</p>
+    </section>
+
+    <section id="foundation">
+      <h2>6. Credit-truth foundation state</h2>
+      <ul>
+        <li>Parser-v2 remains opt-in <code>SHADOW_ONLY</code>; legacy parsing and writes are unchanged.</li>
+        <li>Bureau facts remain isolated; silence, failure, and outside coverage remain <code>UNKNOWN</code>.</li>
+        <li>Historical adversity and incomplete evidence prevent <code>CLEAN</code>; affirmative complete controls can be clean.</li>
+        <li>Consumer assertions bind exact scope, observation, series, revision, and digest; drift requires reconfirmation.</li>
+        <li>All 12 strategies remain <code>DORMANT_PHASE_1</code>; seven counsel-sensitive policies remain <code>PENDING_COUNSEL</code>.</li>
+        <li>The artifact contract remains exact-scope, immutable, digest-bound, replay-resistant, and legal-hold aware.</li>
+        <li>Foundation invariants I1–I10 and progress requirements P1–P12 are green for this dormant slice.</li>
+      </ul>
+    </section>
+
+    <section id="security">
+      <h2>7. Security, compliance, and privacy</h2>
+      <p>Tenant, consumer, report, run, case, recipient, and artifact boundaries use scoped composite keys and fail-closed validators. Sensitive values and locators are ciphertext envelopes; evidence events are refs-only.</p>
+      <p>Compliance review is <span class="badge pass">0 CRITICAL · 0 HIGH</span> after terminology alignment. Current-report absence means only <code>NO_LONGER_REPORTED</code>; it never proves deletion, recipient action, or dispute causation.</p>
+      <p>Final repository, staged-file, PII, secret, evidence-path, PDF/image/base64, and diff checks passed. Founder reports, generated consumer letters, screenshots, and private evidence were not copied or staged.</p>
+    </section>
+
+    <section id="repo">
+      <h2>8. Repository state</h2>
+      <div class="scroll" tabindex="0"><table>
+        <thead><tr><th>Control</th><th>State</th></tr></thead>
+        <tbody>
+          <tr><td>Worktree</td><td><code>/private/tmp/creditvector-p0-launch-correctness</code></td></tr>
+          <tr><td>Branch</td><td><code>codex/p0-launch-correctness</code></td></tr>
+          <tr><td>Pre-closure checkpoint</td><td><code>f57c7f7afa559b25e071add7624c3b92a08a0af1</code></td></tr>
+          <tr><td>Closure commit</td><td>The commit containing this file; exact SHA is in the Founder chat handoff.</td></tr>
+          <tr><td>Scope</td><td>Additive schema/migration, nine dormant truth modules, two opt-in re-exports, seven P0 test/verification scripts plus rollback SQL, and five Phase 1 documents.</td></tr>
+          <tr><td>Staging</td><td>Explicit files only; no blanket <code>git add .</code>.</td></tr>
+          <tr><td>Post-commit state</td><td>Clean staged and unstaged state.</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section id="isolation">
+      <h2>9. Production and M2 isolation</h2>
+      <ul>
+        <li>Production access, migration, backfill, reanalysis, and source processing: <strong>NONE</strong>.</li>
+        <li>Production credentials or database fingerprints: <strong>NOT READ OR PRINTED</strong>.</li>
+        <li>Deployment, feature activation, fulfillment, push, and merge: <strong>NONE</strong>.</li>
+        <li>M2 worktree, lineage, and artifacts: <strong>UNTOUCHED</strong>; its two prior untracked probes remain unchanged.</li>
+        <li>Founder/private evidence: <strong>LOCAL, UNTRACKED, UNSTAGED, NOT COMMITTED</strong>.</li>
+      </ul>
+    </section>
+
+    <section id="residuals">
+      <h2>10. Remaining findings</h2>
+      <div class="scroll" tabindex="0"><table>
+        <thead><tr><th>Severity</th><th>Count</th><th>Residuals</th></tr></thead>
+        <tbody>
+          <tr><td>Critical</td><td>0</td><td>None</td></tr>
+          <tr><td>High</td><td>0</td><td>None</td></tr>
+          <tr><td>Medium</td><td>4</td><td>Trusted repository/writer semantic attestation for encrypted-value equality; truthful post-I/O artifact result state; stricter negative-integrity result shape; retry/translation for fail-closed PostgreSQL <code>40P01</code>.</td></tr>
+          <tr><td>Low</td><td>2</td><td>Strict ISO-instant parsing and ingress schema parsing for malformed nested artifact inputs.</td></tr>
+        </tbody>
+      </table></div>
+      <p>All residuals are explicit pre-activation gates; none exposes a production path in Phase 1.</p>
+    </section>
+
+    <section id="next">
+      <h2>11. Next Founder decision</h2>
+      <div class="callout"><strong>Stop at Phase 1.</strong> No further authorization is needed to preserve this checkpoint in Git. If desired, the next separately bounded decision is a Phase 2 shadow-integration program for authenticated repository-backed writers, semantic attestation, concrete storage/KMS conformance, and opt-in non-authoritative shadow comparison. Production application remains separately gated.</div>
+    </section>
+  </main>
+
+  <footer>CreditVector P0 Phase 1 · PII-free Founder checkpoint · Self-contained HTML with no external CSS, JavaScript, assets, secrets, or evidence.</footer>
+</body>
+</html>
