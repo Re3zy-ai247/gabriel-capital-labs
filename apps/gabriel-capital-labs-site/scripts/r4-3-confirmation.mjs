@@ -49,11 +49,15 @@ const FILTER = new Set(
 
 const DESKTOPS = [
   { width: 1920, height: 1080 },
+  { width: 1680, height: 1050 },
   { width: 1512, height: 982 },
   { width: 1440, height: 900 },
+  { width: 1366, height: 768 },
   { width: 1280, height: 720 },
+  { width: 1180, height: 820 },
   { width: 1024, height: 768 },
   { width: 1024, height: 568 },
+  { width: 960, height: 720 },
 ];
 const MOBILES = [
   { width: 390, height: 844 },
@@ -61,6 +65,10 @@ const MOBILES = [
   { width: 320, height: 568 },
 ];
 const POLICIES = ["no-preference", "reduce"];
+const MISSION_THRESHOLD_WIDTHS = [
+  959, 960, 963, 964, 1023, 1024, 1025, 1415, 1416, 1445, 1446, 1454, 1455, 1456, 1599,
+  1600, 1601, 1679, 1680, 1681, 1920,
+];
 
 const EXPECTED_ASSETS = {
   "public/img/gateway-g-480.webp":
@@ -72,6 +80,22 @@ const EXPECTED_ASSETS = {
   "public/img/gateway-g-480.png":
     "9ed7766905c9167b6dd86b6e061430fb1e66892ff1501460702c8755b66b1c9b",
 };
+
+const EXPECTED_CONTACT_ROUTES = [
+  {
+    label: "General institutional inquiry",
+    href: "mailto:contact@gabrielcapitallabs.com",
+  },
+  {
+    label: "Partnerships / strategic relationships",
+    href: "mailto:partnerships@gabrielcapitallabs.com",
+  },
+  { label: "Media / press", href: "mailto:media@gabrielcapitallabs.com" },
+  { label: "Careers", href: "mailto:careers@gabrielcapitallabs.com" },
+  { label: "Legal", href: "mailto:legal@gabrielcapitallabs.com" },
+  { label: "Security reports", href: "mailto:security@gabrielcapitallabs.com" },
+  { label: "Support", href: "mailto:support@gabrielcapitallabs.com" },
+];
 
 const SOURCE_FILES = [
   "app/globals.css",
@@ -330,8 +354,95 @@ async function resolveEcosystem(page) {
   });
 }
 
+async function readMissionGeometry(page) {
+  return page.evaluate(() => {
+    const pin = document.querySelector(".mission__pin");
+    const titles = [...document.querySelectorAll(".mission__pillar-title")];
+    if (!pin || titles.length !== 3) return null;
+    const pinRect = pin.getBoundingClientRect();
+    return {
+      pin: {
+        left: pinRect.left,
+        right: pinRect.right,
+        width: pinRect.width,
+        overflow: getComputedStyle(pin).overflow,
+      },
+      titles: titles.map((title) => {
+        const range = document.createRange();
+        range.selectNodeContents(title);
+        const rect = title.getBoundingClientRect();
+        const textRect = range.getBoundingClientRect();
+        const style = getComputedStyle(title);
+        return {
+          text: title.textContent?.trim() ?? "",
+          fontSize: Number.parseFloat(style.fontSize),
+          letterSpacing: Number.parseFloat(style.letterSpacing),
+          transform: style.transform,
+          lineRects: range.getClientRects().length,
+          boxWidth: title.clientWidth,
+          contentWidth: title.scrollWidth,
+          rect: { left: rect.left, right: rect.right, width: rect.width },
+          textRect: { left: textRect.left, right: textRect.right, width: textRect.width },
+        };
+      }),
+      viewportWidth: document.documentElement.clientWidth,
+      overflow: document.documentElement.scrollWidth - window.innerWidth,
+    };
+  });
+}
+
+function assertMissionGeometry(mission, viewport) {
+  assert.ok(mission, "Mission geometry must exist");
+  assert.deepEqual(
+    mission.titles.map((title) => title.text),
+    ["INTELLIGENCE", "INFRASTRUCTURE", "IMPACT"],
+    "Mission must retain its approved title sequence"
+  );
+  assert.ok(
+    mission.titles.every((title) => title.contentWidth <= title.boxWidth),
+    `Mission title exceeds its pillar at ${viewport.width}x${viewport.height}: ${JSON.stringify(
+      mission.titles
+    )}`
+  );
+  assert.ok(
+    mission.titles.every(
+      (title) =>
+        title.textRect.left >= title.rect.left - 0.5 && title.textRect.right <= title.rect.right + 0.5
+    ),
+    `Mission ink leaves its title box at ${viewport.width}x${viewport.height}`
+  );
+  assert.ok(
+    mission.titles.every(
+      (title) =>
+        title.textRect.left >= mission.pin.left - 0.5 &&
+        title.textRect.right <= mission.pin.right + 0.5 &&
+        title.textRect.left >= -0.5 &&
+        title.textRect.right <= mission.viewportWidth + 0.5
+    ),
+    `Mission ink leaves its pin or viewport at ${viewport.width}x${viewport.height}`
+  );
+  assert.ok(
+    mission.titles.every((title) => title.lineRects === 1),
+    "Mission titles must remain single-line"
+  );
+}
+
 async function inspectMatrix(page, viewport, policy, label) {
   await gotoComposed(page);
+
+  const missionStart = await absoluteTop(page, ".mission__pin");
+  if (viewport.width >= 1024) {
+    const missionDistance = viewport.height * (policy === "reduce" ? 1.26 : 2.1);
+    await scrollToAbsolute(page, missionStart + missionDistance * 0.4);
+  } else {
+    await scrollToAbsolute(page, missionStart);
+  }
+
+  const mission = await readMissionGeometry(page);
+  assertMissionGeometry(mission, viewport);
+  const missionShot =
+    viewport.width >= 1024 ? await screenshot(page, `${label}-mission-infrastructure`) : null;
+
   const titleOrigins = await resolveEcosystem(page);
   const xs = titleOrigins.map((item) => item.x);
   const spread = Math.max(...xs) - Math.min(...xs);
@@ -346,14 +457,12 @@ async function inspectMatrix(page, viewport, policy, label) {
     const section = document.querySelector("#contact");
     const chapter = document.querySelector(".engagement__chapter-mark");
     const rows = [...document.querySelectorAll(".engagement__category")];
-    const note = document.querySelector(".engagement__placeholder-note");
     const outro = document.querySelector("#institutional-outro");
     const footer = document.querySelector("footer");
-    if (!section || !chapter || rows.length !== 6 || !note || !outro || !footer) return null;
+    if (!section || !chapter || rows.length !== 7 || !outro || !footer) return null;
     const sectionRect = section.getBoundingClientRect();
     const chapterRect = chapter.getBoundingClientRect();
     const rowRects = rows.map((row) => row.getBoundingClientRect());
-    const noteRect = note.getBoundingClientRect();
     const outroRect = outro.getBoundingClientRect();
     const footerRect = footer.getBoundingClientRect();
     const absolute = (rect) => ({ top: rect.top + scrollY, bottom: rect.bottom + scrollY });
@@ -361,8 +470,7 @@ async function inspectMatrix(page, viewport, policy, label) {
       section: { width: sectionRect.width, height: sectionRect.height, ...absolute(sectionRect) },
       chapterGap: rowRects[0].top - chapterRect.bottom,
       rowHeights: rowRects.map((rect) => rect.height),
-      noteGap: noteRect.top - rowRects.at(-1).bottom,
-      bottomBreathingRoom: sectionRect.bottom - noteRect.bottom,
+      bottomBreathingRoom: sectionRect.bottom - rowRects.at(-1).bottom,
       outro: { height: outroRect.height, ...absolute(outroRect) },
       footer: absolute(footerRect),
       domOrder:
@@ -370,6 +478,15 @@ async function inspectMatrix(page, viewport, policy, label) {
         Boolean(outro.compareDocumentPosition(footer) & Node.DOCUMENT_POSITION_FOLLOWING),
       engagementMarks: section.querySelectorAll("img[src*='gateway-g']").length,
       overflow: document.documentElement.scrollWidth - window.innerWidth,
+      contacts: rows.map((row) => {
+        const link = row.querySelector("a.engagement__category-link");
+        return {
+          label: row.querySelector(".engagement__category-label")?.textContent?.trim() ?? "",
+          href: link?.getAttribute("href") ?? "",
+        };
+      }),
+      placeholderPresent:
+        document.body.textContent?.includes("Contact channels are being finalised.") ?? false,
       headings: [...document.querySelectorAll("h1,h2")].map((heading) => ({
         tag: heading.tagName,
         id: heading.id,
@@ -379,7 +496,6 @@ async function inspectMatrix(page, viewport, policy, label) {
   });
   assert.ok(engagement, "Engagement geometry must exist");
   assert.ok(engagement.chapterGap >= 48, `chapter-to-rows gap is ${engagement.chapterGap}px`);
-  assert.ok(engagement.noteGap >= 24, `status-note gap is ${engagement.noteGap}px`);
   assert.ok(
     engagement.bottomBreathingRoom >= 64,
     `Engagement bottom breathing room is ${engagement.bottomBreathingRoom}px`
@@ -390,6 +506,12 @@ async function inspectMatrix(page, viewport, policy, label) {
     assert.ok(rowSpread <= 2, `desktop engagement row-height spread is ${rowSpread}px`);
   }
   assert.equal(engagement.engagementMarks, 0, "Gateway G must not remain in Engagement");
+  assert.deepEqual(
+    engagement.contacts,
+    EXPECTED_CONTACT_ROUTES,
+    "Engagement routes must match the seven approved institutional aliases"
+  );
+  assert.equal(engagement.placeholderPresent, false, "active contact must not retain placeholder copy");
   assert.equal(engagement.domOrder, true, "DOM order must be Engagement → Outro → Footer");
   assert.ok(Math.abs(engagement.footer.top - engagement.outro.bottom) <= 1, "Footer must follow Outro flow");
   assert.ok(engagement.overflow <= 0.5, `horizontal overflow is ${engagement.overflow}px`);
@@ -507,12 +629,95 @@ async function inspectMatrix(page, viewport, policy, label) {
   return {
     viewport,
     policy,
+    mission,
     titleOrigins,
     titleOriginSpreadPx: spread,
     engagement,
     outro,
-    screenshots: [engagementShot, outroShot],
+    screenshots: [missionShot, engagementShot, outroShot].filter(Boolean),
   };
+}
+
+async function missionThresholdSweep() {
+  const resultsByPolicy = [];
+  for (const policy of POLICIES) {
+    const samples = await withPage(
+      {
+        label: `mission-threshold-${policy}`,
+        viewport: { width: 1920, height: 820 },
+        policy,
+        seen: true,
+      },
+      async (page) => {
+        await gotoComposed(page);
+        const collected = [];
+        for (const width of MISSION_THRESHOLD_WIDTHS) {
+          const viewport = { width, height: 820 };
+          await page.setViewportSize(viewport);
+          await page.evaluate(() => window.ScrollTrigger?.refresh?.());
+          await page.waitForTimeout(300);
+          const missionStart = await absoluteTop(page, ".mission__pin");
+          if (width >= 1024) {
+            const missionDistance = viewport.height * (policy === "reduce" ? 1.26 : 2.1);
+            await scrollToAbsolute(page, missionStart + missionDistance * 0.4);
+          } else {
+            await scrollToAbsolute(page, missionStart);
+          }
+          const geometry = await readMissionGeometry(page);
+          assertMissionGeometry(geometry, viewport);
+          collected.push({ width, geometry });
+        }
+        return collected;
+      }
+    );
+    resultsByPolicy.push({ policy, samples });
+  }
+  return resultsByPolicy;
+}
+
+async function contactRoutingKeyboard() {
+  const viewport = { width: 1440, height: 900 };
+  return withPage(
+    { label: "contact-routing-keyboard", viewport, policy: "no-preference", seen: true },
+    async (page) => {
+      await gotoComposed(page, "/#contact");
+      const links = page.locator(".engagement__category-link");
+      assert.equal(await links.count(), EXPECTED_CONTACT_ROUTES.length);
+      await links.first().focus();
+      // macOS/WebKit follows Safari's default keyboard-access preference:
+      // Tab leaves the link sequence, while Option-Tab traverses links.
+      // Chromium uses plain Tab. Exercise each engine's real native key path.
+      const traversalKey = BROWSER_ENGINE === "webkit" ? "Alt+Tab" : "Tab";
+
+      const tabOrder = [];
+      let focusStyle = null;
+      for (let index = 0; index < EXPECTED_CONTACT_ROUTES.length; index += 1) {
+        const focused = await page.evaluate(() => {
+          const element = document.activeElement;
+          if (!(element instanceof HTMLAnchorElement)) return null;
+          const style = getComputedStyle(element);
+          return {
+            href: element.getAttribute("href"),
+            outlineStyle: style.outlineStyle,
+            outlineWidth: Number.parseFloat(style.outlineWidth),
+          };
+        });
+        assert.ok(focused, `contact link ${index + 1} must receive keyboard focus`);
+        tabOrder.push(focused.href);
+        if (index === 0) focusStyle = focused;
+        if (index < EXPECTED_CONTACT_ROUTES.length - 1) await page.keyboard.press(traversalKey);
+      }
+
+      assert.deepEqual(
+        tabOrder,
+        EXPECTED_CONTACT_ROUTES.map((route) => route.href),
+        "contact links must follow semantic DOM keyboard order"
+      );
+      assert.notEqual(focusStyle.outlineStyle, "none", "contact focus indicator must be visible");
+      assert.ok(focusStyle.outlineWidth >= 2, "contact focus indicator must be at least 2px");
+      return { tabOrder, focusStyle, traversalKey };
+    }
+  );
 }
 
 async function narrative(policy) {
@@ -934,6 +1139,8 @@ async function main() {
       : await chromium.launch({ headless: true, executablePath: CHROME_PATH });
   results.configuration.browserVersion = browser.version();
 
+  await scenario("mission-threshold-sweep", missionThresholdSweep);
+
   for (const policy of POLICIES) {
     const policyName = policy === "reduce" ? "reduced" : "full";
     for (const viewport of [...DESKTOPS, ...MOBILES]) {
@@ -954,6 +1161,7 @@ async function main() {
   await scenario("mobile-replay-bypass", mobileReplayBypass);
   await scenario("hash-contact-full", () => hashLanding("no-preference"));
   await scenario("hash-contact-reduced", () => hashLanding("reduce"));
+  await scenario("contact-routing-keyboard", contactRoutingKeyboard);
 
   const axeSource = await readFile(path.join(SITE_ROOT, "node_modules/axe-core/axe.min.js"), "utf8");
   await scenario("axe-full", () => axePolicy("no-preference", axeSource));

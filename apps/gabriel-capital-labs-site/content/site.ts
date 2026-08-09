@@ -5,6 +5,7 @@
 export type ContactCategory = {
   label: string;
   description: string;
+  href: `mailto:${string}`;
 };
 
 export type Pillar = {
@@ -32,17 +33,6 @@ export type Principle = {
   title: string;
   statement: string;
 };
-
-// ---------------------------------------------------------------------------
-// Contact resolution — never invent an address. Read from env, else the
-// literal placeholder the spec mandates.
-// ---------------------------------------------------------------------------
-const CONTACT_PLACEHOLDER = "[contact email pending]";
-export const contactEmail: string =
-  process.env.NEXT_PUBLIC_GCL_CONTACT_EMAIL || CONTACT_PLACEHOLDER;
-export const contactHref: string =
-  contactEmail === CONTACT_PLACEHOLDER ? "#contact" : `mailto:${contactEmail}`;
-export const contactIsPlaceholder = contactEmail === CONTACT_PLACEHOLDER;
 
 // ---------------------------------------------------------------------------
 // Global
@@ -203,15 +193,41 @@ export const principles = {
 export const engagement = {
   chapterMark: "06 — Engagement",
   categories: [
-    { label: "Partnerships", description: "Institutional and platform partnerships." },
-    { label: "Research", description: "Collaboration across our research programs." },
-    { label: "Enterprise collaboration", description: "Enterprise-scale engagement." },
     {
-      label: "Investment & strategic relationships",
-      description: "Investment and strategic relationships.",
+      label: "General institutional inquiry",
+      description: "General inquiries about Gabriel Capital Labs.",
+      href: "mailto:contact@gabrielcapitallabs.com",
     },
-    { label: "Careers", description: "Building the team behind the institution." },
-    { label: "General inquiries", description: "All other inquiries." },
+    {
+      label: "Partnerships / strategic relationships",
+      description: "Research, enterprise, and investment collaboration.",
+      href: "mailto:partnerships@gabrielcapitallabs.com",
+    },
+    {
+      label: "Media / press",
+      description: "Media and press inquiries.",
+      href: "mailto:media@gabrielcapitallabs.com",
+    },
+    {
+      label: "Careers",
+      description: "Building the team behind the institution.",
+      href: "mailto:careers@gabrielcapitallabs.com",
+    },
+    {
+      label: "Legal",
+      description: "Legal inquiries.",
+      href: "mailto:legal@gabrielcapitallabs.com",
+    },
+    {
+      label: "Security reports",
+      description: "Report a potential security issue.",
+      href: "mailto:security@gabrielcapitallabs.com",
+    },
+    {
+      label: "Support",
+      description: "Product support inquiries.",
+      href: "mailto:support@gabrielcapitallabs.com",
+    },
   ] satisfies ContactCategory[],
 };
 

@@ -33,10 +33,10 @@
       "sha256": "101905441f604273c94bd25d069d2d36731e70ea1ff87ce0d4016c7fcea79d23"
     }
   ],
-  "exportIndexSha256": "88f40631bc1a7e59e491cf8d7e640dca98d3083bbba3451b1bec8e731df716df",
+  "exportIndexSha256": "c3ffc3bd61460a38df2c5478d677480839b6bd2243fad31f0921e1e1807f558b",
   "sourceHashes": {
     "app/layout.tsx": "78854d0d1554605a043336f3b641e5ccb434a4ee9a6ce6e77ea718423b631b3f",
-    "content/site.ts": "62c92066748e8b412b4f4f46b93f8a482b9a145d7bd1fa842ed1b0e90f4212a8",
+    "content/site.ts": "88f81bdbc224b68d684e902909cf1e7fa689635d6f05b8de591396b0d6a63b99",
     "public/robots.txt": "d05e66e7fae579dd3b5b4351878083cf7f8bbac551d7b2f453a7b4951e8b5a2b",
     "public/sitemap.xml": "02311cbe52b27b1de10b1d11d004cbe99ee0a4f9417a5f343ec7c1508fa7b4d7",
     "scripts/optimize-images.mjs": "79ac2cb54edf45e813f37d743f01271476a19596f7622b55c715c4fac26ca106",

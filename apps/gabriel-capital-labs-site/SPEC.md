@@ -43,8 +43,9 @@ Semantic: `<header>` (minimal fixed nav, appears after arrival), `<main id="cont
 "Skip to content" link first in DOM. Anchor nav: #institution #mission #ecosystem #lab #principles #contact.
 
 All copy lives in `content/site.ts` (typed config) — presentation separated from content.
-Contact destinations read from `content/site.ts` with values from `NEXT_PUBLIC_GCL_CONTACT_EMAIL`
-env or the literal placeholder `[contact email pending]` — NEVER an invented address.
+Approved public contact destinations are explicit typed `mailto:` values in `content/site.ts`:
+general institutional, partnerships, media, careers, legal, security, and support. The static export
+does not depend on a contact environment variable and must not invent or fall back to an address.
 
 ### Chapter 1 — ARRIVAL (100svh, sticky scene)
 Sequence (first visit only, ~5.5s, GSAP timeline, then releases into scroll):
@@ -114,9 +115,9 @@ moderate (~2.5 viewport heights total) so users are never trapped.
 ### Chapter 7 — ENGAGEMENT + FOOTER
 Restrained invitation: "Enter the future we are engineering." as the closing display statement over a
 final, dimmer recurrence of the gateway glow (light motif returns; the mark itself may recur small and
-exact — use the 512 transparent asset). Engagement categories as a simple editorial list (Partnerships ·
-Research · Enterprise collaboration · Investment & strategic relationships · Careers · General inquiries)
-each pointing to the configured contact destination (mailto or placeholder). Footer: footer lockup asset
+exact — use the 512 transparent asset). Engagement categories are a simple editorial list (General
+institutional inquiry · Partnerships / strategic relationships · Media / press · Careers · Legal ·
+Security reports · Support), each pointing to its approved explicit `mailto:` destination. Footer: footer lockup asset
 (small), "Gabriel Capital Labs, LLC" legal line, © year, Replay-arrival control, quiet link to
 www.creditvector.app. No invented address/phone/socials.
 
