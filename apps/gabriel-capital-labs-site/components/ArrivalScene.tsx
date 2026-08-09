@@ -16,17 +16,62 @@ import { arrival, site } from "@/content/site";
 
 const SESSION_KEY = "gcl-arrival-seen";
 
+function hasSeenArrival() {
+  try {
+    return sessionStorage.getItem(SESSION_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function markArrivalSeen() {
+  try {
+    sessionStorage.setItem(SESSION_KEY, "1");
+  } catch {
+    // Storage can be unavailable in privacy modes; completion must still
+    // release interaction and compose the page for this visit.
+  }
+}
+
+function resetArrivalSeen() {
+  try {
+    sessionStorage.removeItem(SESSION_KEY);
+  } catch {
+    // Replay remains deterministic even when session persistence is denied.
+  }
+}
+
+function focusReplayWhenVisible(
+  replayRef: { current: HTMLButtonElement | null },
+  mountedRef: { current: boolean },
+  framesRemaining = 30
+) {
+  requestAnimationFrame(() => {
+    if (!mountedRef.current) return;
+    const replay = replayRef.current;
+    if (!replay) return;
+    const style = getComputedStyle(replay);
+    if (style.visibility === "visible" && style.pointerEvents !== "none") {
+      replay.focus({ preventScroll: true });
+      return;
+    }
+    if (framesRemaining > 0) {
+      focusReplayWhenVisible(replayRef, mountedRef, framesRemaining - 1);
+    }
+  });
+}
+
 // R4.2 — R-1/R-2: `window.__gclLockEpoch` is the shared invalidation token
-// between layout.tsx's pre-paint watchdog and this component's own
-// replay-session watchdog (see handleReplay below) — whichever one most
-// recently armed a `gcl-prologue` lock owns the current epoch number, so
-// an OLDER watchdog whose captured epoch no longer matches becomes a
-// harmless no-op instead of releasing a lock (and a session) it didn't
-// arm. Declared once, globally, so both the plain inline script and this
-// module agree on the same property without either importing the other.
+// for the pre-paint script's first-load and replay watchdog signals. The
+// most recently armed `gcl-prologue` lock owns the current epoch, so an
+// older timer/animationend callback becomes a harmless no-op instead of
+// releasing a later session. The component invokes the script's shared
+// arm/release primitives without duplicating either lifecycle locally.
 declare global {
   interface Window {
     __gclLockEpoch?: number;
+    __gclArmPrologueWatchdog?: () => number | false;
+    __gclReleasePrologue?: (expectedEpoch?: number, notify?: boolean) => boolean;
   }
 }
 
@@ -105,7 +150,15 @@ function waitForScrollTop(behavior: ScrollBehavior): Promise<void> {
     }
     const start = performance.now();
     const tick = () => {
-      if (window.scrollY <= 0 || performance.now() - start > 1500) {
+      if (window.scrollY <= 0) {
+        resolve();
+        return;
+      }
+      if (performance.now() - start > 1500) {
+        // R4.2 — R-1: a smooth scroll that misses the safety deadline must
+        // still land at the one coherent replay start position before any
+        // hidden states or containment are reset.
+        window.scrollTo({ top: 0, behavior: "auto" });
         resolve();
         return;
       }
@@ -124,11 +177,10 @@ function waitForScrollTop(behavior: ScrollBehavior): Promise<void> {
 // other `<main>` section, the footer) is made `inert` for the duration,
 // which removes it from both the tab order and hit-testing — the skip
 // chip and skip-link stay reachable because both live outside this set.
-// Idempotent in both directions (setAttribute/removeAttribute on an
-// element already in that state is a no-op), so it's safe to call from
-// every unlock path (awaken, skip, Esc, crossing-abort) without tracking
-// whether it was actually applied first.
-function setChromeInert(arrivalSection: HTMLElement | null, inert: boolean) {
+// Only nodes this feature actually changes receive its ownership marker.
+// The shared release primitive removes inert from marked nodes only, so an
+// unrelated pre-existing inert state can never be destroyed by the prologue.
+function setChromeInert(arrivalSection: HTMLElement | null) {
   const navEl = document.querySelector<HTMLElement>(".nav");
   const footerEl = document.querySelector<HTMLElement>("footer");
   const targets: HTMLElement[] = [];
@@ -143,15 +195,18 @@ function setChromeInert(arrivalSection: HTMLElement | null, inert: boolean) {
     });
   }
   targets.forEach((el) => {
-    if (inert) {
+    if (!el.hasAttribute("inert")) {
       el.setAttribute("inert", "");
-    } else {
-      el.removeAttribute("inert");
+      el.setAttribute("data-gcl-prologue-inert", "");
     }
   });
 }
 
-export default function ArrivalScene() {
+type ArrivalSceneInstanceProps = {
+  desktopPolicy: boolean;
+};
+
+function ArrivalSceneInstance({ desktopPolicy }: ArrivalSceneInstanceProps) {
   const sectionRef = useRef<HTMLElement | null>(null);
   const pinRef = useRef<HTMLDivElement | null>(null);
   const atmosphereRef = useRef<HTMLDivElement | null>(null);
@@ -168,6 +223,7 @@ export default function ArrivalScene() {
   const cueRef = useRef<HTMLDivElement | null>(null);
   const headingRef = useRef<HTMLHeadingElement | null>(null);
   const timelineRef = useRef<gsap.core.Timeline | null>(null);
+  const timelineDesktopPolicyRef = useRef<boolean | null>(null);
   const completedRef = useRef(false);
   // R3.1 / Finding 15 — has the visitor engaged the scroll-driven pull-back
   // yet? Read by the intro's own (wall-clock-scheduled) cue-reveal step so
@@ -178,11 +234,12 @@ export default function ArrivalScene() {
   // explicit desktop replay, as opposed to an ordinary fresh-visit
   // autoplay? markComplete reads this to decide whether to speak/refocus.
   const wasReplayRef = useRef(false);
-  // R4.2 — R-1: the replay-session dead-man watchdog id, so awaken() can
-  // cancel it on a normal completion instead of leaving a dangling timer
-  // that would otherwise fire ~22s later as a harmless no-op (see
-  // window.__gclLockEpoch below).
-  const replayWatchdogRef = useRef<number | null>(null);
+  // R4.2 — R-1: React state commits asynchronously, so it cannot prevent
+  // two replay activations arriving in the same task. This ref is the
+  // synchronous lock; every completion/abort/unmount path clears it.
+  const replayInFlightRef = useRef(false);
+  const registerReclaimRef = useRef<(() => void) | null>(null);
+  const mountedRef = useRef(true);
 
   const [isStatic, setIsStatic] = useState(false);
   const [showSkip, setShowSkip] = useState(true);
@@ -202,6 +259,19 @@ export default function ArrivalScene() {
   // awaken() and never unset — the institution, once awake, stays awake.
   const [awake, setAwake] = useState(false);
 
+  // Component lifetime and controller lifetime are intentionally distinct.
+  // The GSAP controller below rebuilds at the 1024px policy boundary, but a
+  // replay preflight promise, its synchronous duplicate-request guard, and
+  // its accessibility handoff belong to this still-mounted React instance.
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      replayInFlightRef.current = false;
+      wasReplayRef.current = false;
+    };
+  }, []);
+
   useEffect(() => {
     ensureGsapRegistered();
 
@@ -217,20 +287,16 @@ export default function ArrivalScene() {
     // <1024px reduce keeps the pre-R2 static-jump behavior below.
     const desktopReduced = window.matchMedia(DESKTOP_REDUCED_QUERY).matches;
     const staticJump = reducedMotion && !desktopReduced;
-    const alreadySeen = sessionStorage.getItem(SESSION_KEY) === "1";
+    const alreadySeen = hasSeenArrival();
 
     // R3.1 — computed once at mount, same convention as reducedMotion/
     // desktopReduced above. Drives the disabled-vs-aria-disabled choice on
     // the replay chip (Finding 16) — below 1024px that choice must render
     // byte-identical to pre-R3.1.
-    const isDesktopWidthNow = window.matchMedia("(min-width: 1024px)").matches;
+    const isDesktopWidthNow = desktopPolicy;
+    timelineDesktopPolicyRef.current = isDesktopWidthNow;
     setIsDesktopWidth(isDesktopWidthNow);
 
-    // R4 — a hash means the visitor asked for a specific piece of content,
-    // not the front door; they bypass the prologue exactly like an
-    // already-seen visitor (landOnHash, scheduled below, still runs
-    // untouched).
-    const hasHash = Boolean(window.location.hash);
     // R4.2 — R-2: the single source of truth for "is the lock actually
     // active for THIS load" is the DOM class itself, read once, right
     // here, at mount — never a recomputed predicate. layout.tsx's
@@ -247,13 +313,11 @@ export default function ArrivalScene() {
     // watchdog-released load never gets a prologue either, even if every
     // OTHER condition below would otherwise say yes).
     const lockPresent = document.documentElement.classList.contains("gcl-prologue");
-    // R4 — the single gate for "does this load actually run the
-    // six-phase prologue": desktop width, first visit this session, no
-    // hash, AND the pre-paint lock actually landed and is still present.
-    // Mobile is excluded by construction (isDesktopWidthNow), so every
-    // mobile path below is unreachable from here — the mobile ladder is
-    // built and played exactly as in R3.
-    const willRunPrologue = isDesktopWidthNow && !alreadySeen && !hasHash && lockPresent;
+    // R4.2 — R-2 strict source: the pre-paint script owns every eligibility
+    // condition. At mount this class is the complete answer, not one input
+    // into a second predicate. Mobile, seen, hash, and non-root paths never
+    // receive it; a watchdog-released load no longer has it.
+    const willRunPrologue = lockPresent;
 
     // R3.1 / Finding 7 — desktop-reduce auto-plays the intro as a real
     // ~4.3s ladder (R3/D-3 above), but global chrome can't be gated behind
@@ -277,13 +341,18 @@ export default function ArrivalScene() {
     }
 
     const markComplete = () => {
+      // A policy rebuild composes its replacement timeline at progress(1).
+      // If this scene had already completed, that duplicate callback must
+      // not clear a still-awaited replay preflight's component-wide guard
+      // or busy state.
       if (completedRef.current) return;
+      replayInFlightRef.current = false;
+      setIsReplaying(false);
       completedRef.current = true;
-      sessionStorage.setItem(SESSION_KEY, "1");
+      markArrivalSeen();
       window.dispatchEvent(new Event("gcl:arrival-complete"));
       setShowSkip(false);
       setShowReplay(true);
-      setIsReplaying(false);
 
       // R3.1 / Finding 16 — only a desktop REPLAY moves focus; an ordinary
       // fresh-visit completion must not suddenly steal focus nobody asked
@@ -303,7 +372,12 @@ export default function ArrivalScene() {
         wasReplayRef.current = false;
         setAnnouncement("Introduction complete");
         if (isReplay) {
-          replayButtonRef.current?.focus({ preventScroll: true });
+          // awaken() removes `gcl-replaying` immediately before this
+          // callback, while React may still be committing the chip's
+          // offscreen/visible state. Focusing a computed-hidden control is
+          // rejected. Retry for at most half a second and land as soon as
+          // the released control is genuinely rendered focusable.
+          focusReplayWhenVisible(replayButtonRef, mountedRef);
         }
       }
     };
@@ -323,20 +397,24 @@ export default function ArrivalScene() {
     // class at P6. Keyboard (Tab focus, Enter/Space, and the separate
     // Esc-to-skip effect below) never depended on pointer-events, which is
     // why this specific defect only ever affects a pointer/mouse skip.
-    // R4.1 — F9: resting reveal is dimmed (0.65, not 1) — measured at that
-    // target the chip's brightest pixel sits comfortably above the 4.5:1
-    // AA contrast floor against #060608 while no longer reading as the
-    // brightest element in P2 ("restrained gold signal, almost
-    // invisible"). Full weight (opacity:1) restores on :hover/:focus-
-    // visible via the `!important` CSS rule in globals.css.
+    // R4.2 — R-5(a): 0.87 composites the prologue bronze near RGB(166,57,23)
+    // over #060608: about 3.10:1, while remaining below the signal centre
+    // near RGB(119,91,42), about 3.20:1. The old 0.65 value was only 2.17:1
+    // once element opacity was included. Full weight (opacity:1 + brand
+    // gold) restores on :hover/:focus-visible in globals.css.
     const revealSkip = () => {
       gsap.to(skipButtonRef.current, {
-        autoAlpha: 0.65,
+        autoAlpha: 0.87,
         pointerEvents: "auto",
         duration: 0.4,
         ease: "power2.out",
       });
     };
+
+    // Assigned after reclaimPrologueGlow is declared below. awaken() can
+    // run synchronously while introCtx is being built, so it calls this
+    // initialized no-op rather than reaching through a temporal dead zone.
+    let unregisterReclaim = () => {};
 
     // R4 — awaken (P6): the CONTINUITY MECHANISM. The one moment the
     // prologue becomes the site — release scroll, start the ambient
@@ -348,23 +426,13 @@ export default function ArrivalScene() {
     // tl.progress(1) fires this tl.call inline on every seen/hash-bypass
     // jump AND on the timeline's own forward playback to completion.
     const awaken = () => {
-      document.documentElement.classList.remove("gcl-prologue");
-      // R4.1 — F4: also clears the replay-only chrome-withholding class
-      // (see globals.css `html.gcl-replaying`) — a harmless no-op on a
-      // first-visit play, where the class was never added.
-      document.documentElement.classList.remove("gcl-replaying");
-      // R4.1 — F2/F6: release the focus containment applied at prologue
-      // start (or replay start) — see `setChromeInert` above.
-      setChromeInert(arrivalSection, false);
-      // R4.2 — R-1: cancel this replay session's own dead-man watchdog
-      // (armed in handleReplay) on every normal exit path — natural
-      // completion, Skip, Esc, or a breakpoint-crossing abort all funnel
-      // through this same awaken() call. A harmless no-op on a
-      // first-visit play, which never arms this timer.
-      if (replayWatchdogRef.current !== null) {
-        window.clearTimeout(replayWatchdogRef.current);
-        replayWatchdogRef.current = null;
-      }
+      // R4.2 — R-1/R-2: the pre-paint-defined primitive atomically clears
+      // both root classes, the current timer/animation listener, and only
+      // inert attributes owned by this prologue.
+      window.__gclReleasePrologue?.(undefined, false);
+      // Synchronous class ownership matters on a crossing cleanup and replay
+      // reset; React state follows so the next render agrees with the DOM.
+      arrivalSection?.classList.add("arrival--awake");
       setAwake(true);
       window.dispatchEvent(new Event("gcl:arrival-complete"));
       // R4.1 — F5: the refresh-reclaim listener's whole job is protecting
@@ -375,7 +443,7 @@ export default function ArrivalScene() {
       // referencing it here is safe because this callback only ever runs
       // (via the timeline's P6 tl.call, or a jump) long after the whole
       // effect body — including that declaration — has already executed.
-      ScrollTrigger.removeEventListener("refresh", reclaimPrologueGlow);
+      unregisterReclaim();
       // R4 — the scroll lock's release can change viewport width (a
       // Windows-style scrollbar reappearing), so every pin measured while
       // locked needs one re-measure against the real, post-unlock layout.
@@ -449,9 +517,19 @@ export default function ArrivalScene() {
         tl.render(tl.time(), true, true);
       }
     };
-    if (isDesktopWidthNow) {
+    let reclaimRegistered = false;
+    const registerReclaim = () => {
+      if (!isDesktopWidthNow || reclaimRegistered) return;
       ScrollTrigger.addEventListener("refresh", reclaimPrologueGlow);
-    }
+      reclaimRegistered = true;
+    };
+    unregisterReclaim = () => {
+      if (!reclaimRegistered) return;
+      ScrollTrigger.removeEventListener("refresh", reclaimPrologueGlow);
+      reclaimRegistered = false;
+    };
+    registerReclaimRef.current = registerReclaim;
+    registerReclaim();
 
     const introCtx = gsap.context(() => {
       const tl = gsap.timeline({ paused: true, delay: 0.4, onComplete: markComplete });
@@ -575,28 +653,28 @@ export default function ArrivalScene() {
       // policy; mobile-reduce is unaffected (staticJump === reducedMotion
       // there).
       //
-      // R4 — `isDesktopWidthNow && hasHash` joins the jump condition: a
-      // hash visitor bypasses the prologue exactly like an already-seen
-      // one (fires awaken() inline via the forward render to progress 1,
-      // so unlock/nav-reveal/refresh all still happen — just with zero
-      // visible animation). Scoped to desktop-width on purpose — a mobile
-      // hash visit keeps playing its ladder exactly as it always has
-      // (mobile "byte-identical to R3" is the harder constraint here; the
-      // mobile ladder never had hash-awareness before, and it doesn't gain
-      // any now).
-      // R4.2 — R-2: `isDesktopWidthNow && !lockPresent` joins the jump
-      // condition — any desktop load where the pre-paint lock never
-      // landed (wrong pathname, or a dead-man watchdog already released
-      // it before this ever ran) must compose exactly like an
-      // already-seen visit: no lock, no inert, no prologue playback.
+      // R4.2 — R-2 strict source: desktop plays the prologue iff the class
+      // was present at mount. The pre-paint owner already folded pathname,
+      // hash, seen-session, width, and watchdog state into that class. The
+      // separate alreadySeen branch remains only for the inherited mobile
+      // ladder, which intentionally has no hash awareness.
       if (
         staticJump ||
-        alreadySeen ||
-        (isDesktopWidthNow && hasHash) ||
-        (isDesktopWidthNow && !lockPresent)
+        (!isDesktopWidthNow && (alreadySeen || completedRef.current)) ||
+        (isDesktopWidthNow && !willRunPrologue)
       ) {
         setIsStatic(true);
         tl.progress(1);
+        // The inherited mobile timeline has no awaken() call of its own.
+        // Its seen/reduced static branch used to remain composed only
+        // because progress(1) left GSAP's inline opacity/transform behind.
+        // R-3 deliberately clears that residue, so give the same composed
+        // state an explicit CSS authority before normalization removes the
+        // inline fallback. The atmosphere animation remains desktop-only.
+        if (!isDesktopWidthNow) {
+          arrivalSection?.classList.add("arrival--awake");
+          setAwake(true);
+        }
       } else {
         tl.play();
         if (willRunPrologue) {
@@ -604,10 +682,26 @@ export default function ArrivalScene() {
           // R4.1 — F2/F6: contain focus to the arrival section (skip chip
           // + skip-link only) for the duration of the real, first-visit
           // prologue. Released by awaken() above on every exit path.
-          setChromeInert(arrivalSection, true);
+          setChromeInert(arrivalSection);
         }
       }
     }, sectionRef);
+
+    // R4.2 — R-1/R-2: both 22s watchdog signals atomically release the DOM
+    // first, then synchronously dispatch this event. A mounted scene seeks
+    // the same timeline to its end so awaken() and markComplete perform the
+    // ordinary state, announcement, focus, and listener cleanup.
+    const handleForcedPrologueRelease = () => {
+      replayInFlightRef.current = false;
+      const tl = timelineRef.current;
+      if (tl && !completedRef.current) {
+        tl.progress(1, false);
+        return;
+      }
+      wasReplayRef.current = false;
+      setIsReplaying(false);
+    };
+    window.addEventListener("gcl:prologue-force-release", handleForcedPrologueRelease);
 
     // R4.1 — F1/F3 (BLOCKER, breakpoint-crossing abort): the prologue's
     // timeline is built once, keyed on `isDesktopWidthNow` at mount, and
@@ -624,11 +718,52 @@ export default function ArrivalScene() {
     // siblings (atmosphere/signal) and the skip chip are then explicitly
     // cleared of their inline styles so nothing prologue-only leaks into
     // the mobile composition the visitor now sees.
+    let breakpointCleanupFrame: number | null = null;
+    const normalizeCrossingResidue = () => {
+      if (!mountedRef.current || desktopWidthQuery.matches) return;
+      const skip = skipButtonRef.current;
+      if (skip) gsap.killTweensOf(skip);
+      const crossingTargets: HTMLElement[] = [];
+      const possibleTargets = [
+        markWrapRef.current,
+        atmosphereRef.current,
+        signalRef.current,
+        skip,
+      ];
+      possibleTargets.forEach((target) => {
+        if (target) crossingTargets.push(target);
+      });
+      if (crossingTargets.length === 0) return;
+      // `.arrival--awake .arrival__mark-wrap` is the later composed-state
+      // CSS authority, so clearing all four targets now leaves a native,
+      // visible mark instead of falling back to the pre-hidden rule.
+      gsap.set(crossingTargets, { clearProps: "all" });
+      // Refresh against that clean composed state, then clear once more in
+      // case the newly built mobile trigger rendered a progress-0 inline
+      // start value during its measurement.
+      ScrollTrigger.refresh();
+      gsap.set(crossingTargets, { clearProps: "all" });
+    };
+    const scheduleCrossingNormalization = () => {
+      if (breakpointCleanupFrame !== null) {
+        cancelAnimationFrame(breakpointCleanupFrame);
+      }
+      breakpointCleanupFrame = requestAnimationFrame(() => {
+        breakpointCleanupFrame = null;
+        normalizeCrossingResidue();
+      });
+    };
     const handleBreakpointChange = (event: MediaQueryListEvent) => {
-      if (event.matches || completedRef.current) return;
+      if (event.matches) return;
       const tl = timelineRef.current;
       if (!tl) return;
-      tl.progress(1, false);
+      // The pre-paint owner's width listener may run first and synchronously
+      // force this timeline to completion. Progress only when still active,
+      // but ALWAYS schedule residue normalization below; listener order can
+      // never be allowed to skip the R-3 clearProps contract.
+      if (!completedRef.current) {
+        tl.progress(1, false);
+      }
       // R4.2 — R-3: deferred one frame so this always runs AFTER the
       // forced `progress(1)` render above AND after gsap.matchMedia's own
       // synchronous rebuild of the mobile pull-back trigger — both fire
@@ -638,31 +773,10 @@ export default function ArrivalScene() {
       // captured before this abort ever ran, onto markWrap. Running one
       // frame later means these corrections are always the last write,
       // regardless of which listener the browser happens to fire first.
-      requestAnimationFrame(() => {
-        // Stop revealSkip's in-flight 0.4s reveal tween from writing a
-        // value AFTER this clear (R4.1 measured this exact race leaving a
-        // stale inline style on the skip chip post-abort).
-        gsap.killTweensOf(skipButtonRef.current);
-        gsap.set([atmosphereRef.current, signalRef.current], { clearProps: "all" });
-        gsap.set(skipButtonRef.current, { clearProps: "all" });
-        // markWrap is deliberately NOT clearProps'd: its only unscoped
-        // (every-width) CSS rule is the PRE-HIDDEN state
-        // (`html.js .arrival__mark-wrap { opacity:0; transform:
-        // translateY(18px) scale(1.04); }`) — clearing every inline style
-        // would revert it to THAT, not to the composed rest state, making
-        // the mark vanish. Explicitly re-assert the only two channels the
-        // mobile pull-back's own scrub tween can corrupt.
-        gsap.set(markWrapRef.current, { y: 0, scale: 1 });
-        // Force every ScrollTrigger — including the mobile pull-back
-        // trigger gsap.matchMedia just built — to re-measure pin spacing
-        // against this now-correct DOM state.
-        ScrollTrigger.refresh();
-      });
+      scheduleCrossingNormalization();
     };
     const desktopWidthQuery = window.matchMedia("(min-width: 1024px)");
-    if (isDesktopWidthNow) {
-      desktopWidthQuery.addEventListener("change", handleBreakpointChange);
-    }
+    desktopWidthQuery.addEventListener("change", handleBreakpointChange);
 
     // R2 2.1 — the camera-pull-back on first scroll. Mobile/tablet (<1024)
     // keeps the exact pre-R2 short pin; desktop gets an extended pull-back
@@ -879,19 +993,35 @@ export default function ArrivalScene() {
       onEnterBack: () => setOffscreen(false),
     });
 
+    // The policy wrapper below rebuilds this controller's GSAP ownership at
+    // the 1024px boundary without replacing its DOM or React state. A
+    // desktop->mobile abort first completes the outgoing timeline; the
+    // incoming mobile timeline then composes at progress(1). Normalize the
+    // incoming timeline's prologue-only targets after its own
+    // matchMedia/ScrollTrigger setup, otherwise that composition would put
+    // inline residue back after the outgoing controller had cleared it.
+    if (!isDesktopWidthNow && completedRef.current) {
+      scheduleCrossingNormalization();
+    }
+
     return () => {
+      if (breakpointCleanupFrame !== null) {
+        cancelAnimationFrame(breakpointCleanupFrame);
+        breakpointCleanupFrame = null;
+      }
+      timelineDesktopPolicyRef.current = null;
+      window.removeEventListener("gcl:prologue-force-release", handleForcedPrologueRelease);
       introCtx.revert();
       pinCtx.revert();
       offscreenTrigger.kill();
-      if (isDesktopWidthNow) {
-        ScrollTrigger.removeEventListener("refresh", reclaimPrologueGlow);
-        desktopWidthQuery.removeEventListener("change", handleBreakpointChange);
-      }
-      // R4.1 — F2/F6: never leave the rest of the page inert past this
-      // component's own lifetime.
-      setChromeInert(arrivalSection, false);
+      desktopWidthQuery.removeEventListener("change", handleBreakpointChange);
+      unregisterReclaim();
+      registerReclaimRef.current = null;
+      // R4.2 — R-1/R-2: unmount is an ordinary atomic release. It clears
+      // the current replay timer/animation listener and only owned inert.
+      window.__gclReleasePrologue?.(undefined, false);
     };
-  }, []);
+  }, [desktopPolicy]);
 
   // R4 — Esc-to-skip (Founder a11y mitigation): scoped to desktop width
   // only, computed once at mount (same convention as every other
@@ -904,8 +1034,7 @@ export default function ArrivalScene() {
   // belt-and-braces second guard against a double-fire race with a
   // near-simultaneous natural completion.
   useEffect(() => {
-    const isDesktopWidthNow = window.matchMedia("(min-width: 1024px)").matches;
-    if (!isDesktopWidthNow) return undefined;
+    if (!desktopPolicy) return undefined;
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape" && !completedRef.current && timelineRef.current?.isActive()) {
@@ -914,7 +1043,7 @@ export default function ArrivalScene() {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  }, [desktopPolicy]);
 
   // R4.2 — R-5(b): the site-wide "Skip to content" link (layout.tsx,
   // outside this component's own JSX — a plain `<a href="#content">`)
@@ -951,14 +1080,14 @@ export default function ArrivalScene() {
   }, []);
 
   const handleSkip = () => {
-    // R4.2 — R-5(c): move focus to the (tabIndex=-1) heading BEFORE
-    // forcing the timeline to its end — markComplete (fired synchronously
-    // by progress(1) below) sets `showSkip` false, which removes this
-    // button via the `hidden` attribute; hiding a still-focused element
-    // is what dropped focus to <body> (same root cause R3.1/Finding 16
-    // fixed for the replay chip, never applied here for the skip chip).
-    headingRef.current?.focus({ preventScroll: true });
+    // R4.2 — R-5(c): the heading is still `visibility:hidden` during P2,
+    // so trying to focus it before the jump is rejected by Chromium. Jump
+    // through the ordinary awaken/complete path first; then restore focus
+    // on the next frame, after the heading is composed and React has hidden
+    // the activating button. This produces the required stable landing for
+    // Enter/Space without competing with the button's `hidden` commit.
     timelineRef.current?.progress(1, false);
+    requestAnimationFrame(() => headingRef.current?.focus({ preventScroll: true }));
   };
 
   // R2 1.2 — deterministic in every state (desktop+mobile, fresh/seen/
@@ -971,7 +1100,8 @@ export default function ArrivalScene() {
   // full static arrival rather than silently no-op'ing.
   const handleReplay = useCallback(
     (event?: React.MouseEvent<HTMLButtonElement>) => {
-      if (isReplaying) return;
+      if (replayInFlightRef.current) return;
+      replayInFlightRef.current = true;
       setIsReplaying(true);
 
       // R3.1 / Finding 16 — recomputed on every call, same convention as
@@ -1037,12 +1167,37 @@ export default function ArrivalScene() {
       }
 
       waitForScrollTop(reducedMotion ? "auto" : "smooth").then(() => {
-        sessionStorage.removeItem(SESSION_KEY);
-        completedRef.current = false;
-        // R3.1 / Finding 15 — a fresh play (replay or first load) starts
-        // with no scroll engagement yet.
-        pullbackEngagedRef.current = false;
-
+        if (!mountedRef.current) {
+          replayInFlightRef.current = false;
+          return;
+        }
+        // R4.2 — replay preflight breakpoint race: width was sampled when
+        // the control was activated, but a mid-page smooth reset can take
+        // up to 1.5s. If the viewport crossed the 1024px boundary during
+        // that await, this component's timeline still has its mount-time
+        // flavor and must not start under the stale policy. Keep the
+        // already-composed scene, resolve the announced replay request,
+        // and leave a later activation free to make a fresh decision.
+        const desktopWidthAfterScroll = window.matchMedia("(min-width: 1024px)").matches;
+        if (
+          desktopWidthAfterScroll !== isDesktopWidthNow ||
+          timelineDesktopPolicyRef.current !== desktopWidthAfterScroll
+        ) {
+          replayInFlightRef.current = false;
+          wasReplayRef.current = false;
+          setIsReplaying(false);
+          setShowSkip(false);
+          setOffscreen(false);
+          setShowReplay(true);
+          setAnnouncement("Introduction complete");
+          window.__gclReleasePrologue?.(undefined, false);
+          focusReplayWhenVisible(replayButtonRef, mountedRef);
+          return;
+        }
+        // The replay reset has deterministically landed at the Arrival.
+        // Do not wait for a ScrollTrigger state callback to make the fixed
+        // replay control focusable again—its offscreen state is now known.
+        setOffscreen(false);
         // R3.1 / Finding 16 — below 1024px the chip still hides during
         // replay exactly as before. At >=1024px it now stays in the AX
         // tree the whole time — isReplaying alone drives aria-busy/
@@ -1058,9 +1213,24 @@ export default function ArrivalScene() {
         // Replay's only job is to re-compose the static arrival and re-arm
         // the control.
         if (staticJump) {
+          resetArrivalSeen();
+          completedRef.current = false;
+          pullbackEngagedRef.current = false;
           setIsStatic(true);
           setShowSkip(false);
-          timelineRef.current?.progress(1);
+          const tl = timelineRef.current;
+          if (tl) {
+            // The mobile-reduce timeline is already parked at progress 1
+            // from its initial static composition. Rewind synchronously so
+            // progress(1,false) re-fires markComplete and restores the
+            // session key/showReplay contract instead of becoming a no-op.
+            tl.pause(0).progress(1, false);
+          } else {
+            markArrivalSeen();
+            setShowReplay(true);
+          }
+          replayInFlightRef.current = false;
+          wasReplayRef.current = false;
           setIsReplaying(false);
           return;
         }
@@ -1107,37 +1277,48 @@ export default function ArrivalScene() {
         // of these — lock, inert, nav, replay chip, focus — on every exit
         // path, a harmless idempotent re-run for whichever of these a
         // first-visit play already cleared.
-        setIsStatic(false);
-        setShowSkip(true);
-        // R4.1 — F4(a): `awake` drives the CSS `.arrival--awake` breathe
-        // animation, which otherwise keeps outranking `setInitialHiddenStates`'
-        // plain inline `opacity:0` on the atmosphere (a CSS animation beats
-        // a non-!important inline style), making the P1 "void breathes
-        // barely-visible" beat a silent no-op on every replay.
-        setAwake(false);
-
         if (isDesktopWidthNow) {
           document.documentElement.classList.add("gcl-replaying");
           document.documentElement.classList.add("gcl-prologue");
-          setChromeInert(sectionRef.current, true);
-          // R4.2 — R-1/R-2: bump the shared invalidation epoch BEFORE
-          // re-adding the lock, so any watchdog armed by an EARLIER lock
-          // holder (the original page-load script, or a previous replay)
-          // sees its own captured epoch go stale and no-ops instead of
-          // releasing a lock/session it didn't arm — then arm a fresh
-          // dead-man scoped to this replay, same 22s margin and same
-          // atomic (lock + inert) release as the page-load watchdog in
-          // layout.tsx. Cleared by awaken() above on every normal exit.
-          window.__gclLockEpoch = (window.__gclLockEpoch ?? 0) + 1;
-          const myEpoch = window.__gclLockEpoch;
-          replayWatchdogRef.current = window.setTimeout(() => {
-            if (window.__gclLockEpoch !== myEpoch) return;
-            document.documentElement.classList.remove("gcl-prologue");
-            document.documentElement.classList.remove("gcl-replaying");
-            document.querySelectorAll("[inert]").forEach((el) => el.removeAttribute("inert"));
-            replayWatchdogRef.current = null;
-          }, 22000);
+          setChromeInert(sectionRef.current);
+          // The pre-paint script owns both 22s mechanisms and their epoch.
+          // Natural completion/Skip/Esc/crossing all clear them through
+          // awaken(); forced release synchronously finishes this timeline.
+          const armed = window.__gclArmPrologueWatchdog?.();
+          // arm() samples width before it mutates scene/session state. A
+          // false result means the viewport crossed in the tiny interval
+          // after the post-scroll check; shared release has already removed
+          // classes/inert, while the completed composition and seen marker
+          // are still intact. Resolve the announced request without ever
+          // rewinding or hiding the scene.
+          if (!armed || !document.documentElement.classList.contains("gcl-prologue")) {
+            window.__gclReleasePrologue?.(undefined, false);
+            replayInFlightRef.current = false;
+            wasReplayRef.current = false;
+            setIsReplaying(false);
+            setShowSkip(false);
+            setShowReplay(true);
+            setAnnouncement("Introduction complete");
+            focusReplayWhenVisible(replayButtonRef, mountedRef);
+            return;
+          }
+          // awaken() unregisters this listener at every end. The guarded
+          // registrar makes each new desktop replay add exactly one copy.
+          registerReclaimRef.current?.();
         }
+
+        // Only a successfully acquired desktop lock (or the inherited
+        // mobile replay path) may reset the completion/session state.
+        resetArrivalSeen();
+        completedRef.current = false;
+        pullbackEngagedRef.current = false;
+        setIsStatic(false);
+        setShowSkip(true);
+        // R4.2 — R-1: remove the composed/awake class synchronously before
+        // any hidden state is written. React state alone commits too late;
+        // the still-running CSS breathe can otherwise outrank the reset.
+        sectionRef.current?.classList.remove("arrival--awake");
+        setAwake(false);
 
         const tl = timelineRef.current;
         if (tl) {
@@ -1176,11 +1357,21 @@ export default function ArrivalScene() {
           }
           tl.play(0);
         } else {
+          replayInFlightRef.current = false;
+          wasReplayRef.current = false;
+          completedRef.current = true;
+          markArrivalSeen();
+          sectionRef.current?.classList.add("arrival--awake");
+          setAwake(true);
+          setShowSkip(false);
+          setShowReplay(true);
+          setAnnouncement("Introduction complete");
           setIsReplaying(false);
+          window.__gclReleasePrologue?.(undefined, false);
         }
       });
     },
-    [isReplaying]
+    []
   );
 
   // Allow the footer's "Replay arrival" control to trigger the same replay.
@@ -1305,4 +1496,25 @@ export default function ArrivalScene() {
       </div>
     </section>
   );
+}
+
+// The intro timeline is intentionally built once per width policy. Re-run
+// the controller effect at the 1024px boundary—without replacing its DOM or
+// React state—so a scene mounted on mobile can never later acquire a desktop
+// replay lock around its mobile timeline (or vice versa). Preserving the
+// instance also lets an awaited replay preflight finish its cancellation
+// announcement/focus handoff against the newly built live-policy timeline.
+export default function ArrivalScene() {
+  const [desktopPolicy, setDesktopPolicy] = useState(
+    () => typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches
+  );
+
+  useEffect(() => {
+    const query = window.matchMedia("(min-width: 1024px)");
+    const handlePolicyChange = (event: MediaQueryListEvent) => setDesktopPolicy(event.matches);
+    query.addEventListener("change", handlePolicyChange);
+    return () => query.removeEventListener("change", handlePolicyChange);
+  }, []);
+
+  return <ArrivalSceneInstance desktopPolicy={desktopPolicy} />;
 }

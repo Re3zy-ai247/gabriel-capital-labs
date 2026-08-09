@@ -102,61 +102,67 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             reliably NOT be the JS path's own experience too. */}
         {/* R4 — extends the existing pre-paint script (still the first body
             child, still one script) with the Gateway G Institutional
-            Prologue's scroll lock. This predicate MUST stay a literal twin
-            of ArrivalScene's own `willRunPrologue` check (min-width:1024px,
-            no hash, session not yet marked seen) — one source of intent,
-            duplicated because this runs before hydration and has no
-            import path to the component. try/catch because sessionStorage
-            can throw (privacy modes): on throw, the class is simply never
-            added, so the worst case is a first frame without the
-            pre-paint lock (ArrivalScene's own predicate, also
-            try/catch-safe via its existing sessionStorage usage, still
-            governs actual playback) — never a locked page with no
-            prologue to unlock it.
+            Prologue's scroll lock. This script is the sole owner of the
+            eligibility predicate (root path, min-width:1024px, no hash,
+            session not yet marked seen); ArrivalScene later reads only the
+            resulting class. try/catch because sessionStorage can throw
+            (privacy modes): on throw, the class is never added, and the
+            component therefore takes its composed static path — never a
+            locked page with no prologue to unlock it.
             R4.1 — F15: gated on `location.pathname === '/'` too, so the
             lock only ever applies on the arrival route. Every other route
             (404 included) has no ArrivalScene to unlock it, so it must
             never lock in the first place.
-            R4.1 — F0 (BLOCKER, hydration dead-man): a bare `setTimeout`
-            watchdog that removes the class ~22s after it was added, with
-            no dependency on React ever mounting. This is deliberately
-            independent of the pure-CSS watchdog in globals.css
-            (`gcl-prologue-watchdog`) — two unlock mechanisms that don't
-            share a failure mode, so a visitor is never trapped on a black,
-            unscrollable page if the JS bundle fails to hydrate.
-            R4.2 — R-2 (margin + atomicity): 18s -> 22s — the beat table's
-            own P4 hold extension (R4.1 finding 13) left as little as
-            ~2.1s of margin between the prologue's real completion
-            (measured ~15.1s wall) and the old 18s dead-man under load;
-            22s restores real headroom. The callback also strips any
-            `[inert]` left on the page — the watchdog previously only
-            unlocked scroll (`gcl-prologue`, which drives `overflow` via
-            CSS) while leaving the JS-applied `inert` containment
-            (ArrivalScene's `setChromeInert`) in place, so a slow-hydration
-            visitor could land on a page that scrolls but still hit-tests
-            as empty everywhere outside Arrival. Both releases now happen
-            in the same tick.
-            R4.2 — R-1/epoch guard: `window.__gclLockEpoch` lets a LATER
-            lock holder (a desktop Replay re-arming `gcl-prologue` — see
-            ArrivalScene.tsx handleReplay) invalidate this specific timer
-            without needing a reference to it: bumping the epoch makes
-            this callback's own stale `0` check fail, so it becomes a
-            harmless no-op instead of releasing a lock it didn't arm. */}
+            R4.2 — R-1/R-2: this script owns the one atomic prologue-lock
+            lifecycle used by first load, Replay, natural completion,
+            forced completion, and unmount. `__gclArmPrologueWatchdog()`
+            gives each lock a new epoch and arms two independent 22s
+            signals: a timer and the CSS `gcl-prologue-watchdog`
+            `animationend`. Both signals call the SAME epoch-checked
+            `__gclReleasePrologue()` primitive. That primitive clears the
+            timer/listener, removes both root classes, and removes only
+            `inert` attributes carrying this feature's ownership marker;
+            unrelated pre-existing inert state is preserved. CSS never
+            unlocks overflow by itself. A forced release dispatches a
+            synchronous event so a hydrated ArrivalScene can finish its
+            timeline through the ordinary awaken/markComplete path; before
+            hydration, removing the class makes the later mount choose the
+            composed static path. */}
         {/* eslint-disable-next-line react/no-danger */}
         <script
           id="gcl-js-class"
           dangerouslySetInnerHTML={{
             __html:
               "document.documentElement.classList.add('js');" +
+              "window.__gclReleasePrologue=function(expectedEpoch,notify){" +
+              "if(typeof expectedEpoch==='number'&&window.__gclLockEpoch!==expectedEpoch)return false;" +
+              "if(window.__gclPrologueWatchdogTimer!==undefined){clearTimeout(window.__gclPrologueWatchdogTimer);window.__gclPrologueWatchdogTimer=undefined;}" +
+              "if(window.__gclPrologueAnimationEnd){document.documentElement.removeEventListener('animationend',window.__gclPrologueAnimationEnd);window.__gclPrologueAnimationEnd=undefined;}" +
+              "if(window.__gclPrologueWidthQuery&&window.__gclPrologueWidthChange){window.__gclPrologueWidthQuery.removeEventListener('change',window.__gclPrologueWidthChange);window.__gclPrologueWidthQuery=undefined;window.__gclPrologueWidthChange=undefined;}" +
+              "document.documentElement.classList.remove('gcl-prologue','gcl-replaying');" +
+              "var owned=document.querySelectorAll('[data-gcl-prologue-inert]');" +
+              "for(var i=0;i<owned.length;i++){owned[i].removeAttribute('inert');owned[i].removeAttribute('data-gcl-prologue-inert');}" +
+              "window.__gclLockEpoch=(window.__gclLockEpoch||0)+1;" +
+              "if(notify)window.dispatchEvent(new Event('gcl:prologue-force-release'));" +
+              "return true;" +
+              "};" +
+              "window.__gclArmPrologueWatchdog=function(){" +
+              "if(window.__gclPrologueWatchdogTimer!==undefined)clearTimeout(window.__gclPrologueWatchdogTimer);" +
+              "if(window.__gclPrologueAnimationEnd)document.documentElement.removeEventListener('animationend',window.__gclPrologueAnimationEnd);" +
+              "if(window.__gclPrologueWidthQuery&&window.__gclPrologueWidthChange)window.__gclPrologueWidthQuery.removeEventListener('change',window.__gclPrologueWidthChange);" +
+              "var widthQuery=matchMedia('(min-width:1024px)');" +
+              "if(!widthQuery.matches){window.__gclReleasePrologue(undefined,false);return false;}" +
+              "var epoch=(window.__gclLockEpoch||0)+1;window.__gclLockEpoch=epoch;" +
+              "var onEnd=function(event){if(event.target===document.documentElement&&event.animationName==='gcl-prologue-watchdog')window.__gclReleasePrologue(epoch,true);};" +
+              "window.__gclPrologueAnimationEnd=onEnd;document.documentElement.addEventListener('animationend',onEnd);" +
+              "var onWidth=function(event){if(!event.matches)window.__gclReleasePrologue(epoch,true);};" +
+              "window.__gclPrologueWidthQuery=widthQuery;window.__gclPrologueWidthChange=onWidth;widthQuery.addEventListener('change',onWidth);" +
+              "window.__gclPrologueWatchdogTimer=setTimeout(function(){window.__gclReleasePrologue(epoch,true);},22000);" +
+              "return epoch;" +
+              "};" +
               "try{if(location.pathname==='/'&&matchMedia('(min-width:1024px)').matches&&!location.hash&&sessionStorage.getItem('gcl-arrival-seen')!=='1'){" +
               "document.documentElement.classList.add('gcl-prologue');" +
-              "window.__gclLockEpoch=0;" +
-              "setTimeout(function(){" +
-              "if(window.__gclLockEpoch!==0)return;" +
-              "document.documentElement.classList.remove('gcl-prologue');" +
-              "var els=document.querySelectorAll('[inert]');" +
-              "for(var i=0;i<els.length;i++){els[i].removeAttribute('inert');}" +
-              "},22000);" +
+              "window.__gclArmPrologueWatchdog();" +
               "}}catch(e){}",
           }}
         />

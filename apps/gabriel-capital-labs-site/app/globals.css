@@ -304,6 +304,12 @@ html.gcl-replaying .arrival__replay {
   opacity: 0 !important;
   visibility: hidden !important;
   pointer-events: none !important;
+  /* The base chip deliberately fades between its resting states. A replay's
+     P1 withhold is a containment boundary, though, not a cosmetic state: a
+     400ms transition left the old gold chip visibly lingering after the
+     replay lock/inert state was already active. Suppress that transition
+     while the replay class owns the chip so all three change atomically. */
+  transition: none !important;
 }
 
 .nav__brand {
@@ -474,37 +480,27 @@ html.gcl-replaying .arrival__replay {
 
 /* R4 — pre-paint scroll lock for the Gateway G Institutional Prologue. Added
    ONLY by the inline pre-paint script in layout.tsx (first-visit desktop,
-   no hash — the same predicate ArrivalScene's own `willRunPrologue` checks
-   at mount) and removed by the timeline's own awaken() call at P6. A no-JS
+   no hash); ArrivalScene reads the resulting class as its strict source at
+   mount. Removed by the timeline's own awaken() call at P6. A no-JS
    visitor never gets `html.js`, let alone this class, so the fully composed
    static page guarantee is untouched. */
 html.gcl-prologue {
   overflow: hidden;
-  /* R4.1 — F0 (BLOCKER, hydration dead-man): a pure-CSS failsafe that is
-     completely independent of React/the bundle ever hydrating. `overflow`
-     is a discrete-animatable property (no interpolation, it just flips at
-     a keyframe boundary), so this unconditionally releases the lock ~22s
-     after the class was added, in every failure mode — including a CSP or
-     bundle failure that would also prevent the inline setTimeout watchdog
-     in layout.tsx from ever having been reached. The two watchdogs are
-     deliberately redundant, not sequential: whichever fires first wins.
-     R4.2 — R-2: 18s -> 22s, same margin fix and same reasoning as the
-     inline setTimeout twin in layout.tsx — keep these two numbers equal.
-     Also doubles as the replay-session watchdog: because this class is
-     genuinely removed then re-added (not toggled within one frame) across
-     a desktop Replay (ArrivalScene.tsx handleReplay), the browser starts
-     this keyframe fresh from 0% on every reapplication with no extra code
-     needed here. */
+  /* R4.2 — R-1/R-2: this animation is the timer-independent 22s watchdog
+     SIGNAL, not an unlock path of its own. The pre-paint script listens for
+     its animationend and routes that signal through the same epoch-checked
+     atomic release primitive as the inline timer. Keeping overflow hidden
+     at every keyframe makes the impossible state structurally impossible:
+     CSS can never release scroll while prologue-owned inert remains. */
   animation: gcl-prologue-watchdog 22s linear forwards;
 }
 
 @keyframes gcl-prologue-watchdog {
-  0%,
-  99.99% {
-    overflow: hidden;
+  from {
+    --gcl-prologue-watchdog-tick: 0;
   }
-  100% {
-    overflow: visible;
+  to {
+    --gcl-prologue-watchdog-tick: 1;
   }
 }
 
@@ -667,6 +663,15 @@ html.js .arrival__wordmark-top {
   }
 }
 
+/* R4.2 — R-3: the composed state comes after both pre-hidden declarations.
+   A crossing-down cleanup can therefore clear every desktop inline style,
+   including markWrap, and land on the native visible 120x130 mobile mark
+   without replacing those residues with another inline transform. */
+html.js .arrival--awake .arrival__mark-wrap {
+  opacity: 1;
+  transform: none;
+}
+
 .arrival__wordmark-bottom {
   display: flex;
   align-items: center;
@@ -712,9 +717,16 @@ html.js .arrival__wordmark-bottom {
      element in the composition, inverting the arrival's hierarchy. A
      `max-inline-size` below the wordmark's own measure forces the SAME
      two-line wrap at every phone width 320-430, ch-based so it tracks
-     the fluid clamp() font-size above instead of going stale against it. */
-  max-inline-size: 21ch;
+     the fluid clamp() font-size above instead of going stale against it.
+     The width cap itself is phone-scoped below so this ruling cannot alter
+     the accepted tablet/desktop composition. */
   text-wrap: balance;
+}
+
+@media (max-width: 430px) {
+  .arrival__tagline-line {
+    max-inline-size: 21ch;
+  }
 }
 
 html.js .arrival__tagline-line {
@@ -821,13 +833,11 @@ html.gcl-prologue .arrival__skip {
    thin as the one this exact finding flagged as a defect. This is a
    distinct, deliberately warmer/lower-green solid (a restrained bronze,
    not the full brand gold — full brand gold is reserved for :hover/
-   :focus-visible below) chosen to clear BOTH floors with real headroom
-   instead of threading the same needle: computed simple-luma ~89 (5
-   points under the P2 signal, not a razor's edge) and WCAG contrast
-   ~3.7:1 against #060608 (23% above the 3:1 UI-control floor, not the
-   ~1% margin the gray chip had). Re-measure both numbers against real
-   rendered pixels if this color or the resting opacity target
-   (revealSkip, still 0.65) ever changes. */
+   :focus-visible below). At revealSkip's corrected 0.87 resting opacity,
+   it composites over #060608 near RGB(166,57,23): about 3.10:1 contrast,
+   while its relative luminance remains below the signal centre near
+   RGB(119,91,42), about 3.20:1. Re-measure both composited values against
+   real rendered pixels if either this color or that opacity changes. */
 html.gcl-prologue .arrival__skip {
   color: rgb(190, 65, 25);
   border-color: rgb(190, 65, 25);

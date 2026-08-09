@@ -8,24 +8,27 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
+    "test:r4.2": "node scripts/r4-confirmation.mjs",
     "optimize-images": "node scripts/optimize-images.mjs"
   },
   "dependencies": {
+    "gsap": "^3.12.5",
     "next": "14.2.18",
     "react": "18.3.1",
-    "react-dom": "18.3.1",
-    "gsap": "^3.12.5"
+    "react-dom": "18.3.1"
   },
   "devDependencies": {
-    "typescript": "5.6.3",
+    "@types/node": "^20.16.0",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
-    "@types/node": "^20.16.0",
+    "autoprefixer": "^10.4.20",
+    "axe-core": "^4.13.0",
     "eslint": "^8.57.1",
     "eslint-config-next": "14.2.18",
-    "sharp": "^0.33.5",
-    "serve": "^14.2.4",
+    "playwright-core": "^1.62.0",
     "postcss": "^8.4.47",
-    "autoprefixer": "^10.4.20"
+    "serve": "^14.2.4",
+    "sharp": "^0.33.5",
+    "typescript": "5.6.3"
   }
 }
