@@ -1,3 +1,180 @@
+## R4.3 · Founder Experience Closure — Final Report (2026-08-08)
+
+**Verdict: READY WITH DISCLOSURES.** All four Founder Experience blockers are closed. The full
+unfiltered schema-v1 confirmation is `passed` and `attestable`: 30/30 scenarios passed, zero
+failures, zero unexpected telemetry, and 45 screenshots. Both pre-implementation read-only audits
+were incorporated; the fresh post-implementation adversary returned PASS with no confidence-8+
+actionable blocker.
+
+**Durable path:** branch `codex/gcl-r4-3-founder-closure-2026-08-08` · base
+`3600ae2c9cd92d193c2228773420c7ec31e24be2` · implementation commit
+`655a4eec8cb6076c95803f20d60cd8c433dfdc3b` · protected preview
+<https://gcl-institutional-site-evo51qmqh-rey-gabriel-s-projects.vercel.app> · Vercel preview
+Ready, unauthenticated 302 → SSO, authenticated 200, `x-robots-tag: noindex`. Main was not merged.
+Production was not deployed. CreditVector, GIOS, HELIOS, DNS, and canonical Gateway G assets were
+not changed.
+
+### R4.3.1 Founder findings
+
+| Finding | Final disposition |
+|---|---|
+| GIOS shifted relative to the other Ecosystem domains | **PASS** — removed the authored GIOS-only `offset`; all four title origins now have 0px final spread in every tested full/reduced state. |
+| Engagement/contact vertically compressed | **PASS** — Engagement now owns marker, six consistent rows, and subordinate status with height-aware rhythm; Footer is separated after the Outro. |
+| Gateway G too close to `06 — ENGAGEMENT` | **PASS** — no G remains in Engagement; its closing role moved to a distinct central field. |
+| Approved closing sentence behaved as ordinary copy | **PASS** — exact two-line sentence now resolves as the dominant verbal beat of a full Institutional Outro and holds before Footer release. |
+
+### R4.3.2 Ecosystem alignment
+
+Root cause: `WING_VARIANTS` gave only GIOS the `offset` variant, and desktop CSS added
+`margin-left: clamp(2rem, 6vw, 5rem)` to its header. At 1440px that was an 80px static shift;
+animation endpoints already resolved to `x: 0`. R4.3 removes the one-off variant/rule, establishes a
+fixed `3rem` numeral column, and shares title/description origins and measures. Directional entrance
+sequencing remains.
+
+| Viewport | Full title x | Reduced title x | Max four-title spread |
+|---:|---:|---:|---:|
+| 1920×1080 | 372px | 372px | 0px |
+| 1512×982 | 164.469px | 164.469px | 0px |
+| 1440×900 | 125.594px | 125.594px | 0px |
+| 1280×720 | 119.188px | 119.188px | 0px |
+| 1024×768 / 1024×568 | 108.953px | 108.953px | 0px |
+| 430×932 / 390×844 / 320×568 | 88px | 88px | 0px |
+
+The binding maximum is 2 CSS pixels; every one of the 18 matrix cases measures exactly 0px.
+
+### R4.3.3 Engagement before and after
+
+Before, Engagement stacked marker, G, headline, six rows, status, width-derived `12vw` padding,
+Footer border, Footer, and Replay. There was no explicit marker-to-G gap, yet compact 1024×568
+received 122.9px top and bottom padding. After, Engagement is an editorial chapter with the
+semantic `06 — ENGAGEMENT` heading, unchanged six categories/descriptions, subordinate status,
+height-aware `svh` spacing, and preserved `#contact` ownership.
+
+Measured marker→rows / status / bottom gaps are 81 / 45 / 126px at 1440×900; 72 / 32 / 96px at
+1024×568; and 56 / 32 / 80px at 320×568. Horizontal overflow is 0px throughout. Six row heights
+are consistent within the expected 1px boundary at representative desktop sizes. The final DOM
+order is Engagement → Institutional Outro → Footer.
+
+### R4.3.4 Gateway G relocation and Institutional Outro
+
+`InstitutionalOutroScene` is a new semantic full visual chapter after Engagement. The section
+remains in normal flow and pins only its inner desktop field. Its near-black field, restrained gold
+signal, composition, mark wrapper, untouched image, and exact two-span h2 are separate layers. The
+Footer remains an ordinary subordinate sibling after the scene.
+
+Narrative: Engagement recedes naturally → near-black field → gold architectural signal → canonical
+G → “Enter the future” / “we are engineering.” → resolved hold → minimal Footer.
+
+- Full desktop: one timeline-hosted `gcl-institutional-outro` ScrollTrigger, `+=100%` inner pin,
+  restrained opacity/scale/depth, ~24% final hold.
+- Third Motion Class: same story with one `+=60%` inner pin; opacity/luminance only; all sampled
+  signal, wrapper, line, and image transforms are `none`.
+- Mobile: full-height chapter in normal flow and no new Outro pin.
+- Stable pin topology: 5 desktop full / 5 desktop reduced / 2 mobile full / 0 mobile reduced;
+  zero nested spacers and exactly one Outro trigger.
+
+At full-motion progress 0.22, signal opacity is 0.875 while mark/message are 0; at 0.46, mark is
+0.999 while both lines remain 0; at 0.88 and 0.97, mark/message stay fully resolved at identical
+resting transforms. Reduced motion preserves the same order and hold without spatial movement.
+
+### R4.3.5 Gateway G integrity
+
+The locked 480/768/1080 WebP and 480 PNG hashes are unchanged. The Outro reuses the 480×520 WebP
+and PNG fallback. Across entry, reveal, hold, Replay, reduced motion, compact desktop, and mobile,
+the image itself is opacity 1, `transform: none`, `filter: none`, normal blend, unmasked, unclipped,
+and within 0.02% of 480:520. Motion is wrapper-only. Engagement contains zero Gateway G marks.
+
+### R4.3.6 Replay and inert regression
+
+Arrival source/lifecycle was not changed. The new Outro simply becomes a ninth top-level
+prologue-owned inert target.
+
+- Engagement → Escape, Outro → keyboard SKIP, and the real Footer button → natural completion all
+  acquire scrollY 0, nine owned/inert targets, hidden Replay, and hidden overflow.
+- Every release leaves zero owned markers, zero unintended inert, no prologue/replaying classes,
+  visible overflow, focus on Replay, and the “Introduction complete” live announcement.
+- Pin count remains five, one Outro pin, zero nested pins, and exactly one active Replay bridge
+  listener after each cycle.
+- A real independently inert Footer fixture remains inert and unowned through acquisition/release.
+- Reduced-motion Outro Replay passes; mobile Replay bypass has no lock/inert and preserves two pins.
+- Direct `/#contact` bypasses Arrival and lands at 84.171875px under full and reduced policies.
+
+No stale overlay, stale lock, duplicate listener/timeline/ScrollTrigger, focus loss, or interaction
+defect was found.
+
+### R4.3.7 Responsive, accessibility, performance, and evidence
+
+The matrix covers 1920×1080, 1512×982, 1440×900, 1280×720, 1024×768, extra 1024×568
+compact-height stress, 390×844, 430×932, and 320×568 under full and reduced motion. All 18 cases
+pass Engagement rhythm, Footer separation, exact two message lines, mark containment, pin topology,
+navigation, and zero overflow. Independent visual inspection found no collision, clipping,
+distortion, Footer leakage, or desktop motion leakage into mobile.
+
+Diff-scoped axe at `#contact`, `#institutional-outro`, and `footer` reports zero violations in both
+policies. Heading order remains one h1 followed by semantic chapter h2s; the Outro accessible name
+is exact. This changed-region result is not mislabeled as a whole-document pass at arbitrary
+mid-animation scroll positions; frozen R4.2 retains the composed whole-document result.
+
+Typecheck, lint, production build, harness syntax, and `git diff --check` pass. Browser telemetry,
+page errors, console errors, hydration warnings, NaN styles, and horizontal overflow are zero.
+Local static timing is 4.3ms response start, 126.8ms DOMContentLoaded, 209.5ms load, 11 resources,
+and 1,007ms wall time including composed-state wait. The protected Vercel build compiled,
+typechecked, generated four static pages, and reached Ready.
+
+Authoritative evidence:
+[`../assets/r4-3/r4-3-confirmation-results.json`](../assets/r4-3/r4-3-confirmation-results.json).
+Frames: [1440 Engagement](../assets/r4-3/matrix-full-1440x900-engagement.png) ·
+[1440 Outro](../assets/r4-3/matrix-full-1440x900-outro-hold.png) ·
+[1024×568 stress](../assets/r4-3/matrix-full-1024x568-outro-hold.png) ·
+[320×568 Engagement](../assets/r4-3/matrix-full-320x568-engagement.png) ·
+[320×568 Outro](../assets/r4-3/matrix-full-320x568-outro-hold.png) ·
+[reduced hold](../assets/r4-3/narrative-reduce-0-88.png) ·
+[three Replay origins](../assets/r4-3/replay-three-cycles-complete.png).
+
+### R4.3.8 Gate trail and disclosures
+
+| Gate | Verdict |
+|---|---|
+| Composition auditor | **DONE WITH CONCERNS → RESOLVED** — exact static root cause and rhythm risk are closed in measurements/screenshots. |
+| Motion/accessibility auditor | **PASS AFTER IMPLEMENTATION** — prescribed lifecycle, motion classes, mobile protection, and topology all pass. |
+| Fresh adversary | **PASS** — no confidence-8+ actionable blocker after independent source/evidence/visual review. |
+| Compliance | **GO** — no category claim changed; exact approved institutional copy moved; no pricing, credit outcome, consumer-report, dispute, billing, or subscription claim; no Critical/High issue or counsel escalation. Internal review is not legal advice. |
+| Security | **PASS WITH INHERITED DEBT** — no confidence-8+ finding and no new external/data/auth surface. Next 14.2.18 advisory debt is inherited and reachable only if the prohibited Next request runtime is exposed; deployment is static-export-only. |
+
+This AI-assisted review is not a substitute for a professional security audit or penetration test.
+
+Disclosures:
+
+1. Automated browser evidence is Chromium-only; Safari/WebKit, notched compact landscape, and
+   physical-device safe-area behavior remain manual Founder checks.
+2. The 1024×568 stress case is automated and independently visually inspected, not physical-device
+   coverage.
+3. The harness hashes nine source files, four locked assets, and the clean implementation commit,
+   but not served export bytes or each PNG before setting `attestable`. The committed evidence tree
+   and final ZIP SHA-256 bind the delivered bundle. The fresh adversary rated this lower-confidence
+   and non-blocking.
+4. Changed-region axe results must not be restated as whole-document results at arbitrary active
+   animation states.
+5. Inherited Next/transitive debt remains. No forced upgrade or `npm audit fix --force` occurred.
+6. Prior R4/R3 behavior and disclosures remain historical below; Arrival/Replay were not reopened.
+7. The prior GitHub HTTP 403 was not retried. Branch and commits remain local pending authorization.
+
+### R4.3.9 Founder checklist
+
+1. Protected desktop preview: confirm all four Ecosystem titles settle on one axis.
+2. Engagement: marker → six rows → subordinate status, with no G in the label cluster.
+3. Outro: darkness → signal → canonical G → exact two-line message → hold → separate Footer.
+4. Repeat at 1280×720 and 1024×568; inspect negative space and Footer separation.
+5. Review 430×932, 390×844, and 320×568 for overflow, clipping, crowding, or desktop pin leakage.
+6. Enable Reduce Motion and confirm the same story with no spatial movement.
+7. Replay from Engagement/Escape, Outro/keyboard SKIP, and Footer/natural completion; confirm focus,
+   announcement, and interaction restoration.
+8. Open `/#contact` directly and confirm the 84px Engagement landing.
+9. Manually spot-check Safari/WebKit and a notched compact device.
+10. Authorize merge and production separately if approved. Neither occurred here.
+
+---
+
 ## R4 · Gateway G Institutional Prologue — Completion Report (2026-08-08)
 
 **Verdict: READY WITH DISCLOSURES.** All six binding R4.2 rulings pass. The independent

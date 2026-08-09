@@ -1,6 +1,6 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>GCL Cinematic Website — R4 Completion &amp; Review Report</title>
+<title>GCL Cinematic Website — R4.3 Founder Experience Closure Report</title>
 <style>
 :root{--bg:#0B0D10;--panel:#0F1012;--txt:#E6E6E6;--mut:#B7B7B7;--gold:#D4A146;--line:#26282c}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--txt);font:16px/1.65 -apple-system,"Segoe UI",Inter,Roboto,sans-serif;padding:2rem 1rem}
@@ -24,7 +24,122 @@ figcaption{font-size:.78rem;color:var(--mut);padding-top:.5rem;letter-spacing:.0
 @media print{body{background:#fff;color:#111}p,li{color:#333}}
 </style></head><body><main>
 <h1>Gabriel Capital Labs — Cinematic Institutional Website v1</h1>
-<p><strong>Build + adversarial-review handoff report</strong> · 2026-08-05 · Original branch <code>claude/gcl-cinematic-institutional-site-6qx964</code>. <strong>Revision R4 (2026-08-08): Gateway G Institutional Prologue completion — READY WITH DISCLOSURES — branch <code>codex/gcl-r4-completion-2026-08-08</code>, implementation/evidence commit <code>43adaff</code>.</strong> R3, R2, and v1 follow as historical record.</p>
+<p><strong>Build + adversarial-review handoff report</strong> · 2026-08-05 · Original branch <code>claude/gcl-cinematic-institutional-site-6qx964</code>. <strong>Revision R4.3 (2026-08-08): Founder Experience Closure — READY WITH DISCLOSURES — branch <code>codex/gcl-r4-3-founder-closure-2026-08-08</code>, implementation commit <code>655a4ee</code>.</strong> R4, R3, R2, and v1 follow as historical record.</p>
+<hr>
+<h2>R4.3 · Founder Experience Closure (Founder experience gate, 2026-08-08)</h2>
+<p><strong>R4.3 outcome: READY WITH DISCLOSURES.</strong> The four Founder Experience blockers are closed. The full unfiltered R4.3 confirmation is <code>passed</code> and <code>attestable</code>: 30/30 scenarios passed, zero failures, zero unexpected browser telemetry, and 45 screenshots. The two pre-implementation read-only auditors and the fresh post-implementation adversary found no unresolved Replay, inert-state, Gateway G, mobile, accessibility, hydration, interaction, or composition defect.</p>
+<p><strong>Protected preview:</strong> <a href="https://gcl-institutional-site-evo51qmqh-rey-gabriel-s-projects.vercel.app">gcl-institutional-site R4.3 preview</a> — Vercel target <code>preview</code>, Ready; unauthenticated 302 → Vercel SSO; authenticated 200; <code>x-robots-tag: noindex</code>. Main was not merged. Production was not deployed. CreditVector, GIOS, HELIOS, DNS, and the canonical Gateway G assets were not changed.</p>
+
+<h3>R4.3.1 Founder findings — final disposition</h3>
+<div class="tw"><table><thead><tr><th>Founder finding</th><th>Disposition</th><th>Executable result</th></tr></thead><tbody>
+<tr><td><strong>1 · GIOS is not aligned</strong></td><td><strong class="ok">PASS</strong></td><td>The GIOS-only <code>offset</code> variant and desktop margin were removed. All four domains now share a fixed numeral column, title origin, description origin, and text measure. Maximum resolved title spread is <strong>0px</strong> in all 18 full/reduced viewport cases (limit: 2px).</td></tr>
+<tr><td><strong>2 · Engagement is vertically compressed</strong></td><td><strong class="ok">PASS</strong></td><td>Engagement is a complete editorial chapter: marker → six consistently measured rows → subordinate status. Height-aware spacing replaces the old width-only closing stack; the Footer is outside the chapter. No compact-height/mobile collision or horizontal overflow was observed.</td></tr>
+<tr><td><strong>3 · Gateway G crowds 06 — ENGAGEMENT</strong></td><td><strong class="ok">PASS</strong></td><td>The mark was removed from Engagement. Its major closing role now lives in the independent Institutional Outro, with a clear central field and no label/contact/Footer competition.</td></tr>
+<tr><td><strong>4 · Closing sentence reads as ordinary copy</strong></td><td><strong class="ok">PASS</strong></td><td>The exact approved sentence is an explicit two-line cinematic message—“Enter the future” / “we are engineering.”—inside its own near-black chapter with signal, mark, reveal, and stable hold.</td></tr>
+</tbody></table></div>
+
+<h3>R4.3.2 Ecosystem alignment — root cause and measurement</h3>
+<p>The defect was static authored geometry, not GSAP residue. <code>WING_VARIANTS</code> assigned GIOS the <code>offset</code> variant; at desktop widths <code>.ecosystem__wing--offset .ecosystem__wing-top</code> added <code>clamp(2rem, 6vw, 5rem)</code>, resolving to an 80px false hierarchy at 1440px. Entrance motion already settled to <code>x: 0</code>.</p>
+<p>R4.3 removes that one-off offset, uses a fixed <code>3rem</code> numeral column for all four domains, and gives the title and description blocks common origins and measures. HELIOS no longer widens its supporting-copy measure; KAI retains only its non-positional inset hairline. Cinematic directional entrances remain intact.</p>
+<div class="tw"><table><thead><tr><th>Viewport</th><th>Shared final title x · full</th><th>Shared final title x · reduce</th><th>Max spread</th></tr></thead><tbody>
+<tr><td>1920×1080</td><td>372px</td><td>372px</td><td>0px</td></tr>
+<tr><td>1512×982</td><td>164.469px</td><td>164.469px</td><td>0px</td></tr>
+<tr><td>1440×900</td><td>125.594px</td><td>125.594px</td><td>0px</td></tr>
+<tr><td>1280×720</td><td>119.188px</td><td>119.188px</td><td>0px</td></tr>
+<tr><td>1024×768</td><td>108.953px</td><td>108.953px</td><td>0px</td></tr>
+<tr><td>1024×568 stress</td><td>108.953px</td><td>108.953px</td><td>0px</td></tr>
+<tr><td>430×932 / 390×844 / 320×568</td><td>88px</td><td>88px</td><td>0px</td></tr>
+</tbody></table></div>
+<p>Every resolved title reports the same identity resting transform. The result is 2px inside the binding tolerance at every tested state.</p>
+
+<h3>R4.3.3 Engagement refinement — before and after</h3>
+<p>Before R4.3, one stack carried the chapter marker, Gateway G, large closing sentence, six rows, status, section padding, Footer border, Footer, and Replay. There was no explicit marker-to-G gap, while width-based <code>12vw</code> section padding created 122.9px top and bottom at 1024×568. The composition felt crowded near the label and wasteful near the Footer simultaneously.</p>
+<p>Engagement now owns only its semantic <code>06 — ENGAGEMENT</code> h2, the six approved category/description rows, the subordinate status note, local <code>svh</code>-aware rhythm, and the existing <code>#contact</code> anchor. Meaning and claims are unchanged.</p>
+<div class="tw"><table><thead><tr><th>Representative viewport</th><th>Marker→rows</th><th>Status gap</th><th>Bottom breathing room</th><th>Overflow</th></tr></thead><tbody>
+<tr><td>1920×1080</td><td>97.2px</td><td>54px</td><td>151.2px</td><td>0px</td></tr>
+<tr><td>1440×900</td><td>81px</td><td>45px</td><td>126px</td><td>0px</td></tr>
+<tr><td>1024×568 stress</td><td>72px</td><td>32px</td><td>96px</td><td>0px</td></tr>
+<tr><td>430×932</td><td>74.5px</td><td>46.6px</td><td>111.8px</td><td>0px</td></tr>
+<tr><td>320×568</td><td>56px</td><td>32px</td><td>80px</td><td>0px</td></tr>
+</tbody></table></div>
+<p>At 1440px the six rows resolve to five 81.39px rows and one 82.39px boundary row; at 1024×568 they resolve to five 75.17px rows and one 76.17px boundary row. The Footer follows the complete Outro in normal flow and is no longer visually attached to the contact table.</p>
+
+<h3>R4.3.4 Institutional Outro architecture and motion</h3>
+<p><code>InstitutionalOutroScene</code> is a new semantic section between Engagement and Footer. Its outer section stays in document flow; only the inner field is pinned on desktop. Field, gold signal, composition, mark wrapper, untouched image, and exact two-span h2 are separate layers. The Footer is never hidden, transformed, overlapped, or pulled into the cinematic frame.</p>
+<ol>
+<li>Engagement recedes naturally.</li>
+<li>A near-black field establishes a distinct chapter.</li>
+<li>A restrained architectural gold signal resolves.</li>
+<li>The canonical Gateway G resolves in a clear central field.</li>
+<li>“Enter the future” / “we are engineering.” becomes the dominant verbal element.</li>
+<li>The frame holds through the final ~24%.</li>
+<li>The separate minimal Footer follows as institutional credits.</li>
+</ol>
+<p>One timeline-hosted ScrollTrigger, id <code>gcl-institutional-outro</code>, owns the desktop scene. Full motion uses one <code>+=100%</code> inner pin and restrained opacity/scale/depth. The Third Motion Class uses one shorter <code>+=60%</code> pin with opacity/luminance only. Mobile adds no Outro pin. Stable pin topology is <strong>5 / 5 / 2 / 0</strong> for desktop full / desktop reduced / mobile full / mobile reduced, with zero nested spacers.</p>
+<p>Full-motion samples prove order and hold: at progress 0.22 the signal is 0.875 while mark/message are 0; at 0.46 the mark is 0.999 while both lines remain 0; at 0.88 and 0.97 the mark and lines remain 1 at identical resting transforms. Reduced samples retain the same order while signal, mark wrapper, lines, and image all compute <code>transform: none</code>.</p>
+
+<h3>R4.3.5 Gateway G integrity</h3>
+<p>All four locked projection hashes remain unchanged: <code>gateway-g-480.webp</code> <code>90b2c57e…b737b19</code>; <code>gateway-g-768.webp</code> <code>bdc797d7…cf1ef7a</code>; <code>gateway-g-1080.webp</code> <code>67f8f444…f9ccc7</code>; and <code>gateway-g-480.png</code> <code>9ed77669…6b1c9b</code>.</p>
+<p>The Outro uses the existing 480×520 WebP and PNG fallback. Across entry, reveal, hold, reduced motion, Replay, compact desktop, and mobile, the image remains opacity 1, <code>transform: none</code>, <code>filter: none</code>, <code>mix-blend-mode: normal</code>, unmasked, unclipped, and within 0.02% of the locked 480:520 aspect. Motion is confined to a wrapper. No Gateway G remains inside Engagement.</p>
+
+<h3>R4.3.6 Replay, navigation, accessibility, and reliability</h3>
+<p>The accepted Arrival controller was not changed. The new Outro is a ninth ordinary prologue-owned inert target, while release still removes only <code>[data-gcl-prologue-inert]</code>.</p>
+<div class="tw"><table><thead><tr><th>Replay origin / exit</th><th>During Replay</th><th>After release</th></tr></thead><tbody>
+<tr><td>Engagement → Escape</td><td>scroll 0; 9 owned + inert; overflow hidden; Replay hidden</td><td>0 owned; 0 unintended inert; classes gone; overflow visible; focus restored; “Introduction complete”</td></tr>
+<tr><td>Outro → keyboard SKIP</td><td>Same containment</td><td>Same atomic release; 5 pins; one Outro pin; one active Replay listener</td></tr>
+<tr><td>Real Footer button → natural completion</td><td>Same containment</td><td>Same atomic release; no nested pin and no listener/timeline/ScrollTrigger growth</td></tr>
+</tbody></table></div>
+<p>An actual non-prologue Footer inert state remained inert and unowned through release. Reduced-motion Replay from the Outro passes. Mobile Replay bypasses locking/inert and retains two full-motion pins. Direct <code>/#contact</code> bypasses the prologue and lands at <strong>84.171875px</strong> under both policies.</p>
+<p>Heading order remains one h1 followed by semantic chapter h2s; the Outro accessible name is exactly “Enter the future we are engineering.” Diff-scoped axe-core checks at <code>#contact</code>, <code>#institutional-outro</code>, and <code>footer</code> report zero violations under both policies. This is not presented as a whole-document axe pass at arbitrary mid-animation states; frozen R4.2 records the composed whole-document result.</p>
+<p>There are zero console errors, page errors, hydration warnings, NaN styles, horizontal overflow, or unexpected telemetry. Local static navigation measured 4.3ms response start, 126.8ms DOMContentLoaded, 209.5ms load, 11 resources, and 1,007ms wall time including the composed-state wait. Typecheck, lint, production build, harness syntax, and <code>git diff --check</code> pass. The protected Vercel build compiled, typechecked, generated all four static pages, and reached Ready.</p>
+
+<h3>R4.3.7 Responsive and visual evidence</h3>
+<p>The complete matrix covers desktop 1920×1080, 1512×982, 1440×900, 1280×720, 1024×768, plus 1024×568 compact-height stress; mobile 390×844, 430×932, and 320×568; and both motion policies. Engagement spacing, Outro containment, exact two-line message, Footer separation, navigation, and overflow pass all 18 combinations. Independent visual inspection found no collision, clipping, distortion, Footer leakage, or desktop-state leakage into mobile.</p>
+<div class="gallery">
+<figure><img src="assets/r4-3/matrix-full-1440x900-engagement.png" alt="R4.3 Engagement at 1440 by 900"><figcaption>1440×900 · Engagement chapter</figcaption></figure>
+<figure><img src="assets/r4-3/matrix-full-1440x900-outro-hold.png" alt="R4.3 Institutional Outro hold at 1440 by 900"><figcaption>1440×900 · Institutional hold</figcaption></figure>
+<figure><img src="assets/r4-3/matrix-full-1024x568-outro-hold.png" alt="R4.3 compact-height Outro hold at 1024 by 568"><figcaption>1024×568 · Compact-height stress</figcaption></figure>
+<figure><img src="assets/r4-3/matrix-full-320x568-engagement.png" alt="R4.3 mobile Engagement at 320 by 568"><figcaption>320×568 · Mobile Engagement</figcaption></figure>
+<figure><img src="assets/r4-3/matrix-full-320x568-outro-hold.png" alt="R4.3 mobile Institutional Outro at 320 by 568"><figcaption>320×568 · Mobile Outro</figcaption></figure>
+<figure><img src="assets/r4-3/narrative-reduce-0-88.png" alt="R4.3 reduced-motion Institutional Outro hold"><figcaption>Reduced motion · resolved hold</figcaption></figure>
+</div>
+<p>Durable evidence: <a href="assets/r4-3/r4-3-confirmation-results.json">R4.3 confirmation manifest</a> · <a href="assets/r4-3/replay-three-cycles-complete.png">three Replay origins</a>.</p>
+
+<h3>R4.3.8 Independent gates</h3>
+<div class="tw"><table><thead><tr><th>Gate</th><th>Verdict</th></tr></thead><tbody>
+<tr><td>Composition auditor</td><td><strong class="ok">DONE WITH CONCERNS → RESOLVED</strong> — found the GIOS-only 80px offset and width-derived closing-stack imbalance; final evidence shows 0px spread and complete chapter separation.</td></tr>
+<tr><td>Motion/accessibility auditor</td><td><strong class="ok">PASS AFTER IMPLEMENTATION</strong> — one inner-pinned, timeline-hosted Outro; strict Third Motion Class; mobile non-pin; ninth inert target; stable 5/5/2/0 topology.</td></tr>
+<tr><td>Fresh adversary</td><td><strong class="ok">PASS</strong> — no confidence-8+ actionable blocker after source, manifest, and full/reduced/compact/mobile screenshots were independently inspected.</td></tr>
+<tr><td>Compliance</td><td><strong class="ok">GO</strong> — content meaning is unchanged; the exact approved institutional sentence moved without adding a price, consumer-credit, dispute, billing, subscription, or outcome claim. No Critical/High issue or counsel escalation. Internal review is not legal advice.</td></tr>
+<tr><td>Security</td><td><strong class="ok">PASS WITH INHERITED DEBT</strong> — no confidence-8+ exploitable finding and no new endpoint/form/API/auth/data/LLM surface. Next 14.2.18 advisories are inherited; deployment is static-only. Never expose <code>next dev</code>/<code>next start</code>; schedule a compatible upgrade.</td></tr>
+</tbody></table></div>
+<p>This AI-assisted review is not a substitute for a professional security audit or penetration test.</p>
+
+<h3>R4.3.9 Residual disclosures and durable handoff</h3>
+<ol>
+<li>Browser automation is Chromium-only. Safari/WebKit, a physical compact notched landscape device, and safe-area behavior remain manual Founder checks.</li>
+<li>The 1024×568 stress case is automated and independently visually inspected; it is not a claim of physical-device coverage.</li>
+<li>The harness hashes nine relevant source files and four canonical assets and binds the clean implementation commit, but does not independently hash served export bytes or each PNG before declaring <code>attestable</code>. The committed evidence tree and final Founder ZIP SHA-256 bind the delivered bundle. The fresh adversary rated this lower-confidence and non-blocking.</li>
+<li>Changed-region axe results are zero; do not relabel them as whole-document results at arbitrary active-animation positions.</li>
+<li>Inherited Next 14.2.18/transitive advisory debt remains under the static-export-only model. No forced migration or <code>npm audit fix --force</code> was performed.</li>
+<li>Accepted R4/R3 behavior and residuals remain historical below. Arrival timing, the Skip contrast exception, opening Gateway G, and Replay lifecycle were not reopened.</li>
+<li>The prior GitHub HTTP 403 was not retried. The branch and commits remain local until an authorized push is available.</li>
+</ol>
+<p>Implementation commit <code>655a4eec8cb6076c95803f20d60cd8c433dfdc3b</code> contains the bounded source and harness. <code>docs/reviews/assets/r4-3/</code> contains the schema-v1 manifest and 45 screenshots. The final documentation commit adds the Markdown, this standalone HTML, checkpoint update, evidence, and refreshed Founder archive.</p>
+
+<h3>R4.3.10 Founder review checklist</h3>
+<ol>
+<li>Open the protected preview and confirm all four Ecosystem titles settle on one axis.</li>
+<li>Read Engagement as a distinct chapter: marker, six rows, subordinate status, then a clear scene boundary—no Gateway G in the label cluster.</li>
+<li>Enter the Outro: near-black → gold signal → canonical G → exact two-line message → hold; confirm Footer availability only after release.</li>
+<li>Repeat at 1280×720 and 1024×568; check negative space, navigation, and Footer separation.</li>
+<li>Review 430×932, 390×844, and 320×568: no overflow, clipping, crowded message, or desktop pin.</li>
+<li>Enable Reduce Motion: same narrative and hold, no translate/scale/rotation.</li>
+<li>Trigger Replay from Engagement with Escape, Outro with keyboard SKIP, and Footer through natural completion; confirm focus, announcement, and interaction restoration.</li>
+<li>Open <code>/#contact</code> directly and confirm the 84px Engagement landing.</li>
+<li>Manually spot-check Safari/WebKit and a notched compact device.</li>
+<li>Authorize merge and production separately if approved. Neither occurred here.</li>
+</ol>
 <hr>
 <h2>R4 · Gateway G Institutional Prologue Completion (Founder round 4, 2026-08-08)</h2>
 <p><strong>R4 outcome: READY WITH DISCLOSURES.</strong> Every binding R4.2 ruling passes. The final schema-v2 confirmation is full and unfiltered: <code>status: passed</code>, <code>attestable: true</code>, 26/26 mandatory scenarios passed, zero failures, and zero unexpected telemetry. Both requested read-only adversaries independently returned PASS; no unresolved Replay, inert-state, Gateway G, mobile, accessibility, hydration, or interaction defect remains.</p>
