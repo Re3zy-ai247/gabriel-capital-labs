@@ -1,0 +1,6108 @@
+{
+  "schemaVersion": 1,
+  "suite": "gcl-r4.6.1-live-production-closure-chromium",
+  "startedAt": "2026-08-09T19:47:35.325Z",
+  "configuration": {
+    "baseUrl": "https://www.gabrielcapitallabs.com/",
+    "evidenceDir": "/private/tmp/gcl-r461-live-chromium",
+    "requestedScenarios": [
+      "mission-threshold-sweep",
+      "matrix-full-1680x1050",
+      "matrix-full-1366x768",
+      "matrix-full-1280x720",
+      "matrix-full-1180x820",
+      "matrix-full-1024x568",
+      "matrix-reduced-1180x820",
+      "matrix-full-320x568",
+      "matrix-reduced-320x568",
+      "narrative-full",
+      "narrative-reduced",
+      "replay-full-three-origins",
+      "replay-reduced-outro",
+      "unrelated-inert-preservation",
+      "mobile-replay-bypass",
+      "hash-contact-full",
+      "hash-contact-reduced",
+      "contact-routing-keyboard",
+      "axe-full",
+      "axe-reduced"
+    ],
+    "fullConfirmationRun": false,
+    "desktopViewports": [
+      {
+        "width": 1920,
+        "height": 1080
+      },
+      {
+        "width": 1680,
+        "height": 1050
+      },
+      {
+        "width": 1512,
+        "height": 982
+      },
+      {
+        "width": 1440,
+        "height": 900
+      },
+      {
+        "width": 1366,
+        "height": 768
+      },
+      {
+        "width": 1280,
+        "height": 720
+      },
+      {
+        "width": 1180,
+        "height": 820
+      },
+      {
+        "width": 1024,
+        "height": 768
+      },
+      {
+        "width": 1024,
+        "height": 568
+      },
+      {
+        "width": 960,
+        "height": 720
+      }
+    ],
+    "mobileViewports": [
+      {
+        "width": 390,
+        "height": 844
+      },
+      {
+        "width": 430,
+        "height": 932
+      },
+      {
+        "width": 320,
+        "height": 568
+      }
+    ],
+    "policies": [
+      "no-preference",
+      "reduce"
+    ],
+    "browserEngine": "chromium",
+    "expectedPinTopology": {
+      "desktopFull": 5,
+      "desktopReduced": 5,
+      "mobileFull": 2,
+      "mobileReduced": 0
+    },
+    "browserVersion": "151.0.7922.108"
+  },
+  "git": {
+    "branch": "codex/gcl-r4-6-1-production-closure-2026-08-09",
+    "head": "08ecd01099a84e8b5d2082ebee3fd0affeea4663",
+    "base": "3600ae2c9cd92d193c2228773420c7ec31e24be2"
+  },
+  "sourceHashes": {},
+  "assetHashes": {},
+  "exportBinding": {},
+  "scenarios": {
+    "canonical-assets-and-source-binding": {
+      "status": "skipped",
+      "reason": "GCL_R43_SCENARIOS filter"
+    },
+    "mission-threshold-sweep": {
+      "0": {
+        "policy": "no-preference",
+        "samples": [
+          {
+            "width": 959,
+            "geometry": {
+              "pin": {
+                "left": 38.359375,
+                "right": 920.640625,
+                "width": 882.28125,
+                "overflow": "visible"
+              },
+              "titles": [
+                {
+                  "text": "INTELLIGENCE",
+                  "fontSize": 60,
+                  "letterSpacing": 2.4,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 826,
+                  "contentWidth": 826,
+                  "rect": {
+                    "left": 94.359375,
+                    "right": 920.640625,
+                    "width": 826.28125
+                  },
+                  "textRect": {
+                    "left": 94.359375,
+                    "right": 547.078125,
+                    "width": 452.71875
+                  }
+                },
+                {
+                  "text": "INFRASTRUCTURE",
+                  "fontSize": 60,
+                  "letterSpacing": 2.4,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 826,
+                  "contentWidth": 826,
+                  "rect": {
+                    "left": 94.359375,
+                    "right": 920.640625,
+                    "width": 826.28125
+                  },
+                  "textRect": {
+                    "left": 94.359375,
+                    "right": 660.765625,
+                    "width": 566.40625
+                  }
+                },
+                {
+                  "text": "IMPACT",
+                  "fontSize": 60,
+                  "letterSpacing": 2.4,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 826,
+                  "contentWidth": 826,
+                  "rect": {
+                    "left": 94.359375,
+                    "right": 920.640625,
+                    "width": 826.28125
+                  },
+                  "textRect": {
+                    "left": 94.359375,
+                    "right": 332.21875,
+                    "width": 237.859375
+                  }
+                }
+              ],
+              "viewportWidth": 959,
+              "overflow": 0
+            }
+          },
+          {
+            "width": 960,
+            "geometry": {
+              "pin": {
+                "left": 38.390625,
+                "right": 921.609375,
+                "width": 883.21875,
+                "overflow": "visible"
+              },
+              "titles": [
+                {
+                  "text": "INTELLIGENCE",
+                  "fontSize": 40,
+                  "letterSpacing": 1.6,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 548,
+                  "contentWidth": 548,
+                  "rect": {
+                    "left": 38.390625,
+                    "right": 585.984375,
+                    "width": 547.59375
+                  },
+                  "textRect": {
+                    "left": 38.390625,
+                    "right": 340.203125,
+                    "width": 301.8125
+                  }
+                },
+                {
+                  "text": "INFRASTRUCTURE",
+                  "fontSize": 40,
+                  "letterSpacing": 1.6,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 495,
+                  "contentWidth": 495,
+                  "rect": {
+                    "left": 427,
+                    "right": 921.59375,
+                    "width": 494.59375
+                  },
+                  "textRect": {
+                    "left": 427,
+                    "right": 804.609375,
+                    "width": 377.609375
+                  }
+                },
+                {
+                  "text": "IMPACT",
+                  "fontSize": 40,
+                  "letterSpacing": 1.6,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 548,
+                  "contentWidth": 548,
+                  "rect": {
+                    "left": 38.390625,
+                    "right": 585.984375,
+                    "width": 547.59375
+                  },
+                  "textRect": {
+                    "left": 38.390625,
+                    "right": 196.96875,
+                    "width": 158.578125
+                  }
+                }
+              ],
+              "viewportWidth": 960,
+              "overflow": 0
+            }
+          },
+          {
+            "width": 963,
+            "geometry": {
+              "pin": {
+                "left": 38.515625,
+                "right": 924.484375,
+                "width": 885.96875,
+                "overflow": "visible"
+              },
+              "titles": [
+                {
+                  "text": "INTELLIGENCE",
+                  "fontSize": 40,
+                  "letterSpacing": 1.6,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 549,
+                  "contentWidth": 549,
+                  "rect": {
+                    "left": 38.515625,
+                    "right": 587.8125,
+                    "width": 549.296875
+                  },
+                  "textRect": {
+                    "left": 38.515625,
+                    "right": 340.328125,
+                    "width": 301.8125
+                  }
+                },
+                {
+                  "text": "INFRASTRUCTURE",
+                  "fontSize": 40,
+                  "letterSpacing": 1.6,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 496,
+                  "contentWidth": 496,
+                  "rect": {
+                    "left": 428.328125,
+                    "right": 924.46875,
+                    "width": 496.140625
+                  },
+                  "textRect": {
+                    "left": 428.328125,
+                    "right": 805.9375,
+                    "width": 377.609375
+                  }
+                },
+                {
+                  "text": "IMPACT",
+                  "fontSize": 40,
+                  "letterSpacing": 1.6,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 549,
+                  "contentWidth": 549,
+                  "rect": {
+                    "left": 38.515625,
+                    "right": 587.8125,
+                    "width": 549.296875
+                  },
+                  "textRect": {
+                    "left": 38.515625,
+                    "right": 197.09375,
+                    "width": 158.578125
+                  }
+                }
+              ],
+              "viewportWidth": 963,
+              "overflow": 0
+            }
+          },
+          {
+            "width": 964,
+            "geometry": {
+              "pin": {
+                "left": 38.546875,
+                "right": 925.453125,
+                "width": 886.90625,
+                "overflow": "visible"
+              },
+              "titles": [
+                {
+                  "text": "INTELLIGENCE",
+                  "fontSize": 40.006,
+                  "letterSpacing": 1.60024,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 550,
+                  "contentWidth": 550,
+                  "rect": {
+                    "left": 38.546875,
+                    "right": 588.421875,
+                    "width": 549.875
+                  },
+                  "textRect": {
+                    "left": 38.546875,
+                    "right": 340.359375,
+                    "width": 301.8125
+                  }
+                },
+                {
+                  "text": "INFRASTRUCTURE",
+                  "fontSize": 40.006,
+                  "letterSpacing": 1.60024,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 497,
+                  "contentWidth": 497,
+                  "rect": {
+                    "left": 428.78125,
+                    "right": 925.4375,
+                    "width": 496.65625
+                  },
+                  "textRect": {
+                    "left": 428.78125,
+                    "right": 806.390625,
+                    "width": 377.609375
+                  }
+                },
+                {
+                  "text": "IMPACT",
+                  "fontSize": 40.006,
+                  "letterSpacing": 1.60024,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 550,
+                  "contentWidth": 550,
+                  "rect": {
+                    "left": 38.546875,
+                    "right": 588.421875,
+                    "width": 549.875
+                  },
+                  "textRect": {
+                    "left": 38.546875,
+                    "right": 197.125,
+                    "width": 158.578125
+                  }
+                }
+              ],
+              "viewportWidth": 964,
+              "overflow": 0
+            }
+          },
+          {
+            "width": 1023,
+            "geometry": {
+              "pin": {
+                "left": 40.90625,
+                "right": 982.09375,
+                "width": 941.1875,
+                "overflow": "visible"
+              },
+              "titles": [
+                {
+                  "text": "INTELLIGENCE",
+                  "fontSize": 42.4545,
+                  "letterSpacing": 1.69818,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 584,
+                  "contentWidth": 584,
+                  "rect": {
+                    "left": 40.90625,
+                    "right": 624.4375,
+                    "width": 583.53125
+                  },
+                  "textRect": {
+                    "left": 40.90625,
+                    "right": 361.203125,
+                    "width": 320.296875
+                  }
+                },
+                {
+                  "text": "INFRASTRUCTURE",
+                  "fontSize": 42.4545,
+                  "letterSpacing": 1.69818,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 527,
+                  "contentWidth": 527,
+                  "rect": {
+                    "left": 455.015625,
+                    "right": 982.078125,
+                    "width": 527.0625
+                  },
+                  "textRect": {
+                    "left": 455.015625,
+                    "right": 855.75,
+                    "width": 400.734375
+                  }
+                },
+                {
+                  "text": "IMPACT",
+                  "fontSize": 42.4545,
+                  "letterSpacing": 1.69818,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 584,
+                  "contentWidth": 584,
+                  "rect": {
+                    "left": 40.90625,
+                    "right": 624.4375,
+                    "width": 583.53125
+                  },
+                  "textRect": {
+                    "left": 40.90625,
+                    "right": 209.1875,
+                    "width": 168.28125
+                  }
+                }
+              ],
+              "viewportWidth": 1023,
+              "overflow": 0
+            }
+          },
+          {
+            "width": 1024,
+            "geometry": {
+              "pin": {
+                "left": 40.953125,
+                "right": 983.953125,
+                "width": 943,
+                "overflow": "hidden"
+              },
+              "titles": [
+                {
+                  "text": "INTELLIGENCE",
+                  "fontSize": 42.496,
+                  "letterSpacing": 1.69984,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 415,
+                  "contentWidth": 415,
+                  "rect": {
+                    "left": 47.17671203613281,
+                    "right": 449.6358184814453,
+                    "width": 402.4591064453125
+                  },
+                  "textRect": {
+                    "left": 47.17671203613281,
+                    "right": 358.1678009033203,
+                    "width": 310.9910888671875
+                  }
+                },
+                {
+                  "text": "INFRASTRUCTURE",
+                  "fontSize": 42.496,
+                  "letterSpacing": 1.69984,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 415,
+                  "contentWidth": 415,
+                  "rect": {
+                    "left": 575.2704467773438,
+                    "right": 977.7294921875,
+                    "width": 402.45904541015625
+                  },
+                  "textRect": {
+                    "left": 575.2704467773438,
+                    "right": 964.3465576171875,
+                    "width": 389.07611083984375
+                  }
+                },
+                {
+                  "text": "IMPACT",
+                  "fontSize": 42.496,
+                  "letterSpacing": 1.69984,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 415,
+                  "contentWidth": 415,
+                  "rect": {
+                    "left": 40.953125,
+                    "right": 455.859375,
+                    "width": 414.90625
+                  },
+                  "textRect": {
+                    "left": 40.953125,
+                    "right": 209.390625,
+                    "width": 168.4375
+                  }
+                }
+              ],
+              "viewportWidth": 1024,
+              "overflow": 60
+            }
+          },
+          {
+            "width": 1025,
+            "geometry": {
+              "pin": {
+                "left": 41,
+                "right": 984,
+                "width": 943,
+                "overflow": "hidden"
+              },
+              "titles": [
+                {
+                  "text": "INTELLIGENCE",
+                  "fontSize": 42.5375,
+                  "letterSpacing": 1.7015,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 415,
+                  "contentWidth": 415,
+                  "rect": {
+                    "left": 47.22358703613281,
+                    "right": 449.6826934814453,
+                    "width": 402.4591064453125
+                  },
+                  "textRect": {
+                    "left": 47.22358703613281,
+                    "right": 358.50270080566406,
+                    "width": 311.27911376953125
+                  }
+                },
+                {
+                  "text": "INFRASTRUCTURE",
+                  "fontSize": 42.5375,
+                  "letterSpacing": 1.7015,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 415,
+                  "contentWidth": 415,
+                  "rect": {
+                    "left": 575.3173217773438,
+                    "right": 977.7763671875,
+                    "width": 402.45904541015625
+                  },
+                  "textRect": {
+                    "left": 575.3173217773438,
+                    "right": 964.7572021484375,
+                    "width": 389.43988037109375
+                  }
+                },
+                {
+                  "text": "IMPACT",
+                  "fontSize": 42.5375,
+                  "letterSpacing": 1.7015,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 415,
+                  "contentWidth": 415,
+                  "rect": {
+                    "left": 41,
+                    "right": 455.90625,
+                    "width": 414.90625
+                  },
+                  "textRect": {
+                    "left": 41,
+                    "right": 209.609375,
+                    "width": 168.609375
+                  }
+                }
+              ],
+              "viewportWidth": 1025,
+              "overflow": 60
+            }
+          },
+          {
+            "width": 1415,
+            "geometry": {
+              "pin": {
+                "left": 56.59375,
+                "right": 1358.390625,
+                "width": 1301.796875,
+                "overflow": "hidden"
+              },
+              "titles": [
+                {
+                  "text": "INTELLIGENCE",
+                  "fontSize": 58.7225,
+                  "letterSpacing": 2.3489,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 573,
+                  "contentWidth": 573,
+                  "rect": {
+                    "left": 65.18545532226562,
+                    "right": 620.7833557128906,
+                    "width": 555.597900390625
+                  },
+                  "textRect": {
+                    "left": 65.18545532226562,
+                    "right": 494.9560852050781,
+                    "width": 429.7706298828125
+                  }
+                },
+                {
+                  "text": "INFRASTRUCTURE",
+                  "fontSize": 58.7225,
+                  "letterSpacing": 2.3489,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 573,
+                  "contentWidth": 573,
+                  "rect": {
+                    "left": 794.2010498046875,
+                    "right": 1349.798828125,
+                    "width": 555.5977783203125
+                  },
+                  "textRect": {
+                    "left": 794.2010498046875,
+                    "right": 1331.88427734375,
+                    "width": 537.6832275390625
+                  }
+                },
+                {
+                  "text": "IMPACT",
+                  "fontSize": 58.7225,
+                  "letterSpacing": 2.3489,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 573,
+                  "contentWidth": 573,
+                  "rect": {
+                    "left": 56.59375,
+                    "right": 629.375,
+                    "width": 572.78125
+                  },
+                  "textRect": {
+                    "left": 56.59375,
+                    "right": 289.375,
+                    "width": 232.78125
+                  }
+                }
+              ],
+              "viewportWidth": 1415,
+              "overflow": 60
+            }
+          },
+          {
+            "width": 1416,
+            "geometry": {
+              "pin": {
+                "left": 56.625,
+                "right": 1359.375,
+                "width": 1302.75,
+                "overflow": "hidden"
+              },
+              "titles": [
+                {
+                  "text": "INTELLIGENCE",
+                  "fontSize": 58.764,
+                  "letterSpacing": 2.35056,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 573,
+                  "contentWidth": 573,
+                  "rect": {
+                    "left": 65.22305297851562,
+                    "right": 621.2301330566406,
+                    "width": 556.007080078125
+                  },
+                  "textRect": {
+                    "left": 65.22305297851562,
+                    "right": 495.2816467285156,
+                    "width": 430.05859375
+                  }
+                },
+                {
+                  "text": "INFRASTRUCTURE",
+                  "fontSize": 58.764,
+                  "letterSpacing": 2.35056,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 573,
+                  "contentWidth": 573,
+                  "rect": {
+                    "left": 794.7698974609375,
+                    "right": 1350.77685546875,
+                    "width": 556.0069580078125
+                  },
+                  "textRect": {
+                    "left": 794.7698974609375,
+                    "right": 1332.83203125,
+                    "width": 538.0621337890625
+                  }
+                },
+                {
+                  "text": "IMPACT",
+                  "fontSize": 58.764,
+                  "letterSpacing": 2.35056,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 573,
+                  "contentWidth": 573,
+                  "rect": {
+                    "left": 56.625,
+                    "right": 629.828125,
+                    "width": 573.203125
+                  },
+                  "textRect": {
+                    "left": 56.625,
+                    "right": 289.5625,
+                    "width": 232.9375
+                  }
+                }
+              ],
+              "viewportWidth": 1416,
+              "overflow": 60
+            }
+          },
+          {
+            "width": 1445,
+            "geometry": {
+              "pin": {
+                "left": 60.296875,
+                "right": 1384.703125,
+                "width": 1324.40625,
+                "overflow": "hidden"
+              },
+              "titles": [
+                {
+                  "text": "INTELLIGENCE",
+                  "fontSize": 59.9675,
+                  "letterSpacing": 2.3987,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 583,
+                  "contentWidth": 583,
+                  "rect": {
+                    "left": 69.03787231445312,
+                    "right": 634.2903137207031,
+                    "width": 565.25244140625
+                  },
+                  "textRect": {
+                    "left": 69.03787231445312,
+                    "right": 507.8871154785156,
+                    "width": 438.8492431640625
+                  }
+                },
+                {
+                  "text": "INFRASTRUCTURE",
+                  "fontSize": 59.9675,
+                  "letterSpacing": 2.3987,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 583,
+                  "contentWidth": 583,
+                  "rect": {
+                    "left": 810.709716796875,
+                    "right": 1375.962158203125,
+                    "width": 565.25244140625
+                  },
+                  "textRect": {
+                    "left": 810.709716796875,
+                    "right": 1359.760009765625,
+                    "width": 549.05029296875
+                  }
+                },
+                {
+                  "text": "IMPACT",
+                  "fontSize": 59.9675,
+                  "letterSpacing": 2.3987,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 583,
+                  "contentWidth": 583,
+                  "rect": {
+                    "left": 60.296875,
+                    "right": 643.03125,
+                    "width": 582.734375
+                  },
+                  "textRect": {
+                    "left": 60.296875,
+                    "right": 298,
+                    "width": 237.703125
+                  }
+                }
+              ],
+              "viewportWidth": 1445,
+              "overflow": 60
+            }
+          },
+          {
+            "width": 1446,
+            "geometry": {
+              "pin": {
+                "left": 60.828125,
+                "right": 1385.15625,
+                "width": 1324.328125,
+                "overflow": "hidden"
+              },
+              "titles": [
+                {
+                  "text": "INTELLIGENCE",
+                  "fontSize": 60,
+                  "letterSpacing": 2.4,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 583,
+                  "contentWidth": 583,
+                  "rect": {
+                    "left": 69.56866455078125,
+                    "right": 634.7907104492188,
+                    "width": 565.2220458984375
+                  },
+                  "textRect": {
+                    "left": 69.56866455078125,
+                    "right": 508.70587158203125,
+                    "width": 439.13720703125
+                  }
+                },
+                {
+                  "text": "INFRASTRUCTURE",
+                  "fontSize": 60,
+                  "letterSpacing": 2.4,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 583,
+                  "contentWidth": 583,
+                  "rect": {
+                    "left": 811.1936645507812,
+                    "right": 1376.415771484375,
+                    "width": 565.2221069335938
+                  },
+                  "textRect": {
+                    "left": 811.1936645507812,
+                    "right": 1360.607666015625,
+                    "width": 549.4140014648438
+                  }
+                },
+                {
+                  "text": "IMPACT",
+                  "fontSize": 60,
+                  "letterSpacing": 2.4,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 583,
+                  "contentWidth": 583,
+                  "rect": {
+                    "left": 60.828125,
+                    "right": 643.53125,
+                    "width": 582.703125
+                  },
+                  "textRect": {
+                    "left": 60.828125,
+                    "right": 298.6875,
+                    "width": 237.859375
+                  }
+                }
+              ],
+              "viewportWidth": 1446,
+              "overflow": 60
+            }
+          },
+          {
+            "width": 1454,
+            "geometry": {
+              "pin": {
+                "left": 65.15625,
+                "right": 1388.84375,
+                "width": 1323.6875,
+                "overflow": "hidden"
+              },
+              "titles": [
+                {
+                  "text": "INTELLIGENCE",
+                  "fontSize": 60,
+                  "letterSpacing": 2.4,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 582,
+                  "contentWidth": 582,
+                  "rect": {
+                    "left": 73.892578125,
+                    "right": 638.841796875,
+                    "width": 564.94921875
+                  },
+                  "textRect": {
+                    "left": 73.892578125,
+                    "right": 513.02978515625,
+                    "width": 439.13720703125
+                  }
+                },
+                {
+                  "text": "INFRASTRUCTURE",
+                  "fontSize": 60,
+                  "letterSpacing": 2.4,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 582,
+                  "contentWidth": 582,
+                  "rect": {
+                    "left": 815.158203125,
+                    "right": 1380.107421875,
+                    "width": 564.94921875
+                  },
+                  "textRect": {
+                    "left": 815.158203125,
+                    "right": 1364.572265625,
+                    "width": 549.4140625
+                  }
+                },
+                {
+                  "text": "IMPACT",
+                  "fontSize": 60,
+                  "letterSpacing": 2.4,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 582,
+                  "contentWidth": 582,
+                  "rect": {
+                    "left": 65.15625,
+                    "right": 647.578125,
+                    "width": 582.421875
+                  },
+                  "textRect": {
+                    "left": 65.15625,
+                    "right": 303.015625,
+                    "width": 237.859375
+                  }
+                }
+              ],
+              "viewportWidth": 1454,
+              "overflow": 60
+            }
+          },
+          {
+            "width": 1455,
+            "geometry": {
+              "pin": {
+                "left": 65.6875,
+                "right": 1389.296875,
+                "width": 1323.609375,
+                "overflow": "hidden"
+              },
+              "titles": [
+                {
+                  "text": "INTELLIGENCE",
+                  "fontSize": 60,
+                  "letterSpacing": 2.4,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 582,
+                  "contentWidth": 582,
+                  "rect": {
+                    "left": 74.42312622070312,
+                    "right": 639.3269348144531,
+                    "width": 564.90380859375
+                  },
+                  "textRect": {
+                    "left": 74.42312622070312,
+                    "right": 513.560302734375,
+                    "width": 439.1371765136719
+                  }
+                },
+                {
+                  "text": "INFRASTRUCTURE",
+                  "fontSize": 60,
+                  "letterSpacing": 2.4,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 582,
+                  "contentWidth": 582,
+                  "rect": {
+                    "left": 815.657470703125,
+                    "right": 1380.561279296875,
+                    "width": 564.90380859375
+                  },
+                  "textRect": {
+                    "left": 815.657470703125,
+                    "right": 1365.071533203125,
+                    "width": 549.4140625
+                  }
+                },
+                {
+                  "text": "IMPACT",
+                  "fontSize": 60,
+                  "letterSpacing": 2.4,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 582,
+                  "contentWidth": 582,
+                  "rect": {
+                    "left": 65.6875,
+                    "right": 648.0625,
+                    "width": 582.375
+                  },
+                  "textRect": {
+                    "left": 65.6875,
+                    "right": 303.546875,
+                    "width": 237.859375
+                  }
+                }
+              ],
+              "viewportWidth": 1455,
+              "overflow": 60
+            }
+          },
+          {
+            "width": 1456,
+            "geometry": {
+              "pin": {
+                "left": 66.234375,
+                "right": 1389.75,
+                "width": 1323.515625,
+                "overflow": "hidden"
+              },
+              "titles": [
+                {
+                  "text": "INTELLIGENCE",
+                  "fontSize": 60,
+                  "letterSpacing": 2.4,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 582,
+                  "contentWidth": 582,
+                  "rect": {
+                    "left": 74.96951293945312,
+                    "right": 639.8430480957031,
+                    "width": 564.87353515625
+                  },
+                  "textRect": {
+                    "left": 74.96951293945312,
+                    "right": 514.106689453125,
+                    "width": 439.1371765136719
+                  }
+                },
+                {
+                  "text": "INFRASTRUCTURE",
+                  "fontSize": 60,
+                  "letterSpacing": 2.4,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 582,
+                  "contentWidth": 582,
+                  "rect": {
+                    "left": 816.141357421875,
+                    "right": 1381.014892578125,
+                    "width": 564.87353515625
+                  },
+                  "textRect": {
+                    "left": 816.141357421875,
+                    "right": 1365.555419921875,
+                    "width": 549.4140625
+                  }
+                },
+                {
+                  "text": "IMPACT",
+                  "fontSize": 60,
+                  "letterSpacing": 2.4,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 582,
+                  "contentWidth": 582,
+                  "rect": {
+                    "left": 66.234375,
+                    "right": 648.578125,
+                    "width": 582.34375
+                  },
+                  "textRect": {
+                    "left": 66.234375,
+                    "right": 304.09375,
+                    "width": 237.859375
+                  }
+                }
+              ],
+              "viewportWidth": 1456,
+              "overflow": 60
+            }
+          },
+          {
+            "width": 1599,
+            "geometry": {
+              "pin": {
+                "left": 143.453125,
+                "right": 1455.53125,
+                "width": 1312.078125,
+                "overflow": "hidden"
+              },
+              "titles": [
+                {
+                  "text": "INTELLIGENCE",
+                  "fontSize": 60,
+                  "letterSpacing": 2.4,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 577,
+                  "contentWidth": 577,
+                  "rect": {
+                    "left": 152.11279296875,
+                    "right": 712.10595703125,
+                    "width": 559.9931640625
+                  },
+                  "textRect": {
+                    "left": 152.11279296875,
+                    "right": 591.25,
+                    "width": 439.13720703125
+                  }
+                },
+                {
+                  "text": "INFRASTRUCTURE",
+                  "fontSize": 60,
+                  "letterSpacing": 2.4,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 577,
+                  "contentWidth": 577,
+                  "rect": {
+                    "left": 886.87841796875,
+                    "right": 1446.87158203125,
+                    "width": 559.9931640625
+                  },
+                  "textRect": {
+                    "left": 886.87841796875,
+                    "right": 1436.29248046875,
+                    "width": 549.4140625
+                  }
+                },
+                {
+                  "text": "IMPACT",
+                  "fontSize": 60,
+                  "letterSpacing": 2.4,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 577,
+                  "contentWidth": 577,
+                  "rect": {
+                    "left": 143.453125,
+                    "right": 720.765625,
+                    "width": 577.3125
+                  },
+                  "textRect": {
+                    "left": 143.453125,
+                    "right": 381.3125,
+                    "width": 237.859375
+                  }
+                }
+              ],
+              "viewportWidth": 1599,
+              "overflow": 60
+            }
+          },
+          {
+            "width": 1600,
+            "geometry": {
+              "pin": {
+                "left": 144,
+                "right": 1456,
+                "width": 1312,
+                "overflow": "hidden"
+              },
+              "titles": [
+                {
+                  "text": "INTELLIGENCE",
+                  "fontSize": 60,
+                  "letterSpacing": 2.4,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 577,
+                  "contentWidth": 577,
+                  "rect": {
+                    "left": 152.65896606445312,
+                    "right": 712.6067199707031,
+                    "width": 559.94775390625
+                  },
+                  "textRect": {
+                    "left": 152.65896606445312,
+                    "right": 591.796142578125,
+                    "width": 439.1371765136719
+                  }
+                },
+                {
+                  "text": "INFRASTRUCTURE",
+                  "fontSize": 60,
+                  "letterSpacing": 2.4,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 577,
+                  "contentWidth": 577,
+                  "rect": {
+                    "left": 887.393310546875,
+                    "right": 1447.341064453125,
+                    "width": 559.94775390625
+                  },
+                  "textRect": {
+                    "left": 887.393310546875,
+                    "right": 1436.807373046875,
+                    "width": 549.4140625
+                  }
+                },
+                {
+                  "text": "IMPACT",
+                  "fontSize": 60,
+                  "letterSpacing": 2.4,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 577,
+                  "contentWidth": 577,
+                  "rect": {
+                    "left": 144,
+                    "right": 721.265625,
+                    "width": 577.265625
+                  },
+                  "textRect": {
+                    "left": 144,
+                    "right": 381.859375,
+                    "width": 237.859375
+                  }
+                }
+              ],
+              "viewportWidth": 1600,
+              "overflow": 60
+            }
+          },
+          {
+            "width": 1601,
+            "geometry": {
+              "pin": {
+                "left": 144.5,
+                "right": 1456.5,
+                "width": 1312,
+                "overflow": "hidden"
+              },
+              "titles": [
+                {
+                  "text": "INTELLIGENCE",
+                  "fontSize": 60,
+                  "letterSpacing": 2.4,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 577,
+                  "contentWidth": 577,
+                  "rect": {
+                    "left": 153.15896606445312,
+                    "right": 713.1067199707031,
+                    "width": 559.94775390625
+                  },
+                  "textRect": {
+                    "left": 153.15896606445312,
+                    "right": 592.296142578125,
+                    "width": 439.1371765136719
+                  }
+                },
+                {
+                  "text": "INFRASTRUCTURE",
+                  "fontSize": 60,
+                  "letterSpacing": 2.4,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 577,
+                  "contentWidth": 577,
+                  "rect": {
+                    "left": 887.893310546875,
+                    "right": 1447.841064453125,
+                    "width": 559.94775390625
+                  },
+                  "textRect": {
+                    "left": 887.893310546875,
+                    "right": 1437.307373046875,
+                    "width": 549.4140625
+                  }
+                },
+                {
+                  "text": "IMPACT",
+                  "fontSize": 60,
+                  "letterSpacing": 2.4,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 577,
+                  "contentWidth": 577,
+                  "rect": {
+                    "left": 144.5,
+                    "right": 721.765625,
+                    "width": 577.265625
+                  },
+                  "textRect": {
+                    "left": 144.5,
+                    "right": 382.359375,
+                    "width": 237.859375
+                  }
+                }
+              ],
+              "viewportWidth": 1601,
+              "overflow": 60
+            }
+          },
+          {
+            "width": 1679,
+            "geometry": {
+              "pin": {
+                "left": 183.5,
+                "right": 1495.5,
+                "width": 1312,
+                "overflow": "hidden"
+              },
+              "titles": [
+                {
+                  "text": "INTELLIGENCE",
+                  "fontSize": 60,
+                  "letterSpacing": 2.4,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 577,
+                  "contentWidth": 577,
+                  "rect": {
+                    "left": 192.15896606445312,
+                    "right": 752.1067199707031,
+                    "width": 559.94775390625
+                  },
+                  "textRect": {
+                    "left": 192.15896606445312,
+                    "right": 631.296142578125,
+                    "width": 439.1371765136719
+                  }
+                },
+                {
+                  "text": "INFRASTRUCTURE",
+                  "fontSize": 60,
+                  "letterSpacing": 2.4,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 577,
+                  "contentWidth": 577,
+                  "rect": {
+                    "left": 926.893310546875,
+                    "right": 1486.841064453125,
+                    "width": 559.94775390625
+                  },
+                  "textRect": {
+                    "left": 926.893310546875,
+                    "right": 1476.307373046875,
+                    "width": 549.4140625
+                  }
+                },
+                {
+                  "text": "IMPACT",
+                  "fontSize": 60,
+                  "letterSpacing": 2.4,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 577,
+                  "contentWidth": 577,
+                  "rect": {
+                    "left": 183.5,
+                    "right": 760.765625,
+                    "width": 577.265625
+                  },
+                  "textRect": {
+                    "left": 183.5,
+                    "right": 421.359375,
+                    "width": 237.859375
+                  }
+                }
+              ],
+              "viewportWidth": 1679,
+              "overflow": 60
+            }
+          },
+          {
+            "width": 1680,
+            "geometry": {
+              "pin": {
+                "left": 184,
+                "right": 1496,
+                "width": 1312,
+                "overflow": "hidden"
+              },
+              "titles": [
+                {
+                  "text": "INTELLIGENCE",
+                  "fontSize": 60,
+                  "letterSpacing": 2.4,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 577,
+                  "contentWidth": 577,
+                  "rect": {
+                    "left": 192.65896606445312,
+                    "right": 752.6067199707031,
+                    "width": 559.94775390625
+                  },
+                  "textRect": {
+                    "left": 192.65896606445312,
+                    "right": 631.796142578125,
+                    "width": 439.1371765136719
+                  }
+                },
+                {
+                  "text": "INFRASTRUCTURE",
+                  "fontSize": 60,
+                  "letterSpacing": 2.4,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 577,
+                  "contentWidth": 577,
+                  "rect": {
+                    "left": 927.393310546875,
+                    "right": 1487.341064453125,
+                    "width": 559.94775390625
+                  },
+                  "textRect": {
+                    "left": 927.393310546875,
+                    "right": 1476.807373046875,
+                    "width": 549.4140625
+                  }
+                },
+                {
+                  "text": "IMPACT",
+                  "fontSize": 60,
+                  "letterSpacing": 2.4,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 577,
+                  "contentWidth": 577,
+                  "rect": {
+                    "left": 184,
+                    "right": 761.265625,
+                    "width": 577.265625
+                  },
+                  "textRect": {
+                    "left": 184,
+                    "right": 421.859375,
+                    "width": 237.859375
+                  }
+                }
+              ],
+              "viewportWidth": 1680,
+              "overflow": 60
+            }
+          },
+          {
+            "width": 1681,
+            "geometry": {
+              "pin": {
+                "left": 184.5,
+                "right": 1496.5,
+                "width": 1312,
+                "overflow": "hidden"
+              },
+              "titles": [
+                {
+                  "text": "INTELLIGENCE",
+                  "fontSize": 60,
+                  "letterSpacing": 2.4,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 577,
+                  "contentWidth": 577,
+                  "rect": {
+                    "left": 193.15896606445312,
+                    "right": 753.1067199707031,
+                    "width": 559.94775390625
+                  },
+                  "textRect": {
+                    "left": 193.15896606445312,
+                    "right": 632.296142578125,
+                    "width": 439.1371765136719
+                  }
+                },
+                {
+                  "text": "INFRASTRUCTURE",
+                  "fontSize": 60,
+                  "letterSpacing": 2.4,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 577,
+                  "contentWidth": 577,
+                  "rect": {
+                    "left": 927.893310546875,
+                    "right": 1487.841064453125,
+                    "width": 559.94775390625
+                  },
+                  "textRect": {
+                    "left": 927.893310546875,
+                    "right": 1477.307373046875,
+                    "width": 549.4140625
+                  }
+                },
+                {
+                  "text": "IMPACT",
+                  "fontSize": 60,
+                  "letterSpacing": 2.4,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 577,
+                  "contentWidth": 577,
+                  "rect": {
+                    "left": 184.5,
+                    "right": 761.765625,
+                    "width": 577.265625
+                  },
+                  "textRect": {
+                    "left": 184.5,
+                    "right": 422.359375,
+                    "width": 237.859375
+                  }
+                }
+              ],
+              "viewportWidth": 1681,
+              "overflow": 60
+            }
+          },
+          {
+            "width": 1920,
+            "geometry": {
+              "pin": {
+                "left": 304,
+                "right": 1616,
+                "width": 1312,
+                "overflow": "hidden"
+              },
+              "titles": [
+                {
+                  "text": "INTELLIGENCE",
+                  "fontSize": 60,
+                  "letterSpacing": 2.4,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 577,
+                  "contentWidth": 577,
+                  "rect": {
+                    "left": 312.6589660644531,
+                    "right": 872.6067199707031,
+                    "width": 559.94775390625
+                  },
+                  "textRect": {
+                    "left": 312.6589660644531,
+                    "right": 751.796142578125,
+                    "width": 439.1371765136719
+                  }
+                },
+                {
+                  "text": "INFRASTRUCTURE",
+                  "fontSize": 60,
+                  "letterSpacing": 2.4,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 577,
+                  "contentWidth": 577,
+                  "rect": {
+                    "left": 1047.393310546875,
+                    "right": 1607.341064453125,
+                    "width": 559.94775390625
+                  },
+                  "textRect": {
+                    "left": 1047.393310546875,
+                    "right": 1596.807373046875,
+                    "width": 549.4140625
+                  }
+                },
+                {
+                  "text": "IMPACT",
+                  "fontSize": 60,
+                  "letterSpacing": 2.4,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 577,
+                  "contentWidth": 577,
+                  "rect": {
+                    "left": 304,
+                    "right": 881.265625,
+                    "width": 577.265625
+                  },
+                  "textRect": {
+                    "left": 304,
+                    "right": 541.859375,
+                    "width": 237.859375
+                  }
+                }
+              ],
+              "viewportWidth": 1920,
+              "overflow": 60
+            }
+          }
+        ]
+      },
+      "1": {
+        "policy": "reduce",
+        "samples": [
+          {
+            "width": 959,
+            "geometry": {
+              "pin": {
+                "left": 38.359375,
+                "right": 920.640625,
+                "width": 882.28125,
+                "overflow": "visible"
+              },
+              "titles": [
+                {
+                  "text": "INTELLIGENCE",
+                  "fontSize": 60,
+                  "letterSpacing": 2.4,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 826,
+                  "contentWidth": 826,
+                  "rect": {
+                    "left": 94.359375,
+                    "right": 920.640625,
+                    "width": 826.28125
+                  },
+                  "textRect": {
+                    "left": 94.359375,
+                    "right": 547.078125,
+                    "width": 452.71875
+                  }
+                },
+                {
+                  "text": "INFRASTRUCTURE",
+                  "fontSize": 60,
+                  "letterSpacing": 2.4,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 826,
+                  "contentWidth": 826,
+                  "rect": {
+                    "left": 94.359375,
+                    "right": 920.640625,
+                    "width": 826.28125
+                  },
+                  "textRect": {
+                    "left": 94.359375,
+                    "right": 660.765625,
+                    "width": 566.40625
+                  }
+                },
+                {
+                  "text": "IMPACT",
+                  "fontSize": 60,
+                  "letterSpacing": 2.4,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 826,
+                  "contentWidth": 826,
+                  "rect": {
+                    "left": 94.359375,
+                    "right": 920.640625,
+                    "width": 826.28125
+                  },
+                  "textRect": {
+                    "left": 94.359375,
+                    "right": 332.21875,
+                    "width": 237.859375
+                  }
+                }
+              ],
+              "viewportWidth": 959,
+              "overflow": 0
+            }
+          },
+          {
+            "width": 960,
+            "geometry": {
+              "pin": {
+                "left": 38.390625,
+                "right": 921.609375,
+                "width": 883.21875,
+                "overflow": "visible"
+              },
+              "titles": [
+                {
+                  "text": "INTELLIGENCE",
+                  "fontSize": 40,
+                  "letterSpacing": 1.6,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 548,
+                  "contentWidth": 548,
+                  "rect": {
+                    "left": 38.390625,
+                    "right": 585.984375,
+                    "width": 547.59375
+                  },
+                  "textRect": {
+                    "left": 38.390625,
+                    "right": 340.203125,
+                    "width": 301.8125
+                  }
+                },
+                {
+                  "text": "INFRASTRUCTURE",
+                  "fontSize": 40,
+                  "letterSpacing": 1.6,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 495,
+                  "contentWidth": 495,
+                  "rect": {
+                    "left": 427,
+                    "right": 921.59375,
+                    "width": 494.59375
+                  },
+                  "textRect": {
+                    "left": 427,
+                    "right": 804.609375,
+                    "width": 377.609375
+                  }
+                },
+                {
+                  "text": "IMPACT",
+                  "fontSize": 40,
+                  "letterSpacing": 1.6,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 548,
+                  "contentWidth": 548,
+                  "rect": {
+                    "left": 38.390625,
+                    "right": 585.984375,
+                    "width": 547.59375
+                  },
+                  "textRect": {
+                    "left": 38.390625,
+                    "right": 196.96875,
+                    "width": 158.578125
+                  }
+                }
+              ],
+              "viewportWidth": 960,
+              "overflow": 0
+            }
+          },
+          {
+            "width": 963,
+            "geometry": {
+              "pin": {
+                "left": 38.515625,
+                "right": 924.484375,
+                "width": 885.96875,
+                "overflow": "visible"
+              },
+              "titles": [
+                {
+                  "text": "INTELLIGENCE",
+                  "fontSize": 40,
+                  "letterSpacing": 1.6,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 549,
+                  "contentWidth": 549,
+                  "rect": {
+                    "left": 38.515625,
+                    "right": 587.8125,
+                    "width": 549.296875
+                  },
+                  "textRect": {
+                    "left": 38.515625,
+                    "right": 340.328125,
+                    "width": 301.8125
+                  }
+                },
+                {
+                  "text": "INFRASTRUCTURE",
+                  "fontSize": 40,
+                  "letterSpacing": 1.6,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 496,
+                  "contentWidth": 496,
+                  "rect": {
+                    "left": 428.328125,
+                    "right": 924.46875,
+                    "width": 496.140625
+                  },
+                  "textRect": {
+                    "left": 428.328125,
+                    "right": 805.9375,
+                    "width": 377.609375
+                  }
+                },
+                {
+                  "text": "IMPACT",
+                  "fontSize": 40,
+                  "letterSpacing": 1.6,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 549,
+                  "contentWidth": 549,
+                  "rect": {
+                    "left": 38.515625,
+                    "right": 587.8125,
+                    "width": 549.296875
+                  },
+                  "textRect": {
+                    "left": 38.515625,
+                    "right": 197.09375,
+                    "width": 158.578125
+                  }
+                }
+              ],
+              "viewportWidth": 963,
+              "overflow": 0
+            }
+          },
+          {
+            "width": 964,
+            "geometry": {
+              "pin": {
+                "left": 38.546875,
+                "right": 925.453125,
+                "width": 886.90625,
+                "overflow": "visible"
+              },
+              "titles": [
+                {
+                  "text": "INTELLIGENCE",
+                  "fontSize": 40.006,
+                  "letterSpacing": 1.60024,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 550,
+                  "contentWidth": 550,
+                  "rect": {
+                    "left": 38.546875,
+                    "right": 588.421875,
+                    "width": 549.875
+                  },
+                  "textRect": {
+                    "left": 38.546875,
+                    "right": 340.359375,
+                    "width": 301.8125
+                  }
+                },
+                {
+                  "text": "INFRASTRUCTURE",
+                  "fontSize": 40.006,
+                  "letterSpacing": 1.60024,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 497,
+                  "contentWidth": 497,
+                  "rect": {
+                    "left": 428.78125,
+                    "right": 925.4375,
+                    "width": 496.65625
+                  },
+                  "textRect": {
+                    "left": 428.78125,
+                    "right": 806.390625,
+                    "width": 377.609375
+                  }
+                },
+                {
+                  "text": "IMPACT",
+                  "fontSize": 40.006,
+                  "letterSpacing": 1.60024,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 550,
+                  "contentWidth": 550,
+                  "rect": {
+                    "left": 38.546875,
+                    "right": 588.421875,
+                    "width": 549.875
+                  },
+                  "textRect": {
+                    "left": 38.546875,
+                    "right": 197.125,
+                    "width": 158.578125
+                  }
+                }
+              ],
+              "viewportWidth": 964,
+              "overflow": 0
+            }
+          },
+          {
+            "width": 1023,
+            "geometry": {
+              "pin": {
+                "left": 40.90625,
+                "right": 982.09375,
+                "width": 941.1875,
+                "overflow": "visible"
+              },
+              "titles": [
+                {
+                  "text": "INTELLIGENCE",
+                  "fontSize": 42.4545,
+                  "letterSpacing": 1.69818,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 584,
+                  "contentWidth": 584,
+                  "rect": {
+                    "left": 40.90625,
+                    "right": 624.4375,
+                    "width": 583.53125
+                  },
+                  "textRect": {
+                    "left": 40.90625,
+                    "right": 361.203125,
+                    "width": 320.296875
+                  }
+                },
+                {
+                  "text": "INFRASTRUCTURE",
+                  "fontSize": 42.4545,
+                  "letterSpacing": 1.69818,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 527,
+                  "contentWidth": 527,
+                  "rect": {
+                    "left": 455.015625,
+                    "right": 982.078125,
+                    "width": 527.0625
+                  },
+                  "textRect": {
+                    "left": 455.015625,
+                    "right": 855.75,
+                    "width": 400.734375
+                  }
+                },
+                {
+                  "text": "IMPACT",
+                  "fontSize": 42.4545,
+                  "letterSpacing": 1.69818,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 584,
+                  "contentWidth": 584,
+                  "rect": {
+                    "left": 40.90625,
+                    "right": 624.4375,
+                    "width": 583.53125
+                  },
+                  "textRect": {
+                    "left": 40.90625,
+                    "right": 209.1875,
+                    "width": 168.28125
+                  }
+                }
+              ],
+              "viewportWidth": 1023,
+              "overflow": 0
+            }
+          },
+          {
+            "width": 1024,
+            "geometry": {
+              "pin": {
+                "left": 40.953125,
+                "right": 983.953125,
+                "width": 943,
+                "overflow": "hidden"
+              },
+              "titles": [
+                {
+                  "text": "INTELLIGENCE",
+                  "fontSize": 42.496,
+                  "letterSpacing": 1.69984,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 415,
+                  "contentWidth": 415,
+                  "rect": {
+                    "left": 40.953125,
+                    "right": 455.859375,
+                    "width": 414.90625
+                  },
+                  "textRect": {
+                    "left": 40.953125,
+                    "right": 361.5625,
+                    "width": 320.609375
+                  }
+                },
+                {
+                  "text": "INFRASTRUCTURE",
+                  "fontSize": 42.496,
+                  "letterSpacing": 1.69984,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 415,
+                  "contentWidth": 415,
+                  "rect": {
+                    "left": 569.046875,
+                    "right": 983.953125,
+                    "width": 414.90625
+                  },
+                  "textRect": {
+                    "left": 569.046875,
+                    "right": 970.15625,
+                    "width": 401.109375
+                  }
+                },
+                {
+                  "text": "IMPACT",
+                  "fontSize": 42.496,
+                  "letterSpacing": 1.69984,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 415,
+                  "contentWidth": 415,
+                  "rect": {
+                    "left": 40.953125,
+                    "right": 455.859375,
+                    "width": 414.90625
+                  },
+                  "textRect": {
+                    "left": 40.953125,
+                    "right": 209.390625,
+                    "width": 168.4375
+                  }
+                }
+              ],
+              "viewportWidth": 1024,
+              "overflow": 0
+            }
+          },
+          {
+            "width": 1025,
+            "geometry": {
+              "pin": {
+                "left": 41,
+                "right": 984,
+                "width": 943,
+                "overflow": "hidden"
+              },
+              "titles": [
+                {
+                  "text": "INTELLIGENCE",
+                  "fontSize": 42.5375,
+                  "letterSpacing": 1.7015,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 415,
+                  "contentWidth": 415,
+                  "rect": {
+                    "left": 41,
+                    "right": 455.90625,
+                    "width": 414.90625
+                  },
+                  "textRect": {
+                    "left": 41,
+                    "right": 361.90625,
+                    "width": 320.90625
+                  }
+                },
+                {
+                  "text": "INFRASTRUCTURE",
+                  "fontSize": 42.5375,
+                  "letterSpacing": 1.7015,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 415,
+                  "contentWidth": 415,
+                  "rect": {
+                    "left": 569.09375,
+                    "right": 984,
+                    "width": 414.90625
+                  },
+                  "textRect": {
+                    "left": 569.09375,
+                    "right": 970.578125,
+                    "width": 401.484375
+                  }
+                },
+                {
+                  "text": "IMPACT",
+                  "fontSize": 42.5375,
+                  "letterSpacing": 1.7015,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 415,
+                  "contentWidth": 415,
+                  "rect": {
+                    "left": 41,
+                    "right": 455.90625,
+                    "width": 414.90625
+                  },
+                  "textRect": {
+                    "left": 41,
+                    "right": 209.609375,
+                    "width": 168.609375
+                  }
+                }
+              ],
+              "viewportWidth": 1025,
+              "overflow": 0
+            }
+          },
+          {
+            "width": 1415,
+            "geometry": {
+              "pin": {
+                "left": 56.59375,
+                "right": 1358.390625,
+                "width": 1301.796875,
+                "overflow": "hidden"
+              },
+              "titles": [
+                {
+                  "text": "INTELLIGENCE",
+                  "fontSize": 58.7225,
+                  "letterSpacing": 2.3489,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 573,
+                  "contentWidth": 573,
+                  "rect": {
+                    "left": 56.59375,
+                    "right": 629.375,
+                    "width": 572.78125
+                  },
+                  "textRect": {
+                    "left": 56.59375,
+                    "right": 499.65625,
+                    "width": 443.0625
+                  }
+                },
+                {
+                  "text": "INFRASTRUCTURE",
+                  "fontSize": 58.7225,
+                  "letterSpacing": 2.3489,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 573,
+                  "contentWidth": 573,
+                  "rect": {
+                    "left": 785.609375,
+                    "right": 1358.390625,
+                    "width": 572.78125
+                  },
+                  "textRect": {
+                    "left": 785.609375,
+                    "right": 1339.921875,
+                    "width": 554.3125
+                  }
+                },
+                {
+                  "text": "IMPACT",
+                  "fontSize": 58.7225,
+                  "letterSpacing": 2.3489,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 573,
+                  "contentWidth": 573,
+                  "rect": {
+                    "left": 56.59375,
+                    "right": 629.375,
+                    "width": 572.78125
+                  },
+                  "textRect": {
+                    "left": 56.59375,
+                    "right": 289.375,
+                    "width": 232.78125
+                  }
+                }
+              ],
+              "viewportWidth": 1415,
+              "overflow": 0
+            }
+          },
+          {
+            "width": 1416,
+            "geometry": {
+              "pin": {
+                "left": 56.625,
+                "right": 1359.375,
+                "width": 1302.75,
+                "overflow": "hidden"
+              },
+              "titles": [
+                {
+                  "text": "INTELLIGENCE",
+                  "fontSize": 58.764,
+                  "letterSpacing": 2.35056,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 573,
+                  "contentWidth": 573,
+                  "rect": {
+                    "left": 56.625,
+                    "right": 629.828125,
+                    "width": 573.203125
+                  },
+                  "textRect": {
+                    "left": 56.625,
+                    "right": 499.984375,
+                    "width": 443.359375
+                  }
+                },
+                {
+                  "text": "INFRASTRUCTURE",
+                  "fontSize": 58.764,
+                  "letterSpacing": 2.35056,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 573,
+                  "contentWidth": 573,
+                  "rect": {
+                    "left": 786.171875,
+                    "right": 1359.375,
+                    "width": 573.203125
+                  },
+                  "textRect": {
+                    "left": 786.171875,
+                    "right": 1340.875,
+                    "width": 554.703125
+                  }
+                },
+                {
+                  "text": "IMPACT",
+                  "fontSize": 58.764,
+                  "letterSpacing": 2.35056,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 573,
+                  "contentWidth": 573,
+                  "rect": {
+                    "left": 56.625,
+                    "right": 629.828125,
+                    "width": 573.203125
+                  },
+                  "textRect": {
+                    "left": 56.625,
+                    "right": 289.5625,
+                    "width": 232.9375
+                  }
+                }
+              ],
+              "viewportWidth": 1416,
+              "overflow": 0
+            }
+          },
+          {
+            "width": 1445,
+            "geometry": {
+              "pin": {
+                "left": 60.296875,
+                "right": 1384.703125,
+                "width": 1324.40625,
+                "overflow": "hidden"
+              },
+              "titles": [
+                {
+                  "text": "INTELLIGENCE",
+                  "fontSize": 59.9675,
+                  "letterSpacing": 2.3987,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 583,
+                  "contentWidth": 583,
+                  "rect": {
+                    "left": 60.296875,
+                    "right": 643.03125,
+                    "width": 582.734375
+                  },
+                  "textRect": {
+                    "left": 60.296875,
+                    "right": 512.71875,
+                    "width": 452.421875
+                  }
+                },
+                {
+                  "text": "INFRASTRUCTURE",
+                  "fontSize": 59.9675,
+                  "letterSpacing": 2.3987,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 583,
+                  "contentWidth": 583,
+                  "rect": {
+                    "left": 801.96875,
+                    "right": 1384.703125,
+                    "width": 582.734375
+                  },
+                  "textRect": {
+                    "left": 801.96875,
+                    "right": 1368,
+                    "width": 566.03125
+                  }
+                },
+                {
+                  "text": "IMPACT",
+                  "fontSize": 59.9675,
+                  "letterSpacing": 2.3987,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 583,
+                  "contentWidth": 583,
+                  "rect": {
+                    "left": 60.296875,
+                    "right": 643.03125,
+                    "width": 582.734375
+                  },
+                  "textRect": {
+                    "left": 60.296875,
+                    "right": 298,
+                    "width": 237.703125
+                  }
+                }
+              ],
+              "viewportWidth": 1445,
+              "overflow": 0
+            }
+          },
+          {
+            "width": 1446,
+            "geometry": {
+              "pin": {
+                "left": 60.828125,
+                "right": 1385.15625,
+                "width": 1324.328125,
+                "overflow": "hidden"
+              },
+              "titles": [
+                {
+                  "text": "INTELLIGENCE",
+                  "fontSize": 60,
+                  "letterSpacing": 2.4,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 583,
+                  "contentWidth": 583,
+                  "rect": {
+                    "left": 60.828125,
+                    "right": 643.53125,
+                    "width": 582.703125
+                  },
+                  "textRect": {
+                    "left": 60.828125,
+                    "right": 513.546875,
+                    "width": 452.71875
+                  }
+                },
+                {
+                  "text": "INFRASTRUCTURE",
+                  "fontSize": 60,
+                  "letterSpacing": 2.4,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 583,
+                  "contentWidth": 583,
+                  "rect": {
+                    "left": 802.453125,
+                    "right": 1385.15625,
+                    "width": 582.703125
+                  },
+                  "textRect": {
+                    "left": 802.453125,
+                    "right": 1368.859375,
+                    "width": 566.40625
+                  }
+                },
+                {
+                  "text": "IMPACT",
+                  "fontSize": 60,
+                  "letterSpacing": 2.4,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 583,
+                  "contentWidth": 583,
+                  "rect": {
+                    "left": 60.828125,
+                    "right": 643.53125,
+                    "width": 582.703125
+                  },
+                  "textRect": {
+                    "left": 60.828125,
+                    "right": 298.6875,
+                    "width": 237.859375
+                  }
+                }
+              ],
+              "viewportWidth": 1446,
+              "overflow": 0
+            }
+          },
+          {
+            "width": 1454,
+            "geometry": {
+              "pin": {
+                "left": 65.15625,
+                "right": 1388.84375,
+                "width": 1323.6875,
+                "overflow": "hidden"
+              },
+              "titles": [
+                {
+                  "text": "INTELLIGENCE",
+                  "fontSize": 60,
+                  "letterSpacing": 2.4,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 582,
+                  "contentWidth": 582,
+                  "rect": {
+                    "left": 65.15625,
+                    "right": 647.578125,
+                    "width": 582.421875
+                  },
+                  "textRect": {
+                    "left": 65.15625,
+                    "right": 517.875,
+                    "width": 452.71875
+                  }
+                },
+                {
+                  "text": "INFRASTRUCTURE",
+                  "fontSize": 60,
+                  "letterSpacing": 2.4,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 582,
+                  "contentWidth": 582,
+                  "rect": {
+                    "left": 806.421875,
+                    "right": 1388.84375,
+                    "width": 582.421875
+                  },
+                  "textRect": {
+                    "left": 806.421875,
+                    "right": 1372.828125,
+                    "width": 566.40625
+                  }
+                },
+                {
+                  "text": "IMPACT",
+                  "fontSize": 60,
+                  "letterSpacing": 2.4,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 582,
+                  "contentWidth": 582,
+                  "rect": {
+                    "left": 65.15625,
+                    "right": 647.578125,
+                    "width": 582.421875
+                  },
+                  "textRect": {
+                    "left": 65.15625,
+                    "right": 303.015625,
+                    "width": 237.859375
+                  }
+                }
+              ],
+              "viewportWidth": 1454,
+              "overflow": 0
+            }
+          },
+          {
+            "width": 1455,
+            "geometry": {
+              "pin": {
+                "left": 65.6875,
+                "right": 1389.296875,
+                "width": 1323.609375,
+                "overflow": "hidden"
+              },
+              "titles": [
+                {
+                  "text": "INTELLIGENCE",
+                  "fontSize": 60,
+                  "letterSpacing": 2.4,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 582,
+                  "contentWidth": 582,
+                  "rect": {
+                    "left": 65.6875,
+                    "right": 648.0625,
+                    "width": 582.375
+                  },
+                  "textRect": {
+                    "left": 65.6875,
+                    "right": 518.40625,
+                    "width": 452.71875
+                  }
+                },
+                {
+                  "text": "INFRASTRUCTURE",
+                  "fontSize": 60,
+                  "letterSpacing": 2.4,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 582,
+                  "contentWidth": 582,
+                  "rect": {
+                    "left": 806.921875,
+                    "right": 1389.296875,
+                    "width": 582.375
+                  },
+                  "textRect": {
+                    "left": 806.921875,
+                    "right": 1373.328125,
+                    "width": 566.40625
+                  }
+                },
+                {
+                  "text": "IMPACT",
+                  "fontSize": 60,
+                  "letterSpacing": 2.4,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 582,
+                  "contentWidth": 582,
+                  "rect": {
+                    "left": 65.6875,
+                    "right": 648.0625,
+                    "width": 582.375
+                  },
+                  "textRect": {
+                    "left": 65.6875,
+                    "right": 303.546875,
+                    "width": 237.859375
+                  }
+                }
+              ],
+              "viewportWidth": 1455,
+              "overflow": 0
+            }
+          },
+          {
+            "width": 1456,
+            "geometry": {
+              "pin": {
+                "left": 66.234375,
+                "right": 1389.75,
+                "width": 1323.515625,
+                "overflow": "hidden"
+              },
+              "titles": [
+                {
+                  "text": "INTELLIGENCE",
+                  "fontSize": 60,
+                  "letterSpacing": 2.4,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 582,
+                  "contentWidth": 582,
+                  "rect": {
+                    "left": 66.234375,
+                    "right": 648.578125,
+                    "width": 582.34375
+                  },
+                  "textRect": {
+                    "left": 66.234375,
+                    "right": 518.953125,
+                    "width": 452.71875
+                  }
+                },
+                {
+                  "text": "INFRASTRUCTURE",
+                  "fontSize": 60,
+                  "letterSpacing": 2.4,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 582,
+                  "contentWidth": 582,
+                  "rect": {
+                    "left": 807.40625,
+                    "right": 1389.75,
+                    "width": 582.34375
+                  },
+                  "textRect": {
+                    "left": 807.40625,
+                    "right": 1373.8125,
+                    "width": 566.40625
+                  }
+                },
+                {
+                  "text": "IMPACT",
+                  "fontSize": 60,
+                  "letterSpacing": 2.4,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 582,
+                  "contentWidth": 582,
+                  "rect": {
+                    "left": 66.234375,
+                    "right": 648.578125,
+                    "width": 582.34375
+                  },
+                  "textRect": {
+                    "left": 66.234375,
+                    "right": 304.09375,
+                    "width": 237.859375
+                  }
+                }
+              ],
+              "viewportWidth": 1456,
+              "overflow": 0
+            }
+          },
+          {
+            "width": 1599,
+            "geometry": {
+              "pin": {
+                "left": 143.453125,
+                "right": 1455.53125,
+                "width": 1312.078125,
+                "overflow": "hidden"
+              },
+              "titles": [
+                {
+                  "text": "INTELLIGENCE",
+                  "fontSize": 60,
+                  "letterSpacing": 2.4,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 577,
+                  "contentWidth": 577,
+                  "rect": {
+                    "left": 143.453125,
+                    "right": 720.765625,
+                    "width": 577.3125
+                  },
+                  "textRect": {
+                    "left": 143.453125,
+                    "right": 596.171875,
+                    "width": 452.71875
+                  }
+                },
+                {
+                  "text": "INFRASTRUCTURE",
+                  "fontSize": 60,
+                  "letterSpacing": 2.4,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 577,
+                  "contentWidth": 577,
+                  "rect": {
+                    "left": 878.21875,
+                    "right": 1455.53125,
+                    "width": 577.3125
+                  },
+                  "textRect": {
+                    "left": 878.21875,
+                    "right": 1444.625,
+                    "width": 566.40625
+                  }
+                },
+                {
+                  "text": "IMPACT",
+                  "fontSize": 60,
+                  "letterSpacing": 2.4,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 577,
+                  "contentWidth": 577,
+                  "rect": {
+                    "left": 143.453125,
+                    "right": 720.765625,
+                    "width": 577.3125
+                  },
+                  "textRect": {
+                    "left": 143.453125,
+                    "right": 381.3125,
+                    "width": 237.859375
+                  }
+                }
+              ],
+              "viewportWidth": 1599,
+              "overflow": 0
+            }
+          },
+          {
+            "width": 1600,
+            "geometry": {
+              "pin": {
+                "left": 144,
+                "right": 1456,
+                "width": 1312,
+                "overflow": "hidden"
+              },
+              "titles": [
+                {
+                  "text": "INTELLIGENCE",
+                  "fontSize": 60,
+                  "letterSpacing": 2.4,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 577,
+                  "contentWidth": 577,
+                  "rect": {
+                    "left": 144,
+                    "right": 721.265625,
+                    "width": 577.265625
+                  },
+                  "textRect": {
+                    "left": 144,
+                    "right": 596.71875,
+                    "width": 452.71875
+                  }
+                },
+                {
+                  "text": "INFRASTRUCTURE",
+                  "fontSize": 60,
+                  "letterSpacing": 2.4,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 577,
+                  "contentWidth": 577,
+                  "rect": {
+                    "left": 878.734375,
+                    "right": 1456,
+                    "width": 577.265625
+                  },
+                  "textRect": {
+                    "left": 878.734375,
+                    "right": 1445.140625,
+                    "width": 566.40625
+                  }
+                },
+                {
+                  "text": "IMPACT",
+                  "fontSize": 60,
+                  "letterSpacing": 2.4,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 577,
+                  "contentWidth": 577,
+                  "rect": {
+                    "left": 144,
+                    "right": 721.265625,
+                    "width": 577.265625
+                  },
+                  "textRect": {
+                    "left": 144,
+                    "right": 381.859375,
+                    "width": 237.859375
+                  }
+                }
+              ],
+              "viewportWidth": 1600,
+              "overflow": 0
+            }
+          },
+          {
+            "width": 1601,
+            "geometry": {
+              "pin": {
+                "left": 144.5,
+                "right": 1456.5,
+                "width": 1312,
+                "overflow": "hidden"
+              },
+              "titles": [
+                {
+                  "text": "INTELLIGENCE",
+                  "fontSize": 60,
+                  "letterSpacing": 2.4,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 577,
+                  "contentWidth": 577,
+                  "rect": {
+                    "left": 144.5,
+                    "right": 721.765625,
+                    "width": 577.265625
+                  },
+                  "textRect": {
+                    "left": 144.5,
+                    "right": 597.21875,
+                    "width": 452.71875
+                  }
+                },
+                {
+                  "text": "INFRASTRUCTURE",
+                  "fontSize": 60,
+                  "letterSpacing": 2.4,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 577,
+                  "contentWidth": 577,
+                  "rect": {
+                    "left": 879.234375,
+                    "right": 1456.5,
+                    "width": 577.265625
+                  },
+                  "textRect": {
+                    "left": 879.234375,
+                    "right": 1445.640625,
+                    "width": 566.40625
+                  }
+                },
+                {
+                  "text": "IMPACT",
+                  "fontSize": 60,
+                  "letterSpacing": 2.4,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 577,
+                  "contentWidth": 577,
+                  "rect": {
+                    "left": 144.5,
+                    "right": 721.765625,
+                    "width": 577.265625
+                  },
+                  "textRect": {
+                    "left": 144.5,
+                    "right": 382.359375,
+                    "width": 237.859375
+                  }
+                }
+              ],
+              "viewportWidth": 1601,
+              "overflow": 0
+            }
+          },
+          {
+            "width": 1679,
+            "geometry": {
+              "pin": {
+                "left": 183.5,
+                "right": 1495.5,
+                "width": 1312,
+                "overflow": "hidden"
+              },
+              "titles": [
+                {
+                  "text": "INTELLIGENCE",
+                  "fontSize": 60,
+                  "letterSpacing": 2.4,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 577,
+                  "contentWidth": 577,
+                  "rect": {
+                    "left": 183.5,
+                    "right": 760.765625,
+                    "width": 577.265625
+                  },
+                  "textRect": {
+                    "left": 183.5,
+                    "right": 636.21875,
+                    "width": 452.71875
+                  }
+                },
+                {
+                  "text": "INFRASTRUCTURE",
+                  "fontSize": 60,
+                  "letterSpacing": 2.4,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 577,
+                  "contentWidth": 577,
+                  "rect": {
+                    "left": 918.234375,
+                    "right": 1495.5,
+                    "width": 577.265625
+                  },
+                  "textRect": {
+                    "left": 918.234375,
+                    "right": 1484.640625,
+                    "width": 566.40625
+                  }
+                },
+                {
+                  "text": "IMPACT",
+                  "fontSize": 60,
+                  "letterSpacing": 2.4,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 577,
+                  "contentWidth": 577,
+                  "rect": {
+                    "left": 183.5,
+                    "right": 760.765625,
+                    "width": 577.265625
+                  },
+                  "textRect": {
+                    "left": 183.5,
+                    "right": 421.359375,
+                    "width": 237.859375
+                  }
+                }
+              ],
+              "viewportWidth": 1679,
+              "overflow": 0
+            }
+          },
+          {
+            "width": 1680,
+            "geometry": {
+              "pin": {
+                "left": 184,
+                "right": 1496,
+                "width": 1312,
+                "overflow": "hidden"
+              },
+              "titles": [
+                {
+                  "text": "INTELLIGENCE",
+                  "fontSize": 60,
+                  "letterSpacing": 2.4,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 577,
+                  "contentWidth": 577,
+                  "rect": {
+                    "left": 184,
+                    "right": 761.265625,
+                    "width": 577.265625
+                  },
+                  "textRect": {
+                    "left": 184,
+                    "right": 636.71875,
+                    "width": 452.71875
+                  }
+                },
+                {
+                  "text": "INFRASTRUCTURE",
+                  "fontSize": 60,
+                  "letterSpacing": 2.4,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 577,
+                  "contentWidth": 577,
+                  "rect": {
+                    "left": 918.734375,
+                    "right": 1496,
+                    "width": 577.265625
+                  },
+                  "textRect": {
+                    "left": 918.734375,
+                    "right": 1485.140625,
+                    "width": 566.40625
+                  }
+                },
+                {
+                  "text": "IMPACT",
+                  "fontSize": 60,
+                  "letterSpacing": 2.4,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 577,
+                  "contentWidth": 577,
+                  "rect": {
+                    "left": 184,
+                    "right": 761.265625,
+                    "width": 577.265625
+                  },
+                  "textRect": {
+                    "left": 184,
+                    "right": 421.859375,
+                    "width": 237.859375
+                  }
+                }
+              ],
+              "viewportWidth": 1680,
+              "overflow": 0
+            }
+          },
+          {
+            "width": 1681,
+            "geometry": {
+              "pin": {
+                "left": 184.5,
+                "right": 1496.5,
+                "width": 1312,
+                "overflow": "hidden"
+              },
+              "titles": [
+                {
+                  "text": "INTELLIGENCE",
+                  "fontSize": 60,
+                  "letterSpacing": 2.4,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 577,
+                  "contentWidth": 577,
+                  "rect": {
+                    "left": 184.5,
+                    "right": 761.765625,
+                    "width": 577.265625
+                  },
+                  "textRect": {
+                    "left": 184.5,
+                    "right": 637.21875,
+                    "width": 452.71875
+                  }
+                },
+                {
+                  "text": "INFRASTRUCTURE",
+                  "fontSize": 60,
+                  "letterSpacing": 2.4,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 577,
+                  "contentWidth": 577,
+                  "rect": {
+                    "left": 919.234375,
+                    "right": 1496.5,
+                    "width": 577.265625
+                  },
+                  "textRect": {
+                    "left": 919.234375,
+                    "right": 1485.640625,
+                    "width": 566.40625
+                  }
+                },
+                {
+                  "text": "IMPACT",
+                  "fontSize": 60,
+                  "letterSpacing": 2.4,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 577,
+                  "contentWidth": 577,
+                  "rect": {
+                    "left": 184.5,
+                    "right": 761.765625,
+                    "width": 577.265625
+                  },
+                  "textRect": {
+                    "left": 184.5,
+                    "right": 422.359375,
+                    "width": 237.859375
+                  }
+                }
+              ],
+              "viewportWidth": 1681,
+              "overflow": 0
+            }
+          },
+          {
+            "width": 1920,
+            "geometry": {
+              "pin": {
+                "left": 304,
+                "right": 1616,
+                "width": 1312,
+                "overflow": "hidden"
+              },
+              "titles": [
+                {
+                  "text": "INTELLIGENCE",
+                  "fontSize": 60,
+                  "letterSpacing": 2.4,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 577,
+                  "contentWidth": 577,
+                  "rect": {
+                    "left": 304,
+                    "right": 881.265625,
+                    "width": 577.265625
+                  },
+                  "textRect": {
+                    "left": 304,
+                    "right": 756.71875,
+                    "width": 452.71875
+                  }
+                },
+                {
+                  "text": "INFRASTRUCTURE",
+                  "fontSize": 60,
+                  "letterSpacing": 2.4,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 577,
+                  "contentWidth": 577,
+                  "rect": {
+                    "left": 1038.734375,
+                    "right": 1616,
+                    "width": 577.265625
+                  },
+                  "textRect": {
+                    "left": 1038.734375,
+                    "right": 1605.140625,
+                    "width": 566.40625
+                  }
+                },
+                {
+                  "text": "IMPACT",
+                  "fontSize": 60,
+                  "letterSpacing": 2.4,
+                  "transform": "none",
+                  "lineRects": 1,
+                  "boxWidth": 577,
+                  "contentWidth": 577,
+                  "rect": {
+                    "left": 304,
+                    "right": 881.265625,
+                    "width": 577.265625
+                  },
+                  "textRect": {
+                    "left": 304,
+                    "right": 541.859375,
+                    "width": 237.859375
+                  }
+                }
+              ],
+              "viewportWidth": 1920,
+              "overflow": 0
+            }
+          }
+        ]
+      },
+      "status": "passed",
+      "durationMs": 57688
+    },
+    "matrix-full-1920x1080": {
+      "status": "skipped",
+      "reason": "GCL_R43_SCENARIOS filter"
+    },
+    "matrix-full-1680x1050": {
+      "viewport": {
+        "width": 1680,
+        "height": 1050
+      },
+      "policy": "no-preference",
+      "mission": {
+        "pin": {
+          "left": 184,
+          "right": 1496,
+          "width": 1312,
+          "overflow": "hidden"
+        },
+        "titles": [
+          {
+            "text": "INTELLIGENCE",
+            "fontSize": 60,
+            "letterSpacing": 2.4,
+            "transform": "none",
+            "lineRects": 1,
+            "boxWidth": 577,
+            "contentWidth": 577,
+            "rect": {
+              "left": 192.65896606445312,
+              "right": 752.6067199707031,
+              "width": 559.94775390625
+            },
+            "textRect": {
+              "left": 192.65896606445312,
+              "right": 631.796142578125,
+              "width": 439.1371765136719
+            }
+          },
+          {
+            "text": "INFRASTRUCTURE",
+            "fontSize": 60,
+            "letterSpacing": 2.4,
+            "transform": "none",
+            "lineRects": 1,
+            "boxWidth": 577,
+            "contentWidth": 577,
+            "rect": {
+              "left": 918.734375,
+              "right": 1496,
+              "width": 577.265625
+            },
+            "textRect": {
+              "left": 918.734375,
+              "right": 1485.140625,
+              "width": 566.40625
+            }
+          },
+          {
+            "text": "IMPACT",
+            "fontSize": 60,
+            "letterSpacing": 2.4,
+            "transform": "none",
+            "lineRects": 1,
+            "boxWidth": 577,
+            "contentWidth": 577,
+            "rect": {
+              "left": 195.54531860351562,
+              "right": 749.7203674316406,
+              "width": 554.175048828125
+            },
+            "textRect": {
+              "left": 195.54531860351562,
+              "right": 423.89031982421875,
+              "width": 228.34500122070312
+            }
+          }
+        ],
+        "viewportWidth": 1680,
+        "overflow": 60
+      },
+      "titleOrigins": [
+        {
+          "name": "CreditVector",
+          "x": 252,
+          "transform": "matrix(1, 0, 0, 1, 0, 0)"
+        },
+        {
+          "name": "GIOS",
+          "x": 252,
+          "transform": "matrix(1, 0, 0, 1, 0, 0)"
+        },
+        {
+          "name": "HELIOS",
+          "x": 252,
+          "transform": "matrix(1, 0, 0, 1, 0, 0)"
+        },
+        {
+          "name": "Kai",
+          "x": 252,
+          "transform": "matrix(1, 0, 0, 1, 0, 0)"
+        }
+      ],
+      "titleOriginSpreadPx": 0,
+      "engagement": {
+        "section": {
+          "width": 1680,
+          "height": 1042.625,
+          "top": 14657.578125,
+          "bottom": 15700.203125
+        },
+        "chapterGap": 94.5,
+        "rowHeights": [
+          90.390625,
+          90.390625,
+          90.390625,
+          90.390625,
+          90.390625,
+          90.390625,
+          91.390625
+        ],
+        "bottomBreathingRoom": 147,
+        "outro": {
+          "height": 2100,
+          "top": 15700.203125,
+          "bottom": 17800.203125
+        },
+        "footer": {
+          "top": 17800.203125,
+          "bottom": 17973.203125
+        },
+        "domOrder": true,
+        "engagementMarks": 0,
+        "overflow": 0,
+        "contacts": [
+          {
+            "label": "General institutional inquiry",
+            "href": "mailto:contact@gabrielcapitallabs.com"
+          },
+          {
+            "label": "Partnerships / strategic relationships",
+            "href": "mailto:partnerships@gabrielcapitallabs.com"
+          },
+          {
+            "label": "Media / press",
+            "href": "mailto:media@gabrielcapitallabs.com"
+          },
+          {
+            "label": "Careers",
+            "href": "mailto:careers@gabrielcapitallabs.com"
+          },
+          {
+            "label": "Legal",
+            "href": "mailto:legal@gabrielcapitallabs.com"
+          },
+          {
+            "label": "Security reports",
+            "href": "mailto:security@gabrielcapitallabs.com"
+          },
+          {
+            "label": "Support",
+            "href": "mailto:support@gabrielcapitallabs.com"
+          }
+        ],
+        "placeholderPresent": false,
+        "headings": [
+          {
+            "tag": "H1",
+            "id": "arrival-heading",
+            "text": "GABRIELCAPITAL LABS"
+          },
+          {
+            "tag": "H2",
+            "id": "institution-heading",
+            "text": "Gabriel Capital Labs is the parentinstitution behind intelligent infrastructure —operating systems for credit, intelligenceexecution, and spatial computing."
+          },
+          {
+            "tag": "H2",
+            "id": "mission-heading",
+            "text": "Mission Architecture"
+          },
+          {
+            "tag": "H2",
+            "id": "ecosystem-heading",
+            "text": "One parent institution. Four domains."
+          },
+          {
+            "tag": "H2",
+            "id": "lab-heading",
+            "text": "Seven domains of research and engineering."
+          },
+          {
+            "tag": "H2",
+            "id": "principles-heading",
+            "text": "Principles"
+          },
+          {
+            "tag": "H2",
+            "id": "engagement-heading",
+            "text": "06 — Engagement"
+          },
+          {
+            "tag": "H2",
+            "id": "institutional-outro-heading",
+            "text": "Enter the future we are engineering."
+          }
+        ]
+      },
+      "outro": {
+        "accessibleText": "Enter the future we are engineering.",
+        "lineRects": [
+          {
+            "rectCount": 1,
+            "left": 296,
+            "right": 1384,
+            "opacity": 1
+          },
+          {
+            "rectCount": 1,
+            "left": 296,
+            "right": 1384,
+            "opacity": 1
+          }
+        ],
+        "image": {
+          "width": 152,
+          "height": 164.65625,
+          "opacity": 1,
+          "transform": "none",
+          "filter": "none",
+          "mixBlendMode": "normal"
+        },
+        "markWrap": {
+          "opacity": 1,
+          "transform": "matrix(1, 0, 0, 1, 0, 0)"
+        },
+        "pinHeight": 1050,
+        "footerTop": 1176.203125,
+        "imageContained": true,
+        "chain": [
+          {
+            "className": "institutional-outro__mark",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__mark-wrap",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__composition",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__pin",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "pin-spacer pin-spacer-gcl-institutional-outro",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          }
+        ],
+        "pinSpacers": 5,
+        "nestedPinSpacers": 0,
+        "outroPinSpacers": 1,
+        "overflow": 0
+      },
+      "screenshots": [
+        "matrix-full-1680x1050-mission-infrastructure.png",
+        "matrix-full-1680x1050-engagement.png",
+        "matrix-full-1680x1050-outro-hold.png"
+      ],
+      "status": "passed",
+      "durationMs": 9950
+    },
+    "matrix-full-1512x982": {
+      "status": "skipped",
+      "reason": "GCL_R43_SCENARIOS filter"
+    },
+    "matrix-full-1440x900": {
+      "status": "skipped",
+      "reason": "GCL_R43_SCENARIOS filter"
+    },
+    "matrix-full-1366x768": {
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "policy": "no-preference",
+      "mission": {
+        "pin": {
+          "left": 54.625,
+          "right": 1311.625,
+          "width": 1257,
+          "overflow": "hidden"
+        },
+        "titles": [
+          {
+            "text": "INTELLIGENCE",
+            "fontSize": 56.689,
+            "letterSpacing": 2.26756,
+            "transform": "none",
+            "lineRects": 1,
+            "boxWidth": 553,
+            "contentWidth": 553,
+            "rect": {
+              "left": 62.921173095703125,
+              "right": 599.4070129394531,
+              "width": 536.48583984375
+            },
+            "textRect": {
+              "left": 62.921173095703125,
+              "right": 477.7629089355469,
+              "width": 414.84173583984375
+            }
+          },
+          {
+            "text": "INFRASTRUCTURE",
+            "fontSize": 56.689,
+            "letterSpacing": 2.26756,
+            "transform": "none",
+            "lineRects": 1,
+            "boxWidth": 553,
+            "contentWidth": 553,
+            "rect": {
+              "left": 758.546875,
+              "right": 1311.625,
+              "width": 553.078125
+            },
+            "textRect": {
+              "left": 758.546875,
+              "right": 1293.609375,
+              "width": 535.0625
+            }
+          },
+          {
+            "text": "IMPACT",
+            "fontSize": 56.689,
+            "letterSpacing": 2.26756,
+            "transform": "none",
+            "lineRects": 1,
+            "boxWidth": 553,
+            "contentWidth": 553,
+            "rect": {
+              "left": 65.68655395507812,
+              "right": 596.6416320800781,
+              "width": 530.955078125
+            },
+            "textRect": {
+              "left": 65.68655395507812,
+              "right": 281.40155029296875,
+              "width": 215.71499633789062
+            }
+          }
+        ],
+        "viewportWidth": 1366,
+        "overflow": 60
+      },
+      "titleOrigins": [
+        {
+          "name": "CreditVector",
+          "x": 122.625,
+          "transform": "matrix(1, 0, 0, 1, 0, 0)"
+        },
+        {
+          "name": "GIOS",
+          "x": 122.625,
+          "transform": "matrix(1, 0, 0, 1, 0, 0)"
+        },
+        {
+          "name": "HELIOS",
+          "x": 122.625,
+          "transform": "matrix(1, 0, 0, 1, 0, 0)"
+        },
+        {
+          "name": "Kai",
+          "x": 122.625,
+          "transform": "matrix(1, 0, 0, 1, 0, 0)"
+        }
+      ],
+      "titleOriginSpreadPx": 0,
+      "engagement": {
+        "section": {
+          "width": 1366,
+          "height": 847.3125,
+          "top": 10973.171875,
+          "bottom": 11820.484375
+        },
+        "chapterGap": 72,
+        "rowHeights": [
+          76.984375,
+          76.984375,
+          76.984375,
+          76.984375,
+          76.984375,
+          76.984375,
+          77.984375
+        ],
+        "bottomBreathingRoom": 107.515625,
+        "outro": {
+          "height": 1536,
+          "top": 11820.484375,
+          "bottom": 13356.484375
+        },
+        "footer": {
+          "top": 13356.484375,
+          "bottom": 13529.484375
+        },
+        "domOrder": true,
+        "engagementMarks": 0,
+        "overflow": 0,
+        "contacts": [
+          {
+            "label": "General institutional inquiry",
+            "href": "mailto:contact@gabrielcapitallabs.com"
+          },
+          {
+            "label": "Partnerships / strategic relationships",
+            "href": "mailto:partnerships@gabrielcapitallabs.com"
+          },
+          {
+            "label": "Media / press",
+            "href": "mailto:media@gabrielcapitallabs.com"
+          },
+          {
+            "label": "Careers",
+            "href": "mailto:careers@gabrielcapitallabs.com"
+          },
+          {
+            "label": "Legal",
+            "href": "mailto:legal@gabrielcapitallabs.com"
+          },
+          {
+            "label": "Security reports",
+            "href": "mailto:security@gabrielcapitallabs.com"
+          },
+          {
+            "label": "Support",
+            "href": "mailto:support@gabrielcapitallabs.com"
+          }
+        ],
+        "placeholderPresent": false,
+        "headings": [
+          {
+            "tag": "H1",
+            "id": "arrival-heading",
+            "text": "GABRIELCAPITAL LABS"
+          },
+          {
+            "tag": "H2",
+            "id": "institution-heading",
+            "text": "Gabriel Capital Labs is the parentinstitution behind intelligent infrastructure —operating systems for credit, intelligenceexecution, and spatial computing."
+          },
+          {
+            "tag": "H2",
+            "id": "mission-heading",
+            "text": "Mission Architecture"
+          },
+          {
+            "tag": "H2",
+            "id": "ecosystem-heading",
+            "text": "One parent institution. Four domains."
+          },
+          {
+            "tag": "H2",
+            "id": "lab-heading",
+            "text": "Seven domains of research and engineering."
+          },
+          {
+            "tag": "H2",
+            "id": "principles-heading",
+            "text": "Principles"
+          },
+          {
+            "tag": "H2",
+            "id": "engagement-heading",
+            "text": "06 — Engagement"
+          },
+          {
+            "tag": "H2",
+            "id": "institutional-outro-heading",
+            "text": "Enter the future we are engineering."
+          }
+        ]
+      },
+      "outro": {
+        "accessibleText": "Enter the future we are engineering.",
+        "lineRects": [
+          {
+            "rectCount": 1,
+            "left": 176.890625,
+            "right": 1189.109375,
+            "opacity": 1
+          },
+          {
+            "rectCount": 1,
+            "left": 176.890625,
+            "right": 1189.109375,
+            "opacity": 1
+          }
+        ],
+        "image": {
+          "width": 136.59375,
+          "height": 147.96875,
+          "opacity": 1,
+          "transform": "none",
+          "filter": "none",
+          "mixBlendMode": "normal"
+        },
+        "markWrap": {
+          "opacity": 1,
+          "transform": "matrix(1, 0, 0, 1, 0, 0)"
+        },
+        "pinHeight": 768,
+        "footerTop": 860.484375,
+        "imageContained": true,
+        "chain": [
+          {
+            "className": "institutional-outro__mark",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__mark-wrap",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__composition",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__pin",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "pin-spacer pin-spacer-gcl-institutional-outro",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          }
+        ],
+        "pinSpacers": 5,
+        "nestedPinSpacers": 0,
+        "outroPinSpacers": 1,
+        "overflow": 0
+      },
+      "screenshots": [
+        "matrix-full-1366x768-mission-infrastructure.png",
+        "matrix-full-1366x768-engagement.png",
+        "matrix-full-1366x768-outro-hold.png"
+      ],
+      "status": "passed",
+      "durationMs": 9421
+    },
+    "matrix-full-1280x720": {
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "policy": "no-preference",
+      "mission": {
+        "pin": {
+          "left": 51.1875,
+          "right": 1229.1875,
+          "width": 1178,
+          "overflow": "hidden"
+        },
+        "titles": [
+          {
+            "text": "INTELLIGENCE",
+            "fontSize": 53.12,
+            "letterSpacing": 2.1248,
+            "transform": "none",
+            "lineRects": 1,
+            "boxWidth": 518,
+            "contentWidth": 518,
+            "rect": {
+              "left": 58.96217346191406,
+              "right": 561.7253570556641,
+              "width": 502.76318359375
+            },
+            "textRect": {
+              "left": 58.96217346191406,
+              "right": 447.7351837158203,
+              "width": 388.77301025390625
+            }
+          },
+          {
+            "text": "INFRASTRUCTURE",
+            "fontSize": 53.12,
+            "letterSpacing": 2.1248,
+            "transform": "none",
+            "lineRects": 1,
+            "boxWidth": 518,
+            "contentWidth": 518,
+            "rect": {
+              "left": 710.875,
+              "right": 1229.1875,
+              "width": 518.3125
+            },
+            "textRect": {
+              "left": 710.875,
+              "right": 1212.328125,
+              "width": 501.453125
+            }
+          },
+          {
+            "text": "IMPACT",
+            "fontSize": 53.12,
+            "letterSpacing": 2.1248,
+            "transform": "none",
+            "lineRects": 1,
+            "boxWidth": 518,
+            "contentWidth": 518,
+            "rect": {
+              "left": 61.55375671386719,
+              "right": 559.1337127685547,
+              "width": 497.5799560546875
+            },
+            "textRect": {
+              "left": 61.55375671386719,
+              "right": 263.708740234375,
+              "width": 202.1549835205078
+            }
+          }
+        ],
+        "viewportWidth": 1280,
+        "overflow": 60
+      },
+      "titleOrigins": [
+        {
+          "name": "CreditVector",
+          "x": 119.1875,
+          "transform": "matrix(1, 0, 0, 1, 0, 0)"
+        },
+        {
+          "name": "GIOS",
+          "x": 119.1875,
+          "transform": "matrix(1, 0, 0, 1, 0, 0)"
+        },
+        {
+          "name": "HELIOS",
+          "x": 119.1875,
+          "transform": "matrix(1, 0, 0, 1, 0, 0)"
+        },
+        {
+          "name": "Kai",
+          "x": 119.1875,
+          "transform": "matrix(1, 0, 0, 1, 0, 0)"
+        }
+      ],
+      "titleOriginSpreadPx": 0,
+      "engagement": {
+        "section": {
+          "width": 1280,
+          "height": 823.078125,
+          "top": 10490.765625,
+          "bottom": 11313.84375
+        },
+        "chapterGap": 72,
+        "rowHeights": [
+          76.984375,
+          76.984375,
+          76.984375,
+          76.984375,
+          76.984375,
+          76.984375,
+          77.984375
+        ],
+        "bottomBreathingRoom": 96,
+        "outro": {
+          "height": 1440,
+          "top": 11313.84375,
+          "bottom": 12753.84375
+        },
+        "footer": {
+          "top": 12753.84375,
+          "bottom": 12926.84375
+        },
+        "domOrder": true,
+        "engagementMarks": 0,
+        "overflow": 0,
+        "contacts": [
+          {
+            "label": "General institutional inquiry",
+            "href": "mailto:contact@gabrielcapitallabs.com"
+          },
+          {
+            "label": "Partnerships / strategic relationships",
+            "href": "mailto:partnerships@gabrielcapitallabs.com"
+          },
+          {
+            "label": "Media / press",
+            "href": "mailto:media@gabrielcapitallabs.com"
+          },
+          {
+            "label": "Careers",
+            "href": "mailto:careers@gabrielcapitallabs.com"
+          },
+          {
+            "label": "Legal",
+            "href": "mailto:legal@gabrielcapitallabs.com"
+          },
+          {
+            "label": "Security reports",
+            "href": "mailto:security@gabrielcapitallabs.com"
+          },
+          {
+            "label": "Support",
+            "href": "mailto:support@gabrielcapitallabs.com"
+          }
+        ],
+        "placeholderPresent": false,
+        "headings": [
+          {
+            "tag": "H1",
+            "id": "arrival-heading",
+            "text": "GABRIELCAPITAL LABS"
+          },
+          {
+            "tag": "H2",
+            "id": "institution-heading",
+            "text": "Gabriel Capital Labs is the parentinstitution behind intelligent infrastructure —operating systems for credit, intelligenceexecution, and spatial computing."
+          },
+          {
+            "tag": "H2",
+            "id": "mission-heading",
+            "text": "Mission Architecture"
+          },
+          {
+            "tag": "H2",
+            "id": "ecosystem-heading",
+            "text": "One parent institution. Four domains."
+          },
+          {
+            "tag": "H2",
+            "id": "lab-heading",
+            "text": "Seven domains of research and engineering."
+          },
+          {
+            "tag": "H2",
+            "id": "principles-heading",
+            "text": "Principles"
+          },
+          {
+            "tag": "H2",
+            "id": "engagement-heading",
+            "text": "06 — Engagement"
+          },
+          {
+            "tag": "H2",
+            "id": "institutional-outro-heading",
+            "text": "Enter the future we are engineering."
+          }
+        ]
+      },
+      "outro": {
+        "accessibleText": "Enter the future we are engineering.",
+        "lineRects": [
+          {
+            "rectCount": 1,
+            "left": 165.75,
+            "right": 1114.25,
+            "opacity": 1
+          },
+          {
+            "rectCount": 1,
+            "left": 165.75,
+            "right": 1114.25,
+            "opacity": 1
+          }
+        ],
+        "image": {
+          "width": 115.1875,
+          "height": 124.78125,
+          "opacity": 1,
+          "transform": "none",
+          "filter": "none",
+          "mixBlendMode": "normal"
+        },
+        "markWrap": {
+          "opacity": 1,
+          "transform": "matrix(1, 0, 0, 1, 0, 0)"
+        },
+        "pinHeight": 720,
+        "footerTop": 806.84375,
+        "imageContained": true,
+        "chain": [
+          {
+            "className": "institutional-outro__mark",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__mark-wrap",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__composition",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__pin",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "pin-spacer pin-spacer-gcl-institutional-outro",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          }
+        ],
+        "pinSpacers": 5,
+        "nestedPinSpacers": 0,
+        "outroPinSpacers": 1,
+        "overflow": 0
+      },
+      "screenshots": [
+        "matrix-full-1280x720-mission-infrastructure.png",
+        "matrix-full-1280x720-engagement.png",
+        "matrix-full-1280x720-outro-hold.png"
+      ],
+      "status": "passed",
+      "durationMs": 9661
+    },
+    "matrix-full-1180x820": {
+      "viewport": {
+        "width": 1180,
+        "height": 820
+      },
+      "policy": "no-preference",
+      "mission": {
+        "pin": {
+          "left": 47.1875,
+          "right": 1133.1875,
+          "width": 1086,
+          "overflow": "hidden"
+        },
+        "titles": [
+          {
+            "text": "INTELLIGENCE",
+            "fontSize": 48.97,
+            "letterSpacing": 1.9588,
+            "transform": "none",
+            "lineRects": 1,
+            "boxWidth": 478,
+            "contentWidth": 478,
+            "rect": {
+              "left": 54.35491943359375,
+              "right": 517.8482055664062,
+              "width": 463.4932861328125
+            },
+            "textRect": {
+              "left": 54.35491943359375,
+              "right": 412.7547607421875,
+              "width": 358.39984130859375
+            }
+          },
+          {
+            "text": "INFRASTRUCTURE",
+            "fontSize": 48.97,
+            "letterSpacing": 1.9588,
+            "transform": "none",
+            "lineRects": 1,
+            "boxWidth": 478,
+            "contentWidth": 478,
+            "rect": {
+              "left": 655.359375,
+              "right": 1133.1875,
+              "width": 477.828125
+            },
+            "textRect": {
+              "left": 655.359375,
+              "right": 1117.640625,
+              "width": 462.28125
+            }
+          },
+          {
+            "text": "IMPACT",
+            "fontSize": 48.97,
+            "letterSpacing": 1.9588,
+            "transform": "none",
+            "lineRects": 1,
+            "boxWidth": 478,
+            "contentWidth": 478,
+            "rect": {
+              "left": 56.74406433105469,
+              "right": 515.4590301513672,
+              "width": 458.7149658203125
+            },
+            "textRect": {
+              "left": 56.74406433105469,
+              "right": 243.10406494140625,
+              "width": 186.36000061035156
+            }
+          }
+        ],
+        "viewportWidth": 1180,
+        "overflow": 60
+      },
+      "titleOrigins": [
+        {
+          "name": "CreditVector",
+          "x": 115.1875,
+          "transform": "matrix(1, 0, 0, 1, 0, 0)"
+        },
+        {
+          "name": "GIOS",
+          "x": 115.1875,
+          "transform": "matrix(1, 0, 0, 1, 0, 0)"
+        },
+        {
+          "name": "HELIOS",
+          "x": 115.1875,
+          "transform": "matrix(1, 0, 0, 1, 0, 0)"
+        },
+        {
+          "name": "Kai",
+          "x": 115.1875,
+          "transform": "matrix(1, 0, 0, 1, 0, 0)"
+        }
+      ],
+      "titleOriginSpreadPx": 0,
+      "engagement": {
+        "section": {
+          "width": 1180,
+          "height": 860.96875,
+          "top": 11470.921875,
+          "bottom": 12331.890625
+        },
+        "chapterGap": 73.796875,
+        "rowHeights": [
+          76.984375,
+          76.984375,
+          76.984375,
+          76.984375,
+          76.984375,
+          76.984375,
+          77.984375
+        ],
+        "bottomBreathingRoom": 114.796875,
+        "outro": {
+          "height": 1640,
+          "top": 12331.890625,
+          "bottom": 13971.890625
+        },
+        "footer": {
+          "top": 13971.890625,
+          "bottom": 14144.890625
+        },
+        "domOrder": true,
+        "engagementMarks": 0,
+        "overflow": 0,
+        "contacts": [
+          {
+            "label": "General institutional inquiry",
+            "href": "mailto:contact@gabrielcapitallabs.com"
+          },
+          {
+            "label": "Partnerships / strategic relationships",
+            "href": "mailto:partnerships@gabrielcapitallabs.com"
+          },
+          {
+            "label": "Media / press",
+            "href": "mailto:media@gabrielcapitallabs.com"
+          },
+          {
+            "label": "Careers",
+            "href": "mailto:careers@gabrielcapitallabs.com"
+          },
+          {
+            "label": "Legal",
+            "href": "mailto:legal@gabrielcapitallabs.com"
+          },
+          {
+            "label": "Security reports",
+            "href": "mailto:security@gabrielcapitallabs.com"
+          },
+          {
+            "label": "Support",
+            "href": "mailto:support@gabrielcapitallabs.com"
+          }
+        ],
+        "placeholderPresent": false,
+        "headings": [
+          {
+            "tag": "H1",
+            "id": "arrival-heading",
+            "text": "GABRIELCAPITAL LABS"
+          },
+          {
+            "tag": "H2",
+            "id": "institution-heading",
+            "text": "Gabriel Capital Labs is the parentinstitution behind intelligent infrastructure —operating systems for credit, intelligenceexecution, and spatial computing."
+          },
+          {
+            "tag": "H2",
+            "id": "mission-heading",
+            "text": "Mission Architecture"
+          },
+          {
+            "tag": "H2",
+            "id": "ecosystem-heading",
+            "text": "One parent institution. Four domains."
+          },
+          {
+            "tag": "H2",
+            "id": "lab-heading",
+            "text": "Seven domains of research and engineering."
+          },
+          {
+            "tag": "H2",
+            "id": "principles-heading",
+            "text": "Principles"
+          },
+          {
+            "tag": "H2",
+            "id": "engagement-heading",
+            "text": "06 — Engagement"
+          },
+          {
+            "tag": "H2",
+            "id": "institutional-outro-heading",
+            "text": "Enter the future we are engineering."
+          }
+        ]
+      },
+      "outro": {
+        "accessibleText": "Enter the future we are engineering.",
+        "lineRects": [
+          {
+            "rectCount": 1,
+            "left": 152.796875,
+            "right": 1027.1875,
+            "opacity": 1
+          },
+          {
+            "rectCount": 1,
+            "left": 152.796875,
+            "right": 1027.1875,
+            "opacity": 1
+          }
+        ],
+        "image": {
+          "width": 118,
+          "height": 127.828125,
+          "opacity": 1,
+          "transform": "none",
+          "filter": "none",
+          "mixBlendMode": "normal"
+        },
+        "markWrap": {
+          "opacity": 1,
+          "transform": "matrix(1, 0, 0, 1, 0, 0)"
+        },
+        "pinHeight": 820,
+        "footerTop": 918.890625,
+        "imageContained": true,
+        "chain": [
+          {
+            "className": "institutional-outro__mark",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__mark-wrap",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__composition",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__pin",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "pin-spacer pin-spacer-gcl-institutional-outro",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          }
+        ],
+        "pinSpacers": 5,
+        "nestedPinSpacers": 0,
+        "outroPinSpacers": 1,
+        "overflow": 0
+      },
+      "screenshots": [
+        "matrix-full-1180x820-mission-infrastructure.png",
+        "matrix-full-1180x820-engagement.png",
+        "matrix-full-1180x820-outro-hold.png"
+      ],
+      "status": "passed",
+      "durationMs": 9651
+    },
+    "matrix-full-1024x768": {
+      "status": "skipped",
+      "reason": "GCL_R43_SCENARIOS filter"
+    },
+    "matrix-full-1024x568": {
+      "viewport": {
+        "width": 1024,
+        "height": 568
+      },
+      "policy": "no-preference",
+      "mission": {
+        "pin": {
+          "left": 40.953125,
+          "right": 983.953125,
+          "width": 943,
+          "overflow": "hidden"
+        },
+        "titles": [
+          {
+            "text": "INTELLIGENCE",
+            "fontSize": 42.496,
+            "letterSpacing": 1.69984,
+            "transform": "none",
+            "lineRects": 1,
+            "boxWidth": 415,
+            "contentWidth": 415,
+            "rect": {
+              "left": 47.17671203613281,
+              "right": 449.6358184814453,
+              "width": 402.4591064453125
+            },
+            "textRect": {
+              "left": 47.17671203613281,
+              "right": 358.1678009033203,
+              "width": 310.9910888671875
+            }
+          },
+          {
+            "text": "INFRASTRUCTURE",
+            "fontSize": 42.496,
+            "letterSpacing": 1.69984,
+            "transform": "none",
+            "lineRects": 1,
+            "boxWidth": 415,
+            "contentWidth": 415,
+            "rect": {
+              "left": 569.046875,
+              "right": 983.953125,
+              "width": 414.90625
+            },
+            "textRect": {
+              "left": 569.046875,
+              "right": 970.15625,
+              "width": 401.109375
+            }
+          },
+          {
+            "text": "IMPACT",
+            "fontSize": 42.496,
+            "letterSpacing": 1.69984,
+            "transform": "none",
+            "lineRects": 1,
+            "boxWidth": 415,
+            "contentWidth": 415,
+            "rect": {
+              "left": 49.251251220703125,
+              "right": 447.5612487792969,
+              "width": 398.30999755859375
+            },
+            "textRect": {
+              "left": 49.251251220703125,
+              "right": 210.9512481689453,
+              "width": 161.6999969482422
+            }
+          }
+        ],
+        "viewportWidth": 1024,
+        "overflow": 60
+      },
+      "titleOrigins": [
+        {
+          "name": "CreditVector",
+          "x": 108.953125,
+          "transform": "matrix(1, 0, 0, 1, 0, 0)"
+        },
+        {
+          "name": "GIOS",
+          "x": 108.953125,
+          "transform": "matrix(1, 0, 0, 1, 0, 0)"
+        },
+        {
+          "name": "HELIOS",
+          "x": 108.953125,
+          "transform": "matrix(1, 0, 0, 1, 0, 0)"
+        },
+        {
+          "name": "Kai",
+          "x": 108.953125,
+          "transform": "matrix(1, 0, 0, 1, 0, 0)"
+        }
+      ],
+      "titleOriginSpreadPx": 0,
+      "engagement": {
+        "section": {
+          "width": 1024,
+          "height": 808,
+          "top": 8706.015625,
+          "bottom": 9514.015625
+        },
+        "chapterGap": 72,
+        "rowHeights": [
+          75.171875,
+          75.171875,
+          75.171875,
+          75.171875,
+          75.171875,
+          75.171875,
+          76.171875
+        ],
+        "bottomBreathingRoom": 96,
+        "outro": {
+          "height": 1136,
+          "top": 9514.015625,
+          "bottom": 10650.015625
+        },
+        "footer": {
+          "top": 10650.015625,
+          "bottom": 10817.890625
+        },
+        "domOrder": true,
+        "engagementMarks": 0,
+        "overflow": 0,
+        "contacts": [
+          {
+            "label": "General institutional inquiry",
+            "href": "mailto:contact@gabrielcapitallabs.com"
+          },
+          {
+            "label": "Partnerships / strategic relationships",
+            "href": "mailto:partnerships@gabrielcapitallabs.com"
+          },
+          {
+            "label": "Media / press",
+            "href": "mailto:media@gabrielcapitallabs.com"
+          },
+          {
+            "label": "Careers",
+            "href": "mailto:careers@gabrielcapitallabs.com"
+          },
+          {
+            "label": "Legal",
+            "href": "mailto:legal@gabrielcapitallabs.com"
+          },
+          {
+            "label": "Security reports",
+            "href": "mailto:security@gabrielcapitallabs.com"
+          },
+          {
+            "label": "Support",
+            "href": "mailto:support@gabrielcapitallabs.com"
+          }
+        ],
+        "placeholderPresent": false,
+        "headings": [
+          {
+            "tag": "H1",
+            "id": "arrival-heading",
+            "text": "GABRIELCAPITAL LABS"
+          },
+          {
+            "tag": "H2",
+            "id": "institution-heading",
+            "text": "Gabriel Capital Labs is the parentinstitution behind intelligent infrastructure —operating systems for credit, intelligenceexecution, and spatial computing."
+          },
+          {
+            "tag": "H2",
+            "id": "mission-heading",
+            "text": "Mission Architecture"
+          },
+          {
+            "tag": "H2",
+            "id": "ecosystem-heading",
+            "text": "One parent institution. Four domains."
+          },
+          {
+            "tag": "H2",
+            "id": "lab-heading",
+            "text": "Seven domains of research and engineering."
+          },
+          {
+            "tag": "H2",
+            "id": "principles-heading",
+            "text": "Principles"
+          },
+          {
+            "tag": "H2",
+            "id": "engagement-heading",
+            "text": "06 — Engagement"
+          },
+          {
+            "tag": "H2",
+            "id": "institutional-outro-heading",
+            "text": "Enter the future we are engineering."
+          }
+        ]
+      },
+      "outro": {
+        "accessibleText": "Enter the future we are engineering.",
+        "lineRects": [
+          {
+            "rectCount": 1,
+            "left": 132.59375,
+            "right": 891.390625,
+            "opacity": 1
+          },
+          {
+            "rectCount": 1,
+            "left": 132.59375,
+            "right": 891.390625,
+            "opacity": 1
+          }
+        ],
+        "image": {
+          "width": 96,
+          "height": 104,
+          "opacity": 1,
+          "transform": "none",
+          "filter": "none",
+          "mixBlendMode": "normal"
+        },
+        "markWrap": {
+          "opacity": 1,
+          "transform": "matrix(1, 0, 0, 1, 0, 0)"
+        },
+        "pinHeight": 568,
+        "footerTop": 636.015625,
+        "imageContained": true,
+        "chain": [
+          {
+            "className": "institutional-outro__mark",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__mark-wrap",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__composition",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__pin",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "pin-spacer pin-spacer-gcl-institutional-outro",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          }
+        ],
+        "pinSpacers": 5,
+        "nestedPinSpacers": 0,
+        "outroPinSpacers": 1,
+        "overflow": 0
+      },
+      "screenshots": [
+        "matrix-full-1024x568-mission-infrastructure.png",
+        "matrix-full-1024x568-engagement.png",
+        "matrix-full-1024x568-outro-hold.png"
+      ],
+      "status": "passed",
+      "durationMs": 9626
+    },
+    "matrix-full-960x720": {
+      "status": "skipped",
+      "reason": "GCL_R43_SCENARIOS filter"
+    },
+    "matrix-full-390x844": {
+      "status": "skipped",
+      "reason": "GCL_R43_SCENARIOS filter"
+    },
+    "matrix-full-430x932": {
+      "status": "skipped",
+      "reason": "GCL_R43_SCENARIOS filter"
+    },
+    "matrix-full-320x568": {
+      "viewport": {
+        "width": 320,
+        "height": 568
+      },
+      "policy": "no-preference",
+      "mission": {
+        "pin": {
+          "left": 20,
+          "right": 300,
+          "width": 280,
+          "overflow": "visible"
+        },
+        "titles": [
+          {
+            "text": "INTELLIGENCE",
+            "fontSize": 22.4,
+            "letterSpacing": 0.896,
+            "transform": "none",
+            "lineRects": 1,
+            "boxWidth": 224,
+            "contentWidth": 224,
+            "rect": {
+              "left": 76,
+              "right": 300,
+              "width": 224
+            },
+            "textRect": {
+              "left": 76,
+              "right": 245.015625,
+              "width": 169.015625
+            }
+          },
+          {
+            "text": "INFRASTRUCTURE",
+            "fontSize": 22.4,
+            "letterSpacing": 0.896,
+            "transform": "none",
+            "lineRects": 1,
+            "boxWidth": 224,
+            "contentWidth": 224,
+            "rect": {
+              "left": 76,
+              "right": 300,
+              "width": 224
+            },
+            "textRect": {
+              "left": 76,
+              "right": 287.46875,
+              "width": 211.46875
+            }
+          },
+          {
+            "text": "IMPACT",
+            "fontSize": 22.4,
+            "letterSpacing": 0.896,
+            "transform": "none",
+            "lineRects": 1,
+            "boxWidth": 224,
+            "contentWidth": 224,
+            "rect": {
+              "left": 76,
+              "right": 300,
+              "width": 224
+            },
+            "textRect": {
+              "left": 76,
+              "right": 164.796875,
+              "width": 88.796875
+            }
+          }
+        ],
+        "viewportWidth": 320,
+        "overflow": 0
+      },
+      "titleOrigins": [
+        {
+          "name": "CreditVector",
+          "x": 88,
+          "transform": "none"
+        },
+        {
+          "name": "GIOS",
+          "x": 88,
+          "transform": "none"
+        },
+        {
+          "name": "HELIOS",
+          "x": 88,
+          "transform": "none"
+        },
+        {
+          "name": "Kai",
+          "x": 88,
+          "transform": "none"
+        }
+      ],
+      "titleOriginSpreadPx": 0,
+      "engagement": {
+        "section": {
+          "width": 320,
+          "height": 964.421875,
+          "top": 7274.015625,
+          "bottom": 8238.4375
+        },
+        "chapterGap": 56,
+        "rowHeights": [
+          119.375,
+          119.375,
+          98.375,
+          98.375,
+          98.375,
+          98.375,
+          99.375
+        ],
+        "bottomBreathingRoom": 80,
+        "outro": {
+          "height": 568,
+          "top": 8238.4375,
+          "bottom": 8806.4375
+        },
+        "footer": {
+          "top": 8806.4375,
+          "bottom": 9036.53125
+        },
+        "domOrder": true,
+        "engagementMarks": 0,
+        "overflow": 0,
+        "contacts": [
+          {
+            "label": "General institutional inquiry",
+            "href": "mailto:contact@gabrielcapitallabs.com"
+          },
+          {
+            "label": "Partnerships / strategic relationships",
+            "href": "mailto:partnerships@gabrielcapitallabs.com"
+          },
+          {
+            "label": "Media / press",
+            "href": "mailto:media@gabrielcapitallabs.com"
+          },
+          {
+            "label": "Careers",
+            "href": "mailto:careers@gabrielcapitallabs.com"
+          },
+          {
+            "label": "Legal",
+            "href": "mailto:legal@gabrielcapitallabs.com"
+          },
+          {
+            "label": "Security reports",
+            "href": "mailto:security@gabrielcapitallabs.com"
+          },
+          {
+            "label": "Support",
+            "href": "mailto:support@gabrielcapitallabs.com"
+          }
+        ],
+        "placeholderPresent": false,
+        "headings": [
+          {
+            "tag": "H1",
+            "id": "arrival-heading",
+            "text": "GABRIELCAPITAL LABS"
+          },
+          {
+            "tag": "H2",
+            "id": "institution-heading",
+            "text": "Gabriel Capital Labs is the parentinstitution behind intelligent infrastructure —operating systems for credit, intelligenceexecution, and spatial computing."
+          },
+          {
+            "tag": "H2",
+            "id": "mission-heading",
+            "text": "Mission Architecture"
+          },
+          {
+            "tag": "H2",
+            "id": "ecosystem-heading",
+            "text": "One parent institution. Four domains."
+          },
+          {
+            "tag": "H2",
+            "id": "lab-heading",
+            "text": "Seven domains of research and engineering."
+          },
+          {
+            "tag": "H2",
+            "id": "principles-heading",
+            "text": "Principles"
+          },
+          {
+            "tag": "H2",
+            "id": "engagement-heading",
+            "text": "06 — Engagement"
+          },
+          {
+            "tag": "H2",
+            "id": "institutional-outro-heading",
+            "text": "Enter the future we are engineering."
+          }
+        ]
+      },
+      "outro": {
+        "accessibleText": "Enter the future we are engineering.",
+        "lineRects": [
+          {
+            "rectCount": 1,
+            "left": 20,
+            "right": 300,
+            "opacity": 1
+          },
+          {
+            "rectCount": 1,
+            "left": 20,
+            "right": 300,
+            "opacity": 1
+          }
+        ],
+        "image": {
+          "width": 104,
+          "height": 112.65625,
+          "opacity": 1,
+          "transform": "none",
+          "filter": "none",
+          "mixBlendMode": "normal"
+        },
+        "markWrap": {
+          "opacity": 1,
+          "transform": "matrix(1, 0, 0, 1, 0, 0)"
+        },
+        "pinHeight": 568,
+        "footerTop": 568.4375,
+        "imageContained": true,
+        "chain": [
+          {
+            "className": "institutional-outro__mark",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__mark-wrap",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__composition",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__pin",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          }
+        ],
+        "pinSpacers": 2,
+        "nestedPinSpacers": 0,
+        "outroPinSpacers": 0,
+        "overflow": 0
+      },
+      "screenshots": [
+        "matrix-full-320x568-engagement.png",
+        "matrix-full-320x568-outro-hold.png"
+      ],
+      "status": "passed",
+      "durationMs": 9885
+    },
+    "matrix-reduced-1920x1080": {
+      "status": "skipped",
+      "reason": "GCL_R43_SCENARIOS filter"
+    },
+    "matrix-reduced-1680x1050": {
+      "status": "skipped",
+      "reason": "GCL_R43_SCENARIOS filter"
+    },
+    "matrix-reduced-1512x982": {
+      "status": "skipped",
+      "reason": "GCL_R43_SCENARIOS filter"
+    },
+    "matrix-reduced-1440x900": {
+      "status": "skipped",
+      "reason": "GCL_R43_SCENARIOS filter"
+    },
+    "matrix-reduced-1366x768": {
+      "status": "skipped",
+      "reason": "GCL_R43_SCENARIOS filter"
+    },
+    "matrix-reduced-1280x720": {
+      "status": "skipped",
+      "reason": "GCL_R43_SCENARIOS filter"
+    },
+    "matrix-reduced-1180x820": {
+      "viewport": {
+        "width": 1180,
+        "height": 820
+      },
+      "policy": "reduce",
+      "mission": {
+        "pin": {
+          "left": 47.1875,
+          "right": 1133.1875,
+          "width": 1086,
+          "overflow": "hidden"
+        },
+        "titles": [
+          {
+            "text": "INTELLIGENCE",
+            "fontSize": 48.97,
+            "letterSpacing": 1.9588,
+            "transform": "none",
+            "lineRects": 1,
+            "boxWidth": 478,
+            "contentWidth": 478,
+            "rect": {
+              "left": 47.1875,
+              "right": 525.015625,
+              "width": 477.828125
+            },
+            "textRect": {
+              "left": 47.1875,
+              "right": 416.671875,
+              "width": 369.484375
+            }
+          },
+          {
+            "text": "INFRASTRUCTURE",
+            "fontSize": 48.97,
+            "letterSpacing": 1.9588,
+            "transform": "none",
+            "lineRects": 1,
+            "boxWidth": 478,
+            "contentWidth": 478,
+            "rect": {
+              "left": 655.359375,
+              "right": 1133.1875,
+              "width": 477.828125
+            },
+            "textRect": {
+              "left": 655.359375,
+              "right": 1117.640625,
+              "width": 462.28125
+            }
+          },
+          {
+            "text": "IMPACT",
+            "fontSize": 48.97,
+            "letterSpacing": 1.9588,
+            "transform": "none",
+            "lineRects": 1,
+            "boxWidth": 478,
+            "contentWidth": 478,
+            "rect": {
+              "left": 47.1875,
+              "right": 525.015625,
+              "width": 477.828125
+            },
+            "textRect": {
+              "left": 47.1875,
+              "right": 241.3125,
+              "width": 194.125
+            }
+          }
+        ],
+        "viewportWidth": 1180,
+        "overflow": 0
+      },
+      "titleOrigins": [
+        {
+          "name": "CreditVector",
+          "x": 115.1875,
+          "transform": "none"
+        },
+        {
+          "name": "GIOS",
+          "x": 115.1875,
+          "transform": "none"
+        },
+        {
+          "name": "HELIOS",
+          "x": 115.1875,
+          "transform": "none"
+        },
+        {
+          "name": "Kai",
+          "x": 115.1875,
+          "transform": "none"
+        }
+      ],
+      "titleOriginSpreadPx": 0,
+      "engagement": {
+        "section": {
+          "width": 1180,
+          "height": 860.96875,
+          "top": 9690.921875,
+          "bottom": 10551.890625
+        },
+        "chapterGap": 73.796875,
+        "rowHeights": [
+          76.984375,
+          76.984375,
+          76.984375,
+          76.984375,
+          76.984375,
+          76.984375,
+          77.984375
+        ],
+        "bottomBreathingRoom": 114.796875,
+        "outro": {
+          "height": 1312,
+          "top": 10551.890625,
+          "bottom": 11863.890625
+        },
+        "footer": {
+          "top": 11863.890625,
+          "bottom": 12036.890625
+        },
+        "domOrder": true,
+        "engagementMarks": 0,
+        "overflow": 0,
+        "contacts": [
+          {
+            "label": "General institutional inquiry",
+            "href": "mailto:contact@gabrielcapitallabs.com"
+          },
+          {
+            "label": "Partnerships / strategic relationships",
+            "href": "mailto:partnerships@gabrielcapitallabs.com"
+          },
+          {
+            "label": "Media / press",
+            "href": "mailto:media@gabrielcapitallabs.com"
+          },
+          {
+            "label": "Careers",
+            "href": "mailto:careers@gabrielcapitallabs.com"
+          },
+          {
+            "label": "Legal",
+            "href": "mailto:legal@gabrielcapitallabs.com"
+          },
+          {
+            "label": "Security reports",
+            "href": "mailto:security@gabrielcapitallabs.com"
+          },
+          {
+            "label": "Support",
+            "href": "mailto:support@gabrielcapitallabs.com"
+          }
+        ],
+        "placeholderPresent": false,
+        "headings": [
+          {
+            "tag": "H1",
+            "id": "arrival-heading",
+            "text": "GABRIELCAPITAL LABS"
+          },
+          {
+            "tag": "H2",
+            "id": "institution-heading",
+            "text": "Gabriel Capital Labs is the parentinstitution behind intelligent infrastructure —operating systems for credit, intelligenceexecution, and spatial computing."
+          },
+          {
+            "tag": "H2",
+            "id": "mission-heading",
+            "text": "Mission Architecture"
+          },
+          {
+            "tag": "H2",
+            "id": "ecosystem-heading",
+            "text": "One parent institution. Four domains."
+          },
+          {
+            "tag": "H2",
+            "id": "lab-heading",
+            "text": "Seven domains of research and engineering."
+          },
+          {
+            "tag": "H2",
+            "id": "principles-heading",
+            "text": "Principles"
+          },
+          {
+            "tag": "H2",
+            "id": "engagement-heading",
+            "text": "06 — Engagement"
+          },
+          {
+            "tag": "H2",
+            "id": "institutional-outro-heading",
+            "text": "Enter the future we are engineering."
+          }
+        ]
+      },
+      "outro": {
+        "accessibleText": "Enter the future we are engineering.",
+        "lineRects": [
+          {
+            "rectCount": 1,
+            "left": 152.796875,
+            "right": 1027.1875,
+            "opacity": 1
+          },
+          {
+            "rectCount": 1,
+            "left": 152.796875,
+            "right": 1027.1875,
+            "opacity": 1
+          }
+        ],
+        "image": {
+          "width": 118,
+          "height": 127.828125,
+          "opacity": 1,
+          "transform": "none",
+          "filter": "none",
+          "mixBlendMode": "normal"
+        },
+        "markWrap": {
+          "opacity": 1,
+          "transform": "none"
+        },
+        "pinHeight": 820,
+        "footerTop": 878.890625,
+        "imageContained": true,
+        "chain": [
+          {
+            "className": "institutional-outro__mark",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__mark-wrap",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__composition",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__pin",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "pin-spacer pin-spacer-gcl-institutional-outro",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          }
+        ],
+        "pinSpacers": 5,
+        "nestedPinSpacers": 0,
+        "outroPinSpacers": 1,
+        "overflow": 0
+      },
+      "screenshots": [
+        "matrix-reduced-1180x820-mission-infrastructure.png",
+        "matrix-reduced-1180x820-engagement.png",
+        "matrix-reduced-1180x820-outro-hold.png"
+      ],
+      "status": "passed",
+      "durationMs": 9601
+    },
+    "matrix-reduced-1024x768": {
+      "status": "skipped",
+      "reason": "GCL_R43_SCENARIOS filter"
+    },
+    "matrix-reduced-1024x568": {
+      "status": "skipped",
+      "reason": "GCL_R43_SCENARIOS filter"
+    },
+    "matrix-reduced-960x720": {
+      "status": "skipped",
+      "reason": "GCL_R43_SCENARIOS filter"
+    },
+    "matrix-reduced-390x844": {
+      "status": "skipped",
+      "reason": "GCL_R43_SCENARIOS filter"
+    },
+    "matrix-reduced-430x932": {
+      "status": "skipped",
+      "reason": "GCL_R43_SCENARIOS filter"
+    },
+    "matrix-reduced-320x568": {
+      "viewport": {
+        "width": 320,
+        "height": 568
+      },
+      "policy": "reduce",
+      "mission": {
+        "pin": {
+          "left": 20,
+          "right": 300,
+          "width": 280,
+          "overflow": "visible"
+        },
+        "titles": [
+          {
+            "text": "INTELLIGENCE",
+            "fontSize": 22.4,
+            "letterSpacing": 0.896,
+            "transform": "none",
+            "lineRects": 1,
+            "boxWidth": 224,
+            "contentWidth": 224,
+            "rect": {
+              "left": 76,
+              "right": 300,
+              "width": 224
+            },
+            "textRect": {
+              "left": 76,
+              "right": 245.015625,
+              "width": 169.015625
+            }
+          },
+          {
+            "text": "INFRASTRUCTURE",
+            "fontSize": 22.4,
+            "letterSpacing": 0.896,
+            "transform": "none",
+            "lineRects": 1,
+            "boxWidth": 224,
+            "contentWidth": 224,
+            "rect": {
+              "left": 76,
+              "right": 300,
+              "width": 224
+            },
+            "textRect": {
+              "left": 76,
+              "right": 287.46875,
+              "width": 211.46875
+            }
+          },
+          {
+            "text": "IMPACT",
+            "fontSize": 22.4,
+            "letterSpacing": 0.896,
+            "transform": "none",
+            "lineRects": 1,
+            "boxWidth": 224,
+            "contentWidth": 224,
+            "rect": {
+              "left": 76,
+              "right": 300,
+              "width": 224
+            },
+            "textRect": {
+              "left": 76,
+              "right": 164.796875,
+              "width": 88.796875
+            }
+          }
+        ],
+        "viewportWidth": 320,
+        "overflow": 0
+      },
+      "titleOrigins": [
+        {
+          "name": "CreditVector",
+          "x": 88,
+          "transform": "matrix(1, 0, 0, 1, 0, 0)"
+        },
+        {
+          "name": "GIOS",
+          "x": 88,
+          "transform": "matrix(1, 0, 0, 1, 0, 0)"
+        },
+        {
+          "name": "HELIOS",
+          "x": 88,
+          "transform": "matrix(1, 0, 0, 1, 0, 0)"
+        },
+        {
+          "name": "Kai",
+          "x": 88,
+          "transform": "matrix(1, 0, 0, 1, 0, 0)"
+        }
+      ],
+      "titleOriginSpreadPx": 0,
+      "engagement": {
+        "section": {
+          "width": 320,
+          "height": 964.421875,
+          "top": 6062.75,
+          "bottom": 7027.171875
+        },
+        "chapterGap": 56,
+        "rowHeights": [
+          119.375,
+          119.375,
+          98.375,
+          98.375,
+          98.375,
+          98.375,
+          99.375
+        ],
+        "bottomBreathingRoom": 80,
+        "outro": {
+          "height": 568,
+          "top": 7027.171875,
+          "bottom": 7595.171875
+        },
+        "footer": {
+          "top": 7595.171875,
+          "bottom": 7825.265625
+        },
+        "domOrder": true,
+        "engagementMarks": 0,
+        "overflow": 0,
+        "contacts": [
+          {
+            "label": "General institutional inquiry",
+            "href": "mailto:contact@gabrielcapitallabs.com"
+          },
+          {
+            "label": "Partnerships / strategic relationships",
+            "href": "mailto:partnerships@gabrielcapitallabs.com"
+          },
+          {
+            "label": "Media / press",
+            "href": "mailto:media@gabrielcapitallabs.com"
+          },
+          {
+            "label": "Careers",
+            "href": "mailto:careers@gabrielcapitallabs.com"
+          },
+          {
+            "label": "Legal",
+            "href": "mailto:legal@gabrielcapitallabs.com"
+          },
+          {
+            "label": "Security reports",
+            "href": "mailto:security@gabrielcapitallabs.com"
+          },
+          {
+            "label": "Support",
+            "href": "mailto:support@gabrielcapitallabs.com"
+          }
+        ],
+        "placeholderPresent": false,
+        "headings": [
+          {
+            "tag": "H1",
+            "id": "arrival-heading",
+            "text": "GABRIELCAPITAL LABS"
+          },
+          {
+            "tag": "H2",
+            "id": "institution-heading",
+            "text": "Gabriel Capital Labs is the parentinstitution behind intelligent infrastructure —operating systems for credit, intelligenceexecution, and spatial computing."
+          },
+          {
+            "tag": "H2",
+            "id": "mission-heading",
+            "text": "Mission Architecture"
+          },
+          {
+            "tag": "H2",
+            "id": "ecosystem-heading",
+            "text": "One parent institution. Four domains."
+          },
+          {
+            "tag": "H2",
+            "id": "lab-heading",
+            "text": "Seven domains of research and engineering."
+          },
+          {
+            "tag": "H2",
+            "id": "principles-heading",
+            "text": "Principles"
+          },
+          {
+            "tag": "H2",
+            "id": "engagement-heading",
+            "text": "06 — Engagement"
+          },
+          {
+            "tag": "H2",
+            "id": "institutional-outro-heading",
+            "text": "Enter the future we are engineering."
+          }
+        ]
+      },
+      "outro": {
+        "accessibleText": "Enter the future we are engineering.",
+        "lineRects": [
+          {
+            "rectCount": 1,
+            "left": 20,
+            "right": 300,
+            "opacity": 1
+          },
+          {
+            "rectCount": 1,
+            "left": 20,
+            "right": 300,
+            "opacity": 1
+          }
+        ],
+        "image": {
+          "width": 104,
+          "height": 112.65625,
+          "opacity": 1,
+          "transform": "none",
+          "filter": "none",
+          "mixBlendMode": "normal"
+        },
+        "markWrap": {
+          "opacity": 1,
+          "transform": "none"
+        },
+        "pinHeight": 568,
+        "footerTop": 568.171875,
+        "imageContained": true,
+        "chain": [
+          {
+            "className": "institutional-outro__mark",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__mark-wrap",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__composition",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__pin",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          }
+        ],
+        "pinSpacers": 0,
+        "nestedPinSpacers": 0,
+        "outroPinSpacers": 0,
+        "overflow": 0
+      },
+      "screenshots": [
+        "matrix-reduced-320x568-engagement.png",
+        "matrix-reduced-320x568-outro-hold.png"
+      ],
+      "status": "passed",
+      "durationMs": 8782
+    },
+    "narrative-full": {
+      "policy": "no-preference",
+      "samples": [
+        {
+          "progress": 0.22,
+          "signal": 0.875,
+          "mark": 0,
+          "lines": [
+            0,
+            0
+          ],
+          "transforms": {
+            "signal": "matrix(0.8975, 0, 0, 1, 0, 0)",
+            "mark": "matrix(0.94, 0, 0, 0.94, 0, 16)",
+            "lines": [
+              "matrix(1, 0, 0, 1, 0, 18)",
+              "matrix(1, 0, 0, 1, 0, 18)"
+            ],
+            "image": "none"
+          },
+          "markRect": {
+            "x": 652.3200073242188,
+            "y": 296.35186767578125,
+            "width": 135.3599853515625,
+            "height": 146.6400146484375
+          },
+          "footerTop": 1602.296875,
+          "screenshot": "narrative-no-preference-0-22.png"
+        },
+        {
+          "progress": 0.46,
+          "signal": 1,
+          "mark": 0.9989,
+          "lines": [
+            0,
+            0
+          ],
+          "transforms": {
+            "signal": "matrix(1, 0, 0, 1, 0, 0)",
+            "mark": "matrix(0.9999, 0, 0, 0.9999, 0, 0.0175)",
+            "lines": [
+              "matrix(1, 0, 0, 1, 0, 18)",
+              "matrix(1, 0, 0, 1, 0, 18)"
+            ],
+            "image": "none"
+          },
+          "markRect": {
+            "x": 648.0072021484375,
+            "y": 275.6971740722656,
+            "width": 143.985595703125,
+            "height": 155.98440551757812
+          },
+          "footerTop": 1386.296875,
+          "screenshot": "narrative-no-preference-0-46.png"
+        },
+        {
+          "progress": 0.88,
+          "signal": 0.42,
+          "mark": 1,
+          "lines": [
+            1,
+            1
+          ],
+          "transforms": {
+            "signal": "matrix(1, 0, 0, 1, 0, 0)",
+            "mark": "matrix(1, 0, 0, 1, 0, 0)",
+            "lines": [
+              "matrix(1, 0, 0, 1, 0, 0)",
+              "matrix(1, 0, 0, 1, 0, 0)"
+            ],
+            "image": "none"
+          },
+          "markRect": {
+            "x": 648,
+            "y": 275.671875,
+            "width": 144,
+            "height": 156
+          },
+          "footerTop": 1008.296875,
+          "screenshot": "narrative-no-preference-0-88.png"
+        },
+        {
+          "progress": 0.97,
+          "signal": 0.42,
+          "mark": 1,
+          "lines": [
+            1,
+            1
+          ],
+          "transforms": {
+            "signal": "matrix(1, 0, 0, 1, 0, 0)",
+            "mark": "matrix(1, 0, 0, 1, 0, 0)",
+            "lines": [
+              "matrix(1, 0, 0, 1, 0, 0)",
+              "matrix(1, 0, 0, 1, 0, 0)"
+            ],
+            "image": "none"
+          },
+          "markRect": {
+            "x": 648,
+            "y": 275.671875,
+            "width": 144,
+            "height": 156
+          },
+          "footerTop": 927.296875,
+          "screenshot": "narrative-no-preference-0-97.png"
+        }
+      ],
+      "status": "passed",
+      "durationMs": 6134
+    },
+    "narrative-reduced": {
+      "policy": "reduce",
+      "samples": [
+        {
+          "progress": 0.22,
+          "signal": 0.8767,
+          "mark": 0,
+          "lines": [
+            0,
+            0
+          ],
+          "transforms": {
+            "signal": "none",
+            "mark": "none",
+            "lines": [
+              "none",
+              "none"
+            ],
+            "image": "none"
+          },
+          "markRect": {
+            "x": 648,
+            "y": 275.671875,
+            "width": 144,
+            "height": 156
+          },
+          "footerTop": 1321.296875,
+          "screenshot": "narrative-reduce-0-22.png"
+        },
+        {
+          "progress": 0.46,
+          "signal": 1,
+          "mark": 0.9945,
+          "lines": [
+            0,
+            0
+          ],
+          "transforms": {
+            "signal": "none",
+            "mark": "none",
+            "lines": [
+              "none",
+              "none"
+            ],
+            "image": "none"
+          },
+          "markRect": {
+            "x": 648,
+            "y": 275.671875,
+            "width": 144,
+            "height": 156
+          },
+          "footerTop": 1191.296875,
+          "screenshot": "narrative-reduce-0-46.png"
+        },
+        {
+          "progress": 0.88,
+          "signal": 0.42,
+          "mark": 1,
+          "lines": [
+            1,
+            1
+          ],
+          "transforms": {
+            "signal": "none",
+            "mark": "none",
+            "lines": [
+              "none",
+              "none"
+            ],
+            "image": "none"
+          },
+          "markRect": {
+            "x": 648,
+            "y": 275.671875,
+            "width": 144,
+            "height": 156
+          },
+          "footerTop": 965.296875,
+          "screenshot": "narrative-reduce-0-88.png"
+        },
+        {
+          "progress": 0.97,
+          "signal": 0.42,
+          "mark": 1,
+          "lines": [
+            1,
+            1
+          ],
+          "transforms": {
+            "signal": "none",
+            "mark": "none",
+            "lines": [
+              "none",
+              "none"
+            ],
+            "image": "none"
+          },
+          "markRect": {
+            "x": 648,
+            "y": 275.671875,
+            "width": 144,
+            "height": 156
+          },
+          "footerTop": 916.296875,
+          "screenshot": "narrative-reduce-0-97.png"
+        }
+      ],
+      "status": "passed",
+      "durationMs": 5556
+    },
+    "replay-full-three-origins": {
+      "initial": {
+        "pins": 5,
+        "listener": {
+          "added": 1,
+          "removed": 0,
+          "active": 1
+        }
+      },
+      "engagementLock": {
+        "scrollY": 0,
+        "owned": 9,
+        "ownedInert": 9,
+        "overflow": "hidden",
+        "replayVisibility": "hidden"
+      },
+      "afterEscape": {
+        "owned": 0,
+        "allInert": 0,
+        "prologue": false,
+        "replaying": false,
+        "overflow": "visible",
+        "focusClass": "arrival__replay arrival__replay--visible",
+        "status": "Introduction complete",
+        "pins": 5,
+        "nestedPins": 0,
+        "outroPins": 1,
+        "listener": {
+          "added": 1,
+          "removed": 0,
+          "active": 1
+        }
+      },
+      "outroLock": {
+        "scrollY": 0,
+        "owned": 9,
+        "ownedInert": 9,
+        "overflow": "hidden",
+        "replayVisibility": "hidden"
+      },
+      "afterSkip": {
+        "owned": 0,
+        "allInert": 0,
+        "prologue": false,
+        "replaying": false,
+        "overflow": "visible",
+        "focusClass": "arrival__replay arrival__replay--visible",
+        "status": "Introduction complete",
+        "pins": 5,
+        "nestedPins": 0,
+        "outroPins": 1,
+        "listener": {
+          "added": 1,
+          "removed": 0,
+          "active": 1
+        }
+      },
+      "footerLock": {
+        "scrollY": 0,
+        "owned": 9,
+        "ownedInert": 9,
+        "overflow": "hidden",
+        "replayVisibility": "hidden"
+      },
+      "afterNatural": {
+        "owned": 0,
+        "allInert": 0,
+        "prologue": false,
+        "replaying": false,
+        "overflow": "visible",
+        "focusClass": "arrival__replay arrival__replay--visible",
+        "status": "Introduction complete",
+        "pins": 5,
+        "nestedPins": 0,
+        "outroPins": 1,
+        "listener": {
+          "added": 1,
+          "removed": 0,
+          "active": 1
+        }
+      },
+      "screenshot": "replay-three-cycles-complete.png",
+      "status": "passed",
+      "durationMs": 21572
+    },
+    "replay-reduced-outro": {
+      "lock": {
+        "scrollY": 0,
+        "owned": 9,
+        "ownedInert": 9,
+        "overflow": "hidden",
+        "replayVisibility": "hidden"
+      },
+      "release": {
+        "owned": 0,
+        "allInert": 0,
+        "prologue": false,
+        "replaying": false,
+        "overflow": "visible",
+        "focusClass": "arrival__replay arrival__replay--visible",
+        "status": "Introduction complete",
+        "pins": 5,
+        "nestedPins": 0,
+        "outroPins": 1,
+        "listener": {
+          "added": 1,
+          "removed": 0,
+          "active": 1
+        }
+      },
+      "status": "passed",
+      "durationMs": 17180
+    },
+    "unrelated-inert-preservation": {
+      "active": {
+        "inert": true,
+        "owned": false
+      },
+      "released": {
+        "inert": true,
+        "owned": false
+      },
+      "status": "passed",
+      "durationMs": 15353
+    },
+    "mobile-replay-bypass": {
+      "prologue": false,
+      "replaying": false,
+      "owned": 0,
+      "inert": 0,
+      "pins": 2,
+      "outroTransform": "matrix(1, 0, 0, 1, 0, 0)",
+      "status": "passed",
+      "durationMs": 3019
+    },
+    "hash-contact-full": {
+      "top": 84.171875,
+      "hash": "#contact",
+      "prologue": false,
+      "replaying": false,
+      "owned": 0,
+      "inert": 0,
+      "pins": 5,
+      "status": "passed",
+      "durationMs": 2365
+    },
+    "hash-contact-reduced": {
+      "top": 84.171875,
+      "hash": "#contact",
+      "prologue": false,
+      "replaying": false,
+      "owned": 0,
+      "inert": 0,
+      "pins": 5,
+      "status": "passed",
+      "durationMs": 2409
+    },
+    "contact-routing-keyboard": {
+      "tabOrder": [
+        "mailto:contact@gabrielcapitallabs.com",
+        "mailto:partnerships@gabrielcapitallabs.com",
+        "mailto:media@gabrielcapitallabs.com",
+        "mailto:careers@gabrielcapitallabs.com",
+        "mailto:legal@gabrielcapitallabs.com",
+        "mailto:security@gabrielcapitallabs.com",
+        "mailto:support@gabrielcapitallabs.com"
+      ],
+      "focusStyle": {
+        "href": "mailto:contact@gabrielcapitallabs.com",
+        "outlineStyle": "solid",
+        "outlineWidth": 2
+      },
+      "traversalKey": "Tab",
+      "status": "passed",
+      "durationMs": 1595
+    },
+    "axe-full": {
+      "policy": "no-preference",
+      "audits": [
+        {
+          "selector": "#contact",
+          "violations": [],
+          "passes": 12
+        },
+        {
+          "selector": "#institutional-outro",
+          "violations": [],
+          "passes": 8
+        },
+        {
+          "selector": "footer",
+          "violations": [],
+          "passes": 5
+        }
+      ],
+      "status": "passed",
+      "durationMs": 5209
+    },
+    "axe-reduced": {
+      "policy": "reduce",
+      "audits": [
+        {
+          "selector": "#contact",
+          "violations": [],
+          "passes": 12
+        },
+        {
+          "selector": "#institutional-outro",
+          "violations": [],
+          "passes": 8
+        },
+        {
+          "selector": "footer",
+          "violations": [],
+          "passes": 5
+        }
+      ],
+      "status": "passed",
+      "durationMs": 5105
+    },
+    "local-static-performance": {
+      "status": "skipped",
+      "reason": "GCL_R43_SCENARIOS filter"
+    }
+  },
+  "telemetry": [],
+  "failures": [],
+  "screenshots": [
+    "matrix-full-1680x1050-mission-infrastructure.png",
+    "matrix-full-1680x1050-engagement.png",
+    "matrix-full-1680x1050-outro-hold.png",
+    "matrix-full-1366x768-mission-infrastructure.png",
+    "matrix-full-1366x768-engagement.png",
+    "matrix-full-1366x768-outro-hold.png",
+    "matrix-full-1280x720-mission-infrastructure.png",
+    "matrix-full-1280x720-engagement.png",
+    "matrix-full-1280x720-outro-hold.png",
+    "matrix-full-1180x820-mission-infrastructure.png",
+    "matrix-full-1180x820-engagement.png",
+    "matrix-full-1180x820-outro-hold.png",
+    "matrix-full-1024x568-mission-infrastructure.png",
+    "matrix-full-1024x568-engagement.png",
+    "matrix-full-1024x568-outro-hold.png",
+    "matrix-full-320x568-engagement.png",
+    "matrix-full-320x568-outro-hold.png",
+    "matrix-reduced-1180x820-mission-infrastructure.png",
+    "matrix-reduced-1180x820-engagement.png",
+    "matrix-reduced-1180x820-outro-hold.png",
+    "matrix-reduced-320x568-engagement.png",
+    "matrix-reduced-320x568-outro-hold.png",
+    "narrative-no-preference-0-22.png",
+    "narrative-no-preference-0-46.png",
+    "narrative-no-preference-0-88.png",
+    "narrative-no-preference-0-97.png",
+    "narrative-reduce-0-22.png",
+    "narrative-reduce-0-46.png",
+    "narrative-reduce-0-88.png",
+    "narrative-reduce-0-97.png",
+    "replay-three-cycles-complete.png"
+  ],
+  "screenshotHashes": {
+    "matrix-full-1680x1050-mission-infrastructure.png": "cf491be9b73bdf2e9520bd94af827382a74efc57dd2140fba478ba5fd747a575",
+    "matrix-full-1680x1050-engagement.png": "607992ec310c1ace337a023d93c5638affe7172dc81d5b40aa81364638a5b30a",
+    "matrix-full-1680x1050-outro-hold.png": "4e3d1c7076f9fe9b8f891fb8111fff629cfe5a6df90d0a10d85350aa4abdbe30",
+    "matrix-full-1366x768-mission-infrastructure.png": "9cbb25f8193697dc163d54bc49a5c3924d539849bba7b01eb676e14b044036b5",
+    "matrix-full-1366x768-engagement.png": "eccd4d8d051ff35a4c9af073e66074eda2d33c625cab18367aba3bdc8faef53e",
+    "matrix-full-1366x768-outro-hold.png": "ee99e0a3cb003f111854495db9638b5ecc624721dd9a643ab6d199393d548f84",
+    "matrix-full-1280x720-mission-infrastructure.png": "6c3cd3962344b6a589b9cc48880df84735a8c164a1e0d19651b085d4942bcb37",
+    "matrix-full-1280x720-engagement.png": "8dac0275461d5559c5a39ad93e0e681439aee89887ba94ef7af423ef686c39e8",
+    "matrix-full-1280x720-outro-hold.png": "50e70df566fcfb6bf12d8182bfb269865c0358589c105f9241bfd686e3bd5e79",
+    "matrix-full-1180x820-mission-infrastructure.png": "714a01305ecf65b57512a607160cb60e693fe733c3e2649ed3019827a8c67752",
+    "matrix-full-1180x820-engagement.png": "daf6f9c54e5c94e2ccd349a5d2acd65ee21e0d8a59792e2f4c2888609811be89",
+    "matrix-full-1180x820-outro-hold.png": "cc41b4587e730f2e2a61cd0cab9072d546c1424388d9f79313324e08e06e6236",
+    "matrix-full-1024x568-mission-infrastructure.png": "e5100910b984e5187d1126cdb24a0d1f976a0a7d3d42a9b6454b95e3a49f2c87",
+    "matrix-full-1024x568-engagement.png": "83d273a50ef32777bd8052bf55d8249e8060df4e5f5d1ada37cc052808de81e5",
+    "matrix-full-1024x568-outro-hold.png": "1d9869395d2c8d93e1eabb9b838481be67b292ef911b8210ee52181243206d46",
+    "matrix-full-320x568-engagement.png": "d645503f77dc118148cd1b03f48fbb876092b2de688f0e9cd663df87ba9553f0",
+    "matrix-full-320x568-outro-hold.png": "87dc6f7f9dcd4399aaee40e4749c66b7a3b4aa501694dde9c1aac436637f0b88",
+    "matrix-reduced-1180x820-mission-infrastructure.png": "6e68e31b33f146923c24503144a26bcbb9d77684fed15b9c5241e218c1225077",
+    "matrix-reduced-1180x820-engagement.png": "daf6f9c54e5c94e2ccd349a5d2acd65ee21e0d8a59792e2f4c2888609811be89",
+    "matrix-reduced-1180x820-outro-hold.png": "b8bcc0f35fa0fe7b33a9b67913ea51f0b6056e803671406c06b8eccacfdc4d80",
+    "matrix-reduced-320x568-engagement.png": "3cf4e9f3c236f9b4d7c18a8260ec1e65aeaae7ed401cc0215e2ab4eb099d9fd5",
+    "matrix-reduced-320x568-outro-hold.png": "e0b93d61dc22c168cd53b53f1627a1401f4a7c26355ed2d96d0f89b5766022dd",
+    "narrative-no-preference-0-22.png": "e07762c4be64ecc76be061a9904dd9fa94d89088bc03b8ec1594f45e46368902",
+    "narrative-no-preference-0-46.png": "9de2534b9dadbf9a0433538d8fad8287f02c9fcd5eacb9da57dc76d9837fb449",
+    "narrative-no-preference-0-88.png": "5fc04d874b4789e9aa3198b64ceda55a03e00fb729da6a0eb7620ff298f1d1b4",
+    "narrative-no-preference-0-97.png": "5fc04d874b4789e9aa3198b64ceda55a03e00fb729da6a0eb7620ff298f1d1b4",
+    "narrative-reduce-0-22.png": "6301b9b4fa05121977283783ccf77d23505c26eb3274b24167f0e98d369cc648",
+    "narrative-reduce-0-46.png": "64d11cb0a1ab68d03c82c21eae561b774e31e0c361412803b50de47a92bd225c",
+    "narrative-reduce-0-88.png": "ada1ad6908d350505b8b86c44c30d3614fd28399c2542092031b4820220dccb2",
+    "narrative-reduce-0-97.png": "ada1ad6908d350505b8b86c44c30d3614fd28399c2542092031b4820220dccb2",
+    "replay-three-cycles-complete.png": "1a6b3a220e287c463afc1e9c98b1afb9cd7ab677944c9c38d8ebaa23f43264b7"
+  },
+  "disclosures": [
+    "Automated evidence uses installed Google Chrome; Safari/WebKit is recorded in the companion R4.6.1 WebKit manifest.",
+    "The 1024x568 compact-height pair is an additional stress case beyond the binding minimum matrix."
+  ],
+  "finishedAt": "2026-08-09T19:51:17.307Z",
+  "telemetrySummary": {
+    "unexpectedCount": 0
+  },
+  "status": "partial",
+  "attestable": false
+}
