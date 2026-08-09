@@ -1,0 +1,121 @@
+{
+  "schemaVersion": 1,
+  "suite": "gcl-r4.4-social-card-reconciliation",
+  "approvedThesis": "Building the Infrastructure for Intelligent Capital.",
+  "renderedLines": [
+    "Building the Infrastructure",
+    "for Intelligent Capital."
+  ],
+  "rendering": {
+    "format": "lossless PNG",
+    "fontFamily": "Helvetica Neue",
+    "fontWeight": 300,
+    "fontSizePx": 28,
+    "color": "#aeb0b4"
+  },
+  "cards": [
+    {
+      "name": "open-graph",
+      "input": "brand/web/GCL_OpenGraph_1200x630.jpg",
+      "inputSha256": "4eda708eea8d24cef44910586aa5d20d906de644f98bf06367cb3ab5feebd765",
+      "brandOutput": "brand/web/GCL_OpenGraph_1200x630.png",
+      "publicOutput": "public/og.png",
+      "outputSha256": "9ed61c6f62dc29ca82f0be399eed512c513d30343077fc83244d6bed614d6002",
+      "dimensions": {
+        "width": 1200,
+        "height": 630
+      },
+      "taglineRegion": {
+        "left": 520,
+        "top": 382,
+        "width": 520,
+        "height": 82
+      },
+      "pixelDelta": {
+        "insideChanged": 31241,
+        "outsideChanged": 0,
+        "changedBounds": {
+          "left": 545,
+          "top": 388,
+          "right": 1004,
+          "bottom": 461
+        }
+      },
+      "gatewayG": {
+        "region": {
+          "left": 145,
+          "top": 85,
+          "width": 310,
+          "height": 455
+        },
+        "before": "aec5d6bfe4572e649dd45eda8b48fcbcad14e8530ddbf19a973c1fe266cbf73a",
+        "after": "aec5d6bfe4572e649dd45eda8b48fcbcad14e8530ddbf19a973c1fe266cbf73a",
+        "identical": true
+      },
+      "wordmark": {
+        "region": {
+          "left": 500,
+          "top": 200,
+          "width": 580,
+          "height": 170
+        },
+        "before": "f0b54ac33252397263c28f26ccb1e58d8bd3037a6e65f399c4bf0c86b0979f91",
+        "after": "f0b54ac33252397263c28f26ccb1e58d8bd3037a6e65f399c4bf0c86b0979f91",
+        "identical": true
+      },
+      "publicCopyByteIdentical": true
+    },
+    {
+      "name": "x-card",
+      "input": "brand/web/GCL_X_Card_1200x600.jpg",
+      "inputSha256": "c8f59339194420d9d063e34089c5de8eb52854be0a968d3203312bfd77ab59a2",
+      "brandOutput": "brand/web/GCL_X_Card_1200x600.png",
+      "publicOutput": "public/x-card.png",
+      "outputSha256": "101905441f604273c94bd25d069d2d36731e70ea1ff87ce0d4016c7fcea79d23",
+      "dimensions": {
+        "width": 1200,
+        "height": 600
+      },
+      "taglineRegion": {
+        "left": 520,
+        "top": 367,
+        "width": 520,
+        "height": 82
+      },
+      "pixelDelta": {
+        "insideChanged": 31680,
+        "outsideChanged": 0,
+        "changedBounds": {
+          "left": 545,
+          "top": 373,
+          "right": 1004,
+          "bottom": 446
+        }
+      },
+      "gatewayG": {
+        "region": {
+          "left": 145,
+          "top": 85,
+          "width": 310,
+          "height": 455
+        },
+        "before": "0caf429b3d7cdb7b0e51dc00e064ec205e5b63160ed58f04d293cb52accb5208",
+        "after": "0caf429b3d7cdb7b0e51dc00e064ec205e5b63160ed58f04d293cb52accb5208",
+        "identical": true
+      },
+      "wordmark": {
+        "region": {
+          "left": 500,
+          "top": 200,
+          "width": 580,
+          "height": 170
+        },
+        "before": "bb2ab409e863bc5884fd01d0a4132d12486ee8787e8c94bc28f759c8de68308d",
+        "after": "bb2ab409e863bc5884fd01d0a4132d12486ee8787e8c94bc28f759c8de68308d",
+        "identical": true
+      },
+      "publicCopyByteIdentical": true
+    }
+  ],
+  "status": "passed"
+}

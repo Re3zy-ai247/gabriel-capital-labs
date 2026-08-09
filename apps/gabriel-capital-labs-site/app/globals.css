@@ -1,0 +1,2373 @@
+/* ==========================================================================
+   Gabriel Capital Labs — global stylesheet
+   Design tokens + reset + section styles. Hand-rolled CSS, no framework.
+   ========================================================================== */
+
+:root {
+  /* Brand palette (locked — brand/web/gcl-brand-tokens.json) */
+  --gcl-deep-obsidian: #060608;
+  --gcl-obsidian: #0b0d10;
+  --gcl-charcoal: #0f1012;
+  --gcl-stone-silver: #b7b7b7;
+  --gcl-steel: #a7a9ac;
+  --gcl-platinum: #e6e6e6;
+  --gcl-gateway-gold: #d4a146;
+  --gcl-gateway-gold-dim: rgba(212, 161, 70, 0.35);
+
+  --gcl-font-display: var(--font-inter), "Helvetica Neue", Arial, sans-serif;
+
+  /* Layout */
+  --gcl-container-max: 1440px;
+  --gcl-gutter: clamp(1.25rem, 4vw, 4rem);
+  --gcl-section-pad-y: clamp(4rem, 12vw, 9rem);
+  /* R2 defect C — the shared measure between the engagement rows and the
+     footer, so both align to the same left/right edges on desktop
+     instead of the footer spanning the full site container while the
+     rows sit in a narrower centered column. */
+  --gcl-engagement-measure: 56rem;
+
+  /* Motion */
+  --gcl-ease-out: cubic-bezier(0.16, 0.84, 0.44, 1);
+  --gcl-ease-inout: cubic-bezier(0.65, 0, 0.35, 1);
+
+  color-scheme: dark;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--gcl-deep-obsidian);
+  scroll-behavior: auto;
+}
+
+body {
+  margin: 0;
+  background: var(--gcl-deep-obsidian);
+  color: var(--gcl-stone-silver);
+  font-family: var(--gcl-font-display);
+  font-weight: 400;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow-x: clip;
+}
+
+img,
+picture,
+video {
+  display: block;
+  max-width: 100%;
+}
+
+a {
+  color: inherit;
+}
+
+button {
+  font-family: inherit;
+  color: inherit;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+/* D21 — overflow-wrap:anywhere is a targeted allowance for the one kind of
+   content that can actually overflow a narrow viewport (a bare URL token),
+   not a blanket permission to break arbitrary words mid-word everywhere. */
+.footer__link,
+.ecosystem__wing-link {
+  overflow-wrap: anywhere;
+}
+
+ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Respect the platform
+   R3.1 (finding 18) — this used to match `*, *::before, *::after`, so every
+   element on the page paid a style-recalc cost on every scroll frame once R3
+   put real per-frame scroll-driven tweens on the desktop-reduce path (before
+   R3 nothing animated under reduce, so the universal matcher was free —
+   0.6ms for a whole scroll). Measured: desktop-reduce recalc cost was ~3.8x
+   the full-motion path per 1000px scrolled, and deleting this block dropped
+   it 78%, entirely attributable to selector-matching cost, not the four
+   declarations themselves. None of R3's GSAP-driven tweens are CSS
+   transitions/animations (GSAP writes inline styles directly, which this
+   block never touches), so the guard's actual job is narrow: freeze the
+   handful of things that ARE plain CSS transitions/animations — the nav
+   chrome's hover/show transitions, the skip/replay chips, and the ambient
+   glow-breathe keyframe. Listing them explicitly (instead of `*`) keeps the
+   same guarantee for the elements that need it while removing the tax from
+   every element that doesn't. If a future component adds its own CSS
+   transition/animation, add its selector here too — this list is meant to
+   be exhaustive, not representative. */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  .skip-link,
+  .nav,
+  .nav__link,
+  .nav__index-toggle,
+  .nav__overlay,
+  .nav__overlay-close,
+  .nav__overlay-link,
+  .arrival__skip,
+  .arrival__replay,
+  .arrival--static .arrival__glow,
+  .engagement__category-link {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ==========================================================================
+   Accessibility utilities
+   ========================================================================== */
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skip-link {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1000;
+  transform: translateY(-120%);
+  background: var(--gcl-gateway-gold);
+  color: var(--gcl-deep-obsidian);
+  font-weight: 500;
+  padding: 0.9rem 1.5rem;
+  text-decoration: none;
+  transition: transform 0.2s var(--gcl-ease-out);
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+}
+
+:focus-visible {
+  outline: 2px solid var(--gcl-gateway-gold);
+  outline-offset: 3px;
+}
+
+.container {
+  max-width: var(--gcl-container-max);
+  margin-inline: auto;
+  padding-inline: var(--gcl-gutter);
+}
+
+/* Offset anchor-nav scroll targets so the fixed nav never covers the
+   chapter mark at the top of a section. */
+main > section[id] {
+  scroll-margin-top: 84px;
+}
+
+/* ==========================================================================
+   Chapter mark system — shared across sections 2‑7 (Swiss grid, hairline rules)
+   ========================================================================== */
+
+.chapter-mark {
+  display: flex;
+  align-items: baseline;
+  gap: 1rem;
+  font-size: clamp(0.7rem, 1vw, 0.85rem);
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--gcl-steel);
+  font-weight: 400;
+}
+
+/* D9 — the hairline can draw (scaleX 0→1) via this custom property.
+   Default/fallback is 1 (fully drawn, i.e. today's static line) so every
+   section that never sets --gcl-rule-scale is completely unaffected;
+   Ecosystem + Lab set it from 0→1 on desktop-motion scroll-in only.
+   R3 — the reduced twin of that draw: --gcl-rule-opacity fades the same
+   hairline in at full length instead of drawing it. Default/fallback is 1
+   (fully visible) so every consumer that never sets it is pixel-identical;
+   only the desktop-reduce scene builders in Ecosystem/Lab ever set it. */
+.chapter-mark::before {
+  content: "";
+  display: inline-block;
+  width: 2.5rem;
+  height: 1px;
+  background: var(--gcl-gateway-gold);
+  transform: scaleX(var(--gcl-rule-scale, 1));
+  transform-origin: left;
+  opacity: var(--gcl-rule-opacity, 1);
+}
+
+.hairline {
+  border: 0;
+  border-top: 1px solid rgba(183, 183, 183, 0.16);
+  margin: 0;
+}
+
+.hairline-v {
+  position: absolute;
+  top: 0;
+  width: 1px;
+  height: 0%;
+  background: rgba(212, 161, 70, 0.55);
+}
+
+/* ==========================================================================
+   Nav
+   ========================================================================== */
+
+.nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 600;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.1rem var(--gcl-gutter);
+  /* D13 — first stop near-opaque with a taller ramp so page content never
+     reads through the header; blurred for the sliver where it does. */
+  background: linear-gradient(
+    to bottom,
+    rgba(6, 6, 8, 0.98) 0%,
+    rgba(6, 6, 8, 0.9) 55%,
+    rgba(6, 6, 8, 0) 100%
+  );
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-12px);
+  pointer-events: none;
+  transition: opacity 0.6s var(--gcl-ease-out), transform 0.6s var(--gcl-ease-out),
+    visibility 0.6s var(--gcl-ease-out);
+}
+
+.nav--visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+/* R4.1 — F4: re-applies chrome withholding for the duration of a
+   user-initiated desktop REPLAY (an explicit act, so the R3
+   nav-availability concern does not apply — see ArrivalScene.tsx
+   handleReplay). ArrivalScene toggles `html.gcl-replaying` only for a
+   replay's own run and clears it inside awaken(); Nav's own `visible`
+   state/class is never touched, so Nav.tsx needs no change. `!important`
+   is required to beat `.nav--visible`'s equal-specificity class rule via
+   source order alone — this block must win regardless of where either
+   rule sits. */
+html.gcl-replaying .nav {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+/* R4.2 — R-1: the REPLAY chip must withhold itself too — measured on the
+   R4.1 build, the chip's own resting `.arrival__replay--visible` state
+   (opacity:1) stayed on-screen through every replay's P1, at full brand
+   gold, the brightest thing in a frame the beat table specifies as pure
+   obsidian. Visual-only hide (opacity/visibility, same mechanism as the
+   nav rule above) — the element stays in the DOM and keeps its
+   `aria-busy`/`aria-label` (R3.1 Finding 16), it just leaves the tab order
+   and hit-testing for the sequence's duration, same as the nav. Cleared
+   by the same `awaken()` call (ArrivalScene.tsx) that clears
+   `gcl-replaying` itself, on every exit path (natural completion, Skip,
+   Esc, the dead-man watchdogs). `!important` for the same reason as the
+   nav rule: beats `.arrival__replay--visible`'s equal-specificity class
+   rule via source order alone would be fragile if that rule is ever
+   reordered — this must win regardless. */
+html.gcl-replaying .arrival__replay {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  /* The base chip deliberately fades between its resting states. A replay's
+     P1 withhold is a containment boundary, though, not a cosmetic state: a
+     400ms transition left the old gold chip visibly lingering after the
+     replay lock/inert state was already active. Suppress that transition
+     while the replay class owns the chip so all three change atomically. */
+  transition: none !important;
+}
+
+.nav__brand {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  text-decoration: none;
+  min-height: 44px;
+}
+
+.nav__brand-mark {
+  width: 22px;
+  height: auto;
+}
+
+.nav__brand-word {
+  font-size: 0.72rem;
+  letter-spacing: 0.28em;
+  color: var(--gcl-platinum);
+  font-weight: 300;
+  text-transform: uppercase;
+}
+
+.nav__links {
+  display: none;
+  gap: clamp(1rem, 2.5vw, 2.25rem);
+}
+
+@media (min-width: 860px) {
+  .nav__links {
+    display: flex;
+  }
+}
+
+.nav__link {
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--gcl-steel);
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  transition: color 0.25s var(--gcl-ease-out);
+}
+
+.nav__link:hover,
+.nav__link:focus-visible {
+  color: var(--gcl-gateway-gold);
+}
+
+/* D7 — mobile substitute for the primary nav below 860px: a hairline
+   "Index" text button (not an icon-only hamburger) opening a full-bleed
+   editorial chapter list. */
+.nav__index-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0.5rem 0.9rem;
+  background: transparent;
+  border: 1px solid rgba(183, 183, 183, 0.35);
+  color: var(--gcl-stone-silver);
+  font-size: 0.7rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: border-color 0.25s var(--gcl-ease-out), color 0.25s var(--gcl-ease-out);
+}
+
+.nav__index-toggle:hover,
+.nav__index-toggle:focus-visible {
+  border-color: var(--gcl-gateway-gold);
+  color: var(--gcl-gateway-gold);
+}
+
+@media (min-width: 860px) {
+  .nav__index-toggle {
+    display: none;
+  }
+}
+
+.nav__overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 950;
+  display: flex;
+  flex-direction: column;
+  padding: clamp(1.25rem, 5vw, 2.5rem) var(--gcl-gutter);
+  background: var(--gcl-deep-obsidian);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.3s var(--gcl-ease-out), visibility 0.3s var(--gcl-ease-out);
+}
+
+@media (min-width: 860px) {
+  .nav__overlay {
+    display: none;
+  }
+}
+
+.nav__overlay--open {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.nav__overlay-close {
+  align-self: flex-end;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0.6rem 1.1rem;
+  background: transparent;
+  border: 1px solid rgba(183, 183, 183, 0.35);
+  color: var(--gcl-stone-silver);
+  font-size: 0.7rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: border-color 0.25s var(--gcl-ease-out), color 0.25s var(--gcl-ease-out);
+}
+
+.nav__overlay-close:hover,
+.nav__overlay-close:focus-visible {
+  border-color: var(--gcl-gateway-gold);
+  color: var(--gcl-gateway-gold);
+}
+
+.nav__overlay-list {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  margin-top: 2rem;
+}
+
+.nav__overlay-list li {
+  border-top: 1px solid rgba(183, 183, 183, 0.16);
+}
+
+.nav__overlay-list li:last-child {
+  border-bottom: 1px solid rgba(183, 183, 183, 0.16);
+}
+
+.nav__overlay-link {
+  display: flex;
+  align-items: center;
+  min-height: 64px;
+  font-size: clamp(1.6rem, 8vw, 2.75rem);
+  font-weight: 300;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--gcl-platinum);
+  text-decoration: none;
+  transition: color 0.25s var(--gcl-ease-out);
+}
+
+.nav__overlay-link:hover,
+.nav__overlay-link:focus-visible {
+  color: var(--gcl-gateway-gold);
+}
+
+/* ==========================================================================
+   Chapter 1 — Arrival
+   ========================================================================== */
+
+/* R4 — pre-paint scroll lock for the Gateway G Institutional Prologue. Added
+   ONLY by the inline pre-paint script in layout.tsx (first-visit desktop,
+   no hash); ArrivalScene reads the resulting class as its strict source at
+   mount. Removed by the timeline's own awaken() call at P6. A no-JS
+   visitor never gets `html.js`, let alone this class, so the fully composed
+   static page guarantee is untouched. */
+html.gcl-prologue {
+  overflow: hidden;
+  /* R4.2 — R-1/R-2: this animation is the timer-independent 22s watchdog
+     SIGNAL, not an unlock path of its own. The pre-paint script listens for
+     its animationend and routes that signal through the same epoch-checked
+     atomic release primitive as the inline timer. Keeping overflow hidden
+     at every keyframe makes the impossible state structurally impossible:
+     CSS can never release scroll while prologue-owned inert remains. */
+  animation: gcl-prologue-watchdog 22s linear forwards;
+}
+
+@keyframes gcl-prologue-watchdog {
+  from {
+    --gcl-prologue-watchdog-tick: 0;
+  }
+  to {
+    --gcl-prologue-watchdog-tick: 1;
+  }
+}
+
+.arrival {
+  position: relative;
+  min-height: 100svh;
+  background: var(--gcl-deep-obsidian);
+}
+
+.arrival__pin {
+  position: relative;
+  min-height: 100svh;
+  width: 100%;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.arrival__glow {
+  position: absolute;
+  left: 50%;
+  bottom: -10%;
+  width: min(90vw, 1100px);
+  height: 60%;
+  transform: translateX(-50%);
+  /* D16 — registered to the mark's own base rather than a generic bloom:
+     tighter, warmer inner stop, radius keyed to the mark. */
+  background: radial-gradient(
+    ellipse at center,
+    rgba(212, 161, 70, 0.5) 0%,
+    rgba(212, 161, 70, 0.22) 28%,
+    rgba(212, 161, 70, 0.08) 52%,
+    rgba(212, 161, 70, 0) 72%
+  );
+  pointer-events: none;
+}
+
+/* D9 — animation-initial (hidden) states only apply once we know JS is
+   running (see the beforeInteractive script in layout.tsx). Without it,
+   no-JS visitors get the fully visible, fully static composition — the
+   noscript patch this used to require is no longer needed. */
+html.js .arrival__glow {
+  opacity: 0;
+}
+
+/* R2 2.1 — the desktop-only stage-darken overlay for the extended
+   pull-back handoff. Opacity 0 by default so mobile/reduced-motion (which
+   never tween it) never see it; the desktop branch of ArrivalScene's pin
+   fades it to 0.55 across the scrub. */
+.arrival__stage-overlay {
+  position: absolute;
+  inset: 0;
+  background: var(--gcl-deep-obsidian);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* R4 — P1's ambient atmosphere. A prologue-transient sibling, never an
+   ancestor of the mark (Gateway G lock): stacked between the stage-overlay
+   and `.arrival__stage` in DOM order, so it always paints BEHIND the mark,
+   never above or through a filter on it. Rest state 0 in every path that
+   never builds the desktop prologue (mobile, any width once already
+   composed pre-R4) — it is not listed in `.arrival--static` or the
+   mobile-reduce !important block below, so it must stay invisible there by
+   construction, not by an extra override. */
+.arrival__atmosphere {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 60%, rgba(212, 161, 70, 0.05) 0%, rgba(6, 6, 8, 0) 60%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* R4 — P2's gold signal. Centered via inset-inline + margin-inline instead
+   of a transform, so GSAP's scaleX tween owns the transform channel
+   cleanly (no competing centering transform to interpolate against). Rest
+   state 0 — a prologue-transient layer, never present in the composed
+   page at rest. */
+.arrival__signal {
+  position: absolute;
+  top: 50%;
+  inset-inline: 0;
+  margin-inline: auto;
+  width: min(38vw, 340px);
+  height: 1px;
+  background: linear-gradient(
+    to right,
+    rgba(212, 161, 70, 0) 0%,
+    var(--gcl-gateway-gold) 50%,
+    rgba(212, 161, 70, 0) 100%
+  );
+  opacity: 0;
+  pointer-events: none;
+}
+
+.arrival__stage {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: clamp(1.25rem, 3vw, 2.25rem);
+  padding: 0 var(--gcl-gutter);
+  max-width: 62rem;
+}
+
+.arrival__mark-wrap {
+  width: clamp(120px, 22vw, 220px);
+}
+
+html.js .arrival__mark-wrap {
+  opacity: 0;
+  transform: translateY(18px) scale(1.04);
+}
+
+.arrival__mark {
+  width: 100%;
+  height: auto;
+}
+
+.arrival__wordmark {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.arrival__wordmark-top {
+  font-size: clamp(1.9rem, 6.5vw, 4rem);
+  font-weight: 300;
+  letter-spacing: 0.32em;
+  color: var(--gcl-platinum);
+  text-transform: uppercase;
+  margin-inline-start: 0.32em; /* optical centering for letter-spacing */
+}
+
+html.js .arrival__wordmark-top {
+  opacity: 0;
+}
+
+/* R4 — LCP floor. Chrome's largest-contentful-paint heuristic ignores a
+   candidate at EXACTLY opacity:0, which would otherwise leave the
+   prologue's first-visit LCP stranded on the P3 mark reveal (~5-7s in).
+   Scoped to >=1024px (must come after the base opacity:0 rule above, same
+   specificity via a media query, so source order alone decides — see the
+   R3.1 comment further down this file for the precedent) — mobile stays
+   at a true 0, pixel-identical to R3.
+   R4.1 — F8/F10: the wordmark half of this floor is REMOVED. Measured
+   (R4 gate) it bought zero LCP benefit on its own (the mark alone is a
+   sufficient covered candidate) while it was the site's only axe
+   color-contrast violation for ~10.6s and put readable-but-unreadable
+   "GABRIEL" text on screen through P1 ("no UI, no text") and P4 ("the G
+   exists alone"). `.arrival__wordmark-top` now stays a true 0 at every
+   width, matching mobile. The mark's own floor is lowered from 0.011 to
+   0.002 — still a covered LCP candidate, quarter the residual ghost. */
+@media (min-width: 1024px) {
+  html.js .arrival__mark-wrap {
+    opacity: 0.002;
+  }
+}
+
+/* R4.2 — R-3: the composed state comes after both pre-hidden declarations.
+   A crossing-down cleanup can therefore clear every desktop inline style,
+   including markWrap, and land on the native visible 120x130 mobile mark
+   without replacing those residues with another inline transform. */
+html.js .arrival--awake .arrival__mark-wrap {
+  opacity: 1;
+  transform: none;
+}
+
+.arrival__wordmark-bottom {
+  display: flex;
+  align-items: center;
+  gap: clamp(0.6rem, 2vw, 1.1rem);
+  font-size: clamp(0.85rem, 2.2vw, 1.15rem);
+  font-weight: 400;
+  letter-spacing: 0.34em;
+  color: var(--gcl-gateway-gold);
+  text-transform: uppercase;
+}
+
+.arrival__wordmark-bottom::before,
+.arrival__wordmark-bottom::after {
+  content: "";
+  width: clamp(1.25rem, 4vw, 3rem);
+  height: 1px;
+  background: var(--gcl-gateway-gold);
+}
+
+html.js .arrival__wordmark-bottom {
+  opacity: 0;
+}
+
+.arrival__tagline {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.arrival__tagline-line {
+  font-size: clamp(0.95rem, 2.3vw, 1.25rem);
+  font-weight: 300;
+  color: var(--gcl-steel);
+  /* R4.1 — F7: the single line orphaned "Capital." on its own row at
+     320px. `text-wrap: balance` evens the wrap points instead of packing
+     every line but the last; unsupported browsers fall back to normal
+     wrap (today's behavior), so this is a pure enhancement.
+     R4.2 — R-4: `balance` only rebalances wraps that ALREADY exist — at
+     320-375px the flex column itself was narrow enough to force a wrap,
+     so balance had a wrap point to even out; from 393px up the full line
+     fit in one row (measured 335.7px at 393, 1.6x the GABRIEL wordmark),
+     so balance was a no-op and the tagline became the single widest
+     element in the composition, inverting the arrival's hierarchy. A
+     `max-inline-size` below the wordmark's own measure forces the SAME
+     two-line wrap at every phone width 320-430, ch-based so it tracks
+     the fluid clamp() font-size above instead of going stale against it.
+     The width cap itself is phone-scoped below so this ruling cannot alter
+     the accepted tablet/desktop composition. */
+  text-wrap: balance;
+}
+
+@media (max-width: 430px) {
+  .arrival__tagline-line {
+    max-inline-size: 21ch;
+  }
+}
+
+html.js .arrival__tagline-line {
+  opacity: 0;
+}
+
+.arrival__cue {
+  position: absolute;
+  bottom: clamp(1.5rem, 4vh, 3rem);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  color: var(--gcl-steel);
+}
+
+html.js .arrival__cue {
+  opacity: 0;
+}
+
+.arrival__cue-line {
+  width: 1px;
+  height: 34px;
+  background: linear-gradient(to bottom, rgba(183, 183, 183, 0), var(--gcl-steel));
+}
+
+.arrival__cue-label {
+  font-size: 0.62rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+}
+
+.arrival__skip {
+  position: absolute;
+  top: clamp(1rem, 3vh, 1.75rem);
+  right: clamp(1rem, 4vw, 2rem);
+  /* R4.1 — F4c: was 20, below the nav's z-index:600, so a visible nav
+     (post-prologue replay) sat on top of the chip and hijacked its clicks
+     via elementsFromPoint. Raised above the nav so the mandated skip
+     affordance is never occluded or click-hijacked in any state. */
+  z-index: 700;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0.6rem 1.1rem;
+  background: transparent;
+  border: 1px solid rgba(183, 183, 183, 0.35);
+  color: var(--gcl-stone-silver);
+  font-size: 0.7rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: border-color 0.25s var(--gcl-ease-out), color 0.25s var(--gcl-ease-out),
+    opacity 0.25s var(--gcl-ease-out);
+}
+
+.arrival__skip:hover,
+.arrival__skip:focus-visible {
+  /* R4.2 — R-5(a): `!important` on color/border-color too, not just
+     opacity. `html.gcl-prologue .arrival__skip` (a type + two classes,
+     specificity 0-2-1) is MORE specific than this hover/focus-visible
+     rule (two classes/pseudo-classes, 0-2-0) — without `!important` here,
+     that higher-specificity rule's resting bronze would keep winning even
+     while hovered/focused, regardless of source order, silently
+     defeating "full weight on hover/focus." */
+  border-color: var(--gcl-gateway-gold) !important;
+  color: var(--gcl-gateway-gold) !important;
+  /* R4.1 — F9: restores full weight on hover/focus over revealSkip()'s
+     restrained resting autoAlpha (see ArrivalScene.tsx). `!important` is
+     required to beat GSAP's inline opacity write — an ordinary rule can't. */
+  opacity: 1 !important;
+}
+
+.arrival__skip[hidden] {
+  display: none;
+}
+
+/* R4 — P1's "no UI" withhold (Founder a11y ruling, superseding R3 Finding
+   7 for first-visit desktop only — see ArrivalScene.tsx). No !important on
+   either side: the timeline's own inline `autoAlpha` write (revealSkip(),
+   ~3.0s wall) always beats a plain stylesheet rule regardless of
+   specificity, so this only ever suppresses the chip BEFORE that write
+   runs — it can never re-suppress it afterward, and Esc/skip always land
+   on a chip GSAP has already made visible+focusable. */
+html.gcl-prologue .arrival__skip {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* R4.2 — R-5(a): the chip's resting reveal (revealSkip(), ArrivalScene.tsx)
+   used to keep the chip's default steel-gray (`--gcl-stone-silver`) at
+   opacity 0.65 — measured brightest composited pixel RGB(121,121,122),
+   simple-luma 121 (0.2126R+0.7152G+0.0722B), ABOVE the P2 gold signal's
+   own measured peak RGB(120,91,42), simple-luma ~94. A cool-gray control
+   read brighter than the phase's own "restrained gold signal, almost
+   invisible" hero element.
+   A straight alpha-blend of the brand `--gcl-gateway-gold` (212,161,70)
+   over the P1/P2 background can't fix this with real margin either way:
+   the composited luma needed to drop clearly below 94 crosses under the
+   >=3:1 WCAG contrast floor at almost exactly the same alpha (both
+   metrics are dominated by the same green channel), leaving a margin as
+   thin as the one this exact finding flagged as a defect. This is a
+   distinct, deliberately warmer/lower-green solid (a restrained bronze,
+   not the full brand gold — full brand gold is reserved for :hover/
+   :focus-visible below). At revealSkip's corrected 0.87 resting opacity,
+   it composites over #060608 near RGB(166,57,23): about 3.10:1 contrast,
+   while its relative luminance remains below the signal centre near
+   RGB(119,91,42), about 3.20:1. Re-measure both composited values against
+   real rendered pixels if either this color or that opacity changes. */
+html.gcl-prologue .arrival__skip {
+  color: rgb(190, 65, 25);
+  border-color: rgb(190, 65, 25);
+}
+
+/* D1 — position:fixed, not absolute: the arrival section's own box grows
+   far taller than 100svh once its pin-spacer is inserted (the pull-back
+   pin adds ~100vh of scroll distance as real document height), which
+   pushed this chip's absolute-relative-to-`.arrival` "bottom" anchor deep
+   below the fold at scrollY 0. Fixed positioning is always relative to the
+   viewport, so the chip can never end up somewhere a browser's native
+   focus-scroll would need to scroll the page to reach. */
+.arrival__replay {
+  position: fixed;
+  bottom: clamp(1rem, 3vh, 1.75rem);
+  left: clamp(1rem, 4vw, 2rem);
+  z-index: 20;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0.6rem 1.1rem;
+  background: transparent;
+  border: 1px solid rgba(183, 183, 183, 0.35);
+  color: var(--gcl-stone-silver);
+  font-size: 0.7rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  cursor: pointer;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: border-color 0.25s var(--gcl-ease-out), color 0.25s var(--gcl-ease-out),
+    opacity 0.4s var(--gcl-ease-out), visibility 0.4s var(--gcl-ease-out);
+}
+
+/* D6 — visibility:hidden (not just opacity:0/pointer-events:none) so the
+   chip is excluded from tab order while it isn't shown yet. */
+.arrival__replay--visible {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.arrival__replay:hover,
+.arrival__replay:focus-visible {
+  border-color: var(--gcl-gateway-gold);
+  color: var(--gcl-gateway-gold);
+}
+
+/* D12 — once the arrival scene has scrolled fully past, hide the scroll
+   cue + replay chip so neither ever collides with the fixed nav or
+   chapter 2's chrome. !important beats the GSAP-authored inline opacity
+   on the cue (animated by the intro timeline). */
+.arrival--offscreen .arrival__cue,
+.arrival--offscreen .arrival__replay {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+/* Reduced motion / already-seen / no-JS: everything simply visible, no transforms.
+   This CSS rule is the guarantee — it does not depend on JS running. */
+.arrival--static .arrival__glow,
+.arrival--static .arrival__mark-wrap,
+.arrival--static .arrival__wordmark-top,
+.arrival--static .arrival__wordmark-bottom,
+.arrival--static .arrival__tagline-line,
+.arrival--static .arrival__cue {
+  opacity: 1;
+  transform: none;
+}
+
+/* R3 — scoped to <1024px only. Below 1024, Arrival keeps the pre-R3
+   static-jump guarantee: everything simply visible, !important beating any
+   inline style. At >=1024 under reduce, Arrival now runs a real pinned
+   cinematic scene (opacity-only cross-fade ladder, see ArrivalScene.tsx) —
+   these !important declarations would beat GSAP's inline opacity tweens and
+   silently flatten that ladder back into a no-op, recreating D-3. */
+@media (max-width: 1023.98px) and (prefers-reduced-motion: reduce) {
+  .arrival__glow,
+  .arrival__mark-wrap,
+  .arrival__wordmark-top,
+  .arrival__wordmark-bottom,
+  .arrival__tagline-line,
+  .arrival__cue {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
+
+/* R2 1.3 — the ONE ambient animation permitted sitewide: on the seen-path
+   static arrival (repeat visits skip the intro and render it composed
+   immediately), an extremely slow glow breath keeps the hero from reading
+   as a dead screenshot. Compositor-cheap (opacity only); the global
+   prefers-reduced-motion rule above (animation-duration: 0.001ms !important)
+   already neutralizes it under reduced motion, and most browsers already
+   throttle/pause CSS animations in backgrounded tabs on their own — no
+   extra JS loop needed for either case. */
+@keyframes gcl-glow-breathe {
+  0%,
+  100% {
+    opacity: 0.85;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.arrival--static .arrival__glow {
+  animation: gcl-glow-breathe 8s ease-in-out infinite;
+}
+
+/* R4 — P6 "the institution awakens": once the prologue's `awaken()` call
+   fires (or the composed timeline is jumped straight there via
+   progress(1) on a seen/hash visit — same continuity mechanism either
+   way), the ambient atmosphere breathes almost imperceptibly.
+   R4.2 — R-3: the rule that starts this animation is now scoped to
+   `(min-width: 1024px) and (prefers-reduced-motion: no-preference)` —
+   TWO fixes in one gate, corrected after both were measured wrong:
+   (1) `.arrival--awake` never gets removed on a 1024px breakpoint-crossing
+   abort (ArrivalScene.tsx handleBreakpointChange plays the desktop
+   timeline to its end, which sets it), so without a width scope the
+   breathe kept running on the MOBILE composition a visitor lands on after
+   crossing down — a prologue-only layer bleeding into a page mobile never
+   otherwise builds. (2) the previous comment here claimed this was "the
+   same precedent as `.arrival--static .arrival__glow` above" as the
+   reason it was deliberately left OUT of the `prefers-reduced-motion:
+   reduce` guard block near the top of this file — that claim was false:
+   glow-breathe IS listed in that block (`.arrival--static .arrival__glow`
+   is right there in its selector list) and measured `animation-name: none`
+   under reduce; this rule, unscoped, kept running under reduce with a
+   measured non-zero opacity delta. Gating the animation declaration
+   itself behind `(prefers-reduced-motion: no-preference)` makes it
+   structurally impossible for the animation to ever start under reduce,
+   at any width — a stronger guarantee than adding a selector to the
+   freeze list further up, and it needed the width scope anyway for (1). */
+@keyframes gcl-atmosphere-breathe {
+  from {
+    opacity: 0.06;
+  }
+  to {
+    opacity: 0.1;
+  }
+}
+
+@media (min-width: 1024px) and (prefers-reduced-motion: no-preference) {
+  .arrival--awake .arrival__atmosphere {
+    animation: gcl-atmosphere-breathe 9s ease-in-out infinite alternate;
+  }
+}
+
+/* ==========================================================================
+   Chapter 2 — The Institution
+   ========================================================================== */
+
+.institution {
+  position: relative;
+  background: linear-gradient(to bottom, var(--gcl-deep-obsidian), var(--gcl-charcoal));
+  padding-block: var(--gcl-section-pad-y);
+  overflow: hidden;
+}
+
+/* R2 defect A — a dedicated three-track frame (rule / gutter / content)
+   wraps the existing 12-col grid, so the vertical rule gets its own
+   column and can never share an x-position with any text. */
+.institution__frame {
+  position: relative;
+}
+
+@media (min-width: 960px) {
+  .institution__frame {
+    display: grid;
+    grid-template-columns: [line] 2px [gutter] clamp(2rem, 4vw, 4.5rem) [content] minmax(0, 1fr);
+    align-items: stretch;
+  }
+}
+
+.institution__grid {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: var(--gcl-gutter);
+}
+
+@media (min-width: 960px) {
+  .institution__grid {
+    grid-column: content;
+  }
+}
+
+/* D2 — the pinned scene fills the viewport EXACTLY (not min-height, real
+   height, with an overflow:hidden guard) on desktop-motion only, scoped to
+   the same no-preference query the pin itself is gated behind — reduced
+   motion at a desktop width gets the plain static flow, no forced height.
+   `.institution`'s own padding-block is zeroed here too: it was the
+   leading offset that put the pinned box's top ~64–144px below the
+   viewport top once it went `position:fixed` (GSAP pins an element at
+   whatever on-screen position it already occupied) — that offset is what
+   pushed the second reveal beat below the fold. The mark/paragraphs' own
+   margins are zeroed in favor of the grid's own row-gap, so spacing isn't
+   double-counted, and the whole composition comfortably fits inside
+   100svh at every desktop-motion width down to 1024×768.
+
+   The heading also gets its OWN, smaller font-size clamp here (measured
+   empirically, not guessed): the site-wide clamp(1.6rem,4.6vw,3.4rem)
+   clamps to its 3.4rem ceiling by ~1183px viewport width, and from there
+   up the column it's laid out in (a fixed fraction of the viewport) grows
+   more slowly than the now-fixed font would need — at 1280px specifically
+   that mismatch was enough to force the longest authored line to wrap
+   into two visual lines, blowing the heading block from ~280px to 557px
+   tall and pushing the second reveal beat below the fold. A fixed, modest
+   clamp(1.6rem,3vw,1.9rem) never reaches a size that wraps any authored
+   line at any desktop-motion width 1024–1920 (verified live), with the
+   compression only applying to the pinned scene — the static/mobile
+   heading keeps its original, larger display size.
+
+   R3 — moved off the no-preference-only query to plain (min-width: 1024px).
+   This is pinned-STAGING geometry, not motion: the desktop-reduce path now
+   runs the same pinned scene (InstitutionSection.tsx buildScene(true)) and
+   needs the identical 100svh grid/typography to stand on. Only <1024px
+   (mobile, all motion preferences) is exempt now. */
+@media (min-width: 1024px) {
+  html.js .institution {
+    padding-block: 0;
+  }
+  html.js .institution__grid {
+    height: 100svh;
+    min-height: 100svh;
+    overflow: hidden;
+    align-content: center;
+    row-gap: clamp(1.5rem, 3vw, 2.5rem);
+  }
+  html.js .institution__heading {
+    font-size: clamp(1.6rem, 3vw, 1.9rem);
+  }
+  html.js .institution__mark {
+    margin-bottom: 0;
+  }
+  html.js .institution__paragraphs {
+    margin-top: 0;
+  }
+}
+
+.institution__mark {
+  grid-column: 1 / -1;
+  margin-bottom: clamp(2rem, 6vw, 4rem);
+}
+
+.institution__heading {
+  grid-column: 1 / -1;
+  font-size: clamp(1.6rem, 4.6vw, 3.4rem);
+  font-weight: 300;
+  line-height: 1.28;
+  color: var(--gcl-platinum);
+  max-width: 52rem;
+  text-wrap: balance;
+}
+
+@media (min-width: 960px) {
+  .institution__heading {
+    grid-column: 2 / span 9;
+  }
+  .institution__paragraphs {
+    grid-column: 6 / span 6;
+  }
+}
+
+/* D11 — the mask box is the line box PLUS a little descender padding, so
+   a letter like "g"/"y"/"p" translating up into view during the scrub
+   never gets its descender sliced by the overflow:hidden edge; the
+   negative margin-bottom cancels the padding's added space so line
+   spacing above/below is unaffected. */
+.institution__heading-line {
+  display: block;
+  overflow: hidden;
+  padding-bottom: 0.15em;
+  margin-bottom: -0.15em;
+}
+
+.institution__heading-line span {
+  display: block;
+}
+
+html.js .institution__heading-line span {
+  transform: translateY(110%);
+}
+
+.institution__paragraphs {
+  grid-column: 1 / -1;
+  margin-top: clamp(2.5rem, 6vw, 4rem);
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  max-width: 34rem;
+}
+
+.institution__paragraphs p {
+  font-size: clamp(0.95rem, 1.4vw, 1.05rem);
+  color: var(--gcl-stone-silver);
+}
+
+/* R2 defect A — a real grid item in the [line] track (see
+   .institution__frame above) rather than an absolutely-positioned line
+   guessed to line up with the gutter: it is now structurally impossible
+   for this to overlap the chapter-mark or heading text at any width,
+   because grid tracks can't overlap by definition. */
+.institution__rule-v {
+  display: none;
+  position: relative;
+  width: 2px;
+  background: rgba(183, 183, 183, 0.14);
+}
+
+@media (min-width: 960px) {
+  .institution__rule-v {
+    display: block;
+    grid-column: line;
+  }
+}
+
+.institution__rule-v-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 0%;
+  background: rgba(212, 161, 70, 0.5);
+}
+
+/* ==========================================================================
+   Chapter 3 — Mission Architecture
+   ========================================================================== */
+
+.mission {
+  position: relative;
+  background: var(--gcl-charcoal);
+  padding-block: var(--gcl-section-pad-y);
+}
+
+.mission__header {
+  margin-bottom: clamp(3rem, 8vw, 6rem);
+}
+
+.mission__body {
+  position: relative;
+}
+
+/* D3 — a plain div animated via scaleY (transform-origin:top) rather than
+   an SVG path: no viewBox/dasharray unit mismatch to get wrong, and no way
+   for it to render as disconnected dashes. Positioned at the seam between
+   the alternating pillar columns on desktop (left:44%, matching
+   .mission__pillar--right's margin-left below) so it runs right up to
+   where each column's text starts without ever running through it. */
+.mission__connector {
+  position: absolute;
+  left: 1.4rem;
+  top: 0;
+  width: 2px;
+  height: 100%;
+  background: var(--gcl-gateway-gold);
+  transform-origin: top;
+  pointer-events: none;
+}
+
+html.js .mission__connector {
+  transform: scaleY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.js .mission__connector {
+    transform: scaleY(1) !important;
+  }
+}
+
+@media (min-width: 960px) {
+  .mission__connector {
+    left: 44%;
+  }
+}
+
+/* R2 2.3/defect B — on desktop-motion the old full-height single-center
+   connector is replaced by two short, measured connector segments (drawn
+   by MissionSection.tsx) that only ever span the local gutter between two
+   consecutive pillars — never a full-height center divider.
+
+   R3 / D-2 fix — moved off the no-preference-only query to plain
+   (min-width: 1024px). Desktop-reduce now runs the SAME pinned three-pillar
+   scene and measures the same segments (MissionSection.tsx buildScene(true)),
+   so it must never fall back to this full-height divider either — that was
+   the exact "center vertical line reads like a divider" defect (2px x
+   1170px at x=634 on a 1440 viewport, 80.2% of the section height). The
+   `prefers-reduced-motion: reduce` override above (transform: scaleY(1)
+   !important) stays untouched: below 1024 it's still the mobile-reduce
+   guarantee; at >=1024 the element is display:none so the override is
+   inert there regardless of motion preference. */
+@media (min-width: 1024px) {
+  html.js .mission__connector {
+    display: none;
+  }
+}
+
+.mission__connector-seg {
+  position: absolute;
+  height: 2px;
+  width: 0;
+  background: var(--gcl-gateway-gold);
+  transform-origin: left center;
+  pointer-events: none;
+  display: none;
+}
+
+.mission__pillar {
+  position: relative;
+  padding-block: clamp(2.25rem, 6vw, 4.25rem);
+  padding-left: 3.5rem;
+}
+
+@media (min-width: 960px) {
+  .mission__pillar {
+    width: 62%;
+    padding-left: 0;
+  }
+  .mission__pillar--right {
+    width: 56%;
+    margin-left: 44%;
+  }
+}
+
+/* R2 2.3 — pinned connected-scenes treatment: the three pillars occupy
+   alternating horizontal thirds (widths/margins above) of the SAME
+   viewport-height rect rather than three separate vertical bands, so one
+   can recede (depth cue) while the next enters. Gated to desktop-motion
+   only; mobile and reduced-motion keep the plain stacked layout. */
+/* D3 — the pin now aligns flush to the viewport top the instant it
+   engages (JS side: the scrollTrigger's own trigger IS the pin element,
+   start:"top top" — see MissionSection.tsx), so the chapter-mark is
+   brought INTO the pinned composition as a small absolute top band
+   instead of scrolling past separately above it. Pillar content no
+   longer centers in the FULL 100svh box (which put its vertical center
+   too low and left 34%+ empty space above it) — it top-aligns after a
+   fixed, viewport-height-relative offset instead, which keeps both the
+   empty-space-above and center-within-middle-50% acceptance bounds
+   satisfied at every desktop-motion height from 768 to 1080.
+
+   R3 — moved off the no-preference-only query to plain (min-width: 1024px).
+   This absolute pillar-stack + pinned-header staging is layout correctness
+   BOTH motion policies need — desktop-reduce pins the identical stage
+   (MissionSection.tsx buildScene(true)), just with opacity/scale-neutral
+   transitions instead of recede/enter transforms. Only <1024px is exempt.
+
+   R3.1 (finding 10) — gated on `gsap-ready`, not `js`. `html.js` is set by a
+   blocking inline script in layout.tsx and is present even when the chunk
+   carrying MissionSection's own mount effect fails to load — verified: with
+   that chunk aborted, `html.js` still lands, this staging still applied
+   (two pillars absolutely stacked at the same left:0/width:44% with no JS
+   left to run to separate/animate them), and they rendered fully opaque,
+   directly on top of each other. `gsap-ready` is set from
+   InstitutionSection's mount effect (see InstitutionSection.tsx — same
+   pattern lib/gsap.ts already documents for scheduleScrollTriggerRefresh:
+   "call this once, from any single mounted component") immediately after
+   `ensureGsapRegistered()`, i.e. only once React has actually hydrated and a
+   GSAP-driving effect has actually run. If that never happens, this block
+   never applies and the pillars fall back to the plain, non-absolute
+   stacked flow below — degraded but readable, never overlapping. */
+@media (min-width: 1024px) {
+  html.gsap-ready .mission__pin {
+    position: relative;
+    height: 100svh;
+    min-height: 560px;
+    overflow: hidden;
+    display: block;
+  }
+  html.gsap-ready .mission__header {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 2;
+    margin-bottom: 0;
+    padding-top: clamp(1.5rem, 3vh, 2.25rem);
+  }
+  /* R2 defect B — the 62% / 56%+44% widths above were sized for the
+     mobile STACKED layout (one pillar per row, never sharing a viewport
+     with another). Displayed simultaneously at this desktop-only
+     absolute-stack, that same width pair let the display-size titles
+     genuinely overlap (measured: INTELLIGENCE's own text ran past
+     INFRASTRUCTURE's own text start). A true non-overlapping split with
+     a real protected gutter between the two halves. */
+  html.gsap-ready .mission__pillar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: auto;
+    width: 44%;
+    height: 100%;
+    margin-left: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    /* D3 — the ceiling here originally clamped out at 8rem, which bound
+       at viewport heights ≥~820px (20vh > 8rem past that point) — so the
+       padding stopped growing with the viewport while the viewport kept
+       growing, and the active pillar's measured center drifted below the
+       required middle-50% band by 1080px tall (0.224, need ≥0.25).
+       14rem never actually binds across the whole tested 768–1080px
+       range (20vh tops out at 216px there, under 14rem/224px), so the
+       offset keeps scaling with the viewport at every tested height —
+       verified live: center ratio 0.30 (768) / 0.32 (900) / 0.30 (1080),
+       empty-space-above 20–22% at all three (both comfortably inside the
+       required bounds, not just barely over the line). */
+    padding-top: clamp(5rem, 20vh, 14rem);
+    padding-bottom: 0;
+  }
+  html.gsap-ready .mission__pillar--right {
+    left: auto;
+    right: 0;
+    width: 44%;
+    margin-left: 0;
+  }
+}
+
+.mission__pillar-numeral {
+  font-size: 0.75rem;
+  letter-spacing: 0.2em;
+  color: var(--gcl-gateway-gold);
+  margin-bottom: 0.75rem;
+  display: block;
+}
+
+.mission__pillar-title {
+  font-size: clamp(1.6rem, 7vw, 3.75rem);
+  font-weight: 300;
+  letter-spacing: 0.04em;
+  color: var(--gcl-platinum);
+  margin-bottom: 1rem;
+}
+
+.mission__pillar-def {
+  max-width: 34rem;
+  color: var(--gcl-stone-silver);
+  font-size: clamp(0.95rem, 1.4vw, 1.1rem);
+}
+
+/* ==========================================================================
+   Chapter 4 — Ecosystem Architecture
+   ========================================================================== */
+
+.ecosystem {
+  position: relative;
+  background: var(--gcl-obsidian);
+  padding-block: var(--gcl-section-pad-y);
+}
+
+.ecosystem__header {
+  margin-bottom: clamp(2.5rem, 6vw, 4.5rem);
+}
+
+.ecosystem__intro {
+  font-size: clamp(1.1rem, 2vw, 1.4rem);
+  color: var(--gcl-platinum);
+  font-weight: 300;
+  margin-top: 1rem;
+}
+
+/* D9 — the mask wrapper for the desktop-motion line-reveal, same
+   technique as Institution's heading lines; on mobile/reduced-motion the
+   line just sits at rest, no visual change from the plain heading. */
+.ecosystem__intro-mask {
+  display: block;
+  overflow: hidden;
+}
+
+.ecosystem__intro-line {
+  display: block;
+}
+
+@media (min-width: 1024px) and (prefers-reduced-motion: no-preference) {
+  html.js .ecosystem__intro-line {
+    transform: translateY(110%);
+  }
+}
+
+.ecosystem__wing {
+  position: relative;
+  padding-block: clamp(2.75rem, 7vw, 5rem);
+  border-top: 1px solid rgba(183, 183, 183, 0.14);
+  clip-path: inset(0 0 0 0);
+}
+
+.ecosystem__wing:first-of-type {
+  border-top: none;
+}
+
+/* R2 2.4 — a real drawable hairline (desktop-motion only) layered over
+   the static border-top above, rather than trying to animate the border
+   itself; scaleX 0→1, transform-origin left. Invisible by default (the
+   static border already reads fine on mobile/reduced-motion). */
+.ecosystem__wing-rule {
+  position: absolute;
+  top: -1px;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--gcl-gateway-gold);
+  transform-origin: left;
+  transform: scaleX(0);
+  pointer-events: none;
+  display: none;
+}
+
+/* R3 — moved off the no-preference-only query to plain (min-width: 1024px).
+   The desktop-reduce wing entrance also draws this rule (as an opacity
+   fade at a CSS-preset scaleX(1) rather than a scaleX draw — see ADD 2
+   below), so it must exist at this width regardless of motion preference.
+   Mobile keeps display:none in both cases. */
+@media (min-width: 1024px) {
+  html.js .ecosystem__wing-rule {
+    display: block;
+  }
+}
+
+.ecosystem__wing-top {
+  display: grid;
+  grid-template-columns: 3rem minmax(0, 1fr);
+  align-items: baseline;
+  gap: 1.25rem;
+  margin-bottom: 1rem;
+}
+
+.ecosystem__wing-numeral {
+  font-size: 0.8rem;
+  letter-spacing: 0.18em;
+  color: var(--gcl-steel);
+}
+
+.ecosystem__wing-name {
+  font-size: clamp(1.6rem, 6vw, 3.6rem);
+  font-weight: 300;
+  letter-spacing: 0.08em;
+  color: var(--gcl-platinum);
+  text-transform: uppercase;
+}
+
+.ecosystem__wing-designation {
+  font-size: clamp(0.95rem, 1.6vw, 1.15rem);
+  color: var(--gcl-stone-silver);
+  margin-bottom: 0.85rem;
+}
+
+.ecosystem__wing-status {
+  font-size: 0.7rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gcl-gateway-gold);
+  margin-bottom: 0.85rem;
+  display: inline-block;
+}
+
+.ecosystem__wing-desc {
+  /* D10 — body-copy measure capped at 38rem sitewide. */
+  max-width: 38rem;
+  color: var(--gcl-stone-silver);
+  font-size: 0.98rem;
+  margin-bottom: 0.75rem;
+}
+
+.ecosystem__wing-link {
+  color: var(--gcl-platinum);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  font-size: 0.95rem;
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+}
+
+.ecosystem__wing-link:hover,
+.ecosystem__wing-link:focus-visible {
+  color: var(--gcl-gateway-gold);
+}
+
+.ecosystem__wing--inset {
+  border-top: none;
+}
+
+.ecosystem__wing--inset::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 15%;
+  right: 0;
+  height: 1px;
+  background: rgba(183, 183, 183, 0.14);
+}
+
+/* D10 — at ultra-wide viewports each wing's content clustered at the top
+   of its own block with a large, unbalanced void below (500–810px at
+   1920). Give the wing a viewport-relative minimum height and vertically
+   center its content within it — balanced whitespace above/below instead
+   of a void underneath. */
+@media (min-width: 1680px) {
+  .ecosystem__wing {
+    min-height: 58vh;
+    display: flex;
+    align-items: center;
+  }
+  .ecosystem__wing > .container {
+    width: 100%;
+  }
+}
+
+/* ==========================================================================
+   Chapter 5 — The Lab
+   ========================================================================== */
+
+.lab {
+  position: relative;
+  background: var(--gcl-charcoal);
+  padding-block: var(--gcl-section-pad-y);
+  overflow: hidden;
+}
+
+.lab__grid-bg {
+  position: absolute;
+  /* R2 2.5 — oversized headroom (inset beyond the section edges) so the
+     desktop parallax drift (±2% translate, transform-only) never reveals
+     a hard edge; a plain background-position tween would repaint on
+     every scroll frame, this is compositor-only. */
+  inset: -10% -10% -10% -10%;
+  opacity: 0.03;
+  background-image: linear-gradient(rgba(183, 183, 183, 1) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(183, 183, 183, 1) 1px, transparent 1px);
+  background-size: 64px 64px;
+  pointer-events: none;
+}
+
+.lab__header {
+  position: relative;
+  margin-bottom: clamp(2.5rem, 6vw, 4.5rem);
+}
+
+.lab__intro {
+  font-size: clamp(1.1rem, 2vw, 1.4rem);
+  color: var(--gcl-platinum);
+  font-weight: 300;
+  margin-top: 1rem;
+}
+
+/* D9 — same mask-reveal treatment as Ecosystem's intro heading. */
+.lab__intro-mask {
+  display: block;
+  overflow: hidden;
+}
+
+.lab__intro-line {
+  display: block;
+}
+
+@media (min-width: 1024px) and (prefers-reduced-motion: no-preference) {
+  html.js .lab__intro-line {
+    transform: translateY(110%);
+  }
+}
+
+.lab__index {
+  position: relative;
+}
+
+.lab__row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 3.5rem 1fr;
+  align-items: baseline;
+  gap: 1.25rem;
+  padding-block: 1.25rem;
+  border-top: 1px solid rgba(183, 183, 183, 0.14);
+}
+
+/* R2 2.5 — a real drawable hairline layered over the static border-top,
+   desktop-motion only; scaleX 0→1 rather than fading in with the row. */
+.lab__row-rule {
+  position: absolute;
+  top: -1px;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--gcl-gateway-gold-dim);
+  transform-origin: left;
+  transform: scaleX(0);
+  pointer-events: none;
+  display: none;
+}
+
+/* R3 — moved off the no-preference-only query to plain (min-width: 1024px).
+   Same reasoning as .ecosystem__wing-rule above: the desktop-reduce row
+   entrance also fades this rule in (at a CSS-preset scaleX(1)), so it must
+   exist at this width regardless of motion preference. */
+@media (min-width: 1024px) {
+  html.js .lab__row-rule {
+    display: block;
+  }
+}
+
+/* D9 — without JS, all seven rows render visible immediately. */
+html.js .lab__row {
+  opacity: 0;
+  transform: translateY(14px);
+}
+
+/* R3.1 (findings 21 + 23) — the desktop-reduce cinematic path's OWN
+   pre-hidden states. The no-preference path hides these elements with a
+   transform (translateY, scale) because the reveal itself IS the transform
+   settling to rest — that is exactly the motion forbidden under reduce. The
+   reduce path hides the same elements with opacity alone; the section's
+   buildScene(true) fades them in on the same scrub/trigger, never writing a
+   transform.
+
+   This block MUST come after every other rule targeting the same selectors
+   at the same specificity (html.js .institution__heading-line span above,
+   html.js .lab__row above) — media queries add zero specificity, so source
+   order alone decides the winner, and this block used to sit BEFORE both of
+   those, making its overrides dead CSS. Verified live under desktop-reduce:
+   before this move, computed transform was translateY(110%)/translateY(14px)
+   (the earlier, losing declarations never applied); after the move it is
+   `none` for both, matching what the comment always claimed. Move this block
+   again if a future edit adds another same-specificity rule for any of these
+   selectors later in the file. */
+@media (min-width: 1024px) and (prefers-reduced-motion: reduce) {
+  html.js .arrival__mark-wrap {
+    transform: none;
+  }
+  html.js .institution__heading-line span {
+    transform: none;
+    opacity: 0;
+  }
+  html.js .ecosystem__intro-line {
+    opacity: 0;
+  }
+  html.js .lab__intro-line {
+    opacity: 0;
+  }
+  html.js .lab__row {
+    transform: none;
+  }
+  html.js .ecosystem__wing-rule {
+    transform: scaleX(1);
+    opacity: 0;
+  }
+  html.js .lab__row-rule {
+    transform: scaleX(1);
+    opacity: 0;
+  }
+}
+
+.lab__row:last-child {
+  border-bottom: 1px solid rgba(183, 183, 183, 0.14);
+}
+
+@media (min-width: 720px) {
+  .lab__row {
+    grid-template-columns: 5rem 1fr;
+  }
+}
+
+.lab__row-numeral {
+  font-size: 0.85rem;
+  color: var(--gcl-gateway-gold);
+  letter-spacing: 0.1em;
+}
+
+.lab__row-title {
+  font-size: clamp(1.15rem, 2.4vw, 1.7rem);
+  font-weight: 300;
+  color: var(--gcl-platinum);
+}
+
+/* ==========================================================================
+   Chapter 6 — Principles
+   ========================================================================== */
+
+/* D9 / D4 — the DEFAULT (no `.js`, or reduced motion) rendering is the
+   complete static editorial list: every principle its own block, nothing
+   pinned, nothing absolutely stacked. The pinned single-visible-at-a-time
+   interaction is an enhancement added only under `html.js`, and even then
+   GSAP (not a CSS transition) owns the actual cross-fade — see D4 in
+   PrinciplesSection.tsx (autoAlpha tweens with overwrite:'auto', so only
+   one item is ever mid-transition at a time). */
+.principles {
+  position: relative;
+  background: var(--gcl-deep-obsidian);
+}
+
+.principles__pin {
+  position: static;
+  height: auto;
+  display: block;
+  padding-block: var(--gcl-section-pad-y);
+}
+
+.principles__header {
+  position: relative;
+  text-align: center;
+  margin-bottom: clamp(2rem, 6vw, 3.5rem);
+}
+
+.principles__item {
+  position: static;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: clamp(2rem, 6vw, 3.5rem) var(--gcl-gutter);
+  border-top: 1px solid rgba(183, 183, 183, 0.14);
+  opacity: 1;
+  visibility: visible;
+}
+
+.principles__item:last-child {
+  border-bottom: 1px solid rgba(183, 183, 183, 0.14);
+}
+
+.principles__progress {
+  display: none;
+}
+
+/* R3.1 (finding 10) — split in two, by width, instead of one unconditional
+   block. The original was a single `html.js`-gated block applying at every
+   width. `html.js` lands even when the chunk carrying PrinciplesSection's
+   own mount effect fails to load — with that effect never running, nothing
+   ever adds `principles__item--active` or drives the cross-fade, so under
+   the old gate `.principles__pin`/`.principles__item` still went absolute +
+   opacity:0, and 4 of 5 principles (everything but whichever one first
+   paint happens to leave inert) simply vanished. That failure mode was only
+   ever measured/fixed at desktop widths (>=1024px), so ONLY the desktop
+   copy below is regated to `gsap-ready` (set from InstitutionSection's
+   mount effect right after `ensureGsapRegistered()` — see the comment
+   there and in lib/gsap.ts on scheduleScrollTriggerRefresh for the
+   established one-shared-marker pattern). The <1024px copy keeps the
+   original `html.js` gate and declarations byte-for-byte, so mobile's pin
+   count/timing is provably untouched by this fix. */
+@media (max-width: 1023.98px) {
+  html.js .principles__pin {
+    position: relative;
+    height: 100svh;
+    min-height: 520px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    padding-block: 0;
+  }
+
+  html.js .principles__header {
+    position: absolute;
+    top: clamp(2rem, 6vh, 4rem);
+    left: 0;
+    right: 0;
+    margin-bottom: 0;
+  }
+
+  html.js .principles__item {
+    position: absolute;
+    inset: 0;
+    padding: 0 var(--gcl-gutter);
+    border-top: none;
+    opacity: 0;
+    visibility: hidden;
+  }
+
+  html.js .principles__item:last-child {
+    border-bottom: none;
+  }
+
+  html.js .principles__item--active {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  html.js .principles__progress {
+    display: flex;
+  }
+}
+
+@media (min-width: 1024px) {
+  html.gsap-ready .principles__pin {
+    position: relative;
+    height: 100svh;
+    min-height: 520px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    padding-block: 0;
+  }
+
+  html.gsap-ready .principles__header {
+    position: absolute;
+    top: clamp(2rem, 6vh, 4rem);
+    left: 0;
+    right: 0;
+    margin-bottom: 0;
+  }
+
+  html.gsap-ready .principles__item {
+    position: absolute;
+    inset: 0;
+    padding: 0 var(--gcl-gutter);
+    border-top: none;
+    opacity: 0;
+    visibility: hidden;
+  }
+
+  html.gsap-ready .principles__item:last-child {
+    border-bottom: none;
+  }
+
+  html.gsap-ready .principles__item--active {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  html.gsap-ready .principles__progress {
+    display: flex;
+  }
+}
+
+.principles__item-numeral {
+  font-size: 0.8rem;
+  letter-spacing: 0.2em;
+  color: var(--gcl-steel);
+  margin-bottom: 1rem;
+}
+
+.principles__item-title {
+  font-size: clamp(1.9rem, 7vw, 5rem);
+  font-weight: 300;
+  color: var(--gcl-gateway-gold);
+  letter-spacing: 0.05em;
+  margin-bottom: 1rem;
+  text-transform: uppercase;
+}
+
+.principles__item-statement {
+  font-size: clamp(1.1rem, 2.6vw, 1.6rem);
+  font-weight: 300;
+  color: var(--gcl-platinum);
+}
+
+.principles__progress {
+  position: absolute;
+  bottom: clamp(2rem, 6vh, 3.5rem);
+  left: 50%;
+  transform: translateX(-50%);
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.principles__progress-track {
+  width: clamp(140px, 24vw, 240px);
+  height: 1px;
+  background: rgba(183, 183, 183, 0.24);
+  position: relative;
+}
+
+.principles__progress-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  background: var(--gcl-gateway-gold);
+  width: 20%;
+}
+
+.principles__progress-label {
+  font-size: 0.7rem;
+  letter-spacing: 0.14em;
+  color: var(--gcl-steel);
+  white-space: nowrap;
+}
+
+/* Reduced motion (with JS running, `html.js` present) and the React
+   `.principles--static` class it sets both fall back to exactly the same
+   unconditional/no-JS static list — belt-and-suspenders, not two sources
+   of truth (the declarations are identical on purpose).
+
+   R3 — scoped to <1024px only. Desktop-reduce now runs the SAME pinned
+   one-principle-at-a-time scene as the full-motion path (a pin-hold plus
+   pure opacity cross-fades — PrinciplesSection.tsx buildScene(true)), which
+   the Founder's ruling calls out as the most reduced-motion-friendly
+   chapter on the site. These !important declarations would force the
+   static list back on top of it, so they now apply only below 1024px
+   (mobile-reduce) and to the no-JS/`.principles--static` React fallback
+   below, which is unaffected by this scope change. */
+@media (max-width: 1023.98px) and (prefers-reduced-motion: reduce) {
+  html.js .principles__pin {
+    position: static !important;
+    height: auto !important;
+    display: block !important;
+    padding-block: var(--gcl-section-pad-y) !important;
+  }
+  html.js .principles__header {
+    position: relative !important;
+    top: auto !important;
+    margin-bottom: clamp(2rem, 6vw, 3.5rem) !important;
+  }
+  html.js .principles__item {
+    position: static !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    padding: clamp(2rem, 6vw, 3.5rem) var(--gcl-gutter) !important;
+    border-top: 1px solid rgba(183, 183, 183, 0.14) !important;
+  }
+  html.js .principles__item:last-child {
+    border-bottom: 1px solid rgba(183, 183, 183, 0.14) !important;
+  }
+  html.js .principles__progress {
+    display: none !important;
+  }
+}
+
+.principles--static .principles__pin {
+  position: static;
+  height: auto;
+  display: block;
+  padding-block: var(--gcl-section-pad-y);
+}
+
+.principles--static .principles__header {
+  position: relative;
+  top: auto;
+  margin-bottom: clamp(2rem, 6vw, 3.5rem);
+}
+
+.principles--static .principles__item {
+  position: static;
+  opacity: 1;
+  visibility: visible;
+  padding: clamp(2rem, 6vw, 3.5rem) var(--gcl-gutter);
+  border-top: 1px solid rgba(183, 183, 183, 0.14);
+}
+
+.principles--static .principles__item:last-child {
+  border-bottom: 1px solid rgba(183, 183, 183, 0.14);
+}
+
+.principles--static .principles__progress {
+  display: none;
+}
+
+/* ==========================================================================
+   Chapter 7 — Engagement
+   ========================================================================== */
+
+.engagement {
+  position: relative;
+  background: var(--gcl-deep-obsidian);
+  padding-block: clamp(6rem, 14svh, 10rem);
+}
+
+.engagement__inner {
+  max-width: calc(var(--gcl-engagement-measure) + (2 * var(--gcl-gutter)));
+}
+
+.engagement__chapter-mark {
+  margin-bottom: clamp(4.5rem, 9svh, 7rem);
+}
+
+/* One editorial measure for all six rows. */
+.engagement__categories {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  max-width: var(--gcl-engagement-measure);
+  margin-inline: auto;
+}
+
+@media (min-width: 1024px) {
+  .engagement__categories {
+    max-width: var(--gcl-engagement-measure);
+    align-items: stretch;
+  }
+}
+
+.engagement__category {
+  width: 100%;
+  border-top: 1px solid rgba(183, 183, 183, 0.14);
+}
+
+.engagement__category:last-child {
+  border-bottom: 1px solid rgba(183, 183, 183, 0.14);
+}
+
+.engagement__category-link {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.55rem;
+  padding: 1.4rem 0;
+  min-height: 44px;
+  text-decoration: none;
+  color: var(--gcl-stone-silver);
+  font-size: clamp(0.95rem, 1.6vw, 1.1rem);
+  text-align: left;
+  transition: color 0.25s var(--gcl-ease-out);
+}
+
+.engagement__category-link:hover,
+.engagement__category-link:focus-visible {
+  color: var(--gcl-gateway-gold);
+}
+
+.engagement__category-label {
+  color: var(--gcl-platinum);
+  font-weight: 400;
+}
+
+.engagement__category-desc {
+  font-size: 0.875rem;
+  color: var(--gcl-steel);
+  text-align: left;
+}
+
+/* R2 defect C — a real two-column grid at desktop: label gets a defined
+   measure wide enough that "Investment & strategic relationships" never
+   wraps awkwardly, description gets the remaining width, both
+   baseline-aligned, consistent row block padding, no centered/offset
+   rows. */
+@media (min-width: 1024px) {
+  .engagement__category-link {
+    display: grid;
+    grid-template-columns: [label] minmax(18rem, 24rem) [desc] minmax(0, 1fr);
+    justify-content: initial;
+    align-items: baseline;
+    gap: clamp(2rem, 5vw, 5rem);
+    padding: clamp(1.55rem, 3svh, 2rem) 0;
+    text-align: left;
+  }
+
+  .engagement__category-label {
+    grid-column: label;
+  }
+
+  .engagement__category-desc {
+    grid-column: desc;
+    text-align: left;
+  }
+}
+
+.engagement__category-link--static {
+  cursor: default;
+}
+
+.engagement__category-link--static:hover,
+.engagement__category-link--static:focus-visible {
+  color: var(--gcl-stone-silver);
+}
+
+/* R2 defect C — one single-line note, always rendered once (never per
+   row); on desktop it takes the full engagement measure so it reads as
+   one consistent line under the list rather than looking like a stray
+   seventh row. */
+.engagement__placeholder-note {
+  position: relative;
+  margin: clamp(2rem, 5svh, 3.5rem) auto 0;
+  max-width: var(--gcl-engagement-measure);
+  font-size: 0.85rem;
+  letter-spacing: 0.02em;
+  color: var(--gcl-stone-silver);
+  font-style: italic;
+  text-align: left;
+}
+
+@media (min-width: 1024px) {
+  .engagement__placeholder-note {
+    text-align: right;
+  }
+}
+
+/* ==========================================================================
+   Institutional Outro — one complete closing chapter
+   ========================================================================== */
+
+.institutional-outro {
+  position: relative;
+  min-height: 100svh;
+  background: var(--gcl-deep-obsidian);
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.institutional-outro__pin {
+  position: relative;
+  min-height: 100svh;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+
+.institutional-outro__field,
+.institutional-outro__light {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.institutional-outro__field {
+  z-index: -2;
+  background:
+    linear-gradient(180deg, rgba(11, 13, 16, 0.46) 0%, rgba(6, 6, 8, 0) 24%),
+    var(--gcl-deep-obsidian);
+}
+
+.institutional-outro__light {
+  z-index: -1;
+  background: radial-gradient(
+    ellipse at 50% 46%,
+    rgba(212, 161, 70, 0.13) 0%,
+    rgba(212, 161, 70, 0.045) 28%,
+    rgba(212, 161, 70, 0) 66%
+  );
+}
+
+.institutional-outro__composition {
+  position: relative;
+  width: min(100%, 76rem);
+  min-height: 100svh;
+  padding: clamp(4.5rem, 10svh, 8rem) var(--gcl-gutter);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.institutional-outro__signal {
+  width: clamp(5rem, 9vw, 8rem);
+  height: 1px;
+  margin-bottom: clamp(2.25rem, 5svh, 3.75rem);
+  background: var(--gcl-gateway-gold);
+  transform-origin: center;
+}
+
+.institutional-outro__mark-wrap {
+  width: clamp(6.5rem, 10vw, 9.5rem);
+  margin-bottom: clamp(3rem, 7svh, 5.25rem);
+  transform-origin: center;
+}
+
+.institutional-outro__mark-wrap picture,
+.institutional-outro__mark {
+  width: 100%;
+  height: auto;
+}
+
+.institutional-outro__mark {
+  opacity: 1;
+  transform: none;
+  filter: none;
+  mix-blend-mode: normal;
+}
+
+.institutional-outro__heading {
+  width: min(100%, 20ch);
+  color: var(--gcl-platinum);
+  font-size: clamp(2.35rem, 6vw, 5.75rem);
+  font-weight: 300;
+  line-height: 1.02;
+  letter-spacing: -0.025em;
+  text-wrap: balance;
+}
+
+.institutional-outro__line {
+  display: block;
+  white-space: nowrap;
+}
+
+@media (max-width: 1023.98px) {
+  .engagement {
+    padding-block: clamp(5rem, 12svh, 7rem);
+  }
+
+  .engagement__chapter-mark {
+    margin-bottom: clamp(3.5rem, 8svh, 5rem);
+  }
+
+  .institutional-outro__composition {
+    min-height: 100svh;
+    padding-block: clamp(4rem, 9svh, 6rem);
+  }
+
+  .institutional-outro__heading {
+    font-size: clamp(1.75rem, 7.5vw, 3.75rem);
+  }
+}
+
+@media (max-height: 720px) and (min-width: 1024px) {
+  .engagement {
+    padding-block: 6rem;
+  }
+
+  .engagement__chapter-mark {
+    margin-bottom: 4.5rem;
+  }
+
+  .institutional-outro__composition {
+    padding-block: 3.5rem;
+  }
+
+  .institutional-outro__signal {
+    margin-bottom: 2rem;
+  }
+
+  .institutional-outro__mark-wrap {
+    width: clamp(6rem, 9vw, 7.75rem);
+    margin-bottom: 2.5rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .institutional-outro__mark {
+    transform: none !important;
+  }
+}
+
+.footer {
+  position: relative;
+  background: var(--gcl-deep-obsidian);
+  border-top: 1px solid rgba(183, 183, 183, 0.14);
+  padding-block: clamp(2.5rem, 6vw, 4rem);
+}
+
+.footer__inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+}
+
+/* R2 defect C — the footer aligns to the SAME measure as the engagement
+   rows above it (var(--gcl-engagement-measure)), not the full site
+   container, so their left/right edges match instead of the footer
+   spanning wider than the content it sits under. Desktop + tablet only;
+   mobile's full-width footer is unaffected and unflagged. */
+@media (min-width: 1024px) {
+  .footer__inner {
+    max-width: var(--gcl-engagement-measure);
+    margin-inline: auto;
+    padding-inline: 0;
+  }
+}
+
+/* R4.3 — credits after the closing ident: institutional name only. The
+   canonical mark receives its final major role in the Outro above rather
+   than repeating as a small footer ornament. */
+.footer__brand {
+  display: flex;
+  align-items: center;
+}
+
+.footer__brand-word {
+  font-size: 0.72rem;
+  letter-spacing: 0.28em;
+  color: var(--gcl-platinum);
+  font-weight: 300;
+  text-transform: uppercase;
+}
+
+.footer__legal {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-size: 0.78rem;
+  color: var(--gcl-steel);
+}
+
+.footer__legal strong {
+  color: var(--gcl-stone-silver);
+  font-weight: 400;
+}
+
+.footer__links {
+  display: flex;
+  align-items: center;
+  gap: clamp(1rem, 3vw, 2rem);
+  flex-wrap: wrap;
+}
+
+.footer__link {
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+  color: var(--gcl-steel);
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.footer__link:hover,
+.footer__link:focus-visible {
+  color: var(--gcl-gateway-gold);
+}
+
+/* ==========================================================================
+   D10 — ultra-wide display-type rebalance (≥1680px)
+   Display type gets ~15% more headroom at very wide viewports so it can
+   breathe into the extra space rather than reading small against a big
+   canvas; body copy (capped at 38rem elsewhere) is deliberately untouched
+   — this is display type only.
+   ========================================================================== */
+@media (min-width: 1680px) {
+  .arrival__wordmark-top {
+    font-size: clamp(1.9rem, 6.5vw, 4.6rem);
+  }
+  .institution__heading {
+    font-size: clamp(1.6rem, 4.6vw, 3.9rem);
+  }
+  .mission__pillar-title {
+    font-size: clamp(1.6rem, 7vw, 4.3rem);
+  }
+  .ecosystem__wing-name {
+    font-size: clamp(1.6rem, 6vw, 4.1rem);
+  }
+  .principles__item-title {
+    font-size: clamp(1.9rem, 7vw, 5.75rem);
+  }
+}

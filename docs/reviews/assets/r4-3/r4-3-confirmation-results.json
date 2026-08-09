@@ -1,0 +1,4076 @@
+{
+  "schemaVersion": 1,
+  "suite": "gcl-r4.3-founder-experience-closure",
+  "startedAt": "2026-08-09T03:17:14.120Z",
+  "configuration": {
+    "baseUrl": "http://127.0.0.1:4310/",
+    "evidenceDir": "/Users/re3zy/Documents/gabriel-capital-labs-site-r4/docs/reviews/assets/r4-3",
+    "requestedScenarios": [],
+    "fullConfirmationRun": true,
+    "desktopViewports": [
+      {
+        "width": 1920,
+        "height": 1080
+      },
+      {
+        "width": 1512,
+        "height": 982
+      },
+      {
+        "width": 1440,
+        "height": 900
+      },
+      {
+        "width": 1280,
+        "height": 720
+      },
+      {
+        "width": 1024,
+        "height": 768
+      },
+      {
+        "width": 1024,
+        "height": 568
+      }
+    ],
+    "mobileViewports": [
+      {
+        "width": 390,
+        "height": 844
+      },
+      {
+        "width": 430,
+        "height": 932
+      },
+      {
+        "width": 320,
+        "height": 568
+      }
+    ],
+    "policies": [
+      "no-preference",
+      "reduce"
+    ],
+    "expectedPinTopology": {
+      "desktopFull": 5,
+      "desktopReduced": 5,
+      "mobileFull": 2,
+      "mobileReduced": 0
+    }
+  },
+  "git": {
+    "branch": "codex/gcl-r4-3-founder-closure-2026-08-08",
+    "head": "655a4eec8cb6076c95803f20d60cd8c433dfdc3b",
+    "base": "3600ae2c9cd92d193c2228773420c7ec31e24be2"
+  },
+  "sourceHashes": {
+    "app/globals.css": "22167ec55c372e897f4206c5802eeca05e3907b844fe7eb86f320d71d401547f",
+    "app/page.tsx": "86a24d87539fa53d73d7b3bfd7391b109a18eca87689da4901decaea729496eb",
+    "components/EcosystemSection.tsx": "1cae27101d51e4e5196a83a2d4d3d4460d8e9f1f1e05169df8b99939b49ad00b",
+    "components/EngagementSection.tsx": "070d8a2763aabc9d869dca8aff8f35eae9e63462cd5558fe57e451e9a2989fbc",
+    "components/InstitutionalOutroScene.tsx": "32833cc45ced5dbc9d3f99825d6a2937d8c89da5597c7e2ecc214efa8cef9941",
+    "components/Footer.tsx": "deac29628b4240143ddfefe596235f8a96753f770a30bc7e6abc2b62872f9506",
+    "content/site.ts": "cc10bc93c436c30d9d1f4b3049c03bc5fa85f3dc834fe5f241f701b68c580d08",
+    "scripts/r4-3-confirmation.mjs": "257b1e45718e114cf78e4824f58ce9296ab70100c707ac99a28c319f2d1bfa77",
+    "package.json": "e7be4b23068e605d7223a4c8a1d0c9752ff792c639c72097c4d54a55969c8217"
+  },
+  "assetHashes": {
+    "public/img/gateway-g-480.webp": "90b2c57e6dfd5d2a6cfc46d7f4a89c534337ff19954a6719142872af8b737b19",
+    "public/img/gateway-g-768.webp": "bdc797d78f19d2e59c7e1e06f9c106203492651ba4300c2c93427407ccf1ef7a",
+    "public/img/gateway-g-1080.webp": "67f8f444ad9800520e1a4d0f941021cffe8903a16b1a00a9909f25649ef9ccc7",
+    "public/img/gateway-g-480.png": "9ed7766905c9167b6dd86b6e061430fb1e66892ff1501460702c8755b66b1c9b"
+  },
+  "scenarios": {
+    "canonical-assets-and-source-binding": {
+      "assets": {
+        "public/img/gateway-g-480.webp": "90b2c57e6dfd5d2a6cfc46d7f4a89c534337ff19954a6719142872af8b737b19",
+        "public/img/gateway-g-768.webp": "bdc797d78f19d2e59c7e1e06f9c106203492651ba4300c2c93427407ccf1ef7a",
+        "public/img/gateway-g-1080.webp": "67f8f444ad9800520e1a4d0f941021cffe8903a16b1a00a9909f25649ef9ccc7",
+        "public/img/gateway-g-480.png": "9ed7766905c9167b6dd86b6e061430fb1e66892ff1501460702c8755b66b1c9b"
+      },
+      "sourceFiles": 9,
+      "status": "passed",
+      "durationMs": 9
+    },
+    "matrix-full-1920x1080": {
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "policy": "no-preference",
+      "titleOrigins": [
+        {
+          "name": "CreditVector",
+          "x": 372,
+          "transform": "matrix(1, 0, 0, 1, 0, 0)"
+        },
+        {
+          "name": "GIOS",
+          "x": 372,
+          "transform": "matrix(1, 0, 0, 1, 0, 0)"
+        },
+        {
+          "name": "HELIOS",
+          "x": 372,
+          "transform": "matrix(1, 0, 0, 1, 0, 0)"
+        },
+        {
+          "name": "Kai",
+          "x": 372,
+          "transform": "matrix(1, 0, 0, 1, 0, 0)"
+        }
+      ],
+      "titleOriginSpreadPx": 0,
+      "engagement": {
+        "section": {
+          "width": 1920,
+          "height": 1043.6875,
+          "top": 15027.140625,
+          "bottom": 16070.828125
+        },
+        "chapterGap": 97.1875,
+        "rowHeights": [
+          91.390625,
+          91.390625,
+          91.390625,
+          91.390625,
+          91.390625,
+          92.390625
+        ],
+        "noteGap": 54,
+        "bottomBreathingRoom": 151.1875,
+        "outro": {
+          "height": 2160,
+          "top": 16070.828125,
+          "bottom": 18230.828125
+        },
+        "footer": {
+          "top": 18230.828125,
+          "bottom": 18403.828125
+        },
+        "domOrder": true,
+        "engagementMarks": 0,
+        "overflow": 0,
+        "headings": [
+          {
+            "tag": "H1",
+            "id": "arrival-heading",
+            "text": "GABRIELCAPITAL LABS"
+          },
+          {
+            "tag": "H2",
+            "id": "institution-heading",
+            "text": "Gabriel Capital Labs is the parentinstitution behind intelligent infrastructure —operating systems for credit, intelligenceexecution, and spatial computing."
+          },
+          {
+            "tag": "H2",
+            "id": "mission-heading",
+            "text": "Mission Architecture"
+          },
+          {
+            "tag": "H2",
+            "id": "ecosystem-heading",
+            "text": "One parent institution. Four domains."
+          },
+          {
+            "tag": "H2",
+            "id": "lab-heading",
+            "text": "Seven domains of research and engineering."
+          },
+          {
+            "tag": "H2",
+            "id": "principles-heading",
+            "text": "Principles"
+          },
+          {
+            "tag": "H2",
+            "id": "engagement-heading",
+            "text": "06 — Engagement"
+          },
+          {
+            "tag": "H2",
+            "id": "institutional-outro-heading",
+            "text": "Enter the future we are engineering."
+          }
+        ]
+      },
+      "outro": {
+        "accessibleText": "Enter the future we are engineering.",
+        "lineRects": [
+          {
+            "rectCount": 1,
+            "left": 416,
+            "right": 1504,
+            "opacity": 1
+          },
+          {
+            "rectCount": 1,
+            "left": 416,
+            "right": 1504,
+            "opacity": 1
+          }
+        ],
+        "image": {
+          "width": 152,
+          "height": 164.65625,
+          "opacity": 1,
+          "transform": "none",
+          "filter": "none",
+          "mixBlendMode": "normal"
+        },
+        "markWrap": {
+          "opacity": 1,
+          "transform": "matrix(1, 0, 0, 1, 0, 0)"
+        },
+        "pinHeight": 1080,
+        "footerTop": 1209.828125,
+        "imageContained": true,
+        "chain": [
+          {
+            "className": "institutional-outro__mark",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__mark-wrap",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__composition",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__pin",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "pin-spacer pin-spacer-gcl-institutional-outro",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          }
+        ],
+        "pinSpacers": 5,
+        "nestedPinSpacers": 0,
+        "outroPinSpacers": 1,
+        "overflow": 0
+      },
+      "screenshots": [
+        "matrix-full-1920x1080-engagement.png",
+        "matrix-full-1920x1080-outro-hold.png"
+      ],
+      "status": "passed",
+      "durationMs": 9317
+    },
+    "matrix-full-1512x982": {
+      "viewport": {
+        "width": 1512,
+        "height": 982
+      },
+      "policy": "no-preference",
+      "titleOrigins": [
+        {
+          "name": "CreditVector",
+          "x": 164.46875,
+          "transform": "matrix(1, 0, 0, 1, 0, 0)"
+        },
+        {
+          "name": "GIOS",
+          "x": 164.46875,
+          "transform": "matrix(1, 0, 0, 1, 0, 0)"
+        },
+        {
+          "name": "HELIOS",
+          "x": 164.46875,
+          "transform": "matrix(1, 0, 0, 1, 0, 0)"
+        },
+        {
+          "name": "Kai",
+          "x": 164.46875,
+          "transform": "matrix(1, 0, 0, 1, 0, 0)"
+        }
+      ],
+      "titleOriginSpreadPx": 0,
+      "engagement": {
+        "section": {
+          "width": 1512,
+          "height": 971.96875,
+          "top": 13113.171875,
+          "bottom": 14085.140625
+        },
+        "chapterGap": 88.375,
+        "rowHeights": [
+          86.296875,
+          86.296875,
+          86.296875,
+          86.296875,
+          86.296875,
+          87.296875
+        ],
+        "noteGap": 49.09375,
+        "bottomBreathingRoom": 137.46875,
+        "outro": {
+          "height": 1964,
+          "top": 14085.140625,
+          "bottom": 16049.140625
+        },
+        "footer": {
+          "top": 16049.140625,
+          "bottom": 16222.140625
+        },
+        "domOrder": true,
+        "engagementMarks": 0,
+        "overflow": 0,
+        "headings": [
+          {
+            "tag": "H1",
+            "id": "arrival-heading",
+            "text": "GABRIELCAPITAL LABS"
+          },
+          {
+            "tag": "H2",
+            "id": "institution-heading",
+            "text": "Gabriel Capital Labs is the parentinstitution behind intelligent infrastructure —operating systems for credit, intelligenceexecution, and spatial computing."
+          },
+          {
+            "tag": "H2",
+            "id": "mission-heading",
+            "text": "Mission Architecture"
+          },
+          {
+            "tag": "H2",
+            "id": "ecosystem-heading",
+            "text": "One parent institution. Four domains."
+          },
+          {
+            "tag": "H2",
+            "id": "lab-heading",
+            "text": "Seven domains of research and engineering."
+          },
+          {
+            "tag": "H2",
+            "id": "principles-heading",
+            "text": "Principles"
+          },
+          {
+            "tag": "H2",
+            "id": "engagement-heading",
+            "text": "06 — Engagement"
+          },
+          {
+            "tag": "H2",
+            "id": "institutional-outro-heading",
+            "text": "Enter the future we are engineering."
+          }
+        ]
+      },
+      "outro": {
+        "accessibleText": "Enter the future we are engineering.",
+        "lineRects": [
+          {
+            "rectCount": 1,
+            "left": 208.46875,
+            "right": 1303.53125,
+            "opacity": 1
+          },
+          {
+            "rectCount": 1,
+            "left": 208.46875,
+            "right": 1303.53125,
+            "opacity": 1
+          }
+        ],
+        "image": {
+          "width": 151.1875,
+          "height": 163.78125,
+          "opacity": 1,
+          "transform": "none",
+          "filter": "none",
+          "mixBlendMode": "normal"
+        },
+        "markWrap": {
+          "opacity": 1,
+          "transform": "matrix(1, 0, 0, 1, 0, 0)"
+        },
+        "pinHeight": 982,
+        "footerTop": 1100.140625,
+        "imageContained": true,
+        "chain": [
+          {
+            "className": "institutional-outro__mark",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__mark-wrap",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__composition",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__pin",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "pin-spacer pin-spacer-gcl-institutional-outro",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          }
+        ],
+        "pinSpacers": 5,
+        "nestedPinSpacers": 0,
+        "outroPinSpacers": 1,
+        "overflow": 0
+      },
+      "screenshots": [
+        "matrix-full-1512x982-engagement.png",
+        "matrix-full-1512x982-outro-hold.png"
+      ],
+      "status": "passed",
+      "durationMs": 8613
+    },
+    "matrix-full-1440x900": {
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "policy": "no-preference",
+      "titleOrigins": [
+        {
+          "name": "CreditVector",
+          "x": 125.59375,
+          "transform": "matrix(1, 0, 0, 1, 0, 0)"
+        },
+        {
+          "name": "GIOS",
+          "x": 125.59375,
+          "transform": "matrix(1, 0, 0, 1, 0, 0)"
+        },
+        {
+          "name": "HELIOS",
+          "x": 125.59375,
+          "transform": "matrix(1, 0, 0, 1, 0, 0)"
+        },
+        {
+          "name": "Kai",
+          "x": 125.59375,
+          "transform": "matrix(1, 0, 0, 1, 0, 0)"
+        }
+      ],
+      "titleOriginSpreadPx": 0,
+      "engagement": {
+        "section": {
+          "width": 1440,
+          "height": 908.125,
+          "top": 12293.171875,
+          "bottom": 13201.296875
+        },
+        "chapterGap": 81,
+        "rowHeights": [
+          81.390625,
+          81.390625,
+          81.390625,
+          81.390625,
+          81.390625,
+          82.390625
+        ],
+        "noteGap": 45,
+        "bottomBreathingRoom": 126,
+        "outro": {
+          "height": 1800,
+          "top": 13201.296875,
+          "bottom": 15001.296875
+        },
+        "footer": {
+          "top": 15001.296875,
+          "bottom": 15174.296875
+        },
+        "domOrder": true,
+        "engagementMarks": 0,
+        "overflow": 0,
+        "headings": [
+          {
+            "tag": "H1",
+            "id": "arrival-heading",
+            "text": "GABRIELCAPITAL LABS"
+          },
+          {
+            "tag": "H2",
+            "id": "institution-heading",
+            "text": "Gabriel Capital Labs is the parentinstitution behind intelligent infrastructure —operating systems for credit, intelligenceexecution, and spatial computing."
+          },
+          {
+            "tag": "H2",
+            "id": "mission-heading",
+            "text": "Mission Architecture"
+          },
+          {
+            "tag": "H2",
+            "id": "ecosystem-heading",
+            "text": "One parent institution. Four domains."
+          },
+          {
+            "tag": "H2",
+            "id": "lab-heading",
+            "text": "Seven domains of research and engineering."
+          },
+          {
+            "tag": "H2",
+            "id": "principles-heading",
+            "text": "Principles"
+          },
+          {
+            "tag": "H2",
+            "id": "engagement-heading",
+            "text": "06 — Engagement"
+          },
+          {
+            "tag": "H2",
+            "id": "institutional-outro-heading",
+            "text": "Enter the future we are engineering."
+          }
+        ]
+      },
+      "outro": {
+        "accessibleText": "Enter the future we are engineering.",
+        "lineRects": [
+          {
+            "rectCount": 1,
+            "left": 186.46875,
+            "right": 1253.53125,
+            "opacity": 1
+          },
+          {
+            "rectCount": 1,
+            "left": 186.46875,
+            "right": 1253.53125,
+            "opacity": 1
+          }
+        ],
+        "image": {
+          "width": 144,
+          "height": 156,
+          "opacity": 1,
+          "transform": "none",
+          "filter": "none",
+          "mixBlendMode": "normal"
+        },
+        "markWrap": {
+          "opacity": 1,
+          "transform": "matrix(1, 0, 0, 1, 0, 0)"
+        },
+        "pinHeight": 900,
+        "footerTop": 1008.296875,
+        "imageContained": true,
+        "chain": [
+          {
+            "className": "institutional-outro__mark",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__mark-wrap",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__composition",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__pin",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "pin-spacer pin-spacer-gcl-institutional-outro",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          }
+        ],
+        "pinSpacers": 5,
+        "nestedPinSpacers": 0,
+        "outroPinSpacers": 1,
+        "overflow": 0
+      },
+      "screenshots": [
+        "matrix-full-1440x900-engagement.png",
+        "matrix-full-1440x900-outro-hold.png"
+      ],
+      "status": "passed",
+      "durationMs": 8396
+    },
+    "matrix-full-1280x720": {
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "policy": "no-preference",
+      "titleOrigins": [
+        {
+          "name": "CreditVector",
+          "x": 119.1875,
+          "transform": "matrix(1, 0, 0, 1, 0, 0)"
+        },
+        {
+          "name": "GIOS",
+          "x": 119.1875,
+          "transform": "matrix(1, 0, 0, 1, 0, 0)"
+        },
+        {
+          "name": "HELIOS",
+          "x": 119.1875,
+          "transform": "matrix(1, 0, 0, 1, 0, 0)"
+        },
+        {
+          "name": "Kai",
+          "x": 119.1875,
+          "transform": "matrix(1, 0, 0, 1, 0, 0)"
+        }
+      ],
+      "titleOriginSpreadPx": 0,
+      "engagement": {
+        "section": {
+          "width": 1280,
+          "height": 802.484375,
+          "top": 10490.765625,
+          "bottom": 11293.25
+        },
+        "chapterGap": 72,
+        "rowHeights": [
+          76.984375,
+          76.984375,
+          76.984375,
+          76.984375,
+          76.984375,
+          77.984375
+        ],
+        "noteGap": 36,
+        "bottomBreathingRoom": 96,
+        "outro": {
+          "height": 1440,
+          "top": 11293.25,
+          "bottom": 12733.25
+        },
+        "footer": {
+          "top": 12733.25,
+          "bottom": 12906.25
+        },
+        "domOrder": true,
+        "engagementMarks": 0,
+        "overflow": 0,
+        "headings": [
+          {
+            "tag": "H1",
+            "id": "arrival-heading",
+            "text": "GABRIELCAPITAL LABS"
+          },
+          {
+            "tag": "H2",
+            "id": "institution-heading",
+            "text": "Gabriel Capital Labs is the parentinstitution behind intelligent infrastructure —operating systems for credit, intelligenceexecution, and spatial computing."
+          },
+          {
+            "tag": "H2",
+            "id": "mission-heading",
+            "text": "Mission Architecture"
+          },
+          {
+            "tag": "H2",
+            "id": "ecosystem-heading",
+            "text": "One parent institution. Four domains."
+          },
+          {
+            "tag": "H2",
+            "id": "lab-heading",
+            "text": "Seven domains of research and engineering."
+          },
+          {
+            "tag": "H2",
+            "id": "principles-heading",
+            "text": "Principles"
+          },
+          {
+            "tag": "H2",
+            "id": "engagement-heading",
+            "text": "06 — Engagement"
+          },
+          {
+            "tag": "H2",
+            "id": "institutional-outro-heading",
+            "text": "Enter the future we are engineering."
+          }
+        ]
+      },
+      "outro": {
+        "accessibleText": "Enter the future we are engineering.",
+        "lineRects": [
+          {
+            "rectCount": 1,
+            "left": 165.75,
+            "right": 1114.25,
+            "opacity": 1
+          },
+          {
+            "rectCount": 1,
+            "left": 165.75,
+            "right": 1114.25,
+            "opacity": 1
+          }
+        ],
+        "image": {
+          "width": 115.1875,
+          "height": 124.78125,
+          "opacity": 1,
+          "transform": "none",
+          "filter": "none",
+          "mixBlendMode": "normal"
+        },
+        "markWrap": {
+          "opacity": 1,
+          "transform": "matrix(1, 0, 0, 1, 0, 0)"
+        },
+        "pinHeight": 720,
+        "footerTop": 806.25,
+        "imageContained": true,
+        "chain": [
+          {
+            "className": "institutional-outro__mark",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__mark-wrap",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__composition",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__pin",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "pin-spacer pin-spacer-gcl-institutional-outro",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          }
+        ],
+        "pinSpacers": 5,
+        "nestedPinSpacers": 0,
+        "outroPinSpacers": 1,
+        "overflow": 0
+      },
+      "screenshots": [
+        "matrix-full-1280x720-engagement.png",
+        "matrix-full-1280x720-outro-hold.png"
+      ],
+      "status": "passed",
+      "durationMs": 8365
+    },
+    "matrix-full-1024x768": {
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "policy": "no-preference",
+      "titleOrigins": [
+        {
+          "name": "CreditVector",
+          "x": 108.953125,
+          "transform": "matrix(1, 0, 0, 1, 0, 0)"
+        },
+        {
+          "name": "GIOS",
+          "x": 108.953125,
+          "transform": "matrix(1, 0, 0, 1, 0, 0)"
+        },
+        {
+          "name": "HELIOS",
+          "x": 108.953125,
+          "transform": "matrix(1, 0, 0, 1, 0, 0)"
+        },
+        {
+          "name": "Kai",
+          "x": 108.953125,
+          "transform": "matrix(1, 0, 0, 1, 0, 0)"
+        }
+      ],
+      "titleOriginSpreadPx": 0,
+      "engagement": {
+        "section": {
+          "width": 1024,
+          "height": 814.640625,
+          "top": 10706.015625,
+          "bottom": 11520.65625
+        },
+        "chapterGap": 72,
+        "rowHeights": [
+          75.171875,
+          75.171875,
+          75.171875,
+          75.171875,
+          75.171875,
+          76.171875
+        ],
+        "noteGap": 38.390625,
+        "bottomBreathingRoom": 107.515625,
+        "outro": {
+          "height": 1536,
+          "top": 11520.65625,
+          "bottom": 13056.65625
+        },
+        "footer": {
+          "top": 13056.65625,
+          "bottom": 13224.53125
+        },
+        "domOrder": true,
+        "engagementMarks": 0,
+        "overflow": 0,
+        "headings": [
+          {
+            "tag": "H1",
+            "id": "arrival-heading",
+            "text": "GABRIELCAPITAL LABS"
+          },
+          {
+            "tag": "H2",
+            "id": "institution-heading",
+            "text": "Gabriel Capital Labs is the parentinstitution behind intelligent infrastructure —operating systems for credit, intelligenceexecution, and spatial computing."
+          },
+          {
+            "tag": "H2",
+            "id": "mission-heading",
+            "text": "Mission Architecture"
+          },
+          {
+            "tag": "H2",
+            "id": "ecosystem-heading",
+            "text": "One parent institution. Four domains."
+          },
+          {
+            "tag": "H2",
+            "id": "lab-heading",
+            "text": "Seven domains of research and engineering."
+          },
+          {
+            "tag": "H2",
+            "id": "principles-heading",
+            "text": "Principles"
+          },
+          {
+            "tag": "H2",
+            "id": "engagement-heading",
+            "text": "06 — Engagement"
+          },
+          {
+            "tag": "H2",
+            "id": "institutional-outro-heading",
+            "text": "Enter the future we are engineering."
+          }
+        ]
+      },
+      "outro": {
+        "accessibleText": "Enter the future we are engineering.",
+        "lineRects": [
+          {
+            "rectCount": 1,
+            "left": 132.59375,
+            "right": 891.390625,
+            "opacity": 1
+          },
+          {
+            "rectCount": 1,
+            "left": 132.59375,
+            "right": 891.390625,
+            "opacity": 1
+          }
+        ],
+        "image": {
+          "width": 104,
+          "height": 112.65625,
+          "opacity": 1,
+          "transform": "none",
+          "filter": "none",
+          "mixBlendMode": "normal"
+        },
+        "markWrap": {
+          "opacity": 1,
+          "transform": "matrix(1, 0, 0, 1, 0, 0)"
+        },
+        "pinHeight": 768,
+        "footerTop": 860.65625,
+        "imageContained": true,
+        "chain": [
+          {
+            "className": "institutional-outro__mark",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__mark-wrap",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__composition",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__pin",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "pin-spacer pin-spacer-gcl-institutional-outro",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          }
+        ],
+        "pinSpacers": 5,
+        "nestedPinSpacers": 0,
+        "outroPinSpacers": 1,
+        "overflow": 0
+      },
+      "screenshots": [
+        "matrix-full-1024x768-engagement.png",
+        "matrix-full-1024x768-outro-hold.png"
+      ],
+      "status": "passed",
+      "durationMs": 9069
+    },
+    "matrix-full-1024x568": {
+      "viewport": {
+        "width": 1024,
+        "height": 568
+      },
+      "policy": "no-preference",
+      "titleOrigins": [
+        {
+          "name": "CreditVector",
+          "x": 108.953125,
+          "transform": "matrix(1, 0, 0, 1, 0, 0)"
+        },
+        {
+          "name": "GIOS",
+          "x": 108.953125,
+          "transform": "matrix(1, 0, 0, 1, 0, 0)"
+        },
+        {
+          "name": "HELIOS",
+          "x": 108.953125,
+          "transform": "matrix(1, 0, 0, 1, 0, 0)"
+        },
+        {
+          "name": "Kai",
+          "x": 108.953125,
+          "transform": "matrix(1, 0, 0, 1, 0, 0)"
+        }
+      ],
+      "titleOriginSpreadPx": 0,
+      "engagement": {
+        "section": {
+          "width": 1024,
+          "height": 785.21875,
+          "top": 8706.015625,
+          "bottom": 9491.234375
+        },
+        "chapterGap": 72,
+        "rowHeights": [
+          75.171875,
+          75.171875,
+          75.171875,
+          75.171875,
+          75.171875,
+          76.171875
+        ],
+        "noteGap": 32,
+        "bottomBreathingRoom": 96,
+        "outro": {
+          "height": 1136,
+          "top": 9491.234375,
+          "bottom": 10627.234375
+        },
+        "footer": {
+          "top": 10627.234375,
+          "bottom": 10795.109375
+        },
+        "domOrder": true,
+        "engagementMarks": 0,
+        "overflow": 0,
+        "headings": [
+          {
+            "tag": "H1",
+            "id": "arrival-heading",
+            "text": "GABRIELCAPITAL LABS"
+          },
+          {
+            "tag": "H2",
+            "id": "institution-heading",
+            "text": "Gabriel Capital Labs is the parentinstitution behind intelligent infrastructure —operating systems for credit, intelligenceexecution, and spatial computing."
+          },
+          {
+            "tag": "H2",
+            "id": "mission-heading",
+            "text": "Mission Architecture"
+          },
+          {
+            "tag": "H2",
+            "id": "ecosystem-heading",
+            "text": "One parent institution. Four domains."
+          },
+          {
+            "tag": "H2",
+            "id": "lab-heading",
+            "text": "Seven domains of research and engineering."
+          },
+          {
+            "tag": "H2",
+            "id": "principles-heading",
+            "text": "Principles"
+          },
+          {
+            "tag": "H2",
+            "id": "engagement-heading",
+            "text": "06 — Engagement"
+          },
+          {
+            "tag": "H2",
+            "id": "institutional-outro-heading",
+            "text": "Enter the future we are engineering."
+          }
+        ]
+      },
+      "outro": {
+        "accessibleText": "Enter the future we are engineering.",
+        "lineRects": [
+          {
+            "rectCount": 1,
+            "left": 132.59375,
+            "right": 891.390625,
+            "opacity": 1
+          },
+          {
+            "rectCount": 1,
+            "left": 132.59375,
+            "right": 891.390625,
+            "opacity": 1
+          }
+        ],
+        "image": {
+          "width": 96,
+          "height": 104,
+          "opacity": 1,
+          "transform": "none",
+          "filter": "none",
+          "mixBlendMode": "normal"
+        },
+        "markWrap": {
+          "opacity": 1,
+          "transform": "matrix(1, 0, 0, 1, 0, 0)"
+        },
+        "pinHeight": 568,
+        "footerTop": 636.234375,
+        "imageContained": true,
+        "chain": [
+          {
+            "className": "institutional-outro__mark",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__mark-wrap",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__composition",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__pin",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "pin-spacer pin-spacer-gcl-institutional-outro",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          }
+        ],
+        "pinSpacers": 5,
+        "nestedPinSpacers": 0,
+        "outroPinSpacers": 1,
+        "overflow": 0
+      },
+      "screenshots": [
+        "matrix-full-1024x568-engagement.png",
+        "matrix-full-1024x568-outro-hold.png"
+      ],
+      "status": "passed",
+      "durationMs": 9541
+    },
+    "matrix-full-390x844": {
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "policy": "no-preference",
+      "titleOrigins": [
+        {
+          "name": "CreditVector",
+          "x": 88,
+          "transform": "none"
+        },
+        {
+          "name": "GIOS",
+          "x": 88,
+          "transform": "none"
+        },
+        {
+          "name": "HELIOS",
+          "x": 88,
+          "transform": "none"
+        },
+        {
+          "name": "Kai",
+          "x": 88,
+          "transform": "none"
+        }
+      ],
+      "titleOriginSpreadPx": 0,
+      "engagement": {
+        "section": {
+          "width": 390,
+          "height": 940.671875,
+          "top": 8263.671875,
+          "bottom": 9204.34375
+        },
+        "chapterGap": 67.515625,
+        "rowHeights": [
+          98.375,
+          98.375,
+          98.375,
+          98.375,
+          98.375,
+          99.375
+        ],
+        "noteGap": 42.1875,
+        "bottomBreathingRoom": 101.265625,
+        "outro": {
+          "height": 844,
+          "top": 9204.34375,
+          "bottom": 10048.34375
+        },
+        "footer": {
+          "top": 10048.34375,
+          "bottom": 10278.4375
+        },
+        "domOrder": true,
+        "engagementMarks": 0,
+        "overflow": 0,
+        "headings": [
+          {
+            "tag": "H1",
+            "id": "arrival-heading",
+            "text": "GABRIELCAPITAL LABS"
+          },
+          {
+            "tag": "H2",
+            "id": "institution-heading",
+            "text": "Gabriel Capital Labs is the parentinstitution behind intelligent infrastructure —operating systems for credit, intelligenceexecution, and spatial computing."
+          },
+          {
+            "tag": "H2",
+            "id": "mission-heading",
+            "text": "Mission Architecture"
+          },
+          {
+            "tag": "H2",
+            "id": "ecosystem-heading",
+            "text": "One parent institution. Four domains."
+          },
+          {
+            "tag": "H2",
+            "id": "lab-heading",
+            "text": "Seven domains of research and engineering."
+          },
+          {
+            "tag": "H2",
+            "id": "principles-heading",
+            "text": "Principles"
+          },
+          {
+            "tag": "H2",
+            "id": "engagement-heading",
+            "text": "06 — Engagement"
+          },
+          {
+            "tag": "H2",
+            "id": "institutional-outro-heading",
+            "text": "Enter the future we are engineering."
+          }
+        ]
+      },
+      "outro": {
+        "accessibleText": "Enter the future we are engineering.",
+        "lineRects": [
+          {
+            "rectCount": 1,
+            "left": 20,
+            "right": 370,
+            "opacity": 1
+          },
+          {
+            "rectCount": 1,
+            "left": 20,
+            "right": 370,
+            "opacity": 1
+          }
+        ],
+        "image": {
+          "width": 104,
+          "height": 112.65625,
+          "opacity": 1,
+          "transform": "none",
+          "filter": "none",
+          "mixBlendMode": "normal"
+        },
+        "markWrap": {
+          "opacity": 1,
+          "transform": "matrix(1, 0, 0, 1, 0, 0)"
+        },
+        "pinHeight": 844,
+        "footerTop": 844.34375,
+        "imageContained": true,
+        "chain": [
+          {
+            "className": "institutional-outro__mark",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__mark-wrap",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__composition",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__pin",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          }
+        ],
+        "pinSpacers": 2,
+        "nestedPinSpacers": 0,
+        "outroPinSpacers": 0,
+        "overflow": 0
+      },
+      "screenshots": [
+        "matrix-full-390x844-engagement.png",
+        "matrix-full-390x844-outro-hold.png"
+      ],
+      "status": "passed",
+      "durationMs": 8907
+    },
+    "matrix-full-430x932": {
+      "viewport": {
+        "width": 430,
+        "height": 932
+      },
+      "policy": "no-preference",
+      "titleOrigins": [
+        {
+          "name": "CreditVector",
+          "x": 88,
+          "transform": "none"
+        },
+        {
+          "name": "GIOS",
+          "x": 88,
+          "transform": "none"
+        },
+        {
+          "name": "HELIOS",
+          "x": 88,
+          "transform": "none"
+        },
+        {
+          "name": "Kai",
+          "x": 88,
+          "transform": "none"
+        }
+      ],
+      "titleOriginSpreadPx": 0,
+      "engagement": {
+        "section": {
+          "width": 430,
+          "height": 973.234375,
+          "top": 8576.46875,
+          "bottom": 9549.703125
+        },
+        "chapterGap": 74.546875,
+        "rowHeights": [
+          98.375,
+          98.375,
+          98.375,
+          98.375,
+          98.375,
+          99.375
+        ],
+        "noteGap": 46.59375,
+        "bottomBreathingRoom": 111.828125,
+        "outro": {
+          "height": 932,
+          "top": 9549.703125,
+          "bottom": 10481.703125
+        },
+        "footer": {
+          "top": 10481.703125,
+          "bottom": 10670.53125
+        },
+        "domOrder": true,
+        "engagementMarks": 0,
+        "overflow": 0,
+        "headings": [
+          {
+            "tag": "H1",
+            "id": "arrival-heading",
+            "text": "GABRIELCAPITAL LABS"
+          },
+          {
+            "tag": "H2",
+            "id": "institution-heading",
+            "text": "Gabriel Capital Labs is the parentinstitution behind intelligent infrastructure —operating systems for credit, intelligenceexecution, and spatial computing."
+          },
+          {
+            "tag": "H2",
+            "id": "mission-heading",
+            "text": "Mission Architecture"
+          },
+          {
+            "tag": "H2",
+            "id": "ecosystem-heading",
+            "text": "One parent institution. Four domains."
+          },
+          {
+            "tag": "H2",
+            "id": "lab-heading",
+            "text": "Seven domains of research and engineering."
+          },
+          {
+            "tag": "H2",
+            "id": "principles-heading",
+            "text": "Principles"
+          },
+          {
+            "tag": "H2",
+            "id": "engagement-heading",
+            "text": "06 — Engagement"
+          },
+          {
+            "tag": "H2",
+            "id": "institutional-outro-heading",
+            "text": "Enter the future we are engineering."
+          }
+        ]
+      },
+      "outro": {
+        "accessibleText": "Enter the future we are engineering.",
+        "lineRects": [
+          {
+            "rectCount": 1,
+            "left": 20,
+            "right": 410,
+            "opacity": 1
+          },
+          {
+            "rectCount": 1,
+            "left": 20,
+            "right": 410,
+            "opacity": 1
+          }
+        ],
+        "image": {
+          "width": 104,
+          "height": 112.65625,
+          "opacity": 1,
+          "transform": "none",
+          "filter": "none",
+          "mixBlendMode": "normal"
+        },
+        "markWrap": {
+          "opacity": 1,
+          "transform": "matrix(1, 0, 0, 1, 0, 0)"
+        },
+        "pinHeight": 932,
+        "footerTop": 931.703125,
+        "imageContained": true,
+        "chain": [
+          {
+            "className": "institutional-outro__mark",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__mark-wrap",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__composition",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__pin",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          }
+        ],
+        "pinSpacers": 2,
+        "nestedPinSpacers": 0,
+        "outroPinSpacers": 0,
+        "overflow": 0
+      },
+      "screenshots": [
+        "matrix-full-430x932-engagement.png",
+        "matrix-full-430x932-outro-hold.png"
+      ],
+      "status": "passed",
+      "durationMs": 8894
+    },
+    "matrix-full-320x568": {
+      "viewport": {
+        "width": 320,
+        "height": 568
+      },
+      "policy": "no-preference",
+      "titleOrigins": [
+        {
+          "name": "CreditVector",
+          "x": 88,
+          "transform": "none"
+        },
+        {
+          "name": "GIOS",
+          "x": 88,
+          "transform": "none"
+        },
+        {
+          "name": "HELIOS",
+          "x": 88,
+          "transform": "none"
+        },
+        {
+          "name": "Kai",
+          "x": 88,
+          "transform": "none"
+        }
+      ],
+      "titleOriginSpreadPx": 0,
+      "engagement": {
+        "section": {
+          "width": 320,
+          "height": 897.4375,
+          "top": 7288.359375,
+          "bottom": 8185.796875
+        },
+        "chapterGap": 56,
+        "rowHeights": [
+          98.375,
+          119.375,
+          98.375,
+          98.375,
+          98.375,
+          99.375
+        ],
+        "noteGap": 32,
+        "bottomBreathingRoom": 80,
+        "outro": {
+          "height": 568,
+          "top": 8185.796875,
+          "bottom": 8753.796875
+        },
+        "footer": {
+          "top": 8753.796875,
+          "bottom": 8983.890625
+        },
+        "domOrder": true,
+        "engagementMarks": 0,
+        "overflow": 0,
+        "headings": [
+          {
+            "tag": "H1",
+            "id": "arrival-heading",
+            "text": "GABRIELCAPITAL LABS"
+          },
+          {
+            "tag": "H2",
+            "id": "institution-heading",
+            "text": "Gabriel Capital Labs is the parentinstitution behind intelligent infrastructure —operating systems for credit, intelligenceexecution, and spatial computing."
+          },
+          {
+            "tag": "H2",
+            "id": "mission-heading",
+            "text": "Mission Architecture"
+          },
+          {
+            "tag": "H2",
+            "id": "ecosystem-heading",
+            "text": "One parent institution. Four domains."
+          },
+          {
+            "tag": "H2",
+            "id": "lab-heading",
+            "text": "Seven domains of research and engineering."
+          },
+          {
+            "tag": "H2",
+            "id": "principles-heading",
+            "text": "Principles"
+          },
+          {
+            "tag": "H2",
+            "id": "engagement-heading",
+            "text": "06 — Engagement"
+          },
+          {
+            "tag": "H2",
+            "id": "institutional-outro-heading",
+            "text": "Enter the future we are engineering."
+          }
+        ]
+      },
+      "outro": {
+        "accessibleText": "Enter the future we are engineering.",
+        "lineRects": [
+          {
+            "rectCount": 1,
+            "left": 20,
+            "right": 300,
+            "opacity": 1
+          },
+          {
+            "rectCount": 1,
+            "left": 20,
+            "right": 300,
+            "opacity": 1
+          }
+        ],
+        "image": {
+          "width": 104,
+          "height": 112.65625,
+          "opacity": 1,
+          "transform": "none",
+          "filter": "none",
+          "mixBlendMode": "normal"
+        },
+        "markWrap": {
+          "opacity": 1,
+          "transform": "matrix(1, 0, 0, 1, 0, 0)"
+        },
+        "pinHeight": 568,
+        "footerTop": 567.796875,
+        "imageContained": true,
+        "chain": [
+          {
+            "className": "institutional-outro__mark",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__mark-wrap",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__composition",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__pin",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          }
+        ],
+        "pinSpacers": 2,
+        "nestedPinSpacers": 0,
+        "outroPinSpacers": 0,
+        "overflow": 0
+      },
+      "screenshots": [
+        "matrix-full-320x568-engagement.png",
+        "matrix-full-320x568-outro-hold.png"
+      ],
+      "status": "passed",
+      "durationMs": 8927
+    },
+    "matrix-reduced-1920x1080": {
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "policy": "reduce",
+      "titleOrigins": [
+        {
+          "name": "CreditVector",
+          "x": 372,
+          "transform": "none"
+        },
+        {
+          "name": "GIOS",
+          "x": 372,
+          "transform": "none"
+        },
+        {
+          "name": "HELIOS",
+          "x": 372,
+          "transform": "none"
+        },
+        {
+          "name": "Kai",
+          "x": 372,
+          "transform": "none"
+        }
+      ],
+      "titleOriginSpreadPx": 0,
+      "engagement": {
+        "section": {
+          "width": 1920,
+          "height": 1043.6875,
+          "top": 12684.140625,
+          "bottom": 13727.828125
+        },
+        "chapterGap": 97.1875,
+        "rowHeights": [
+          91.390625,
+          91.390625,
+          91.390625,
+          91.390625,
+          91.390625,
+          92.390625
+        ],
+        "noteGap": 54,
+        "bottomBreathingRoom": 151.1875,
+        "outro": {
+          "height": 1728,
+          "top": 13727.828125,
+          "bottom": 15455.828125
+        },
+        "footer": {
+          "top": 15455.828125,
+          "bottom": 15628.828125
+        },
+        "domOrder": true,
+        "engagementMarks": 0,
+        "overflow": 0,
+        "headings": [
+          {
+            "tag": "H1",
+            "id": "arrival-heading",
+            "text": "GABRIELCAPITAL LABS"
+          },
+          {
+            "tag": "H2",
+            "id": "institution-heading",
+            "text": "Gabriel Capital Labs is the parentinstitution behind intelligent infrastructure —operating systems for credit, intelligenceexecution, and spatial computing."
+          },
+          {
+            "tag": "H2",
+            "id": "mission-heading",
+            "text": "Mission Architecture"
+          },
+          {
+            "tag": "H2",
+            "id": "ecosystem-heading",
+            "text": "One parent institution. Four domains."
+          },
+          {
+            "tag": "H2",
+            "id": "lab-heading",
+            "text": "Seven domains of research and engineering."
+          },
+          {
+            "tag": "H2",
+            "id": "principles-heading",
+            "text": "Principles"
+          },
+          {
+            "tag": "H2",
+            "id": "engagement-heading",
+            "text": "06 — Engagement"
+          },
+          {
+            "tag": "H2",
+            "id": "institutional-outro-heading",
+            "text": "Enter the future we are engineering."
+          }
+        ]
+      },
+      "outro": {
+        "accessibleText": "Enter the future we are engineering.",
+        "lineRects": [
+          {
+            "rectCount": 1,
+            "left": 416,
+            "right": 1504,
+            "opacity": 1
+          },
+          {
+            "rectCount": 1,
+            "left": 416,
+            "right": 1504,
+            "opacity": 1
+          }
+        ],
+        "image": {
+          "width": 152,
+          "height": 164.65625,
+          "opacity": 1,
+          "transform": "none",
+          "filter": "none",
+          "mixBlendMode": "normal"
+        },
+        "markWrap": {
+          "opacity": 1,
+          "transform": "none"
+        },
+        "pinHeight": 1080,
+        "footerTop": 1157.828125,
+        "imageContained": true,
+        "chain": [
+          {
+            "className": "institutional-outro__mark",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__mark-wrap",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__composition",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__pin",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "pin-spacer pin-spacer-gcl-institutional-outro",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          }
+        ],
+        "pinSpacers": 5,
+        "nestedPinSpacers": 0,
+        "outroPinSpacers": 1,
+        "overflow": 0
+      },
+      "screenshots": [
+        "matrix-reduced-1920x1080-engagement.png",
+        "matrix-reduced-1920x1080-outro-hold.png"
+      ],
+      "status": "passed",
+      "durationMs": 8619
+    },
+    "matrix-reduced-1512x982": {
+      "viewport": {
+        "width": 1512,
+        "height": 982
+      },
+      "policy": "reduce",
+      "titleOrigins": [
+        {
+          "name": "CreditVector",
+          "x": 164.46875,
+          "transform": "none"
+        },
+        {
+          "name": "GIOS",
+          "x": 164.46875,
+          "transform": "none"
+        },
+        {
+          "name": "HELIOS",
+          "x": 164.46875,
+          "transform": "none"
+        },
+        {
+          "name": "Kai",
+          "x": 164.46875,
+          "transform": "none"
+        }
+      ],
+      "titleOriginSpreadPx": 0,
+      "engagement": {
+        "section": {
+          "width": 1512,
+          "height": 971.96875,
+          "top": 10982.171875,
+          "bottom": 11954.140625
+        },
+        "chapterGap": 88.375,
+        "rowHeights": [
+          86.296875,
+          86.296875,
+          86.296875,
+          86.296875,
+          86.296875,
+          87.296875
+        ],
+        "noteGap": 49.09375,
+        "bottomBreathingRoom": 137.46875,
+        "outro": {
+          "height": 1571,
+          "top": 11954.140625,
+          "bottom": 13525.140625
+        },
+        "footer": {
+          "top": 13525.140625,
+          "bottom": 13698.140625
+        },
+        "domOrder": true,
+        "engagementMarks": 0,
+        "overflow": 0,
+        "headings": [
+          {
+            "tag": "H1",
+            "id": "arrival-heading",
+            "text": "GABRIELCAPITAL LABS"
+          },
+          {
+            "tag": "H2",
+            "id": "institution-heading",
+            "text": "Gabriel Capital Labs is the parentinstitution behind intelligent infrastructure —operating systems for credit, intelligenceexecution, and spatial computing."
+          },
+          {
+            "tag": "H2",
+            "id": "mission-heading",
+            "text": "Mission Architecture"
+          },
+          {
+            "tag": "H2",
+            "id": "ecosystem-heading",
+            "text": "One parent institution. Four domains."
+          },
+          {
+            "tag": "H2",
+            "id": "lab-heading",
+            "text": "Seven domains of research and engineering."
+          },
+          {
+            "tag": "H2",
+            "id": "principles-heading",
+            "text": "Principles"
+          },
+          {
+            "tag": "H2",
+            "id": "engagement-heading",
+            "text": "06 — Engagement"
+          },
+          {
+            "tag": "H2",
+            "id": "institutional-outro-heading",
+            "text": "Enter the future we are engineering."
+          }
+        ]
+      },
+      "outro": {
+        "accessibleText": "Enter the future we are engineering.",
+        "lineRects": [
+          {
+            "rectCount": 1,
+            "left": 208.46875,
+            "right": 1303.53125,
+            "opacity": 1
+          },
+          {
+            "rectCount": 1,
+            "left": 208.46875,
+            "right": 1303.53125,
+            "opacity": 1
+          }
+        ],
+        "image": {
+          "width": 151.1875,
+          "height": 163.78125,
+          "opacity": 1,
+          "transform": "none",
+          "filter": "none",
+          "mixBlendMode": "normal"
+        },
+        "markWrap": {
+          "opacity": 1,
+          "transform": "none"
+        },
+        "pinHeight": 982,
+        "footerTop": 1052.140625,
+        "imageContained": true,
+        "chain": [
+          {
+            "className": "institutional-outro__mark",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__mark-wrap",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__composition",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__pin",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "pin-spacer pin-spacer-gcl-institutional-outro",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          }
+        ],
+        "pinSpacers": 5,
+        "nestedPinSpacers": 0,
+        "outroPinSpacers": 1,
+        "overflow": 0
+      },
+      "screenshots": [
+        "matrix-reduced-1512x982-engagement.png",
+        "matrix-reduced-1512x982-outro-hold.png"
+      ],
+      "status": "passed",
+      "durationMs": 8790
+    },
+    "matrix-reduced-1440x900": {
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "policy": "reduce",
+      "titleOrigins": [
+        {
+          "name": "CreditVector",
+          "x": 125.59375,
+          "transform": "none"
+        },
+        {
+          "name": "GIOS",
+          "x": 125.59375,
+          "transform": "none"
+        },
+        {
+          "name": "HELIOS",
+          "x": 125.59375,
+          "transform": "none"
+        },
+        {
+          "name": "Kai",
+          "x": 125.59375,
+          "transform": "none"
+        }
+      ],
+      "titleOriginSpreadPx": 0,
+      "engagement": {
+        "section": {
+          "width": 1440,
+          "height": 908.125,
+          "top": 10340.171875,
+          "bottom": 11248.296875
+        },
+        "chapterGap": 81,
+        "rowHeights": [
+          81.390625,
+          81.390625,
+          81.390625,
+          81.390625,
+          81.390625,
+          82.390625
+        ],
+        "noteGap": 45,
+        "bottomBreathingRoom": 126,
+        "outro": {
+          "height": 1440,
+          "top": 11248.296875,
+          "bottom": 12688.296875
+        },
+        "footer": {
+          "top": 12688.296875,
+          "bottom": 12861.296875
+        },
+        "domOrder": true,
+        "engagementMarks": 0,
+        "overflow": 0,
+        "headings": [
+          {
+            "tag": "H1",
+            "id": "arrival-heading",
+            "text": "GABRIELCAPITAL LABS"
+          },
+          {
+            "tag": "H2",
+            "id": "institution-heading",
+            "text": "Gabriel Capital Labs is the parentinstitution behind intelligent infrastructure —operating systems for credit, intelligenceexecution, and spatial computing."
+          },
+          {
+            "tag": "H2",
+            "id": "mission-heading",
+            "text": "Mission Architecture"
+          },
+          {
+            "tag": "H2",
+            "id": "ecosystem-heading",
+            "text": "One parent institution. Four domains."
+          },
+          {
+            "tag": "H2",
+            "id": "lab-heading",
+            "text": "Seven domains of research and engineering."
+          },
+          {
+            "tag": "H2",
+            "id": "principles-heading",
+            "text": "Principles"
+          },
+          {
+            "tag": "H2",
+            "id": "engagement-heading",
+            "text": "06 — Engagement"
+          },
+          {
+            "tag": "H2",
+            "id": "institutional-outro-heading",
+            "text": "Enter the future we are engineering."
+          }
+        ]
+      },
+      "outro": {
+        "accessibleText": "Enter the future we are engineering.",
+        "lineRects": [
+          {
+            "rectCount": 1,
+            "left": 186.46875,
+            "right": 1253.53125,
+            "opacity": 1
+          },
+          {
+            "rectCount": 1,
+            "left": 186.46875,
+            "right": 1253.53125,
+            "opacity": 1
+          }
+        ],
+        "image": {
+          "width": 144,
+          "height": 156,
+          "opacity": 1,
+          "transform": "none",
+          "filter": "none",
+          "mixBlendMode": "normal"
+        },
+        "markWrap": {
+          "opacity": 1,
+          "transform": "none"
+        },
+        "pinHeight": 900,
+        "footerTop": 965.296875,
+        "imageContained": true,
+        "chain": [
+          {
+            "className": "institutional-outro__mark",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__mark-wrap",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__composition",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__pin",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "pin-spacer pin-spacer-gcl-institutional-outro",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          }
+        ],
+        "pinSpacers": 5,
+        "nestedPinSpacers": 0,
+        "outroPinSpacers": 1,
+        "overflow": 0
+      },
+      "screenshots": [
+        "matrix-reduced-1440x900-engagement.png",
+        "matrix-reduced-1440x900-outro-hold.png"
+      ],
+      "status": "passed",
+      "durationMs": 8704
+    },
+    "matrix-reduced-1280x720": {
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "policy": "reduce",
+      "titleOrigins": [
+        {
+          "name": "CreditVector",
+          "x": 119.1875,
+          "transform": "none"
+        },
+        {
+          "name": "GIOS",
+          "x": 119.1875,
+          "transform": "none"
+        },
+        {
+          "name": "HELIOS",
+          "x": 119.1875,
+          "transform": "none"
+        },
+        {
+          "name": "Kai",
+          "x": 119.1875,
+          "transform": "none"
+        }
+      ],
+      "titleOriginSpreadPx": 0,
+      "engagement": {
+        "section": {
+          "width": 1280,
+          "height": 802.484375,
+          "top": 8927.765625,
+          "bottom": 9730.25
+        },
+        "chapterGap": 72,
+        "rowHeights": [
+          76.984375,
+          76.984375,
+          76.984375,
+          76.984375,
+          76.984375,
+          77.984375
+        ],
+        "noteGap": 36,
+        "bottomBreathingRoom": 96,
+        "outro": {
+          "height": 1152,
+          "top": 9730.25,
+          "bottom": 10882.25
+        },
+        "footer": {
+          "top": 10882.25,
+          "bottom": 11055.25
+        },
+        "domOrder": true,
+        "engagementMarks": 0,
+        "overflow": 0,
+        "headings": [
+          {
+            "tag": "H1",
+            "id": "arrival-heading",
+            "text": "GABRIELCAPITAL LABS"
+          },
+          {
+            "tag": "H2",
+            "id": "institution-heading",
+            "text": "Gabriel Capital Labs is the parentinstitution behind intelligent infrastructure —operating systems for credit, intelligenceexecution, and spatial computing."
+          },
+          {
+            "tag": "H2",
+            "id": "mission-heading",
+            "text": "Mission Architecture"
+          },
+          {
+            "tag": "H2",
+            "id": "ecosystem-heading",
+            "text": "One parent institution. Four domains."
+          },
+          {
+            "tag": "H2",
+            "id": "lab-heading",
+            "text": "Seven domains of research and engineering."
+          },
+          {
+            "tag": "H2",
+            "id": "principles-heading",
+            "text": "Principles"
+          },
+          {
+            "tag": "H2",
+            "id": "engagement-heading",
+            "text": "06 — Engagement"
+          },
+          {
+            "tag": "H2",
+            "id": "institutional-outro-heading",
+            "text": "Enter the future we are engineering."
+          }
+        ]
+      },
+      "outro": {
+        "accessibleText": "Enter the future we are engineering.",
+        "lineRects": [
+          {
+            "rectCount": 1,
+            "left": 165.75,
+            "right": 1114.25,
+            "opacity": 1
+          },
+          {
+            "rectCount": 1,
+            "left": 165.75,
+            "right": 1114.25,
+            "opacity": 1
+          }
+        ],
+        "image": {
+          "width": 115.1875,
+          "height": 124.78125,
+          "opacity": 1,
+          "transform": "none",
+          "filter": "none",
+          "mixBlendMode": "normal"
+        },
+        "markWrap": {
+          "opacity": 1,
+          "transform": "none"
+        },
+        "pinHeight": 720,
+        "footerTop": 772.25,
+        "imageContained": true,
+        "chain": [
+          {
+            "className": "institutional-outro__mark",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__mark-wrap",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__composition",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__pin",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "pin-spacer pin-spacer-gcl-institutional-outro",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          }
+        ],
+        "pinSpacers": 5,
+        "nestedPinSpacers": 0,
+        "outroPinSpacers": 1,
+        "overflow": 0
+      },
+      "screenshots": [
+        "matrix-reduced-1280x720-engagement.png",
+        "matrix-reduced-1280x720-outro-hold.png"
+      ],
+      "status": "passed",
+      "durationMs": 8506
+    },
+    "matrix-reduced-1024x768": {
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "policy": "reduce",
+      "titleOrigins": [
+        {
+          "name": "CreditVector",
+          "x": 108.953125,
+          "transform": "none"
+        },
+        {
+          "name": "GIOS",
+          "x": 108.953125,
+          "transform": "none"
+        },
+        {
+          "name": "HELIOS",
+          "x": 108.953125,
+          "transform": "none"
+        },
+        {
+          "name": "Kai",
+          "x": 108.953125,
+          "transform": "none"
+        }
+      ],
+      "titleOriginSpreadPx": 0,
+      "engagement": {
+        "section": {
+          "width": 1024,
+          "height": 814.640625,
+          "top": 9040.015625,
+          "bottom": 9854.65625
+        },
+        "chapterGap": 72,
+        "rowHeights": [
+          75.171875,
+          75.171875,
+          75.171875,
+          75.171875,
+          75.171875,
+          76.171875
+        ],
+        "noteGap": 38.390625,
+        "bottomBreathingRoom": 107.515625,
+        "outro": {
+          "height": 1228,
+          "top": 9854.65625,
+          "bottom": 11082.65625
+        },
+        "footer": {
+          "top": 11082.65625,
+          "bottom": 11250.53125
+        },
+        "domOrder": true,
+        "engagementMarks": 0,
+        "overflow": 0,
+        "headings": [
+          {
+            "tag": "H1",
+            "id": "arrival-heading",
+            "text": "GABRIELCAPITAL LABS"
+          },
+          {
+            "tag": "H2",
+            "id": "institution-heading",
+            "text": "Gabriel Capital Labs is the parentinstitution behind intelligent infrastructure —operating systems for credit, intelligenceexecution, and spatial computing."
+          },
+          {
+            "tag": "H2",
+            "id": "mission-heading",
+            "text": "Mission Architecture"
+          },
+          {
+            "tag": "H2",
+            "id": "ecosystem-heading",
+            "text": "One parent institution. Four domains."
+          },
+          {
+            "tag": "H2",
+            "id": "lab-heading",
+            "text": "Seven domains of research and engineering."
+          },
+          {
+            "tag": "H2",
+            "id": "principles-heading",
+            "text": "Principles"
+          },
+          {
+            "tag": "H2",
+            "id": "engagement-heading",
+            "text": "06 — Engagement"
+          },
+          {
+            "tag": "H2",
+            "id": "institutional-outro-heading",
+            "text": "Enter the future we are engineering."
+          }
+        ]
+      },
+      "outro": {
+        "accessibleText": "Enter the future we are engineering.",
+        "lineRects": [
+          {
+            "rectCount": 1,
+            "left": 132.59375,
+            "right": 891.390625,
+            "opacity": 1
+          },
+          {
+            "rectCount": 1,
+            "left": 132.59375,
+            "right": 891.390625,
+            "opacity": 1
+          }
+        ],
+        "image": {
+          "width": 104,
+          "height": 112.65625,
+          "opacity": 1,
+          "transform": "none",
+          "filter": "none",
+          "mixBlendMode": "normal"
+        },
+        "markWrap": {
+          "opacity": 1,
+          "transform": "none"
+        },
+        "pinHeight": 768,
+        "footerTop": 822.65625,
+        "imageContained": true,
+        "chain": [
+          {
+            "className": "institutional-outro__mark",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__mark-wrap",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__composition",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__pin",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "pin-spacer pin-spacer-gcl-institutional-outro",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          }
+        ],
+        "pinSpacers": 5,
+        "nestedPinSpacers": 0,
+        "outroPinSpacers": 1,
+        "overflow": 0
+      },
+      "screenshots": [
+        "matrix-reduced-1024x768-engagement.png",
+        "matrix-reduced-1024x768-outro-hold.png"
+      ],
+      "status": "passed",
+      "durationMs": 8547
+    },
+    "matrix-reduced-1024x568": {
+      "viewport": {
+        "width": 1024,
+        "height": 568
+      },
+      "policy": "reduce",
+      "titleOrigins": [
+        {
+          "name": "CreditVector",
+          "x": 108.953125,
+          "transform": "none"
+        },
+        {
+          "name": "GIOS",
+          "x": 108.953125,
+          "transform": "none"
+        },
+        {
+          "name": "HELIOS",
+          "x": 108.953125,
+          "transform": "none"
+        },
+        {
+          "name": "Kai",
+          "x": 108.953125,
+          "transform": "none"
+        }
+      ],
+      "titleOriginSpreadPx": 0,
+      "engagement": {
+        "section": {
+          "width": 1024,
+          "height": 785.21875,
+          "top": 7474.015625,
+          "bottom": 8259.234375
+        },
+        "chapterGap": 72,
+        "rowHeights": [
+          75.171875,
+          75.171875,
+          75.171875,
+          75.171875,
+          75.171875,
+          76.171875
+        ],
+        "noteGap": 32,
+        "bottomBreathingRoom": 96,
+        "outro": {
+          "height": 909,
+          "top": 8259.234375,
+          "bottom": 9168.234375
+        },
+        "footer": {
+          "top": 9168.234375,
+          "bottom": 9336.109375
+        },
+        "domOrder": true,
+        "engagementMarks": 0,
+        "overflow": 0,
+        "headings": [
+          {
+            "tag": "H1",
+            "id": "arrival-heading",
+            "text": "GABRIELCAPITAL LABS"
+          },
+          {
+            "tag": "H2",
+            "id": "institution-heading",
+            "text": "Gabriel Capital Labs is the parentinstitution behind intelligent infrastructure —operating systems for credit, intelligenceexecution, and spatial computing."
+          },
+          {
+            "tag": "H2",
+            "id": "mission-heading",
+            "text": "Mission Architecture"
+          },
+          {
+            "tag": "H2",
+            "id": "ecosystem-heading",
+            "text": "One parent institution. Four domains."
+          },
+          {
+            "tag": "H2",
+            "id": "lab-heading",
+            "text": "Seven domains of research and engineering."
+          },
+          {
+            "tag": "H2",
+            "id": "principles-heading",
+            "text": "Principles"
+          },
+          {
+            "tag": "H2",
+            "id": "engagement-heading",
+            "text": "06 — Engagement"
+          },
+          {
+            "tag": "H2",
+            "id": "institutional-outro-heading",
+            "text": "Enter the future we are engineering."
+          }
+        ]
+      },
+      "outro": {
+        "accessibleText": "Enter the future we are engineering.",
+        "lineRects": [
+          {
+            "rectCount": 1,
+            "left": 132.59375,
+            "right": 891.390625,
+            "opacity": 1
+          },
+          {
+            "rectCount": 1,
+            "left": 132.59375,
+            "right": 891.390625,
+            "opacity": 1
+          }
+        ],
+        "image": {
+          "width": 96,
+          "height": 104,
+          "opacity": 1,
+          "transform": "none",
+          "filter": "none",
+          "mixBlendMode": "normal"
+        },
+        "markWrap": {
+          "opacity": 1,
+          "transform": "none"
+        },
+        "pinHeight": 568,
+        "footerTop": 609.234375,
+        "imageContained": true,
+        "chain": [
+          {
+            "className": "institutional-outro__mark",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__mark-wrap",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__composition",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__pin",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "pin-spacer pin-spacer-gcl-institutional-outro",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          }
+        ],
+        "pinSpacers": 5,
+        "nestedPinSpacers": 0,
+        "outroPinSpacers": 1,
+        "overflow": 0
+      },
+      "screenshots": [
+        "matrix-reduced-1024x568-engagement.png",
+        "matrix-reduced-1024x568-outro-hold.png"
+      ],
+      "status": "passed",
+      "durationMs": 8413
+    },
+    "matrix-reduced-390x844": {
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "policy": "reduce",
+      "titleOrigins": [
+        {
+          "name": "CreditVector",
+          "x": 88,
+          "transform": "matrix(1, 0, 0, 1, 0, 0)"
+        },
+        {
+          "name": "GIOS",
+          "x": 88,
+          "transform": "matrix(1, 0, 0, 1, 0, 0)"
+        },
+        {
+          "name": "HELIOS",
+          "x": 88,
+          "transform": "matrix(1, 0, 0, 1, 0, 0)"
+        },
+        {
+          "name": "Kai",
+          "x": 88,
+          "transform": "matrix(1, 0, 0, 1, 0, 0)"
+        }
+      ],
+      "titleOriginSpreadPx": 0,
+      "engagement": {
+        "section": {
+          "width": 390,
+          "height": 940.671875,
+          "top": 5921.40625,
+          "bottom": 6862.078125
+        },
+        "chapterGap": 67.515625,
+        "rowHeights": [
+          98.375,
+          98.375,
+          98.375,
+          98.375,
+          98.375,
+          99.375
+        ],
+        "noteGap": 42.1875,
+        "bottomBreathingRoom": 101.265625,
+        "outro": {
+          "height": 844,
+          "top": 6862.078125,
+          "bottom": 7706.078125
+        },
+        "footer": {
+          "top": 7706.078125,
+          "bottom": 7936.171875
+        },
+        "domOrder": true,
+        "engagementMarks": 0,
+        "overflow": 0,
+        "headings": [
+          {
+            "tag": "H1",
+            "id": "arrival-heading",
+            "text": "GABRIELCAPITAL LABS"
+          },
+          {
+            "tag": "H2",
+            "id": "institution-heading",
+            "text": "Gabriel Capital Labs is the parentinstitution behind intelligent infrastructure —operating systems for credit, intelligenceexecution, and spatial computing."
+          },
+          {
+            "tag": "H2",
+            "id": "mission-heading",
+            "text": "Mission Architecture"
+          },
+          {
+            "tag": "H2",
+            "id": "ecosystem-heading",
+            "text": "One parent institution. Four domains."
+          },
+          {
+            "tag": "H2",
+            "id": "lab-heading",
+            "text": "Seven domains of research and engineering."
+          },
+          {
+            "tag": "H2",
+            "id": "principles-heading",
+            "text": "Principles"
+          },
+          {
+            "tag": "H2",
+            "id": "engagement-heading",
+            "text": "06 — Engagement"
+          },
+          {
+            "tag": "H2",
+            "id": "institutional-outro-heading",
+            "text": "Enter the future we are engineering."
+          }
+        ]
+      },
+      "outro": {
+        "accessibleText": "Enter the future we are engineering.",
+        "lineRects": [
+          {
+            "rectCount": 1,
+            "left": 20,
+            "right": 370,
+            "opacity": 1
+          },
+          {
+            "rectCount": 1,
+            "left": 20,
+            "right": 370,
+            "opacity": 1
+          }
+        ],
+        "image": {
+          "width": 104,
+          "height": 112.65625,
+          "opacity": 1,
+          "transform": "none",
+          "filter": "none",
+          "mixBlendMode": "normal"
+        },
+        "markWrap": {
+          "opacity": 1,
+          "transform": "none"
+        },
+        "pinHeight": 844,
+        "footerTop": 844.078125,
+        "imageContained": true,
+        "chain": [
+          {
+            "className": "institutional-outro__mark",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__mark-wrap",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__composition",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__pin",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          }
+        ],
+        "pinSpacers": 0,
+        "nestedPinSpacers": 0,
+        "outroPinSpacers": 0,
+        "overflow": 0
+      },
+      "screenshots": [
+        "matrix-reduced-390x844-engagement.png",
+        "matrix-reduced-390x844-outro-hold.png"
+      ],
+      "status": "passed",
+      "durationMs": 7598
+    },
+    "matrix-reduced-430x932": {
+      "viewport": {
+        "width": 430,
+        "height": 932
+      },
+      "policy": "reduce",
+      "titleOrigins": [
+        {
+          "name": "CreditVector",
+          "x": 88,
+          "transform": "matrix(1, 0, 0, 1, 0, 0)"
+        },
+        {
+          "name": "GIOS",
+          "x": 88,
+          "transform": "matrix(1, 0, 0, 1, 0, 0)"
+        },
+        {
+          "name": "HELIOS",
+          "x": 88,
+          "transform": "matrix(1, 0, 0, 1, 0, 0)"
+        },
+        {
+          "name": "Kai",
+          "x": 88,
+          "transform": "matrix(1, 0, 0, 1, 0, 0)"
+        }
+      ],
+      "titleOriginSpreadPx": 0,
+      "engagement": {
+        "section": {
+          "width": 430,
+          "height": 973.234375,
+          "top": 5873.203125,
+          "bottom": 6846.4375
+        },
+        "chapterGap": 74.546875,
+        "rowHeights": [
+          98.375,
+          98.375,
+          98.375,
+          98.375,
+          98.375,
+          99.375
+        ],
+        "noteGap": 46.59375,
+        "bottomBreathingRoom": 111.828125,
+        "outro": {
+          "height": 932,
+          "top": 6846.4375,
+          "bottom": 7778.4375
+        },
+        "footer": {
+          "top": 7778.4375,
+          "bottom": 7967.265625
+        },
+        "domOrder": true,
+        "engagementMarks": 0,
+        "overflow": 0,
+        "headings": [
+          {
+            "tag": "H1",
+            "id": "arrival-heading",
+            "text": "GABRIELCAPITAL LABS"
+          },
+          {
+            "tag": "H2",
+            "id": "institution-heading",
+            "text": "Gabriel Capital Labs is the parentinstitution behind intelligent infrastructure —operating systems for credit, intelligenceexecution, and spatial computing."
+          },
+          {
+            "tag": "H2",
+            "id": "mission-heading",
+            "text": "Mission Architecture"
+          },
+          {
+            "tag": "H2",
+            "id": "ecosystem-heading",
+            "text": "One parent institution. Four domains."
+          },
+          {
+            "tag": "H2",
+            "id": "lab-heading",
+            "text": "Seven domains of research and engineering."
+          },
+          {
+            "tag": "H2",
+            "id": "principles-heading",
+            "text": "Principles"
+          },
+          {
+            "tag": "H2",
+            "id": "engagement-heading",
+            "text": "06 — Engagement"
+          },
+          {
+            "tag": "H2",
+            "id": "institutional-outro-heading",
+            "text": "Enter the future we are engineering."
+          }
+        ]
+      },
+      "outro": {
+        "accessibleText": "Enter the future we are engineering.",
+        "lineRects": [
+          {
+            "rectCount": 1,
+            "left": 20,
+            "right": 410,
+            "opacity": 1
+          },
+          {
+            "rectCount": 1,
+            "left": 20,
+            "right": 410,
+            "opacity": 1
+          }
+        ],
+        "image": {
+          "width": 104,
+          "height": 112.65625,
+          "opacity": 1,
+          "transform": "none",
+          "filter": "none",
+          "mixBlendMode": "normal"
+        },
+        "markWrap": {
+          "opacity": 1,
+          "transform": "none"
+        },
+        "pinHeight": 932,
+        "footerTop": 932.4375,
+        "imageContained": true,
+        "chain": [
+          {
+            "className": "institutional-outro__mark",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__mark-wrap",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__composition",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__pin",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          }
+        ],
+        "pinSpacers": 0,
+        "nestedPinSpacers": 0,
+        "outroPinSpacers": 0,
+        "overflow": 0
+      },
+      "screenshots": [
+        "matrix-reduced-430x932-engagement.png",
+        "matrix-reduced-430x932-outro-hold.png"
+      ],
+      "status": "passed",
+      "durationMs": 7740
+    },
+    "matrix-reduced-320x568": {
+      "viewport": {
+        "width": 320,
+        "height": 568
+      },
+      "policy": "reduce",
+      "titleOrigins": [
+        {
+          "name": "CreditVector",
+          "x": 88,
+          "transform": "matrix(1, 0, 0, 1, 0, 0)"
+        },
+        {
+          "name": "GIOS",
+          "x": 88,
+          "transform": "matrix(1, 0, 0, 1, 0, 0)"
+        },
+        {
+          "name": "HELIOS",
+          "x": 88,
+          "transform": "matrix(1, 0, 0, 1, 0, 0)"
+        },
+        {
+          "name": "Kai",
+          "x": 88,
+          "transform": "matrix(1, 0, 0, 1, 0, 0)"
+        }
+      ],
+      "titleOriginSpreadPx": 0,
+      "engagement": {
+        "section": {
+          "width": 320,
+          "height": 897.4375,
+          "top": 6077.09375,
+          "bottom": 6974.53125
+        },
+        "chapterGap": 56,
+        "rowHeights": [
+          98.375,
+          119.375,
+          98.375,
+          98.375,
+          98.375,
+          99.375
+        ],
+        "noteGap": 32,
+        "bottomBreathingRoom": 80,
+        "outro": {
+          "height": 568,
+          "top": 6974.53125,
+          "bottom": 7542.53125
+        },
+        "footer": {
+          "top": 7542.53125,
+          "bottom": 7772.625
+        },
+        "domOrder": true,
+        "engagementMarks": 0,
+        "overflow": 0,
+        "headings": [
+          {
+            "tag": "H1",
+            "id": "arrival-heading",
+            "text": "GABRIELCAPITAL LABS"
+          },
+          {
+            "tag": "H2",
+            "id": "institution-heading",
+            "text": "Gabriel Capital Labs is the parentinstitution behind intelligent infrastructure —operating systems for credit, intelligenceexecution, and spatial computing."
+          },
+          {
+            "tag": "H2",
+            "id": "mission-heading",
+            "text": "Mission Architecture"
+          },
+          {
+            "tag": "H2",
+            "id": "ecosystem-heading",
+            "text": "One parent institution. Four domains."
+          },
+          {
+            "tag": "H2",
+            "id": "lab-heading",
+            "text": "Seven domains of research and engineering."
+          },
+          {
+            "tag": "H2",
+            "id": "principles-heading",
+            "text": "Principles"
+          },
+          {
+            "tag": "H2",
+            "id": "engagement-heading",
+            "text": "06 — Engagement"
+          },
+          {
+            "tag": "H2",
+            "id": "institutional-outro-heading",
+            "text": "Enter the future we are engineering."
+          }
+        ]
+      },
+      "outro": {
+        "accessibleText": "Enter the future we are engineering.",
+        "lineRects": [
+          {
+            "rectCount": 1,
+            "left": 20,
+            "right": 300,
+            "opacity": 1
+          },
+          {
+            "rectCount": 1,
+            "left": 20,
+            "right": 300,
+            "opacity": 1
+          }
+        ],
+        "image": {
+          "width": 104,
+          "height": 112.65625,
+          "opacity": 1,
+          "transform": "none",
+          "filter": "none",
+          "mixBlendMode": "normal"
+        },
+        "markWrap": {
+          "opacity": 1,
+          "transform": "none"
+        },
+        "pinHeight": 568,
+        "footerTop": 567.53125,
+        "imageContained": true,
+        "chain": [
+          {
+            "className": "institutional-outro__mark",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__mark-wrap",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__composition",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro__pin",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          },
+          {
+            "className": "institutional-outro",
+            "filter": "none",
+            "backdropFilter": "none",
+            "mixBlendMode": "normal",
+            "maskImage": "none"
+          }
+        ],
+        "pinSpacers": 0,
+        "nestedPinSpacers": 0,
+        "outroPinSpacers": 0,
+        "overflow": 0
+      },
+      "screenshots": [
+        "matrix-reduced-320x568-engagement.png",
+        "matrix-reduced-320x568-outro-hold.png"
+      ],
+      "status": "passed",
+      "durationMs": 7639
+    },
+    "narrative-full": {
+      "policy": "no-preference",
+      "samples": [
+        {
+          "progress": 0.22,
+          "signal": 0.875,
+          "mark": 0,
+          "lines": [
+            0,
+            0
+          ],
+          "transforms": {
+            "signal": "matrix(0.8975, 0, 0, 1, 0, 0)",
+            "mark": "matrix(0.94, 0, 0, 0.94, 0, 16)",
+            "lines": [
+              "matrix(1, 0, 0, 1, 0, 18)",
+              "matrix(1, 0, 0, 1, 0, 18)"
+            ],
+            "image": "none"
+          },
+          "markRect": {
+            "x": 652.3200073242188,
+            "y": 296.35186767578125,
+            "width": 135.3599853515625,
+            "height": 146.6400146484375
+          },
+          "footerTop": 1602.296875,
+          "screenshot": "narrative-no-preference-0-22.png"
+        },
+        {
+          "progress": 0.46,
+          "signal": 1,
+          "mark": 0.9989,
+          "lines": [
+            0,
+            0
+          ],
+          "transforms": {
+            "signal": "matrix(1, 0, 0, 1, 0, 0)",
+            "mark": "matrix(0.9999, 0, 0, 0.9999, 0, 0.0175)",
+            "lines": [
+              "matrix(1, 0, 0, 1, 0, 18)",
+              "matrix(1, 0, 0, 1, 0, 18)"
+            ],
+            "image": "none"
+          },
+          "markRect": {
+            "x": 648.0072021484375,
+            "y": 275.6971740722656,
+            "width": 143.985595703125,
+            "height": 155.98440551757812
+          },
+          "footerTop": 1386.296875,
+          "screenshot": "narrative-no-preference-0-46.png"
+        },
+        {
+          "progress": 0.88,
+          "signal": 0.42,
+          "mark": 1,
+          "lines": [
+            1,
+            1
+          ],
+          "transforms": {
+            "signal": "matrix(1, 0, 0, 1, 0, 0)",
+            "mark": "matrix(1, 0, 0, 1, 0, 0)",
+            "lines": [
+              "matrix(1, 0, 0, 1, 0, 0)",
+              "matrix(1, 0, 0, 1, 0, 0)"
+            ],
+            "image": "none"
+          },
+          "markRect": {
+            "x": 648,
+            "y": 275.671875,
+            "width": 144,
+            "height": 156
+          },
+          "footerTop": 1008.296875,
+          "screenshot": "narrative-no-preference-0-88.png"
+        },
+        {
+          "progress": 0.97,
+          "signal": 0.42,
+          "mark": 1,
+          "lines": [
+            1,
+            1
+          ],
+          "transforms": {
+            "signal": "matrix(1, 0, 0, 1, 0, 0)",
+            "mark": "matrix(1, 0, 0, 1, 0, 0)",
+            "lines": [
+              "matrix(1, 0, 0, 1, 0, 0)",
+              "matrix(1, 0, 0, 1, 0, 0)"
+            ],
+            "image": "none"
+          },
+          "markRect": {
+            "x": 648,
+            "y": 275.671875,
+            "width": 144,
+            "height": 156
+          },
+          "footerTop": 927.296875,
+          "screenshot": "narrative-no-preference-0-97.png"
+        }
+      ],
+      "status": "passed",
+      "durationMs": 5605
+    },
+    "narrative-reduced": {
+      "policy": "reduce",
+      "samples": [
+        {
+          "progress": 0.22,
+          "signal": 0.8767,
+          "mark": 0,
+          "lines": [
+            0,
+            0
+          ],
+          "transforms": {
+            "signal": "none",
+            "mark": "none",
+            "lines": [
+              "none",
+              "none"
+            ],
+            "image": "none"
+          },
+          "markRect": {
+            "x": 648,
+            "y": 275.671875,
+            "width": 144,
+            "height": 156
+          },
+          "footerTop": 1321.296875,
+          "screenshot": "narrative-reduce-0-22.png"
+        },
+        {
+          "progress": 0.46,
+          "signal": 1,
+          "mark": 0.9945,
+          "lines": [
+            0,
+            0
+          ],
+          "transforms": {
+            "signal": "none",
+            "mark": "none",
+            "lines": [
+              "none",
+              "none"
+            ],
+            "image": "none"
+          },
+          "markRect": {
+            "x": 648,
+            "y": 275.671875,
+            "width": 144,
+            "height": 156
+          },
+          "footerTop": 1191.296875,
+          "screenshot": "narrative-reduce-0-46.png"
+        },
+        {
+          "progress": 0.88,
+          "signal": 0.42,
+          "mark": 1,
+          "lines": [
+            1,
+            1
+          ],
+          "transforms": {
+            "signal": "none",
+            "mark": "none",
+            "lines": [
+              "none",
+              "none"
+            ],
+            "image": "none"
+          },
+          "markRect": {
+            "x": 648,
+            "y": 275.671875,
+            "width": 144,
+            "height": 156
+          },
+          "footerTop": 965.296875,
+          "screenshot": "narrative-reduce-0-88.png"
+        },
+        {
+          "progress": 0.97,
+          "signal": 0.42,
+          "mark": 1,
+          "lines": [
+            1,
+            1
+          ],
+          "transforms": {
+            "signal": "none",
+            "mark": "none",
+            "lines": [
+              "none",
+              "none"
+            ],
+            "image": "none"
+          },
+          "markRect": {
+            "x": 648,
+            "y": 275.671875,
+            "width": 144,
+            "height": 156
+          },
+          "footerTop": 916.296875,
+          "screenshot": "narrative-reduce-0-97.png"
+        }
+      ],
+      "status": "passed",
+      "durationMs": 5474
+    },
+    "replay-full-three-origins": {
+      "initial": {
+        "pins": 5,
+        "listener": {
+          "added": 1,
+          "removed": 0,
+          "active": 1
+        }
+      },
+      "engagementLock": {
+        "scrollY": 0,
+        "owned": 9,
+        "ownedInert": 9,
+        "overflow": "hidden",
+        "replayVisibility": "hidden"
+      },
+      "afterEscape": {
+        "owned": 0,
+        "allInert": 0,
+        "prologue": false,
+        "replaying": false,
+        "overflow": "visible",
+        "focusClass": "arrival__replay arrival__replay--visible",
+        "status": "Introduction complete",
+        "pins": 5,
+        "nestedPins": 0,
+        "outroPins": 1,
+        "listener": {
+          "added": 1,
+          "removed": 0,
+          "active": 1
+        }
+      },
+      "outroLock": {
+        "scrollY": 0,
+        "owned": 9,
+        "ownedInert": 9,
+        "overflow": "hidden",
+        "replayVisibility": "hidden"
+      },
+      "afterSkip": {
+        "owned": 0,
+        "allInert": 0,
+        "prologue": false,
+        "replaying": false,
+        "overflow": "visible",
+        "focusClass": "arrival__replay arrival__replay--visible",
+        "status": "Introduction complete",
+        "pins": 5,
+        "nestedPins": 0,
+        "outroPins": 1,
+        "listener": {
+          "added": 1,
+          "removed": 0,
+          "active": 1
+        }
+      },
+      "footerLock": {
+        "scrollY": 0,
+        "owned": 9,
+        "ownedInert": 9,
+        "overflow": "hidden",
+        "replayVisibility": "hidden"
+      },
+      "afterNatural": {
+        "owned": 0,
+        "allInert": 0,
+        "prologue": false,
+        "replaying": false,
+        "overflow": "visible",
+        "focusClass": "arrival__replay arrival__replay--visible",
+        "status": "Introduction complete",
+        "pins": 5,
+        "nestedPins": 0,
+        "outroPins": 1,
+        "listener": {
+          "added": 1,
+          "removed": 0,
+          "active": 1
+        }
+      },
+      "screenshot": "replay-three-cycles-complete.png",
+      "status": "passed",
+      "durationMs": 21219
+    },
+    "replay-reduced-outro": {
+      "lock": {
+        "scrollY": 0,
+        "owned": 9,
+        "ownedInert": 9,
+        "overflow": "hidden",
+        "replayVisibility": "hidden"
+      },
+      "release": {
+        "owned": 0,
+        "allInert": 0,
+        "prologue": false,
+        "replaying": false,
+        "overflow": "visible",
+        "focusClass": "arrival__replay arrival__replay--visible",
+        "status": "Introduction complete",
+        "pins": 5,
+        "nestedPins": 0,
+        "outroPins": 1,
+        "listener": {
+          "added": 1,
+          "removed": 0,
+          "active": 1
+        }
+      },
+      "status": "passed",
+      "durationMs": 16955
+    },
+    "unrelated-inert-preservation": {
+      "active": {
+        "inert": true,
+        "owned": false
+      },
+      "released": {
+        "inert": true,
+        "owned": false
+      },
+      "status": "passed",
+      "durationMs": 1995
+    },
+    "mobile-replay-bypass": {
+      "prologue": false,
+      "replaying": false,
+      "owned": 0,
+      "inert": 0,
+      "pins": 2,
+      "outroTransform": "matrix(1, 0, 0, 1, 0, 0)",
+      "status": "passed",
+      "durationMs": 2800
+    },
+    "hash-contact-full": {
+      "top": 84.171875,
+      "hash": "#contact",
+      "prologue": false,
+      "replaying": false,
+      "owned": 0,
+      "inert": 0,
+      "pins": 5,
+      "status": "passed",
+      "durationMs": 2199
+    },
+    "hash-contact-reduced": {
+      "top": 84.171875,
+      "hash": "#contact",
+      "prologue": false,
+      "replaying": false,
+      "owned": 0,
+      "inert": 0,
+      "pins": 5,
+      "status": "passed",
+      "durationMs": 2334
+    },
+    "axe-full": {
+      "policy": "no-preference",
+      "audits": [
+        {
+          "selector": "#contact",
+          "violations": [],
+          "passes": 10
+        },
+        {
+          "selector": "#institutional-outro",
+          "violations": [],
+          "passes": 8
+        },
+        {
+          "selector": "footer",
+          "violations": [],
+          "passes": 5
+        }
+      ],
+      "status": "passed",
+      "durationMs": 5052
+    },
+    "axe-reduced": {
+      "policy": "reduce",
+      "audits": [
+        {
+          "selector": "#contact",
+          "violations": [],
+          "passes": 10
+        },
+        {
+          "selector": "#institutional-outro",
+          "violations": [],
+          "passes": 8
+        },
+        {
+          "selector": "footer",
+          "violations": [],
+          "passes": 5
+        }
+      ],
+      "status": "passed",
+      "durationMs": 4981
+    },
+    "local-static-performance": {
+      "wallMs": 1007,
+      "navigation": {
+        "responseStart": 4.300000011920929,
+        "domContentLoaded": 126.80000001192093,
+        "load": 209.5,
+        "duration": 209.5,
+        "resources": 11
+      },
+      "status": "passed",
+      "durationMs": 1474
+    }
+  },
+  "telemetry": [],
+  "failures": [],
+  "screenshots": [
+    "matrix-full-1920x1080-engagement.png",
+    "matrix-full-1920x1080-outro-hold.png",
+    "matrix-full-1512x982-engagement.png",
+    "matrix-full-1512x982-outro-hold.png",
+    "matrix-full-1440x900-engagement.png",
+    "matrix-full-1440x900-outro-hold.png",
+    "matrix-full-1280x720-engagement.png",
+    "matrix-full-1280x720-outro-hold.png",
+    "matrix-full-1024x768-engagement.png",
+    "matrix-full-1024x768-outro-hold.png",
+    "matrix-full-1024x568-engagement.png",
+    "matrix-full-1024x568-outro-hold.png",
+    "matrix-full-390x844-engagement.png",
+    "matrix-full-390x844-outro-hold.png",
+    "matrix-full-430x932-engagement.png",
+    "matrix-full-430x932-outro-hold.png",
+    "matrix-full-320x568-engagement.png",
+    "matrix-full-320x568-outro-hold.png",
+    "matrix-reduced-1920x1080-engagement.png",
+    "matrix-reduced-1920x1080-outro-hold.png",
+    "matrix-reduced-1512x982-engagement.png",
+    "matrix-reduced-1512x982-outro-hold.png",
+    "matrix-reduced-1440x900-engagement.png",
+    "matrix-reduced-1440x900-outro-hold.png",
+    "matrix-reduced-1280x720-engagement.png",
+    "matrix-reduced-1280x720-outro-hold.png",
+    "matrix-reduced-1024x768-engagement.png",
+    "matrix-reduced-1024x768-outro-hold.png",
+    "matrix-reduced-1024x568-engagement.png",
+    "matrix-reduced-1024x568-outro-hold.png",
+    "matrix-reduced-390x844-engagement.png",
+    "matrix-reduced-390x844-outro-hold.png",
+    "matrix-reduced-430x932-engagement.png",
+    "matrix-reduced-430x932-outro-hold.png",
+    "matrix-reduced-320x568-engagement.png",
+    "matrix-reduced-320x568-outro-hold.png",
+    "narrative-no-preference-0-22.png",
+    "narrative-no-preference-0-46.png",
+    "narrative-no-preference-0-88.png",
+    "narrative-no-preference-0-97.png",
+    "narrative-reduce-0-22.png",
+    "narrative-reduce-0-46.png",
+    "narrative-reduce-0-88.png",
+    "narrative-reduce-0-97.png",
+    "replay-three-cycles-complete.png"
+  ],
+  "disclosures": [
+    "Automated browser evidence is Chromium-only; Safari/WebKit remains a manual Founder check.",
+    "The 1024x568 compact-height pair is an additional stress case beyond the binding minimum matrix."
+  ],
+  "finishedAt": "2026-08-09T03:21:00.571Z",
+  "telemetrySummary": {
+    "unexpectedCount": 0
+  },
+  "status": "passed",
+  "attestable": true
+}

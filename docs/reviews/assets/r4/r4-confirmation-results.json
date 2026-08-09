@@ -1,0 +1,1946 @@
+{
+  "schemaVersion": 2,
+  "suite": "gcl-r4.2-confirmation",
+  "startedAt": "2026-08-09T00:30:53.079Z",
+  "configuration": {
+    "baseUrl": "http://127.0.0.1:4310/",
+    "controlUrl": "http://127.0.0.1:4311/",
+    "controlRootProvided": true,
+    "evidenceDir": "/Users/re3zy/Documents/gabriel-capital-labs-site-r4/docs/reviews/assets/r4",
+    "playwrightSpecifier": "playwright-core",
+    "chromePath": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+    "requestedScenarios": [],
+    "fullConfirmationRun": true,
+    "watchdogCeilingMs": 23500,
+    "beatTableMs": 15100
+  },
+  "assets": {
+    "public/img/gateway-g-480.webp": {
+      "expected": "90b2c57e6dfd5d2a6cfc46d7f4a89c534337ff19954a6719142872af8b737b19",
+      "actual": "90b2c57e6dfd5d2a6cfc46d7f4a89c534337ff19954a6719142872af8b737b19",
+      "bytes": 49854
+    },
+    "public/img/gateway-g-768.webp": {
+      "expected": "bdc797d78f19d2e59c7e1e06f9c106203492651ba4300c2c93427407ccf1ef7a",
+      "actual": "bdc797d78f19d2e59c7e1e06f9c106203492651ba4300c2c93427407ccf1ef7a",
+      "bytes": 108102
+    },
+    "public/img/gateway-g-1080.webp": {
+      "expected": "67f8f444ad9800520e1a4d0f941021cffe8903a16b1a00a9909f25649ef9ccc7",
+      "actual": "67f8f444ad9800520e1a4d0f941021cffe8903a16b1a00a9909f25649ef9ccc7",
+      "bytes": 168268
+    },
+    "public/img/gateway-g-480.png": {
+      "expected": "9ed7766905c9167b6dd86b6e061430fb1e66892ff1501460702c8755b66b1c9b",
+      "actual": "9ed7766905c9167b6dd86b6e061430fb1e66892ff1501460702c8755b66b1c9b",
+      "bytes": 48272
+    }
+  },
+  "scenarios": {
+    "canonical-assets": {
+      "count": 4,
+      "status": "passed",
+      "durationMs": 4
+    },
+    "initial-first-visit-full-motion": {
+      "screenshots": [
+        "01-initial-no-preference-p1.png",
+        "02-initial-no-preference-p3.png",
+        "03-initial-no-preference-p6.png"
+      ],
+      "gatewaySamples": {
+        "p1": {
+          "chain": [
+            {
+              "tag": "IMG",
+              "className": "arrival__mark",
+              "filter": "none",
+              "backdropFilter": "none",
+              "maskImage": "none",
+              "webkitMaskImage": "none",
+              "mixBlendMode": "normal"
+            },
+            {
+              "tag": "PICTURE",
+              "className": "",
+              "filter": "none",
+              "backdropFilter": "none",
+              "maskImage": "none",
+              "webkitMaskImage": "none",
+              "mixBlendMode": "normal"
+            },
+            {
+              "tag": "DIV",
+              "className": "arrival__mark-wrap",
+              "filter": "none",
+              "backdropFilter": "none",
+              "maskImage": "none",
+              "webkitMaskImage": "none",
+              "mixBlendMode": "normal"
+            },
+            {
+              "tag": "DIV",
+              "className": "arrival__stage",
+              "filter": "none",
+              "backdropFilter": "none",
+              "maskImage": "none",
+              "webkitMaskImage": "none",
+              "mixBlendMode": "normal"
+            },
+            {
+              "tag": "DIV",
+              "className": "arrival__pin",
+              "filter": "none",
+              "backdropFilter": "none",
+              "maskImage": "none",
+              "webkitMaskImage": "none",
+              "mixBlendMode": "normal"
+            },
+            {
+              "tag": "DIV",
+              "className": "pin-spacer",
+              "filter": "none",
+              "backdropFilter": "none",
+              "maskImage": "none",
+              "webkitMaskImage": "none",
+              "mixBlendMode": "normal"
+            },
+            {
+              "tag": "SECTION",
+              "className": "arrival",
+              "filter": "none",
+              "backdropFilter": "none",
+              "maskImage": "none",
+              "webkitMaskImage": "none",
+              "mixBlendMode": "normal"
+            }
+          ],
+          "image": {
+            "opacity": 1,
+            "transform": "none",
+            "inlineOpacity": "",
+            "inlineTransform": ""
+          }
+        },
+        "p3": {
+          "chain": [
+            {
+              "tag": "IMG",
+              "className": "arrival__mark",
+              "filter": "none",
+              "backdropFilter": "none",
+              "maskImage": "none",
+              "webkitMaskImage": "none",
+              "mixBlendMode": "normal"
+            },
+            {
+              "tag": "PICTURE",
+              "className": "",
+              "filter": "none",
+              "backdropFilter": "none",
+              "maskImage": "none",
+              "webkitMaskImage": "none",
+              "mixBlendMode": "normal"
+            },
+            {
+              "tag": "DIV",
+              "className": "arrival__mark-wrap",
+              "filter": "none",
+              "backdropFilter": "none",
+              "maskImage": "none",
+              "webkitMaskImage": "none",
+              "mixBlendMode": "normal"
+            },
+            {
+              "tag": "DIV",
+              "className": "arrival__stage",
+              "filter": "none",
+              "backdropFilter": "none",
+              "maskImage": "none",
+              "webkitMaskImage": "none",
+              "mixBlendMode": "normal"
+            },
+            {
+              "tag": "DIV",
+              "className": "arrival__pin",
+              "filter": "none",
+              "backdropFilter": "none",
+              "maskImage": "none",
+              "webkitMaskImage": "none",
+              "mixBlendMode": "normal"
+            },
+            {
+              "tag": "DIV",
+              "className": "pin-spacer",
+              "filter": "none",
+              "backdropFilter": "none",
+              "maskImage": "none",
+              "webkitMaskImage": "none",
+              "mixBlendMode": "normal"
+            },
+            {
+              "tag": "SECTION",
+              "className": "arrival",
+              "filter": "none",
+              "backdropFilter": "none",
+              "maskImage": "none",
+              "webkitMaskImage": "none",
+              "mixBlendMode": "normal"
+            }
+          ],
+          "image": {
+            "opacity": 1,
+            "transform": "none",
+            "inlineOpacity": "",
+            "inlineTransform": ""
+          }
+        },
+        "p6": {
+          "chain": [
+            {
+              "tag": "IMG",
+              "className": "arrival__mark",
+              "filter": "none",
+              "backdropFilter": "none",
+              "maskImage": "none",
+              "webkitMaskImage": "none",
+              "mixBlendMode": "normal"
+            },
+            {
+              "tag": "PICTURE",
+              "className": "",
+              "filter": "none",
+              "backdropFilter": "none",
+              "maskImage": "none",
+              "webkitMaskImage": "none",
+              "mixBlendMode": "normal"
+            },
+            {
+              "tag": "DIV",
+              "className": "arrival__mark-wrap",
+              "filter": "none",
+              "backdropFilter": "none",
+              "maskImage": "none",
+              "webkitMaskImage": "none",
+              "mixBlendMode": "normal"
+            },
+            {
+              "tag": "DIV",
+              "className": "arrival__stage",
+              "filter": "none",
+              "backdropFilter": "none",
+              "maskImage": "none",
+              "webkitMaskImage": "none",
+              "mixBlendMode": "normal"
+            },
+            {
+              "tag": "DIV",
+              "className": "arrival__pin",
+              "filter": "none",
+              "backdropFilter": "none",
+              "maskImage": "none",
+              "webkitMaskImage": "none",
+              "mixBlendMode": "normal"
+            },
+            {
+              "tag": "DIV",
+              "className": "pin-spacer",
+              "filter": "none",
+              "backdropFilter": "none",
+              "maskImage": "none",
+              "webkitMaskImage": "none",
+              "mixBlendMode": "normal"
+            },
+            {
+              "tag": "SECTION",
+              "className": "arrival arrival--awake",
+              "filter": "none",
+              "backdropFilter": "none",
+              "maskImage": "none",
+              "webkitMaskImage": "none",
+              "mixBlendMode": "normal"
+            }
+          ],
+          "image": {
+            "opacity": 1,
+            "transform": "none",
+            "inlineOpacity": "",
+            "inlineTransform": ""
+          }
+        }
+      },
+      "finalState": {
+        "prologue": false,
+        "replaying": false,
+        "overflow": "visible",
+        "overflowY": "visible",
+        "scrollY": 0,
+        "dataOwned": 0,
+        "ownedInert": 0,
+        "allInert": 0,
+        "bodyInline": {
+          "overflow": "",
+          "overflowY": "",
+          "position": "",
+          "pointerEvents": ""
+        },
+        "replay": {
+          "opacity": 0.192728,
+          "visibility": "visible",
+          "pointerEvents": "auto",
+          "ariaBusy": "false"
+        },
+        "pinSpacers": 4,
+        "nestedPinSpacers": 0
+      },
+      "status": "passed",
+      "durationMs": 16884
+    },
+    "initial-first-visit-reduced-motion": {
+      "screenshots": [
+        "04-initial-reduce-p1.png",
+        "05-initial-reduce-p3.png",
+        "06-initial-reduce-p6.png"
+      ],
+      "gatewaySamples": {
+        "p1": {
+          "chain": [
+            {
+              "tag": "IMG",
+              "className": "arrival__mark",
+              "filter": "none",
+              "backdropFilter": "none",
+              "maskImage": "none",
+              "webkitMaskImage": "none",
+              "mixBlendMode": "normal"
+            },
+            {
+              "tag": "PICTURE",
+              "className": "",
+              "filter": "none",
+              "backdropFilter": "none",
+              "maskImage": "none",
+              "webkitMaskImage": "none",
+              "mixBlendMode": "normal"
+            },
+            {
+              "tag": "DIV",
+              "className": "arrival__mark-wrap",
+              "filter": "none",
+              "backdropFilter": "none",
+              "maskImage": "none",
+              "webkitMaskImage": "none",
+              "mixBlendMode": "normal"
+            },
+            {
+              "tag": "DIV",
+              "className": "arrival__stage",
+              "filter": "none",
+              "backdropFilter": "none",
+              "maskImage": "none",
+              "webkitMaskImage": "none",
+              "mixBlendMode": "normal"
+            },
+            {
+              "tag": "DIV",
+              "className": "arrival__pin",
+              "filter": "none",
+              "backdropFilter": "none",
+              "maskImage": "none",
+              "webkitMaskImage": "none",
+              "mixBlendMode": "normal"
+            },
+            {
+              "tag": "DIV",
+              "className": "pin-spacer",
+              "filter": "none",
+              "backdropFilter": "none",
+              "maskImage": "none",
+              "webkitMaskImage": "none",
+              "mixBlendMode": "normal"
+            },
+            {
+              "tag": "SECTION",
+              "className": "arrival",
+              "filter": "none",
+              "backdropFilter": "none",
+              "maskImage": "none",
+              "webkitMaskImage": "none",
+              "mixBlendMode": "normal"
+            }
+          ],
+          "image": {
+            "opacity": 1,
+            "transform": "none",
+            "inlineOpacity": "",
+            "inlineTransform": ""
+          }
+        },
+        "p3": {
+          "chain": [
+            {
+              "tag": "IMG",
+              "className": "arrival__mark",
+              "filter": "none",
+              "backdropFilter": "none",
+              "maskImage": "none",
+              "webkitMaskImage": "none",
+              "mixBlendMode": "normal"
+            },
+            {
+              "tag": "PICTURE",
+              "className": "",
+              "filter": "none",
+              "backdropFilter": "none",
+              "maskImage": "none",
+              "webkitMaskImage": "none",
+              "mixBlendMode": "normal"
+            },
+            {
+              "tag": "DIV",
+              "className": "arrival__mark-wrap",
+              "filter": "none",
+              "backdropFilter": "none",
+              "maskImage": "none",
+              "webkitMaskImage": "none",
+              "mixBlendMode": "normal"
+            },
+            {
+              "tag": "DIV",
+              "className": "arrival__stage",
+              "filter": "none",
+              "backdropFilter": "none",
+              "maskImage": "none",
+              "webkitMaskImage": "none",
+              "mixBlendMode": "normal"
+            },
+            {
+              "tag": "DIV",
+              "className": "arrival__pin",
+              "filter": "none",
+              "backdropFilter": "none",
+              "maskImage": "none",
+              "webkitMaskImage": "none",
+              "mixBlendMode": "normal"
+            },
+            {
+              "tag": "DIV",
+              "className": "pin-spacer",
+              "filter": "none",
+              "backdropFilter": "none",
+              "maskImage": "none",
+              "webkitMaskImage": "none",
+              "mixBlendMode": "normal"
+            },
+            {
+              "tag": "SECTION",
+              "className": "arrival",
+              "filter": "none",
+              "backdropFilter": "none",
+              "maskImage": "none",
+              "webkitMaskImage": "none",
+              "mixBlendMode": "normal"
+            }
+          ],
+          "image": {
+            "opacity": 1,
+            "transform": "none",
+            "inlineOpacity": "",
+            "inlineTransform": ""
+          }
+        },
+        "p6": {
+          "chain": [
+            {
+              "tag": "IMG",
+              "className": "arrival__mark",
+              "filter": "none",
+              "backdropFilter": "none",
+              "maskImage": "none",
+              "webkitMaskImage": "none",
+              "mixBlendMode": "normal"
+            },
+            {
+              "tag": "PICTURE",
+              "className": "",
+              "filter": "none",
+              "backdropFilter": "none",
+              "maskImage": "none",
+              "webkitMaskImage": "none",
+              "mixBlendMode": "normal"
+            },
+            {
+              "tag": "DIV",
+              "className": "arrival__mark-wrap",
+              "filter": "none",
+              "backdropFilter": "none",
+              "maskImage": "none",
+              "webkitMaskImage": "none",
+              "mixBlendMode": "normal"
+            },
+            {
+              "tag": "DIV",
+              "className": "arrival__stage",
+              "filter": "none",
+              "backdropFilter": "none",
+              "maskImage": "none",
+              "webkitMaskImage": "none",
+              "mixBlendMode": "normal"
+            },
+            {
+              "tag": "DIV",
+              "className": "arrival__pin",
+              "filter": "none",
+              "backdropFilter": "none",
+              "maskImage": "none",
+              "webkitMaskImage": "none",
+              "mixBlendMode": "normal"
+            },
+            {
+              "tag": "DIV",
+              "className": "pin-spacer",
+              "filter": "none",
+              "backdropFilter": "none",
+              "maskImage": "none",
+              "webkitMaskImage": "none",
+              "mixBlendMode": "normal"
+            },
+            {
+              "tag": "SECTION",
+              "className": "arrival arrival--awake",
+              "filter": "none",
+              "backdropFilter": "none",
+              "maskImage": "none",
+              "webkitMaskImage": "none",
+              "mixBlendMode": "normal"
+            }
+          ],
+          "image": {
+            "opacity": 1,
+            "transform": "none",
+            "inlineOpacity": "",
+            "inlineTransform": ""
+          }
+        }
+      },
+      "finalState": {
+        "prologue": false,
+        "replaying": false,
+        "overflow": "visible",
+        "overflowY": "visible",
+        "scrollY": 0,
+        "dataOwned": 0,
+        "ownedInert": 0,
+        "allInert": 0,
+        "bodyInline": {
+          "overflow": "",
+          "overflowY": "",
+          "position": "",
+          "pointerEvents": ""
+        },
+        "replay": {
+          "opacity": 1,
+          "visibility": "visible",
+          "pointerEvents": "auto",
+          "ariaBusy": "false"
+        },
+        "pinSpacers": 4,
+        "nestedPinSpacers": 0
+      },
+      "status": "passed",
+      "durationMs": 16339
+    },
+    "three-consecutive-desktop-replays": {
+      "baselinePinSpacers": 4,
+      "cycles": [
+        {
+          "source": "top",
+          "active": {
+            "prologue": true,
+            "replaying": true,
+            "overflow": "hidden",
+            "overflowY": "hidden",
+            "scrollY": 0,
+            "dataOwned": 8,
+            "ownedInert": 8,
+            "allInert": 8,
+            "bodyInline": {
+              "overflow": "",
+              "overflowY": "",
+              "position": "",
+              "pointerEvents": ""
+            },
+            "replay": {
+              "opacity": 0,
+              "visibility": "hidden",
+              "pointerEvents": "none",
+              "ariaBusy": "true"
+            },
+            "pinSpacers": 4,
+            "nestedPinSpacers": 0
+          }
+        },
+        {
+          "source": "mid-event-bridge",
+          "active": {
+            "prologue": true,
+            "replaying": true,
+            "overflow": "hidden",
+            "overflowY": "hidden",
+            "scrollY": 0,
+            "dataOwned": 8,
+            "ownedInert": 8,
+            "allInert": 8,
+            "bodyInline": {
+              "overflow": "",
+              "overflowY": "",
+              "position": "",
+              "pointerEvents": ""
+            },
+            "replay": {
+              "opacity": 0,
+              "visibility": "hidden",
+              "pointerEvents": "none",
+              "ariaBusy": "true"
+            },
+            "pinSpacers": 4,
+            "nestedPinSpacers": 0
+          }
+        },
+        {
+          "source": "footer",
+          "active": {
+            "prologue": true,
+            "replaying": true,
+            "overflow": "hidden",
+            "overflowY": "hidden",
+            "scrollY": 0,
+            "dataOwned": 8,
+            "ownedInert": 8,
+            "allInert": 8,
+            "bodyInline": {
+              "overflow": "",
+              "overflowY": "",
+              "position": "",
+              "pointerEvents": ""
+            },
+            "replay": {
+              "opacity": 0,
+              "visibility": "hidden",
+              "pointerEvents": "none",
+              "ariaBusy": "true"
+            },
+            "pinSpacers": 4,
+            "nestedPinSpacers": 0
+          }
+        }
+      ],
+      "screenshot": "07-three-replays-final.png",
+      "status": "passed",
+      "durationMs": 24132
+    },
+    "replay-origin-matrix": {
+      "baselinePinSpacers": 4,
+      "samples": [
+        {
+          "name": "arrival",
+          "selector": ".arrival",
+          "sourceY": 0,
+          "active": {
+            "prologue": true,
+            "replaying": true,
+            "overflow": "hidden",
+            "overflowY": "hidden",
+            "scrollY": 0,
+            "dataOwned": 8,
+            "ownedInert": 8,
+            "allInert": 8,
+            "bodyInline": {
+              "overflow": "",
+              "overflowY": "",
+              "position": "",
+              "pointerEvents": ""
+            },
+            "replay": {
+              "opacity": 0,
+              "visibility": "hidden",
+              "pointerEvents": "none",
+              "ariaBusy": "true"
+            },
+            "pinSpacers": 4,
+            "nestedPinSpacers": 0
+          }
+        },
+        {
+          "name": "institution",
+          "selector": ".institution",
+          "sourceY": 2163,
+          "active": {
+            "prologue": true,
+            "replaying": true,
+            "overflow": "hidden",
+            "overflowY": "hidden",
+            "scrollY": 0,
+            "dataOwned": 8,
+            "ownedInert": 8,
+            "allInert": 8,
+            "bodyInline": {
+              "overflow": "",
+              "overflowY": "",
+              "position": "",
+              "pointerEvents": ""
+            },
+            "replay": {
+              "opacity": 0,
+              "visibility": "hidden",
+              "pointerEvents": "none",
+              "ariaBusy": "true"
+            },
+            "pinSpacers": 4,
+            "nestedPinSpacers": 0
+          }
+        },
+        {
+          "name": "mission",
+          "selector": ".mission",
+          "sourceY": 4557,
+          "active": {
+            "prologue": true,
+            "replaying": true,
+            "overflow": "hidden",
+            "overflowY": "hidden",
+            "scrollY": 0,
+            "dataOwned": 8,
+            "ownedInert": 8,
+            "allInert": 8,
+            "bodyInline": {
+              "overflow": "",
+              "overflowY": "",
+              "position": "",
+              "pointerEvents": ""
+            },
+            "replay": {
+              "opacity": 0,
+              "visibility": "hidden",
+              "pointerEvents": "none",
+              "ariaBusy": "true"
+            },
+            "pinSpacers": 4,
+            "nestedPinSpacers": 0
+          }
+        },
+        {
+          "name": "ecosystem",
+          "selector": ".ecosystem",
+          "sourceY": 6742,
+          "active": {
+            "prologue": true,
+            "replaying": true,
+            "overflow": "hidden",
+            "overflowY": "hidden",
+            "scrollY": 0,
+            "dataOwned": 8,
+            "ownedInert": 8,
+            "allInert": 8,
+            "bodyInline": {
+              "overflow": "",
+              "overflowY": "",
+              "position": "",
+              "pointerEvents": ""
+            },
+            "replay": {
+              "opacity": 0,
+              "visibility": "hidden",
+              "pointerEvents": "none",
+              "ariaBusy": "true"
+            },
+            "pinSpacers": 4,
+            "nestedPinSpacers": 0
+          }
+        },
+        {
+          "name": "principles",
+          "selector": ".principles",
+          "sourceY": 10451,
+          "active": {
+            "prologue": true,
+            "replaying": true,
+            "overflow": "hidden",
+            "overflowY": "hidden",
+            "scrollY": 0,
+            "dataOwned": 8,
+            "ownedInert": 8,
+            "allInert": 8,
+            "bodyInline": {
+              "overflow": "",
+              "overflowY": "",
+              "position": "",
+              "pointerEvents": ""
+            },
+            "replay": {
+              "opacity": 0,
+              "visibility": "hidden",
+              "pointerEvents": "none",
+              "ariaBusy": "true"
+            },
+            "pinSpacers": 4,
+            "nestedPinSpacers": 0
+          }
+        },
+        {
+          "name": "engagement",
+          "selector": ".engagement",
+          "sourceY": 12404,
+          "active": {
+            "prologue": true,
+            "replaying": true,
+            "overflow": "hidden",
+            "overflowY": "hidden",
+            "scrollY": 0,
+            "dataOwned": 8,
+            "ownedInert": 8,
+            "allInert": 8,
+            "bodyInline": {
+              "overflow": "",
+              "overflowY": "",
+              "position": "",
+              "pointerEvents": ""
+            },
+            "replay": {
+              "opacity": 0,
+              "visibility": "hidden",
+              "pointerEvents": "none",
+              "ariaBusy": "true"
+            },
+            "pinSpacers": 4,
+            "nestedPinSpacers": 0
+          }
+        },
+        {
+          "name": "footer",
+          "selector": "footer",
+          "sourceY": 12772,
+          "active": {
+            "prologue": true,
+            "replaying": true,
+            "overflow": "hidden",
+            "overflowY": "hidden",
+            "scrollY": 0,
+            "dataOwned": 8,
+            "ownedInert": 8,
+            "allInert": 8,
+            "bodyInline": {
+              "overflow": "",
+              "overflowY": "",
+              "position": "",
+              "pointerEvents": ""
+            },
+            "replay": {
+              "opacity": 0,
+              "visibility": "hidden",
+              "pointerEvents": "none",
+              "ariaBusy": "true"
+            },
+            "pinSpacers": 4,
+            "nestedPinSpacers": 0
+          }
+        }
+      ],
+      "status": "passed",
+      "durationMs": 18448
+    },
+    "replay-preflight-breakpoint-crossing": {
+      "duplicateGuard": {
+        "seen": "1",
+        "busy": "true",
+        "status": "Replaying introduction — press Escape to skip at any time."
+      },
+      "mobile": {
+        "prologue": false,
+        "replaying": false,
+        "overflow": "visible",
+        "overflowY": "visible",
+        "scrollY": 0,
+        "dataOwned": 0,
+        "ownedInert": 0,
+        "allInert": 0,
+        "bodyInline": {
+          "overflow": "",
+          "overflowY": "",
+          "position": "",
+          "pointerEvents": ""
+        },
+        "replay": {
+          "opacity": 1,
+          "visibility": "visible",
+          "pointerEvents": "auto",
+          "ariaBusy": "false"
+        },
+        "pinSpacers": 2,
+        "nestedPinSpacers": 0
+      },
+      "replayActive": {
+        "prologue": true,
+        "replaying": true,
+        "overflow": "hidden",
+        "overflowY": "hidden",
+        "scrollY": 0,
+        "dataOwned": 8,
+        "ownedInert": 8,
+        "allInert": 8,
+        "bodyInline": {
+          "overflow": "",
+          "overflowY": "",
+          "position": "",
+          "pointerEvents": ""
+        },
+        "replay": {
+          "opacity": 0,
+          "visibility": "hidden",
+          "pointerEvents": "none",
+          "ariaBusy": "true"
+        },
+        "pinSpacers": 4,
+        "nestedPinSpacers": 0
+      },
+      "screenshot": "08-replay-preflight-crossing-recovered.png",
+      "status": "passed",
+      "durationMs": 7987
+    },
+    "replay-arm-immediate-width-failure": {
+      "failedArmState": {
+        "prologue": false,
+        "replaying": false,
+        "overflow": "visible",
+        "overflowY": "visible",
+        "scrollY": 0,
+        "dataOwned": 0,
+        "ownedInert": 0,
+        "allInert": 0,
+        "bodyInline": {
+          "overflow": "",
+          "overflowY": "",
+          "position": "",
+          "pointerEvents": ""
+        },
+        "replay": {
+          "opacity": 1,
+          "visibility": "visible",
+          "pointerEvents": "auto",
+          "ariaBusy": "false"
+        },
+        "pinSpacers": 4,
+        "nestedPinSpacers": 0
+      },
+      "recovered": {
+        "prologue": true,
+        "replaying": true,
+        "overflow": "hidden",
+        "overflowY": "hidden",
+        "scrollY": 0,
+        "dataOwned": 8,
+        "ownedInert": 8,
+        "allInert": 8,
+        "bodyInline": {
+          "overflow": "",
+          "overflowY": "",
+          "position": "",
+          "pointerEvents": ""
+        },
+        "replay": {
+          "opacity": 0,
+          "visibility": "hidden",
+          "pointerEvents": "none",
+          "ariaBusy": "true"
+        },
+        "pinSpacers": 4,
+        "nestedPinSpacers": 0
+      },
+      "screenshot": "09-replay-arm-width-failure-recovered.png",
+      "status": "passed",
+      "durationMs": 5413
+    },
+    "replay-after-policy-remounts": {
+      "initialMobilePins": 2,
+      "firstDesktopReplay": {
+        "prologue": true,
+        "replaying": true,
+        "overflow": "hidden",
+        "overflowY": "hidden",
+        "scrollY": 0,
+        "dataOwned": 8,
+        "ownedInert": 8,
+        "allInert": 8,
+        "bodyInline": {
+          "overflow": "",
+          "overflowY": "",
+          "position": "",
+          "pointerEvents": ""
+        },
+        "replay": {
+          "opacity": 0,
+          "visibility": "hidden",
+          "pointerEvents": "none",
+          "ariaBusy": "true"
+        },
+        "pinSpacers": 4,
+        "nestedPinSpacers": 0
+      },
+      "mobileActive": {
+        "prologue": false,
+        "replaying": false,
+        "overflow": "visible",
+        "overflowY": "visible",
+        "scrollY": 0,
+        "dataOwned": 0,
+        "ownedInert": 0,
+        "allInert": 0,
+        "bodyInline": {
+          "overflow": "",
+          "overflowY": "",
+          "position": "",
+          "pointerEvents": ""
+        },
+        "replay": {
+          "opacity": 1,
+          "visibility": "visible",
+          "pointerEvents": "none",
+          "ariaBusy": "true"
+        },
+        "pinSpacers": 2,
+        "nestedPinSpacers": 0
+      },
+      "mobileComplete": {
+        "prologue": false,
+        "replaying": false,
+        "overflow": "visible",
+        "overflowY": "visible",
+        "scrollY": 0,
+        "dataOwned": 0,
+        "ownedInert": 0,
+        "allInert": 0,
+        "bodyInline": {
+          "overflow": "",
+          "overflowY": "",
+          "position": "",
+          "pointerEvents": ""
+        },
+        "replay": {
+          "opacity": 0.960551,
+          "visibility": "visible",
+          "pointerEvents": "auto",
+          "ariaBusy": "false"
+        },
+        "pinSpacers": 2,
+        "nestedPinSpacers": 0
+      },
+      "secondDesktopReplay": {
+        "prologue": true,
+        "replaying": true,
+        "overflow": "hidden",
+        "overflowY": "hidden",
+        "scrollY": 0,
+        "dataOwned": 8,
+        "ownedInert": 8,
+        "allInert": 8,
+        "bodyInline": {
+          "overflow": "",
+          "overflowY": "",
+          "position": "",
+          "pointerEvents": ""
+        },
+        "replay": {
+          "opacity": 0,
+          "visibility": "hidden",
+          "pointerEvents": "none",
+          "ariaBusy": "true"
+        },
+        "pinSpacers": 4,
+        "nestedPinSpacers": 0
+      },
+      "screenshot": "10-policy-remount-replays-recovered.png",
+      "status": "passed",
+      "durationMs": 14209
+    },
+    "unrelated-inert-preservation": {
+      "activeOwnership": {
+        "inert": true,
+        "claimed": false
+      },
+      "preserved": {
+        "exists": true,
+        "inert": true,
+        "owned": false,
+        "ownedRemaining": 0
+      },
+      "status": "passed",
+      "durationMs": 6381
+    },
+    "deep-hash-contact-bypass": {
+      "pathname": "/#contact",
+      "httpStatus": 200,
+      "composed": {
+        "hasArrival": true,
+        "visible": [
+          {
+            "selector": ".arrival__mark-wrap",
+            "exists": true,
+            "opacity": 1,
+            "visibility": "visible",
+            "width": 202.4000244140625,
+            "height": 219.26171875
+          },
+          {
+            "selector": ".arrival__wordmark-top",
+            "exists": true,
+            "opacity": 1,
+            "visibility": "visible",
+            "width": 373.2900390625,
+            "height": 88.3203125
+          },
+          {
+            "selector": ".arrival__wordmark-bottom",
+            "exists": true,
+            "opacity": 1,
+            "visibility": "visible",
+            "width": 307.52435302734375,
+            "height": 25.400390625
+          },
+          {
+            "selector": ".arrival__tagline-line",
+            "exists": true,
+            "opacity": 1,
+            "visibility": "visible",
+            "width": 406.338134765625,
+            "height": 27.599609375
+          }
+        ]
+      },
+      "state": {
+        "prologue": false,
+        "replaying": false,
+        "overflow": "visible",
+        "overflowY": "visible",
+        "scrollY": 12209,
+        "dataOwned": 0,
+        "ownedInert": 0,
+        "allInert": 0,
+        "bodyInline": {
+          "overflow": "",
+          "overflowY": "",
+          "position": "",
+          "pointerEvents": ""
+        },
+        "replay": {
+          "opacity": 0,
+          "visibility": "hidden",
+          "pointerEvents": "none",
+          "ariaBusy": "false"
+        },
+        "pinSpacers": 4,
+        "nestedPinSpacers": 0
+      },
+      "status": "passed",
+      "durationMs": 2808
+    },
+    "deep-hash-mission-bypass": {
+      "pathname": "/#mission",
+      "httpStatus": 200,
+      "composed": {
+        "hasArrival": true,
+        "visible": [
+          {
+            "selector": ".arrival__mark-wrap",
+            "exists": true,
+            "opacity": 1,
+            "visibility": "visible",
+            "width": 202.4000244140625,
+            "height": 219.26171875
+          },
+          {
+            "selector": ".arrival__wordmark-top",
+            "exists": true,
+            "opacity": 1,
+            "visibility": "visible",
+            "width": 373.2900390625,
+            "height": 88.320068359375
+          },
+          {
+            "selector": ".arrival__wordmark-bottom",
+            "exists": true,
+            "opacity": 1,
+            "visibility": "visible",
+            "width": 307.52435302734375,
+            "height": 25.400634765625
+          },
+          {
+            "selector": ".arrival__tagline-line",
+            "exists": true,
+            "opacity": 1,
+            "visibility": "visible",
+            "width": 406.338134765625,
+            "height": 27.5999755859375
+          }
+        ]
+      },
+      "state": {
+        "prologue": false,
+        "replaying": false,
+        "overflow": "visible",
+        "overflowY": "visible",
+        "scrollY": 3426,
+        "dataOwned": 0,
+        "ownedInert": 0,
+        "allInert": 0,
+        "bodyInline": {
+          "overflow": "",
+          "overflowY": "",
+          "position": "",
+          "pointerEvents": ""
+        },
+        "replay": {
+          "opacity": 0,
+          "visibility": "hidden",
+          "pointerEvents": "none",
+          "ariaBusy": "false"
+        },
+        "pinSpacers": 4,
+        "nestedPinSpacers": 0
+      },
+      "status": "passed",
+      "durationMs": 2872
+    },
+    "index-html-bypass": {
+      "pathname": "/index.html",
+      "httpStatus": 200,
+      "composed": {
+        "hasArrival": true,
+        "visible": [
+          {
+            "selector": ".arrival__mark-wrap",
+            "exists": true,
+            "opacity": 1,
+            "visibility": "visible",
+            "width": 220,
+            "height": 238.328125
+          },
+          {
+            "selector": ".arrival__wordmark-top",
+            "exists": true,
+            "opacity": 1,
+            "visibility": "visible",
+            "width": 405.75,
+            "height": 96
+          },
+          {
+            "selector": ".arrival__wordmark-bottom",
+            "exists": true,
+            "opacity": 1,
+            "visibility": "visible",
+            "width": 334.265625,
+            "height": 27.609375
+          },
+          {
+            "selector": ".arrival__tagline-line",
+            "exists": true,
+            "opacity": 1,
+            "visibility": "visible",
+            "width": 441.671875,
+            "height": 30
+          }
+        ]
+      },
+      "state": {
+        "prologue": false,
+        "replaying": false,
+        "overflow": "visible",
+        "overflowY": "visible",
+        "scrollY": 0,
+        "dataOwned": 0,
+        "ownedInert": 0,
+        "allInert": 0,
+        "bodyInline": {
+          "overflow": "",
+          "overflowY": "",
+          "position": "",
+          "pointerEvents": ""
+        },
+        "replay": {
+          "opacity": 1,
+          "visibility": "visible",
+          "pointerEvents": "auto",
+          "ariaBusy": "false"
+        },
+        "pinSpacers": 4,
+        "nestedPinSpacers": 0
+      },
+      "status": "passed",
+      "durationMs": 2886
+    },
+    "404-bypass": {
+      "pathname": "/__r4_confirmation_missing__",
+      "httpStatus": 404,
+      "composed": {
+        "hasArrival": false
+      },
+      "state": {
+        "prologue": false,
+        "replaying": false,
+        "overflow": "visible",
+        "overflowY": "visible",
+        "scrollY": 0,
+        "dataOwned": 0,
+        "ownedInert": 0,
+        "allInert": 0,
+        "bodyInline": {
+          "overflow": "",
+          "overflowY": "",
+          "position": "",
+          "pointerEvents": ""
+        },
+        "replay": null,
+        "pinSpacers": 0,
+        "nestedPinSpacers": 0
+      },
+      "status": "passed",
+      "durationMs": 2073
+    },
+    "watchdog-23s-delayed-hydration": {
+      "delayedRequests": 7,
+      "performanceNowMs": 23535.5,
+      "composed": {
+        "hasArrival": true,
+        "visible": [
+          {
+            "selector": ".arrival__mark-wrap",
+            "exists": true,
+            "opacity": 1,
+            "visibility": "visible",
+            "width": 220,
+            "height": 238.328125
+          },
+          {
+            "selector": ".arrival__wordmark-top",
+            "exists": true,
+            "opacity": 1,
+            "visibility": "visible",
+            "width": 405.75,
+            "height": 96
+          },
+          {
+            "selector": ".arrival__wordmark-bottom",
+            "exists": true,
+            "opacity": 1,
+            "visibility": "visible",
+            "width": 334.265625,
+            "height": 27.609375
+          },
+          {
+            "selector": ".arrival__tagline-line",
+            "exists": true,
+            "opacity": 1,
+            "visibility": "visible",
+            "width": 441.671875,
+            "height": 30
+          }
+        ]
+      },
+      "screenshot": "11-delayed-hydration-composed.png",
+      "status": "passed",
+      "durationMs": 24756
+    },
+    "pre-hydration-breakpoint-crossing": {
+      "delayedRequests": 7,
+      "releasedBeforeHydration": {
+        "prologue": false,
+        "replaying": false,
+        "overflow": "visible",
+        "overflowY": "visible",
+        "scrollY": 0,
+        "dataOwned": 0,
+        "ownedInert": 0,
+        "allInert": 0,
+        "bodyInline": {
+          "overflow": "",
+          "overflowY": "",
+          "position": "",
+          "pointerEvents": ""
+        },
+        "replay": {
+          "opacity": 0,
+          "visibility": "hidden",
+          "pointerEvents": "none",
+          "ariaBusy": "false"
+        },
+        "pinSpacers": 0,
+        "nestedPinSpacers": 0
+      },
+      "hydrated": {
+        "prologue": false,
+        "replaying": false,
+        "overflow": "visible",
+        "overflowY": "visible",
+        "scrollY": 0,
+        "dataOwned": 0,
+        "ownedInert": 0,
+        "allInert": 0,
+        "bodyInline": {
+          "overflow": "",
+          "overflowY": "",
+          "position": "",
+          "pointerEvents": ""
+        },
+        "replay": {
+          "opacity": 0,
+          "visibility": "hidden",
+          "pointerEvents": "auto",
+          "ariaBusy": "false"
+        },
+        "pinSpacers": 2,
+        "nestedPinSpacers": 0
+      },
+      "screenshot": "12-pre-hydration-mobile-release.png",
+      "status": "passed",
+      "durationMs": 5362
+    },
+    "crossing-1.5s": {
+      "seconds": 1.5,
+      "initialPins": 4,
+      "mobile": {
+        "mark": {
+          "width": 120,
+          "height": 130
+        },
+        "styles": {
+          "mark": {
+            "attribute": "",
+            "opacity": "",
+            "transform": "",
+            "translate": "",
+            "scale": "",
+            "visibility": "",
+            "pointerEvents": "",
+            "animationName": "none"
+          },
+          "atmosphere": {
+            "attribute": "",
+            "opacity": "",
+            "transform": "",
+            "translate": "",
+            "scale": "",
+            "visibility": "",
+            "pointerEvents": "",
+            "animationName": "none"
+          },
+          "signal": {
+            "attribute": "",
+            "opacity": "",
+            "transform": "",
+            "translate": "",
+            "scale": "",
+            "visibility": "",
+            "pointerEvents": "",
+            "animationName": "none"
+          },
+          "skip": {
+            "attribute": "",
+            "opacity": "",
+            "transform": "",
+            "translate": "",
+            "scale": "",
+            "visibility": "",
+            "pointerEvents": "",
+            "animationName": "none"
+          }
+        },
+        "pinSpacers": 2,
+        "nestedPinSpacers": 0
+      },
+      "desktopPins": 4,
+      "screenshot": "13-crossing-1-5s-mobile.png",
+      "status": "passed",
+      "durationMs": 3954
+    },
+    "crossing-3s": {
+      "seconds": 3,
+      "initialPins": 4,
+      "mobile": {
+        "mark": {
+          "width": 120,
+          "height": 130
+        },
+        "styles": {
+          "mark": {
+            "attribute": "",
+            "opacity": "",
+            "transform": "",
+            "translate": "",
+            "scale": "",
+            "visibility": "",
+            "pointerEvents": "",
+            "animationName": "none"
+          },
+          "atmosphere": {
+            "attribute": "",
+            "opacity": "",
+            "transform": "",
+            "translate": "",
+            "scale": "",
+            "visibility": "",
+            "pointerEvents": "",
+            "animationName": "none"
+          },
+          "signal": {
+            "attribute": "",
+            "opacity": "",
+            "transform": "",
+            "translate": "",
+            "scale": "",
+            "visibility": "",
+            "pointerEvents": "",
+            "animationName": "none"
+          },
+          "skip": {
+            "attribute": "",
+            "opacity": "",
+            "transform": "",
+            "translate": "",
+            "scale": "",
+            "visibility": "",
+            "pointerEvents": "",
+            "animationName": "none"
+          }
+        },
+        "pinSpacers": 2,
+        "nestedPinSpacers": 0
+      },
+      "desktopPins": 4,
+      "screenshot": "14-crossing-3s-mobile.png",
+      "status": "passed",
+      "durationMs": 5531
+    },
+    "crossing-6s": {
+      "seconds": 6,
+      "initialPins": 4,
+      "mobile": {
+        "mark": {
+          "width": 120,
+          "height": 130
+        },
+        "styles": {
+          "mark": {
+            "attribute": "",
+            "opacity": "",
+            "transform": "",
+            "translate": "",
+            "scale": "",
+            "visibility": "",
+            "pointerEvents": "",
+            "animationName": "none"
+          },
+          "atmosphere": {
+            "attribute": "",
+            "opacity": "",
+            "transform": "",
+            "translate": "",
+            "scale": "",
+            "visibility": "",
+            "pointerEvents": "",
+            "animationName": "none"
+          },
+          "signal": {
+            "attribute": "",
+            "opacity": "",
+            "transform": "",
+            "translate": "",
+            "scale": "",
+            "visibility": "",
+            "pointerEvents": "",
+            "animationName": "none"
+          },
+          "skip": {
+            "attribute": "",
+            "opacity": "",
+            "transform": "",
+            "translate": "",
+            "scale": "",
+            "visibility": "",
+            "pointerEvents": "",
+            "animationName": "none"
+          }
+        },
+        "pinSpacers": 2,
+        "nestedPinSpacers": 0
+      },
+      "desktopPins": 4,
+      "screenshot": "15-crossing-6s-mobile.png",
+      "status": "passed",
+      "durationMs": 8656
+    },
+    "tagline-range-320-1440": {
+      "samples": {
+        "320": {
+          "lines": 2,
+          "lineWidths": [
+            182.34375,
+            149.0625
+          ],
+          "balanceRatio": 1.2232704402515724,
+          "rect": {
+            "left": 61.4375,
+            "right": 258.546875,
+            "width": 197.109375
+          },
+          "wordWidth": 209.296875,
+          "viewportWidth": 320,
+          "clientWidth": 197,
+          "scrollWidth": 197,
+          "maxInlineSize": "197.11px",
+          "textWrap": "balance"
+        },
+        "360": {
+          "lines": 2,
+          "lineWidths": [
+            182.34375,
+            149.0625
+          ],
+          "balanceRatio": 1.2232704402515724,
+          "rect": {
+            "left": 61.4375,
+            "right": 258.546875,
+            "width": 197.109375
+          },
+          "wordWidth": 209.296875,
+          "viewportWidth": 360,
+          "clientWidth": 197,
+          "scrollWidth": 197,
+          "maxInlineSize": "197.11px",
+          "textWrap": "balance"
+        },
+        "375": {
+          "lines": 2,
+          "lineWidths": [
+            182.34375,
+            149.0625
+          ],
+          "balanceRatio": 1.2232704402515724,
+          "rect": {
+            "left": 61.4375,
+            "right": 258.546875,
+            "width": 197.109375
+          },
+          "wordWidth": 209.296875,
+          "viewportWidth": 375,
+          "clientWidth": 197,
+          "scrollWidth": 197,
+          "maxInlineSize": "197.11px",
+          "textWrap": "balance"
+        },
+        "390": {
+          "lines": 2,
+          "lineWidths": [
+            182.34375,
+            149.0625
+          ],
+          "balanceRatio": 1.2232704402515724,
+          "rect": {
+            "left": 61.4375,
+            "right": 258.546875,
+            "width": 197.109375
+          },
+          "wordWidth": 209.296875,
+          "viewportWidth": 390,
+          "clientWidth": 197,
+          "scrollWidth": 197,
+          "maxInlineSize": "197.11px",
+          "textWrap": "balance"
+        },
+        "393": {
+          "lines": 2,
+          "lineWidths": [
+            182.34375,
+            149.0625
+          ],
+          "balanceRatio": 1.2232704402515724,
+          "rect": {
+            "left": 61.4375,
+            "right": 258.546875,
+            "width": 197.109375
+          },
+          "wordWidth": 209.296875,
+          "viewportWidth": 393,
+          "clientWidth": 197,
+          "scrollWidth": 197,
+          "maxInlineSize": "197.11px",
+          "textWrap": "balance"
+        },
+        "412": {
+          "lines": 2,
+          "lineWidths": [
+            182.34375,
+            149.0625
+          ],
+          "balanceRatio": 1.2232704402515724,
+          "rect": {
+            "left": 61.4375,
+            "right": 258.546875,
+            "width": 197.109375
+          },
+          "wordWidth": 209.296875,
+          "viewportWidth": 412,
+          "clientWidth": 197,
+          "scrollWidth": 197,
+          "maxInlineSize": "197.11px",
+          "textWrap": "balance"
+        },
+        "430": {
+          "lines": 2,
+          "lineWidths": [
+            182.34375,
+            149.0625
+          ],
+          "balanceRatio": 1.2232704402515724,
+          "rect": {
+            "left": 61.4375,
+            "right": 258.546875,
+            "width": 197.109375
+          },
+          "wordWidth": 209.296875,
+          "viewportWidth": 430,
+          "clientWidth": 197,
+          "scrollWidth": 197,
+          "maxInlineSize": "197.11px",
+          "textWrap": "balance"
+        },
+        "768": {
+          "lines": 2,
+          "lineWidths": [
+            211.84375,
+            173.1875
+          ],
+          "balanceRatio": 1.2232046192710213,
+          "rect": {
+            "left": -6.21875,
+            "right": 326.234375,
+            "width": 332.453125
+          },
+          "wordWidth": 316.484375,
+          "viewportWidth": 768,
+          "clientWidth": 332,
+          "scrollWidth": 332,
+          "maxInlineSize": "none",
+          "textWrap": "balance"
+        },
+        "1024": {
+          "lines": 1,
+          "lineWidths": [
+            441.671875
+          ],
+          "balanceRatio": 1,
+          "rect": {
+            "left": 291.15625,
+            "right": 732.828125,
+            "width": 441.671875
+          },
+          "wordWidth": 405.75,
+          "viewportWidth": 1024,
+          "clientWidth": 442,
+          "scrollWidth": 442,
+          "maxInlineSize": "none",
+          "textWrap": "balance"
+        },
+        "1440": {
+          "lines": 1,
+          "lineWidths": [
+            441.671875
+          ],
+          "balanceRatio": 1,
+          "rect": {
+            "left": 291.15625,
+            "right": 732.828125,
+            "width": 441.671875
+          },
+          "wordWidth": 405.75,
+          "viewportWidth": 1440,
+          "clientWidth": 442,
+          "scrollWidth": 442,
+          "maxInlineSize": "none",
+          "textWrap": "balance"
+        }
+      },
+      "status": "passed",
+      "durationMs": 2332
+    },
+    "skip-composite-hierarchy": {
+      "metrics": {
+        "background": [
+          6,
+          6,
+          8
+        ],
+        "gold": [
+          212,
+          161,
+          70
+        ],
+        "goldColor": "rgb(212, 161, 70)",
+        "skipForeground": [
+          190,
+          65,
+          25
+        ],
+        "skipOpacity": 0.87,
+        "signalOpacity": 0.5486,
+        "skipComposite": [
+          166,
+          57,
+          23
+        ],
+        "signalComposite": [
+          119,
+          91,
+          42
+        ],
+        "contrast": 3.103270121350087,
+        "skipLuminance": 0.11095107752796192,
+        "signalLuminance": 0.11571276629081104
+      },
+      "hover": {
+        "opacity": 1,
+        "color": "rgb(212, 161, 70)",
+        "gold": "rgb(212, 161, 70)"
+      },
+      "focus": {
+        "opacity": 1,
+        "color": "rgb(212, 161, 70)",
+        "gold": "rgb(212, 161, 70)"
+      },
+      "screenshot": "16-skip-p2-composite.png",
+      "status": "passed",
+      "durationMs": 6301
+    },
+    "skip-focus-flows": {
+      "skipToContent": {
+        "hash": "#content",
+        "activeId": "arrival-heading",
+        "inert": 0
+      },
+      "arrivalSkip": {
+        "activeId": "arrival-heading",
+        "inert": 0
+      },
+      "status": "passed",
+      "durationMs": 5357
+    },
+    "axe-full-motion": {
+      "reducedMotion": "no-preference",
+      "total": 0,
+      "severe": 0,
+      "violations": [],
+      "status": "passed",
+      "durationMs": 1305
+    },
+    "axe-reduced-motion": {
+      "reducedMotion": "reduce",
+      "total": 0,
+      "severe": 0,
+      "violations": [],
+      "status": "passed",
+      "durationMs": 1141
+    },
+    "cpu-6x-full-motion": {
+      "reducedMotion": "no-preference",
+      "cpuRate": 6,
+      "unlockMs": 14550.699999988079,
+      "completeMs": 16130.699999988079,
+      "beatTableMs": 15100,
+      "status": "passed",
+      "durationMs": 16694
+    },
+    "cpu-6x-reduced-motion": {
+      "reducedMotion": "reduce",
+      "cpuRate": 6,
+      "unlockMs": 14403.399999976158,
+      "completeMs": 15941.800000011921,
+      "beatTableMs": 15100,
+      "status": "passed",
+      "durationMs": 16491
+    },
+    "r3-control-parity": {
+      "skipped": false,
+      "provenance": {
+        "commit": "0c7f51501bee404539ba54b21a339141ef7d2ff6",
+        "sourceSha256": "83c5664e7f3a7cc4bf7bbc4591aac1023a784d910c70177e02da72642d25ae90",
+        "sourceFiles": 64,
+        "indexSha256": "5fb1bb8e8db78053a3bea69382a096f87aacbae324dadfda5a9e35c16b8e169a"
+      },
+      "current": {
+        "mark": {
+          "x": 134.984375,
+          "y": 276,
+          "width": 120,
+          "height": 130
+        },
+        "glow": {
+          "x": 195,
+          "y": 422,
+          "width": 351,
+          "height": 506.390625
+        },
+        "cue": {
+          "x": 195,
+          "y": 751.78125,
+          "width": 47.078125,
+          "height": 58.46875
+        },
+        "documentHeight": 9345,
+        "pinSpacers": 2
+      },
+      "control": {
+        "mark": {
+          "x": 134.984375,
+          "y": 273.203125,
+          "width": 120,
+          "height": 130
+        },
+        "glow": {
+          "x": 195,
+          "y": 422,
+          "width": 351,
+          "height": 506.390625
+        },
+        "cue": {
+          "x": 195,
+          "y": 751.78125,
+          "width": 47.078125,
+          "height": 58.46875
+        },
+        "documentHeight": 9345,
+        "pinSpacers": 2
+      },
+      "screenshots": [
+        "17-control-parity-current.png",
+        "18-control-parity-r3.png"
+      ],
+      "status": "passed",
+      "durationMs": 1570
+    }
+  },
+  "telemetry": [
+    {
+      "kind": "console.error",
+      "label": "bypass-r4-confirmation-missing",
+      "url": "http://127.0.0.1:4310/__r4_confirmation_missing__",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    }
+  ],
+  "disclosures": [],
+  "failures": [],
+  "finishedAt": "2026-08-09T00:34:36.052Z",
+  "status": "passed",
+  "attestable": true,
+  "telemetrySummary": {
+    "expectedCount": 1,
+    "unexpectedCount": 0
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "brand": "Gabriel Capital Labs",
+  "mark": "Gateway G",
+  "version": "1.0.0",
+  "status": "LOCKED",
+  "locked_on": "2026-08-05",
+  "canonical_files": {
+    "mark_only": "GatewayG_Canonical_Mark_Dark_1254.png",
+    "horizontal": "GatewayG_Canonical_Horizontal_1672x941.png",
+    "stacked": "GatewayG_Canonical_Stacked_1254.png",
+    "standards_board": "GatewayG_Canonical_Standards_Board.png",
+    "transparent_material": "GatewayG_Canonical_Material_Transparent.png"
+  },
+  "non_negotiable_rules": [
+    "Preserve the monolithic width-to-height ratio.",
+    "Do not stretch vertically or compress horizontally.",
+    "Preserve the heavy architectural massing.",
+    "Preserve the detached inner pillar.",
+    "Preserve the open gateway floor.",
+    "Gold is natural illumination only; no decorative interior gold line.",
+    "Use a dark obsidian environment as the primary presentation.",
+    "Keep GABRIEL sharp, evenly tracked, symmetrical, and centered.",
+    "All derivative assets must be projections of the canonical master."
+  ],
+  "tagline": [
+    "Building Intelligent Infrastructure.",
+    "Engineering the Future of Intelligence."
+  ]
+}
