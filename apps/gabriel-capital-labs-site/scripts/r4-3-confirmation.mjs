@@ -11,14 +11,17 @@
  *   GCL_BASE_URL=http://127.0.0.1:4310
  *   GCL_R43_EVIDENCE_DIR=../../docs/reviews/assets/r4-3
  *   GCL_R43_SCENARIOS=matrix-full-1440x900,narrative-reduced
+ *   GCL_BROWSER_ENGINE=chromium|webkit
+ *   GCL_CONFIRMATION_SUITE=gcl-r4.4-launch-closure-webkit
+ *   GCL_CONFIRMATION_MANIFEST=r4-4-webkit-confirmation-results.json
  */
 
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { chromium } from "playwright-core";
+import { chromium, webkit } from "playwright-core";
 
 const SITE_ROOT = process.cwd();
 const REPO_ROOT = path.resolve(SITE_ROOT, "../..");
@@ -28,13 +31,17 @@ const EVIDENCE_DIR = path.resolve(
   process.env.GCL_R43_EVIDENCE_DIR ?? "../../docs/reviews/assets/r4-3"
 );
 const CHROME_PATH = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
+const BROWSER_ENGINE = process.env.GCL_BROWSER_ENGINE ?? "chromium";
+const SUITE = process.env.GCL_CONFIRMATION_SUITE ?? "gcl-r4.3-founder-experience-closure";
+const MANIFEST_NAME =
+  process.env.GCL_CONFIRMATION_MANIFEST ?? "r4-3-confirmation-results.json";
 const SESSION_KEY = "gcl-arrival-seen";
 const OWNED_SELECTOR = "[data-gcl-prologue-inert]";
 const APPROVED_OUTRO = "Enter the future we are engineering.";
 const NAV_OFFSET = 84;
 const DEFAULT_TIMEOUT = 30_000;
 const FILTER = new Set(
-  (process.env.GCL_R43_SCENARIOS ?? "")
+  (process.env.GCL_CONFIRMATION_SCENARIOS ?? process.env.GCL_R43_SCENARIOS ?? "")
     .split(",")
     .map((item) => item.trim())
     .filter(Boolean)
@@ -74,13 +81,17 @@ const SOURCE_FILES = [
   "components/InstitutionalOutroScene.tsx",
   "components/Footer.tsx",
   "content/site.ts",
+  "app/layout.tsx",
+  "scripts/optimize-images.mjs",
+  "scripts/reconcile-social-cards.mjs",
+  "scripts/r4-4-seo-verification.mjs",
   "scripts/r4-3-confirmation.mjs",
   "package.json",
 ];
 
 const results = {
   schemaVersion: 1,
-  suite: "gcl-r4.3-founder-experience-closure",
+  suite: SUITE,
   startedAt: new Date().toISOString(),
   configuration: {
     baseUrl: sanitizeUrl(BASE_URL),
@@ -90,6 +101,7 @@ const results = {
     desktopViewports: DESKTOPS,
     mobileViewports: MOBILES,
     policies: POLICIES,
+    browserEngine: BROWSER_ENGINE,
     expectedPinTopology: {
       desktopFull: 5,
       desktopReduced: 5,
@@ -100,12 +112,16 @@ const results = {
   git: {},
   sourceHashes: {},
   assetHashes: {},
+  exportBinding: {},
   scenarios: {},
   telemetry: [],
   failures: [],
   screenshots: [],
+  screenshotHashes: {},
   disclosures: [
-    "Automated browser evidence is Chromium-only; Safari/WebKit remains a manual Founder check.",
+    BROWSER_ENGINE === "webkit"
+      ? "Automated evidence uses Playwright WebKit; installed real-Safari interaction and physical notched-device checks remain manual."
+      : "Automated evidence uses installed Google Chrome; Safari/WebKit is recorded in the companion R4.4 manifest.",
     "The 1024x568 compact-height pair is an additional stress case beyond the binding minimum matrix.",
   ],
 };
@@ -128,6 +144,15 @@ function validateEndpoint() {
   assert.equal(url.password, "", "GCL_BASE_URL must not contain password credentials");
   assert.equal(url.search, "", "GCL_BASE_URL must not contain a query string");
   assert.ok(["http:", "https:"].includes(url.protocol), "GCL_BASE_URL must be HTTP(S)");
+  assert.ok(
+    ["chromium", "webkit"].includes(BROWSER_ENGINE),
+    "GCL_BROWSER_ENGINE must be chromium or webkit"
+  );
+  assert.match(
+    MANIFEST_NAME,
+    /^[a-z0-9][a-z0-9.-]*\.json$/,
+    "GCL_CONFIRMATION_MANIFEST must be a plain JSON filename"
+  );
 }
 
 function siteUrl(pathname = "/") {
@@ -267,8 +292,10 @@ async function gotoComposed(page, pathname = "/") {
 
 async function screenshot(page, label) {
   const filename = `${safeName(label)}.png`;
-  await page.screenshot({ path: path.join(EVIDENCE_DIR, filename), fullPage: false });
+  const screenshotPath = path.join(EVIDENCE_DIR, filename);
+  await page.screenshot({ path: screenshotPath, fullPage: false });
   results.screenshots.push(filename);
+  results.screenshotHashes[filename] = sha256(await readFile(screenshotPath));
   return filename;
 }
 
@@ -853,6 +880,35 @@ async function hashFiles() {
   }
 }
 
+async function hashDirectory(root) {
+  const hash = createHash("sha256");
+  let fileCount = 0;
+  let totalBytes = 0;
+
+  async function visit(directory, relativeDirectory = "") {
+    const entries = await readdir(directory, { withFileTypes: true });
+    entries.sort((left, right) => left.name.localeCompare(right.name));
+    for (const entry of entries) {
+      const relativePath = path.posix.join(relativeDirectory, entry.name);
+      const absolutePath = path.join(directory, entry.name);
+      if (entry.isDirectory()) {
+        await visit(absolutePath, relativePath);
+      } else if (entry.isFile()) {
+        const bytes = await readFile(absolutePath);
+        hash.update(relativePath);
+        hash.update("\0");
+        hash.update(bytes);
+        hash.update("\0");
+        fileCount += 1;
+        totalBytes += bytes.length;
+      }
+    }
+  }
+
+  await visit(root);
+  return { sha256: hash.digest("hex"), fileCount, totalBytes };
+}
+
 async function main() {
   validateEndpoint();
   await mkdir(EVIDENCE_DIR, { recursive: true });
@@ -864,10 +920,19 @@ async function main() {
 
   await scenario("canonical-assets-and-source-binding", async () => {
     await hashFiles();
-    return { assets: results.assetHashes, sourceFiles: Object.keys(results.sourceHashes).length };
+    results.exportBinding = await hashDirectory(path.join(SITE_ROOT, "out"));
+    return {
+      assets: results.assetHashes,
+      sourceFiles: Object.keys(results.sourceHashes).length,
+      exportBinding: results.exportBinding,
+    };
   });
 
-  browser = await chromium.launch({ headless: true, executablePath: CHROME_PATH });
+  browser =
+    BROWSER_ENGINE === "webkit"
+      ? await webkit.launch({ headless: true })
+      : await chromium.launch({ headless: true, executablePath: CHROME_PATH });
+  results.configuration.browserVersion = browser.version();
 
   for (const policy of POLICIES) {
     const policyName = policy === "reduce" ? "reduced" : "full";
@@ -911,7 +976,7 @@ async function main() {
     results.failures.push({
       scenario: "harness-selection",
       name: "AssertionError",
-      message: `Unknown GCL_R43_SCENARIOS selection: ${unknown.join(", ")}`,
+      message: `Unknown confirmation scenario selection: ${unknown.join(", ")}`,
     });
   }
 
@@ -933,12 +998,12 @@ async function main() {
   results.status =
     results.failures.length > 0 ? "failed" : FILTER.size > 0 ? "partial" : "passed";
   results.attestable = results.status === "passed" && FILTER.size === 0;
-  const manifestPath = path.join(EVIDENCE_DIR, "r4-3-confirmation-results.json");
+  const manifestPath = path.join(EVIDENCE_DIR, MANIFEST_NAME);
   await writeFile(manifestPath, `${JSON.stringify(results, null, 2)}\n`, "utf8");
 
   if (results.failures.length > 0) {
     throw new assert.AssertionError({
-      message: `${results.failures.length} R4.3 confirmation failure(s); see ${manifestPath}`,
+      message: `${results.failures.length} confirmation failure(s); see ${manifestPath}`,
       actual: results.failures.length,
       expected: 0,
       operator: "strictEqual",
@@ -964,7 +1029,7 @@ main().catch(async (error) => {
   }
   await mkdir(EVIDENCE_DIR, { recursive: true });
   await writeFile(
-    path.join(EVIDENCE_DIR, "r4-3-confirmation-results.json"),
+    path.join(EVIDENCE_DIR, MANIFEST_NAME),
     `${JSON.stringify(results, null, 2)}\n`,
     "utf8"
   );

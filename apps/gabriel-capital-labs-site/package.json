@@ -10,6 +10,8 @@
     "typecheck": "tsc --noEmit",
     "test:r4.2": "node scripts/r4-confirmation.mjs",
     "test:r4.3": "node scripts/r4-3-confirmation.mjs",
+    "test:r4.4:seo": "node scripts/r4-4-seo-verification.mjs",
+    "reconcile-social-cards": "node scripts/reconcile-social-cards.mjs",
     "optimize-images": "node scripts/optimize-images.mjs"
   },
   "dependencies": {

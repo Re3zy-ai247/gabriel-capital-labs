@@ -75,8 +75,8 @@ async function main() {
     ["web/apple-touch-icon.png", "apple-touch-icon.png"],
     ["web/android-chrome-192x192.png", "android-chrome-192x192.png"],
     ["web/android-chrome-512x512.png", "android-chrome-512x512.png"],
-    ["web/GCL_OpenGraph_1200x630.jpg", "og.jpg"],
-    ["web/GCL_X_Card_1200x600.jpg", "x-card.jpg"],
+    ["web/GCL_OpenGraph_1200x630.png", "og.png"],
+    ["web/GCL_X_Card_1200x600.png", "x-card.png"],
     ["web/GatewayG_Material_Transparent_512x512.png", "gateway-g-512.png"],
   ];
   for (const [from, to] of copies) {

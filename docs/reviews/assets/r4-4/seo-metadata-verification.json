@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "suite": "gcl-r4.4-seo-metadata-reconciliation",
+  "approvedThesis": "Building the Infrastructure for Intelligent Capital.",
+  "title": "Gabriel Capital Labs — Building the Infrastructure for Intelligent Capital.",
+  "description": "Gabriel Capital Labs is the parent institution behind intelligent infrastructure. Building the Infrastructure for Intelligent Capital.",
+  "canonicalDomain": "https://www.gabrielcapitallabs.com",
+  "organizationJsonLd": {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "Gabriel Capital Labs",
+    "legalName": "Gabriel Capital Labs, LLC",
+    "url": "https://www.gabrielcapitallabs.com",
+    "logo": "https://www.gabrielcapitallabs.com/gateway-g-512.png",
+    "slogan": "Building the Infrastructure for Intelligent Capital."
+  },
+  "productionIndexing": "index, follow",
+  "cards": [
+    {
+      "brandPath": "brand/web/GCL_OpenGraph_1200x630.png",
+      "publicPath": "public/og.png",
+      "format": "png",
+      "width": 1200,
+      "height": 630,
+      "sha256": "9ed61c6f62dc29ca82f0be399eed512c513d30343077fc83244d6bed614d6002"
+    },
+    {
+      "brandPath": "brand/web/GCL_X_Card_1200x600.png",
+      "publicPath": "public/x-card.png",
+      "format": "png",
+      "width": 1200,
+      "height": 600,
+      "sha256": "101905441f604273c94bd25d069d2d36731e70ea1ff87ce0d4016c7fcea79d23"
+    }
+  ],
+  "exportIndexSha256": "88f40631bc1a7e59e491cf8d7e640dca98d3083bbba3451b1bec8e731df716df",
+  "sourceHashes": {
+    "app/layout.tsx": "78854d0d1554605a043336f3b641e5ccb434a4ee9a6ce6e77ea718423b631b3f",
+    "content/site.ts": "62c92066748e8b412b4f4f46b93f8a482b9a145d7bd1fa842ed1b0e90f4212a8",
+    "public/robots.txt": "d05e66e7fae579dd3b5b4351878083cf7f8bbac551d7b2f453a7b4951e8b5a2b",
+    "public/sitemap.xml": "02311cbe52b27b1de10b1d11d004cbe99ee0a4f9417a5f343ec7c1508fa7b4d7",
+    "scripts/optimize-images.mjs": "79ac2cb54edf45e813f37d743f01271476a19596f7622b55c715c4fac26ca106",
+    "scripts/reconcile-social-cards.mjs": "69ef4a91edc73694f9d73bb25675d5ce0405b75e0f7da66c144f3e41b835d715",
+    "scripts/r4-4-seo-verification.mjs": "c1e10719a3335227443653063d81bea97f7215bf0bf6944033f33e54f3a0726f"
+  },
+  "status": "passed"
+}

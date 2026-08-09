@@ -53,13 +53,11 @@ export const site = {
   domain: "https://www.gabrielcapitallabs.com",
   wordmarkTop: "GABRIEL",
   wordmarkBottom: "CAPITAL LABS",
-  title: "Gabriel Capital Labs — Building Intelligent Infrastructure.",
+  title:
+    "Gabriel Capital Labs — Building the Infrastructure for Intelligent Capital.",
   description:
-    "Gabriel Capital Labs is the parent institution behind intelligent infrastructure — operating systems for credit, intelligence execution, and spatial computing. Building intelligent infrastructure. Engineering the future of intelligence.",
-  tagline: [
-    "Building Intelligent Infrastructure.",
-    "Engineering the Future of Intelligence.",
-  ],
+    "Gabriel Capital Labs is the parent institution behind intelligent infrastructure. Building the Infrastructure for Intelligent Capital.",
+  tagline: ["Building the Infrastructure for Intelligent Capital."],
 };
 
 // ---------------------------------------------------------------------------
@@ -71,16 +69,10 @@ export const arrival = {
   replayLabel: "Replay arrival",
   markAlt:
     "The Gateway G — the monolithic mark of Gabriel Capital Labs, golden light rising from its open gateway floor.",
-  // R4 — COPY RULING (Founder-confirm item, disclose in every report): the
-  // Founder specified this line verbatim for P5 of the Gateway G
-  // Institutional Prologue. It REPLACES the two-line tagline pair
-  // ("Building Intelligent Infrastructure." / "Engineering the Future of
-  // Intelligence.") in the arrival composition ONLY — a single source of
-  // truth, not a per-breakpoint fork (mobile renders the same line).
-  // `site.tagline` below is intentionally left UNCHANGED: layout.tsx's
-  // organizationJsonLd `slogan` (site.tagline.join(' ')) and every
-  // <title>/meta/OG string are SEO non-negotiables and are NOT touched by
-  // this ruling.
+  // R4 — COPY RULING: the Founder specified this line verbatim for P5 of
+  // the Gateway G Institutional Prologue. R4.4 reconciles the public
+  // metadata and JSON-LD slogan to this same approved institutional thesis;
+  // the arrival remains a single source, not a per-breakpoint copy fork.
   tagline: "Building the Infrastructure for Intelligent Capital.",
 };
 
