@@ -1,6 +1,175 @@
 # Gabriel Capital Labs — Cinematic Institutional Website v1
 **Build + adversarial-review handoff report** · 2026-08-05 · Branch `claude/gcl-cinematic-institutional-site-6qx964`
-**Revision R4.3 (2026-08-08): Founder Experience Closure — READY WITH DISCLOSURES — branch `codex/gcl-r4-3-founder-closure-2026-08-08`, implementation commit `655a4ee`.** R4, R3, R2, and v1 follow as historical record.
+**Revision R4.4 (2026-08-09): Launch Closure — READY TO MERGE WITH DISCLOSURES — branch `codex/gcl-launch-closure-safari-seo-2026-08-09`, implementation/evidence commit `7ca8cdb`.** R4.3, R4, R3, R2, and v1 follow as historical record.
+
+---
+
+## R4.4 · Launch Closure (Safari/WebKit + SEO/meta gate, 2026-08-09)
+
+**R4.4 outcome: READY TO MERGE WITH DISCLOSURES.** Founder approval of R4.3 on 2026-08-08 is
+preserved. Automated Playwright WebKit 26.5 and installed Chrome 151 each completed the full
+unfiltered 30-scenario confirmation with `status: passed`, `attestable: true`, 30/30 scenarios,
+45/45 hashed screenshots, zero failures, and zero unexpected telemetry. The exact approved thesis
+now resolves across title, description, Open Graph, X, both social cards, and the Organization
+JSON-LD slogan:
+
+> Building the Infrastructure for Intelligent Capital.
+
+No page component, body copy, stylesheet, interaction controller, accepted motion geometry,
+canonical Gateway G projection, CreditVector surface, GIOS surface, or HELIOS surface changed.
+Main was not merged; production was not deployed; DNS and Vercel production were not touched.
+
+### R4.4.1 Safari/WebKit method and environment
+
+The closure ran on macOS 15.7.7 (build `24G720`, x86_64). Installed Safari is 26.5.2
+(`20624.2.5.18.7`) and its SafariDriver reports the same version. SafariDriver was ready but
+refused session creation because **Allow remote automation** is disabled; that preference was not
+changed. Real Safari nevertheless loaded the local static export and all critical CSS, JavaScript,
+font, icon, and Gateway G requests successfully. Its committed screenshot is expressly load-only
+evidence, not interaction automation.
+
+The executable cross-engine gate therefore uses Playwright Core 1.62.0 with its matching WebKit
+26.5 runtime. No npm dependency or lockfile was upgraded. The same static export was then run in
+installed Google Chrome 151.0.7922.108 as the R4/R4.3 companion regression.
+
+| Engine / surface | Matrix | Result |
+|---|---|---|
+| Playwright WebKit 26.5 | Full + reduced motion at 1920×1080, 1512×982, 1440×900, 1280×720, 1024×768, 1024×568, 390×844, 430×932, and 320×568 | **30/30 PASS; attestable; 45 screenshots; 0 telemetry** |
+| Installed Chrome 151.0.7922.108 | Identical matrix and lifecycle suite | **30/30 PASS; attestable; 45 screenshots; 0 telemetry** |
+| Installed Safari 26.5.2 | Local static-export load and critical-asset smoke check | **PASS for load only; interaction remains manual** |
+
+Both automated manifests bind the same 48-file, 3,347,284-byte export digest:
+`859c2aa929ad92e841b18e7e44727d91957e78a58a64a12941eda53879c5f74d`.
+Every recorded PNG is independently hashed inside its manifest. The WebKit manifest itself hashes
+to `1bf9f07d…5278d08`; the Chromium manifest hashes to `b502e45f…7f29b0`.
+
+### R4.4.2 WebKit interaction, accessibility, and reliability result
+
+WebKit passes first/composed state geometry, full desktop motion, the Third Motion Class, mobile
+non-pin behavior, compact-height stress, reduced motion, deep links, and the complete accepted
+Replay lifecycle.
+
+| Gate | Executable WebKit result |
+|---|---|
+| Replay origins and exits | Engagement → Escape, Outro → keyboard Skip, and Footer → natural completion all acquire 9 owned inert targets, release to 0, restore scroll and focus to Replay, announce “Introduction complete,” retain one listener, and preserve 5 pins with no nested spacer. |
+| Reduced/mobile Replay | Reduced-motion Replay passes; mobile Replay bypasses prologue locking/inert and retains the accepted two full-motion mobile pins. |
+| Inert ownership | A real unrelated inert state remains inert and unowned during acquisition and after release. |
+| Hash navigation | Direct `/#contact` lands at 84.09375px under both WebKit policies with no prologue, Replay, inert, or scroll-lock residue. |
+| Accessibility | Diff-scoped axe checks at Engagement, Outro, and Footer report zero violations under full and reduced motion; keyboard Skip/Escape, focus restoration, and live announcement pass. |
+| Gateway G / composition | Correct aspect and containment; image opacity 1; no transform, filter, mask, or blend corruption; 0px horizontal overflow; stable 5/5/2/0 pin topology. |
+| Performance / runtime | 3ms response start, 37ms DOMContentLoaded, 117ms load, 1,025ms composed wall time; zero console errors, page errors, hydration warnings, NaN styles, or unexpected telemetry. |
+
+Independent inspection of full/reduced 1440×900, compact 1024×568, 390×844, and 320×568
+WebKit frames plus the three-cycle Replay frame found no clipping, collision, Footer leakage,
+malformed Outro, Gateway G corruption, horizontal overflow, or stuck state.
+
+Evidence: [WebKit manifest](assets/r4-4/webkit/r4-4-webkit-confirmation-results.json) ·
+[Chrome manifest](assets/r4-4/chromium/r4-4-chromium-confirmation-results.json) ·
+[Safari load-only capture](assets/r4-4/safari-26-5-2-load-only.png) ·
+[WebKit 1440 Outro](assets/r4-4/webkit/matrix-full-1440x900-outro-hold.png) ·
+[WebKit compact-height Outro](assets/r4-4/webkit/matrix-full-1024x568-outro-hold.png) ·
+[WebKit 320px Outro](assets/r4-4/webkit/matrix-full-320x568-outro-hold.png) ·
+[WebKit three-cycle Replay](assets/r4-4/webkit/replay-three-cycles-complete.png).
+
+### R4.4.3 Safe-area disposition
+
+The rendered viewport is `width=device-width, initial-scale=1`; the application does not request
+`viewport-fit=cover`, and no `env(safe-area-inset-*)` rule exists. The site therefore does not opt
+into unsafe edge-to-edge cutout placement. WebKit passes 320×568, 390×844, 430×932, and the
+1024×568 compact-height stress case without overflow or clipping. This does not emulate physical
+iPhone/iPad cutouts or dynamic Safari browser chrome, so a physical notched-device check remains
+manual before production promotion.
+
+### R4.4.4 SEO, metadata, JSON-LD, and canonical domain
+
+The patch is deliberately metadata-only. `content/site.ts` remains the source of truth;
+`app/layout.tsx` continues to consume it and changes only the social-card file paths/type.
+
+| Surface | Final exported value / result |
+|---|---|
+| Title / OG title / X title | `Gabriel Capital Labs — Building the Infrastructure for Intelligent Capital.` |
+| Description / OG description / X description | `Gabriel Capital Labs is the parent institution behind intelligent infrastructure. Building the Infrastructure for Intelligent Capital.` |
+| Canonical / OG URL | `https://www.gabrielcapitallabs.com` |
+| Organization JSON-LD | Parses; `Gabriel Capital Labs`; legal name `Gabriel Capital Labs, LLC`; canonical URL/logo; slogan is the exact approved thesis. No speculative schema fields were added. |
+| Production indexing | Exported `index, follow`; robots allows `/`; sitemap uses the canonical `www` domain; no production `noindex` leak. |
+| Protected preview | Existing preview remains delivery-layer protected: unauthenticated 302 → Vercel SSO with `x-robots-tag: noindex`. No R4.4 preview or production deploy was required. |
+| Identity isolation | No CreditVector identity appears in title, description, social metadata, or JSON-LD. Intentional body/footer links remain untouched. |
+
+Historical metadata wording occurs zero times in `out/index.html`. The standalone SEO verifier
+binds the exported index, sources, robots, sitemap, and social assets and returns `status: passed`.
+Its manifest is [here](assets/r4-4/seo-metadata-verification.json) and hashes to
+`6c5420ba…84b5e`.
+
+### R4.4.5 Social-card reconciliation and visual invariance
+
+Open Graph now references `/og.png` (`image/png`, 1200×630); X references `/x-card.png`
+(1200×600). Both retain the approved R4.3 crop, background, Gateway G, wordmark, colors, and
+composition while replacing only the historical tagline region. Lossless PNG is intentional: it
+allows exact decoded-pixel proof that the protected image regions did not move or re-encode.
+
+| Card | Changed pixels inside tagline region | Outside region | Final SHA-256 |
+|---|---:|---:|---|
+| Open Graph | 31,241 | **0** | `9ed61c6f…14d6002` |
+| X | 31,680 | **0** | `10190544…a79d23` |
+
+For both cards, the Gateway G region and wordmark region are pixel-identical before/after; source,
+public, and exported copies are byte-identical. The original JPEGs remain archival R4.3 source
+inputs for deterministic reconciliation; they are not served by current metadata or copied by the
+production asset pipeline. The reconciliation proof is
+[here](assets/r4-4/social-card-reconciliation.json) and hashes to `2aa75f3a…c2eb9`.
+
+No approved experience visual changed: `app/page.tsx`, `app/globals.css`, and every component are
+byte-unchanged from approved R4.3. Against the frozen R4.3 Chromium evidence, 44/45 R4.4 Chromium
+screenshots are byte-identical; the Replay frame is independently visually identical, with its
+binary difference attributable to capture timing/focus rasterization. No new baseline was accepted.
+
+### R4.4.6 Quality gates and commands
+
+All required gates pass:
+
+- `npm run reconcile-social-cards` — PASS; exact pixel-containment proof emitted.
+- `npm run optimize-images` — PASS; current PNG cards copied from brand sources.
+- `npm run typecheck` — PASS.
+- `npm run lint` — PASS; zero warnings/errors.
+- `npm run build` — PASS; optimized static export, four static pages.
+- `npm run test:r4.4:seo` — PASS; rendered metadata, JSON-LD, indexing, canonical, cards.
+- full unfiltered R4.4 WebKit confirmation — PASS, attestable, 30/30.
+- full unfiltered R4.4 Chromium confirmation — PASS, attestable, 30/30.
+- `xmllint --noout public/sitemap.xml`, harness syntax, generator syntax, and
+  `git diff --check` — PASS.
+
+The implementation/evidence commit is
+`7ca8cdb3d3a8ff44105345eb47101e9445ffd396`. It also hardens the inherited harness by recording
+browser engine/version, hashing the exact served export, and hashing every screenshot; filtered
+runs remain non-attestable.
+
+### R4.4.7 Independent gates
+
+| Gate | Verdict |
+|---|---|
+| Safari/WebKit adversary | **READY TO MERGE WITH DISCLOSURES** — independently verified the WebKit manifest, all 45 screenshot hashes, representative full/reduced/compact/mobile/Replay frames, and the matching Chrome export binding. No confidence-8+ blocker. |
+| SEO/metadata adversary | **PASS** — exact thesis, canonical `www`, valid six-field Organization JSON-LD, production indexing, card integrity, source/export hashes, and bounded scope independently verified. No confidence-8+ blocker. |
+| Compliance | **GO** — exact approved institutional language; no credit outcome, deletion, score, investment-return, pricing, availability, or performance promise; no counsel escalation. Internal review is not legal advice. |
+
+### R4.4.8 Residual disclosures and merge-readiness verdict
+
+1. Automated cross-engine verification uses Playwright WebKit 26.5, not the installed Safari
+   application's UI. Installed Safari 26.5.2 received a load/asset smoke check only because remote
+   automation remained disabled. Physical iPhone/iPad notch, safe-area inset, and dynamic
+   browser-chrome behavior remain manual before production promotion.
+2. The exact Founder title is 75 characters and may truncate on some search surfaces. Shortening
+   it requires a separate Founder copy decision; R4.4 does not improvise a shorter claim.
+3. Protected-preview `noindex` is a Vercel delivery-layer control and must be reconfirmed for any
+   future closure preview. The production export itself correctly remains `index, follow`.
+4. Diff-scoped axe results remain scoped to Engagement, Outro, and Footer; frozen R4.2 retains the
+   composed whole-document accessibility evidence.
+5. Inherited Next 14.2.18 advisory debt and the static-export-only operating boundary remain as
+   disclosed in R4.3. No dependency migration or forced audit remediation occurred.
+
+**Final technical verdict: READY TO MERGE WITH DISCLOSURES.** WebKit is green and no current
+Safari/WebKit, Replay, inert-state, Gateway G, mobile, accessibility, hydration, interaction,
+metadata, JSON-LD, canonical-domain, indexing, or visual-regression blocker remains. This is a
+merge-review handoff, not merge or production authorization.
 
 ---
 
