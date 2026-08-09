@@ -1,0 +1,150 @@
+{
+  "schemaVersion": "gcl-r4.6.1-live-production-verification-v1",
+  "verifiedAt": "2026-08-09T19:55:14Z",
+  "verdict": "LIVE AND VERIFIED",
+  "repository": "Re3zy-ai247/gabriel-capital-labs",
+  "sourceBranch": "codex/gcl-r4-6-1-production-closure-2026-08-09",
+  "sourceCommit": "08ecd01099a84e8b5d2082ebee3fd0affeea4663",
+  "mergeCommit": "7cd61cb0161c66bf73ed1811ed4ee94d07855de1",
+  "websiteTree": "941520b007b36ffe43b6c3e55666417fcdf83dd8",
+  "pullRequest": "https://github.com/Re3zy-ai247/gabriel-capital-labs/pull/14",
+  "postMergeActionsRun": "https://github.com/Re3zy-ai247/gabriel-capital-labs/actions/runs/31332192390",
+  "deployment": {
+    "project": "gcl-institutional-site",
+    "githubDeploymentRecord": 5822179618,
+    "id": "dpl_2hkmVz5AZG7RriANpe6v8aokH6ey",
+    "url": "https://gcl-institutional-site-e0s2xfzfw-rey-gabriel-s-projects.vercel.app",
+    "canonicalUrl": "https://www.gabrielcapitallabs.com",
+    "gitSha": "7cd61cb0161c66bf73ed1811ed4ee94d07855de1",
+    "status": "success"
+  },
+  "dns": {
+    "nameservers": [
+      "nsd1.squarespacedns.com",
+      "nsd2.squarespacedns.com",
+      "nsd3.squarespacedns.com",
+      "nsd4.squarespacedns.com"
+    ],
+    "authoritativeAndRecursiveAgreement": true,
+    "ttlSeconds": 14400,
+    "apexA": "216.150.1.1",
+    "wwwCname": "28658db1f314aa1b.vercel-dns-016.com."
+  },
+  "httpTls": {
+    "wwwStatus": 200,
+    "wwwServer": "Vercel",
+    "apexStatus": 308,
+    "apexLocation": "https://www.gabrielcapitallabs.com/",
+    "tlsProtocol": "TLSv1.3",
+    "certificateCommonName": "www.gabrielcapitallabs.com",
+    "certificateVerified": true,
+    "hsts": "max-age=63072000",
+    "vercelAuthenticationPresent": false,
+    "squarespaceResponsePresent": false
+  },
+  "content": {
+    "canonical": "https://www.gabrielcapitallabs.com",
+    "robots": "index, follow",
+    "robotsTxtStatus": 200,
+    "sitemapStatus": 200,
+    "sitemapCanonical": "https://www.gabrielcapitallabs.com/",
+    "founderThesis": "Building the Infrastructure for Intelligent Capital.",
+    "legalName": "Gabriel Capital Labs, LLC",
+    "organizationJsonLd": "valid",
+    "creditVectorMetadataContamination": false,
+    "contactPlaceholderPresent": false,
+    "contactRoutes": [
+      "mailto:contact@gabrielcapitallabs.com",
+      "mailto:partnerships@gabrielcapitallabs.com",
+      "mailto:media@gabrielcapitallabs.com",
+      "mailto:careers@gabrielcapitallabs.com",
+      "mailto:legal@gabrielcapitallabs.com",
+      "mailto:security@gabrielcapitallabs.com",
+      "mailto:support@gabrielcapitallabs.com"
+    ]
+  },
+  "assetSha256": {
+    "gateway-g-480.webp": "90b2c57e6dfd5d2a6cfc46d7f4a89c534337ff19954a6719142872af8b737b19",
+    "gateway-g-768.webp": "bdc797d78f19d2e59c7e1e06f9c106203492651ba4300c2c93427407ccf1ef7a",
+    "gateway-g-1080.webp": "67f8f444ad9800520e1a4d0f941021cffe8903a16b1a00a9909f25649ef9ccc7",
+    "gateway-g-480.png": "9ed7766905c9167b6dd86b6e061430fb1e66892ff1501460702c8755b66b1c9b",
+    "og.png": "9ed61c6f62dc29ca82f0be399eed512c513d30343077fc83244d6bed614d6002",
+    "x-card.png": "101905441f604273c94bd25d069d2d36731e70ea1ff87ce0d4016c7fcea79d23"
+  },
+  "liveBrowserRuns": {
+    "webkit": {
+      "version": "26.5",
+      "selectedPassed": 20,
+      "selectedFailed": 0,
+      "skipped": 20,
+      "screenshots": 31,
+      "screenshotHashMismatches": 0,
+      "unexpectedTelemetry": 0,
+      "manifest": "live-webkit/r4-6-1-live-webkit-results.json"
+    },
+    "chromium": {
+      "version": "151.0.7922.108",
+      "selectedPassed": 20,
+      "selectedFailed": 0,
+      "skipped": 20,
+      "screenshots": 31,
+      "screenshotHashMismatches": 0,
+      "unexpectedTelemetry": 0,
+      "manifest": "live-chromium/r4-6-1-live-chromium-results.json"
+    }
+  },
+  "mission": {
+    "desktopRule": "font-size: clamp(2.5rem, 4.15vw, 3.75rem)",
+    "thresholdSamplesPerEngine": 42,
+    "singleLineFailures": 0,
+    "minimumPinClearancePx": {
+      "webkit": 10.8719482421875,
+      "chromium": 10.859375
+    },
+    "minimumViewportClearancePx": {
+      "webkit": 53.7957763671875,
+      "chromium": 53.84375
+    }
+  },
+  "interaction": {
+    "replayThreeOrigins": "passed",
+    "reducedMotionReplay": "passed",
+    "unrelatedInertPreservation": "passed",
+    "mobileReplayBypass": "passed",
+    "hashContactFullAndReduced": "passed",
+    "keyboardContactOrder": "passed",
+    "focusOutline": "2px solid",
+    "scopedAxeViolations": 0,
+    "axeScopes": [
+      "#contact",
+      "#institutional-outro",
+      "footer"
+    ],
+    "contactTraversalKeys": {
+      "chromium": "Tab",
+      "webkit": "Alt+Tab (macOS Option-Tab equivalent)"
+    },
+    "installedSafariContactTraversal": "manual/not executed",
+    "transientLocalEarlyEscape": {
+      "engine": "installed Chrome 151.0.7922.108",
+      "delayMs": 50,
+      "status": "passed",
+      "manifestBound": false,
+      "live": false,
+      "crossEngine": false
+    },
+    "consolePageHydrationErrors": 0,
+    "unexpectedTelemetry": 0
+  },
+  "rollback": {
+    "preHotfixDeployment": "dpl_3qab11i1DBb2U9nAcYwNUn3KZyNR",
+    "previousDeployment": "dpl_2CCpUvBuejgnikDmUJYqY3cSSEDX",
+    "previousGitSha": "c661f3c46d47d30f5c274df14d436cbe25453ea7"
+  },
+  "disclosures": [
+    "Filtered live runs are intentionally partial and non-attestable; full local Chromium and WebKit runs are passed and attestable at 40/40 each.",
+    "Playwright WebKit is not physical Safari or notched-device automation; Founder manual Safari approval covers the unchanged cinematic and Replay architecture only. Installed-Safari traversal of the new contact anchors and mail-client launch remain manual.",
+    "Mailto destination wiring and keyboard operation were verified; no live email was sent.",
+    "A report-only merge may advance main after this production-source checkpoint without changing the website tree."
+  ]
+}

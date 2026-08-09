@@ -11440,7 +11440,7 @@
     "replay-three-cycles-complete.png": "1e59465f54eca43d37fdb65db7040d6f56015e21d014ea2828326fe0aa155a98"
   },
   "disclosures": [
-    "Automated evidence uses installed Google Chrome; Safari/WebKit is recorded in the companion R4.4 manifest.",
+    "Automated evidence uses installed Google Chrome; Safari/WebKit is recorded in the companion R4.6.1 WebKit manifest.",
     "The 1024x568 compact-height pair is an additional stress case beyond the binding minimum matrix."
   ],
   "finishedAt": "2026-08-09T19:25:26.811Z",

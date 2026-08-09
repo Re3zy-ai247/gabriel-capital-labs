@@ -1,6 +1,616 @@
-# Gabriel Capital Labs — Cinematic Institutional Website v1
-**Build + adversarial-review handoff report** · 2026-08-05 · Branch `claude/gcl-cinematic-institutional-site-6qx964`
-**Revision R4.5 (2026-08-09): Controlled Merge — MERGED AND VERIFIED — policy-required PR #12, merge commit `c661f3c`.** R4.4, R4.3, R4, R3, R2, and v1 follow as historical record.
+# GCL R4.6.1 LIVE PRODUCTION CLOSURE
+**Authoritative production-closure report** · 2026-08-09 · Repository `Re3zy-ai247/gabriel-capital-labs`
+**Final verdict: LIVE AND VERIFIED.** The bounded Mission typography and institutional-contact patch is merged, deployed, and verified on the real canonical domain. `www` serves the exact Vercel deployment with valid HTTPS; apex performs the exact permanent redirect; Mission headings remain single-line and contained; all seven approved mail routes are active; Replay, inert ownership, reduced motion, mobile, focus, accessibility, Gateway G, metadata, indexing, and runtime telemetry pass. R4.6 and all earlier rounds follow as historical record.
+
+---
+
+## R4.6.1 · Live Production Closure (2026-08-09)
+
+### R4.6.1.1 Executive result
+
+**R4.6.1 verdict: LIVE AND VERIFIED.** The operation changed only the verified Mission text-fit
+invariant, the approved static contact architecture, the bounded confirmation harness, and its
+evidence. It did not redesign the site or reopen accepted R4 work. Both independent read-only
+adversaries returned **PASS WITH DISCLOSURES** and found no confidence-8+ blocker.
+
+| Outcome | Result |
+|---|---|
+| Canonical DNS / HTTPS / apex redirect | **PASS** |
+| Scoped source and website-tree provenance | **PASS** |
+| Mission clipping root cause and bounded fix | **PASS** |
+| Seven approved institutional contact routes | **PASS** |
+| Local Chromium and WebKit full confirmation | **PASS — 40/40 each, attestable** |
+| Live Chromium and WebKit selected confirmation | **PASS — 20/20 each, zero failures/telemetry** |
+| Replay / inert ownership / focus / reduced motion | **PASS** |
+| Gateway G and accepted R4 visual invariants | **PASS — unchanged** |
+| Accessibility / keyboard / mobile / deep links | **PASS** |
+| Merge / post-merge CI / Vercel production deployment | **PASS** |
+| Rollback readiness | **READY; rollback not required** |
+
+### R4.6.1.2 Production preflight, branch, and lineage
+
+The required preflight ran before source changes. A fresh fetch proved that local `main` and
+`origin/main` were both the expected R4.6 starting SHA, with zero divergence. The only dirty files
+were the two already-known R4.6 report files; no website-source drift was misclassified or ignored.
+
+| Repository fact | Exact value |
+|---|---|
+| Starting `main` / `origin/main` | `f44ace233cc25a05f761e8f64ec2e6e89299ea54` |
+| Starting divergence | `0 0` |
+| Starting locked website subtree | `6baa052d5cb9631ab5f96414dc1c5922910b0a94` |
+| Hotfix branch | `codex/gcl-r4-6-1-production-closure-2026-08-09` |
+| Scoped source commit | `08ecd01099a84e8b5d2082ebee3fd0affeea4663` |
+| Candidate / merged website subtree | `941520b007b36ffe43b6c3e55666417fcdf83dd8` |
+| Pull request | [#14](https://github.com/Re3zy-ai247/gabriel-capital-labs/pull/14) |
+| Merge base | `f44ace233cc25a05f761e8f64ec2e6e89299ea54` |
+| Authoritative hotfix merge | `7cd61cb0161c66bf73ed1811ed4ee94d07855de1` |
+| Source-to-merged website diff | **EMPTY** |
+| Production-source `main` / `origin/main` checkpoint | `7cd61cb0161c66bf73ed1811ed4ee94d07855de1` |
+
+The report delivery itself is documentation/evidence-only. Repository policy requires that
+follow-up to land through a merge wrapper; it may advance the final repository ref without changing
+the website subtree or the production artifact verified here. The exact post-report ref is returned
+in the task handoff, avoiding a false circular claim inside the commit that creates it.
+
+### R4.6.1.3 Canonical production truth before the patch
+
+Before implementation, the real canonical host was already stable on Vercel after the Founder’s
+manual DNS cutover. All four authoritative Squarespace nameservers, the system resolver, Cloudflare
+`1.1.1.1`, Google `8.8.8.8`, and Quad9 `9.9.9.9` agreed on the intended values.
+
+| Canonical fact | Verified value |
+|---|---|
+| Nameservers | `nsd1.squarespacedns.com` through `nsd4.squarespacedns.com` |
+| Apex `A` | `216.150.1.1` |
+| `www CNAME` | `28658db1f314aa1b.vercel-dns-016.com.` |
+| Authoritative TTL | `14400` seconds |
+| `https://www.gabrielcapitallabs.com/` | HTTP/2 `200`, `server: Vercel` |
+| `https://gabrielcapitallabs.com/` | HTTP/2 `308` to exact `https://www.gabrielcapitallabs.com/` |
+| HTTPS | TLS 1.3; CN/SAN `www.gabrielcapitallabs.com`; certificate verification **PASS** |
+| HSTS | `max-age=63072000` |
+| Vercel authentication / Squarespace response | **ABSENT / ABSENT** |
+| Pre-hotfix deployment | `dpl_3qab11i1DBb2U9nAcYwNUn3KZyNR` |
+
+The canonical tag, exact Founder thesis, Organization JSON-LD, legal name
+`Gabriel Capital Labs, LLC`, `index, follow`, robots, sitemap, OG/X metadata and images, favicons,
+Gateway G, deep link, Replay, reduced-motion, mobile, focus, and runtime baseline all passed before
+the patch. The only verified production defects were Mission heading clipping and the intentionally
+inactive placeholder contact architecture.
+
+### R4.6.1.4 Mission clipping: measured root cause
+
+This was geometry, not a browser-specific raster defect:
+
+1. `.mission__pillar-title` reached `60px` across much of desktop while GSAP’s hydrated desktop
+   composition constrained each absolute pillar to `44%` of the gutter-reduced container.
+2. The right pillar is right-anchored. `.mission__pin { overflow: hidden; }` clips excess ink, while
+   `body { overflow-x: clip; }` concealed the failure from document-width-only tests.
+3. At `>=1680px`, an old `4.3rem` rule enlarged the heading to `68.8px` after the container had
+   stopped growing. Active `INFRASTRUCTURE` ink was `649.469px` inside only `577.266px` of available
+   width — a `72.203px` deficit.
+4. At `60px`, the word measured `566.406px`. The old live rule produced real viewport-edge clipping
+   at `1024px` (about `117.55px`), `1180px` (`48.359px`), and `1280px` (`3.656px`). At `1366px`, the
+   ink exceeded its intended column even though it remained inside the outer viewport.
+
+The correction is Mission-only:
+
+```css
+@media (min-width: 960px) {
+  .mission__pillar-title {
+    font-size: clamp(2.5rem, 4.15vw, 3.75rem);
+  }
+}
+```
+
+The obsolete `>=1680px` Mission enlargement was removed. The base mobile floor moved from `1.6rem`
+to `1.4rem` so `320px` preserves the same single-line invariant. No wrap, tracking change, transform,
+pillar position, connector, ScrollTrigger, timing, semantic hierarchy, or global typography scale was
+changed.
+
+### R4.6.1.5 Mission before/after measurements and viewport matrix
+
+The final rule is `40px` at the `960px` desktop boundary, grows at `4.15vw`, and caps at `60px` near
+`1446px`. Both motion policies and both engines produced the same safe geometry. The table records
+active `INFRASTRUCTURE` after hydration; clearance is measured from ink to the clipping pin edge.
+
+| Viewport | Before | After font | After ink / title box | After pin clearance | Result |
+|---:|---|---:|---:|---:|---|
+| `320×568` | mobile floor risk | `22.4px` | `211.469 / 224px` | `12.547px` | **PASS; single line** |
+| `960×720` | desktop transition | `40px` | `377.596 / 495px` | `117px+` | **PASS** |
+| `1024×568/768` | about `117.55px` past viewport | `42.496px` | `401.157 / 415px` | `13.749px` WebKit | **PASS** |
+| `1180×820` | `48.359px` past viewport | `48.970px` | `462.281 / 478px` | `15.557px` WebKit | **PASS** |
+| `1280×720` | `3.656px` past viewport | `53.120px` | about `501.45 / 518px` | `16.866px` WebKit | **PASS** |
+| `1366×768` | about `19.94px` wider than column | `56.689px` | `535.063 / 553px` | `17.940px` WebKit | **PASS** |
+| `1440×900` | narrow positive fit | `59.760px` | `564.141 / 583px` | `18.873px` WebKit | **PASS** |
+| `1512×982` | fit | `60px` | `566.394 / 581px` | `14.403px` WebKit | **PASS** |
+| `1680×1050` | `72.203px` pin deficit at `68.8px` | `60px` | `566.394 / 577.266px` | `10.872px` WebKit | **PASS** |
+| `1920×1080` | same capped-container deficit | `60px` | `566.394 / 577.266px` | `10.872px` WebKit | **PASS** |
+
+The exact threshold sweep covered `959, 960, 963, 964, 1023, 1024, 1025, 1415, 1416, 1445,
+1446, 1454, 1455, 1456, 1599, 1600, 1601, 1679, 1680, 1681, 1920` under full and reduced
+motion: **42 samples per engine**. All headings remained one line, their text ranges stayed inside
+the title, Mission pin, and viewport, and no negative content-box clearance occurred. The minimum
+live pin clearance was `10.871948px` in WebKit and `10.859375px` in Chromium.
+
+### R4.6.1.6 Approved institutional contact architecture
+
+The single environment-driven placeholder was removed. The static export now renders seven native,
+keyboard-operable `mailto:` anchors, each exposed once and only in its matching Engagement row.
+
+| Public category | Exact route |
+|---|---|
+| General institutional inquiry | `contact@gabrielcapitallabs.com` |
+| Partnerships / strategic relationships | `partnerships@gabrielcapitallabs.com` |
+| Media / press | `media@gabrielcapitallabs.com` |
+| Careers | `careers@gabrielcapitallabs.com` |
+| Legal | `legal@gabrielcapitallabs.com` |
+| Security reports | `security@gabrielcapitallabs.com` |
+| Support | `support@gabrielcapitallabs.com` |
+
+`NEXT_PUBLIC_GCL_CONTACT_EMAIL`, the inactive placeholder branch, and its unused styles no longer
+participate. No Vercel environment variable was needed or changed. No form, API, database, CRM,
+ticketing system, validation service, or new inbox was invented. The final seven rows preserve equal
+height, DOM order, visual rhythm, native mail behavior, a `2px solid` focus outline, and the exact
+approved keyboard order. Compliance/security review returned **GO / no blocker**; public aliases are
+scrapeable by design, and no PII collection or server-side data path was introduced.
+
+### R4.6.1.7 Files changed
+
+Runtime/specification/harness scope:
+
+- `apps/gabriel-capital-labs-site/app/globals.css`
+- `apps/gabriel-capital-labs-site/components/EngagementSection.tsx`
+- `apps/gabriel-capital-labs-site/content/site.ts`
+- `apps/gabriel-capital-labs-site/SPEC.md`
+- `apps/gabriel-capital-labs-site/scripts/r4-3-confirmation.mjs`
+- `docs/reviews/assets/r4-4/seo-metadata-verification.json` — deterministic regenerated export/source hashes only
+- `docs/reviews/assets/r4-6-1/` — local and live Chromium/WebKit evidence
+- this authoritative Markdown report and its standalone HTML companion
+
+No page composition, Arrival controller, Nav, Institution, Ecosystem, Lab, Principles, Outro,
+Footer, Gateway G asset, social card, favicon, dependency, lockfile, Next configuration, schema,
+database, CreditVector, GIOS, HELIOS, DNS, or unrelated Vercel-project source changed.
+
+### R4.6.1.8 Local/static quality gates
+
+| Gate | Result |
+|---|---|
+| `npm run typecheck` | **PASS** |
+| `npm run lint` | **PASS — zero warnings/errors** |
+| `npm run build` | **PASS — optimized static export; four pages** |
+| `npm run test:r4.4:seo` | **PASS** |
+| `xmllint --noout public/sitemap.xml` | **PASS** |
+| `git diff --check` / staged diff check | **PASS** |
+| Contact-route exactness / placeholder absence | **PASS** |
+| CreditVector metadata contamination | **NONE** |
+| Static export binding | `48` files, `3,344,470` bytes, SHA-256 `7c281ec829594c6db2c9090697627f9351a52eee3197ca0563e4218e9dbe7d36` |
+| Exported index SHA-256 | `c3ffc3bd61460a38df2c5478d677480839b6bd2243fad31f0921e1e1807f558b` |
+| Harness SHA-256 | `893fbdaaed53af40891b32eae20fbc9e0bf7848f392176546ae6df1c43d18aa5` |
+
+Full local engine evidence:
+
+| Engine | Result | Matrix / evidence |
+|---|---|---|
+| Installed Chrome `151.0.7922.108` | **PASS; attestable; 40/40** | 79/79 screenshots, zero failures/telemetry |
+| Playwright WebKit `26.5` | **PASS; attestable; 40/40** | 79/79 screenshots, zero failures/telemetry |
+
+Both manifests bind the same source, assets, harness, and export. All 158 screenshot hashes were
+independently reconciled. The matrix covers full/reduced motion across 1920, 1680, 1512, 1440,
+1366, 1280, 1180, 1024, 960, 430, 390, and 320 widths, including compact heights and the dedicated
+21-width Mission sweep per policy.
+
+### R4.6.1.9 Replay, motion, mobile, accessibility, and Gateway G
+
+- **Replay:** three consecutive full-motion cycles from Engagement, Outro, and Footer passed Escape,
+  keyboard Skip, and natural completion. Each acquisition reached scroll `0`, `9` marker-owned inert
+  targets, and hidden overflow; each release returned owned/all inert to `0`, removed lock classes,
+  restored visible overflow and focus to Replay, announced “Introduction complete,” preserved one
+  listener, five desktop pins, one Outro pin, and zero nested spacers.
+- **Early Escape (transient local installed-Chrome check):** an independent `50ms` post-Replay
+  Escape completed and released normally. This check is not manifest-bound, live, or cross-engine.
+- **Inert ownership:** a pre-existing unrelated inert target stayed inert and unowned during and after
+  Replay release.
+- **Reduced motion:** reduced Replay, static composition, focus/announcement, five desktop pins, and
+  release lifecycle passed.
+- **Mobile:** full-motion mobile retained the accepted two pins; reduced mobile retained zero; Replay
+  never acquired desktop lock/inert. `320×568`, `390×844`, and `430×932` passed with no contact or
+  Outro clipping.
+- **Deep link:** blank-tab `/#contact` under both policies landed at about `84.09px`, with no prologue,
+  Replay, owned inert, or scroll-lock residue.
+- **Accessibility:** scoped axe checks for Engagement, Outro, and Footer returned zero violations in
+  both policies; exact keyboard order and visible focus passed with `Tab` in Chromium and `Alt+Tab`
+  in Playwright WebKit (the macOS Option-Tab equivalent). Installed-Safari traversal of the new
+  contact anchors and mail-client launch remain manual. Prior accepted full-page R4 coverage remains
+  applicable to the unchanged Arrival surface.
+- **Gateway G / accepted visuals:** the four locked projections are byte-exact; the image remains
+  contained and has no filter, mask, blend, or transform corruption. All eight narrative frames and
+  the three-cycle Replay frame remain byte-identical to R4.4 in both engines. Pin topology remains
+  `5/5/2/0`, with zero nested spacers.
+- **Runtime:** zero console errors, page errors, hydration warnings, NaN styles, listener or pin-
+  spacer accumulation, or unexpected telemetry. Source audit found no Replay path that creates a
+  timeline or ScrollTrigger.
+
+Locked production SHA-256 values:
+
+- `gateway-g-480.webp` — `90b2c57e6dfd5d2a6cfc46d7f4a89c534337ff19954a6719142872af8b737b19`
+- `gateway-g-768.webp` — `bdc797d78f19d2e59c7e1e06f9c106203492651ba4300c2c93427407ccf1ef7a`
+- `gateway-g-1080.webp` — `67f8f444ad9800520e1a4d0f941021cffe8903a16b1a00a9909f25649ef9ccc7`
+- `gateway-g-480.png` — `9ed7766905c9167b6dd86b6e061430fb1e66892ff1501460702c8755b66b1c9b`
+- `og.png` — `9ed61c6f62dc29ca82f0be399eed512c513d30343077fc83244d6bed614d6002`
+- `x-card.png` — `101905441f604273c94bd25d069d2d36731e70ea1ff87ce0d4016c7fcea79d23`
+
+### R4.6.1.10 Independent adversarial review
+
+The two required read-only adversaries completed after final executable evidence existed:
+
+1. **Replay / accessibility adversary — PASS WITH DISCLOSURES.** Manifest-bound repeated Replay,
+   inert ownership, Escape/Skip/natural exits, hash navigation, focus restoration, keyboard behavior,
+   reduced motion, mobile bypass, scoped axe, listener count, and pin-spacer stability passed. A
+   separate transient local installed-Chrome check passed Escape at `50ms`; source audit found no
+   Replay path that creates timelines or ScrollTriggers. No confidence-8+ blocker was found.
+2. **Visual / reliability adversary — PASS WITH DISCLOSURES.** Mission thresholds, all selected
+   desktop/mobile frames, full/reduced motion, Third Motion Class, deep links, compact height,
+   Gateway G locks, R4.4 frame identity, source/export/screenshot hashes, build evidence, and local
+   performance reconciled. No confidence-8+ blocker was found.
+
+The separate Mission root-cause audit confirmed the `4.15vw` formula mathematically safe; the
+contact/security/compliance audit approved the exact seven-row mapping and found no active-data or
+credential risk.
+
+### R4.6.1.11 Pull request, merge, CI, and production deployment
+
+PR [#14](https://github.com/Re3zy-ai247/gabriel-capital-labs/pull/14) used the normal protected-main
+policy and merge-commit strategy. There was no bypass, force push, squash, rebase, conflict
+resolution, or source-branch deletion. Both duplicated PR Gate D and verify runs passed, both Vercel
+previews passed, and post-merge Actions run
+[31332192390](https://github.com/Re3zy-ai247/gabriel-capital-labs/actions/runs/31332192390)
+passed `Gate D preflight` and `verify` for the exact merge SHA.
+
+| Deployment fact | Exact value |
+|---|---|
+| Vercel team / project | `rey-gabriel-s-projects` / `gcl-institutional-site` |
+| Project ID | `prj_rrVRlPw1Ia0X86prZw8nvvvNNaN8` |
+| Git / Root Directory | `Re3zy-ai247/gabriel-capital-labs` / `apps/gabriel-capital-labs-site` |
+| Production branch | `main` |
+| GitHub deployment record | `5822179618` |
+| Production deployment ID | `dpl_2hkmVz5AZG7RriANpe6v8aokH6ey` |
+| Deployment URL | `https://gcl-institutional-site-e0s2xfzfw-rey-gabriel-s-projects.vercel.app` |
+| Deployment Git SHA | `7cd61cb0161c66bf73ed1811ed4ee94d07855de1` |
+| Canonical alias | `https://www.gabrielcapitallabs.com` |
+| GitHub/Vercel state | **SUCCESS / Deployment has completed** |
+
+The unrelated repository-root Vercel project was not operated. Its automatic status completed but is
+not used as GCL production evidence.
+
+### R4.6.1.12 Live post-deploy verification
+
+The canonical HTML identifies `dpl_2hkmVz5AZG7RriANpe6v8aokH6ey`; it contains the new Mission CSS,
+all seven routes, no placeholder, and no legacy contact environment reference.
+
+| Live gate | Result |
+|---|---|
+| `www` HTTPS / canonical document | **PASS — TLS 1.3, HTTP/2 200, Vercel, no auth** |
+| Apex redirect | **PASS — one HTTP/2 308 to exact canonical `www/`** |
+| DNS | **PASS — all four authoritative NS + system/Cloudflare/Google/Quad9 agree** |
+| Mission | **PASS — 42 threshold samples per engine; minimum pin clearance >10.85px** |
+| Full / reduced cinematic behavior | **PASS** |
+| Contact routes / keyboard / focus | **PASS — exact 7; 2px solid focus** |
+| Replay / inert / focus restoration | **PASS** |
+| `/#contact` full and reduced | **PASS** |
+| Mobile / compact height / horizontal overflow | **PASS** |
+| Gateway G / R4 visual invariants | **PASS — locked bytes and frames** |
+| Canonical / Founder thesis / JSON-LD / legal name | **PASS** |
+| `index, follow` / robots / sitemap | **PASS** |
+| OG / X / social images / favicon | **PASS** |
+| Console / page / hydration / unexpected telemetry | **ZERO** |
+
+The focused live runs selected 20 production-relevant scenarios in WebKit and the same 20 in
+Chromium. Each passed 20/20 with 31/31 independently rehashed screenshots, zero failures, and zero
+unexpected telemetry. Their `partial` / non-attestable labels are intentional: the harness refuses
+to present a filtered selection as a full confirmation. The committed local 40/40 manifests are the
+full attestations; the live runs prove the deployed canonical artifact behaves the same.
+
+Durable evidence:
+
+- [Live-production verification manifest](assets/r4-6-1/live-production-verification.json)
+- [Local Chromium full manifest](assets/r4-6-1/chromium/r4-6-1-local-chromium-results.json)
+- [Local WebKit full manifest](assets/r4-6-1/webkit/r4-6-1-local-webkit-results.json)
+- [Live Chromium selected manifest](assets/r4-6-1/live-chromium/r4-6-1-live-chromium-results.json)
+- [Live WebKit selected manifest](assets/r4-6-1/live-webkit/r4-6-1-live-webkit-results.json)
+
+### R4.6.1.13 Rollback boundary
+
+Rollback was not needed. The immediate pre-hotfix production deployment remains the primary known-
+good rollback boundary:
+
+| Rollback level | Deployment / Git |
+|---|---|
+| Immediate pre-hotfix production | `dpl_3qab11i1DBb2U9nAcYwNUn3KZyNR` / `f44ace233cc25a05f761e8f64ec2e6e89299ea54` |
+| Earlier retained deployment | `dpl_2CCpUvBuejgnikDmUJYqY3cSSEDX` / `c661f3c46d47d30f5c274df14d436cbe25453ea7` |
+| Current verified production | `dpl_2hkmVz5AZG7RriANpe6v8aokH6ey` / `7cd61cb0161c66bf73ed1811ed4ee94d07855de1` |
+
+Vercel Instant Rollback can restore the immediate pre-hotfix deployment without rewriting source.
+DNS is already correct and was not mutated during R4.6.1, so a website rollback would not require a
+DNS rollback.
+
+### R4.6.1.14 Residual disclosures and explicit non-changes
+
+1. Playwright WebKit 26.5 is not physical Safari/notched-device automation. Founder manual Safari
+   review from 2026-08-09 remains authoritative for the unchanged cinematic/Replay architecture,
+   not the new contact anchors. Contact traversal passed Playwright WebKit with `Alt+Tab` (the macOS
+   Option-Tab equivalent); installed-Safari contact traversal and mail-client launch remain manual.
+2. Live browser runs are deliberately filtered and therefore labeled `partial`/non-attestable; both
+   full local engine runs are `passed`/attestable at 40/40.
+3. Contact wiring, keyboard traversal, and exact `mailto:` destinations were verified. No test email
+   was sent; alias delivery existence is Founder-confirmed external Workspace state.
+4. Public contact aliases are scrapeable by design. No form, backend, PII collection, or new data
+   retention exists. The inherited absence of CSP is unchanged; adding one around existing inline
+   bootstrap/JSON-LD scripts was outside this bounded closure.
+5. Browser performance evidence is local-static, not a production-network benchmark. Live runtime
+   behavior and request success were verified without claiming a new Core Web Vitals baseline.
+6. The full manifests were generated before the source commit and report Git `f44ace…`; their source,
+   harness, asset, export, and screenshot hashes bind the committed candidate. The focused live
+   manifests report source commit `08ecd…` and canonical deployment behavior.
+7. A documentation-only report merge may cause Vercel to build the same website tree under a newer
+   immutable deployment ID. That administrative follow-up does not alter the verified site artifact;
+   its final repository/deployment observation is returned in the task handoff.
+
+No redesign, global scale change, wrapping policy, Gateway G edit, social-card change, animation
+rewrite, dependency modernization, architecture rewrite, environment mutation, schema/database
+change, DNS mutation, search-engine submission, CreditVector change, GIOS change, HELIOS change,
+new feature, or R5 work occurred.
+
+## R4.6.1 FINAL VERDICT
+
+**LIVE AND VERIFIED**
+
+The bounded R4.6.1 patch is provenance-bound, merged, deployed, and verified on the real canonical
+production domain. The previously clipped Mission headings are contained across the supported and
+threshold matrices; all approved institutional routes are active; every required interaction,
+accessibility, reliability, metadata, asset, and production gate passes; and no unresolved Replay,
+inert-state, Gateway G, mobile, accessibility, hydration, or interaction defect remains.
+
+---
+
+## R4.6 · Controlled Production Deployment + Domain Verification (2026-08-09)
+
+### R4.6.1 Executive result
+
+**R4.6 verdict: BLOCKED BEFORE PRODUCTION.** Repository and Vercel provenance passed. The accepted
+deployment already existed as Vercel's current Production deployment, so no redundant rebuild,
+redeploy, or promotion was performed. Vercel now has both authorized hostnames attached to that
+Production environment, with the apex configured as a permanent `308` redirect to `www`.
+
+The canonical domain did **not** cut over. Its authoritative DNS remains at Squarespace, and neither
+available browser session was authenticated to the Squarespace account. The operation therefore
+stopped at the external-provider boundary required by the R4.6 authorization. The current public
+canonical hosts still serve the Squarespace holding page, not the approved GCL site.
+
+| Outcome | Result |
+|---|---|
+| Locked repository lineage | **PASS** |
+| Vercel project / Root Directory / Git binding | **PASS** |
+| Candidate deployment provenance | **PASS** |
+| Pre-production quality gates | **PASS** |
+| Gateway G locked bytes on public Vercel alias | **PASS** |
+| Vercel `www` + apex attachment | **COMPLETE** |
+| Authoritative Squarespace DNS cutover | **NOT PERFORMED — authentication boundary** |
+| Canonical-domain production verification | **BLOCKED — canonical hosts still serve Squarespace** |
+
+### R4.6.2 Phase 0 preflight and immutable lineage
+
+`git fetch origin --prune` completed before any Vercel mutation. No legitimate main advancement,
+tree drift, unreviewed website content, or dirty-worktree condition was present.
+
+| Preflight fact | Verified value |
+|---|---|
+| Local branch | `main` |
+| Local `HEAD` / `main` | `f44ace233cc25a05f761e8f64ec2e6e89299ea54` |
+| Refreshed `origin/main` | `f44ace233cc25a05f761e8f64ec2e6e89299ea54` |
+| Local/remote divergence | `0 0` |
+| Expected R4.5 final SHA | **MATCH** |
+| Approved source HEAD | `2d8f151e4555f932cc7d63e922bd252d07911e27` |
+| Authoritative R4.5 merge | `c661f3c46d47d30f5c274df14d436cbe25453ea7` |
+| Locked website subtree | `6baa052d5cb9631ab5f96414dc1c5922910b0a94` |
+| Approved-source-to-main website diff | **EMPTY** |
+| Worktree before production mutation | **CLEAN** |
+
+### R4.6.3 Read-only Vercel production audit
+
+Authenticated dashboard evidence and GitHub deployment record `5819991625` establish the exact
+project and source chain. The repository-root `gabriel-capital-labs` Vercel project was not used or
+changed.
+
+| Production fact | Verified value |
+|---|---|
+| Vercel team | `rey-gabriel-s-projects` |
+| Project | `gcl-institutional-site` |
+| Project ID | `prj_rrVRlPw1Ia0X86prZw8nvvvNNaN8` |
+| Git repository | `Re3zy-ai247/gabriel-capital-labs` |
+| Root Directory | `apps/gabriel-capital-labs-site` |
+| Framework | Next.js |
+| Production build overrides | `npm ci` / `npm run build` |
+| Production branch | `main` |
+| Relevant production environment-variable names | **None** |
+| Current deployment ID | `dpl_3qab11i1DBb2U9nAcYwNUn3KZyNR` |
+| Current deployment URL | `https://gcl-institutional-site-l5xv2trzn-rey-gabriel-s-projects.vercel.app` |
+| Git SHA | `f44ace233cc25a05f761e8f64ec2e6e89299ea54` |
+| State | **Ready · Current · Production** |
+| Created | `2026-08-09T15:13:10Z` |
+| Public production alias | `https://gcl-institutional-site.vercel.app` |
+| Candidate website tree | `6baa052d5cb9631ab5f96414dc1c5922910b0a94` |
+| Deployment protection | Standard protection retained for pre-production URLs; public production alias returns unauthenticated `200` |
+
+The candidate commit has the exact locked website tree. Vercel's deployment detail binds the Ready
+artifact to `main` at `f44ace2…`; GitHub independently records the same successful
+`gcl-institutional-site` deployment against that full SHA. Artifact provenance is therefore
+established without rebuilding.
+
+`NEXT_PUBLIC_GCL_CONTACT_EMAIL` is not configured. Its accepted fallback remains non-interactive;
+no environment variable was added or changed during R4.6.
+
+### R4.6.4 Final pre-promotion gates
+
+The required commands ran from `apps/gabriel-capital-labs-site` against the locked tree.
+
+| Gate | Result |
+|---|---|
+| `npm run typecheck` | **PASS** |
+| `npm run lint` | **PASS** — zero warnings/errors |
+| `npm run build` | **PASS** — optimized static build; four pages |
+| `npm run test:r4.4:seo` | **PASS** |
+| `xmllint --noout public/sitemap.xml` | **PASS** |
+| Canonical / thesis / legal name / JSON-LD | **PASS** |
+| `index, follow`, robots, sitemap | **PASS** |
+| Open Graph and X metadata/assets | **PASS** |
+| CreditVector metadata contamination | **NONE** |
+| Final accepted evidence / worktree state | **BYTE-RESTORED / CLEAN** |
+
+The SEO verifier changed only its run-specific generated `out/index.html` hash. That incidental
+evidence write was not accepted as a new baseline; the committed R4.4 manifest was restored to
+SHA-256 `6c5420ba691e6ea7dd7ea1037c79e01e13bbb1ee63195a58719db3dea0684b5e`,
+and the worktree returned clean before the Vercel domain mutation.
+
+Locked Gateway G SHA-256 values, reproduced locally and from the public Vercel production alias:
+
+- `gateway-g-480.webp` — `90b2c57e6dfd5d2a6cfc46d7f4a89c534337ff19954a6719142872af8b737b19`
+- `gateway-g-768.webp` — `bdc797d78f19d2e59c7e1e06f9c106203492651ba4300c2c93427407ccf1ef7a`
+- `gateway-g-1080.webp` — `67f8f444ad9800520e1a4d0f941021cffe8903a16b1a00a9909f25649ef9ccc7`
+- `gateway-g-480.png` — `9ed7766905c9167b6dd86b6e061430fb1e66892ff1501460702c8755b66b1c9b`
+
+The public project alias returned `200` with the exact Founder thesis, canonical `www` URL,
+`index, follow`, Organization JSON-LD (`Gabriel Capital Labs, LLC`), correct OG/X metadata,
+canonical robots and sitemap, and matching social-card bytes:
+
+- `og.png` — `9ed61c6f62dc29ca82f0be399eed512c513d30343077fc83244d6bed614d6002`
+- `x-card.png` — `101905441f604273c94bd25d069d2d36731e70ea1ff87ce0d4016c7fcea79d23`
+- `favicon.ico` — `8fe9bc138bb4d801413999e6b766e70e255a823d011454cb8d30f524e1102dd7`
+
+### R4.6.5 Production artifact and Vercel domain changes
+
+The exact audited deployment was already **Current** in Vercel Production. Rebuilding or promoting
+it would add risk without changing the artifact, so it was preserved in place.
+
+The following bounded Vercel configuration was performed:
+
+1. Attached `www.gabrielcapitallabs.com` to the Production environment.
+2. Attached `gabrielcapitallabs.com` and configured Vercel's recommended apex-to-`www` `308`
+   redirect.
+3. Preserved `gcl-institutional-site.vercel.app` as the public project alias.
+
+Both custom domains now appear in Vercel but remain **Invalid Configuration** until authoritative
+DNS changes. No domain was transferred from another Vercel project. No rebuild, redeploy, promote,
+rollback, environment-variable change, or production-protection change was performed.
+
+### R4.6.6 Authoritative DNS stop gate
+
+Before the operation, authoritative DNS resolved to Squarespace:
+
+| Record | Existing value |
+|---|---|
+| Nameservers | `nsd1.squarespacedns.com` through `nsd4.squarespacedns.com` |
+| Apex `A` | `198.49.23.145`, `198.49.23.144`, `198.185.159.144`, `198.185.159.145` |
+| `www CNAME` | `ext-sq.squarespace.com` |
+| MX | Google Workspace records present and preserved |
+| Other TXT / verification records | Present, values not printed, preserved |
+| Web-record TTL observed | `14400` seconds |
+
+Vercel's authenticated domain inspector supplied these exact project-specific replacements:
+
+| Type | Name | Required value |
+|---|---|---|
+| `A` | `@` | `216.150.1.1` |
+| `CNAME` | `www` | `28658db1f314aa1b.vercel-dns-016.com.` |
+
+Vercel did not request an ownership-verification TXT record at this checkpoint. No generic legacy
+target was substituted. Nameservers must remain at Squarespace; MX, TXT, email, and every unrelated
+record must remain unchanged.
+
+Neither Chrome nor the in-app browser had an authenticated Squarespace account session. Logging in
+would require credentials or account selection not safely inferable from the authorization. In
+accordance with the explicit R4.6 stop condition, **no Squarespace DNS record was changed**.
+
+Founder completion action:
+
+1. In Squarespace DNS, remove only the four existing Squarespace apex `A` records and add one
+   `A` record for `@` → `216.150.1.1`.
+2. Replace only `www CNAME ext-sq.squarespace.com` with
+   `www CNAME 28658db1f314aa1b.vercel-dns-016.com.`.
+3. Preserve nameservers, Google MX, TXT, verification, and all unrelated records.
+4. After propagation, refresh both domains in Vercel and rerun R4.6 Phase 5–7 verification.
+
+### R4.6.7 Canonical live verification disposition
+
+The real public domains were checked after the Vercel attachment. DNS had not changed, so they
+continued to serve Squarespace:
+
+| Required live check | R4.6 result |
+|---|---|
+| `https://www.gabrielcapitallabs.com` serves approved GCL site | **FAIL / BLOCKED** — Squarespace `Coming Soon` |
+| Apex permanent redirect to exact `www` HTTPS URL | **FAIL / BLOCKED** — apex returns `200`, zero redirects |
+| Redirect loop absence | **NOT TESTABLE on intended route** |
+| Canonical tag / Founder thesis / JSON-LD / OG / X on canonical host | **BLOCKED** — wrong site is live |
+| Production indexing | **FAIL / BLOCKED** — Squarespace page returns `noindex` |
+| `/robots.txt` | **FAIL / BLOCKED** — `401` from Squarespace |
+| `/sitemap.xml` | **FAIL / BLOCKED** — `401` from Squarespace |
+| Vercel custom-domain certificate | **PENDING DNS verification** |
+| Existing HTTPS certificate | **VALID for the Squarespace holding site only** |
+| Social images / favicon / critical assets | **PASS on public Vercel alias; blocked on canonical GCL host** |
+| Gateway G locked bytes | **PASS on public Vercel alias** |
+| Gateway G render on canonical host | **NOT EXECUTED** |
+| Console/runtime/hydration/overflow | **NOT EXECUTED on canonical host** |
+| `/#contact`, Replay Arrival, reduced motion | **NOT EXECUTED on canonical host** |
+| Mobile/responsive and keyboard/focus | **NOT EXECUTED on canonical host** |
+| Production free of Vercel authentication | **Public alias PASS; canonical cutover not yet verifiable** |
+
+The accepted R4.5 WebKit 30/30, 45-screenshot, zero-telemetry evidence remains intact, but it is not
+substituted for a live canonical-domain run. No R4.6 visual baseline or live screenshot baseline was
+created.
+
+### R4.6.8 Rollback readiness
+
+The immediately preceding Vercel Production deployment remains available:
+
+| Rollback fact | Value |
+|---|---|
+| Previous deployment ID | `dpl_2CCpUvBuejgnikDmUJYqY3cSSEDX` |
+| Previous deployment URL | `https://gcl-institutional-site-aox2qix25-rey-gabriel-s-projects.vercel.app` |
+| Previous Git SHA | `c661f3c46d47d30f5c274df14d436cbe25453ea7` |
+| Previous state | **Ready · Stale** |
+| Previous website tree | `6baa052d5cb9631ab5f96414dc1c5922910b0a94` |
+| Current deployment ID | `dpl_3qab11i1DBb2U9nAcYwNUn3KZyNR` |
+| Rollback mechanism | Vercel dashboard Instant Rollback / `vercel rollback` to the previous URL |
+
+A Vercel rollback would reassign Production aliases, including verified custom domains, without
+source rewriting. No rollback was executed because the GCL artifact itself passed and the canonical
+DNS cutover never occurred. The current Squarespace DNS values above are also the exact external-DNS
+rollback reference if a later cutover fails.
+
+### R4.6.9 Explicitly unchanged and residual disclosures
+
+No website source, copy, component, stylesheet, motion, Gateway G asset, social card, dependency,
+schema, database, environment variable, CreditVector surface, GIOS surface, HELIOS surface,
+nameserver, MX/TXT record, or unrelated Vercel project was changed. No search-engine submission was
+performed. No visual baseline was accepted. The only external mutation was the authorized domain
+attachment and apex redirect policy inside `gcl-institutional-site`.
+
+Residual disclosures:
+
+1. Canonical DNS still serves the old Squarespace holding site and has a four-hour observed TTL.
+2. Vercel custom-domain SSL provisioning cannot complete until DNS validates.
+3. `NEXT_PUBLIC_GCL_CONTACT_EMAIL` remains absent; the accepted fallback is non-interactive.
+4. Canonical live interaction, accessibility, mobile, reduced-motion, Replay, hydration, console,
+   and Gateway-render verification remain mandatory after DNS propagation.
+5. This R4.6 report is intentionally not committed or pushed during the operation; a report-only
+   push would trigger a new automatic deployment and change the deployment facts just verified.
+
+## FINAL VERDICT
+
+**BLOCKED BEFORE PRODUCTION**
+
+The exact approved GCL artifact is healthy, provenance-verified, and domain-attached in the correct
+Vercel project. Production cannot be declared live until the two precise Squarespace DNS changes
+above are made and the real canonical domains pass the complete R4.6 Phase 5–7 verification.
 
 ---
 
