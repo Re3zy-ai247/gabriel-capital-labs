@@ -1367,12 +1367,26 @@ html.js .mission__connector {
   display: block;
 }
 
+/* R4.6.1 — the 1.4rem floor lets the longest approved title retain one line
+   inside the existing 3.5rem-indented 320px mobile column. Wider mobile
+   widths continue to use the accepted 7vw scale. */
 .mission__pillar-title {
-  font-size: clamp(1.6rem, 7vw, 3.75rem);
+  font-size: clamp(1.4rem, 7vw, 3.75rem);
   font-weight: 300;
   letter-spacing: 0.04em;
   color: var(--gcl-platinum);
   margin-bottom: 1rem;
+}
+
+/* R4.6.1 — once the Mission composition changes to its protected split at
+   960px, size display type from the viewport instead of immediately hitting
+   the old 60px ceiling. 4.15vw keeps the longest approved title inside a
+   44% pinned pillar (including its 0.04em tracking) from 1024px upward, while
+   the 60px cap preserves the accepted large-screen hierarchy. */
+@media (min-width: 960px) {
+  .mission__pillar-title {
+    font-size: clamp(2.5rem, 4.15vw, 3.75rem);
+  }
 }
 
 .mission__pillar-def {
@@ -2006,7 +2020,7 @@ html.js .lab__row {
   margin-bottom: clamp(4.5rem, 9svh, 7rem);
 }
 
-/* One editorial measure for all six rows. */
+/* One editorial measure for all contact rows. */
 .engagement__categories {
   position: relative;
   display: flex;
@@ -2085,36 +2099,6 @@ html.js .lab__row {
   .engagement__category-desc {
     grid-column: desc;
     text-align: left;
-  }
-}
-
-.engagement__category-link--static {
-  cursor: default;
-}
-
-.engagement__category-link--static:hover,
-.engagement__category-link--static:focus-visible {
-  color: var(--gcl-stone-silver);
-}
-
-/* R2 defect C — one single-line note, always rendered once (never per
-   row); on desktop it takes the full engagement measure so it reads as
-   one consistent line under the list rather than looking like a stray
-   seventh row. */
-.engagement__placeholder-note {
-  position: relative;
-  margin: clamp(2rem, 5svh, 3.5rem) auto 0;
-  max-width: var(--gcl-engagement-measure);
-  font-size: 0.85rem;
-  letter-spacing: 0.02em;
-  color: var(--gcl-stone-silver);
-  font-style: italic;
-  text-align: left;
-}
-
-@media (min-width: 1024px) {
-  .engagement__placeholder-note {
-    text-align: right;
   }
 }
 
@@ -2360,9 +2344,6 @@ html.js .lab__row {
   }
   .institution__heading {
     font-size: clamp(1.6rem, 4.6vw, 3.9rem);
-  }
-  .mission__pillar-title {
-    font-size: clamp(1.6rem, 7vw, 4.3rem);
   }
   .ecosystem__wing-name {
     font-size: clamp(1.6rem, 6vw, 4.1rem);

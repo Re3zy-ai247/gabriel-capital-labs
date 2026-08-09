@@ -11,7 +11,7 @@ import {
   MOBILE_MOTION_QUERY,
 } from "@/lib/gsap";
 import { revealFromTo } from "@/lib/motion";
-import { engagement, contactHref, contactIsPlaceholder } from "@/content/site";
+import { engagement } from "@/content/site";
 
 export default function EngagementSection() {
   const rootRef = useRef<HTMLElement | null>(null);
@@ -21,7 +21,7 @@ export default function EngagementSection() {
 
     const applyStaticFallback = () => {
       gsap.set(
-        ".engagement__chapter-mark, .engagement__category, .engagement__placeholder-note",
+        ".engagement__chapter-mark, .engagement__category",
         { opacity: 1, y: 0 }
       );
     };
@@ -61,14 +61,12 @@ export default function EngagementSection() {
               { opacity: 1, y: 0, duration: 0.5, ease: "power2.out", stagger: 0.08 }
             );
 
-            tl.fromTo(".engagement__chapter-mark", chapterFrom, chapterTo, 0)
-              .fromTo(".engagement__category", rowFrom, rowTo, 0.28)
-              .fromTo(
-                ".engagement__placeholder-note",
-                { opacity: 0 },
-                { opacity: 1, duration: 0.45, ease: "power2.out" },
-                0.75
-              );
+            tl.fromTo(".engagement__chapter-mark", chapterFrom, chapterTo, 0).fromTo(
+              ".engagement__category",
+              rowFrom,
+              rowTo,
+              0.28
+            );
 
             return () => tl.scrollTrigger?.kill();
           };
@@ -103,28 +101,15 @@ export default function EngagementSection() {
         </h2>
 
         <ul className="engagement__categories">
-          {engagement.categories.map((category) =>
-            contactIsPlaceholder ? (
-              <li key={category.label} className="engagement__category">
-                <div className="engagement__category-link engagement__category-link--static">
-                  <span className="engagement__category-label">{category.label}</span>
-                  <span className="engagement__category-desc">{category.description}</span>
-                </div>
-              </li>
-            ) : (
-              <li key={category.label} className="engagement__category">
-                <a className="engagement__category-link" href={contactHref}>
-                  <span className="engagement__category-label">{category.label}</span>
-                  <span className="engagement__category-desc">{category.description}</span>
-                </a>
-              </li>
-            )
-          )}
+          {engagement.categories.map((category) => (
+            <li key={category.label} className="engagement__category">
+              <a className="engagement__category-link" href={category.href}>
+                <span className="engagement__category-label">{category.label}</span>
+                <span className="engagement__category-desc">{category.description}</span>
+              </a>
+            </li>
+          ))}
         </ul>
-
-        {contactIsPlaceholder ? (
-          <p className="engagement__placeholder-note">Contact channels are being finalised.</p>
-        ) : null}
       </div>
     </section>
   );
