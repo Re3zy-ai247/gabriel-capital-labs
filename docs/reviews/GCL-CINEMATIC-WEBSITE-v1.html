@@ -1,6 +1,6 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>GCL Cinematic Website — R4.4 Launch Closure Report</title>
+<title>GCL Cinematic Website — R4.5 Controlled Merge Report</title>
 <style>
 :root{--bg:#0B0D10;--panel:#0F1012;--txt:#E6E6E6;--mut:#B7B7B7;--gold:#D4A146;--line:#26282c}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--txt);font:16px/1.65 -apple-system,"Segoe UI",Inter,Roboto,sans-serif;padding:2rem 1rem}
@@ -24,7 +24,53 @@ figcaption{font-size:.78rem;color:var(--mut);padding-top:.5rem;letter-spacing:.0
 @media print{body{background:#fff;color:#111}p,li{color:#333}}
 </style></head><body><main>
 <h1>Gabriel Capital Labs — Cinematic Institutional Website v1</h1>
-<p><strong>Build + adversarial-review handoff report</strong> · 2026-08-05 · Original branch <code>claude/gcl-cinematic-institutional-site-6qx964</code>. <strong>Revision R4.4 (2026-08-09): Launch Closure — READY TO MERGE WITH DISCLOSURES — branch <code>codex/gcl-launch-closure-safari-seo-2026-08-09</code>, implementation/evidence commit <code>7ca8cdb</code>.</strong> R4.3, R4, R3, R2, and v1 follow as historical record.</p>
+<p><strong>Build + adversarial-review handoff report</strong> · 2026-08-05 · Original branch <code>claude/gcl-cinematic-institutional-site-6qx964</code>. <strong>Revision R4.5 (2026-08-09): Controlled Merge — MERGED AND VERIFIED — policy-required PR #12, merge commit <code>c661f3c</code>.</strong> R4.4, R4.3, R4, R3, R2, and v1 follow as historical record.</p>
+<hr>
+<h2>R4.5 · Controlled Merge (2026-08-09)</h2>
+<p><strong class="ok">R4.5 outcome: MERGED AND VERIFIED.</strong> Founder approval is <strong>APPROVED</strong> and manual Safari approval is <strong>APPROVED</strong>. The exact pushed branch <code>codex/gcl-launch-closure-safari-seo-2026-08-09</code> at <code>2d8f151e4555f932cc7d63e922bd252d07911e27</code> was merged into <code>main</code> without squash, rebase, conflict resolution, force, content alteration, or source-branch deletion.</p>
+
+<h3>R4.5.1 Merge lineage and deterministic tree gate</h3>
+<p>The pre-merge fetch established <code>origin/main</code> at <code>3a9943040da5648f1ae68fa9b8e0f06a276f75b1</code>, also the exact merge base. Divergence was 0 main-only / 17 approved-source-only commits. Scope was the isolated GCL site, review evidence, expected root TypeScript exclusion, and dated current-state note; no CreditVector, GIOS, HELIOS, schema, billing, DNS, or unrelated application file changed.</p>
+<p>GitHub correctly rejected a direct non-force push under rule <code>GH013</code> because <code>main</code> requires a pull request. No bypass was attempted. Policy-required <a href="https://github.com/Re3zy-ai247/gabriel-capital-labs/pull/12">PR #12</a> used GitHub's normal merge-commit strategy after every required check passed.</p>
+<div class="tw"><table><thead><tr><th>Merge fact</th><th>Verified value</th></tr></thead><tbody>
+<tr><td>Source branch</td><td><code>codex/gcl-launch-closure-safari-seo-2026-08-09</code></td></tr>
+<tr><td>Source HEAD, local and remote</td><td><code>2d8f151e4555f932cc7d63e922bd252d07911e27</code></td></tr>
+<tr><td><code>origin/main</code> before</td><td><code>3a9943040da5648f1ae68fa9b8e0f06a276f75b1</code></td></tr>
+<tr><td>Authoritative merge commit</td><td><code>c661f3c46d47d30f5c274df14d436cbe25453ea7</code></td></tr>
+<tr><td>Merge parents</td><td><code>3a9943040da5648f1ae68fa9b8e0f06a276f75b1</code> + <code>2d8f151e4555f932cc7d63e922bd252d07911e27</code></td></tr>
+<tr><td>Approved source website tree</td><td><code>6baa052d5cb9631ab5f96414dc1c5922910b0a94</code></td></tr>
+<tr><td>Merged <code>main</code> website tree</td><td><code>6baa052d5cb9631ab5f96414dc1c5922910b0a94</code></td></tr>
+<tr><td>Deterministic workspace diff</td><td><strong class="ok">PASS — zero content difference</strong></td></tr>
+<tr><td>First pushed <code>main</code> / <code>origin/main</code></td><td><code>c661f3c46d47d30f5c274df14d436cbe25453ea7</code></td></tr>
+<tr><td>Worktree at merge checkpoint</td><td><strong class="ok">CLEAN</strong></td></tr>
+<tr><td>Approved source branch after merge</td><td><strong class="ok">INTACT</strong> locally and on <code>origin</code></td></tr>
+</tbody></table></div>
+<p>A local validation merge (<code>55bf9e56419315ddf2f7c81da4396f8e8fcd7d28</code>) had the same two parents and same website tree. It was never pushed and was superseded only because repository policy required PR #12; the authoritative merge is <code>c661f3c…</code>.</p>
+
+<h3>R4.5.2 Post-merge verification</h3>
+<div class="tw"><table><thead><tr><th>Gate</th><th>Result</th></tr></thead><tbody>
+<tr><td>Typecheck</td><td><strong class="ok">PASS</strong> — <code>npm run typecheck</code></td></tr>
+<tr><td>Lint</td><td><strong class="ok">PASS</strong> — zero warnings/errors</td></tr>
+<tr><td>Production build</td><td><strong class="ok">PASS</strong> — optimized static export; four static pages</td></tr>
+<tr><td>SEO / metadata</td><td><strong class="ok">PASS</strong> — exact thesis, canonical <code>www</code>, valid Organization JSON-LD, indexing, robots, sitemap, and PNG social cards</td></tr>
+<tr><td>Sitemap XML</td><td><strong class="ok">PASS</strong> — <code>xmllint --noout public/sitemap.xml</code></td></tr>
+<tr><td>Tree equivalence</td><td><strong class="ok">PASS</strong> — Git object equality plus zero workspace diff</td></tr>
+<tr><td>Gateway G</td><td><strong class="ok">PASS</strong> — four locked projection hashes unchanged</td></tr>
+<tr><td>WebKit interaction regression</td><td><strong class="ok">PASS</strong>, attestable; WebKit 26.5; 30/30 scenarios; 45/45 screenshots; zero failures/telemetry</td></tr>
+<tr><td>Replay / inert / focus</td><td><strong class="ok">PASS</strong> — three full-motion origins, reduced Replay, unrelated inert preservation, focus/announcement, singular listener/pin topology</td></tr>
+<tr><td>Responsive / reduced motion</td><td><strong class="ok">PASS</strong> — all 18 matrix cases, compact height, mobile, <code>/#contact</code>, and changed-region axe checks</td></tr>
+</tbody></table></div>
+<p>The unfiltered post-merge WebKit suite <code>gcl-r4.5-post-merge-webkit</code> produced a temporary, non-baseline manifest SHA-256 <code>704d2ddbad9f94f7af2b8fbd12247e3b326656b68c7f3672d3347349610e5ec5</code>. It bound 48 files / 3,347,284 bytes at digest <code>1d75760cb8ff51ee39f4a01d2ee676b1d3fee70ce68904b812226c11e4b648d3</code> to validation HEAD <code>55bf9e5…</code>, whose website tree is identical to authoritative merge <code>c661f3c…</code>. Temporary screenshots were not committed and no new baseline was accepted. Next's generated build-ID path makes the fresh whole-export digest a run identity rather than the Git tree-equivalence test; source tree, file count, total bytes, assertions, and visual results reproduced.</p>
+<p>Locked Gateway G SHA-256 values remain: <code>gateway-g-480.webp</code> <code>90b2c57e…b737b19</code>; <code>gateway-g-768.webp</code> <code>bdc797d7…cf1ef7a</code>; <code>gateway-g-1080.webp</code> <code>67f8f444…f9ccc7</code>; and <code>gateway-g-480.png</code> <code>9ed77669…6b1c9b</code>.</p>
+<p>The SEO verifier passed against the fresh export. It rewrote only its recorded generated <code>exportIndexSha256</code>; that run-specific write was not accepted as a new baseline, and the approved tracked R4.4 manifest was restored byte-for-byte before integration.</p>
+
+<h3>R4.5.3 Remote checks and deployment observation</h3>
+<p>PR #12's required <code>Gate D preflight</code> and <code>verify</code> jobs passed. Automatic main CI run <a href="https://github.com/Re3zy-ai247/gabriel-capital-labs/actions/runs/31319771152">31319771152</a> also completed successfully for <code>c661f3c…</code>.</p>
+<p>Vercel automatically created two successful deployment status records: <code>gcl-institutional-site</code> record <code>5819858123</code> and <code>gabriel-capital-labs</code> record <code>5819865066</code>. GitHub labels both environments <code>Production – …</code> while its deployment records report <code>production_environment: false</code>. This task only observed those automatic records. It did not run a Vercel deployment command, promote or alias either result, verify or change the target domain, or change DNS. This report does not claim the production domain is live.</p>
+<p><strong>PRODUCTION NOT AUTHORIZED / NOT PROMOTED.</strong></p>
+<p><strong>DNS UNCHANGED.</strong></p>
+<p>This R4.5 addition is documentation-only. Repository policy requires it to land through a separate PR merge wrapper; that wrapper may advance final <code>main</code> but must leave the approved website subtree at <code>6baa052d5cb9631ab5f96414dc1c5922910b0a94</code>.</p>
+<p><strong>Next action: Founder authorization for controlled production deployment.</strong></p>
 <hr>
 <h2>R4.4 · Launch Closure (Safari/WebKit + SEO/meta gate, 2026-08-09)</h2>
 <p><strong>R4.4 outcome: READY TO MERGE WITH DISCLOSURES.</strong> Founder approval of R4.3 on 2026-08-08 is preserved. Automated Playwright WebKit 26.5 and installed Chrome 151 each completed the full unfiltered confirmation with <code>status: passed</code>, <code>attestable: true</code>, 30/30 scenarios, 45/45 hashed screenshots, zero failures, and zero unexpected telemetry. The exact approved thesis now resolves across title, description, Open Graph, X, both social cards, and the Organization JSON-LD slogan: <strong>Building the Infrastructure for Intelligent Capital.</strong></p>
