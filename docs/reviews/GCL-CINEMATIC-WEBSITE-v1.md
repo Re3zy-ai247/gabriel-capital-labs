@@ -1,6 +1,111 @@
 # Gabriel Capital Labs — Cinematic Institutional Website v1
 **Build + adversarial-review handoff report** · 2026-08-05 · Branch `claude/gcl-cinematic-institutional-site-6qx964`
-**Revision R4.4 (2026-08-09): Launch Closure — READY TO MERGE WITH DISCLOSURES — branch `codex/gcl-launch-closure-safari-seo-2026-08-09`, implementation/evidence commit `7ca8cdb`.** R4.3, R4, R3, R2, and v1 follow as historical record.
+**Revision R4.5 (2026-08-09): Controlled Merge — MERGED AND VERIFIED — policy-required PR #12, merge commit `c661f3c`.** R4.4, R4.3, R4, R3, R2, and v1 follow as historical record.
+
+---
+
+## R4.5 · Controlled Merge (2026-08-09)
+
+**R4.5 outcome: MERGED AND VERIFIED.** Founder approval is **APPROVED** and manual Safari
+approval is **APPROVED**. The exact pushed launch-closure branch
+`codex/gcl-launch-closure-safari-seo-2026-08-09` at
+`2d8f151e4555f932cc7d63e922bd252d07911e27` was merged into `main` without squash, rebase,
+conflict resolution, force, content alteration, or source-branch deletion.
+
+### R4.5.1 Merge lineage and deterministic tree gate
+
+The pre-merge fetch established `origin/main` at
+`3a9943040da5648f1ae68fa9b8e0f06a276f75b1`, which was also the exact merge base. Divergence was
+0 main-only / 17 approved-source-only commits. The reviewed delta was the isolated GCL site, its
+review evidence, the expected root TypeScript exclusion, and its dated current-state note; no
+CreditVector, GIOS, HELIOS, schema, billing, DNS, or unrelated application file changed.
+
+GitHub correctly rejected a direct non-force push under repository rule `GH013` because changes to
+`main` must use a pull request. No bypass was attempted. Policy-required
+[PR #12](https://github.com/Re3zy-ai247/gabriel-capital-labs/pull/12) used GitHub's normal
+merge-commit strategy after every required check passed.
+
+| Merge fact | Verified value |
+|---|---|
+| Source branch | `codex/gcl-launch-closure-safari-seo-2026-08-09` |
+| Source HEAD, local and remote | `2d8f151e4555f932cc7d63e922bd252d07911e27` |
+| `origin/main` before merge | `3a9943040da5648f1ae68fa9b8e0f06a276f75b1` |
+| Authoritative merge commit | `c661f3c46d47d30f5c274df14d436cbe25453ea7` |
+| Merge parents | `3a9943040da5648f1ae68fa9b8e0f06a276f75b1` + `2d8f151e4555f932cc7d63e922bd252d07911e27` |
+| Approved source website tree | `6baa052d5cb9631ab5f96414dc1c5922910b0a94` |
+| Merged `main` website tree | `6baa052d5cb9631ab5f96414dc1c5922910b0a94` |
+| Deterministic workspace diff | **PASS — zero content difference** |
+| First pushed `main` / `origin/main` | `c661f3c46d47d30f5c274df14d436cbe25453ea7` |
+| Worktree at merge checkpoint | **CLEAN** |
+| Approved source branch after merge | **INTACT** locally and on `origin` |
+
+A local validation merge (`55bf9e56419315ddf2f7c81da4396f8e8fcd7d28`) had the same two
+parents and same website tree. It was never pushed and was superseded only because repository
+policy required PR #12; the authoritative merge is `c661f3c…` above.
+
+### R4.5.2 Post-merge verification
+
+All required gates ran on the object-identical merged website before the first main integration:
+
+| Gate | Result |
+|---|---|
+| Typecheck | **PASS** — `npm run typecheck` |
+| Lint | **PASS** — `npm run lint`; zero warnings/errors |
+| Production build | **PASS** — optimized static export; four static pages |
+| SEO / metadata | **PASS** — exact Founder thesis, canonical `www`, valid Organization JSON-LD, `index, follow`, robots, sitemap, and PNG social cards |
+| Sitemap XML | **PASS** — `xmllint --noout public/sitemap.xml` |
+| Tree equivalence | **PASS** — Git object equality plus zero workspace diff |
+| Gateway G | **PASS** — all four locked projection hashes unchanged |
+| WebKit interaction regression | **PASS**, attestable; WebKit 26.5; 30/30 scenarios; 45/45 screenshots; zero failures; zero unexpected telemetry |
+| Replay / inert / focus | **PASS** — all three full-motion origins, reduced Replay, unrelated inert preservation, focus restoration, announcement, and singular listener/pin topology |
+| Responsive / reduced motion | **PASS** — all 18 full/reduced viewport cases, compact height, mobile, `/#contact`, and changed-region axe checks |
+
+The unfiltered post-merge WebKit run was named `gcl-r4.5-post-merge-webkit`; its temporary,
+non-baseline manifest hashes to
+`704d2ddbad9f94f7af2b8fbd12247e3b326656b68c7f3672d3347349610e5ec5`. It bound 48 export
+files / 3,347,284 bytes at digest
+`1d75760cb8ff51ee39f4a01d2ee676b1d3fee70ce68904b812226c11e4b648d3` to merge validation
+HEAD `55bf9e5…`, whose website tree is identical to authoritative merge `c661f3c…`. The temporary
+screenshots were not committed and no new visual baseline was accepted. A fresh Next export uses a
+generated build-ID path, so its whole-export digest is a run identity rather than the Git tree
+equivalence test; source tree, file count, total bytes, assertions, and visual results reproduced.
+
+The four locked Gateway G projection SHA-256 values remain:
+
+- `gateway-g-480.webp` — `90b2c57e6dfd5d2a6cfc46d7f4a89c534337ff19954a6719142872af8b737b19`
+- `gateway-g-768.webp` — `bdc797d78f19d2e59c7e1e06f9c106203492651ba4300c2c93427407ccf1ef7a`
+- `gateway-g-1080.webp` — `67f8f444ad9800520e1a4d0f941021cffe8903a16b1a00a9909f25649ef9ccc7`
+- `gateway-g-480.png` — `9ed7766905c9167b6dd86b6e061430fb1e66892ff1501460702c8755b66b1c9b`
+
+The SEO verifier passed against the fresh export. It rewrote only its recorded generated
+`exportIndexSha256`; that run-specific write was not accepted as a new baseline, and the approved
+tracked R4.4 manifest was restored byte-for-byte before integration.
+
+### R4.5.3 Remote checks and deployment observation
+
+PR #12's required `Gate D preflight` and `verify` jobs passed. The automatic main-branch CI run
+[`31319771152`](https://github.com/Re3zy-ai247/gabriel-capital-labs/actions/runs/31319771152)
+also completed successfully for merge `c661f3c…`.
+
+Vercel automatically created two successful deployment status records for the merge commit:
+
+- `gcl-institutional-site` — deployment record `5819858123`
+- `gabriel-capital-labs` — deployment record `5819865066`
+
+GitHub labels both environments `Production – …` while its deployment records report
+`production_environment: false`. This task only observed those automatic records. It did not run a
+Vercel deployment command, promote or alias either result, verify or change the target domain, or
+change DNS. This report does not claim the production domain is live.
+
+**PRODUCTION NOT AUTHORIZED / NOT PROMOTED.**
+
+**DNS UNCHANGED.**
+
+This R4.5 addition is documentation-only. Repository policy requires it to land through a separate
+PR merge wrapper; that wrapper may advance the final `main` commit but must leave the approved
+website subtree at `6baa052d5cb9631ab5f96414dc1c5922910b0a94`.
+
+**Next action: Founder authorization for controlled production deployment.**
 
 ---
 
