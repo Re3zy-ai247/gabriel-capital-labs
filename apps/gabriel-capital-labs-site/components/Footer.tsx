@@ -10,22 +10,7 @@ export default function Footer() {
   return (
     <footer className="footer">
       <div className="container footer__inner">
-        {/* D14 — the nav's own treatment: the bare canonical mark at its
-            correct 480:520 aspect ratio (never a distorted 1:1 tile) at a
-            legible ~22px, plus the wide-tracked wordmark text — replaces
-            the old footer-lockup image, which read as an illegible grey
-            square at 48px. The lockup image assets stay on disk, just
-            unused here. */}
         <div className="footer__brand">
-          <img
-            className="footer__brand-mark"
-            src="/img/gateway-g-480.webp"
-            width={480}
-            height={520}
-            alt=""
-            aria-hidden="true"
-            loading="lazy"
-          />
           <span className="footer__brand-word">{site.name}</span>
         </div>
 

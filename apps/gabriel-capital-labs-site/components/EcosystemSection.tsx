@@ -13,11 +13,11 @@ import {
 import { revealFromTo } from "@/lib/motion";
 import { ecosystem } from "@/content/site";
 
-// D15 — each wing gets its own restrained architectural identity rather
-// than four identical blocks: an alternating numeral gutter, one
-// full-measure wing, and a staggered hairline inset. No added ornament,
-// just grid position/measure variation, matched 1:1 to the four domains.
-const WING_VARIANTS = ["", "offset", "wide", "inset"];
+// R4.3 — every domain now resolves on one institutional content grid. The
+// final KAI boundary keeps its restrained inset hairline, but no variant may
+// move a title or change supporting-copy measure. Directional variation is
+// confined to the temporary GSAP entrance and always settles back to x: 0.
+const WING_VARIANTS = ["", "", "", "inset"];
 
 // R3.1 — finding 5 fix (HIGH): the D4 "previous wing recedes" dim used to
 // drop straight to 0.5, which is fine under full-motion (D4 there rides

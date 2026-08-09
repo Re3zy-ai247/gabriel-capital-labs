@@ -1460,7 +1460,8 @@ html.js .mission__connector {
 }
 
 .ecosystem__wing-top {
-  display: flex;
+  display: grid;
+  grid-template-columns: 3rem minmax(0, 1fr);
   align-items: baseline;
   gap: 1.25rem;
   margin-bottom: 1rem;
@@ -1516,18 +1517,6 @@ html.js .mission__connector {
 .ecosystem__wing-link:hover,
 .ecosystem__wing-link:focus-visible {
   color: var(--gcl-gateway-gold);
-}
-
-/* D15 — per-wing variation, grid position/measure only, no ornament. */
-@media (min-width: 960px) {
-  .ecosystem__wing--offset .ecosystem__wing-top {
-    margin-left: clamp(2rem, 6vw, 5rem);
-  }
-}
-
-.ecosystem__wing--wide .ecosystem__wing-desc,
-.ecosystem__wing--wide .ecosystem__wing-designation {
-  max-width: none;
 }
 
 .ecosystem__wing--inset {
@@ -2000,102 +1989,31 @@ html.js .lab__row {
 }
 
 /* ==========================================================================
-   Chapter 7 — Engagement + Footer
+   Chapter 7 — Engagement
    ========================================================================== */
 
 .engagement {
   position: relative;
   background: var(--gcl-deep-obsidian);
-  padding-block: var(--gcl-section-pad-y);
-  overflow: hidden;
-  text-align: center;
+  padding-block: clamp(6rem, 14svh, 10rem);
 }
 
-.engagement__glow {
-  position: absolute;
-  left: 50%;
-  bottom: -20%;
-  width: min(80vw, 900px);
-  height: 50%;
-  transform: translateX(-50%);
-  background: radial-gradient(
-    ellipse at center,
-    rgba(212, 161, 70, 0.22) 0%,
-    rgba(212, 161, 70, 0.08) 40%,
-    rgba(212, 161, 70, 0) 70%
-  );
-  pointer-events: none;
+.engagement__inner {
+  max-width: calc(var(--gcl-engagement-measure) + (2 * var(--gcl-gutter)));
 }
 
-.engagement__mark {
-  position: relative;
-  width: clamp(56px, 8vw, 96px);
-  margin: 0 auto clamp(1.5rem, 4vw, 2.5rem);
+.engagement__chapter-mark {
+  margin-bottom: clamp(4.5rem, 9svh, 7rem);
 }
 
-.engagement__mark img {
-  width: 100%;
-  height: auto;
-}
-
-.engagement__heading {
-  position: relative;
-  font-size: clamp(2rem, 6vw, 3.75rem);
-  font-weight: 300;
-  color: var(--gcl-platinum);
-  max-width: 46rem;
-  margin: 0 auto clamp(2.5rem, 6vw, 4rem);
-}
-
-/* D12 — the headline was centered as its own narrow 46rem column, so its
-   rendered left edge sat far deeper inset than Institution's own
-   heading. Left-align it — the mark + glow stay centered above it as the
-   bookend, untouched.
-
-   R3.1 (finding 4) — D12's fix put the heading on a THIRD anchor
-   (margin-inline:0, i.e. flush to the container gutter) while
-   .engagement__categories and .footer__inner below it both sit on
-   var(--gcl-engagement-measure), centered. Three conflicting anchors in
-   one chapter (mark/G centered full-bleed, categories/footer centered at
-   the 56rem measure, heading flush to the gutter) meant the heading's left
-   edge landed 23–214px to the left of everything below it at every width
-   1280–1920, detaching the closing headline from the composition. Putting
-   the heading on the SAME measure + auto-centering as the categories/footer
-   collapses this back to one shared anchor for the whole lower composition
-   — the heading's left edge now lands exactly on the categories' and
-   footer's left edge, text-align:left preserved inside that column. */
-@media (min-width: 1024px) {
-  .engagement__heading {
-    text-align: left;
-    max-width: var(--gcl-engagement-measure);
-    margin-inline: auto;
-  }
-}
-
-/* R2 2.7 — the mask wrapper for the desktop-motion line-reveal; on
-   mobile/reduced-motion the line just sits at rest inside it, no visual
-   change from the plain heading of before. */
-.engagement__heading-mask {
-  display: block;
-  overflow: hidden;
-}
-
-.engagement__heading-line {
-  display: block;
-}
-
-/* R2 defect C — a defined desktop grid (shared measure with the footer,
-   see .footer__inner below) instead of a narrow centered column, so
-   labels and descriptions line up and "Investment & strategic
-   relationships" gets enough measure not to wrap awkwardly. */
+/* One editorial measure for all six rows. */
 .engagement__categories {
   position: relative;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 0.25rem;
-  max-width: 34rem;
-  margin: 0 auto;
+  align-items: stretch;
+  max-width: var(--gcl-engagement-measure);
+  margin-inline: auto;
 }
 
 @media (min-width: 1024px) {
@@ -2116,14 +2034,15 @@ html.js .lab__row {
 
 .engagement__category-link {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 1.1rem 0.25rem;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.55rem;
+  padding: 1.4rem 0;
   min-height: 44px;
   text-decoration: none;
   color: var(--gcl-stone-silver);
   font-size: clamp(0.95rem, 1.6vw, 1.1rem);
+  text-align: left;
   transition: color 0.25s var(--gcl-ease-out);
 }
 
@@ -2138,9 +2057,9 @@ html.js .lab__row {
 }
 
 .engagement__category-desc {
-  font-size: 0.8rem;
+  font-size: 0.875rem;
   color: var(--gcl-steel);
-  text-align: right;
+  text-align: left;
 }
 
 /* R2 defect C — a real two-column grid at desktop: label gets a defined
@@ -2151,11 +2070,11 @@ html.js .lab__row {
 @media (min-width: 1024px) {
   .engagement__category-link {
     display: grid;
-    grid-template-columns: [label] minmax(18rem, 28rem) [desc] minmax(0, 1fr);
+    grid-template-columns: [label] minmax(18rem, 24rem) [desc] minmax(0, 1fr);
     justify-content: initial;
     align-items: baseline;
-    gap: 1.5rem;
-    padding: 1.4rem 0;
+    gap: clamp(2rem, 5vw, 5rem);
+    padding: clamp(1.55rem, 3svh, 2rem) 0;
     text-align: left;
   }
 
@@ -2184,18 +2103,164 @@ html.js .lab__row {
    seventh row. */
 .engagement__placeholder-note {
   position: relative;
-  margin: clamp(1.5rem, 4vw, 2.25rem) auto 0;
-  max-width: 34rem;
-  font-size: 0.8rem;
+  margin: clamp(2rem, 5svh, 3.5rem) auto 0;
+  max-width: var(--gcl-engagement-measure);
+  font-size: 0.85rem;
   letter-spacing: 0.02em;
-  color: var(--gcl-steel);
+  color: var(--gcl-stone-silver);
   font-style: italic;
+  text-align: left;
 }
 
 @media (min-width: 1024px) {
   .engagement__placeholder-note {
-    max-width: var(--gcl-engagement-measure);
     text-align: right;
+  }
+}
+
+/* ==========================================================================
+   Institutional Outro — one complete closing chapter
+   ========================================================================== */
+
+.institutional-outro {
+  position: relative;
+  min-height: 100svh;
+  background: var(--gcl-deep-obsidian);
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.institutional-outro__pin {
+  position: relative;
+  min-height: 100svh;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+
+.institutional-outro__field,
+.institutional-outro__light {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.institutional-outro__field {
+  z-index: -2;
+  background:
+    linear-gradient(180deg, rgba(11, 13, 16, 0.46) 0%, rgba(6, 6, 8, 0) 24%),
+    var(--gcl-deep-obsidian);
+}
+
+.institutional-outro__light {
+  z-index: -1;
+  background: radial-gradient(
+    ellipse at 50% 46%,
+    rgba(212, 161, 70, 0.13) 0%,
+    rgba(212, 161, 70, 0.045) 28%,
+    rgba(212, 161, 70, 0) 66%
+  );
+}
+
+.institutional-outro__composition {
+  position: relative;
+  width: min(100%, 76rem);
+  min-height: 100svh;
+  padding: clamp(4.5rem, 10svh, 8rem) var(--gcl-gutter);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.institutional-outro__signal {
+  width: clamp(5rem, 9vw, 8rem);
+  height: 1px;
+  margin-bottom: clamp(2.25rem, 5svh, 3.75rem);
+  background: var(--gcl-gateway-gold);
+  transform-origin: center;
+}
+
+.institutional-outro__mark-wrap {
+  width: clamp(6.5rem, 10vw, 9.5rem);
+  margin-bottom: clamp(3rem, 7svh, 5.25rem);
+  transform-origin: center;
+}
+
+.institutional-outro__mark-wrap picture,
+.institutional-outro__mark {
+  width: 100%;
+  height: auto;
+}
+
+.institutional-outro__mark {
+  opacity: 1;
+  transform: none;
+  filter: none;
+  mix-blend-mode: normal;
+}
+
+.institutional-outro__heading {
+  width: min(100%, 20ch);
+  color: var(--gcl-platinum);
+  font-size: clamp(2.35rem, 6vw, 5.75rem);
+  font-weight: 300;
+  line-height: 1.02;
+  letter-spacing: -0.025em;
+  text-wrap: balance;
+}
+
+.institutional-outro__line {
+  display: block;
+  white-space: nowrap;
+}
+
+@media (max-width: 1023.98px) {
+  .engagement {
+    padding-block: clamp(5rem, 12svh, 7rem);
+  }
+
+  .engagement__chapter-mark {
+    margin-bottom: clamp(3.5rem, 8svh, 5rem);
+  }
+
+  .institutional-outro__composition {
+    min-height: 100svh;
+    padding-block: clamp(4rem, 9svh, 6rem);
+  }
+
+  .institutional-outro__heading {
+    font-size: clamp(1.75rem, 7.5vw, 3.75rem);
+  }
+}
+
+@media (max-height: 720px) and (min-width: 1024px) {
+  .engagement {
+    padding-block: 6rem;
+  }
+
+  .engagement__chapter-mark {
+    margin-bottom: 4.5rem;
+  }
+
+  .institutional-outro__composition {
+    padding-block: 3.5rem;
+  }
+
+  .institutional-outro__signal {
+    margin-bottom: 2rem;
+  }
+
+  .institutional-outro__mark-wrap {
+    width: clamp(6rem, 9vw, 7.75rem);
+    margin-bottom: 2.5rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .institutional-outro__mark {
+    transform: none !important;
   }
 }
 
@@ -2227,18 +2292,12 @@ html.js .lab__row {
   }
 }
 
-/* D14 — the nav's own lockup treatment (bare mark at its true 480:520
-   aspect ratio + wide-tracked wordmark text), replacing the old 1:1
-   footer-lockup tile that read as an illegible grey square at 48px. */
+/* R4.3 — credits after the closing ident: institutional name only. The
+   canonical mark receives its final major role in the Outro above rather
+   than repeating as a small footer ornament. */
 .footer__brand {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
-}
-
-.footer__brand-mark {
-  width: 22px;
-  height: auto;
 }
 
 .footer__brand-word {
@@ -2310,8 +2369,5 @@ html.js .lab__row {
   }
   .principles__item-title {
     font-size: clamp(1.9rem, 7vw, 5.75rem);
-  }
-  .engagement__heading {
-    font-size: clamp(2rem, 6vw, 4.3rem);
   }
 }

@@ -7,6 +7,7 @@ import EcosystemSection from "@/components/EcosystemSection";
 import LabSection from "@/components/LabSection";
 import PrinciplesSection from "@/components/PrinciplesSection";
 import EngagementSection from "@/components/EngagementSection";
+import InstitutionalOutroScene from "@/components/InstitutionalOutroScene";
 
 export default function HomePage() {
   return (
@@ -20,6 +21,7 @@ export default function HomePage() {
         <LabSection />
         <PrinciplesSection />
         <EngagementSection />
+        <InstitutionalOutroScene />
       </main>
       <Footer />
     </>

@@ -9,6 +9,7 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "test:r4.2": "node scripts/r4-confirmation.mjs",
+    "test:r4.3": "node scripts/r4-3-confirmation.mjs",
     "optimize-images": "node scripts/optimize-images.mjs"
   },
   "dependencies": {

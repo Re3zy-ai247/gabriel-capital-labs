@@ -206,11 +206,10 @@ export const principles = {
 };
 
 // ---------------------------------------------------------------------------
-// Chapter 7 — Engagement + Footer
+// Chapter 7 — Engagement
 // ---------------------------------------------------------------------------
 export const engagement = {
   chapterMark: "06 — Engagement",
-  heading: "Enter the future we are engineering.",
   categories: [
     { label: "Partnerships", description: "Institutional and platform partnerships." },
     { label: "Research", description: "Collaboration across our research programs." },
@@ -222,6 +221,13 @@ export const engagement = {
     { label: "Careers", description: "Building the team behind the institution." },
     { label: "General inquiries", description: "All other inquiries." },
   ] satisfies ContactCategory[],
+};
+
+// ---------------------------------------------------------------------------
+// Institutional Outro
+// ---------------------------------------------------------------------------
+export const institutionalOutro = {
+  headingLines: ["Enter the future", "we are engineering."],
 };
 
 export const footer = {
