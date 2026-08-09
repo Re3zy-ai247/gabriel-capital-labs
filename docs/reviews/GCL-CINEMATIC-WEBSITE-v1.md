@@ -1,6 +1,142 @@
 # Gabriel Capital Labs — Cinematic Institutional Website v1
 **Build + adversarial-review handoff report** · 2026-08-05 · Branch `claude/gcl-cinematic-institutional-site-6qx964`
-**Revision R3 (2026-08-06): The Third Motion Class — reduced-motion cinema, READY WITH DISCLOSURES — see §R3 at the top.** R2 and v1 follow as historical record. The original v1 report follows unchanged as historical record.
+**Revision R4 (2026-08-08): Gateway G Institutional Prologue completion — READY WITH DISCLOSURES — branch `codex/gcl-r4-completion-2026-08-08`, implementation/evidence commit `43adaff`.** R3, R2, and v1 follow as historical record.
+
+---
+
+## R4 · Gateway G Institutional Prologue Completion (Founder round 4, 2026-08-08)
+
+**R4 outcome: READY WITH DISCLOSURES.** Every binding R4.2 ruling passes. The final
+schema-v2 confirmation is a full unfiltered run with `status: passed`, `attestable: true`, 26/26
+mandatory scenarios passed, zero failures, and zero unexpected telemetry. Both requested
+read-only adversaries independently returned PASS; no unresolved Replay, inert-state, Gateway G,
+mobile, accessibility, hydration, or interaction defect remains.
+
+**Protected preview:**
+<https://gcl-institutional-site-lnldsz5x0-rey-gabriel-s-projects.vercel.app> — target `preview`,
+Ready, unauthenticated 302 → Vercel SSO, authenticated 200, `noindex`. Main was not merged;
+production was not deployed; CreditVector and DNS were untouched.
+
+### R4.1 What was built and the Replay root cause
+
+R4 extends Arrival into one continuous six-phase institutional opening: darkness → gold signal →
+canonical G revealed by light → still hold → wordmark/thesis → awakening. It is authored at
+15.1s, skippable, replayable, keyboard-operable, session-aware, mobile/hash-bypassed, and uses the
+Founder-approved Third Motion Class under reduced motion.
+
+The replay failure was distributed state ownership, not one missing CSS rule. Scroll, root
+classes, inert, timeline, focus, live status, and breakpoint policy could change on separate
+callbacks. Replay captured desktop width before an awaited smooth-scroll; a 1024px crossing could
+replace the controller, null old GSAP refs, leave inline state on the new mark, and erase focus or
+announcements. The old watchdog could expose scroll without completing JavaScript state.
+
+The fix preserves one controller across policy changes, keeps a component-lifetime replay guard,
+rechecks width after every awaited preflight, and gives first visit and Replay the same atomic
+acquire/release lifecycle. Timer and CSS `animationend` now signal one epoch-checked release
+primitive; CSS never unlocks alone. Natural completion, Skip, Escape, crossing, watchdog, route,
+and failed acquisition converge on the same composed state and remove only prologue-owned inert.
+Mobile normalization clears every prologue inline property after its own policy builds, without
+replacing or transforming the canonical mark.
+
+| Phase | Authored window | Treatment |
+|---|---:|---|
+| P1 · Darkness | 0.0–2.6s | Obsidian; pre-paint containment; Escape from t=0 |
+| P2 · Gold signal | 2.6–5.2s | 1px signal; SKIP around 3s below signal luminance |
+| P3 · The G | 5.2–8.4s | Native canonical asset revealed by light; no filter/redraw |
+| P4 · Hold | 8.4–10.7s | Deliberate stillness |
+| P5 · The words | →13.5s | GABRIEL / CAPITAL LABS, then Founder thesis |
+| P6 · Awakening | →15.1s | Atomic release; nav/Replay return; R3 site continues |
+
+### R4.2 Six binding rulings
+
+| Ruling | Final result | Evidence |
+|---|---|---|
+| **R-1 · True Replay** | **PASS** | Same containment as first visit; eight owned inert markers; nav/Replay hidden; Skip/Escape and status live; focus restored; three cycles; duplicate request rejected; width/policy recovery; no listener/timeline/ScrollTrigger accumulation. |
+| **R-2 · Single source + 22s release** | **PASS** | `html.gcl-prologue` at mount is strict source. Timer and CSS signal share atomic epoch release. Slow hydration releases at 23,535.5ms and mounts composed; route/hash, storage denial, pre-hydration crossing, and absent class cannot strand inert. |
+| **R-3 · Zero crossing residue** | **PASS** | 1.5s/3s/6s crossings leave zero inline mark/atmosphere/signal/Skip residue, page error, or extra pin. Atmosphere is desktop/no-preference only. Exact R3 control and current retain 120×130 mark geometry and identical canonical hashes. |
+| **R-4 · Phone tagline** | **PASS** | 320/360/375/390/393/412/430px each produce exactly two lines, balance ratio 1.223, no clipping/overflow, no desktop/tablet width constraint. |
+| **R-5 · SKIP hierarchy/focus** | **PASS WITH EXPLICIT EXCEPTION** | RGB(166,57,23) composites at 3.103:1 on RGB(6,6,8), satisfying the binding 3:1 UI-control floor while remaining below signal luminance; focus/hover restores gold; Skip lands focus on Arrival heading with zero inert residue. This is not blanket WCAG 1.4.3 small-text conformance. |
+| **R-6 · Timing disclosure** | **PASS WITH DISCLOSURE** | Authored 15,100ms. CPU-6× full unlock/complete: 14,550.7/16,130.7ms; reduce: 14,403.4/15,941.8ms. Earlier combined CPU-6× + Slow 3G: 26,635ms. Authored and throttled wall time are reported separately. |
+
+### R4.3 Verification and evidence
+
+Authoritative manifest:
+[`assets/r4/r4-confirmation-results.json`](assets/r4/r4-confirmation-results.json). It binds the
+control to R3 commit `0c7f51501bee404539ba54b21a339141ef7d2ff6`, source digest
+`83c5664e7f3a7cc4bf7bbc4591aac1023a784d910c70177e02da72642d25ae90`, 64 files, and served index
+SHA-256 `5fb1bb8e8db78053a3bea69382a096f87aacbae324dadfda5a9e35c16b8e169a`.
+
+Passed: `npm run typecheck`, `npm run lint`, production `npm run build`, harness syntax,
+`git diff --check`, secret-pattern scan, evidence integrity assertion, and the unfiltered
+`npm run test:r4.2` with exact R3 control. axe-core 4.13.0 reports zero composed-state violations
+under both policies. All 18 PNGs validate; all four canonical asset hashes match; no mark/ancestor
+filter, mask, blend, or material change exists. Local static smoke measured 53ms TTFB, 75ms
+DOM-ready, 176ms total, with no console errors. The Vercel build completed as static content.
+
+Evidence: [P1](assets/r4/01-initial-no-preference-p1.png) ·
+[P3](assets/r4/02-initial-no-preference-p3.png) ·
+[P6](assets/r4/03-initial-no-preference-p6.png) ·
+[three Replays](assets/r4/07-three-replays-final.png) ·
+[delayed hydration](assets/r4/11-delayed-hydration-composed.png) ·
+[mobile crossing](assets/r4/14-crossing-3s-mobile.png) ·
+[SKIP](assets/r4/16-skip-p2-composite.png) ·
+[current/R3 parity](assets/r4/17-control-parity-current.png).
+
+### R4.4 Independent gate trail
+
+| Gate | Verdict |
+|---|---|
+| Replay/accessibility adversary | **PASS** — lifecycle, inert ownership, focus, abort/hash, reduced motion, and accumulation invariants independently traced. |
+| Visual/reliability adversary | **PASS** — R-4/R-5 pixels, assets, R3 geometry, full/reduce, mobile, atmosphere, and axe independently reproduced. |
+| Verification-integrity/security adversary | **PASS** — full-run semantics, sanitization, expected telemetry, control provenance, actual-footer inert preservation, and locked dependencies verified. |
+| Live QA | **PASS** — 0 defects, 99/100 bounded score, no console errors. |
+| Design review | **DONE WITH CONCERNS** — Design A-, AI-slop A; contrast/spec exceptions and Chromium/safe-area residuals retained. |
+| Compliance | **GO** — institutional animation only; no pricing, credit outcome, consumer-report, dispute, debt, subscription, or money-touching claim changed; no counsel escalation. Internal review is not legal advice. |
+| Security | **PASS WITH INHERITED DEBT** — no new confidence-8+ exploitable finding. Fixed inline payloads and credential-free evidence are clean. Next 14.2.18/nested PostCSS advisories are inherited; affected request-runtime paths are absent from the `output: export` deployment. Never expose `next dev`/`next start`; schedule a compatible upgrade. |
+
+This AI-assisted review is not a substitute for a professional security audit or penetration test.
+
+### R4.5 Founder-confirm items and disclosures
+
+1. Arrival uses “Building the Infrastructure for Intelligent Capital.” The untouched SEO
+   title/meta/JSON-LD retain historical wording; reconcile in a separate content/SEO change.
+2. First-visit nav stays withheld until P6; SKIP appears around 3s; Escape works from t=0; hashes
+   and same-session returns bypass the long opening.
+3. Replay intentionally locks like first visit, with Skip/Escape exit.
+4. The 3.103:1 SKIP result is the exact 3:1 R-5 exception, not blanket small-text WCAG AA. Its
+   signal-luminance margin is ~0.00476; rerun after any color/opacity change.
+5. The R3/R4 reduced-motion narrative intentionally supersedes an older static-only `SPEC.md`
+   clause; that historical documentation debt was not broadened into this fix.
+6. The 26.635s CPU-6× + Slow 3G run must never be described as authored duration.
+7. Automated evidence is Chromium-only; Safari/WebKit, compact notched landscape, and safe-area
+   positioning remain manual checks.
+8. Inherited R3 residuals remain: ecosystem-wing contrast, phone reduced-motion flatness, and the
+   PageDown Principles behavior.
+9. npm reports inherited Next 14.2.18/transitive debt; no `npm audit fix --force` or unrelated
+   dependency migration was performed.
+
+### R4.6 Files and durable handoff
+
+Commit `43adaff` contains the bounded implementation/evidence surface: `ArrivalScene.tsx`,
+`layout.tsx`, `globals.css`, package manifest/lock, `scripts/r4-confirmation.mjs`, and
+`docs/reviews/assets/r4/`. The final documentation commit adds this Markdown/HTML, the checkpoint
+report, and Founder archive. Local `.gstack` gate records remain ignored. The temporary Vercel
+OIDC `.env.local` was deleted after preview verification and is not in Git or the handoff.
+
+### R4.7 Founder review checklist
+
+1. Fresh authenticated desktop preview: darkness → signal → G → hold → words → awaken.
+2. Escape in P1, then SKIP in P2: immediate composition and Arrival-heading focus.
+3. Replay three times, including after scrolling: return top, lock, hide nav/Replay, keep
+   Skip/Escape, announce, restore.
+4. Cross 1024px during Replay both ways: no stranded lock, blank G, page error, duplicate pin, or
+   lost status.
+5. Open `/#contact`: bypass and 84px landing offset.
+6. Compare full/reduced desktop: identical story order, spatial channel stripped under reduce.
+7. Check 320–430px phones: exactly two balanced tagline lines, no overflow.
+8. Manually confirm Safari/WebKit and a notched compact-height device.
+9. Confirm SEO wording discrepancy and explicit contrast exception.
+10. Authorize merge/production separately if approved. Neither occurred here.
 
 ---
 
