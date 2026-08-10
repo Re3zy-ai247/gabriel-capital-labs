@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CreditVector P0 Phase 1.1 Pre-Activation Founder Checkpoint</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #07111f;
+      --panel: #0d1b2d;
+      --panel-2: #13243a;
+      --text: #edf5ff;
+      --muted: #a9bad0;
+      --line: #2a405c;
+      --good: #55d89b;
+      --bounded: #f0c56b;
+      --stop: #ff8b8b;
+      --accent: #7bb7ff;
+      --shadow: 0 18px 45px rgba(0, 0, 0, .26);
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at 90% 0%, rgba(64, 126, 209, .18), transparent 32rem),
+        linear-gradient(180deg, #081321, var(--bg));
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.58;
+    }
+    a { color: var(--accent); }
+    code {
+      overflow-wrap: anywhere;
+      color: #d9ebff;
+      background: rgba(123, 183, 255, .11);
+      border: 1px solid rgba(123, 183, 255, .18);
+      border-radius: .35rem;
+      padding: .08rem .28rem;
+    }
+    .shell { width: min(1120px, calc(100% - 2rem)); margin: 0 auto; }
+    header { padding: 3rem 0 1.5rem; }
+    .eyebrow {
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: .14em;
+      font-size: .76rem;
+      font-weight: 800;
+    }
+    h1 { margin: .6rem 0 .3rem; font-size: clamp(2rem, 5vw, 3.55rem); line-height: 1.06; }
+    .subtitle { color: var(--muted); font-size: clamp(1rem, 2.5vw, 1.2rem); max-width: 62rem; }
+    .status-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: .75rem;
+      margin: 1.4rem 0;
+    }
+    .status {
+      padding: .95rem;
+      border: 1px solid var(--line);
+      border-radius: .85rem;
+      background: rgba(13, 27, 45, .92);
+    }
+    .status small { display: block; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+    .status strong { display: block; margin-top: .25rem; }
+    .good { color: var(--good); }
+    .bounded { color: var(--bounded); }
+    .stop { color: var(--stop); }
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 4;
+      border-block: 1px solid var(--line);
+      background: rgba(7, 17, 31, .94);
+      backdrop-filter: blur(12px);
+    }
+    .nav-scroll { overflow-x: auto; scrollbar-width: thin; }
+    .nav-row { display: flex; gap: .45rem; padding: .65rem 0; min-width: max-content; }
+    .nav-row a {
+      text-decoration: none;
+      padding: .4rem .65rem;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--muted);
+      font-size: .82rem;
+    }
+    main { padding: 1.25rem 0 4rem; }
+    section {
+      margin: 1rem 0;
+      padding: clamp(1rem, 3vw, 1.5rem);
+      border: 1px solid var(--line);
+      border-radius: 1rem;
+      background: linear-gradient(145deg, rgba(19, 36, 58, .94), rgba(10, 23, 40, .96));
+      box-shadow: var(--shadow);
+      scroll-margin-top: 4.5rem;
+    }
+    h2 { margin: 0 0 .8rem; font-size: clamp(1.18rem, 3vw, 1.62rem); }
+    p { margin: .65rem 0; }
+    ul { padding-left: 1.3rem; }
+    li + li { margin-top: .28rem; }
+    .table-wrap { width: 100%; overflow-x: auto; border: 1px solid var(--line); border-radius: .7rem; }
+    table { width: 100%; min-width: 650px; border-collapse: collapse; background: rgba(7, 17, 31, .42); }
+    th, td { padding: .72rem .8rem; border-bottom: 1px solid var(--line); vertical-align: top; text-align: left; }
+    th { color: #cce3ff; background: rgba(123, 183, 255, .08); }
+    tr:last-child td, tr:last-child th { border-bottom: 0; }
+    .callout {
+      margin: 1rem 0;
+      padding: .9rem 1rem;
+      border-left: .28rem solid var(--good);
+      background: rgba(85, 216, 155, .08);
+      border-radius: .35rem .7rem .7rem .35rem;
+    }
+    .boundary { border-left-color: var(--bounded); background: rgba(240, 197, 107, .08); }
+    .stop-box { border-left-color: var(--stop); background: rgba(255, 139, 139, .08); }
+    footer { color: var(--muted); padding: 0 0 3rem; text-align: center; }
+    @media (max-width: 820px) {
+      .status-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      header { padding-top: 2rem; }
+    }
+    @media (max-width: 520px) {
+      .shell { width: min(100% - 1rem, 1120px); }
+      .status-grid { grid-template-columns: 1fr; }
+      section { border-radius: .8rem; }
+      table { min-width: 560px; }
+      th, td { padding: .62rem; }
+    }
+    @media print {
+      :root { color-scheme: light; }
+      body { background: #fff; color: #111; }
+      nav { display: none; }
+      section, .status { background: #fff; box-shadow: none; border-color: #bbb; break-inside: avoid; }
+      code { color: #111; background: #f4f4f4; }
+      .good, .bounded, .stop { color: #111; }
+    }
+  </style>
+</head>
+<body>
+  <header class="shell">
+    <div class="eyebrow">CreditVector · August 10, 2026 · Local build only</div>
+    <h1>P0 Phase 1.1 Founder Checkpoint</h1>
+    <p class="subtitle">Pre-activation hardening closure for the six accepted Phase 1 findings. The exact delta is verified and included in one local checkpoint; production remains untouched.</p>
+    <div class="status-grid" aria-label="Checkpoint status">
+      <div class="status"><small>Implementation</small><strong class="good">COMPLETE · LOCAL CHECKPOINT</strong></div>
+      <div class="status"><small>Findings</small><strong class="good">C0 / H0 / M0 / L0</strong></div>
+      <div class="status"><small>Trusted writer</small><strong class="bounded">BOUNDED</strong></div>
+      <div class="status"><small>Production</small><strong class="stop">UNTOUCHED · NO-GO</strong></div>
+    </div>
+    <div class="callout boundary">
+      Five findings are closed. Trusted-writer semantic attestation is explicitly bounded: the dormant contract fails closed, but an authenticated production repository verifier/adapter must still be implemented and attested before any activation.
+    </div>
+    <p>Founder accepted the dormant/local implementation and authorized exactly one local checkpoint commit. This artifact is included in it; the exact SHA is recorded in the external post-commit Founder receipt because a commit cannot truthfully embed its own SHA. There was no push, merge, deployment, activation, production interaction, M2 change, or Phase 2 work.</p>
+  </header>
+
+  <nav aria-label="Checkpoint sections">
+    <div class="shell nav-scroll"><div class="nav-row">
+      <a href="#s1">1 Baseline</a><a href="#s2">2 M2</a><a href="#s3">3 Writers</a>
+      <a href="#s4">4 Post-I/O</a><a href="#s5">5 Integrity</a><a href="#s6">6 40P01</a>
+      <a href="#s7">7 ISO</a><a href="#s8">8 Nested data</a><a href="#s9">9 Constitution</a>
+      <a href="#s10">10 Tests</a><a href="#s11">11 Findings</a><a href="#s12">12 Files</a>
+      <a href="#s13">13 Production</a><a href="#s14">14 Commit</a><a href="#s15">15 Push</a>
+      <a href="#s16">16 Release</a><a href="#s17">17 Phase 2</a><a href="#s18">18 Decision</a>
+    </div></div>
+  </nav>
+
+  <main class="shell">
+    <section id="s1">
+      <h2>1. BASELINE IDENTITY — <span class="good">PASS</span></h2>
+      <div class="table-wrap"><table><tbody>
+        <tr><th>Branch</th><td><code>codex/p0-launch-correctness</code></td></tr>
+        <tr><th>Accepted baseline / checkpoint parent</th><td><code>6f3058d53f7428184da48755a6646c4002fc932d</code></td></tr>
+        <tr><th>Pre-change worktree/index</th><td>Clean / clean</td></tr>
+        <tr><th>Local Phase 1.1 checkpoint commit</th><td>Included; exact SHA recorded in the external Founder receipt</td></tr>
+        <tr><th>Post-commit worktree/index</th><td>Verified in the external Founder receipt</td></tr>
+      </tbody></table></div>
+      <p>The exact branch, parent commit, clean worktree, and clean index were verified before any Phase 1.1 change. The accepted Phase 1 commit is the exact parent of this local checkpoint.</p>
+    </section>
+
+    <section id="s2">
+      <h2>2. M2 ISOLATION — <span class="good">PASS</span></h2>
+      <ul>
+        <li>M2 identity and all recorded fingerprints remained unchanged.</li>
+        <li>No M2 source, migration, evidence, artifact, or worktree change was used as Phase 1.1 authority.</li>
+        <li>No production connection or production data was used.</li>
+      </ul>
+    </section>
+
+    <section id="s3">
+      <h2>3. TRUSTED-WRITER SEMANTIC ATTESTATION — <span class="bounded">BOUNDED</span></h2>
+      <p>The hardened contract requires module-minted, verifier-backed repository reads with exact writer identity/version, semantic digest, source-set digest, and immutable snapshot identity. Raw, forged, stale, mismatched, and replayed inputs fail closed. Report-difference persistence candidates, score comparisons, ConsumerAssertion bindings, correspondence evidence, and human confirmations bind to the exact attested source set.</p>
+      <p>The durable source-set digest is value-free; plaintext score and comparable values are not persisted or logged by this attestation path. Ephemeral semantic verification may include values in memory only.</p>
+      <div class="callout boundary"><strong>Explicit boundary:</strong> an authenticated production repository verifier/adapter is intentionally absent from dormant Phase 1.1. Schema validity and direct database access do not prove semantic authority or encrypted-value equality. The adapter must be separately implemented, authenticated, and attested before activation. Until then, the contract fails closed.</div>
+    </section>
+
+    <section id="s4">
+      <h2>4. POST-I/O ARTIFACT TRUTH — <span class="good">CLOSED</span></h2>
+      <p>Storage success is no longer proof of final artifact truth. The contract requires <code>write → immutable readback → independent exact verification</code>.</p>
+      <p>Before success, it verifies object identity, contract version, exact bytes, digest, recipient, bureau authority, ordered artifact membership, and readback time. Partial writes, substituted IDs, stale versions, wrong routing, wrong digests, and mismatched membership fail closed. Pure/local contracts do not gain unnecessary I/O.</p>
+    </section>
+
+    <section id="s5">
+      <h2>5. NEGATIVE-INTEGRITY RESULT SHAPE — <span class="good">CLOSED</span></h2>
+      <p>Artifact integrity is now a discriminated result: <code>ARTIFACT_INTEGRITY_VERIFIED</code> or <code>ARTIFACT_INTEGRITY_FAILURE</code> with an exact failure code.</p>
+      <p>Failure is structurally distinct from Clean, absent, unknown, parser uncertainty, deletion, unsupported, and not evaluated. Release is permitted only by the verified branch.</p>
+    </section>
+
+    <section id="s6">
+      <h2>6. POSTGRESQL 40P01 HANDLING — <span class="good">CLOSED</span></h2>
+      <p>Exact PostgreSQL <code>40P01</code> deadlocks become explicit rolled-back failures, never success. Default behavior is no retry. Retry requires frozen, module-minted verifier authority bound to the exact operation, idempotency key, semantic attestation, and retry class.</p>
+      <ul>
+        <li>Retries are bounded with a hard ceiling of three attempts.</li>
+        <li>Exhaustion returns <code>DEADLOCK_RETRY_EXHAUSTED</code>.</li>
+        <li>No-authority deadlock returns <code>DEADLOCK_DETECTED</code>.</li>
+        <li>Ambiguous provider errors return <code>TRANSACTION_OUTCOME_UNKNOWN</code> and are not retried.</li>
+        <li>Messages are redacted; malformed and cyclic error shapes are bounded.</li>
+      </ul>
+      <p>No production database caller was added. A disposable local replay exercised a real concurrent <code>40P01</code> at the unchanged Phase 1 schema boundary.</p>
+    </section>
+
+    <section id="s7">
+      <h2>7. STRICT ISO PARSING — <span class="good">CLOSED</span></h2>
+      <p>Strict calendar and offset validation rejects impossible dates, invalid leap dates, malformed offsets, ambiguous or missing required timezones, locale strings, trailing garbage, silent normalization, and unsupported timestamp precision.</p>
+      <p>Partial source dates stay explicitly partial/unknown. No exact date, timestamp, or precision is invented.</p>
+    </section>
+
+    <section id="s8">
+      <h2>8. MALFORMED NESTED ARTIFACT VALIDATION — <span class="good">CLOSED</span></h2>
+      <p>Authoritative nested inputs require exact plain-record shapes, required children, correct child types, exact allowed keys, valid bureau/recipient authority, consistent values, unique IDs and ordinals, bounded membership, and matching sequence/digest truth.</p>
+      <p>Malformed children, unexpected arrays/objects, duplicate IDs, contradictory values, invalid provenance/authority, oversized membership, and valid-looking outer objects with invalid inner authority are denied.</p>
+    </section>
+
+    <section id="s9">
+      <h2>9. PHASE 1 CONSTITUTIONAL NON-REGRESSION — <span class="good">PASS</span></h2>
+      <ul>
+        <li>Bureau A facts never become Bureau B claims.</li>
+        <li>Closed, Paid, zero balance, or Pays as Agreed never erase supported historical derogatory evidence.</li>
+        <li>Truly clean controls remain Clean.</li>
+        <li>Parser uncertainty never becomes deletion.</li>
+        <li>Missing score never produces an invented score.</li>
+        <li><code>ReportVersion</code> remains immutable; score provenance remains explicit.</li>
+        <li><code>ConsumerAssertion</code> remains bound to exact bureau, field, observation, revision, and evidence.</li>
+        <li>CRA recipient routing remains bound to immutable bureau authority.</li>
+        <li>Accurate former addresses and legitimate employment are not automatically disputable.</li>
+      </ul>
+      <p>The previously closed CRA routing High was included in the independent reattack and remained closed.</p>
+    </section>
+
+    <section id="s10">
+      <h2>10. TEST COUNTS — <span class="good">515 / 515 PASS</span></h2>
+      <div class="table-wrap"><table><thead><tr><th>Suite</th><th>Exact result</th></tr></thead><tbody>
+        <tr><td>Sanitized source-truth fixture</td><td>23 / 23</td></tr>
+        <tr><td>Parser-v2 shadow contract</td><td>69 / 69</td></tr>
+        <tr><td>Assessment and assertion binding</td><td>79 / 79</td></tr>
+        <tr><td>Executable strategy policy</td><td>102 / 102</td></tr>
+        <tr><td>Artifact storage contract</td><td>96 / 96</td></tr>
+        <tr><td>Progress Intelligence</td><td>33 / 33</td></tr>
+        <tr><td>Existing classification regression</td><td>29 / 29</td></tr>
+        <tr><td>Migration static guard</td><td>51 / 51</td></tr>
+        <tr><td>PostgreSQL transaction hardening</td><td>33 / 33</td></tr>
+        <tr><th>Contract/static total</th><th>515 / 515</th></tr>
+      </tbody></table></div>
+      <ul>
+        <li>Disposable local PostgreSQL: <strong>3 positive suites / 65 negative cases</strong>, freshly replayed at the unchanged schema/migration boundary and torn down.</li>
+        <li>Whole-tree TypeScript typecheck: <strong>PASS</strong>.</li>
+        <li>Prisma validation: <strong>PASS</strong>.</li>
+        <li>Git whitespace/diff check: <strong>PASS</strong>.</li>
+        <li>Temporary dependency link: <strong>REMOVED</strong>.</li>
+      </ul>
+    </section>
+
+    <section id="s11">
+      <h2>11. ADVERSARIAL FINDINGS — <span class="good">C0 / H0 / M0 / L0</span></h2>
+      <div class="table-wrap"><table><thead><tr><th>Severity</th><th>Open</th><th>Result</th></tr></thead><tbody>
+        <tr><td>Critical</td><td>0</td><td>None open.</td></tr>
+        <tr><td>High</td><td>0</td><td>None open.</td></tr>
+        <tr><td>Medium</td><td>0</td><td>None open.</td></tr>
+        <tr><td>Low</td><td>0</td><td>None open.</td></tr>
+      </tbody></table></div>
+      <p>Independent review reattacked all six findings plus CRA routing, cross-bureau contamination, history loss, clean false positives, false deletion, ConsumerAssertion misbinding, recipient retargeting, concurrency corruption, and malformed evidence acceptance.</p>
+      <div class="callout boundary">Trusted-writer attestation remains <strong>BOUNDED</strong>, not silently closed. Its absent production adapter is an explicit fail-closed activation prerequisite, not an open defect in this dormant Phase 1.1 delta.</div>
+    </section>
+
+    <section id="s12">
+      <h2>12. FILES IN LOCAL CHECKPOINT — 8</h2>
+      <p>Six source/test files plus this Markdown/HTML pair are included in the authorized local checkpoint. No schema or migration file changed.</p>
+      <div class="table-wrap"><table><thead><tr><th>Frozen source/test file</th><th>SHA-256</th></tr></thead><tbody>
+        <tr><td><code>lib/creditTruth/artifactStorage.ts</code></td><td><code>973eebe594ec5a004e66e2774112f3cf7f6e826e909eacb4b01b6b76af7f6c59</code></td></tr>
+        <tr><td><code>scripts/p0-artifact-storage-contract.test.ts</code></td><td><code>09acd9ef4dab848737ba36c9e78c0050eadcc70b98df5e458aa15c8bd5b501a9</code></td></tr>
+        <tr><td><code>lib/creditTruth/progressIntelligence.ts</code></td><td><code>f1ef16b24298b7a4bd77f36ea8bdcd4aff1b30d4a801547410830c1e4a2456ba</code></td></tr>
+        <tr><td><code>scripts/p0-progress-intelligence.test.ts</code></td><td><code>1b84bab395934561cbabb823a663b7c58babffe1674f8288c224ca621e12cd40</code></td></tr>
+        <tr><td><code>lib/creditTruth/postgresTransaction.ts</code></td><td><code>3e21f0c4900dd02e199b1efc325c818b0cddacd2591a89f632c0d2033c57a3db</code></td></tr>
+        <tr><td><code>scripts/p0-postgres-transaction.test.ts</code></td><td><code>6f9d8ea400f03c7289a725fb99673a1963107e3fea06f5d0635d4a354cd3d734</code></td></tr>
+        <tr><th>Ordered six-file manifest</th><th><code>c0941f9fff76f50744bbc3e906b407f517da7a24e9b3dcd213443016adbfe230</code></th></tr>
+      </tbody></table></div>
+      <p>Manifest order: artifact source, artifact test, progress source, progress test, transaction source, transaction test.</p>
+    </section>
+
+    <section id="s13">
+      <h2>13. PRODUCTION MUTATIONS — <span class="good">NONE</span></h2>
+      <p>No production connection, migration, write, backfill, report processing, reanalysis, or feature interaction occurred. No private report, consumer PII, credential, secret, or production identifier is present in the delta or checkpoint.</p>
+    </section>
+
+    <section id="s14">
+      <h2>14. COMMIT — <span class="good">LOCAL CHECKPOINT INCLUDED</span></h2>
+      <p>Founder authorized exactly one local Phase 1.1 checkpoint commit with parent <code>6f3058d53f7428184da48755a6646c4002fc932d</code>. This artifact is included in that commit. Its exact SHA, file count, worktree state, and index state are recorded in the external post-commit Founder receipt.</p>
+    </section>
+
+    <section id="s15">
+      <h2>15. PUSH — <span class="good">NONE</span></h2>
+      <p>No branch, commit, tag, or artifact was pushed to any remote.</p>
+    </section>
+
+    <section id="s16">
+      <h2>16. MERGE / DEPLOY / ACTIVATION — <span class="good">NONE</span></h2>
+      <p>No merge, deployment, production migration, backfill, parser-v2 activation, feature-flag change, correspondence activation, or release action occurred. Production remains <strong class="stop">NO-GO</strong>.</p>
+    </section>
+
+    <section id="s17">
+      <h2>17. PHASE 2 — <span class="good">NOT STARTED</span></h2>
+      <p>No Phase 2 design, implementation, migration, or activation work began.</p>
+    </section>
+
+    <section id="s18">
+      <h2>18. NEXT FOUNDER DECISION</h2>
+      <p>Review the external post-commit receipt. The next substantive Founder decision is whether and when to authorize a separately scoped implementation and attestation of the authenticated production repository verifier/adapter.</p>
+      <p>Before future activation, that adapter must prove the trusted-writer semantic boundary is satisfied. This checkpoint does not authorize production access, activation, flags, migration, backfill, merge, deployment, push, or Phase 2.</p>
+      <div class="callout stop-box"><strong>STOP.</strong> Await Founder authorization.</div>
+    </section>
+  </main>
+
+  <footer class="shell">CreditVector P0 Phase 1.1 · Local, dormant checkpoint · August 10, 2026</footer>
+</body>
+</html>

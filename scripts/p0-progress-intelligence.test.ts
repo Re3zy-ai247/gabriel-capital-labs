@@ -6,23 +6,31 @@ import type { Bureau } from "@prisma/client";
 import {
   NO_CAUSAL_ATTRIBUTION_NOTICE,
   PROGRESS_INTELLIGENCE_ROLLOUT_MODE,
+  TRUSTED_PROGRESS_WRITER_ID,
+  TRUSTED_PROGRESS_WRITER_SEMANTICS_VERSION,
   assessCausalityStatement,
-  bindApprovedCorrespondenceTarget,
-  bindHumanOutcomeConfirmation,
-  bindPersistedReportDifference,
+  bindApprovedCorrespondenceTarget as bindApprovedCorrespondenceTargetAttested,
+  bindHumanOutcomeConfirmation as bindHumanOutcomeConfirmationAttested,
+  bindPersistedReportDifference as bindPersistedReportDifferenceAttested,
   buildProgressProjection,
-  compareAccountPresence,
-  compareBureauCoverage,
-  compareCreditScores,
-  compareFieldObservations,
-  compareIdentityFacts,
+  compareAccountPresence as compareAccountPresenceAttested,
+  compareBureauCoverage as compareBureauCoverageAttested,
+  compareCreditScores as compareCreditScoresAttested,
+  compareFieldObservations as compareFieldObservationsAttested,
+  compareIdentityFacts as compareIdentityFactsAttested,
+  computeProgressSemanticSha256,
+  computeProgressSourceSetSha256,
   createCreditScoreObservation,
   createReportComparisonContext,
+  deriveVerifiedDifferenceSourceSetSha256,
   deriveCreditScoreObservationSeriesKey,
   determineDisputeOutcome,
+  isStrictIsoCalendarDate,
+  isStrictIsoInstant,
   renderNoncausalProgressNarrative,
   toCreditScoreInsertCandidate,
-  toReportDifferenceInsertCandidate,
+  toReportDifferenceInsertCandidate as toReportDifferenceInsertCandidateAttested,
+  verifyTrustedProgressRepositoryRead,
   type AccountPresenceEvidence,
   type BureauCoverageEvidence,
   type CorrespondenceItemBindingSnapshot,
@@ -35,10 +43,16 @@ import {
   type FieldObservationEvidence,
   type HumanOutcomeConfirmationSnapshot,
   type IdentityFactEvidence,
+  type PersistedReportDifferenceSnapshot,
+  type ProgressRepositoryReadKind,
   type ReportCheckpoint,
   type ReportComparisonContext,
   type ReportDifferenceDecision,
+  type ReportDifferenceInsertCandidate,
+  type ReportDifferenceInsertMetadata,
+  type TrustedProgressRepositoryVerifier,
   type VerifiedApprovedCorrespondenceTarget,
+  type VerifiedProgressRepositoryRead,
   type VerifiedReportDifferenceBinding,
 } from "../lib/creditTruth/progressIntelligence";
 
@@ -76,6 +90,157 @@ function encryptedScoreEnvelope(seed = 1): EncryptedScoreEnvelope {
     envelopeVersion: "synthetic-envelope-v1",
     aadVersion: "synthetic-aad-v1",
   };
+}
+
+const syntheticRepositoryReads = new Map<
+  string,
+  {
+    kind: ProgressRepositoryReadKind;
+    semanticSha256: string;
+    sourceSetSha256: string;
+  }
+>();
+let syntheticRepositoryReadSequence = 0;
+
+const SYNTHETIC_REPOSITORY_VERIFIER: TrustedProgressRepositoryVerifier = {
+  writerId: TRUSTED_PROGRESS_WRITER_ID,
+  semanticsVersion: TRUSTED_PROGRESS_WRITER_SEMANTICS_VERSION,
+  verifyRepositoryRead(input) {
+    const authoritative = syntheticRepositoryReads.get(input.repositoryReadId);
+    return (
+      authoritative?.kind === input.kind &&
+      authoritative.semanticSha256 === input.semanticSha256 &&
+      authoritative.sourceSetSha256 === input.sourceSetSha256 &&
+      input.semanticSha256 === computeProgressSemanticSha256(input.snapshot)
+    );
+  },
+};
+
+function repositoryRead<T>(
+  kind: ProgressRepositoryReadKind,
+  snapshot: T
+): VerifiedProgressRepositoryRead<T> {
+  syntheticRepositoryReadSequence += 1;
+  const repositoryReadId = `synthetic-repository-read-${syntheticRepositoryReadSequence}`;
+  syntheticRepositoryReads.set(repositoryReadId, {
+    kind,
+    semanticSha256: computeProgressSemanticSha256(snapshot),
+    sourceSetSha256: computeProgressSourceSetSha256(kind, snapshot),
+  });
+  return verifyTrustedProgressRepositoryRead(
+    { kind, repositoryReadId, snapshot },
+    SYNTHETIC_REPOSITORY_VERIFIER
+  );
+}
+
+function compareAccountPresence(
+  context: ReportComparisonContext,
+  prior: AccountPresenceEvidence,
+  current: AccountPresenceEvidence
+): ReportDifferenceDecision {
+  return compareAccountPresenceAttested(
+    context,
+    prior,
+    current,
+    repositoryRead("ACCOUNT_PRESENCE_PAIR", { prior, current })
+  );
+}
+
+function compareFieldObservations(
+  context: ReportComparisonContext,
+  prior: FieldObservationEvidence,
+  current: FieldObservationEvidence
+): ReportDifferenceDecision {
+  return compareFieldObservationsAttested(
+    context,
+    prior,
+    current,
+    repositoryRead("FIELD_OBSERVATION_PAIR", { prior, current })
+  );
+}
+
+function compareBureauCoverage(
+  context: ReportComparisonContext,
+  prior: BureauCoverageEvidence,
+  current: BureauCoverageEvidence
+): ReportDifferenceDecision {
+  return compareBureauCoverageAttested(
+    context,
+    prior,
+    current,
+    repositoryRead("BUREAU_COVERAGE_PAIR", { prior, current })
+  );
+}
+
+function compareIdentityFacts(
+  context: ReportComparisonContext,
+  prior: IdentityFactEvidence,
+  current: IdentityFactEvidence
+): ReportDifferenceDecision {
+  return compareIdentityFactsAttested(
+    context,
+    prior,
+    current,
+    repositoryRead("IDENTITY_FACT_PAIR", { prior, current })
+  );
+}
+
+function compareCreditScores(
+  context: ReportComparisonContext,
+  prior: CreditScoreObservation,
+  current: CreditScoreObservation
+) {
+  return compareCreditScoresAttested(
+    context,
+    prior,
+    current,
+    repositoryRead("CREDIT_SCORE_PAIR", { prior, current })
+  );
+}
+
+function toReportDifferenceInsertCandidate(
+  decision: ReportDifferenceDecision,
+  metadata: ReportDifferenceInsertMetadata
+): ReportDifferenceInsertCandidate {
+  return toReportDifferenceInsertCandidateAttested(decision, {
+    ...metadata,
+    sourceSetSha256: deriveVerifiedDifferenceSourceSetSha256(decision),
+  });
+}
+
+function bindPersistedReportDifference(
+  decision: ReportDifferenceDecision,
+  persisted: PersistedReportDifferenceSnapshot
+): VerifiedReportDifferenceBinding {
+  return bindPersistedReportDifferenceAttested(
+    decision,
+    persisted,
+    repositoryRead("PERSISTED_REPORT_DIFFERENCE", persisted)
+  );
+}
+
+function bindApprovedCorrespondenceTarget(
+  input: Omit<
+    Parameters<typeof bindApprovedCorrespondenceTargetAttested>[0],
+    "repositoryRead"
+  >
+): VerifiedApprovedCorrespondenceTarget {
+  return bindApprovedCorrespondenceTargetAttested({
+    ...input,
+    repositoryRead: repositoryRead("APPROVED_CORRESPONDENCE_CHAIN", input),
+  });
+}
+
+function bindHumanOutcomeConfirmation(
+  input: Omit<
+    Parameters<typeof bindHumanOutcomeConfirmationAttested>[0],
+    "repositoryRead"
+  >
+) {
+  return bindHumanOutcomeConfirmationAttested({
+    ...input,
+    repositoryRead: repositoryRead("HUMAN_OUTCOME_CONFIRMATION", input.snapshot),
+  });
 }
 
 function checkpoint(
@@ -302,15 +467,16 @@ function fieldObservation(
   };
 }
 
-function approvedTarget(
+function correspondenceChain(
   options: {
     fieldKey?: string;
     priorObservationId?: string;
     versionStatus?: CorrespondenceVersionBindingSnapshot["status"];
     membershipItemId?: string;
     assertionDisposition?: ConsumerAssertionBindingSnapshot["disposition"];
+    assertionConfirmedAt?: string;
   } = {}
-): VerifiedApprovedCorrespondenceTarget {
+) {
   const fieldKey = options.fieldKey ?? "detailedStatus";
   const priorObservationId =
     options.priorObservationId ??
@@ -325,7 +491,8 @@ function approvedTarget(
     observationId: priorObservationId,
     disposition: options.assertionDisposition ?? "CONFIRMED_INACCURATE",
     confirmedByActorId: "synthetic-consumer-actor",
-    confirmedAt: "2026-01-12T12:00:00.000Z",
+    confirmedAt:
+      options.assertionConfirmedAt ?? "2026-01-12T12:00:00.000Z",
   };
   const item: CorrespondenceItemBindingSnapshot = {
     ...SYNTHETIC_SCOPE,
@@ -356,12 +523,18 @@ function approvedTarget(
     correspondenceVersionId: version.id,
     correspondenceItemId: options.membershipItemId ?? item.id,
   };
-  return bindApprovedCorrespondenceTarget({
+  return {
     assertion,
     item,
     version,
     membership,
-  });
+  };
+}
+
+function approvedTarget(
+  options: Parameters<typeof correspondenceChain>[0] = {}
+): VerifiedApprovedCorrespondenceTarget {
+  return bindApprovedCorrespondenceTarget(correspondenceChain(options));
 }
 
 function persistedDifference(
@@ -1553,6 +1726,341 @@ contract("RED TEAM 8 — insert candidates match durable encrypted/source-pin sh
     differenceCandidate.currentScoreObservationId,
     methodMismatch.currentObservationId
   );
+});
+
+contract("PHASE 1.1 — trusted writer semantic attestation fails closed", () => {
+  const prior = fieldObservation(
+    REPORT_V1,
+    "EQUIFAX",
+    "detailedStatus",
+    "PRESENT",
+    { comparableValue: "SYNTHETIC_LATE" }
+  );
+  const current = fieldObservation(
+    REPORT_V2,
+    "EQUIFAX",
+    "detailedStatus",
+    "PRESENT",
+    { comparableValue: "SYNTHETIC_CURRENT" }
+  );
+  const exactRead = repositoryRead("FIELD_OBSERVATION_PAIR", { prior, current });
+  const valueSubstitutedSnapshot = {
+    prior,
+    current: { ...current, comparableValue: "SYNTHETIC_SUBSTITUTED" },
+  };
+  assert.notEqual(
+    exactRead.semanticSha256,
+    computeProgressSemanticSha256(valueSubstitutedSnapshot)
+  );
+  assert.equal(
+    exactRead.sourceSetSha256,
+    computeProgressSourceSetSha256(
+      "FIELD_OBSERVATION_PAIR",
+      valueSubstitutedSnapshot
+    )
+  );
+
+  assert.throws(
+    () =>
+      compareFieldObservationsAttested(
+        TEMPORAL_COMPARISON,
+        prior,
+        current,
+        undefined as unknown as typeof exactRead
+      ),
+    /verified repository semantic read/
+  );
+  assert.throws(
+    () =>
+      compareFieldObservationsAttested(
+        { ...TEMPORAL_COMPARISON },
+        prior,
+        current,
+        exactRead
+      ),
+    /verified immutable context factory result/
+  );
+  assert.throws(
+    () =>
+      compareFieldObservationsAttested(
+        TEMPORAL_COMPARISON,
+        prior,
+        { ...current, comparableValue: "SYNTHETIC_SUBSTITUTED" },
+        exactRead
+      ),
+    /does not match the exact writer input/
+  );
+  const reportIdentityDrift = {
+    ...current,
+    checkpoint: {
+      ...current.checkpoint,
+      reportInputSha256: digest("f"),
+    },
+  };
+  assert.throws(
+    () =>
+      compareFieldObservationsAttested(
+        TEMPORAL_COMPARISON,
+        prior,
+        reportIdentityDrift,
+        repositoryRead("FIELD_OBSERVATION_PAIR", {
+          prior,
+          current: reportIdentityDrift,
+        })
+      ),
+    /exact immutable report\/run checkpoint/
+  );
+
+  const staleVerifier = {
+    ...SYNTHETIC_REPOSITORY_VERIFIER,
+    semanticsVersion: "stale-writer-semantics",
+  } as unknown as TrustedProgressRepositoryVerifier;
+  assert.throws(
+    () =>
+      verifyTrustedProgressRepositoryRead(
+        {
+          kind: "FIELD_OBSERVATION_PAIR",
+          repositoryReadId: "synthetic-stale-writer-read",
+          snapshot: { prior, current },
+        },
+        staleVerifier
+      ),
+    /stale or unauthorized/
+  );
+
+  const decision = compareFieldObservations(
+    TEMPORAL_COMPARISON,
+    prior,
+    current
+  );
+  const metadata: ReportDifferenceInsertMetadata = {
+    differenceSeriesKey: "synthetic-attested-difference-series",
+    version: 1,
+    idempotencyKey: "synthetic-attested-difference-idempotency",
+    comparisonRuleKey: "synthetic-attested-comparison-rule",
+    comparisonRuleVersion: "1",
+    sourceSetSha256: digest("7"),
+    integritySha256: digest("8"),
+    createdByActorId: "synthetic-system-actor",
+  };
+  assert.throws(
+    () => toReportDifferenceInsertCandidateAttested(decision, metadata),
+    /must match the verified repository source set/
+  );
+  assert.throws(
+    () =>
+      toReportDifferenceInsertCandidateAttested(
+        { ...decision },
+        {
+          ...metadata,
+          sourceSetSha256: deriveVerifiedDifferenceSourceSetSha256(decision),
+        }
+      ),
+    /verified semantic comparison decision/
+  );
+
+  const score = reportScore(REPORT_V1, "EQUIFAX", 612);
+  assert.throws(
+    () =>
+      toCreditScoreInsertCandidate(
+        { ...score } as CreditScoreObservation,
+        {
+          integritySha256: digest("9"),
+          encryptedScore: encryptedScoreEnvelope(3),
+          normalizationRuleKey: "synthetic-score-normalization",
+          normalizationRuleVersion: "1",
+        }
+      ),
+    /verified immutable observation factory result/
+  );
+
+  const chain = correspondenceChain();
+  const forgedRead = {
+    ...repositoryRead("APPROVED_CORRESPONDENCE_CHAIN", chain),
+  } as unknown as VerifiedProgressRepositoryRead<typeof chain>;
+  assert.throws(
+    () =>
+      bindApprovedCorrespondenceTargetAttested({
+        ...chain,
+        repositoryRead: forgedRead,
+      }),
+    /verified repository semantic read/
+  );
+});
+
+contract("PHASE 1.1 — strict ISO dates reject normalization and ambiguity", () => {
+  for (const valid of [
+    "2024-02-29",
+    "2026-08-10",
+  ]) {
+    assert.equal(isStrictIsoCalendarDate(valid), true, valid);
+  }
+  for (const invalid of [
+    "2025-02-29",
+    "2026-02-30",
+    "2026-13-01",
+    "2026-8-10",
+    "2026-08",
+    "08/10/2026",
+    "2026-08-10junk",
+  ]) {
+    assert.equal(isStrictIsoCalendarDate(invalid), false, invalid);
+  }
+
+  for (const valid of [
+    "2026-08-10T12:34:56Z",
+    "2026-08-10T12:34:56.123Z",
+    "2026-08-10T12:34:56.1-04:00",
+    "2026-08-10T12:34:56+14:00",
+  ]) {
+    assert.equal(isStrictIsoInstant(valid), true, valid);
+  }
+  for (const invalid of [
+    "2026-02-30T12:00:00Z",
+    "2025-02-29T12:00:00Z",
+    "2026-08-10T24:00:00Z",
+    "2026-08-10T12:60:00Z",
+    "2026-08-10T12:00:60Z",
+    "2026-08-10T12:00:00",
+    "2026-08-10 12:00:00Z",
+    "2026-08-10T12:00:00-00:00",
+    "2026-08-10T12:00:00+14:01",
+    "2026-08-10T12:00:00+15:00",
+    "2026-08-10T12:00:00.1234Z",
+    "2026-08-10T12:00:00Zjunk",
+  ]) {
+    assert.equal(isStrictIsoInstant(invalid), false, invalid);
+  }
+});
+
+contract("PHASE 1.1 — authoritative progress timestamps and partial dates fail closed", () => {
+  assert.throws(
+    () =>
+      createCreditScoreObservation({
+        ...SYNTHETIC_SCOPE,
+        observationId: "synthetic-invalid-time-score",
+        revision: 1,
+        idempotencyKey: "synthetic-invalid-time-score-idempotency",
+        supersedesObservationId: null,
+        bureau: "EQUIFAX",
+        occurrence: 0,
+        sourceType: "REPORT_DERIVED",
+        checkpoint: REPORT_V1,
+        bureauCoverageId: "synthetic-invalid-time-coverage",
+        coverageStatus: "COVERED",
+        presence: "SCORE_REPORTED",
+        evidenceCompleteness: "COMPLETE",
+        score: 620,
+        model: {
+          completeness: "COMPLETE",
+          modelKey: "SYNTHETIC_SCORE_MODEL",
+          modelVersion: "1",
+          scaleMin: 300,
+          scaleMax: 850,
+        },
+        sourceMethodKey: "synthetic-score-parser",
+        sourceMethodVersion: "1",
+        sourceLocatorToken: "synthetic-score-locator",
+        observedAt: "2026-02-30T12:00:00Z",
+      }),
+    /strict ISO instant/
+  );
+  assert.throws(
+    () =>
+      createCreditScoreObservation({
+        ...SYNTHETIC_SCOPE,
+        observationId: "synthetic-ambiguous-manual-time",
+        revision: 1,
+        idempotencyKey: "synthetic-ambiguous-manual-time-idempotency",
+        supersedesObservationId: null,
+        bureau: "EXPERIAN",
+        occurrence: 0,
+        sourceType: "MANUAL_ENTRY",
+        presence: "SCORE_REPORTED",
+        evidenceCompleteness: "MANUAL_UNVERIFIED",
+        score: 621,
+        model: { completeness: "UNKNOWN" },
+        sourceMethodKey: "synthetic-manual-entry",
+        sourceMethodVersion: "1",
+        observedAt: "2026-08-10T12:00:00Z",
+        enteredByActorId: "synthetic-consumer-actor",
+        enteredAt: "2026-08-10T12:00:00",
+      }),
+    /strict ISO instant/
+  );
+  assert.throws(
+    () => approvedTarget({ assertionConfirmedAt: "2026-08-10 12:00:00Z" }),
+    /strict ISO instant/
+  );
+
+  const facts = correctedFieldFacts();
+  const difference = persistedDifference(
+    facts.difference,
+    "synthetic-strict-time-difference"
+  );
+  const target = approvedTarget({
+    priorObservationId: facts.prior.sourceObservationId,
+  });
+  const confirmationSnapshot: HumanOutcomeConfirmationSnapshot = {
+    ...SYNTHETIC_SCOPE,
+    id: "synthetic-invalid-time-confirmation",
+    comparisonId: facts.difference.comparisonId,
+    differenceId: difference.id,
+    correspondenceItemId: target.target.correspondenceItemId,
+    currentSourceObservationId: facts.current.sourceObservationId,
+    confirmedState: "CORRECTED",
+    confirmedByActorId: "synthetic-reviewer-actor",
+    confirmedAt: "2026-08-10T12:00:00-00:00",
+  };
+  assert.throws(
+    () =>
+      bindHumanOutcomeConfirmation({
+        snapshot: confirmationSnapshot,
+        difference,
+        target,
+      }),
+    /strict ISO instant/
+  );
+  assert.throws(
+    () =>
+      determineDisputeOutcome({
+        difference,
+        target,
+        ...outcomeMetadata(),
+        decidedAt: "2026-08-10T12:00:00Zjunk",
+      }),
+    /strict ISO instant/
+  );
+
+  assert.throws(
+    () =>
+      comparison(
+        REPORT_V1,
+        checkpoint(2, { date: "2026-02-30" }),
+        "synthetic-impossible-report-date"
+      ),
+    /explicit ISO report date/
+  );
+
+  const partialDate = checkpoint(3, {
+    reportDateEvidence: {
+      provenance: "UNKNOWN",
+      reasonCode: "PARTIAL_SOURCE_DATE_MONTH",
+    },
+  });
+  assert.equal("reportDate" in partialDate.reportDateEvidence, false);
+  const partialComparison = comparison(
+    REPORT_V2,
+    partialDate,
+    "synthetic-partial-date-comparison"
+  );
+  const scoreResult = compareCreditScores(
+    partialComparison,
+    reportScore(REPORT_V2, "TRANSUNION", 604),
+    reportScore(partialDate, "TRANSUNION", 608)
+  );
+  assert.equal(scoreResult.directlyComparable, false);
+  assert.ok(scoreResult.reasonCodes.includes("SOURCE_REPORT_DATES_NOT_COMPARABLE"));
 });
 
 console.log(`\n${passed} contract groups passed; ${failed} failed.`);

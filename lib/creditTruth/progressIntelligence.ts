@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import type { Bureau } from "@prisma/client";
 
 /**
@@ -11,6 +12,60 @@ import type { Bureau } from "@prisma/client";
 export const PROGRESS_INTELLIGENCE_CONTRACT_VERSION =
   "credit-progress-intelligence-v1" as const;
 export const PROGRESS_INTELLIGENCE_ROLLOUT_MODE = "DORMANT_PHASE_1" as const;
+export const TRUSTED_PROGRESS_WRITER_ID =
+  "CREDIT_TRUTH_REPOSITORY" as const;
+export const TRUSTED_PROGRESS_WRITER_SEMANTICS_VERSION =
+  "credit-truth-repository-semantics-v1" as const;
+
+export const PROGRESS_REPOSITORY_READ_KINDS = [
+  "ACCOUNT_PRESENCE_PAIR",
+  "FIELD_OBSERVATION_PAIR",
+  "BUREAU_COVERAGE_PAIR",
+  "IDENTITY_FACT_PAIR",
+  "CREDIT_SCORE_PAIR",
+  "PERSISTED_REPORT_DIFFERENCE",
+  "APPROVED_CORRESPONDENCE_CHAIN",
+  "HUMAN_OUTCOME_CONFIRMATION",
+] as const;
+
+export type ProgressRepositoryReadKind =
+  (typeof PROGRESS_REPOSITORY_READ_KINDS)[number];
+
+export interface ProgressRepositoryReadVerification {
+  readonly kind: ProgressRepositoryReadKind;
+  readonly repositoryReadId: string;
+  /** Ephemeral verifier binding; must never be persisted or logged. */
+  readonly semanticSha256: string;
+  /** Value-free durable source identity; never a plaintext-value fingerprint. */
+  readonly sourceSetSha256: string;
+  readonly snapshot: unknown;
+}
+
+/**
+ * Activation must supply the authenticated repository implementation for this
+ * verifier. The pure Phase-1 contract never treats a repository-shaped object
+ * as proof that a read occurred.
+ */
+export interface TrustedProgressRepositoryVerifier {
+  readonly writerId: typeof TRUSTED_PROGRESS_WRITER_ID;
+  readonly semanticsVersion: typeof TRUSTED_PROGRESS_WRITER_SEMANTICS_VERSION;
+  verifyRepositoryRead(input: ProgressRepositoryReadVerification): boolean;
+}
+
+const VERIFIED_PROGRESS_REPOSITORY_READ = Symbol(
+  "verified-progress-repository-read"
+);
+const verifiedProgressRepositoryReads = new WeakMap<object, string>();
+
+export interface VerifiedProgressRepositoryRead<T = unknown> {
+  readonly kind: ProgressRepositoryReadKind;
+  readonly repositoryReadId: string;
+  /** Ephemeral verifier binding; must never be persisted or logged. */
+  readonly semanticSha256: string;
+  readonly sourceSetSha256: string;
+  readonly snapshot: T;
+  readonly [VERIFIED_PROGRESS_REPOSITORY_READ]: true;
+}
 
 export const REPORT_DIFFERENCE_SCOPES = [
   "ACCOUNT_PRESENCE",
@@ -684,12 +739,330 @@ export interface ProgressProjection extends ProgressScope {
   causalityNotice: typeof NO_CAUSAL_ATTRIBUTION_NOTICE;
 }
 
-const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+const verifiedReportComparisonContexts = new WeakMap<object, string>();
+const verifiedCreditScoreObservations = new WeakMap<object, string>();
+const verifiedDifferenceDecisions = new WeakMap<object, string>();
+const differenceSourceSetDigests = new WeakMap<object, string>();
+
+const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
+const ISO_INSTANT =
+  /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,3}))?(Z|[+-]\d{2}:\d{2})$/;
 const SHA_256 = /^[a-f0-9]{64}$/i;
 const MACHINE_CODE = /^[A-Z][A-Z0-9_]{0,127}$/;
 
-function requireNonEmpty(value: string, field: string): void {
-  if (value.trim().length === 0) throw new Error(`${field} is required`);
+function isLeapYear(year: number): boolean {
+  return year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+}
+
+function validCalendarParts(year: number, month: number, day: number): boolean {
+  if (year < 1 || year > 9999 || month < 1 || month > 12 || day < 1) {
+    return false;
+  }
+  const days = [31, isLeapYear(year) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  return day <= days[month - 1]!;
+}
+
+/** Strict day-precision ISO date. Partial source dates must remain non-exact. */
+export function isStrictIsoCalendarDate(value: unknown): value is string {
+  if (typeof value !== "string") return false;
+  const match = ISO_DATE.exec(value);
+  return Boolean(
+    match &&
+      validCalendarParts(Number(match[1]), Number(match[2]), Number(match[3]))
+  );
+}
+
+/**
+ * Strict ISO-8601 instant with an explicit timezone. The original string is
+ * validated, never normalized, so invalid calendar values and extra precision
+ * cannot be silently changed by `Date.parse` or a database millisecond column.
+ */
+export function isStrictIsoInstant(value: unknown): value is string {
+  if (typeof value !== "string") return false;
+  const match = ISO_INSTANT.exec(value);
+  if (!match) return false;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const hour = Number(match[4]);
+  const minute = Number(match[5]);
+  const second = Number(match[6]);
+  if (
+    !validCalendarParts(year, month, day) ||
+    hour > 23 ||
+    minute > 59 ||
+    second > 59
+  ) {
+    return false;
+  }
+  const zone = match[8]!;
+  if (zone === "Z") return true;
+  if (zone === "-00:00") return false;
+  const offsetHour = Number(zone.slice(1, 3));
+  const offsetMinute = Number(zone.slice(4, 6));
+  return (
+    offsetHour <= 14 &&
+    offsetMinute <= 59 &&
+    (offsetHour < 14 || offsetMinute === 0)
+  );
+}
+
+function canonicalSemanticValue(
+  value: unknown,
+  ancestors: ReadonlySet<object> = new Set<object>()
+): string {
+  if (value === null) return "null";
+  if (typeof value === "string" || typeof value === "boolean") {
+    return JSON.stringify(value);
+  }
+  if (typeof value === "number") {
+    if (!Number.isFinite(value)) {
+      throw new Error("semantic attestation numbers must be finite");
+    }
+    return JSON.stringify(value);
+  }
+  if (typeof value !== "object") {
+    throw new Error("semantic attestation accepts JSON-domain values only");
+  }
+  if (ancestors.has(value)) {
+    throw new Error("semantic attestation snapshots cannot be cyclic");
+  }
+  const nestedAncestors = new Set(ancestors);
+  nestedAncestors.add(value);
+  if (Array.isArray(value)) {
+    return `[${value
+      .map((item) => canonicalSemanticValue(item, nestedAncestors))
+      .join(",")}]`;
+  }
+  if (
+    Object.getPrototypeOf(value) !== Object.prototype &&
+    Object.getPrototypeOf(value) !== null
+  ) {
+    throw new Error("semantic attestation snapshots must use plain objects");
+  }
+  const record = value as Readonly<Record<string, unknown>>;
+  return `{${Object.keys(record)
+    .sort()
+    .map(
+      (key) =>
+        `${JSON.stringify(key)}:${canonicalSemanticValue(record[key], nestedAncestors)}`
+    )
+    .join(",")}}`;
+}
+
+function immutableSemanticSnapshot<T>(value: T): T {
+  if (value === null || typeof value !== "object") return value;
+  if (Array.isArray(value)) {
+    return Object.freeze(value.map((item) => immutableSemanticSnapshot(item))) as T;
+  }
+  if (
+    Object.getPrototypeOf(value) !== Object.prototype &&
+    Object.getPrototypeOf(value) !== null
+  ) {
+    throw new Error("semantic attestation snapshots must use plain objects");
+  }
+  const clone: Record<string, unknown> = {};
+  for (const [key, nested] of Object.entries(value)) {
+    clone[key] = immutableSemanticSnapshot(nested);
+  }
+  return Object.freeze(clone) as T;
+}
+
+export function computeProgressSemanticSha256(value: unknown): string {
+  return createHash("sha256")
+    .update(canonicalSemanticValue(value), "utf8")
+    .digest("hex");
+}
+
+function valueFreeSourceIdentity(value: unknown): unknown {
+  if (value === null || typeof value !== "object") return value;
+  if (Array.isArray(value)) return value.map(valueFreeSourceIdentity);
+  const record = value as Readonly<Record<string, unknown>>;
+  return Object.fromEntries(
+    Object.entries(record)
+      .filter(([key]) => key !== "comparableValue" && key !== "score")
+      .map(([key, nested]) => [key, valueFreeSourceIdentity(nested)])
+  );
+}
+
+export function computeProgressSourceSetSha256(
+  kind: ProgressRepositoryReadKind,
+  snapshot: unknown
+): string {
+  return computeProgressSemanticSha256({
+    kind,
+    sourceIdentity: valueFreeSourceIdentity(snapshot),
+  });
+}
+
+export function verifyTrustedProgressRepositoryRead<T>(
+  input: {
+    kind: ProgressRepositoryReadKind;
+    repositoryReadId: string;
+    snapshot: T;
+  },
+  verifier: TrustedProgressRepositoryVerifier
+): VerifiedProgressRepositoryRead<T> {
+  requireNonEmpty(input.repositoryReadId, "repository read id");
+  if (!PROGRESS_REPOSITORY_READ_KINDS.includes(input.kind)) {
+    throw new Error("repository read kind is not recognized");
+  }
+  if (
+    verifier.writerId !== TRUSTED_PROGRESS_WRITER_ID ||
+    verifier.semanticsVersion !== TRUSTED_PROGRESS_WRITER_SEMANTICS_VERSION
+  ) {
+    throw new Error("repository writer semantic attestation is stale or unauthorized");
+  }
+  const snapshot = immutableSemanticSnapshot(input.snapshot);
+  const semanticSha256 = computeProgressSemanticSha256(snapshot);
+  const sourceSetSha256 = computeProgressSourceSetSha256(input.kind, snapshot);
+  const verification = Object.freeze({
+    kind: input.kind,
+    repositoryReadId: input.repositoryReadId,
+    semanticSha256,
+    sourceSetSha256,
+    snapshot,
+  });
+  if (!verifier.verifyRepositoryRead(verification)) {
+    throw new Error("repository read semantic attestation was not established");
+  }
+  const verified = {
+    ...verification,
+  } as VerifiedProgressRepositoryRead<T>;
+  Object.defineProperty(verified, VERIFIED_PROGRESS_REPOSITORY_READ, {
+    value: true,
+    enumerable: false,
+    configurable: false,
+    writable: false,
+  });
+  verifiedProgressRepositoryReads.set(verified, semanticSha256);
+  return Object.freeze(verified);
+}
+
+function requireExactTrustedRepositoryRead<T>(
+  read: VerifiedProgressRepositoryRead<T> | undefined,
+  kind: ProgressRepositoryReadKind,
+  expectedSnapshot: T
+): string {
+  if (
+    !read ||
+    read[VERIFIED_PROGRESS_REPOSITORY_READ] !== true ||
+    !verifiedProgressRepositoryReads.has(read) ||
+    !Object.isFrozen(read) ||
+    !Object.isFrozen(read.snapshot) ||
+    read.kind !== kind
+  ) {
+    throw new Error("operation requires a verified repository semantic read");
+  }
+  const currentSha256 = computeProgressSemanticSha256(read.snapshot);
+  const currentSourceSetSha256 = computeProgressSourceSetSha256(
+    read.kind,
+    read.snapshot
+  );
+  if (
+    currentSha256 !== read.semanticSha256 ||
+    currentSourceSetSha256 !== read.sourceSetSha256 ||
+    verifiedProgressRepositoryReads.get(read) !== currentSha256 ||
+    currentSha256 !== computeProgressSemanticSha256(expectedSnapshot)
+  ) {
+    throw new Error("repository semantic read does not match the exact writer input");
+  }
+  return currentSourceSetSha256;
+}
+
+function sealReportComparisonContext(
+  context: ReportComparisonContext
+): ReportComparisonContext {
+  const sealed = immutableSemanticSnapshot(context);
+  verifiedReportComparisonContexts.set(
+    sealed,
+    computeProgressSemanticSha256(sealed)
+  );
+  return sealed;
+}
+
+function requireVerifiedReportComparisonContext(
+  context: ReportComparisonContext
+): void {
+  const expectedSha256 = verifiedReportComparisonContexts.get(context);
+  if (
+    !expectedSha256 ||
+    !Object.isFrozen(context) ||
+    expectedSha256 !== computeProgressSemanticSha256(context)
+  ) {
+    throw new Error("comparison requires a verified immutable context factory result");
+  }
+}
+
+function sealCreditScoreObservation<T extends CreditScoreObservation>(
+  observation: T
+): T {
+  const sealed = immutableSemanticSnapshot(observation);
+  verifiedCreditScoreObservations.set(
+    sealed,
+    computeProgressSemanticSha256(sealed)
+  );
+  return sealed;
+}
+
+function requireVerifiedCreditScoreObservation(
+  observation: CreditScoreObservation
+): void {
+  const expectedSha256 = verifiedCreditScoreObservations.get(observation);
+  if (
+    !expectedSha256 ||
+    !Object.isFrozen(observation) ||
+    expectedSha256 !== computeProgressSemanticSha256(observation)
+  ) {
+    throw new Error("score writer requires a verified immutable observation factory result");
+  }
+}
+
+function sealDifferenceDecision(
+  decision: ReportDifferenceDecision,
+  sourceSetSha256: string
+): ReportDifferenceDecision {
+  if (!SHA_256.test(sourceSetSha256)) {
+    throw new Error("difference source set attestation must be a SHA-256 digest");
+  }
+  const sealed = immutableSemanticSnapshot(decision);
+  verifiedDifferenceDecisions.set(sealed, computeProgressSemanticSha256(sealed));
+  differenceSourceSetDigests.set(sealed, sourceSetSha256);
+  return sealed;
+}
+
+function requireVerifiedDifferenceDecision(
+  decision: ReportDifferenceDecision
+): string {
+  const expectedDecisionSha256 = verifiedDifferenceDecisions.get(decision);
+  const sourceSetSha256 = differenceSourceSetDigests.get(decision);
+  if (
+    !expectedDecisionSha256 ||
+    !sourceSetSha256 ||
+    !Object.isFrozen(decision) ||
+    expectedDecisionSha256 !== computeProgressSemanticSha256(decision)
+  ) {
+    throw new Error("difference writer requires a verified semantic comparison decision");
+  }
+  return sourceSetSha256;
+}
+
+export function deriveVerifiedDifferenceSourceSetSha256(
+  decision: ReportDifferenceDecision
+): string {
+  return requireVerifiedDifferenceDecision(decision);
+}
+
+function requireNonEmpty(value: unknown, field: string): asserts value is string {
+  if (typeof value !== "string" || value.trim().length === 0) {
+    throw new Error(`${field} is required`);
+  }
+}
+
+function requireStrictIsoInstant(value: unknown, field: string): asserts value is string {
+  if (!isStrictIsoInstant(value)) {
+    throw new Error(`${field} must be a strict ISO instant with an explicit timezone`);
+  }
 }
 
 function requirePositiveInteger(value: number, field: string): void {
@@ -732,15 +1105,8 @@ function requireScope(expected: ProgressScope, actual: ProgressScope, label: str
 
 function validateReportDateEvidence(evidence: ReportDateEvidence): void {
   if (evidence.provenance === "SOURCE_REPORTED") {
-    if (!ISO_DATE.test(evidence.reportDate)) {
+    if (!isStrictIsoCalendarDate(evidence.reportDate)) {
       throw new Error("SOURCE_REPORTED requires an explicit ISO report date");
-    }
-    const parsed = new Date(`${evidence.reportDate}T00:00:00.000Z`);
-    if (
-      Number.isNaN(parsed.valueOf()) ||
-      parsed.toISOString().slice(0, 10) !== evidence.reportDate
-    ) {
-      throw new Error("SOURCE_REPORTED report date must be a real calendar date");
     }
     requireNonEmpty(evidence.sourceLocatorToken, "report date source locator");
     requireNonEmpty(evidence.ruleKey, "report date rule key");
@@ -755,7 +1121,7 @@ function validateReportDateEvidence(evidence: ReportDateEvidence): void {
     return;
   }
 
-  requireNonEmpty(evidence.reasonCode, "unknown report-date reason code");
+  validateMachineCodes([evidence.reasonCode], "unknown report-date reason code");
 }
 
 export function validateReportCheckpoint(checkpoint: ReportCheckpoint): void {
@@ -801,7 +1167,7 @@ export function createReportComparisonContext(input: {
   if (sameReport) {
     const exactRetry =
       input.prior.extractionRunId === input.current.extractionRunId;
-    return {
+    return sealReportComparisonContext({
       tenantId: input.prior.tenantId,
       consumerId: input.prior.consumerId,
       comparisonId: input.comparisonId,
@@ -821,7 +1187,7 @@ export function createReportComparisonContext(input: {
       reasonCodes: exactRetry
         ? ["IDENTICAL_REPORT_AND_EXTRACTION_RUN"]
         : ["SAME_REPORT_REANALYSIS_IS_NOT_TEMPORAL_PROGRESS"],
-    };
+    });
   }
 
   const orderedSameSeries =
@@ -829,7 +1195,7 @@ export function createReportComparisonContext(input: {
     input.prior.reportVersion < input.current.reportVersion &&
     input.prior.reportInputSha256 !== input.current.reportInputSha256;
 
-  return {
+  return sealReportComparisonContext({
     tenantId: input.prior.tenantId,
     consumerId: input.prior.consumerId,
     comparisonId: input.comparisonId,
@@ -851,7 +1217,7 @@ export function createReportComparisonContext(input: {
     reasonCodes: orderedSameSeries
       ? []
       : ["REPORT_CHRONOLOGY_NOT_ESTABLISHED"],
-  };
+  });
 }
 
 function validateScore(score: number, model: ScoreModelMetadata): void {
@@ -938,12 +1304,14 @@ export function createCreditScoreObservation(
   input: CreditScoreObservationInput,
   priorRevision?: CreditScoreObservation
 ): CreditScoreObservation {
+  if (priorRevision) requireVerifiedCreditScoreObservation(priorRevision);
   requireNonEmpty(input.observationId, "observationId");
   requireNonEmpty(input.idempotencyKey, "score observation idempotencyKey");
   requireNonEmpty(input.tenantId, "tenantId");
   requireNonEmpty(input.consumerId, "consumerId");
   requireNonEmpty(input.sourceMethodKey, "sourceMethodKey");
   requireNonEmpty(input.sourceMethodVersion, "sourceMethodVersion");
+  requireStrictIsoInstant(input.observedAt, "score observedAt");
   if (!Number.isInteger(input.occurrence) || input.occurrence < 0) {
     throw new Error("occurrence must be a non-negative integer");
   }
@@ -983,7 +1351,8 @@ export function createCreditScoreObservation(
     }
     validateScore(input.score, input.model);
     requireNonEmpty(input.enteredByActorId, "enteredByActorId");
-    return {
+    requireStrictIsoInstant(input.enteredAt, "manual score enteredAt");
+    return sealCreditScoreObservation({
       ...common,
       sourceType: "MANUAL_ENTRY",
       evidenceRole: "SECONDARY_MANUAL_CONTEXT",
@@ -993,7 +1362,7 @@ export function createCreditScoreObservation(
       model: { ...input.model },
       enteredByActorId: input.enteredByActorId,
       enteredAt: input.enteredAt,
-    };
+    });
   }
 
   validateReportCheckpoint(input.checkpoint);
@@ -1018,7 +1387,7 @@ export function createCreditScoreObservation(
 
   if (input.presence === "SCORE_REPORTED") {
     validateScore(input.score, input.model);
-    return {
+    return sealCreditScoreObservation({
       ...common,
       sourceType: "REPORT_DERIVED",
       evidenceRole: "PRIMARY_REPORT_EVIDENCE",
@@ -1032,7 +1401,7 @@ export function createCreditScoreObservation(
       evidenceCompleteness: input.evidenceCompleteness,
       score: input.score,
       model: { ...input.model },
-    };
+    });
   }
 
   if ("score" in input && input.score !== undefined) {
@@ -1061,23 +1430,24 @@ export function createCreditScoreObservation(
     model: { completeness: "UNKNOWN" },
   } as const;
   if (input.presence === "SCORE_NOT_PROVIDED") {
-    return {
+    return sealCreditScoreObservation({
       ...absentBase,
       presence: "SCORE_NOT_PROVIDED",
       evidenceCompleteness: "NOT_PROVIDED",
-    };
+    });
   }
-  return {
+  return sealCreditScoreObservation({
     ...absentBase,
     presence: "UNKNOWN",
     evidenceCompleteness: input.evidenceCompleteness,
-  };
+  });
 }
 
 export function toCreditScoreInsertCandidate(
   observation: CreditScoreObservation,
   metadata: CreditScoreInsertMetadata
 ): CreditScoreInsertCandidate {
+  requireVerifiedCreditScoreObservation(observation);
   validateMachineCodes(metadata.errorCodes ?? [], "score errorCodes");
   if (!SHA_256.test(metadata.integritySha256)) {
     throw new Error("score integritySha256 must be a SHA-256 hex digest");
@@ -1242,9 +1612,13 @@ function validateEvidenceCheckpoint(
   const expected = context[side];
   if (
     evidence.checkpoint.reportVersionId !== expected.reportVersionId ||
-    evidence.checkpoint.extractionRunId !== expected.extractionRunId
+    evidence.checkpoint.extractionRunId !== expected.extractionRunId ||
+    computeProgressSemanticSha256(evidence.checkpoint) !==
+      computeProgressSemanticSha256(expected)
   ) {
-    throw new Error(`${side} evidence must pin the comparison's exact report/run`);
+    throw new Error(
+      `${side} evidence must pin the comparison's exact immutable report/run checkpoint`
+    );
   }
 }
 
@@ -1281,9 +1655,10 @@ function differenceBase(
     currentIdentityBaselineId?: string | null;
     identityFactSeriesKey?: string | null;
     reasonCodes?: readonly string[];
+    sourceSetSha256: string;
   }
 ): ReportDifferenceDecision {
-  return {
+  return sealDifferenceDecision({
     persistenceDisposition: "PERSIST",
     tenantId: context.tenantId,
     consumerId: context.consumerId,
@@ -1316,7 +1691,7 @@ function differenceBase(
     currentIdentityBaselineId: params.currentIdentityBaselineId ?? null,
     identityFactSeriesKey: params.identityFactSeriesKey ?? null,
     reasonCodes: params.reasonCodes ?? [],
-  };
+  }, params.sourceSetSha256);
 }
 
 function unknownDifference(
@@ -1347,8 +1722,18 @@ function validateMatchedBureauAccount(
 export function compareAccountPresence(
   context: ReportComparisonContext,
   prior: AccountPresenceEvidence,
-  current: AccountPresenceEvidence
+  current: AccountPresenceEvidence,
+  repositoryRead: VerifiedProgressRepositoryRead<{
+    prior: AccountPresenceEvidence;
+    current: AccountPresenceEvidence;
+  }>
 ): ReportDifferenceDecision {
+  requireVerifiedReportComparisonContext(context);
+  const sourceSetSha256 = requireExactTrustedRepositoryRead(
+    repositoryRead,
+    "ACCOUNT_PRESENCE_PAIR",
+    { prior, current }
+  );
   validateEvidenceCheckpoint(context, prior, "prior");
   validateEvidenceCheckpoint(context, current, "current");
   validateMatchedBureauAccount(prior, current);
@@ -1364,6 +1749,7 @@ export function compareAccountPresence(
     sourceKind: "ACCOUNT_PRESENCE_OBSERVATION" as const,
     priorSourceId: prior.sourceObservationId,
     currentSourceId: current.sourceObservationId,
+    sourceSetSha256,
   };
 
   if (!comparisonCanDescribeProgress(context)) {
@@ -1459,8 +1845,18 @@ function fieldChangeKind(fieldKey: string): ReportDifferenceChangeKind {
 export function compareFieldObservations(
   context: ReportComparisonContext,
   prior: FieldObservationEvidence,
-  current: FieldObservationEvidence
+  current: FieldObservationEvidence,
+  repositoryRead: VerifiedProgressRepositoryRead<{
+    prior: FieldObservationEvidence;
+    current: FieldObservationEvidence;
+  }>
 ): ReportDifferenceDecision {
+  requireVerifiedReportComparisonContext(context);
+  const sourceSetSha256 = requireExactTrustedRepositoryRead(
+    repositoryRead,
+    "FIELD_OBSERVATION_PAIR",
+    { prior, current }
+  );
   validateEvidenceCheckpoint(context, prior, "prior");
   validateEvidenceCheckpoint(context, current, "current");
   validateMatchedBureauAccount(prior, current);
@@ -1477,6 +1873,7 @@ export function compareFieldObservations(
     sourceKind: "FIELD_OBSERVATION" as const,
     priorSourceId: prior.sourceObservationId,
     currentSourceId: current.sourceObservationId,
+    sourceSetSha256,
   };
 
   if (!comparisonCanDescribeProgress(context)) {
@@ -1547,8 +1944,18 @@ export function compareFieldObservations(
 export function compareBureauCoverage(
   context: ReportComparisonContext,
   prior: BureauCoverageEvidence,
-  current: BureauCoverageEvidence
+  current: BureauCoverageEvidence,
+  repositoryRead: VerifiedProgressRepositoryRead<{
+    prior: BureauCoverageEvidence;
+    current: BureauCoverageEvidence;
+  }>
 ): ReportDifferenceDecision {
+  requireVerifiedReportComparisonContext(context);
+  const sourceSetSha256 = requireExactTrustedRepositoryRead(
+    repositoryRead,
+    "BUREAU_COVERAGE_PAIR",
+    { prior, current }
+  );
   validateEvidenceCheckpoint(context, prior, "prior");
   validateEvidenceCheckpoint(context, current, "current");
   if (prior.bureau !== current.bureau) {
@@ -1564,6 +1971,7 @@ export function compareBureauCoverage(
     sourceKind: "BUREAU_COVERAGE_OBSERVATION" as const,
     priorSourceId: prior.sourceObservationId,
     currentSourceId: current.sourceObservationId,
+    sourceSetSha256,
   };
   if (!comparisonCanDescribeProgress(context)) {
     return unknownDifference(context, {
@@ -1584,8 +1992,18 @@ export function compareBureauCoverage(
 export function compareIdentityFacts(
   context: ReportComparisonContext,
   prior: IdentityFactEvidence,
-  current: IdentityFactEvidence
+  current: IdentityFactEvidence,
+  repositoryRead: VerifiedProgressRepositoryRead<{
+    prior: IdentityFactEvidence;
+    current: IdentityFactEvidence;
+  }>
 ): ReportDifferenceDecision {
+  requireVerifiedReportComparisonContext(context);
+  const sourceSetSha256 = requireExactTrustedRepositoryRead(
+    repositoryRead,
+    "IDENTITY_FACT_PAIR",
+    { prior, current }
+  );
   validateEvidenceCheckpoint(context, prior, "prior");
   validateEvidenceCheckpoint(context, current, "current");
   if (
@@ -1607,6 +2025,7 @@ export function compareIdentityFacts(
     priorIdentityBaselineId: prior.identityBaselineId,
     currentIdentityBaselineId: current.identityBaselineId,
     identityFactSeriesKey: prior.factSeriesKey,
+    sourceSetSha256,
   };
   if (
     !comparisonCanDescribeProgress(context) ||
@@ -1677,8 +2096,20 @@ function scoreReportDatesAreComparable(
 export function compareCreditScores(
   context: ReportComparisonContext,
   prior: CreditScoreObservation,
-  current: CreditScoreObservation
+  current: CreditScoreObservation,
+  repositoryRead: VerifiedProgressRepositoryRead<{
+    prior: CreditScoreObservation;
+    current: CreditScoreObservation;
+  }>
 ): ScoreComparisonDecision {
+  requireVerifiedReportComparisonContext(context);
+  requireVerifiedCreditScoreObservation(prior);
+  requireVerifiedCreditScoreObservation(current);
+  const sourceSetSha256 = requireExactTrustedRepositoryRead(
+    repositoryRead,
+    "CREDIT_SCORE_PAIR",
+    { prior, current }
+  );
   requireScope(context, prior, "prior score");
   requireScope(context, current, "current score");
   if (prior.bureau !== current.bureau) {
@@ -1720,6 +2151,7 @@ export function compareCreditScores(
     sourceKind: "CREDIT_SCORE_OBSERVATION" as const,
     priorSourceId: prior.observationId,
     currentSourceId: current.observationId,
+    sourceSetSha256,
   };
   const exactModel =
     prior.presence === "SCORE_REPORTED" &&
@@ -1866,6 +2298,7 @@ export function toReportDifferenceInsertCandidate(
   decision: ReportDifferenceDecision,
   metadata: ReportDifferenceInsertMetadata
 ): ReportDifferenceInsertCandidate {
+  const attestedSourceSetSha256 = requireVerifiedDifferenceDecision(decision);
   validateMachineCodes(decision.reasonCodes, "difference reasonCodes");
   if (decision.persistenceDisposition !== "PERSIST") {
     throw new Error("an omitted comparison evaluation cannot become a durable difference");
@@ -1886,6 +2319,11 @@ export function toReportDifferenceInsertCandidate(
   );
   if (!SHA_256.test(metadata.sourceSetSha256)) {
     throw new Error("difference sourceSetSha256 must be a SHA-256 hex digest");
+  }
+  if (metadata.sourceSetSha256 !== attestedSourceSetSha256) {
+    throw new Error(
+      "difference sourceSetSha256 must match the verified repository source set"
+    );
   }
   if (!SHA_256.test(metadata.integritySha256)) {
     throw new Error("difference integritySha256 must be a SHA-256 hex digest");
@@ -2078,8 +2516,15 @@ function decisionMatchesCandidate(
 
 export function bindPersistedReportDifference(
   decision: ReportDifferenceDecision,
-  persisted: PersistedReportDifferenceSnapshot
+  persisted: PersistedReportDifferenceSnapshot,
+  repositoryRead: VerifiedProgressRepositoryRead<PersistedReportDifferenceSnapshot>
 ): VerifiedReportDifferenceBinding {
+  requireVerifiedDifferenceDecision(decision);
+  requireExactTrustedRepositoryRead(
+    repositoryRead,
+    "PERSISTED_REPORT_DIFFERENCE",
+    persisted
+  );
   requireNonEmpty(persisted.id, "persisted difference id");
   if (!decisionMatchesCandidate(decision, persisted.candidate)) {
     throw new Error(
@@ -2109,8 +2554,19 @@ export function bindApprovedCorrespondenceTarget(input: {
   item: CorrespondenceItemBindingSnapshot;
   version: CorrespondenceVersionBindingSnapshot;
   membership: CorrespondenceVersionItemBindingSnapshot;
+  repositoryRead: VerifiedProgressRepositoryRead<{
+    assertion: ConsumerAssertionBindingSnapshot;
+    item: CorrespondenceItemBindingSnapshot;
+    version: CorrespondenceVersionBindingSnapshot;
+    membership: CorrespondenceVersionItemBindingSnapshot;
+  }>;
 }): VerifiedApprovedCorrespondenceTarget {
-  const { assertion, item, version, membership } = input;
+  const { assertion, item, version, membership, repositoryRead } = input;
+  requireExactTrustedRepositoryRead(
+    repositoryRead,
+    "APPROVED_CORRESPONDENCE_CHAIN",
+    { assertion, item, version, membership }
+  );
   requireScope(assertion, item, "correspondence assertion/item binding");
   requireScope(assertion, version, "correspondence assertion/version binding");
   requireScope(assertion, membership, "correspondence assertion/membership binding");
@@ -2152,6 +2608,7 @@ export function bindApprovedCorrespondenceTarget(input: {
       "approved target rows do not form one exact correspondence chain"
     );
   }
+  requireStrictIsoInstant(assertion.confirmedAt, "consumer assertion confirmedAt");
   for (const [field, value] of Object.entries({
     tenantId: assertion.tenantId,
     consumerId: assertion.consumerId,
@@ -2197,8 +2654,14 @@ export function bindHumanOutcomeConfirmation(input: {
   snapshot: HumanOutcomeConfirmationSnapshot;
   difference: VerifiedReportDifferenceBinding;
   target: VerifiedApprovedCorrespondenceTarget;
+  repositoryRead: VerifiedProgressRepositoryRead<HumanOutcomeConfirmationSnapshot>;
 }): VerifiedHumanOutcomeConfirmation {
-  const { snapshot, difference, target } = input;
+  const { snapshot, difference, target, repositoryRead } = input;
+  requireExactTrustedRepositoryRead(
+    repositoryRead,
+    "HUMAN_OUTCOME_CONFIRMATION",
+    snapshot
+  );
   requireScope(difference.decision, snapshot, "human outcome confirmation");
   if (
     (snapshot.confirmedState !== "CORRECTED" &&
@@ -2216,7 +2679,7 @@ export function bindHumanOutcomeConfirmation(input: {
   }
   requireNonEmpty(snapshot.id, "human confirmation id");
   requireNonEmpty(snapshot.confirmedByActorId, "human confirmation actor");
-  requireNonEmpty(snapshot.confirmedAt, "human confirmation timestamp");
+  requireStrictIsoInstant(snapshot.confirmedAt, "human confirmation confirmedAt");
   const confirmation = Object.freeze({ ...snapshot });
   const binding: VerifiedHumanOutcomeConfirmation = Object.freeze({
     confirmation,
@@ -2255,7 +2718,7 @@ export function determineDisputeOutcome(
   if (!SHA_256.test(input.integritySha256)) {
     throw new Error("outcome integritySha256 must be a SHA-256 hex digest");
   }
-  requireNonEmpty(input.decidedAt, "system outcome decision timestamp");
+  requireStrictIsoInstant(input.decidedAt, "system outcome decidedAt");
   validateAppendOnlyVersion(
     input.version,
     input.supersedesOutcomeId,

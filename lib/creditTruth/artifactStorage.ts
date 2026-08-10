@@ -8,10 +8,11 @@ import { createHash } from "node:crypto";
  * persist provider binding fields only through the encrypted Artifact envelope.
  */
 
-export const ARTIFACT_STORAGE_CONTRACT_VERSION = "artifact-storage-v1" as const;
+export const ARTIFACT_STORAGE_CONTRACT_VERSION = "artifact-storage-v1.1" as const;
 export const MAX_ARTIFACT_READ_GRANT_SECONDS = 300 as const;
 export const MAX_ARTIFACT_ERASURE_DECISION_SECONDS = 30 as const;
 export const MAX_ARTIFACT_BYTES = 50 * 1024 * 1024;
+export const MAX_ARTIFACT_AUTHORITY_MEMBERS = 256 as const;
 
 const VERIFIED_ARTIFACT_CAPABILITY = Symbol("verified-artifact-capability");
 const VERIFIED_ARTIFACT_SOURCE = Symbol("verified-artifact-source");
@@ -81,6 +82,32 @@ export interface VerifiedArtifactCapability extends AuthorizedArtifactCapability
 }
 
 export type ArtifactContentKind = "PDF" | "PNG" | "JPEG" | "TIFF";
+export type ArtifactBureau = "EQUIFAX" | "EXPERIAN" | "TRANSUNION";
+
+export interface ArtifactRecipientAuthority {
+  readonly recipientId: string;
+  readonly recipientKind: "CRA" | "NON_CRA";
+  readonly bureau: ArtifactBureau | null;
+}
+
+export interface ArtifactAuthorityMember {
+  readonly kind: "CORRESPONDENCE_VERSION" | "ENCLOSURE";
+  readonly memberId: string;
+  readonly ordinal: number;
+  readonly sha256: string;
+}
+
+/**
+ * Value-free domain authority that must survive provider persistence exactly.
+ * The member IDs identify immutable correspondence/enclosure versions; their
+ * ordered digest prevents a successful storage response from blessing a
+ * substituted recipient, bureau, or membership set.
+ */
+export interface ArtifactAuthorityManifest {
+  readonly recipient: ArtifactRecipientAuthority;
+  readonly members: readonly ArtifactAuthorityMember[];
+  readonly membershipSha256: string;
+}
 
 export interface ArtifactSourceBinding {
   readonly kind: "APPROVED_CANONICAL" | "APPROVED_ENCLOSURE" | "INGESTED_RESPONSE";
@@ -117,6 +144,7 @@ export interface ImmutableArtifactWriteRequest {
   readonly mimeType: string;
   readonly idempotencyKey: string;
   readonly sourceBinding: VerifiedArtifactSourceBinding;
+  readonly authorityManifest: ArtifactAuthorityManifest;
   readonly writeMode: "CREATE_EXACT_VERSION_ONLY";
   readonly immutability: "REQUIRED";
   readonly serverSideEncryption: "REQUIRED";
@@ -147,9 +175,24 @@ export interface StoredArtifactObject {
   readonly contentKind: ArtifactContentKind;
   readonly mimeType: string;
   readonly sourceBindingSha256: string;
+  readonly authorityManifestSha256: string;
   readonly encryption: ArtifactEncryptionReceipt;
   readonly writeDisposition: "CREATED" | "IDEMPOTENT_REPLAY";
   readonly immutable: true;
+}
+
+export interface ImmutableArtifactReadbackRequest {
+  readonly contractVersion: typeof ARTIFACT_STORAGE_CONTRACT_VERSION;
+  readonly capability: VerifiedArtifactCapability;
+  readonly object: StoredArtifactObject;
+  readonly expectedAuthorityManifestSha256: string;
+}
+
+export interface ImmutableArtifactReadbackResult {
+  readonly object: StoredArtifactObject;
+  readonly authorityManifest: ArtifactAuthorityManifest;
+  readonly content: Uint8Array;
+  readonly readAt: string;
 }
 
 export interface ArtifactReadGrantRequest {
@@ -216,8 +259,7 @@ export interface ArtifactIntegrityRequest {
   readonly object: StoredArtifactObject;
 }
 
-export interface ArtifactIntegrityResult {
-  readonly matches: boolean;
+interface ArtifactIntegrityResultIdentity {
   readonly providerKey: string;
   readonly providerObjectVersion: string;
   readonly objectBindingSha256: string;
@@ -225,6 +267,29 @@ export interface ArtifactIntegrityResult {
   readonly observedByteLength: number;
   readonly verifiedAt: string;
 }
+
+export interface ArtifactIntegrityVerifiedResult extends ArtifactIntegrityResultIdentity {
+  readonly kind: "ARTIFACT_INTEGRITY_VERIFIED";
+}
+
+export type ArtifactIntegrityFailureCode =
+  | "DIGEST_MISMATCH"
+  | "BYTE_LENGTH_MISMATCH"
+  | "DIGEST_AND_BYTE_LENGTH_MISMATCH";
+
+export interface ArtifactIntegrityFailureResult extends ArtifactIntegrityResultIdentity {
+  readonly kind: "ARTIFACT_INTEGRITY_FAILURE";
+  readonly failure: {
+    readonly code: ArtifactIntegrityFailureCode;
+  };
+}
+
+/**
+ * Integrity failure is deliberately not a boolean business-negative. Callers
+ * must branch on the discriminant and cannot type it as Clean, absent,
+ * unknown, uncertain, deleted, unsupported, or not-evaluated.
+ */
+export type ArtifactIntegrityResult = ArtifactIntegrityVerifiedResult | ArtifactIntegrityFailureResult;
 
 export interface ArtifactErasureEligibility {
   readonly retentionDecision: "ERASURE_ELIGIBLE";
@@ -287,6 +352,7 @@ export interface ArtifactTombstoneResult {
 export interface ArtifactStorageProvider {
   readonly providerKey: string;
   putImmutable(request: ImmutableArtifactWriteRequest): Promise<StoredArtifactObject>;
+  readBackImmutable(request: ImmutableArtifactReadbackRequest): Promise<ImmutableArtifactReadbackResult>;
   issueReadGrant(request: ArtifactReadGrantRequest): Promise<ArtifactReadGrant>;
   redeemReadGrantAtomically(request: ArtifactReadRedemptionRequest): Promise<ArtifactReadRedemptionResult>;
   verifyIntegrity(request: ArtifactIntegrityRequest): Promise<ArtifactIntegrityResult>;
@@ -310,6 +376,7 @@ export type ArtifactStorageContractErrorCode =
   | "INVALID_MIME_TYPE"
   | "INVALID_IDEMPOTENCY_KEY"
   | "INVALID_SOURCE_BINDING"
+  | "INVALID_AUTHORITY_MANIFEST"
   | "CREATE_ONLY_REQUIRED"
   | "INVALID_AAD_VERSION"
   | "IMMUTABILITY_REQUIRED"
@@ -320,6 +387,9 @@ export type ArtifactStorageContractErrorCode =
   | "PUBLIC_URL_FORBIDDEN"
   | "INVALID_ENCRYPTION_RECEIPT"
   | "INVALID_STORED_OBJECT"
+  | "INVALID_PROVIDER_ADAPTER"
+  | "INVALID_POST_WRITE_READBACK"
+  | "MALFORMED_ARTIFACT_INPUT"
   | "INVALID_GRANT_TTL"
   | "INVALID_GRANT"
   | "SINGLE_USE_REQUIRED"
@@ -338,6 +408,21 @@ const PROTOCOL_RELATIVE_URI = /^[\\/]{2}/;
 const ASCII_CONTROL = /[\u0000-\u001f\u007f]/;
 const READ_PURPOSES = ["PREVIEW", "DOWNLOAD", "PRINT", "FULFILLMENT", "EXPORT"] as const;
 const APPROVED_ENCRYPTION_ALGORITHMS = ["AES-256-GCM", "PROVIDER-SSE-KMS"] as const;
+const ARTIFACT_BUREAUS = ["EQUIFAX", "EXPERIAN", "TRANSUNION"] as const;
+const ARTIFACT_PURPOSES: readonly ArtifactAccessPurpose[] = [
+  "STORE_CANONICAL",
+  "STORE_ENCLOSURE",
+  "STORE_RESPONSE",
+  "PREVIEW",
+  "DOWNLOAD",
+  "PRINT",
+  "FULFILLMENT",
+  "EXPORT",
+  "INTEGRITY_VERIFY",
+  "ERASURE",
+];
+const MAX_ARTIFACT_MACHINE_STRING_LENGTH = 512;
+const ISO_INSTANT = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,9}))?(Z|([+-])(\d{2}):(\d{2}))$/;
 const MIME_BY_KIND: Readonly<Record<ArtifactContentKind, string>> = Object.freeze({
   PDF: "application/pdf",
   PNG: "image/png",
@@ -345,28 +430,94 @@ const MIME_BY_KIND: Readonly<Record<ArtifactContentKind, string>> = Object.freez
   TIFF: "image/tiff",
 });
 
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
+}
+
+function hasExactKeys(value: unknown, expectedKeys: readonly string[]): value is Record<string, unknown> {
+  if (!isPlainRecord(value)) return false;
+  const actualKeys = Object.keys(value);
+  return actualKeys.length === expectedKeys.length && expectedKeys.every((key) => actualKeys.includes(key));
+}
+
 function nonEmpty(value: unknown): value is string {
-  return typeof value === "string" && value.trim().length > 0;
-}
-
-function validIsoInstant(value: unknown): boolean {
-  return typeof value === "string" && Number.isFinite(Date.parse(value));
-}
-
-function validScope(scope: ArtifactStorageScope): boolean {
   return (
+    typeof value === "string" &&
+    value.length <= MAX_ARTIFACT_MACHINE_STRING_LENGTH &&
+    value.trim().length > 0
+  );
+}
+
+function daysInMonth(year: number, month: number): number {
+  if (month === 2) {
+    const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+    return leap ? 29 : 28;
+  }
+  return [4, 6, 9, 11].includes(month) ? 30 : 31;
+}
+
+/** Strict RFC-3339-style instant: a real calendar value with an explicit zone. */
+export function isStrictIsoInstant(value: unknown): value is string {
+  if (typeof value !== "string") return false;
+  const match = ISO_INSTANT.exec(value);
+  if (!match) return false;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const hour = Number(match[4]);
+  const minute = Number(match[5]);
+  const second = Number(match[6]);
+  const offsetHour = match[10] === undefined ? 0 : Number(match[10]);
+  const offsetMinute = match[11] === undefined ? 0 : Number(match[11]);
+  if (
+    year < 1 ||
+    month < 1 ||
+    month > 12 ||
+    day < 1 ||
+    day > daysInMonth(year, month) ||
+    hour > 23 ||
+    minute > 59 ||
+    second > 59 ||
+    offsetHour > 14 ||
+    offsetMinute > 59 ||
+    (offsetHour === 14 && offsetMinute !== 0)
+  ) {
+    return false;
+  }
+  // RFC 3339's -00:00 means "unknown local offset", not a proven instant.
+  if (match[9] === "-" && offsetHour === 0 && offsetMinute === 0) return false;
+  return Number.isFinite(Date.parse(value));
+}
+
+function strictInstantMs(value: unknown): number | null {
+  return isStrictIsoInstant(value) ? Date.parse(value) : null;
+}
+
+function validNow(now: Date): boolean {
+  return now instanceof Date && Number.isFinite(now.getTime());
+}
+
+const SCOPE_KEYS = ["tenantId", "consumerId", "reportVersionId", "caseId", "artifactId", "artifactVersion"] as const;
+
+function validScope(scope: unknown): scope is ArtifactStorageScope {
+  return (
+    hasExactKeys(scope, SCOPE_KEYS) &&
     nonEmpty(scope.tenantId) &&
     nonEmpty(scope.consumerId) &&
     nonEmpty(scope.reportVersionId) &&
     nonEmpty(scope.caseId) &&
     nonEmpty(scope.artifactId) &&
     Number.isSafeInteger(scope.artifactVersion) &&
-    scope.artifactVersion > 0
+    (scope.artifactVersion as number) > 0
   );
 }
 
-function sameScope(left: ArtifactStorageScope, right: ArtifactStorageScope): boolean {
+function sameScope(left: unknown, right: unknown): boolean {
   return (
+    validScope(left) &&
+    validScope(right) &&
     left.tenantId === right.tenantId &&
     left.consumerId === right.consumerId &&
     left.reportVersionId === right.reportVersionId &&
@@ -384,6 +535,14 @@ function immutableScopeSnapshot(scope: ArtifactStorageScope): ArtifactStorageSco
     caseId: scope.caseId,
     artifactId: scope.artifactId,
     artifactVersion: scope.artifactVersion,
+  });
+}
+
+function immutableAuthorityManifestSnapshot(manifest: ArtifactAuthorityManifest): ArtifactAuthorityManifest {
+  return Object.freeze({
+    recipient: Object.freeze({ ...manifest.recipient }),
+    members: Object.freeze(manifest.members.map((member) => Object.freeze({ ...member }))),
+    membershipSha256: manifest.membershipSha256,
   });
 }
 
@@ -462,49 +621,77 @@ function erasureBindingSha256(eligibility: ArtifactErasureEligibility): string {
   );
 }
 
-function validAuthorizedCapabilityMetadata(
-  capability: AuthorizedArtifactCapability,
+const AUTHORIZED_CAPABILITY_KEYS = [
+  "scope",
+  "purpose",
+  "actorId",
+  "authorizationDecisionId",
+  "issuedAt",
+  "expiresAt",
+] as const;
+const VERIFIED_CAPABILITY_KEYS = [...AUTHORIZED_CAPABILITY_KEYS, "decisionSha256"] as const;
+
+function validAuthorizedCapabilityFields(
+  capability: Record<string, unknown>,
   scope: ArtifactStorageScope,
   now: Date,
   allowedPurposes: readonly ArtifactAccessPurpose[]
 ): boolean {
-  const issuedAt = Date.parse(capability.issuedAt);
-  const expiresAt = Date.parse(capability.expiresAt);
+  const issuedAt = strictInstantMs(capability.issuedAt);
+  const expiresAt = strictInstantMs(capability.expiresAt);
   return (
     validScope(capability.scope) &&
     sameScope(capability.scope, scope) &&
     nonEmpty(capability.actorId) &&
     nonEmpty(capability.authorizationDecisionId) &&
-    Number.isFinite(issuedAt) &&
-    Number.isFinite(expiresAt) &&
+    typeof capability.purpose === "string" &&
+    ARTIFACT_PURPOSES.includes(capability.purpose as ArtifactAccessPurpose) &&
+    issuedAt !== null &&
+    expiresAt !== null &&
+    validNow(now) &&
     issuedAt <= now.getTime() &&
     expiresAt > issuedAt &&
     expiresAt > now.getTime() &&
-    allowedPurposes.includes(capability.purpose)
+    allowedPurposes.includes(capability.purpose as ArtifactAccessPurpose)
+  );
+}
+
+function validAuthorizedCapabilityMetadata(
+  capability: unknown,
+  scope: ArtifactStorageScope,
+  now: Date,
+  allowedPurposes: readonly ArtifactAccessPurpose[]
+): capability is AuthorizedArtifactCapability {
+  return (
+    hasExactKeys(capability, AUTHORIZED_CAPABILITY_KEYS) &&
+    validAuthorizedCapabilityFields(capability, scope, now, allowedPurposes)
   );
 }
 
 function validCapability(
-  capability: VerifiedArtifactCapability,
+  capability: unknown,
   scope: ArtifactStorageScope,
   now: Date,
   allowedPurposes: readonly ArtifactAccessPurpose[]
-): boolean {
+): capability is VerifiedArtifactCapability {
   if (
+    !hasExactKeys(capability, VERIFIED_CAPABILITY_KEYS) ||
     !verifiedCapabilityIdentities.has(capability) ||
-    capability[VERIFIED_ARTIFACT_CAPABILITY] !== true ||
+    (capability as unknown as VerifiedArtifactCapability)[VERIFIED_ARTIFACT_CAPABILITY] !== true ||
     !capability.scope ||
     !Object.isFrozen(capability) ||
     !Object.isFrozen(capability.scope)
   ) {
     return false;
   }
-  const currentBindingDigest = capabilityBindingSha256(capability);
+  const verified = capability as unknown as VerifiedArtifactCapability;
+  const currentBindingDigest = capabilityBindingSha256(verified);
   return (
+    typeof capability.decisionSha256 === "string" &&
     SHA256.test(capability.decisionSha256) &&
     capability.decisionSha256 === currentBindingDigest &&
     verifiedCapabilityBindingDigests.get(capability) === currentBindingDigest &&
-    validAuthorizedCapabilityMetadata(capability, scope, now, allowedPurposes)
+    validAuthorizedCapabilityFields(capability, scope, now, allowedPurposes)
   );
 }
 
@@ -521,33 +708,49 @@ function sha256Utf8(value: string): string {
   return createHash("sha256").update(value, "utf8").digest("hex");
 }
 
-function validSourceBindingShape(binding: ArtifactSourceBinding): boolean {
+const SOURCE_BINDING_KEYS = ["kind", "decisionId", "sourceVersionId", "sourceInputSha256", "policyVersion"] as const;
+const VERIFIED_SOURCE_BINDING_KEYS = [
+  ...SOURCE_BINDING_KEYS,
+  "authorizedScope",
+  "authorizedPurpose",
+  "verificationSha256",
+] as const;
+
+function validSourceBindingFields(binding: Record<string, unknown>): boolean {
   return (
+    typeof binding.kind === "string" &&
     ["APPROVED_CANONICAL", "APPROVED_ENCLOSURE", "INGESTED_RESPONSE"].includes(binding.kind) &&
     nonEmpty(binding.decisionId) &&
     nonEmpty(binding.sourceVersionId) &&
+    typeof binding.sourceInputSha256 === "string" &&
     SHA256.test(binding.sourceInputSha256) &&
     nonEmpty(binding.policyVersion)
   );
 }
 
+function validSourceBindingShape(binding: unknown): binding is ArtifactSourceBinding {
+  return hasExactKeys(binding, SOURCE_BINDING_KEYS) && validSourceBindingFields(binding);
+}
+
 function validVerifiedSourceBinding(
-  binding: VerifiedArtifactSourceBinding,
+  binding: unknown,
   expectedScope: ArtifactStorageScope,
   expectedPurpose: ArtifactAccessPurpose
-): boolean {
+): binding is VerifiedArtifactSourceBinding {
   if (
+    !hasExactKeys(binding, VERIFIED_SOURCE_BINDING_KEYS) ||
+    !validSourceBindingFields(binding) ||
     !verifiedSourceIdentities.has(binding) ||
-    binding[VERIFIED_ARTIFACT_SOURCE] !== true ||
+    (binding as unknown as VerifiedArtifactSourceBinding)[VERIFIED_ARTIFACT_SOURCE] !== true ||
     !binding.authorizedScope ||
     !Object.isFrozen(binding) ||
     !Object.isFrozen(binding.authorizedScope)
   ) {
     return false;
   }
-  const currentBindingDigest = sourceVerificationSha256(binding, binding.authorizedScope, binding.authorizedPurpose);
+  const verified = binding as unknown as VerifiedArtifactSourceBinding;
+  const currentBindingDigest = sourceVerificationSha256(verified, verified.authorizedScope, verified.authorizedPurpose);
   return (
-    validSourceBindingShape(binding) &&
     sameScope(binding.authorizedScope, expectedScope) &&
     binding.authorizedPurpose === expectedPurpose &&
     binding.verificationSha256 === currentBindingDigest &&
@@ -555,40 +758,127 @@ function validVerifiedSourceBinding(
   );
 }
 
-function validVerifiedGrant(grant: VerifiedArtifactReadGrant): boolean {
+const RECIPIENT_AUTHORITY_KEYS = ["recipientId", "recipientKind", "bureau"] as const;
+const AUTHORITY_MEMBER_KEYS = ["kind", "memberId", "ordinal", "sha256"] as const;
+const AUTHORITY_MANIFEST_KEYS = ["recipient", "members", "membershipSha256"] as const;
+
+function validRecipientAuthority(value: unknown): value is ArtifactRecipientAuthority {
+  if (!hasExactKeys(value, RECIPIENT_AUTHORITY_KEYS) || !nonEmpty(value.recipientId)) return false;
+  if (value.recipientKind !== "CRA" && value.recipientKind !== "NON_CRA") return false;
+  if (value.recipientKind === "CRA") {
+    return typeof value.bureau === "string" && ARTIFACT_BUREAUS.includes(value.bureau as ArtifactBureau);
+  }
+  return value.bureau === null;
+}
+
+function validAuthorityMember(value: unknown): value is ArtifactAuthorityMember {
+  return (
+    hasExactKeys(value, AUTHORITY_MEMBER_KEYS) &&
+    (value.kind === "CORRESPONDENCE_VERSION" || value.kind === "ENCLOSURE") &&
+    nonEmpty(value.memberId) &&
+    Number.isSafeInteger(value.ordinal) &&
+    (value.ordinal as number) >= 0 &&
+    typeof value.sha256 === "string" &&
+    SHA256.test(value.sha256)
+  );
+}
+
+function validAuthorityManifest(value: unknown): value is ArtifactAuthorityManifest {
   if (
+    !hasExactKeys(value, AUTHORITY_MANIFEST_KEYS) ||
+    !validRecipientAuthority(value.recipient) ||
+    !Array.isArray(value.members) ||
+    value.members.length < 1 ||
+    value.members.length > MAX_ARTIFACT_AUTHORITY_MEMBERS ||
+    typeof value.membershipSha256 !== "string" ||
+    !SHA256.test(value.membershipSha256)
+  ) {
+    return false;
+  }
+  for (let index = 0; index < value.members.length; index += 1) {
+    if (!Object.hasOwn(value.members, index) || !validAuthorityMember(value.members[index])) return false;
+  }
+  const memberIds = new Set<string>();
+  const ordinals = new Set<number>();
+  for (const member of value.members) {
+    if (memberIds.has(member.memberId) || ordinals.has(member.ordinal)) return false;
+    memberIds.add(member.memberId);
+    ordinals.add(member.ordinal);
+  }
+  if (value.members.some((member, index) => member.ordinal !== index)) return false;
+  return value.membershipSha256 === computeArtifactMembershipSha256(value.members);
+}
+
+const READ_GRANT_KEYS = [
+  "brokerGrantId",
+  "brokerGrantToken",
+  "tokenFormat",
+  "scope",
+  "purpose",
+  "providerKey",
+  "providerObjectVersion",
+  "objectBindingSha256",
+  "expectedSha256",
+  "expectedByteLength",
+  "issuedAt",
+  "expiresAt",
+  "singleUse",
+] as const;
+
+function validVerifiedGrant(grant: unknown): grant is VerifiedArtifactReadGrant {
+  if (
+    !hasExactKeys(grant, READ_GRANT_KEYS) ||
     !verifiedGrantIdentities.has(grant) ||
-    grant[VERIFIED_ARTIFACT_GRANT] !== true ||
+    (grant as unknown as VerifiedArtifactReadGrant)[VERIFIED_ARTIFACT_GRANT] !== true ||
     !grant.scope ||
     !Object.isFrozen(grant) ||
     !Object.isFrozen(grant.scope)
   ) {
     return false;
   }
-  const currentBindingDigest = grantBindingSha256(grant);
+  const currentBindingDigest = grantBindingSha256(grant as unknown as ArtifactReadGrant);
   return verifiedGrantBindingDigests.get(grant) === currentBindingDigest;
 }
 
+const ERASURE_ELIGIBILITY_KEYS = [
+  "retentionDecision",
+  "legalHoldStatus",
+  "replicaDisposition",
+  "backupDisposition",
+  "decisionId",
+  "decisionSha256",
+  "retentionPolicyVersion",
+  "issuedAt",
+  "expiresAt",
+  "scope",
+  "providerObjectVersion",
+  "objectBindingSha256",
+  "objectSha256",
+] as const;
+
 function validVerifiedErasureEligibility(
-  eligibility: VerifiedArtifactErasureEligibility,
+  eligibility: unknown,
   now: Date
-): boolean {
+): eligibility is VerifiedArtifactErasureEligibility {
   if (
+    !hasExactKeys(eligibility, ERASURE_ELIGIBILITY_KEYS) ||
     !verifiedErasureIdentities.has(eligibility) ||
-    eligibility[VERIFIED_ERASURE_ELIGIBILITY] !== true ||
+    (eligibility as unknown as VerifiedArtifactErasureEligibility)[VERIFIED_ERASURE_ELIGIBILITY] !== true ||
     !eligibility.scope ||
     !Object.isFrozen(eligibility) ||
     !Object.isFrozen(eligibility.scope)
   ) {
     return false;
   }
-  const currentBindingDigest = erasureBindingSha256(eligibility);
-  const issuedAt = Date.parse(eligibility.issuedAt);
-  const expiresAt = Date.parse(eligibility.expiresAt);
+  const verified = eligibility as unknown as VerifiedArtifactErasureEligibility;
+  const currentBindingDigest = erasureBindingSha256(verified);
+  const issuedAt = strictInstantMs(eligibility.issuedAt);
+  const expiresAt = strictInstantMs(eligibility.expiresAt);
   return (
     verifiedErasureBindingDigests.get(eligibility) === currentBindingDigest &&
-    Number.isFinite(issuedAt) &&
-    Number.isFinite(expiresAt) &&
+    issuedAt !== null &&
+    expiresAt !== null &&
+    validNow(now) &&
     issuedAt <= now.getTime() &&
     expiresAt > now.getTime() &&
     expiresAt > issuedAt &&
@@ -643,6 +933,24 @@ export function computeArtifactSourceBindingSha256(binding: ArtifactSourceBindin
   );
 }
 
+export function computeArtifactMembershipSha256(members: readonly ArtifactAuthorityMember[]): string {
+  return sha256Utf8(
+    JSON.stringify(members.map((member) => [member.kind, member.memberId, member.ordinal, member.sha256]))
+  );
+}
+
+export function computeArtifactAuthorityManifestSha256(manifest: ArtifactAuthorityManifest): string {
+  return sha256Utf8(
+    JSON.stringify([
+      manifest.recipient.recipientId,
+      manifest.recipient.recipientKind,
+      manifest.recipient.bureau,
+      manifest.membershipSha256,
+      manifest.members.map((member) => [member.kind, member.memberId, member.ordinal, member.sha256]),
+    ])
+  );
+}
+
 export function computeStoredArtifactObjectBindingSha256(object: StoredArtifactObject): string {
   return sha256Utf8(
     JSON.stringify([
@@ -655,6 +963,7 @@ export function computeStoredArtifactObjectBindingSha256(object: StoredArtifactO
       object.contentKind,
       object.mimeType,
       object.sourceBindingSha256,
+      object.authorityManifestSha256,
       object.encryption.serverSideEncrypted,
       object.encryption.algorithm,
       sha256Utf8(object.encryption.keyReferenceOpaque),
@@ -687,6 +996,18 @@ export async function verifyArtifactCapability(
   now: Date,
   verifier: ArtifactAuthorizationDecisionVerifier
 ): Promise<VerifiedArtifactCapability | null> {
+  if (
+    !validScope(expectedScope) ||
+    !Array.isArray(allowedPurposes) ||
+    allowedPurposes.length < 1 ||
+    allowedPurposes.length > ARTIFACT_PURPOSES.length ||
+    !allowedPurposes.every((purpose) => ARTIFACT_PURPOSES.includes(purpose)) ||
+    new Set(allowedPurposes).size !== allowedPurposes.length ||
+    !validAuthorizedCapabilityMetadata(capability, expectedScope, now, allowedPurposes) ||
+    typeof verifier?.verifyDecision !== "function"
+  ) {
+    return null;
+  }
   const capabilitySnapshot = Object.freeze({
     ...capability,
     scope: immutableScopeSnapshot(capability.scope),
@@ -729,6 +1050,14 @@ export async function verifyArtifactSourceBinding(
   purpose: ArtifactAccessPurpose,
   verifier: ArtifactSourceDecisionVerifier
 ): Promise<VerifiedArtifactSourceBinding | null> {
+  if (
+    !validSourceBindingShape(sourceBinding) ||
+    !validScope(scope) ||
+    !ARTIFACT_PURPOSES.includes(purpose) ||
+    typeof verifier?.verifyDecision !== "function"
+  ) {
+    return null;
+  }
   const sourceBindingSnapshot = Object.freeze({ ...sourceBinding });
   const scopeSnapshot = immutableScopeSnapshot(scope);
   if (
@@ -757,43 +1086,108 @@ export async function verifyArtifactSourceBinding(
   return Object.freeze(verified);
 }
 
-function storedObjectErrors(object: StoredArtifactObject, expectedScope?: ArtifactStorageScope): ArtifactStorageContractErrorCode[] {
+const ENCRYPTION_RECEIPT_KEYS = [
+  "serverSideEncrypted",
+  "algorithm",
+  "keyReferenceOpaque",
+  "keyVersion",
+  "aadVersion",
+  "encryptionContextSha256",
+] as const;
+const STORED_OBJECT_KEYS = [
+  "scope",
+  "providerKey",
+  "providerObjectVersion",
+  "providerLocatorOpaque",
+  "sha256",
+  "byteLength",
+  "contentKind",
+  "mimeType",
+  "sourceBindingSha256",
+  "authorityManifestSha256",
+  "encryption",
+  "writeDisposition",
+  "immutable",
+] as const;
+
+function validEncryptionReceipt(value: unknown, scope: ArtifactStorageScope): value is ArtifactEncryptionReceipt {
+  return (
+    hasExactKeys(value, ENCRYPTION_RECEIPT_KEYS) &&
+    value.serverSideEncrypted === true &&
+    typeof value.algorithm === "string" &&
+    APPROVED_ENCRYPTION_ALGORITHMS.includes(value.algorithm as (typeof APPROVED_ENCRYPTION_ALGORITHMS)[number]) &&
+    validOpaqueNotUrl(value.keyReferenceOpaque) &&
+    nonEmpty(value.keyVersion) &&
+    nonEmpty(value.aadVersion) &&
+    value.encryptionContextSha256 === computeArtifactScopeSha256(scope)
+  );
+}
+
+function storedObjectErrors(object: unknown, expectedScope?: ArtifactStorageScope): ArtifactStorageContractErrorCode[] {
   const errors: ArtifactStorageContractErrorCode[] = [];
+  if (!hasExactKeys(object, STORED_OBJECT_KEYS)) return ["MALFORMED_ARTIFACT_INPUT", "INVALID_STORED_OBJECT"];
   if (!validScope(object.scope) || (expectedScope && !sameScope(object.scope, expectedScope))) errors.push("INVALID_SCOPE");
   if (!nonEmpty(object.providerKey)) errors.push("INVALID_PROVIDER_KEY");
   if (!nonEmpty(object.providerObjectVersion)) errors.push("INVALID_OBJECT_VERSION");
   if (!nonEmpty(object.providerLocatorOpaque)) errors.push("INVALID_PROVIDER_LOCATOR");
   else if (!validOpaqueNotUrl(object.providerLocatorOpaque)) errors.push("PUBLIC_URL_FORBIDDEN");
-  if (!SHA256.test(object.sha256)) errors.push("INVALID_SHA256");
-  if (!Number.isSafeInteger(object.byteLength) || object.byteLength < 1) errors.push("INVALID_BYTE_LENGTH");
-  if (!nonEmpty(object.mimeType) || MIME_BY_KIND[object.contentKind] !== object.mimeType) errors.push("INVALID_MIME_TYPE");
-  if (!SHA256.test(object.sourceBindingSha256)) errors.push("INVALID_SOURCE_BINDING");
+  if (typeof object.sha256 !== "string" || !SHA256.test(object.sha256)) errors.push("INVALID_SHA256");
+  if (!Number.isSafeInteger(object.byteLength) || (object.byteLength as number) < 1) errors.push("INVALID_BYTE_LENGTH");
+  if (
+    typeof object.contentKind !== "string" ||
+    !nonEmpty(object.mimeType) ||
+    MIME_BY_KIND[object.contentKind as ArtifactContentKind] !== object.mimeType
+  ) errors.push("INVALID_MIME_TYPE");
+  if (typeof object.sourceBindingSha256 !== "string" || !SHA256.test(object.sourceBindingSha256)) {
+    errors.push("INVALID_SOURCE_BINDING");
+  }
+  if (typeof object.authorityManifestSha256 !== "string" || !SHA256.test(object.authorityManifestSha256)) {
+    errors.push("INVALID_AUTHORITY_MANIFEST");
+  }
   if (
     object.immutable !== true ||
-    !["CREATED", "IDEMPOTENT_REPLAY"].includes(object.writeDisposition) ||
-    object.encryption?.serverSideEncrypted !== true ||
-    !APPROVED_ENCRYPTION_ALGORITHMS.includes(
-      object.encryption.algorithm as (typeof APPROVED_ENCRYPTION_ALGORITHMS)[number]
-    ) ||
-    !validOpaqueNotUrl(object.encryption.keyReferenceOpaque) ||
-    !nonEmpty(object.encryption.keyVersion) ||
-    !nonEmpty(object.encryption.aadVersion) ||
-    object.encryption.encryptionContextSha256 !== computeArtifactScopeSha256(object.scope)
+    (object.writeDisposition !== "CREATED" && object.writeDisposition !== "IDEMPOTENT_REPLAY") ||
+    !validScope(object.scope) ||
+    !validEncryptionReceipt(object.encryption, object.scope)
   ) {
     errors.push("INVALID_ENCRYPTION_RECEIPT");
   }
   return errors;
 }
 
+function validStoredObjectShape(object: unknown, expectedScope?: ArtifactStorageScope): object is StoredArtifactObject {
+  return storedObjectErrors(object, expectedScope).length === 0;
+}
+
 export function computeArtifactSha256(content: Uint8Array): string {
   return createHash("sha256").update(content).digest("hex");
 }
+
+const IMMUTABLE_WRITE_KEYS = [
+  "contractVersion",
+  "selectedProviderKey",
+  "scope",
+  "capability",
+  "content",
+  "sha256",
+  "byteLength",
+  "contentKind",
+  "mimeType",
+  "idempotencyKey",
+  "sourceBinding",
+  "authorityManifest",
+  "writeMode",
+  "immutability",
+  "serverSideEncryption",
+  "aadVersion",
+] as const;
 
 export function validateImmutableArtifactWrite(
   request: ImmutableArtifactWriteRequest,
   now: Date
 ): ArtifactStorageContractErrorCode[] {
   const errors: ArtifactStorageContractErrorCode[] = [];
+  if (!hasExactKeys(request, IMMUTABLE_WRITE_KEYS)) return ["MALFORMED_ARTIFACT_INPUT"];
   if (request.contractVersion !== ARTIFACT_STORAGE_CONTRACT_VERSION) errors.push("INVALID_CONTRACT_VERSION");
   if (!nonEmpty(request.selectedProviderKey)) errors.push("INVALID_PROVIDER_KEY");
   if (!validScope(request.scope)) errors.push("INVALID_SCOPE");
@@ -806,24 +1200,47 @@ export function validateImmutableArtifactWrite(
   ) {
     errors.push("INVALID_CAPABILITY");
   }
-  if (!SHA256.test(request.sha256)) errors.push("INVALID_SHA256");
-  else if (computeArtifactSha256(request.content) !== request.sha256) errors.push("CONTENT_DIGEST_MISMATCH");
-  if (!Number.isSafeInteger(request.byteLength) || request.byteLength < 1) errors.push("INVALID_BYTE_LENGTH");
-  if (request.byteLength > MAX_ARTIFACT_BYTES) errors.push("CONTENT_TOO_LARGE");
-  if (request.content.byteLength !== request.byteLength) errors.push("CONTENT_LENGTH_MISMATCH");
-  if (!contentMatchesKind(request.content, request.contentKind)) errors.push("CONTENT_KIND_MISMATCH");
-  if (!nonEmpty(request.mimeType) || MIME_BY_KIND[request.contentKind] !== request.mimeType) {
+  if (typeof request.sha256 !== "string" || !SHA256.test(request.sha256)) errors.push("INVALID_SHA256");
+  else if (!(request.content instanceof Uint8Array) || computeArtifactSha256(request.content) !== request.sha256) {
+    errors.push("CONTENT_DIGEST_MISMATCH");
+  }
+  if (!Number.isSafeInteger(request.byteLength) || (request.byteLength as number) < 1) errors.push("INVALID_BYTE_LENGTH");
+  if (typeof request.byteLength === "number" && request.byteLength > MAX_ARTIFACT_BYTES) errors.push("CONTENT_TOO_LARGE");
+  if (!(request.content instanceof Uint8Array) || request.content.byteLength !== request.byteLength) {
+    errors.push("CONTENT_LENGTH_MISMATCH");
+  }
+  if (
+    !(request.content instanceof Uint8Array) ||
+    typeof request.contentKind !== "string" ||
+    !Object.hasOwn(MIME_BY_KIND, request.contentKind) ||
+    !contentMatchesKind(request.content, request.contentKind as ArtifactContentKind)
+  ) errors.push("CONTENT_KIND_MISMATCH");
+  if (
+    typeof request.contentKind !== "string" ||
+    !nonEmpty(request.mimeType) ||
+    MIME_BY_KIND[request.contentKind as ArtifactContentKind] !== request.mimeType
+  ) {
     errors.push("INVALID_MIME_TYPE");
   }
-  if (request.idempotencyKey !== computeArtifactIdempotencyKey(request.scope, request.sha256)) {
+  if (
+    !validScope(request.scope) ||
+    typeof request.sha256 !== "string" ||
+    request.idempotencyKey !== computeArtifactIdempotencyKey(request.scope, request.sha256)
+  ) {
     errors.push("INVALID_IDEMPOTENCY_KEY");
   }
   if (
+    !validCapability(request.capability, request.scope, now, [
+      "STORE_CANONICAL",
+      "STORE_ENCLOSURE",
+      "STORE_RESPONSE",
+    ]) ||
     !validVerifiedSourceBinding(request.sourceBinding, request.scope, request.capability.purpose) ||
     !sourceBindingMatchesPurpose(request.sourceBinding, request.capability.purpose)
   ) {
     errors.push("INVALID_SOURCE_BINDING");
   }
+  if (!validAuthorityManifest(request.authorityManifest)) errors.push("INVALID_AUTHORITY_MANIFEST");
   if (request.writeMode !== "CREATE_EXACT_VERSION_ONLY") errors.push("CREATE_ONLY_REQUIRED");
   if (!nonEmpty(request.aadVersion)) errors.push("INVALID_AAD_VERSION");
   if (request.immutability !== "REQUIRED") errors.push("IMMUTABILITY_REQUIRED");
@@ -836,7 +1253,16 @@ export function validateStoredArtifactObject(
   object: StoredArtifactObject,
   expectedProviderKey: string
 ): ArtifactStorageContractErrorCode[] {
+  if (!hasExactKeys(request, IMMUTABLE_WRITE_KEYS)) return ["MALFORMED_ARTIFACT_INPUT"];
   const errors = storedObjectErrors(object, request.scope);
+  if (!hasExactKeys(object, STORED_OBJECT_KEYS)) return [...new Set(errors)];
+  const sourceBindingSha256 =
+    hasExactKeys(request.sourceBinding, VERIFIED_SOURCE_BINDING_KEYS) && validSourceBindingFields(request.sourceBinding)
+      ? computeArtifactSourceBindingSha256(request.sourceBinding as unknown as ArtifactSourceBinding)
+      : null;
+  const authorityManifestSha256 = validAuthorityManifest(request.authorityManifest)
+    ? computeArtifactAuthorityManifestSha256(request.authorityManifest)
+    : null;
   if (!nonEmpty(expectedProviderKey) || object.providerKey !== expectedProviderKey) {
     errors.push("INVALID_PROVIDER_KEY");
   }
@@ -845,10 +1271,121 @@ export function validateStoredArtifactObject(
     object.byteLength !== request.byteLength ||
     object.contentKind !== request.contentKind ||
     object.mimeType !== request.mimeType ||
-    object.sourceBindingSha256 !== computeArtifactSourceBindingSha256(request.sourceBinding) ||
+    sourceBindingSha256 === null ||
+    object.sourceBindingSha256 !== sourceBindingSha256 ||
+    authorityManifestSha256 === null ||
+    object.authorityManifestSha256 !== authorityManifestSha256 ||
+    !validEncryptionReceipt(object.encryption, object.scope) ||
     object.encryption.aadVersion !== request.aadVersion
   ) {
     errors.push("INVALID_STORED_OBJECT");
+  }
+  return [...new Set(errors)];
+}
+
+const IMMUTABLE_READBACK_REQUEST_KEYS = [
+  "contractVersion",
+  "capability",
+  "object",
+  "expectedAuthorityManifestSha256",
+] as const;
+const IMMUTABLE_READBACK_RESULT_KEYS = ["object", "authorityManifest", "content", "readAt"] as const;
+
+function bytesEqual(left: Uint8Array, right: Uint8Array): boolean {
+  if (left.byteLength !== right.byteLength) return false;
+  return left.every((byte, index) => byte === right[index]);
+}
+
+function validateImmutableArtifactReadbackRequest(
+  request: unknown,
+  now: Date
+): ArtifactStorageContractErrorCode[] {
+  if (!hasExactKeys(request, IMMUTABLE_READBACK_REQUEST_KEYS)) return ["MALFORMED_ARTIFACT_INPUT"];
+  const errors: ArtifactStorageContractErrorCode[] = [];
+  if (request.contractVersion !== ARTIFACT_STORAGE_CONTRACT_VERSION) errors.push("INVALID_CONTRACT_VERSION");
+  const objectErrors = storedObjectErrors(request.object);
+  errors.push(...objectErrors);
+  if (
+    !validStoredObjectShape(request.object) ||
+    !validCapability(request.capability, request.object.scope, now, [
+      "STORE_CANONICAL",
+      "STORE_ENCLOSURE",
+      "STORE_RESPONSE",
+    ])
+  ) {
+    errors.push("INVALID_CAPABILITY");
+  }
+  if (
+    typeof request.expectedAuthorityManifestSha256 !== "string" ||
+    !SHA256.test(request.expectedAuthorityManifestSha256) ||
+    (validStoredObjectShape(request.object) &&
+      request.object.authorityManifestSha256 !== request.expectedAuthorityManifestSha256)
+  ) {
+    errors.push("INVALID_AUTHORITY_MANIFEST");
+  }
+  return [...new Set(errors)];
+}
+
+export function validateImmutableArtifactReadback(
+  writeRequest: ImmutableArtifactWriteRequest,
+  firstResult: StoredArtifactObject,
+  readback: ImmutableArtifactReadbackResult,
+  expectedProviderKey: string,
+  now: Date
+): ArtifactStorageContractErrorCode[] {
+  const errors: ArtifactStorageContractErrorCode[] = [];
+  if (!hasExactKeys(writeRequest, IMMUTABLE_WRITE_KEYS)) return ["MALFORMED_ARTIFACT_INPUT"];
+  const writeErrors = validateImmutableArtifactWrite(writeRequest, now);
+  if (writeErrors.length > 0) return [...new Set([...writeErrors, "INVALID_POST_WRITE_READBACK"] as const)];
+  if (!validStoredObjectShape(firstResult, writeRequest.scope)) {
+    return ["MALFORMED_ARTIFACT_INPUT", "INVALID_POST_WRITE_READBACK"];
+  }
+  if (!hasExactKeys(readback, IMMUTABLE_READBACK_RESULT_KEYS)) {
+    return ["MALFORMED_ARTIFACT_INPUT", "INVALID_POST_WRITE_READBACK"];
+  }
+  errors.push(...validateStoredArtifactObject(writeRequest, readback.object as StoredArtifactObject, expectedProviderKey));
+  if (!validStoredObjectShape(readback.object, writeRequest.scope)) {
+    errors.push("INVALID_POST_WRITE_READBACK");
+    return [...new Set(errors)];
+  }
+  if (
+    computeStoredArtifactObjectBindingSha256(readback.object as unknown as StoredArtifactObject) !==
+    computeStoredArtifactObjectBindingSha256(firstResult)
+  ) {
+    errors.push("INVALID_POST_WRITE_READBACK");
+  }
+  const validManifest = validAuthorityManifest(readback.authorityManifest);
+  if (
+    !validManifest ||
+    !validAuthorityManifest(writeRequest.authorityManifest) ||
+    (validManifest &&
+      computeArtifactAuthorityManifestSha256(readback.authorityManifest) !==
+        computeArtifactAuthorityManifestSha256(writeRequest.authorityManifest)) ||
+    (validManifest &&
+      computeArtifactAuthorityManifestSha256(readback.authorityManifest) !== readback.object.authorityManifestSha256)
+  ) {
+    errors.push("INVALID_AUTHORITY_MANIFEST", "INVALID_POST_WRITE_READBACK");
+  }
+  if (!(readback.content instanceof Uint8Array)) {
+    errors.push("MALFORMED_ARTIFACT_INPUT", "INVALID_POST_WRITE_READBACK");
+  } else {
+    if (readback.content.byteLength !== writeRequest.byteLength) errors.push("CONTENT_LENGTH_MISMATCH");
+    if (computeArtifactSha256(readback.content) !== writeRequest.sha256) errors.push("CONTENT_DIGEST_MISMATCH");
+    if (!bytesEqual(readback.content, writeRequest.content)) errors.push("INVALID_POST_WRITE_READBACK");
+  }
+  const readAt = strictInstantMs(readback.readAt);
+  const capabilityExpiresAt = strictInstantMs(writeRequest.capability.expiresAt);
+  if (
+    readAt === null ||
+    capabilityExpiresAt === null ||
+    !validNow(now) ||
+    readAt < now.getTime() ||
+    readAt >= capabilityExpiresAt
+  ) {
+    errors.push("INVALID_POST_WRITE_READBACK");
+  }
+  if (errors.length > 0 && !errors.includes("INVALID_POST_WRITE_READBACK")) {
+    errors.push("INVALID_POST_WRITE_READBACK");
   }
   return [...new Set(errors)];
 }
@@ -857,19 +1394,28 @@ export function validateArtifactReadGrantRequest(
   request: ArtifactReadGrantRequest,
   now: Date
 ): ArtifactStorageContractErrorCode[] {
+  const requestKeys = ["contractVersion", "capability", "object", "expiresInSeconds", "singleUse"] as const;
+  if (!hasExactKeys(request, requestKeys)) return ["MALFORMED_ARTIFACT_INPUT"];
   const errors: ArtifactStorageContractErrorCode[] = [];
   if (request.contractVersion !== ARTIFACT_STORAGE_CONTRACT_VERSION) errors.push("INVALID_CONTRACT_VERSION");
-  errors.push(...storedObjectErrors(request.object, request.capability.scope));
-  const expiresAt = Date.parse(request.capability.expiresAt);
-  if (
-    !validCapability(request.capability, request.object.scope, now, READ_PURPOSES)
-  ) {
+  const capabilityScope =
+    hasExactKeys(request.capability, VERIFIED_CAPABILITY_KEYS) && validScope(request.capability.scope)
+      ? request.capability.scope
+      : undefined;
+  errors.push(...storedObjectErrors(request.object, capabilityScope));
+  const validObject = validStoredObjectShape(request.object);
+  const validReadCapability =
+    validObject && validCapability(request.capability, request.object.scope, now, READ_PURPOSES);
+  const expiresAt = validReadCapability ? strictInstantMs(request.capability.expiresAt) : null;
+  if (!validReadCapability) {
     errors.push("INVALID_CAPABILITY");
   }
   if (
     !Number.isSafeInteger(request.expiresInSeconds) ||
-    request.expiresInSeconds < 1 ||
-    request.expiresInSeconds > MAX_ARTIFACT_READ_GRANT_SECONDS ||
+    (request.expiresInSeconds as number) < 1 ||
+    (request.expiresInSeconds as number) > MAX_ARTIFACT_READ_GRANT_SECONDS ||
+    expiresAt === null ||
+    !validNow(now) ||
     now.getTime() + request.expiresInSeconds * 1000 > expiresAt
   ) {
     errors.push("INVALID_GRANT_TTL");
@@ -883,13 +1429,21 @@ export function validateArtifactReadGrantResult(
   grant: ArtifactReadGrant,
   now: Date
 ): ArtifactStorageContractErrorCode[] {
+  const requestKeys = ["contractVersion", "capability", "object", "expiresInSeconds", "singleUse"] as const;
+  if (!hasExactKeys(request, requestKeys)) return ["MALFORMED_ARTIFACT_INPUT", "INVALID_GRANT"];
   const errors: ArtifactStorageContractErrorCode[] = [...validateArtifactReadGrantRequest(request, now)];
-  const issuedAt = Date.parse(grant.issuedAt);
-  const expiresAt = Date.parse(grant.expiresAt);
+  if (!hasExactKeys(grant, READ_GRANT_KEYS)) return [...new Set([...errors, "MALFORMED_ARTIFACT_INPUT", "INVALID_GRANT"] as const)];
+  const issuedAt = strictInstantMs(grant.issuedAt);
+  const expiresAt = strictInstantMs(grant.expiresAt);
   if (!nonEmpty(grant.brokerGrantId) || !validOpaqueNotUrl(grant.brokerGrantToken) || grant.tokenFormat !== "SIGNED_OPAQUE") {
-    errors.push(looksLikeUrl(grant.brokerGrantToken) ? "PUBLIC_URL_FORBIDDEN" : "INVALID_GRANT");
+    errors.push(typeof grant.brokerGrantToken === "string" && looksLikeUrl(grant.brokerGrantToken) ? "PUBLIC_URL_FORBIDDEN" : "INVALID_GRANT");
   }
+  const validRequestObject = validStoredObjectShape(request.object);
+  const validRequestCapability = validRequestObject && validCapability(request.capability, request.object.scope, now, READ_PURPOSES);
+  const requestCapabilityExpiresAt = validRequestCapability ? strictInstantMs(request.capability.expiresAt) : null;
   if (
+    !validRequestObject ||
+    !validRequestCapability ||
     !sameScope(grant.scope, request.object.scope) ||
     grant.purpose !== request.capability.purpose ||
     grant.providerKey !== request.object.providerKey ||
@@ -901,12 +1455,14 @@ export function validateArtifactReadGrantResult(
     errors.push("INVALID_GRANT");
   }
   if (
-    !Number.isFinite(issuedAt) ||
-    !Number.isFinite(expiresAt) ||
+    issuedAt === null ||
+    expiresAt === null ||
+    !validNow(now) ||
     issuedAt > now.getTime() ||
     expiresAt <= now.getTime() ||
     expiresAt - issuedAt > request.expiresInSeconds * 1000 ||
-    expiresAt > Date.parse(request.capability.expiresAt)
+    requestCapabilityExpiresAt === null ||
+    expiresAt > requestCapabilityExpiresAt
   ) {
     errors.push("INVALID_GRANT_TTL");
   }
@@ -920,6 +1476,15 @@ export async function verifyArtifactReadGrant(
   now: Date,
   verifier: ArtifactReadGrantSignatureVerifier
 ): Promise<VerifiedArtifactReadGrant | null> {
+  if (
+    validateArtifactReadGrantResult(request, grant, now).length > 0 ||
+    typeof verifier?.verifyGrant !== "function" ||
+    !validStoredObjectShape(request.object) ||
+    !hasExactKeys(grant, READ_GRANT_KEYS) ||
+    !validScope(grant.scope)
+  ) {
+    return null;
+  }
   const requestSnapshot = Object.freeze({
     ...request,
     object: immutableStoredObjectSnapshot(request.object),
@@ -949,24 +1514,28 @@ export function validateArtifactReadRedemptionRequest(
   request: ArtifactReadRedemptionRequest,
   now: Date
 ): ArtifactStorageContractErrorCode[] {
+  const requestKeys = ["contractVersion", "capability", "grant"] as const;
+  if (!hasExactKeys(request, requestKeys)) return ["MALFORMED_ARTIFACT_INPUT"];
   const errors: ArtifactStorageContractErrorCode[] = [];
-  const grantIssuedAt = Date.parse(request.grant.issuedAt);
-  const grantExpiresAt = Date.parse(request.grant.expiresAt);
+  const validGrant = validVerifiedGrant(request.grant);
+  const grantIssuedAt = validGrant ? strictInstantMs(request.grant.issuedAt) : null;
+  const grantExpiresAt = validGrant ? strictInstantMs(request.grant.expiresAt) : null;
   if (request.contractVersion !== ARTIFACT_STORAGE_CONTRACT_VERSION) errors.push("INVALID_CONTRACT_VERSION");
   if (
-    !validVerifiedGrant(request.grant) ||
-    !validCapability(request.capability, request.grant.scope, now, READ_PURPOSES) ||
+    !validGrant ||
+    !validCapability(request.capability, validGrant ? request.grant.scope : ({} as ArtifactStorageScope), now, READ_PURPOSES) ||
     request.capability.purpose !== request.grant.purpose
   ) {
     errors.push("INVALID_CAPABILITY");
   }
   if (
-    !validScope(request.grant.scope) ||
+    !validGrant ||
     !validOpaqueNotUrl(request.grant.brokerGrantToken) ||
     request.grant.tokenFormat !== "SIGNED_OPAQUE" ||
     !READ_PURPOSES.includes(request.grant.purpose as (typeof READ_PURPOSES)[number]) ||
-    !Number.isFinite(grantIssuedAt) ||
-    !Number.isFinite(grantExpiresAt) ||
+    grantIssuedAt === null ||
+    grantExpiresAt === null ||
+    !validNow(now) ||
     grantIssuedAt > now.getTime() ||
     grantExpiresAt <= now.getTime() ||
     request.grant.singleUse !== true
@@ -981,7 +1550,28 @@ export function validateArtifactReadRedemption(
   result: ArtifactReadRedemptionResult,
   now: Date
 ): ArtifactStorageContractErrorCode[] {
+  if (!hasExactKeys(request, ["contractVersion", "capability", "grant"])) {
+    return ["MALFORMED_ARTIFACT_INPUT", "INVALID_GRANT"];
+  }
   const errors: ArtifactStorageContractErrorCode[] = [...validateArtifactReadRedemptionRequest(request, now)];
+  const baseResultKeys = [
+    "status",
+    "brokerGrantId",
+    "providerKey",
+    "objectBindingSha256",
+    "redeemedAt",
+    "singleUseConsumed",
+  ] as const;
+  const redeemedResultKeys = [...baseResultKeys, "content", "observedSha256", "observedByteLength"] as const;
+  if (
+    !isPlainRecord(result) ||
+    (result.status === "REDEEMED"
+      ? !hasExactKeys(result, redeemedResultKeys)
+      : !hasExactKeys(result, baseResultKeys))
+  ) {
+    return [...new Set([...errors, "MALFORMED_ARTIFACT_INPUT", "INVALID_GRANT"] as const)];
+  }
+  if (!validVerifiedGrant(request.grant)) return [...new Set([...errors, "INVALID_GRANT"] as const)];
   if (result.brokerGrantId !== request.grant.brokerGrantId) errors.push("INVALID_GRANT");
   if (
     result.providerKey !== request.grant.providerKey ||
@@ -991,13 +1581,13 @@ export function validateArtifactReadRedemption(
   }
   if (
     !["REDEEMED", "ALREADY_REDEEMED", "EXPIRED", "DENIED"].includes(result.status) ||
-    !validIsoInstant(result.redeemedAt)
+    !isStrictIsoInstant(result.redeemedAt)
   ) {
     errors.push("INVALID_GRANT");
   }
   if (result.status === "REDEEMED") {
     if (!result.singleUseConsumed) errors.push("GRANT_REPLAY_NOT_ENFORCED");
-    if (!result.content || result.content.byteLength !== request.grant.expectedByteLength) {
+    if (!(result.content instanceof Uint8Array) || result.content.byteLength !== request.grant.expectedByteLength) {
       errors.push("CONTENT_LENGTH_MISMATCH");
     } else if (computeArtifactSha256(result.content) !== request.grant.expectedSha256) {
       errors.push("CONTENT_DIGEST_MISMATCH");
@@ -1019,10 +1609,15 @@ export function validateArtifactIntegrityRequest(
   request: ArtifactIntegrityRequest,
   now: Date
 ): ArtifactStorageContractErrorCode[] {
+  const requestKeys = ["contractVersion", "capability", "object"] as const;
+  if (!hasExactKeys(request, requestKeys)) return ["MALFORMED_ARTIFACT_INPUT"];
   const errors: ArtifactStorageContractErrorCode[] = [];
   if (request.contractVersion !== ARTIFACT_STORAGE_CONTRACT_VERSION) errors.push("INVALID_CONTRACT_VERSION");
-  errors.push(...storedObjectErrors(request.object, request.capability.scope));
-  if (!validCapability(request.capability, request.object.scope, now, ["INTEGRITY_VERIFY"])) {
+  errors.push(...storedObjectErrors(request.object));
+  if (
+    !validStoredObjectShape(request.object) ||
+    !validCapability(request.capability, request.object.scope, now, ["INTEGRITY_VERIFY"])
+  ) {
     errors.push("INVALID_CAPABILITY");
   }
   return [...new Set(errors)];
@@ -1032,6 +1627,37 @@ export function validateArtifactIntegrityResult(
   request: ArtifactIntegrityRequest,
   result: ArtifactIntegrityResult
 ): ArtifactStorageContractErrorCode[] {
+  const commonKeys = [
+    "kind",
+    "providerKey",
+    "providerObjectVersion",
+    "objectBindingSha256",
+    "observedSha256",
+    "observedByteLength",
+    "verifiedAt",
+  ] as const;
+  const failureKeys = [...commonKeys, "failure"] as const;
+  if (
+    !hasExactKeys(request, ["contractVersion", "capability", "object"]) ||
+    !validStoredObjectShape(request.object) ||
+    !isPlainRecord(result) ||
+    (result.kind === "ARTIFACT_INTEGRITY_VERIFIED"
+      ? !hasExactKeys(result, commonKeys)
+      : result.kind === "ARTIFACT_INTEGRITY_FAILURE"
+        ? !hasExactKeys(result, failureKeys)
+        : true)
+  ) return ["MALFORMED_ARTIFACT_INPUT", "INVALID_INTEGRITY_RESULT"];
+  if (
+    !nonEmpty(result.providerKey) ||
+    !nonEmpty(result.providerObjectVersion) ||
+    typeof result.objectBindingSha256 !== "string" ||
+    !SHA256.test(result.objectBindingSha256) ||
+    typeof result.observedSha256 !== "string" ||
+    !SHA256.test(result.observedSha256) ||
+    !Number.isSafeInteger(result.observedByteLength) ||
+    (result.observedByteLength as number) < 0 ||
+    !isStrictIsoInstant(result.verifiedAt)
+  ) return ["INVALID_INTEGRITY_RESULT"];
   const exactObjectIdentity =
     result.providerKey === request.object.providerKey &&
     result.providerObjectVersion === request.object.providerObjectVersion &&
@@ -1039,35 +1665,63 @@ export function validateArtifactIntegrityResult(
   const contentMatches =
     result.observedSha256 === request.object.sha256 &&
     result.observedByteLength === request.object.byteLength;
-  return exactObjectIdentity && contentMatches === result.matches && validIsoInstant(result.verifiedAt)
+  if (!exactObjectIdentity) return ["INVALID_INTEGRITY_RESULT"];
+  if (result.kind === "ARTIFACT_INTEGRITY_VERIFIED") {
+    return contentMatches ? [] : ["INVALID_INTEGRITY_RESULT"];
+  }
+  if (!hasExactKeys(result.failure, ["code"])) return ["MALFORMED_ARTIFACT_INPUT", "INVALID_INTEGRITY_RESULT"];
+  const digestMismatch = result.observedSha256 !== request.object.sha256;
+  const byteLengthMismatch = result.observedByteLength !== request.object.byteLength;
+  const expectedFailureCode: ArtifactIntegrityFailureCode | null =
+    digestMismatch && byteLengthMismatch
+      ? "DIGEST_AND_BYTE_LENGTH_MISMATCH"
+      : digestMismatch
+        ? "DIGEST_MISMATCH"
+        : byteLengthMismatch
+          ? "BYTE_LENGTH_MISMATCH"
+          : null;
+  return expectedFailureCode !== null && result.failure.code === expectedFailureCode
     ? []
     : ["INVALID_INTEGRITY_RESULT"];
 }
 
+export function artifactIntegrityPermitsRelease(
+  request: ArtifactIntegrityRequest,
+  result: ArtifactIntegrityResult
+): result is ArtifactIntegrityVerifiedResult {
+  return validateArtifactIntegrityResult(request, result).length === 0 && result.kind === "ARTIFACT_INTEGRITY_VERIFIED";
+}
+
 function erasureEligibilityMatchesObject(
-  eligibility: ArtifactErasureEligibility,
-  object: StoredArtifactObject,
+  eligibility: unknown,
+  object: unknown,
   now: Date
-): boolean {
-  const issuedAt = Date.parse(eligibility.issuedAt);
-  const expiresAt = Date.parse(eligibility.expiresAt);
+): eligibility is ArtifactErasureEligibility {
+  if (
+    !hasExactKeys(eligibility, ERASURE_ELIGIBILITY_KEYS) ||
+    !validStoredObjectShape(object)
+  ) return false;
+  const issuedAt = strictInstantMs(eligibility.issuedAt);
+  const expiresAt = strictInstantMs(eligibility.expiresAt);
   return (
     eligibility.retentionDecision === "ERASURE_ELIGIBLE" &&
     eligibility.legalHoldStatus === "CLEAR" &&
     eligibility.replicaDisposition === "TOMBSTONE_PROPAGATION_REQUIRED" &&
     eligibility.backupDisposition === "TOMBSTONE_PROPAGATION_REQUIRED" &&
     nonEmpty(eligibility.decisionId) &&
+    typeof eligibility.decisionSha256 === "string" &&
     SHA256.test(eligibility.decisionSha256) &&
     nonEmpty(eligibility.retentionPolicyVersion) &&
-    Number.isFinite(issuedAt) &&
-    Number.isFinite(expiresAt) &&
+    issuedAt !== null &&
+    expiresAt !== null &&
+    validNow(now) &&
     issuedAt <= now.getTime() &&
     expiresAt > now.getTime() &&
     expiresAt > issuedAt &&
     expiresAt - issuedAt <= MAX_ARTIFACT_ERASURE_DECISION_SECONDS * 1000 &&
     sameScope(eligibility.scope, object.scope) &&
     eligibility.providerObjectVersion === object.providerObjectVersion &&
-    eligibility.objectBindingSha256 === computeStoredArtifactObjectBindingSha256(object) &&
+    eligibility.objectBindingSha256 === computeStoredArtifactObjectBindingSha256(object as unknown as StoredArtifactObject) &&
     eligibility.objectSha256 === object.sha256
   );
 }
@@ -1078,6 +1732,10 @@ export async function verifyArtifactErasureEligibility(
   now: Date,
   verifier: ArtifactErasureDecisionVerifier
 ): Promise<VerifiedArtifactErasureEligibility | null> {
+  if (
+    !erasureEligibilityMatchesObject(eligibility, object, now) ||
+    typeof verifier?.verifyDecision !== "function"
+  ) return null;
   const eligibilitySnapshot = Object.freeze({
     ...eligibility,
     scope: immutableScopeSnapshot(eligibility.scope),
@@ -1104,30 +1762,39 @@ export function validateArtifactTombstoneRequest(
   request: ArtifactTombstoneRequest,
   now: Date
 ): ArtifactStorageContractErrorCode[] {
+  const requestKeys = ["contractVersion", "capability", "object", "eligibility", "tombstoneEventKey"] as const;
+  if (!hasExactKeys(request, requestKeys)) return ["MALFORMED_ARTIFACT_INPUT"];
   const errors: ArtifactStorageContractErrorCode[] = [];
   if (request.contractVersion !== ARTIFACT_STORAGE_CONTRACT_VERSION) errors.push("INVALID_CONTRACT_VERSION");
-  errors.push(...storedObjectErrors(request.object, request.capability.scope));
-  if (!validCapability(request.capability, request.object.scope, now, ["ERASURE"])) errors.push("INVALID_CAPABILITY");
+  errors.push(...storedObjectErrors(request.object));
+  const validObject = validStoredObjectShape(request.object);
+  if (!validObject || !validCapability(request.capability, request.object.scope, now, ["ERASURE"])) {
+    errors.push("INVALID_CAPABILITY");
+  }
+  const validEligibility = validVerifiedErasureEligibility(request.eligibility, now);
   if (
-    !validVerifiedErasureEligibility(request.eligibility, now) ||
-    request.eligibility.objectBindingSha256 !== computeStoredArtifactObjectBindingSha256(request.object)
+    !validEligibility ||
+    !validObject ||
+    (validEligibility && request.eligibility.objectBindingSha256 !== computeStoredArtifactObjectBindingSha256(request.object))
   ) {
     errors.push("INVALID_ERASURE_DECISION");
   }
-  if (request.eligibility.retentionDecision !== "ERASURE_ELIGIBLE") errors.push("RETENTION_NOT_ELIGIBLE");
-  if (request.eligibility.legalHoldStatus !== "CLEAR") errors.push("LEGAL_HOLD_ACTIVE");
-  if (request.eligibility.replicaDisposition !== "TOMBSTONE_PROPAGATION_REQUIRED") {
+  if (!validEligibility || request.eligibility.retentionDecision !== "ERASURE_ELIGIBLE") errors.push("RETENTION_NOT_ELIGIBLE");
+  if (!validEligibility || request.eligibility.legalHoldStatus !== "CLEAR") errors.push("LEGAL_HOLD_ACTIVE");
+  if (!validEligibility || request.eligibility.replicaDisposition !== "TOMBSTONE_PROPAGATION_REQUIRED") {
     errors.push("REPLICA_TOMBSTONE_REQUIRED");
   }
-  if (request.eligibility.backupDisposition !== "TOMBSTONE_PROPAGATION_REQUIRED") {
+  if (!validEligibility || request.eligibility.backupDisposition !== "TOMBSTONE_PROPAGATION_REQUIRED") {
     errors.push("BACKUP_TOMBSTONE_REQUIRED");
   }
   if (
+    !validEligibility ||
+    !validObject ||
     !nonEmpty(request.eligibility.decisionId) ||
     !SHA256.test(request.eligibility.decisionSha256) ||
     !nonEmpty(request.eligibility.retentionPolicyVersion) ||
-    !validIsoInstant(request.eligibility.issuedAt) ||
-    !validIsoInstant(request.eligibility.expiresAt) ||
+    !isStrictIsoInstant(request.eligibility.issuedAt) ||
+    !isStrictIsoInstant(request.eligibility.expiresAt) ||
     !sameScope(request.eligibility.scope, request.object.scope) ||
     request.eligibility.providerObjectVersion !== request.object.providerObjectVersion ||
     request.eligibility.objectBindingSha256 !== computeStoredArtifactObjectBindingSha256(request.object) ||
@@ -1144,6 +1811,19 @@ export function validateArtifactTombstoneResult(
   result: ArtifactTombstoneResult
 ): ArtifactStorageContractErrorCode[] {
   const errors: ArtifactStorageContractErrorCode[] = [];
+  const baseKeys = ["status", "providerKey", "providerObjectVersion", "objectBindingSha256", "completedAt"] as const;
+  const successKeys = [
+    ...baseKeys,
+    "providerDeletionRef",
+    "replicaTombstoneEventKey",
+    "backupTombstoneEventKey",
+  ] as const;
+  if (
+    !hasExactKeys(request, ["contractVersion", "capability", "object", "eligibility", "tombstoneEventKey"]) ||
+    !validStoredObjectShape(request.object) ||
+    !isPlainRecord(result) ||
+    (result.status === "FAILED" ? !hasExactKeys(result, baseKeys) : !hasExactKeys(result, successKeys))
+  ) return ["MALFORMED_ARTIFACT_INPUT", "INVALID_TOMBSTONE_RESULT"];
   if (!["OBJECT_DELETED", "CRYPTO_SHREDDED", "FAILED"].includes(result.status)) {
     errors.push("INVALID_TOMBSTONE_RESULT");
   }
@@ -1151,10 +1831,10 @@ export function validateArtifactTombstoneResult(
     result.providerKey !== request.object.providerKey ||
     result.providerObjectVersion !== request.object.providerObjectVersion ||
     result.objectBindingSha256 !== computeStoredArtifactObjectBindingSha256(request.object) ||
-    !validIsoInstant(result.completedAt) ||
+    !isStrictIsoInstant(result.completedAt) ||
     (result.providerDeletionRef !== undefined && !validOpaqueNotUrl(result.providerDeletionRef))
   ) {
-    errors.push(result.providerDeletionRef && looksLikeUrl(result.providerDeletionRef) ? "PUBLIC_URL_FORBIDDEN" : "INVALID_TOMBSTONE_RESULT");
+    errors.push(typeof result.providerDeletionRef === "string" && looksLikeUrl(result.providerDeletionRef) ? "PUBLIC_URL_FORBIDDEN" : "INVALID_TOMBSTONE_RESULT");
   }
   if (result.status !== "FAILED") {
     if (!nonEmpty(result.replicaTombstoneEventKey)) errors.push("REPLICA_TOMBSTONE_REQUIRED");
@@ -1181,11 +1861,20 @@ export async function dispatchImmutableArtifactWrite(
   request: ImmutableArtifactWriteRequest,
   now: Date
 ): Promise<ArtifactProviderDispatchResult<StoredArtifactObject>> {
-  const selectedProviderKey = provider.providerKey;
+  const selectedProviderKey = provider?.providerKey;
+  const preflightErrors = [
+    ...validateArtifactProviderSelection(selectedProviderKey, request?.selectedProviderKey),
+    ...validateImmutableArtifactWrite(request, now),
+  ];
+  if (typeof provider?.putImmutable !== "function" || typeof provider?.readBackImmutable !== "function") {
+    preflightErrors.push("INVALID_PROVIDER_ADAPTER");
+  }
+  if (preflightErrors.length > 0) return deniedDispatch(preflightErrors);
   const requestSnapshot = Object.freeze({
     ...request,
     scope: immutableScopeSnapshot(request.scope),
     content: new Uint8Array(request.content),
+    authorityManifest: immutableAuthorityManifestSnapshot(request.authorityManifest),
   });
   const errors = [
     ...validateArtifactProviderSelection(selectedProviderKey, request.selectedProviderKey),
@@ -1193,9 +1882,29 @@ export async function dispatchImmutableArtifactWrite(
   ];
   if (errors.length > 0) return deniedDispatch(errors);
 
-  const result = immutableStoredObjectSnapshot(await provider.putImmutable(requestSnapshot));
-  const resultErrors = validateStoredArtifactObject(requestSnapshot, result, selectedProviderKey);
-  return resultErrors.length > 0 ? deniedDispatch(resultErrors) : successfulDispatch(result);
+  const rawResult = await provider.putImmutable(requestSnapshot);
+  const resultErrors = validateStoredArtifactObject(requestSnapshot, rawResult, selectedProviderKey);
+  if (resultErrors.length > 0) return deniedDispatch(resultErrors);
+  const result = immutableStoredObjectSnapshot(rawResult);
+  const readbackRequest = Object.freeze({
+    contractVersion: ARTIFACT_STORAGE_CONTRACT_VERSION,
+    capability: requestSnapshot.capability,
+    object: result,
+    expectedAuthorityManifestSha256: computeArtifactAuthorityManifestSha256(requestSnapshot.authorityManifest),
+  });
+  const readbackRequestErrors = validateImmutableArtifactReadbackRequest(readbackRequest, now);
+  if (readbackRequestErrors.length > 0) return deniedDispatch(readbackRequestErrors);
+  const rawReadback = await provider.readBackImmutable(readbackRequest);
+  const readbackErrors = validateImmutableArtifactReadback(
+    requestSnapshot,
+    result,
+    rawReadback,
+    selectedProviderKey,
+    now
+  );
+  if (readbackErrors.length > 0) return deniedDispatch(readbackErrors);
+  const verifiedPersistedObject = immutableStoredObjectSnapshot(rawReadback.object);
+  return successfulDispatch(verifiedPersistedObject);
 }
 
 export async function dispatchArtifactReadGrant(
@@ -1203,7 +1912,13 @@ export async function dispatchArtifactReadGrant(
   request: ArtifactReadGrantRequest,
   now: Date
 ): Promise<ArtifactProviderDispatchResult<ArtifactReadGrant>> {
-  const selectedProviderKey = provider.providerKey;
+  const selectedProviderKey = provider?.providerKey;
+  const preflightErrors = validateArtifactReadGrantRequest(request, now);
+  if (typeof provider?.issueReadGrant !== "function") preflightErrors.push("INVALID_PROVIDER_ADAPTER");
+  if (
+    preflightErrors.length > 0 ||
+    !validStoredObjectShape(request.object)
+  ) return deniedDispatch(preflightErrors);
   const requestSnapshot = Object.freeze({
     ...request,
     object: immutableStoredObjectSnapshot(request.object),
@@ -1215,9 +1930,12 @@ export async function dispatchArtifactReadGrant(
   if (errors.length > 0) return deniedDispatch(errors);
 
   const rawResult = await provider.issueReadGrant(requestSnapshot);
+  const resultErrors = validateArtifactReadGrantResult(requestSnapshot, rawResult, now);
+  if (resultErrors.length > 0 || !hasExactKeys(rawResult, READ_GRANT_KEYS) || !validScope(rawResult.scope)) {
+    return deniedDispatch(resultErrors);
+  }
   const result = Object.freeze({ ...rawResult, scope: immutableScopeSnapshot(rawResult.scope) });
-  const resultErrors = validateArtifactReadGrantResult(requestSnapshot, result, now);
-  return resultErrors.length > 0 ? deniedDispatch(resultErrors) : successfulDispatch(result);
+  return successfulDispatch(result);
 }
 
 export async function dispatchArtifactReadRedemption(
@@ -1225,7 +1943,10 @@ export async function dispatchArtifactReadRedemption(
   request: ArtifactReadRedemptionRequest,
   now: Date
 ): Promise<ArtifactProviderDispatchResult<ArtifactReadRedemptionResult>> {
-  const selectedProviderKey = provider.providerKey;
+  const selectedProviderKey = provider?.providerKey;
+  const preflightErrors = validateArtifactReadRedemptionRequest(request, now);
+  if (typeof provider?.redeemReadGrantAtomically !== "function") preflightErrors.push("INVALID_PROVIDER_ADAPTER");
+  if (preflightErrors.length > 0 || !validVerifiedGrant(request.grant)) return deniedDispatch(preflightErrors);
   const requestSnapshot = Object.freeze({ ...request });
   const errors = [
     ...validateArtifactProviderSelection(selectedProviderKey, request.grant.providerKey),
@@ -1234,12 +1955,14 @@ export async function dispatchArtifactReadRedemption(
   if (errors.length > 0) return deniedDispatch(errors);
 
   const rawResult = await provider.redeemReadGrantAtomically(requestSnapshot);
-  const result = Object.freeze({
-    ...rawResult,
-    content: rawResult.content ? new Uint8Array(rawResult.content) : undefined,
-  });
-  const resultErrors = validateArtifactReadRedemption(requestSnapshot, result, now);
-  return resultErrors.length > 0 ? deniedDispatch(resultErrors) : successfulDispatch(result);
+  const resultErrors = validateArtifactReadRedemption(requestSnapshot, rawResult, now);
+  if (resultErrors.length > 0) return deniedDispatch(resultErrors);
+  const result = Object.freeze(
+    rawResult.status === "REDEEMED"
+      ? { ...rawResult, content: new Uint8Array(rawResult.content as Uint8Array) }
+      : { ...rawResult }
+  ) as ArtifactReadRedemptionResult;
+  return successfulDispatch(result);
 }
 
 export async function dispatchArtifactIntegrityVerification(
@@ -1247,7 +1970,12 @@ export async function dispatchArtifactIntegrityVerification(
   request: ArtifactIntegrityRequest,
   now: Date
 ): Promise<ArtifactProviderDispatchResult<ArtifactIntegrityResult>> {
-  const selectedProviderKey = provider.providerKey;
+  const selectedProviderKey = provider?.providerKey;
+  const preflightErrors = validateArtifactIntegrityRequest(request, now);
+  if (typeof provider?.verifyIntegrity !== "function") preflightErrors.push("INVALID_PROVIDER_ADAPTER");
+  if (preflightErrors.length > 0 || !validStoredObjectShape(request.object)) {
+    return deniedDispatch(preflightErrors);
+  }
   const requestSnapshot = Object.freeze({
     ...request,
     object: immutableStoredObjectSnapshot(request.object),
@@ -1258,9 +1986,15 @@ export async function dispatchArtifactIntegrityVerification(
   ];
   if (errors.length > 0) return deniedDispatch(errors);
 
-  const result = Object.freeze({ ...(await provider.verifyIntegrity(requestSnapshot)) });
-  const resultErrors = validateArtifactIntegrityResult(requestSnapshot, result);
-  return resultErrors.length > 0 ? deniedDispatch(resultErrors) : successfulDispatch(result);
+  const rawResult = await provider.verifyIntegrity(requestSnapshot);
+  const resultErrors = validateArtifactIntegrityResult(requestSnapshot, rawResult);
+  if (resultErrors.length > 0) return deniedDispatch(resultErrors);
+  const result = Object.freeze(
+    rawResult.kind === "ARTIFACT_INTEGRITY_FAILURE"
+      ? { ...rawResult, failure: Object.freeze({ ...rawResult.failure }) }
+      : { ...rawResult }
+  ) as ArtifactIntegrityResult;
+  return successfulDispatch(result);
 }
 
 export async function dispatchArtifactTombstone(
@@ -1269,7 +2003,14 @@ export async function dispatchArtifactTombstone(
   now: Date,
   verifier: ArtifactErasureDecisionVerifier
 ): Promise<ArtifactProviderDispatchResult<ArtifactTombstoneResult>> {
-  const selectedProviderKey = provider.providerKey;
+  const selectedProviderKey = provider?.providerKey;
+  const preflightErrors = validateArtifactTombstoneRequest(request, now);
+  if (typeof provider?.tombstoneExactVersion !== "function" || typeof verifier?.verifyDecision !== "function") {
+    preflightErrors.push("INVALID_PROVIDER_ADAPTER");
+  }
+  if (preflightErrors.length > 0 || !validStoredObjectShape(request.object)) {
+    return deniedDispatch(preflightErrors);
+  }
   const requestSnapshot = Object.freeze({
     ...request,
     object: immutableStoredObjectSnapshot(request.object),
@@ -1287,7 +2028,7 @@ export async function dispatchArtifactTombstone(
   });
   if (!liveDecisionApproved) return deniedDispatch(["INVALID_ERASURE_DECISION"]);
 
-  const result = Object.freeze({ ...(await provider.tombstoneExactVersion(requestSnapshot)) });
-  const resultErrors = validateArtifactTombstoneResult(requestSnapshot, result);
-  return resultErrors.length > 0 ? deniedDispatch(resultErrors) : successfulDispatch(result);
+  const rawResult = await provider.tombstoneExactVersion(requestSnapshot);
+  const resultErrors = validateArtifactTombstoneResult(requestSnapshot, rawResult);
+  return resultErrors.length > 0 ? deniedDispatch(resultErrors) : successfulDispatch(Object.freeze({ ...rawResult }));
 }

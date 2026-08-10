@@ -1,9 +1,13 @@
 import assert from "node:assert/strict";
 import {
   ARTIFACT_STORAGE_CONTRACT_VERSION,
+  MAX_ARTIFACT_AUTHORITY_MEMBERS,
   MAX_ARTIFACT_ERASURE_DECISION_SECONDS,
   MAX_ARTIFACT_READ_GRANT_SECONDS,
+  artifactIntegrityPermitsRelease,
+  computeArtifactAuthorityManifestSha256,
   computeArtifactIdempotencyKey,
+  computeArtifactMembershipSha256,
   computeArtifactScopeSha256,
   computeArtifactSha256,
   computeArtifactSourceBindingSha256,
@@ -13,6 +17,7 @@ import {
   dispatchArtifactReadRedemption,
   dispatchArtifactTombstone,
   dispatchImmutableArtifactWrite,
+  isStrictIsoInstant,
   validateArtifactIntegrityRequest,
   validateArtifactIntegrityResult,
   validateArtifactReadGrantRequest,
@@ -21,14 +26,17 @@ import {
   validateArtifactTombstoneRequest,
   validateArtifactTombstoneResult,
   validateImmutableArtifactWrite,
+  validateImmutableArtifactReadback,
   validateStoredArtifactObject,
   verifyArtifactCapability,
   verifyArtifactErasureEligibility,
   verifyArtifactReadGrant,
   verifyArtifactSourceBinding,
   type ArtifactAccessPurpose,
+  type ArtifactAuthorityManifest,
   type ArtifactAuthorizationDecisionVerifier,
   type ArtifactIntegrityRequest,
+  type ArtifactIntegrityResult,
   type ArtifactReadGrant,
   type ArtifactReadGrantSignatureVerifier,
   type ArtifactReadGrantRequest,
@@ -41,6 +49,7 @@ import {
   type ArtifactErasureDecisionVerifier,
   type AuthorizedArtifactCapability,
   type ImmutableArtifactWriteRequest,
+  type ImmutableArtifactReadbackResult,
   type StoredArtifactObject,
   type VerifiedArtifactCapability,
 } from "../lib/creditTruth/artifactStorage";
@@ -72,6 +81,31 @@ const sourceBinding: ArtifactSourceBinding = {
   sourceVersionId: "correspondence_version_synthetic",
   sourceInputSha256: computeArtifactSha256(encoder.encode("synthetic render input")),
   policyVersion: "policy_synthetic_v1",
+};
+
+const authorityMembers = [
+  {
+    kind: "CORRESPONDENCE_VERSION" as const,
+    memberId: "correspondence_version_synthetic",
+    ordinal: 0,
+    sha256: computeArtifactSha256(encoder.encode("synthetic correspondence member")),
+  },
+  {
+    kind: "ENCLOSURE" as const,
+    memberId: "enclosure_version_synthetic",
+    ordinal: 1,
+    sha256: computeArtifactSha256(encoder.encode("synthetic enclosure member")),
+  },
+] as const;
+
+const authorityManifest: ArtifactAuthorityManifest = {
+  recipient: {
+    recipientId: "recipient_synthetic",
+    recipientKind: "CRA",
+    bureau: "EQUIFAX",
+  },
+  members: authorityMembers,
+  membershipSha256: computeArtifactMembershipSha256(authorityMembers),
 };
 
 const verifier: ArtifactAuthorizationDecisionVerifier = {
@@ -130,6 +164,7 @@ function storedObject(providerKey = "provider_alpha"): StoredArtifactObject {
     contentKind: "PDF",
     mimeType: "application/pdf",
     sourceBindingSha256: computeArtifactSourceBindingSha256(sourceBinding),
+    authorityManifestSha256: computeArtifactAuthorityManifestSha256(authorityManifest),
     encryption: {
       serverSideEncrypted: true,
       algorithm: "PROVIDER-SSE-KMS",
@@ -164,6 +199,7 @@ async function main(): Promise<void> {
     mimeType: "application/pdf",
     idempotencyKey: computeArtifactIdempotencyKey(scope, contentSha256),
     sourceBinding: approvedSource,
+    authorityManifest,
     writeMode: "CREATE_EXACT_VERSION_ONLY",
     immutability: "REQUIRED",
     serverSideEncryption: "REQUIRED",
@@ -214,8 +250,137 @@ async function main(): Promise<void> {
     assert.equal(denied, null);
   });
 
+  await check("strict artifact instants accept real zoned values only", () => {
+    assert.equal(isStrictIsoInstant("2024-02-29T23:59:59.123456789Z"), true);
+    assert.equal(isStrictIsoInstant("2026-08-08T12:00:00-04:00"), true);
+    for (const invalid of [
+      "2026-02-30T00:00:00Z",
+      "2025-02-29T00:00:00Z",
+      "2026-08-08T16:00:00",
+      "2026-08-08",
+      "08/08/2026 16:00:00",
+      "2026-08-08T16:00:00+14:01",
+      "2026-08-08T16:00:00+24:00",
+      "2026-08-08T16:00:00-00:00",
+      "2026-08-08T16:00:00Z trailing",
+      "2026-08-08T24:00:00Z",
+    ]) {
+      assert.equal(isStrictIsoInstant(invalid), false, invalid);
+    }
+  });
+
+  await check("impossible or zone-ambiguous capability timestamps are rejected", async () => {
+    for (const issuedAt of ["2026-02-30T15:59:00Z", "2026-08-08T15:59:00"] as const) {
+      const denied = await verifyArtifactCapability(
+        { ...authorization("STORE_CANONICAL", "invalid_time_synthetic"), issuedAt },
+        scope,
+        ["STORE_CANONICAL"],
+        now,
+        verifier
+      );
+      assert.equal(denied, null);
+    }
+  });
+
   await check("valid immutable write passes", () => {
     assert.deepEqual(validateImmutableArtifactWrite(validWrite, now), []);
+  });
+
+  await check("authority manifest binds exact CRA recipient, bureau, and ordered membership", () => {
+    assert.match(computeArtifactAuthorityManifestSha256(authorityManifest), /^[0-9a-f]{64}$/);
+    assert.equal(authorityManifest.membershipSha256, computeArtifactMembershipSha256(authorityManifest.members));
+  });
+
+  await check("CRA authority without a bureau fails closed", () => {
+    const invalid = {
+      ...validWrite,
+      authorityManifest: {
+        ...authorityManifest,
+        recipient: { ...authorityManifest.recipient, bureau: null },
+      },
+    };
+    assert.ok(validateImmutableArtifactWrite(invalid as never, now).includes("INVALID_AUTHORITY_MANIFEST"));
+  });
+
+  await check("non-CRA authority carrying a recipient bureau fails closed", () => {
+    const invalid = {
+      ...validWrite,
+      authorityManifest: {
+        ...authorityManifest,
+        recipient: { ...authorityManifest.recipient, recipientKind: "NON_CRA" as const },
+      },
+    };
+    assert.ok(validateImmutableArtifactWrite(invalid as never, now).includes("INVALID_AUTHORITY_MANIFEST"));
+  });
+
+  await check("duplicate nested member IDs fail closed", () => {
+    const members = [authorityMembers[0], { ...authorityMembers[1], memberId: authorityMembers[0].memberId }] as const;
+    const invalid = {
+      ...validWrite,
+      authorityManifest: {
+        ...authorityManifest,
+        members,
+        membershipSha256: computeArtifactMembershipSha256(members),
+      },
+    };
+    assert.ok(validateImmutableArtifactWrite(invalid as never, now).includes("INVALID_AUTHORITY_MANIFEST"));
+  });
+
+  await check("duplicate or non-contiguous nested ordinals fail closed", () => {
+    const members = [authorityMembers[0], { ...authorityMembers[1], ordinal: 0 }] as const;
+    const invalid = {
+      ...validWrite,
+      authorityManifest: {
+        ...authorityManifest,
+        members,
+        membershipSha256: computeArtifactMembershipSha256(members),
+      },
+    };
+    assert.ok(validateImmutableArtifactWrite(invalid as never, now).includes("INVALID_AUTHORITY_MANIFEST"));
+  });
+
+  await check("sparse authority membership fails as a structured request denial", () => {
+    const sparseMembers = new Array(2) as Array<(typeof authorityMembers)[number]>;
+    sparseMembers[0] = authorityMembers[0];
+    const invalid = {
+      ...validWrite,
+      authorityManifest: {
+        ...authorityManifest,
+        members: sparseMembers,
+        membershipSha256: "a".repeat(64),
+      },
+    };
+    assert.doesNotThrow(() => validateImmutableArtifactWrite(invalid as never, now));
+    assert.ok(validateImmutableArtifactWrite(invalid as never, now).includes("INVALID_AUTHORITY_MANIFEST"));
+  });
+
+  await check("unexpected authoritative nested keys fail closed", () => {
+    const invalid = {
+      ...validWrite,
+      authorityManifest: {
+        ...authorityManifest,
+        recipient: { ...authorityManifest.recipient, unexpected: { arbitrarily: ["nested"] } },
+      },
+    };
+    assert.ok(validateImmutableArtifactWrite(invalid as never, now).includes("INVALID_AUTHORITY_MANIFEST"));
+  });
+
+  await check("authority membership is explicitly bounded", () => {
+    const members = Array.from({ length: MAX_ARTIFACT_AUTHORITY_MEMBERS + 1 }, (_, ordinal) => ({
+      kind: "ENCLOSURE" as const,
+      memberId: `enclosure_${ordinal}`,
+      ordinal,
+      sha256: "a".repeat(64),
+    }));
+    const invalid = {
+      ...validWrite,
+      authorityManifest: {
+        ...authorityManifest,
+        members,
+        membershipSha256: computeArtifactMembershipSha256(members),
+      },
+    };
+    assert.ok(validateImmutableArtifactWrite(invalid as never, now).includes("INVALID_AUTHORITY_MANIFEST"));
   });
 
   await check("verified source approval is immutable and exact-scope bound", async () => {
@@ -376,6 +541,24 @@ async function main(): Promise<void> {
       encryption: { ...validStored.encryption, keyReferenceOpaque: "key\nreference" },
     };
     assert.ok(validateStoredArtifactObject(validWrite, invalid, "provider_alpha").includes("INVALID_ENCRYPTION_RECEIPT"));
+  });
+
+  await check("malformed authoritative inner objects return errors instead of throwing", () => {
+    for (const malformed of [
+      { ...validStored, encryption: undefined },
+      { ...validStored, encryption: [] },
+      { ...validStored, scope: [] },
+      { ...validStored, encryption: { ...validStored.encryption, unexpected: true } },
+    ]) {
+      assert.doesNotThrow(() => validateStoredArtifactObject(validWrite, malformed as never, "provider_alpha"));
+      assert.ok(validateStoredArtifactObject(validWrite, malformed as never, "provider_alpha").length > 0);
+    }
+  });
+
+  await check("partially valid outer write cannot bless malformed authoritative children", () => {
+    const malformed = { ...validWrite, authorityManifest: { ...authorityManifest, members: [42] } };
+    assert.doesNotThrow(() => validateImmutableArtifactWrite(malformed as never, now));
+    assert.ok(validateImmutableArtifactWrite(malformed as never, now).includes("INVALID_AUTHORITY_MANIFEST"));
   });
 
   const readCapability = await verified("DOWNLOAD", "decision_read_synthetic");
@@ -560,7 +743,7 @@ async function main(): Promise<void> {
 
   await check("integrity result cannot lie about a mismatch", () => {
     const invalid = {
-      matches: true,
+      kind: "ARTIFACT_INTEGRITY_VERIFIED" as const,
       providerKey: validStored.providerKey,
       providerObjectVersion: validStored.providerObjectVersion,
       objectBindingSha256: computeStoredArtifactObjectBindingSha256(validStored),
@@ -569,11 +752,13 @@ async function main(): Promise<void> {
       verifiedAt: now.toISOString(),
     };
     assert.ok(validateArtifactIntegrityResult(integrityRequest, invalid).includes("INVALID_INTEGRITY_RESULT"));
+    assert.equal(artifactIntegrityPermitsRelease(integrityRequest, invalid), false);
   });
 
   await check("negative integrity result must still identify the exact provider object", () => {
     const invalid = {
-      matches: false,
+      kind: "ARTIFACT_INTEGRITY_FAILURE" as const,
+      failure: { code: "DIGEST_AND_BYTE_LENGTH_MISMATCH" as const },
       providerKey: "provider_beta",
       providerObjectVersion: "provider_beta_version_1",
       objectBindingSha256: "b".repeat(64),
@@ -586,7 +771,8 @@ async function main(): Promise<void> {
 
   await check("exact-object integrity check may report a real content mismatch", () => {
     const mismatch = {
-      matches: false,
+      kind: "ARTIFACT_INTEGRITY_FAILURE" as const,
+      failure: { code: "DIGEST_MISMATCH" as const },
       providerKey: validStored.providerKey,
       providerObjectVersion: validStored.providerObjectVersion,
       objectBindingSha256: computeStoredArtifactObjectBindingSha256(validStored),
@@ -595,6 +781,71 @@ async function main(): Promise<void> {
       verifiedAt: now.toISOString(),
     };
     assert.deepEqual(validateArtifactIntegrityResult(integrityRequest, mismatch), []);
+  });
+
+  await check("integrity failure is structurally distinct and blocks a consuming caller", () => {
+    const verifiedResult: ArtifactIntegrityResult = {
+      kind: "ARTIFACT_INTEGRITY_VERIFIED",
+      providerKey: validStored.providerKey,
+      providerObjectVersion: validStored.providerObjectVersion,
+      objectBindingSha256: computeStoredArtifactObjectBindingSha256(validStored),
+      observedSha256: validStored.sha256,
+      observedByteLength: validStored.byteLength,
+      verifiedAt: now.toISOString(),
+    };
+    const failedResult: ArtifactIntegrityResult = {
+      kind: "ARTIFACT_INTEGRITY_FAILURE",
+      failure: { code: "DIGEST_MISMATCH" },
+      providerKey: validStored.providerKey,
+      providerObjectVersion: validStored.providerObjectVersion,
+      objectBindingSha256: computeStoredArtifactObjectBindingSha256(validStored),
+      observedSha256: "b".repeat(64),
+      observedByteLength: validStored.byteLength,
+      verifiedAt: now.toISOString(),
+    };
+    assert.equal(artifactIntegrityPermitsRelease(integrityRequest, verifiedResult), true);
+    assert.equal(artifactIntegrityPermitsRelease(integrityRequest, failedResult), false);
+    assert.deepEqual(validateArtifactIntegrityResult(integrityRequest, failedResult), []);
+    assert.notEqual(failedResult.kind, "ARTIFACT_INTEGRITY_VERIFIED");
+  });
+
+  await check("legacy boolean and business-negative integrity shapes are rejected", () => {
+    for (const malformed of [
+      {
+        matches: false,
+        providerKey: validStored.providerKey,
+        providerObjectVersion: validStored.providerObjectVersion,
+        objectBindingSha256: computeStoredArtifactObjectBindingSha256(validStored),
+        observedSha256: "b".repeat(64),
+        observedByteLength: validStored.byteLength,
+        verifiedAt: now.toISOString(),
+      },
+      {
+        kind: "CLEAN",
+        providerKey: validStored.providerKey,
+        providerObjectVersion: validStored.providerObjectVersion,
+        objectBindingSha256: computeStoredArtifactObjectBindingSha256(validStored),
+        observedSha256: validStored.sha256,
+        observedByteLength: validStored.byteLength,
+        verifiedAt: now.toISOString(),
+      },
+    ]) {
+      assert.ok(validateArtifactIntegrityResult(integrityRequest, malformed as never).includes("INVALID_INTEGRITY_RESULT"));
+    }
+  });
+
+  await check("integrity failure reason must exactly describe observed mismatch", () => {
+    const invalid = {
+      kind: "ARTIFACT_INTEGRITY_FAILURE" as const,
+      failure: { code: "BYTE_LENGTH_MISMATCH" as const },
+      providerKey: validStored.providerKey,
+      providerObjectVersion: validStored.providerObjectVersion,
+      objectBindingSha256: computeStoredArtifactObjectBindingSha256(validStored),
+      observedSha256: "b".repeat(64),
+      observedByteLength: validStored.byteLength,
+      verifiedAt: now.toISOString(),
+    };
+    assert.ok(validateArtifactIntegrityResult(integrityRequest, invalid).includes("INVALID_INTEGRITY_RESULT"));
   });
 
   const erasureCapability = await verified("ERASURE", "decision_erasure_synthetic");
@@ -781,6 +1032,14 @@ async function main(): Promise<void> {
       async putImmutable(request) {
         return { ...storedObject(providerKey), scope: request.scope };
       },
+      async readBackImmutable(request) {
+        return {
+          object: request.object,
+          authorityManifest,
+          content,
+          readAt: now.toISOString(),
+        };
+      },
       async issueReadGrant(request) {
         return {
           ...validGrant,
@@ -821,7 +1080,7 @@ async function main(): Promise<void> {
       },
       async verifyIntegrity(request) {
         return {
-          matches: true,
+          kind: "ARTIFACT_INTEGRITY_VERIFIED",
           providerKey,
           providerObjectVersion: request.object.providerObjectVersion,
           objectBindingSha256: computeStoredArtifactObjectBindingSha256(request.object),
@@ -844,6 +1103,209 @@ async function main(): Promise<void> {
       },
     };
   }
+
+  await check("write success requires one exact persisted readback", async () => {
+    const base = conformingProvider("provider_alpha");
+    let putCalls = 0;
+    let readbackCalls = 0;
+    const provider: ArtifactStorageProvider = {
+      ...base,
+      async putImmutable(request) {
+        putCalls += 1;
+        return base.putImmutable(request);
+      },
+      async readBackImmutable(request) {
+        readbackCalls += 1;
+        return base.readBackImmutable(request);
+      },
+    };
+    const result = await dispatchImmutableArtifactWrite(provider, validWrite, now);
+    assert.equal(result.dispatched, true);
+    assert.equal(putCalls, 1);
+    assert.equal(readbackCalls, 1);
+    if (!result.dispatched) throw new Error("verified synthetic write was denied");
+    assert.equal(Object.isFrozen(result.result), true);
+  });
+
+  await check("adapter without readback is denied before any write I/O", async () => {
+    const base = conformingProvider("provider_alpha");
+    let putCalls = 0;
+    const missingReadback = {
+      ...base,
+      readBackImmutable: undefined,
+      async putImmutable(request: ImmutableArtifactWriteRequest) {
+        putCalls += 1;
+        return base.putImmutable(request);
+      },
+    } as unknown as ArtifactStorageProvider;
+    const denied = await dispatchImmutableArtifactWrite(missingReadback, validWrite, now);
+    assert.equal(denied.dispatched, false);
+    assert.ok(denied.errors.includes("INVALID_PROVIDER_ADAPTER"));
+    assert.equal(putCalls, 0);
+  });
+
+  async function expectReadbackDenied(
+    mutate: (readback: ImmutableArtifactReadbackResult) => ImmutableArtifactReadbackResult,
+    expectedError: string
+  ): Promise<void> {
+    const base = conformingProvider("provider_alpha");
+    const provider: ArtifactStorageProvider = {
+      ...base,
+      async readBackImmutable(request) {
+        return mutate(await base.readBackImmutable(request));
+      },
+    };
+    const denied = await dispatchImmutableArtifactWrite(provider, validWrite, now);
+    assert.equal(denied.dispatched, false);
+    assert.ok(denied.errors.includes(expectedError as never), JSON.stringify(denied.errors));
+  }
+
+  await check("partial persisted bytes fail post-I/O truth", () =>
+    expectReadbackDenied(
+      (readback) => ({ ...readback, content: readback.content.slice(0, -1) }),
+      "CONTENT_LENGTH_MISMATCH"
+    ));
+
+  await check("substituted persisted artifact identity or version fails post-I/O truth", async () => {
+    await expectReadbackDenied(
+      (readback) => ({
+        ...readback,
+        object: { ...readback.object, scope: { ...readback.object.scope, artifactId: "artifact_substituted" } },
+      }),
+      "INVALID_POST_WRITE_READBACK"
+    );
+    await expectReadbackDenied(
+      (readback) => ({
+        ...readback,
+        object: { ...readback.object, providerObjectVersion: "stale_provider_version" },
+      }),
+      "INVALID_POST_WRITE_READBACK"
+    );
+  });
+
+  await check("wrong persisted recipient or bureau fails post-I/O truth", async () => {
+    await expectReadbackDenied(
+      (readback) => ({
+        ...readback,
+        authorityManifest: {
+          ...readback.authorityManifest,
+          recipient: { ...readback.authorityManifest.recipient, recipientId: "recipient_substituted" },
+        },
+      }),
+      "INVALID_AUTHORITY_MANIFEST"
+    );
+    await expectReadbackDenied(
+      (readback) => ({
+        ...readback,
+        authorityManifest: {
+          ...readback.authorityManifest,
+          recipient: { ...readback.authorityManifest.recipient, bureau: "TRANSUNION" },
+        },
+      }),
+      "INVALID_AUTHORITY_MANIFEST"
+    );
+  });
+
+  await check("wrong persisted membership ID, order, or digest fails post-I/O truth", async () => {
+    const substitutedMembers = [
+      { ...authorityMembers[0], memberId: "correspondence_version_substituted" },
+      authorityMembers[1],
+    ] as const;
+    await expectReadbackDenied(
+      (readback) => ({
+        ...readback,
+        authorityManifest: {
+          ...readback.authorityManifest,
+          members: substitutedMembers,
+          membershipSha256: computeArtifactMembershipSha256(substitutedMembers),
+        },
+      }),
+      "INVALID_AUTHORITY_MANIFEST"
+    );
+    await expectReadbackDenied(
+      (readback) => ({
+        ...readback,
+        authorityManifest: { ...readback.authorityManifest, membershipSha256: "b".repeat(64) },
+      }),
+      "INVALID_AUTHORITY_MANIFEST"
+    );
+  });
+
+  await check("stale or impossible readback time fails post-I/O truth", async () => {
+    await expectReadbackDenied(
+      (readback) => ({ ...readback, readAt: "2026-08-08T15:59:59.999Z" }),
+      "INVALID_POST_WRITE_READBACK"
+    );
+    await expectReadbackDenied(
+      (readback) => ({ ...readback, readAt: "2026-02-30T16:00:00Z" }),
+      "INVALID_POST_WRITE_READBACK"
+    );
+  });
+
+  await check("malformed nested readback returns a denial rather than throwing", async () => {
+    const base = conformingProvider("provider_alpha");
+    const provider: ArtifactStorageProvider = {
+      ...base,
+      async readBackImmutable() {
+        return { object: { scope: [] } } as never;
+      },
+    };
+    const denied = await dispatchImmutableArtifactWrite(provider, validWrite, now);
+    assert.equal(denied.dispatched, false);
+    assert.ok(denied.errors.includes("MALFORMED_ARTIFACT_INPUT"));
+  });
+
+  await check("sparse persisted membership returns a structured readback denial", async () => {
+    const base = conformingProvider("provider_alpha");
+    const sparseMembers = new Array(2) as Array<(typeof authorityMembers)[number]>;
+    sparseMembers[0] = authorityMembers[0];
+    const provider: ArtifactStorageProvider = {
+      ...base,
+      async readBackImmutable(request) {
+        const readback = await base.readBackImmutable(request);
+        return {
+          ...readback,
+          authorityManifest: {
+            ...readback.authorityManifest,
+            members: sparseMembers,
+            membershipSha256: "a".repeat(64),
+          },
+        };
+      },
+    };
+    let denied: Awaited<ReturnType<typeof dispatchImmutableArtifactWrite>> | undefined;
+    await assert.doesNotReject(async () => {
+      denied = await dispatchImmutableArtifactWrite(provider, validWrite, now);
+    });
+    assert.ok(denied);
+    assert.equal(denied.dispatched, false);
+    assert.ok(denied.errors.includes("INVALID_AUTHORITY_MANIFEST"));
+    assert.ok(denied.errors.includes("INVALID_POST_WRITE_READBACK"));
+  });
+
+  await check("integrity dispatch preserves failure as a blocking typed outcome", async () => {
+    const base = conformingProvider("provider_alpha");
+    const provider: ArtifactStorageProvider = {
+      ...base,
+      async verifyIntegrity(request) {
+        return {
+          kind: "ARTIFACT_INTEGRITY_FAILURE",
+          failure: { code: "DIGEST_MISMATCH" },
+          providerKey: request.object.providerKey,
+          providerObjectVersion: request.object.providerObjectVersion,
+          objectBindingSha256: computeStoredArtifactObjectBindingSha256(request.object),
+          observedSha256: "b".repeat(64),
+          observedByteLength: request.object.byteLength,
+          verifiedAt: now.toISOString(),
+        };
+      },
+    };
+    const dispatch = await dispatchArtifactIntegrityVerification(provider, integrityRequest, now);
+    assert.equal(dispatch.dispatched, true);
+    if (!dispatch.dispatched) throw new Error("valid negative-integrity result was denied");
+    assert.equal(dispatch.result.kind, "ARTIFACT_INTEGRITY_FAILURE");
+    assert.equal(artifactIntegrityPermitsRelease(integrityRequest, dispatch.result), false);
+  });
 
   async function verifyProviderConformance(providerKey: string): Promise<void> {
     const provider = conformingProvider(providerKey);
