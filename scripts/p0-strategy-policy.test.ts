@@ -1,9 +1,12 @@
 // Executable Phase 1 strategy-policy guard.
 // Synthetic facts only; no consumer identity, report content, addresses, or account values.
 // Run: npx --no-install tsx scripts/p0-strategy-policy.test.ts
+import type { Bureau } from "@prisma/client";
+
 import {
   CONSUMER_ASSERTION_BINDING_VERSION,
   PHASE_1_STRATEGY_POLICY_SET,
+  PHASE_1_STRATEGY_POLICY_SET_VERSION,
   PHASE_1_STRATEGY_POLICY_VERSION,
   STRATEGY_POLICY_SCHEMA_VERSION,
   evaluateStrategyPolicy,
@@ -74,7 +77,8 @@ function syntheticDigest(hexCharacter: string): string {
 function consumerAssertionProof(
   definition: StrategyPolicyDefinition,
   type: ConsumerAssertionType,
-  sequence: number
+  sequence: number,
+  bureau: Bureau = "EQUIFAX"
 ): {
   assertion: ConsumerAssertionEvidence;
   current: CurrentConsumerAssertionBinding;
@@ -89,7 +93,7 @@ function consumerAssertionProof(
       reportVersionId: `synthetic-report-version-${definition.strategyId}`,
       extractionRunId: `synthetic-extraction-run-${definition.strategyId}`,
       accountId: `synthetic-account-${definition.strategyId}`,
-      bureau: "EQUIFAX",
+      bureau,
       field: "detailedStatus",
       observationSeriesKey: `synthetic-observation-series-${suffix}`,
       observationRevision: 1,
@@ -153,13 +157,21 @@ function completeRequest(
 ): StrategyPolicyEvaluationRequest {
   const claimType = definition.allowedClaimTypes[0];
   if (!claimType) throw new Error(`Policy has no allowed synthetic claim: ${definition.strategyId}`);
+  const recipientType = overrides.recipientType ?? definition.recipientTypes[0];
+  const recipientBureau =
+    overrides.recipientBureau !== undefined
+      ? overrides.recipientBureau
+      : recipientType === "CREDIT_REPORTING_AGENCY"
+        ? "EQUIFAX"
+        : null;
+  const evidenceBureau = recipientBureau ?? "EQUIFAX";
   const claimRequirement = definition.claimRequirements[claimType];
   const assertionTypes = [
     ...definition.requiredConsumerAssertions,
     ...(claimRequirement?.requiredConsumerAssertions ?? []),
   ].filter((type, index, all) => all.indexOf(type) === index);
   const assertionProofs = assertionTypes.map((type, index) =>
-    consumerAssertionProof(definition, type, index)
+    consumerAssertionProof(definition, type, index, evidenceBureau)
   );
   return {
     scope: { ...SYNTHETIC_SCOPE },
@@ -169,7 +181,8 @@ function completeRequest(
     correspondenceItemId: `synthetic-item-${definition.strategyId}`,
     recipientId: `synthetic-recipient-${definition.strategyId}`,
     recipientAddressVersionId: `synthetic-address-version-${definition.strategyId}`,
-    recipientType: definition.recipientTypes[0],
+    recipientType,
+    recipientBureau,
     addressStatus: "VERIFIED_VERSIONED",
     round: definition.roundPolicy.minimum,
     applicabilityFacts: [...definition.applicabilityPredicates],
@@ -204,6 +217,7 @@ function consolidationItem(
     itemId,
     recipientId: request.recipientId,
     recipientAddressVersionId: request.recipientAddressVersionId,
+    recipientBureau: request.recipientBureau,
     round: request.round,
     policyVersion: definition.policyVersion,
     recipientType: request.recipientType,
@@ -257,6 +271,18 @@ const expectedStrategies: StrategyPolicyId[] = [
   "cease_desist",
   "cfpb_threat",
 ];
+
+equal("bureau-routing schema version is explicit", STRATEGY_POLICY_SCHEMA_VERSION, "1.1.0");
+equal(
+  "bureau-routing Phase 1 policy-set version is explicit",
+  PHASE_1_STRATEGY_POLICY_SET_VERSION,
+  "2026-08-10.phase1"
+);
+equal(
+  "bureau-routing policy version is explicit",
+  PHASE_1_STRATEGY_POLICY_VERSION,
+  "2026-08-10.1"
+);
 
 equal(
   "all 12 checkpoint strategies are represented once",
@@ -351,6 +377,144 @@ const activeFcra611 = activePolicySet("fcra_611");
 const allowedFcra611 = evaluateStrategyPolicy(activeFcra611, completeRequest(fcra611));
 equal("a complete synthetic context can pass an explicitly activated approved policy", allowedFcra611.decision, "ALLOW");
 equal("an eligible result has no denial reasons", allowedFcra611.reasons, []);
+
+for (const bureau of ["EQUIFAX", "EXPERIAN", "TRANSUNION"] as const satisfies readonly Bureau[]) {
+  equal(
+    `${bureau} CRA routing passes only with exact recipient/evidence bureau authority`,
+    evaluateStrategyPolicy(
+      activeFcra611,
+      completeRequest(fcra611, { recipientBureau: bureau })
+    ).decision,
+    "ALLOW"
+  );
+}
+
+const {
+  recipientBureau: _omittedLegacyRecipientBureau,
+  ...legacyRequestWithoutRecipientBureau
+} = completeRequest(fcra611);
+const omittedLegacyBureau = evaluateStrategyPolicy(
+  activeFcra611,
+  legacyRequestWithoutRecipientBureau as StrategyPolicyEvaluationRequest
+);
+check(
+  "legacy CRA input with omitted recipient bureau fails closed",
+  hasReason(omittedLegacyBureau, "CRA_RECIPIENT_BUREAU_MISSING")
+);
+
+const nullCraBureau = evaluateStrategyPolicy(activeFcra611, {
+  ...completeRequest(fcra611),
+  recipientBureau: null,
+});
+check(
+  "CRA input with null recipient bureau fails closed",
+  hasReason(nullCraBureau, "CRA_RECIPIENT_BUREAU_MISSING")
+);
+
+const equifaxEvidenceForExperian = evaluateStrategyPolicy(activeFcra611, {
+  ...completeRequest(fcra611, { recipientBureau: "EQUIFAX" }),
+  recipientBureau: "EXPERIAN",
+});
+check(
+  "Equifax assertion evidence cannot be reused for Experian correspondence",
+  hasReason(
+    equifaxEvidenceForExperian,
+    "CRA_RECIPIENT_BUREAU_ASSERTION_MISMATCH",
+    "EXACT_FIELD_DISPUTED"
+  )
+);
+check(
+  "Equifax current evidence cannot be reused for Experian correspondence",
+  hasReason(
+    equifaxEvidenceForExperian,
+    "CRA_RECIPIENT_BUREAU_CURRENT_BINDING_MISMATCH",
+    "EXACT_FIELD_DISPUTED"
+  )
+);
+
+const equifaxRequest = completeRequest(fcra611, { recipientBureau: "EQUIFAX" });
+const experianProof = consumerAssertionProof(
+  fcra611,
+  "EXACT_FIELD_DISPUTED",
+  99,
+  "EXPERIAN"
+);
+const mixedBureauEvidence = evaluateStrategyPolicy(activeFcra611, {
+  ...equifaxRequest,
+  consumerAssertions: [...equifaxRequest.consumerAssertions, experianProof.assertion],
+  currentAssertionBindings: [
+    ...equifaxRequest.currentAssertionBindings,
+    experianProof.current,
+  ],
+});
+check(
+  "mixed-bureau assertion evidence fails closed",
+  hasReason(mixedBureauEvidence, "CRA_MIXED_BUREAU_EVIDENCE")
+);
+
+const duplicateEvidence = evaluateStrategyPolicy(activeFcra611, {
+  ...equifaxRequest,
+  consumerAssertions: [
+    ...equifaxRequest.consumerAssertions,
+    equifaxRequest.consumerAssertions[0],
+  ],
+  currentAssertionBindings: [
+    ...equifaxRequest.currentAssertionBindings,
+    equifaxRequest.currentAssertionBindings[0],
+  ],
+});
+check(
+  "duplicate consumer-assertion evidence fails closed",
+  hasReason(
+    duplicateEvidence,
+    "DUPLICATE_CONSUMER_ASSERTION_EVIDENCE",
+    "EXACT_FIELD_DISPUTED"
+  )
+);
+check(
+  "duplicate current evidence bindings fail closed",
+  hasReason(
+    duplicateEvidence,
+    "DUPLICATE_CURRENT_ASSERTION_BINDING",
+    "EXACT_FIELD_DISPUTED"
+  )
+);
+
+const staleHitchhikerProof = consumerAssertionProof(
+  fcra611,
+  "EXACT_FIELD_DISPUTED",
+  100,
+  "EQUIFAX"
+);
+if (staleHitchhikerProof.current.bindingKind !== "OBSERVATION") {
+  throw new Error("Synthetic stale hitchhiker must be observation-bound");
+}
+const staleHitchhiker = evaluateStrategyPolicy(activeFcra611, {
+  ...equifaxRequest,
+  consumerAssertions: [
+    ...equifaxRequest.consumerAssertions,
+    staleHitchhikerProof.assertion,
+  ],
+  currentAssertionBindings: [
+    ...equifaxRequest.currentAssertionBindings,
+    {
+      ...staleHitchhikerProof.current,
+      observationBinding: {
+        ...staleHitchhikerProof.current.observationBinding,
+        observationRevision: 2,
+        observationDigest: syntheticDigest("d"),
+      },
+    },
+  ],
+});
+check(
+  "extra stale evidence cannot hitchhike behind a separate current proof",
+  hasReason(
+    staleHitchhiker,
+    "SUPPLIED_CONSUMER_ASSERTION_NOT_CURRENT",
+    "EXACT_FIELD_DISPUTED"
+  )
+);
 
 const unknownStrategy = evaluateStrategyPolicy(activeFcra611, {
   ...completeRequest(fcra611),
@@ -526,6 +690,14 @@ check("active policy set cannot bypass pending counsel status", pendingCounsel.d
 check("pending counsel returns a precise denial reason", hasReason(pendingCounsel, "COUNSEL_APPROVAL_PENDING"));
 
 const activeApprovedValidation = activePolicySet("validation");
+const collectorWithCraBureau = evaluateStrategyPolicy(activeApprovedValidation, {
+  ...completeRequest(validation),
+  recipientBureau: "EQUIFAX",
+});
+check(
+  "non-CRA recipient cannot impersonate a CRA bureau route",
+  hasReason(collectorWithCraBureau, "NON_CRA_RECIPIENT_BUREAU_NOT_ALLOWED")
+);
 const validationElectionProof = consumerAssertionProof(
   validation,
   "VALIDATION_REQUEST_ELECTED",
@@ -669,6 +841,37 @@ const compatibleConsolidation = evaluateStrategyPolicy(activeFcra611, {
   },
 });
 equal("compatible same-recipient CRA consolidation passes policy", compatibleConsolidation.decision, "ALLOW");
+
+const mixedBureauConsolidation = evaluateStrategyPolicy(activeFcra611, {
+  ...compatibleConsolidationRequest,
+  consolidation: {
+    items: [
+      consolidationItem(
+        fcra611,
+        compatibleConsolidationRequest,
+        compatibleConsolidationRequest.correspondenceItemId
+      ),
+      consolidationItem(
+        fcra609,
+        compatibleConsolidationRequest,
+        "synthetic-item-experian-fcra-609",
+        { recipientBureau: "EXPERIAN" }
+      ),
+    ],
+  },
+});
+check(
+  "same-recipient CRA consolidation rejects an item routed to another bureau",
+  hasReason(
+    mixedBureauConsolidation,
+    "CONSOLIDATION_RECIPIENT_BUREAU_MISMATCH",
+    "synthetic-item-experian-fcra-609"
+  )
+);
+check(
+  "mixed-bureau CRA consolidation fails closed as a mixed route",
+  hasReason(mixedBureauConsolidation, "CONSOLIDATION_MIXED_CRA_RECIPIENT_BUREAUS")
+);
 
 const forgedCompatibilityKeys = evaluateStrategyPolicy(activeFcra611, {
   ...compatibleConsolidationRequest,

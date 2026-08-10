@@ -1976,8 +1976,9 @@ model IdentityFact {
   @@index([tenantId, consumerId, identityBaselineId, factType, classification])
 }
 
-// Recipient identity is stable; consumer/personally identifying display data is
-// encrypted. Public routing policy is keyed by recipientType/stableKey.
+// Recipient identity and, for a CRA, its exact bureau authority are stable;
+// consumer/personally identifying display data is encrypted. Non-CRA recipients
+// retain item-level bureau provenance and therefore carry no recipient bureau.
 model Recipient {
   id                         String               @id @default(cuid())
   tenantId                   String
@@ -1985,6 +1986,7 @@ model Recipient {
   scope                      CreditTruthScope     @relation(fields: [tenantId, consumerId], references: [tenantId, consumerId], onDelete: Restrict, onUpdate: Restrict)
   stableKey                  String
   recipientType              RecipientType
+  bureau                     Bureau?
   displayNameCiphertext      Bytes?
   displayNameIv              Bytes?
   displayNameAuthTag         Bytes?

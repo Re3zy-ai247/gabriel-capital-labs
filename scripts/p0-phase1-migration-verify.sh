@@ -14,8 +14,8 @@ readonly MIGRATION_SQL="${REPO_ROOT}/prisma/migrations/${MIGRATION_NAME}/migrati
 readonly SCHEMA_FILE="${REPO_ROOT}/prisma/schema.prisma"
 readonly ROLLBACK_SQL="${REPO_ROOT}/scripts/sql/p0-phase1-disposable-rollback.sql"
 readonly PRISMA_BIN="${REPO_ROOT}/node_modules/.bin/prisma"
-readonly EXPECTED_SCHEMA_SHA256="ea1665d6708e8b170e486b69ae8bd734f62ca548fa20ab3f7685aa3ddb1c531a"
-readonly EXPECTED_MIGRATION_SHA256="95e18c20735e152baad6e8a995a951dab792e999469b7cf77dbc973148ad426a"
+readonly EXPECTED_SCHEMA_SHA256="a18b04ab0026c3e1b6e4dd6f034fa59182acf39fdcc1181f714bb79039bb9d91"
+readonly EXPECTED_MIGRATION_SHA256="bd2c03aa76f29d1f25258bb23786adaf39601c9401e4e5eafdf92ba0a8eeb7c9"
 readonly POSTGRES_IMAGE_TAG="postgres:16-alpine"
 readonly POSTGRES_IMAGE_ID="sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777"
 readonly POSTGRES_IMAGE_DIGEST="postgres@sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777"
@@ -25,11 +25,11 @@ readonly EXPECTED_TABLE_COUNT=32
 readonly EXPECTED_UNIQUE_INDEX_COUNT=122
 readonly EXPECTED_SECONDARY_INDEX_COUNT=38
 readonly EXPECTED_FK_COUNT=106
-readonly EXPECTED_CHECK_COUNT=127
-readonly EXPECTED_TRIGGER_COUNT=72
-readonly EXPECTED_FUNCTION_COUNT=29
+readonly EXPECTED_CHECK_COUNT=128
+readonly EXPECTED_TRIGGER_COUNT=74
+readonly EXPECTED_FUNCTION_COUNT=31
 readonly EXPECTED_POSITIVE_SUITE_COUNT=3
-readonly EXPECTED_NEGATIVE_CASE_COUNT=47
+readonly EXPECTED_NEGATIVE_CASE_COUNT=65
 
 say() {
   printf '%s\n' "$*"
@@ -1088,6 +1088,14 @@ INSERT INTO "ConsumerAssertion" (
     'fo-neutral-equifax-summaryStatus-series', 1, repeat('b', 64),
     'assessment-neutral', 'assert-series-neutral', 1,
     'CONFIRMED_INACCURATE', 'synthetic-actor', now()
+  ),
+  (
+    'assert-clean-experian', 'p0-synthetic-direct', 'p0-synthetic-direct',
+    'rv-v2', 'acct-clean', 'run-clean', 'EXPERIAN', 'summaryStatus',
+    'fo-clean-experian-summaryStatus',
+    'fo-clean-experian-summaryStatus-series', 1, repeat('a', 64),
+    'assessment-clean', 'assert-series-clean-experian', 1,
+    'CONFIRMED_ACCURATE', 'synthetic-actor', now()
   );
 
 SELECT pg_temp.expect_sqlstate(
@@ -1136,10 +1144,47 @@ INSERT INTO "IdentityBaseline" (
   );
 
 INSERT INTO "Recipient" (
-  "id", "tenantId", "consumerId", "stableKey", "recipientType"
+  "id", "tenantId", "consumerId", "stableKey", "recipientType", "bureau"
 ) VALUES
-  ('recipient-1', 'p0-synthetic-direct', 'p0-synthetic-direct', 'recipient-one', 'CREDIT_REPORTING_AGENCY'),
-  ('recipient-2', 'p0-synthetic-direct', 'p0-synthetic-direct', 'recipient-two', 'FURNISHER');
+  ('recipient-1', 'p0-synthetic-direct', 'p0-synthetic-direct', 'recipient-one', 'CREDIT_REPORTING_AGENCY', 'EQUIFAX'),
+  ('recipient-2', 'p0-synthetic-direct', 'p0-synthetic-direct', 'recipient-two', 'FURNISHER', NULL),
+  ('recipient-3', 'p0-synthetic-direct', 'p0-synthetic-direct', 'recipient-three', 'CREDIT_REPORTING_AGENCY', 'TRANSUNION');
+
+SELECT pg_temp.expect_sqlstate(
+  'CRA recipient requires an exact bureau authority',
+  $q$INSERT INTO "Recipient" (
+       "id", "tenantId", "consumerId", "stableKey", "recipientType"
+     ) VALUES (
+       'recipient-bad-cra-null', 'p0-synthetic-direct',
+       'p0-synthetic-direct', 'recipient-bad-cra-null',
+       'CREDIT_REPORTING_AGENCY'
+     )$q$,
+  '23514'
+);
+
+SELECT pg_temp.expect_sqlstate(
+  'non-CRA recipient cannot claim bureau authority',
+  $q$INSERT INTO "Recipient" (
+       "id", "tenantId", "consumerId", "stableKey", "recipientType", "bureau"
+     ) VALUES (
+       'recipient-bad-furnisher-bureau', 'p0-synthetic-direct',
+       'p0-synthetic-direct', 'recipient-bad-furnisher-bureau',
+       'FURNISHER', 'EQUIFAX'
+     )$q$,
+  '23514'
+);
+
+SELECT pg_temp.expect_sqlstate(
+  'recipient rejects unknown bureau authority',
+  $q$INSERT INTO "Recipient" (
+       "id", "tenantId", "consumerId", "stableKey", "recipientType", "bureau"
+     ) VALUES (
+       'recipient-bad-unknown-bureau', 'p0-synthetic-direct',
+       'p0-synthetic-direct', 'recipient-bad-unknown-bureau',
+       'CREDIT_REPORTING_AGENCY', 'UNKNOWN'
+     )$q$,
+  '22P02'
+);
 
 INSERT INTO "RecipientAddressVersion" (
   "id", "tenantId", "consumerId", "recipientId", "addressSeriesKey",
@@ -1175,6 +1220,13 @@ INSERT INTO "RecipientAddressVersion" (
     decode('31','hex'), decode('32','hex'), decode('33','hex'), 'key-v1',
     'AES_256_GCM', 'env-v1', 'aad-v1', 'synthetic-validation', 'v1',
     now(), 'synthetic-actor'
+  ),
+  (
+    'address-3', 'p0-synthetic-direct', 'p0-synthetic-direct',
+    'recipient-3', 'address-series-3', 1, 'VALIDATED',
+    decode('41','hex'), decode('42','hex'), decode('43','hex'), 'key-v1',
+    'AES_256_GCM', 'env-v1', 'aad-v1', 'synthetic-validation', 'v1',
+    now(), 'synthetic-actor'
   );
 
 INSERT INTO "DisputeCase" (
@@ -1195,6 +1247,63 @@ INSERT INTO "Correspondence" (
   'case-1', 'recipient-1', 'address-1', 'baseline-1',
   'synthetic-strategy', 'FACTUAL_ACCURACY', 'policy-v1', 1, 'DRAFT',
   'corr-idempotency-1', 'ROOT', 'synthetic-actor', now()
+);
+
+INSERT INTO "Correspondence" (
+  "id", "tenantId", "consumerId", "reportVersionId", "caseId",
+  "recipientId", "recipientAddressVersionId", "identityBaselineId",
+  "strategyKey", "claimClass", "policyVersion", "round", "status",
+  "idempotencyKey", "parentLineageRef", "createdByActorId", "updatedAt"
+) VALUES
+  (
+    'corr-tu', 'p0-synthetic-direct', 'p0-synthetic-direct', 'rv-v2',
+    'case-1', 'recipient-3', 'address-3', 'baseline-1',
+    'synthetic-strategy', 'FACTUAL_ACCURACY', 'policy-v1', 1, 'DRAFT',
+    'corr-idempotency-tu', 'ROOT', 'synthetic-actor', now()
+  ),
+  (
+    'corr-furnisher', 'p0-synthetic-direct', 'p0-synthetic-direct', 'rv-v2',
+    'case-1', 'recipient-2', 'address-2', 'baseline-1',
+    'synthetic-strategy', 'FACTUAL_ACCURACY', 'policy-v1', 1, 'DRAFT',
+    'corr-idempotency-furnisher', 'ROOT', 'synthetic-actor', now()
+  ),
+  (
+    'corr-retarget-empty', 'p0-synthetic-direct', 'p0-synthetic-direct',
+    'rv-v2', 'case-1', 'recipient-1', 'address-1', 'baseline-1',
+    'synthetic-strategy', 'FACTUAL_ACCURACY', 'policy-v1', 1, 'DRAFT',
+    'corr-idempotency-retarget-empty', 'ROOT', 'synthetic-actor', now()
+  ),
+  (
+    'corr-race-insert-first', 'p0-synthetic-direct',
+    'p0-synthetic-direct', 'rv-v2', 'case-1', 'recipient-1', 'address-1',
+    'baseline-1', 'synthetic-strategy', 'FACTUAL_ACCURACY', 'policy-v1',
+    1, 'DRAFT', 'corr-idempotency-race-insert-first', 'ROOT',
+    'synthetic-actor', now()
+  ),
+  (
+    'corr-race-update-first', 'p0-synthetic-direct',
+    'p0-synthetic-direct', 'rv-v2', 'case-1', 'recipient-1', 'address-1',
+    'baseline-1', 'synthetic-strategy', 'FACTUAL_ACCURACY', 'policy-v1',
+    1, 'DRAFT', 'corr-idempotency-race-update-first', 'ROOT',
+    'synthetic-actor', now()
+  );
+
+SELECT pg_temp.expect_sqlstate(
+  'empty correspondence cannot replace its CRA recipient',
+  $q$UPDATE "Correspondence"
+     SET "recipientId" = 'recipient-3',
+         "recipientAddressVersionId" = 'address-3',
+         "updatedAt" = now()
+     WHERE "id" = 'corr-retarget-empty'$q$,
+  '23514'
+);
+
+SELECT pg_temp.expect_sqlstate(
+  'correspondence cannot cross consumer ownership',
+  $q$UPDATE "Correspondence"
+     SET "consumerId" = 'p0-synthetic-other', "updatedAt" = now()
+     WHERE "id" = 'corr-retarget-empty'$q$,
+  '23514'
 );
 
 SELECT pg_temp.expect_sqlstate(
@@ -1273,6 +1382,117 @@ INSERT INTO "CorrespondenceItem" (
 );
 
 SELECT pg_temp.expect_sqlstate(
+  'valid Equifax evidence cannot enter TransUnion CRA correspondence',
+  $q$INSERT INTO "CorrespondenceItem" (
+       "id", "tenantId", "consumerId", "reportVersionId", "caseId",
+       "correspondenceId", "accountId", "extractionRunId", "bureau",
+       "fieldKey", "observationId", "observationSeriesKey",
+       "observationRevision", "observationIntegritySha256", "assessmentId",
+       "consumerAssertionId", "itemKey", "ordinal", "claimType"
+     ) VALUES (
+       'item-bad-eq-to-tu', 'p0-synthetic-direct', 'p0-synthetic-direct',
+       'rv-v2', 'case-1', 'corr-tu', 'acct-clean', 'run-clean', 'EQUIFAX',
+       'summaryStatus', 'fo-clean-equifax-summaryStatus',
+       'fo-clean-equifax-summaryStatus-series', 1, repeat('a',64),
+       'assessment-clean', 'assert-clean', 'item-key-bad-eq-to-tu', 0,
+       'FACTUAL_ACCURACY'
+     )$q$,
+  '23514'
+);
+
+SELECT pg_temp.expect_sqlstate(
+  'same Equifax CRA recipient rejects valid Experian evidence',
+  $q$INSERT INTO "CorrespondenceItem" (
+       "id", "tenantId", "consumerId", "reportVersionId", "caseId",
+       "correspondenceId", "accountId", "extractionRunId", "bureau",
+       "fieldKey", "observationId", "observationSeriesKey",
+       "observationRevision", "observationIntegritySha256", "assessmentId",
+       "consumerAssertionId", "itemKey", "ordinal", "claimType"
+     ) VALUES (
+       'item-bad-ex-to-eq', 'p0-synthetic-direct', 'p0-synthetic-direct',
+       'rv-v2', 'case-1', 'corr-1', 'acct-clean', 'run-clean', 'EXPERIAN',
+       'summaryStatus', 'fo-clean-experian-summaryStatus',
+       'fo-clean-experian-summaryStatus-series', 1, repeat('a',64),
+       'assessment-clean', 'assert-clean-experian', 'item-key-bad-ex-to-eq',
+       2, 'FACTUAL_ACCURACY'
+     )$q$,
+  '23514'
+);
+
+SELECT pg_temp.expect_sqlstate(
+  'correspondence item cannot cross consumer ownership',
+  $q$INSERT INTO "CorrespondenceItem" (
+       "id", "tenantId", "consumerId", "reportVersionId", "caseId",
+       "correspondenceId", "accountId", "extractionRunId", "bureau",
+       "fieldKey", "observationId", "observationSeriesKey",
+       "observationRevision", "observationIntegritySha256", "assessmentId",
+       "consumerAssertionId", "itemKey", "ordinal", "claimType"
+     ) VALUES (
+       'item-bad-cross-consumer', 'p0-synthetic-direct',
+       'p0-synthetic-other', 'rv-v2', 'case-1', 'corr-1', 'acct-clean',
+       'run-clean', 'EQUIFAX', 'summaryStatus',
+       'fo-clean-equifax-summaryStatus',
+       'fo-clean-equifax-summaryStatus-series', 1, repeat('a',64),
+       'assessment-clean', 'assert-clean', 'item-key-bad-cross-consumer', 2,
+       'FACTUAL_ACCURACY'
+     )$q$,
+  '23503'
+);
+
+-- Non-CRA correspondence remains policy-compatible and preserves each item's
+-- own bureau provenance; the CRA-only recipient authority rule must not flatten
+-- or reject this valid multi-bureau evidence set.
+INSERT INTO "CorrespondenceItem" (
+  "id", "tenantId", "consumerId", "reportVersionId", "caseId",
+  "correspondenceId", "accountId", "extractionRunId", "bureau",
+  "fieldKey", "observationId", "observationSeriesKey",
+  "observationRevision", "observationIntegritySha256", "assessmentId",
+  "consumerAssertionId", "itemKey", "ordinal", "claimType"
+) VALUES
+  (
+    'item-furnisher-eq', 'p0-synthetic-direct', 'p0-synthetic-direct',
+    'rv-v2', 'case-1', 'corr-furnisher', 'acct-clean', 'run-clean',
+    'EQUIFAX', 'summaryStatus', 'fo-clean-equifax-summaryStatus',
+    'fo-clean-equifax-summaryStatus-series', 1, repeat('a',64),
+    'assessment-clean', 'assert-clean', 'item-key-furnisher-eq', 0,
+    'FACTUAL_ACCURACY'
+  ),
+  (
+    'item-furnisher-ex', 'p0-synthetic-direct', 'p0-synthetic-direct',
+    'rv-v2', 'case-1', 'corr-furnisher', 'acct-clean', 'run-clean',
+    'EXPERIAN', 'summaryStatus', 'fo-clean-experian-summaryStatus',
+    'fo-clean-experian-summaryStatus-series', 1, repeat('a',64),
+    'assessment-clean', 'assert-clean-experian', 'item-key-furnisher-ex', 1,
+    'FACTUAL_ACCURACY'
+  );
+
+SELECT pg_temp.expect_sqlstate(
+  'correspondence with items cannot replace its CRA recipient',
+  $q$UPDATE "Correspondence"
+     SET "recipientId" = 'recipient-3',
+         "recipientAddressVersionId" = 'address-3',
+         "updatedAt" = now()
+     WHERE "id" = 'corr-1'$q$,
+  '23514'
+);
+
+SELECT pg_temp.expect_sqlstate(
+  'CRA recipient bureau authority is append-only',
+  $q$UPDATE "Recipient"
+     SET "bureau" = 'TRANSUNION'
+     WHERE "id" = 'recipient-1'$q$,
+  '55000'
+);
+
+SELECT pg_temp.expect_sqlstate(
+  'CRA recipient class authority is append-only',
+  $q$UPDATE "Recipient"
+     SET "recipientType" = 'FURNISHER', "bureau" = NULL
+     WHERE "id" = 'recipient-1'$q$,
+  '55000'
+);
+
+SELECT pg_temp.expect_sqlstate(
   'correspondence item rejects mismatched assertion chain',
   $q$INSERT INTO "CorrespondenceItem" (
        "id", "tenantId", "consumerId", "reportVersionId", "caseId",
@@ -1336,7 +1556,26 @@ INSERT INTO "CorrespondenceVersion" (
     decode('22','hex'), decode('23','hex'), 'key-v1', 'AES_256_GCM',
     'env-v1', 'aad-v1', repeat('e',64), repeat('f',64), 0, NULL,
     NULL, NULL, 'synthetic-actor'
+  ),
+  (
+    'cv-tu', 'p0-synthetic-direct', 'p0-synthetic-direct', 'rv-v2',
+    'case-1', 'corr-tu', 1, 'APPROVED', 'synthetic-strategy',
+    'FACTUAL_ACCURACY', 'policy-v1', 1, 'ROOT', 'template-v1',
+    'recipient-3', 'address-3', 'baseline-1', decode('31','hex'),
+    decode('32','hex'), decode('33','hex'), 'key-v1', 'AES_256_GCM',
+    'env-v1', 'aad-v1', repeat('3',64), repeat('4',64), 0, NULL,
+    'synthetic-approver', now(), 'synthetic-actor'
   );
+
+SELECT pg_temp.expect_sqlstate(
+  'sealed correspondence cannot replace its CRA recipient',
+  $q$UPDATE "Correspondence"
+     SET "recipientId" = 'recipient-3',
+         "recipientAddressVersionId" = 'address-3',
+         "updatedAt" = now()
+     WHERE "id" = 'corr-1'$q$,
+  '23514'
+);
 
 SELECT pg_temp.expect_sqlstate(
   'correspondence version cannot change recipient',
@@ -1388,6 +1627,39 @@ INSERT INTO "CorrespondenceVersionItem" (
 ) VALUES (
   'cvi-1', 'p0-synthetic-direct', 'p0-synthetic-direct', 'rv-v2',
   'case-1', 'corr-1', 'cv-1', 'item-1', 0
+);
+
+SELECT pg_temp.expect_sqlstate(
+  'version membership cannot cross CRA correspondence recipients',
+  $q$INSERT INTO "CorrespondenceVersionItem" (
+       "id", "tenantId", "consumerId", "reportVersionId", "caseId",
+       "correspondenceId", "correspondenceVersionId",
+       "correspondenceItemId", "ordinal"
+     ) VALUES (
+       'cvi-bad-cross-cra', 'p0-synthetic-direct', 'p0-synthetic-direct',
+       'rv-v2', 'case-1', 'corr-tu', 'cv-tu', 'item-1', 0
+     )$q$,
+  '23503'
+);
+
+SELECT pg_temp.expect_sqlstate(
+  'sealed TransUnion CRA correspondence still rejects Equifax evidence',
+  $q$INSERT INTO "CorrespondenceItem" (
+       "id", "tenantId", "consumerId", "reportVersionId", "caseId",
+       "correspondenceId", "accountId", "extractionRunId", "bureau",
+       "fieldKey", "observationId", "observationSeriesKey",
+       "observationRevision", "observationIntegritySha256", "assessmentId",
+       "consumerAssertionId", "itemKey", "ordinal", "claimType"
+     ) VALUES (
+       'item-bad-eq-to-sealed-tu', 'p0-synthetic-direct',
+       'p0-synthetic-direct', 'rv-v2', 'case-1', 'corr-tu', 'acct-clean',
+       'run-clean', 'EQUIFAX', 'summaryStatus',
+       'fo-clean-equifax-summaryStatus',
+       'fo-clean-equifax-summaryStatus-series', 1, repeat('a',64),
+       'assessment-clean', 'assert-clean', 'item-key-bad-eq-to-sealed-tu',
+       0, 'FACTUAL_ACCURACY'
+     )$q$,
+  '23514'
 );
 
 INSERT INTO "Packet" (
@@ -1489,6 +1761,21 @@ INSERT INTO "PacketCorrespondenceVersion" (
   'pcv-1', 'p0-synthetic-direct', 'p0-synthetic-direct', 'rv-v2',
   'case-1', 'recipient-1', 'address-1', 'baseline-1', 'policy-v1', 1,
   'FACTUAL_ACCURACY', 'packet-1', 'corr-1', 'cv-1', 0
+);
+
+SELECT pg_temp.expect_sqlstate(
+  'Equifax CRA packet cannot consolidate a TransUnion CRA correspondence',
+  $q$INSERT INTO "PacketCorrespondenceVersion" (
+       "id", "tenantId", "consumerId", "reportVersionId", "caseId",
+       "recipientId", "recipientAddressVersionId", "identityBaselineId",
+       "policyVersion", "round", "claimClass", "packetId",
+       "correspondenceId", "correspondenceVersionId", "ordinal"
+     ) VALUES (
+       'pcv-bad-cross-cra', 'p0-synthetic-direct', 'p0-synthetic-direct',
+       'rv-v2', 'case-1', 'recipient-1', 'address-1', 'baseline-1',
+       'policy-v1', 1, 'FACTUAL_ACCURACY', 'packet-1', 'corr-tu', 'cv-tu', 1
+     )$q$,
+  '23503'
 );
 
 SELECT pg_temp.expect_sqlstate(
@@ -2566,6 +2853,158 @@ printf '%s\n' \
   'P0_ASSERT_PASS evidence-first race rejected CLEAN assessment [23514]' \
   >>"${tmp_root}/constraints.log"
 say "assessment_evidence_race: assessment_first=1|0 evidence_first=0|1 stale_pairs=0"
+
+run_race_correspondence_item_transaction() {
+  local correspondence_id="$1"
+  local item_id="$2"
+  local hold_seconds="$3"
+  local race_log="$4"
+
+  docker exec "${container_name}" \
+    psql -X --set=ON_ERROR_STOP=1 --set=VERBOSITY=verbose --quiet \
+      --username "${DB_ROLE}" --dbname "${primary_db}" \
+      --command "BEGIN;
+        INSERT INTO \"CorrespondenceItem\" (
+          \"id\", \"tenantId\", \"consumerId\", \"reportVersionId\",
+          \"caseId\", \"correspondenceId\", \"accountId\",
+          \"extractionRunId\", \"bureau\", \"fieldKey\", \"observationId\",
+          \"observationSeriesKey\", \"observationRevision\",
+          \"observationIntegritySha256\", \"assessmentId\",
+          \"consumerAssertionId\", \"itemKey\", \"ordinal\", \"claimType\"
+        ) VALUES (
+          '${item_id}', 'p0-synthetic-direct', 'p0-synthetic-direct', 'rv-v2',
+          'case-1', '${correspondence_id}', 'acct-clean', 'run-clean',
+          'EQUIFAX', 'summaryStatus', 'fo-clean-equifax-summaryStatus',
+          'fo-clean-equifax-summaryStatus-series', 1, repeat('a',64),
+          'assessment-clean', 'assert-clean', '${item_id}-key', 0,
+          'FACTUAL_ACCURACY'
+        );
+        SELECT pg_sleep(${hold_seconds});
+        COMMIT;" >"${race_log}" 2>&1
+}
+
+run_race_correspondence_retarget_transaction() {
+  local correspondence_id="$1"
+  local lock_first="$2"
+  local hold_seconds="$3"
+  local race_log="$4"
+  local lock_sql=""
+
+  if [[ "${lock_first}" == "true" ]]; then
+    lock_sql="SELECT 1 FROM \"Correspondence\" WHERE \"id\" = '${correspondence_id}' FOR UPDATE;
+      SELECT pg_sleep(${hold_seconds});"
+  fi
+
+  docker exec "${container_name}" \
+    psql -X --set=ON_ERROR_STOP=1 --set=VERBOSITY=verbose --quiet \
+      --username "${DB_ROLE}" --dbname "${primary_db}" \
+      --command "BEGIN;
+        ${lock_sql}
+        UPDATE \"Correspondence\"
+        SET \"recipientId\" = 'recipient-3',
+            \"recipientAddressVersionId\" = 'address-3',
+            \"updatedAt\" = now()
+        WHERE \"id\" = '${correspondence_id}';
+        COMMIT;" >"${race_log}" 2>&1
+}
+
+say "constraints: item-first race against correspondence recipient retarget"
+set +e
+run_race_correspondence_item_transaction \
+  "corr-race-insert-first" "item-race-insert-first" 1.0 \
+  "${tmp_root}/race-correspondence-item-first-item.log" &
+item_first_pid=$!
+sleep 0.2
+run_race_correspondence_retarget_transaction \
+  "corr-race-insert-first" "false" 0 \
+  "${tmp_root}/race-correspondence-item-first-retarget.log"
+item_first_retarget_status=$?
+wait "${item_first_pid}"
+item_first_item_status=$?
+set -e
+
+item_first_state="$(psql_query "${primary_db}" \
+  "SELECT c.\"recipientId\" || '|' || c.\"recipientAddressVersionId\" || '|' ||
+     (SELECT COUNT(*) FROM \"CorrespondenceItem\" ci
+      WHERE ci.\"correspondenceId\" = c.\"id\")::text
+   FROM \"Correspondence\" c
+   WHERE c.\"id\" = 'corr-race-insert-first';")"
+if [[ "${item_first_item_status}" -ne 0 ]] \
+    || [[ "${item_first_retarget_status}" -eq 0 ]] \
+    || ! grep -q 'ERROR:  23514:' "${tmp_root}/race-correspondence-item-first-retarget.log" \
+    || [[ "${item_first_state}" != "recipient-1|address-1|1" ]]; then
+  redact_log "${tmp_root}/race-correspondence-item-first-item.log" >&2
+  redact_log "${tmp_root}/race-correspondence-item-first-retarget.log" >&2
+  fail "item-first recipient-retarget race did not preserve exact routing"
+fi
+
+say "constraints: retarget-first race against correspondence item insert"
+set +e
+run_race_correspondence_retarget_transaction \
+  "corr-race-update-first" "true" 1.0 \
+  "${tmp_root}/race-correspondence-retarget-first-retarget.log" &
+retarget_first_pid=$!
+sleep 0.2
+run_race_correspondence_item_transaction \
+  "corr-race-update-first" "item-race-update-first" 0 \
+  "${tmp_root}/race-correspondence-retarget-first-item.log"
+retarget_first_item_status=$?
+wait "${retarget_first_pid}"
+retarget_first_retarget_status=$?
+set -e
+
+retarget_first_state="$(psql_query "${primary_db}" \
+  "SELECT c.\"recipientId\" || '|' || c.\"recipientAddressVersionId\" || '|' ||
+     (SELECT COUNT(*) FROM \"CorrespondenceItem\" ci
+      WHERE ci.\"correspondenceId\" = c.\"id\")::text
+   FROM \"Correspondence\" c
+   WHERE c.\"id\" = 'corr-race-update-first';")"
+if [[ "${retarget_first_item_status}" -ne 0 ]] \
+    || [[ "${retarget_first_retarget_status}" -eq 0 ]] \
+    || ! grep -q 'ERROR:  23514:' "${tmp_root}/race-correspondence-retarget-first-retarget.log" \
+    || [[ "${retarget_first_state}" != "recipient-1|address-1|1" ]]; then
+  redact_log "${tmp_root}/race-correspondence-retarget-first-retarget.log" >&2
+  redact_log "${tmp_root}/race-correspondence-retarget-first-item.log" >&2
+  fail "retarget-first item race did not preserve exact routing"
+fi
+
+say "constraints: immutable recipient authority races item insertion"
+set +e
+docker exec "${container_name}" \
+  psql -X --set=ON_ERROR_STOP=1 --set=VERBOSITY=verbose --quiet \
+    --username "${DB_ROLE}" --dbname "${primary_db}" \
+    --command "UPDATE \"Recipient\" SET \"bureau\" = 'TRANSUNION'
+      WHERE \"id\" = 'recipient-1';" \
+    >"${tmp_root}/race-recipient-authority-update.log" 2>&1 &
+recipient_authority_pid=$!
+run_race_correspondence_item_transaction \
+  "corr-retarget-empty" "item-race-recipient-authority" 0 \
+  "${tmp_root}/race-recipient-authority-item.log"
+recipient_authority_item_status=$?
+wait "${recipient_authority_pid}"
+recipient_authority_update_status=$?
+set -e
+
+recipient_authority_state="$(psql_query "${primary_db}" \
+  "SELECT r.\"bureau\"::text || '|' ||
+     (SELECT COUNT(*) FROM \"CorrespondenceItem\" ci
+      WHERE ci.\"correspondenceId\" = 'corr-retarget-empty')::text
+   FROM \"Recipient\" r WHERE r.\"id\" = 'recipient-1';")"
+if [[ "${recipient_authority_item_status}" -ne 0 ]] \
+    || [[ "${recipient_authority_update_status}" -eq 0 ]] \
+    || ! grep -q 'ERROR:  55000:' "${tmp_root}/race-recipient-authority-update.log" \
+    || [[ "${recipient_authority_state}" != "EQUIFAX|1" ]]; then
+  redact_log "${tmp_root}/race-recipient-authority-update.log" >&2
+  redact_log "${tmp_root}/race-recipient-authority-item.log" >&2
+  fail "recipient-authority race did not preserve exact routing"
+fi
+
+printf '%s\n' \
+  'P0_ASSERT_PASS item-first race rejected recipient retarget [23514]' \
+  'P0_ASSERT_PASS retarget-first race rejected recipient retarget [23514]' \
+  'P0_ASSERT_PASS recipient authority race rejected bureau mutation [55000]' \
+  >>"${tmp_root}/constraints.log"
+say "correspondence_race: item_first=${item_first_state} retarget_first=${retarget_first_state} authority=${recipient_authority_state}"
 
 run_concurrent_packet_probe() {
   local probe_id="$1"

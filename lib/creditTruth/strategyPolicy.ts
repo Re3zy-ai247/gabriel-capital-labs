@@ -6,6 +6,8 @@
  * read path. Future activation requires a separately versioned policy set.
  */
 
+import type { Bureau } from "@prisma/client";
+
 import {
   CONSUMER_ASSERTION_BINDING_VERSION,
   validateConsumerAssertionBinding,
@@ -20,9 +22,9 @@ export {
   type ObservationBinding,
 } from "./consumerAssertion";
 
-export const STRATEGY_POLICY_SCHEMA_VERSION = "1.0.0" as const;
-export const PHASE_1_STRATEGY_POLICY_SET_VERSION = "2026-08-08.phase1" as const;
-export const PHASE_1_STRATEGY_POLICY_VERSION = "2026-08-08.1" as const;
+export const STRATEGY_POLICY_SCHEMA_VERSION = "1.1.0" as const;
+export const PHASE_1_STRATEGY_POLICY_SET_VERSION = "2026-08-10.phase1" as const;
+export const PHASE_1_STRATEGY_POLICY_VERSION = "2026-08-10.1" as const;
 
 export type StrategyPolicyId =
   | "fcra_611"
@@ -331,6 +333,7 @@ export interface ConsolidationItemMetadata {
   readonly itemId: string;
   readonly recipientId: string;
   readonly recipientAddressVersionId: string;
+  readonly recipientBureau: Bureau | null;
   readonly round: number;
   readonly policyVersion: string;
   readonly recipientType: PolicyRecipientType;
@@ -354,6 +357,11 @@ export interface StrategyPolicyEvaluationRequest {
   readonly recipientId: string;
   readonly recipientAddressVersionId: string;
   readonly recipientType: PolicyRecipientType;
+  /**
+   * Immutable routing authority for a CRA recipient. It is required for CRA
+   * correspondence and must be null for every non-CRA recipient.
+   */
+  readonly recipientBureau: Bureau | null;
   readonly addressStatus: RecipientAddressStatus;
   readonly round: number;
   readonly applicabilityFacts: readonly ApplicabilityPredicate[];
@@ -389,6 +397,13 @@ export type StrategyPolicyDenialCode =
   | "RECIPIENT_ID_MISSING"
   | "RECIPIENT_ADDRESS_VERSION_ID_MISSING"
   | "RECIPIENT_TYPE_NOT_ALLOWED"
+  | "CRA_RECIPIENT_BUREAU_MISSING"
+  | "CRA_ASSERTION_BUREAU_MISSING"
+  | "CRA_CURRENT_BINDING_BUREAU_MISSING"
+  | "CRA_RECIPIENT_BUREAU_ASSERTION_MISMATCH"
+  | "CRA_RECIPIENT_BUREAU_CURRENT_BINDING_MISMATCH"
+  | "CRA_MIXED_BUREAU_EVIDENCE"
+  | "NON_CRA_RECIPIENT_BUREAU_NOT_ALLOWED"
   | "RECIPIENT_ADDRESS_NOT_VERIFIED_VERSIONED"
   | "APPLICABILITY_PREDICATE_MISSING"
   | "REQUIRED_OBSERVATION_MISSING"
@@ -398,6 +413,10 @@ export type StrategyPolicyDenialCode =
   | "CONSUMER_ASSERTION_BINDING_KIND_INVALID"
   | "CONSUMER_ASSERTION_NOT_BOUND_TO_CURRENT_OBSERVATION"
   | "CONSUMER_ASSERTION_NOT_BOUND_TO_CURRENT_POLICY_CONTEXT"
+  | "SUPPLIED_CONSUMER_ASSERTION_NOT_CURRENT"
+  | "SUPPLIED_CURRENT_ASSERTION_BINDING_UNPAIRED"
+  | "DUPLICATE_CONSUMER_ASSERTION_EVIDENCE"
+  | "DUPLICATE_CURRENT_ASSERTION_BINDING"
   | "REQUIRED_TIMING_FACT_MISSING"
   | "CLAIM_SELECTION_MISSING"
   | "CLAIM_TYPE_NOT_ALLOWED"
@@ -421,6 +440,10 @@ export type StrategyPolicyDenialCode =
   | "CONSOLIDATION_POLICY_VERSION_MISMATCH"
   | "CONSOLIDATION_MIXED_RECIPIENT_TYPES"
   | "CONSOLIDATION_RECIPIENT_TYPE_NOT_ALLOWED"
+  | "CONSOLIDATION_CRA_RECIPIENT_BUREAU_MISSING"
+  | "CONSOLIDATION_RECIPIENT_BUREAU_MISMATCH"
+  | "CONSOLIDATION_MIXED_CRA_RECIPIENT_BUREAUS"
+  | "CONSOLIDATION_NON_CRA_RECIPIENT_BUREAU_NOT_ALLOWED"
   | "CONSOLIDATION_CLAIM_INCOMPATIBLE"
   | "CONSOLIDATION_ENCLOSURE_INCOMPATIBLE"
   | "CONSOLIDATION_STRATEGY_INCOMPATIBLE";
@@ -967,6 +990,67 @@ function isSha256Digest(value: string): boolean {
   return /^[a-f0-9]{64}$/.test(value);
 }
 
+const CREDIT_REPORTING_BUREAUS = new Set<Bureau>([
+  "EQUIFAX",
+  "EXPERIAN",
+  "TRANSUNION",
+]);
+
+function isCreditReportingBureau(value: unknown): value is Bureau {
+  return typeof value === "string" && CREDIT_REPORTING_BUREAUS.has(value as Bureau);
+}
+
+function observationBindingKey(binding: ObservationBinding): string {
+  return JSON.stringify([
+    binding.tenantId,
+    binding.consumerId,
+    binding.observationId,
+    binding.reportVersionId,
+    binding.extractionRunId,
+    binding.accountId,
+    binding.bureau,
+    binding.field,
+    binding.observationSeriesKey,
+    binding.observationRevision,
+    binding.observationDigest,
+  ]);
+}
+
+function policyContextBindingKey(binding: PolicyContextBinding): string {
+  return JSON.stringify([
+    binding.tenantId,
+    binding.consumerId,
+    binding.caseId,
+    binding.contextId,
+    binding.contextVersion,
+    binding.contextDigest,
+    binding.strategyId,
+    binding.policyVersion,
+  ]);
+}
+
+function consumerAssertionId(assertion: ConsumerAssertionEvidence): string {
+  return assertion.bindingKind === "OBSERVATION"
+    ? assertion.assertion.assertionId
+    : assertion.assertionId;
+}
+
+function consumerAssertionEvidenceKey(assertion: ConsumerAssertionEvidence): string {
+  const bindingKey =
+    assertion.bindingKind === "OBSERVATION"
+      ? observationBindingKey(assertion.assertion.binding)
+      : policyContextBindingKey(assertion.policyContextBinding);
+  return JSON.stringify([assertion.type, assertion.bindingKind, bindingKey]);
+}
+
+function currentAssertionBindingKey(binding: CurrentConsumerAssertionBinding): string {
+  const bindingKey =
+    binding.bindingKind === "OBSERVATION"
+      ? observationBindingKey(binding.observationBinding)
+      : policyContextBindingKey(binding.policyContextBinding);
+  return JSON.stringify([binding.type, binding.bindingKind, bindingKey]);
+}
+
 function validPolicyContextBinding(binding: PolicyContextBinding): boolean {
   return (
     isNonEmpty(binding.tenantId) &&
@@ -1054,6 +1138,102 @@ function policyAssertionBindingIsCurrent(
   }
 
   return false;
+}
+
+function validateSuppliedAssertionEvidence(
+  reasons: StrategyPolicyDenialReason[],
+  assertions: readonly ConsumerAssertionEvidence[],
+  currentBindings: readonly CurrentConsumerAssertionBinding[],
+  expected: {
+    strategyId: StrategyPolicyId;
+    policyVersion: string;
+    scope: StrategyPolicyEvaluationScope;
+  }
+): void {
+  const assertionIds = new Set<string>();
+  const evidenceKeys = new Set<string>();
+  for (const assertion of assertions) {
+    const assertionId = consumerAssertionId(assertion);
+    const evidenceKey = consumerAssertionEvidenceKey(assertion);
+    if (assertionIds.has(assertionId) || evidenceKeys.has(evidenceKey)) {
+      addReason(reasons, "DUPLICATE_CONSUMER_ASSERTION_EVIDENCE", assertion.type);
+    }
+    assertionIds.add(assertionId);
+    evidenceKeys.add(evidenceKey);
+
+    const isCurrent = currentBindings.some((binding) =>
+      policyAssertionBindingIsCurrent(assertion, binding, expected)
+    );
+    if (!isCurrent) {
+      addReason(reasons, "SUPPLIED_CONSUMER_ASSERTION_NOT_CURRENT", assertion.type);
+    }
+  }
+
+  const currentKeys = new Set<string>();
+  for (const current of currentBindings) {
+    const currentKey = currentAssertionBindingKey(current);
+    if (currentKeys.has(currentKey)) {
+      addReason(reasons, "DUPLICATE_CURRENT_ASSERTION_BINDING", current.type);
+    }
+    currentKeys.add(currentKey);
+
+    const hasAssertion = assertions.some((assertion) =>
+      policyAssertionBindingIsCurrent(assertion, current, expected)
+    );
+    if (!hasAssertion) {
+      addReason(reasons, "SUPPLIED_CURRENT_ASSERTION_BINDING_UNPAIRED", current.type);
+    }
+  }
+}
+
+function validateCraRecipientBureauRouting(
+  reasons: StrategyPolicyDenialReason[],
+  request: StrategyPolicyEvaluationRequest
+): void {
+  if (request.recipientType !== "CREDIT_REPORTING_AGENCY") {
+    if (request.recipientBureau !== null) {
+      addReason(reasons, "NON_CRA_RECIPIENT_BUREAU_NOT_ALLOWED");
+    }
+    return;
+  }
+
+  const recipientBureau = isCreditReportingBureau(request.recipientBureau)
+    ? request.recipientBureau
+    : null;
+  if (recipientBureau === null) {
+    addReason(reasons, "CRA_RECIPIENT_BUREAU_MISSING");
+  }
+
+  const suppliedBureaus = new Set<Bureau>();
+  for (const assertion of request.consumerAssertions) {
+    if (assertion.bindingKind !== "OBSERVATION") continue;
+    const evidenceBureau = assertion.assertion.binding.bureau;
+    if (!isCreditReportingBureau(evidenceBureau)) {
+      addReason(reasons, "CRA_ASSERTION_BUREAU_MISSING", assertion.type);
+      continue;
+    }
+    suppliedBureaus.add(evidenceBureau);
+    if (recipientBureau !== null && evidenceBureau !== recipientBureau) {
+      addReason(reasons, "CRA_RECIPIENT_BUREAU_ASSERTION_MISMATCH", assertion.type);
+    }
+  }
+
+  for (const current of request.currentAssertionBindings) {
+    if (current.bindingKind !== "OBSERVATION") continue;
+    const evidenceBureau = current.observationBinding.bureau;
+    if (!isCreditReportingBureau(evidenceBureau)) {
+      addReason(reasons, "CRA_CURRENT_BINDING_BUREAU_MISSING", current.type);
+      continue;
+    }
+    suppliedBureaus.add(evidenceBureau);
+    if (recipientBureau !== null && evidenceBureau !== recipientBureau) {
+      addReason(reasons, "CRA_RECIPIENT_BUREAU_CURRENT_BINDING_MISMATCH", current.type);
+    }
+  }
+
+  if (suppliedBureaus.size > 1) {
+    addReason(reasons, "CRA_MIXED_BUREAU_EVIDENCE");
+  }
 }
 
 function validateAssertionScopes(
@@ -1257,6 +1437,37 @@ function evaluateConsolidation(
     addReason(reasons, "CONSOLIDATION_RECIPIENT_TYPE_NOT_ALLOWED");
   }
 
+  const craRecipientBureaus = new Set<Bureau>();
+  for (const item of candidate.items) {
+    if (item.recipientType === "CREDIT_REPORTING_AGENCY") {
+      if (!isCreditReportingBureau(item.recipientBureau)) {
+        addReason(
+          reasons,
+          "CONSOLIDATION_CRA_RECIPIENT_BUREAU_MISSING",
+          item.itemId || "missing-item-id"
+        );
+        continue;
+      }
+      craRecipientBureaus.add(item.recipientBureau);
+      if (item.recipientBureau !== request.recipientBureau) {
+        addReason(
+          reasons,
+          "CONSOLIDATION_RECIPIENT_BUREAU_MISMATCH",
+          item.itemId
+        );
+      }
+    } else if (item.recipientBureau !== null) {
+      addReason(
+        reasons,
+        "CONSOLIDATION_NON_CRA_RECIPIENT_BUREAU_NOT_ALLOWED",
+        item.itemId || "missing-item-id"
+      );
+    }
+  }
+  if (craRecipientBureaus.size > 1) {
+    addReason(reasons, "CONSOLIDATION_MIXED_CRA_RECIPIENT_BUREAUS");
+  }
+
   for (const item of candidate.items) {
     if (!consolidation.compatibleStrategyIds.includes(item.strategyId)) {
       addReason(reasons, "CONSOLIDATION_STRATEGY_INCOMPATIBLE", item.strategyId);
@@ -1362,6 +1573,7 @@ export function evaluateStrategyPolicy(
   if (!definition.recipientTypes.includes(request.recipientType)) {
     addReason(reasons, "RECIPIENT_TYPE_NOT_ALLOWED", request.recipientType);
   }
+  validateCraRecipientBureauRouting(reasons, request);
   if (request.addressStatus !== definition.requiredAddressStatus) {
     addReason(reasons, "RECIPIENT_ADDRESS_NOT_VERIFIED_VERSIONED", request.addressStatus);
   }
@@ -1389,6 +1601,17 @@ export function evaluateStrategyPolicy(
     request.consumerAssertions,
     request.currentAssertionBindings,
     request.scope
+  );
+
+  validateSuppliedAssertionEvidence(
+    reasons,
+    request.consumerAssertions,
+    request.currentAssertionBindings,
+    {
+      strategyId: definition.strategyId,
+      policyVersion: definition.policyVersion,
+      scope: request.scope,
+    }
   );
 
   requireConsumerAssertions(

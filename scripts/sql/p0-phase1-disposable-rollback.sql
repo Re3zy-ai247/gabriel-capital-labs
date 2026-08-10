@@ -92,6 +92,8 @@ DROP FUNCTION IF EXISTS p0_validate_canonical_artifact_context();
 DROP FUNCTION IF EXISTS p0_validate_packet_correspondence_approval();
 DROP FUNCTION IF EXISTS p0_validate_approved_mailing_context();
 DROP FUNCTION IF EXISTS p0_validate_correspondence_version_supersession();
+DROP FUNCTION IF EXISTS p0_validate_correspondence_item_recipient_bureau();
+DROP FUNCTION IF EXISTS p0_validate_correspondence_recipient_update();
 DROP FUNCTION IF EXISTS p0_validate_dispute_outcome_insert();
 DROP FUNCTION IF EXISTS p0_reject_post_comparison_identity_input();
 DROP FUNCTION IF EXISTS p0_validate_report_comparison_seal();

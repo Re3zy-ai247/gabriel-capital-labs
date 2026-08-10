@@ -1102,6 +1102,7 @@ CREATE TABLE "Recipient" (
     "consumerId" TEXT NOT NULL,
     "stableKey" TEXT NOT NULL,
     "recipientType" "RecipientType" NOT NULL,
+    "bureau" "Bureau",
     "displayNameCiphertext" BYTEA,
     "displayNameIv" BYTEA,
     "displayNameAuthTag" BYTEA,
@@ -1112,6 +1113,11 @@ CREATE TABLE "Recipient" (
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "Recipient_pkey" PRIMARY KEY ("id"),
+    CONSTRAINT "Recipient_bureau_authority_ck" CHECK (
+      ("recipientType" = 'CREDIT_REPORTING_AGENCY' AND "bureau" IS NOT NULL)
+      OR
+      ("recipientType" <> 'CREDIT_REPORTING_AGENCY' AND "bureau" IS NULL)
+    ),
     CONSTRAINT "Recipient_display_name_envelope_ck" CHECK (
       ("displayNameCiphertext" IS NULL AND "displayNameIv" IS NULL AND "displayNameAuthTag" IS NULL AND "displayNameKeyVersion" IS NULL AND "displayNameAlgorithm" IS NULL AND "displayNameEnvelopeVersion" IS NULL AND "displayNameAadVersion" IS NULL)
       OR
@@ -3626,6 +3632,81 @@ $$;
 CREATE TRIGGER "DisputeOutcome_validate_insert_trg"
 BEFORE INSERT ON "DisputeOutcome"
 FOR EACH ROW EXECUTE FUNCTION p0_validate_dispute_outcome_insert();
+
+-- A correspondence owns one durable recipient identity. Status and other
+-- aggregate-header state may evolve, but owner/scope/recipient retargeting must
+-- append a new correspondence so immutable items can never change destination.
+CREATE FUNCTION p0_validate_correspondence_recipient_update()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  IF OLD."id" IS DISTINCT FROM NEW."id"
+    OR OLD."tenantId" IS DISTINCT FROM NEW."tenantId"
+    OR OLD."consumerId" IS DISTINCT FROM NEW."consumerId"
+    OR OLD."reportVersionId" IS DISTINCT FROM NEW."reportVersionId"
+    OR OLD."caseId" IS DISTINCT FROM NEW."caseId"
+    OR OLD."recipientId" IS DISTINCT FROM NEW."recipientId"
+  THEN
+    RAISE EXCEPTION USING
+      ERRCODE = '23514',
+      MESSAGE = 'correspondence owner, report, case and recipient identity are immutable; append a new correspondence';
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER "Correspondence_recipient_identity_trg"
+BEFORE UPDATE ON "Correspondence"
+FOR EACH ROW EXECUTE FUNCTION p0_validate_correspondence_recipient_update();
+
+-- Every immutable item resolves its exact correspondence and recipient while
+-- locking both rows. CRA evidence must match the recipient's immutable bureau;
+-- non-CRA correspondence retains compatible item-level bureau provenance.
+CREATE FUNCTION p0_validate_correspondence_item_recipient_bureau()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  exact_recipient_type "RecipientType";
+  exact_recipient_bureau "Bureau";
+BEGIN
+  SELECT r."recipientType", r."bureau"
+  INTO exact_recipient_type, exact_recipient_bureau
+  FROM "Correspondence" c
+  JOIN "Recipient" r
+    ON r."tenantId" = c."tenantId"
+   AND r."consumerId" = c."consumerId"
+   AND r."id" = c."recipientId"
+  WHERE c."tenantId" = NEW."tenantId"
+    AND c."consumerId" = NEW."consumerId"
+    AND c."reportVersionId" = NEW."reportVersionId"
+    AND c."caseId" = NEW."caseId"
+    AND c."id" = NEW."correspondenceId"
+  FOR UPDATE OF c, r;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION USING
+      ERRCODE = '23503',
+      MESSAGE = 'correspondence item requires the exact owned correspondence and recipient';
+  END IF;
+
+  IF exact_recipient_type = 'CREDIT_REPORTING_AGENCY'
+    AND exact_recipient_bureau IS DISTINCT FROM NEW."bureau"
+  THEN
+    RAISE EXCEPTION USING
+      ERRCODE = '23514',
+      MESSAGE = 'CRA correspondence item bureau must equal the immutable recipient bureau';
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER "CorrespondenceItem_recipient_bureau_trg"
+BEFORE INSERT ON "CorrespondenceItem"
+FOR EACH ROW EXECUTE FUNCTION p0_validate_correspondence_item_recipient_bureau();
 
 -- Supersession remains inside one correspondence by FK and moves strictly
 -- forward in version number, which also makes supersession cycles impossible.

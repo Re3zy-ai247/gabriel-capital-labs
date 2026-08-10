@@ -1,189 +1,291 @@
-# CreditVector P0 Phase 1 — Founder Checkpoint
+# CreditVector P0 Credit Intelligence & Correspondence Integrity
 
-- **Date:** 2026-08-09
-- **Branch:** `codex/p0-launch-correctness`
-- **Phase 1 verdict:** `GO FOR PHASE 1 CHECKPOINT`
-- **Production verdict:** `NO-GO`
-- **Scope:** dormant, isolated, additive, build-only foundation
+## Phase 1 Continuation — Founder Checkpoint
 
-## 1. Final verdict
+- **Date:** August 10, 2026
+- **Phase:** Phase 1 build-only foundation
+- **Implementation verdict:** **COMPLETE**
+- **Checkpoint verdict:** **GO — DORMANT, ISOLATED CHECKPOINT ONLY**
+- **Production verdict:** **NO-GO**
+- **Open findings:** **C0 / H0 / M4 / L2**
 
-Phase 1 is closure-ready. The four authoritative final-red-team High findings
-were repaired, independently exercised on disposable PostgreSQL, and attacked
-again against the exact repaired state. Final closure severity is **0 Critical / 0
-High**.
+The exact prior P0 lineage was recovered from Git before any change. A fresh
+adversarial pass then found one High correspondence-integrity gap: a valid
+bureau-specific item was not durably bound to the bureau authority of its CRA
+recipient. That High was repaired at the pure policy, database, direct-writer,
+and concurrency boundaries and independently reattacked closed.
 
-This is permission to preserve the dormant Phase 1 checkpoint in Git only. It
-does **not** authorize a production migration, backfill, report reanalysis,
-read-path switch, UI/Kai activation, correspondence, fulfillment, deployment,
-push, or merge to `main`.
+The Founder accepted Phase 1 as complete and authorized exactly one local P0
+checkpoint commit. This artifact is included in that commit; its exact commit
+SHA is recorded in the external post-commit Founder receipt because a commit
+cannot truthfully embed its own SHA. All implementation remains dormant and
+local. No M2 source or artifact was changed or used as P0 authority; no
+production system, private report, or consumer record was accessed.
 
-## 2. Red-team closure
+## 1. P0 LINEAGE — PASS
 
-| Finding | Root cause | Repair | Regression protection | Independent result |
-|---|---|---|---|---|
-| “No longer reported” disagreement | Runtime used account-level disappearance vocabulary for a field transition while database authority reserved it for whole-account presence. | Whole-account complete `PRESENT → ABSENT_CONFIRMED` alone yields `NO_LONGER_REPORTED`. Field disappearance uses its field-specific change kind with `NOT_APPLICABLE`; it never proves deletion. | Progress RED TEAM 3, SQL truth-table checks, static function-body guard, and committed positive field/account chains. | **PASS** |
-| Incomplete account-presence transitions | Direct writers could relabel some prior/current presence pairs, and complete absent/absent was not representable. | Runtime and SQL now exhaustively enforce P/P, P/A, A/P, and A/A. Incomplete or `UNKNOWN` evidence remains non-comparable and unable to determine. | Progress RED TEAM 2, direct-writer negatives, static guard, and persisted P/A positive chain. | **PASS** |
-| Missing durable score comparability | Database checks omitted source method/version, occurrence, and source-report chronology; score revision semantics diverged from runtime. | Exact report/run/bureau, primary report role, model/scale, method/version, occurrence, source-reported date order, and same-slot revision pins are enforced. | Progress RED TEAM 6–8, composite FKs/checks, static guard, and persisted `SCORE_CHANGED` positive chain. | **PASS** |
-| Permissive causal-language filtering | A short regex denylist allowed unsupported causal claims that avoided its phrases. | Only module-generated, frozen, `WeakSet`-registered templates with exact statement equality are accepted. Free-form variants fail closed. | Progress RED TEAM 1 plus five whitespace, Unicode, chronology, and causal-claim bypass probes. | **PASS** |
+| Evidence | Exact value |
+| --- | --- |
+| Branch | `codex/p0-launch-correctness` |
+| Checkpoint parent | `10ca22d85a522b48624309abc321139f0bf6e8fc` |
+| Parent tree | `0adb1da6507460c8e9768264a646e4eeaa8725d3` |
+| Local checkpoint commit | Included; exact SHA recorded in the external Founder receipt |
+| Recovered worktree | Isolated local P0 worktree; private path withheld |
+| Baseline / merge-base | `3a9943040da5648f1ae68fa9b8e0f06a276f75b1` |
+| Plan commit | `f57c7f7afa559b25e071add7624c3b92a08a0af1` |
+| Prior closure commit | `10ca22d85a522b48624309abc321139f0bf6e8fc` |
 
-Outcome authority was aligned at the same boundary: comparison-only absence is
-`NO_LONGER_REPORTED`, never `DELETED`; `DELETED` is rejected in Phase 1;
-`CORRECTED` and `NEW_CONFLICT` require exact human confirmation; bounded
-observable outcomes use system-derived provenance.
+The registered historical worktree path was missing and prunable. Its stale Git
+metadata was removed after a dry run, then the same path was recreated from the
+verified local-only branch. Git object integrity passed. The branch is not on a
+remote. `AGENTS.md` is absent from this lineage; no substitute was inferred.
 
-## 3. Test and verification matrix
+## 2. ISOLATION FROM M2 — PASS
 
-| Suite | Result |
-|---|---:|
+- P0 and M2 diverge from the same baseline; neither contains the other.
+- The only overlapping changed pathname is `prisma/schema.prisma`; no content
+  was copied, merged, or edited across worktrees.
+- M2 status, tracked-diff, untracked-inventory, and empty-index fingerprints
+  remained exactly unchanged throughout this continuation.
+- P0 used only its recovered worktree and a temporary ignored dependency link
+  to the exact-lockfile-matched local dependency tree.
+- No M2 migration, source, evidence, artifact, or production access was used.
+
+## 3. PHASE 1 IMPLEMENTATION — COMPLETE
+
+Delta recovery reused the committed parser-v2, durable source-truth,
+assessment, ConsumerAssertion, ReportVersion, score provenance, strategy,
+Round 0, artifact, fixture, and migration foundations. It did not restart
+discovery or redesign CreditVector.
+
+The fresh adversarial review identified one remaining authorized delta and it is
+now complete:
+
+1. add immutable CRA bureau authority to `Recipient`;
+2. reject CRA/non-CRA authority-shape violations;
+3. prevent correspondence recipient retargeting;
+4. validate each CRA correspondence item against its exact recipient bureau;
+5. serialize item insertion against recipient retarget races;
+6. require the same authority in strategy evaluation and consolidation; and
+7. add direct, stale, duplicate, cross-bureau, downstream, and race regressions.
+
+Seven engineering files changed. The checkpoint Markdown and HTML are the only
+artifact files changed. No Phase 2, UI, mailing runtime, or production work was
+performed.
+
+## 4. PARSER-V2 SHADOW CONTRACT — PASS
+
+- Parser-v2 remains opt-in and explicitly `SHADOW_ONLY`.
+- Legacy parsing and legacy writes remain unchanged.
+- Bureau observations retain bureau, section, source locator, method, version,
+  confidence, and extraction-error provenance.
+- Missing, failed, incomplete, or out-of-coverage fields remain `UNKNOWN`.
+- Confirmed absence still requires complete canonical section evidence.
+- Same-account bureau disagreements remain distinct observations.
+
+## 5. DURABLE BUREAU-SPECIFIC SOURCE TRUTH — PASS
+
+The durable graph preserves exact tenant, consumer, report, ReportVersion,
+ExtractionRun, account, bureau, section, field, observation, series, revision,
+and digest boundaries. Bureau-specific presence, completeness, current facts,
+and historical evidence remain independent.
+
+The repaired correspondence boundary now adds an exact CRA destination rule:
+`Recipient.bureau` is required for a CRA and forbidden for a non-CRA; a CRA item
+must match that immutable authority. Non-CRA correspondence preserves each
+item's own bureau provenance without flattening it.
+
+## 6. HISTORICAL EVIDENCE PRESERVATION — PASS
+
+Supported historical derogatory evidence remains adverse when current fields
+say Closed, Paid, zero balance, or Pays as Agreed. Current neutral or positive
+fields cannot erase supported prior lateness, charge-off, collection, or other
+derogatory evidence. Incomplete extraction cannot silently remove history.
+
+## 7. CLEAN-CONTROL SAFETY — PASS
+
+- `CLEAN` requires affirmative, complete, non-adverse evidence.
+- Neutral-only, incomplete, uncertain, or conflicting input requires review.
+- Supported adversity is monotonic against `CLEAN`.
+- The synthetic clean control remains clean; the repair does not flag
+  everything.
+- Both assessment/adverse-evidence race orderings preserve zero stale
+  `CLEAN`/adverse pairs.
+
+## 8. REPORTVERSION / SCORE PROVENANCE — PASS
+
+- Uploads can become immutable `ReportVersion` rows; reanalysis appends an
+  `ExtractionRun` rather than overwriting truth.
+- Present scores preserve bureau, encrypted value envelope, model/scale,
+  method/version, occurrence, source locator, report date, and integrity data.
+- A report without a score stays explicitly score-absent; no score is invented.
+- Manual scores remain secondary and provenance-labeled.
+- Before/after comparisons support score, account, field, bureau-coverage, and
+  identity changes.
+- Parser uncertainty never becomes deletion. Only complete
+  `PRESENT → ABSENT_CONFIRMED` evidence can become `NO_LONGER_REPORTED`.
+- Chronology/correlation is supported; unsupported causality is not.
+
+## 9. CONSUMERASSERTION — PASS
+
+`ConsumerAssertion` binds the exact tenant, consumer, report, run, account,
+bureau, field, observation, series, revision, and evidence digest. Drift or
+replacement requires reconfirmation; cross-bureau replay fails closed.
+
+The repaired policy evaluator also rejects duplicate proof, orphan current
+bindings, and stale extra evidence attempting to hitchhike behind a valid proof.
+Parser inference still cannot autonomously create a factual dispute assertion.
+
+## 10. STRATEGY POLICY FOUNDATION — PASS
+
+- Twelve executable strategy policies remain present and dormant.
+- Seven counsel-dependent policies remain `PENDING_COUNSEL`.
+- Contract versions are now schema `1.1.0`, set `2026-08-10.phase1`, and policy
+  `2026-08-10.1`.
+- CRA evaluation requires a non-null recipient bureau equal to every supplied
+  observation assertion and current binding.
+- CRA consolidation rejects missing, conflicting, or mixed bureau authority.
+- Non-CRA recipient authority must be null; item-level bureau evidence remains
+  intact.
+- No policy activates correspondence, fulfillment, or production behavior.
+
+## 11. ROUND 0 FOUNDATION — PASS
+
+The additive model supports an immutable, consumer-confirmed Identity Baseline
+covering legal name, aliases, current/former addresses, safe identity fields,
+reported phone/employment information, mixed-file indicators, and unrecognized
+accounts. Accurate former addresses and legitimate employment information are
+not automatically treated as disputable.
+
+## 12. CORRESPONDENCE PROVENANCE FOUNDATION — PASS
+
+Every future factual item can be pinned to recipient, bureau, creditor or
+furnisher, masked account reference, exact field observation,
+consumer-confirmed basis, requested action, and evidence digest.
+
+The closed High is now guarded in both layers:
+
+- **Runtime:** Equifax evidence cannot authorize Experian or TransUnion CRA
+  correspondence; mixed CRA consolidation is denied.
+- **Database:** direct writers cannot insert an item under a different CRA
+  bureau, mutate immutable recipient authority, retarget a correspondence, or
+  win either item-insert/retarget concurrency ordering.
+- **Downstream:** correspondence versions, membership, packets, and artifacts
+  retain the exact recipient lineage already enforced by composite keys.
+
+Recipient-first packetization remains limited to compatible items. CRA,
+collector, furnisher, goodwill, cease/desist, and regulator classes stay
+separate unless an explicit dormant policy allows consolidation. No final
+mailing runtime was built.
+
+## 13. LOCAL/DISPOSABLE MIGRATION — PASS
+
+| Frozen repaired input | SHA-256 |
+| --- | --- |
+| `prisma/schema.prisma` | `a18b04ab0026c3e1b6e4dd6f034fa59182acf39fdcc1181f714bb79039bb9d91` |
+| Phase 1 migration | `bd2c03aa76f29d1f25258bb23786adaf39601c9401e4e5eafdf92ba0a8eeb7c9` |
+| Migration static guard | `37cd3f70fc20a5dcc324891965b6673a517c86a79c5d9acb4dcb79f5a8a4ee1f` |
+| Disposable verifier | `982f15a517d7647859b8cb84152333b2a6135d7018cff1d63a100abad41d7fc8` |
+| Disposable rollback | `8e4b04734dd063a8ac04e6c5db98dc7c6026936df4317aa4758b5c619a9a9e39` |
+| Strategy policy | `0f36c72fbadf8aef8ec453a418c064b490efebe84732db85de47986a646a7301` |
+| Strategy test | `1796ca2756b98737373ce95c5ee9934bc3f1af061b2050f5af67dce7a4c8c9e5` |
+| Synthetic fixture, unchanged | `b3afc9ae354f6966186851b31d7712a20929d15c559f08756ff90ff659db0b10` |
+
+The disposable PostgreSQL proof passed forward deploy, exact no-op deploy,
+empty Prisma parity diff, catalog validation, 65 negative probes, three positive
+suites, both routing race orders, rollback, clean rebuild, rebuilt no-op, and
+teardown. Final P0 catalog counts were 49 enums, 32 tables, 122 unique indexes,
+38 secondary indexes, 106 foreign keys, 128 checks, 74 triggers, and 31
+functions. The disposable container was removed and only the verifier-started
+local Colima profile was stopped.
+
+The committed migration-verification and red-team reports remain historical
+pre-repair evidence for unchanged gates. For recipient routing and migration
+counts, this continuation's frozen hashes and **51 / 51; 3 / 65** evidence
+supersede their earlier **48 / 48; 3 / 47** snapshot.
+
+Production migration, connection, write, backfill, reanalysis, report
+processing, and feature activation were **NONE**.
+
+## 14. TEST COUNTS — 454 / 454 GREEN
+
+| Suite | Exact result |
+| --- | ---: |
 | Sanitized source-truth fixture | 23 / 23 |
 | Parser-v2 shadow contract | 69 / 69 |
 | Assessment and assertion binding | 79 / 79 |
-| Executable strategy policy | 85 / 85 |
+| Executable strategy policy | 102 / 102 |
 | Artifact storage contract | 71 / 71 |
 | Progress Intelligence | 30 / 30 |
 | Existing classification regression | 29 / 29 |
-| Migration static guard | 48 / 48 |
-| Independent disposable migration | 3 positive suites / 47 negative cases |
-| Whole-tree TypeScript | PASS |
-| Prisma format / validate / generate | PASS |
-| Schema ↔ migration ↔ database parity | PASS — empty Prisma diff |
-| Forward / no-op / rollback / rebuild | PASS |
-| Assessment-versus-evidence races | PASS — `1|0`, `0|1`, stale pairs `0` |
-| Sealed-packet concurrent invalid writers | PASS fail-closed — zero commits |
-| Disposable teardown | PASS — no labeled container remained |
+| Migration static guard | 51 / 51 |
+| **Contract/static total** | **454 / 454** |
+| Disposable migration | **3 positive suites / 65 negative cases** |
 
-The persisted progress proof commits and reads back exactly two compatible score
-observations, one temporal comparison, three differences, two outcomes, and two
-approved correspondence memberships. It covers comparable score change,
-account P/A, field P/A, a system-derived observable outcome, and a
-human-confirmed correction.
+Whole-tree TypeScript, Prisma format and validate, shell syntax, whitespace,
+schema/database parity, forward/no-op/rollback/rebuild, race checks, privacy
+scans, and disposable teardown are also **PASS**.
 
-## 4. Schema and migration state
+Rendered local-file browser QA was **UNAVAILABLE** because the in-app browser
+policy blocks `file:` URLs. Static responsive CSS, mobile overflow containment,
+HTML structure, and anchor checks passed; no workaround was attempted.
 
-- `prisma/schema.prisma` SHA-256:
-  `ea1665d6708e8b170e486b69ae8bd734f62ca548fa20ab3f7685aa3ddb1c531a`
-- `prisma/migrations/20260808_p0_credit_truth_foundation/migration.sql`
-  SHA-256:
-  `95e18c20735e152baad6e8a995a951dab792e999469b7cf77dbc973148ad426a`
-- Additive inventory: 49 enums, 32 tables, 122 unique indexes, 38 secondary
-  indexes, 106 `RESTRICT` foreign keys, 127 checks, 72 triggers, and 29
-  functions.
-- No `CASCADE`, destructive baseline mutation, backfill, or legacy truth
-  invention.
-- Disposable verification used loopback-only PostgreSQL 16 for the independent
-  verifier and PostgreSQL 17 for the schema-owner harness, each with an isolated
-  generated database. Ordinary application `DATABASE_URL` was not used.
-- Rollback removed only the Phase 1 graph, preserved legacy sentinels, and was
-  followed by a clean rebuild and empty parity diff.
+The executable matrix covers all 16 Founder scenarios, including three-bureau
+disagreement; current positive fields plus historical adversity; the clean
+control; missing/conflicting fields and dates; historical-section evidence;
+parser uncertainty; score present/absent; immutable ReportVersions; uncertainty
+not deletion; exact ConsumerAssertion binding; Bureau A→B replay rejection;
+noncausal score language; and clean remaining clean.
 
-## 5. Progress Intelligence state
+## 15. ADVERSARIAL FINDINGS — C0 / H0 / M4 / L2
 
-- **ReportVersion:** immutable report checkpoints; reanalysis appends an
-  ExtractionRun; report date is `SOURCE_REPORTED`, explicit not-provided, or
-  unknown—never inferred from upload time.
-- **Score provenance:** report-derived scores retain bureau, report/run,
-  encrypted value envelope, source locator, extraction method/version,
-  occurrence, model/scale, confidence/errors, and integrity metadata. Missing
-  scores are explicit and never invented.
-- **Score comparability:** a delta requires matching bureau, primary
-  report-derived role, model/version/scale, method/version, occurrence, complete
-  coverage, and ordered source-reported dates. Manual scores remain secondary
-  and cannot back a durable report delta.
-- **Report differences:** account, field, score, bureau-coverage, and identity
-  changes remain bureau- and source-exact. Parser uncertainty cannot become
-  absence or deletion.
-- **Account presence:** P/P is unchanged-present; P/A is
-  `NO_LONGER_REPORTED`; A/P is `NEW_ITEM`; A/A is unchanged/non-deletion.
-- **Dispute outcomes:** exact case, comparison, difference, assertion,
-  correspondence item/version, and approved membership are pinned. Report
-  comparison alone cannot produce `DELETED`.
-- **Causal language:** only closed structured noncausal templates are accepted.
-  The contract may describe chronology; it cannot claim that correspondence,
-  an item, or a dispute caused score movement.
+The continuation found one High and closed it before this checkpoint:
 
-No production import, route, UI, Score Tracker, Kai, or read path uses this
-module.
+| Finding | Final disposition |
+| --- | --- |
+| CRA recipient was not durably bound to item bureau | **CLOSED** — policy, schema, trigger, direct-writer, retarget, downstream, and concurrency tests pass. |
 
-## 6. Credit-truth foundation state
+Open pre-activation findings remain unchanged:
 
-- Parser-v2 remains opt-in `SHADOW_ONLY`; legacy parser behavior and writes are
-  unchanged.
-- Bureau observations remain isolated; silence/failure/out-of-coverage remain
-  `UNKNOWN`; confirmed absence requires complete canonical section provenance.
-- Current and historical adversity are monotonic against `CLEAN`; neutral-only
-  evidence requires review; `CLEAN` needs affirmative non-adverse evidence.
-- Consumer assertions bind exact tenant, consumer, report, run, account,
-  bureau, field, observation, series, revision, and digest. Drift requires
-  reconfirmation.
-- All 12 strategies remain `DORMANT_PHASE_1`; seven counsel-dependent policies
-  remain `PENDING_COUNSEL`.
-- The provider-neutral artifact interface remains dormant and exact-scope,
-  create-only, digest-bound, replay-resistant, and legal-hold aware.
-- Invariants I1–I10 and progress requirements P1–P12 are green for the dormant
-  foundation.
+| Severity | Count | Remaining pre-activation findings |
+| --- | ---: | --- |
+| Critical | 0 | None. |
+| High | 0 | None. |
+| Medium | 4 | Trusted writer semantic attestation for encrypted-value equality; truthful post-I/O artifact result state; strict negative-integrity result shape; safe translation/retry for fail-closed PostgreSQL `40P01`. |
+| Low | 2 | Strict ISO-instant parsing; runtime schema parsing for malformed nested artifact inputs. |
 
-## 7. Security and privacy
+These are explicit activation gates. They do not expose an active production
+path and do not reopen this build-only Phase 1 checkpoint.
 
-- Tenant/consumer/report/run/case/recipient boundaries use scoped composite
-  foreign keys and fail-closed validators.
-- Sensitive values, bodies, addresses, and storage locators are modeled as
-  authenticated ciphertext envelopes; evidence events remain refs-only.
-- Synthetic fixtures contain no consumer identity or source-report content.
-- Final repository, staged-file, PII, secret, evidence-path, PDF/image/base64,
-  and diff checks passed before commit.
-- No Founder report, generated consumer letter, screenshot, or private evidence
-  was copied into the worktree or staged.
+## 16. PRODUCTION MUTATIONS — NONE
 
-Compliance result after terminology correction: **0 Critical / 0 High** for the
-dormant progress contract. Complete current-report absence means only
-`NO_LONGER_REPORTED`; it does not prove deletion, recipient action, or dispute
-causation.
+- Production database connections, migrations, writes, backfills, reanalysis,
+  and report processing: **NONE**.
+- Production correspondence, fulfillment, feature activation, and user-data
+  inspection: **NONE**.
+- Founder reports, consumer PII, PDFs, screenshots, letters, credentials, and
+  private evidence: **NOT READ OR COPIED**.
+- M2, Stripe, and every other production system: **UNTOUCHED**.
+- Local/disposable PostgreSQL only: **PASS, fully torn down**.
 
-## 8. Repository state
+## 17. LOCAL CHECKPOINT / MERGE / DEPLOY / ACTIVATION
 
-- Worktree: `/private/tmp/creditvector-p0-launch-correctness`
-- Branch: `codex/p0-launch-correctness`
-- Pre-closure checkpoint HEAD: `f57c7f7afa559b25e071add7624c3b92a08a0af1`
-- The exact closure commit is the commit containing this document; its SHA is
-  reported in the Founder handoff because a file cannot embed the hash of its
-  own commit.
-- Scope changed: additive Prisma schema/migration; nine dormant
-  `lib/creditTruth` modules; two opt-in parser re-exports; seven P0 test/verify
-  scripts plus rollback SQL; and five Phase 1 documents.
-- Explicit file staging was used; no blanket `git add .`.
-- Post-commit staged and unstaged state: clean.
+- One local P0-only checkpoint commit: **FOUNDER-AUTHORIZED AND INCLUDED**.
+- Push: **NONE**.
+- Merge to `main`: **NONE**.
+- Deployment or production migration: **NONE**.
+- Backfill, reanalysis, parser read-path switch, flag enablement, UI/Kai change,
+  or correspondence runtime activation: **NONE**.
 
-## 9. Production and M2 isolation
+The commit contains only the seven reviewed engineering/migration-verification
+files and this existing Markdown/HTML checkpoint pair. The exact commit SHA,
+parent SHA, file count, clean-worktree result, and unchanged M2 fingerprints are
+recorded in the external post-commit Founder receipt.
 
-- Production access: **NONE**.
-- Production credentials or fingerprints: **NOT READ OR PRINTED**.
-- Production migration/backfill/reanalysis/source processing: **NONE**.
-- Deployment, feature activation, fulfillment, push, and merge: **NONE**.
-- M2 worktree/lineage/artifacts: **UNTOUCHED**; its prior detached HEAD and two
-  pre-existing untracked probe files remained unchanged.
-- Founder/private evidence: **LOCAL, UNTRACKED, UNSTAGED, NOT COMMITTED**.
+## 18. NEXT FOUNDER DECISION
 
-## 10. Remaining findings
+Phase 1 is accepted and locally checkpointed. No additional engineering action
+is authorized. Any push, merge, deploy, production migration, backfill,
+activation, or Phase 2 work requires a separate Founder decision.
 
-| Severity | Count | Residuals |
-|---|---:|---|
-| Critical | 0 | None |
-| High | 0 | None |
-| Medium | 4 | Trusted repository/writer semantic attestation for encrypted-value equality before activation; truthful post-I/O artifact result state; strict negative-integrity result shape; retry/translation for fail-closed PostgreSQL `40P01` during simultaneous invalid sealed-packet writes. |
-| Low | 2 | Strict ISO-instant parsing and runtime schema parsing for malformed nested artifact-contract inputs. |
-
-These residuals do not activate or expose a production path. Each remains an
-explicit pre-activation gate.
-
-## 11. Next Founder decision
-
-No further authorization is required to preserve this Phase 1 checkpoint in
-Git. Stop here.
-
-Recommended next authorization, if desired: a separately bounded **Phase 2
-shadow-integration program** for authenticated repository-backed writers,
-semantic attestation over decrypted values, concrete storage/KMS adapter
-conformance, and opt-in non-authoritative shadow comparison. Production schema
-application, backfill, user-facing output, correspondence, fulfillment, deploy,
-and merge to `main` must remain separately authorized.
+**STOP here. Phase 2 is not started. Wait for Founder authorization.**

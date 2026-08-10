@@ -12,9 +12,9 @@ const verifierPath = resolve(root, "scripts/p0-phase1-migration-verify.sh");
 const rollbackPath = resolve(root, "scripts/sql/p0-phase1-disposable-rollback.sql");
 
 const expectedSchemaSha =
-  "ea1665d6708e8b170e486b69ae8bd734f62ca548fa20ab3f7685aa3ddb1c531a";
+  "a18b04ab0026c3e1b6e4dd6f034fa59182acf39fdcc1181f714bb79039bb9d91";
 const expectedMigrationSha =
-  "95e18c20735e152baad6e8a995a951dab792e999469b7cf77dbc973148ad426a";
+  "bd2c03aa76f29d1f25258bb23786adaf39601c9401e4e5eafdf92ba0a8eeb7c9";
 
 const schema = readFileSync(schemaPath, "utf8");
 const migration = readFileSync(migrationPath, "utf8");
@@ -127,16 +127,16 @@ check(
   "106 P0 foreign keys",
 );
 check(
-  countMatches(migration, /^\s*CONSTRAINT .* CHECK /gm) === 127,
-  "127 P0 checks",
+  countMatches(migration, /^\s*CONSTRAINT .* CHECK /gm) === 128,
+  "128 P0 checks",
 );
 check(
-  countMatches(migration, /^CREATE (?:CONSTRAINT )?TRIGGER /gm) === 72,
-  "72 P0 triggers",
+  countMatches(migration, /^CREATE (?:CONSTRAINT )?TRIGGER /gm) === 74,
+  "74 P0 triggers",
 );
 check(
-  countMatches(migration, /^CREATE FUNCTION /gm) === 29,
-  "29 P0 functions",
+  countMatches(migration, /^CREATE FUNCTION /gm) === 31,
+  "31 P0 functions",
 );
 
 const forwardTopLevelDestruction = migration
@@ -233,6 +233,52 @@ check(
     verifier.includes("field cannot pin another section row") &&
     verifier.includes("ABSENT_CONFIRMED cannot pin PARTIAL section"),
   "verifier includes the three section-pin exploit regressions",
+);
+const correspondenceItemRoutingValidator = captureSqlFunction(
+  migration,
+  "p0_validate_correspondence_item_recipient_bureau",
+);
+const correspondenceRecipientUpdateValidator = captureSqlFunction(
+  migration,
+  "p0_validate_correspondence_recipient_update",
+);
+check(
+  schema.includes("bureau                     Bureau?") &&
+    migration.includes('CONSTRAINT "Recipient_bureau_authority_ck"') &&
+    migration.includes("\"recipientType\" = 'CREDIT_REPORTING_AGENCY' AND \"bureau\" IS NOT NULL") &&
+    migration.includes("\"recipientType\" <> 'CREDIT_REPORTING_AGENCY' AND \"bureau\" IS NULL") &&
+    migration.includes('CREATE TRIGGER "Recipient_append_only_trg"'),
+  "recipient has exact immutable CRA/non-CRA bureau authority",
+);
+check(
+  correspondenceItemRoutingValidator.includes('JOIN "Recipient" r') &&
+    correspondenceItemRoutingValidator.includes("FOR UPDATE OF c, r") &&
+    correspondenceItemRoutingValidator.includes(
+      "exact_recipient_type = 'CREDIT_REPORTING_AGENCY'",
+    ) &&
+    correspondenceItemRoutingValidator.includes(
+      'exact_recipient_bureau IS DISTINCT FROM NEW."bureau"',
+    ) &&
+    correspondenceRecipientUpdateValidator.includes(
+      'OLD."recipientId" IS DISTINCT FROM NEW."recipientId"',
+    ) &&
+    migration.includes('CREATE TRIGGER "Correspondence_recipient_identity_trg"') &&
+    migration.includes('CREATE TRIGGER "CorrespondenceItem_recipient_bureau_trg"'),
+  "CRA item routing and correspondence recipient identity fail closed",
+);
+check(
+  verifier.includes("CRA recipient requires an exact bureau authority") &&
+    verifier.includes("non-CRA recipient cannot claim bureau authority") &&
+    verifier.includes("valid Equifax evidence cannot enter TransUnion CRA correspondence") &&
+    verifier.includes("same Equifax CRA recipient rejects valid Experian evidence") &&
+    verifier.includes("correspondence item cannot cross consumer ownership") &&
+    verifier.includes("sealed correspondence cannot replace its CRA recipient") &&
+    verifier.includes("version membership cannot cross CRA correspondence recipients") &&
+    verifier.includes("Equifax CRA packet cannot consolidate a TransUnion CRA correspondence") &&
+    verifier.includes("item-first race against correspondence recipient retarget") &&
+    verifier.includes("retarget-first race against correspondence item insert") &&
+    verifier.includes("immutable recipient authority races item insertion"),
+  "verifier attacks direct, sealed, owner, downstream, and concurrent routing bypasses",
 );
 check(
   migration.includes('CONSTRAINT "packet_enclosure_packet_fkey"') &&
@@ -456,7 +502,7 @@ check(
 );
 check(
   verifier.includes("EXPECTED_POSITIVE_SUITE_COUNT=3") &&
-    verifier.includes("EXPECTED_NEGATIVE_CASE_COUNT=47") &&
+    verifier.includes("EXPECTED_NEGATIVE_CASE_COUNT=65") &&
     verifier.includes(
       '[[ "${negative_pass_count}" == "${EXPECTED_NEGATIVE_CASE_COUNT}" ]]',
     ),

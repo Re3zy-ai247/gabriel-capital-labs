@@ -3,243 +3,365 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="dark light">
-  <meta name="description" content="CreditVector P0 Phase 1 build-only Founder checkpoint.">
-  <title>CreditVector P0 Phase 1 — Founder Checkpoint</title>
+  <title>CreditVector P0 Phase 1 Founder Checkpoint</title>
   <style>
     :root {
-      color-scheme: dark light;
+      color-scheme: dark;
       --bg: #07111f;
-      --panel: #0d1929;
-      --raised: #13233a;
-      --ink: #f5f8fc;
-      --muted: #b7c5d6;
-      --dim: #8395ac;
-      --line: #29425f;
-      --cyan: #48cfe3;
-      --green: #82dfb6;
-      --yellow: #f4ca67;
-      --red: #ff94a0;
-      --max: 88rem;
+      --panel: #0d1b2d;
+      --panel-2: #13243a;
+      --text: #edf5ff;
+      --muted: #a9bad0;
+      --line: #2a405c;
+      --good: #55d89b;
+      --warn: #f0c56b;
+      --stop: #ff8b8b;
+      --accent: #7bb7ff;
+      --shadow: 0 18px 45px rgba(0, 0, 0, .26);
     }
     * { box-sizing: border-box; }
     html { scroll-behavior: smooth; }
     body {
       margin: 0;
-      min-width: 20rem;
-      background: var(--bg);
-      color: var(--ink);
-      font: 1rem/1.62 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      text-rendering: optimizeLegibility;
+      background:
+        radial-gradient(circle at 90% 0%, rgba(64, 126, 209, .18), transparent 32rem),
+        linear-gradient(180deg, #081321, var(--bg));
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.58;
     }
-    header, main, footer { width: min(var(--max), calc(100% - 2rem)); margin-inline: auto; }
-    header { padding: clamp(2rem, 7vw, 5rem) 0 2rem; }
-    main { padding-bottom: 4rem; }
-    section { border-top: 1px solid var(--line); padding-top: .25rem; }
-    h1 { margin: .45rem 0 1rem; max-width: 17ch; font-size: clamp(2.25rem, 7vw, 5.25rem); line-height: .98; letter-spacing: -.045em; }
-    h2 { margin: 3rem 0 1rem; font-size: clamp(1.45rem, 4vw, 2.15rem); line-height: 1.16; }
-    h3 { margin: 1.7rem 0 .55rem; font-size: 1.08rem; }
-    p, li, td { color: var(--muted); }
-    strong, th { color: var(--ink); }
-    a { color: var(--cyan); text-underline-offset: .18em; }
-    a:focus-visible, .scroll:focus-visible { outline: .2rem solid var(--yellow); outline-offset: .2rem; }
-    .eyebrow { color: var(--cyan); font-size: .78rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
-    .signals { display: flex; flex-wrap: wrap; gap: .55rem; margin: 1.35rem 0; }
-    .badge { display: inline-flex; align-items: center; min-height: 2rem; padding: .3rem .7rem; border: 1px solid var(--line); border-radius: 999px; font-size: .78rem; font-weight: 800; }
-    .pass { color: var(--green); background: #12382a; }
-    .warn { color: var(--yellow); background: #382d13; }
-    .nogo { color: var(--red); background: #3b1922; }
-    .callout { margin: 1.2rem 0; padding: 1rem 1.1rem; border: 1px solid var(--line); border-left: .3rem solid var(--cyan); border-radius: .7rem; background: var(--panel); }
-    .stop { border-left-color: var(--red); }
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr)); gap: 1rem; }
-    .card { padding: 1rem; border: 1px solid var(--line); border-radius: .8rem; background: var(--panel); }
-    .card h3 { margin-top: 0; }
-    .scroll { width: 100%; overflow-x: auto; border: 1px solid var(--line); border-radius: .75rem; background: var(--panel); -webkit-overflow-scrolling: touch; }
-    table { width: 100%; min-width: 44rem; border-collapse: collapse; }
-    th, td { padding: .72rem .8rem; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    a { color: var(--accent); }
+    code {
+      overflow-wrap: anywhere;
+      color: #d9ebff;
+      background: rgba(123, 183, 255, .11);
+      border: 1px solid rgba(123, 183, 255, .18);
+      border-radius: .35rem;
+      padding: .08rem .28rem;
+    }
+    .shell { width: min(1120px, calc(100% - 2rem)); margin: 0 auto; }
+    header { padding: 3.25rem 0 1.5rem; }
+    .eyebrow {
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: .14em;
+      font-size: .76rem;
+      font-weight: 800;
+    }
+    h1 { margin: .6rem 0 .3rem; font-size: clamp(2rem, 5vw, 3.65rem); line-height: 1.06; }
+    .subtitle { color: var(--muted); font-size: clamp(1rem, 2.5vw, 1.25rem); max-width: 58rem; }
+    .status-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: .75rem;
+      margin: 1.4rem 0;
+    }
+    .status {
+      padding: .95rem;
+      border: 1px solid var(--line);
+      border-radius: .85rem;
+      background: rgba(13, 27, 45, .92);
+    }
+    .status small { display: block; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+    .status strong { display: block; margin-top: .25rem; }
+    .good { color: var(--good); }
+    .warn { color: var(--warn); }
+    .stop { color: var(--stop); }
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 4;
+      border-block: 1px solid var(--line);
+      background: rgba(7, 17, 31, .94);
+      backdrop-filter: blur(12px);
+    }
+    .nav-scroll { overflow-x: auto; scrollbar-width: thin; }
+    .nav-row { display: flex; gap: .45rem; padding: .65rem 0; min-width: max-content; }
+    .nav-row a {
+      text-decoration: none;
+      padding: .4rem .65rem;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--muted);
+      font-size: .82rem;
+    }
+    main { padding: 1.25rem 0 4rem; }
+    section {
+      margin: 1rem 0;
+      padding: clamp(1rem, 3vw, 1.5rem);
+      border: 1px solid var(--line);
+      border-radius: 1rem;
+      background: linear-gradient(145deg, rgba(19, 36, 58, .94), rgba(10, 23, 40, .96));
+      box-shadow: var(--shadow);
+      scroll-margin-top: 4.5rem;
+    }
+    h2 { margin: 0 0 .8rem; font-size: clamp(1.2rem, 3vw, 1.65rem); }
+    h3 { margin-bottom: .4rem; }
+    p { margin: .65rem 0; }
+    ul, ol { padding-left: 1.3rem; }
+    li + li { margin-top: .28rem; }
+    .table-wrap { width: 100%; overflow-x: auto; border: 1px solid var(--line); border-radius: .7rem; }
+    table { width: 100%; min-width: 620px; border-collapse: collapse; background: rgba(7, 17, 31, .42); }
+    th, td { padding: .72rem .8rem; border-bottom: 1px solid var(--line); vertical-align: top; text-align: left; }
+    th { color: #cce3ff; background: rgba(123, 183, 255, .08); }
     tr:last-child td { border-bottom: 0; }
-    th { background: var(--raised); font-size: .76rem; letter-spacing: .04em; text-transform: uppercase; }
-    code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
-    code { color: var(--cyan); overflow-wrap: anywhere; }
-    pre { margin: 1rem 0; padding: 1rem; overflow-x: auto; border: 1px solid var(--line); border-radius: .75rem; background: #050d18; color: var(--muted); font-size: .82rem; }
-    ul { padding-left: 1.3rem; }
-    li { margin: .35rem 0; }
-    .toc { padding: 1rem; border: 1px solid var(--line); border-radius: .75rem; background: var(--panel); }
-    .toc ol { columns: 2; column-gap: 2rem; margin-bottom: 0; }
-    .toc li { break-inside: avoid; }
-    footer { padding: 2rem 0 4rem; border-top: 1px solid var(--line); color: var(--dim); font-size: .85rem; }
-    @media (max-width: 44rem) {
-      header, main, footer { width: min(100% - 1rem, var(--max)); }
-      .toc ol { columns: 1; }
-      h1 { font-size: clamp(2.1rem, 14vw, 3.8rem); }
-      .card { padding: .9rem; }
+    .callout {
+      margin: 1rem 0;
+      padding: .9rem 1rem;
+      border-left: .28rem solid var(--good);
+      background: rgba(85, 216, 155, .08);
+      border-radius: .35rem .7rem .7rem .35rem;
+    }
+    .risk { border-left-color: var(--warn); background: rgba(240, 197, 107, .08); }
+    footer { color: var(--muted); padding: 0 0 3rem; text-align: center; }
+    @media (max-width: 820px) {
+      .status-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      header { padding-top: 2rem; }
+    }
+    @media (max-width: 520px) {
+      .shell { width: min(100% - 1rem, 1120px); }
+      .status-grid { grid-template-columns: 1fr; }
+      section { border-radius: .8rem; }
+      table { min-width: 560px; }
+      th, td { padding: .62rem; }
     }
     @media print {
-      :root { color-scheme: light; --bg: #fff; --panel: #fff; --raised: #eef4f8; --ink: #102033; --muted: #30445b; --dim: #566b80; --line: #bdcbd8; }
-      body { font-size: 10pt; }
-      .card, .scroll, pre, .callout { break-inside: avoid; }
-      a { color: inherit; }
+      :root { color-scheme: light; }
+      body { background: #fff; color: #111; }
+      nav { display: none; }
+      section, .status { background: #fff; box-shadow: none; border-color: #bbb; break-inside: avoid; }
+      code { color: #111; background: #f4f4f4; }
     }
   </style>
 </head>
 <body>
-  <header>
-    <div class="eyebrow">Founder checkpoint · 2026-08-09</div>
-    <h1>CreditVector P0 Phase 1</h1>
-    <p>Dormant, isolated, additive correctness foundation.</p>
-    <div class="signals" aria-label="Decision status">
-      <span class="badge pass">PHASE 1 CHECKPOINT: GO</span>
-      <span class="badge pass">CRITICAL 0 · HIGH 0</span>
-      <span class="badge nogo">PRODUCTION: NO-GO</span>
-      <span class="badge pass">M2: UNTOUCHED</span>
+  <header class="shell">
+    <div class="eyebrow">CreditVector · August 10, 2026 · Build only</div>
+    <h1>P0 Phase 1 Founder Checkpoint</h1>
+    <p class="subtitle">Credit Intelligence &amp; Correspondence Integrity — exact isolated-lineage continuation after a fresh recipient/bureau-routing repair and adversarial recheck.</p>
+    <div class="status-grid" aria-label="Checkpoint status">
+      <div class="status"><small>Implementation</small><strong class="good">COMPLETE</strong></div>
+      <div class="status"><small>Checkpoint</small><strong class="good">GO — DORMANT ONLY</strong></div>
+      <div class="status"><small>Production</small><strong class="stop">NO-GO</strong></div>
+      <div class="status"><small>Open findings</small><strong class="warn">C0 / H0 / M4 / L2</strong></div>
     </div>
-    <div class="callout stop"><strong>Authority boundary.</strong> This checkpoint permits a Git commit of dormant Phase 1 work only. It does not authorize production migration, backfill, reanalysis, read activation, UI/Kai output, correspondence, fulfillment, deployment, push, or merge to <code>main</code>.</div>
-    <nav class="toc" aria-label="Contents">
-      <strong>Contents</strong>
-      <ol>
-        <li><a href="#verdict">Verdict</a></li>
-        <li><a href="#closure">Four High closures</a></li>
-        <li><a href="#tests">Verification matrix</a></li>
-        <li><a href="#schema">Schema and migration</a></li>
-        <li><a href="#progress">Progress Intelligence</a></li>
-        <li><a href="#foundation">Credit truth</a></li>
-        <li><a href="#security">Security and privacy</a></li>
-        <li><a href="#repo">Repository state</a></li>
-        <li><a href="#isolation">Production and M2</a></li>
-        <li><a href="#residuals">Remaining findings</a></li>
-        <li><a href="#next">Next decision</a></li>
-      </ol>
-    </nav>
+    <div class="callout">
+      A fresh adversarial pass found one High: a bureau-specific item was not durably bound to its CRA recipient's bureau. The High is now closed in policy, schema, direct-writer, downstream, and concurrency tests. The Founder accepted Phase 1 and authorized exactly one local P0 checkpoint commit; everything remains local and dormant.
+    </div>
   </header>
 
-  <main>
-    <section id="verdict">
-      <h2>1. Final verdict</h2>
-      <p><strong>GO FOR PHASE 1 CHECKPOINT.</strong> The four authoritative final-red-team High findings were repaired, independently persisted on disposable PostgreSQL, and attacked again against the exact repaired state. Final closure severity is <strong>0 Critical / 0 High</strong>.</p>
-      <p>Production remains <span class="badge nogo">NO-GO</span>. The new domain, parsers, policies, storage contract, and progress engine are dormant and have no production consumer.</p>
+  <nav aria-label="Checkpoint sections">
+    <div class="shell nav-scroll"><div class="nav-row">
+      <a href="#s1">1 Lineage</a><a href="#s2">2 M2 isolation</a><a href="#s3">3 Implementation</a>
+      <a href="#s4">4 Parser</a><a href="#s5">5 Source truth</a><a href="#s6">6 History</a>
+      <a href="#s7">7 Clean control</a><a href="#s8">8 Reports/scores</a><a href="#s9">9 Assertions</a>
+      <a href="#s10">10 Strategy</a><a href="#s11">11 Round 0</a><a href="#s12">12 Correspondence</a>
+      <a href="#s13">13 Migration</a><a href="#s14">14 Tests</a><a href="#s15">15 Findings</a>
+      <a href="#s16">16 Production</a><a href="#s17">17 Release</a><a href="#s18">18 Decision</a>
+    </div></div>
+  </nav>
+
+  <main class="shell">
+    <section id="s1">
+      <h2>1. P0 LINEAGE — <span class="good">PASS</span></h2>
+      <div class="table-wrap"><table><tbody>
+        <tr><th>Branch</th><td><code>codex/p0-launch-correctness</code></td></tr>
+        <tr><th>Checkpoint parent</th><td><code>10ca22d85a522b48624309abc321139f0bf6e8fc</code></td></tr>
+        <tr><th>Parent tree</th><td><code>0adb1da6507460c8e9768264a646e4eeaa8725d3</code></td></tr>
+        <tr><th>Local checkpoint commit</th><td>Included; exact SHA recorded in the external Founder receipt</td></tr>
+        <tr><th>Recovered worktree</th><td>Isolated local P0 worktree; private path withheld</td></tr>
+        <tr><th>Baseline / merge-base</th><td><code>3a9943040da5648f1ae68fa9b8e0f06a276f75b1</code></td></tr>
+        <tr><th>Plan commit</th><td><code>f57c7f7afa559b25e071add7624c3b92a08a0af1</code></td></tr>
+      </tbody></table></div>
+      <p>The missing/prunable historical worktree was recovered from verified local Git objects at the same path. The branch is local-only. <code>AGENTS.md</code> is absent; no replacement was inferred.</p>
     </section>
 
-    <section id="closure">
-      <h2>2. Red-team closure</h2>
-      <div class="scroll" tabindex="0"><table>
-        <thead><tr><th>Finding</th><th>Root cause</th><th>Repair</th><th>Protection</th><th>Result</th></tr></thead>
-        <tbody>
-          <tr><td>No-longer-reported mismatch</td><td>A field transition borrowed whole-account disappearance vocabulary.</td><td>Only complete account P/A yields <code>NO_LONGER_REPORTED</code>. Field P/A stays field-specific with <code>NOT_APPLICABLE</code>; neither proves deletion.</td><td>Runtime RED TEAM 3, SQL truth table, static guard, committed positive chain.</td><td><span class="badge pass">PASS</span></td></tr>
-          <tr><td>Incomplete account transitions</td><td>Some prior/current pairs could be relabeled; A/A was unrepresentable.</td><td>P/P, P/A, A/P, and A/A are exhaustive. Incomplete or unknown input fails closed.</td><td>Runtime RED TEAM 2, direct-writer negatives, persisted P/A path.</td><td><span class="badge pass">PASS</span></td></tr>
-          <tr><td>Score comparability gaps</td><td>Durable checks omitted method/version, occurrence, report chronology, and aligned revision semantics.</td><td>Exact report/run/bureau, role, model/scale, method/version, occurrence, source date, and same-slot revision pins.</td><td>Runtime RED TEAM 6–8, composite constraints, persisted score path.</td><td><span class="badge pass">PASS</span></td></tr>
-          <tr><td>Causal-language bypass</td><td>A regex denylist accepted unsupported phrasing.</td><td>Only frozen, module-registered, exact generated templates are accepted.</td><td>Runtime RED TEAM 1 and five extra causal/tamper probes.</td><td><span class="badge pass">PASS</span></td></tr>
-        </tbody>
-      </table></div>
-      <p>Outcome provenance is also state-exact: comparison-only absence is <code>NO_LONGER_REPORTED</code>, <code>DELETED</code> is unavailable in Phase 1, and <code>CORRECTED</code>/<code>NEW_CONFLICT</code> require exact human confirmation.</p>
-    </section>
-
-    <section id="tests">
-      <h2>3. Test and verification matrix</h2>
-      <div class="scroll" tabindex="0"><table>
-        <thead><tr><th>Suite</th><th>Result</th><th>Suite</th><th>Result</th></tr></thead>
-        <tbody>
-          <tr><td>Sanitized fixture</td><td>23 / 23</td><td>Parser-v2</td><td>69 / 69</td></tr>
-          <tr><td>Assessment/assertions</td><td>79 / 79</td><td>Strategy policy</td><td>85 / 85</td></tr>
-          <tr><td>Artifact storage</td><td>71 / 71</td><td>Progress Intelligence</td><td>30 / 30</td></tr>
-          <tr><td>Classification regression</td><td>29 / 29</td><td>Migration static guard</td><td>48 / 48</td></tr>
-          <tr><td>Disposable migration</td><td>3 positive / 47 negative</td><td>TypeScript + Prisma</td><td>PASS</td></tr>
-          <tr><td>Parity, no-op, rollback, rebuild</td><td>PASS</td><td>Both-order assessment races</td><td><code>1|0</code>, <code>0|1</code>, stale <code>0</code></td></tr>
-          <tr><td>Sealed-packet concurrency</td><td>Fail-closed, zero commits</td><td>Teardown</td><td>No disposable container</td></tr>
-        </tbody>
-      </table></div>
-      <p>The independent progress proof commits and reads back <code>2|1|3|2|2</code>: two compatible scores, one comparable temporal comparison, three differences, two outcomes, and two approved memberships.</p>
-    </section>
-
-    <section id="schema">
-      <h2>4. Schema and migration state</h2>
-      <div class="grid">
-        <article class="card"><h3>Schema SHA-256</h3><p><code>ea1665d6708e8b170e486b69ae8bd734f62ca548fa20ab3f7685aa3ddb1c531a</code></p></article>
-        <article class="card"><h3>Migration SHA-256</h3><p><code>95e18c20735e152baad6e8a995a951dab792e999469b7cf77dbc973148ad426a</code></p></article>
-      </div>
-      <p>Inventory: 49 enums, 32 additive tables, 122 unique indexes, 38 secondary indexes, 106 restrictive foreign keys, 127 checks, 72 triggers, and 29 functions. Prisma database-to-schema diff was empty after forward apply and rebuild. The rollback contains no <code>CASCADE</code> and preserves legacy sentinels.</p>
-      <p>Verification used loopback-only disposable PostgreSQL 16 for the independent verifier and PostgreSQL 17 for the schema-owner harness. The ordinary application database URL and production credentials were not used.</p>
-    </section>
-
-    <section id="progress">
-      <h2>5. Progress Intelligence state</h2>
-      <div class="grid">
-        <article class="card"><h3>ReportVersion</h3><p>Immutable measurement checkpoints; reanalysis appends a run. Report date is source-reported, explicit not-provided, or unknown—never upload time.</p></article>
-        <article class="card"><h3>Score provenance</h3><p>Encrypted report scores retain exact bureau/report/run, locator, method/version, occurrence, model/scale, confidence/errors, and integrity pins. Missing scores are never invented.</p></article>
-        <article class="card"><h3>Comparability</h3><p>A delta requires compatible model, method, occurrence, coverage, primary report role, and ordered source dates. Manual entries remain secondary.</p></article>
-        <article class="card"><h3>Differences</h3><p>Account, field, score, coverage, and identity changes stay bureau- and source-exact. Parser uncertainty cannot become absence or deletion.</p></article>
-        <article class="card"><h3>Account transitions</h3><p>P/P unchanged-present; P/A no longer reported; A/P new item; A/A unchanged non-deletion.</p></article>
-        <article class="card"><h3>Outcomes and language</h3><p>Exact approved membership is required. Deletion is rejected. Correction/conflict requires human confirmation. Causal copy uses a closed noncausal template set.</p></article>
-      </div>
-      <p>No production route, UI, Score Tracker, Kai, or read path imports this module.</p>
-    </section>
-
-    <section id="foundation">
-      <h2>6. Credit-truth foundation state</h2>
+    <section id="s2">
+      <h2>2. ISOLATION FROM M2 — <span class="good">PASS</span></h2>
       <ul>
-        <li>Parser-v2 remains opt-in <code>SHADOW_ONLY</code>; legacy parsing and writes are unchanged.</li>
-        <li>Bureau facts remain isolated; silence, failure, and outside coverage remain <code>UNKNOWN</code>.</li>
-        <li>Historical adversity and incomplete evidence prevent <code>CLEAN</code>; affirmative complete controls can be clean.</li>
-        <li>Consumer assertions bind exact scope, observation, series, revision, and digest; drift requires reconfirmation.</li>
-        <li>All 12 strategies remain <code>DORMANT_PHASE_1</code>; seven counsel-sensitive policies remain <code>PENDING_COUNSEL</code>.</li>
-        <li>The artifact contract remains exact-scope, immutable, digest-bound, replay-resistant, and legal-hold aware.</li>
-        <li>Foundation invariants I1–I10 and progress requirements P1–P12 are green for this dormant slice.</li>
+        <li>P0 and M2 diverge from one baseline; neither contains the other.</li>
+        <li>The sole overlapping changed pathname is <code>prisma/schema.prisma</code>; no content crossed worktrees.</li>
+        <li>M2 status, tracked diff, untracked inventory, and empty-index fingerprints stayed exact.</li>
+        <li>A temporary ignored dependency link used the exact-lockfile-matched local dependencies only.</li>
+        <li>No M2 source, migration, evidence, artifact, or production access was used.</li>
       </ul>
     </section>
 
-    <section id="security">
-      <h2>7. Security, compliance, and privacy</h2>
-      <p>Tenant, consumer, report, run, case, recipient, and artifact boundaries use scoped composite keys and fail-closed validators. Sensitive values and locators are ciphertext envelopes; evidence events are refs-only.</p>
-      <p>Compliance review is <span class="badge pass">0 CRITICAL · 0 HIGH</span> after terminology alignment. Current-report absence means only <code>NO_LONGER_REPORTED</code>; it never proves deletion, recipient action, or dispute causation.</p>
-      <p>Final repository, staged-file, PII, secret, evidence-path, PDF/image/base64, and diff checks passed. Founder reports, generated consumer letters, screenshots, and private evidence were not copied or staged.</p>
+    <section id="s3">
+      <h2>3. PHASE 1 IMPLEMENTATION — <span class="good">COMPLETE</span></h2>
+      <p>Delta recovery reused the committed parser, source-truth, assessment, assertion, ReportVersion, score, policy, Round 0, artifact, fixture, and migration foundations. The one newly proven delta is closed.</p>
+      <ol>
+        <li>Added immutable CRA bureau authority to <code>Recipient</code>.</li>
+        <li>Rejected invalid CRA/non-CRA authority shapes.</li>
+        <li>Prevented correspondence recipient retargeting.</li>
+        <li>Bound CRA items to their exact recipient bureau.</li>
+        <li>Serialized item insert versus recipient-retarget races.</li>
+        <li>Required the same authority in evaluation and consolidation.</li>
+        <li>Added direct, stale, duplicate, downstream, and race regressions.</li>
+      </ol>
+      <p>Seven engineering files and this Markdown/HTML pair changed. No Phase 2, UI, mailing runtime, or production work occurred.</p>
     </section>
 
-    <section id="repo">
-      <h2>8. Repository state</h2>
-      <div class="scroll" tabindex="0"><table>
-        <thead><tr><th>Control</th><th>State</th></tr></thead>
-        <tbody>
-          <tr><td>Worktree</td><td><code>/private/tmp/creditvector-p0-launch-correctness</code></td></tr>
-          <tr><td>Branch</td><td><code>codex/p0-launch-correctness</code></td></tr>
-          <tr><td>Pre-closure checkpoint</td><td><code>f57c7f7afa559b25e071add7624c3b92a08a0af1</code></td></tr>
-          <tr><td>Closure commit</td><td>The commit containing this file; exact SHA is in the Founder chat handoff.</td></tr>
-          <tr><td>Scope</td><td>Additive schema/migration, nine dormant truth modules, two opt-in re-exports, seven P0 test/verification scripts plus rollback SQL, and five Phase 1 documents.</td></tr>
-          <tr><td>Staging</td><td>Explicit files only; no blanket <code>git add .</code>.</td></tr>
-          <tr><td>Post-commit state</td><td>Clean staged and unstaged state.</td></tr>
-        </tbody>
-      </table></div>
-    </section>
-
-    <section id="isolation">
-      <h2>9. Production and M2 isolation</h2>
+    <section id="s4">
+      <h2>4. PARSER-V2 SHADOW CONTRACT — <span class="good">PASS</span></h2>
       <ul>
-        <li>Production access, migration, backfill, reanalysis, and source processing: <strong>NONE</strong>.</li>
-        <li>Production credentials or database fingerprints: <strong>NOT READ OR PRINTED</strong>.</li>
-        <li>Deployment, feature activation, fulfillment, push, and merge: <strong>NONE</strong>.</li>
-        <li>M2 worktree, lineage, and artifacts: <strong>UNTOUCHED</strong>; its two prior untracked probes remain unchanged.</li>
-        <li>Founder/private evidence: <strong>LOCAL, UNTRACKED, UNSTAGED, NOT COMMITTED</strong>.</li>
+        <li>Opt-in, <code>SHADOW_ONLY</code>, and forbidden from legacy writes.</li>
+        <li>Bureau, section, locator, method, version, confidence, and error provenance remain intact.</li>
+        <li>Missing/failed/incomplete/out-of-coverage fields remain <code>UNKNOWN</code>.</li>
+        <li>Confirmed absence requires complete canonical section evidence.</li>
+        <li>Same-account bureau disagreements never flatten together.</li>
       </ul>
     </section>
 
-    <section id="residuals">
-      <h2>10. Remaining findings</h2>
-      <div class="scroll" tabindex="0"><table>
-        <thead><tr><th>Severity</th><th>Count</th><th>Residuals</th></tr></thead>
-        <tbody>
-          <tr><td>Critical</td><td>0</td><td>None</td></tr>
-          <tr><td>High</td><td>0</td><td>None</td></tr>
-          <tr><td>Medium</td><td>4</td><td>Trusted repository/writer semantic attestation for encrypted-value equality; truthful post-I/O artifact result state; stricter negative-integrity result shape; retry/translation for fail-closed PostgreSQL <code>40P01</code>.</td></tr>
-          <tr><td>Low</td><td>2</td><td>Strict ISO-instant parsing and ingress schema parsing for malformed nested artifact inputs.</td></tr>
-        </tbody>
-      </table></div>
-      <p>All residuals are explicit pre-activation gates; none exposes a production path in Phase 1.</p>
+    <section id="s5">
+      <h2>5. DURABLE BUREAU-SPECIFIC SOURCE TRUTH — <span class="good">PASS</span></h2>
+      <p>The graph preserves tenant, consumer, report, version, run, account, bureau, section, field, observation, series, revision, and digest boundaries.</p>
+      <p>A CRA now requires a non-null immutable <code>Recipient.bureau</code>, while non-CRA authority must be null. CRA items must match the recipient bureau. Non-CRA correspondence retains each item's bureau provenance without flattening.</p>
     </section>
 
-    <section id="next">
-      <h2>11. Next Founder decision</h2>
-      <div class="callout"><strong>Stop at Phase 1.</strong> No further authorization is needed to preserve this checkpoint in Git. If desired, the next separately bounded decision is a Phase 2 shadow-integration program for authenticated repository-backed writers, semantic attestation, concrete storage/KMS conformance, and opt-in non-authoritative shadow comparison. Production application remains separately gated.</div>
+    <section id="s6">
+      <h2>6. HISTORICAL EVIDENCE PRESERVATION — <span class="good">PASS</span></h2>
+      <p>Closed, Paid, zero balance, or Pays as Agreed cannot erase supported historical lateness, charge-off, collection, or other derogatory evidence. Incomplete extraction cannot silently remove history.</p>
+    </section>
+
+    <section id="s7">
+      <h2>7. CLEAN-CONTROL SAFETY — <span class="good">PASS</span></h2>
+      <ul>
+        <li><code>CLEAN</code> requires complete affirmative non-adverse evidence.</li>
+        <li>Neutral-only, incomplete, uncertain, or conflicting evidence requires review.</li>
+        <li>Supported adversity is monotonic against <code>CLEAN</code>.</li>
+        <li>The synthetic clean control remains clean; the solution does not flag everything.</li>
+        <li>Both assessment/evidence race orders preserve zero stale clean/adverse pairs.</li>
+      </ul>
+    </section>
+
+    <section id="s8">
+      <h2>8. REPORTVERSION / SCORE PROVENANCE — <span class="good">PASS</span></h2>
+      <ul>
+        <li>Uploads can become immutable ReportVersions; reanalysis appends a run.</li>
+        <li>Scores preserve bureau, encrypted value, model/scale, method/version, occurrence, locator, report date, and integrity.</li>
+        <li>No-score reports stay score-absent; manual scores remain secondary.</li>
+        <li>Before/after comparison supports score, account, field, coverage, and identity changes.</li>
+        <li>Parser uncertainty never becomes deletion; only complete present-to-confirmed-absent evidence can become <code>NO_LONGER_REPORTED</code>.</li>
+        <li>Chronology/correlation is supported; causality is not invented.</li>
+      </ul>
+    </section>
+
+    <section id="s9">
+      <h2>9. CONSUMERASSERTION — <span class="good">PASS</span></h2>
+      <p>Assertions pin exact tenant, consumer, report, run, account, bureau, field, observation, series, revision, and evidence digest. Drift requires reconfirmation and cross-bureau replay fails.</p>
+      <p>The policy repair also denies duplicate proofs, orphan current bindings, and stale extra evidence. Parser inference still cannot autonomously authorize a factual claim.</p>
+    </section>
+
+    <section id="s10">
+      <h2>10. STRATEGY POLICY FOUNDATION — <span class="good">PASS</span></h2>
+      <ul>
+        <li>12 executable strategies remain dormant; seven remain <code>PENDING_COUNSEL</code>.</li>
+        <li>Versions: schema <code>1.1.0</code>, set <code>2026-08-10.phase1</code>, policy <code>2026-08-10.1</code>.</li>
+        <li>Every CRA observation assertion/current binding must match recipient bureau.</li>
+        <li>CRA consolidation rejects missing, conflicting, or mixed bureau authority.</li>
+        <li>Non-CRA recipient bureau must be null; item-level bureau evidence remains intact.</li>
+        <li>No policy activates correspondence, fulfillment, or production behavior.</li>
+      </ul>
+    </section>
+
+    <section id="s11">
+      <h2>11. ROUND 0 FOUNDATION — <span class="good">PASS</span></h2>
+      <p>The immutable consumer-confirmed Identity Baseline supports legal name, aliases, current/former addresses, safe identity fields, reported phone/employment, mixed-file indicators, and unrecognized accounts. Accurate former addresses and legitimate employment are not auto-disputed.</p>
+    </section>
+
+    <section id="s12">
+      <h2>12. CORRESPONDENCE PROVENANCE FOUNDATION — <span class="good">PASS</span></h2>
+      <p>Every future factual item can pin recipient, bureau, creditor/furnisher, masked account reference, exact observation, disputed field, consumer-confirmed basis, requested action, and evidence digest.</p>
+      <ul>
+        <li><strong>Runtime:</strong> Bureau A evidence cannot authorize Bureau B CRA correspondence; mixed CRA routing is denied.</li>
+        <li><strong>Database:</strong> direct writers cannot cross bureau, mutate recipient authority, retarget a correspondence, or win either insert/retarget race.</li>
+        <li><strong>Downstream:</strong> versions, membership, packets, and artifacts preserve exact recipient lineage.</li>
+      </ul>
+      <p>Recipient classes remain policy-separated. No final mailing runtime was built.</p>
+    </section>
+
+    <section id="s13">
+      <h2>13. LOCAL/DISPOSABLE MIGRATION — <span class="good">PASS</span></h2>
+      <div class="table-wrap"><table><thead><tr><th>Frozen repaired input</th><th>SHA-256</th></tr></thead><tbody>
+        <tr><td>Prisma schema</td><td><code>a18b04ab0026c3e1b6e4dd6f034fa59182acf39fdcc1181f714bb79039bb9d91</code></td></tr>
+        <tr><td>Phase 1 migration</td><td><code>bd2c03aa76f29d1f25258bb23786adaf39601c9401e4e5eafdf92ba0a8eeb7c9</code></td></tr>
+        <tr><td>Migration guard</td><td><code>37cd3f70fc20a5dcc324891965b6673a517c86a79c5d9acb4dcb79f5a8a4ee1f</code></td></tr>
+        <tr><td>Disposable verifier</td><td><code>982f15a517d7647859b8cb84152333b2a6135d7018cff1d63a100abad41d7fc8</code></td></tr>
+        <tr><td>Rollback</td><td><code>8e4b04734dd063a8ac04e6c5db98dc7c6026936df4317aa4758b5c619a9a9e39</code></td></tr>
+        <tr><td>Strategy policy</td><td><code>0f36c72fbadf8aef8ec453a418c064b490efebe84732db85de47986a646a7301</code></td></tr>
+        <tr><td>Strategy test</td><td><code>1796ca2756b98737373ce95c5ee9934bc3f1af061b2050f5af67dce7a4c8c9e5</code></td></tr>
+        <tr><td>Unchanged synthetic fixture</td><td><code>b3afc9ae354f6966186851b31d7712a20929d15c559f08756ff90ff659db0b10</code></td></tr>
+      </tbody></table></div>
+      <p>Forward deploy, no-op, empty parity diff, 65 negatives, three positives, both routing races, rollback, rebuild, rebuilt no-op, and teardown passed.</p>
+      <p>Catalog: 49 enums · 32 tables · 122 unique indexes · 38 secondary indexes · 106 RESTRICT foreign keys · 128 checks · 74 triggers · 31 functions.</p>
+      <p>Disposable container removed; only the verifier-started local Colima profile was stopped. Production migration/access: <strong>NONE</strong>.</p>
+      <p>The committed migration-verification and red-team reports remain historical pre-repair evidence for unchanged gates. For recipient routing and migration counts, this continuation's frozen hashes and <strong>51 / 51; 3 / 65</strong> evidence supersede their earlier <strong>48 / 48; 3 / 47</strong> snapshot.</p>
+    </section>
+
+    <section id="s14">
+      <h2>14. TEST COUNTS — <span class="good">454 / 454 GREEN</span></h2>
+      <div class="table-wrap"><table><thead><tr><th>Suite</th><th>Exact result</th></tr></thead><tbody>
+        <tr><td>Sanitized source-truth fixture</td><td>23 / 23</td></tr>
+        <tr><td>Parser-v2 shadow contract</td><td>69 / 69</td></tr>
+        <tr><td>Assessment and assertion binding</td><td>79 / 79</td></tr>
+        <tr><td>Executable strategy policy</td><td>102 / 102</td></tr>
+        <tr><td>Artifact storage contract</td><td>71 / 71</td></tr>
+        <tr><td>Progress Intelligence</td><td>30 / 30</td></tr>
+        <tr><td>Existing classification regression</td><td>29 / 29</td></tr>
+        <tr><td>Migration static guard</td><td>51 / 51</td></tr>
+        <tr><th>Contract/static total</th><th>454 / 454</th></tr>
+        <tr><td>Disposable migration</td><td>3 positive suites / 65 negative cases</td></tr>
+      </tbody></table></div>
+      <p>TypeScript, Prisma format/validate, shell syntax, whitespace, parity, rollback/rebuild, races, privacy scans, and teardown also pass. All 16 Founder test scenarios are represented, including cross-bureau replay refusal and uncertainty-not-deletion.</p>
+      <p>Rendered local-file browser QA was <strong class="warn">UNAVAILABLE</strong> because the in-app browser policy blocks <code>file:</code> URLs. Static responsive CSS, mobile overflow containment, HTML structure, and anchor checks passed; no workaround was attempted.</p>
+    </section>
+
+    <section id="s15">
+      <h2>15. ADVERSARIAL FINDINGS — <span class="good">C0 / H0 / M4 / L2</span></h2>
+      <div class="table-wrap"><table><thead><tr><th>Finding</th><th>Disposition</th></tr></thead><tbody>
+        <tr><td>CRA recipient not durably bound to item bureau</td><td><strong class="good">CLOSED</strong> — policy, schema, triggers, direct writers, retarget, downstream, and races pass.</td></tr>
+      </tbody></table></div>
+      <div class="table-wrap" style="margin-top:.8rem"><table><thead><tr><th>Severity</th><th>Open</th><th>Pre-activation findings</th></tr></thead><tbody>
+        <tr><td>Critical</td><td>0</td><td>None</td></tr>
+        <tr><td>High</td><td>0</td><td>None</td></tr>
+        <tr><td>Medium</td><td>4</td><td>Trusted writer semantic attestation; truthful post-I/O artifact result; strict negative-integrity shape; safe PostgreSQL <code>40P01</code> translation/retry.</td></tr>
+        <tr><td>Low</td><td>2</td><td>Strict ISO-instant parsing; malformed nested artifact runtime schema parsing.</td></tr>
+      </tbody></table></div>
+      <div class="callout risk">These remain explicit activation gates. They do not expose an active production path and do not reopen this build-only checkpoint.</div>
+    </section>
+
+    <section id="s16">
+      <h2>16. PRODUCTION MUTATIONS — <span class="good">NONE</span></h2>
+      <ul>
+        <li>No production connection, migration, write, backfill, reanalysis, or report processing.</li>
+        <li>No production correspondence, fulfillment, activation, or user-data inspection.</li>
+        <li>No Founder report, consumer PII, credential, PDF, screenshot, letter, or private evidence read or copied.</li>
+        <li>M2, Stripe, and every production system remained untouched.</li>
+        <li>Local disposable PostgreSQL only; teardown complete.</li>
+      </ul>
+    </section>
+
+    <section id="s17">
+      <h2>17. LOCAL CHECKPOINT / MERGE / DEPLOY / ACTIVATION</h2>
+      <ul>
+        <li>One local P0-only checkpoint commit: <strong class="good">FOUNDER-AUTHORIZED AND INCLUDED</strong>.</li>
+        <li>Push or merge: none.</li>
+        <li>Deploy or production migration: none.</li>
+        <li>Backfill, reanalysis, parser switch, flag, UI/Kai, or correspondence runtime: none.</li>
+      </ul>
+      <p>The commit contains only the seven reviewed engineering/migration-verification files and this existing Markdown/HTML checkpoint pair. The exact commit SHA, parent SHA, file count, clean-worktree result, and unchanged M2 fingerprints are recorded in the external post-commit Founder receipt.</p>
+    </section>
+
+    <section id="s18">
+      <h2>18. NEXT FOUNDER DECISION</h2>
+      <div class="callout">
+        <strong>Checkpoint:</strong> Phase 1 is accepted and locally checkpointed. No additional engineering action is authorized.
+      </div>
+      <p>Any push, merge, deploy, production migration, backfill, activation, or Phase 2 work requires a separate Founder decision. <strong>STOP here. Phase 2 is not started. Wait for Founder authorization.</strong></p>
     </section>
   </main>
 
-  <footer>CreditVector P0 Phase 1 · PII-free Founder checkpoint · Self-contained HTML with no external CSS, JavaScript, assets, secrets, or evidence.</footer>
+  <footer class="shell">CreditVector P0 Phase 1 · dormant build-only checkpoint · production NO-GO</footer>
 </body>
 </html>
