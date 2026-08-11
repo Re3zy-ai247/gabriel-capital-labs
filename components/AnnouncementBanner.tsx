@@ -27,7 +27,19 @@ export function AnnouncementBanner() {
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         const ann: Announcement | null = d?.announcement || null;
-        if (ann && localStorage.getItem(`ann_dismissed_${ann.id}`) !== "1") setA(ann);
+        // T2.2 FIX 6: a successful fetch that finds NO active announcement
+        // (deactivated/deleted since the last navigation, or already
+        // dismissed on this device) must CLEAR whatever this component is
+        // currently showing, not just skip setting something new — the old
+        // code only ever called setA() on the truthy branch, so once
+        // RoomsShell stopped remounting this component per navigation
+        // (T2 persistence), a banner that became stale after the fetch that
+        // originally showed it would never disappear on its own.
+        if (ann && localStorage.getItem(`ann_dismissed_${ann.id}`) !== "1") {
+          setA(ann);
+        } else {
+          setA(null);
+        }
       })
       .catch(() => {});
     // T2 persistence-safety fix (T2-SPEC.md §1 item 5): announcement check

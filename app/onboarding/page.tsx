@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AppShell } from "@/components/AppShell";
 import { currentUserOrDemo } from "@/lib/session";
 import { loadOnboardingStatus } from "@/lib/onboarding";
 import { OnboardingSteps, type OnboardingStepDef } from "./OnboardingSteps";
@@ -56,7 +57,11 @@ const STEPS: OnboardingStepDef[] = [
 export default async function OnboardingPage() {
   const user = await currentUserOrDemo();
   if (!user) {
-    return <p className="text-slate-400">Please sign in.</p>;
+    return (
+      <AppShell title="/ Getting started">
+        <p className="text-slate-400">Please sign in.</p>
+      </AppShell>
+    );
   }
 
   const { completedSteps } = await loadOnboardingStatus(user.id);

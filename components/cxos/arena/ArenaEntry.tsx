@@ -33,11 +33,24 @@ import { useOptionalJourneyMachine } from "@/components/transition-runtime/Trans
 // in-shell cinematic journey has just arrived here. This does NOT change
 // when ArenaEntry itself mounts — the persistent shell doesn't remount, but
 // the routed page inside it still does, exactly as before. What changes is
-// what a mount CAN mean: when a live journey machine reports it just
-// completed a journey (`sequence > 0`) and this entry would otherwise play
-// the short "returning" veil, the journey's own arrival already performed
-// the ceremony — this component defers and stays off rather than stacking a
+// what a mount CAN mean: when a live journey is CURRENTLY, cinematically
+// arriving AT THIS ROOM, the journey's own arrival already performed the
+// ceremony — this component defers and stays off rather than stacking a
 // second, redundant veil on top of it.
+//
+// T2.2 FIX 3 (Opus adversarial gate): the ORIGINAL predicate
+// (`machine.state().sequence > 0`) over-suppressed — `sequence` only ever
+// increments, so it stayed truthy for the rest of the browsing session after
+// the FIRST journey anywhere, silently swallowing the returning veil on
+// every later tier-C/immediate journey, Back/Forward navigation, deep link,
+// and post-force-settle slow arrival to this room — none of which are "the
+// journey's own arrival [performing] the ceremony" in any visible sense. The
+// replacement predicate below only suppresses when a journey is LIVE, right
+// now, in cinematic mode, mid-transit specifically to this room: phase is
+// "traveling" or "arriving" (not settled/recovering/intent/departing), mode
+// is "cinematic" (never immediate — tier C/D journeys keep their veil), and
+// `destination.id` names this exact room. `ROOM_ID` below MUST match this
+// room's `id` in lib/transition-runtime/roomRegistry.ts.
 export interface ArenaEntryProps {
   identity: string;
   rank: string;
@@ -52,6 +65,11 @@ export interface ArenaEntryProps {
 }
 
 const SESSION_KEY = "cx-arena";
+
+// T2.2 FIX 3: MUST match the "arena" row's `id` in
+// lib/transition-runtime/roomRegistry.ts — this is the Arena's own
+// journey-room identity, read by the bail predicate below.
+const ROOM_ID = "arena";
 
 export function ArenaEntry(props: ArenaEntryProps) {
   const [mode, setMode] = useState<"off" | "first" | "returning">("off");
@@ -80,10 +98,15 @@ export function ArenaEntry(props: ArenaEntryProps) {
         /* no storage → first */
       }
       const variant = props.forceVariant ?? (returning || tier === "C" ? "returning" : "first");
-      if (machine && machine.state().sequence > 0 && variant === "returning") {
-        // T2 §5 journey-arrival bail: an in-shell journey just arrived at
-        // this room (a real journey, sequence > 0 — the machine's initial
-        // state is sequence 0 and only a request() ever advances it) and
+      const s = machine?.state();
+      const journeyArrivalHere =
+        !!s &&
+        (s.phase === "traveling" || s.phase === "arriving") &&
+        s.mode === "cinematic" &&
+        s.destination?.id === ROOM_ID;
+      if (journeyArrivalHere && variant === "returning") {
+        // T2 §5 / T2.2 FIX 3 journey-arrival bail: a live cinematic journey
+        // is mid-transit, arriving specifically at THIS room right now, and
         // this mount would otherwise have played the short returning veil.
         // The journey's own arrival already was the ceremony — do not
         // start a second, stacked one. Mode stays "off"; render nothing.

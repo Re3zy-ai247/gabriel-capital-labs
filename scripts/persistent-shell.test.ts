@@ -3,6 +3,9 @@
 // GUARD for the T2 persistent shell (T2-SPEC.md §9, items 1-9, implemented
 // here in that exact numbered order — this file's own section banners match
 // the spec's numbering verbatim, never renumbered). W3-owned (T2-SPEC.md §8).
+// T2.2 repair pass (Opus adversarial gate, FIX 9) ADDS item 10 (the
+// escape-hatch byte-identity pins) beyond the spec's original nine — an
+// addendum, not a renumbering of anything above it.
 //
 // CONCURRENCY NOTE: T2 has three writers landing on the same worktree at
 // once (W1 shell, W2 migration, W3 — this file). Several assertions below
@@ -24,9 +27,13 @@
 //   4. Registry ⇄ filesystem consistency.
 //   5. Hook cadence pins ([pathname] deps + clearAdminContextCache wiring).
 //   6. Ambient luminance contract (GxlField.tsx / AmbientGrid.tsx alpha ceilings).
-//   7. Sidebar interception (useOptionalJourneyMachine + gated preventDefault).
+//   7. Shell-delegated journey interception (onClickCapture on the shell
+//      root; useOptionalJourneyMachine + gated preventDefault) — NOT a
+//      Sidebar-level check (Sidebar.tsx is byte-identical to baseline).
 //   8. Isolation gate (git diff vs 1698e2b ⊆ the T2 allowlist).
 //   9. T1 freeze (machine/pacing/types/TravelLayer/RoomReady/demo segment byte-identical).
+//   10. (T2.2 addendum) Escape-hatch set — onboarding/billing-cancel/letters-print
+//       byte-identical to 1698e2b, outside app/(rooms)/.
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { execSync } from "node:child_process";
@@ -303,9 +310,13 @@ const stripComments = (src: string) => src.replace(/\/\*[\s\S]*?\*\//g, "").repl
 
 // ── 7 · Journey interception — ONE delegated shell-level mechanism (T2.1) ──
 // The T2.1 coordinator pass consolidated interception: Sidebar.tsx reverted
-// byte-identical to baseline (no per-component handlers anywhere), and
-// ShellBody carries a single bubble-phase delegated onClick (TransitionShell
-// precedent) that also covers in-content portals like the frozen ArenaDoor.
+// byte-identical to baseline (no per-component handlers anywhere, no
+// Sidebar-level interception of any kind), and ShellBody carries a single
+// CAPTURE-phase delegated onClickCapture (TransitionShell precedent — capture
+// is load-bearing, T2.2 FIX 9(a): next/link's own anchor handler calls
+// preventDefault() during BUBBLE, so a bubble-phase handler would always see
+// defaultPrevented=true for every <Link> and could only ever intercept plain
+// anchors) that also covers in-content portals like the frozen ArenaDoor.
 {
   const sidebarSrc = tryReadRepoFile("components/Sidebar.tsx");
   const sidebarDiff = runGit("diff 1698e2b --stat -- components/Sidebar.tsx");
@@ -347,6 +358,25 @@ const stripComments = (src: string) => src.replace(/\/\*[\s\S]*?\*\//g, "").repl
       "RoomsShell delegation: journeyLabel() used so announcements never speak the leading slash",
       /journeyLabel\(/.test(body),
     );
+
+    // T2.2 FIX 9(a)/(b): pin the outer div's exact attribute set — CAPTURE
+    // phase specifically (not bubble), and the SAME div also carrying the
+    // inert-scope marker TravelLayer.tsx now resolves against (T2.2 FIX 1).
+    const outerDivMatch = body.match(/<div\s+className="flex min-h-screen"[\s\S]{0,400}?>/);
+    const outerDivSrc = outerDivMatch ? outerDivMatch[0] : "";
+    check(
+      "RoomsShell delegation (T2.2 FIX 9a): the handler is attached via onClickCapture (CAPTURE phase) — never a plain onClick (bubble)",
+      /onClickCapture=\{onShellClick\}/.test(outerDivSrc) && !/\bonClick=\{onShellClick\}/.test(body),
+    );
+    check(
+      "RoomsShell delegation (T2.2 FIX 9b): the SAME outer div carries data-journey-inert-scope (TravelLayer's inert-scope marker, T2.2 FIX 1)",
+      outerDivSrc !== "" && /data-journey-inert-scope="/.test(outerDivSrc),
+    );
+    check(
+      "RoomsShell delegation (T2.2 FIX 10): same-origin guard precedes matchJourneyRoom — mirrors TransitionShell's own url.origin !== window.location.origin exclusion",
+      /url\.origin\s*!==\s*window\.location\.origin/.test(body) &&
+      /matchJourneyRoom\(\s*url\.pathname\s*\)/.test(body),
+    );
   }
 }
 
@@ -384,11 +414,15 @@ const stripComments = (src: string) => src.replace(/\/\*[\s\S]*?\*\//g, "").repl
     "scripts/persistent-shell.test.ts",
   ]);
   const PREFIX_ALLOWLIST = ["app/(rooms)/", "docs/reviews/cinematic-transition-runtime/"];
-  // The 22 git-mv'd dirs (spec §1) — the ONLY renames permitted, and only
-  // app/<dir>/... -> app/(rooms)/<dir>/... (same dir name both sides).
+  // The 21 dirs that stay `git mv`'d into app/(rooms)/ (spec §1 originally
+  // named 22 — T2.2 FIX 8 reverts "onboarding" back out to its pre-T2 path,
+  // the third chrome-free escape, so it is no longer one of these and is
+  // instead covered by item 10's byte-identity pins below) — the ONLY
+  // renames permitted, and only app/<dir>/... -> app/(rooms)/<dir>/...
+  // (same dir name both sides).
   const MOVED_DIRS = new Set([
     "academy", "agency", "arena", "billing", "builder", "campaigns", "community", "dashboard",
-    "gxl", "identity", "journey", "letters", "mail", "modules", "network", "onboarding",
+    "gxl", "identity", "journey", "letters", "mail", "modules", "network",
     "scores", "settings", "strategist", "support", "tradelines", "upload",
   ]);
   // Zero-diff zones: no exceptions except the two W3 ceremony files.
@@ -492,27 +526,37 @@ const stripComments = (src: string) => src.replace(/\/\*[\s\S]*?\*\//g, "").repl
   );
   if ((frozenDiff ?? "").trim() !== "") console.error(`  T1 freeze diff:\n${frozenDiff}`);
 
-  // T2.1 amendment (new integration evidence, coordinator-authorized):
-  // TravelLayer.tsx is no longer byte-frozen — the ONE permitted change is
-  // the arrival focus-handoff fallback ("main h1" ?? "header h1"), because
-  // the product shell's title <h1> lives in <header> and the original
-  // selector silently voided the a11y focus law product-wide. Pin: the
-  // fallback exists, AND the diff touches only that region (no other
-  // hunk in the file).
+  // T2.1/T2.2 amendments (new integration evidence, coordinator-authorized):
+  // TravelLayer.tsx is no longer byte-frozen. THREE amended behaviors are
+  // now permitted (T2.2 FIX 9d): the T2.1 arrival focus-handoff fallback,
+  // plus two T2.2 additions — the inert-scope marker resolution (FIX 1) and
+  // the location-gated announce/focus (FIX 2). A hunk-count assertion is
+  // deliberately NOT used here (dropped, T2.2 FIX 9d — brittle: three
+  // independent, differently-shaped edits to the same file will not
+  // generally coalesce into exactly one diff hunk, and a hunk-count pin
+  // would fail on legitimate multi-hunk changes just as readily as on a
+  // real regression). Instead each behavior is pinned directly via a source
+  // regex — together they ARE the amendment; nothing else in this file is
+  // license to diverge further from 1698e2b.
   const travelSrc = tryReadRepoFile("components/transition-runtime/TravelLayer.tsx");
   check(
     "TravelLayer (T2.1 amendment): arrival focus-handoff falls back to header h1",
     travelSrc !== null && /querySelector<HTMLElement>\("main h1"\)\s*\?\?\s*\n?\s*document\.querySelector<HTMLElement>\("header h1"\)/.test(travelSrc),
   );
-  const travelDiff = runGit(`diff ${T2_BASE} -- "components/transition-runtime/TravelLayer.tsx"`) ?? "";
-  const travelHunks = travelDiff.split("\n").filter((l) => l.startsWith("@@")).length;
-  const travelRemovals = travelDiff
-    .split("\n")
-    .filter((l) => l.startsWith("-") && !l.startsWith("---"))
-    .filter((l) => !/main h1|TransitionShell's own settle-focus/.test(l));
   check(
-    "TravelLayer (T2.1 amendment): the diff vs 1698e2b is exactly one hunk touching only the focus-handoff selector",
-    travelHunks === 1 && travelRemovals.length === 0,
+    "TravelLayer (T2.2 FIX 1): inert-scope marker resolution — [data-journey-inert-scope] preferred, T1 top-level-main fallback preserved",
+    travelSrc !== null &&
+      /getInertScope/.test(travelSrc) &&
+      /document\.querySelectorAll<HTMLElement>\("\[data-journey-inert-scope\]"\)/.test(travelSrc) &&
+      /return getTopLevelMains\(\);/.test(travelSrc) &&
+      /for \(const el of getInertScope\(\)\)/.test(travelSrc),
+  );
+  check(
+    "TravelLayer (T2.2 FIX 2): arrival announce/focus is location-gated — window.location.pathname must equal the destination href's resolved pathname",
+    travelSrc !== null &&
+      /new URL\(destination\.href, window\.location\.href\)\.pathname/.test(travelSrc) &&
+      /window\.location\.pathname === destinationPathname/.test(travelSrc) &&
+      /if \(!atDestination\) return;/.test(travelSrc),
   );
 
   // Additive-only spot-check on the one permitted exception (spec §0): the
@@ -529,6 +573,35 @@ const stripComments = (src: string) => src.replace(/\/\*[\s\S]*?\*\//g, "").repl
       "TransitionRuntimeProvider.tsx (T1 freeze exception): diff vs 1698e2b is purely additive — zero removed/changed lines",
       removedLines.length === 0,
     );
+  }
+}
+
+// ── 10 · escape-hatch set — three chrome-free routes, byte-identical (T2.2 FIX 9c) ──
+// billing/cancel and letters/print were already restored outside app/(rooms)
+// by the T2.1 coordinator pass; onboarding joins them in T2.2 (FIX 8 — its
+// signed-in branch was never AppShell-wrapped to begin with, the same escape
+// class, just not caught in the original recon). All three MUST exist at
+// their plain pre-T2 path, OUTSIDE app/(rooms)/, byte-identical to 1698e2b —
+// this is what makes them safe to leave permanently chrome-free rather than
+// forcing them through RoomsShell.
+{
+  const T2_BASE = "1698e2b";
+  const ESCAPE_HATCHES = [
+    { label: "onboarding", dir: "app/onboarding" },
+    { label: "billing/cancel", dir: "app/billing/cancel" },
+    { label: "letters/print", dir: "app/letters/print" },
+  ];
+  for (const { label, dir } of ESCAPE_HATCHES) {
+    const exists = existsSync(join(repoRoot, dir));
+    check(`escape hatch: ${dir} exists`, exists);
+    check(`escape hatch: ${dir} does NOT live under app/(rooms)/`, !dir.startsWith("app/(rooms)/"));
+    if (exists) {
+      const diff = runGit(`diff ${T2_BASE} --stat -- "${dir}"`);
+      check(
+        `escape hatch: ${label} (${dir}) is byte-identical to 1698e2b (git diff empty — never wrapped by RoomsShell)`,
+        diff !== null && diff.trim() === "",
+      );
+    }
   }
 }
 

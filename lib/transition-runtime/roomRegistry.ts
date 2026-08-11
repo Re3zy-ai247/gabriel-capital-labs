@@ -2,8 +2,11 @@
 //
 // The persistent shell's room table (T2-SPEC.md §3). Single source for
 // three consumers: RoomsShell's <h1> title, the JourneyMachine's
-// `initialRoom` seed, and Sidebar's journey-interception check — all three
-// read the SAME `label` string (the existing per-page `<AppShell title="…">`
+// `initialRoom` seed, and RoomsShell's own delegated journey-interception
+// check (T2.1 — a single onClickCapture handler on the shell root, NOT a
+// Sidebar-level check; see components/shell/RoomsShell.tsx's onShellClick)
+// — all three read the SAME `label` string (the existing per-page
+// `<AppShell title="…">`
 // value, byte-verified against every current app/(rooms) page.tsx/loading.tsx
 // before this table was written) so there is exactly one place that can go
 // stale.
@@ -24,33 +27,44 @@ export interface Room {
   journey: boolean;
 }
 
-// Reconciling "26 product rooms" (T2-SPEC.md §3) against this 24-row table:
-// the 22 top-level `git mv` dirs (§1) each own one row. Two of those dirs
-// hold TWO AppShell-wrapped pages apiece that share their parent's exact
-// title — community/page.tsx + community/[id]/page.tsx (both
-// "/ Operator Network"), and gxl/page.tsx + gxl/[room]/page.tsx (both
-// "/ GXL Gallery") — so one row correctly resolves both via longest-prefix
-// matching; a second identically-labeled row would be redundant, never
-// reachable differently. mail/ instead holds two SUB-pages whose titles
-// DIFFER from "/ Mail Center" (mail/download → "/ Download package",
-// mail/send → "/ Mail a dispute"), so those two get their own longer-prefix
-// rows precisely so matchRoom() resolves them correctly instead of
-// inheriting the parent's title. 22 top-level rows + 2 mail sub-rows = 24
-// rows, covering all 26 pages: 22 + 2 (community/gxl duplicates, covered by
-// their parent row) + 2 (mail sub-pages, covered by their own row) = 26.
+// Reconciling "26 product rooms" (T2-SPEC.md §3) against this 23-row table:
+// the 21 top-level `git mv` dirs remaining under app/(rooms)/ (§1, minus
+// onboarding — see below) each own one row. Two of those dirs hold TWO
+// AppShell-wrapped pages apiece that share their parent's exact title —
+// community/page.tsx + community/[id]/page.tsx (both "/ Operator Network"),
+// and gxl/page.tsx + gxl/[room]/page.tsx (both "/ GXL Gallery") — so one row
+// correctly resolves both via longest-prefix matching; a second
+// identically-labeled row would be redundant, never reachable differently.
+// mail/ instead holds two SUB-pages whose titles DIFFER from "/ Mail Center"
+// (mail/download → "/ Download package", mail/send → "/ Mail a dispute"), so
+// those two get their own longer-prefix rows precisely so matchRoom()
+// resolves them correctly instead of inheriting the parent's title. 21
+// top-level rows + 2 mail sub-rows = 23 rows, covering 25 of the 26 pages:
+// 21 + 2 (community/gxl duplicates, covered by their parent row) + 2 (mail
+// sub-pages, covered by their own row) = 25. The 26th page — onboarding — is
+// the third chrome-free escape below and deliberately has no row at all.
 //
-// EXCLUDED BY DESIGN (repository evidence, not an oversight): two
-// deliberately chrome-free pages live OUTSIDE the (rooms) group — resolved
-// in the T2.1 coordinator pass by moving them back to their original
-// ungrouped paths (route groups don't affect URLs, so /billing/cancel and
-// /letters/print/[id] serve from app/billing/cancel/ and app/letters/print/
-// exactly as before T2, with no layout beyond the root):
+// EXCLUDED BY DESIGN (repository evidence, not an oversight): THREE
+// deliberately chrome-free pages live OUTSIDE the (rooms) group — route
+// groups don't affect URLs, so each serves from its plain pre-T2 path with
+// no layout beyond the root, byte-identical to its pre-T2 self:
 //   - app/billing/cancel/page.tsx: "no AppShell, no navigation...
 //     deliberately standalone" (the one surface a suspended account can
-//     still reach) — byte-identical to its pre-T2 self at its pre-T2 path.
+//     still reach) — resolved in the T2.1 coordinator pass.
 //   - app/letters/print/[id]/page.tsx (+ PrintActions.tsx): a clean print
-//     sheet, no chrome by design — likewise restored.
-// Neither gets a registry row; neither is wrapped by RoomsShell.
+//     sheet, no chrome by design — likewise resolved in T2.1.
+//   - app/onboarding/page.tsx (+ OnboardingSteps.tsx): T2.2 FIX 8 — this dir
+//     was ORIGINALLY `git mv`'d into app/(rooms)/ with the other 22 (§1) and
+//     unwrapped from AppShell like every other room page, but its signed-in
+//     branch was never actually AppShell-wrapped to begin with (recon,
+//     T2.2): it renders its own full-bleed standalone first-run surface
+//     with no header/Sidebar/main chrome at all, structurally the same
+//     "deliberately chrome-free" escape class as billing/cancel and
+//     letters/print above — just not caught in the original T2.1 pass. It
+//     is restored to its pre-T2 path, byte-identical to its pre-T2 self
+//     (`git diff 1698e2b -- app/onboarding` is empty), and removed from the
+//     table below.
+// None of the three gets a registry row; none is wrapped by RoomsShell.
 export const ROOMS: readonly Room[] = [
   { id: "academy", href: "/academy", label: "/ Academy", journey: false },
   { id: "agency", href: "/agency", label: "/ Agency", journey: true },
@@ -77,7 +91,9 @@ export const ROOMS: readonly Room[] = [
   // effect commits (RoomsShell.tsx), matching T2-SPEC.md §1's title rule.
   { id: "modules", href: "/modules", label: "/ Modules", journey: false },
   { id: "network", href: "/network", label: "/ Operator Network", journey: false },
-  { id: "onboarding", href: "/onboarding", label: "/ Getting started", journey: false },
+  // "onboarding" deliberately has NO row (T2.2 FIX 8) — it is the third
+  // chrome-free escape, restored outside app/(rooms)/ to app/onboarding/,
+  // never wrapped by RoomsShell. See this file's header comment.
   { id: "scores", href: "/scores", label: "/ Score Tracker", journey: false },
   { id: "settings", href: "/settings", label: "/ Settings", journey: false },
   { id: "strategist", href: "/strategist", label: "/ Strategy Desk", journey: false },

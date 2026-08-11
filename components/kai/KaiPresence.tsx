@@ -31,17 +31,12 @@ const EXCLUDED_PATHS = new Set(["/dashboard", "/journey"]);
 // every room under app/(rooms)/ — RoomsShell mounts this component ONCE and
 // keeps it mounted across client-side navigations between rooms (admin still
 // mounts it per-page via the untouched AppShell.tsx, where the original
-// remount premise still holds). The fix below does not depend on remounting,
-// only on staying pathname-reactive, which this component already is (see
-// the mount effect's own `[pathname]` deps, below) — a fresh mount and a
-// persisted component re-running its effect on a pathname change hit the
-// exact same code path, so nothing here needed to change, only this
-// comment's premise.] The cache exists purely to skip a redundant fetch
-// within CACHE_TTL_MS, not to hold state across a remount or a pathname
-// change. That window is exactly where it bled: an agency operator opening
-// or exiting a client workspace, or signing out, changes WHO the next fetch
-// is for without unmounting anything, so a still-mounted (or freshly
-// mounted) instance could still read the previous subject's cached
+// remount premise still holds).] The cache exists purely to skip a redundant
+// fetch within CACHE_TTL_MS, not to hold state across a remount or a
+// pathname change. That window is exactly where it bled: an agency operator
+// opening or exiting a client workspace, or signing out, changes WHO the
+// next fetch is for without unmounting anything, so a still-mounted (or
+// freshly mounted) instance could still read the previous subject's cached
 // recommendation. The workspace cookie is httpOnly (by design, unreadable
 // here), so this component cannot itself detect "the subject changed" —
 // every place that CHANGES it calls this instead, so the next fetch (mount
@@ -49,6 +44,17 @@ const EXCLUDED_PATHS = new Set(["/dashboard", "/journey"]);
 // entry. Exported so those switch paths (app/agency/page.tsx openClient,
 // components/AgencyBar.tsx exit, components/Sidebar.tsx sign-out) never
 // hardcode the key name.
+//
+// T2.2 FIX 7: persistence (above) removed the free reset a fresh mount used
+// to give this component for free — `useState(null)`'s own initializer. A
+// STILL-MOUNTED instance whose cache was just cleared (a workspace switch)
+// used to be a contradiction (clearing the cache always came bundled with an
+// unmount); now it's the normal case. Without an explicit clear, this
+// component would keep rendering the PREVIOUS subject's `ctx` for the full
+// ~400ms fetch delay below — a real stale-subject flash, not a theoretical
+// one. The mount effect now clears `ctx` (and closes any open panel)
+// synchronously the moment it determines the fetch path will actually run
+// (cache absent or expired), before the delayed fetch is even scheduled.
 export function clearKaiPresenceCache(): void {
   try {
     if (typeof window === "undefined") return;
@@ -94,6 +100,14 @@ export function KaiPresence() {
     } catch {
       /* cache is best-effort */
     }
+
+    // Fix 7: cache absent/stale — the fetch below WILL run. Clear the
+    // previous subject's context (and close any open panel showing it) now
+    // rather than leaving it rendered for the ~400ms until the fetch
+    // resolves; setOpen(false) also prevents an already-open panel from
+    // reopening itself against stale content once the new ctx lands.
+    setCtx(null);
+    setOpen(false);
 
     const t = setTimeout(async () => {
       try {

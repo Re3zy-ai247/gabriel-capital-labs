@@ -1606,9 +1606,34 @@ html[data-cxpassage="B"] .cx-p-depth {
    compositor-cheap — and no new veil visuals: the accepted T1 TravelLayer
    remains the only "travel" visual; this block only shapes what the ROOM
    content does immediately before/after it. */
+/* T2.2 FIX 4(a): the departing/arriving phase rules on main#main (the
+   opacity transition below, and the arrival keyframe animation) each create
+   a NEW stacking context on main#main for the duration of that phase. A
+   first-visit ceremony veil (MissionEntry/ArenaEntry — fixed, z-[96]) that
+   mounts INSIDE main#main while "arriving" is in progress stacks within
+   THAT context; without main#main itself lifted above the sticky header
+   (header is z-20), an unlucky paint order could leave the ceremony veil
+   trapped beneath chrome instead of covering it. z-30 lifts main#main just
+   above the header, scoped to ONLY the two transient phases — main#main
+   carries no elevated z-index at all once settled. */
+[data-journey-phase="departing"] main#main,
+[data-journey-phase="arriving"] main#main {
+  position: relative;
+  z-index: 30;
+}
+
+/* T2.2 FIX 4(b): the opacity transition lives on the bare `[data-journey-phase]`
+   attribute selector (matches EVERY phase value, including "settled") so
+   that leaving "departing" for ANY reason — not only a normal arrival, but
+   also a governed cancel (departing -> recovering -> settled, machine.ts
+   law 4) — un-recedes main#main with this same smooth transition, instead
+   of the opacity snapping back to 1 the instant the attribute's value
+   changes away from "departing". */
+[data-journey-phase] main#main {
+  transition: opacity 240ms var(--ease-vector);
+}
 [data-journey-phase="departing"] main#main {
   opacity: 0.55;
-  transition: opacity 240ms var(--ease-vector);
 }
 
 @keyframes t2-arrive {
@@ -1619,6 +1644,20 @@ html[data-cxpassage="B"] .cx-p-depth {
 [data-journey-phase="arriving"] header h1 {
   animation: t2-arrive 360ms var(--ease-vector) both;
 }
+
+/* T2.2 FIX 4(c) — honest mirror note: 240ms (departing) and 360ms (arriving)
+   approximate pacing.ts's tier-A durations (JOURNEY_PACING.departingMs.A=280,
+   arrivingMs.A=360 — arrival matches exactly; departure is a rounder,
+   deliberately simplified constant, not a byte-for-byte copy). Tier B runs
+   faster (departingMs.B=200, arrivingMs.B=260), but this CSS block carries
+   no tier awareness at all — `data-journey-phase` flips identically
+   regardless of which tier resolved the journey — so a tier-B journey's
+   shell-level fade runs slightly slower than its own TravelLayer veil.
+   Deliberate simplification (spec §4: "NO transform choreography at shell
+   level in T2 … opacity only"), not a defect: the phase attribute itself
+   flips at the correct tier-scaled moment regardless, only this CSS
+   constant is a fixed approximation. Pinned here as a KNOWN MIRROR so any
+   future retune is a conscious edit, never silent drift. */
 
 /* Defense-in-depth (spec §4): an immediate-mode journey (tier C/D — which
    includes prefers-reduced-motion via detectTier(), machine.ts law 7 — or a

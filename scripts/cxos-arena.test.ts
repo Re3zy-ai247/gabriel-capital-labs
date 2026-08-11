@@ -100,8 +100,12 @@ check("review runs never consume the visitor's first-entry marker",
   check("returning entry ≤ 1.5 s", ret > 0 && ret <= 1500);
 }
 check("tier D mounts nothing", /if \(tier === "D"\) return;/.test(entry));
-check("entry: journey-arrival bail (T2 §5) — an in-shell journey that already arrived (sequence > 0) suppresses a stacked returning veil",
-  /if \(machine && machine\.state\(\)\.sequence > 0 && variant === "returning"\) \{/.test(entry));
+check("entry: journey-arrival bail (T2.2 FIX 3) — pins ROOM_ID, the phase check (traveling/arriving), the mode check (cinematic), and the destination-id check before suppressing a returning veil",
+  /const ROOM_ID = "arena";/.test(entry) &&
+  /s\.phase === "traveling" \|\| s\.phase === "arriving"/.test(entry) &&
+  /s\.mode === "cinematic"/.test(entry) &&
+  /s\.destination\?\.id === ROOM_ID/.test(entry) &&
+  /if \(journeyArrivalHere && variant === "returning"\) \{/.test(entry));
 check("entry: reads the OPTIONAL journey hook only — never the hard hook that throws outside a provider",
   /import \{ useOptionalJourneyMachine \} from "@\/components\/transition-runtime\/TransitionRuntimeProvider";/.test(entry) &&
   !/useJourneyMachine\(/.test(entry));

@@ -164,10 +164,17 @@ now law. `scripts/cxos-passage.test.ts` copy pins unaffected.
 
 ## 6.5 T2.1 — coordinator adjudications (post-implementation, binding)
 
-1. **Chrome-free routes escape the group:** `billing/cancel` and `letters/print/[id]`
-   (deliberately shell-less; billing/cancel is the disabled-account escape hatch)
-   moved back to their original ungrouped paths — URLs unchanged, zero diff vs
-   `1698e2b`, never wrapped by RoomsShell.
+1. **Chrome-free routes escape the group:** THREE routes are deliberately
+   shell-less and live outside `app/(rooms)/` — URLs unchanged, zero diff vs
+   `1698e2b`, never wrapped by RoomsShell:
+   - `billing/cancel` — the disabled-account escape hatch.
+   - `letters/print/[id]` — a clean print sheet, no chrome by design.
+   - `onboarding` (T2.2 FIX 8, added after this pass's original two): its
+     signed-in branch was never AppShell-wrapped to begin with — a
+     full-bleed standalone first-run surface, the same escape class as the
+     other two, not caught in the original T2.1 recon.
+   All three moved back to (or, for onboarding, were restored to) their
+   original ungrouped paths.
 2. **ONE interception mechanism:** Sidebar.tsx reverted byte-identical to baseline;
    journey interception is a single **capture-phase** delegated handler on the shell
    root (TransitionShell precedent — capture is load-bearing: next/link

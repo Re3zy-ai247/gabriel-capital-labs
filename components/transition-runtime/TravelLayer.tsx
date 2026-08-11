@@ -50,6 +50,23 @@ function getTopLevelMains(): HTMLElement[] {
   return mains.filter((el) => !mains.some((other) => other !== el && other.contains(el)));
 }
 
+// T2.2 FIX 1: keyboard-inert SCOPE resolution. The product shell
+// (components/shell/RoomsShell.tsx) marks its ShellBody outer div — the
+// WHOLE chrome+main tree (Sidebar, header, banners, main#main, KaiPresence,
+// MobileNav) — with `data-journey-inert-scope`, because a keyboard/AT user
+// mid-travel must not be able to reach the persistent Sidebar or MobileNav
+// either, not just the old room's `<main>`. TravelLayer's own veil overlay
+// and the always-mounted announcer are siblings OUTSIDE that marked div (see
+// RoomsShell.tsx), so they are never matched here and can never be inerted.
+// When no marked scope exists — the T1 review demo, which carries no marker
+// at all — this falls back to the original T1 top-level-`<main>` resolution
+// unchanged, so the demo segment's behavior is untouched by this amendment.
+function getInertScope(): HTMLElement[] {
+  const marked = Array.from(document.querySelectorAll<HTMLElement>("[data-journey-inert-scope]"));
+  if (marked.length > 0) return marked;
+  return getTopLevelMains();
+}
+
 export function TravelLayer() {
   const machine = useJourneyMachine();
   const { state, cancel } = useJourney();
@@ -105,6 +122,28 @@ export function TravelLayer() {
       // readyTimeoutMs fallback), so the destination room's DOM already
       // exists by the time either path lands here.
       if (previousPhase === "arriving") {
+        // T2.2 FIX 2: location-gated arrival. The machine's own `settled`
+        // phase is not itself proof the browser is actually AT the
+        // destination URL — a mid-journey Back/Forward, a manual address-bar
+        // edit, or any other out-of-band navigation can race a `ready()`/
+        // hard-cap settle. Announcing "<room> ready" or moving focus to that
+        // room's heading while the DOM behind the veil is really some OTHER
+        // page would be actively misleading (a false a11y signal is worse
+        // than a missed one). Require the live `window.location.pathname` to
+        // equal the destination's own resolved pathname before doing EITHER
+        // side effect; on a mismatch, settle silently — the router-verify
+        // fallback (elsewhere in the runtime) owns recovering the visible
+        // truth, this component simply declines to narrate a room it cannot
+        // confirm the user is actually looking at. `destination` is
+        // theoretically nullable (JourneyState's own type) — no destination
+        // means no pathname to verify against, so that also settles silently.
+        const destinationPathname = destination
+          ? new URL(destination.href, window.location.href).pathname
+          : null;
+        const atDestination =
+          destinationPathname !== null && window.location.pathname === destinationPathname;
+        if (!atDestination) return;
+
         setAnnouncement(`${destination?.label ?? "The room"} ready`);
         // CXOS focus-handoff law, cinematic journeys only (spec §4):
         // immediate mode leaves native focus behavior untouched, matching
@@ -165,16 +204,23 @@ export function TravelLayer() {
   // user being blocked is not the same as a keyboard/AT user being blocked —
   // Tab order and screen-reader virtual-cursor navigation don't consult
   // pointer-events at all. Ownership-marked inert (GCL law): this effect
-  // marks every top-level `<main>` present the INSTANT traveling begins with
+  // marks every element in the resolved inert SCOPE (T2.2 FIX 1:
+  // `getInertScope()` — the shell's marked chrome+main tree, or the T1
+  // top-level-`<main>` fallback) present the INSTANT traveling begins with
   // both `inert` and the `data-trt-inert` marker attribute, and on leaving
   // traveling (phase change) or unmount, unmarks ONLY elements still
-  // carrying that marker — a `<main>` that was already inert for some
+  // carrying that marker — an element that was already inert for some
   // unrelated reason is never touched in either direction.
   //
-  // KNOWN RESIDUAL (accepted for T1): a destination `<main>` that mounts for
-  // the FIRST time mid-traveling — i.e. AFTER this effect's querySelectorAll
-  // already ran — is never picked up by this effect instance; it simply
-  // doesn't exist in the DOM yet at that point. This is bounded by
+  // KNOWN RESIDUAL (accepted for T1, still true under the T2.2 scope
+  // amendment): an element belonging to the resolved scope that mounts for
+  // the FIRST time mid-traveling — i.e. AFTER this effect's
+  // querySelectorAll already ran — is never picked up by this effect
+  // instance; it simply doesn't exist in the DOM yet at that point. (In the
+  // T2 product shell this is moot in practice — the marked scope is the
+  // shell's own persistent root, mounted well before any journey can begin
+  // — but the residual is stated at the scope level, not just for `<main>`,
+  // since FIX 1 broadened what this effect resolves.) This is bounded by
   // `readyTimeoutMs` (currently 1000ms): the destination signals `ready()`
   // well inside that window in the ordinary case, and until it does, the
   // newly-mounted room renders behind the still-opaque, still-pointer-
@@ -184,7 +230,7 @@ export function TravelLayer() {
     if (phase !== "traveling") return;
 
     const marked: HTMLElement[] = [];
-    for (const el of getTopLevelMains()) {
+    for (const el of getInertScope()) {
       if (el.hasAttribute("inert")) continue; // never touch a pre-existing inert node
       el.setAttribute("inert", "");
       el.setAttribute(INERT_MARKER_ATTR, "");

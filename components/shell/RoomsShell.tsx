@@ -21,6 +21,7 @@ import {
   type ReactNode,
 } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
 import { Sidebar, MobileNav } from "@/components/Sidebar";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -49,7 +50,21 @@ import { isDirectorActive } from "@/lib/cxos/reviewMode";
 // cross-cutting imports above. Confirmed with the coordinator's directive:
 // "check that import path is allowed: it IS a T1 review file; do NOT modify
 // it, import only."
-import { MotionPreviewControl } from "@/app/review/transition-runtime/MotionPreviewControl";
+//
+// T2.2 FIX 5: loaded via next/dynamic (`ssr: false`) instead of a static
+// import. This component (and everything it pulls in) is REVIEW-ONLY —
+// rendered only when `reviewInstrumentsAllowed && directorActive` (both
+// false in production, the first by server truth from reviewBuildAllowed()).
+// A static import bundles its module into RoomsShell's own chunk regardless
+// of whether the gate ever opens, so every production visitor's bundle would
+// carry review-instrument bytes it can never execute. Dynamic import code-
+// splits it into its own chunk that the browser only ever fetches at the
+// moment the gated JSX below actually tries to render it — impossible in
+// production, so production never requests this chunk at all.
+const MotionPreviewControl = dynamic(
+  () => import("@/app/review/transition-runtime/MotionPreviewControl").then((m) => m.MotionPreviewControl),
+  { ssr: false },
+);
 
 /**
  * The dynamic-title escape hatch (T2-SPEC.md §1: "Dynamic-title rooms use
@@ -108,14 +123,37 @@ function ShellBody({ title, children }: { title: string; children: ReactNode }) 
     if (anchor.target === "_blank" || anchor.hasAttribute("download")) return;
     const href = anchor.getAttribute("href");
     if (!href || !href.startsWith("/")) return;
-    const room = matchJourneyRoom(new URL(href, window.location.href).pathname);
+    // T2.2 FIX 10: same-origin guard, mirroring TransitionShell.tsx's own
+    // exclusion (`url.origin !== window.location.origin`). `href.startsWith("/")`
+    // above already rules out absolute cross-origin URLs in the common case,
+    // but a relative href resolved against a `<base>` tag or an edge case in
+    // `URL`'s own resolution could still land off-origin — resolve once and
+    // check explicitly rather than trusting the string prefix alone.
+    const url = new URL(href, window.location.href);
+    if (url.origin !== window.location.origin) return;
+    const room = matchJourneyRoom(url.pathname);
     if (!room) return;
     const accepted = navigate({ id: room.id, href, label: journeyLabel(room) });
     if (accepted) event.preventDefault();
   };
 
   return (
-    <div className="flex min-h-screen" data-journey-phase={state.phase} onClickCapture={onShellClick}>
+    // T2.2 FIX 1: `data-journey-inert-scope` marks this div — the WHOLE
+    // chrome+main tree (Sidebar through MobileNav below) — as the scope
+    // TravelLayer.tsx inerts while `traveling` (its `getInertScope()`
+    // prefers this marker over the T1 top-level-`<main>` fallback). This
+    // div is the ONLY thing inerted: TravelLayer's own veil overlay and its
+    // always-mounted announcer are rendered as siblings of <ShellBody>
+    // inside <TransitionRuntimeProvider> (see RoomsShell below), never
+    // nested inside this div, so marking it can never inert the veil or the
+    // announcer that must keep working throughout the very phase this
+    // scope goes inert.
+    <div
+      className="flex min-h-screen"
+      data-journey-phase={state.phase}
+      data-journey-inert-scope=""
+      onClickCapture={onShellClick}
+    >
       <Sidebar />
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-20 flex items-center justify-between border-b border-ink-700/70 bg-ink-900/70 px-5 py-3 backdrop-blur">
