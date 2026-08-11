@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 
 export interface CommunityAccess {
   canAccess: boolean;
@@ -37,6 +38,7 @@ function load(): Promise<CommunityAccess | null> {
 
 // Returns null until loaded (unchanged contract for all existing callers).
 export function useCommunityAccess(): CommunityAccess | null {
+  const pathname = usePathname();
   const [ctx, setCtx] = useState<CommunityAccess | null>(cached);
   useEffect(() => {
     let cancelled = false;
@@ -46,6 +48,12 @@ export function useCommunityAccess(): CommunityAccess | null {
     return () => {
       cancelled = true;
     };
-  }, []);
+    // T2 persistence-safety fix (T2-SPEC.md §1 item 2) — same rationale as
+    // useAdminContext.ts: RoomsShell now mounts this hook once for the whole
+    // session instead of per-page, so `[]` deps would probe only on first
+    // load. Reacting to `pathname` restores an attempt per navigation; the
+    // module-level TTL above still collapses that into the same cadence as
+    // today.
+  }, [pathname]);
   return ctx;
 }

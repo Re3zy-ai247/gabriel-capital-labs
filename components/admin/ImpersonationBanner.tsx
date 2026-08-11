@@ -1,7 +1,7 @@
 "use client";
 import { useRouter } from "next/navigation";
 import { Eye, LogOut } from "lucide-react";
-import { useAdminContext } from "./useAdminContext";
+import { useAdminContext, clearAdminContextCache } from "./useAdminContext";
 
 // Persistent banner shown while an admin is impersonating ("viewing as") a user,
 // so it's always obvious — and one click to exit.
@@ -13,6 +13,14 @@ export function ImpersonationBanner() {
 
   async function exit() {
     await fetch("/api/admin/impersonate/stop", { method: "POST" });
+    // T2 persistence-safety fix (T2-SPEC.md §1 item 4): under RoomsShell's
+    // persistent mount, useAdminContext's module-level cache can otherwise
+    // survive this exit and keep reporting `impersonating.active: true` for
+    // up to its 60s TTL — clearing it before refresh() guarantees the next
+    // fetch (triggered by router.refresh()'s server re-render, and by this
+    // component's own pathname-reactive effect once /admin/users mounts) is
+    // genuinely fresh, not a stale hit.
+    clearAdminContextCache();
     router.push("/admin/users");
     router.refresh();
   }

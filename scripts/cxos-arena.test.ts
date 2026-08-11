@@ -25,8 +25,8 @@ const root = join(__dirname, "..");
 const entry = readFileSync(join(root, "components/cxos/arena/ArenaEntry.tsx"), "utf8");
 const chamber = readFileSync(join(root, "components/cxos/arena/ArenaChamber.tsx"), "utf8");
 const door = readFileSync(join(root, "components/cxos/arena/ArenaDoor.tsx"), "utf8");
-const page = readFileSync(join(root, "app/arena/page.tsx"), "utf8");
-const dash = readFileSync(join(root, "app/dashboard/page.tsx"), "utf8");
+const page = readFileSync(join(root, "app/(rooms)/arena/page.tsx"), "utf8");
+const dash = readFileSync(join(root, "app/(rooms)/dashboard/page.tsx"), "utf8");
 const stage = readFileSync(join(root, "app/review/arena/stage.tsx"), "utf8");
 const stagePage = readFileSync(join(root, "app/review/arena/page.tsx"), "utf8");
 const ledger = readFileSync(join(root, "lib/cxos/arenaLedger.ts"), "utf8");
@@ -100,6 +100,11 @@ check("review runs never consume the visitor's first-entry marker",
   check("returning entry ≤ 1.5 s", ret > 0 && ret <= 1500);
 }
 check("tier D mounts nothing", /if \(tier === "D"\) return;/.test(entry));
+check("entry: journey-arrival bail (T2 §5) — an in-shell journey that already arrived (sequence > 0) suppresses a stacked returning veil",
+  /if \(machine && machine\.state\(\)\.sequence > 0 && variant === "returning"\) \{/.test(entry));
+check("entry: reads the OPTIONAL journey hook only — never the hard hook that throws outside a provider",
+  /import \{ useOptionalJourneyMachine \} from "@\/components\/transition-runtime\/TransitionRuntimeProvider";/.test(entry) &&
+  !/useJourneyMachine\(/.test(entry));
 check("three-way skip: Escape + autofocused button + click anywhere",
   /e\.key === "Escape"\) finish\(\)/.test(entry) && /autoFocus/.test(entry) && /onClick=\{finish\}/.test(entry));
 check("the 12 s pure-CSS safety fade covers the Arena veil",

@@ -301,6 +301,20 @@ export function useJourneyMachine(): JourneyMachine {
 }
 
 /**
+ * T2 — ADDITIVE ONLY (T2-SPEC.md §1/§8, the sole permitted change to this
+ * otherwise-frozen T1 file). Same context read as `useJourneyMachine()`,
+ * but never throws: outside a provider (or a provider that hasn't mounted
+ * yet) this returns `null` instead. Built for consumers that exist both
+ * INSIDE the persistent shell (where a `<TransitionRuntimeProvider>` always
+ * wraps them) and OUTSIDE it — Sidebar.tsx is mounted by admin's own
+ * AppShell with no provider in the tree at all, and it must render exactly
+ * today's plain links there, zero behavior change, rather than crash.
+ */
+export function useOptionalJourneyMachine(): JourneyMachine | null {
+  return useContext(TransitionRuntimeContext);
+}
+
+/**
  * The public hook (spec §4): `{ state, navigate(dest), cancel() }`.
  * Fix 3/4: `navigate()` now returns the boolean `machine.request()` itself
  * returns (`true` = accepted/superseded the journey, `false` = post-commit

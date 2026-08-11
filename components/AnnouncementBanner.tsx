@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { Megaphone, X } from "lucide-react";
 
 interface Announcement {
@@ -19,6 +20,7 @@ const toneClass: Record<string, string> = {
 // per device (localStorage), keyed by announcement id, so a new one re-appears.
 export function AnnouncementBanner() {
   const [a, setA] = useState<Announcement | null>(null);
+  const pathname = usePathname();
 
   useEffect(() => {
     fetch("/api/announcements/active")
@@ -28,7 +30,10 @@ export function AnnouncementBanner() {
         if (ann && localStorage.getItem(`ann_dismissed_${ann.id}`) !== "1") setA(ann);
       })
       .catch(() => {});
-  }, []);
+    // T2 persistence-safety fix (T2-SPEC.md §1 item 5): announcement check
+    // per navigation, as today — see useAdminContext.ts's identical
+    // rationale (RoomsShell mounts this once now instead of per-page).
+  }, [pathname]);
 
   if (!a) return null;
 

@@ -24,19 +24,31 @@ const CACHE_TTL_MS = 5 * 60 * 1000;
 const EXCLUDED_PATHS = new Set(["/dashboard", "/journey"]);
 
 // Phase 1A cache fix (SIM-REVIEW finding 4 — live defect): sessionStorage has
-// no user/workspace scope of its own. KaiPresence is mounted by AppShell,
-// which every page.tsx calls directly (not the persistent root layout), so it
-// remounts on each navigation — the cache exists purely to skip a redundant
-// fetch within CACHE_TTL_MS, not to hold state across a remount. That window
-// is exactly where it bled: an agency operator opening or exiting a client
-// workspace, or signing out, changes WHO the next fetch is for without
-// unmounting anything, so a fresh mount could still read the previous
-// subject's cached recommendation. The workspace cookie is httpOnly (by
-// design, unreadable here), so this component cannot itself detect "the
-// subject changed" — every place that CHANGES it calls this instead, so the
-// next mount fetches fresh rather than trusting a stale entry. Exported so
-// those switch paths (app/agency/page.tsx openClient, components/AgencyBar.tsx
-// exit, components/Sidebar.tsx sign-out) never hardcode the key name.
+// no user/workspace scope of its own. [T2 update — the persistent shell,
+// components/shell/RoomsShell.tsx: KaiPresence used to be mounted by
+// AppShell, which every page.tsx called directly (not the persistent root
+// layout), so it remounted on each navigation; that premise is now FALSE for
+// every room under app/(rooms)/ — RoomsShell mounts this component ONCE and
+// keeps it mounted across client-side navigations between rooms (admin still
+// mounts it per-page via the untouched AppShell.tsx, where the original
+// remount premise still holds). The fix below does not depend on remounting,
+// only on staying pathname-reactive, which this component already is (see
+// the mount effect's own `[pathname]` deps, below) — a fresh mount and a
+// persisted component re-running its effect on a pathname change hit the
+// exact same code path, so nothing here needed to change, only this
+// comment's premise.] The cache exists purely to skip a redundant fetch
+// within CACHE_TTL_MS, not to hold state across a remount or a pathname
+// change. That window is exactly where it bled: an agency operator opening
+// or exiting a client workspace, or signing out, changes WHO the next fetch
+// is for without unmounting anything, so a still-mounted (or freshly
+// mounted) instance could still read the previous subject's cached
+// recommendation. The workspace cookie is httpOnly (by design, unreadable
+// here), so this component cannot itself detect "the subject changed" —
+// every place that CHANGES it calls this instead, so the next fetch (mount
+// OR pathname-change re-run) fetches fresh rather than trusting a stale
+// entry. Exported so those switch paths (app/agency/page.tsx openClient,
+// components/AgencyBar.tsx exit, components/Sidebar.tsx sign-out) never
+// hardcode the key name.
 export function clearKaiPresenceCache(): void {
   try {
     if (typeof window === "undefined") return;

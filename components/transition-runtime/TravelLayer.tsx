@@ -109,8 +109,15 @@ export function TravelLayer() {
         // CXOS focus-handoff law, cinematic journeys only (spec §4):
         // immediate mode leaves native focus behavior untouched, matching
         // TransitionShell's own settle-focus pattern (`main h1`, tabindex -1).
+        // T2.1 amendment (new integration evidence, not a reopened T1
+        // finding): in the T2 persistent product shell the room title <h1>
+        // lives in the shell's <header>, not inside <main> (the T1 demo had
+        // it in <main>) — without the fallback this handoff silently found
+        // nothing product-wide, voiding the a11y law it implements.
         if (mode === "cinematic") {
-          const heading = document.querySelector<HTMLElement>("main h1");
+          const heading =
+            document.querySelector<HTMLElement>("main h1") ??
+            document.querySelector<HTMLElement>("header h1");
           if (heading) {
             heading.setAttribute("tabindex", "-1");
             heading.focus({ preventScroll: true });

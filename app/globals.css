@@ -1589,3 +1589,53 @@ html[data-cxpassage="B"] .cx-p-depth {
   opacity: 0.45;
   cursor: not-allowed;
 }
+
+/* T2 journey grammar */
+/* ── Cinematic Transition Runtime — Wave T2 (persistent shell) ──
+   docs/reviews/cinematic-transition-runtime/T2-SPEC.md §4. Two states only —
+   departure recede (origin, pre-veil) and arrival settle (destination) —
+   both opacity/luminance-only (the PASSAGE power-down precedent above,
+   gentler here since main#main is a whole room's content, not one scene
+   layer). `[data-journey-phase]` here is the attribute RoomsShell's own
+   outer div carries (components/shell/RoomsShell.tsx, from useJourney()) —
+   an ANCESTOR of main#main. TravelLayer.tsx stamps the same attribute name
+   on its own veil overlay, a SIBLING of the shell tree, never main#main's
+   ancestor — so these rules react only to the shell's own phase read, never
+   to the veil's, and the two stampings never collide.
+   NO transform choreography at shell level in T2 (spec §4) — opacity only,
+   compositor-cheap — and no new veil visuals: the accepted T1 TravelLayer
+   remains the only "travel" visual; this block only shapes what the ROOM
+   content does immediately before/after it. */
+[data-journey-phase="departing"] main#main {
+  opacity: 0.55;
+  transition: opacity 240ms var(--ease-vector);
+}
+
+@keyframes t2-arrive {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+[data-journey-phase="arriving"] main#main,
+[data-journey-phase="arriving"] header h1 {
+  animation: t2-arrive 360ms var(--ease-vector) both;
+}
+
+/* Defense-in-depth (spec §4): an immediate-mode journey (tier C/D — which
+   includes prefers-reduced-motion via detectTier(), machine.ts law 7 — or a
+   hidden document) never enters departing/traveling/arriving at all, so
+   `[data-journey-phase]` never stamps anything but "settled" for a
+   reduced-motion visitor in the first place. This reset is the house's
+   second line of defense (CINEMATIC-BIBLE discipline: numeric/behavioral
+   intent pinned so drift fails a guard, not silently reappears), not the
+   mechanism reduced motion actually relies on. */
+@media (prefers-reduced-motion: reduce) {
+  [data-journey-phase="departing"] main#main {
+    opacity: 1;
+    transition: none;
+  }
+  [data-journey-phase="arriving"] main#main,
+  [data-journey-phase="arriving"] header h1 {
+    animation: none;
+    opacity: 1;
+  }
+}

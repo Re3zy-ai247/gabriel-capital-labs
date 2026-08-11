@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 
 export interface OnboardingProbe {
   incomplete: boolean;
@@ -51,6 +52,7 @@ export function clearOnboardingStatusCache(): void {
 // Returns null until loaded (same contract as useAdminContext/
 // useCommunityAccess, so Sidebar renders nothing extra during the probe).
 export function useOnboardingStatus(): OnboardingProbe | null {
+  const pathname = usePathname();
   const [ctx, setCtx] = useState<OnboardingProbe | null>(cached);
   useEffect(() => {
     let cancelled = false;
@@ -60,6 +62,12 @@ export function useOnboardingStatus(): OnboardingProbe | null {
     return () => {
       cancelled = true;
     };
-  }, []);
+    // T2 persistence-safety fix (T2-SPEC.md §1 item 2) — same rationale as
+    // useAdminContext.ts: RoomsShell now mounts this hook once for the whole
+    // session instead of per-page, so `[]` deps would probe only on first
+    // load. Reacting to `pathname` restores an attempt per navigation; the
+    // module-level TTL above still collapses that into the same cadence as
+    // today.
+  }, [pathname]);
   return ctx;
 }

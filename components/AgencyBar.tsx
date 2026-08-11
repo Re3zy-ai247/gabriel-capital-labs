@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { Briefcase, LogOut } from "lucide-react";
 import { clearKaiPresenceCache } from "@/components/kai/KaiPresence";
 import { clearOnboardingStatusCache } from "@/components/onboarding/useOnboardingStatus";
@@ -10,6 +10,7 @@ import { clearOnboardingStatusCache } from "@/components/onboarding/useOnboardin
 export function AgencyBar() {
   const [client, setClient] = useState<{ id: string; name: string } | null>(null);
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     let cancelled = false;
@@ -19,11 +20,28 @@ export function AgencyBar() {
         if (!cancelled) setClient(d.client || null);
       })
       .catch(() => {});
-  }, []);
+    // T2 persistence-safety fix (T2-SPEC.md §1 item 3): this is a raw fetch
+    // with no TTL cache (unlike useAdminContext/useCommunityAccess/
+    // useOnboardingStatus) — it already re-fetches on every mount today
+    // (AppShell remounts per page.tsx). Reacting to `pathname` under the new
+    // persistent RoomsShell (mounted once) restores that exact per-
+    // navigation cadence; there is no cache here to double-suppress against.
+  }, [pathname]);
 
   if (!client) return null;
 
   async function exit() {
+    // T2 persistence-safety fix (T2-SPEC.md §1 item 3, "fixes the
+    // stale-banner break recon confirmed"): under the OLD per-page AppShell
+    // mount, navigating to /agency after exiting remounted this whole
+    // component, so the stale `client` from before the exit call could never
+    // outlive the navigation. RoomsShell now keeps this component mounted
+    // across that same navigation, so without this line the banner would
+    // keep showing the just-exited client's name until the effect above's
+    // fetch resolves. Clearing synchronously, before the async calls below,
+    // makes the banner disappear the instant "Exit to agency" is clicked —
+    // never a stale name surviving into the destination room's first paint.
+    setClient(null);
     await fetch("/api/agency/select", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

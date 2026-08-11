@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { detectTier } from "@/lib/cxos/capability";
 import { isDirectorActive } from "@/lib/cxos/reviewMode";
+import { useOptionalJourneyMachine } from "@/components/transition-runtime/TransitionRuntimeProvider";
 
 // CXOS Phase 5 — the entry into the Arena.
 //
@@ -23,6 +24,20 @@ import { isDirectorActive } from "@/lib/cxos/reviewMode";
 // Returning ≈ 1.1 s. Tier C short. Tier D (reduced motion / effects off)
 // mounts NOTHING. Skip: Escape, the autofocused button, or click anywhere.
 // A pure-CSS 12 s safety fade guarantees the floor is never stranded.
+//
+// T2 §5 — entry-grammar differentiation. The old premise ("arena is a
+// distinct route, so every mount here is either a true first visit or an
+// ordinary reload") is going stale: T2's persistent shell keeps a
+// TransitionRuntimeProvider mounted above the room, and arena is a flagship
+// journey room, so this component can now mount immediately after an
+// in-shell cinematic journey has just arrived here. This does NOT change
+// when ArenaEntry itself mounts — the persistent shell doesn't remount, but
+// the routed page inside it still does, exactly as before. What changes is
+// what a mount CAN mean: when a live journey machine reports it just
+// completed a journey (`sequence > 0`) and this entry would otherwise play
+// the short "returning" veil, the journey's own arrival already performed
+// the ceremony — this component defers and stays off rather than stacking a
+// second, redundant veil on top of it.
 export interface ArenaEntryProps {
   identity: string;
   rank: string;
@@ -45,6 +60,13 @@ export function ArenaEntry(props: ArenaEntryProps) {
   const review = useRef(false);
   const doneRef = useRef(false);
   const timers = useRef<number[]>([]);
+  // Rules of hooks: called unconditionally every render, same position, so
+  // this is always safe whether or not a <TransitionRuntimeProvider> is an
+  // ancestor (null outside one — see the hook's own doc comment). The
+  // machine's STATE is deliberately not read here at render time; it is
+  // read once, inside the mount effect below, at the moment that actually
+  // decides this entry's variant.
+  const machine = useOptionalJourneyMachine();
 
   useEffect(() => {
     try {
@@ -58,6 +80,15 @@ export function ArenaEntry(props: ArenaEntryProps) {
         /* no storage → first */
       }
       const variant = props.forceVariant ?? (returning || tier === "C" ? "returning" : "first");
+      if (machine && machine.state().sequence > 0 && variant === "returning") {
+        // T2 §5 journey-arrival bail: an in-shell journey just arrived at
+        // this room (a real journey, sequence > 0 — the machine's initial
+        // state is sequence 0 and only a request() ever advances it) and
+        // this mount would otherwise have played the short returning veil.
+        // The journey's own arrival already was the ceremony — do not
+        // start a second, stacked one. Mode stays "off"; render nothing.
+        return;
+      }
       setMode(variant);
       start(variant);
     } catch {

@@ -928,28 +928,40 @@ function runGit(args: string): string | null {
     return null;
   }
 }
-const diffRaw = runGit("diff --name-only a72a47c");
-check("isolation gate: `git diff --name-only a72a47c` runs cleanly", diffRaw !== null);
-const diffFiles = (diffRaw ?? "")
-  .split("\n")
-  .map((l) => l.trim())
-  .filter(Boolean);
+// T2 supersession (coordinator amendment): this suite's isolation gate is
+// scoped to the T1 wave (baseline a72a47c, T1 file allowlist). On a T2+
+// branch the wave-scoped gate lives in scripts/persistent-shell.test.ts
+// (baseline 1698e2b, T2 allowlist) — running BOTH baselines here would flag
+// every legitimate T2 file as a violation by construction. Detection is the
+// presence of the successor guard file, not a flag.
+const supersededByT2 = existsSync(join(repoRoot, "scripts/persistent-shell.test.ts"));
+if (supersededByT2) {
+  check("isolation gate: SUPERSEDED by scripts/persistent-shell.test.ts (T2 wave gate, baseline 1698e2b) — see that suite", true);
+  check("isolation gate: successor guard present and non-empty", readFileSync(join(repoRoot, "scripts/persistent-shell.test.ts"), "utf8").length > 1000);
+} else {
+  const diffRaw = runGit("diff --name-only a72a47c");
+  check("isolation gate: `git diff --name-only a72a47c` runs cleanly", diffRaw !== null);
+  const diffFiles = (diffRaw ?? "")
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean);
 
-const statusRaw = runGit("status --porcelain --untracked-files=all");
-check("isolation gate: `git status --porcelain` runs cleanly", statusRaw !== null);
-const untrackedFiles = (statusRaw ?? "")
-  .split("\n")
-  .map((l) => l.trim())
-  .filter((l) => l.startsWith("??"))
-  .map((l) => l.slice(2).trim());
+  const statusRaw = runGit("status --porcelain --untracked-files=all");
+  check("isolation gate: `git status --porcelain` runs cleanly", statusRaw !== null);
+  const untrackedFiles = (statusRaw ?? "")
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => l.startsWith("??"))
+    .map((l) => l.slice(2).trim());
 
-check("isolation gate: git diff --name-only a72a47c touches only T1-allowlisted paths", diffFiles.every(isAllowedPath));
-check("isolation gate: untracked new files (git status --porcelain) are all T1-allowlisted", untrackedFiles.every(isAllowedPath));
+  check("isolation gate: git diff --name-only a72a47c touches only T1-allowlisted paths", diffFiles.every(isAllowedPath));
+  check("isolation gate: untracked new files (git status --porcelain) are all T1-allowlisted", untrackedFiles.every(isAllowedPath));
 
-console.log("\n--- Isolation gate report (vs a72a47c) ---");
-const allTouched = Array.from(new Set([...diffFiles, ...untrackedFiles])).sort();
-if (allTouched.length === 0) console.log("  (no tracked diff or untracked files detected)");
-for (const f of allTouched) console.log(`  ${isAllowedPath(f) ? "OK  " : "VIOLATION"}  ${f}`);
+  console.log("\n--- Isolation gate report (vs a72a47c) ---");
+  const allTouched = Array.from(new Set([...diffFiles, ...untrackedFiles])).sort();
+  if (allTouched.length === 0) console.log("  (no tracked diff or untracked files detected)");
+  for (const f of allTouched) console.log(`  ${isAllowedPath(f) ? "OK  " : "VIOLATION"}  ${f}`);
+}
 
 const total = pass + fail;
 console.log(`\ntransition-runtime.test.ts: ${pass} passed, ${fail} failed`);

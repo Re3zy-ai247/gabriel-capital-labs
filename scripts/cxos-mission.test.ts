@@ -19,7 +19,7 @@ const root = join(__dirname, "..");
 const boot = readFileSync(join(root, "app/api/cxos/founder-bootstrap/route.ts"), "utf8");
 const entry = readFileSync(join(root, "components/cxos/mission/MissionEntry.tsx"), "utf8");
 const header = readFileSync(join(root, "components/cxos/mission/CommandHeader.tsx"), "utf8");
-const dash = readFileSync(join(root, "app/dashboard/page.tsx"), "utf8");
+const dash = readFileSync(join(root, "app/(rooms)/dashboard/page.tsx"), "utf8");
 const stage = readFileSync(join(root, "app/review/mission-control/stage.tsx"), "utf8");
 const stagePage = readFileSync(join(root, "app/review/mission-control/page.tsx"), "utf8");
 const css = readFileSync(join(root, "app/globals.css"), "utf8");
@@ -87,14 +87,33 @@ function check(label: string, cond: boolean) {
 // ── 2 · the entry never masks truth ──────────────────────────────────────────
 // Phase-1a's dashboard resolves an altitude-routed principal before `user` is
 // ever derived — the auth/early-return guard variable is `principal`, not
-// `user` (see app/dashboard/page.tsx's resolveDashboardPrincipal()). `user`
-// itself (`client ?? account`) is always truthy once reached, so the
+// `user` (see app/(rooms)/dashboard/page.tsx's resolveDashboardPrincipal()).
+// `user` itself (`client ?? account`) is always truthy once reached, so the
 // equivalent guard is expressed entirely via `!principal`.
-check("entry: rendered ONLY by the authenticated branch (signed-out renders no overlay) — phase-1a's guard variable is `principal`",
-  dash.indexOf("Please sign in.") < dash.indexOf("<MissionEntry") &&
-  /if \(!principal\) return <AppShell/.test(dash));
+// T2 persistent-shell note: the page no longer wraps its signed-out early
+// return in a local `<AppShell>` (T2 §1 — the persistent RoomsShell supplies
+// that chrome now, for both branches, from app/(rooms)/layout.tsx). The
+// guard below is rewritten to pin the CURRENT shape: the signed-out branch
+// (from `if (!principal) return (` up to the `principal` destructure that
+// only the authenticated path reaches) still shows "Please sign in." and
+// still never reaches <MissionEntry>.
+{
+  const guardIdx = dash.indexOf("if (!principal) return (");
+  const destructureIdx = dash.indexOf("const { account, client } = principal;");
+  const signedOutBranch = guardIdx !== -1 && destructureIdx !== -1 ? dash.slice(guardIdx, destructureIdx) : "";
+  check("entry: rendered ONLY by the authenticated branch (signed-out renders no overlay) — phase-1a's guard variable is `principal`",
+    dash.indexOf("Please sign in.") < dash.indexOf("<MissionEntry") &&
+    guardIdx !== -1 &&
+    /Please sign in\./.test(signedOutBranch) &&
+    !/<MissionEntry/.test(signedOutBranch));
+}
 check("entry: tier D mounts nothing (reduced motion / effects off)",
   /if \(tier === "D"\) return;/.test(entry));
+check("entry: journey-arrival bail (T2 §5) — an in-shell journey that already arrived (sequence > 0) suppresses a stacked returning veil",
+  /if \(machine && machine\.state\(\)\.sequence > 0 && variant === "returning"\) \{/.test(entry));
+check("entry: reads the OPTIONAL journey hook only — never the hard hook that throws outside a provider",
+  /import \{ useOptionalJourneyMachine \} from "@\/components\/transition-runtime\/TransitionRuntimeProvider";/.test(entry) &&
+  !/useJourneyMachine\(/.test(entry));
 check("entry: skippable three ways — Escape, the button, click anywhere",
   /e\.key === "Escape"\) finish\(\)/.test(entry) && /onClick=\{finish\}/.test(entry) && /Skip — Esc/.test(entry));
 check("entry: the skip control takes first focus", /autoFocus/.test(entry));
