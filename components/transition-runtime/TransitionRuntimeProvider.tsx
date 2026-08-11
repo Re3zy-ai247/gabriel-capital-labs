@@ -68,6 +68,28 @@ import type {
 
 const TransitionRuntimeContext = createContext<JourneyMachine | null>(null);
 
+/**
+ * T1.3 — REVIEW-ONLY motion preview (Founder review harness).
+ *
+ * "system" is byte-for-byte the production resolution path (detectTier() +
+ * document.hidden) and is the default everywhere: a provider mounted without
+ * the prop behaves exactly as before T1.3. "full" / "reduced" exist so the
+ * Founder — whose Mac keeps OS Reduce Motion ON for memory headroom — can
+ * preview either path from the review harness without touching the OS
+ * setting. Safety boundary, in order: (1) this provider has ZERO production
+ * consumers — only app/review/transition-runtime/layout.tsx mounts it;
+ * (2) that segment 404s in production via the existing reviewBuildAllowed()
+ * gate; (3) production motion detection (lib/cxos/capability.ts) is
+ * untouched; (4) the machine's own law-7 backstop is intact — "full" works
+ * by RESOLVING tier A/B at this review adapter (exactly what the Playwright
+ * evidence harness does via reducedMotion:'no-preference' emulation), never
+ * by weakening the C/D→immediate forcing inside machine.ts. Precedent: the
+ * CXOS review surfaces' own consent overrides (Agency HQ
+ * reducedMotionOverride, Passage confirmReducedCinematic()).
+ */
+export type MotionPreviewMode = "system" | "full" | "reduced";
+const MotionPreviewContext = createContext<MotionPreviewMode>("system");
+
 // Outer, adapter-owned safety net (TransitionShell law — see this repo's
 // components/cxos/transitions/TransitionShell.tsx for the production
 // precedent: an unconditional `location.assign` fail-open clock measured
@@ -100,6 +122,7 @@ function hasReachedHref(href: string): boolean {
 export function TransitionRuntimeProvider({
   children,
   initialRoom,
+  motionPreview = "system",
 }: {
   children: ReactNode;
   /**
@@ -111,6 +134,12 @@ export function TransitionRuntimeProvider({
    * defaults to `null`) — the original T1 behaviour.
    */
   initialRoom?: JourneyDestination;
+  /**
+   * T1.3 — review-only motion preview; see MotionPreviewMode above. Unlike
+   * `initialRoom`, this IS live-reactive: the review harness toggles it at
+   * runtime and the next navigate() resolves under the new mode.
+   */
+  motionPreview?: MotionPreviewMode;
 }) {
   const router = useRouter();
   // Read fresh on every render so the onEffect closure below (created once,
@@ -144,6 +173,15 @@ export function TransitionRuntimeProvider({
           window.clearTimeout(verifyTimerRef.current);
           verifyTimerRef.current = null;
         }
+        // T1.3 hardening (found live): the pre-push location, captured so the
+        // verify callback can distinguish "the push never went anywhere" from
+        // "SOMETHING navigated" — including navigations this adapter never
+        // sees: an ignored post-commit request falling through to its real
+        // <Link> (fix 7's fallthrough) is a genuine client navigation that is
+        // neither a popstate nor a new commit, and before this predicate the
+        // timer treated it as a failed push and force-reloaded the browser
+        // out of the user's own chosen destination.
+        const prePushLocation = window.location.pathname + window.location.search;
         routerRef.current.push(destination.href);
         verifyTimerRef.current = window.setTimeout(() => {
           verifyTimerRef.current = null;
@@ -156,6 +194,13 @@ export function TransitionRuntimeProvider({
           // browser that has since moved on to somewhere else entirely.
           const current = machineRef.current;
           if (!current || current.state().sequence !== commitSequence) return;
+          // The assign is only for a push that NEVER moved the browser: if
+          // the location differs from the pre-push snapshot at all, either
+          // our push landed (hasReachedHref would pass anyway) or the user
+          // navigated somewhere else on purpose — their navigation wins,
+          // never this timer.
+          const here = window.location.pathname + window.location.search;
+          if (here !== prePushLocation) return;
           if (!hasReachedHref(destination.href)) {
             window.location.assign(destination.href);
           }
@@ -237,7 +282,9 @@ export function TransitionRuntimeProvider({
 
   return (
     <TransitionRuntimeContext.Provider value={machine}>
-      {children}
+      <MotionPreviewContext.Provider value={motionPreview}>
+        {children}
+      </MotionPreviewContext.Provider>
     </TransitionRuntimeContext.Provider>
   );
 }
@@ -268,6 +315,7 @@ export function useJourney(): {
   cancel: () => void;
 } {
   const machine = useJourneyMachine();
+  const motionPreview = useContext(MotionPreviewContext);
   const state = useSyncExternalStore(machine.subscribe, machine.state, machine.state);
 
   const navigate = useCallback(
@@ -284,13 +332,31 @@ export function useJourney(): {
         // An unparsable href can't be guarded here — fall through and let
         // request()/the router surface whatever is actually wrong with it.
       }
-      // spec §4: tier via detectTier() (additive reuse — lib/cxos/capability.ts
-      // is never modified), immediate for tier C/D or a hidden document.
+      // T1.3 review-only preview branches (see MotionPreviewMode). A hidden
+      // document forces immediate in EVERY mode — animating an invisible
+      // journey serves no one, preview included.
+      if (motionPreview === "full") {
+        // The same resolution the Playwright evidence harness produces under
+        // reducedMotion:'no-preference' emulation: tier by viewport band
+        // (detectTier's own 768px breakpoint), never C/D — so the machine's
+        // law-7 backstop stays fully intact and untouched.
+        const tier = window.matchMedia("(max-width: 768px)").matches ? "B" : "A";
+        const mode = document.hidden ? "immediate" : "cinematic";
+        return machine.request(destination, { mode, tier });
+      }
+      if (motionPreview === "reduced") {
+        // Explicit accessibility-path preview: the production reduced-motion
+        // contract (tier D → deterministic INTENT → DESTINATION → ACTIVE).
+        return machine.request(destination, { mode: "immediate", tier: "D" });
+      }
+      // "system" — byte-for-byte the production path (spec §4): tier via
+      // detectTier() (additive reuse — lib/cxos/capability.ts is never
+      // modified), immediate for tier C/D or a hidden document.
       const tier = detectTier();
       const mode = tier === "C" || tier === "D" || document.hidden ? "immediate" : "cinematic";
       return machine.request(destination, { mode, tier });
     },
-    [machine],
+    [machine, motionPreview],
   );
 
   const cancel = useCallback(() => {

@@ -218,6 +218,20 @@ defect class the adversarial gate found. Idempotent per sequence and under Stric
   demo segment.
 - Inherits `app/review/layout.tsx` (`reviewBuildAllowed()` → `notFound()` in
   production). Do NOT add a second gate; do not modify the layout.
+- **T1.3 amendment — Founder MOTION PREVIEW (review harness only):** the segment
+  layout renders a SYSTEM / FULL MOTION / REDUCED MOTION radiogroup
+  (`MotionPreviewControl.tsx`) feeding the provider's review-only `motionPreview`
+  prop (default `system` = byte-for-byte production resolution). FULL resolves tier
+  A/B at the review adapter (the same resolution the Playwright evidence harness
+  produces) so the Founder can experience the T1 cinematic path while macOS Reduce
+  Motion stays ON; REDUCED explicitly previews the tier-D deterministic path; hidden
+  documents force immediate in every mode. Isolation: the provider has zero
+  production consumers, the mode is never persisted, production motion detection is
+  untouched, and machine.ts's law-7 C/D backstop is unchanged. Hardening from live
+  verification: the router-verify fallback now compares against a pre-push location
+  snapshot, so ANY navigation (including an ignored request's real-`<Link>`
+  fallthrough) supersedes verification — the assign fires only when the push never
+  moved the browser at all.
 - Portals must remain plain `<a>`/`<Link>` semantics underneath (TransitionShell law:
   links stay real links) — intercept the click, call `navigate()`, and `preventDefault`
   ONLY when the request was accepted (T1.2: a rejected/ignored request falls through to

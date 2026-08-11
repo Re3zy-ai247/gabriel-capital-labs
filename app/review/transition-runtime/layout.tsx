@@ -25,11 +25,16 @@
 // reads this segment's own dynamic `[room]` param and resolves it against
 // the SAME `DEMO_ROOMS` registry DemoRoom.tsx renders from, then seeds the
 // provider with it as `initialRoom`.
+import { useState } from "react";
 import { useParams } from "next/navigation";
 import type { ReactNode } from "react";
-import { TransitionRuntimeProvider } from "@/components/transition-runtime/TransitionRuntimeProvider";
+import {
+  TransitionRuntimeProvider,
+  type MotionPreviewMode,
+} from "@/components/transition-runtime/TransitionRuntimeProvider";
 import { TravelLayer } from "@/components/transition-runtime/TravelLayer";
 import { DEMO_ROOMS } from "./[room]/roomsShared";
+import { MotionPreviewControl } from "./MotionPreviewControl";
 
 export default function TransitionRuntimeDemoLayout({
   children,
@@ -47,9 +52,18 @@ export default function TransitionRuntimeDemoLayout({
     ? DEMO_ROOMS.find((candidate) => candidate.id === params.room)
     : undefined;
 
+  // T1.3 — Founder motion preview. State lives HERE (the segment layout that
+  // persists across room navigations) so the chosen mode survives every
+  // journey within the demo, and dies with the segment: leaving
+  // /review/transition-runtime discards it. Default "system" = production
+  // behavior, fresh on every entry — the override is never persisted
+  // anywhere (no storage, no URL param), so it cannot leak or linger.
+  const [motionPreview, setMotionPreview] = useState<MotionPreviewMode>("system");
+
   return (
-    <TransitionRuntimeProvider initialRoom={currentRoom}>
+    <TransitionRuntimeProvider initialRoom={currentRoom} motionPreview={motionPreview}>
       {children}
+      <MotionPreviewControl value={motionPreview} onChange={setMotionPreview} />
       <TravelLayer />
     </TransitionRuntimeProvider>
   );
