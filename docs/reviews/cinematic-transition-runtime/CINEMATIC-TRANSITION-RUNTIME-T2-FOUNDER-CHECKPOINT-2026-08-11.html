@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Cinematic Transition Runtime — T2 Founder Checkpoint</title>
+<style>
+  :root { color-scheme: light dark;
+    --bg:#f7f8fa; --fg:#16202b; --muted:#5b6b7c; --line:#d8dee6; --card:#ffffff;
+    --accent:#0e7490; --code:#eef1f5; }
+  @media (prefers-color-scheme: dark) { :root {
+    --bg:#04121b; --fg:#e6edf3; --muted:#8fa3b5; --line:#1f3242; --card:#0a1c29;
+    --accent:#38bdf8; --code:#0f2434; } }
+  * { box-sizing:border-box }
+  body { margin:0; background:var(--bg); color:var(--fg);
+    font:16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-text-size-adjust:100%; }
+  .wrap { max-width:860px; margin:0 auto; padding:24px 18px 96px; }
+  h1 { font-size:1.7rem; line-height:1.25; margin:0.4em 0 0.5em; }
+  h2 { font-size:1.25rem; margin:2.2em 0 0.6em; padding-top:0.9em; border-top:1px solid var(--line); }
+  h3 { font-size:1.05rem; margin:1.6em 0 0.4em; }
+  p, li { overflow-wrap:break-word; }
+  a { color:var(--accent); }
+  code { background:var(--code); border-radius:5px; padding:0.12em 0.35em;
+    font:0.86em ui-monospace, SFMono-Regular, Menlo, monospace; overflow-wrap:anywhere; }
+  pre { background:var(--code); border:1px solid var(--line); border-radius:10px;
+    padding:14px; overflow-x:auto; }
+  pre code { background:none; padding:0; }
+  table { border-collapse:collapse; width:100%; font-size:0.9rem; }
+  .tblwrap { overflow-x:auto; margin:1em 0; border:1px solid var(--line); border-radius:10px; }
+  th, td { border-bottom:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+  th { background:var(--card); position:sticky; top:0; }
+  tr:last-child td { border-bottom:none; }
+  blockquote { margin:1em 0; padding:2px 16px; border-left:3px solid var(--accent);
+    color:var(--muted); }
+  hr { border:none; border-top:1px solid var(--line); margin:2em 0; }
+  strong { font-weight:650; }
+</style>
+</head>
+<body><main class="wrap">
+<h1>Cinematic Transition Runtime — T2 Founder Checkpoint</h1>
+<p><strong>Date:</strong> 2026-08-11 · <strong>Author:</strong> Fable 5 (coordinator/design authority; 3 Sonnet writers, 5 Sonnet recon readers, 3-lens Opus adversarial gate)
+<strong>Branch:</strong> <code>feat/cinematic-transition-t2</code> · <strong>T2 head <code>7f562b9</code></strong> (= T2 <code>09e0d61</code> + T2.2 gate closure) on accepted T1 <code>1698e2b</code> · production <code>main</code> untouched at <code>a72a47c</code>
+<strong>Binding docs:</strong> <code>T2-SPEC.md</code> (with §6.5 T2.1 + T2.2 adjudications) · T1 checkpoint · the Wave-plan audit</p>
+<h2>1 · What T2 is</h2>
+<p>The structural fix for CLICK → PAGE → CONTENT plus the first production wiring of the
+accepted T1 journey grammar:</p>
+<ul>
+<li><strong>Persistent product shell</strong> — new route group <code>app/(rooms)/</code> hosting ONE
+<code>RoomsShell</code> (byte-faithful reproduction of AppShell&#39;s DOM) for 25 product pages;
+the chrome (Sidebar, header, banners, KaiPresence, MobileNav) is mounted once and
+<strong>provably survives navigation</strong> (element-identity verified live). 21 route dirs
+moved URL-identically; 26 pages + 4 loading files de-shelled; <code>AppShell</code> itself
+untouched (admin keeps it).</li>
+<li><strong>Three deliberate chrome-free escapes</strong> stay outside the group, byte-identical at
+their original paths: <code>billing/cancel</code> (the disabled-account escape hatch),
+<code>letters/print/[id]</code>, and <code>onboarding</code> (its signed-in surface was always
+full-bleed standalone — caught by the adversarial gate). Guard-pinned.</li>
+<li><strong>Flagship journey integration</strong> — dashboard ↔ agency ↔ arena run the accepted T1
+machine via ONE capture-phase delegated handler on the shell root (the production
+TransitionShell precedent; capture is load-bearing — next/link preventDefaults
+during bubble, proven live). It covers sidebar links, the mobile bottom bar, and
+in-content portals (ArenaDoor — a frozen component — journeys without being
+touched). Non-flagship rooms navigate exactly as before.</li>
+<li><strong>Departure/arrival grammar</strong> — opacity-only shell CSS: origin recedes to 0.55
+during departing; destination content and header title settle in over 360 ms on
+arrival; <code>data-journey-phase</code> stamped on the shell root drives it. Reduced-motion
+resets belt-and-braces.</li>
+<li><strong>Entry-grammar differentiation (Founder directive)</strong> — Mission Control and Arena
+returning veils are suppressed <strong>only</strong> for an in-flight cinematic journey arrival
+to that exact room; first-visit ceremonies, tier-C veils, deep-link/refresh veils,
+and Back/Forward veils all preserved (guard-pinned predicate).</li>
+<li><strong>Persistence-safety</strong> — the five mount-once shell data hooks are now
+pathname-reactive (today&#39;s per-navigation cadence, TTL-limited); AgencyBar and
+ImpersonationBanner exits clear their own state (<code>clearAdminContextCache</code> added);
+AnnouncementBanner clears deactivated announcements; KaiPresence can no longer
+flash the previous subject after a workspace switch.</li>
+<li><strong>Readability hardening</strong> — the departure recede IS the travel-hierarchy state;
+the two under-text ambient canvases&#39; alpha ceilings are guard-pinned (the
+numeric-contract discipline from the audit), and no global darkening was done.</li>
+</ul>
+<h2>2 · Validation (all executed)</h2>
+<div class="tblwrap"><table>
+<thead>
+<tr>
+<th>Gate</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>typecheck / <code>next build</code></td>
+<td>clean / clean (70/70; with and without the review flag)</td>
+</tr>
+<tr>
+<td>Guards</td>
+<td>T1 suite <strong>151/151</strong> · persistent-shell <strong>59/59</strong> · cxos-mission <strong>33/33</strong> · cxos-arena <strong>27/27</strong></td>
+</tr>
+<tr>
+<td>Shell persistence</td>
+<td><strong>Element identity held across every navigation</strong> (marked sidebar node survives; title updates reactively)</td>
+</tr>
+<tr>
+<td>Full Motion (emulated no-preference = production cinematic path)</td>
+<td>Full grammar on all three interception surfaces — sidebar click, in-content anchor, mobile tap: <code>departing(recede) → traveling(veil, chrome INERT) → arriving(settle) → settled(H1 focus)</code></td>
+</tr>
+<tr>
+<td>Reduced Motion (inherited forced reduce = Founder environment)</td>
+<td>Deterministic instant swap, zero veil, shell persisted</td>
+</tr>
+<tr>
+<td>Router/history</td>
+<td>Browser Back clean past the verify horizon · Escape mid-departing holds at origin · anonymous <code>/arena</code> <strong>server-redirect absorbed mid-journey</strong> (settles at <code>/dashboard</code>, no hijack, no reload)</td>
+</tr>
+<tr>
+<td>Mobile (375×812, touch, mobile UA)</td>
+<td>Full grammar via bottom tab bar, chrome inert during travel, CLS 0</td>
+</tr>
+<tr>
+<td>CLS during journeys</td>
+<td><strong>0</strong> (desktop and mobile, layout-shift observer)</td>
+</tr>
+<tr>
+<td>Isolation</td>
+<td>Guard-enforced: zero diffs under <code>app/admin</code>, <code>app/api</code>, <code>lib/cxos</code>, <code>components/cxos/runtime</code>, <code>app/review/agency-command</code>, middleware/configs/prisma; M2 clone untouched; T1 frozen files byte-identical except two pinned TravelLayer amendments</td>
+</tr>
+</tbody></table></div>
+<p>Local-validation caveat (disclosed): no local database exists, so the live battery ran
+anonymously with <code>/api/**</code> aborted at the browser layer (journey mechanics are pure
+client; server renders don&#39;t need the DB on anonymous paths). Authenticated visual
+flow — including the first-visit ceremonies and the veil-suppression on re-entry — is
+yours on the preview, where the real DB and your login exist.</p>
+<h2>3 · Adversarial gate (3-lens Opus on the exact committed source)</h2>
+<p><strong>0 Critical / 5 High (4 distinct) / 10 Medium / 14 Low.</strong> All Highs and all
+actionable Mediums repaired in T2.2 and re-verified live:</p>
+<div class="tblwrap"><table>
+<thead>
+<tr>
+<th>Finding</th>
+<th>Repair</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Keyboard/SR could reach the persistent chrome behind the opaque veil (the T1 inert law only covered <code>&lt;main&gt;</code>)</td>
+<td>Inert scope marker on the whole shell root; T1 demo fallback unchanged; verified live — chrome <code>[INERT]</code> during every traveling window</td>
+</tr>
+<tr>
+<td>Slow/cold destination: arrival announced + focused for a room the browser never reached</td>
+<td>Arrival announce/focus now location-gated (silent settle on mismatch; router-verify owns recovery)</td>
+</tr>
+<tr>
+<td>Ceremony suppression keyed on &quot;any journey ever&quot; (killed tier-C/Back/Forward veils, violating spec §5)</td>
+<td>Precise predicate: in-flight cinematic arrival to that exact room (<code>ROOM_ID</code>), guard-pinned</td>
+</tr>
+<tr>
+<td>Arrival/departure animation created a stacking context that trapped ceremony veils under the sticky header</td>
+<td><code>z-index</code> lift on <code>main#main</code> scoped to the two transient phases</td>
+</tr>
+<tr>
+<td><code>/onboarding</code> silently gained chrome it never had (signed-in surface is full-bleed standalone)</td>
+<td>Third chrome-free escape — restored byte-identical outside the group, guard-pinned</td>
+</tr>
+<tr>
+<td>Review MotionPreviewControl statically bundled into the product chunk</td>
+<td>Code-split via <code>next/dynamic</code>; production never fetches the chunk</td>
+</tr>
+<tr>
+<td>AnnouncementBanner never cleared · KaiPresence stale-subject flash · same-origin gap · Escape recede-snap · unpinned capture phase</td>
+<td>All fixed + guard-pinned</td>
+</tr>
+</tbody></table></div>
+<p><strong>Accepted with disclosure</strong> (each traced, none blocking): post-fallthrough journeys
+leave the machine&#39;s advisory <code>destination</code> unreconciled until the next journey (the
+location-gated announce removes the user-facing harm; reconciliation is T3);
+<code>readyTimeout</code> fail-open on a &gt;1.6 s destination render releases the veil before the
+content swap (fail-open by design; small on a real DB; richer slow-arrival treatment
+is T3); ~5 chrome re-renders per journey (React reconciliation only — zero DOM churn,
+CLS 0); SSR title fallback paints one frame before hydration on dynamic-title rooms;
+mobile drawer state persists across non-drawer navigations; CSS mirrors tier-A pacing
+constants (tier B phases flip the attribute regardless — commented in the block);
+per-navigation shell API cadence equals today&#39;s remount cadence by design.</p>
+<h2>4 · What the Founder should review (visual pass)</h2>
+<p>On the preview (URL in the report), signed in as yourself:</p>
+<ol>
+<li><strong><code>/dashboard</code> → sidebar → Agency → back to Mission Control</strong> — the shell never
+flashes; travel reads departure → travel → arrival; the returning Mission veil no
+longer replays on the journey re-entry (your entry-grammar directive).</li>
+<li><strong>Mission Control → ArenaDoor → Arena</strong> — an in-content portal journeys with the
+same grammar (first Arena visit keeps its full ceremony; re-entries don&#39;t).</li>
+<li><strong>Reduced motion (your Mac&#39;s default)</strong> — everything resolves instantly and
+deterministically; nothing waits on animation.</li>
+<li><strong>Full Motion preview of the product shell</strong> — append <code>?director</code> to any room URL
+on the preview build: the T1.3 MOTION PREVIEW control appears (review builds
+only); FULL MOTION shows the cinematic path despite OS Reduce Motion.</li>
+<li>Non-flagship rooms (Letters, Mail, Academy…) behave exactly as before — persistent
+chrome, plain navigation.</li>
+<li><code>/onboarding</code>, <code>/billing/cancel</code>, letter print sheets — unchanged, chrome-free.</li>
+</ol>
+<h2>5 · Boundaries honored</h2>
+<p>No production deploy/alias/merge; <code>main</code> = <code>a72a47c</code> throughout. No schema, billing,
+Stripe, migrations, counsel copy. P0/M2/Launch Closure untouched (guard-enforced).
+Registry/<code>CRITICAL_NEVER</code> untouched (T3 Founder decision). Admin untouched.</p>
+<h2>6 · Recommended next (T3, on your acceptance)</h2>
+<p>Portal/spatial Level-1 controls + the governed registry/<code>CRITICAL_NEVER</code> ruling +
+destination-state reconciliation + slow-arrival instrumentation; then T4 ambient
+(budget model) and T5 mobile/perf hardening per the audit&#39;s wave plan.</p>
+
+
+</main></body>
+</html>
