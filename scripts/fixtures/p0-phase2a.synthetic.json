@@ -1,0 +1,109 @@
+{
+  "_meta": {
+    "synthetic": true,
+    "containsConsumerPii": false,
+    "containsSourceReportContent": false,
+    "purpose": "P0 Phase 2A local contract and adversarial verification"
+  },
+  "scope": {
+    "actorId": "actor-synthetic-direct",
+    "tenantId": "tenant-synthetic-a",
+    "consumerId": "tenant-synthetic-a",
+    "authorizationKind": "DIRECT_CONSUMER",
+    "authorizationVersion": "direct-consumer-v1"
+  },
+  "agencyScope": {
+    "actorId": "actor-synthetic-agency",
+    "tenantId": "tenant-synthetic-agency",
+    "consumerId": "consumer-synthetic-managed",
+    "authorizationKind": "AGENCY_MANAGED_CLIENT",
+    "authorizationVersion": "managed-client-grant-v1"
+  },
+  "ingestion": {
+    "operationId": "ingestion-op-synthetic-001",
+    "idempotencyKey": "ingestion-idem-synthetic-001",
+    "reportSeriesKey": "series-synthetic-001",
+    "reservedVersion": 1,
+    "sourceSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "bureauSourceSelectors": ["EQUIFAX", "EXPERIAN", "TRANSUNION"]
+  },
+  "bureauScopedAccounts": [
+    {
+      "sourceAccountKey": "account-synthetic-history",
+      "bureau": "EQUIFAX",
+      "currentStatus": "PAID_CLOSED_ZERO_BALANCE",
+      "historicalEvidence": ["PAYMENT_DELINQUENCY_120_DAYS"],
+      "expectedCondition": "DEROGATORY"
+    },
+    {
+      "sourceAccountKey": "account-synthetic-history",
+      "bureau": "EXPERIAN",
+      "currentStatus": "CHARGE_OFF",
+      "historicalEvidence": ["CHARGE_OFF"],
+      "expectedCondition": "DEROGATORY"
+    },
+    {
+      "sourceAccountKey": "account-synthetic-history",
+      "bureau": "TRANSUNION",
+      "currentStatus": "UNKNOWN",
+      "historicalEvidence": [],
+      "expectedCondition": "NEEDS_REVIEW"
+    },
+    {
+      "sourceAccountKey": "account-synthetic-clean-control",
+      "bureau": "EQUIFAX",
+      "currentStatus": "PAYS_AS_AGREED",
+      "historicalEvidence": [],
+      "expectedCondition": "CLEAN"
+    }
+  ],
+  "scores": [
+    {
+      "bureau": "EQUIFAX",
+      "presence": "SCORE_REPORTED",
+      "score": 701,
+      "model": "SYNTHETIC_MODEL_A",
+      "reportDate": "2026-08-01",
+      "datePrecision": "DAY"
+    },
+    {
+      "bureau": "EXPERIAN",
+      "presence": "SCORE_NOT_PROVIDED"
+    },
+    {
+      "bureau": "TRANSUNION",
+      "presence": "UNKNOWN"
+    }
+  ],
+  "identityFacts": [
+    {
+      "factId": "identity-fact-synthetic-former-address",
+      "category": "FORMER_ADDRESS",
+      "bureau": "EQUIFAX",
+      "classification": "CORRECT_FORMER",
+      "integritySha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    {
+      "factId": "identity-fact-synthetic-employment",
+      "category": "EMPLOYMENT",
+      "bureau": "EXPERIAN",
+      "classification": "CORRECT_CURRENT",
+      "integritySha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    },
+    {
+      "factId": "identity-fact-synthetic-alias",
+      "category": "ALIAS",
+      "bureau": "TRANSUNION",
+      "classification": "REVIEW_NEEDED",
+      "integritySha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+    }
+  ],
+  "adversarialSelectors": {
+    "otherTenantId": "tenant-synthetic-b",
+    "otherConsumerId": "consumer-synthetic-b",
+    "otherBureau": "TRANSUNION",
+    "staleObservationRevision": 1,
+    "currentObservationRevision": 2,
+    "substitutedSha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+  }
+}

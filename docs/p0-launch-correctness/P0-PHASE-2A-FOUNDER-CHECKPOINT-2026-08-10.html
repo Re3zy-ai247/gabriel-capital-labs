@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CreditVector P0 Phase 2A — Founder Checkpoint</title>
+  <style>
+    :root{color-scheme:light;--navy:#0b1830;--ink:#17233a;--muted:#5d6b7e;--line:#dce4ee;--panel:#f6f9fc;--blue:#145ea8;--green:#187747;--amber:#9a5b00;--red:#a62f28;--white:#fff}
+    *{box-sizing:border-box}html{font-family:ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#edf3f8;color:var(--ink);line-height:1.55}body{margin:0}main{width:min(1000px,100%);margin:auto;background:var(--white);min-height:100vh;padding:clamp(20px,4vw,50px)}h1,h2,h3{color:var(--navy);line-height:1.2}h1{font-size:clamp(1.85rem,5vw,3rem);margin:.15em 0 .3em}h2{font-size:1.4rem;margin:2rem 0 .8rem;border-bottom:2px solid var(--line);padding-bottom:.4rem}h3{font-size:1.08rem;margin:1.25rem 0 .35rem}p,li{max-width:86ch}.eyebrow{font-size:.78rem;letter-spacing:.12em;text-transform:uppercase;font-weight:800;color:var(--blue)}.meta{color:var(--muted)}.banner{border:1px solid #9dcbb8;border-left:6px solid var(--green);background:#effaf4;border-radius:10px;padding:1rem 1.2rem;margin:1rem 0}.gate{border-color:#f1cf95;border-left-color:var(--amber);background:#fff8e9}.no-go{border-color:#edb4ae;border-left-color:var(--red);background:#fff3f2}.banner strong{display:block}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:.8rem;margin:1rem 0}.card{border:1px solid var(--line);border-radius:10px;padding:1rem;background:var(--panel)}.card b{display:block;color:var(--navy)}.status{font-size:.78rem;text-transform:uppercase;letter-spacing:.07em;font-weight:800;color:var(--green)}.pending{color:var(--amber)}.table-wrap{max-width:100%;overflow-x:auto;border:1px solid var(--line);border-radius:10px;margin:1rem 0}table{border-collapse:collapse;width:100%;min-width:560px}th,td{text-align:left;padding:.7rem .8rem;border-bottom:1px solid var(--line);vertical-align:top}th{background:var(--panel);color:var(--navy)}tr:last-child td{border-bottom:0}code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:#eef3f8;padding:.08rem .28rem;border-radius:4px;overflow-wrap:anywhere}.hash{display:block;font-size:.81rem;word-break:break-all;margin:.25rem 0}.callout{border:1px solid var(--line);border-radius:10px;padding:1rem 1.1rem;margin:.8rem 0}.footer{margin-top:2.5rem;padding-top:1rem;border-top:2px solid var(--line);color:var(--muted);font-size:.88rem}@media(max-width:560px){main{padding:18px}.table-wrap{margin-left:-4px;margin-right:-4px}}
+  </style>
+</head>
+<body>
+<main>
+  <div class="eyebrow">Founder mobile handoff · rebound August 11, 2026</div>
+  <h1>CreditVector P0 Phase 2A<br>Founder Checkpoint</h1>
+  <p class="meta">Original checkpoint August 10 · branch <code>codex/p0-launch-correctness</code> · parent <code>4bbdf5c561f94a132962d27971551096b53528d9</code></p>
+
+  <div class="banner"><strong>Local engineering verification: PASS</strong>H1/H2/H3 remain closed. Two pristine PostgreSQL 16.14 dynamic runs now close the former environment blocker.</div>
+  <div class="banner gate"><strong>Fresh exact-source reattack: C0 / H0 / M0 / L0</strong>A new independent review was earned after the dynamic repairs; no earlier verdict was inherited.</div>
+  <div class="banner no-go"><strong>Production: NO-GO</strong>No push, merge, deploy, activation, production connection, or Phase 2B work is authorized or represented.</div>
+
+  <div class="grid">
+    <div class="card"><span class="status">PASS</span><b>Phase 1 / 1.1</b>515 / 515</div>
+    <div class="card"><span class="status">PASS</span><b>Phase 2A</b>218 / 218</div>
+    <div class="card"><span class="status">PASS</span><b>Aggregate</b>733 / 733</div>
+    <div class="card"><span class="status">PASS</span><b>Dynamic per run</b>90 / 90 + exact 40P01</div>
+  </div>
+
+  <h2>Accepted Phase 2A scope</h2>
+  <div class="grid">
+    <div class="card"><span class="status">CLOSED</span><b>H1 · Lossless metadata</b>Bureau-specific report dates, scores, models, provenance, uncertainty, and actual precision remain distinct and exact.</div>
+    <div class="card"><span class="status">CLOSED</span><b>H2 · Round 0 seal</b>One exact report/run/artifact/source-set authority binds extraction, facts, completeness, and confirmation.</div>
+    <div class="card"><span class="status">CLOSED</span><b>H3 · Account review</b>Consumer recognition state is bounded and append-only; it creates no fraud, dispute, deletion, policy, or legal conclusion.</div>
+    <div class="card"><span class="status">PASS</span><b>Principal and audit</b>Server-resolved scope and refs-only access decisions fail closed.</div>
+    <div class="card"><span class="status">PASS</span><b>Ingestion and source truth</b>CAS, leases, idempotency, digest/readback verification, recovery, and shadow-only parsing remain enforced.</div>
+    <div class="card"><span class="status">PASS</span><b>Round 0 and confirmation</b>No auto-dispute, inferred testimony, bureau substitution, or stale assertion authority.</div>
+    <div class="card"><span class="status">PASS</span><b>Case Action</b>Append-only consumer selection and chronology only; no policy eligibility.</div>
+    <div class="card"><span class="status">PASS</span><b>Dormant gates</b>Absent means false, client input cannot enable, root kill switch remains authoritative.</div>
+  </div>
+
+  <h2>Dynamic PostgreSQL closure</h2>
+  <p>Both pristine local runs used Colima <code>gios-p03</code>, a verified Docker
+  Unix socket, the already-cached pinned <code>postgres:16-alpine</code> image,
+  PostgreSQL <strong>16.14</strong>, and a Docker-assigned loopback port. They
+  passed forward apply, no-op reapply, Prisma parity, valid and malformed
+  reconstruction, both Round 0 construction orders, concurrency, exact
+  <code>40P01</code>, guarded rollback, rebuild, and teardown.</p>
+  <p>Each run passed <strong>17 affirmative/readback + 73 negative/adversarial =
+  90 behavior assertions</strong>, plus a separate deadlock proof with exactly
+  one <code>40P01</code> victim and one committed transaction.</p>
+
+  <h2>Seal → append repair</h2>
+  <p>The defect was temporal: after a deferred parent seal was forced and
+  discharged, a later same-transaction child needed its own proof against the
+  fixed count. Reverse child-triggered exact recounts now reject six post-set
+  append paths with SQLSTATE <code>23514</code>, while valid completeness-first
+  and baseline/member-first atomic construction still pass.</p>
+  <ul>
+    <li>source identity fact;</li>
+    <li>counted account pair;</li>
+    <li>source-listed account without counted presence;</li>
+    <li>confirmed identity fact;</li>
+    <li>category completion; and</li>
+    <li>confirmed account-review membership.</li>
+  </ul>
+  <p><code>ABSENT_CONFIRMED</code> evidence remains explicitly uncounted,
+  integrity-unattested, and ineligible for source membership or account-review
+  authority. Its semantics stay inside the trusted-writer pre-activation
+  boundary.</p>
+
+  <h2>Verification binding</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Verification</th><th>Result</th></tr></thead>
+    <tbody>
+      <tr><td>Phase 1 / 1.1</td><td>515/515 PASS</td></tr>
+      <tr><td>Runtime and adversarial suites</td><td>138/138 PASS</td></tr>
+      <tr><td>Static migration guard</td><td>73/73 PASS</td></tr>
+      <tr><td>Compatibility protocol</td><td>7/7 PASS</td></tr>
+      <tr><td>Phase 2A total</td><td>218/218 PASS</td></tr>
+      <tr><td>Aggregate</td><td>733/733 PASS</td></tr>
+      <tr><td>Two pristine DB runs</td><td>90/90 each + exact 40P01 PASS</td></tr>
+      <tr><td>TypeScript / Prisma validate / Bash / diff / privacy</td><td>PASS</td></tr>
+    </tbody>
+  </table></div>
+  <p>Prisma in-place formatting is not applicable because it would create
+  out-of-scope churn in frozen Phase 1 schema formatting. Validation, catalog
+  parity, static guards, and diff checks are green.</p>
+
+  <h2>Frozen identities</h2>
+  <div class="callout"><b>Schema</b><code class="hash">e5cd3765f0d60ff0757c41ee5fdd1ee4be758cbb729bc28633aa77f8fc89765a</code><b>Migration</b><code class="hash">d9e9615318db3df0a484ead860523890041598115eade298e611b14af845fa55</code><b>Verifier</b><code class="hash">745b5bdad2fdc576255b2fa1358743ee9f30500137fecc7e828603425e547001</code><b>Guard</b><code class="hash">d057cddb571d4335ff53a9ef820c4d7924fab5c00d3290c21b24bbf79c8695d4</code><b>Rollback</b><code class="hash">9a920cdd8e55785fb1beb6033786e2d5bdf767456d9fab7e27ac68502b6d306a</code><b>Compatibility</b><code class="hash">a55967795516e24760990bdc4031096fe37c83f6e0a9af19a5d746e000192e97</code><b>37-file non-document content manifest</b><code class="hash">5953e26210c70689b6a65dbb33380f3e19b3653bfd1aabda03b9ec9804519de5</code></div>
+
+  <h2>Scoped worktree</h2>
+  <p>The authoritative P0 audit has <strong>44 changed/untracked paths</strong>:
+  37 intended non-document Phase 2A files, 5 approved checkpoint/evidence
+  documents, and 2 preserved architecture-plan documents. Generated database
+  state, containers, temporary verifier output, <code>node_modules</code>, PII,
+  private reports, production identifiers, and unrelated worktrees are excluded.
+  A broader UI count is not the scoped Git manifest.</p>
+
+  <h2>Dynamic repair record</h2>
+  <p>The executable proof drove narrow fixes for verifier Bash binding,
+  PL/pgSQL row targets, 63-byte identifiers/FK mapping, fixture provenance,
+  bounded readiness/version reporting, failed-run sealing, table-dependent
+  <code>NEW</code> fields, same-transaction count seals, the Case Action branch,
+  and rollback FK-before-index ordering. No test was weakened.</p>
+
+  <h2>Adversarial result</h2>
+  <div class="banner"><strong>C0 / H0 / M0 / L0</strong>A fresh independent reviewer reattacked exact final source, independently accepted the 218/218 Phase 2A binding, and reopened no finding. No old verdict was inherited or downgraded.</div>
+
+  <h2>Pre-activation boundaries</h2>
+  <div class="callout"><h3>Trusted writer — BOUNDED</h3><p>Production activation is blocked until the authenticated production repository verifier/adapter is separately implemented and attested.</p></div>
+  <div class="callout"><h3>PDF resource safety — BOUNDED</h3><p>Hard process-isolated PDF termination remains a mandatory pre-activation dependency.</p></div>
+  <div class="callout"><h3>Retention / legal hold — Founder/Counsel decision required</h3><p>Mechanical erasure behavior is tested; no retention or legal-hold duration is invented.</p></div>
+
+  <h2>Safety receipt</h2>
+  <div class="grid">
+    <div class="card"><span class="status">PASS</span><b>M2 isolation</b>Untouched</div>
+    <div class="card"><span class="status">PASS</span><b>Fable isolation</b>Untouched</div>
+    <div class="card"><span class="status">PASS</span><b>Overnight isolation</b>Untouched</div>
+    <div class="card"><span class="status">NONE</span><b>Production mutations</b>No connection or effect</div>
+    <div class="card"><span class="status">NONE</span><b>Push / merge / deploy</b>None</div>
+    <div class="card"><span class="status">NONE</span><b>Activation</b>All gates false</div>
+    <div class="card"><span class="status">NONE</span><b>Phase 2B</b>Not started</div>
+  </div>
+
+  <h2>Local checkpoint identity</h2>
+  <p>The exact local commit SHA is recorded in the post-commit Founder chat
+  receipt. This tracked artifact cannot contain its containing commit's SHA; it
+  binds through the accepted parent, frozen hashes, content manifest, and Git
+  blob in the single local checkpoint.</p>
+
+  <h2>Next Founder decision</h2>
+  <p>Review the post-commit Founder receipt for the exact local checkpoint SHA,
+  then decide separately whether to authorize work on a still-open
+  pre-activation dependency. Any push, merge, deploy, activation, production
+  work, or Phase 2B requires separate authorization.</p>
+
+  <div class="footer">Standalone mobile-safe artifact. No external assets, scripts, forms, consumer PII, private report evidence, credentials, or production identifiers.</div>
+</main>
+</body>
+</html>

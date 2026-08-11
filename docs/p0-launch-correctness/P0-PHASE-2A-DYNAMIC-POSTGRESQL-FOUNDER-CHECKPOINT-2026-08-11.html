@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CreditVector P0 Phase 2A — Dynamic PostgreSQL Founder Checkpoint</title>
+  <style>
+    :root{color-scheme:light;--navy:#0b1830;--ink:#17233a;--muted:#5d6b7e;--line:#dce4ee;--panel:#f6f9fc;--blue:#145ea8;--teal:#087f7a;--green:#187747;--amber:#9a5b00;--red:#a62f28;--white:#fff}
+    *{box-sizing:border-box}html{font-family:ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#edf3f8;color:var(--ink);line-height:1.55}body{margin:0}main{width:min(1040px,100%);margin:auto;background:var(--white);min-height:100vh;padding:clamp(20px,4vw,52px)}h1,h2,h3{color:var(--navy);line-height:1.2}h1{font-size:clamp(1.8rem,5vw,3rem);margin:.15em 0 .3em}h2{font-size:1.45rem;margin:2rem 0 .8rem;border-bottom:2px solid var(--line);padding-bottom:.4rem}h3{font-size:1.08rem;margin:1.4rem 0 .4rem}p,li{max-width:86ch}.eyebrow{font-size:.78rem;letter-spacing:.12em;text-transform:uppercase;font-weight:800;color:var(--blue)}.meta{color:var(--muted);margin:.25rem 0}.banner{border:1px solid #9dcbb8;border-left:6px solid var(--green);background:#effaf4;border-radius:10px;padding:1rem 1.2rem;margin:1.4rem 0}.banner strong{display:block}.gate{border-color:#f1cf95;border-left-color:var(--amber);background:#fff8e9}.no-go{border-color:#edb4ae;border-left-color:var(--red);background:#fff3f2}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:.8rem}.card{border:1px solid var(--line);border-radius:10px;padding:1rem;background:var(--panel)}.card .label{font-size:.75rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:800}.card .value{font-weight:800;color:var(--navy);margin-top:.2rem}.field{border:1px solid var(--line);border-radius:10px;padding:1rem 1.1rem;margin:.75rem 0}.field h3{margin:0 0 .35rem}.pass{color:var(--green);font-weight:800}.pending{color:var(--amber);font-weight:800}.none{color:var(--blue);font-weight:800}.table-wrap{max-width:100%;overflow-x:auto;border:1px solid var(--line);border-radius:10px;margin:1rem 0}table{border-collapse:collapse;width:100%;min-width:560px}th,td{text-align:left;padding:.72rem .8rem;border-bottom:1px solid var(--line);vertical-align:top}th{background:var(--panel);color:var(--navy)}tr:last-child td{border-bottom:0}code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:#eef3f8;padding:.08rem .28rem;border-radius:4px;overflow-wrap:anywhere}.hash{display:block;font-size:.82rem;word-break:break-all;margin:.25rem 0}ol,ul{padding-left:1.3rem}.footer{margin-top:2.5rem;padding-top:1rem;border-top:2px solid var(--line);color:var(--muted);font-size:.88rem}@media(max-width:560px){main{padding:18px}.field{padding:.85rem}h2{margin-top:1.5rem}.table-wrap{margin-left:-4px;margin-right:-4px}}
+  </style>
+</head>
+<body>
+<main>
+  <div class="eyebrow">Founder mobile handoff · August 11, 2026</div>
+  <h1>CreditVector P0 Phase 2A<br>Dynamic PostgreSQL Checkpoint</h1>
+  <p class="meta">Branch <code>codex/p0-launch-correctness</code> · accepted parent <code>4bbdf5c561f94a132962d27971551096b53528d9</code></p>
+
+  <div class="banner">
+    <strong>Dynamic disposable PostgreSQL proof: PASS</strong>
+    Two pristine PostgreSQL 16.14 runs completed the full apply, behavior,
+    concurrency, rollback, rebuild, and teardown lifecycle.
+  </div>
+  <div class="banner gate">
+    <strong>Fresh exact-source adversarial reattack: C0 / H0 / M0 / L0</strong>
+    A new independent review was earned after the source changes; no old
+    verdict was inherited.
+  </div>
+  <div class="banner no-go">
+    <strong>Production: NO-GO</strong>
+    This is local, dormant evidence only. It authorizes no push, merge, deploy,
+    activation, production connection, or Phase 2B work.
+  </div>
+
+  <div class="grid">
+    <div class="card"><div class="label">Phase 1 / 1.1</div><div class="value">515 / 515 PASS</div></div>
+    <div class="card"><div class="label">Phase 2A</div><div class="value">218 / 218 PASS</div></div>
+    <div class="card"><div class="label">Aggregate</div><div class="value">733 / 733 PASS</div></div>
+    <div class="card"><div class="label">Dynamic per run</div><div class="value">90 / 90 + 40P01 PASS</div></div>
+  </div>
+
+  <h2>What changed during dynamic proof</h2>
+  <p>The exact database runtime exposed narrow defects in the verifier and
+  migration: Bash local binding, PL/pgSQL row targeting, 63-byte identifier
+  truncation and Prisma FK mapping, fixture provenance, bounded readiness and
+  version proof, failed-run sealing, table-dependent <code>NEW</code> field
+  access, same-transaction post-<code>SET</code> count sealing, the Case Action
+  table branch, and rollback FK-before-index ordering. Each was repaired at its
+  source; no integrity test was weakened.</p>
+
+  <h2>Seal → append root cause and repair</h2>
+  <p>A deferred parent check could be forced and discharged with
+  <code>SET CONSTRAINTS ALL IMMEDIATE</code>. A later child inserted in the same
+  transaction then needed its own proof that durable membership still fit the
+  fixed parent count. Depending on the earlier parent event left a temporal
+  seal-then-append gap.</p>
+  <p>The repair adds reverse child-triggered exact recounts. Valid atomic
+  construction remains possible in either order while every later authoritative
+  child must re-prove the source or confirmed-baseline count. All six post-set
+  attacks reject with SQLSTATE <code>23514</code>:</p>
+  <ol>
+    <li>source <code>IdentityFact</code> append;</li>
+    <li>counted account pair append;</li>
+    <li>source-listed account without counted presence;</li>
+    <li>CONFIRMED-baseline <code>IdentityFact</code> append;</li>
+    <li>category-completion append; and</li>
+    <li>confirmed account-review membership append.</li>
+  </ol>
+  <p>Both completeness-first and baseline/member-first valid construction
+  orders pass. Same-transaction <code>ABSENT_CONFIRMED</code> evidence is
+  explicitly uncounted: it has no authoritative integrity digest, is never
+  source membership or consumer-review authority, and stays inside the
+  trusted-writer pre-activation boundary.</p>
+
+  <h2>Founder checkpoint — 30 fields</h2>
+
+  <section class="field"><h3>1. Baseline identity — <span class="pass">PASS</span></h3><p>Exact worktree <code>/private/tmp/creditvector-p0-launch-correctness</code>; exact branch <code>codex/p0-launch-correctness</code>; accepted parent <code>4bbdf5c561f94a132962d27971551096b53528d9</code>. Exact 37-file non-document content manifest:</p><code class="hash">5953e26210c70689b6a65dbb33380f3e19b3653bfd1aabda03b9ec9804519de5</code></section>
+  <section class="field"><h3>2. Disposable PostgreSQL environment — <span class="pass">PASS</span></h3><p>Local Colima <code>gios-p03</code>, Docker Unix socket, already-cached pinned <code>postgres:16-alpine</code>, PostgreSQL <strong>16.14</strong>, Docker-assigned loopback port, synthetic sentinel database and role, no image pull.</p><code class="hash">sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777</code></section>
+  <section class="field"><h3>3. Forward apply — <span class="pass">PASS</span></h3><p>Clean migration applied in both pristine runs; all expected database objects were created.</p></section>
+  <section class="field"><h3>4. Reapply / no-op — <span class="pass">PASS</span></h3><p>Second deploy was a true no-op in both runs and did not alter the catalog.</p></section>
+  <section class="field"><h3>5. Schema parity — <span class="pass">PASS</span></h3><p>Prisma and PostgreSQL catalog parity passed, including the explicitly mapped short FK identity.</p></section>
+  <section class="field"><h3>6. Rebuild / reconstruction — <span class="pass">PASS</span></h3><p>Valid reconstruction passed before and after rollback; malformed reconstruction and authoritative nested inconsistencies failed closed.</p></section>
+  <section class="field"><h3>7. Rollback verification — <span class="pass">PASS</span></h3><p>Sentinel guards, precise object removal, FK-before-index dependency order, Phase 1 preservation, and clean rebuild all passed. No <code>CASCADE</code> or non-disposable target was used.</p></section>
+  <section class="field"><h3>8. Concurrency / 40P01 — <span class="pass">PASS</span></h3><p>CAS, lease, stale-worker, idempotency, append-only, and concurrent membership behavior passed. Each deadlock run produced exactly one <code>40P01</code> victim and one committed transaction.</p></section>
+  <section class="field"><h3>9. Teardown — <span class="pass">PASS</span></h3><p>Sentinel containers and temporary verifier directories were removed; no disposable database output belongs in Git.</p></section>
+  <section class="field"><h3>10. Schema SHA-256</h3><code class="hash">e5cd3765f0d60ff0757c41ee5fdd1ee4be758cbb729bc28633aa77f8fc89765a</code></section>
+  <section class="field"><h3>11. Migration SHA-256</h3><code class="hash">d9e9615318db3df0a484ead860523890041598115eade298e611b14af845fa55</code></section>
+  <section class="field"><h3>12. Verifier SHA-256</h3><code class="hash">745b5bdad2fdc576255b2fa1358743ee9f30500137fecc7e828603425e547001</code><p>Guard <code class="hash">d057cddb571d4335ff53a9ef820c4d7924fab5c00d3290c21b24bbf79c8695d4</code> · rollback <code class="hash">9a920cdd8e55785fb1beb6033786e2d5bdf767456d9fab7e27ac68502b6d306a</code> · compatibility <code class="hash">a55967795516e24760990bdc4031096fe37c83f6e0a9af19a5d746e000192e97</code></p></section>
+  <section class="field"><h3>13. Phase 1 / 1.1 tests — <span class="pass">515/515 PASS</span></h3></section>
+  <section class="field"><h3>14. Phase 2A tests — <span class="pass">218/218 PASS</span></h3><p>138 runtime/adversarial + 73 static guard + 7 compatibility.</p></section>
+  <section class="field"><h3>15. Aggregate tests — <span class="pass">733/733 PASS</span></h3><p>TypeScript, Prisma validate, Bash syntax, diff, privacy, and secrets checks pass. In-place Prisma format is not applicable because it would create out-of-scope frozen Phase 1 churn.</p></section>
+  <section class="field"><h3>16. Adversarial final state — <span class="pass">C0 / H0 / M0 / L0</span></h3><p>A fresh independent reviewer reattacked the exact final source after dynamic repairs, independently accepted the 218/218 Phase 2A binding, and reopened no finding. No earlier verdict was inherited or downgraded.</p></section>
+  <section class="field"><h3>17. Trusted-writer dependency — <span class="pending">BOUNDED</span></h3><p>Mandatory pre-activation dependency. Production activation is blocked until the authenticated production repository verifier/adapter is separately implemented and attested.</p></section>
+  <section class="field"><h3>18. Resource-safety dependency — <span class="pending">BOUNDED</span></h3><p>Hard process-isolated PDF termination remains mandatory before activation.</p></section>
+  <section class="field"><h3>19. Retention / legal hold — <span class="pending">FOUNDER/COUNSEL DECISION REQUIRED</span></h3><p>Mechanical erasure behavior is tested; no retention or legal-hold duration was invented.</p></section>
+  <section class="field"><h3>20. M2 isolation — <span class="pass">PASS</span></h3><p>The separate M2 worktree and pre-existing state were untouched.</p></section>
+  <section class="field"><h3>21. Fable isolation — <span class="pass">PASS</span></h3><p>The Fable/cinematic repository and worktree were untouched.</p></section>
+  <section class="field"><h3>22. Overnight closure isolation — <span class="pass">PASS</span></h3><p>The overnight launch-closure worktree remained separate and unchanged.</p></section>
+  <section class="field"><h3>23. Production mutations — <span class="none">NONE</span></h3><p>No connection, read, write, migration, backfill, processing, reanalysis, or consumer-data access.</p></section>
+  <section class="field"><h3>24. Local checkpoint commit</h3><p>The exact SHA is recorded in the post-commit Founder chat receipt. A tracked artifact cannot embed the SHA of the commit that contains it; its stable binding is its parent, frozen hashes, content manifest, and Git blob.</p></section>
+  <section class="field"><h3>25. Push — <span class="none">NONE</span></h3></section>
+  <section class="field"><h3>26. Merge — <span class="none">NONE</span></h3></section>
+  <section class="field"><h3>27. Deploy — <span class="none">NONE</span></h3></section>
+  <section class="field"><h3>28. Activation — <span class="none">NONE</span></h3><p>All gates remain dormant/default-false.</p></section>
+  <section class="field"><h3>29. Phase 2B — <span class="none">NOT STARTED</span></h3></section>
+  <section class="field"><h3>30. Recommended next Founder decision</h3><p>Review the post-commit Founder receipt for the exact local checkpoint SHA, then decide separately whether to authorize work on a still-open pre-activation dependency. Any push, merge, deployment, activation, production work, or Phase 2B requires separate authorization.</p></section>
+
+  <h2>Exact regression and dynamic evidence</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Evidence</th><th>Result</th></tr></thead>
+    <tbody>
+      <tr><td>Phase 1 / 1.1</td><td>515/515 PASS</td></tr>
+      <tr><td>Phase 2A runtime/adversarial</td><td>138/138 PASS</td></tr>
+      <tr><td>Static migration guard</td><td>73/73 PASS</td></tr>
+      <tr><td>Compatibility</td><td>7/7 PASS</td></tr>
+      <tr><td>Pristine PostgreSQL run 1</td><td>90/90 + exact 40P01 PASS</td></tr>
+      <tr><td>Pristine PostgreSQL run 2</td><td>90/90 + exact 40P01 PASS</td></tr>
+      <tr><td>Forward / no-op / parity / rollback / rebuild / teardown</td><td>PASS</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="footer">Standalone mobile-safe artifact. No external styles, scripts, forms, images, production identifiers, consumer PII, or private report evidence.</div>
+</main>
+</body>
+</html>

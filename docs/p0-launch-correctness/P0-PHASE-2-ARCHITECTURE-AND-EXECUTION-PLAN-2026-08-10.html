@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CreditVector — P0 Phase 2 Architecture + Execution Plan</title>
+  <style>
+    :root{--ink:#172033;--muted:#586377;--paper:#f4f6fb;--card:#fff;--line:#dbe1ea;--navy:#152a52;--blue:#275ea8;--good:#17633b;--warn:#8a5300;--stop:#9b2635;--code:#eef2f7}
+    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+    header{background:linear-gradient(135deg,var(--navy),#234d89);color:#fff;padding:2.4rem max(1.2rem,calc((100vw - 1120px)/2)) 2rem}header h1{font-size:clamp(1.85rem,5vw,3.1rem);line-height:1.08;margin:0 0 .8rem}header p{max-width:860px;margin:.35rem 0;color:#e7efff}.badge{display:inline-block;margin:.25rem .35rem .25rem 0;padding:.22rem .6rem;border:1px solid #9bb9e8;border-radius:999px;font-size:.82rem;font-weight:700}
+    nav{position:sticky;top:0;z-index:3;background:#fff;border-bottom:1px solid var(--line);padding:.7rem max(1rem,calc((100vw - 1120px)/2));overflow-x:auto;white-space:nowrap}nav a{color:var(--blue);font-size:.84rem;margin-right:.9rem;text-decoration:none}
+    main{max-width:1120px;margin:1.4rem auto;padding:0 1rem 4rem}.notice{border-left:5px solid var(--stop);background:#fff6f7;padding:1rem 1.1rem;border-radius:.35rem;margin-bottom:1rem}.notice strong{color:var(--stop)}section{background:var(--card);border:1px solid var(--line);border-radius:.75rem;padding:1.3rem;margin:1rem 0;box-shadow:0 2px 8px rgba(20,37,65,.04)}h2{font-size:1.4rem;line-height:1.25;margin:0 0 .8rem;color:var(--navy)}h3{font-size:1.07rem;margin:1.2rem 0 .45rem;color:#263d68}p{margin:.55rem 0}ul,ol{padding-left:1.35rem}li{margin:.3rem 0}.table-wrap{overflow-x:auto;margin:.8rem 0}table{border-collapse:collapse;width:100%;min-width:650px;font-size:.91rem}th,td{text-align:left;vertical-align:top;border:1px solid var(--line);padding:.55rem}th{background:#edf2fa;color:var(--navy)}code,pre{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--code)}code{padding:.08rem .28rem;border-radius:.25rem}pre{white-space:pre-wrap;overflow-wrap:anywhere;padding:1rem;border-radius:.55rem;border:1px solid var(--line);font-size:.86rem}.status{font-weight:800}.good{color:var(--good)}.warn{color:var(--warn)}.stop{color:var(--stop)}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.8rem}.callout{padding:.8rem;border:1px solid var(--line);border-radius:.55rem;background:#fafcff}.small{font-size:.88rem;color:var(--muted)}footer{max-width:1120px;margin:0 auto;padding:0 1rem 3rem;color:var(--muted);font-size:.88rem}
+    @media(max-width:820px){.grid{grid-template-columns:1fr}section{padding:1rem}table{min-width:580px}nav{position:static}}
+    @media(max-width:520px){body{font-size:15px}header{padding:1.5rem 1rem}main{padding:0 .65rem 3rem}section{border-radius:.5rem;margin:.75rem 0}h2{font-size:1.23rem}.badge{font-size:.75rem}table{min-width:520px}}
+    @media print{nav{display:none}body{background:#fff}header{background:#fff;color:#000;padding:1rem 0}header p{color:#333}main{max-width:none;padding:0}section{break-inside:avoid;box-shadow:none;border-color:#bbb}.notice{border-color:#000}}
+  </style>
+</head>
+<body>
+<header>
+  <h1>CreditVector — P0 Phase 2 Architecture + Execution Plan</h1>
+  <p>Repository-backed design for the Operational Credit Intelligence Loop · August 10, 2026</p>
+  <span class="badge">DESIGN COMPLETE</span><span class="badge">IMPLEMENTATION NOT AUTHORIZED</span><span class="badge">PRODUCTION UNTOUCHED</span>
+  <p class="small">Branch <code>codex/p0-launch-correctness</code> · Baseline <code>4bbdf5c561f94a132962d27971551096b53528d9</code> · Phase 1/1.1 515/515 PASS · C0/H0/M0/L0 open</p>
+</header>
+<nav aria-label="Plan sections">
+  <a href="#s1">1 Architecture</a><a href="#s2">2 Delta</a><a href="#s3">3 Surfaces</a><a href="#s4">4 Model</a><a href="#s5">5 States</a><a href="#s6">6 Trust</a><a href="#s7">7 Round 0</a><a href="#s8">8 Confirmation</a><a href="#s9">9 Compatibility</a><a href="#s10">10 Artifact</a><a href="#s11">11 Mail</a><a href="#s12">12 Responses</a><a href="#s13">13 Diff</a><a href="#s14">14 Progress</a><a href="#s15">15 Kai</a><a href="#s16">16 Privacy</a><a href="#s17">17 Waves</a><a href="#s18">18 Migration</a><a href="#s19">19 Flags</a><a href="#s20">20 Tests</a><a href="#s21">21 Red team</a><a href="#s22">22 Disable</a><a href="#s23">23 Counsel</a><a href="#s24">24 Writer</a><a href="#s25">25 Gates</a><a href="#s26">26 Non-goals</a><a href="#s27">27 Risks</a><a href="#s28">28 First wave</a><a href="#review">Review</a>
+</nav>
+<main>
+  <div class="notice"><strong>STOP boundary.</strong> This plan authorizes no code, schema, migration, commit, production access, backfill, deployment, activation, M2 work, or Phase 2A implementation. Trusted-writer semantic attestation remains <strong>BOUNDED</strong> and mandatory before activation.</div>
+
+  <section id="s1"><h2>1. Executive architecture</h2>
+    <p>Extend the accepted Phase 1.1 graph; do not create another truth system. Four planes separate immutable truth, idempotent orchestration, existing user experiences, and narrow adapters.</p>
+    <div class="grid"><div class="callout"><strong>Truth</strong><br>Report versions, bureau facts, history, scores, assessments, assertions, comparisons, correspondence, packets, artifacts, typed domain records.</div><div class="callout"><strong>Orchestration / audit</strong><br>Reservations, state transitions, idempotency, adapter calls, readback, unknown outcomes, and rebuildable refs-only EvidenceEvent projections.</div><div class="callout"><strong>Experience</strong><br>Upload, Identity, Strategy, Letters, Mail, Score, Mission, Kai as evidence projections.</div><div class="callout"><strong>Adapters</strong><br>Parser, storage, renderer, fulfillment, OCR, notifications, Kai with narrow capabilities.</div></div>
+    <pre>Report N -> source artifact -> bureau truth -> assessment -> Round 0
+-> consumer assertion -> action -> recipient-first packet -> canonical bytes
+-> mail evidence -> response -> Report N+1 -> coverage-aware diff -> progress/Kai</pre>
+    <p>Every transition uses exact tenant-, version-, bureau-, recipient-, and digest-bound readback evidence. Unknown or stale inputs stop.</p>
+  </section>
+
+  <section id="s2"><h2>2. Repository delta assessment</h2>
+    <p>Phase 1 already supplies the durable truth/correspondence/diff/artifact spine. Missing pieces are operational orchestration, per-fact review, supplemental correspondence evidence, tenant-scoped mailing, response association, and explicit account matching.</p>
+    <div class="table-wrap"><table><thead><tr><th>Area</th><th>Current truth</th><th>Delta</th></tr></thead><tbody>
+      <tr><td>Reports/parser</td><td>Immutable Phase 1 graph; parser-v2 shadow</td><td>Idempotent source-artifact ingestion and exact input binding</td></tr>
+      <tr><td>Round 0/assertions</td><td>Identity baseline/facts and exact account ConsumerAssertion</td><td>Append-only review state plus specialized identity assertion</td></tr>
+      <tr><td>Correspondence/artifact</td><td>Recipient, versions, packets, content-addressed artifacts</td><td>Supplemental evidence roles and deterministic renderer</td></tr>
+      <tr><td>Mail/responses</td><td>Legacy mutable stores/routes</td><td>Tenant-bound lifecycle and immutable response evidence</td></tr>
+      <tr><td>Diff/progress</td><td>Safe comparisons/outcomes and noncausal progress</td><td>Account-match authority and operational projections</td></tr>
+    </tbody></table></div>
+    <p><strong>Evidence spine:</strong> Phase 1 models are in <code>prisma/schema.prisma:1209-2469</code>; legacy upload/delete behavior is in <code>app/api/reports/upload/route.ts:107-124</code> and <code>app/api/reports/[id]/route.ts:7-18</code>; legacy bureau fan-out appears at <code>lib/parse.ts:165</code> while v2 requires bureau-scoped input; current Identity/Letter/Mail/Response routes remain legacy authority; <code>progressIntelligence.ts:1722-3050</code> and <code>strategyPolicy.ts:504-1693</code> supply safe diff and recipient/counsel foundations.</p>
+    <p>Shadow activation must resolve the restrictive legacy Report link and consumer deletion/erasure semantics before creating P0 rows. Mismatch remains reconciliation evidence, never backfill.</p>
+  </section>
+
+  <section id="s3"><h2>3. Existing surfaces: REUSE / HARDEN / REPLACE / DEFER</h2>
+    <div class="table-wrap"><table><thead><tr><th>Decision</th><th>Surfaces</th></tr></thead><tbody>
+      <tr><td><strong>REUSE</strong></td><td>CreditTruthScope; report/extraction/observation/history/assessment/score; ConsumerAssertion; recipient/correspondence/version/packet; artifactStorage; comparison/progress contracts; EvidenceEvent only as refs-only audit/index/notification projection, never domain/work authority.</td></tr>
+      <tr><td><strong>HARDEN</strong></td><td>Upload, Identity, Score Tracker, Strategy Desk, Campaign concepts, Mail Center UI, MailProvider boundary, tasks, notifications, Kai.</td></tr>
+      <tr><td><strong>REPLACE authority</strong></td><td>Transient identity AI, mutable Letter generation/response, browser PDF regeneration, MailManifest/MailStore, VerifiedOutcome.</td></tr>
+      <tr><td><strong>DEFER</strong></td><td>Vendor-specific fulfillment, legacy aggregate migration/deprecation, generic task/workflow engine, live activation.</td></tr>
+    </tbody></table></div>
+    <p>Legacy remains consumer-visible during shadow work; P0 remains internal until separately activated. Mismatch is reconciliation evidence, never automatic promotion.</p>
+  </section>
+
+  <section id="s4"><h2>4. Domain/data model additions</h2>
+    <div class="table-wrap"><table><thead><tr><th>Wave</th><th>Additive models/fields</th><th>Purpose</th></tr></thead><tbody>
+      <tr><td>2A</td><td>ReportIngestion as sole leased DB queue; extraction input binding; identity category completion; IdentityCorrespondenceAssertion; CaseActionDecision; P0SensitiveAccessEvent</td><td>Recoverable orchestration, exact input, one canonical IdentityFact disposition, consumer selection and refs-only access audit; no policy evaluation</td></tr>
+      <tr><td>2B</td><td>PolicyEvaluationReceipt; CorrespondenceItemEvidence; typed identity item; selected-action/policy binding; restriction digest; PacketSenderIdentityFact; closed action codes; minimal artifact kinds</td><td>Exact policy eligibility, creditor/masked-ref/support, sender identity and no incompatible/free-form action</td></tr>
+      <tr><td>2C</td><td>Mailing with sender digest; MailingEvent; FulfillmentAttempt; MailingArtifact</td><td>Immutable delivery identity; MailingEvent sole semantic state; adapter-neutral attempts and proof</td></tr>
+      <tr><td>2D</td><td>ResponseRecord; ResponseAssociation; ResponseFinding; AccountMatchDecision</td><td>Immutable association/uncertainty and safe cross-version matching</td></tr>
+      <tr><td>2E</td><td>None initially</td><td>Reuse progress truth; add indexes/projections only after measurement</td></tr>
+    </tbody></table></div>
+    <p><code>IdentityFact.classification</code> is the sole identity disposition. Correct current/former maps to confirmed; incorrect/never-mine/outdated maps to disputed; review-needed maps to unknown/reported pending review. NOT_APPLICABLE is category-completion evidence only when no fact exists. The identity claim receipt cannot disagree.</p>
+    <p><code>MailingEvent</code> is the sole mail-state authority. <code>EvidenceEvent</code> is a same-transaction, rebuildable refs-only audit/index/outbox. Access audit and evidence events never establish business truth. All authoritative rows repeat tenant/consumer scope and use composite FKs; no plaintext consumer data enters indexes, logs, analytics, or events.</p>
+  </section>
+
+  <section id="s5"><h2>5. State machines</h2>
+    <pre>Ingestion: RECEIVED -> SOURCE_STORED_AND_VERIFIED -> VERSION_COMMITTED
+-> EXTRACTING -> SUCCEEDED | PARTIAL | FAILED -> ASSESSED -> ROUND0_READY
+
+Round 0 fact: REPORTED/REVIEW_NEEDED -> CONFIRMED | DISPUTED | UNKNOWN
+Empty category only: NOT_APPLICABLE
+Baseline: DRAFT -> CONFIRMED -> SUPERSEDED
+Artifact: BUILDING -> STORED -> READBACK_VERIFIED -> RELEASABLE
+
+Exact artifact/packet/sender/recipient approval -> READY_TO_MAIL
+SELF_MAIL: READY_TO_MAIL -> CONSUMER_ATTESTED_SENT -> TRACKING? -> DELIVERED?
+FULFILLMENT: READY_TO_MAIL -> SUBMISSION_PENDING -> ACCEPTED_BY_FULFILLMENT
+             -> MAILED/SENT -> TRACKING -> DELIVERED
+Either -> RESPONSE_RECEIVED -> RESOLVED | FOLLOW_UP</pre>
+    <p>Self-mail marks provider-only stages not applicable. Provider accepted is not mailed; tracking is not delivery. The exact tuple is reattested immediately before dispatch. Any ambiguous DB/provider result remains <code>OUTCOME_UNKNOWN</code> until retrieved and reconciled.</p>
+  </section>
+
+  <section id="s6"><h2>6. Trust boundaries</h2>
+    <p>Every operation uses a server-owned principal: <code>actorId + tenantId + consumerId + authorizationKind + authorizationVersion</code>. Agency grants are revalidated. IDs, cookies, model output, tracking refs, and provider refs are selectors—not authority.</p>
+    <ul><li>Authorize before lookup/decrypt.</li><li>No bare-ID repository operations.</li><li>AAD binds scope, entity/version, purpose, and key/schema version.</li><li>Adapters cannot choose tenants or hold general DB credentials.</li><li>Callbacks are signature/timestamp/replay checked before parsing and exact correlation.</li><li>Every write is read back and semantically verified.</li></ul>
+  </section>
+
+  <section id="s7"><h2>7. Round 0 architecture</h2>
+    <p>Round 0 reviews legal name, aliases, current/former addresses, safe identity fields, phones and employment actually reported, mixed-file indicators, and unrecognized accounts. The consumer sees bureau, provenance, uncertainty, and a safely masked value.</p>
+    <p><strong>REPORTED, CONFIRMED, DISPUTED, UNKNOWN, NOT APPLICABLE</strong> are product projections. The immutable baseline's <code>IdentityFact.classification</code> is the sole per-fact disposition; NOT APPLICABLE is category completion only when no fact exists. Accurate former addresses and legitimate employment can be confirmed. Merely unfamiliar information is not automatically false or disputable. A machine mixed-file flag is not testimony.</p>
+    <p>A confirmed baseline is a new immutable version; later reports supersede rather than rewrite it.</p>
+  </section>
+
+  <section id="s8"><h2>8. Consumer confirmation architecture</h2>
+    <p>Account facts retain the existing exact <code>ConsumerAssertion</code>. Identity facts retain canonical <code>IdentityFact.classification</code>; a separate exact correspondence claim receipt pins that classification and purpose without carrying another disposition. No nullable account FK or fake account.</p>
+    <pre>observation -> neutral consumer review -> bounded disposition
+-> server re-read of exact source -> append account assertion or identity claim receipt
+-> readback/attestation
+-> downstream receives only exact assertion bindings</pre>
+    <p>No leading default, AI testimony, silent confirmation, stale replay, or cross-bureau/field/report reuse. New evidence revision or digest requires reconfirmation.</p>
+  </section>
+
+  <section id="s9"><h2>9. Correspondence compatibility model</h2>
+    <pre>tenant + consumer + case + recipient/type/address
++ CRA bureau + round + policy version/status + restriction compatibility digest
++ claim class + enclosure compatibility + confirmed identity baseline
++ sender manifest digest</pre>
+    <p>Every item also pins assertion, disputed field, observation, assessment, creditor/furnisher, masked account reference, requested action, evidence provenance, one exact <code>CONSUMER_SELECTED</code> action decision, and its eligible 2B policy-evaluation receipt. Requested action is a closed code, not free-form claim authority. Restricted items consolidate only when normalized restriction digests match.</p>
+    <ul><li>Compatible Equifax items may form one Equifax packet; likewise Experian and TransUnion.</li><li>CRA, furnisher, collector, goodwill, cease/desist, and regulator content never mix.</li><li>Non-CRA recipients preserve item-level bureau provenance.</li><li>Follow-up/Round 2 also pins parent correspondence, delivery/response or elapsed-window evidence, fresh policy evaluation, and explicit selection.</li><li>Unknown compatibility or counsel state is <code>NOT_READY</code>.</li></ul>
+  </section>
+
+  <section id="s10"><h2>10. Canonical artifact architecture</h2>
+    <p>Sender identity is exact membership, never a current-profile lookup: selected legal-name and return-address fact IDs/roles, baseline/version, classification/integrity/order, and <code>senderManifestSha256</code> are pinned through Packet, Artifact, approval, Mailing, and fulfillment.</p>
+    <pre>approved versions + packet manifest + pinned recipient/address/baseline/policy/restrictions
++ exact sender fact membership + sender manifest digest
+-> deterministic no-network renderer -> bytes/digest/counts
+-> encrypted write -> independent readback -> immutable Artifact
+-> purpose-bound access capability</pre>
+    <p><strong>Preview = download = print = future fulfillment bytes.</strong> No regeneration. The mailed letter excludes browser URL/title/timestamp, CreditVector educational footer, and UI instructions. A separate <strong>DO NOT MAIL THIS PAGE</strong> guide is excluded from fulfillment.</p>
+  </section>
+
+  <section id="s11"><h2>11. Mail Center / Evidence Ledger</h2>
+    <p>Mail Center becomes a projection of Packet, Artifact, Mailing, attempts, and evidence—not a package generator. <code>MailingEvent</code> is the sole semantic transition chain; current state is derived or a rebuildable CAS cache. <code>EvidenceEvent</code> is a same-transaction refs-only audit/index/outbox, never another state authority. Sensitive access is separately audited.</p>
+    <p>Self-mail requires approval of the exact artifact/packet/sender/recipient tuple and explicit bounded sent evidence. Future fulfillment reattests that tuple, consumes an exact artifact capability and pinned address, then verifies create/retrieve/callback evidence. The core is vendor-neutral. After self-mail sent attestation or provider submission begins, content, membership, sender, recipient address, and bytes cannot change; corrections create a new version/mailing.</p>
+  </section>
+
+  <section id="s12"><h2>12. Response Intelligence</h2>
+    <ol><li>Authorize scope.</li><li>Store/read back immutable response bytes.</li><li>Associate to exact mailing/recipient/packet/version/report/round.</li><li>Link findings to exact items/accounts/bureaus.</li><li>Quarantine ambiguity.</li><li>Persist provisional, uncertainty-preserving interpretation.</li><li>Require review before testimony/outcome/action.</li></ol>
+    <p>Filename, OCR text, tracking number, recipient name, and model guess cannot authorize association. Kai can summarize evidence but cannot manufacture a legal conclusion.</p>
+  </section>
+
+  <section id="s13"><h2>13. ReportVersion diff semantics</h2>
+    <div class="table-wrap"><table><thead><tr><th>Outcome</th><th>Minimum proof</th></tr></thead><tbody>
+      <tr><td>CONFIRMED_CHANGE</td><td>Exact match, comparable source snapshots, changed meaning</td></tr><tr><td>NO_LONGER_REPORTED</td><td>Prior listed + exact match context + later bureau covered + complete index + ABSENT_CONFIRMED</td></tr><tr><td>UNCHANGED</td><td>Equivalent comparable facts</td></tr><tr><td>NEW</td><td>Current listed + complete prior evidence + exact NO_MATCH</td></tr><tr><td>UNCERTAIN</td><td>Partial/failed parsing, ambiguity, contradiction, or missing proof</td></tr><tr><td>NOT_COMPARABLE</td><td>Chronology, coverage, model, source, or mapping not established</td></tr>
+    </tbody></table></div>
+    <p><strong>Absence ≠ deletion.</strong> No diff encodes correspondence/score causality.</p>
+  </section>
+
+  <section id="s14"><h2>14. Progress Intelligence</h2>
+    <p>Report-derived scores are primary; manual scores are secondary and provenance-labeled; missing scores remain missing. Views cover bureau/model-compatible trajectories, changed/new/no-longer-reported accounts, corrections, unresolved issues, balance/status/remarks movement, correspondence, delivery, responses, uncertainty, and not-comparable periods.</p>
+    <p>Allowed: “Experian score increased 18 points between comparable reports.” Prohibited: “Deleting Account X caused the increase.”</p>
+  </section>
+
+  <section id="s15"><h2>15. Kai boundary</h2>
+    <p>Kai receives a server-built evidence envelope with provenance, completeness, uncertainty, assertion state, policy status, and allowed review verbs. It may explain, compare, teach, and guide review. It may not confirm facts, create assertions/outcomes, select actions/recipients, approve/send, override counsel, or claim causality. All proposed actions are revalidated server-side.</p>
+  </section>
+
+  <section id="s16"><h2>16. Tenant isolation/privacy threat model</h2>
+    <div class="table-wrap"><table><thead><tr><th>Attack</th><th>Defense</th></tr></thead><tbody>
+      <tr><td>IDOR / cross-org</td><td>server principal, composite scope, authorize before decrypt</td></tr><tr><td>Artifact guessing/cache leak</td><td>no public locator; short purpose capability; private/no-store response</td></tr><tr><td>Version/bureau/assertion substitution</td><td>repeat exact scope, version, bureau, revision, digest at each boundary</td></tr><tr><td>Callback/tracking spoof</td><td>signature, timestamp, replay, internal correlation; external refs never authority</td></tr><tr><td>Response misassociation</td><td>exact membership or quarantine</td></tr><tr><td>PII logs/analytics</td><td>allowlisted states/counts/opaque refs and automated scans</td></tr><tr><td>Resource/polyglot abuse</td><td>magic/MIME agreement; encrypted/polyglot rejection; byte/page/decompression/time/memory/token limits; quotas/backpressure</td></tr><tr><td>Invisible sensitive access</td><td>refs-only access audit for decrypt/download/export/privileged/worker use; audit failure denies release</td></tr><tr><td>Trusted writer bypass</td><td>repository ownership, deployment attestation, readback equality, fail-closed readiness</td></tr>
+    </tbody></table></div>
+  </section>
+
+  <section id="s17"><h2>17. Phase 2A–2E execution waves</h2>
+    <p>Each is a build-only checkpoint with default-off flags, exact tests, independent review, disable proof, Founder gate, and STOP.</p>
+    <h3>2A — ingestion + Round 0 + confirmation</h3>
+    <div class="table-wrap"><table><tbody>
+      <tr><th>Objective</th><td>Authenticated, leased/idempotent source ingestion; genuine bureau-scoped parser-v2 shadow; canonical IdentityFact classification; identity claim receipts; exact account assertions; consumer action decisions; sensitive-access audit. No policy evaluation in 2A.</td></tr>
+      <tr><th>Surfaces</th><td>Upload envelope, parser-v2, consumerAssertion, truth repository/orchestrator, Identity shell.</td></tr>
+      <tr><th>Schema/migration</th><td>ReportIngestion is the sole durable DB queue, claimed by lease/CAS or SKIP LOCKED; no scheduling outbox. Add extraction input binding, category completion, IdentityCorrespondenceAssertion, CaseActionDecision and P0SensitiveAccessEvent. Notifications may project committed transitions only.</td></tr>
+      <tr><th>Flags</th><td>Master, shadow ingestion, Round 0, assertion; absent false and server-cohort only.</td></tr>
+      <tr><th>Tests</th><td>Constitutional parser set; source readback; crash/lease/redelivery; authz; Round 0 mapping; assertion replay; 40P01/unknown; deletion/erasure; access audit; resource/PII limits.</td></tr>
+      <tr><th>Adversarial</th><td>Flattened fan-out, forged writer, duplicate version, stale lease, source substitution, restrictive legacy link/hidden retention, identity authority duplication, AI testimony.</td></tr>
+      <tr><th>Dependencies</th><td>Phase 1.1, explicit principal, encryption/AAD, retention policy, trusted-writer adapter implementation; activation remains separately blocked.</td></tr>
+      <tr><th>Acceptance</th><td>Readback-verified SHADOW_V2 under local/synthetic or later approved shadow cohort; legacy upload response and consumer deletion remain predictable; one identity disposition; exact chains; fail closed.</td></tr>
+      <tr><th>Founder gate</th><td>Accept local checkpoint only. Production migration, shadow enablement, and consumer cohort are separate later decisions.</td></tr>
+      <tr><th>Disable</th><td>Flags off; preserve immutable evidence; no down-migration/deletion; legacy remains authoritative.</td></tr>
+    </tbody></table></div>
+    <h3>2B — action + recipient-first correspondence + artifact</h3>
+    <div class="table-wrap"><table><tbody>
+      <tr><th>Objective/surfaces</th><td>Use strategyPolicy, exact selected actions/assertions, correspondence/packet/artifact models, deterministic renderer, Letters/Strategy shells.</td></tr>
+      <tr><th>Schema/migration</th><td>PolicyEvaluationReceipt, supplemental evidence, identity membership, PacketSenderIdentityFact, composite selected-action/eligible-policy receipt binding, restriction digest, closed action codes, guide/proof kinds.</td></tr>
+      <tr><th>Flags</th><td>Correspondence preview and canonical artifact preview; no mail capability.</td></tr>
+      <tr><th>Tests</th><td>Compatibility tuple including restriction/sender digests, creditor/masked ref, assertion/action/policy/follow-up pins, CRA routing, counsel restrictions, byte equality, tamper/readback/grants.</td></tr>
+      <tr><th>Adversarial</th><td>Recipient mixing/retarget, incompatible restriction manifests, wrong legal name/former return address, free-form or unselected action, chronology-only Round 2, fake identity account, stale evidence/address, remote render drift, legacy mail call.</td></tr>
+      <tr><th>Dependencies/acceptance</th><td>Accepted 2A and exact approved policy/templates; every clause traceable; one compatible packet; exact stored bytes; zero mail/provider calls.</td></tr>
+      <tr><th>Founder/disable</th><td>Separate template/policy and preview-only approval; flags off retains inaccessible immutable drafts/artifacts.</td></tr>
+    </tbody></table></div>
+    <h3>2C — Mail Center / Evidence Ledger + fulfillment boundary</h3>
+    <div class="table-wrap"><table><tbody>
+      <tr><th>Objective/surfaces</th><td>Self-mail evidence and vendor-neutral test adapter over Mail Center shell, artifact grants, MailingEvent, refs-only EvidenceEvent projection.</td></tr>
+      <tr><th>Schema/migration</th><td>Mailing, MailingEvent, FulfillmentAttempt, MailingArtifact, proof kinds/subjects.</td></tr>
+      <tr><th>Flags</th><td>Mail ledger and contract test; live fulfillment separately absent/off.</td></tr>
+      <tr><th>Tests</th><td>Separate channel states, final artifact/sender/recipient approval, dispatch reattestation, event-derived state, idempotency/unknown, callback replay, tracking substitution, IDOR/audit.</td></tr>
+      <tr><th>Adversarial</th><td>Spoofed provider, arbitrary URL/bytes, approval before final artifact, duplicate timeout send, cross-mail callback, mutable sent content, EvidenceEvent state bypass.</td></tr>
+      <tr><th>Dependencies/acceptance</th><td>2B artifact, retention, security/compliance; truthful evidence projection and test adapter; production provider not wired.</td></tr>
+      <tr><th>Founder/disable</th><td>Evidence-ledger checkpoint only; live vendor separate. Stop attempts, preserve evidence, reconcile unknown before retry.</td></tr>
+    </tbody></table></div>
+    <h3>2D — responses + report diff</h3>
+    <div class="table-wrap"><table><tbody>
+      <tr><th>Objective/surfaces</th><td>Immutable response storage/association/quarantine and exact ReportVersion comparison using artifact storage and existing diff/progress contracts.</td></tr>
+      <tr><th>Schema/migration</th><td>ResponseRecord, ResponseAssociation, ResponseFinding, AccountMatchDecision, exact enums/events.</td></tr>
+      <tr><th>Flags</th><td>Response intake, internal provisional interpretation, report diff; no automatic action.</td></tr>
+      <tr><th>Tests/adversarial</th><td>Exact/ambiguous association, uncertainty, matching, complete/incomplete coverage, all diff states, substitution/replay; attack filename/tracking/model authority, wrong packet, forced match/deletion, AI legal conclusion/auto Round 2.</td></tr>
+      <tr><th>Dependencies/acceptance</th><td>2C mailing evidence, later report, matching policy, review workflow; ambiguity quarantines, no false deletion/causality.</td></tr>
+      <tr><th>Founder/disable</th><td>Approve thresholds/read-only cohort; stop new interpretation/comparison, retain evidence.</td></tr>
+    </tbody></table></div>
+    <h3>2E — progress + Kai</h3>
+    <div class="table-wrap"><table><tbody>
+      <tr><th>Objective/surfaces</th><td>Repoint Score, Strategy, Mission, reminders, and Kai to progressIntelligence and exact read APIs.</td></tr>
+      <tr><th>Schema/flags</th><td>No authoritative schema initially; independent progress/UI/Kai gates.</td></tr>
+      <tr><th>Tests/adversarial</th><td>Score provenance/no-score/manual-secondary, all outcome states, noncausal language, stale/policy/cross-tenant context; attack model mixing, causality prompts, hidden uncertainty, Kai mutation and PII notifications.</td></tr>
+      <tr><th>Dependencies/acceptance</th><td>Accepted 2D and evidence-envelope/copy review; one consistent source-linked story and no truth/action mutation.</td></tr>
+      <tr><th>Founder/disable</th><td>Each consumer surface/cohort separate; disable returns existing UI and preserves evidence.</td></tr>
+    </tbody></table></div>
+    <p><strong>Ownership:</strong> schema/migration has one serial writer. Repository, adapter, and UI lanes branch only after the contract freezes; independent red team reviews the exact integrated source. Any out-of-manifest schema need pauses the wave.</p>
+  </section>
+
+  <section id="s18"><h2>18. Migration strategy</h2>
+    <p>One additive migration per wave; no rename/drop, db push, runtime DDL, production backfill, or legacy fact promotion. New uploads bind source artifacts rather than depending on the deletable legacy Report FK. Verify static contract, disposable PostgreSQL apply/redeploy/rollback/rebuild, old-runtime compatibility, sole-DB-queue lease/idempotency, concurrency/40P01, Prisma parity, and teardown.</p>
+    <p>Expected: substantive 2A including erasure/access audit; small evidence/action membership 2B; operational mail 2C; response/matching 2D; no 2E schema initially. Production migration remains unauthorized.</p>
+  </section>
+
+  <section id="s19"><h2>19. Feature-flag strategy</h2>
+    <p>Exact server-side flags, absent false, root kill switch, server-resolved cohort, ordered readiness:</p>
+    <pre>P0_PHASE2_ENABLED
+P0_INGESTION_SHADOW_ENABLED
+P0_ROUND0_REVIEW_ENABLED
+P0_ASSERTION_RUNTIME_ENABLED
+P0_CORRESPONDENCE_PREVIEW_ENABLED
+P0_CANONICAL_ARTIFACT_ENABLED
+P0_MAIL_LEDGER_ENABLED
+P0_FULFILLMENT_ENABLED
+P0_RESPONSE_INTELLIGENCE_ENABLED
+P0_PROGRESS_INTELLIGENCE_ENABLED
+P0_KAI_EVIDENCE_EXPLANATIONS_ENABLED</pre>
+    <p>No later flag works without earlier flags, migration checksum, adapter attestation, policy version, cohort, and readiness receipt. Disable stops work; it does not delete evidence.</p>
+  </section>
+
+  <section id="s20"><h2>20. Testing strategy</h2>
+    <p>Preserve the 515/515 Phase 1.1 suite and add exact—not predicted—counts per wave. Test pure contracts, hostile repository shapes, disposable PostgreSQL, runtime authz, deterministic bytes, adapter contracts, end-to-end synthetic flow, load/query plans, pagination/backpressure, and independent red team.</p>
+    <pre>Report N -> parser/isolation/history/clean/score -> review/assertions
+-> packet/artifact byte equality -> mail evidence -> response
+-> Report N+1 -> account match/coverage-aware diff -> noncausal progress/Kai</pre>
+    <div class="table-wrap"><table><thead><tr><th>Failure</th><th>Required result</th><th>Retry/user effect</th></tr></thead><tbody>
+      <tr><td>Flag/cohort/readiness absent</td><td>No-op/unavailable before mutation</td><td>Legacy unchanged</td></tr><tr><td>Source readback mismatch</td><td>Typed integrity failure</td><td>Same operation only; no ReportVersion</td></tr><tr><td>Crash/enqueue gap/stale lease</td><td>Sole ReportIngestion DB queue reclaims by lease/CAS</td><td>Bounded redelivery, no duplicate truth</td></tr><tr><td>Parser partial/timeout</td><td>FAILED/PARTIAL/UNKNOWN</td><td>Never absent/Clean</td></tr><tr><td>Exact 40P01</td><td>Attested idempotent retry</td><td>Maximum 3, distinct exhaustion</td></tr><tr><td>Ambiguous DB/provider outcome</td><td>OUTCOME_UNKNOWN</td><td>Retrieve/reconcile first</td></tr><tr><td>Stale assertion/address/policy</td><td>NOT_READY</td><td>Review/reconfirm</td></tr><tr><td>Artifact mismatch</td><td>Integrity failure</td><td>No preview/download/print/send</td></tr><tr><td>Callback/response ambiguity</td><td>Reject/quarantine</td><td>No state/outcome/action</td></tr><tr><td>Incomplete later report</td><td>UNCERTAIN/NOT_COMPARABLE</td><td>Never deletion/new</td></tr><tr><td>Score absent/model mismatch</td><td>Absent/noncomparable</td><td>No invention/causality</td></tr><tr><td>Polyglot/encrypted/oversized source</td><td>Reject at bounded file/resource gates</td><td>No parser/truth write</td></tr><tr><td>Access-audit failure</td><td>Deny sensitive access</td><td>No data release</td></tr><tr><td>Kill switch</td><td>Reject new work, preserve state</td><td>Only safe earlier path remains</td></tr>
+    </tbody></table></div>
+    <p>All lists use bounded cursor pagination. History, Mail Center, response, and progress receive N+1/query-plan tests. Parser/render/OCR/model work has byte/page/decompression/time/memory/token quotas, bounded concurrency, per-tenant fairness and backpressure. Load failure never truncates evidence into “complete.”</p>
+  </section>
+
+  <section id="s21"><h2>21. Adversarial test strategy</h2>
+    <ul><li>Parallel truth/identity/mail/outcome authorities and legacy promotion.</li><li>Bureau flattening, history loss, clean false positive, uncertainty-as-deletion/new.</li><li>Competing identity dispositions, preselected/AI testimony, stale/replayed assertion.</li><li>Recipient mixing/retarget, unselected/free-form action, chronology-only follow-up.</li><li>Artifact membership/byte/access drift and provider duplicate/spoof/status overclaim.</li><li>Response misassociation or model output as legal/outcome authority.</li><li>IDOR, agency revocation, cache/signed-URL/PII leakage and audit bypass.</li><li>Score-model mixing, causality, Kai mutation and counsel bypass.</li><li>Race/40P01/unknown outcome duplicates.</li><li>Legacy delete/reanalysis/mail interference, hidden retention, resource bombs, pagination/N+1/backpressure.</li></ul>
+    <p>No severity is lowered to obtain a green checkpoint.</p>
+  </section>
+
+  <section id="s22"><h2>22. Rollback/disable strategy</h2>
+    <p>Use forward-safe disable: kill switches stop new work, workers recheck gates, immutable truth/evidence remains, unknown outcomes reconcile before retry, and sent content never mutates. Do not treat a production down-migration as the operational rollback.</p>
+  </section>
+
+  <section id="s23"><h2>23. Counsel dependencies</h2>
+    <p>Seven policy families remain <strong>PENDING_COUNSEL</strong>: validation, FCRA 623, FDCPA, goodwill, pay-delete, cease/desist, and CFPB threat. Five more are draft; zero is approved.</p>
+    <pre>counselDisposition: DRAFT | PENDING_COUNSEL | APPROVED | RESTRICTED | DISABLED | RETIRED
+runtimeEligibility: INELIGIBLE | ELIGIBLE | ELIGIBLE_WITH_RESTRICTIONS
+RESTRICTED requires a versioned exact restriction manifest
+REVISED always appends a new immutable policy version</pre>
+    <p>Disabled/retired is unconditionally ineligible for new work; old artifacts retain their pinned version. Round chronology and feature flags never substitute for eligibility.</p>
+  </section>
+
+  <section id="s24"><h2>24. Trusted-writer pre-activation dependency</h2>
+    <p class="status warn">BOUNDED — mandatory before activation.</p>
+    <ol><li>Inventory-control every P0 writer/read.</li><li>Authorize actor/scope/report/case/bureau/recipient/purpose before decrypt or write.</li><li>Bind adapter to writer/version/code/migration/encryption/AAD/query set.</li><li>Use idempotent transactions and authoritative readback.</li><li>Mint attestation only after semantic equality; persist value-free digests.</li><li>Reject stale/forged/replayed/swapped/partial/direct-helper paths.</li><li>Pass disposable DB, 40P01, IDOR, PII and bypass review.</li><li>Fail runtime readiness when adapter receipt is missing/stale/mismatched.</li></ol>
+    <p>Local tests, schema validity, deployment, or this plan do not close it.</p>
+  </section>
+
+  <section id="s25"><h2>25. Founder approval gates</h2>
+    <div class="table-wrap"><table><thead><tr><th>Gate</th><th>Separate decision</th><th>Required evidence</th></tr></thead><tbody>
+      <tr><td>Plan</td><td>Accept/revise</td><td>Exact docs, independent review, no source changes</td></tr><tr><td>2A build</td><td>Authorize implementation only</td><td>Owned-file/migration/privacy/test plan</td></tr><tr><td>Local checkpoint</td><td>Accept/reject each wave</td><td>Exact tests/migration/red team/zero production</td></tr><tr><td>Production schema</td><td>Authorize/deny separately</td><td>Migration hash, rollback/compatibility, maintenance</td></tr><tr><td>Shadow ingestion</td><td>Authorize cohort separately</td><td>Writer adapter, claim recovery, limits/audit, deletion/erasure, observability/kill switch</td></tr><tr><td>Round 0/assertion</td><td>Authorize cohort separately</td><td>UX/compliance/privacy/tenant tests and shadow quality</td></tr><tr><td>2B preview</td><td>Authorize separately</td><td>Counsel-approved policy/template and artifact security</td></tr><tr><td>2C ledger</td><td>Authorize separately</td><td>State/retention proof; no vendor implied</td></tr><tr><td>Live fulfillment</td><td>Vendor-specific authorize/deny</td><td>Contract/security/compliance/pricing/webhook/reconciliation/canary</td></tr><tr><td>2D response/diff</td><td>Authorize separately</td><td>Association/matching thresholds and false-deletion red team</td></tr><tr><td>2E surfaces</td><td>Authorize each cohort</td><td>Copy/compliance, noncausal/Kai tests</td></tr><tr><td>Backfill/reanalysis</td><td>New plan and authorize/deny</td><td>Source/non-manufacture/rollback/consumer-impact evidence</td></tr>
+    </tbody></table></div>
+    <p>No gate implies the next; every checkpoint stops.</p>
+  </section>
+
+  <section id="s26"><h2>26. Explicit non-goals</h2>
+    <p>No implementation, source/schema/migration edits, production access, deployment, activation, M2 work, legal advice, autonomous assertions/actions, vendor integration, legacy promotion, causal score claim, automatic identity dispute, generic workflow engine, broad UI polish, trusted-writer production closure, Phase 3, or legacy deprecation.</p>
+  </section>
+
+  <section id="s27"><h2>27. Risks/open questions</h2>
+    <ol><li><strong>Bureau flattening at ingestion.</strong></li><li><strong>Tenant/evidence substitution.</strong></li><li><strong>False deletion/new from weak matching or coverage.</strong></li><li><strong>Canonical artifact/delivery drift.</strong></li><li><strong>AI, round, flag, legacy, or counsel authority creep.</strong></li></ol>
+    <h3>Future wave-entry decisions</h3><ul><li>Report-series identity and multi-bureau version reservation.</li><li>Retain original bytes and normalized text as separately digested artifacts (recommended), with each run pinning its exact input.</li><li>Account-match threshold; ambiguity stays uncertain.</li><li>Round 0 required categories and valid NOT_APPLICABLE cases.</li><li>Self-mail sent/delivery evidence thresholds.</li><li>Retention, export, erasure/crypto-shred, backup, and legal hold.</li><li>Deterministic renderer/template/font/assets/accessibility.</li><li>Whether encrypted consumer corrections are retained without overwriting source facts.</li><li>Legacy delete/reanalysis/letter/mail fences before authority.</li></ul>
+    <p>These are explicit gates, never silent implementer choices.</p>
+  </section>
+
+  <section id="s28"><h2>28. Recommended first implementation wave</h2>
+    <p><strong>Recommend Phase 2A only</strong> after a separate Founder authorization.</p>
+    <ol><li>Freeze principal/repository/attestation/flag contracts.</li><li>Design the additive migration: ReportIngestion as sole leased DB queue, access audit, erasure, one identity disposition.</li><li>Implement source readback, bounded recovery, deletion/crypto-shred/tombstone, input binding.</li><li>Wire genuine bureau-scoped parser-v2 shadow without changing legacy output.</li><li>Implement exact actor/tenant/consumer repository scope.</li><li>Implement IdentityFact classification/category completion/claim receipt and account assertion.</li><li>Implement consumer action decisions only; defer policy evaluation/receipts to 2B.</li><li>Add flags, access audit, safe metrics, resource limits, reconciliation and 40P01 behavior.</li><li>Run constitutional, migration, authz, erasure, privacy, performance, concurrency and adversarial suites.</li><li>Return a local build-only Founder checkpoint and stop.</li></ol>
+    <p>Exclude correspondence, mail, fulfillment, responses, consumer authority, backfill, and production activation.</p>
+  </section>
+
+  <section id="review"><h2>GSTACK REVIEW REPORT</h2>
+    <h3>Engineering review</h3><p>The plan reuses the truth graph, limits additive schema to operational gaps, defines failures/state/ownership/waves/tests/gates/disable behavior.</p>
+    <h3>Independent adversarial review</h3><p>Three bounded read-only passes attacked drift/duplication, bureau/history/deletion, testimony/action, recipient/restriction, sender/artifact/mail truth, async recovery, responses, tenant/privacy/resources, score/Kai/counsel, activation and pair parity.</p>
+    <ul><li>Pass 1: C0/H5/M5/L0; revised.</li><li>Pass 2: C0/H0/M4/L1; revised.</li><li><strong>Final exact-pair closure: C0/H0/M0/L0 — PASS.</strong></li></ul>
+    <p>Closure includes one identity disposition, action plus 2B policy receipts, deletion/erasure safety, split mail states/final-artifact approval, MailingEvent authority, refs-only access audit, one DB ingestion queue, sender/restriction manifests, resource controls, and executable counsel mapping.</p>
+    <h3>Decision record</h3><p>Additive operations, specialized identity assertions, canonical stored bytes, vendor-neutral fulfillment, exact account matching, and evidence projections are selected over parallel or heuristic authority.</p>
+    <p>P0 executable source/schema/migrations/index remain unchanged; only this pair is untracked. M2 remains <code>launch/extraction-wave-2</code> at <code>ebe780ec24d4518521689e8f2add6ed9e539fb2f</code>; frozen diff/name-status/untracked/index evidence matches. This task made no M2 write.</p>
+    <p class="status good">NO UNRESOLVED DECISIONS</p>
+  </section>
+</main>
+<footer>Standalone, no external assets. Static responsive plan artifact. Production remains NO-GO; implementation remains unauthorized.</footer>
+</body>
+</html>

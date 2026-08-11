@@ -10,6 +10,7 @@ import { recordKaiEvent } from "@/lib/kaiEvents";
 import { track, PRODUCT_EVENTS } from "@/lib/events";
 import { getBureauData, crossBureauConflicts } from "@/lib/bureauData";
 import { recommendStrategy } from "@/lib/recommend";
+import { createP0ReportUploadShadowDispatcher } from "@/lib/creditTruth/shadowExtractionService";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -17,6 +18,10 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 const VALID_BUREAUS: Bureau[] = ["EQUIFAX", "EXPERIAN", "TRANSUNION"];
+
+// Phase 2A build-only seam. No environment, query, body, or client value can
+// install this dependency; the local build therefore remains exactly dormant.
+const dispatchP0ReportUploadShadow = createP0ReportUploadShadowDispatcher({ hook: null });
 
 // Accepts a pasted report (text) and/or an uploaded PDF, plus the set of bureaus
 // the report covers. Extracts text, runs the shared analysis pipeline (AI
@@ -70,6 +75,7 @@ export async function POST(req: Request) {
       { status: 400 }
     );
   }
+  const pastedSourceAtIngress = rawText;
   const TOO_SHORT =
     "We couldn't read enough text. If you uploaded a scanned/image PDF, paste the report text instead.";
   // Pasted-only uploads can be validated up front; PDF text length is only
@@ -123,6 +129,31 @@ export async function POST(req: Request) {
           (stage) => emit({ stage })
         );
         analyzed = true;
+
+        // Preserve the existing legacy response and authority. The lazy input
+        // is not even materialized while the injected hook is absent. A future
+        // separately authorized server hook must resolve its own principal;
+        // these legacy ids and bureau selections remain selectors/evidence only.
+        await dispatchP0ReportUploadShadow(() => ({
+          legacyReportId: report!.id,
+          bureauSelectors: [...bureaus],
+          sources: [
+            ...(pdfBuf
+              ? [{
+                  kind: "ORIGINAL_PDF" as const,
+                  mimeType: "application/pdf" as const,
+                  content: new Uint8Array(pdfBuf),
+                }]
+              : []),
+            ...(pastedSourceAtIngress
+              ? [{
+                  kind: "ORIGINAL_TEXT" as const,
+                  mimeType: "text/plain" as const,
+                  content: new TextEncoder().encode(pastedSourceAtIngress),
+                }]
+              : []),
+          ],
+        }));
 
         await recordKaiEvent(user.id, "report.uploaded", {
           refType: "report",

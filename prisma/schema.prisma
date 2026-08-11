@@ -840,6 +840,19 @@ enum ReportDateProvenance {
   UNKNOWN
 }
 
+enum ReportDateEvidencePresence {
+  PRESENT
+  EXPLICIT_NOT_PROVIDED
+  UNKNOWN
+}
+
+enum ReportDatePrecision {
+  DAY
+  MONTH
+  YEAR
+  UNKNOWN
+}
+
 enum ExtractionEngine {
   AI_V2
   REGEX_V2
@@ -850,6 +863,40 @@ enum ExtractionRunStatus {
   SUCCEEDED
   PARTIAL
   FAILED
+}
+
+enum ReportIngestionState {
+  RECEIVED
+  SOURCE_STORED_AND_VERIFIED
+  VERSION_COMMITTED
+  EXTRACTING
+  SUCCEEDED
+  PARTIAL
+  FAILED
+  ASSESSED
+  ROUND0_READY
+  OUTCOME_UNKNOWN
+  QUARANTINED
+}
+
+enum ExtractionInputRepresentation {
+  ORIGINAL_REPORT_BYTES
+  DERIVED_NORMALIZED_TEXT
+}
+
+enum ReportSourceDisposition {
+  RETAINED
+  TOMBSTONE_REQUESTED
+  OBJECT_DELETED
+  CRYPTO_SHREDDED
+  DISPOSITION_FAILED
+}
+
+enum P0AuthorizationKind {
+  DIRECT_CONSUMER
+  AGENCY_MANAGED_CLIENT
+  ADMIN_IMPERSONATION
+  SYSTEM_WORKER
 }
 
 enum ObservationPresence {
@@ -984,6 +1031,12 @@ enum ScoreModelMetadataCompleteness {
   UNKNOWN
 }
 
+enum CreditScoreModelPresence {
+  PRESENT
+  NOT_PROVIDED
+  UNKNOWN
+}
+
 enum ReportComparisonPurpose {
   EXTRACTION_RECONCILIATION
   TEMPORAL_REPORT_CHANGE
@@ -1111,6 +1164,40 @@ enum IdentityFactClassification {
   REVIEW_NEEDED
 }
 
+enum IdentityReviewCategory {
+  LEGAL_NAME
+  ALIAS
+  CURRENT_ADDRESS
+  FORMER_ADDRESS
+  SAFE_IDENTIFIER
+  PHONE
+  EMPLOYMENT
+  MIXED_FILE_INDICATOR
+  UNRECOGNIZED_ACCOUNT
+}
+
+enum IdentityCategoryCompletionDisposition {
+  NOT_APPLICABLE
+}
+
+enum IdentityCorrespondenceAssertionStatus {
+  ATTESTED
+  REVOKED
+}
+
+enum IdentityCorrespondencePurpose {
+  CORRESPONDENCE_SENDER_IDENTITY
+  CORRESPONDENCE_IDENTITY_CORRECTION
+}
+
+enum ConsumerAccountReviewState {
+  RECOGNIZED
+  UNRECOGNIZED
+  UNKNOWN
+  DEFERRED
+  REVOKED
+}
+
 enum RecipientType {
   CREDIT_REPORTING_AGENCY
   FURNISHER
@@ -1132,6 +1219,79 @@ enum DisputeCaseStatus {
   ACTIVE
   PAUSED
   CLOSED
+}
+
+enum CaseActionDecisionState {
+  PROPOSED
+  CONSUMER_SELECTED
+  DECLINED
+  WAITING
+  BLOCKED
+}
+
+enum CaseActionCode {
+  REVIEW_ACCOUNT_FACT
+  REVIEW_IDENTITY_FACT
+  REQUEST_ACCOUNT_CORRECTION
+  REQUEST_IDENTITY_CORRECTION
+  TAKE_NO_ACTION
+  DEFER_REVIEW
+}
+
+enum CaseActionSourceType {
+  FIELD_OBSERVATION
+  DERIVED_ACCOUNT_ASSESSMENT
+  CONSUMER_ASSERTION
+  CONSUMER_ACCOUNT_REVIEW
+  IDENTITY_FACT
+  IDENTITY_CORRESPONDENCE_ASSERTION
+  IDENTITY_CATEGORY_COMPLETION
+}
+
+enum P0SensitiveAccessKind {
+  DECRYPT
+  PREVIEW
+  DOWNLOAD
+  EXPORT
+  AGENCY
+  ADMIN
+  WORKER
+}
+
+enum P0SensitiveAccessPurposeCode {
+  REPORT_INGESTION
+  ROUND0_REVIEW
+  CONSUMER_CONFIRMATION
+  INTEGRITY_VERIFICATION
+  CONSUMER_EXPORT
+  AGENCY_MANAGED_CLIENT_SERVICE
+  ADMIN_SUPPORT
+  WORKER_EXTRACTION
+}
+
+enum P0SensitiveAccessDecision {
+  ALLOW
+  DENY
+}
+
+enum P0SensitiveAccessReasonCode {
+  AUTHORIZED
+  SCOPE_DENIED
+  PURPOSE_DENIED
+  RESOURCE_NOT_FOUND
+  GATE_DISABLED
+  INTEGRITY_FAILURE
+  OTHER_SAFE_DENIAL
+}
+
+enum P0SensitiveResourceType {
+  REPORT_INGESTION
+  REPORT_SOURCE
+  NORMALIZED_REPORT_TEXT
+  REPORT_VERSION
+  IDENTITY_FACT_VALUE
+  CONSUMER_ASSERTION_STATEMENT
+  ARTIFACT
 }
 
 enum CorrespondenceStatus {
@@ -1225,9 +1385,78 @@ model CreditTruthScope {
   reportComparisons       ReportComparison[]
   reportDifferences       ReportDifference[]
   disputeOutcomes         DisputeOutcome[]
+  reportIngestions        ReportIngestion[]
+  sensitiveAccessEvents   P0SensitiveAccessEvent[]
+  bureauReportDates       BureauReportDateEvidence[]
+  consumerAccountReviews  ConsumerAccountReviewReceipt[]
+  round0SourceCompleteness Round0SourceCompletenessEvidence[]
+  identityBaselineAccountReviewMemberships IdentityBaselineAccountReviewMembership[]
 
   @@id([tenantId, consumerId])
   @@index([consumerId, tenantId])
+}
+
+// Sole durable Phase 2A ingestion queue. Source-object locator material is an
+// encrypted recovery capability, not business evidence. Exact immutable truth is
+// established only after the linked Artifact/ReportVersion/ExtractionRun are
+// read back and semantically attested. Mutable fields advance by revisioned CAS.
+model ReportIngestion {
+  id                           String                  @id @default(cuid())
+  tenantId                     String
+  consumerId                   String
+  scope                        CreditTruthScope        @relation(fields: [tenantId, consumerId], references: [tenantId, consumerId], onDelete: Restrict, onUpdate: Restrict)
+  actorId                      String
+  authorizationKind            P0AuthorizationKind
+  authorizationVersion         String
+  idempotencyKey               String
+  operationKey                 String
+  reportSeriesKey              String
+  reservedVersion              Int
+  sourceSha256                 String                  @db.VarChar(64)
+  sourceByteLength             BigInt
+  sourceDeclaredMimeType       String
+  sourceDetectedMimeType       String
+  sourceStorageProviderKey     String?
+  sourceLocatorCiphertext      Bytes?
+  sourceLocatorIv              Bytes?
+  sourceLocatorAuthTag         Bytes?
+  sourceLocatorKeyVersion      String?
+  sourceLocatorAlgorithm       EncryptionAlgorithm?
+  sourceLocatorEnvelopeVersion String?
+  sourceLocatorAadVersion      String?
+  sourceReadbackSha256         String?                 @db.VarChar(64)
+  sourceReadbackByteLength     BigInt?
+  sourceVerifiedAt             DateTime?
+  sourceDisposition            ReportSourceDisposition @default(RETAINED)
+  sourceDispositionReasonCode  String?
+  sourceDispositionAt          DateTime?
+  state                        ReportIngestionState    @default(RECEIVED)
+  safeFailureCode              String?
+  revision                     Int                     @default(1)
+  attemptCount                 Int                     @default(0)
+  maxAttempts                  Int                     @default(3)
+  leaseToken                   String?
+  leaseOwnerId                 String?
+  leaseExpiresAt               DateTime?
+  nextAttemptAt                DateTime?
+  reportVersionId              String?
+  reportVersion                ReportVersion?          @relation(fields: [tenantId, consumerId, reportVersionId], references: [tenantId, consumerId, id], onDelete: Restrict, onUpdate: Restrict, map: "report_ingestion_report_version_fkey")
+  sourceArtifactId             String?
+  sourceArtifact               Artifact?               @relation("ReportIngestionSourceArtifact", fields: [tenantId, consumerId, sourceArtifactId, sourceSha256], references: [tenantId, consumerId, id, sha256], onDelete: Restrict, onUpdate: Restrict, map: "report_ingestion_source_artifact_fkey")
+  extractionRunId              String?
+  extractionRun                ExtractionRun?          @relation(fields: [tenantId, consumerId, reportVersionId, extractionRunId], references: [tenantId, consumerId, reportVersionId, id], onDelete: Restrict, onUpdate: Restrict, map: "report_ingestion_extraction_run_fkey")
+  identityBaselines            IdentityBaseline[]      @relation("IdentityBaselineReportIngestion")
+  createdAt                    DateTime                @default(now())
+  updatedAt                    DateTime                @updatedAt
+
+  @@unique([tenantId, consumerId, id], map: "report_ingestion_scope_id_key")
+  @@unique([tenantId, consumerId, idempotencyKey], map: "report_ingestion_idempotency_key")
+  @@unique([tenantId, consumerId, operationKey], map: "report_ingestion_operation_key")
+  @@unique([tenantId, consumerId, reportSeriesKey, reservedVersion], map: "report_ingestion_reservation_key")
+  @@unique([tenantId, consumerId, reportVersionId, id], map: "report_ingestion_identity_baseline_pin_key")
+  @@index([state, nextAttemptAt, leaseExpiresAt, createdAt], map: "report_ingestion_claim_idx")
+  @@index([tenantId, consumerId, state, createdAt], map: "report_ingestion_scope_state_idx")
+  @@index([tenantId, consumerId, sourceDisposition, createdAt], map: "report_ingestion_disposition_idx")
 }
 
 // Immutable version header. The safe defaults deliberately classify an omitted
@@ -1264,6 +1493,11 @@ model ReportVersion {
   creditScoreObservations CreditScoreObservation[]
   priorComparisons        ReportComparison[]         @relation("ReportComparisonPriorReport")
   currentComparisons      ReportComparison[]         @relation("ReportComparisonCurrentReport")
+  reportIngestions        ReportIngestion[]
+  bureauReportDates       BureauReportDateEvidence[]
+  consumerAccountReviews  ConsumerAccountReviewReceipt[]
+  round0SourceCompleteness Round0SourceCompletenessEvidence[]
+  identityBaselineAccountReviewMemberships IdentityBaselineAccountReviewMembership[]
 
   @@unique([tenantId, consumerId, id])
   @@unique([tenantId, consumerId, reportSeriesKey, version])
@@ -1288,6 +1522,10 @@ model ExtractionRun {
   errorCodes           String[]            @default([])
   startedAt            DateTime
   completedAt          DateTime
+  inputArtifactId      String?
+  inputSha256          String?                        @db.VarChar(64)
+  inputRepresentation  ExtractionInputRepresentation?
+  inputArtifact        Artifact?                      @relation("ExtractionRunInputArtifact", fields: [tenantId, consumerId, inputArtifactId, inputSha256], references: [tenantId, consumerId, id, sha256], onDelete: Restrict, onUpdate: Restrict, map: "extraction_run_input_artifact_fkey")
   createdAt            DateTime            @default(now())
 
   observations            FieldObservation[]
@@ -1299,6 +1537,13 @@ model ExtractionRun {
   creditScoreObservations CreditScoreObservation[]
   priorComparisons        ReportComparison[]           @relation("ReportComparisonPriorRun")
   currentComparisons      ReportComparison[]           @relation("ReportComparisonCurrentRun")
+  reportIngestions        ReportIngestion[]
+  bureauReportDates       BureauReportDateEvidence[]
+  identityBaselines       IdentityBaseline[]             @relation("IdentityBaselineExtractionRun")
+  identityFacts           IdentityFact[]                 @relation("IdentityFactExtractionRun")
+  consumerAccountReviews  ConsumerAccountReviewReceipt[]
+  round0SourceCompleteness Round0SourceCompletenessEvidence[]
+  identityBaselineAccountReviewMemberships IdentityBaselineAccountReviewMembership[]
 
   @@unique([tenantId, consumerId, id])
   @@unique([tenantId, consumerId, reportVersionId, id])
@@ -1325,6 +1570,8 @@ model ExtractionBureauCoverage {
   sectionCompleteness     SectionCompleteness[]
   historicalEvidence      HistoricalEvidence[]
   creditScoreObservations CreditScoreObservation[]
+  reportDates             BureauReportDateEvidence[]
+  round0SourceCompleteness Round0SourceCompletenessEvidence[]
   priorDifferences        ReportDifference[]           @relation("ReportDifferencePriorCoverage")
   currentDifferences      ReportDifference[]           @relation("ReportDifferenceCurrentCoverage")
 
@@ -1333,6 +1580,77 @@ model ExtractionBureauCoverage {
   @@unique([tenantId, consumerId, reportVersionId, extractionRunId, bureau, id], map: "extraction_bureau_coverage_difference_pin_key")
   @@unique([tenantId, consumerId, reportVersionId, extractionRunId, bureau, coverageStatus, id], map: "extraction_bureau_coverage_pin_key")
   @@index([tenantId, consumerId, reportVersionId, extractionRunId, coverageStatus])
+}
+
+// Lossless bureau-specific report-date evidence for one exact parser-v2 run.
+// The source value remains lexical so YEAR/MONTH precision is never promoted to
+// an invented day. UNKNOWN is distinct from explicit source-reported absence.
+model BureauReportDateEvidence {
+  id                 String                     @id @default(cuid())
+  tenantId           String
+  consumerId         String
+  scope              CreditTruthScope           @relation(fields: [tenantId, consumerId], references: [tenantId, consumerId], onDelete: Restrict, onUpdate: Restrict)
+  reportVersionId    String
+  reportVersion      ReportVersion              @relation(fields: [tenantId, consumerId, reportVersionId], references: [tenantId, consumerId, id], onDelete: Restrict, onUpdate: Restrict, map: "bureau_report_date_report_fkey")
+  extractionRunId    String
+  extractionRun      ExtractionRun              @relation(fields: [tenantId, consumerId, reportVersionId, extractionRunId], references: [tenantId, consumerId, reportVersionId, id], onDelete: Restrict, onUpdate: Restrict, map: "bureau_report_date_run_fkey")
+  bureau             Bureau
+  coverageStatus     BureauCoverageStatus
+  bureauCoverageId   String
+  bureauCoverage     ExtractionBureauCoverage   @relation(fields: [tenantId, consumerId, reportVersionId, extractionRunId, bureau, coverageStatus, bureauCoverageId], references: [tenantId, consumerId, reportVersionId, extractionRunId, bureau, coverageStatus, id], onDelete: Restrict, onUpdate: Restrict, map: "bureau_report_date_coverage_fkey")
+  presence           ReportDateEvidencePresence
+  sourceValue        String?                    @db.VarChar(10)
+  precision          ReportDatePrecision
+  provenance         ReportDateProvenance
+  sourceLocatorToken String?
+  integritySha256    String                     @db.VarChar(64)
+  createdAt          DateTime                   @default(now())
+
+  @@unique([tenantId, consumerId, id], map: "bureau_report_date_scope_id_key")
+  @@unique([tenantId, consumerId, reportVersionId, extractionRunId, bureau], map: "bureau_report_date_run_bureau_key")
+  @@index([tenantId, consumerId, reportVersionId, bureau, presence], map: "bureau_report_date_report_idx")
+}
+
+// Immutable, value-free parser-v2 completeness evidence for every exact
+// run/bureau/Round-0 catalog slot. UNRECOGNIZED_ACCOUNT is the ACCOUNT_INDEX
+// slot; the other eight categories describe source-reported identity evidence.
+// One exact run therefore carries 3 bureaus x 9 categories, including explicit
+// OUTSIDE_COVERAGE rows. This is source evidence, never a consumer disposition.
+model Round0SourceCompletenessEvidence {
+  id                     String                   @id @default(cuid())
+  tenantId               String
+  consumerId             String
+  scope                  CreditTruthScope         @relation(fields: [tenantId, consumerId], references: [tenantId, consumerId], onDelete: Restrict, onUpdate: Restrict)
+  reportVersionId        String
+  reportVersion          ReportVersion            @relation(fields: [tenantId, consumerId, reportVersionId], references: [tenantId, consumerId, id], onDelete: Restrict, onUpdate: Restrict, map: "round0_source_completeness_report_fkey")
+  extractionRunId        String
+  extractionRun          ExtractionRun            @relation(fields: [tenantId, consumerId, reportVersionId, extractionRunId], references: [tenantId, consumerId, reportVersionId, id], onDelete: Restrict, onUpdate: Restrict, map: "round0_source_completeness_run_fkey")
+  identityBaselineId     String?
+  baselineInputSetSha256 String?                  @db.VarChar(64)
+  identityBaseline       IdentityBaseline?        @relation("Round0SourceCompletenessBaseline", fields: [tenantId, consumerId, reportVersionId, extractionRunId, identityBaselineId, baselineInputSetSha256], references: [tenantId, consumerId, reportVersionId, extractionRunId, id, inputSetSha256], onDelete: Restrict, onUpdate: Restrict, map: "round0_source_completeness_baseline_fkey")
+  bureau                 Bureau
+  coverageStatus         BureauCoverageStatus
+  bureauCoverageId       String
+  bureauCoverage         ExtractionBureauCoverage @relation(fields: [tenantId, consumerId, reportVersionId, extractionRunId, bureau, coverageStatus, bureauCoverageId], references: [tenantId, consumerId, reportVersionId, extractionRunId, bureau, coverageStatus, id], onDelete: Restrict, onUpdate: Restrict, map: "round0_source_completeness_coverage_fkey")
+  category               IdentityReviewCategory
+  status                 SectionExtractionStatus
+  sourceMemberCount      Int
+  sourceMembershipSha256 String                   @db.VarChar(64)
+  sourceLocatorToken     String?
+  integritySha256        String                   @db.VarChar(64)
+  ruleKey                String
+  ruleVersion            String
+  createdAt              DateTime                 @default(now())
+
+  equifaxCategoryCompletions    IdentityCategoryCompletion[] @relation("IdentityCategoryCompletionEquifaxCompleteness")
+  experianCategoryCompletions   IdentityCategoryCompletion[] @relation("IdentityCategoryCompletionExperianCompleteness")
+  transunionCategoryCompletions IdentityCategoryCompletion[] @relation("IdentityCategoryCompletionTransunionCompleteness")
+  consumerAccountReviews        ConsumerAccountReviewReceipt[]
+
+  @@unique([tenantId, consumerId, id], map: "round0_source_completeness_scope_id_key")
+  @@unique([tenantId, consumerId, id, sourceMembershipSha256, integritySha256], map: "round0_source_completeness_receipt_pin_key")
+  @@unique([tenantId, consumerId, reportVersionId, extractionRunId, bureau, category], map: "round0_source_completeness_run_bureau_category_key")
+  @@index([tenantId, consumerId, reportVersionId, extractionRunId, category, status], map: "round0_source_completeness_category_idx")
 }
 
 // Stable account identity within a consumer scope. stableKey is random/opaque,
@@ -1350,6 +1668,7 @@ model Account {
   createdAt         DateTime             @default(now())
 
   reportVersions ReportVersionAccount[]
+  consumerAccountReviews ConsumerAccountReviewReceipt[]
 
   @@unique([tenantId, consumerId, id])
   @@unique([tenantId, consumerId, stableKey])
@@ -1378,9 +1697,11 @@ model ReportVersionAccount {
   sectionCompleteness SectionCompleteness[]
   historicalEvidence  HistoricalEvidence[]
   assessments         DerivedAccountAssessment[]
+  consumerAccountReviews ConsumerAccountReviewReceipt[]
 
   @@unique([tenantId, consumerId, id])
   @@unique([tenantId, consumerId, reportVersionId, accountId])
+  @@unique([tenantId, consumerId, reportVersionId, id, accountId], map: "report_version_account_review_pin_key")
   @@unique([tenantId, consumerId, reportVersionId, sourceAccountOrdinal])
   @@index([tenantId, consumerId, accountId, reportVersionId])
 }
@@ -1415,11 +1736,13 @@ model AccountPresenceObservation {
 
   priorDifferences   ReportDifference[] @relation("ReportDifferencePriorPresence")
   currentDifferences ReportDifference[] @relation("ReportDifferenceCurrentPresence")
+  consumerAccountReviews ConsumerAccountReviewReceipt[]
 
   @@unique([tenantId, consumerId, id])
   @@unique([tenantId, consumerId, observationSeriesKey, revision])
   @@unique([tenantId, consumerId, extractionRunId, accountId, bureau])
   @@unique([tenantId, consumerId, reportVersionId, extractionRunId, bureau, accountId, id], map: "account_presence_difference_pin_key")
+  @@unique([tenantId, consumerId, reportVersionId, extractionRunId, bureau, accountId, id, revision, integritySha256], map: "account_presence_review_pin_key")
   @@index([tenantId, consumerId, reportVersionId, accountId, bureau, presence])
 }
 
@@ -1621,6 +1944,7 @@ model ConsumerAssertion {
   observationSeriesKey       String
   observationRevision        Int
   observationIntegritySha256 String                       @db.VarChar(64)
+  integritySha256            String?                      @db.VarChar(64)
   assessmentId               String
   observation                FieldObservation             @relation(fields: [tenantId, consumerId, reportVersionId, accountId, extractionRunId, bureau, fieldKey, observationSeriesKey, observationRevision, observationIntegritySha256, observationId], references: [tenantId, consumerId, reportVersionId, accountId, extractionRunId, bureau, fieldKey, observationSeriesKey, revision, integritySha256, id], onDelete: Restrict, onUpdate: Restrict, map: "consumer_assertion_observation_fkey")
   assessment                 DerivedAccountAssessment     @relation(fields: [tenantId, consumerId, reportVersionId, accountId, extractionRunId, assessmentId], references: [tenantId, consumerId, reportVersionId, accountId, extractionRunId, id], onDelete: Restrict, onUpdate: Restrict, map: "consumer_assertion_assessment_fkey")
@@ -1693,6 +2017,9 @@ model CreditScoreObservation {
   scoreAadVersion           String?
   scoreModelKey             String?
   scoreModelVersion         String?
+  scoreModelPresence           CreditScoreModelPresence?
+  scoreModelEvidenceValue      String?
+  scoreModelSourceLocatorToken String?
   scoreScaleMin             Int?
   scoreScaleMax             Int?
   modelMetadataCompleteness ScoreModelMetadataCompleteness
@@ -1919,6 +2246,20 @@ model IdentityBaseline {
   consumerId         String
   reportVersionId    String
   reportVersion      ReportVersion          @relation(fields: [tenantId, consumerId, reportVersionId], references: [tenantId, consumerId, id], onDelete: Restrict, onUpdate: Restrict)
+  extractionRunId    String?
+  extractionRun      ExtractionRun?         @relation("IdentityBaselineExtractionRun", fields: [tenantId, consumerId, reportVersionId, extractionRunId], references: [tenantId, consumerId, reportVersionId, id], onDelete: Restrict, onUpdate: Restrict, map: "identity_baseline_extraction_run_fkey")
+  reportIngestionId  String?
+  reportIngestion    ReportIngestion?        @relation("IdentityBaselineReportIngestion", fields: [tenantId, consumerId, reportVersionId, reportIngestionId], references: [tenantId, consumerId, reportVersionId, id], onDelete: Restrict, onUpdate: Restrict, map: "identity_baseline_report_ingestion_fkey")
+  sourceIdentityBaselineId            String?
+  sourceIdentityBaseline              IdentityBaseline?  @relation("IdentityBaselineConfirmationSource", fields: [tenantId, consumerId, reportVersionId, extractionRunId, sourceIdentityBaselineId, inputSetSha256], references: [tenantId, consumerId, reportVersionId, extractionRunId, id, inputSetSha256], onDelete: Restrict, onUpdate: Restrict, map: "identity_baseline_confirmation_source_fkey")
+  confirmedSuccessorBaselines         IdentityBaseline[]  @relation("IdentityBaselineConfirmationSource")
+  supersedesIdentityBaselineId        String?
+  supersedesIdentityBaseline          IdentityBaseline?  @relation("IdentityBaselineConfirmationChronology", fields: [tenantId, consumerId, supersedesIdentityBaselineId], references: [tenantId, consumerId, id], onDelete: Restrict, onUpdate: Restrict, map: "identity_baseline_confirmation_predecessor_fkey")
+  supersededByIdentityBaseline        IdentityBaseline?  @relation("IdentityBaselineConfirmationChronology")
+  semanticSha256                      String?              @db.VarChar(64)
+  expectedIdentityFactCount           Int?
+  expectedCategoryCompletionCount     Int?
+  expectedAccountReviewReceiptCount   Int?
   baselineSeriesKey  String
   version            Int
   status             IdentityBaselineStatus
@@ -1934,9 +2275,18 @@ model IdentityBaseline {
   correspondenceVersions CorrespondenceVersion[]
   packets                Packet[]
   artifacts              Artifact[]
+  categoryCompletions    IdentityCategoryCompletion[]
+  identityAssertions     IdentityCorrespondenceAssertion[]
+  consumerAccountReviews ConsumerAccountReviewReceipt[]
+  round0SourceCompleteness Round0SourceCompletenessEvidence[] @relation("Round0SourceCompletenessBaseline")
+  confirmedAccountReviewMemberships IdentityBaselineAccountReviewMembership[]
 
   @@unique([tenantId, consumerId, id])
   @@unique([tenantId, consumerId, reportVersionId, id])
+  @@unique([tenantId, consumerId, reportVersionId, id, version, inputSetSha256], map: "identity_baseline_attestation_pin_key")
+  @@unique([tenantId, consumerId, reportVersionId, extractionRunId, id, version, inputSetSha256], map: "identity_baseline_source_seal_pin_key")
+  @@unique([tenantId, consumerId, reportVersionId, extractionRunId, id, inputSetSha256], map: "identity_baseline_round0_source_pin_key")
+  @@unique([tenantId, consumerId, supersedesIdentityBaselineId], map: "identity_baseline_single_successor_key")
   @@unique([tenantId, consumerId, baselineSeriesKey, version])
   @@index([tenantId, consumerId, reportVersionId, status])
 }
@@ -1948,11 +2298,16 @@ model IdentityFact {
   reportVersionId          String
   identityBaselineId       String
   baseline                 IdentityBaseline           @relation(fields: [tenantId, consumerId, reportVersionId, identityBaselineId], references: [tenantId, consumerId, reportVersionId, id], onDelete: Restrict, onUpdate: Restrict)
+  extractionRunId          String?
+  extractionRun            ExtractionRun?             @relation("IdentityFactExtractionRun", fields: [tenantId, consumerId, reportVersionId, extractionRunId], references: [tenantId, consumerId, reportVersionId, id], onDelete: Restrict, onUpdate: Restrict, map: "identity_fact_extraction_run_fkey")
+  baselineInputSetSha256   String?                    @db.VarChar(64)
   factSeriesKey            String
   factOrdinal              Int
   bureau                   Bureau?
   factType                 IdentityFactType
   classification           IdentityFactClassification
+  reviewCategory           IdentityReviewCategory?
+  integritySha256          String?                    @db.VarChar(64)
   presence                 ObservationPresence
   valueCiphertext          Bytes?
   valueIv                  Bytes?
@@ -1968,12 +2323,178 @@ model IdentityFact {
 
   priorDifferences   ReportDifference[] @relation("ReportDifferencePriorIdentityFact")
   currentDifferences ReportDifference[] @relation("ReportDifferenceCurrentIdentityFact")
+  identityAssertions IdentityCorrespondenceAssertion[]
 
   @@unique([tenantId, consumerId, id])
   @@unique([tenantId, consumerId, identityBaselineId, factOrdinal])
   @@unique([tenantId, consumerId, identityBaselineId, factSeriesKey])
   @@unique([tenantId, consumerId, reportVersionId, identityBaselineId, factSeriesKey, id], map: "identity_fact_difference_pin_key")
+  @@unique([tenantId, consumerId, reportVersionId, identityBaselineId, factSeriesKey, id, classification, integritySha256], map: "identity_fact_assertion_pin_key")
+  @@unique([tenantId, consumerId, reportVersionId, extractionRunId, identityBaselineId, baselineInputSetSha256, factSeriesKey, id, classification, integritySha256], map: "identity_fact_source_seal_pin_key")
   @@index([tenantId, consumerId, identityBaselineId, factType, classification])
+}
+
+// Category-level Round 0 completion evidence. It can only say that a category
+// was not applicable after a complete source review found no corresponding fact.
+// Database triggers reject both a contradictory completion and a later fact.
+model IdentityCategoryCompletion {
+  id                               String                                @id @default(cuid())
+  tenantId                         String
+  consumerId                       String
+  reportVersionId                  String
+  extractionRunId                  String
+  identityBaselineId               String
+  identityBaselineVersion          Int
+  baselineInputSetSha256           String                                @db.VarChar(64)
+  baseline                         IdentityBaseline                      @relation(fields: [tenantId, consumerId, reportVersionId, extractionRunId, identityBaselineId, identityBaselineVersion, baselineInputSetSha256], references: [tenantId, consumerId, reportVersionId, extractionRunId, id, version, inputSetSha256], onDelete: Restrict, onUpdate: Restrict, map: "identity_category_completion_baseline_fkey")
+  category                         IdentityReviewCategory
+  disposition                      IdentityCategoryCompletionDisposition @default(NOT_APPLICABLE)
+  sourceCompletenessSha256         String                                @db.VarChar(64)
+  sourceCompletenessAttestationKey String
+  sourceCompletenessRuleVersion    String
+  sourceCompletenessEvidenceCount  Int                                   @default(3)
+  equifaxSourceCompletenessEvidenceId String
+  equifaxSourceCompletenessEvidence   Round0SourceCompletenessEvidence    @relation("IdentityCategoryCompletionEquifaxCompleteness", fields: [tenantId, consumerId, equifaxSourceCompletenessEvidenceId], references: [tenantId, consumerId, id], onDelete: Restrict, onUpdate: Restrict, map: "identity_category_completion_equifax_source_fkey")
+  experianSourceCompletenessEvidenceId String
+  experianSourceCompletenessEvidence   Round0SourceCompletenessEvidence   @relation("IdentityCategoryCompletionExperianCompleteness", fields: [tenantId, consumerId, experianSourceCompletenessEvidenceId], references: [tenantId, consumerId, id], onDelete: Restrict, onUpdate: Restrict, map: "identity_category_completion_experian_source_fkey")
+  transunionSourceCompletenessEvidenceId String
+  transunionSourceCompletenessEvidence   Round0SourceCompletenessEvidence @relation("IdentityCategoryCompletionTransunionCompleteness", fields: [tenantId, consumerId, transunionSourceCompletenessEvidenceId], references: [tenantId, consumerId, id], onDelete: Restrict, onUpdate: Restrict, map: "identity_category_completion_transunion_source_fkey")
+  completedByActorId               String
+  completedAt                      DateTime
+  createdAt                        DateTime                              @default(now())
+
+  @@unique([tenantId, consumerId, id], map: "identity_category_completion_scope_id_key")
+  @@unique([tenantId, consumerId, identityBaselineId, category], map: "identity_category_completion_category_key")
+  @@index([tenantId, consumerId, reportVersionId, category], map: "identity_category_completion_report_idx")
+}
+
+// Immutable receipt that the consumer authorized use of one exact classified
+// identity fact for a bounded correspondence purpose. Classification remains on
+// IdentityFact; this receipt cannot carry an alternate disposition.
+model IdentityCorrespondenceAssertion {
+  id                          String                                @id @default(cuid())
+  tenantId                    String
+  consumerId                  String
+  reportVersionId             String
+  extractionRunId             String
+  identityBaselineId          String
+  identityBaselineVersion     Int
+  baselineInputSetSha256      String                                @db.VarChar(64)
+  baseline                    IdentityBaseline                      @relation(fields: [tenantId, consumerId, reportVersionId, extractionRunId, identityBaselineId, identityBaselineVersion, baselineInputSetSha256], references: [tenantId, consumerId, reportVersionId, extractionRunId, id, version, inputSetSha256], onDelete: Restrict, onUpdate: Restrict, map: "identity_correspondence_assertion_baseline_fkey")
+  identityFactSeriesKey       String
+  identityFactId              String
+  identityFactClassification  IdentityFactClassification
+  identityFactIntegritySha256 String                                @db.VarChar(64)
+  identityFact                IdentityFact                          @relation(fields: [tenantId, consumerId, reportVersionId, extractionRunId, identityBaselineId, baselineInputSetSha256, identityFactSeriesKey, identityFactId, identityFactClassification, identityFactIntegritySha256], references: [tenantId, consumerId, reportVersionId, extractionRunId, identityBaselineId, baselineInputSetSha256, factSeriesKey, id, classification, integritySha256], onDelete: Restrict, onUpdate: Restrict, map: "identity_correspondence_assertion_fact_fkey")
+  factBureau                  Bureau?
+  factSourceLocatorToken      String
+  correspondencePurposeCode   IdentityCorrespondencePurpose
+  sourceSeriesKey             String                                @db.VarChar(64)
+  assertionSeriesKey          String
+  version                     Int
+  status                      IdentityCorrespondenceAssertionStatus
+  sourceSetSha256             String                                @db.VarChar(64)
+  attestedByActorId           String
+  attestedAt                  DateTime
+  supersedesAssertionId       String?
+  supersedes                  IdentityCorrespondenceAssertion?      @relation("IdentityCorrespondenceAssertionSupersession", fields: [tenantId, consumerId, assertionSeriesKey, supersedesAssertionId], references: [tenantId, consumerId, assertionSeriesKey, id], onDelete: Restrict, onUpdate: Restrict, map: "identity_correspondence_assertion_supersession_fkey")
+  supersededBy                IdentityCorrespondenceAssertion[]     @relation("IdentityCorrespondenceAssertionSupersession")
+  createdAt                   DateTime                              @default(now())
+
+  @@unique([tenantId, consumerId, id], map: "identity_correspondence_scope_id_key")
+  @@unique([tenantId, consumerId, assertionSeriesKey, id], map: "identity_correspondence_supersession_key")
+  @@unique([tenantId, consumerId, assertionSeriesKey, version], map: "identity_correspondence_series_version_key")
+  @@unique([tenantId, consumerId, sourceSeriesKey, version], map: "identity_correspondence_source_series_version_key")
+  @@unique([tenantId, consumerId, supersedesAssertionId], map: "identity_correspondence_single_successor_key")
+  @@index([tenantId, consumerId, identityBaselineId, identityFactId, attestedAt], map: "identity_correspondence_fact_idx")
+}
+
+// Bounded consumer recognition review for one exact source-listed account.
+// UNRECOGNIZED means only that the consumer did not recognize the account; no
+// fraud, inaccuracy, dispute, deletion, policy, or legal conclusion is stored.
+model ConsumerAccountReviewReceipt {
+  id                                 String                         @id @default(cuid())
+  tenantId                           String
+  consumerId                         String
+  scope                              CreditTruthScope               @relation(fields: [tenantId, consumerId], references: [tenantId, consumerId], onDelete: Restrict, onUpdate: Restrict)
+  reportVersionId                    String
+  reportVersion                      ReportVersion                  @relation(fields: [tenantId, consumerId, reportVersionId], references: [tenantId, consumerId, id], onDelete: Restrict, onUpdate: Restrict, map: "consumer_account_review_report_fkey")
+  extractionRunId                    String
+  extractionRun                      ExtractionRun                  @relation(fields: [tenantId, consumerId, reportVersionId, extractionRunId], references: [tenantId, consumerId, reportVersionId, id], onDelete: Restrict, onUpdate: Restrict, map: "consumer_account_review_run_fkey")
+  identityBaselineId                 String
+  identityBaselineVersion            Int
+  baselineInputSetSha256             String                         @db.VarChar(64)
+  identityBaseline                   IdentityBaseline               @relation(fields: [tenantId, consumerId, reportVersionId, extractionRunId, identityBaselineId, identityBaselineVersion, baselineInputSetSha256], references: [tenantId, consumerId, reportVersionId, extractionRunId, id, version, inputSetSha256], onDelete: Restrict, onUpdate: Restrict, map: "consumer_account_review_baseline_fkey")
+  bureau                             Bureau
+  accountId                          String
+  account                            Account                        @relation(fields: [tenantId, consumerId, accountId], references: [tenantId, consumerId, id], onDelete: Restrict, onUpdate: Restrict, map: "consumer_account_review_account_fkey")
+  reportVersionAccountId             String
+  reportVersionAccount               ReportVersionAccount           @relation(fields: [tenantId, consumerId, reportVersionId, reportVersionAccountId, accountId], references: [tenantId, consumerId, reportVersionId, id, accountId], onDelete: Restrict, onUpdate: Restrict, map: "consumer_account_review_report_account_fkey")
+  accountPresenceObservationId       String
+  accountPresenceObservationRevision Int
+  accountPresenceIntegritySha256     String                         @db.VarChar(64)
+  accountPresenceSourceLocatorToken  String
+  accountPresenceObservation         AccountPresenceObservation     @relation(fields: [tenantId, consumerId, reportVersionId, extractionRunId, bureau, accountId, accountPresenceObservationId, accountPresenceObservationRevision, accountPresenceIntegritySha256], references: [tenantId, consumerId, reportVersionId, extractionRunId, bureau, accountId, id, revision, integritySha256], onDelete: Restrict, onUpdate: Restrict, map: "consumer_account_review_presence_fkey")
+  accountIndexCompletenessEvidenceId String
+  accountIndexSourceMembershipSha256 String                         @db.VarChar(64)
+  accountIndexCompletenessIntegritySha256 String                    @db.VarChar(64)
+  accountIndexCompletenessEvidence   Round0SourceCompletenessEvidence @relation(fields: [tenantId, consumerId, accountIndexCompletenessEvidenceId, accountIndexSourceMembershipSha256, accountIndexCompletenessIntegritySha256], references: [tenantId, consumerId, id, sourceMembershipSha256, integritySha256], onDelete: Restrict, onUpdate: Restrict, map: "consumer_account_review_completeness_fkey")
+  sourceSeriesKey                    String                         @db.VarChar(64)
+  reviewSeriesKey                    String
+  version                            Int
+  reviewState                        ConsumerAccountReviewState
+  sourceSetSha256                    String                         @db.VarChar(64)
+  authorizationKind                  P0AuthorizationKind
+  authorizationVersion               String
+  reviewedByActorId                  String
+  reviewedAt                         DateTime
+  supersedesReviewId                 String?
+  supersedes                         ConsumerAccountReviewReceipt?  @relation("ConsumerAccountReviewSupersession", fields: [tenantId, consumerId, reviewSeriesKey, supersedesReviewId], references: [tenantId, consumerId, reviewSeriesKey, id], onDelete: Restrict, onUpdate: Restrict, map: "consumer_account_review_supersession_fkey")
+  supersededBy                       ConsumerAccountReviewReceipt[] @relation("ConsumerAccountReviewSupersession")
+  confirmedBaselineMemberships       IdentityBaselineAccountReviewMembership[]
+  createdAt                          DateTime                       @default(now())
+
+  @@unique([tenantId, consumerId, id], map: "consumer_account_review_scope_id_key")
+  @@unique([tenantId, consumerId, reviewSeriesKey, id], map: "consumer_account_review_supersession_key")
+  @@unique([tenantId, consumerId, reviewSeriesKey, version], map: "consumer_account_review_series_version_key")
+  @@unique([tenantId, consumerId, sourceSeriesKey, version], map: "consumer_account_review_source_series_version_key")
+  @@unique([tenantId, consumerId, supersedesReviewId], map: "consumer_account_review_single_successor_key")
+  @@unique([tenantId, consumerId, id, reviewSeriesKey, version, reviewState, sourceSetSha256, bureau, accountId, reportVersionAccountId], map: "consumer_account_review_confirmation_pin_key")
+  @@index([tenantId, consumerId, reportVersionId, extractionRunId, bureau, accountId, reviewedAt], map: "consumer_account_review_source_idx")
+}
+
+// Exact normalized membership of a current consumer account-review receipt in
+// one immutable CONFIRMED Round-0 baseline. This is refs-only confirmation
+// evidence; it carries no fraud, accuracy, dispute, policy, or legal conclusion.
+model IdentityBaselineAccountReviewMembership {
+  id                                String                         @id @default(cuid())
+  tenantId                          String
+  consumerId                        String
+  scope                             CreditTruthScope               @relation(fields: [tenantId, consumerId], references: [tenantId, consumerId], onDelete: Restrict, onUpdate: Restrict, map: "identity_baseline_account_review_scope_fkey")
+  reportVersionId                   String
+  reportVersion                     ReportVersion                  @relation(fields: [tenantId, consumerId, reportVersionId], references: [tenantId, consumerId, id], onDelete: Restrict, onUpdate: Restrict, map: "identity_baseline_account_review_report_fkey")
+  extractionRunId                   String
+  extractionRun                     ExtractionRun                  @relation(fields: [tenantId, consumerId, reportVersionId, extractionRunId], references: [tenantId, consumerId, reportVersionId, id], onDelete: Restrict, onUpdate: Restrict, map: "identity_baseline_account_review_run_fkey")
+  confirmedIdentityBaselineId       String
+  confirmedIdentityBaselineVersion  Int
+  confirmedBaselineInputSetSha256   String                         @db.VarChar(64)
+  confirmedIdentityBaseline         IdentityBaseline               @relation(fields: [tenantId, consumerId, reportVersionId, extractionRunId, confirmedIdentityBaselineId, confirmedIdentityBaselineVersion, confirmedBaselineInputSetSha256], references: [tenantId, consumerId, reportVersionId, extractionRunId, id, version, inputSetSha256], onDelete: Restrict, onUpdate: Restrict, map: "identity_baseline_account_review_baseline_fkey")
+  consumerAccountReviewReceiptId    String
+  reviewSeriesKey                   String
+  reviewVersion                     Int
+  reviewState                       ConsumerAccountReviewState
+  receiptSourceSetSha256            String                         @db.VarChar(64)
+  bureau                            Bureau
+  accountId                         String
+  reportVersionAccountId            String
+  consumerAccountReviewReceipt      ConsumerAccountReviewReceipt   @relation(fields: [tenantId, consumerId, consumerAccountReviewReceiptId, reviewSeriesKey, reviewVersion, reviewState, receiptSourceSetSha256, bureau, accountId, reportVersionAccountId], references: [tenantId, consumerId, id, reviewSeriesKey, version, reviewState, sourceSetSha256, bureau, accountId, reportVersionAccountId], onDelete: Restrict, onUpdate: Restrict, map: "identity_baseline_account_review_receipt_fkey")
+  ordinal                           Int
+  createdAt                         DateTime                        @default(now())
+
+  @@unique([tenantId, consumerId, id], map: "identity_baseline_account_review_scope_id_key")
+  @@unique([tenantId, consumerId, confirmedIdentityBaselineId, consumerAccountReviewReceiptId], map: "identity_baseline_account_review_member_key")
+  @@unique([tenantId, consumerId, confirmedIdentityBaselineId, ordinal], map: "identity_baseline_account_review_ordinal_key")
+  @@index([tenantId, consumerId, reportVersionId, confirmedIdentityBaselineId], map: "identity_baseline_account_review_baseline_idx")
 }
 
 // Recipient identity and, for a CRA, its exact bureau authority are stable;
@@ -2062,11 +2583,73 @@ model DisputeCase {
   artifacts       Artifact[]
   evidenceEvents  EvidenceEvent[]
   disputeOutcomes DisputeOutcome[]
+  actionDecisions CaseActionDecision[]
 
   @@unique([tenantId, consumerId, id])
   @@unique([tenantId, consumerId, reportVersionId, id])
   @@unique([tenantId, consumerId, caseKey])
   @@index([tenantId, consumerId, status, createdAt])
+}
+
+// Append-only consumer selection chronology. No policy, counsel disposition,
+// legal eligibility, correspondence content, or requested legal conclusion is
+// stored here. Exact source memberships are normalized below.
+model CaseActionDecision {
+  id                   String                  @id @default(cuid())
+  tenantId             String
+  consumerId           String
+  reportVersionId      String
+  caseId               String
+  disputeCase          DisputeCase             @relation(fields: [tenantId, consumerId, reportVersionId, caseId], references: [tenantId, consumerId, reportVersionId, id], onDelete: Restrict, onUpdate: Restrict, map: "CaseActionDecision_case_fkey")
+  decisionSeriesKey    String
+  version              Int
+  state                CaseActionDecisionState
+  actionCode           CaseActionCode
+  chronologyRound      Int
+  expectedSourceCount  Int
+  sourceSetSha256      String                  @db.VarChar(64)
+  idempotencyKey       String
+  recordedByActorId    String
+  recordedAt           DateTime
+  supersedesDecisionId String?
+  supersedes           CaseActionDecision?     @relation("CaseActionDecisionSupersession", fields: [tenantId, consumerId, decisionSeriesKey, supersedesDecisionId], references: [tenantId, consumerId, decisionSeriesKey, id], onDelete: Restrict, onUpdate: Restrict, map: "case_action_decision_supersession_fkey")
+  supersededBy         CaseActionDecision[]    @relation("CaseActionDecisionSupersession")
+  createdAt            DateTime                @default(now())
+
+  sourceRefs CaseActionSourceRef[]
+
+  @@unique([tenantId, consumerId, id], map: "case_action_decision_scope_id_key")
+  @@unique([tenantId, consumerId, reportVersionId, caseId, id], map: "case_action_decision_membership_pin_key")
+  @@unique([tenantId, consumerId, decisionSeriesKey, id], map: "case_action_decision_supersession_key")
+  @@unique([tenantId, consumerId, decisionSeriesKey, version], map: "case_action_decision_series_version_key")
+  @@unique([tenantId, consumerId, idempotencyKey], map: "case_action_decision_idempotency_key")
+  @@unique([tenantId, consumerId, supersedesDecisionId], map: "case_action_decision_single_successor_key")
+  @@index([tenantId, consumerId, caseId, state, recordedAt], map: "case_action_decision_case_state_idx")
+}
+
+// Closed, normalized exact source membership for both proposed and consumer-
+// selected decisions. A database trigger resolves and locks the type-specific
+// source row in the same scope/report and verifies version, bureau, and digest.
+model CaseActionSourceRef {
+  id              String               @id @default(cuid())
+  tenantId        String
+  consumerId      String
+  reportVersionId String
+  caseId          String
+  decisionId      String
+  decision        CaseActionDecision   @relation(fields: [tenantId, consumerId, reportVersionId, caseId, decisionId], references: [tenantId, consumerId, reportVersionId, caseId, id], onDelete: Restrict, onUpdate: Restrict, map: "case_action_source_decision_fkey")
+  sourceType      CaseActionSourceType
+  sourceId        String
+  sourceVersion   Int
+  bureau          Bureau?
+  integritySha256 String               @db.VarChar(64)
+  ordinal         Int
+  createdAt       DateTime             @default(now())
+
+  @@unique([tenantId, consumerId, id], map: "case_action_source_scope_id_key")
+  @@unique([tenantId, consumerId, decisionId, sourceType, sourceId], map: "case_action_source_membership_key")
+  @@unique([tenantId, consumerId, decisionId, ordinal], map: "case_action_source_ordinal_key")
+  @@index([tenantId, consumerId, sourceType, sourceId], map: "case_action_source_lookup_idx")
 }
 
 // Mutable aggregate header only. Approved content, addresses, items and artifacts
@@ -2379,8 +2962,11 @@ model Artifact {
   enclosureMemberships   PacketEnclosure[]
   correspondenceVersions ArtifactCorrespondenceVersion[]
   tombstones             ArtifactTombstone[]
+  sourceReportIngestions ReportIngestion[]               @relation("ReportIngestionSourceArtifact")
+  extractionInputRuns    ExtractionRun[]                 @relation("ExtractionRunInputArtifact")
 
   @@unique([tenantId, consumerId, id])
+  @@unique([tenantId, consumerId, id, sha256], map: "artifact_extraction_input_pin_key")
   @@unique([tenantId, consumerId, reportVersionId, caseId, id])
   @@unique([tenantId, consumerId, reportVersionId, caseId, kind, id], map: "artifact_enclosure_pin_key")
   @@unique([tenantId, consumerId, reportVersionId, caseId, packetId, recipientId, recipientAddressVersionId, identityBaselineId, policyVersion, round, claimClass, kind, id], map: "artifact_packet_enclosure_pin_key")
@@ -2437,6 +3023,35 @@ model ArtifactTombstone {
   @@unique([tenantId, consumerId, id])
   @@unique([tenantId, consumerId, eventKey])
   @@index([tenantId, consumerId, artifactId, createdAt])
+}
+
+// Refs-only access-decision ledger. No report values, testimony, addresses,
+// snippets, provider errors, or arbitrary metadata are permitted.
+model P0SensitiveAccessEvent {
+  id                   String                       @id @default(cuid())
+  tenantId             String
+  consumerId           String
+  scope                CreditTruthScope             @relation(fields: [tenantId, consumerId], references: [tenantId, consumerId], onDelete: Restrict, onUpdate: Restrict)
+  eventKey             String
+  actorId              String
+  authorizationKind    P0AuthorizationKind
+  authorizationVersion String
+  accessKind           P0SensitiveAccessKind
+  purposeCode          P0SensitiveAccessPurposeCode
+  decision             P0SensitiveAccessDecision
+  decisionCode         P0SensitiveAccessReasonCode
+  resourceType         P0SensitiveResourceType
+  resourceId           String
+  resourceVersion      Int
+  correlationId        String
+  occurredAt           DateTime
+  createdAt            DateTime                     @default(now())
+
+  @@unique([tenantId, consumerId, id], map: "p0_sensitive_access_scope_id_key")
+  @@unique([tenantId, consumerId, eventKey], map: "p0_sensitive_access_event_key")
+  @@index([tenantId, consumerId, resourceType, resourceId, resourceVersion], map: "p0_sensitive_access_resource_idx")
+  @@index([tenantId, consumerId, actorId, occurredAt, id], map: "p0_sensitive_access_actor_idx")
+  @@index([tenantId, consumerId, correlationId], map: "p0_sensitive_access_correlation_idx")
 }
 
 // PII-safe append-only ledger: internal refs and bounded machine keys only. There
