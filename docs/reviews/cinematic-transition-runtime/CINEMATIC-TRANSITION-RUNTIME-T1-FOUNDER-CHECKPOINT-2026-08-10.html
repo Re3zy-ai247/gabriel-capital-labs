@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Cinematic Transition Runtime — T1 Founder Checkpoint</title>
+<style>
+  :root { color-scheme: light dark;
+    --bg:#f7f8fa; --fg:#16202b; --muted:#5b6b7c; --line:#d8dee6; --card:#ffffff;
+    --accent:#0e7490; --code:#eef1f5; }
+  @media (prefers-color-scheme: dark) { :root {
+    --bg:#04121b; --fg:#e6edf3; --muted:#8fa3b5; --line:#1f3242; --card:#0a1c29;
+    --accent:#38bdf8; --code:#0f2434; } }
+  * { box-sizing:border-box }
+  body { margin:0; background:var(--bg); color:var(--fg);
+    font:16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-text-size-adjust:100%; }
+  .wrap { max-width:860px; margin:0 auto; padding:24px 18px 96px; }
+  h1 { font-size:1.7rem; line-height:1.25; margin:0.4em 0 0.5em; }
+  h2 { font-size:1.25rem; margin:2.2em 0 0.6em; padding-top:0.9em; border-top:1px solid var(--line); }
+  h3 { font-size:1.05rem; margin:1.6em 0 0.4em; }
+  p, li { overflow-wrap:break-word; }
+  a { color:var(--accent); }
+  code { background:var(--code); border-radius:5px; padding:0.12em 0.35em;
+    font:0.86em ui-monospace, SFMono-Regular, Menlo, monospace; overflow-wrap:anywhere; }
+  pre { background:var(--code); border:1px solid var(--line); border-radius:10px;
+    padding:14px; overflow-x:auto; }
+  pre code { background:none; padding:0; }
+  table { border-collapse:collapse; width:100%; font-size:0.9rem; }
+  .tblwrap { overflow-x:auto; margin:1em 0; border:1px solid var(--line); border-radius:10px; }
+  th, td { border-bottom:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+  th { background:var(--card); position:sticky; top:0; }
+  tr:last-child td { border-bottom:none; }
+  blockquote { margin:1em 0; padding:2px 16px; border-left:3px solid var(--accent);
+    color:var(--muted); }
+  hr { border:none; border-top:1px solid var(--line); margin:2em 0; }
+  strong { font-weight:650; }
+</style>
+</head>
+<body><main class="wrap">
+<h1>Cinematic Transition Runtime — T1 Founder Checkpoint</h1>
+<p><strong>Date:</strong> 2026-08-10/11 · <strong>Author:</strong> Fable 5 (coordinator/design authority; Sonnet implementation, Opus adversarial gate)
+<strong>Branch:</strong> <code>feat/cinematic-transition-runtime-t1</code> from <code>origin/main</code> @ <code>a72a47c</code> · worktree <code>~/Documents/worktrees/cinematic-transition-runtime-t1</code>
+<strong>Companion:</strong> <code>CINEMATIC-TRANSITION-RUNTIME-AUDIT-2026-08-10.md</code> (the repository audit this wave rests on), <code>T1-SPEC.md</code> (binding spec, amendments T1.1/T1.2 recorded).</p>
+<h2>1 · What T1 is</h2>
+<p>The reusable <strong>journey state machine</strong> the whole cinematic program will build on — the
+Founder&#39;s grammar (MOVE → DISCOVER → TRAVEL → ARRIVE → OPERATE) as an engineered,
+tested runtime, not choreography. Phases <code>settled → intent → departing → traveling → arriving → settled</code> (+ <code>recovering</code>), synthesizing the three proven in-house grammars:
+CXOS sequence-cancellation and tier ladder, HELIOS journey laws (route-commit
+discipline, governed Esc, separate clocks, RM full citizenship), and the production
+<code>TransitionShell</code> fail-open ethic. No product room was modified; nothing global was
+mounted; the demo lives behind the existing <code>/review</code> production 404 hard-off.</p>
+<h2>2 · What was built (17 new files, 0 modified)</h2>
+<div class="tblwrap"><table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>Files</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Pure machine</td>
+<td><code>lib/transition-runtime/{types,machine,pacing}.ts</code> — zero React/DOM, injectable clock, 8 laws</td>
+</tr>
+<tr>
+<td>React adapter</td>
+<td><code>components/transition-runtime/{TransitionRuntimeProvider,TravelLayer,RoomReady}.tsx</code></td>
+</tr>
+<tr>
+<td>Demo (review-gated)</td>
+<td><code>app/review/transition-runtime/{page,layout,[room]/page,[room]/DemoRoom,[room]/roomsShared}</code></td>
+</tr>
+<tr>
+<td>Guards</td>
+<td><code>scripts/transition-runtime.test.ts</code> — <strong>153/153</strong>, deterministic manual clock</td>
+</tr>
+<tr>
+<td>Docs</td>
+<td><code>docs/reviews/cinematic-transition-runtime/</code> — spec + audit + this checkpoint (+ HTML twins)</td>
+</tr>
+</tbody></table></div>
+<p>Machine laws (each guard-pinned): monotonic <strong>sequence</strong> cancellation (input never
+blocked); <strong>route commits exactly once</strong> at departing→traveling; retarget <strong>supersedes
+pre-commit / ignored post-commit</strong>; <strong>governed Escape cancel</strong> pre-commit; named
+per-phase timers with deterministic destroy; <strong>fail-open clocks</strong> (readiness timeout
+1000 ms, journey hard cap 1800 ms; worst-case cinematic chain 1640 ms &lt; hard cap,
+pinned as a static inequality guard); <strong>immediate mode</strong> for reduced-motion/tier C-D/
+hidden documents — deterministic INTENT → DESTINATION → ACTIVE with zero veil.</p>
+<h2>3 · Validation (all executed, all green)</h2>
+<ul>
+<li><code>npm run typecheck</code> clean · <code>NEXT_PUBLIC_CXOS_REVIEW=1 npx next build</code> clean (70/70 pages; also clean without the flag).</li>
+<li>Guard suite <strong>153/153</strong>: 16 spec scenarios + T1.2 regressions (seeding/recovery, pacing inequality, readiness predicate) + machine-purity greps + the <strong>isolation gate</strong> (diff vs <code>a72a47c</code> must touch only T1-allowlisted paths — this gate caught and forced repair of a transient <code>.claude/launch.json</code> overwrite during the session; the tracked file is byte-identical to <code>a72a47c</code>).</li>
+<li><strong>Live browser evidence, reduced-motion path</strong> (this Mac forces reduce in every Chromium): journey resolves <code>settled / seq 1 / immediate / D</code>, real route swap, zero veil — the deterministic reduced path, verified in the pane.</li>
+<li><strong>Live browser evidence, cinematic path</strong> (Playwright <code>reducedMotion: &#39;no-preference&#39;</code> per-context emulation — the CXOS-proven override): full grammar across a <strong>real router.push</strong>: departing (veil fade-in over origin) → traveling (veil opaque, pointer-intercepting, <code>&lt;main&gt;</code> ownership-marked <code>inert</code>, destination mounts beneath, RoomReady fires) → arriving (veil release) → settled with <strong>focus handed to the destination H1</strong>. Zero inert residue after settle.</li>
+<li><strong>Regression drive for the adversarial fixes:</strong> browser-back after a journey then 2.4 s wait — location never hijacked (the pre-fix stale verify-timer bug, live-reproduced before, gone after). Self-navigation click starts no journey. Escape mid-departing recovers to origin with no commit.</li>
+</ul>
+<h2>4 · Adversarial gate (Opus, three lenses) and disposition</h2>
+<p><strong>0 Critical · 5 High (deduped) · 8 Medium · 7 Low.</strong> All Highs and all actionable
+Mediums FIXED in the T1.2 pass and re-verified live:</p>
+<div class="tblwrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Finding (sev)</th>
+<th>Disposition</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td>Stale router-verify timer hijacks back-navigation (High, live-reproduced)</td>
+<td><strong>Fixed</strong> — timer cleared on popstate + cancelled/failed/recovered + sequence-scoped callback; regression-driven</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Self-navigation blackout; readiness bound to component MOUNT (High — foundation defect)</td>
+<td><strong>Fixed</strong> — RoomReady is subscription-based (<code>roomId</code> predicate), self-nav guarded in portal + adapter</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Keyboard reaches content behind the opaque veil (High)</td>
+<td><strong>Fixed</strong> — ownership-marked <code>inert</code> on <code>&lt;main&gt;</code> during traveling (GCL law); disclosed residual: destination <code>&lt;main&gt;</code> mounting mid-traveling is unmarked, bounded by 1000 ms</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Pacing inconsistency: hard cap truncated fail-open arrival (Med)</td>
+<td><strong>Fixed</strong> — readyTimeoutMs 1400→1000; inequality guard-pinned</td>
+</tr>
+<tr>
+<td>5</td>
+<td>False &quot;ready&quot; announcement + focus steal on cancel/recovery/hard-cap (Med)</td>
+<td><strong>Fixed</strong> — announce policy keyed on previous phase; hard-cap settle silent</td>
+</tr>
+<tr>
+<td>6</td>
+<td>popstate ignored pre-commit (Med)</td>
+<td><strong>Fixed</strong> — pre-commit back = governed cancel</td>
+</tr>
+<tr>
+<td>7</td>
+<td>Post-commit clicks preventDefault&#39;ed then dropped (Med)</td>
+<td><strong>Fixed</strong> — rejected requests fall through to the real link</td>
+</tr>
+<tr>
+<td>8</td>
+<td>Machine never seeded with starting room (Med)</td>
+<td><strong>Fixed</strong> — <code>initial</code> option; layout seeds from <code>useParams()</code></td>
+</tr>
+<tr>
+<td>9</td>
+<td>Spec/audit claimed the machine itself calls <code>location.assign</code> (Low, doc honesty)</td>
+<td><strong>Fixed</strong> — law 6 reworded; adapter&#39;s router-verify is the only assign, only for a genuinely failed push</td>
+</tr>
+</tbody></table></div>
+<p><strong>Accepted with disclosure (design policy, not defects):</strong> click-through during the
+280 ms departing fade is the deliberate retarget window (spec law 3) · the Escape
+window equals departingMs (≤280 ms) in T1&#39;s skeleton — T2&#39;s real departure choreography
+widens it · consecutive identical announcements coalesce (aria-live) · <code>tabindex=&quot;-1&quot;</code>
+left on the focused H1 · guard suite has no automated a11y assertions yet (T2 adds
+axe coverage when there is real choreography to test).</p>
+<p><strong>Independently verified sound by the gate:</strong> isolation (tracked diff vs <code>a72a47c</code>
+empty pre-commit; only T1 paths untracked) · frozen-surface law (zero changes under
+<code>lib/cxos/</code>, <code>components/cxos/</code>, <code>app/review/agency-command/</code>) · production hard-off
+(<code>/review*</code> 404 by construction; no T1 module imported by any production chunk) ·
+machine deadlock-freedom (every non-settled state is timer- or signal-covered) ·
+reduced-motion double-lock (tier D at detectTier AND forced-immediate at the machine
+boundary — no bypass found).</p>
+<h2>5 · Environment law re-proven this session</h2>
+<p>This Mac forces <code>prefers-reduced-motion: reduce</code> in every Chromium: every pane
+screenshot shows only the immediate path. Cinematic-path claims in this program are
+valid <strong>only</strong> from per-context emulation (Playwright/CDP) or the deterministic guard
+suite — both were used here. The demo&#39;s <code>t1-demo</code> launch entry (session launch.json)
+serves the flagged build at <code>localhost:3041/review/transition-runtime</code> for desk review.</p>
+<h2>6 · Status against the brief</h2>
+<div class="tblwrap"><table>
+<thead>
+<tr>
+<th>Checkpoint item</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Frontend Design skill</td>
+<td>LOADED (official repo; mapping in audit §5)</td>
+</tr>
+<tr>
+<td>Repository / lineage</td>
+<td>Monorepo <code>gabriel-capital-labs</code>, <code>origin/main</code> @ <code>a72a47c</code>; unambiguous</td>
+</tr>
+<tr>
+<td>Target surface</td>
+<td>CreditVector product app (root <code>app/</code>); GCL site out of scope for rooms; HELIOS separation preserved</td>
+</tr>
+<tr>
+<td>T1 implementation</td>
+<td><strong>COMPLETE</strong> (T1.1 + T1.2 amendments recorded in spec)</td>
+</tr>
+<tr>
+<td>Tests</td>
+<td>153/153 deterministic guards; typecheck + build clean</td>
+</tr>
+<tr>
+<td>Visual review</td>
+<td><strong>PASS</strong> — desktop cinematic (emulated no-preference) + reduced path (native); mobile visual pass deferred to T2 (demo is skeletal; machine&#39;s tier-B band guard-tested)</td>
+</tr>
+<tr>
+<td>Adversarial findings</td>
+<td>0 Critical / 5 High / 8 Med / 7 Low — all High+actionable-Med fixed &amp; re-verified</td>
+</tr>
+<tr>
+<td>P0 / M2 isolation</td>
+<td><strong>PASS</strong> (guard-enforced allowlist; M2 clone untouched)</td>
+</tr>
+<tr>
+<td>Production mutations</td>
+<td><strong>NONE</strong> (no push, no merge, no deploy, no flags; demo 404s in production)</td>
+</tr>
+<tr>
+<td>Background readability</td>
+<td><strong>PARTIAL</strong> (audit §4: RC1 correction regressed by RC2 0.30→0.42/0.72, prod-inert; Ecosystem wing 0.5 AA fail live on the GCL site; treatment: preserve Codex approach, harden in T2, no darkening pass now)</td>
+</tr>
+</tbody></table></div>
+<h2>7 · Recommended next wave — T2</h2>
+<p><strong>Persistent Shell + Departure/Arrival Grammar</strong> (audit §7): route-group layout
+hosting one AppShell (44 pages de-duplicated — the structural root cause), journey
+runtime wired for dashboard ↔ agency ↔ arena with skeletal departure/arrival, the
+readability hardening via state-aware environmental recede, and the re-entry veil
+policy decision applied.</p>
+<h2>8 · Founder decisions queued (none block review of T1)</h2>
+<ol>
+<li>Authorize T2 (the persistent-shell migration is the one structural change).</li>
+<li>Registry/<code>CRITICAL_NEVER</code> policy for which room pairs may animate (T3 gate; guard-pinned law).</li>
+<li>Re-entry veil policy for MissionEntry/ArenaEntry once the shell persists (current replay is pinned design).</li>
+<li>CXOS readability values: re-assert RC1&#39;s 0.30/0.46 recede or ratify RC2&#39;s 0.42/0.72 before any CXOS promotion.</li>
+<li>Ecosystem-wing full-motion 0.5 contrast fix on the live GCL site (small, separate surface).</li>
+</ol>
+<p><strong>STOPPED per the brief.</strong> No T2 work begun. No push. Awaiting Founder review.</p>
+
+
+</main></body>
+</html>

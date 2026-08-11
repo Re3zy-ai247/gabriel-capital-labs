@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Cinematic Transition Runtime — Audit (2026-08-10)</title>
+<style>
+  :root { color-scheme: light dark;
+    --bg:#f7f8fa; --fg:#16202b; --muted:#5b6b7c; --line:#d8dee6; --card:#ffffff;
+    --accent:#0e7490; --code:#eef1f5; }
+  @media (prefers-color-scheme: dark) { :root {
+    --bg:#04121b; --fg:#e6edf3; --muted:#8fa3b5; --line:#1f3242; --card:#0a1c29;
+    --accent:#38bdf8; --code:#0f2434; } }
+  * { box-sizing:border-box }
+  body { margin:0; background:var(--bg); color:var(--fg);
+    font:16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-text-size-adjust:100%; }
+  .wrap { max-width:860px; margin:0 auto; padding:24px 18px 96px; }
+  h1 { font-size:1.7rem; line-height:1.25; margin:0.4em 0 0.5em; }
+  h2 { font-size:1.25rem; margin:2.2em 0 0.6em; padding-top:0.9em; border-top:1px solid var(--line); }
+  h3 { font-size:1.05rem; margin:1.6em 0 0.4em; }
+  p, li { overflow-wrap:break-word; }
+  a { color:var(--accent); }
+  code { background:var(--code); border-radius:5px; padding:0.12em 0.35em;
+    font:0.86em ui-monospace, SFMono-Regular, Menlo, monospace; overflow-wrap:anywhere; }
+  pre { background:var(--code); border:1px solid var(--line); border-radius:10px;
+    padding:14px; overflow-x:auto; }
+  pre code { background:none; padding:0; }
+  table { border-collapse:collapse; width:100%; font-size:0.9rem; }
+  .tblwrap { overflow-x:auto; margin:1em 0; border:1px solid var(--line); border-radius:10px; }
+  th, td { border-bottom:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+  th { background:var(--card); position:sticky; top:0; }
+  tr:last-child td { border-bottom:none; }
+  blockquote { margin:1em 0; padding:2px 16px; border-left:3px solid var(--accent);
+    color:var(--muted); }
+  hr { border:none; border-top:1px solid var(--line); margin:2em 0; }
+  strong { font-weight:650; }
+</style>
+</head>
+<body><main class="wrap">
+<h1>Cinematic Transition Runtime — Repository Audit</h1>
+<p><strong>Date:</strong> 2026-08-10 · <strong>Author:</strong> Fable 5 (Principal Spatial Experience Architect, Design Authority)
+<strong>Method:</strong> 15-agent repository audit (8 Sonnet readers → synthesis → 6 Opus adversarial verifications), coordinated by Fable. Every load-bearing claim below survived independent adversarial re-derivation or carries its correction.
+<strong>External reference:</strong> Anthropic <code>skills/frontend-design/SKILL.md</code> (loaded from the official repository). The X.com reference was inaccessible (HTTP 402) and nothing depends on it.</p>
+<hr>
+<h2>1. Repository / lineage</h2>
+<p>One monorepo: <code>Re3zy-ai247/gabriel-capital-labs</code>, <code>origin/main</code> = <code>a72a47c</code> (clean, verified).</p>
+<div class="tblwrap"><table>
+<thead>
+<tr>
+<th>Surface</th>
+<th>Where</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>CreditVector product</strong> (the &quot;rooms&quot;: dashboard, agency, arena, mail, journey, gxl, community, academy, brief, builder…)</td>
+<td>root <code>app/</code></td>
+<td>LIVE at creditvector.app. <strong>This is the target experience surface.</strong></td>
+</tr>
+<tr>
+<td><strong>CXOS cinematic prototypes</strong> (Agency HQ chambers, THE PASSAGE, Threshold review)</td>
+<td><code>app/review/*</code>, <code>lib/cxos/*</code>, <code>components/cxos/*</code></td>
+<td>On <code>main</code>, hard-off in production (<code>reviewBuildAllowed()</code> → 404). RC2 frozen at <code>f7ee9c5</code> pending Founder review; the main-branch copy carries newer Phase 1A-CX/1A-CX2 work.</td>
+</tr>
+<tr>
+<td><strong>GCL institutional site</strong></td>
+<td><code>apps/gabriel-capital-labs-site</code></td>
+<td><strong>LIVE IN PRODUCTION</strong> at gabrielcapitallabs.com since R4.4→R4.6.1 (merged; partly Codex-closed). Single scroll-cinematic page — no rooms; out of scope for room travel, in scope as pattern source. Must not be destabilized.</td>
+</tr>
+<tr>
+<td><strong>HELIOS world</strong></td>
+<td><code>~/Documents/GIOS-Ops-Center</code> (not a git repo)</td>
+<td>Separate vanilla-JS generated runtime at helios-world.vercel.app. Code cannot be reused in Next.js; its W4.1 traversal grammar is the in-house reference. Separation preserved.</td>
+</tr>
+</tbody></table></div>
+<p>The memory-index claim &quot;R4 paused, not shippable&quot; is superseded: R4 completed, merged, and is live.</p>
+<hr>
+<h2>2. Current experience diagnosis — why it feels like CLICK → PAGE → CONTENT</h2>
+<p>Verified root causes, ranked (Opus-verified; corrections applied):</p>
+<ol>
+<li><strong>No persistent shell exists below the root layout.</strong> [CONFIRMED] <code>app/layout.tsx</code> renders only <code>&lt;Providers&gt;</code> + <code>&lt;TransitionShell/&gt;</code>. Exactly 3 layouts exist in <code>app/</code>; the other two (<code>admin</code>, <code>review</code>) are chrome-less gates. <strong>44 page.tsx files each instantiate <code>&lt;AppShell&gt;</code> themselves</strong> (Sidebar, MobileNav, KaiPresence, header), so every room-to-room click tears down and rebuilds the entire chrome. No <code>template.tsx</code>, no route groups, no rescue anywhere. The codebase confesses this in <code>components/kai/KaiPresence.tsx:26-34</code> (&quot;…mounted by AppShell, which every page.tsx calls directly (not the persistent root layout), so it remounts on each navigation&quot;). A second disjoint chrome family (SiteNav + SiteFooter, 5 pages) repeats the pattern.</li>
+<li><strong>The one production transition engine is fenced out of every product room.</strong> [CONFIRMED] <code>TransitionShell</code> is mounted globally and works (fail-open, capture-phase, 1800 ms hard fallback), but <code>lib/cxos/transitions/registry.ts</code> holds exactly one entry (<code>/</code> → <code>/pricing</code>) and <code>CRITICAL_NEVER</code> (checked first, unconditionally, destination-only) denylists dashboard/billing/mail/letters/settings/etc. <strong>Correction from verification:</strong> the denylist is not separable from adoption — registering a denylisted room is dead code by construction, and <code>scripts/cxos-journey.test.ts:86-91</code> guard-pins the denylist tokens. Extending transitions to product rooms is a <strong>governed policy change</strong>, not a registry append.</li>
+<li><strong>The MOVE→TRAVEL→ARRIVE grammar exists but has never shipped.</strong> [PARTIALLY TRUE — corrected] One genuine machine exists: <strong>THE PASSAGE</strong> (<code>lib/cxos/passageTimeline.ts</code>: origin→call→clearance→passage→conversion→threshold→greeting→floor→returning; 933-line driver; watchdog 14 s &lt; CSS safety 18 s ordering law), confined to <code>/review/mission-control-to-arena</code>. The Agency HQ <code>chamberTransition</code> is <strong>intra-room only</strong> (binary settled|passage across 7 districts in one document) — and its room-to-room exit is literally <code>window.location.assign()</code> (<code>useCxosRoomRuntime.ts:1283</code>): the exact CLICK→PAGE pattern under complaint, inside the flagship cinematic prototype.</li>
+<li><strong>Most rooms give zero navigation feedback.</strong> [CORRECTED COUNTS] 22 pages are <code>force-dynamic</code>; only 4 <code>loading.tsx</code> exist (dashboard, journey, tradelines, community — all inside the force-dynamic set), so <strong>18 force-dynamic rooms have no Suspense boundary</strong>: the old room stays frozen-but-interactive during the server fetch, then hard-swaps. No global progress affordance, no scroll-restoration management, no View Transitions API anywhere. The 4 existing skeletons each mount <strong>a third fresh AppShell</strong> per navigation.</li>
+<li><strong>Arrival ceremonies replay on every re-entry — by pinned design.</strong> [CORRECTED] <code>MissionEntry</code> (7.3 s first / 1.1 s returning) and <code>ArenaEntry</code> (8.6 s first / 1.1 s returning) veil on every within-session re-entry because their host pages remount. Verification showed this replay is <strong>documented, test-pinned design intent</strong>, not a bug — but it stacks a repeating tax on top of the remount and is a Founder design decision to revisit once a persistent shell exists.</li>
+<li><strong>Motion capability policy is fragmented in the product.</strong> CXOS has a disciplined tier ladder (<code>detectTier()</code> A/B/C/D, reduced-motion always wins) and even two parallel resolvers; the main product has <strong>no central motion policy module</strong> — each component reads <code>matchMedia</code> itself, governed only by a design doc.</li>
+</ol>
+<p><strong>Answer to the primary question:</strong> yes — the frontend can be evolved into one continuous operating environment, and most of the hard machinery already exists in-repo. The gap is structural (no persistent shell) and adoption (grammar locked behind <code>/review</code>), not invention.</p>
+<hr>
+<h2>3. What already works and must be preserved</h2>
+<ul>
+<li><strong><code>TransitionShell</code> + registry</strong> (production, fail-open, links stay real links, 1800 ms escape hatch) — extend, never replace.</li>
+<li><strong><code>detectTier()</code> A/B/C/D ladder</strong> (<code>lib/cxos/capability.ts</code>) — reduced-motion always resolves first; reuse wholesale.</li>
+<li><strong><code>reviewBuildAllowed()</code> hard-off</strong> — the proven pattern for shipping cinematic work invisibly; all T1 work sits behind it.</li>
+<li><strong>CXOS Core Runtime</strong> (ADR-0040): pure policy module + headless hook, sequence-based stale-cancellation, WAAPI cleanup net, safety-timeout settle — frozen at <code>f7ee9c5</code>; treat as reference, adopt incrementally per ADR-0040&#39;s own procedure.</li>
+<li><strong>THE PASSAGE timing discipline</strong> (single-source constants mirrored to CSS, guard-tested; journey-end &lt; JS watchdog &lt; pure-CSS safety fade).</li>
+<li><strong>GCL site production state</strong> (live, hash-locked assets, prologue watchdog/epoch-release machinery) — untouchable by this initiative.</li>
+<li><strong>Global <code>:focus-visible</code> law</strong> (<code>app/globals.css:123-126</code>) — single rule covering every control.</li>
+<li><strong><code>ThresholdGate</code> lazy-load discipline</strong> (reduced-motion visitors download zero cinematic bytes).</li>
+<li><strong>HELIOS laws</strong> (as concepts): history commits at settlement; second destination ignored in transit; governed Esc; separate travel/arrival clocks; RM keeps state changes instant (&quot;full citizenship&quot;).</li>
+<li><strong>Skeleton design law</strong> in the 4 loading.tsx files (shape-matched, never spinners).</li>
+</ul>
+<h2>4. Background readability — verdict: <strong>PARTIAL</strong></h2>
+<p>The Founder&#39;s brightness complaint has a real, traceable correction lineage — inconsistently preserved:</p>
+<ul>
+<li><strong>CXOS Agency HQ — corrected, then regressed (currently production-inert).</strong> RC1 (commit <code>dbea394</code>, the Codex-lineage Living Environment engine) implemented a genuine recede law: <code>.districtEnvironment</code> opacity <strong>0.30</strong> during reading/inspecting, <strong>0.46</strong> idle-settled, <strong>0.38</strong> tier C/D — against a 0.92 operating-state base. RC2&#39;s motion restoration (<code>fdfb940</code>, self-disclosed in its commit message) raised reading to <strong>0.42 (+40 %)</strong> and added a brighter <strong>0.72</strong> settling intermediate; per-chamber settle opacities now 0.42–0.54. The regressed values are live at current <code>main</code> HEAD (<code>agency-command.module.css:8270/:8294</code>) but have <strong>zero production exposure</strong> (the /review 404). The tier C/D floor (0.38) survived untouched.</li>
+<li><strong>GCL site — mostly fixed, one open AA failure in production.</strong> Gateway-G dimming regression: caught, fully reverted, structurally locked (mark never has filter ancestors — verified at 84 states). SKIP/REPLAY chip luminance: genuinely fixed at R4.2 with inline contrast math. <strong>Ecosystem wing: full-motion dim 0.5 composites wing text at 2.8–3.2:1 (below AA) and remains unfixed through R4.6.1 in production; only the reduced-motion path got the 0.82 floor.</strong> Correction from verification: this IS observable on this Mac — the Playwright harness overrides forced reduced-motion per context and the repo&#39;s own R4.6.1 evidence contains full-motion captures.</li>
+<li><strong>Main product — no environment-recede system exists at all.</strong> Mission Control&#39;s GXL materials follow a real low-luminance law (single 0.05-alpha key light; recessed-past 0.72 &quot;AA holds&quot;), but there is no scrim/backdrop token anywhere; nothing to regress because nothing was built.</li>
+</ul>
+<p><strong>Treatment decision (per brief):</strong> preserve the Codex/RC1 approach; do <strong>not</strong> re-darken anything now. T2 hardens the existing mechanism: re-assert RC1&#39;s reading-state values (or Founder-ratified replacements) as a pinned contract before any CXOS promotion, and adopt the state-aware contrast model (environment recedes in operating/reading states — the attention states already exist) as the dynamic-contrast option. The Ecosystem-wing 0.5 fix is a small, separate, site-side craft item — already the report&#39;s &quot;next craft item.&quot;</p>
+<h2>5. Frontend-design skill mapping (principles → repository evidence)</h2>
+<div class="tblwrap"><table>
+<thead>
+<tr>
+<th>Skill principle</th>
+<th>Status</th>
+<th>Evidence</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Distinctive direction, not templated defaults</td>
+<td><strong>ALREADY</strong> (cinematic surfaces) / <strong>PARTIAL</strong> (product rooms)</td>
+<td>CXOS chamber signatures, GXL Watch Floor material laws, GCL prologue vs. utilitarian Tailwind rooms</td>
+</tr>
+<tr>
+<td>Hero/orchestrated moment as thesis</td>
+<td><strong>ALREADY</strong> (entrances) / <strong>MISSING</strong> (navigation)</td>
+<td>Threshold, MissionEntry/ArenaEntry, GCL prologue exist; room-to-room movement has zero orchestration — the precise gap</td>
+</tr>
+<tr>
+<td>Concentrate motion in high-impact moments</td>
+<td><strong>PARTIAL</strong></td>
+<td>Boldness is all spent on first entry; the highest-frequency moment (travel between rooms) has none. The transition runtime is the skill-conform answer</td>
+</tr>
+<tr>
+<td>Page-load choreography</td>
+<td><strong>ALREADY</strong>, miscalibrated</td>
+<td>Ceremonies replay per re-entry (pinned design + remount); recalibrate after persistent shell</td>
+</tr>
+<tr>
+<td>Hover/interaction states with hierarchy</td>
+<td><strong>PARTIAL — inverted</strong></td>
+<td>Global focus-visible law is exemplary; but Level-1 spatial controls (Sidebar/MobileNav, facilityDirectory) have the least treatment (no hover choreography; facilityDirectory lacks <code>:hover</code>/<code>:active</code> entirely) while lesser cards have proximity effects</td>
+</tr>
+<tr>
+<td>Ambient atmosphere subordinate to content</td>
+<td><strong>PARTIAL</strong></td>
+<td>CXOS budget model (0/1/2 continuous channels) is exemplary discipline; readability PARTIAL (see §4); marketing auroras run infinite with 72 px blur</td>
+</tr>
+<tr>
+<td>Reduced motion respected, not amputated</td>
+<td><strong>ALREADY</strong> (CXOS/GCL) / <strong>PARTIAL</strong> (product)</td>
+<td>Tier ladder + three-motion-class model vs. fragmented per-component matchMedia, one smooth-scroll leak (<code>Composer.tsx:31</code>), SiteNav mobile menu with no motion at all</td>
+</tr>
+<tr>
+<td>Restraint: one signature element</td>
+<td><strong>GUIDING RULE for T2+</strong></td>
+<td>The journey itself becomes the signature; rooms stay quiet</td>
+</tr>
+<tr>
+<td>Typography/copy principles</td>
+<td><strong>N/A</strong></td>
+<td>Out of initiative scope; no evidence of failure</td>
+</tr>
+</tbody></table></div>
+<p><strong>Smallest set of changes → largest experiential improvement:</strong> (1) persistent shell; (2) journey runtime wired to navigation with skeletal departure/arrival; (3) travel feedback for all rooms; (4) governed registry extension; (5) Level-1 portal treatment. Everything else is polish on top.</p>
+<h2>6. Transition runtime architecture (T1 — implemented this session)</h2>
+<p>A <strong>journey state machine</strong> synthesizing the three proven in-house grammars — spec: <code>T1-SPEC.md</code> (binding):</p>
+<ul>
+<li>Phases <code>settled → intent → departing → traveling → arriving → settled</code>, plus <code>recovering</code>; Founder grammar mapped 1:1 (acknowledgment and readiness are events).</li>
+<li><strong>Laws:</strong> CXOS sequence-based stale cancellation (never block input); HELIOS route-commit-once at the departing→traveling boundary; retarget supersedes pre-commit, is ignored post-commit; governed Esc cancel pre-commit; separate named clocks per phase with deterministic destroy; fail-open readiness timeout (1000 ms, T1.2 amendment — was 1400 ms) + journey hard cap (1800 ms) that force-settles the MACHINE&#39;s own state (never touches the router or <code>location</code>) — the ADAPTER&#39;s separate, independent router-verify fallback timer is the only thing that ever performs <code>location.assign</code>, and only for a genuinely failed push (navigation can never be lost); immediate mode for tier C/D &amp; hidden documents (deterministic INTENT → DESTINATION → ACTIVE, no veil).</li>
+<li>Pure TS machine (injectable clock) + React adapter (<code>useSyncExternalStore</code>, StrictMode-safe) + TravelLayer (opacity-only veil; pointer interception only during traveling; <code>aria-live</code> announcements; focus handoff on settle) + <code>RoomReady</code> beacon.</li>
+<li>Demo: 3 rooms over <strong>real router navigation</strong> at <code>/review/transition-runtime/*</code>, inheriting the production 404 hard-off.</li>
+<li>Deterministic guard suite (manual clock, 16 behavioral cases + purity/isolation gates), repo guard-script style.</li>
+</ul>
+<h2>7. Implementation plan — waves</h2>
+<p><strong>T1 — Transition Runtime Foundation</strong> <em>(this session; see checkpoint doc for results)</em>. Rollback: delete branch.</p>
+<p><strong>T2 — Persistent Shell + Departure/Arrival Grammar.</strong> Route-group layout <code>(rooms)/layout.tsx</code> hosting a single AppShell (44 pages de-duplicated; loading.tsx de-shelled); wire the journey runtime for 2–3 flagship pairs (dashboard ↔ agency ↔ arena) with skeletal departure (environment recede via existing attention states — this is the readability hardening) and arrival sequencing (identity → operating surface → controls → ambient); Founder decision on re-entry veil policy applied here. Acceptance: chrome DOM nodes survive navigation (verifiable via element identity); no ceremony replay without design intent; reduced motion = instant deterministic; CLS ≤ 0.05; rollback = revert branch.</p>
+<p><strong>T3 — Portal &amp; Spatial Interaction Controls.</strong> Governed <code>CRITICAL_NEVER</code>/registry extension for room pairs (Founder ruling + <code>cxos-journey</code> guard update in the same change); Level-1 treatment for Sidebar/MobileNav/room selectors (hover illumination, press, destination preview, depth — token-driven); unify the two motion-token vocabularies (<code>--dur-*</code> vs <code>--cxos-*</code>, one drifted value known); mobile drawer gets real focus trap/inert + Escape.</p>
+<p><strong>T4 — Ambient Room Motion.</strong> Adopt the CXOS budget model (0–2 continuous channels, attention/idle states) into flagship rooms; Kai presence cues; pause marketing auroras when hidden; ambient stays subordinate (budget 0 while reading).</p>
+<p><strong>T5 — Mobile + Reduced Motion + Performance Hardening.</strong> <code>env(safe-area-inset-bottom)</code> for the bottom tab bar; visualViewport handling; central motion-policy module for the product (port the GCL <code>lib/motion.ts</code> single-choke-point pattern); production LoAF/CLS instrumentation (today it exists only in the QA harness); physical-device validation pass; bundle discipline check.</p>
+<p>Each wave: separate branch, review-gated where visual, guard scripts extended, no production activation without Founder approval.</p>
+<h2>8. Founder decisions queued (none block T1)</h2>
+<ol>
+<li><strong>T2 authorization</strong> — the persistent-shell migration is the one structural change (44 pages, mechanical, revertible).</li>
+<li><strong>Registry/denylist policy</strong> — which room pairs may animate; requires amending the guard-pinned <code>CRITICAL_NEVER</code> law (T3 gate).</li>
+<li><strong>Re-entry veil policy</strong> — keep/shorten/first-visit-only for MissionEntry/ArenaEntry once the shell persists (current behavior is pinned design).</li>
+<li><strong>CXOS readability values</strong> — re-assert RC1&#39;s 0.30/0.46 recede (or ratify RC2&#39;s 0.42/0.72) before any CXOS promotion to production.</li>
+<li><strong>Ecosystem wing 0.5</strong> — approve the small full-motion contrast fix on the live GCL site (separate surface, separate change).</li>
+</ol>
+<h2>9. Environment facts that shaped verification</h2>
+<ul>
+<li>This Mac forces <code>prefers-reduced-motion: reduce</code> in every Chromium — live browser checks here always exercise the reduced/tier-D path. Full-motion paths are verifiable via Playwright per-context emulation (proven by the repo&#39;s own R4.6.1 evidence) — motion-path claims in this program must come from that harness or tests, never from pane screenshots.</li>
+<li>The <code>~/Documents/gabriel-capital-labs-to-upload</code> clone holds uncommitted M2 billing work: untouched, and no T1 file overlaps any P0/M2/billing/schema surface.</li>
+</ul>
+
+
+</main></body>
+</html>
