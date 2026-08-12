@@ -397,6 +397,9 @@ const stripComments = (src: string) => src.replace(/\/\*[\s\S]*?\*\//g, "").repl
     // this file exists; everything else in it is untouched).
     "components/transition-runtime/TravelLayer.tsx",
     "scripts/transition-runtime.test.ts",
+    // Founder-directed Getting Started copy correction (2026-08-12) — the
+    // §10 onboarding pins constrain this file's delta to exactly that copy.
+    "app/onboarding/page.tsx",
     "components/Sidebar.tsx",
     "components/AgencyBar.tsx",
     "components/AnnouncementBanner.tsx",
@@ -595,13 +598,49 @@ const stripComments = (src: string) => src.replace(/\/\*[\s\S]*?\*\//g, "").repl
     const exists = existsSync(join(repoRoot, dir));
     check(`escape hatch: ${dir} exists`, exists);
     check(`escape hatch: ${dir} does NOT live under app/(rooms)/`, !dir.startsWith("app/(rooms)/"));
-    if (exists) {
+    if (exists && dir !== "app/onboarding") {
       const diff = runGit(`diff ${T2_BASE} --stat -- "${dir}"`);
       check(
         `escape hatch: ${label} (${dir}) is byte-identical to 1698e2b (git diff empty — never wrapped by RoomsShell)`,
         diff !== null && diff.trim() === "",
       );
     }
+  }
+
+  // onboarding: Founder-directed COPY-ONLY correction (2026-08-12) replaces
+  // the byte-identity pin with precise content pins — the structural escape
+  // properties still hold (location asserted above), the pricing-CTA body
+  // copy is pinned to the corrected sentence, the superseded monthly-
+  // replenishment claim and the counsel-held "unlimited dispute letters"
+  // phrase are banned from this surface, and the ONLY diff vs 1698e2b in the
+  // whole dir must be that one page.tsx (no structural drift smuggled in
+  // under a copy pin).
+  {
+    const page = tryReadRepoFile("app/onboarding/page.tsx");
+    check(
+      "onboarding copy: corrected first-month-only CTA sentence present",
+      page !== null &&
+        page.includes(
+          "The free tier stays free and includes 3 introductory letters during your first month only. Compare plans for expanded workflow and letter-refinement tools.",
+        ),
+    );
+    check(
+      "onboarding copy: superseded monthly-replenishment claim absent",
+      page !== null && !/3 letters a month/i.test(page),
+    );
+    check(
+      "onboarding copy: counsel-held phrase \"unlimited dispute letters\" absent from this surface",
+      page !== null && !/unlimited dispute letters/i.test(page),
+    );
+    check(
+      "onboarding copy: headline and button unchanged",
+      page !== null && page.includes("Want the full engine?") && page.includes("View Pricing"),
+    );
+    const dirDiff = (runGit(`diff ${T2_BASE} --name-only -- "app/onboarding"`) ?? "x").trim();
+    check(
+      "onboarding: the ONLY tracked diff vs 1698e2b in app/onboarding is page.tsx (copy correction only)",
+      dirDiff === "app/onboarding/page.tsx",
+    );
   }
 }
 

@@ -104,7 +104,7 @@ export default async function OnboardingPage() {
         <div className="mt-16 card p-8 text-center">
           <h2 className="text-2xl font-bold mb-4">Want the full engine?</h2>
           <p className="text-slate-400 mb-6">
-            Professional includes unlimited dispute letters and letter refinement. The free tier stays free — 3 letters a month.
+            The free tier stays free and includes 3 introductory letters during your first month only. Compare plans for expanded workflow and letter-refinement tools.
           </p>
           <Link href="/pricing" className="btn-primary btn-lg inline-flex">
             View Pricing
