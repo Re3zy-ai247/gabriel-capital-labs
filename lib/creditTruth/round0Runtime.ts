@@ -925,7 +925,7 @@ export async function confirmRound0Baseline(input: {
       principal,
       scope,
       stage: "ROUND0_REVIEW",
-      mode: "LOCAL_BUILD",
+      mode: input.gatePermit.mode,
       operationId: request.operationId,
     })
   ) {
@@ -1386,7 +1386,7 @@ export async function appendIdentityCorrespondenceAssertion(input: {
       principal,
       scope,
       stage: "ASSERTION_RUNTIME",
-      mode: "LOCAL_BUILD",
+      mode: input.gatePermit.mode,
       operationId: request.operationId,
     })
   ) {

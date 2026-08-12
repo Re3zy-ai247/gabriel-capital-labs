@@ -46,6 +46,8 @@ import type {
   P0ReportVersionCommitReadback,
 } from "../lib/creditTruth/reportIngestion";
 import {
+  computeP0RepositorySemanticSha256,
+  isVerifiedP0RepositoryAttestation,
   P0_LOCAL_REPOSITORY_ID,
   P0_LOCAL_REPOSITORY_SEMANTICS_VERSION,
   verifyLocalP0RepositoryReadback,
@@ -86,7 +88,8 @@ async function storeNormalized(authenticated: P0Principal, ingestionId: string, 
 async function erasureAuthority(authenticated: P0Principal, stored: Awaited<ReturnType<typeof storeNormalized>>, key: string) {
   const now = new Date(); const object = stored.receipt.object; const objectBindingSha256 = computeP0StoredSourceObjectBindingSha256(object);
   const capability = await verifyP0SourceArtifactCapability({ scope: object.scope, purpose: "ERASE_SOURCE", actorId: authenticated.actorId, authorizationDecisionId: key, authorizationVersion: authenticated.authorizationVersion, issuedAt: new Date(now.getTime() - 1_000).toISOString(), expiresAt: new Date(now.getTime() + 60_000).toISOString() }, { verifyDecision: async () => true }); assert(capability);
-  const eligibility = await verifyP0SourceArtifactErasure({ decisionId: key, decisionVersion: "v1", disposition: "DELETE_OR_CRYPTO_SHRED", scope: object.scope, objectBindingSha256, issuedAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 30_000).toISOString() }, object, { verifyDecision: async () => true }); assert(eligibility);
+  const erasureIssuedAt = new Date();
+  const eligibility = await verifyP0SourceArtifactErasure({ decisionId: key, decisionVersion: "v1", disposition: "DELETE_OR_CRYPTO_SHRED", scope: object.scope, objectBindingSha256, issuedAt: erasureIssuedAt.toISOString(), expiresAt: new Date(erasureIssuedAt.getTime() + 30_000).toISOString() }, object, { verifyDecision: async () => true }); assert(eligibility);
   return { objectBindingSha256, provider: stored.provider, capability: capability as typeof capability & { purpose: "ERASE_SOURCE" }, eligibility, tombstoneEventKey: key };
 }
 
@@ -433,6 +436,32 @@ async function main() {
     const digestOperation = "shadow-h2-substituted-digest"; const digestNow = new Date(); const digestRow = Object.freeze({ ...row, sourceSha256: "e".repeat(64), sourceReadbackSha256: "e".repeat(64) }); const digestSubstitution = await service.persist({ principal: authenticated, gatePermit: await gate(authenticated, digestOperation, digestNow), ingestion: row, reportVersionReceipt: await reportVersionReceipt(authenticated, digestRow, digestOperation), inputReceipt: stored.receipt, envelope: verified, operationId: digestOperation, now: digestNow }); assert.equal(digestSubstitution.ok, false); if (!digestSubstitution.ok) assert.equal(digestSubstitution.code, "SOURCE_REPORT_READBACK_MISMATCH");
     const selfPinOperation = "shadow-h2-substituted-self-pin"; const selfPinNow = new Date(); const selfPinRepository = createLocalSyntheticP0ShadowTruthGraphRepository({ mutateReadback: (value) => ({ ...value, round0SourceCompleteness: value.round0SourceCompleteness.map((member, index) => index === 0 ? { ...member, baselineInputSetSha256: "f".repeat(64) } : member) }) }); const selfPin = await createP0ShadowExtractionService({ repository: selfPinRepository, protector: createLocalSyntheticP0ShadowValueProtector() }).persist({ principal: authenticated, gatePermit: await gate(authenticated, selfPinOperation, selfPinNow), ingestion: row, reportVersionReceipt: await reportVersionReceipt(authenticated, row, selfPinOperation), inputReceipt: stored.receipt, envelope: verified, operationId: selfPinOperation, now: selfPinNow }); assert.equal(selfPin.ok, false); if (!selfPin.ok) assert.equal(selfPin.code, "SHADOW_READBACK_MISMATCH");
   });
+  await check("ABSENT_CONFIRMED account evidence cannot be normalized into source membership", async () => {
+    const authenticated = await principal();
+    const stored = await storeNormalized(authenticated, "ing-absent-non-authority", "artifact-absent-non-authority", "store-absent-non-authority", new TextEncoder().encode("normalized absent non-authority"));
+    const candidate = structuredClone(envelope(stored.receipt)) as any;
+    candidate.accounts[0].account.bureaus.EQUIFAX.accountPresence = {
+      presence: "ABSENT_CONFIRMED",
+      value: false,
+      locator: { section: "ACCOUNT_INDEX", page: 1, lineStart: 1, lineEnd: 1, charStart: 0, charEnd: 1 },
+    };
+    const verified = verifyP0ParserShadowEnvelope(candidate); assert(verified);
+    const baseRepository = createLocalSyntheticP0ShadowTruthGraphRepository();
+    let repositoryWrites = 0;
+    const repository = {
+      async persistExact(input: any) {
+        repositoryWrites += 1;
+        return baseRepository.persistExact(input);
+      },
+    };
+    const operationId = "shadow-absent-non-authority";
+    const now = new Date();
+    const row = ingestion(stored.receipt);
+    const result = await createP0ShadowExtractionService({ repository: repository as any, protector: createLocalSyntheticP0ShadowValueProtector() }).persist({ principal: authenticated, gatePermit: await gate(authenticated, operationId, now), ingestion: row, reportVersionReceipt: await reportVersionReceipt(authenticated, row, operationId), inputReceipt: stored.receipt, envelope: verified, operationId, now });
+    assert.equal(result.ok, false);
+    if (!result.ok) assert.equal(result.code, "ABSENT_CONFIRMED_NON_AUTHORITY");
+    assert.equal(repositoryWrites, 0);
+  });
   await check("H2 seals source-listed UNKNOWN account presence without converting uncertainty to absence", async () => {
     const authenticated = await principal(); const stored = await storeNormalized(authenticated, "ing-h2-unknown-account", "artifact-h2-unknown-account", "store-h2-unknown-account", new TextEncoder().encode("normalized unknown account presence")); const candidate = structuredClone(envelope(stored.receipt)) as any; candidate.accounts[0].account.bureaus.EQUIFAX.accountPresence = { presence: "UNKNOWN", reason: "PARSER_SILENCE" }; const verified = verifyP0ParserShadowEnvelope(candidate); assert(verified); const operationId = "shadow-h2-unknown-account"; const now = new Date(); const row = ingestion(stored.receipt); const result = await createP0ShadowExtractionService({ repository: createLocalSyntheticP0ShadowTruthGraphRepository(), protector: createLocalSyntheticP0ShadowValueProtector() }).persist({ principal: authenticated, gatePermit: await gate(authenticated, operationId, now), ingestion: row, reportVersionReceipt: await reportVersionReceipt(authenticated, row, operationId), inputReceipt: stored.receipt, envelope: verified, operationId, now }); assert(result.ok); if (!result.ok) return; const presence = result.value.accountPresence[0]!; assert.equal(presence.presence, "UNKNOWN"); assert.equal(presence.sourceLocatorToken, null); const membership = result.value.round0SourceCompleteness.find((item) => item.bureau === "EQUIFAX" && item.category === "UNRECOGNIZED_ACCOUNT"); assert(membership); assert.equal(membership.sourceMemberCount, 1); assert(result.value.identityBaselines[0]);
   });
@@ -449,6 +478,73 @@ async function main() {
   });
   await check("shadow persistence rejects shaped unbranded batch and run attestations", async () => {
     const authenticated = await principal(); const stored = await storeNormalized(authenticated, "ing-forged-shadow", "artifact-forged-shadow", "store-forged-shadow", new TextEncoder().encode("normalized forged shadow")); const verified = verifyP0ParserShadowEnvelope(envelope(stored.receipt)); assert(verified); const base = createLocalSyntheticP0ShadowTruthGraphRepository(); const forgedRepository = Object.freeze({ persistExact: async (input: any) => { const result = await base.persistExact(input); return "value" in result ? { ...result, attestation: { ...result.attestation }, extractionRunAttestation: { ...result.extractionRunAttestation } } : result; } }); const operationId = "shadow-forged-attestation"; const now = new Date(); const row = ingestion(stored.receipt); const result = await createP0ShadowExtractionService({ repository: forgedRepository as any, protector: createLocalSyntheticP0ShadowValueProtector() }).persist({ principal: authenticated, gatePermit: await gate(authenticated, operationId, now), ingestion: row, reportVersionReceipt: await reportVersionReceipt(authenticated, row, operationId), inputReceipt: stored.receipt, envelope: verified, operationId, now }); assert.equal(result.ok, false); if (!result.ok) assert.equal(result.code, "SHADOW_READBACK_UNATTESTED");
+  });
+  await check("full extraction-run attestation binds every run field and rejects branded truncated or mutated receipts", async () => {
+    type RunReceiptMutation = (run: Record<string, unknown>) => Record<string, unknown>;
+    const exercise = async (caseId: string, mutateReceiptSnapshot?: RunReceiptMutation) => {
+      const authenticated = await principal();
+      const stored = await storeNormalized(authenticated, `ing-run-attestation-${caseId}`, `artifact-run-attestation-${caseId}`, `store-run-attestation-${caseId}`, new TextEncoder().encode(`normalized run attestation ${caseId}`));
+      const verified = verifyP0ParserShadowEnvelope(envelope(stored.receipt)); assert(verified);
+      const base = createLocalSyntheticP0ShadowTruthGraphRepository();
+      let fullRunSemanticSha256: string | null = null;
+      const repository = Object.freeze({
+        persistExact: async (input: any) => {
+          const result = await base.persistExact(input);
+          assert("value" in result);
+          fullRunSemanticSha256 = computeP0RepositorySemanticSha256(input.batch.extractionRun);
+          assert(isVerifiedP0RepositoryAttestation(result.extractionRunAttestation));
+          assert.equal(result.extractionRunAttestation.semanticSha256, fullRunSemanticSha256);
+          assert.equal(computeP0RepositorySemanticSha256(result.extractionRunAttestation.snapshot), fullRunSemanticSha256);
+          if (!mutateReceiptSnapshot) return result;
+          const receiptSnapshot = mutateReceiptSnapshot(structuredClone(input.batch.extractionRun));
+          const substitutedReceipt = await verifyLocalP0RepositoryReadback({
+            operationId: input.operationId,
+            purpose: "SHADOW_EXTRACTION_WRITE",
+            scope: input.scope,
+            expectedSnapshot: receiptSnapshot,
+            readbackSnapshot: structuredClone(receiptSnapshot),
+            sourceRefs: input.sourceRefs,
+            verifier: {
+              repositoryId: P0_LOCAL_REPOSITORY_ID,
+              semanticsVersion: P0_LOCAL_REPOSITORY_SEMANTICS_VERSION,
+              verifyReadback: async () => true,
+            },
+          });
+          assert(substitutedReceipt);
+          assert(isVerifiedP0RepositoryAttestation(substitutedReceipt));
+          assert.equal(substitutedReceipt.semanticSha256, computeP0RepositorySemanticSha256(receiptSnapshot));
+          assert.notEqual(substitutedReceipt.semanticSha256, fullRunSemanticSha256);
+          return { ...result, extractionRunAttestation: substitutedReceipt };
+        },
+      });
+      const operationId = `shadow-run-attestation-${caseId}`;
+      const now = new Date();
+      const row = ingestion(stored.receipt);
+      const result = await createP0ShadowExtractionService({ repository: repository as any, protector: createLocalSyntheticP0ShadowValueProtector() }).persist({ principal: authenticated, gatePermit: await gate(authenticated, operationId, now), ingestion: row, reportVersionReceipt: await reportVersionReceipt(authenticated, row, operationId), inputReceipt: stored.receipt, envelope: verified, operationId, now });
+      assert(fullRunSemanticSha256);
+      return { result, fullRunSemanticSha256 };
+    };
+
+    const positive = await exercise("positive");
+    assert(positive.result.ok);
+    if (positive.result.ok) assert.equal(positive.result.extractionRunReceipt.semanticSha256, positive.fullRunSemanticSha256);
+
+    const truncated = await exercise("truncated", (run) => {
+      const { engineVersion: _engineVersion, ...withoutEngineVersion } = run;
+      return withoutEngineVersion;
+    });
+    assert.equal(truncated.result.ok, false);
+    if (!truncated.result.ok) {
+      assert.equal(truncated.result.kind, "OUTCOME_UNKNOWN");
+      assert.equal(truncated.result.code, "SHADOW_READBACK_UNATTESTED");
+    }
+
+    const mutated = await exercise("mutated", (run) => ({ ...run, engineVersion: "attacker-engine-v999" }));
+    assert.equal(mutated.result.ok, false);
+    if (!mutated.result.ok) {
+      assert.equal(mutated.result.kind, "OUTCOME_UNKNOWN");
+      assert.equal(mutated.result.code, "SHADOW_READBACK_UNATTESTED");
+    }
   });
   await check("FAILED parser timeout persists only exact coverage, uncertainty sentinels, and safe errors", async () => {
     const authenticated = await principal(); const stored = await storeNormalized(authenticated, "ing-failed", "artifact-failed", "store-failed", new TextEncoder().encode("normalized failed")); const candidate = structuredClone(envelope(stored.receipt)) as any; candidate.status = "FAILED"; candidate.accounts = []; candidate.bureauEvidence[0].reportDate = { presence: "UNKNOWN", precision: "UNKNOWN" }; candidate.bureauEvidence[0].scores = [{ presence: "UNKNOWN", occurrence: 0, model: { presence: "UNKNOWN" } }]; candidate.bureauEvidence[0].identity = []; candidate.bureauEvidence[0].round0Completeness = P0_ROUND0_COMPLETENESS_CATEGORIES.map((category) => ({ category, status: "UNKNOWN", ruleKey: "regex-v2-round0-completeness", ruleVersion: "regex-v2.1" })); candidate.bureauEvidence[0].errors = [{ code: "PARSER_TIMEOUT", severity: "ERROR" }]; candidate.safeErrorCodes = ["PARSER_TIMEOUT"]; const verified = verifyP0ParserShadowEnvelope(candidate); assert(verified); const now = new Date(); const operationId = "shadow-failed"; const service = createP0ShadowExtractionService({ repository: createLocalSyntheticP0ShadowTruthGraphRepository(), protector: createLocalSyntheticP0ShadowValueProtector() }); const row = ingestion(stored.receipt); const result = await service.persist({ principal: authenticated, gatePermit: await gate(authenticated, operationId, now), ingestion: row, reportVersionReceipt: await reportVersionReceipt(authenticated, row, operationId), inputReceipt: stored.receipt, envelope: verified, operationId, now }); assert(result.ok); if (!result.ok) return; assert.equal(result.value.extractionRun.status, "FAILED"); assert.equal(result.value.bureauCoverage.length, 3); assert.deepEqual(result.value.accounts, []); assert.deepEqual(result.value.fieldObservations, []); assert.deepEqual(result.value.historicalEvidence, []); assert.equal(result.value.reportDateEvidence.length, 1); assert.deepEqual([result.value.reportDateEvidence[0]?.presence, result.value.reportDateEvidence[0]?.precision, result.value.reportDateEvidence[0]?.sourceValue, result.value.reportDateEvidence[0]?.sourceLocatorToken], ["UNKNOWN", "UNKNOWN", null, null]); assert.deepEqual(result.value.identityBaselines, []); assert.deepEqual(result.value.identityFacts, []); assert.equal(result.value.round0SourceCompleteness.length, 27); assert(result.value.round0SourceCompleteness.every((item) => item.identityBaselineId === null && item.baselineInputSetSha256 === null)); assert(result.value.round0SourceCompleteness.filter((item) => item.coverageStatus === "COVERED").every((item) => item.status === "UNKNOWN" && item.sourceMemberCount === 0 && item.sourceLocatorToken === null)); assert.equal(result.value.creditScoreObservations.length, 1); assert.equal(result.value.creditScoreObservations[0]?.presence, "UNKNOWN"); assert.equal(result.value.creditScoreObservations[0]?.scoreModelPresence, "UNKNOWN"); assert.equal(result.value.creditScoreObservations[0]?.protectedScore, null); assert.equal(result.value.safeErrorRefs[0]?.code, "PARSER_TIMEOUT"); assert.equal(result.value.safeErrorRefs[0]?.bureau, "EQUIFAX");

@@ -129,10 +129,21 @@ check("stale assertion and cross-scope adversarial selectors are genuinely disti
   );
 });
 
-check("upload integration is build-only and cannot install a hook from request data", () => {
+check("upload integration stays server-owned dormant and cannot be enabled by request data", () => {
   const route = readFileSync(join(root, "app/api/reports/upload/route.ts"), "utf8");
-  assert(route.includes("createP0ReportUploadShadowDispatcher({ hook: null })"));
-  assert.equal(/P0_[A-Z0-9_]+.*createP0ReportUploadShadowDispatcher/.test(route), false);
+  const trustedWriterHook = readFileSync(
+    join(root, "lib/creditTruth/trustedWriterUploadHook.ts"),
+    "utf8",
+  );
+  assert(route.includes("hook: createP0ProductionTrustedWriterUploadHook(),"));
+  assert(route.includes("await dispatchP0ReportUploadShadow(() => ({"));
+  assert(trustedWriterHook.includes('process.env.NODE_ENV === "production"'));
+  assert(trustedWriterHook.includes("new AsyncLocalStorage<P0DisposableHookContext>()"));
+  assert(trustedWriterHook.includes("const concretePrismaUploadHooks = new WeakSet<object>()"));
+  assert(trustedWriterHook.includes("context.active = false"));
+  assert(trustedWriterHook.includes("concretePrismaUploadHooks.has(context.hook)"));
+  assert.equal(trustedWriterHook.includes("disposableInstalledHook"), false);
+  assert.equal(/req\.(?:body|query|headers).*P0_/i.test(route), false);
 });
 
 check("Phase 2B durable authorities remain absent from the Phase 2A migration", () => {

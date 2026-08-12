@@ -24,6 +24,8 @@ export const P0_REPOSITORY_PURPOSES = [
   "SOURCE_ARTIFACT_WRITE",
   "SOURCE_ARTIFACT_READ",
   "SOURCE_ARTIFACT_ERASURE",
+  "REPORT_VERSION_COMMIT",
+  "EXTRACTION_INPUT_COMMIT",
   "SHADOW_EXTRACTION_WRITE",
   "SHADOW_EXTRACTION_READ",
 ] as const;
@@ -109,13 +111,15 @@ function validContext(context: P0RepositoryContext): boolean {
 
 function validWriteContext(context: P0RepositoryContext): boolean {
   if (!validContext(context)) return false;
+  const permit = context.gatePermit;
+  if (!permit) return false;
   return Boolean(
     p0Phase2AGatePermitAuthorizes({
-        permit: context.gatePermit,
+        permit,
         principal: context.principal,
         scope: context.scope,
         stage: "INGESTION_SHADOW",
-        mode: "LOCAL_BUILD",
+        mode: permit.mode,
         operationId: context.operationId,
       }),
   );
@@ -156,6 +160,9 @@ function cloneJson<T>(value: T): T {
 export function createLocalSyntheticP0Repository(
   options: LocalSyntheticP0RepositoryOptions = {},
 ): P0Repository {
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("local synthetic repository is unavailable in production");
+  }
   const rows = new Map<string, unknown>();
   const verifier = Object.freeze({
     repositoryId: P0_LOCAL_REPOSITORY_ID,

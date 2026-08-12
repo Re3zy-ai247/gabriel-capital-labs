@@ -32,7 +32,12 @@ import {
 
 export const P0_SOURCE_ARTIFACT_CONTRACT_VERSION = "p0-source-artifact-v1" as const;
 export const P0_LOCAL_SOURCE_PROVIDER_KEY = "P0_LOCAL_SYNTHETIC_SOURCE" as const;
+export const P0_PRISMA_SOURCE_PROVIDER_KEY = "P0_PRISMA_ENCRYPTED_SOURCE" as const;
 export const P0_MAX_SOURCE_ARTIFACT_BYTES = 15 * 1024 * 1024;
+
+export type P0SourceArtifactProviderKey =
+  | typeof P0_LOCAL_SOURCE_PROVIDER_KEY
+  | typeof P0_PRISMA_SOURCE_PROVIDER_KEY;
 
 export type P0SourceArtifactKind =
   | "ORIGINAL_PDF"
@@ -115,13 +120,119 @@ export interface P0SourceArtifactWriteFence {
   }): Promise<P0SourceWriteFenceResult<T>>;
 }
 
+/**
+ * Concrete backends hold the authoritative database transaction and retained
+ * ingestion row lock.  The callback is intentionally permit-free: the common
+ * contract mints the process-local permit only after the backend has entered
+ * that exact transaction.
+ */
+export interface P0AuthenticatedSourceWriteFenceBackend {
+  readonly adapterClass: "AUTHENTICATED_PRODUCTION";
+  readonly backendId: string;
+  runWhileRetained<T>(input: {
+    readonly principal: P0Principal;
+    readonly scope: P0SourceArtifactScope;
+    readonly ingestionRevision: number;
+    readonly operationId: string;
+    readonly sourceOperationId: string;
+    readonly execute: () => Promise<T>;
+  }): Promise<P0SourceWriteFenceResult<T>>;
+}
+
+/**
+ * Production-capable fence constructor. A direct provider invocation cannot
+ * manufacture the private permit, and a backend does not receive one until it
+ * has established its authoritative retained-ingestion transaction.
+ */
+export function createAuthenticatedP0SourceArtifactWriteFence(
+  backend: P0AuthenticatedSourceWriteFenceBackend,
+): P0SourceArtifactWriteFence {
+  if (
+    backend?.adapterClass !== "AUTHENTICATED_PRODUCTION" ||
+    !STABLE.test(backend.backendId) ||
+    typeof backend.runWhileRetained !== "function"
+  ) {
+    throw new Error("invalid authenticated source write-fence backend");
+  }
+  return Object.freeze({
+    async runWhileRetained<T>(input: {
+      readonly principal: P0Principal;
+      readonly scope: P0SourceArtifactScope;
+      readonly ingestionRevision: number;
+      readonly operationId: string;
+      readonly sourceOperationId: string;
+      readonly execute: (permit: VerifiedP0SourceWriteFencePermit) => Promise<T>;
+    }): Promise<P0SourceWriteFenceResult<T>> {
+      if (
+        !input ||
+        !validScope(input.scope) ||
+        !p0PrincipalAuthorizesScope(input.principal, input.scope) ||
+        !Number.isSafeInteger(input.ingestionRevision) ||
+        input.ingestionRevision < 1 ||
+        !STABLE.test(input.operationId) ||
+        !STABLE.test(input.sourceOperationId) ||
+        typeof input.execute !== "function"
+      ) {
+        return { kind: "DENIED" };
+      }
+      try {
+        const result = await backend.runWhileRetained({
+          principal: input.principal,
+          scope: Object.freeze({ ...input.scope }),
+          ingestionRevision: input.ingestionRevision,
+          operationId: input.operationId,
+          sourceOperationId: input.sourceOperationId,
+          execute: async () => {
+            const unsigned = {
+              tenantId: input.scope.tenantId,
+              consumerId: input.scope.consumerId,
+              ingestionId: input.scope.ingestionId,
+              ingestionRevision: input.ingestionRevision,
+              operationId: input.operationId,
+              sourceOperationId: input.sourceOperationId,
+            };
+            const permit = { ...unsigned } as VerifiedP0SourceWriteFencePermit;
+            Object.defineProperty(permit, VERIFIED_SOURCE_WRITE_FENCE_PERMIT, {
+              value: true,
+              enumerable: false,
+              configurable: false,
+              writable: false,
+            });
+            Object.freeze(permit);
+            verifiedWriteFencePermits.set(
+              permit,
+              writeFencePermitBinding(permit),
+            );
+            try {
+              return await input.execute(permit);
+            } finally {
+              verifiedWriteFencePermits.delete(permit);
+            }
+          },
+        });
+        if (
+          !result ||
+          !["EXECUTED", "DENIED", "OUTCOME_UNKNOWN"].includes(result.kind)
+        ) {
+          return { kind: "OUTCOME_UNKNOWN" };
+        }
+        return result;
+      } catch {
+        return { kind: "OUTCOME_UNKNOWN" };
+      }
+    },
+  });
+}
+
 export interface P0SourceLocatorEnvelope {
   readonly ciphertextBase64: string;
   readonly ivBase64: string;
   readonly authTagBase64: string;
   readonly algorithm: "AES_256_GCM";
   readonly keyVersion: string;
-  readonly envelopeVersion: "p0-local-source-locator-v1";
+  readonly envelopeVersion:
+    | "p0-local-source-locator-v1"
+    | "p0-prisma-source-locator-v1";
   readonly aadVersion: string;
   readonly aadSha256: string;
 }
@@ -129,7 +240,7 @@ export interface P0SourceLocatorEnvelope {
 export interface P0StoredSourceArtifact {
   readonly contractVersion: typeof P0_SOURCE_ARTIFACT_CONTRACT_VERSION;
   readonly scope: P0SourceArtifactScope;
-  readonly providerKey: typeof P0_LOCAL_SOURCE_PROVIDER_KEY;
+  readonly providerKey: P0SourceArtifactProviderKey;
   /** Deterministic provider operation identity derived from durable ingestion identity. */
   readonly providerOperationId: string;
   readonly providerObjectVersion: string;
@@ -145,7 +256,7 @@ export interface P0StoredSourceArtifact {
 
 export interface P0SourceArtifactWriteRequest {
   readonly contractVersion: typeof P0_SOURCE_ARTIFACT_CONTRACT_VERSION;
-  readonly selectedProviderKey: typeof P0_LOCAL_SOURCE_PROVIDER_KEY;
+  readonly selectedProviderKey: P0SourceArtifactProviderKey;
   readonly capability: VerifiedP0SourceArtifactCapability & {
     readonly purpose: "STORE_SOURCE";
   };
@@ -204,7 +315,7 @@ export interface P0SourceArtifactWriteReadbackRequest {
 
 export interface P0SourceArtifactOrphanReconciliationRequest {
   readonly contractVersion: typeof P0_SOURCE_ARTIFACT_CONTRACT_VERSION;
-  readonly selectedProviderKey: typeof P0_LOCAL_SOURCE_PROVIDER_KEY;
+  readonly selectedProviderKey: P0SourceArtifactProviderKey;
   readonly capability: VerifiedP0SourceArtifactCapability & { readonly purpose: "STORE_SOURCE" };
   readonly principal: P0Principal;
   readonly gatePermit: P0Phase2AGatePermit;
@@ -280,7 +391,7 @@ export interface P0SourceArtifactTombstoneRequest {
 
 export interface P0SourceArtifactTombstoneResult {
   readonly status: "OBJECT_DELETED" | "CRYPTO_SHREDDED" | "FAILED";
-  readonly providerKey: typeof P0_LOCAL_SOURCE_PROVIDER_KEY;
+  readonly providerKey: P0SourceArtifactProviderKey;
   readonly providerObjectVersion: string;
   readonly objectBindingSha256: string;
   readonly tombstoneRef?: string;
@@ -288,7 +399,7 @@ export interface P0SourceArtifactTombstoneResult {
 }
 
 export interface P0SourceArtifactProvider {
-  readonly providerKey: typeof P0_LOCAL_SOURCE_PROVIDER_KEY;
+  readonly providerKey: P0SourceArtifactProviderKey;
   putImmutable(request: P0SourceArtifactWriteRequest & { readonly writeFencePermit: VerifiedP0SourceWriteFencePermit }): Promise<P0StoredSourceArtifact>;
   readBackAfterWrite(
     request: P0SourceArtifactWriteReadbackRequest,
@@ -513,7 +624,7 @@ function storeGateAllows(
         principal: gate.principal,
         scope,
         stage: "INGESTION_SHADOW",
-        mode: "LOCAL_BUILD",
+        mode: gate.permit.mode,
         operationId: gate.operationId,
       }),
   );
@@ -557,13 +668,20 @@ export function computeP0StoredSourceObjectBindingSha256(
 }
 
 function validObject(object: P0StoredSourceArtifact): boolean {
+  const providerEnvelopeMatches =
+    (object?.providerKey === P0_LOCAL_SOURCE_PROVIDER_KEY &&
+      object?.locator?.envelopeVersion === "p0-local-source-locator-v1") ||
+    (object?.providerKey === P0_PRISMA_SOURCE_PROVIDER_KEY &&
+      object?.locator?.envelopeVersion === "p0-prisma-source-locator-v1");
   return Boolean(
     object &&
       exactKeys(object, ["contractVersion", "scope", "providerKey", "providerOperationId", "providerObjectVersion", "locator", "kind", "mimeType", "sha256", "byteLength", "writeDisposition", "immutable", "storedAt"]) &&
       object.contractVersion === P0_SOURCE_ARTIFACT_CONTRACT_VERSION &&
       exactKeys(object.scope, ["tenantId", "consumerId", "ingestionId", "artifactId", "artifactVersion"]) &&
       validScope(object.scope) &&
-      object.providerKey === P0_LOCAL_SOURCE_PROVIDER_KEY &&
+      (object.providerKey === P0_LOCAL_SOURCE_PROVIDER_KEY ||
+        object.providerKey === P0_PRISMA_SOURCE_PROVIDER_KEY) &&
+      providerEnvelopeMatches &&
       STABLE.test(object.providerOperationId) &&
       STABLE.test(object.providerObjectVersion) &&
       exactKeys(object.locator, ["ciphertextBase64", "ivBase64", "authTagBase64", "algorithm", "keyVersion", "envelopeVersion", "aadVersion", "aadSha256"]) &&
@@ -576,7 +694,6 @@ function validObject(object: P0StoredSourceArtifact): boolean {
       STABLE.test(object.locator.keyVersion) &&
       STABLE.test(object.locator.aadVersion) &&
       SHA256.test(object.locator.aadSha256) &&
-      object.locator.envelopeVersion === "p0-local-source-locator-v1" &&
       ((object.kind === "ORIGINAL_PDF" && object.mimeType === "application/pdf") || ((object.kind === "ORIGINAL_TEXT" || object.kind === "NORMALIZED_TEXT") && object.mimeType === "text/plain")) &&
       SHA256.test(object.sha256) &&
       Number.isSafeInteger(object.byteLength) &&
@@ -650,7 +767,8 @@ function validWrite(request: P0SourceArtifactWriteRequest, now: Date): boolean {
   }
   return Boolean(
       request.contractVersion === P0_SOURCE_ARTIFACT_CONTRACT_VERSION &&
-      request.selectedProviderKey === P0_LOCAL_SOURCE_PROVIDER_KEY &&
+      (request.selectedProviderKey === P0_LOCAL_SOURCE_PROVIDER_KEY ||
+        request.selectedProviderKey === P0_PRISMA_SOURCE_PROVIDER_KEY) &&
       typeof request.writeFence?.runWhileRetained === "function" &&
       validScope(request.scope) &&
       request.scope.artifactId === identity.artifactId &&
@@ -697,7 +815,8 @@ function validOrphanReconciliationRequest(request: P0SourceArtifactOrphanReconci
   const mimeMatches = (request.kind === "ORIGINAL_PDF" && request.mimeType === "application/pdf") || ((request.kind === "ORIGINAL_TEXT" || request.kind === "NORMALIZED_TEXT") && request.mimeType === "text/plain");
   return Boolean(
     request.contractVersion === P0_SOURCE_ARTIFACT_CONTRACT_VERSION &&
-      request.selectedProviderKey === P0_LOCAL_SOURCE_PROVIDER_KEY &&
+      (request.selectedProviderKey === P0_LOCAL_SOURCE_PROVIDER_KEY ||
+        request.selectedProviderKey === P0_PRISMA_SOURCE_PROVIDER_KEY) &&
       typeof request.writeFence?.runWhileRetained === "function" &&
       request.scope.artifactId === identity.artifactId &&
       validCapability(request.capability, request.scope, "STORE_SOURCE", now) &&
@@ -726,6 +845,123 @@ function exactReadback(
       computeP0SourceArtifactSha256(result.content) === request.sha256 &&
       Buffer.from(result.content).equals(Buffer.from(request.content)) &&
       instant(result.readAt) !== null,
+  );
+}
+
+/** Exact common-contract validation used again inside concrete providers. */
+export function p0SourceArtifactProviderWriteAuthorizes(
+  request:
+    | (P0SourceArtifactWriteRequest & {
+        readonly writeFencePermit: VerifiedP0SourceWriteFencePermit;
+      })
+    | null
+    | undefined,
+  expectedProviderKey: P0SourceArtifactProviderKey,
+  now: Date = new Date(),
+): request is P0SourceArtifactWriteRequest & {
+  readonly writeFencePermit: VerifiedP0SourceWriteFencePermit;
+} {
+  return Boolean(
+    request &&
+      request.selectedProviderKey === expectedProviderKey &&
+      validWrite(request, now) &&
+      validWriteFencePermit(request.writeFencePermit, request),
+  );
+}
+
+export function p0SourceArtifactProviderWriteReadbackAuthorizes(
+  request: P0SourceArtifactWriteReadbackRequest | null | undefined,
+  expectedProviderKey: P0SourceArtifactProviderKey,
+  now: Date = new Date(),
+): request is P0SourceArtifactWriteReadbackRequest {
+  return Boolean(
+    request &&
+      request.readKind === "WRITE_READBACK" &&
+      request.object?.providerKey === expectedProviderKey &&
+      validObject(request.object) &&
+      validWriteFencePermit(request.writeFencePermit, {
+        scope: request.object.scope,
+        ingestionRevision: request.ingestionRevision,
+        operationId: request.operationId,
+        sourceOperationId: request.sourceOperationId,
+      }) &&
+      validCapability(
+        request.capability,
+        request.object.scope,
+        "STORE_SOURCE",
+        now,
+      ) &&
+      validSensitiveByteRelease({
+        principal: request.principal,
+        grant: request.sensitiveAccessGrant,
+        resource: request.sensitiveResource,
+        accessKind: request.sensitiveAccessKind,
+        purposeCode: request.sensitiveAccessPurposeCode,
+        scope: request.object.scope,
+        kind: request.object.kind,
+        boundary: "INGESTION_STORE",
+        ingestionRevision: request.ingestionRevision,
+      }),
+  );
+}
+
+export function p0SourceArtifactProviderOrphanReadAuthorizes(
+  request:
+    | (P0SourceArtifactOrphanReconciliationRequest & {
+        readonly writeFencePermit: VerifiedP0SourceWriteFencePermit;
+      })
+    | null
+    | undefined,
+  expectedProviderKey: P0SourceArtifactProviderKey,
+  now: Date = new Date(),
+): request is P0SourceArtifactOrphanReconciliationRequest & {
+  readonly writeFencePermit: VerifiedP0SourceWriteFencePermit;
+} {
+  return Boolean(
+    request &&
+      request.selectedProviderKey === expectedProviderKey &&
+      validOrphanReconciliationRequest(request, now) &&
+      validWriteFencePermit(request.writeFencePermit, request),
+  );
+}
+
+export function p0SourceArtifactProviderReadAuthorizes(
+  request: P0SourceArtifactReadRequest | null | undefined,
+  expectedProviderKey: P0SourceArtifactProviderKey,
+  now: Date = new Date(),
+): request is P0SourceArtifactReadRequest {
+  return Boolean(
+    request &&
+      request.object?.providerKey === expectedProviderKey &&
+      validObject(request.object) &&
+      validCapability(
+        request.capability,
+        request.object.scope,
+        "READ_SOURCE",
+        now,
+      ) &&
+      validSensitiveByteRelease({
+        principal: request.principal,
+        grant: request.sensitiveAccessGrant,
+        resource: request.sensitiveResource,
+        accessKind: request.sensitiveAccessKind,
+        purposeCode: request.sensitiveAccessPurposeCode,
+        scope: request.object.scope,
+        kind: request.object.kind,
+        boundary: "STORED_ARTIFACT",
+      }),
+  );
+}
+
+export function isValidP0StoredSourceArtifact(
+  object: P0StoredSourceArtifact | null | undefined,
+  expectedProviderKey?: P0SourceArtifactProviderKey,
+): object is P0StoredSourceArtifact {
+  return Boolean(
+    object &&
+      validObject(object) &&
+      (expectedProviderKey === undefined ||
+        object.providerKey === expectedProviderKey),
   );
 }
 
@@ -995,6 +1231,27 @@ function validVerifiedErasure(
   );
 }
 
+export function p0SourceArtifactProviderErasureAuthorizes(
+  request: P0SourceArtifactTombstoneRequest | null | undefined,
+  expectedProviderKey: P0SourceArtifactProviderKey,
+  now: Date = new Date(),
+): request is P0SourceArtifactTombstoneRequest {
+  return Boolean(
+    request &&
+      request.contractVersion === P0_SOURCE_ARTIFACT_CONTRACT_VERSION &&
+      request.object?.providerKey === expectedProviderKey &&
+      validObject(request.object) &&
+      validCapability(
+        request.capability,
+        request.object.scope,
+        "ERASE_SOURCE",
+        now,
+      ) &&
+      validVerifiedErasure(request.eligibility, request.object, now) &&
+      STABLE.test(request.tombstoneEventKey),
+  );
+}
+
 export async function dispatchP0SourceArtifactTombstone(
   provider: P0SourceArtifactProvider,
   request: P0SourceArtifactTombstoneRequest,
@@ -1031,6 +1288,9 @@ export async function dispatchP0SourceArtifactTombstone(
 
 /** In-memory encrypted-locator provider for local/synthetic verification only. */
 export function createLocalSyntheticP0SourceArtifactProvider(): P0SourceArtifactProvider {
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("local synthetic source provider is unavailable in production");
+  }
   const locatorKey = randomBytes(32);
   const rows = new Map<string, { object: P0StoredSourceArtifact; content: Uint8Array }>();
   const operationIndex = new Map<string, string>();
@@ -1265,6 +1525,9 @@ export function createLocalSyntheticP0SourceRetentionState(input: {
   readonly state: P0ReportIngestionState;
   readonly sourceDisposition: P0ErasureSetSnapshot["sourceDisposition"];
 }): P0LocalSyntheticSourceRetentionState {
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("local synthetic source retention is unavailable in production");
+  }
   if (!STABLE.test(input.tenantId) || !STABLE.test(input.consumerId) || !STABLE.test(input.ingestionId) || !STABLE.test(input.sourceOperationId) || !Number.isSafeInteger(input.revision) || input.revision < 1 || !["RECEIVED", "SOURCE_STORED_AND_VERIFIED", "VERSION_COMMITTED", "EXTRACTING", "SUCCEEDED", "PARTIAL", "FAILED", "ASSESSED", "ROUND0_READY", "OUTCOME_UNKNOWN", "QUARANTINED"].includes(input.state) || !["RETAINED", "TOMBSTONE_REQUESTED", "OBJECT_DELETED", "CRYPTO_SHREDDED", "DISPOSITION_FAILED"].includes(input.sourceDisposition)) throw new Error("invalid local retention state");
   const mutable: LocalSourceRetentionMutable = { ...input, activeWrites: 0 };
   const holder = {} as P0LocalSyntheticSourceRetentionState;
@@ -1460,6 +1723,9 @@ export function createP0SourceErasureCoordinator(repository: P0SourceErasureRepo
 }
 
 export function createLocalSyntheticP0SourceErasureRepository(initial: P0ErasureSetSnapshot, options: { readonly mutateReadback?: (resourceType: "ERASURE_SET" | "ARTIFACT_TOMBSTONE", value: unknown) => unknown; readonly retentionState?: P0LocalSyntheticSourceRetentionState } = {}): P0SourceErasureRepository {
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("local synthetic source erasure repository is unavailable in production");
+  }
   let snapshot = structuredClone(initial);
   const sharedRetention = options.retentionState ? localSourceRetentionStates.get(options.retentionState) : undefined;
   if (options.retentionState && (!sharedRetention || sharedRetention.tenantId !== initial.tenantId || sharedRetention.consumerId !== initial.consumerId || sharedRetention.ingestionId !== initial.ingestionId || sharedRetention.revision !== initial.revision || sharedRetention.state !== initial.state || sharedRetention.sourceDisposition !== initial.sourceDisposition)) throw new Error("local retention state mismatch");

@@ -61,6 +61,10 @@ model User {
   // Admin & subscription
   role                 UserRole          @default(USER)
   disabled             Boolean           @default(false) // admin can disable an account (blocks login)
+  // Monotonic authorization epoch for P0 principals. A database trigger owns
+  // this value and increments it whenever an authorization-bearing User field
+  // changes, preventing revoke/regrant ABA from reviving an older principal.
+  p0AuthorizationRevision Int            @default(1)
   briefDigest          Boolean           @default(false) // opted in to the weekly CreditVector Brief email digest
   letterCredits        Int               @default(0) // one-time letter-pack credits (consumed past the free monthly allowance)
   // Billing — Stripe subscription state. plan is the source of truth for entitlements.
@@ -1386,6 +1390,7 @@ model CreditTruthScope {
   reportDifferences       ReportDifference[]
   disputeOutcomes         DisputeOutcome[]
   reportIngestions        ReportIngestion[]
+  sourceObjects           P0SourceObject[]
   sensitiveAccessEvents   P0SensitiveAccessEvent[]
   bureauReportDates       BureauReportDateEvidence[]
   consumerAccountReviews  ConsumerAccountReviewReceipt[]
@@ -1446,6 +1451,7 @@ model ReportIngestion {
   extractionRunId              String?
   extractionRun                ExtractionRun?          @relation(fields: [tenantId, consumerId, reportVersionId, extractionRunId], references: [tenantId, consumerId, reportVersionId, id], onDelete: Restrict, onUpdate: Restrict, map: "report_ingestion_extraction_run_fkey")
   identityBaselines            IdentityBaseline[]      @relation("IdentityBaselineReportIngestion")
+  sourceObjects                P0SourceObject[]
   createdAt                    DateTime                @default(now())
   updatedAt                    DateTime                @updatedAt
 
@@ -1457,6 +1463,50 @@ model ReportIngestion {
   @@index([state, nextAttemptAt, leaseExpiresAt, createdAt], map: "report_ingestion_claim_idx")
   @@index([tenantId, consumerId, state, createdAt], map: "report_ingestion_scope_state_idx")
   @@index([tenantId, consumerId, sourceDisposition, createdAt], map: "report_ingestion_disposition_idx")
+}
+
+// Encrypted immutable source bytes used by the concrete trusted-writer path.
+// Provider/object identities and both authenticated-encryption AAD digests are
+// server-derived. No plaintext locator, report bytes, or consumer value is
+// stored in this row.
+model P0SourceObject {
+  id                       String              @id
+  tenantId                 String
+  consumerId               String
+  scope                    CreditTruthScope    @relation(fields: [tenantId, consumerId], references: [tenantId, consumerId], onDelete: Restrict, onUpdate: Restrict)
+  ingestionId              String
+  ingestion                ReportIngestion     @relation(fields: [tenantId, consumerId, ingestionId], references: [tenantId, consumerId, id], onDelete: Restrict, onUpdate: Restrict, map: "p0_source_object_ingestion_fkey")
+  artifactId               String
+  artifactVersion          Int
+  providerOperationId      String
+  providerObjectVersion    String
+  kind                     String
+  mimeType                 String
+  sha256                   String              @db.VarChar(64)
+  byteLength               BigInt
+  ciphertext               Bytes
+  iv                       Bytes
+  authTag                  Bytes
+  keyVersion               String
+  algorithm                EncryptionAlgorithm
+  envelopeVersion          String
+  aadVersion               String
+  aadSha256                String              @db.VarChar(64)
+  locatorCiphertext        Bytes
+  locatorIv                Bytes
+  locatorAuthTag           Bytes
+  locatorKeyVersion        String
+  locatorAlgorithm         EncryptionAlgorithm
+  locatorEnvelopeVersion   String
+  locatorAadVersion        String
+  locatorAadSha256         String              @db.VarChar(64)
+  storedAt                 DateTime            @default(now())
+
+  @@unique([tenantId, consumerId, id], map: "p0_source_object_scope_id_key")
+  @@unique([tenantId, consumerId, artifactId, artifactVersion], map: "p0_source_object_artifact_version_key")
+  @@unique([tenantId, consumerId, providerOperationId], map: "p0_source_object_provider_operation_key")
+  @@unique([tenantId, consumerId, providerObjectVersion], map: "p0_source_object_provider_object_version_key")
+  @@index([tenantId, consumerId, ingestionId], map: "p0_source_object_ingestion_idx")
 }
 
 // Immutable version header. The safe defaults deliberately classify an omitted
@@ -1933,6 +1983,7 @@ model DerivedAccountAssessment {
 // appends a new series version. Free text is encrypted, never indexed.
 model ConsumerAssertion {
   id                         String                       @id @default(cuid())
+  operationId                String
   tenantId                   String
   consumerId                 String
   reportVersionId            String
@@ -1969,6 +2020,7 @@ model ConsumerAssertion {
   correspondenceItems CorrespondenceItem[]
 
   @@unique([tenantId, consumerId, id])
+  @@unique([tenantId, consumerId, operationId], map: "consumer_assertion_operation_key")
   @@unique([tenantId, consumerId, reportVersionId, accountId, id])
   @@unique([tenantId, consumerId, reportVersionId, accountId, extractionRunId, bureau, fieldKey, observationSeriesKey, observationRevision, observationIntegritySha256, observationId, assessmentId, id], map: "consumer_assertion_chain_key")
   @@unique([tenantId, consumerId, assertionSeriesKey, id], map: "consumer_assertion_supersession_key")

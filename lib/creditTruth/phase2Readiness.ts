@@ -1,5 +1,9 @@
 import { createHash } from "node:crypto";
 import { isStrictIsoInstant } from "./progressIntelligence";
+import {
+  isVerifiedP0TrustedWriterReadinessReceipt,
+  type VerifiedP0TrustedWriterReadinessReceipt,
+} from "./trustedWriterReadiness";
 
 export const P0_PHASE2A_READINESS_CONTRACT_VERSION =
   "p0-phase2a-readiness-v1" as const;
@@ -12,7 +16,10 @@ export const P0_PHASE2A_STAGES = [
 ] as const;
 
 export type P0Phase2AStage = (typeof P0_PHASE2A_STAGES)[number];
-export type P0ReadinessMode = "LOCAL_BUILD" | "PRODUCTION_ACTIVATION";
+export type P0ReadinessMode =
+  | "LOCAL_BUILD"
+  | "PRE_ACTIVATION_ATTESTATION"
+  | "PRODUCTION_ACTIVATION";
 
 export const P0_REPOSITORY_CAPABILITIES = [
   "AUTHENTICATED_PRINCIPAL",
@@ -71,6 +78,11 @@ export interface P0Phase2AReadinessEvidence {
   readonly round0BoundaryVerified: boolean;
   readonly assertionBoundaryVerified: boolean;
   readonly repositoryReceipt: VerifiedP0RepositoryReadinessReceipt | null;
+  /** Signed concrete-writer proof. It is evidence, never activation authority. */
+  readonly productionRepositoryReceipt?: VerifiedP0TrustedWriterReadinessReceipt | null;
+  readonly deployedDbRoleAttested?: boolean;
+  readonly hardProcessIsolatedPdfTerminationVerified?: boolean;
+  readonly retentionLegalHoldApproved?: boolean;
 }
 
 export type P0Phase2AReadinessReason =
@@ -86,7 +98,12 @@ export type P0Phase2AReadinessReason =
   | "INGESTION_BOUNDARY_NOT_VERIFIED"
   | "ROUND0_BOUNDARY_NOT_VERIFIED"
   | "ASSERTION_BOUNDARY_NOT_VERIFIED"
-  | "AUTHENTICATED_PRODUCTION_REPOSITORY_RECEIPT_REQUIRED";
+  | "AUTHENTICATED_PRODUCTION_REPOSITORY_RECEIPT_REQUIRED"
+  | "PRODUCTION_REPOSITORY_RECEIPT_MIGRATION_MISMATCH"
+  | "DEPLOYED_DB_ROLE_ATTESTATION_REQUIRED"
+  | "HARD_PROCESS_ISOLATED_PDF_TERMINATION_REQUIRED"
+  | "RETENTION_LEGAL_HOLD_APPROVAL_REQUIRED"
+  | "FOUNDER_ACTIVATION_AUTHORIZATION_REQUIRED";
 
 export interface P0Phase2AReadinessDecision {
   readonly ready: boolean;
@@ -94,6 +111,9 @@ export interface P0Phase2AReadinessDecision {
   readonly mode: P0ReadinessMode;
   readonly reasons: readonly P0Phase2AReadinessReason[];
   readonly trustedWriterDependency: "BOUNDED";
+  readonly trustedWriterLocalAttestation:
+    | "MISSING"
+    | "SIGNED_RECEIPT_VERIFIED";
   readonly productionActivation:
     | "BLOCKED"
     | "REPOSITORY_RECEIPT_SATISFIED_OTHER_GATES_STILL_REQUIRED";
@@ -243,7 +263,9 @@ export function evaluateP0Phase2AReadiness(input: {
     throw new Error("invalid readiness evaluation time");
   }
   const modeValid =
-    mode === "LOCAL_BUILD" || mode === "PRODUCTION_ACTIVATION";
+    mode === "LOCAL_BUILD" ||
+    mode === "PRE_ACTIVATION_ATTESTATION" ||
+    mode === "PRODUCTION_ACTIVATION";
   if (!modeValid) reasons.push("INVALID_READINESS_MODE");
   if (!evidence.migrationVerified) reasons.push("MIGRATION_NOT_VERIFIED");
   if (!SHA256.test(evidence.migrationSha256)) {
@@ -258,16 +280,25 @@ export function evaluateP0Phase2AReadiness(input: {
 
   const receipt = evidence.repositoryReceipt;
   const validReceipt = isVerifiedP0RepositoryReadinessReceipt(receipt);
-  if (!validReceipt) {
-    reasons.push("REPOSITORY_RECEIPT_MISSING_OR_INVALID");
-  } else {
-    const expiresAt = Date.parse(receipt.expiresAt);
-    if (expiresAt <= now.getTime()) {
+  const productionReceipt = evidence.productionRepositoryReceipt;
+  const validProductionReceipt =
+    isVerifiedP0TrustedWriterReadinessReceipt(productionReceipt);
+  if (mode === "LOCAL_BUILD") {
+    if (!validReceipt) {
       reasons.push("REPOSITORY_RECEIPT_MISSING_OR_INVALID");
+    } else {
+      const expiresAt = Date.parse(receipt.expiresAt);
+      if (expiresAt <= now.getTime()) {
+        reasons.push("REPOSITORY_RECEIPT_MISSING_OR_INVALID");
+      }
+      if (receipt.migrationSha256 !== evidence.migrationSha256) {
+        reasons.push("REPOSITORY_RECEIPT_MIGRATION_MISMATCH");
+      }
     }
-    if (receipt.migrationSha256 !== evidence.migrationSha256) {
-      reasons.push("REPOSITORY_RECEIPT_MIGRATION_MISMATCH");
-    }
+  } else if (!validProductionReceipt) {
+    reasons.push("AUTHENTICATED_PRODUCTION_REPOSITORY_RECEIPT_REQUIRED");
+  } else if (productionReceipt.migrationSha256 !== evidence.migrationSha256) {
+    reasons.push("PRODUCTION_REPOSITORY_RECEIPT_MIGRATION_MISMATCH");
   }
 
   if (stage !== "ROOT") {
@@ -287,10 +318,20 @@ export function evaluateP0Phase2AReadiness(input: {
     reasons.push("ASSERTION_BOUNDARY_NOT_VERIFIED");
   }
 
-  // Anything except the exact local-build code must retain the production
-  // trusted-writer blocker. A malformed mode cannot route around it.
-  if (mode !== "LOCAL_BUILD") {
-    reasons.push("AUTHENTICATED_PRODUCTION_REPOSITORY_RECEIPT_REQUIRED");
+  // This implementation gate can verify a concrete writer but cannot authorize
+  // activation. Independent infrastructure, PDF, retention/counsel and Founder
+  // gates remain explicit and fail closed.
+  if (mode === "PRODUCTION_ACTIVATION") {
+    if (!evidence.deployedDbRoleAttested) {
+      reasons.push("DEPLOYED_DB_ROLE_ATTESTATION_REQUIRED");
+    }
+    if (!evidence.hardProcessIsolatedPdfTerminationVerified) {
+      reasons.push("HARD_PROCESS_ISOLATED_PDF_TERMINATION_REQUIRED");
+    }
+    if (!evidence.retentionLegalHoldApproved) {
+      reasons.push("RETENTION_LEGAL_HOLD_APPROVAL_REQUIRED");
+    }
+    reasons.push("FOUNDER_ACTIVATION_AUTHORIZATION_REQUIRED");
   }
 
   const uniqueReasons = [...new Set(reasons)];
@@ -302,6 +343,9 @@ export function evaluateP0Phase2AReadiness(input: {
       uniqueReasons.length === 0 ? (["READY"] as const) : uniqueReasons,
     ),
     trustedWriterDependency: "BOUNDED",
+    trustedWriterLocalAttestation: validProductionReceipt
+      ? "SIGNED_RECEIPT_VERIFIED"
+      : "MISSING",
     productionActivation: "BLOCKED",
   });
 }

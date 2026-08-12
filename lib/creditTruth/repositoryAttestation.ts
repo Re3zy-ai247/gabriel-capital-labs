@@ -6,6 +6,20 @@ export const P0_REPOSITORY_ATTESTATION_CONTRACT_VERSION =
 export const P0_LOCAL_REPOSITORY_ID = "P0_LOCAL_SYNTHETIC_REPOSITORY" as const;
 export const P0_LOCAL_REPOSITORY_SEMANTICS_VERSION =
   "p0-local-repository-semantics-v1" as const;
+export const P0_PRISMA_REPOSITORY_ID =
+  "P0_AUTHENTICATED_TENANT_SCOPED_PRISMA_REPOSITORY" as const;
+export const P0_PRISMA_REPOSITORY_SEMANTICS_VERSION =
+  "p0-prisma-repository-semantics-v1" as const;
+
+export type P0RepositoryAdapterClass =
+  | "LOCAL_SYNTHETIC_ONLY"
+  | "AUTHENTICATED_TENANT_SCOPED_PRISMA";
+export type P0RepositoryId =
+  | typeof P0_LOCAL_REPOSITORY_ID
+  | typeof P0_PRISMA_REPOSITORY_ID;
+export type P0RepositorySemanticsVersion =
+  | typeof P0_LOCAL_REPOSITORY_SEMANTICS_VERSION
+  | typeof P0_PRISMA_REPOSITORY_SEMANTICS_VERSION;
 
 const VERIFIED_REPOSITORY_ATTESTATION = Symbol("verified-p0-repository-attestation");
 const verifiedAttestations = new WeakMap<object, string>();
@@ -19,11 +33,8 @@ export interface P0RepositorySourceRef {
   readonly integritySha256?: string;
 }
 
-export interface P0RepositoryReadbackVerification {
+interface P0RepositoryReadbackVerificationBase {
   readonly contractVersion: typeof P0_REPOSITORY_ATTESTATION_CONTRACT_VERSION;
-  readonly adapterClass: "LOCAL_SYNTHETIC_ONLY";
-  readonly repositoryId: typeof P0_LOCAL_REPOSITORY_ID;
-  readonly semanticsVersion: typeof P0_LOCAL_REPOSITORY_SEMANTICS_VERSION;
   readonly operationId: string;
   readonly purpose: string;
   readonly scopeSha256: string;
@@ -33,18 +44,47 @@ export interface P0RepositoryReadbackVerification {
   readonly sourceSetSha256: string;
 }
 
+export interface P0LocalRepositoryReadbackVerification
+  extends P0RepositoryReadbackVerificationBase {
+  readonly adapterClass: "LOCAL_SYNTHETIC_ONLY";
+  readonly repositoryId: typeof P0_LOCAL_REPOSITORY_ID;
+  readonly semanticsVersion: typeof P0_LOCAL_REPOSITORY_SEMANTICS_VERSION;
+}
+
+export interface P0PrismaRepositoryReadbackVerification
+  extends P0RepositoryReadbackVerificationBase {
+  readonly adapterClass: "AUTHENTICATED_TENANT_SCOPED_PRISMA";
+  readonly repositoryId: typeof P0_PRISMA_REPOSITORY_ID;
+  readonly semanticsVersion: typeof P0_PRISMA_REPOSITORY_SEMANTICS_VERSION;
+}
+
+export type P0RepositoryReadbackVerification =
+  | P0LocalRepositoryReadbackVerification
+  | P0PrismaRepositoryReadbackVerification;
+
 export interface P0LocalRepositoryAttestationVerifier {
   readonly repositoryId: typeof P0_LOCAL_REPOSITORY_ID;
   readonly semanticsVersion: typeof P0_LOCAL_REPOSITORY_SEMANTICS_VERSION;
-  verifyReadback(input: P0RepositoryReadbackVerification): Promise<boolean>;
+  verifyReadback(input: P0LocalRepositoryReadbackVerification): Promise<boolean>;
 }
+
+export interface P0PrismaRepositoryAttestationVerifier {
+  readonly repositoryId: typeof P0_PRISMA_REPOSITORY_ID;
+  readonly semanticsVersion: typeof P0_PRISMA_REPOSITORY_SEMANTICS_VERSION;
+  verifyReadback(input: P0PrismaRepositoryReadbackVerification): Promise<boolean>;
+}
+
+type P0RepositoryAttestationVerifier =
+  | P0LocalRepositoryAttestationVerifier
+  | P0PrismaRepositoryAttestationVerifier;
 
 export interface VerifiedP0RepositoryAttestation<T> {
   readonly operationId: string;
   readonly purpose: string;
   readonly scope: P0Scope;
-  readonly repositoryId: typeof P0_LOCAL_REPOSITORY_ID;
-  readonly semanticsVersion: typeof P0_LOCAL_REPOSITORY_SEMANTICS_VERSION;
+  readonly adapterClass: P0RepositoryAdapterClass;
+  readonly repositoryId: P0RepositoryId;
+  readonly semanticsVersion: P0RepositorySemanticsVersion;
   readonly semanticSha256: string;
   readonly sourceSetSha256: string;
   readonly snapshot: T;
@@ -127,6 +167,7 @@ function attestationBinding(attestation: VerifiedP0RepositoryAttestation<unknown
     attestation.purpose,
     attestation.scope.tenantId,
     attestation.scope.consumerId,
+    attestation.adapterClass,
     attestation.repositoryId,
     attestation.semanticsVersion,
     attestation.semanticSha256,
@@ -134,19 +175,35 @@ function attestationBinding(attestation: VerifiedP0RepositoryAttestation<unknown
   ]);
 }
 
-/**
- * Local/synthetic contract proof only. Exact expected and readback snapshots
- * are compared in memory before a branded result is minted.
- */
-export async function verifyLocalP0RepositoryReadback<T>(input: {
+/** Resolve only one of the two explicitly supported adapter identities. */
+function verifierAdapterClass(
+  verifier: P0RepositoryAttestationVerifier,
+): P0RepositoryAdapterClass | null {
+  if (
+    verifier.repositoryId === P0_LOCAL_REPOSITORY_ID &&
+    verifier.semanticsVersion === P0_LOCAL_REPOSITORY_SEMANTICS_VERSION
+  ) {
+    return "LOCAL_SYNTHETIC_ONLY";
+  }
+  if (
+    verifier.repositoryId === P0_PRISMA_REPOSITORY_ID &&
+    verifier.semanticsVersion === P0_PRISMA_REPOSITORY_SEMANTICS_VERSION
+  ) {
+    return "AUTHENTICATED_TENANT_SCOPED_PRISMA";
+  }
+  return null;
+}
+
+async function verifyP0RepositoryReadback<T>(input: {
   readonly operationId: string;
   readonly purpose: string;
   readonly scope: P0Scope;
   readonly expectedSnapshot: T;
   readonly readbackSnapshot: T;
   readonly sourceRefs: readonly P0RepositorySourceRef[];
-  readonly verifier: P0LocalRepositoryAttestationVerifier;
+  readonly verifier: P0RepositoryAttestationVerifier;
 }): Promise<VerifiedP0RepositoryAttestation<T> | null> {
+  const adapterClass = verifierAdapterClass(input.verifier);
   if (
     typeof input.operationId !== "string" ||
     input.operationId.length < 1 ||
@@ -154,8 +211,7 @@ export async function verifyLocalP0RepositoryReadback<T>(input: {
     !MACHINE_KEY.test(input.purpose) ||
     !input.scope?.tenantId ||
     !input.scope?.consumerId ||
-    input.verifier?.repositoryId !== P0_LOCAL_REPOSITORY_ID ||
-    input.verifier?.semanticsVersion !== P0_LOCAL_REPOSITORY_SEMANTICS_VERSION
+    !adapterClass
   ) {
     return null;
   }
@@ -176,9 +232,9 @@ export async function verifyLocalP0RepositoryReadback<T>(input: {
 
   const verification = Object.freeze({
     contractVersion: P0_REPOSITORY_ATTESTATION_CONTRACT_VERSION,
-    adapterClass: "LOCAL_SYNTHETIC_ONLY" as const,
-    repositoryId: P0_LOCAL_REPOSITORY_ID,
-    semanticsVersion: P0_LOCAL_REPOSITORY_SEMANTICS_VERSION,
+    adapterClass,
+    repositoryId: input.verifier.repositoryId,
+    semanticsVersion: input.verifier.semanticsVersion,
     operationId: input.operationId,
     purpose: input.purpose,
     scopeSha256: scopeSha256(input.scope),
@@ -187,7 +243,11 @@ export async function verifyLocalP0RepositoryReadback<T>(input: {
   });
   let verified = false;
   try {
-    verified = await input.verifier.verifyReadback(verification);
+    verified = adapterClass === "LOCAL_SYNTHETIC_ONLY"
+      ? await (input.verifier as P0LocalRepositoryAttestationVerifier)
+          .verifyReadback(verification as P0LocalRepositoryReadbackVerification)
+      : await (input.verifier as P0PrismaRepositoryAttestationVerifier)
+          .verifyReadback(verification as P0PrismaRepositoryReadbackVerification);
   } catch {
     return null;
   }
@@ -197,8 +257,9 @@ export async function verifyLocalP0RepositoryReadback<T>(input: {
     operationId: input.operationId,
     purpose: input.purpose,
     scope: Object.freeze({ ...input.scope }),
-    repositoryId: P0_LOCAL_REPOSITORY_ID,
-    semanticsVersion: P0_LOCAL_REPOSITORY_SEMANTICS_VERSION,
+    adapterClass,
+    repositoryId: input.verifier.repositoryId,
+    semanticsVersion: input.verifier.semanticsVersion,
     semanticSha256: expectedSha256,
     sourceSetSha256,
     snapshot,
@@ -212,6 +273,30 @@ export async function verifyLocalP0RepositoryReadback<T>(input: {
   Object.freeze(attestation);
   verifiedAttestations.set(attestation, attestationBinding(attestation));
   return attestation;
+}
+
+export async function verifyLocalP0RepositoryReadback<T>(input: {
+  readonly operationId: string;
+  readonly purpose: string;
+  readonly scope: P0Scope;
+  readonly expectedSnapshot: T;
+  readonly readbackSnapshot: T;
+  readonly sourceRefs: readonly P0RepositorySourceRef[];
+  readonly verifier: P0LocalRepositoryAttestationVerifier;
+}): Promise<VerifiedP0RepositoryAttestation<T> | null> {
+  return verifyP0RepositoryReadback(input);
+}
+
+export async function verifyPrismaP0RepositoryReadback<T>(input: {
+  readonly operationId: string;
+  readonly purpose: string;
+  readonly scope: P0Scope;
+  readonly expectedSnapshot: T;
+  readonly readbackSnapshot: T;
+  readonly sourceRefs: readonly P0RepositorySourceRef[];
+  readonly verifier: P0PrismaRepositoryAttestationVerifier;
+}): Promise<VerifiedP0RepositoryAttestation<T> | null> {
+  return verifyP0RepositoryReadback(input);
 }
 
 export function isVerifiedP0RepositoryAttestation<T>(

@@ -66,8 +66,8 @@ check("the reviewed schema and legacy upload seam tracked deltas are additions-o
   assert.deepEqual(
     rows.map(([added, deleted, path]) => ({ added: Number(added), deleted: Number(deleted), path })),
     [
-      { added: 31, deleted: 0, path: "app/api/reports/upload/route.ts" },
-      { added: 615, deleted: 0, path: "prisma/schema.prisma" },
+      { added: 40, deleted: 0, path: "app/api/reports/upload/route.ts" },
+      { added: 667, deleted: 0, path: "prisma/schema.prisma" },
     ],
   );
 });

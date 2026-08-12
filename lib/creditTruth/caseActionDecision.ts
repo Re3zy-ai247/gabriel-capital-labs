@@ -373,7 +373,7 @@ export async function appendCaseActionDecision(input: {
       principal,
       scope,
       stage: "ROUND0_REVIEW",
-      mode: "LOCAL_BUILD",
+      mode: input.gatePermit.mode,
       operationId: request.operationId,
     })
   ) {

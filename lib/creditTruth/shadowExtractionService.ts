@@ -40,6 +40,10 @@ import {
   type VerifiedP0PostgresRetryAttestation,
 } from "./postgresTransaction";
 import {
+  isVerifiedP0TrustedParserExecution,
+  type VerifiedP0TrustedParserExecution,
+} from "./trustedWriterParserExecution";
+import {
   ROUND0_SOURCE_SEAL_CONTRACT_VERSION,
   bindRound0SourceSnapshotInputSetSha256,
   computeRound0CompletenessMembershipSha256,
@@ -71,12 +75,16 @@ export interface P0ProtectedShadowValue {
   readonly authTagBase64: string;
   readonly algorithm: "AES_256_GCM";
   readonly keyVersion: string;
-  readonly envelopeVersion: "p0-local-shadow-value-v1";
+  readonly envelopeVersion:
+    | "p0-local-shadow-value-v1"
+    | "p0-production-shadow-value-v1";
   readonly aadVersion: "p0-shadow-row-aad-v1";
 }
 
 export interface P0ShadowValueProtector {
-  readonly adapterClass: "LOCAL_SYNTHETIC_ONLY";
+  readonly adapterClass:
+    | "LOCAL_SYNTHETIC_ONLY"
+    | "AUTHENTICATED_PRODUCTION_VALUE_PROTECTION";
   protect(input: {
     readonly scope: P0Scope;
     readonly rowId: string;
@@ -225,6 +233,130 @@ export type P0ShadowTruthGraphRepositoryResult =
     }
   | { readonly kind: "DENIED" | "CONFLICT" | "OUTCOME_UNKNOWN" };
 
+const VERIFIED_SHADOW_WRITER_AUTHORITY = Symbol(
+  "verified-p0-shadow-writer-authority",
+);
+const verifiedShadowWriterAuthorities = new WeakMap<object, string>();
+
+/**
+ * Process-local proof that an exact truth-graph batch was derived by this
+ * service from a verified parser envelope and exact source/report readbacks.
+ * Repositories must reject a caller-supplied batch that lacks this proof.
+ */
+export interface VerifiedP0ShadowWriterAuthority {
+  readonly operationId: string;
+  readonly tenantId: string;
+  readonly consumerId: string;
+  readonly reportVersionId: string;
+  readonly extractionRunId: string;
+  readonly inputSha256: string;
+  readonly batchSemanticSha256: string;
+  readonly sourceSetSha256: string;
+  readonly issuedAt: string;
+  readonly expiresAt: string;
+  readonly [VERIFIED_SHADOW_WRITER_AUTHORITY]: true;
+}
+
+function shadowWriterAuthorityBinding(
+  authority: Omit<
+    VerifiedP0ShadowWriterAuthority,
+    typeof VERIFIED_SHADOW_WRITER_AUTHORITY
+  >,
+): string {
+  return computeP0RepositorySemanticSha256([
+    authority.operationId,
+    authority.tenantId,
+    authority.consumerId,
+    authority.reportVersionId,
+    authority.extractionRunId,
+    authority.inputSha256,
+    authority.batchSemanticSha256,
+    authority.sourceSetSha256,
+    authority.issuedAt,
+    authority.expiresAt,
+  ]);
+}
+
+function mintShadowWriterAuthority(input: {
+  readonly operationId: string;
+  readonly scope: P0Scope;
+  readonly batch: P0ShadowTruthGraphBatch;
+  readonly sourceRefs: readonly P0RepositorySourceRef[];
+  readonly now: Date;
+}): VerifiedP0ShadowWriterAuthority {
+  const issuedAt = input.now.toISOString();
+  const expiresAt = new Date(input.now.getTime() + 60_000).toISOString();
+  const unsigned = {
+    operationId: input.operationId,
+    tenantId: input.scope.tenantId,
+    consumerId: input.scope.consumerId,
+    reportVersionId: input.batch.reportVersionId,
+    extractionRunId: input.batch.extractionRun.extractionRunId,
+    inputSha256: input.batch.extractionRun.inputSha256,
+    batchSemanticSha256: computeP0RepositorySemanticSha256(input.batch),
+    sourceSetSha256: computeP0RepositorySourceSetSha256(input.sourceRefs),
+    issuedAt,
+    expiresAt,
+  } as const;
+  const authority = { ...unsigned } as VerifiedP0ShadowWriterAuthority;
+  Object.defineProperty(authority, VERIFIED_SHADOW_WRITER_AUTHORITY, {
+    value: true,
+    enumerable: false,
+    configurable: false,
+    writable: false,
+  });
+  Object.freeze(authority);
+  verifiedShadowWriterAuthorities.set(
+    authority,
+    shadowWriterAuthorityBinding(unsigned),
+  );
+  return authority;
+}
+
+export function isVerifiedP0ShadowWriterAuthority(input: {
+  readonly authority: VerifiedP0ShadowWriterAuthority | null | undefined;
+  readonly operationId: string;
+  readonly scope: P0Scope;
+  readonly batch: P0ShadowTruthGraphBatch;
+  readonly sourceRefs: readonly P0RepositorySourceRef[];
+  readonly now?: Date;
+}): input is typeof input & {
+  readonly authority: VerifiedP0ShadowWriterAuthority;
+} {
+  const authority = input.authority;
+  if (
+    !authority ||
+    authority[VERIFIED_SHADOW_WRITER_AUTHORITY] !== true ||
+    !Object.isFrozen(authority)
+  ) {
+    return false;
+  }
+  const now = input.now ?? new Date();
+  const issuedAt = Date.parse(authority.issuedAt);
+  const expiresAt = Date.parse(authority.expiresAt);
+  return Boolean(
+    verifiedShadowWriterAuthorities.get(authority) ===
+      shadowWriterAuthorityBinding(authority) &&
+      authority.operationId === input.operationId &&
+      authority.tenantId === input.scope.tenantId &&
+      authority.consumerId === input.scope.consumerId &&
+      authority.reportVersionId === input.batch.reportVersionId &&
+      authority.extractionRunId ===
+        input.batch.extractionRun.extractionRunId &&
+      authority.inputSha256 === input.batch.extractionRun.inputSha256 &&
+      authority.batchSemanticSha256 ===
+        computeP0RepositorySemanticSha256(input.batch) &&
+      authority.sourceSetSha256 ===
+        computeP0RepositorySourceSetSha256(input.sourceRefs) &&
+      Number.isFinite(issuedAt) &&
+      Number.isFinite(expiresAt) &&
+      issuedAt <= now.getTime() &&
+      expiresAt > now.getTime() &&
+      expiresAt - issuedAt > 0 &&
+      expiresAt - issuedAt <= 60_000,
+  );
+}
+
 export interface P0ShadowTruthGraphRepository {
   persistExact(input: {
     readonly principal: P0Principal;
@@ -234,6 +366,7 @@ export interface P0ShadowTruthGraphRepository {
     readonly now: Date;
     readonly batch: P0ShadowTruthGraphBatch;
     readonly sourceRefs: readonly P0RepositorySourceRef[];
+    readonly writerAuthority: VerifiedP0ShadowWriterAuthority;
   }): Promise<P0ShadowTruthGraphRepositoryResult>;
 }
 
@@ -257,6 +390,8 @@ export interface P0ShadowExtractionService {
     readonly reportVersionReceipt: VerifiedP0RepositoryAttestation<P0ReportVersionCommitReadback>;
     readonly inputReceipt: VerifiedP0SourceArtifactWriteReceipt;
     readonly envelope: VerifiedP0ParserShadowEnvelope;
+    /** Required for a production-mode write; optional in frozen local-contract tests. */
+    readonly parserExecutionReceipt?: VerifiedP0TrustedParserExecution;
     readonly operationId: string;
     readonly now: Date;
     readonly retryAttestation?: VerifiedP0PostgresRetryAttestation;
@@ -354,6 +489,9 @@ function exactReportVersionSourceReadback(input: {
 }
 
 export function createLocalSyntheticP0ShadowValueProtector(): P0ShadowValueProtector {
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("local synthetic shadow protector is unavailable in production");
+  }
   const key = randomBytes(32);
   const protectedByOperationRow = new Map<string, P0ProtectedShadowValue>();
   return Object.freeze({
@@ -393,13 +531,16 @@ function localVerifier(): P0LocalRepositoryAttestationVerifier {
 export function createLocalSyntheticP0ShadowTruthGraphRepository(options: {
   readonly mutateReadback?: (value: P0ShadowTruthGraphBatch) => P0ShadowTruthGraphBatch;
 } = {}): P0ShadowTruthGraphRepository {
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("local synthetic shadow repository is unavailable in production");
+  }
   const rows = new Map<string, P0ShadowTruthGraphBatch>();
   const verifier = localVerifier();
   return Object.freeze({
     async persistExact(
       input: Parameters<P0ShadowTruthGraphRepository["persistExact"]>[0],
     ): Promise<P0ShadowTruthGraphRepositoryResult> {
-      if (!p0Phase2AGatePermitAuthorizes({ permit: input.gatePermit, principal: input.principal, scope: input.scope, stage: "INGESTION_SHADOW", mode: "LOCAL_BUILD", operationId: input.operationId })) return { kind: "DENIED" };
+      if (!p0Phase2AGatePermitAuthorizes({ permit: input.gatePermit, principal: input.principal, scope: input.scope, stage: "INGESTION_SHADOW", mode: input.gatePermit.mode, operationId: input.operationId }) || !isVerifiedP0ShadowWriterAuthority({ authority: input.writerAuthority, operationId: input.operationId, scope: input.scope, batch: input.batch, sourceRefs: input.sourceRefs, now: input.now })) return { kind: "DENIED" };
       const key = `${input.scope.tenantId}\u001f${input.scope.consumerId}\u001f${input.batch.extractionRun.extractionRunId}`;
       const existing = rows.get(key);
       if (existing && computeP0RepositorySemanticSha256(existing) !== computeP0RepositorySemanticSha256(input.batch)) return { kind: "CONFLICT" };
@@ -852,9 +993,28 @@ export function createP0ShadowExtractionService(dependencies: {
     async persist(input: Parameters<P0ShadowExtractionService["persist"]>[0]): Promise<P0ShadowExtractionPersistenceResult> {
       let scope: P0Scope;
       try { scope = p0ScopeFromPrincipal(input.principal); } catch { return { ok: false, kind: "DENIED", code: "UNVERIFIED_PRINCIPAL" }; }
-      if (!STABLE.test(input.operationId) || !(input.now instanceof Date) || !Number.isFinite(input.now.getTime()) || !p0Phase2AGatePermitAuthorizes({ permit: input.gatePermit, principal: input.principal, scope, stage: "INGESTION_SHADOW", mode: "LOCAL_BUILD", operationId: input.operationId })) return { ok: false, kind: "DENIED", code: "SHADOW_GATE_DENIED" };
+      if (!STABLE.test(input.operationId) || !(input.now instanceof Date) || !Number.isFinite(input.now.getTime()) || !p0Phase2AGatePermitAuthorizes({ permit: input.gatePermit, principal: input.principal, scope, stage: "INGESTION_SHADOW", mode: input.gatePermit.mode, operationId: input.operationId })) return { ok: false, kind: "DENIED", code: "SHADOW_GATE_DENIED" };
       const ingestion = input.ingestion;
       if (!ingestion || ingestion.tenantId !== scope.tenantId || ingestion.consumerId !== scope.consumerId || ingestion.state !== "EXTRACTING" || !ingestion.reportVersionId || !isVerifiedP0SourceArtifactWriteReceipt(input.inputReceipt) || input.inputReceipt.object.kind !== "NORMALIZED_TEXT" || input.inputReceipt.object.scope.ingestionId !== ingestion.id || input.inputReceipt.object.scope.tenantId !== scope.tenantId || input.inputReceipt.object.scope.consumerId !== scope.consumerId || input.envelope.source.ingestionId !== ingestion.id || input.envelope.source.artifactId !== input.inputReceipt.object.scope.artifactId || input.envelope.source.artifactVersion !== input.inputReceipt.object.scope.artifactVersion || input.envelope.source.sha256 !== input.inputReceipt.object.sha256 || input.envelope.source.byteLength !== input.inputReceipt.object.byteLength) return { ok: false, kind: "DENIED", code: "EXTRACTION_INPUT_BINDING_MISMATCH" };
+      if (
+        (input.gatePermit.mode !== "LOCAL_BUILD" ||
+          input.parserExecutionReceipt !== undefined) &&
+        !isVerifiedP0TrustedParserExecution({
+          receipt: input.parserExecutionReceipt,
+          envelope: input.envelope,
+          scope,
+          operationId: input.operationId,
+          ingestionId: ingestion.id,
+          reportVersionId: ingestion.reportVersionId,
+          now: input.now,
+        })
+      ) {
+        return {
+          ok: false,
+          kind: "DENIED",
+          code: "UNVERIFIED_TRUSTED_PARSER_EXECUTION",
+        };
+      }
       const reportVersionReadback = exactReportVersionSourceReadback({
         receipt: input.reportVersionReceipt,
         ingestion,
@@ -864,12 +1024,27 @@ export function createP0ShadowExtractionService(dependencies: {
         return { ok: false, kind: "DENIED", code: "SOURCE_REPORT_READBACK_MISMATCH" };
       }
       if (input.envelope.status === "FAILED" && (input.envelope.accounts.length > 0 || input.envelope.bureauEvidence.some((item) => item.scores.some((score) => score.presence !== "UNKNOWN" || score.model.presence !== "UNKNOWN") || item.identity.length > 0 || item.reportDate.presence !== "UNKNOWN"))) return { ok: false, kind: "DENIED", code: "FAILED_EXTRACTION_CONTAINS_FACTS" };
+      // ABSENT_CONFIRMED is evidence of non-membership, never a source-member
+      // candidate. Reject it before parser-v2 conflict normalization can
+      // downgrade a contradictory absence to UNKNOWN and inadvertently make
+      // the account eligible for the authoritative source-set seal.
+      if (input.envelope.accounts.some((unit) =>
+        unit.account.bureaus?.[unit.bureau]?.accountPresence?.presence ===
+          "ABSENT_CONFIRMED"
+      )) {
+        return {
+          ok: false,
+          kind: "DENIED",
+          code: "ABSENT_CONFIRMED_NON_AUTHORITY",
+        };
+      }
       const adapted = adaptP0ParserShadowEnvelope(input.envelope);
       if (!adapted.ok) return { ok: false, kind: "DENIED", code: adapted.code };
       const batch = await buildTruthGraphBatch({ principal: input.principal, scope, ingestion, reportVersionReadback, inputReceipt: input.inputReceipt, adapted: adapted.value, operationId: input.operationId, now: input.now, protector: dependencies.protector });
       if (!batch) return { ok: false, kind: "OUTCOME_UNKNOWN", code: "VALUE_PROTECTION_FAILED" };
       const sourceRefs = Object.freeze([{ resourceType: "REPORT_INGESTION", resourceId: ingestion.id, resourceVersion: String(ingestion.revision) }, { resourceType: "REPORT_SOURCE_ARTIFACT", resourceId: reportVersionReadback.sourceArtifact.artifactId, resourceVersion: String(reportVersionReadback.sourceArtifact.artifactVersion), integritySha256: reportVersionReadback.sourceArtifact.sha256 }, { resourceType: "SOURCE_ARTIFACT", resourceId: input.inputReceipt.object.scope.artifactId, resourceVersion: String(input.inputReceipt.object.scope.artifactVersion), integritySha256: input.inputReceipt.object.sha256 }, { resourceType: "REPORT_VERSION", resourceId: ingestion.reportVersionId, resourceVersion: String(ingestion.reservedVersion), integritySha256: ingestion.sourceSha256 }]);
-      const transaction = await runP0PostgresTransaction({ operationId: input.operationId, retryAttestation: input.retryAttestation, execute: () => dependencies.repository.persistExact({ principal: input.principal, scope, gatePermit: input.gatePermit, operationId: input.operationId, now: input.now, batch, sourceRefs }) });
+      const writerAuthority = mintShadowWriterAuthority({ operationId: input.operationId, scope, batch, sourceRefs, now: input.now });
+      const transaction = await runP0PostgresTransaction({ operationId: input.operationId, retryAttestation: input.retryAttestation, execute: () => dependencies.repository.persistExact({ principal: input.principal, scope, gatePermit: input.gatePermit, operationId: input.operationId, now: input.now, batch, sourceRefs, writerAuthority }) });
       if (!transaction.ok) return transaction.kind === "DEADLOCK_DETECTED" || transaction.kind === "DEADLOCK_RETRY_EXHAUSTED" ? { ok: false, kind: "DEADLOCK_DETECTED", code: transaction.kind } : { ok: false, kind: "OUTCOME_UNKNOWN", code: "SHADOW_WRITE_OUTCOME_UNKNOWN" };
       const repositoryResult = transaction.value;
       if (!("value" in repositoryResult)) {

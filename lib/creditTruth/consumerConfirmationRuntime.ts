@@ -408,7 +408,7 @@ export async function appendConsumerAssertion(input: {
       principal,
       scope,
       stage: "ASSERTION_RUNTIME",
-      mode: "LOCAL_BUILD",
+      mode: input.gatePermit.mode,
       operationId: request.operationId,
     })
   ) {

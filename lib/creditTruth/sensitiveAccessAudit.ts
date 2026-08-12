@@ -170,12 +170,14 @@ export interface P0SensitiveAccessRepository {
   appendSensitiveAccessEvent(input: {
     readonly principal: P0Principal;
     readonly scope: P0Scope;
+    readonly operationId: string;
     readonly purpose: "SENSITIVE_ACCESS_AUDIT_APPEND";
     readonly event: P0SensitiveAccessEventDraft;
   }): Promise<{ readonly disposition: "CREATED" | "IDEMPOTENT_REPLAY" }>;
   readSensitiveAccessEvent(input: {
     readonly principal: P0Principal;
     readonly scope: P0Scope;
+    readonly operationId: string;
     readonly purpose: "SENSITIVE_ACCESS_AUDIT_READBACK";
     readonly eventKey: string;
   }): Promise<P0SensitiveAccessEventDraft | null>;
@@ -242,12 +244,20 @@ function nonEmpty(value: unknown): value is string {
 }
 
 function opaqueRef(value: unknown): value is string {
+  const serverDerivedP0Ref =
+    typeof value === "string" &&
+    /^p0(?:ing|src|obj|rv|evt|corr|op)_[a-f0-9]{16,64}$/.test(value);
+  const serverDerivedAuthorizationVersion =
+    typeof value === "string" &&
+    /^p0-authz-(?:worker|direct|managed):[a-f0-9]{64}$/.test(value);
   return (
     nonEmpty(value) &&
     value.length <= 160 &&
     !/[\s@]/.test(value) &&
     !/^https?:/i.test(value) &&
-    !/\d{9,}/.test(value)
+    (!/\d{9,}/.test(value) ||
+      serverDerivedP0Ref ||
+      serverDerivedAuthorizationVersion)
   );
 }
 
@@ -574,6 +584,13 @@ function denied(code: Exclude<P0SensitiveAccessResult, { allowed: true }>["code"
 export async function authorizeAndAuditP0SensitiveAccess(input: {
   readonly principal: P0Principal;
   readonly scope: P0Scope;
+  /**
+   * Exact authenticated operation authority. Production worker repositories
+   * revalidate this opaque token in the same transaction as the audit write.
+   * Local callers may omit it; their refs-only event key remains the bounded
+   * operation identity used by synthetic repositories.
+   */
+  readonly operationId?: string;
   readonly accessKind: P0SensitiveAccessKind;
   readonly purposeCode: P0SensitiveAccessPurposeCode;
   readonly resource: VerifiedP0SensitiveResourceRef;
@@ -659,6 +676,7 @@ export async function authorizeAndAuditP0SensitiveAccess(input: {
     const write = await input.repository.appendSensitiveAccessEvent({
       principal: input.principal,
       scope: input.scope,
+      operationId: input.operationId ?? event.eventKey,
       purpose: "SENSITIVE_ACCESS_AUDIT_APPEND",
       event,
     });
@@ -671,6 +689,7 @@ export async function authorizeAndAuditP0SensitiveAccess(input: {
     const readback = await input.repository.readSensitiveAccessEvent({
       principal: input.principal,
       scope: input.scope,
+      operationId: input.operationId ?? event.eventKey,
       purpose: "SENSITIVE_ACCESS_AUDIT_READBACK",
       eventKey: event.eventKey,
     });

@@ -223,13 +223,14 @@ function gateAllows(
   operationId: string,
 ): boolean {
   if (!STABLE.test(operationId)) return false;
+  if (!permit) return false;
   try {
     return p0Phase2AGatePermitAuthorizes({
       permit,
       principal,
       scope: p0ScopeFromPrincipal(principal),
       stage: "INGESTION_SHADOW",
-      mode: "LOCAL_BUILD",
+      mode: permit.mode,
       operationId,
     });
   } catch {
@@ -385,7 +386,7 @@ export function createP0ReportIngestionService(repository: P0Repository): P0Repo
       input: Parameters<P0ReportIngestionService["claim"]>[0],
     ): Promise<P0IngestionServiceResult> {
       if (input.principal.authorizationKind !== "SYSTEM_WORKER" || !gateAllows(input.principal, input.gatePermit, input.operationId)) return { ok: false, kind: "DENIED", code: "INGESTION_GATE_DENIED" };
-      const read = await readRow(input.principal, input.ingestionId, `${input.operationId}:read`, "INGESTION_CLAIM"); if (!read.ok) return read;
+      const read = await readRow(input.principal, input.ingestionId, input.operationId, "INGESTION_CLAIM"); if (!read.ok) return read;
       const row = read.ingestion, now = new Date(), nowMs = now.getTime();
       if (!Number.isSafeInteger(input.leaseMs) || input.leaseMs < 1_000 || input.leaseMs > 300_000) return { ok: false, kind: "DENIED", code: "INVALID_LEASE_DURATION" };
       if ((instantMs(row.leaseExpiresAt) ?? -Infinity) > nowMs || (instantMs(row.nextAttemptAt) ?? -Infinity) > nowMs) return { ok: false, kind: "BUSY", code: "INGESTION_NOT_CLAIMABLE" };
@@ -401,7 +402,7 @@ export function createP0ReportIngestionService(repository: P0Repository): P0Repo
       input: Parameters<P0ReportIngestionService["transition"]>[0],
     ): Promise<P0IngestionServiceResult> {
       if (input.principal.authorizationKind !== "SYSTEM_WORKER" || !gateAllows(input.principal, input.gatePermit, input.operationId)) return { ok: false, kind: "DENIED", code: "INGESTION_GATE_DENIED" };
-      const read = await readRow(input.principal, input.ingestionId, `${input.operationId}:read`, "INGESTION_TRANSITION"); if (!read.ok) return read;
+      const read = await readRow(input.principal, input.ingestionId, input.operationId, "INGESTION_TRANSITION"); if (!read.ok) return read;
       const row = read.ingestion, now = new Date();
       if (row.revision !== input.expectedRevision || row.leaseToken !== input.leaseToken || row.leaseOwnerId !== input.principal.actorId || (instantMs(row.leaseExpiresAt) ?? -Infinity) <= now.getTime()) return { ok: false, kind: "CONFLICT", code: "STALE_WORKER_LEASE" };
       if (!ALLOWED[row.state].includes(input.to)) return { ok: false, kind: "CONFLICT", code: "INVALID_INGESTION_TRANSITION" };
@@ -480,7 +481,7 @@ export function createP0ReportIngestionService(repository: P0Repository): P0Repo
       input: Parameters<P0ReportIngestionService["recoverExpired"]>[0],
     ): Promise<P0IngestionServiceResult> {
       if (input.principal.authorizationKind !== "SYSTEM_WORKER" || !gateAllows(input.principal, input.gatePermit, input.operationId)) return { ok: false, kind: "DENIED", code: "INGESTION_RECOVERY_GATE_DENIED" };
-      const read = await readRow(input.principal, input.ingestionId, `${input.operationId}:read`, "INGESTION_RECOVERY"); if (!read.ok) return read; const row = read.ingestion;
+      const read = await readRow(input.principal, input.ingestionId, input.operationId, "INGESTION_RECOVERY"); if (!read.ok) return read; const row = read.ingestion;
       const now = new Date();
       if ((instantMs(row.leaseExpiresAt) ?? Infinity) > now.getTime()) return { ok: false, kind: "BUSY", code: "LEASE_NOT_EXPIRED" };
       if (["ROUND0_READY", "QUARANTINED"].includes(row.state)) return { ok: false, kind: "CONFLICT", code: "INGESTION_STATE_NOT_RECOVERABLE" };
@@ -510,7 +511,7 @@ export function createP0ReportIngestionService(repository: P0Repository): P0Repo
       input: Parameters<P0ReportIngestionService["reconcile"]>[0],
     ): Promise<P0IngestionServiceResult> {
       if (input.principal.authorizationKind !== "SYSTEM_WORKER" || !gateAllows(input.principal, input.gatePermit, input.operationId)) return { ok: false, kind: "DENIED", code: "INGESTION_RECONCILIATION_GATE_DENIED" };
-      const read = await readRow(input.principal, input.ingestionId, `${input.operationId}:read`, "INGESTION_RECOVERY"); if (!read.ok) return read;
+      const read = await readRow(input.principal, input.ingestionId, input.operationId, "INGESTION_RECOVERY"); if (!read.ok) return read;
       const current = read.ingestion, receipt = input.receipt, now = new Date();
       if (current.state !== "OUTCOME_UNKNOWN" || current.revision !== input.expectedRevision) return { ok: false, kind: "CONFLICT", code: "RECONCILIATION_EXPECTATION_MISMATCH" };
       if (!receipt || !isVerifiedP0RepositoryAttestation(receipt) || receipt.operationId !== input.operationId || receipt.purpose !== "INGESTION_RECONCILIATION" || receipt.scope.tenantId !== current.tenantId || receipt.scope.consumerId !== current.consumerId || !validRow(receipt.snapshot) || !exactImmutableIngestionIdentity(current, receipt.snapshot) || !reconciliationPinsAreExact(current, receipt.snapshot, now.getTime())) return { ok: false, kind: "DENIED", code: "UNATTESTED_INGESTION_RECONCILIATION" };

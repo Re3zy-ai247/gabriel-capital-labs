@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CreditVector P0 — Trusted-Writer Closure Founder Checkpoint</title>
+  <style>
+    :root{color-scheme:light dark;--bg:#f5f7fb;--card:#fff;--ink:#14213d;--muted:#526176;--line:#d9e1ec;--amber:#9a6700;--green:#067647;--red:#b42318;--blue:#175cd3;--code:#eef3f8}
+    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+    main{max-width:1120px;margin:auto;padding:20px}.hero,.section{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px;margin:0 0 16px;box-shadow:0 4px 18px rgba(16,42,67,.06)}
+    h1{font-size:clamp(1.7rem,5vw,2.7rem);line-height:1.12;margin:.2rem 0 .8rem}h2{font-size:1.35rem;margin:0 0 .75rem}h3{font-size:1.08rem;margin:1.15rem 0 .5rem}p{margin:.55rem 0 1rem}
+    .eyebrow{font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-size:.78rem}.status{display:inline-block;padding:.35rem .65rem;border-radius:999px;background:#d1fadf;color:#05603a;font-weight:800}.pass{color:var(--green);font-weight:750}.pending{color:var(--amber);font-weight:800}.stop{color:var(--red);font-weight:800}.flow{font-weight:750;padding:12px;border-left:4px solid var(--blue);background:var(--code);border-radius:6px}
+    code{background:var(--code);color:#243b53;border-radius:5px;padding:.1rem .3rem;overflow-wrap:anywhere}.table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:10px 0 16px}table{border-collapse:collapse;width:100%;min-width:720px}th,td{text-align:left;vertical-align:top;padding:9px 10px;border:1px solid var(--line)}th{background:var(--code)}ul,ol{padding-left:1.25rem}li{margin:.25rem 0}details{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:10px 0}summary{cursor:pointer;font-weight:750}.small{font-size:.9rem;color:var(--muted)}.mono-list{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.88rem;overflow-wrap:anywhere}
+    @media(max-width:640px){main{padding:10px}.hero,.section{padding:16px;border-radius:12px}table{font-size:.84rem}.table-wrap{margin-left:-6px;margin-right:-6px}h2{font-size:1.18rem}}
+    @media(prefers-color-scheme:dark){:root{--bg:#091421;--card:#102235;--ink:#edf4fb;--muted:#adbdcd;--line:#32475c;--code:#183047}.status{background:#123d2a;color:#76e0ae}code{color:#e8f2fb}.pass{color:#63d6a6}.pending{color:#f3c969}.stop{color:#ffb4ad}}
+  </style>
+</head>
+<body>
+<main>
+  <header class="hero">
+    <div class="eyebrow">CreditVector P0 · August 11, 2026</div>
+    <h1>Trusted-Writer Closure Founder Checkpoint</h1>
+    <p><span class="status">CLOSED LOCALLY / PRE-ACTIVATION PROVEN</span></p>
+    <p><strong>Accepted base:</strong> <code>10d438df539056e043a6adbe046820cdb3947cb8</code><br><strong>Branch:</strong> <code>codex/p0-launch-correctness</code><br><strong>Local checkpoint:</strong> authorized; exact containing commit is reported in the final git receipt</p>
+    <p>The narrow privileged-validator boundary, dedicated role-bound writer client, exact-current regressions, and two-pass disposable PostgreSQL proof are green on one frozen input manifest. This closes the trusted-writer semantic gate locally; it does not authorize deployment or activation.</p>
+  </header>
+
+  <section class="section">
+    <h2>Executive result</h2>
+    <p>Exactly 24 <code>SECURITY DEFINER</code> trigger validators and four owner-only <code>SECURITY INVOKER</code> helpers are owned by a dedicated NOLOGIN role, use one fixed search path, contain no dynamic SQL or data mutation, expose no direct application/PUBLIC execution, and receive only the accepted read and row-lock privileges. The application writer still has no broad <code>UPDATE</code>.</p>
+    <p>Two exact-final pristine PostgreSQL 16.14 passes completed the legitimate path, original <strong>20/20</strong> attacks, privileged <strong>15/15</strong> attacks, atomic late-audit rollback, concurrency, exact <code>40P01</code>, reconstruction, rebuild, and teardown. Exact-current behavioral regression is <strong>604/604</strong>, compatibility <strong>7/7</strong>, component/static proof <strong>670/670</strong>, and the fresh verdict is <strong>C0/H0/M0/L0</strong>.</p>
+  </section>
+
+  <section class="section">
+    <h2>1–2. Status and accepted base</h2>
+    <div class="table-wrap"><table><tbody>
+      <tr><th>Trusted-writer status</th><td class="pass">CLOSED LOCALLY / PRE-ACTIVATION PROVEN</td></tr>
+      <tr><th>Accepted Phase 2A</th><td><code>10d438df539056e043a6adbe046820cdb3947cb8</code></td></tr>
+      <tr><th>Parent</th><td><code>4bbdf5c561f94a132962d27971551096b53528d9</code></td></tr>
+      <tr><th>Historical accepted proof</th><td>Phase 1/1.1 515/515; Phase 2A 218/218; aggregate 733/733</td></tr>
+      <tr><th>Boundary static audit</th><td class="pass">332/332 PASS</td></tr>
+      <tr><th>Exact-final pristine PostgreSQL</th><td class="pass">2/2 PASS; each 47/47, original 20/20, privileged 15/15</td></tr>
+      <tr><th>Exact-current regression</th><td class="pass">604/604 behavioral + 7/7 compatibility</td></tr>
+      <tr><th>Exact-final component/static</th><td class="pass">670/670</td></tr>
+      <tr><th>Fresh exact-final verdict</th><td class="pass">C0 / H0 / M0 / L0</td></tr>
+      <tr><th>Local checkpoint</th><td>Authorized; exact containing SHA is reported after commit</td></tr>
+    </tbody></table></div>
+    <p class="small">Historical 733/733 is preserved as frozen accepted evidence and is not relabeled as exact-current trusted-writer proof.</p>
+  </section>
+
+  <section class="section">
+    <h2>3. Exact privileged-function inventory</h2>
+    <p>All 28 routines are in <code>public</code>, owned by <code>p0_validator_owner</code>, configured with <code>search_path=pg_catalog, public, pg_temp</code>, mutation-free, and directly executable only by the owner. <code>FU</code> means <code>FOR UPDATE</code>; <code>KS</code> means <code>FOR KEY SHARE</code>.</p>
+    <div class="table-wrap"><table><thead><tr><th>#</th><th>Exact signature / security</th><th>Reads and locks</th><th>Trigger/caller</th><th>Boundary purpose</th></tr></thead><tbody>
+      <tr><td>1</td><td><code>p0_validate_artifact_seal()</code><br>DEFINER</td><td>Artifact, ArtifactCorrespondenceVersion; Artifact FU</td><td>Artifact seal-count trigger</td><td>Lock immutable parent while proving count.</td></tr>
+      <tr><td>2</td><td><code>p0_validate_report_account_subject()</code><br>DEFINER</td><td>ReportVersion, ReportVersionAccount, ReportComparison; ReportVersion FU</td><td>ReportVersionAccount subject trigger</td><td>Prove exact report/account scope.</td></tr>
+      <tr><td>3</td><td><code>p0_reject_post_assessment_account_input()</code><br>DEFINER</td><td>DerivedAccountAssessment + helpers; ExtractionRun and ReportVersionAccount FU</td><td>four sealed input triggers</td><td>Preserve assessment-input immutability.</td></tr>
+      <tr><td>4</td><td><code>p0_reject_post_assessment_coverage()</code><br>DEFINER</td><td>DerivedAccountAssessment + helpers; ExtractionRun FU</td><td>coverage sealed-input trigger</td><td>Serialize coverage sealing.</td></tr>
+      <tr><td>5</td><td><code>p0_validate_credit_score_insert()</code><br>DEFINER</td><td>CreditScoreObservation + helpers; ExtractionRun FU</td><td>score insert trigger</td><td>Pin score evidence to run/comparison seal.</td></tr>
+      <tr><td>6</td><td><code>p0_reject_post_comparison_identity_input()</code><br>DEFINER</td><td>ReportVersion, ReportComparison; ReportVersion FU</td><td>baseline/fact comparison-seal triggers</td><td>Reject late identity input.</td></tr>
+      <tr><td>7</td><td><code>p0_2a_validate_extraction_input()</code><br>DEFINER</td><td>Artifact; Artifact KS</td><td>ExtractionRun input trigger</td><td>Pin exact normalized artifact.</td></tr>
+      <tr><td>8</td><td><code>p0_2a_validate_score_model_evidence()</code><br>DEFINER</td><td>ExtractionRun; KS</td><td>score-model trigger</td><td>Pin exact run/provenance.</td></tr>
+      <tr><td>9</td><td><code>p0_2a_validate_bureau_report_date()</code><br>DEFINER</td><td>ExtractionRun; KS</td><td>bureau-date trigger</td><td>Pin exact run/provenance.</td></tr>
+      <tr><td>10</td><td><code>p0_2a_validate_round0_source_completeness()</code><br>DEFINER</td><td>ReportVersion FU; ExtractionRun KS</td><td>source-completeness trigger</td><td>Serialize version/source seal.</td></tr>
+      <tr><td>11</td><td><code>p0_2a_validate_identity_baseline_source_seal()</code><br>DEFINER</td><td>ExtractionRun, ReportIngestion, Artifact; all KS</td><td>baseline source-seal trigger</td><td>Pin exact source set.</td></tr>
+      <tr><td>12</td><td><code>p0_2a_validate_round0_source_seal_deferred()</code><br>DEFINER</td><td>run/baseline/review/completeness/presence/membership tables; run KS, baseline FU, joined membership/receipt FU</td><td><code>AccountPresenceObservation_round0_membership_deferred_trg</code>; <code>IdentityBaseline_round0_manifest_deferred_trg</code>; <code>IdentityFact_round0_source_membership_deferred_trg</code>; <code>ReportVersionAccount_round0_source_membership_deferred_trg</code>; <code>Round0SourceCompletenessEvidence_manifest_deferred_trg</code>; <code>Round0SourceCompletenessEvidence_membership_deferred_trg</code></td><td>Preserve both insertion orders and complete seal.</td></tr>
+      <tr><td>13</td><td><code>p0_2a_validate_report_ingestion_mutation()</code><br>DEFINER</td><td>ReportVersion, Artifact, ExtractionRun; all KS</td><td>ReportIngestion CAS trigger</td><td>Pin exact immutable links during mutable CAS.</td></tr>
+      <tr><td>14</td><td><code>p0_2a_validate_identity_fact_insert()</code><br>DEFINER</td><td>version/baseline/coverage/completion/fact/completeness; version + baseline FU</td><td>identity-fact category trigger</td><td>Serialize fact insertion against completion.</td></tr>
+      <tr><td>15</td><td><code>p0_2a_validate_identity_category_completion()</code><br>DEFINER</td><td>version/baseline/run/fact/account/coverage/completeness; version + baseline FU, run KS</td><td>category-completion trigger</td><td>Serialize completion against exact population.</td></tr>
+      <tr><td>16</td><td><code>p0_2a_reject_account_presence_after_source_completeness()</code><br>DEFINER</td><td>version/account/presence/completeness; version FU</td><td>presence membership trigger</td><td>Stop late source-membership drift.</td></tr>
+      <tr><td>17</td><td><code>p0_2a_reject_account_after_identity_completion()</code><br>DEFINER</td><td>version/category/completeness; version FU</td><td>report-account category trigger</td><td>Stop late account membership.</td></tr>
+      <tr><td>18</td><td><code>p0_2a_validate_identity_correspondence_assertion()</code><br>DEFINER</td><td>baseline/membership/receipt/fact/assertion; baseline + assertion FU, membership/receipt/facts KS</td><td>correspondence assertion trigger</td><td>Pin exact review/fact authority.</td></tr>
+      <tr><td>19</td><td><code>p0_2a_validate_consumer_account_review()</code><br>DEFINER</td><td>baseline/run/account/presence/completeness/category/receipt; baseline + receipt FU, source rows KS</td><td>consumer review trigger</td><td>Prevent review/source race.</td></tr>
+      <tr><td>20</td><td><code>p0_2a_validate_identity_baseline_account_review_membership()</code><br>DEFINER</td><td>baseline KS; receipt FU</td><td>baseline-review membership trigger</td><td>Pin exact membership authority.</td></tr>
+      <tr><td>21</td><td><code>p0_2a_validate_confirmed_baseline_child_deferred()</code><br>DEFINER</td><td>baseline/membership/completion/fact; baseline KS</td><td><code>IdentityBaselineAccountReview_confirmed_parent_deferred_trg</code>; <code>IdentityCategoryCompletion_confirmed_parent_deferred_trg</code>; <code>IdentityFact_confirmed_parent_deferred_trg</code></td><td>Reject incomplete confirmed baseline.</td></tr>
+      <tr><td>22</td><td><code>p0_2a_validate_case_action_decision()</code><br>DEFINER</td><td>CaseActionDecision; FU</td><td>decision validation trigger</td><td>Serialize decision/source-count seal.</td></tr>
+      <tr><td>23</td><td><code>p0_2a_validate_case_action_source_ref()</code><br>DEFINER</td><td>decision, evidence, assertion, review, fact, baseline, correspondence, completion, membership; bounded KS/FU locks</td><td>source-ref validation trigger</td><td>Pin every exact source authority row.</td></tr>
+      <tr><td>24</td><td><code>p0_2a_validate_case_action_source_membership()</code><br>DEFINER</td><td>decision/ref/assertion/correspondence; decision FU</td><td><code>CaseActionDecision_source_membership_trg</code>; <code>CaseActionSourceRef_source_membership_trg</code></td><td>Close exact action-source membership.</td></tr>
+      <tr><td>25</td><td><code>p0_lock_extraction_run(text,text,text,text)</code><br>INVOKER helper</td><td>ExtractionRun; FU</td><td>lock-assessment, coverage, score validators</td><td>Owner-only central exact-run lock.</td></tr>
+      <tr><td>26</td><td><code>p0_lock_assessment_input(text,text,text,text,text)</code><br>INVOKER helper</td><td>ExtractionRun + ReportVersionAccount; both FU</td><td><code>p0_reject_post_assessment_account_input</code>; <code>p0_validate_assessment_insert</code></td><td>Owner-only canonical lock order.</td></tr>
+      <tr><td>27</td><td><code>p0_reject_if_run_is_compared(text,text,text,text)</code><br>INVOKER helper</td><td>ReportComparison; caller holds run lock</td><td>sealed-input, coverage, score validators</td><td>Owner-only shared comparison seal check.</td></tr>
+      <tr><td>28</td><td><code>p0_2a_identity_fact_matches_category(IdentityFactType,IdentityReviewCategory,IdentityReviewCategory)</code><br>INVOKER helper</td><td>none</td><td>fact-insert and category-completion validators</td><td>Owner-only pure predicate, substitution-proof.</td></tr>
+    </tbody></table></div>
+    <p>The broader audit pins 30 authority tables, 87 non-internal triggers, and all 37 distinct trigger functions. A differently named or non-<code>p0</code> trigger cannot hide outside the 28-routine privileged allowlist.</p>
+  </section>
+
+  <section class="section">
+    <h2>4–7. Owner, search path, execution, and privilege proof</h2>
+    <h3>Dedicated owner</h3>
+    <ul><li><code>p0_validator_owner</code> must pre-exist and is never auto-repaired or broadened.</li><li>NOLOGIN, NOSUPERUSER, NOCREATEDB, NOCREATEROLE, NOINHERIT, NOREPLICATION, NOBYPASSRLS.</li><li>No memberships, members, database/schema/table/sequence/type ownership, or unrelated routines.</li><li>Writer cannot <code>SET ROLE</code> to owner; runtime SQLSTATE <code>42501</code>.</li></ul>
+    <h3>Search path and object resolution</h3>
+    <p>Every routine has the exact single configuration <code>search_path=pg_catalog, public, pg_temp</code>. Hostile caller search path, temporary-schema shadow table, and same-name public function probes all failed closed. No dynamic SQL or caller-controlled identifier dispatch exists.</p>
+    <h3>Execution</h3>
+    <p>PUBLIC and writer execution is revoked on all 28; only the owner has explicit EXECUTE. Writer direct calls: <strong>28/28 SQLSTATE 42501</strong>. PUBLIC probe calls: <strong>28/28 SQLSTATE 42501</strong>. Trigger execution still completed the legitimate path.</p>
+    <h3>Exact owner matrix</h3>
+    <div class="table-wrap"><table><thead><tr><th>Surface</th><th>Allowed</th><th>Absent</th></tr></thead><tbody>
+      <tr><td>Role</td><td>NOLOGIN, non-admin, no memberships</td><td>superuser, createdb, createrole, inherit, replication, bypassrls</td></tr>
+      <tr><td>Schema</td><td>USAGE on public</td><td>final CREATE and unrelated schemas</td></tr>
+      <tr><td>Tables</td><td>SELECT on exact 22-table set</td><td>INSERT, DELETE, TRUNCATE, REFERENCES, TRIGGER</td></tr>
+      <tr><td>Row-lock enabler</td><td>UPDATE(id) on exact 16-table set</td><td>table-level/broad or other-column UPDATE</td></tr>
+      <tr><td>Routines</td><td>owns/executes exact 28</td><td>unrelated execution or ownership</td></tr>
+      <tr><td>Sequences/Phase 2B</td><td>none</td><td>all authority</td></tr>
+    </tbody></table></div>
+    <details><summary>Exact 22-table SELECT set</summary><p class="mono-list">AccountPresenceObservation; Artifact; ArtifactCorrespondenceVersion; CaseActionDecision; CaseActionSourceRef; ConsumerAccountReviewReceipt; ConsumerAssertion; CreditScoreObservation; DerivedAccountAssessment; ExtractionBureauCoverage; ExtractionRun; FieldObservation; IdentityBaseline; IdentityBaselineAccountReviewMembership; IdentityCategoryCompletion; IdentityCorrespondenceAssertion; IdentityFact; ReportComparison; ReportIngestion; ReportVersion; ReportVersionAccount; Round0SourceCompletenessEvidence.</p></details>
+    <details><summary>Exact 16-table UPDATE(id) row-lock set</summary><p class="mono-list">AccountPresenceObservation; Artifact; CaseActionDecision; ConsumerAccountReviewReceipt; ConsumerAssertion; DerivedAccountAssessment; ExtractionRun; FieldObservation; IdentityBaseline; IdentityCategoryCompletion; IdentityCorrespondenceAssertion; IdentityFact; ReportIngestion; ReportVersion; ReportVersionAccount; Round0SourceCompletenessEvidence.</p></details>
+    <p><strong>Local role contract:</strong> proven. <strong>Deployed role attestation:</strong> future infrastructure gate. The application writer remains separate, has no owner membership/direct execute/broad immutable-evidence update, and its ReportVersion authority update returned <code>42501</code> with no durable change.</p>
+  </section>
+
+  <section class="section">
+    <h2>8. Exact function-body hashes</h2>
+    <p>Every row also has owner <code>p0_validator_owner</code>, exact fixed search path, owner-only EXECUTE, and a mutation-free body.</p>
+    <div class="table-wrap"><table><thead><tr><th>Exact signature</th><th>Security</th><th>SHA-256 of source body</th></tr></thead><tbody>
+      <tr><td><code>p0_validate_artifact_seal()</code></td><td>DEFINER</td><td><code>1d608a8f885dc0b0c1966284a5592f997074bf81f6ff5fae095083315ace7759</code></td></tr>
+      <tr><td><code>p0_validate_report_account_subject()</code></td><td>DEFINER</td><td><code>17a0c43aca18f98ed07a8df12185beb0350539a01fa65b97a6561f204619605a</code></td></tr>
+      <tr><td><code>p0_reject_post_assessment_account_input()</code></td><td>DEFINER</td><td><code>3b9a5e5c2b0d8daed5850306de0e2a8d383847db98907cf9b13d39331f750923</code></td></tr>
+      <tr><td><code>p0_reject_post_assessment_coverage()</code></td><td>DEFINER</td><td><code>661786850fcaeeff24d5865595d5d56b5a73d6f1c5c997965283bed700eb260f</code></td></tr>
+      <tr><td><code>p0_validate_credit_score_insert()</code></td><td>DEFINER</td><td><code>5e814b4b1e315b89dcee488503e3670d33e47dfd2ce08a9f16cadf9a07fad3ba</code></td></tr>
+      <tr><td><code>p0_reject_post_comparison_identity_input()</code></td><td>DEFINER</td><td><code>6980f52fef7531727c3e4315b99204b388f8b45415af8d0a90d4536d4d2ec861</code></td></tr>
+      <tr><td><code>p0_2a_validate_extraction_input()</code></td><td>DEFINER</td><td><code>310db03be26e73f6e9cdd3e38b6f18095efbc2404804371160f85d5efa98b8ea</code></td></tr>
+      <tr><td><code>p0_2a_validate_score_model_evidence()</code></td><td>DEFINER</td><td><code>45267e4a7b04080a4af65f07eb1a6b92bcc625d3ac3316e828957fe242dd801f</code></td></tr>
+      <tr><td><code>p0_2a_validate_bureau_report_date()</code></td><td>DEFINER</td><td><code>f7288d1057824cf3cf71cc489b29a1d1a6a666462feb1efd704864e7c6c229c9</code></td></tr>
+      <tr><td><code>p0_2a_validate_round0_source_completeness()</code></td><td>DEFINER</td><td><code>f32135f3eda156e4e1b24defab93ff11784e2cf5a00ef8e359179fd3889333a5</code></td></tr>
+      <tr><td><code>p0_2a_validate_identity_baseline_source_seal()</code></td><td>DEFINER</td><td><code>3fd2e45195a3e21da7e6bf69eb10595e76526ecabe5f72c8c07bf5ad1f8442f5</code></td></tr>
+      <tr><td><code>p0_2a_validate_round0_source_seal_deferred()</code></td><td>DEFINER</td><td><code>be3ab78770b6e552689265a4c47d00ec79994de863cdee2b47c3d9d30956573a</code></td></tr>
+      <tr><td><code>p0_2a_validate_report_ingestion_mutation()</code></td><td>DEFINER</td><td><code>3f226333428af5761f279ffa0a57c56e5cefc18c90a619b565b92b2aee270105</code></td></tr>
+      <tr><td><code>p0_2a_validate_identity_fact_insert()</code></td><td>DEFINER</td><td><code>a0e1045e7dd2addbce6396bc45151cfbf1a18ccd7712f661fdf81ced2c538268</code></td></tr>
+      <tr><td><code>p0_2a_validate_identity_category_completion()</code></td><td>DEFINER</td><td><code>8e846b9ef7af667d3f94e3a5b8bb514ef4905c1ddc8e30ced7167efca711e043</code></td></tr>
+      <tr><td><code>p0_2a_reject_account_presence_after_source_completeness()</code></td><td>DEFINER</td><td><code>cb02f7e087241c27d3ece5f110709ba535a24c5e3c6e998ddb2e49fe957332b1</code></td></tr>
+      <tr><td><code>p0_2a_reject_account_after_identity_completion()</code></td><td>DEFINER</td><td><code>adf17da0fefc0c85423647e336f33190ca7db3dd0f5c5360d9ad8df18f235895</code></td></tr>
+      <tr><td><code>p0_2a_validate_identity_correspondence_assertion()</code></td><td>DEFINER</td><td><code>655e06940782b9834fa647bcbbfdbd6be55262e686054aac51001cfd9b05d425</code></td></tr>
+      <tr><td><code>p0_2a_validate_consumer_account_review()</code></td><td>DEFINER</td><td><code>ebb9cb1589d6d9e86057e2174cfe55147fc7082d8189dca8d8181311cbf29382</code></td></tr>
+      <tr><td><code>p0_2a_validate_identity_baseline_account_review_membership()</code></td><td>DEFINER</td><td><code>9634f4ddece91e54e534fc898fe537d4bfcba5a64e76e77f730a4944de4c6fb6</code></td></tr>
+      <tr><td><code>p0_2a_validate_confirmed_baseline_child_deferred()</code></td><td>DEFINER</td><td><code>7bf3ddc8ef72c03a0f1b10cb9d0307a4c7e933fe959e1004d4e780a2724f567d</code></td></tr>
+      <tr><td><code>p0_2a_validate_case_action_decision()</code></td><td>DEFINER</td><td><code>ef3d13ac3d1b87a5cccfc6df2d27789ddd39b6c974e7dc0f9ce3e06e5f22eceb</code></td></tr>
+      <tr><td><code>p0_2a_validate_case_action_source_ref()</code></td><td>DEFINER</td><td><code>4ae00541347da78825e33ec30d4589608b866c7fc0e77e8291919f4f08bafd1f</code></td></tr>
+      <tr><td><code>p0_2a_validate_case_action_source_membership()</code></td><td>DEFINER</td><td><code>ceef5ade280fdc45eaa36e74002e66e3b94408a44a8c992090e2a438eaf8314b</code></td></tr>
+      <tr><td><code>p0_lock_extraction_run(text,text,text,text)</code></td><td>INVOKER</td><td><code>04988bd7d94cbd3a0cf100467354fbfc675ef4509ce1dc11f463a85e82139368</code></td></tr>
+      <tr><td><code>p0_lock_assessment_input(text,text,text,text,text)</code></td><td>INVOKER</td><td><code>5a1845a681a657babcae257c5a4042392c5611c3a2d93474adc738cd3af3c066</code></td></tr>
+      <tr><td><code>p0_reject_if_run_is_compared(text,text,text,text)</code></td><td>INVOKER</td><td><code>6925e3418574288ceefc7a17bb3d95b443f8a135e61ec1a3277788de10e9c485</code></td></tr>
+      <tr><td><code>p0_2a_identity_fact_matches_category(IdentityFactType,IdentityReviewCategory,IdentityReviewCategory)</code></td><td>INVOKER</td><td><code>9c35391788b30fe188cc1308273b7db026d310548841855f9716ed24e3c9dbcb</code></td></tr>
+    </tbody></table></div>
+    <p><strong>Exact-final privileged catalog manifest:</strong> <code>65ee818e8b987424fd03bf582cd03dbcec36795bd7fd2af6d533ef959f0c7253</code>. It binds 28 privileged routines, all 37 trigger-function definitions, and all 87 trigger edges.</p>
+  </section>
+
+  <section class="section">
+    <h2>9. Static privileged-surface audit</h2>
+    <p class="pass">332/332 PASS</p>
+    <ul><li>Exact 24 definers + four helpers, hashes, owner, security class, search path, and ACL.</li><li>No overload, extra privileged routine, dynamic SQL, mutation, caller-controlled dispatch, or Phase 2B routine.</li><li>Exact 22-table SELECT and 16-table UPDATE(id) privilege unions.</li><li>No owner object/schema/table/column/sequence/routine/membership/default-ACL drift.</li><li>Exact 30-table, 87-trigger, 37-function authority surface.</li><li>Application writer retains no broad immutable-evidence UPDATE.</li></ul>
+    <p>Migration/role/static guard: <strong>153/153 PASS</strong>. Writer-surface audit: <strong>58/58 PASS</strong>. The atomic role contract also passed a late-audit failure probe with byte-identical authorization-state fingerprints before and after rollback on both primary and rebuilt databases.</p>
+  </section>
+
+  <section class="section">
+    <h2>10. Positive real-adapter result</h2>
+    <div class="table-wrap"><table><thead><tr><th>Path</th><th>Observed durable proof</th></tr></thead><tbody>
+      <tr><td>Dormant route</td><td>Factory hard-null without exact server gates; legacy behavior unchanged.</td></tr>
+      <tr><td>Principal/managed scope/worker</td><td>Server-derived principal and exact direct/managed scope; separate live worker authority.</td></tr>
+      <tr><td>Dedicated database client</td><td>Separate role-bound Prisma client; both current_user and session_user verified inside every authority transaction.</td></tr>
+      <tr><td>Source</td><td>Server digest, encrypted immutable object, readback and audit persisted.</td></tr>
+      <tr><td>Version/Artifact</td><td>Exact version, source identity, length and digest committed/read back.</td></tr>
+      <tr><td>Parser</td><td>Deployment-owned ID/version/hash/signature accepted.</td></tr>
+      <tr><td>PRESENT graph</td><td>Source-reported membership persisted; ABSENT_CONFIRMED remained non-authoritative.</td></tr>
+      <tr><td>History/score</td><td>Three exact protected historical subtypes and protected score 704 reconstructed with provenance.</td></tr>
+      <tr><td>Readback/rollback</td><td>Authority returned only after exact readback; induced attestation mismatch rolled back all new graph rows.</td></tr>
+      <tr><td>Replay/reconstruction</td><td>Explicit idempotency with no duplicate; durable graph/source reconstructed.</td></tr>
+      <tr><td>Protected read</td><td>Revocation between authorization and read failed same-transaction live revalidation.</td></tr>
+      <tr><td>Readiness</td><td>Signed dormant receipt bound implementation/config/schema/verifier/adapters/safety/privileged manifest and truthfully attested VALUE_PROTECTION_KEYRING behavior without claiming deployed managed-KMS custody.</td></tr>
+    </tbody></table></div>
+  </section>
+
+  <section class="section">
+    <h2>11. Original 20-attack matrix</h2>
+    <p>Every attack executed against the concrete path in each pristine pass.</p>
+    <div class="table-wrap"><table><thead><tr><th>#</th><th>Attack</th><th>Observed durable result</th><th>Result</th></tr></thead><tbody>
+      <tr><td>1</td><td>forged authoritative status</td><td>Server persisted SHADOW_V2; caller status ignored.</td><td class="pass">PASS</td></tr>
+      <tr><td>2</td><td>forged digest</td><td>Ingestion/object held exact server byte digest, not caller digest.</td><td class="pass">PASS</td></tr>
+      <tr><td>3</td><td>cross-tenant report/version</td><td>Route failed; ingestion/version counts unchanged.</td><td class="pass">PASS</td></tr>
+      <tr><td>4</td><td>correct tenant, wrong ReportVersion</td><td>Repository DENIED; Artifact count unchanged.</td><td class="pass">PASS</td></tr>
+      <tr><td>5</td><td>correct report, wrong source</td><td>DENIED; singular ReportVersion unchanged.</td><td class="pass">PASS</td></tr>
+      <tr><td>6</td><td>ABSENT_CONFIRMED escalation</td><td>Graph rejected; run/membership counts unchanged.</td><td class="pass">PASS</td></tr>
+      <tr><td>7</td><td>unrecognized to confirmed authority</td><td>Review source null; no review receipt.</td><td class="pass">PASS</td></tr>
+      <tr><td>8</td><td>retry changes semantics</td><td>IDEMPOTENCY_CONFLICT; ingestion count unchanged.</td><td class="pass">PASS</td></tr>
+      <tr><td>9</td><td>duplicate/replay</td><td>IDEMPOTENT_REPLAY; one durable ingestion.</td><td class="pass">PASS</td></tr>
+      <tr><td>10</td><td>worker race</td><td>One winner; attempt 1, revision 2, one lease.</td><td class="pass">PASS</td></tr>
+      <tr><td>11</td><td>partial transaction</td><td>Rollback; CreditTruthScope count 0.</td><td class="pass">PASS</td></tr>
+      <tr><td>12</td><td>direct repository bypass</td><td>DENIED; ingestion count unchanged.</td><td class="pass">PASS</td></tr>
+      <tr><td>13</td><td>raw SQL/helper bypass</td><td>Database denied; membership count unchanged.</td><td class="pass">PASS</td></tr>
+      <tr><td>14</td><td>stale parser</td><td>Unverified receipt; no ExtractionRun.</td><td class="pass">PASS</td></tr>
+      <tr><td>15</td><td>parser/source hash mismatch</td><td>Receipt null; graph rejected; no run.</td><td class="pass">PASS</td></tr>
+      <tr><td>16</td><td>reanalysis over newer source</td><td>STALE_REPORT_VERSION; no stale row.</td><td class="pass">PASS</td></tr>
+      <tr><td>17</td><td>malformed/null provenance</td><td>Envelope unverified; graph rejected; no run.</td><td class="pass">PASS</td></tr>
+      <tr><td>18</td><td>membership before authority</td><td>Forged/spread authority DENIED; no run.</td><td class="pass">PASS</td></tr>
+      <tr><td>19</td><td>sealed-evidence mutation</td><td>Update denied; integrity digest unchanged.</td><td class="pass">PASS</td></tr>
+      <tr><td>20</td><td>test/dev/admin runtime reachability</td><td>Crypto/installer denied; factory null; counts unchanged.</td><td class="pass">PASS</td></tr>
+    </tbody></table></div>
+  </section>
+
+  <section class="section">
+    <h2>12. SECURITY DEFINER-specific attacks</h2>
+    <div class="table-wrap"><table><thead><tr><th>#</th><th>Attack</th><th>Observed durable result</th><th>Result</th></tr></thead><tbody>
+      <tr><td>1</td><td>writer/PUBLIC direct invocation</td><td>28/28 + 28/28 SQLSTATE 42501; triggers usable.</td><td class="pass">PASS</td></tr>
+      <tr><td>2</td><td>owner impersonation/session trigger bypass</td><td>Both 42501; session remained origin; no membership/GUC authority.</td><td class="pass">PASS</td></tr>
+      <tr><td>3</td><td>search-path/temp/public shadow poisoning</td><td>All denied; manifest unchanged.</td><td class="pass">PASS</td></tr>
+      <tr><td>4</td><td>caller-controlled identifier</td><td>Direct helper 42501; version count unchanged.</td><td class="pass">PASS</td></tr>
+      <tr><td>5</td><td>definer body drift</td><td>Detected; rollback restored body/manifest.</td><td class="pass">PASS</td></tr>
+      <tr><td>6</td><td>owner drift</td><td>Detected; owner restored by rollback.</td><td class="pass">PASS</td></tr>
+      <tr><td>7</td><td>search-path config drift</td><td>Exact proconfig mismatch detected/rolled back.</td><td class="pass">PASS</td></tr>
+      <tr><td>8</td><td>EXECUTE grant drift</td><td>ACL/effective-authority drift detected/rolled back.</td><td class="pass">PASS</td></tr>
+      <tr><td>9</td><td>unexpected differently named definer trigger</td><td>Trigger graph rejected; injected objects absent after rollback.</td><td class="pass">PASS</td></tr>
+      <tr><td>10</td><td>accepted invoker body drift</td><td>37-function manifest detected; rollback restored.</td><td class="pass">PASS</td></tr>
+      <tr><td>11</td><td>registered trigger disabled</td><td>Manifest mismatch detected; rollback re-enabled.</td><td class="pass">PASS</td></tr>
+      <tr><td>12</td><td>owner non-lock UPDATE grant</td><td>Exact 22/16 matrix detected and restored.</td><td class="pass">PASS</td></tr>
+      <tr><td>13</td><td>unrelated/Phase 2B mutation</td><td>Both 42501; counts unchanged.</td><td class="pass">PASS</td></tr>
+      <tr><td>14</td><td>application broad UPDATE</td><td>42501; ReportVersion authority unchanged.</td><td class="pass">PASS</td></tr>
+      <tr><td>15</td><td>readiness manifest forgery</td><td>Forged receipt null; exact manifest accepted after restoration.</td><td class="pass">PASS</td></tr>
+    </tbody></table></div>
+  </section>
+
+  <section class="section">
+    <h2>13–14. Two pristine PostgreSQL passes, concurrency, and 40P01</h2>
+    <p><strong>Pinned PostgreSQL 16.14 image:</strong> <code>sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777</code></p>
+    <p><strong>Exact-final verifier input manifest:</strong> <code>013a0bee03203a74e7d9df4c796eb5cc3f29113383017c455e10fe46172feab5</code>.</p>
+    <div class="table-wrap"><table><thead><tr><th>Gate</th><th>Pass 1</th><th>Pass 2</th></tr></thead><tbody>
+      <tr><td>forward/no-op/parity</td><td class="pass">PASS</td><td class="pass">PASS</td></tr>
+      <tr><td>role normalization/exact allowlist</td><td class="pass">PASS</td><td class="pass">PASS</td></tr>
+      <tr><td>validator apply/no-op/static/runtime</td><td class="pass">PASS</td><td class="pass">PASS</td></tr>
+      <tr><td>atomic late-audit rollback, primary + rebuild</td><td class="pass">PASS</td><td class="pass">PASS</td></tr>
+      <tr><td>real-adapter harness</td><td class="pass">47/47</td><td class="pass">47/47</td></tr>
+      <tr><td>original / privileged attacks</td><td class="pass">20/20 · 15/15</td><td class="pass">20/20 · 15/15</td></tr>
+      <tr><td>rollback/worker race/concurrency</td><td class="pass">PASS</td><td class="pass">PASS</td></tr>
+      <tr><td>exact 40P01</td><td class="pass">PASS</td><td class="pass">PASS</td></tr>
+      <tr><td>reconstruction/readback/rebuild</td><td class="pass">PASS</td><td class="pass">PASS</td></tr>
+      <tr><td>teardown</td><td class="pass">PASS</td><td class="pass">PASS</td></tr>
+    </tbody></table></div>
+    <p>Exact-final result: <strong>2/2 PASS</strong>. The 47 checks are distinct checks repeated twice, not 94 distinct claims. Inputs were byte-identical.</p>
+    <p>Concurrent claims produced one winner; replay remained idempotent; stale worker/competing version failed closed; interruptions rolled back. ReportVersion and extraction-input paths classified induced deadlocks as <code>DEADLOCK_DETECTED / POSTGRES_40P01_DEADLOCK_DETECTED / databaseCode=40P01 / retryable=false</code>. No automatic retry was added.</p>
+  </section>
+
+  <section class="section">
+    <h2>15–16. Exact-current regression and test totals</h2>
+    <div class="table-wrap"><table><thead><tr><th>Binding</th><th>Exact-final result</th></tr></thead><tbody>
+      <tr><td>Phase 1/1.1 behavioral</td><td>464/464 PASS</td></tr>
+      <tr><td>Phase 2A behavioral</td><td>140/140 PASS</td></tr>
+      <tr><td>Exact-current behavioral</td><td><strong>604/604 PASS</strong></td></tr>
+      <tr><td>Exact-current compatibility</td><td>7/7 PASS</td></tr>
+      <tr><td>migration/role guard</td><td>153/153 PASS</td></tr>
+      <tr><td>validator boundary</td><td>332/332 PASS</td></tr>
+      <tr><td>writer surface</td><td>58/58 PASS</td></tr>
+      <tr><td>Prisma repositories</td><td>20/20 PASS</td></tr>
+      <tr><td>source storage</td><td>14/14 PASS</td></tr>
+      <tr><td>principal/worker/readiness</td><td>29/29 PASS</td></tr>
+      <tr><td>upload hook</td><td>17/17 PASS</td></tr>
+      <tr><td>Phase 2A adapters</td><td>7/7 PASS</td></tr>
+      <tr><td>parser identity</td><td>7/7 PASS</td></tr>
+      <tr><td>source/parser</td><td>33/33 PASS</td></tr>
+      <tr><td>Component/static total</td><td><strong>670/670 PASS</strong></td></tr>
+      <tr><td>TypeScript / Prisma validate / Bash syntax / diff</td><td>PASS</td></tr>
+    </tbody></table></div>
+    <p>Frozen identity sentinels remained 50/51 and 72/73 only because their accepted schema SHA intentionally rejects the authorized additive source. They were not weakened and are not semantic regression failures. Historical 733/733 remains separate. All displayed current totals bind the exact-final source.</p>
+  </section>
+
+  <section class="section">
+    <h2>17. Fresh adversarial state</h2>
+    <p class="pass">Critical 0 / High 0 / Medium 0 / Low 0</p>
+    <p>The fresh independent reviewer recomputed the exact-final manifest and reattacked the role-bound client, atomic role contract, readiness/keyring claims, privileged inventory, hidden-trigger closure, dormant route, source/version binding, concurrency, and activation gates. No unresolved source defect was found.</p>
+  </section>
+
+  <section class="section">
+    <h2>18. Exact files changed</h2>
+    <p>Exact-final scope: <strong>49 intended paths</strong> — 47 source/schema/migration/test/verifier paths plus the two checkpoint documents. Final scope audit found no unrelated or forbidden path.</p>
+    <details><summary>Runtime and schema (30)</summary><p class="mono-list">app/api/reports/upload/route.ts<br>lib/creditTruth/accountReview.ts<br>lib/creditTruth/caseActionDecision.ts<br>lib/creditTruth/consumerConfirmationRuntime.ts<br>lib/creditTruth/phase2Flags.ts<br>lib/creditTruth/phase2Readiness.ts<br>lib/creditTruth/principalPrismaAdapter.ts<br>lib/creditTruth/prismaCaseActionRepository.ts<br>lib/creditTruth/prismaConsumerConfirmationRepository.ts<br>lib/creditTruth/prismaExtractionInputRepository.ts<br>lib/creditTruth/prismaReportIngestionRepository.ts<br>lib/creditTruth/prismaReportVersionRepository.ts<br>lib/creditTruth/prismaRound0Repository.ts<br>lib/creditTruth/prismaSensitiveAccessRepository.ts<br>lib/creditTruth/prismaShadowTruthGraphRepository.ts<br>lib/creditTruth/prismaSourceArtifactProvider.ts<br>lib/creditTruth/reportIngestion.ts<br>lib/creditTruth/repository.ts<br>lib/creditTruth/repositoryAttestation.ts<br>lib/creditTruth/round0Runtime.ts<br>lib/creditTruth/sensitiveAccessAudit.ts<br>lib/creditTruth/shadowExtractionService.ts<br>lib/creditTruth/sourceArtifact.ts<br>lib/creditTruth/trustedWriterParserExecution.ts<br>lib/creditTruth/trustedWriterPrismaClient.ts<br>lib/creditTruth/trustedWriterReadiness.ts<br>lib/creditTruth/trustedWriterShadowValueProtector.ts<br>lib/creditTruth/trustedWriterUploadHook.ts<br>lib/creditTruth/trustedWriterValueProtection.ts<br>prisma/schema.prisma</p></details>
+    <details><summary>Migration, contracts, harnesses, tests (17)</summary><p class="mono-list">prisma/migrations/20260811_p0_trusted_writer_gate/migration.sql<br>scripts/p0-phase2a-adversarial-fixture.test.ts<br>scripts/p0-phase2a-phase1-nonregression.test.ts<br>scripts/p0-phase2a-source-parser.test.ts<br>scripts/p0-trusted-writer-disposable-verify.sh<br>scripts/p0-trusted-writer-migration-guard.test.ts<br>scripts/p0-trusted-writer-parser-identity.test.ts<br>scripts/p0-trusted-writer-phase2a-adapters.test.ts<br>scripts/p0-trusted-writer-principal-readiness.test.ts<br>scripts/p0-trusted-writer-prisma-repositories.test.ts<br>scripts/p0-trusted-writer-real-adapter.test.ts<br>scripts/p0-trusted-writer-source-storage.test.ts<br>scripts/p0-trusted-writer-surface-audit.test.ts<br>scripts/p0-trusted-writer-upload-hook.test.ts<br>scripts/p0-trusted-writer-validator-boundary.test.ts<br>scripts/sql/p0-trusted-writer-db-role-contract.sql<br>scripts/sql/p0-trusted-writer-validator-boundary.sql</p></details>
+    <p>Checkpoint documents: Markdown and this standalone HTML. No DB, dump, log, container layer, dependency tree, or temporary verifier artifact belongs in scope.</p>
+  </section>
+
+  <section class="section">
+    <h2>19. Manifests and critical hashes</h2>
+    <div class="table-wrap"><table><thead><tr><th>Artifact</th><th>SHA-256</th></tr></thead><tbody>
+      <tr><td>validator-boundary SQL</td><td><code>87ac3e3023f5f3f0ba9dfc66d5cb6b7f5c988bc987e3d0c70a7d9ed576ac1009</code></td></tr>
+      <tr><td>validator-boundary audit</td><td><code>b8452294fc3063b05a9ec967364c1360d2a3c359e26ba02e779eb104ed631e7b</code></td></tr>
+      <tr><td>privileged catalog manifest</td><td><code>65ee818e8b987424fd03bf582cd03dbcec36795bd7fd2af6d533ef959f0c7253</code></td></tr>
+      <tr><td>exact-final verifier input manifest</td><td><code>013a0bee03203a74e7d9df4c796eb5cc3f29113383017c455e10fe46172feab5</code></td></tr>
+      <tr><td>upload route</td><td><code>1c6d3bff6616859fec43f59a43b39b5a675bdaa70506695d81f9a342161f221c</code></td></tr>
+      <tr><td>Prisma schema</td><td><code>d822f26a5b429f8aff3d811e08eb8fc28610b5b7bd8515d91c51a97b4f456427</code></td></tr>
+      <tr><td>trusted-writer migration</td><td><code>a628900e61ee6292f67c210b74dad42d2533748852f5ffc03d4f942a09dc663f</code></td></tr>
+      <tr><td>DB role contract</td><td><code>4f4f094cf878b429ded62e111a71f618ecda9db723bb5d7295a53e2ea8dfe04f</code></td></tr>
+      <tr><td>disposable verifier</td><td><code>b1ff1912794d5304e46950814e0f74c62d98f1c7a14f06a53f53018b56e1162a</code></td></tr>
+      <tr><td>migration/role guard</td><td><code>443bb22c31c1a7f4673eaa4bfe28d9a958f45655f76d97e4f740c14b9b1bb6b7</code></td></tr>
+      <tr><td>dedicated writer Prisma client</td><td><code>228596093e7afc75a99b048c376d1a6e9402b3694acf3ae70d695ef85dcf0530</code></td></tr>
+      <tr><td>principal adapter</td><td><code>5642aa87e40dadf3e97fea49855fefe5dadd82e92845bc90368a0f225709994e</code></td></tr>
+      <tr><td>upload-hook composition</td><td><code>457fdefc336a7f945b17343a945831cf3e97690e36cbaca4dac792c5156bf1c6</code></td></tr>
+      <tr><td>real-adapter harness</td><td><code>aeba7791cc672fa4db6aa3b533d63362b470b9a9564d0cd4c02f0ab6f77c86f2</code></td></tr>
+      <tr><td>readiness implementation</td><td><code>eab470b37dbbbf11a1a30eeed140380b95841f5a1255bb16e5e268078b04ce21</code></td></tr>
+      <tr><td>non-document 47-path delta manifest</td><td><code>54fdda5d471d4d61ba8f99324ae4eea2402c95557b565402a21daefbb724d9e2</code></td></tr>
+    </tbody></table></div>
+    <p>Manifest records are path-sorted <code>&lt;file-sha256&gt;&lt;two spaces&gt;&lt;path&gt;&lt;LF&gt;</code>, with the final line feed included in the outer SHA-256. The containing commit SHA is reported in the final chat/git receipt because this document cannot stably embed the hash of the commit containing its own bytes.</p>
+  </section>
+
+  <section class="section">
+    <h2>20–21. Local checkpoint and remaining dependencies</h2>
+    <p><strong>Local checkpoint:</strong> all gates are green and one commit is authorized. The exact containing SHA is reported in the final Founder handoff after artifact freeze.</p>
+    <ol><li>Hard process-isolated PDF termination — mandatory.</li><li>Retention/legal-hold — Founder/counsel decision.</li><li>Deployed database-role attestation — future infrastructure gate.</li><li>Deployed managed key custody — local VALUE_PROTECTION_KEYRING proof is not a deployed KMS/secret-manager custody attestation.</li><li>Founder production activation — separate and not authorized.</li></ol>
+    <p>No counsel-sensitive policy changed.</p>
+  </section>
+
+  <section class="section">
+    <h2>22. Safety and isolation</h2>
+    <ul><li>No production connection or consumer-data access.</li><li>No production mutation, migration, backfill, or reanalysis.</li><li>No push, merge, deploy, activation, or cohort enablement.</li><li>Phase 2B not started.</li><li>M2, Fable/cinematic, and Launch Closure untouched.</li><li>Verification used local synthetic data and disposable PostgreSQL only.</li></ul>
+    <p class="flow">CLOSED LOCALLY / PRE-ACTIVATION PROVEN. This closes only the trusted-writer semantic-attestation gate on exact local source. It does not authorize push, merge, deploy, activation, production connectivity or data, legacy migration/backfill, or Phase 2B.</p>
+  </section>
+</main>
+</body>
+</html>

@@ -11,6 +11,7 @@ import { track, PRODUCT_EVENTS } from "@/lib/events";
 import { getBureauData, crossBureauConflicts } from "@/lib/bureauData";
 import { recommendStrategy } from "@/lib/recommend";
 import { createP0ReportUploadShadowDispatcher } from "@/lib/creditTruth/shadowExtractionService";
+import { createP0ProductionTrustedWriterUploadHook } from "@/lib/creditTruth/trustedWriterUploadHook";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -19,9 +20,17 @@ export const maxDuration = 60;
 
 const VALID_BUREAUS: Bureau[] = ["EQUIFAX", "EXPERIAN", "TRANSUNION"];
 
-// Phase 2A build-only seam. No environment, query, body, or client value can
-// install this dependency; the local build therefore remains exactly dormant.
-const dispatchP0ReportUploadShadow = createP0ReportUploadShadowDispatcher({ hook: null });
+// Phase 2A stays dormant/default-off. Resolve the server-owned hook at dispatch
+// time so the disposable harness can exercise this exact live-route seam inside
+// an async-local installation, while a separately configured server-owned
+// production composition remains behind flags/readiness/cohort/permit gates.
+// Default/partial configuration resolves null and does not materialize input.
+const dispatchP0ReportUploadShadow: ReturnType<
+  typeof createP0ReportUploadShadowDispatcher
+> = async (input) =>
+  createP0ReportUploadShadowDispatcher({
+    hook: createP0ProductionTrustedWriterUploadHook(),
+  })(input);
 
 // Accepts a pasted report (text) and/or an uploaded PDF, plus the set of bureaus
 // the report covers. Extracts text, runs the shared analysis pipeline (AI

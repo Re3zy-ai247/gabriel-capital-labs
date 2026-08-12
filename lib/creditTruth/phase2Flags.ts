@@ -9,6 +9,7 @@ import {
   validateP0Principal,
 } from "./principal";
 import {
+  P0_PHASE2A_STAGES,
   evaluateP0Phase2AReadiness,
   type P0Phase2AReadinessDecision,
   type P0Phase2AReadinessEvidence,
@@ -388,6 +389,103 @@ export async function verifyP0Phase2ACohortDecision(
   verifiedCohortDecisions.add(verified);
   verifiedCohortDigests.set(verified, digest);
   return Object.freeze(verified);
+}
+
+/** Opaque deployment-cohort key; no tenant/consumer value is stored in config. */
+export function p0Phase2ACohortScopeSha256(scope: P0Scope): string {
+  if (
+    !scope ||
+    !nonEmpty(scope.tenantId) ||
+    !nonEmpty(scope.consumerId)
+  ) {
+    return "";
+  }
+  return createHash("sha256")
+    .update("CreditVector/P0/phase2a/cohort-scope/v1\n", "utf8")
+    .update(scope.tenantId, "utf8")
+    .update("\u001f", "utf8")
+    .update(scope.consumerId, "utf8")
+    .digest("hex");
+}
+
+/**
+ * Concrete deployment cohort resolver. It reads only server environment state;
+ * request/query/body flags and scope claims cannot inject a decision. An absent
+ * or malformed allowlist fails closed.
+ */
+export async function resolveP0Phase2ACohortFromServerEnvironment(input: {
+  readonly principal: P0Principal;
+  readonly scope: P0Scope;
+  readonly stage: P0Phase2AStage;
+}): Promise<VerifiedP0Phase2ACohortDecision | null> {
+  if (
+    validateP0Principal(input.principal).length > 0 ||
+    !p0PrincipalAuthorizesScope(input.principal, input.scope) ||
+    !P0_PHASE2A_STAGES.includes(input.stage)
+  ) {
+    return null;
+  }
+  const cohortVersion = process.env.P0_PHASE2_COHORT_VERSION?.trim();
+  const encodedAllowlist = process.env.P0_PHASE2_COHORT_SCOPE_SHA256S;
+  if (
+    !cohortVersion ||
+    cohortVersion.length > 200 ||
+    !/^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,199}$/.test(cohortVersion) ||
+    typeof encodedAllowlist !== "string" ||
+    encodedAllowlist.length > 65_000
+  ) {
+    return null;
+  }
+  const entries = encodedAllowlist.length === 0
+    ? []
+    : encodedAllowlist.split(",");
+  if (
+    entries.length > 1_000 ||
+    entries.some((entry) => !SHA256.test(entry)) ||
+    new Set(entries).size !== entries.length
+  ) {
+    return null;
+  }
+  const scopeSha256 = p0Phase2ACohortScopeSha256(input.scope);
+  if (!SHA256.test(scopeSha256)) return null;
+  const nowMs = Date.now();
+  const decidedAt = new Date(nowMs).toISOString();
+  const expiresAt = new Date(nowMs + 60_000).toISOString();
+  const included = entries.includes(scopeSha256);
+  const decisionId = `p0-cohort:${createHash("sha256")
+    .update(
+      JSON.stringify([
+        cohortVersion,
+        input.stage,
+        input.principal.actorId,
+        scopeSha256,
+        input.principal.authorizationVersion,
+        decidedAt,
+      ]),
+      "utf8",
+    )
+    .digest("hex")}`;
+  const candidate = Object.freeze({
+    contractVersion: P0_PHASE2A_FLAG_CONTRACT_VERSION,
+    decisionId,
+    stage: input.stage,
+    actorId: input.principal.actorId,
+    tenantId: input.scope.tenantId,
+    consumerId: input.scope.consumerId,
+    authorizationKind: input.principal.authorizationKind,
+    authorizationVersion: input.principal.authorizationVersion,
+    cohortVersion,
+    included,
+    decidedAt,
+    expiresAt,
+  });
+  const expectedDigest = cohortSemanticSha256(candidate);
+  return verifyP0Phase2ACohortDecision(candidate, {
+    resolverId: "server-env:p0-phase2a-cohort-v1",
+    async verifyServerResolvedCohort({ semanticSha256 }) {
+      return semanticSha256 === expectedDigest;
+    },
+  });
 }
 
 function validVerifiedCohort(
