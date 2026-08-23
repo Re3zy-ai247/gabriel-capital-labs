@@ -38,8 +38,16 @@
 //     tree `redactSensitivePatterns` does not exist, so this file does not
 //     import. Its absence WAS the finding (E-16: "No redaction helper exists
 //     anywhere in the tree").
-//   · Unmodified slice tree: **52 passed, 0 failed** (exit 0).
-import { readFileSync } from "node:fs";
+//   · REMEDIATION ROUND (review H-1). With `git show d998b8d:` restored for
+//     app/api/identity/discrepancies/route.ts — the version that shipped the
+//     report text to the provider unmasked — **57 passed, 4 failed** (exit 1),
+//     and the four are exactly the new cases: the derived coverage check names
+//     the route, the ordered-call check fails, and the behavioural case finds
+//     `123-45-6789` in the transmitted prompt. The previous version of the
+//     §5 pin ("redaction happens in exactly one place") PASSED on that tree,
+//     which is why it was replaced by a coverage check.
+//   · Unmodified slice tree: **61 passed, 0 failed** (exit 0).
+import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import vm from "node:vm";
 import ts from "typescript";
@@ -237,7 +245,7 @@ async function main() {
   // replaced, awaits POST(), and hands back the request it tried to send.
   // A fresh context per scenario is deliberate: process.env is read at call
   // time, and a warm module would let one scenario's flag leak into the next.
-  function invoke(opts: { flag: string | undefined; idDocs: number }) {
+  function invoke(opts: { flag: string | undefined; idDocs: number; reportText?: string }) {
     return new Promise<{ sent: Sent | null; body: Record<string, unknown>; calls: string[] }>((resolve) => {
       const calls: string[] = [];
       let sent: Sent | null = null;
@@ -325,12 +333,16 @@ async function main() {
           case "@/lib/docCrypto":
             return {
               docCryptoReady: () => true,
-              decryptText: () => "CREDIT REPORT TEXT",
+              decryptText: () => opts.reportText ?? "CREDIT REPORT TEXT",
               decryptDocument: () => {
                 calls.push("docCrypto.decryptDocument");
                 return Buffer.from("JPEGBYTES");
               },
             };
+          case "@/lib/aiParse":
+            // The REAL helper, not a stub. A stub would let this section prove
+            // that something was called, never that the SSN actually left.
+            return { redactSensitivePatterns };
           default:
             throw new Error(`Unexpected route import: ${specifier}`);
         }
@@ -377,6 +389,24 @@ async function main() {
   const fuzzy = await invoke({ flag: "1", idDocs: 2 });
   check('IDENTITY_IMAGE_AI_ENABLED="1" does NOT open the gate (fail closed)', imageBlocks(fuzzy.sent).length === 0);
 
+  // — review H-1, behaviourally: the report text this route transmits is masked.
+  //   Regex over source proves the call is written; only this proves the number
+  //   is not in the bytes the provider would have received.
+  const SSN = "123-45-6789";
+  const withSsn = await invoke({
+    flag: undefined,
+    idDocs: 0,
+    reportText: `PERSONAL INFORMATION\nName: MARCUS CHEN\nSSN: ${SSN}\nAddress: 1 MAIN ST AUSTIN TX 78701`,
+  });
+  const transmitted = JSON.stringify(withSsn.sent?.content ?? []) + (withSsn.sent?.system ?? "");
+  check("the identity request was built (the SSN checks below are not vacuous)", withSsn.sent !== null);
+  check("a dashed SSN in the report text NEVER reaches the identity prompt", !transmitted.includes(SSN));
+  check("…it was masked, not dropped along with the section around it", transmitted.includes("[REDACTED]"));
+  check(
+    "…and the personal information the check actually compares still arrives intact",
+    transmitted.includes("MARCUS CHEN") && transmitted.includes("1 MAIN ST AUSTIN TX 78701")
+  );
+
   console.log("\n5. SSN redaction — what leaves the box on every upload (E-16 / P1-22)");
   check(
     "a dashed SSN is masked",
@@ -405,10 +435,61 @@ async function main() {
     redactSensitivePatterns("Balance 123456789").includes("123456789")
   );
   const aiParse = codeOf(read("lib/aiParse.ts"));
+  // ── COVERAGE, not call-site count (review H-1) ──────────────────────────────
+  // The first version of this check asserted "redaction happens in exactly one
+  // place". That pinned the wrong invariant: it was satisfied while a SECOND
+  // surface — the identity check — shipped the same report text to the same
+  // provider unmasked, and it would have FAILED the correct fix. The invariant
+  // the privacy policy actually makes is EVERY credit-report transmission is
+  // masked, so the transmitter set is DERIVED from the tree rather than listed
+  // here, and each member must redact. A third transmitter added later is
+  // checked automatically instead of shipping unnoticed.
+  //
+  // "Transmits credit-report text" = calls meteredMessage AND handles rawText,
+  // which is Report.rawText, the credit report itself. That deliberately does
+  // NOT include app/api/letters/[id]/round2/route.ts: it sends `responseText`,
+  // the bureau reply the consumer pasted in — a different data class, disclosed
+  // separately on the privacy page and explicitly excluded from the masking
+  // sentence there. It is also outside this slice's owned paths.
+  function walkSources(dir: string): string[] {
+    const out: string[] = [];
+    for (const entry of readdirSync(join(root, dir), { withFileTypes: true })) {
+      const rel = `${dir}/${entry.name}`;
+      if (entry.isDirectory()) out.push(...walkSources(rel));
+      else if (/\.tsx?$/.test(entry.name)) out.push(rel);
+    }
+    return out;
+  }
+  const transmitters = [...walkSources("app"), ...walkSources("lib")]
+    .filter((rel) => {
+      const code = codeOf(read(rel));
+      return /meteredMessage\(/.test(code) && /rawText/.test(code);
+    })
+    .sort();
   check(
-    "redaction is applied at exactly one place, and it is the prompt",
-    (aiParse.match(/redactSensitivePatterns\(/g) || []).length === 2 &&
-      /redactSensitivePatterns\(rawText\.slice\(0, 120_000\)\)/.test(aiParse)
+    `the transmitter sweep found sources (coverage below is not vacuous) — ${transmitters.join(", ") || "NONE"}`,
+    transmitters.length >= 2
+  );
+  check(
+    "the sweep still finds both known transmitters (a rename must not silently shrink it)",
+    transmitters.includes("lib/aiParse.ts") &&
+      transmitters.includes("app/api/identity/discrepancies/route.ts")
+  );
+  for (const rel of transmitters) {
+    check(
+      `${rel}: redacts the report text before it is transmitted`,
+      /redactSensitivePatterns\(/.test(codeOf(read(rel)))
+    );
+  }
+  check(
+    "the upload/parse prompt masks exactly what it sends (slice first, then mask)",
+    /redactSensitivePatterns\(rawText\.slice\(0, 120_000\)\)/.test(aiParse)
+  );
+  check(
+    "the identity prompt does the same, in the same order",
+    /redactSensitivePatterns\(decryptText\(report\.rawText\)\.slice\(0, 120_000\)\)/.test(
+      codeOf(read(IDENTITY_ROUTE))
+    )
   );
   check(
     "the deterministic parser is untouched — it reads the ORIGINAL text",

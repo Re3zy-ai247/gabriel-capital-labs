@@ -16,6 +16,10 @@ const schema = z.object({
   acceptTerms: z.literal(true),
 });
 
+// ⚠️ RELEASE ORDER (review L-3). This route writes TermsAcceptance, and
+// prisma/migrations/20260728000000_terms_acceptance is AUTHORED, NOT APPLIED.
+// Apply it at the owner-gated release step BEFORE this code deploys, or every
+// signup 500s on a missing table — and this is the front door.
 export async function POST(req: Request) {
   // Per-IP cap on account creation to blunt automated signup abuse.
   const limited = await enforceRateLimit(`register:${clientIp(req)}`, 5, 600);

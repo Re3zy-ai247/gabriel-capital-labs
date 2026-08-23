@@ -63,6 +63,10 @@ export default function PrivacyPage() {
           <li>The text of the credit report you uploaded or pasted.</li>
           <li>The identity details you typed into Settings — your name and mailing address — when you run the identity check.</li>
           <li>The text of a community question you ask Kai.</li>
+          <li>
+            The text of a bureau&apos;s reply that you paste in when you log a response, so the next round can be
+            prepared from what they actually wrote.
+          </li>
         </ul>
         <p>What is not sent:</p>
         <ul>
@@ -75,8 +79,10 @@ export default function PrivacyPage() {
           <li>Your card details, which only Stripe ever sees.</li>
         </ul>
         <p>
-          Before report text is sent, we mask Social Security numbers that we can recognize in it. That masking is
-          pattern-based: it reduces what is transmitted, and we cannot promise it catches every instance. A credit report
+          Before credit-report text is sent — on every path that sends it — we mask Social Security numbers that we
+          can recognize in it. That masking is pattern-based: it reduces what is transmitted, and we cannot promise it
+          catches every instance. It applies to your credit-report text; a bureau reply you paste in yourself is sent as
+          you wrote it, so remove anything from it you would rather not send. A credit report
           can also contain your date of birth, address history and employers, and where those appear in the report text
           they are sent with it. If that matters to you, remove them from what you paste before you upload.
         </p>

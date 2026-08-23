@@ -4,6 +4,7 @@ import { currentUserOrDemo } from "@/lib/session";
 import { meteredMessage } from "@/lib/aiMeter";
 import { enforceRateLimit } from "@/lib/rateLimit";
 import { decryptDocument, decryptText, docCryptoReady } from "@/lib/docCrypto";
+import { redactSensitivePatterns } from "@/lib/aiParse";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -188,7 +189,15 @@ export async function POST() {
     identity,
     "",
     "CREDIT REPORT TEXT (find the Personal Information / consumer identification section):",
-    decryptText(report.rawText).slice(0, 120_000),
+    // RC1-S8 review H-1. This is the SECOND surface that ships the consumer's
+    // report text to the AI provider, and it was going unmasked while
+    // /legal/privacy promised, without qualification, that Social Security
+    // numbers are masked before report text is sent. Same helper, same order as
+    // lib/aiParse.ts: slice first, then mask, so the mask covers exactly what is
+    // transmitted. Nothing here compares an SSN — the verified identity is a
+    // name and a mailing address, and the model extracts names, addresses and
+    // employers — so masking removes data the comparison never used.
+    redactSensitivePatterns(decryptText(report.rawText).slice(0, 120_000)),
   ].join("\n");
 
   // Multimodal content: ID image(s) first (when the gate is open AND images were

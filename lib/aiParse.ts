@@ -144,6 +144,18 @@ function systemPrompt(covered: Bureau[]): string {
 //     would trade a privacy win for a correctness loss.
 //   · It is therefore a REDUCTION, not a guarantee, and the privacy policy says
 //     exactly that rather than claiming the report is scrubbed.
+//
+// KNOWN AND ACCEPTED (review L-1/L-2, kept deliberately). SSN_DASHED is not
+// context-bounded, so a non-SSN written in the 3-2-4 hyphenated shape is masked
+// too: "Reference 555-12-3456" → "[REDACTED]". Verified byte-identical and
+// therefore unaffected: card numbers (4147-2029-1234-5678), masked account
+// numbers (517805XXXXXX1234), 4-2-4 references (1234-56-7890) and ISO dates
+// (2019-04-12), plus the whole realistic tradeline fixture in
+// scripts/disclosure-truth.test.ts. Tightening it would mean requiring a label,
+// which loses the common case of a bare dashed SSN on its own line — the exact
+// shape a bureau report prints. Conversely an UNLABELLED spaced SSN
+// ("123 45 6789") is not caught; labelled is. Both residuals are why the policy
+// text says the masking is pattern-based and cannot catch every instance.
 const SSN_LABELLED =
   /\b(SSN|SS#|SOC(?:IAL)?\.?\s*SEC(?:URITY)?(?:\s*(?:NO\.?|NUM(?:BER)?|#))?)\s*[:#-]?\s*(\d{3}[-\s]?\d{2}[-\s]?\d{4})\b/gi;
 const SSN_DASHED = /\b\d{3}-\d{2}-\d{4}\b/g;

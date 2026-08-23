@@ -7,7 +7,10 @@ import { ArrowLeft, ShieldCheck, ScanSearch, Mails } from "lucide-react";
 const PANEL_POINTS = [
   { icon: ScanSearch, text: "AI reads all three bureau reports and flags inaccuracies" },
   { icon: Mails, text: "FCRA-grounded dispute letters, compliance-checked before you send" },
-  { icon: ShieldCheck, text: "Your reports encrypted at rest — never shared, never sold" },
+  // RC1-S8 review M-1: "never shared" was false the moment this slice disclosed
+  // that report text goes to a named AI provider. Stated as what is actually
+  // true, and pointed at the page that names the provider — no marketing spin.
+  { icon: ShieldCheck, text: "Your reports encrypted at rest, never sold, and shared only with the providers named in our Privacy Policy" },
 ];
 
 // Split-screen auth shell: the form on the left, a brand/value panel on the right
