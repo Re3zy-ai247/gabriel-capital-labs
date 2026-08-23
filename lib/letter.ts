@@ -1,4 +1,4 @@
-import type { Bureau, AccountType } from "@prisma/client";
+import type { Bureau, AccountType, LetterStatus } from "@prisma/client";
 import { STRATEGY_BY_ID, type Strategy } from "./strategies";
 import { STATUTES } from "./statutes";
 import { BUREAU_ADDRESS, BUREAU_LABEL } from "./bureaus";
@@ -797,9 +797,118 @@ export function renderTemplateLetter(t: LetterTradeline, ctx: LetterContext, con
   // deadline sentence and round-scaled escalation.
   lines.push(...requestedAction(ctx, hasFindings), "");
   lines.push(...closing(ctx, hasFindings), "");
-  lines.push("Respectfully,", "", name);
+  lines.push("Respectfully,", "", "");
+  lines.push(...signatureBlock(name));
 
   return lines.join("\n");
+}
+
+// RC1-S5 (A3 L-07) — SIGNATURE AND DATE, ON THE PAPER.
+// The print guide instructs "Print every page … then sign and date it" and the
+// mail bar recommends certified mail, but the letter itself ended
+// `"Respectfully," / "" / name` — one blank line, no signature rule, no date
+// line. A dispute is a signed statement; the artifact has to have somewhere to
+// sign it and somewhere to date it, or the instruction is asking the consumer
+// to improvise on a document they are about to mail to a credit bureau.
+//
+// Rules, not free text: the rules are what a reader recognizes as a signature
+// block, and they print identically in every browser because the print view
+// renders the body as pre-wrapped text.
+export function signatureBlock(name: string): string[] {
+  return [
+    "_____________________________________________        _____________________",
+    `${SIGNATURE_LABEL}${SIGNATURE_LABEL_PAD}${DATE_LABEL}`,
+    "",
+    name,
+  ];
+}
+const SIGNATURE_LABEL = "Signature";
+const DATE_LABEL = "Date signed";
+// Aligns "Date signed" under the second rule above (45 chars + 8 spaces).
+const SIGNATURE_LABEL_PAD = " ".repeat(53 - SIGNATURE_LABEL.length);
+
+// ── RC1-S5 · THE LETTER LIFECYCLE ───────────────────────────────────────────
+//
+// Lives here, not in a route, because THREE routes write a letter's status —
+// app/api/letters/[id]/route.ts (the consumer's own transitions),
+// app/api/letters/[id]/response/route.ts (logging the bureau's reply) and
+// app/api/letters/generate/route.ts (recomposition resets to GENERATED). Review
+// M-5 found the hole that follows from each of them knowing its own rule only:
+// the response route wrote RESPONSE_RECEIVED from ANY state, and RESOLVED (which
+// can write `tradeline.resolved`) is reachable from there — so a letter that was
+// never approved and never mailed could still be reported as a resolved dispute.
+//
+//   GENERATED ──edit──▶ DRAFT ──approve──▶ PRINTED ──mark mailed──▶ MAILED
+//        └────────────approve────────────▶ PRINTED       │
+//                     ▲                     │            ├─▶ RESPONSE_RECEIVED ─▶ RESOLVED
+//                     └──re-open to edit────┘            └─▶ RESOLVED
+//
+// ⚠️ NAMING DEBT, DELIBERATE AND DOCUMENTED. "Approved" is carried by the
+// existing `PRINTED` enum member because `LetterStatus` has no APPROVED value
+// and `prisma/schema.prisma` is outside this slice's owned paths — adding one is
+// a migration, which belongs to whichever slice owns the schema next. PRINTED is
+// the closest existing meaning (app/api/letters/generate/route.ts:162 already
+// treats it as "the printed page still matches this content") and the product
+// only ever sets it at the moment it hands the consumer the printable document.
+// The follow-up is exactly one change: add `APPROVED` to `enum LetterStatus` +
+// a migration, then swap the constant below. The name reaches a consumer-visible
+// surface in exactly one place today: lib/intelligence/reasoning.ts:121 renders
+// `(status: PRINTED)` into a reasoning trace (review L-3, unowned — S11).
+export const LETTER_APPROVED_STATUS: LetterStatus = "PRINTED";
+
+/** Statuses whose body the consumer may still change. */
+export const LETTER_EDITABLE_STATUSES: LetterStatus[] = ["GENERATED", "DRAFT"];
+
+export const LETTER_TRANSITIONS: Record<LetterStatus, LetterStatus[]> = {
+  GENERATED: ["GENERATED", "DRAFT", LETTER_APPROVED_STATUS],
+  DRAFT: ["DRAFT", LETTER_APPROVED_STATUS],
+  PRINTED: [LETTER_APPROVED_STATUS, "DRAFT", "MAILED"],
+  MAILED: ["MAILED", "RESPONSE_RECEIVED", "RESOLVED"],
+  RESPONSE_RECEIVED: ["RESPONSE_RECEIVED", "RESOLVED"],
+  RESOLVED: ["RESOLVED"],
+};
+
+export function canTransitionLetter(from: LetterStatus, to: LetterStatus): boolean {
+  return (LETTER_TRANSITIONS[from] ?? []).includes(to);
+}
+
+// ── RC1-S5 (A3 L-01 / P1-31): the consumer's own edits ──────────────────────
+// A dispute letter is a signed statement, so the consumer gets to change it —
+// PATCH /api/letters/[id] accepts a body while the letter is still a draft.
+// These are the bounds that apply to what they type.
+export const LETTER_BODY_MIN = 40;
+/** ~10 printed pages. Longer than any letter this product composes, bounded so
+ *  nothing unbounded can be persisted, encrypted, printed or re-scrubbed. */
+export const LETTER_BODY_MAX = 20_000;
+
+/**
+ * Clean a consumer-edited letter body WITHOUT reformatting it.
+ *
+ * Whitespace is the consumer's: indentation, blank lines and line breaks are
+ * preserved exactly, because the print view renders the stored body verbatim
+ * and re-wrapping their paragraphs would change the document they approved.
+ * What is removed is what cannot legitimately appear in a printed letter:
+ * carriage returns (normalized so the body has one line-ending convention),
+ * control characters, and the invisible/bidirectional formatting characters
+ * that can make printed text read differently from the text on screen.
+ */
+export function sanitizeLetterBody(raw: string): string {
+  return raw
+    .replace(/\r\n?/g, "\n")
+    // REVIEW M-4: U+2028 / U+2029 are what Word, Pages and Google Docs emit for
+    // a soft line break. DELETING them glued words together in a pasted draft
+    // ("Account number XXXX-1234" → "Account numberXXXX-1234"); they are line
+    // breaks, so they normalize to one, exactly like \r\n two lines above.
+    .replace(/[\u2028\u2029]/g, "\n")
+    // C0 controls except \n and \t, plus DEL and the C1 block. Written with
+    // \u escapes for the same reason normalizeConsumerNote above is: a literal
+    // control character in this source file would make the file binary to grep.
+    // eslint-disable-next-line no-control-regex
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]/g, "")
+    // Zero-width, line/paragraph separators, bidi overrides and BOM.
+    .replace(/[\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]/g, "")
+    .replace(/[ \t]+$/gm, "")
+    .replace(/\s+$/, "");
 }
 
 export function buildSystemPrompt(round: number = 1): string {

@@ -84,7 +84,8 @@ export default async function LetterPrintPage({ params }: { params: { id: string
 
   // Documents the user toggled "include in letters". Images are decrypted
   // server-side and embedded as data URIs so they print without a public URL.
-  const includedDocs = docCryptoReady()
+  const cryptoReady = docCryptoReady();
+  const includedDocs = cryptoReady
     ? await prisma.document.findMany({
         where: { userId: user.id, includeInLetters: true },
         orderBy: { type: "asc" },
@@ -105,8 +106,25 @@ export default async function LetterPrintPage({ params }: { params: { id: string
         dataUri = null;
       }
     }
-    return { type: d.type, label: DOC_LABEL[d.type] || d.type, dataUri };
+    return { type: d.type, label: DOC_LABEL[d.type] || d.type, dataUri, mimeType: d.mimeType };
   });
+
+  // RC1-S5 (A3 L-06 / P1-07) — THE ENCLOSURE LIST IS A STATEMENT ON A SIGNED
+  // LETTER, SO IT HAS TO BE TRUE.
+  //
+  // The letter used to list EVERY document marked "include in letters" under
+  // "Enclosures", while only images were ever rendered onto paper (:96). Uploads
+  // accept application/pdf, so a PDF government ID was named as enclosed on a
+  // letter the consumer signed — and was not in the envelope. Separately, when
+  // document encryption is not configured the query is skipped entirely and the
+  // packet shipped with no enclosures and no warning at all.
+  //
+  // Now: the printed list contains exactly the pages this packet prints, and
+  // everything else is called out on screen — to the consumer, who is the only
+  // person who can put it in the envelope — never printed as though it were
+  // enclosed.
+  const printedEnclosures = enclosures.filter((e) => e.dataUri);
+  const unprintableEnclosures = enclosures.filter((e) => !e.dataUri);
 
   return (
     <div className="min-h-screen bg-slate-100 font-sans text-black print:bg-white">
@@ -149,6 +167,38 @@ export default async function LetterPrintPage({ params }: { params: { id: string
         </div>
       )}
 
+      {/* RC1-S5 (A3 L-06) — WHAT IS NOT IN THIS PACKET. Screen-only: it is an
+          instruction to the consumer, not a statement to the bureau, and the
+          letter itself must never claim an enclosure the packet does not carry. */}
+      {(unprintableEnclosures.length > 0 || !cryptoReady) && (
+        <div className="mx-auto max-w-[8.5in] px-6 pt-4 print:hidden">
+          <div className="flex gap-2 rounded-lg border border-gold-500/30 bg-gold-500/10 p-3 text-xs text-gold-400">
+            <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden />
+            <div>
+              <p className="font-semibold">Bring these documents yourself</p>
+              {unprintableEnclosures.length > 0 && (
+                <p className="mt-1">
+                  You marked {unprintableEnclosures.length === 1 ? "this document" : "these documents"} to include with
+                  your letters, but {unprintableEnclosures.length === 1 ? "it can" : "they can"}&apos;t be printed into
+                  this packet: {unprintableEnclosures.map((e) => `${e.label} (${e.mimeType})`).join(", ")}. Print{" "}
+                  {unprintableEnclosures.length === 1 ? "it" : "them"} separately and add{" "}
+                  {unprintableEnclosures.length === 1 ? "it" : "them"} to the envelope yourself. The letter does not
+                  name {unprintableEnclosures.length === 1 ? "it" : "them"} as enclosed — this packet doesn&apos;t
+                  contain {unprintableEnclosures.length === 1 ? "it" : "them"}, so the letter can&apos;t say it does.
+                </p>
+              )}
+              {!cryptoReady && (
+                <p className="mt-1">
+                  Uploaded documents can&apos;t be attached to a printed packet right now, so nothing you marked
+                  &ldquo;include with my letters&rdquo; is in this one. Add copies to the envelope yourself if your
+                  dispute needs them.
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Screen-only context strip — what this document is, before it prints. */}
       <div className="mx-auto flex max-w-[8.5in] flex-wrap items-baseline gap-x-5 gap-y-1 px-6 pt-6 text-[11px] uppercase tracking-widest text-slate-500 print:hidden">
         <span className="font-bold text-slate-700">Dispute letter</span>
@@ -169,11 +219,12 @@ export default async function LetterPrintPage({ params }: { params: { id: string
             ))}
           </div>
 
-          {enclosures.length > 0 && (
+          {/* Exactly the pages printed below — nothing the packet does not contain. */}
+          {printedEnclosures.length > 0 && (
             <section className="mt-10 border-t border-black/20 pt-4">
               <div className="text-[9pt] font-bold uppercase tracking-[0.18em] text-black/60">Enclosures</div>
               <ul className="mt-2 space-y-1 text-[10.5pt] leading-relaxed">
-                {enclosures.map((e) => (
+                {printedEnclosures.map((e) => (
                   <li key={e.type} className="flex gap-2">
                     <span aria-hidden="true">—</span>
                     {e.label}
@@ -190,8 +241,7 @@ export default async function LetterPrintPage({ params }: { params: { id: string
             Prepared with CreditVector — educational tool; statutes cited within.
           </footer>
 
-          {enclosures
-            .filter((e) => e.dataUri)
+          {printedEnclosures
             .map((e) => (
               <figure key={e.type} className="break-before-page pt-2">
                 <figcaption className="mb-3 text-[9pt] font-bold uppercase tracking-[0.18em] text-black/60">
@@ -215,7 +265,10 @@ export default async function LetterPrintPage({ params }: { params: { id: string
           <span className="rounded bg-brand-500/15 px-1.5 py-0.5 text-slate-700">KAI</span> How to mail this
         </div>
         <ol className="list-decimal space-y-1.5 pl-5 leading-relaxed">
-          <li>Print every page — the letter and any enclosures — then sign and date it.</li>
+          <li>
+            Print every page — the letter and any enclosures — then sign and date it on the signature line at the end
+            of the letter.
+          </li>
           <li>Mail it to the address shown at the top of the letter.</li>
           <li>First-class mail works. Certified mail with return receipt costs a little more but gives you proof of delivery and the date the response window starts — worth it for a dispute.</li>
           <li>

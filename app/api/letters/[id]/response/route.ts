@@ -7,6 +7,7 @@ import { enforceRateLimit } from "@/lib/rateLimit";
 import { encryptText, decryptText } from "@/lib/docCrypto";
 import { recordKaiEvent } from "@/lib/kaiEvents";
 import { recordVerifiedOutcome } from "@/lib/outcomeLedger";
+import { canTransitionLetter } from "@/lib/letter";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -27,6 +28,29 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
   const letter = await prisma.letter.findFirst({ where: { id: params.id, userId: user.id } });
   if (!letter) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  // ---- RC1-S5 REMEDIATION (review M-5): THE SAME LIFECYCLE, EVERY WRITER ----
+  // This route writes `status: "RESPONSE_RECEIVED"`, and PATCH /api/letters/[id]
+  // allows RESPONSE_RECEIVED → RESOLVED, where the outcome "corrected or
+  // removed" writes `tradeline.resolved = true` — read by lib/missionControl.ts,
+  // the strategist and the admin dashboard. Written from any state, this route
+  // was therefore a way to report a dispute as resolved on a letter that was
+  // never approved and never mailed. It now answers to the shared transition
+  // map (lib/letter.ts), so a response can only be logged against a letter that
+  // actually went out. Checked BEFORE the PDF is read and before any AI call.
+  if (!canTransitionLetter(letter.status, "RESPONSE_RECEIVED")) {
+    return NextResponse.json(
+      {
+        error:
+          letter.status === "RESOLVED"
+            ? "This dispute is already closed out. Reopen it by starting a new round if another response arrived."
+            : "Mark this letter mailed first — a response can only be logged against a dispute that actually went out.",
+        invalidTransition: true,
+        from: letter.status,
+      },
+      { status: 409 }
+    );
+  }
 
   let responseText = "";
   try {
