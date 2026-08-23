@@ -90,9 +90,25 @@ function check(label: string, cond: boolean) {
 // `user` (see app/dashboard/page.tsx's resolveDashboardPrincipal()). `user`
 // itself (`client ?? account`) is always truthy once reached, so the
 // equivalent guard is expressed entirely via `!principal`.
-check("entry: rendered ONLY by the authenticated branch (signed-out renders no overlay) — phase-1a's guard variable is `principal`",
-  dash.indexOf("Please sign in.") < dash.indexOf("<MissionEntry") &&
-  /if \(!principal\) return <AppShell/.test(dash));
+// RC1 S2 (P0-5) replaced the linkless "Please sign in." shell with a redirect. The
+// property is unchanged: nothing renders for an unresolved principal, so the
+// cinematic entry can never be shown to a signed-out visitor.
+//
+// Three traps this guard must avoid, all of which the old spelling walked into:
+//   • ordering measured on the bare identifier `redirectToLogin` is vacuous — it
+//     also appears in the import, so the test passes with the guard call deleted.
+//     Measure the CALL.
+//   • indexOf(-1) comparisons go vacuous once the searched string is gone
+//     (-1 < N is always true). Require both indices to be found.
+//   • "Please sign in." now appears in an explanatory COMMENT in this file, so any
+//     absence check must read comment-stripped source.
+const dashRendered = dash.split("\n").filter((l) => !l.trim().startsWith("//")).join("\n");
+const guardAt = dashRendered.indexOf('if (!principal) redirectToLogin("/dashboard");');
+const entryAt = dashRendered.indexOf("<MissionEntry");
+check("entry: rendered ONLY by the authenticated branch — the signed-out branch leaves for /login before any overlay is reached",
+  guardAt !== -1 && entryAt !== -1 && guardAt < entryAt);
+check("entry: the dashboard no longer renders a linkless sign-in shell",
+  !dashRendered.includes("Please sign in."));
 check("entry: tier D mounts nothing (reduced motion / effects off)",
   /if \(tier === "D"\) return;/.test(entry));
 check("entry: skippable three ways — Escape, the button, click anywhere",

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
-import { currentUserOrDemo } from "@/lib/session";
+import { requireUser } from "@/lib/requireSession";
 import { loadOnboardingStatus } from "@/lib/onboarding";
 import { OnboardingSteps, type OnboardingStepDef } from "./OnboardingSteps";
 
@@ -54,23 +54,25 @@ const STEPS: OnboardingStepDef[] = [
 // /letters, and /journey's own checklist already treat as done. A brand-new,
 // zero-data account renders every step honestly incomplete; nothing here is
 // ever a placeholder standing in for a fact that isn't there.
+//
+// RC1 S2 (A1-15): this is the FIRST screen after registration
+// (app/register/page.tsx pushes here) and it rendered as a bare full-bleed div —
+// no sidebar, no header, no logo, no sign-out. A new consumer's first
+// authenticated impression of the product was a page with no way out of it
+// except the five step links. It now wears the same AppShell every other
+// authenticated room wears, so the app is navigable from the moment it starts.
+// Structural only: the step copy and the CTA below are untouched here.
 export default async function OnboardingPage() {
-  const user = await currentUserOrDemo();
-  if (!user) {
-    return (
-      <AppShell title="/ Getting started">
-        <p className="text-slate-400">Please sign in.</p>
-      </AppShell>
-    );
-  }
+  // P0-5: was a linkless "Please sign in." inside the shell.
+  const user = await requireUser("/onboarding");
 
   const { completedSteps } = await loadOnboardingStatus(user.id);
   const completedCount = completedSteps.length;
 
   return (
-    <div className="min-h-screen bg-ink-950 text-white">
+    <AppShell title="/ Getting started">
       {/* Header */}
-      <div className="max-w-6xl mx-auto px-6 py-16">
+      <div className="mx-auto max-w-5xl">
         <div className="mb-3 flex items-center gap-2">
           <span className="rounded bg-brand-500/15 px-1.5 py-0.5 text-[10px] font-bold tracking-widest text-brand-300">KAI</span>
           <span className="text-[11px] font-semibold uppercase tracking-widest text-slate-500">Getting started</span>
@@ -97,7 +99,7 @@ export default async function OnboardingPage() {
       </div>
 
       {/* Steps */}
-      <div className="max-w-6xl mx-auto px-6 pb-20">
+      <div className="mx-auto mt-8 max-w-5xl">
         <OnboardingSteps steps={STEPS} completedSteps={completedSteps} />
 
         {/* Bottom CTA */}
@@ -111,6 +113,6 @@ export default async function OnboardingPage() {
           </Link>
         </div>
       </div>
-    </div>
+    </AppShell>
   );
 }

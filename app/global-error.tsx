@@ -10,6 +10,10 @@
 // next/headers, no brand/server module, no icon package, and no reliance on the Tailwind
 // stylesheet having loaded. Copy voice and treatment mirror app/error.tsx; the digest is
 // surfaced the same way so an incident can be correlated to a Vercel log line.
+//
+// A1-12 · copy ADOPTED from the free consumer lane, commit a130d2d ("fix: close bounded consumer
+// launch defects"), verbatim — same reasoning as app/error.tsx: the boundary cannot know that
+// nothing was lost, and must never read as a statement about the reader's credit.
 export default function GlobalError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   return (
     <html lang="en">
@@ -35,8 +39,8 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
             Something went wrong on our end
           </h1>
           <p style={{ margin: "0.75rem auto 0", maxWidth: "24rem", color: "#94a3b8", lineHeight: 1.6 }}>
-            The page failed to load. Try again — nothing was lost. Nothing about your report or your
-            credit caused this.
+            We hit a technical error. If you were making a change, confirm its status before retrying.
+            This message is not a credit decision and does not itself change your credit report.
           </p>
           {error.digest ? (
             <p style={{ margin: "0.5rem 0 0", fontSize: "0.75rem", color: "#475569" }}>

@@ -3,6 +3,7 @@ import { GraduationCap, ArrowUpRight } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Disclaimer, EduBanner } from "@/components/Disclaimer";
 import { currentUser, currentUserOrDemo, currentWorkspace } from "@/lib/session";
+import { redirectToLogin } from "@/lib/requireSession";
 import { getMissionControl } from "@/lib/missionControl";
 import { loadSnapshot, assembleIntelligence } from "@/lib/intelligence";
 import { assembleMissions } from "@/lib/missionEngine";
@@ -57,7 +58,10 @@ export const dynamic = "force-dynamic";
 //                  greeting echoes it in words, it does not duplicate the bar).
 export default async function DashboardPage() {
   const principal = await resolveDashboardPrincipal();
-  if (!principal) return <AppShell title="/ Mission Control"><p className="text-slate-400">Please sign in.</p></AppShell>;
+  // P0-5: an unresolved principal used to render the full shell around the
+  // words "Please sign in." — no link, no redirect — and Mission Control is the
+  // page a returning consumer lands on first. Leave for /login and come back.
+  if (!principal) redirectToLogin("/dashboard");
   const { account, client } = principal;
   const altitude: Altitude = client ? "workspace" : account.isAgency ? "agency-owner" : "consumer";
 

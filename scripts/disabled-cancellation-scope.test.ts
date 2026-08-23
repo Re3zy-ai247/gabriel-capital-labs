@@ -239,8 +239,21 @@ const middleware = read("middleware.ts");
 // caught where app/login/page.tsx sends it. What must never change is that the
 // suspended user's own remedy is not matched, and that middleware routes that
 // principal TO it rather than away from it.
-check("middleware never matches /billing/cancel, so the remedy stays reachable",
-  /matcher:\s*\["\/",\s*"\/dashboard"\]/.test(middleware) && !/matcher:[^\]]*billing/.test(middleware));
+//
+// RC1 S2 widened the matcher from ["/","/dashboard"] to the landing plus the
+// authenticated route roots. The invariant this guard protects is unchanged and is
+// now expressed against the matcher's CONTENTS rather than its old literal: nothing
+// under /billing may be matched, and the remedy is additionally excluded in code so
+// the property holds in behaviour and not only in configuration.
+const matcherBlock = /export const config = \{[\s\S]*?matcher: \[([\s\S]*?)\],\s*\};/.exec(middleware);
+check("the middleware matcher is still a reviewed literal list", matcherBlock !== null);
+check("middleware never matches anything under /billing, so the remedy stays reachable",
+  matcherBlock !== null && !/billing/.test(matcherBlock[1]));
+// The tripwire OUTSIDE the cancellationOnly branch: if the /billing prefix is ever
+// added to the matcher, /billing/cancel still cannot be redirected away. Two
+// occurrences are required — one inside the S1 branch, one unconditional.
+check("/billing/cancel is excluded in code as well as in the matcher",
+  (middleware.match(/if \(pathname === CANCEL_PATH\) return NextResponse\.next\(\);/g) || []).length === 2);
 check("middleware sends a cancellation-only principal to the cancellation page",
   /cancellationOnly === true/.test(middleware) && /CANCEL_PATH/.test(middleware));
 check("the cancellation page path in middleware is exactly the page that exists",

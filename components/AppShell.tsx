@@ -4,8 +4,8 @@ import { AgencyBar } from "./AgencyBar";
 import { ImpersonationBanner } from "./admin/ImpersonationBanner";
 import { AnnouncementBanner } from "./AnnouncementBanner";
 import { HeaderLogout } from "./HeaderLogout";
+import { NewDisputeCta } from "./NewDisputeCta";
 import { KaiPresence } from "./kai/KaiPresence";
-import Link from "next/link";
 
 export function AppShell({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -16,7 +16,10 @@ export function AppShell({ title, children }: { title: string; children: React.R
           <h1 className="text-sm font-medium text-slate-300">{title}</h1>
           <div className="flex items-center gap-3 text-xs text-slate-400">
             <ThemeToggle />
-            <Link href="/upload" className="btn-primary !py-1.5">+ New Dispute</Link>
+            {/* RC1 S2 (review MEDIUM-2): session-conditional — this shell renders on
+                signed-out panels too, where "+ New Dispute" promised an action the
+                visitor cannot take. S7 reworks this header next wave. */}
+            <NewDisputeCta />
             <HeaderLogout />
           </div>
         </header>

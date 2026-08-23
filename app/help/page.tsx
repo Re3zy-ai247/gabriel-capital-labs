@@ -1,6 +1,8 @@
 'use client';
 
 import Link from 'next/link';
+import { SiteNav } from '@/components/marketing/SiteNav';
+import { SiteFooter } from '@/components/marketing/SiteFooter';
 import { StatuteCard } from '@/components/StatuteCard';
 import { STATUTES, type StatuteKey } from '@/lib/statutes';
 
@@ -45,10 +47,22 @@ const guides = [
   },
 ];
 
+// RC1 S2 (A1-09), STRUCTURAL ONLY. /help is served publicly and returns 200 to
+// anyone, but it rendered a bare full-bleed div: no SiteNav, no SiteFooter, no
+// AppShell. A visitor arriving from search had no logo, no home link and no way
+// to sign in — on the page a locked-out consumer is most likely to reach first.
+// It also had no route INTO it: the only two /help references in the codebase
+// sat inside the authenticated Credit Builder engine. It is now linked from the
+// sidebar (components/Sidebar.tsx) and from /login.
+//
+// NOT changed here, and deliberately so — this page's monetization copy ("$99/
+// month plan", "free tier (3 letters/month)") and the tier-gated support SLA
+// belong to the copy slice (S6b), not to session recovery.
 export default function HelpPage() {
   return (
-    <div className="min-h-screen bg-slate-950 text-white">
-      <div className="max-w-6xl mx-auto px-6 py-16">
+    <div className="flex min-h-screen flex-col bg-slate-950 text-white">
+      <SiteNav />
+      <div id="main" className="max-w-6xl mx-auto w-full px-6 py-16">
         <div className="mb-3 flex items-center gap-2">
           <span className="rounded bg-brand-500/15 px-1.5 py-0.5 text-[10px] font-bold tracking-widest text-brand-300">KAI</span>
           <span className="text-[11px] font-semibold uppercase tracking-widest text-slate-500">Briefing room</span>
@@ -104,6 +118,16 @@ export default function HelpPage() {
           <Link href="/support" className="inline-block bg-brand-500 hover:bg-brand-600 text-white keep-white px-8 py-3 rounded-lg font-semibold transition">
             Open a ticket
           </Link>
+          {/* A1-09: the ticket desk needs a session, so it is not an answer for
+              someone who cannot sign in. The address below already exists in the
+              product (app/billing/cancel/page.tsx) and needs no account. */}
+          <p className="mt-5 text-sm text-slate-400">
+            Can&apos;t sign in? Email{' '}
+            <a href="mailto:support@creditvector.app" className="font-medium text-brand-300 underline underline-offset-2 transition hover:text-brand-200">
+              support@creditvector.app
+            </a>{' '}
+            — no account needed.
+          </p>
         </div>
 
         {/* Quick Tips */}
@@ -138,6 +162,7 @@ export default function HelpPage() {
           </div>
         </div>
       </div>
+      <SiteFooter />
     </div>
   );
 }
