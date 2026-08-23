@@ -126,3 +126,57 @@ export function localDateIso(d: Date): string {
 export function todayIso(): string {
   return localDateIso(new Date());
 }
+
+// ── Server-side future-date guard (M-1 remediation) ─────────────────────────
+// The client's `<input type="date">` always sends a bare "YYYY-MM-DD" string
+// (via todayIso() above), never a full timestamp. Comparing that string's
+// UTC-midnight parse against the SERVER's `Date.now()` — the original
+// server-side S-02 fix — rejects the visitor's own "today" for anyone whose
+// local time is ahead of UTC: their calendar day has turned over locally
+// while the server's UTC day has not, so `new Date("<their today>")` (UTC
+// midnight of that date) is still numerically in the future relative to the
+// server's instant. isFutureLocalDate compares CALENDAR DATES in the
+// SUBMITTER's own frame instead, using a client-declared UTC-offset —
+// exactly the shape of the actual, only production payload — while leaving
+// every other input shape byte-for-byte on the original strict check.
+export const MAX_TIMEZONE_OFFSET_MINUTES = 14 * 60; // ±14h spans every real-world zone (UTC-12..UTC+14)
+
+// Shifts a true UTC instant (in ms) into a given zone's wall-clock reading,
+// then reads its calendar date. `offsetMinutes` uses the same sign
+// convention as `Date.prototype.getTimezoneOffset()` (positive = behind
+// UTC, e.g. +300 for New York; negative = ahead, e.g. -120 for Berlin in
+// summer) — local = utc − offsetMinutes.
+function localDateFromInstant(ms: number, offsetMinutes: number): string {
+  return new Date(ms - offsetMinutes * 60000).toISOString().slice(0, 10);
+}
+
+// Returns true when `recordedAtRaw` should be refused as a future date.
+//
+//  - When `recordedAtRaw` is a bare "YYYY-MM-DD" string AND `offsetMinutes`
+//    is present and finite: the offset is clamped to ±MAX_TIMEZONE_OFFSET_MINUTES
+//    (bounding the maximum leniency any client — honest or malicious — can
+//    claim to exactly one calendar day, never more) and the two calendar
+//    DATE STRINGS are compared directly — never instants, so no timezone
+//    math is applied to `recordedAtRaw` itself (it already IS the caller's
+//    stated calendar date, verbatim; shifting it by an offset would corrupt
+//    it, not correct it).
+//  - Every other case — no offset, a non-finite offset, or `recordedAtRaw`
+//    not date-only-shaped (a full timestamp, which this app's own client
+//    never sends but a direct API call could) — fails closed to the
+//    original instant-vs-instant check, unchanged.
+export function isFutureLocalDate(
+  recordedAtRaw: unknown,
+  recordedAtMs: number,
+  offsetMinutes: unknown,
+  nowMs: number,
+): boolean {
+  if (typeof recordedAtRaw === "string" && /^\d{4}-\d{2}-\d{2}$/.test(recordedAtRaw)) {
+    const offset = Number(offsetMinutes);
+    if (Number.isFinite(offset)) {
+      const clamped = Math.max(-MAX_TIMEZONE_OFFSET_MINUTES, Math.min(MAX_TIMEZONE_OFFSET_MINUTES, offset));
+      const callerToday = localDateFromInstant(nowMs, clamped);
+      return recordedAtRaw > callerToday;
+    }
+  }
+  return recordedAtMs > nowMs;
+}

@@ -97,7 +97,12 @@ export default function ScoresPage() {
     try {
       const res = await fetch("/api/scores", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ bureau, score: n, recordedAt: date }),
+        // timezoneOffset (M-1 remediation) lets the server compare this
+        // date-only string against the SUBMITTER's own calendar day rather
+        // than UTC midnight vs. the server's Date.now() — otherwise a
+        // visitor ahead of UTC gets a 400 on this page's own pre-filled
+        // "today" (see lib/selfReportedScores.ts's isFutureLocalDate).
+        body: JSON.stringify({ bureau, score: n, recordedAt: date, timezoneOffset: new Date().getTimezoneOffset() }),
       });
       if (res.status === 401) {
         window.location.replace("/login?callbackUrl=/scores");

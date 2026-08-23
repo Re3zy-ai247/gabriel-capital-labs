@@ -20,10 +20,12 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
+  MAX_TIMEZONE_OFFSET_MINUTES,
   SELF_REPORTED_SCORE_COMPARABILITY_NOTE,
   SELF_REPORTED_SCORE_DISCLOSURE,
   buildSelfReportedScoreSeries,
   formatUserRecordedScoreChange,
+  isFutureLocalDate,
   localDateIso,
   selfReportedScoreInventory,
   todayIso,
@@ -70,6 +72,16 @@ const sameDay = [
 ];
 check("same-day direction is deterministic by createdAt then id", buildSelfReportedScoreSeries(sameDay)[0].change === 50 && buildSelfReportedScoreSeries([...sameDay].reverse())[0].change === 50);
 
+// L-1 (review): the prior sameDay fixture differs in createdAt, so the THIRD
+// tie-break leg (id.localeCompare) was never exercised — both same-day
+// entries here share IDENTICAL recordedAt AND createdAt, so only `id` can
+// break the tie.
+const sameInstant = [
+  { id: "b-later-id", bureau: "EQUIFAX", score: 710, recordedAt: "2026-05-01T00:00:00.000Z", createdAt: "2026-05-01T01:00:00.000Z" },
+  { id: "a-earlier-id", bureau: "EQUIFAX", score: 655, recordedAt: "2026-05-01T00:00:00.000Z", createdAt: "2026-05-01T01:00:00.000Z" },
+];
+check("when recordedAt AND createdAt are identical, the id leg alone breaks the tie (L-1)", buildSelfReportedScoreSeries(sameInstant)[0].change === 55 && buildSelfReportedScoreSeries([...sameInstant].reverse())[0].change === 55);
+
 const inventory = selfReportedScoreInventory(sample);
 check("inventory counts entries and bureaus without summing their changes", inventory.entryCount === 5 && inventory.bureauCount === 3 && inventory.stat === "5 entries");
 check("canonical disclosure states self-entry, no retrieval/verification, and comparability limits", /entered by you/.test(SELF_REPORTED_SCORE_DISCLOSURE) && /does not pull live scores/.test(SELF_REPORTED_SCORE_DISCLOSURE) && /not independently verified/.test(SELF_REPORTED_SCORE_DISCLOSURE) && /model, source, and date/.test(SELF_REPORTED_SCORE_DISCLOSURE));
@@ -103,6 +115,45 @@ check("comparability note never claims like-for-like models or sources", /do not
 }
 check("todayIso() is a thin wrapper over localDateIso(new Date())", typeof todayIso() === "string" && /^\d{4}-\d{2}-\d{2}$/.test(todayIso()));
 
+// ── M-1 (review remediation): isFutureLocalDate / the server-side leg ───────
+// The route no longer compares recordedAt's UTC-midnight parse against the
+// server's own Date.now() when the client sends a date-only string plus its
+// own timezoneOffset — it compares CALENDAR DATES in the SUBMITTER's frame.
+// This reproduces the review's own worked example: 2026-08-23T20:00:00.000Z
+// (server "now") is still 2026-08-23 in UTC, but already 2026-08-24 in
+// Sydney (UTC+10, getTimezoneOffset() === -600) and in Kolkata
+// (UTC+5:30, getTimezoneOffset() === -330).
+{
+  const serverNowMs = new Date("2026-08-23T20:00:00.000Z").getTime();
+  const sydneyOffset = -600;
+  const kolkataOffset = -330;
+
+  check("Sydney's own local today (one day ahead of the server's UTC date) is NOT future", !isFutureLocalDate("2026-08-24", new Date("2026-08-24").getTime(), sydneyOffset, serverNowMs));
+  check("Kolkata's own local today is NOT future", !isFutureLocalDate("2026-08-24", new Date("2026-08-24").getTime(), kolkataOffset, serverNowMs));
+  check("a date genuinely beyond Sydney's own local today (one more day out) IS future", isFutureLocalDate("2026-08-25", new Date("2026-08-25").getTime(), sydneyOffset, serverNowMs));
+  check("the server's own UTC-behind date (2026-08-23) is never future for itself", !isFutureLocalDate("2026-08-23", new Date("2026-08-23").getTime(), 0, serverNowMs));
+
+  // Fail-closed: no offset, or a non-finite offset, preserves the ORIGINAL
+  // strict instant-vs-instant check — proving Sydney's today is future
+  // under that exact prior behaviour (this is what M-1 reported as broken).
+  check("with NO offset, Sydney's local today still fails closed to the strict prior check", isFutureLocalDate("2026-08-24", new Date("2026-08-24").getTime(), undefined, serverNowMs));
+  check("a non-finite offset (NaN) also fails closed", isFutureLocalDate("2026-08-24", new Date("2026-08-24").getTime(), Number.NaN, serverNowMs));
+  check("a non-numeric offset also fails closed", isFutureLocalDate("2026-08-24", new Date("2026-08-24").getTime(), "not-a-number", serverNowMs));
+
+  // Clamp: an offset far outside any real timezone cannot buy more than
+  // MAX_TIMEZONE_OFFSET_MINUTES (14h) of leniency in either direction.
+  check("MAX_TIMEZONE_OFFSET_MINUTES is exactly 14 hours", MAX_TIMEZONE_OFFSET_MINUTES === 14 * 60);
+  check("an absurd ahead-claiming offset is clamped to 14h, not trusted verbatim — 2 days out is still future", isFutureLocalDate("2026-08-25", new Date("2026-08-25").getTime(), -999999, serverNowMs));
+  check("clamped to exactly +14h, Sydney's own one-day-ahead today is still accepted (the clamp doesn't UNDER-grant real zones)", !isFutureLocalDate("2026-08-24", new Date("2026-08-24").getTime(), -840, serverNowMs));
+
+  // Only a bare date-only string gets this treatment — a full timestamp
+  // (never sent by this app's client) always falls back to the strict
+  // instant check, regardless of any offset supplied alongside it.
+  const farFutureIso = new Date(serverNowMs + 30 * 24 * 60 * 60 * 1000).toISOString();
+  check("a full-timestamp recordedAt ignores any offset and stays on the strict check", isFutureLocalDate(farFutureIso, new Date(farFutureIso).getTime(), sydneyOffset, serverNowMs));
+}
+
+
 // ── Page copy / structure (app/scores/page.tsx) ──────────────────────────────
 check("page heading and compact provenance badge are visibly SELF-REPORTED", /Self-Reported Score Tracker/.test(page) && /SELF-REPORTED/.test(page));
 check("bureau cards expose self-reported provenance and unavailable state to assistive technology", /self-reported score: unavailable/.test(page) && /self-reported score: latest/.test(page));
@@ -120,6 +171,8 @@ check("legend wraps rather than overflowing narrow cards", /flex flex-wrap gap-x
 
 check("form fields have associated labels and bounded numeric input", /htmlFor="self-reported-score-bureau"/.test(page) && /htmlFor="self-reported-score-value"/.test(page) && /type="number"/.test(page) && /min=\{300\} max=\{850\} step=\{1\}/.test(page));
 check("recorded date hydrates from the visitor's local date via lib/selfReportedScores and rejects future dates", /todayIso\(\)/.test(page) && /max=\{today \|\| undefined\}/.test(page) && /Date recorded cannot be in the future/.test(api));
+check("the client sends its own timezoneOffset alongside the date-only recordedAt (M-1)", /timezoneOffset: new Date\(\)\.getTimezoneOffset\(\)/.test(page));
+check("the route derives the future-date decision through isFutureLocalDate, not a bare instant compare (M-1)", /import \{ isFutureLocalDate \} from "@\/lib\/selfReportedScores"/.test(api) && /isFutureLocalDate\(body\?\.recordedAt, recordedAt\.getTime\(\), body\?\.timezoneOffset, Date\.now\(\)\)/.test(api));
 check("save confirmation and errors are announced", /role="status"[^>]*aria-live="polite"/.test(page) && /role="alert"/.test(page));
 check("loading failure is distinct from an empty history", /setLoadError\("Your self-reported score history could not be loaded/.test(page) && /loadError \?/.test(page));
 check("chart has a titled description and a visible exact-entry equivalent (S-01)", /aria-labelledby="self-reported-score-chart-title self-reported-score-chart-description"/.test(page) && /View exact self-reported entries/.test(page) && /Exact self-reported score history/.test(page));

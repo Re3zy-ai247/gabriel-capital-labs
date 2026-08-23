@@ -1,5 +1,12 @@
 // Run: npx tsx scripts/score-tracker-auth-runtime.test.ts
 //
+// REMEDIATION (review round): added a deterministic M-1 block inside
+// testScoresRouteIsolation that POSTs the client's ACTUAL payload shape —
+// a bare date-only string plus timezoneOffset — reproducing the reviewer's
+// own Sydney/UTC+10 worked example via a mocked Date.now, so the case is
+// deterministic regardless of when this suite runs. See
+// lib/selfReportedScores.ts's isFutureLocalDate for the fix itself.
+//
 // RUNTIME guard for the Score Tracker's server-side auth gate (S-06) and the
 // route's future-date rejection (S-02, server side). This executes the REAL
 // app/scores/layout.tsx, the REAL app/api/scores/route.ts, and the REAL
@@ -370,6 +377,63 @@ async function testScoresRouteIsolation() {
       body: JSON.stringify({ bureau: "EXPERIAN", score: 690, recordedAt: yesterday }),
     }));
     check("a past-dated POST is unaffected by the future-date guard", pastPost.status === 200 && entries.length === entriesBeforePast + 1);
+
+    // ── M-1 (review remediation): the CLIENT's actual payload shape ─────────
+    // Every prior future-date case above sends a FULL ISO datetime
+    // (`.toISOString()`) — a shape the real client never sends. The real
+    // client (app/scores/page.tsx) always sends a bare "YYYY-MM-DD" string
+    // plus its own timezoneOffset. Reproduces the review's own worked
+    // example verbatim: server "now" = 2026-08-23T20:00:00.000Z (still
+    // 2026-08-23 in UTC) while Sydney (UTC+10, getTimezoneOffset() === -600)
+    // is already 2026-08-24 — on the pre-fix code this 200 was a 400.
+    // Date.now is mocked for exactly this block so the scenario is
+    // deterministic regardless of when this suite actually runs.
+    sessionUserId = "a";
+    const realDateNow = Date.now;
+    (Date as { now: () => number }).now = () => new Date("2026-08-23T20:00:00.000Z").getTime();
+    try {
+      const entriesBeforeSydneyToday = entries.length;
+      const sydneyTodayPost = await route.POST(new Request("https://app.test/api/scores", {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ bureau: "EQUIFAX", score: 705, recordedAt: "2026-08-24", timezoneOffset: -600 }),
+      }));
+      check("M-1: Sydney's own local today (date-only + its offset) is accepted, not rejected as future", sydneyTodayPost.status === 200);
+      check("M-1: the accepted Sydney-today entry was persisted", entries.length === entriesBeforeSydneyToday + 1);
+
+      const entriesBeforeSydneyTomorrow = entries.length;
+      const sydneyTomorrowPost = await route.POST(new Request("https://app.test/api/scores", {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ bureau: "EQUIFAX", score: 706, recordedAt: "2026-08-25", timezoneOffset: -600 }),
+      }));
+      const sydneyTomorrowBody = await sydneyTomorrowPost.json() as { error?: string };
+      check("M-1: a date genuinely beyond Sydney's own today is still rejected with 400", sydneyTomorrowPost.status === 400);
+      check("M-1: that rejection uses the documented message", sydneyTomorrowBody.error === "Date recorded cannot be in the future.");
+      check("M-1: the rejected beyond-today entry was not persisted", entries.length === entriesBeforeSydneyTomorrow);
+
+      // Fail-closed: the SAME date-only string, with NO timezoneOffset sent,
+      // falls back to the strict prior check and IS rejected — proving the
+      // fix does not weaken the guard for a caller that omits the offset.
+      const entriesBeforeNoOffset = entries.length;
+      const noOffsetPost = await route.POST(new Request("https://app.test/api/scores", {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ bureau: "EQUIFAX", score: 707, recordedAt: "2026-08-24" }),
+      }));
+      check("M-1: the identical date-only string with NO offset fails closed to 400", noOffsetPost.status === 400);
+      check("M-1: the fail-closed rejection persisted nothing", entries.length === entriesBeforeNoOffset);
+
+      // Clamp: an absurd offset cannot buy more than 14h of leniency — two
+      // calendar days beyond the server's own UTC date is still refused even
+      // though the claimed offset implies "far ahead of UTC".
+      const entriesBeforeAbuse = entries.length;
+      const clampAbusePost = await route.POST(new Request("https://app.test/api/scores", {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ bureau: "EQUIFAX", score: 708, recordedAt: "2026-08-25", timezoneOffset: -999999 }),
+      }));
+      check("M-1: an absurd offset is clamped to 14h, not trusted verbatim — two days out is still refused", clampAbusePost.status === 400);
+      check("M-1: the clamp-bounded rejection persisted nothing", entries.length === entriesBeforeAbuse);
+    } finally {
+      Date.now = realDateNow;
+    }
   } finally {
     NodeModule._load = realLoad;
     clearModule("../app/api/scores/route");

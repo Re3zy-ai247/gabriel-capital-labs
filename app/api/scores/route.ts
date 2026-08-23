@@ -14,6 +14,7 @@ import { NextResponse } from "next/server";
 import type { Bureau } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { currentUserOrDemo } from "@/lib/session";
+import { isFutureLocalDate } from "@/lib/selfReportedScores";
 
 export const dynamic = "force-dynamic";
 
@@ -51,7 +52,16 @@ export async function POST(req: Request) {
   }
   // Server-side mirror of the client's `max={today}` — the client bound alone
   // is only a UI nicety; a direct POST (or a client bug) must still be refused.
-  if (recordedAt.getTime() > Date.now()) {
+  //
+  // M-1 remediation: comparing recordedAt's UTC-midnight parse against the
+  // server's own Date.now() rejected the visitor's OWN today whenever their
+  // local time is ahead of UTC (Berlin 00:00-02:00, Kolkata 00:00-05:30,
+  // Sydney 00:00-10:00) — a regression vs. base, which had no future check
+  // at all. isFutureLocalDate compares calendar dates in the SUBMITTER's own
+  // frame when the client sends its date-only string plus its own
+  // timezoneOffset (see app/scores/page.tsx), and fails closed to this exact
+  // original instant-vs-instant check for every other input shape.
+  if (isFutureLocalDate(body?.recordedAt, recordedAt.getTime(), body?.timezoneOffset, Date.now())) {
     return NextResponse.json({ error: "Date recorded cannot be in the future." }, { status: 400 });
   }
 
