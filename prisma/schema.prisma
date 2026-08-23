@@ -105,6 +105,11 @@ model User {
   // durable org an account owns. Dormant behind OPERATOR_IDENTITY_ENABLED.
   operatorIdentity   OperatorIdentity?
   ownedOrganizations Organization[]    @relation("OrganizationOwner")
+
+  // ---- RC1-S4 Consumer Fact Confirmation. Back-relation only (no new column
+  // on User): the consumer's confirmed statements of fact about their own
+  // tradelines. See model ConsumerAssertion at the end of this file.
+  consumerAssertions ConsumerAssertion[]
 }
 
 // Append-only record of privileged admin actions (discount codes created, plans
@@ -239,6 +244,10 @@ model Tradeline {
   resolved  Boolean  @default(false)
   letters   Letter[]
   createdAt DateTime @default(now())
+
+  // ---- RC1-S4: what the consumer themselves confirmed is wrong about this
+  // item. Back-relation only; see model ConsumerAssertion at the end of file.
+  consumerAssertions ConsumerAssertion[]
 }
 
 model Letter {
@@ -798,4 +807,82 @@ model ReputationMilestone {
 
   @@unique([operatorId, milestoneKey]) // latched: earned once, never re-earned/removed
   @@index([operatorId])
+}
+
+// ---- RC1-S4: Consumer Fact Confirmation (Founder decision D-7) ---------------
+// The consumer is the FACTUAL AUTHORITY. Before CreditVector composes a single
+// first-person sentence in their name, they say — in typed, bounded terms —
+// WHICH fact on the item is wrong. One row = one confirmed statement of fact by
+// the consumer about one of their own tradelines.
+//
+// APPEND-ORIENTED. A withdrawal flips `status` to "WITHDRAWN" and stamps
+// `withdrawnAt`; nothing is ever deleted by the application, so the record of
+// what the consumer confirmed (and when they took it back) survives the letters
+// composed from it. `status` is a bounded string, not a Prisma enum, so a future
+// value needs no ALTER TYPE on a live database.
+//
+// FK LIFECYCLE — CORRECTED (review H-2). Tradelines ARE deleted on ordinary
+// paths, and an earlier draft of this comment wrongly said otherwise:
+//   • lib/analyze.ts:168 — `tx.tradeline.deleteMany({ where: { reportId } })`
+//     inside the RE-ANALYSIS transaction. Every re-upload/re-analyze replaces the
+//     whole tradeline set. That transaction already snapshots and re-links
+//     Letter rows across the delete, precisely so a consumer's dispute history is
+//     not orphaned; it knows nothing about this table.
+//   • app/api/reports/[id]/route.ts:17 — `prisma.report.delete(...)`, which
+//     cascades to Tradeline.
+// A CASCADE from Tradeline would therefore destroy, on a routine path, the only
+// evidence that the consumer authorized the first-person sentences in letters
+// they have already signed and mailed — the exact record this table exists to
+// keep. So `tradelineId` is NULLABLE with onDelete: SetNull, mirroring how
+// `Letter.tradelineId` already survives the same delete, and the immutable
+// `tradeline*` snapshot fields keep an orphaned row meaningful on its own.
+//
+// The consequence is deliberate and truthful: after a re-analysis the NEW
+// tradeline rows carry no assertions, so the Tradelines page shows them as
+// unconfirmed and letter generation refuses until the consumer confirms against
+// the freshly parsed data. A confirmation is about what a report SAID; a new
+// report is a new set of facts to confirm.
+//
+// The User FK stays Cascade: no application path hard-deletes a User
+// (scripts/consumer-deletion-containment.test.ts pins that), so it is latent.
+model ConsumerAssertion {
+  id     String @id @default(cuid())
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+
+  // Nullable + SetNull: see the FK LIFECYCLE note above. A NULL tradelineId
+  // means "the report this was confirmed against has since been replaced or
+  // deleted" — the statement stands as history, and composes into nothing.
+  tradeline   Tradeline? @relation(fields: [tradelineId], references: [id], onDelete: SetNull)
+  tradelineId String?
+
+  // IMMUTABLE SNAPSHOT, written once at creation and never updated. Without it
+  // an orphaned row is an anonymous "the consumer confirmed something once".
+  // With it, the record still says WHICH account the consumer was looking at,
+  // which is what makes it usable as the authorization evidence for a letter
+  // that was already mailed.
+  tradelineCreditorName String
+  tradelineAccountMask  String?
+  tradelineAccountType  String?
+
+  // Optional per-bureau scope. NULL = "this is wrong about the account itself,
+  // on every file that reports it". A bureau letter only ever composes from
+  // assertions whose scope is NULL or that bureau — never another bureau's
+  // (lib/letter.ts assertionsForContext), and app/api/letters/generate/route.ts
+  // refuses a target bureau for which no assertion is applicable at all.
+  bureauScope Bureau?
+
+  // Bounded vocabulary, defined once in lib/letter.ts (CONSUMER_ASSERTION_TYPES).
+  // A string, not an enum, for the same live-migration reason as `status`.
+  assertionType String
+  // The consumer's own words, optional, whitespace-normalized and length-capped
+  // at the API boundary. Never rewritten, never AI-generated.
+  consumerNote  String? @db.Text
+
+  status      String    @default("ACTIVE") // ACTIVE | WITHDRAWN
+  createdAt   DateTime  @default(now())
+  withdrawnAt DateTime?
+
+  @@index([userId, tradelineId, status])
+  @@index([tradelineId, status])
 }

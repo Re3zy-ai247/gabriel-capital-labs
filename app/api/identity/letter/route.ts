@@ -20,6 +20,39 @@ interface Discrepancy {
   severity: string;
   explanation: string;
   bureaus?: string[];
+  // RC1-S4 (L-09): the consumer's own per-item confirmation. Strictly `true` —
+  // never truthy-coerced — and set only by the consumer ticking that one item.
+  confirmed?: unknown;
+}
+
+// RC1-S4 (L-09) — PER-ITEM CONSUMER CONFIRMATION.
+//
+// THE DEFECT. `app/identity/page.tsx` posts the entire AI-produced
+// `discrepancies` array, and the prompt below then tells the model, for each
+// item, `report shows "X"; correct is "Y"`. "Correct is Y" is a factual
+// assertion about the consumer's own legal name, addresses and employers,
+// produced by DIFFING the report against a profile — the consumer never
+// affirmed any of it item by item, yet they sign and mail the result.
+//
+// THE RULE NOW. An item is disputed only if the consumer confirmed THAT item.
+// Unconfirmed items are dropped, not asserted; if nothing is confirmed the route
+// refuses and says so plainly. No AI call is made in the refusal path.
+//
+// HANDOFF (precise — `app/identity/page.tsx` is NOT owned by this slice, so the
+// checkbox does not exist yet and this route therefore refuses every current
+// request from that page):
+//   1. Each detected discrepancy renders an UNCHECKED checkbox worded as the
+//      consumer's own statement, e.g. "I confirm my correct {category} is
+//      \"{yourValue}\" and that the report is wrong."
+//   2. The POST body sends `confirmed: true` on exactly the ticked items (the
+//      whole array may still be sent; unticked items are simply dropped here).
+//   3. The submit button stays disabled while nothing is ticked, so the 400
+//      below is a backstop rather than the normal path.
+// Until step 1 ships, the correction letter cannot be generated. That is the
+// deliberate fail-closed direction: refusing to draft is recoverable, mailing an
+// unaffirmed statement of fact about the consumer's identity is not.
+function isConfirmed(d: Discrepancy): boolean {
+  return d.confirmed === true;
 }
 
 // Premium: drafts a Personal Information correction letter to a bureau from the
@@ -52,9 +85,34 @@ export async function POST(req: Request) {
   // Only dispute items the TARGET bureau actually reports — a letter to Equifax
   // must never contain Experian's or TransUnion's data. Items without bureau
   // attribution (legacy/unknown) are kept so nothing is silently dropped.
-  const relevant = discrepancies.filter(
+  const reportedByTarget = discrepancies.filter(
     (d) => !Array.isArray(d.bureaus) || d.bureaus.length === 0 || d.bureaus.includes(bureau)
   );
+  // RC1-S4 (L-09): and of those, ONLY the ones the consumer confirmed item by
+  // item. Checked before the AI call, so a refusal costs nothing.
+  const relevant = reportedByTarget.filter(isConfirmed);
+  if (reportedByTarget.length && !relevant.length) {
+    return NextResponse.json(
+      {
+        error:
+          "Confirm each correction before we draft it. This letter states, in your name, what your correct personal information is \u2014 so you tell us which items are wrong and what the right value is; we never assert that for you.",
+        needsConfirmation: true,
+        // REMEDIATION M-5: an actionable, TRUTHFUL next step. The per-item
+        // confirmation control does not exist on app/identity/page.tsx yet (that
+        // file is outside this slice's ownership), so this says exactly that
+        // rather than pointing at a control the consumer cannot find. It links
+        // nowhere, because there is nowhere honest to link yet.
+        nextStep:
+          "Tick each correction you want disputed, then generate the letter. If you don\u2019t see a confirmation control beside each item yet, this letter can\u2019t be drafted \u2014 nothing has been charged, nothing about your report has changed, and your dispute letters for accounts are unaffected.",
+        // Which items are still awaiting the consumer's confirmation, by their
+        // index in the submitted array, so the UI can point at them exactly.
+        unconfirmed: discrepancies
+          .map((d, i) => (reportedByTarget.includes(d) && !isConfirmed(d) ? i : -1))
+          .filter((i) => i >= 0),
+      },
+      { status: 400 }
+    );
+  }
   if (!relevant.length) {
     return NextResponse.json(
       {
@@ -75,6 +133,7 @@ export async function POST(req: Request) {
     "3. Professional, firm, non-threatening. No all-caps, no threats.",
     "4. Output ONLY the finished letter (sender block, date, recipient block, RE line, body listing each item, signature). No commentary.",
     "5. EVERY item listed below is reported by the SINGLE target bureau named in the prompt. Dispute only these items, address only that bureau, and do NOT mention, compare to, or include any other credit bureau or another bureau's data anywhere in the letter.",
+    "6. EVERY item listed below was confirmed by the consumer personally, item by item. State ONLY those items. Do not add an item, do not generalize one into a broader claim about the consumer's identity or history, and do not introduce any first-person statement the list does not support.",
   ].join("\n");
 
   const today = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
@@ -105,7 +164,16 @@ export async function POST(req: Request) {
     const letter = await prisma.letter.create({
       data: {
         userId: user.id,
-        strategy: "personal_info",
+        // RC1-S4 (L-09): was "personal_info", which is NOT a member of
+        // STRATEGIES (lib/strategies.ts). Harmless while this route bypasses
+        // buildContext, but any future path through buildContext would silently
+        // fall back to fcra_611 anyway — and every reader that looks the id up
+        // (the letters list, outcome tracking) gets an unknown key today. This
+        // letter IS a §611 reinvestigation request addressed to a bureau, which
+        // is exactly what fcra_611 denotes, so it records that.
+        // A dedicated "personal_info" strategy entry would be more precise; it
+        // belongs in lib/strategies.ts, which this slice does not own.
+        strategy: "fcra_611",
         recipientType: "bureau",
         recipientName: addr.name,
         targetBureau: bureau,
