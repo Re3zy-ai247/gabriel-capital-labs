@@ -454,3 +454,6 @@ main().catch((error) => {
   console.error("score-tracker-auth-runtime.test.ts harness failure", error);
   process.exit(1);
 });
+
+// Module scope: prevents TS2393 global-script collisions with sibling standalone guards.
+export {};

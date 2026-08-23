@@ -280,3 +280,6 @@ async function main() {
 }
 
 void main();
+
+// Module scope: prevents TS2393 global-script collisions with sibling standalone guards.
+export {};
