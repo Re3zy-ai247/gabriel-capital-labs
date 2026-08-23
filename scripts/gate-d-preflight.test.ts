@@ -2,7 +2,7 @@
 //
 // DB-less deterministic fixtures for the Gate D catalog classifier. No fixture
 // opens a socket or touches Production/Preview.
-import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -10,6 +10,8 @@ import {
   ActualConstraint,
   CatalogSnapshot,
   GateDManifest,
+  AUTHORED_UNAPPLIED_MIGRATIONS,
+  EXPECTED_MIGRATION_DIRECTORIES,
   GATE_D_MIGRATION_CHAIN,
   MigrationHistoryTable,
   MigrationExpectation,
@@ -361,17 +363,77 @@ function withoutMigration(
 const reputation = "20260721160000_operator_reputation";
 const identityMigration = "20260721120000_operator_identity";
 
-// Manifest coverage is derived from the exact six SQL files.
+// Manifest coverage is derived from the exact six APPLIED SQL files.
 const coverage = manifestCoverage(manifest);
 check("manifest covers exactly six migrations", coverage.migrations === 6);
 check(
   "manifest directory set exactly matches the reviewed Gate D chain",
   manifest.migrations.map((item) => item.name).join(",") === GATE_D_MIGRATION_CHAIN.join(","),
 );
+
+// ---------------------------------------------------------------------------
+// 2026-08-23 — DIRECTORY SET vs APPLIED SET (RC1-S4).
+//
+// Migration: 20260823120000_consumer_assertion (ConsumerAssertion table, RC1-S4
+// Consumer Fact Confirmation). It is AUTHORED AND REVIEWED BUT NOT APPLIED —
+// RC1's migration-first law ships the file and applies it only at the
+// owner-gated release step — so the folder exists on disk while the table does
+// not exist in any database.
+//
+// That splits one list into two, and BOTH stay pinned:
+//   · GATE_D_MIGRATION_CHAIN — the applied chain. The manifest, the coverage
+//     counts, the manifest hash and every fixture's physical/applied set come
+//     from this alone, so a Gate D database is still expected NOT to contain the
+//     consumer_assertion table. Unchanged: still exactly the reviewed six.
+//   · EXPECTED_MIGRATION_DIRECTORIES — what may exist under prisma/migrations.
+//     Extended by exactly one entry. An eighth folder still fails loudly.
+//
+// The tripwire is extended, never weakened: the checks below pin the on-disk set
+// exactly (no "startsWith"/"length >=" slack) and pin the authored entry OUT of
+// the applied manifest, so applying a migration without review cannot pass by
+// merely being on disk.
+//
+// SERIAL ARTIFACT (S4 → S8): S8's terms-acceptance migration is the next entry
+// expected in AUTHORED_UNAPPLIED_MIGRATIONS. One slice extends it per wave.
+// ---------------------------------------------------------------------------
+check(
+  "the authored-but-unapplied set is exactly the RC1-S4 migration",
+  AUTHORED_UNAPPLIED_MIGRATIONS.join(",") === "20260823120000_consumer_assertion",
+);
+check(
+  "expected directory set = the reviewed chain + the authored-unapplied set",
+  EXPECTED_MIGRATION_DIRECTORIES.join(",") ===
+    [...GATE_D_MIGRATION_CHAIN, ...AUTHORED_UNAPPLIED_MIGRATIONS].join(","),
+);
+check(
+  "the on-disk migration directories are exactly that set (drift tripwire)",
+  readdirSync(join(root, "prisma", "migrations"), { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name)
+    .sort()
+    .join(",") === [...EXPECTED_MIGRATION_DIRECTORIES].sort().join(","),
+);
+check(
+  "an authored-but-unapplied migration never enters the applied manifest",
+  AUTHORED_UNAPPLIED_MIGRATIONS.every(
+    (name) =>
+      !manifest.migrations.some((item) => item.name === name) &&
+      !(GATE_D_MIGRATION_CHAIN as readonly string[]).includes(name),
+  ),
+);
+check(
+  "…so its tables are absent from the schema the preflight expects",
+  !manifest.migrations.some((migration) =>
+    migration.tables.some((table) => table.name === "ConsumerAssertion"),
+  ),
+);
 {
   const tempRoot = mkdtempSync(join(tmpdir(), "gate-d-manifest-"));
   try {
-    for (const name of GATE_D_MIGRATION_CHAIN) {
+    // The fixture root mirrors the FULL expected directory set — the applied
+    // chain plus the authored-unapplied folders — so the rejection below is
+    // attributable to the unexpected directory alone and not to a missing one.
+    for (const name of EXPECTED_MIGRATION_DIRECTORIES) {
       const target = join(tempRoot, "prisma", "migrations", name);
       mkdirSync(target, { recursive: true });
       copyFileSync(
@@ -379,6 +441,13 @@ check(
         join(target, "migration.sql"),
       );
     }
+    // Control: the exact expected set loads, and yields the applied six only.
+    const fromTemp = loadGateDManifest(tempRoot);
+    check(
+      "manifest loads from a root holding the full expected directory set",
+      fromTemp.migrations.length === 6 && fromTemp.manifestHash === manifest.manifestHash,
+    );
+
     mkdirSync(join(tempRoot, "prisma", "migrations", "unexpected_empty_directory"));
     let rejected = false;
     try {
@@ -387,6 +456,17 @@ check(
       rejected = error instanceof UnsupportedMigrationSqlError;
     }
     check("manifest rejects an unexpected migration directory without SQL", rejected);
+
+    // …and a MISSING expected directory is still drift, in the other direction.
+    rmSync(join(tempRoot, "prisma", "migrations", "unexpected_empty_directory"), { recursive: true });
+    rmSync(join(tempRoot, "prisma", "migrations", AUTHORED_UNAPPLIED_MIGRATIONS[0]), { recursive: true });
+    let missingRejected = false;
+    try {
+      loadGateDManifest(tempRoot);
+    } catch (error) {
+      missingRejected = error instanceof UnsupportedMigrationSqlError;
+    }
+    check("manifest rejects a MISSING expected migration directory", missingRejected);
   } finally {
     rmSync(tempRoot, { recursive: true });
   }
