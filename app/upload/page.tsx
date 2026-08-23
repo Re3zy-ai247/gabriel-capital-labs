@@ -53,6 +53,29 @@ const BUREAUS = [
 // turn prose into fake ones — so the honest consequence is "some accounts may
 // be missing", and the consumer needs that fact to judge what they're looking
 // at. No blame, no outcome claim, and a real next step.
+// The re-analysis endpoint may cap how many reports one call covers. When it
+// does, it says so itself — render that sentence verbatim rather than writing
+// our own summary over the top of it. "All re-read" is a claim about the whole
+// file and must never be printed unless the response actually accounts for
+// every report. Every field is read defensively: an endpoint that returns no
+// cap fields (as today's does) still produces a correct, count-scoped line, and
+// a missing count degrades to a claim we can stand behind rather than
+// "undefined".
+function reanalyzeResult(j: { tradelines?: number; reportsAnalyzed?: number; skipped?: number; notice?: string }): string {
+  const notice = typeof j.notice === "string" ? j.notice.trim() : "";
+  if (notice) return notice;
+  const skipped = Number(j.skipped) || 0;
+  const analyzed = Number(j.reportsAnalyzed) || 0;
+  const tradelines = Number(j.tradelines) || 0;
+  const reports = `${analyzed} ${analyzed === 1 ? "report" : "reports"}`;
+  if (skipped > 0) {
+    // Cap hit but no wording supplied — still never claim "all".
+    return `Re-read ${reports} — ${tradelines} tradelines. ${skipped} older ${skipped === 1 ? "report was" : "reports were"} left as they are.`;
+  }
+  if (!analyzed) return "Re-analysis finished.";
+  return `Re-read ${reports} — ${tradelines} tradelines.`;
+}
+
 function ExtractionFallbackNotice() {
   return (
     <div className="mt-4 rounded-lg border border-ink-600 bg-ink-800/50 p-3">
@@ -426,7 +449,7 @@ export default function UploadPage() {
                 return;
               }
               const j = await res.json().catch(() => ({}));
-              setStatus(res.ok ? `All re-read — ${j.tradelines} tradelines across ${j.reportsAnalyzed} ${j.reportsAnalyzed === 1 ? "report" : "reports"}.` : res.status === 401 ? "Your session ended. Sign in again in a new tab, then press Re-analyze — your reports are saved." : j.error || "The re-analysis didn't finish. Try again in a moment.");
+              setStatus(res.ok ? reanalyzeResult(j) : res.status === 401 ? "Your session ended. Sign in again in a new tab, then press Re-analyze — your reports are saved." : j.error || "The re-analysis didn't finish. Try again in a moment.");
               await loadReports();
               router.refresh();
             }}
