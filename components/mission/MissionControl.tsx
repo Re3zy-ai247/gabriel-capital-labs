@@ -69,7 +69,16 @@ export function MissionControl({ data }: { data: MissionControlData }) {
                 </li>
               ))}
             </ul>
-            <p className="mt-2 text-[11px] text-slate-400">No action recommended while a window is running — Kai is watching the clock.</p>
+            {/* RC1 S7 (finding C-06, review M-1). This line used to end "Kai is
+                watching the clock." Nothing watches a §611 window while the
+                consumer is away — vercel.json declares two crons and both
+                belong to the news Brief, and no consumer notification is wired
+                to a window — so a consumer who read that reasonably stopped
+                checking, and if a window lapsed nobody told them. Every number
+                above is derived at view time from the date they logged, and
+                the copy now says exactly that. It renders for every consumer
+                with an open window, i.e. the ordinary steady state. */}
+            <p className="mt-2 text-[11px] text-slate-400">No action recommended while a window is running — each window&apos;s remaining time is counted from the date you logged and shown here whenever you open CreditVector.</p>
           </div>
         )}
 
@@ -110,7 +119,11 @@ export function MissionControl({ data }: { data: MissionControlData }) {
       {/* What's happening automatically */}
       {automatic.length > 0 && (
         <div className="card mb-4 border-ink-700 p-4">
-          <h3 className={`${gxl.engravedDim} mb-2`}>Happening automatically</h3>
+          {/* C-06 / M-1: "Happening automatically" framed derived-at-view-time
+              lines as background activity. These items are staging and clock
+              arithmetic the room performs when you open it — nothing runs
+              while you are away. */}
+          <h3 className={`${gxl.engravedDim} mb-2`}>Staged and unlocking</h3>
           <ul className="space-y-1.5">
             {automatic.map((a, i) => (
               <li key={i} className="flex items-start gap-2 text-[13px] text-slate-400">

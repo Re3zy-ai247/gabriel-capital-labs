@@ -10,24 +10,19 @@ import { assembleMissions } from "@/lib/missionEngine";
 import { buildRoadmap } from "@/lib/roadmap";
 import { buildBuilder } from "@/lib/builder";
 import { financialGraph } from "@/lib/knowledge";
-import { assembleExecution } from "@/lib/execution";
 import { buildAcademy } from "@/lib/academy";
 import { buildOperatorSession, type Altitude, type OperatorAccount, type WorkspaceClient } from "@/lib/operatorSession";
 import { getAgencyRoster } from "@/lib/agencyRoster";
 import { MissionControl } from "@/components/mission/MissionControl";
-import { MissionEntry } from "@/components/cxos/mission/MissionEntry";
 import { ArenaDoor } from "@/components/cxos/arena/ArenaDoor";
 import { arenaAccessible } from "@/lib/arena/cohort";
 import { readOwnProgress } from "@/lib/arena/ownProgress";
 import { CommandHeader } from "@/components/cxos/mission/CommandHeader";
-import { ExecutiveQueue } from "@/components/mission/ExecutiveQueue";
 import { CommandCenter } from "@/components/mission/CommandCenter";
 import { ReadinessStrip } from "@/components/mission/ReadinessStrip";
-import { MissionQueue } from "@/components/mission/MissionQueue";
 import { RoadmapView } from "@/components/mission/RoadmapView";
 import { BuilderView } from "@/components/mission/BuilderView";
 import { KnowledgeJourney } from "@/components/mission/KnowledgeJourney";
-import { GxlField } from "@/components/gxl/GxlField";
 import { GxlPull } from "@/components/gxl/GxlPull";
 import {
   SessionHeader, AccomplishmentPanel, ContinueWhereYouLeftOff, PriorityList, SessionCloseBlock,
@@ -45,6 +40,33 @@ export const dynamic = "force-dynamic";
 // makes the room know the PERSON doing the work, not only the case
 // (SIM-REVIEW.md's verdict: "no room knows the person doing the work or the
 // work itself as a unit").
+//
+// RC1 / Founder Decision D-6 (2026-08-23) — TASK-FIRST AT CONSUMER ALTITUDE.
+// This screen used to compose FIVE independently-ranked answers to "what
+// should I do next" (finding C-04), two of which provably disagreed: the
+// Operator Session always puts kai.recommendation first, while Mission Control
+// prefers an approved-but-unmailed campaign over it. Each surface was worded
+// as THE one answer. There is now exactly one ranking at this altitude -
+// MissionControl's "Today's mission" plus its single "Kai's next action",
+// both read from the same `data` object - and the duplicates below are
+// unmounted rather than reworded:
+//
+//   MissionEntry ....... the 7.3 s full-screen veil. Nothing in it is
+//                        information the room beneath does not already show,
+//                        and it also carried the over-claiming
+//                        CLEARANCE/SYSTEMS register (C-05).
+//   GxlField ........... a permanent rAF loop for a decorative field no task
+//                        depends on (C-10).
+//   PriorityList ....... ranking #2, and the one that disagrees with
+//                        "Kai's next action" (C-04).
+//   AccomplishmentPanel  } together these produced "Done today: 0 · Still
+//   SessionCloseBlock .. } open: 1" beside "ALL SYSTEMS GREEN" (C-05).
+//   ExecutiveQueue ..... ranking #3 ("Kai's one-list of what to do next").
+//   MissionQueue ....... ranking #4.
+//
+// Every one of these components is KEPT and still compiles; CXOS is not
+// abandoned. This is a mount-point decision, reversible by restoring the JSX -
+// see the re-enable notes in the RC1 S7 report.
 //
 // Three renders by altitude, never mixed (SIM-REVIEW finding: Mission Control
 // at agency altitude was 0/6 presentations, zero `isAgency` anywhere in the
@@ -103,20 +125,15 @@ export default async function DashboardPage() {
   const mission = assembleMissions(intel, data);   // prioritized queue
   const roadmap = buildRoadmap(intel, mission, data); // the journey
   const builder = buildBuilder(snap, intel);          // the Credit Builder OS
-  // The Execution Engine (Sprint XX) orchestrates all of the above into ONE
-  // Executive Queue — pure, no new query, composed from the already-loaded engines.
-  const execution = assembleExecution({ intel, mission, roadmap, builder, knowledge, mc: data, snap });
   const academy = buildAcademy(snap); // pure over the already-loaded snapshot
 
-  // The Watch Floor's ambient field runs on REAL queue aggregates (GXL L10:
-  // aliveness is never simulated) — total items on the floor, items awaiting a
-  // person, items actively in progress. Derived, never invented.
-  const allItems = execution.buckets.flatMap((b) => b.items);
-  const fieldState = {
-    total: allItems.length,
-    awaiting: allItems.filter((i) => i.status === "available" || i.status === "needs_review").length,
-    active: allItems.filter((i) => i.status === "in_progress" || i.status === "waiting").length,
-  };
+  // D-6: the Execution Engine's assembleExecution() was called here purely to
+  // feed the Executive Queue and the ambient GXL field, both of which this
+  // altitude no longer mounts. It is not called, rather than called and
+  // discarded — a per-request fold over every engine's output is real work,
+  // and computing an answer nobody reads is how a second ranking quietly
+  // grows back. lib/execution is untouched and its guard suite still runs;
+  // restoring <ExecutiveQueue> means restoring this one line with it.
 
   // CXOS presentation layer needs a few identity fields (role, isAgency,
   // username, email) that the Operator Session runtime's OperatorAccount /
@@ -132,50 +149,52 @@ export default async function DashboardPage() {
   // server-side gate passes (flag + cohort). Outside the cohort: nothing.
   const cxArena = arenaAccessible(user) ? await readOwnProgress(user.id) : null;
 
-  // CXOS Phase 4 — the authenticated entry + command header run on REAL resolved
-  // state only: the user row, the deterministic health signals, queue aggregates,
-  // and Kai's actual computed next action. Auth already succeeded (this render IS
-  // the proof); the signed-out branch above renders with no overlay at all.
+  // CXOS Phase 4 — the command header runs on REAL resolved state only: the
+  // user row, the deterministic health signals, and the engine's own standing.
+  // Auth already succeeded (this render IS the proof).
   const cxRole = cxUser.role === "ADMIN" ? "ADMIN" : cxUser.isAgency ? "AGENCY" : "OPERATOR";
   const cxIdentity = cxUser.username ?? cxUser.email.split("@")[0];
   const cxHealth = data.health.map((h) => ({ label: h.label, status: h.status }));
 
+  // RC1 S7 (A1-04): `data.hasReport` now answers "has a report been uploaded",
+  // keyed on report rows the way lib/kaiHome.ts keys it — it used to be a
+  // stand-in for "did extraction produce anything", which is a different
+  // question. The panels below summarise EXTRACTED accounts, so they ask the
+  // second question explicitly. This is the exact predicate they carried
+  // before (`tradelines.length > 0`); nothing about when they render changes,
+  // and an account whose report parsed to nothing is not shown five empty
+  // summaries of a case that has no rows.
+  const hasAnalysis = data.hasReport && !data.reportWithoutTradelines;
+
   return (
     <AppShell title="/ Mission Control">
-      <MissionEntry
-        firstName={data.firstName}
-        identity={cxIdentity}
-        role={cxRole}
-        plan={cxUser.plan}
-        health={cxHealth}
-        tasksCount={data.tasks.length}
-        waitingCount={data.waiting.length}
-        hasReport={data.hasReport}
-        nextAction={data.nextAction ? data.nextAction.title : null}
-      />
       <div className={`${gxl.room} relative isolate -mx-5 -my-6 px-5 py-6`}>
-        <GxlField state={fieldState} tint="from-ocean-500/[0.05]" />
         <GxlPull />
         <EduBanner />
         <SessionHeader identity={session.identity} />
-        <AccomplishmentPanel yesterday={session.yesterdayCompleted} today={session.todayCompleted} />
+        {/* Resumable work is not a ranking — it names work already in flight,
+            and it is the one session block that says something MissionControl
+            does not. It stays. */}
         <ContinueWhereYouLeftOff items={session.interruptedWork} />
-        <PriorityList heading="Today's priorities" priorities={session.todaysPriorities} />
         <CommandHeader
           firstName={data.firstName}
           identity={cxIdentity}
           role={cxRole}
           plan={cxUser.plan}
           health={cxHealth}
+          standing={data.standing}
           capacity={data.capacity}
           isAgency={cxUser.isAgency}
         />
         {cxArena && <ArenaDoor totalXp={cxArena.standing.totalXp} level={cxArena.standing.level} />}
+        {/* THE one ranking at consumer altitude: "Today's mission" + a single
+            "Kai's next action", both derived from `data` in one place. */}
         <MissionControl data={data} />
-        {/* The full operating-system summary appears once there's a case to summarize —
-            a first-time user (no report yet) sees only the single upload mission. */}
-        {data.hasReport && <ExecutiveQueue execution={execution} />}
-        {data.hasReport && academy.nextLesson && (
+        {/* The full operating-system summary appears once there's a case to
+            summarize — a first-time user (no report yet), and a user whose
+            report produced no accounts, both see only the single mission that
+            actually helps them. */}
+        {hasAnalysis && academy.nextLesson && (
           <Link href="/academy" className="mb-4 block">
             <div className="card flex items-center gap-3 p-4 transition-colors hover:bg-ink-800/40">
               <GraduationCap className="h-5 w-5 shrink-0 text-brand-300" aria-hidden />
@@ -188,13 +207,11 @@ export default async function DashboardPage() {
             </div>
           </Link>
         )}
-        {data.hasReport && <MissionQueue mission={mission} />}
-        {data.hasReport && <RoadmapView roadmap={roadmap} />}
-        {data.hasReport && <KnowledgeJourney knowledge={knowledge} />}
-        {data.hasReport && <BuilderView builder={builder} />}
-        {data.hasReport && <ReadinessStrip intel={intel} />}
-        {data.hasReport && <CommandCenter data={data} />}
-        <SessionCloseBlock close={session.sessionClose} />
+        {hasAnalysis && <RoadmapView roadmap={roadmap} />}
+        {hasAnalysis && <KnowledgeJourney knowledge={knowledge} />}
+        {hasAnalysis && <BuilderView builder={builder} />}
+        {hasAnalysis && <ReadinessStrip intel={intel} />}
+        {hasAnalysis && <CommandCenter data={data} />}
         <Disclaimer />
       </div>
     </AppShell>

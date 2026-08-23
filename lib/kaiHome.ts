@@ -212,6 +212,25 @@ export function pickRecommendation(
     };
   }
 
+  // 4b. RC1 S7 / A1-04 — a report IS on file, but analysis produced no
+  //     accounts. This state used to fall through branch 5 (which finds no
+  //     candidate) to `null`, and a null recommendation is how the room ended
+  //     up telling the consumer who most needs help that "nothing needs your
+  //     attention right now" while Mission Control simultaneously showed an
+  //     upload task. Naming the state here is what lets every consumer of this
+  //     engine - Mission Control, the Operator Session, Kai's presence - say
+  //     the same sentence. It states the fact and offers the one move that
+  //     helps; it promises nothing about what a re-run will find.
+  if (tradelines.length === 0) {
+    return {
+      title: "Your report is on file, but I could not read any accounts from it.",
+      body: "That usually means the file was an image, a partial export, or a format I could not parse. Upload that report again, or add another bureau's report, and I will re-run the analysis.",
+      cta: "Open Upload",
+      href: "/upload",
+      basis: "Rule: a report is on file with no accounts extracted from it.",
+    };
+  }
+
   // 5. Analyzed items exist but nothing has been disputed yet. Ranked by
   //    `score` (which already determines `probability`'s band — lib/scoring.ts
   //    BANDS — so sorting by score alone orders by probability too), so the

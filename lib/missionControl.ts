@@ -30,6 +30,17 @@ const DAY = 86_400_000;
 
 export type Health = "green" | "amber" | "red";
 
+// RC1 S7 (finding C-05). `Health` answers "how is the work going"; it has no
+// vocabulary for "no work has started", so an account that had done nothing
+// scored all-green on every signal and the room announced "ALL SYSTEMS GREEN"
+// next to "Upload your credit report to get started". On a credit product that
+// pill reads as a statement about the consumer's FILE, not about an empty
+// internal queue. `Standing` is the missing state, kept as its OWN type rather
+// than widened into `Health` so the existing tone maps (exhaustive
+// Record<Health, ...> lookups in components/mission/CommandCenter.tsx) stay
+// total and unchanged.
+export type Standing = Health | "unstarted";
+
 export interface MissionTask { text: string; href: string; kind: "review" | "mail" | "upload" | "escalate" | "start" }
 export interface WaitItem { recipient: string; daysLeft: number; text: string; href: string }
 export interface AutoItem { text: string }
@@ -52,7 +63,16 @@ export interface MissionControlData {
   deferred: DeferredItem[];
   health: HealthSignal[];
   caseHealth: Health;
+  /** C-05: caseHealth, except an account that has not started reads "unstarted", never green. */
+  standing: Standing;
+  /** A report row exists. THE shared fact - see the derivation note in assembleMission. */
   hasReport: boolean;
+  /**
+   * A report exists but analysis produced no tradelines (A1-04). Its own
+   * state, because "nothing to do" and "we could not read your report" are
+   * different sentences, and the consumer in the second one needs the most help.
+   */
+  reportWithoutTradelines: boolean;
   ownHistory: string | null; // gate-free own verified-outcome track record (Sprint XIV)
 }
 
@@ -63,10 +83,30 @@ export interface MissionInputs {
   caseMemory: CaseMemory;
   campaigns: Campaign[];
   composed: ComposedCampaign;
-  // accountType + dateOfFirstDelinquency: RB-2's isFactualNegative fact test,
-  // so the Deferred Queue below can tell a genuine negative from a factually
-  // clean account (e.g. "pays as agreed, never late").
-  tradelines: { id: string; resolved: boolean; accountType: AccountType; dateOfFirstDelinquency: Date | null }[];
+  // accountType + dateOfFirstDelinquency + bureauData: RB-2's isFactualNegative
+  // fact test, so the Deferred Queue below can tell a genuine negative from a
+  // factually clean account (e.g. "pays as agreed, never late").
+  //
+  // RC1 S7 (S3 handoff): `bureauData` is load-bearing and used to be missing.
+  // lib/intelligence/snapshot.ts's factualCondition() reads the report's OWN
+  // per-bureau status text ("Charge-Off", "Collection", "120 days past due")
+  // as evidence - but this projection carried only type + DOFD, and
+  // ConditionInput makes bureauData optional so a narrowed caller still
+  // compiles. The result was silent: a REVOLVING row whose report text says
+  // "Charge-Off" is DEROGATORY to every S3 surface and NEEDS_REVIEW here, so
+  // the Deferred Queue dropped an account the rest of the product counts.
+  // Same rows, same fact test, same answer - pass the field.
+  tradelines: { id: string; resolved: boolean; accountType: AccountType; dateOfFirstDelinquency: Date | null; bureauData?: unknown }[];
+  /**
+   * How many report rows exist for this user (A1-04 / C-04, the split-brain).
+   * Mission Control derived `hasReport` from `tradelines.length > 0` while Kai
+   * Home's own branch 4 keys on `reports.length === 0`. The two disagree in a
+   * very reachable state - upload succeeded, extraction produced nothing - and
+   * that disagreement rendered as one screen saying "Upload your credit report
+   * to get started" and "Nothing needs your attention right now" at once. Both
+   * engines now key on the same fact.
+   */
+  reportCount: number;
   letters: Pick<Letter, "id" | "tradelineId" | "recipientName" | "parentLetterId" | "responseAt" | "responseOutcome" | "mailedAt">[];
   scoreEntries: { bureau: string; score: number; recordedAt: Date }[];
   nextSeq: number;
@@ -115,7 +155,13 @@ export function assembleMission(x: MissionInputs): MissionControlData {
   const now = x.now ?? Date.now();
 
   const firstName = (user.fullName || user.name || "").trim().split(" ")[0] || "there";
-  const hasReport = tradelines.length > 0;
+  // THE shared fact (A1-04): "has this consumer given us a report" is a
+  // question about REPORTS, and it is answered here exactly the way
+  // lib/kaiHome.ts's pickRecommendation answers it. Extraction yield is a
+  // separate, second question - never a proxy for the first.
+  const hasReport = x.reportCount > 0;
+  const hasTradelines = tradelines.length > 0;
+  const reportWithoutTradelines = hasReport && !hasTradelines;
   const resolved = tradelines.filter((t) => t.resolved).length;
 
   const liveCampaigns = campaigns.filter((c) => LIVE_CAMPAIGN.has(c.status));
@@ -147,6 +193,11 @@ export function assembleMission(x: MissionInputs): MissionControlData {
   const tasks: MissionTask[] = [];
   if (!hasReport) {
     tasks.push({ text: "Upload your credit report to get started", href: "/upload", kind: "upload" });
+  } else if (reportWithoutTradelines) {
+    // A1-04: the consumer who most needs help used to be told there was
+    // nothing to do. State the fact and give them the one move that helps -
+    // no promise about what a re-run will find.
+    tasks.push({ text: "No accounts were read from your last report — open Upload to try that file again or add another report", href: "/upload", kind: "upload" });
   } else {
     for (const l of escalatable.slice(0, 2)) {
       tasks.push({ text: l.responseOutcome === "verified" ? `Open Round 2 for ${l.recipientName} — method-of-verification available` : `Review the ${l.recipientName} response and decide the next round`, href: "/letters", kind: "escalate" });
@@ -181,8 +232,14 @@ export function assembleMission(x: MissionInputs): MissionControlData {
   const deferredComposed = deferredItems({ items: composed.items }).filter(
     (i) => negativeById.get(i.tradelineId) ?? true
   );
-  if (deferredComposed.length > 0) automatic.push({ text: `${deferredComposed.length} account${deferredComposed.length === 1 ? " is" : "s are"} staged for a later campaign — Kai unlocks them automatically.` });
-  if (kai.deadlines.length > 0) automatic.push({ text: `Your response windows are tracked automatically against the ~${REINVESTIGATION_DAYS}-day §611 clock.` });
+  // C-06 - every line here is a render-time derivation over rows the consumer
+  // already gave us. There is no scheduler behind any of it: vercel.json
+  // declares two crons and both belong to the news Brief, and no consumer
+  // notification is wired to a §611 window. So the copy says what is true -
+  // these are counted and shown when you open CreditVector - and never "we are
+  // watching it for you", which would tell a consumer they can stop looking.
+  if (deferredComposed.length > 0) automatic.push({ text: `${deferredComposed.length} account${deferredComposed.length === 1 ? " is" : "s are"} staged for a later campaign — they move into the next campaign as the current one progresses.` });
+  if (kai.deadlines.length > 0) automatic.push({ text: `Every response window is counted against the ~${REINVESTIGATION_DAYS}-day §611 clock from the date you logged, and shown here each time you open CreditVector.` });
   if (composed.nextUnlock.length > 0 && tasks.some((t) => t.kind === "mail")) automatic.push({ text: "Your next campaign is staged and unlocks as the current one progresses." });
 
   // ---- Next action (single, deterministic) ----
@@ -192,7 +249,12 @@ export function assembleMission(x: MissionInputs): MissionControlData {
   // "mail the next campaign" step (the priority inversion the review caught).
   let nextAction: KaiRecommendation | null = null;
   const urgent = overdueCount > 0 || escalatable.length > 0;
-  if (urgent && kai.recommendation) {
+  if (reportWithoutTradelines && kai.recommendation) {
+    // A1-04: kaiHome's own branch for this exact state. Taking it verbatim is
+    // what makes "Today's mission" and "Kai's next action" ONE answer rather
+    // than two - there is nothing to escalate or mail on a file with no rows.
+    nextAction = kai.recommendation;
+  } else if (urgent && kai.recommendation) {
     nextAction = kai.recommendation;
   } else if (approvedUnmailed[0]) {
     const c = approvedUnmailed[0]; const n = unmailedCount(c);
@@ -206,7 +268,7 @@ export function assembleMission(x: MissionInputs): MissionControlData {
     nextAction = { title: `Review your next campaign`, body: composed.rationale, cta: "Open campaigns", href: "/campaigns", basis: "Rule: disputable items on file with no campaign in review." };
   } else if (waiting[0]) {
     const min = Math.min(...waiting.map((w) => w.daysLeft));
-    nextAction = { title: `Wait ${min} day${min === 1 ? "" : "s"}`, body: `Your disputes are within their statutory windows — no action is needed right now. Kai is watching the clocks.`, cta: "See what's in flight", href: "/mail", basis: `Rule: ${waiting.length} open window${waiting.length === 1 ? "" : "s"}, none overdue.` };
+    nextAction = { title: `Wait ${min} day${min === 1 ? "" : "s"}`, body: `Your disputes are within their statutory windows — no action is needed right now. Each window's remaining time is shown here whenever you open CreditVector.`, cta: "See what's in flight", href: "/mail", basis: `Rule: ${waiting.length} open window${waiting.length === 1 ? "" : "s"}, none overdue.` };
   }
 
   // ---- Next unlock ----
@@ -258,10 +320,24 @@ export function assembleMission(x: MissionInputs): MissionControlData {
   const stale = lastEvent ? (now - new Date(lastEvent).getTime()) / DAY > 30 : false;
   const openDisputes = letters.some((l) => l.mailedAt && !l.responseAt);
   if (stale && openDisputes) health.push({ key: "timeline", label: "Timeline health", status: "amber", message: "No activity in over 30 days while disputes are open — check your windows." });
-  else health.push({ key: "timeline", label: "Timeline health", status: "green", message: hasReport ? "Your case is moving." : "Upload a report to begin." });
+  else if (reportWithoutTradelines) health.push({ key: "timeline", label: "Timeline health", status: "amber", message: "A report is on file but no accounts were read from it — try that file again or add another report." });
+  else health.push({ key: "timeline", label: "Timeline health", status: "green", message: hasReport ? "Your case is moving." : "Nothing has started yet." });
 
   const caseHealth: Health = health.some((h) => h.status === "red") ? "red" : health.some((h) => h.status === "amber") ? "amber" : "green";
-  health.push({ key: "case", label: "Case health", status: caseHealth, message: caseHealth === "green" ? "Everything's green — no action needed." : caseHealth === "amber" ? "A couple of things want your attention." : "Something's overdue — see the flags above." });
+  // C-05: zero rows is not health. An account with nothing on file has an
+  // empty queue, which is not the same claim as a clean, monitored file - and
+  // that was the claim the all-green roll-up was making.
+  const standing: Standing = hasReport ? caseHealth : "unstarted";
+  health.push({
+    key: "case",
+    label: "Case health",
+    status: caseHealth,
+    message: standing === "unstarted"
+      ? "Nothing has started yet — upload a report to begin."
+      : caseHealth === "green" ? "Everything's green — no action needed."
+        : caseHealth === "amber" ? "A couple of things want your attention."
+          : "Something's overdue — see the flags above.",
+  });
 
   // ---- Command Center (deep-linked sections) ----
   const nearest = kai.deadlines.filter((d) => d.daysLeft > 0).sort((a, b) => a.daysLeft - b.daysLeft)[0];
@@ -279,26 +355,30 @@ export function assembleMission(x: MissionInputs): MissionControlData {
   ];
 
   const ownHistory = x.ownTrack ? ownHistorySummary(x.ownTrack) : null;
-  return { firstName, caseMemory, overnight: kai.overnight, tasks, waiting, automatic, nextAction, nextUnlock, command, capacity, deferred, health, caseHealth, hasReport, ownHistory };
+  return { firstName, caseMemory, overnight: kai.overnight, tasks, waiting, automatic, nextAction, nextUnlock, command, capacity, deferred, health, caseHealth, standing, hasReport, reportWithoutTradelines, ownHistory };
 }
 
 // The loader — pulls the real rows and hands them to the pure assembler.
 export async function getMissionControl(userId: string, user: { fullName?: string | null; name?: string | null }): Promise<MissionControlData> {
   const svc = campaignService();
-  const [kai, caseMemory, campaigns, items, tradelines, letters, scoreEntries, ownTrack, nextSeq] = await Promise.all([
+  const [kai, caseMemory, campaigns, items, tradelines, letters, scoreEntries, ownTrack, nextSeq, reportCount] = await Promise.all([
     getKaiHomeData(userId),
     caseMemorySince(userId),
     svc.list(userId, 50),
     buildComposerItems(userId),
-    prisma.tradeline.findMany({ where: { userId }, select: { id: true, resolved: true, accountType: true, dateOfFirstDelinquency: true } }),
+    prisma.tradeline.findMany({ where: { userId }, select: { id: true, resolved: true, accountType: true, dateOfFirstDelinquency: true, bureauData: true } }),
     prisma.letter.findMany({ where: { userId }, orderBy: { createdAt: "desc" }, select: { id: true, tradelineId: true, recipientName: true, parentLetterId: true, responseAt: true, responseOutcome: true, mailedAt: true } }),
     prisma.scoreEntry.findMany({ where: { userId }, select: { bureau: true, score: true, recordedAt: true }, orderBy: { recordedAt: "asc" } }),
     ownOutcomeTrack(userId),
     svc.nextSequence(userId),
+    // The same row set lib/kaiHome.ts counts, counted the same way - the whole
+    // point of A1-04's unification is that neither engine gets its own idea of
+    // whether a report exists.
+    prisma.report.count({ where: { userId } }),
   ]);
   const composed = svc.compose(items, nextSeq);
   return assembleMission({
     user, kai, caseMemory, campaigns, composed, tradelines,
-    letters, scoreEntries, ownTrack, nextSeq, policy: resolveCampaignPolicy(),
+    letters, scoreEntries, ownTrack, nextSeq, reportCount, policy: resolveCampaignPolicy(),
   });
 }

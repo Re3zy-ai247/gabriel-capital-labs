@@ -140,13 +140,20 @@ export function KaiPresence() {
   if (EXCLUDED_PATHS.has(pathname)) return null;
 
   const hasSomething = Boolean(ctx.recommendation || ctx.deadline || ctx.overnightCount > 0);
+  // RC1 S7 (finding C-06): this line is derived at VIEW time from rows already
+  // on file - there is no background watcher behind it. vercel.json declares
+  // two crons and both belong to the news Brief; no consumer notification is
+  // wired to a §611 window, so nothing tells a consumer when one lapses. The
+  // old copy ("Watching the X window", "Your file is quiet. I'm watching it.")
+  // invited them to stop checking, which is exactly the reliance an unearned
+  // monitoring claim creates. It now says only what this render can prove.
   const contextLine = ctx.deadline
     ? ctx.deadline.daysLeft <= 0
       ? `The ${ctx.deadline.recipient} response window has passed.`
-      : `Watching the ${ctx.deadline.recipient} window — ${ctx.deadline.daysLeft}d left.`
+      : `${ctx.deadline.daysLeft}d left on the ${ctx.deadline.recipient} window, counted from the date you logged.`
     : ctx.overnightCount > 0
       ? `${ctx.overnightCount} update${ctx.overnightCount === 1 ? "" : "s"} since your last visit.`
-      : "Your file is quiet. I'm watching it.";
+      : "Nothing needs a decision from you on this file right now.";
 
   function dismiss() {
     sessionStorage.setItem(DISMISS_KEY, "1");

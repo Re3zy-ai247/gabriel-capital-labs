@@ -89,20 +89,33 @@ export default function Home() {
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-ink-950 text-white [&_section]:scroll-mt-20">
-      {/* CXOS Phase 2 — the Threshold. First human visit ENTERS CreditVector;
-          crawlers, no-JS, reduced-motion and returning sessions land directly
-          on this fully server-rendered page beneath it. The inline script runs
-          BEFORE the hero is parsed: when (and only when) this visit will get
-          the walk, it drops the page into darkness at first paint, so the Hero
-          is never glimpsed before it is earned. The darkness itself carries a
-          CSS-only 12s safety fade (the reveal-safety pattern) so no failure
-          mode can strand a black screen. */}
+      {/* CXOS Phase 2 — the Threshold, RC1 posture (Founder Decision D-6).
+          TASK-FIRST IS THE DEFAULT: the entrance is OPT-IN. A visitor who has
+          not pressed "Cinematic entrance: on" (the control in the footer and
+          in the app header) never reaches this branch, so the pre-paint
+          blackout is IMPOSSIBLE for them — finding C-02's worst case (a black
+          screen over fully-painted LCP content, floored only by a 12 s CSS
+          fade) cannot occur on the default path at all.
+
+          When the visitor HAS opted in, this script still runs before the hero
+          is parsed and drops the page into darkness, so the Hero is never
+          glimpsed before it is earned — but only under the same conservative
+          signals lib/cxos/capability.ts's detectTier() calls tier A:
+          reduced-motion off, Data Saver off, ≥4 GB device memory, a viewport
+          wider than 768 px, and WebGL present. C-13: the "already entered"
+          memory is durable (localStorage), not per-tab. ThresholdGate arms a
+          1.5 s lift on top of this, and the CSS safety fade remains beneath
+          both, so no failure mode can strand a black screen. */}
       <script
         dangerouslySetInnerHTML={{
           __html:
             'try{var R=' +
             (reviewBuildAllowed() ? "1" : "0") +
-            '&&/[?&](director|cxos|review)(=|&|$)/.test(location.search);if(!matchMedia("(prefers-reduced-motion: reduce)").matches&&(R||!sessionStorage.getItem("cx-threshold"))){var c=document.createElement("canvas");if(c.getContext("webgl2")||c.getContext("webgl"))document.documentElement.setAttribute("data-cxenter","1")}}catch(e){}',
+            '&&/[?&](director|cxos|review)(=|&|$)/.test(location.search);' +
+            'var O=false,S=false;try{O=localStorage.getItem("cx-cinematic")==="on";S=localStorage.getItem("cx-threshold")==="1"||sessionStorage.getItem("cx-threshold")==="1"}catch(e){S=true}' +
+            'var n=navigator;' +
+            'var A=!(n.connection&&n.connection.saveData)&&!(typeof n.deviceMemory==="number"&&n.deviceMemory<4)&&!matchMedia("(max-width: 768px)").matches;' +
+            'if(!matchMedia("(prefers-reduced-motion: reduce)").matches&&(R||(O&&A))&&(R||!S)){var c=document.createElement("canvas");if(c.getContext("webgl2")||c.getContext("webgl"))document.documentElement.setAttribute("data-cxenter","1")}}catch(e){}',
         }}
       />
       <ThresholdGate />

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { BrandLogo } from "@/components/BrandLogo";
+import { CinematicToggle } from "@/components/cxos/CinematicToggle";
 import { BRAND } from "@/lib/brand";
 import { DISCLAIMER } from "@/lib/compliance";
 
@@ -62,7 +63,16 @@ export function SiteFooter() {
             <p className="text-xs text-slate-500">
               © {new Date().getFullYear()} {BRAND.parent}. All rights reserved.
             </p>
-            <div className="flex items-center gap-5 text-xs text-slate-500">
+            <div className="flex flex-wrap items-center gap-5 text-xs text-slate-500">
+              {/* RC1 / Founder Decision D-6 + finding C-01: the cinematic
+                  control has to EXIST on a surface a visitor can actually
+                  reach. Its only mount used to be inside the founder
+                  walkthrough, behind a route that 404s in production, so the
+                  documented "the persisted footer toggle is the visitor's own
+                  explicit choice" (lib/cxos/capability.ts) described a control
+                  nobody could press. Task-first is now the default, and this
+                  is where a visitor opts IN. */}
+              <CinematicToggle />
               <Link href="/legal/privacy" className="transition hover:text-slate-300">Privacy</Link>
               <Link href="/legal/terms" className="transition hover:text-slate-300">Terms</Link>
               <span>Educational tool · Not legal advice</span>

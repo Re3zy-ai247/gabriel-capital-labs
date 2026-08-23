@@ -89,7 +89,12 @@ export interface CappedList<T> {
 
 // ---- Interrupted work (resumable) ---------------------------------------------
 
-export type InterruptedKind = "mail_in_review" | "mail_approved" | "letter_unmailed";
+export type InterruptedKind =
+  | "mail_in_review"
+  | "mail_approved"
+  | "letter_draft"
+  | "letter_unmailed"
+  | "letter_approved";
 
 export interface InterruptedItem {
   kind: InterruptedKind;
@@ -273,6 +278,30 @@ function completedWithin(events: KaiEventRow[], start: number, end: number): Acc
 // are progressing, not interrupted.
 const RESUMABLE_MANIFEST_STATUSES = new Set<MailStatus>(["IN_REVIEW", "APPROVED"]);
 
+// The unfinished-letter vocabulary, keyed on Prisma's LetterStatus. Each state
+// gets its OWN words: telling a consumer their draft is "generated and ready to
+// mail" would be a false statement about their own work.
+const UNFINISHED_LETTER: Record<
+  "DRAFT" | "GENERATED" | "PRINTED",
+  { kind: InterruptedKind; label: (recipient: string) => string; href: (id: string) => string }
+> = {
+  DRAFT: {
+    kind: "letter_draft",
+    label: (r) => `A dispute letter to ${r} is a draft you were still editing`,
+    href: (id) => `/letters?draft=${id}`,
+  },
+  GENERATED: {
+    kind: "letter_unmailed",
+    label: (r) => `A dispute letter to ${r} is generated and ready to mail`,
+    href: (id) => `/mail/send/${id}`,
+  },
+  PRINTED: {
+    kind: "letter_approved",
+    label: (r) => `A dispute letter to ${r} is approved and ready to print and mail`,
+    href: (id) => `/letters/print/${id}`,
+  },
+};
+
 function interruptedWorkOf(manifests: ManifestSlice[], letters: LetterSlice[]): InterruptedItem[] {
   const items: InterruptedItem[] = [];
   // Any letter with a NON-TERMINAL manifest already has an active claim via the
@@ -297,13 +326,27 @@ function interruptedWorkOf(manifests: ManifestSlice[], letters: LetterSlice[]): 
       since: m.createdAt,
     });
   }
+  // RC1 S7 (S5 review addendum). This used to read `l.status !== "GENERATED"`,
+  // which was complete when GENERATED was the only pre-mail state. S5 added a
+  // DRAFT edit state and made PRINTED mean "approved", so under the old
+  // predicate a letter VANISHED from "Continue where you left off" the moment
+  // the consumer edited or approved it — the continuity block dropped work at
+  // exactly the two moments the consumer had just touched it. The set is now
+  // "unfinished", not "one particular status": everything before MAILED.
+  // MAILED / RESPONSE_RECEIVED / RESOLVED are progress or closure, and the
+  // §611 clock and the response surfaces own them from there.
   for (const l of letters) {
-    if (l.status !== "GENERATED" || l.mailedAt) continue;
+    const unfinished = UNFINISHED_LETTER[l.status as keyof typeof UNFINISHED_LETTER];
+    if (!unfinished || l.mailedAt) continue;
     if (inFlight.has(l.id)) continue; // already actioned via the Send wizard — never double-count the same letter
     items.push({
-      kind: "letter_unmailed",
-      label: `A dispute letter to ${l.recipientName} is generated and ready to mail`,
-      resumeHref: `/mail/send/${l.id}`,
+      kind: unfinished.kind,
+      label: unfinished.label(l.recipientName),
+      // Per-letter hrefs, never a bare "/letters" shared by every draft:
+      // sessionCloseOf() de-duplicates priorities against interrupted work BY
+      // HREF, so two drafts sharing one href would silently collapse into a
+      // single "still open" count — the undercount F3 exists to prevent.
+      resumeHref: unfinished.href(l.id),
       since: new Date(l.createdAt).toISOString(),
     });
   }
@@ -320,7 +363,9 @@ const PRIORITY_CAP = 8;
 const RESUME_BASIS: Record<InterruptedKind, string> = {
   mail_in_review: "Ready for your review before it mails.",
   mail_approved: "Approved — ready to confirm and queue.",
+  letter_draft: "Draft — keep editing.",
   letter_unmailed: "Generated and ready to mail.",
+  letter_approved: "Approved — ready to print.",
 };
 
 // Consumer (and "workspace" — an agency operator sees the CLIENT's own case,
