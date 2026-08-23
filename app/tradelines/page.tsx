@@ -25,7 +25,7 @@ import { recommendationIntel } from "@/lib/recommendationIntel";
 import { factualCondition } from "@/lib/intelligence/snapshot";
 // RC1-S4 (Consumer Fact Confirmation): the vocabulary the consumer confirms
 // from, and the panel they confirm in.
-import { ASSERTION_CHOICES, ASSERTION_CHOICE_BY_TYPE, CONSUMER_NOTE_MAX, isConsumerAssertionType } from "@/lib/letter";
+import { ASSERTION_CHOICE_BY_TYPE, CONSUMER_NOTE_MAX, choicesForAccountType, isConsumerAssertionType } from "@/lib/letter";
 import { FactConfirmation, type ExistingAssertion } from "@/components/tradelines/FactConfirmation";
 
 const BUREAU_ORDER: Bureau[] = ["EQUIFAX", "EXPERIAN", "TRANSUNION"];
@@ -49,11 +49,19 @@ export default async function TradelinesPage() {
           where: { userId: user.id, status: "ACTIVE" },
           orderBy: { createdAt: "asc" },
           select: { id: true, tradelineId: true, assertionType: true, consumerNote: true, bureauScope: true, createdAt: true },
+          // NOTE: rows whose tradelineId is NULL are ORPHANS — the report they
+          // were confirmed against has since been re-analyzed or deleted, and
+          // the FK set the link to NULL (review H-2). They are history, not live
+          // confirmations, and are skipped below: the freshly parsed row shows
+          // as unconfirmed, which is the truth. Their immutable snapshot keeps
+          // them meaningful as the authorization record for letters already
+          // composed from them.
         }),
       ])
     : [[], []];
   const assertionsByTradeline = new Map<string, ExistingAssertion[]>();
   for (const a of assertionRows) {
+    if (!a.tradelineId) continue; // orphaned by re-analysis / report deletion — see the note above
     if (!isConsumerAssertionType(a.assertionType)) continue; // unknown vocabulary → not shown, never invented
     const list = assertionsByTradeline.get(a.tradelineId) ?? [];
     list.push({
@@ -174,12 +182,17 @@ export default async function TradelinesPage() {
           const strat = t.probability !== "NOT_RECOMMENDED"
             ? recommendStrategy({ accountType: t.accountType, isDebtBuyer: t.isDebtBuyer, probability: t.probability, dateOfFirstDelinquency: t.dateOfFirstDelinquency, bureauData: t.bureauData, creditorName: t.creditorName })
             : null;
+          // REMEDIATION M-3: only claims that can be TRUE of this kind of row.
+          // An inquiry has no balance, status, payment history or delinquency
+          // date, so it is offered the inquiry vocabulary instead of the account
+          // one (the API enforces the same rule server-side).
+          const availableChoices = choicesForAccountType(t.accountType);
           // Suggested-first ordering. A suggestion is a prompt to LOOK, never a
           // claim: it changes the order of the list and nothing else.
           const suggestedTypes = strat?.suggestedAssertions ?? [];
           const orderedChoices = [
-            ...ASSERTION_CHOICES.filter((c) => suggestedTypes.includes(c.type)),
-            ...ASSERTION_CHOICES.filter((c) => !suggestedTypes.includes(c.type)),
+            ...availableChoices.filter((c) => suggestedTypes.includes(c.type)),
+            ...availableChoices.filter((c) => !suggestedTypes.includes(c.type)),
           ].map((c) => ({ type: c.type, prompt: c.prompt, help: c.help, requiresNote: c.requiresNote }));
           const explanation = explainTradeline({
             accountType: t.accountType, isDebtBuyer: t.isDebtBuyer, balance: t.balance,

@@ -23,7 +23,15 @@
 //     gate at all): **34 passed, 15 failed (exit 1)**. The pre-fix behaviour —
 //     generate SUCCEEDS with zero confirmed facts, writes a letter row and
 //     spends the allowance — is exactly what the first section below fails on.
-//   · (unmodified) **49 passed, 0 failed (exit 0)**.
+//   · REMEDIATION round: restore `76d26c5`'s generate route (the per-tradeline
+//     gate, before H-1): section 8 fails — the Experian-scoped/Equifax-target
+//     scenario returned 200, wrote a letter and spent the allowance.
+//   · REMEDIATION round: with the migration's Tradeline FK back at ON DELETE
+//     CASCADE, `scripts/consumer-assertion.test.ts` fails the H-2 DDL checks that
+//     this file's `reanalyze()` emulation depends on.
+//     Measured: restoring `76d26c5:app/api/letters/generate/route.ts` gives
+//     **71 passed, 14 failed (exit 1)**, every failure in section 8.
+//   · (unmodified, remediated tree) **85 passed, 0 failed (exit 0)**.
 import { check, loadModule, mockModule, run, section } from "./_harness";
 
 export {};
@@ -48,7 +56,11 @@ interface TradelineRow {
 interface AssertionRow {
   id: string;
   userId: string;
-  tradelineId: string;
+  // NULLABLE — the FK is ON DELETE SET NULL (review H-2).
+  tradelineId: string | null;
+  tradelineCreditorName: string;
+  tradelineAccountMask: string | null;
+  tradelineAccountType: string | null;
   assertionType: string;
   consumerNote: string | null;
   bureauScope: string | null;
@@ -89,6 +101,23 @@ class FakeDb {
     this.calls.length = 0;
   }
 
+  /**
+   * Emulates `lib/analyze.ts:168` — the re-analysis transaction's
+   * `tx.tradeline.deleteMany({ where: { reportId } })` — plus the database's own
+   * ON DELETE SET NULL on ConsumerAssertion.tradelineId, then inserts the freshly
+   * parsed replacement row.
+   *
+   * The emulation is only faithful if the migration really declares SET NULL, so
+   * `scripts/consumer-assertion.test.ts` pins that DDL separately; with CASCADE
+   * in the migration this method would be modelling the wrong database.
+   */
+  reanalyze(oldTradelineId: string, newTradelineId: string, userId: string): void {
+    this.calls.push("tradeline.deleteMany(reanalysis)");
+    this.tradelines = this.tradelines.filter((t) => t.id !== oldTradelineId);
+    for (const a of this.assertions) if (a.tradelineId === oldTradelineId) a.tradelineId = null; // ON DELETE SET NULL
+    seedTradelineInto(this, newTradelineId, userId);
+  }
+
   tradeline = {
     findFirst: async (args: { where: { id?: string; userId?: string } }) => {
       this.calls.push("tradeline.findFirst");
@@ -127,7 +156,10 @@ class FakeDb {
       const row: AssertionRow = {
         id: this.id("ca"),
         userId: String(args.data.userId),
-        tradelineId: String(args.data.tradelineId),
+        tradelineId: args.data.tradelineId === undefined ? null : (args.data.tradelineId as string | null),
+        tradelineCreditorName: String(args.data.tradelineCreditorName ?? ""),
+        tradelineAccountMask: (args.data.tradelineAccountMask as string | null) ?? null,
+        tradelineAccountType: (args.data.tradelineAccountType as string | null) ?? null,
         assertionType: String(args.data.assertionType),
         consumerNote: (args.data.consumerNote as string | null) ?? null,
         bureauScope: (args.data.bureauScope as string | null) ?? null,
@@ -240,7 +272,7 @@ const assertionRoute = loadModule<{
   DELETE: (req: Request, ctx: { params: { id: string } }) => Promise<Response>;
 }>("app/api/tradelines/[id]/assertion/route.ts");
 
-function seedTradeline(id: string, userId: string): TradelineRow {
+function seedTradelineInto(target: FakeDb, id: string, userId: string): TradelineRow {
   const row: TradelineRow = {
     id,
     userId,
@@ -252,7 +284,18 @@ function seedTradeline(id: string, userId: string): TradelineRow {
     dateOfFirstDelinquency: new Date("2021-03-01"),
     bureauData: { EQUIFAX: { presence: "PRESENT", status: "Charge-off", balanceCents: 128900, dofd: "2021-03-01" } },
   };
-  db.tradelines.push(row);
+  target.tradelines.push(row);
+  return row;
+}
+const seedTradeline = (id: string, userId: string) => seedTradelineInto(db, id, userId);
+
+function seedInquiry(id: string, userId: string): TradelineRow {
+  const row = seedTradelineInto(db, id, userId);
+  row.accountType = "INQUIRY";
+  row.balance = 0;
+  row.creditorName = "Some Lender";
+  row.dateOfFirstDelinquency = null;
+  row.bureauData = { EQUIFAX: { presence: "PRESENT" } };
   return row;
 }
 
@@ -298,6 +341,9 @@ run("consumer-assertion.runtime", async () => {
       id: "ca_w",
       userId: "u1",
       tradelineId: "t1",
+      tradelineCreditorName: "Midland Funding LLC",
+      tradelineAccountMask: "XXXX-1234",
+      tradelineAccountType: "COLLECTION",
       assertionType: "not_mine",
       consumerNote: null,
       bureauScope: null,
@@ -319,6 +365,9 @@ run("consumer-assertion.runtime", async () => {
       id: "ca_other",
       userId: "u2",
       tradelineId: "t1",
+      tradelineCreditorName: "Midland Funding LLC",
+      tradelineAccountMask: "XXXX-1234",
+      tradelineAccountType: "COLLECTION",
       assertionType: "not_mine",
       consumerNote: null,
       bureauScope: null,
@@ -355,7 +404,10 @@ run("consumer-assertion.runtime", async () => {
     check("exactly one letter row was written", db.letters.length === 1);
     const letterBody = String((body.letter as Json | undefined)?.body ?? "");
     check("the letter carries the consumer's confirmed claim", /I state that this account was paid or settled/.test(letterBody));
-    check("…and their own words, verbatim", letterBody.includes('In my own words: "Paid in full 3/2/2024 by cashier\'s check."'));
+    check(
+      "…and their own words, verbatim (typographic attribution delimiters, review L-2)",
+      letterBody.includes("In my own words: \u201CPaid in full 3/2/2024 by cashier's check.\u201D")
+    );
     check("…and NOT the old always-on Payment History concern", !letterBody.includes("The payment history associated with this account as reported."));
     check("…and NOT the old first-person fallback", !/I am unable to reconcile the reported status with my records/.test(letterBody));
     check("exactly one numbered concern (nothing padded in)", (letterBody.match(/^\d+\. /gm) ?? []).length === 1);
@@ -475,22 +527,139 @@ run("consumer-assertion.runtime", async () => {
     check("…and the stored note is whitespace-normalized, not rewritten", db.assertions[0].consumerNote === "The account number is not mine.");
   }
 
-  // ── 8. bureau scope is honored end to end ────────────────────────────────
-  section("a fact confirmed about one bureau's file is not told to another");
+  // ── 8. bureau scope: the gate and the composer agree (REMEDIATION H-1) ────
+  section("a fact confirmed about one bureau's file does not buy a letter to another");
   {
     db.reset();
+    spend.length = 0;
     seedTradeline("t1", "u1");
     await assertionRoute.POST(
-      post("http://localhost/api/tradelines/t1/assertion", { assertionType: "inaccurate_status", bureauScope: "EXPERIAN" }),
+      post("http://localhost/api/tradelines/t1/assertion", { assertionType: "inaccurate_balance", bureauScope: "EXPERIAN" }),
       { params: { id: "t1" } }
     );
-    const res = await generate.POST(
+
+    // THE REVIEWER'S SCENARIO, exactly: Experian-scoped confirmation, Equifax
+    // target. This previously returned 200, wrote a claim-free letter whose
+    // demand referred to "each disputed item", and spent the allowance.
+    const single = await generate.POST(
       post("http://localhost/api/letters/generate", { tradelineId: "t1", strategyId: "fcra_611", targetBureaus: ["EQUIFAX"] })
     );
+    const singleBody = await json(single);
+    check("Equifax-only target with an Experian-scoped fact is REFUSED (400)", single.status === 400);
+    check("…the refusal names the mismatch, not a generic error", /Experian/.test(String(singleBody.error)) && /Equifax/.test(String(singleBody.error)));
+    check("…it says nothing was used up", /Nothing was used up/i.test(String(singleBody.error)));
+    check("…and reports which targets were unsupported", Array.isArray(singleBody.skippedBureaus) && (singleBody.skippedBureaus as string[]).includes("EQUIFAX"));
+    check("NO letter row was written", db.letters.length === 0);
+    check("NOTHING was charged", spend.length === 0);
+    check("the entitlement gate was never reached", !db.calls.includes("letter.findMany"));
+
+    // All three bureaus: only Experian is supported. The other two are skipped,
+    // disclosed, and uncharged — never written as content-free letters.
+    const multi = await generate.POST(
+      post("http://localhost/api/letters/generate", {
+        tradelineId: "t1",
+        strategyId: "fcra_611",
+        targetBureaus: ["EQUIFAX", "EXPERIAN", "TRANSUNION"],
+      })
+    );
+    const multiBody = await json(multi);
+    check("a mixed request succeeds for the supported bureau only", multi.status === 200);
+    check("exactly ONE letter was written, not three", db.letters.length === 1);
+    check("…and it is the Experian one", db.letters[0].targetBureau === "EXPERIAN");
+    check("…the two unsupported targets are disclosed", ((multiBody.skippedBureaus as string[]) ?? []).sort().join() === "EQUIFAX,TRANSUNION");
+    check("…with a plain-language reason", /No confirmed fact of yours applies to/.test(String(multiBody.skippedReason)));
+    check("…and only ONE letter was charged", spend.length === 1 && spend[0] === 1);
+    const written = String((multiBody.letters as Json[])?.[0]?.body ?? "");
+    check("the letter that WAS written carries the confirmed claim", /I state that this balance is not accurate/.test(written));
+    check("…and no letter anywhere refers to disputed items it does not list", !db.letters.some((l) => !/SUMMARY OF FACTUAL CONCERNS/.test(l.body) && /each disputed item/.test(l.body)));
+    check("…and never names a bureau other than its target", !/Equifax|TransUnion/i.test(written));
+
+    // Unscoped confirmations still reach every bureau (control).
+    db.reset();
+    spend.length = 0;
+    seedTradeline("t2", "u1");
+    await assertionRoute.POST(post("http://localhost/api/tradelines/t2/assertion", { assertionType: "not_mine" }), { params: { id: "t2" } });
+    const all3 = await generate.POST(
+      post("http://localhost/api/letters/generate", {
+        tradelineId: "t2",
+        strategyId: "fcra_611",
+        targetBureaus: ["EQUIFAX", "EXPERIAN", "TRANSUNION"],
+      })
+    );
+    check("an UNSCOPED confirmation still generates for all three (control)", all3.status === 200 && db.letters.length === 3);
+    check("…and every one of them states the confirmed claim", db.letters.every((l) => /I do not recognize this account/.test(l.body)));
+    check("…charged once per letter written", spend.length === 1 && spend[0] === 3);
+  }
+
+  // ── 9. the record survives re-analysis (REMEDIATION H-2) ──────────────────
+  section("a confirmation survives the re-analysis that replaces its tradeline");
+  {
+    db.reset();
+    spend.length = 0;
+    seedTradeline("t_old", "u1");
+    await assertionRoute.POST(
+      post("http://localhost/api/tradelines/t_old/assertion", { assertionType: "not_mine", consumerNote: "Never had an account here." }),
+      { params: { id: "t_old" } }
+    );
+    check("the snapshot is captured at creation", db.assertions[0].tradelineCreditorName === "Midland Funding LLC" && db.assertions[0].tradelineAccountMask === "XXXX-1234");
+
+    const before = await generate.POST(post("http://localhost/api/letters/generate", { tradelineId: "t_old", strategyId: "fcra_611", targetBureaus: ["EQUIFAX"] }));
+    check("a letter is generated from it (control)", before.status === 200 && db.letters.length === 1);
+
+    // lib/analyze.ts:168 — the whole tradeline set is replaced on re-upload.
+    db.reanalyze("t_old", "t_new", "u1");
+
+    check("the consumer's confirmation still EXISTS after re-analysis", db.assertions.length === 1);
+    check("…with its tradeline link set to NULL, not the row deleted", db.assertions[0].tradelineId === null);
+    check("…and the snapshot still says WHICH account it was about", db.assertions[0].tradelineCreditorName === "Midland Funding LLC");
+    check("…and their own words are intact", db.assertions[0].consumerNote === "Never had an account here.");
+    check("…so the already-mailed letter still has its authorization evidence", db.letters.length === 1 && /I do not recognize this account/.test(db.letters[0].body));
+
+    // The freshly parsed row is a new set of facts: it must be re-confirmed.
+    const after = await generate.POST(post("http://localhost/api/letters/generate", { tradelineId: "t_new", strategyId: "fcra_611", targetBureaus: ["EQUIFAX"] }));
+    check("generation on the NEW tradeline refuses until it is re-confirmed", after.status === 400);
+    check("…and wrote nothing", db.letters.length === 1);
+    check("…and charged nothing for the refusal", spend.length === 1);
+
+    await assertionRoute.POST(post("http://localhost/api/tradelines/t_new/assertion", { assertionType: "not_mine" }), { params: { id: "t_new" } });
+    const reconfirmed = await generate.POST(post("http://localhost/api/letters/generate", { tradelineId: "t_new", strategyId: "fcra_611", targetBureaus: ["EQUIFAX"] }));
+    check("…and succeeds once the consumer confirms against the new data", reconfirmed.status === 200 && db.letters.length === 2);
+    check("the orphaned row was never resurrected into the new letter's evidence", db.assertions.filter((a) => a.tradelineId === "t_new").length === 1);
+  }
+
+  // ── 10. an inquiry can only say what an inquiry can say (M-3) ─────────────
+  section("INQUIRY rows are offered — and accept — only applicable claims");
+  {
+    db.reset();
+    seedInquiry("t_inq", "u1");
+    const wrong = await assertionRoute.POST(
+      post("http://localhost/api/tradelines/t_inq/assertion", { assertionType: "inaccurate_balance" }),
+      { params: { id: "t_inq" } }
+    );
+    const wrongBody = await json(wrong);
+    check("'the balance is wrong' on an inquiry is refused (400)", wrong.status === 400);
+    check("…with the applicable choices returned", ((wrongBody.allowed as string[]) ?? []).includes("inquiry_not_authorized"));
+    check("…and nothing written", db.assertions.length === 0);
+
+    const right = await assertionRoute.POST(
+      post("http://localhost/api/tradelines/t_inq/assertion", { assertionType: "inquiry_not_authorized" }),
+      { params: { id: "t_inq" } }
+    );
+    check("'I did not authorize this inquiry' is accepted (control)", right.status === 201);
+
+    const res = await generate.POST(post("http://localhost/api/letters/generate", { tradelineId: "t_inq", strategyId: "fcra_611", targetBureaus: ["EQUIFAX"] }));
     const body = await json(res);
-    check("the letter to Equifax is still generated (the gate is per-tradeline)", res.status === 200);
     const letterBody = String((body.letter as Json | undefined)?.body ?? "");
-    check("…but carries NO factual concern scoped to another bureau", !letterBody.includes("SUMMARY OF FACTUAL CONCERNS"));
-    check("…and never names the other bureau", !/Experian/i.test(letterBody));
+    check("a letter about the inquiry generates", res.status === 200);
+    check("…in the consumer's own voice", /I do not recognize any application or transaction that would authorize this inquiry/.test(letterBody));
+    check("…and never asserts a balance about an inquiry", !/balance is not accurate/.test(letterBody));
+
+    // The account vocabulary is still refused the other way round.
+    seedTradeline("t_acct", "u1");
+    const inqOnAccount = await assertionRoute.POST(
+      post("http://localhost/api/tradelines/t_acct/assertion", { assertionType: "inquiry_not_authorized" }),
+      { params: { id: "t_acct" } }
+    );
+    check("the inquiry claim is refused on a normal account", inqOnAccount.status === 400);
   }
 });

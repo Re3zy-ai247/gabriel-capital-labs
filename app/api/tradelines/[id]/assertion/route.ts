@@ -6,6 +6,8 @@ import { enforceRateLimit } from "@/lib/rateLimit";
 import {
   ASSERTION_CHOICE_BY_TYPE,
   CONSUMER_NOTE_MAX,
+  assertionAppliesTo,
+  choicesForAccountType,
   isConsumerAssertionType,
   normalizeConsumerNote,
 } from "@/lib/letter";
@@ -36,7 +38,10 @@ async function ownTradeline(userId: string, tradelineId: string) {
   if (!tradelineId) return null;
   return prisma.tradeline.findFirst({
     where: { id: tradelineId, userId },
-    select: { id: true, creditorName: true },
+    // accountNumberMask / accountType are read for the IMMUTABLE SNAPSHOT stored
+    // on the assertion (review H-2), and accountType additionally decides which
+    // claims are even sayable about this row (review M-3).
+    select: { id: true, creditorName: true, accountNumberMask: true, accountType: true },
   });
 }
 
@@ -54,6 +59,25 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   if (!isConsumerAssertionType(assertionType)) {
     return NextResponse.json(
       { error: "Choose which fact about this account is wrong." },
+      { status: 400 }
+    );
+  }
+
+  // REMEDIATION M-3: a claim must be sayable about THIS kind of row. An INQUIRY
+  // has no balance, status, payment history or first-delinquency date, so
+  // "the balance is wrong" on one would put an impossible sentence ("I state
+  // that this balance is not accurate. The reported balance is $0.00.") into a
+  // signed letter. Enforced server-side, not just by which buttons the page
+  // renders.
+  if (!assertionAppliesTo(assertionType, tradeline.accountType)) {
+    return NextResponse.json(
+      {
+        error:
+          tradeline.accountType === "INQUIRY"
+            ? "That isn't something an inquiry can be wrong about. An inquiry is a record that someone looked at your credit — tell us if you didn't authorize it."
+            : "That isn't something this account can be wrong about.",
+        allowed: choicesForAccountType(tradeline.accountType).map((c) => c.type),
+      },
       { status: 400 }
     );
   }
@@ -91,6 +115,13 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     data: {
       userId: user.id,
       tradelineId: tradeline.id,
+      // Immutable snapshot (review H-2): the row stays meaningful — and stays
+      // usable as the authorization evidence for a letter already mailed — after
+      // a re-analysis replaces the tradeline it points at and the FK sets
+      // tradelineId to NULL.
+      tradelineCreditorName: tradeline.creditorName,
+      tradelineAccountMask: tradeline.accountNumberMask,
+      tradelineAccountType: tradeline.accountType,
       assertionType,
       consumerNote: note || null,
       bureauScope,

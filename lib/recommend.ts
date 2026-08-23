@@ -39,6 +39,13 @@ export function suggestAssertionTypes(t: RecommendInput): ConsumerAssertionType[
     if (!out.includes(x)) out.push(x);
   };
 
+  // REMEDIATION M-3: an INQUIRY is a record that someone LOOKED at the file. It
+  // has no balance, no status, no payment history and no first-delinquency date,
+  // so the generic tail below would have steered the consumer toward three
+  // claims that cannot be true of it. Returns EARLY: the inquiry vocabulary is
+  // the whole list for an inquiry.
+  if (t.accountType === AccountType.INQUIRY) return ["inquiry_not_authorized"];
+
   if (t.accountType === AccountType.COLLECTION) {
     // A collection reaches the consumer through at least one transfer, and a
     // debt buyer's file is the most common place an account is attributed to

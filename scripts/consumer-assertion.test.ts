@@ -21,12 +21,15 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   ASSERTION_CHOICES,
+  choicesForAccountType,
+  assertionAppliesTo,
   ASSERTION_CHOICE_BY_TYPE,
   CONSUMER_ASSERTION_TYPES,
   CONSUMER_NOTE_MAX,
   assertionsForContext,
   buildContext,
   buildFindings,
+  buildSystemPrompt,
   buildUserPrompt,
   isConsumerAssertionType,
   normalizeConsumerNote,
@@ -213,11 +216,24 @@ console.log("\n— the consumer's own words");
   ok("the words themselves are not rewritten", normalizeConsumerNote("I payed this off in 2019, they no it") === "I payed this off in 2019, they no it");
 
   const noted = letterFor([A("paid_settled", { consumerNote: "Paid in\nfull on 3/2/2024 by cashier's check." })]).body;
-  ok("the note reaches the letter verbatim, attributed to the consumer", noted.includes('In my own words: "Paid in full on 3/2/2024 by cashier\'s check."'));
+  ok(
+    "the note reaches the letter verbatim, attributed to the consumer",
+    noted.includes("In my own words: \u201CPaid in full on 3/2/2024 by cashier's check.\u201D")
+  );
+  // REMEDIATION L-2: a straight double quote inside the note must not be
+  // confusable with the attribution delimiters around it.
+  const quoted = letterFor([A("other", { consumerNote: 'I said "no" to this account.' })]).body;
+  ok(
+    "a note containing a double quote keeps distinguishable attribution delimiters",
+    quoted.includes("In my own words: \u201CI said \"no\" to this account.\u201D")
+  );
   ok("a note never lands on its own line and never breaks the Fact: layout", !/^\s*Paid in full/m.test(noted));
 
   const otherOnly = letterFor([A("other", { consumerNote: "The account number shown is not one I have ever had." })]).body;
   ok("`other` carries the consumer's words as the substance of the concern", otherOnly.includes("The account number shown is not one I have ever had."));
+  // REMEDIATION L-3: it no longer promises a description "below" that is
+  // actually appended inline on the same line.
+  ok("`other` does not promise text that appears nowhere", !/as described below/.test(otherOnly));
 
   const longNote = "y".repeat(CONSUMER_NOTE_MAX + 200);
   const capped = letterFor([A("other", { consumerNote: longNote })]).body;
@@ -368,6 +384,142 @@ console.log("\n— existing letter discipline is undisturbed");
 
   const single = letterFor([A("inaccurate_balance")]).body;
   ok("single-bureau discipline holds: no other bureau is named", !/TransUnion|Experian/i.test(single));
+}
+
+// ---------------------------------------------------------------------------
+console.log("\n— zero findings ⇒ a coherent letter, not a scaffold (H-1 / M-1)");
+// ---------------------------------------------------------------------------
+{
+  const empty = letterFor([]).body;
+  ok("the scope disclaimer no longer points at concerns that do not exist", !/The concerns I set out/.test(empty));
+  ok("…and is still present, claim-free", /This dispute and any concerns it raises relate solely to how this account is reported on my/.test(empty));
+  ok("the demand does not reference 'each disputed item' when no item is set out", !/each disputed item/.test(empty));
+  ok("…nor 'each disputed element'", !/each disputed element/.test(empty));
+  ok("…nor 'any disputed item' in the closing", !/any disputed item cannot be verified/.test(empty));
+  ok("it still demands a reinvestigation and the method of verification", /REQUESTED ACTION — REINVESTIGATION/.test(empty) && /611\(a\)\(7\)/.test(empty));
+  ok("…of 'the information reported for this account'", /reinvestigation of the information reported for this account/.test(empty));
+
+  const withFindings = letterFor([A("inaccurate_balance")]).body;
+  ok("WITH a confirmed fact the demand names the disputed items again (control)", /each disputed item/.test(withFindings));
+
+  // Round 2 with nothing confirmed reads as a follow-up, not a broken dispute.
+  const r2 = letterFor([], { round: 2 }).body;
+  ok("round-2 with nothing confirmed asks about the prior reinvestigation", /please confirm its current status, disclose how the previously disputed information was verified/.test(r2));
+  ok("…and sets out no phantom concerns", !/I have set out below/.test(r2) && !/each disputed item/.test(r2));
+  ok("…and stays compliance-clean", applyCompliance(r2).flags.length === 0);
+
+  const furnisherEmpty = renderTemplateLetter(
+    tl,
+    buildContext("fcra_623", tl, consumer, undefined, 1, { name: "X", address: "PO Box 1" }, { assertions: [] }),
+    consumer
+  );
+  ok("the furnisher demand likewise stops referencing 'the disputed information' with none", !/investigation of the disputed information/.test(furnisherEmpty));
+  ok("…while still demanding a §1681s-2(b) investigation", /1681s-2\(b\)/.test(furnisherEmpty));
+}
+
+// ---------------------------------------------------------------------------
+console.log("\n— INQUIRY rows get a claim they can actually make (M-3)");
+// ---------------------------------------------------------------------------
+{
+  const inquiryChoices = choicesForAccountType("INQUIRY").map((c) => c.type);
+  const accountChoices = choicesForAccountType("COLLECTION").map((c) => c.type);
+  ok("an inquiry can say it was not authorized", inquiryChoices.includes("inquiry_not_authorized"));
+  ok("an inquiry is NOT offered balance / status / dates / closed / paid", !["inaccurate_balance", "inaccurate_status", "late_dates_wrong", "account_closed", "paid_settled"].some((t) => inquiryChoices.includes(t as ConsumerAssertionType)));
+  ok("an account is NOT offered the inquiry claim", !accountChoices.includes("inquiry_not_authorized"));
+  ok("both keep the universal claims", inquiryChoices.includes("not_mine") && inquiryChoices.includes("other") && accountChoices.includes("not_mine"));
+  ok("assertionAppliesTo agrees with the list", assertionAppliesTo("inquiry_not_authorized", "INQUIRY") && !assertionAppliesTo("inaccurate_balance", "INQUIRY") && assertionAppliesTo("inaccurate_balance", "COLLECTION"));
+  ok(
+    "suggestAssertionTypes never steers an inquiry toward balance / status / dates",
+    (() => {
+      const sug = suggestAssertionTypes({ accountType: "INQUIRY", isDebtBuyer: false, probability: "MEDIUM", bureauData: {}, creditorName: "Some Lender" });
+      return sug.length > 0 && sug.every((x) => x === "inquiry_not_authorized");
+    })()
+  );
+
+  const inq = letterFor([A("inquiry_not_authorized")]).body;
+  ok("the inquiry claim composes in the consumer's own voice", /I do not recognize any application or transaction that would authorize this inquiry/.test(inq));
+  ok("…cites permissible purpose, asserts no violation", /permissible purpose/.test(inq) && !/violat/i.test(inq));
+  ok("…and stays compliance-clean", applyCompliance(inq).flags.length === 0);
+}
+
+// ---------------------------------------------------------------------------
+console.log("\n— self-defeating observations are not quoted back (L-1)");
+// ---------------------------------------------------------------------------
+{
+  const closedTl: LetterTradeline = { ...tl, bureauData: { EQUIFAX: { presence: "PRESENT", status: "Closed", balanceCents: 0 } } };
+  const closed = letterFor([A("account_closed")], { tradeline: closedTl }).body;
+  ok("'I state that this account is closed' is not followed by 'It is reported as \"Closed\"'", /I state that this account is closed\./.test(closed) && !/reported as "Closed"/.test(closed));
+
+  const paidZero: LetterTradeline = { ...tl, balance: 0 };
+  const paid = letterFor([A("paid_settled")], { tradeline: paidZero }).body;
+  ok("a $0 balance is not quoted back against a paid/settled claim", !/The reported balance is \$0/.test(paid));
+  const paidOwing = letterFor([A("paid_settled")]).body;
+  ok("…while a non-zero reported balance still is (control)", /The reported balance is \$1,289/.test(paidOwing));
+}
+
+// ---------------------------------------------------------------------------
+console.log("\n— the AI prompt cannot invite the deleted claim back (M-2)");
+// ---------------------------------------------------------------------------
+{
+  const sys = buildSystemPrompt(1);
+  // The SUGGESTION list is the segment between "Prefer phrasing such as:" and
+  // "Present facts". The phrase may still appear AFTER that, in the sentence
+  // that reserves it to the consumer — that is the fix, not a leak.
+  const suggestionList = sys.slice(sys.indexOf("Prefer phrasing such as:"), sys.indexOf("Present facts that warrant"));
+  ok("'I am unable to reconcile' is no longer a PREFERRED FRAMING suggestion", !/I am unable to reconcile/.test(suggestionList));
+  ok("'based on the information currently available' is no longer suggested either", !/based on the information currently available/.test(suggestionList));
+  ok("…and first-person statements about the consumer's records are explicitly reserved to them", /reserved to the consumer/.test(sys));
+  ok("rule 8 still forbids introducing new first-person statements", /CONSUMER-CONFIRMED FACTS ONLY/.test(sys));
+}
+
+// ---------------------------------------------------------------------------
+console.log("\n— the confirmation record survives re-analysis (H-2)");
+// ---------------------------------------------------------------------------
+{
+  const SCHEMA_FULL = read("prisma/schema.prisma");
+  // Scoped to the ConsumerAssertion MODEL BLOCK: `Letter` already declares a
+  // nullable tradelineId with SetNull, so a whole-file regex would pass on
+  // Letter's line and prove nothing about this table.
+  const modelStart = SCHEMA_FULL.indexOf("model ConsumerAssertion {");
+  const SCHEMA = modelStart >= 0 ? SCHEMA_FULL.slice(modelStart, SCHEMA_FULL.indexOf("\n}", modelStart)) : "";
+  const MIGRATION = read("prisma/migrations/20260823120000_consumer_assertion/migration.sql");
+  ok("schema: the ConsumerAssertion model block was located", SCHEMA.length > 0);
+  ok("schema: tradelineId is NULLABLE", /tradelineId String\?/.test(SCHEMA));
+  ok("schema: the Tradeline FK is SetNull, not Cascade", /tradeline\s+Tradeline\? @relation\(fields: \[tradelineId\], references: \[id\], onDelete: SetNull\)/.test(SCHEMA));
+  ok("schema: an immutable snapshot keeps an orphaned row meaningful", /tradelineCreditorName String/.test(SCHEMA) && /tradelineAccountMask\s+String\?/.test(SCHEMA) && /tradelineAccountType\s+String\?/.test(SCHEMA));
+  ok("migration: the Tradeline FK is ON DELETE SET NULL", /ConsumerAssertion_tradelineId_fkey[^;]*ON DELETE SET NULL/.test(MIGRATION));
+  ok("migration: the column is created nullable", /"tradelineId" TEXT,/.test(MIGRATION));
+  ok("migration: the snapshot columns are created", /"tradelineCreditorName" TEXT NOT NULL/.test(MIGRATION));
+  ok("the User FK stays CASCADE (no path hard-deletes a User)", /ConsumerAssertion_userId_fkey[^;]*ON DELETE CASCADE/.test(MIGRATION));
+
+  // The false claim that motivated H-2 must be gone from BOTH files, and the
+  // real deletion paths named.
+  for (const [name, src] of [["schema", SCHEMA_FULL], ["migration", MIGRATION]] as const) {
+    ok(`${name}: the false "nothing deletes a Tradeline" claim is gone`, !/(?:nothing|none) deletes a Tradeline/.test(src));
+    ok(`${name}: the real deletion paths are cited`, /lib\/analyze\.ts:168/.test(src) && /app\/api\/reports\/\[id\]\/route\.ts:17/.test(src));
+  }
+
+  const ROUTE = read("app/api/tradelines/[id]/assertion/route.ts");
+  ok("the snapshot is written at creation", /tradelineCreditorName: tradeline\.creditorName/.test(ROUTE) && /tradelineAccountMask: tradeline\.accountNumberMask/.test(ROUTE));
+  const PAGE = read("app/tradelines/page.tsx");
+  ok("the page skips orphaned assertions, so a re-analyzed item shows as unconfirmed", /if \(!a\.tradelineId\) continue;/.test(PAGE));
+  ok("the page offers only claims the row can make", /choicesForAccountType\(t\.accountType\)/.test(PAGE));
+}
+
+// ---------------------------------------------------------------------------
+console.log("\n— the per-target bureau gate (H-1, source-level)");
+// ---------------------------------------------------------------------------
+{
+  const GEN = read("app/api/letters/generate/route.ts");
+  ok("the route narrows per target with the SAME filter the composer uses", /assertionsForContext\(assertions, \{ strategy: ctxProbe\.strategy, targetBureau: b \}\)/.test(GEN));
+  ok("targets with no applicable confirmation are dropped before anything is planned", /targets = validTargets;/.test(GEN) && GEN.indexOf("targets = validTargets;") < GEN.indexOf("planLetterRegeneration(targets"));
+  ok("…and before the entitlement gate and any spend", GEN.indexOf("validTargets.length === 0") < GEN.indexOf("await getEntitlement(user)") && GEN.indexOf("validTargets.length === 0") < GEN.indexOf("await spendLetterCredits("));
+  ok("all-targets-unsupported is a 400, not a silent empty success", /if \(validTargets\.length === 0\)[\s\S]{0,1600}status: 400/.test(GEN));
+  ok("partial skips are disclosed, not swallowed", /skippedBureaus,/.test(GEN) && /skippedReason/.test(GEN));
+  ok("each target composes from ITS OWN applicable set", (GEN.match(/assertionsByTarget\.get\(targetKey\(b\)\)/g) ?? []).length === 2);
+
+  const IDENT = read("app/api/identity/letter/route.ts");
+  ok("the identity refusal carries an actionable next step (M-5)", /nextStep:/.test(IDENT) && /nothing has been charged/.test(IDENT));
 }
 
 console.log(failures === 0 ? "\nAll consumer-assertion guards passed." : `\n${failures} guard(s) failed.`);

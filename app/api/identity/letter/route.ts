@@ -97,6 +97,13 @@ export async function POST(req: Request) {
         error:
           "Confirm each correction before we draft it. This letter states, in your name, what your correct personal information is \u2014 so you tell us which items are wrong and what the right value is; we never assert that for you.",
         needsConfirmation: true,
+        // REMEDIATION M-5: an actionable, TRUTHFUL next step. The per-item
+        // confirmation control does not exist on app/identity/page.tsx yet (that
+        // file is outside this slice's ownership), so this says exactly that
+        // rather than pointing at a control the consumer cannot find. It links
+        // nowhere, because there is nowhere honest to link yet.
+        nextStep:
+          "Tick each correction you want disputed, then generate the letter. If you don\u2019t see a confirmation control beside each item yet, this letter can\u2019t be drafted \u2014 nothing has been charged, nothing about your report has changed, and your dispute letters for accounts are unaffected.",
         // Which items are still awaiting the consumer's confirmation, by their
         // index in the submitted array, so the UI can point at them exactly.
         unconfirmed: discrepancies

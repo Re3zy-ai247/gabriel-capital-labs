@@ -203,6 +203,15 @@ export function FactConfirmation({
                 </label>
               ))}
             </div>
+            {/* REMEDIATION L-4 (partial): the letter states the chosen fact as
+                the consumer's own statement and asks for it to be verified. The
+                exact sentences are not previewed here (the full body is visible
+                before printing); this says what shape they take, so the consumer
+                is not surprised by the register of what they sign. */}
+            <p className="mt-2 text-[11px] text-slate-500">
+              Whatever you choose, the letter states it as your own statement and asks for it to be verified against the
+              original records. It never claims a law was broken and never promises a result.
+            </p>
           </fieldset>
 
           <div>
@@ -213,14 +222,17 @@ export function FactConfirmation({
               id={`note-${tradelineId}`}
               className="input min-h-[72px]"
               value={note}
-              maxLength={noteMax * 2}
+              /* REMEDIATION L-5: the same cap the server enforces, so the
+                 consumer is stopped at the limit rather than typing twice it
+                 and then being told to cut it down. */
+              maxLength={noteMax}
               onChange={(e) => setNote(e.target.value)}
               placeholder="What do you know about this account that the report gets wrong?"
             />
             <p className={`mt-1 text-[11px] ${overLong ? "text-rose-300" : "text-slate-500"}`}>
               {overLong
                 ? `Please shorten this to ${noteMax} characters or fewer — your words go into the letter exactly as you write them, so we won't cut them off for you.`
-                : `Goes into the letter exactly as you write it. ${noteMax} characters or fewer.`}
+                : `Goes into the letter exactly as you write it. ${Math.max(0, noteMax - note.length)} characters left.`}
             </p>
           </div>
 

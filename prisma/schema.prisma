@@ -821,23 +821,55 @@ model ReputationMilestone {
 // composed from it. `status` is a bounded string, not a Prisma enum, so a future
 // value needs no ALTER TYPE on a live database.
 //
-// FK LIFECYCLE: Cascade on BOTH sides, matching Tradeline's own onDelete:Cascade
-// from User. An assertion is a statement ABOUT one tradeline — it is meaningless
-// once that row is gone, and it is consumer content, not a commercial or consent
-// record (contrast TermsAcceptance, which is Restrict on purpose). No application
-// path hard-deletes a User today (scripts/consumer-deletion-containment.test.ts
-// pins that), and nothing deletes a Tradeline, so this cascade is latent.
+// FK LIFECYCLE — CORRECTED (review H-2). Tradelines ARE deleted on ordinary
+// paths, and an earlier draft of this comment wrongly said otherwise:
+//   • lib/analyze.ts:168 — `tx.tradeline.deleteMany({ where: { reportId } })`
+//     inside the RE-ANALYSIS transaction. Every re-upload/re-analyze replaces the
+//     whole tradeline set. That transaction already snapshots and re-links
+//     Letter rows across the delete, precisely so a consumer's dispute history is
+//     not orphaned; it knows nothing about this table.
+//   • app/api/reports/[id]/route.ts:17 — `prisma.report.delete(...)`, which
+//     cascades to Tradeline.
+// A CASCADE from Tradeline would therefore destroy, on a routine path, the only
+// evidence that the consumer authorized the first-person sentences in letters
+// they have already signed and mailed — the exact record this table exists to
+// keep. So `tradelineId` is NULLABLE with onDelete: SetNull, mirroring how
+// `Letter.tradelineId` already survives the same delete, and the immutable
+// `tradeline*` snapshot fields keep an orphaned row meaningful on its own.
+//
+// The consequence is deliberate and truthful: after a re-analysis the NEW
+// tradeline rows carry no assertions, so the Tradelines page shows them as
+// unconfirmed and letter generation refuses until the consumer confirms against
+// the freshly parsed data. A confirmation is about what a report SAID; a new
+// report is a new set of facts to confirm.
+//
+// The User FK stays Cascade: no application path hard-deletes a User
+// (scripts/consumer-deletion-containment.test.ts pins that), so it is latent.
 model ConsumerAssertion {
-  id          String    @id @default(cuid())
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId      String
-  tradeline   Tradeline @relation(fields: [tradelineId], references: [id], onDelete: Cascade)
-  tradelineId String
+  id     String @id @default(cuid())
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+
+  // Nullable + SetNull: see the FK LIFECYCLE note above. A NULL tradelineId
+  // means "the report this was confirmed against has since been replaced or
+  // deleted" — the statement stands as history, and composes into nothing.
+  tradeline   Tradeline? @relation(fields: [tradelineId], references: [id], onDelete: SetNull)
+  tradelineId String?
+
+  // IMMUTABLE SNAPSHOT, written once at creation and never updated. Without it
+  // an orphaned row is an anonymous "the consumer confirmed something once".
+  // With it, the record still says WHICH account the consumer was looking at,
+  // which is what makes it usable as the authorization evidence for a letter
+  // that was already mailed.
+  tradelineCreditorName String
+  tradelineAccountMask  String?
+  tradelineAccountType  String?
 
   // Optional per-bureau scope. NULL = "this is wrong about the account itself,
   // on every file that reports it". A bureau letter only ever composes from
   // assertions whose scope is NULL or that bureau — never another bureau's
-  // (lib/letter.ts assertionsForContext), so the cross-bureau rule holds.
+  // (lib/letter.ts assertionsForContext), and app/api/letters/generate/route.ts
+  // refuses a target bureau for which no assertion is applicable at all.
   bureauScope Bureau?
 
   // Bounded vocabulary, defined once in lib/letter.ts (CONSUMER_ASSERTION_TYPES).

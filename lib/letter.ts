@@ -48,6 +48,7 @@ export interface LetterConsumer {
 // ---------------------------------------------------------------------------
 export const CONSUMER_ASSERTION_TYPES = [
   "not_mine",
+  "inquiry_not_authorized",
   "inaccurate_balance",
   "inaccurate_status",
   "late_dates_wrong",
@@ -71,6 +72,13 @@ export interface AssertionChoice {
   prompt: string;
   help: string;
   requiresNote: boolean;
+  // REMEDIATION M-3. An INQUIRY is a record that someone LOOKED at the file. It
+  // has no balance, no payment history, no open/closed status and no date of
+  // first delinquency, so offering "the balance is wrong" on one invites the
+  // consumer to sign a statement that cannot be true ("I state that this balance
+  // is not accurate. The reported balance is $0.00."). Applicability is declared
+  // here, enforced at the API boundary, and used to build the UI list.
+  appliesTo: "any" | "account" | "inquiry";
 }
 export const ASSERTION_CHOICES: readonly AssertionChoice[] = [
   {
@@ -78,50 +86,76 @@ export const ASSERTION_CHOICES: readonly AssertionChoice[] = [
     prompt: "This account is not mine",
     help: "You do not recognize it, and you did not open or authorize it.",
     requiresNote: false,
+    appliesTo: "any",
+  },
+  {
+    type: "inquiry_not_authorized",
+    prompt: "I did not authorize this inquiry",
+    help: "You do not recognize any application or transaction that would have let this company look at your credit.",
+    requiresNote: false,
+    appliesTo: "inquiry",
   },
   {
     type: "inaccurate_balance",
     prompt: "The balance is wrong",
     help: "The amount reported does not match what you owe, or what you owed.",
     requiresNote: false,
+    appliesTo: "account",
   },
   {
     type: "inaccurate_status",
     prompt: "The account status is wrong",
     help: "How the account is described (open, closed, collection, charge-off, and so on) is not accurate.",
     requiresNote: false,
+    appliesTo: "account",
   },
   {
     type: "late_dates_wrong",
     prompt: "The late payments or the dates are wrong",
     help: "A late payment is reported that did not happen, or a date on the account is not accurate.",
     requiresNote: false,
+    appliesTo: "account",
   },
   {
     type: "account_closed",
     prompt: "This account is closed",
     help: "You closed it, or it was closed, and the report does not say so.",
     requiresNote: false,
+    appliesTo: "account",
   },
   {
     type: "paid_settled",
     prompt: "This account was paid or settled",
     help: "You paid or settled it, and the report does not reflect that.",
     requiresNote: false,
+    appliesTo: "account",
   },
   {
     type: "incomplete_info",
     prompt: "Information is missing from this account",
     help: "Something the report should include about this account is not there.",
     requiresNote: false,
+    appliesTo: "account",
   },
   {
     type: "other",
     prompt: "Something else about this account is wrong",
     help: "Describe it in your own words. Your words go into the letter exactly as you write them.",
     requiresNote: true,
+    appliesTo: "any",
   },
 ];
+// The choices a given row may offer. INQUIRY rows get the inquiry vocabulary;
+// everything else gets the account vocabulary. `any` appears on both.
+export function choicesForAccountType(accountType: string | null | undefined): AssertionChoice[] {
+  const kind = accountType === "INQUIRY" ? "inquiry" : "account";
+  return ASSERTION_CHOICES.filter((c) => c.appliesTo === "any" || c.appliesTo === kind);
+}
+
+export function assertionAppliesTo(type: ConsumerAssertionType, accountType: string | null | undefined): boolean {
+  return choicesForAccountType(accountType).some((c) => c.type === type);
+}
+
 export const ASSERTION_CHOICE_BY_TYPE: Record<ConsumerAssertionType, AssertionChoice> =
   Object.fromEntries(ASSERTION_CHOICES.map((c) => [c.type, c])) as Record<ConsumerAssertionType, AssertionChoice>;
 
@@ -381,6 +415,13 @@ export function buildFindings(t: LetterTradeline, ctx: LetterContext): Finding[]
           why: "An account I state is not mine cannot be verified as belonging to me against the original account records, and information that cannot be verified as accurate should not remain on my file.",
         };
         break;
+      case "inquiry_not_authorized":
+        f = {
+          element: "Inquiry Authorization",
+          fact: "I do not recognize any application or transaction that would authorize this inquiry into my consumer file.",
+          why: "A consumer report may be furnished only for a permissible purpose under FCRA §604 (15 U.S.C. §1681b); an inquiry I do not recognize should be verified as authorized against the requesting party's own records, or removed if it cannot be.",
+        };
+        break;
       case "inaccurate_balance":
         f = {
           element: "Reported Balance",
@@ -407,7 +448,12 @@ export function buildFindings(t: LetterTradeline, ctx: LetterContext): Finding[]
         break;
       }
       case "account_closed": {
-        const obs = statusObservation();
+        // REMEDIATION L-1: never append an observation that CONTRADICTS the
+        // claim. "I state that this account is closed. It is reported as
+        // \"Closed\"." is a self-defeating dispute, so the observation is
+        // dropped when the report already says closed.
+        const rawStatus = statusObservation();
+        const obs = /\bclosed\b/i.test(rawStatus) ? "" : rawStatus;
         f = {
           element: "Account Status — Closed",
           fact: `I state that this account is closed.${obs ? " " + obs : ""}`,
@@ -416,7 +462,10 @@ export function buildFindings(t: LetterTradeline, ctx: LetterContext): Finding[]
         break;
       }
       case "paid_settled": {
-        const obs = balanceObservation();
+        // REMEDIATION L-1: a $0 reported balance is consistent with "paid or
+        // settled", so quoting it back argues against the consumer's own claim.
+        // Only a NON-ZERO reported balance is worth putting in the letter.
+        const obs = t.balance > 0 ? balanceObservation() : "";
         f = {
           element: "Payment or Settlement",
           fact: `I state that this account was paid or settled.${obs ? " " + obs : ""}`,
@@ -435,14 +484,21 @@ export function buildFindings(t: LetterTradeline, ctx: LetterContext): Finding[]
       default:
         f = {
           element: "Consumer-Identified Concern",
-          fact: "I state that information reported for this account is inaccurate or incomplete, as described below.",
+          // REMEDIATION L-3: the note is appended INLINE, so this no longer
+          // promises a description "below" that never appears on its own line.
+          fact: "I state that information reported for this account is inaccurate or incomplete.",
           why: "Information I state is inaccurate or incomplete must be verified against the original account records before it can continue to be reported.",
         };
         break;
     }
     // The consumer's own words, carried verbatim (whitespace-normalized only)
     // and attributed to them. Never paraphrased, never AI-refined into a claim.
-    if (note) f = { ...f, fact: `${f.fact} In my own words: "${note}"` };
+    // REMEDIATION L-2: typographic outer quotes. A note containing a straight
+    // double quote used to render as `In my own words: "I said "no" ..."`,
+    // where the attribution delimiters are indistinguishable from the
+    // consumer's own punctuation. The consumer's characters are NOT altered —
+    // only the delimiters around them changed.
+    if (note) f = { ...f, fact: `${f.fact} In my own words: \u201C${note}\u201D` };
 
     // Original-creditor context, attached to the ownership claim only — it is
     // the one finding a collection's chain of title actually bears on, and it is
@@ -464,7 +520,14 @@ export function buildFindings(t: LetterTradeline, ctx: LetterContext): Finding[]
 // demand (asking a collector for a "§611 reinvestigation") is both legally wrong and
 // pattern-matchable as a credit-repair template, so the demand tracks the recipient.
 // Every request stays conditional ("if it cannot be verified") — never an outcome.
-function requestedAction(ctx: LetterContext): string[] {
+// REMEDIATION H-1 / M-1. `hasFindings` is what makes the demand match the
+// letter. With concerns set out, the demand is "reinvestigate each disputed
+// item"; with none — the round-2 path today, and any caller that has not been
+// given the consumer's assertions — the SAME demand referred to "each disputed
+// item" and "any disputed item" when no item had been identified anywhere in
+// the document. That is the phantom-findings defect, not a wording nicety: it
+// is what makes a claim-free letter read as though a list were attached.
+function requestedAction(ctx: LetterContext, hasFindings: boolean): string[] {
   const out: string[] = [];
   switch (ctx.strategy.id) {
     case "goodwill":
@@ -497,7 +560,11 @@ function requestedAction(ctx: LetterContext): string[] {
       return out;
     case "furnisher":
       out.push("REQUESTED ACTION — FURNISHER INVESTIGATION");
-      out.push(`  1. Conduct your own reasonable investigation of the disputed information under ${STATUTES.fcra_623.short} (${STATUTES.fcra_623.usc}).`);
+      out.push(
+        hasFindings
+          ? `  1. Conduct your own reasonable investigation of the disputed information under ${STATUTES.fcra_623.short} (${STATUTES.fcra_623.usc}).`
+          : `  1. Conduct your own reasonable investigation of the information you report for this account under ${STATUTES.fcra_623.short} (${STATUTES.fcra_623.usc}).`
+      );
       out.push("  2. Review the account-level records that would substantiate this reporting — the original signed agreement, the account statements or ledger, and the complete payment history — rather than re-confirming a summary tradeline.");
       out.push("  3. Report the results of your investigation to every consumer reporting agency to which you furnish this account.");
       out.push("  4. Modify, delete, or permanently block any item you find to be inaccurate, incomplete, or that cannot be verified against those records.");
@@ -505,8 +572,16 @@ function requestedAction(ctx: LetterContext): string[] {
     case "bureau":
     default:
       out.push("REQUESTED ACTION — REINVESTIGATION");
-      out.push(`  1. Conduct a reasonable reinvestigation of each disputed item under ${STATUTES.fcra_611.short} (${STATUTES.fcra_611.usc}).`);
-      out.push("  2. Forward all relevant information to the furnisher and require it to verify each disputed element against original, account-level documentation — not merely re-match my name and balance to its own record.");
+      out.push(
+        hasFindings
+          ? `  1. Conduct a reasonable reinvestigation of each disputed item under ${STATUTES.fcra_611.short} (${STATUTES.fcra_611.usc}).`
+          : `  1. Conduct a reasonable reinvestigation of the information reported for this account under ${STATUTES.fcra_611.short} (${STATUTES.fcra_611.usc}).`
+      );
+      out.push(
+        hasFindings
+          ? "  2. Forward all relevant information to the furnisher and require it to verify each disputed element against original, account-level documentation — not merely re-match my name and balance to its own record."
+          : "  2. Forward all relevant information to the furnisher and require it to verify the information it reports for this account against original, account-level documentation — not merely re-match my name and balance to its own record."
+      );
       out.push("  3. Correct or delete any information that cannot be verified as both accurate and complete.");
       out.push("  4. Disclose the method of verification under FCRA §611(a)(7): the business contacted, the procedure used, and the documentation relied upon.");
       out.push("  5. Provide an updated copy of my consumer file and written notice of the results.");
@@ -516,7 +591,7 @@ function requestedAction(ctx: LetterContext): string[] {
 
 // The deadline sentence + round-scaled escalation — also recipient-specific, so a
 // collector/furnisher is never told to "complete a §611 reinvestigation in 30 days."
-function closing(ctx: LetterContext): string[] {
+function closing(ctx: LetterContext, hasFindings: boolean): string[] {
   // Non-dispute strategies get a matching close and NO reinvestigation/validation
   // demand and NO regulatory escalation ladder.
   if (ctx.strategy.id === "goodwill") {
@@ -535,9 +610,13 @@ function closing(ctx: LetterContext): string[] {
     // don't track, so we never assert it as fact.
     out.push(`This is a written dispute. To the extent it is timely under ${STATUTES.fdcpa_809.short} (${STATUTES.fdcpa_809.usc}), please cease collection until you have mailed the validation described above. Nothing in this letter acknowledges the debt or waives any defense.`);
   } else if (ctx.strategy.recipient === "furnisher") {
-    out.push(`Please complete your investigation and report the corrected results to the consumer reporting agencies under ${STATUTES.fcra_623.short} (${STATUTES.fcra_623.usc}). If an item cannot be substantiated against your account records, it should be modified, deleted, or blocked.`);
+    out.push(`Please complete your investigation and report the corrected results to the consumer reporting agencies under ${STATUTES.fcra_623.short} (${STATUTES.fcra_623.usc}). If ${hasFindings ? "an item" : "any information you report for this account"} cannot be substantiated against your account records, it should be modified, deleted, or blocked.`);
   } else {
-    out.push(`Under ${STATUTES.fcra_611.short} (${STATUTES.fcra_611.usc}), please complete this reinvestigation within 30 days of receipt. If any disputed item cannot be verified as accurate and complete, it should be corrected or deleted.`);
+    out.push(
+      hasFindings
+        ? `Under ${STATUTES.fcra_611.short} (${STATUTES.fcra_611.usc}), please complete this reinvestigation within 30 days of receipt. If any disputed item cannot be verified as accurate and complete, it should be corrected or deleted.`
+        : `Under ${STATUTES.fcra_611.short} (${STATUTES.fcra_611.usc}), please complete this reinvestigation within 30 days of receipt. If any information reported for this account cannot be verified as accurate and complete, it should be corrected or deleted.`
+    );
   }
   out.push("");
   // Escalation ladder — only the regulatory framing scales with the round.
@@ -597,6 +676,11 @@ export function renderTemplateLetter(t: LetterTradeline, ctx: LetterContext, con
   // (a goodwill letter that also lists "factual concerns" contradicts itself). The
   // accuracy disputes keep the neutral, round-aware investigation frame.
   const nonDispute = ctx.strategy.id === "goodwill" || ctx.strategy.id === "cease_desist" || ctx.strategy.id === "pay_delete";
+  // Computed ONCE, before the opening paragraph is written, so the opening, the
+  // scope disclaimer, the requested action and the closing all describe the same
+  // letter. Non-dispute strategies never carry findings by design.
+  const findings = nonDispute ? [] : buildFindings(t, ctx);
+  const hasFindings = findings.length > 0;
   if (ctx.strategy.id === "goodwill") {
     lines.push(
       "I am writing regarding the above account. I am not disputing the accuracy of what is reported; rather, I am asking you to consider a goodwill adjustment in light of my overall history with the account, as explained below.",
@@ -614,15 +698,14 @@ export function renderTemplateLetter(t: LetterTradeline, ctx: LetterContext, con
     );
   } else if (ctx.round >= 2) {
     lines.push(
-      `I am writing to follow up on a prior dispute concerning the above account, which remains unresolved. ${
-        ctx.assertions.length
-          ? `I have reviewed the information that appears on ${
-              ctx.targetBureau ? `my ${bureauName} consumer file` : "my consumer credit file"
-            }, and I have set out below the specific information I state is inaccurate or incomplete.`
-          : `I have reviewed the information that appears on ${
-              ctx.targetBureau ? `my ${bureauName} consumer file` : "my consumer credit file"
-            }.`
-      } I ask that it be addressed through a reasonable reinvestigation under ${statutes}.`,
+      hasFindings
+        ? `I am writing to follow up on a prior dispute concerning the above account, which remains unresolved. I have reviewed the information that appears on ${
+            ctx.targetBureau ? `my ${bureauName} consumer file` : "my consumer credit file"
+          }, and I have set out below the specific information I state is inaccurate or incomplete. I ask that it be addressed through a reasonable reinvestigation under ${statutes}.`
+        : // REMEDIATION M-1: with nothing confirmed, this is a follow-up on the
+          // PRIOR dispute and a request for the method of verification — it
+          // states no concern, and it points at none.
+          `I am writing to follow up on a prior dispute concerning the above account, which remains unresolved. I am asking about the reinvestigation of that dispute: please confirm its current status, disclose how the previously disputed information was verified, and address the information reported for this account under ${statutes}.`,
       ""
     );
   } else {
@@ -647,12 +730,16 @@ export function renderTemplateLetter(t: LetterTradeline, ctx: LetterContext, con
 
   // SCOPE DISCLAIMER. Emitted for every accuracy dispute, INDEPENDENTLY of how
   // many concerns follow: it is a statement about the whole letter's scope (one
-  // file, reviewed by the consumer), not a caption for the list. It moved out of
-  // the findings block in RC1-S4 because that block is now conditional on the
-  // consumer having confirmed something, while the scope limit always holds.
+  // file, reviewed by the consumer), not a caption for the list.
+  //
+  // REMEDIATION H-1/M-1: the wording is now claim-free. Carrying "The concerns
+  // I set out…" out of the findings block left the sentence referring to a list
+  // that may not exist — a letter that points at concerns it never states. It
+  // is conditional now ("any concerns it raises"), so it is true either way and
+  // scaffolds nothing.
   if (!nonDispute && !ctx.crossBureau) {
     lines.push(
-      `(The concerns I set out relate solely to how this account is reported on my ${bureauName} file. I make no representation about any other consumer reporting agency, as I have not reviewed those files.)`,
+      `(This dispute and any concerns it raises relate solely to how this account is reported on my ${bureauName} file. I make no representation about any other consumer reporting agency, as I have not reviewed those files.)`,
       ""
     );
   }
@@ -668,7 +755,6 @@ export function renderTemplateLetter(t: LetterTradeline, ctx: LetterContext, con
   // has not yet been given the consumer's assertions (see the round-2 handoff
   // note on buildRound2UserPrompt in lib/round2.ts).
   if (!nonDispute) {
-    const findings = buildFindings(t, ctx);
     if (findings.length) {
       lines.push("SUMMARY OF FACTUAL CONCERNS");
       lines.push("");
@@ -709,8 +795,8 @@ export function renderTemplateLetter(t: LetterTradeline, ctx: LetterContext, con
 
   // Recipient- and strategy-specific requested action + evidence, then the matching
   // deadline sentence and round-scaled escalation.
-  lines.push(...requestedAction(ctx), "");
-  lines.push(...closing(ctx), "");
+  lines.push(...requestedAction(ctx, hasFindings), "");
+  lines.push(...closing(ctx, hasFindings), "");
   lines.push("Respectfully,", "", name);
 
   return lines.join("\n");
@@ -725,7 +811,14 @@ export function buildSystemPrompt(round: number = 1): string {
     "INVESTIGATOR-FIRST METHOD (how to argue — this governs structure):",
     "Every disputed point follows the order FACT → WHY IT MATTERS → INVESTIGATION REQUEST. Never lead with a statute, an accusation, or a demand. State the factual concern first; explain in one sentence why it prevents the information from being verified as accurate and complete; only then invoke the law that entitles the consumer to a reinvestigation. The objective is deletion of UNVERIFIABLE information — and the lawful, higher-yield path to deletion is to compel a real reinvestigation the furnisher cannot satisfy, after which §1681i requires deletion automatically. A letter an agency can pattern-match to a credit-repair template may be deemed frivolous under FCRA §1681i(a)(3) and never investigated; an investigator-style letter compels the reinvestigation. Never demand deletion as a substitute for requesting verification first.",
     "",
-    "PREFERRED FRAMING — state concerns, not verdicts. Prefer phrasing such as: 'raises concerns regarding', 'appears inconsistent with', 'cannot be readily reconciled', 'warrants verification', 'appears incomplete', 'if it cannot be substantiated', 'based on the information currently available', 'I am unable to reconcile'. Present facts that warrant investigation; do not pronounce conclusions only an adjudicator can reach.",
+    // REMEDIATION M-2: 'I am unable to reconcile' and 'based on the information
+    // currently available' were removed from this list. Both are first-person
+    // statements about the CONSUMER'S OWN records and recollection — exactly
+    // what rule 8 below forbids the model from introducing, and exactly the
+    // phrasing RC1-S4 deleted from the deterministic template. Leaving them here
+    // instructed the model both ways, with the concrete instruction inviting the
+    // deleted claim back on the AI-refinement path.
+    "PREFERRED FRAMING — state concerns, not verdicts. Prefer phrasing such as: 'raises concerns regarding', 'appears inconsistent with', 'cannot be readily reconciled', 'warrants verification', 'appears incomplete', 'if it cannot be substantiated'. Present facts that warrant investigation; do not pronounce conclusions only an adjudicator can reach. Phrasings that speak for the consumer about their OWN records, recollection or intentions ('I am unable to reconcile…', 'I do not recall…', 'I intend to…') are reserved to the consumer: use them ONLY where the grounded draft already contains them.",
     "",
     "NEVER STATE AS ESTABLISHED FACT (reframe each as a concern warranting investigation):",
     "• that a law has been violated — no 'this violates the FCRA', 'you are in violation', 'this is illegal', 'this is fraud', 'you are liable';",

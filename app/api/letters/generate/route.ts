@@ -6,6 +6,7 @@ import { recordKaiEvent } from "@/lib/kaiEvents";
 import { track, PRODUCT_EVENTS } from "@/lib/events";
 import { enforceRateLimit } from "@/lib/rateLimit";
 import {
+  assertionsForContext,
   buildContext,
   renderTemplateLetter,
   buildSystemPrompt,
@@ -18,11 +19,16 @@ import { encryptText } from "@/lib/docCrypto";
 import { getEntitlement, spendLetterCredits } from "@/lib/entitlements";
 import { presentBureaus, getBureauData } from "@/lib/bureauData";
 import { getFurnisherContact, formatFurnisherAddress } from "@/lib/furnisher";
+import { BUREAU_LABEL } from "@/lib/bureaus";
 import type { Bureau } from "@prisma/client";
 
 export const maxDuration = 60;
 
 const VALID: Bureau[] = ["EQUIFAX", "EXPERIAN", "TRANSUNION"];
+
+// One stable key per target, including the bureau-less furnisher/collector
+// target. Mirrors planLetterRegeneration's own "__none__" convention.
+const targetKey = (b: Bureau | undefined) => b ?? "__none__";
 
 type GenerateUser = {
   id: string;
@@ -250,6 +256,61 @@ export async function POST(req: Request) {
       targets = list;
     }
 
+    // ---- RC1-S4 REMEDIATION H-1: THE GATE AND THE COMPOSER MUST AGREE --------
+    // The check above asks "has this consumer confirmed anything about this
+    // ACCOUNT". `buildContext` then narrows per RECIPIENT (assertionsForContext,
+    // lib/letter.ts): a bureau letter may only speak from assertions scoped to
+    // NULL or to that same bureau, because telling Equifax about a fact the
+    // consumer confirmed only about their Experian file is the cross-bureau
+    // violation this product exists to avoid.
+    //
+    // Those two questions are not the same one. A consumer who confirms "the
+    // balance is wrong — only my Experian file" and then generates for all three
+    // bureaus used to get three letters: one real, and two that asserted
+    // nothing, contradicted themselves ("each disputed item" with no items), and
+    // were charged for. Mailing a dispute that identifies nothing is exactly the
+    // §1681i(a)(3) frivolous-determination hazard this letter engine is built to
+    // avoid.
+    //
+    // So the narrowing happens HERE, per target, BEFORE anything is created,
+    // updated or spent. A target with no applicable confirmation is not written.
+    const assertionsByTarget = new Map<string, typeof assertions>();
+    const validTargets: (Bureau | undefined)[] = [];
+    const skippedBureaus: Bureau[] = [];
+    for (const b of targets) {
+      const applicable = assertionsForContext(assertions, { strategy: ctxProbe.strategy, targetBureau: b });
+      assertionsByTarget.set(targetKey(b), applicable as typeof assertions);
+      if (applicable.length > 0) validTargets.push(b);
+      else if (b) skippedBureaus.push(b);
+    }
+
+    // Every requested target is unsupported → refuse outright, before the
+    // entitlement gate and before any spend, exactly like the no-assertion case.
+    if (validTargets.length === 0) {
+      const scopes = Array.from(
+        new Set(assertions.map((a) => (a.bureauScope ? BUREAU_LABEL[a.bureauScope] : null)).filter(Boolean) as string[])
+      );
+      const askedFor = skippedBureaus.map((b) => BUREAU_LABEL[b]);
+      return NextResponse.json(
+        {
+          error:
+            askedFor.length && scopes.length
+              ? `You told us what\u2019s wrong on your ${scopes.join(" and ")} ${
+                  scopes.length > 1 ? "files" : "file"
+                }, but this letter is addressed to ${askedFor.join(" and ")}. Confirm what\u2019s wrong on ${
+                  askedFor.length > 1 ? "those files" : "that file"
+                } \u2014 or re-confirm it for every bureau reporting this account \u2014 and we\u2019ll draft it. Nothing was used up.`
+              : "We don\u2019t have a confirmed fact that applies to the bureau this letter is addressed to. Confirm what\u2019s wrong on that file before we draft it. Nothing was used up.",
+          needsAssertion: true,
+          tradelineId: tradeline.id,
+          // Machine-readable: which targets had no applicable confirmation.
+          skippedBureaus,
+        },
+        { status: 400 }
+      );
+    }
+    targets = validTargets;
+
     // Phase 1A-R RB-6: idempotent regenerate. Match each requested target
     // against any UNMAILED letter already on file for this exact tradeline +
     // strategy + round (round is always 1 here — round 2+ is the dedicated
@@ -299,14 +360,14 @@ export async function POST(req: Request) {
     let consumerComplete = true;
     let recipientComplete = true;
     for (const { target: b, existingId } of toUpdate) {
-      const r = await updateOne(user, tradeline as any, strategyId, b, entitlement.aiRefinement, key, recipient, existingId, assertions);
+      const r = await updateOne(user, tradeline as any, strategyId, b, entitlement.aiRefinement, key, recipient, existingId, assertionsByTarget.get(targetKey(b)) ?? []);
       updated.push(r.letter);
       anyAI = anyAI || r.aiRefined;
       consumerComplete = consumerComplete && r.consumerComplete;
       recipientComplete = recipientComplete && r.recipientComplete;
     }
     for (const b of newTargets) {
-      const r = await generateOne(user, tradeline as any, strategyId, b, entitlement.aiRefinement, key, recipient, assertions);
+      const r = await generateOne(user, tradeline as any, strategyId, b, entitlement.aiRefinement, key, recipient, assertionsByTarget.get(targetKey(b)) ?? []);
       created.push(r.letter);
       anyAI = anyAI || r.aiRefined;
       consumerComplete = consumerComplete && r.consumerComplete;
@@ -342,7 +403,21 @@ export async function POST(req: Request) {
       entitlement: after,
       consumerComplete,
       recipientComplete,
-      warning: !consumerComplete
+      // REMEDIATION H-1: which requested bureaus were NOT written, and why.
+      // Never silently dropped, and never charged for.
+      skippedBureaus,
+      skippedReason: skippedBureaus.length
+        ? `No confirmed fact of yours applies to ${skippedBureaus
+            .map((b) => BUREAU_LABEL[b])
+            .join(" or ")}, so ${skippedBureaus.length > 1 ? "those letters were" : "that letter was"} not drafted and nothing was used up for ${
+            skippedBureaus.length > 1 ? "them" : "it"
+          }.`
+        : null,
+      warning: skippedBureaus.length
+        ? `Drafted for ${all.length} of ${all.length + skippedBureaus.length} bureaus. No confirmed fact of yours applies to ${skippedBureaus
+            .map((b) => BUREAU_LABEL[b])
+            .join(" or ")} \u2014 confirm what\u2019s wrong on that file and we\u2019ll draft it. Nothing was used up for it.`
+        : !consumerComplete
         ? "Complete your Consumer Info (name + mailing address) before printing — the draft contains placeholders."
         : !recipientComplete
         ? "Add the furnisher/collector mailing address before printing — the draft still shows a [Furnisher mailing address] placeholder."
