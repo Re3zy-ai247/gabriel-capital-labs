@@ -2,6 +2,11 @@ import { createHash } from "node:crypto";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
+// THE REVIEWED, APPLIED Gate D chain. This is the schema the preflight compares a
+// live database against, so a name may be added here ONLY once its migration has
+// been reviewed AND applied as part of a Gate D release. Everything downstream —
+// manifest contents, coverage counts, the manifest hash, and every fixture's
+// physical/applied sets — is derived from exactly this list.
 export const GATE_D_MIGRATION_CHAIN = [
   "0_init",
   "20260720204355_operator_network_messages",
@@ -9,6 +14,36 @@ export const GATE_D_MIGRATION_CHAIN = [
   "20260720231803_event_bus_agency_index",
   "20260721120000_operator_identity",
   "20260721160000_operator_reputation",
+] as const;
+
+// AUTHORED-BUT-UNAPPLIED migration directories (RC1, added 2026-08-23).
+//
+// `loadGateDManifest` pins the migration DIRECTORY SET as a drift tripwire: an
+// unreviewed folder appearing under prisma/migrations must fail loudly. RC1
+// authors migrations that are deliberately NOT applied until the owner-gated
+// release step, so the directory set and the applied chain are no longer the
+// same list, and the tripwire needs both halves stated explicitly rather than
+// relaxed.
+//
+// An entry here is ACKNOWLEDGED ON DISK AND ABSENT FROM THE DATABASE. It is
+// deliberately NOT part of GATE_D_MIGRATION_CHAIN, so it contributes nothing to
+// the manifest, the coverage counts or the manifest hash, and the preflight
+// still expects a Gate D database NOT to contain it — which is the truth for an
+// unapplied migration. When one is applied in a future reviewed release it
+// MOVES to the chain above; it is never in both.
+//
+//   · 20260823120000_consumer_assertion — RC1-S4 Consumer Fact Confirmation
+//     (ConsumerAssertion table). Authored, reviewed, NOT applied.
+//
+// SERIAL ARTIFACT: this list is extended one slice at a time, in wave order.
+// S8's terms-acceptance migration is the next entry expected here.
+export const AUTHORED_UNAPPLIED_MIGRATIONS = ["20260823120000_consumer_assertion"] as const;
+
+// Every directory legitimately present under prisma/migrations: the applied
+// chain plus the authored-but-unapplied set. Anything else is drift.
+export const EXPECTED_MIGRATION_DIRECTORIES = [
+  ...GATE_D_MIGRATION_CHAIN,
+  ...AUTHORED_UNAPPLIED_MIGRATIONS,
 ] as const;
 
 export type MigrationState =
@@ -758,7 +793,11 @@ export function loadGateDManifest(repoRoot: string): GateDManifest {
     .filter((entry) => entry.isDirectory())
     .map((entry) => entry.name)
     .sort();
-  const expected = [...GATE_D_MIGRATION_CHAIN].sort();
+  // Directory set, not applied set: an authored-but-unapplied migration is a
+  // legitimate folder. The manifest built below still comes from the APPLIED
+  // chain alone, so nothing about what the preflight expects of a live database
+  // changes here.
+  const expected = [...EXPECTED_MIGRATION_DIRECTORIES].sort();
   if (!same(discovered, expected)) {
     throw new UnsupportedMigrationSqlError(
       `migration directory set: expected=${expected.join(",")} actual=${discovered.join(",")}`,
