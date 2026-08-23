@@ -164,7 +164,12 @@ const fakeStripe = {
   },
 };
 
-let rateLimitResponse: ReturnType<typeof NextResponse.json> | null = null;
+// P0-10 made lib/rateLimit.ts fail CLOSED product-wide. This route deliberately
+// does NOT use enforceRateLimit: on this one surface a limiter fault must let the
+// caller through, because denying a suspended payer their only way to stop being
+// charged re-creates the stranding the route exists to prevent.
+type RateDecision = { ok: boolean; retryAfter: number; reason?: "over-limit" | "unavailable" };
+let rateLimitDecision: RateDecision = { ok: true, retryAfter: 0 };
 const rateLimitKeys: string[] = [];
 const audits: Array<{ action: string; actorId: string; targetId?: string }> = [];
 
@@ -215,7 +220,11 @@ Mod._load = function patched(this: unknown, request: string, parent: unknown, is
   }
   if (request === "@/lib/rateLimit") {
     return {
-      enforceRateLimit: async (key: string) => { rateLimitKeys.push(key); return rateLimitResponse; },
+      rateLimit: async (key: string) => { rateLimitKeys.push(key); return rateLimitDecision; },
+      enforceRateLimit: async (key: string) => {
+        rateLimitKeys.push(key);
+        return rateLimitDecision.ok ? null : NextResponse.json({ error: "Too many requests." }, { status: 429 });
+      },
       clientIp: () => "127.0.0.1",
     };
   }
@@ -443,11 +452,20 @@ async function run() {
 
   // Rate-limit refusals surface as 429 and stop before any Stripe work.
   const before11d = updated.length;
-  rateLimitResponse = NextResponse.json({ error: "Too many requests." }, { status: 429 });
+  rateLimitDecision = { ok: false, retryAfter: 60, reason: "over-limit" };
   const c11d = await cancelPost();
   check("11 RUNTIME an over-limit caller gets 429 and no Stripe mutation",
     c11d.status === 429 && updated.length === before11d);
-  rateLimitResponse = null;
+
+  // The limiter itself being DOWN is our fault, not the caller's. Everywhere else
+  // in the product that now denies (P0-10). Here it must not: a suspended payer
+  // who cannot cancel is the exact harm this route exists to prevent.
+  const before11e = updated.length;
+  rateLimitDecision = { ok: false, retryAfter: 5, reason: "unavailable" };
+  const c11e = await cancelPost();
+  check("11 RUNTIME a limiter BACKEND fault must not strand a payer — cancellation proceeds",
+    c11e.status === 200 && updated.length === before11e + 1);
+  rateLimitDecision = { ok: true, retryAfter: 0 };
 
   // ── CASE 8 — RUNTIME. Direct API bypass fails ───────────────────────────────
   const before8 = updated.length;

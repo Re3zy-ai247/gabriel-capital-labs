@@ -45,10 +45,26 @@ const accountFn = session.slice(loadAt, returnAt > loadAt ? returnAt : undefined
 check("no second user fetch was introduced in currentAccount",
   (accountFn.match(/prisma\.user\.find/g) ?? []).length === 1);
 
-// ── Sign-in must still block disabled accounts ───────────────────────────────
-// Removing the login check would let a disabled user mint a fresh token that the
-// currentAccount gate would then have to reject on every request.
-check("authorize() still refuses disabled accounts at sign-in", /user\.disabled/.test(auth));
+// ── A disabled account gets a CANCELLATION-ONLY principal, and nothing else ──
+// This assertion used to read "authorize() still refuses disabled accounts at
+// sign-in". That refusal, combined with password-session evidence, stranded a
+// suspended payer with no way to stop being charged (M-1) — every pre-wave JWT
+// reads as anonymous, and sign-in was the only way to mint a replacement. So the
+// refusal moved: `authorize` admits the credential, and the projection to zero
+// access happens in the callbacks. What must hold is that the disabled state is
+// still enforced everywhere it matters. Behaviour is proven end to end in
+// scripts/runtime/suspended-payer-cancellation.runtime.test.ts; these are the
+// shape assertions that keep the projection wired.
+const sessionVersionLib = readFileSync(join(root, "lib/sessionVersion.ts"), "utf8");
+check("authorize() no longer refuses a disabled account outright",
+  !/if \(user\.disabled\) return null;/.test(auth));
+check("the jwt callback projects a disabled row to a cancellation-only token",
+  /if \(current\.disabled\)/.test(sessionVersionLib) && /cancellationOnly: true/.test(sessionVersionLib));
+check("the session callback returns null for that marker, so no session exists",
+  /token\.cancellationOnly === true/.test(auth) && /return null as unknown as typeof session/.test(auth));
+check("a cancellation-only cookie is never upgraded to an active session without a fresh sign-in",
+  /if \(!isSignIn && token\.cancellationOnly === true\) return anonymousToken/.test(sessionVersionLib));
+check("currentAccount() still fails closed on disabled", /account\?\.disabled/.test(session));
 
 // ── Login throttle must survive (same file, easy to regress) ─────────────────
 check("sign-in throttle still present", /login-id:/.test(auth) && /login-ip:/.test(auth));

@@ -21,6 +21,7 @@ const REQUIRED = [
   "invoice-shape.runtime.test.ts",
   "rate-limit-failclosed.runtime.test.ts",
   "stripe-provision-auth.runtime.test.ts",
+  "suspended-payer-cancellation.runtime.test.ts",
   "stripe-webhook-claim.runtime.test.ts",
   "stripe-webhook-reorder.runtime.test.ts",
   "unknown-price-failclosed.runtime.test.ts",

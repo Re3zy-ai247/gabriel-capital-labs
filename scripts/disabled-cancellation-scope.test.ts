@@ -194,10 +194,15 @@ check(`${ROUTE} never returns a stack`, !/e\.stack/.test(route));
 check(`${ROUTE} audits through the shared convention`,
   /import \{ logAudit \} from "@\/lib\/admin"/.test(route) && /action: "billing\.self_cancel"/.test(route));
 check(`${ROUTE} rate-limits with the shared limiter, keyed by user id`,
-  /enforceRateLimit\(`billing:self-cancel:\$\{account\.id\}`/.test(route));
+  /rateLimit\(`billing:self-cancel:\$\{account\.id\}`/.test(route));
+// P0-10 made lib/rateLimit.ts fail CLOSED everywhere. This is the ONE surface
+// where that would re-create the stranding the route exists to prevent, so it
+// must refuse an over-limit caller and PROCEED when the limiter itself is down.
+check(`${ROUTE} refuses only a genuine over-limit caller, never a limiter fault`,
+  /reason === "over-limit"/.test(route) && !/enforceRateLimit\(/.test(route));
 // The limit must be applied before any Stripe work, and after identity is known.
 const idAt = route.indexOf("await sessionAccountState(req)");
-const rlAt = route.indexOf("enforceRateLimit(");
+const rlAt = route.indexOf("rateLimit(`billing:self-cancel:");
 const stripeAt = route.indexOf("stripe.subscriptions.retrieve");
 check(`${ROUTE} rate-limits after identity and before Stripe`,
   idAt > -1 && rlAt > idAt && stripeAt > rlAt);
@@ -230,8 +235,16 @@ check("a dropped request does not falsely claim nothing changed",
 
 // The middleware must not start redirecting this path away.
 const middleware = read("middleware.ts");
-check("middleware still only matches the landing page, so /billing/cancel is reachable",
-  /matcher:\s*\["\/"\]/.test(middleware));
+// M-1 added /dashboard to the matcher purely so a cancellation-only principal is
+// caught where app/login/page.tsx sends it. What must never change is that the
+// suspended user's own remedy is not matched, and that middleware routes that
+// principal TO it rather than away from it.
+check("middleware never matches /billing/cancel, so the remedy stays reachable",
+  /matcher:\s*\["\/",\s*"\/dashboard"\]/.test(middleware) && !/matcher:[^\]]*billing/.test(middleware));
+check("middleware sends a cancellation-only principal to the cancellation page",
+  /cancellationOnly === true/.test(middleware) && /CANCEL_PATH/.test(middleware));
+check("the cancellation page path in middleware is exactly the page that exists",
+  /const CANCEL_PATH = "\/billing\/cancel"/.test(middleware));
 
 console.log(`\ndisabled-cancellation-scope.test.ts: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

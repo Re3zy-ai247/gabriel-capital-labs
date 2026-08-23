@@ -31,13 +31,59 @@ const TOO_LARGE = "PDF too large (max 15 MB).";
 const NOT_A_PDF =
   "That file isn't a PDF. Upload the PDF your bureau gave you, or paste the report text instead.";
 
-// Declared body size, refused BEFORE req.formData() buffers a single byte.
-// `content-length` is absent on a chunked upload; the per-file f.size check
-// below still applies in that case, so this is a cheap first line, not the only
-// one.
-function declaredBodyTooLarge(req: Request): boolean {
+// A body-size bound that holds whether or not the client declares one (M-5).
+//
+// The first version of this gate only read `content-length` and, because
+// `Number.isFinite(NaN)` is false, let anything WITHOUT that header straight
+// through to `req.formData()` — which buffers the whole body before the per-file
+// `f.size` check can run. A chunked or HTTP/2 request that omits the header
+// therefore reproduced the original E-05 defect verbatim ("the size cap is
+// enforced after the bytes are already in memory"). A declared length is also
+// only a claim; nothing forces the body to match it.
+//
+// So: trust the header only to REFUSE early, never to admit. When no trustworthy
+// length is present, the body is piped through a counter that errors the stream
+// past the cap, so parsing aborts mid-transfer instead of after it.
+type BoundedBody =
+  | { ok: true; req: Request; exceeded: { value: boolean } }
+  | { ok: false };
+
+function boundBodySize(req: Request): BoundedBody {
   const declared = Number.parseInt(req.headers.get("content-length") || "", 10);
-  return Number.isFinite(declared) && declared > MAX_BODY_BYTES;
+  if (Number.isFinite(declared)) {
+    // Cheapest possible refusal: no allocation, no read of the body at all.
+    if (declared > MAX_BODY_BYTES) return { ok: false };
+    return { ok: true, req, exceeded: { value: false } };
+  }
+
+  const source = req.body;
+  // A multipart POST with neither a declared length nor a readable body is not a
+  // shape we can bound. Fail closed rather than hand it to the parser.
+  if (!source) return { ok: false };
+
+  const exceeded = { value: false };
+  let seen = 0;
+  const metered = source.pipeThrough(
+    new TransformStream<Uint8Array, Uint8Array>({
+      transform(chunk, controller) {
+        seen += chunk.byteLength;
+        if (seen > MAX_BODY_BYTES) {
+          exceeded.value = true;
+          controller.error(new Error("upload body exceeded the size cap"));
+          return;
+        }
+        controller.enqueue(chunk);
+      },
+    })
+  );
+  const bounded = new Request(req.url, {
+    method: "POST",
+    headers: req.headers,
+    body: metered,
+    // Required by undici for a streaming request body.
+    duplex: "half",
+  } as RequestInit);
+  return { ok: true, req: bounded, exceeded };
 }
 
 // Accepts a pasted report (text) and/or an uploaded PDF, plus the set of bureaus
@@ -49,8 +95,8 @@ export async function POST(req: Request) {
   const limited = await enforceRateLimit(`report-upload:${user.id}`, 20, 3600); // paid AI extraction — abuse/cost guard
   if (limited) return limited;
 
-  // Cheapest possible refusal: before req.formData(), before any allocation.
-  if (declaredBodyTooLarge(req)) {
+  const bounded = boundBodySize(req);
+  if (!bounded.ok) {
     return NextResponse.json({ error: TOO_LARGE }, { status: 413 });
   }
 
@@ -63,7 +109,7 @@ export async function POST(req: Request) {
 
   try {
     if (contentType.includes("multipart/form-data")) {
-      const form = await req.formData();
+      const form = await bounded.req.formData();
       rawText = String(form.get("text") || "").trim();
       const bureauRaw = String(form.get("bureaus") || "");
       bureaus = bureauRaw.split(",").map((b) => b.trim().toUpperCase()).filter((b): b is Bureau =>
@@ -87,13 +133,18 @@ export async function POST(req: Request) {
         pdfBuf = Buffer.from(await f.arrayBuffer());
       }
     } else {
-      const body = await req.json().catch(() => ({}));
+      const body = await bounded.req.json().catch(() => ({}));
       rawText = String(body.text || "").trim();
       bureaus = (Array.isArray(body.bureaus) ? body.bureaus : [])
         .map((b: string) => String(b).toUpperCase())
         .filter((b: string): b is Bureau => VALID_BUREAUS.includes(b as Bureau));
     }
   } catch (e) {
+    // The metered stream aborts the parse mid-transfer when the body outruns the
+    // cap. Report that as the size refusal it is, not as an unreadable upload.
+    if (bounded.exceeded.value) {
+      return NextResponse.json({ error: TOO_LARGE }, { status: 413 });
+    }
     console.error("upload parse error", e);
     return NextResponse.json({ error: "Could not read the upload." }, { status: 400 });
   }

@@ -5,7 +5,7 @@ import { enforceRateLimit } from "@/lib/rateLimit";
 import { analyzeReportText } from "@/lib/analyze";
 import { decryptText } from "@/lib/docCrypto";
 import { recordKaiEvent } from "@/lib/kaiEvents";
-import { AiSpendRefusal, withAiPrincipal } from "@/lib/aiMeter";
+import { AiSpendRefusal, assertAiBudgetAvailable, withAiPrincipal } from "@/lib/aiMeter";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -32,6 +32,20 @@ export async function POST(req: Request) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const limited = await enforceRateLimit(`report-analyze:${user.id}`, 10, 3600); // fans out paid AI over all reports — cost guard
   if (limited) return limited;
+
+  // Ask BEFORE fanning out. lib/analyze.ts catches every extractor exception and
+  // falls back to the deterministic parser, so without this probe a
+  // budget-exhausted consumer would watch quality drop with no explanation and
+  // the refusal copy would be unreachable by anyone. Read-only and advisory —
+  // the bound that actually holds is the reservation inside the meter.
+  try {
+    await assertAiBudgetAvailable(user.id);
+  } catch (e) {
+    if (e instanceof AiSpendRefusal) {
+      return NextResponse.json({ error: e.consumerMessage }, { status: 429 });
+    }
+    throw e;
+  }
 
   const { reportId } = await req.json().catch(() => ({}));
   const owned = await prisma.report.count({

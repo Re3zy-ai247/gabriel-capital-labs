@@ -74,7 +74,26 @@ export const authOptions: NextAuthOptions = {
           where: { OR: [{ email: id }, { username: id }] },
         });
         if (!user?.passwordHash) return null;
-        if (user.disabled) return null; // admin-disabled accounts cannot sign in
+        // A disabled account is NOT refused here (M-1). It used to be, and the
+        // combination of that refusal with password-session evidence stranded the
+        // one population this product must never strand: a SUSPENDED PAYER. Every
+        // JWT minted before this wave carries `uid` only, so it now reads as
+        // anonymous — and an account suspended while signed out could never mint a
+        // replacement, because sign-in refused it. The result was a subscriber who
+        // could not reach /api/billing/self-cancel and could not stop being
+        // charged without contacting support. Founder law: a historical payer can
+        // always stop billing themselves.
+        //
+        // Admitting the credential here grants NOTHING. The jwt callback projects
+        // a disabled row to `{ uid, sessionVersion, cancellationOnly: true }`
+        // (lib/sessionVersion.ts:108-114); the session callback returns null for
+        // that marker (below), so getServerSession — and therefore
+        // currentAccount(), currentUser() and requireAdmin() — see no session at
+        // all; middleware.ts routes it to /billing/cancel and nowhere else; and
+        // sessionVersion.ts:119 refuses to upgrade a cancellation-only cookie to
+        // an active session even if an admin re-enables the row, without a fresh
+        // sign-in. The ONLY thing this credential can now do is report billing
+        // state and cancel a subscription.
         // Demo data may survive a historic bootstrap. Its repository-known
         // credential must never create a session outside explicit development.
         if (isDemoIdentityBlocked(process.env.NODE_ENV, user.email)) return null;

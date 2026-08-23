@@ -24,6 +24,7 @@
 // handler, not on the text of the file.
 //
 // Offline. No build, no network.
+import { readFileSync } from "node:fs";
 import Module from "node:module";
 import { join } from "node:path";
 
@@ -169,34 +170,101 @@ console.log("\nthe authenticated start_url is not fetched into Cache Storage");
 check("dynamicStartUrl is off (no start-url route, no register.js re-fetch)", capture.options?.dynamicStartUrl === false);
 check("cacheStartUrl is off (start_url is not added to the precache manifest)", capture.options?.cacheStartUrl === false);
 
-console.log("\nnon-vacuity: the same URLs against next-pwa's DEFAULT list");
-// If this guard passed on the pre-change config it would be worthless. Resolve
-// the same URLs against the INSTALLED default list — the exact rules that
-// applied on a72a47c — and show they are cached.
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const defaultCache = require(join(root, "node_modules", "next-pwa", "cache.js")) as Rule[];
-function defaultHandlerFor(href: string, destination = "empty"): string {
-  const url = new URL(href);
-  const ctx = { url, request: { destination }, sameOrigin: url.origin === ORIGIN };
-  for (const rule of defaultCache) {
-    const matched =
-      typeof rule.urlPattern === "function" ? rule.urlPattern(ctx) : rule.urlPattern.test(url.href);
-    if (matched) return rule.handler;
-  }
-  return "<none>";
-}
-check(
-  `the default list DOES cache /api/tradelines (${defaultHandlerFor(`${ORIGIN}/api/tradelines`)})`,
-  defaultHandlerFor(`${ORIGIN}/api/tradelines`) === "NetworkFirst"
-);
-check(
-  `the default list DOES cache the decrypted document route (${defaultHandlerFor(`${ORIGIN}/api/documents/doc_1/raw`)})`,
-  defaultHandlerFor(`${ORIGIN}/api/documents/doc_1/raw`) === "NetworkFirst"
-);
-check(
-  `the default list DOES cache /dashboard (${defaultHandlerFor(`${ORIGIN}/dashboard`, "document")})`,
-  defaultHandlerFor(`${ORIGIN}/dashboard`, "document") === "NetworkFirst"
-);
+async function main(): Promise<void> {
+  console.log("\nM-3: the custom worker purges caches the OLD worker already wrote");
+  // next.config.js stops the new worker writing consumer data to Cache Storage,
+  // but entries the previous worker wrote survive on the device until the browser
+  // evicts them — decrypted /api/documents/[id]/raw bytes and authenticated
+  // /dashboard HTML on a possibly-resold phone. worker/index.js is compiled into
+  // public/sw.js by next-pwa, so its activate handler runs once per SW activation.
+  // Executed here in a fake service-worker global rather than pattern-matched.
+  const workerSource = readFileSync(join(root, "worker", "index.js"), "utf8");
+  const listeners = new Map<string, (event: { waitUntil(p: Promise<unknown>): void }) => void>();
+  const cacheNames = [
+    "apis",
+    "others",
+    "start-url",
+    "next-data",
+    "static-data-assets",
+    "static-js-assets",
+    "google-fonts-webfonts",
+    // must SURVIVE:
+    "workbox-precache-v2-https://www.creditvector.app/",
+    "static-build-assets",
+    "static-public-assets",
+    "next-image",
+  ];
+  const deleted: string[] = [];
+  const fakeSelf = {
+    addEventListener: (type: string, fn: (event: { waitUntil(p: Promise<unknown>): void }) => void) => {
+      listeners.set(type, fn);
+    },
+    registration: { showNotification: () => {} },
+  };
+  const fakeCaches = {
+    keys: async () => cacheNames.slice(),
+    delete: async (name: string) => {
+      deleted.push(name);
+      return true;
+    },
+  };
+  // eslint-disable-next-line @typescript-eslint/no-implied-eval
+  new Function("self", "caches", "clients", workerSource)(fakeSelf, fakeCaches, { matchAll: async () => [] });
 
-console.log(`\npwa-cache-policy.test.ts: ${pass} passed, ${fail} failed`);
-process.exit(fail === 0 ? 0 : 1);
+  check("the worker registers an activate handler", listeners.has("activate"));
+  check("the push handler is still registered (the purge did not displace it)", listeners.has("push"));
+  const activate = listeners.get("activate");
+  if (activate) {
+    const pending: Promise<unknown>[] = [];
+    activate({ waitUntil: (p) => pending.push(p) });
+    await Promise.all(pending);
+  }
+  for (const name of ["apis", "others", "start-url", "next-data", "static-data-assets"]) {
+    check(`the legacy "${name}" cache is deleted`, deleted.includes(name));
+  }
+  check(
+    "workbox's own precache is NOT deleted",
+    !deleted.some((n) => n.startsWith("workbox-precache"))
+  );
+  for (const name of ["static-build-assets", "static-public-assets", "next-image"]) {
+    check(`the cache this build actually uses ("${name}") survives`, !deleted.includes(name));
+  }
+  check(
+    "deleting a cache that never existed is harmless (only present names are touched)",
+    deleted.every((n) => cacheNames.includes(n))
+  );
+
+  console.log("\nnon-vacuity: the same URLs against next-pwa's DEFAULT list");
+  // If this guard passed on the pre-change config it would be worthless. Resolve
+  // the same URLs against the INSTALLED default list — the exact rules that
+  // applied on a72a47c — and show they are cached.
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const defaultCache = require(join(root, "node_modules", "next-pwa", "cache.js")) as Rule[];
+  function defaultHandlerFor(href: string, destination = "empty"): string {
+    const url = new URL(href);
+    const ctx = { url, request: { destination }, sameOrigin: url.origin === ORIGIN };
+    for (const rule of defaultCache) {
+      const matched =
+        typeof rule.urlPattern === "function" ? rule.urlPattern(ctx) : rule.urlPattern.test(url.href);
+      if (matched) return rule.handler;
+    }
+    return "<none>";
+  }
+  check(
+    `the default list DOES cache /api/tradelines (${defaultHandlerFor(`${ORIGIN}/api/tradelines`)})`,
+    defaultHandlerFor(`${ORIGIN}/api/tradelines`) === "NetworkFirst"
+  );
+  check(
+    `the default list DOES cache the decrypted document route (${defaultHandlerFor(`${ORIGIN}/api/documents/doc_1/raw`)})`,
+    defaultHandlerFor(`${ORIGIN}/api/documents/doc_1/raw`) === "NetworkFirst"
+  );
+  check(
+    `the default list DOES cache /dashboard (${defaultHandlerFor(`${ORIGIN}/dashboard`, "document")})`,
+    defaultHandlerFor(`${ORIGIN}/dashboard`, "document") === "NetworkFirst"
+  );
+
+  console.log(`\npwa-cache-policy.test.ts: ${pass} passed, ${fail} failed`);
+  process.exit(fail === 0 ? 0 : 1);
+}
+
+void main();

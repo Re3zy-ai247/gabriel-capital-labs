@@ -707,7 +707,13 @@ async function main() {
     .filter((path) => /\bgetToken\s*\(/.test(readFileSync(path, "utf8")))
     .map((path) => path.slice(root.length + 1))
     .sort();
-  check("raw getToken middleware is scoped only to the public landing page", /matcher:\s*\["\/"\]/.test(middleware));
+  // M-1 widened the matcher by exactly one path so a cancellation-only principal
+  // is caught where app/login/page.tsx pushes it. The invariant that matters is
+  // unchanged: the suspended user's only remedy must never be matched.
+  check("raw getToken middleware is scoped to the landing page and /dashboard only",
+    /matcher:\s*\["\/",\s*"\/dashboard"\]/.test(middleware));
+  check("the cancellation page is never matched by middleware",
+    !/matcher:[^\]]*billing/.test(middleware));
   check("raw getToken middleware performs navigation only", !/prisma|currentAccount|currentUser|requireAdmin|\.create\(|\.update\(|\.delete\(/.test(middlewareCode));
   check("raw decoded-token consumers are exactly the reviewed allowlist",
     rawTokenConsumers.length === 2 &&
@@ -739,9 +745,9 @@ async function main() {
   const { middleware: landingMiddleware } = await import("../middleware");
   const priorAuthSecret = process.env.NEXTAUTH_SECRET;
   process.env.NEXTAUTH_SECRET = secret;
-  async function landingResponse(payload: Record<string, unknown>) {
+  async function landingResponse(payload: Record<string, unknown>, url = "https://www.creditvector.app/") {
     const encrypted = await encode({ token: payload, secret, maxAge: 60 });
-    return landingMiddleware(new NextRequest("https://www.creditvector.app/", {
+    return landingMiddleware(new NextRequest(url, {
       headers: { authorization: `Bearer ${encodeURIComponent(encrypted)}` },
     }));
   }
@@ -757,9 +763,20 @@ async function main() {
   const malformedLanding = await landingResponse({ uid: userId, sessionVersion: "malformed" });
   check("malformed middleware session evidence stays on the public landing",
     malformedLanding.status === 200 && malformedLanding.headers.get("location") === null);
+  // M-1: a cancellation-only JWT is no longer left on the landing page with no
+  // onward route — it is sent to the ONE surface it can use. It is still not
+  // given /dashboard, and it still has no session (asserted above).
   const cancellationOnlyLanding = await landingResponse(disabled);
-  check("a cancellation-only JWT stays on the public landing",
-    cancellationOnlyLanding.status === 200 && cancellationOnlyLanding.headers.get("location") === null);
+  check("a cancellation-only JWT is routed to the cancellation page, never the dashboard",
+    cancellationOnlyLanding.status === 307 &&
+    cancellationOnlyLanding.headers.get("location") === "https://www.creditvector.app/billing/cancel");
+  const cancellationOnlyDashboard = await landingResponse(disabled, "https://www.creditvector.app/dashboard");
+  check("and the same is true of the /dashboard push that follows a successful sign-in",
+    cancellationOnlyDashboard.status === 307 &&
+    cancellationOnlyDashboard.headers.get("location") === "https://www.creditvector.app/billing/cancel");
+  const validDashboard = await landingResponse(tokenFor(hashBefore), "https://www.creditvector.app/dashboard");
+  check("an ENABLED session is not redirected on /dashboard (no self-redirect loop)",
+    validDashboard.status === 200 && validDashboard.headers.get("location") === null);
   const demoLanding = await landingResponse({ ...tokenFor(hashBefore), email: "demo@gabrielcapitallabs.com" });
   check("a structurally valid blocked demo JWT stays on the public landing",
     demoLanding.status === 200 && demoLanding.headers.get("location") === null);

@@ -60,6 +60,57 @@ const NOT_A_PDF = Buffer.from(
   "latin1"
 );
 
+
+// ── real streamed Requests (M-5) ─────────────────────────────────────────────
+// A `Request` built from a ReadableStream carries NO content-length — exactly the
+// chunked / HTTP-2 shape that used to skip the pre-buffer gate entirely. These
+// are genuine platform objects, not doubles, so they exercise the real
+// pipeThrough/duplex path the route now depends on.
+const BOUNDARY = "----guard-boundary";
+function multipartParts(fileBytes: Buffer, padBytes: number): Uint8Array[] {
+  const enc = new TextEncoder();
+  const head = enc.encode(
+    `--${BOUNDARY}\r\nContent-Disposition: form-data; name="bureaus"\r\n\r\nEQUIFAX\r\n` +
+      `--${BOUNDARY}\r\nContent-Disposition: form-data; name="file"; filename="report.pdf"\r\n` +
+      `Content-Type: application/pdf\r\n\r\n`
+  );
+  const tail = enc.encode(`\r\n--${BOUNDARY}--\r\n`);
+  const chunks: Uint8Array[] = [head, new Uint8Array(fileBytes)];
+  if (padBytes > 0) {
+    const block = new Uint8Array(256 * 1024).fill(0x20);
+    for (let sent = 0; sent < padBytes; sent += block.byteLength) chunks.push(block);
+  }
+  chunks.push(tail);
+  return chunks;
+}
+
+/** Streamed multipart Request plus a counter of bytes the SOURCE actually produced. */
+function streamedRequest(fileBytes: Buffer, padBytes: number) {
+  const chunks = multipartParts(fileBytes, padBytes);
+  const produced = { bytes: 0 };
+  let i = 0;
+  const body = new ReadableStream<Uint8Array>({
+    // Pull-based on purpose: if the route abandons the stream, generation stops,
+    // and `produced.bytes` records how far it got.
+    pull(controller) {
+      if (i >= chunks.length) {
+        controller.close();
+        return;
+      }
+      const chunk = chunks[i++];
+      produced.bytes += chunk.byteLength;
+      controller.enqueue(chunk);
+    },
+  });
+  const req = new Request("http://localhost/api/reports/upload", {
+    method: "POST",
+    headers: { "content-type": `multipart/form-data; boundary=${BOUNDARY}` },
+    body,
+    duplex: "half",
+  } as RequestInit);
+  return { req, produced };
+}
+
 // ── doubles ──────────────────────────────────────────────────────────────────
 const calls: string[] = [];
 
@@ -84,9 +135,13 @@ function fakeFile(bytes: Buffer, size = bytes.length, name = "report.pdf") {
   };
 }
 
+// `contentLength` defaults to a normal declared size, because that is what a real
+// browser sends for a FormData body. Pass an explicit value to exercise the gate;
+// the no-header shape is covered by the streamed Requests above, which are real.
 function fakeRequest(opts: { contentLength?: string; file?: unknown; text?: string; bureaus?: string }) {
   const headers = new Map<string, string>([
     ["content-type", "multipart/form-data; boundary=----guard"],
+    ["content-length", "2048"],
   ]);
   if (opts.contentLength !== undefined) headers.set("content-length", opts.contentLength);
   return {
@@ -248,6 +303,49 @@ run("upload-bounds.runtime.test.ts", async () => {
     "the consumer is told when the page cap stopped the read early",
     truncationNote !== undefined && (truncationNote.note as string).includes("9000 pages")
   );
+
+  section("M-5: a body with NO content-length is still bounded");
+  const normal = streamedRequest(REAL_PDF, 0);
+  check("a streamed Request really carries no content-length", normal.req.headers.get("content-length") === null);
+  calls.length = 0;
+  const chunkedOk = await route.POST(normal.req);
+  check("a normal chunked upload is still accepted", chunkedOk.status === 200);
+  const chunkedLines = await ndjson(chunkedOk);
+  check(
+    "and it completes end to end (the metered re-wrap does not break parsing)",
+    chunkedLines.length > 0 && chunkedLines[chunkedLines.length - 1].ok === true
+  );
+
+  // 40 MB of padding behind a 16 MB cap, produced lazily.
+  const huge = streamedRequest(REAL_PDF, 40 * 1024 * 1024);
+  calls.length = 0;
+  const chunkedTooBig = await route.POST(huge.req);
+  check("an oversized chunked upload is refused 413, not parsed", chunkedTooBig.status === 413);
+  const chunkedBody = (await chunkedTooBig.json()) as Json;
+  check(
+    "it is reported as a size refusal, not as an unreadable upload",
+    typeof chunkedBody.error === "string" && (chunkedBody.error as string).includes("15 MB")
+  );
+  check(
+    `the transfer was abandoned mid-stream (${Math.round(huge.produced.bytes / 1024 / 1024)} MB produced of 40 MB offered)`,
+    huge.produced.bytes < 20 * 1024 * 1024
+  );
+  check("nothing was persisted for the refused chunked upload", !calls.includes("report.create"));
+  check("pdf.js never saw the refused chunked upload", !calls.includes("extractPdfTextBounded"));
+
+  section("M-5: a shape we cannot bound at all fails closed");
+  const unboundable = {
+    headers: { get: (k: string) => (k.toLowerCase() === "content-type" ? "multipart/form-data; boundary=x" : null) },
+    body: null,
+    formData: async () => {
+      calls.push("req.formData");
+      return { get: () => null };
+    },
+  } as unknown as Request;
+  calls.length = 0;
+  const refusedShape = await route.POST(unboundable);
+  check("no declared length and no readable body is refused 413", refusedShape.status === 413);
+  check("and the body was never handed to the parser", !calls.includes("req.formData"));
 
   section("route configuration");
   check("the route still declares maxDuration = 60", route.maxDuration === 60);

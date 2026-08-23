@@ -189,14 +189,17 @@ const defaultAiClientFactory: AiClientFactory = async (opts) => {
 let aiClientFactory: AiClientFactory = defaultAiClientFactory;
 
 /**
- * Swap the provider client. REFUSED in production — a runtime-swappable model
- * provider would be an authorization-free way to redirect every prompt in the
- * product, so the seam exists only where it is a development/verification tool.
- * Pass null to restore the real client.
+ * Swap the provider client. Allowed ONLY in development and test — a
+ * runtime-swappable model provider would be an authorization-free way to
+ * redirect every prompt in the product. Written as a POSITIVE allowance, not
+ * `=== "production"`: that is the fail-open shape E-11 condemned, and it would
+ * leave the seam open on any runtime where NODE_ENV is unset, "staging",
+ * "preview", or misspelled. Pass null to restore the real client.
  */
 export function setAiClientFactory(factory: AiClientFactory | null): void {
-  if (process.env.NODE_ENV === "production") {
-    throw new Error("aiMeter: the provider client cannot be replaced in production");
+  const env = process.env.NODE_ENV;
+  if (env !== "development" && env !== "test") {
+    throw new Error("aiMeter: the provider client can only be replaced in development or test");
   }
   aiClientFactory = factory ?? defaultAiClientFactory;
 }
@@ -206,21 +209,108 @@ function startOfUtcDay(now = new Date()): Date {
 }
 
 /**
- * Pre-call gate. Sums today's recorded estimate for this user and refuses when
- * it has reached the ceiling.
- *
- * FAILS CLOSED. `recordAiUsage` below fails OPEN on purpose — a metering write
- * must never break a call the consumer already paid for in latency — but a
- * budget we cannot read is a budget we cannot enforce, and the whole point of
- * this control is that a limiter fault must not silently remove the ceiling
- * (the exact defect this repo had in lib/rateLimit.ts). Every AI route needs the
- * same database for its own work, so a database fault denies the AI step rather
- * than the product.
- *
- * The check is a gate, not a meter: the call it admits is not itself bounded, so
- * a user can finish the day at most one call above the ceiling.
+ * Conservative pre-call cost estimate, used as the RESERVATION amount. Input is
+ * measured from the prompt actually being sent (~4 chars/token); output is
+ * assumed to be the full `max_tokens` the caller asked for. Both err high on
+ * purpose: a reservation that overstates is corrected downward the moment the
+ * real usage comes back, whereas one that understates re-opens the hole.
  */
-async function assertWithinDailyBudget(userId: string): Promise<void> {
+export function estimateRequestCostUsd(model: string, request: Record<string, unknown>): number {
+  const system = typeof request.system === "string" ? request.system : JSON.stringify(request.system ?? "");
+  const messages = JSON.stringify(request.messages ?? []);
+  const inputTokens = Math.ceil((system.length + messages.length) / 4);
+  const rawMax = Number(request.max_tokens);
+  const outputTokens = Number.isFinite(rawMax) && rawMax > 0 ? rawMax : 1024;
+  return estimateCostUsd(model, { inputTokens, outputTokens, cacheReadTokens: 0, cacheWriteTokens: 0 });
+}
+
+const BUDGET_EXHAUSTED_MESSAGE =
+  "This account has reached its daily limit for AI analysis. It resets at midnight UTC. Everything already analyzed stays available, and the rest of CreditVector keeps working in the meantime.";
+const BUDGET_UNAVAILABLE_MESSAGE =
+  "I couldn't check this account's usage for today, so I stopped before running the AI step rather than guess. Please try again in a moment.";
+
+/**
+ * RESERVE-THEN-SPEND (M-2). Admits or refuses one call, and — when it admits —
+ * writes the reservation that makes the next decision see this call's cost.
+ *
+ * The first version of this control read `SUM(costUsd)` before the call and
+ * wrote the row after it, and claimed "at most one call above the ceiling". That
+ * is true only SERIALLY. Measured concurrently, 20 requests fired together all
+ * read `spent = 0` and all spent: 9.6x the ceiling, because the real bound was
+ * the surface's rate limit (20 uploads/hr, 10 analyses/hr x 5 fan-out), not the
+ * budget. The reservation closes that: the row is written INSIDE the same
+ * transaction that reads the sum, and `SELECT ... FOR UPDATE` on the owning User
+ * row serializes concurrent decisions for one consumer — the same lock the
+ * password-reset revocation path uses (lib/passwordReset.ts). Concurrent callers
+ * queue behind it and each sees the previous reservation.
+ *
+ * ADMISSION RULE: refuse when `spent + estimate > budget`, EXCEPT for the first
+ * call of the day, which always runs. Without that exception a single request
+ * whose estimate exceeds the whole daily budget could never run at all. So the
+ * true bound is: **daily spend never exceeds the ceiling, unless one single call
+ * alone exceeds it, in which case it is exceeded by exactly that one call.**
+ *
+ * FAILS CLOSED. `settleReservation`/`recordAiUsage` fail OPEN on purpose — a
+ * metering write must never break a call already made — but a budget we cannot
+ * read or reserve against is a budget we cannot enforce, and the whole point of
+ * this control is that a backend fault must not silently remove the ceiling (the
+ * exact defect this repo had in lib/rateLimit.ts). Every AI route needs the same
+ * database for its own work, so a fault denies the AI step, not the product.
+ *
+ * Returns the reservation row id, to be settled with real usage after the call.
+ */
+async function reserveDailyBudget(
+  userId: string,
+  surface: string,
+  model: string,
+  estimateUsd: number,
+): Promise<string> {
+  const budget = aiDailyBudgetUsd();
+  try {
+    await ensureAiUsageTable();
+    return await prisma.$transaction(async (tx) => {
+      const locked = await tx.$queryRaw<Array<{ id: string }>>`
+        SELECT id FROM "User" WHERE id = ${userId} FOR UPDATE
+      `;
+      if (locked.length !== 1 || locked[0]?.id !== userId) {
+        // No row to bill against. Fail closed rather than spend for a principal
+        // that no longer exists.
+        throw new AiSpendRefusal("budget-unavailable", BUDGET_UNAVAILABLE_MESSAGE);
+      }
+      const agg = await tx.aiUsage.aggregate({
+        _sum: { costUsd: true },
+        where: { userId, createdAt: { gte: startOfUtcDay() } },
+      });
+      const spentUsd = agg._sum.costUsd ?? 0;
+      if (spentUsd > 0 && spentUsd + estimateUsd > budget) {
+        throw new AiSpendRefusal("budget-exhausted", BUDGET_EXHAUSTED_MESSAGE);
+      }
+      const reservation = await tx.aiUsage.create({
+        data: { surface, model, userId, costUsd: estimateUsd, ok: true, ms: 0 },
+      });
+      return reservation.id;
+    });
+  } catch (e) {
+    if (e instanceof AiSpendRefusal) throw e;
+    console.error("aiMeter: daily budget could not be reserved (failing closed):", e);
+    throw new AiSpendRefusal("budget-unavailable", BUDGET_UNAVAILABLE_MESSAGE);
+  }
+}
+
+/**
+ * READ-ONLY budget probe (L-3). Throws the same AiSpendRefusal the reservation
+ * would, without reserving anything.
+ *
+ * It exists because the refusal was previously unreachable by any consumer:
+ * lib/analyze.ts catches every exception from the extractor and falls back to
+ * the deterministic parser, so a budget-exhausted consumer saw quality quietly
+ * drop with no explanation. A route that is ABOUT to fan out model calls can ask
+ * first and say so.
+ *
+ * Advisory, not authoritative: being read-only it is inherently racy, and the
+ * bound that actually holds is the reservation inside reserveDailyBudget.
+ */
+export async function assertAiBudgetAvailable(userId: string): Promise<void> {
   const budget = aiDailyBudgetUsd();
   let spentUsd: number;
   try {
@@ -232,16 +322,46 @@ async function assertWithinDailyBudget(userId: string): Promise<void> {
     spentUsd = agg._sum.costUsd ?? 0;
   } catch (e) {
     console.error("aiMeter: daily budget unreadable (failing closed):", e);
-    throw new AiSpendRefusal(
-      "budget-unavailable",
-      "I couldn't check this account's usage for today, so I stopped before running the AI step rather than guess. Please try again in a moment."
-    );
+    throw new AiSpendRefusal("budget-unavailable", BUDGET_UNAVAILABLE_MESSAGE);
   }
   if (spentUsd >= budget) {
-    throw new AiSpendRefusal(
-      "budget-exhausted",
-      "This account has reached its daily limit for AI analysis. It resets at midnight UTC. Everything already analyzed stays available, and the rest of CreditVector keeps working in the meantime."
-    );
+    throw new AiSpendRefusal("budget-exhausted", BUDGET_EXHAUSTED_MESSAGE);
+  }
+}
+
+/**
+ * Replace a reservation's estimate with what the call really cost. Fails OPEN:
+ * the money is already spent, and a settlement failure must not turn a completed
+ * call into an error. An unsettled reservation simply leaves the conservative
+ * estimate standing, which is the safe direction for a ceiling.
+ *
+ * On the FAILURE path the reservation's cost is deliberately NOT zeroed (L-4): a
+ * request that timed out at 45 s may still have been billed by the provider for
+ * its input tokens, so the estimate stays on the ledger rather than recording $0
+ * for work that may well have cost money.
+ */
+async function settleReservation(
+  reservationId: string,
+  outcome: { model: string; usage: AiUsageTokens; ok: boolean; ms: number },
+): Promise<void> {
+  try {
+    await prisma.aiUsage.update({
+      where: { id: reservationId },
+      data: outcome.ok
+        ? {
+            model: outcome.model,
+            inputTokens: outcome.usage.inputTokens,
+            outputTokens: outcome.usage.outputTokens,
+            cacheReadTokens: outcome.usage.cacheReadTokens,
+            cacheWriteTokens: outcome.usage.cacheWriteTokens,
+            costUsd: estimateCostUsd(outcome.model, outcome.usage),
+            ok: true,
+            ms: outcome.ms,
+          }
+        : { ok: false, ms: outcome.ms },
+    });
+  } catch (e) {
+    console.error("aiMeter: reservation settlement failed (fail-open):", e);
   }
 }
 
@@ -260,36 +380,38 @@ export async function meteredMessage(
   if (!key) throw new Error("ANTHROPIC_API_KEY is not configured");
   // An explicit argument wins; otherwise inherit the route's declared principal.
   const principal = userId ?? currentAiPrincipal();
-  if (principal) await assertWithinDailyBudget(principal);
   const model = String(request.model || process.env.LLM_MODEL || "claude-opus-4-8");
+  // Reserve BEFORE spending, inside a per-user lock, so concurrent requests
+  // cannot all read the same pre-call sum. Anonymous surfaces (no principal and
+  // no ambient scope) keep the post-hoc, fail-open metering they always had.
+  const reservationId = principal
+    ? await reserveDailyBudget(principal, surface, model, estimateRequestCostUsd(model, request))
+    : null;
   const started = Date.now();
   try {
     const client = await aiClientFactory(aiClientOptions(key));
     const msg = (await client.messages.create(request)) as any;
     const u = (msg as any).usage || {};
-    await recordAiUsage({
-      surface,
-      model: String((msg as any).model || model),
-      userId: principal,
-      usage: {
-        inputTokens: u.input_tokens ?? 0,
-        outputTokens: u.output_tokens ?? 0,
-        cacheReadTokens: u.cache_read_input_tokens ?? 0,
-        cacheWriteTokens: u.cache_creation_input_tokens ?? 0,
-      },
-      ok: true,
-      ms: Date.now() - started,
-    });
+    const usage: AiUsageTokens = {
+      inputTokens: u.input_tokens ?? 0,
+      outputTokens: u.output_tokens ?? 0,
+      cacheReadTokens: u.cache_read_input_tokens ?? 0,
+      cacheWriteTokens: u.cache_creation_input_tokens ?? 0,
+    };
+    const settledModel = String((msg as any).model || model);
+    if (reservationId) {
+      await settleReservation(reservationId, { model: settledModel, usage, ok: true, ms: Date.now() - started });
+    } else {
+      await recordAiUsage({ surface, model: settledModel, userId: principal, usage, ok: true, ms: Date.now() - started });
+    }
     return msg;
   } catch (e) {
-    await recordAiUsage({
-      surface,
-      model,
-      userId: principal,
-      usage: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 },
-      ok: false,
-      ms: Date.now() - started,
-    });
+    const zero: AiUsageTokens = { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 };
+    if (reservationId) {
+      await settleReservation(reservationId, { model, usage: zero, ok: false, ms: Date.now() - started });
+    } else {
+      await recordAiUsage({ surface, model, userId: principal, usage: zero, ok: false, ms: Date.now() - started });
+    }
     throw e;
   }
 }

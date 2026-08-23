@@ -17,6 +17,7 @@ import {
   mockPackage,
   repoPath,
   run,
+  requireActual,
   section,
 } from "./_harness";
 
@@ -51,11 +52,30 @@ const refusingStripe = new Proxy(
   },
 );
 
+// M-4: the secret comparison now lives in lib/admin.ts (constant time, throttled
+// per source IP). Fake only the session-shaped exports; delegate the credential
+// check to the REAL implementation so this guard keeps testing shipped code
+// rather than a re-implementation. Prisma is doubled so the throttle is offline.
+let rateHitWrites = 0;
+mockModule("lib/prisma.ts", {
+  prisma: {
+    $executeRawUnsafe: async () => 0,
+    rateHit: {
+      upsert: async ({ where }: { where: { bucket: string } }) => {
+        rateHitWrites++;
+        return { bucket: where.bucket, count: rateHitWrites };
+      },
+    },
+  },
+});
+const realAdmin = requireActual<typeof import("../../lib/admin")>("lib/admin.ts");
+
 mockModule("lib/admin.ts", {
   requireAdmin: async () => adminPrincipal,
   logAudit: async (entry: unknown) => {
     audits.push(entry);
   },
+  setupSecretAccepted: (req: Request) => realAdmin.setupSecretAccepted(req),
 });
 
 mockModule("lib/stripe.ts", {
@@ -179,7 +199,10 @@ run("stripe-provision-auth.runtime.test.ts", async () => {
     check("PUT is not exported", route.PUT === undefined);
     check("PATCH is not exported", route.PATCH === undefined);
     check("DELETE is not exported", route.DELETE === undefined);
-    check("the setup secret is read from x-setup-secret", /headers\.get\("x-setup-secret"\)/.test(source));
+    // M-4 moved the header read into lib/admin.ts's throttled, constant-time
+    // helper; the invariant (header only, never a query string) is unchanged.
+    check("the setup secret is read from x-setup-secret",
+      /headers\.get\("x-setup-secret"\)/.test(source) || /setupSecretAccepted\(req\)/.test(source));
     check(
       "URL/query parsing is absent from provisioning authorization",
       !/searchParams|get\("secret"\)|new URL\(req\.url\)/.test(source),

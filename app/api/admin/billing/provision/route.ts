@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getStripe, resolvePrice, reconcileTaxCodes, PRICES } from "@/lib/stripe";
-import { requireAdmin, logAudit } from "@/lib/admin";
+import { requireAdmin, logAudit, setupSecretAccepted } from "@/lib/admin";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -12,10 +12,8 @@ export const runtime = "nodejs";
 // browser history, or analytics). This route intentionally exports POST only.
 async function authorize(req: Request): Promise<boolean> {
   if (await requireAdmin()) return true;
-  const setup = process.env.SETUP_SECRET;
-  if (!setup) return false;
-  const provided = req.headers.get("x-setup-secret") || "";
-  return provided === setup;
+  // Constant-time and throttled per source IP — see lib/admin.ts setupSecretAccepted.
+  return setupSecretAccepted(req);
 }
 
 export async function POST(req: Request) {
