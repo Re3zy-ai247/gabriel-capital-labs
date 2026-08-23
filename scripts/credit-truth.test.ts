@@ -19,6 +19,7 @@ import type { Bureau } from "@prisma/client";
 import {
   factualCondition,
   isFactualNegative,
+  disputeQueue,
   hasAdverseStatusEvidence,
   hasAffirmativeStandingEvidence,
 } from "../lib/intelligence/snapshot";
@@ -125,6 +126,52 @@ const reporting = (status: string, bureau: Bureau = "EQUIFAX"): BureauData => ({
 }
 
 // ===========================================================================
+// 2b. ZERO/NONE-VALUED FIELD LABELS (review M-1).
+//
+// A flattened PDF column routinely lands "Past Due: $0" on the same line as
+// "Status: Current", and the fallback parser takes the rest of the line
+// (lib/parse.ts). The label names the adverse event; the VALUE says it did not
+// happen. Reading the label as the event flags a never-late account as
+// derogatory — the A2-01 harm inverted, and worse than base, which called
+// these accounts clean correctly.
+// ===========================================================================
+{
+  const zeroValued = [
+    "Current | Past due: $0",
+    "Current, amount past due $0",
+    "Open/Current. Past Due Amount: 0",
+    "Charge-off amount: $0",
+    "Pays as agreed. Charge-off: none",
+    "Loss mitigation / foreclosure prevention plan",
+    // Mine, same class:
+    "Current. Charge off amount $0.00",
+    "Pays as agreed; past due amount: none",
+    "Current — collection amount 0",
+    "Never late. Amount past due: N/A",
+  ];
+  for (const status of zeroValued) {
+    eq(`"${status}" is not adverse evidence`, hasAdverseStatusEvidence(status), false);
+    eq(`"${status}" → not a negative`, isFactualNegative({ accountType: "REVOLVING", dateOfFirstDelinquency: null, bureauData: reporting(status) }), false);
+  }
+  // …and the same labels with a REAL value must still flag. The zero-value
+  // strip must not become a way to hide a genuine charge-off.
+  const realValued: [string, boolean][] = [
+    ["Charge-off amount: $1,477", true],
+    ["Past due: $340", true],
+    ["Past Due Amount: 210.00", true],
+    ["120 days past due", true],
+    ["Past due", true],           // bare label, no value: still adverse
+    ["Charge-Off", true],
+    ["Foreclosure", true],        // the event itself, not the prevention program
+    ["Late 30 x2, 60 x1", true],  // L-1: rating-code wording
+    ["Account transferred to recovery", true], // L-1
+  ];
+  for (const [status, want] of realValued) {
+    eq(`"${status}" → adverse=${want}`, hasAdverseStatusEvidence(status), want);
+  }
+}
+
+// ===========================================================================
 // 3. UNKNOWN — parser silence is neither clean nor derogatory.
 // ===========================================================================
 {
@@ -200,6 +247,7 @@ const aiAccount = (over: Partial<AIAccount> = {}): AIAccount => ({
   eq("a bureau outside the covered set is dropped, not reported", [data.EQUIFAX?.presence, data.TRANSUNION?.presence], ["PRESENT", "UNKNOWN"]);
 }
 
+
 // ===========================================================================
 // 5. ATTRIBUTION — the deterministic fallback parser, which reads a FLAT block
 //    and cannot attribute anything to a bureau.
@@ -228,6 +276,27 @@ const BLOCK = [
   eq("regex, tri-merge → the status is still evidence, unattributed", isFactualNegative({ accountType: "REVOLVING", dateOfFirstDelinquency: null, bureauData: data }), true);
 }
 
+{
+  // Review M-2 — attribution PARITY between the two parsers. A single-bureau
+  // report where the model omits the bureau list must not lose its
+  // attribution: every account in a one-bureau report is that bureau's, which
+  // is what the system prompt itself tells the model. Losing it left
+  // presentBureaus empty (the "—" bureau badge on the tradelines page) and let
+  // the letter builder's API path fall through to a hardcoded EQUIFAX default —
+  // a letter aimed at a bureau whose report was never uploaded.
+  const [ex] = toExtractedTradelines([aiAccount({ reportedByBureaus: [] })], ["TRANSUNION"]);
+  const data = toBureauData(ex, ["TRANSUNION"]);
+  eq("AI path, single covered bureau + no model list → attributed anyway", [data.TRANSUNION?.presence, data.TRANSUNION?.status], ["PRESENT", "Charge-Off"]);
+  eq("AI path, single covered bureau → presentBureaus is not empty", presentBureaus(data), ["TRANSUNION"]);
+  eq("AI path, single covered bureau → nothing left unattributed", (data as Record<string, unknown>)[UNATTRIBUTED], undefined);
+  const [rex] = extractRawTradelines(BLOCK, ["TRANSUNION"]);
+  const rdata = toBureauData(rex, ["TRANSUNION"]);
+  eq("both parsers answer the single-covered-bureau question identically", [presentBureaus(data), presentBureaus(rdata)], [["TRANSUNION"], ["TRANSUNION"]]);
+  // The multi-bureau case is unchanged by the parity rule.
+  const [multi] = toExtractedTradelines([aiAccount({ reportedByBureaus: [] })], ALL);
+  eq("parity rule does not re-introduce fabrication on a tri-bureau upload", presentBureaus(toBureauData(multi, ALL)), []);
+}
+
 // Real per-bureau data (the demo/seed shape) must still produce real conflicts —
 // the honesty fix must not blunt the product's actual cross-bureau finding.
 {
@@ -243,13 +312,45 @@ const BLOCK = [
 // 6. The AI Action Plan queue and the parse-mode disclosure — the two
 //    consumer-facing surfaces this slice owns.
 // ===========================================================================
+// ---- The queue itself: derived ONCE, behaviorally ----
+//
+// app/strategist/AiPlan.tsx:106 decides a generated plan has gone stale by
+// comparing the item count the ROUTE returned against the count the PAGE
+// passes. When those two came from independently-written filters they drifted,
+// and the drift rendered as "Your dispute queue has changed since this plan was
+// written" on a case where nothing had changed. One derivation, both callers.
+{
+  const rows = [
+    { id: "a", probability: "HIGH", accountType: "REVOLVING" as const, dateOfFirstDelinquency: null, bureauData: reporting("Charge-Off") },
+    { id: "b", probability: "MEDIUM", accountType: "INSTALLMENT" as const, dateOfFirstDelinquency: null, bureauData: reporting("Pays as agreed") },
+    { id: "c", probability: "LOW", accountType: "REVOLVING" as const, dateOfFirstDelinquency: null, bureauData: {} },
+    { id: "d", probability: "NOT_RECOMMENDED", accountType: "GOVERNMENT" as const, dateOfFirstDelinquency: null, bureauData: reporting("Charge-Off") },
+    { id: "e", probability: "LOW", accountType: "COLLECTION" as const, dateOfFirstDelinquency: null, bureauData: {} },
+  ];
+  eq("disputeQueue keeps only confirmed negatives that aren't statutory", disputeQueue(rows).map((r) => r.id), ["a", "e"]);
+  eq("a CLEAN row is not queued", disputeQueue(rows).some((r) => r.id === "b"), false);
+  eq("a NEEDS_REVIEW row is not queued", disputeQueue(rows).some((r) => r.id === "c"), false);
+  eq("a government debt is not queued even when its status is adverse", disputeQueue(rows).some((r) => r.id === "d"), false);
+}
+
 {
   const route = readFileSync(join(ROOT, "app/api/strategist/plan/route.ts"), "utf8");
-  eq("plan queue imports the shared fact test", route.includes('import { isFactualNegative } from "@/lib/intelligence/snapshot"'), true);
-  eq("plan queue applies it (not the probability band alone)", /const queue = tradelines\.filter\(\(t\) =>[^\n]*isFactualNegative\(t\)\);/.test(route), true);
+  const page = readFileSync(join(ROOT, "app/strategist/page.tsx"), "utf8");
+  // Source-level, deliberately loose: these assert WHERE the queue comes from,
+  // which no behavioral test of a Next route handler / server component can
+  // reach offline. Kept resilient to reformatting.
+  eq("plan route takes its queue from the shared derivation", /disputeQueue\(\s*tradelines\s*\)/.test(route), true);
+  eq("plan route does not re-implement the filter", /tradelines\.filter\([^)]*probability/.test(route), false);
+  eq("strategy desk takes its queue from the same derivation", /disputeQueue\(\s*tradelines\s*\)/.test(page), true);
+  eq("strategy desk feeds that same queue to AiPlan's staleness check", /currentItemCount=\{queue\.length\}/.test(page), true);
+  eq("strategy desk no longer prints a good-standing claim on a ranked row", page.includes("Account in good standing — no derogatory history on file."), false);
+  eq("strategy desk names the unconfirmed state honestly", page.includes("couldn&apos;t confirm this account&apos;s standing") || page.includes("couldn't confirm this account's standing"), true);
+
   eq("no fabricated fallback angle is injected into the prompt", route.includes("standard reinvestigation"), false);
   eq("an item with no angle is described truthfully", route.includes("none identified by the analysis"), true);
   eq("the prompt forbids inventing an angle", /Do NOT invent one/.test(route), true);
+  eq("the empty-plan message points at a path that exists (M-3)", route.includes("Letters page lets you start a dispute for any account"), true);
+  eq("the empty-plan message no longer points at a row with no CTA", route.includes("start from that account's row"), false);
 
   const upload = readFileSync(join(ROOT, "app/upload/page.tsx"), "utf8");
   eq("upload discloses a fallback-reader analysis", /!done\.usedAI\s*&&\s*<ExtractionFallbackNotice/.test(upload), true);
