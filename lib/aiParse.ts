@@ -15,7 +15,7 @@ const CREDITOR_KINDS = ["original_creditor", "debt_buyer", "collection_agency", 
 
 const ALL_BUREAUS: Bureau[] = ["EQUIFAX", "EXPERIAN", "TRANSUNION"];
 
-interface AIAccount {
+export interface AIAccount {
   creditorName: string;
   originalCreditor: string;
   accountNumberMask: string;
@@ -161,8 +161,17 @@ export async function aiExtractTradelines(
   } catch {
     return null;
   }
-  const accounts = parsed.accounts ?? [];
+  return toExtractedTradelines(parsed.accounts ?? [], coveredBureaus);
+}
 
+// The pure mapping from the model's structured output to our extraction shape.
+// Split out of aiExtractTradelines so the bureau-attribution rules below are
+// directly testable offline (scripts/credit-truth.test.ts) — no key, no
+// network, no I/O.
+export function toExtractedTradelines(
+  accounts: AIAccount[],
+  coveredBureaus: Bureau[]
+): ExtractedTradeline[] {
   return accounts
     .filter((a) => a.creditorName && a.creditorName.trim().length >= 2)
     .map((a) => {
@@ -170,16 +179,35 @@ export async function aiExtractTradelines(
       const reported = (a.reportedByBureaus || []).filter((b): b is Bureau =>
         coveredBureaus.includes(b as Bureau)
       );
-      const bureausForAccount = reported.length ? reported : coveredBureaus;
 
+      // RC1-S3 (Credit Truth Core) — bureau attribution, three honest cases.
+      //
+      // The schema gives us ONE status/balance/DOFD per account, not one per
+      // bureau. So:
+      //   • exactly one bureau reported  -> those values unambiguously belong
+      //     to that bureau. Attribute them.
+      //   • two or three bureaus reported -> presence is attested per bureau,
+      //     but the VALUES are not attributed. Record presence only and keep
+      //     the values as an account-level observation. (Copying one value set
+      //     into all three used to fabricate each bureau's report AND make
+      //     crossBureauConflicts() compare identical copies, so a genuine
+      //     inconsistency could never surface — the product's headline claim.)
+      //   • the model returned no bureau list -> we do not know which bureau
+      //     shows this account. It previously became "PRESENT at every bureau
+      //     the consumer selected", inventing presence outright. Now every
+      //     covered bureau stays UNKNOWN (toBureauData) and the values are
+      //     recorded unattributed.
+      const observed = {
+        status: a.status?.trim() || undefined,
+        balanceCents: a.balanceCents || 0,
+        dofd: a.dofd?.trim() || undefined,
+        dateReported: a.dateReported?.trim() || undefined,
+      };
       const perBureau: ExtractedTradeline["perBureau"] = {};
-      for (const b of bureausForAccount) {
-        perBureau[b] = {
-          status: a.status?.trim() || undefined,
-          balanceCents: a.balanceCents || 0,
-          dofd: a.dofd?.trim() || undefined,
-          dateReported: a.dateReported?.trim() || undefined,
-        };
+      if (reported.length === 1) {
+        perBureau[reported[0]] = observed;
+      } else {
+        for (const b of reported) perBureau[b] = {}; // presence attested, values not
       }
 
       // Assemble the furnisher mailing contact, keeping only non-empty parts.
@@ -208,6 +236,7 @@ export async function aiExtractTradelines(
           : undefined,
         furnisherAddress,
         perBureau,
+        unattributed: reported.length === 1 ? undefined : observed,
       } satisfies ExtractedTradeline;
     });
 }

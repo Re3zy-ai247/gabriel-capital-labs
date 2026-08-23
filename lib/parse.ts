@@ -11,6 +11,21 @@ import type { FurnisherContact } from "./furnisher";
 // prose into fake accounts. For full-fidelity extraction of arbitrary reports,
 // the AI parser (lib/aiParse.ts) is strongly preferred.
 
+// RC1-S3 (Credit Truth Core): the key under which an account-level observation
+// is stored when the SOURCE attests a value but does not attribute it to a
+// specific bureau (a tri-merge account whose single status/balance was printed
+// once, or a report that never said which bureau shows the account). It is
+// deliberately NOT a `Bureau`, so every bureau-scoped reader ignores it by
+// construction: presentBureaus()/hasCrossBureauKnowledge()/conflictFields()
+// filter on presence PRESENT|ABSENT (this entry is UNKNOWN), and the per-bureau
+// comparison table iterates the three real bureaus. Only whole-record readers
+// that legitimately want "everything the report said about this account" —
+// bureauTextBlob() for the §605 clock and the condition model in
+// lib/intelligence/snapshot.ts — see it. Writing an unattributed value into a
+// bureau's fields instead would assert that THAT bureau reports it, which the
+// report never said.
+export const UNATTRIBUTED = "UNATTRIBUTED";
+
 export interface ExtractedTradeline {
   creditorName: string;
   originalCreditor?: string;
@@ -24,8 +39,14 @@ export interface ExtractedTradeline {
   // used to pre-fill the dispute-letter recipient address. AI-only (the regex
   // fallback leaves it undefined).
   furnisherAddress?: FurnisherContact;
-  // per-bureau raw values, only for bureaus actually present in this report
+  // Per-bureau raw values, only for bureaus the source actually attributed.
+  // An entry may legitimately be `{}`: the source attested that this bureau
+  // reports the account but gave no bureau-scoped VALUES for it (presence is
+  // attested, values are not).
   perBureau: Partial<Record<Bureau, Omit<BureauFields, "presence">>>;
+  // Values the source attests for the ACCOUNT without saying which bureau they
+  // belong to. Never copied into a bureau's fields — see UNATTRIBUTED above.
+  unattributed?: Omit<BureauFields, "presence">;
 }
 
 // Hard cap so a pathological parse can never flood the account list.
@@ -169,10 +190,17 @@ export function extractRawTradelines(rawText: string, coveredBureaus: Bureau[]):
     const acctMatch = block.match(/account[#:\s]*([xX\d\-\*]{4,})/);
     const status = (block.match(/status[:\s]*(.+)/i)?.[1] || "").trim() || undefined;
 
+    // This parser reads a FLAT account block: it has no way to tell which
+    // bureau a value came from. Copying one status/balance/DOFD into every
+    // covered bureau (what this did before) asserted that all three bureaus
+    // report those exact values — a claim the report never made, and one that
+    // also made crossBureauConflicts() compare identical copies and conclude
+    // "no inconsistency". Attribution is only honest when the consumer told us
+    // the report covers exactly ONE bureau; otherwise the values are recorded
+    // as an account-level observation and every covered bureau stays UNKNOWN.
+    const observed = { status, balanceCents, dofd: dofdMatch?.[1] };
     const perBureau: ExtractedTradeline["perBureau"] = {};
-    for (const b of coveredBureaus) {
-      perBureau[b] = { status, balanceCents, dofd: dofdMatch?.[1] };
-    }
+    if (coveredBureaus.length === 1) perBureau[coveredBureaus[0]] = observed;
 
     out.push({
       creditorName,
@@ -182,6 +210,7 @@ export function extractRawTradelines(rawText: string, coveredBureaus: Bureau[]):
       dofd: dofdMatch?.[1],
       typeHint: typeMatch?.[1]?.trim(),
       perBureau,
+      unattributed: coveredBureaus.length === 1 ? undefined : observed,
     });
   }
   return out;
@@ -189,20 +218,33 @@ export function extractRawTradelines(rawText: string, coveredBureaus: Bureau[]):
 
 // Convert extracted per-bureau values + the set of covered bureaus into the
 // stored BureauData with honest presence flags.
+//
+// ABSENT is an AFFIRMATIVE claim — the UI renders it as "Not reporting this
+// account" — so it may only be written when the extractor actually attributed
+// this account to some bureau and left this one out. When the extractor
+// attributed nothing (it could not tell, or the model returned no bureau
+// list), every covered bureau is UNKNOWN: parser silence is unknown, never
+// absence.
 export function toBureauData(
   ex: ExtractedTradeline,
   coveredBureaus: Bureau[],
   allBureaus: Bureau[] = ["EQUIFAX", "EXPERIAN", "TRANSUNION"]
 ): BureauData {
   const data: BureauData = {};
+  const attributed = allBureaus.some((b) => ex.perBureau[b]);
   for (const b of allBureaus) {
     if (ex.perBureau[b]) {
       data[b] = { presence: "PRESENT", ...ex.perBureau[b] };
-    } else if (coveredBureaus.includes(b)) {
+    } else if (coveredBureaus.includes(b) && attributed) {
       data[b] = { presence: "ABSENT" };
     } else {
       data[b] = { presence: "UNKNOWN" };
     }
+  }
+  if (ex.unattributed) {
+    // Stored under a non-Bureau key with UNKNOWN presence: kept as evidence,
+    // never presented as any bureau's report. See UNATTRIBUTED above.
+    (data as Record<string, BureauFields>)[UNATTRIBUTED] = { presence: "UNKNOWN", ...ex.unattributed };
   }
   return data;
 }
