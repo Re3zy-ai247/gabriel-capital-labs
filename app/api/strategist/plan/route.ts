@@ -7,10 +7,10 @@ import { getEntitlement } from "@/lib/entitlements";
 import { STRATEGIES } from "@/lib/strategies";
 import { formatCents } from "@/lib/utils";
 import { track, PRODUCT_EVENTS } from "@/lib/events";
-// The SAME fact test the Tradelines page and Strategy Desk use for "is this an
-// actual negative" — imported, never re-implemented, so the plan can never
-// disagree with the screen the consumer just read.
-import { isFactualNegative } from "@/lib/intelligence/snapshot";
+// The SAME queue the Strategy Desk page ranks — derived once in
+// lib/intelligence/snapshot.ts, never re-implemented here, so the plan and the
+// screen the consumer just read can never disagree about what is in the queue.
+import { disputeQueue } from "@/lib/intelligence/snapshot";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -45,18 +45,22 @@ export async function POST() {
     where: { userId: user.id },
     orderBy: { score: "desc" },
   });
-  // The plan queue is built from the SAME fact test the UI applies, not from
-  // the `probability` band. The band gives every non-government account a
-  // nonzero "worth a look" score regardless of payment history, so filtering on
-  // it alone handed the model clean, never-late accounts labelled "my scored,
+  // The plan queue is the SAME queue the Strategy Desk ranks, not the
+  // `probability` band. The band gives every non-government account a nonzero
+  // "worth a look" score regardless of payment history, so filtering on it
+  // alone handed the model clean, never-late accounts labelled "my scored,
   // disputable items" — a plan telling the consumer to open a reinvestigation
   // against an account this same product shows as being in good standing.
-  const queue = tradelines.filter((t) => t.probability !== "NOT_RECOMMENDED" && isFactualNegative(t));
+  const queue = disputeQueue(tradelines);
   if (!queue.length) {
     return NextResponse.json(
       {
+        // The next step named here has to be one that exists. A row with
+        // nothing derogatory on it carries no Dispute link, so pointing at
+        // "that account's row" would be a dead end — the Letters page lists
+        // every account on file and can start a letter for any of them.
         error: tradelines.length
-          ? "I don't have an item on your file I can honestly build a dispute plan around yet — nothing on it shows a derogatory status I can point to. If you know something on your report is wrong, start from that account's row."
+          ? "I don't have an item on your file I can honestly build a dispute plan around yet — nothing on it shows a derogatory status I can point to. You know your file better than any report does: if something on it is wrong, the Letters page lets you start a dispute for any account, including these."
           : "No analyzed accounts yet. Upload a report first.",
       },
       { status: 400 }

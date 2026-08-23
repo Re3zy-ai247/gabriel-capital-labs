@@ -37,7 +37,11 @@ const DEROGATORY: ReadonlySet<AccountType> = new Set<AccountType>(["COLLECTION",
 //      affirmative statement of standing => NEEDS_REVIEW (unknown stays
 //      unknown; it is not laundered into either verdict).
 //   3. A negated statement ("never late", "no late payments") is evidence the
-//      adverse event did NOT happen — it must never be read as the event.
+//      adverse event did NOT happen — it must never be read as the event. The
+//      same holds for a FIELD LABEL carrying a zero or "none" value: "Past due:
+//      $0" is the report stating the account is NOT past due, and reading the
+//      label as the event would flag a current account as derogatory — the
+//      A2-01 harm inverted, and newly false rather than merely incomplete.
 // ---------------------------------------------------------------------------
 
 // Field LABELS that a report prints whether or not a value follows. They must
@@ -50,7 +54,20 @@ const NEUTRAL_LABELS: RegExp[] = [
   /current balance/g,
   /high balance/g,
   /original creditor/g,
+  // Programs NAMED after the adverse event they exist to avoid. "Foreclosure
+  // prevention" is the opposite of a foreclosure.
+  /foreclos\w*\s+(?:prevention|avoidance|alternative|counsel\w*|assistance)/g,
+  /loss mitigation/g,
 ];
+
+// An adverse FIELD LABEL whose value is zero or none: "Past due: $0",
+// "amount past due $0", "Charge-off amount: $0", "Charge-off: none". The label
+// names the event; the value says it did not happen. Stripped with the negated
+// phrases below, because a negator can trail the term as well as precede it.
+// (Note the text is normalized first, so "$", ":" and "." are already gone —
+// "Charge-off amount: $0.00" arrives as "charge-off amount 0 00".)
+const ZERO_VALUED_ADVERSE_LABEL =
+  /\b(?:amount\s+)?(?:past\s*due|charge[-\s]?off|collection|delinquen\w*|late\s+payments?)\s*(?:amount|amt|balance|payments?)?\s*(?:0+(?:\s+0+)*|none|n\/a|na|nil)\b/g;
 
 // "Never late", "no late payments", "0 times 30 days late" — statements that
 // the adverse event did NOT occur. Stripped before adverse matching (rule 3).
@@ -65,6 +82,10 @@ const ADVERSE_MARKERS: RegExp[] = [
   /\d+\s*days?\s*late/, /\bwas\s+late\b/, /\blate\s+payments?\b/, /\bpaid\s+late\b/,
   /repossess/, /voluntary surrender/, /\bforeclos/,
   /\bdefault(?:ed)?\b/,
+  // L-1 (review): rating-code and hand-off wordings the first pass missed.
+  // `late 30`, `late 60 x2` — but never a "late 0", which the zero-value strip
+  // above has already removed anyway.
+  /\blate\s+[1-9]\d*/, /transferred to (?:recovery|attorney|legal)/,
   /settled(?!\s+in\s+full)/, /less than (?:the )?full/,
   /written\s+off/, /write[-\s]?off/, /\bbad debt\b/, /profit and loss/,
   /\bbankrupt/, /\bjudgment\b/, /\bjudgement\b/, /\blien\b/, /garnish/,
@@ -89,7 +110,12 @@ function normalizeConditionText(raw: string): string {
 }
 
 export function hasAdverseStatusEvidence(text: string): boolean {
-  const t = normalizeConditionText(text).replace(NEGATED_ADVERSE, " ");
+  // Order matters: remove the zero/none-valued labels BEFORE the negated
+  // phrases, so "Current, amount past due $0" loses "past due 0" outright
+  // rather than leaving a bare "past due" behind.
+  const t = normalizeConditionText(text)
+    .replace(ZERO_VALUED_ADVERSE_LABEL, " ")
+    .replace(NEGATED_ADVERSE, " ");
   return ADVERSE_MARKERS.some((re) => re.test(t));
 }
 
@@ -158,6 +184,22 @@ export function factualCondition(t: ConditionInput): FactualCondition {
 // "not a confirmed negative", which includes "we don't know".
 export function isFactualNegative(t: ConditionInput): boolean {
   return factualCondition(t) === "DEROGATORY";
+}
+
+// THE dispute queue. Two surfaces used to compute this filter independently —
+// the Strategy Desk page and the Action Plan route — and when only one of them
+// changed basis the two disagreed, which is exactly what
+// app/strategist/AiPlan.tsx compares to decide whether a generated plan has
+// gone stale ("Your dispute queue has changed since this plan was written").
+// A queue that two files derive separately WILL drift, and the drift renders as
+// a false statement about the consumer's own case. So it is derived once, here.
+//
+// Both conditions are load-bearing and mean different things: NOT_RECOMMENDED
+// is a government/statutory debt that generally cannot be disputed off a report
+// (excluded for a legal reason), while `isFactualNegative` asks whether the
+// report attests anything adverse at all (excluded for an evidentiary one).
+export function disputeQueue<T extends ConditionInput & { probability: string }>(rows: T[]): T[] {
+  return rows.filter((t) => t.probability !== "NOT_RECOMMENDED" && isFactualNegative(t));
 }
 
 export interface OpenWindow { recipient: string; daysElapsed: number; daysLeft: number; letterId: string }

@@ -184,28 +184,38 @@ export function toExtractedTradelines(
       //
       // The schema gives us ONE status/balance/DOFD per account, not one per
       // bureau. So:
-      //   • exactly one bureau reported  -> those values unambiguously belong
-      //     to that bureau. Attribute them.
+      //   • the values belong to exactly ONE bureau -> attribute them. That is
+      //     true when the model named a single bureau, and equally true when
+      //     the consumer's report covers a single bureau (every account in a
+      //     one-bureau report is that bureau's, which is what the system prompt
+      //     tells the model in the first place — so a model that omits the list
+      //     must not cost the consumer their attribution). This is the SAME
+      //     rule the deterministic parser applies in lib/parse.ts; the two
+      //     paths answer one question and must answer it identically.
       //   • two or three bureaus reported -> presence is attested per bureau,
       //     but the VALUES are not attributed. Record presence only and keep
       //     the values as an account-level observation. (Copying one value set
       //     into all three used to fabricate each bureau's report AND make
       //     crossBureauConflicts() compare identical copies, so a genuine
       //     inconsistency could never surface — the product's headline claim.)
-      //   • the model returned no bureau list -> we do not know which bureau
-      //     shows this account. It previously became "PRESENT at every bureau
-      //     the consumer selected", inventing presence outright. Now every
-      //     covered bureau stays UNKNOWN (toBureauData) and the values are
-      //     recorded unattributed.
+      //   • no bureau list on a multi-bureau report -> we do not know which
+      //     bureau shows this account. It previously became "PRESENT at every
+      //     bureau the consumer selected", inventing presence outright. Now
+      //     every covered bureau stays UNKNOWN (toBureauData) and the values
+      //     are recorded unattributed.
       const observed = {
         status: a.status?.trim() || undefined,
         balanceCents: a.balanceCents || 0,
         dofd: a.dofd?.trim() || undefined,
         dateReported: a.dateReported?.trim() || undefined,
       };
+      // `reported` is already filtered to the covered set, so a length above 1
+      // implies more than one covered bureau — the two arms cannot conflict.
+      const soleBureau =
+        reported.length === 1 ? reported[0] : coveredBureaus.length === 1 ? coveredBureaus[0] : null;
       const perBureau: ExtractedTradeline["perBureau"] = {};
-      if (reported.length === 1) {
-        perBureau[reported[0]] = observed;
+      if (soleBureau) {
+        perBureau[soleBureau] = observed;
       } else {
         for (const b of reported) perBureau[b] = {}; // presence attested, values not
       }
@@ -236,7 +246,7 @@ export function toExtractedTradelines(
           : undefined,
         furnisherAddress,
         perBureau,
-        unattributed: reported.length === 1 ? undefined : observed,
+        unattributed: soleBureau ? undefined : observed,
       } satisfies ExtractedTradeline;
     });
 }
