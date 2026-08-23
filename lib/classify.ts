@@ -46,14 +46,30 @@ export interface ClassifyResult {
   nonStrategic: boolean; // true => should NOT be queued for dispute letters
 }
 
-// Map a free-text account-type hint to an AccountType. Used as a fallback and to
-// type accounts the AI flags as original creditors.
-function typeFromHint(h: string): AccountType | null {
+// The report's own explicit PRODUCT type — what kind of credit this is. This is
+// a fact the source printed about the account, so it outranks our curated
+// creditor-name heuristics (see classifyCreditor step 2).
+function productTypeFromHint(h: string): AccountType | null {
   if (!h) return null;
   if (h.includes("mortgage") || h.includes("real estate")) return AccountType.MORTGAGE;
   if (h.includes("student")) return AccountType.STUDENT_LOAN;
   if (h.includes("auto") || h.includes("vehicle") || h.includes("install")) return AccountType.INSTALLMENT;
-  if (h.includes("revolv") || h.includes("credit card") || h.includes("charge account") || h.includes("line of credit")) return AccountType.REVOLVING;
+  if (h.includes("revolv") || h.includes("credit card") || h.includes("charge account") || h.includes("line of credit"))
+    return AccountType.REVOLVING;
+  return null;
+}
+
+// Map a free-text account-type hint to an AccountType. Used as a fallback and to
+// type accounts the AI flags as original creditors. Note that COLLECTION and
+// CHARGE_OFF are CONDITIONS, not product types — they only become the account
+// type when the source offered no product type at all. The account's condition
+// is carried separately by the condition model (lib/intelligence/snapshot.ts
+// factualCondition), which reads the per-bureau status text, so a charged-off
+// card stays typed REVOLVING and is still correctly treated as a negative.
+function typeFromHint(h: string): AccountType | null {
+  if (!h) return null;
+  const product = productTypeFromHint(h);
+  if (product) return product;
   if (h.includes("collection")) return AccountType.COLLECTION;
   if (h.includes("charge")) return AccountType.CHARGE_OFF;
   if (h.includes("inquiry")) return AccountType.INQUIRY;
@@ -74,10 +90,24 @@ export function classifyCreditor(nameRaw: string, hint?: string, kind?: Creditor
   }
 
   // 2. Curated original creditors win over a generic "collection" hint or an AI
-  //    mislabel — these are financing/lender names we are sure about.
+  //    mislabel — these are financing/lender names we are sure about. What they
+  //    settle is the ENTITY question (this is a lender, not a third-party debt
+  //    buyer), which is what the curated list actually knows.
+  //
+  //    They do NOT settle the product type: if the report itself printed one
+  //    ("Type: Revolving"), the report wins. A hardcoded name mapping used to
+  //    override the source — MDG forced INSTALLMENT even on a row the report
+  //    explicitly typed Revolving — which is a name heuristic beating the
+  //    document it is supposed to be reading.
+  //
+  //    They also do not settle the account's CONDITION. A charged-off Capital
+  //    One card is a REVOLVING account in derogatory condition, not a clean
+  //    one; the condition comes from the report's status text via
+  //    lib/intelligence/snapshot.ts factualCondition, never from this list.
+  const explicitProduct = productTypeFromHint(h);
   for (const oc of ORIGINAL_CREDITORS) {
     if (oc.match.some((m) => name.includes(m))) {
-      return { accountType: oc.type, isDebtBuyer: false, nonStrategic: false };
+      return { accountType: explicitProduct ?? oc.type, isDebtBuyer: false, nonStrategic: false };
     }
   }
 

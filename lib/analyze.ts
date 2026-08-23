@@ -8,6 +8,12 @@ import { saveFurnisherContact, getFurnisherContacts, type FurnisherContact } fro
 
 export interface AnalyzeResult {
   tradelines: number;
+  // FALSE means the precision-tuned regex fallback produced these rows, not the
+  // AI extractor — a materially weaker read of the report (lib/parse.ts header).
+  // This is a consumer-visible fact, not telemetry: every surface that reports
+  // the result of an analysis must disclose it (app/upload/page.tsx does). It is
+  // false whenever ANTHROPIC_API_KEY is absent, the AI call throws, or the model
+  // returns no accounts — all three mean the same thing to the consumer.
   usedAI: boolean;
 }
 
@@ -23,6 +29,13 @@ function safeCents(v: number): number {
 
 // Parse a possibly-garbage date string; return null if it isn't a valid date so
 // Prisma never receives an Invalid Date.
+//
+// RC1-S3: a null here is the absence of a PARSED DATE, nothing more. Most
+// consumer reports never print a date of first delinquency, so this returns
+// null constantly — which is why "no DOFD" must never be read as "no derogatory
+// history". The condition model (lib/intelligence/snapshot.ts factualCondition)
+// reads the report's status text as well, so an unparseable or absent DOFD can
+// no longer launder a charged-off account into "Clean".
 function safeDate(v: string | undefined | null): Date | null {
   if (!v) return null;
   const d = new Date(v);
@@ -90,7 +103,10 @@ export async function analyzeReportText(
       accountType: cls.accountType,
       isDebtBuyer: cls.isDebtBuyer,
       balanceCents,
-      dateOfFirstDelinquency: ex.dofd ? new Date(ex.dofd) : null,
+      // Same guard the persisted column gets below: an unparseable date string
+      // must not reach scoring as an Invalid Date while the row stores null —
+      // scoring and the stored fact have to agree about whether a DOFD exists.
+      dateOfFirstDelinquency: safeDate(ex.dofd),
       bureauData,
       nonStrategic: cls.nonStrategic,
       creditorName: ex.creditorName,
