@@ -4,7 +4,7 @@ import { Disclaimer, EduBanner } from "@/components/Disclaimer";
 import { ProbabilityBadge } from "@/components/ui/Badge";
 import { AiPlan } from "./AiPlan";
 import { prisma } from "@/lib/prisma";
-import { currentUserOrDemo } from "@/lib/session";
+import { requireUser } from "@/lib/requireSession";
 import { formatCents } from "@/lib/utils";
 // RB-2 (Founder Experience Gate): a factually clean account (e.g. "pays as
 // agreed, never late") must never be presented as a queued dispute
@@ -17,8 +17,12 @@ import { disputeQueue, factualCondition } from "@/lib/intelligence/snapshot";
 export const dynamic = "force-dynamic";
 
 export default async function StrategistPage() {
-  const user = await currentUserOrDemo();
-  const tradelines = user ? await prisma.tradeline.findMany({ where: { userId: user.id }, orderBy: { score: "desc" } }) : [];
+  // P0-5: this page had NO guard — an expired session fell through to an empty
+  // tradeline list and the Strategy Desk rendered a complete, chrome-and-all
+  // "0 High / 0 Medium / 0 Low" reading of a file it had never loaded. The S3
+  // truth rework below is only truthful about facts we actually have.
+  const user = await requireUser("/strategist");
+  const tradelines = await prisma.tradeline.findMany({ where: { userId: user.id }, orderBy: { score: "desc" } });
   const queue = disputeQueue(tradelines);
   const excluded = tradelines.filter((t) => t.probability === "NOT_RECOMMENDED");
   // Everything else: analyzed, disputable in principle, but the report shows
@@ -51,7 +55,7 @@ export default async function StrategistPage() {
             : `I went through ${tradelines.length === 1 ? "your item" : `all ${tradelines.length} of your items`} and none of them shows something adverse I can rank a dispute around, so there's nothing for me to queue. What I could and couldn't confirm on each one is below.`}
       </p>
 
-      <AiPlan currentItemCount={queue.length} storageKey={user ? `cv-strategy-plan:${user.id}` : null} />
+      <AiPlan currentItemCount={queue.length} storageKey={`cv-strategy-plan:${user.id}`} />
 
       <div className="mb-5 grid grid-cols-4 gap-3">
         <div className="card p-4 text-center"><div className="text-xl font-bold text-brand-400">{counts.HIGH}</div><div className="text-[11px] uppercase text-slate-400">High</div></div>

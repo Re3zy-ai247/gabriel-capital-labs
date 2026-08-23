@@ -1,8 +1,10 @@
 "use client";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { EduBanner } from "@/components/Disclaimer";
-import { Loader2, Save, Lock, Bell, Mail, ShieldCheck } from "lucide-react";
+import { loginPathFor } from "@/lib/callbackUrl";
+import { Loader2, Save, Lock, Bell, Mail, ShieldCheck, LogIn } from "lucide-react";
 import { PushToggle } from "@/components/PushToggle";
 
 interface Profile {
@@ -32,6 +34,13 @@ export default function SettingsPage() {
   const [digestBusy, setDigestBusy] = useState(false);
   const [contribute, setContribute] = useState(false);
   const [contributeBusy, setContributeBusy] = useState(false);
+  // P0-5, mid-visit case. app/settings/layout.tsx now refuses an unresolved
+  // session before this page renders at all, so arriving signed-out is handled.
+  // What is left is the session that expires WHILE the page is open: /api/profile
+  // answers 401, the loader flattened that to null, and the consumer was left
+  // looking at their own name and mailing address as blank boxes — on the one
+  // screen where blank reads as "my details were erased".
+  const [sessionEnded, setSessionEnded] = useState(false);
 
   useEffect(() => {
     fetch("/api/brief/digest/preference")
@@ -75,7 +84,11 @@ export default function SettingsPage() {
 
   useEffect(() => {
     fetch("/api/profile")
-      .then((r) => (r.ok ? r.json() : null))
+      .then((r) => {
+        if (r.status === 401 || r.status === 403) { setSessionEnded(true); return null; }
+        return r.ok ? r.json() : null;
+      })
+      .catch(() => null)
       .then((data) => {
         if (data) {
           setProfile({
@@ -116,6 +129,12 @@ export default function SettingsPage() {
     if (!res) {
       setBusy(false);
       setStatus("The connection dropped mid-request. Try again — nothing was lost.");
+      return;
+    }
+    if (res.status === 401 || res.status === 403) {
+      setBusy(false);
+      setSessionEnded(true);
+      setStatus("Your session ended, so this wasn't saved. Sign in again and your existing details will still be here.");
       return;
     }
     const d = await res.json().catch(() => ({}));
@@ -169,6 +188,17 @@ export default function SettingsPage() {
         {loading ? (
           <div className="flex items-center gap-2 text-slate-400">
             <Loader2 className="h-4 w-4 animate-spin" /> Pulling up your account…
+          </div>
+        ) : sessionEnded ? (
+          <div className="card p-6">
+            <h3 className="text-base font-semibold">Your session ended</h3>
+            <p className="mt-2 text-sm leading-relaxed text-slate-400">
+              We couldn&apos;t load your profile because you&apos;re no longer signed in. Nothing has
+              been changed or removed — sign in again and your details will be exactly as you left them.
+            </p>
+            <Link href={loginPathFor("/settings")} className="btn-primary mt-5 inline-flex">
+              <LogIn className="h-4 w-4" aria-hidden="true" /> Sign in again
+            </Link>
           </div>
         ) : (
           <form onSubmit={save} className="space-y-4">

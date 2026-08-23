@@ -61,6 +61,18 @@ const BUREAUS = [
 // cap fields (as today's does) still produces a correct, count-scoped line, and
 // a missing count degrades to a claim we can stand behind rather than
 // "undefined".
+// RC1 S2 handoff (A1 / upload): the button said "Re-analyze all" while
+// app/api/reports/analyze/route.ts has taken only the newest MAX_FANOUT = 5
+// since the S1 cost-guard slice — so an account holding more than five reports
+// pressed a control that promised something the endpoint would not do, and only
+// the RESULT line (below) admitted the shortfall, after the fact. The label is
+// now an upper bound, which stays honest even if the server cap is lowered:
+// "up to 5" is true at any cap ≤ 5. Mirrored, not imported — the route is a
+// server module and this is a "use client" page (CLAUDE.md gotcha 2); the
+// result line already reads the server's own `skipped`/`notice` fields, so the
+// authoritative number always comes from the response, never from here.
+const REANALYZE_BATCH = 5;
+
 function reanalyzeResult(j: { tradelines?: number; reportsAnalyzed?: number; skipped?: number; notice?: string }): string {
   const notice = typeof j.notice === "string" ? j.notice.trim() : "";
   if (notice) return notice;
@@ -457,7 +469,7 @@ export default function UploadPage() {
             className="btn-ghost text-xs"
           >
             {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-            Re-analyze all
+            {reports.length > REANALYZE_BATCH ? `Re-analyze up to ${REANALYZE_BATCH}` : "Re-analyze all"}
           </button>
         </div>
 

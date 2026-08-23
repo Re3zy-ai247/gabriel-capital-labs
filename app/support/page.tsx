@@ -1,10 +1,12 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { SUPPORT_CATEGORIES, supportCategoryLabel } from "@/lib/supportShared";
 import { AttachmentPicker, AttachmentList, imagesFromClipboard } from "@/components/Attachments";
 import type { AttachmentMeta } from "@/lib/attachmentsShared";
-import { LifeBuoy, Loader2, Plus, Send, ArrowLeft, ShieldCheck } from "lucide-react";
+import { loginPathFor } from "@/lib/callbackUrl";
+import { LifeBuoy, Loader2, Plus, Send, ArrowLeft, ShieldCheck, LogIn } from "lucide-react";
 
 interface TicketRow {
   id: string; subject: string; category: string; status: string;
@@ -32,6 +34,15 @@ function statusChip(status: string) {
 export default function SupportPage() {
   const [tickets, setTickets] = useState<TicketRow[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
+  // A1-09. /api/support/tickets answers 401 to a signed-out visitor and the
+  // loader coerced EVERY non-OK response into `{ tickets: [] }` — so the person
+  // who most needs support was shown a working-looking ticket desk, an empty
+  // list reading "No open tickets", and a submit button that silently failed.
+  // This page is deliberately NOT behind the session gate the rest of the app
+  // now has (middleware.ts leaves /support out on purpose): a consumer who
+  // cannot sign in must still be able to reach a human. So the 401 is kept as a
+  // FACT rather than flattened, and the page tells the truth about it.
+  const [signedOut, setSignedOut] = useState(false);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<TicketDetail | null>(null);
   const [selLoading, setSelLoading] = useState(false);
@@ -51,8 +62,12 @@ export default function SupportPage() {
   const loadList = useCallback(() => {
     setLoading(true);
     fetch("/api/support/tickets")
-      .then((r) => (r.ok ? r.json() : { tickets: [] }))
-      .then((d) => { setTickets(d.tickets || []); setIsAdmin(!!d.isAdmin); })
+      .then(async (r) => {
+        if (r.status === 401 || r.status === 403) return { signedOut: true, tickets: [] };
+        return r.ok ? { signedOut: false, ...(await r.json()) } : { signedOut: false, tickets: [] };
+      })
+      .catch(() => ({ signedOut: false, tickets: [] }))
+      .then((d) => { setSignedOut(!!d.signedOut); setTickets(d.tickets || []); setIsAdmin(!!d.isAdmin); })
       .finally(() => setLoading(false));
   }, []);
 
@@ -77,6 +92,15 @@ export default function SupportPage() {
       form.set("body", body);
       files.forEach((f) => form.append("files", f));
       const res = await fetch("/api/support/tickets", { method: "POST", body: form });
+      // A session can expire while this form is open. Say so, instead of
+      // reporting a generic failure the consumer can only read as "lost".
+      // Deliberately does NOT flip to the signed-out view: that would discard
+      // what they just wrote. The draft stays on screen so it can be sent once
+      // they are back in.
+      if (res.status === 401 || res.status === 403) {
+        setError("Your session ended before this was filed, so it wasn't sent. Sign in again in another tab, then press Submit — your draft is still here.");
+        return;
+      }
       const j = await res.json();
       if (!res.ok) { setError(j.error || "Could not submit."); return; }
       setSubject(""); setBody(""); setCategory("general"); setFiles([]); setOpen(false);
@@ -171,6 +195,41 @@ export default function SupportPage() {
             )}
           </>
         )}
+      </AppShell>
+    );
+  }
+
+  // ---- Signed-out view (A1-09) ----
+  // Never the ticket UI. What a signed-out visitor gets is the one channel that
+  // actually works without an account, plus an honest statement of what a
+  // session would add. No capability is claimed and no response time is
+  // promised.
+  if (!loading && signedOut) {
+    return (
+      <AppShell title="/ Support">
+        <div className="card mx-auto max-w-2xl p-8 text-center">
+          <LifeBuoy className="mx-auto h-9 w-9 text-brand-400" aria-hidden="true" />
+          <h2 className="mt-4 text-lg font-semibold">You&apos;re signed out</h2>
+          <p className="mt-2 text-sm leading-relaxed text-slate-400">
+            Your support tickets live in your account, so they aren&apos;t shown here right now.
+            Sign in to read your existing tickets or open a new one — nothing in them has changed.
+          </p>
+          <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
+            <Link href={loginPathFor("/support")} className="btn-primary">
+              <LogIn className="h-4 w-4" aria-hidden="true" /> Sign in to view your tickets
+            </Link>
+            <Link href="/help" className="btn-ghost">
+              <ArrowLeft className="h-4 w-4" aria-hidden="true" /> Back to help guides
+            </Link>
+          </div>
+          <p className="mt-6 border-t border-ink-700/60 pt-6 text-sm text-slate-400">
+            Can&apos;t sign in at all? Email{" "}
+            <a href="mailto:support@creditvector.app" className="font-medium text-brand-300 underline underline-offset-2 transition hover:text-brand-200">
+              support@creditvector.app
+            </a>{" "}
+            from the address on your account — no sign-in needed.
+          </p>
+        </div>
       </AppShell>
     );
   }
