@@ -27,6 +27,7 @@ const REQUIRED = [
   "unknown-price-failclosed.runtime.test.ts",
   "upload-bounds.runtime.test.ts",
   "consumer-assertion.runtime.test.ts",
+  "terms-acceptance.runtime.test.ts",
 ];
 
 if (guards.length === 0) {
