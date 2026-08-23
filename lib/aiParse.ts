@@ -126,6 +126,44 @@ function systemPrompt(covered: Bureau[]): string {
   ].join("\n");
 }
 
+// ── RC1-S8 / P1-22 (E-16): mask SSNs before the report text leaves the box ───
+//
+// A bureau report carries the consumer's Social Security number in plain text,
+// and every upload shipped the whole thing to the AI provider untouched. This is
+// a PRE-STEP, deliberately scoped as narrowly as it can usefully be:
+//
+//   · It is a pure string→string function with no knowledge of parsing, and it
+//     is called at exactly ONE place — the prompt built below. lib/parse.ts,
+//     lib/aiParse.ts's own toExtractedTradelines(), and every offline fixture in
+//     scripts/credit-truth.test.ts read the ORIGINAL text and are untouched by
+//     it. Redaction changes what we transmit, never what we parse.
+//   · It masks two shapes only: an SSN written with dashes, and a 9-digit run
+//     that is explicitly LABELLED as an SSN. It deliberately does NOT chase bare
+//     9-digit runs, because a bare 9-digit run in a credit report is at least as
+//     likely to be an account number the extractor needs, and mangling those
+//     would trade a privacy win for a correctness loss.
+//   · It is therefore a REDUCTION, not a guarantee, and the privacy policy says
+//     exactly that rather than claiming the report is scrubbed.
+//
+// KNOWN AND ACCEPTED (review L-1/L-2, kept deliberately). SSN_DASHED is not
+// context-bounded, so a non-SSN written in the 3-2-4 hyphenated shape is masked
+// too: "Reference 555-12-3456" → "[REDACTED]". Verified byte-identical and
+// therefore unaffected: card numbers (4147-2029-1234-5678), masked account
+// numbers (517805XXXXXX1234), 4-2-4 references (1234-56-7890) and ISO dates
+// (2019-04-12), plus the whole realistic tradeline fixture in
+// scripts/disclosure-truth.test.ts. Tightening it would mean requiring a label,
+// which loses the common case of a bare dashed SSN on its own line — the exact
+// shape a bureau report prints. Conversely an UNLABELLED spaced SSN
+// ("123 45 6789") is not caught; labelled is. Both residuals are why the policy
+// text says the masking is pattern-based and cannot catch every instance.
+const SSN_LABELLED =
+  /\b(SSN|SS#|SOC(?:IAL)?\.?\s*SEC(?:URITY)?(?:\s*(?:NO\.?|NUM(?:BER)?|#))?)\s*[:#-]?\s*(\d{3}[-\s]?\d{2}[-\s]?\d{4})\b/gi;
+const SSN_DASHED = /\b\d{3}-\d{2}-\d{4}\b/g;
+
+export function redactSensitivePatterns(text: string): string {
+  return text.replace(SSN_LABELLED, (_m, label: string) => `${label}: [REDACTED]`).replace(SSN_DASHED, "[REDACTED]");
+}
+
 export async function aiExtractTradelines(
   rawText: string,
   coveredBureaus: Bureau[]
@@ -146,7 +184,12 @@ export async function aiExtractTradelines(
           "Extract all accounts from this credit report text. Covered bureaus: " +
           coveredBureaus.join(", ") +
           ".\n\n----- REPORT TEXT -----\n" +
-          rawText.slice(0, 120_000),
+          // MASK THE WHOLE PLAINTEXT, THEN TRUNCATE (review micro-round). The
+          // reverse order let an SSN straddling the 120k cut arrive as a
+          // truncated run that matches neither pattern — up to 8 of 9 digits
+          // transmitted. Masking first cannot leave a partial number behind;
+          // the cut then falls on already-masked text.
+          redactSensitivePatterns(rawText).slice(0, 120_000),
       },
     ],
     output_config: { format: { type: "json_schema", schema: SCHEMA } },

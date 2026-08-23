@@ -7,7 +7,7 @@ export const metadata = {
 
 export default function TermsPage() {
   return (
-    <LegalShell title="Terms of Service" updated="June 18, 2026">
+    <LegalShell title="Terms of Service" updated="August 23, 2026">
       <section>
         <h2>What CreditVector is</h2>
         <p>
@@ -15,6 +15,37 @@ export default function TermsPage() {
           your own disputes. It is not a credit-repair organization, a law firm, or a substitute for legal or financial
           advice. You review, sign, and mail your own letters and stay in control throughout.
         </p>
+      </section>
+
+      {/* RC1-S8 (D-02/D-03, interim factual text — Founder decision D-9). These
+          two sections state capabilities the product actually has today. They
+          make no legal characterization and carry no counsel sign-off: counsel
+          replaces this wording later, not the behaviour it describes. */}
+      <section>
+        <h2>How your letters are written</h2>
+        <p>
+          Your dispute letters are drafted by software, including an AI model, from a template and from the facts you
+          confirm about your own accounts. CreditVector does not know what is true about your credit — you do. Nothing is
+          asserted on your behalf that you have not confirmed, every letter is yours to read before it goes anywhere, and
+          you are the one who signs and mails it. Check every letter against your own copy of your report before you send
+          it, and only dispute information you have a good-faith basis to believe is inaccurate.
+        </p>
+      </section>
+
+      <section>
+        <h2>What the product cannot verify</h2>
+        <ul>
+          <li>
+            Report reading is automated and imperfect. It can miss an account, misread a value, or misclassify one, and
+            it only ever sees the report you gave it. Treat what you see here as a starting point, not a complete or
+            authoritative copy of your file.
+          </li>
+          <li>
+            Scores in the Score Tracker are the ones you type in yourself. CreditVector does not pull, verify, or
+            bureau-confirm any score, and a change between two entries you recorded is not evidence that CreditVector or
+            a dispute caused it.
+          </li>
+        </ul>
       </section>
 
       <section>
@@ -34,6 +65,15 @@ export default function TermsPage() {
           <li>Review every letter before sending it, and only dispute information you have a good-faith basis to believe is inaccurate.</li>
           <li>Keep your login credentials secure.</li>
         </ul>
+      </section>
+
+      <section>
+        <h2>Third-party services we use</h2>
+        <p>
+          To read your report and draft your letters, CreditVector sends report text and the identity details you type to
+          Anthropic, our AI provider. Payments are handled by Stripe. Our <a href="/legal/privacy">Privacy Policy</a> sets
+          out exactly what is sent, what is not, and what we do to reduce it.
+        </p>
       </section>
 
       <section>

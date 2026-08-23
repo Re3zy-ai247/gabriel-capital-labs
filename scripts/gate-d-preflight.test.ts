@@ -393,12 +393,16 @@ check(
 // the applied manifest, so applying a migration without review cannot pass by
 // merely being on disk.
 //
-// SERIAL ARTIFACT (S4 → S8): S8's terms-acceptance migration is the next entry
-// expected in AUTHORED_UNAPPLIED_MIGRATIONS. One slice extends it per wave.
+// SERIAL ARTIFACT (S4 → S8): S8 added 20260728000000_terms_acceptance — the
+// TermsAcceptance table behind registration's consent capture — as the second
+// authored-but-unapplied entry. Same treatment as S4's: on disk, absent from the
+// applied manifest, absent from any Gate D database. One slice extends it per
+// wave, and the set below stays EXACT — never a prefix or a length check.
 // ---------------------------------------------------------------------------
 check(
-  "the authored-but-unapplied set is exactly the RC1-S4 migration",
-  AUTHORED_UNAPPLIED_MIGRATIONS.join(",") === "20260823120000_consumer_assertion",
+  "the authored-but-unapplied set is exactly the RC1-S8 + RC1-S4 migrations",
+  AUTHORED_UNAPPLIED_MIGRATIONS.join(",") ===
+    "20260728000000_terms_acceptance,20260823120000_consumer_assertion",
 );
 check(
   "expected directory set = the reviewed chain + the authored-unapplied set",
@@ -424,7 +428,7 @@ check(
 check(
   "…so its tables are absent from the schema the preflight expects",
   !manifest.migrations.some((migration) =>
-    migration.tables.some((table) => table.name === "ConsumerAssertion"),
+    migration.tables.some((table) => table.name === "ConsumerAssertion" || table.name === "TermsAcceptance"),
   ),
 );
 {
