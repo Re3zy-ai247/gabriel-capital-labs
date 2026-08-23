@@ -1,7 +1,11 @@
 import { cookies } from "next/headers";
 import { getServerSession } from "next-auth";
+import { getToken } from "next-auth/jwt";
+import type { NextRequest } from "next/server";
 import { authOptions } from "./auth";
 import { prisma } from "./prisma";
+import { isDemoIdentityBlocked } from "./demoIdentity";
+import { passwordSessionVersionMatches } from "./sessionVersion";
 
 // Cookie holding the client an agency currently has "open". Read by currentUser()
 // so every existing page/route operates inside that client's workspace.
@@ -20,14 +24,12 @@ export async function currentAccount() {
   if (!id) return null;
   const account = await prisma.user.findUnique({ where: { id } });
 
-  // `disabled` was enforced ONLY at sign-in (lib/auth.ts). Sessions are stateless
-  // JWTs, so an account disabled AFTER sign-in kept full access until its token
-  // expired naturally — admin suspension, security lock and agency removal all
-  // took effect only for users who happened to be signed out. Re-checking here
-  // evicts them from every authenticated surface at once, because every gate in
-  // the app resolves through currentAccount(). This costs no extra query: the row
-  // is already loaded. Fail-closed — a disabled account reads as no account.
-  if (account?.disabled) return null;
+  // `disabled` and the repository-known demo identity must be rechecked after
+  // every JWT lookup. Otherwise an account disabled after sign-in, or a demo JWT
+  // minted by a historic deployment bootstrap, would remain usable until expiry.
+  // This costs no extra query: the row is already loaded. Fail closed so neither
+  // state can reach profile mutation or any other authenticated surface.
+  if (account?.disabled || isDemoIdentityBlocked(process.env.NODE_ENV, account?.email)) return null;
 
   return account;
 }
@@ -63,11 +65,11 @@ export async function currentUser() {
 }
 
 // Dev convenience: fall back to the seeded demo user so the app is explorable
-// without configuring auth. Disabled automatically in production.
+// without configuring auth. Any missing or non-development runtime fails closed.
 export async function currentUserOrDemo() {
   const u = await currentUser();
   if (u) return u;
-  if (process.env.NODE_ENV === "production") return null;
+  if (process.env.NODE_ENV !== "development") return null;
   return prisma.user.findUnique({ where: { email: "demo@gabrielcapitallabs.com" } });
 }
 
@@ -94,8 +96,9 @@ export async function impersonationContext() {
 //     email, which app/api/profile/route.ts lets the user change (a stale JWT
 //     holding a released address would otherwise resolve to whoever registered it
 //     next, i.e. cancel a stranger's subscription);
-//   • it reads NO cookies — not WORKSPACE_COOKIE, not IMPERSONATE_COOKIE — so an
-//     agency or an impersonating admin can never reach this path as someone else;
+//   • it decodes only the signed session JWT from the request and never reads the
+//     WORKSPACE_COOKIE or IMPERSONATE_COOKIE, so an agency or impersonating admin
+//     can never reach this path as someone else;
 //   • it grants NOTHING. It reports state. Every caller must still decide, and the
 //     cancellation route refuses the "enabled" state outright so the ordinary
 //     billing path stays provably unchanged.
@@ -105,13 +108,42 @@ export type SessionAccountState =
   | { state: "enabled"; account: NonNullable<Awaited<ReturnType<typeof currentAccount>>> }
   | { state: "disabled"; account: NonNullable<Awaited<ReturnType<typeof currentAccount>>> };
 
-export async function sessionAccountState(): Promise<SessionAccountState> {
-  const session = await getServerSession(authOptions);
-  const id = (session?.user as { id?: string } | undefined)?.id;
+export async function sessionAccountState(req: NextRequest): Promise<SessionAccountState> {
+  // The normal callback must project disabled principals to no public session.
+  // This one resolver decodes the already signed request JWT so a payer can be identified,
+  // then independently validates the same keyed password-version evidence against
+  // the current row. It is not a general session and grants no application access.
+  let token: Awaited<ReturnType<typeof getToken>>;
+  try {
+    token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+  } catch {
+    return { state: "anonymous", account: null };
+  }
+  const id = token?.uid;
   if (!id) return { state: "anonymous", account: null };
+  if (typeof id !== "string" || id.length === 0) return { state: "anonymous", account: null };
   const account = await prisma.user.findUnique({ where: { id } });
   // A session id with no row (deleted user) is anonymous, not disabled — fail closed.
   if (!account) return { state: "anonymous", account: null };
+  if (account.disabled !== false && account.disabled !== true) {
+    return { state: "anonymous", account: null };
+  }
+  // Historic demo JWTs are not account state outside explicit development.
+  // Treat them exactly like a missing principal so this cancellation-only
+  // resolver cannot become a back door around currentAccount().
+  if (isDemoIdentityBlocked(process.env.NODE_ENV, account.email)) {
+    return { state: "anonymous", account: null };
+  }
+  if (
+    !passwordSessionVersionMatches(
+      id,
+      account.passwordHash,
+      process.env.NEXTAUTH_SECRET,
+      token?.sessionVersion,
+    )
+  ) {
+    return { state: "anonymous", account: null };
+  }
   return account.disabled ? { state: "disabled", account } : { state: "enabled", account };
 }
 

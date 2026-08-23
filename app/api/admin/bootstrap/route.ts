@@ -5,14 +5,19 @@ import { seedDemoUser, seedAdminUser, DEMO_EMAIL } from "@/lib/demoSeed";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-// One-time setup endpoint. Creates the admin login and the demo account.
-// Guarded by SETUP_SECRET so it can't be triggered by the public. Idempotent.
+// Local-only setup endpoint. Creates the admin login and the demo account.
+// Deployed bootstrap is intentionally unavailable: a repository-known demo
+// password and a reusable setup secret are not acceptable launch surfaces.
 //
-// Usage (after deploy, with env vars set in Vercel):
-//   curl -X POST https://YOUR_SITE/api/admin/bootstrap \
+// Usage (local development only):
+//   curl -X POST http://localhost:3000/api/admin/bootstrap \
 //     -H "Content-Type: application/json" \
 //     -d '{"secret":"<SETUP_SECRET>"}'
 export async function POST(req: Request) {
+  if (process.env.NODE_ENV !== "development") {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
   const setupSecret = process.env.SETUP_SECRET;
   if (!setupSecret) {
     return NextResponse.json(

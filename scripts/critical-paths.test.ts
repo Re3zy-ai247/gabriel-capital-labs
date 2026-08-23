@@ -50,10 +50,10 @@ const read = (p: string) => readFileSync(p, "utf8");
   const seed = read("app/api/demo/seed/route.ts");
   const handler = seed.match(/async function handle\(req: Request\)[\s\S]*?\n\}/)?.[0] ?? "";
 
-  check("B-07a· the route has a production guard", /process\.env\.NODE_ENV === "production"/.test(seed));
-  check("B-07b· the guard returns 404 in production",
-    /process\.env\.NODE_ENV === "production"\)\s*\{[\s\S]{0,160}?status: 404/.test(seed));
-  check("B-07c· the guard is the FIRST thing the handler does (before the fail-open rate limiter)",
+  check("B-07a· the route is positively limited to development", /process\.env\.NODE_ENV !== "development"/.test(seed));
+  check("B-07b· the guard returns 404 outside development",
+    /process\.env\.NODE_ENV !== "development"\)\s*\{[\s\S]{0,160}?status: 404/.test(seed));
+  check("B-07c· the guard is the FIRST thing the handler does (before the rate limiter)",
     handler.length > 0
     && handler.indexOf("NODE_ENV") > -1
     && handler.indexOf("NODE_ENV") < handler.indexOf("enforceRateLimit"));

@@ -10,7 +10,9 @@ Disallow: /tradelines
 Disallow: /journey
 Disallow: /community
 Disallow: /academy
+Disallow: /arena
 Disallow: /builder
+Disallow: /campaigns
 Disallow: /agency
 Disallow: /scores
 Disallow: /strategist
@@ -22,6 +24,7 @@ Disallow: /mail
 Disallow: /support
 Disallow: /onboarding
 Disallow: /modules
+Disallow: /network
 Disallow: /admin
 Disallow: /gxl
 Disallow: /api/

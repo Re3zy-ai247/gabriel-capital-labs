@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 import { sessionAccountState } from "@/lib/session";
 import { getStripe } from "@/lib/stripe";
 import { logAudit } from "@/lib/admin";
-import { enforceRateLimit } from "@/lib/rateLimit";
+import { rateLimit } from "@/lib/rateLimit";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -58,8 +59,8 @@ const NO_SUBSCRIPTION =
 // Exists so the cancellation page can render truthfully for a disabled user, who
 // cannot load any ordinary authenticated surface to find out. Returns booleans and
 // human copy only — never a Stripe customer or subscription id.
-export async function GET() {
-  const state = await sessionAccountState();
+export async function GET(req: NextRequest) {
+  const state = await sessionAccountState(req);
   if (state.state === "anonymous") {
     return NextResponse.json({ error: "Please sign in first." }, { status: 401 });
   }
@@ -76,10 +77,10 @@ export async function GET() {
   });
 }
 
-export async function POST() {
-  // 1. Identity: immutable session user id only. Not email, not any cookie, and
-  //    nothing from the request body — this handler reads no body at all.
-  const state = await sessionAccountState();
+export async function POST(req: NextRequest) {
+  // 1. Identity: immutable id from the signed session JWT only. Not email, not a
+  //    workspace/impersonation cookie, and nothing from the request body.
+  const state = await sessionAccountState(req);
   if (state.state === "anonymous") {
     return NextResponse.json({ error: "Please sign in first." }, { status: 401 });
   }
@@ -96,9 +97,22 @@ export async function POST() {
   //    authenticated, so the id is the precise, unspoofable bucket, and it cannot
   //    be shared by an unrelated user behind the same NAT. Cancellation is a rare
   //    action; 5 attempts per 5 minutes leaves room to retry a Stripe blip. The
-  //    limiter fails OPEN by design, so it can never be what strands a subscriber.
-  const limited = await enforceRateLimit(`billing:self-cancel:${account.id}`, 5, 300);
-  if (limited) return limited;
+  //    action; 5 attempts per 5 minutes leaves room to retry a Stripe blip.
+  //
+  //    This is the ONE surface in the product that deliberately keeps a fail-OPEN
+  //    limiter. P0-10 made lib/rateLimit.ts fail CLOSED everywhere, which is right
+  //    when the thing behind the limiter is paid AI spend — but here the thing
+  //    behind it is a suspended payer's only way to STOP being charged. Denying
+  //    them because our own limiter backend hiccuped would re-create exactly the
+  //    stranding this route exists to prevent. So: refuse a genuine over-limit
+  //    caller, and proceed when the limiter itself is unavailable.
+  const throttle = await rateLimit(`billing:self-cancel:${account.id}`, 5, 300);
+  if (!throttle.ok && throttle.reason === "over-limit") {
+    return NextResponse.json(
+      { error: "Too many cancellation attempts. Please wait a few minutes and try again." },
+      { status: 429, headers: { "Retry-After": String(throttle.retryAfter) } }
+    );
+  }
 
   const stripe = getStripe();
   if (!stripe) {

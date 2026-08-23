@@ -1,20 +1,18 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/admin";
+import { requireAdmin, setupSecretAccepted } from "@/lib/admin";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 // The migration is additive/idempotent, but applying schema is privileged. Allow
 // it only for a signed-in ADMIN (browser) OR a caller presenting the SETUP_SECRET
-// (curl: ?secret= or x-setup-secret header) so it can still be run headlessly.
+// in the x-setup-secret header so it can still be run headlessly without placing
+// the reusable credential in browser history, proxy logs, or analytics URLs.
 async function authorize(req: Request): Promise<boolean> {
   if (await requireAdmin()) return true;
-  const setup = process.env.SETUP_SECRET;
-  if (!setup) return false;
-  const url = new URL(req.url);
-  const provided = req.headers.get("x-setup-secret") || url.searchParams.get("secret") || "";
-  return provided === setup;
+  // Constant-time and throttled per source IP — see lib/admin.ts setupSecretAccepted.
+  return setupSecretAccepted(req);
 }
 
 // Applies the additive billing columns to the User table if they are missing.
@@ -119,8 +117,4 @@ export async function POST(req: Request) {
       { status: 500 }
     );
   }
-}
-
-export async function GET(req: Request) {
-  return POST(req);
 }

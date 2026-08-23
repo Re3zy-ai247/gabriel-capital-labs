@@ -37,6 +37,7 @@ writeFileSync(
     "fi",
     'if [ "$1" = "-s" ] && [ "$2" = "-o" ]; then',
     '  case "$6" in',
+    "    */api/health/ready) printf '%s' \"${GATE_D_TEST_READY_CODE:-200}\" ;;",
     "    */api/letters) printf '401' ;;",
     "    */api/admin/overview|*/api/admin/diagnostics) printf '403' ;;",
     "    *) printf '200' ;;",
@@ -63,7 +64,7 @@ function headers(releaseLines: string[], status = "HTTP/2 200"): string {
   ].join("\r\n");
 }
 
-function run(headerBlock: string): number | null {
+function run(headerBlock: string, readyCode = "200"): number | null {
   const result = spawnSync(
     "bash",
     [join(root, "scripts", "release-verify.sh"), "https://example.invalid", expectedSha],
@@ -73,6 +74,7 @@ function run(headerBlock: string): number | null {
       env: {
         ...process.env,
         GATE_D_TEST_HEADERS: headerBlock,
+        GATE_D_TEST_READY_CODE: readyCode,
         PATH: fixtureDir + ":" + (process.env.PATH || ""),
       },
     },
@@ -101,6 +103,10 @@ try {
     check("release verifier requires an explicit target before curl", result.status === 64 && !result.curlInvoked);
   }
   check("exact single release header passes", run(headers(["x-cv-release: " + expectedRelease])) === 0);
+  check(
+    "database readiness failure fails the release gate",
+    run(headers(["x-cv-release: " + expectedRelease]), "503") !== 0,
+  );
   check(
     "trailing release-header token fails",
     run(headers(["x-cv-release: " + expectedRelease + " trailing-token"])) !== 0,

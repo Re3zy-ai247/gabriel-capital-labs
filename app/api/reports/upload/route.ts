@@ -4,12 +4,13 @@ import { prisma } from "@/lib/prisma";
 import { currentUserOrDemo } from "@/lib/session";
 import { enforceRateLimit } from "@/lib/rateLimit";
 import { analyzeReportText } from "@/lib/analyze";
-import { extractPdfText } from "@/lib/pdf";
+import { extractPdfTextBounded, looksLikePdf } from "@/lib/pdf";
 import { encryptText } from "@/lib/docCrypto";
 import { recordKaiEvent } from "@/lib/kaiEvents";
 import { track, PRODUCT_EVENTS } from "@/lib/events";
 import { getBureauData, crossBureauConflicts } from "@/lib/bureauData";
 import { recommendStrategy } from "@/lib/recommend";
+import { withAiPrincipal } from "@/lib/aiMeter";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -17,6 +18,73 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 const VALID_BUREAUS: Bureau[] = ["EQUIFAX", "EXPERIAN", "TRANSUNION"];
+
+// P1-20 (E-05). The 15 MB cap is the number the consumer is told, and it is the
+// per-FILE cap. The body carries multipart framing and the pasted-text field on
+// top of it, so the pre-buffer gate allows 1 MB of slack — a real 15 MB PDF must
+// not be refused by the gate that exists to refuse a 500 MB one.
+const MAX_FILE_BYTES = 15 * 1024 * 1024;
+const MAX_BODY_BYTES = MAX_FILE_BYTES + 1024 * 1024;
+const TOO_LARGE = "PDF too large (max 15 MB).";
+// Sniffed against the leading bytes, never against the client-supplied
+// `file.type` (see lib/pdf.ts looksLikePdf / lib/attachments.ts:66-99).
+const NOT_A_PDF =
+  "That file isn't a PDF. Upload the PDF your bureau gave you, or paste the report text instead.";
+
+// A body-size bound that holds whether or not the client declares one (M-5).
+//
+// The first version of this gate only read `content-length` and, because
+// `Number.isFinite(NaN)` is false, let anything WITHOUT that header straight
+// through to `req.formData()` — which buffers the whole body before the per-file
+// `f.size` check can run. A chunked or HTTP/2 request that omits the header
+// therefore reproduced the original E-05 defect verbatim ("the size cap is
+// enforced after the bytes are already in memory"). A declared length is also
+// only a claim; nothing forces the body to match it.
+//
+// So: trust the header only to REFUSE early, never to admit. When no trustworthy
+// length is present, the body is piped through a counter that errors the stream
+// past the cap, so parsing aborts mid-transfer instead of after it.
+type BoundedBody =
+  | { ok: true; req: Request; exceeded: { value: boolean } }
+  | { ok: false };
+
+function boundBodySize(req: Request): BoundedBody {
+  const declared = Number.parseInt(req.headers.get("content-length") || "", 10);
+  if (Number.isFinite(declared)) {
+    // Cheapest possible refusal: no allocation, no read of the body at all.
+    if (declared > MAX_BODY_BYTES) return { ok: false };
+    return { ok: true, req, exceeded: { value: false } };
+  }
+
+  const source = req.body;
+  // A multipart POST with neither a declared length nor a readable body is not a
+  // shape we can bound. Fail closed rather than hand it to the parser.
+  if (!source) return { ok: false };
+
+  const exceeded = { value: false };
+  let seen = 0;
+  const metered = source.pipeThrough(
+    new TransformStream<Uint8Array, Uint8Array>({
+      transform(chunk, controller) {
+        seen += chunk.byteLength;
+        if (seen > MAX_BODY_BYTES) {
+          exceeded.value = true;
+          controller.error(new Error("upload body exceeded the size cap"));
+          return;
+        }
+        controller.enqueue(chunk);
+      },
+    })
+  );
+  const bounded = new Request(req.url, {
+    method: "POST",
+    headers: req.headers,
+    body: metered,
+    // Required by undici for a streaming request body.
+    duplex: "half",
+  } as RequestInit);
+  return { ok: true, req: bounded, exceeded };
+}
 
 // Accepts a pasted report (text) and/or an uploaded PDF, plus the set of bureaus
 // the report covers. Extracts text, runs the shared analysis pipeline (AI
@@ -27,6 +95,11 @@ export async function POST(req: Request) {
   const limited = await enforceRateLimit(`report-upload:${user.id}`, 20, 3600); // paid AI extraction — abuse/cost guard
   if (limited) return limited;
 
+  const bounded = boundBodySize(req);
+  if (!bounded.ok) {
+    return NextResponse.json({ error: TOO_LARGE }, { status: 413 });
+  }
+
   let rawText = "";
   let fileName = "pasted-report.txt";
   let bureaus: Bureau[] = [];
@@ -36,7 +109,7 @@ export async function POST(req: Request) {
 
   try {
     if (contentType.includes("multipart/form-data")) {
-      const form = await req.formData();
+      const form = await bounded.req.formData();
       rawText = String(form.get("text") || "").trim();
       const bureauRaw = String(form.get("bureaus") || "");
       bureaus = bureauRaw.split(",").map((b) => b.trim().toUpperCase()).filter((b): b is Bureau =>
@@ -46,20 +119,32 @@ export async function POST(req: Request) {
       const file = form.get("file");
       if (file && typeof file === "object" && "arrayBuffer" in file) {
         const f = file as File;
-        if (f.size > 15 * 1024 * 1024) {
-          return NextResponse.json({ error: "PDF too large (max 15 MB)." }, { status: 413 });
+        if (f.size > MAX_FILE_BYTES) {
+          return NextResponse.json({ error: TOO_LARGE }, { status: 413 });
+        }
+        // Signature check on the first bytes only — refuses a mislabelled or
+        // hostile payload before the whole file is read into memory and before
+        // pdf.js ever sees it.
+        const head = new Uint8Array(await f.slice(0, 8).arrayBuffer());
+        if (!looksLikePdf(head)) {
+          return NextResponse.json({ error: NOT_A_PDF }, { status: 415 });
         }
         fileName = f.name || "uploaded-report.pdf";
         pdfBuf = Buffer.from(await f.arrayBuffer());
       }
     } else {
-      const body = await req.json().catch(() => ({}));
+      const body = await bounded.req.json().catch(() => ({}));
       rawText = String(body.text || "").trim();
       bureaus = (Array.isArray(body.bureaus) ? body.bureaus : [])
         .map((b: string) => String(b).toUpperCase())
         .filter((b: string): b is Bureau => VALID_BUREAUS.includes(b as Bureau));
     }
   } catch (e) {
+    // The metered stream aborts the parse mid-transfer when the body outruns the
+    // cap. Report that as the size refusal it is, not as an unreadable upload.
+    if (bounded.exceeded.value) {
+      return NextResponse.json({ error: TOO_LARGE }, { status: 413 });
+    }
     console.error("upload parse error", e);
     return NextResponse.json({ error: "Could not read the upload." }, { status: 400 });
   }
@@ -95,12 +180,36 @@ export async function POST(req: Request) {
       try {
         if (pdfBuf) {
           emit({ stage: "extracting" });
-          const pdfText = await extractPdfText(pdfBuf);
+          // Bounded: signature, page cap and wall-clock deadline (lib/pdf.ts).
+          // A page bomb now costs milliseconds instead of a paid minute.
+          const extraction = await extractPdfTextBounded(pdfBuf);
+          if (!extraction.ok && extraction.reason === "timeout") {
+            emit({
+              error:
+                "That PDF took too long to read, so I stopped rather than leave you waiting. Paste the report text instead and I'll read it right away.",
+            });
+            controller.close();
+            return;
+          }
+          if (!extraction.ok && extraction.reason === "not-pdf") {
+            emit({ error: NOT_A_PDF });
+            controller.close();
+            return;
+          }
+          const pdfText = extraction.ok ? extraction.text : "";
           if (pdfText.length > rawText.length) rawText = pdfText;
           if (rawText.length < 40) {
             emit({ error: TOO_SHORT });
             controller.close();
             return;
+          }
+          // Say so when the cap stopped us early — never present a partial read
+          // as a complete one.
+          if (extraction.ok && extraction.truncated) {
+            emit({
+              stage: "extracting",
+              note: `This PDF is unusually long (${extraction.declaredPages} pages). I read the first ${extraction.renderedPages}; anything after that isn't included.`,
+            });
           }
         }
 
@@ -117,10 +226,17 @@ export async function POST(req: Request) {
           },
         });
 
-        const result = await analyzeReportText(
-          prisma,
-          { userId: user.id, reportId: report.id, rawText: plainText, coveredBureaus: bureaus },
-          (stage) => emit({ stage })
+        // Attribute every nested model call to this consumer so the daily AI
+        // budget sees report parsing (lib/aiParse.ts calls the meter with
+        // userId: null). A refusal is caught inside analyzeReportText, which
+        // falls back to the deterministic parser — no spend, still a result.
+        const reportId = report.id;
+        const result = await withAiPrincipal(user.id, () =>
+          analyzeReportText(
+            prisma,
+            { userId: user.id, reportId, rawText: plainText, coveredBureaus: bureaus },
+            (stage) => emit({ stage })
+          )
         );
         analyzed = true;
 

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin, logAudit } from "@/lib/admin";
+import { withPasswordResetRevocation } from "@/lib/passwordReset";
 
 export const dynamic = "force-dynamic";
 
@@ -68,11 +69,17 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     return NextResponse.json({ error: "No supported changes provided." }, { status: 400 });
   }
 
-  const updated = await prisma.user.update({
+  const updateUser = (client: Pick<typeof prisma, "user">) => client.user.update({
     where: { id: target.id },
     data,
     select: { id: true, role: true, plan: true, isAgency: true, disabled: true },
   });
+  // Disable and re-enable are password-reset revocation events. The shared row
+  // lock prevents issuance/redemption from landing between cleanup and the state
+  // update; a failed cleanup rolls back instead of re-enabling unsafely.
+  const updated = typeof data.disabled === "boolean"
+    ? await withPasswordResetRevocation(target.id, updateUser)
+    : await updateUser(prisma);
 
   await logAudit({
     actor: { id: admin.id, email: admin.email },

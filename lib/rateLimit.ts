@@ -3,11 +3,23 @@ import { prisma } from "./prisma";
 
 // DB-backed fixed-window rate limiter. Vercel serverless + Prisma Accelerate means
 // in-memory counters don't survive across instances, so each (key, window) pair is
-// one row whose count is atomically incremented per request. The limiter FAILS OPEN:
-// any DB/limiter error returns ok so a transient fault can never lock out legit
-// users — it only ever *adds* protection, never removes access. Counting is
+// one row whose count is atomically incremented per request. Counting is
 // approximate (a race can let a few extra requests through near the boundary), which
 // is fine for abuse mitigation.
+//
+// P0-10 (E-07) — THIS LIMITER NOW FAILS CLOSED. It used to return `{ ok: true }`
+// on any error, by explicit design, so that "a transient fault can never lock out
+// legit users". Under a free consumer model that reasoning inverts: this is the
+// only control in front of paid AI spend on every AI route, it is backed by the
+// same Postgres those routes use, and so ONE database blip removed every AI quota
+// in the product simultaneously — precisely when the product was least able to
+// absorb the bill. The availability argument also does not survive inspection:
+// every caller needs that same database for its own work, so a limiter fault is
+// never the difference between a working request and a denied one; it is only the
+// difference between a denial and an unmetered one.
+//
+// Callers distinguish the two denials: `reason: "over-limit"` is the consumer
+// genuinely going too fast, `reason: "unavailable"` is our fault and says so.
 
 // Self-heal: the RateHit table creates itself at runtime. CREATE TABLE IF NOT EXISTS
 // via raw SQL works through the Accelerate proxy even though build-time
@@ -47,14 +59,27 @@ export function clientIp(req: Request): string {
   return "unknown";
 }
 
+export type RateLimitResult = {
+  ok: boolean;
+  retryAfter: number;
+  /** Present only on a denial. "unavailable" = the limiter itself failed. */
+  reason?: "over-limit" | "unavailable";
+};
+
+// Seconds a caller is asked to wait when the limiter backend is unavailable.
+// Short: the fault is ours, and the caller should be able to retry as soon as it
+// clears rather than serve out a punitive window.
+const UNAVAILABLE_RETRY_AFTER_SEC = 5;
+
 // Increment the counter for `key` within the current fixed window and report
 // whether the caller is still under `limit`. retryAfter is the seconds until the
-// current window rolls over (0 when allowed). Never throws — fails open.
+// current window rolls over (0 when allowed). Never throws — a limiter failure is
+// reported as a DENIAL (`ok: false`, `reason: "unavailable"`), never as success.
 export async function rateLimit(
   key: string,
   limit: number,
   windowSec: number
-): Promise<{ ok: boolean; retryAfter: number }> {
+): Promise<RateLimitResult> {
   try {
     const windowStart = Math.floor(Date.now() / 1000 / windowSec);
     const bucket = `${key}:${windowStart}`;
@@ -65,26 +90,38 @@ export async function rateLimit(
       update: { count: { increment: 1 } },
     });
     const ok = result.count <= limit;
-    const retryAfter = ok
-      ? 0
-      : (windowStart + 1) * windowSec - Math.floor(Date.now() / 1000);
-    return { ok, retryAfter };
+    if (ok) return { ok: true, retryAfter: 0 };
+    return {
+      ok: false,
+      retryAfter: (windowStart + 1) * windowSec - Math.floor(Date.now() / 1000),
+      reason: "over-limit",
+    };
   } catch (e) {
-    console.error("rateLimit error (failing open)", e);
-    return { ok: true, retryAfter: 0 };
+    console.error("rateLimit error (failing closed)", e);
+    return { ok: false, retryAfter: UNAVAILABLE_RETRY_AFTER_SEC, reason: "unavailable" };
   }
 }
 
-// Route helper: returns a ready-to-return 429 when the caller is over the limit,
+// Route helper: returns a ready-to-return denial when the caller may not proceed,
 // or null to continue. Call AFTER resolving the caller's identity and BEFORE any
 // expensive work (DB-heavy queries, AI calls).
+//
+// Two denials, two truths: 429 means the consumer really did go too fast; 503
+// means our limiter is down and we refused rather than run unmetered. Saying
+// "too many requests" in the second case would blame the consumer for our fault.
 export async function enforceRateLimit(
   key: string,
   limit: number,
   windowSec: number
 ): Promise<NextResponse | null> {
-  const { ok, retryAfter } = await rateLimit(key, limit, windowSec);
+  const { ok, retryAfter, reason } = await rateLimit(key, limit, windowSec);
   if (ok) return null;
+  if (reason === "unavailable") {
+    return NextResponse.json(
+      { error: "We can't process that right now — a service we depend on isn't responding. Please try again in a moment." },
+      { status: 503, headers: { "Retry-After": String(retryAfter) } }
+    );
+  }
   return NextResponse.json(
     { error: "Too many requests. Please slow down and try again shortly." },
     { status: 429, headers: { "Retry-After": String(retryAfter) } }
