@@ -24,6 +24,10 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   const limited = await enforceRateLimit(`letters-round2:${user.id}`, 20, 3600); // paid Opus escalation letter — cost guard
   if (limited) return limited;
 
+  // Optional JSON body — a caller that sends none (every caller before RC1-S5)
+  // gets `{}` and therefore the conservative defaults.
+  const payload = await req.json().catch(() => ({} as Record<string, unknown>));
+
   const parent = await prisma.letter.findFirst({
     where: { id: params.id, userId: user.id },
     include: { tradeline: true },
@@ -45,13 +49,6 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     return NextResponse.json({ error: "The disputed account no longer exists." }, { status: 400 });
   }
 
-  // Entitlement: a Round 2 letter counts against the monthly allowance.
-  const entitlement = await getEntitlement(user);
-  const gate = canGenerateLetter(entitlement);
-  if (!gate.allowed) {
-    return NextResponse.json({ error: gate.reason, upgrade: true, entitlement }, { status: 402 });
-  }
-
   const consumer = {
     fullName: user.fullName,
     addressLine1: user.addressLine1,
@@ -59,6 +56,28 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     state: user.state,
     zip: user.zip,
   };
+
+  // ---- RC1-S5 (S4 handoff): THE ROUND-2 GATE ------------------------------
+  // Round 1 refuses to compose in the consumer's name from facts they never
+  // confirmed (app/api/letters/generate/route.ts). Round 2 spends the SAME
+  // allowance on a letter written in the same first person, so it answers to the
+  // same rule — and until now a consumer with zero confirmations could spend an
+  // allowance on a claim-free escalation.
+  //
+  // Same per-target semantics as round 1: `buildContext` narrows the ACTIVE
+  // assertions through `assertionsForContext` for THIS recipient (a bureau
+  // letter may only speak from assertions scoped to that bureau or to none), and
+  // the gate reads the narrowed set — so the check and the composer can never
+  // disagree. buildContext is pure, so running it here costs nothing.
+  //
+  // RC1-S4 (L-03): `complaintIntent` is the consumer's own opt-in, read with a
+  // strict === true so no truthy value can assert it for them. Default false.
+  const complaintIntent = payload?.complaintIntent === true;
+  const assertions = await prisma.consumerAssertion.findMany({
+    where: { userId: user.id, tradelineId: parent.tradelineId!, status: "ACTIVE" },
+    orderBy: { createdAt: "asc" },
+    select: { assertionType: true, consumerNote: true, bureauScope: true, status: true },
+  });
 
   // Escalation strategy, aimed at the same bureau as the original. The round
   // increments from the parent so the tone ladder advances (R2 demands method of
@@ -68,8 +87,32 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     parent.tradeline as any,
     consumer,
     (parent.targetBureau as Bureau) ?? undefined,
-    parent.round + 1
+    parent.round + 1,
+    undefined,
+    { assertions, complaintIntent }
   );
+
+  // BEFORE the entitlement gate, the credit spend and any AI call, so a refusal
+  // costs the consumer nothing — no quota, no credit, no charge, no row.
+  if (ctx.assertions.length === 0) {
+    return NextResponse.json(
+      {
+        error:
+          "Before we draft anything in your name, tell us which fact on this account is wrong. Open the account on your Tradelines page, choose “Review the facts,” and confirm what you know to be inaccurate — we only write what you confirm.",
+        needsAssertion: true,
+        tradelineId: parent.tradelineId,
+      },
+      { status: 400 }
+    );
+  }
+
+  // Entitlement: a Round 2 letter counts against the monthly allowance.
+  const entitlement = await getEntitlement(user);
+  const gate = canGenerateLetter(entitlement);
+  if (!gate.allowed) {
+    return NextResponse.json({ error: gate.reason, upgrade: true, entitlement }, { status: 402 });
+  }
+
   let body = renderTemplateLetter(parent.tradeline as any, ctx, consumer);
   let aiRefined = false;
 
