@@ -374,6 +374,11 @@ export const COMPLIANCE_RULES = RULES.map(
 // than it is: it is a phrase-level pass over final text. It cannot judge whether
 // a factual claim is true, and it is not a substitute for the consumer reading
 // their own letter before signing it.
+//
+// HANDOFF: nothing renders this yet. app/admin/compliance/page.tsx presents
+// COMPLIANCE_RULES as "Prohibited-phrase rules ({n})" with no statement of
+// scope — the overstatement A3 L-05 recorded. That page is outside this slice's
+// owned paths; the one-line fix is to show this note beside that list.
 export const COMPLIANCE_SCOPE_NOTE =
   "These rules are a phrase-level pass over final text: they catch guaranteed outcomes, litigation threats, deletion-on-demand, declared violations and the §609 / Metro 2 deletion myths. They cannot judge whether a factual statement is true, and they are not a review of the letter's substance.";
 

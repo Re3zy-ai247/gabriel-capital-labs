@@ -465,7 +465,7 @@ function LettersInner() {
                       <Link
                         href={`/letters/print/${letter.id}`}
                         target="_blank"
-                        onClick={() => { void setStatus(letter.id, APPROVED_STATUS).then((e) => { if (!e) setApproved(true); }); }}
+                        onClick={() => { void setStatus(letter.id, APPROVED_STATUS).then((e) => { setError(e); if (!e) setApproved(true); }); }}
                         className="btn-primary !py-1.5 text-xs"
                         title="Mark this letter approved and open the printable copy."
                       >
@@ -869,7 +869,7 @@ function LetterRow({
               <Link
                 href={`/letters/print/${l.id}`}
                 target="_blank"
-                onClick={() => { void onStatus(l.id, APPROVED_STATUS); }}
+                onClick={() => { void onStatus(l.id, APPROVED_STATUS).then(setMsg); }}
                 className="btn-primary min-h-[44px] !py-1.5 text-xs"
                 title="Mark this letter approved and open the printable copy."
               >
