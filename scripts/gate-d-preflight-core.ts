@@ -32,12 +32,23 @@ export const GATE_D_MIGRATION_CHAIN = [
 // unapplied migration. When one is applied in a future reviewed release it
 // MOVES to the chain above; it is never in both.
 //
+//   · 20260728000000_terms_acceptance — RC1-S8 Terms acceptance capture
+//     (TermsAcceptance table, adopted byte-for-byte from the m2 lane).
+//     Authored, reviewed, NOT applied. Its timestamp predates the S4 entry
+//     because it was authored on that lane in July; it still sorts AFTER the
+//     whole applied chain (which ends at 20260721160000_operator_reputation),
+//     so it interleaves with nothing that has been applied.
 //   · 20260823120000_consumer_assertion — RC1-S4 Consumer Fact Confirmation
 //     (ConsumerAssertion table). Authored, reviewed, NOT applied.
 //
 // SERIAL ARTIFACT: this list is extended one slice at a time, in wave order.
-// S8's terms-acceptance migration is the next entry expected here.
-export const AUTHORED_UNAPPLIED_MIGRATIONS = ["20260823120000_consumer_assertion"] as const;
+// S4 added the first entry; S8 added the second. A later slice appends its own
+// and updates the exact-set assertion in scripts/gate-d-preflight.test.ts —
+// it never relaxes the set into a prefix or a length check.
+export const AUTHORED_UNAPPLIED_MIGRATIONS = [
+  "20260728000000_terms_acceptance",
+  "20260823120000_consumer_assertion",
+] as const;
 
 // Every directory legitimately present under prisma/migrations: the applied
 // chain plus the authored-but-unapplied set. Anything else is drift.

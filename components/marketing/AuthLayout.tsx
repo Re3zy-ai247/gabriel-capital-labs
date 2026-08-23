@@ -43,6 +43,32 @@ export function AuthLayout({
             <h1 className="h-display text-2xl text-white md:text-3xl">{heading}</h1>
             <p className="mt-2 text-sm text-slate-400">{subheading}</p>
             <div className="mt-8">{children}</div>
+
+            {/* RC1-S8 (A1-03): this disclosure used to exist ONLY inside the
+                brand panel, which is `hidden lg:block` — so a phone, where most
+                sign-ups happen, never saw it. It now lives in the form column,
+                inside no breakpoint-conditional container, and is the single
+                copy of it on the page. */}
+            <div className="mt-10 border-t border-ink-700/60 pt-6 text-xs leading-relaxed text-slate-500">
+              <p>
+                {BRAND.product} is an educational tool, not a credit-repair organization, and does not provide legal
+                advice. No outcome is guaranteed.
+              </p>
+              {/* Links only. This shell is shared by sign-in and sign-up, so it
+                  states no acceptance of its own — the sign-up form carries the
+                  explicit, unchecked-by-default acceptance box. */}
+              <p className="mt-2">
+                Read our{" "}
+                <Link href="/legal/terms" className="text-slate-400 underline underline-offset-2 hover:text-slate-200">
+                  Terms of Service
+                </Link>{" "}
+                and{" "}
+                <Link href="/legal/privacy" className="text-slate-400 underline underline-offset-2 hover:text-slate-200">
+                  Privacy Policy
+                </Link>
+                .
+              </p>
+            </div>
           </div>
         </div>
       </div>
@@ -67,10 +93,8 @@ export function AuthLayout({
               </li>
             ))}
           </ul>
-          <p className="mt-12 max-w-md text-xs leading-relaxed text-slate-500">
-            {BRAND.product} is an educational tool, not a credit-repair organization, and does not provide legal advice.
-            No outcome is guaranteed.
-          </p>
+          {/* RC1-S8: the disclaimer that used to be duplicated here now renders
+              once, in the form column, at every breakpoint. */}
         </div>
       </div>
     </div>

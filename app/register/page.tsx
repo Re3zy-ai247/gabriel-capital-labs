@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Eye, EyeOff, Loader2, Check } from "lucide-react";
 import { AuthLayout } from "@/components/marketing/AuthLayout";
+import { TermsAcceptField } from "@/components/TermsAccept";
 import { validatePassword } from "@/lib/password";
 
 export default function RegisterPage() {
@@ -14,6 +15,11 @@ export default function RegisterPage() {
   const [show, setShow] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // RC1-S8 (D-02 / P1-10). Seeded false on every mount, never from a prop, a
+  // query string or storage. `termsBlocked` only ever becomes true because the
+  // user tried to submit without checking it — it renders the announced reason.
+  const [acceptTerms, setAcceptTerms] = useState(false);
+  const [termsBlocked, setTermsBlocked] = useState(false);
   const router = useRouter();
   const passwordError = validatePassword(password);
   const passwordMeetsRequirements = password.length > 0 && passwordError === null;
@@ -25,11 +31,20 @@ export default function RegisterPage() {
       setErr(passwordError);
       return;
     }
+    // The client half of the gate. The server refuses independently — see
+    // app/api/register/route.ts — so removing this block cannot create an
+    // account with no recorded acceptance; it would only make the refusal rude.
+    if (!acceptTerms) {
+      setTermsBlocked(true);
+      return;
+    }
     setBusy(true);
     const res = await fetch("/api/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, email, password }),
+      // No version travels from here. The client asserts only that acceptance
+      // was given; the server records its own published constant.
+      body: JSON.stringify({ name, email, password, acceptTerms: true }),
     }).catch(() => null);
     if (!res) {
       setBusy(false);
@@ -97,13 +112,26 @@ export default function RegisterPage() {
           </p>
         </div>
 
+        <TermsAcceptField
+          accepted={acceptTerms}
+          blocked={termsBlocked}
+          disabled={busy}
+          onChange={(next) => {
+            setAcceptTerms(next);
+            if (next) setTermsBlocked(false);
+          }}
+          className="pt-1"
+        />
+
         {err && (
           <p role="alert" className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-300">
             {err}
           </p>
         )}
 
-        <button className="btn-primary btn-lg w-full" disabled={busy}>
+        {/* aria-disabled, not disabled: the control stays focusable so pressing
+            it announces WHY it refused instead of doing nothing silently. */}
+        <button className="btn-primary btn-lg w-full" disabled={busy} aria-disabled={!acceptTerms || busy}>
           {busy ? (<><Loader2 className="h-4 w-4 animate-spin" /> Creating…</>) : "Create account"}
         </button>
       </form>

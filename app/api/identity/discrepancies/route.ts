@@ -15,6 +15,30 @@ export const maxDuration = 60;
 // invents data. Available to all signed-in users (the correction LETTER is premium).
 // Each reported item / discrepancy carries the bureau(s) actually reporting it,
 // so the UI can show attribution and a correction letter can target one bureau.
+//
+// ── RC1-S8 / P0-8 (E-15), Founder decision D-5 ───────────────────────────────
+// This route used to decrypt the consumer's uploaded GOVERNMENT-ID images and
+// send them to the AI provider as base64 image blocks, with a system instruction
+// to read the DATE OF BIRTH off the ID. The privacy policy disclosed only that
+// "text is processed by our AI provider" — it named no provider, no images and
+// no DOB. That is the highest-sensitivity data class in the product travelling
+// under a disclosure that did not cover it.
+//
+// The image path is now OFF and FAILS CLOSED:
+//   · IDENTITY_IMAGE_AI_ENABLED must be exactly "true". Absent, empty, "1",
+//     "TRUE" or anything else is off, which is what an unset production
+//     environment gives you.
+//   · With it off, `collectGovIdImages` is never called, so no ciphertext is
+//     read, nothing is decrypted, and no base64 ever exists in this process.
+//     The refusal is structural, not a filter applied to bytes we already made.
+//   · The DOB instruction is DELETED, not conditioned. Re-enabling the flag
+//     cannot bring it back, because it is no longer written anywhere. Re-reading
+//     a date of birth off an ID is a new decision for counsel, not a flag flip.
+// The typed-identity comparison (name + address from Settings) is unaffected and
+// continues exactly as before.
+function identityImageAiEnabled(): boolean {
+  return process.env.IDENTITY_IMAGE_AI_ENABLED === "true";
+}
 const BUREAUS = { type: "array", items: { type: "string", enum: ["EQUIFAX", "EXPERIAN", "TRANSUNION"] } } as const;
 const SCHEMA = {
   type: "object",
@@ -71,6 +95,33 @@ const SCHEMA = {
   required: ["reportedNames", "reportedAddresses", "reportedEmployers", "discrepancies"],
 } as const;
 
+// The ONLY code in this file that decrypts a government-ID document. It is
+// unreachable unless identityImageAiEnabled() is true — extracted precisely so
+// that is a single, reviewable call site rather than an `if` wrapped around
+// twenty lines that could be edited back into the main flow by accident.
+async function collectGovIdImages(userId: string): Promise<{ media_type: string; data: string }[]> {
+  if (!identityImageAiEnabled()) return [];
+  if (!docCryptoReady()) return [];
+  const images: { media_type: string; data: string }[] = [];
+  const idDocs = await prisma.document.findMany({
+    where: { userId, type: { in: ["GOV_ID_FRONT", "GOV_ID_BACK"] } },
+  });
+  for (const d of idDocs) {
+    if (!["image/jpeg", "image/png", "image/webp"].includes(d.mimeType)) continue;
+    try {
+      const buf = decryptDocument({
+        ciphertext: Buffer.from(d.ciphertext),
+        iv: Buffer.from(d.iv),
+        authTag: Buffer.from(d.authTag),
+      });
+      images.push({ media_type: d.mimeType, data: buf.toString("base64") });
+    } catch {
+      /* skip an unreadable image */
+    }
+  }
+  return images;
+}
+
 export async function POST() {
   const user = await currentUserOrDemo();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -98,34 +149,23 @@ export async function POST() {
     `Address: ${user.addressLine1}${user.addressLine2 ? ", " + user.addressLine2 : ""}, ${user.city}, ${user.state} ${user.zip}`,
   ].join("\n");
 
-  // Pull in the consumer's uploaded government ID (front/back images) so the AI
-  // can read the ID directly and compare it against the report — not just the
-  // typed Settings identity. Images are decrypted in-memory and never persisted.
-  const idImages: { media_type: string; data: string }[] = [];
-  if (docCryptoReady()) {
-    const idDocs = await prisma.document.findMany({
-      where: { userId: user.id, type: { in: ["GOV_ID_FRONT", "GOV_ID_BACK"] } },
-    });
-    for (const d of idDocs) {
-      if (!["image/jpeg", "image/png", "image/webp"].includes(d.mimeType)) continue;
-      try {
-        const buf = decryptDocument({
-          ciphertext: Buffer.from(d.ciphertext),
-          iv: Buffer.from(d.iv),
-          authTag: Buffer.from(d.authTag),
-        });
-        idImages.push({ media_type: d.mimeType, data: buf.toString("base64") });
-      } catch {
-        /* skip an unreadable image */
-      }
-    }
-  }
+  // How many government-ID documents this consumer has, WITHOUT reading a byte
+  // of them: a count over metadata only. It exists so the response can be honest
+  // that an ID is on file and was not used, rather than silently implying there
+  // was none. It never touches ciphertext, iv or authTag.
+  const idDocumentCount = await prisma.document.count({
+    where: { userId: user.id, type: { in: ["GOV_ID_FRONT", "GOV_ID_BACK"] } },
+  });
+
+  // GATED. When the flag is off this is never called, so no ID ciphertext is
+  // read and no plaintext image exists anywhere in this request.
+  const idImages = identityImageAiEnabled() ? await collectGovIdImages(user.id) : [];
   const usedId = idImages.length > 0;
 
   const system = [
     "You compare a consumer's VERIFIED identity against the Personal Information section of their credit report to surface inaccuracies they may dispute.",
     usedId
-      ? "You are given one or more GOVERNMENT ID images. Read the legal name, address, and date of birth printed on the ID and treat the ID as the most authoritative source of the consumer's verified identity (corroborated by the typed identity below)."
+      ? "You are given one or more GOVERNMENT ID images. Read the legal name and address printed on the ID and treat the ID as the most authoritative source of the consumer's verified identity (corroborated by the typed identity below)."
       : "",
     "RULES:",
     "1. Extract reported names/AKAs, addresses, and employers strictly from the report text. Never invent anything not present.",
@@ -151,12 +191,14 @@ export async function POST() {
     decryptText(report.rawText).slice(0, 120_000),
   ].join("\n");
 
-  // Multimodal content: ID image(s) first (when present), then the text prompt.
+  // Multimodal content: ID image(s) first (when the gate is open AND images were
+  // read), then the text prompt. `idImages` is empty whenever the gate is shut,
+  // so this loop has nothing to iterate and the request is text-only.
   const content: any[] = [];
   if (usedId) {
     content.push({
       type: "text",
-      text: "GOVERNMENT ID IMAGE(S) — read the name, address, and date of birth shown and use them as the authoritative verified identity:",
+      text: "GOVERNMENT ID IMAGE(S) — read the name and address shown and use them as the authoritative verified identity:",
     });
     for (const img of idImages) {
       content.push({ type: "image", source: { type: "base64", media_type: img.media_type, data: img.data } });
@@ -177,7 +219,19 @@ export async function POST() {
       return NextResponse.json({ error: "Could not analyze. Try again." }, { status: 500 });
     }
     const parsed = JSON.parse(textBlock.text);
-    return NextResponse.json({ ok: true, usedId, ...parsed });
+    // `usedId` stays the existing contract: true ONLY when an ID image was
+    // actually read. `idImagesPresent` is the honest other half — an ID is on
+    // file and was deliberately not used — so a surface can say so instead of
+    // leaving the consumer to assume it was consulted. (No page renders it yet;
+    // app/identity/page.tsx belongs to another slice. Its existing badge is
+    // gated on `usedId`, so with the image path off it simply does not render
+    // and nothing false is shown.)
+    return NextResponse.json({
+      ok: true,
+      usedId,
+      idImagesPresent: idDocumentCount > 0,
+      ...parsed,
+    });
   } catch (e) {
     console.error("discrepancy detection error", e);
     return NextResponse.json({ error: "Identity analysis failed. Please try again." }, { status: 500 });
