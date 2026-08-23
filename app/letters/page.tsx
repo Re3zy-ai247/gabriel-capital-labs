@@ -97,6 +97,10 @@ function LettersInner() {
   // born unapproved; nothing may mail it until the consumer has said it is right.
   const [editing, setEditing] = useState(false);
   const [approved, setApproved] = useState(false);
+  // REVIEW L-10: regenerating replaces the body in place, so a consumer who has
+  // edited their draft would lose their words to one click. One confirmation,
+  // and only when there is actually an edited draft to lose.
+  const [confirmRegen, setConfirmRegen] = useState(false);
   const deepApplied = useRef(false);
 
   const [loaded, setLoaded] = useState(false);
@@ -124,6 +128,7 @@ function LettersInner() {
   // Apply the recommended strategy + the item's bureaus when an item is chosen.
   function applyItem(id: string, overrideStrategy?: string) {
     setTradelineId(id);
+    setConfirmRegen(false);
     const tl = tradelines.find((t) => t.id === id);
     if (tl) {
       setBureausSel(tl.bureaus.length ? tl.bureaus : ["EQUIFAX"]);
@@ -153,9 +158,21 @@ function LettersInner() {
     setBureausSel((prev) => (prev.includes(b) ? prev.filter((x) => x !== b) : [...prev, b]));
   }
 
+  // An unmailed round-1 draft for this item + strategy that the consumer has
+  // EDITED (status DRAFT — the generator only ever writes GENERATED).
+  const editedDraft = saved.find(
+    (sl) => sl.tradelineId === tradelineId && sl.strategy === strategyId && !sl.mailedAt && sl.round === 1 && sl.status === "DRAFT"
+  );
+
   async function generate() {
     if (!tradelineId) { setError("Select an item to dispute."); return; }
     if (isBureauStrategy && bureausSel.length === 0) { setError("Choose at least one bureau to send to."); return; }
+    if (editedDraft && !confirmRegen) {
+      setConfirmRegen(true);
+      setError("Regenerating rewrites this letter from scratch — the edits you made to it will be gone. Press again to go ahead.");
+      return;
+    }
+    setConfirmRegen(false);
     setBusy(true); setError(null); setLetter(null); setWarning(null); setUpgrade(false); setAiRefined(false); setGenCount(0);
     setEditing(false); setApproved(false); // a recomposed letter is unapproved again
     try {
@@ -285,7 +302,7 @@ function LettersInner() {
             )}
 
             <label htmlFor="letter-strategy" className="label">Letter Type / Strategy</label>
-            <select id="letter-strategy" className="input mb-1" value={strategyId} onChange={(e) => setStrategyId(e.target.value)}>
+            <select id="letter-strategy" className="input mb-1" value={strategyId} onChange={(e) => { setStrategyId(e.target.value); setConfirmRegen(false); }}>
               {strategies.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.label}{selectedTradeline?.recommendedStrategy === s.id ? "  ★ recommended" : ""}
@@ -388,6 +405,8 @@ function LettersInner() {
                       (sl) => sl.tradelineId === tradelineId && sl.strategy === strategyId && !sl.mailedAt && sl.round === 1
                     );
                     const n = isBureauStrategy && bureausSel.length > 1 ? bureausSel.length : 1;
+                    if (confirmRegen && editedDraft) return "Yes — replace my edited letter";
+                    if (editedDraft) return n > 1 ? `Regenerate ${n} Letters (replaces your edits)` : "Regenerate Letter (replaces your edits)";
                     if (willUpdate) return n > 1 ? `Regenerate ${n} Letters (updates your drafts)` : "Regenerate Letter (updates your draft)";
                     return n > 1 ? `Generate ${n} Letters` : "Generate Letter";
                   })()}
@@ -462,15 +481,23 @@ function LettersInner() {
                         </button>
                       </>
                     ) : (
-                      <Link
-                        href={`/letters/print/${letter.id}`}
-                        target="_blank"
-                        onClick={() => { void setStatus(letter.id, APPROVED_STATUS).then((e) => { setError(e); if (!e) setApproved(true); }); }}
-                        className="btn-primary !py-1.5 text-xs"
+                      <button
+                        onClick={async () => {
+                          // REVIEW L-7: approve, THEN open — a print tab must
+                          // never open off the back of an approval that failed.
+                          const e = await setStatus(letter.id, APPROVED_STATUS);
+                          setError(e);
+                          if (e) return;
+                          setApproved(true);
+                          if (!window.open(`/letters/print/${letter.id}`, "_blank")) {
+                            setError("Approved. Your browser blocked the print tab — use Print / PDF to open it.");
+                          }
+                        }}
+                        className="btn-primary min-h-[44px] !py-1.5 text-xs"
                         title="Mark this letter approved and open the printable copy."
                       >
                         <Printer className="h-3.5 w-3.5" /> Approve &amp; print
-                      </Link>
+                      </button>
                     )}
                     {approved && (
                       <MarkMailedControl
@@ -866,15 +893,22 @@ function LetterRow({
               </button>
             )}
             {isEditable && (
-              <Link
-                href={`/letters/print/${l.id}`}
-                target="_blank"
-                onClick={() => { void onStatus(l.id, APPROVED_STATUS).then(setMsg); }}
+              <button
+                onClick={async () => {
+                  // REVIEW L-7: approval is the commitment; the print tab opens
+                  // only once the server has accepted it.
+                  const e = await onStatus(l.id, APPROVED_STATUS);
+                  setMsg(e);
+                  if (e) return;
+                  if (!window.open(`/letters/print/${l.id}`, "_blank")) {
+                    setMsg("Approved. Your browser blocked the print tab — use the printer button to open it.");
+                  }
+                }}
                 className="btn-primary min-h-[44px] !py-1.5 text-xs"
                 title="Mark this letter approved and open the printable copy."
               >
                 <Check className="h-3.5 w-3.5" aria-hidden /> Approve &amp; print
-              </Link>
+              </button>
             )}
             {isApproved && (
               <button
@@ -1085,7 +1119,16 @@ function safeParse(s: string): any {
 // the two to the same number.
 const LETTER_BODY_MAX_UI = 20_000;
 
-interface ComplianceNote { sentence: string; why: string; replacedWith?: string; rule?: string }
+interface ComplianceNote {
+  sentence: string;
+  why: string;
+  replacedWith?: string;
+  // Review H-1: a refused sentence carries the compliant wording, for the
+  // consumer to adopt in their own words rather than have it done to them.
+  suggestion?: string;
+  partial?: boolean;
+  rule?: string;
+}
 
 function LetterEditor({
   letterId, initialBody, onSaved, onCancel,
@@ -1101,6 +1144,14 @@ function LetterEditor({
   const [error, setError] = useState<string | null>(null);
   const [refusals, setRefusals] = useState<ComplianceNote[]>([]);
   const [adjustments, setAdjustments] = useState<ComplianceNote[]>([]);
+  const overLength = draft.length > LETTER_BODY_MAX_UI;
+
+  // Review H-1: the consumer adopts the suggested wording by their own action,
+  // in their own editor, and can then change it further before saving.
+  function adoptSuggestion(r: ComplianceNote) {
+    if (!r.suggestion) return;
+    setDraft((d) => (d.includes(r.sentence) ? d.replace(r.sentence, r.suggestion as string) : d));
+  }
 
   useEffect(() => {
     if (initialBody !== undefined) return;
@@ -1130,8 +1181,13 @@ function LetterEditor({
       const savedBody: string = j.letter?.body ?? draft;
       if (Array.isArray(j.complianceAdjustments) && j.complianceAdjustments.length > 0) {
         setAdjustments(j.complianceAdjustments);
-        setDraft(savedBody); // show them the letter as it will actually print
       }
+      // REVIEW M-4: re-sync UNCONDITIONALLY. The sanitizer can change the saved
+      // text on its own (a soft line break normalized, trailing spaces trimmed)
+      // with no compliance finding at all; showing the pre-save copy would leave
+      // the box disagreeing with what is stored and make a second Save
+      // re-submit stale text.
+      setDraft(savedBody);
       onSaved(savedBody);
     } catch {
       setError("The connection dropped mid-save. Your text is still here — try again.");
@@ -1150,27 +1206,33 @@ function LetterEditor({
     <div className="rounded-lg border border-ink-700 bg-ink-900/50 p-3">
       <label htmlFor={`edit-${letterId}`} className="label">Your letter — edit anything you want changed</label>
       <p className="mb-2 text-[11px] text-slate-500">
-        What you save here is exactly what prints and exactly what you sign. Nothing is rewritten for you: if a
-        sentence has to change to keep the letter mailable, I&apos;ll show you the change before you approve it.
+        What you save here is exactly what prints and exactly what you sign. If a sentence carries facts of your own,
+        I will never replace it for you — I&apos;ll refuse the save, show you the sentence and suggest wording you can
+        adopt. Where a sentence is nothing but a phrase that gets disputes dismissed, I replace that whole sentence and
+        show you the change before you approve.
       </p>
       <textarea
         id={`edit-${letterId}`}
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
         rows={22}
-        maxLength={LETTER_BODY_MAX_UI}
+        // REVIEW L-5: no maxLength — silently swallowing the tail of a long
+        // paste is the same class of problem as silently rewriting a sentence.
+        // Over-length is refused with a message, below and on the server.
         spellCheck
         className="w-full resize-y whitespace-pre-wrap rounded-lg border border-ink-700 bg-ink-900 p-3 font-sans text-[13px] leading-relaxed text-slate-200 focus:border-brand-500 focus:outline-none"
       />
       <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
-        <span className="text-[10px] text-slate-500">
-          {(LETTER_BODY_MAX_UI - draft.length).toLocaleString()} characters left
+        <span className={`text-[10px] ${overLength ? "font-semibold text-rose-400" : "text-slate-500"}`}>
+          {overLength
+            ? `${(draft.length - LETTER_BODY_MAX_UI).toLocaleString()} characters too long — trim it before saving.`
+            : `${(LETTER_BODY_MAX_UI - draft.length).toLocaleString()} characters left`}
         </span>
         <div className="flex items-center gap-2">
           <button onClick={onCancel} disabled={busy} className="min-h-[44px] px-2 text-xs text-slate-400 hover:text-slate-200">
             Discard changes
           </button>
-          <button onClick={save} disabled={busy} className="btn-primary min-h-[44px] !py-1.5 text-xs">
+          <button onClick={save} disabled={busy || overLength} className="btn-primary min-h-[44px] !py-1.5 text-xs">
             {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> : <Check className="h-3.5 w-3.5" aria-hidden />}
             {busy ? "Saving…" : "Save my letter"}
           </button>
@@ -1180,11 +1242,32 @@ function LetterEditor({
       {refusals.length > 0 && (
         <div className="mt-2 rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-200">
           <p className="mb-1 font-semibold">Nothing was saved. These sentences have to change first:</p>
-          <ul className="space-y-2">
+          <ul className="space-y-3">
             {refusals.map((r, i) => (
               <li key={i}>
                 <span className="block italic text-rose-100">“{r.sentence}”</span>
-                <span className="text-rose-300/90">{r.why}</span>
+                <span className="block text-rose-300/90">{r.why}</span>
+                {r.suggestion && (
+                  <span className="mt-1 block rounded border border-rose-500/20 bg-rose-500/5 p-2">
+                    <span className="block text-[10px] font-semibold uppercase tracking-widest text-rose-300/70">
+                      Wording that works
+                    </span>
+                    <span className="block italic text-rose-50">“{r.suggestion}”</span>
+                    {r.partial && (
+                      <span className="mt-1 block text-[11px] text-rose-300/80">
+                        Your sentence also carries facts of your own, so I won&apos;t swap it for you — anything you
+                        wrote there would be lost. Use this wording and put your facts back in your own words.
+                      </span>
+                    )}
+                    <button
+                      onClick={() => adoptSuggestion(r)}
+                      disabled={!draft.includes(r.sentence)}
+                      className="mt-1.5 rounded-md border border-rose-400/40 px-2 py-1 text-[11px] font-semibold text-rose-100 hover:bg-rose-500/10 disabled:opacity-40"
+                    >
+                      Use this wording
+                    </button>
+                  </span>
+                )}
               </li>
             ))}
           </ul>

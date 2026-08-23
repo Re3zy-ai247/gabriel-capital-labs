@@ -143,15 +143,27 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       } as any);
       const text = msg.content.find((c: any) => c.type === "text");
       if (text && "text" in text && text.text.trim().length > 100) {
-        body = text.text.trim();
-        aiRefined = true;
+        const candidate = text.text.trim();
+        // RC1-S5 REMEDIATION (review L-4): a REFUSE-severity rule is defined as
+        // one no rewrite makes honest. Enforcing it only against what the
+        // CONSUMER types, while silently rewriting and saving the same sentence
+        // when the MODEL writes it, is the wrong way round. If the refinement
+        // trips one, the refinement is discarded and the grounded template draft
+        // is used instead — it asserts only what the consumer confirmed.
+        if (applyCompliance(candidate, { bar: "signed-letter" }).refused.length > 0) {
+          console.error("round 2 refinement tripped a REFUSE rule, using grounded draft");
+        } else {
+          body = candidate;
+          aiRefined = true;
+        }
       }
     } catch (e) {
       console.error("round 2 refinement failed, using grounded draft:", e);
     }
   }
 
-  const { text, flags } = applyCompliance(body);
+  // The signed-letter bar — this body is printed, signed and mailed.
+  const { text, flags } = applyCompliance(body, { bar: "signed-letter" });
   const letter = await prisma.letter.create({
     data: {
       userId: user.id,

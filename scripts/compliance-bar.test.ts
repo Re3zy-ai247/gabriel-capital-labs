@@ -10,17 +10,21 @@
 // (guarantees, litigation threats, deletion-on-demand). Both directions are
 // pinned here, plus the property that legitimate text is returned unchanged.
 //
-// NON-VACUITY (measured 2026-08-23 on the pre-slice lib/compliance.ts via
-// `git show 31d4e35:lib/compliance.ts` — the branch base — copied in and
-// reverted immediately, never
-// committed): **140 passed, 69 failed (exit 1)**. Every guarantee-blocking case,
-// every mangling regression and the whole findings/refused API fail there; the
-// 140 that pass are the false-positive controls, which the old rule list also
-// left alone.
+// NON-VACUITY (measured 2026-08-23, each pre-fix file copied in and reverted
+// immediately, never committed):
+//   · branch base `31d4e35:lib/compliance.ts`      → 203 passed, 108 failed (exit 1)
+//   · pre-remediation `df5a640:lib/compliance.ts`  → 286 passed,  32 failed (exit 1)
+//     (the review's H-1 partial-match findings and all five M-2 community posts —
+//      every legitimate post was BLOCKED there and is allowed here)
+//   · this tree                                    → 318 passed,   0 failed (exit 0)
+// The suite reads the result shape defensively ON PURPOSE so the old code
+// produces counted failures rather than a stack trace.
+
 export {};
 
 import {
   applyCompliance,
+  blockingFindings,
   type ComplianceFinding,
   COMPLIANCE_RULES,
   COMPLIANCE_SCOPE_NOTE,
@@ -48,8 +52,8 @@ function ok(label: string, cond: boolean, detail?: string) {
 // suite on the first assertion instead of REPORTING the failures. The
 // non-vacuity measurement above depends on the old code producing counted
 // failures, not a stack trace.
-const run = (s: string) => {
-  const r = applyCompliance(s) as {
+const run = (s: string, bar?: "base" | "signed-letter") => {
+  const r = applyCompliance(s, bar ? { bar } : undefined) as {
     text: string;
     flags?: string[];
     findings?: ComplianceFinding[];
@@ -57,6 +61,21 @@ const run = (s: string) => {
   };
   return { text: r.text, flags: r.flags ?? [], findings: r.findings ?? [], refused: r.refused ?? [] };
 };
+// The bar a signed, mailed dispute letter is held to (review M-2). Everything a
+// letter surface screens goes through this one; `run` alone is the BASE bar that
+// lib/community.ts, lib/brief.ts and lib/kai.ts see.
+const runLetter = (s: string) => run(s, "signed-letter");
+
+// Defensive for the same reason `run` is: `blockingFindings` does not exist on
+// the pre-remediation lib/compliance.ts, and this suite must REPORT that rather
+// than crash on the first assertion. The fallback is a pure function of the
+// finding shape, so on the old code (no `partial` field) it correctly reports
+// that a partial match is NOT blocked.
+type LooseFinding = { severity: string; partial?: boolean };
+const blocking = (r: { findings: LooseFinding[] }): LooseFinding[] =>
+  typeof blockingFindings === "function"
+    ? (blockingFindings(r as never) as unknown as LooseFinding[])
+    : (r.findings ?? []).filter((f) => f.severity === "REFUSE" || f.partial === true);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. MANGLING REGRESSIONS — the six input→output rows measured on the shipped
@@ -122,7 +141,7 @@ const MUST_REFUSE: string[] = [
 ];
 
 for (const input of MUST_REFUSE) {
-  const { text, refused, flags } = run(input);
+  const { text, refused, flags } = runLetter(input);
   ok(`REFUSED: ${input}`, refused.length >= 1, `refused=${refused.length}`);
   ok(`  flagged (never silent): ${input}`, flags.length >= 1);
   ok(`  every refusal carries a consumer-readable explanation: ${input}`, refused.every((f) => f.explanation.length > 40 && /[.!?]$/.test(f.explanation)));
@@ -132,7 +151,7 @@ for (const input of MUST_REFUSE) {
 // "Under FCRA 609 the bureau must delete this item." — A3 L-05 notes the old
 // rule needed the literal words requires|compels|mandates|forces to trip.
 {
-  const { text, findings } = run("Under FCRA 609 the bureau must delete this item.");
+  const { text, findings } = runLetter("Under FCRA 609 the bureau must delete this item.");
   ok('"Under FCRA 609 the bureau must delete this item." is caught', findings.length === 1, JSON.stringify(findings));
   ok("  …and rewritten to what §609 actually provides", /entitles me to disclosure/.test(text), text);
 }
@@ -148,7 +167,7 @@ for (const input of MUST_REFUSE) {
     "",
     "Respectfully,",
   ].join("\n");
-  const { text, refused } = run(letter);
+  const { text, refused } = runLetter(letter);
   const out = text.split("\n");
   ok("surrounding lines are untouched", out[0] === "To Whom It May Concern," && out[2] === "I have reviewed the information associated with the above account." && out[5] === "Respectfully,");
   ok("the neighbouring sentence on the SAME line survives verbatim", out[3].includes("The balance reported is not mine."), out[3]);
@@ -164,7 +183,7 @@ console.log("\n— 3. grammatical-output property —");
 
 const ALL_TRIPPING = [...MANGLED_INPUTS, ...MUST_REFUSE, "Under FCRA 609 the bureau must delete this item.", "The inquiry was unauthorized.", "This account has been re-aged.", "This is fraud.", "I will force you to delete this account."];
 for (const input of ALL_TRIPPING) {
-  const { text, findings } = run(input);
+  const { text, findings } = runLetter(input);
   ok(`  trips a rule: ${input}`, findings.length >= 1);
   const t = text.trim();
   if (!t) continue; // instruction_to_software removes its sentence outright
@@ -198,9 +217,11 @@ const MUST_SURVIVE: string[] = [
 ];
 
 for (const input of MUST_SURVIVE) {
-  const { text, flags, findings } = run(input);
+  const { text, flags, findings } = runLetter(input);
   ok(`unchanged: ${truncate(input)}`, text === input, `\n    in : ${input}\n    out: ${text}`);
   ok(`  zero flags: ${truncate(input)}`, flags.length === 0 && findings.length === 0, JSON.stringify(flags));
+  const base = run(input);
+  ok(`  unchanged at the base bar too: ${truncate(input)}`, base.text === input && base.flags.length === 0);
 }
 
 // Line structure, indentation and blank lines survive a no-op pass exactly.
@@ -244,10 +265,119 @@ for (const strategy of STRATEGIES) {
       }
     );
     const body = renderTemplateLetter(tradeline, ctx, consumer);
-    const res = applyCompliance(body);
+    const res = applyCompliance(body, { bar: "signed-letter" });
     ok(`${strategy.id} r${round}: zero flags`, res.flags.length === 0, res.flags.join(" | "));
     ok(`${strategy.id} r${round}: returned byte-identical`, res.text === body);
+    const base = applyCompliance(body);
+    ok(`${strategy.id} r${round}: zero flags at the base bar too`, base.flags.length === 0 && base.text === body);
   }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 5b. REVIEW H-1 — A PARTIAL MATCH NEVER DESTROYS WHAT THE CONSUMER WROTE.
+//     The distinction is not REFUSE vs REWRITE: it is whether the rule's match
+//     IS the sentence. When the consumer's evidence shares the sentence, the
+//     finding is `partial` and the edit path refuses instead of rewriting.
+// ─────────────────────────────────────────────────────────────────────────────
+console.log("\n— 5b. partial matches (review H-1) —");
+
+const CONSUMER_FACT_SENTENCES: { input: string; fact: RegExp }[] = [
+  // The reviewer's measured case.
+  { input: "I paid this account in full in March 2023 and you failed to investigate my dispute.", fact: /March 2023/ },
+  { input: "The account was opened 5/1/2019 with a $500 limit and a $1,240 balance, and this account must be deleted immediately.", fact: /\$1,240/ },
+  { input: "I never applied for credit with this lender on June 3, 2024, and the inquiry was unauthorized.", fact: /June 3, 2024/ },
+  { input: "Metro 2 requires deletion when the DOFD field is blank, which it is on all three reports.", fact: /all three reports/ },
+  { input: "The date of first delinquency is listed as 2021 but I stopped paying in 2018, so this account is re-aged.", fact: /2018/ },
+];
+
+for (const { input, fact } of CONSUMER_FACT_SENTENCES) {
+  const res = runLetter(input);
+  ok(`flagged at all: ${truncate(input)}`, res.findings.length === 1);
+  ok(`  marked PARTIAL — the match is not the whole sentence: ${truncate(input)}`, res.findings[0]?.partial === true);
+  ok(`  it is in blockingFindings, so the edit path refuses it: ${truncate(input)}`, blocking(res).length === 1);
+  ok(`  a suggested compliant wording is carried for the consumer to adopt: ${truncate(input)}`, (res.findings[0]?.replacement ?? "").length > 40);
+  ok(`  and the scrubbed text (kai/brief/composer path) is still safe: ${truncate(input)}`, res.text !== input);
+}
+
+{
+  // A rule that IS the whole sentence loses nothing, so it may still auto-rewrite.
+  const whole = runLetter("This account must be deleted.");
+  ok("a whole-sentence match is NOT partial", whole.findings.length === 1 && whole.findings[0].partial === false, JSON.stringify(whole.findings));
+  ok("…so it stays in the auto-rewrite lane", blocking(whole).length === 0);
+  // Deliberately conservative: even a trailing object ("… my dispute") makes the
+  // match partial, so the consumer is asked rather than overwritten.
+  const trailing = runLetter("You failed to investigate my dispute.");
+  ok("a trailing object the rule does not cover counts as partial", trailing.findings[0]?.partial === true);
+  const refuseWhole = runLetter("We guarantee results.");
+  ok("a REFUSE finding blocks regardless of coverage", blocking(refuseWhole).length === 1);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 5c. REVIEW M-2 — THE SHARED SURFACES ARE NOT HELD TO THE LETTER BAR.
+//     lib/community.ts:144 and lib/brief.ts:347 reject on `flags.length > 0`,
+//     so any rule that fires at the BASE bar is a hard moderation block. These
+//     three realistic posts were measured blocked by the first cut of this
+//     rewrite and allowed by the pre-slice rule set.
+// ─────────────────────────────────────────────────────────────────────────────
+console.log("\n— 5c. community / brief posts are not moderated at the letter bar (review M-2) —");
+
+const LEGITIMATE_POSTS = [
+  "Equifax verified it again. In my experience they failed to investigate my dispute properly.",
+  "My collector told me they would force them to delete it — is that even a thing?",
+  "Round 3 done. Still reported. I will sue for $1,000 if they keep this up.",
+  "Does anyone know if the bureau must delete an item when they can't verify it?",
+  "I guarantee I mailed this on October 1 — I have the certified receipt.",
+];
+
+for (const post of LEGITIMATE_POSTS) {
+  const base = run(post);
+  ok(`base bar allows the post: ${truncate(post)}`, base.flags.length === 0, JSON.stringify(base.flags));
+  ok(`  …and returns it byte-identical: ${truncate(post)}`, base.text === post, base.text);
+}
+{
+  // …while the letter bar still holds a signed document to the stricter rule.
+  ok("the same litigation threat IS refused inside a letter", runLetter("Round 3 done. Still reported. I will sue for $1,000 if they keep this up.").refused.length === 1);
+  ok("…and so is a letter demanding the bureau must delete", runLetter("The bureau must delete this item.").refused.length === 1);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 5d. REVIEW M-3 — A PROHIBITED PHRASE THAT STRADDLES A NEWLINE IS ONE SENTENCE.
+//     Hard-wrapped text (Kai answers, pasted drafts) must neither bypass the bar
+//     nor produce the L-04 dangling remainder the rewrite exists to kill.
+// ─────────────────────────────────────────────────────────────────────────────
+console.log("\n— 5d. phrases across a soft line break (review M-3) —");
+
+for (const straddle of [
+  "We\nguarantee results.",
+  "I will\nsue for $1,000.",
+  "You are\nin violation of the law.",
+  "This account must\nbe deleted immediately.",
+]) {
+  const res = runLetter(straddle);
+  ok(`caught across the newline: ${JSON.stringify(straddle)}`, res.findings.length === 1, JSON.stringify(res.text));
+  const out = res.text.trim();
+  ok(`  no dangling remainder in front of the replacement: ${JSON.stringify(straddle)}`, !/^(We|I will|You are|This account must)\b/.test(out), JSON.stringify(out));
+  ok(`  the replacement is one grammatical sentence: ${JSON.stringify(straddle)}`, /^[A-Z§]/.test(out) && /[.!?]$/.test(out) && !/\b(\w+)\s+\1\b/i.test(out));
+}
+{
+  // Paragraph structure is never crossed: a blank line separates blocks.
+  const doc = "Jane Q. Consumer\n1 Main St\nAustin, TX 78701\n\nRE: Dispute of Account XXXX-1234\n\nWe guarantee results.\n\nRespectfully,";
+  const out = runLetter(doc).text.split("\n\n");
+  ok("the letterhead block is untouched", out[0] === "Jane Q. Consumer\n1 Main St\nAustin, TX 78701");
+  ok("the RE: line is untouched", out[1] === "RE: Dispute of Account XXXX-1234");
+  ok("only the offending paragraph changed", out[2].startsWith("No result is promised here") && out[3] === "Respectfully,");
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 5e. REVIEW L-1 / L-2 — coverage siblings and the first-person false positive.
+// ─────────────────────────────────────────────────────────────────────────────
+console.log("\n— 5e. coverage siblings (review L-1 / L-2) —");
+{
+  const own = runLetter("I guarantee I mailed this on October 1.");
+  ok("L-1: a factual assurance about the consumer's OWN conduct is not a guarantee of outcome", own.flags.length === 0 && own.text === "I guarantee I mailed this on October 1.");
+  ok("L-2: 'The bureau is legally obligated to remove this.' is now caught", runLetter("The bureau is legally obligated to remove this.").refused.length === 1);
+  ok("L-2: 'This will be removed, guaranteed.' is now caught", runLetter("This will be removed, guaranteed.").refused.length === 1);
+  ok("…and the disclaimer's own 'is guaranteed' still survives", runLetter("No deletion, correction, or score improvement is guaranteed.").flags.length === 0);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -256,7 +386,7 @@ for (const strategy of STRATEGIES) {
 // ─────────────────────────────────────────────────────────────────────────────
 console.log("\n— 6. API shape + admin surface —");
 {
-  const res = run("We guarantee results. This account must be deleted immediately.");
+  const res = runLetter("We guarantee results. This account must be deleted immediately.");
   ok("text is always safe to display (lib/kai.ts:138 contract)", typeof res.text === "string" && !/We guarantee results\./.test(res.text));
   ok("flags is still string[]", Array.isArray(res.flags) && res.flags.every((f) => typeof f === "string"));
   ok("findings carry ruleId / severity / original / replacement / explanation", res.findings.length === 2 && res.findings.every((f) => f.ruleId && f.severity && f.original && typeof f.replacement === "string" && f.explanation));
@@ -265,7 +395,8 @@ console.log("\n— 6. API shape + admin surface —");
   ok("a REWRITE finding is not refused", res.findings.some((f) => f.severity === "REWRITE") && res.refused.every((f) => f.severity === "REFUSE"));
 }
 {
-  ok("COMPLIANCE_RULES is plain English, not regex source (L-05)", COMPLIANCE_RULES.length > 0 && COMPLIANCE_RULES.every((r) => /^(REFUSE|REWRITE) — /.test(r) && !/\\b|\\s|\[\^|gi$/.test(r)), COMPLIANCE_RULES[0]);
+  ok("COMPLIANCE_RULES is plain English, not regex source (L-05)", COMPLIANCE_RULES.length > 0 && COMPLIANCE_RULES.every((r) => /^(REFUSE|REWRITE)( \(letters only\))? — /.test(r) && !/\\b|\\s|\[\^|gi$/.test(r)), COMPLIANCE_RULES[0]);
+  ok("…and says which rules apply only to a signed letter", COMPLIANCE_RULES.some((r) => /\(letters only\)/.test(r)));
   ok("the admin list states scope honestly", /phrase-level/.test(COMPLIANCE_SCOPE_NOTE) && /cannot judge whether a factual statement is true/.test(COMPLIANCE_SCOPE_NOTE));
   ok("the disclaimer still promises no outcome", /No deletion, correction, or score improvement is guaranteed\./.test(DISCLAIMER));
 }
@@ -273,9 +404,9 @@ console.log("\n— 6. API shape + admin surface —");
 // Abbreviations must not fool the sentence splitter into replacing a fragment.
 {
   const input = "Under 15 U.S.C. §1681i the bureau must complete its reinvestigation. I ask for the method of verification.";
-  ok("U.S.C. does not split a sentence (fragment safety)", run(input).text === input, run(input).text);
+  ok("U.S.C. does not split a sentence (fragment safety)", runLetter(input).text === input, runLetter(input).text);
   const threat = "This is a willful violation of 15 U.S.C. 1681i and I will sue.";
-  const out = run(threat).text;
+  const out = runLetter(threat).text;
   ok("a threat containing U.S.C. is replaced as ONE whole sentence (the splitter never cut at \"U.S.\")", !/15 U\.S\./.test(out) && /^[A-Z]/.test(out.trim()) && out.trim().split(/(?<=\.)\s+/).length === 1, out);
 }
 

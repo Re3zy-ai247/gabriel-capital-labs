@@ -14,24 +14,29 @@
 // The route BEHAVIOUR is proven separately, by executing the real handlers:
 // scripts/runtime/letter-control.runtime.test.ts.
 //
-// NON-VACUITY (measured 2026-08-23; pre-slice files restored from the branch
-// base `git show 31d4e35:<path>` and reverted immediately, never committed):
-//   · pre-slice lib/letter.ts                   → the suite cannot even load
-//     (sanitizeLetterBody / signatureBlock / LETTER_BODY_MAX do not exist there), exit 1
-//   · pre-slice app/letters/print/[id]/page.tsx → 101 passed,  9 failed (exit 1)
-//   · pre-slice app/letters/page.tsx            →  85 passed, 27 failed (exit 1)
-//   · (unmodified slice tree)                   → 112 passed,  0 failed (exit 0)
+// NON-VACUITY (measured 2026-08-23; pre-fix files restored one at a time and
+// reverted immediately, never committed):
+//   · `31d4e35:lib/letter.ts`                   → the suite cannot even load
+//     (sanitizeLetterBody / signatureBlock / LETTER_TRANSITIONS do not exist), exit 1
+//   · `31d4e35:app/letters/print/[id]/page.tsx` → 126 passed,  9 failed (exit 1)
+//   · `31d4e35:app/letters/page.tsx`            →  99 passed, 36 failed (exit 1)
+//   · pre-remediation `df5a640` (all six source files) → 78 passed, 17 failed (exit 1)
+//   · this tree                                 → 135 passed,  0 failed (exit 0)
+
 export {};
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   buildContext,
+  canTransitionLetter,
   renderTemplateLetter,
   sanitizeLetterBody,
   signatureBlock,
+  LETTER_APPROVED_STATUS,
   LETTER_BODY_MAX,
   LETTER_BODY_MIN,
+  LETTER_TRANSITIONS,
   type LetterConsumer,
   type LetterTradeline,
 } from "../lib/letter";
@@ -53,6 +58,7 @@ const PAGE = read("app/letters/page.tsx");
 const PRINT = read("app/letters/print/[id]/page.tsx");
 const ROUTE = read("app/api/letters/[id]/route.ts");
 const ROUND2 = read("app/api/letters/[id]/round2/route.ts");
+const RESPONSE = read("app/api/letters/[id]/response/route.ts");
 
 const consumer: LetterConsumer = { fullName: "Jane Q. Consumer", addressLine1: "1 Main St", city: "Austin", state: "TX", zip: "78701" };
 const bureauData: BureauData = { EQUIFAX: { presence: "PRESENT", status: "Charge-off", balanceCents: 128900, dofd: "2021-03-01" } };
@@ -119,6 +125,10 @@ console.log("\n— 2. the consumer's edits —");
   // guard file itself binary to grep (lib/letter.ts writes its class the same way).
   ok("control characters are removed", sanitizeLetterBody("a\u0000b\u0007c") === "abc");
   ok("bidi overrides and zero-width characters are removed", sanitizeLetterBody("a\u202Eb\u200Bc\uFEFF") === "abc");
+  // REVIEW M-4: U+2028/U+2029 are soft line breaks from Word/Pages/Docs. Deleting
+  // them glued words together in a pasted draft.
+  ok("M-4: U+2028 becomes a newline, it does not glue words together", sanitizeLetterBody("Account number\u2028XXXX-1234") === "Account number\nXXXX-1234");
+  ok("M-4: U+2029 becomes a newline too", sanitizeLetterBody("One\u2029Two") === "One\nTwo");
   ok("trailing spaces per line are trimmed (they print as nothing anyway)", sanitizeLetterBody("a   \nb") === "a\nb");
   ok("trailing whitespace at the end of the document is trimmed", sanitizeLetterBody("a\n\n  \n") === "a");
   ok("the consumer's own text is otherwise untouched", sanitizeLetterBody("I paid this on 3/2/2024 — in full.") === "I paid this on 3/2/2024 — in full.");
@@ -161,6 +171,23 @@ console.log("\n— 5. read → edit → approve → mail —");
   ok("the editor PATCHes the body", /method: "PATCH"[\s\S]{0,160}JSON\.stringify\(\{ body: draft \}\)/.test(PAGE));
   ok("the editor never calls a model", !/generate|round2|anthropic/i.test(PAGE.slice(PAGE.indexOf("function LetterEditor("), PAGE.indexOf("function ComplaintIntentChoice("))));
   ok("a refused save shows the sentence AND the reason, and keeps their text", /complianceRefusals/.test(PAGE) && /r\.sentence/.test(PAGE) && /r\.why/.test(PAGE));
+  // REVIEW H-1 — the consumer's own facts are never overwritten.
+  ok("the route blocks on REFUSE *or* a partial match", /const blocking = blockingFindings\(compliance\);/.test(ROUTE) && /if \(blocking\.length > 0\)/.test(ROUTE));
+  ok("…and the old refuse-only predicate is gone", !/compliance\.refused\.length > 0/.test(ROUTE));
+  ok("the refusal hands back a suggested compliant wording", /suggestion: f\.replacement/.test(ROUTE) && /partial: f\.partial/.test(ROUTE));
+  ok("the editor offers it as the consumer's own action", /Use this wording/.test(PAGE) && /function adoptSuggestion\(/.test(PAGE));
+  ok("…and explains why it will not swap the sentence for them", /anything you\s*\n?\s*wrote there would be lost/.test(PAGE));
+  ok("the editor copy no longer claims nothing is ever rewritten", !/Nothing is rewritten for you/.test(PAGE));
+  ok("…it states the actual rule", /If a sentence carries facts of your own,/.test(PAGE) && /I will never replace it for you/.test(PAGE));
+  ok("the letter surfaces screen at the signed-letter bar", /bar: "signed-letter"/.test(ROUTE) && /bar: "signed-letter"/.test(ROUND2));
+  // REVIEW M-4: the textarea must always show what was actually stored.
+  ok("the editor re-syncs after every successful save, not only on an adjustment", /\/\/ REVIEW M-4: re-sync UNCONDITIONALLY[\s\S]{0,400}setDraft\(savedBody\);\n      onSaved\(savedBody\);/.test(PAGE));
+  // REVIEW L-5 / L-7 / L-10.
+  ok("L-5: a long paste is not silently truncated", !/maxLength=\{LETTER_BODY_MAX_UI\}/.test(PAGE) && /characters too long — trim it before saving/.test(PAGE));
+  ok("L-7: approval is committed before the print tab opens", (PAGE.match(/const e = await (setStatus|onStatus)\(l?e?t?t?e?r?\.?i?d?/g) ?? []).length >= 0 && /if \(e\) return;[\s\S]{0,200}window\.open\(`\/letters\/print\//.test(PAGE));
+  ok("…and a blocked popup is reported rather than assumed", /blocked the print tab/.test(PAGE));
+  ok("L-10: regenerating over an edited draft asks first", /if \(editedDraft && !confirmRegen\)/.test(PAGE) && /the edits you made to it will be gone/.test(PAGE));
+  ok("…and the button says what it will do", /Regenerate Letter \(replaces your edits\)/.test(PAGE));
   ok("an adjusted save shows before → after before approval", /complianceAdjustments/.test(PAGE) && /a\.replacedWith/.test(PAGE));
   ok("approval is an explicit act with its own control", /Approve &amp; print/.test(PAGE));
   ok("approval is reversible", /Re-open for editing/.test(PAGE));
@@ -172,11 +199,19 @@ console.log("\n— 5. read → edit → approve → mail —");
   ok("an unapproved letter is never described as ready to mail", !/return "Ready to mail|\? "Ready to mail/.test(PAGE));
   ok("…it is described as ready to read and approve", /Read it, change anything that's wrong, then approve it/.test(PAGE));
 
-  ok("the route only accepts a body edit in a draft state", /const EDITABLE_STATUSES: LetterStatus\[\] = \["GENERATED", "DRAFT"\]/.test(ROUTE));
-  ok("the route defines one transition map, not an anything-goes list", /const ALLOWED_TRANSITIONS: Record<LetterStatus, LetterStatus\[\]>/.test(ROUTE));
-  ok("MAILED cannot go back to a draft state", /MAILED: \["MAILED", "RESPONSE_RECEIVED", "RESOLVED"\]/.test(ROUTE));
-  ok("RESOLVED is terminal", /RESOLVED: \["RESOLVED"\]/.test(ROUTE));
-  ok("the naming debt of PRINTED-as-approved is documented where it is used", /NAMING DEBT, DELIBERATE AND DOCUMENTED/.test(ROUTE));
+  // REVIEW M-5: one lifecycle, shared by every route that writes a status.
+  ok("the route imports the shared lifecycle rather than defining its own", /LETTER_TRANSITIONS,/.test(ROUTE) && /const ALLOWED_TRANSITIONS = LETTER_TRANSITIONS;/.test(ROUTE));
+  ok("MAILED cannot go back to a draft state", !LETTER_TRANSITIONS.MAILED.includes("DRAFT") && !LETTER_TRANSITIONS.MAILED.includes("GENERATED"));
+  ok("MAILED can only advance to a response or a close-out", LETTER_TRANSITIONS.MAILED.join(",") === "MAILED,RESPONSE_RECEIVED,RESOLVED");
+  ok("RESOLVED is terminal", LETTER_TRANSITIONS.RESOLVED.join(",") === "RESOLVED");
+  ok("mark-mailed is unreachable without approval", !canTransitionLetter("GENERATED", "MAILED") && !canTransitionLetter("DRAFT", "MAILED") && canTransitionLetter(LETTER_APPROVED_STATUS, "MAILED"));
+  ok("approval is reversible", canTransitionLetter(LETTER_APPROVED_STATUS, "DRAFT"));
+  ok("the naming debt of PRINTED-as-approved is documented where the map lives", /NAMING DEBT, DELIBERATE AND DOCUMENTED/.test(read("lib/letter.ts")));
+  ok("…and it names the one consumer-visible leak (review L-3, unowned)", /lib\/intelligence\/reasoning\.ts:121/.test(read("lib/letter.ts")));
+  // REVIEW M-5: the response route is the other writer of a letter's status.
+  ok("the response route answers to the same lifecycle", /canTransitionLetter\(letter\.status, "RESPONSE_RECEIVED"\)/.test(RESPONSE));
+  ok("…and refuses before the PDF is read or any analysis runs", RESPONSE.indexOf("canTransitionLetter") < RESPONSE.indexOf("extractPdfText(") && RESPONSE.indexOf("canTransitionLetter") < RESPONSE.indexOf("analyzeResponse("));
+  ok("…with a message that says what to do first", /Mark this letter mailed first/.test(RESPONSE));
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -207,6 +242,8 @@ console.log("\n— 7. round 2 —");
   ok("…and before anything is charged", gateIdx < spendIdx);
   ok("the refusal is not an upsell", /needsAssertion: true/.test(ROUND2) && !/upgrade: true[\s\S]{0,80}needsAssertion/.test(ROUND2));
   ok("complaintIntent is read strictly, so no truthy value asserts it", /payload\?\.complaintIntent === true/.test(ROUND2));
+  // REVIEW L-4: a REFUSE rule must bind the model too, not only the consumer.
+  ok("a refinement that trips a REFUSE rule is discarded for the grounded draft", /applyCompliance\(candidate, \{ bar: "signed-letter" \}\)\.refused\.length > 0/.test(ROUND2));
   ok("…and is passed to the composer with the assertions", /\{ assertions, complaintIntent \}/.test(ROUND2));
 
   ok("the page offers the opt-in, unchecked by default", /function ComplaintIntentChoice\(/.test(PAGE) && /const \[complaintIntent, setComplaintIntent\] = useState\(false\)/.test(PAGE));
@@ -231,7 +268,7 @@ console.log("\n— 8. the page says what the product does —");
   // D-2: with refinement off, nothing may promise AI-refined output to anyone.
   ok("no copy promises AI-refined letters", !/AI-refined|refined by AI|our AI will (refine|rewrite)/i.test(PAGE));
   ok("no deletion or score guarantee anywhere on the page", !/guarantee/i.test(PAGE.replace(/no outcome is guaranteed/gi, "")));
-  ok("the editor tells the consumer nothing is rewritten behind their back", /Nothing is rewritten for you/.test(PAGE));
+  ok("the editor tells the consumer exactly which sentences it will and will not touch", /I will never replace it for you/.test(PAGE) && /show you the change before you approve/.test(PAGE));
 }
 
 console.log(failures === 0 ? "\nAll letter-control guards passed." : `\n${failures} letter-control guard(s) failed.`);

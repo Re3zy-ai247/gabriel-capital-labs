@@ -6,8 +6,15 @@ import { decryptText, encryptText } from "@/lib/docCrypto";
 import { recordKaiEvent } from "@/lib/kaiEvents";
 import { track, PRODUCT_EVENTS } from "@/lib/events";
 import { validateMailedAtInput } from "@/lib/mailCenter";
-import { applyCompliance } from "@/lib/compliance";
-import { LETTER_BODY_MAX, LETTER_BODY_MIN, sanitizeLetterBody } from "@/lib/letter";
+import { applyCompliance, blockingFindings } from "@/lib/compliance";
+import {
+  LETTER_APPROVED_STATUS,
+  LETTER_BODY_MAX,
+  LETTER_BODY_MIN,
+  LETTER_EDITABLE_STATUSES,
+  LETTER_TRANSITIONS,
+  sanitizeLetterBody,
+} from "@/lib/letter";
 
 export const dynamic = "force-dynamic";
 
@@ -39,44 +46,14 @@ const VALID_STATUSES: LetterStatus[] = [
 // letter straight to RESOLVED, and could not change one word of the document
 // they were about to sign and mail.
 //
-// The lifecycle now has one shape, enforced here (the ONLY writer of a letter's
-// status other than the response logger and the generator):
-//
-//   GENERATED ──edit──▶ DRAFT ──approve──▶ PRINTED ──mark mailed──▶ MAILED
-//        └────────────approve────────────▶ PRINTED       │
-//                     ▲                     │            ├─▶ RESPONSE_RECEIVED ─▶ RESOLVED
-//                     └──re-open to edit────┘            └─▶ RESOLVED
-//
-//   · The BODY is editable only in GENERATED / DRAFT — before approval.
-//   · MAILED and everything past it is IMMUTABLE: the record of what was
-//     actually put in an envelope can never be rewritten afterwards.
-//   · Approval is reversible (PRINTED → DRAFT re-opens it for editing), which
-//     is why nothing about it is destructive.
-//
-// ⚠️ NAMING DEBT, DELIBERATE AND DOCUMENTED. "Approved" is carried by the
-// existing `PRINTED` enum member because `LetterStatus` has no APPROVED value
-// and `prisma/schema.prisma` is outside this slice's owned paths — adding one is
-// a migration, which belongs to whichever slice owns the schema next. PRINTED is
-// the closest existing meaning (app/api/letters/generate/route.ts:162 already
-// treats it as "the printed page still matches this content") and the product
-// only ever sets it at the moment it hands the consumer the printable document.
-// The follow-up is exactly one change: add `APPROVED` to `enum LetterStatus`
-// + a migration, then swap the constant below. Surfaces that would then read
-// "Approved" instead of "Printed": app/letters/page.tsx (STATUS_LABEL — already
-// labelled "Approved · ready to print" here), app/admin/compliance/page.tsx.
-const APPROVED: LetterStatus = "PRINTED";
-
-/** Statuses whose body the consumer may still change. */
-const EDITABLE_STATUSES: LetterStatus[] = ["GENERATED", "DRAFT"];
-
-const ALLOWED_TRANSITIONS: Record<LetterStatus, LetterStatus[]> = {
-  GENERATED: ["GENERATED", "DRAFT", APPROVED],
-  DRAFT: ["DRAFT", APPROVED],
-  PRINTED: [APPROVED, "DRAFT", "MAILED"],
-  MAILED: ["MAILED", "RESPONSE_RECEIVED", "RESOLVED"],
-  RESPONSE_RECEIVED: ["RESPONSE_RECEIVED", "RESOLVED"],
-  RESOLVED: ["RESOLVED"],
-};
+// The map itself now lives in lib/letter.ts, because this is not the only route
+// that writes a letter's status — app/api/letters/[id]/response/route.ts writes
+// RESPONSE_RECEIVED and must answer to the same rule (review M-5). The shape,
+// the naming debt behind PRINTED-as-approved and the follow-up are documented
+// there.
+const APPROVED = LETTER_APPROVED_STATUS;
+const EDITABLE_STATUSES = LETTER_EDITABLE_STATUSES;
+const ALLOWED_TRANSITIONS = LETTER_TRANSITIONS;
 
 // What the consumer is saying when they close a dispute out. RESOLVED used to
 // flip `tradeline.resolved = true` with no evidence of any kind (A3 L-11) — a
@@ -202,17 +179,28 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       );
     }
 
-    const compliance = applyCompliance(cleaned);
-    if (compliance.refused.length > 0) {
-      // Nothing is saved and nothing is rewritten: their text stays in their
-      // editor exactly as they typed it, and they are told which sentence has
-      // to change and why.
+    // The signed-letter bar: this is the document the consumer prints, signs and
+    // mails, so it is held to the stricter rule set (lib/compliance.ts, "BAR").
+    const compliance = applyCompliance(cleaned, { bar: "signed-letter" });
+    // REVIEW H-1 — WHOSE WORDS ARE BEING REPLACED.
+    // A rule whose match IS the whole sentence loses nothing when the sentence
+    // is replaced, so that still saves (and is shown before approval). A rule
+    // that matched only PART of the sentence would delete the rest — the
+    // consumer's payment date, balance, or the fact they never applied — and
+    // store words they never wrote. Those are refused, with the suggested
+    // compliant wording handed back so the consumer adopts it in their own
+    // words. Nothing is rewritten out from under them.
+    const blocking = blockingFindings(compliance);
+    if (blocking.length > 0) {
       return NextResponse.json(
         {
           error: "This letter can't be saved as written — see the sentences below.",
-          complianceRefusals: compliance.refused.map((f) => ({
+          complianceRefusals: blocking.map((f) => ({
             sentence: f.original,
             why: f.explanation,
+            // Empty for a rule that simply removes the sentence.
+            suggestion: f.replacement,
+            partial: f.partial,
             rule: f.ruleId,
           })),
         },

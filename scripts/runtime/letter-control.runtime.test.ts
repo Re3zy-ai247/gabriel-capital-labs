@@ -18,12 +18,16 @@
 // the I/O boundaries (Prisma, session, rate limit, entitlements, crypto, AI,
 // analytics, mail-date validation) are replaced.
 //
-// NON-VACUITY (measured 2026-08-23; each pre-slice route copied in from
-// `git show 31d4e35:<path>` — the branch base — and reverted immediately
-// afterwards, never committed):
-//   · pre-slice app/api/letters/[id]/route.ts        → 64 passed, 34 failed (exit 1)
-//   · pre-slice app/api/letters/[id]/round2/route.ts → 85 passed, 13 failed (exit 1)
-//   · (unmodified slice tree)                        → 98 passed,  0 failed (exit 0)
+// NON-VACUITY (measured 2026-08-23; each pre-fix route copied in from git and
+// reverted immediately afterwards, never committed):
+//   · branch base `31d4e35:app/api/letters/[id]/route.ts`          →  75 passed, 40 failed (exit 1)
+//   · branch base `31d4e35:app/api/letters/[id]/round2/route.ts`   → 102 passed, 13 failed (exit 1)
+//   · branch base `31d4e35:app/api/letters/[id]/response/route.ts` → 110 passed,  5 failed (exit 1)
+//     (review M-5: a response logged against a never-mailed letter, and RESOLVED
+//      writing tradeline.resolved off that lineage)
+//   · pre-remediation `df5a640` (all six source files)             → 102 passed, 13 failed (exit 1)
+//     (review H-1: the consumer's payment date destroyed by a partial rewrite)
+//   · this tree                                                     → 115 passed,  0 failed (exit 0)
 import { check, loadModule, mockModule, run, section } from "./_harness";
 
 export {};
@@ -225,6 +229,11 @@ mockModule("lib/aiMeter.ts", {
     throw new Error("no AI call may happen in this guard");
   },
 });
+// The response route's own I/O boundaries. `lib/round2.ts` is NOT mocked:
+// analyzeResponse returns null with no ANTHROPIC_API_KEY, which is the offline
+// path, and the round-2 route needs the real buildRound2UserPrompt.
+mockModule("lib/pdf.ts", { extractPdfText: async () => "" });
+mockModule("lib/outcomeLedger.ts", { recordVerifiedOutcome: async () => undefined });
 
 const letterRoute = loadModule<{
   GET: (req: Request, ctx: { params: { id: string } }) => Promise<Response>;
@@ -233,6 +242,9 @@ const letterRoute = loadModule<{
 }>("app/api/letters/[id]/route.ts");
 const round2 = loadModule<{ POST: (req: Request, ctx: { params: { id: string } }) => Promise<Response> }>(
   "app/api/letters/[id]/round2/route.ts"
+);
+const responseRoute = loadModule<{ POST: (req: Request, ctx: { params: { id: string } }) => Promise<Response> }>(
+  "app/api/letters/[id]/response/route.ts"
 );
 
 const TEMPLATE_BODY = [
@@ -424,23 +436,47 @@ run("letter-control.runtime", async () => {
     check("the letter status did not change", db.letters[0].status === "GENERATED");
   }
 
-  section("a rewritable sentence is saved adjusted, and the adjustment is shown");
+  section("a whole-sentence rewrite is saved, and the adjustment is shown");
   {
     resetAll();
     seedTradeline();
     seedLetter();
-    const myth = `${TEMPLATE_BODY}\n\nSection 609 requires deletion of this account.`;
-    const res = await letterRoute.PATCH(patch("l1", { body: myth }), { params: { id: "l1" } });
+    // The rule's match IS the sentence: replacing it drops nothing the consumer
+    // wrote, so it saves and the change is shown before approval.
+    const demand = `${TEMPLATE_BODY}\n\nThis account must be deleted.`;
+    const res = await letterRoute.PATCH(patch("l1", { body: demand }), { params: { id: "l1" } });
     const body = await json(res);
     check("the save succeeds (200)", res.status === 200);
-    check("the stored letter no longer carries the myth", !/609 requires deletion/i.test(stored("l1")));
-    check("…and carries the coherent replacement instead", /Section 609 of the Fair Credit Reporting Act entitles me to disclosure/.test(stored("l1")));
-    check("the mangling defects are gone (no lower-case fragment, no dangling object)", !/of this account\.$/.test(stored("l1").trim()) && !/ the the /i.test(stored("l1")));
+    check("the stored letter no longer carries the demand", !/This account must be deleted\./.test(stored("l1")));
+    check("…and carries the coherent replacement instead", /I request that this account be deleted or corrected if it cannot be verified/.test(stored("l1")));
+    check("the mangling defects are gone (no lower-case fragment, no doubled article)", /^[A-Z]/.test(stored("l1").split("\n").pop()!.trim()) && !/ the the /i.test(stored("l1")));
     check("the response flags that something changed", body.adjusted === true);
     const adj = (body.complianceAdjustments as { sentence: string; replacedWith: string; why: string }[]) ?? [];
-    check("…and shows the before, the after and the reason", adj.length === 1 && /609 requires deletion/i.test(adj[0].sentence) && adj[0].replacedWith.length > 40 && adj[0].why.length > 40);
+    check("…and shows the before, the after and the reason", adj.length === 1 && /must be deleted/i.test(adj[0].sentence) && adj[0].replacedWith.length > 40 && adj[0].why.length > 40);
     check("the returned body is the SAVED body, so the editor shows what will print", ((body.letter as Json)?.body as string) === stored("l1").slice(4));
     check("the adjustment is recorded on the row for the compliance record", db.letters[0].complianceFlags.length === 1);
+  }
+
+  // ── 3b. REVIEW H-1 — a partial match never destroys the consumer's facts ──
+  section("a sentence carrying the consumer's own evidence is refused, not rewritten");
+  {
+    resetAll();
+    seedTradeline();
+    seedLetter();
+    // The reviewer's measured case: the prohibited claim is welded to the
+    // payment date the whole dispute rests on.
+    const mixed = `${TEMPLATE_BODY}\n\nI paid this account in full in March 2023 and you failed to investigate my dispute.`;
+    const res = await letterRoute.PATCH(patch("l1", { body: mixed }), { params: { id: "l1" } });
+    const body = await json(res);
+    check("the save is refused (400)", res.status === 400);
+    check("NOTHING was saved — the consumer's payment date is not destroyed", stored("l1") === `enc:${TEMPLATE_BODY}`);
+    check("…and the stored body never contains words they did not write", !/does not appear to reflect a reasonable reinvestigation/.test(stored("l1")));
+    const refusals = (body.complianceRefusals as { sentence: string; why: string; suggestion: string; partial: boolean }[]) ?? [];
+    check("the refusal quotes their whole sentence back, payment fact included", refusals.length === 1 && /I paid this account in full in March 2023/.test(refusals[0].sentence));
+    check("…marked as a partial match", refusals[0]?.partial === true);
+    check("…with a suggested compliant wording for them to adopt", (refusals[0]?.suggestion ?? "").length > 40);
+    check("…and a plain-language reason", (refusals[0]?.why ?? "").length > 40);
+    check("the letter status did not change", db.letters[0].status === "GENERATED");
   }
 
   // ── 4. approval, and what it gates ────────────────────────────────────────
@@ -524,6 +560,48 @@ run("letter-control.runtime", async () => {
     check("stating the item was corrected or removed is accepted (200)", fixed.status === 200);
     check("…and only THAT writes resolved to the tradeline", db.tradelines[0].resolved === true);
     check("…recorded as the consumer's own report", kaiEvents.some((e) => e.type === "dispute.resolved" && e.payload.selfReported === true && e.payload.tradelineMarkedResolved === true));
+  }
+
+  // ── 5b. REVIEW M-5 — every writer of a status answers to one lifecycle ────
+  section("a response cannot be logged against a letter that never went out");
+  {
+    resetAll();
+    seedTradeline();
+    seedLetter(); // GENERATED: never approved, never mailed
+    const logged = await responseRoute.POST(
+      new Request("http://localhost/api/letters/l1/response", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ text: "We have completed our reinvestigation and verified the item as accurate." }),
+      }),
+      { params: { id: "l1" } }
+    );
+    check("logging a response on an unmailed letter is refused (409)", logged.status === 409);
+    check("…and says what to do first", /mailed first/i.test(String((await json(logged)).error)));
+    check("…the letter is untouched", db.letters[0].status === "GENERATED" && db.letters[0].responseText === null);
+
+    // …which closes the path to a resolved dispute on a letter nobody sent.
+    const resolve = await letterRoute.PATCH(patch("l1", { status: "RESOLVED", outcome: "corrected_or_deleted" }), { params: { id: "l1" } });
+    check("RESOLVED is therefore unreachable (409)", resolve.status === 409);
+    check("…and tradeline.resolved was never written", db.tradelines[0].resolved === false && !db.calls.includes("tradeline.update"));
+  }
+  {
+    resetAll();
+    seedTradeline();
+    seedLetter({ status: "MAILED", mailedAt: new Date("2026-08-02") });
+    const logged = await responseRoute.POST(
+      new Request("http://localhost/api/letters/l1/response", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ text: "We have completed our reinvestigation and verified the item as accurate." }),
+      }),
+      { params: { id: "l1" } }
+    );
+    check("a response on a MAILED letter is accepted (200)", logged.status === 200);
+    check("…and the letter advances", db.letters[0].status === "RESPONSE_RECEIVED" && db.letters[0].responseText !== null);
+    check("…offline, with no assessment claimed", (await json(logged)).needsAI === true);
+    const resolve = await letterRoute.PATCH(patch("l1", { status: "RESOLVED", outcome: "corrected_or_deleted" }), { params: { id: "l1" } });
+    check("and RESOLVED is reachable from a real mailing lineage", resolve.status === 200 && db.tradelines[0].resolved === true);
   }
 
   // ── 6. round 2 answers to round 1's rule (S4 handoff) ─────────────────────
