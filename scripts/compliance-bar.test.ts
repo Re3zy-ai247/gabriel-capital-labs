@@ -11,7 +11,8 @@
 // pinned here, plus the property that legitimate text is returned unchanged.
 //
 // NON-VACUITY (measured 2026-08-23 on the pre-slice lib/compliance.ts via
-// `git show HEAD:lib/compliance.ts`, copied in and reverted immediately, never
+// `git show 31d4e35:lib/compliance.ts` — the branch base — copied in and
+// reverted immediately, never
 // committed): **140 passed, 69 failed (exit 1)**. Every guarantee-blocking case,
 // every mangling regression and the whole findings/refused API fail there; the
 // 140 that pass are the false-positive controls, which the old rule list also
