@@ -24,6 +24,165 @@ export interface LetterConsumer {
   zip?: string | null;
 }
 
+// ---------------------------------------------------------------------------
+// RC1-S4 (Consumer Fact Confirmation) — the CONSUMER is the factual authority.
+//
+// Before this slice, `buildFindings` below composed the "SUMMARY OF FACTUAL
+// CONCERNS" from parsed report data alone: it ALWAYS emitted a Payment History
+// concern, and when the parser held no status text it put the sentence "I am
+// unable to reconcile the reported status with my records" into the consumer's
+// mouth — about records the product had never asked them about. The consumer
+// then signed and mailed it.
+//
+// Findings now come from ONE source and one only: `ConsumerAssertion` rows the
+// consumer created by picking, from the typed list below, which fact on the item
+// is wrong. No assertion → no finding. The product never supplies the claim, and
+// `app/api/letters/generate/route.ts` refuses to compose at all when the
+// consumer has confirmed nothing.
+//
+// The vocabulary is bounded on purpose. A free-text-only confirmation would put
+// the drafting burden back on the consumer and let an arbitrary sentence into a
+// letter; a typed choice maps to ONE pre-reviewed sentence written in the first
+// person, and the optional note is carried verbatim (whitespace-normalized,
+// never rewritten, never AI-touched) as the consumer's own words.
+// ---------------------------------------------------------------------------
+export const CONSUMER_ASSERTION_TYPES = [
+  "not_mine",
+  "inaccurate_balance",
+  "inaccurate_status",
+  "late_dates_wrong",
+  "account_closed",
+  "paid_settled",
+  "incomplete_info",
+  "other",
+] as const;
+export type ConsumerAssertionType = (typeof CONSUMER_ASSERTION_TYPES)[number];
+
+export function isConsumerAssertionType(v: unknown): v is ConsumerAssertionType {
+  return typeof v === "string" && (CONSUMER_ASSERTION_TYPES as readonly string[]).includes(v);
+}
+
+// What the consumer sees when they choose. `prompt` is the claim they are making
+// in their own name — deliberately written as "I state…", never as a question the
+// product answers for them. `help` is the plain-language explanation.
+// `requiresNote` marks the one choice that means nothing on its own.
+export interface AssertionChoice {
+  type: ConsumerAssertionType;
+  prompt: string;
+  help: string;
+  requiresNote: boolean;
+}
+export const ASSERTION_CHOICES: readonly AssertionChoice[] = [
+  {
+    type: "not_mine",
+    prompt: "This account is not mine",
+    help: "You do not recognize it, and you did not open or authorize it.",
+    requiresNote: false,
+  },
+  {
+    type: "inaccurate_balance",
+    prompt: "The balance is wrong",
+    help: "The amount reported does not match what you owe, or what you owed.",
+    requiresNote: false,
+  },
+  {
+    type: "inaccurate_status",
+    prompt: "The account status is wrong",
+    help: "How the account is described (open, closed, collection, charge-off, and so on) is not accurate.",
+    requiresNote: false,
+  },
+  {
+    type: "late_dates_wrong",
+    prompt: "The late payments or the dates are wrong",
+    help: "A late payment is reported that did not happen, or a date on the account is not accurate.",
+    requiresNote: false,
+  },
+  {
+    type: "account_closed",
+    prompt: "This account is closed",
+    help: "You closed it, or it was closed, and the report does not say so.",
+    requiresNote: false,
+  },
+  {
+    type: "paid_settled",
+    prompt: "This account was paid or settled",
+    help: "You paid or settled it, and the report does not reflect that.",
+    requiresNote: false,
+  },
+  {
+    type: "incomplete_info",
+    prompt: "Information is missing from this account",
+    help: "Something the report should include about this account is not there.",
+    requiresNote: false,
+  },
+  {
+    type: "other",
+    prompt: "Something else about this account is wrong",
+    help: "Describe it in your own words. Your words go into the letter exactly as you write them.",
+    requiresNote: true,
+  },
+];
+export const ASSERTION_CHOICE_BY_TYPE: Record<ConsumerAssertionType, AssertionChoice> =
+  Object.fromEntries(ASSERTION_CHOICES.map((c) => [c.type, c])) as Record<ConsumerAssertionType, AssertionChoice>;
+
+// The maximum length of the consumer's own note. Enforced at the API boundary
+// (a longer note is REFUSED, never silently truncated — truncating a consumer's
+// statement of fact changes what they said), and re-applied defensively here.
+export const CONSUMER_NOTE_MAX = 500;
+
+// Whitespace/control-character normalization ONLY. The consumer's words are not
+// rewritten, spell-corrected, softened, or AI-processed: newlines and control
+// characters become single spaces so the sentence stays on one line of a plain-
+// text letter, and runs of whitespace collapse. Nothing else is touched.
+export function normalizeConsumerNote(note: string | null | undefined): string {
+  if (!note) return "";
+  // The class is written with \u escapes on purpose: a literal control
+  // character in this source file would make the file itself binary to grep.
+  // eslint-disable-next-line no-control-regex
+  const flattened = note.replace(/[\u0000-\u001f\u007f\u2028\u2029]+/g, " ");
+  return flattened.replace(/\s+/g, " ").trim();
+}
+
+// Normalization PLUS the hard cap. The API refuses an over-length note outright
+// (app/api/tradelines/[id]/assertion/route.ts) precisely so this cap never fires
+// on anything a consumer actually typed; it is a defensive bound for the
+// composer, which must never emit an unbounded line into a signed letter.
+export function sanitizeConsumerNote(note: string | null | undefined): string {
+  const collapsed = normalizeConsumerNote(note);
+  return collapsed.length > CONSUMER_NOTE_MAX ? collapsed.slice(0, CONSUMER_NOTE_MAX).trim() : collapsed;
+}
+
+// One confirmed statement of fact, as the composer needs it. Deliberately a
+// narrow projection of the Prisma row, so lib/letter.ts stays DB-free and
+// unit-testable with plain objects.
+export interface ConsumerAssertionInput {
+  assertionType: string;
+  consumerNote?: string | null;
+  bureauScope?: Bureau | null;
+  status?: string | null; // ACTIVE | WITHDRAWN — a WITHDRAWN row never composes
+}
+
+// Which of the consumer's assertions this particular letter may speak from.
+//   · WITHDRAWN rows never compose — the consumer took the statement back.
+//   · An unrecognized type never composes (fail closed: we have no sentence for it).
+//   · A BUREAU letter composes only assertions scoped to THAT bureau or to no
+//     bureau at all. The cross-bureau rule already forbids telling Equifax what
+//     Experian reports; it equally forbids telling Equifax about a fact the
+//     consumer confirmed only about their Experian file.
+//   · A furnisher/collector letter composes every scope: the furnisher supplies
+//     all of them, so a fact confirmed about any file is a fact about its data.
+export function assertionsForContext(
+  assertions: ConsumerAssertionInput[],
+  ctx: Pick<LetterContext, "strategy" | "targetBureau">
+): ConsumerAssertionInput[] {
+  return assertions.filter((a) => {
+    if ((a.status ?? "ACTIVE") !== "ACTIVE") return false;
+    if (!isConsumerAssertionType(a.assertionType)) return false;
+    if (ctx.strategy.recipient !== "bureau") return true;
+    return !a.bureauScope || a.bureauScope === ctx.targetBureau;
+  });
+}
+
 export interface LetterContext {
   strategy: Strategy;
   recipientName: string;
@@ -43,6 +202,23 @@ export interface LetterContext {
   // Dispute round (1 = first dispute). Drives the tone ladder: neutral
   // investigation in R1, method-of-verification in R2, regulatory framing by R4/5.
   round: number;
+  // RC1-S4: the consumer's OWN confirmed statements of fact about this item,
+  // already filtered to the ones this letter may speak from
+  // (assertionsForContext). Empty = the consumer has confirmed nothing, so the
+  // letter asserts nothing: no SUMMARY OF FACTUAL CONCERNS section is emitted.
+  assertions: ConsumerAssertionInput[];
+  // RC1-S4 (L-03): whether the CONSUMER has explicitly said they intend to take
+  // this to the CFPB / their state Attorney General. Default FALSE, everywhere.
+  // Nothing in the product may set it except the consumer's own opt-in.
+  complaintIntent: boolean;
+}
+
+// Optional, additive inputs to buildContext. Kept as one options object so a
+// caller that has neither (every pre-RC1-S4 call site) is unchanged and gets the
+// conservative defaults: no assertions, no complaint intent.
+export interface LetterOptions {
+  assertions?: ConsumerAssertionInput[];
+  complaintIntent?: boolean;
 }
 
 // Optional override of the recipient block for furnisher/collector letters, so a
@@ -68,7 +244,8 @@ export function buildContext(
   consumer: LetterConsumer,
   targetBureau?: Bureau,
   round: number = 1,
-  recipient?: RecipientOverride
+  recipient?: RecipientOverride,
+  options?: LetterOptions
 ): LetterContext {
   const strategy = STRATEGY_BY_ID[strategyId] ?? STRATEGY_BY_ID["fcra_611"];
   const data = getBureauData(t.bureauData);
@@ -94,12 +271,13 @@ export function buildContext(
   }
 
   const consumerComplete = Boolean(consumer.fullName && consumer.addressLine1 && consumer.city && consumer.state && consumer.zip);
+  const resolvedTargetBureau = strategy.recipient === "bureau" ? bureau : undefined;
 
   return {
     strategy,
     recipientName,
     recipientLines,
-    targetBureau: strategy.recipient === "bureau" ? bureau : undefined,
+    targetBureau: resolvedTargetBureau,
     consumerComplete,
     recipientComplete,
     crossBureau: hasCrossBureauKnowledge(data),
@@ -112,6 +290,14 @@ export function buildContext(
       text: bureauTextBlob(data),
     }),
     round: Math.max(1, round),
+    // Filtered ONCE, here, so every consumer of the context (template render, AI
+    // grounding prompt, round-2 prompt) speaks from exactly the same set and no
+    // caller can widen it by accident.
+    assertions: assertionsForContext(options?.assertions ?? [], {
+      strategy,
+      targetBureau: resolvedTargetBureau,
+    }),
+    complaintIntent: options?.complaintIntent === true,
   };
 }
 
@@ -125,91 +311,151 @@ interface Finding {
   why: string;
 }
 
-// Builds at most five findings, grounded STRICTLY in available data. Cross-bureau
-// facts are emitted only when ctx.crossBureau is true and the values actually
-// differ — absence of data is never treated as a discrepancy.
-function buildFindings(t: LetterTradeline, ctx: LetterContext): Finding[] {
+// RC1-S4 — findings are the CONSUMER'S confirmed statements, nothing else.
+//
+// WHAT THIS REPLACED, and why. The previous implementation derived every
+// "factual concern" from parsed report data with no consumer input at all: it
+// unconditionally appended a Payment History concern ("always a completeness
+// concern"), and its Account Status fallback asserted, in the consumer's first
+// person, "I am unable to reconcile the reported status with my records" — a
+// statement about records the product had never asked them about. Both are gone.
+//
+// The report's own data has NOT stopped mattering: it still supplies the
+// OBSERVABLE half of each finding (what the file actually says the status,
+// balance or date is, and where the bureaus disagree). What it may no longer do
+// is supply the CLAIM. Every claim below is prefixed by what the consumer
+// themselves confirmed, and if they confirmed nothing this returns [].
+//
+// At most five, in the order the consumer confirmed them.
+export function buildFindings(t: LetterTradeline, ctx: LetterContext): Finding[] {
   const data = ctx.data;
   const present = ctx.presentBureaus;
   const lbl = (b: Bureau) => BUREAU_LABEL[b];
-  const findings: Finding[] = [];
 
   const collect = <V>(pick: (f: BureauData[Bureau]) => V | undefined | null) =>
     present
       .map((b) => ({ b, v: pick(data[b]) }))
       .filter((x) => x.v != null && String(x.v).length > 0) as { b: Bureau; v: V }[];
 
-  // Account status
+  // Observed values, used ONLY to say what the file shows — never to conclude
+  // anything about it. Cross-bureau text is emitted only when ctx.crossBureau is
+  // true AND the values actually differ (absence is never a discrepancy).
   const statuses = collect((f) => f?.status);
-  if (ctx.crossBureau && new Set(statuses.map((s) => String(s.v).toLowerCase())).size > 1) {
-    findings.push({
-      element: "Account Status",
-      fact: statuses.map((s) => `${lbl(s.b)} reports "${s.v}"`).join("; ") + ".",
-      why: "These reported statuses cannot all describe the current state of the same account, and the discrepancy warrants verification.",
-    });
-  } else if (statuses.length) {
-    findings.push({
-      element: "Account Status",
-      fact: `Reported as "${statuses[0].v}"${ctx.targetBureau ? ` on the ${lbl(ctx.targetBureau)} file` : ""}.`,
-      why: "The reported status must be verifiable against the original account records; if it cannot be substantiated as accurate and complete, it cannot be reported as such.",
-    });
-  } else {
-    findings.push({
-      element: "Account Status",
-      fact: "The account status as currently reported.",
-      why: "I am unable to reconcile the reported status with my records and request that its accuracy be verified.",
-    });
-  }
-
-  // Reported balance
+  const statusObservation = (): string => {
+    if (ctx.crossBureau && new Set(statuses.map((s) => String(s.v).toLowerCase())).size > 1) {
+      return statuses.map((s) => `${lbl(s.b)} reports "${s.v}"`).join("; ") + ".";
+    }
+    if (statuses.length) {
+      return `It is reported as "${statuses[0].v}"${ctx.targetBureau ? ` on the ${lbl(ctx.targetBureau)} file` : ""}.`;
+    }
+    return "";
+  };
   const balances = collect((f) => f?.balanceCents);
-  if (ctx.crossBureau && new Set(balances.map((s) => s.v)).size > 1) {
-    findings.push({
-      element: "Reported Balance",
-      fact: balances.map((s) => `${lbl(s.b)} reports ${formatCents(s.v)}`).join("; ") + ".",
-      why: "A single account cannot simultaneously carry materially different balances; this inconsistency warrants verification of the correct figure, if any.",
-    });
-  } else {
-    findings.push({
-      element: "Reported Balance",
-      fact: `Reported balance of ${formatCents(t.balance)}.`,
-      why: "The reported balance must reconcile with the account's payment and transaction history; a balance that cannot be substantiated to the penny cannot be reported as accurate.",
-    });
-  }
-
-  // Date of first delinquency
+  const balanceObservation = (): string => {
+    if (ctx.crossBureau && new Set(balances.map((s) => s.v)).size > 1) {
+      return balances.map((s) => `${lbl(s.b)} reports ${formatCents(s.v)}`).join("; ") + ".";
+    }
+    return `The reported balance is ${formatCents(t.balance)}.`;
+  };
   const dofds = collect((f) => f?.dofd);
-  if (ctx.crossBureau && new Set(dofds.map((s) => String(s.v))).size > 1) {
-    findings.push({
-      element: "Date of First Delinquency",
-      fact: dofds.map((s) => `${lbl(s.b)} reports ${formatDate(s.v)}`).join("; ") + ".",
-      why: "The date of first delinquency governs the seven-year reporting window under FCRA §605; inconsistent dates raise a concern that the reporting period may be misstated and warrant verification.",
-    });
-  } else if (t.dateOfFirstDelinquency) {
-    findings.push({
-      element: "Date of First Delinquency",
-      fact: `Reported as ${formatDate(t.dateOfFirstDelinquency)}.`,
-      why: "The date of first delinquency controls when this item must cease to be reported under FCRA §605 and must be accurate and verifiable to the original delinquency.",
-    });
+  const dofdObservation = (): string => {
+    if (ctx.crossBureau && new Set(dofds.map((s) => String(s.v))).size > 1) {
+      return dofds.map((s) => `${lbl(s.b)} reports a date of first delinquency of ${formatDate(s.v)}`).join("; ") + ".";
+    }
+    if (t.dateOfFirstDelinquency) {
+      return `The date of first delinquency is reported as ${formatDate(t.dateOfFirstDelinquency)}.`;
+    }
+    return "";
+  };
+
+  const findings: Finding[] = [];
+  for (const a of ctx.assertions.slice(0, 5)) {
+    const type = a.assertionType as ConsumerAssertionType;
+    const note = sanitizeConsumerNote(a.consumerNote);
+    let f: Finding;
+    switch (type) {
+      case "not_mine":
+        f = {
+          element: "Account Ownership",
+          fact: "I do not recognize this account. I did not open it and I did not authorize it.",
+          why: "An account I state is not mine cannot be verified as belonging to me against the original account records, and information that cannot be verified as accurate should not remain on my file.",
+        };
+        break;
+      case "inaccurate_balance":
+        f = {
+          element: "Reported Balance",
+          fact: `${balanceObservation()} I state that this balance is not accurate.`.trim(),
+          why: "A balance I state is inaccurate must be reconciled to the account's own payment and transaction records before it can be reported as accurate.",
+        };
+        break;
+      case "inaccurate_status": {
+        const obs = statusObservation();
+        f = {
+          element: "Account Status",
+          fact: `${obs ? obs + " " : ""}I state that the status reported for this account is not accurate.`,
+          why: "A status I state is inaccurate must be verified against the original account records; if it cannot be substantiated as accurate and complete, it cannot be reported as such.",
+        };
+        break;
+      }
+      case "late_dates_wrong": {
+        const obs = dofdObservation();
+        f = {
+          element: "Payment History and Dates",
+          fact: `I state that the late payment history and/or the dates reported for this account are not accurate.${obs ? " " + obs : ""}`,
+          why: "Payment history and the date of first delinquency must be accurate and verifiable to the original account records; the date of first delinquency also controls when this item must cease to be reported under FCRA §605.",
+        };
+        break;
+      }
+      case "account_closed": {
+        const obs = statusObservation();
+        f = {
+          element: "Account Status — Closed",
+          fact: `I state that this account is closed.${obs ? " " + obs : ""}`,
+          why: "Reporting that does not reflect that the account is closed is incomplete, and incomplete information must be corrected as well as inaccurate information.",
+        };
+        break;
+      }
+      case "paid_settled": {
+        const obs = balanceObservation();
+        f = {
+          element: "Payment or Settlement",
+          fact: `I state that this account was paid or settled.${obs ? " " + obs : ""}`,
+          why: "Reporting that does not reflect a payment or settlement I state was made is incomplete, and must be reconciled to the account's own records.",
+        };
+        break;
+      }
+      case "incomplete_info":
+        f = {
+          element: "Completeness of Reporting",
+          fact: "I state that the information reported for this account is incomplete.",
+          why: "FCRA §611 requires disputed information to be verified as both accurate AND complete; information that cannot be substantiated as complete should be corrected or deleted.",
+        };
+        break;
+      case "other":
+      default:
+        f = {
+          element: "Consumer-Identified Concern",
+          fact: "I state that information reported for this account is inaccurate or incomplete, as described below.",
+          why: "Information I state is inaccurate or incomplete must be verified against the original account records before it can continue to be reported.",
+        };
+        break;
+    }
+    // The consumer's own words, carried verbatim (whitespace-normalized only)
+    // and attributed to them. Never paraphrased, never AI-refined into a claim.
+    if (note) f = { ...f, fact: `${f.fact} In my own words: "${note}"` };
+
+    // Original-creditor context, attached to the ownership claim only — it is
+    // the one finding a collection's chain of title actually bears on, and it is
+    // an observation about the file, not a claim of its own.
+    if (type === "not_mine" && t.originalCreditor) {
+      f = {
+        ...f,
+        why: `${f.why} The reporting names ${t.originalCreditor} as the original creditor; the chain from that creditor to the party now reporting this account should be documented as part of that verification.`,
+      };
+    }
+    findings.push(f);
   }
-
-  // Original creditor (collections) — completeness concern
-  if (t.originalCreditor) {
-    findings.push({
-      element: "Original Creditor",
-      fact: `Reported original creditor: ${t.originalCreditor}.`,
-      why: "The chain from the original creditor to the current reporting party must be documented; if it cannot be substantiated, the reporting is incomplete.",
-    });
-  }
-
-  // Payment history — always a completeness concern
-  findings.push({
-    element: "Payment History",
-    fact: "The payment history associated with this account as reported.",
-    why: "The payment history must be complete and accurate in every field; entries the furnisher cannot substantiate render the reporting incomplete.",
-  });
-
-  return findings.slice(0, 5);
+  return findings;
 }
 
 // REQUESTED ACTION + the exact evidence demanded — differentiated by who the letter
@@ -295,9 +541,27 @@ function closing(ctx: LetterContext): string[] {
   }
   out.push("");
   // Escalation ladder — only the regulatory framing scales with the round.
+  //
+  // RC1-S4 (L-03). The round-4 sentence used to read "I am prepared to submit
+  // this record to the Consumer Financial Protection Bureau and my state
+  // Attorney General for review" — a statement of the CONSUMER'S INTENT that no
+  // consumer had ever expressed, reached by one click and, with the letter body
+  // read-only, impossible for them to remove before signing it. An intent to
+  // file a regulatory complaint is the consumer's to declare, so it is now
+  // gated on `ctx.complaintIntent`, which defaults to FALSE everywhere.
+  //
+  // The default is NOT silence about the agencies: it is the same
+  // RESERVATION-OF-RIGHTS framing rounds 1-3 already use. Reserving a right the
+  // FCRA actually gives the consumer states nothing about what they plan to do;
+  // "I am prepared to submit this record" states something about them that only
+  // they can know.
   if (ctx.round >= 4) {
     out.push(
-      "This letter, together with my prior correspondence on this matter, constitutes a complete record of the disputes I have raised and the responses received. If the disputed information is not corrected or deleted, I am prepared to submit this record to the Consumer Financial Protection Bureau and my state Attorney General for review. Please preserve all records, investigation notes, verification documentation, and audit trails relating to this dispute."
+      "This letter, together with my prior correspondence on this matter, constitutes a complete record of the disputes I have raised and the responses received. " +
+        (ctx.complaintIntent
+          ? "If the disputed information is not corrected or deleted, I am prepared to submit this record to the Consumer Financial Protection Bureau and my state Attorney General for review. "
+          : "If the disputed information is not corrected or deleted, I reserve the right to seek review through the Consumer Financial Protection Bureau, my state Attorney General, and other appropriate regulatory channels. ") +
+        "Please preserve all records, investigation notes, verification documentation, and audit trails relating to this dispute."
     );
   } else if (ctx.round === 3) {
     out.push(
@@ -350,38 +614,71 @@ export function renderTemplateLetter(t: LetterTradeline, ctx: LetterContext, con
     );
   } else if (ctx.round >= 2) {
     lines.push(
-      `I am writing to follow up on a prior dispute concerning the above account, which remains unresolved. Having reviewed the information that appears on ${
-        ctx.targetBureau ? `my ${bureauName} consumer file` : "my consumer credit file"
-      }, I have set out below the specific factual concerns that I am unable to reconcile, and I ask that they be addressed through a reasonable reinvestigation under ${statutes}.`,
+      `I am writing to follow up on a prior dispute concerning the above account, which remains unresolved. ${
+        ctx.assertions.length
+          ? `I have reviewed the information that appears on ${
+              ctx.targetBureau ? `my ${bureauName} consumer file` : "my consumer credit file"
+            }, and I have set out below the specific information I state is inaccurate or incomplete.`
+          : `I have reviewed the information that appears on ${
+              ctx.targetBureau ? `my ${bureauName} consumer file` : "my consumer credit file"
+            }.`
+      } I ask that it be addressed through a reasonable reinvestigation under ${statutes}.`,
       ""
     );
   } else {
+    // RC1-S4 (L-02). The old opening asserted, in the consumer's first person,
+    // that the account contained information "that, based on the information
+    // currently available to me, I am unable to reconcile" — before the product
+    // had asked them a single question about their own records. The opening now
+    // says only what is true: the consumer reviewed the item and has identified
+    // the specific information they state is wrong. With nothing confirmed, it
+    // claims nothing at all.
     lines.push(
-      `I am writing to bring to your attention specific information associated with the above account that appears on ${
-        ctx.targetBureau ? `my ${bureauName} consumer file` : "my consumer credit file"
-      } and that, based on the information currently available to me, I am unable to reconcile. I set out each concern below and respectfully request a reasonable reinvestigation under ${statutes}.`,
+      ctx.assertions.length
+        ? `I have reviewed the information associated with the above account as it appears on ${
+            ctx.targetBureau ? `my ${bureauName} consumer file` : "my consumer credit file"
+          }. I have identified the specific information set out below as inaccurate or incomplete, and I respectfully request a reasonable reinvestigation under ${statutes}.`
+        : `I am writing regarding the information associated with the above account as it appears on ${
+            ctx.targetBureau ? `my ${bureauName} consumer file` : "my consumer credit file"
+          }, and I respectfully request a reasonable reinvestigation of that information under ${statutes}.`,
       ""
     );
   }
 
-  // INVESTIGATOR SUMMARY — Data Element / Fact / Why It Matters. Grounded strictly
-  // in available data; cross-bureau facts only when ctx.crossBureau is true. Emitted
-  // only for accuracy disputes — never for goodwill / cease & desist / pay-for-delete.
+  // SCOPE DISCLAIMER. Emitted for every accuracy dispute, INDEPENDENTLY of how
+  // many concerns follow: it is a statement about the whole letter's scope (one
+  // file, reviewed by the consumer), not a caption for the list. It moved out of
+  // the findings block in RC1-S4 because that block is now conditional on the
+  // consumer having confirmed something, while the scope limit always holds.
+  if (!nonDispute && !ctx.crossBureau) {
+    lines.push(
+      `(The concerns I set out relate solely to how this account is reported on my ${bureauName} file. I make no representation about any other consumer reporting agency, as I have not reviewed those files.)`,
+      ""
+    );
+  }
+
+  // INVESTIGATOR SUMMARY — Data Element / Fact / Why It Matters.
+  //
+  // RC1-S4: every entry here is one statement of fact the CONSUMER confirmed
+  // (buildFindings above). With nothing confirmed, the section is omitted
+  // entirely rather than padded with concerns nobody asserted — the letter then
+  // requests a reinvestigation without putting a single factual claim in the
+  // consumer's mouth. app/api/letters/generate/route.ts refuses to compose in
+  // that state at all, so the empty case is reachable only from a caller that
+  // has not yet been given the consumer's assertions (see the round-2 handoff
+  // note on buildRound2UserPrompt in lib/round2.ts).
   if (!nonDispute) {
     const findings = buildFindings(t, ctx);
-    lines.push("SUMMARY OF FACTUAL CONCERNS");
-    if (!ctx.crossBureau) {
-      lines.push(
-        `(The following concerns relate solely to how this account is reported on my ${bureauName} file. I make no representation about any other consumer reporting agency, as I have not reviewed those files.)`
-      );
-    }
-    lines.push("");
-    findings.forEach((f, i) => {
-      lines.push(`${i + 1}. ${f.element}`);
-      lines.push(`   Fact: ${f.fact}`);
-      lines.push(`   Why it matters: ${f.why}`);
+    if (findings.length) {
+      lines.push("SUMMARY OF FACTUAL CONCERNS");
       lines.push("");
-    });
+      findings.forEach((f, i) => {
+        lines.push(`${i + 1}. ${f.element}`);
+        lines.push(`   Fact: ${f.fact}`);
+        lines.push(`   Why it matters: ${f.why}`);
+        lines.push("");
+      });
+    }
   }
 
   // Obsolescence grounds — the specific basis for the §605 strategy (bureau only).
@@ -467,6 +764,7 @@ export function buildSystemPrompt(round: number = 1): string {
     "5. No threats, no all-caps demands, no fabricated legal consequences. A firm, professional, literate tone. This is consumer education, not legal advice — do not claim to be the consumer's attorney.",
     "6. RECIPIENT-SPECIFIC DEMANDS — match the demand to the recipient and never mix them. A BUREAU is asked to conduct a §611 reasonable reinvestigation and to disclose the §611(a)(7) method of verification (the business contacted, the procedure used, the documentation relied upon). A FURNISHER is asked to conduct its own §1681s-2(b) investigation against account-level records (the original agreement, statements/ledger, full payment history) and to report corrections to every CRA it furnishes. A COLLECTOR is asked to validate under FDCPA §1692g (the amount, the original creditor's name and address, and the chain of title) and to cease collection until validation is mailed. NEVER demand a '§611 reinvestigation within 30 days' from a collector or furnisher, and NEVER ask a bureau to 'validate' a debt. A goodwill request makes no legal demand; a cease-and-desist or pay-for-delete adds no accuracy dispute and admits nothing.",
     "7. Output ONLY the finished letter text (sender block, date, recipient block, RE line, body, signature). No preamble, no commentary, no markdown.",
+    "8. CONSUMER-CONFIRMED FACTS ONLY. Every first-person factual claim in the 'SUMMARY OF FACTUAL CONCERNS' section of the grounded draft was confirmed by the consumer personally. You may reword for clarity, but you may NOT add a concern, generalize one into a broader claim, or introduce any new first-person statement about the consumer's own records, recollection, payments, or intentions. If the draft contains no such section, the consumer has confirmed nothing: request the reinvestigation without asserting a single factual concern, and never supply one yourself. Never state or imply that the consumer intends to file a complaint with the CFPB, a state Attorney General, or any regulator unless the grounded draft already says so in those words.",
   ].join("\n");
 }
 
@@ -596,6 +894,15 @@ export function buildUserPrompt(t: LetterTradeline, ctx: LetterContext, draft: s
     `Bureaus with data: ${ctx.presentBureaus.join(", ") || "single-bureau / unknown"}`,
     `Verified cross-bureau conflicts: ${ctx.conflicts.length ? ctx.conflicts.join("; ") : "NONE — do not assert any cross-bureau conflict"}`,
     `Account: ${t.creditorName}${t.originalCreditor ? ` (original creditor: ${t.originalCreditor})` : ""}, balance ${formatCents(t.balance)}`,
+    // RC1-S4: the model is told EXACTLY which claims the consumer confirmed, so
+    // "add no new facts" has a concrete referent instead of being a general
+    // exhortation. An empty list is stated explicitly rather than omitted.
+    ctx.assertions.length
+      ? `Facts the CONSUMER personally confirmed (the ONLY factual claims permitted in this letter): ${ctx.assertions
+          .map((a) => a.assertionType)
+          .join(", ")}`
+      : "Facts the CONSUMER personally confirmed: NONE. Assert no factual concern of any kind; request the reinvestigation only.",
+    `Consumer's expressed intent to file a regulatory complaint: ${ctx.complaintIntent ? "YES — the consumer opted in" : "NO — never state or imply such an intent"}`,
     "",
     "----- GROUNDED DRAFT -----",
     draft,

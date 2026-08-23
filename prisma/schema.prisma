@@ -105,6 +105,11 @@ model User {
   // durable org an account owns. Dormant behind OPERATOR_IDENTITY_ENABLED.
   operatorIdentity   OperatorIdentity?
   ownedOrganizations Organization[]    @relation("OrganizationOwner")
+
+  // ---- RC1-S4 Consumer Fact Confirmation. Back-relation only (no new column
+  // on User): the consumer's confirmed statements of fact about their own
+  // tradelines. See model ConsumerAssertion at the end of this file.
+  consumerAssertions ConsumerAssertion[]
 }
 
 // Append-only record of privileged admin actions (discount codes created, plans
@@ -239,6 +244,10 @@ model Tradeline {
   resolved  Boolean  @default(false)
   letters   Letter[]
   createdAt DateTime @default(now())
+
+  // ---- RC1-S4: what the consumer themselves confirmed is wrong about this
+  // item. Back-relation only; see model ConsumerAssertion at the end of file.
+  consumerAssertions ConsumerAssertion[]
 }
 
 model Letter {
@@ -798,4 +807,50 @@ model ReputationMilestone {
 
   @@unique([operatorId, milestoneKey]) // latched: earned once, never re-earned/removed
   @@index([operatorId])
+}
+
+// ---- RC1-S4: Consumer Fact Confirmation (Founder decision D-7) ---------------
+// The consumer is the FACTUAL AUTHORITY. Before CreditVector composes a single
+// first-person sentence in their name, they say — in typed, bounded terms —
+// WHICH fact on the item is wrong. One row = one confirmed statement of fact by
+// the consumer about one of their own tradelines.
+//
+// APPEND-ORIENTED. A withdrawal flips `status` to "WITHDRAWN" and stamps
+// `withdrawnAt`; nothing is ever deleted by the application, so the record of
+// what the consumer confirmed (and when they took it back) survives the letters
+// composed from it. `status` is a bounded string, not a Prisma enum, so a future
+// value needs no ALTER TYPE on a live database.
+//
+// FK LIFECYCLE: Cascade on BOTH sides, matching Tradeline's own onDelete:Cascade
+// from User. An assertion is a statement ABOUT one tradeline — it is meaningless
+// once that row is gone, and it is consumer content, not a commercial or consent
+// record (contrast TermsAcceptance, which is Restrict on purpose). No application
+// path hard-deletes a User today (scripts/consumer-deletion-containment.test.ts
+// pins that), and nothing deletes a Tradeline, so this cascade is latent.
+model ConsumerAssertion {
+  id          String    @id @default(cuid())
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String
+  tradeline   Tradeline @relation(fields: [tradelineId], references: [id], onDelete: Cascade)
+  tradelineId String
+
+  // Optional per-bureau scope. NULL = "this is wrong about the account itself,
+  // on every file that reports it". A bureau letter only ever composes from
+  // assertions whose scope is NULL or that bureau — never another bureau's
+  // (lib/letter.ts assertionsForContext), so the cross-bureau rule holds.
+  bureauScope Bureau?
+
+  // Bounded vocabulary, defined once in lib/letter.ts (CONSUMER_ASSERTION_TYPES).
+  // A string, not an enum, for the same live-migration reason as `status`.
+  assertionType String
+  // The consumer's own words, optional, whitespace-normalized and length-capped
+  // at the API boundary. Never rewritten, never AI-generated.
+  consumerNote  String? @db.Text
+
+  status      String    @default("ACTIVE") // ACTIVE | WITHDRAWN
+  createdAt   DateTime  @default(now())
+  withdrawnAt DateTime?
+
+  @@index([userId, tradelineId, status])
+  @@index([tradelineId, status])
 }
