@@ -21,19 +21,63 @@ export const dynamic = "force-dynamic";
 // decision, not an implementation detail.
 const UPGRADE_PRORATION_BEHAVIOR = "create_prorations" as const;
 
-// The plans this API will actually sell, in ONE reviewable place.
+// ── RC1-S6a · NOTHING IS FOR SALE HERE (Founder D-3 / D-4) ───────────────────
 //
-// agency_pro is deliberately ABSENT: it is "Coming soon" on /pricing, and that
-// page promises "you can't be charged for a plan that isn't available yet".
-// Re-add it here the day the tier goes live, together with its live price.
+// PURCHASABLE_PLANS is now EMPTY. It used to be ["premium", "agency"], and the
+// one-time "letters_5" pack had its own branch below. All three are closed:
 //
-// This list is a REFUSAL list, not a default list — see the validation at the
-// subscription branch below. Coercing an unrecognized plan into a purchasable one
-// sells the customer a product they did not ask for.
-const PURCHASABLE_PLANS = ["premium", "agency"] as const;
+//   letters_5  D-3  consumer letter packs are retired — assistance is free, so
+//                   there is nothing left to buy. Credits already purchased are
+//                   preserved and frozen (lib/entitlements), never spent.
+//   premium    D-3  the consumer subscription is retired. Existing subscribers
+//                   keep their portal, their invoices and their self-cancel
+//                   path; this route simply no longer opens new ones.
+//   agency     D-4  Agency sales are PAUSED, not cancelled. Existing Agency
+//                   accounts are untouched — workspaces, capacity and the
+//                   webhook that keeps their billing in sync all keep working.
+//
+// The refusal happens FIRST, before the Stripe client is constructed, before the
+// session is read and before any customer record is created or touched: a closed
+// sale must cost the consumer nothing and must not reach the processor at all.
+//
+// This is a source constant, not an env flag. Re-opening a sale is a Founder
+// decision and must arrive as a reviewed commit, not an ops toggle.
+const PURCHASABLE_PLANS = [] as const;
 type PurchasablePlan = (typeof PURCHASABLE_PLANS)[number];
 function isPurchasablePlan(value: string): value is PurchasablePlan {
   return (PURCHASABLE_PLANS as readonly string[]).includes(value);
+}
+
+// 410 Gone is the honest code: these products existed and no longer do. The copy
+// states the fact and stops — no pricing, no alternative to buy, no "contact us
+// to upgrade", nothing that reads as a pitch.
+const SALES_CLOSED: Record<string, string> = {
+  letters_5:
+    "Letter packs are no longer sold. You don't need one: generating dispute letters is free, with no monthly limit. Any letter credits already on your account stay on it.",
+  premium:
+    "CreditVector no longer sells a consumer plan. Everything the paid plan used to gate — dispute letters, escalations, personal-information corrections, your action plan — is available to you at no cost.",
+  agency:
+    "New Agency sign-ups are paused. Existing Agency accounts are unaffected and continue to work as they are.",
+};
+const SALES_CLOSED_DEFAULT =
+  "This isn't for sale. CreditVector doesn't charge consumers, and no new subscriptions are being opened.";
+
+/**
+ * Refuse a purchase before anything commercial happens. Returns a response for
+ * every request this route can receive today; the nullable return type is what
+ * keeps the legacy machinery below reachable in principle rather than dead code
+ * the compiler has to be told to ignore.
+ */
+function refuseSale(body: { product?: unknown; plan?: unknown }): NextResponse | null {
+  const product = typeof body?.product === "string" ? body.product : null;
+  // An OMITTED plan has always meant "premium" on this route (app/billing's
+  // Upgrade button posts no body at all), so it is refused as premium.
+  const plan = typeof body?.plan === "string" && body.plan.length > 0 ? body.plan : "premium";
+  const key = product ?? plan;
+  return NextResponse.json(
+    { error: SALES_CLOSED[key] ?? SALES_CLOSED_DEFAULT, salesClosed: true, product: key },
+    { status: 410 }
+  );
 }
 
 // Terms-of-Service acceptance at the point of payment, in ONE reviewable place.
@@ -61,17 +105,27 @@ const CONSENT_COLLECTION = TOS_CONSENT_ENABLED
   ? { consent_collection: { terms_of_service: "required" as const } }
   : {};
 
-// Creates a Stripe Checkout Session. Body:
-//   { plan?: "premium"|"agency", interval?: "month"|"year" }  — subscription
-//                                     (plan omitted = premium; any other value is a 400)
-//   { product: "letters_5" }                                  — one-time letter pack
+// Refuses every purchase (see SALES_CLOSED above).
+//
+// Everything below the refusal is the DORMANT sell machinery, kept intact and
+// unreachable: the existing-subscription lookup, the in-place prorated upgrade
+// that stops a customer being billed twice, the 409s that refuse to guess which
+// subscription to mutate, and both Checkout Sessions. It is preserved rather
+// than deleted because it is reviewed, hard-won billing-safety code that must
+// still hold the day the Founder re-opens a sale — deleting it would mean
+// rebuilding the double-billing protection from scratch. Nothing in it runs
+// while PURCHASABLE_PLANS is empty and refuseSale answers every request.
 export async function POST(req: Request) {
+  // Parse first, refuse first. No Stripe client, no session lookup, no customer
+  // record: a closed sale never reaches the processor.
+  const body = await req.json().catch(() => ({}));
+  const refusal = refuseSale(body);
+  if (refusal) return refusal;
+
   const stripe = getStripe();
   if (!stripe) {
     return NextResponse.json({ error: "Billing is not configured yet. Please try again later." }, { status: 503 });
   }
-
-  const body = await req.json().catch(() => ({}));
 
   // Resolve the account by user ID, never by the session's email. Email is
   // user-mutable (app/api/profile/route.ts changes it) while the JWT keeps the
