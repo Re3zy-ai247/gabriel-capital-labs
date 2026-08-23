@@ -19,8 +19,8 @@
 //   · pre-slice lib/letter.ts                   → the suite cannot even load
 //     (sanitizeLetterBody / signatureBlock / LETTER_BODY_MAX do not exist there), exit 1
 //   · pre-slice app/letters/print/[id]/page.tsx → 101 passed,  9 failed (exit 1)
-//   · pre-slice app/letters/page.tsx            →  85 passed, 25 failed (exit 1)
-//   · (unmodified slice tree)                   → 110 passed,  0 failed (exit 0)
+//   · pre-slice app/letters/page.tsx            →  85 passed, 27 failed (exit 1)
+//   · (unmodified slice tree)                   → 112 passed,  0 failed (exit 0)
 export {};
 
 import { readFileSync } from "node:fs";
@@ -168,6 +168,9 @@ console.log("\n— 5. read → edit → approve → mail —");
   ok("mark-mailed is gated on approval in the fresh-letter panel too", /\{approved && \(\s*<MarkMailedControl/.test(PAGE));
   ok("the editor is offered only for editable statuses", /const isEditable = EDITABLE_STATUSES\.includes\(l\.status\) && !l\.mailedAt/.test(PAGE));
   ok("the status vocabulary tells the consumer whether it is approved", /"Draft — not approved"/.test(PAGE) && /"Approved · ready to print"/.test(PAGE));
+  // Comments quoting the old string are fine; the RETURNED copy is what matters.
+  ok("an unapproved letter is never described as ready to mail", !/return "Ready to mail|\? "Ready to mail/.test(PAGE));
+  ok("…it is described as ready to read and approve", /Read it, change anything that's wrong, then approve it/.test(PAGE));
 
   ok("the route only accepts a body edit in a draft state", /const EDITABLE_STATUSES: LetterStatus\[\] = \["GENERATED", "DRAFT"\]/.test(ROUTE));
   ok("the route defines one transition map, not an anything-goes list", /const ALLOWED_TRANSITIONS: Record<LetterStatus, LetterStatus\[\]>/.test(ROUTE));

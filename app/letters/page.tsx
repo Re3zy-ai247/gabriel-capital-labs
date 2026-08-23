@@ -591,9 +591,15 @@ function letterStoryline(l: SavedLetter): string | null {
     if (l.needsDetails) {
       return "Needs your details before mailing — open the letter to see what's missing.";
     }
+    // RC1-S5: "Ready to mail" was said of a letter nobody had read yet. A draft
+    // is ready for the consumer to read and approve; only an approved letter is
+    // ready to go in an envelope.
+    if (l.status !== APPROVED_STATUS) {
+      return "Read it, change anything that's wrong, then approve it — nothing gets mailed until you do.";
+    }
     return l.targetBureau
-      ? "Ready to mail — the §611 clock starts when the bureau receives it."
-      : "Ready to mail — the response clock starts once it arrives.";
+      ? "Approved and ready to mail — the §611 clock starts when the bureau receives it."
+      : "Approved and ready to mail — the response clock starts once it arrives.";
   }
   return null;
 }
