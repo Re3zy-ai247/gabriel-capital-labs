@@ -46,7 +46,13 @@
 //     `123-45-6789` in the transmitted prompt. The previous version of the
 //     §5 pin ("redaction happens in exactly one place") PASSED on that tree,
 //     which is why it was replaced by a coverage check.
-//   · Unmodified slice tree: **61 passed, 0 failed** (exit 0).
+//   · MICRO-ROUND (mask-then-truncate). The boundary case carries its own
+//     non-vacuity inline: it asserts that the OLD order — truncate, then mask —
+//     demonstrably leaks a fragment of an SSN straddling the 120k cut, on the
+//     same fixture where the shipped order leaks none of 36 fragments. That
+//     check fails if the leak ever stops being reproducible, so the boundary
+//     assertion above it can never pass for free.
+//   · Unmodified slice tree: **64 passed, 0 failed** (exit 0).
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import vm from "node:vm";
@@ -407,6 +413,35 @@ async function main() {
     transmitted.includes("MARCUS CHEN") && transmitted.includes("1 MAIN ST AUSTIN TX 78701")
   );
 
+  // — review micro-round: an SSN STRADDLING the 120k truncation boundary.
+  //   Order matters here and nothing else catches it: truncate-then-mask hands
+  //   the masker a partial run ("123-4") that matches neither pattern, so up to
+  //   8 of 9 digits ship. Mask-then-truncate cuts already-masked text.
+  // Padded so the SSN begins 5 characters before the cut: truncating first
+  // leaves "123-4" at the end of what is transmitted.
+  // Padded so the SSN begins exactly 5 characters before the cut — truncating
+  // first leaves "123-4" at the end of what is transmitted. The newline before
+  // it matters: SSN_DASHED needs a word boundary, so an SSN abutting filler
+  // text would not be a test of the ORDER at all.
+  const boundaryHead = "PERSONAL INFORMATION\n";
+  const boundaryText =
+    boundaryHead + "x".repeat(120_000 - 5 - boundaryHead.length - 1) + "\n" + SSN + "\nTRAILING";
+  const straddle = await invoke({ flag: undefined, idDocs: 0, reportText: boundaryText });
+  const straddleSent = JSON.stringify(straddle.sent?.content ?? []);
+  const fragments = [] as string[];
+  for (let start = 0; start < SSN.length; start++) {
+    for (let end = start + 4; end <= SSN.length; end++) fragments.push(SSN.slice(start, end));
+  }
+  check("the boundary request was built (the checks below are not vacuous)", straddle.sent !== null);
+  check(
+    `no 4+ character fragment of the SSN survives the cut (${fragments.length} fragments checked)`,
+    fragments.every((f) => !straddleSent.includes(f))
+  );
+  check(
+    "…and the check is not free: the OLD order (truncate, then mask) demonstrably leaked one",
+    fragments.some((f) => redactSensitivePatterns(boundaryText.slice(0, 120_000)).includes(f))
+  );
+
   console.log("\n5. SSN redaction — what leaves the box on every upload (E-16 / P1-22)");
   check(
     "a dashed SSN is masked",
@@ -482,12 +517,12 @@ async function main() {
     );
   }
   check(
-    "the upload/parse prompt masks exactly what it sends (slice first, then mask)",
-    /redactSensitivePatterns\(rawText\.slice\(0, 120_000\)\)/.test(aiParse)
+    "the upload/parse prompt masks the whole plaintext BEFORE truncating it",
+    /redactSensitivePatterns\(rawText\)\.slice\(0, 120_000\)/.test(aiParse)
   );
   check(
     "the identity prompt does the same, in the same order",
-    /redactSensitivePatterns\(decryptText\(report\.rawText\)\.slice\(0, 120_000\)\)/.test(
+    /redactSensitivePatterns\(decryptText\(report\.rawText\)\)\.slice\(0, 120_000\)/.test(
       codeOf(read(IDENTITY_ROUTE))
     )
   );

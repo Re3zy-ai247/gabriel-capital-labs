@@ -184,9 +184,12 @@ export async function aiExtractTradelines(
           "Extract all accounts from this credit report text. Covered bureaus: " +
           coveredBureaus.join(", ") +
           ".\n\n----- REPORT TEXT -----\n" +
-          // The ONLY redaction call site. Slice first, then mask, so the mask
-          // applies to exactly the bytes that are transmitted.
-          redactSensitivePatterns(rawText.slice(0, 120_000)),
+          // MASK THE WHOLE PLAINTEXT, THEN TRUNCATE (review micro-round). The
+          // reverse order let an SSN straddling the 120k cut arrive as a
+          // truncated run that matches neither pattern — up to 8 of 9 digits
+          // transmitted. Masking first cannot leave a partial number behind;
+          // the cut then falls on already-masked text.
+          redactSensitivePatterns(rawText).slice(0, 120_000),
       },
     ],
     output_config: { format: { type: "json_schema", schema: SCHEMA } },
