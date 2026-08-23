@@ -60,14 +60,38 @@ const NEUTRAL_LABELS: RegExp[] = [
   /loss mitigation/g,
 ];
 
-// An adverse FIELD LABEL whose value is zero or none: "Past due: $0",
-// "amount past due $0", "Charge-off amount: $0", "Charge-off: none". The label
-// names the event; the value says it did not happen. Stripped with the negated
-// phrases below, because a negator can trail the term as well as precede it.
-// (Note the text is normalized first, so "$", ":" and "." are already gone —
-// "Charge-off amount: $0.00" arrives as "charge-off amount 0 00".)
-const ZERO_VALUED_ADVERSE_LABEL =
-  /\b(?:amount\s+)?(?:past\s*due|charge[-\s]?off|collection|delinquen\w*|late\s+payments?)\s*(?:amount|amt|balance|payments?)?\s*(?:0+(?:\s+0+)*|none|n\/a|na|nil)\b/g;
+// An adverse FIELD LABEL whose value says the thing it names did not happen.
+// A value may only cancel the label it actually belongs to, and the two kinds
+// of label are not the same:
+//
+//   • AMOUNT-BEARING labels — "past due", "late payments" — ARE quantities. A
+//     zero is a direct statement about them: "Past due: $0" means the account
+//     is not past due. A bare zero cancels these.
+//   • EVENT labels — "charge-off", "collection", "delinquent" — name something
+//     that either happened or did not. A number next to one is an amount
+//     FIELD, not the event, so only an explicit `amount`/`amt` qualifier lets a
+//     zero cancel it ("Charge-off amount: $0"). A word value that denies the
+//     event outright ("Charge-off: none") still cancels it.
+//
+// `balance` is deliberately absent from every qualifier: a zero BALANCE says
+// nothing about condition. A paid charge-off and a paid collection carry
+// "Balance: $0" BY DEFINITION and stay derogatory for seven years from DOFD —
+// letting a zero balance delete the status would print "Account in good
+// standing" over exactly the item a consumer came here to work on.
+//
+// (Text is normalized first, so "$", ":" and "." are gone — "Charge-off
+// amount: $0.00" arrives as "charge-off amount 0 00".)
+const ZERO_VALUE = String.raw`(?:0+(?:\s+0+)*|none|n\/a|na|nil)`;
+const ZERO_VALUED_AMOUNT_LABEL = new RegExp(
+  String.raw`\b(?:amount\s+)?(?:past\s*due|late\s+payments?)\s*(?:amount|amt|payments?)?\s*${ZERO_VALUE}\b`,
+  "g"
+);
+const EVENT_LABEL = String.raw`(?:charge[-\s]?off|collection|delinquen\w*)`;
+const ZERO_VALUED_EVENT_AMOUNT = new RegExp(
+  String.raw`\b(?:${EVENT_LABEL}\s*(?:amount|amt)|(?:amount|amt)\s+(?:of\s+)?${EVENT_LABEL})\s*${ZERO_VALUE}\b`,
+  "g"
+);
+const NONE_VALUED_EVENT_LABEL = new RegExp(String.raw`\b${EVENT_LABEL}\s*(?:none|n\/a|na|nil)\b`, "g");
 
 // "Never late", "no late payments", "0 times 30 days late" — statements that
 // the adverse event did NOT occur. Stripped before adverse matching (rule 3).
@@ -114,7 +138,9 @@ export function hasAdverseStatusEvidence(text: string): boolean {
   // phrases, so "Current, amount past due $0" loses "past due 0" outright
   // rather than leaving a bare "past due" behind.
   const t = normalizeConditionText(text)
-    .replace(ZERO_VALUED_ADVERSE_LABEL, " ")
+    .replace(ZERO_VALUED_AMOUNT_LABEL, " ")
+    .replace(ZERO_VALUED_EVENT_AMOUNT, " ")
+    .replace(NONE_VALUED_EVENT_LABEL, " ")
     .replace(NEGATED_ADVERSE, " ");
   return ADVERSE_MARKERS.some((re) => re.test(t));
 }

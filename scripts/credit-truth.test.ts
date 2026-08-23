@@ -165,10 +165,54 @@ const reporting = (status: string, bureau: Bureau = "EQUIFAX"): BureauData => ({
     ["Foreclosure", true],        // the event itself, not the prevention program
     ["Late 30 x2, 60 x1", true],  // L-1: rating-code wording
     ["Account transferred to recovery", true], // L-1
+    // Review R2 controls: a real amount can never satisfy the zero value.
+    ["Charge-off amount: $1,243", true],
+    ["Charge-off amount: $10,000", true],
+    ["Past due: $1,243", true],
+    ["Amount past due $450.00", true],
+    ["Charge off; past due $0; balance $1,243", true],
   ];
   for (const [status, want] of realValued) {
     eq(`"${status}" → adverse=${want}`, hasAdverseStatusEvidence(status), want);
   }
+}
+
+// ===========================================================================
+// 2c. A ZERO BALANCE IS NOT A CLEAN CONDITION (review H-2).
+//
+// A paid charge-off and a paid collection carry "Balance: $0" BY DEFINITION,
+// and both stay on the report for seven years from DOFD — they are among the
+// most common derogatory items a consumer comes here to work on. Letting a
+// zero balance cancel the status printed "Account in good standing — no
+// derogatory history on file." over exactly those rows: A2-01 verbatim.
+//
+// The rule these pin: a value cancels only the label it belongs to. "Past due"
+// and "late payments" ARE amounts, so a bare zero cancels them. "Charge-off",
+// "collection" and "delinquent" name an EVENT, so only an explicit
+// amount/amt qualifier — or a word that denies the event outright ("none") —
+// can cancel those. `balance` qualifies nothing.
+// ===========================================================================
+{
+  const zeroBalance = [
+    "Collection, balance $0",
+    "Charge-off, balance $0",
+    "Paid collection $0",
+    "Status: Charge-off  Balance: $0",
+    // Mine, same class:
+    "Charge-off. Balance: $0.00. Paid in full",
+    "Collection — balance 0, settled",
+    "Paid charge-off, current balance $0",
+    "Delinquent; balance $0",
+  ];
+  for (const status of zeroBalance) {
+    eq(`"${status}" IS adverse evidence`, hasAdverseStatusEvidence(status), true);
+    eq(`"${status}" → DEROGATORY, never "good standing"`, factualCondition({ accountType: "REVOLVING", dateOfFirstDelinquency: null, bureauData: reporting(status) }), "DEROGATORY");
+  }
+  // The other direction stays fixed: an explicit zero AMOUNT still cancels,
+  // and so does a word value that denies the event.
+  eq('"Charge-off amount: $0" stays non-adverse', hasAdverseStatusEvidence("Charge-off amount: $0"), false);
+  eq('"Collection amount: $0" stays non-adverse', hasAdverseStatusEvidence("Current. Collection amount: $0"), false);
+  eq('"Charge-off: none" stays non-adverse', hasAdverseStatusEvidence("Pays as agreed. Charge-off: none"), false);
 }
 
 // ===========================================================================
