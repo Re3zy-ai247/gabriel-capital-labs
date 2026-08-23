@@ -26,6 +26,7 @@ const REQUIRED = [
   "stripe-webhook-reorder.runtime.test.ts",
   "unknown-price-failclosed.runtime.test.ts",
   "upload-bounds.runtime.test.ts",
+  "consumer-assertion.runtime.test.ts",
 ];
 
 if (guards.length === 0) {
