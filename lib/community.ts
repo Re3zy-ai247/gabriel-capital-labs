@@ -1,23 +1,33 @@
 import { currentAccount } from "./session";
 import { prisma } from "./prisma";
-import { isPremium } from "./entitlements";
 import { deleteAttachmentsFor } from "./attachments";
 import { CATEGORIES, CATEGORY_KEYS, type Category } from "./communityShared";
 import { applyCompliance } from "./compliance";
 
 export { CATEGORIES, CATEGORY_KEYS, type Category };
 
-// The Operator Network is for every PAYING CreditVector member (founder decision,
-// Phase 1.1) plus the platform owner/ADMIN. Paid status comes from the ONE
-// canonical predicate — lib/entitlements.isPremium (plan + isAgency + active
-// subscription states) — never re-derived here, so billing truth cannot drift.
-// Fail-closed: unpaid, expired, or canceled accounts get nothing. A delinquent
-// (past_due) account KEEPS access during Stripe's payment-retry grace window —
-// past_due is in ACTIVE_SUBSCRIPTION_STATES (lib/os/host/billingTier.ts) and is
-// cleared back to a live status (or canceled) by the invoice webhook handlers.
-// A managed client (a consumer worked by an agency) is NOT itself a paying
-// member — its own row carries no paid plan — so it does not gain access; the
-// agency inheritance in getEntitlement() is deliberately NOT consulted here.
+// ── RC1-S6a · THE OPERATOR NETWORK IS OFF (Founder D-8 / P1-36) ──────────────
+//
+// This module used to gate the network on lib/entitlements.isPremium — a paid
+// membership check that answered "no" with a 403 "Members only". That is a
+// paywall wearing a 403, and under the free-consumer law no such refusal may
+// exist. The billing predicate is not consulted here any more, at all.
+//
+// The Founder's decision is that community is OFF, not that it is priced. So the
+// gate is now a plain feature switch:
+//   · COMMUNITY_ENABLED absent or anything but "true"  → the feature is off, for
+//     everyone, and every surface says so in those words. Fail-closed by default.
+//   · COMMUNITY_ENABLED="true"                         → every SIGNED-IN account
+//     may use it. There is no tier, no plan, no payer.
+//
+// NOTHING IS DELETED. Threads, replies, reports and attachments stay exactly
+// where they are, and the routes stay mounted, so turning the switch back on
+// restores the network intact.
+//
+// AUTHOR DATA-CONTROL IS NOT PART OF THE SWITCH. A member who posted something
+// must be able to withdraw it whether or not the feature is available — see
+// requireCommunityAuthor() below. "The feature is off" must never become "you
+// cannot take your own words down."
 //
 // Authorship always uses currentAccount() — the REAL signed-in account — never an
 // impersonated client or an opened client workspace, so posts are attributed to
@@ -25,15 +35,26 @@ export { CATEGORIES, CATEGORY_KEYS, type Category };
 
 export type CommunityAccount = NonNullable<Awaited<ReturnType<typeof currentAccount>>>;
 
+/** Absent = off. Only the exact string "true" turns the network on. */
+export function communityEnabled(): boolean {
+  return process.env.COMMUNITY_ENABLED === "true";
+}
+
+// The ONE refusal string for a switched-off network. Truthful and non-commercial:
+// it states availability and nothing about membership, payment or tiers.
+export const COMMUNITY_UNAVAILABLE = "Community is not available right now.";
+
 export function canAccessCommunity(account: {
   role?: string | null;
-  isAgency?: boolean | null;
-  plan?: string | null;
-  subscriptionStatus?: string | null;
 } | null): boolean {
   if (!account) return false;
+  // STAFF MODERATION, not a tier. An ADMIN keeps access while the network is
+  // switched off so already-published content stays moderatable — a report filed
+  // the day before the switch must not become impossible to action, and content
+  // that has to come down must still be reachable. This is a role, never a plan:
+  // no amount of paying makes an account an ADMIN, and no ADMIN is a consumer.
   if (account.role === "ADMIN") return true;
-  return isPremium(account);
+  return communityEnabled();
 }
 
 // Community tables are created lazily at runtime — CREATE TABLE IF NOT EXISTS via
@@ -93,8 +114,9 @@ export async function ensureCommunityTables(): Promise<void> {
 }
 
 // Returns the signed-in account IFF it may use the community, else null. The
-// correct gate for every /api/community/* route; also self-heals the Hub schema
-// on first access so the feature works without a manual migrate.
+// correct gate for every READ or NEW-CONTENT /api/community/* route; also
+// self-heals the Hub schema on first access so the feature works without a
+// manual migrate. Fail-closed while the network is switched off.
 export async function requireCommunityAccount(): Promise<CommunityAccount | null> {
   const account = await currentAccount();
   if (!account || !canAccessCommunity(account)) return null;
@@ -102,11 +124,30 @@ export async function requireCommunityAccount(): Promise<CommunityAccount | null
   return account;
 }
 
+/**
+ * THE AUTHOR CARVE-OUT. Returns the signed-in account WITHOUT asking whether the
+ * network is switched on, for the one class of action that must never be gated
+ * by availability: removing content you yourself posted (and admin moderation of
+ * content someone reported before the switch flipped).
+ *
+ * The caller still has to prove authorship — this grants no read, no write and
+ * no new content, only an identity to compare against `authorId`. Order matters
+ * in the routes: resolve the author, check ownership, THEN (and only for a
+ * non-author) refuse. Checking availability first is what would trap a member's
+ * own words behind a feature switch.
+ */
+export async function requireCommunityAuthor(): Promise<CommunityAccount | null> {
+  const account = await currentAccount();
+  if (!account) return null;
+  await ensureCommunityTables();
+  return account;
+}
+
 // Display name for a member in the Operator Network: the agency brand if the
 // account has one, falling back to the account name, then a population-neutral
-// default — the network is open to ALL paying members (Phase 1.1), so the
-// fallback must never imply an agency affiliation. Snapshotted at post time;
-// historical agency-era rows keep their (then-accurate) snapshots.
+// default — the network carries no tiers, so the fallback must never imply an
+// agency affiliation. Snapshotted at post time; historical agency-era rows keep
+// their (then-accurate) snapshots.
 export function communityDisplayName(account: {
   agencyName?: string | null;
   name?: string | null;

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireCommunityAccount } from "@/lib/community";
+import { requireCommunityAccount, COMMUNITY_UNAVAILABLE } from "@/lib/community";
 import { enforceRateLimit } from "@/lib/rateLimit";
 import { askKai } from "@/lib/kai";
 
@@ -12,7 +12,7 @@ export const maxDuration = 60; // Opus call
 // an expert, compliance-scrubbed answer as a reply (isKai = true).
 export async function POST(_req: Request, { params }: { params: { id: string } }) {
   const account = await requireCommunityAccount();
-  if (!account) return NextResponse.json({ error: "Members only" }, { status: 403 });
+  if (!account) return NextResponse.json({ error: COMMUNITY_UNAVAILABLE, communityUnavailable: true }, { status: 403 });
 
   // Per-account cap before the (expensive) Opus call.
   const limited = await enforceRateLimit(`kai:${account.id}`, 20, 3600);
