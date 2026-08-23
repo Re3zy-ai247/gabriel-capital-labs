@@ -3,7 +3,6 @@ import { prisma } from "@/lib/prisma";
 import { currentUserOrDemo } from "@/lib/session";
 import { meteredMessage } from "@/lib/aiMeter";
 import { enforceRateLimit } from "@/lib/rateLimit";
-import { getEntitlement } from "@/lib/entitlements";
 import { STRATEGIES } from "@/lib/strategies";
 import { formatCents } from "@/lib/utils";
 import { track, PRODUCT_EVENTS } from "@/lib/events";
@@ -15,8 +14,14 @@ import { disputeQueue } from "@/lib/intelligence/snapshot";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-// Premium: an AI-generated, personalized dispute action plan grounded strictly
-// in the user's own scored tradelines. Educational, no guarantees.
+// An AI-generated, personalized dispute action plan grounded strictly in the
+// consumer's own scored tradelines. Educational, no guarantees.
+//
+// RC1-S6a (S-06 / P0-6): this route used to open with
+// `if (!entitlement.premium) → 402 "The Action Plan is a Professional
+// feature."`. The plan is now available to every consumer; no entitlement is
+// read here at all. The bound that remains is capability-neutral — the S1 rate
+// limit above and the AI spend budget — and it applies to everyone identically.
 export async function POST() {
   const user = await currentUserOrDemo();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -24,14 +29,6 @@ export async function POST() {
   // Per-user cap before the (expensive) Opus call.
   const limited = await enforceRateLimit(`strategist:${user.id}`, 10, 3600);
   if (limited) return limited;
-
-  const entitlement = await getEntitlement(user);
-  if (!entitlement.premium) {
-    return NextResponse.json(
-      { error: "The Action Plan is a Professional feature.", upgrade: true },
-      { status: 402 }
-    );
-  }
 
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) {

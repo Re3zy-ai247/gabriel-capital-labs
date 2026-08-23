@@ -4,7 +4,6 @@ import { prisma } from "@/lib/prisma";
 import { currentUserOrDemo } from "@/lib/session";
 import { meteredMessage } from "@/lib/aiMeter";
 import { enforceRateLimit } from "@/lib/rateLimit";
-import { getEntitlement } from "@/lib/entitlements";
 import { applyCompliance } from "@/lib/compliance";
 import { encryptText } from "@/lib/docCrypto";
 import { BUREAU_ADDRESS, BUREAU_LABEL } from "@/lib/bureaus";
@@ -55,21 +54,21 @@ function isConfirmed(d: Discrepancy): boolean {
   return d.confirmed === true;
 }
 
-// Premium: drafts a Personal Information correction letter to a bureau from the
-// detected discrepancies, runs the compliance filter, and saves it like any letter.
+// Drafts a Personal Information correction letter to a bureau from the items the
+// consumer confirmed, runs the compliance filter, and saves it like any letter.
+//
+// RC1-S6a (S-05 / P0-6): this route used to open with
+// `if (!entitlement.premium) → 402 "Generating correction letters is a
+// Professional feature."` — the analysis was free but the finished letter was
+// sold. It is not sold any more, and no entitlement is read here at all. The
+// gate that remains is S4's, and it is about truth rather than money: an item is
+// disputed only if the consumer confirmed THAT item.
 export async function POST(req: Request) {
   const user = await currentUserOrDemo();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const limited = await enforceRateLimit(`identity-letter:${user.id}`, 20, 3600); // paid Opus letter — cost guard
+  const limited = await enforceRateLimit(`identity-letter:${user.id}`, 20, 3600); // Opus letter — cost guard, same for everyone
   if (limited) return limited;
 
-  const entitlement = await getEntitlement(user);
-  if (!entitlement.premium) {
-    return NextResponse.json(
-      { error: "Generating correction letters is a Professional feature.", upgrade: true },
-      { status: 402 }
-    );
-  }
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) return NextResponse.json({ error: "AI is not configured." }, { status: 503 });
 
@@ -160,7 +159,8 @@ export async function POST(req: Request) {
     const draft = textBlock && "text" in textBlock ? textBlock.text.trim() : "";
     if (!draft) return NextResponse.json({ error: "Could not draft the letter." }, { status: 500 });
 
-    const { text, flags } = applyCompliance(draft);
+    // The signed-letter bar — this body is printed, signed and mailed.
+    const { text, flags } = applyCompliance(draft, { bar: "signed-letter" });
     const letter = await prisma.letter.create({
       data: {
         userId: user.id,
