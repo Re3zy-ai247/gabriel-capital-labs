@@ -7,6 +7,10 @@ import { getEntitlement } from "@/lib/entitlements";
 import { STRATEGIES } from "@/lib/strategies";
 import { formatCents } from "@/lib/utils";
 import { track, PRODUCT_EVENTS } from "@/lib/events";
+// The SAME fact test the Tradelines page and Strategy Desk use for "is this an
+// actual negative" — imported, never re-implemented, so the plan can never
+// disagree with the screen the consumer just read.
+import { isFactualNegative } from "@/lib/intelligence/snapshot";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -41,18 +45,37 @@ export async function POST() {
     where: { userId: user.id },
     orderBy: { score: "desc" },
   });
-  const queue = tradelines.filter((t) => t.probability !== "NOT_RECOMMENDED");
+  // The plan queue is built from the SAME fact test the UI applies, not from
+  // the `probability` band. The band gives every non-government account a
+  // nonzero "worth a look" score regardless of payment history, so filtering on
+  // it alone handed the model clean, never-late accounts labelled "my scored,
+  // disputable items" — a plan telling the consumer to open a reinvestigation
+  // against an account this same product shows as being in good standing.
+  const queue = tradelines.filter((t) => t.probability !== "NOT_RECOMMENDED" && isFactualNegative(t));
   if (!queue.length) {
-    return NextResponse.json({ error: "No disputable items yet. Upload a report first." }, { status: 400 });
+    return NextResponse.json(
+      {
+        error: tradelines.length
+          ? "I don't have an item on your file I can honestly build a dispute plan around yet — nothing on it shows a derogatory status I can point to. If you know something on your report is wrong, start from that account's row."
+          : "No analyzed accounts yet. Upload a report first.",
+      },
+      { status: 400 }
+    );
   }
 
   const itemLines = queue
-    .map(
-      (t, i) =>
+    .map((t, i) => {
+      // No invented angle. The engine produced one or it did not. The generic
+      // placeholder this used to substitute told the model there were grounds
+      // we never found, and it wrote the plan as if there were.
+      const angle = t.disputeAngles[0];
+      return (
         `${i + 1}. ${t.creditorName} — ${t.accountType}${t.isDebtBuyer ? " (debt buyer)" : ""}, ` +
         `${formatCents(t.balance)}, priority ${t.probability}, score ${t.score}. ` +
-        `Key reason: ${t.reasons[0] || "—"}. Angle: ${t.disputeAngles[0] || "standard reinvestigation"}.`
-    )
+        `Key reason: ${t.reasons[0] || "none recorded"}. ` +
+        (angle ? `Angle: ${angle}.` : "Angle: none identified by the analysis.")
+      );
+    })
     .join("\n");
 
   const strategyCatalog = STRATEGIES.map((s) => `- ${s.id}: ${s.label} (${s.recipient}) — ${s.blurb}`).join("\n");
@@ -65,10 +88,12 @@ export async function POST() {
     "3. Sequence the work across Month 1 (highest-impact disputes), Month 2 (responses & escalations), Month 3 (resolution / CFPB). Advise certified mail and keeping copies.",
     "4. NEVER guarantee deletions, score increases, or outcomes. This is educational, not legal advice.",
     "5. Be concise and skimmable — short sections and bullet points. No preamble.",
+    "6. An item listed with 'Angle: none identified by the analysis.' has no dispute angle the engine could find. Do NOT invent one. Say plainly that nothing in the extracted data supports a specific challenge yet, and that the next step is for the consumer to check that item against their own records — they are the authority on what is accurate.",
+    "7. Never state or imply that an item is inaccurate. The consumer decides what is inaccurate; you explain what the report shows and what the process is.",
   ].join("\n");
 
   const userPrompt = [
-    "Here are my scored, disputable items (highest priority first):",
+    "Here are the items from my report that show a derogatory status (highest priority first):",
     itemLines,
     "",
     "Available strategies:",
