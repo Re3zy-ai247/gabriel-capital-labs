@@ -1,9 +1,11 @@
 "use client";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
 import { EduBanner } from "@/components/Disclaimer";
-import { UploadCloud, Loader2, FileText, ClipboardPaste, CheckCircle2, Trash2 } from "lucide-react";
+import { loginPathFor } from "@/lib/callbackUrl";
+import { UploadCloud, Loader2, FileText, ClipboardPaste, CheckCircle2, Trash2, LogIn } from "lucide-react";
 
 interface StoredReport {
   id: string;
@@ -116,13 +118,24 @@ export default function UploadPage() {
   const [dragging, setDragging] = useState(false);
   const [reports, setReports] = useState<StoredReport[]>([]);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  // P0-5, mid-visit case (review MEDIUM-1). app/upload/layout.tsx refuses an
+  // unresolved session before this page renders, so ARRIVING signed-out is
+  // handled. What was left is the session that dies WHILE the page is open:
+  // /api/reports answers 401, the loader dropped it on the floor, and `reports`
+  // stayed [] — so the panel below said "No reports uploaded yet" over a file the
+  // consumer had already uploaded. On the one screen where they hand us their
+  // credit report, that sentence reads as data loss. The action path at the
+  // re-analyse button already told the truth about a 401; only this load path
+  // did not.
+  const [sessionEnded, setSessionEnded] = useState(false);
 
   async function loadReports() {
     try {
       const res = await fetch("/api/reports");
-      if (res.ok) setReports((await res.json()).reports || []);
+      if (res.status === 401 || res.status === 403) { setSessionEnded(true); return; }
+      if (res.ok) { setSessionEnded(false); setReports((await res.json()).reports || []); }
     } catch {
-      /* ignore */
+      /* a transport failure is not a statement about the session */
     }
   }
   useEffect(() => {
@@ -473,7 +486,18 @@ export default function UploadPage() {
           </button>
         </div>
 
-        {reports.length === 0 ? (
+        {sessionEnded ? (
+          <div className="mt-3 rounded-lg border border-ink-700/70 bg-ink-900/40 p-4">
+            <div className="text-sm font-semibold">Your session ended</div>
+            <p className="mt-1 text-xs leading-relaxed text-slate-400">
+              We couldn&apos;t load your uploaded reports because you&apos;re no longer signed in.
+              Nothing has been deleted — sign in again and they&apos;ll be exactly where you left them.
+            </p>
+            <Link href={loginPathFor("/upload")} className="btn-primary mt-3 inline-flex text-xs">
+              <LogIn className="h-3.5 w-3.5" aria-hidden="true" /> Sign in again
+            </Link>
+          </div>
+        ) : reports.length === 0 ? (
           <p className="mt-2 text-xs text-slate-500">No reports uploaded yet. Analyze one above to get started.</p>
         ) : (
           <div className="mt-3 divide-y divide-ink-700/50">

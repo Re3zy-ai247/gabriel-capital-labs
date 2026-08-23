@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { signOut, useSession } from "next-auth/react";
+import { signOut } from "next-auth/react";
 import { cn } from "@/lib/utils";
 import { BRAND } from "@/lib/brand";
 import { loginPathFor } from "@/lib/callbackUrl";
@@ -11,6 +11,7 @@ import { useCommunityAccess } from "./community/useCommunityAccess";
 import { useOnboardingStatus, clearOnboardingStatusCache } from "./onboarding/useOnboardingStatus";
 import { BrandLogo } from "./BrandLogo";
 import { clearKaiPresenceCache } from "./kai/KaiPresence";
+import { useSignedOut } from "./useSignedOut";
 import {
   LayoutDashboard, Upload, ListTree, Mails, Target, CalendarRange, Settings, CreditCard, ScanSearch, LineChart, Building2, LogOut, LogIn, Menu, X, ShieldCheck, MessagesSquare, LifeBuoy, HelpCircle, Newspaper, Send, Layers, Sprout, GraduationCap, ListChecks,
 } from "lucide-react";
@@ -85,23 +86,16 @@ function BrandMark() {
 // wearing the label of the one thing they did not want to do. The control now
 // says what it does.
 //
-// While NextAuth is still resolving (`status === "loading"`) this stays on the
-// signed-in spelling: that is the overwhelmingly common case, and the label
-// settles to the truth the moment the session resolves. Only a RESOLVED
-// "unauthenticated" flips it — including for the pre-RC1 uid-only JWTs that
-// lib/auth.ts now declines to honour, which is precisely the population that
-// must be offered a way in rather than a way out.
+// The decision itself lives in components/useSignedOut.ts, shared with the app
+// header (HeaderLogout, NewDisputeCta) so the shell cannot say "Sign in" in the
+// sidebar and "Log out" three inches away in the header.
 //
 // Only the DECISION is shared. The two controls themselves stay written out at
-// both call sites: scripts/kai-experience.test.ts:50-52 counts the sign-out
-// handlers in this file and asserts each one clears the Kai presence cache
-// first, because a different account may sign in on the same tab. Collapsing
-// them into one shared control would make that guard see one handler where two
-// exist — and a guard that can no longer see both sites is not a guard.
-function useSignedOut(): boolean {
-  const { status } = useSession();
-  return status === "unauthenticated";
-}
+// both call sites below: scripts/kai-experience.test.ts:50-52 counts the
+// sign-out handlers in this file and asserts each one clears the Kai presence
+// cache first, because a different account may sign in on the same tab.
+// Collapsing them into one shared control would make that guard see one handler
+// where two exist — and a guard that can no longer see both sites is not a guard.
 
 export function Sidebar() {
   const path = usePathname();

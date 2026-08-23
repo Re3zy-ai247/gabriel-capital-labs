@@ -128,7 +128,18 @@ const read = (p: string) => readFileSync(join(root, p), "utf8");
   ok("...and no longer to /dashboard (that redirect belonged to the old front door)", !/router\.push\("\/dashboard"\)/.test(REGISTER_SRC));
 
   const LOGIN_SRC = read("app/login/page.tsx");
-  ok("sign-in (an EXISTING account, not a new one) still lands on /dashboard, unchanged", /router\.push\("\/dashboard"\)/.test(LOGIN_SRC));
+  // RC1 S2 replaced the hardcoded destination with a validated return path. The
+  // invariant is unchanged: an EXISTING account signing in with no return path lands
+  // on /dashboard, never on /onboarding (the new-account front door).
+  ok("sign-in pushes the validated return path, not an attacker-supplied one",
+    /const returnTo = safeCallbackUrl\(params\.get\("callbackUrl"\)\)/.test(LOGIN_SRC) &&
+    /router\.push\(returnTo\)/.test(LOGIN_SRC));
+  ok("...and never sends an existing account to the new-account front door",
+    !/router\.push\("\/onboarding"\)/.test(LOGIN_SRC));
+  const CALLBACK_SRC = read("lib/callbackUrl.ts");
+  ok("...whose default, with no return path, is still /dashboard, unchanged",
+    /export const DEFAULT_AFTER_LOGIN = "\/dashboard"/.test(CALLBACK_SRC) &&
+    /return isSafeCallbackPath\(raw\) \? raw : fallback/.test(CALLBACK_SRC));
 
   const SIDEBAR_SRC = read("components/Sidebar.tsx");
   ok("the Sidebar nav entry is gated on the real /api/onboarding/status probe", /useOnboardingStatus/.test(SIDEBAR_SRC) && /onboarding\?\.incomplete/.test(SIDEBAR_SRC));

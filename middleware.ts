@@ -20,6 +20,18 @@ const CANCEL_PATH = "/billing/cancel";
 //   /                      public landing (its own branch below)
 //   /login /register /forgot-password /reset-password /pricing /legal /help
 //                          public by design
+//   /brief/*               PUBLIC content, not an app room. It carries canonical
+//                          + OpenGraph metadata (app/brief/page.tsx:14-24,
+//                          app/brief/[slug]/page.tsx:22-35), is the one authed-nav
+//                          root public/robots.txt does NOT disallow, and the
+//                          digest email deep-links articles at
+//                          lib/briefDigest.ts:75,87 — so redirecting it would
+//                          bounce a reader arriving from their own email, and
+//                          deindex every published article. /brief/saved is
+//                          per-user but already renders a truthful signed-out
+//                          panel of its own (app/brief/saved/page.tsx:35-40),
+//                          so it needs no gate here either. Being in the in-app
+//                          NAV list does not make a route non-public.
 //   /support               must work signed-out — a consumer who cannot sign in
 //                          still has to be able to ask for help (A1-09). The
 //                          page shows the support address and says plainly that
@@ -34,7 +46,7 @@ const CANCEL_PATH = "/billing/cancel";
 //   /api/*                 routes answer 401 as JSON; a redirect would turn an
 //                          honest error into an HTML page a fetch() cannot read.
 const AUTHED_ROUTES = [
-  "/academy", "/admin", "/agency", "/arena", "/brief", "/builder",
+  "/academy", "/admin", "/agency", "/arena", "/builder",
   "/campaigns", "/community", "/dashboard", "/identity", "/journey", "/letters",
   "/mail", "/modules", "/network", "/onboarding", "/scores", "/settings",
   "/strategist", "/tradelines", "/upload",
@@ -122,7 +134,7 @@ export const config = {
   matcher: [
     "/",
     "/academy/:path*", "/admin/:path*", "/agency/:path*", "/arena/:path*",
-    "/brief/:path*", "/builder/:path*", "/campaigns/:path*",
+    "/builder/:path*", "/campaigns/:path*",
     "/community/:path*", "/dashboard/:path*", "/identity/:path*",
     "/journey/:path*", "/letters/:path*", "/mail/:path*", "/modules/:path*",
     "/network/:path*", "/onboarding/:path*", "/scores/:path*",

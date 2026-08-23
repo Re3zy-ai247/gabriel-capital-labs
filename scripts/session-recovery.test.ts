@@ -154,6 +154,20 @@ async function testMiddleware() {
     check("signed out on /billing/cancel is never redirected (S1 remedy)", (await run("/billing/cancel")).status === 200);
     check("signed out on /support is never redirected (A1-09)", (await run("/support")).status === 200);
     check("signed out on the landing renders the landing", (await run("/")).status === 200);
+    // Review HIGH-1. /brief is PUBLIC content, not an app room: it carries
+    // canonical + OpenGraph metadata, robots.txt deliberately does not disallow
+    // it, and lib/briefDigest.ts:75,87 deep-links articles from the digest email.
+    // Redirecting it bounces a reader arriving from their own inbox and deindexes
+    // every published article. Being in the in-app NAV list does not make a route
+    // non-public — which is exactly how it got over-matched.
+    check("signed out on a public Brief article is never redirected (it is indexed and is linked from the digest email)",
+      (await run("/brief/some-article")).status === 200);
+    check("signed out on the Brief index is never redirected", (await run("/brief")).status === 200);
+    check("signed out on /brief/saved is never redirected (it renders its own truthful panel)",
+      (await run("/brief/saved")).status === 200);
+    for (const path of ["/help", "/pricing", "/legal/terms", "/register", "/forgot-password"]) {
+      check(`signed out on the public route ${path} is never redirected`, (await run(path)).status === 200);
+    }
 
     // --- stale / legacy evidence -----------------------------------------
     token = { uid: "u1" }; // pre-RC1 uid-only JWT: no sessionVersion
@@ -220,6 +234,13 @@ function testMatcherConsistency() {
   check("the landing stays matched", matcher.includes("/"));
   check("/support is deliberately absent from the matcher", !matcherRoots.includes("/support"));
   check("no public auth screen is matched", !matcherRoots.some((m) => ["/login", "/register", "/forgot-password", "/reset-password", "/help", "/pricing", "/legal"].includes(m)));
+  // Set-equality alone is blind to this class: a matcher that swallows a public
+  // surface is still perfectly self-consistent, which is how review HIGH-1
+  // shipped 172-green. Name the public surfaces explicitly.
+  check("no public content surface is matched",
+    !matcherRoots.some((m) => ["/brief", "/help", "/pricing", "/legal"].includes(m)));
+  check("nothing under /brief is matched, by prefix either",
+    !matcher.some((m) => m.startsWith("/brief")) && !routes.some((r) => r.startsWith("/brief")));
   check("/api is never matched", !matcherRoots.some((m) => m.startsWith("/api")));
 }
 
@@ -448,7 +469,8 @@ function testSidebar() {
   check("the trigger advertises the dialog", text.includes('aria-haspopup="dialog"') && text.includes("aria-expanded={open}"));
 
   // Truthful auth control (P0-5, correction G).
-  check("the auth control reads the real session state", text.includes("useSession") && text.includes('status === "unauthenticated"'));
+  check("the auth control reads the real session state via the shared decision",
+    text.includes('from "./useSignedOut"') && text.includes("useSignedOut()"));
   check("a signed-out visitor is offered Sign in, not Log out", text.includes("Sign in") && text.includes("loginPathFor(path ?? "));
   // Both navigations keep their own handler (scripts/kai-experience.test.ts:50
   // counts them), and both must offer the truthful alternative.
@@ -495,7 +517,9 @@ function testTruthfulSurfaces() {
   check("/help offers the no-account support channel", help.includes("support@creditvector.app"));
 
   // Upload button-label handoff: the route caps the fan-out at 5.
-  const upload = src("app/upload/page.tsx");
+  // Comment-stripped: this slice's own comments quote "No reports uploaded yet"
+  // in order to explain why it must never reach an expired session.
+  const upload = rendered("app/upload/page.tsx");
   const routeText = src("app/api/reports/analyze/route.ts");
   const cap = /const MAX_FANOUT = (\d+);/.exec(routeText);
   check("the analyze route still declares a fan-out cap", cap !== null);
@@ -504,6 +528,29 @@ function testTruthfulSurfaces() {
   check("the mirrored cap matches the route's own", cap !== null && Number(cap[1]) === 5);
   check("the result line still reads the server's own skipped/notice fields",
     upload.includes("j.skipped") && upload.includes("j.notice"));
+
+  // Review MEDIUM-1: the /upload LIST load, not just the action path.
+  check("upload keeps a 401 on the report list as a fact",
+    upload.includes("res.status === 401 || res.status === 403") && upload.includes("setSessionEnded(true)"));
+  check("upload never shows the empty state to an expired session",
+    /\{sessionEnded \? \(/.test(upload) && upload.indexOf("sessionEnded ? (") < upload.indexOf("No reports uploaded yet"));
+  check("upload states nothing was deleted and offers a return path",
+    upload.includes("Nothing has been deleted") && upload.includes('loginPathFor("/upload")'));
+
+  // Review MEDIUM-2: the app header must not contradict the signed-out panels
+  // this slice authored — one shared decision, used by sidebar AND header.
+  const hook = rendered("components/useSignedOut.ts");
+  check("the signed-out decision lives in one shared client hook",
+    hook.includes('status === "unauthenticated"') && hook.includes("export function useSignedOut"));
+  const header = rendered("components/HeaderLogout.tsx");
+  check("the header offers Sign in when the session is resolved absent",
+    header.includes("useSignedOut()") && header.includes("Sign in") && header.includes("loginPathFor(path"));
+  check("the header still offers Log out to a live session", header.includes("signOut({ callbackUrl: \"/login\" })"));
+  const cta = rendered("components/NewDisputeCta.tsx");
+  check("the header CTA does not promise a dispute a signed-out visitor cannot start",
+    cta.includes("useSignedOut()") && cta.includes("loginPathFor(") && cta.includes("+ New Dispute"));
+  const shell = rendered("components/AppShell.tsx");
+  check("AppShell delegates the CTA rather than hardcoding it", shell.includes("<NewDisputeCta />") && !shell.includes('href="/upload"'));
 
   // Settings: the mid-visit expiry that the segment gate cannot catch.
   const settings = src("app/settings/page.tsx");

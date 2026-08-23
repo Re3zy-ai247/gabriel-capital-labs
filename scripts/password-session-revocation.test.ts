@@ -710,8 +710,15 @@ async function main() {
   // M-1 widened the matcher by exactly one path so a cancellation-only principal
   // is caught where app/login/page.tsx pushes it. The invariant that matters is
   // unchanged: the suspended user's only remedy must never be matched.
-  check("raw getToken middleware is scoped to the landing page and /dashboard only",
-    /matcher:\s*\["\/",\s*"\/dashboard"\]/.test(middleware));
+  //
+  // RC1 S2 widened the matcher beyond ["/","/dashboard"]. The property this suite
+  // protects is not the SIZE of the matcher but that this raw-getToken consumer stays
+  // navigation-only and never becomes the authority on revocation: the JWT it reads
+  // cannot reveal a disabled account or a rotated password version.
+  check("raw getToken middleware is declared over a static literal matcher, not an inverted catch-all",
+    /export const config = \{[\s\S]*?matcher: \[[\s\S]*?\],\s*\};/.test(middleware) && !/\(\?!/.test(middleware));
+  check("the edge check still requires the keyed sessionVersion evidence a real password session carries",
+    /typeof token\.sessionVersion === "string"/.test(middlewareCode) && /\{43\}/.test(middlewareCode));
   check("the cancellation page is never matched by middleware",
     !/matcher:[^\]]*billing/.test(middleware));
   check("raw getToken middleware performs navigation only", !/prisma|currentAccount|currentUser|requireAdmin|\.create\(|\.update\(|\.delete\(/.test(middlewareCode));
