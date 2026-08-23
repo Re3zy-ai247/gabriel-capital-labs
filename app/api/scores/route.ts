@@ -1,3 +1,15 @@
+// Adopted from the p0 score-intelligence lane: 96da6d1 ("fix: make Score Tracker
+// explicitly self-reported") for the stable-ordering + self-reported shape, and
+// 2d2e3e5 ("fix(scores): restore authenticated preview history") for the
+// server-side future-date rejection.
+//
+// REQUIRED ADAPTATION (RC1): the p0 lane resolved the user via
+// `currentScoreEntryUserId()`, a function added to lib/session.ts by a rejected
+// preview-auth commit that does not exist on this base and is out of this
+// slice's owned paths. This route keeps the base's own `currentUserOrDemo()` —
+// unchanged from the pre-adoption version of this same file, and the identical
+// resolver app/api/tradelines/route.ts already uses — so user resolution is
+// zero-risk here and every read/write stays scoped to `userId: user.id`.
 import { NextResponse } from "next/server";
 import type { Bureau } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -12,7 +24,10 @@ export async function GET() {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const entries = await prisma.scoreEntry.findMany({
     where: { userId: user.id },
-    orderBy: { recordedAt: "asc" },
+    // recordedAt is day-granular in the UI. Stable tie-breaks (createdAt, then
+    // id) prevent the displayed first-to-latest direction — and therefore the
+    // "+N since <month>" delta and its color — from flipping after a reload.
+    orderBy: [{ recordedAt: "asc" }, { createdAt: "asc" }, { id: "asc" }],
   });
   return NextResponse.json({ entries });
 }
@@ -33,6 +48,11 @@ export async function POST(req: Request) {
   const recordedAt = body?.recordedAt ? new Date(body.recordedAt) : new Date();
   if (isNaN(recordedAt.getTime())) {
     return NextResponse.json({ error: "Invalid date." }, { status: 400 });
+  }
+  // Server-side mirror of the client's `max={today}` — the client bound alone
+  // is only a UI nicety; a direct POST (or a client bug) must still be refused.
+  if (recordedAt.getTime() > Date.now()) {
+    return NextResponse.json({ error: "Date recorded cannot be in the future." }, { status: 400 });
   }
 
   const entry = await prisma.scoreEntry.create({
