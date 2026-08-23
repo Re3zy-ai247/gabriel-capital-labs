@@ -47,6 +47,26 @@ const BUREAUS = [
   { id: "TRANSUNION", label: "TransUnion" },
 ];
 
+// Shown whenever the analysis ran on the deterministic fallback reader instead
+// of the AI extractor (`usedAI === false` from lib/analyze.ts). The fallback is
+// tuned for precision over recall — it would rather return fewer accounts than
+// turn prose into fake ones — so the honest consequence is "some accounts may
+// be missing", and the consumer needs that fact to judge what they're looking
+// at. No blame, no outcome claim, and a real next step.
+function ExtractionFallbackNotice() {
+  return (
+    <div className="mt-4 rounded-lg border border-ink-600 bg-ink-800/50 p-3">
+      <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400">How I read this report</div>
+      <p className="mt-1 text-xs text-slate-400">
+        My full reader wasn&apos;t available, so I used the built-in pattern reader as a backup. It only keeps accounts
+        it can identify with certainty, so your report may list accounts it didn&apos;t pick up. Compare the account
+        list against your report — if something is missing, re-run the analysis from the report below, or paste that
+        section of the report as text.
+      </p>
+    </div>
+  );
+}
+
 export default function UploadPage() {
   const router = useRouter();
   const [mode, setMode] = useState<"paste" | "pdf">("paste");
@@ -210,8 +230,8 @@ export default function UploadPage() {
         <a href="https://www.annualcreditreport.com" target="_blank" rel="noreferrer" className="text-brand-400 underline">
           AnnualCreditReport.com
         </a>
-        . Paste the report text or upload the PDF. We record which bureau each item comes from and never assert what a
-        bureau reports unless its report was actually uploaded.
+        . Paste the report text or upload the PDF. We record which bureau each item comes from, and when your report
+        doesn&apos;t say which bureau reports an account, we mark that unknown instead of assuming.
       </p>
 
       {reveal ? (
@@ -278,17 +298,29 @@ export default function UploadPage() {
             Scored by fixed rules against the data read from your report — each account&apos;s row shows exactly why it
             was flagged.
           </p>
+
+          {/* How the report was actually read. This disclosure used to sit in a
+              branch that could never render (the reveal always took precedence),
+              so a consumer whose report was read by the weaker fallback reader
+              was never told. A weaker read means accounts may be missing — that
+              is the consumer's fact, not ours to keep. */}
+          {done && !done.usedAI && <ExtractionFallbackNotice />}
         </div>
       ) : done && done.tradelines > 0 ? (
         <div className="card flex flex-col items-center gap-3 p-10 text-center">
           <CheckCircle2 className="h-10 w-10 text-brand-400" />
           <div className="text-lg font-semibold">Analyzed {done.tradelines} accounts</div>
           <p className="text-sm text-slate-400">
-            {done.usedAI ? "Extraction complete." : "Report parsed."}{" "}
+            {done.usedAI ? "Extraction complete." : "Read with the built-in pattern reader."}{" "}
             <button onClick={() => router.push("/tradelines")} className="font-semibold text-brand-400 hover:underline">
               See your tradelines →
             </button>
           </p>
+          {!done.usedAI && (
+            <div className="w-full max-w-xl text-left">
+              <ExtractionFallbackNotice />
+            </div>
+          )}
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-[1fr_300px]">
