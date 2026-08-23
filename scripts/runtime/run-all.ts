@@ -22,6 +22,7 @@ const REQUIRED = [
   "stripe-webhook-claim.runtime.test.ts",
   "stripe-webhook-reorder.runtime.test.ts",
   "unknown-price-failclosed.runtime.test.ts",
+  "upload-bounds.runtime.test.ts",
 ];
 
 if (guards.length === 0) {

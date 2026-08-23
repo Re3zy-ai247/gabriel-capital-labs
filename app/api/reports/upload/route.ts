@@ -4,12 +4,13 @@ import { prisma } from "@/lib/prisma";
 import { currentUserOrDemo } from "@/lib/session";
 import { enforceRateLimit } from "@/lib/rateLimit";
 import { analyzeReportText } from "@/lib/analyze";
-import { extractPdfText } from "@/lib/pdf";
+import { extractPdfTextBounded, looksLikePdf } from "@/lib/pdf";
 import { encryptText } from "@/lib/docCrypto";
 import { recordKaiEvent } from "@/lib/kaiEvents";
 import { track, PRODUCT_EVENTS } from "@/lib/events";
 import { getBureauData, crossBureauConflicts } from "@/lib/bureauData";
 import { recommendStrategy } from "@/lib/recommend";
+import { withAiPrincipal } from "@/lib/aiMeter";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -17,6 +18,27 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 const VALID_BUREAUS: Bureau[] = ["EQUIFAX", "EXPERIAN", "TRANSUNION"];
+
+// P1-20 (E-05). The 15 MB cap is the number the consumer is told, and it is the
+// per-FILE cap. The body carries multipart framing and the pasted-text field on
+// top of it, so the pre-buffer gate allows 1 MB of slack — a real 15 MB PDF must
+// not be refused by the gate that exists to refuse a 500 MB one.
+const MAX_FILE_BYTES = 15 * 1024 * 1024;
+const MAX_BODY_BYTES = MAX_FILE_BYTES + 1024 * 1024;
+const TOO_LARGE = "PDF too large (max 15 MB).";
+// Sniffed against the leading bytes, never against the client-supplied
+// `file.type` (see lib/pdf.ts looksLikePdf / lib/attachments.ts:66-99).
+const NOT_A_PDF =
+  "That file isn't a PDF. Upload the PDF your bureau gave you, or paste the report text instead.";
+
+// Declared body size, refused BEFORE req.formData() buffers a single byte.
+// `content-length` is absent on a chunked upload; the per-file f.size check
+// below still applies in that case, so this is a cheap first line, not the only
+// one.
+function declaredBodyTooLarge(req: Request): boolean {
+  const declared = Number.parseInt(req.headers.get("content-length") || "", 10);
+  return Number.isFinite(declared) && declared > MAX_BODY_BYTES;
+}
 
 // Accepts a pasted report (text) and/or an uploaded PDF, plus the set of bureaus
 // the report covers. Extracts text, runs the shared analysis pipeline (AI
@@ -26,6 +48,11 @@ export async function POST(req: Request) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const limited = await enforceRateLimit(`report-upload:${user.id}`, 20, 3600); // paid AI extraction — abuse/cost guard
   if (limited) return limited;
+
+  // Cheapest possible refusal: before req.formData(), before any allocation.
+  if (declaredBodyTooLarge(req)) {
+    return NextResponse.json({ error: TOO_LARGE }, { status: 413 });
+  }
 
   let rawText = "";
   let fileName = "pasted-report.txt";
@@ -46,8 +73,15 @@ export async function POST(req: Request) {
       const file = form.get("file");
       if (file && typeof file === "object" && "arrayBuffer" in file) {
         const f = file as File;
-        if (f.size > 15 * 1024 * 1024) {
-          return NextResponse.json({ error: "PDF too large (max 15 MB)." }, { status: 413 });
+        if (f.size > MAX_FILE_BYTES) {
+          return NextResponse.json({ error: TOO_LARGE }, { status: 413 });
+        }
+        // Signature check on the first bytes only — refuses a mislabelled or
+        // hostile payload before the whole file is read into memory and before
+        // pdf.js ever sees it.
+        const head = new Uint8Array(await f.slice(0, 8).arrayBuffer());
+        if (!looksLikePdf(head)) {
+          return NextResponse.json({ error: NOT_A_PDF }, { status: 415 });
         }
         fileName = f.name || "uploaded-report.pdf";
         pdfBuf = Buffer.from(await f.arrayBuffer());
@@ -95,12 +129,36 @@ export async function POST(req: Request) {
       try {
         if (pdfBuf) {
           emit({ stage: "extracting" });
-          const pdfText = await extractPdfText(pdfBuf);
+          // Bounded: signature, page cap and wall-clock deadline (lib/pdf.ts).
+          // A page bomb now costs milliseconds instead of a paid minute.
+          const extraction = await extractPdfTextBounded(pdfBuf);
+          if (!extraction.ok && extraction.reason === "timeout") {
+            emit({
+              error:
+                "That PDF took too long to read, so I stopped rather than leave you waiting. Paste the report text instead and I'll read it right away.",
+            });
+            controller.close();
+            return;
+          }
+          if (!extraction.ok && extraction.reason === "not-pdf") {
+            emit({ error: NOT_A_PDF });
+            controller.close();
+            return;
+          }
+          const pdfText = extraction.ok ? extraction.text : "";
           if (pdfText.length > rawText.length) rawText = pdfText;
           if (rawText.length < 40) {
             emit({ error: TOO_SHORT });
             controller.close();
             return;
+          }
+          // Say so when the cap stopped us early — never present a partial read
+          // as a complete one.
+          if (extraction.ok && extraction.truncated) {
+            emit({
+              stage: "extracting",
+              note: `This PDF is unusually long (${extraction.declaredPages} pages). I read the first ${extraction.renderedPages}; anything after that isn't included.`,
+            });
           }
         }
 
@@ -117,10 +175,17 @@ export async function POST(req: Request) {
           },
         });
 
-        const result = await analyzeReportText(
-          prisma,
-          { userId: user.id, reportId: report.id, rawText: plainText, coveredBureaus: bureaus },
-          (stage) => emit({ stage })
+        // Attribute every nested model call to this consumer so the daily AI
+        // budget sees report parsing (lib/aiParse.ts calls the meter with
+        // userId: null). A refusal is caught inside analyzeReportText, which
+        // falls back to the deterministic parser — no spend, still a result.
+        const reportId = report.id;
+        const result = await withAiPrincipal(user.id, () =>
+          analyzeReportText(
+            prisma,
+            { userId: user.id, reportId, rawText: plainText, coveredBureaus: bureaus },
+            (stage) => emit({ stage })
+          )
         );
         analyzed = true;
 
