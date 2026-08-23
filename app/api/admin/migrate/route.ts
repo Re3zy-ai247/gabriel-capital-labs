@@ -7,13 +7,13 @@ export const runtime = "nodejs";
 
 // The migration is additive/idempotent, but applying schema is privileged. Allow
 // it only for a signed-in ADMIN (browser) OR a caller presenting the SETUP_SECRET
-// (curl: ?secret= or x-setup-secret header) so it can still be run headlessly.
+// in the x-setup-secret header so it can still be run headlessly without placing
+// the reusable credential in browser history, proxy logs, or analytics URLs.
 async function authorize(req: Request): Promise<boolean> {
   if (await requireAdmin()) return true;
   const setup = process.env.SETUP_SECRET;
   if (!setup) return false;
-  const url = new URL(req.url);
-  const provided = req.headers.get("x-setup-secret") || url.searchParams.get("secret") || "";
+  const provided = req.headers.get("x-setup-secret") || "";
   return provided === setup;
 }
 
@@ -119,8 +119,4 @@ export async function POST(req: Request) {
       { status: 500 }
     );
   }
-}
-
-export async function GET(req: Request) {
-  return POST(req);
 }

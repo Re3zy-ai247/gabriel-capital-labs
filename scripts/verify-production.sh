@@ -308,7 +308,7 @@ note "SET is not DELIVERED: only an end-to-end alert drill (fire a real alert, c
 record verify "SETUP_SECRET is UNSET in production" "presence only. It is a god-mode setup credential and must be absent once first-run setup is done"
 note "npx vercel env ls production | grep -c SETUP_SECRET        # expect exactly 0"
 note "or: GET /api/admin/diagnostics → envPresent.SETUP_SECRET === false"
-note "unauthenticated presence probe (no value revealed): pass --probe to this script"
+note "--probe verifies only the non-development 404 containment; it cannot determine whether SETUP_SECRET is set"
 
 record verify "encryption backfill is complete (zero plaintext rows)" "row-level DB fact — not observable from the repository"
 note "the measurement is the backfill itself, and it MUTATES: this harness will not run it"
@@ -350,18 +350,19 @@ if [ "$PROBE" = 1 ]; then
   if ! have curl; then
     record env "probes" "curl is unavailable"
   else
-    # 3.1 SETUP_SECRET presence, WITHOUT sending or learning any secret. /api/admin/bootstrap
-    #     answers 503 when the var is unset and 403 when it is set but the (empty) secret we
-    #     send does not match. Both branches return before any seeding happens.
+    # 3.1 Bootstrap containment, WITHOUT sending or learning any secret. In every
+    #     non-development runtime /api/admin/bootstrap returns 404 before reading
+    #     SETUP_SECRET or reaching a seed function. The deliberately indistinguishable
+    #     404 proves only that the public surface is unavailable; it is not a secret-
+    #     presence oracle and cannot prove whether the route exists in the deployment.
     c=$(curl -s -o /dev/null -w "%{http_code}" --max-time 20 -X POST "${BASE}/api/admin/bootstrap" \
           -H "Content-Type: application/json" -d '{}')
     case "$c" in
-      503) record pass "SETUP_SECRET unset in production" "bootstrap answers 503 'not configured' — the god-mode setup path is closed" ;;
-      403) record fail "SETUP_SECRET unset in production" "bootstrap answers 403 — the secret IS configured; any route accepting ?secret= is a live log-exposure risk" ;;
-      404) record fail "bootstrap route reachable" "HTTP 404 — route deleted or misrouted by a deploy" ;;
-      200) record fail "bootstrap refuses an empty secret" "HTTP 200 — the setup endpoint RAN for an anonymous caller" ;;
-      000) record env "SETUP_SECRET presence probe" "no response (network blocked or DNS unavailable)" ;;
-      *)   record fail "SETUP_SECRET presence probe" "unexpected HTTP ${c}" ;;
+      404)     record pass "bootstrap unavailable outside development" "HTTP 404 matches the hard-off contract and reveals neither route nor SETUP_SECRET presence" ;;
+      403|503) record fail "bootstrap unavailable outside development" "HTTP ${c} — expected the non-development 404 before configuration or authorization branches" ;;
+      200)     record fail "bootstrap unavailable outside development" "HTTP 200 — expected 404; an anonymous request reached an enabled path" ;;
+      000)     record env "bootstrap containment probe" "no response (network blocked or DNS unavailable)" ;;
+      *)       record fail "bootstrap containment probe" "unexpected HTTP ${c}; expected 404" ;;
     esac
 
     # 3.2 Every privileged route must fail closed to an anonymous caller. 404 is a FAILURE:

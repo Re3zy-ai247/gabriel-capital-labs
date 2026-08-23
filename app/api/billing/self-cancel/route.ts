@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 import { sessionAccountState } from "@/lib/session";
 import { getStripe } from "@/lib/stripe";
 import { logAudit } from "@/lib/admin";
@@ -58,8 +59,8 @@ const NO_SUBSCRIPTION =
 // Exists so the cancellation page can render truthfully for a disabled user, who
 // cannot load any ordinary authenticated surface to find out. Returns booleans and
 // human copy only — never a Stripe customer or subscription id.
-export async function GET() {
-  const state = await sessionAccountState();
+export async function GET(req: NextRequest) {
+  const state = await sessionAccountState(req);
   if (state.state === "anonymous") {
     return NextResponse.json({ error: "Please sign in first." }, { status: 401 });
   }
@@ -76,10 +77,10 @@ export async function GET() {
   });
 }
 
-export async function POST() {
-  // 1. Identity: immutable session user id only. Not email, not any cookie, and
-  //    nothing from the request body — this handler reads no body at all.
-  const state = await sessionAccountState();
+export async function POST(req: NextRequest) {
+  // 1. Identity: immutable id from the signed session JWT only. Not email, not a
+  //    workspace/impersonation cookie, and nothing from the request body.
+  const state = await sessionAccountState(req);
   if (state.state === "anonymous") {
     return NextResponse.json({ error: "Please sign in first." }, { status: 401 });
   }

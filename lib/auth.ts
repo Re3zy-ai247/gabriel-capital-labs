@@ -3,6 +3,13 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { prisma } from "./prisma";
 import { rateLimit } from "./rateLimit";
+import { isDemoIdentityBlocked } from "./demoIdentity";
+import {
+  createPasswordSessionVersion,
+  isPasswordSessionVersion,
+  validatePasswordSessionToken,
+  type SessionCredentialStateLoader,
+} from "./sessionVersion";
 
 // NextAuth hands `authorize` a plain headers object, not a fetch Headers — so the
 // shared clientIp(Request) helper does not apply here. Same precedence rule: the
@@ -14,6 +21,22 @@ function ipFromAuthHeaders(headers: Record<string, string> | undefined): string 
   const first = headers?.["x-forwarded-for"]?.split(",")[0]?.trim();
   return first || "unknown";
 }
+
+// JWT sessions are revalidated against the current password credential on every
+// server-side session read. This central callback also covers the few routes that
+// call getServerSession() directly instead of going through currentAccount().
+const loadSessionCredentialState: SessionCredentialStateLoader = async (userId) => {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { passwordHash: true, disabled: true, email: true },
+  });
+  if (!user) return null;
+  return {
+    passwordHash: user.passwordHash,
+    disabled: user.disabled,
+    identityBlocked: isDemoIdentityBlocked(process.env.NODE_ENV, user.email),
+  };
+};
 
 export const authOptions: NextAuthOptions = {
   session: { strategy: "jwt" },
@@ -50,19 +73,49 @@ export const authOptions: NextAuthOptions = {
         });
         if (!user?.passwordHash) return null;
         if (user.disabled) return null; // admin-disabled accounts cannot sign in
+        // Demo data may survive a historic bootstrap. Its repository-known
+        // credential must never create a session outside explicit development.
+        if (isDemoIdentityBlocked(process.env.NODE_ENV, user.email)) return null;
         const ok = await bcrypt.compare(credentials.password, user.passwordHash);
         if (!ok) return null;
-        return { id: user.id, email: user.email, name: user.name ?? undefined };
+        const sessionVersion = createPasswordSessionVersion(
+          user.id,
+          user.passwordHash,
+          process.env.NEXTAUTH_SECRET,
+        );
+        // Missing key/version evidence must not mint a JWT that can bypass later
+        // revocation checks. NextAuth itself also requires this secret in prod.
+        if (!sessionVersion) return null;
+        return { id: user.id, email: user.email, name: user.name ?? undefined, sessionVersion };
       },
     }),
   ],
   callbacks: {
     async jwt({ token, user }) {
-      if (user) token.uid = (user as { id: string }).id;
-      return token;
+      return validatePasswordSessionToken(
+        token,
+        user,
+        process.env.NEXTAUTH_SECRET,
+        loadSessionCredentialState,
+      );
     },
     async session({ session, token }) {
-      if (session.user && token.uid) (session.user as { id?: string }).id = token.uid as string;
+      if (
+        token.cancellationOnly === true ||
+        !session.user ||
+        typeof token.uid !== "string" ||
+        token.uid.length === 0 ||
+        !isPasswordSessionVersion(token.sessionVersion)
+      ) {
+        // NextAuth's session route forwards this return value verbatim, and its
+        // React client classifies every truthy value as `authenticated`. Returning
+        // `{ expires, user: undefined }` would therefore deny server authorization
+        // but still report a stale JWT as authenticated to useSession(). Runtime
+        // supports a null body; its public callback type omits null, so keep the
+        // compatibility cast confined to this fail-closed return only.
+        return null as unknown as typeof session;
+      }
+      session.user.id = token.uid;
       return session;
     },
   },

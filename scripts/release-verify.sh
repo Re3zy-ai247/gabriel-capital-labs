@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # RC1 P0-5 release verification — repeatable prod smoke test (the OPERATIONS.md post-deploy probes,
-# executable). Verifies: public routes 200, auth gates 401/403 (never 200-with-effect), health live,
-# security headers present, and x-cv-release consistency. Read-only. Usage:
+# executable). Verifies: public routes 200, auth gates 401/403 (never 200-with-effect), liveness,
+# database readiness, security headers, and x-cv-release consistency. Read-only. Usage:
 #   scripts/release-verify.sh BASE_URL [EXPECTED_SHA]   (explicit target required)
 set -uo pipefail
 if [ "$#" -lt 1 ] || [ "$#" -gt 2 ] || [ -z "${1:-}" ]; then
@@ -23,6 +23,7 @@ check /               200
 check /login          200
 check /pricing        200
 check /api/health     200
+check /api/health/ready 200
 check /api/letters    401   # authed API, unauth → 401 (never 200-with-effect)
 check /api/admin/overview     403
 check /api/admin/diagnostics  403
@@ -85,6 +86,7 @@ if [ -n "$EXPECT_SHA" ]; then
   fi
 fi
 
-echo "▶ Health: $(curl -s "$BASE/api/health")"
+echo "▶ Liveness: $(curl -s "$BASE/api/health")"
+echo "▶ Readiness: $(curl -s "$BASE/api/health/ready")"
 [ "$fail" = 0 ] && echo "✅ release-verify PASS" || echo "❌ release-verify FAIL"
 exit $fail

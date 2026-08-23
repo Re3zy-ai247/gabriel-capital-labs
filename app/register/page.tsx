@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Eye, EyeOff, Loader2, Check } from "lucide-react";
 import { AuthLayout } from "@/components/marketing/AuthLayout";
+import { validatePassword } from "@/lib/password";
 
 export default function RegisterPage() {
   const [name, setName] = useState("");
@@ -14,11 +15,17 @@ export default function RegisterPage() {
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const router = useRouter();
+  const passwordError = validatePassword(password);
+  const passwordMeetsRequirements = password.length > 0 && passwordError === null;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    setBusy(true);
     setErr(null);
+    if (passwordError) {
+      setErr(passwordError);
+      return;
+    }
+    setBusy(true);
     const res = await fetch("/api/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -26,7 +33,7 @@ export default function RegisterPage() {
     }).catch(() => null);
     if (!res) {
       setBusy(false);
-      setErr("The connection dropped mid-request. Try again — nothing was lost.");
+      setErr("We couldn't confirm whether your account was created. Try signing in; if that doesn't work, return here and try again.");
       return;
     }
     const j = await res.json().catch(() => ({}));
@@ -68,7 +75,7 @@ export default function RegisterPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              minLength={8}
+              minLength={10}
             />
             <button
               type="button"
@@ -79,8 +86,14 @@ export default function RegisterPage() {
               {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
           </div>
-          <p className={`mt-1.5 flex items-center gap-1.5 text-xs ${password.length >= 8 ? "text-success-400" : "text-slate-500"}`}>
-            <Check className="h-3.5 w-3.5" strokeWidth={2.5} /> At least 8 characters
+          <p
+            aria-live="polite"
+            className={`mt-1.5 flex items-start gap-1.5 text-xs ${passwordMeetsRequirements ? "text-success-400" : "text-slate-500"}`}
+          >
+            <Check className="mt-px h-3.5 w-3.5 shrink-0" strokeWidth={2.5} />
+            {passwordMeetsRequirements
+              ? "Password meets the security requirements."
+              : passwordError}
           </p>
         </div>
 

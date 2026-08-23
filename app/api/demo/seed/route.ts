@@ -18,7 +18,7 @@ export const runtime = "nodejs";
 // either — an endpoint must not hand out a working credential in any
 // environment.
 async function handle(req: Request) {
-  if (process.env.NODE_ENV === "production") {
+  if (process.env.NODE_ENV !== "development") {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
   const limited = await enforceRateLimit(`demo-seed:${clientIp(req)}`, 5, 3600); // unauth destructive re-seed — IP throttle

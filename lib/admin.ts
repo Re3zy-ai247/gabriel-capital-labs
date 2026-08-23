@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "./auth";
 import { prisma } from "./prisma";
+import { isDemoIdentityBlocked } from "./demoIdentity";
 
 // True when the CURRENT session belongs to an enabled ADMIN. Privilege is
 // resolved from the session's user id — NEVER from a caller-supplied email:
@@ -20,13 +21,11 @@ export async function requireAdmin() {
   if (!id) return null;
   const user = await prisma.user.findUnique({ where: { id } });
   if (!user || user.role !== "ADMIN") return null;
-  // `disabled` was enforced only at sign-in (lib/auth.ts). Sessions are stateless
-  // JWTs with no maxAge, so NextAuth's 30-day default applied: an admin suspended
-  // AFTER sign-in kept /admin and every admin API for up to a month — admin
-  // privilege had no revocation path. Re-checking here costs no extra query (the
-  // row is already loaded) and fails closed, matching currentAccount() in
-  // lib/session.ts.
+  // Recheck revocable identity state after resolving the JWT id. This blocks
+  // both disabled admins and any historic canonical demo row that was promoted
+  // before the bootstrap boundary was hardened.
   if (user.disabled) return null;
+  if (isDemoIdentityBlocked(process.env.NODE_ENV, user.email)) return null;
   return user;
 }
 

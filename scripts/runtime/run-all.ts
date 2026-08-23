@@ -18,6 +18,7 @@ const guards = readdirSync(here)
 // removing or renaming one fails the CI step instead of quietly shrinking cover.
 const REQUIRED = [
   "invoice-shape.runtime.test.ts",
+  "stripe-provision-auth.runtime.test.ts",
   "stripe-webhook-claim.runtime.test.ts",
   "stripe-webhook-reorder.runtime.test.ts",
   "unknown-price-failclosed.runtime.test.ts",

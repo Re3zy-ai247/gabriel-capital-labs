@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
-import { prisma } from "@/lib/prisma";
 import { clientIp, enforceRateLimit } from "@/lib/rateLimit";
-import { consumeResetToken } from "@/lib/passwordReset";
+import { completePasswordReset } from "@/lib/passwordReset";
 import { validatePassword } from "@/lib/password";
 
 export const dynamic = "force-dynamic";
@@ -22,18 +21,15 @@ export async function POST(req: Request) {
   const pwErr = validatePassword(password);
   if (pwErr) return NextResponse.json({ error: pwErr }, { status: 400 });
 
-  // Consume the token first (single-use) — invalid/expired/used tokens are rejected.
-  const userId = await consumeResetToken(token);
-  if (!userId) {
+  // Token claim, credential binding, password write CAS, and sibling cleanup are
+  // one fail-closed primitive. The bcrypt work runs only after evidence is current.
+  const completed = await completePasswordReset(token, () => bcrypt.hash(password, 10));
+  if (!completed) {
     return NextResponse.json(
       { error: "This reset link is invalid or has expired. Request a new one." },
       { status: 400 }
     );
   }
 
-  await prisma.user.update({
-    where: { id: userId },
-    data: { passwordHash: await bcrypt.hash(password, 10) },
-  });
   return NextResponse.json({ ok: true });
 }

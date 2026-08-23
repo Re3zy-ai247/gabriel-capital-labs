@@ -3,8 +3,9 @@ import bcrypt from "bcryptjs";
 import { toBureauData, type ExtractedTradeline } from "./parse";
 import { classifyCreditor } from "./classify";
 import { scoreTradeline } from "./scoring";
+import { DEMO_EMAIL } from "./demoIdentity";
 
-export const DEMO_EMAIL = "demo@gabrielcapitallabs.com";
+export { DEMO_EMAIL } from "./demoIdentity";
 export const DEMO_PASSWORD = "demo1234";
 
 const ALL: Bureau[] = ["EQUIFAX", "EXPERIAN", "TRANSUNION"];
@@ -235,18 +236,26 @@ export async function seedDemoUser(prisma: PrismaClient): Promise<number> {
   return DEMO_ACCOUNTS.length;
 }
 
-// Idempotently creates (or promotes) an admin user with the given credentials.
+// Idempotently creates an admin user or rotates an existing admin's password.
+// A public account that preclaims the configured email must never be promoted.
 export async function seedAdminUser(
   prisma: PrismaClient,
   email: string,
   password: string
 ): Promise<void> {
+  const normalizedEmail = email.trim().toLowerCase();
   const passwordHash = await bcrypt.hash(password, 10);
-  await prisma.user.upsert({
-    where: { email: email.toLowerCase() },
-    update: { role: "ADMIN", passwordHash },
-    create: {
-      email: email.toLowerCase(),
+  const existing = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+  if (existing && existing.role !== "ADMIN") {
+    throw new Error("Refusing to promote a pre-existing non-admin account");
+  }
+  if (existing) {
+    await prisma.user.update({ where: { id: existing.id }, data: { passwordHash } });
+    return;
+  }
+  await prisma.user.create({
+    data: {
+      email: normalizedEmail,
       name: "Administrator",
       role: "ADMIN",
       passwordHash,

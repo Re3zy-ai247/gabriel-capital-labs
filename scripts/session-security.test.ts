@@ -1,6 +1,6 @@
 // Run: npx tsx scripts/session-security.test.ts
 //
-// Guards session revocation for disabled accounts.
+// Guards session revocation for disabled accounts and password events.
 //
 // THE DEFECT (found 2026-07-20): `disabled` was checked ONLY inside authorize()
 // in lib/auth.ts — i.e. only at sign-in. Sessions are stateless JWTs with no
@@ -28,7 +28,7 @@ const auth = readFileSync(join(root, "lib/auth.ts"), "utf8");
 // ── The post-login gate exists ───────────────────────────────────────────────
 check("currentAccount re-checks disabled after sign-in", /account\?\.disabled/.test(session));
 check("a disabled account resolves to null (fail-closed)",
-  /if \(account\?\.disabled\) return null;/.test(session));
+  session.includes("if (account?.disabled || isDemoIdentityBlocked"));
 
 // The check must come AFTER the row is loaded and BEFORE it is returned —
 // otherwise it is decorative.
@@ -53,15 +53,18 @@ check("authorize() still refuses disabled accounts at sign-in", /user\.disabled/
 // ── Login throttle must survive (same file, easy to regress) ─────────────────
 check("sign-in throttle still present", /login-id:/.test(auth) && /login-ip:/.test(auth));
 
-// ── Known remaining gap, deliberately recorded ───────────────────────────────
-// Password reset updates only passwordHash, so a stolen session survives the
-// reset. Closing that needs server-side session state (a notBefore timestamp),
-// which changes the stateless-JWT posture and must be sequenced with a migration
-// — see the sprint report. This assertion documents that the gap is known rather
-// than silently accepted; it should be inverted when the fix lands.
+// ── Password-event revocation must stay wired ─────────────────────────────────
+// Password reset rotates passwordHash. The JWT callback now carries a keyed
+// fingerprint of that existing credential and revalidates it on every session
+// read, so no new schema or deployment-ordered column is required.
 const reset = readFileSync(join(root, "app/api/auth/reset-password/route.ts"), "utf8");
-check("password reset still only rotates the hash (known gap, tracked)",
-  /passwordHash/.test(reset) && !/sessionsValidFrom|notBefore/.test(reset));
+const resetLibrary = readFileSync(join(root, "lib/passwordReset.ts"), "utf8");
+const change = readFileSync(join(root, "app/api/profile/password/route.ts"), "utf8");
+check("password reset rotates the credential used by session versioning",
+  /completePasswordReset\(/.test(reset) && /data:\s*\{\s*passwordHash: nextPasswordHash\s*\}/.test(resetLibrary));
+check("password change rotates the credential used by session versioning", /data:\s*\{\s*passwordHash:/.test(change));
+check("sign-in mints keyed password-session evidence", /createPasswordSessionVersion/.test(auth));
+check("JWT callback revalidates current credential state", /validatePasswordSessionToken/.test(auth));
 
 
 // ── Authenticated bytes must not outlive the session that authorized them ────

@@ -78,7 +78,12 @@ check("sessionAccountState resolves the row by immutable id",
   /findUnique\(\{\s*where:\s*\{\s*id\s*\}\s*\}\)/.test(helperBody));
 check("sessionAccountState never looks a user up by email",
   !/where:\s*\{\s*email/.test(helperBody));
-check("sessionAccountState reads NO cookie", !/cookies\(\)/.test(helperBody));
+check("sessionAccountState never reads workspace/impersonation cookies through next/headers",
+  !/cookies\(\)/.test(helperBody));
+check("sessionAccountState reads only the signed JWT from the caller's request",
+  /getToken\(\{\s*req,\s*secret: process\.env\.NEXTAUTH_SECRET\s*\}\)/.test(helperBody));
+check("sessionAccountState revalidates keyed password-version evidence",
+  /passwordSessionVersionMatches\(/.test(helperBody));
 check("sessionAccountState mentions neither the workspace nor the impersonation cookie",
   !/WORKSPACE_COOKIE|IMPERSONATE_COOKIE/.test(helperBody));
 check("sessionAccountState grants nothing — it only reports state",
@@ -91,8 +96,15 @@ const accountFn = sessionLib.slice(
   sessionLib.indexOf("export async function currentAccount"),
   sessionLib.indexOf("export async function currentUser"),
 );
+const directNullGuardConditions = [...accountFn.matchAll(/if\s*\(([^;\n]+)\)\s*return null;/g)]
+  .map((match) => match[1]);
+const disabledGuard = directNullGuardConditions.find((condition) =>
+  condition.split(/\s*\|\|\s*/).some((term) => term.trim() === "account?.disabled"),
+);
 check("currentAccount() still fails closed on `disabled`",
-  /if \(account\?\.disabled\) return null;/.test(accountFn));
+  disabledGuard !== undefined);
+check("the stricter currentAccount() guard also retains demo-identity containment",
+  disabledGuard !== undefined && /isDemoIdentityBlocked\(/.test(disabledGuard));
 check("currentAccount() still resolves by id",
   /findUnique\(\{\s*where:\s*\{\s*id\s*\}\s*\}\)/.test(accountFn));
 check("currentUser() still routes through currentAccount()",
@@ -164,7 +176,8 @@ check(`${ROUTE} does not change plan, role or entitlements`,
 // No identifier may enter from the request — that is what makes cross-account
 // cancellation structurally impossible rather than merely validated.
 check(`${ROUTE} reads no request body`, !/req\.json\(\)/.test(route) && !/request\.json\(\)/.test(route));
-check(`${ROUTE} takes no request parameter on POST`, /export async function POST\(\)/.test(route));
+check(`${ROUTE} takes only the framework request on POST`,
+  /export async function POST\(req: NextRequest\)/.test(route));
 check(`${ROUTE} reads no query parameters`, !/searchParams/.test(route));
 check(`${ROUTE} uses only the ids stored on the caller's own row`,
   /account\.stripeCustomerId/.test(route) && /account\.stripeSubscriptionId/.test(route));
@@ -183,7 +196,7 @@ check(`${ROUTE} audits through the shared convention`,
 check(`${ROUTE} rate-limits with the shared limiter, keyed by user id`,
   /enforceRateLimit\(`billing:self-cancel:\$\{account\.id\}`/.test(route));
 // The limit must be applied before any Stripe work, and after identity is known.
-const idAt = route.indexOf("await sessionAccountState()");
+const idAt = route.indexOf("await sessionAccountState(req)");
 const rlAt = route.indexOf("enforceRateLimit(");
 const stripeAt = route.indexOf("stripe.subscriptions.retrieve");
 check(`${ROUTE} rate-limits after identity and before Stripe`,

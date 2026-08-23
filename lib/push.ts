@@ -93,6 +93,12 @@ export interface PushPayload {
 export async function sendPushToUser(userId: string, payload: PushPayload): Promise<void> {
   if (!configure()) return;
   try {
+    // A stateless JWT or old subscription must not outlive an account disable.
+    const recipient = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { disabled: true },
+    });
+    if (!recipient || recipient.disabled) return;
     await ensurePushTable();
     const subs = await prisma.pushSubscription.findMany({ where: { userId } });
     await Promise.all(
@@ -121,7 +127,10 @@ export async function sendPushToUser(userId: string, payload: PushPayload): Prom
 export async function sendPushToAdmins(payload: PushPayload): Promise<void> {
   if (!configure()) return;
   try {
-    const admins = await prisma.user.findMany({ where: { role: "ADMIN" }, select: { id: true } });
+    const admins = await prisma.user.findMany({
+      where: { role: "ADMIN", disabled: false },
+      select: { id: true },
+    });
     await Promise.all(admins.map((a) => sendPushToUser(a.id, payload)));
   } catch (e) {
     console.error("sendPushToAdmins failed (non-fatal)", e);
