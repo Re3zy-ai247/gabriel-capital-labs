@@ -9,33 +9,155 @@ import { prisma } from "@/lib/prisma";
 import { yearsSince } from "@/lib/utils";
 import { REINVESTIGATION_DAYS, daysElapsedSinceEstimatedReceipt } from "@/lib/forecast";
 import { fallOffInsight } from "@/lib/tradelineInsights";
+import { getBureauData } from "@/lib/bureauData";
+import { bureauTextBlob } from "@/lib/obsolescence";
 import { ownOutcomeTrack, ownHistorySummary, type OwnTrack } from "@/lib/outcomeLedger";
 import { listKaiEvents } from "@/lib/kaiEvents";
 
 const DEROGATORY: ReadonlySet<AccountType> = new Set<AccountType>(["COLLECTION", "CHARGE_OFF", "PUBLIC_RECORD"]);
 
+// ---------------------------------------------------------------------------
+// RC1-S3 (Credit Truth Core) — the CONDITION model.
+//
+// `AccountType` answers "what KIND of account is this" (product type + the two
+// legacy condition-ish types COLLECTION/CHARGE_OFF/PUBLIC_RECORD). It does NOT
+// answer "what CONDITION is this account in" — a charged-off Capital One card
+// is still typed REVOLVING, and a collection-status OneMain loan is still typed
+// INSTALLMENT. The report says so in its per-bureau STATUS text, which lives in
+// `bureauData` (lib/bureauData.ts) and was previously read by nobody making the
+// negative/clean call. That is the whole of the false-"Clean" defect: type is
+// not condition, and a missing date-of-first-delinquency is not evidence of
+// good standing.
+//
+// The condition model below reads the report's own words. Three rules govern
+// it, and none of them may be weakened:
+//   1. Adverse evidence in the status/remarks text makes an account
+//      DEROGATORY, whatever its product type says.
+//   2. Absence of evidence is NEVER "clean". No adverse marker AND no
+//      affirmative statement of standing => NEEDS_REVIEW (unknown stays
+//      unknown; it is not laundered into either verdict).
+//   3. A negated statement ("never late", "no late payments") is evidence the
+//      adverse event did NOT happen — it must never be read as the event.
+// ---------------------------------------------------------------------------
+
+// Field LABELS that a report prints whether or not a value follows. They must
+// never be read as evidence: "Date of first delinquency:" is a label, not a
+// delinquency, and "current balance" is an amount, not a statement of standing.
+const NEUTRAL_LABELS: RegExp[] = [
+  /date of first delinquency/g,
+  /first delinquency/g,
+  /\bdofd\b/g,
+  /current balance/g,
+  /high balance/g,
+  /original creditor/g,
+];
+
+// "Never late", "no late payments", "0 times 30 days late" — statements that
+// the adverse event did NOT occur. Stripped before adverse matching (rule 3).
+const NEGATED_ADVERSE =
+  /\b(?:never|no|not|zero|0)\s+(?:\w+\s+){0,3}?(?:late|lates|delinquen\w*|past\s*due|derogator\w*|missed\s+payments?|charge[-\s]?offs?|collections?|repossess\w*)\b/g;
+
+// Adverse condition as consumer reports actually word it.
+const ADVERSE_MARKERS: RegExp[] = [
+  /charge[-\s]?off/, /charged[-\s]?off/, /\bchargeoff\b/,
+  /\bcollection/, /placed (?:for|with) collection/, /assigned to collection/,
+  /past\s*due/, /\bdelinquen/, /\bderogator/,
+  /\d+\s*days?\s*late/, /\bwas\s+late\b/, /\blate\s+payments?\b/, /\bpaid\s+late\b/,
+  /repossess/, /voluntary surrender/, /\bforeclos/,
+  /\bdefault(?:ed)?\b/,
+  /settled(?!\s+in\s+full)/, /less than (?:the )?full/,
+  /written\s+off/, /write[-\s]?off/, /\bbad debt\b/, /profit and loss/,
+  /\bbankrupt/, /\bjudgment\b/, /\bjudgement\b/, /\blien\b/, /garnish/,
+];
+
+// Affirmative statements of standing. Required before any CLEAN verdict —
+// a "Clean" claim has to be earned by what the report SAYS, never by what it
+// omits.
+const AFFIRMATIVE_STANDING: RegExp[] = [
+  /pay(?:s|ing)? as agreed/, /paid as agreed/, /\bas agreed\b/,
+  /\bcurrent\b/, /account (?:is )?current/,
+  /never late/, /no late payments?/, /\bnever delinquent\b/,
+  /\bin good standing\b/, /no derogator/,
+  /paid in full/, /paid on time/, /exceptional payment history/,
+];
+
+// Lowercase, drop punctuation, collapse whitespace, then remove label noise.
+function normalizeConditionText(raw: string): string {
+  let t = (raw || "").toLowerCase().replace(/[^a-z0-9/\-\s]+/g, " ").replace(/\s+/g, " ").trim();
+  for (const label of NEUTRAL_LABELS) t = t.replace(label, " ");
+  return t.replace(/\s+/g, " ").trim();
+}
+
+export function hasAdverseStatusEvidence(text: string): boolean {
+  const t = normalizeConditionText(text).replace(NEGATED_ADVERSE, " ");
+  return ADVERSE_MARKERS.some((re) => re.test(t));
+}
+
+export function hasAffirmativeStandingEvidence(text: string): boolean {
+  const t = normalizeConditionText(text);
+  return AFFIRMATIVE_STANDING.some((re) => re.test(t));
+}
+
+// DEROGATORY   — the report attests an adverse condition (or the account type
+//                is itself a collection/charge-off/public record, or a
+//                first-delinquency date is on file).
+// CLEAN        — the report affirmatively states the account is in good
+//                standing AND carries no adverse marker.
+// NEEDS_REVIEW — we do not know. No adverse evidence, no affirmative standing.
+//                This is the honest default for parser silence; it is NOT a
+//                statement that the account is fine.
+// NOT_APPLICABLE — inquiries and government/statutory debts are outside the
+//                condition model entirely (they are excluded from the dispute
+//                queue for their own, separate reasons).
+export type FactualCondition = "DEROGATORY" | "CLEAN" | "NEEDS_REVIEW" | "NOT_APPLICABLE";
+
+export interface ConditionInput {
+  accountType: AccountType;
+  dateOfFirstDelinquency: Date | string | null;
+  // The stored per-bureau JSON (Prisma `Tradeline.bureauData`). Optional so
+  // callers holding a narrowed projection still compile — but a caller that
+  // omits it can only ever get DEROGATORY from type/DOFD, never from the
+  // report's own status text, so pass the whole row wherever you have it.
+  bureauData?: unknown;
+}
+
+export function factualCondition(t: ConditionInput): FactualCondition {
+  if (t.accountType === "INQUIRY" || t.accountType === "GOVERNMENT") return "NOT_APPLICABLE";
+  if (DEROGATORY.has(t.accountType)) return "DEROGATORY";
+  // The report's own words, across every bureau entry we hold (and the
+  // unattributed account-level observation — lib/parse.ts UNATTRIBUTED).
+  const text = bureauTextBlob(getBureauData(t.bureauData));
+  if (hasAdverseStatusEvidence(text)) return "DEROGATORY";
+  if (t.dateOfFirstDelinquency != null) return "DEROGATORY";
+  if (hasAffirmativeStandingEvidence(text)) return "CLEAN";
+  return "NEEDS_REVIEW";
+}
+
 // RB-2 (Founder Experience Gate): the single fact-test for "is this tradeline
 // an actual negative" — reused everywhere a per-item or aggregate negative
 // state is shown (the `negatives` count below, Mission Control's Deferred
-// Queue, and the Strategy Desk / Tradelines per-item presentation). NEVER the
-// disputability `probability`/`score` band: the scoring engine (lib/scoring.ts,
-// untouched here) gives every non-government account TYPE a nonzero baseline
-// "worth a look" score regardless of payment history, so a clean, never-late
-// account (e.g. a student loan or auto loan with no missed payment) still
-// scores > 0 and would be miscounted as a negative if `probability !==
-// NOT_RECOMMENDED` were the test — the bug this replaces. A derogatory
-// account TYPE (collection/charge-off/public-record) is always a negative;
-// otherwise a genuine derogatory EVENT in the account's own history — a
-// first-delinquency date actually on file (e.g. a late-payment history the
-// account has since cured, still current) — counts it too. An account with
-// neither (e.g. "Pays as agreed / Never late", no DOFD) has nothing to
-// dispute.
-export function isFactualNegative(t: { accountType: AccountType; dateOfFirstDelinquency: Date | string | null }): boolean {
-  return (
-    t.accountType !== "INQUIRY" &&
-    t.accountType !== "GOVERNMENT" &&
-    (DEROGATORY.has(t.accountType) || t.dateOfFirstDelinquency != null)
-  );
+// Queue, the Strategy Desk / Tradelines per-item presentation, and the AI
+// Action Plan queue). NEVER the disputability `probability`/`score` band: the
+// scoring engine (lib/scoring.ts, untouched here) gives every non-government
+// account TYPE a nonzero baseline "worth a look" score regardless of payment
+// history, so a clean, never-late account (e.g. a student loan or auto loan
+// with no missed payment) still scores > 0 and would be miscounted as a
+// negative if `probability !== NOT_RECOMMENDED` were the test — the bug this
+// replaces.
+//
+// RC1-S3: this is now the DEROGATORY arm of `factualCondition` above, so the
+// report's own per-bureau status text counts ("Charge-Off", "Collection",
+// "120 days past due" on a REVOLVING/INSTALLMENT row) alongside a derogatory
+// account TYPE and a first-delinquency date on file. The true-set only GROWS —
+// every account this returned true for before still returns true.
+//
+// It stays strictly "the report attests something adverse". An account we
+// could not read (NEEDS_REVIEW) is NOT a negative here — and it is NOT clean
+// either. Callers that make the affirmative "in good standing" claim must ask
+// for `factualCondition(t) === "CLEAN"`; `!isFactualNegative(t)` means
+// "not a confirmed negative", which includes "we don't know".
+export function isFactualNegative(t: ConditionInput): boolean {
+  return factualCondition(t) === "DEROGATORY";
 }
 
 export interface OpenWindow { recipient: string; daysElapsed: number; daysLeft: number; letterId: string }
