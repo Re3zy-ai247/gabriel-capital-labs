@@ -64,8 +64,10 @@ export const authOptions: NextAuthOptions = {
         ]);
         // Deny on limit. Returning null yields the same generic failure the wrong
         // -password path returns, so the throttle reveals nothing about whether the
-        // identifier exists. (The limiter itself fails OPEN on a DB fault — the
-        // established repo posture: a transient outage must not lock everyone out.)
+        // identifier exists. (Since P0-10 the limiter FAILS CLOSED on a backend
+        // fault — see lib/rateLimit.ts. Sign-in is unaffected in practice: the user
+        // lookup three lines below needs the same database, so a fault that denies
+        // here would have denied there.)
         if (!byId.ok || !byIp.ok) return null;
 
         const user = await prisma.user.findFirst({

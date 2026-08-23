@@ -53,7 +53,7 @@ const read = (p: string) => readFileSync(p, "utf8");
   check("B-07a· the route is positively limited to development", /process\.env\.NODE_ENV !== "development"/.test(seed));
   check("B-07b· the guard returns 404 outside development",
     /process\.env\.NODE_ENV !== "development"\)\s*\{[\s\S]{0,160}?status: 404/.test(seed));
-  check("B-07c· the guard is the FIRST thing the handler does (before the fail-open rate limiter)",
+  check("B-07c· the guard is the FIRST thing the handler does (before the rate limiter)",
     handler.length > 0
     && handler.indexOf("NODE_ENV") > -1
     && handler.indexOf("NODE_ENV") < handler.indexOf("enforceRateLimit"));
