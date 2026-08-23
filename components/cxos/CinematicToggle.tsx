@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CINEMATIC_PREF_KEY, cinematicEntranceOptIn, detectTier } from "@/lib/cxos/capability";
+import { CINEMATIC_PREF_KEY, cinematicEntranceOptIn } from "@/lib/cxos/capability";
 
 // CXOS Phase 3 — the user-facing cinematic control (navigation law 5: "users
 // may disable cinematic transitions").
@@ -18,14 +18,35 @@ import { CINEMATIC_PREF_KEY, cinematicEntranceOptIn, detectTier } from "@/lib/cx
 // An untouched control (no key) is the RC1 default: no entrance, and the
 // non-blocking tier ladder still applies. prefers-reduced-motion needs no
 // toggle — it is tier D absolutely, before this preference is even read, and
-// it is never overridden by pressing "on".
+// pressing "on" never overrides it.
 //
-// C-11: the choice applies LIVE in both directions. The journey runtime reads
-// the tier once at mount, so this restamps `data-cxjourney` itself rather than
-// leaving the visitor to guess that a reload is required.
-export function CinematicToggle({ className = "" }: { className?: string }) {
+// ── WHY THE "ON" DIRECTION DOES NOT APPLY LIVE (review H-1) ──────────────────
+// An earlier revision of this file stamped `data-cxjourney` with the freshly
+// detected tier so the choice would "apply live" in both directions (C-11, a
+// P3 nicety). That is a content-hiding bug, and correctness beats liveness:
+//
+//   The stamp only selects the tier-A/B choreography rules. What DRIVES them
+//   is `--cxp`, and only JourneyRuntime writes it — from an effect whose
+//   dependency array is [active], where `active` comes from state set once at
+//   mount. A visitor arriving with "off" persisted gets tier D, so that effect
+//   returned early: no listeners, no observer, and `--cxp` left at its
+//   declared default of 0. Stamping the tier from HERE made those rules match
+//   at --cxp: 0 — which is the START of the choreography, not its rest state.
+//   The three classification chips in IntelligenceAwakens ("Cross-bureau
+//   mismatch", "Potential inaccuracy", "Unverifiable") computed to opacity 0,
+//   the evidence spine stayed undrawn, and the alignment chapter froze
+//   mis-aligned, until a full page load.
+//
+// So this component now NEVER stamps. `data-cxjourney` has exactly one writer,
+// JourneyRuntime, which owns both the stamp and its listeners and can never
+// set one without the other. The "off" direction still applies live because
+// REMOVING the attribute can only ever fall content back to its rest state —
+// it cannot strand anything. The "on" direction takes effect on the next load,
+// and says so out loud rather than leaving the visitor to guess.
+export function CinematicToggle({ className = "", label = "Cinematic entrance" }: { className?: string; label?: string }) {
   const [on, setOn] = useState(false);
   const [ready, setReady] = useState(false);
+  const [pending, setPending] = useState(false);
 
   useEffect(() => {
     setOn(cinematicEntranceOptIn());
@@ -35,27 +56,41 @@ export function CinematicToggle({ className = "" }: { className?: string }) {
   // Server render and first paint agree (nothing), so no hydration mismatch.
   if (!ready) return null;
   return (
-    <button
-      type="button"
-      aria-pressed={on}
-      onClick={() => {
-        const next = !on;
-        setOn(next);
-        try {
-          localStorage.setItem(CINEMATIC_PREF_KEY, next ? "on" : "off");
-        } catch {
-          /* storage unavailable — the session keeps the in-memory choice */
-        }
-        // Reflect the choice on this page immediately, in BOTH directions.
-        // detectTier() re-reads the value just written, so "on" restamps the
-        // real tier (which may still be D under reduced motion — the opt-in
-        // never overrides that) and "off" clears the stamp.
-        if (next) document.documentElement.setAttribute("data-cxjourney", detectTier());
-        else document.documentElement.removeAttribute("data-cxjourney");
-      }}
-      className={`transition hover:text-slate-300 ${className}`}
-    >
-      Cinematic entrance: {on ? "on" : "off"}
-    </button>
+    <span className="inline-flex items-center gap-2">
+      <button
+        type="button"
+        aria-pressed={on}
+        // Static, so this control never needs to read the motion preference in
+        // order to describe it — and so it can never be mistaken for a way to
+        // override one (review L-5).
+        title="Reduced-motion settings always take priority over this choice."
+        onClick={() => {
+          const next = !on;
+          setOn(next);
+          try {
+            localStorage.setItem(CINEMATIC_PREF_KEY, next ? "on" : "off");
+          } catch {
+            /* storage unavailable — the session keeps the in-memory choice */
+          }
+          // OFF applies immediately and safely: removing the stamp can only
+          // return content to its rest state. ON is deferred to the next load
+          // (see the note above) and disclosed below.
+          if (next) {
+            setPending(true);
+          } else {
+            document.documentElement.removeAttribute("data-cxjourney");
+            setPending(false);
+          }
+        }}
+        className={`transition hover:text-slate-300 ${className}`}
+      >
+        {label}: {on ? "on" : "off"}
+      </button>
+      {pending && (
+        <span role="status" className="whitespace-nowrap text-[11px] text-slate-500">
+          Plays on your next visit
+        </span>
+      )}
+    </span>
   );
 }

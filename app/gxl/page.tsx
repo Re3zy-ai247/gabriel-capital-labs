@@ -24,8 +24,8 @@ export default async function GxlGalleryLobby() {
   // reading "This is a founder-only validation gallery for an unratified
   // design language" — an internal artifact, disclosed inside the product
   // shell, to a consumer who has no business knowing this route exists. The
-  // route is already unlinked and noindex; it now takes the same posture
-  // /review/* takes and simply does not exist for anyone outside the gate.
+  // route is already unlinked and noindex; it now takes the same posture the
+  // /review routes take and does not exist for anyone outside the gate.
   if (!(await gxlGalleryAllowed())) notFound();
 
   const totals = ROOMS.reduce((a, r) => ({ total: a.total + r.field.total, awaiting: a.awaiting + r.field.awaiting, active: a.active + r.field.active }), { total: 0, awaiting: 0, active: 0 });

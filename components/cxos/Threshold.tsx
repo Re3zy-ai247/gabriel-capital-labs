@@ -20,9 +20,20 @@ import { THRESHOLD_SEEN_KEY } from "@/lib/cxos/capability";
 // RC1 posture (Founder Decision D-6, findings C-03/C-07/C-13):
 //   · This component only ever mounts for a visitor who explicitly opted in
 //     (ThresholdGate) — it is no longer a toll every first-time consumer pays.
-//   · DUR is capped at 3 s. The beat SHAPE below is unchanged: playback is
-//     progress-normalized (`tl.progress(actual)`), so the same six beats play,
-//     bounded by the cap instead of a ten-second walk.
+//   · The entrance is bounded at 3 s of VISIBLE time, fade included. The beat
+//     SHAPE below is unchanged: playback is progress-normalized
+//     (`tl.progress(actual)`), so the same six beats play, bounded by the cap
+//     instead of a ten-second walk.
+//
+//     Review M-2 corrected an earlier version of this claim. `WALK_S` is the
+//     rate at which `target` reaches 1, NOT the duration of the overlay:
+//     `actual` follows `target` through an exponential smoother, dismissal
+//     fires at `actual > 0.999`, and a fade runs after that. With the old
+//     spelling (rate = 3 s) the observed overlay life was ~4.5 s at 60 fps and
+//     over 5 s at 15 fps — 50 % past the figure the source claimed. The bound
+//     is now enforced rather than asserted: VISIBLE_CAP_S + FADE_S = 3.0 s is
+//     a hard ceiling at ANY frame rate, and the walk rate is tuned so the cap
+//     does not bite on a healthy run.
 //   · The skip control is visible and focused at t=0. It used to fade in from
 //     t=0.6 s while already holding focus — a sighted keyboard user had focus
 //     on an invisible control, and a touch visitor had no escape at all for
@@ -37,7 +48,20 @@ import { THRESHOLD_SEEN_KEY } from "@/lib/cxos/capability";
 // deep facility hum with WebAudio on the user's explicit click — no audio
 // files, no autoplay, nothing essential lives in sound.
 
-const DUR = 3; // master timeline seconds (auto-advance; input accelerates)
+// The one number the product promises, and everything below derived from it.
+const TOTAL_S = 3.0;   // user-visible bound: overlay fully gone by this mark
+const FADE_S = 0.55;   // the dismissal fade that runs AFTER the walk completes
+// The cap can only be TESTED once per frame, so the walk overshoots it by at
+// most one frame. Budgeting for a 100 ms frame (10 fps) keeps the 3.0 s bound
+// true down to that frame rate; below it the watchdog is the hard floor and no
+// per-frame check could do better.
+const FRAME_ALLOWANCE_S = 0.1;
+const VISIBLE_CAP_S = TOTAL_S - FADE_S - FRAME_ALLOWANCE_S; // 2.35 s of visible walk
+const WALK_S = 1.2;    // seconds for `target` to reach 1 (input accelerates it)
+// Watchdog basis. Deliberately larger than TOTAL_S: this timer is the
+// freeze-detector of last resort, so it must sit clear of every healthy
+// dismissal or a merely slow device earns a console.warn. (DUR + 2) * 1000 = 5 s.
+const DUR = 3;
 
 export function Threshold({ onDone, review = false }: { onDone: () => void; review?: boolean }) {
   const rootRef = useRef<HTMLDivElement>(null);
@@ -99,6 +123,18 @@ export function Threshold({ onDone, review = false }: { onDone: () => void; revi
     // The page beneath must not scroll while the visitor walks.
     const prevOverflow = document.documentElement.style.overflow;
     document.documentElement.style.overflow = "hidden";
+    // C-07 (review L-4): aria-modal is a promise to assistive tech, not an
+    // enforcement — AT that ignores it, and plain Tab, would still reach a
+    // fully-painted landing sitting under an opaque overlay. `inert` is the
+    // enforcement. Applied to every body-level subtree that does NOT contain
+    // this overlay, so the overlay itself is never inerted whatever the mount
+    // point is, and restored exactly on teardown.
+    const inerted: HTMLElement[] = [];
+    for (const el of Array.from(document.body.children)) {
+      if (!(el instanceof HTMLElement) || el.contains(root) || el.hasAttribute("inert")) continue;
+      el.setAttribute("inert", "");
+      inerted.push(el);
+    }
     // This overlay (z-100) now owns the darkness the entry script painted (z-99).
     document.documentElement.removeAttribute("data-cxenter");
 
@@ -125,7 +161,8 @@ export function Threshold({ onDone, review = false }: { onDone: () => void; revi
       .to(root, { opacity: 0, duration: 0.7, ease: "power2.inOut" }, 9.35);
 
     // ── Advance model: time walks, input strides ─────────────────────────────
-    // The sequence completes on its own (~DUR = 3s). Wheel / touch / arrow keys add
+    // The sequence completes on its own (walk rate WALK_S, hard-capped at
+    // VISIBLE_CAP_S of visible time). Wheel / touch / arrow keys add
     // stride — "every scroll is another step" — and can only move forward.
     let target = 0;
     let actual = 0;
@@ -172,8 +209,11 @@ export function Threshold({ onDone, review = false }: { onDone: () => void; revi
       // screen-reader user tabs straight out of the dialog into content they
       // cannot see. Paired with aria-modal="true" on the root below.
       if (e.key === "Tab") {
-        const focusables = Array.from(root.querySelectorAll<HTMLElement>("button:not([disabled])"))
-          .filter((el) => el.offsetParent !== null);
+        const focusables = Array.from(
+          root.querySelectorAll<HTMLElement>(
+            'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+          ),
+        ).filter((el) => el.offsetParent !== null);
         if (focusables.length === 0) return;
         const first = focusables[0];
         const last = focusables[focusables.length - 1];
@@ -215,14 +255,27 @@ export function Threshold({ onDone, review = false }: { onDone: () => void; revi
 
     let raf = 0;
     let last = performance.now();
+    // VISIBLE time, not wall time: a backgrounded tab is not costing the
+    // visitor anything, so it must not burn the budget either. This is what
+    // makes the 3 s claim true at every frame rate — the smoother's tail is
+    // frame-rate dependent, the clock is not.
+    let visible = 0;
     const frame = (now: number) => {
-      const dt = Math.min(0.05, (now - last) / 1000);
+      const elapsed = (now - last) / 1000;
+      // `dt` stays clamped at 50 ms — it drives the walk and the scene, where a
+      // long stall must not teleport the visitor forward. The BUDGET must not
+      // use that clamp: at 10 fps a clamped dt under-counts real time by half,
+      // which would stretch the very bound it exists to enforce. It gets real
+      // elapsed time, itself bounded so one frame after a tab unhide cannot
+      // spend the whole budget at once.
+      const dt = Math.min(0.05, elapsed);
       last = now;
       if (!document.hidden) {
+        visible += Math.min(elapsed, FRAME_ALLOWANCE_S * 2);
         frameTimes.push(dt * 1000);
         if (frameTimes.length > 120) frameTimes.shift();
         if (!paused) {
-          target = Math.min(1, target + (dt * speed) / DUR); // the walk never stalls
+          target = Math.min(1, target + (dt * speed) / WALK_S); // the walk never stalls
           actual += (target - actual) * Math.min(1, dt * 4.5);              // heavy, smooth inertia
         }
         tl.progress(actual);
@@ -232,7 +285,10 @@ export function Threshold({ onDone, review = false }: { onDone: () => void; revi
           // sound follows the walk: the hum swells toward the opening
           audioRef.current.gain.gain.setTargetAtTime(0.02 + actual * 0.03, audioRef.current.ctx.currentTime, 0.2);
         }
-        if (actual > 0.999) {
+        // Two ways out, one exit: the walk finished, or the visible budget is
+        // spent. The cap is exempt in review mode for the same reason the
+        // watchdog is — the Director's loop past the end is intended.
+        if (actual > 0.999 || (!review && visible >= VISIBLE_CAP_S)) {
           if (review) { target = 0; actual = 0; } // the review stage loops; Escape exits
           else finish(false);
         }
@@ -293,6 +349,7 @@ export function Threshold({ onDone, review = false }: { onDone: () => void; revi
       window.removeEventListener("deviceorientation", onTilt);
       window.removeEventListener("resize", onResize);
       document.documentElement.style.overflow = prevOverflow;
+      for (const el of inerted) el.removeAttribute("inert");
       tl.kill();
       scene?.dispose();
       if (audioRef.current) {
@@ -309,10 +366,10 @@ export function Threshold({ onDone, review = false }: { onDone: () => void; revi
       if (done) return;
       done = true;
       if (immediate) cleanup();
-      else gsap.to(root, { opacity: 0, duration: 0.55, ease: "power2.inOut", onComplete: cleanup });
+      else gsap.to(root, { opacity: 0, duration: FADE_S, ease: "power2.inOut", onComplete: cleanup });
     }
 
-    return () => { if (!cleanedUp) { cleanedUp = true; done = true; if (watchdog !== undefined) window.clearTimeout(watchdog); cancelAnimationFrame(raf); tl.kill(); scene?.dispose(); document.documentElement.style.overflow = prevOverflow; } };
+    return () => { if (!cleanedUp) { cleanedUp = true; done = true; if (watchdog !== undefined) window.clearTimeout(watchdog); cancelAnimationFrame(raf); tl.kill(); scene?.dispose(); document.documentElement.style.overflow = prevOverflow; for (const el of inerted) el.removeAttribute("inert"); } };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

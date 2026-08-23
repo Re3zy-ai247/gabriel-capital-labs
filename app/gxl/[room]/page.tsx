@@ -74,15 +74,11 @@ function Entry({ t, lamp }: { t: SpecimenEntry; lamp?: boolean }) {
 export default async function GxlRoom({ params }: { params: { room: string } }) {
   const room = roomBySlug(params.room);
   if (!room) notFound();
-  if (!(await gxlGalleryAllowed())) {
-    return (
-      <AppShell title="/ GXL Gallery">
-        <div className="card mx-auto mt-6 max-w-md p-8 text-center text-sm text-slate-400">
-          This is a founder-only validation gallery for an unratified design language.
-        </div>
-      </AppShell>
-    );
-  }
+  // RC1 S7 (finding C-14, review L-8): the lobby's wall was replaced with
+  // notFound() and this deep route carried the identical one — URL-reachable,
+  // and disclosing an internal artifact to any signed-in member. Same posture
+  // as the /review routes: outside the gate this route does not exist.
+  if (!(await gxlGalleryAllowed())) notFound();
 
   const lampId = ENTRIES.find((t) => t.state === "awaiting")?.id ?? null;
 
@@ -125,7 +121,7 @@ export default async function GxlRoom({ params }: { params: { room: string } }) 
                   </ul>
                 </section>
                 <section aria-label="The tape">
-                  <div className={`${styles.engraved} mb-2`}>The tape — the institution's memory (specimen)</div>
+                  <div className={`${styles.engraved} mb-2`}>The tape — the institution&apos;s memory (specimen)</div>
                   <ol className={`${styles.tape} space-y-3 py-1 pl-0`}>
                     {["Jul 18 — Entry № 041 appended: bureau response received", "Jul 16 — Custody check completed (verified)", "Jul 15 — Exhibit B entered into the record", "Jul 12 — Statutory window entered from delivery receipt", "Jun 28 — Exhibit D entered; contradiction with Exhibit C preserved", "Mar 22 — Exhibit E entered (now aged; refresh due)"].map((t, i) => (
                       <li key={i} className={`${styles.tick} tnum font-mono text-[11px] text-slate-400`}>{t}</li>
