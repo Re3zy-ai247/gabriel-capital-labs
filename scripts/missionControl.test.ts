@@ -18,7 +18,10 @@ function inputs(over: Partial<MissionInputs> = {}): MissionInputs {
     // Default tradeline is a genuine negative (RB-2's isFactualNegative fact
     // test) so existing cases that don't care about cleanliness are unaffected.
     composed: emptyComposed, tradelines: [{ id: "t1", resolved: false, accountType: "CHARGE_OFF", dateOfFirstDelinquency: new Date(NOW - 1000 * 86400000) }], letters: [],
-    scoreEntries: [], nextSeq: 1, policy: DEFAULT_CAMPAIGN_POLICY, now: NOW, ...over,
+    // RC1 S7 (A1-04): `hasReport` is a fact about REPORTS, not about extraction
+    // yield, so the fixture states both independently. The default is the
+    // ordinary case — a report on file that parsed into a tradeline.
+    scoreEntries: [], nextSeq: 1, reportCount: 1, policy: DEFAULT_CAMPAIGN_POLICY, now: NOW, ...over,
   };
 }
 function item(over: Partial<ComposerItem> = {}): ComposerItem {
@@ -45,15 +48,50 @@ const lt = (over: Partial<MissionInputs["letters"][number]>): MissionInputs["let
   ok("firstName parsed", m.firstName === "Rey");
   ok("on-track → no tasks", m.tasks.length === 0);
   ok("case health green when nothing outstanding", m.caseHealth === "green");
+  ok("a started account with nothing outstanding is green, not unstarted", m.standing === "green");
   ok("command center has 8 sections", m.command.length === 8);
   ok("5 health signals + case roll-up = 5", m.health.length === 5);
 }
 
 // ---- no report → upload task ----
+// RC1 S7: this case used to be spelled `inputs({ tradelines: [] })` and relied
+// on `hasReport = tradelines.length > 0`. It now states the real fact (no
+// report rows), which is the same fact lib/kaiHome.ts branch 4 keys on.
 {
-  const m = assembleMission(inputs({ tradelines: [] }));
+  const m = assembleMission(inputs({ tradelines: [], reportCount: 0 }));
   ok("no report → upload task", m.tasks.some((t) => t.kind === "upload" && /upload your credit report/i.test(t.text)));
   ok("hasReport false", m.hasReport === false);
+  ok("no report → standing is unstarted, never green (C-05)", m.standing === "unstarted");
+  ok("no report → the case signal says nothing has started, never 'everything\'s green'",
+    !/green/i.test(m.health.find((h) => h.key === "case")?.message ?? ""));
+  ok("no report → reportWithoutTradelines is false (that is a different state)", m.reportWithoutTradelines === false);
+}
+
+// ---- RC1 S7 / A1-04: report on file, ZERO tradelines extracted -------------
+// The split-brain state. Mission Control keyed `hasReport` on tradelines while
+// Kai Home keyed its own branch on reports, so this account was told to upload
+// a report it had already uploaded AND told nothing needed its attention.
+{
+  const kai: KaiHomeData = {
+    ...emptyKai,
+    recommendation: {
+      title: "Your report is on file, but I could not read any accounts from it.",
+      body: "…", cta: "Open Upload", href: "/upload",
+      basis: "Rule: a report is on file with no accounts extracted from it.",
+    },
+  };
+  const m = assembleMission(inputs({ tradelines: [], reportCount: 1, kai }));
+  ok("report + no tradelines → hasReport is TRUE (keyed on reports, not extraction yield)", m.hasReport === true);
+  ok("report + no tradelines → the state is named", m.reportWithoutTradelines === true);
+  ok("report + no tradelines → NOT the first-time 'upload your credit report to get started' copy",
+    !m.tasks.some((t) => /upload your credit report to get started/i.test(t.text)));
+  ok("report + no tradelines → the task states the real fact", m.tasks.some((t) => /no accounts were read/i.test(t.text)));
+  ok("report + no tradelines → exactly ONE task (one answer, not a list)", m.tasks.length === 1);
+  ok("report + no tradelines → nextAction is Kai's own branch for this state, so the two surfaces AGREE",
+    m.nextAction?.basis === kai.recommendation!.basis);
+  ok("report + no tradelines → standing is not 'unstarted' (they did start)", m.standing !== "unstarted");
+  ok("report + no tradelines → standing is not green (something needs doing)", m.standing !== "green");
+  ok("report + no tradelines → timeline health is amber, not green", m.health.find((h) => h.key === "timeline")?.status === "amber");
 }
 
 // ---- overdue window → red health + upload task ----

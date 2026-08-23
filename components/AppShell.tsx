@@ -6,6 +6,7 @@ import { AnnouncementBanner } from "./AnnouncementBanner";
 import { HeaderLogout } from "./HeaderLogout";
 import { NewDisputeCta } from "./NewDisputeCta";
 import { KaiPresence } from "./kai/KaiPresence";
+import { CinematicToggle } from "./cxos/CinematicToggle";
 
 export function AppShell({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -15,6 +16,14 @@ export function AppShell({ title, children }: { title: string; children: React.R
         <header className="sticky top-0 z-20 flex items-center justify-between border-b border-ink-700/70 bg-ink-900/70 px-5 py-3 backdrop-blur">
           <h1 className="text-sm font-medium text-slate-300">{title}</h1>
           <div className="flex items-center gap-3 text-xs text-slate-400">
+            {/* RC1 S7 (Founder Decision D-6, finding C-01): the cinematic
+                control is reachable INSIDE the product too, not only on the
+                marketing footer — a signed-in consumer who wants the entrance
+                (or wants no cinematic motion at all) should not have to sign
+                out to find the switch. Hidden on the narrowest viewports where
+                the header is already at capacity; the footer mount is the
+                always-available one. */}
+            <span className="hidden sm:inline"><CinematicToggle /></span>
             <ThemeToggle />
             {/* RC1 S2 (review MEDIUM-2): session-conditional — this shell renders on
                 signed-out panels too, where "+ New Dispute" promised an action the
