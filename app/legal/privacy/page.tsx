@@ -60,13 +60,20 @@ export default function PrivacyPage() {
           is sent, and only for that purpose:
         </p>
         <ul>
-          <li>The text of the credit report you uploaded or pasted.</li>
-          <li>The identity details you typed into Settings — your name and mailing address — when you run the identity check.</li>
-          <li>The text of a community question you ask Kai.</li>
+          <li>The text of the credit report you uploaded or pasted, when it is read and when the identity check runs.</li>
           <li>
-            The text of a bureau&apos;s reply that you paste in when you log a response, so the next round can be
-            prepared from what they actually wrote.
+            The identity details you typed into Settings — your name and mailing address — when you run the identity
+            check, and again if you ask for a personal-information correction letter.
           </li>
+          <li>
+            The account details from your report — creditor, status, balance and dates — when you ask for an action plan.
+          </li>
+          <li>
+            When you log a bureau&apos;s response: the reply you paste in, <strong>together with the dispute letter it
+            replies to</strong>, so the next round can be prepared from what they actually wrote. That letter carries the
+            full name and mailing address printed on it, along with the creditor and the masked account number.
+          </li>
+          <li>The text of a community question you ask Kai, where the community is switched on.</li>
         </ul>
         <p>What is not sent:</p>
         <ul>
@@ -81,10 +88,14 @@ export default function PrivacyPage() {
         <p>
           Before credit-report text is sent — on every path that sends it — we mask Social Security numbers that we
           can recognize in it. That masking is pattern-based: it reduces what is transmitted, and we cannot promise it
-          catches every instance. It applies to your credit-report text; a bureau reply you paste in yourself is sent as
-          you wrote it, so remove anything from it you would rather not send. A credit report
-          can also contain your date of birth, address history and employers, and where those appear in the report text
-          they are sent with it. If that matters to you, remove them from what you paste before you upload.
+          catches every instance. A credit report can also contain your date of birth, address history and employers,
+          and where those appear in the report text they are sent with it. If that matters to you, remove them from what
+          you paste before you upload.
+        </p>
+        <p>
+          That masking covers credit-report text and nothing else. A dispute letter and a bureau reply you paste in are
+          sent exactly as they stand — we do not strip the sender block from your own letter before it is analyzed — so
+          treat anything written in them as something that will be transmitted.
         </p>
       </section>
 

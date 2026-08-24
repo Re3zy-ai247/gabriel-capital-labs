@@ -31,7 +31,11 @@
 //     ("found: $399 $699 $1,299"). The 13 that PASS are section 3, which is the
 //     correct result: those assert PRESERVATION and must hold on the old file
 //     too, or they would be pinning nothing.
-//   · Unmodified slice tree: **28 passed, 0 failed** (exit 0).
+//   · S11 ROUND (review B-1 companion). With `git show 59f2afd:lib/kai.ts`
+//     restored: **28 passed, 6 failed** (exit 1) — the whole of section 5,
+//     because that file passes `null` as the meter principal and has no way to
+//     be told who it is answering for.
+//   · Unmodified slice tree: **34 passed, 0 failed** (exit 0).
 //
 // WHAT KIND OF CHECK THIS IS: it imports lib/kai.ts and reads the composed
 // string. No network, no key, no API call — askKai() is never invoked.
@@ -142,6 +146,39 @@ check(
 check(
   "completeness claims are forbidden (A2-07)",
   /NEVER CLAIM COMPLETENESS/.test(KAI_SYSTEM) && /can miss or misread an account/i.test(KAI_SYSTEM)
+);
+
+console.log("\n5. Kai's AI call is budgeted against a consumer (S11 review B-1 companion)");
+// The meter only budgets when it has a principal (lib/aiMeter.ts: an anonymous
+// call skips reserveDailyBudget entirely). askKai passed `null`, so every Kai
+// answer was unbudgeted — the same hole the S11 reviewer rated HIGH on the
+// response path. Community is off in RC1, so this closes the door before it can
+// ever be opened rather than fixing a live leak.
+// Comments stripped: the block comment above askKai QUOTES the old
+// `meteredMessage("kai", null, …)` to explain the defect, and a doc comment is
+// not the code doing it.
+const srcCode = src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+check("askKai takes the consumer it is answering for", /userId\?: string \| null;/.test(src));
+check(
+  "…falling back to the caller's ambient principal when it opens one instead",
+  /const principal = input\.userId \?\? currentAiPrincipal\(\);/.test(src)
+);
+check(
+  "the metered call names that principal — never null",
+  /meteredMessage\("kai", principal,/.test(srcCode) && !/meteredMessage\("kai", null,/.test(srcCode)
+);
+check(
+  "…and runs inside a withAiPrincipal scope, so anything nested is attributed too",
+  /withAiPrincipal\(principal, \(\) =>[\s\S]{0,120}meteredMessage\("kai", principal,/.test(srcCode)
+);
+check(
+  "with NO principal it FAILS CLOSED — the graceful non-answer, not an unbudgeted paid call",
+  /if \(!key \|\| !principal\) \{/.test(src)
+);
+check(
+  "…and the offline copy is truthful for both reasons it can fire",
+  /the AI engine isn't available for this request right now/.test(src) &&
+    !/the AI engine isn't configured right now/.test(src)
 );
 
 console.log(`\nkai-persona.test.ts: ${pass} passed, ${fail} failed`);
