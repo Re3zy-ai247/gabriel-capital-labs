@@ -1045,11 +1045,21 @@ export interface LetterAuthorizationInput {
   activeAssertionCount: number;
   /**
    * The letter's stored strategy — the discriminator described below.
-   * OPTIONAL, and absence fails CLOSED: a caller that cannot say which kind of
-   * letter this is gets the orphan reading (REVOKED), never the identity one.
-   * Every gate in the product passes it.
+   *
+   * REQUIRED (RC1-S11 closing gate). It was optional while the call sites were
+   * being threaded, and that is exactly how the dashboard shipped a gate that
+   * omitted it and silently took the fail-closed path — the HIGH this round
+   * opened with. Requiring it makes omission a compile error instead of a quiet
+   * wrong answer at runtime.
+   *
+   * `null` is still a legal value and still fails CLOSED: a caller that
+   * genuinely does not know which kind of letter it holds gets the orphan
+   * reading (REVOKED), never the identity one. The flip changes who must supply
+   * the field, not what the rule does with a bad one — scripts/letter-control.
+   * test.ts keeps the runtime `undefined` path tested by cast, because the type
+   * cannot bind a JavaScript caller.
    */
-  strategy?: string | null;
+  strategy: string | null;
 }
 
 export function letterAuthorization(l: LetterAuthorizationInput): LetterAuthorizationState {

@@ -27,7 +27,7 @@
 //   · branch base `31d4e35:lib/letter.ts`         → the suite cannot even load
 //   · `31d4e35:app/letters/print/[id]/page.tsx`   → 126 passed,  9 failed (exit 1)
 //   · `31d4e35:app/letters/page.tsx`              →  99 passed, 36 failed (exit 1)
-//   · this tree                                   → 237 passed,  0 failed (exit 0)
+//   · this tree                                   → 238 passed,  0 failed (exit 0)
 
 export {};
 
@@ -531,7 +531,25 @@ console.log("\n— 9d. the identity letter is authorized at birth (AD-R2-1) —"
   // again — nothing is left to check its claims against.
   ok("a re-analysis / deleted-report orphan is REVOKED again", letterAuthorization(orphan) === "REVOKED");
   ok("…and every tradeline strategy behaves that way, not just §611", STRATEGIES.every((st) => letterAuthorization({ ...orphan, strategy: st.id }) === "REVOKED"));
-  ok("…and an unknown or missing strategy fails closed", letterAuthorization({ ...orphan, strategy: null }) === "REVOKED" && letterAuthorization({ ...orphan, strategy: "made_up" }) === "REVOKED" && letterAuthorization({ mailedAt: null, tradelineId: null, activeAssertionCount: 0 }) === "REVOKED");
+  // Fail-closed on a bad value, and on a MISSING one.
+  //
+  // This third case used to be written by simply omitting `strategy`, which was
+  // a weaker check than it looked: while the field was optional, an omitting
+  // caller and a null-strategy caller were the same call. `strategy` is REQUIRED
+  // now, so omission is a compile error and no future call site can silently
+  // take this path — but a JavaScript caller, or a row deserialized from an
+  // older client, can still hand over `undefined` at runtime, so that is what
+  // the cast exercises. All three readings are the orphan one: REVOKED, never
+  // AUTHORIZED, and never HISTORICAL — `mailedAt` is null throughout, so
+  // agreeing with HISTORICAL here would be agreement by accident.
+  const undefinedStrategy = { mailedAt: null, tradelineId: null, activeAssertionCount: 0 } as unknown as Parameters<typeof letterAuthorization>[0];
+  ok(
+    "…and an unknown, null or missing strategy fails closed",
+    letterAuthorization({ ...orphan, strategy: null }) === "REVOKED" &&
+      letterAuthorization({ ...orphan, strategy: "made_up" }) === "REVOKED" &&
+      letterAuthorization(undefinedStrategy) === "REVOKED"
+  );
+  ok("…and none of those is mistaken for a mailed letter", letterAuthorization(undefinedStrategy) !== "HISTORICAL" && letterAuthorization({ ...orphan, strategy: null }) !== "HISTORICAL");
 
   // The withdrawal case AD-2 was written for is untouched.
   ok("a tradeline letter with nothing standing behind it is still REVOKED", letterAuthorization({ mailedAt: null, tradelineId: "t1", activeAssertionCount: 0, strategy: "fcra_611" }) === "REVOKED");
