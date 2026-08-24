@@ -538,8 +538,57 @@ function testTruthfulSurfaces() {
   check("the button label is an upper bound, not a promise of 'all'",
     upload.includes("Re-analyze up to ${REANALYZE_BATCH}") && upload.includes("const REANALYZE_BATCH = 5"));
   check("the mirrored cap matches the route's own", cap !== null && Number(cap[1]) === 5);
-  check("the result line still reads the server's own skipped/notice fields",
-    upload.includes("j.skipped") && upload.includes("j.notice"));
+  // ── S11 B-R3-3 — a degraded run may never be reported as a clean one ──────
+  // The route reports on three axes (usedAI / degraded / aiRefused) plus its own
+  // `notice`. This page used to read `notice` alone, so a run that finished on
+  // the fallback parser with nothing to announce rendered as an unqualified
+  // success line. The sentence is now S4's exported helper — one implementation,
+  // pinned as behaviour, so /tradelines and /upload cannot drift apart.
+  check("/upload renders its result line through the shared helper, not a second copy",
+    upload.includes('from "@/components/ReanalyzeButton"') &&
+    upload.includes("reanalyzeStatusLine(j)") &&
+    !upload.includes("function reanalyzeResult"));
+  check("/upload still renders the server's own refusal wording verbatim on a failure",
+    upload.includes('j.error || "The re-analysis didn\'t finish. Try again in a moment."'));
+
+  // Executed, not read: the four shapes the route can actually return.
+  const { reanalyzeStatusLine } = require("../components/ReanalyzeButton") as typeof import("../components/ReanalyzeButton");
+  const FALLBACK = "built-in pattern reader as a backup";
+  const clean = reanalyzeStatusLine({ reportsAnalyzed: 3, tradelines: 12, skipped: 0, usedAI: true, degraded: false, aiRefused: false });
+  check("a clean run reports a clean run", clean === "Re-read 3 reports — 12 tradelines.");
+
+  const degraded = reanalyzeStatusLine({ reportsAnalyzed: 3, tradelines: 12, skipped: 0, usedAI: false, degraded: true, aiRefused: false });
+  check("a degraded run is NEVER reported as a clean one (the B-R3-3 defect)",
+    degraded.includes("Re-read 3 reports — 12 tradelines.") && degraded.includes(FALLBACK) && degraded !== clean);
+
+  const serverRefusal = "My full reader is paused for today, so I read this with the built-in reader instead.";
+  const refused = reanalyzeStatusLine({ reportsAnalyzed: 2, tradelines: 5, usedAI: false, degraded: true, aiRefused: true, notice: serverRefusal });
+  check("a refusal renders the server's own words, verbatim and first", refused.startsWith(serverRefusal));
+  check("...and the generic fallback sentence is suppressed so it is not said twice", !refused.includes(FALLBACK));
+
+  const skippedNotice = "Re-analyzed your 5 most recent reports. 3 older reports were left as they are.";
+  const both = reanalyzeStatusLine({ reportsAnalyzed: 5, tradelines: 20, skipped: 3, usedAI: false, degraded: true, aiRefused: false, notice: skippedNotice });
+  check("a skip notice and a degraded read are BOTH disclosed, not one at the expense of the other",
+    both.startsWith(skippedNotice) && both.includes(FALLBACK));
+
+  // A spend ceiling is a platform pause. There is nothing to buy, so nothing here
+  // may read as a prompt to pay.
+  check("no status line frames a limit as something to pay for",
+    [clean, degraded, refused, both].every((line) => !/upgrade|subscribe|premium|purchase|payment|billing|checkout|\$\d/i.test(line)));
+
+  // The upload STREAM path carried the same facts and dropped them.
+  check("the stream's final event declares the degradation fields it receives",
+    /degraded\?: boolean;/.test(upload) && /aiRefused\?: boolean;/.test(upload) && /notice\?: string;/.test(upload));
+  check("a mid-stream note is kept before the generic stage line overwrites it",
+    upload.indexOf("keepNote(evt.note);") !== -1 &&
+    upload.indexOf("keepNote(evt.note);") < upload.indexOf("STAGE_LINES[evt.stage]"));
+  check("the final notice reaches the consumer too", upload.includes("keepNote(final.notice);"));
+  check("the notes are rendered above every outcome branch",
+    upload.includes("<AnalysisNotices notices={notices} />") &&
+    upload.indexOf("<AnalysisNotices notices={notices} />") < upload.indexOf("{reveal ? ("));
+  check("a degraded upload still shows the fallback disclosure even if usedAI came back true",
+    upload.includes("(!done.usedAI || done.degraded) && <ExtractionFallbackNotice />") &&
+    !/\{done\.usedAI \? "Extraction complete\."/.test(upload));
 
   // Review MEDIUM-1: the /upload LIST load, not just the action path.
   check("upload keeps a 401 on the report list as a fact",
