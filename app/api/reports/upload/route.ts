@@ -5,7 +5,7 @@ import { currentUserOrDemo } from "@/lib/session";
 import { enforceRateLimit } from "@/lib/rateLimit";
 import { analyzeReportText } from "@/lib/analyze";
 import { extractPdfTextBounded, looksLikePdf } from "@/lib/pdf";
-import { encryptText } from "@/lib/docCrypto";
+import { docCryptoReady, encryptText } from "@/lib/docCrypto";
 import { recordKaiEvent } from "@/lib/kaiEvents";
 import { track, PRODUCT_EVENTS } from "@/lib/events";
 import { getBureauData, crossBureauConflicts } from "@/lib/bureauData";
@@ -94,6 +94,25 @@ export async function POST(req: Request) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const limited = await enforceRateLimit(`report-upload:${user.id}`, 20, 3600); // paid AI extraction — abuse/cost guard
   if (limited) return limited;
+
+  // S11 · MEDIUM_BLOCKING-1. Every other route that encrypts checks this first
+  // (documents, documents/[id]/raw, attachments, identity/discrepancies); the
+  // PRIMARY consumer flow did not. With DOCUMENT_ENCRYPTION_KEY absent or the
+  // wrong length, encryptText() threw inside the NDJSON stream, was swallowed by
+  // the generic catch, deleted the half-written report and told the consumer
+  // "the analysis hit a snag on our side" — 100% of intake down, with nothing
+  // anywhere saying the deploy was misconfigured. Fail fast, before the upload is
+  // read, and say something true: this is ours, not theirs, and retrying will not
+  // help until it is fixed.
+  if (!docCryptoReady()) {
+    return NextResponse.json(
+      {
+        error:
+          "We can't accept uploads right now — secure storage for your report isn't available on our side. Nothing about your report or your credit caused this. Please try again later; we're already alerted.",
+      },
+      { status: 503 }
+    );
+  }
 
   const bounded = boundBodySize(req);
   if (!bounded.ok) {

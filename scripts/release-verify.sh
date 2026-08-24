@@ -87,6 +87,30 @@ if [ -n "$EXPECT_SHA" ]; then
 fi
 
 echo "▶ Liveness: $(curl -s "$BASE/api/health")"
-echo "▶ Readiness: $(curl -s "$BASE/api/health/ready")"
+READY_BODY=$(curl -s "$BASE/api/health/ready")
+echo "▶ Readiness: $READY_BODY"
+
+# S11 · X-1/X-6. The status code above already fails a degraded deployment, but a
+# refused promotion must SAY which dependency is missing — otherwise an operator
+# reads "503" and redeploys the same broken thing. These three name the two
+# failures that take a core consumer flow to zero:
+#   schema      — a deployment that landed before `prisma migrate deploy`
+#                 (registration throws with no try/catch: nobody can sign up)
+#   encryption  — DOCUMENT_ENCRYPTION_KEY absent (100% of report intake fails)
+# Both are dependencies of the RELEASE, not of the process, so they belong here
+# and not in the liveness probe.
+echo "▶ Readiness dependencies"
+case "$READY_BODY" in
+  *'"schema":"ok"'*)     echo "  OK   schema      required migrations are applied" ;;
+  *)                     echo "  FAIL schema      required tables missing — run 'prisma migrate deploy' against the DIRECT (non-Accelerate) URL before promoting"; fail=1 ;;
+esac
+case "$READY_BODY" in
+  *'"encryption":"ok"'*) echo "  OK   encryption   DOCUMENT_ENCRYPTION_KEY usable" ;;
+  *)                     echo "  FAIL encryption   DOCUMENT_ENCRYPTION_KEY absent or not 32 bytes — report intake would fail for every consumer"; fail=1 ;;
+esac
+case "$READY_BODY" in
+  *'"status":"ready"'*)  echo "  OK   status      ready" ;;
+  *)                     echo "  FAIL status      readiness did not report ready"; fail=1 ;;
+esac
 [ "$fail" = 0 ] && echo "✅ release-verify PASS" || echo "❌ release-verify FAIL"
 exit $fail

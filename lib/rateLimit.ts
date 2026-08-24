@@ -24,9 +24,24 @@ import { prisma } from "./prisma";
 // Self-heal: the RateHit table creates itself at runtime. CREATE TABLE IF NOT EXISTS
 // via raw SQL works through the Accelerate proxy even though build-time
 // `prisma db push` does not — mirrors ensureCommunityTables / ensureAttachmentTable.
-let tableReady = false;
+// Single-flight (S11 · MEDIUM-5). `CREATE ... IF NOT EXISTS` is NOT concurrency
+// safe in Postgres: two statements can both pass the existence check and one then
+// fails on the pg_type unique index (P2010, "Key (typname, typnamespace) already
+// exists"). The old `let ready = false` flag was only set AFTER the await, so a
+// burst of concurrent first requests all issued the DDL and raced. Memoising the
+// PROMISE means concurrent callers await the same statement; a failure clears it
+// so the next caller retries rather than inheriting a poisoned "ready".
+let tableReady: Promise<void> | null = null;
 export async function ensureRateLimitTable(): Promise<void> {
-  if (tableReady) return;
+  if (!tableReady) {
+    tableReady = createRateLimitTable().catch((e) => {
+      tableReady = null;
+      throw e;
+    });
+  }
+  return tableReady;
+}
+async function createRateLimitTable(): Promise<void> {
   await prisma.$executeRawUnsafe(
     `CREATE TABLE IF NOT EXISTS "RateHit" (
        "id" TEXT NOT NULL PRIMARY KEY,
@@ -39,7 +54,6 @@ export async function ensureRateLimitTable(): Promise<void> {
   await prisma.$executeRawUnsafe(
     `CREATE UNIQUE INDEX IF NOT EXISTS "RateHit_bucket_key" ON "RateHit"("bucket")`
   );
-  tableReady = true;
 }
 
 // Best-effort client IP from the proxy chain: the first hop of x-forwarded-for is

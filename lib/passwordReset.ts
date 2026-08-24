@@ -15,9 +15,21 @@ const RESET_EVIDENCE_PATTERN = /^[A-Za-z0-9_-]{43}$/;
 // Self-heal: the table creates itself at runtime via CREATE TABLE IF NOT EXISTS
 // (works through Accelerate even though build-time `prisma db push` doesn't) —
 // mirrors ensureRateLimitTable / ensureCommunityTables.
-let tableReady = false;
+// Single-flight (S11 · MEDIUM-5): `CREATE ... IF NOT EXISTS` is not concurrency
+// safe in Postgres, and a flag set only AFTER the await lets a burst of first
+// requests all issue the DDL. Memoise the PROMISE; clear it on failure so the
+// next caller retries instead of inheriting a poisoned "ready".
+let tableReady: Promise<void> | null = null;
 export async function ensurePasswordResetTable(): Promise<void> {
-  if (tableReady) return;
+  if (!tableReady) {
+    tableReady = createPasswordResetTable().catch((e) => {
+      tableReady = null;
+      throw e;
+    });
+  }
+  return tableReady;
+}
+async function createPasswordResetTable(): Promise<void> {
   await prisma.$executeRawUnsafe(
     `CREATE TABLE IF NOT EXISTS "PasswordResetToken" (
        "id" TEXT NOT NULL PRIMARY KEY,
@@ -34,7 +46,6 @@ export async function ensurePasswordResetTable(): Promise<void> {
   await prisma.$executeRawUnsafe(
     `CREATE INDEX IF NOT EXISTS "PasswordResetToken_userId_idx" ON "PasswordResetToken"("userId")`
   );
-  tableReady = true;
 }
 
 function hashToken(raw: string): string {

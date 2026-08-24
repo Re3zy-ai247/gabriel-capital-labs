@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { seedDemoUser, seedAdminUser, DEMO_EMAIL } from "@/lib/demoSeed";
+import { setupSecretAccepted } from "@/lib/admin";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -11,31 +12,32 @@ export const runtime = "nodejs";
 //
 // Usage (local development only):
 //   curl -X POST http://localhost:3000/api/admin/bootstrap \
-//     -H "Content-Type: application/json" \
-//     -d '{"secret":"<SETUP_SECRET>"}'
+//     -H "x-setup-secret: <SETUP_SECRET>"
 export async function POST(req: Request) {
   if (process.env.NODE_ENV !== "development") {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  const setupSecret = process.env.SETUP_SECRET;
-  if (!setupSecret) {
+  if (!process.env.SETUP_SECRET) {
     return NextResponse.json(
       { error: "SETUP_SECRET is not configured on the server." },
       { status: 503 }
     );
   }
 
-  let provided = "";
-  try {
-    const body = await req.json();
-    provided = body?.secret ?? "";
-  } catch {
-    // also accept the secret via header
-  }
-  provided = provided || req.headers.get("x-setup-secret") || "";
-
-  if (provided !== setupSecret) {
+  // S11 · B-5. This route used to compare `provided !== setupSecret` with no
+  // throttle — a length-and-first-byte short circuit, and an unbounded online
+  // oracle. M-4 moved the other two SETUP_SECRET routes onto the shared helper
+  // (constant-time over SHA-256 digests, throttled per source IP before any
+  // comparison, fail-closed) and left this one behind. The environment guard
+  // above means it is not production-reachable today, so this is defence in
+  // depth against a future edit that relaxes that separate line — which is
+  // exactly the defect M-4 exists to remove.
+  //
+  // Input is header-only now. The body-`secret` form is dropped deliberately: a
+  // credential in a JSON body is not logged the way a query string is, but there
+  // is no reason to keep two accepted shapes for one secret.
+  if (!(await setupSecretAccepted(req))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
