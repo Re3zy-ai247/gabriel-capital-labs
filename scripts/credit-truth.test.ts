@@ -650,8 +650,79 @@ const BLOCK = [
   // case; whitespace is new) — this is an exact match, not the fallback.
   eq("casing and internal whitespace never break an exact match", matchRebuiltTradelines([row("p1", "capital  one", "xxxx1234")], [row("n1", "CAPITAL ONE", "XXXX1234")]).get("p1"), "n1");
 
+  // ── B-R4-1 · FORCED IS NOT CORRECT ──────────────────────────────────────
+  //
+  // The count rule ("one prior left, one rebuilt left") pairs whatever remains.
+  // When the two remaining rows are genuinely DIFFERENT accounts at one
+  // creditor — one closed and gone, another newly appearing — it re-points the
+  // consumer's mailed dispute at an account they never disputed, and closing
+  // that dispute out as "corrected or removed" then writes resolved: true onto
+  // the wrong row. The pairing must be corroborated, not merely forced.
+  const acct = (
+    id: string,
+    creditorName: string,
+    o: { mask?: string | null; type?: string; balance?: number; original?: string | null; debtBuyer?: boolean } = {}
+  ): RelinkRow => ({
+    id,
+    creditorName,
+    originalCreditor: o.original ?? null,
+    accountNumberMask: o.mask ?? null,
+    accountType: o.type ?? "REVOLVING",
+    isDebtBuyer: o.debtBuyer ?? false,
+    balance: o.balance ?? 147700,
+  });
+
+  // The reviewer's measured mis-links (r4 probe cases C, D, E).
+  eq("C · 1234 left and a different 9999 arrived at one creditor → NO link",
+    matchRebuiltTradelines([acct("old1234", "CAPITAL ONE", { mask: "****1234" })], [acct("new9999", "CAPITAL ONE", { mask: "****9999", balance: 30000 })]).size, 0);
+
+  const caseD = matchRebuiltTradelines(
+    [acct("oldA", "CAPITAL ONE", { mask: "****1234" }), acct("oldB", "CAPITAL ONE", { mask: "****5678", balance: 22000 })],
+    [acct("newA", "CAPITAL ONE", { mask: "****1234" }), acct("newC", "CAPITAL ONE", { mask: "****9999", balance: 30000 })]
+  );
+  eq("D · the surviving account still links", caseD.get("oldA"), "newA");
+  eq("D · the departed one does NOT inherit the newcomer", caseD.get("oldB"), undefined);
+  eq("D · exactly one pairing is made", caseD.size, 1);
+
+  eq("E · same collector and original creditor, different account numbers → NO link",
+    matchRebuiltTradelines(
+      [acct("oldDebt", "MIDLAND CREDIT", { mask: "****1111", original: "SYNCHRONY BANK", debtBuyer: true, type: "COLLECTION" })],
+      [acct("newDebt", "MIDLAND CREDIT", { mask: "****2222", original: "SYNCHRONY BANK", debtBuyer: true, type: "COLLECTION", balance: 90000 })]
+    ).size, 0);
+
+  // The intended case must still work, with the corroborating fields present:
+  // the SAME account, re-parsed, whose mask changed shape.
+  eq("a true mask-shape change on the same account still links",
+    matchRebuiltTradelines([acct("p1", "CAPITAL ONE", { mask: "XXXX1234" })], [acct("n1", "CAPITAL ONE", { mask: "517805XXXXXX1234" })]).get("p1"), "n1");
+  eq("the mask fix's null → mask migration still links",
+    matchRebuiltTradelines([acct("p1", "CAPITAL ONE", { mask: null })], [acct("n1", "CAPITAL ONE", { mask: "517805XXXXXX1234" })]).get("p1"), "n1");
+  eq("…and the reverse, mask → null, still links",
+    matchRebuiltTradelines([acct("p1", "CAPITAL ONE", { mask: "XXXX1234" })], [acct("n1", "CAPITAL ONE", { mask: null })]).get("p1"), "n1");
+
+  // When the mask can say nothing (one side never parsed a number), something
+  // else must corroborate — a different balance or type means a different
+  // account, and it is refused.
+  eq("mask silent + different balance → NO link",
+    matchRebuiltTradelines([acct("p1", "CAPITAL ONE", { mask: "****1234", balance: 147700 })], [acct("n1", "CAPITAL ONE", { mask: null, balance: 30000 })]).size, 0);
+  eq("mask silent + different account type → NO link",
+    matchRebuiltTradelines([acct("p1", "CAPITAL ONE", { mask: null, type: "REVOLVING" })], [acct("n1", "CAPITAL ONE", { mask: "****9999", type: "COLLECTION" })]).size, 0);
+  eq("mask silent + different debt-buyer status → NO link",
+    matchRebuiltTradelines([acct("p1", "MIDLAND CREDIT", { mask: null, debtBuyer: false })], [acct("n1", "MIDLAND CREDIT", { mask: "****9999", debtBuyer: true })]).size, 0);
+
+  // The plural-ambiguity guard still refuses, and an exact match is never
+  // affected by corroboration (it is identity, not inference).
+  eq("two unmatched priors and two unclaimed rebuilds still refuse",
+    matchRebuiltTradelines(
+      [acct("p1", "CAPITAL ONE", { mask: "****1111" }), acct("p2", "CAPITAL ONE", { mask: "****2222" })],
+      [acct("n1", "CAPITAL ONE", { mask: "****8888" }), acct("n2", "CAPITAL ONE", { mask: "****9999" })]
+    ).size, 0);
+  eq("an exact-key match links even when the balance moved between pulls",
+    matchRebuiltTradelines([acct("p1", "CAPITAL ONE", { mask: "****1234", balance: 147700 })], [acct("n1", "CAPITAL ONE", { mask: "****1234", balance: 90000 })]).get("p1"), "n1");
+
   const analyze = readFileSync(join(ROOT, "lib/analyze.ts"), "utf8");
   eq("the transaction re-links through the shared matcher", /matchedByPriorId = matchRebuiltTradelines\(prior, rebuilt\)/.test(analyze), true);
+  eq("the fallback is corroborated, not merely forced", /corroboratesSameAccount\(p, candidate\)/.test(analyze), true);
+  eq("a conflicting account number refuses the pairing outright", /if \(masks === "conflicts"\) return false;/.test(analyze), true);
   eq("the furnisher contact is carried by the same matcher, not by the parser key", /carriedContactByNewId/.test(analyze) && !/priorContactByKey/.test(analyze), true);
 }
 
