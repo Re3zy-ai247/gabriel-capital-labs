@@ -108,6 +108,27 @@ async function main() {
     developmentGuard < secretRead && developmentGuard < seedCall,
   );
 
+  // ── S11 · B-5: the credential comparison ───────────────────────────────────
+  // This route compared `provided !== setupSecret` — a length-and-first-byte
+  // short circuit — with no throttle in front of it, while the two
+  // production-reachable SETUP_SECRET routes had already moved onto the shared
+  // constant-time, throttled helper (M-4). The development guard above means it
+  // was not reachable in production, so this is defence in depth against a
+  // future edit that relaxes that separate line. Pinned so the asymmetry cannot
+  // come back.
+  const adminLib = readFileSync(join(root, "lib/admin.ts"), "utf8");
+  // Absence assertions must run against CODE, not prose: the route documents the
+  // defect it removed, and a raw grep would match that documentation.
+  const routeCode = route.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
+  check("the setup secret is checked by the shared helper, not an inline compare",
+    /setupSecretAccepted\(req\)/.test(routeCode));
+  check("no raw !== / === comparison of SETUP_SECRET survives in the route",
+    !/provided\s*!==\s*setupSecret/.test(routeCode) && !/provided\s*===\s*setupSecret/.test(routeCode));
+  check("the helper it delegates to is constant-time and throttled",
+    /timingSafeEqual\(/.test(adminLib) && /rateLimit\(`setup-secret:/.test(adminLib));
+  check("the secret is accepted from the header only — no request-body form",
+    !/body\?\.secret/.test(routeCode));
+
   const demoSeedRoute = readFileSync(join(root, "app/api/demo/seed/route.ts"), "utf8");
   const session = readFileSync(join(root, "lib/session.ts"), "utf8");
   const auth = readFileSync(join(root, "lib/auth.ts"), "utf8");
