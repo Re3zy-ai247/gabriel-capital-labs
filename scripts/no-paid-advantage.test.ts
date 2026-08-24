@@ -461,7 +461,7 @@ console.log("\n— 11. no plan can turn AI refinement on —");
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 12. NO PLAN BUYS A CHEAPER MAILING (review M-3 · B report S-26)
+// 12. IDENTICAL PIECE, IDENTICAL QUOTE (review M-3 · S11 C-1 · B report S-26)
 // ─────────────────────────────────────────────────────────────────────────────
 console.log("\n— 12. the mail quote is the same price for everyone —");
 {
@@ -496,9 +496,80 @@ console.log("\n— 12. the mail quote is the same price for everyone —");
       estimate, plan: "premium", isAgency: false,
       policy: { ...DEFAULT_PRICING_POLICY, planDiscountRate: { premium: 0.5 } },
     }).discountCents > 0);
-  // The agency markup is a B2B cost input, not a consumer entitlement, and is
-  // deliberately untouched.
-  ok("the B2B agency markup is untouched", DEFAULT_PRICING_POLICY.agencyMarkupRate === 0.05);
+  // ── S11 · C-1 · THE FIVE PERSONAS, ON THE IDENTICAL PIECE ─────────────────
+  //
+  // §12 previously exempted the agency markup here ("a B2B cost input,
+  // deliberately untouched") while its own headline claimed the quote was the
+  // same for everyone. It was not: `agencyMarkupRate: 0.05` against
+  // `markupRate: 0.15` quoted an account flagged isAgency 1149c where a free
+  // consumer was quoted 1249c for the identical piece. There is no
+  // agency-facing mail surface — /api/mail/prepare is the CONSUMER self-serve
+  // flow, and an Agency owner mailing their own dispute letter is a consumer of
+  // it. The exemption was the finding, so it is gone.
+  const PIECE = { providerCostCents: 1000, currency: "USD" as const, breakdown: [] };
+  const PERSONAS: Array<[string, "free" | "premium" | "agency" | "agency_pro", boolean]> = [
+    ["a free consumer", "free", false],
+    ["a legacy Professional", "premium", false],
+    ["a letterCredits holder", "free", false],
+    ["an Agency-managed consumer", "free", false],
+    ["an Agency payer", "agency", true],
+    ["a legacy Agency Pro payer", "agency_pro", true],
+  ];
+  const quotes = PERSONAS.map(([label, plan, isAgency]) =>
+    [label, computePrice({ estimate: PIECE, plan, isAgency })] as const);
+  for (const [label, q] of quotes) {
+    ok(`${label} is quoted the same as everyone else for the identical piece`,
+      q.totalCents === quotes[0][1].totalCents,
+      `${label}=${q.totalCents} free=${quotes[0][1].totalCents}`);
+  }
+  ok("every persona's whole breakdown is byte-identical, not just the total",
+    new Set(quotes.map(([, q]) => JSON.stringify(q.lines))).size === 1);
+  ok("no persona gets a different markup",
+    new Set(quotes.map(([, q]) => q.markupCents)).size === 1);
+  // The fix must not have been made by raising the CONSUMER to meet the agency:
+  // parity is at the consumer's pre-existing rate, so no consumer's quote moved.
+  ok("parity was reached WITHOUT making any consumer's quote higher",
+    quotes[0][1].totalCents === 1249 && quotes[0][1].markupCents === 150);
+  // Structural: the platform policy must not configure a reseller markup at all.
+  // `!= null` is the branch condition in computePrice, so ABSENT (not 0) is what
+  // makes the branch unreachable.
+  ok("the platform policy configures no reseller markup",
+    DEFAULT_PRICING_POLICY.agencyMarkupRate == null);
+  // …and the consumer quote path must not feed the engine an account at all.
+  {
+    const prepare = codeOnly(read("app/api/mail/prepare/route.ts"));
+    ok("the consumer quote path reads no account type or plan",
+      /const isAgency = false;/.test(prepare) &&
+      !/user\.isAgency/.test(prepare) &&
+      !/user\.plan/.test(prepare));
+  }
+  // The ENGINE is intact — a white-label channel supplying its own policy can
+  // still express a reseller markup; the platform simply does not.
+  ok("the pricing engine still honours a reseller markup when a policy supplies one",
+    computePrice({
+      estimate: PIECE, plan: "free", isAgency: true,
+      policy: { ...DEFAULT_PRICING_POLICY, agencyMarkupRate: 0.05 },
+    }).markupCents === 50);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 12b. MAIL SPEND IS DERIVED, NOT ASSERTED (S11 C-5)
+// ─────────────────────────────────────────────────────────────────────────────
+console.log("\n— 12b. /mail does not claim a spend it cannot know —");
+{
+  const mailPage = read("app/mail/page.tsx");
+  ok("the hardcoded $0.00 spend tile is gone", !/label="Mail spend" value="\$0\.00"/.test(mailPage));
+  ok("the figure is derived from the manifest ledger",
+    /const mailSpendCents = manifests\.reduce\(/.test(mailPage) && /formatCents\(mailSpendCents\)/.test(mailPage));
+  // A manifest reaches PAID even with MAIL_LIVE off (confirm records
+  // "authorized:no-charge"), so a naive sum over PAID would report money nobody
+  // was asked for. The derivation must exclude the no-charge marker.
+  ok("a no-charge authorization is excluded from spend",
+    /no-charge/i.test(mailPage) && /toStatus === "PAID"/.test(mailPage));
+  ok("when nothing was charged it says so plainly instead of quoting a total",
+    /Nothing has been charged/.test(mailPage) && /mailSpendCents > 0 \? formatCents/.test(mailPage));
+  ok("the explanation reaches assistive technology, not only a hover title",
+    /aria-label=\{hint \?/.test(mailPage));
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

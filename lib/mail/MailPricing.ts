@@ -21,7 +21,12 @@ export interface PricingPolicy {
   // reseller policy may express one — but the PLATFORM policy below carries no
   // plan rates at all. A plan must never buy a consumer a cheaper mailing.
   planDiscountRate: Partial<Record<PlanTier, number>>;
-  // Agencies can price at cost + a smaller markup; overrides markupRate when set.
+  // A reseller markup: cost + a SMALLER markup, overriding markupRate when set.
+  // RC1-S11 (C-1): the ENGINE stays — a white-label/reseller policy may express
+  // one — but the PLATFORM policy below must not, because the only live caller of
+  // computePrice is the CONSUMER self-serve flow (/api/mail/prepare). A rate here
+  // does not price a wholesale channel; it prices an ordinary consumer who
+  // happens to hold an account type, which is the thing that must never happen.
   agencyMarkupRate?: number;
   whiteLabelId?: string;         // reserved: reseller-specific policy identity
   currency: "USD";
@@ -40,7 +45,18 @@ export const DEFAULT_PRICING_POLICY: PricingPolicy = {
   // quote is identical for everyone and the discount line never renders.
   // This is a hard pre-condition on MAIL_LIVE ever being turned on.
   planDiscountRate: {},
-  agencyMarkupRate: 0.05,
+  // NEUTRALIZED (RC1-S11 · finding C-1). This read `agencyMarkupRate: 0.05`
+  // against `markupRate: 0.15`, so an account flagged isAgency was quoted a
+  // 5% markup where a free consumer was quoted 15% — measured on the real
+  // module at a 1000c provider cost: consumer 1249c, agency 1149c. An Agency
+  // owner mailing THEIR OWN dispute letter is a consumer of the same self-serve
+  // service, and was quoted 100c less for the identical piece.
+  //
+  // ABSENT, not zeroed: `policy.agencyMarkupRate != null` is then false and
+  // every quote takes `markupRate`, so the branch cannot be reached at all. The
+  // parity is at the CONSUMER's existing rate, so no consumer's quote moves —
+  // only the unearned advantage disappears.
+  // This is a hard pre-condition on MAIL_LIVE ever being turned on.
   currency: "USD",
 };
 
@@ -80,7 +96,9 @@ export function computePrice(input: PriceInput): PriceBreakdown {
   const policy = input.policy ?? DEFAULT_PRICING_POLICY;
   const providerCostCents = Math.max(0, round(input.estimate.providerCostCents));
 
-  // Agencies get the (smaller) agency markup when one is configured.
+  // A reseller markup applies ONLY when a policy explicitly configures one. The
+  // platform policy does not (RC1-S11, C-1), so this resolves to `markupRate`
+  // for every caller and an account type cannot change what a piece costs.
   const markupRate = input.isAgency && policy.agencyMarkupRate != null
     ? policy.agencyMarkupRate
     : policy.markupRate;
