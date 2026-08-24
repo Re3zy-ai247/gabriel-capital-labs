@@ -135,7 +135,7 @@ export function timelineIntel(s: IntelSnapshot): { past: string[]; present: stri
 // ---- Module 3 + 7 + 9: Readiness engine (credit / funding / business) ------
 type Check = { label: string; ok: boolean; hard: boolean; reason: string };
 function evaluate(goal: string, label: string, checks: Check[], s: IntelSnapshot, timelineNote: string): ReadinessResult {
-  if (!s.hasReport) return { goal, label, level: "unknown", reasons: [{ text: "No report on file yet." }], nextActions: [{ text: "Upload a credit report", href: "/upload" }], estimatedTimeline: "Unknown until a report is uploaded", confidence: "insufficient" };
+  if (!s.hasReport) return { goal, label, level: "unknown", reasons: [{ text: "No accounts have been read from your report yet." }], nextActions: [{ text: "Upload a credit report", href: "/upload" }], estimatedTimeline: "Unknown until a report is uploaded", confidence: "insufficient" };
   const failed = checks.filter((c) => !c.ok);
   const hardFails = failed.filter((c) => c.hard).length;
   const level: ReadinessResult["level"] = hardFails > 0 ? "not_ready" : failed.length > 0 ? "almost" : "ready";

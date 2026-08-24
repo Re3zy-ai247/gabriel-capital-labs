@@ -47,10 +47,37 @@ const lt = (over: Partial<MissionInputs["letters"][number]>): MissionInputs["let
   const m = assembleMission(inputs());
   ok("firstName parsed", m.firstName === "Rey");
   ok("on-track → no tasks", m.tasks.length === 0);
-  ok("case health green when nothing outstanding", m.caseHealth === "green");
-  ok("a started account with nothing outstanding is green, not unstarted", m.standing === "green");
+  // S11 HIGH-1 — RE-PINNED. This fixture's one tradeline is an UNRESOLVED
+  // CHARGE-OFF, and "nothing outstanding" only ever meant "no workflow item is
+  // stalled". An unresolved charge-off on the consumer's report is not a green
+  // case, and calling it one is precisely the defect: the roll-up read our
+  // queue and never read their file. Workflow hygiene is still asserted below.
+  ok("an unresolved derogatory account is NOT a green case, however clean the workflow (HIGH-1)", m.caseHealth === "amber");
+  ok("…and the report-health signal names it", /still shows a derogatory status/.test(m.health.find((h) => h.key === "file")?.message ?? ""));
+  ok("…while every workflow signal stays green (the change is additive, not a blanket downgrade)",
+    ["campaign", "mail", "response", "timeline"].every((k) => m.health.find((h) => h.key === k)?.status === "green"));
+  ok("on-track case is started, not unstarted", m.standing !== "unstarted");
   ok("command center has 8 sections", m.command.length === 8);
-  ok("5 health signals + case roll-up = 5", m.health.length === 5);
+  // 4 workflow signals + report health + the case roll-up.
+  ok("5 health signals + case roll-up = 6 (HIGH-1 added report health)", m.health.length === 6);
+}
+
+// ---- a genuinely clean, started file still rolls up GREEN (HIGH-1 is additive) ----
+{
+  const m = assembleMission(inputs({
+    tradelines: [{ id: "t1", resolved: false, accountType: "STUDENT_LOAN", dateOfFirstDelinquency: null }],
+  }));
+  ok("a started file with no unresolved derogatory account is still green", m.caseHealth === "green" && m.standing === "green");
+  ok("…and report health does not assert the file is clean, only what was read",
+    /read from your report/.test(m.health.find((h) => h.key === "file")?.message ?? ""));
+}
+
+// ---- a resolved derogatory account no longer holds the case amber ----
+{
+  const m = assembleMission(inputs({
+    tradelines: [{ id: "t1", resolved: true, accountType: "CHARGE_OFF", dateOfFirstDelinquency: new Date(NOW - 1000 * 86400000) }],
+  }));
+  ok("a RESOLVED derogatory account does not hold report health amber", m.health.find((h) => h.key === "file")?.status === "green");
 }
 
 // ---- no report → upload task ----

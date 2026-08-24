@@ -14,6 +14,7 @@
 //      fetch, no session import can reach it.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { stripComments } from "./_source";
 
 const root = join(__dirname, "..");
 const boot = readFileSync(join(root, "app/api/cxos/founder-bootstrap/route.ts"), "utf8");
@@ -116,7 +117,13 @@ function check(label: string, cond: boolean) {
 //   (b) no cinematic overlay is mounted here.
 // A future slice that restores the mount must restore the ordering check with
 // it — (b) fails the moment <MissionEntry> reappears.
-const dashRendered = dash.split("\n").filter((l) => !l.trim().startsWith("//")).join("\n");
+// S11 addendum 2: this used to be a line filter that dropped `//` lines only.
+// It could not dangle a JSDoc the way the sibling guard's stripper did, but it
+// was blind in the other direction — a JSX `{/* … */}` rationale note quoting
+// the removed markup would defeat every absence assertion below. Both guards
+// share one correct tokenizer pass now (scripts/_source.ts), whose own
+// self-test runs in scripts/dashboard-ranking.test.ts.
+const dashRendered = stripComments(dash);
 const guardAt = dashRendered.indexOf('if (!principal) redirectToLogin("/dashboard");');
 const firstReturnAt = dashRendered.indexOf("return (");
 check("entry: the auth guard still precedes EVERY render — an unresolved principal leaves for /login before any markup",

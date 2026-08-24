@@ -26,8 +26,10 @@
 //      bounded when taken (C-02/C-03/C-13), and reduced motion is untouched.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { stripComments, stripCommentsSelfTest } from "./_source";
 import { assembleMission, type MissionInputs } from "../lib/missionControl";
 import { assembleOperatorSession, type OperatorSessionInputs } from "../lib/operatorSession";
+import { assembleMissions } from "../lib/missionEngine";
 import type { KaiHomeData } from "../lib/kaiHome";
 import { pickRecommendation } from "../lib/kaiHome";
 import type { ComposedCampaign } from "../lib/campaign";
@@ -35,29 +37,16 @@ import { DEFAULT_CAMPAIGN_POLICY } from "../lib/campaign";
 
 const root = join(__dirname, "..");
 const read = (rel: string) => readFileSync(join(root, rel), "utf8");
-// Comment-stripped, because every absence assertion below is otherwise
-// defeated by the comment that explains the absence.
-const stripComments = (src: string) =>
-  // LINE comments first, then block comments — including the JSX `{/* … */}`
-  // form, since a rationale note written in JSX defeats an absence assertion
-  // just as surely as a `//` one. The order is load-bearing: a `//` comment
-  // whose prose contains a route glob would otherwise open a block comment and
-  // swallow the code line beneath it (this bit exactly once).
-  src
-    .split("\n")
-    .filter((l) => {
-      const t = l.trim();
-      return !t.startsWith("//") && !t.startsWith("*");
-    })
-    .join("\n")
-    .replace(/\{?\/\*[\s\S]*?\*\/\}?/g, "");
 
-// Every source read below is comment-stripped. This is not tidiness: an
-// absence assertion measured on raw source is DEFEATED by the comment that
-// explains the absence (the removed copy is quoted in the note that records
-// why it was removed), and an ordering assertion is defeated by a doc block
-// that names the thing it orders. The one exception is the landing's inline
-// entry script, which is a string literal inside JSX and carries no comments.
+// S11 addendum 2: the local line-based stripper this guard used to carry was
+// BLIND. It filtered ` * ` continuation lines before pairing `/* … */`, so a
+// JSDoc's closing delimiter was deleted, its `/**` was left dangling, and the
+// block pass then ate every line down to the next `*/` anywhere later in the
+// file — silently removing real code from what these assertions inspect. An
+// absence assertion over code the guard never saw is a vacuous pass. It is one
+// correct tokenizer pass now, shared with the other guards that need it, and
+// section 0 below proves it is not blind before anything else runs.
+
 const dash = stripComments(read("app/dashboard/page.tsx"));
 const landing = read("app/page.tsx");
 const gate = stripComments(read("components/cxos/ThresholdGate.tsx"));
@@ -72,6 +61,7 @@ const mcEngine = stripComments(read("lib/missionControl.ts"));
 const mcView = stripComments(read("components/mission/MissionControl.tsx"));
 const journeyRuntime = read("components/cxos/journey/JourneyRuntime.tsx");
 const gxlRoom = stripComments(read("app/gxl/[room]/page.tsx"));
+const kaiHome = stripComments(read("lib/kaiHome.ts"));
 const globals = read("app/globals.css");
 const gxlLobby = read("app/gxl/page.tsx");
 
@@ -80,6 +70,35 @@ let fail = 0;
 function check(label: string, cond: boolean) {
   if (cond) pass++;
   else { fail++; console.error(`FAIL: ${label}`); }
+}
+
+// ══ 0 · PROVE THE INSTRUMENT ═════════════════════════════════════════════════
+// Every absence assertion below is only as good as the strip that feeds it, so
+// the strip is tested first, on the exact shapes that fooled the line-based
+// version: a JSDoc followed by code containing `*/` in a string, a `//`
+// comment whose prose contains `/*`, a URL in a string literal, and a JSX
+// comment. See scripts/_source.ts.
+for (const failure of stripCommentsSelfTest()) {
+  check(`stripComments self-test: ${failure}`, false);
+}
+check("stripComments self-test: the strip is not blind", stripCommentsSelfTest().length === 0);
+// Belt and braces against gross over-deletion: every stripped source must
+// still contain an anchor only real code can provide. If a future comment ever
+// swallows a file again, these fail loudly instead of passing silently.
+for (const [name, src, anchor] of [
+  ["dashboard", dash, "export default async function DashboardPage()"],
+  ["missionControl engine", mcEngine, "export function assembleMission("],
+  ["MissionControl view", mcView, "export function MissionControl("],
+  ["CommandHeader", header, "export function CommandHeader("],
+  ["CinematicToggle", toggle, "export function CinematicToggle("],
+  ["capability policy", capability, "export function detectTier()"],
+  ["ThresholdGate", gate, "export function ThresholdGate()"],
+  ["Threshold", threshold, "export function Threshold("],
+  ["KaiPresence", presence, "export function KaiPresence()"],
+  ["SiteFooter", footer, "export function SiteFooter()"],
+  ["AppShell", shell, "export function AppShell("],
+] as const) {
+  check(`stripComments did not eat ${name} (anchor survives the strip)`, src.includes(anchor));
 }
 
 const NOW = new Date("2026-07-14T00:00:00.000Z").getTime();
@@ -168,7 +187,10 @@ function inputs(over: Partial<MissionInputs> = {}): MissionInputs {
   // five empty summaries of a case that has none.
   check("A1-04: the analysis panels ask about extraction, not about upload",
     /const hasAnalysis = data\.hasReport && !data\.reportWithoutTradelines;/.test(dash));
-  for (const panel of ["<RoadmapView", "<KnowledgeJourney", "<BuilderView", "<ReadinessStrip", "<CommandCenter"]) {
+  // <CommandCenter> is deliberately NOT in this list any more: S11 AD-4 gives
+  // it a wider gate (`showCaseSummary`) so the header's "#health" anchor
+  // resolves for a case whose report row is gone. Pinned in section 3b.
+  for (const panel of ["<RoadmapView", "<KnowledgeJourney", "<BuilderView", "<ReadinessStrip"]) {
     check(`A1-04: ${panel}> renders only when there is analysis to summarise`,
       new RegExp(`\\{hasAnalysis && ${panel}`).test(dash));
   }
@@ -190,8 +212,151 @@ function inputs(over: Partial<MissionInputs> = {}): MissionInputs {
     !dash.slice(dash.indexOf("const user = client ?? account;")).includes("<SessionCloseBlock"));
   // A started, healthy account must still be able to be green — the fix adds a
   // state, it does not blanket-suppress the good news.
-  const healthy = assembleMission(inputs());
-  check("C-05: a started account with nothing outstanding is still green", healthy.standing === "green");
+  // Uses a clean tradeline: the default fixture's row is an unresolved
+  // charge-off, which S11 HIGH-1 correctly stops calling green.
+  const healthyAcct = assembleMission(inputs({
+    tradelines: [{ id: "t1", resolved: false, accountType: "STUDENT_LOAN", dateOfFirstDelinquency: null }],
+  }));
+  check("C-05: a started account with nothing outstanding is still green", healthyAcct.standing === "green");
+}
+
+// ══ 3b · THE STANDING BAND ACROSS THE WHOLE LIFECYCLE ════════════════════════
+// S11 AD-4 + HIGH-1. This band is the product's loudest single claim, and it
+// has now been caught being wrong in BOTH directions: green over an empty
+// account (C-05), NOT STARTED over a live overdue case (AD-4), and ALL SYSTEMS
+// GREEN over a file with four unresolved derogatories and three responses that
+// all came back verified (HIGH-1). One state table, every arm pinned, so the
+// next wrong direction has to break a test to ship.
+{
+  const derogatory = { id: "t1", resolved: false, accountType: "CHARGE_OFF" as const, dateOfFirstDelinquency: new Date(NOW - 900 * 86400000) };
+  const clean = { id: "t2", resolved: false, accountType: "STUDENT_LOAN" as const, dateOfFirstDelinquency: null };
+  const mailed = (over: Partial<MissionInputs["letters"][number]> = {}) => ({
+    id: "L1", tradelineId: "t1", recipientName: "Equifax", parentLetterId: null,
+    responseAt: null, responseOutcome: null, mailedAt: new Date(NOW - 10 * 86400000), ...over,
+  });
+
+  // (a) nothing at all on file → NOT STARTED is the honest read.
+  const empty = assembleMission(inputs({ tradelines: [], reportCount: 0 }));
+  check("AD-4/a: an account with nothing on file reads NOT STARTED", empty.standing === "unstarted");
+
+  // (b) report uploaded, zero accounts read → started, and not green.
+  const unread = assembleMission(inputs({ tradelines: [], reportCount: 1 }));
+  check("AD-4/b: report-with-zero-tradelines is started, not NOT STARTED", unread.standing !== "unstarted");
+  check("AD-4/b: …and is not green — something needs doing", unread.standing !== "green");
+
+  // (c) started, current, nothing overdue, nothing derogatory → green is legitimate.
+  const healthy = assembleMission(inputs({ tradelines: [clean] }));
+  check("AD-4/c: a started, current file with no unresolved derogatory account IS green", healthy.standing === "green");
+
+  // (d) started with unresolved derogatories and all-verified responses → not green.
+  //
+  // Fixture shape matters here, and this is the exact shape the runtime journey
+  // hit: the verified response has ALREADY been followed up (L2 is its round-2
+  // child), so `escalatable` is empty and response health is green; the child
+  // is generated but unmailed, so mail health is green too. Every workflow
+  // signal is legitimately green while the consumer's file is entirely
+  // unresolved and nothing they logged changed anything. Build it any other way
+  // and the case rolls up amber on the OLD code, and the guard proves nothing.
+  const goingBadly = assembleMission(inputs({
+    tradelines: [derogatory, { ...clean, id: "t3", accountType: "COLLECTION", dateOfFirstDelinquency: new Date(NOW - 800 * 86400000) }],
+    letters: [
+      mailed({ id: "L1", mailedAt: new Date(NOW - 45 * 86400000), responseAt: new Date(NOW - 2 * 86400000), responseOutcome: "verified" }),
+      mailed({ id: "L2", recipientName: "Equifax", parentLetterId: "L1", mailedAt: null }),
+    ],
+  }));
+  check("HIGH-1/d: an active file with unresolved derogatories is NOT green", goingBadly.standing !== "green");
+  check("HIGH-1/d: …and never reads NOT STARTED either", goingBadly.standing !== "unstarted");
+  check("HIGH-1/d: …and the roll-up names the file, not just the workflow",
+    /derogatory status/.test(goingBadly.health.find((h) => h.key === "file")?.message ?? ""));
+  check("HIGH-1/d: …and reports that nothing the consumer logged actually changed",
+    /None of the 1 logged response changed one/.test(goingBadly.health.find((h) => h.key === "file")?.message ?? ""));
+  // The pure "every response came back verified" case, with a clean file.
+  const allVerified = assembleMission(inputs({
+    tradelines: [clean],
+    letters: [
+      mailed({ id: "L1", mailedAt: new Date(NOW - 45 * 86400000), responseAt: new Date(NOW - 2 * 86400000), responseOutcome: "verified" }),
+      mailed({ id: "L2", recipientName: "Equifax", parentLetterId: "L1", mailedAt: null }),
+    ],
+  }));
+  check("HIGH-1/d: responses that all came back verified are not a green case on their own",
+    allVerified.standing !== "green");
+
+  // (e) AD-4's exact scenario: letters mailed, report row deleted, window blown.
+  const overdueNoReport = assembleMission(inputs({
+    tradelines: [], reportCount: 0,
+    kai: { ...emptyKai, lettersMailed: 2, deadlines: [{ letterId: "L1", recipient: "Equifax", round: 1, daysElapsed: 40, daysLeft: -10 }] },
+    letters: [mailed({ id: "L1", mailedAt: new Date(NOW - 45 * 86400000) }), mailed({ id: "L2", recipientName: "Experian", mailedAt: new Date(NOW - 45 * 86400000) })],
+  }));
+  check("AD-4/e: a case with overdue windows NEVER reads NOT STARTED, even with no report row on file",
+    overdueNoReport.standing !== "unstarted");
+  check("AD-4/e: …it reads red, the loudest true thing", overdueNoReport.standing === "red");
+  check("AD-4/e: …and the mission list leads with the overdue window, not an onboarding prompt",
+    /window has passed/i.test(overdueNoReport.tasks[0]?.text ?? ""));
+  check("AD-4/e: …while still asking for the report it genuinely needs",
+    overdueNoReport.tasks.some((t) => /upload your credit report to get started/i.test(t.text)));
+  check("AD-4/e: caseOnFile is the fact the band asks about, and it is true here",
+    overdueNoReport.caseOnFile === true && overdueNoReport.hasReport === false);
+  // The header's "N urgent" link targets #health inside the case summary, so
+  // the summary has to be on the page in exactly this state.
+  check("AD-4/e: the dashboard renders the case summary when letters exist without a report row (the #health anchor must resolve)",
+    /const showCaseSummary = hasAnalysis \|\| \(data\.caseOnFile && !data\.hasReport\);/.test(dash) &&
+    /\{showCaseSummary && <CommandCenter data=\{data\} \/>\}/.test(dash));
+
+  // The band can never be quieter than its own signals — the structural
+  // invariant, independent of which state anyone thought of.
+  for (const [name, m] of [["empty", empty], ["unread", unread], ["healthy", healthy], ["goingBadly", goingBadly], ["overdueNoReport", overdueNoReport]] as const) {
+    const worst = m.health.some((h) => h.status === "red") ? "red" : m.health.some((h) => h.status === "amber") ? "amber" : "green";
+    check(`STANDING INVARIANT (${name}): "unstarted" never masks a non-green signal`,
+      !(m.standing === "unstarted" && worst !== "green"));
+  }
+}
+
+// ══ 3b2 · ONE date derivation, read by the roll-up too (S11 addendum 3) ══════
+// Adopting S3's rc1/s3-s11-fix. A report that prints "03/2019" has a real date
+// of first delinquency, but the persisted column cannot hold a month-precision
+// value, so it is null. S3 made `reportedDofd()` the one derivation and taught
+// `factualCondition` to read it. These assertions prove the S7 roll-up inherits
+// that automatically — because HIGH-1's report-health signal asks
+// `factualCondition`, the shared truth source, instead of reimplementing the
+// fact test. A roll-up with its own private idea of "derogatory" would have
+// gone on calling this file green.
+{
+  const monthPrecision = {
+    id: "t1", resolved: false, accountType: "REVOLVING" as const,
+    dateOfFirstDelinquency: null,
+    bureauData: { EQUIFAX: { dofd: "03/2019" } },
+  };
+  const m = assembleMission(inputs({ tradelines: [monthPrecision] }));
+  check("ADDENDUM-3: a month-precision DOFD the column cannot hold still counts as derogatory in report health",
+    m.health.find((h) => h.key === "file")?.status === "amber");
+  check("ADDENDUM-3: …so the case does not roll up green on a file the report says is delinquent",
+    m.standing !== "green" && m.caseHealth !== "green");
+  check("ADDENDUM-3: the roll-up reads the SHARED condition model rather than its own fact test",
+    /factualCondition\(t\) === "DEROGATORY"/.test(mcEngine));
+  // Kai's §605 sentence must not disagree with the engine that produced it.
+  check("ADDENDUM-3: Kai's obsolescence copy derives its age from reportedDofd, not the raw column",
+    /reportedDofd\(obsolete!\)/.test(kaiHome) &&
+    !/yearsSince\(obsolete!\.dateOfFirstDelinquency\)/.test(kaiHome));
+  check("ADDENDUM-3: …and when no date is readable it says so instead of asserting '0 years'",
+    /not readable from your report/.test(kaiHome));
+}
+
+// ══ 3c · the mission engine states the read, not the misnomer (S11 MEDIUM-1) ══
+{
+  const unread = assembleMission(inputs({ tradelines: [], reportCount: 1 }));
+  const intel = { hasReport: false, opportunities: [], profile: { confidence: "insufficient" } };
+  const today = assembleMissions(intel as never, unread).today;
+  check("MEDIUM-1: a report that parsed to zero accounts is never called 'No report on file.'",
+    today !== null && !/no report on file/i.test(today.evidence));
+  check("MEDIUM-1: …the evidence states what actually happened",
+    /report is on file; no accounts were read/i.test(today?.evidence ?? ""));
+  check("MEDIUM-1: …and the mission asks for a readable report rather than implying nothing was uploaded",
+    /read/i.test(today?.title ?? "") && today?.title !== "Upload your credit reports");
+  // A genuinely empty account keeps the original, correct sentence.
+  const none = assembleMission(inputs({ tradelines: [], reportCount: 0 }));
+  const noneToday = assembleMissions(intel as never, none).today;
+  check("MEDIUM-1: an account with no report at all still says exactly that",
+    noneToday?.evidence === "No report on file." && noneToday?.title === "Upload your credit reports");
 }
 
 // ══ 4 · no unearned watcher claims (C-06) ═════════════════════════════════════
@@ -289,8 +454,24 @@ function inputs(over: Partial<MissionInputs> = {}): MissionInputs {
     /localStorage\.getItem\(CINEMATIC_PREF_KEY\) === "on"/.test(capability));
   check("D-6: the opt-in fails CLOSED — unreadable storage means no entrance",
     /catch \{\s*return false;\s*\}/.test(capability.slice(capability.indexOf("export function cinematicEntranceOptIn"))));
-  check("D-6: the toggle persists the visitor's own choice in both directions",
-    /localStorage\.setItem\(CINEMATIC_PREF_KEY, next \? "on" : "off"\)/.test(toggle));
+  check("D-6: the toggle persists the visitor's own choice through the policy's own writer",
+    /setCinematicPreference\(next\)/.test(toggle) &&
+    /localStorage\.setItem\(CINEMATIC_PREF_KEY, pref\)/.test(capability));
+  // ── E-3 · the control renders the model it stores ────────────────────────
+  // The preference has three meanings and the control rendered two, showing
+  // "absent" (the RC1 task-first default, the ONLY state in which the
+  // non-blocking tier ladder runs without an entrance) as "off" — and once
+  // touched, "absent" was unreachable forever.
+  check("E-3: all three stored states are offered",
+    /value: "default"/.test(toggle) && /value: "on"/.test(toggle) && /value: "off"/.test(toggle));
+  check("E-3: the RC1 default is a reachable CHOICE, labelled as the default",
+    /Default \(task-first\)/.test(toggle));
+  check("E-3: choosing the default REMOVES the key rather than storing a third literal — the stored vocabulary the rest of the policy reads is unchanged",
+    /if \(pref === "default"\) localStorage\.removeItem\(CINEMATIC_PREF_KEY\)/.test(capability));
+  check("E-3: the control is a labelled form control, not an unlabelled press-state",
+    /<label htmlFor=\{id\}>/.test(toggle) && /<select/.test(toggle));
+  check("E-3: reading and writing both go through the policy, so the control cannot invent a fourth state",
+    /cinematicPreference\(\)/.test(toggle) && !/localStorage\./.test(toggle));
   // ── H-1 · the toggle must never stamp a tier it cannot drive ─────────────
   // `data-cxjourney` only SELECTS the tier-A/B choreography rules; `--cxp`
   // DRIVES them, and only JourneyRuntime writes it — from an effect that has
@@ -310,8 +491,11 @@ function inputs(over: Partial<MissionInputs> = {}): MissionInputs {
     ].some(([, src]) => /setAttribute\(\s*"data-cxjourney"/.test(src)));
   check("H-1: the OFF direction still applies live — removing the stamp can only fall content back to rest",
     /removeAttribute\("data-cxjourney"\)/.test(toggle));
-  check("H-1: the ON direction discloses that it takes effect on the next visit, rather than silently requiring a reload",
-    /setPending\(true\)/.test(toggle) && /Plays on your next visit/.test(toggle) && /role="status"/.test(toggle));
+  check("H-1: any non-OFF choice discloses that it takes effect on the next visit, rather than silently requiring a reload",
+    /setPending\(true\)/.test(toggle) && /Applies on your next visit/.test(toggle) && /role="status"/.test(toggle));
+  check("H-1: OFF is still the ONLY choice that touches the DOM, and it only ever removes",
+    (toggle.match(/document\.documentElement\./g) ?? []).length === 1 &&
+    /next === "off"/.test(toggle));
   check("H-1: the toggle no longer imports the tier detector at all (it has no reason to know the tier)",
     !/detectTier/.test(toggle));
 

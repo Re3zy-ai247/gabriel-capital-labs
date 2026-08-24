@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { listKaiEvents } from "@/lib/kaiEvents";
 import { recommendStrategy } from "@/lib/recommend";
 import { yearsSince } from "@/lib/utils";
+import { reportedDofd } from "@/lib/tradelineInsights";
 import { daysElapsedSinceEstimatedReceipt } from "@/lib/forecast";
 // Phase 1A-R M1 (CCO correction): the same RB-2 fact test every other
 // negative-count/negative-presentation surface already applies (this file's
@@ -122,10 +123,29 @@ export function pickRecommendation(
   // its starvation-guard return (from branches 1/2, below) render identical
   // copy — the only difference is an optional `secondary` receipt.
   function obsoleteRecommendation(secondary?: KaiRecommendation["secondary"]): KaiRecommendation {
-    const age = Math.floor(yearsSince(obsolete!.dateOfFirstDelinquency) ?? 0);
+    // S11 addendum 3 (adopting S3's rc1/s3-s11-fix @ b2551f4). This used to read
+    // the raw persisted column, which is null whenever the report printed a
+    // month-precision date like "03/2019" — the parser could not store it. The
+    // §605 clock, scoring and factualCondition all read `reportedDofd()` now, so
+    // reading the column here made THIS sentence disagree with the very engine
+    // that produced the recommendation: the strategy desk flagged the item as
+    // past its window while Kai said its first delinquency was "about 0 years
+    // old". One derivation, read everywhere.
+    //
+    // A month-precision date is anchored to the LAST instant of that month by
+    // reportedDofd, so the age below can never be rounded up past what the
+    // report actually attests.
+    const dofd = reportedDofd(obsolete!);
+    const age = dofd ? Math.floor(yearsSince(dofd.date) ?? 0) : null;
+    // If no date is readable at all, say so rather than asserting "0 years".
+    // The §605 flag still stands — it came from the strategy engine, which has
+    // its own basis — but the age claim is dropped, not invented.
+    const ageLine = age === null
+      ? "Its date of first delinquency is not readable from your report."
+      : `Its first delinquency is about ${age} year${age === 1 ? "" : "s"} old.`;
     return {
       title: `${obsolete!.creditorName} may be past its FCRA §605 reporting window.`,
-      body: `Its first delinquency is about ${age} years old. Under FCRA §605, most adverse items are reported for seven years from the date of first delinquency — ten years for a Chapter 7 or 11 bankruptcy public record, and collections and charge-offs add a 180-day offset. Because this item appears to sit beyond that window, disputing it asks the bureau to verify the reporting period and remove the item if it can't be substantiated.`,
+      body: `${ageLine} Under FCRA §605, most adverse items are reported for seven years from the date of first delinquency — ten years for a Chapter 7 or 11 bankruptcy public record, and collections and charge-offs add a 180-day offset. Because this item appears to sit beyond that window, disputing it asks the bureau to verify the reporting period and remove the item if it can't be substantiated.`,
       cta: "Review this item & dispute",
       href: `/letters?tradeline=${obsolete!.id}&strategy=fcra_605`,
       basis: "Rule: the strategy engine flags this item as past its §605 reporting window (bankruptcy and collection/charge-off offsets applied).",

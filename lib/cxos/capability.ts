@@ -49,6 +49,40 @@ export type CxTier = "A" | "B" | "C" | "D";
 export const CINEMATIC_PREF_KEY = "cx-cinematic";
 
 /**
+ * The three states above, named (S11 E-3). The control used to render two
+ * buttons' worth of state over this three-state model, so "absent" — the RC1
+ * default, and the only state in which the non-blocking tier ladder still runs
+ * without an entrance — was displayed as "off" and was unreachable once the
+ * visitor had touched the control at all.
+ */
+export type CinematicPreference = "default" | "on" | "off";
+
+/** Reads the stored preference. Unreadable storage reads as the safe default. */
+export function cinematicPreference(): CinematicPreference {
+  try {
+    const v = localStorage.getItem(CINEMATIC_PREF_KEY);
+    return v === "on" || v === "off" ? v : "default";
+  } catch {
+    return "default";
+  }
+}
+
+/**
+ * Writes it — and "default" REMOVES the key rather than storing a third
+ * literal, so the stored vocabulary the rest of the policy reads
+ * (`cinematicDisabled`, `cinematicEntranceOptIn`, and the landing's pre-paint
+ * script, which cannot import anything) is completely unchanged.
+ */
+export function setCinematicPreference(pref: CinematicPreference): void {
+  try {
+    if (pref === "default") localStorage.removeItem(CINEMATIC_PREF_KEY);
+    else localStorage.setItem(CINEMATIC_PREF_KEY, pref);
+  } catch {
+    /* storage unavailable — the session keeps the in-memory choice */
+  }
+}
+
+/**
  * localStorage key for "this visitor has already walked through the entrance".
  * D-6 / C-13: durable, not per-tab — a browser restart or a mobile-Safari tab
  * eviction must not re-charge someone for a first impression they already had.

@@ -166,6 +166,16 @@ export default async function DashboardPage() {
   // summaries of a case that has no rows.
   const hasAnalysis = data.hasReport && !data.reportWithoutTradelines;
 
+  // S11 AD-4. CommandCenter is the ONLY renderer of the per-signal health list,
+  // and the Command Header's "N urgent" link targets `#health` inside it. Gated
+  // on `hasAnalysis` alone, a consumer whose report row is gone but whose
+  // letters are past the §611 window got an urgent link pointing at an anchor
+  // that did not exist on the page. That state is exactly where the summary is
+  // the ONLY place the overdue detail lives, so it renders there too. The one
+  // state still without it is report-with-zero-tradelines, where every section
+  // would be empty — the case A1-04 added the gate for.
+  const showCaseSummary = hasAnalysis || (data.caseOnFile && !data.hasReport);
+
   return (
     <AppShell title="/ Mission Control">
       <div className={`${gxl.room} relative isolate -mx-5 -my-6 px-5 py-6`}>
@@ -211,7 +221,7 @@ export default async function DashboardPage() {
         {hasAnalysis && <KnowledgeJourney knowledge={knowledge} />}
         {hasAnalysis && <BuilderView builder={builder} />}
         {hasAnalysis && <ReadinessStrip intel={intel} />}
-        {hasAnalysis && <CommandCenter data={data} />}
+        {showCaseSummary && <CommandCenter data={data} />}
         <Disclaimer />
       </div>
     </AppShell>
