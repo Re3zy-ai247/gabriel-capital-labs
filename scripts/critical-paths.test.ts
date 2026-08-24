@@ -80,8 +80,17 @@ const read = (p: string) => readFileSync(p, "utf8");
   check("B-08c· letters are re-linked AFTER the delete/recreate", relink > -1 && relink > del);
   check("B-08d· the re-link writes a new tradelineId onto those letters",
     /letter\.updateMany\(\{ where: \{ id: \{ in: letterIds \} \}, data: \{ tradelineId: newId \} \}\)/.test(analyze));
+  // NEW-4 (S11): `newIdByKey` / `keyByPriorId` were replaced by the shared
+  // matchRebuiltTradelines() derivation, which still matches on the same stable
+  // natural key but falls back to the mask-free identity when a PARSER change
+  // altered the key's shape for rows already in the database. Same intent, so
+  // the pin follows the implementation rather than two removed variable names.
   check("B-08e· old→new identity is matched on a stable natural key, not the cuid",
-    /function tradelineKey\(/.test(analyze) && /newIdByKey/.test(analyze) && /keyByPriorId/.test(analyze));
+    /function tradelineKey\(/.test(analyze)
+    && /export function matchRebuiltTradelines\(/.test(analyze)
+    && /matchedByPriorId = matchRebuiltTradelines\(prior, rebuilt\)/.test(analyze));
+  check("B-08e2· the re-link survives a parser-driven change in the key's shape",
+    /function tradelineIdentity\(/.test(analyze) && /stillUnmatched\.length === 1 && available\.length === 1/.test(analyze));
   check("B-08f· the natural key excludes balance (it legitimately changes between pulls)",
     !/balance/i.test(analyze.match(/function tradelineKey\([\s\S]*?\n\}/)?.[0] ?? "balance"));
 

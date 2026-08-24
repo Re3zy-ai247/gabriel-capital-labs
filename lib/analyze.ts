@@ -61,14 +61,87 @@ function safeDate(v: string | undefined | null): Date | null {
 // account", and it is what re-links a consumer's existing dispute letters (and
 // their furnisher mailing address) to the rebuilt rows. Balance is deliberately
 // excluded: it legitimately changes between pulls.
-function tradelineKey(t: {
+export interface RelinkRow {
+  id: string;
   creditorName: string;
   originalCreditor?: string | null;
   accountNumberMask?: string | null;
-}): string {
-  return [t.creditorName, t.originalCreditor ?? "", t.accountNumberMask ?? ""]
-    .map((s) => s.trim().toUpperCase())
-    .join("|");
+}
+
+const normalizePart = (s: string) => s.trim().toUpperCase().replace(/\s+/g, " ");
+
+function tradelineKey(t: Omit<RelinkRow, "id">): string {
+  return [t.creditorName, t.originalCreditor ?? "", t.accountNumberMask ?? ""].map(normalizePart).join("|");
+}
+
+// The same account WITHOUT its masked number. The mask is the strongest
+// disambiguator we have, but it is also the part most likely to change when the
+// PARSER changes rather than the report — so it cannot be the thing that decides
+// whether a consumer's existing letters survive.
+function tradelineIdentity(t: Omit<RelinkRow, "id">): string {
+  return [t.creditorName, t.originalCreditor ?? ""].map(normalizePart).join("|");
+}
+
+function groupBy(rows: RelinkRow[], keyOf: (r: RelinkRow) => string): Map<string, string[]> {
+  const out = new Map<string, string[]>();
+  for (const r of rows) {
+    const k = keyOf(r);
+    const ids = out.get(k);
+    if (ids) ids.push(r.id);
+    else out.set(k, [r.id]);
+  }
+  return out;
+}
+
+// Match the rows that existed BEFORE a rebuild to the rows that exist after it,
+// returning priorId -> newId. This is what carries a consumer's dispute letters
+// and furnisher addresses across a re-analysis.
+//
+// Why it is not just an exact-key lookup: the key is computed by OUR parser, so
+// a parser IMPROVEMENT changes its shape for rows that already exist in the
+// database. The case-insensitive account-mask fix is exactly that — a row stored
+// before it carries `accountNumberMask = null` (a capitalised "Account #:" never
+// matched), and the same account re-parsed after it carries "…1234". Exact-only
+// matching would miss, `Letter.tradelineId` would go NULL, and the authorization
+// gate treats an orphaned letter as revoked: a real, previously-valid letter
+// becomes un-approvable and un-printable, and the consumer is told the account is
+// no longer on their report when in truth only our parser changed. That failure
+// is invisible on a fresh database and lands only on existing users, at upgrade.
+//
+// So: exact key first; then, for anything still unmatched, the same account
+// ignoring the mask — but ONLY when that identity is unambiguous on both sides
+// (exactly one unmatched prior row and exactly one unclaimed rebuilt row). Two
+// accounts at the same creditor never get guessed between, and an account that
+// genuinely left the report still matches nothing and is still orphaned, which
+// is the honest outcome the re-link must keep.
+export function matchRebuiltTradelines(prior: RelinkRow[], rebuilt: RelinkRow[]): Map<string, string> {
+  const matches = new Map<string, string>();
+  const claimed = new Set<string>();
+
+  const rebuiltByKey = groupBy(rebuilt, tradelineKey);
+  for (const p of prior) {
+    const candidate = (rebuiltByKey.get(tradelineKey(p)) ?? []).find((id) => !claimed.has(id));
+    if (candidate) {
+      matches.set(p.id, candidate);
+      claimed.add(candidate);
+    }
+  }
+
+  const priorByIdentity = groupBy(prior, tradelineIdentity);
+  const rebuiltByIdentity = groupBy(rebuilt, tradelineIdentity);
+  for (const p of prior) {
+    if (matches.has(p.id)) continue;
+    const identity = tradelineIdentity(p);
+    const stillUnmatched = (priorByIdentity.get(identity) ?? []).filter((id) => !matches.has(id));
+    const available = (rebuiltByIdentity.get(identity) ?? []).filter((id) => !claimed.has(id));
+    // One left on each side => the assignment is forced, not guessed.
+    if (stillUnmatched.length === 1 && available.length === 1) {
+      matches.set(p.id, available[0]);
+      claimed.add(available[0]);
+    }
+  }
+
+  return matches;
 }
 
 // The single source of truth for turning a report's raw text into scored,
@@ -140,13 +213,14 @@ export async function analyzeReportText(
     select: { id: true, creditorName: true, originalCreditor: true, accountNumberMask: true },
   });
   const priorIds = prior.map((p) => p.id);
-  const keyByPriorId = new Map(prior.map((p) => [p.id, tradelineKey(p)] as const));
-  const priorContactByKey = new Map<string, FurnisherContact>();
+  // Keyed by the prior ROW, not by its parser-derived key: the same rebuild
+  // matcher then carries the contact forward, so a mask that changed shape can
+  // no longer silently drop the furnisher's mailing address either.
+  const priorContactById = new Map<string, FurnisherContact>();
   if (priorIds.length) {
     try {
       for (const [id, contact] of Object.entries(await getFurnisherContacts(priorIds))) {
-        const key = keyByPriorId.get(id);
-        if (key && !priorContactByKey.has(key)) priorContactByKey.set(key, contact);
+        if (!priorContactById.has(id)) priorContactById.set(id, contact);
       }
     } catch (e) {
       console.error("furnisher contact snapshot failed", e);
@@ -158,9 +232,13 @@ export async function analyzeReportText(
   // the 5s default because a large report writes up to the parser's cap of 150
   // rows inside this boundary.
   const createdIds: string[] = [];
+  // priorId -> newId, from the shared matcher below; also used after the commit
+  // to carry each account's furnisher contact onto its rebuilt row.
+  let matchedByPriorId = new Map<string, string>();
   await prisma.$transaction(
     async (tx) => {
       createdIds.length = 0;
+      matchedByPriorId = new Map();
 
       // Read the letter→tradeline mapping INSIDE the transaction, immediately
       // before the delete that destroys it. Reading it outside left a window in
@@ -176,7 +254,7 @@ export async function analyzeReportText(
 
       await tx.tradeline.deleteMany({ where: { reportId } });
 
-      const newIdByKey = new Map<string, string>();
+      const rebuilt: RelinkRow[] = [];
       for (let i = 0; i < records.length; i++) {
         const r = records[i];
         const created = await tx.tradeline.create({
@@ -199,9 +277,14 @@ export async function analyzeReportText(
           },
         });
         createdIds[i] = created.id;
-        const key = tradelineKey(created);
-        if (!newIdByKey.has(key)) newIdByKey.set(key, created.id);
+        rebuilt.push(created);
       }
+
+      // Old rows -> new rows. Exact natural key first, then the same account
+      // ignoring a mask whose shape our own parser changed — see
+      // matchRebuiltTradelines. An account that genuinely left the report still
+      // matches nothing.
+      matchedByPriorId = matchRebuiltTradelines(prior, rebuilt);
 
       // Re-link every letter whose account came back in this parse. Without this
       // a re-analysis permanently orphans the consumer's dispute history:
@@ -211,8 +294,7 @@ export async function analyzeReportText(
       // and is never deleted.
       const relink = new Map<string, string[]>();
       for (const letter of priorLetters) {
-        const key = letter.tradelineId ? keyByPriorId.get(letter.tradelineId) : undefined;
-        const newId = key ? newIdByKey.get(key) : undefined;
+        const newId = letter.tradelineId ? matchedByPriorId.get(letter.tradelineId) : undefined;
         if (!newId) continue;
         const ids = relink.get(newId);
         if (ids) ids.push(letter.id);
@@ -233,10 +315,15 @@ export async function analyzeReportText(
   // THIS report wins; otherwise the one we already held for the same account is
   // carried forward, because the delete above cascaded it away. Best-effort —
   // never fail an analysis over it.
+  const carriedContactByNewId = new Map<string, FurnisherContact>();
+  for (const [priorId, newId] of matchedByPriorId) {
+    const contact = priorContactById.get(priorId);
+    if (contact && !carriedContactByNewId.has(newId)) carriedContactByNewId.set(newId, contact);
+  }
   for (let i = 0; i < records.length; i++) {
     const id = createdIds[i];
     if (!id) continue;
-    const contact = records[i].ex.furnisherAddress ?? priorContactByKey.get(tradelineKey(records[i].ex));
+    const contact = records[i].ex.furnisherAddress ?? carriedContactByNewId.get(id);
     if (!contact) continue;
     try {
       await saveFurnisherContact(id, contact);

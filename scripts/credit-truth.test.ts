@@ -29,6 +29,7 @@ import { extractRawTradelines, toBureauData, UNATTRIBUTED } from "../lib/parse";
 import { presentBureaus, crossBureauConflicts, getBureauData, type BureauData } from "../lib/bureauData";
 import { knownBureauCount, parseReportDate, reportedDofd, fallOffInsight } from "../lib/tradelineInsights";
 import { scoreTradeline } from "../lib/scoring";
+import { matchRebuiltTradelines, type RelinkRow } from "../lib/analyze";
 import { explainTradeline } from "../lib/explain";
 
 let failures = 0;
@@ -578,6 +579,80 @@ const BLOCK = [
   eq("a genuinely old MM/YY delinquency is still past the window", fallOffInsight({ accountType: "CHARGE_OFF", creditorName: "CAPITAL ONE", bureauData: oldData, dateOfFirstDelinquency: null })?.pastWindow, true);
   // Month precision is never persisted, so no invented day can reach a letter.
   eq("a MM/YY DOFD never becomes a day-precision column value", reportedDofd({ dateOfFirstDelinquency: null, bureauData: recentData })?.precision, "month");
+}
+
+
+// ===========================================================================
+// 11. A PARSER IMPROVEMENT MUST NOT ORPHAN EXISTING LETTERS (S11 AD, NEW-4).
+//
+// The re-link that carries a consumer's dispute letters across a re-analysis
+// matched on creditor|originalCreditor|accountNumberMask and gave up when the
+// exact key missed. But that key is computed by OUR parser, so the
+// case-insensitive account-mask fix changes its shape for rows ALREADY IN THE
+// DATABASE: a row stored before the fix has accountNumberMask = null, the same
+// account re-parsed after it has "…1234", the lookup misses, and
+// Letter.tradelineId goes NULL. The authorization gate then treats the orphan as
+// revoked — a real, previously-valid letter becomes un-approvable and
+// un-printable, and the consumer is told the account is no longer on their
+// report when only our parser changed.
+//
+// Invisible on a fresh database; lands only on existing users, at upgrade.
+// ===========================================================================
+{
+  const row = (id: string, creditorName: string, accountNumberMask?: string | null, originalCreditor?: string | null): RelinkRow =>
+    ({ id, creditorName, accountNumberMask: accountNumberMask ?? null, originalCreditor: originalCreditor ?? null });
+
+  // THE migration case: stored with no mask (old regex never matched a
+  // capitalised "Account #:"), re-parsed with one.
+  const migrated = matchRebuiltTradelines([row("p1", "CAPITAL ONE", null)], [row("n1", "CAPITAL ONE", "517805XXXXXX1234")]);
+  eq("a row parsed before the mask fix re-links after it", migrated.get("p1"), "n1");
+
+  // …and the reverse shape (a mask that stops parsing) is the same hazard.
+  eq("a row that loses its mask still re-links", matchRebuiltTradelines([row("p1", "CAPITAL ONE", "XXXX1234")], [row("n1", "CAPITAL ONE", null)]).get("p1"), "n1");
+  eq("a mask that merely changes shape still re-links", matchRebuiltTradelines([row("p1", "CAPITAL ONE", "XXXX1234")], [row("n1", "CAPITAL ONE", "517805XXXXXX1234")]).get("p1"), "n1");
+
+  // The guarantee that must NOT be weakened: an account that genuinely left the
+  // report matches nothing and is still orphaned, honestly.
+  const gone = matchRebuiltTradelines([row("p1", "LVNV FUNDING LLC", "XXXX9999")], [row("n1", "CAPITAL ONE", "517805XXXXXX1234")]);
+  eq("an account that truly disappeared does NOT re-link", gone.get("p1"), undefined);
+  eq("…and nothing else is linked in its place", gone.size, 0);
+  eq("an empty rebuild orphans everything", matchRebuiltTradelines([row("p1", "CAPITAL ONE", null)], []).size, 0);
+
+  // Exactness still wins where it can, and no rebuilt row is claimed twice.
+  const twoExact = matchRebuiltTradelines(
+    [row("p1", "CAPITAL ONE", "XXXX1111"), row("p2", "CAPITAL ONE", "XXXX2222")],
+    [row("n2", "CAPITAL ONE", "XXXX2222"), row("n1", "CAPITAL ONE", "XXXX1111")]
+  );
+  eq("two accounts at one creditor keep their own identities", [twoExact.get("p1"), twoExact.get("p2")], ["n1", "n2"]);
+
+  // Ambiguity is refused, never guessed: two same-creditor rows, one rebuilt.
+  const ambiguous = matchRebuiltTradelines(
+    [row("p1", "CAPITAL ONE", "XXXX1111"), row("p2", "CAPITAL ONE", "XXXX2222")],
+    [row("n1", "CAPITAL ONE", "517805XXXXXX9999")]
+  );
+  eq("two candidates, one rebuilt row → no guess", ambiguous.size, 0);
+
+  // …but once the ambiguity is resolved by an exact match, the leftover is forced.
+  const forced = matchRebuiltTradelines(
+    [row("p1", "CAPITAL ONE", "XXXX1111"), row("p2", "CAPITAL ONE", "XXXX2222")],
+    [row("n2", "CAPITAL ONE", "XXXX2222"), row("n1", "CAPITAL ONE", "517805XXXXXX1111")]
+  );
+  eq("the exact match takes its row, and the only leftover pair is linked", [forced.get("p1"), forced.get("p2")], ["n1", "n2"]);
+
+  // Original creditor still separates two collections at the same collector.
+  const byOriginal = matchRebuiltTradelines(
+    [row("p1", "LVNV FUNDING", null, "Credit One"), row("p2", "LVNV FUNDING", null, "Synchrony")],
+    [row("n1", "LVNV FUNDING", "XXXX1", "Synchrony"), row("n2", "LVNV FUNDING", "XXXX2", "Credit One")]
+  );
+  eq("the original creditor still distinguishes two accounts at one collector", [byOriginal.get("p1"), byOriginal.get("p2")], ["n2", "n1"]);
+
+  // Casing and whitespace are normalized on both sides (they always were for
+  // case; whitespace is new) — this is an exact match, not the fallback.
+  eq("casing and internal whitespace never break an exact match", matchRebuiltTradelines([row("p1", "capital  one", "xxxx1234")], [row("n1", "CAPITAL ONE", "XXXX1234")]).get("p1"), "n1");
+
+  const analyze = readFileSync(join(ROOT, "lib/analyze.ts"), "utf8");
+  eq("the transaction re-links through the shared matcher", /matchedByPriorId = matchRebuiltTradelines\(prior, rebuilt\)/.test(analyze), true);
+  eq("the furnisher contact is carried by the same matcher, not by the parser key", /carriedContactByNewId/.test(analyze) && !/priorContactByKey/.test(analyze), true);
 }
 
 console.log(failures === 0 ? "\nALL PASS" : `\n${failures} FAILURE(S)`);
