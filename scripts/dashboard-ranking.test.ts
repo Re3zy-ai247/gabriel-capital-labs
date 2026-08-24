@@ -485,24 +485,38 @@ function inputs(over: Partial<MissionInputs> = {}): MissionInputs {
     !/withdrew|withdrawn/i.test(legacy.interruptedWork[0]?.label ?? ""));
   check("NEW-3/b: …and it is counted as open work", legacy.sessionClose.remaining.count === 1);
 
-  // (c) ORPHANED — no tradeline at all (report deleted, or a letter that is not
-  // about a tradeline). Whether that is REVOKED is S4/S5's rule to state, not
-  // this guard's to assume: S5 is moving identity-correction letters, which
-  // legitimately carry a null tradelineId, to AUTHORIZED. So the expectation is
-  // DERIVED from letterAuthorization() rather than hardcoded — the property
-  // being pinned is that the surface agrees with the server, whichever way the
-  // rule reads. It still fails on the candidate, where the surface consults
-  // nothing at all.
-  const orphanInput = { mailedAt: null, tradelineId: null, activeAssertionCount: 0 };
+  // (c) TRADELINE ORPHAN — a tradeline letter whose row is gone (re-analysis, or
+  // a deleted report). The expectation is DERIVED from letterAuthorization()
+  // rather than hardcoded, because whether a given shape is REVOKED is S4/S5's
+  // rule to state and this guard must not freeze a snapshot of it.
+  //
+  // S11 closing gate: the probe used to omit `strategy` entirely, so it was
+  // reaching REVOKED through the OPTIONAL field's fail-closed default rather
+  // than through the reading it names — the accidental-agreement class S4 found
+  // in its own mailed-orphan case. It now carries the SAME tradeline strategy
+  // the fixture below carries, so `orphanBlocked` genuinely predicts
+  // `orphanItem` instead of two different shapes agreeing by luck.
+  const orphanInput = { mailedAt: null, tradelineId: null, activeAssertionCount: 0, strategy: "fcra_611" };
   const orphanBlocked = letterAuthorization(orphanInput) === "REVOKED";
-  const orphan = session([draft({ id: "L3", tradelineId: null, activeAssertionCount: 0 })]);
+  const orphan = session([draft({ id: "L3", tradelineId: null, activeAssertionCount: 0, strategy: "fcra_611" })]);
   const orphanItem = orphan.interruptedWork[0];
-  check("NEW-3/c: a letter with no tradeline is presented exactly as letterAuthorization rules it",
+  check("NEW-3/c: a tradeline letter with no tradeline is presented exactly as letterAuthorization rules it",
     orphanBlocked
       ? orphanItem?.kind === "letter_blocked" && !/ready to mail/i.test(orphanItem?.label ?? "")
       : orphanItem?.kind === "letter_unmailed" && /generated and ready to mail/i.test(orphanItem?.label ?? ""));
   check("NEW-3/c: …and when it IS blocked, it does not send the consumer to a /tradelines page that has nothing to confirm",
     !orphanBlocked || (/no longer on your report/i.test(orphanItem?.label ?? "") && orphanItem?.resumeHref === "/upload"));
+  check("NEW-3/c: …and it is blocked for the stated reason — a TRADELINE strategy with no row — not by the absent-field default",
+    letterAuthorization({ ...orphanInput, strategy: "personal_info" }) === "AUTHORIZED");
+
+  // (c2) NO STRATEGY RECORDED — the fail-closed default, pinned as its own case
+  // rather than left as the silent path every other case leaned on.
+  const noStrategyInput = { mailedAt: null, tradelineId: null, activeAssertionCount: 0, strategy: null };
+  check("NEW-3/c2: a letter with no strategy recorded fails CLOSED at the rule",
+    letterAuthorization(noStrategyInput) === "REVOKED");
+  const noStrategyItem = session([draft({ id: "L4", tradelineId: null, activeAssertionCount: 0, strategy: null })]).interruptedWork[0];
+  check("NEW-3/c2: …and the surface agrees — it is never offered as ready to mail",
+    noStrategyItem?.kind === "letter_blocked" && !/ready to mail/i.test(noStrategyItem?.label ?? ""));
 
   // An authorized draft is untouched — the change is a refusal-aware split, not
   // a blanket downgrade of every draft.
