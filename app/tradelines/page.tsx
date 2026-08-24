@@ -107,7 +107,10 @@ export default async function TradelinesPage() {
   return (
     <AppShell title="/ Tradelines">
       <EduBanner />
-      <div className="mb-4 flex items-center justify-between">
+      {/* S11 CE4-1: the re-analyze control now carries a status line under it
+          (the server's refusal, or the "N older reports were left as they are"
+          notice), so the header wraps instead of squeezing it. */}
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-2">
         <h2 className="text-xl font-semibold">Tradeline Analysis</h2>
         <ReanalyzeButton />
       </div>

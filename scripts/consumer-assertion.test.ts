@@ -45,6 +45,7 @@ import {
 import { buildRound2UserPrompt } from "../lib/round2";
 import { recommendStrategy, suggestAssertionTypes } from "../lib/recommend";
 import { applyCompliance } from "../lib/compliance";
+import { reanalyzeStatusLine } from "../components/ReanalyzeButton";
 import { STRATEGIES, STRATEGY_BY_ID, isNonTradelineStrategy } from "../lib/strategies";
 import { parseReportDate, formatMonthYear } from "../lib/tradelineInsights";
 import { formatDate } from "../lib/utils";
@@ -1023,6 +1024,76 @@ console.log("\n— S11: `personal_info` is a real strategy, and only identity le
     );
   }
   ok("the identity route is the ONLY writer of this strategy", !/strategy: "personal_info"/.test(GEN2));
+}
+
+// ---------------------------------------------------------------------------
+console.log("\n— S11 CE4-1: /tradelines' re-analyze control reports what the server said");
+// ---------------------------------------------------------------------------
+{
+  // BEHAVIOUR — the line a consumer actually reads. The rule is one-directional
+  // and absolute: a degraded run may never render as a clean one.
+  const clean = reanalyzeStatusLine({ reportsAnalyzed: 3, tradelines: 12, skipped: 0, usedAI: true, degraded: false, aiRefused: false });
+  ok("a clean run reads as a clean run", /Re-read 3 reports — 12 tradelines\./.test(clean));
+  ok("…and adds no qualifier it has no basis for", !/backup|left as they are|wasn't available/.test(clean));
+
+  const refused = reanalyzeStatusLine({
+    reportsAnalyzed: 2,
+    tradelines: 4,
+    skipped: 0,
+    usedAI: false,
+    degraded: true,
+    aiRefused: true,
+    notice: "I've paused AI reading for today. 3 reports were left exactly as they are.",
+  });
+  ok("a ceiling refusal reaches the consumer in the SERVER'S words", refused.includes("I've paused AI reading for today."));
+  ok("…and is not paraphrased or reworded", refused.startsWith("I've paused AI reading for today."));
+  ok("…and is not repeated by a second degraded sentence", (refused.match(/wasn't available/g) ?? []).length === 0);
+
+  const cappedNotice = reanalyzeStatusLine({
+    reportsAnalyzed: 5,
+    tradelines: 20,
+    skipped: 3,
+    usedAI: true,
+    degraded: false,
+    notice: "Re-analyzed your 5 most recent reports. 3 older reports were left as they are — open one and re-analyze it on its own if you need it refreshed.",
+  });
+  ok("the fan-out cap notice reaches the consumer verbatim", cappedNotice.includes("3 older reports were left as they are"));
+
+  const cappedNoNotice = reanalyzeStatusLine({ reportsAnalyzed: 5, tradelines: 20, skipped: 3, usedAI: true, degraded: false });
+  ok("…and a cap with no server wording still never claims 'all'", /3 older reports were left as they are/.test(cappedNoNotice) && !/all/i.test(cappedNoNotice));
+
+  // THE CASE B-R3-3 NAMES: degraded with no refusal message and nothing
+  // skipped — the one that used to render as an unqualified success.
+  const fallback = reanalyzeStatusLine({ reportsAnalyzed: 4, tradelines: 9, skipped: 0, usedAI: false, degraded: true, aiRefused: false });
+  ok("a fallback-reader run is DISCLOSED, not reported as clean", /built-in pattern reader as a backup/.test(fallback));
+  ok("…alongside the real numbers", /Re-read 4 reports — 9 tradelines\./.test(fallback));
+  ok("…and says it may have picked up less, without inventing a cause", /may have picked up less/.test(fallback) && !/error|failed|broken/i.test(fallback));
+
+  ok("a run that read nothing says so plainly", reanalyzeStatusLine({ reportsAnalyzed: 0, tradelines: 0 }) === "Re-analysis finished.");
+
+  // NO PAYMENT FRAMING anywhere in this surface: a spend pause is a platform
+  // pause, never a prompt to pay.
+  const RB = read("components/ReanalyzeButton.tsx");
+  ok(
+    "the control never frames a pause as something to pay for",
+    !/upgrade|subscribe|premium|professional|\$\d|billing|checkout|credits?\b/i.test(RB.replace(/^\s*\/\/.*$/gm, ""))
+  );
+
+  // SHAPE — the response is actually read. The defect was structural: the fetch
+  // result was unassigned, so no wording could have reached anyone.
+  ok("the fetch result is assigned and its status checked", /const res = await fetch\(/.test(RB) && /if \(!res\.ok\)/.test(RB));
+  ok("…the body is parsed", /await res\.json\(\)/.test(RB));
+  ok("…a 401 gets the session message, not a generic failure", /res\.status === 401/.test(RB));
+  ok(
+    "…and any other refusal renders the SERVER'S message, with the generic line only as a fallback",
+    /j\.error \|\| "The re-analysis didn't finish/.test(RB)
+  );
+  ok("…a dropped connection is handled without claiming loss", /connection dropped/i.test(RB) && /nothing was lost/i.test(RB));
+  ok("…and the result is rendered, politely announced", /role="status"/.test(RB) && /aria-live="polite"/.test(RB));
+  ok("the label is an upper bound, not a promise the endpoint won't keep", /Re-analyze up to \$\{REANALYZE_BATCH\} reports/.test(RB));
+
+  const TRADELINES_PAGE = read("app/tradelines/page.tsx");
+  ok("the page header gives that status line room instead of squeezing it", /flex flex-wrap items-start justify-between gap-2/.test(TRADELINES_PAGE));
 }
 
 console.log(failures === 0 ? "\nAll consumer-assertion guards passed." : `\n${failures} guard(s) failed.`);
