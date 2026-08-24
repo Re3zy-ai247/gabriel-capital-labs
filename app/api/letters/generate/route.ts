@@ -344,9 +344,22 @@ export async function POST(req: Request) {
     // duplicate. planLetterRegeneration (lib/letter.ts, guard-tested) owns
     // the matching rule, including why a MAILED letter is never matched.
     const strategyKey = ctxProbe.strategy.id;
+    //
+    // RC1-S11 (review AD-3) — `status` ENGAGES S5's SERVER SEAM. S5 taught
+    // planLetterRegeneration to skip a candidate whose status is the approved
+    // one, so an approved letter is never update-matched and the plan CREATES a
+    // new draft beside it instead of overwriting it. That line was inert while
+    // this select omitted `status`: `c.status` arrived undefined, never equalled
+    // LETTER_APPROVED_STATUS, and the protection existed only as the two-press
+    // confirmation on app/letters/page.tsx — which a direct API call skips
+    // entirely, destroying a letter the consumer had read, edited and approved.
+    //
+    // Selecting it is the whole change. The rule — and the decision to create
+    // beside rather than refuse — are S5's and stay in lib/letter.ts; nothing
+    // here interprets `status`.
     const existingRoundOne = await prisma.letter.findMany({
       where: { userId: user.id, tradelineId: tradeline.id, strategy: strategyKey, round: 1 },
-      select: { id: true, targetBureau: true, mailedAt: true },
+      select: { id: true, targetBureau: true, mailedAt: true, status: true },
     });
     const { toUpdate, toCreate } = planLetterRegeneration(targets, existingRoundOne);
 

@@ -676,5 +676,27 @@ console.log("\n— S11 AD-5 / B-6 / E-4");
   ok("B-6: refused, never silently truncated", !/\.slice\(0, DISCREPANCY_MAX\)/.test(IDENT));
 }
 
+// ---------------------------------------------------------------------------
+console.log("\n— S11 AD-3: the server seam is wired, not dormant");
+// ---------------------------------------------------------------------------
+{
+  const GEN = read("app/api/letters/generate/route.ts");
+  ok(
+    "the regeneration candidates carry `status`, so S5's skip-approved rule can fire",
+    /select: \{ id: true, targetBureau: true, mailedAt: true, status: true \}/.test(GEN)
+  );
+  ok(
+    "…and this route does not re-interpret it (the rule stays in lib/letter.ts)",
+    // Comments may NAME the constant; code may not import or compare against it.
+    !/import[\s\S]{0,400}LETTER_APPROVED_STATUS/.test(GEN) &&
+      !/^\s*(?!\/\/).*status === (?:LETTER_APPROVED_STATUS|"PRINTED")/m.test(GEN)
+  );
+  const LETTER_SRC = read("lib/letter.ts");
+  ok(
+    "the rule itself is still S5's single line in planLetterRegeneration",
+    /if \(c\.status === LETTER_APPROVED_STATUS\) continue;/.test(LETTER_SRC)
+  );
+}
+
 console.log(failures === 0 ? "\nAll consumer-assertion guards passed." : `\n${failures} guard(s) failed.`);
 process.exit(failures === 0 ? 0 : 1);

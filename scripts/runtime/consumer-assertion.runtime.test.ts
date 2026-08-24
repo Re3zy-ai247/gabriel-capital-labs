@@ -208,12 +208,23 @@ class FakeDb {
         ) ?? null
       );
     },
-    findMany: async (args: { where: { userId?: string; tradelineId?: string } }) => {
+    // S11 AD-3: this HONOURS THE `select` CLAUSE. planLetterRegeneration only
+    // refuses to update-match an APPROVED letter if the caller actually asked
+    // for `status`; a fake that hands back every column regardless would engage
+    // the seam even for a route that never selected it, and the guard below
+    // would pass against the very code it exists to catch.
+    findMany: async (args: {
+      where: { userId?: string; tradelineId?: string };
+      select?: Record<string, boolean>;
+    }) => {
       this.calls.push("letter.findMany");
       const w = args.where ?? {};
+      const fields = args.select
+        ? Object.entries(args.select).filter(([, on]) => on).map(([k]) => k)
+        : ["id", "targetBureau", "mailedAt", "status"];
       return this.letters
         .filter((l) => (w.userId === undefined || l.userId === w.userId) && (w.tradelineId === undefined || l.tradelineId === w.tradelineId))
-        .map((l) => ({ id: l.id, targetBureau: l.targetBureau, mailedAt: l.mailedAt }));
+        .map((l) => Object.fromEntries(fields.map((f) => [f, (l as unknown as Record<string, unknown>)[f]])));
     },
     create: async (args: { data: Partial<LetterRow> }) => {
       this.calls.push("letter.create");
@@ -822,5 +833,61 @@ run("consumer-assertion.runtime", async () => {
     check("a MAILED letter's lifecycle continues normally after withdrawal", logResponse.status === 200);
     check("…it was never blocked as revoked", (await json(logResponse)).authorizationRevoked === undefined);
     check("…and the mailedAt stamp is unchanged", db.letters[0].mailedAt !== null);
+  }
+
+  // ── 14. S11 AD-3: regeneration never destroys an APPROVED letter ─────────
+  section("regenerating over an approved, consumer-edited letter is refused server-side");
+  {
+    db.reset();
+    seedTradeline("t1", "u1");
+    await assertionRoute.POST(post("http://localhost/api/tradelines/t1/assertion", { assertionType: "not_mine" }), {
+      params: { id: "t1" },
+    });
+    const first = await generate.POST(
+      post("http://localhost/api/letters/generate", { tradelineId: "t1", strategyId: "fcra_611", targetBureaus: ["EQUIFAX"] })
+    );
+    check("a letter is generated (control)", first.status === 200 && db.letters.length === 1);
+    const original = db.letters[0];
+
+    // The consumer edits it and approves it. (Both are S5 surfaces; what
+    // matters to this guard is the row state the generator will meet.)
+    original.body = "enc:MY OWN WORDS — the letter I read, corrected and approved.";
+    original.status = "PRINTED"; // LETTER_APPROVED_STATUS
+
+    // A DIRECT API call — no page, so no two-press confirmation in the way.
+    const regen = await generate.POST(
+      post("http://localhost/api/letters/generate", { tradelineId: "t1", strategyId: "fcra_611", targetBureaus: ["EQUIFAX"] })
+    );
+    const regenBody = await json(regen);
+    check("the request succeeds", regen.status === 200);
+    check("the approved letter's body is UNTOUCHED — the consumer's words survive", original.body === "enc:MY OWN WORDS — the letter I read, corrected and approved.");
+    check("…and it is still approved (not silently reset to a fresh draft)", original.status === "PRINTED");
+    check("…because it was never update-matched", regenBody.updatedCount === 0);
+    check("a NEW draft is created beside it instead", regenBody.createdCount === 1 && db.letters.length === 2);
+    check("…and the new one is the freshly composed letter", /SUMMARY OF FACTUAL CONCERNS/.test(db.letters[1].body));
+
+    // Control: an UNAPPROVED draft is still updated in place — RB-6's whole
+    // point (correcting a draft must not spawn duplicates) is not regressed.
+    db.reset();
+    seedTradeline("t2", "u1");
+    await assertionRoute.POST(post("http://localhost/api/tradelines/t2/assertion", { assertionType: "not_mine" }), {
+      params: { id: "t2" },
+    });
+    await generate.POST(post("http://localhost/api/letters/generate", { tradelineId: "t2", strategyId: "fcra_611", targetBureaus: ["EQUIFAX"] }));
+    const before = db.letters.length;
+    const again = await generate.POST(
+      post("http://localhost/api/letters/generate", { tradelineId: "t2", strategyId: "fcra_611", targetBureaus: ["EQUIFAX"] })
+    );
+    const againBody = await json(again);
+    check("an unapproved draft is still updated in place (RB-6 control)", againBody.updatedCount === 1 && againBody.createdCount === 0);
+    check("…with no duplicate row", db.letters.length === before);
+
+    // Control: a MAILED letter was already never matched — unchanged.
+    db.letters[0].mailedAt = new Date();
+    db.letters[0].status = "MAILED";
+    const afterMail = await generate.POST(
+      post("http://localhost/api/letters/generate", { tradelineId: "t2", strategyId: "fcra_611", targetBureaus: ["EQUIFAX"] })
+    );
+    check("a mailed letter is still never update-matched", (await json(afterMail)).createdCount === 1);
   }
 });
