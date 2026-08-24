@@ -31,6 +31,28 @@ You deploy ONCE as a website. Desktop and mobile are then installed from that UR
    DATABASE_URL="<prod-url>" npm run db:seed
    ```
 
+## Before any promotion: apply pending migrations (required)
+
+The build command (`prisma generate && next build`, in `vercel.json`) does **not**
+apply migrations, and two tables this release depends on —
+`20260728000000_terms_acceptance` then `20260823120000_consumer_assertion` — have no runtime
+self-heal fallback. Promote the code first and `POST /api/register` throws with no
+try/catch: nobody can create an account.
+
+Run, **against the DIRECT Postgres URL, never the Prisma Accelerate `prisma://`
+proxy URL** (Accelerate is a query proxy and cannot run migrations):
+
+```bash
+DATABASE_URL="<direct-postgres-url>" npx prisma migrate deploy
+```
+
+Verify both tables are present, then promote, then confirm from outside with
+`scripts/release-verify.sh <BASE_URL>` — it fails unless `/api/health/ready`
+reports `"schema":"ok"`. Full ordered procedure:
+[.ai/RUNBOOKS/deploy.md](.ai/RUNBOOKS/deploy.md).
+
+---
+
 ## Option B — Self-host with Docker (one command)
 ```bash
 ANTHROPIC_API_KEY=sk-ant-... docker compose up --build

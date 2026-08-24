@@ -204,7 +204,14 @@ mockModule("lib/prisma.ts", {
     tradeline: { findMany: async () => [] },
   },
 });
-mockModule("lib/docCrypto.ts", { encryptText: (t: string) => `cv1:${t.length}` });
+// The upload route now refuses before reading the body when encryption is
+// unusable (S11 · MEDIUM_BLOCKING-1). These bounds cases are about SIZE, so the
+// double reports encryption as ready; the encryption gate itself is proven in
+// scripts/runtime/encryption-readiness.runtime.test.ts against the real predicate.
+mockModule("lib/docCrypto.ts", {
+  docCryptoReady: () => true,
+  encryptText: (t: string) => `cv1:${t.length}`,
+});
 mockModule("lib/analyze.ts", {
   analyzeReportText: async (
     _prisma: unknown,

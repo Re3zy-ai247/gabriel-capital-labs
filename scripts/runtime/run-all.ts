@@ -18,6 +18,7 @@ const guards = readdirSync(here)
 // removing or renaming one fails the CI step instead of quietly shrinking cover.
 const REQUIRED = [
   "ai-spend-control.runtime.test.ts",
+  "encryption-readiness.runtime.test.ts",
   "invoice-shape.runtime.test.ts",
   "rate-limit-failclosed.runtime.test.ts",
   "stripe-provision-auth.runtime.test.ts",

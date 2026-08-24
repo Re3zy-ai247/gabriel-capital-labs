@@ -3,7 +3,7 @@
 // DB-free adversarial fixtures for release-header parsing. The fake curl command
 // never opens a network connection.
 import { spawnSync } from "node:child_process";
-import { chmodSync, existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -44,6 +44,9 @@ writeFileSync(
     "  esac",
     "  exit 0",
     "fi",
+    "case \"${2:-}\" in",
+    "  */api/health/ready) printf '%s' \"${GATE_D_TEST_READY_BODY:-{\\\"status\\\":\\\"ready\\\",\\\"db\\\":\\\"ok\\\",\\\"encryption\\\":\\\"ok\\\",\\\"schema\\\":\\\"ok\\\"}}\"; exit 0 ;;",
+    "esac",
     "printf '{}'",
     "",
   ].join("\n"),
@@ -64,7 +67,9 @@ function headers(releaseLines: string[], status = "HTTP/2 200"): string {
   ].join("\r\n");
 }
 
-function run(headerBlock: string, readyCode = "200"): number | null {
+const READY_OK = '{"status":"ready","db":"ok","encryption":"ok","schema":"ok"}';
+
+function run(headerBlock: string, readyCode = "200", readyBody = READY_OK): number | null {
   const result = spawnSync(
     "bash",
     [join(root, "scripts", "release-verify.sh"), "https://example.invalid", expectedSha],
@@ -75,6 +80,7 @@ function run(headerBlock: string, readyCode = "200"): number | null {
         ...process.env,
         GATE_D_TEST_HEADERS: headerBlock,
         GATE_D_TEST_READY_CODE: readyCode,
+        GATE_D_TEST_READY_BODY: readyBody,
         PATH: fixtureDir + ":" + (process.env.PATH || ""),
       },
     },
@@ -106,6 +112,75 @@ try {
   check(
     "database readiness failure fails the release gate",
     run(headers(["x-cv-release: " + expectedRelease]), "503") !== 0,
+  );
+
+  // S11 · X-1/X-6. A deployment promoted before `prisma migrate deploy` has run
+  // leaves POST /api/register throwing with no try/catch — nobody can create an
+  // account — and until this release nothing outside the database could tell.
+  // The gate must refuse the promotion and must NAME the dependency.
+  check(
+    "a deployment whose migrations were never applied fails the release gate",
+    run(
+      headers(["x-cv-release: " + expectedRelease]),
+      "503",
+      '{"status":"degraded","db":"ok","encryption":"ok","schema":"incomplete","missingTables":["TermsAcceptance"]}',
+    ) !== 0,
+  );
+  check(
+    "an unusable DOCUMENT_ENCRYPTION_KEY fails the release gate",
+    run(
+      headers(["x-cv-release: " + expectedRelease]),
+      "503",
+      '{"status":"degraded","db":"ok","encryption":"unavailable","schema":"ok"}',
+    ) !== 0,
+  );
+  // Non-vacuity for the two above: a 200 status code alone must NOT be enough —
+  // the body has to agree, or the checks would pass on a probe that lies.
+  check(
+    "a 200 readiness whose body reports incomplete schema still fails",
+    run(
+      headers(["x-cv-release: " + expectedRelease]),
+      "200",
+      '{"status":"ready","db":"ok","encryption":"ok","schema":"incomplete"}',
+    ) !== 0,
+  );
+  check(
+    "a fully green readiness body passes (control)",
+    run(headers(["x-cv-release: " + expectedRelease]), "200", READY_OK) === 0,
+  );
+
+  // ── The written release procedure (S11 · X-1 step 2, X-2) ──────────────────
+  // The ordering these guards enforce at runtime has to exist in the documents an
+  // operator actually follows, or the detection only tells them something is
+  // wrong without telling them what to do. Pinned so a doc edit cannot silently
+  // drop it.
+  const deployRunbook = readFileSync(join(root, ".ai", "RUNBOOKS", "deploy.md"), "utf8");
+  const deployDoc = readFileSync(join(root, "DEPLOY.md"), "utf8");
+  const operations = readFileSync(join(root, "OPERATIONS.md"), "utf8");
+  for (const [label, doc] of [
+    ["the deploy runbook", deployRunbook],
+    ["DEPLOY.md", deployDoc],
+    ["OPERATIONS.md (restore)", operations],
+  ] as const) {
+    check(`${label} names \`prisma migrate deploy\``, /prisma migrate deploy/.test(doc));
+    check(
+      `${label} warns that the apply must use the DIRECT url, not Accelerate`,
+      /DIRECT/i.test(doc) && /Accelerate/i.test(doc),
+    );
+  }
+  check(
+    "the deploy runbook names both required migrations, in order",
+    deployRunbook.indexOf("20260728000000_terms_acceptance") > -1 &&
+      deployRunbook.indexOf("20260823120000_consumer_assertion") >
+        deployRunbook.indexOf("20260728000000_terms_acceptance"),
+  );
+  for (const table of ["TermsAcceptance", "ConsumerAssertion"]) {
+    check(`OPERATIONS.md restore names ${table} among the tables to verify`, operations.includes(table));
+  }
+  check(
+    "OPERATIONS.md no longer claims a restored DB needs no migration step",
+    !/a restore does not need a\s*\n?separate migration step[\s\S]{0,200}$/m.test(operations) &&
+      /no longer sufficient on its own/i.test(operations),
   );
   check(
     "trailing release-header token fails",

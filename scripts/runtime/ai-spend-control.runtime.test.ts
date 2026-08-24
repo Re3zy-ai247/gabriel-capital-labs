@@ -393,16 +393,256 @@ run("ai-spend-control.runtime.test.ts", async () => {
   check("the analyze route keeps its maxDuration", analyzeRoute.maxDuration === 60);
   delete process.env.AI_DAILY_BUDGET_USD_PER_USER;
 
-  section("baseline behaviour that must never return");
-  const unscoped = usage.length;
-  process.env.AI_DAILY_BUDGET_USD_PER_USER = "0.0001";
-  // No principal, no userId: nothing to budget against. This is the pre-change
-  // behaviour, and it is exactly why the scope above exists — it is asserted
-  // here so a future change that silently reverts the scope is visible.
-  await meter.meteredMessage("parse", null, REQUEST);
+  section("PLATFORM CEILING: the control that does not depend on attribution");
+  // S11 · B-1 showed the shape of the hole: one call site that forgets to open a
+  // principal has NO ceiling at all, because the per-user reservation is the only
+  // control and it is keyed on attribution. The global ceiling is checked for
+  // every call, principal or not, so a forgotten call site is still bounded.
+  usage.length = 0;
+  messagesCreated = 0;
+  meter.resetGlobalSpendCache();
+  delete process.env.AI_DAILY_BUDGET_USD_PER_USER;
+  delete process.env.AI_DAILY_BUDGET_USD_GLOBAL;
+  check("the platform ceiling is on by default and positive", meter.aiDailyGlobalBudgetUsd() === 50);
+  process.env.AI_DAILY_BUDGET_USD_GLOBAL = "0";
+  check("there is no 'unlimited' setting for it either", meter.aiDailyGlobalBudgetUsd() === 50);
+  process.env.AI_DAILY_BUDGET_USD_GLOBAL = "7.5";
+  check("a valid platform ceiling is honoured", meter.aiDailyGlobalBudgetUsd() === 7.5);
+
+  // Spend past the platform ceiling using ANONYMOUS calls — no principal, no
+  // ambient scope — i.e. exactly the surface B-1 found unbudgeted.
+  process.env.AI_DAILY_BUDGET_USD_GLOBAL = "0.30";
+  meter.resetGlobalSpendCache();
+  let anonymousCalls = 0;
+  let ceilingRefusal: unknown = null;
+  try {
+    for (let i = 0; i < 25; i++) {
+      await meter.meteredMessage("response-analysis", null, REQUEST);
+      anonymousCalls++;
+    }
+  } catch (e) {
+    ceilingRefusal = e;
+  }
+  check("an UNATTRIBUTED call is now bounded by something", ceilingRefusal instanceof meter.AiSpendRefusal);
+  check("and it is bounded quickly, not after 25 calls", anonymousCalls > 0 && anonymousCalls < 25);
+  check("the provider was not called for the refused request", messagesCreated === anonymousCalls);
+  if (ceilingRefusal instanceof meter.AiSpendRefusal) {
+    check("the refusal names the platform ceiling, not the consumer's usage", ceilingRefusal.kind === "global-ceiling");
+    const m = ceilingRefusal.consumerMessage;
+    check("its copy does not blame the consumer or their credit file", /isn't about your account|not about your account/i.test(m));
+    check("it says when the limit clears", /midnight UTC/i.test(m));
+    check("it offers no payment path", !/upgrade|subscri|\bpay\b|premium/i.test(m));
+  }
+
+  // A read fault on the platform total must deny, exactly like the per-user one.
+  meter.resetGlobalSpendCache();
+  process.env.AI_DAILY_BUDGET_USD_GLOBAL = "1000";
+  aggregateThrows = true;
+  const beforeFault = messagesCreated;
+  let globalFault: unknown = null;
+  try {
+    await meter.meteredMessage("response-analysis", null, REQUEST);
+  } catch (e) {
+    globalFault = e;
+  }
+  check("an unreadable platform total FAILS CLOSED", globalFault instanceof meter.AiSpendRefusal);
+  check("no provider call was made", messagesCreated === beforeFault);
+  aggregateThrows = false;
+  meter.resetGlobalSpendCache();
+  delete process.env.AI_DAILY_BUDGET_USD_GLOBAL;
+
+  section("COVERAGE: every reachable metered call site must open a principal");
+  // ── WHY THIS REPLACED AN ASSERTION ────────────────────────────────────────
+  // This section used to read: "outside any principal an anonymous call is still
+  // unbudgeted (documented residual)". That assertion PINNED THE HOLE OPEN. It
+  // proved the mechanism works; it never proved the mechanism was APPLIED, and
+  // S11 · B-1 found a consumer route reaching a `userId: null` meter call with no
+  // principal — replayable at 20 calls/hour on a single letter, ≈$22/day/account
+  // against a $1.00/day design. A guard that documents a gap is not a guard.
+  //
+  // ── METHOD ────────────────────────────────────────────────────────────────
+  // Taint analysis at the level of EXPORTED SYMBOLS, not files, because
+  // lib/brief.ts holds one metered export (summarizeArticle) beside a dozen
+  // ordinary ones (ensureBriefTables, slugify, …) and a file-level rule would
+  // accuse every Brief route in the product.
+  //   1. split each source file into top-level export blocks;
+  //   2. a block is TAINTED if it calls meteredMessage(..., null, ...) or calls a
+  //      tainted imported symbol — UNLESS that same block opens withAiPrincipal(),
+  //      which makes it a covered boundary and stops propagation;
+  //   3. iterate to a fixpoint over parsed `import { … } from "…"` edges;
+  //   4. any app route/page with a tainted export is a violation, unless it is on
+  //      the justified exception list, and each exception verifies itself.
+  const { readdirSync, statSync, readFileSync: readSrc } = await import("node:fs");
+  const { join: joinPath, dirname, relative, resolve: resolvePath } = await import("node:path");
+  const ROOT = joinPath(__dirname, "..", "..");
+
+  function walk(dir: string, out: string[] = []): string[] {
+    for (const entry of readdirSync(dir)) {
+      if (entry === "node_modules" || entry === ".next" || entry.startsWith(".")) continue;
+      const full = joinPath(dir, entry);
+      if (statSync(full).isDirectory()) walk(full, out);
+      else if (/\.tsx?$/.test(entry)) out.push(full);
+    }
+    return out;
+  }
+  const srcOf = new Map<string, string>();
+  for (const f of [...walk(joinPath(ROOT, "app")), ...walk(joinPath(ROOT, "lib"))]) {
+    srcOf.set(f, readSrc(f, "utf8"));
+  }
+  const rel = (f: string) => relative(ROOT, f).split("\\").join("/");
+  const meterFile = joinPath(ROOT, "lib", "aiMeter.ts");
+
+  /** Top-level export blocks: from one column-0 `export` to the next (or EOF). */
+  type Block = { name: string; text: string };
+  const blocksCache = new Map<string, Block[]>();
+  function blocksOf(file: string): Block[] {
+    const cached = blocksCache.get(file);
+    if (cached) return cached;
+    const src = srcOf.get(file) ?? "";
+    const starts: Array<{ name: string; at: number }> = [];
+    for (const m of src.matchAll(/^export\s+(?:async\s+)?(?:function|const|class)\s+([A-Za-z0-9_$]+)/gm)) {
+      starts.push({ name: m[1], at: m.index ?? 0 });
+    }
+    const out: Block[] = [];
+    for (let i = 0; i < starts.length; i++) {
+      const from = starts[i].at;
+      const to = i + 1 < starts.length ? starts[i + 1].at : src.length;
+      out.push({ name: starts[i].name, text: src.slice(from, to) });
+    }
+    // Anything before the first export (module-level side effects) counts as one
+    // pseudo-block, so a metered call outside any export is not invisible.
+    if (starts.length === 0 || starts[0].at > 0) {
+      out.unshift({ name: "<module>", text: src.slice(0, starts.length ? starts[0].at : src.length) });
+    }
+    blocksCache.set(file, out);
+    return out;
+  }
+
+  function resolveSpecifier(fromFile: string, spec: string): string | null {
+    let base: string;
+    if (spec.startsWith("@/")) base = joinPath(ROOT, spec.slice(2));
+    else if (spec.startsWith(".")) base = resolvePath(dirname(fromFile), spec);
+    else return null;
+    for (const c of [base + ".ts", base + ".tsx", joinPath(base, "index.ts"), joinPath(base, "index.tsx")]) {
+      if (srcOf.has(c)) return c;
+    }
+    return null;
+  }
+
+  type Edge = { from: string; to: string; names: string[]; namespace: boolean };
+  const edges: Edge[] = [];
+  for (const [file, src] of srcOf) {
+    for (const m of src.matchAll(/import\s+([^;]*?)\s+from\s+["']([^"']+)["']/g)) {
+      const clause = m[1].trim();
+      const target = resolveSpecifier(file, m[2]);
+      if (!target) continue;
+      if (/^\*\s+as\s+/.test(clause)) {
+        edges.push({ from: file, to: target, names: [], namespace: true });
+        continue;
+      }
+      const braces = clause.match(/\{([^}]*)\}/);
+      const names = braces
+        ? braces[1].split(",").map((n) => n.split(/\s+as\s+/)[0].trim()).filter(Boolean)
+        : [];
+      edges.push({ from: file, to: target, names, namespace: false });
+    }
+  }
+
+  // 1. classify the meter call sites (analyzer sanity).
+  const ANON_CALL = /meteredMessage\(\s*(?:"[^"]*"|`[^`]*`|[A-Za-z0-9_.]+)\s*,\s*null\s*,/;
+  const anonymousSites: string[] = [];
+  const attributedSites: string[] = [];
+  for (const [file, src] of srcOf) {
+    if (file === meterFile) continue;
+    for (const m of src.matchAll(/meteredMessage\(\s*("[^"]*"|`[^`]*`|[A-Za-z0-9_.]+)\s*,\s*([^,]+?)\s*,/g)) {
+      (m[2].trim() === "null" ? anonymousSites : attributedSites).push(`${rel(file)} (${m[1]})`);
+    }
+  }
   check(
-    "outside any principal an anonymous call is still unbudgeted (documented residual)",
-    usage.length === unscoped + 1 && usage[usage.length - 1].userId === null
+    `the analyzer sees the meter call sites it must see (${attributedSites.length} attributed, ${anonymousSites.length} anonymous)`,
+    attributedSites.length >= 5 && anonymousSites.length >= 4
+  );
+  check("the analyzer resolved a real import graph, not an empty one", edges.length > 50);
+
+  // 2/3. fixpoint over tainted exports.
+  const tainted = new Map<string, Map<string, string>>(); // file -> export -> reason
+  function taint(file: string, name: string, why: string): boolean {
+    let forFile = tainted.get(file);
+    if (!forFile) tainted.set(file, (forFile = new Map()));
+    if (forFile.has(name)) return false;
+    forFile.set(name, why);
+    return true;
+  }
+  for (const [file] of srcOf) {
+    if (file === meterFile) continue;
+    for (const b of blocksOf(file)) {
+      if (ANON_CALL.test(b.text) && !/withAiPrincipal\(/.test(b.text)) {
+        taint(file, b.name, "calls meteredMessage(..., null, ...) with no principal open");
+      }
+    }
+  }
+  const seedCount = [...tainted.values()].reduce((a, m) => a + m.size, 0);
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const edge of edges) {
+      const targetTaint = tainted.get(edge.to);
+      if (!targetTaint) continue;
+      const imported = edge.namespace ? [...targetTaint.keys()] : edge.names.filter((n) => targetTaint.has(n));
+      if (imported.length === 0) continue;
+      for (const b of blocksOf(edge.from)) {
+        if (/withAiPrincipal\(/.test(b.text)) continue; // covered boundary
+        const called = imported.filter((n) => new RegExp(`\\b${n}\\s*\\(`).test(b.text));
+        if (called.length === 0) continue;
+        if (taint(edge.from, b.name, `${b.name} calls ${called.join(", ")} from ${rel(edge.to)}`)) changed = true;
+      }
+    }
+  }
+  check("the analyzer actually found the metered exports (it is not silently empty)", seedCount >= 4);
+
+  // 4. violations.
+  // Named exceptions: surfaces with NO consumer to attribute the spend to. Each
+  // is verified below rather than trusted. This list must stay free of consumer
+  // routes — that is the whole point of the section.
+  const EXCEPTIONS: Array<{ file: string; why: string; mustMatch: RegExp }> = [
+    { file: "app/api/admin/brief/summarize/route.ts", why: "admin-only editorial tool; operator spend", mustMatch: /requireAdmin\(/ },
+    { file: "app/api/admin/brief/ingest/route.ts", why: "admin-only Brief ingestion; operator spend", mustMatch: /requireAdmin\(/ },
+    { file: "app/api/admin/brief/[id]/resummarize/route.ts", why: "admin-only re-summarize; operator spend", mustMatch: /requireAdmin\(/ },
+    { file: "app/api/cron/brief-ingest/route.ts", why: "platform cron behind CRON_SECRET; no consumer principal exists", mustMatch: /CRON_SECRET/ },
+  ];
+  const exceptionPaths = new Set(EXCEPTIONS.map((e) => e.file));
+  for (const e of EXCEPTIONS) {
+    const abs = joinPath(ROOT, e.file);
+    check(`exception is operator-gated, not a consumer route: ${e.file}`,
+      srcOf.has(abs) && e.mustMatch.test(srcOf.get(abs) ?? "") &&
+      (e.file.startsWith("app/api/admin/") || e.file.startsWith("app/api/cron/")));
+  }
+  check("the exception list contains no consumer surface",
+    EXCEPTIONS.every((e) => e.file.startsWith("app/api/admin/") || e.file.startsWith("app/api/cron/")));
+
+  const reachingRoutes = [...tainted.keys()]
+    .filter((f) => /\/app\/.*\/(route|page)\.tsx?$/.test(f.split("\\").join("/")))
+    .map(rel)
+    .sort();
+  const violations = reachingRoutes.filter((f) => !exceptionPaths.has(f));
+
+  check("a namespace import never hides a tainted edge from the analyzer",
+    !edges.some((e) => e.namespace && tainted.has(e.to)));
+  check("the covered surfaces really are recognised as covered (control)",
+    !violations.includes("app/api/reports/upload/route.ts") &&
+      !violations.includes("app/api/reports/analyze/route.ts"));
+
+  if (violations.length > 0) {
+    console.error("\n  UNBUDGETED METERED SURFACES — wrap the call in withAiPrincipal(user.id, () => ...):");
+    for (const v of violations) {
+      const reasons = [...(tainted.get(joinPath(ROOT, v))?.entries() ?? [])];
+      for (const [name, why] of reasons) console.error(`    ${v} :: ${name} — ${why}`);
+    }
+    console.error("  (or, if the surface genuinely has no consumer principal, add a justified EXCEPTION above)\n");
+  }
+  check(
+    `every route reaching an unattributed meter call opens a principal (${violations.length} violation(s))`,
+    violations.length === 0
   );
 
   delete process.env.AI_DAILY_BUDGET_USD_PER_USER;

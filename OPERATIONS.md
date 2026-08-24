@@ -101,7 +101,29 @@ Postgres, RDS — each has native automated backups + PITR; record the retention
 (commonly ≤5 min for Neon/Supabase); RTO = the measured restore time in step 5. **Fill these in
 with measured numbers; leave blank until proven.**
 
-**Schema-drift caveat (already known, ADR-0001):** prod schema is applied by runtime self-heal DDL,
-not migrations — a restored DB self-heals its tables on first request, so a restore does not need a
-separate migration step, but verify the self-heal `ensureXTable` gates ran (check for the expected
-tables) before declaring the restore complete.
+**Schema-drift caveat (ADR-0001, AMENDED — read the second paragraph):** the LEGACY tables are
+applied by runtime self-heal DDL, not migrations — a restored DB self-heals those on first request,
+so they need no separate step; verify the self-heal `ensureXTable` gates ran before declaring the
+restore complete.
+
+**That is no longer sufficient on its own (RC1).** Since the migration-first law (`CLAUDE.md`
+gotcha 1) every NEW table ships as a reviewed migration and has **no** self-heal gate — so there is
+nothing for the check above to find, and a restore that follows only the paragraph above completes
+on a database where **registration and letter generation are 100% down**. `TermsAcceptance` and
+`ConsumerAssertion` are the first two tables in that class. A restore is therefore not complete
+until you have also run, against the **DIRECT** Postgres URL and never the Prisma Accelerate
+`prisma://` proxy (Accelerate is a query proxy and cannot run migrations):
+
+```bash
+DATABASE_URL="<direct-postgres-url>" npx prisma migrate deploy
+```
+
+and confirmed both tables exist:
+
+```sql
+SELECT to_regclass('"TermsAcceptance"'), to_regclass('"ConsumerAssertion"');  -- both NON-NULL
+```
+
+`GET /api/health/ready` answers this for you: it returns **503** with `"schema":"incomplete"` and a
+`missingTables` list while either is absent, and `scripts/release-verify.sh` fails on it. Treat a
+green readiness probe — not a self-heal gate check — as the completion criterion for a restore.

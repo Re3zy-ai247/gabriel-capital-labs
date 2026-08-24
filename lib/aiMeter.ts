@@ -46,9 +46,24 @@ type AiUsageTokens = {
 
 // Self-heal table (same pattern as ensureCommunityTables / the billing dedup
 // ledger): runtime CREATE TABLE works through Accelerate where db push doesn't.
-let aiUsageReady = false;
+// Single-flight (S11 · MEDIUM-5). `CREATE ... IF NOT EXISTS` is NOT concurrency
+// safe in Postgres: two statements can both pass the existence check and one then
+// fails on the pg_type unique index (P2010, "Key (typname, typnamespace) already
+// exists"). The old `let ready = false` flag was only set AFTER the await, so a
+// burst of concurrent first requests all issued the DDL and raced. Memoising the
+// PROMISE means concurrent callers await the same statement; a failure clears it
+// so the next caller retries rather than inheriting a poisoned "ready".
+let aiUsageReady: Promise<void> | null = null;
 async function ensureAiUsageTable(): Promise<void> {
-  if (aiUsageReady) return;
+  if (!aiUsageReady) {
+    aiUsageReady = createAiUsageTable().catch((e) => {
+      aiUsageReady = null;
+      throw e;
+    });
+  }
+  return aiUsageReady;
+}
+async function createAiUsageTable(): Promise<void> {
   await prisma.$executeRawUnsafe(
     `CREATE TABLE IF NOT EXISTS "AiUsage" (
       "id" TEXT PRIMARY KEY,
@@ -68,7 +83,6 @@ async function ensureAiUsageTable(): Promise<void> {
   await prisma.$executeRawUnsafe(
     `CREATE INDEX IF NOT EXISTS "AiUsage_surface_createdAt_idx" ON "AiUsage" ("surface", "createdAt")`
   );
-  aiUsageReady = true;
 }
 
 // Recording must never break the product path — metering fails open.
@@ -156,10 +170,12 @@ export function aiDailyBudgetUsd(): number {
  * nothing about credit, and offers no payment path (the consumer product is
  * free — this is an abuse/cost control, not a paywall).
  */
+export type AiSpendRefusalKind = "budget-exhausted" | "budget-unavailable" | "global-ceiling";
+
 export class AiSpendRefusal extends Error {
   readonly consumerMessage: string;
-  readonly kind: "budget-exhausted" | "budget-unavailable";
-  constructor(kind: "budget-exhausted" | "budget-unavailable", consumerMessage: string) {
+  readonly kind: AiSpendRefusalKind;
+  constructor(kind: AiSpendRefusalKind, consumerMessage: string) {
     super(`aiMeter: ${kind}`);
     this.name = "AiSpendRefusal";
     this.kind = kind;
@@ -204,6 +220,36 @@ export function setAiClientFactory(factory: AiClientFactory | null): void {
   aiClientFactory = factory ?? defaultAiClientFactory;
 }
 
+/**
+ * PLATFORM-WIDE daily ceiling in USD, measured with the same estimate the
+ * per-user budget uses. `AI_DAILY_BUDGET_USD_GLOBAL`.
+ *
+ * WHY IT EXISTS (S11 · B-1). The per-user ceiling is the only spend control in
+ * the product, so it holds exactly as far as every metered call site is
+ * attributed to a user. B-1 showed what happens when one is not: an unattributed
+ * surface has no ceiling at all, and under a free product with open registration
+ * the swarm case (N scripted accounts) has no bound either. A ceiling that does
+ * not depend on attribution being complete catches both.
+ *
+ * WHY IT IS ON BY DEFAULT. Defaulting it off would be the fail-open shape this
+ * whole slice exists to remove, and the failure modes are not symmetric: a
+ * ceiling that refuses is truthful, visible, and undone with one environment
+ * variable; an unbounded provider bill is none of those.
+ *
+ * WHY $50 IS THE DEFAULT AND WHY IT IS NOT A DENIAL-OF-SERVICE LEVER. The
+ * per-user ceiling already bounds any single account to $1.00/day, so reaching
+ * $50 requires ~50 maxed accounts in one UTC day — that is the swarm this is
+ * meant to stop, and one abusive account cannot exhaust it alone. THE NUMBER IS
+ * A BUSINESS DECISION, not an engineering one: it is the Founder's daily
+ * provider-spend appetite. It is deliberately conservative for a pre-launch free
+ * product and should be raised deliberately, not discovered.
+ */
+export function aiDailyGlobalBudgetUsd(): number {
+  const raw = Number.parseFloat(process.env.AI_DAILY_BUDGET_USD_GLOBAL || "");
+  if (!Number.isFinite(raw) || raw <= 0) return 50;
+  return raw;
+}
+
 function startOfUtcDay(now = new Date()): Date {
   return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
 }
@@ -228,6 +274,69 @@ const BUDGET_EXHAUSTED_MESSAGE =
   "This account has reached its daily limit for AI analysis. It resets at midnight UTC. Everything already analyzed stays available, and the rest of CreditVector keeps working in the meantime.";
 const BUDGET_UNAVAILABLE_MESSAGE =
   "I couldn't check this account's usage for today, so I stopped before running the AI step rather than guess. Please try again in a moment.";
+
+const GLOBAL_CEILING_MESSAGE =
+  "AI analysis is paused for the rest of today while CreditVector's daily processing limit resets at midnight UTC. This isn't about your account or your credit file — everything already analyzed stays available, and the rest of CreditVector keeps working.";
+
+// The global sum has no selective index (AiUsage is indexed on [userId, createdAt]
+// and [surface, createdAt], not on createdAt alone), so reading it on every call
+// would be a scan per call. It is therefore read at most once per TTL per process
+// and advanced locally by each settled call in between. Consequences, stated
+// plainly: the ceiling is APPROXIMATE. Across P concurrent processes the worst
+// case overshoot is bounded by the spend those processes can complete inside one
+// TTL window — far tighter than the unbounded case it replaces, and far looser
+// than the per-user reservation, which is exact.
+const GLOBAL_SPEND_TTL_MS = 30_000;
+let globalSpend: { day: number; readAt: number; usd: number } | null = null;
+
+/** Reset the cached global total. Test-only seam; production never calls it. */
+export function resetGlobalSpendCache(): void {
+  globalSpend = null;
+}
+
+async function globalSpendTodayUsd(): Promise<number> {
+  const dayStart = startOfUtcDay();
+  const day = dayStart.valueOf();
+  const now = Date.now();
+  if (globalSpend && globalSpend.day === day && now - globalSpend.readAt < GLOBAL_SPEND_TTL_MS) {
+    return globalSpend.usd;
+  }
+  await ensureAiUsageTable();
+  const agg = await prisma.aiUsage.aggregate({
+    _sum: { costUsd: true },
+    where: { createdAt: { gte: dayStart } },
+  });
+  const usd = agg._sum.costUsd ?? 0;
+  globalSpend = { day, readAt: now, usd };
+  return usd;
+}
+
+function advanceGlobalSpend(usd: number): void {
+  if (!globalSpend || !Number.isFinite(usd) || usd <= 0) return;
+  if (globalSpend.day !== startOfUtcDay().valueOf()) return;
+  globalSpend.usd += usd;
+}
+
+/**
+ * Platform ceiling, checked before EVERY metered call — including the ones that
+ * pass no principal and therefore have no per-user reservation. That ordering is
+ * the point: this is the control that does not depend on attribution being
+ * complete, so it is the one that still holds when a call site forgets to open a
+ * principal. FAILS CLOSED on a read fault, exactly like the per-user budget.
+ */
+async function assertWithinGlobalBudget(): Promise<void> {
+  const ceiling = aiDailyGlobalBudgetUsd();
+  let spentUsd: number;
+  try {
+    spentUsd = await globalSpendTodayUsd();
+  } catch (e) {
+    console.error("aiMeter: global daily spend unreadable (failing closed):", e);
+    throw new AiSpendRefusal("budget-unavailable", BUDGET_UNAVAILABLE_MESSAGE);
+  }
+  if (spentUsd >= ceiling) {
+    throw new AiSpendRefusal("global-ceiling", GLOBAL_CEILING_MESSAGE);
+  }
+}
 
 /**
  * RESERVE-THEN-SPEND (M-2). Admits or refuses one call, and — when it admits —
@@ -381,12 +490,26 @@ export async function meteredMessage(
   // An explicit argument wins; otherwise inherit the route's declared principal.
   const principal = userId ?? currentAiPrincipal();
   const model = String(request.model || process.env.LLM_MODEL || "claude-opus-4-8");
-  // Reserve BEFORE spending, inside a per-user lock, so concurrent requests
+  const estimateUsd = estimateRequestCostUsd(model, request);
+  // The platform ceiling runs FIRST and runs for EVERY call, principal or not.
+  // The per-user reservation below is exact but only covers attributed calls;
+  // this one covers the rest, so a call site that forgets to open a principal
+  // (S11 · B-1) is still bounded by something.
+  await assertWithinGlobalBudget();
+  // Then reserve BEFORE spending, inside a per-user lock, so concurrent requests
   // cannot all read the same pre-call sum. Anonymous surfaces (no principal and
-  // no ambient scope) keep the post-hoc, fail-open metering they always had.
+  // no ambient scope) keep the post-hoc, fail-open per-user metering they always
+  // had — they are bounded by the global ceiling only, which is why the coverage
+  // assertion in scripts/runtime/ai-spend-control.runtime.test.ts requires every
+  // reachable call site to open one.
   const reservationId = principal
-    ? await reserveDailyBudget(principal, surface, model, estimateRequestCostUsd(model, request))
+    ? await reserveDailyBudget(principal, surface, model, estimateUsd)
     : null;
+  // Charge the platform ceiling the CONSERVATIVE estimate immediately, whether or
+  // not there was a reservation. It is deliberately not corrected downward on
+  // settlement: erring high is the safe direction for a ceiling, and the cached
+  // total is re-read from the database every TTL, which self-corrects it anyway.
+  advanceGlobalSpend(estimateUsd);
   const started = Date.now();
   try {
     const client = await aiClientFactory(aiClientOptions(key));
