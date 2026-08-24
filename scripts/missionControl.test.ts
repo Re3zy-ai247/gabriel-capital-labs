@@ -24,7 +24,7 @@ function inputs(over: Partial<MissionInputs> = {}): MissionInputs {
     // S11 NEW-3: the ACTIVE-confirmation counts letterAuthorization() needs.
     // Required, so no fixture can silently skip the question the server asks
     // before it 409s. The default fixture's letters are authorized.
-    scoreEntries: [], nextSeq: 1, reportCount: 1, activeAssertionCounts: { "t1": 1, "tl-default": 1 }, policy: DEFAULT_CAMPAIGN_POLICY, now: NOW, ...over,
+    scoreEntries: [], nextSeq: 1, reportCount: 1, activeAssertionCounts: { "t1": 1, "tl-default": 1 }, campaignDataUnavailable: false, policy: DEFAULT_CAMPAIGN_POLICY, now: NOW, ...over,
   };
 }
 function item(over: Partial<ComposerItem> = {}): ComposerItem {

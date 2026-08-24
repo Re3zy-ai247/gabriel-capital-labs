@@ -31,6 +31,7 @@ import { assembleMission, type MissionInputs } from "../lib/missionControl";
 import { assembleOperatorSession, type OperatorSessionInputs } from "../lib/operatorSession";
 import { assembleMissions } from "../lib/missionEngine";
 import { letterAuthorization } from "../lib/letter";
+import { computeOwnTrack, ownHistorySummary, type LedgerRow } from "../lib/outcomeLedger";
 import type { KaiHomeData } from "../lib/kaiHome";
 import { pickRecommendation } from "../lib/kaiHome";
 import type { ComposedCampaign } from "../lib/campaign";
@@ -63,6 +64,7 @@ const mcView = stripComments(read("components/mission/MissionControl.tsx"));
 const journeyRuntime = read("components/cxos/journey/JourneyRuntime.tsx");
 const gxlRoom = stripComments(read("app/gxl/[room]/page.tsx"));
 const kaiHome = stripComments(read("lib/kaiHome.ts"));
+const ledger = stripComments(read("lib/outcomeLedger.ts"));
 const globals = read("app/globals.css");
 const gxlLobby = read("app/gxl/page.tsx");
 
@@ -112,7 +114,7 @@ function inputs(over: Partial<MissionInputs> = {}): MissionInputs {
     // S11 NEW-3: the ACTIVE-confirmation counts letterAuthorization() needs.
     // Required, so no fixture can silently skip the question the server asks
     // before it 409s. The default fixture's letters are authorized.
-    letters: [], scoreEntries: [], nextSeq: 1, reportCount: 1, activeAssertionCounts: { "t1": 1, "tl-default": 1 }, policy: DEFAULT_CAMPAIGN_POLICY, now: NOW, ...over,
+    letters: [], scoreEntries: [], nextSeq: 1, reportCount: 1, activeAssertionCounts: { "t1": 1, "tl-default": 1 }, campaignDataUnavailable: false, policy: DEFAULT_CAMPAIGN_POLICY, now: NOW, ...over,
   };
 }
 
@@ -682,6 +684,69 @@ function inputs(over: Partial<MissionInputs> = {}): MissionInputs {
   check("AD-R3-1: both input types REQUIRE it, so S5 making it required upstream is a no-op here",
     /"mailedAt" \| "strategy">\[\]/.test(mcEngine) &&
     /strategy: string \| null;/.test(stripComments(read("lib/operatorSession.ts"))));
+}
+
+// ══ 4e · an absence of knowledge is never reported as good news ══════════════
+// Two findings, one principle, both reached from this engine.
+{
+  // ── AD-R4-1 · the ledger must not invent a determination ─────────────────
+  // ensureLedger()'s backfill runs on every cold start and used to write
+  // COALESCE(responseOutcome,'unknown') for every letter with a responseAt.
+  // That COALESCE was dead until the response route started storing responseAt
+  // with a NULL outcome for a reply nothing could read — the "logged but never
+  // read" state. 'unknown' is a DETERMINATION ("the reply doesn't say"), and
+  // RESPONDED counts it, so the consumer's own track record silently gained a
+  // response nobody had read. No guard could catch it: every runtime guard
+  // mocks this module, so its SQL is never executed. These assert the SQL text
+  // itself, plus the consumer-facing consequence through the pure functions.
+  const backfill = ledger.slice(ledger.indexOf('INSERT INTO "VerifiedOutcome"'));
+  check("AD-R4-1: the backfill no longer manufactures an 'unknown' determination",
+    !/COALESCE\(l\."responseOutcome"/.test(backfill) && !/'unknown'/.test(backfill));
+  check("AD-R4-1: …and does not select a letter whose reply was never read",
+    /WHERE l\."responseAt" IS NOT NULL AND l\."responseOutcome" IS NOT NULL/.test(backfill));
+  check("AD-R4-1: 'unknown' remains a real recorded determination in the vocabulary, not a synonym for absence",
+    /RESPONDED = new Set\(\[[^\]]*"unknown"/.test(ledger));
+
+  // The reviewer's reproduction, through the pure track-record functions: three
+  // genuinely-read replies, then the row the backfill used to add.
+  const row = (letterId: string, outcome: string | null): LedgerRow => ({
+    letterId, strategy: "fcra_611", recipientType: "bureau", bureau: "EQUIFAX", round: 1,
+    accountType: "CHARGE_OFF", isDebtBuyer: false, outcome, latencyDays: 30,
+  });
+  const read3 = [row("a", "deleted"), row("b", "verified"), row("c", "verified")];
+  const truth = computeOwnTrack(read3);
+  check("AD-R4-1: three read replies read as three", ownHistorySummary(truth)?.includes("your 3 logged dispute responses") === true);
+  check("AD-R4-1: …with the favorable rate the data supports", truth.byStrategy["fcra_611"].favorableRate === 0.33);
+  const invented = computeOwnTrack([...read3, row("d", "unknown")]);
+  check("AD-R4-1: an invented 'unknown' WOULD have inflated the count and cut the rate — which is why the backfill must not write one",
+    ownHistorySummary(invented)?.includes("your 4 logged dispute responses") === true &&
+    invented.byStrategy["fcra_611"].favorableRate === 0.25);
+  const absent = computeOwnTrack([...read3, row("d", null)]);
+  check("AD-R4-1: a genuinely unknown outcome is not counted as a response",
+    ownHistorySummary(absent)?.includes("your 3 logged dispute responses") === true &&
+    absent.byStrategy["fcra_611"].favorableRate === 0.33);
+
+  // ── AD-R3-3 · an unreadable campaign queue is not an empty one ────────────
+  const unavailable = assembleMission(inputs({ campaignDataUnavailable: true }));
+  check("AD-R3-3: a degraded campaign read never reports 'Nothing stalled.'",
+    !/Nothing stalled/.test(unavailable.health.find((h) => h.key === "campaign")?.message ?? ""));
+  check("AD-R3-3: …it says it could not load them, and that this is not a claim that there are none",
+    /couldn't load your campaigns/i.test(unavailable.health.find((h) => h.key === "campaign")?.message ?? "") &&
+    /isn't a statement that you have none/i.test(unavailable.health.find((h) => h.key === "campaign")?.message ?? ""));
+  check("AD-R3-3: …campaign health is amber, so the roll-up cannot summarise the account as clear",
+    unavailable.health.find((h) => h.key === "campaign")?.status === "amber" &&
+    unavailable.standing !== "green" && unavailable.caseHealth !== "green");
+  check("AD-R3-3: …and an unreadable queue is never reported as NOT STARTED either",
+    assembleMission(inputs({ tradelines: [], reportCount: 0, campaignDataUnavailable: true })).standing !== "unstarted");
+  check("AD-R3-3: …the Campaigns tile does not print a count it could not read",
+    unavailable.command.find((c) => c.key === "campaigns")?.stat === "Unavailable");
+  // The available path is untouched — this is a new state, not a downgrade.
+  const available = assembleMission(inputs());
+  check("AD-R3-3: a healthy campaign read still reports normally",
+    /Nothing stalled/.test(available.health.find((h) => h.key === "campaign")?.message ?? "") &&
+    available.command.find((c) => c.key === "campaigns")?.stat === "0 active");
+  check("AD-R3-3: the engine consults S1's own signal rather than inventing a second one",
+    /campaignDataUnavailable\(\)/.test(mcEngine) && /from "@\/lib\/campaign\/CampaignStore"/.test(mcEngine));
 }
 
 // ══ 5 · D-6 · task-first is the default; the entrance is opt-in ═══════════════

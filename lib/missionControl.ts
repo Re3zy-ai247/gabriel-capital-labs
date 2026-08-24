@@ -15,6 +15,7 @@ import type { AccountType, Letter } from "@prisma/client";
 import { getKaiHomeData, REINVESTIGATION_DAYS, type KaiHomeData, type KaiRecommendation, type OvernightItem } from "@/lib/kaiHome";
 import { caseMemorySince, type CaseMemory } from "@/lib/kaiSeen";
 import { campaignService, buildComposerItems } from "@/lib/campaignInput";
+import { campaignDataUnavailable } from "@/lib/campaign/CampaignStore";
 import { ownOutcomeTrack, ownHistorySummary, type OwnTrack } from "@/lib/outcomeLedger";
 // RB-2 (Founder Experience Gate): the same fact test lib/intelligence/snapshot.ts
 // uses for the "active negatives" count — reused here so the Deferred Queue can
@@ -115,6 +116,16 @@ export interface MissionInputs {
    * engines now key on the same fact.
    */
   reportCount: number;
+  /**
+   * S11 AD-R3-3: the campaign read DEGRADED rather than returned nothing.
+   * PrismaCampaignStore catches a table-level fault and hands back `[]`, which
+   * is indistinguishable from "this consumer has no campaigns" — so the room
+   * reported "Nothing stalled." over a queue it could not read. S1 built
+   * `campaignDataUnavailable()` for exactly this and left the hand-off note;
+   * this is the surface consuming it. Required, not optional: an absence of
+   * knowledge must never default to the good-news branch.
+   */
+  campaignDataUnavailable: boolean;
   /**
    * ACTIVE ConsumerAssertion counts by tradelineId (S11 NEW-3). Feeds
    * lib/letter.ts's letterAuthorization() — the SAME predicate the approve,
@@ -389,7 +400,12 @@ export function assembleMission(x: MissionInputs): MissionControlData {
 
   // ---- Health Dashboard ----
   const health: HealthSignal[] = [];
-  if (approvedUnmailed.length > 0) health.push({ key: "campaign", label: "Campaign health", status: "amber", message: "A campaign is approved but not yet mailed — send it; the clock starts once the recipient receives it." });
+  // AD-R3-3 first, because an unreadable queue outranks every conclusion drawn
+  // from it: `campaigns` is `[]` in this state, so pendingReview and
+  // approvedUnmailed are empty for a reason that has nothing to do with the
+  // consumer's case, and every branch below would have read as all-clear.
+  if (x.campaignDataUnavailable) health.push({ key: "campaign", label: "Campaign health", status: "amber", message: "We couldn't load your campaigns just now, so this view may be incomplete — it isn't a statement that you have none. Try again in a moment." });
+  else if (approvedUnmailed.length > 0) health.push({ key: "campaign", label: "Campaign health", status: "amber", message: "A campaign is approved but not yet mailed — send it; the clock starts once the recipient receives it." });
   else if (pendingReview.length > 0) health.push({ key: "campaign", label: "Campaign health", status: "amber", message: "A campaign is waiting for your review." });
   else health.push({ key: "campaign", label: "Campaign health", status: "green", message: liveCampaigns.length > 0 ? "Your campaigns are progressing." : "Nothing stalled." });
 
@@ -500,7 +516,10 @@ export function assembleMission(x: MissionInputs): MissionControlData {
   const sp = scoreProgress(scoreEntries);
   const lastEventDate = lastEvent ? new Date(lastEvent).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "—";
   const command: CommandSection[] = [
-    { key: "campaigns", title: "Campaigns", stat: `${liveCampaigns.length} active`, sub: `${campaigns.length} total`, href: "/campaigns", tone: pendingReview.length || approvedUnmailed.length ? "amber" : "neutral" },
+    // AD-R3-3: never print a count we could not read as though it were the count.
+    x.campaignDataUnavailable
+      ? { key: "campaigns", title: "Campaigns", stat: "Unavailable", sub: "we couldn't load these just now", href: "/campaigns", tone: "amber" as const }
+      : { key: "campaigns", title: "Campaigns", stat: `${liveCampaigns.length} active`, sub: `${campaigns.length} total`, href: "/campaigns", tone: pendingReview.length || approvedUnmailed.length ? "amber" : "neutral" },
     { key: "mail", title: "Mail", stat: `${kai.lettersMailed} mailed`, sub: `${openWindows} awaiting response`, href: "/mail", tone: overdueCount ? "red" : "neutral" },
     { key: "responses", title: "Responses", stat: `${kai.responsesReceived} / ${kai.lettersMailed}`, sub: "responses logged", href: "/letters", tone: needsResponseAction ? "amber" : "neutral" },
     { key: "timeline", title: "Timeline", stat: `Last: ${lastEventDate}`, sub: `${resolved} item${resolved === 1 ? "" : "s"} resolved`, href: "/journey", tone: "neutral" },
@@ -532,6 +551,9 @@ export async function getMissionControl(userId: string, user: { fullName?: strin
     // whether a report exists.
     prisma.report.count({ where: { userId } }),
   ]);
+  // AD-R3-3: read the degradation flag AFTER the loads above, so it reflects
+  // this render's campaign read rather than an earlier one.
+  const campaignsUnavailable = campaignDataUnavailable();
 
   // S11 NEW-3 — one grouped count for the whole render, mirroring
   // app/api/letters/route.ts. Mailed letters are excluded: HISTORICAL is
@@ -551,6 +573,7 @@ export async function getMissionControl(userId: string, user: { fullName?: strin
   const composed = svc.compose(items, nextSeq);
   return assembleMission({
     user, kai, caseMemory, campaigns, composed, tradelines,
-    letters, scoreEntries, ownTrack, nextSeq, reportCount, activeAssertionCounts, policy: resolveCampaignPolicy(),
+    letters, scoreEntries, ownTrack, nextSeq, reportCount, activeAssertionCounts,
+    campaignDataUnavailable: campaignsUnavailable, policy: resolveCampaignPolicy(),
   });
 }
