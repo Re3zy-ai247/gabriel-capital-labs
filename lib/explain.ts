@@ -9,7 +9,7 @@ import { getBureauData, presentBureaus, hasCrossBureauKnowledge, crossBureauConf
 import { BUREAU_LABEL } from "./bureaus";
 import { STATUTES, type StatuteKey } from "./statutes";
 import { STRATEGY_BY_ID } from "./strategies";
-import { fallOffInsight, formatMonthYear } from "./tradelineInsights";
+import { fallOffInsight, formatMonthYear, knownBureauCount, reportedDofd } from "./tradelineInsights";
 import { formatCents } from "./utils";
 
 const TYPE_LABEL: Record<string, string> = {
@@ -74,13 +74,22 @@ export function explainTradeline(t: ExplainInput): Explanation {
 
   // Uncertainty — stated plainly, never hidden (this is the trust move).
   const uncertainty: string[] = [];
-  if (!hasCrossBureauKnowledge(data)) {
+  const known = knownBureauCount(t.bureauData);
+  if (known === 0) {
+    // Never "this bureau" when there is no bureau: an account the report never
+    // attributed has ZERO known bureaus, and `hasCrossBureauKnowledge` (< 2)
+    // used to fold that case into the single-bureau sentence below.
+    uncertainty.push("Your report didn't say which bureau reports this account, so nothing here is attributed to a bureau and no cross-bureau comparison was possible.");
+  } else if (known === 1) {
     uncertainty.push("Only one bureau's data is on file, so this read is limited to that bureau's internal accuracy — no cross-bureau claims are made.");
   } else if (contradictions.length === 0) {
     uncertainty.push("The bureaus on file agree on this account, so the dispute rests on the item's own accuracy rather than a cross-bureau conflict.");
   }
-  if (!t.dateOfFirstDelinquency) {
+  const dofd = reportedDofd(t);
+  if (!dofd) {
     uncertainty.push("No date of first delinquency is on file, so the §605 reporting-window clock can't be computed for this item.");
+  } else if (dofd.precision === "month") {
+    uncertainty.push("The date of first delinquency is reported as a month, not a specific day, so the §605 window below is dated to the end of that month — the latest date the report supports.");
   }
   if (t.probability === "LOW") {
     uncertainty.push("Scored LOW — the grounds here are weaker; worth a look before spending a dispute round on it.");
