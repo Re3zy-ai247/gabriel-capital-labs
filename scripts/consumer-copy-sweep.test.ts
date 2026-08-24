@@ -45,6 +45,7 @@
 export {};
 
 import { readFileSync, readdirSync } from "node:fs";
+import { stripComments, stripCommentsSelfTest } from "./_source";
 import { join } from "node:path";
 
 const root = join(__dirname, "..");
@@ -61,20 +62,42 @@ function ok(label: string, cond: boolean, detail?: string) {
 /**
  * Source with comments removed, so no absence scan can be defeated by prose.
  *
- * Block comments are stripped FIRST and as spans, not line by line. These files
- * are JSX: the narration of removed copy lives in `{/* … *\/}` blocks whose
- * lines begin with `{` or with ordinary prose, so a line-prefix filter alone
- * leaves most of it standing — which is how a guard ends up reporting its own
- * documentation as a live paywall.
+ * RC1-S11 CLOSING (CE2-1) — THIS USED TO BE A REGEX AND IT WAS BLIND.
+ *
+ * The previous implementation opened with `.replace(/\/\*[\s\S]*?\*\//g, "")`,
+ * which pairs `/*` with the next `*\/` ANYWHERE, with no idea what a string
+ * literal is. Replayed over `components/Attachments.tsx` it deleted L88-L121 —
+ * 1713 characters, 29% of a live consumer component — because the `/*` it
+ * latched onto was inside the attribute value `accept="image/*,application/pdf"`
+ * and the first `*\/` after it belonged to a `{/* eslint-disable-next-line *\/}`
+ * thirty-three lines later. The file input, its error paragraph, the file-chip
+ * markup, the size labels, the remove control and the image thumbnail anchor
+ * were all inside that span. Every absence rule "passed" over them, and the
+ * coverage line counted the file as scanned.
+ *
+ * That is the exact failure this suite exists to prevent — a protection that
+ * quietly stops protecting — so the guard no longer carries its own stripper.
+ * It uses the shared tokenizer in scripts/_source.ts, which walks the source
+ * once and treats a comment marker inside a string literal as DATA. The
+ * tokenizer's own self-test is run below as a gate: if the instrument this
+ * suite measures with is unhealthy, this suite fails rather than reporting
+ * numbers it cannot stand behind.
+ *
+ * KNOWN RESIDUAL, disclosed rather than assumed away (CE2-2, S7's open item):
+ * the version of the tokenizer adopted here is string-literal-aware but not
+ * REGEX-literal-aware — `grep -ci regex scripts/_source.ts` is 0 on this
+ * candidate. A regex literal containing a quote (`/["']/`) can desync its
+ * string state. The likely direction of that failure is UNDER-stripping, which
+ * surfaces as an absence rule matching comment prose — a loud, self-announcing
+ * failure rather than a silent pass. The dangerous direction, a desync that
+ * over-strips, is the CE2-1 class returning through a different door.
+ *
+ * This suite does not paper over that: it gates on stripCommentsSelfTest()
+ * above rather than on a private copy of the stripper, so when S7 lands the
+ * regex-literal state and extends that self-test, this suite inherits the
+ * stronger instrument and the stronger gate on the same day, with no edit here.
  */
-function codeOnly(src: string): string {
-  return src
-    .replace(/\/\*[\s\S]*?\*\//g, "")
-    .split("\n")
-    .filter((l) => !l.trim().startsWith("//"))
-    .map((l) => l.replace(/\s\/\/.*$/, ""))
-    .join("\n");
-}
+const codeOnly = stripComments;
 
 /** Whitespace-normalised source, for presence checks on copy that line-wraps. */
 const flat = (s: string) => s.replace(/\s+/g, " ");
@@ -302,10 +325,85 @@ for (const rule of RULES) {
 // exists to prevent, so the coverage itself is an assertion. The floor is a
 // floor, not the current count: it fails if the walker starts returning far less
 // than the tree really holds, without breaking every time a page is added.
+// ── COVERAGE, MEASURED RATHER THAN CLAIMED (CE2-1) ──────────────────────────
+// The old line printed a file count and asserted a floor. Both were true and
+// both were beside the point: the suite was counting a file as covered while
+// 29% of it had been deleted before any rule ran. A coverage claim has to be
+// about the text actually scanned, so it is now reported in characters as well
+// as files, and the instrument that produces those characters is gated first.
+{
+  const selfTestFailures = stripCommentsSelfTest();
+  ok(
+    "the comment stripper this suite measures with passes its own self-test",
+    selfTestFailures.length === 0,
+    selfTestFailures.join("; "),
+  );
+}
+
+const totalChars = TREE.reduce((n, p) => n + read(p).length, 0);
+const scannedChars = TREE.reduce((n, p) => n + treeCode.get(p)!.length, 0);
 ok(
-  `absence scan covered ${TREE.length} consumer files x ${RULES.length} rules (excludes: ${EXCLUDED.length} documented areas)`,
-  TREE.length >= 120 && RULES.length === 11,
+  `absence scan covered ${TREE.length} consumer files x ${RULES.length} rules — ${scannedChars} of ${totalChars} characters after comment removal (excludes: ${EXCLUDED.length} documented areas)`,
+  TREE.length >= 120 && RULES.length === 11 && scannedChars > 0,
 );
+
+// The CE2-1 regression, on the real file that was blind. These landmarks all sat
+// inside the deleted span; if any of them stops being scanned, the hole is back.
+{
+  const attachments = treeCode.get("components/Attachments.tsx") ?? "";
+  ok("components/Attachments.tsx is in the scanned tree", TREE.includes("components/Attachments.tsx"));
+  for (const landmark of [
+    'accept="image/*,application/pdf"',   // the string literal that opened the fake comment
+    "{err && <p",                          // the error paragraph, 4 lines after it
+    "{formatBytes(f.size)}",               // a size label mid-span
+    'aria-label="Remove"',                 // the remove control, near the end of the span
+  ]) {
+    ok(
+      `CE2-1: the formerly-blind span of components/Attachments.tsx is scanned — ${JSON.stringify(landmark)} survives comment removal`,
+      attachments.includes(landmark),
+    );
+  }
+}
+
+// THE PROOF THE COORDINATOR ASKED FOR, as an executable fixture rather than a
+// claim: the CE2-1 shape — a `/*` inside a quoted attribute value, then a
+// violating line, then a JSX comment carrying the `*\/` that used to close the
+// fake block. Under the old regex stripper the violating line vanished and every
+// rule passed. It must now be seen, and it must FIRE.
+{
+  const fixture = [
+    '<input accept="image/*,application/pdf" />',
+    '<p>Upgrade to Professional — $99/mo</p>',
+    "{/* eslint-disable-next-line @next/next/no-img-element */}",
+    "<img />",
+  ].join("\n");
+  const strippedFixture = codeOnly(fixture);
+  ok(
+    "CE2-1 fixture: a `/*` inside a string literal does not open a comment",
+    strippedFixture.includes('accept="image/*,application/pdf"'),
+  );
+  ok(
+    "CE2-1 fixture: the JSX comment after it is still removed",
+    !strippedFixture.includes("eslint-disable-next-line"),
+  );
+  ok(
+    "CE2-1 fixture: code between the two is scanned, and markup after them survives",
+    strippedFixture.includes("Upgrade to Professional") && strippedFixture.includes("<img />"),
+  );
+  const fired = RULES.filter((r) => r.re.test(strippedFixture)).map((r) => r.label);
+  ok(
+    `CE2-1 fixture: the planted violation FIRES (${fired.length} rule(s): price + purchase control)`,
+    fired.length >= 2,
+    `fired: ${fired.join(" | ") || "none — the span is still blind"}`,
+  );
+  // And the counter-proof: under the old regex stripper the same fixture is silent.
+  const oldStripper = (src: string) =>
+    src.replace(/\/\*[\s\S]*?\*\//g, "").split("\n").filter((l) => !l.trim().startsWith("//")).join("\n");
+  ok(
+    "CE2-1 counter-proof: the OLD regex stripper hid that same violation entirely",
+    !RULES.some((r) => r.re.test(oldStripper(fixture))),
+  );
+}
 // The 16 rewritten surfaces must all be INSIDE the scanned tree — a presence
 // check on a file the absence scan never reads would be half a guard.
 for (const p of SURFACES) {
@@ -373,9 +471,19 @@ for (const p of SURFACES) {
     "the gate is not a dead end — it routes back into the product the consumer does have",
     /href="\/dashboard"/.test(gate),
   );
+  // CE2-4: this used to read "nothing in the product produces the
+  // /agency?checkout=success URL" while testing a single file. The claim was
+  // wider than the measurement, and it was also false: the URL is still built
+  // server-side at app/api/stripe/checkout/route.ts as a Stripe `success_url`.
+  // That line is dormant — refuseSale() returns before any Stripe client is
+  // constructed, so no session and no redirect can ever be produced from it —
+  // and app/api/ is outside this suite's consumer tree by design. So the check
+  // now scans every file the suite actually reads, and says exactly that.
+  const producers = TREE.filter((f) => /\/agency\?checkout=success/.test(treeCode.get(f)!));
   ok(
-    "nothing in the product produces the /agency?checkout=success URL",
-    !/\/agency\?checkout=success/.test(agencyCode),
+    `no file in the scanned consumer tree produces the /agency?checkout=success URL (${TREE.length} files; the dormant server-side success_url in app/api/stripe/checkout is out of tree and unreachable behind refuseSale())`,
+    producers.length === 0,
+    producers.join(", "),
   );
 }
 
