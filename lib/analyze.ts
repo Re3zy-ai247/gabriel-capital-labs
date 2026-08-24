@@ -112,8 +112,14 @@ function compareMasks(a: string | null | undefined, b: string | null | undefined
   const da = maskDigits(a);
   const db = maskDigits(b);
   if (!da || !db) return "silent";
-  if (da === db) return "identical";
   if (Math.min(da.length, db.length) < MIN_MEANINGFUL_TAIL) return "silent";
+  // Equality is only IDENTITY when the number is longer than the tail every
+  // report prints. Two masks that both parsed down to the same four visible
+  // digits are two accounts showing the same tail — the comment above says a
+  // tail can never establish identity on its own, and this used to short-circuit
+  // past that. `****3333` is an ordinary parse (lib/parse.ts accepts a 4-char
+  // mask), not a contrived one, so equality there is support, not proof.
+  if (da === db && da.length > MIN_MEANINGFUL_TAIL) return "identical";
   return da.endsWith(db) || db.endsWith(da) ? "weak" : "conflicts";
 }
 
@@ -165,14 +171,29 @@ function individuatingAgreement(prior: RelinkRow, rebuilt: RelinkRow): boolean {
 //     and we decline.
 // Declining is safe by design: an unmatched letter orphans, and the
 // authorization rule then asks the consumer to re-confirm.
+// Two rows that both carry a first-delinquency date, and disagree about it, are
+// not the same account — whatever their keys say. This is the module's stated
+// rule ("first-delinquency dates that disagree refuse outright, whatever the
+// counts say"), and it applies on EVERY matching path, including the exact-key
+// one, where it previously never ran.
+//
+// It is deliberately the only attribute check that reaches the exact-key path.
+// Two parses of the SAME account legitimately disagree on type and balance when
+// extraction quality changes (AI reader vs regex fallback) — that is the common
+// case the re-link exists to serve — so gating the exact key on those would
+// trade a rare wrong link for frequent false orphans. A DOFD is different: it is
+// a fact about the delinquency itself, not about how well we read the page, and
+// when it is absent on either side this refuses nothing.
+function delinquencyDatesDisagree(a: RelinkRow, b: RelinkRow): boolean {
+  const at = asTime(a.dateOfFirstDelinquency);
+  const bt = asTime(b.dateOfFirstDelinquency);
+  return at != null && bt != null && at !== bt;
+}
+
 function corroboratesSameAccount(prior: RelinkRow, rebuilt: RelinkRow): boolean {
   const masks = compareMasks(prior.accountNumberMask, rebuilt.accountNumberMask);
   if (masks === "conflicts") return false;
-
-  const pd = asTime(prior.dateOfFirstDelinquency);
-  const rd = asTime(rebuilt.dateOfFirstDelinquency);
-  if (pd != null && rd != null && pd !== rd) return false; // different delinquencies
-
+  if (delinquencyDatesDisagree(prior, rebuilt)) return false;
   if (masks === "identical") return true;
 
   const sameCategory =
@@ -233,9 +254,19 @@ export function matchRebuiltTradelines(prior: RelinkRow[], rebuilt: RelinkRow[])
     // is a guess dressed as an exact match. Corroborate, or decline.
     const keyIdentifiesAnAccount = maskDigits(p.accountNumberMask).length > 0;
     const unique = (priorByKey.get(key) ?? []).length === 1 && (rebuiltByKey.get(key) ?? []).length === 1;
+    // A matching key is not a licence to ignore a contradicted delinquency
+    // date. Filtering rather than refusing outright also fixes the order
+    // dependence: where two accounts at one creditor print the same visible
+    // four digits, the extractor returning them in the opposite order used to
+    // cross-link both letters; each prior row now takes the candidate whose
+    // delinquency it does not contradict, in either order.
+    const acceptable = candidates.filter((id) => {
+      const row = rowById.get(id);
+      return row ? !delinquencyDatesDisagree(p, row) : false;
+    });
     const candidate = keyIdentifiesAnAccount || unique
-      ? candidates[0]
-      : candidates.find((id) => {
+      ? acceptable[0]
+      : acceptable.find((id) => {
           const row = rowById.get(id);
           return row ? corroboratesSameAccount(p, row) : false;
         });
