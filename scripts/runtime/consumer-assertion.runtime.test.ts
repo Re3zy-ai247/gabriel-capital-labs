@@ -49,6 +49,7 @@ interface TradelineRow {
   originalCreditor: string | null;
   accountNumberMask: string | null;
   accountType: string;
+  probability: string;
   balance: number;
   dateOfFirstDelinquency: Date | null;
   bureauData: unknown;
@@ -151,6 +152,16 @@ class FakeDb {
         ) ?? null
       );
     },
+    count: async (args: { where: { userId?: string; tradelineId?: string; status?: string } }) => {
+      this.calls.push("consumerAssertion.count");
+      const w = args.where ?? {};
+      return this.assertions.filter(
+        (a) =>
+          (w.userId === undefined || a.userId === w.userId) &&
+          (w.tradelineId === undefined || a.tradelineId === w.tradelineId) &&
+          (w.status === undefined || a.status === w.status)
+      ).length;
+    },
     create: async (args: { data: Partial<AssertionRow> }) => {
       this.calls.push("consumerAssertion.create");
       const row: AssertionRow = {
@@ -188,6 +199,15 @@ class FakeDb {
   };
 
   letter = {
+    findFirst: async (args: { where: { id?: string; userId?: string } }) => {
+      this.calls.push("letter.findFirst");
+      const w = args.where ?? {};
+      return (
+        this.letters.find(
+          (l) => (w.id === undefined || l.id === w.id) && (w.userId === undefined || l.userId === w.userId)
+        ) ?? null
+      );
+    },
     findMany: async (args: { where: { userId?: string; tradelineId?: string } }) => {
       this.calls.push("letter.findMany");
       const w = args.where ?? {};
@@ -256,7 +276,11 @@ mockModule("lib/events.ts", {
   },
   PRODUCT_EVENTS: { disputeCreated: "dispute_created", failure: "failure" },
 });
-mockModule("lib/docCrypto.ts", { encryptText: (s: string) => `enc:${s}` });
+mockModule("lib/docCrypto.ts", {
+  encryptText: (s: string) => `enc:${s}`,
+  // The PATCH route reads a stored body back; the fake is its own inverse.
+  decryptText: (s: string) => (s.startsWith("enc:") ? s.slice(4) : s),
+});
 mockModule("lib/entitlements.ts", {
   // Free tier, no AI refinement, ample allowance: the point of this guard is the
   // ASSERTION gate, so nothing else may be what refuses.
@@ -277,6 +301,9 @@ mockModule("lib/aiMeter.ts", {
 });
 
 const generate = loadModule<{ POST: (req: Request) => Promise<Response> }>("app/api/letters/generate/route.ts");
+const letterRoute = loadModule<{
+  PATCH: (req: Request, ctx: { params: { id: string } }) => Promise<Response>;
+}>("app/api/letters/[id]/route.ts");
 const assertionRoute = loadModule<{
   POST: (req: Request, ctx: { params: { id: string } }) => Promise<Response>;
   DELETE: (req: Request, ctx: { params: { id: string } }) => Promise<Response>;
@@ -290,6 +317,7 @@ function seedTradelineInto(target: FakeDb, id: string, userId: string): Tradelin
     originalCreditor: "Synchrony Bank",
     accountNumberMask: "XXXX-1234",
     accountType: "COLLECTION",
+    probability: "HIGH",
     balance: 128900,
     dateOfFirstDelinquency: new Date("2021-03-01"),
     bureauData: { EQUIFAX: { presence: "PRESENT", status: "Charge-off", balanceCents: 128900, dofd: "2021-03-01" } },
@@ -298,6 +326,14 @@ function seedTradelineInto(target: FakeDb, id: string, userId: string): Tradelin
   return row;
 }
 const seedTradeline = (id: string, userId: string) => seedTradelineInto(db, id, userId);
+
+function seedSetAside(id: string, userId: string): TradelineRow {
+  const row = seedTradelineInto(db, id, userId);
+  row.accountType = "GOVERNMENT";
+  row.probability = "NOT_RECOMMENDED";
+  row.creditorName = "State Tax Lien";
+  return row;
+}
 
 function seedInquiry(id: string, userId: string): TradelineRow {
   const row = seedTradelineInto(db, id, userId);
@@ -679,5 +715,112 @@ run("consumer-assertion.runtime", async () => {
       { params: { id: "t_acct" } }
     );
     check("the inquiry claim is refused on a normal account", inqOnAccount.status === 400);
+  }
+
+  // ── 11. S11 AD-1: a set-aside row is refused with the TRUE reason ─────────
+  section("a government / set-aside row gets a true reason, not an instruction it cannot follow");
+  {
+    db.reset();
+    seedSetAside("t_gov", "u1");
+    const res = await generate.POST(post("http://localhost/api/letters/generate", { tradelineId: "t_gov", strategyId: "fcra_611" }));
+    const body = await json(res);
+    check("refused (400)", res.status === 400);
+    check("…flagged as set aside, not as a missing confirmation", body.setAside === true && body.needsAssertion === undefined);
+    check("…and says WHY, in the consumer's terms", /government or statutory debt/i.test(String(body.error)));
+    check(
+      "…and does NOT tell them to use a panel their row does not have",
+      !/Review the facts/.test(String(body.error))
+    );
+    check("…nothing was used up", /Nothing was used up/i.test(String(body.error)) && db.letters.length === 0);
+  }
+
+  // ── 12. S11 AD-2: withdrawal reaches an unmailed letter ──────────────────
+  section("a withdrawn confirmation blocks approval of the letter it authorized");
+  {
+    db.reset();
+    seedTradeline("t1", "u1");
+    await assertionRoute.POST(post("http://localhost/api/tradelines/t1/assertion", { assertionType: "not_mine" }), {
+      params: { id: "t1" },
+    });
+    const gen = await generate.POST(
+      post("http://localhost/api/letters/generate", { tradelineId: "t1", strategyId: "fcra_611", targetBureaus: ["EQUIFAX"] })
+    );
+    check("a letter exists, drafted from a standing confirmation (control)", gen.status === 200 && db.letters.length === 1);
+    const letterId = db.letters[0].id;
+
+    // Control: while the confirmation stands, approval goes through.
+    const approvedOk = await letterRoute.PATCH(
+      post(`http://localhost/api/letters/${letterId}`, { status: "PRINTED" }),
+      { params: { id: letterId } }
+    );
+    check("approval succeeds while the confirmation stands (control)", approvedOk.status === 200);
+    check("…and the row really moved", db.letters[0].status === "PRINTED");
+
+    // The consumer changes their mind.
+    const assertionId = db.assertions[0].id;
+    await assertionRoute.DELETE(
+      new Request(`http://localhost/api/tradelines/t1/assertion?assertionId=${encodeURIComponent(assertionId)}`, { method: "DELETE" }),
+      { params: { id: "t1" } }
+    );
+    check("the confirmation is WITHDRAWN, not deleted", db.assertions.length === 1 && db.assertions[0].status === "WITHDRAWN");
+
+    const mailAfterWithdraw = await letterRoute.PATCH(
+      post(`http://localhost/api/letters/${letterId}`, { status: "MAILED" }),
+      { params: { id: letterId } }
+    );
+    const mailBody = await json(mailAfterWithdraw);
+    check("marking it MAILED is now refused (409)", mailAfterWithdraw.status === 409);
+    check("…flagged machine-readably for the letters page", mailBody.authorizationRevoked === true && mailBody.tradelineId === "t1");
+    check("…with a truthful message that does not claim anything was deleted", /withdrawn/i.test(String(mailBody.error)) && /Nothing has been deleted/.test(String(mailBody.error)));
+    check("…and the letter was NOT mailed", db.letters[0].mailedAt === null && db.letters[0].status === "PRINTED");
+
+    const reApprove = await letterRoute.PATCH(
+      post(`http://localhost/api/letters/${letterId}`, { status: "PRINTED" }),
+      { params: { id: letterId } }
+    );
+    check("re-approving is refused on the same grounds", reApprove.status === 409);
+
+    // Re-confirming restores the path — the block is a state, not a one-way door.
+    await assertionRoute.POST(post("http://localhost/api/tradelines/t1/assertion", { assertionType: "not_mine" }), {
+      params: { id: "t1" },
+    });
+    const afterReconfirm = await letterRoute.PATCH(
+      post(`http://localhost/api/letters/${letterId}`, { status: "MAILED" }),
+      { params: { id: letterId } }
+    );
+    check("…and succeeds again once the consumer re-confirms", afterReconfirm.status === 200);
+    check("…the letter is mailed", db.letters[0].mailedAt !== null);
+  }
+
+  // ── 13. S11 AD-2 (other half): a MAILED record is never re-judged ────────
+  section("a mailed letter keeps its evidence and its lifecycle, whatever happens later");
+  {
+    // The letter from section 12 is MAILED. Withdraw its confirmation again.
+    const active = db.assertions.filter((a) => a.status === "ACTIVE");
+    for (const a of active) {
+      await assertionRoute.DELETE(
+        new Request(`http://localhost/api/tradelines/t1/assertion?assertionId=${encodeURIComponent(a.id)}`, { method: "DELETE" }),
+        { params: { id: "t1" } }
+      );
+    }
+    check("no ACTIVE confirmation remains", db.assertions.every((a) => a.status === "WITHDRAWN"));
+
+    const mailedLetter = db.letters[0];
+    check("the mailed letter still exists, mailed", mailedLetter.mailedAt !== null && mailedLetter.status === "MAILED");
+    check("…its body is untouched — the record of what was sent", /I do not recognize this account/.test(mailedLetter.body));
+    check(
+      "…the withdrawn confirmations survive as its authorization evidence",
+      db.assertions.length >= 1 && db.assertions.every((a) => a.tradelineCreditorName === "Midland Funding LLC")
+    );
+
+    // A post-mail lifecycle step must still work: the block is for pending
+    // action only, never for a record.
+    const logResponse = await letterRoute.PATCH(
+      post(`http://localhost/api/letters/${mailedLetter.id}`, { status: "RESPONSE_RECEIVED" }),
+      { params: { id: mailedLetter.id } }
+    );
+    check("a MAILED letter's lifecycle continues normally after withdrawal", logResponse.status === 200);
+    check("…it was never blocked as revoked", (await json(logResponse)).authorizationRevoked === undefined);
+    check("…and the mailedAt stamp is unchanged", db.letters[0].mailedAt !== null);
   }
 });

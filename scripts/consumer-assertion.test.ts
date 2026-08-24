@@ -32,6 +32,8 @@ import {
   buildSystemPrompt,
   buildUserPrompt,
   isConsumerAssertionType,
+  letterAuthorization,
+  letterAuthorizationRevoked,
   normalizeConsumerNote,
   renderTemplateLetter,
   sanitizeConsumerNote,
@@ -440,8 +442,20 @@ console.log("\n— INQUIRY rows get a claim they can actually make (M-3)");
   ok("an inquiry can say it was not authorized", inquiryChoices.includes("inquiry_not_authorized"));
   ok("an inquiry is NOT offered balance / status / dates / closed / paid", !["inaccurate_balance", "inaccurate_status", "late_dates_wrong", "account_closed", "paid_settled"].some((t) => inquiryChoices.includes(t as ConsumerAssertionType)));
   ok("an account is NOT offered the inquiry claim", !accountChoices.includes("inquiry_not_authorized"));
-  ok("both keep the universal claims", inquiryChoices.includes("not_mine") && inquiryChoices.includes("other") && accountChoices.includes("not_mine"));
-  ok("assertionAppliesTo agrees with the list", assertionAppliesTo("inquiry_not_authorized", "INQUIRY") && !assertionAppliesTo("inaccurate_balance", "INQUIRY") && assertionAppliesTo("inaccurate_balance", "COLLECTION"));
+  // S11 AD-8: `not_mine` is an ACCOUNT claim. It composed "I do not recognize
+  // this account. I did not open it…" onto an INQUIRY, which nobody opens.
+  ok("an inquiry is NOT offered the account-ownership claim", !inquiryChoices.includes("not_mine"));
+  ok("an account still is", accountChoices.includes("not_mine"));
+  ok("both keep the free-text claim", inquiryChoices.includes("other") && accountChoices.includes("other"));
+  ok("an inquiry still has at least two things it can honestly say", inquiryChoices.length >= 2);
+  ok(
+    "assertionAppliesTo agrees with the list",
+    assertionAppliesTo("inquiry_not_authorized", "INQUIRY") &&
+      !assertionAppliesTo("inaccurate_balance", "INQUIRY") &&
+      !assertionAppliesTo("not_mine", "INQUIRY") &&
+      assertionAppliesTo("inaccurate_balance", "COLLECTION") &&
+      assertionAppliesTo("not_mine", "COLLECTION")
+  );
   ok(
     "suggestAssertionTypes never steers an inquiry toward balance / status / dates",
     (() => {
@@ -542,6 +556,124 @@ console.log("\n— the per-target bureau gate (H-1, source-level)");
 
   const IDENT = read("app/api/identity/letter/route.ts");
   ok("the identity refusal carries an actionable next step (M-5)", /nextStep:/.test(IDENT) && /nothing has been charged/.test(IDENT));
+}
+
+// ---------------------------------------------------------------------------
+console.log("\n— S11 AD-1: no state has an unfollowable instruction");
+// ---------------------------------------------------------------------------
+{
+  const PAGE = read("app/tradelines/page.tsx");
+  // The panel is mounted in exactly one place in the product, so what gates it
+  // decides who can confirm anything at all.
+  ok(
+    "the confirmation panel is no longer withheld from a CLEAN row",
+    /const canAssert = !setAside && t\.accountType !== "GOVERNMENT";/.test(PAGE)
+  );
+  ok("…and the CLEAN exclusion is really gone", !/canAssert = [^;]*condition !== "CLEAN"/.test(PAGE));
+  ok(
+    "a CLEAN row's disclosure names the panel behind it",
+    /\{canAssert \? "Review the facts ▾" : "Bureau detail ▾"\}/.test(PAGE)
+  );
+  ok(
+    "…while the report's own read is unchanged (no invented dispute claim)",
+    /Your report shows no derogatory status for this account/.test(PAGE) && /nothing to dispute/.test(PAGE)
+  );
+  ok(
+    "a GOVERNMENT / set-aside row still has NO confirmation path",
+    /!setAside && t\.accountType !== "GOVERNMENT"/.test(PAGE)
+  );
+
+  const GEN = read("app/api/letters/generate/route.ts");
+  ok(
+    "…so the route answers those rows with the true reason instead of a confirm-first instruction",
+    /tradeline\.accountType === "GOVERNMENT" \|\| tradeline\.probability === "NOT_RECOMMENDED"/.test(GEN) &&
+      /setAside: true/.test(GEN)
+  );
+  const setAsideIdx = GEN.indexOf('setAside: true');
+  ok(
+    "…before the confirm-first refusal can be reached",
+    setAsideIdx > 0 && setAsideIdx < GEN.indexOf("needsAssertion: true")
+  );
+  ok(
+    "…and before the entitlement resolve and any composition, so it costs nothing",
+    // S6a made the consumer product free, so there is no credit spend left in
+    // this route to order against; the entitlement resolve and the first write
+    // are what the refusal must still precede.
+    setAsideIdx < GEN.indexOf("await getEntitlement(user)") && setAsideIdx < GEN.indexOf("await generateOne(")
+  );
+  ok("the set-aside refusal invents no CTA", !/Review the facts[^\n]*set aside|setAside: true[\s\S]{0,40}Upgrade/.test(GEN));
+}
+
+// ---------------------------------------------------------------------------
+console.log("\n— S11 AD-2: a withdrawal reaches the letter it authorized");
+// ---------------------------------------------------------------------------
+{
+  const mailed = { mailedAt: new Date("2026-08-01"), tradelineId: "t1", activeAssertionCount: 0 };
+  ok("a MAILED letter is HISTORICAL, never re-judged", letterAuthorization(mailed) === "HISTORICAL");
+  ok("…and is never reported as revoked, whatever the consumer does later", !letterAuthorizationRevoked(mailed));
+  ok(
+    "…including one whose tradeline is gone entirely",
+    letterAuthorization({ mailedAt: new Date("2026-08-01"), tradelineId: null, activeAssertionCount: 0 }) === "HISTORICAL"
+  );
+  ok(
+    "an UNMAILED letter with a standing confirmation is AUTHORIZED",
+    letterAuthorization({ mailedAt: null, tradelineId: "t1", activeAssertionCount: 1 }) === "AUTHORIZED"
+  );
+  ok(
+    "an UNMAILED letter whose confirmations are all withdrawn is REVOKED",
+    letterAuthorization({ mailedAt: null, tradelineId: "t1", activeAssertionCount: 0 }) === "REVOKED"
+  );
+  ok(
+    "…and one whose tradeline is gone fails CLOSED, not open",
+    letterAuthorization({ mailedAt: null, tradelineId: null, activeAssertionCount: 0 }) === "REVOKED"
+  );
+
+  const PATCH = read("app/api/letters/[id]/route.ts");
+  ok(
+    "approval and mailing are gated on the CURRENT authorization",
+    /if \(!existing\.mailedAt && \(status === APPROVED \|\| status === "MAILED"\)\)/.test(PATCH) &&
+      /letterAuthorizationRevoked\(/.test(PATCH)
+  );
+  ok("…counted for THIS user and THIS tradeline", /consumerAssertion\.count\(\{[\s\S]{0,160}userId: user\.id[\s\S]{0,120}status: "ACTIVE"/.test(PATCH));
+  ok("…answered with a truthful, shared message", /LETTER_AUTHORIZATION_REVOKED_MESSAGE/.test(PATCH) && /authorizationRevoked: true/.test(PATCH));
+  ok("…and the mailed record is explicitly excluded from the check", /!existing\.mailedAt &&/.test(PATCH));
+
+  const PRINT = read("app/letters/print/[id]/page.tsx");
+  ok("the printable packet is withheld too", /letterAuthorizationRevoked\(\{ mailedAt: letter\.mailedAt/.test(PRINT));
+  ok(
+    "…and a MAILED letter still prints its record verbatim",
+    /renderedBody = letter\.mailedAt \? letter\.body :/.test(PRINT)
+  );
+
+  const LIST = read("app/api/letters/route.ts");
+  ok("the letters list exposes the state so the page can say it", /authorizationRevoked: letterAuthorizationRevoked\(/.test(LIST));
+  ok("…without a query per letter", /groupBy\(\{/.test(LIST));
+  ok("…and without re-judging mailed rows", /filter\(\(l\) => !l\.mailedAt && l\.tradelineId\)/.test(LIST));
+
+  const MESSAGE = read("lib/letter.ts");
+  ok("the message says nothing was deleted (the draft survives)", /Nothing has been deleted/.test(MESSAGE));
+  ok("…and promises no outcome", !/LETTER_AUTHORIZATION_REVOKED_MESSAGE[\s\S]{0,400}guarantee/.test(MESSAGE));
+}
+
+// ---------------------------------------------------------------------------
+console.log("\n— S11 AD-5 / B-6 / E-4");
+// ---------------------------------------------------------------------------
+{
+  const PAGE = read("app/tradelines/page.tsx");
+  ok(
+    "AD-5: the scope picker offers only bureaus the report says are PRESENT",
+    /bureaus=\{presentBureaus\(data\)\.map/.test(PAGE) && !/bureaus=\{known\.map/.test(PAGE)
+  );
+  ok("E-4: the stat row stacks below sm", /grid grid-cols-1 gap-3 sm:grid-cols-3/.test(PAGE));
+
+  const IDENT = read("app/api/identity/letter/route.ts");
+  ok("B-6: the client-supplied array is bounded", /DISCREPANCY_MAX = 50/.test(IDENT) && /rawDiscrepancies\.length > DISCREPANCY_MAX/.test(IDENT));
+  ok("B-6: every text field is bounded", /DISCREPANCY_FIELD_MAX = 500/.test(IDENT) && /DISCREPANCY_TEXT_FIELDS\.some/.test(IDENT));
+  ok(
+    "B-6: bounded BEFORE the paid model is called",
+    IDENT.indexOf("rawDiscrepancies.length > DISCREPANCY_MAX") < IDENT.indexOf("await meteredMessage(")
+  );
+  ok("B-6: refused, never silently truncated", !/\.slice\(0, DISCREPANCY_MAX\)/.test(IDENT));
 }
 
 console.log(failures === 0 ? "\nAll consumer-assertion guards passed." : `\n${failures} guard(s) failed.`);

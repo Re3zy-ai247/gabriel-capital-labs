@@ -211,6 +211,25 @@ export async function POST(req: Request) {
       orderBy: { createdAt: "asc" },
       select: { assertionType: true, consumerNote: true, bureauScope: true, status: true },
     });
+    // S11 AD-1: a GOVERNMENT / set-aside row has no confirmation path, by
+    // design — it is excluded for a LEGAL reason (a reinvestigation generally
+    // cannot remove a government or statutory debt), not an evidentiary one, so
+    // the Tradelines page deliberately offers no "Review the facts" panel on
+    // it. Sending that consumer the confirm-first message would instruct them
+    // to use an affordance that does not exist on their row. They get the true
+    // reason instead, and no invented next step.
+    if (tradeline.accountType === "GOVERNMENT" || tradeline.probability === "NOT_RECOMMENDED") {
+      return NextResponse.json(
+        {
+          error:
+            "This is a government or statutory debt. We don\u2019t draft dispute letters for these \u2014 a reinvestigation generally can\u2019t remove them, so a round spent here doesn\u2019t get you anywhere. It stays marked \u201cset aside\u201d on your Tradelines page. Nothing was used up.",
+          setAside: true,
+          tradelineId: tradeline.id,
+        },
+        { status: 400 }
+      );
+    }
+
     if (assertions.length === 0) {
       return NextResponse.json(
         {

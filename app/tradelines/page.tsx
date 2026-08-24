@@ -139,7 +139,10 @@ export default async function TradelinesPage() {
         </div>
       ) : (
       <>
-      <div className="mb-4 grid grid-cols-3 gap-3">
+      {/* S11 E-4: three `card p-5` tiles in a fixed 3-column grid left ~48px of
+          text column at 320px, wrapping "Weak / low priority" to four lines.
+          Stacks below sm; unchanged from sm up. */}
+      <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
         <StatCard label="High confidence" value={high} accent="brand" />
         <StatCard label="Medium" value={med} accent="gold" />
         <StatCard label="Weak / low priority" value={weak} />
@@ -221,14 +224,32 @@ export default async function TradelinesPage() {
           const condition = factualCondition(t);
           const clean = !setAside && condition === "CLEAN";
           const unknownStanding = !setAside && condition === "NEEDS_REVIEW";
-          // RC1-S4: which rows the consumer can confirm a fact on. Never a
-          // CLEAN row (the report says it is fine and nothing is queued), never
-          // a set-aside government/statutory debt. DEROGATORY and NEEDS_REVIEW
-          // are the two the slice names; INQUIRY rows are included because the
-          // product still offers "Dispute →" on them, and without a way to
-          // confirm a fact that link would dead-end in the new refusal from
-          // POST /api/letters/generate.
-          const canAssert = !setAside && condition !== "CLEAN" && t.accountType !== "GOVERNMENT";
+          // Which rows the consumer can confirm a fact on.
+          //
+          // S11 AD-1 — the CLEAN exclusion is REMOVED. `<FactConfirmation>` is
+          // mounted here and nowhere else, so excluding CLEAN rows meant a row
+          // the truth model reads as clean had no confirmation UI at all —
+          // while /letters still listed it, and POST /api/letters/generate
+          // still refused it with "open the account on your Tradelines page,
+          // choose Review the facts". That instruction was unfollowable: the
+          // affordance did not exist on that row. A consumer with first-hand
+          // knowledge that a clean-LOOKING account is misreported was the one
+          // person the gate structurally silenced — the exact inversion of "the
+          // consumer is the factual authority".
+          //
+          // What the report says stays exactly as it was: the row still reads
+          // "Your report shows no derogatory status for this account", the
+          // action still says "nothing to dispute", and nothing is queued. The
+          // consumer simply may open it and say otherwise.
+          //
+          // GOVERNMENT / set-aside rows still have no confirmation path, and
+          // that is deliberate: they are excluded for a LEGAL reason (a
+          // reinvestigation generally cannot remove them), not an evidentiary
+          // one, so offering a confirm step there would imply a dispute that
+          // works. Their dead end is closed at the other end instead — the
+          // generate route now refuses them with the true reason rather than
+          // an instruction they cannot follow.
+          const canAssert = !setAside && t.accountType !== "GOVERNMENT";
           const existingAssertions = assertionsByTradeline.get(t.id) ?? [];
           // Kai's DISPUTE read is shown only where the report itself attests
           // something adverse. On a NEEDS_REVIEW row we do not know what the
@@ -327,7 +348,11 @@ export default async function TradelinesPage() {
                           per-bureau detail; a row the consumer can confirm a
                           fact on says so. */}
                       <span className="group-open:hidden">
-                        {clean ? "Bureau detail ▾" : canAssert ? "Review the facts ▾" : "Kai's read ▾"}
+                        {/* S11 AD-1: a CLEAN row now opens into the
+                            confirmation panel, so the affordance names it —
+                            otherwise the panel exists but is undiscoverable,
+                            which is the dead end this fixes. */}
+                        {canAssert ? "Review the facts ▾" : "Bureau detail ▾"}
                       </span>
                       <span className="hidden group-open:inline">close ▴</span>
                     </div>
@@ -363,12 +388,21 @@ export default async function TradelinesPage() {
                 set aside
                 <span className="sr-only">. {t.reasons[0] ?? "Government or statutory debt generally can't be disputed off a report, so it's excluded so you don't waste a round."}</span>
               </span>
-            ) : clean ? (
-              // RB-2: honest state for a factually clean account — never a
-              // live "Dispute" action presented next to a queued opportunity.
-              <span className="text-[11px] text-slate-500" title="Your report shows no derogatory status for this account.">
+            ) : clean && existingAssertions.length === 0 ? (
+              // RB-2: honest state for a factually clean account — never a live
+              // "Dispute" action presented next to a queued opportunity. S11
+              // AD-1: the row now opens into the confirmation panel, so the
+              // sentence says that too. The product still queues nothing here;
+              // it just no longer pretends the consumer has nothing to say.
+              <span
+                className="text-[11px] text-slate-500"
+                title="Your report shows no derogatory status for this account. If you know something on it is wrong, open this row and confirm the facts."
+              >
                 nothing to dispute
-                <span className="sr-only">. Your report shows no derogatory status for this account.</span>
+                <span className="sr-only">
+                  . Your report shows no derogatory status for this account. If you know something on it is wrong, open
+                  this row and confirm the facts.
+                </span>
               </span>
             ) : existingAssertions.length === 0 && canAssert ? (
               // RC1-S4: with nothing confirmed there is nothing to draft from,
@@ -418,7 +452,14 @@ export default async function TradelinesPage() {
                     creditorName={t.creditorName}
                     choices={orderedChoices}
                     existing={existingAssertions}
-                    bureaus={known.map((b) => ({ value: b, label: BUREAU_LABEL[b] }))}
+                    /* S11 AD-5: `known` includes entries whose presence is
+                       ABSENT or UNKNOWN, so the same expanded row rendered
+                       "Not reporting this account." for Equifax while offering
+                       "Only my Equifax file" in the scope picker — a choice
+                       that can only ever produce a correct refusal at
+                       generation. Only bureaus the report says are PRESENT are
+                       offered. */
+                    bureaus={presentBureaus(data).map((b) => ({ value: b, label: BUREAU_LABEL[b] }))}
                     suggested={strat?.suggestedAssertions ?? []}
                     noteMax={CONSUMER_NOTE_MAX}
                   />
