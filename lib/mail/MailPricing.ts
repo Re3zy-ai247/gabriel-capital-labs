@@ -17,7 +17,10 @@ export interface PricingPolicy {
   markupRate: number;            // markup on provider cost (0.15 = +15%)
   // NOTE: certified/mail-class/page costs live in the PROVIDER estimate (single
   // source of truth) — pricing never re-adds them, so nothing is double-charged.
-  planDiscountRate: Partial<Record<PlanTier, number>>; // e.g. { premium: 0.1 }
+  // RC1-S6a (P0-6, B report S-26): the ENGINE stays — a future white-label
+  // reseller policy may express one — but the PLATFORM policy below carries no
+  // plan rates at all. A plan must never buy a consumer a cheaper mailing.
+  planDiscountRate: Partial<Record<PlanTier, number>>;
   // Agencies can price at cost + a smaller markup; overrides markupRate when set.
   agencyMarkupRate?: number;
   whiteLabelId?: string;         // reserved: reseller-specific policy identity
@@ -29,7 +32,14 @@ export interface PricingPolicy {
 export const DEFAULT_PRICING_POLICY: PricingPolicy = {
   platformFeeCents: 99,
   markupRate: 0.15,
-  planDiscountRate: { premium: 0.1, agency: 0.15, agency_pro: 0.2 },
+  // NEUTRALIZED (RC1-S6a · Founder D-3). This read { premium: 0.1, agency: 0.15,
+  // agency_pro: 0.2 } — the one remaining surface where a consumer could SEE that
+  // paying bought a better deal: a legacy Professional's mail quote was 10% lower
+  // and their breakdown carried a literal "Premium discount" line. Empty means
+  // every plan resolves to 0 through the unchanged `?? 0` lookup below, so the
+  // quote is identical for everyone and the discount line never renders.
+  // This is a hard pre-condition on MAIL_LIVE ever being turned on.
+  planDiscountRate: {},
   agencyMarkupRate: 0.05,
   currency: "USD",
 };
