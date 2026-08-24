@@ -4,6 +4,7 @@
 // this?") and so acted-on recommendations become part of the outcome dataset the
 // engines learn from. Structured rows only (no freeform AI memory). Fail-open:
 // a registry hiccup never blocks a recommendation. Self-heal table (ADR-0001).
+import { AsyncLocalStorage } from "node:async_hooks";
 import { prisma } from "@/lib/prisma";
 
 export interface DecisionRecord {
@@ -105,9 +106,42 @@ async function createTableStatements(): Promise<void> {
 // .catch(() => []), bypassing ensureTable() entirely — so on a fresh database no
 // read ever creates the table, and neither call site can see this signal. They
 // should route through listDecisions() (or call ensureTable first).
+// S11 B-R5-1 / CE-r5 — identical shape to lib/campaign/CampaignStore.ts, and
+// identical fix. A module-level `let` that every success clears cannot answer
+// "was THIS render's data complete": a sibling read succeeding in the same
+// fan-out clears the failure, and a concurrent REQUEST can both forge and hide
+// the signal. The per-request scope below is monotonic — degradation only ever
+// sets it — so one failing read among ten successes still reads as degraded,
+// and no other request can see or touch the cell. The process-global is kept,
+// unchanged, for operator diagnostics and for the runtime guard that pins its
+// clear-on-success behaviour; it is not a consumer-facing signal.
 let lastReadUnavailable = false;
 
-/** True when the most recent read in this process could not reach the table. */
+/** Per-request degradation cell. Monotonic: set on failure, never cleared. */
+interface DecisionAvailabilityCell { unavailable: boolean }
+const decisionScope = new AsyncLocalStorage<DecisionAvailabilityCell>();
+
+/**
+ * Runs `read` in a fresh availability scope and reports whether ANY decision
+ * read inside it degraded. This is the signal a consumer surface renders.
+ */
+export async function withDecisionAvailability<T>(read: () => Promise<T>): Promise<{ data: T; unavailable: boolean }> {
+  const cell: DecisionAvailabilityCell = { unavailable: false };
+  const data = await decisionScope.run(cell, read);
+  return { data, unavailable: cell.unavailable };
+}
+
+/** Records a degradation into the caller's scope, if one is open. Never clears. */
+function markDecisionUnavailable(): void {
+  const cell = decisionScope.getStore();
+  if (cell) cell.unavailable = true;
+}
+
+/**
+ * PROCESS-level: operator diagnostics only. A concurrent success clears it and
+ * a concurrent failure sets it, so it cannot answer "was this render complete".
+ * Consumer surfaces must use withDecisionAvailability().
+ */
 export function decisionDataUnavailable(): boolean {
   return lastReadUnavailable;
 }
@@ -157,6 +191,7 @@ export async function listDecisions(userId: string, limit = 50): Promise<Decisio
     }));
   } catch (e) {
     lastReadUnavailable = true;
+    markDecisionUnavailable();
     if (isMissingRelation(e)) tableReady = null; // un-latch a stale success memo
     console.error("decisionRegistry: list unavailable (degrading, not throwing):", e);
     return [];

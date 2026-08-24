@@ -15,7 +15,7 @@ import type { AccountType, Letter } from "@prisma/client";
 import { getKaiHomeData, REINVESTIGATION_DAYS, type KaiHomeData, type KaiRecommendation, type OvernightItem } from "@/lib/kaiHome";
 import { caseMemorySince, type CaseMemory } from "@/lib/kaiSeen";
 import { campaignService, buildComposerItems } from "@/lib/campaignInput";
-import { campaignDataUnavailable } from "@/lib/campaign/CampaignStore";
+import { withCampaignAvailability } from "@/lib/campaign/CampaignStore";
 import { ownOutcomeTrack, ownHistorySummary, type OwnTrack } from "@/lib/outcomeLedger";
 // RB-2 (Founder Experience Gate): the same fact test lib/intelligence/snapshot.ts
 // uses for the "active negatives" count — reused here so the Deferred Queue can
@@ -536,7 +536,16 @@ export function assembleMission(x: MissionInputs): MissionControlData {
 // The loader — pulls the real rows and hands them to the pure assembler.
 export async function getMissionControl(userId: string, user: { fullName?: string | null; name?: string | null }): Promise<MissionControlData> {
   const svc = campaignService();
-  const [kai, caseMemory, campaigns, items, tradelines, letters, scoreEntries, ownTrack, nextSeq, reportCount] = await Promise.all([
+  // S11 B-R5-1 — the availability answer must belong to THIS request. The
+  // process-global `campaignDataUnavailable()` this used to read is cleared by
+  // every success, and three readers run in the fan-out below: a sibling
+  // succeeding after the failing one wiped the failure, and the dashboard fell
+  // back to "Nothing stalled." — the one claim the signal exists to prevent.
+  // Being process-global it could also show "Unavailable" to a consumer whose
+  // read succeeded and hide it from the one whose read failed. The scope is
+  // per-request and monotonic, so one failed read among many successes is still
+  // a failed read, and no other request can see or clear it.
+  const { data: loaded, unavailable: campaignsUnavailable } = await withCampaignAvailability(async () => await Promise.all([
     getKaiHomeData(userId),
     caseMemorySince(userId),
     svc.list(userId, 50),
@@ -550,10 +559,8 @@ export async function getMissionControl(userId: string, user: { fullName?: strin
     // point of A1-04's unification is that neither engine gets its own idea of
     // whether a report exists.
     prisma.report.count({ where: { userId } }),
-  ]);
-  // AD-R3-3: read the degradation flag AFTER the loads above, so it reflects
-  // this render's campaign read rather than an earlier one.
-  const campaignsUnavailable = campaignDataUnavailable();
+  ]));
+  const [kai, caseMemory, campaigns, items, tradelines, letters, scoreEntries, ownTrack, nextSeq, reportCount] = loaded;
 
   // S11 NEW-3 — one grouped count for the whole render, mirroring
   // app/api/letters/route.ts. Mailed letters are excluded: HISTORICAL is
