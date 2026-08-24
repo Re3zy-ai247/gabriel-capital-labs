@@ -52,7 +52,13 @@
 //     same fixture where the shipped order leaks none of 36 fragments. That
 //     check fails if the leak ever stops being reproducible, so the boundary
 //     assertion above it can never pass for free.
-//   · Unmodified slice tree: **64 passed, 0 failed** (exit 0).
+//   · S11 ROUND (review B-3). With `git show 59f2afd:app/legal/privacy/page.tsx`
+//     restored — the RC's four-bullet list — **74 passed, 9 failed** (exit 1).
+//     The widened derivation does not merely re-find B-3's response path: it
+//     also fails on TWO further live transmitters the RC policy never named,
+//     the identity correction letter and the action plan. That is the point of
+//     deriving the set instead of listing it.
+//   · Unmodified slice tree: **83 passed, 0 failed** (exit 0).
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import vm from "node:vm";
@@ -470,22 +476,27 @@ async function main() {
     redactSensitivePatterns("Balance 123456789").includes("123456789")
   );
   const aiParse = codeOf(read("lib/aiParse.ts"));
-  // ── COVERAGE, not call-site count (review H-1) ──────────────────────────────
-  // The first version of this check asserted "redaction happens in exactly one
-  // place". That pinned the wrong invariant: it was satisfied while a SECOND
-  // surface — the identity check — shipped the same report text to the same
-  // provider unmasked, and it would have FAILED the correct fix. The invariant
-  // the privacy policy actually makes is EVERY credit-report transmission is
-  // masked, so the transmitter set is DERIVED from the tree rather than listed
-  // here, and each member must redact. A third transmitter added later is
-  // checked automatically instead of shipping unnoticed.
+  // ── COVERAGE OVER EVERY AI TRANSMITTER (review H-1, widened by S11 B-3) ─────
   //
-  // "Transmits credit-report text" = calls meteredMessage AND handles rawText,
-  // which is Report.rawText, the credit report itself. That deliberately does
-  // NOT include app/api/letters/[id]/round2/route.ts: it sends `responseText`,
-  // the bureau reply the consumer pasted in — a different data class, disclosed
-  // separately on the privacy page and explicitly excluded from the masking
-  // sentence there. It is also outside this slice's owned paths.
+  // Version 1 of this check asserted "redaction happens in exactly one place".
+  // It pinned the wrong invariant and passed while a second surface shipped the
+  // report unmasked. Version 2 derived the set from `meteredMessage(` AND
+  // `rawText` — better, but STRUCTURALLY BLIND to the defect S11 found: logging
+  // a bureau response sends `decryptText(letter.body)` (which opens with the
+  // consumer's full legal name and street address) through `analyzeResponse`,
+  // so it carries neither `rawText` nor a `meteredMessage` call of its own.
+  //
+  // Version 3 derives the transmitter set the way the data actually travels:
+  //   L0 — every source that calls meteredMessage (minus lib/aiMeter.ts, which
+  //        defines it).
+  //   L1 — every source that imports and calls a lib/ export whose OWN body
+  //        calls meteredMessage. That one hop is what catches the response
+  //        route through lib/round2.ts's analyzeResponse.
+  // The derived set is then compared against a reviewed MANIFEST, exactly. A
+  // new transmitter — a third surface, a new caller of an existing helper — is
+  // not in the manifest, so it FAILS here and gets read by a person, instead of
+  // shipping under a policy that does not mention it. Each manifest entry
+  // carries the reason it is allowed, and each reason is itself asserted.
   function walkSources(dir: string): string[] {
     const out: string[] = [];
     for (const entry of readdirSync(join(root, dir), { withFileTypes: true })) {
@@ -495,27 +506,150 @@ async function main() {
     }
     return out;
   }
-  const transmitters = [...walkSources("app"), ...walkSources("lib")]
-    .filter((rel) => {
-      const code = codeOf(read(rel));
-      return /meteredMessage\(/.test(code) && /rawText/.test(code);
-    })
+  const allSources = [...walkSources("app"), ...walkSources("lib")];
+  const level0 = allSources
+    .filter((rel) => /meteredMessage\(/.test(codeOf(read(rel))) && rel !== "lib/aiMeter.ts")
     .sort();
-  check(
-    `the transmitter sweep found sources (coverage below is not vacuous) — ${transmitters.join(", ") || "NONE"}`,
-    transmitters.length >= 2
-  );
-  check(
-    "the sweep still finds both known transmitters (a rename must not silently shrink it)",
-    transmitters.includes("lib/aiParse.ts") &&
-      transmitters.includes("app/api/identity/discrepancies/route.ts")
-  );
-  for (const rel of transmitters) {
-    check(
-      `${rel}: redacts the report text before it is transmitted`,
-      /redactSensitivePatterns\(/.test(codeOf(read(rel)))
+  /** Exported functions in `rel` whose own body reaches meteredMessage. */
+  function aiExportsOf(rel: string): string[] {
+    const code = codeOf(read(rel));
+    const marks = [...code.matchAll(/export\s+(?:async\s+)?function\s+([A-Za-z0-9_]+)/g)].map(
+      (m) => [m[1], m.index ?? 0] as const
     );
+    return marks
+      .filter(([, at], i) => /meteredMessage\(/.test(code.slice(at, i + 1 < marks.length ? marks[i + 1][1] : code.length)))
+      .map(([name]) => name);
   }
+  const level1 = new Map<string, string[]>();
+  for (const mod of level0.filter((rel) => rel.startsWith("lib/"))) {
+    for (const name of aiExportsOf(mod)) {
+      for (const rel of allSources) {
+        if (level0.includes(rel)) continue;
+        const code = codeOf(read(rel));
+        if (new RegExp(`\\b${name}\\s*\\(`).test(code) && new RegExp(`import[^;]*\\b${name}\\b[^;]*from`).test(code)) {
+          level1.set(rel, (level1.get(rel) ?? []).concat(`${mod}:${name}`));
+        }
+      }
+    }
+  }
+  const transmitters = [...new Set([...level0, ...level1.keys()])].sort();
+
+  // Every entry is a reviewed decision about ONE data class. "DISCLOSED_*" means
+  // the privacy page names that class; the phrase it must contain is asserted
+  // below, so deleting the disclosure fails here rather than drifting silently.
+  type Disposition =
+    | "REPORT_TEXT_REDACTED"
+    | "REPORT_TEXT_VIA_REDACTING_HELPER"
+    | "DISCLOSED_IDENTITY"
+    | "DISCLOSED_ACCOUNT_DETAILS"
+    | "DISCLOSED_LETTER_AND_REPLY"
+    | "DISCLOSED_FORUM_TEXT"
+    | "DORMANT_AI_REFINEMENT"
+    | "NOT_CONSUMER_CONTENT";
+  const MANIFEST: Record<string, Disposition> = {
+    "lib/aiParse.ts": "REPORT_TEXT_REDACTED",
+    "app/api/identity/discrepancies/route.ts": "REPORT_TEXT_REDACTED",
+    "lib/analyze.ts": "REPORT_TEXT_VIA_REDACTING_HELPER",
+    "app/api/identity/letter/route.ts": "DISCLOSED_IDENTITY",
+    "app/api/strategist/plan/route.ts": "DISCLOSED_ACCOUNT_DETAILS",
+    // ── the S11 B-3 defect: letter body (name + street address) + pasted reply
+    "lib/round2.ts": "DISCLOSED_LETTER_AND_REPLY",
+    "app/api/letters/[id]/response/route.ts": "DISCLOSED_LETTER_AND_REPLY",
+    "lib/os/modules/credit/index.ts": "DISCLOSED_LETTER_AND_REPLY",
+    "lib/kai.ts": "DISCLOSED_FORUM_TEXT",
+    "app/api/community/threads/route.ts": "DISCLOSED_FORUM_TEXT",
+    "app/api/community/threads/[id]/ask-kai/route.ts": "DISCLOSED_FORUM_TEXT",
+    // Structurally unreachable: entitlements.ts pins aiRefinement ALWAYS false (D-2).
+    "app/api/letters/generate/route.ts": "DORMANT_AI_REFINEMENT",
+    "app/api/letters/[id]/round2/route.ts": "DORMANT_AI_REFINEMENT",
+    // Editorial ingest / admin summarisation. No consumer record is involved.
+    "lib/brief.ts": "NOT_CONSUMER_CONTENT",
+    "lib/briefIngest.ts": "NOT_CONSUMER_CONTENT",
+    "app/api/admin/brief/summarize/route.ts": "NOT_CONSUMER_CONTENT",
+  };
+
+  check(
+    `the derivation found transmitters (everything below is not vacuous) — L0=${level0.length}, +L1=${level1.size}`,
+    level0.length >= 5 && level1.size >= 3
+  );
+  check(
+    "the one-hop closure reaches the response route THROUGH lib/round2.ts — the path the old sweep could not see",
+    level1.get("app/api/letters/[id]/response/route.ts")?.includes("lib/round2.ts:analyzeResponse") === true
+  );
+  check(
+    `the derived set is EXACTLY the reviewed manifest — unlisted: [${transmitters
+      .filter((rel) => !(rel in MANIFEST))
+      .join(", ")}] · missing: [${Object.keys(MANIFEST)
+      .filter((rel) => !transmitters.includes(rel))
+      .join(", ")}]`,
+    transmitters.length === Object.keys(MANIFEST).length &&
+      transmitters.every((rel) => rel in MANIFEST)
+  );
+
+  for (const rel of transmitters) {
+    const disposition = MANIFEST[rel];
+    const code = rel in MANIFEST ? codeOf(read(rel)) : "";
+    switch (disposition) {
+      case "REPORT_TEXT_REDACTED":
+        check(`${rel} [${disposition}]: masks the report text itself`, /redactSensitivePatterns\(/.test(code));
+        break;
+      case "REPORT_TEXT_VIA_REDACTING_HELPER":
+        check(
+          `${rel} [${disposition}]: hands the text to aiExtractTradelines, which masks it`,
+          /aiExtractTradelines\(/.test(code) && /redactSensitivePatterns\(/.test(aiParse)
+        );
+        break;
+      case "DISCLOSED_IDENTITY":
+        check(
+          `${rel} [${disposition}]: the policy names the correction letter, not just the identity check`,
+          /if you ask for a personal-information correction letter/i.test(PRIVACY)
+        );
+        break;
+      case "DISCLOSED_ACCOUNT_DETAILS":
+        check(
+          `${rel} [${disposition}]: the policy names the account details sent for an action plan`,
+          /creditor, status, balance and dates — when you ask for an action plan/i.test(PRIVACY)
+        );
+        break;
+      case "DISCLOSED_LETTER_AND_REPLY":
+        check(
+          `${rel} [${disposition}]: the policy names the LETTER, not only the pasted reply (B-3)`,
+          /<strong>together with the dispute letter it replies to<\/strong>/i.test(PRIVACY)
+        );
+        check(
+          `${rel} [${disposition}]: …and names the identity data that letter carries`,
+          /full name and mailing address printed on it/i.test(PRIVACY)
+        );
+        break;
+      case "DISCLOSED_FORUM_TEXT":
+        check(
+          `${rel} [${disposition}]: the policy names the community question`,
+          /The text of a community question you ask Kai/i.test(PRIVACY)
+        );
+        break;
+      case "DORMANT_AI_REFINEMENT":
+        check(
+          `${rel} [${disposition}]: gated on entitlement.aiRefinement, which entitlements pins ALWAYS false`,
+          /entitlement\.aiRefinement/.test(code) && /aiRefinement:\s*false/.test(codeOf(read("lib/entitlements.ts")))
+        );
+        break;
+      case "NOT_CONSUMER_CONTENT":
+        check(
+          `${rel} [${disposition}]: touches no consumer record — no report text, no identity, no letter`,
+          !/rawText/.test(code) && !/user\.fullName/.test(code) && !/letter\.body/.test(code)
+        );
+        break;
+    }
+  }
+
+  // The masking promise must not outrun the manifest: it is scoped to
+  // credit-report text, and the policy has to say so in as many words.
+  check(
+    "the policy scopes the masking claim to credit-report text and says the letter is NOT stripped",
+    /That masking covers credit-report text and nothing else/i.test(PRIVACY) &&
+      /we do not strip the sender block from your own letter/i.test(PRIVACY)
+  );
+
   check(
     "the upload/parse prompt masks the whole plaintext BEFORE truncating it",
     /redactSensitivePatterns\(rawText\)\.slice\(0, 120_000\)/.test(aiParse)
