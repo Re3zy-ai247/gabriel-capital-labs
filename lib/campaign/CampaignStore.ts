@@ -9,6 +9,7 @@
 // after CampaignService.owned() verifies ownership, and findCovering reads through
 // the userId-scoped listByUser(). By-id lookups here are therefore always
 // preceded by an ownership check; the store itself is intentionally id-keyed.
+import { AsyncLocalStorage } from "node:async_hooks";
 import { prisma } from "@/lib/prisma";
 import type { Campaign } from "./CampaignModel";
 
@@ -198,16 +199,68 @@ function rowToCampaign(r: Row): Campaign {
 // process could not reach the table, which lets a surface say "we could not load
 // your campaigns" instead of the false "you have no campaigns".
 //
-// ⚠️ HAND-OFF (outside this round's grant): nothing renders that signal yet.
-// lib/campaignInput.ts:45 and lib/knowledge/loader.ts:17 already .catch(() => [])
-// and so cannot tell "none" from "unknown" either. The dashboard / Mission
-// Control owner should consult campaignDataUnavailable() and render a truthful
-// unavailable state. Until then the surface shows the empty state — which is what
-// it already showed on every caught read, and which is strictly better than the
-// blank screen this replaces.
+// ── S11 B-R5-1 / CE-r5 · THE SIGNAL IS PER-REQUEST, NOT PER-PROCESS ─────────
+//
+// `lastReadUnavailable` below is a module-level `let`. That was adequate while
+// nothing rendered it, and it stopped being adequate the moment a consumer did:
+//
+//   · EVERY success clears it (here and in nextSequence). Mission Control runs
+//     three readers in one Promise.all and then asks — so a sibling read
+//     succeeding after the failing one clears the failure, and the dashboard
+//     falls back to "Nothing stalled.", the exact claim the signal exists to
+//     prevent.
+//   · It is process-global and last-writer-wins across CONCURRENT REQUESTS, so
+//     it can equally show "Unavailable" to a consumer whose read succeeded and
+//     hide it from the consumer whose read failed.
+//
+// A truth signal that a concurrent success can clear, or a stranger's failure
+// can forge, is not a truth signal. So the value a surface renders now comes
+// from a scope the CALLER opens around its own reads:
+//
+//   const { data, unavailable } = await withCampaignAvailability(() => …reads…);
+//
+// AsyncLocalStorage gives each request its own cell, so no other request can
+// see or touch it, and within a scope the cell is MONOTONIC — degradation only
+// ever sets it, never clears it. One failing read among ten successes is still
+// a failed read, and that is what the consumer is told.
+//
+// The process-global is kept, unchanged, for the operator-level "is this
+// process seeing faults" question and for scripts/runtime/self-heal-
+// concurrency.runtime.test.ts, which pins its clear-on-success behaviour. It is
+// NOT a consumer-facing signal: it cannot answer "was THIS render's data
+// complete", which is the only question a surface is entitled to ask.
+//
+// ⚠️ HAND-OFF (outside this round's grant): lib/campaignInput.ts:45 and
+// lib/knowledge/loader.ts:17 still .catch(() => []) and so cannot tell "none"
+// from "unknown". Routing them through a scope would extend the same guarantee.
 let lastReadUnavailable = false;
 
-/** True when the most recent read in this process could not reach the table. */
+/** Per-request degradation cell. Monotonic: set on failure, never cleared. */
+interface AvailabilityCell { unavailable: boolean }
+const campaignScope = new AsyncLocalStorage<AvailabilityCell>();
+
+/**
+ * Runs `read` in a fresh availability scope and reports whether ANY campaign
+ * read inside it degraded. This is the signal a consumer surface renders.
+ */
+export async function withCampaignAvailability<T>(read: () => Promise<T>): Promise<{ data: T; unavailable: boolean }> {
+  const cell: AvailabilityCell = { unavailable: false };
+  const data = await campaignScope.run(cell, read);
+  return { data, unavailable: cell.unavailable };
+}
+
+/** Records a degradation into the caller's scope, if one is open. Never clears. */
+function markCampaignUnavailable(): void {
+  const cell = campaignScope.getStore();
+  if (cell) cell.unavailable = true;
+}
+
+/**
+ * PROCESS-level: true when the most recent read in this process could not reach
+ * the table. Operator diagnostics only — a concurrent success clears it and a
+ * concurrent failure sets it, so it cannot answer "was this render complete".
+ * Consumer surfaces must use withCampaignAvailability().
+ */
 export function campaignDataUnavailable(): boolean {
   return lastReadUnavailable;
 }
@@ -224,6 +277,7 @@ async function readOrDegrade<T>(what: string, fallback: T, run: () => Promise<T>
     return value;
   } catch (e) {
     lastReadUnavailable = true;
+    markCampaignUnavailable();
     if (isMissingRelation(e)) tableReady = null; // un-latch a stale success memo
     // Loud on the server, invisible to the consumer: an operator must be able to
     // find this, and a consumer must never meet a stack trace.
@@ -323,6 +377,7 @@ export class PrismaCampaignStore implements CampaignStore {
     } catch (e) {
       if (!isMissingRelation(e)) throw e;
       lastReadUnavailable = true;
+      markCampaignUnavailable();
       tableReady = null; // un-latch, so the next call re-creates the table
       console.error("CampaignStore: nextSequence has no table (degrading to 1):", e);
       return 1;

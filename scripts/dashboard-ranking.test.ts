@@ -32,6 +32,8 @@ import { assembleOperatorSession, type OperatorSessionInputs } from "../lib/oper
 import { assembleMissions } from "../lib/missionEngine";
 import { letterAuthorization } from "../lib/letter";
 import { computeOwnTrack, ownHistorySummary, type LedgerRow } from "../lib/outcomeLedger";
+import { prisma as prismaClient } from "../lib/prisma";
+import { PrismaCampaignStore, withCampaignAvailability, campaignDataUnavailable, resetCampaignAvailability } from "../lib/campaign/CampaignStore";
 import type { KaiHomeData } from "../lib/kaiHome";
 import { pickRecommendation } from "../lib/kaiHome";
 import type { ComposedCampaign } from "../lib/campaign";
@@ -65,6 +67,8 @@ const journeyRuntime = read("components/cxos/journey/JourneyRuntime.tsx");
 const gxlRoom = stripComments(read("app/gxl/[room]/page.tsx"));
 const kaiHome = stripComments(read("lib/kaiHome.ts"));
 const ledger = stripComments(read("lib/outcomeLedger.ts"));
+const campaignStore = stripComments(read("lib/campaign/CampaignStore.ts"));
+const decisionRegistry = stripComments(read("lib/decisionRegistry.ts"));
 const globals = read("app/globals.css");
 const gxlLobby = read("app/gxl/page.tsx");
 
@@ -745,8 +749,111 @@ function inputs(over: Partial<MissionInputs> = {}): MissionInputs {
   check("AD-R3-3: a healthy campaign read still reports normally",
     /Nothing stalled/.test(available.health.find((h) => h.key === "campaign")?.message ?? "") &&
     available.command.find((c) => c.key === "campaigns")?.stat === "0 active");
-  check("AD-R3-3: the engine consults S1's own signal rather than inventing a second one",
-    /campaignDataUnavailable\(\)/.test(mcEngine) && /from "@\/lib\/campaign\/CampaignStore"/.test(mcEngine));
+  check("AD-R3-3: the engine consults S1's own store rather than inventing a second signal",
+    /withCampaignAvailability\(/.test(mcEngine) && /from "@\/lib\/campaign\/CampaignStore"/.test(mcEngine));
+  check("B-R5-1: …and it reads the PER-REQUEST scope, never the process-global that a concurrent success clears",
+    !/campaignDataUnavailable\(\)/.test(mcEngine));
+}
+
+// ══ 4f · the availability signal belongs to THIS request ════════════════════
+// S11 B-R5-1 / CE-r5. Wiring the first consumer to `campaignDataUnavailable()`
+// made a latent substrate defect live: it is a module-level `let` that every
+// success clears, and Mission Control runs three readers in ONE Promise.all
+// before asking. So a sibling read succeeding after the failing one wiped the
+// failure and the dashboard fell back to "Nothing stalled." — the exact claim
+// the signal exists to prevent. Process-global and last-writer-wins, it could
+// equally show "Unavailable" to a consumer whose read succeeded and hide it
+// from the one whose read failed.
+//
+// This drives the REAL PrismaCampaignStore through the real degrade path, with
+// the prisma singleton's raw methods swapped for an offline fault — the same
+// fan-out lens B measured — so it is a behavioural assertion, not a regex.
+// This runs from the async tail at the bottom of the file: this guard is
+// transformed to CJS, where top-level await is unavailable.
+async function checkAvailabilityScope(): Promise<void> {
+  // A tree without the per-request API fails these checks; it must not CRASH
+  // the guard, or the run reports an exception instead of an enumerated
+  // failure — and a crashed guard is indistinguishable from a broken harness.
+  if (typeof withCampaignAvailability !== "function") {
+    for (const label of [
+      "a failing read concurrent with a succeeding one still reports UNAVAILABLE for that request",
+      "the per-request availability scope exists at all",
+    ]) check(`B-R5-1: ${label}`, false);
+    return;
+  }
+  const p = prismaClient as unknown as Record<string, unknown>;
+  const realExec = p.$executeRawUnsafe;
+  const realQuery = p.$queryRaw;
+  const realError = console.error;
+  let mode: "fail" | "ok" = "ok";
+  p.$executeRawUnsafe = async () => 0;
+  p.$queryRaw = async () => {
+    if (mode === "fail") {
+      const e = new Error('relation "Campaign" does not exist');
+      (e as unknown as { code: string }).code = "P2010";
+      throw e;
+    }
+    return [];
+  };
+  console.error = () => {}; // the degrade path logs loudly by design
+
+  const store = new PrismaCampaignStore();
+  resetCampaignAvailability();
+
+  // The fan-out: a failing read, then a succeeding one, inside one request.
+  const fanOut = await withCampaignAvailability(async () => {
+    const failing = (async () => { mode = "fail"; return store.listByUser("u1"); })();
+    const succeeding = (async () => { await failing.catch(() => {}); mode = "ok"; return store.listByUser("u1"); })();
+    return Promise.all([failing, succeeding]);
+  });
+  const globalAfterFanOut = campaignDataUnavailable();
+  const clean = await withCampaignAvailability(async () => { mode = "ok"; return store.listByUser("u1"); });
+
+  console.error = realError;
+  p.$executeRawUnsafe = realExec;
+  p.$queryRaw = realQuery;
+  resetCampaignAvailability();
+
+  check("B-R5-1: a failing read concurrent with a succeeding one still reports UNAVAILABLE for that request",
+    fanOut.unavailable === true);
+  check("B-R5-1: …and this is precisely what the process-global could not do — the success cleared it",
+    globalAfterFanOut === false);
+  check("B-R5-1: a wholly successful request never reports unavailable",
+    clean.unavailable === false);
+  check("B-R5-1: the scope is monotonic — degradation only ever sets it",
+    /if \(cell\) cell\.unavailable = true;/.test(campaignStore) &&
+    !/cell\.unavailable = false/.test(campaignStore));
+  check("B-R5-1: each request gets its OWN cell, so no other request can read or clear it",
+    /new AsyncLocalStorage<AvailabilityCell>\(\)/.test(campaignStore) &&
+    /const cell: AvailabilityCell = \{ unavailable: false \};/.test(campaignStore));
+
+  // What the consumer actually sees, given that answer.
+  const rendered = assembleMission(inputs({ campaignDataUnavailable: fanOut.unavailable }));
+  check("B-R5-1: the roll-up over that fan-out is neither ALL SYSTEMS GREEN nor NOT STARTED",
+    rendered.standing !== "green" && rendered.standing !== "unstarted" && rendered.caseHealth !== "green");
+  check("B-R5-1: …and it never says 'Nothing stalled.' over a queue it could not read",
+    !/Nothing stalled/.test(rendered.health.find((h) => h.key === "campaign")?.message ?? ""));
+
+  // The decision registry has the identical shape and the identical fix.
+  check("B-R5-1: lib/decisionRegistry.ts carries the same per-request scope",
+    /export async function withDecisionAvailability</.test(decisionRegistry) &&
+    /new AsyncLocalStorage<DecisionAvailabilityCell>\(\)/.test(decisionRegistry) &&
+    /if \(cell\) cell\.unavailable = true;/.test(decisionRegistry));
+  // The globals are kept for operator diagnostics and for S1's own runtime
+  // guard, which pins their clear-on-success behaviour. What must not happen
+  // again is a SURFACE reading them: measured structurally rather than by
+  // trusting the doc comment that says so.
+  const surfaces = [
+    ["lib/missionControl.ts", mcEngine],
+    ["lib/operatorSession.ts", stripComments(read("lib/operatorSession.ts"))],
+    ["app/dashboard/page.tsx", dash],
+    ["components/mission/MissionControl.tsx", mcView],
+    ["components/cxos/mission/CommandHeader.tsx", header],
+  ] as const;
+  for (const [name, src] of surfaces) {
+    check(`B-R5-1: ${name} does not read a process-global availability flag`,
+      !/campaignDataUnavailable\(\)/.test(src) && !/decisionDataUnavailable\(\)/.test(src));
+  }
 }
 
 // ══ 5 · D-6 · task-first is the default; the entrance is opt-in ═══════════════
@@ -925,7 +1032,13 @@ function inputs(over: Partial<MissionInputs> = {}): MissionInputs {
     /\.cx-mc-veil, \.cx-mc-leave \{ animation: none !important; display: none !important; \}/.test(globals));
 }
 
-console.log(`\ndashboard-ranking.test.ts: ${pass} passed, ${fail} failed`);
-process.exit(fail ? 1 : 0);
+// Every check above is synchronous and has already run. The one behavioural
+// section that needs await — the availability fan-out — runs here, then the
+// summary: top-level await is unavailable under this file's CJS transform.
+void (async () => {
+  await checkAvailabilityScope();
+  console.log(`\ndashboard-ranking.test.ts: ${pass} passed, ${fail} failed`);
+  process.exit(fail ? 1 : 0);
+})();
 
 export {};
