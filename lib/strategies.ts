@@ -118,4 +118,59 @@ export const STRATEGIES: Strategy[] = [
   },
 ];
 
-export const STRATEGY_BY_ID = Object.fromEntries(STRATEGIES.map((s) => [s.id, s]));
+// ── RC1-S11 · NON-TRADELINE STRATEGIES ───────────────────────────────────────
+//
+// Every entry in STRATEGIES above disputes a TRADELINE. The Personal
+// Information correction letter (app/api/identity/letter/route.ts) does not: it
+// disputes the consumer's own name, addresses and employers — items in the file
+// that hang off no account.
+//
+// It is kept OUT of STRATEGIES on purpose. That array drives the dispute
+// chooser (/api/strategies → app/letters/page.tsx), Kai's strategy catalogue
+// (lib/kai.ts), the strategist's prompt catalogue and the alternatives list in
+// lib/recommendationIntel.ts. Offering "Personal Information Correction" as a
+// way to dispute a charge-off would be wrong in all four places.
+//
+// It IS registered in STRATEGY_BY_ID below, so the id RESOLVES everywhere a
+// stored letter's strategy is looked up (lib/mailCenter.ts's package basis, the
+// letters list). Before this entry existed the identity letter recorded an id
+// that was in no registry at all: `personal_info` resolved to nothing, and the
+// L-09 remediation papered over that by recording `fcra_611` instead — which
+// mislabelled an identity correction as a tradeline reinvestigation AND erased
+// the only thing distinguishing the two populations of letters that carry no
+// tradelineId (an identity letter, and a tradeline letter whose report was
+// later deleted). A real, distinct, registered id fixes the label and restores
+// the discriminator in one move.
+//
+// STATUTES: §611 and §607(b) genuinely reach identifying information —
+// §1681i(a)(1)(A) covers "any item of information contained in a consumer's
+// file", and §1681e(b) requires reasonable procedures for maximum possible
+// accuracy of everything reported. No §605B identity-theft block is claimed
+// (that needs an identity-theft report the consumer has not filed), and no
+// outcome is promised.
+export const NON_TRADELINE_STRATEGIES: Strategy[] = [
+  {
+    id: "personal_info",
+    tier: 1,
+    label: "Personal Information Correction",
+    recipient: "bureau",
+    statutes: ["fcra_611", "fcra_607b"],
+    blurb:
+      "Asks a bureau to correct or remove inaccurate personal details on your file — names, addresses and employers you have confirmed are wrong. It disputes no account.",
+  },
+];
+
+/** True for a strategy that disputes something OTHER than a tradeline. Such a
+ *  letter legitimately carries no tradelineId, so a tradeline-confirmation rule
+ *  has nothing to say about it. */
+export function isNonTradelineStrategy(id: string | null | undefined): boolean {
+  return typeof id === "string" && NON_TRADELINE_STRATEGIES.some((s) => s.id === id);
+}
+
+// Lookup covers BOTH sets: a stored letter's strategy must always resolve to a
+// real label, whichever kind of letter it is (including rows written before
+// this entry existed — production identity letters already carry
+// `personal_info`, and they resolve here now instead of falling back).
+export const STRATEGY_BY_ID = Object.fromEntries(
+  [...STRATEGIES, ...NON_TRADELINE_STRATEGIES].map((s) => [s.id, s])
+);
