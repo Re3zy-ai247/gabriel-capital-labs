@@ -21,6 +21,7 @@ import { ownOutcomeTrack, ownHistorySummary, type OwnTrack } from "@/lib/outcome
 // never stage a factually clean account (never the disputability `probability`
 // band the campaign composer ranks by).
 import { isFactualNegative, factualCondition } from "@/lib/intelligence/snapshot";
+import { letterAuthorization } from "@/lib/letter";
 import {
   resolveCampaignPolicy, includedItems, deferredItems, FAMILY_LABEL,
   type Campaign, type CampaignItem, type CampaignPolicy, type ComposedCampaign,
@@ -114,6 +115,14 @@ export interface MissionInputs {
    * engines now key on the same fact.
    */
   reportCount: number;
+  /**
+   * ACTIVE ConsumerAssertion counts by tradelineId (S11 NEW-3). Feeds
+   * lib/letter.ts's letterAuthorization() — the SAME predicate the approve,
+   * print and mail routes enforce — so this engine can never describe a letter
+   * as ready when the server has already decided to refuse it with a 409.
+   * Only unmailed letters are judged; a mailed letter is a record.
+   */
+  activeAssertionCounts: Record<string, number>;
   letters: Pick<Letter, "id" | "tradelineId" | "recipientName" | "parentLetterId" | "responseAt" | "responseOutcome" | "mailedAt">[];
   scoreEntries: { bureau: string; score: number; recordedAt: Date }[];
   nextSeq: number;
@@ -194,6 +203,28 @@ export function assembleMission(x: MissionInputs): MissionControlData {
   const closing = kai.deadlines.filter((d) => d.daysLeft > 0 && d.daysLeft <= 5);
   // Counts derived DIRECTLY from the letters, so they stay correct even when more
   // than Kai Home's 6-deadline display cap is open.
+  // S11 NEW-3 — the drafts the server will refuse. Asked of lib/letter.ts's own
+  // letterAuthorization(), never a second predicate of this engine's invention:
+  // a letter is REVOKED when it is unmailed and either its tradeline is gone
+  // (report deleted or replaced) or no ACTIVE confirmation stands behind it
+  // (withdrawn, or drafted before confirmations existed). Those letters cannot
+  // be approved, printed or mailed, so a room that called them ready — and then
+  // summarised the account as needing no action — was describing a product that
+  // had already decided otherwise.
+  const blockedLetters = letters.filter(
+    (l) =>
+      letterAuthorization({
+        mailedAt: l.mailedAt,
+        tradelineId: l.tradelineId,
+        activeAssertionCount: l.tradelineId ? x.activeAssertionCounts[l.tradelineId] ?? 0 : 0,
+      }) === "REVOKED"
+  );
+  // The two shapes have different remedies, and sending everyone to /tradelines
+  // was the secondary defect: for a consumer whose report was deleted that page
+  // is empty, so the offered action did not exist.
+  const blockedOrphaned = blockedLetters.filter((l) => !l.tradelineId).length;
+  const blockedConfirmable = blockedLetters.length - blockedOrphaned;
+
   const openLetters = letters.filter((l) => l.mailedAt && !l.responseAt);
   const openWindows = openLetters.length;
   const overdueCount = openLetters.filter((l) => (now - new Date(l.mailedAt as Date).getTime()) / DAY >= REINVESTIGATION_DAYS).length;
@@ -222,6 +253,20 @@ export function assembleMission(x: MissionInputs): MissionControlData {
   }
   for (const d of overdue.slice(0, 2)) {
     tasks.push({ text: `Upload the ${d.recipient} response (its window has passed)`, href: "/letters", kind: "upload" });
+  }
+  // S11 NEW-3: the true next step for a blocked draft, split by what actually
+  // blocks it. Letter-derived, so it is emitted whatever the report state is.
+  if (blockedConfirmable > 0) {
+    tasks.push({
+      text: `Confirm the facts behind ${blockedConfirmable} dispute letter${blockedConfirmable === 1 ? "" : "s"} — ${blockedConfirmable === 1 ? "it can't" : "they can't"} be approved, printed or mailed until you do`,
+      href: "/tradelines", kind: "review",
+    });
+  }
+  if (blockedOrphaned > 0) {
+    tasks.push({
+      text: `${blockedOrphaned} dispute letter${blockedOrphaned === 1 ? " names an account that is" : "s name accounts that are"} no longer on your report — upload that report again to confirm the facts, or leave the draft as it is`,
+      href: "/upload", kind: "upload",
+    });
   }
   if (!hasReport) {
     tasks.push({ text: "Upload your credit report to get started", href: "/upload", kind: "upload" });
@@ -383,6 +428,23 @@ export function assembleMission(x: MissionInputs): MissionControlData {
     });
   }
 
+  // ---- Draft health: what the SERVER will refuse (S11 NEW-3) ----
+  // Same class as report health above: the roll-up must not summarise as
+  // "no action needed" an account whose only pending work the product itself
+  // has blocked.
+  if (blockedLetters.length > 0) {
+    const n = blockedLetters.length;
+    health.push({
+      key: "authorization", label: "Draft health", status: "amber",
+      message: `${n} dispute letter${n === 1 ? " is" : "s are"} on hold — ${n === 1 ? "it states facts" : "they state facts"} in your name with no confirmation standing behind ${n === 1 ? "it" : "them"} right now.`,
+    });
+  } else {
+    health.push({
+      key: "authorization", label: "Draft health", status: "green",
+      message: letters.some((l) => !l.mailedAt) ? "Every draft on file is confirmed and can move." : "No drafts waiting.",
+    });
+  }
+
   const lastEvent = kai.recentEvents[0]?.occurredAt;
   const stale = lastEvent ? (now - new Date(lastEvent).getTime()) / DAY > 30 : false;
   const openDisputes = letters.some((l) => l.mailedAt && !l.responseAt);
@@ -456,9 +518,25 @@ export async function getMissionControl(userId: string, user: { fullName?: strin
     // whether a report exists.
     prisma.report.count({ where: { userId } }),
   ]);
+
+  // S11 NEW-3 — one grouped count for the whole render, mirroring
+  // app/api/letters/route.ts. Mailed letters are excluded: HISTORICAL is
+  // terminal and a record is never re-judged.
+  const unmailedTradelineIds = Array.from(
+    new Set(letters.filter((l) => !l.mailedAt && l.tradelineId).map((l) => l.tradelineId as string))
+  );
+  const activeAssertionCounts: Record<string, number> = {};
+  if (unmailedTradelineIds.length) {
+    const grouped = await prisma.consumerAssertion.groupBy({
+      by: ["tradelineId"],
+      where: { userId, status: "ACTIVE", tradelineId: { in: unmailedTradelineIds } },
+      _count: { _all: true },
+    });
+    for (const g of grouped) if (g.tradelineId) activeAssertionCounts[g.tradelineId] = g._count._all;
+  }
   const composed = svc.compose(items, nextSeq);
   return assembleMission({
     user, kai, caseMemory, campaigns, composed, tradelines,
-    letters, scoreEntries, ownTrack, nextSeq, reportCount, policy: resolveCampaignPolicy(),
+    letters, scoreEntries, ownTrack, nextSeq, reportCount, activeAssertionCounts, policy: resolveCampaignPolicy(),
   });
 }
