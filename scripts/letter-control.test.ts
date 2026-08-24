@@ -239,7 +239,11 @@ console.log("\n— 7. round 2 —");
   const entitlementIdx = ROUND2.indexOf("const entitlement = await getEntitlement(user)");
   const spendIdx = ROUND2.indexOf("await spendLetterCredits(");
   ok("the refusal happens BEFORE the entitlement gate", gateIdx > 0 && gateIdx < entitlementIdx, `gate=${gateIdx} entitlement=${entitlementIdx}`);
-  ok("…and before anything is charged", gateIdx < spendIdx);
+  // RC1-S6a: assert the ABSENCE first, so the removal of the charge is pinned
+  // rather than merely implied by an ordering check that can no longer fail.
+  ok("nothing is charged at all — the spend path is not called", spendIdx === -1);
+  ok("…and the refusal still precedes the commit of a letter row",
+    gateIdx > 0 && gateIdx < ROUND2.indexOf("prisma.letter.create("));
   ok("the refusal is not an upsell", /needsAssertion: true/.test(ROUND2) && !/upgrade: true[\s\S]{0,80}needsAssertion/.test(ROUND2));
   ok("complaintIntent is read strictly, so no truthy value asserts it", /payload\?\.complaintIntent === true/.test(ROUND2));
   // REVIEW L-4: a REFUSE rule must bind the model too, not only the consumer.

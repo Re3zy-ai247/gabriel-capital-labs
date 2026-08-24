@@ -16,7 +16,7 @@ import {
 } from "@/lib/letter";
 import { applyCompliance } from "@/lib/compliance";
 import { encryptText } from "@/lib/docCrypto";
-import { getEntitlement, spendLetterCredits } from "@/lib/entitlements";
+import { getEntitlement } from "@/lib/entitlements";
 import { presentBureaus, getBureauData } from "@/lib/bureauData";
 import { getFurnisherContact, formatFurnisherAddress } from "@/lib/furnisher";
 import { BUREAU_LABEL } from "@/lib/bureaus";
@@ -92,7 +92,9 @@ async function composeLetter(
     }
   }
 
-  const { text, flags } = applyCompliance(body);
+  // The signed-letter bar — this body is printed, signed and mailed by the
+  // consumer, so it answers to the letter rules, not only the base ones.
+  const { text, flags } = applyCompliance(body, { bar: "signed-letter" });
   return { ctx, text, flags, aiRefined };
 }
 
@@ -136,9 +138,8 @@ async function generateOne(
 // Only ever called for a target planLetterRegeneration matched to an unmailed
 // row (never a mailed one — see lib/letter.ts). No credit spend, no
 // dispute_created event here: the caller (POST below) only counts this
-// against `updated`, never `created`, so the monthly ledger and purchased
-// credits are untouched — the row was already counted once, at its original
-// creation.
+// against `updated`, never `created`, so the append-only ledger is untouched —
+// the row was already counted once, at its original creation.
 async function updateOne(
   user: GenerateUser,
   tradeline: any,
@@ -174,7 +175,12 @@ async function updateOne(
 }
 
 // Generates one or more dispute letters — one per selected bureau for bureau-type
-// strategies. Free tier is capped at 3 letters/month; AI refinement is premium-only.
+// strategies.
+//
+// RC1-S6a: there is NO letter quota and no paid tier. What actually bounds this
+// route is capability-neutral and stays exactly as S4/S5 left it: the consumer
+// must have confirmed a fact that applies to each target (no confirmed fact, no
+// letter), and the S1 rate/spend limits cap volume for everyone equally.
 export async function POST(req: Request) {
   try {
     const user = await currentUserOrDemo();
@@ -325,33 +331,20 @@ export async function POST(req: Request) {
     });
     const { toUpdate, toCreate } = planLetterRegeneration(targets, existingRoundOne);
 
-    // Entitlement gate. Free tier: cap to the remaining monthly allowance —
-    // but ONLY against toCreate (net-new rows). An update never consumes
-    // quota (RB-6: fixing a letter must not cost a letter), so it is never
-    // blocked by the quota gate either — a pure correction goes through even
-    // at 0 remaining, as long as there's nothing NEW it also needs to create.
-    // The common case (nothing on file yet) is byte-identical to the prior
-    // gate: toCreate === targets and toUpdate is empty, so `!hasQuota` alone
-    // decides, exactly as the old unconditional check did.
+    // RC1-S6a (S-01 / D-3): THE LETTER QUOTA IS GONE.
+    //
+    // This is where the 402 lived — "You've used all 3 free dispute letters this
+    // month. Upgrade to Professional…" — together with a silent partial-success
+    // cap that generated some of the requested letters, dropped the rest, and
+    // attached an upgrade nudge to a 200. Both are removed: every consumer gets
+    // every target they confirmed a fact for. Nothing here reads plan,
+    // subscription, credits or who is paying.
+    //
+    // The entitlement is still resolved, for two non-commercial reasons: the AI
+    // refinement switch (off for everyone, D-2) and the read-only snapshot the
+    // client renders.
     const entitlement = await getEntitlement(user);
-    const hasQuota = entitlement.lettersRemaining === null || entitlement.lettersRemaining > 0;
-    if (toUpdate.length === 0 && toCreate.length > 0 && !hasQuota) {
-      return NextResponse.json(
-        {
-          error: "You've used all 3 free dispute letters this month. Upgrade to Professional for unlimited letters and AI refinement.",
-          upgrade: true,
-          entitlement,
-        },
-        { status: 402 }
-      );
-    }
-    let allowedNew = toCreate.length;
-    let capped = false;
-    if (entitlement.lettersRemaining !== null && toCreate.length > entitlement.lettersRemaining) {
-      allowedNew = Math.max(0, entitlement.lettersRemaining);
-      capped = true;
-    }
-    const newTargets = toCreate.slice(0, allowedNew);
+    const newTargets = toCreate;
 
     const key = process.env.ANTHROPIC_API_KEY;
     const updated: any[] = [];
@@ -374,14 +367,13 @@ export async function POST(req: Request) {
       recipientComplete = recipientComplete && r.recipientComplete;
     }
 
-    // Spend purchased letter credits for anything beyond the free monthly allowance.
-    // Clamped + conditionally guarded in lib/entitlements so the balance can never go
-    // negative (a negative balance silently eats the next letter-pack purchase).
-    // Only NEW rows spend — an update is free (RB-6: the burn never happens; no
-    // refund logic needed because nothing was ever charged for it).
-    await spendLetterCredits(user.id, entitlement, created.length);
-
-    // Same reasoning: the append-only monthly ledger only grows for NEW
+    // RC1-S6a (D-3): NOTHING IS SPENT HERE. Purchased letter credits are a frozen
+    // historical balance — the credit-decrement path is not called from this route
+    // at all, and a generation cycle leaves that balance byte-unchanged. The append-only
+    // ledger below is history, not accounting: it records that letters were
+    // written, and nothing consumes it.
+    //
+    // The append-only ledger only grows for NEW
     // letters. Skipped entirely (not tracked-then-refunded) when a request is
     // a pure regenerate — RB-6's "the burn never happens", not a credit-back.
     if (created.length > 0) {
@@ -398,8 +390,6 @@ export async function POST(req: Request) {
       updatedCount: updated.length, // additive — how many were regenerated in place
       createdCount: created.length, // additive — how many were brand-new rows
       aiRefined: anyAI,
-      capped,
-      upgrade: capped,
       entitlement: after,
       consumerComplete,
       recipientComplete,
@@ -421,8 +411,6 @@ export async function POST(req: Request) {
         ? "Complete your Consumer Info (name + mailing address) before printing — the draft contains placeholders."
         : !recipientComplete
         ? "Add the furnisher/collector mailing address before printing — the draft still shows a [Furnisher mailing address] placeholder."
-        : capped
-        ? `Generated ${created.length} letter(s). You hit your free monthly limit — upgrade for unlimited letters.`
         : null,
     });
   } catch (e) {

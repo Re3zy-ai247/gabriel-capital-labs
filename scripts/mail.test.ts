@@ -39,12 +39,23 @@ const est = { providerCostCents: 100, currency: "USD" as const, breakdown: [] };
 const base = computePrice({ estimate: est, plan: "free", isAgency: false });
 // 100 provider + 99 fee + 15 markup(15%) = 214, no discount
 eq("free plan total", base.totalCents, 214);
+// RC1-S6a (Founder D-3, review M-3): the PLAN discount is neutralized — this
+// used to assert 193 (a legacy Professional quoted 10% under a free consumer,
+// with a literal "Premium discount" line on the send page). A plan must never
+// buy a consumer a cheaper mailing, so the pin is now PARITY.
 const prem = computePrice({ estimate: est, plan: "premium", isAgency: false });
-// subtotal 214 − 10% = 214 − 21 = 193
-eq("premium discount applied", prem.totalCents, 193);
+eq("a legacy Professional is quoted exactly what a free consumer is quoted", prem.totalCents, 214);
+ok("no plan discount is applied to anyone", prem.discountCents === 0 && base.discountCents === 0);
+ok("no discount line item can render", !prem.lines.some((l) => /discount/i.test(l.label)));
+// The AGENCY MARKUP is a B2B cost input, not a consumer entitlement, and stays:
+// agency markup 5% → subtotal 100+99+5 = 204, and no plan discount on top.
 const agency = computePrice({ estimate: est, plan: "agency", isAgency: true });
-// agency markup 5% → subtotal 100+99+5=204; −15% = 204−31=173
-eq("agency markup + discount", agency.totalCents, 173);
+eq("agency markup still applies (B2B cost input, not an entitlement)", agency.totalCents, 204);
+// The ENGINE is intact — an explicitly supplied (e.g. white-label) policy can
+// still express a discount; only the platform default carries none.
+ok("the pricing engine still honours an explicitly supplied policy",
+  computePrice({ estimate: est, plan: "premium", isAgency: false,
+    policy: { ...DEFAULT_PRICING_POLICY, planDiscountRate: { premium: 0.5 } } }).discountCents > 0);
 const coup = computePrice({ estimate: est, plan: "free", isAgency: false, coupon: { code: "HALF", kind: "percent", value: 0.5 } });
 // 214 → coupon 50% of 214 = 107 → 107
 eq("coupon after discount", coup.totalCents, 107);

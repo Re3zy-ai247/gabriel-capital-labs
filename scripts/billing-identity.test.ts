@@ -106,16 +106,24 @@ const checkout = read("app/api/stripe/checkout/route.ts");
 
 check("billing/status keeps 401 unauthorized + 404 not found",
   /"Unauthorized"[\s\S]{0,40}status: 401/.test(status) && /"Not found"[\s\S]{0,40}status: 404/.test(status));
+// RC1-S6a: the 400's COPY changed (it used to end "Start with the Upgrade
+// button." — a pitch for a product that now answers 410 Gone). The status codes,
+// which are what this check guards, are unchanged.
 check("stripe/portal keeps 401 sign-in + 400 no-subscription",
-  /Please sign in first\.[\s\S]{0,40}status: 401/.test(portal) && /No subscription found\.[\s\S]{0,120}status: 400/.test(portal));
+  /Please sign in first\.[\s\S]{0,40}status: 401/.test(portal) &&
+  /No subscription is associated with this account\.[\s\S]{0,120}status: 400/.test(portal) &&
+  !/Upgrade button/.test(portal));
 check("stripe/checkout keeps 401 sign-in + 404 account-not-found",
   /Please sign in first\.[\s\S]{0,40}status: 401/.test(checkout) && /Account not found\.[\s\S]{0,40}status: 404/.test(checkout));
 
 // ── Checkout sells only what it is allowed to sell (B-02) ────────────────────
 // The tier vocabulary is asserted literally here rather than imported, so a silent
 // widening of the sellable set has to be made deliberately in BOTH places.
-check("checkout declares the purchasable set as a named constant",
-  /const PURCHASABLE_PLANS = \["premium", "agency"\] as const;/.test(checkout));
+// RC1-S6a (Founder D-3 / D-4): the sellable set is now EMPTY. The constant stays
+// named and in one reviewable place — that is what makes re-opening a sale a
+// deliberate, visible edit — but it sells nothing.
+check("checkout declares the purchasable set as a named constant, and it is empty",
+  /const PURCHASABLE_PLANS = \[\] as const;/.test(checkout));
 check("agency_pro is NOT purchasable while /pricing calls it Coming soon",
   !/PURCHASABLE_PLANS = \[[^\]]*agency_pro/.test(checkout));
 check("the plan is validated by a type guard over that set",

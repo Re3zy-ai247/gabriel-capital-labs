@@ -7,7 +7,7 @@ import { buildContext, renderTemplateLetter, buildSystemPrompt } from "@/lib/let
 import { buildRound2UserPrompt, type ResponseAnalysis } from "@/lib/round2";
 import { applyCompliance } from "@/lib/compliance";
 import { encryptText, decryptText } from "@/lib/docCrypto";
-import { getEntitlement, canGenerateLetter, spendLetterCredits } from "@/lib/entitlements";
+import { getEntitlement } from "@/lib/entitlements";
 import { track, PRODUCT_EVENTS } from "@/lib/events";
 import type { Bureau } from "@prisma/client";
 
@@ -106,12 +106,17 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     );
   }
 
-  // Entitlement: a Round 2 letter counts against the monthly allowance.
+  // RC1-S6a (S-03 / D-3): THE ROUND-2 QUOTA IS GONE.
+  //
+  // This is where the payment-required refusal lived — the same "Upgrade to
+  // Professional… or buy a letter pack" copy as round 1, plus an upgrade nudge. An
+  // escalation is assistance, and assistance is free, so the only gate left is
+  // the one above: the consumer must have confirmed a fact that applies to the
+  // bureau this letter is addressed to.
+  //
+  // The entitlement is still read for the AI refinement switch (off for
+  // everyone, D-2) and for the read-only snapshot returned to the client.
   const entitlement = await getEntitlement(user);
-  const gate = canGenerateLetter(entitlement);
-  if (!gate.allowed) {
-    return NextResponse.json({ error: gate.reason, upgrade: true, entitlement }, { status: 402 });
-  }
 
   let body = renderTemplateLetter(parent.tradeline as any, ctx, consumer);
   let aiRefined = false;
@@ -181,11 +186,10 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   // Persist ciphertext, return plaintext for immediate render.
   letter.body = text;
 
-  // A Round 2 letter consumes entitlement on the SAME terms as /api/letters/generate:
-  // it spends a purchased credit past the free allowance, and it is metered on the
-  // append-only ledger that lib/entitlements reads back as monthly usage. Without both,
-  // every escalation letter was free and invisible to the meter.
-  await spendLetterCredits(user.id, entitlement, 1);
+  // RC1-S6a (D-3): nothing is spent. A Round 2 letter is recorded on the
+  // append-only ledger on the same terms as /api/letters/generate — that is
+  // history, so escalations stay visible — but no credit is consumed and
+  // `letterCredits` is left byte-unchanged.
   await track(PRODUCT_EVENTS.disputeCreated, { userId: user.id, meta: { count: 1, aiRefined } });
 
   const after = await getEntitlement(user);

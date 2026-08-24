@@ -188,7 +188,12 @@ const USER = {
 const OTHER_USER = { ...USER, id: "u2", fullName: "Someone Else" };
 let sessionUser: Json | null = USER;
 
+// RC1-S6a: `spend` can no longer move — Founder D-3 froze purchased credits and
+// the routes dropped the call — so a bare `spend.length === 0` is structurally
+// vacuous and would ship false coverage. Every such assertion below is paired
+// with the append-only ledger, which is the only accounting left.
 const spend: number[] = [];
+const ledgered = () => tracked.filter((t) => t.event === "dispute_created");
 const kaiEvents: { type: string; payload: Json }[] = [];
 const tracked: { event: string; meta: Json }[] = [];
 let aiCalls = 0;
@@ -366,7 +371,8 @@ run("letter-control.runtime", async () => {
     check("IDOR: the body was not touched", stored("l1") === `enc:${TEMPLATE_BODY}`);
     const idorRound2 = await round2.POST(post("l1"), { params: { id: "l1" } });
     check("IDOR: round 2 on another user's letter is 404", idorRound2.status === 404);
-    check("IDOR: nothing was charged", spend.length === 0);
+    check("IDOR: nothing was charged and nothing was accounted for",
+      spend.length === 0 && ledgered().length === 0);
     sessionUser = USER;
   }
 
@@ -386,7 +392,8 @@ run("letter-control.runtime", async () => {
     check("an edited letter becomes the consumer's own draft", db.letters[0].status === "DRAFT");
     check("nothing was adjusted — no rule fired on ordinary prose", body.adjusted === false);
     check("no AI call happened anywhere in the edit path", aiCalls === 0);
-    check("editing costs no letter allowance", spend.length === 0);
+    check("editing costs no letter allowance and adds nothing to the ledger",
+      spend.length === 0 && ledgered().length === 0);
   }
 
   section("the edit is bounded and sanitized, never silently reformatted");
@@ -616,7 +623,8 @@ run("letter-control.runtime", async () => {
     check("it names the item to confirm", body.needsAssertion === true && body.tradelineId === "t1");
     check("the message is not an upsell", !/upgrade|professional|\$|pack/i.test(String(body.error)));
     check("NO letter row was written", db.letters.length === 1);
-    check("NOTHING was charged", spend.length === 0);
+    check("NOTHING was charged and nothing was accounted for",
+      spend.length === 0 && ledgered().length === 0);
     check("no AI call was made", aiCalls === 0);
     check("the entitlement gate was never reached", spend.length === 0 && !tracked.some((t) => t.event === "dispute_created"));
   }
@@ -628,13 +636,15 @@ run("letter-control.runtime", async () => {
     seedLetter({ status: "MAILED", mailedAt: new Date("2026-08-02"), responseText: "enc:Verified.", responseOutcome: "verified" });
     seedAssertion({ status: "WITHDRAWN" });
     check("withdrawn ⇒ still 400", (await round2.POST(post("l1"), { params: { id: "l1" } })).status === 400);
-    check("…and still nothing charged", spend.length === 0 && db.letters.length === 1);
+    check("…and still nothing charged or accounted for",
+      spend.length === 0 && ledgered().length === 0 && db.letters.length === 1);
 
     db.assertions.length = 0;
     seedAssertion({ bureauScope: "EXPERIAN" });
     const crossBureau = await round2.POST(post("l1"), { params: { id: "l1" } });
     check("an Experian-scoped fact does not unlock an Equifax escalation (400)", crossBureau.status === 400);
-    check("…and nothing was charged for it", spend.length === 0 && db.letters.length === 1);
+    check("…and nothing was charged or accounted for",
+      spend.length === 0 && ledgered().length === 0 && db.letters.length === 1);
 
     db.assertions.length = 0;
     seedAssertion({ userId: "u2" });
@@ -656,7 +666,7 @@ run("letter-control.runtime", async () => {
     check("it carries the consumer's confirmed claim", /paid or settled/i.test(composed));
     check("…and their own words", /Paid in full 3\/2\/2024\./.test(composed));
     check("the round advanced", db.letters[1].round === 4 && db.letters[1].parentLetterId === "l1");
-    check("one letter was accounted for", spend.length === 1 && spend[0] === 1);
+    check("one letter was accounted for", ledgered().length === 1 && (ledgered()[0].meta as { count?: number })?.count === 1);
     check("NO complaint intent is asserted by default", !/I am prepared to submit this record/.test(composed));
     check("…the reservation-of-rights framing is used instead", /I reserve the right to seek review/.test(composed));
     check("the stored body is encrypted", db.letters[1].body.startsWith("enc:"));
@@ -690,12 +700,13 @@ run("letter-control.runtime", async () => {
     seedAssertion();
     const noResponse = await round2.POST(post("l1"), { params: { id: "l1" } });
     check("no logged response ⇒ 400", noResponse.status === 400);
-    check("…and nothing charged", spend.length === 0);
+    check("…and nothing charged or accounted for", spend.length === 0 && ledgered().length === 0);
 
     db.letters[0].responseText = "enc:We deleted the item.";
     db.letters[0].responseOutcome = "deleted";
     const alreadyDeleted = await round2.POST(post("l1"), { params: { id: "l1" } });
     check("an item already reported deleted ⇒ 400 (no escalation needed)", alreadyDeleted.status === 400);
-    check("…and nothing charged", spend.length === 0 && db.letters.length === 1);
+    check("…and nothing charged or accounted for",
+      spend.length === 0 && ledgered().length === 0 && db.letters.length === 1);
   }
 });

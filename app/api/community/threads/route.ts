@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import {
   requireCommunityAccount,
+  COMMUNITY_UNAVAILABLE,
   communityDisplayName,
   normalizeCategory,
   cleanText,
@@ -21,7 +22,7 @@ export const maxDuration = 60; // a thread can ask Kai on creation (Opus call)
 // category. Annotates each with whether Kai has answered, for the UI badge.
 export async function GET(req: Request) {
   const account = await requireCommunityAccount();
-  if (!account) return NextResponse.json({ error: "Members only" }, { status: 403 });
+  if (!account) return NextResponse.json({ error: COMMUNITY_UNAVAILABLE, communityUnavailable: true }, { status: 403 });
 
   const url = new URL(req.url);
   const cat = url.searchParams.get("category");
@@ -64,7 +65,7 @@ export async function GET(req: Request) {
 // Accepts multipart/form-data so the post can carry image/PDF attachments.
 export async function POST(req: Request) {
   const account = await requireCommunityAccount();
-  if (!account) return NextResponse.json({ error: "Members only" }, { status: 403 });
+  if (!account) return NextResponse.json({ error: COMMUNITY_UNAVAILABLE, communityUnavailable: true }, { status: 403 });
 
   const form = await req.formData().catch(() => null);
   if (!form) return NextResponse.json({ error: "Bad request." }, { status: 400 });

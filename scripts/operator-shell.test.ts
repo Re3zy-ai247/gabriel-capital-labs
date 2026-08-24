@@ -52,8 +52,13 @@ check("page sorts the feed through the canonical comparator", /\.sort\(compareTh
 check("no randomness anywhere in the shell", ![ambient, page, card, now, rail].some((s) => /Math\.random/.test(s)));
 
 // ── Access model: all paid members, one predicate, fail-closed ───────────────
-check("canAccessCommunity delegates to the canonical isPremium predicate",
-  /return isPremium\(account\);/.test(community) && /import \{ isPremium \} from "\.\/entitlements"/.test(community));
+// RC1-S6a (Founder D-8): the network is OFF, not priced. The gate is a feature
+// switch, and the billing predicate must never come back — the negative half is
+// the half that matters.
+check("canAccessCommunity delegates to communityEnabled(), absent = off",
+  /return communityEnabled\(\);/.test(community) &&
+  /process\.env\.COMMUNITY_ENABLED === "true"/.test(community) &&
+  !/isPremium/.test(community));
 check("no duplicated billing logic (no plan-string comparisons anywhere in the gate module)",
   !/plan\s*===/.test(community));
 check("gate copy: paid membership, not agency-only",

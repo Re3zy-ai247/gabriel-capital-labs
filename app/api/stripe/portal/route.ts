@@ -26,9 +26,14 @@ export async function POST() {
   const user = await currentAccount();
   if (!user) return NextResponse.json({ error: "Please sign in first." }, { status: 401 });
 
+  // RC1-S6a (D-3): this portal exists for people who ALREADY paid — invoices,
+  // card updates, cancellation. It must not point anyone at a purchase. The
+  // control this refusal used to name now answers 410 Gone, so telling a
+  // consumer to press it would send them to a dead end for a product that is
+  // no longer sold. The refusal states the fact and stops.
   if (!user.stripeCustomerId) {
     return NextResponse.json(
-      { error: "No subscription found. Start with the Upgrade button." },
+      { error: "No subscription is associated with this account." },
       { status: 400 }
     );
   }

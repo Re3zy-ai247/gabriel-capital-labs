@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireCommunityAccount, communityDisplayName, cleanText, LIMITS, screenCommunityText } from "@/lib/community";
+import { requireCommunityAccount, COMMUNITY_UNAVAILABLE, communityDisplayName, cleanText, LIMITS, screenCommunityText } from "@/lib/community";
 import { filesFromForm, validateFiles, saveAttachments } from "@/lib/attachments";
 import { enforceRateLimit } from "@/lib/rateLimit";
 
@@ -11,7 +11,7 @@ export const runtime = "nodejs";
 // Accepts multipart/form-data so a reply can carry image/PDF attachments.
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const account = await requireCommunityAccount();
-  if (!account) return NextResponse.json({ error: "Members only" }, { status: 403 });
+  if (!account) return NextResponse.json({ error: COMMUNITY_UNAVAILABLE, communityUnavailable: true }, { status: 403 });
 
   const thread = await prisma.communityThread.findUnique({ where: { id: params.id } });
   if (!thread) return NextResponse.json({ error: "Not found" }, { status: 404 });
