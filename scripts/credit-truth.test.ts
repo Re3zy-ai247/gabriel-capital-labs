@@ -517,5 +517,68 @@ const BLOCK = [
   eq("the persisted column wins over the report text when present", reportedDofd({ dateOfFirstDelinquency: new Date(Date.UTC(2022, 4, 9)), bureauData: { EQUIFAX: { presence: "PRESENT", dofd: "01/2019" } } })?.source, "column");
 }
 
+
+// ===========================================================================
+// 10. TWO-DIGIT YEARS ARE YEARS, NOT DAYS (S11 AD review, AD-R2-2 note (b)).
+//
+// `parseReportDate("08/21")` used to fall through every explicit branch to
+// `new Date(v + " UTC")`, where the "names a day" heuristic read the 21 as a
+// day-of-month: 2001-08-21 at DAY precision. Two faults in one value — a
+// fabricated exact day the report never gave, and an anchor twenty years early,
+// which let the §605 clock call a 2021 delinquency obsolete. Since
+// reportedDofd() is now the single authority the clock, the scoring engine and
+// the condition model all read, one bad parse propagated to all three at once,
+// and obsolescence claimed early is precisely the assertion a dispute letter
+// must never carry.
+//
+// MM/YY is MONTH precision: a date of first delinquency without a year cannot
+// anchor anything, so the second number is a year, and the month is all the
+// report actually stated.
+// ===========================================================================
+{
+  const p = (v: string | null | undefined) => {
+    const r = parseReportDate(v ?? null);
+    return r ? [r.date.toISOString().slice(0, 10), r.precision] : null;
+  };
+  // The five shapes the round asked to pin, each with its documented value.
+  eq('"08/21" (MM/YY) → August 2021 at MONTH precision, never 2001 and never a day', p("08/21"), ["2021-08-31", "month"]);
+  eq('"08/2021" → MONTH precision', p("08/2021"), ["2021-08-31", "month"]);
+  eq('"2021-08" → MONTH precision', p("2021-08"), ["2021-08-31", "month"]);
+  eq('"08/15/2021" → DAY precision', p("08/15/2021"), ["2021-08-15", "day"]);
+  eq('garbage → null', p("not-a-date"), null);
+
+  eq('"08-21" (MM-YY) is the same shape', p("08-21"), ["2021-08-31", "month"]);
+  eq('"12/99" resolves to the past century, not 2099', p("12/99"), ["1999-12-31", "month"]);
+  eq('"08/15/21" (MM/DD/YY) states a day, so DAY precision with the century inferred', p("08/15/21"), ["2021-08-15", "day"]);
+  eq('"15/08/21" is refused — month 15 is not a month', p("15/08/21"), null);
+  eq('"21/08" is refused — ambiguous, and 21 is not a month', p("21/08"), null);
+  eq('"13/21" is refused', p("13/21"), null);
+  // The same class, one layer out: a string with no four-digit year can no
+  // longer reach `new Date`, which would have invented the current year.
+  eq('"Aug 21" is refused rather than dated to the current year', p("Aug 21"), null);
+  eq('"Aug 2021" still parses at MONTH precision', p("Aug 2021"), ["2021-08-31", "month"]);
+  eq('"August 15, 2021" still parses at DAY precision', p("August 15, 2021"), ["2021-08-15", "day"]);
+  eq('an 8-digit run with no separators is refused', p("08152021"), null);
+  eq('a bare year is still refused', p("2021"), null);
+
+  // The consequence that matters: a RECENT delinquency written MM/YY must not
+  // be called obsolete. Built from the clock so the guard cannot rot.
+  const now = new Date();
+  const recent = new Date(Date.UTC(now.getUTCFullYear() - 3, now.getUTCMonth(), 1));
+  const mmYY = `${String(recent.getUTCMonth() + 1).padStart(2, "0")}/${String(recent.getUTCFullYear() % 100).padStart(2, "0")}`;
+  eq(`"${mmYY}" (3 years ago, MM/YY) resolves to the right year`, parseReportDate(mmYY)?.date.getUTCFullYear(), recent.getUTCFullYear());
+  const recentData: BureauData = { EQUIFAX: { presence: "PRESENT", status: "Charge-Off", dofd: mmYY } };
+  const recentFall = fallOffInsight({ accountType: "CHARGE_OFF", creditorName: "CAPITAL ONE", bureauData: recentData, dateOfFirstDelinquency: null });
+  eq(`a ${mmYY} delinquency is NOT past the §605 window`, [recentFall?.pastWindow, recentFall?.dofdPrecision], [false, "month"]);
+  eq("scoring raises no §605 obsolescence angle for it", scoreTradeline({ accountType: "CHARGE_OFF", isDebtBuyer: false, balanceCents: 50000, dateOfFirstDelinquency: null, bureauData: recentData, nonStrategic: false, creditorName: "CAPITAL ONE" }).disputeAngles.some((a) => a.includes("obsolete")), false);
+  // …while still counting as the derogatory event it is.
+  eq("and it is still DEROGATORY — a missing day launders nothing", factualCondition({ accountType: "REVOLVING", dateOfFirstDelinquency: null, bureauData: recentData }), "DEROGATORY");
+  // An OLD MM/YY delinquency does still reach the window (the fix is not a mute).
+  const oldData: BureauData = { EQUIFAX: { presence: "PRESENT", status: "Charge-Off", dofd: `08/${String((now.getUTCFullYear() - 12) % 100).padStart(2, "0")}` } };
+  eq("a genuinely old MM/YY delinquency is still past the window", fallOffInsight({ accountType: "CHARGE_OFF", creditorName: "CAPITAL ONE", bureauData: oldData, dateOfFirstDelinquency: null })?.pastWindow, true);
+  // Month precision is never persisted, so no invented day can reach a letter.
+  eq("a MM/YY DOFD never becomes a day-precision column value", reportedDofd({ dateOfFirstDelinquency: null, bureauData: recentData })?.precision, "month");
+}
+
 console.log(failures === 0 ? "\nALL PASS" : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);
