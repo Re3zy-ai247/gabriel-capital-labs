@@ -30,6 +30,7 @@ import { stripComments, stripCommentsSelfTest } from "./_source";
 import { assembleMission, type MissionInputs } from "../lib/missionControl";
 import { assembleOperatorSession, type OperatorSessionInputs } from "../lib/operatorSession";
 import { assembleMissions } from "../lib/missionEngine";
+import { letterAuthorization } from "../lib/letter";
 import type { KaiHomeData } from "../lib/kaiHome";
 import { pickRecommendation } from "../lib/kaiHome";
 import type { ComposedCampaign } from "../lib/campaign";
@@ -469,14 +470,37 @@ function inputs(over: Partial<MissionInputs> = {}): MissionInputs {
   check("NEW-3/a: …and it is still counted as open work, not silently dropped",
     withdrawn.sessionClose.remaining.count === 1);
 
-  // (b) LEGACY / ORPHANED — no tradeline to confirm against at all.
-  const legacy = session([draft({ id: "L2", tradelineId: null, activeAssertionCount: 0 })]);
-  check("NEW-3/b: a legacy letter with no confirmation is NOT described as ready to mail",
+  // (b) LEGACY — drafted before confirmations existed, so it never had one to
+  // withdraw. Its tradeline is still on file; what is missing is any ACTIVE
+  // assertion. Same arm of the rule as (a), different population, and the
+  // refusal message is deliberately worded for both.
+  const legacy = session([draft({ id: "L2", activeAssertionCount: 0 })]);
+  check("NEW-3/b: a legacy letter that never had a confirmation is NOT described as ready to mail",
     !legacy.interruptedWork.some((w) => /ready to mail/i.test(w.label)));
-  check("NEW-3/b: …it says the account is no longer on the report, rather than asking for a confirmation that cannot be given",
-    /no longer on your report/i.test(legacy.interruptedWork[0]?.label ?? ""));
-  check("NEW-3/b: …and it does NOT send the consumer to an empty /tradelines page",
-    legacy.interruptedWork[0]?.resumeHref === "/upload");
+  check("NEW-3/b: …it is on hold and names the confirmation as what is missing, without claiming one was withdrawn",
+    legacy.interruptedWork[0]?.kind === "letter_blocked" &&
+    /on hold until you confirm the facts/i.test(legacy.interruptedWork[0]?.label ?? "") &&
+    !/withdrew|withdrawn/i.test(legacy.interruptedWork[0]?.label ?? ""));
+  check("NEW-3/b: …and it is counted as open work", legacy.sessionClose.remaining.count === 1);
+
+  // (c) ORPHANED — no tradeline at all (report deleted, or a letter that is not
+  // about a tradeline). Whether that is REVOKED is S4/S5's rule to state, not
+  // this guard's to assume: S5 is moving identity-correction letters, which
+  // legitimately carry a null tradelineId, to AUTHORIZED. So the expectation is
+  // DERIVED from letterAuthorization() rather than hardcoded — the property
+  // being pinned is that the surface agrees with the server, whichever way the
+  // rule reads. It still fails on the candidate, where the surface consults
+  // nothing at all.
+  const orphanInput = { mailedAt: null, tradelineId: null, activeAssertionCount: 0 };
+  const orphanBlocked = letterAuthorization(orphanInput) === "REVOKED";
+  const orphan = session([draft({ id: "L3", tradelineId: null, activeAssertionCount: 0 })]);
+  const orphanItem = orphan.interruptedWork[0];
+  check("NEW-3/c: a letter with no tradeline is presented exactly as letterAuthorization rules it",
+    orphanBlocked
+      ? orphanItem?.kind === "letter_blocked" && !/ready to mail/i.test(orphanItem?.label ?? "")
+      : orphanItem?.kind === "letter_unmailed" && /generated and ready to mail/i.test(orphanItem?.label ?? ""));
+  check("NEW-3/c: …and when it IS blocked, it does not send the consumer to a /tradelines page that has nothing to confirm",
+    !orphanBlocked || (/no longer on your report/i.test(orphanItem?.label ?? "") && orphanItem?.resumeHref === "/upload"));
 
   // An authorized draft is untouched — the change is a refusal-aware split, not
   // a blanket downgrade of every draft.
@@ -495,6 +519,11 @@ function inputs(over: Partial<MissionInputs> = {}): MissionInputs {
     id: "L1", tradelineId: "t1", recipientName: "Equifax Information Services LLC",
     parentLetterId: null, responseAt: null, responseOutcome: null, mailedAt: null, ...over,
   });
+  // Two blocked drafts under the rule as it stands: one confirmable (tradeline
+  // on file, zero ACTIVE assertions) and one orphaned. The orphaned one is
+  // included only for the roll-up assertions below, all of which hold whichever
+  // way the orphan rule reads, because the confirmable one alone already makes
+  // the account non-green.
   const blockedRollup = assembleMission(inputs({
     tradelines: [], reportCount: 0,
     letters: [mcLetter({}), mcLetter({ id: "L2", tradelineId: null })],
@@ -511,8 +540,10 @@ function inputs(over: Partial<MissionInputs> = {}): MissionInputs {
     !/no action needed/i.test(blockedRollup.health.find((h) => h.key === "case")?.message ?? ""));
   check("NEW-3: …the consumer is given the true next step for the confirmable draft",
     blockedRollup.tasks.some((t) => /Confirm the facts behind 1 dispute letter/.test(t.text) && t.href === "/tradelines"));
-  check("NEW-3: …and for the orphaned one, a step that exists",
-    blockedRollup.tasks.some((t) => /no longer on your report/.test(t.text) && t.href === "/upload"));
+  check("NEW-3: …and for the orphaned one, a step that exists (only while the rule blocks it)",
+    !orphanBlocked || blockedRollup.tasks.some((t) => /no longer on your report/.test(t.text) && t.href === "/upload"));
+  check("NEW-3: no blocked draft is ever left without a next step",
+    blockedRollup.tasks.filter((t) => t.href === "/tradelines" || t.href === "/upload").length > 0);
   check("NEW-3: both engines ask lib/letter.ts's letterAuthorization, never a second predicate",
     /letterAuthorization\(/.test(mcEngine) && /letterAuthorization\(/.test(stripComments(read("lib/operatorSession.ts"))));
   check("NEW-3: Kai's historical event line no longer asserts a letter is ready to mail now",
