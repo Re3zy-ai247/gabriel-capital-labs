@@ -831,12 +831,73 @@ const BLOCK = [
     ).size, 0);
 
   // The true-positives this must not cost, all with the corroboration present.
-  eq("the identical account number links whatever the formatting", matchRebuiltTradelines([acct("p1", "CAPITAL ONE", { mask: "XXXX-1234", ...noBalance })], [acct("n1", "CAPITAL ONE", { mask: "xxxx1234", ...noBalance })]).get("p1"), "n1");
+  // A full account number, differently formatted, IS identity.
+  eq("the identical account number links whatever the formatting", matchRebuiltTradelines([acct("p1", "CAPITAL ONE", { mask: "517805-XXXXXX-1234", ...noBalance })], [acct("n1", "CAPITAL ONE", { mask: "517805xxxxxx1234", ...noBalance })]).get("p1"), "n1");
+  // …but the same four VISIBLE digits are a tail, not an account number, and a
+  // tail can never establish identity on its own (R6-1). This assertion used to
+  // read the other way round, which is the defect.
+  eq("two bare 4-digit masks that agree are support, not proof → NO link on their own",
+    matchRebuiltTradelines([acct("p1", "CAPITAL ONE", { mask: "XXXX-1234", ...noBalance })], [acct("n1", "CAPITAL ONE", { mask: "xxxx1234", ...noBalance })]).size, 0);
   eq("a real, equal balance individuates across a mask-shape change", matchRebuiltTradelines([acct("p1", "CAPITAL ONE", { mask: "XXXX1234", balance: 147700 })], [acct("n1", "CAPITAL ONE", { mask: "517805XXXXXX1234", balance: 147700 })]).get("p1"), "n1");
   eq("an equal first-delinquency date individuates when no balance parsed",
     matchRebuiltTradelines(
       [acct("p1", "CAPITAL ONE", { mask: null, dofd: new Date(Date.UTC(2021, 7, 31)), ...noBalance })],
       [acct("n1", "CAPITAL ONE", { mask: "517805XXXXXX1234", dofd: new Date(Date.UTC(2021, 7, 31)), ...noBalance })]
+    ).get("p1"), "n1");
+
+  // ── R6-1 · THE EXACT-KEY PATH IS NOT EXEMPT ─────────────────────────────
+  //
+  // A matching natural key was taken as identity with no corroboration at all,
+  // so the module's own rule — "first-delinquency dates that disagree refuse
+  // outright, whatever the counts say" — never ran on that path. Reproduced
+  // end-to-end through the real routes: the mailed letter re-linked to a
+  // different account and closing it out wrote resolved=true on the account the
+  // consumer never disputed.
+  //
+  // Only the DOFD check reaches this path, deliberately. Two parses of the SAME
+  // account legitimately disagree on type and balance when extraction quality
+  // changes (AI reader vs regex fallback) — the common case the re-link exists
+  // to serve — so gating the exact key on those would trade a rare wrong link
+  // for frequent false orphans.
+  const d2019 = new Date(Date.UTC(2019, 2, 15));
+  const d2021 = new Date(Date.UTC(2021, 6, 22));
+
+  eq("A1 · same visible digits, contradicted delinquency → NO link",
+    matchRebuiltTradelines(
+      [acct("p1", "CAPITAL ONE", { mask: "****3333", type: "REVOLVING", balance: 370000, dofd: d2019 })],
+      [acct("n1", "CAPITAL ONE", { mask: "****3333", type: "INSTALLMENT", balance: 990000, dofd: d2021 })]
+    ).size, 0);
+  eq("A3 · both masks unreadable, 1-vs-1, delinquency contradicted → NO link",
+    matchRebuiltTradelines(
+      [acct("p1", "CAPITAL ONE", { mask: null, type: "REVOLVING", balance: 370000, dofd: d2019 })],
+      [acct("n1", "CAPITAL ONE", { mask: null, type: "INSTALLMENT", balance: 990000, dofd: d2021 })]
+    ).size, 0);
+
+  // Order dependence: the extractor prefers a non-deterministic AI reader with a
+  // regex fallback, so two runs over identical stored text can return the same
+  // two accounts in either order. Neither order may cross-link them.
+  const pAB = [
+    acct("pA", "CAPITAL ONE", { mask: "****1234", type: "REVOLVING", balance: 370000, dofd: d2019 }),
+    acct("pB", "CAPITAL ONE", { mask: "****1234", type: "INSTALLMENT", balance: 990000, dofd: d2021 }),
+  ];
+  const rA = acct("rA", "CAPITAL ONE", { mask: "****1234", type: "REVOLVING", balance: 370000, dofd: d2019 });
+  const rB = acct("rB", "CAPITAL ONE", { mask: "****1234", type: "INSTALLMENT", balance: 990000, dofd: d2021 });
+  const inOrder = matchRebuiltTradelines(pAB, [rA, rB]);
+  const reversed = matchRebuiltTradelines(pAB, [rB, rA]);
+  eq("C · same four digits, extractor order preserved → each links to its own account", [inOrder.get("pA"), inOrder.get("pB")], ["rA", "rB"]);
+  eq("C · …and reversed order does NOT cross-link them", [reversed.get("pA"), reversed.get("pB")], ["rA", "rB"]);
+
+  // The improved-extraction case this must not cost: the DOFD agrees, or is
+  // absent on one side, so nothing is refused.
+  eq("an exact key still links when only type and balance moved (AI → regex)",
+    matchRebuiltTradelines(
+      [acct("p1", "CAPITAL ONE", { mask: "****1234", type: "REVOLVING", balance: 370000, dofd: d2019 })],
+      [acct("n1", "CAPITAL ONE", { mask: "****1234", type: "OTHER", balance: 0, dofd: d2019 })]
+    ).get("p1"), "n1");
+  eq("an exact key still links when the rebuilt row parsed no delinquency date",
+    matchRebuiltTradelines(
+      [acct("p1", "CAPITAL ONE", { mask: "****1234", dofd: d2019 })],
+      [acct("n1", "CAPITAL ONE", { mask: "****1234", dofd: null })]
     ).get("p1"), "n1");
 
   const analyze = readFileSync(join(ROOT, "lib/analyze.ts"), "utf8");
@@ -845,6 +906,8 @@ const BLOCK = [
   eq("a conflicting account number refuses the pairing outright", /if \(masks === "conflicts"\) return false;/.test(analyze), true);
   eq("a shared tail must be long enough to identify anything", /MIN_MEANINGFUL_TAIL/.test(analyze), true);
   eq("a zero balance is never read as corroboration", /pb > 0 && pb === rb/.test(analyze), true);
+  eq("the delinquency-date refusal runs on the exact-key path too", /const acceptable = candidates\.filter\(\(id\) => \{[\s\S]{0,140}?delinquencyDatesDisagree\(p, row\)/.test(analyze), true);
+  eq("equality only means identity above the visible tail", /da === db && da\.length > MIN_MEANINGFUL_TAIL/.test(analyze), true);
   eq("the furnisher contact is carried by the same matcher, not by the parser key", /carriedContactByNewId/.test(analyze) && !/priorContactByKey/.test(analyze), true);
 }
 
