@@ -52,6 +52,14 @@
 //   returns the file to 31 passed / 0 failed. Exact transcript in the writer
 //   report for this slice.
 //
+// S11 ROUND (2026-08-24, branch rc1/s10-s11-fix off release-candidate tip
+// 59f2afd, per S11-review-CE.md finding E-1): PushToggle's own SUCCESS-state
+// message said "Phone alerts are on for this device" directly above the
+// persistent "nothing is sent through it today" hint this guard already
+// pinned — a contradiction the prior round's bureau/deadline-only scanner
+// could not see. Section 1c adds a general on/enabled/active-style scanner
+// and re-checks Settings for the same class per the coordinator's instruction.
+//
 // Offline throughout: no database, no network, no Stripe/Anthropic client, no
 // cron trigger, no email/push send. Source-text checks only.
 import { readFileSync, readdirSync } from "node:fs";
@@ -170,6 +178,70 @@ check(
   "…and the shipped truthful sentence does NOT trip the same scanner (order + negation both matter)",
   assertedAlertPromises(SETTINGS).length === 0 &&
     /won&apos;t notify you/.test(SETTINGS)
+);
+
+// ── 1c. S11-E-1: no "alerts are on/enabled/active" state claim survives beside
+// the nothing-is-sent statement (the contradiction class, not just the one string) ──
+// PRE-FIX (this round's baseline, 59f2afd — the S11 release-candidate tip):
+// components/PushToggle.tsx:93 set "Phone alerts are on for this device. 🎉" as
+// the SUCCESS-state message, directly above the persistent hint at :150-153
+// ("Registers this device for push notifications — nothing is sent through it
+// today."). Two true-sounding claims on one screen, one of them false: no
+// consumer-facing push composer exists (section 5 below re-proves this on
+// every run), so nothing was ever "on". S11 finding E-1 (S11-review-CE.md).
+// The prior guard round's ALERT_PROMISE scanner (section 2) missed this
+// because "alerts are on for this device" names no bureau/deadline/clock
+// class — it is a plain, unqualified capability claim, a different shape.
+const ON_STYLE_ALERT_CLAIM = /\b(alerts?|notifications?|push)\s+(is|are)\s+(on|enabled|active|live)\b/i;
+function assertedOnStyleClaims(text: string): string[] {
+  return text
+    .split(/(?<=[.!?])\s+/)
+    .filter((sentence) => ON_STYLE_ALERT_CLAIM.test(sentence) && !NEGATED.test(sentence))
+    .map((sentence) => sentence.trim().slice(0, 100));
+}
+console.log("\n1c. no on/enabled/active-style alert-state claim survives (S11 E-1)");
+check(
+  "the exact pre-fix E-1 contradiction string is gone from PushToggle",
+  !/Phone alerts are on for this device/i.test(PUSHTOGGLE_RAW)
+);
+check(
+  "…replaced by a state label that AGREES with the persistent nothing-is-sent description",
+  /This device is registered\. Nothing is sent through it today\./.test(PUSHTOGGLE)
+);
+check(
+  `PushToggle carries no OTHER on/enabled/active-style alert claim (found: ${
+    assertedOnStyleClaims(PUSHTOGGLE).join(" | ") || "none"
+  })`,
+  assertedOnStyleClaims(PUSHTOGGLE).length === 0
+);
+check(
+  `Settings (re-checked per the same instruction) carries none either (found: ${
+    assertedOnStyleClaims(SETTINGS).join(" | ") || "none"
+  })`,
+  assertedOnStyleClaims(SETTINGS).length === 0
+);
+check(
+  "the on-style scanner is not vacuous: a planted claim IS caught",
+  assertedOnStyleClaims("Phone alerts are on for this device.").length === 1
+);
+check(
+  "…specifically catches the literal pre-fix E-1 string, emoji included",
+  assertedOnStyleClaims("Phone alerts are on for this device. \u{1F389}").length === 1
+);
+check(
+  "…and is negation-aware like the section-2 scanner (a denial is not a claim)",
+  assertedOnStyleClaims("Push notifications are not active on this device.").length === 0
+);
+check(
+  "the scanner does NOT flag the truthful negative state ('alerts are off') — off-style stays out of scope",
+  assertedOnStyleClaims("Phone alerts are off for this device.").length === 0
+);
+check(
+  "…nor the honest replacement text itself, nor the persistent description it now agrees with",
+  assertedOnStyleClaims("This device is registered. Nothing is sent through it today.").length === 0 &&
+    assertedOnStyleClaims(
+      "Registers this device for push notifications — nothing is sent through it today."
+    ).length === 0
 );
 
 // ── 3. Data-control claims match S8's privacy posture (no deletion/export promise) ──
