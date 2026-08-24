@@ -531,6 +531,84 @@ run("ai-spend-control.runtime.test.ts", async () => {
   delete process.env.AI_DAILY_BUDGET_USD_GLOBAL;
   usage.length = 0;
 
+  section("B-R3-1: the pre-flight and the reservation must agree — no silent band");
+  // The band: probe refused at `spent >= budget`, reservation at
+  // `spent > 0 && spent + estimate > budget`. Since the estimate is positive,
+  // `budget − estimate < spent < budget` is non-empty and EVERY consumer who
+  // reaches the ceiling passes through it. In the band the probe admitted, the
+  // reservation refused, lib/analyze.ts swallowed the refusal into its regex
+  // fallback, and the route answered `ok: true` on a fully degraded re-analysis.
+  // A refused reservation writes no usage row, so the sum never advances: the
+  // band is an ABSORBING state, silent until midnight UTC.
+  usage.length = 0;
+  meter.resetGlobalSpendCache();
+  delete process.env.AI_DAILY_BUDGET_USD_GLOBAL;
+  process.env.AI_DAILY_BUDGET_USD_PER_USER = "1.00";
+  const parseEstimate = meter.reportParseEstimateUsd();
+  check(`a report-parse call has a positive representative estimate ($${parseEstimate.toFixed(4)})`, parseEstimate > 0);
+  check("and it is smaller than the daily ceiling, so the band is a band and not the whole day", parseEstimate < 1.0);
+
+  // Land squarely inside the band: spent + estimate > 1.00, but spent < 1.00.
+  const bandSpend = 1.0 - parseEstimate / 2;
+  createUsage({ data: { userId: "user_band", costUsd: bandSpend } });
+  let bandRefusal: unknown = null;
+  try {
+    await meter.assertAiBudgetAvailable("user_band", parseEstimate);
+  } catch (e) {
+    bandRefusal = e;
+  }
+  check(
+    `the probe now REFUSES inside the band ($${bandSpend.toFixed(4)} spent of $1.00)`,
+    bandRefusal instanceof meter.AiSpendRefusal
+  );
+  check("and reports the per-user kind, not the platform one",
+    bandRefusal instanceof meter.AiSpendRefusal && bandRefusal.kind === "budget-exhausted");
+  check(
+    "the reservation refuses the same call — probe and control now agree",
+    await meter.meteredMessage("parse", "user_band", { ...REQUEST, max_tokens: 8000 }).then(
+      () => false,
+      (e) => e instanceof meter.AiSpendRefusal
+    )
+  );
+  // Non-vacuity: the OLD rule (no estimate) still admits here, which is exactly
+  // the hole. Asserting it keeps the fix from being reverted quietly.
+  check(
+    "with estimateUsd omitted the old rule would still admit — the estimate is what closes it",
+    await meter.assertAiBudgetAvailable("user_band").then(() => true, () => false)
+  );
+
+  section("B-R3-1: /api/reports/analyze cannot answer success on a degraded re-analysis");
+  usage.length = 0;
+  createUsage({ data: { userId: "user_analyze", costUsd: bandSpend } });
+  analyzeRuns = 0;
+  const bandAnalyze = await analyzeRoute.POST(
+    new Request("http://localhost/api/reports/analyze", { method: "POST", headers: { "content-type": "application/json" }, body: "{}" })
+  );
+  const bandBody = (await bandAnalyze.json()) as Record<string, unknown>;
+  check("in the band the re-analysis refuses instead of running", bandAnalyze.status === 429);
+  check("nothing was re-analyzed, so nothing was destructively rewritten", analyzeRuns === 0);
+  check("it does not claim success", bandBody.ok !== true);
+  check("the consumer is told why", typeof bandBody.error === "string" && (bandBody.error as string).length > 20);
+
+  // And the healthy path still reports the three truth axes rather than a bare ok.
+  usage.length = 0;
+  analyzeRuns = 0;
+  const healthyAnalyze = await analyzeRoute.POST(
+    new Request("http://localhost/api/reports/analyze", { method: "POST", headers: { "content-type": "application/json" }, body: "{}" })
+  );
+  const healthyBody = (await healthyAnalyze.json()) as Record<string, unknown>;
+  check("with budget available the re-analysis runs", healthyAnalyze.status === 200 && analyzeRuns === 1);
+  check("and the payload carries usedAI/degraded/aiRefused, not a bare ok",
+    "usedAI" in healthyBody && "degraded" in healthyBody && "aiRefused" in healthyBody);
+  check("reportsAnalyzed counts what was actually re-read", healthyBody.reportsAnalyzed === 1);
+  check("a run that did not use the AI reader is reported as degraded",
+    healthyBody.usedAI === false && healthyBody.degraded === true);
+  check("but it is not reported as an AI REFUSAL when none happened", healthyBody.aiRefused === false);
+
+  delete process.env.AI_DAILY_BUDGET_USD_PER_USER;
+  usage.length = 0;
+  meter.resetGlobalSpendCache();
+
   section("COVERAGE: every reachable metered call site must open a principal");
   // ── WHY THIS REPLACED AN ASSERTION ────────────────────────────────────────
   // This section used to read: "outside any principal an anonymous call is still

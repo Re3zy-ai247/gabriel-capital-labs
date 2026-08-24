@@ -157,6 +157,7 @@ try {
   const deployRunbook = readFileSync(join(root, ".ai", "RUNBOOKS", "deploy.md"), "utf8");
   const deployDoc = readFileSync(join(root, "DEPLOY.md"), "utf8");
   const operations = readFileSync(join(root, "OPERATIONS.md"), "utf8");
+  const releaseScript = readFileSync(join(root, "scripts", "release-verify.sh"), "utf8");
   for (const [label, doc] of [
     ["the deploy runbook", deployRunbook],
     ["DEPLOY.md", deployDoc],
@@ -177,6 +178,33 @@ try {
   for (const table of ["TermsAcceptance", "ConsumerAssertion"]) {
     check(`OPERATIONS.md restore names ${table} among the tables to verify`, operations.includes(table));
   }
+  // ── The spend knobs must be documented where an operator looks (S11 · CE2-3) ──
+  // A $50/day platform-wide AI ceiling with a working default is invisible until
+  // it binds: ~50 consumers at the $1.00 per-consumer default reach it, and from
+  // then until 00:00 UTC every consumer is told AI analysis is paused. Nothing
+  // fails, so nothing surfaces it — which is why it has to be written down.
+  for (const [label, doc] of [
+    ["the deploy runbook", deployRunbook],
+    ["DEPLOY.md", deployDoc],
+    ["OPERATIONS.md", operations],
+  ] as const) {
+    check(`${label} names AI_DAILY_BUDGET_USD_GLOBAL`, doc.includes("AI_DAILY_BUDGET_USD_GLOBAL"));
+    check(`${label} names AI_DAILY_BUDGET_USD_PER_USER`, doc.includes("AI_DAILY_BUDGET_USD_PER_USER"));
+    check(`${label} names HEALTH_READY_DB_TTL_MS`, doc.includes("HEALTH_READY_DB_TTL_MS"));
+    check(`${label} states the platform default (50)`, /\b50(?:\.00)?\b/.test(doc));
+    check(`${label} says the global ceiling is a Founder decision`, /Founder decision/i.test(doc));
+    check(
+      `${label} states the symptom — a product-wide AI pause until midnight UTC`,
+      /paused/i.test(doc) && /UTC/.test(doc)
+    );
+  }
+  check(
+    "release-verify.sh prints the configured ceilings so a promotion records them",
+    /AI_DAILY_BUDGET_USD_GLOBAL/.test(releaseScript) &&
+      /AI_DAILY_BUDGET_USD_PER_USER/.test(releaseScript) &&
+      /HEALTH_READY_DB_TTL_MS/.test(releaseScript)
+  );
+
   check(
     "OPERATIONS.md no longer claims a restored DB needs no migration step",
     !/a restore does not need a\s*\n?separate migration step[\s\S]{0,200}$/m.test(operations) &&

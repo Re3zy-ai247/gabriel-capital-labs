@@ -99,6 +99,19 @@ echo "▶ Readiness: $READY_BODY"
 #   encryption  — DOCUMENT_ENCRYPTION_KEY absent (100% of report intake fails)
 # Both are dependencies of the RELEASE, not of the process, so they belong here
 # and not in the liveness probe.
+# S11 · CE2-3. The spend ceilings have working defaults, so nothing fails without
+# them — which is how a $50/day platform-wide AI pause becomes a launch-day
+# surprise. Print what is in force so a promotion leaves a record of it. Values
+# only bind if they are exported here; blank means "the default applies".
+echo "▶ AI spend ceilings (defaults apply when unset)"
+echo "  AI_DAILY_BUDGET_USD_GLOBAL   = ${AI_DAILY_BUDGET_USD_GLOBAL:-<unset — default 50.00/day platform-wide>}"
+echo "  AI_DAILY_BUDGET_USD_PER_USER = ${AI_DAILY_BUDGET_USD_PER_USER:-<unset — default 1.00/day per consumer>}"
+echo "  HEALTH_READY_DB_TTL_MS       = ${HEALTH_READY_DB_TTL_MS:-<unset — default 5000 ms>}"
+if [ -z "${AI_DAILY_BUDGET_USD_GLOBAL:-}" ]; then
+  echo "  NOTE  the platform ceiling is a Founder decision; at the \$1.00 per-consumer default,"
+  echo "        ~50 consumers at full allowance pause AI product-wide until 00:00 UTC."
+fi
+
 echo "▶ Readiness dependencies"
 case "$READY_BODY" in
   *'"schema":"ok"'*)     echo "  OK   schema      required migrations are applied" ;;
