@@ -249,11 +249,22 @@ function LettersInner() {
   return (
     <AppShell title="/ Dispute Letters">
       <EduBanner />
-      {params.get("purchase") === "success" && (
-        <div className="mb-4 rounded-lg border border-success-500/40 bg-success-500/10 px-4 py-3 text-sm text-success-300">
-          🎉 Payment received — your letter pack is being added. Your extra letters will be available momentarily.
-        </div>
-      )}
+      {/* RC1-S6b remediation (H-1). A success-green banner with a 🎉 stood here
+          and fired on `?purchase=success`, telling the reader a payment had been
+          received, that a letter pack "is being added", and that extra letters
+          would arrive momentarily. All three are false: /api/stripe/checkout
+          refuses every consumer purchase with a 410 before Stripe is touched,
+          nothing is added, and there is no quota for letters to be "extra" to.
+          The URL survives in historical Stripe receipts, bookmarks and browser
+          history, and the param is trivially typed by anyone.
+
+          NOTHING replaces it, deliberately. A neutral historical note was the
+          alternative, but any such note has to keep a `purchase === "success"`
+          branch alive on a consumer surface — the exact shape the new
+          purchase-confirmation rule in scripts/consumer-copy-sweep.test.ts
+          forbids, and one edit away from being a banner again. The truthful
+          statement about preserved credits belongs on /billing, where the
+          record actually lives, and it is there. */}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-xl font-semibold">Dispute Letter Builder</h2>
         {tradelines.length > 1 && (

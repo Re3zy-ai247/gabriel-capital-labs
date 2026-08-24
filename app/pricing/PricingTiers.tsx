@@ -64,7 +64,7 @@ const INCLUDED: { group: string; items: string[] }[] = [
 const FAQ: [string, string][] = [
   [
     "What does CreditVector cost me?",
-    "Nothing. The consumer product is free to use today — there is no plan to pick, no card to enter, and no paid tier held back behind what you can see. If that ever changes, it will be said plainly and in advance, not discovered at a checkout screen.",
+    "Nothing. The consumer product is free to use today — there is no plan to pick, no card to enter, and no paid tier held back behind what you can see.",
   ],
   [
     "Is there a paid version with more features?",

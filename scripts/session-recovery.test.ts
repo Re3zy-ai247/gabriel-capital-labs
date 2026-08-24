@@ -431,7 +431,19 @@ function testOwnedPagesWireTheGate() {
   // Onboarding gets the app chrome (A1-15) without its pricing copy being touched.
   const onboarding = rendered("app/onboarding/page.tsx");
   check("onboarding renders inside AppShell (A1-15)", /<AppShell title="\/ Getting started">/.test(onboarding) && onboarding.includes("</AppShell>"));
-  check("onboarding's pricing copy is left to the copy slice", onboarding.includes("Want the full engine?"));
+  // RC1-S6b: S2's hand-off marker ("Want the full engine?") existed to hold the
+  // stale upsell in place until the copy slice landed. It has landed. Pinned
+  // both ways now — the truthful replacement must be present AND the upsell
+  // must not come back. rendered() strips {/* */} and //, so the narration at
+  // app/onboarding/page.tsx:105-111 satisfies neither half.
+  check("onboarding's tail CTA states the consumer already has the whole product",
+    onboarding.includes("You already have the full engine") &&
+    onboarding.includes("held back behind a paid tier"));
+  check("onboarding's tail CTA sells nothing and routes into the product, not /pricing",
+    !/Want the full engine\?/.test(onboarding) &&
+    !/\/pricing/.test(onboarding) &&
+    !/View Pricing/.test(onboarding) &&
+    /href="\/dashboard"/.test(onboarding));
 }
 
 // ── 8 — the login screen honours the return path ───────────────────────────

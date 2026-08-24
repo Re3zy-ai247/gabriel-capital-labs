@@ -159,9 +159,9 @@ export default async function CommunityPage({
           <Network className="mx-auto mb-3 h-9 w-9 text-brand-400" aria-hidden="true" />
           <h2 className="mb-2 text-lg font-semibold">The Operator Network is closed right now</h2>
           <p className="mb-5 text-sm text-slate-400">
-            It is switched off for everyone — this is not about your account, and there is nothing to buy that would
-            open it. If you posted here before, your posts are still yours and still under your control: you can
-            delete anything you wrote, whether or not the network is open.
+            It is switched off for everyone — this is not about your account, and there is
+            nothing to buy that would open it. If you posted here before, your posts are still yours and still under
+            your control: you can delete anything you wrote, whether or not the network is open.
           </p>
           <p className="text-sm text-slate-400">
             Everything else in CreditVector is unaffected and open to you.{" "}

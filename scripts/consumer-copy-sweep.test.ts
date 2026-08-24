@@ -4,10 +4,20 @@
 //
 // THE INVARIANT, EXECUTABLE:
 //   No consumer-facing surface quotes a consumer price, names a retired
-//   consumer tier as something to get, offers a purchase, meters a letter
-//   quota, promises a subscription cancellation, or gates a feature on
-//   membership — AND each swept surface positively states the truthful thing
-//   that replaced it.
+//   consumer tier as something to get, offers a purchase, confirms a purchase,
+//   meters a letter quota, promises a subscription cancellation, or gates a
+//   feature on membership — AND each swept surface positively states the
+//   truthful thing that replaced it.
+//
+// COVERAGE (M-1). The absence half runs over the WHOLE consumer tree, walked
+// from disk at run time — every .ts/.tsx under app/ and components/ minus the
+// business, staff and content areas listed in EXCLUDED below. It is not a
+// hand-maintained file list: a new consumer page is covered the moment it
+// exists, which is the only version of this guard worth having. The first cut
+// of this file scanned sixteen named files while its header claimed to be
+// tree-wide, and a live "Payment received" banner on an owned, supposedly
+// scanned page survived it (H-1). The presence half is necessarily per-page and
+// names its files.
 //
 // TWO HALVES, BOTH REQUIRED. An absence scan alone passes on a blank file, so
 // every removal below is paired with a presence check on the same surface. A
@@ -34,7 +44,7 @@
 
 export {};
 
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
 const root = join(__dirname, "..");
@@ -69,7 +79,9 @@ function codeOnly(src: string): string {
 /** Whitespace-normalised source, for presence checks on copy that line-wraps. */
 const flat = (s: string) => s.replace(/\s+/g, " ");
 
-// ── The swept consumer surfaces ─────────────────────────────────────────────
+// ── The surfaces this slice REWROTE. Named, because the presence checks in §2-§6
+// ── ask each one for its own specific sentence. The absence scan below runs
+// ── over a superset: the whole consumer tree, walked from disk.
 const SURFACES = [
   "app/page.tsx",
   "app/pricing/page.tsx",
@@ -94,15 +106,48 @@ const code = new Map(SURFACES.map((p) => [p, codeOnly(read(p))] as const));
 const get = (p: (typeof SURFACES)[number]) => src.get(p)!;
 const bare = (p: (typeof SURFACES)[number]) => code.get(p)!;
 
-// ── 1 · TREE-WIDE ABSENCE SCANS ─────────────────────────────────────────────
+// ── THE CONSUMER TREE ───────────────────────────────────────────────────────
+// Walked from disk, so nothing is covered only because someone remembered to
+// add it. Exclusions are areas that are legitimately NOT consumer surfaces, and
+// each says why — an exclusion is how a paywall hides, so none is silent.
+const EXCLUDED: [RegExp, string][] = [
+  [/^app\/agency\//, "the agency product is a real business surface; its prices are legitimate and out of consumer scope by assignment"],
+  [/^app\/admin\//, "staff-only tooling, never rendered to a consumer"],
+  [/^app\/api\//, "route layer; the money invariants there are guarded by no-paid-advantage + the S6a runtime suite"],
+  [/^app\/academy\//, "educational content about credit, not about CreditVector's commercials"],
+  [/^app\/brief\//, "editorial news content; quotes third-party figures by its nature"],
+  [/^app\/review\//, "the Founder walkthrough rooms — deliberately synthetic fixture data, gated behind reviewBuildAllowed(), unreachable in a consumer build"],
+  [/^app\/gxl\//, "same review-room family as app/review"],
+  [/^components\/(admin|brief|academy)\//, "the component halves of the three excluded areas above"],
+  [/^components\/cxos\/(review|journey)\//, "fixture + choreography internals of the review rooms"],
+];
+
+function consumerTree(): string[] {
+  const out: string[] = [];
+  const walk = (rel: string) => {
+    for (const e of readdirSync(join(root, rel), { withFileTypes: true })) {
+      const p = `${rel}/${e.name}`;
+      if (e.isDirectory()) walk(p);
+      else if (/\.tsx?$/.test(e.name)) out.push(p);
+    }
+  };
+  walk("app");
+  walk("components");
+  return out.filter((p) => !EXCLUDED.some(([re]) => re.test(p))).sort();
+}
+
+const TREE = consumerTree();
+const treeCode = new Map(TREE.map((p) => [p, codeOnly(read(p))] as const));
+
+// ── 1 · ABSENCE SCANS OVER THE WHOLE CONSUMER TREE ──────────────────────────
 // Each rule names WHAT it forbids and lists the exceptions it tolerates, with
 // the reason. An unexplained allowlist entry is how a paywall comes back.
 
 interface Rule {
   label: string;
   re: RegExp;
-  /** Surfaces where a match is legitimate, each with the reason it is legitimate. */
-  allow?: Partial<Record<(typeof SURFACES)[number], RegExp>>;
+  /** Paths where a match is legitimate, each pinned to the exact permitted shape. */
+  allow?: Record<string, RegExp>;
 }
 
 const RULES: Rule[] = [
@@ -117,6 +162,17 @@ const RULES: Rule[] = [
       // amounts a consumer's own report shows, not an amount CreditVector
       // charges. Pinned to the exact demo row so a real price cannot hide here.
       "components/marketing/Showcase.tsx": /\{ label: "Balance", values: \["\$2,410", "\$2,410", "\$3,180"\], flag: true \},/,
+      // Same class: the paste-your-report placeholder shows what a report line
+      // looks like. Pinned to the whole placeholder string.
+      "app/upload/page.tsx": /placeholder=\{"Paste your credit report's accounts section here…[\s\S]*?XXXX1477"\}/,
+      // A regex REPLACEMENT BACKREFERENCE, not money. Pinned to the whole call.
+      "components/community/AmbientGrid.tsx": /\.replace\(\/rgba\?\\\(\(\[\^\)\]\+\)\\\)\/, "\$1"\)/,
+      // The consumer's own POSTAGE total, not a CreditVector price — so it is
+      // not this slice's rule to enforce. It is, separately, hardcoded and
+      // therefore asserts $0.00 whatever the consumer actually spent: reviewer
+      // L-4, an S11/mail truthfulness item, outside S6b's owned paths. Pinned
+      // to the exact tile so this exception cannot shelter a real price.
+      "app/mail/page.tsx": /<StatPill label="Mail spend" value="\$0\.00" \/>/,
     },
   },
   {
@@ -158,14 +214,31 @@ const RULES: Rule[] = [
     re: /is for members|paid (CreditVector )?membership|every paid plan|members get|Members only/i,
   },
   {
-    label: 'no permanence promise ("free forever", "forever free", "always free")',
-    re: /free forever|forever free|always free/i,
+    // "You're always free to send more" (app/campaigns/page.tsx) is "free" in
+    // the sense of AT LIBERTY, and forbidding it would push the product toward
+    // worse copy for no truth gain. Narrowed by sense rather than by file, so
+    // the exemption holds tree-wide and a real "always free" pricing claim on
+    // any page still fails.
+    label: 'no permanence promise ("free forever", "forever free", "always free" in the pricing sense)',
+    re: /free forever|forever free|always free(?! to\b)/i,
+  },
+  {
+    // RC1-S6b REMEDIATION (H-1). The rule that was missing. A success-green
+    // "🎉 Payment received — your letter pack is being added" banner on
+    // app/letters/page.tsx fired on `?purchase=success` — a URL that lives on in
+    // historical Stripe receipts and is trivially typed — and it passed all nine
+    // preceding rules: no `$`, no "Upgrade to", no `letters_5`, no quota phrase.
+    // The regex deliberately catches the CODE SHAPE as well as the copy, because
+    // a surviving `purchase === "success"` branch is one edit away from being a
+    // banner again.
+    label: 'no purchase-confirmation or fulfilment banner ("Payment received", purchase=success, "letter pack is being added")',
+    re: /Payment received|purchase["']?\s*\)?\s*===?\s*["']success|letter pack is being added|credits? (are|is) being added/i,
   },
 ];
 
 for (const rule of RULES) {
-  for (const p of SURFACES) {
-    const body = bare(p);
+  for (const p of TREE) {
+    const body = treeCode.get(p)!;
     const hit = rule.re.exec(body);
     if (!hit) continue;
     const exempt = rule.allow?.[p];
@@ -180,8 +253,19 @@ for (const rule of RULES) {
     );
   }
 }
-// Report the clean surfaces too, so a suite that scanned nothing is visible.
-ok(`all ${SURFACES.length} consumer surfaces scanned against ${RULES.length} absence rules`, SURFACES.length === 16 && RULES.length === 9);
+// A suite that silently scanned nothing is the failure mode this whole section
+// exists to prevent, so the coverage itself is an assertion. The floor is a
+// floor, not the current count: it fails if the walker starts returning far less
+// than the tree really holds, without breaking every time a page is added.
+ok(
+  `absence scan covered ${TREE.length} consumer files x ${RULES.length} rules (excludes: ${EXCLUDED.length} documented areas)`,
+  TREE.length >= 120 && RULES.length === 10,
+);
+// The 16 rewritten surfaces must all be INSIDE the scanned tree — a presence
+// check on a file the absence scan never reads would be half a guard.
+for (const p of SURFACES) {
+  ok(`${p} is inside the scanned consumer tree`, TREE.includes(p));
+}
 
 // ── 2 · PER-PAGE PRESENCE: the truthful statement that replaced the pitch ────
 
