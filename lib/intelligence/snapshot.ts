@@ -8,7 +8,7 @@ import type { AccountType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { yearsSince } from "@/lib/utils";
 import { REINVESTIGATION_DAYS, daysElapsedSinceEstimatedReceipt } from "@/lib/forecast";
-import { fallOffInsight } from "@/lib/tradelineInsights";
+import { fallOffInsight, reportedDofd } from "@/lib/tradelineInsights";
 import { getBureauData } from "@/lib/bureauData";
 import { bureauTextBlob } from "@/lib/obsolescence";
 import { ownOutcomeTrack, ownHistorySummary, type OwnTrack } from "@/lib/outcomeLedger";
@@ -180,7 +180,11 @@ export function factualCondition(t: ConditionInput): FactualCondition {
   // unattributed account-level observation — lib/parse.ts UNATTRIBUTED).
   const text = bureauTextBlob(getBureauData(t.bureauData));
   if (hasAdverseStatusEvidence(text)) return "DEROGATORY";
-  if (t.dateOfFirstDelinquency != null) return "DEROGATORY";
+  // A first-delinquency date on file is a derogatory EVENT. Read it through the
+  // shared derivation so a month-precision DOFD the column cannot hold
+  // ("08/2021") still counts — the absence of a PARSED day must never launder a
+  // reported delinquency into "we found nothing".
+  if (reportedDofd(t) != null) return "DEROGATORY";
   if (hasAffirmativeStandingEvidence(text)) return "CLEAN";
   return "NEEDS_REVIEW";
 }

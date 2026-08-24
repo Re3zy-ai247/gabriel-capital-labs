@@ -1,6 +1,7 @@
 import { AccountType, Probability } from "@prisma/client";
 import { type BureauData, crossBureauConflicts, hasCrossBureauKnowledge } from "./bureauData";
 import { obsolescenceWindowYears, bureauTextBlob, reportingOffsetDays } from "./obsolescence";
+import { knownBureauCount, reportedDofd } from "./tradelineInsights";
 import { yearsSince } from "./utils";
 
 export interface ScoreInput {
@@ -70,7 +71,11 @@ export function scoreTradeline(input: ScoreInput): ScoreResult {
     creditorName: input.creditorName,
     text: bureauTextBlob(input.bureauData),
   });
-  const yrs = yearsSince(input.dateOfFirstDelinquency);
+  // Read the DOFD through the shared derivation (column first, then what the
+  // report itself printed). `new Date("08/2021")` is Invalid, so a month-only
+  // DOFD — one of the commonest formats on a real report — used to disable this
+  // whole block, and the §605 obsolescence angle silently never fired.
+  const yrs = yearsSince(reportedDofd(input)?.date ?? null);
   // Collection/charge-off clocks start 180 days after DOFD (§1681c(c)(1)); fold
   // that into the year threshold so we never call an item obsolete early.
   const windowYrs = windowYears + reportingOffsetDays(input.accountType) / 365.25;
@@ -93,8 +98,15 @@ export function scoreTradeline(input: ScoreInput): ScoreResult {
       reasons.push(`${conflicts.length} verifiable cross-bureau inconsistency(ies).`);
       angles.push(...conflicts);
     }
-  } else {
+  } else if (knownBureauCount(input.bureauData) === 1) {
     reasons.push("Single-bureau data — dispute focuses on this bureau's internal accuracy (no cross-bureau claims).");
+  } else {
+    // ZERO bureaus known. `hasCrossBureauKnowledge` is "fewer than 2", so this
+    // branch used to emit the single-bureau sentence here too — naming "this
+    // bureau" when the report attributed the account to no bureau at all. That
+    // is the fabrication class P0-2 exists to prevent, and it fired on every
+    // account of every multi-bureau report read by the fallback extractor.
+    reasons.push("No bureau attribution on file — the report didn't say which bureau reports this account, so no bureau-specific or cross-bureau claim is made.");
   }
 
   score = Math.max(0, Math.min(100, score));

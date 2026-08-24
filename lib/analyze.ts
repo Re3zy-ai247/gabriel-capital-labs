@@ -1,5 +1,6 @@
 import type { Bureau, PrismaClient } from "@prisma/client";
 import { extractRawTradelines, toBureauData, type ExtractedTradeline } from "./parse";
+import { parseReportDate } from "./tradelineInsights";
 import { aiExtractTradelines } from "./aiParse";
 import { classifyCreditor } from "./classify";
 import { scoreTradeline } from "./scoring";
@@ -36,14 +37,22 @@ function safeCents(v: number): number {
 // history". The condition model (lib/intelligence/snapshot.ts factualCondition)
 // reads the report's status text as well, so an unparseable or absent DOFD can
 // no longer launder a charged-off account into "Clean".
+// S11: it now parses the formats reports actually print (MM/YYYY, MM-YYYY,
+// MM/DD/YYYY, MM-DD-YYYY, YYYY-MM, YYYY-MM-DD, "August 15, 2021"), but it
+// persists a value ONLY when the report named a specific DAY. A month-precision
+// DOFD stays out of this column on purpose: lib/letter.ts prints the column
+// inside a mailed dispute letter as "The date of first delinquency is reported
+// as <full date>", so widening "08/2021" into "August 1, 2021" would put a day
+// the report never stated into a legal document the consumer signs.
+//
+// Nothing is lost by that: the reported value stays in `bureauData`, and
+// reportedDofd() (lib/tradelineInsights.ts) is the single derivation the §605
+// clock, the scoring engine and the condition model all read — so a month-only
+// DOFD still runs the obsolescence clock and still marks the account
+// derogatory. Precision is carried, never invented and never discarded.
 function safeDate(v: string | undefined | null): Date | null {
-  if (!v) return null;
-  const d = new Date(v);
-  if (isNaN(d.getTime())) return null;
-  // Guard against absurd years from mis-parsed text.
-  const y = d.getUTCFullYear();
-  if (y < 1900 || y > 2100) return null;
-  return d;
+  const parsed = parseReportDate(v ?? null);
+  return parsed && parsed.precision === "day" ? parsed.date : null;
 }
 
 // A re-analysis deletes a report's tradelines and recreates them with NEW cuids,
