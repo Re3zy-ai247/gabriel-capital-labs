@@ -29,6 +29,7 @@ const REQUIRED = [
   "consumer-assertion.runtime.test.ts",
   "terms-acceptance.runtime.test.ts",
   "letter-control.runtime.test.ts",
+  "free-entitlement.runtime.test.ts",
 ];
 
 if (guards.length === 0) {
