@@ -14,15 +14,15 @@
 // The route BEHAVIOUR is proven separately, by executing the real handlers:
 // scripts/runtime/letter-control.runtime.test.ts.
 //
-// NON-VACUITY (measured 2026-08-24; pre-fix files restored and reverted
-// immediately, never committed):
-//   · release candidate `59f2afd` (all five source files, lib/bodyBounds.ts
-//     removed)                                  → 143 passed, 26 failed (exit 1)
-//     — journey CRITICAL-1 (bureau attribution), B-1, B-2, B-4, AD-3, AD-7
+// NON-VACUITY (measured 2026-08-24; the eight source files this suite reads
+// reverted to the release candidate and restored immediately, never committed):
+//   · release candidate `59f2afd`               → 151 passed, 40 failed (exit 1)
+//     — journey CRITICAL-1 (bureau relabelling), critic X-3 (the silent 5-fact
+//       cap) and X-4 (the banner wording), B-1, B-2, B-4, AD-2 surfacing, AD-3, AD-7
 //   · branch base `31d4e35:lib/letter.ts`       → the suite cannot even load
 //   · `31d4e35:app/letters/print/[id]/page.tsx` → 126 passed,  9 failed (exit 1)
 //   · `31d4e35:app/letters/page.tsx`            →  99 passed, 36 failed (exit 1)
-//   · this tree                                 → 173 passed,  0 failed (exit 0)
+//   · this tree                                 → 197 passed,  0 failed (exit 0)
 
 export {};
 
@@ -34,6 +34,8 @@ import {
   buildUserPrompt,
   canTransitionLetter,
   isConsumerAssertionType,
+  letterAuthorization,
+  LETTER_AUTHORIZATION_REVOKED_MESSAGE,
   MAX_LETTER_ASSERTIONS,
   planLetterRegeneration,
   renderTemplateLetter,
@@ -479,6 +481,31 @@ console.log("\n— 10. S11 review items (B-1 / B-2 / B-4 / AD-3 / AD-7) —");
     const legacyPlan = planLetterRegeneration(["EQUIFAX"], [{ id: "l_legacy", targetBureau: "EQUIFAX" as Bureau, mailedAt: null }]);
     ok("AD-3: …and a caller that supplies no status behaves exactly as before", legacyPlan.toUpdate.length === 1);
     ok("AD-3: the dormancy is documented where the routed change belongs", /DORMANT until the caller supplies it/.test(read("lib/letter.ts")));
+  }
+
+  // S11 AD-2 / critic X-4: the /letters banner.
+  {
+    ok("the row surfaces the authorization flag the list route now returns", /const authorizationRevoked = Boolean\(l\.authorizationRevoked\)/.test(PAGE));
+    ok("…as a banner that says why, not a silent missing button", /This letter can&apos;t be approved or printed right now/.test(PAGE));
+    ok("…with one real next step, deep-linked to the account", /\/tradelines\?tradeline=\$\{encodeURIComponent\(l\.tradelineId\)\}/.test(PAGE) && /Review the facts on this account/.test(PAGE));
+    ok("…and no control is offered that the server would 409", /\{isEditable && !authorizationRevoked && \(/.test(PAGE) && /\{!authorizationRevoked && \(\s*<Link href=\{`\/letters\/print/.test(PAGE));
+    ok("…while reading and editing the draft stay open", /\{isEditable && \(\s*<button onClick=\{\(\) => setOpenEdit/.test(PAGE));
+    ok("…and an approved-then-revoked letter can no longer be marked mailed", /const isApproved = l\.status === APPROVED_STATUS && !l\.mailedAt && !authorizationRevoked;/.test(PAGE));
+
+    // X-4: the wording must be true for a letter that NEVER had a confirmation,
+    // not only for one whose confirmation was withdrawn.
+    ok("the message does not claim a withdrawal that may never have happened", !/^.*The confirmation this letter was drafted from has been withdrawn/m.test(read("lib/letter.ts")));
+    ok("…it names all three real causes", /either the confirmation it was drafted from was withdrawn/.test(LETTER_AUTHORIZATION_REVOKED_MESSAGE) && /the report it was drafted from has been replaced/.test(LETTER_AUTHORIZATION_REVOKED_MESSAGE) && /before we started asking you to confirm each fact/.test(LETTER_AUTHORIZATION_REVOKED_MESSAGE));
+    ok("…and says nothing was deleted", /Nothing has been deleted/.test(LETTER_AUTHORIZATION_REVOKED_MESSAGE));
+    // The page cannot import lib/letter (client bundle), so the copy is pinned.
+    const uiCopy = PAGE.match(/const LETTER_AUTHORIZATION_REVOKED_MESSAGE_UI =\n([\s\S]*?);\n/)?.[1] ?? "";
+    const uiText = (uiCopy.match(/"([^"]*)"/g) ?? []).map((q) => q.slice(1, -1)).join("").replace(/\\u2014/g, "\u2014").replace(/\\u2019/g, "\u2019");
+    ok("the banner copy is byte-identical to the shared message", uiText === LETTER_AUTHORIZATION_REVOKED_MESSAGE, `ui=${JSON.stringify(uiText.slice(0, 80))}`);
+
+    // HISTORICAL is terminal: a mailed letter is never re-judged.
+    ok("a mailed letter is never judged unauthorized, whatever the confirmations say", letterAuthorization({ mailedAt: new Date(), tradelineId: null, activeAssertionCount: 0 }) === "HISTORICAL");
+    ok("…and an unmailed letter with nothing standing behind it is", letterAuthorization({ mailedAt: null, tradelineId: "t1", activeAssertionCount: 0 }) === "REVOKED");
+    ok("…while a live confirmation authorizes it", letterAuthorization({ mailedAt: null, tradelineId: "t1", activeAssertionCount: 1 }) === "AUTHORIZED");
   }
 
   // AD-7: concurrent edits.

@@ -29,6 +29,11 @@ interface SavedLetter {
   // resolution) — true while the printable artifact still carries any
   // placeholder. Optional so a stale cached response can't crash the page.
   needsDetails?: boolean;
+  // S11 AD-2: true only while an action is still PENDING on a letter no
+  // confirmation stands behind. Never true of a mailed letter — that is a
+  // record, not a pending action. Optional so a stale cached response can't
+  // crash the page.
+  authorizationRevoked?: boolean;
 }
 
 // Phase 1A (F1): the SAME derived package-grouping key lib/mailCenter.ts's
@@ -753,8 +758,14 @@ function LetterRow({
   // used to state an intent to file CFPB / state-AG complaints that nobody had
   // expressed, on a letter the consumer could not edit before signing.
   const [complaintIntent, setComplaintIntent] = useState(false);
+  // S11 AD-2 / critic X-4. Editing stays open on purpose: a consumer who
+  // withdrew a confirmation is exactly who should still be able to open the
+  // draft and read what it says in their name. What is closed is every step
+  // toward the envelope — approving, printing and marking mailed — because the
+  // server refuses those too, and offering a control that 409s is a dead end.
+  const authorizationRevoked = Boolean(l.authorizationRevoked);
   const isEditable = EDITABLE_STATUSES.includes(l.status) && !l.mailedAt;
-  const isApproved = l.status === APPROVED_STATUS && !l.mailedAt;
+  const isApproved = l.status === APPROVED_STATUS && !l.mailedAt && !authorizationRevoked;
   const analysis = l.responseAnalysis ? safeParse(l.responseAnalysis) : null;
   const storyline = letterStoryline(l);
   // §611 window progress — same visual grammar as the Kai Home radar, so the
@@ -898,7 +909,9 @@ function LetterRow({
           </div>
         ) : (
           <div className="flex flex-wrap items-center gap-1.5">
-            <Link href={`/letters/print/${l.id}`} target="_blank" className="btn-ghost min-h-[44px] min-w-[44px] justify-center text-xs" aria-label="Open the printable letter" title={isEditable ? "Preview the printable letter (this does not approve it)" : "Open the printable letter"}><Printer className="h-3.5 w-3.5" aria-hidden /></Link>
+            {!authorizationRevoked && (
+              <Link href={`/letters/print/${l.id}`} target="_blank" className="btn-ghost min-h-[44px] min-w-[44px] justify-center text-xs" aria-label="Open the printable letter" title={isEditable ? "Preview the printable letter (this does not approve it)" : "Open the printable letter"}><Printer className="h-3.5 w-3.5" aria-hidden /></Link>
+            )}
             {/* RC1-S5 (A3 L-01): edit → approve → mail, in that order. The letter
                 is the consumer's signed statement, so it is theirs to change
                 until they say it is right, and nothing can mail it before then. */}
@@ -907,7 +920,7 @@ function LetterRow({
                 <Pencil className="h-3.5 w-3.5" aria-hidden /> {openEdit ? "Close editor" : "Read & edit"}
               </button>
             )}
-            {isEditable && (
+            {isEditable && !authorizationRevoked && (
               <button
                 onClick={async () => {
                   // REVIEW L-7: approval is the commitment; the print tab opens
@@ -974,6 +987,29 @@ function LetterRow({
           </div>
         )}
       </div>
+
+      {/* S11 AD-2 / critic X-4 — WHY THIS LETTER CANNOT GO OUT.
+          The server already refuses to approve, print or mail it; without this
+          the consumer meets that refusal as a 409 from a button that looked
+          available. The wording covers all three causes and claims none of them
+          in particular — a letter drafted before confirmations existed never had
+          one to withdraw, so "revoked" would be false for that population. The
+          one action offered is real and goes where the fix actually is. */}
+      {authorizationRevoked && (
+        <div className="mt-2 flex gap-2 rounded-lg border border-gold-500/30 bg-gold-500/10 p-3 text-xs text-gold-300">
+          <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden />
+          <div>
+            <p className="font-semibold">This letter can&apos;t be approved or printed right now</p>
+            <p className="mt-1 text-gold-400/90">{LETTER_AUTHORIZATION_REVOKED_MESSAGE_UI}</p>
+            <Link
+              href={l.tradelineId ? `/tradelines?tradeline=${encodeURIComponent(l.tradelineId)}` : "/tradelines"}
+              className="mt-1.5 inline-block font-semibold text-gold-200 underline"
+            >
+              Review the facts on this account →
+            </Link>
+          </div>
+        </div>
+      )}
 
       {/* The letter itself, open for editing. */}
       {openEdit && isEditable && (
@@ -1133,6 +1169,17 @@ function safeParse(s: string): any {
 // a server module into the browser bundle); scripts/letter-control.test.ts pins
 // the two to the same number.
 const LETTER_BODY_MAX_UI = 20_000;
+
+// The same sentence lib/letter.ts's LETTER_AUTHORIZATION_REVOKED_MESSAGE carries,
+// duplicated for the same reason LETTER_BODY_MAX_UI is (CLAUDE.md gotcha 2: a
+// "use client" page must not pull a server module into the browser bundle).
+// scripts/letter-control.test.ts pins the two byte-for-byte, so the banner here
+// and the refusal on the print page can never say different things.
+const LETTER_AUTHORIZATION_REVOKED_MESSAGE_UI =
+  "This letter states facts in your name, and no confirmation stands behind it right now \u2014 either the confirmation it was drafted from was withdrawn, " +
+  "the report it was drafted from has been replaced, or it was drafted before we started asking you to confirm each fact. " +
+  "It can\u2019t be approved, printed or mailed until you confirm those facts on your Tradelines page. " +
+  "Nothing has been deleted \u2014 the draft is still here.";
 
 interface ComplianceNote {
   sentence: string;

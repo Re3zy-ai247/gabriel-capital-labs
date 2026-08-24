@@ -18,16 +18,17 @@
 // the I/O boundaries (Prisma, session, rate limit, entitlements, crypto, AI,
 // analytics, mail-date validation) are replaced.
 //
-// NON-VACUITY (measured 2026-08-24; each pre-fix file copied in from git and
-// reverted immediately afterwards, never committed):
-//   · release candidate `59f2afd` (route + page + lib files)       → 127 passed, 18 failed (exit 1)
-//     — B-1 (no AI principal opened; the analysis replayable on one letter),
-//       B-2 (a declared 64 MB and a chunked body both parsed), AD-7 (tab B
-//       silently overwrote tab A's sentence)
+// NON-VACUITY (measured 2026-08-24; the eight source files these guards execute
+// reverted to the release candidate and restored immediately, never committed):
+//   · release candidate `59f2afd`                                  → 131 passed, 23 failed (exit 1)
+//     — B-1 (no AI principal opened; the paid analysis replayable on one
+//       letter), B-2 (a declared 64 MB body and a chunked body both parsed),
+//       AD-7 (tab B silently overwrote tab A), AD-2 (a withdrawn confirmation
+//       left the letter approvable and mailable)
 //   · branch base `31d4e35:app/api/letters/[id]/route.ts`          →  75 passed, 40 failed (exit 1)
 //   · branch base `31d4e35:app/api/letters/[id]/round2/route.ts`   → 102 passed, 13 failed (exit 1)
 //   · branch base `31d4e35:app/api/letters/[id]/response/route.ts` → 110 passed,  5 failed (exit 1)
-//   · this tree                                                    → 145 passed,  0 failed (exit 0)
+//   · this tree                                                    → 154 passed,  0 failed (exit 0)
 import { check, loadModule, mockModule, run, section } from "./_harness";
 
 export {};
@@ -155,6 +156,19 @@ class FakeDb {
   };
 
   consumerAssertion = {
+    // S11 AD-2 (S4's cross-slice edit into the PATCH route): the authorization
+    // check counts the ACTIVE confirmations still standing behind a letter.
+    count: async (args: { where: { userId: string; tradelineId: string; status: string } }) => {
+      this.calls.push("consumerAssertion.count");
+      const w = args.where ?? ({} as { userId: string; tradelineId: string; status: string });
+      if (!w.userId) throw new Error("assertion count must be scoped to the caller");
+      return this.assertions.filter(
+        (a) =>
+          a.userId === w.userId &&
+          (w.tradelineId === undefined || a.tradelineId === w.tradelineId) &&
+          (w.status === undefined || a.status === w.status)
+      ).length;
+    },
     findMany: async (args: { where: { userId: string; tradelineId: string; status: string } }) => {
       this.calls.push("consumerAssertion.findMany");
       const w = args.where ?? ({} as { userId: string; tradelineId: string; status: string });
@@ -524,6 +538,10 @@ run("letter-control.runtime", async () => {
     resetAll();
     seedTradeline();
     seedLetter();
+    // S11 AD-2 (S4): a letter only exists because a confirmation authorized it,
+    // and approval is now gated on that confirmation still standing. Seeding it
+    // is what makes this fixture a real letter rather than an orphan.
+    seedAssertion();
     const early = await letterRoute.PATCH(patch("l1", { status: "MAILED", mailedAt: "2026-08-02" }), { params: { id: "l1" } });
     check("marking an unapproved letter mailed is refused (409)", early.status === 409);
     check("…and it was NOT mailed", db.letters[0].mailedAt === null && db.letters[0].status === "GENERATED");
@@ -771,6 +789,46 @@ run("letter-control.runtime", async () => {
     // The status self-transition stays legal: this guard is on the DATA, so a
     // PATCH to a status the letter already holds is still idempotent.
     check("re-PATCHing RESPONSE_RECEIVED is still allowed", (await letterRoute.PATCH(patch("l1", { status: "RESPONSE_RECEIVED" }), { params: { id: "l1" } })).status === 200);
+  }
+
+  // ── S11 AD-2 × S5 — the two contracts hold together ───────────────────────
+  section("a withdrawn confirmation stops the letter, but never re-judges a mailed one");
+  {
+    resetAll();
+    seedTradeline();
+    seedLetter();
+    seedAssertion();
+    check("with a live confirmation the letter can be approved", (await letterRoute.PATCH(patch("l1", { status: "PRINTED" }), { params: { id: "l1" } })).status === 200);
+
+    // The consumer withdraws it. The letter is still unmailed, so it is now
+    // unauthorized — and every step toward the envelope must refuse.
+    db.assertions[0].status = "WITHDRAWN";
+    const reApprove = await letterRoute.PATCH(patch("l1", { status: "PRINTED" }), { params: { id: "l1" } });
+    check("a withdrawn confirmation blocks re-approval (409)", reApprove.status === 409);
+    check("…identified as an authorization problem, with the account to fix", (await json(reApprove)).authorizationRevoked === true);
+    const mail = await letterRoute.PATCH(patch("l1", { status: "MAILED", mailedAt: "2026-08-02" }), { params: { id: "l1" } });
+    check("…and mailing is refused too", mail.status === 409 && db.letters[0].mailedAt === null);
+
+    // …while reading and editing the draft stay open (S4's rule), and S5's own
+    // edit path still refuses to save it into an APPROVED state.
+    const reopen = await letterRoute.PATCH(patch("l1", { status: "DRAFT" }), { params: { id: "l1" } });
+    check("returning it to a draft is still allowed", reopen.status === 200 && db.letters[0].status === "DRAFT");
+    const edit = await letterRoute.PATCH(patch("l1", { body: `${TEMPLATE_BODY}\n\nStill my letter to read and change.` }), { params: { id: "l1" } });
+    check("…and the consumer can still edit what it says in their name", edit.status === 200);
+  }
+  {
+    // HISTORICAL is terminal: a MAILED letter is never re-judged, its evidence
+    // is never touched, and S5's immutability still holds over the top of it.
+    resetAll();
+    seedTradeline();
+    seedLetter({ status: "MAILED", mailedAt: new Date("2026-08-02") });
+    seedAssertion({ status: "WITHDRAWN" });
+    const bodyBefore = stored("l1");
+    const resolve = await letterRoute.PATCH(patch("l1", { status: "RESOLVED", outcome: "corrected_or_deleted" }), { params: { id: "l1" } });
+    check("a mailed letter can still be closed out after a withdrawal", resolve.status === 200);
+    check("…its body is untouched — the record of what was sent", stored("l1") === bodyBefore);
+    const edit = await letterRoute.PATCH(patch("l1", { body: "Rewriting a mailed letter." }), { params: { id: "l1" } });
+    check("…and it is still immutable", edit.status === 409 && stored("l1") === bodyBefore);
   }
 
   // ── RC1-S11 · review B-2 — the body is bounded before it is buffered ───────

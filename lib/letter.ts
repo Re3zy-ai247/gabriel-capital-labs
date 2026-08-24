@@ -1027,10 +1027,17 @@ export function letterAuthorizationRevoked(l: LetterAuthorizationInput): boolean
 
 // One message, used by every surface that has to say this, so the refusal a
 // consumer meets on Approve reads the same as the one on the print page.
+//
+// RC1-S5 / S11 (critic X-4): the wording must be true for BOTH populations that
+// reach it. A consumer who withdrew a confirmation is one. The other is every
+// letter drafted BEFORE confirmations existed: it never had one to withdraw, so
+// "has been withdrawn" would state something that never happened to them. The
+// message names the three real causes and does not claim which one applies.
 export const LETTER_AUTHORIZATION_REVOKED_MESSAGE =
-  "The confirmation this letter was drafted from has been withdrawn, or the report it was based on has been replaced. " +
-  "This letter states facts in your name, so it can\u2019t be approved, printed or mailed until you confirm those facts again " +
-  "on your Tradelines page. Nothing has been deleted \u2014 the draft is still here.";
+  "This letter states facts in your name, and no confirmation stands behind it right now \u2014 either the confirmation it was drafted from was withdrawn, " +
+  "the report it was drafted from has been replaced, or it was drafted before we started asking you to confirm each fact. " +
+  "It can\u2019t be approved, printed or mailed until you confirm those facts on your Tradelines page. " +
+  "Nothing has been deleted \u2014 the draft is still here.";
 
 // ── RC1-S5 (A3 L-01 / P1-31): the consumer's own edits ──────────────────────
 // A dispute letter is a signed statement, so the consumer gets to change it —
