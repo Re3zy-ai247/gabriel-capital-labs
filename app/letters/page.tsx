@@ -156,10 +156,23 @@ function LettersInner() {
     setBureausSel((prev) => (prev.includes(b) ? prev.filter((x) => x !== b) : [...prev, b]));
   }
 
-  // An unmailed round-1 draft for this item + strategy that the consumer has
-  // EDITED (status DRAFT — the generator only ever writes GENERATED).
+  // An unmailed round-1 letter for this item + strategy that carries the
+  // consumer's OWN work: DRAFT (they edited it — the generator only ever writes
+  // GENERATED) or approved (they read it and said it was right).
+  //
+  // RC1-S11 (review AD-3): the approved case was missing. Approving an edited
+  // letter moves it to PRINTED, so the DRAFT-only predicate stopped matching
+  // exactly when the consumer had done the MOST work on it — and regenerate
+  // overwrote the body and reset the status with no prompt, under a label that
+  // called an approved letter a draft. Same law as the H-1 fix: the consumer's
+  // own words are never destroyed silently.
   const editedDraft = saved.find(
-    (sl) => sl.tradelineId === tradelineId && sl.strategy === strategyId && !sl.mailedAt && sl.round === 1 && sl.status === "DRAFT"
+    (sl) =>
+      sl.tradelineId === tradelineId &&
+      sl.strategy === strategyId &&
+      !sl.mailedAt &&
+      sl.round === 1 &&
+      (sl.status === "DRAFT" || sl.status === APPROVED_STATUS)
   );
 
   async function generate() {
@@ -167,7 +180,11 @@ function LettersInner() {
     if (isBureauStrategy && bureausSel.length === 0) { setError("Choose at least one bureau to send to."); return; }
     if (editedDraft && !confirmRegen) {
       setConfirmRegen(true);
-      setError("Regenerating rewrites this letter from scratch — the edits you made to it will be gone. Press again to go ahead.");
+      setError(
+        editedDraft.status === APPROVED_STATUS
+          ? "You already read this letter and approved it. Regenerating rewrites it from scratch — your edits go, and it stops being approved. Press again to go ahead."
+          : "Regenerating rewrites this letter from scratch — the edits you made to it will be gone. Press again to go ahead."
+      );
       return;
     }
     setConfirmRegen(false);
@@ -415,6 +432,9 @@ function LettersInner() {
                     );
                     const n = isBureauStrategy && bureausSel.length > 1 ? bureausSel.length : 1;
                     if (confirmRegen && editedDraft) return "Yes — replace my edited letter";
+                    if (editedDraft?.status === APPROVED_STATUS) {
+                      return n > 1 ? `Regenerate ${n} Letters (replaces the ones you approved)` : "Regenerate Letter (replaces the one you approved)";
+                    }
                     if (editedDraft) return n > 1 ? `Regenerate ${n} Letters (replaces your edits)` : "Regenerate Letter (replaces your edits)";
                     if (willUpdate) return n > 1 ? `Regenerate ${n} Letters (updates your drafts)` : "Regenerate Letter (updates your draft)";
                     return n > 1 ? `Generate ${n} Letters` : "Generate Letter";
@@ -1134,6 +1154,14 @@ function LetterEditor({
   onCancel: () => void;
 }) {
   const [draft, setDraft] = useState(initialBody ?? "");
+  // RC1-S11 (review AD-7): the body this editor STARTED from — the compare-and-
+  // swap token. `Letter` has no `updatedAt` column, so there is no version to
+  // send; the stored body itself is the version. Two tabs open on one draft: the
+  // second save arrives with a token that no longer matches what is stored and
+  // is refused, instead of silently erasing the first tab's sentences from a
+  // document the consumer signs.
+  const [baseBody, setBaseBody] = useState(initialBody ?? "");
+  const [stale, setStale] = useState(false);
   const [loading, setLoading] = useState(initialBody === undefined);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -1153,24 +1181,44 @@ function LetterEditor({
     let live = true;
     fetch(`/api/letters/${letterId}`)
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error("load"))))
-      .then((j) => { if (live) setDraft(j.letter?.body ?? ""); })
+      .then((j) => {
+        if (!live) return;
+        setDraft(j.letter?.body ?? "");
+        setBaseBody(j.letter?.body ?? "");
+      })
       .catch(() => { if (live) setError("I couldn't load this letter to edit. Try again in a moment."); })
       .finally(() => { if (live) setLoading(false); });
     return () => { live = false; };
   }, [letterId, initialBody]);
 
-  async function save() {
+  async function reload() {
     setBusy(true); setError(null); setRefusals([]); setAdjustments([]);
+    try {
+      const r = await fetch(`/api/letters/${letterId}`);
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) { setError("I couldn't load the current letter. Try again in a moment."); return; }
+      setDraft(j.letter?.body ?? "");
+      setBaseBody(j.letter?.body ?? "");
+      setStale(false);
+    } catch {
+      setError("The connection dropped. Try again in a moment.");
+    } finally { setBusy(false); }
+  }
+
+  async function save() {
+    setBusy(true); setError(null); setRefusals([]); setAdjustments([]); setStale(false);
     try {
       const res = await fetch(`/api/letters/${letterId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ body: draft }),
+        // baseBody is the compare-and-swap token (review AD-7).
+        body: JSON.stringify({ body: draft, baseBody }),
       });
       const j = await res.json().catch(() => ({}));
       if (!res.ok) {
         setError(j.error || "That didn't save. Try again in a moment.");
         if (Array.isArray(j.complianceRefusals)) setRefusals(j.complianceRefusals);
+        if (j.staleEdit) setStale(true);
         return;
       }
       const savedBody: string = j.letter?.body ?? draft;
@@ -1183,6 +1231,7 @@ function LetterEditor({
       // the box disagreeing with what is stored and make a second Save
       // re-submit stale text.
       setDraft(savedBody);
+      setBaseBody(savedBody);
       onSaved(savedBody);
     } catch {
       setError("The connection dropped mid-save. Your text is still here — try again.");
@@ -1234,6 +1283,18 @@ function LetterEditor({
         </div>
       </div>
       {error && <p className="mt-2 text-xs text-rose-400" role="alert">{error}</p>}
+      {stale && (
+        <div className="mt-2 rounded-lg border border-gold-500/30 bg-gold-500/10 p-3 text-xs text-gold-300">
+          <p className="mb-1 font-semibold">This letter changed somewhere else</p>
+          <p>
+            Nothing here was saved and nothing you wrote was lost — but the stored letter is no longer the one you
+            started from, probably from another tab. Copy anything you want to keep, then load the current letter.
+          </p>
+          <button onClick={reload} disabled={busy} className="mt-1.5 rounded-md border border-gold-400/40 px-2 py-1 text-[11px] font-semibold text-gold-100 hover:bg-gold-500/10">
+            Load the current letter
+          </button>
+        </div>
+      )}
       {refusals.length > 0 && (
         <div className="mt-2 rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-200">
           <p className="mb-1 font-semibold">Nothing was saved. These sentences have to change first:</p>

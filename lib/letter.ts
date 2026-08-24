@@ -164,6 +164,13 @@ export const ASSERTION_CHOICE_BY_TYPE: Record<ConsumerAssertionType, AssertionCh
 // statement of fact changes what they said), and re-applied defensively here.
 export const CONSUMER_NOTE_MAX = 500;
 
+// RC1-S11 (critic X-3). Not a product limit — a defensive bound, set at twice
+// the entire confirmable vocabulary so no consumer can reach it by confirming
+// everything there is to confirm, while a runaway caller still cannot compose an
+// unbounded document. Each finding is bounded (fixed prose + CONSUMER_NOTE_MAX),
+// so this stays far inside LETTER_BODY_MAX.
+export const MAX_LETTER_ASSERTIONS = CONSUMER_ASSERTION_TYPES.length * 2;
+
 // Whitespace/control-character normalization ONLY. The consumer's words are not
 // rewritten, spell-corrected, softened, or AI-processed: newlines and control
 // characters become single spaces so the sentence stays on one line of a plain-
@@ -241,6 +248,10 @@ export interface LetterContext {
   // (assertionsForContext). Empty = the consumer has confirmed nothing, so the
   // letter asserts nothing: no SUMMARY OF FACTUAL CONCERNS section is emitted.
   assertions: ConsumerAssertionInput[];
+  // RC1-S11 (critic X-3): how many of the consumer's confirmed facts did NOT
+  // fit this letter. Non-zero is never silent — the opening paragraph stops
+  // claiming the list below is the complete set. Zero in every ordinary case.
+  omittedAssertions: number;
   // RC1-S4 (L-03): whether the CONSUMER has explicitly said they intend to take
   // this to the CFPB / their state Attorney General. Default FALSE, everywhere.
   // Nothing in the product may set it except the consumer's own opt-in.
@@ -307,6 +318,34 @@ export function buildContext(
   const consumerComplete = Boolean(consumer.fullName && consumer.addressLine1 && consumer.city && consumer.state && consumer.zip);
   const resolvedTargetBureau = strategy.recipient === "bureau" ? bureau : undefined;
 
+  // RC1-S11 (critic X-3) — EVERY FACT THE CONSUMER CONFIRMED REACHES THE LETTER.
+  //
+  // buildFindings used to iterate `ctx.assertions.slice(0, 5)`. Nothing capped
+  // confirmations upstream (the assertion route creates unconditionally; the
+  // confirm UI shows no limit) and EIGHT distinct facts are confirmable about an
+  // ordinary account — so a consumer who confirmed six got a letter carrying
+  // five of them, with nothing anywhere saying so, under an opening paragraph
+  // claiming the information "set out below" was what they had identified. In a
+  // product whose whole law is "we only write what you confirm", writing less
+  // than they confirmed is the same failure as writing more.
+  //
+  // The cap is gone. What remains is a defensive bound an ordinary consumer
+  // cannot reach (twice the entire vocabulary), because an unbounded loop must
+  // never be able to compose an unbounded document — and if it ever DOES bite,
+  // `omittedAssertions` makes it visible in the letter's own wording rather than
+  // dropping the facts quietly.
+  //
+  // Filtered and bounded ONCE, here, so every consumer of the context (template
+  // render, AI grounding prompt, round-2 prompt) speaks from exactly the same
+  // set and no caller can widen or narrow it by accident. That also closes the
+  // divergence the critic found between the template path (truncated) and the
+  // AI-refinement path (not truncated).
+  const applicableAssertions = assertionsForContext(options?.assertions ?? [], {
+    strategy,
+    targetBureau: resolvedTargetBureau,
+  });
+  const boundedAssertions = applicableAssertions.slice(0, MAX_LETTER_ASSERTIONS);
+
   return {
     strategy,
     recipientName,
@@ -327,10 +366,8 @@ export function buildContext(
     // Filtered ONCE, here, so every consumer of the context (template render, AI
     // grounding prompt, round-2 prompt) speaks from exactly the same set and no
     // caller can widen it by accident.
-    assertions: assertionsForContext(options?.assertions ?? [], {
-      strategy,
-      targetBureau: resolvedTargetBureau,
-    }),
+    assertions: boundedAssertions,
+    omittedAssertions: Math.max(0, applicableAssertions.length - boundedAssertions.length),
     complaintIntent: options?.complaintIntent === true,
   };
 }
@@ -371,39 +408,90 @@ export function buildFindings(t: LetterTradeline, ctx: LetterContext): Finding[]
       .map((b) => ({ b, v: pick(data[b]) }))
       .filter((x) => x.v != null && String(x.v).length > 0) as { b: Bureau; v: V }[];
 
-  // Observed values, used ONLY to say what the file shows — never to conclude
-  // anything about it. Cross-bureau text is emitted only when ctx.crossBureau is
-  // true AND the values actually differ (absence is never a discrepancy).
+  // ---- RC1-S11 (journey CRITICAL-1): A BUREAU IS ONLY EVER TOLD WHAT IT SAID
+  //
+  // `collect()` gathers observations from the bureaus that ACTUALLY attest a
+  // datum (`presentBureaus`). The single-value branches below then took
+  // `statuses[0].v` — whichever bureau supplied it — and relabelled it with
+  // `ctx.targetBureau`. Nothing checked that the target was among the attesting
+  // bureaus, and `present` is computed independently of the target. Reproduced
+  // end to end at the release gate: an Equifax-only report, a consumer
+  // confirmation scoped to Experian, and the Experian-targeted letter printed
+  //
+  //     Fact: It is reported as "Charge-Off" on the Experian file.
+  //
+  // three lines under "I make no representation about any other consumer
+  // reporting agency, as I have not reviewed those files." Experian's presence
+  // was UNKNOWN; only Equifax ever said "Charge-Off". A signed, mailed letter
+  // asserting a fact the file never attested is the P0-2 fabrication class in
+  // the one artifact that carries legal consequence, and a dispute whose factual
+  // predicate is demonstrably false invites the §1681i(a)(3) frivolous
+  // determination the assertion gate exists to avoid.
+  //
+  // THE RULE NOW: an observation may name a bureau only if THAT bureau's own
+  // record carries the value. For a bureau-targeted letter that means the target
+  // and nobody else — naming another agency would also contradict the scope
+  // sentence and break the cross-bureau rule. Where the target attests nothing,
+  // the observation is OMITTED and the consumer's own confirmed claim stands
+  // alone: dropping an unattested observation costs the letter a detail, while
+  // keeping it costs the consumer the dispute. (Options considered: attribute to
+  // the attesting bureau instead — rejected for a bureau letter, it tells
+  // Experian what Equifax reports; refuse to compose — rejected, the CLAIM is
+  // still the consumer's to make about the target's file.)
+  //
+  // A furnisher/collector letter has no target bureau: there the observation is
+  // attributed BY NAME to the bureau that attested it, which is truthful and
+  // permitted — the furnisher supplies all of them.
+  //
+  // The cross-bureau branches are untouched and were never affected: each value
+  // is already printed beside the bureau that reported it, and that branch only
+  // runs when ≥2 bureaus are known, which is exactly when the letter drops the
+  // "no representation about any other agency" sentence and disputes ON the
+  // discrepancy.
+  const attesting = <V>(obs: { b: Bureau; v: V }[]) =>
+    ctx.targetBureau ? obs.filter((o) => o.b === ctx.targetBureau) : obs;
+
   const statuses = collect((f) => f?.status);
   const statusObservation = (): string => {
     if (ctx.crossBureau && new Set(statuses.map((s) => String(s.v).toLowerCase())).size > 1) {
       return statuses.map((s) => `${lbl(s.b)} reports "${s.v}"`).join("; ") + ".";
     }
-    if (statuses.length) {
-      return `It is reported as "${statuses[0].v}"${ctx.targetBureau ? ` on the ${lbl(ctx.targetBureau)} file` : ""}.`;
-    }
-    return "";
+    const own = attesting(statuses);
+    if (!own.length) return "";
+    return ctx.targetBureau
+      ? `It is reported as "${own[0].v}" on the ${lbl(ctx.targetBureau)} file.`
+      : `${lbl(own[0].b)} reports it as "${own[0].v}".`;
   };
   const balances = collect((f) => f?.balanceCents);
   const balanceObservation = (): string => {
     if (ctx.crossBureau && new Set(balances.map((s) => s.v)).size > 1) {
       return balances.map((s) => `${lbl(s.b)} reports ${formatCents(s.v)}`).join("; ") + ".";
     }
-    return `The reported balance is ${formatCents(t.balance)}.`;
+    const own = attesting(balances);
+    if (!own.length) return "";
+    // The bureau-target wording is unchanged: inside a letter whose scope
+    // sentence already says "solely how this account is reported on my {target}
+    // file", an unqualified "The reported balance is …" means the target — and
+    // the gate above now makes that implication TRUE. The value quoted is the
+    // target's OWN attested figure, not the tradeline aggregate.
+    return ctx.targetBureau
+      ? `The reported balance is ${formatCents(own[0].v)}.`
+      : `${lbl(own[0].b)} reports a balance of ${formatCents(own[0].v)}.`;
   };
   const dofds = collect((f) => f?.dofd);
   const dofdObservation = (): string => {
     if (ctx.crossBureau && new Set(dofds.map((s) => String(s.v))).size > 1) {
       return dofds.map((s) => `${lbl(s.b)} reports a date of first delinquency of ${formatDate(s.v)}`).join("; ") + ".";
     }
-    if (t.dateOfFirstDelinquency) {
-      return `The date of first delinquency is reported as ${formatDate(t.dateOfFirstDelinquency)}.`;
-    }
-    return "";
+    const own = attesting(dofds);
+    if (!own.length) return "";
+    return ctx.targetBureau
+      ? `The date of first delinquency reported on the ${lbl(ctx.targetBureau)} file is ${formatDate(own[0].v)}.`
+      : `${lbl(own[0].b)} reports a date of first delinquency of ${formatDate(own[0].v)}.`;
   };
 
   const findings: Finding[] = [];
-  for (const a of ctx.assertions.slice(0, 5)) {
+  for (const a of ctx.assertions) {
     const type = a.assertionType as ConsumerAssertionType;
     const note = sanitizeConsumerNote(a.consumerNote);
     let f: Finding;
@@ -465,7 +553,11 @@ export function buildFindings(t: LetterTradeline, ctx: LetterContext): Finding[]
         // REMEDIATION L-1: a $0 reported balance is consistent with "paid or
         // settled", so quoting it back argues against the consumer's own claim.
         // Only a NON-ZERO reported balance is worth putting in the letter.
-        const obs = t.balance > 0 ? balanceObservation() : "";
+        // RC1-S11: gate on the balance the letter would actually QUOTE (the
+        // target bureau's own), not the tradeline aggregate — otherwise a target
+        // reporting $0 could still have a non-zero aggregate quoted at it.
+        const quoted = attesting(balances)[0]?.v ?? t.balance;
+        const obs = quoted > 0 ? balanceObservation() : "";
         f = {
           element: "Payment or Settlement",
           fact: `I state that this account was paid or settled.${obs ? " " + obs : ""}`,
@@ -720,7 +812,9 @@ export function renderTemplateLetter(t: LetterTradeline, ctx: LetterContext, con
       ctx.assertions.length
         ? `I have reviewed the information associated with the above account as it appears on ${
             ctx.targetBureau ? `my ${bureauName} consumer file` : "my consumer credit file"
-          }. I have identified the specific information set out below as inaccurate or incomplete, and I respectfully request a reasonable reinvestigation under ${statutes}.`
+          }. I have identified ${
+            ctx.omittedAssertions > 0 ? "information" : "the specific information"
+          } set out below as inaccurate or incomplete, and I respectfully request a reasonable reinvestigation under ${statutes}.`
         : `I am writing regarding the information associated with the above account as it appears on ${
             ctx.targetBureau ? `my ${bureauName} consumer file` : "my consumer credit file"
           }, and I respectfully request a reasonable reinvestigation of that information under ${statutes}.`,
@@ -1040,6 +1134,8 @@ export function detectPlaceholders(renderedBody: string): PlaceholderStatus {
 
 // ---- RB-6: idempotent-regenerate matching (pure) -----------------------------
 export interface RegenerateCandidate {
+  /** Optional — see the AD-3 note in planLetterRegeneration. */
+  status?: string | null;
   id: string;
   targetBureau: Bureau | null;
   mailedAt: Date | string | null;
@@ -1064,6 +1160,18 @@ export function planLetterRegeneration(
   const unmailedByBureau = new Map<string, RegenerateCandidate>();
   for (const c of candidates) {
     if (c.mailedAt) continue; // mailed rows are never regenerate-matched
+    // RC1-S11 (review AD-3): nor is a letter the consumer has APPROVED. An
+    // approved letter is one they read, edited and said was right; overwriting
+    // it in place destroys their own words and silently un-approves it. Skipped
+    // here means the plan CREATES a new draft beside it instead — never
+    // destroys.
+    //
+    // ⚠️ DORMANT until the caller supplies it. app/api/letters/generate/route.ts
+    // selects only { id, targetBureau, mailedAt } for these candidates, so
+    // `status` is undefined today and this line is inert. That route belongs to
+    // another slice; the routed change is one word in its select. Until then the
+    // protection is the two-press confirmation on app/letters/page.tsx.
+    if (c.status === LETTER_APPROVED_STATUS) continue;
     const key = c.targetBureau ?? "__none__";
     if (!unmailedByBureau.has(key)) unmailedByBureau.set(key, c); // first match wins, stable
   }

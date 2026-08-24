@@ -163,6 +163,25 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       );
     }
 
+    // ---- RC1-S11 (review AD-7): COMPARE-AND-SWAP ON THE BODY ---------------
+    // Two tabs open on the same draft: tab A saves an edit, tab B saves the copy
+    // it loaded BEFORE that edit, and A's sentences are gone from a document the
+    // consumer signs. `Letter` has no `updatedAt` column (adding one is a
+    // migration, outside this slice), so the stored body IS the version token:
+    // an editor sends back the body it started from and a save is refused when
+    // that no longer matches. Optional, so any caller that does not send one
+    // behaves exactly as before.
+    if (typeof body?.baseBody === "string" && body.baseBody !== decryptText(existing.body)) {
+      return NextResponse.json(
+        {
+          error:
+            "This letter changed somewhere else since you opened it — probably another tab. Nothing was saved, so nothing you wrote is lost. Load the current letter and reapply your changes.",
+          staleEdit: true,
+        },
+        { status: 409 }
+      );
+    }
+
     const cleaned = sanitizeLetterBody(body.body);
     if (cleaned.length < LETTER_BODY_MIN) {
       return NextResponse.json(
