@@ -93,11 +93,25 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   // FURTHER reply belongs to the next round — which is a new letter, with its
   // own response slot. What this refuses is re-running the analysis over the
   // same letter, which is the only thing the replay bought.
-  if (letter.responseAt) {
+  //
+  // RC1-S11 (review NEW-3) — AND IT LOCKS ON THE ANALYSIS, NOT ON THE LOG.
+  // Keyed on `responseAt` alone, this guard composed with its own sibling into a
+  // trap: the refusal path below wrote `responseAt` even when the budget refused
+  // or the provider errored, so an assessment that never happened could never
+  // happen. Our failure, permanently charged to the consumer, with no reset path
+  // anywhere and the Log-response control gone from the page.
+  //
+  // The predicate is now "already logged AND already analysed". What the paid
+  // call cost is the ANALYSIS, so that is what may not be replayed; a reply that
+  // was never analysed is exactly the one the consumer must be able to retry.
+  // Retrying does not reopen the replay hole: a retry that succeeds writes the
+  // analysis and locks, and a retry that fails is either a refusal (which spends
+  // nothing, by design) or an error — with the 20/hour limiter still over both.
+  if (letter.responseAt && letter.responseAnalysis) {
     return NextResponse.json(
       {
         error:
-          "A response is already logged for this letter. If they wrote again, draft the next round — that reply belongs to it.",
+          "A response is already logged and read for this letter. If they wrote again, draft the next round — that reply belongs to it.",
         alreadyLogged: true,
         responseAt: letter.responseAt,
       },
@@ -172,13 +186,24 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     console.error("response analysis failed", e);
   }
 
+  // RC1-S11 (review NEW-3) — WRITE WHAT HAPPENED, NOT A PLACEHOLDER FOR IT.
+  // `responseOutcome` used to be stamped `"unknown"` whenever no analysis came
+  // back. But "unknown" is a DETERMINATION — the model's own vocabulary for "the
+  // reply doesn't say" (lib/round2.ts) — and it then travelled into the verified
+  // outcome ledger as though the product had read the reply and been unable to
+  // tell. When nothing read it, the honest value is no value.
+  //
+  // `responseAt` IS written: the reply genuinely was logged, and that is what the
+  // field means. It is written ONCE, on the first log, so a later retry of the
+  // analysis cannot shift the date the consumer's reply arrived — every §611
+  // latency estimate anchors on it.
   const updated = await prisma.letter.update({
     where: { id: letter.id },
     data: {
       responseText: encryptText(responseText.slice(0, 200_000)),
-      responseOutcome: analysis?.outcome ?? "unknown",
+      responseOutcome: analysis?.outcome ?? null,
       responseAnalysis: analysis ? encryptText(JSON.stringify(analysis)) : null,
-      responseAt: new Date(),
+      ...(letter.responseAt ? {} : { responseAt: new Date() }),
       status: "RESPONSE_RECEIVED",
     },
   });
@@ -191,11 +216,19 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
   // Close the compounding loop: record this verified outcome in the ledger,
   // linked to the recommendation that produced it (Sprint XIV, fail-open).
-  await recordVerifiedOutcome({
-    userId: user.id, letterId: letter.id, tradelineId: letter.tradelineId,
-    strategy: letter.strategy, recipientType: letter.recipientType, bureau: letter.targetBureau ?? null,
-    round: letter.round, outcome: updated.responseOutcome, mailedAt: letter.mailedAt, responseAt: updated.responseAt,
-  });
+  //
+  // RC1-S11 (review NEW-3): only when there IS an outcome. The ledger is the
+  // product's evidence base — what disputes actually achieved — and a row saying
+  // "unknown" because our budget ran out is not evidence of anything. The retry
+  // that does produce an analysis records it (the ledger upserts per letter, so
+  // there is exactly one row either way).
+  if (analysis) {
+    await recordVerifiedOutcome({
+      userId: user.id, letterId: letter.id, tradelineId: letter.tradelineId,
+      strategy: letter.strategy, recipientType: letter.recipientType, bureau: letter.targetBureau ?? null,
+      round: letter.round, outcome: updated.responseOutcome, mailedAt: letter.mailedAt, responseAt: updated.responseAt,
+    });
+  }
 
   return NextResponse.json({
     ok: true,

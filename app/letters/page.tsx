@@ -781,6 +781,10 @@ function LetterRow({
   const isEditable = EDITABLE_STATUSES.includes(l.status) && !l.mailedAt;
   const isApproved = l.status === APPROVED_STATUS && !l.mailedAt && !authorizationRevoked;
   const analysis = l.responseAnalysis ? safeParse(l.responseAnalysis) : null;
+  // RC1-S11 (review NEW-3): their reply is on file, but nothing has read it —
+  // the assessment was refused or errored on our side. Recoverable, and the
+  // consumer needs to be able to say so.
+  const analysisMissing = l.hasResponse && !analysis;
   const storyline = letterStoryline(l);
   // §611 window progress — same visual grammar as the Kai Home radar, so the
   // clock reads identically everywhere. Only for mailed rows still waiting.
@@ -982,9 +986,13 @@ function LetterRow({
                 </Link>
               </>
             )}
-            {(l.status === "MAILED" || l.status === "RESPONSE_RECEIVED") && !l.hasResponse && (
+            {/* RC1-S11 (review NEW-3): the control also has to come BACK when the
+                reply is logged but nothing ever read it — a refused budget or a
+                provider error on our side. Without this the route would accept a
+                retry that the page gave the consumer no way to make. */}
+            {(l.status === "MAILED" || l.status === "RESPONSE_RECEIVED") && (!l.hasResponse || analysisMissing) && (
               <button onClick={() => setOpenResp((v) => !v)} className="btn-ghost min-h-[44px] text-xs">
-                <Upload className="h-3.5 w-3.5" /> Log response
+                <Upload className="h-3.5 w-3.5" /> {analysisMissing ? "Read this response" : "Log response"}
               </button>
             )}
             {l.hasResponse && l.responseOutcome !== "deleted" && (
@@ -1125,6 +1133,13 @@ function LetterRow({
               silently returns nothing when it is unavailable — and the drafting
               is a separate step the consumer takes. It now says what logging
               the response actually does. */}
+          {analysisMissing && (
+            <p className="mb-2 rounded border border-gold-500/30 bg-gold-500/10 p-2 text-xs text-gold-300">
+              Your reply is saved, but nothing has read it yet — the automatic assessment wasn&apos;t available when you
+              logged it. Paste it again (or attach the PDF) and I&apos;ll try once more. The date you logged it stays as
+              it was.
+            </p>
+          )}
           <p className="mb-2 text-xs text-slate-400">
             Paste the bureau&apos;s response, or attach the PDF. It&apos;s saved to this dispute, and where an
             automatic reading is available it summarizes the reply and lists what a follow-up round can target. Either

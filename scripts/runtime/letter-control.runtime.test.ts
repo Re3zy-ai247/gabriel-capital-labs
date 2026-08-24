@@ -20,14 +20,16 @@
 //
 // NON-VACUITY (measured 2026-08-24; each pre-fix file reverted and restored
 // immediately afterwards, never committed):
+//   · final candidate `d9b2a1e` (response route + letters page)     → 187 passed,  5 failed (exit 1)
+//     — NEW-3: a budget-refused reply was stamped with an outcome nobody
+//       determined, recorded in the ledger, and could never be analysed after
 //   · candidate `4bb33fa` (lib/letter.ts + the three gates)         → 174 passed,  3 failed (exit 1)
-//     — the re-analysis orphan was approvable at the gate
 //   · merged candidate `bd6cfbb` (three files)                      → 160 passed, 13 failed (exit 1)
 //   · release candidate `59f2afd` (route + page + lib files)        → 131 passed, 23 failed (exit 1)
 //   · branch base `31d4e35:app/api/letters/[id]/route.ts`           →  75 passed, 40 failed (exit 1)
 //   · branch base `31d4e35:app/api/letters/[id]/round2/route.ts`    → 102 passed, 13 failed (exit 1)
 //   · branch base `31d4e35:app/api/letters/[id]/response/route.ts`  → 110 passed,  5 failed (exit 1)
-//   · this tree                                                     → 177 passed,  0 failed (exit 0)
+//   · this tree                                                     → 192 passed,  0 failed (exit 0)
 import { check, loadModule, mockModule, run, section } from "./_harness";
 import { letterAuthorizationRevoked } from "../../lib/letter";
 
@@ -303,6 +305,23 @@ mockModule("lib/aiMeter.ts", {
     // The identity correction letter is the ONE surface here that is composed by
     // the model rather than the template, so a canned draft stands in for it.
     // Everything else must still never reach a provider.
+    if (label === "response-analysis") {
+      // A real, schema-shaped assessment, so the "was it analysed?" half of the
+      // NEW-3 pin exercises the path that actually locks the letter.
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify({
+              outcome: "verified",
+              summary: "The bureau says it verified the item as accurate and will keep reporting it.",
+              weaknesses: ["No method of verification was disclosed."],
+              recommendedNextStep: "Request the method of verification under FCRA 611(a)(7).",
+            }),
+          },
+        ],
+      };
+    }
     if (label === "identity-letter") {
       return {
         content: [
@@ -345,7 +364,12 @@ mockModule("lib/furnisher.ts", {
   getFurnisherContact: async () => null,
   formatFurnisherAddress: () => null,
 });
-mockModule("lib/outcomeLedger.ts", { recordVerifiedOutcome: async () => undefined });
+const ledgerRows: Json[] = [];
+mockModule("lib/outcomeLedger.ts", {
+  recordVerifiedOutcome: async (row: Json) => {
+    ledgerRows.push(row);
+  },
+});
 
 const letterRoute = loadModule<{
   GET: (req: Request, ctx: { params: { id: string } }) => Promise<Response>;
@@ -464,6 +488,7 @@ function resetAll() {
   spend.length = 0;
   aiPrincipals.length = 0;
   budgetExhausted = false;
+  ledgerRows.length = 0;
   kaiEvents.length = 0;
   tracked.length = 0;
   aiCalls = 0;
@@ -839,7 +864,7 @@ run("letter-control.runtime", async () => {
     const body = await json(res);
     check("the reply is still saved (200) — the refusal is about spend, not about their evidence", res.status === 200);
     check("…and it is on the row", db.letters[0].responseText !== null && db.letters[0].status === "RESPONSE_RECEIVED");
-    check("the outcome is not guessed at", db.letters[0].responseOutcome === "unknown");
+    check("the outcome is not guessed at — nothing read it, so nothing is recorded", db.letters[0].responseOutcome === null);
     check("the page is told no assessment happened", body.needsAI === true && body.budgetRefused === true);
   }
 
@@ -848,6 +873,9 @@ run("letter-control.runtime", async () => {
     resetAll();
     seedTradeline();
     seedLetter({ status: "MAILED", mailedAt: new Date("2026-08-02") });
+    // The lock is on the ANALYSIS (review NEW-3), so this fixture has to produce
+    // one: offline, that means the canned assessment above.
+    process.env.ANTHROPIC_API_KEY = "test-key-not-used-offline";
     const first = await responseRoute.POST(logResponse("l1", "We verified the item as accurate and it will remain."), { params: { id: "l1" } });
     check("the first log succeeds", first.status === 200);
     const storedFirst = db.letters[0].responseText;
@@ -862,6 +890,7 @@ run("letter-control.runtime", async () => {
     // The status self-transition stays legal: this guard is on the DATA, so a
     // PATCH to a status the letter already holds is still idempotent.
     check("re-PATCHing RESPONSE_RECEIVED is still allowed", (await letterRoute.PATCH(patch("l1", { status: "RESPONSE_RECEIVED" }), { params: { id: "l1" } })).status === 200);
+    delete process.env.ANTHROPIC_API_KEY;
   }
 
   // ── S11 AD-2 × S5 — the two contracts hold together ───────────────────────
@@ -1010,6 +1039,45 @@ run("letter-control.runtime", async () => {
     seedLetter();
     const noConfirmation = await letterRoute.PATCH(patch("l1", { status: "PRINTED" }), { params: { id: "l1" } });
     check("a TRADELINE letter with no confirmation behind it is still refused", noConfirmation.status === 409 && (await json(noConfirmation)).authorizationRevoked === true);
+    delete process.env.ANTHROPIC_API_KEY;
+  }
+
+  // ── RC1-S11 · review NEW-3 — our failure must not lock the consumer out ───
+  section("a reply nothing could read can be read later; one that WAS read cannot be re-run");
+  {
+    resetAll();
+    seedTradeline();
+    seedLetter({ status: "MAILED", mailedAt: new Date("2026-08-02") });
+    budgetExhausted = true;
+    const refused = await responseRoute.POST(logResponse("l1", "We have completed our reinvestigation and verified the item."), { params: { id: "l1" } });
+    const refusedBody = await json(refused);
+    check("the reply is saved even though the budget refused (200)", refused.status === 200);
+    check("…the consumer's evidence is on the row", db.letters[0].responseText !== null);
+    check("…and the page is told no assessment ran", refusedBody.needsAI === true && refusedBody.budgetRefused === true);
+    // The determination we never made must not be written anywhere.
+    check("NEW-3: no outcome is invented — it is null, not \"unknown\"", db.letters[0].responseOutcome === null);
+    check("…and nothing was recorded in the verified-outcome ledger", ledgerRows.length === 0);
+    check("…and no analysis is stored", db.letters[0].responseAnalysis === null);
+    const loggedAt = db.letters[0].responseAt;
+    check("…while responseAt records that the reply arrived", loggedAt !== null);
+
+    // …and the consumer can come back and get it read.
+    budgetExhausted = false;
+    process.env.ANTHROPIC_API_KEY = "test-key-not-used-offline";
+    const retry = await responseRoute.POST(logResponse("l1", "We have completed our reinvestigation and verified the item."), { params: { id: "l1" } });
+    check("NEW-3: the retry is ACCEPTED — our failure did not lock them out", retry.status === 200);
+    check("…and this time it was analysed", db.letters[0].responseAnalysis !== null && (await json(retry)).needsAI === false);
+    check("…the outcome is now a real determination", typeof db.letters[0].responseOutcome === "string" && db.letters[0].responseOutcome !== null);
+    check("…recorded once in the ledger", ledgerRows.length === 1);
+    check("…and the date their reply arrived was NOT moved to the retry", db.letters[0].responseAt === loggedAt);
+
+    // Non-replayability still holds for what actually cost something.
+    const callsAfterRetry = aiCalls;
+    const third = await responseRoute.POST(logResponse("l1", "Pasting the same reply a third time."), { params: { id: "l1" } });
+    const thirdBody = await json(third);
+    check("a reply that WAS analysed still refuses the repeat (409)", third.status === 409);
+    check("…identified as already logged and read", thirdBody.alreadyLogged === true);
+    check("…and no further analysis ran", aiCalls === callsAfterRetry);
     delete process.env.ANTHROPIC_API_KEY;
   }
 

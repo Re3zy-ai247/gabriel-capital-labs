@@ -16,16 +16,18 @@
 //
 // NON-VACUITY (measured 2026-08-24; pre-fix files reverted and restored
 // immediately, never committed):
-//   · candidate `4bb33fa` (lib/letter.ts + the three gates; S4's strategy
-//     registry left in place, so this isolates S5's half) → 227 passed, 5 failed (exit 1)
-//     — the re-analysis orphan authorized, no membership predicate, no gate
-//       passing the letter's own strategy
-//   · merged candidate `bd6cfbb` (three files)   → 170 passed, 10 failed (exit 1)
-//   · release candidate `59f2afd` (eight files)  → 151 passed, 40 failed (exit 1)
-//   · branch base `31d4e35:lib/letter.ts`        → the suite cannot even load
-//   · `31d4e35:app/letters/print/[id]/page.tsx`  → 126 passed,  9 failed (exit 1)
-//   · `31d4e35:app/letters/page.tsx`             →  99 passed, 36 failed (exit 1)
-//   · this tree                                  → 232 passed,  0 failed (exit 0)
+//   · final candidate `d9b2a1e` (the response route + the letters page)
+//                                                → 231 passed,  6 failed (exit 1)
+//     — NEW-3: the one-shot guard keyed on responseAt alone, "unknown" written
+//       as an outcome nothing determined, the ledger row for it, responseAt
+//       re-stamped on a retry, and no way back to the analysis from the page
+//   · candidate `4bb33fa` (lib/letter.ts + gates) → 227 passed,  5 failed (exit 1)
+//   · merged candidate `bd6cfbb` (three files)    → 170 passed, 10 failed (exit 1)
+//   · release candidate `59f2afd` (eight files)   → 151 passed, 40 failed (exit 1)
+//   · branch base `31d4e35:lib/letter.ts`         → the suite cannot even load
+//   · `31d4e35:app/letters/print/[id]/page.tsx`   → 126 passed,  9 failed (exit 1)
+//   · `31d4e35:app/letters/page.tsx`              →  99 passed, 36 failed (exit 1)
+//   · this tree                                   → 237 passed,  0 failed (exit 0)
 
 export {};
 
@@ -580,8 +582,16 @@ console.log("\n— 10. S11 review items (B-1 / B-2 / B-4 / AD-3 / AD-7) —");
   // B-1: the spend control is applied, not merely available.
   ok("B-1: the response analysis runs inside an AI principal", /withAiPrincipal\(user\.id, \(\) => analyzeResponse\(/.test(RESPONSE));
   ok("B-1: a budget refusal is distinguished from a failure", /e instanceof AiSpendRefusal/.test(RESPONSE) && /budgetRefused/.test(RESPONSE));
-  ok("B-1: a second response on the same letter is refused, so the paid call cannot be replayed", /if \(letter\.responseAt\)/.test(RESPONSE) && /alreadyLogged: true/.test(RESPONSE));
-  ok("B-1: …and the refusal is placed before the body is read or the model is called", RESPONSE.indexOf("if (letter.responseAt)") < RESPONSE.indexOf("boundBodySize(") && RESPONSE.indexOf("if (letter.responseAt)") < RESPONSE.indexOf("analyzeResponse("));
+  // NEW-3 corrected the predicate: the lock is on the ANALYSIS, because a reply
+  // that was never read is exactly the one the consumer must be able to retry.
+  ok("B-1: a second response on the same letter is refused, so the paid call cannot be replayed", /if \(letter\.responseAt && letter\.responseAnalysis\)/.test(RESPONSE) && /alreadyLogged: true/.test(RESPONSE));
+  ok("B-1: …and the refusal is placed before the body is read or the model is called", RESPONSE.indexOf("if (letter.responseAt && letter.responseAnalysis)") < RESPONSE.indexOf("boundBodySize(") && RESPONSE.indexOf("if (letter.responseAt && letter.responseAnalysis)") < RESPONSE.indexOf("analyzeResponse("));
+  // NEW-3: our own failure must not write a determination, or move their date.
+  ok("NEW-3: no outcome is invented when nothing read the reply", /responseOutcome: analysis\?\.outcome \?\? null/.test(RESPONSE) && !/\?\? "unknown"/.test(RESPONSE));
+  ok("NEW-3: …the verified-outcome ledger is written only when there IS an outcome", /if \(analysis\) \{\s*await recordVerifiedOutcome\(/.test(RESPONSE));
+  ok("NEW-3: …and responseAt is stamped once, so a retry cannot move the date the reply arrived", /\.\.\.\(letter\.responseAt \? \{\} : \{ responseAt: new Date\(\) \}\)/.test(RESPONSE));
+  ok("NEW-3: …and the page offers the retry the route now accepts", /const analysisMissing = l\.hasResponse && !analysis;/.test(PAGE) && /\(!l\.hasResponse \|\| analysisMissing\)/.test(PAGE));
+  ok("NEW-3: …saying plainly that nothing read it yet", /nothing has read it yet/.test(PAGE));
   ok("B-1: the status self-transition is left alone (a repeat PATCH stays idempotent)", canTransitionLetter("RESPONSE_RECEIVED", "RESPONSE_RECEIVED"));
 
   // B-2: the body is bounded before it is buffered, from the shared helper.
