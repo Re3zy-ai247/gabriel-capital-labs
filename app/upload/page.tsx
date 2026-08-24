@@ -5,6 +5,13 @@ import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
 import { EduBanner } from "@/components/Disclaimer";
 import { loginPathFor } from "@/lib/callbackUrl";
+// S11 B-R3-3: reused, not re-implemented. S4 exported this so the sentence a
+// consumer reads after a re-analysis is pinned as BEHAVIOUR in one place, and
+// /tradelines and /upload cannot drift into disagreeing about whether a run was
+// clean. This page previously carried its own copy that read `notice` but never
+// `degraded` or `usedAI`, so a fallback-parser run with nothing to report
+// rendered as an unqualified success.
+import { reanalyzeStatusLine } from "@/components/ReanalyzeButton";
 import { UploadCloud, Loader2, FileText, ClipboardPaste, CheckCircle2, Trash2, LogIn } from "lucide-react";
 
 interface StoredReport {
@@ -55,14 +62,13 @@ const BUREAUS = [
 // turn prose into fake ones — so the honest consequence is "some accounts may
 // be missing", and the consumer needs that fact to judge what they're looking
 // at. No blame, no outcome claim, and a real next step.
-// The re-analysis endpoint may cap how many reports one call covers. When it
-// does, it says so itself — render that sentence verbatim rather than writing
-// our own summary over the top of it. "All re-read" is a claim about the whole
-// file and must never be printed unless the response actually accounts for
-// every report. Every field is read defensively: an endpoint that returns no
-// cap fields (as today's does) still produces a correct, count-scoped line, and
-// a missing count degrades to a claim we can stand behind rather than
-// "undefined".
+// The re-analysis endpoint may cap how many reports one call covers, and may
+// finish on the fallback reader after a spend ceiling refused the AI one. When
+// it does either, it says so itself — reanalyzeStatusLine renders the server's
+// own sentence verbatim and appends the fallback disclosure when the run was
+// degraded without a refusal message of its own. "All re-read" is a claim about
+// the whole file and must never be printed unless the response accounts for
+// every report.
 // RC1 S2 handoff (A1 / upload): the button said "Re-analyze all" while
 // app/api/reports/analyze/route.ts has taken only the newest MAX_FANOUT = 5
 // since the S1 cost-guard slice — so an account holding more than five reports
@@ -75,19 +81,20 @@ const BUREAUS = [
 // authoritative number always comes from the response, never from here.
 const REANALYZE_BATCH = 5;
 
-function reanalyzeResult(j: { tradelines?: number; reportsAnalyzed?: number; skipped?: number; notice?: string }): string {
-  const notice = typeof j.notice === "string" ? j.notice.trim() : "";
-  if (notice) return notice;
-  const skipped = Number(j.skipped) || 0;
-  const analyzed = Number(j.reportsAnalyzed) || 0;
-  const tradelines = Number(j.tradelines) || 0;
-  const reports = `${analyzed} ${analyzed === 1 ? "report" : "reports"}`;
-  if (skipped > 0) {
-    // Cap hit but no wording supplied — still never claim "all".
-    return `Re-read ${reports} — ${tradelines} tradelines. ${skipped} older ${skipped === 1 ? "report was" : "reports were"} left as they are.`;
-  }
-  if (!analyzed) return "Re-analysis finished.";
-  return `Re-read ${reports} — ${tradelines} tradelines.`;
+// S11 B-R3-3. The server's own words about what limited a run, rendered where
+// the consumer reads the result — never summarised, never given a reason we did
+// not observe, and never framed as something to pay for: a spend ceiling is a
+// platform pause and there is nothing to buy.
+function AnalysisNotices({ notices }: { notices: string[] }) {
+  if (notices.length === 0) return null;
+  return (
+    <div role="status" aria-live="polite" className="mb-4 rounded-lg border border-gold-500/30 bg-gold-500/5 p-4">
+      <div className="text-[10px] font-bold uppercase tracking-widest text-gold-300">What limited this run</div>
+      {notices.map((n) => (
+        <p key={n} className="mt-1.5 max-w-2xl text-xs leading-relaxed text-slate-300">{n}</p>
+      ))}
+    </div>
+  );
 }
 
 function ExtractionFallbackNotice() {
@@ -113,7 +120,17 @@ export default function UploadPage() {
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [done, setDone] = useState<{ tradelines: number; usedAI: boolean } | null>(null);
+  const [done, setDone] = useState<{ tradelines: number; usedAI: boolean; degraded: boolean } | null>(null);
+  // S11 B-R3-3. The upload stream carries the server's own sentences about what
+  // limited a run — a PDF longer than the render cap, or a spend ceiling that
+  // refused the AI reader mid-analysis — as `note` on a stage event and as
+  // `notice` on the final one. Both were thrown away: the stage handler
+  // overwrote the note with a generic "I'm reading every account on the report",
+  // and the final type did not even declare `notice`. So the analysis quietly
+  // degraded and the page reported a clean success over it. These are kept
+  // verbatim; nothing here invents a reason, and a spend ceiling is a platform
+  // pause with nothing to buy, never a prompt to pay.
+  const [notices, setNotices] = useState<string[]>([]);
   const [reveal, setReveal] = useState<Reveal | null>(null);
   const [dragging, setDragging] = useState(false);
   const [reports, setReports] = useState<StoredReport[]>([]);
@@ -190,6 +207,7 @@ export default function UploadPage() {
 
     setBusy(true);
     setReveal(null);
+    setNotices([]);
     setStatus("Sending your report…");
     try {
       const form = new FormData();
@@ -220,10 +238,21 @@ export default function UploadPage() {
         ok?: boolean;
         tradelines?: number;
         usedAI?: boolean;
+        // The three fields the route reports degradation on (S1/S11). Declaring
+        // them is the point: without them the page cannot tell a clean run from
+        // one that finished on the fallback reader.
+        degraded?: boolean;
+        aiRefused?: boolean;
+        notice?: string;
         warning?: string;
         error?: string;
         reveal?: Reveal;
       } | null = null;
+      const collected: string[] = [];
+      const keepNote = (value: unknown) => {
+        const note = typeof value === "string" ? value.trim() : "";
+        if (note && !collected.includes(note)) collected.push(note);
+      };
       for (;;) {
         const { done: eof, value } = await reader.read();
         if (eof) break;
@@ -235,6 +264,9 @@ export default function UploadPage() {
           if (!line) continue;
           try {
             const evt = JSON.parse(line);
+            // Read the note FIRST: the stage line below is generic and would
+            // otherwise be the only thing the consumer ever saw.
+            keepNote(evt.note);
             if (evt.stage && STAGE_LINES[evt.stage]) setStatus(STAGE_LINES[evt.stage]);
             else final = evt;
           } catch {
@@ -249,7 +281,13 @@ export default function UploadPage() {
         setError(final?.error || "The analysis hit a snag on our side — nothing about your report or your credit caused this. Give it another try in a moment.");
         return;
       }
-      setDone({ tradelines: final.tradelines ?? 0, usedAI: Boolean(final.usedAI) });
+      keepNote(final.notice);
+      setNotices(collected);
+      setDone({
+        tradelines: final.tradelines ?? 0,
+        usedAI: Boolean(final.usedAI),
+        degraded: final.degraded === true,
+      });
       if ((final.tradelines ?? 0) > 0 && final.reveal) {
         setReveal(final.reveal);
         loadReports();
@@ -281,6 +319,10 @@ export default function UploadPage() {
         . Paste the report text or upload the PDF. We record which bureau each item comes from, and when your report
         doesn&apos;t say which bureau reports an account, we mark that unknown instead of assuming.
       </p>
+
+      {/* Above every outcome: a note that arrived mid-stream is true whether the
+          run ends in the reveal, the saved-but-no-accounts warning, or the form. */}
+      <AnalysisNotices notices={notices} />
 
       {reveal ? (
         <div className="card animate-rise p-6">
@@ -352,19 +394,23 @@ export default function UploadPage() {
               so a consumer whose report was read by the weaker fallback reader
               was never told. A weaker read means accounts may be missing — that
               is the consumer's fact, not ours to keep. */}
-          {done && !done.usedAI && <ExtractionFallbackNotice />}
+          {done && (!done.usedAI || done.degraded) && <ExtractionFallbackNotice />}
         </div>
       ) : done && done.tradelines > 0 ? (
         <div className="card flex flex-col items-center gap-3 p-10 text-center">
           <CheckCircle2 className="h-10 w-10 text-brand-400" />
           <div className="text-lg font-semibold">Analyzed {done.tradelines} accounts</div>
           <p className="text-sm text-slate-400">
-            {done.usedAI ? "Extraction complete." : "Read with the built-in pattern reader."}{" "}
+            {done.usedAI && !done.degraded
+              ? "Extraction complete."
+              : done.usedAI
+                ? "Extraction finished, but something limited this run — see the note above."
+                : "Read with the built-in pattern reader."}{" "}
             <button onClick={() => router.push("/tradelines")} className="font-semibold text-brand-400 hover:underline">
               See your tradelines →
             </button>
           </p>
-          {!done.usedAI && (
+          {(!done.usedAI || done.degraded) && (
             <div className="w-full max-w-xl text-left">
               <ExtractionFallbackNotice />
             </div>
@@ -474,7 +520,7 @@ export default function UploadPage() {
                 return;
               }
               const j = await res.json().catch(() => ({}));
-              setStatus(res.ok ? reanalyzeResult(j) : res.status === 401 ? "Your session ended. Sign in again in a new tab, then press Re-analyze — your reports are saved." : j.error || "The re-analysis didn't finish. Try again in a moment.");
+              setStatus(res.ok ? reanalyzeStatusLine(j) : res.status === 401 ? "Your session ended. Sign in again in a new tab, then press Re-analyze — your reports are saved." : j.error || "The re-analysis didn't finish. Try again in a moment.");
               await loadReports();
               router.refresh();
             }}
