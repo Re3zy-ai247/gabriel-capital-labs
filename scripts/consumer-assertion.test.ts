@@ -631,62 +631,127 @@ console.log("\n— S11 AD-2: a withdrawal reaches the letter it authorized");
     "an UNMAILED letter with a standing confirmation is AUTHORIZED",
     letterAuthorization({ mailedAt: null, tradelineId: "t1", activeAssertionCount: 1 }) === "AUTHORIZED"
   );
-  // ── THE RULE THIS PROTECTS (restated after S11 review AD-R2-1) ────────────
-  // A TRADELINE-CONFIRMATION rule judges TRADELINE letters. That is the whole
-  // scope of it, in both directions:
-  //   · A letter attached to a tradeline is judged by the confirmations on that
-  //     tradeline. Withdraw them and it is REVOKED — AD-2's actual scenario,
-  //     undiminished.
-  //   · A letter attached to NO tradeline carries no tradeline claim for a
-  //     withdrawal to undermine, so this rule has nothing to say about it. The
-  //     earlier reading ("no tradeline ⇒ fail closed") looked conservative and
-  //     was not: it killed every Personal Information correction letter at
-  //     birth — un-approvable, un-printable, after a metered model call, under a
-  //     message telling the consumer to confirm facts on a page where those
-  //     facts do not exist.
-  // The two assertions below are deliberately adjacent so the second can never
-  // be relaxed without the first failing beside it.
+  // ── THE AUTHORIZATION MATRIX (final, after AD-2 → AD-R2-1 → the S11 close) ──
+  //
+  // Four states, asserted together and deliberately adjacent, so no one of them
+  // can be relaxed without a neighbour failing beside it. The rule reached this
+  // shape by two corrections, and each correction is a state below:
+  //
+  //   1. IDENTITY — `personal_info`, no tradeline → AUTHORIZED. A Personal
+  //      Information correction disputes the consumer's own name, addresses and
+  //      employers; those items hang off no account, so a tradeline-confirmation
+  //      rule has nothing to say about it. The first cut read "no tradeline ⇒
+  //      fail closed" and killed every one of these at birth.
+  //   2. RE-ANALYSIS ORPHAN — a TRADELINE strategy, no tradeline → REVOKED. The
+  //      second cut authorized this too, because the two null-tradeline
+  //      populations looked identical. They are not: the letter's own STRATEGY
+  //      tells them apart, with no schema column.
+  //   3. WITHDRAWAL — tradeline present, nothing standing behind it → REVOKED.
+  //      AD-2's original scenario, untouched by either correction.
+  //   4. MAILED — HISTORICAL, never re-judged, whatever the other three fields
+  //      say. A mailed letter is a record of what was sent.
+  const IDENTITY_STRATEGY = "personal_info";
+  const TRADELINE_STRATEGY = "fcra_611";
+
+  // 1 — IDENTITY
   ok(
-    "WITHDRAWAL (tradeline present, nothing standing behind it) is REVOKED — AD-2, unchanged",
-    letterAuthorization({ mailedAt: null, tradelineId: "t1", activeAssertionCount: 0 }) === "REVOKED"
+    "IDENTITY (personal_info, no tradeline) is AUTHORIZED",
+    letterAuthorization({ mailedAt: null, tradelineId: null, activeAssertionCount: 0, strategy: IDENTITY_STRATEGY }) === "AUTHORIZED"
+  );
+  ok(
+    "…and is never reported as revoked to a caller that gates on it",
+    !letterAuthorizationRevoked({ mailedAt: null, tradelineId: null, activeAssertionCount: 0, strategy: IDENTITY_STRATEGY })
+  );
+  ok(
+    "…decided by the STRATEGY, not by the assertion count",
+    letterAuthorization({ mailedAt: null, tradelineId: null, activeAssertionCount: 0, strategy: IDENTITY_STRATEGY }) ===
+      letterAuthorization({ mailedAt: null, tradelineId: null, activeAssertionCount: 5, strategy: IDENTITY_STRATEGY })
+  );
+
+  // 2 — RE-ANALYSIS ORPHAN (the residual that used to be accepted, now closed)
+  ok(
+    "ORPHAN (a tradeline strategy, no tradeline) is REVOKED",
+    letterAuthorization({ mailedAt: null, tradelineId: null, activeAssertionCount: 0, strategy: TRADELINE_STRATEGY }) === "REVOKED"
+  );
+  ok(
+    "…and every caller therefore blocks it",
+    letterAuthorizationRevoked({ mailedAt: null, tradelineId: null, activeAssertionCount: 0, strategy: TRADELINE_STRATEGY })
+  );
+  ok(
+    "…so the two null-tradeline populations are NOT the same answer any more",
+    letterAuthorization({ mailedAt: null, tradelineId: null, activeAssertionCount: 0, strategy: IDENTITY_STRATEGY }) !==
+      letterAuthorization({ mailedAt: null, tradelineId: null, activeAssertionCount: 0, strategy: TRADELINE_STRATEGY })
+  );
+  ok(
+    "…and the discriminator is REGISTRY MEMBERSHIP, not a hard-coded name",
+    isNonTradelineStrategy(IDENTITY_STRATEGY) && !isNonTradelineStrategy(TRADELINE_STRATEGY)
+  );
+  for (const other of STRATEGIES) {
+    if (letterAuthorization({ mailedAt: null, tradelineId: null, activeAssertionCount: 0, strategy: other.id }) !== "REVOKED") {
+      ok(`…no tradeline dispute strategy can pass as an identity letter (${other.id})`, false);
+    }
+  }
+  ok("…checked across every tradeline dispute strategy in the registry", STRATEGIES.length > 0);
+
+  // 2b — S5's FAIL-CLOSED choice. `strategy` is optional at the type level (a
+  // required field broke the compile of S7's scripts/dashboard-ranking.test.ts),
+  // so a caller that cannot say which kind of letter this is must get the
+  // ORPHAN reading, never the identity one.
+  ok(
+    "ABSENT strategy fails CLOSED — REVOKED, not AUTHORIZED",
+    letterAuthorization({ mailedAt: null, tradelineId: null, activeAssertionCount: 0 }) === "REVOKED"
+  );
+  ok(
+    "…the same for an explicit undefined and an explicit null",
+    letterAuthorization({ mailedAt: null, tradelineId: null, activeAssertionCount: 0, strategy: undefined }) === "REVOKED" &&
+      letterAuthorization({ mailedAt: null, tradelineId: null, activeAssertionCount: 0, strategy: null }) === "REVOKED"
+  );
+  ok(
+    "…and for an unrecognized strategy id",
+    letterAuthorization({ mailedAt: null, tradelineId: null, activeAssertionCount: 0, strategy: "not_a_strategy" }) === "REVOKED"
+  );
+
+  // 3 — WITHDRAWAL (AD-2, unchanged by either correction)
+  ok(
+    "WITHDRAWAL (tradeline present, nothing standing behind it) is REVOKED",
+    letterAuthorization({ mailedAt: null, tradelineId: "t1", activeAssertionCount: 0, strategy: TRADELINE_STRATEGY }) === "REVOKED"
   );
   ok(
     "…and letterAuthorizationRevoked agrees, so every caller blocks it",
-    letterAuthorizationRevoked({ mailedAt: null, tradelineId: "t1", activeAssertionCount: 0 })
+    letterAuthorizationRevoked({ mailedAt: null, tradelineId: "t1", activeAssertionCount: 0, strategy: TRADELINE_STRATEGY })
   );
   ok(
-    "a letter with NO tradeline is not judged by the tradeline rule — it is AUTHORIZED",
-    letterAuthorization({ mailedAt: null, tradelineId: null, activeAssertionCount: 0 }) === "AUTHORIZED"
+    "…decided by the CONFIRMATIONS, not by the id's presence",
+    letterAuthorization({ mailedAt: null, tradelineId: "t1", activeAssertionCount: 1, strategy: TRADELINE_STRATEGY }) === "AUTHORIZED" &&
+      letterAuthorization({ mailedAt: null, tradelineId: "t1", activeAssertionCount: 0, strategy: TRADELINE_STRATEGY }) === "REVOKED"
   );
   ok(
-    "…and is therefore never reported as revoked to a caller that gates on it",
-    !letterAuthorizationRevoked({ mailedAt: null, tradelineId: null, activeAssertionCount: 0 })
+    "…and NOT by the strategy: an identity strategy cannot rescue a withdrawn tradeline letter",
+    letterAuthorization({ mailedAt: null, tradelineId: "t1", activeAssertionCount: 0, strategy: IDENTITY_STRATEGY }) === "REVOKED"
   );
-  ok(
-    "the tradeline case is decided by the CONFIRMATIONS, not by the id's presence",
-    letterAuthorization({ mailedAt: null, tradelineId: "t1", activeAssertionCount: 1 }) === "AUTHORIZED" &&
-      letterAuthorization({ mailedAt: null, tradelineId: "t1", activeAssertionCount: 0 }) === "REVOKED"
-  );
-  ok(
-    "the identity case is decided by the ABSENCE of a tradeline, whatever the count says",
-    letterAuthorization({ mailedAt: null, tradelineId: null, activeAssertionCount: 0 }) ===
-      letterAuthorization({ mailedAt: null, tradelineId: null, activeAssertionCount: 5 })
-  );
-  {
-    // The residual, pinned as a known and accepted state rather than left to be
-    // rediscovered: a tradeline letter whose row was deleted by re-analysis has
-    // a null tradelineId and is therefore AUTHORIZED again. The two populations
-    // are byte-identical in the row (see the AD-R2-1 note in lib/letter.ts), so
-    // this guard records the consequence instead of asserting a distinction the
-    // data cannot support.
-    const orphanedByReanalysis = { mailedAt: null, tradelineId: null, activeAssertionCount: 0 };
-    const identityLetter = { mailedAt: null, tradelineId: null, activeAssertionCount: 0 };
-    ok(
-      "ACCEPTED RESIDUAL: a re-analysis orphan is indistinguishable from an identity letter here",
-      letterAuthorization(orphanedByReanalysis) === letterAuthorization(identityLetter)
-    );
-    const LETTER_SRC_R2 = read("lib/letter.ts");
-    ok("…and lib/letter.ts states that residual rather than hiding it", /RESIDUAL/.test(LETTER_SRC_R2));
+
+  // 4 — MAILED is terminal, whatever the other three fields say
+  for (const [label, input] of [
+    ["identity", { mailedAt: new Date("2026-08-01"), tradelineId: null, activeAssertionCount: 0, strategy: IDENTITY_STRATEGY }],
+    ["orphan", { mailedAt: new Date("2026-08-01"), tradelineId: null, activeAssertionCount: 0, strategy: TRADELINE_STRATEGY }],
+    ["withdrawn", { mailedAt: new Date("2026-08-01"), tradelineId: "t1", activeAssertionCount: 0, strategy: TRADELINE_STRATEGY }],
+    ["no strategy", { mailedAt: new Date("2026-08-01"), tradelineId: null, activeAssertionCount: 0 }],
+  ] as const) {
+    ok(`MAILED is HISTORICAL and never re-judged (${label})`, letterAuthorization(input) === "HISTORICAL");
+    ok(`…and never reported as revoked (${label})`, !letterAuthorizationRevoked(input));
+  }
+
+  // S5 made `strategy` OPTIONAL at the type level (a required field broke S7's
+  // scripts/dashboard-ranking.test.ts) and fails closed without it. That is the
+  // safe direction for an unknown caller — and it means a GATE that forgets to
+  // pass it silently turns every identity letter back into an orphan, killing
+  // them at birth again with no type error to catch it. So every gate is pinned
+  // to pass it.
+  for (const gate of ["app/api/letters/[id]/route.ts", "app/letters/print/[id]/page.tsx", "app/api/letters/route.ts"]) {
+    const src = read(gate);
+    const calls = src.match(/letterAuthorization(?:Revoked)?\(\{[\s\S]{0,400}?\}\)/g) ?? [];
+    ok(`${gate} gates on the authorization rule`, calls.length > 0);
+    ok(`…and passes the letter's strategy, so it cannot fail closed by omission`, calls.every((c) => /strategy:/.test(c)));
   }
 
   const PATCH = read("app/api/letters/[id]/route.ts");

@@ -984,11 +984,17 @@ run("consumer-assertion.runtime", async () => {
     // rule EVERY one of these was REVOKED at birth — un-approvable and
     // un-printable after a metered model call, under a message telling the
     // consumer to confirm facts on a page where those facts do not exist.
+    //
+    // `strategy` is the discriminator, so the fixture has to carry the value the
+    // route actually writes and the value legacy production rows already hold:
+    // `personal_info`. Built with "fcra_611" this fixture was not an identity
+    // letter at all — it was a re-analysis orphan, and asserting it approvable
+    // pinned exactly the state the S11 close removed.
     const identity = await db.letter.create({
       data: {
         userId: "u1",
         tradelineId: null,
-        strategy: "fcra_611",
+        strategy: "personal_info",
         recipientType: "bureau",
         recipientName: "Equifax Information Services LLC",
         targetBureau: "EQUIFAX",
@@ -1012,6 +1018,35 @@ run("consumer-assertion.runtime", async () => {
       { params: { id: identity.id } }
     );
     check("…and it can be mailed", mail.status === 200);
+
+    // THE ORPHAN, same section so the pair cannot drift: byte-identical to the
+    // letter above except for its strategy — a tradeline dispute whose report
+    // was later deleted, so its tradelineId went NULL. It must be REFUSED.
+    const orphan = await db.letter.create({
+      data: {
+        userId: "u1",
+        tradelineId: null,
+        strategy: "fcra_611",
+        recipientType: "bureau",
+        recipientName: "Equifax Information Services LLC",
+        targetBureau: "EQUIFAX",
+        round: 1,
+        body: "enc:A tradeline dispute whose report the consumer later deleted.",
+        complianceFlags: [],
+      },
+    });
+    const orphanApprove = await letterRoute.PATCH(
+      post(`http://localhost/api/letters/${orphan.id}`, { status: "PRINTED" }),
+      { params: { id: orphan.id } }
+    );
+    check("a re-analysis ORPHAN (tradeline strategy, no tradeline) is REFUSED (409)", orphanApprove.status === 409);
+    check("…as revoked, specifically", (await json(orphanApprove)).authorizationRevoked === true);
+    check("…and it was not approved", db.letters.find((l) => l.id === orphan.id)?.status !== "PRINTED");
+    check(
+      "…so the two null-tradeline letters get OPPOSITE answers from the same gate",
+      db.letters.find((l) => l.id === identity.id)?.status === "MAILED" &&
+        db.letters.find((l) => l.id === orphan.id)?.status !== "PRINTED"
+    );
 
     // THE COMPANION PROTECTION, in the same section so the two cannot drift:
     // a letter that DOES have a tradeline, whose confirmations are withdrawn,
