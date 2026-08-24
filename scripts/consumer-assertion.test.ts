@@ -620,16 +620,23 @@ console.log("\n— S11 AD-1: no state has an unfollowable instruction");
 console.log("\n— S11 AD-2: a withdrawal reaches the letter it authorized");
 // ---------------------------------------------------------------------------
 {
-  const mailed = { mailedAt: new Date("2026-08-01"), tradelineId: "t1", activeAssertionCount: 0 };
+  // Every case in this block is a TRADELINE dispute letter, so each one says so
+  // explicitly. `strategy` is the discriminator between the two null-tradeline
+  // populations; omitting it here would have made the third case below an
+  // ORPHAN reading that happened to agree by accident, and it will not compile
+  // at all once the field is required.
+  const TRADELINE = "fcra_611";
+  const mailed = { mailedAt: new Date("2026-08-01"), tradelineId: "t1", activeAssertionCount: 0, strategy: TRADELINE };
   ok("a MAILED letter is HISTORICAL, never re-judged", letterAuthorization(mailed) === "HISTORICAL");
   ok("…and is never reported as revoked, whatever the consumer does later", !letterAuthorizationRevoked(mailed));
   ok(
-    "…including one whose tradeline is gone entirely",
-    letterAuthorization({ mailedAt: new Date("2026-08-01"), tradelineId: null, activeAssertionCount: 0 }) === "HISTORICAL"
+    "…including one whose tradeline is gone entirely (an orphan, but mailed)",
+    letterAuthorization({ mailedAt: new Date("2026-08-01"), tradelineId: null, activeAssertionCount: 0, strategy: TRADELINE }) ===
+      "HISTORICAL"
   );
   ok(
     "an UNMAILED letter with a standing confirmation is AUTHORIZED",
-    letterAuthorization({ mailedAt: null, tradelineId: "t1", activeAssertionCount: 1 }) === "AUTHORIZED"
+    letterAuthorization({ mailedAt: null, tradelineId: "t1", activeAssertionCount: 1, strategy: TRADELINE }) === "AUTHORIZED"
   );
   // ── THE AUTHORIZATION MATRIX (final, after AD-2 → AD-R2-1 → the S11 close) ──
   //
@@ -697,18 +704,29 @@ console.log("\n— S11 AD-2: a withdrawal reaches the letter it authorized");
   // required field broke the compile of S7's scripts/dashboard-ranking.test.ts),
   // so a caller that cannot say which kind of letter this is must get the
   // ORPHAN reading, never the identity one.
+  // The runtime fail-closed PATH, exercised with the two shapes a caller can
+  // still legitimately produce once `strategy` is a required field: a row whose
+  // stored strategy is NULL, and an id that is in no registry. Both take the
+  // orphan reading.
+  //
+  // "Omitted entirely" is deliberately NOT tested here any more. It was the
+  // weaker half of this protection — it asked the runtime to recover from a
+  // call site that forgot the discriminator, which is exactly how the dashboard
+  // came to announce every identity letter as blocked. With the field required,
+  // that omission is a COMPILE error instead, which is the stronger guarantee;
+  // this guard keeps the runtime half for the cases the type cannot catch.
   ok(
-    "ABSENT strategy fails CLOSED — REVOKED, not AUTHORIZED",
-    letterAuthorization({ mailedAt: null, tradelineId: null, activeAssertionCount: 0 }) === "REVOKED"
+    "a NULL stored strategy fails CLOSED — REVOKED, not AUTHORIZED",
+    letterAuthorization({ mailedAt: null, tradelineId: null, activeAssertionCount: 0, strategy: null }) === "REVOKED"
   );
   ok(
-    "…the same for an explicit undefined and an explicit null",
-    letterAuthorization({ mailedAt: null, tradelineId: null, activeAssertionCount: 0, strategy: undefined }) === "REVOKED" &&
-      letterAuthorization({ mailedAt: null, tradelineId: null, activeAssertionCount: 0, strategy: null }) === "REVOKED"
-  );
-  ok(
-    "…and for an unrecognized strategy id",
+    "…and so does an unrecognized strategy id",
     letterAuthorization({ mailedAt: null, tradelineId: null, activeAssertionCount: 0, strategy: "not_a_strategy" }) === "REVOKED"
+  );
+  ok(
+    "…and neither is ever reported as authorized to a gate",
+    letterAuthorizationRevoked({ mailedAt: null, tradelineId: null, activeAssertionCount: 0, strategy: null }) &&
+      letterAuthorizationRevoked({ mailedAt: null, tradelineId: null, activeAssertionCount: 0, strategy: "not_a_strategy" })
   );
 
   // 3 — WITHDRAWAL (AD-2, unchanged by either correction)
@@ -735,7 +753,7 @@ console.log("\n— S11 AD-2: a withdrawal reaches the letter it authorized");
     ["identity", { mailedAt: new Date("2026-08-01"), tradelineId: null, activeAssertionCount: 0, strategy: IDENTITY_STRATEGY }],
     ["orphan", { mailedAt: new Date("2026-08-01"), tradelineId: null, activeAssertionCount: 0, strategy: TRADELINE_STRATEGY }],
     ["withdrawn", { mailedAt: new Date("2026-08-01"), tradelineId: "t1", activeAssertionCount: 0, strategy: TRADELINE_STRATEGY }],
-    ["no strategy", { mailedAt: new Date("2026-08-01"), tradelineId: null, activeAssertionCount: 0 }],
+    ["null strategy", { mailedAt: new Date("2026-08-01"), tradelineId: null, activeAssertionCount: 0, strategy: null }],
   ] as const) {
     ok(`MAILED is HISTORICAL and never re-judged (${label})`, letterAuthorization(input) === "HISTORICAL");
     ok(`…and never reported as revoked (${label})`, !letterAuthorizationRevoked(input));
