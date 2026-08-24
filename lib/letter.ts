@@ -5,6 +5,7 @@ import { BUREAU_ADDRESS, BUREAU_LABEL } from "./bureaus";
 import { getBureauData, presentBureaus, hasCrossBureauKnowledge, crossBureauConflicts, type BureauData } from "./bureauData";
 import { obsolescenceWindowYears, bureauTextBlob } from "./obsolescence";
 import { formatCents, formatDate } from "./utils";
+import { formatMonthYear, parseReportDate, type ParsedReportDate } from "./tradelineInsights";
 
 export interface LetterTradeline {
   creditorName: string;
@@ -454,7 +455,7 @@ export function buildFindings(t: LetterTradeline, ctx: LetterContext): Finding[]
   // runs when ≥2 bureaus are known, which is exactly when the letter drops the
   // "no representation about any other agency" sentence and disputes ON the
   // discrepancy.
-  const attesting = <V>(obs: { b: Bureau; v: V }[]) =>
+  const attesting = <T extends { b: Bureau }>(obs: T[]) =>
     ctx.targetBureau ? obs.filter((o) => o.b === ctx.targetBureau) : obs;
 
   const statuses = collect((f) => f?.status);
@@ -484,16 +485,49 @@ export function buildFindings(t: LetterTradeline, ctx: LetterContext): Finding[]
       ? `The reported balance is ${formatCents(own[0].v)}.`
       : `${lbl(own[0].b)} reports a balance of ${formatCents(own[0].v)}.`;
   };
-  const dofds = collect((f) => f?.dofd);
+  // ---- RC1-S11 (journey NEW-1): A DATE IS PARSED BEFORE IT IS STATED --------
+  //
+  // These sites used to read the persisted `dateOfFirstDelinquency` COLUMN,
+  // which is NULL for a month-precision report value, so the sentence was simply
+  // omitted. The CRITICAL-1 fix redirected them to the per-bureau observations —
+  // which carry the report's RAW string — and handed that string to formatDate.
+  // `new Date("08/2021")` is Invalid Date in Node, and toLocaleDateString prints
+  // that literally, so an approved, printable letter stated:
+  //
+  //     The date of first delinquency reported on the Equifax file is Invalid Date.
+  //
+  // as a fact, in a document the consumer signs. Nothing caught it: it trips no
+  // compliance rule and no placeholder check. It fired on the fallback-parser
+  // path — the default whenever AI extraction is unavailable — and it destroyed
+  // the §605 obsolescence argument that month-precision parsing exists to make.
+  //
+  // `reportedDofd`/`parseReportDate` (lib/tradelineInsights.ts) is the single
+  // derivation the scoring engine, the §605 clock and the explain copy already
+  // share; the letter now speaks from it too. Two rules follow from that:
+  //   · a value that does not parse is DROPPED, never rendered — an unstatable
+  //     date means no sentence, exactly as before the regression;
+  //   · a month-precision value renders as a MONTH ("Aug 2021"). The parser
+  //     anchors such a date to the end of the month so the §605 window is never
+  //     claimed early, and printing that day ("Aug 31, 2021") would state a
+  //     precision the report never gave. The letter says what the report says.
+  const dofds = collect((f) => f?.dofd)
+    .map((s) => ({ b: s.b, d: parseReportDate(s.v as string) }))
+    .filter((x): x is { b: Bureau; d: ParsedReportDate } => x.d !== null);
+  const renderDofd = (d: ParsedReportDate) =>
+    d.precision === "month" ? formatMonthYear(d.date) : formatDate(d.date);
   const dofdObservation = (): string => {
-    if (ctx.crossBureau && new Set(dofds.map((s) => String(s.v))).size > 1) {
-      return dofds.map((s) => `${lbl(s.b)} reports a date of first delinquency of ${formatDate(s.v)}`).join("; ") + ".";
+    // Compared as PARSED dates, not raw strings: "8/2021" and "08/2021" are the
+    // same date, and calling that a cross-bureau discrepancy would be its own
+    // fabricated fact.
+    const distinct = new Set(dofds.map((x) => `${x.d.date.getTime()}:${x.d.precision}`));
+    if (ctx.crossBureau && distinct.size > 1) {
+      return dofds.map((x) => `${lbl(x.b)} reports a date of first delinquency of ${renderDofd(x.d)}`).join("; ") + ".";
     }
     const own = attesting(dofds);
     if (!own.length) return "";
     return ctx.targetBureau
-      ? `The date of first delinquency reported on the ${lbl(ctx.targetBureau)} file is ${formatDate(own[0].v)}.`
-      : `${lbl(own[0].b)} reports a date of first delinquency of ${formatDate(own[0].v)}.`;
+      ? `The date of first delinquency reported on the ${lbl(ctx.targetBureau)} file is ${renderDofd(own[0].d)}.`
+      : `${lbl(own[0].b)} reports a date of first delinquency of ${renderDofd(own[0].d)}.`;
   };
 
   const findings: Finding[] = [];
@@ -1013,9 +1047,38 @@ export interface LetterAuthorizationInput {
 
 export function letterAuthorization(l: LetterAuthorizationInput): LetterAuthorizationState {
   if (l.mailedAt != null) return "HISTORICAL";
-  // Fails closed: an unmailed letter whose tradeline is gone (report deleted)
-  // has nothing left to check the claim against.
-  if (!l.tradelineId) return "REVOKED";
+  // ---- RC1-S11 (review AD-R2-1) --------------------------------------------
+  // This branch used to read `if (!l.tradelineId) return "REVOKED"`, described
+  // as failing closed on a letter whose tradeline is gone. It also caught the
+  // one letter in the product that never HAS a tradeline: the Personal
+  // Information correction letter (app/api/identity/letter/route.ts), which
+  // disputes the consumer's own name, address and employer — facts that have no
+  // tradeline row to hang a confirmation on. Every one of those letters was
+  // therefore unauthorized at birth: the consumer ticked the per-item
+  // confirmations, spent a metered model call, and got a letter that could not
+  // be approved, printed or mailed, under a message telling them to confirm the
+  // facts on their Tradelines page — where these facts do not exist.
+  //
+  // THE RULE NOW: a tradeline-confirmation rule judges TRADELINE letters. It is
+  // unchanged and undiminished for them — a letter attached to a tradeline with
+  // no ACTIVE confirmation behind it is REVOKED, which is exactly the withdrawal
+  // case AD-2 was written for. A letter attached to no tradeline is not judged
+  // by it, because it carries no tradeline claim for a withdrawal to undermine.
+  //
+  // WHY NOT KEEP IT AND SPECIAL-CASE IDENTITY: the two populations are
+  // indistinguishable in the row. An identity letter records
+  // `strategy: "fcra_611"`, `recipientType: "bureau"` and a null tradelineId —
+  // byte-identical to a §611 tradeline letter whose report was later deleted.
+  // Telling them apart needs a column (a migration, outside this slice), and
+  // guessing wrong the other way blocks a legitimate letter.
+  //
+  // RESIDUAL, stated rather than hidden: a letter whose tradeline row is gone
+  // (the consumer deleted the report) is no longer blocked here. It is not a
+  // withdrawal — the consumer's ConsumerAssertion rows survive a deleted report
+  // with their immutable creditor snapshots, and nothing they confirmed was
+  // taken back. What still protects that letter is everything else: the
+  // compliance bar, their own review before approving, and MAILED immutability.
+  if (!l.tradelineId) return "AUTHORIZED";
   return l.activeAssertionCount > 0 ? "AUTHORIZED" : "REVOKED";
 }
 
@@ -1216,6 +1279,17 @@ export interface RegenerateCandidate {
 export interface RegeneratePlan {
   toUpdate: { target: Bureau | undefined; existingId: string }[];
   toCreate: (Bureau | undefined)[];
+  /**
+   * Targets whose only unmailed letter is one the consumer APPROVED. The caller
+   * must not act on these without an explicit instruction from the consumer —
+   * see the AD-3 / NEW-2 note on planLetterRegeneration.
+   */
+  blockedByApproval: { target: Bureau | undefined; existingId: string }[];
+}
+
+export interface RegenerateOptions {
+  /** The consumer said, in so many words, "replace the letter I approved". */
+  replaceApproved?: boolean;
 }
 
 // For each requested target (a specific bureau, or undefined for a single-
@@ -1228,34 +1302,55 @@ export interface RegeneratePlan {
 // the dedicated /api/letters/[id]/round2 endpoint, untouched by this function.
 export function planLetterRegeneration(
   targets: (Bureau | undefined)[],
-  candidates: RegenerateCandidate[]
+  candidates: RegenerateCandidate[],
+  options?: RegenerateOptions
 ): RegeneratePlan {
   const unmailedByBureau = new Map<string, RegenerateCandidate>();
+  const approvedByBureau = new Map<string, RegenerateCandidate>();
   for (const c of candidates) {
     if (c.mailedAt) continue; // mailed rows are never regenerate-matched
-    // RC1-S11 (review AD-3): nor is a letter the consumer has APPROVED. An
-    // approved letter is one they read, edited and said was right; overwriting
-    // it in place destroys their own words and silently un-approves it. Skipped
-    // here means the plan CREATES a new draft beside it instead — never
-    // destroys.
-    //
-    // ⚠️ DORMANT until the caller supplies it. app/api/letters/generate/route.ts
-    // selects only { id, targetBureau, mailedAt } for these candidates, so
-    // `status` is undefined today and this line is inert. That route belongs to
-    // another slice; the routed change is one word in its select. Until then the
-    // protection is the two-press confirmation on app/letters/page.tsx.
-    if (c.status === LETTER_APPROVED_STATUS) continue;
     const key = c.targetBureau ?? "__none__";
+    // RC1-S11 (review AD-3, then journey NEW-2): a letter the consumer APPROVED
+    // is one they read, edited and said was right. Overwriting it in place
+    // destroys their own words and silently un-approves it.
+    //
+    // The first cut of this rule SKIPPED such a candidate, which stopped the
+    // overwrite — and the runtime re-run showed what skipping actually did:
+    // POST /api/letters/generate returned 200 and CREATED a second letter, so
+    // the tradeline carried two live round-1 EQUIFAX letters, both approvable,
+    // both mailable. Mailing both sends the same bureau two round-1 disputes on
+    // one item. Not destroying their letter is necessary; quietly duplicating it
+    // is not the alternative.
+    //
+    // So an approved letter is reported, not silently dropped. With no explicit
+    // instruction the caller refuses (nothing composed, nothing charged, nothing
+    // written). When the consumer says "replace the one I approved", the row is
+    // matched for UPDATE like any other draft — so the outcome is one letter
+    // either way, never two.
+    if (c.status === LETTER_APPROVED_STATUS && !options?.replaceApproved) {
+      if (!approvedByBureau.has(key)) approvedByBureau.set(key, c);
+      continue;
+    }
     if (!unmailedByBureau.has(key)) unmailedByBureau.set(key, c); // first match wins, stable
   }
   const toUpdate: RegeneratePlan["toUpdate"] = [];
   const toCreate: RegeneratePlan["toCreate"] = [];
+  const blockedByApproval: RegeneratePlan["blockedByApproval"] = [];
   for (const t of targets) {
-    const match = unmailedByBureau.get(t ?? "__none__");
-    if (match) toUpdate.push({ target: t, existingId: match.id });
-    else toCreate.push(t);
+    const key = t ?? "__none__";
+    const match = unmailedByBureau.get(key);
+    if (match) {
+      toUpdate.push({ target: t, existingId: match.id });
+      continue;
+    }
+    const approved = approvedByBureau.get(key);
+    if (approved) {
+      blockedByApproval.push({ target: t, existingId: approved.id });
+      continue;
+    }
+    toCreate.push(t);
   }
-  return { toUpdate, toCreate };
+  return { toUpdate, toCreate, blockedByApproval };
 }
 
 export function buildUserPrompt(t: LetterTradeline, ctx: LetterContext, draft: string): string {
