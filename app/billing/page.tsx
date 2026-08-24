@@ -119,6 +119,12 @@ function BillingInner() {
   // actually governs the account is identical to everybody else's.
   const hadConsumerPlan = status?.planIsHistorical === true || status?.plan === 'premium';
   const historicalPlanLabel = 'Professional';
+  // RC1-S11 (C-4). A `plan: "premium"` row does not prove a payment: staff can
+  // provision one (app/api/admin/billing/provision), and a comped account has no
+  // Stripe customer at all. "Plan you previously paid for" would be a false
+  // statement about that person's money, so the claim is made only when a Stripe
+  // customer exists to back it.
+  const planRowLabel = status?.hasStripeCustomer ? 'Plan you previously paid for' : 'Plan on record';
   const frozenCredits = Math.max(0, status?.letterCredits ?? 0);
   const hasBillingRecord =
     hadConsumerPlan || frozenCredits > 0 || Boolean(status?.hasStripeCustomer) || Boolean(status?.subscriptionStatus);
@@ -192,7 +198,7 @@ function BillingInner() {
                   <div className="space-y-5">
                     {hadConsumerPlan && (
                       <div>
-                        <div className="text-slate-400 text-sm">Plan you previously paid for</div>
+                        <div className="text-slate-400 text-sm">{planRowLabel}</div>
                         <div className="text-lg font-semibold">
                           {historicalPlanLabel}
                           <span className="ml-2 rounded bg-slate-800 px-2 py-0.5 align-middle text-[10px] font-bold uppercase tracking-wide text-slate-300">
@@ -271,6 +277,20 @@ function BillingInner() {
                 >
                   {busy ? 'Opening…' : 'Open Billing Portal'}
                 </button>
+              ) : hasBillingRecord ? (
+                // RC1-S11 (C-4). This branch used to print "No billing history on
+                // this account — you have never been charged" purely on the
+                // absence of a Stripe customer, directly contradicting the
+                // "Your billing history" card above, which renders whenever a
+                // plan, credits or a subscription status exist. A comped or
+                // staff-provisioned account saw its subscription listed AND was
+                // told it had no billing history. The portal's absence is a fact
+                // about Stripe, not a claim about whether the person ever paid.
+                <p className="text-slate-500 text-sm">
+                  No Stripe customer is linked to this account, so there is no portal to open. Your record above is
+                  unaffected — if you believe something is missing from it, contact support and we will tell you
+                  honestly what we can see.
+                </p>
               ) : (
                 <p className="text-slate-500 text-sm">
                   No billing history on this account — you have never been charged, and there is nothing to open.

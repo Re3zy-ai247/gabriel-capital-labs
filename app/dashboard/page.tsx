@@ -190,7 +190,6 @@ export default async function DashboardPage() {
           firstName={data.firstName}
           identity={cxIdentity}
           role={cxRole}
-          plan={cxUser.plan}
           health={cxHealth}
           standing={data.standing}
           capacity={data.capacity}
