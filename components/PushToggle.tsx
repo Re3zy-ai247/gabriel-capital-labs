@@ -90,7 +90,7 @@ export function PushToggle() {
         return;
       }
       setEnabled(true);
-      setMsg("Phone alerts are on for this device. 🎉");
+      setMsg("This device is registered. Nothing is sent through it today.");
     } catch (e) {
       setMsg((e as Error)?.message || "Couldn't enable notifications on this device.");
     } finally {
