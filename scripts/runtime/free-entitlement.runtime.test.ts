@@ -289,6 +289,17 @@ class FakeDb {
       reads.push("communityReply.findMany");
       return this.replies.map((r) => ({ ...r }));
     },
+    findUnique: async (args: { where: { id: string } }) => {
+      reads.push("communityReply.findUnique");
+      const r = this.replies.find((x) => x.id === args.where.id);
+      return r ? { ...r } : null;
+    },
+    delete: async (args: { where: { id: string } }) => {
+      writes.push("communityReply.delete");
+      const i = this.replies.findIndex((x) => x.id === args.where.id);
+      if (i < 0) throw new Error("no reply");
+      return this.replies.splice(i, 1)[0];
+    },
     create: async (args: { data: Partial<ReplyRow> }) => {
       writes.push("communityReply.create");
       const row: ReplyRow = {
@@ -430,6 +441,9 @@ const thread = loadModule<{
 }>("app/api/community/threads/[id]/route.ts");
 const askKaiRoute = loadModule<{ POST(req: Request, c: { params: { id: string } }): Promise<Response> }>(
   "app/api/community/threads/[id]/ask-kai/route.ts"
+);
+const replyRoute = loadModule<{ DELETE(req: Request, c: { params: { id: string } }): Promise<Response> }>(
+  "app/api/community/replies/[id]/route.ts"
 );
 
 // ── fixtures ─────────────────────────────────────────────────────────────────
@@ -649,6 +663,35 @@ run("free-entitlement.runtime.test.ts", async () => {
 
   const readOwn = await thread.GET(new Request("https://runtime.test/t"), { params: { id: "t_own" } });
   check("even your OWN thread is not readable while the feature is off", readOwn.status === 403);
+
+  // REMEDIATION M-1 — the case thread deletion never covered: a reply the
+  // consumer left inside SOMEONE ELSE'S thread. Deleting `t_own` cascades only
+  // its own replies, so without this route the author's words would be stranded.
+  db.replies.push({
+    id: "r_own", threadId: "t_other", authorId: "u_legacy_pro", authorName: "Member",
+    body: "My reply, in someone else's thread", isKai: false, createdAt: new Date(),
+  });
+  db.replies.push({
+    id: "r_theirs", threadId: "t_other", authorId: "u_free", authorName: "Someone",
+    body: "Their reply", isKai: false, createdAt: new Date(),
+  });
+
+  const delTheirReply = await replyRoute.DELETE(new Request("https://runtime.test/r", { method: "DELETE" }), {
+    params: { id: "r_theirs" },
+  });
+  const delTheirBody = (await delTheirReply.json()) as Record<string, unknown>;
+  check("someone else's reply cannot be deleted", delTheirReply.status === 403);
+  check("…and the refusal is the availability message, not a paywall",
+    delTheirBody.error === "Community is not available right now." && delTheirBody.communityUnavailable === true);
+  check("…no \"Members only\" anywhere in it", !/Members only/.test(JSON.stringify(delTheirBody)));
+  check("…and it is still there", db.replies.some((r) => r.id === "r_theirs"));
+
+  const delOwnReply = await replyRoute.DELETE(new Request("https://runtime.test/r", { method: "DELETE" }), {
+    params: { id: "r_own" },
+  });
+  check("THE AUTHOR CAN STILL DELETE THEIR OWN REPLY with the feature off", delOwnReply.status === 200);
+  check("…and it is really gone", !db.replies.some((r) => r.id === "r_own"));
+  check("…the parent thread's replyCount was kept in sync", writes.includes("communityThread.update"));
 
   const delOther = await thread.DELETE(new Request("https://runtime.test/t", { method: "DELETE" }), {
     params: { id: "t_other" },

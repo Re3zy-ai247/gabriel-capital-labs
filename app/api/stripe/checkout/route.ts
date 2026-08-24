@@ -51,22 +51,36 @@ function isPurchasablePlan(value: string): value is PurchasablePlan {
 // 410 Gone is the honest code: these products existed and no longer do. The copy
 // states the fact and stops — no pricing, no alternative to buy, no "contact us
 // to upgrade", nothing that reads as a pitch.
-const SALES_CLOSED: Record<string, string> = {
+// Prototype-free ON PURPOSE. A plain object literal inherits `constructor`,
+// `__proto__`, `toString` and friends, so `SALES_CLOSED["constructor"]` returned
+// a FUNCTION — truthy, so `?? SALES_CLOSED_DEFAULT` never fired — and the 410
+// body then carried an `error` that does not serialize to a string. No sale ever
+// occurred and Stripe was never touched, but the client renders `data.error`
+// directly, so it must always be a string. Object.create(null) has no prototype,
+// so every key that was not written here misses and falls through to the default.
+const SALES_CLOSED: Record<string, string> = Object.assign(Object.create(null), {
   letters_5:
     "Letter packs are no longer sold. You don't need one: generating dispute letters is free, with no monthly limit. Any letter credits already on your account stay on it.",
   premium:
     "CreditVector no longer sells a consumer plan. Everything the paid plan used to gate — dispute letters, escalations, personal-information corrections, your action plan — is available to you at no cost.",
   agency:
     "New Agency sign-ups are paused. Existing Agency accounts are unaffected and continue to work as they are.",
-};
+});
 const SALES_CLOSED_DEFAULT =
   "This isn't for sale. CreditVector doesn't charge consumers, and no new subscriptions are being opened.";
 
 /**
- * Refuse a purchase before anything commercial happens. Returns a response for
- * every request this route can receive today; the nullable return type is what
- * keeps the legacy machinery below reachable in principle rather than dead code
- * the compiler has to be told to ignore.
+ * Refuse a purchase before anything commercial happens.
+ *
+ * THIS FUNCTION IS TOTAL. It contains exactly one `return`, reached
+ * unconditionally, so EVERY request to this route is answered 410 and nothing
+ * below the call site can execute. The nullable return type is deliberate — it
+ * is what keeps the dormant machinery below type-reachable rather than dead code
+ * the compiler has to be told to ignore — but that same nullability means a
+ * future edit could make the refusal CONDITIONAL and still compile. So the
+ * totality is pinned in scripts/no-paid-advantage.test.ts (no branch, exactly
+ * one return): re-opening a sale here turns guard assertions red in CI, it does
+ * not slip through as a one-line change.
  */
 function refuseSale(body: { product?: unknown; plan?: unknown }): NextResponse | null {
   const product = typeof body?.product === "string" ? body.product : null;

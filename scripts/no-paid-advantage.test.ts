@@ -34,6 +34,8 @@ import {
   FREE_LETTER_LIMIT,
   type Entitlement,
 } from "../lib/entitlements";
+// Pure pricing maths — no I/O, no provider, safe to execute offline.
+import { computePrice, DEFAULT_PRICING_POLICY } from "../lib/mail/MailPricing";
 
 const root = join(__dirname, "..");
 const read = (p: string) => readFileSync(join(root, p), "utf8");
@@ -78,7 +80,26 @@ const COMMUNITY_ROUTES = {
   "app/api/community/threads/[id]/replies/route.ts": read("app/api/community/threads/[id]/replies/route.ts"),
   "app/api/community/threads/[id]/ask-kai/route.ts": read("app/api/community/threads/[id]/ask-kai/route.ts"),
   "app/api/community/access/route.ts": read("app/api/community/access/route.ts"),
+  // REMEDIATION M-1. These two were the last of the six-route 403 family the
+  // evidence names (B report S-07) still answering "Members only", and the
+  // reply route stranded an author's own words behind the feature switch.
+  "app/api/community/replies/[id]/route.ts": read("app/api/community/replies/[id]/route.ts"),
+  "app/api/community/reports/route.ts": read("app/api/community/reports/route.ts"),
 } as const;
+
+/**
+ * The lines of a route that form a REFUSAL a consumer can read back: the
+ * response payloads. Scanning whole files for commercial words would catch
+ * unrelated internal text (the reports route composes an ADMIN moderation email
+ * that legitimately says "A member flagged…"), which is neither shown to a
+ * consumer nor a paywall. The refusal is what the invariant is about.
+ */
+function refusalPayloads(code: string): string {
+  return code
+    .split("\n")
+    .filter((l) => /NextResponse\.json\(|error:|communityUnavailable/.test(l))
+    .join("\n");
+}
 
 const CHECKOUT = read("app/api/stripe/checkout/route.ts");
 const CHECKOUT_CODE = codeOnly(CHECKOUT);
@@ -106,15 +127,25 @@ console.log("\n— 1. getEntitlement is structurally blind to payment —");
     ENT_CODE.indexOf("export function canGenerateLetter")
   );
   ok("the resolver never calls the billing predicate", !/isPremium\(/.test(body));
-  ok("the managed-payer lookup is gone (no agency row is read)",
-    !/managedByAgencyId/.test(body) && !/prisma\.user\.findUnique/.test(body));
+  // REMEDIATION L-4: pinning only `findUnique` left `findFirst` / `$queryRaw` as
+  // ways to re-fetch the payer row by id. Pin the whole User accessor.
+  ok("the managed-payer lookup is gone (no agency row is read, by any accessor)",
+    !/managedByAgencyId/.test(body) && !/prisma\.user\./.test(body) && !/\$queryRaw(?!Unsafe<Array<\{ meta)/.test(body.replace(/lettersUsedFromLedger/g, "")));
+  // REMEDIATION L-3: the old two-branch resolver indented its premium `return {`
+  // by four spaces, so an `^\s{2}`-anchored count read 1 and this passed on the
+  // pre-change code. Count at ANY indentation.
   ok("there is exactly ONE return — no tier branch to fall into",
-    (body.match(/^\s{2}return \{/gm) ?? []).length === 1,
-    `found ${(body.match(/^\s{2}return \{/gm) ?? []).length}`);
+    (body.match(/^\s*return \{/gm) ?? []).length === 1,
+    `found ${(body.match(/^\s*return \{/gm) ?? []).length}`);
   ok("the single return is premium:false / plan:\"free\" / aiRefinement:false",
     /premium: false,/.test(body) && /plan: "free",/.test(body) && /aiRefinement: false,/.test(body));
+  // REMEDIATION L-3: `letterLimit: null` / `lettersRemaining: null` were literally
+  // present in the OLD premium branch, so asserting them alone passed on
+  // pre-change code. What is new is the ABSENCE of the capped free branch.
   ok("letters are unbounded by plan (letterLimit and lettersRemaining are null)",
     /letterLimit: null,/.test(body) && /lettersRemaining: null,/.test(body));
+  ok("…and the capped free branch is gone, for everyone",
+    !/letterLimit: FREE_LETTER_LIMIT/.test(body) && !/freeMonthlyRemaining/.test(body));
   ok("no premium tier distinction survives anywhere in the returned shape",
     !/premium: true/.test(body) && !/plan: "premium"/.test(body) && !/aiRefinement: true/.test(body));
 }
@@ -259,8 +290,11 @@ console.log("\n— 6. the community 403 family is a feature switch, not a paywal
   for (const [name, src] of Object.entries(COMMUNITY_ROUTES)) {
     const code = codeOnly(src);
     ok(`${name}: the "Members only" paywall string is gone`, !/Members only/.test(code));
-    ok(`${name}: says nothing about membership, plans or payment`,
-      !/member|paid|plan|subscri|upgrade|pricing/i.test(code.replace(/requireCommunityA\w+/g, "")));
+    ok(`${name}: no refusal it can return says anything about membership, plans or payment`,
+      !/member|paid|plan|subscri|upgrade|pricing/i.test(
+        refusalPayloads(code).replace(/requireCommunityA\w+/g, "")
+      ),
+      refusalPayloads(code));
   }
   ok("Kai-in-community refuses through the same truthful string",
     /COMMUNITY_UNAVAILABLE/.test(codeOnly(COMMUNITY_ROUTES["app/api/community/threads/[id]/ask-kai/route.ts"])));
@@ -296,6 +330,27 @@ console.log("\n— 7. author data-control outranks the feature switch —");
       !/canAccessCommunity/.test(
         COMMUNITY_CODE.slice(COMMUNITY_CODE.indexOf("export async function requireCommunityAuthor"))
       ));
+  // REMEDIATION M-1. Deleting a THREAD cascades its own replies, so it never
+  // covered the case that matters most: a reply left inside SOMEONE ELSE'S
+  // thread. Same law, same order, same helper.
+  const replies = codeOnly(COMMUNITY_ROUTES["app/api/community/replies/[id]/route.ts"]);
+  const replyDel = replies.slice(replies.indexOf("export async function DELETE"));
+  ok("reply delete resolves the author WITHOUT an availability check",
+    /const account = await requireCommunityAuthor\(\);/.test(replyDel));
+  ok("…and the availability-gated helper is not used on the reply delete path",
+    !/requireCommunityAccount\(\)/.test(replyDel));
+  const replyAuthorAt = replyDel.indexOf("reply.authorId === account.id");
+  const replyAvailabilityAt = replyDel.indexOf("canAccessCommunity(");
+  ok("the AUTHOR check comes before any availability check, on replies too",
+    replyAuthorAt > -1 && replyAvailabilityAt > -1 && replyAuthorAt < replyAvailabilityAt,
+    `author=${replyAuthorAt} availability=${replyAvailabilityAt}`);
+  ok("a non-author is refused for ownership, or for availability — never for payment",
+    /You can only delete your own replies\./.test(replyDel) && /COMMUNITY_UNAVAILABLE/.test(replyDel));
+  ok("Kai's replies are still not the consumer's to delete",
+    /!reply\.isKai && reply\.authorId === account\.id/.test(replyDel));
+  ok("the reply is really removed, attachments and count included",
+    /deleteReplyAndAttachments\(reply\.id, reply\.threadId\)/.test(replyDel));
+
   ok("reads and new content stay gated (the switch still means something)",
     /requireCommunityAccount\(\)/.test(codeOnly(COMMUNITY_ROUTES["app/api/community/threads/route.ts"])) &&
       /requireCommunityAccount\(\)/.test(codeOnly(COMMUNITY_ROUTES["app/api/community/threads/[id]/replies/route.ts"])));
@@ -325,6 +380,25 @@ console.log("\n— 8. checkout refuses before it reaches Stripe —");
   }
   ok("an unnamed product is refused too, never coerced into a sale",
     /SALES_CLOSED\[key\] \?\? SALES_CLOSED_DEFAULT/.test(CHECKOUT_CODE));
+  // REMEDIATION L-1: a plain object literal inherits `constructor`/`__proto__`/
+  // `toString`, so those product strings resolved to a truthy non-string, the
+  // `?? DEFAULT` never fired, and the 410 body carried an unusable `error`.
+  ok("the closed-sales map has no prototype, so inherited keys cannot be looked up",
+    /const SALES_CLOSED: Record<string, string> = Object\.assign\(Object\.create\(null\), \{/.test(CHECKOUT_CODE));
+  // REMEDIATION L-2, and the condition on keeping the dormant sell machinery:
+  // the nullable return type is what keeps that machinery type-reachable, which
+  // means a CONDITIONAL refusal would compile silently. Pin totality: one
+  // unconditional return, no branch of any kind.
+  const refuseBody = CHECKOUT_CODE.slice(
+    CHECKOUT_CODE.indexOf("function refuseSale("),
+    CHECKOUT_CODE.indexOf("export async function POST(")
+  );
+  ok("refuseSale is TOTAL — exactly one return", (refuseBody.match(/\breturn\b/g) ?? []).length === 1,
+    refuseBody);
+  ok("…reached unconditionally — no branch can let a request past it",
+    !/\bif\s*\(/.test(refuseBody) && !/\?\s*NextResponse/.test(refuseBody) && !/\bswitch\s*\(/.test(refuseBody));
+  ok("…and the call site returns on anything it produces",
+    /const refusal = refuseSale\(body\);\n\s*if \(refusal\) return refusal;/.test(CHECKOUT_CODE));
   const copy = CHECKOUT.slice(CHECKOUT.indexOf("const SALES_CLOSED"), CHECKOUT.indexOf("const SALES_CLOSED_DEFAULT"));
   ok("the refusal copy quotes no price and offers nothing to buy",
     !/\$\d|\d+\/mo|pricing page|upgrade/i.test(copy), copy);
@@ -384,6 +458,64 @@ console.log("\n— 11. no plan can turn AI refinement on —");
   ok("the flag survives as a dormant switch the letter routes still read",
     /entitlement\.aiRefinement/.test(codeOnly(SURFACES["app/api/letters/generate/route.ts"])) &&
       /entitlement\.aiRefinement/.test(codeOnly(SURFACES["app/api/letters/[id]/round2/route.ts"])));
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 12. NO PLAN BUYS A CHEAPER MAILING (review M-3 · B report S-26)
+// ─────────────────────────────────────────────────────────────────────────────
+console.log("\n— 12. the mail quote is the same price for everyone —");
+{
+  // Behavioural, executed: computePrice is pure. This was the LAST surface where
+  // a consumer could SEE that paying bought a better deal — a legacy
+  // Professional's quote came out 10% lower and their breakdown carried a
+  // literal "Premium discount" line item on the send page.
+  const estimate = { providerCostCents: 100, currency: "USD" as const, breakdown: [] };
+  const quote = (plan: "free" | "premium" | "agency_pro", isAgency = false) =>
+    computePrice({ estimate, plan, isAgency });
+
+  const free = quote("free");
+  const legacyPro = quote("premium");
+  const legacyProPlus = quote("agency_pro");
+  ok("a legacy Professional is quoted exactly what a free consumer is quoted",
+    legacyPro.totalCents === free.totalCents,
+    `free=${free.totalCents} premium=${legacyPro.totalCents}`);
+  ok("…and so is a legacy Agency Pro consumer",
+    legacyProPlus.totalCents === free.totalCents);
+  ok("no plan produces a discount at all",
+    free.discountCents === 0 && legacyPro.discountCents === 0 && legacyProPlus.discountCents === 0);
+  ok("the whole breakdown is byte-identical, not just the total",
+    JSON.stringify(legacyPro.lines) === JSON.stringify(free.lines),
+    JSON.stringify(legacyPro.lines));
+  ok("no discount line item can render on the send page",
+    !legacyPro.lines.some((l) => /discount/i.test(l.label)));
+  ok("the platform policy carries no plan rates",
+    Object.keys(DEFAULT_PRICING_POLICY.planDiscountRate).length === 0);
+  // The ENGINE is intact — a white-label reseller policy may still express one.
+  ok("the pricing engine still honours an explicitly supplied policy",
+    computePrice({
+      estimate, plan: "premium", isAgency: false,
+      policy: { ...DEFAULT_PRICING_POLICY, planDiscountRate: { premium: 0.5 } },
+    }).discountCents > 0);
+  // The agency markup is a B2B cost input, not a consumer entitlement, and is
+  // deliberately untouched.
+  ok("the B2B agency markup is untouched", DEFAULT_PRICING_POLICY.agencyMarkupRate === 0.05);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 13. NO ROUTE PAYLOAD POINTS A CONSUMER AT A DEAD PURCHASE (review M-2)
+// ─────────────────────────────────────────────────────────────────────────────
+console.log("\n— 13. the portal serves history, it does not pitch —");
+{
+  const portal = codeOnly(read("app/api/stripe/portal/route.ts"));
+  ok("the portal no longer tells a consumer to press the Upgrade button",
+    !/Upgrade button/.test(portal));
+  ok("…and says something true instead",
+    /No subscription is associated with this account\./.test(portal));
+  ok("no route payload in app/api pitches an upgrade except the B2B capacity gate",
+    !/upgrade/i.test(portal) && !/upgrade/i.test(CHECKOUT_CODE.replace(/UPGRADE_PRORATION_BEHAVIOR|upgraded/g, "")));
+  // The portal itself must still work — legacy payers need invoices and cancel.
+  ok("the portal still opens a Stripe-hosted session for a real customer",
+    /billingPortal\.sessions\.create/.test(portal));
 }
 
 console.log(
