@@ -10,7 +10,7 @@ import type { Bureau } from "@prisma/client";
 import { presentBureaus, getBureauData, crossBureauConflicts, conflictFields } from "@/lib/bureauData";
 import { BUREAU_SHORT, BUREAU_LABEL } from "@/lib/bureaus";
 import { formatCents, formatDate } from "@/lib/utils";
-import { fallOffInsight, formatMonthYear, duplicateGroups, groupAdjacentOrder } from "@/lib/tradelineInsights";
+import { fallOffInsight, formatMonthYear, duplicateGroups, groupAdjacentOrder, parseReportDate } from "@/lib/tradelineInsights";
 import { StatuteCard } from "@/components/StatuteCard";
 import type { StatuteKey } from "@/lib/statutes";
 import { explainTradeline } from "@/lib/explain";
@@ -511,8 +511,15 @@ export default async function TradelinesPage() {
                         <dl className="mt-2 space-y-1 text-xs">
                           {f.status && <Field label="Status" value={f.status} hot={diff.has("status")} />}
                           {f.balanceCents != null && <Field label="Balance" value={formatCents(f.balanceCents)} hot={diff.has("balance")} />}
-                          {f.dateReported && <Field label="Reported" value={formatDate(f.dateReported)} />}
-                          {f.dofd && <Field label="First delinquency" value={formatDate(f.dofd)} hot={diff.has("dofd")} />}
+                          {/* S11 NEW-1: these are RAW STRINGS the report printed,
+                              not parsed columns. `formatDate` handed "08/2021"
+                              to `new Date()`, which is Invalid Date in Node, and
+                              `toLocaleDateString` rendered that literally — so
+                              the panel stated "First delinquency: Invalid Date"
+                              as a fact about the consumer's own file. Both go
+                              through the one parser now. */}
+                          {f.dateReported && <ReportedDate label="Reported" raw={f.dateReported} />}
+                          {f.dofd && <ReportedDate label="First delinquency" raw={f.dofd} hot={diff.has("dofd")} />}
                           {f.remarks && <Field label="Remarks" value={f.remarks} />}
                         </dl>
                       </div>
@@ -546,17 +553,69 @@ export default async function TradelinesPage() {
   );
 }
 
+// S11 NEW-1 — a date the REPORT printed, rendered at the precision the report
+// actually gave.
+//
+// `bureauData.dofd` / `.dateReported` are verbatim strings from the parsed
+// report, not the persisted date column. Passing one straight to `formatDate`
+// meant `new Date("08/2021")` — Invalid Date in Node — and
+// `toLocaleDateString` printed that string verbatim, so a month-precision DOFD
+// showed as "First delinquency: Invalid Date" on the consumer's own account.
+//
+// `parseReportDate` is the same parser `reportedDofd` uses for the §605 clock
+// (lib/tradelineInsights.ts), so the panel and the clock can never disagree
+// about whether a date exists or what it says. Three honest outcomes and no
+// fourth:
+//   · day precision   — the full date, as before.
+//   · month precision — MONTH AND YEAR ONLY. The report did not give a day, so
+//     neither does this; inventing one would be the same fabrication in the
+//     other direction.
+//   · unreadable      — the report's own characters, verbatim, labelled as
+//     such. Showing what it printed is true; "Invalid Date" is not.
+function ReportedDate({ label, raw, hot }: { label: string; raw: string; hot?: boolean }) {
+  const parsed = parseReportDate(raw);
+  if (!parsed) {
+    return (
+      <Field
+        label={label}
+        value={raw}
+        hot={hot}
+        note={`Shown exactly as your report printed it — we couldn't read "${raw}" as a date.`}
+      />
+    );
+  }
+  if (parsed.precision === "month") {
+    return (
+      <Field
+        label={label}
+        value={formatMonthYear(parsed.date)}
+        hot={hot}
+        note="Your report gave a month and year for this date, with no day."
+      />
+    );
+  }
+  return <Field label={label} value={formatDate(parsed.date)} hot={hot} />;
+}
+
 // One labeled value in a bureau's comparison card. `hot` marks a field that
 // crossBureauConflicts flagged as disagreeing across bureaus.
-function Field({ label, value, hot }: { label: string; value: string; hot?: boolean }) {
+function Field({ label, value, hot, note }: { label: string; value: string; hot?: boolean; note?: string }) {
+  // `note` explains a rendering the consumer would otherwise have to guess at
+  // (a month-only date, a value we could not parse). It is additive to the
+  // cross-bureau `hot` explanation, never a replacement for it, and it is
+  // repeated for screen readers because `title` alone is unreliable.
+  const title = [hot ? "This value differs across the bureaus reporting this account." : null, note]
+    .filter(Boolean)
+    .join(" ");
   return (
     <div className="flex justify-between gap-2">
       <dt className="shrink-0 text-slate-500">{label}</dt>
       <dd
         className={`text-right ${hot ? "font-semibold text-gold-400" : "text-slate-300"}`}
-        title={hot ? "This value differs across the bureaus reporting this account." : undefined}
+        title={title || undefined}
       >
         {value}
+        {note && <span className="sr-only"> {note}</span>}
       </dd>
     </div>
   );

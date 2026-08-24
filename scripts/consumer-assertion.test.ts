@@ -45,6 +45,8 @@ import {
 import { buildRound2UserPrompt } from "../lib/round2";
 import { recommendStrategy, suggestAssertionTypes } from "../lib/recommend";
 import { applyCompliance } from "../lib/compliance";
+import { parseReportDate, formatMonthYear } from "../lib/tradelineInsights";
+import { formatDate } from "../lib/utils";
 import type { BureauData } from "../lib/bureauData";
 import type { Bureau } from "@prisma/client";
 
@@ -742,6 +744,59 @@ console.log("\n— S11: a month-precision DOFD reaches the recommendation (S3 ad
   const RECOMMEND_SRC = read("lib/recommend.ts");
   ok("both DOFD sites read reportedDofd()", (RECOMMEND_SRC.match(/reportedDofd\(t\)/g) ?? []).length === 2);
   ok("…and neither still reads the raw persisted column for the clock", !/yearsSince\(t\.dateOfFirstDelinquency\)/.test(RECOMMEND_SRC));
+}
+
+// ---------------------------------------------------------------------------
+console.log("\n— S11 NEW-1: a report's own date is never rendered as 'Invalid Date'");
+// ---------------------------------------------------------------------------
+{
+  // The defect, at the parser level: these are the raw strings a report prints,
+  // and `new Date()` cannot read the month-precision ones.
+  ok("a month-precision value is unreadable to the JS Date constructor", isNaN(new Date("08/2021").getTime()));
+  ok("…and `formatDate` renders that literally — the string the panel used to show", formatDate("08/2021") === "Invalid Date");
+
+  // The fix: the same parser the §605 clock uses, at the precision the report
+  // actually gave.
+  const month = parseReportDate("08/2021");
+  ok("parseReportDate reads it", month !== null);
+  ok("…as MONTH precision, so no day is invented", month?.precision === "month");
+  ok("…rendered month-and-year only", month !== null && formatMonthYear(month.date) === "Aug 2021");
+  const day = parseReportDate("2021-08-14");
+  ok("a full date still parses at day precision", day?.precision === "day");
+  ok("…and still renders as a full date", day !== null && formatDate(day.date) === "Aug 14, 2021");
+  ok("an unreadable value parses to null (so the caller can show it verbatim)", parseReportDate("n/a") === null);
+
+  const PAGE = read("app/tradelines/page.tsx");
+  ok(
+    "the bureau panel routes BOTH report-printed dates through the parser",
+    /<ReportedDate label="Reported" raw=\{f\.dateReported\}/.test(PAGE) &&
+      /<ReportedDate label="First delinquency" raw=\{f\.dofd\}/.test(PAGE)
+  );
+  ok("…and no raw report string is handed to formatDate any more", !/formatDate\(f\.(?:dofd|dateReported)\)/.test(PAGE));
+  ok("month precision renders month-and-year, not a fabricated day", /parsed\.precision === "month"[\s\S]{0,200}formatMonthYear\(parsed\.date\)/.test(PAGE));
+  ok("an unreadable value is shown verbatim, disclosed as such", /couldn&apos;t read|couldn't read/.test(PAGE));
+  ok("the page uses the SAME parser as the §605 clock", /parseReportDate/.test(PAGE) && /from "@\/lib\/tradelineInsights"/.test(PAGE));
+}
+
+// ---------------------------------------------------------------------------
+console.log("\n— S11 NEW-5: the account must be named, and every query is scoped");
+// ---------------------------------------------------------------------------
+{
+  const GEN = read("app/api/letters/generate/route.ts");
+  ok(
+    "an absent / non-string tradeline id is refused before any lookup",
+    /typeof tradelineId !== "string" \|\| !tradelineId\.trim\(\)/.test(GEN)
+  );
+  const guardIdx = GEN.indexOf('typeof tradelineId !== "string"');
+  ok("…before the tradeline query runs", guardIdx > 0 && guardIdx < GEN.indexOf("prisma.tradeline.findFirst"));
+  ok("…and a malformed body reaches that refusal instead of throwing a 500", /req\.json\(\)\.catch\(\(\) => \(\{\}/.test(GEN));
+
+  // The ownership predicate is the thing that makes NEW-5 a misdirection bug
+  // rather than a cross-account read. Every query that can reach a row must
+  // carry it — checked here so a future edit cannot quietly drop one.
+  const queries = GEN.match(/prisma\.(?:tradeline|consumerAssertion|letter)\.(?:findFirst|findMany)\(\{[\s\S]{0,220}?\}\)/g) ?? [];
+  ok("every tradeline/assertion/letter read in this route is scoped by userId", queries.length >= 3 && queries.every((q) => /userId: user\.id/.test(q)));
+  ok("…and the letter update targets an id that came from one of those scoped reads", /prisma\.letter\.update\(\{\s*where: \{ id: existingId \}/.test(GEN));
 }
 
 console.log(failures === 0 ? "\nAll consumer-assertion guards passed." : `\n${failures} guard(s) failed.`);

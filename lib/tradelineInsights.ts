@@ -53,6 +53,14 @@ function endOfMonthUTC(year: number, monthIndex: number): Date {
   return new Date(Date.UTC(year, monthIndex + 1, 0));
 }
 
+// A two-digit year on a credit report is in the past — a date of first
+// delinquency cannot be in the future. Standard sliding window: 2000+yy unless
+// that lands ahead of the current year, in which case it was last century.
+function expandTwoDigitYear(yy: number): number {
+  const thisYear = new Date().getUTCFullYear();
+  return 2000 + yy <= thisYear ? 2000 + yy : 1900 + yy;
+}
+
 export function parseReportDate(raw: string | Date | null | undefined): ParsedReportDate | null {
   if (!raw) return null;
   if (raw instanceof Date) return isNaN(raw.getTime()) ? null : { date: raw, precision: "day" };
@@ -76,6 +84,15 @@ export function parseReportDate(raw: string | Date | null | undefined): ParsedRe
     const date = new Date(Date.UTC(y, m - 1, d));
     return date.getUTCMonth() === m - 1 ? { date, precision: "day" } : null;
   }
+  // MM/DD/YY — three components, so the day is stated; only the century is not.
+  const mdyy = /^(\d{1,2})[\/-](\d{1,2})[\/-](\d{2})$/.exec(v);
+  if (mdyy) {
+    const [m, d] = [Number(mdyy[1]), Number(mdyy[2])];
+    const y = expandTwoDigitYear(Number(mdyy[3]));
+    if (m < 1 || m > 12 || d < 1 || d > 31) return null;
+    const date = new Date(Date.UTC(y, m - 1, d));
+    return date.getUTCMonth() === m - 1 ? { date, precision: "day" } : null;
+  }
 
   // Month precision: MM/YYYY, MM-YYYY, YYYY-MM.
   const my = /^(\d{1,2})[\/-](\d{4})$/.exec(v);
@@ -90,15 +107,34 @@ export function parseReportDate(raw: string | Date | null | undefined): ParsedRe
     if (!inRange(y) || m < 1 || m > 12) return null;
     return { date: endOfMonthUTC(y, m - 1), precision: "month" };
   }
+  // MM/YY — MONTH precision. Two numbers, and the second one is a YEAR, not a
+  // day: a date of first delinquency without a year cannot anchor anything, so
+  // "08/21" is August 2021. Left to the loose branch below it parsed as
+  // 2001-08-21 at DAY precision — a fabricated day AND a twenty-year-early
+  // anchor, which would let the §605 clock call a 2021 delinquency obsolete.
+  // The month is what the report stated, so the month is what we keep.
+  const myy = /^(\d{1,2})[\/-](\d{2})$/.exec(v);
+  if (myy) {
+    const m = Number(myy[1]);
+    if (m < 1 || m > 12) return null; // 21/08 and the like: ambiguous, refused
+    return { date: endOfMonthUTC(expandTwoDigitYear(Number(myy[2])), m - 1), precision: "month" };
+  }
 
   // A bare year is YEAR precision. There is no honest month to anchor a §605
   // clock to, and `new Date("2021")` would silently claim January — so refuse.
   if (/^\d{4}$/.test(v)) return null;
 
   // Anything else ("Aug 2021", "August 15, 2021") — let the platform try, but
-  // only trust a day when the string itself names one. Read the result through
-  // UTC getters: the platform parses a bare month-name string in LOCAL time, and
-  // a behind-UTC zone would otherwise roll it back into the previous month.
+  // only after the string states a four-digit year itself. Without that guard
+  // `new Date` invents one: "Aug 21" becomes the 21st of August in the CURRENT
+  // year, a date the report never gave, at a precision it never gave either.
+  // Every shape whose year is only two digits is resolved explicitly above, so
+  // by this point a two-digit number left over can only be a day.
+  if (!/\b\d{4}\b/.test(v)) return null;
+
+  // Read the result through UTC getters: the platform parses a bare month-name
+  // string in LOCAL time, and a behind-UTC zone would otherwise roll it back
+  // into the previous month.
   const loose = new Date(v + " UTC");
   if (isNaN(loose.getTime()) || !inRange(loose.getUTCFullYear())) return null;
   const namesADay = /\d{1,2}(?!\d)/.test(v.replace(/\d{4}/g, ""));

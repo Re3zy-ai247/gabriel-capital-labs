@@ -190,8 +190,38 @@ export async function POST(req: Request) {
     const limited = await enforceRateLimit(`letters:${user.id}`, 40, 3600);
     if (limited) return limited;
 
-    const body = await req.json();
+    // A malformed body is a bad request, not a server error — and it must reach
+    // the explicit validation below rather than throwing into the catch-all 500.
+    const body = await req.json().catch(() => ({} as Record<string, unknown>));
     const { tradelineId, strategyId } = body;
+
+    // ---- S11 NEW-5: THE ACCOUNT MUST BE NAMED, EXPLICITLY -------------------
+    // `POST /api/letters/generate {}` used to return 200 with a real dispute
+    // letter about the consumer's FIRST tradeline. Prisma treats an `undefined`
+    // filter value as "no filter", so `where: { id: undefined, userId }` drops
+    // the `id` predicate and selects an arbitrary row instead of matching none.
+    //
+    // NOT AN IDOR, and the distinction matters: `userId: user.id` is a SEPARATE
+    // key in the same `where` and is never undefined — `user` is resolved at the
+    // top of this handler and a null user already returned 401. So the widened
+    // query could only ever reach the caller's OWN rows. Every other query in
+    // this route carries the same predicate (the assertion lookup and the
+    // regeneration-candidate lookup are both `userId: user.id`, and the letter
+    // update targets an id that came out of that scoped lookup). Verified by
+    // execution in scripts/runtime/consumer-assertion.runtime.test.ts, not by
+    // reading: a foreign tradeline id 404s, and an absent id now 400s.
+    //
+    // The harm is therefore misdirection, not disclosure: a malformed or legacy
+    // client drafts a letter about the wrong account of the consumer's own — and
+    // RB-6 matching can then update an existing unmailed draft for that bureau.
+    // Real, and worth refusing, but it is not a cross-account read.
+    if (typeof tradelineId !== "string" || !tradelineId.trim()) {
+      return NextResponse.json(
+        { error: "Tell us which account this letter is about.", needsTradeline: true },
+        { status: 400 }
+      );
+    }
+
     const tradeline = await prisma.tradeline.findFirst({ where: { id: tradelineId, userId: user.id } });
     if (!tradeline) return NextResponse.json({ error: "Tradeline not found" }, { status: 404 });
 
