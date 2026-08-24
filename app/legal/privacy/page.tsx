@@ -105,7 +105,16 @@ export default function PrivacyPage() {
           </li>
           <li>Delete a document or attachment you uploaded, including a government-ID image.</li>
           <li>Update your account email and password from Settings.</li>
-          <li>Cancel your subscription whenever you like; access continues to the end of the billing period.</li>
+          {/* RC1-S6b: "Cancel your subscription whenever you like" listed a
+              control most readers of this page do not have — the consumer
+              product has no subscription. Restated so it is true for both
+              readers: nothing to cancel if you never paid, and the full portal
+              if you did. Only this line changed; the rest is S8's text. */}
+          <li>
+            If you have a subscription from before — the consumer product does not have one — view receipts, update
+            your payment method, or cancel it from the Stripe billing portal on your billing page; access continues to
+            the end of the billing period.
+          </li>
         </ul>
         <p>
           What we cannot do yet: there is no self-service way to delete your whole account or to export everything we

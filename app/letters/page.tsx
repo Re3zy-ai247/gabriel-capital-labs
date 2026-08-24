@@ -86,9 +86,7 @@ function LettersInner() {
   const [letter, setLetter] = useState<{ id: string; body: string; createdAt: string } | null>(null);
   const [genCount, setGenCount] = useState(0);
   const [aiRefined, setAiRefined] = useState(false);
-  const [remaining, setRemaining] = useState<number | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
-  const [upgrade, setUpgrade] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -173,7 +171,7 @@ function LettersInner() {
       return;
     }
     setConfirmRegen(false);
-    setBusy(true); setError(null); setLetter(null); setWarning(null); setUpgrade(false); setAiRefined(false); setGenCount(0);
+    setBusy(true); setError(null); setLetter(null); setWarning(null); setAiRefined(false); setGenCount(0);
     setEditing(false); setApproved(false); // a recomposed letter is unapproved again
     try {
       const res = await fetch("/api/letters/generate", {
@@ -187,14 +185,14 @@ function LettersInner() {
         }),
       });
       const j = await res.json();
-      if (res.status === 402) { setError(j.error); setUpgrade(true); return; }
+      // RC1-S6b: the 402 branch is gone with the upsell it drove. S6a removed
+      // every 402 from this route, so the only thing this branch could still do
+      // was resurrect a purchase prompt from an unexpected payload.
       if (!res.ok) { setError(j.error || "That letter didn't generate. Try again in a moment."); return; }
       setLetter({ id: j.letter.id, body: j.letter.body, createdAt: j.letter.createdAt });
       setGenCount(j.count || 1);
       setAiRefined(Boolean(j.aiRefined));
       setWarning(j.warning);
-      setUpgrade(Boolean(j.upgrade));
-      setRemaining(j.entitlement?.lettersRemaining ?? null);
       loadSaved();
     } catch {
       setError("The connection dropped mid-request. Try again — nothing was lost.");
@@ -251,11 +249,22 @@ function LettersInner() {
   return (
     <AppShell title="/ Dispute Letters">
       <EduBanner />
-      {params.get("purchase") === "success" && (
-        <div className="mb-4 rounded-lg border border-success-500/40 bg-success-500/10 px-4 py-3 text-sm text-success-300">
-          🎉 Payment received — your letter pack is being added. Your extra letters will be available momentarily.
-        </div>
-      )}
+      {/* RC1-S6b remediation (H-1). A success-green banner with a 🎉 stood here
+          and fired on `?purchase=success`, telling the reader a payment had been
+          received, that a letter pack "is being added", and that extra letters
+          would arrive momentarily. All three are false: /api/stripe/checkout
+          refuses every consumer purchase with a 410 before Stripe is touched,
+          nothing is added, and there is no quota for letters to be "extra" to.
+          The URL survives in historical Stripe receipts, bookmarks and browser
+          history, and the param is trivially typed by anyone.
+
+          NOTHING replaces it, deliberately. A neutral historical note was the
+          alternative, but any such note has to keep a `purchase === "success"`
+          branch alive on a consumer surface — the exact shape the new
+          purchase-confirmation rule in scripts/consumer-copy-sweep.test.ts
+          forbids, and one edit away from being a banner again. The truthful
+          statement about preserved credits belongs on /billing, where the
+          record actually lives, and it is there. */}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-xl font-semibold">Dispute Letter Builder</h2>
         {tradelines.length > 1 && (
@@ -411,31 +420,17 @@ function LettersInner() {
                     return n > 1 ? `Generate ${n} Letters` : "Generate Letter";
                   })()}
             </button>
-            {remaining !== null && (
-              <p className="mt-2 text-center text-[11px] text-slate-500">{remaining} free letters left this month</p>
-            )}
+            {/* RC1-S6b. Three commercial surfaces stood here and are gone:
+                  · a quota meter reading "N free letters left this month".
+                    There is no quota; getEntitlement returns lettersRemaining:
+                    null for every consumer, so this counter could only ever
+                    have shown a number that no longer governs anything.
+                  · an upgrade link into the retired consumer plan.
+                  · a live POST to /api/stripe/checkout for the one-time letter
+                    pack — the last purchase control on a consumer surface.
+                S5's editor, approve flow and print path above and below this
+                block are untouched. */}
             {error && <p className="mt-3 text-xs text-rose-400">{error}</p>}
-            {upgrade && (
-              <div className="mt-2 space-y-1.5 text-center">
-                <Link href="/pricing" className="block text-xs font-semibold text-brand-300 underline">
-                  Upgrade to Professional for unlimited letters →
-                </Link>
-                <button
-                  onClick={async () => {
-                    const r = await fetch("/api/stripe/checkout", {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ product: "letters_5" }),
-                    });
-                    const j = await r.json();
-                    if (r.ok && j.url) window.location.href = j.url;
-                  }}
-                  className="text-[11px] text-slate-400 underline hover:text-slate-200"
-                >
-                  …or buy a one-time 5-letter pack for $19
-                </button>
-              </div>
-            )}
           </div>
 
           <div className="card min-h-[400px] p-5">

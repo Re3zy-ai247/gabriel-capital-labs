@@ -179,7 +179,13 @@ export function TrustBar() {
     { icon: Lock, label: "AES-256 encryption", sub: "Your reports, encrypted at rest" },
     { icon: Scale, label: "FCRA-grounded", sub: "Every letter cites real rights" },
     { icon: ShieldCheck, label: "Software + education", sub: "Not a credit-repair organization" },
-    { icon: BadgeCheck, label: "Cancel anytime", sub: "No contracts, no lock-in" },
+    // RC1-S6b: "Cancel anytime / No contracts, no lock-in" is a subscription
+    // promise, on a shared band rendered on / and /pricing, for a consumer
+    // product that has no subscription to cancel. Replaced with a fact about
+    // the product as it is rather than about a billing relationship that does
+    // not exist. Kept deliberately about TODAY — a "free forever" badge would
+    // be a commitment nobody authorised.
+    { icon: BadgeCheck, label: "Free to use today", sub: "No card, no plan to choose" },
   ];
   return (
     <div className="grid gap-px overflow-hidden rounded-2xl border border-ink-700/60 bg-ink-700/40 sm:grid-cols-2 lg:grid-cols-4">

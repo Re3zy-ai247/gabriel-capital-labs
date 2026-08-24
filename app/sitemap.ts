@@ -9,7 +9,14 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const base = siteUrl().replace(/\/$/, "");
   const routes: { path: string; priority: number; changeFrequency: MetadataRoute.Sitemap[number]["changeFrequency"] }[] = [
     { path: "/", priority: 1, changeFrequency: "weekly" },
-    { path: "/pricing", priority: 0.9, changeFrequency: "weekly" },
+    // RC1-S6b: /pricing is no longer a conversion page — it is the short
+    // explanation that the consumer product is free to use today. Kept in the
+    // sitemap (it is a real, useful public page and inbound links point at it),
+    // but demoted from 0.9: it is a reference page now, not the page the site
+    // is trying to send people to. Its content is what changed; the URL is
+    // stable on purpose, so existing links and the walkthrough guard keep
+    // resolving.
+    { path: "/pricing", priority: 0.5, changeFrequency: "monthly" },
     { path: "/login", priority: 0.3, changeFrequency: "yearly" },
     { path: "/register", priority: 0.6, changeFrequency: "yearly" },
     { path: "/legal/privacy", priority: 0.3, changeFrequency: "yearly" },

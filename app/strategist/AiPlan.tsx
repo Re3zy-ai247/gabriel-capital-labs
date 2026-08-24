@@ -1,6 +1,5 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import Link from "next/link";
 import { Sparkles, Loader2, RotateCw } from "lucide-react";
 import { Markdown } from "@/components/Markdown";
 import { trackClient } from "@/lib/trackClient";
@@ -37,7 +36,6 @@ export function AiPlan({ currentItemCount, storageKey }: { currentItemCount: num
   const [planItems, setPlanItems] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [upgrade, setUpgrade] = useState(false);
 
   // Restore any saved plan for this user on mount, so it survives refresh/navigation.
   useEffect(() => {
@@ -59,15 +57,13 @@ export function AiPlan({ currentItemCount, storageKey }: { currentItemCount: num
   async function generate() {
     setBusy(true);
     setError(null);
-    setUpgrade(false);
     try {
       const res = await fetch("/api/strategist/plan", { method: "POST" });
       const j = await res.json();
-      if (res.status === 402) {
-        setError(j.error);
-        setUpgrade(true);
-        return;
-      }
+      // RC1-S6b: the 402 branch and the "Upgrade to Professional →" link it
+      // rendered are gone. S6a removed the paywall from /api/strategist/plan —
+      // the Strategy Desk is not sold — so the only thing this branch could
+      // still do was put a purchase prompt back on a free surface.
       if (!res.ok) {
         setError(j.error || "Could not generate the plan.");
         return;
@@ -140,21 +136,19 @@ export function AiPlan({ currentItemCount, storageKey }: { currentItemCount: num
         </p>
       )}
 
-      {error && (
-        <div className="mt-3 text-xs text-rose-400">
-          {error}{" "}
-          {upgrade && (
-            <Link href="/pricing" className="font-semibold text-brand-300 underline">
-              Upgrade to Professional →
-            </Link>
-          )}
-        </div>
-      )}
+      {error && <div className="mt-3 text-xs text-rose-400">{error}</div>}
 
       {stale && !busy && (
         <div className="mt-3 flex items-start gap-2 rounded-lg border border-gold-500/30 bg-gold-500/10 p-2.5 text-[11px] text-gold-300">
           <RotateCw className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-          <span>Your dispute queue has changed since this plan was written — regenerate to bring the strategy up to date.</span>
+          {/* RC1-S6b: says what is actually known — the queue this plan was
+              written against no longer matches the queue on file. It does not
+              claim the plan is wrong (it may still be right), and regenerating
+              costs nothing, so there is nothing to weigh up. */}
+          <span>
+            Your dispute queue has changed since this plan was written, so parts of it may no longer describe your
+            file. Regenerating is free and replaces it with a plan written against what is on file now.
+          </span>
         </div>
       )}
 

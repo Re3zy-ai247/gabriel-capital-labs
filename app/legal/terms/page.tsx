@@ -76,12 +76,26 @@ export default function TermsPage() {
         </p>
       </section>
 
+      {/* RC1-S6b. The sentence "One-time letter-pack credits do not expire and
+          carry over month to month" described a credit that is spent against a
+          monthly allowance. Neither exists: there is no allowance, and nothing
+          in the product decrements a credit balance. Saying credits "carry over
+          month to month" would now imply a spending mechanism that was removed,
+          which is why this is restated rather than left standing. Only that
+          clause and the consumer-subscription framing around it changed; the
+          rest of these Terms is S8's text. */}
       <section>
-        <h2>Billing and cancellation</h2>
+        <h2>Billing</h2>
         <p>
-          Paid plans are billed through Stripe on the interval you select. You can cancel anytime from your billing
-          settings; access continues until the end of the current billing period. One-time letter-pack credits do not
-          expire and carry over month to month.
+          CreditVector does not charge consumers for the consumer product. There is no consumer plan to buy and no
+          consumer subscription to start.
+        </p>
+        <p>
+          If you paid for a consumer plan or a letter pack before, that record is preserved on your account. Any letter
+          credits you hold are frozen: they are not consumed when you generate a letter, because letters are not
+          charged for. Existing subscriptions are billed through Stripe, and you can view receipts, update your payment
+          method, or cancel from the Stripe billing portal linked on your billing page; access continues until the end
+          of the current billing period. Services for agencies and businesses are provided under separate terms.
         </p>
       </section>
 

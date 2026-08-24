@@ -61,13 +61,35 @@ check("canAccessCommunity delegates to communityEnabled(), absent = off",
   !/isPremium/.test(community));
 check("no duplicated billing logic (no plan-string comparisons anywhere in the gate module)",
   !/plan\s*===/.test(community));
-check("gate copy: paid membership, not agency-only",
-  /active paid CreditVector membership/.test(page) && !/Agency members/.test(page));
-check("gate CTA uses the existing plans destination", /href="\/pricing"/.test(page));
+// RC1-S6b (Founder D-8). The network is switched OFF, not priced, so the three
+// rows that pinned "paid membership" gate copy, a /pricing CTA, and an
+// Operator-Network row in the consumer pricing matrix all assert copy that was
+// ordered removed. Their protective intent — the gate must state the TRUE reason
+// and must not dead-end the reader — survives, re-expressed against the new
+// truth. Comment-stripped, because this file documents the sentence it removed
+// (app/community/page.tsx:141-154) and commit 1fbe901 showed a raw scan passing
+// on that narration.
+const strip = (s: string) =>
+  s.replace(/\{\/\*[\s\S]*?\*\/\}/g, "").replace(/\/\*[\s\S]*?\*\//g, "")
+   .split("\n").filter((l) => !l.trim().startsWith("//")).join("\n");
+const pageCode = strip(page), pricingCode = strip(pricing);
+
+check("gate copy: closed for everyone, not a plan or a membership decision",
+  /closed right now/.test(pageCode) &&
+  /switched off for everyone/.test(pageCode) &&
+  /nothing to buy that would open it/.test(pageCode) &&
+  !/membership|paid plan|Agency members|is for members/i.test(pageCode));
+check("gate offers no purchase CTA and no /pricing destination",
+  !/href="\/pricing"/.test(pageCode) && !/See plans/.test(pageCode));
+check("gate is not a dead end — it routes back into the product the consumer does have",
+  /href="\/dashboard"/.test(pageCode) &&
+  /Everything else in CreditVector is unaffected/.test(pageCode));
+check("gate states the author keeps control of their own posts (S6a's carve-out)",
+  /delete anything you wrote/.test(pageCode));
 check("page title chrome is Operator Network", /title="\/ Operator Network"/.test(page) && /title="\/ Operator Network"/.test(loading));
 check("sidebar label is Operator Network", /label: "Operator Network"/.test(sidebar));
-check("pricing matrix: Operator Network for every paid tier",
-  /\["Operator Network", "n", "y", "y", "y", "y", "y", "y"\]/.test(pricing) && !/\["Community access"/.test(pricing));
+check("the consumer cost page carries no tier matrix and no Operator Network tier row",
+  !/\["Operator Network"/.test(pricingCode) && !/\["Community access"/.test(pricingCode));
 check("no customer-facing 'Community Hub' chrome remains in the shell",
   !/Community Hub/.test(page) && !/Community Hub/.test(sidebar));
 
