@@ -66,6 +66,11 @@ export interface RelinkRow {
   creditorName: string;
   originalCreditor?: string | null;
   accountNumberMask?: string | null;
+  // Corroboration for the mask-free fallback below. Not part of any key — only
+  // ever used to REFUSE a pairing the counting rule would otherwise force.
+  accountType?: string | null;
+  isDebtBuyer?: boolean | null;
+  balance?: number | null;
 }
 
 const normalizePart = (s: string) => s.trim().toUpperCase().replace(/\s+/g, " ");
@@ -80,6 +85,55 @@ function tradelineKey(t: Omit<RelinkRow, "id">): string {
 // whether a consumer's existing letters survive.
 function tradelineIdentity(t: Omit<RelinkRow, "id">): string {
   return [t.creditorName, t.originalCreditor ?? ""].map(normalizePart).join("|");
+}
+
+// Just the digits of a masked account number: "517805XXXXXX1234" -> "5178051234".
+// Reports mask the middle, so two renderings of the SAME account agree on their
+// trailing digits while two different accounts at one creditor do not.
+const maskDigits = (s: string | null | undefined) => (s ?? "").replace(/\D/g, "");
+
+type MaskEvidence = "agrees" | "conflicts" | "silent";
+
+function compareMasks(a: string | null | undefined, b: string | null | undefined): MaskEvidence {
+  const da = maskDigits(a);
+  const db = maskDigits(b);
+  if (!da || !db) return "silent"; // one side never parsed a number
+  if (da.endsWith(db) || db.endsWith(da)) return "agrees";
+  return "conflicts";
+}
+
+// Does the evidence actually say these two rows are the SAME account, or is the
+// pairing merely the last one left over?
+//
+// "Forced" and "correct" are not the same thing. Two DIFFERENT accounts at one
+// creditor — one closed and gone from the report, another newly appearing —
+// leave exactly one prior unmatched and one rebuilt unclaimed, and counting
+// alone would pair them. The consequence is not cosmetic: the consumer's mailed
+// dispute is re-pointed at an account they never disputed, and closing that
+// dispute out as "corrected or removed" then writes `resolved: true` onto the
+// wrong row (app/api/letters/[id]/route.ts), dropping a live derogatory account
+// out of every recommendation surface while the disputed one stays open.
+//
+// So the fallback has to be corroborated, never merely forced:
+//   • the account numbers disagree  -> refuse outright, whatever the counts say;
+//   • they agree on trailing digits -> that IS the identity evidence;
+//   • only one side parsed a number -> the mask can say nothing, so something
+//     else must: same account type, same debt-buyer status, same balance. (The
+//     rows are re-derived from the SAME stored report text, so on a genuine
+//     re-parse of one account these agree; two different accounts at a creditor
+//     essentially never carry the same balance.)
+// Refusing is the safe direction: an unmatched letter orphans, and the
+// authorization rule then asks the consumer to re-confirm — the honest outcome
+// when we cannot tell two accounts apart.
+function corroboratesSameAccount(prior: RelinkRow, rebuilt: RelinkRow): boolean {
+  const masks = compareMasks(prior.accountNumberMask, rebuilt.accountNumberMask);
+  if (masks === "conflicts") return false;
+  if (masks === "agrees") return true;
+  return (
+    (prior.accountType ?? null) === (rebuilt.accountType ?? null) &&
+    Boolean(prior.isDebtBuyer) === Boolean(rebuilt.isDebtBuyer) &&
+    (prior.balance ?? null) === (rebuilt.balance ?? null)
+  );
 }
 
 function groupBy(rows: RelinkRow[], keyOf: (r: RelinkRow) => string): Map<string, string[]> {
@@ -109,14 +163,17 @@ function groupBy(rows: RelinkRow[], keyOf: (r: RelinkRow) => string): Map<string
 // is invisible on a fresh database and lands only on existing users, at upgrade.
 //
 // So: exact key first; then, for anything still unmatched, the same account
-// ignoring the mask — but ONLY when that identity is unambiguous on both sides
-// (exactly one unmatched prior row and exactly one unclaimed rebuilt row). Two
-// accounts at the same creditor never get guessed between, and an account that
-// genuinely left the report still matches nothing and is still orphaned, which
-// is the honest outcome the re-link must keep.
+// ignoring the mask — but only when the identity is unambiguous on both sides
+// (exactly one unmatched prior row and one unclaimed rebuilt row) AND the
+// evidence corroborates that the two rows are the same account
+// (corroboratesSameAccount). Two accounts at the same creditor are never guessed
+// between, and an account that genuinely left the report matches nothing and is
+// still orphaned — including when a DIFFERENT account at that same creditor
+// arrived in its place, which the counting rule alone could not tell apart.
 export function matchRebuiltTradelines(prior: RelinkRow[], rebuilt: RelinkRow[]): Map<string, string> {
   const matches = new Map<string, string>();
   const claimed = new Set<string>();
+  const rowById = new Map(rebuilt.map((r) => [r.id, r] as const));
 
   const rebuiltByKey = groupBy(rebuilt, tradelineKey);
   for (const p of prior) {
@@ -134,11 +191,13 @@ export function matchRebuiltTradelines(prior: RelinkRow[], rebuilt: RelinkRow[])
     const identity = tradelineIdentity(p);
     const stillUnmatched = (priorByIdentity.get(identity) ?? []).filter((id) => !matches.has(id));
     const available = (rebuiltByIdentity.get(identity) ?? []).filter((id) => !claimed.has(id));
-    // One left on each side => the assignment is forced, not guessed.
-    if (stillUnmatched.length === 1 && available.length === 1) {
-      matches.set(p.id, available[0]);
-      claimed.add(available[0]);
-    }
+    // One left on each side makes the assignment FORCED. It still has to be
+    // CORROBORATED before it is made — see corroboratesSameAccount.
+    if (stillUnmatched.length !== 1 || available.length !== 1) continue;
+    const candidate = rowById.get(available[0]);
+    if (!candidate || !corroboratesSameAccount(p, candidate)) continue;
+    matches.set(p.id, candidate.id);
+    claimed.add(candidate.id);
   }
 
   return matches;
@@ -210,7 +269,18 @@ export async function analyzeReportText(
   // both links are gone and unrecoverable — the mapping has to be captured here.
   const prior = await prisma.tradeline.findMany({
     where: { reportId },
-    select: { id: true, creditorName: true, originalCreditor: true, accountNumberMask: true },
+    // accountType/isDebtBuyer/balance are not part of any key — they are the
+    // corroboration the mask-free re-link fallback needs to refuse a pairing
+    // that counting alone would force onto two different accounts.
+    select: {
+      id: true,
+      creditorName: true,
+      originalCreditor: true,
+      accountNumberMask: true,
+      accountType: true,
+      isDebtBuyer: true,
+      balance: true,
+    },
   });
   const priorIds = prior.map((p) => p.id);
   // Keyed by the prior ROW, not by its parser-derived key: the same rebuild

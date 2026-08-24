@@ -90,7 +90,14 @@ const read = (p: string) => readFileSync(p, "utf8");
     && /export function matchRebuiltTradelines\(/.test(analyze)
     && /matchedByPriorId = matchRebuiltTradelines\(prior, rebuilt\)/.test(analyze));
   check("B-08e2· the re-link survives a parser-driven change in the key's shape",
-    /function tradelineIdentity\(/.test(analyze) && /stillUnmatched\.length === 1 && available\.length === 1/.test(analyze));
+    /function tradelineIdentity\(/.test(analyze)
+    && /stillUnmatched\.length !== 1 \|\| available\.length !== 1\) continue;/.test(analyze));
+  // B-R4-1 (S11): being the last pair left over is not evidence of identity —
+  // two DIFFERENT accounts at one creditor leave exactly one on each side too.
+  check("B-08e3· the mask-free fallback is corroborated before it links, not merely forced",
+    /function corroboratesSameAccount\(/.test(analyze)
+    && /!corroboratesSameAccount\(p, candidate\)\) continue;/.test(analyze)
+    && /if \(masks === "conflicts"\) return false;/.test(analyze));
   check("B-08f· the natural key excludes balance (it legitimately changes between pulls)",
     !/balance/i.test(analyze.match(/function tradelineKey\([\s\S]*?\n\}/)?.[0] ?? "balance"));
 
