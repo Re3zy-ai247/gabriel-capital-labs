@@ -900,6 +900,43 @@ const BLOCK = [
       [acct("n1", "CAPITAL ONE", { mask: "****1234", dofd: null })]
     ).get("p1"), "n1");
 
+  // ── R7-1 · NOTHING TO GO ON IS NOT A REASON TO PICK ─────────────────────
+  //
+  // The delinquency filter can only discriminate when a date exists on both
+  // sides. Where two accounts at one creditor print the same visible four
+  // digits and NEITHER carries a parseable date, every candidate survives the
+  // filter and the first was taken — i.e. the extractor's ordering decided
+  // which account a mailed dispute belonged to. Reproduced end to end: reversed
+  // order cross-linked the letter and wrote resolved=true on the account the
+  // consumer never disputed. Two runs over identical stored text can differ in
+  // order, because AI extraction is preferred with a regex fallback.
+  const undated = { dofd: null, ...noBalance };
+  const pUndated = [
+    acct("pA", "CAPITAL ONE", { mask: "****3333", type: "REVOLVING", ...undated }),
+    acct("pB", "CAPITAL ONE", { mask: "****3333", type: "INSTALLMENT", ...undated }),
+  ];
+  const uA = acct("uA", "CAPITAL ONE", { mask: "****3333", type: "REVOLVING", ...undated });
+  const uB = acct("uB", "CAPITAL ONE", { mask: "****3333", type: "INSTALLMENT", ...undated });
+  eq("R7-1 · same four digits, no date on either side → NO link (extractor order)", matchRebuiltTradelines(pUndated, [uA, uB]).size, 0);
+  eq("R7-1 · …and none in the reversed order either", matchRebuiltTradelines(pUndated, [uB, uA]).size, 0);
+
+  // Deliberately narrow — each of these still links.
+  eq("R7-1 · a single surviving candidate still links, dated or not",
+    matchRebuiltTradelines([acct("p1", "CAPITAL ONE", { mask: "****3333", ...undated })], [acct("n1", "CAPITAL ONE", { mask: "****3333", ...undated })]).get("p1"), "n1");
+  eq("R7-1 · a usable date still separates two same-digit candidates",
+    (() => {
+      const m = matchRebuiltTradelines(
+        [acct("pA", "CAPITAL ONE", { mask: "****3333", dofd: d2019, ...noBalance }), acct("pB", "CAPITAL ONE", { mask: "****3333", dofd: d2021, ...noBalance })],
+        [acct("rB", "CAPITAL ONE", { mask: "****3333", dofd: d2021, ...noBalance }), acct("rA", "CAPITAL ONE", { mask: "****3333", dofd: d2019, ...noBalance })]
+      );
+      return [m.get("pA"), m.get("pB")];
+    })(), ["rA", "rB"]);
+  eq("R7-1 · an account number longer than the visible tail still links",
+    matchRebuiltTradelines(
+      [acct("pA", "CAPITAL ONE", { mask: "517805XXXXXX3333", ...undated }), acct("pB", "CAPITAL ONE", { mask: "409112XXXXXX7777", ...undated })],
+      [acct("nB", "CAPITAL ONE", { mask: "409112XXXXXX7777", ...undated }), acct("nA", "CAPITAL ONE", { mask: "517805XXXXXX3333", ...undated })]
+    ).get("pA"), "nA");
+
   const analyze = readFileSync(join(ROOT, "lib/analyze.ts"), "utf8");
   eq("the transaction re-links through the shared matcher", /matchedByPriorId = matchRebuiltTradelines\(prior, rebuilt\)/.test(analyze), true);
   eq("the fallback is corroborated, not merely forced", /corroboratesSameAccount\(p, candidate\)/.test(analyze), true);
@@ -908,6 +945,7 @@ const BLOCK = [
   eq("a zero balance is never read as corroboration", /pb > 0 && pb === rb/.test(analyze), true);
   eq("the delinquency-date refusal runs on the exact-key path too", /const acceptable = candidates\.filter\(\(id\) => \{[\s\S]{0,140}?delinquencyDatesDisagree\(p, row\)/.test(analyze), true);
   eq("equality only means identity above the visible tail", /da === db && da\.length > MIN_MEANINGFUL_TAIL/.test(analyze), true);
+  eq("an indistinguishable set is refused rather than decided by position", /const nothingLeftToGoOn = acceptable\.length > 1 && !maskIsStrong && !dateCouldDiscriminate;/.test(analyze), true);
   eq("the furnisher contact is carried by the same matcher, not by the parser key", /carriedContactByNewId/.test(analyze) && !/priorContactByKey/.test(analyze), true);
 }
 

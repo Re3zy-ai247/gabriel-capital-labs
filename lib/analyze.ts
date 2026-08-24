@@ -264,8 +264,34 @@ export function matchRebuiltTradelines(prior: RelinkRow[], rebuilt: RelinkRow[])
       const row = rowById.get(id);
       return row ? !delinquencyDatesDisagree(p, row) : false;
     });
+    // …but the filter can only discriminate when a date exists on both sides.
+    // Where several candidates survive it, the account number is no stronger
+    // than the four digits every report prints, and no delinquency date is
+    // available to separate them, there is genuinely nothing left to go on:
+    // taking the first is deciding by extractor order. Two runs over identical
+    // stored text can differ in order (AI extraction is preferred, with a regex
+    // fallback), and the wrong choice re-points a mailed dispute at an account
+    // the consumer never disputed. Refuse instead — an orphan is recoverable by
+    // re-confirming; a silent wrong association is not.
+    //
+    // Deliberately narrow: one surviving candidate, a usable date, or an
+    // account number longer than the visible tail all still link, because a
+    // false orphan has a real cost too.
+    const firstRow = acceptable.length ? rowById.get(acceptable[0]) : undefined;
+    const maskIsStrong =
+      firstRow != null && compareMasks(p.accountNumberMask, firstRow.accountNumberMask) === "identical";
+    const dateCouldDiscriminate =
+      asTime(p.dateOfFirstDelinquency) != null &&
+      acceptable.some((id) => asTime(rowById.get(id)?.dateOfFirstDelinquency) != null);
+    const nothingLeftToGoOn = acceptable.length > 1 && !maskIsStrong && !dateCouldDiscriminate;
+
     const candidate = keyIdentifiesAnAccount || unique
-      ? acceptable[0]
+      ? // The blind arm: a matching key is taken as identity, so it is the one
+        // that must not decide by position when nothing distinguishes the
+        // candidates. The other arm already requires individuating evidence.
+        nothingLeftToGoOn
+        ? undefined
+        : acceptable[0]
       : acceptable.find((id) => {
           const row = rowById.get(id);
           return row ? corroboratesSameAccount(p, row) : false;
