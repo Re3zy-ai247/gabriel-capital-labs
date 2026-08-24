@@ -835,7 +835,7 @@ run("consumer-assertion.runtime", async () => {
     check("…and the mailedAt stamp is unchanged", db.letters[0].mailedAt !== null);
   }
 
-  // ── 14. S11 AD-3: regeneration never destroys an APPROVED letter ─────────
+  // ── 14. S11 AD-3 / NEW-2: regeneration over an APPROVED letter ───────────
   section("regenerating over an approved, consumer-edited letter is refused server-side");
   {
     db.reset();
@@ -859,12 +859,45 @@ run("consumer-assertion.runtime", async () => {
       post("http://localhost/api/letters/generate", { tradelineId: "t1", strategyId: "fcra_611", targetBureaus: ["EQUIFAX"] })
     );
     const regenBody = await json(regen);
-    check("the request succeeds", regen.status === 200);
+    // S11 journey NEW-2 corrected this. The first cut SKIPPED an approved
+    // candidate, which stopped the overwrite but returned 200 and CREATED a
+    // second letter — leaving two live round-1 EQUIFAX letters on one tradeline,
+    // both approvable and both mailable. Not destroying the consumer's letter is
+    // necessary; quietly duplicating it is not the alternative. The rule is now
+    // report-and-refuse, and the outcome is ONE letter either way.
+    check("the request is REFUSED (409), not answered with a second letter", regen.status === 409);
+    check("…and says which letter is in the way, machine-readably", regenBody.approvedLetterExists === true && (regenBody.blockedLetterIds as string[])?.includes(original.id));
+    check("…naming the bureau it belongs to", ((regenBody.blockedBureaus as (string | null)[]) ?? []).includes("EQUIFAX"));
+    check("…and offering the consumer the choice, without taking it for them", /confirm that you want the approved letter replaced/i.test(String(regenBody.error)));
+    check("…stating that nothing was consumed", /nothing was used up/i.test(String(regenBody.error)));
     check("the approved letter's body is UNTOUCHED — the consumer's words survive", original.body === "enc:MY OWN WORDS — the letter I read, corrected and approved.");
     check("…and it is still approved (not silently reset to a fresh draft)", original.status === "PRINTED");
-    check("…because it was never update-matched", regenBody.updatedCount === 0);
-    check("a NEW draft is created beside it instead", regenBody.createdCount === 1 && db.letters.length === 2);
-    check("…and the new one is the freshly composed letter", /SUMMARY OF FACTUAL CONCERNS/.test(db.letters[1].body));
+    check("NOTHING was composed or written — no second live letter", db.letters.length === 1);
+    check("…so the tradeline never carries two round-1 letters to the same bureau", db.letters.filter((l) => l.tradelineId === "t1" && l.targetBureau === "EQUIFAX" && l.round === 1 && !l.mailedAt).length === 1);
+
+    // With the consumer's explicit instruction, the approved row is REPLACED in
+    // place — still one letter, never two.
+    const replaced = await generate.POST(
+      post("http://localhost/api/letters/generate", {
+        tradelineId: "t1",
+        strategyId: "fcra_611",
+        targetBureaus: ["EQUIFAX"],
+        replaceApproved: true,
+      })
+    );
+    const replacedBody = await json(replaced);
+    check("with the consumer's explicit go-ahead the regeneration proceeds (200)", replaced.status === 200);
+    check("…updating the approved row in place, not creating a rival", replacedBody.updatedCount === 1 && replacedBody.createdCount === 0);
+    check("…leaving exactly one round-1 EQUIFAX letter", db.letters.length === 1);
+    check("…now carrying the freshly composed text", /SUMMARY OF FACTUAL CONCERNS/.test(db.letters[0].body));
+    check("…and no longer standing as approved", db.letters[0].status !== "PRINTED");
+    check("a truthy-but-not-true flag does NOT count as consent", (await (async () => {
+      db.letters[0].status = "PRINTED";
+      const sneaky = await generate.POST(
+        post("http://localhost/api/letters/generate", { tradelineId: "t1", strategyId: "fcra_611", targetBureaus: ["EQUIFAX"], replaceApproved: "yes" })
+      );
+      return sneaky.status;
+    })()) === 409);
 
     // Control: an UNAPPROVED draft is still updated in place — RB-6's whole
     // point (correcting a draft must not spawn duplicates) is not regressed.
@@ -938,5 +971,70 @@ run("consumer-assertion.runtime", async () => {
     );
     check("naming your own account still generates (control)", good.status === 200 && db.letters.length === 1);
     check("…for that account, not another", db.letters[0].tradelineId === "t_mine");
+  }
+
+  // ── 16. S11 AD-R2-1: a letter with no tradeline is judged by no tradeline rule
+  section("an identity-correction letter (no tradeline) is authorized and approvable");
+  {
+    db.reset();
+    sessionUser = USER;
+    // The Personal Information correction letter disputes the consumer's own
+    // name, address and employer. Those facts have no tradeline row, so it is
+    // persisted with tradelineId null. Under the first cut of the authorization
+    // rule EVERY one of these was REVOKED at birth — un-approvable and
+    // un-printable after a metered model call, under a message telling the
+    // consumer to confirm facts on a page where those facts do not exist.
+    const identity = await db.letter.create({
+      data: {
+        userId: "u1",
+        tradelineId: null,
+        strategy: "fcra_611",
+        recipientType: "bureau",
+        recipientName: "Equifax Information Services LLC",
+        targetBureau: "EQUIFAX",
+        round: 1,
+        body: "enc:PERSONAL INFORMATION CORRECTION — my correct address is 1 Main St.",
+        complianceFlags: [],
+      },
+    });
+    check("it exists with no tradeline (control)", identity.tradelineId === null);
+    check("there is no ACTIVE assertion anywhere for this user (control)", db.assertions.length === 0);
+
+    const approve = await letterRoute.PATCH(
+      post(`http://localhost/api/letters/${identity.id}`, { status: "PRINTED" }),
+      { params: { id: identity.id } }
+    );
+    check("approving it is NOT refused as revoked", approve.status === 200);
+    check("…and it really moved to approved", db.letters.find((l) => l.id === identity.id)?.status === "PRINTED");
+
+    const mail = await letterRoute.PATCH(
+      post(`http://localhost/api/letters/${identity.id}`, { status: "MAILED" }),
+      { params: { id: identity.id } }
+    );
+    check("…and it can be mailed", mail.status === 200);
+
+    // THE COMPANION PROTECTION, in the same section so the two cannot drift:
+    // a letter that DOES have a tradeline, whose confirmations are withdrawn,
+    // is still refused. AD-2's actual scenario is untouched by AD-R2-1.
+    seedTradeline("t_w", "u1");
+    await assertionRoute.POST(post("http://localhost/api/tradelines/t_w/assertion", { assertionType: "not_mine" }), {
+      params: { id: "t_w" },
+    });
+    const gen = await generate.POST(
+      post("http://localhost/api/letters/generate", { tradelineId: "t_w", strategyId: "fcra_611", targetBureaus: ["EQUIFAX"] })
+    );
+    check("a tradeline letter is generated (control)", gen.status === 200);
+    const tlLetter = db.letters.find((l) => l.tradelineId === "t_w")!;
+    await assertionRoute.DELETE(
+      new Request(`http://localhost/api/tradelines/t_w/assertion?assertionId=${encodeURIComponent(db.assertions[0].id)}`, { method: "DELETE" }),
+      { params: { id: "t_w" } }
+    );
+    const blocked = await letterRoute.PATCH(
+      post(`http://localhost/api/letters/${tlLetter.id}`, { status: "PRINTED" }),
+      { params: { id: tlLetter.id } }
+    );
+    check("a TRADELINE letter whose confirmations are withdrawn is still REFUSED", blocked.status === 409);
+    check("…as revoked, specifically", (await json(blocked)).authorizationRevoked === true);
+    check("…and it was not approved", db.letters.find((l) => l.id === tlLetter.id)?.status !== "PRINTED");
   }
 });
