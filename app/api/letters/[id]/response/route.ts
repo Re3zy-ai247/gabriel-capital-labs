@@ -104,9 +104,31 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   // The predicate is now "already logged AND already analysed". What the paid
   // call cost is the ANALYSIS, so that is what may not be replayed; a reply that
   // was never analysed is exactly the one the consumer must be able to retry.
-  // Retrying does not reopen the replay hole: a retry that succeeds writes the
-  // analysis and locks, and a retry that fails is either a refusal (which spends
-  // nothing, by design) or an error — with the 20/hour limiter still over both.
+  //
+  // WHAT THIS COSTS, STATED HONESTLY (review B-R4-2). The earlier version of
+  // this note said a failed retry "spends nothing, by design". That is true of a
+  // budget REFUSAL — it is refused before the provider is called — but it is not
+  // true of the other failure mode. A call that reaches the provider, is
+  // charged, and then yields nothing usable (an unparseable or empty response,
+  // or an error after the request went out) stores no analysis, so the letter
+  // stays retryable and every retry is real spend. The bound on that is not
+  // zero: it is `enforceRateLimit("letters-response:<uid>", 20, 3600)` above,
+  // and the per-user daily ceiling this call now runs under
+  // (AI_DAILY_BUDGET_USD_PER_USER, via withAiPrincipal below) — which is the
+  // control B-1 added precisely so this surface could not spend without one.
+  // So the worst case is a consumer's own daily budget, spent on a reply the
+  // provider keeps failing to read, and never another consumer's.
+  //
+  // SHOULD THE BOUND BE TIGHTER? Yes, and deliberately not changed here. The
+  // right shape is a per-letter attempt counter — two or three tries, then a
+  // refusal that says the reply could not be read and offers the next round —
+  // and that needs a column on Letter, which is a migration outside this slice.
+  // Tightening it with the tools at hand would mean going back to locking on
+  // `responseAt`, which is the livelock this predicate exists to fix: a failure
+  // on OUR side permanently denying the consumer their analysis. Between
+  // "bounded by their own daily budget" and "locked out by our error", the
+  // budget is the right side to err on, and it is now written down rather than
+  // assumed.
   if (letter.responseAt && letter.responseAnalysis) {
     return NextResponse.json(
       {

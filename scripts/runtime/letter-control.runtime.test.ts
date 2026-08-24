@@ -976,6 +976,44 @@ run("letter-control.runtime", async () => {
     check("a merely TRUTHY replaceApproved is not the consumer's instruction", truthy.status === 409 && db.letters.length === 1);
   }
 
+  section("the refusal names the blocked bureau even when a newer draft sits on another");
+  {
+    // Review AD-R3-2: the client used to re-derive what to confirm from a local
+    // lookup with NO bureau term, so this shape — approved on one bureau, a
+    // newer draft on another — re-sent "don't replace" forever. The defect was
+    // client-side, so this section does NOT fail on `28ee468`: it pins the
+    // server contract the fixed page now depends on (the right bureau's letter
+    // named, and one letter per bureau after the confirmation). The regression
+    // itself is pinned in scripts/letter-control.test.ts, which does fail there.
+    resetAll();
+    seedTradeline();
+    seedAssertion();
+    const approved = seedLetter({ id: "l_eq", targetBureau: "EQUIFAX", status: "PRINTED", body: "enc:the Equifax letter I approved" });
+    seedLetter({ id: "l_ex", targetBureau: "EXPERIAN", status: "DRAFT", body: "enc:a newer Experian draft" });
+
+    const res = await generate.POST(
+      post("http://localhost/api/letters/generate", { tradelineId: "t1", strategyId: "fcra_611", targetBureaus: ["EQUIFAX", "EXPERIAN"] })
+    );
+    const body = await json(res);
+    check("the request is refused (409)", res.status === 409);
+    check("…naming ONLY the approved bureau's letter", (body.blockedLetterIds as string[]).join(",") === "l_eq" && (body.blockedBureaus as string[]).join(",") === "EQUIFAX");
+    check("…and nothing was written, not even the unblocked bureau's draft", db.letters.length === 2 && approved.body === "enc:the Equifax letter I approved");
+
+    // The next press answers about exactly that list.
+    const confirmed = await generate.POST(
+      post("http://localhost/api/letters/generate", {
+        tradelineId: "t1",
+        strategyId: "fcra_611",
+        targetBureaus: ["EQUIFAX", "EXPERIAN"],
+        replaceApproved: true,
+      })
+    );
+    check("…and the second press resolves it (200)", confirmed.status === 200);
+    check("…still exactly two letters — one per bureau, none duplicated", db.letters.length === 2);
+    check("…the approved one was replaced in place", db.letters.find((l) => l.id === "l_eq")!.body !== "enc:the Equifax letter I approved");
+    check("…and the other bureau's draft was updated, not duplicated", db.letters.find((l) => l.id === "l_ex")!.body !== "enc:a newer Experian draft");
+  }
+
   // ── RC1-S11 · review AD-R2-1 — the identity letter, draft → approve → print ─
   section("a Personal Information correction letter is authorized at birth");
   {

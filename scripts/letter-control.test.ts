@@ -16,6 +16,12 @@
 //
 // NON-VACUITY (measured 2026-08-24; pre-fix files reverted and restored
 // immediately, never committed):
+//   · final candidate `28ee468` (the letters page + the response route)
+//                                                → 238 passed,  8 failed (exit 1)
+//     — AD-R3-2: the replace-approved confirmation was re-derived client-side
+//       from a bureau-less lookup, so the 409 could never be answered;
+//       B-R4-2: the replay guard's justification claimed a failed retry spends
+//       nothing, which is true only of a budget refusal
 //   · final candidate `d9b2a1e` (the response route + the letters page)
 //                                                → 231 passed,  6 failed (exit 1)
 //     — NEW-3: the one-shot guard keyed on responseAt alone, "unknown" written
@@ -27,7 +33,7 @@
 //   · branch base `31d4e35:lib/letter.ts`         → the suite cannot even load
 //   · `31d4e35:app/letters/print/[id]/page.tsx`   → 126 passed,  9 failed (exit 1)
 //   · `31d4e35:app/letters/page.tsx`              →  99 passed, 36 failed (exit 1)
-//   · this tree                                   → 238 passed,  0 failed (exit 0)
+//   · this tree                                   → 246 passed,  0 failed (exit 0)
 
 export {};
 
@@ -590,6 +596,21 @@ console.log("\n— 9e. an approved letter is neither overwritten nor duplicated 
   ok("…and REFUSES when an approved letter blocks, before composing anything", /if \(blockedByApproval\.length > 0\)/.test(GEN) && GEN.indexOf("blockedByApproval.length > 0") < GEN.indexOf("const entitlement = await getEntitlement(user)"));
   ok("…with a 409 and a machine-readable flag", /approvedLetterExists: true/.test(GEN) && /\{ status: 409 \}/.test(GEN.slice(GEN.indexOf("approvedLetterExists"))));
   ok("…and the page sends the confirmation and handles the refusal", /\.\.\.\(replaceApproved \? \{ replaceApproved: true \} : \{\}\)/.test(PAGE) && /res\.status === 409 && j\.approvedLetterExists/.test(PAGE));
+
+  // AD-R3-2: the confirmation is driven by the SERVER's own list, not by a
+  // client-side re-derivation. The old `.find()` had no targetBureau term, so an
+  // approved letter on one bureau plus a newer draft on another re-sent
+  // "replaceApproved: false" forever — a prompt the UI could never answer.
+  ok("AD-R3-2: the page keeps the ids the server said it blocked", /const \[blockedLetterIds, setBlockedLetterIds\] = useState<string\[\]>\(\[\]\)/.test(PAGE));
+  ok("AD-R3-2: …taken from the 409 itself", /setBlockedLetterIds\(Array\.isArray\(j\.blockedLetterIds\) \? j\.blockedLetterIds : \[\]\)/.test(PAGE));
+  ok("AD-R3-2: …and the next press confirms from that list, not from a local lookup", /confirmRegen && \(blockedLetterIds\.length > 0 \|\| editedDraft\?\.status === APPROVED_STATUS\)/.test(PAGE));
+  ok("AD-R3-2: …so a server-driven refusal also relabels the button", /confirmRegen && \(blockedLetterIds\.length > 0 \|\| editedDraft\)/.test(PAGE));
+  ok("AD-R3-2: …and the list is cleared once the request goes out and when the target changes", (PAGE.match(/setBlockedLetterIds\(\[\]\)/g) ?? []).length >= 3);
+
+  // B-R4-2: the replay guard's justification must describe the real bound.
+  ok("B-R4-2: the retry cost is stated, not waved away", !/spends\s*\n?\s*\/\/ nothing, by design/.test(RESPONSE) && /every retry is real spend/.test(RESPONSE));
+  ok("B-R4-2: …naming the two controls that actually bound it", /letters-response:<uid>", 20, 3600/.test(RESPONSE) && /AI_DAILY_BUDGET_USD_PER_USER/.test(RESPONSE));
+  ok("B-R4-2: …and saying plainly that the bound should be tighter, with why it was not changed here", /SHOULD THE BOUND BE TIGHTER\? Yes/.test(RESPONSE) && /per-letter attempt counter/.test(RESPONSE));
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
