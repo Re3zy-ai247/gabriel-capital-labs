@@ -890,4 +890,53 @@ run("consumer-assertion.runtime", async () => {
     );
     check("a mailed letter is still never update-matched", (await json(afterMail)).createdCount === 1);
   }
+
+  // ── 15. S11 NEW-5: the account must be named, and the query is scoped ─────
+  section("generate refuses an unnamed account, and cannot reach another user's row");
+  {
+    db.reset();
+    sessionUser = USER;
+    seedTradeline("t_mine", "u1");
+    seedTradeline("t_theirs", "u2"); // another consumer's account
+    await assertionRoute.POST(post("http://localhost/api/tradelines/t_mine/assertion", { assertionType: "not_mine" }), {
+      params: { id: "t_mine" },
+    });
+
+    // The reported defect: an EMPTY body used to draft a real letter about an
+    // arbitrary account, because Prisma drops an `undefined` filter value.
+    const empty = await generate.POST(post("http://localhost/api/letters/generate", {}));
+    const emptyBody = await json(empty);
+    check("an empty body is refused (400), not answered with a letter", empty.status === 400);
+    check("…and says which input is missing", emptyBody.needsTradeline === true);
+    check("…and drafts nothing", db.letters.length === 0);
+
+    for (const [label, value] of [["null", null], ["a number", 7], ["an object", {}], ["blank", "   "]] as const) {
+      const res = await generate.POST(post("http://localhost/api/letters/generate", { tradelineId: value, strategyId: "fcra_611" }));
+      check(`a tradelineId that is ${label} is refused (400)`, res.status === 400);
+    }
+    check("none of the malformed attempts drafted anything", db.letters.length === 0);
+
+    // THE OWNERSHIP QUESTION, answered by execution rather than by reading.
+    const foreign = await generate.POST(
+      post("http://localhost/api/letters/generate", { tradelineId: "t_theirs", strategyId: "fcra_611", targetBureaus: ["EQUIFAX"] })
+    );
+    check("another user's tradeline id is 404, never resolved", foreign.status === 404);
+    check("…and no letter was written for it", db.letters.length === 0);
+    check("…and no letter exists on that account at all", !db.letters.some((l) => l.tradelineId === "t_theirs"));
+
+    // The ownership predicate is what does that work: prove the widened-query
+    // shape (id undefined) still cannot cross accounts, by asking the fake the
+    // same question the route's `where` clause asks.
+    const widened = await db.tradeline.findFirst({ where: { id: undefined, userId: "u1" } });
+    check("with the id filter dropped, the query still cannot leave the caller's rows", widened !== null && widened.userId === "u1");
+    const widenedOther = await db.tradeline.findFirst({ where: { id: undefined, userId: "u2" } });
+    check("…and a different caller sees only their own", widenedOther !== null && widenedOther.userId === "u2");
+
+    // Control: naming the account properly still works.
+    const good = await generate.POST(
+      post("http://localhost/api/letters/generate", { tradelineId: "t_mine", strategyId: "fcra_611", targetBureaus: ["EQUIFAX"] })
+    );
+    check("naming your own account still generates (control)", good.status === 200 && db.letters.length === 1);
+    check("…for that account, not another", db.letters[0].tradelineId === "t_mine");
+  }
 });
