@@ -1,6 +1,7 @@
 import { AccountType, Probability } from "@prisma/client";
 import { getBureauData, crossBureauConflicts } from "./bureauData";
 import { obsolescenceWindowYears, bureauTextBlob, reportingOffsetDays } from "./obsolescence";
+import { reportedDofd } from "./tradelineInsights";
 import { yearsSince } from "./utils";
 import { type ConsumerAssertionType } from "./letter";
 
@@ -70,7 +71,13 @@ export function suggestAssertionTypes(t: RecommendInput): ConsumerAssertionType[
   }
   // A first-delinquency date on file is the field the §605 clock runs from, so
   // it is worth the consumer checking the dates against their own records.
-  if (t.dateOfFirstDelinquency) push("late_dates_wrong");
+  //
+  // S11 (S3 adoption): via reportedDofd, not the raw column. A report printing
+  // "08/2021" cannot be held at day precision in the column, so reading the
+  // column alone missed every month-precision DOFD — and this suggestion would
+  // disagree with the §605 clock, the scoring engine and factualCondition,
+  // which all read the same derivation.
+  if (reportedDofd(t)) push("late_dates_wrong");
 
   push("inaccurate_status");
   push("inaccurate_balance");
@@ -105,7 +112,13 @@ export function recommendStrategy(t: RecommendInput): Recommendation {
     creditorName: t.creditorName,
     text: bureauTextBlob(getBureauData(t.bureauData)),
   });
-  const age = (t.dateOfFirstDelinquency ? yearsSince(t.dateOfFirstDelinquency) : 0) ?? 0;
+  // S11 (S3 adoption): the single DOFD derivation, so an obsolescence
+  // recommendation runs off exactly the date the §605 clock runs off. A
+  // month-only DOFD is anchored to month-end and conflicting values resolve to
+  // the latest, so this can never recommend an obsolescence dispute EARLIER
+  // than fallOffInsight says the window closes.
+  const reported = reportedDofd(t);
+  const age = (reported ? yearsSince(reported.date) : 0) ?? 0;
   // §1681c(c)(1): collection/charge-off reporting starts 180 days after DOFD.
   const windowYrs = windowYears + reportingOffsetDays(t.accountType) / 365.25;
   if (age >= windowYrs) {
