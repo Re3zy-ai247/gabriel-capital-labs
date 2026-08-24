@@ -984,11 +984,17 @@ run("consumer-assertion.runtime", async () => {
     // rule EVERY one of these was REVOKED at birth — un-approvable and
     // un-printable after a metered model call, under a message telling the
     // consumer to confirm facts on a page where those facts do not exist.
+    //
+    // `strategy` is the discriminator, so the fixture has to carry the value the
+    // route actually writes and the value legacy production rows already hold:
+    // `personal_info`. Built with "fcra_611" this fixture was not an identity
+    // letter at all — it was a re-analysis orphan, and asserting it approvable
+    // pinned exactly the state the S11 close removed.
     const identity = await db.letter.create({
       data: {
         userId: "u1",
         tradelineId: null,
-        strategy: "fcra_611",
+        strategy: "personal_info",
         recipientType: "bureau",
         recipientName: "Equifax Information Services LLC",
         targetBureau: "EQUIFAX",
@@ -1013,6 +1019,35 @@ run("consumer-assertion.runtime", async () => {
     );
     check("…and it can be mailed", mail.status === 200);
 
+    // THE ORPHAN, same section so the pair cannot drift: byte-identical to the
+    // letter above except for its strategy — a tradeline dispute whose report
+    // was later deleted, so its tradelineId went NULL. It must be REFUSED.
+    const orphan = await db.letter.create({
+      data: {
+        userId: "u1",
+        tradelineId: null,
+        strategy: "fcra_611",
+        recipientType: "bureau",
+        recipientName: "Equifax Information Services LLC",
+        targetBureau: "EQUIFAX",
+        round: 1,
+        body: "enc:A tradeline dispute whose report the consumer later deleted.",
+        complianceFlags: [],
+      },
+    });
+    const orphanApprove = await letterRoute.PATCH(
+      post(`http://localhost/api/letters/${orphan.id}`, { status: "PRINTED" }),
+      { params: { id: orphan.id } }
+    );
+    check("a re-analysis ORPHAN (tradeline strategy, no tradeline) is REFUSED (409)", orphanApprove.status === 409);
+    check("…as revoked, specifically", (await json(orphanApprove)).authorizationRevoked === true);
+    check("…and it was not approved", db.letters.find((l) => l.id === orphan.id)?.status !== "PRINTED");
+    check(
+      "…so the two null-tradeline letters get OPPOSITE answers from the same gate",
+      db.letters.find((l) => l.id === identity.id)?.status === "MAILED" &&
+        db.letters.find((l) => l.id === orphan.id)?.status !== "PRINTED"
+    );
+
     // THE COMPANION PROTECTION, in the same section so the two cannot drift:
     // a letter that DOES have a tradeline, whose confirmations are withdrawn,
     // is still refused. AD-2's actual scenario is untouched by AD-R2-1.
@@ -1036,5 +1071,40 @@ run("consumer-assertion.runtime", async () => {
     check("a TRADELINE letter whose confirmations are withdrawn is still REFUSED", blocked.status === 409);
     check("…as revoked, specifically", (await json(blocked)).authorizationRevoked === true);
     check("…and it was not approved", db.letters.find((l) => l.id === tlLetter.id)?.status !== "PRINTED");
+  }
+
+  // ── 17. S11: the discriminator cannot be forged onto a tradeline letter ───
+  section("a tradeline letter can never be assigned the personal-information strategy");
+  {
+    db.reset();
+    sessionUser = USER;
+    seedTradeline("t_pi", "u1");
+    await assertionRoute.POST(post("http://localhost/api/tradelines/t_pi/assertion", { assertionType: "not_mine" }), {
+      params: { id: "t_pi" },
+    });
+
+    const forged = await generate.POST(
+      post("http://localhost/api/letters/generate", {
+        tradelineId: "t_pi",
+        strategyId: "personal_info",
+        targetBureaus: ["EQUIFAX"],
+      })
+    );
+    const forgedBody = await json(forged);
+    check("a direct API call naming the non-tradeline strategy is refused (400)", forged.status === 400);
+    check("…flagged machine-readably", forgedBody.invalidStrategyForTradeline === true);
+    check("…explaining what that letter type actually does", /corrects the personal details on your file/i.test(String(forgedBody.error)));
+    check("…and NOTHING was written", db.letters.length === 0);
+    check(
+      "…so no letter anywhere carries a tradelineId AND the identity strategy",
+      !db.letters.some((l) => l.tradelineId !== null && l.strategy === "personal_info")
+    );
+
+    // Control: an ordinary dispute strategy on the same account still works.
+    const ok200 = await generate.POST(
+      post("http://localhost/api/letters/generate", { tradelineId: "t_pi", strategyId: "fcra_611", targetBureaus: ["EQUIFAX"] })
+    );
+    check("a real dispute strategy still generates (control)", ok200.status === 200 && db.letters.length === 1);
+    check("…recording the strategy it was asked for", db.letters[0].strategy === "fcra_611");
   }
 });

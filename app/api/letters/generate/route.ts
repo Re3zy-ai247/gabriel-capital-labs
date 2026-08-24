@@ -20,6 +20,7 @@ import { getEntitlement } from "@/lib/entitlements";
 import { presentBureaus, getBureauData } from "@/lib/bureauData";
 import { getFurnisherContact, formatFurnisherAddress } from "@/lib/furnisher";
 import { BUREAU_LABEL } from "@/lib/bureaus";
+import { isNonTradelineStrategy } from "@/lib/strategies";
 import type { Bureau } from "@prisma/client";
 
 export const maxDuration = 60;
@@ -218,6 +219,28 @@ export async function POST(req: Request) {
     if (typeof tradelineId !== "string" || !tradelineId.trim()) {
       return NextResponse.json(
         { error: "Tell us which account this letter is about.", needsTradeline: true },
+        { status: 400 }
+      );
+    }
+
+    // ---- S11: A TRADELINE LETTER CAN NEVER CARRY A NON-TRADELINE STRATEGY ----
+    // `personal_info` (lib/strategies.ts NON_TRADELINE_STRATEGIES) marks a
+    // letter that disputes the consumer's own identifying information and
+    // therefore legitimately has no tradelineId. `letterAuthorization` reads
+    // exactly that to tell an identity letter apart from a tradeline letter
+    // whose report was deleted — so if this route could stamp `personal_info`
+    // onto a tradeline letter, the discriminator would be worthless and a
+    // re-analysis orphan could be laundered into "authorized".
+    //
+    // Nothing offers it: the chooser is fed by STRATEGIES, which excludes it.
+    // This refuses the direct API call that the chooser cannot prevent.
+    if (isNonTradelineStrategy(strategyId)) {
+      return NextResponse.json(
+        {
+          error:
+            "That letter type doesn\u2019t dispute an account \u2014 it corrects the personal details on your file. Choose a dispute type for this account, or start a personal-information correction instead.",
+          invalidStrategyForTradeline: true,
+        },
         { status: 400 }
       );
     }

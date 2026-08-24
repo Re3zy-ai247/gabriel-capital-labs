@@ -210,16 +210,23 @@ export async function POST(req: Request) {
     const letter = await prisma.letter.create({
       data: {
         userId: user.id,
-        // RC1-S4 (L-09): was "personal_info", which is NOT a member of
-        // STRATEGIES (lib/strategies.ts). Harmless while this route bypasses
-        // buildContext, but any future path through buildContext would silently
-        // fall back to fcra_611 anyway — and every reader that looks the id up
-        // (the letters list, outcome tracking) gets an unknown key today. This
-        // letter IS a §611 reinvestigation request addressed to a bureau, which
-        // is exactly what fcra_611 denotes, so it records that.
-        // A dedicated "personal_info" strategy entry would be more precise; it
-        // belongs in lib/strategies.ts, which this slice does not own.
-        strategy: "fcra_611",
+        // RC1-S11: `personal_info`, a real registered strategy again
+        // (lib/strategies.ts NON_TRADELINE_STRATEGIES).
+        //
+        // The L-09 remediation moved this to "fcra_611" because `personal_info`
+        // was in no registry and resolved to nothing for every reader that
+        // looked it up. That fixed the dangling id and introduced two problems:
+        // it labelled a personal-information correction as a §611 TRADELINE
+        // reinvestigation, which it is not; and it erased the only thing
+        // separating this letter from a tradeline letter whose report was later
+        // deleted — both carry a null tradelineId, and `letterAuthorization`
+        // has to tell them apart to block the second without killing the first.
+        // A registered, distinct id fixes the label and restores the
+        // discriminator without a schema column.
+        //
+        // Production rows written before RC1 already carry this exact value, so
+        // they resolve identically now rather than needing a backfill.
+        strategy: "personal_info",
         recipientType: "bureau",
         recipientName: addr.name,
         targetBureau: bureau,

@@ -20,16 +20,14 @@
 //
 // NON-VACUITY (measured 2026-08-24; each pre-fix file reverted and restored
 // immediately afterwards, never committed):
-//   · merged candidate `bd6cfbb` (lib/letter.ts, app/letters/page.tsx,
-//     app/api/letters/generate/route.ts)                            → 160 passed, 13 failed (exit 1)
-//     — NEW-2 (generate returned 200 and left two live round-1 letters on one
-//       tradeline), AD-R2-1 (the identity correction letter could not be
-//       approved, printed or mailed)
+//   · candidate `4bb33fa` (lib/letter.ts + the three gates)         → 174 passed,  3 failed (exit 1)
+//     — the re-analysis orphan was approvable at the gate
+//   · merged candidate `bd6cfbb` (three files)                      → 160 passed, 13 failed (exit 1)
 //   · release candidate `59f2afd` (route + page + lib files)        → 131 passed, 23 failed (exit 1)
 //   · branch base `31d4e35:app/api/letters/[id]/route.ts`           →  75 passed, 40 failed (exit 1)
 //   · branch base `31d4e35:app/api/letters/[id]/round2/route.ts`    → 102 passed, 13 failed (exit 1)
 //   · branch base `31d4e35:app/api/letters/[id]/response/route.ts`  → 110 passed,  5 failed (exit 1)
-//   · this tree                                                     → 173 passed,  0 failed (exit 0)
+//   · this tree                                                     → 177 passed,  0 failed (exit 0)
 import { check, loadModule, mockModule, run, section } from "./_harness";
 import { letterAuthorizationRevoked } from "../../lib/letter";
 
@@ -979,9 +977,32 @@ run("letter-control.runtime", async () => {
     check("AD-R2-1: it can be APPROVED — every one of these used to 409 at birth", approve.status === 200);
     check("…and the letter is approved", db.letters[0].status === "PRINTED");
     // The print page branches on exactly this predicate.
-    check("…and the print gate lets it through", letterAuthorizationRevoked({ mailedAt: null, tradelineId: null, activeAssertionCount: 0 }) === false);
+    check("…and the print gate lets it through", letterAuthorizationRevoked({ mailedAt: null, tradelineId: null, activeAssertionCount: 0, strategy: db.letters[0].strategy }) === false);
+    check("…because the letter records the registered non-tradeline strategy", db.letters[0].strategy === "personal_info");
     const mailed = await letterRoute.PATCH(patch(id, { status: "MAILED", mailedAt: "2026-08-24" }), { params: { id } });
     check("…and it can be mailed", mailed.status === 200 && db.letters[0].mailedAt !== null);
+
+    // …and the OTHER null-tradeline population is not rescued with it. A
+    // TRADELINE letter whose row is gone (re-analysis, deleted report) has
+    // nothing left to check its claims against, so the gate refuses it again.
+    resetAll();
+    const orphan = await db.letter.create({
+      data: {
+        userId: "u1",
+        tradelineId: null,
+        strategy: "fcra_611", // a tradeline strategy — this letter HAD a tradeline
+        recipientType: "bureau",
+        recipientName: "Equifax Information Services LLC",
+        targetBureau: "EQUIFAX",
+        round: 1,
+        body: "enc:a dispute letter whose account row is gone",
+        complianceFlags: [],
+      },
+    });
+    const orphanApprove = await letterRoute.PATCH(patch(orphan.id, { status: "PRINTED" }), { params: { id: orphan.id } });
+    check("a re-analysis / deleted-report orphan is REFUSED at the gate (409)", orphanApprove.status === 409);
+    check("…as an authorization problem", (await json(orphanApprove)).authorizationRevoked === true);
+    check("…and it was not approved", db.letters[0].status !== "PRINTED");
 
     // The tradeline protection is undiminished by the same change.
     resetAll();
