@@ -10,7 +10,7 @@ import { recordKaiEvent } from "@/lib/kaiEvents";
 import { track, PRODUCT_EVENTS } from "@/lib/events";
 import { getBureauData, crossBureauConflicts } from "@/lib/bureauData";
 import { recommendStrategy } from "@/lib/recommend";
-import { withAiPrincipal } from "@/lib/aiMeter";
+import { AiSpendRefusal, assertAiBudgetAvailable, withAiPrincipal } from "@/lib/aiMeter";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -250,6 +250,24 @@ export async function POST(req: Request) {
         // userId: null). A refusal is caught inside analyzeReportText, which
         // falls back to the deterministic parser — no spend, still a result.
         const reportId = report.id;
+        // S11 · NEW-1. lib/analyze.ts catches EVERY extractor exception — including
+        // an AiSpendRefusal — and falls back to the deterministic parser, so a
+        // refused AI read reaches this route as an ordinary success with quieter
+        // results. Ask first, so the answer can be said out loud. The upload is
+        // NOT refused: the report is still stored and still analyzed by the
+        // deterministic reader, which is the honest trade — losing the consumer's
+        // upload would be a worse outcome than a plainly-labelled weaker read.
+        // (Re-analysis is different: app/api/reports/analyze refuses with 429,
+        // because nothing is lost by declining to redo work.)
+        let aiRefusedMessage: string | null = null;
+        try {
+          await assertAiBudgetAvailable(user.id);
+        } catch (e) {
+          if (!(e instanceof AiSpendRefusal)) throw e;
+          aiRefusedMessage = e.consumerMessage;
+          emit({ stage: "reading", note: aiRefusedMessage });
+        }
+
         const result = await withAiPrincipal(user.id, () =>
           analyzeReportText(
             prisma,
@@ -274,6 +292,9 @@ export async function POST(req: Request) {
         if (result.tradelines === 0) {
           emit({
             ok: true,
+            degraded: aiRefusedMessage !== null,
+            aiRefused: aiRefusedMessage !== null,
+            ...(aiRefusedMessage ? { notice: aiRefusedMessage } : {}),
             reportId: report.id,
             tradelines: 0,
             usedAI: result.usedAI,
@@ -310,6 +331,13 @@ export async function POST(req: Request) {
 
         emit({
           ok: true,
+          // Never an unqualified success when the AI reading was refused: the
+          // consumer is told the analysis ran without it, with no invented reason
+          // and no payment framing (there is nothing to buy — this is a platform
+          // spend control, not a tier).
+          degraded: aiRefusedMessage !== null,
+          aiRefused: aiRefusedMessage !== null,
+          ...(aiRefusedMessage ? { notice: aiRefusedMessage } : {}),
           reportId: report.id,
           tradelines: result.tradelines,
           usedAI: result.usedAI,

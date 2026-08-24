@@ -420,6 +420,14 @@ async function reserveDailyBudget(
  * bound that actually holds is the reservation inside reserveDailyBudget.
  */
 export async function assertAiBudgetAvailable(userId: string): Promise<void> {
+  // S11 · NEW-1. This probe used to check ONLY the per-user ceiling, so on a day
+  // the PLATFORM ceiling had tripped it passed — the route fanned out, every model
+  // call was refused inside lib/analyze.ts's catch-all, and the consumer got
+  // `ok: true` with silently worse results. The global refusal had no reachable
+  // render path anywhere in the product. Check it here too: it throws the same
+  // AiSpendRefusal type, so every caller that already surfaces consumerMessage
+  // now surfaces this kind as well.
+  await assertWithinGlobalBudget();
   const budget = aiDailyBudgetUsd();
   let spentUsd: number;
   try {

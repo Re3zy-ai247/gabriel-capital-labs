@@ -26,11 +26,39 @@ const REQUIRED_TABLES = ["TermsAcceptance", "ConsumerAssertion"] as const;
 // for the dependencies that take the product down is not a readiness probe; it is
 // a liveness probe wearing the wrong name, and it converts a loud outage into a
 // silent one.
-export async function GET() {
-  const encryption = docCryptoReady();
+// The database half of this probe is cached briefly (S11 · lens-B LOW). The route
+// is deliberately unauthenticated — an uptime monitor and a load balancer must be
+// able to reach it — which also means anyone can, and every request was issuing a
+// database round-trip. A short memo makes a flood cost at most one query per
+// process per window while staying far below any monitor's interval, and it caches
+// failures too, which is the case where the database can least afford extra load.
+// The environment half (encryption) is a pure in-process check with no I/O, so it
+// stays live and recovers the instant the variable is fixed.
+//
+// Next.js route modules may only export the recognised handler names, so the
+// window is tuned through the environment rather than a test seam:
+// HEALTH_READY_DB_TTL_MS, default 5 s, and 0 disables caching entirely.
+type DbProbe = { db: "ok" | "unreachable"; missingTables: string[] };
+let dbProbeCache: { at: number; result: DbProbe } | null = null;
+
+function dbProbeTtlMs(): number {
+  const raw = Number.parseInt(process.env.HEALTH_READY_DB_TTL_MS || "", 10);
+  if (!Number.isFinite(raw) || raw < 0) return 5_000;
+  return Math.min(raw, 60_000);
+}
+
+async function probeDatabase(): Promise<DbProbe> {
+  const now = Date.now();
+  const ttl = dbProbeTtlMs();
+  if (ttl > 0 && dbProbeCache && now - dbProbeCache.at < ttl) return dbProbeCache.result;
+  const result = await runDatabaseProbe();
+  dbProbeCache = { at: now, result };
+  return result;
+}
+
+async function runDatabaseProbe(): Promise<DbProbe> {
   let db: "ok" | "unreachable" = "unreachable";
   let missingTables: string[] = [];
-
   try {
     // to_regclass returns NULL for a relation that does not exist instead of
     // throwing, so one round-trip answers the connection AND the schema.
@@ -49,6 +77,12 @@ export async function GET() {
   } catch {
     db = "unreachable";
   }
+  return { db, missingTables };
+}
+
+export async function GET() {
+  const encryption = docCryptoReady();
+  const { db, missingTables } = await probeDatabase();
 
   const schema = db === "ok" && missingTables.length === 0 ? "ok" : "incomplete";
   const ready = db === "ok" && encryption && schema === "ok";
