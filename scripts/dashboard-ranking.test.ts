@@ -236,7 +236,8 @@ function inputs(over: Partial<MissionInputs> = {}): MissionInputs {
   const clean = { id: "t2", resolved: false, accountType: "STUDENT_LOAN" as const, dateOfFirstDelinquency: null };
   const mailed = (over: Partial<MissionInputs["letters"][number]> = {}) => ({
     id: "L1", tradelineId: "t1", recipientName: "Equifax", parentLetterId: null,
-    responseAt: null, responseOutcome: null, mailedAt: new Date(NOW - 10 * 86400000), ...over,
+    responseAt: null, responseOutcome: null, mailedAt: new Date(NOW - 10 * 86400000),
+    strategy: "fcra_611", ...over,
   });
 
   // (a) nothing at all on file → NOT STARTED is the honest read.
@@ -409,7 +410,7 @@ function inputs(over: Partial<MissionInputs> = {}): MissionInputs {
   // behind it. The blocked shape is exercised in its own section below.
   const letter = (id: string, status: string, recipientName: string) => ({
     id, recipientName, status, mailedAt: null, createdAt: "2026-07-10T00:00:00.000Z",
-    tradelineId: `tl-${id}`, activeAssertionCount: 1,
+    tradelineId: `tl-${id}`, activeAssertionCount: 1, strategy: "fcra_611",
   });
   const session = assembleOperatorSession({
     account, client: null, kai: emptyKai, events: [], manifests: [],
@@ -452,7 +453,8 @@ function inputs(over: Partial<MissionInputs> = {}): MissionInputs {
   const account = { id: "u1", fullName: "Rey Gabriel", name: null, isAgency: false, agencyName: null };
   const draft = (over: Record<string, unknown>) => ({
     id: "L1", recipientName: "Equifax Information Services LLC", status: "GENERATED",
-    mailedAt: null, createdAt: "2026-07-10T00:00:00.000Z", tradelineId: "t1", activeAssertionCount: 1, ...over,
+    mailedAt: null, createdAt: "2026-07-10T00:00:00.000Z", tradelineId: "t1",
+    activeAssertionCount: 1, strategy: "fcra_611", ...over,
   });
   const session = (letters: unknown[]) => assembleOperatorSession({
     account, client: null, kai: emptyKai, events: [], manifests: [], letters, now: NOW,
@@ -517,7 +519,8 @@ function inputs(over: Partial<MissionInputs> = {}): MissionInputs {
   // ── the roll-up ─────────────────────────────────────────────────────────
   const mcLetter = (over: Record<string, unknown>) => ({
     id: "L1", tradelineId: "t1", recipientName: "Equifax Information Services LLC",
-    parentLetterId: null, responseAt: null, responseOutcome: null, mailedAt: null, ...over,
+    parentLetterId: null, responseAt: null, responseOutcome: null, mailedAt: null,
+    strategy: "fcra_611", ...over,
   });
   // Two blocked drafts under the rule as it stands: one confirmable (tradeline
   // on file, zero ACTIVE assertions) and one orphaned. The orphaned one is
@@ -556,6 +559,115 @@ function inputs(over: Partial<MissionInputs> = {}): MissionInputs {
     activeAssertionCounts: { t1: 1 },
   }));
   check("NEW-3: a case whose drafts are all confirmed is still green", okRollup.standing === "green");
+}
+
+// ══ 4d · ALL FOUR AUTHORIZATION STATES, THROUGH BOTH ENGINES ════════════════
+// S11 AD-R3-1 / B-R3-2. The identity discriminator reached letterAuthorization
+// and the three enforcement gates, but not these two engines — `strategy` was
+// absent from their input types and their Prisma selects, so it could not be
+// passed, and because it is optional-and-fails-closed both engines read every
+// Personal Information correction letter as an orphan whose account had been
+// deleted. Every sentence they produced was false: that letter names no account
+// (it disputes the consumer's own name, address and employers, which is WHY it
+// has no tradelineId), nothing was removed from their report, they did confirm
+// per item on /identity, and re-uploading can never mint a tradeline for it —
+// so the amber roll-up and the instruction were permanent. Meanwhile
+// /api/letters returned authorizationRevoked:false for the same row and the
+// print page rendered it: one screen said on hold, the next printed and mailed.
+//
+// One table, all four states, asserted through BOTH engines, so a future engine
+// cannot drift from the rule in either direction.
+{
+  const account = { id: "u1", fullName: "Rey Gabriel", name: null, isAgency: false, agencyName: null };
+  const sessionFor = (over: Record<string, unknown>) => assembleOperatorSession({
+    account, client: null, kai: emptyKai, events: [], manifests: [],
+    letters: [{
+      id: "L1", recipientName: "Equifax", status: "GENERATED", mailedAt: null,
+      createdAt: "2026-07-10T00:00:00.000Z", tradelineId: "t1", activeAssertionCount: 1,
+      strategy: "fcra_611", ...over,
+    }],
+    now: NOW,
+  } as unknown as OperatorSessionInputs);
+  const missionFor = (over: Record<string, unknown>) => assembleMission(inputs({
+    tradelines: [{ id: "t1", resolved: false, accountType: "STUDENT_LOAN", dateOfFirstDelinquency: null }],
+    letters: [{
+      id: "L1", tradelineId: "t1", recipientName: "Equifax", parentLetterId: null,
+      responseAt: null, responseOutcome: null, mailedAt: null, strategy: "fcra_611", ...over,
+    } as never],
+    activeAssertionCounts: { t1: 1 },
+  }));
+
+  // ── 1 · IDENTITY: personal_info, null tradelineId → AUTHORIZED ────────────
+  const idOver = { tradelineId: null, activeAssertionCount: 0, strategy: "personal_info" };
+  check("AD-R3-1: the rule itself authorizes an identity letter",
+    letterAuthorization({ mailedAt: null, tradelineId: null, activeAssertionCount: 0, strategy: "personal_info" }) === "AUTHORIZED");
+  const idSession = sessionFor(idOver);
+  check("AD-R3-1: operatorSession does NOT call an identity letter blocked",
+    idSession.interruptedWork[0]?.kind === "letter_unmailed");
+  check("AD-R3-1: …and never tells the consumer their account was removed from their report",
+    !idSession.interruptedWork.some((w) => /no longer on your report/i.test(w.label)) &&
+    !idSession.interruptedWork.some((w) => /on hold/i.test(w.label)));
+  check("AD-R3-1: …and does not send them to /upload, which can never mint a tradeline for it",
+    idSession.interruptedWork.every((w) => w.resumeHref !== "/upload"));
+  const idMission = missionFor(idOver);
+  check("AD-R3-1: missionControl reads an identity letter as authorized — draft health green",
+    idMission.health.find((h) => h.key === "authorization")?.status === "green");
+  check("AD-R3-1: …so an otherwise-clean case is still green, not permanently amber",
+    idMission.standing === "green" && idMission.caseHealth === "green");
+  check("AD-R3-1: …and no false instruction is staged",
+    !idMission.tasks.some((t) => /no longer on your report|Confirm the facts behind/i.test(t.text)));
+  check("AD-R3-1: the dashboard now agrees with /api/letters and the print page for the same row",
+    idMission.health.find((h) => h.key === "authorization")?.status === "green" &&
+    idSession.interruptedWork[0]?.kind !== "letter_blocked");
+
+  // ── 2 · RE-ANALYSIS ORPHAN: tradeline strategy, null tradelineId → REVOKED ─
+  const orphanOver = { tradelineId: null, activeAssertionCount: 0, strategy: "fcra_611" };
+  check("AD-R3-1: the rule still revokes a tradeline letter whose row is gone",
+    letterAuthorization({ mailedAt: null, tradelineId: null, activeAssertionCount: 0, strategy: "fcra_611" }) === "REVOKED");
+  const orphanSession = sessionFor(orphanOver);
+  check("AD-R3-1: operatorSession blocks the orphan with its truthful message",
+    orphanSession.interruptedWork[0]?.kind === "letter_blocked" &&
+    /no longer on your report/i.test(orphanSession.interruptedWork[0]?.label ?? "") &&
+    orphanSession.interruptedWork[0]?.resumeHref === "/upload");
+  const orphanMission = missionFor(orphanOver);
+  check("AD-R3-1: missionControl keeps the orphan amber and staged",
+    orphanMission.health.find((h) => h.key === "authorization")?.status === "amber" &&
+    orphanMission.standing !== "green" &&
+    orphanMission.tasks.some((t) => /no longer on your report/.test(t.text) && t.href === "/upload"));
+
+  // ── 3 · WITHDRAWAL: tradeline on file, zero ACTIVE assertions → REVOKED ────
+  const withdrawnSession = sessionFor({ activeAssertionCount: 0 });
+  check("AD-R3-1: operatorSession still blocks a withdrawn-confirmation letter",
+    withdrawnSession.interruptedWork[0]?.kind === "letter_blocked" &&
+    /on hold until you confirm the facts/i.test(withdrawnSession.interruptedWork[0]?.label ?? "") &&
+    withdrawnSession.interruptedWork[0]?.resumeHref === "/tradelines");
+  const withdrawnMission = assembleMission(inputs({
+    tradelines: [{ id: "t1", resolved: false, accountType: "STUDENT_LOAN", dateOfFirstDelinquency: null }],
+    letters: [{ id: "L1", tradelineId: "t1", recipientName: "Equifax", parentLetterId: null, responseAt: null, responseOutcome: null, mailedAt: null, strategy: "fcra_611" } as never],
+    activeAssertionCounts: {},
+  }));
+  check("AD-R3-1: missionControl still blocks it and points at the page that can unblock it",
+    withdrawnMission.health.find((h) => h.key === "authorization")?.status === "amber" &&
+    withdrawnMission.tasks.some((t) => /Confirm the facts behind/.test(t.text) && t.href === "/tradelines"));
+
+  // ── 4 · MAILED: never re-judged, whatever happened afterwards ─────────────
+  const mailedOver = { mailedAt: "2026-07-11T00:00:00.000Z", activeAssertionCount: 0, tradelineId: null, strategy: "fcra_611" };
+  check("AD-R3-1: the rule reads a mailed letter as HISTORICAL, never REVOKED",
+    letterAuthorization({ mailedAt: new Date(NOW), tradelineId: null, activeAssertionCount: 0, strategy: "fcra_611" }) === "HISTORICAL");
+  check("AD-R3-1: operatorSession never re-judges a mailed letter",
+    sessionFor(mailedOver).interruptedWork.length === 0);
+  const mailedMission = missionFor({ mailedAt: new Date(NOW - 10 * 86400000), tradelineId: null, activeAssertionCount: 0 });
+  check("AD-R3-1: missionControl never counts a mailed letter as blocked",
+    mailedMission.health.find((h) => h.key === "authorization")?.status === "green");
+
+  // ── the structural guarantee ─────────────────────────────────────────────
+  check("AD-R3-1: both engines PASS the discriminator, so neither can silently take the fail-closed default",
+    /strategy: l\.strategy/.test(mcEngine) && /strategy: l\.strategy/.test(stripComments(read("lib/operatorSession.ts"))));
+  check("AD-R3-1: both engines SELECT it, so the loader cannot starve the derivation",
+    /strategy: true/.test(mcEngine) && /strategy: true/.test(stripComments(read("lib/operatorSession.ts"))));
+  check("AD-R3-1: both input types REQUIRE it, so S5 making it required upstream is a no-op here",
+    /"mailedAt" \| "strategy">\[\]/.test(mcEngine) &&
+    /strategy: string \| null;/.test(stripComments(read("lib/operatorSession.ts"))));
 }
 
 // ══ 5 · D-6 · task-first is the default; the entrance is opt-in ═══════════════

@@ -43,7 +43,10 @@ function campaign(status: Campaign["status"], sequence: number, items: CampaignI
   return { id: "c" + sequence, userId: "u", sequence, status, strategyFamily: "bureau_reinvestigation", items, rationale: "", warnings: [], nextUnlock: [], userDecision: null, createdAt: "", approvedAt: null, startedAt: null, completedAt: null, canceledAt: null, snapshot: null, auditTrail: [] };
 }
 const lt = (over: Partial<MissionInputs["letters"][number]>): MissionInputs["letters"][number] =>
-  ({ id: "L", tradelineId: "t1", recipientName: "Experian", parentLetterId: null, responseAt: null, responseOutcome: null, mailedAt: null, ...over });
+  // S11 AD-R3-1: `strategy` is required on the projection, so no fixture can
+  // silently omit letterAuthorization()'s discriminator. The default is an
+  // ordinary tradeline dispute.
+  ({ id: "L", tradelineId: "t1", recipientName: "Experian", parentLetterId: null, responseAt: null, responseOutcome: null, mailedAt: null, strategy: "fcra_611", ...over });
 
 // ---- on-track: report on file, nothing to do ----
 {

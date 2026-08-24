@@ -24,6 +24,39 @@
 // There is no ordering of line-filters that is correct, because comments and
 // strings nest. This is a single tokenizer pass instead: it walks the source
 // once, and inside a string literal a comment marker is DATA, not a delimiter.
+//
+// S11 CE2-2 — REGEX LITERALS ARE THE THIRD NESTING CONTEXT, and this tokenizer
+// had no state for them. `/\/\*/` and `/https:\/\//` both contain what looks
+// like a comment opener, so a guard measuring a file that tests comment
+// handling — or any regex holding a URL — would have had code silently eaten
+// from under its assertions. Latent rather than live, but the self-test below
+// asserted "the strip is not blind", and that claim has to be true.
+//
+// Telling `/` (divide) from `/` (regex opener) needs the preceding token: a
+// regex can only START where a value cannot already have ended. `regexAllowed`
+// tracks exactly that, and it is deliberately conservative — when in doubt it
+// treats the slash as division, which at worst leaves a comment un-stripped
+// (a loud, self-announcing failure) rather than eating code (a silent one).
+function regexCanStartAfter(out: string): boolean {
+  // Walk back over whitespace to the last significant character.
+  let j = out.length - 1;
+  while (j >= 0 && /\s/.test(out[j])) j--;
+  if (j < 0) return true; // start of file
+  const prev = out[j];
+  // After a value or a closer, `/` is division. After an operator, a comma, an
+  // opener, a keyword, or `=>`, it opens a regex.
+  if (/[)\]}]/.test(prev)) return false;
+  if (/[A-Za-z0-9_$]/.test(prev)) {
+    // A word: a KEYWORD can be followed by a regex (`return /x/`), an
+    // identifier or literal cannot (`a / b`).
+    let k = j;
+    while (k >= 0 && /[A-Za-z0-9_$]/.test(out[k])) k--;
+    const word = out.slice(k + 1, j + 1);
+    return ["return", "typeof", "instanceof", "in", "of", "new", "delete", "void", "throw", "case", "do", "else", "yield", "await"].includes(word);
+  }
+  return true; // operator, punctuation, `(`, `,`, `=`, `:` …
+}
+
 export function stripComments(src: string): string {
   let out = "";
   let i = 0;
@@ -57,6 +90,28 @@ export function stripComments(src: string): string {
       i += 2;
       while (i < n && !(src[i] === "*" && src[i + 1] === "/")) i++;
       i += 2; // consume the closing delimiter; an unterminated block ends the file
+      continue;
+    }
+    // A regex literal. Copied through verbatim, including any `/*` or `//` it
+    // contains, and including its character class, where an unescaped `/` is
+    // legal and must not be read as the terminator (`/[/]/`).
+    if (c === "/" && regexCanStartAfter(out)) {
+      out += c;
+      i++;
+      let inClass = false;
+      while (i < n && src[i] !== "\n") {
+        if (src[i] === "\\") {
+          out += src[i] + (src[i + 1] ?? "");
+          i += 2;
+          continue;
+        }
+        if (src[i] === "[") inClass = true;
+        else if (src[i] === "]") inClass = false;
+        const closed = src[i] === "/" && !inClass;
+        out += src[i];
+        i++;
+        if (closed) break;
+      }
       continue;
     }
     out += c;
@@ -121,6 +176,35 @@ export function stripCommentsSelfTest(): string[] {
   // 5 · Nothing is removed from comment-free source.
   const clean = 'const a = 1;\nconst b = "two";\n';
   expect("comment-free source is returned unchanged", stripComments(clean) === clean);
+
+  // 6 · REGEX LITERALS (S11 CE2-2). A regex containing a comment opener must
+  //     survive intact and must not open a comment.
+  const regexWithBlockOpener = ["const re = /\\/\\*/;", "const after6 = 6;"].join("\n");
+  const stripped6 = stripComments(regexWithBlockOpener);
+  expect("a regex containing `/*` does not open a block comment", stripped6.includes("const after6 = 6;"));
+  expect("…and the regex itself is preserved", stripped6.includes("/\\/\\*/"));
+
+  const regexWithLineOpener = ["const url = /https:\\/\\//;", "const after7 = 7;"].join("\n");
+  const stripped7 = stripComments(regexWithLineOpener);
+  expect("a regex containing `//` does not open a line comment", stripped7.includes("const after7 = 7;"));
+
+  // A `/` inside a character class is not the terminator.
+  const regexClass = ["const cls = /[/*]/;", "const after8 = 8;"].join("\n");
+  expect("a `/` inside a regex character class is not the terminator",
+    stripComments(regexClass).includes("const after8 = 8;"));
+
+  // 7 · DIVISION that looks like a regex must stay division — the converse
+  //     failure. If `a / b` were read as a regex opener, everything to the next
+  //     `/` would be swallowed as regex text and the real comment after it
+  //     would survive, which is the same blindness in reverse.
+  const division = ["const ratio = a / b; // trailing note", "const c9 = x / y;", "const after9 = 9;"].join("\n");
+  const stripped9 = stripComments(division);
+  expect("division is not mistaken for a regex", stripped9.includes("const c9 = x / y;") && stripped9.includes("const after9 = 9;"));
+  expect("…and the comment after a division is still stripped", !stripped9.includes("trailing note"));
+
+  // A keyword CAN be followed by a regex, an identifier cannot.
+  expect("a regex directly after `return` is recognised",
+    stripComments("function f() { return /a\\/\\*b/; }\nconst after10 = 10;").includes("const after10 = 10;"));
 
   return failures;
 }
