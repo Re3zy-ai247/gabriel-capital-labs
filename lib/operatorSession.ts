@@ -177,6 +177,16 @@ interface LetterSlice {
   tradelineId: string | null;
   /** ACTIVE ConsumerAssertion rows this user holds on that tradeline, counted NOW. */
   activeAssertionCount: number;
+  /**
+   * The letter's stored strategy — letterAuthorization()'s discriminator
+   * (S11 AD-R3-1 / B-R3-2). REQUIRED here for the same reason the two fields
+   * above are: upstream it is optional and absence fails CLOSED, which is
+   * precisely how this engine read every Personal Information correction letter
+   * as an orphaned tradeline letter. A letter that has no tradelineId BY DESIGN
+   * is not a letter whose account was deleted. Requiring it also makes S5's
+   * coming flip to a required field a no-op here.
+   */
+  strategy: string | null;
 }
 
 export interface OperatorSessionInputs {
@@ -324,6 +334,9 @@ const UNFINISHED_LETTER: Record<
 // in the finding: for a consumer whose report was deleted that page is EMPTY,
 // so the offered action did not exist.
 function blockedLetterItem(l: LetterSlice): InterruptedItem {
+  // Only reached for a letter letterAuthorization() has ALREADY ruled REVOKED,
+  // so a null tradelineId here is the re-analysis/deleted-report orphan and
+  // never a non-tradeline letter (those are authorized).
   const orphaned = !l.tradelineId;
   return {
     kind: "letter_blocked",
@@ -379,7 +392,7 @@ function interruptedWorkOf(manifests: ManifestSlice[], letters: LetterSlice[]): 
     // status vocabulary below describes how far the draft got; it says nothing
     // about whether the consumer still stands behind what it claims in their
     // name, and only the second question decides whether it can move.
-    if (letterAuthorization({ mailedAt: l.mailedAt, tradelineId: l.tradelineId, activeAssertionCount: l.activeAssertionCount }) === "REVOKED") {
+    if (letterAuthorization({ mailedAt: l.mailedAt, tradelineId: l.tradelineId, activeAssertionCount: l.activeAssertionCount, strategy: l.strategy }) === "REVOKED") {
       items.push(blockedLetterItem(l));
       continue;
     }
@@ -541,7 +554,7 @@ export async function buildOperatorSession(
     new PrismaMailStore().listByUser(userId, 200).catch(() => []),
     prisma.letter.findMany({
       where: { userId },
-      select: { id: true, recipientName: true, status: true, mailedAt: true, createdAt: true, tradelineId: true },
+      select: { id: true, recipientName: true, status: true, mailedAt: true, createdAt: true, tradelineId: true, strategy: true },
     }),
   ]);
 

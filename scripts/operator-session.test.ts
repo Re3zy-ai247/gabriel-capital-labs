@@ -49,7 +49,7 @@ function letterRow(over: Partial<LetterFixture> & { id: string }): LetterFixture
   // a confirmation standing behind it — so every existing case below keeps the
   // exact behaviour it was written to assert. Blocked-letter cases state the
   // revoked shape explicitly.
-  return { recipientName: "Equifax", status: "GENERATED", mailedAt: null, createdAt: new Date("2026-07-10T00:00:00.000Z"), tradelineId: "tl-default", activeAssertionCount: 1, ...over };
+  return { recipientName: "Equifax", status: "GENERATED", mailedAt: null, createdAt: new Date("2026-07-10T00:00:00.000Z"), tradelineId: "tl-default", activeAssertionCount: 1, strategy: "fcra_611", ...over };
 }
 
 function inputs(over: Partial<OperatorSessionInputs> = {}): OperatorSessionInputs {

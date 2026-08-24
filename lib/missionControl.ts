@@ -123,7 +123,15 @@ export interface MissionInputs {
    * Only unmailed letters are judged; a mailed letter is a record.
    */
   activeAssertionCounts: Record<string, number>;
-  letters: Pick<Letter, "id" | "tradelineId" | "recipientName" | "parentLetterId" | "responseAt" | "responseOutcome" | "mailedAt">[];
+  // `strategy` (S11 AD-R3-1 / B-R3-2) is NOT optional here even though
+  // LetterAuthorizationInput still declares it optional. Optional-and-absent is
+  // exactly how this engine got the identity letter wrong: the field failed
+  // closed, so every Personal Information correction letter — which has no
+  // tradelineId BY DESIGN, because it disputes the consumer's own name, address
+  // and employers — read as an orphan whose account had been deleted. Requiring
+  // it here means no caller can omit it, and S5 making it required upstream is
+  // a no-op for this engine rather than a compile break.
+  letters: Pick<Letter, "id" | "tradelineId" | "recipientName" | "parentLetterId" | "responseAt" | "responseOutcome" | "mailedAt" | "strategy">[];
   scoreEntries: { bureau: string; score: number; recordedAt: Date }[];
   nextSeq: number;
   policy: CampaignPolicy;
@@ -217,11 +225,17 @@ export function assembleMission(x: MissionInputs): MissionControlData {
         mailedAt: l.mailedAt,
         tradelineId: l.tradelineId,
         activeAssertionCount: l.tradelineId ? x.activeAssertionCounts[l.tradelineId] ?? 0 : 0,
+        // The discriminator. Without it a null tradelineId reads as a deleted
+        // account; with it, a non-tradeline strategy reads as what it is.
+        strategy: l.strategy,
       }) === "REVOKED"
   );
   // The two shapes have different remedies, and sending everyone to /tradelines
   // was the secondary defect: for a consumer whose report was deleted that page
   // is empty, so the offered action did not exist.
+  // Every letter in `blockedLetters` has already been ruled REVOKED, so a null
+  // tradelineId here can only be the re-analysis/deleted-report orphan — a
+  // non-tradeline letter never reaches this line.
   const blockedOrphaned = blockedLetters.filter((l) => !l.tradelineId).length;
   const blockedConfirmable = blockedLetters.length - blockedOrphaned;
 
@@ -509,7 +523,7 @@ export async function getMissionControl(userId: string, user: { fullName?: strin
     svc.list(userId, 50),
     buildComposerItems(userId),
     prisma.tradeline.findMany({ where: { userId }, select: { id: true, resolved: true, accountType: true, dateOfFirstDelinquency: true, bureauData: true } }),
-    prisma.letter.findMany({ where: { userId }, orderBy: { createdAt: "desc" }, select: { id: true, tradelineId: true, recipientName: true, parentLetterId: true, responseAt: true, responseOutcome: true, mailedAt: true } }),
+    prisma.letter.findMany({ where: { userId }, orderBy: { createdAt: "desc" }, select: { id: true, tradelineId: true, recipientName: true, parentLetterId: true, responseAt: true, responseOutcome: true, mailedAt: true, strategy: true } }),
     prisma.scoreEntry.findMany({ where: { userId }, select: { bureau: true, score: true, recordedAt: true }, orderBy: { recordedAt: "asc" } }),
     ownOutcomeTrack(userId),
     svc.nextSequence(userId),
