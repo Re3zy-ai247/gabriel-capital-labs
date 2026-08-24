@@ -148,7 +148,7 @@ export function PushToggle() {
       </button>
       {msg && <p className="mt-2 text-xs text-slate-400">{msg}</p>}
       <p className="mt-2 text-xs text-slate-500">
-        Sends a push to this device for things that need attention (e.g., a Brief draft awaiting approval). On iPhone, add
+        Registers this device for push notifications — nothing is sent through it today. On iPhone, add
         CreditVector to your Home Screen first.
       </p>
     </div>

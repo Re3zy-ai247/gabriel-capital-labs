@@ -28,15 +28,29 @@
 //   deadline math) — so the honest move is to say what push delivers TODAY
 //   ("nothing, yet") rather than promise what it doesn't.
 //
-// NON-VACUITY (measured 2026-08-23, this worktree, branch base a6ea947 — the
-// unmodified settings page IS a6ea947's, confirmed `git diff a6ea947 --
-// app/settings/page.tsx` was empty before this slice's edit):
-//   `git stash` (reverting only the settings-page edit) then running this file
-//   against the untouched a6ea947 text: section 1's two "false promise is
-//   gone" checks FAIL (the literal string is present), the truthful-replacement
-//   checks FAIL (the new sentences do not exist yet) — 5 failed, rest passed.
-//   `git stash pop` restores the fix: full file passes, 0 failed. Numbers
-//   reconfirmed in the writer report for this slice.
+// GRANT (coordinator, same round, recorded in the overlap ledger):
+// components/PushToggle.tsx was unclaimed by any slice and handed to S10.
+// Its own caption at the old :150 named a SPECIFIC example — "(e.g., a Brief
+// draft awaiting approval)" — as if the viewer's device would receive it. That
+// event is admin-only (app/api/admin/brief/route.ts:96, sendPushToAdmins);
+// PushToggle is rendered ONLY from app/settings/page.tsx (verified: the only
+// <PushToggle usage in app/ or components/), i.e. to whichever account is
+// looking at their own Settings — for the overwhelming non-admin majority,
+// naming that example is the same class of false promise as G-M2, just one
+// component down. Fixed the same way: state what registering the device does
+// today (nothing is sent), not a specific alert class that mostly never fires.
+//
+// NON-VACUITY (measured 2026-08-23, this worktree, branch base a6ea947 — both
+// files are a6ea947's unmodified content before each was edited, confirmed by
+// `git diff a6ea947 -- <path>` being empty immediately before its edit):
+//   `git stash` (reverting the settings-page AND PushToggle edits together)
+//   then running this file against the untouched a6ea947 text for both: 10
+//   checks FAIL — all five section-1 checks, four of section 1b's five (the
+//   fifth, the untouched iPhone instruction, is true on both versions so it
+//   correctly still passes), and the section-2 cross-check that the shipped
+//   truthful sentence exists — 21 passed / 10 failed. Restoring both fixes
+//   returns the file to 31 passed / 0 failed. Exact transcript in the writer
+//   report for this slice.
 //
 // Offline throughout: no database, no network, no Stripe/Anthropic client, no
 // cron trigger, no email/push send. Source-text checks only.
@@ -69,6 +83,10 @@ const flat = (src: string) => codeOf(src).replace(/\s+/g, " ");
 const SETTINGS_PATH = "app/settings/page.tsx";
 const SETTINGS_RAW = read(SETTINGS_PATH);
 const SETTINGS = flat(SETTINGS_RAW);
+
+const PUSHTOGGLE_PATH = "components/PushToggle.tsx";
+const PUSHTOGGLE_RAW = read(PUSHTOGGLE_PATH);
+const PUSHTOGGLE = flat(PUSHTOGGLE_RAW);
 
 // ── 1. The G-M2 false promise is gone, replaced by the truth ─────────────────
 console.log("\n1. Phone Alerts no longer promises a channel that does not exist");
@@ -107,12 +125,42 @@ function assertedAlertPromises(text: string): string[] {
     .filter((sentence) => ALERT_PROMISE.test(sentence) && !NEGATED.test(sentence))
     .map((sentence) => sentence.trim().slice(0, 100));
 }
-console.log("\n2. no bureau/deadline alert promise, worded any way, survives in Settings");
+// ── 1b. PushToggle's own caption stops naming an admin-only example ──────────
+console.log("\n1b. PushToggle's caption is truthful for whichever audience is looking at it");
+check(
+  "the admin-only example claim is gone (a consumer's device never gets a Brief-draft-approval push)",
+  !/e\.g\.,?\s*a Brief draft awaiting approval/i.test(PUSHTOGGLE)
+);
+check(
+  "…and the unqualified 'sends a push for things that need attention' framing is gone with it",
+  !/sends a push to this device for things that need attention/i.test(PUSHTOGGLE)
+);
+check(
+  "replaced by what the toggle actually does today: registers the device, sends nothing yet",
+  /Registers this device for push notifications/.test(PUSHTOGGLE) &&
+    /nothing is sent through it today/.test(PUSHTOGGLE)
+);
+check(
+  "the real, working iPhone instruction survives untouched (no functionality description lost)",
+  /On iPhone, add\s*CreditVector to your Home Screen first\./.test(PUSHTOGGLE)
+);
+check(
+  "PushToggle's fix does not contradict Settings' fix — neither promises a specific alert class",
+  !/Brief draft/i.test(PUSHTOGGLE) && !/dispute|bureau|deadline/i.test(PUSHTOGGLE)
+);
+
+console.log("\n2. no bureau/deadline alert promise, worded any way, survives in Settings or PushToggle");
 check(
   `Settings asserts no bureau-response/deadline alert promise (found: ${
     assertedAlertPromises(SETTINGS).join(" | ") || "none"
   })`,
   assertedAlertPromises(SETTINGS).length === 0
+);
+check(
+  `PushToggle asserts no bureau-response/deadline alert promise (found: ${
+    assertedAlertPromises(PUSHTOGGLE).join(" | ") || "none"
+  })`,
+  assertedAlertPromises(PUSHTOGGLE).length === 0
 );
 check(
   "the scanner is not vacuous: a planted bureau/deadline promise IS caught",
