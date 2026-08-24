@@ -486,8 +486,17 @@ run("ai-spend-control.runtime.test.ts", async () => {
     return out;
   }
   const srcOf = new Map<string, string>();
+  // Every predicate below runs against CODE, never prose. These files document
+  // the defects they removed — lib/kai.ts:123 explains why
+  // `meteredMessage("kai", null, …)` was wrong — so an un-stripped scan invents a
+  // call site out of a comment. The soundness half matters more than the counting
+  // half: a comment mentioning withAiPrincipal would otherwise mark a block
+  // "covered" and silently suppress a real violation. `//` is only a comment when
+  // it is not preceded by `:`, so URLs inside string literals survive.
+  const stripComments = (src: string) =>
+    src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
   for (const f of [...walk(joinPath(ROOT, "app")), ...walk(joinPath(ROOT, "lib"))]) {
-    srcOf.set(f, readSrc(f, "utf8"));
+    srcOf.set(f, stripComments(readSrc(f, "utf8")));
   }
   const rel = (f: string) => relative(ROOT, f).split("\\").join("/");
   const meterFile = joinPath(ROOT, "lib", "aiMeter.ts");
@@ -558,9 +567,15 @@ run("ai-spend-control.runtime.test.ts", async () => {
       (m[2].trim() === "null" ? anonymousSites : attributedSites).push(`${rel(file)} (${m[1]})`);
     }
   }
+  // Blindness checks, expressed so they cannot decay as coverage improves. The
+  // ANONYMOUS manifest below carries the real weight: it is an exact set, so a
+  // broken regex (everything drops to zero) fails it just as loudly as an
+  // unreviewed new call site. These two only assert that both classes are
+  // non-empty — "at least one attributed" can fail only if the product stops
+  // attributing spend at all, which is itself a regression worth failing on.
   check(
-    `the analyzer sees the meter call sites it must see (${attributedSites.length} attributed, ${anonymousSites.length} anonymous)`,
-    attributedSites.length >= 5 && anonymousSites.length >= 4
+    `the analyzer sees metered call sites at all (${attributedSites.length} attributed, ${anonymousSites.length} anonymous)`,
+    attributedSites.length >= 1 && anonymousSites.length >= 1
   );
   check("the analyzer resolved a real import graph, not an empty one", edges.length > 50);
 
@@ -581,7 +596,18 @@ run("ai-spend-control.runtime.test.ts", async () => {
       }
     }
   }
-  const seedCount = [...tainted.values()].reduce((a, m) => a + m.size, 0);
+  // Everything the analyzer believes calls the meter WITHOUT a principal
+  // argument, whether or not that block also opens one. Seeds (below) are the
+  // uncovered subset of this; THIS set is what the manifest pins.
+  const observedAnonymous = new Set<string>();
+  for (const [file] of srcOf) {
+    if (file === meterFile) continue;
+    for (const b of blocksOf(file)) {
+      if (ANON_CALL.test(b.text)) observedAnonymous.add(`${rel(file)}::${b.name}`);
+    }
+  }
+  const seedKeys = new Set<string>();
+  for (const [file, exports] of tainted) for (const name of exports.keys()) seedKeys.add(`${rel(file)}::${name}`);
   let changed = true;
   while (changed) {
     changed = false;
@@ -598,7 +624,48 @@ run("ai-spend-control.runtime.test.ts", async () => {
       }
     }
   }
-  check("the analyzer actually found the metered exports (it is not silently empty)", seedCount >= 4);
+  // ── Non-emptiness, without a number that decays ──────────────────────────
+  // This used to be `seedCount >= 4`, calibrated when four library exports still
+  // reached the meter anonymously. That threshold got MORE likely to fail as
+  // coverage got BETTER — S5 wrapping the response path and S8 giving askKai a
+  // principal legitimately shrank the population below it — which is backwards
+  // for a guard whose job is to notice the analyzer going blind.
+  //
+  // Replaced with an exact, reviewed manifest of the library exports that call
+  // the meter with `null` as the principal argument. That set does not shrink
+  // when a CALL SITE starts opening a principal (that is the coverage assertion's
+  // job, further down); it changes only when a LIBRARY changes how it calls the
+  // meter — a reviewed event, and exactly what a manifest should force someone to
+  // look at. Set-equality fails in both directions: an unreviewed new anonymous
+  // surface, and an analyzer that has gone silently empty.
+  const ANONYMOUS_METER_MANIFEST: Array<{ key: string; why: string }> = [
+    {
+      key: "lib/aiParse.ts::aiExtractTradelines",
+      why: "report parsing — a pure library helper with no request context; both consumer call sites (reports/upload, reports/analyze) open a principal around it",
+    },
+    {
+      key: "lib/round2.ts::analyzeResponse",
+      why: "bureau-response analysis — same shape; letters/[id]/response opens the principal (S11 · B-1)",
+    },
+    {
+      key: "lib/brief.ts::summarizeArticle",
+      why: "editorial Brief summarisation — reached only from admin/cron surfaces, which have no consumer principal to open (see EXCEPTIONS below)",
+    },
+  ];
+  const manifestKeys = new Set(ANONYMOUS_METER_MANIFEST.map((m) => m.key));
+  const unreviewed = [...observedAnonymous].filter((k) => !manifestKeys.has(k)).sort();
+  const stale = [...manifestKeys].filter((k) => !observedAnonymous.has(k)).sort();
+  if (unreviewed.length) console.error(`  UNREVIEWED anonymous meter surface(s): ${unreviewed.join(", ")}`);
+  if (stale.length) console.error(`  MANIFEST entries no longer observed (analyzer blind, or the call site changed): ${stale.join(", ")}`);
+  check("the anonymous-meter manifest is not itself empty", ANONYMOUS_METER_MANIFEST.length >= 1);
+  check(
+    `the analyzer observes exactly the reviewed anonymous-meter surfaces (${observedAnonymous.size} found)`,
+    unreviewed.length === 0 && stale.length === 0
+  );
+  check(
+    "every seed is one of those reviewed surfaces (seeds are their uncovered subset)",
+    [...seedKeys].every((k) => manifestKeys.has(k))
+  );
 
   // 4. violations.
   // Named exceptions: surfaces with NO consumer to attribute the spend to. Each
