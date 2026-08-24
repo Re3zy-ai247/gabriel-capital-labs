@@ -119,7 +119,13 @@ const EXCLUDED: [RegExp, string][] = [
   [/^app\/review\//, "the Founder walkthrough rooms — deliberately synthetic fixture data, gated behind reviewBuildAllowed(), unreachable in a consumer build"],
   [/^app\/gxl\//, "same review-room family as app/review"],
   [/^components\/(admin|brief|academy)\//, "the component halves of the three excluded areas above"],
-  [/^components\/cxos\/(review|journey)\//, "fixture + choreography internals of the review rooms"],
+  // RC1-S6b r2 (N-2): `journey` was wrongly bundled in here. Only `review` is
+  // review-room internals — components/cxos/journey/* is imported by
+  // app/page.tsx:18-20 (JourneyRuntime, ProblemChamber, IntelligenceAwakens) and
+  // renders on the PUBLIC landing page, so it is a consumer surface and is now
+  // scanned. Its illustrative bureau balances are allowlisted below, pinned the
+  // same way Showcase.tsx's are.
+  [/^components\/cxos\/review\//, "fixture + choreography internals of the review rooms"],
 ];
 
 function consumerTree(): string[] {
@@ -173,6 +179,12 @@ const RULES: Rule[] = [
       // L-4, an S11/mail truthfulness item, outside S6b's owned paths. Pinned
       // to the exact tile so this exception cannot shelter a real price.
       "app/mail/page.tsx": /<StatPill label="Mail spend" value="\$0\.00" \/>/,
+      // The landing journey's illustrative auto-loan balances — the same class
+      // as Showcase.tsx's demo table: what a consumer's own report shows, not
+      // an amount CreditVector charges. One pin per file, each spanning both
+      // rows in that file.
+      "components/cxos/journey/IntelligenceAwakens.tsx": /fact="Balance \$8,214 · May 12"[\s\S]*?fact="Balance \$7,940 · Apr 28"/,
+      "components/cxos/journey/ProblemChamber.tsx": /detail="Balance \$8,214"[\s\S]*?detail="Balance \$7,940"/,
     },
   },
   {
@@ -214,13 +226,20 @@ const RULES: Rule[] = [
     re: /is for members|paid (CreditVector )?membership|every paid plan|members get|Members only/i,
   },
   {
-    // "You're always free to send more" (app/campaigns/page.tsx) is "free" in
-    // the sense of AT LIBERTY, and forbidding it would push the product toward
-    // worse copy for no truth gain. Narrowed by sense rather than by file, so
-    // the exemption holds tree-wide and a real "always free" pricing claim on
-    // any page still fails.
-    label: 'no permanence promise ("free forever", "forever free", "always free" in the pricing sense)',
-    re: /free forever|forever free|always free(?! to\b)/i,
+    label: 'no permanence promise ("free forever", "forever free", "always free")',
+    re: /free forever|forever free|always free/i,
+    allow: {
+      // "always free to send more" is free in the sense of AT LIBERTY, not price.
+      // Pinned to the exact sentence rather than narrowed by regex sense, so no
+      // permanence PRICING claim ("always free to use") can ride the exemption.
+      //
+      // The narrowing this replaces — `always free(?! to\b)` — was the one
+      // exemption in this file that broadened tree-wide instead of naming its
+      // single case, and it let the whole "always free to use / to keep" family
+      // through. The product's own house phrasing is "free to use today", so
+      // "always free to use" sat one word from shipping past the guard.
+      "app/campaigns/page.tsx": /You&apos;re always free to send more; this is guidance, not a limit\./,
+    },
   },
   {
     // RC1-S6b REMEDIATION (H-1). The rule that was missing. A success-green
