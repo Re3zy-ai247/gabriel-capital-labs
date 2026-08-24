@@ -14,22 +14,30 @@
 // The route BEHAVIOUR is proven separately, by executing the real handlers:
 // scripts/runtime/letter-control.runtime.test.ts.
 //
-// NON-VACUITY (measured 2026-08-23; pre-fix files restored one at a time and
-// reverted immediately, never committed):
-//   · `31d4e35:lib/letter.ts`                   → the suite cannot even load
-//     (sanitizeLetterBody / signatureBlock / LETTER_TRANSITIONS do not exist), exit 1
+// NON-VACUITY (measured 2026-08-24; the eight source files this suite reads
+// reverted to the release candidate and restored immediately, never committed):
+//   · release candidate `59f2afd`               → 151 passed, 40 failed (exit 1)
+//     — journey CRITICAL-1 (bureau relabelling), critic X-3 (the silent 5-fact
+//       cap) and X-4 (the banner wording), B-1, B-2, B-4, AD-2 surfacing, AD-3, AD-7
+//   · branch base `31d4e35:lib/letter.ts`       → the suite cannot even load
 //   · `31d4e35:app/letters/print/[id]/page.tsx` → 126 passed,  9 failed (exit 1)
 //   · `31d4e35:app/letters/page.tsx`            →  99 passed, 36 failed (exit 1)
-//   · pre-remediation `df5a640` (all six source files) → 78 passed, 17 failed (exit 1)
-//   · this tree                                 → 135 passed,  0 failed (exit 0)
+//   · this tree                                 → 197 passed,  0 failed (exit 0)
 
 export {};
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
+  assertionAppliesTo,
   buildContext,
+  buildUserPrompt,
   canTransitionLetter,
+  isConsumerAssertionType,
+  letterAuthorization,
+  LETTER_AUTHORIZATION_REVOKED_MESSAGE,
+  MAX_LETTER_ASSERTIONS,
+  planLetterRegeneration,
   renderTemplateLetter,
   sanitizeLetterBody,
   signatureBlock,
@@ -42,6 +50,7 @@ import {
 } from "../lib/letter";
 import { STRATEGIES } from "../lib/strategies";
 import type { BureauData } from "../lib/bureauData";
+import type { Bureau } from "@prisma/client";
 
 const root = join(__dirname, "..");
 const read = (p: string) => readFileSync(join(root, p), "utf8");
@@ -168,7 +177,7 @@ console.log("\n— 4. the packet lists only what it contains —");
 console.log("\n— 5. read → edit → approve → mail —");
 {
   ok("the page has a real editor", /function LetterEditor\(/.test(PAGE) && /<textarea/.test(PAGE));
-  ok("the editor PATCHes the body", /method: "PATCH"[\s\S]{0,160}JSON\.stringify\(\{ body: draft \}\)/.test(PAGE));
+  ok("the editor PATCHes the body", /method: "PATCH"[\s\S]{0,400}JSON\.stringify\(\{ body: draft, baseBody \}\)/.test(PAGE));
   ok("the editor never calls a model", !/generate|round2|anthropic/i.test(PAGE.slice(PAGE.indexOf("function LetterEditor("), PAGE.indexOf("function ComplaintIntentChoice("))));
   ok("a refused save shows the sentence AND the reason, and keeps their text", /complianceRefusals/.test(PAGE) && /r\.sentence/.test(PAGE) && /r\.why/.test(PAGE));
   // REVIEW H-1 — the consumer's own facts are never overwritten.
@@ -181,7 +190,7 @@ console.log("\n— 5. read → edit → approve → mail —");
   ok("…it states the actual rule", /If a sentence carries facts of your own,/.test(PAGE) && /I will never replace it for you/.test(PAGE));
   ok("the letter surfaces screen at the signed-letter bar", /bar: "signed-letter"/.test(ROUTE) && /bar: "signed-letter"/.test(ROUND2));
   // REVIEW M-4: the textarea must always show what was actually stored.
-  ok("the editor re-syncs after every successful save, not only on an adjustment", /\/\/ REVIEW M-4: re-sync UNCONDITIONALLY[\s\S]{0,400}setDraft\(savedBody\);\n      onSaved\(savedBody\);/.test(PAGE));
+  ok("the editor re-syncs after every successful save, not only on an adjustment", /\/\/ REVIEW M-4: re-sync UNCONDITIONALLY[\s\S]{0,400}setDraft\(savedBody\);\n      setBaseBody\(savedBody\);\n      onSaved\(savedBody\);/.test(PAGE));
   // REVIEW L-5 / L-7 / L-10.
   ok("L-5: a long paste is not silently truncated", !/maxLength=\{LETTER_BODY_MAX_UI\}/.test(PAGE) && /characters too long — trim it before saving/.test(PAGE));
   ok("L-7: approval is committed before the print tab opens", (PAGE.match(/const e = await (setStatus|onStatus)\(l?e?t?t?e?r?\.?i?d?/g) ?? []).length >= 0 && /if \(e\) return;[\s\S]{0,200}window\.open\(`\/letters\/print\//.test(PAGE));
@@ -273,6 +282,236 @@ console.log("\n— 8. the page says what the product does —");
   ok("no copy promises AI-refined letters", !/AI-refined|refined by AI|our AI will (refine|rewrite)/i.test(PAGE));
   ok("no deletion or score guarantee anywhere on the page", !/guarantee/i.test(PAGE.replace(/no outcome is guaranteed/gi, "")));
   ok("the editor tells the consumer exactly which sentences it will and will not touch", /I will never replace it for you/.test(PAGE) && /show you the change before you approve/.test(PAGE));
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 9. RC1-S11 · JOURNEY CRITICAL-1 — A BUREAU IS ONLY EVER TOLD WHAT IT SAID.
+//    Reproduces the release-gate scenario end to end: an Equifax-only report, a
+//    consumer confirmation scoped to Experian, an Experian-targeted letter.
+// ─────────────────────────────────────────────────────────────────────────────
+console.log("\n— 9. per-bureau facts name only the attesting bureau (CRITICAL-1) —");
+
+const equifaxOnly: BureauData = {
+  EQUIFAX: { presence: "PRESENT", status: "Charge-Off", balanceCents: 128900, dofd: "2021-03-01" },
+  EXPERIAN: { presence: "UNKNOWN" },
+  TRANSUNION: { presence: "UNKNOWN" },
+};
+const eqOnlyTradeline: LetterTradeline = { ...tradeline, bureauData: equifaxOnly };
+
+function bureauLetter(target: Bureau | undefined, assertionType: string, scope: Bureau | null): string {
+  const ctx = buildContext(
+    "fcra_611",
+    eqOnlyTradeline,
+    consumer,
+    target,
+    1,
+    undefined,
+    { assertions: [{ assertionType, consumerNote: null, bureauScope: scope, status: "ACTIVE" }] }
+  );
+  return renderTemplateLetter(eqOnlyTradeline, ctx, consumer);
+}
+
+{
+  // The exact reproduction: Equifax attests "Charge-Off"; Experian's presence is
+  // UNKNOWN; the letter goes to Experian.
+  const body = bureauLetter("EXPERIAN", "inaccurate_status", "EXPERIAN");
+  ok(
+    'CRITICAL-1: the Experian letter never says Experian reports "Charge-Off"',
+    !/reported as "Charge-Off" on the Experian file/.test(body),
+    body.split("\n").find((l) => /Charge-Off/.test(l))
+  );
+  ok("…and does not carry the unattested value at all", !/Charge-Off/.test(body));
+  ok("…while the consumer's own confirmed claim still stands", /I state that the status reported for this account is not accurate\./.test(body));
+  ok("…and the letter still refuses to speak about other agencies", /I make no representation about any other consumer reporting agency/.test(body));
+  ok("…so the finding and the scope sentence no longer contradict each other", /SUMMARY OF FACTUAL CONCERNS/.test(body));
+}
+{
+  // Control: the bureau that DID attest it is told exactly what it reported.
+  const body = bureauLetter("EQUIFAX", "inaccurate_status", "EQUIFAX");
+  ok("the attesting bureau is still told what it reports", /It is reported as "Charge-Off" on the Equifax file\./.test(body));
+}
+{
+  // Same rule for the date of first delinquency…
+  const away = bureauLetter("EXPERIAN", "late_dates_wrong", "EXPERIAN");
+  ok("CRITICAL-1 (DOFD): no date is attributed to a bureau that never reported one", !/date of first delinquency reported on the Experian file/.test(away) && !/date of first delinquency is reported as/.test(away));
+  ok("…and the claim survives", /I state that the late payment history and\/or the dates reported for this account are not accurate\./.test(away));
+  const home = bureauLetter("EQUIFAX", "late_dates_wrong", "EQUIFAX");
+  ok("…and the attesting bureau still gets the date", /date of first delinquency reported on the Equifax file is/.test(home));
+}
+{
+  // …and for the balance, which used to be quoted from the tradeline aggregate
+  // with no attribution at all.
+  const away = bureauLetter("EXPERIAN", "inaccurate_balance", "EXPERIAN");
+  ok("CRITICAL-1 (balance): no balance is quoted at a bureau that reports none", !/The reported balance is/.test(away));
+  ok("…and the claim survives", /I state that this balance is not accurate\./.test(away));
+  const home = bureauLetter("EQUIFAX", "inaccurate_balance", "EQUIFAX");
+  // The wording for a bureau target is unchanged (the scope sentence already
+  // names the file); what changed is that it is only emitted when that bureau
+  // actually attests the figure.
+  ok("…and the attesting bureau still gets its own figure", /The reported balance is \$1,289\./.test(home));
+}
+{
+  // A furnisher letter has no target bureau: the observation is attributed BY
+  // NAME to whoever attested it, which is truthful and permitted.
+  const ctx = buildContext(
+    "fcra_623",
+    eqOnlyTradeline,
+    consumer,
+    undefined,
+    1,
+    { name: "Midland Funding LLC", address: "PO Box 1\nSan Diego, CA 92193" },
+    { assertions: [{ assertionType: "inaccurate_status", consumerNote: null, bureauScope: null, status: "ACTIVE" }] }
+  );
+  const body = renderTemplateLetter(eqOnlyTradeline, ctx, consumer);
+  ok("a furnisher letter attributes the observation to the bureau that made it", /Equifax reports it as "Charge-Off"\./.test(body), body.split("\n").find((l) => /Charge-Off/.test(l)));
+  ok("…and never claims it unattributed", !/It is reported as "Charge-Off"\./.test(body));
+}
+{
+  // The cross-bureau branch is untouched: every value is already printed beside
+  // the bureau that reported it, and that is the letter's whole argument.
+  const twoBureaus: BureauData = {
+    EQUIFAX: { presence: "PRESENT", status: "Charge-Off", balanceCents: 128900, dofd: "2021-03-01" },
+    EXPERIAN: { presence: "PRESENT", status: "Paid", balanceCents: 0, dofd: "2021-03-01" },
+    TRANSUNION: { presence: "UNKNOWN" },
+  };
+  const tl: LetterTradeline = { ...tradeline, bureauData: twoBureaus };
+  const ctx = buildContext("fcra_611", tl, consumer, "EQUIFAX", 1, undefined, {
+    assertions: [{ assertionType: "inaccurate_status", consumerNote: null, bureauScope: null, status: "ACTIVE" }],
+  });
+  const body = renderTemplateLetter(tl, ctx, consumer);
+  ok("a real cross-bureau discrepancy is still stated, bureau by bureau", /Equifax reports "Charge-Off"; Experian reports "Paid"\./.test(body));
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 9b. RC1-S11 · CRITIC X-3 — every confirmed fact reaches the letter.
+// ─────────────────────────────────────────────────────────────────────────────
+console.log("\n— 9b. no confirmed fact is silently dropped (X-3) —");
+{
+  // Eight facts are confirmable about an ordinary account. The consumer confirms
+  // every one of them; all eight must appear.
+  const eight = [
+    "not_mine",
+    "inaccurate_balance",
+    "inaccurate_status",
+    "late_dates_wrong",
+    "account_closed",
+    "paid_settled",
+    "duplicate",
+    "other",
+  ];
+  const available = eight.filter((t) => isConsumerAssertionType(t) && assertionAppliesTo(t as never, "COLLECTION"));
+  ok("the fixture uses facts that really are confirmable on this account", available.length >= 6, available.join(","));
+
+  const ctx = buildContext("fcra_611", tradeline, consumer, "EQUIFAX", 1, undefined, {
+    assertions: available.map((t) => ({
+      assertionType: t,
+      consumerNote: t === "other" ? "The account number does not match my records." : null,
+      bureauScope: null,
+      status: "ACTIVE",
+    })),
+  });
+  ok("every confirmed fact survives narrowing", ctx.assertions.length === available.length);
+  ok("…and nothing is recorded as omitted", ctx.omittedAssertions === 0);
+
+  const body = renderTemplateLetter(tradeline, ctx, consumer);
+  const numbered = (body.match(/^\d+\. /gm) ?? []).length;
+  ok(`X-3: all ${available.length} confirmed facts are set out in the letter (was capped at 5)`, numbered === available.length, `numbered=${numbered}`);
+  ok("…including the consumer's own words on the last one", /The account number does not match my records\./.test(body));
+  ok("…and the opening still claims the list is the specific information identified", /I have identified the specific information set out below/.test(body));
+
+  // The two composition paths must speak from the SAME set — the AI grounding
+  // prompt mapped the full array while the template truncated.
+  const prompt = buildUserPrompt(tradeline, ctx, body);
+  const promptFacts = (prompt.match(/CONFIRMED/g) ?? []).length;
+  ok("the AI grounding prompt and the template agree on what was confirmed", promptFacts === 0 || promptFacts === ctx.assertions.length, `prompt=${promptFacts} ctx=${ctx.assertions.length}`);
+}
+{
+  // The defensive bound is not a product limit, and it is never silent.
+  const many = Array.from({ length: MAX_LETTER_ASSERTIONS + 3 }, () => ({
+    assertionType: "other",
+    consumerNote: "Another thing that is wrong.",
+    bureauScope: null,
+    status: "ACTIVE",
+  }));
+  const ctx = buildContext("fcra_611", tradeline, consumer, "EQUIFAX", 1, undefined, { assertions: many });
+  ok("the defensive bound is far above the whole confirmable vocabulary", MAX_LETTER_ASSERTIONS >= 16);
+  ok("…it does bound a runaway caller", ctx.assertions.length === MAX_LETTER_ASSERTIONS);
+  ok("…and the drop is COUNTED, never silent", ctx.omittedAssertions === 3);
+  const body = renderTemplateLetter(tradeline, ctx, consumer);
+  ok("…and the letter stops claiming the list below is the specific information identified", !/I have identified the specific information set out below/.test(body) && /I have identified information set out below/.test(body));
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 10. RC1-S11 · the response route, the regenerate guard and the edit token.
+// ─────────────────────────────────────────────────────────────────────────────
+console.log("\n— 10. S11 review items (B-1 / B-2 / B-4 / AD-3 / AD-7) —");
+{
+  // B-1: the spend control is applied, not merely available.
+  ok("B-1: the response analysis runs inside an AI principal", /withAiPrincipal\(user\.id, \(\) => analyzeResponse\(/.test(RESPONSE));
+  ok("B-1: a budget refusal is distinguished from a failure", /e instanceof AiSpendRefusal/.test(RESPONSE) && /budgetRefused/.test(RESPONSE));
+  ok("B-1: a second response on the same letter is refused, so the paid call cannot be replayed", /if \(letter\.responseAt\)/.test(RESPONSE) && /alreadyLogged: true/.test(RESPONSE));
+  ok("B-1: …and the refusal is placed before the body is read or the model is called", RESPONSE.indexOf("if (letter.responseAt)") < RESPONSE.indexOf("boundBodySize(") && RESPONSE.indexOf("if (letter.responseAt)") < RESPONSE.indexOf("analyzeResponse("));
+  ok("B-1: the status self-transition is left alone (a repeat PATCH stays idempotent)", canTransitionLetter("RESPONSE_RECEIVED", "RESPONSE_RECEIVED"));
+
+  // B-2: the body is bounded before it is buffered, from the shared helper.
+  ok("B-2: the response route bounds the body before parsing it", /const bounded = boundBodySize\(req, MAX_BODY_BYTES\);/.test(RESPONSE));
+  ok("B-2: …and both branches read from the BOUNDED request", /await bounded\.req\.formData\(\)/.test(RESPONSE) && /await bounded\.req\.json\(\)/.test(RESPONSE));
+  ok("B-2: …the raw request is never parsed", !/await req\.formData\(\)/.test(RESPONSE) && !/await req\.json\(\)/.test(RESPONSE));
+  ok("B-2: …a body that blows the cap mid-stream is a 413, not a 400", /if \(bounded\.exceeded\.value\)/.test(RESPONSE));
+  ok("B-2: the bound lives in one shared module", /from "@\/lib\/bodyBounds"/.test(RESPONSE) && /export function boundBodySize/.test(read("lib/bodyBounds.ts")));
+
+  // B-4: the comment no longer contradicts the control it documents.
+  // The phrase survives only inside the note recording what it used to say; what
+  // must be gone is the ASSERTION that the limiter fails open.
+  ok("B-4: the rate-limiter comment no longer asserts that it fails open", !/kai\)\. Fails open\./.test(RESPONSE) && !/^\s*\/\/ .*\bFails open\.\s*$/m.test(RESPONSE.replace(/used to end "Fails open\."/, "")));
+  ok("B-4: …it says what the limiter actually does", /fails CLOSED/.test(RESPONSE));
+
+  // AD-3: an approved, consumer-edited letter is not silently overwritten.
+  ok("AD-3: the regenerate guard covers the approved state, not just DRAFT", /\(sl\.status === "DRAFT" \|\| sl\.status === APPROVED_STATUS\)/.test(PAGE));
+  ok("AD-3: …and the warning says approval is lost too", /it stops being approved/.test(PAGE));
+  ok("AD-3: …and the button stops calling an approved letter a draft", /replaces the one you approved/.test(PAGE));
+
+  // AD-3, server half: the seam is ready and inert until the caller supplies it.
+  {
+    const cands = [{ id: "l_approved", targetBureau: "EQUIFAX" as Bureau, mailedAt: null, status: LETTER_APPROVED_STATUS }];
+    const plan = planLetterRegeneration(["EQUIFAX"], cands);
+    ok("AD-3: an APPROVED row is never regenerate-matched when the status is known", plan.toUpdate.length === 0 && plan.toCreate.length === 1);
+    const draftPlan = planLetterRegeneration(["EQUIFAX"], [{ id: "l_draft", targetBureau: "EQUIFAX" as Bureau, mailedAt: null, status: "DRAFT" }]);
+    ok("AD-3: …while an unapproved draft is still updated in place", draftPlan.toUpdate.length === 1);
+    const legacyPlan = planLetterRegeneration(["EQUIFAX"], [{ id: "l_legacy", targetBureau: "EQUIFAX" as Bureau, mailedAt: null }]);
+    ok("AD-3: …and a caller that supplies no status behaves exactly as before", legacyPlan.toUpdate.length === 1);
+    ok("AD-3: the dormancy is documented where the routed change belongs", /DORMANT until the caller supplies it/.test(read("lib/letter.ts")));
+  }
+
+  // S11 AD-2 / critic X-4: the /letters banner.
+  {
+    ok("the row surfaces the authorization flag the list route now returns", /const authorizationRevoked = Boolean\(l\.authorizationRevoked\)/.test(PAGE));
+    ok("…as a banner that says why, not a silent missing button", /This letter can&apos;t be approved or printed right now/.test(PAGE));
+    ok("…with one real next step, deep-linked to the account", /\/tradelines\?tradeline=\$\{encodeURIComponent\(l\.tradelineId\)\}/.test(PAGE) && /Review the facts on this account/.test(PAGE));
+    ok("…and no control is offered that the server would 409", /\{isEditable && !authorizationRevoked && \(/.test(PAGE) && /\{!authorizationRevoked && \(\s*<Link href=\{`\/letters\/print/.test(PAGE));
+    ok("…while reading and editing the draft stay open", /\{isEditable && \(\s*<button onClick=\{\(\) => setOpenEdit/.test(PAGE));
+    ok("…and an approved-then-revoked letter can no longer be marked mailed", /const isApproved = l\.status === APPROVED_STATUS && !l\.mailedAt && !authorizationRevoked;/.test(PAGE));
+
+    // X-4: the wording must be true for a letter that NEVER had a confirmation,
+    // not only for one whose confirmation was withdrawn.
+    ok("the message does not claim a withdrawal that may never have happened", !/^.*The confirmation this letter was drafted from has been withdrawn/m.test(read("lib/letter.ts")));
+    ok("…it names all three real causes", /either the confirmation it was drafted from was withdrawn/.test(LETTER_AUTHORIZATION_REVOKED_MESSAGE) && /the report it was drafted from has been replaced/.test(LETTER_AUTHORIZATION_REVOKED_MESSAGE) && /before we started asking you to confirm each fact/.test(LETTER_AUTHORIZATION_REVOKED_MESSAGE));
+    ok("…and says nothing was deleted", /Nothing has been deleted/.test(LETTER_AUTHORIZATION_REVOKED_MESSAGE));
+    // The page cannot import lib/letter (client bundle), so the copy is pinned.
+    const uiCopy = PAGE.match(/const LETTER_AUTHORIZATION_REVOKED_MESSAGE_UI =\n([\s\S]*?);\n/)?.[1] ?? "";
+    const uiText = (uiCopy.match(/"([^"]*)"/g) ?? []).map((q) => q.slice(1, -1)).join("").replace(/\\u2014/g, "\u2014").replace(/\\u2019/g, "\u2019");
+    ok("the banner copy is byte-identical to the shared message", uiText === LETTER_AUTHORIZATION_REVOKED_MESSAGE, `ui=${JSON.stringify(uiText.slice(0, 80))}`);
+
+    // HISTORICAL is terminal: a mailed letter is never re-judged.
+    ok("a mailed letter is never judged unauthorized, whatever the confirmations say", letterAuthorization({ mailedAt: new Date(), tradelineId: null, activeAssertionCount: 0 }) === "HISTORICAL");
+    ok("…and an unmailed letter with nothing standing behind it is", letterAuthorization({ mailedAt: null, tradelineId: "t1", activeAssertionCount: 0 }) === "REVOKED");
+    ok("…while a live confirmation authorizes it", letterAuthorization({ mailedAt: null, tradelineId: "t1", activeAssertionCount: 1 }) === "AUTHORIZED");
+  }
+
+  // AD-7: concurrent edits.
+  ok("AD-7: the body PATCH takes a compare-and-swap token", /typeof body\?\.baseBody === "string" && body\.baseBody !== decryptText\(existing\.body\)/.test(ROUTE));
+  ok("AD-7: …refuses a stale save rather than overwriting", /staleEdit: true/.test(ROUTE));
+  ok("AD-7: …and the editor sends what it loaded, and offers to reload", /baseBody \}\)/.test(PAGE) && /Load the current letter/.test(PAGE));
 }
 
 console.log(failures === 0 ? "\nAll letter-control guards passed." : `\n${failures} letter-control guard(s) failed.`);

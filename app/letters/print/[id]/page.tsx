@@ -5,7 +5,12 @@ import { prisma } from "@/lib/prisma";
 import { currentUserOrDemo } from "@/lib/session";
 import { decryptDocument, decryptText, docCryptoReady } from "@/lib/docCrypto";
 import { MAIL_TRANSIT_DAYS } from "@/lib/forecast";
-import { resolveSenderPlaceholders, detectPlaceholders } from "@/lib/letter";
+import {
+  resolveSenderPlaceholders,
+  detectPlaceholders,
+  letterAuthorizationRevoked,
+  LETTER_AUTHORIZATION_REVOKED_MESSAGE,
+} from "@/lib/letter";
 import { PrintActions } from "./PrintActions";
 
 export const dynamic = "force-dynamic";
@@ -39,6 +44,39 @@ export default async function LetterPrintPage({ params }: { params: { id: string
   if (!user) return notFound();
   const letter = await prisma.letter.findFirst({ where: { id: params.id, userId: user.id } });
   if (!letter) return notFound();
+  // ── S11 AD-2 · a retracted confirmation blocks the printable packet ────────
+  // Cross-slice edit by S4's writer, scoped to this guard. Blocking approval in
+  // PATCH /api/letters/[id] is not enough on its own: this page renders a
+  // printable letter for ANY status, so a letter approved BEFORE the consumer
+  // withdrew their confirmation could still be printed and signed afterwards.
+  //
+  // A MAILED letter is never re-judged — letterAuthorization returns HISTORICAL
+  // for it, so the record of what was actually sent still prints verbatim, with
+  // its evidence intact (the H-2 historical-truth law). This gate can only ever
+  // stop a letter that has not been mailed.
+  const activeAssertionCount = letter.tradelineId
+    ? await prisma.consumerAssertion.count({
+        where: { userId: user.id, tradelineId: letter.tradelineId, status: "ACTIVE" },
+      })
+    : 0;
+  if (letterAuthorizationRevoked({ mailedAt: letter.mailedAt, tradelineId: letter.tradelineId, activeAssertionCount })) {
+    return (
+      <main className="mx-auto max-w-2xl px-6 py-16">
+        <div className="rounded-lg border border-gold-500/40 bg-gold-500/5 p-5">
+          <h1 className="flex items-center gap-2 text-base font-semibold text-gold-300">
+            <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden />
+            This letter can&apos;t be printed right now
+          </h1>
+          <p className="mt-2 text-sm text-slate-300">{LETTER_AUTHORIZATION_REVOKED_MESSAGE}</p>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <Link href="/tradelines" className="btn-primary">Review the facts</Link>
+            <Link href="/letters" className="btn-ghost">Back to my letters</Link>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
   // body is encrypted at rest — decrypt for the printable packet.
   letter.body = decryptText(letter.body);
 

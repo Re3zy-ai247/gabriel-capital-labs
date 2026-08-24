@@ -9,6 +9,8 @@ import { validateMailedAtInput } from "@/lib/mailCenter";
 import { applyCompliance, blockingFindings } from "@/lib/compliance";
 import {
   LETTER_APPROVED_STATUS,
+  LETTER_AUTHORIZATION_REVOKED_MESSAGE,
+  letterAuthorizationRevoked,
   LETTER_BODY_MAX,
   LETTER_BODY_MIN,
   LETTER_EDITABLE_STATUSES,
@@ -163,6 +165,25 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       );
     }
 
+    // ---- RC1-S11 (review AD-7): COMPARE-AND-SWAP ON THE BODY ---------------
+    // Two tabs open on the same draft: tab A saves an edit, tab B saves the copy
+    // it loaded BEFORE that edit, and A's sentences are gone from a document the
+    // consumer signs. `Letter` has no `updatedAt` column (adding one is a
+    // migration, outside this slice), so the stored body IS the version token:
+    // an editor sends back the body it started from and a save is refused when
+    // that no longer matches. Optional, so any caller that does not send one
+    // behaves exactly as before.
+    if (typeof body?.baseBody === "string" && body.baseBody !== decryptText(existing.body)) {
+      return NextResponse.json(
+        {
+          error:
+            "This letter changed somewhere else since you opened it — probably another tab. Nothing was saved, so nothing you wrote is lost. Load the current letter and reapply your changes.",
+          staleEdit: true,
+        },
+        { status: 409 }
+      );
+    }
+
     const cleaned = sanitizeLetterBody(body.body);
     if (cleaned.length < LETTER_BODY_MIN) {
       return NextResponse.json(
@@ -232,6 +253,37 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
         rule: f.ruleId,
       })),
     });
+  }
+
+  // ── S11 AD-2 · THE CONSUMER'S WITHDRAWAL REACHES THIS LETTER ───────────────
+  // Cross-slice edit by S4's writer (the ConsumerAssertion author), scoped to
+  // this one block: P0-3 was enforced only where a letter is COMPOSED, so a
+  // withdrawn confirmation left the already-drafted letter approvable,
+  // printable and mailable while still speaking in the consumer's first person.
+  // The rule and its wording live in lib/letter.ts (letterAuthorization).
+  //
+  // Only transitions that move a letter TOWARD the envelope are gated. Reading
+  // it, editing it and returning it to DRAFT stay open — a consumer who
+  // withdrew a confirmation is exactly who should still be able to open the
+  // draft. A MAILED letter is never re-judged (letterAuthorization returns
+  // HISTORICAL for it), so the record and its evidence are untouched.
+  if (!existing.mailedAt && (status === APPROVED || status === "MAILED")) {
+    const activeAssertionCount = existing.tradelineId
+      ? await prisma.consumerAssertion.count({
+          where: { userId: user.id, tradelineId: existing.tradelineId, status: "ACTIVE" },
+        })
+      : 0;
+    if (letterAuthorizationRevoked({ mailedAt: existing.mailedAt, tradelineId: existing.tradelineId, activeAssertionCount })) {
+      return NextResponse.json(
+        {
+          error: LETTER_AUTHORIZATION_REVOKED_MESSAGE,
+          authorizationRevoked: true,
+          // The deep link the Tradelines page needs to reopen the right row.
+          tradelineId: existing.tradelineId,
+        },
+        { status: 409 }
+      );
+    }
   }
 
   // ── LIFECYCLE TRANSITION ───────────────────────────────────────────────────

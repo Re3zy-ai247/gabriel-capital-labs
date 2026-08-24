@@ -29,6 +29,11 @@ interface SavedLetter {
   // resolution) — true while the printable artifact still carries any
   // placeholder. Optional so a stale cached response can't crash the page.
   needsDetails?: boolean;
+  // S11 AD-2: true only while an action is still PENDING on a letter no
+  // confirmation stands behind. Never true of a mailed letter — that is a
+  // record, not a pending action. Optional so a stale cached response can't
+  // crash the page.
+  authorizationRevoked?: boolean;
 }
 
 // Phase 1A (F1): the SAME derived package-grouping key lib/mailCenter.ts's
@@ -156,10 +161,23 @@ function LettersInner() {
     setBureausSel((prev) => (prev.includes(b) ? prev.filter((x) => x !== b) : [...prev, b]));
   }
 
-  // An unmailed round-1 draft for this item + strategy that the consumer has
-  // EDITED (status DRAFT — the generator only ever writes GENERATED).
+  // An unmailed round-1 letter for this item + strategy that carries the
+  // consumer's OWN work: DRAFT (they edited it — the generator only ever writes
+  // GENERATED) or approved (they read it and said it was right).
+  //
+  // RC1-S11 (review AD-3): the approved case was missing. Approving an edited
+  // letter moves it to PRINTED, so the DRAFT-only predicate stopped matching
+  // exactly when the consumer had done the MOST work on it — and regenerate
+  // overwrote the body and reset the status with no prompt, under a label that
+  // called an approved letter a draft. Same law as the H-1 fix: the consumer's
+  // own words are never destroyed silently.
   const editedDraft = saved.find(
-    (sl) => sl.tradelineId === tradelineId && sl.strategy === strategyId && !sl.mailedAt && sl.round === 1 && sl.status === "DRAFT"
+    (sl) =>
+      sl.tradelineId === tradelineId &&
+      sl.strategy === strategyId &&
+      !sl.mailedAt &&
+      sl.round === 1 &&
+      (sl.status === "DRAFT" || sl.status === APPROVED_STATUS)
   );
 
   async function generate() {
@@ -167,7 +185,11 @@ function LettersInner() {
     if (isBureauStrategy && bureausSel.length === 0) { setError("Choose at least one bureau to send to."); return; }
     if (editedDraft && !confirmRegen) {
       setConfirmRegen(true);
-      setError("Regenerating rewrites this letter from scratch — the edits you made to it will be gone. Press again to go ahead.");
+      setError(
+        editedDraft.status === APPROVED_STATUS
+          ? "You already read this letter and approved it. Regenerating rewrites it from scratch — your edits go, and it stops being approved. Press again to go ahead."
+          : "Regenerating rewrites this letter from scratch — the edits you made to it will be gone. Press again to go ahead."
+      );
       return;
     }
     setConfirmRegen(false);
@@ -415,6 +437,9 @@ function LettersInner() {
                     );
                     const n = isBureauStrategy && bureausSel.length > 1 ? bureausSel.length : 1;
                     if (confirmRegen && editedDraft) return "Yes — replace my edited letter";
+                    if (editedDraft?.status === APPROVED_STATUS) {
+                      return n > 1 ? `Regenerate ${n} Letters (replaces the ones you approved)` : "Regenerate Letter (replaces the one you approved)";
+                    }
                     if (editedDraft) return n > 1 ? `Regenerate ${n} Letters (replaces your edits)` : "Regenerate Letter (replaces your edits)";
                     if (willUpdate) return n > 1 ? `Regenerate ${n} Letters (updates your drafts)` : "Regenerate Letter (updates your draft)";
                     return n > 1 ? `Generate ${n} Letters` : "Generate Letter";
@@ -733,8 +758,14 @@ function LetterRow({
   // used to state an intent to file CFPB / state-AG complaints that nobody had
   // expressed, on a letter the consumer could not edit before signing.
   const [complaintIntent, setComplaintIntent] = useState(false);
+  // S11 AD-2 / critic X-4. Editing stays open on purpose: a consumer who
+  // withdrew a confirmation is exactly who should still be able to open the
+  // draft and read what it says in their name. What is closed is every step
+  // toward the envelope — approving, printing and marking mailed — because the
+  // server refuses those too, and offering a control that 409s is a dead end.
+  const authorizationRevoked = Boolean(l.authorizationRevoked);
   const isEditable = EDITABLE_STATUSES.includes(l.status) && !l.mailedAt;
-  const isApproved = l.status === APPROVED_STATUS && !l.mailedAt;
+  const isApproved = l.status === APPROVED_STATUS && !l.mailedAt && !authorizationRevoked;
   const analysis = l.responseAnalysis ? safeParse(l.responseAnalysis) : null;
   const storyline = letterStoryline(l);
   // §611 window progress — same visual grammar as the Kai Home radar, so the
@@ -878,7 +909,9 @@ function LetterRow({
           </div>
         ) : (
           <div className="flex flex-wrap items-center gap-1.5">
-            <Link href={`/letters/print/${l.id}`} target="_blank" className="btn-ghost min-h-[44px] min-w-[44px] justify-center text-xs" aria-label="Open the printable letter" title={isEditable ? "Preview the printable letter (this does not approve it)" : "Open the printable letter"}><Printer className="h-3.5 w-3.5" aria-hidden /></Link>
+            {!authorizationRevoked && (
+              <Link href={`/letters/print/${l.id}`} target="_blank" className="btn-ghost min-h-[44px] min-w-[44px] justify-center text-xs" aria-label="Open the printable letter" title={isEditable ? "Preview the printable letter (this does not approve it)" : "Open the printable letter"}><Printer className="h-3.5 w-3.5" aria-hidden /></Link>
+            )}
             {/* RC1-S5 (A3 L-01): edit → approve → mail, in that order. The letter
                 is the consumer's signed statement, so it is theirs to change
                 until they say it is right, and nothing can mail it before then. */}
@@ -887,7 +920,7 @@ function LetterRow({
                 <Pencil className="h-3.5 w-3.5" aria-hidden /> {openEdit ? "Close editor" : "Read & edit"}
               </button>
             )}
-            {isEditable && (
+            {isEditable && !authorizationRevoked && (
               <button
                 onClick={async () => {
                   // REVIEW L-7: approval is the commitment; the print tab opens
@@ -954,6 +987,29 @@ function LetterRow({
           </div>
         )}
       </div>
+
+      {/* S11 AD-2 / critic X-4 — WHY THIS LETTER CANNOT GO OUT.
+          The server already refuses to approve, print or mail it; without this
+          the consumer meets that refusal as a 409 from a button that looked
+          available. The wording covers all three causes and claims none of them
+          in particular — a letter drafted before confirmations existed never had
+          one to withdraw, so "revoked" would be false for that population. The
+          one action offered is real and goes where the fix actually is. */}
+      {authorizationRevoked && (
+        <div className="mt-2 flex gap-2 rounded-lg border border-gold-500/30 bg-gold-500/10 p-3 text-xs text-gold-300">
+          <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden />
+          <div>
+            <p className="font-semibold">This letter can&apos;t be approved or printed right now</p>
+            <p className="mt-1 text-gold-400/90">{LETTER_AUTHORIZATION_REVOKED_MESSAGE_UI}</p>
+            <Link
+              href={l.tradelineId ? `/tradelines?tradeline=${encodeURIComponent(l.tradelineId)}` : "/tradelines"}
+              className="mt-1.5 inline-block font-semibold text-gold-200 underline"
+            >
+              Review the facts on this account →
+            </Link>
+          </div>
+        </div>
+      )}
 
       {/* The letter itself, open for editing. */}
       {openEdit && isEditable && (
@@ -1114,6 +1170,17 @@ function safeParse(s: string): any {
 // the two to the same number.
 const LETTER_BODY_MAX_UI = 20_000;
 
+// The same sentence lib/letter.ts's LETTER_AUTHORIZATION_REVOKED_MESSAGE carries,
+// duplicated for the same reason LETTER_BODY_MAX_UI is (CLAUDE.md gotcha 2: a
+// "use client" page must not pull a server module into the browser bundle).
+// scripts/letter-control.test.ts pins the two byte-for-byte, so the banner here
+// and the refusal on the print page can never say different things.
+const LETTER_AUTHORIZATION_REVOKED_MESSAGE_UI =
+  "This letter states facts in your name, and no confirmation stands behind it right now \u2014 either the confirmation it was drafted from was withdrawn, " +
+  "the report it was drafted from has been replaced, or it was drafted before we started asking you to confirm each fact. " +
+  "It can\u2019t be approved, printed or mailed until you confirm those facts on your Tradelines page. " +
+  "Nothing has been deleted \u2014 the draft is still here.";
+
 interface ComplianceNote {
   sentence: string;
   why: string;
@@ -1134,6 +1201,14 @@ function LetterEditor({
   onCancel: () => void;
 }) {
   const [draft, setDraft] = useState(initialBody ?? "");
+  // RC1-S11 (review AD-7): the body this editor STARTED from — the compare-and-
+  // swap token. `Letter` has no `updatedAt` column, so there is no version to
+  // send; the stored body itself is the version. Two tabs open on one draft: the
+  // second save arrives with a token that no longer matches what is stored and
+  // is refused, instead of silently erasing the first tab's sentences from a
+  // document the consumer signs.
+  const [baseBody, setBaseBody] = useState(initialBody ?? "");
+  const [stale, setStale] = useState(false);
   const [loading, setLoading] = useState(initialBody === undefined);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -1153,24 +1228,44 @@ function LetterEditor({
     let live = true;
     fetch(`/api/letters/${letterId}`)
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error("load"))))
-      .then((j) => { if (live) setDraft(j.letter?.body ?? ""); })
+      .then((j) => {
+        if (!live) return;
+        setDraft(j.letter?.body ?? "");
+        setBaseBody(j.letter?.body ?? "");
+      })
       .catch(() => { if (live) setError("I couldn't load this letter to edit. Try again in a moment."); })
       .finally(() => { if (live) setLoading(false); });
     return () => { live = false; };
   }, [letterId, initialBody]);
 
-  async function save() {
+  async function reload() {
     setBusy(true); setError(null); setRefusals([]); setAdjustments([]);
+    try {
+      const r = await fetch(`/api/letters/${letterId}`);
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) { setError("I couldn't load the current letter. Try again in a moment."); return; }
+      setDraft(j.letter?.body ?? "");
+      setBaseBody(j.letter?.body ?? "");
+      setStale(false);
+    } catch {
+      setError("The connection dropped. Try again in a moment.");
+    } finally { setBusy(false); }
+  }
+
+  async function save() {
+    setBusy(true); setError(null); setRefusals([]); setAdjustments([]); setStale(false);
     try {
       const res = await fetch(`/api/letters/${letterId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ body: draft }),
+        // baseBody is the compare-and-swap token (review AD-7).
+        body: JSON.stringify({ body: draft, baseBody }),
       });
       const j = await res.json().catch(() => ({}));
       if (!res.ok) {
         setError(j.error || "That didn't save. Try again in a moment.");
         if (Array.isArray(j.complianceRefusals)) setRefusals(j.complianceRefusals);
+        if (j.staleEdit) setStale(true);
         return;
       }
       const savedBody: string = j.letter?.body ?? draft;
@@ -1183,6 +1278,7 @@ function LetterEditor({
       // the box disagreeing with what is stored and make a second Save
       // re-submit stale text.
       setDraft(savedBody);
+      setBaseBody(savedBody);
       onSaved(savedBody);
     } catch {
       setError("The connection dropped mid-save. Your text is still here — try again.");
@@ -1234,6 +1330,18 @@ function LetterEditor({
         </div>
       </div>
       {error && <p className="mt-2 text-xs text-rose-400" role="alert">{error}</p>}
+      {stale && (
+        <div className="mt-2 rounded-lg border border-gold-500/30 bg-gold-500/10 p-3 text-xs text-gold-300">
+          <p className="mb-1 font-semibold">This letter changed somewhere else</p>
+          <p>
+            Nothing here was saved and nothing you wrote was lost — but the stored letter is no longer the one you
+            started from, probably from another tab. Copy anything you want to keep, then load the current letter.
+          </p>
+          <button onClick={reload} disabled={busy} className="mt-1.5 rounded-md border border-gold-400/40 px-2 py-1 text-[11px] font-semibold text-gold-100 hover:bg-gold-500/10">
+            Load the current letter
+          </button>
+        </div>
+      )}
       {refusals.length > 0 && (
         <div className="mt-2 rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-200">
           <p className="mb-1 font-semibold">Nothing was saved. These sentences have to change first:</p>

@@ -54,6 +54,14 @@ function isConfirmed(d: Discrepancy): boolean {
   return d.confirmed === true;
 }
 
+// S11 B-6 bounds. 50 items is far past any real personal-information section
+// (names, addresses and employers on one file), and 500 chars matches the
+// consumer-note cap this product already uses for free text destined for a
+// signed letter.
+const DISCREPANCY_MAX = 50;
+const DISCREPANCY_FIELD_MAX = 500;
+const DISCREPANCY_TEXT_FIELDS = ["category", "reportValue", "yourValue", "severity", "explanation"] as const;
+
 // Drafts a Personal Information correction letter to a bureau from the items the
 // consumer confirmed, runs the compliance filter, and saves it like any letter.
 //
@@ -73,7 +81,34 @@ export async function POST(req: Request) {
   if (!key) return NextResponse.json({ error: "AI is not configured." }, { status: 503 });
 
   const body = await req.json().catch(() => ({}));
-  const discrepancies: Discrepancy[] = Array.isArray(body?.discrepancies) ? body.discrepancies : [];
+  const rawDiscrepancies: Discrepancy[] = Array.isArray(body?.discrepancies) ? body.discrepancies : [];
+  // ── S11 B-6 · BOUND THE CLIENT-SUPPLIED PROMPT ────────────────────────────
+  // Every confirmed item below becomes a line of an Opus prompt, and the array
+  // arrived straight from the request body with no element count and no
+  // per-field length. `reserveDailyBudget` admits an account's FIRST call of the
+  // day whatever the estimate (lib/aiMeter.ts), so one body-limit-sized array
+  // could exceed the whole daily ceiling in a single request.
+  //
+  // Refused, not silently trimmed: an over-long personal-information value is a
+  // statement about the consumer's own identity, and quietly cutting it in half
+  // would change what they are about to sign — the same rule the consumer note
+  // follows in app/api/tradelines/[id]/assertion/route.ts.
+  if (rawDiscrepancies.length > DISCREPANCY_MAX) {
+    return NextResponse.json(
+      { error: `Dispute up to ${DISCREPANCY_MAX} personal-information items in one letter, then generate another for the rest.` },
+      { status: 400 }
+    );
+  }
+  const overLong = rawDiscrepancies.find((d) =>
+    DISCREPANCY_TEXT_FIELDS.some((f) => typeof d?.[f] === "string" && (d[f] as string).length > DISCREPANCY_FIELD_MAX)
+  );
+  if (overLong) {
+    return NextResponse.json(
+      { error: `Each entry needs to be ${DISCREPANCY_FIELD_MAX} characters or fewer \u2014 the letter quotes them exactly as written.` },
+      { status: 400 }
+    );
+  }
+  const discrepancies: Discrepancy[] = rawDiscrepancies;
   const bureau: Bureau = (["EQUIFAX", "EXPERIAN", "TRANSUNION"] as Bureau[]).includes(body?.bureau)
     ? body.bureau
     : "EQUIFAX";

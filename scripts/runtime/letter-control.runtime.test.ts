@@ -18,16 +18,17 @@
 // the I/O boundaries (Prisma, session, rate limit, entitlements, crypto, AI,
 // analytics, mail-date validation) are replaced.
 //
-// NON-VACUITY (measured 2026-08-23; each pre-fix route copied in from git and
-// reverted immediately afterwards, never committed):
+// NON-VACUITY (measured 2026-08-24; the eight source files these guards execute
+// reverted to the release candidate and restored immediately, never committed):
+//   · release candidate `59f2afd`                                  → 131 passed, 23 failed (exit 1)
+//     — B-1 (no AI principal opened; the paid analysis replayable on one
+//       letter), B-2 (a declared 64 MB body and a chunked body both parsed),
+//       AD-7 (tab B silently overwrote tab A), AD-2 (a withdrawn confirmation
+//       left the letter approvable and mailable)
 //   · branch base `31d4e35:app/api/letters/[id]/route.ts`          →  75 passed, 40 failed (exit 1)
 //   · branch base `31d4e35:app/api/letters/[id]/round2/route.ts`   → 102 passed, 13 failed (exit 1)
 //   · branch base `31d4e35:app/api/letters/[id]/response/route.ts` → 110 passed,  5 failed (exit 1)
-//     (review M-5: a response logged against a never-mailed letter, and RESOLVED
-//      writing tradeline.resolved off that lineage)
-//   · pre-remediation `df5a640` (all six source files)             → 102 passed, 13 failed (exit 1)
-//     (review H-1: the consumer's payment date destroyed by a partial rewrite)
-//   · this tree                                                     → 115 passed,  0 failed (exit 0)
+//   · this tree                                                    → 154 passed,  0 failed (exit 0)
 import { check, loadModule, mockModule, run, section } from "./_harness";
 
 export {};
@@ -155,6 +156,37 @@ class FakeDb {
   };
 
   consumerAssertion = {
+    // S11 AD-2 (S4's cross-slice edit into the PATCH route): the authorization
+    // check counts the ACTIVE confirmations still standing behind a letter.
+    count: async (args: { where: { userId: string; tradelineId: string; status: string } }) => {
+      this.calls.push("consumerAssertion.count");
+      const w = args.where ?? ({} as { userId: string; tradelineId: string; status: string });
+      if (!w.userId) throw new Error("assertion count must be scoped to the caller");
+      return this.assertions.filter(
+        (a) =>
+          a.userId === w.userId &&
+          (w.tradelineId === undefined || a.tradelineId === w.tradelineId) &&
+          (w.status === undefined || a.status === w.status)
+      ).length;
+    },
+    // Used by app/api/letters/route.ts (S4's AD-2 block, same retroactive grant).
+    // That route is not loaded by this guard today; the method exists so the
+    // harness covers every model call S4 added to the three files it edited,
+    // instead of failing the next time one of them is executed here.
+    groupBy: async (args: { by: string[]; where: { userId: string; status: string; tradelineId?: { in: string[] } } }) => {
+      this.calls.push("consumerAssertion.groupBy");
+      const w = args.where ?? ({} as { userId: string; status: string; tradelineId?: { in: string[] } });
+      if (!w.userId) throw new Error("assertion groupBy must be scoped to the caller");
+      if (args.by?.join(",") !== "tradelineId") throw new Error(`unrecognized groupBy: ${args.by?.join(",")}`);
+      const counts = new Map<string | null, number>();
+      for (const a of this.assertions) {
+        if (a.userId !== w.userId) continue;
+        if (w.status !== undefined && a.status !== w.status) continue;
+        if (w.tradelineId?.in && !w.tradelineId.in.includes(a.tradelineId ?? "")) continue;
+        counts.set(a.tradelineId, (counts.get(a.tradelineId) ?? 0) + 1);
+      }
+      return Array.from(counts, ([tradelineId, n]) => ({ tradelineId, _count: { _all: n } }));
+    },
     findMany: async (args: { where: { userId: string; tradelineId: string; status: string } }) => {
       this.calls.push("consumerAssertion.findMany");
       const w = args.where ?? ({} as { userId: string; tradelineId: string; status: string });
@@ -193,6 +225,9 @@ let sessionUser: Json | null = USER;
 // vacuous and would ship false coverage. Every such assertion below is paired
 // with the append-only ledger, which is the only accounting left.
 const spend: number[] = [];
+/** Every consumer id the route declared to the AI meter, in order (review B-1). */
+const aiPrincipals: string[] = [];
+let budgetExhausted = false;
 const ledgered = () => tracked.filter((t) => t.event === "dispute_created");
 const kaiEvents: { type: string; payload: Json }[] = [];
 const tracked: { event: string; meta: Json }[] = [];
@@ -228,10 +263,29 @@ mockModule("lib/entitlements.ts", {
     spend.push(n);
   },
 });
+// RC1-S11 (review B-1): the meter boundary. `withAiPrincipal` is the control
+// under test here — the route must OPEN a principal around the response
+// analysis, because with none lib/aiMeter.ts skips reserveDailyBudget entirely
+// and the spend lands unattributed and unbudgeted. The fake records who was
+// declared and can simulate the refusal the real reservation raises.
+class FakeAiSpendRefusal extends Error {
+  constructor(readonly reason: string, message: string) {
+    super(message);
+    this.name = "AiSpendRefusal";
+  }
+}
 mockModule("lib/aiMeter.ts", {
   meteredMessage: async () => {
     aiCalls += 1;
     throw new Error("no AI call may happen in this guard");
+  },
+  AiSpendRefusal: FakeAiSpendRefusal,
+  withAiPrincipal: async <T>(userId: string, fn: () => Promise<T>): Promise<T> => {
+    aiPrincipals.push(userId);
+    if (budgetExhausted) {
+      throw new FakeAiSpendRefusal("budget-exhausted", "You have used today's AI budget on this account.");
+    }
+    return fn();
   },
 });
 // The response route's own I/O boundaries. `lib/round2.ts` is NOT mocked:
@@ -333,6 +387,14 @@ const post = (id: string, body?: Json) =>
     ...(body ? { body: JSON.stringify(body) } : {}),
   });
 
+const logResponse = (id: string, text: string, init?: RequestInit) =>
+  new Request(`http://localhost/api/letters/${id}/response`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ text }),
+    ...init,
+  });
+
 async function json(res: Response): Promise<Json> {
   try {
     return (await res.json()) as Json;
@@ -345,6 +407,8 @@ const stored = (id: string) => db.letters.find((l) => l.id === id)!.body;
 function resetAll() {
   db.reset();
   spend.length = 0;
+  aiPrincipals.length = 0;
+  budgetExhausted = false;
   kaiEvents.length = 0;
   tracked.length = 0;
   aiCalls = 0;
@@ -492,6 +556,10 @@ run("letter-control.runtime", async () => {
     resetAll();
     seedTradeline();
     seedLetter();
+    // S11 AD-2 (S4): a letter only exists because a confirmation authorized it,
+    // and approval is now gated on that confirmation still standing. Seeding it
+    // is what makes this fixture a real letter rather than an orphan.
+    seedAssertion();
     const early = await letterRoute.PATCH(patch("l1", { status: "MAILED", mailedAt: "2026-08-02" }), { params: { id: "l1" } });
     check("marking an unapproved letter mailed is refused (409)", early.status === 409);
     check("…and it was NOT mailed", db.letters[0].mailedAt === null && db.letters[0].status === "GENERATED");
@@ -690,6 +758,164 @@ run("letter-control.runtime", async () => {
     const truthy = await round2.POST(post("l1", { complaintIntent: "yes" }), { params: { id: "l1" } });
     const truthyBody = String(((await json(truthy)).letter as Json)?.body ?? "");
     check("a merely TRUTHY value never asserts it for them (strict === true)", !/I am prepared to submit this record/.test(truthyBody));
+  }
+
+  // ── RC1-S11 · review B-1 — the paid analysis is budgeted, and not replayable
+  section("the response analysis runs under the consumer's own AI principal");
+  {
+    resetAll();
+    seedTradeline();
+    seedLetter({ status: "MAILED", mailedAt: new Date("2026-08-02") });
+    const res = await responseRoute.POST(logResponse("l1", "We have completed our reinvestigation and verified the item."), { params: { id: "l1" } });
+    const body = await json(res);
+    check("the response is logged (200)", res.status === 200);
+    check("a principal was opened — without one the call skips the daily budget entirely", aiPrincipals.length === 1);
+    check("…and it is THIS consumer, so the spend lands on their ceiling and their usage row", aiPrincipals[0] === "u1");
+    check("nothing was refused on a healthy budget", body.budgetRefused === false);
+  }
+
+  section("a refused budget does not cost the consumer their logged response");
+  {
+    resetAll();
+    seedTradeline();
+    seedLetter({ status: "MAILED", mailedAt: new Date("2026-08-02") });
+    budgetExhausted = true;
+    const res = await responseRoute.POST(logResponse("l1", "We have completed our reinvestigation and verified the item."), { params: { id: "l1" } });
+    const body = await json(res);
+    check("the reply is still saved (200) — the refusal is about spend, not about their evidence", res.status === 200);
+    check("…and it is on the row", db.letters[0].responseText !== null && db.letters[0].status === "RESPONSE_RECEIVED");
+    check("the outcome is not guessed at", db.letters[0].responseOutcome === "unknown");
+    check("the page is told no assessment happened", body.needsAI === true && body.budgetRefused === true);
+  }
+
+  section("one response, one analysis — the call cannot be replayed on the same letter");
+  {
+    resetAll();
+    seedTradeline();
+    seedLetter({ status: "MAILED", mailedAt: new Date("2026-08-02") });
+    const first = await responseRoute.POST(logResponse("l1", "We verified the item as accurate and it will remain."), { params: { id: "l1" } });
+    check("the first log succeeds", first.status === 200);
+    const storedFirst = db.letters[0].responseText;
+
+    const second = await responseRoute.POST(logResponse("l1", "A second copy of the same reply, pasted again."), { params: { id: "l1" } });
+    const body = await json(second);
+    check("the second log is refused (409)", second.status === 409);
+    check("…identified as an already-logged response, not a lifecycle error", body.alreadyLogged === true);
+    check("…the message points at the next round instead", /next round/i.test(String(body.error)));
+    check("NO second principal was opened — the paid call did not run again", aiPrincipals.length === 1);
+    check("…and the stored reply is untouched", db.letters[0].responseText === storedFirst);
+    // The status self-transition stays legal: this guard is on the DATA, so a
+    // PATCH to a status the letter already holds is still idempotent.
+    check("re-PATCHing RESPONSE_RECEIVED is still allowed", (await letterRoute.PATCH(patch("l1", { status: "RESPONSE_RECEIVED" }), { params: { id: "l1" } })).status === 200);
+  }
+
+  // ── S11 AD-2 × S5 — the two contracts hold together ───────────────────────
+  section("a withdrawn confirmation stops the letter, but never re-judges a mailed one");
+  {
+    resetAll();
+    seedTradeline();
+    seedLetter();
+    seedAssertion();
+    check("with a live confirmation the letter can be approved", (await letterRoute.PATCH(patch("l1", { status: "PRINTED" }), { params: { id: "l1" } })).status === 200);
+
+    // The consumer withdraws it. The letter is still unmailed, so it is now
+    // unauthorized — and every step toward the envelope must refuse.
+    db.assertions[0].status = "WITHDRAWN";
+    const reApprove = await letterRoute.PATCH(patch("l1", { status: "PRINTED" }), { params: { id: "l1" } });
+    check("a withdrawn confirmation blocks re-approval (409)", reApprove.status === 409);
+    check("…identified as an authorization problem, with the account to fix", (await json(reApprove)).authorizationRevoked === true);
+    const mail = await letterRoute.PATCH(patch("l1", { status: "MAILED", mailedAt: "2026-08-02" }), { params: { id: "l1" } });
+    check("…and mailing is refused too", mail.status === 409 && db.letters[0].mailedAt === null);
+
+    // …while reading and editing the draft stay open (S4's rule), and S5's own
+    // edit path still refuses to save it into an APPROVED state.
+    const reopen = await letterRoute.PATCH(patch("l1", { status: "DRAFT" }), { params: { id: "l1" } });
+    check("returning it to a draft is still allowed", reopen.status === 200 && db.letters[0].status === "DRAFT");
+    const edit = await letterRoute.PATCH(patch("l1", { body: `${TEMPLATE_BODY}\n\nStill my letter to read and change.` }), { params: { id: "l1" } });
+    check("…and the consumer can still edit what it says in their name", edit.status === 200);
+  }
+  {
+    // HISTORICAL is terminal: a MAILED letter is never re-judged, its evidence
+    // is never touched, and S5's immutability still holds over the top of it.
+    resetAll();
+    seedTradeline();
+    seedLetter({ status: "MAILED", mailedAt: new Date("2026-08-02") });
+    seedAssertion({ status: "WITHDRAWN" });
+    const bodyBefore = stored("l1");
+    const resolve = await letterRoute.PATCH(patch("l1", { status: "RESOLVED", outcome: "corrected_or_deleted" }), { params: { id: "l1" } });
+    check("a mailed letter can still be closed out after a withdrawal", resolve.status === 200);
+    check("…its body is untouched — the record of what was sent", stored("l1") === bodyBefore);
+    const edit = await letterRoute.PATCH(patch("l1", { body: "Rewriting a mailed letter." }), { params: { id: "l1" } });
+    check("…and it is still immutable", edit.status === 409 && stored("l1") === bodyBefore);
+  }
+
+  // ── RC1-S11 · review B-2 — the body is bounded before it is buffered ───────
+  section("an oversized response body is refused before it is read");
+  {
+    resetAll();
+    seedTradeline();
+    seedLetter({ status: "MAILED", mailedAt: new Date("2026-08-02") });
+    const declared = new Request("http://localhost/api/letters/l1/response", {
+      method: "POST",
+      headers: { "content-type": "multipart/form-data; boundary=zz", "content-length": String(64 * 1024 * 1024) },
+      body: "--zz--",
+    });
+    const res = await responseRoute.POST(declared, { params: { id: "l1" } });
+    check("a declared 64 MB body is 413", res.status === 413);
+    check("…with the same message the other upload point uses", /max 15 MB/.test(String((await json(res)).error)));
+    check("…and nothing was written", db.letters[0].responseText === null);
+
+    // The chunked case: no content-length at all, so the header cannot refuse it
+    // and the stream itself has to be metered.
+    let pushed = 0;
+    const chunked = new Request("http://localhost/api/letters/l1/response", {
+      method: "POST",
+      headers: { "content-type": "multipart/form-data; boundary=zz" },
+      body: new ReadableStream<Uint8Array>({
+        pull(controller) {
+          pushed += 1;
+          if (pushed > 512) {
+            controller.close();
+            return;
+          }
+          controller.enqueue(new Uint8Array(1024 * 1024)); // 1 MB per pull
+        },
+      }),
+      duplex: "half",
+    } as RequestInit);
+    const res2 = await responseRoute.POST(chunked, { params: { id: "l1" } });
+    check("a chunked body with no content-length is still 413", res2.status === 413);
+    if (pushed >= 64) console.error(`    (metered stream read ${pushed} MB before aborting)`);
+    check("…aborted mid-transfer, not after buffering all 512 MB", pushed < 64);
+    check("…and still nothing was written", db.letters[0].responseText === null);
+  }
+
+  // ── RC1-S11 · review AD-7 — two tabs cannot silently overwrite each other ──
+  section("a stale editor cannot overwrite an edit it never saw");
+  {
+    resetAll();
+    seedTradeline();
+    seedLetter();
+    const opened = TEMPLATE_BODY; // what both tabs loaded
+
+    const tabA = await letterRoute.PATCH(patch("l1", { body: `${TEMPLATE_BODY}\n\nTab A: I paid this on 3 March 2024.`, baseBody: opened }), { params: { id: "l1" } });
+    check("the first tab saves (200)", tabA.status === 200);
+    check("…and its sentence is stored", /Tab A: I paid this on 3 March 2024\./.test(stored("l1")));
+
+    const tabB = await letterRoute.PATCH(patch("l1", { body: `${TEMPLATE_BODY}\n\nTab B: something else entirely.`, baseBody: opened }), { params: { id: "l1" } });
+    const body = await json(tabB);
+    check("the second tab, holding the pre-edit copy, is refused (409)", tabB.status === 409);
+    check("…identified as a stale edit", body.staleEdit === true);
+    check("…and tab A's sentence survives", /Tab A: I paid this on 3 March 2024\./.test(stored("l1")));
+    check("…and tab B's text was not stored", !/Tab B/.test(stored("l1")));
+    check("the refusal says nothing was lost", /nothing you wrote is lost/i.test(String(body.error)));
+
+    const current = stored("l1").slice(4);
+    const retry = await letterRoute.PATCH(patch("l1", { body: `${current}\n\nTab B, reapplied.`, baseBody: current }), { params: { id: "l1" } });
+    check("reloading and reapplying works", retry.status === 200 && /Tab B, reapplied\./.test(stored("l1")));
+
+    const noToken = await letterRoute.PATCH(patch("l1", { body: `${TEMPLATE_BODY}\n\nA caller that sends no token.` }), { params: { id: "l1" } });
+    check("a caller that sends no token behaves exactly as before", noToken.status === 200);
   }
 
   section("round 2 still refuses on its own preconditions");
