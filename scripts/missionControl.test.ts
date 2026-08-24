@@ -21,7 +21,10 @@ function inputs(over: Partial<MissionInputs> = {}): MissionInputs {
     // RC1 S7 (A1-04): `hasReport` is a fact about REPORTS, not about extraction
     // yield, so the fixture states both independently. The default is the
     // ordinary case — a report on file that parsed into a tradeline.
-    scoreEntries: [], nextSeq: 1, reportCount: 1, policy: DEFAULT_CAMPAIGN_POLICY, now: NOW, ...over,
+    // S11 NEW-3: the ACTIVE-confirmation counts letterAuthorization() needs.
+    // Required, so no fixture can silently skip the question the server asks
+    // before it 409s. The default fixture's letters are authorized.
+    scoreEntries: [], nextSeq: 1, reportCount: 1, activeAssertionCounts: { "t1": 1, "tl-default": 1 }, policy: DEFAULT_CAMPAIGN_POLICY, now: NOW, ...over,
   };
 }
 function item(over: Partial<ComposerItem> = {}): ComposerItem {
@@ -58,8 +61,11 @@ const lt = (over: Partial<MissionInputs["letters"][number]>): MissionInputs["let
     ["campaign", "mail", "response", "timeline"].every((k) => m.health.find((h) => h.key === k)?.status === "green"));
   ok("on-track case is started, not unstarted", m.standing !== "unstarted");
   ok("command center has 8 sections", m.command.length === 8);
-  // 4 workflow signals + report health + the case roll-up.
-  ok("5 health signals + case roll-up = 6 (HIGH-1 added report health)", m.health.length === 6);
+  // 4 workflow signals + report health (HIGH-1) + draft health (NEW-3) + the
+  // case roll-up. Each addition is a signal the roll-up previously could not
+  // see, so the count moving is the fix, not drift.
+  ok("4 workflow signals + report health + draft health + case roll-up = 7", m.health.length === 7);
+  ok("draft health is green when no draft is blocked", m.health.find((h) => h.key === "authorization")?.status === "green");
 }
 
 // ---- a genuinely clean, started file still rolls up GREEN (HIGH-1 is additive) ----

@@ -316,7 +316,13 @@ function overnightFrom(events: KaiHomeData["recentEvents"]): OvernightItem[] {
         items.push({ text: `Round ${String(p.round ?? "")} to ${String(p.recipient ?? "the bureau")} is in the mail — the §611 clock starts once the bureau receives it.`, href: "/journey" });
         break;
       case "letter.generated":
-        items.push({ text: "A dispute letter was generated and is ready to mail.", href: "/letters" });
+        // S11 NEW-3: this line is rendered from a HISTORICAL event, so it can
+        // only truthfully report what happened — "is ready to mail" was a
+        // present-tense claim about a letter this stream cannot re-check, and
+        // it was wrong for every draft whose authorizing confirmation has since
+        // been withdrawn (the server 409s those). /letters shows the real
+        // current state, including the on-hold banner.
+        items.push({ text: "A dispute letter was generated.", href: "/letters" });
         break;
       case "report.analyzed":
         items.push({ text: `Report analyzed — ${String(p.tradelines ?? "your")} accounts reviewed.`, href: "/tradelines" });

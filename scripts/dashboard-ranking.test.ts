@@ -108,7 +108,10 @@ function inputs(over: Partial<MissionInputs> = {}): MissionInputs {
   return {
     user: { fullName: "Rey Gabriel" }, kai: emptyKai, caseMemory: null, campaigns: [], composed: emptyComposed,
     tradelines: [{ id: "t1", resolved: false, accountType: "CHARGE_OFF", dateOfFirstDelinquency: new Date(NOW - 1000 * 86400000) }],
-    letters: [], scoreEntries: [], nextSeq: 1, reportCount: 1, policy: DEFAULT_CAMPAIGN_POLICY, now: NOW, ...over,
+    // S11 NEW-3: the ACTIVE-confirmation counts letterAuthorization() needs.
+    // Required, so no fixture can silently skip the question the server asks
+    // before it 409s. The default fixture's letters are authorized.
+    letters: [], scoreEntries: [], nextSeq: 1, reportCount: 1, activeAssertionCounts: { "t1": 1, "tl-default": 1 }, policy: DEFAULT_CAMPAIGN_POLICY, now: NOW, ...over,
   };
 }
 
@@ -400,8 +403,12 @@ function inputs(over: Partial<MissionInputs> = {}): MissionInputs {
 // work at exactly the two moments the consumer had just touched it.
 {
   const account = { id: "u1", fullName: "Rey Gabriel", name: null, isAgency: false, agencyName: null };
+  // S11 NEW-3: these cases exercise the unfinished-STATUS vocabulary, so every
+  // letter here is authorized — a real tradeline with a confirmation standing
+  // behind it. The blocked shape is exercised in its own section below.
   const letter = (id: string, status: string, recipientName: string) => ({
     id, recipientName, status, mailedAt: null, createdAt: "2026-07-10T00:00:00.000Z",
+    tradelineId: `tl-${id}`, activeAssertionCount: 1,
   });
   const session = assembleOperatorSession({
     account, client: null, kai: emptyKai, events: [], manifests: [],
@@ -431,6 +438,93 @@ function inputs(over: Partial<MissionInputs> = {}): MissionInputs {
     now: NOW,
   } as unknown as OperatorSessionInputs);
   check("S5: mailed and resolved letters are NOT continuity items", mailed.interruptedWork.length === 0);
+}
+
+// ══ 4c · a letter the SERVER refuses is never offered, and never green ═══════
+// S11 NEW-3. Mission Control described drafts as "generated and ready to mail"
+// for letters that approve/print/mail all 409, and then summarised the account
+// as "ALL SYSTEMS GREEN … no action needed". Two populations reach that state:
+// a consumer who WITHDREW the confirmation their letter was drafted from, and
+// every letter drafted before confirmations existed (or whose report has since
+// been deleted, orphaning it). Both are pinned, in both engines.
+{
+  const account = { id: "u1", fullName: "Rey Gabriel", name: null, isAgency: false, agencyName: null };
+  const draft = (over: Record<string, unknown>) => ({
+    id: "L1", recipientName: "Equifax Information Services LLC", status: "GENERATED",
+    mailedAt: null, createdAt: "2026-07-10T00:00:00.000Z", tradelineId: "t1", activeAssertionCount: 1, ...over,
+  });
+  const session = (letters: unknown[]) => assembleOperatorSession({
+    account, client: null, kai: emptyKai, events: [], manifests: [], letters, now: NOW,
+  } as unknown as OperatorSessionInputs);
+
+  // (a) WITHDRAWN — the tradeline is still there, the confirmation is not.
+  const withdrawn = session([draft({ activeAssertionCount: 0 })]);
+  check("NEW-3/a: a withdrawn-authorization letter is NOT described as ready to mail",
+    !withdrawn.interruptedWork.some((w) => /ready to mail/i.test(w.label)));
+  check("NEW-3/a: …it is described as on hold, and says why",
+    withdrawn.interruptedWork[0]?.kind === "letter_blocked" &&
+    /on hold until you confirm the facts/i.test(withdrawn.interruptedWork[0]?.label ?? ""));
+  check("NEW-3/a: …and its next step is the page that can actually unblock it",
+    withdrawn.interruptedWork[0]?.resumeHref === "/tradelines");
+  check("NEW-3/a: …and it is still counted as open work, not silently dropped",
+    withdrawn.sessionClose.remaining.count === 1);
+
+  // (b) LEGACY / ORPHANED — no tradeline to confirm against at all.
+  const legacy = session([draft({ id: "L2", tradelineId: null, activeAssertionCount: 0 })]);
+  check("NEW-3/b: a legacy letter with no confirmation is NOT described as ready to mail",
+    !legacy.interruptedWork.some((w) => /ready to mail/i.test(w.label)));
+  check("NEW-3/b: …it says the account is no longer on the report, rather than asking for a confirmation that cannot be given",
+    /no longer on your report/i.test(legacy.interruptedWork[0]?.label ?? ""));
+  check("NEW-3/b: …and it does NOT send the consumer to an empty /tradelines page",
+    legacy.interruptedWork[0]?.resumeHref === "/upload");
+
+  // An authorized draft is untouched — the change is a refusal-aware split, not
+  // a blanket downgrade of every draft.
+  const fine = session([draft({})]);
+  check("NEW-3: an authorized draft is still offered exactly as before",
+    fine.interruptedWork[0]?.kind === "letter_unmailed" &&
+    /generated and ready to mail/i.test(fine.interruptedWork[0]?.label ?? ""));
+  // A MAILED letter is a RECORD and is never re-judged, whatever happened to
+  // its confirmation afterwards (lib/letter.ts's HISTORICAL is terminal).
+  const mailedAfterWithdrawal = session([draft({ id: "L3", status: "MAILED", mailedAt: "2026-07-11T00:00:00.000Z", activeAssertionCount: 0 })]);
+  check("NEW-3: a MAILED letter is never re-judged as blocked",
+    mailedAfterWithdrawal.interruptedWork.length === 0);
+
+  // ── the roll-up ─────────────────────────────────────────────────────────
+  const mcLetter = (over: Record<string, unknown>) => ({
+    id: "L1", tradelineId: "t1", recipientName: "Equifax Information Services LLC",
+    parentLetterId: null, responseAt: null, responseOutcome: null, mailedAt: null, ...over,
+  });
+  const blockedRollup = assembleMission(inputs({
+    tradelines: [], reportCount: 0,
+    letters: [mcLetter({}), mcLetter({ id: "L2", tradelineId: null })],
+    activeAssertionCounts: {},
+  }));
+  check("NEW-3: an account holding only blocked letters is NOT summarised as green",
+    blockedRollup.standing !== "green" && blockedRollup.caseHealth !== "green");
+  check("NEW-3: …and never as NOT STARTED either — the drafts are on file",
+    blockedRollup.standing !== "unstarted");
+  check("NEW-3: …the roll-up names what is actually wrong",
+    blockedRollup.health.find((h) => h.key === "authorization")?.status === "amber" &&
+    /no confirmation standing behind/i.test(blockedRollup.health.find((h) => h.key === "authorization")?.message ?? ""));
+  check("NEW-3: …the case signal no longer says no action is needed",
+    !/no action needed/i.test(blockedRollup.health.find((h) => h.key === "case")?.message ?? ""));
+  check("NEW-3: …the consumer is given the true next step for the confirmable draft",
+    blockedRollup.tasks.some((t) => /Confirm the facts behind 1 dispute letter/.test(t.text) && t.href === "/tradelines"));
+  check("NEW-3: …and for the orphaned one, a step that exists",
+    blockedRollup.tasks.some((t) => /no longer on your report/.test(t.text) && t.href === "/upload"));
+  check("NEW-3: both engines ask lib/letter.ts's letterAuthorization, never a second predicate",
+    /letterAuthorization\(/.test(mcEngine) && /letterAuthorization\(/.test(stripComments(read("lib/operatorSession.ts"))));
+  check("NEW-3: Kai's historical event line no longer asserts a letter is ready to mail now",
+    !/generated and is ready to mail/.test(kaiHome));
+
+  // A fully authorized case is still allowed to be green.
+  const okRollup = assembleMission(inputs({
+    tradelines: [{ id: "t1", resolved: false, accountType: "STUDENT_LOAN", dateOfFirstDelinquency: null }],
+    letters: [mcLetter({})],
+    activeAssertionCounts: { t1: 1 },
+  }));
+  check("NEW-3: a case whose drafts are all confirmed is still green", okRollup.standing === "green");
 }
 
 // ══ 5 · D-6 · task-first is the default; the entrance is opt-in ═══════════════
