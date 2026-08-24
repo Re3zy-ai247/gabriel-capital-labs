@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { currentUserOrDemo } from "@/lib/session";
 import { getKaiHomeData } from "@/lib/kaiHome";
 import { decryptText } from "@/lib/docCrypto";
+import { formatCents } from "@/lib/utils";
 import { resolveSenderPlaceholders, detectPlaceholders, type PlaceholderStatus } from "@/lib/letter";
 import {
   buildMailCenter, pickMailBand, HEALTH_LABEL, HEALTH_TONE, STAGE_STATE_LABEL,
@@ -91,6 +92,25 @@ export default async function MailCenterPage() {
 
   const manifestByLetter = new Map<string, MailStatus>();
   for (const m of manifests) if (m.letterId) manifestByLetter.set(m.letterId, m.status);
+
+  // ---- RC1-S11 (C-5): MAIL SPEND IS DERIVED, NOT ASSERTED --------------------
+  // This tile read a hardcoded "$0.00" — true only for as long as MAIL_LIVE
+  // happens to be off, and it would have kept claiming zero after real money
+  // started moving.
+  //
+  // Summing PAID manifests would be the obvious derivation and it would be
+  // WRONG in the other direction: a manifest reaches PAID even while mailing is
+  // unavailable, because /api/mail/[mailId]/confirm records
+  // `authorized:no-charge (MAIL_LIVE=off — no card charged, no letter sent yet)`.
+  // That would report money nobody was ever asked for.
+  //
+  // So spend counts only a payment authorization that is NOT a no-charge
+  // marker: zero today by construction, and a true total the day mail is live.
+  const mailSpendCents = manifests.reduce((sum, m) => {
+    const paid = [...(m.auditTrail ?? [])].reverse().find((e) => e.toStatus === "PAID");
+    const reallyCharged = Boolean(paid) && !/no-charge/i.test(paid?.detail ?? "");
+    return reallyCharged ? sum + (m.cost?.totalCents ?? 0) : sum;
+  }, 0);
 
   return (
     <AppShell title="/ Mail Center">
@@ -179,7 +199,15 @@ export default async function MailCenterPage() {
         <StatPill label="Responses" value={stats.responses} />
         <StatPill label="Avg response" value={stats.avgResponseDays != null ? `${stats.avgResponseDays}d` : "—"} />
         <StatPill label="Delivered" value="—" />
-        <StatPill label="Mail spend" value="$0.00" />
+        <StatPill
+          label="Mail spend"
+          value={mailSpendCents > 0 ? formatCents(mailSpendCents) : "—"}
+          hint={
+            mailSpendCents > 0
+              ? undefined
+              : "Nothing has been charged. CreditVector mailing isn\u2019t available yet, so no piece has been sent through us."
+          }
+        />
         {stats.roundDistribution.map((r) => (
           <StatPill key={r.round} label={`Round ${r.round}`} value={r.count} />
         ))}
@@ -190,10 +218,15 @@ export default async function MailCenterPage() {
   );
 }
 
-function StatPill({ label, value }: { label: string; value: string | number }) {
+// `hint` explains a value the number alone cannot: it is exposed to assistive
+// technology through the pill's own label, not only as a hover title, so the
+// reason a figure reads "\u2014" is available to a screen reader too.
+function StatPill({ label, value, hint }: { label: string; value: string | number; hint?: string }) {
   return (
     <span
       role="listitem"
+      title={hint}
+      aria-label={hint ? `${label}: ${value}. ${hint}` : undefined}
       className="inline-flex items-center gap-1.5 rounded-full border border-ink-700/70 bg-ink-900/40 px-2.5 py-1 text-[11px]"
     >
       <span className="font-semibold text-slate-300">{label}</span>
