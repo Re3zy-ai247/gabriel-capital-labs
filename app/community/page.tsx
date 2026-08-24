@@ -138,13 +138,20 @@ export default async function CommunityPage({
   } catch (e) {
     console.error("operator network: account resolve failed", e);
   }
-  // RC1-S6b. This screen used to read "The Operator Network is for members /
-  // Operator Network access comes with an active paid CreditVector membership —
-  // every paid plan includes it" with a "See plans →" button into /pricing. Every
-  // clause of that was false after S6a: canAccessCommunity() no longer asks
-  // about payment at all (it reads a feature switch), so no amount of paying
-  // opens this, and there is no plan to see. What a consumer needs here is the
-  // real reason and the reassurance that their own words are safe.
+  // RC1-S6b. This screen used to headline the network as members-only and tell
+  // the reader that access came with a paid subscription, with a button into
+  // /pricing to go and buy one. Every clause of that was false after S6a:
+  // canAccessCommunity() no longer asks about payment at all (it reads a feature
+  // switch), so no amount of paying opens this, and there is no plan to see.
+  // What a consumer needs here is the real reason and the reassurance that their
+  // own words are safe.
+  //
+  // NOTE (deliberate). The removed sentence is paraphrased above rather than
+  // quoted, because scripts/operator-shell.test.ts asserts that exact phrase is
+  // PRESENT in this file. Quoting it verbatim in a comment would have kept that
+  // assertion green over copy that no longer ships — a guard passing on
+  // narration. It now fails honestly and needs re-pinning by whoever owns that
+  // suite (see the S6b slice report).
   if (!canAccessCommunity(account)) {
     return (
       <AppShell title="/ Operator Network">
