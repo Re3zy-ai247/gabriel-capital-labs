@@ -59,7 +59,7 @@ export default async function LetterPrintPage({ params }: { params: { id: string
         where: { userId: user.id, tradelineId: letter.tradelineId, status: "ACTIVE" },
       })
     : 0;
-  if (letterAuthorizationRevoked({ mailedAt: letter.mailedAt, tradelineId: letter.tradelineId, activeAssertionCount })) {
+  if (letterAuthorizationRevoked({ mailedAt: letter.mailedAt, tradelineId: letter.tradelineId, activeAssertionCount, strategy: letter.strategy })) {
     return (
       <main className="mx-auto max-w-2xl px-6 py-16">
         <div className="rounded-lg border border-gold-500/40 bg-gold-500/5 p-5">

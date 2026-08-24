@@ -73,6 +73,9 @@ export async function GET() {
         mailedAt: l.mailedAt,
         tradelineId: l.tradelineId,
         activeAssertionCount: l.tradelineId ? activeCounts.get(l.tradelineId) ?? 0 : 0,
+        // The discriminator: a letter that never had a tradeline (personal_info)
+        // is not an orphan (lib/letter.ts, letterAuthorization).
+        strategy: l.strategy,
       }),
       responseAt: l.responseAt, // Engine 3: own-history response latency
       preview: decryptText(l.body).slice(0, 240),

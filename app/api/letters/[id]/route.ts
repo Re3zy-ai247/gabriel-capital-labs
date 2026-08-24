@@ -273,7 +273,12 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
           where: { userId: user.id, tradelineId: existing.tradelineId, status: "ACTIVE" },
         })
       : 0;
-    if (letterAuthorizationRevoked({ mailedAt: existing.mailedAt, tradelineId: existing.tradelineId, activeAssertionCount })) {
+    if (letterAuthorizationRevoked({
+        mailedAt: existing.mailedAt,
+        tradelineId: existing.tradelineId,
+        activeAssertionCount,
+        strategy: existing.strategy,
+      })) {
       return NextResponse.json(
         {
           error: LETTER_AUTHORIZATION_REVOKED_MESSAGE,

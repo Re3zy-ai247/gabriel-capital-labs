@@ -1,5 +1,5 @@
 import type { Bureau, AccountType, LetterStatus } from "@prisma/client";
-import { STRATEGY_BY_ID, type Strategy } from "./strategies";
+import { STRATEGY_BY_ID, isNonTradelineStrategy, type Strategy } from "./strategies";
 import { STATUTES } from "./statutes";
 import { BUREAU_ADDRESS, BUREAU_LABEL } from "./bureaus";
 import { getBureauData, presentBureaus, hasCrossBureauKnowledge, crossBureauConflicts, type BureauData } from "./bureauData";
@@ -1043,42 +1043,48 @@ export interface LetterAuthorizationInput {
   tradelineId: string | null;
   /** ACTIVE assertions this user holds on that tradeline, counted NOW. */
   activeAssertionCount: number;
+  /**
+   * The letter's stored strategy — the discriminator described below.
+   * OPTIONAL, and absence fails CLOSED: a caller that cannot say which kind of
+   * letter this is gets the orphan reading (REVOKED), never the identity one.
+   * Every gate in the product passes it.
+   */
+  strategy?: string | null;
 }
 
 export function letterAuthorization(l: LetterAuthorizationInput): LetterAuthorizationState {
   if (l.mailedAt != null) return "HISTORICAL";
-  // ---- RC1-S11 (review AD-R2-1) --------------------------------------------
-  // This branch used to read `if (!l.tradelineId) return "REVOKED"`, described
-  // as failing closed on a letter whose tradeline is gone. It also caught the
-  // one letter in the product that never HAS a tradeline: the Personal
-  // Information correction letter (app/api/identity/letter/route.ts), which
-  // disputes the consumer's own name, address and employer — facts that have no
-  // tradeline row to hang a confirmation on. Every one of those letters was
-  // therefore unauthorized at birth: the consumer ticked the per-item
-  // confirmations, spent a metered model call, and got a letter that could not
-  // be approved, printed or mailed, under a message telling them to confirm the
-  // facts on their Tradelines page — where these facts do not exist.
+  // ---- RC1-S11 (review AD-R2-1, then its residual) -------------------------
+  // A null tradelineId has two completely different meanings, and this branch
+  // has now been wrong in both directions.
   //
-  // THE RULE NOW: a tradeline-confirmation rule judges TRADELINE letters. It is
-  // unchanged and undiminished for them — a letter attached to a tradeline with
-  // no ACTIVE confirmation behind it is REVOKED, which is exactly the withdrawal
-  // case AD-2 was written for. A letter attached to no tradeline is not judged
-  // by it, because it carries no tradeline claim for a withdrawal to undermine.
+  //   1. It first read `if (!l.tradelineId) return "REVOKED"`, described as
+  //      failing closed on a letter whose tradeline is gone. That also caught
+  //      the one letter in the product that never HAS a tradeline — the
+  //      Personal Information correction letter, which disputes the consumer's
+  //      own name, address and employer. Every one of those was unauthorized at
+  //      birth: confirmations ticked, a metered call spent, and a letter that
+  //      could not be approved, printed or mailed, under a message telling the
+  //      consumer to confirm facts on a page where those facts do not exist.
+  //   2. Returning AUTHORIZED for every null instead rescued those letters and
+  //      left the other population — a TRADELINE letter whose row is gone after
+  //      a re-analysis or a deleted report — authorized with nothing left to
+  //      check its claims against. That was the accepted RESIDUAL, and the
+  //      discriminator below closes it: it is REVOKED again.
   //
-  // WHY NOT KEEP IT AND SPECIAL-CASE IDENTITY: the two populations are
-  // indistinguishable in the row. An identity letter records
-  // `strategy: "fcra_611"`, `recipientType: "bureau"` and a null tradelineId —
-  // byte-identical to a §611 tradeline letter whose report was later deleted.
-  // Telling them apart needs a column (a migration, outside this slice), and
-  // guessing wrong the other way blocks a legitimate letter.
+  // The discriminator is the letter's own STRATEGY, and it needs no column: an
+  // identity letter records `personal_info`, which lives in
+  // NON_TRADELINE_STRATEGIES (lib/strategies.ts) — deliberately outside
+  // STRATEGIES, so no chooser, strategist or Kai surface can offer it, and
+  // /api/letters/generate refuses it outright, so no tradeline letter can ever
+  // carry it. A letter whose strategy is a tradeline strategy and whose
+  // tradeline is gone is an orphan again, exactly as before.
   //
-  // RESIDUAL, stated rather than hidden: a letter whose tradeline row is gone
-  // (the consumer deleted the report) is no longer blocked here. It is not a
-  // withdrawal — the consumer's ConsumerAssertion rows survive a deleted report
-  // with their immutable creditor snapshots, and nothing they confirmed was
-  // taken back. What still protects that letter is everything else: the
-  // compliance bar, their own review before approving, and MAILED immutability.
-  if (!l.tradelineId) return "AUTHORIZED";
+  // Membership-based on purpose: the next non-tradeline letter type is added to
+  // that registry, never to this predicate.
+  if (!l.tradelineId) return isNonTradelineStrategy(l.strategy) ? "AUTHORIZED" : "REVOKED";
+  // The withdrawal case, unchanged since AD-2: a letter still attached to a
+  // tradeline is authorized by the confirmations standing behind it.
   return l.activeAssertionCount > 0 ? "AUTHORIZED" : "REVOKED";
 }
 

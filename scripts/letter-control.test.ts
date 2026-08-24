@@ -16,16 +16,16 @@
 //
 // NON-VACUITY (measured 2026-08-24; pre-fix files reverted and restored
 // immediately, never committed):
-//   · merged candidate `bd6cfbb` (lib/letter.ts, app/letters/page.tsx,
-//     app/api/letters/generate/route.ts)        → 170 passed, 10 failed (exit 1)
-//     — NEW-1 ("Invalid Date" in a printable letter), AD-R2-1 (every identity
-//       correction letter unauthorized at birth), NEW-2 (approved letter
-//       silently duplicated instead of refused)
+//   · candidate `4bb33fa` (lib/letter.ts + the three gates; S4's strategy
+//     registry left in place, so this isolates S5's half) → 227 passed, 5 failed (exit 1)
+//     — the re-analysis orphan authorized, no membership predicate, no gate
+//       passing the letter's own strategy
+//   · merged candidate `bd6cfbb` (three files)   → 170 passed, 10 failed (exit 1)
 //   · release candidate `59f2afd` (eight files)  → 151 passed, 40 failed (exit 1)
 //   · branch base `31d4e35:lib/letter.ts`        → the suite cannot even load
 //   · `31d4e35:app/letters/print/[id]/page.tsx`  → 126 passed,  9 failed (exit 1)
 //   · `31d4e35:app/letters/page.tsx`             →  99 passed, 36 failed (exit 1)
-//   · this tree                                  → 226 passed,  0 failed (exit 0)
+//   · this tree                                  → 232 passed,  0 failed (exit 0)
 
 export {};
 
@@ -53,7 +53,7 @@ import {
   type LetterTradeline,
 } from "../lib/letter";
 import { applyCompliance } from "../lib/compliance";
-import { STRATEGIES } from "../lib/strategies";
+import { isNonTradelineStrategy, STRATEGIES, STRATEGY_BY_ID } from "../lib/strategies";
 import type { BureauData } from "../lib/bureauData";
 import type { Bureau } from "@prisma/client";
 
@@ -515,13 +515,29 @@ console.log("\n— 9c. no letter ever states 'Invalid Date' (NEW-1) —");
 // ─────────────────────────────────────────────────────────────────────────────
 console.log("\n— 9d. the identity letter is authorized at birth (AD-R2-1) —");
 {
-  ok("AD-R2-1: an unmailed letter that carries no tradeline is AUTHORIZED", letterAuthorization({ mailedAt: null, tradelineId: null, activeAssertionCount: 0 }) === "AUTHORIZED");
-  ok("…so no gate refuses it", letterAuthorizationRevoked({ mailedAt: null, tradelineId: null, activeAssertionCount: 0 }) === false);
-  // …and the tradeline protection is undiminished.
-  ok("a tradeline letter with nothing standing behind it is still REVOKED", letterAuthorization({ mailedAt: null, tradelineId: "t1", activeAssertionCount: 0 }) === "REVOKED");
-  ok("…and one with a live confirmation is AUTHORIZED", letterAuthorization({ mailedAt: null, tradelineId: "t1", activeAssertionCount: 1 }) === "AUTHORIZED");
-  ok("a mailed letter is never re-judged", letterAuthorization({ mailedAt: new Date(), tradelineId: null, activeAssertionCount: 0 }) === "HISTORICAL");
-  ok("the residual (a deleted report's letter) is stated, not hidden", /RESIDUAL, stated rather than hidden/.test(read("lib/letter.ts")));
+  // The discriminator is the letter's own strategy, not the absence of a
+  // tradeline — the two populations that share `tradelineId: null` mean
+  // opposite things.
+  const identity = { mailedAt: null, tradelineId: null, activeAssertionCount: 0, strategy: "personal_info" };
+  const orphan = { mailedAt: null, tradelineId: null, activeAssertionCount: 0, strategy: "fcra_611" };
+  ok("AD-R2-1: a Personal Information letter carries no tradeline and is AUTHORIZED", letterAuthorization(identity) === "AUTHORIZED");
+  ok("…so no gate refuses it", letterAuthorizationRevoked(identity) === false);
+  ok("…and `personal_info` is the registered non-tradeline strategy", isNonTradelineStrategy("personal_info") && !STRATEGIES.some((x) => x.id === "personal_info"));
+  ok("…it still resolves to a real label for legacy rows", Boolean(STRATEGY_BY_ID["personal_info"]));
+
+  // The residual this closes: a TRADELINE letter whose row is gone is an orphan
+  // again — nothing is left to check its claims against.
+  ok("a re-analysis / deleted-report orphan is REVOKED again", letterAuthorization(orphan) === "REVOKED");
+  ok("…and every tradeline strategy behaves that way, not just §611", STRATEGIES.every((st) => letterAuthorization({ ...orphan, strategy: st.id }) === "REVOKED"));
+  ok("…and an unknown or missing strategy fails closed", letterAuthorization({ ...orphan, strategy: null }) === "REVOKED" && letterAuthorization({ ...orphan, strategy: "made_up" }) === "REVOKED" && letterAuthorization({ mailedAt: null, tradelineId: null, activeAssertionCount: 0 }) === "REVOKED");
+
+  // The withdrawal case AD-2 was written for is untouched.
+  ok("a tradeline letter with nothing standing behind it is still REVOKED", letterAuthorization({ mailedAt: null, tradelineId: "t1", activeAssertionCount: 0, strategy: "fcra_611" }) === "REVOKED");
+  ok("…and one with a live confirmation is AUTHORIZED", letterAuthorization({ mailedAt: null, tradelineId: "t1", activeAssertionCount: 1, strategy: "fcra_611" }) === "AUTHORIZED");
+  ok("a mailed letter is never re-judged, whichever kind it is", letterAuthorization({ ...identity, mailedAt: new Date() }) === "HISTORICAL" && letterAuthorization({ ...orphan, mailedAt: new Date() }) === "HISTORICAL");
+
+  ok("the rule is membership-based, so a new letter type is registered, not special-cased", /isNonTradelineStrategy\(l\.strategy\)/.test(read("lib/letter.ts")));
+  ok("every gate passes the letter's own strategy", /strategy: letter\.strategy/.test(PRINT) && /strategy: existing\.strategy/.test(ROUTE) && /strategy: l\.strategy/.test(read("app/api/letters/route.ts")));
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -620,9 +636,9 @@ console.log("\n— 10. S11 review items (B-1 / B-2 / B-4 / AD-3 / AD-7) —");
     ok("the banner copy is byte-identical to the shared message", uiText === LETTER_AUTHORIZATION_REVOKED_MESSAGE, `ui=${JSON.stringify(uiText.slice(0, 80))}`);
 
     // HISTORICAL is terminal: a mailed letter is never re-judged.
-    ok("a mailed letter is never judged unauthorized, whatever the confirmations say", letterAuthorization({ mailedAt: new Date(), tradelineId: null, activeAssertionCount: 0 }) === "HISTORICAL");
-    ok("…and an unmailed letter with nothing standing behind it is", letterAuthorization({ mailedAt: null, tradelineId: "t1", activeAssertionCount: 0 }) === "REVOKED");
-    ok("…while a live confirmation authorizes it", letterAuthorization({ mailedAt: null, tradelineId: "t1", activeAssertionCount: 1 }) === "AUTHORIZED");
+    ok("a mailed letter is never judged unauthorized, whatever the confirmations say", letterAuthorization({ mailedAt: new Date(), tradelineId: null, activeAssertionCount: 0, strategy: "fcra_611" }) === "HISTORICAL");
+    ok("…and an unmailed letter with nothing standing behind it is", letterAuthorization({ mailedAt: null, tradelineId: "t1", activeAssertionCount: 0, strategy: "fcra_611" }) === "REVOKED");
+    ok("…while a live confirmation authorizes it", letterAuthorization({ mailedAt: null, tradelineId: "t1", activeAssertionCount: 1, strategy: "fcra_611" }) === "AUTHORIZED");
   }
 
   // AD-7: concurrent edits.
