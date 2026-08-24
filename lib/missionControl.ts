@@ -20,7 +20,7 @@ import { ownOutcomeTrack, ownHistorySummary, type OwnTrack } from "@/lib/outcome
 // uses for the "active negatives" count — reused here so the Deferred Queue can
 // never stage a factually clean account (never the disputability `probability`
 // band the campaign composer ranks by).
-import { isFactualNegative } from "@/lib/intelligence/snapshot";
+import { isFactualNegative, factualCondition } from "@/lib/intelligence/snapshot";
 import {
   resolveCampaignPolicy, includedItems, deferredItems, FAMILY_LABEL,
   type Campaign, type CampaignItem, type CampaignPolicy, type ComposedCampaign,
@@ -67,6 +67,13 @@ export interface MissionControlData {
   standing: Standing;
   /** A report row exists. THE shared fact - see the derivation note in assembleMission. */
   hasReport: boolean;
+  /**
+   * Anything at all is on file — a report, a letter or a campaign (S11 AD-4).
+   * Deliberately broader than `hasReport`: letters survive a report delete, and
+   * the mail/response/campaign health signals derive from them, so this is the
+   * question "has this case begun" actually asks.
+   */
+  caseOnFile: boolean;
   /**
    * A report exists but analysis produced no tradelines (A1-04). Its own
    * state, because "nothing to do" and "we could not read your report" are
@@ -162,6 +169,16 @@ export function assembleMission(x: MissionInputs): MissionControlData {
   const hasReport = x.reportCount > 0;
   const hasTradelines = tradelines.length > 0;
   const reportWithoutTradelines = hasReport && !hasTradelines;
+  // S11 AD-4. "Has a report" is NOT the same question as "has anything begun",
+  // and conflating them put the opposite falsehood on the same band C-05 fixed.
+  // `hasReport` counts REPORT rows, which the consumer can zero out at will —
+  // /upload offers DELETE /api/reports/{id}, and letters deliberately survive
+  // that delete (SetNull). Letters and campaigns are what the mail, response
+  // and campaign health signals are derived from, and those are computed
+  // without reference to hasReport at all. So a consumer who mailed two
+  // disputes and then exercised the data-control the product advertises had a
+  // live, overdue case with nothing on file called a report.
+  const caseOnFile = hasReport || letters.length > 0 || campaigns.length > 0;
   const resolved = tradelines.filter((t) => t.resolved).length;
 
   const liveCampaigns = campaigns.filter((c) => LIVE_CAMPAIGN.has(c.status));
@@ -184,13 +201,28 @@ export function assembleMission(x: MissionInputs): MissionControlData {
   // response-health signal so they can never disagree (a task without a matching
   // health flag was the bug the review caught).
   const followedUp = new Set(letters.map((l) => l.parentLetterId).filter(Boolean));
-  const escalatable = hasReport
+  // AD-4: gated on the case existing, not on a report row surviving. A logged
+  // response IS a letter fact; requiring a report to notice it is how a
+  // time-barred escalation went unmentioned. (With no letters the filter is
+  // empty anyway, so this only ever ADDS the state the old gate suppressed.)
+  const escalatable = caseOnFile
     ? letters.filter((l) => l.responseAt && l.responseOutcome && l.responseOutcome !== "deleted" && !followedUp.has(l.id))
     : [];
   const needsResponseAction = escalatable.length > 0;
 
   // ---- Today's Mission (the checklist) ----
   const tasks: MissionTask[] = [];
+  // AD-4: the letter-derived work comes FIRST and is emitted whatever the
+  // report state is. It used to sit inside the final `else`, so a consumer with
+  // no report row on file was shown "Upload your credit report to get started"
+  // as their entire mission while two of their disputes sat past the §611
+  // window. Time-barred facts outrank onboarding prompts, always.
+  for (const l of escalatable.slice(0, 2)) {
+    tasks.push({ text: l.responseOutcome === "verified" ? `Open Round 2 for ${l.recipientName} — method-of-verification available` : `Review the ${l.recipientName} response and decide the next round`, href: "/letters", kind: "escalate" });
+  }
+  for (const d of overdue.slice(0, 2)) {
+    tasks.push({ text: `Upload the ${d.recipient} response (its window has passed)`, href: "/letters", kind: "upload" });
+  }
   if (!hasReport) {
     tasks.push({ text: "Upload your credit report to get started", href: "/upload", kind: "upload" });
   } else if (reportWithoutTradelines) {
@@ -199,12 +231,6 @@ export function assembleMission(x: MissionInputs): MissionControlData {
     // no promise about what a re-run will find.
     tasks.push({ text: "No accounts were read from your last report — open Upload to try that file again or add another report", href: "/upload", kind: "upload" });
   } else {
-    for (const l of escalatable.slice(0, 2)) {
-      tasks.push({ text: l.responseOutcome === "verified" ? `Open Round 2 for ${l.recipientName} — method-of-verification available` : `Review the ${l.recipientName} response and decide the next round`, href: "/letters", kind: "escalate" });
-    }
-    for (const d of overdue.slice(0, 2)) {
-      tasks.push({ text: `Upload the ${d.recipient} response (its window has passed)`, href: "/letters", kind: "upload" });
-    }
     for (const c of approvedUnmailed.slice(0, 2)) {
       const n = unmailedCount(c);
       tasks.push({ text: `Mail ${n} approved dispute${n === 1 ? "" : "s"} — Campaign ${c.sequence}`, href: "/campaigns", kind: "mail" });
@@ -316,18 +342,72 @@ export function assembleMission(x: MissionInputs): MissionControlData {
   else if (needsResponseAction) health.push({ key: "response", label: "Response health", status: "amber", message: "A logged response needs your next move." });
   else health.push({ key: "response", label: "Response health", status: "green", message: "No response action outstanding." });
 
+  // ---- Report health: the CONSUMER'S FILE, not our workflow (S11 HIGH-1) ----
+  // Every signal above measures workflow hygiene — is a campaign stalled, is
+  // mail moving, is a response outstanding, has anything happened lately — and
+  // every one of them has a green else-branch. So a consumer with four
+  // unresolved derogatory accounts, six unmailed letters and three bureau
+  // responses that ALL came back verified rolled up to "ALL SYSTEMS GREEN",
+  // three inches from "Your favorable-change rate so far: 0%". On a credit
+  // product that pill reads as a claim about the consumer's FILE, and nothing
+  // in the roll-up was reading the file at all.
+  //
+  // Truth source is S3's condition model, the same one the Strategy Desk and
+  // the Deferred Queue use — never the disputability band. Note the asymmetry
+  // S3 established and this honours: DEROGATORY is a positive finding, while
+  // "not derogatory" includes NEEDS_REVIEW ("we could not read it"), so the
+  // green branch reports what was READ and never asserts the file is clean.
+  const unresolvedDerogatory = tradelines.filter((t) => !t.resolved && factualCondition(t) === "DEROGATORY").length;
+  const loggedResponses = letters.filter((l) => l.responseAt && l.responseOutcome);
+  const favourableResponses = loggedResponses.filter((l) => l.responseOutcome === "deleted").length;
+  const nothingChanged = loggedResponses.length > 0 && favourableResponses === 0;
+  const verifiedNote = nothingChanged
+    ? ` None of the ${loggedResponses.length} logged response${loggedResponses.length === 1 ? "" : "s"} changed one.`
+    : "";
+  if (unresolvedDerogatory > 0) {
+    health.push({
+      key: "file", label: "Report health", status: "amber",
+      message: `${unresolvedDerogatory} account${unresolvedDerogatory === 1 ? "" : "s"} on your report still show${unresolvedDerogatory === 1 ? "s" : ""} a derogatory status.${verifiedNote}`,
+    });
+  } else if (nothingChanged) {
+    health.push({
+      key: "file", label: "Report health", status: "amber",
+      message: `${loggedResponses.length} response${loggedResponses.length === 1 ? " has" : "s have"} been logged and none of them changed what's reported.`,
+    });
+  } else {
+    health.push({
+      key: "file", label: "Report health", status: "green",
+      message: hasTradelines
+        ? "No unresolved derogatory account was read from your report."
+        : caseOnFile ? "No accounts have been read from your report yet." : "Nothing on file yet.",
+    });
+  }
+
   const lastEvent = kai.recentEvents[0]?.occurredAt;
   const stale = lastEvent ? (now - new Date(lastEvent).getTime()) / DAY > 30 : false;
   const openDisputes = letters.some((l) => l.mailedAt && !l.responseAt);
   if (stale && openDisputes) health.push({ key: "timeline", label: "Timeline health", status: "amber", message: "No activity in over 30 days while disputes are open — check your windows." });
   else if (reportWithoutTradelines) health.push({ key: "timeline", label: "Timeline health", status: "amber", message: "A report is on file but no accounts were read from it — try that file again or add another report." });
-  else health.push({ key: "timeline", label: "Timeline health", status: "green", message: hasReport ? "Your case is moving." : "Nothing has started yet." });
+  // AD-4: "nothing has started" is a claim about the CASE, not about a report
+  // row — a consumer with letters in flight and no report on file is moving.
+  else health.push({ key: "timeline", label: "Timeline health", status: "green", message: caseOnFile ? "Your case is moving." : "Nothing has started yet." });
 
   const caseHealth: Health = health.some((h) => h.status === "red") ? "red" : health.some((h) => h.status === "amber") ? "amber" : "green";
   // C-05: zero rows is not health. An account with nothing on file has an
   // empty queue, which is not the same claim as a clean, monitored file - and
   // that was the claim the all-green roll-up was making.
-  const standing: Standing = hasReport ? caseHealth : "unstarted";
+  // AD-4 — two independent conditions, either of which alone would have
+  // prevented the defect, because this band is the product's loudest single
+  // claim and it has now been wrong in BOTH directions:
+  //   1. "unstarted" requires that nothing is on file at all — not merely that
+  //      a report row is missing.
+  //   2. "unstarted" can never outrank a signal. If anything is amber or red
+  //      the band reports THAT, so a state nobody anticipated can still only
+  //      make the band louder, never quieter.
+  // (W3-S7-review L-9 flagged the mirror image — green surviving on an empty
+  // account. Condition 2 is what closes the class rather than one direction.)
+  const nothingOnFile = !caseOnFile;
+  const standing: Standing = nothingOnFile && caseHealth === "green" ? "unstarted" : caseHealth;
   health.push({
     key: "case",
     label: "Case health",
@@ -355,7 +435,7 @@ export function assembleMission(x: MissionInputs): MissionControlData {
   ];
 
   const ownHistory = x.ownTrack ? ownHistorySummary(x.ownTrack) : null;
-  return { firstName, caseMemory, overnight: kai.overnight, tasks, waiting, automatic, nextAction, nextUnlock, command, capacity, deferred, health, caseHealth, standing, hasReport, reportWithoutTradelines, ownHistory };
+  return { firstName, caseMemory, overnight: kai.overnight, tasks, waiting, automatic, nextAction, nextUnlock, command, capacity, deferred, health, caseHealth, standing, hasReport, caseOnFile, reportWithoutTradelines, ownHistory };
 }
 
 // The loader — pulls the real rows and hands them to the pure assembler.

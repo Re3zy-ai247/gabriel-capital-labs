@@ -27,6 +27,9 @@ import { classifyCreditor } from "../lib/classify";
 import { toExtractedTradelines, type AIAccount } from "../lib/aiParse";
 import { extractRawTradelines, toBureauData, UNATTRIBUTED } from "../lib/parse";
 import { presentBureaus, crossBureauConflicts, getBureauData, type BureauData } from "../lib/bureauData";
+import { knownBureauCount, parseReportDate, reportedDofd, fallOffInsight } from "../lib/tradelineInsights";
+import { scoreTradeline } from "../lib/scoring";
+import { explainTradeline } from "../lib/explain";
 
 let failures = 0;
 function eq(label: string, got: unknown, want: unknown) {
@@ -400,6 +403,118 @@ const BLOCK = [
   eq("upload discloses a fallback-reader analysis", /!done\.usedAI\s*&&\s*<ExtractionFallbackNotice/.test(upload), true);
   eq("upload no longer promises what it cannot keep about bureau attribution", upload.includes("never assert what a bureau reports unless its report was actually uploaded"), false);
   eq("upload states the unknown-bureau rule instead", upload.includes("we mark that unknown instead of assuming"), true);
+}
+
+
+// ===========================================================================
+// 7. ZERO BUREAUS IS NOT ONE BUREAU (S11 journey HIGH-2).
+//
+// `hasCrossBureauKnowledge` is "2 or more", so its negation covers BOTH "one
+// bureau" and "no bureau at all". Two surfaces branched on that negation and
+// then said "this bureau" / "Only one bureau's data is on file" for accounts
+// where all three bureaus are UNKNOWN — naming a bureau the report never named.
+// It fired on every account of every multi-bureau report read by the fallback
+// extractor, which is the fail-closed default state of the build.
+// ===========================================================================
+{
+  const noBureaus: BureauData = { EQUIFAX: { presence: "UNKNOWN" }, EXPERIAN: { presence: "UNKNOWN" }, TRANSUNION: { presence: "UNKNOWN" } };
+  const oneBureau: BureauData = { EQUIFAX: { presence: "PRESENT", status: "Charge-Off", balanceCents: 147700 }, EXPERIAN: { presence: "UNKNOWN" }, TRANSUNION: { presence: "UNKNOWN" } };
+  const twoBureaus: BureauData = { EQUIFAX: { presence: "PRESENT", status: "Charge-Off", balanceCents: 147700 }, EXPERIAN: { presence: "PRESENT", status: "Collection", balanceCents: 152000 }, TRANSUNION: { presence: "ABSENT" } };
+
+  eq("knownBureauCount: all UNKNOWN → 0", knownBureauCount(noBureaus), 0);
+  eq("knownBureauCount: one PRESENT → 1", knownBureauCount(oneBureau), 1);
+  eq("knownBureauCount: PRESENT + PRESENT + ABSENT → 3", knownBureauCount(twoBureaus), 3);
+  eq("knownBureauCount: the UNATTRIBUTED entry is not a bureau", knownBureauCount({ ...noBureaus, [UNATTRIBUTED]: { presence: "UNKNOWN", status: "Charge-Off" } }), 0);
+
+  const score = (bureauData: BureauData) =>
+    scoreTradeline({ accountType: "CHARGE_OFF", isDebtBuyer: false, balanceCents: 147700, dateOfFirstDelinquency: null, bureauData, nonStrategic: false, creditorName: "CAPITAL ONE" });
+
+  const zeroReasons = score(noBureaus).reasons.join(" ");
+  eq("scoring: zero bureaus never says \"this bureau\"", /this bureau/i.test(zeroReasons), false);
+  eq("scoring: zero bureaus never claims single-bureau data", zeroReasons.includes("Single-bureau data"), false);
+  eq("scoring: zero bureaus states the attribution as unknown", zeroReasons.includes("No bureau attribution on file"), true);
+  eq("scoring: ONE bureau still gets the single-bureau read", score(oneBureau).reasons.join(" ").includes("Single-bureau data"), true);
+  eq("scoring: two bureaus get neither unknown-attribution nor single-bureau copy", [
+    score(twoBureaus).reasons.join(" ").includes("No bureau attribution on file"),
+    score(twoBureaus).reasons.join(" ").includes("Single-bureau data"),
+  ], [false, false]);
+
+  const explain = (bureauData: BureauData) =>
+    explainTradeline({ accountType: "CHARGE_OFF", isDebtBuyer: false, balance: 147700, probability: "HIGH", reasons: [], dateOfFirstDelinquency: null, bureauData, creditorName: "CAPITAL ONE", recommendedStrategy: "fcra_611" });
+
+  const zeroUncertainty = explain(noBureaus).uncertainty.join(" ");
+  eq("explain: zero bureaus never says \"Only one bureau\"", zeroUncertainty.includes("Only one bureau"), false);
+  eq("explain: zero bureaus never says \"that bureau\"", /that bureau/i.test(zeroUncertainty), false);
+  eq("explain: zero bureaus states the attribution as unknown", zeroUncertainty.includes("didn't say which bureau reports this account"), true);
+  eq("explain: ONE bureau still gets the single-bureau caveat", explain(oneBureau).uncertainty.some((u) => u.includes("Only one bureau")), true);
+  eq("explain: zero bureaus makes no contradiction claim", explain(noBureaus).contradictions, []);
+  eq("explain: zero bureaus attributes nothing to a bureau", explain(noBureaus).bureauContributions, []);
+}
+
+// ===========================================================================
+// 8. ACCOUNT-NUMBER MASKS (S11 journey MEDIUM-2).
+//
+// The mask matcher was the only one in its block without /i, so a real report's
+// capitalized "Account #:" never matched and every mask parsed as null — which
+// also strips tradelineKey() of its only disambiguator between two accounts at
+// the same creditor, so a re-analysis can mis-relink the consumer's letters.
+// ===========================================================================
+{
+  const realBlock = [
+    "CAPITAL ONE",
+    "Account #: 517805XXXXXX1234",
+    "Type: Revolving",
+    "Balance: $1,477.00",
+    "Status: Charge-Off",
+  ].join("\n");
+  const [ex] = extractRawTradelines(realBlock, ["EQUIFAX"]);
+  eq("capitalized \"Account #:\" is captured", ex?.accountNumberMask, "517805XXXXXX1234");
+
+  const lower = extractRawTradelines(["DISCOVER BANK", "account#: XXXX1477", "Balance: $500.00"].join("\n"), ["EQUIFAX"]);
+  eq("lowercase \"account#:\" still works", lower[0]?.accountNumberMask, "XXXX1477");
+  const mixed = extractRawTradelines(["ONEMAIN FINANCIAL", "ACCOUNT NUMBER: 4521-XXXX-8890", "Balance: $9,000.00"].join("\n"), ["EQUIFAX"]);
+  eq("upper-case \"ACCOUNT NUMBER:\" is captured", mixed[0]?.accountNumberMask, "4521-XXXX-8890");
+}
+
+// ===========================================================================
+// 9. DATES AS REPORTS PRINT THEM (S11 journey MEDIUM-3).
+//
+// `new Date("08/2021")` is Invalid, so a month-only DOFD — one of the commonest
+// formats on a consumer report — disabled the §605 clock entirely. It is now
+// parsed, but a month is NEVER widened into a day: the persisted column is
+// printed verbatim inside a mailed dispute letter, so a day we invented would
+// become an assertion the consumer signs.
+// ===========================================================================
+{
+  const p = (v: string | null | undefined) => {
+    const r = parseReportDate(v ?? null);
+    return r ? [r.date.toISOString().slice(0, 10), r.precision] : null;
+  };
+  eq('MM/YYYY parses at MONTH precision, anchored to month end', p("08/2021"), ["2021-08-31", "month"]);
+  eq('MM-YYYY parses at MONTH precision', p("08-2021"), ["2021-08-31", "month"]);
+  eq('YYYY-MM parses at MONTH precision (never silently day 1)', p("2021-08"), ["2021-08-31", "month"]);
+  eq('MM/DD/YYYY parses at DAY precision', p("08/15/2021"), ["2021-08-15", "day"]);
+  eq('YYYY-MM-DD parses at DAY precision', p("2021-08-15"), ["2021-08-15", "day"]);
+  eq('MM-DD-YYYY parses at DAY precision', p("08-15-2021"), ["2021-08-15", "day"]);
+  eq("absent DOFD stays null", [p(null), p(""), p(undefined)], [null, null, null]);
+  eq("garbage stays null", [p("not-a-date"), p("13/2021"), p("0021-08")], [null, null, null]);
+  eq("a bare year is refused — no honest month to anchor a §605 clock to", p("2021"), null);
+
+  // The clock actually runs on a month-only DOFD.
+  const monthOnly = { accountType: "CHARGE_OFF" as const, creditorName: "CAPITAL ONE", dateOfFirstDelinquency: null, bureauData: { EQUIFAX: { presence: "PRESENT", status: "Charge-Off", dofd: "08/2015" } } as BureauData };
+  const fall = fallOffInsight(monthOnly);
+  eq("§605 clock runs from a month-only DOFD", [fall?.windowYears, fall?.pastWindow, fall?.dofdPrecision], [7, true, "month"]);
+  eq("scoring fires the §605 obsolescence angle on a month-only DOFD", scoreTradeline({ accountType: "CHARGE_OFF", isDebtBuyer: false, balanceCents: 0, dateOfFirstDelinquency: null, bureauData: monthOnly.bureauData, nonStrategic: false, creditorName: "CAPITAL ONE" }).reasons.some((r) => r.includes("§605")), true);
+  eq("explain discloses that the DOFD is a month, not a day", explainTradeline({ accountType: "CHARGE_OFF", isDebtBuyer: false, balance: 0, probability: "HIGH", reasons: [], dateOfFirstDelinquency: null, bureauData: monthOnly.bureauData, creditorName: "CAPITAL ONE", recommendedStrategy: "fcra_611" }).uncertainty.some((u) => u.includes("reported as a month, not a specific day")), true);
+
+  // …and it is still a derogatory EVENT, so the missing day cannot launder it.
+  eq("a month-only reported DOFD alone makes the account DEROGATORY", factualCondition({ accountType: "REVOLVING", dateOfFirstDelinquency: null, bureauData: { EQUIFAX: { presence: "PRESENT", dofd: "08/2021" } } }), "DEROGATORY");
+  eq("no DOFD anywhere is still NEEDS_REVIEW, never CLEAN", factualCondition({ accountType: "REVOLVING", dateOfFirstDelinquency: null, bureauData: { EQUIFAX: { presence: "PRESENT" } } }), "NEEDS_REVIEW");
+
+  // Bureaus disagreeing on the DOFD: take the LATEST, so obsolescence is never
+  // claimed before every reported date supports it.
+  eq("conflicting reported DOFDs resolve to the latest", reportedDofd({ dateOfFirstDelinquency: null, bureauData: { EQUIFAX: { presence: "PRESENT", dofd: "01/2019" }, EXPERIAN: { presence: "PRESENT", dofd: "11/2020" } } })?.date.toISOString().slice(0, 10), "2020-11-30");
+  eq("the persisted column wins over the report text when present", reportedDofd({ dateOfFirstDelinquency: new Date(Date.UTC(2022, 4, 9)), bureauData: { EQUIFAX: { presence: "PRESENT", dofd: "01/2019" } } })?.source, "column");
 }
 
 console.log(failures === 0 ? "\nALL PASS" : `\n${failures} FAILURE(S)`);

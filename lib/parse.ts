@@ -187,7 +187,14 @@ export function extractRawTradelines(rawText: string, coveredBureaus: Bureau[]):
     const dofdMatch = block.match(/(?:dofd|first delinquency)[:\s]*([0-9/\-]+)/i);
     const ocMatch = block.match(/original creditor[:\s]*(.+)/i);
     const typeMatch = block.match(/type[:\s]*(.+)/i);
-    const acctMatch = block.match(/account[#:\s]*([xX\d\-\*]{4,})/);
+    // MEDIUM-2 (S11 journey): this was the only matcher in this block without
+    // /i, so a real report's "Account #: 517805XXXXXX1234" never matched and
+    // every mask parsed as null. That cost the letter its account identification
+    // (it degrades to a generic placeholder) AND cost tradelineKey() its only
+    // disambiguator between two accounts at the same creditor, so a re-analysis
+    // could mis-relink the consumer's existing dispute letters. Reports also
+    // spell the label out ("Account Number:"), so that wording is accepted too.
+    const acctMatch = block.match(/account\s*(?:number|no\.?|num)?[#:\s]*([xX\d\-\*]{4,})/i);
     const status = (block.match(/status[:\s]*(.+)/i)?.[1] || "").trim() || undefined;
 
     // This parser reads a FLAT account block: it has no way to tell which
