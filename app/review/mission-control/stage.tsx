@@ -117,7 +117,7 @@ export function MissionControlStage() {
           {state === "populated" && (
             <>
               <CommandHeader
-                firstName={fx.firstName} identity={fx.identity} role={fx.role} plan={fx.plan}
+                firstName={fx.firstName} identity={fx.identity} role={fx.role}
                 health={fx.health} capacity={projection === "agency" ? AGENCY_CAPACITY : null}
                 isAgency={projection === "agency"}
               />
@@ -130,7 +130,7 @@ export function MissionControlStage() {
           )}
           {state === "empty" && (
             <>
-              <CommandHeader firstName={fx.firstName} identity={fx.identity} role={fx.role} plan="free"
+              <CommandHeader firstName={fx.firstName} identity={fx.identity} role={fx.role}
                 health={[{ label: "Timeline health", status: "green" }]} capacity={null} isAgency={false} />
               <ZoneCard label="First mission" value="No report on file yet — your first mission is staged" sub="upload a report to begin" wide />
             </>

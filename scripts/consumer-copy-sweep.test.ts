@@ -111,7 +111,17 @@ const bare = (p: (typeof SURFACES)[number]) => code.get(p)!;
 // add it. Exclusions are areas that are legitimately NOT consumer surfaces, and
 // each says why — an exclusion is how a paywall hides, so none is silent.
 const EXCLUDED: [RegExp, string][] = [
-  [/^app\/agency\//, "the agency product is a real business surface; its prices are legitimate and out of consumer scope by assignment"],
+  // RC1-S11 (C-2/C-3). This exclusion was written to the brief's scoping and it
+  // was WRONG in one specific way: the release review found /agency is reachable
+  // by an ordinary consumer (middleware requires only a session), so the branch
+  // rendered to a NON-agency visitor is a consumer surface — and a live $399/mo
+  // Subscribe control plus a "🎉 Payment received" banner survived there purely
+  // because this line skipped the whole directory.
+  //
+  // The exclusion stays, because a genuine agency-facing surface may legitimately
+  // quote agency prices. It is no longer a free pass: §1b below scans the file
+  // anyway, targeting exactly what a consumer can reach.
+  [/^app\/agency\//, "the agency product is a real business surface and may quote its own prices to its own users — but NOT on a branch a consumer can reach; §1b scans that branch"],
   [/^app\/admin\//, "staff-only tooling, never rendered to a consumer"],
   [/^app\/api\//, "route layer; the money invariants there are guarded by no-paid-advantage + the S6a runtime suite"],
   [/^app\/academy\//, "educational content about credit, not about CreditVector's commercials"],
@@ -253,6 +263,22 @@ const RULES: Rule[] = [
     label: 'no purchase-confirmation or fulfilment banner ("Payment received", purchase=success, "letter pack is being added")',
     re: /Payment received|purchase["']?\s*\)?\s*===?\s*["']success|letter pack is being added|credits? (are|is) being added/i,
   },
+  {
+    // RC1-S11 (journey MEDIUM-4). Mission Control rendered the raw `plan` column
+    // in a chip — the literal text "OPERATOR premium" for a legacy payer — while
+    // getEntitlement returned plan:"free", premium:false for that same row. Two
+    // faults at once: an internal enum used as consumer copy, and a tier signal
+    // on a product whose law is that there is no tier to report.
+    //
+    // The rule targets the RENDER position specifically — `>{plan}`, `>{u.role}`
+    // — not the identifier, so a component may still hold and branch on these
+    // values (CommandHeader keeps `role` and maps it to written English at :82).
+    // What it may not do is print the enum. Passing one down as a prop is caught
+    // in effect too: a prop that is never rendered has nothing left to do, and
+    // the S11 fix removed the prop for exactly that reason.
+    label: "no raw plan/role/subscription enum rendered as consumer copy (e.g. the \"OPERATOR premium\" chip)",
+    re: />\s*\{\s*(?:[A-Za-z_$][\w$]*\s*\.\s*)*(?:plan|role|subscriptionStatus)\s*\}/,
+  },
 ];
 
 for (const rule of RULES) {
@@ -278,12 +304,79 @@ for (const rule of RULES) {
 // than the tree really holds, without breaking every time a page is added.
 ok(
   `absence scan covered ${TREE.length} consumer files x ${RULES.length} rules (excludes: ${EXCLUDED.length} documented areas)`,
-  TREE.length >= 120 && RULES.length === 10,
+  TREE.length >= 120 && RULES.length === 11,
 );
 // The 16 rewritten surfaces must all be INSIDE the scanned tree — a presence
 // check on a file the absence scan never reads would be half a guard.
 for (const p of SURFACES) {
   ok(`${p} is inside the scanned consumer tree`, TREE.includes(p));
+}
+
+// ── 1b · app/agency/page.tsx — the branch AN ORDINARY CONSUMER CAN REACH ────
+// RC1-S11 (C-2, C-3). /agency needs only a session (middleware.ts), and
+// /api/agency/context answers isAgency:false for a free account, which selects
+// the `!ctx?.isAgency` gate. That gate is therefore a consumer surface however
+// the directory is classified, and it is scanned as one here.
+//
+// The slice is deliberately EXTRACTED rather than the whole file scanned: an
+// agency's own workspace may quote its own prices to its own users, and this
+// must not become a reason to strip that. The extraction failing is itself a
+// failure — a guard that silently scans an empty string is worse than no guard.
+{
+  const agencySrc = read("app/agency/page.tsx");
+  const agencyCode = codeOnly(agencySrc);
+
+  const gateStart = agencyCode.indexOf("!ctx?.isAgency ? (");
+  const gateEnd = gateStart >= 0 ? agencyCode.indexOf("\n      ) : (", gateStart) : -1;
+  ok(
+    "the non-agency gate on app/agency/page.tsx can still be located (extraction is not silently empty)",
+    gateStart >= 0 && gateEnd > gateStart && gateEnd - gateStart > 200,
+    `gateStart=${gateStart} gateEnd=${gateEnd}`,
+  );
+  const gate = gateStart >= 0 && gateEnd > gateStart ? agencyCode.slice(gateStart, gateEnd) : "";
+
+  const gateRules: [string, RegExp][] = [
+    ["quotes no price to a non-agency visitor", /\$\s?\d[\d,]*(\.\d{2})?/],
+    ["renders no purchase control", /Subscribe to|onClick=\{subscribe\}|Get Agency\b|>\s*Buy\b|Buy \d|Start (my |your )?subscription/i],
+    ["makes no checkout-processor reassurance", /card never touches|Secure checkout/i],
+    ["makes no cancellation promise for a sale that is paused", /cancel anytime|no contracts|no lock-in/i],
+    ["initiates no checkout", /\/api\/stripe\/checkout/],
+  ];
+  for (const [label, re] of gateRules) {
+    const hit = re.exec(gate);
+    ok(`app/agency/page.tsx gate — ${label}`, !hit, hit ? `matched ${JSON.stringify(hit[0])}` : undefined);
+  }
+
+  // Rule 10 (payment confirmation) runs over the WHOLE file, agency side
+  // included. A fabricated "payment received" is never acceptable to anyone —
+  // there is no reader for whom a false confirmation about their own money is
+  // fine, so this one is not scoped to the consumer branch.
+  const confirmRule = RULES.find((r) => /purchase-confirmation/.test(r.label))!;
+  const confirmHit = confirmRule.re.exec(agencyCode);
+  ok(
+    "app/agency/page.tsx (whole file) — no purchase-confirmation or fulfilment banner",
+    !confirmHit,
+    confirmHit ? `matched ${JSON.stringify(confirmHit[0])}` : undefined,
+  );
+
+  // Presence: the gate must state the truth it was given instead of the pitch.
+  const gateFlat = agencySrc.replace(/\s+/g, " ");
+  ok(
+    "the gate states that the agency workspace is a separate product with signups paused",
+    /separate product/.test(gateFlat) && /New signups are paused/.test(gateFlat),
+  );
+  ok(
+    "the gate does not name a business product as an offering (D-4)",
+    !/CreditVector Business/.test(agencySrc),
+  );
+  ok(
+    "the gate is not a dead end — it routes back into the product the consumer does have",
+    /href="\/dashboard"/.test(gate),
+  );
+  ok(
+    "nothing in the product produces the /agency?checkout=success URL",
+    !/\/agency\?checkout=success/.test(agencyCode),
+  );
 }
 
 // ── 2 · PER-PAGE PRESENCE: the truthful statement that replaced the pitch ────

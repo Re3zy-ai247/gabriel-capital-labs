@@ -68,7 +68,6 @@ export default function AgencyPage() {
   const [search, setSearch] = useState("");
   const [secret, setSecret] = useState("");
   const [showOwnerPreview, setShowOwnerPreview] = useState(false);
-  const [justCheckedOut, setJustCheckedOut] = useState(false);
   const [kpi, setKpi] = useState<Kpi | null>(null);
   const [kaiSort, setKaiSort] = useState(true);
 
@@ -97,23 +96,20 @@ export default function AgencyPage() {
     return c as Ctx;
   }
 
+  // RC1-S11 (C-3). This effect read `?checkout=success` straight off the URL and
+  // set `justCheckedOut`, which rendered "🎉 Payment received — activating your
+  // Agency workspace" to ANY signed-in account that typed or was sent the link.
+  // No consumer checkout can complete — /api/stripe/checkout answers 410 to every
+  // purchase before Stripe is touched — so every rendering of that banner was
+  // false. It is the same class as the /letters banner removed as H-1, and it is
+  // removed the same way: deleted, not softened into a neutral note, because any
+  // note keeps the success-shape branch alive and one edit from being a
+  // confirmation again. The webhook poll went with it: it existed only to wait
+  // for a checkout that cannot happen.
   useEffect(() => {
-    const checkedOut =
-      typeof window !== "undefined" && new URLSearchParams(window.location.search).get("checkout") === "success";
-    setJustCheckedOut(checkedOut);
     (async () => {
       try {
-        const c = await loadContext();
-        // Returning from Stripe checkout: the webhook that flips on agency mode may
-        // land a beat later — poll briefly until it does.
-        if (checkedOut && !c.isAgency) {
-          let tries = 0;
-          const t = setInterval(async () => {
-            tries++;
-            const next = await loadContext();
-            if (next.isAgency || tries >= 6) clearInterval(t);
-          }, 2500);
-        }
+        await loadContext();
       } catch {
         setError("I couldn't reach the agency workspace. Refresh the page and I'll pick right back up.");
       } finally {
@@ -122,6 +118,21 @@ export default function AgencyPage() {
     })();
   }, []);
 
+  // RC1-S11 (C-2): DELIBERATELY RETAINED, DELIBERATELY UNRENDERED. Nothing calls
+  // this now — the Subscribe control it drove is gone from the gate above.
+  //
+  // It is not deleted, and the reasoning is worth stating so the next reader does
+  // not "tidy" it away or, worse, re-wire it. D-4 PAUSED the agency sale; it did
+  // not abolish it. What this function encodes is not the sale but the contract a
+  // resumed sale must honour: an in-place upgrade returns no redirect URL, so a
+  // SUCCESSFUL, already-charged upgrade must not fall through to "try again", and
+  // a `pending_if_incomplete` proration must never be reported as success. That
+  // contract is pinned by scripts/checkout-client-contract.test.ts, and deleting
+  // the client would delete the protection along with it — leaving a future
+  // re-opened checkout free to lie to a customer about their own money.
+  //
+  // INTEGRATOR FOLLOW-UP: if the pause is ever made permanent, this function and
+  // its row in checkout-client-contract.test.ts should be removed together.
   async function subscribe() {
     setBusy(true);
     setError(null);
@@ -142,9 +153,13 @@ export default function AgencyPage() {
       // the error path and told the customer to try again.
       if (res.ok && d.upgraded) {
         if (d.status === "active" || d.status === "trialing") {
-          // Plan state is written by the webhook, which may land a beat later —
-          // reuse the established ?checkout=success destination.
-          window.location.href = "/agency?checkout=success";
+          // RC1-S11 (C-3): this used to redirect to "/agency?checkout=success",
+          // which was the only thing in the product that produced that URL. The
+          // banner it triggered is gone, so the param would do nothing but sit
+          // in the address bar and in the customer's history as a re-playable
+          // fake confirmation. Land on the page itself; loadContext() already
+          // reports the real workspace state.
+          window.location.href = "/agency";
           return;
         }
         // payment_behavior: "pending_if_incomplete" — the proration invoice needs
@@ -285,32 +300,42 @@ export default function AgencyPage() {
       ) : !ctx?.isAgency ? (
         // Not an agency yet — show the gate.
         <div className="card max-w-2xl p-6">
-          {justCheckedOut && (
-            <div className="mb-4 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
-              🎉 Payment received — activating your Agency workspace. This will unlock momentarily…
-            </div>
-          )}
-          <div className="text-base font-semibold">Run your dispute practice on our platform</div>
+          {/* RC1-S11 (C-2). THE DEFECT. Everything from here down used to be a
+              live sales gate shown to EVERY ordinary signed-in consumer —
+              middleware.ts requires only a session for /agency, and
+              /api/agency/context returns isAgency:false for a free account,
+              which selects exactly this branch. It quoted "$399 /month · cancel
+              anytime", offered a primary "Subscribe to Agency — $399/mo"
+              button, and reassured the reader that "your card never touches our
+              servers" — for a sale Founder decision D-4 PAUSED. Pressing it
+              answered 410. The product's own UI was selling something the
+              server refuses.
+
+              WHAT IS LEFT. A description of what the agency workspace is, and
+              the truth about its availability. No price, no purchase control,
+              no checkout reassurance. The product is deliberately NOT named as
+              an offering (D-4: a direction, not a product), and nothing here
+              invites a consumer to become a customer. */}
+          <div className="text-base font-semibold">The agency workspace is a separate product</div>
           <p className="mt-2 text-sm text-slate-400">
-            The Agency plan is built for solo operators: manage each client in their own workspace, run the full
-            analysis and letter engine for every one, and stay on top of each follow-up window.
+            It is built for operators who work other people&apos;s files rather than their own: each client in their
+            own workspace, the full analysis and letter engine for every one, and a follow-up clock across the roster.
+            It is a different product from the free consumer one, with different users.
+          </p>
+          <p className="mt-2 text-sm text-slate-400">
+            <span className="font-medium text-slate-300">New signups are paused.</span> There is nothing to buy here
+            and no price to quote. Everything in your own CreditVector account is unaffected and free to use today.
           </p>
           <ul className="mt-4 space-y-1.5 text-sm text-slate-300">
             <li className="flex items-center gap-2"><span className="text-brand-400">✓</span> Manage up to {WORKSPACE_BASE_V3.agency} active clients, each in a private workspace — no per-seat logins</li>
             <li className="flex items-center gap-2"><span className="text-brand-400">✓</span> Full credit analysis &amp; letter engine for every client</li>
             <li className="flex items-center gap-2"><span className="text-brand-400">✓</span> Follow-up clock &amp; KPI reporting across your roster</li>
           </ul>
-          <div className="mt-5 flex items-baseline gap-2">
-            <span className="text-3xl font-bold text-white keep-white">$399</span>
-            <span className="text-sm text-slate-400">/month · cancel anytime</span>
+          <div className="mt-5">
+            <Link href="/dashboard" className="btn-ghost">
+              Back to Mission Control
+            </Link>
           </div>
-          <div className="mt-4">
-            <button onClick={subscribe} disabled={busy} className="btn-primary">
-              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Building2 className="h-4 w-4" />}
-              Subscribe to Agency — $399/mo
-            </button>
-          </div>
-          <p className="mt-3 text-[11px] text-slate-500">Secure checkout by Stripe · your card never touches our servers.</p>
 
           {/* Owner/admin preview — enable agency mode without billing. Admins only;
               regular users (and demo) never see the no-billing bypass. */}
@@ -345,7 +370,8 @@ export default function AgencyPage() {
                 </div>
                 <p className="mt-3 flex items-start gap-2 text-[11px] text-slate-500">
                   <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-gold-400" />
-                  Preview access for the owner/admin. Regular customers unlock the workspace with an active $399/mo subscription above.
+                  Preview access for the owner/admin. New agency signups are paused, so there is no self-serve route
+                  into this workspace for anyone else right now — this control is the only way in.
                 </p>
               </div>
             )}

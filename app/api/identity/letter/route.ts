@@ -69,8 +69,19 @@ export async function POST(req: Request) {
   const limited = await enforceRateLimit(`identity-letter:${user.id}`, 20, 3600); // Opus letter — cost guard, same for everyone
   if (limited) return limited;
 
+  // RC1-S11 (E-2). This 503 used to answer "AI is not configured." — a sentence
+  // about our deployment's configuration, in an operator's voice, rendered
+  // verbatim to a consumer who pressed "Draft correction letter" and now has no
+  // idea what to do. It is also the only 503 in the product that spoke that way.
+  // Reuses the house wording from lib/rateLimit.ts:121: it says the same thing a
+  // consumer can act on — not now, try again — without describing our internals.
   const key = process.env.ANTHROPIC_API_KEY;
-  if (!key) return NextResponse.json({ error: "AI is not configured." }, { status: 503 });
+  if (!key) {
+    return NextResponse.json(
+      { error: "We can't process that right now — a service we depend on isn't responding. Please try again in a moment." },
+      { status: 503 },
+    );
+  }
 
   const body = await req.json().catch(() => ({}));
   const discrepancies: Discrepancy[] = Array.isArray(body?.discrepancies) ? body.discrepancies : [];
