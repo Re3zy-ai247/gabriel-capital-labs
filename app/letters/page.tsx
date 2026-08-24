@@ -192,6 +192,11 @@ function LettersInner() {
       );
       return;
     }
+    // RC1-S11 (journey NEW-2): the second press is the consumer's explicit
+    // instruction, and the server needs it IN the request — without it the API
+    // refuses (409 approvedLetterExists) rather than quietly creating a second
+    // live letter for the same bureau.
+    const replaceApproved = Boolean(editedDraft && editedDraft.status === APPROVED_STATUS);
     setConfirmRegen(false);
     setBusy(true); setError(null); setLetter(null); setWarning(null); setAiRefined(false); setGenCount(0);
     setEditing(false); setApproved(false); // a recomposed letter is unapproved again
@@ -201,6 +206,7 @@ function LettersInner() {
         body: JSON.stringify({
           tradelineId,
           strategyId,
+          ...(replaceApproved ? { replaceApproved: true } : {}),
           ...(isBureauStrategy
             ? { targetBureaus: bureausSel }
             : { recipientName: recipientName.trim(), recipientAddress: recipientAddress.trim() }),
@@ -210,6 +216,14 @@ function LettersInner() {
       // RC1-S6b: the 402 branch is gone with the upsell it drove. S6a removed
       // every 402 from this route, so the only thing this branch could still do
       // was resurrect a purchase prompt from an unexpected payload.
+      if (res.status === 409 && j.approvedLetterExists) {
+        // RC1-S11 (journey NEW-2): the server has the final say. It refuses
+        // until the consumer says to replace the letter they approved, so arm
+        // the confirmation and show them exactly what it said.
+        setConfirmRegen(true);
+        setError(j.error);
+        return;
+      }
       if (!res.ok) { setError(j.error || "That letter didn't generate. Try again in a moment."); return; }
       setLetter({ id: j.letter.id, body: j.letter.body, createdAt: j.letter.createdAt });
       setGenCount(j.count || 1);

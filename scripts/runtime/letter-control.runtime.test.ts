@@ -18,18 +18,20 @@
 // the I/O boundaries (Prisma, session, rate limit, entitlements, crypto, AI,
 // analytics, mail-date validation) are replaced.
 //
-// NON-VACUITY (measured 2026-08-24; the eight source files these guards execute
-// reverted to the release candidate and restored immediately, never committed):
-//   · release candidate `59f2afd`                                  → 131 passed, 23 failed (exit 1)
-//     — B-1 (no AI principal opened; the paid analysis replayable on one
-//       letter), B-2 (a declared 64 MB body and a chunked body both parsed),
-//       AD-7 (tab B silently overwrote tab A), AD-2 (a withdrawn confirmation
-//       left the letter approvable and mailable)
-//   · branch base `31d4e35:app/api/letters/[id]/route.ts`          →  75 passed, 40 failed (exit 1)
-//   · branch base `31d4e35:app/api/letters/[id]/round2/route.ts`   → 102 passed, 13 failed (exit 1)
-//   · branch base `31d4e35:app/api/letters/[id]/response/route.ts` → 110 passed,  5 failed (exit 1)
-//   · this tree                                                    → 154 passed,  0 failed (exit 0)
+// NON-VACUITY (measured 2026-08-24; each pre-fix file reverted and restored
+// immediately afterwards, never committed):
+//   · merged candidate `bd6cfbb` (lib/letter.ts, app/letters/page.tsx,
+//     app/api/letters/generate/route.ts)                            → 160 passed, 13 failed (exit 1)
+//     — NEW-2 (generate returned 200 and left two live round-1 letters on one
+//       tradeline), AD-R2-1 (the identity correction letter could not be
+//       approved, printed or mailed)
+//   · release candidate `59f2afd` (route + page + lib files)        → 131 passed, 23 failed (exit 1)
+//   · branch base `31d4e35:app/api/letters/[id]/route.ts`           →  75 passed, 40 failed (exit 1)
+//   · branch base `31d4e35:app/api/letters/[id]/round2/route.ts`    → 102 passed, 13 failed (exit 1)
+//   · branch base `31d4e35:app/api/letters/[id]/response/route.ts`  → 110 passed,  5 failed (exit 1)
+//   · this tree                                                     → 173 passed,  0 failed (exit 0)
 import { check, loadModule, mockModule, run, section } from "./_harness";
+import { letterAuthorizationRevoked } from "../../lib/letter";
 
 export {};
 
@@ -96,6 +98,23 @@ class FakeDb {
   }
 
   letter = {
+    // The regenerate planner reads `status` (S4's select, S5's rule). A fake
+    // that dropped it is what let the AD-3 seam look live while it was inert.
+    findMany: async (args: {
+      where: { userId?: string; tradelineId?: string; strategy?: string; round?: number };
+    }) => {
+      this.calls.push("letter.findMany");
+      const w = args.where ?? {};
+      return this.letters
+        .filter(
+          (l) =>
+            (w.userId === undefined || l.userId === w.userId) &&
+            (w.tradelineId === undefined || l.tradelineId === w.tradelineId) &&
+            (w.strategy === undefined || l.strategy === w.strategy) &&
+            (w.round === undefined || l.round === w.round)
+        )
+        .map((l) => ({ id: l.id, targetBureau: l.targetBureau, mailedAt: l.mailedAt, status: l.status }));
+    },
     findFirst: async (args: { where: { id: string; userId: string } }) => {
       this.calls.push("letter.findFirst");
       const w = args.where ?? ({} as { id: string; userId: string });
@@ -146,6 +165,12 @@ class FakeDb {
   };
 
   tradeline = {
+    findFirst: async (args: { where: { id: string; userId: string } }) => {
+      this.calls.push("tradeline.findFirst");
+      const w = args.where ?? ({} as { id: string; userId: string });
+      if (!w.userId) throw new Error("tradeline.findFirst must be scoped to the caller (IDOR)");
+      return this.tradelines.find((t) => t.id === w.id && t.userId === w.userId) ?? null;
+    },
     update: async (args: { where: { id: string }; data: Partial<TradelineRow> }) => {
       this.calls.push("tradeline.update");
       const row = this.tradelines.find((t) => t.id === args.where.id);
@@ -275,8 +300,34 @@ class FakeAiSpendRefusal extends Error {
   }
 }
 mockModule("lib/aiMeter.ts", {
-  meteredMessage: async () => {
+  meteredMessage: async (label: string) => {
     aiCalls += 1;
+    // The identity correction letter is the ONE surface here that is composed by
+    // the model rather than the template, so a canned draft stands in for it.
+    // Everything else must still never reach a provider.
+    if (label === "identity-letter") {
+      return {
+        content: [
+          {
+            type: "text",
+            text: [
+              "Jane Q. Consumer",
+              "1 Main St",
+              "Austin, TX 78701",
+              "",
+              "RE: Correction of personal information",
+              "",
+              "To Whom It May Concern,",
+              "",
+              "The mailing address reported on my file is not correct. I ask that it be corrected to the address above.",
+              "",
+              "Respectfully,",
+              "Jane Q. Consumer",
+            ].join("\n"),
+          },
+        ],
+      };
+    }
     throw new Error("no AI call may happen in this guard");
   },
   AiSpendRefusal: FakeAiSpendRefusal,
@@ -292,6 +343,10 @@ mockModule("lib/aiMeter.ts", {
 // analyzeResponse returns null with no ANTHROPIC_API_KEY, which is the offline
 // path, and the round-2 route needs the real buildRound2UserPrompt.
 mockModule("lib/pdf.ts", { extractPdfText: async () => "" });
+mockModule("lib/furnisher.ts", {
+  getFurnisherContact: async () => null,
+  formatFurnisherAddress: () => null,
+});
 mockModule("lib/outcomeLedger.ts", { recordVerifiedOutcome: async () => undefined });
 
 const letterRoute = loadModule<{
@@ -305,6 +360,8 @@ const round2 = loadModule<{ POST: (req: Request, ctx: { params: { id: string } }
 const responseRoute = loadModule<{ POST: (req: Request, ctx: { params: { id: string } }) => Promise<Response> }>(
   "app/api/letters/[id]/response/route.ts"
 );
+const generate = loadModule<{ POST: (req: Request) => Promise<Response> }>("app/api/letters/generate/route.ts");
+const identityLetter = loadModule<{ POST: (req: Request) => Promise<Response> }>("app/api/identity/letter/route.ts");
 
 const TEMPLATE_BODY = [
   "Jane Q. Consumer",
@@ -847,6 +904,92 @@ run("letter-control.runtime", async () => {
     check("…its body is untouched — the record of what was sent", stored("l1") === bodyBefore);
     const edit = await letterRoute.PATCH(patch("l1", { body: "Rewriting a mailed letter." }), { params: { id: "l1" } });
     check("…and it is still immutable", edit.status === 409 && stored("l1") === bodyBefore);
+  }
+
+  // ── RC1-S11 · journey NEW-2 — through the ROUTE, not just the planner ─────
+  section("regenerating over an approved letter is refused, and never duplicates it");
+  {
+    resetAll();
+    seedTradeline();
+    seedAssertion();
+    const approved = seedLetter({ id: "l_app", status: "PRINTED", body: "enc:the letter I read, edited and approved" });
+
+    const res = await generate.POST(
+      post("http://localhost/api/letters/generate", { tradelineId: "t1", strategyId: "fcra_611", targetBureaus: ["EQUIFAX"] })
+    );
+    const body = await json(res);
+    check("the API REFUSES (409) — it used to return 200", res.status === 409);
+    check("…identified machine-readably", body.approvedLetterExists === true);
+    check("…naming the bureau and the letter it would have replaced", Array.isArray(body.blockedBureaus) && (body.blockedBureaus as string[])[0] === "EQUIFAX" && (body.blockedLetterIds as string[])[0] === "l_app");
+    check("…and it says nothing was used up", /nothing was used up/i.test(String(body.error)));
+    check("NO second letter exists — the tradeline does not end up with two live round-1 letters", db.letters.length === 1);
+    check("…and the approved letter is untouched, still approved", approved.body === "enc:the letter I read, edited and approved" && approved.status === "PRINTED");
+    check("…nothing was composed or charged", spend.length === 0 && aiCalls === 0);
+
+    // With the consumer's explicit instruction the approved row is REPLACED —
+    // updated in place, so the outcome is one letter either way.
+    const confirmed = await generate.POST(
+      post("http://localhost/api/letters/generate", {
+        tradelineId: "t1",
+        strategyId: "fcra_611",
+        targetBureaus: ["EQUIFAX"],
+        replaceApproved: true,
+      })
+    );
+    check("with the explicit instruction it succeeds (200)", confirmed.status === 200);
+    check("…still exactly ONE letter for this tradeline + bureau", db.letters.length === 1);
+    check("…the approved row was rewritten in place", db.letters[0].id === "l_app" && db.letters[0].body !== "enc:the letter I read, edited and approved");
+    check("…and it is no longer approved, because it is no longer the letter they read", db.letters[0].status === "GENERATED");
+
+    // A truthy-but-not-true value must not count as the instruction.
+    db.letters[0].status = "PRINTED";
+    const truthy = await generate.POST(
+      post("http://localhost/api/letters/generate", { tradelineId: "t1", strategyId: "fcra_611", targetBureaus: ["EQUIFAX"], replaceApproved: "yes" })
+    );
+    check("a merely TRUTHY replaceApproved is not the consumer's instruction", truthy.status === 409 && db.letters.length === 1);
+  }
+
+  // ── RC1-S11 · review AD-R2-1 — the identity letter, draft → approve → print ─
+  section("a Personal Information correction letter is authorized at birth");
+  {
+    resetAll();
+    process.env.ANTHROPIC_API_KEY = "test-key-not-used-offline";
+    const drafted = await identityLetter.POST(
+      post("http://localhost/api/identity/letter", {
+        bureau: "EQUIFAX",
+        discrepancies: [
+          {
+            category: "Address",
+            reportValue: "9 Old Rd, Austin, TX 78701",
+            yourValue: "1 Main St, Austin, TX 78701",
+            severity: "medium",
+            explanation: "I have never lived at the reported address.",
+            confirmed: true,
+          },
+        ],
+      })
+    );
+    if (drafted.status !== 200) console.error(`    (identity draft said: ${String((await json(drafted)).error ?? "")})`);
+    check("the correction letter drafts (200)", drafted.status === 200);
+    check("…and it carries NO tradeline, because these facts have none", db.letters.length === 1 && db.letters[0].tradelineId === null);
+
+    const id = db.letters[0].id;
+    const approve = await letterRoute.PATCH(patch(id, { status: "PRINTED" }), { params: { id } });
+    if (approve.status !== 200) console.error(`    (approve said: ${String((await json(approve)).error ?? "")})`);
+    check("AD-R2-1: it can be APPROVED — every one of these used to 409 at birth", approve.status === 200);
+    check("…and the letter is approved", db.letters[0].status === "PRINTED");
+    // The print page branches on exactly this predicate.
+    check("…and the print gate lets it through", letterAuthorizationRevoked({ mailedAt: null, tradelineId: null, activeAssertionCount: 0 }) === false);
+    const mailed = await letterRoute.PATCH(patch(id, { status: "MAILED", mailedAt: "2026-08-24" }), { params: { id } });
+    check("…and it can be mailed", mailed.status === 200 && db.letters[0].mailedAt !== null);
+
+    // The tradeline protection is undiminished by the same change.
+    resetAll();
+    seedTradeline();
+    seedLetter();
+    const noConfirmation = await letterRoute.PATCH(patch("l1", { status: "PRINTED" }), { params: { id: "l1" } });
+    check("a TRADELINE letter with no confirmation behind it is still refused", noConfirmation.status === 409 && (await json(noConfirmation)).authorizationRevoked === true);
+    delete process.env.ANTHROPIC_API_KEY;
   }
 
   // ── RC1-S11 · review B-2 — the body is bounded before it is buffered ───────

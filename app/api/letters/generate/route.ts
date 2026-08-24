@@ -361,7 +361,36 @@ export async function POST(req: Request) {
       where: { userId: user.id, tradelineId: tradeline.id, strategy: strategyKey, round: 1 },
       select: { id: true, targetBureau: true, mailedAt: true, status: true },
     });
-    const { toUpdate, toCreate } = planLetterRegeneration(targets, existingRoundOne);
+    //
+    // RC1-S11 (journey NEW-2) — S5's granted call-site change. Skipping an
+    // approved letter stopped the overwrite but returned 200 and created a
+    // SECOND live round-1 letter for the same bureau: two mailable disputes on
+    // one item, and a response that said nothing about it. The plan now reports
+    // the approved blocker and the route refuses, unless the consumer has
+    // explicitly said to replace it — in which case the approved row is updated
+    // in place, so the outcome is one letter either way, never two.
+    const replaceApproved = body?.replaceApproved === true;
+    const { toUpdate, toCreate, blockedByApproval } = planLetterRegeneration(targets, existingRoundOne, {
+      replaceApproved,
+    });
+    if (blockedByApproval.length > 0) {
+      const named = blockedByApproval
+        .map((b) => (b.target ? BUREAU_LABEL[b.target] : "this recipient"))
+        .join(", ");
+      return NextResponse.json(
+        {
+          error:
+            `You already read and approved the letter for ${named}. Regenerating writes a new letter over it, and the wording you approved goes with it. ` +
+            `Nothing has changed and nothing was used up — confirm that you want the approved letter replaced, and I'll do it.`,
+          approvedLetterExists: true,
+          // Machine-readable so the letters page can name the right rows and
+          // re-send with the consumer's confirmation.
+          blockedBureaus: blockedByApproval.map((b) => b.target ?? null),
+          blockedLetterIds: blockedByApproval.map((b) => b.existingId),
+        },
+        { status: 409 }
+      );
+    }
 
     // RC1-S6a (S-01 / D-3): THE LETTER QUOTA IS GONE.
     //

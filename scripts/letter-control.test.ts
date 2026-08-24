@@ -14,15 +14,18 @@
 // The route BEHAVIOUR is proven separately, by executing the real handlers:
 // scripts/runtime/letter-control.runtime.test.ts.
 //
-// NON-VACUITY (measured 2026-08-24; the eight source files this suite reads
-// reverted to the release candidate and restored immediately, never committed):
-//   · release candidate `59f2afd`               → 151 passed, 40 failed (exit 1)
-//     — journey CRITICAL-1 (bureau relabelling), critic X-3 (the silent 5-fact
-//       cap) and X-4 (the banner wording), B-1, B-2, B-4, AD-2 surfacing, AD-3, AD-7
-//   · branch base `31d4e35:lib/letter.ts`       → the suite cannot even load
-//   · `31d4e35:app/letters/print/[id]/page.tsx` → 126 passed,  9 failed (exit 1)
-//   · `31d4e35:app/letters/page.tsx`            →  99 passed, 36 failed (exit 1)
-//   · this tree                                 → 197 passed,  0 failed (exit 0)
+// NON-VACUITY (measured 2026-08-24; pre-fix files reverted and restored
+// immediately, never committed):
+//   · merged candidate `bd6cfbb` (lib/letter.ts, app/letters/page.tsx,
+//     app/api/letters/generate/route.ts)        → 170 passed, 10 failed (exit 1)
+//     — NEW-1 ("Invalid Date" in a printable letter), AD-R2-1 (every identity
+//       correction letter unauthorized at birth), NEW-2 (approved letter
+//       silently duplicated instead of refused)
+//   · release candidate `59f2afd` (eight files)  → 151 passed, 40 failed (exit 1)
+//   · branch base `31d4e35:lib/letter.ts`        → the suite cannot even load
+//   · `31d4e35:app/letters/print/[id]/page.tsx`  → 126 passed,  9 failed (exit 1)
+//   · `31d4e35:app/letters/page.tsx`             →  99 passed, 36 failed (exit 1)
+//   · this tree                                  → 226 passed,  0 failed (exit 0)
 
 export {};
 
@@ -35,6 +38,7 @@ import {
   canTransitionLetter,
   isConsumerAssertionType,
   letterAuthorization,
+  letterAuthorizationRevoked,
   LETTER_AUTHORIZATION_REVOKED_MESSAGE,
   MAX_LETTER_ASSERTIONS,
   planLetterRegeneration,
@@ -48,6 +52,7 @@ import {
   type LetterConsumer,
   type LetterTradeline,
 } from "../lib/letter";
+import { applyCompliance } from "../lib/compliance";
 import { STRATEGIES } from "../lib/strategies";
 import type { BureauData } from "../lib/bureauData";
 import type { Bureau } from "@prisma/client";
@@ -442,6 +447,116 @@ console.log("\n— 9b. no confirmed fact is silently dropped (X-3) —");
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// 9c. RC1-S11 · JOURNEY NEW-1 — a date is PARSED before it is stated.
+//     A month-precision DOFD ("08/2021") is what the fallback parser produces,
+//     which is the default whenever AI extraction is unavailable.
+// ─────────────────────────────────────────────────────────────────────────────
+console.log("\n— 9c. no letter ever states 'Invalid Date' (NEW-1) —");
+{
+  const monthPrecision: BureauData = {
+    EQUIFAX: { presence: "PRESENT", status: "Charge-Off", balanceCents: 128900, dofd: "08/2021" },
+    EXPERIAN: { presence: "UNKNOWN" },
+    TRANSUNION: { presence: "UNKNOWN" },
+  };
+  // The persisted column is NULL for a month-precision value — that is exactly
+  // why the raw report string is the only source, and why it must be parsed.
+  const tl: LetterTradeline = { ...tradeline, dateOfFirstDelinquency: null, bureauData: monthPrecision };
+  const ctx = buildContext("fcra_611", tl, consumer, "EQUIFAX", 1, undefined, {
+    assertions: [{ assertionType: "late_dates_wrong", consumerNote: null, bureauScope: null, status: "ACTIVE" }],
+  });
+  const body = renderTemplateLetter(tl, ctx, consumer);
+  ok("NEW-1: 'Invalid Date' appears nowhere in the letter", !/Invalid Date/.test(body), body.split("\n").find((l) => /Invalid Date/.test(l)));
+  ok("…the month-precision date is stated as a MONTH, not a fabricated day", /date of first delinquency reported on the Equifax file is Aug 2021\./.test(body), body.split("\n").find((l) => /first delinquency/.test(l)));
+  ok("…and no day is invented for it", !/Aug 31, 2021/.test(body) && !/Aug 1, 2021/.test(body));
+  ok("…while the consumer's claim is unchanged", /I state that the late payment history and\/or the dates reported for this account are not accurate\./.test(body));
+
+  // Day precision still renders as a day.
+  const dayTl: LetterTradeline = { ...tl, bureauData: { ...monthPrecision, EQUIFAX: { presence: "PRESENT", dofd: "2021-03-01" } } };
+  const dayCtx = buildContext("fcra_611", dayTl, consumer, "EQUIFAX", 1, undefined, {
+    assertions: [{ assertionType: "late_dates_wrong", consumerNote: null, bureauScope: null, status: "ACTIVE" }],
+  });
+  ok("a day-precision date still renders as a day", /date of first delinquency reported on the Equifax file is Mar 1, 2021\./.test(renderTemplateLetter(dayTl, dayCtx, consumer)));
+
+  // An unparseable value is DROPPED, never rendered — the pre-regression behaviour.
+  const junkTl: LetterTradeline = { ...tl, bureauData: { ...monthPrecision, EQUIFAX: { presence: "PRESENT", dofd: "not a date" } } };
+  const junkCtx = buildContext("fcra_611", junkTl, consumer, "EQUIFAX", 1, undefined, {
+    assertions: [{ assertionType: "late_dates_wrong", consumerNote: null, bureauScope: null, status: "ACTIVE" }],
+  });
+  const junk = renderTemplateLetter(junkTl, junkCtx, consumer);
+  ok("an unparseable date states nothing at all", !/Invalid Date/.test(junk) && !/date of first delinquency reported on/.test(junk));
+
+  // Two spellings of the same month are not a cross-bureau discrepancy.
+  const sameDate: BureauData = {
+    EQUIFAX: { presence: "PRESENT", dofd: "08/2021" },
+    EXPERIAN: { presence: "PRESENT", dofd: "8/2021" },
+    TRANSUNION: { presence: "UNKNOWN" },
+  };
+  const sameTl: LetterTradeline = { ...tl, bureauData: sameDate };
+  const sameCtx = buildContext("fcra_611", sameTl, consumer, "EQUIFAX", 1, undefined, {
+    assertions: [{ assertionType: "late_dates_wrong", consumerNote: null, bureauScope: null, status: "ACTIVE" }],
+  });
+  const same = renderTemplateLetter(sameTl, sameCtx, consumer);
+  ok("'8/2021' and '08/2021' are not reported as a disagreement", !/Experian reports a date of first delinquency/.test(same), same.split("\n").find((l) => /first delinquency/.test(l)));
+
+  // And the whole letter still passes the compliance bar unchanged.
+  const res = applyCompliance(body, { bar: "signed-letter" });
+  ok("…and the letter still trips nothing and is returned byte-identical", res.flags.length === 0 && res.text === body);
+}
+{
+  // The sweep: no raw report value reaches formatDate anywhere in lib/letter.ts.
+  const src = read("lib/letter.ts");
+  ok("NEW-1 sweep: lib/letter.ts renders dates only through the shared parser", !/formatDate\((?:s|own\[0\])\.v\)/.test(src));
+  ok("…and the DOFD sites go through parseReportDate", /parseReportDate\(s\.v as string\)/.test(src) && /renderDofd\(own\[0\]\.d\)/.test(src));
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 9d. RC1-S11 · AD-R2-1 — a letter with no tradeline is not judged by a
+//     tradeline-confirmation rule. Every identity correction letter is one.
+// ─────────────────────────────────────────────────────────────────────────────
+console.log("\n— 9d. the identity letter is authorized at birth (AD-R2-1) —");
+{
+  ok("AD-R2-1: an unmailed letter that carries no tradeline is AUTHORIZED", letterAuthorization({ mailedAt: null, tradelineId: null, activeAssertionCount: 0 }) === "AUTHORIZED");
+  ok("…so no gate refuses it", letterAuthorizationRevoked({ mailedAt: null, tradelineId: null, activeAssertionCount: 0 }) === false);
+  // …and the tradeline protection is undiminished.
+  ok("a tradeline letter with nothing standing behind it is still REVOKED", letterAuthorization({ mailedAt: null, tradelineId: "t1", activeAssertionCount: 0 }) === "REVOKED");
+  ok("…and one with a live confirmation is AUTHORIZED", letterAuthorization({ mailedAt: null, tradelineId: "t1", activeAssertionCount: 1 }) === "AUTHORIZED");
+  ok("a mailed letter is never re-judged", letterAuthorization({ mailedAt: new Date(), tradelineId: null, activeAssertionCount: 0 }) === "HISTORICAL");
+  ok("the residual (a deleted report's letter) is stated, not hidden", /RESIDUAL, stated rather than hidden/.test(read("lib/letter.ts")));
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 9e. RC1-S11 · JOURNEY NEW-2 — regeneration over an approved letter.
+// ─────────────────────────────────────────────────────────────────────────────
+console.log("\n— 9e. an approved letter is neither overwritten nor duplicated (NEW-2) —");
+{
+  const approved = [{ id: "l_ok", targetBureau: "EQUIFAX" as Bureau, mailedAt: null, status: LETTER_APPROVED_STATUS }];
+  const plan = planLetterRegeneration(["EQUIFAX"], approved);
+  ok("NEW-2: an approved letter is NOT update-matched", plan.toUpdate.length === 0);
+  ok("NEW-2: …and is NOT quietly duplicated either", plan.toCreate.length === 0);
+  ok("NEW-2: …it is reported so the caller can refuse", plan.blockedByApproval.length === 1 && plan.blockedByApproval[0].existingId === "l_ok");
+
+  const replace = planLetterRegeneration(["EQUIFAX"], approved, { replaceApproved: true });
+  ok("with the consumer's explicit instruction the approved row is UPDATED in place", replace.toUpdate.length === 1 && replace.toUpdate[0].existingId === "l_ok");
+  ok("…so the outcome is one letter, never two", replace.toCreate.length === 0 && replace.blockedByApproval.length === 0);
+
+  const draftPlan = planLetterRegeneration(["EQUIFAX"], [{ id: "l_d", targetBureau: "EQUIFAX" as Bureau, mailedAt: null, status: "DRAFT" }]);
+  ok("an unapproved draft is still updated in place, unblocked", draftPlan.toUpdate.length === 1 && draftPlan.blockedByApproval.length === 0);
+  const freshPlan = planLetterRegeneration(["EXPERIAN"], approved);
+  ok("a target with no letter at all still creates one", freshPlan.toCreate.length === 1 && freshPlan.blockedByApproval.length === 0);
+  const mailedPlan = planLetterRegeneration(["EQUIFAX"], [{ id: "l_m", targetBureau: "EQUIFAX" as Bureau, mailedAt: new Date(), status: LETTER_APPROVED_STATUS }]);
+  ok("a MAILED letter is untouched by all of this", mailedPlan.toUpdate.length === 0 && mailedPlan.blockedByApproval.length === 0 && mailedPlan.toCreate.length === 1);
+
+  // Through the ROUTE, not just the helper — a helper-level pin is what let the
+  // 200-and-duplicate through.
+  const GEN = read("app/api/letters/generate/route.ts");
+  ok("the route asks for the plan WITH the consumer's instruction", /planLetterRegeneration\(targets, existingRoundOne, \{\s*replaceApproved,\s*\}\)/.test(GEN));
+  ok("…reads it strictly", /const replaceApproved = body\?\.replaceApproved === true;/.test(GEN));
+  ok("…and REFUSES when an approved letter blocks, before composing anything", /if \(blockedByApproval\.length > 0\)/.test(GEN) && GEN.indexOf("blockedByApproval.length > 0") < GEN.indexOf("const entitlement = await getEntitlement(user)"));
+  ok("…with a 409 and a machine-readable flag", /approvedLetterExists: true/.test(GEN) && /\{ status: 409 \}/.test(GEN.slice(GEN.indexOf("approvedLetterExists"))));
+  ok("…and the page sends the confirmation and handles the refusal", /\.\.\.\(replaceApproved \? \{ replaceApproved: true \} : \{\}\)/.test(PAGE) && /res\.status === 409 && j\.approvedLetterExists/.test(PAGE));
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // 10. RC1-S11 · the response route, the regenerate guard and the edit token.
 // ─────────────────────────────────────────────────────────────────────────────
 console.log("\n— 10. S11 review items (B-1 / B-2 / B-4 / AD-3 / AD-7) —");
@@ -475,12 +590,14 @@ console.log("\n— 10. S11 review items (B-1 / B-2 / B-4 / AD-3 / AD-7) —");
   {
     const cands = [{ id: "l_approved", targetBureau: "EQUIFAX" as Bureau, mailedAt: null, status: LETTER_APPROVED_STATUS }];
     const plan = planLetterRegeneration(["EQUIFAX"], cands);
-    ok("AD-3: an APPROVED row is never regenerate-matched when the status is known", plan.toUpdate.length === 0 && plan.toCreate.length === 1);
+    // NEW-2 corrected the second half of this: an approved row is not matched
+    // AND not silently created beside — it is reported so the route refuses.
+    ok("AD-3: an APPROVED row is never regenerate-matched when the status is known", plan.toUpdate.length === 0 && plan.toCreate.length === 0 && plan.blockedByApproval.length === 1);
     const draftPlan = planLetterRegeneration(["EQUIFAX"], [{ id: "l_draft", targetBureau: "EQUIFAX" as Bureau, mailedAt: null, status: "DRAFT" }]);
     ok("AD-3: …while an unapproved draft is still updated in place", draftPlan.toUpdate.length === 1);
     const legacyPlan = planLetterRegeneration(["EQUIFAX"], [{ id: "l_legacy", targetBureau: "EQUIFAX" as Bureau, mailedAt: null }]);
     ok("AD-3: …and a caller that supplies no status behaves exactly as before", legacyPlan.toUpdate.length === 1);
-    ok("AD-3: the dormancy is documented where the routed change belongs", /DORMANT until the caller supplies it/.test(read("lib/letter.ts")));
+    ok("AD-3: the seam is live — the route selects status and passes it", /select: \{ id: true, targetBureau: true, mailedAt: true, status: true \}/.test(read("app/api/letters/generate/route.ts")));
   }
 
   // S11 AD-2 / critic X-4: the /letters banner.
