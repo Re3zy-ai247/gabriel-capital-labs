@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireCommunityAccount, communityDisplayName, cleanText, LIMITS } from "@/lib/community";
+import {
+  requireCommunityAccount,
+  COMMUNITY_UNAVAILABLE,
+  communityDisplayName,
+  cleanText,
+  LIMITS,
+} from "@/lib/community";
 import { enforceRateLimit } from "@/lib/rateLimit";
 import { sendAdminEmail } from "@/lib/email";
 import { sendPushToAdmins } from "@/lib/push";
@@ -15,7 +21,12 @@ export const runtime = "nodejs";
 // member-facing surface.
 export async function POST(req: Request) {
   const account = await requireCommunityAccount();
-  if (!account) return NextResponse.json({ error: "Members only" }, { status: 403 });
+  // RC1-S6a (D-8): reporting is a community READ/WRITE surface, so it follows
+  // the feature switch — refused with the availability message, never with the
+  // abolished "Members only" paid framing.
+  if (!account) {
+    return NextResponse.json({ error: COMMUNITY_UNAVAILABLE, communityUnavailable: true }, { status: 403 });
+  }
 
   // Cap report volume per member before any DB work.
   const limited = await enforceRateLimit(`community-report:${account.id}`, 10, 3600);

@@ -8,8 +8,9 @@ export { CATEGORIES, CATEGORY_KEYS, type Category };
 
 // ── RC1-S6a · THE OPERATOR NETWORK IS OFF (Founder D-8 / P1-36) ──────────────
 //
-// This module used to gate the network on lib/entitlements.isPremium — a paid
-// membership check that answered "no" with a 403 "Members only". That is a
+// This module used to gate the network on the canonical paid predicate in
+// lib/entitlements — a membership check that answered "no" with a 403 saying
+// members only. That is a
 // paywall wearing a 403, and under the free-consumer law no such refusal may
 // exist. The billing predicate is not consulted here any more, at all.
 //
