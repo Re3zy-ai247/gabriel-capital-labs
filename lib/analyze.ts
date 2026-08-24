@@ -71,6 +71,7 @@ export interface RelinkRow {
   accountType?: string | null;
   isDebtBuyer?: boolean | null;
   balance?: number | null;
+  dateOfFirstDelinquency?: Date | string | null;
 }
 
 const normalizePart = (s: string) => s.trim().toUpperCase().replace(/\s+/g, " ");
@@ -89,17 +90,56 @@ function tradelineIdentity(t: Omit<RelinkRow, "id">): string {
 
 // Just the digits of a masked account number: "517805XXXXXX1234" -> "5178051234".
 // Reports mask the middle, so two renderings of the SAME account agree on their
-// trailing digits while two different accounts at one creditor do not.
+// trailing digits — but a tail is not an account number. Four digits collide
+// once in ten thousand and masked reports routinely expose exactly four, so a
+// tail can support identity, never establish it on its own.
 const maskDigits = (s: string | null | undefined) => (s ?? "").replace(/\D/g, "");
 
-type MaskEvidence = "agrees" | "conflicts" | "silent";
+// Below this, a shared tail says nothing at all: lib/parse.ts accepts a 4-char
+// mask, so a 2-3 digit capture matches any account ending in those digits.
+const MIN_MEANINGFUL_TAIL = 4;
+
+// identical  — the same account number, digit for digit.
+// weak       — one is a trailing view of the other, over a meaningful tail. Real
+//              support, but consistent with a coincidence, so it needs a second
+//              fact before it can pair two rows.
+// conflicts  — both numbers parsed and they are not the same account.
+// silent     — no usable evidence: one side parsed no digits, or the shared tail
+//              is too short to identify anything. NOT agreement.
+type MaskEvidence = "identical" | "weak" | "conflicts" | "silent";
 
 function compareMasks(a: string | null | undefined, b: string | null | undefined): MaskEvidence {
   const da = maskDigits(a);
   const db = maskDigits(b);
-  if (!da || !db) return "silent"; // one side never parsed a number
-  if (da.endsWith(db) || db.endsWith(da)) return "agrees";
-  return "conflicts";
+  if (!da || !db) return "silent";
+  if (da === db) return "identical";
+  if (Math.min(da.length, db.length) < MIN_MEANINGFUL_TAIL) return "silent";
+  return da.endsWith(db) || db.endsWith(da) ? "weak" : "conflicts";
+}
+
+const asTime = (d: Date | string | null | undefined): number | null => {
+  if (!d) return null;
+  const t = d instanceof Date ? d.getTime() : new Date(d).getTime();
+  return Number.isFinite(t) ? t : null;
+};
+
+// A fact that picks THIS account out from its neighbours at the same creditor,
+// as opposed to describing the category it belongs to. Account type and
+// debt-buyer status are derived from the creditor name, and the fallback only
+// ever fires inside one creditor identity, so those two are equal by
+// construction and individuate nothing.
+//
+// A balance individuates only when it is a real figure: extractRawTradelines
+// returns 0 for a block with no dollar amount and safeCents(NaN) is 0, so two
+// zero balances are the parser saying "I read nothing", not the report saying
+// "these match". A first-delinquency date on both sides is the other real one.
+function individuatingAgreement(prior: RelinkRow, rebuilt: RelinkRow): boolean {
+  const pb = prior.balance ?? 0;
+  const rb = rebuilt.balance ?? 0;
+  if (pb > 0 && pb === rb) return true;
+  const pd = asTime(prior.dateOfFirstDelinquency);
+  const rd = asTime(rebuilt.dateOfFirstDelinquency);
+  return pd != null && pd === rd;
 }
 
 // Does the evidence actually say these two rows are the SAME account, or is the
@@ -114,26 +154,31 @@ function compareMasks(a: string | null | undefined, b: string | null | undefined
 // wrong row (app/api/letters/[id]/route.ts), dropping a live derogatory account
 // out of every recommendation surface while the disputed one stays open.
 //
-// So the fallback has to be corroborated, never merely forced:
-//   • the account numbers disagree  -> refuse outright, whatever the counts say;
-//   • they agree on trailing digits -> that IS the identity evidence;
-//   • only one side parsed a number -> the mask can say nothing, so something
-//     else must: same account type, same debt-buyer status, same balance. (The
-//     rows are re-derived from the SAME stored report text, so on a genuine
-//     re-parse of one account these agree; two different accounts at a creditor
-//     essentially never carry the same balance.)
-// Refusing is the safe direction: an unmatched letter orphans, and the
-// authorization rule then asks the consumer to re-confirm — the honest outcome
-// when we cannot tell two accounts apart.
+// The rule, tightened in the safe direction — refuse rather than guess:
+//   • account numbers that disagree, or first-delinquency dates that disagree,
+//     refuse outright, whatever the counts say;
+//   • the same account number, digit for digit, IS identity;
+//   • anything less — a shared tail, or a mask that parsed on only one side —
+//     is not identity by itself. It pairs only when the category agrees AND
+//     some fact individuates the account: an equal REAL balance, or an equal
+//     first-delinquency date. Absent both, we cannot tell two accounts apart
+//     and we decline.
+// Declining is safe by design: an unmatched letter orphans, and the
+// authorization rule then asks the consumer to re-confirm.
 function corroboratesSameAccount(prior: RelinkRow, rebuilt: RelinkRow): boolean {
   const masks = compareMasks(prior.accountNumberMask, rebuilt.accountNumberMask);
   if (masks === "conflicts") return false;
-  if (masks === "agrees") return true;
-  return (
+
+  const pd = asTime(prior.dateOfFirstDelinquency);
+  const rd = asTime(rebuilt.dateOfFirstDelinquency);
+  if (pd != null && rd != null && pd !== rd) return false; // different delinquencies
+
+  if (masks === "identical") return true;
+
+  const sameCategory =
     (prior.accountType ?? null) === (rebuilt.accountType ?? null) &&
-    Boolean(prior.isDebtBuyer) === Boolean(rebuilt.isDebtBuyer) &&
-    (prior.balance ?? null) === (rebuilt.balance ?? null)
-  );
+    Boolean(prior.isDebtBuyer) === Boolean(rebuilt.isDebtBuyer);
+  return sameCategory && individuatingAgreement(prior, rebuilt);
 }
 
 function groupBy(rows: RelinkRow[], keyOf: (r: RelinkRow) => string): Map<string, string[]> {
@@ -175,13 +220,28 @@ export function matchRebuiltTradelines(prior: RelinkRow[], rebuilt: RelinkRow[])
   const claimed = new Set<string>();
   const rowById = new Map(rebuilt.map((r) => [r.id, r] as const));
 
+  const priorByKey = groupBy(prior, tradelineKey);
   const rebuiltByKey = groupBy(rebuilt, tradelineKey);
   for (const p of prior) {
-    const candidate = (rebuiltByKey.get(tradelineKey(p)) ?? []).find((id) => !claimed.has(id));
-    if (candidate) {
-      matches.set(p.id, candidate);
-      claimed.add(candidate);
-    }
+    const key = tradelineKey(p);
+    const candidates = (rebuiltByKey.get(key) ?? []).filter((id) => !claimed.has(id));
+    if (!candidates.length) continue;
+    // An "exact" key that carries no account number is only creditor +
+    // original creditor — the same information as the identity fallback. With
+    // one row on each side that is still sound (it is the only account at that
+    // creditor), but where either side holds several, pairing them by position
+    // is a guess dressed as an exact match. Corroborate, or decline.
+    const keyIdentifiesAnAccount = maskDigits(p.accountNumberMask).length > 0;
+    const unique = (priorByKey.get(key) ?? []).length === 1 && (rebuiltByKey.get(key) ?? []).length === 1;
+    const candidate = keyIdentifiesAnAccount || unique
+      ? candidates[0]
+      : candidates.find((id) => {
+          const row = rowById.get(id);
+          return row ? corroboratesSameAccount(p, row) : false;
+        });
+    if (!candidate) continue;
+    matches.set(p.id, candidate);
+    claimed.add(candidate);
   }
 
   const priorByIdentity = groupBy(prior, tradelineIdentity);
@@ -280,6 +340,7 @@ export async function analyzeReportText(
       accountType: true,
       isDebtBuyer: true,
       balance: true,
+      dateOfFirstDelinquency: true,
     },
   });
   const priorIds = prior.map((p) => p.id);
