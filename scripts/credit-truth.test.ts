@@ -401,7 +401,41 @@ const BLOCK = [
   eq("the empty-plan message no longer points at a row with no CTA", route.includes("start from that account's row"), false);
 
   const upload = readFileSync(join(ROOT, "app/upload/page.tsx"), "utf8");
-  eq("upload discloses a fallback-reader analysis", /!done\.usedAI\s*&&\s*<ExtractionFallbackNotice/.test(upload), true);
+
+  // The property: the extraction-quality disclosure must render on BOTH result
+  // surfaces whenever the analysis did not use the AI reader OR was degraded.
+  //
+  // This used to be pinned as a literal source shape
+  // (`!done.usedAI && <ExtractionFallbackNotice`). When S2 widened the
+  // condition to `(!done.usedAI || done.degraded)` — the product doing MORE of
+  // what the guard exists to require — the pin broke. A pin that matches
+  // punctuation passes for the wrong reason and fails for the wrong reason, so
+  // this one reads the enclosing JSX guard of every render site instead: it
+  // survives a refactor of the same behaviour, and still fails if a site or
+  // either operand is removed, or if the OR is narrowed to an AND.
+  function enclosingJsxGuard(src: string, at: number): string {
+    let depth = 0;
+    for (let i = at - 1; i >= 0; i--) {
+      const c = src[i];
+      if (c === "}") depth++;
+      else if (c === "{") {
+        if (depth === 0) return src.slice(i + 1, at);
+        depth--;
+      }
+    }
+    return "";
+  }
+  const sites = [...upload.matchAll(/<ExtractionFallbackNotice\b/g)].map((m) => m.index ?? 0);
+  const guards = sites.map((at) => enclosingJsxGuard(upload, at));
+  const notAi = /!\s*[\w.]*\busedAI\b|\busedAI\s*===\s*false\b/;
+  const degraded = /\bdegraded\b/;
+  // Either operand order, so long as they are alternatives and not conjuncts.
+  const asAlternatives =
+    /(!\s*[\w.]*\busedAI\b[\s\S]{0,120}?\|\|[\s\S]{0,120}?\bdegraded\b)|(\bdegraded\b[\s\S]{0,120}?\|\|[\s\S]{0,120}?!\s*[\w.]*\busedAI\b)/;
+  eq("the fallback notice renders on BOTH result surfaces (reveal and no-reveal)", sites.length >= 2, true);
+  eq("every render site is gated on the run not having used the AI reader", guards.length > 0 && guards.every((g) => notAi.test(g)), true);
+  eq("…and every one also discloses a degraded run", guards.length > 0 && guards.every((g) => degraded.test(g)), true);
+  eq("…as alternatives, so either condition alone discloses", guards.length > 0 && guards.every((g) => asAlternatives.test(g)), true);
   eq("upload no longer promises what it cannot keep about bureau attribution", upload.includes("never assert what a bureau reports unless its report was actually uploaded"), false);
   eq("upload states the unknown-bureau rule instead", upload.includes("we mark that unknown instead of assuming"), true);
 }
