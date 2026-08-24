@@ -633,8 +633,21 @@ const BLOCK = [
 // Invisible on a fresh database; lands only on existing users, at upgrade.
 // ===========================================================================
 {
+  // Production-shaped: Tradeline.balance is a non-null Int and accountType is a
+  // non-null enum, so a row with neither cannot exist outside a fixture. The
+  // fallback now requires a fact that INDIVIDUATES an account (an equal real
+  // balance or an equal first-delinquency date), and a fixture carrying no
+  // balance at all would exercise a state the database cannot hold.
   const row = (id: string, creditorName: string, accountNumberMask?: string | null, originalCreditor?: string | null): RelinkRow =>
-    ({ id, creditorName, accountNumberMask: accountNumberMask ?? null, originalCreditor: originalCreditor ?? null });
+    ({
+      id,
+      creditorName,
+      accountNumberMask: accountNumberMask ?? null,
+      originalCreditor: originalCreditor ?? null,
+      accountType: "REVOLVING",
+      isDebtBuyer: false,
+      balance: 147700,
+    });
 
   // THE migration case: stored with no mask (old regex never matched a
   // capitalised "Account #:"), re-parsed with one.
@@ -695,7 +708,7 @@ const BLOCK = [
   const acct = (
     id: string,
     creditorName: string,
-    o: { mask?: string | null; type?: string; balance?: number; original?: string | null; debtBuyer?: boolean } = {}
+    o: { mask?: string | null; type?: string; balance?: number; original?: string | null; debtBuyer?: boolean; dofd?: Date | null } = {}
   ): RelinkRow => ({
     id,
     creditorName,
@@ -704,6 +717,7 @@ const BLOCK = [
     accountType: o.type ?? "REVOLVING",
     isDebtBuyer: o.debtBuyer ?? false,
     balance: o.balance ?? 147700,
+    dateOfFirstDelinquency: o.dofd ?? null,
   });
 
   // The reviewer's measured mis-links (r4 probe cases C, D, E).
@@ -753,10 +767,84 @@ const BLOCK = [
   eq("an exact-key match links even when the balance moved between pulls",
     matchRebuiltTradelines([acct("p1", "CAPITAL ONE", { mask: "****1234", balance: 147700 })], [acct("n1", "CAPITAL ONE", { mask: "****1234", balance: 90000 })]).get("p1"), "n1");
 
+  // ── B-R5-3 · SUPPORT IS NOT PROOF ───────────────────────────────────────
+  //
+  // Corroboration closed the headline case but still leaned on two things that
+  // do not establish identity:
+  //   A. when the mask parsed on only one side, the rule fell through to
+  //      type + debt-buyer + balance. The first two are derived from the
+  //      creditor name and the fallback only fires INSIDE one creditor
+  //      identity, so they are equal by construction; and a balance of 0 is
+  //      extractRawTradelines reporting "no dollar figure in this block", not
+  //      the report saying the two accounts match.
+  //   B. a bare trailing-digit test with no floor: a 2-3 digit capture (the
+  //      parser accepts a 4-character mask) matches any account ending in
+  //      those digits.
+  // Both directions were the same mistake — reading absence of contradiction
+  // as evidence of identity.
+  const noBalance = { balance: 0 };
+
+  // Gap A — the parser read no balance on either side. That is silence, not agreement.
+  eq("A1 · mask silent, both balances unparsed (0) → NO link",
+    matchRebuiltTradelines([acct("oldGONE", "CAPITAL ONE", { mask: null, ...noBalance })], [acct("newDIFFERENT", "CAPITAL ONE", { mask: "****9999", ...noBalance })]).size, 0);
+  eq("A2 · the ARRIVING mask failed to parse (\"XXXX\" has no digits) → NO link",
+    matchRebuiltTradelines([acct("oldGONE", "CAPITAL ONE", { mask: "****1234", ...noBalance })], [acct("newDIFFERENT", "CAPITAL ONE", { mask: "XXXX", ...noBalance })]).size, 0);
+  const a3 = matchRebuiltTradelines(
+    [acct("oldA", "CAPITAL ONE", { mask: "****1234", ...noBalance }), acct("oldB", "CAPITAL ONE", { mask: null, ...noBalance })],
+    [acct("newA", "CAPITAL ONE", { mask: "****1234", ...noBalance }), acct("newC", "CAPITAL ONE", { mask: "****9999", ...noBalance })]
+  );
+  eq("A3 · the survivor still links on its own account number", a3.get("oldA"), "newA");
+  eq("A3 · …and the departed one is NOT forced onto the newcomer", a3.get("oldB"), undefined);
+  eq("A4 · agreeing only on category, one mask unparsable (\"XXXX\") → NO link",
+    matchRebuiltTradelines(
+      [acct("p1", "CAPITAL ONE", { mask: null, type: "REVOLVING", debtBuyer: false, ...noBalance })],
+      [acct("n1", "CAPITAL ONE", { mask: "XXXX", type: "REVOLVING", debtBuyer: false, ...noBalance })]
+    ).size, 0);
+  // A key that carries no account number is only the creditor. One row on each
+  // side is still the only account at that creditor, so it links; several on a
+  // side cannot be told apart, and pairing them by position is a guess.
+  eq("A5 · the sole mask-less account at a creditor still links",
+    matchRebuiltTradelines([acct("p1", "CAPITAL ONE", { mask: null, ...noBalance })], [acct("n1", "CAPITAL ONE", { mask: null, ...noBalance })]).get("p1"), "n1");
+  eq("A6 · two mask-less rows on each side, nothing to tell them apart → NO link",
+    matchRebuiltTradelines(
+      [acct("p1", "CAPITAL ONE", { mask: null, ...noBalance }), acct("p2", "CAPITAL ONE", { mask: null, ...noBalance })],
+      [acct("n1", "CAPITAL ONE", { mask: null, ...noBalance }), acct("n2", "CAPITAL ONE", { mask: null, ...noBalance })]
+    ).size, 0);
+  eq("A7 · …but a real, equal balance still individuates one of them",
+    matchRebuiltTradelines(
+      [acct("p1", "CAPITAL ONE", { mask: null, balance: 88000 }), acct("p2", "CAPITAL ONE", { mask: null, ...noBalance })],
+      [acct("n1", "CAPITAL ONE", { mask: null, ...noBalance }), acct("n2", "CAPITAL ONE", { mask: null, balance: 88000 })]
+    ).get("p1"), "n2");
+
+  // Gap B — a tail too short to identify anything, and a 4-digit collision.
+  eq("B1 · a 3-digit tail is not evidence → NO link",
+    matchRebuiltTradelines([acct("p1", "CAPITAL ONE", { mask: "X234", ...noBalance })], [acct("n1", "CAPITAL ONE", { mask: "517805XXXXXX1234", ...noBalance })]).size, 0);
+  eq("B2 · a 4-digit tail collision between two different accounts → NO link",
+    matchRebuiltTradelines(
+      [acct("p1", "CAPITAL ONE", { mask: "****1234", balance: 147700 })],
+      [acct("n1", "CAPITAL ONE", { mask: "****91234", balance: 30000 })]
+    ).size, 0);
+  eq("B3 · a first-delinquency date that disagrees refuses even a matching tail",
+    matchRebuiltTradelines(
+      [acct("p1", "CAPITAL ONE", { mask: "****1234", dofd: new Date(Date.UTC(2019, 0, 1)) })],
+      [acct("n1", "CAPITAL ONE", { mask: "517805XXXXXX1234", dofd: new Date(Date.UTC(2022, 5, 1)) })]
+    ).size, 0);
+
+  // The true-positives this must not cost, all with the corroboration present.
+  eq("the identical account number links whatever the formatting", matchRebuiltTradelines([acct("p1", "CAPITAL ONE", { mask: "XXXX-1234", ...noBalance })], [acct("n1", "CAPITAL ONE", { mask: "xxxx1234", ...noBalance })]).get("p1"), "n1");
+  eq("a real, equal balance individuates across a mask-shape change", matchRebuiltTradelines([acct("p1", "CAPITAL ONE", { mask: "XXXX1234", balance: 147700 })], [acct("n1", "CAPITAL ONE", { mask: "517805XXXXXX1234", balance: 147700 })]).get("p1"), "n1");
+  eq("an equal first-delinquency date individuates when no balance parsed",
+    matchRebuiltTradelines(
+      [acct("p1", "CAPITAL ONE", { mask: null, dofd: new Date(Date.UTC(2021, 7, 31)), ...noBalance })],
+      [acct("n1", "CAPITAL ONE", { mask: "517805XXXXXX1234", dofd: new Date(Date.UTC(2021, 7, 31)), ...noBalance })]
+    ).get("p1"), "n1");
+
   const analyze = readFileSync(join(ROOT, "lib/analyze.ts"), "utf8");
   eq("the transaction re-links through the shared matcher", /matchedByPriorId = matchRebuiltTradelines\(prior, rebuilt\)/.test(analyze), true);
   eq("the fallback is corroborated, not merely forced", /corroboratesSameAccount\(p, candidate\)/.test(analyze), true);
   eq("a conflicting account number refuses the pairing outright", /if \(masks === "conflicts"\) return false;/.test(analyze), true);
+  eq("a shared tail must be long enough to identify anything", /MIN_MEANINGFUL_TAIL/.test(analyze), true);
+  eq("a zero balance is never read as corroboration", /pb > 0 && pb === rb/.test(analyze), true);
   eq("the furnisher contact is carried by the same matcher, not by the parser key", /carriedContactByNewId/.test(analyze) && !/priorContactByKey/.test(analyze), true);
 }
 
