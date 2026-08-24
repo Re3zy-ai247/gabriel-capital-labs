@@ -21,6 +21,11 @@
 import { check, loadModule, mockModule, run, section } from "./_harness";
 
 process.env.PDF_MAX_PAGES = "3";
+// The readiness probe memoises its database round-trip for 5 s (lens-B LOW: the
+// route is unauthenticated, so a flood must not be one query per request). This
+// guard flips the underlying state deliberately and must observe each flip, so it
+// turns the memo off rather than sleeping through it.
+process.env.HEALTH_READY_DB_TTL_MS = "0";
 
 // A synthetic 32-byte hex key. Not a secret: it exists only inside this process
 // and encrypts nothing but the fixture below.
@@ -73,6 +78,12 @@ mockModule("lib/bureauData.ts", { getBureauData: () => ({}), crossBureauConflict
 mockModule("lib/recommend.ts", { recommendStrategy: () => null });
 mockModule("lib/aiMeter.ts", {
   withAiPrincipal: async (_id: string, fn: () => Promise<unknown>) => fn(),
+  // S11 · NEW-1: the upload now pre-flights the spend ceilings so a refused AI
+  // read can be disclosed. These guards are about bounds and readiness, so the
+  // double reports budget available; the refusal path itself is proven in
+  // scripts/runtime/ai-spend-control.runtime.test.ts against the real meter.
+  assertAiBudgetAvailable: async () => {},
+  AiSpendRefusal: class AiSpendRefusal extends Error {},
 });
 
 const uploadRoute = loadModule<{ POST(req: Request): Promise<Response> }>("app/api/reports/upload/route.ts");

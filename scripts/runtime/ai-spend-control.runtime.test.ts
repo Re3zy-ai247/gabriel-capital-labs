@@ -65,11 +65,14 @@ async function acquireUserLock(userId: string): Promise<() => void> {
   return release;
 }
 
-function aggregateUsage({ where }: { where: { userId: string; createdAt: { gte: Date } } }) {
+// `userId` is absent on the PLATFORM aggregate (lib/aiMeter.ts globalSpendTodayUsd)
+// and present on the per-user one. Filtering unconditionally on it would make the
+// global sum silently 0 — and the platform ceiling untestable.
+function aggregateUsage({ where }: { where: { userId?: string; createdAt: { gte: Date } } }) {
   if (aggregateThrows) throw new Error("guard: usage store unavailable");
   const since = where.createdAt.gte.valueOf();
   const sum = usage
-    .filter((r) => r.userId === where.userId && r.createdAt.valueOf() >= since)
+    .filter((r) => (where.userId === undefined || r.userId === where.userId) && r.createdAt.valueOf() >= since)
     .reduce((a, r) => a + r.costUsd, 0);
   return { _sum: { costUsd: sum } };
 }
@@ -105,7 +108,7 @@ mockModule("lib/prisma.ts", {
           return [{ id: userId }];
         },
         aiUsage: {
-          aggregate: async (args: { where: { userId: string; createdAt: { gte: Date } } }) => aggregateUsage(args),
+          aggregate: async (args: { where: { userId?: string; createdAt: { gte: Date } } }) => aggregateUsage(args),
           create: async (args: { data: Partial<UsageRow> }) => createUsage(args),
         },
       };
@@ -116,9 +119,12 @@ mockModule("lib/prisma.ts", {
       }
     },
     report: {
+      create: async ({ data }: { data: Record<string, unknown> }) => ({ id: "report_new", ...data }),
+      delete: async () => ({}),
       count: async () => reportRows.length,
       findMany: async ({ take }: { take?: number }) => reportRows.slice(0, take ?? reportRows.length),
     },
+    tradeline: { findMany: async () => tradelineRows },
     aiUsage: {
       create: async (args: { data: Partial<UsageRow> }) => createUsage(args),
       update: async ({ where, data }: { where: { id: string }; data: Partial<UsageRow> }) => {
@@ -129,12 +135,13 @@ mockModule("lib/prisma.ts", {
         if (data.ok !== undefined) row.ok = data.ok;
         return row;
       },
-      aggregate: async (args: { where: { userId: string; createdAt: { gte: Date } } }) => aggregateUsage(args),
+      aggregate: async (args: { where: { userId?: string; createdAt: { gte: Date } } }) => aggregateUsage(args),
     },
   },
 });
 
 const reportRows = [{ id: "report_1", rawText: "cv1:stored", bureaus: ["EQUIFAX"] }];
+const tradelineRows: unknown[] = [];
 
 const spendFor = (userId: string) =>
   usage.filter((r) => r.userId === userId).reduce((a, r) => a + r.costUsd, 0);
@@ -175,6 +182,15 @@ mockModule("lib/analyze.ts", {
 const analyzeRoute = loadModule<{ POST(req: Request): Promise<Response>; maxDuration: number }>(
   "app/api/reports/analyze/route.ts"
 );
+// The upload route is the OTHER report surface, and the one that must NOT refuse:
+// the consumer's report still has to be stored and read deterministically. What it
+// must do is say so.
+mockModule("lib/pdf.ts", { looksLikePdf: () => true, extractPdfTextBounded: async () => ({ ok: true, text: "", declaredPages: 0, renderedPages: 0, truncated: false }) });
+mockModule("lib/docCrypto.ts", { docCryptoReady: () => true, encryptText: (t: string) => `cv1:${t.length}` });
+mockModule("lib/events.ts", { track: async () => {}, PRODUCT_EVENTS: { reportUploaded: "report.uploaded" } });
+mockModule("lib/bureauData.ts", { getBureauData: () => ({}), crossBureauConflicts: () => [] });
+mockModule("lib/recommend.ts", { recommendStrategy: () => null });
+const uploadRoute = loadModule<{ POST(req: Request): Promise<Response> }>("app/api/reports/upload/route.ts");
 
 const REQUEST = { model: "claude-sonnet-4-6", max_tokens: 8000, messages: [] };
 
@@ -450,6 +466,70 @@ run("ai-spend-control.runtime.test.ts", async () => {
   aggregateThrows = false;
   meter.resetGlobalSpendCache();
   delete process.env.AI_DAILY_BUDGET_USD_GLOBAL;
+
+  section("NEW-1: the platform refusal must REACH a consumer, on both report surfaces");
+  // The ceiling was a control the product could not talk about. The pre-flight
+  // probe checked only the PER-USER budget, so on a ceiling-tripped day it passed;
+  // the route then fanned out, lib/analyze.ts swallowed every AiSpendRefusal into
+  // its regex fallback, and the consumer got `ok: true` with quietly worse
+  // results. The other live surfaces answered "Please try again" — false, because
+  // the ceiling does not clear until midnight UTC.
+  usage.length = 0;
+  meter.resetGlobalSpendCache();
+  delete process.env.AI_DAILY_BUDGET_USD_PER_USER;
+  process.env.AI_DAILY_BUDGET_USD_GLOBAL = "0.01";
+  createUsage({ data: { userId: "someone_else", costUsd: 5 } }); // platform spend, not this consumer's
+
+  let probeRefusal: unknown = null;
+  try {
+    await meter.assertAiBudgetAvailable("user_analyze");
+  } catch (e) {
+    probeRefusal = e;
+  }
+  check("the pre-flight probe now sees the PLATFORM ceiling, not just the per-user one",
+    probeRefusal instanceof meter.AiSpendRefusal);
+  check("and it reports the platform kind",
+    probeRefusal instanceof meter.AiSpendRefusal && probeRefusal.kind === "global-ceiling");
+
+  analyzeRuns = 0;
+  const ceilingAnalyze = await analyzeRoute.POST(
+    new Request("http://localhost/api/reports/analyze", { method: "POST", headers: { "content-type": "application/json" }, body: "{}" })
+  );
+  const ceilingBody = (await ceilingAnalyze.json()) as { error?: string; ok?: boolean };
+  check("re-analysis refuses instead of quietly degrading", ceilingAnalyze.status === 429);
+  check("it does not claim success", ceilingBody.ok !== true);
+  check("no fan-out ran", analyzeRuns === 0);
+  check("the consumer is given the platform refusal verbatim",
+    typeof ceilingBody.error === "string" && /daily processing limit/i.test(ceilingBody.error));
+  check("with no invented reason — it never says 'try again' for a ceiling that clears at midnight",
+    !/try again/i.test(ceilingBody.error ?? ""));
+  check("and no payment framing — the product is free",
+    !/upgrade|subscri|premium|\bplan\b|\bpay\b/i.test(ceilingBody.error ?? ""));
+
+  // Upload is the opposite trade: refusing would lose the consumer's report, so it
+  // proceeds with the deterministic reader — and says that is what happened.
+  const uploadRes = await uploadRoute.POST(
+    new Request("http://localhost/api/reports/upload", {
+      method: "POST",
+      headers: { "content-type": "application/json", "content-length": "512" },
+      body: JSON.stringify({ text: "x".repeat(200), bureaus: ["EQUIFAX"] }),
+    })
+  );
+  const lines = (await uploadRes.text())
+    .split("\n").filter((l) => l.trim()).map((l) => JSON.parse(l) as Record<string, unknown>);
+  const final = lines[lines.length - 1] ?? {};
+  check("the upload still succeeds — the consumer does not lose their report", final.ok === true);
+  check("but it is NOT reported as an unqualified success", final.degraded === true && final.aiRefused === true);
+  check("and it carries the refusal message verbatim",
+    typeof final.notice === "string" && /daily processing limit/i.test(final.notice as string));
+  check("the truthful note is also streamed while it happens",
+    lines.some((l) => typeof l.note === "string" && /daily processing limit/i.test(l.note as string)));
+  check("no payment framing in the upload disclosure either",
+    !/upgrade|subscri|premium|\bpay\b/i.test(String(final.notice ?? "")));
+
+  meter.resetGlobalSpendCache();
+  delete process.env.AI_DAILY_BUDGET_USD_GLOBAL;
+  usage.length = 0;
 
   section("COVERAGE: every reachable metered call site must open a principal");
   // ── WHY THIS REPLACED AN ASSERTION ────────────────────────────────────────

@@ -232,6 +232,12 @@ mockModule("lib/aiMeter.ts", {
     calls.push(`withAiPrincipal:${userId}`);
     return fn();
   },
+  // S11 · NEW-1: the upload now pre-flights the spend ceilings so a refused AI
+  // read can be disclosed. These guards are about bounds and readiness, so the
+  // double reports budget available; the refusal path itself is proven in
+  // scripts/runtime/ai-spend-control.runtime.test.ts against the real meter.
+  assertAiBudgetAvailable: async () => {},
+  AiSpendRefusal: class AiSpendRefusal extends Error {},
 });
 
 const route = loadModule<{ POST: (req: Request) => Promise<Response>; maxDuration: number }>(

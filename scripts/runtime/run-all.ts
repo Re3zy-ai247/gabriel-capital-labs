@@ -21,6 +21,7 @@ const REQUIRED = [
   "encryption-readiness.runtime.test.ts",
   "invoice-shape.runtime.test.ts",
   "rate-limit-failclosed.runtime.test.ts",
+  "self-heal-concurrency.runtime.test.ts",
   "stripe-provision-auth.runtime.test.ts",
   "suspended-payer-cancellation.runtime.test.ts",
   "stripe-webhook-claim.runtime.test.ts",
