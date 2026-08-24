@@ -368,8 +368,8 @@ export async function POST(req: Request) {
     }
 
     // RC1-S6a (D-3): NOTHING IS SPENT HERE. Purchased letter credits are a frozen
-    // historical balance — `spendLetterCredits` is not called on this path, and a
-    // generation cycle leaves `letterCredits` byte-unchanged. The append-only
+    // historical balance — the credit-decrement path is not called from this route
+    // at all, and a generation cycle leaves that balance byte-unchanged. The append-only
     // ledger below is history, not accounting: it records that letters were
     // written, and nothing consumes it.
     //

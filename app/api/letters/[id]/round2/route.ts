@@ -108,8 +108,8 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
   // RC1-S6a (S-03 / D-3): THE ROUND-2 QUOTA IS GONE.
   //
-  // This is where the 402 lived — the same "Upgrade to Professional… or buy a
-  // letter pack" refusal as round 1, plus an `upgrade: true` nudge. An
+  // This is where the payment-required refusal lived — the same "Upgrade to
+  // Professional… or buy a letter pack" copy as round 1, plus an upgrade nudge. An
   // escalation is assistance, and assistance is free, so the only gate left is
   // the one above: the consumer must have confirmed a fact that applies to the
   // bureau this letter is addressed to.
