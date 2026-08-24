@@ -367,8 +367,9 @@ export default function SettingsPage() {
           </h2>
           <p className="mb-4 text-sm leading-relaxed text-slate-400">
             <span className="mr-2 rounded bg-brand-500/15 px-1.5 py-0.5 text-[10px] font-bold tracking-widest text-brand-300">KAI</span>
-            Turn this on and this device can receive my alerts when something on your account needs your attention.
-            Turn it off and the alerts stop — nothing else about your account changes.
+            Turn this on to register this device for push alerts. No dispute, bureau-response, or deadline
+            alert exists yet, so turning this on won&apos;t notify you about any of those today — it only makes
+            your device ready in case that changes. Turn it off any time; nothing else about your account changes.
           </p>
           <PushToggle />
         </div>
