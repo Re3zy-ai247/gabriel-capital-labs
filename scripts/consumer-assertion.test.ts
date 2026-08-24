@@ -45,6 +45,7 @@ import {
 import { buildRound2UserPrompt } from "../lib/round2";
 import { recommendStrategy, suggestAssertionTypes } from "../lib/recommend";
 import { applyCompliance } from "../lib/compliance";
+import { STRATEGIES, STRATEGY_BY_ID, isNonTradelineStrategy } from "../lib/strategies";
 import { parseReportDate, formatMonthYear } from "../lib/tradelineInsights";
 import { formatDate } from "../lib/utils";
 import type { BureauData } from "../lib/bureauData";
@@ -363,8 +364,17 @@ console.log("\n— the enforcement boundaries (source-level)");
     "…and it refuses, before any AI call, when nothing is confirmed",
     /needsConfirmation: true/.test(IDENT) && IDENT.indexOf("needsConfirmation") < IDENT.indexOf("await meteredMessage(")
   );
-  ok("the phantom strategy id is gone", !/strategy: "personal_info"/.test(IDENT));
-  ok("…replaced with a strategy that actually exists", /strategy: "fcra_611"/.test(IDENT));
+  // L-09's defect was a PHANTOM id — one that resolved to nothing in any
+  // registry — not the string itself. The first remediation swapped it for
+  // `fcra_611`, which resolved but mislabelled an identity correction as a
+  // tradeline reinvestigation and erased the discriminator
+  // `letterAuthorization` needs. S11 registered `personal_info` properly, so
+  // the rule is restated as what it always protected: whatever this route
+  // records MUST resolve to a real strategy.
+  const recordedStrategy = /strategy: "([a-z0-9_]+)"/.exec(IDENT)?.[1] ?? "";
+  ok("the route records a strategy id at all", recordedStrategy.length > 0);
+  ok("…and it is NOT a phantom — it resolves in the registry", Boolean(STRATEGY_BY_ID[recordedStrategy]));
+  ok("…and it is honest about what this letter is: not a tradeline dispute", isNonTradelineStrategy(recordedStrategy));
 
   const SCHEMA = read("prisma/schema.prisma");
   ok("ConsumerAssertion exists in the schema", /model ConsumerAssertion \{/.test(SCHEMA));
@@ -878,6 +888,58 @@ console.log("\n— S11 NEW-5: the account must be named, and every query is scop
   const queries = GEN.match(/prisma\.(?:tradeline|consumerAssertion|letter)\.(?:findFirst|findMany)\(\{[\s\S]{0,220}?\}\)/g) ?? [];
   ok("every tradeline/assertion/letter read in this route is scoped by userId", queries.length >= 3 && queries.every((q) => /userId: user\.id/.test(q)));
   ok("…and the letter update targets an id that came from one of those scoped reads", /prisma\.letter\.update\(\{\s*where: \{ id: existingId \}/.test(GEN));
+}
+
+// ---------------------------------------------------------------------------
+console.log("\n— S11: `personal_info` is a real strategy, and only identity letters get it");
+// ---------------------------------------------------------------------------
+{
+  // VALID: the id resolves, so no reader falls back to an unknown key and
+  // nothing has to launder it into `fcra_611` to be legible.
+  const entry = STRATEGY_BY_ID["personal_info"];
+  ok("the id resolves to a registered strategy", Boolean(entry) && entry.id === "personal_info");
+  ok("…addressed to a bureau", entry?.recipient === "bureau");
+  ok("…citing statutes that genuinely reach identifying information", entry?.statutes.join() === "fcra_611,fcra_607b");
+  ok("…and no §605B identity-theft block is claimed", !/605B|1681c-2|identity theft report/i.test(`${entry?.label} ${entry?.blurb}`));
+  ok("…with no outcome promise in its copy", !/guarantee|will be (?:removed|deleted)|improve your score/i.test(`${entry?.label} ${entry?.blurb}`));
+  ok("…and copy that says it disputes no account", /disputes no account/i.test(entry?.blurb ?? ""));
+
+  // DISTINCTIVE: it is NOT one of the tradeline dispute strategies, so it can
+  // never be offered as a way to dispute an account.
+  ok("it is not in the tradeline dispute list", !STRATEGIES.some((x) => x.id === "personal_info"));
+  ok("…so the chooser, Kai's catalogue and the strategist never offer it", STRATEGIES.every((x) => !isNonTradelineStrategy(x.id)));
+  ok("isNonTradelineStrategy recognizes it, and nothing else", isNonTradelineStrategy("personal_info") && !isNonTradelineStrategy("fcra_611") && !isNonTradelineStrategy("escalation"));
+  ok("…and is null/garbage-safe", !isNonTradelineStrategy(null) && !isNonTradelineStrategy(undefined) && !isNonTradelineStrategy(""));
+
+  // A NEWLY DRAFTED identity letter records it.
+  const IDENT = read("app/api/identity/letter/route.ts");
+  ok("the identity letter records `personal_info`", /strategy: "personal_info"/.test(IDENT));
+  ok("…and no longer records the tradeline reinvestigation id", !/strategy: "fcra_611"/.test(IDENT));
+
+  // LEGACY ROWS: production identity letters already carry this exact value, so
+  // an existing row is handled identically to a new one — no backfill, no
+  // second code path.
+  ok(
+    "a legacy row's value is the SAME string a new row records",
+    STRATEGY_BY_ID["personal_info"]?.id === "personal_info"
+  );
+  const MAILCENTER = read("lib/mailCenter.ts");
+  ok(
+    "…so a stored letter's strategy resolves to a real label instead of the not-on-file fallback",
+    /STRATEGY_BY_ID\[first\.strategy\]/.test(MAILCENTER) && Boolean(STRATEGY_BY_ID["personal_info"]?.label)
+  );
+
+  // NO TRADELINE LETTER CAN EVER BE ASSIGNED IT.
+  const GEN2 = read("app/api/letters/generate/route.ts");
+  ok("the tradeline path refuses a non-tradeline strategy", /isNonTradelineStrategy\(strategyId\)/.test(GEN2) && /invalidStrategyForTradeline: true/.test(GEN2));
+  {
+    const idx = GEN2.indexOf("isNonTradelineStrategy(strategyId)");
+    ok(
+      "…before the tradeline is even looked up, so nothing is composed or written",
+      idx > 0 && idx < GEN2.indexOf("prisma.tradeline.findFirst") && idx < GEN2.indexOf("await generateOne(")
+    );
+  }
+  ok("the identity route is the ONLY writer of this strategy", !/strategy: "personal_info"/.test(GEN2));
 }
 
 console.log(failures === 0 ? "\nAll consumer-assertion guards passed." : `\n${failures} guard(s) failed.`);
