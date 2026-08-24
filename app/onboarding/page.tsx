@@ -102,14 +102,20 @@ export default async function OnboardingPage() {
       <div className="mx-auto mt-8 max-w-5xl">
         <OnboardingSteps steps={STEPS} completedSteps={completedSteps} />
 
-        {/* Bottom CTA */}
+        {/* Bottom CTA — RC1-S6b. This was "Want the full engine? Professional
+            includes unlimited dispute letters and letter refinement. The free
+            tier stays free — 3 letters a month." → View Pricing. It sold an
+            upgrade to someone who had not finished setting up, against a quota
+            that no longer exists. Someone mid-onboarding needs the next step,
+            not a plan. */}
         <div className="mt-16 card p-8 text-center">
-          <h2 className="text-2xl font-bold mb-4">Want the full engine?</h2>
+          <h2 className="text-2xl font-bold mb-4">You already have the full engine</h2>
           <p className="text-slate-400 mb-6">
-            Professional includes unlimited dispute letters and letter refinement. The free tier stays free — 3 letters a month.
+            Nothing here is held back behind a paid tier — every account gets the same product. Work through the steps
+            above and the whole thing is open to you.
           </p>
-          <Link href="/pricing" className="btn-primary btn-lg inline-flex">
-            View Pricing
+          <Link href="/dashboard" className="btn-primary btn-lg inline-flex">
+            Go to Mission Control
           </Link>
         </div>
       </div>

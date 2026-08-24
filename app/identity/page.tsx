@@ -62,9 +62,19 @@ export default function IdentityPage() {
   const [letterBusy, setLetterBusy] = useState(false);
   const [letterMsg, setLetterMsg] = useState<string | null>(null);
   const [bureau, setBureau] = useState("EQUIFAX");
+  // RC1-S6b (closing RC1-S4's L-09 handoff). The route
+  // app/api/identity/letter/route.ts disputes an item ONLY if the consumer
+  // confirmed THAT item (`confirmed === true`, strictly), and until this control
+  // existed it refused every request from this page with a 400 whose `nextStep`
+  // said, truthfully, that the confirmation control did not exist yet. This is
+  // that control. Keyed by index into `result.discrepancies`; cleared whenever a
+  // new analysis lands, because a confirmation is about one specific finding.
+  const [confirmed, setConfirmed] = useState<Record<number, boolean>>({});
+  const [unconfirmed, setUnconfirmed] = useState<number[]>([]);
 
   async function run() {
     setBusy(true); setError(null); setResult(null); setLetter(null); setLetterMsg(null);
+    setConfirmed({}); setUnconfirmed([]);
     try {
       const res = await fetch("/api/identity/discrepancies", { method: "POST" });
       const j = await res.json();
@@ -80,15 +90,29 @@ export default function IdentityPage() {
 
   async function makeLetter() {
     if (!result?.discrepancies.length) return;
-    setLetterBusy(true); setLetterMsg(null); setLetter(null);
+    setLetterBusy(true); setLetterMsg(null); setLetter(null); setUnconfirmed([]);
     try {
       const res = await fetch("/api/identity/letter", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ discrepancies: result.discrepancies, bureau }),
+        body: JSON.stringify({
+          // Each item carries the consumer's own confirmation for THAT item.
+          // The whole array is still sent — the route drops what is not
+          // confirmed rather than trusting the client to pre-filter.
+          discrepancies: result.discrepancies.map((d, i) => (confirmed[i] ? { ...d, confirmed: true } : d)),
+          bureau,
+        }),
       });
       const j = await res.json();
-      if (res.status === 402) { setLetterMsg("Generating correction letters is a Professional feature."); return; }
-      if (!res.ok) { setLetterMsg(j.error || "Could not generate the letter."); return; }
+      // RC1-S6b: the 402 branch ("Generating correction letters is a
+      // Professional feature.") and the "Upgrade →" link it rendered are gone.
+      // S6a removed that paywall from the route — the analysis was free and the
+      // finished letter was sold, which is the shape a consumer discovers only
+      // after spending an identity analysis on it.
+      if (!res.ok) {
+        setLetterMsg([j.error, j.nextStep].filter(Boolean).join(" ") || "Could not generate the letter.");
+        if (Array.isArray(j.unconfirmed)) setUnconfirmed(j.unconfirmed as number[]);
+        return;
+      }
       setLetter({ id: j.letter.id, body: j.letter.body });
     } catch {
       setLetterMsg("The connection dropped mid-request. Try again — nothing was lost.");
@@ -97,7 +121,15 @@ export default function IdentityPage() {
 
   // How many detected items the currently selected bureau actually reports —
   // mirrors the server-side filter so the count matches what the letter contains.
+  // RC1-S6b: mirrors the server's filter EXACTLY — reported by the selected
+  // bureau AND confirmed by the consumer — so the number beside the button is
+  // the number of items the letter will actually contain, and the button is
+  // disabled until at least one is confirmed (the route's 400 stays a backstop
+  // rather than the normal path).
   const forBureauCount = result
+    ? result.discrepancies.filter((d, i) => (!d.bureaus?.length || d.bureaus.includes(bureau)) && confirmed[i]).length
+    : 0;
+  const bureauItemCount = result
     ? result.discrepancies.filter((d) => !d.bureaus?.length || d.bureaus.includes(bureau)).length
     : 0;
 
@@ -165,7 +197,7 @@ export default function IdentityPage() {
                 I found {result.discrepancies.length} potential discrepanc{result.discrepancies.length === 1 ? "y" : "ies"} to dispute first
                 {result.discrepancies.filter((d) => d.severity === "high").length > 0
                   ? ` — ${result.discrepancies.filter((d) => d.severity === "high").length} high severity`
-                  : ""}. Drafting a correction letter below is the next step.
+                  : ""}. Confirm each one you know is wrong, then draft the correction letter below.
               </div>
               {result.discrepancies.map((d, i) => (
                 <div key={i} className={`card border p-4 ${SEV_COLOR[d.severity] || ""}`}>
@@ -184,16 +216,50 @@ export default function IdentityPage() {
                     <span className="text-slate-400">yours:</span> <span className="font-medium">{d.yourValue || "—"}</span>
                   </div>
                   <p className="mt-1 text-xs text-slate-400">{d.explanation}</p>
+
+                  {/* THE CONFIRMATION (RC1-S6b, closing RC1-S4's L-09 handoff).
+                      Worded as the consumer's own statement, because that is
+                      what the letter will say in their name. Unchecked by
+                      default — an unaffirmed assertion about someone's legal
+                      name, address or employer is exactly the thing that must
+                      never be mailed on their behalf. */}
+                  <label className="mt-3 flex cursor-pointer items-start gap-2.5 rounded-lg border border-ink-700 bg-ink-900/50 p-2.5 text-xs text-slate-300">
+                    <input
+                      type="checkbox"
+                      className="mt-0.5 h-4 w-4 shrink-0 accent-brand-500"
+                      checked={Boolean(confirmed[i])}
+                      onChange={(e) => {
+                        const next = e.target.checked;
+                        setConfirmed((prev) => ({ ...prev, [i]: next }));
+                        setUnconfirmed((prev) => prev.filter((x) => x !== i));
+                      }}
+                    />
+                    <span>
+                      I confirm my correct {d.category.toLowerCase()} is{" "}
+                      <span className="font-medium text-slate-200">{d.yourValue || "—"}</span>, and that what the report
+                      shows is wrong.
+                    </span>
+                  </label>
+                  {unconfirmed.includes(i) && !confirmed[i] && (
+                    <p className="mt-1.5 text-[11px] text-gold-300">Still needs your confirmation before it can be disputed.</p>
+                  )}
                 </div>
               ))}
 
-              {/* Generate correction letter (premium) */}
+              {/* Draft a correction letter. RC1-S6b: this card was labelled
+                  "(premium)" and its button rendered fully enabled with no lock
+                  and no price — the consumer discovered the paywall only after
+                  spending an identity analysis on it. There is no paywall here
+                  now. The only gate left is the consumer's own confirmation,
+                  which is about truth rather than money. */}
               <div className="card mt-4 p-5">
                 <div className="mb-1 flex items-center gap-2 text-sm font-semibold">
-                  <Sparkles className="h-4 w-4 text-brand-400" /> Generate a Personal Information correction letter
+                  <Sparkles className="h-4 w-4 text-brand-400" /> Draft a Personal Information correction letter
                 </div>
                 <p className="mb-3 text-xs text-slate-400">
                   Pick a bureau — the letter will include <span className="font-medium text-slate-300">only the items that bureau reports</span>, never another bureau&apos;s data.
+                  It states, in your name, what your correct information is, so it includes{" "}
+                  <span className="font-medium text-slate-300">only the items you confirmed above</span>.
                 </p>
                 <div className="flex flex-wrap items-center gap-3">
                   <select value={bureau} onChange={(e) => setBureau(e.target.value)} className="input max-w-[200px]">
@@ -206,18 +272,13 @@ export default function IdentityPage() {
                     {letterBusy ? "Drafting…" : "Draft correction letter"}
                   </button>
                   <span className={`text-xs ${forBureauCount > 0 ? "text-slate-400" : "text-slate-500"}`}>
-                    {forBureauCount > 0
-                      ? `${forBureauCount} item${forBureauCount === 1 ? "" : "s"} reported by ${BUREAU_SHORT[bureau]}`
-                      : `No items reported by ${BUREAU_SHORT[bureau]}`}
+                    {bureauItemCount === 0
+                      ? `No items reported by ${BUREAU_SHORT[bureau]}`
+                      : forBureauCount > 0
+                      ? `${forBureauCount} confirmed item${forBureauCount === 1 ? "" : "s"} reported by ${BUREAU_SHORT[bureau]}`
+                      : `Confirm at least one of the ${bureauItemCount} item${bureauItemCount === 1 ? "" : "s"} ${BUREAU_SHORT[bureau]} reports`}
                   </span>
-                  {letterMsg && (
-                    <span className="text-xs text-rose-400">
-                      {letterMsg}{" "}
-                      {letterMsg.includes("Professional") && (
-                        <Link href="/pricing" className="font-semibold text-brand-300 underline">Upgrade →</Link>
-                      )}
-                    </span>
-                  )}
+                  {letterMsg && <span className="text-xs text-rose-400">{letterMsg}</span>}
                 </div>
                 {letter && (
                   <div className="mt-4">

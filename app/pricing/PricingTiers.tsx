@@ -1,416 +1,171 @@
-"use client";
-
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
-import { useState } from "react";
-import { Check, X, Loader2, Sparkles, Clock, ArrowRight } from "lucide-react";
+import { Check, Sparkles, ArrowRight } from "lucide-react";
 import { FaqList } from "@/components/marketing/Showcase";
-import { openBillingPortal } from "@/lib/portalClient";
 
-type Status = "live" | "soon" | "contact";
+// RC1-S6b — THE CONSUMER COST PAGE.
+//
+// WHAT THIS FILE USED TO BE. Seven priced tier cards ($0 / $99 / $149 / $399 /
+// $699 / $1,299 / Custom), a 27-row plan-comparison matrix, an interval toggle,
+// a "Buy 5 letters — $19" button, and a live POST to /api/stripe/checkout. It
+// was the single largest concentration of paid-consumer copy in the product.
+//
+// WHAT IT IS NOW. One page that answers one question — what does this cost a
+// consumer — with one answer: nothing today. There is no tier to choose, so
+// there are no tier cards; there is nothing to buy, so there is no checkout
+// call, no price, and no Buy control anywhere in this file.
+//
+// THREE COPY RULES THIS FILE IS HELD TO (guarded by
+// scripts/consumer-copy-sweep.test.ts):
+//   1. No price point, tier name, or purchase control on a consumer surface.
+//   2. No promise about the FUTURE. "Free to use today" is a statement about
+//      today and is true; "free forever" is a commitment nobody authorised and
+//      would be the same class of overclaim as a deletion guarantee.
+//   3. The agency/business direction is described as a separate product whose
+//      new signups are paused — never named as an offering, never priced, and
+//      never dressed up as something a consumer could upgrade into.
+//
+// The file and the exported symbol keep their old names deliberately: three
+// guards outside this slice read this path (see the slice report), and moving
+// the file would turn a re-pin into a crash.
 
-interface Tier {
-  id: string;
-  name: string;
-  kai: string;          // Kai capability tier
-  kaiLine: string;      // one line on what Kai does at this level
-  monthly: number | null; // null = custom
-  yearly: number | null;
-  blurb: string;
-  status: Status;
-  plan?: "premium" | "agency"; // live-checkout plan id (only for live paid tiers)
-  freeRegister?: boolean;
-  popular?: boolean;
-  group: "consumer" | "agency";
-  inherits?: string;
-  features: string[];    // honest for LIVE tiers; future spec for SOON tiers (the card is badged)
-  accent: string;
-  cardClass: string;
-  buttonClass: string;
-}
-
-// LIVE tiers list only what exists today. SOON tiers describe the future spec and can
-// never be purchased — they show "Coming soon" / "Join the waitlist", never Buy Now.
-const TIERS: Tier[] = [
+// Everything the consumer product does, as one flat list. No tier splits the
+// list, because no tier exists. Each line describes a capability that is live
+// today — nothing here is a roadmap item wearing a checkmark.
+const INCLUDED: { group: string; items: string[] }[] = [
   {
-    id: "explorer", name: "Explorer", kai: "Kai Lite", kaiLine: "Kai reads your report and explains what it found.",
-    monthly: 0, yearly: 0, blurb: "Meet your Credit Intelligence Officer", status: "live", freeRegister: true, group: "consumer",
-    features: [
-      "Upload your three bureau reports and see them in one place — never a credit pull",
-      "Kai reads every account and flags what doesn't match",
-      "Mission Control — your whole case on one screen",
-      "Academy: know your FCRA rights in plain English",
-      "3 professional dispute letters every month, free",
-      "Ask Kai what any item on your report means — plain English, any time",
+    group: "Reading your reports",
+    items: [
+      "Upload your Equifax, Experian, and TransUnion reports and see them in one place",
+      "Uploading a report never triggers a credit pull or a hard inquiry",
+      "Every account read, compared across bureaus, and explained in plain English",
+      "An identity check against the names, addresses, and employers on your file",
     ],
-    accent: "text-slate-300", cardClass: "border-ink-700/70 bg-ink-800/50", buttonClass: "btn-ghost",
   },
   {
-    id: "professional", name: "Professional", kai: "Kai Professional", kaiLine: "Kai works your active disputes, end to end.",
-    monthly: 99, yearly: 990, blurb: "Your credit analyst, working every day", status: "live", plan: "premium", popular: true, group: "consumer",
-    inherits: "Everything in Explorer, plus Kai goes to work:",
-    features: [
-      "Unlimited analysis — re-run Kai after every bureau update",
-      "Kai reads every bureau response and tells you what it actually says",
-      "Always know your strongest supported next move (method-of-verification built in)",
-      "Unlimited letters, refined by Kai and grounded in the FCRA",
-      "Credit Builder guidance for the rebuild phase",
-      "Readiness intelligence (funding & mortgage — not a lending decision)",
-      "Every 30-day window tracked — see where each dispute clock stands",
-      "Operator Network — the member intelligence network, with Kai in the room",
+    group: "Disputing what you believe is inaccurate",
+    items: [
+      "Dispute letters built from reviewed templates and from the facts you confirm yourself",
+      "You read, edit, approve, print, and mail every letter — nothing is sent for you",
+      "Each letter cites the rights it relies on, so you can check the citation yourself",
+      "Follow-up rounds when a bureau responds, drafted the same way",
     ],
-    accent: "text-brand-300", cardClass: "border-brand-500/60 bg-gradient-to-b from-brand-500/10 to-ink-800/40 shadow-glow", buttonClass: "btn-primary shine",
   },
   {
-    id: "professional_plus", name: "Professional+", kai: "Kai Pro", kaiLine: "Kai remembers your whole strategy over time.",
-    monthly: 149, yearly: 1490, blurb: "Your strategy, compounding over time", status: "soon", group: "consumer",
-    inherits: "Everything in Professional, plus:",
-    features: [
-      "Kai remembers every dispute, response, and outcome — your whole history",
-      "Funding Hub — funding-readiness intelligence (not a lending decision)",
-      "Business Credit OS — intelligence for your business file",
-      "Priority AI + advanced analytics on your own progress",
-      "Every future module included as it ships",
+    group: "Keeping track",
+    items: [
+      "Mission Control — the whole case on one screen",
+      "A timeline of what you sent, when you sent it, and what came back",
+      "A score tracker for the numbers you record yourself",
+      "Academy: what the Fair Credit Reporting Act actually says, in plain English",
     ],
-    accent: "text-brand-200", cardClass: "border-brand-500/25 bg-ink-800/40", buttonClass: "btn-ghost",
-  },
-  {
-    id: "agency", name: "Agency", kai: "Kai Agency", kaiLine: "Kai analyzes every client's file independently.",
-    monthly: 399, yearly: 3990, blurb: "Built for solo operators", status: "live", plan: "agency", group: "agency",
-    inherits: "Everything in Professional — for every client, plus:",
-    features: [
-      "Manage up to 15 active clients, each in a private workspace",
-      "Your entire roster on one dashboard",
-      "A follow-up clock on every client's §611 window — tracked automatically",
-      "The full dispute engine on every client file",
-      "Kai analyzes each client independently — files never mix",
-      "Professional+ modules roll out to your roster as they launch",
-    ],
-    accent: "text-ocean-300", cardClass: "border-ocean-500/50 bg-ink-800/50", buttonClass: "btn bg-ocean-500 text-white keep-white hover:bg-ocean-400",
-  },
-  {
-    id: "agency_pro", name: "Agency Pro", kai: "Kai Agency", kaiLine: "Kai for a growing team.",
-    monthly: 699, yearly: 6990, blurb: "Built for growing teams", status: "soon", group: "agency",
-    inherits: "Everything in Agency, plus room to grow:",
-    features: [
-      "Grow to 30 active clients without changing how you work",
-      "Bring on staff — grow beyond a solo practice",
-      "See your practice's performance at a glance",
-      "Bulk actions — finish roster-wide tasks in one pass",
-      "Your brand on the client experience",
-      "Priority support — answers when clients are waiting",
-    ],
-    accent: "text-ocean-200", cardClass: "border-ocean-600/30 bg-ink-800/40", buttonClass: "btn-ghost",
-  },
-  {
-    id: "scale", name: "Scale", kai: "Kai Agency", kaiLine: "Kai across your whole operation.",
-    monthly: 1299, yearly: 12990, blurb: "Built for established agencies", status: "soon", group: "agency",
-    inherits: "Everything in Agency Pro — at operating scale:",
-    features: [
-      "Run up to 50 active clients across your whole team",
-      "Unlimited team members — your org chart, your rules",
-      "Automation handles the repetitive work between rounds",
-      "API & webhooks — plug CreditVector into your stack",
-      "Manager visibility across every desk and every client",
-      "White-glove onboarding + recurring strategy reviews",
-    ],
-    accent: "text-ocean-200", cardClass: "border-ocean-600/30 bg-ink-800/40", buttonClass: "btn-ghost",
-  },
-  {
-    id: "enterprise", name: "Enterprise", kai: "Kai Enterprise", kaiLine: "Kai, deployed to your standard.",
-    monthly: null, yearly: null, blurb: "Built for complex organizations", status: "contact", group: "agency",
-    inherits: "Everything in Scale, plus a true partnership:",
-    features: [
-      "Capacity, controls, and terms shaped around your organization",
-      "SSO & advanced security controls",
-      "White-label — CreditVector under your brand",
-      "A named account team and a real SLA",
-      "Custom integrations, training, and rollout support",
-      "Private deployment where supported",
-    ],
-    accent: "text-slate-200", cardClass: "border-ink-600/60 bg-gradient-to-b from-ink-800/60 to-ink-900/40", buttonClass: "btn-ghost",
   },
 ];
-
-// Comparison matrix. Cell values: "y" available now · "s" coming with that plan · "n"
-// not included · "-" not applicable · or a literal string. LIVE columns only show "y"
-// for what genuinely exists today; everything future is "s" (or lives under a column
-// already badged "Coming soon"). Order matches TIERS.
-const COLS = ["Explorer", "Professional", "Professional+", "Agency", "Agency Pro", "Scale", "Enterprise"];
-// Grouped for scan speed. "@group" rows render as full-width section headers.
-// Cell truth values are unchanged from the flat matrix (API access + Webhooks
-// merged into one row — their values were identical).
-const MATRIX: [string, ...string[]][] = [
-  ["@group", "Kai intelligence"],
-  ["Credit report analysis", "y", "y", "y", "y", "y", "y", "y"],
-  ["Cross-bureau intelligence", "y", "y", "y", "y", "y", "y", "y"],
-  ["Unlimited reports", "n", "y", "y", "y", "y", "y", "y"],
-  ["Kai capability", "Lite", "Professional", "Pro", "Agency", "Agency", "Agency", "Enterprise"],
-  ["Conversational Kai", "s", "s", "Unlimited", "s", "Unlimited", "Unlimited", "Unlimited"],
-  ["Persistent Kai memory", "n", "Case", "Long-term", "Case", "Long-term", "Long-term", "Long-term"],
-  ["@group", "Dispute engine"],
-  ["Dispute letters", "3/mo", "Unlimited", "Unlimited", "Unlimited", "Unlimited", "Unlimited", "Unlimited"],
-  ["Letter refinement", "n", "y", "y", "y", "y", "y", "y"],
-  ["Bureau response intelligence", "n", "y", "y", "y", "y", "y", "y"],
-  ["Strategy & next-round planning", "n", "y", "y", "y", "y", "y", "y"],
-  ["Method-of-verification guidance", "n", "y", "y", "y", "y", "y", "y"],
-  ["@group", "Guidance & growth"],
-  ["CFPB guidance", "Edu", "y", "y", "y", "y", "y", "y"],
-  ["Credit Builder", "Edu", "y", "y", "y", "y", "y", "y"],
-  ["Funding Hub", "n", "n", "y", "s", "y", "y", "y"],
-  ["Business Credit OS", "n", "n", "y", "s", "y", "y", "y"],
-  ["Operator Network", "n", "y", "y", "y", "y", "y", "y"],
-  ["@group", "Agency operations"],
-  ["Active client workspaces", "-", "-", "-", "15", "30", "50", "Custom"],
-  ["Team members", "-", "-", "-", "n", "s", "Unlimited", "Unlimited"],
-  ["Agency dashboard", "-", "-", "-", "y", "y", "y", "y"],
-  ["Bulk actions", "-", "-", "-", "n", "s", "s", "y"],
-  ["Automation", "-", "-", "-", "n", "n", "s", "y"],
-  ["@group", "Platform & partnership"],
-  ["API access & webhooks", "-", "-", "-", "n", "n", "s", "y"],
-  ["Custom branding", "-", "-", "-", "n", "s", "s", "y"],
-  ["Priority support", "n", "n", "s", "n", "s", "s", "y"],
-  ["SSO", "-", "-", "-", "-", "-", "-", "s"],
-  ["White-label", "-", "-", "-", "-", "-", "-", "s"],
-  ["Dedicated account manager", "-", "-", "-", "-", "-", "s", "s"],
-];
-const SOON_COLS = new Set([2, 4, 5, 6]); // Professional+, Agency Pro, Scale, Enterprise (0-indexed among the 7)
 
 const FAQ: [string, string][] = [
-  ["Am I buying dispute letters?", "No — you're getting Kai, your Credit Intelligence Officer. Kai reads your reports, recommends the strongest supported next step, drafts compliant letters you review and mail yourself, and tracks every deadline. Letters are one output of the intelligence, not the product."],
-  ["What does “Coming soon” mean?", "Explorer, Professional, and Agency are live today. Professional+, Agency Pro, Scale, and Enterprise are on our roadmap — you can start free now and grow into them, but you can't be charged for a plan that isn't available yet. When a plan ships, its checkout goes live."],
-  ["Does Kai guarantee results?", "No, and no one legally can. Kai provides educational guidance grounded in the FCRA and helps you exercise rights you already have. The bureaus decide each outcome; accurate items can't be removed by disputing them. You stay in control — Kai recommends, you approve, and you mail your own letters."],
-  ["Can I cancel anytime?", "Yes — no contracts. Cancel from your billing dashboard; access continues to the end of your billing period."],
-  ["What happens when I outgrow my plan?", "You upgrade in place — your data, clients, letters, and history move with you, nothing is re-imported and nothing is lost. Reaching a plan's client capacity never locks existing work; it only pauses adding new client workspaces until you upgrade."],
+  [
+    "What does CreditVector cost me?",
+    "Nothing. The consumer product is free to use today — there is no plan to pick, no card to enter, and no paid tier held back behind what you can see. If that ever changes, it will be said plainly and in advance, not discovered at a checkout screen.",
+  ],
+  [
+    "Is there a paid version with more features?",
+    "Not for consumers. Every consumer account gets the same product; nothing is reserved for a higher tier, because there are no tiers. A separate product for agencies and businesses exists, but it is a different product with different users, and new signups for it are paused.",
+  ],
+  [
+    "I paid for a plan before. What happened to it?",
+    "Your record of it is preserved. Your billing history, your past plan, and any letter credits you bought are all still on your account and visible on your billing page, and your payment settings still open in the Stripe portal. Nothing was deleted. What changed is that none of it is needed any more — the product no longer charges consumers, so those credits are held rather than spent.",
+  ],
+  [
+    "Does CreditVector guarantee results?",
+    "No, and no one legally can. CreditVector is software and education. It helps you exercise rights you already have under the Fair Credit Reporting Act; the bureaus and furnishers decide every outcome, and information that is accurate cannot be removed by disputing it.",
+  ],
+  [
+    "If it's free, what is the catch?",
+    "You do the work. CreditVector reads your reports and drafts letters from what you confirm, but you review every letter, you sign it, and you mail it at your own cost. It does not act on your behalf, it does not contact the bureaus for you, and it is not a credit-repair organization.",
+  ],
 ];
 
 export function PricingTiers() {
-  const { data: session } = useSession();
-  const router = useRouter();
-  const [interval, setIntervalState] = useState<"month" | "year">("month");
-  const [busy, setBusy] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [portalOffer, setPortalOffer] = useState(false); // checkout refused: plan change belongs in the portal
-
-  async function checkout(payload: Record<string, unknown>, signedOutNext: string, key: string) {
-    setError(null);
-    setPortalOffer(false);
-    if (!session) { router.push(`/register?next=${signedOutNext}`); return; }
-    setBusy(key);
-    try {
-      const res = await fetch("/api/stripe/checkout", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-      const data = await res.json();
-      if (res.ok && data.url) window.location.href = data.url;
-      // An in-place upgrade (route: subscriptions.update) returns no redirect URL.
-      // Without this branch a SUCCESSFUL, already-charged upgrade fell through to
-      // the error path and told the customer to try again.
-      else if (res.ok && data.upgraded) {
-        if (data.status === "active" || data.status === "trialing") {
-          // Same destination the checkout flow would have used; plan state is
-          // written by the webhook, which the target page already polls for.
-          window.location.href = payload.plan === "premium" ? "/billing?checkout=success" : "/agency?checkout=success";
-        } else {
-          // payment_behavior: "pending_if_incomplete" — the proration invoice needs
-          // authentication, so the plan has NOT changed yet. Never claim success.
-          setPortalOffer(true);
-          setError("Your plan change needs a payment confirmation before it takes effect. Open the billing portal to finish — you have not been charged twice.");
-          setBusy(null);
-        }
-      }
-      else { if (data.portal) setPortalOffer(true); setError(data.error || "We couldn't start checkout. Please try again."); setBusy(null); }
-    } catch { setError("The connection dropped mid-request. Try again — nothing was lost."); setBusy(null); }
-  }
-
-  const consumer = TIERS.filter((t) => t.group === "consumer");
-  const agency = TIERS.filter((t) => t.group === "agency");
-
   return (
     <>
-      {/* Kai thesis band */}
-      <div className="mx-auto max-w-3xl rounded-2xl border border-brand-500/25 bg-brand-500/[0.06] p-5 text-center">
-        <div className="mb-1 inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-brand-300"><Sparkles className="h-3.5 w-3.5" aria-hidden /> Everyone gets Kai</div>
-        <p className="text-sm text-slate-300">One intelligence runs every plan — your tier decides how much of Kai you unlock. <span className="text-slate-400">Kai Lite → Professional → Pro → Agency → Enterprise.</span></p>
-      </div>
-
-      {/* Interval toggle */}
-      <div className="mt-8 flex justify-center">
-        <div className="inline-flex items-center gap-1 rounded-full border border-ink-700 bg-ink-800/60 p-1">
-          <button onClick={() => setIntervalState("month")} className={`rounded-full px-4 py-1.5 text-sm font-semibold transition ${interval === "month" ? "bg-ink-700 text-white" : "text-slate-400 hover:text-slate-200"}`}>Monthly</button>
-          <button onClick={() => setIntervalState("year")} className={`rounded-full px-4 py-1.5 text-sm font-semibold transition ${interval === "year" ? "bg-brand-500 text-brand-ink" : "text-slate-400 hover:text-slate-200"}`}>Annual <span className="ml-1 text-[11px] opacity-90">save 2 months</span></button>
+      {/* The answer, before anything else on the page. */}
+      <div className="mx-auto max-w-3xl rounded-2xl border border-brand-500/25 bg-brand-500/[0.06] p-6 text-center">
+        <div className="mb-2 inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-brand-300">
+          <Sparkles className="h-3.5 w-3.5" aria-hidden /> What it costs
         </div>
+        <p className="text-lg font-semibold text-white">CreditVector is free to use today.</p>
+        <p className="mt-2 text-sm text-slate-300">
+          There is no plan to choose and nothing to buy. Every consumer account gets the same product — the whole
+          product — and no card is required to open one.
+        </p>
       </div>
 
-      {/* Consumer */}
-      <h2 className="mt-12 text-center text-sm font-bold uppercase tracking-widest text-slate-400">For consumers</h2>
-      <div className="mx-auto mt-6 grid max-w-5xl items-stretch gap-6 md:grid-cols-3">
-        {consumer.map((t) => <TierCard key={t.id} t={t} interval={interval} busy={busy} onCheckout={checkout} signedIn={!!session} />)}
-      </div>
-      <p className="mt-4 text-center text-xs text-slate-500">No contracts · Cancel anytime · Uploading reports never triggers a credit pull</p>
-
-      {/* Agency */}
-      <h2 className="mt-14 text-center text-sm font-bold uppercase tracking-widest text-slate-400">For agencies</h2>
-      <div className="mx-auto mt-6 grid max-w-6xl items-stretch gap-6 md:grid-cols-2 lg:grid-cols-4">
-        {agency.map((t) => <TierCard key={t.id} t={t} interval={interval} busy={busy} onCheckout={checkout} signedIn={!!session} />)}
-      </div>
-      {error && <p role="alert" className="mt-5 text-center text-sm text-rose-300">{error}</p>}
-      {portalOffer && (
-        <div className="mt-3 text-center">
-          <button
-            type="button"
-            onClick={async () => {
-              const err = await openBillingPortal();
-              if (err) setError(err);
-            }}
-            className="btn-primary"
-          >
-            Open billing portal
-          </button>
-        </div>
-      )}
-
-      {/* One-time letter pack (live) */}
-      <div className="mx-auto mt-10 flex max-w-6xl flex-col items-center justify-between gap-4 rounded-2xl border border-ink-700/70 bg-ink-800/40 px-6 py-5 sm:flex-row">
-        <div>
-          <div className="font-semibold text-white">Just need a few more letters?</div>
-          <p className="text-sm text-slate-400">Buy a one-time pack of 5 dispute letters — no subscription required.</p>
-        </div>
-        <button onClick={() => checkout({ product: "letters_5" }, "/letters", "letters_5")} disabled={busy !== null} className="btn-ghost shrink-0 px-6 py-2.5">
-          {busy === "letters_5" ? (<><Loader2 className="h-4 w-4 animate-spin" /> Redirecting…</>) : "Buy 5 letters — $19"}
-        </button>
-      </div>
-
-      {/* Comparison matrix */}
-      <div className="mx-auto mt-20 max-w-6xl">
-        <h2 className="h-display mb-2 text-center text-2xl text-white md:text-3xl">Compare every plan</h2>
-        <div className="mb-5 flex flex-wrap items-center justify-center gap-x-5 gap-y-1 text-[11px] text-slate-400">
-          <span className="inline-flex items-center gap-1"><Check className="h-3.5 w-3.5 text-brand-400" strokeWidth={3} aria-hidden /> available now</span>
-          <span className="inline-flex items-center gap-1"><Clock className="h-3.5 w-3.5 text-gold-400" aria-hidden /> coming with that plan</span>
-          <span className="inline-flex items-center gap-1"><X className="h-3.5 w-3.5 text-slate-600" aria-hidden /> not included</span>
-        </div>
-        <div className="overflow-x-auto rounded-2xl border border-ink-700/60">
-          <table className="w-full min-w-[720px] border-collapse text-sm">
-            <thead>
-              <tr className="border-b border-ink-700/60 bg-ink-900/60">
-                <th className="sticky left-0 z-10 bg-ink-900/90 p-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-400">Feature</th>
-                {COLS.map((c, i) => (
-                  <th key={c} className="p-3 text-center text-xs font-semibold text-white">
-                    {c}
-                    {SOON_COLS.has(i) && <span className="mt-0.5 block text-[9px] font-bold uppercase tracking-wide text-gold-400">Coming soon</span>}
-                  </th>
+      {/* What "everything" actually means. */}
+      <div className="mx-auto mt-14 max-w-5xl">
+        <h2 className="h-display mb-2 text-center text-2xl text-white md:text-3xl">What you get</h2>
+        <p className="mx-auto mb-10 max-w-2xl text-center text-sm text-slate-400">
+          All of it, to every account. Nothing on this list is held back, metered, or unlocked by anything.
+        </p>
+        <div className="grid gap-6 md:grid-cols-3">
+          {INCLUDED.map((section) => (
+            <div key={section.group} className="rounded-2xl border border-ink-700/70 bg-ink-800/50 p-7">
+              <h3 className="text-sm font-bold uppercase tracking-widest text-brand-300/90">{section.group}</h3>
+              <ul className="mt-5 space-y-3 text-sm">
+                {section.items.map((item) => (
+                  <li key={item} className="flex items-start gap-2.5">
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-brand-400" strokeWidth={2.5} aria-hidden />
+                    <span className="text-slate-300">{item}</span>
+                  </li>
                 ))}
-              </tr>
-            </thead>
-            <tbody>
-              {MATRIX.map((row, ri) =>
-                row[0] === "@group" ? (
-                  // Label lives in the sticky first cell (same pinning as feature names)
-                  // so it stays visible during horizontal scroll on mobile.
-                  <tr key={`g-${row[1]}`} className="border-b border-ink-700/40">
-                    <td className="sticky left-0 z-10 whitespace-nowrap bg-ink-900 px-3 pb-2 pt-5 text-left text-[10px] font-bold uppercase tracking-widest text-brand-300/90">
-                      {row[1]}
-                    </td>
-                    <td colSpan={COLS.length} className="bg-ink-900" aria-hidden />
-                  </tr>
-                ) : (
-                  <tr key={`${row[0]}-${ri}`} className="border-b border-ink-700/40 last:border-0">
-                    <td className="sticky left-0 z-10 bg-ink-900/90 p-3 text-left text-[13px] font-medium text-slate-300">{row[0]}</td>
-                    {row.slice(1).map((cell, i) => (
-                      <td key={i} className="p-3 text-center">{renderCell(cell)}</td>
-                    ))}
-                  </tr>
-                )
-              )}
-            </tbody>
-          </table>
+              </ul>
+            </div>
+          ))}
+        </div>
+        <div className="mt-10 text-center">
+          <Link href="/register" className="btn-primary btn-lg">
+            Create a free account <ArrowRight className="h-4 w-4" aria-hidden />
+          </Link>
+          <p className="mt-3 text-xs text-slate-500">No card required, because there is nothing to charge it for.</p>
         </div>
       </div>
 
-      {/* Compliance line */}
-      <p className="mx-auto mt-10 max-w-3xl text-center text-xs leading-relaxed text-slate-500 pretty">
+      {/* Historical payers. Stated here because this is the page they will look
+          at first when they wonder what happened to the plan they bought. */}
+      <div className="mx-auto mt-16 max-w-3xl rounded-2xl border border-ink-700/70 bg-ink-800/40 p-7">
+        <h2 className="text-base font-semibold text-white">If you paid for a consumer plan before</h2>
+        <p className="mt-3 text-sm leading-relaxed text-slate-300">
+          Nothing was taken away and nothing was deleted. Your billing history and your past plan are preserved on your
+          account, and any letter credits from a past purchase are preserved on your account as well. They are held as a
+          record rather than spent, because the letters they used to pay for are no longer charged for. Your payment
+          settings, receipts, and cancellation all still open in the Stripe billing portal from your{" "}
+          <Link href="/billing" className="font-medium text-brand-300 underline underline-offset-2 hover:text-brand-200">
+            billing page
+          </Link>
+          .
+        </p>
+      </div>
+
+      {/* The business direction, stated as what it is: a different product, not
+          a consumer upgrade path. No name, no price, no waitlist promise. */}
+      <div className="mx-auto mt-6 max-w-3xl rounded-2xl border border-ink-700/70 bg-ink-800/40 p-7">
+        <h2 className="text-base font-semibold text-white">Working with clients rather than your own file?</h2>
+        <p className="mt-3 text-sm leading-relaxed text-slate-300">
+          A separate product for agencies and businesses exists and is used by existing operators. It is not a consumer
+          plan and it is not something a consumer account upgrades into — different product, different users. New
+          signups for it are paused, so there is nothing to sign up for here and no price to quote.
+        </p>
+      </div>
+
+      {/* Compliance line — unchanged in substance from the previous page. */}
+      <p className="mx-auto mt-14 max-w-3xl text-center text-xs leading-relaxed text-slate-500 pretty">
         CreditVector is educational software, not a credit-repair organization, and does not provide legal advice.
-        Kai provides educational guidance grounded in the Fair Credit Reporting Act; no deletion, correction, or score
-        improvement is guaranteed. You review and mail your own letters and stay in control.
+        Guidance here is grounded in the Fair Credit Reporting Act; no deletion, correction, or score improvement is
+        guaranteed. You review and mail your own letters and stay in control.
       </p>
 
-      {/* FAQ */}
       <div className="mx-auto mt-16 max-w-4xl">
         <h2 className="h-display mb-10 text-center text-2xl text-white md:text-3xl">Common questions</h2>
         <FaqList items={FAQ} />
       </div>
     </>
-  );
-}
-
-function renderCell(cell: string) {
-  if (cell === "y") return <Check className="mx-auto h-4 w-4 text-brand-400" strokeWidth={3} aria-label="available now" />;
-  if (cell === "s") return <Clock className="mx-auto h-4 w-4 text-gold-400" aria-label="coming soon" />;
-  if (cell === "n") return <X className="mx-auto h-4 w-4 text-slate-600" aria-label="not included" />;
-  if (cell === "-") return <span className="text-slate-600" aria-label="not applicable">—</span>;
-  return <span className="text-[13px] font-medium text-slate-200">{cell}</span>;
-}
-
-function TierCard({ t, interval, busy, onCheckout, signedIn }: {
-  t: Tier; interval: "month" | "year"; busy: string | null;
-  onCheckout: (p: Record<string, unknown>, next: string, key: string) => void; signedIn: boolean;
-}) {
-  const custom = t.monthly === null;
-  const price = interval === "year" ? t.yearly : t.monthly;
-  const soon = t.status === "soon";
-  return (
-    <div className={`relative flex flex-col rounded-2xl border p-7 ${t.cardClass} ${soon ? "opacity-95" : ""}`}>
-      {t.popular && <span className="absolute -top-3 left-7 rounded-full bg-brand-500 px-3 py-0.5 text-xs font-bold text-brand-ink">Most popular</span>}
-      {soon && <span className="absolute -top-3 right-7 inline-flex items-center gap-1 rounded-full bg-gold-500/20 px-3 py-0.5 text-xs font-bold text-gold-300"><Clock className="h-3 w-3" aria-hidden /> Coming soon</span>}
-
-      {/* Kai tier + title/price */}
-      <div className="min-h-[150px]">
-        <span className="inline-flex items-center gap-1 rounded bg-brand-500/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-brand-300"><Sparkles className="h-2.5 w-2.5" aria-hidden /> {t.kai}</span>
-        <h3 className="mt-2 text-xl font-semibold text-white">{t.name}</h3>
-        <p className="mt-1 text-[13px] text-slate-400">{t.blurb}</p>
-        <div className="mt-3 flex items-baseline gap-1">
-          {custom ? <span className="h-display text-3xl text-white">Custom</span> : (
-            <>
-              <span className="h-display text-4xl text-white tabular-nums">${interval === "year" ? (price as number).toLocaleString() : price}</span>
-              {(price as number) > 0 && <span className="text-sm text-slate-400">/{interval === "year" ? "yr" : "mo"}</span>}
-            </>
-          )}
-        </div>
-        <div className="mt-1 h-4 text-[11px] text-slate-500">
-          {custom ? "Tailored to your organization" : (price as number) === 0 ? "Forever free" : interval === "year" ? `≈ $${Math.round((price as number) / 12)}/mo, billed annually` : "Billed monthly"}
-        </div>
-      </div>
-
-      <p className="mt-3 text-[12px] italic leading-snug text-slate-400">{t.kaiLine}</p>
-
-      <ul className="mt-5 flex-1 space-y-2.5 text-sm">
-        {t.inherits && <li className="text-[13px] font-semibold text-slate-300">{t.inherits}</li>}
-        {t.features.map((f) => (
-          <li key={f} className="flex items-start gap-2.5">
-            {soon ? <Clock className={`mt-0.5 h-4 w-4 shrink-0 text-gold-400/80`} aria-hidden /> : <Check className={`mt-0.5 h-4 w-4 shrink-0 ${t.accent}`} strokeWidth={2.5} aria-hidden />}
-            <span className="text-slate-300">{f}</span>
-          </li>
-        ))}
-      </ul>
-
-      {/* CTA — live tiers only expose checkout; future tiers never can */}
-      <div className="mt-7">
-        {t.status === "live" && t.freeRegister && (
-          <Link href={signedIn ? "/dashboard" : "/register"} className={`${t.buttonClass} w-full`}>{signedIn ? "Go to dashboard" : "Start free"}</Link>
-        )}
-        {t.status === "live" && t.plan && (
-          <button onClick={() => onCheckout({ plan: t.plan, interval }, t.plan === "premium" ? "/pricing" : "/agency", t.id)} disabled={busy !== null} className={`${t.buttonClass} w-full`}>
-            {busy === t.id ? (<><Loader2 className="h-4 w-4 animate-spin" /> Redirecting…</>) : `Get ${t.name}`}
-          </button>
-        )}
-        {t.status === "soon" && (
-          // Coming-soon tiers never expose a Buy button. Honest CTA: start on the free
-          // tier today (real waitlist capture is a Phase 2 task — no unbacked promise).
-          <Link href="/register" className="btn-ghost w-full">Start free <ArrowRight className="h-4 w-4" aria-hidden /></Link>
-        )}
-        {t.status === "contact" && (
-          <Link href="/support" className="btn-ghost w-full">Talk to our team <ArrowRight className="h-4 w-4" aria-hidden /></Link>
-        )}
-      </div>
-    </div>
   );
 }

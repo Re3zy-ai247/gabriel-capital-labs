@@ -138,18 +138,30 @@ export default async function CommunityPage({
   } catch (e) {
     console.error("operator network: account resolve failed", e);
   }
+  // RC1-S6b. This screen used to read "The Operator Network is for members /
+  // Operator Network access comes with an active paid CreditVector membership —
+  // every paid plan includes it" with a "See plans →" button into /pricing. Every
+  // clause of that was false after S6a: canAccessCommunity() no longer asks
+  // about payment at all (it reads a feature switch), so no amount of paying
+  // opens this, and there is no plan to see. What a consumer needs here is the
+  // real reason and the reassurance that their own words are safe.
   if (!canAccessCommunity(account)) {
     return (
       <AppShell title="/ Operator Network">
         <div className="card mx-auto mt-6 max-w-lg p-8 text-center">
           <Network className="mx-auto mb-3 h-9 w-9 text-brand-400" aria-hidden="true" />
-          <h2 className="mb-2 text-lg font-semibold">The Operator Network is for members</h2>
+          <h2 className="mb-2 text-lg font-semibold">The Operator Network is closed right now</h2>
           <p className="mb-5 text-sm text-slate-400">
-            Operator Network access comes with an active paid CreditVector membership — every paid plan includes it.
-            Compare notes with members working the same process, and bring <strong>Kai</strong> into any brief for
-            answers grounded in statutes and process — never promises.
+            It is switched off for everyone — this is not about your account, and there is nothing to buy that would
+            open it. If you posted here before, your posts are still yours and still under your control: you can
+            delete anything you wrote, whether or not the network is open.
           </p>
-          <Link href="/pricing" className="btn-primary inline-flex">See plans <ArrowRight className="h-4 w-4" aria-hidden="true" /></Link>
+          <p className="text-sm text-slate-400">
+            Everything else in CreditVector is unaffected and open to you.{" "}
+            <Link href="/dashboard" className="inline-flex items-center gap-1 font-semibold text-brand-300 underline underline-offset-2">
+              Back to Mission Control <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+            </Link>
+          </p>
         </div>
       </AppShell>
     );

@@ -36,7 +36,6 @@ const NAV = [
 // human navigates. The only two references in the whole codebase were inside the
 // Credit Builder engine. It belongs beside Support in the account section.
 const ACCOUNT_NAV = [
-  { href: "/agency", label: "Agency", icon: Building2 },
   { href: "/settings", label: "Settings", icon: Settings },
   { href: "/billing", label: "Billing", icon: CreditCard },
   { href: "/help", label: "Help", icon: HelpCircle },
@@ -45,6 +44,64 @@ const ACCOUNT_NAV = [
 
 // Admin link is prepended to the account section only for ADMIN users.
 const ADMIN_LINK = { href: "/admin", label: "Admin", icon: ShieldCheck };
+
+// RC1-S6b (A1-16). "Agency" sat in ACCOUNT_NAV for EVERY account with no gate —
+// the one unconditional entry in a nav whose Admin and Operator Network links
+// are both gated — and it led a consumer to a B2B page that pitched a $399/mo
+// plan. The destination is a legitimate business surface, so the link is not
+// deleted: it is gated to accounts that actually have an agency workspace, and
+// relabelled so it names a place rather than a plan to buy into.
+const AGENCY_LINK = { href: "/agency", label: "Agency Workspace", icon: Building2 };
+
+// Whether THIS account runs an agency workspace. There is no isAgency claim on
+// the session (types/next-auth.d.ts carries only uid + sessionVersion), so the
+// server has to be asked. Module-level cache + TTL, the same shape the admin and
+// community probes already use, so the shell makes one call per page load at
+// most and all three probes behave identically.
+const AGENCY_TTL_MS = 60_000;
+let agencyCached: boolean | null = null;
+let agencyFetchedAt = 0;
+let agencyInflight: Promise<boolean | null> | null = null;
+
+function loadAgency(): Promise<boolean | null> {
+  if (agencyCached !== null && Date.now() - agencyFetchedAt < AGENCY_TTL_MS) return Promise.resolve(agencyCached);
+  if (!agencyInflight) {
+    agencyInflight = fetch("/api/billing/status")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { isAgency?: boolean } | null) => {
+        if (!d) return null;
+        agencyCached = Boolean(d.isAgency);
+        agencyFetchedAt = Date.now();
+        return agencyCached;
+      })
+      .catch(() => null)
+      .finally(() => {
+        agencyInflight = null;
+      });
+  }
+  return agencyInflight;
+}
+
+// Fails CLOSED: null (unknown, unauthenticated, or the probe failed) hides the
+// link. A consumer must never be shown a business surface because a fetch went
+// wrong; an operator seeing it a beat late is the recoverable direction.
+function useIsAgencyAccount(): boolean {
+  const [isAgency, setIsAgency] = useState<boolean>(agencyCached ?? false);
+  useEffect(() => {
+    let cancelled = false;
+    loadAgency().then((d) => {
+      if (!cancelled && d !== null) setIsAgency(d);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  return isAgency;
+}
+
+function accountNavFor(isAdmin: boolean | undefined, isAgency: boolean) {
+  return [...(isAdmin ? [ADMIN_LINK] : []), ...(isAgency ? [AGENCY_LINK] : []), ...ACCOUNT_NAV];
+}
 
 // Operator Network link appears in the main nav for every paid member (+ owner);
 // visibility follows the server's /api/community/access probe (canAccessCommunity).
@@ -103,8 +160,9 @@ export function Sidebar() {
   const ctx = useAdminContext();
   const community = useCommunityAccess();
   const onboarding = useOnboardingStatus();
+  const isAgencyAccount = useIsAgencyAccount();
   const mainNav = withOnboarding(community?.canAccess ? [...NAV, COMMUNITY_LINK] : NAV, onboarding?.incomplete);
-  const accountNav = ctx?.isAdmin ? [ADMIN_LINK, ...ACCOUNT_NAV] : ACCOUNT_NAV;
+  const accountNav = accountNavFor(ctx?.isAdmin, isAgencyAccount);
   return (
     <aside className="hidden w-60 shrink-0 flex-col border-r border-ink-700/70 bg-ink-900/60 p-4 md:flex">
       <div className="mb-6 px-2">
@@ -170,8 +228,9 @@ export function MobileNav() {
   const ctx = useAdminContext();
   const community = useCommunityAccess();
   const onboarding = useOnboardingStatus();
+  const isAgencyAccount = useIsAgencyAccount();
   const mainNav = withOnboarding(community?.canAccess ? [...NAV, COMMUNITY_LINK] : NAV, onboarding?.incomplete);
-  const accountNav = ctx?.isAdmin ? [ADMIN_LINK, ...ACCOUNT_NAV] : ACCOUNT_NAV;
+  const accountNav = accountNavFor(ctx?.isAdmin, isAgencyAccount);
   const primary = MOBILE_PRIMARY.map((href) => NAV.find((n) => n.href === href)!).filter(Boolean);
   const isActive = (href: string) => path === href || path?.startsWith(href + "/");
 

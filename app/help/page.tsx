@@ -36,12 +36,16 @@ const guides = [
       { title: 'Checking Dispute Status', description: 'Track each dispute\'s reinvestigation status across bureaus' },
     ],
   },
+  // RC1-S6b: this card described a $99/month subscription with upgrade and
+  // downgrade paths. There is no consumer subscription to describe. What is
+  // left is what a consumer actually has: an account, and — for anyone who paid
+  // before — a preserved billing record they can still act on.
   {
-    title: 'Billing & Account',
+    title: 'Your Account',
     icon: '💳',
     items: [
-      { title: 'Professional Subscription', description: 'What\'s included in the $99/month plan' },
-      { title: 'Managing Your Subscription', description: 'Upgrade, downgrade, or cancel anytime' },
+      { title: 'What CreditVector Costs', description: 'Free to use today — no plan to choose, no card required' },
+      { title: 'A Plan You Paid For Before', description: 'Your billing history and past purchases are preserved on your billing page' },
       { title: 'Your Account Settings', description: 'Update profile, email, and preferences' },
     ],
   },
@@ -55,9 +59,10 @@ const guides = [
 // sat inside the authenticated Credit Builder engine. It is now linked from the
 // sidebar (components/Sidebar.tsx) and from /login.
 //
-// NOT changed here, and deliberately so — this page's monetization copy ("$99/
-// month plan", "free tier (3 letters/month)") and the tier-gated support SLA
-// belong to the copy slice (S6b), not to session recovery.
+// The monetization copy S2 deliberately left alone ("$99/month plan", "free
+// tier (3 letters/month)") and the tier-gated support SLA were swept by RC1-S6b:
+// the Billing card became an Account card, and the priority-support promise is
+// gone (see the support paragraph below).
 export default function HelpPage() {
   return (
     <div className="flex min-h-screen flex-col bg-slate-950 text-white">
@@ -113,7 +118,15 @@ export default function HelpPage() {
         <div className="mt-16 bg-gradient-to-r from-brand-900/20 to-ocean-700/20 border border-slate-700 rounded-lg p-12 text-center">
           <h2 className="text-3xl font-bold mb-4">Didn&apos;t find your answer?</h2>
           <p className="text-slate-400 mb-6 max-w-2xl mx-auto">
-            Open a ticket and the team picks it up from there. Professional and Agency members get priority email support — we aim to reply within one business day.
+            {/* RC1-S6b (S-32). This sentence promised "Professional and Agency
+                members get priority email support — we aim to reply within one
+                business day." Three things were wrong with it at once: the
+                plans it named are not sold to consumers, the pricing page's own
+                comparison marked priority support as NOT included for those
+                tiers, and lib/support.ts has no plan branch at all — every
+                signed-in user has always gone into the same queue. */}
+            Open a ticket and the team picks it up from there. Every ticket goes into the same queue — there is no
+            faster lane to buy, and no plan changes where yours lands.
           </p>
           <Link href="/support" className="inline-block bg-brand-500 hover:bg-brand-600 text-white keep-white px-8 py-3 rounded-lg font-semibold transition">
             Open a ticket
@@ -137,9 +150,13 @@ export default function HelpPage() {
           <div className="grid md:grid-cols-3 gap-6">
             <div className="bg-slate-900 border border-slate-700 rounded-lg p-6">
               <div className="text-2xl mb-3">💡</div>
-              <h3 className="font-bold mb-2">Start with Free Tier</h3>
+              {/* RC1-S6b: "Try the free tier (3 letters/month) to get familiar
+                  with the system before upgrading." — a quota that does not
+                  exist, and an upgrade there is nothing to upgrade to. */}
+              <h3 className="font-bold mb-2">Start with One Report</h3>
               <p className="text-slate-400 text-sm">
-                Try the free tier (3 letters/month) to get familiar with the system before upgrading.
+                Upload a single bureau report first and get familiar with the system. Add the other two whenever you
+                like — cross-bureau comparison gets stronger with each one.
               </p>
             </div>
 

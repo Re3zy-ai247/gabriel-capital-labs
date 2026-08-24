@@ -12,7 +12,11 @@ const LINKS = [
   { href: "/#platform", label: "Platform" },
   { href: "/#agencies", label: "For agencies" },
   { href: "/#community", label: "Operator Network" },
-  { href: "/pricing", label: "Pricing" },
+  // RC1-S6b: the route is unchanged (sitemap, walkthrough guard and inbound
+  // links all point at /pricing), but "Pricing" promises a price list on a
+  // product that has no consumer price. The label now describes what the page
+  // actually answers.
+  { href: "/pricing", label: "What it costs" },
   { href: "/#faq", label: "FAQ" },
 ];
 
