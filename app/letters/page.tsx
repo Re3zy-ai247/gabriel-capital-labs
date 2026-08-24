@@ -104,6 +104,14 @@ function LettersInner() {
   // edited their draft would lose their words to one click. One confirmation,
   // and only when there is actually an edited draft to lose.
   const [confirmRegen, setConfirmRegen] = useState(false);
+  // RC1-S11 (review AD-R3-2): the letters the SERVER said it would not replace,
+  // taken from its own 409. The client used to re-derive that from a local
+  // `.find()` with no bureau term, so with an approved letter on one bureau and
+  // a newer draft on another it re-sent "no, don't replace" on every press and
+  // got the identical refusal back — a prompt asking the consumer to confirm
+  // something the UI could never confirm. The server names the rows; this holds
+  // them, and the next press answers about exactly those.
+  const [blockedLetterIds, setBlockedLetterIds] = useState<string[]>([]);
   const deepApplied = useRef(false);
 
   const [loaded, setLoaded] = useState(false);
@@ -132,6 +140,7 @@ function LettersInner() {
   function applyItem(id: string, overrideStrategy?: string) {
     setTradelineId(id);
     setConfirmRegen(false);
+    setBlockedLetterIds([]);
     const tl = tradelines.find((t) => t.id === id);
     if (tl) {
       setBureausSel(tl.bureaus.length ? tl.bureaus : ["EQUIFAX"]);
@@ -183,6 +192,10 @@ function LettersInner() {
   async function generate() {
     if (!tradelineId) { setError("Select an item to dispute."); return; }
     if (isBureauStrategy && bureausSel.length === 0) { setError("Choose at least one bureau to send to."); return; }
+    // Two ways to reach the confirmation: the client can see an approved letter
+    // itself (fast path, no round trip), or the server refuses and names what it
+    // blocked. Either way the SECOND press is the consumer's instruction, and
+    // the server's list is the authority on what is being replaced.
     if (editedDraft && !confirmRegen) {
       setConfirmRegen(true);
       setError(
@@ -196,8 +209,10 @@ function LettersInner() {
     // instruction, and the server needs it IN the request — without it the API
     // refuses (409 approvedLetterExists) rather than quietly creating a second
     // live letter for the same bureau.
-    const replaceApproved = Boolean(editedDraft && editedDraft.status === APPROVED_STATUS);
+    const replaceApproved =
+      confirmRegen && (blockedLetterIds.length > 0 || editedDraft?.status === APPROVED_STATUS);
     setConfirmRegen(false);
+    setBlockedLetterIds([]);
     setBusy(true); setError(null); setLetter(null); setWarning(null); setAiRefined(false); setGenCount(0);
     setEditing(false); setApproved(false); // a recomposed letter is unapproved again
     try {
@@ -217,9 +232,12 @@ function LettersInner() {
       // every 402 from this route, so the only thing this branch could still do
       // was resurrect a purchase prompt from an unexpected payload.
       if (res.status === 409 && j.approvedLetterExists) {
-        // RC1-S11 (journey NEW-2): the server has the final say. It refuses
-        // until the consumer says to replace the letter they approved, so arm
-        // the confirmation and show them exactly what it said.
+        // RC1-S11 (journey NEW-2 / review AD-R3-2): the server has the final
+        // say. It refuses until the consumer says to replace the letter they
+        // approved, so arm the confirmation AND keep the ids it named — the next
+        // press answers about those rows, not about whichever letter a local
+        // lookup happens to surface.
+        setBlockedLetterIds(Array.isArray(j.blockedLetterIds) ? j.blockedLetterIds : []);
         setConfirmRegen(true);
         setError(j.error);
         return;
@@ -347,7 +365,7 @@ function LettersInner() {
             )}
 
             <label htmlFor="letter-strategy" className="label">Letter Type / Strategy</label>
-            <select id="letter-strategy" className="input mb-1" value={strategyId} onChange={(e) => { setStrategyId(e.target.value); setConfirmRegen(false); }}>
+            <select id="letter-strategy" className="input mb-1" value={strategyId} onChange={(e) => { setStrategyId(e.target.value); setConfirmRegen(false); setBlockedLetterIds([]); }}>
               {strategies.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.label}{selectedTradeline?.recommendedStrategy === s.id ? "  ★ recommended" : ""}
@@ -450,7 +468,7 @@ function LettersInner() {
                       (sl) => sl.tradelineId === tradelineId && sl.strategy === strategyId && !sl.mailedAt && sl.round === 1
                     );
                     const n = isBureauStrategy && bureausSel.length > 1 ? bureausSel.length : 1;
-                    if (confirmRegen && editedDraft) return "Yes — replace my edited letter";
+                    if (confirmRegen && (blockedLetterIds.length > 0 || editedDraft)) return "Yes — replace my edited letter";
                     if (editedDraft?.status === APPROVED_STATUS) {
                       return n > 1 ? `Regenerate ${n} Letters (replaces the ones you approved)` : "Regenerate Letter (replaces the one you approved)";
                     }
