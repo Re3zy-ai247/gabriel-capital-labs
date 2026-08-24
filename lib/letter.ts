@@ -86,7 +86,13 @@ export const ASSERTION_CHOICES: readonly AssertionChoice[] = [
     prompt: "This account is not mine",
     help: "You do not recognize it, and you did not open or authorize it.",
     requiresNote: false,
-    appliesTo: "any",
+    // S11 AD-8: "account", not "any". M-3 stopped balance/status/date claims
+    // reaching an INQUIRY, but this one slipped through and composed "I do not
+    // recognize this account. I did not open it and I did not authorize it." —
+    // nobody OPENS an inquiry; it is a record that someone looked at the file.
+    // The inquiry vocabulary already carries the claim that fits
+    // (`inquiry_not_authorized`), plus `other` for anything else.
+    appliesTo: "account",
   },
   {
     type: "inquiry_not_authorized",
@@ -871,6 +877,66 @@ export const LETTER_TRANSITIONS: Record<LetterStatus, LetterStatus[]> = {
 export function canTransitionLetter(from: LetterStatus, to: LetterStatus): boolean {
   return (LETTER_TRANSITIONS[from] ?? []).includes(to);
 }
+
+// ── S11 AD-2 · A WITHDRAWN CONFIRMATION MUST REACH THE LETTER IT AUTHORIZED ──
+//
+// P0-3 ("no confirmed fact, no letter") was enforced at COMPOSITION time only.
+// Nothing re-checked it for a letter that already existed, and two ordinary
+// paths revoke the confirmation while the letter stays live and mailable:
+//
+//   (a) WITHDRAWAL. DELETE /api/tradelines/[id]/assertion flips status to
+//       WITHDRAWN. The panel says so — "Withdrawing it stops it being used in
+//       anything drafted from here on" — and POST /api/letters/generate does
+//       refuse to draft it again. But the letter already on file still offered
+//       Approve → Print → Mark mailed, still reading, in the consumer's first
+//       person, "I do not recognize this account. I did not open it…". The
+//       consumer could mail a statement they had formally retracted, from a
+//       product whose own route would now refuse to write it.
+//   (b) RE-ANALYSIS. lib/analyze.ts re-links Letter rows to the rebuilt
+//       tradelines; ConsumerAssertion rows are deliberately NOT re-linked (H-2:
+//       they are history, and a new report is a new set of facts to confirm).
+//       So the letter points at a tradeline carrying zero assertions.
+//
+// Both collapse to one question, asked of the CURRENT state: does an ACTIVE
+// confirmation still stand behind this letter?
+//
+// MAILED IS NEVER RE-JUDGED. A mailed letter is a RECORD of what was sent, and
+// the H-2 round established that its authorizing evidence is preserved, never
+// rewritten. HISTORICAL is therefore a terminal reading: withdrawing a
+// confirmation afterwards changes nothing about the record, and this function
+// must never be used to alter, hide or re-score a mailed letter.
+export type LetterAuthorizationState =
+  | "AUTHORIZED"   // an ACTIVE confirmation still stands behind this draft
+  | "REVOKED"      // unmailed, and nothing the consumer still stands behind
+  | "HISTORICAL";  // already mailed — a record, not a pending action
+
+export interface LetterAuthorizationInput {
+  mailedAt: Date | string | null;
+  tradelineId: string | null;
+  /** ACTIVE assertions this user holds on that tradeline, counted NOW. */
+  activeAssertionCount: number;
+}
+
+export function letterAuthorization(l: LetterAuthorizationInput): LetterAuthorizationState {
+  if (l.mailedAt != null) return "HISTORICAL";
+  // Fails closed: an unmailed letter whose tradeline is gone (report deleted)
+  // has nothing left to check the claim against.
+  if (!l.tradelineId) return "REVOKED";
+  return l.activeAssertionCount > 0 ? "AUTHORIZED" : "REVOKED";
+}
+
+/** True only where an action is still pending AND the consumer no longer stands
+ *  behind it. Never true of a mailed letter. */
+export function letterAuthorizationRevoked(l: LetterAuthorizationInput): boolean {
+  return letterAuthorization(l) === "REVOKED";
+}
+
+// One message, used by every surface that has to say this, so the refusal a
+// consumer meets on Approve reads the same as the one on the print page.
+export const LETTER_AUTHORIZATION_REVOKED_MESSAGE =
+  "The confirmation this letter was drafted from has been withdrawn, or the report it was based on has been replaced. " +
+  "This letter states facts in your name, so it can\u2019t be approved, printed or mailed until you confirm those facts again " +
+  "on your Tradelines page. Nothing has been deleted \u2014 the draft is still here.";
 
 // ── RC1-S5 (A3 L-01 / P1-31): the consumer's own edits ──────────────────────
 // A dispute letter is a signed statement, so the consumer gets to change it —
