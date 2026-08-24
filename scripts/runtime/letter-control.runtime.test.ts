@@ -169,6 +169,24 @@ class FakeDb {
           (w.status === undefined || a.status === w.status)
       ).length;
     },
+    // Used by app/api/letters/route.ts (S4's AD-2 block, same retroactive grant).
+    // That route is not loaded by this guard today; the method exists so the
+    // harness covers every model call S4 added to the three files it edited,
+    // instead of failing the next time one of them is executed here.
+    groupBy: async (args: { by: string[]; where: { userId: string; status: string; tradelineId?: { in: string[] } } }) => {
+      this.calls.push("consumerAssertion.groupBy");
+      const w = args.where ?? ({} as { userId: string; status: string; tradelineId?: { in: string[] } });
+      if (!w.userId) throw new Error("assertion groupBy must be scoped to the caller");
+      if (args.by?.join(",") !== "tradelineId") throw new Error(`unrecognized groupBy: ${args.by?.join(",")}`);
+      const counts = new Map<string | null, number>();
+      for (const a of this.assertions) {
+        if (a.userId !== w.userId) continue;
+        if (w.status !== undefined && a.status !== w.status) continue;
+        if (w.tradelineId?.in && !w.tradelineId.in.includes(a.tradelineId ?? "")) continue;
+        counts.set(a.tradelineId, (counts.get(a.tradelineId) ?? 0) + 1);
+      }
+      return Array.from(counts, ([tradelineId, n]) => ({ tradelineId, _count: { _all: n } }));
+    },
     findMany: async (args: { where: { userId: string; tradelineId: string; status: string } }) => {
       this.calls.push("consumerAssertion.findMany");
       const w = args.where ?? ({} as { userId: string; tradelineId: string; status: string });
