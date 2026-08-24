@@ -324,11 +324,25 @@ console.log("\n— the enforcement boundaries (source-level)");
   );
   ok("…and refuses with 400 when there are none", /assertions\.length === 0[\s\S]{0,900}status: 400/.test(GEN));
   ok("…with a machine-readable needsAssertion flag for the UI", /needsAssertion: true/.test(GEN));
-  const refusalIdx = GEN.indexOf("assertions.length === 0");
+  // `prisma.letter.create(` lives in the generateOne HELPER, defined above the
+  // handler, so a whole-file index would compare against a position that
+  // precedes the handler entirely. Compare inside the handler, against the call
+  // sites that actually commit a letter.
+  const GEN_POST = GEN.slice(GEN.indexOf("export async function POST("));
+  const commitIdx = Math.min(
+    ...["await updateOne(", "await generateOne("].map((t) => GEN_POST.indexOf(t)).filter((i) => i > -1)
+  );
+  const refusalIdx = GEN_POST.indexOf("assertions.length === 0");
+  // RC1-S6a: there is no charge left to run ahead of (Founder D-3 froze
+  // purchased credits and the quota is gone), so the pin is re-expressed rather
+  // than deleted. First the ABSENCE, so the removal is asserted and not merely
+  // implied; then the surviving ordering law — refuse before you commit a row.
+  ok("nothing is charged at all — the spend path is not called",
+    GEN.indexOf("await spendLetterCredits(") === -1);
   ok(
-    "the refusal runs BEFORE the entitlement gate and any credit spend (a refusal costs nothing)",
+    "the refusal runs BEFORE the entitlement read and BEFORE any letter row is written",
     // Compared against the CALL SITES, not the import line at the top of the file.
-    refusalIdx > 0 && refusalIdx < GEN.indexOf("await getEntitlement(user)") && refusalIdx < GEN.indexOf("await spendLetterCredits(")
+    refusalIdx > 0 && refusalIdx < GEN_POST.indexOf("await getEntitlement(user)") && refusalIdx < commitIdx
   );
   ok("no upsell, upgrade or price appears in the refusal path", !/upgrade: true[\s\S]{0,200}needsAssertion/.test(GEN));
 
@@ -513,7 +527,15 @@ console.log("\n— the per-target bureau gate (H-1, source-level)");
   const GEN = read("app/api/letters/generate/route.ts");
   ok("the route narrows per target with the SAME filter the composer uses", /assertionsForContext\(assertions, \{ strategy: ctxProbe\.strategy, targetBureau: b \}\)/.test(GEN));
   ok("targets with no applicable confirmation are dropped before anything is planned", /targets = validTargets;/.test(GEN) && GEN.indexOf("targets = validTargets;") < GEN.indexOf("planLetterRegeneration(targets"));
-  ok("…and before the entitlement gate and any spend", GEN.indexOf("validTargets.length === 0") < GEN.indexOf("await getEntitlement(user)") && GEN.indexOf("validTargets.length === 0") < GEN.indexOf("await spendLetterCredits("));
+  ok("nothing is charged for a skipped target either — the spend path is not called",
+    GEN.indexOf("await spendLetterCredits(") === -1);
+  const POST = GEN.slice(GEN.indexOf("export async function POST("));
+  const commit = Math.min(
+    ...["await updateOne(", "await generateOne("].map((t) => POST.indexOf(t)).filter((i) => i > -1)
+  );
+  ok("…and the narrowing happens before the entitlement read and before any letter is composed",
+    POST.indexOf("validTargets.length === 0") < POST.indexOf("await getEntitlement(user)") &&
+    POST.indexOf("validTargets.length === 0") < commit);
   ok("all-targets-unsupported is a 400, not a silent empty success", /if \(validTargets\.length === 0\)[\s\S]{0,1600}status: 400/.test(GEN));
   ok("partial skips are disclosed, not swallowed", /skippedBureaus,/.test(GEN) && /skippedReason/.test(GEN));
   ok("each target composes from ITS OWN applicable set", (GEN.match(/assertionsByTarget\.get\(targetKey\(b\)\)/g) ?? []).length === 2);

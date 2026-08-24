@@ -236,6 +236,8 @@ const USER = {
 let sessionUser: Json | null = USER;
 
 const spend: number[] = [];
+const tracked: { event: string; count: number }[] = [];
+const ledgered = () => tracked.filter((t) => t.event === "dispute_created");
 let aiCalls = 0;
 
 mockModule("lib/prisma.ts", { prisma: db });
@@ -243,7 +245,15 @@ mockModule("lib/session.ts", { currentUserOrDemo: async () => sessionUser });
 mockModule("lib/rateLimit.ts", { enforceRateLimit: async () => null });
 mockModule("lib/kaiEvents.ts", { recordKaiEvent: async () => undefined });
 mockModule("lib/events.ts", {
-  track: async () => undefined,
+  // RC1-S6a: the ledger is now the ONLY accounting. `spend` can no longer move
+  // (Founder D-3 froze purchased credits and the routes dropped the call), so
+  // every "was this letter accounted for?" assertion reads the append-only
+  // dispute_created event instead — and every surviving "nothing was charged"
+  // assertion is paired with it, because `spend.length === 0` alone is now
+  // structurally vacuous and would ship false coverage.
+  track: async (event: string, opts?: { meta?: { count?: unknown } }) => {
+    tracked.push({ event, count: Number(opts?.meta?.count ?? 0) });
+  },
   PRODUCT_EVENTS: { disputeCreated: "dispute_created", failure: "failure" },
 });
 mockModule("lib/docCrypto.ts", { encryptText: (s: string) => `enc:${s}` });
@@ -316,6 +326,7 @@ run("consumer-assertion.runtime", async () => {
   {
     db.reset();
     spend.length = 0;
+    tracked.length = 0;
     sessionUser = USER;
     seedTradeline("t1", "u1");
     const res = await generate.POST(post("http://localhost/api/letters/generate", { tradelineId: "t1", strategyId: "fcra_611" }));
@@ -326,7 +337,8 @@ run("consumer-assertion.runtime", async () => {
     check("the message is not an upsell", !/upgrade|professional|\$|credit/i.test(String(body.error)));
     check("no upgrade flag is set on the refusal", body.upgrade === undefined);
     check("NO letter row was written", db.letters.length === 0);
-    check("NOTHING was charged — no credit spend at all", spend.length === 0);
+    check("NOTHING was charged and nothing was accounted for",
+      spend.length === 0 && !tracked.some((t) => t.event === "dispute_created"));
     check("no AI call was made", aiCalls === 0);
     check("the entitlement gate was never even reached (no letter lookup)", !db.calls.includes("letter.findMany"));
   }
@@ -336,6 +348,7 @@ run("consumer-assertion.runtime", async () => {
   {
     db.reset();
     spend.length = 0;
+    tracked.length = 0;
     seedTradeline("t1", "u1");
     db.assertions.push({
       id: "ca_w",
@@ -385,6 +398,7 @@ run("consumer-assertion.runtime", async () => {
   {
     db.reset();
     spend.length = 0;
+    tracked.length = 0;
     seedTradeline("t1", "u1");
     const created = await assertionRoute.POST(
       post("http://localhost/api/tradelines/t1/assertion", {
@@ -413,7 +427,7 @@ run("consumer-assertion.runtime", async () => {
     check("exactly one numbered concern (nothing padded in)", (letterBody.match(/^\d+\. /gm) ?? []).length === 1);
     check("no complaint intent is asserted", !/I am prepared to submit this record/.test(letterBody));
     check("the stored row is encrypted, not plaintext", db.letters[0].body.startsWith("enc:"));
-    check("one letter was accounted for", spend.length === 1 && spend[0] === 1);
+    check("one letter was accounted for", ledgered().length === 1 && ledgered()[0].count === 1);
   }
 
   // ── 5. withdrawal ─────────────────────────────────────────────────────────
@@ -532,6 +546,7 @@ run("consumer-assertion.runtime", async () => {
   {
     db.reset();
     spend.length = 0;
+    tracked.length = 0;
     seedTradeline("t1", "u1");
     await assertionRoute.POST(
       post("http://localhost/api/tradelines/t1/assertion", { assertionType: "inaccurate_balance", bureauScope: "EXPERIAN" }),
@@ -550,7 +565,8 @@ run("consumer-assertion.runtime", async () => {
     check("…it says nothing was used up", /Nothing was used up/i.test(String(singleBody.error)));
     check("…and reports which targets were unsupported", Array.isArray(singleBody.skippedBureaus) && (singleBody.skippedBureaus as string[]).includes("EQUIFAX"));
     check("NO letter row was written", db.letters.length === 0);
-    check("NOTHING was charged", spend.length === 0);
+    check("NOTHING was charged and nothing was accounted for",
+      spend.length === 0 && !tracked.some((t) => t.event === "dispute_created"));
     check("the entitlement gate was never reached", !db.calls.includes("letter.findMany"));
 
     // All three bureaus: only Experian is supported. The other two are skipped,
@@ -568,7 +584,7 @@ run("consumer-assertion.runtime", async () => {
     check("…and it is the Experian one", db.letters[0].targetBureau === "EXPERIAN");
     check("…the two unsupported targets are disclosed", ((multiBody.skippedBureaus as string[]) ?? []).sort().join() === "EQUIFAX,TRANSUNION");
     check("…with a plain-language reason", /No confirmed fact of yours applies to/.test(String(multiBody.skippedReason)));
-    check("…and only ONE letter was charged", spend.length === 1 && spend[0] === 1);
+    check("…and only ONE letter was accounted for", ledgered().length === 1 && ledgered()[0].count === 1);
     const written = String((multiBody.letters as Json[])?.[0]?.body ?? "");
     check("the letter that WAS written carries the confirmed claim", /I state that this balance is not accurate/.test(written));
     check("…and no letter anywhere refers to disputed items it does not list", !db.letters.some((l) => !/SUMMARY OF FACTUAL CONCERNS/.test(l.body) && /each disputed item/.test(l.body)));
@@ -577,6 +593,7 @@ run("consumer-assertion.runtime", async () => {
     // Unscoped confirmations still reach every bureau (control).
     db.reset();
     spend.length = 0;
+    tracked.length = 0;
     seedTradeline("t2", "u1");
     await assertionRoute.POST(post("http://localhost/api/tradelines/t2/assertion", { assertionType: "not_mine" }), { params: { id: "t2" } });
     const all3 = await generate.POST(
@@ -588,7 +605,7 @@ run("consumer-assertion.runtime", async () => {
     );
     check("an UNSCOPED confirmation still generates for all three (control)", all3.status === 200 && db.letters.length === 3);
     check("…and every one of them states the confirmed claim", db.letters.every((l) => /I do not recognize this account/.test(l.body)));
-    check("…charged once per letter written", spend.length === 1 && spend[0] === 3);
+    check("…accounted for once, for exactly the letters written", ledgered().length === 1 && ledgered()[0].count === 3);
   }
 
   // ── 9. the record survives re-analysis (REMEDIATION H-2) ──────────────────
@@ -596,6 +613,7 @@ run("consumer-assertion.runtime", async () => {
   {
     db.reset();
     spend.length = 0;
+    tracked.length = 0;
     seedTradeline("t_old", "u1");
     await assertionRoute.POST(
       post("http://localhost/api/tradelines/t_old/assertion", { assertionType: "not_mine", consumerNote: "Never had an account here." }),
@@ -619,7 +637,7 @@ run("consumer-assertion.runtime", async () => {
     const after = await generate.POST(post("http://localhost/api/letters/generate", { tradelineId: "t_new", strategyId: "fcra_611", targetBureaus: ["EQUIFAX"] }));
     check("generation on the NEW tradeline refuses until it is re-confirmed", after.status === 400);
     check("…and wrote nothing", db.letters.length === 1);
-    check("…and charged nothing for the refusal", spend.length === 1);
+    check("…and the refusal itself added nothing to the ledger", ledgered().length === 1);
 
     await assertionRoute.POST(post("http://localhost/api/tradelines/t_new/assertion", { assertionType: "not_mine" }), { params: { id: "t_new" } });
     const reconfirmed = await generate.POST(post("http://localhost/api/letters/generate", { tradelineId: "t_new", strategyId: "fcra_611", targetBureaus: ["EQUIFAX"] }));

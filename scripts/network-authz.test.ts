@@ -23,7 +23,15 @@ function check(label: string, cond: boolean) {
 const code = (p: string) =>
   readFileSync(join(__dirname, "..", p), "utf8").replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
 
-// Fixtures. Membership uses the canonical predicate: canAccessCommunity = ADMIN || isPremium.
+// Fixtures. Membership uses the canonical predicate: canAccessCommunity, which
+// RC1-S6a changed from "ADMIN || isPremium" to "ADMIN || COMMUNITY_ENABLED".
+//
+// THIS MODULE IS NOT DORMANT. canViewChannel / canAccessAgencyChannel execute in
+// PRODUCTION through lib/community/attachmentAuthz.ts -> app/api/attachments/[id]/route.ts.
+// OPERATOR_NETWORK_ENABLED gates the MESSAGE layer, not this matrix. So the
+// switch genuinely changes live behaviour: members channels close for everyone
+// while it is off. Agency-private tenant isolation is unaffected, because
+// canAccessAgencyChannel never consults isMember — it resolves on ownerAgencyId.
 const anon: NetworkAccount | null = null;
 const free: NetworkAccount = { id: "free-1", plan: "explorer", subscriptionStatus: null, isAgency: false };
 const paying: NetworkAccount = { id: "pay-1", plan: "premium", subscriptionStatus: "active", isAgency: false };
@@ -51,12 +59,22 @@ check("free cannot view members", canViewChannel(free, members) === false);
 check("free CANNOT post public (view-only)", canPostChannel(free, pub) === false);
 check("free cannot post members", canPostChannel(free, members) === false);
 // Paying member
-check("paying views + posts members", canViewChannel(paying, members) && canPostChannel(paying, members));
-check("paying posts public", canPostChannel(paying, pub) === true);
+check("a members channel follows the community switch (absent = off)",
+  canViewChannel(paying, members) === false && canPostChannel(paying, members) === false &&
+  canViewChannel(free, members) === false);
+check("posting anywhere requires the switch on", canPostChannel(paying, pub) === false && canPostChannel(free, pub) === false);
+check("paying buys no advantage over not paying, on any channel",
+  canViewChannel(paying, members) === canViewChannel(free, members) &&
+  canPostChannel(paying, pub) === canPostChannel(free, pub));
 check("paying cannot access an agency-private channel", canViewChannel(paying, privA) === false && canPostChannel(paying, privA) === false);
 check("paying cannot moderate", canModerate(paying, members) === false);
 // Agency A
-check("agencyA views + posts + moderates its OWN private channel", canViewChannel(agencyA, privA) && canPostChannel(agencyA, privA) && canModerate(agencyA, privA));
+// Tenant isolation is decided on ownerAgencyId alone, so it is UNAFFECTED by the
+// switch — view and moderate still resolve for the owning agency. Posting to a
+// channel additionally requires membership, which the switch now governs.
+check("agency-private tenant isolation is UNAFFECTED by the switch — view + moderate still resolve on ownerAgencyId alone",
+  canViewChannel(agencyA, privA) === true && canModerate(agencyA, privA) === true &&
+  canAccessAgencyChannel(agencyA, privA) === true);
 check("agencyA CANNOT view agency B's private channel (tenant isolation)", canViewChannel(agencyA, privB) === false);
 check("agencyA CANNOT post to agency B's channel", canPostChannel(agencyA, privB) === false);
 check("agencyA CANNOT moderate agency B's channel", canModerate(agencyA, privB) === false);

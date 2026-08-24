@@ -41,6 +41,8 @@ const read = (p: string) => readFileSync(join(root, p), "utf8");
 const ent = read("lib/entitlements.ts");
 const generate = read("app/api/letters/generate/route.ts");
 const round2 = read("app/api/letters/[id]/round2/route.ts");
+const identityLetter = read("app/api/identity/letter/route.ts");
+const strategistPlan = read("app/api/strategist/plan/route.ts");
 const billingPage = read("app/billing/page.tsx");
 const agencyPage = read("app/agency/page.tsx");
 const events = read("lib/events.ts");
@@ -61,18 +63,21 @@ check("A7· a missing/unparseable meta.count falls back to 1, never 0 (fails tow
   /Number\.isFinite\(n\) && n >= 1 \? Math\.floor\(n\) : 1/.test(ent));
 check("A8· the ledger read degrades to the row count instead of throwing", /catch \(e\)[\s\S]{0,400}?return 0;/.test(ent));
 
-// ── B-01b · Round 2 consumes entitlement on generate's terms ─────────────────
-check("B1· round2 checks the entitlement gate before creating a letter", (() => {
-  const gateAt = round2.indexOf("canGenerateLetter(");
-  const createAt = round2.indexOf("prisma.letter.create(");
-  return gateAt > -1 && createAt > -1 && gateAt < createAt;
-})());
-check("B2· round2 refuses with a 402 when the gate is closed", /status: 402/.test(round2));
+// ── B-01b (RE-EXPRESSED, RC1-S6a) · Round 2 answers to the FREE model ────────
+// B1/B2/B5 protected "cost-before-commit": nothing may be charged before the
+// work is committed, and the quota must actually bite. Under Founder D-3 there
+// is no charge and no quota, so the protective intent is INVERTED rather than
+// deleted — the ordering pin becomes "refuse before you write a row", and the
+// charge pins become "no charge is reachable at all".
+check("B1· round2 refuses an unconfirmed fact BEFORE writing a letter row",
+  round2.indexOf("needsAssertion") < round2.indexOf("prisma.letter.create("));
+check("B2· neither letter route can emit a payment-required refusal",
+  !/status: 402/.test(round2) && !/status: 402/.test(generate) && !/upgrade:/.test(round2) && !/upgrade:/.test(generate));
 check("B3· round2 emits the dispute_created product event",
   /track\(PRODUCT_EVENTS\.disputeCreated/.test(round2));
 check("B4· round2 emits meta.count so the ledger sum is exact", /meta: \{ count: 1/.test(round2));
-check("B5· round2 spends letter credits through the shared helper",
-  /spendLetterCredits\(user\.id, entitlement, 1\)/.test(round2));
+check("B5· round2 neither imports nor calls the spend path (D-3)",
+  !/spendLetterCredits/.test(round2));
 check("B6· round2 meters BEFORE returning the refreshed entitlement", (() => {
   const trackAt = round2.indexOf("PRODUCT_EVENTS.disputeCreated");
   const afterAt = round2.indexOf("const after = await getEntitlement(user)");
@@ -90,13 +95,21 @@ check("C3· the decrement is conditional on the row still holding the balance",
   /letterCredits: \{ gte: fromCredits \}/.test(ent) && /letterCredits: \{ decrement: fromCredits \}/.test(ent));
 check("C4· a lost race clamps at zero instead of going negative",
   /letterCredits: \{ lt: fromCredits \}/.test(ent) && /data: \{ letterCredits: 0 \}/.test(ent));
-check("C5· generate spends through the guarded helper",
-  /spendLetterCredits\(user\.id, entitlement, created\.length\)/.test(generate));
+check("C5· generate neither imports nor calls the spend path (D-3)",
+  !/spendLetterCredits/.test(generate));
 check("C6· no unguarded decrement remains in the generate route",
   !/letterCredits: \{ decrement/.test(generate));
-check("C7· every letter surface that spends credits imports the helper",
-  /import \{[^}]*spendLetterCredits[^}]*\} from "@\/lib\/entitlements"/.test(generate) &&
-  /import \{[^}]*spendLetterCredits[^}]*\} from "@\/lib\/entitlements"/.test(round2));
+// C7 now asserts the REASON nothing spends, so C1-C4's clamp cannot be quietly
+// re-armed by a future caller: the single decrement path is frozen at source.
+check("C7· the single decrement path is frozen at source",
+  /const LETTER_CREDITS_FROZEN: boolean = true;/.test(ent) &&
+  /export async function spendLetterCredits\([\s\S]{0,240}?\{\s*\n\s*if \(LETTER_CREDITS_FROZEN\) return;/.test(ent));
+
+// B8 · the honest translation of "before anything is charged". Without it, the
+// charge-protection semantics of B1/B2/B5/C5 really would only be deleted: this
+// asserts that no consumer-assistance route can reach a payment processor at all.
+check("B8· no consumer assistance route touches Stripe at all",
+  ![generate, round2, identityLetter, strategistPlan].some((s) => /getStripe\(|stripe\./.test(s)));
 
 // ── B-04b · capacity copy quotes the canonical caps, never a literal ─────────
 // The enforced v3 base, restated so a cap change must be a deliberate, reviewed edit.
