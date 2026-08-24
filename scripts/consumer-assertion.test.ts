@@ -621,14 +621,63 @@ console.log("\n— S11 AD-2: a withdrawal reaches the letter it authorized");
     "an UNMAILED letter with a standing confirmation is AUTHORIZED",
     letterAuthorization({ mailedAt: null, tradelineId: "t1", activeAssertionCount: 1 }) === "AUTHORIZED"
   );
+  // ── THE RULE THIS PROTECTS (restated after S11 review AD-R2-1) ────────────
+  // A TRADELINE-CONFIRMATION rule judges TRADELINE letters. That is the whole
+  // scope of it, in both directions:
+  //   · A letter attached to a tradeline is judged by the confirmations on that
+  //     tradeline. Withdraw them and it is REVOKED — AD-2's actual scenario,
+  //     undiminished.
+  //   · A letter attached to NO tradeline carries no tradeline claim for a
+  //     withdrawal to undermine, so this rule has nothing to say about it. The
+  //     earlier reading ("no tradeline ⇒ fail closed") looked conservative and
+  //     was not: it killed every Personal Information correction letter at
+  //     birth — un-approvable, un-printable, after a metered model call, under a
+  //     message telling the consumer to confirm facts on a page where those
+  //     facts do not exist.
+  // The two assertions below are deliberately adjacent so the second can never
+  // be relaxed without the first failing beside it.
   ok(
-    "an UNMAILED letter whose confirmations are all withdrawn is REVOKED",
+    "WITHDRAWAL (tradeline present, nothing standing behind it) is REVOKED — AD-2, unchanged",
     letterAuthorization({ mailedAt: null, tradelineId: "t1", activeAssertionCount: 0 }) === "REVOKED"
   );
   ok(
-    "…and one whose tradeline is gone fails CLOSED, not open",
-    letterAuthorization({ mailedAt: null, tradelineId: null, activeAssertionCount: 0 }) === "REVOKED"
+    "…and letterAuthorizationRevoked agrees, so every caller blocks it",
+    letterAuthorizationRevoked({ mailedAt: null, tradelineId: "t1", activeAssertionCount: 0 })
   );
+  ok(
+    "a letter with NO tradeline is not judged by the tradeline rule — it is AUTHORIZED",
+    letterAuthorization({ mailedAt: null, tradelineId: null, activeAssertionCount: 0 }) === "AUTHORIZED"
+  );
+  ok(
+    "…and is therefore never reported as revoked to a caller that gates on it",
+    !letterAuthorizationRevoked({ mailedAt: null, tradelineId: null, activeAssertionCount: 0 })
+  );
+  ok(
+    "the tradeline case is decided by the CONFIRMATIONS, not by the id's presence",
+    letterAuthorization({ mailedAt: null, tradelineId: "t1", activeAssertionCount: 1 }) === "AUTHORIZED" &&
+      letterAuthorization({ mailedAt: null, tradelineId: "t1", activeAssertionCount: 0 }) === "REVOKED"
+  );
+  ok(
+    "the identity case is decided by the ABSENCE of a tradeline, whatever the count says",
+    letterAuthorization({ mailedAt: null, tradelineId: null, activeAssertionCount: 0 }) ===
+      letterAuthorization({ mailedAt: null, tradelineId: null, activeAssertionCount: 5 })
+  );
+  {
+    // The residual, pinned as a known and accepted state rather than left to be
+    // rediscovered: a tradeline letter whose row was deleted by re-analysis has
+    // a null tradelineId and is therefore AUTHORIZED again. The two populations
+    // are byte-identical in the row (see the AD-R2-1 note in lib/letter.ts), so
+    // this guard records the consequence instead of asserting a distinction the
+    // data cannot support.
+    const orphanedByReanalysis = { mailedAt: null, tradelineId: null, activeAssertionCount: 0 };
+    const identityLetter = { mailedAt: null, tradelineId: null, activeAssertionCount: 0 };
+    ok(
+      "ACCEPTED RESIDUAL: a re-analysis orphan is indistinguishable from an identity letter here",
+      letterAuthorization(orphanedByReanalysis) === letterAuthorization(identityLetter)
+    );
+    const LETTER_SRC_R2 = read("lib/letter.ts");
+    ok("…and lib/letter.ts states that residual rather than hiding it", /RESIDUAL/.test(LETTER_SRC_R2));
+  }
 
   const PATCH = read("app/api/letters/[id]/route.ts");
   ok(
@@ -642,6 +691,10 @@ console.log("\n— S11 AD-2: a withdrawal reaches the letter it authorized");
 
   const PRINT = read("app/letters/print/[id]/page.tsx");
   ok("the printable packet is withheld too", /letterAuthorizationRevoked\(\{ mailedAt: letter\.mailedAt/.test(PRINT));
+  ok(
+    "…through the SAME predicate, so a no-tradeline letter prints instead of being killed at birth",
+    /letterAuthorizationRevoked/.test(PRINT) && !/!letter\.tradelineId/.test(PRINT)
+  );
   ok(
     "…and a MAILED letter still prints its record verbatim",
     /renderedBody = letter\.mailedAt \? letter\.body :/.test(PRINT)
@@ -694,9 +747,37 @@ console.log("\n— S11 AD-3: the server seam is wired, not dormant");
       !/^\s*(?!\/\/).*status === (?:LETTER_APPROVED_STATUS|"PRINTED")/m.test(GEN)
   );
   const LETTER_SRC = read("lib/letter.ts");
+  // Re-expressed after S11 journey NEW-2. The rule used to be "skip an approved
+  // candidate", and skipping is what produced the defect: the route returned
+  // 200 and created a SECOND live round-1 letter for the same tradeline+bureau,
+  // both approvable, both mailable. The rule is now report-and-refuse, so the
+  // outcome is one letter either way. Pinned by BEHAVIOUR, not by the literal
+  // line, so the protection survives another refactor of the same shape.
   ok(
-    "the rule itself is still S5's single line in planLetterRegeneration",
-    /if \(c\.status === LETTER_APPROVED_STATUS\) continue;/.test(LETTER_SRC)
+    "the plan REPORTS an approved candidate instead of silently skipping it",
+    /blockedByApproval/.test(LETTER_SRC) && /blockedByApproval: RegeneratePlan\["blockedByApproval"\]/.test(LETTER_SRC)
+  );
+  ok(
+    "…and only an explicit consumer instruction lets it be replaced",
+    /c\.status === LETTER_APPROVED_STATUS && !options\?\.replaceApproved/.test(LETTER_SRC)
+  );
+  ok(
+    "the route refuses (409) rather than composing a rival letter",
+    /blockedByApproval\.length > 0/.test(GEN) && /approvedLetterExists: true/.test(GEN) && /status: 409/.test(GEN)
+  );
+  {
+    const blockIdx = GEN.indexOf("blockedByApproval.length > 0");
+    ok(
+      "…before the entitlement resolve and before anything is composed or written",
+      blockIdx > 0 &&
+        blockIdx < GEN.indexOf("await getEntitlement(user)") &&
+        blockIdx < GEN.indexOf("await generateOne(") &&
+        blockIdx < GEN.indexOf("await updateOne(")
+    );
+  }
+  ok(
+    "…and the consumer's go-ahead is strict === true, never a truthy value",
+    /body\?\.replaceApproved === true/.test(GEN)
   );
 }
 
