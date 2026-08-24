@@ -676,5 +676,51 @@ console.log("\n— S11 AD-5 / B-6 / E-4");
   ok("B-6: refused, never silently truncated", !/\.slice\(0, DISCREPANCY_MAX\)/.test(IDENT));
 }
 
+// ---------------------------------------------------------------------------
+console.log("\n— S11: a month-precision DOFD reaches the recommendation (S3 adoption)");
+// ---------------------------------------------------------------------------
+{
+  // "08/2018" is what a report prints; the persisted column cannot hold it at
+  // day precision, so reading the column alone used to leave age = 0 and the
+  // §605 recommendation silently off — while fallOffInsight, scoring and
+  // factualCondition all ran the clock. Same input, two spellings, one answer.
+  const monthOnly = {
+    accountType: "CHARGE_OFF" as const,
+    isDebtBuyer: false,
+    probability: "HIGH" as const,
+    dateOfFirstDelinquency: null,
+    bureauData: { EQUIFAX: { presence: "PRESENT", status: "Charge-off", dofd: "08/2018" } },
+    creditorName: "Capital One",
+  };
+  const fullDate = { ...monthOnly, dateOfFirstDelinquency: "2018-08-31", bureauData: { EQUIFAX: { presence: "PRESENT", status: "Charge-off" } } };
+
+  const a = recommendStrategy(monthOnly);
+  const b = recommendStrategy(fullDate);
+  ok("a month-only DOFD yields the same strategy as the equivalent full date", a.strategyId === b.strategyId);
+  ok("…which is the §605 obsolescence play, not the generic accuracy dispute", a.strategyId === "fcra_605");
+  ok("…with the same stated age, to the year", a.reason === b.reason);
+  ok("…and the same suggested fact-checks", a.suggestedAssertions.join() === b.suggestedAssertions.join());
+  ok("…including 'the dates are wrong', which the raw column alone would have missed", a.suggestedAssertions.includes("late_dates_wrong"));
+
+  // Control: a RECENT month-only DOFD must NOT be recommended as obsolete —
+  // the adoption must not make the clock run early.
+  const recentYear = new Date().getUTCFullYear() - 1;
+  const recent = { ...monthOnly, bureauData: { EQUIFAX: { presence: "PRESENT", status: "Charge-off", dofd: `08/${recentYear}` } } };
+  ok("a recent month-only DOFD is not recommended as obsolete (control)", recommendStrategy(recent).strategyId !== "fcra_605");
+
+  // No DOFD anywhere: unchanged behaviour. (`late_dates_wrong` still appears
+  // here, from the unconditional tail of suggestAssertionTypes — the DOFD
+  // branch only promotes it earlier in the ordering. Asserting its absence
+  // would be asserting something the design never claimed.)
+  const none = { ...monthOnly, bureauData: { EQUIFAX: { presence: "PRESENT", status: "Charge-off" } } };
+  ok("with no DOFD at all, no obsolescence recommendation", recommendStrategy(none).strategyId !== "fcra_605");
+
+  // Both sites read the ONE derivation, not the raw column — the whole point of
+  // the adoption is that this file cannot drift from the §605 clock again.
+  const RECOMMEND_SRC = read("lib/recommend.ts");
+  ok("both DOFD sites read reportedDofd()", (RECOMMEND_SRC.match(/reportedDofd\(t\)/g) ?? []).length === 2);
+  ok("…and neither still reads the raw persisted column for the clock", !/yearsSince\(t\.dateOfFirstDelinquency\)/.test(RECOMMEND_SRC));
+}
+
 console.log(failures === 0 ? "\nAll consumer-assertion guards passed." : `\n${failures} guard(s) failed.`);
 process.exit(failures === 0 ? 0 : 1);
