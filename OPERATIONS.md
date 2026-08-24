@@ -101,6 +101,17 @@ Postgres, RDS — each has native automated backups + PITR; record the retention
 (commonly ≤5 min for Neon/Supabase); RTO = the measured restore time in step 5. **Fill these in
 with measured numbers; leave blank until proven.**
 
+**AI spend ceilings (RC1).** `AI_DAILY_BUDGET_USD_GLOBAL` (default **50.00**) is a platform-wide
+per-UTC-day ceiling across all consumers; `AI_DAILY_BUDGET_USD_PER_USER` (default 1.00) is the
+per-consumer one. Both fail CLOSED and neither has an "unlimited" setting. **Incident symptom:**
+consumers report that AI analysis is "paused until midnight UTC" while the app is otherwise healthy
+and `/api/health/ready` is green — that is the global ceiling, not an outage. At $1.00/consumer,
+~50 consumers at full allowance reach $50. Confirm with the AiUsage day-sum, then either wait for
+00:00 UTC or raise `AI_DAILY_BUDGET_USD_GLOBAL` and redeploy (env changes need a redeploy to bind).
+Setting the global value is a Founder decision and should be made before promotion, not during an
+incident. `HEALTH_READY_DB_TTL_MS` (default 5000, capped 60000, `0` disables) bounds how stale
+`/api/health/ready` may be — raise it only if that probe's query load is itself the problem.
+
 **Schema-drift caveat (ADR-0001, AMENDED — read the second paragraph):** the LEGACY tables are
 applied by runtime self-heal DDL, not migrations — a restored DB self-heals those on first request,
 so they need no separate step; verify the self-heal `ensureXTable` gates ran before declaring the

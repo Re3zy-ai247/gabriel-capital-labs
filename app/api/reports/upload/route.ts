@@ -10,7 +10,7 @@ import { recordKaiEvent } from "@/lib/kaiEvents";
 import { track, PRODUCT_EVENTS } from "@/lib/events";
 import { getBureauData, crossBureauConflicts } from "@/lib/bureauData";
 import { recommendStrategy } from "@/lib/recommend";
-import { AiSpendRefusal, assertAiBudgetAvailable, withAiPrincipal } from "@/lib/aiMeter";
+import { AiSpendRefusal, assertAiBudgetAvailable, reportParseEstimateUsd, withAiPrincipal } from "@/lib/aiMeter";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -261,7 +261,10 @@ export async function POST(req: Request) {
         // because nothing is lost by declining to redo work.)
         let aiRefusedMessage: string | null = null;
         try {
-          await assertAiBudgetAvailable(user.id);
+          // With the estimate of the call it fronts (S11 · B-R3-1): without it the
+          // probe admitted inside the band where the reservation refuses, so these
+          // flags reported `false` about a result that really was degraded.
+          await assertAiBudgetAvailable(user.id, reportParseEstimateUsd());
         } catch (e) {
           if (!(e instanceof AiSpendRefusal)) throw e;
           aiRefusedMessage = e.consumerMessage;

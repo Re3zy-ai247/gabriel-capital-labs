@@ -270,6 +270,22 @@ export function estimateRequestCostUsd(model: string, request: Record<string, un
   return estimateCostUsd(model, { inputTokens, outputTokens, cacheReadTokens: 0, cacheWriteTokens: 0 });
 }
 
+/**
+ * What ONE report-parse call reserves, derived from the shape lib/aiParse.ts
+ * actually sends (LLM_PARSE_MODEL, max_tokens 8000, a body sliced at 120 000
+ * characters ≈ 30 000 input tokens) and priced off the same table the reservation
+ * uses. It exists so the PRE-FLIGHT and the RESERVATION can apply the same
+ * admission rule to the same number — see assertAiBudgetAvailable.
+ */
+export function reportParseEstimateUsd(): number {
+  return estimateCostUsd(process.env.LLM_PARSE_MODEL || "claude-sonnet-4-6", {
+    inputTokens: 30_000,
+    outputTokens: 8_000,
+    cacheReadTokens: 0,
+    cacheWriteTokens: 0,
+  });
+}
+
 const BUDGET_EXHAUSTED_MESSAGE =
   "This account has reached its daily limit for AI analysis. It resets at midnight UTC. Everything already analyzed stays available, and the rest of CreditVector keeps working in the meantime.";
 const BUDGET_UNAVAILABLE_MESSAGE =
@@ -419,7 +435,7 @@ async function reserveDailyBudget(
  * Advisory, not authoritative: being read-only it is inherently racy, and the
  * bound that actually holds is the reservation inside reserveDailyBudget.
  */
-export async function assertAiBudgetAvailable(userId: string): Promise<void> {
+export async function assertAiBudgetAvailable(userId: string, estimateUsd = 0): Promise<void> {
   // S11 · NEW-1. This probe used to check ONLY the per-user ceiling, so on a day
   // the PLATFORM ceiling had tripped it passed — the route fanned out, every model
   // call was refused inside lib/analyze.ts's catch-all, and the consumer got
@@ -441,7 +457,20 @@ export async function assertAiBudgetAvailable(userId: string): Promise<void> {
     console.error("aiMeter: daily budget unreadable (failing closed):", e);
     throw new AiSpendRefusal("budget-unavailable", BUDGET_UNAVAILABLE_MESSAGE);
   }
-  if (spentUsd >= budget) {
+  // S11 · B-R3-1. This used to refuse only at `spentUsd >= budget` while
+  // reserveDailyBudget refuses at `spentUsd > 0 && spentUsd + estimate > budget`.
+  // Because the estimate is positive, the band `budget − estimate < spent < budget`
+  // is non-empty and EVERY consumer who reaches the ceiling passes through it: the
+  // probe admitted, the reservation refused, lib/analyze.ts swallowed the refusal
+  // into its regex fallback, and the route answered `ok: true` on a fully degraded
+  // re-analysis. Worse, a refused reservation writes no usage row, so the sum never
+  // advances and the band is an ABSORBING state — silent until midnight UTC.
+  //
+  // Given the estimate for the call it is fronting, the probe now applies exactly
+  // the reservation's rule. `estimateUsd = 0` keeps the old, strictly-safer
+  // behaviour for callers that have no representative figure.
+  const wouldExceed = spentUsd > 0 && spentUsd + estimateUsd > budget;
+  if (spentUsd >= budget || wouldExceed) {
     throw new AiSpendRefusal("budget-exhausted", BUDGET_EXHAUSTED_MESSAGE);
   }
 }

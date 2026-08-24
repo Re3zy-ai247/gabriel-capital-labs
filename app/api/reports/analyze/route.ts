@@ -5,7 +5,7 @@ import { enforceRateLimit } from "@/lib/rateLimit";
 import { analyzeReportText } from "@/lib/analyze";
 import { decryptText } from "@/lib/docCrypto";
 import { recordKaiEvent } from "@/lib/kaiEvents";
-import { AiSpendRefusal, assertAiBudgetAvailable, withAiPrincipal } from "@/lib/aiMeter";
+import { AiSpendRefusal, assertAiBudgetAvailable, reportParseEstimateUsd, withAiPrincipal } from "@/lib/aiMeter";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -39,7 +39,11 @@ export async function POST(req: Request) {
   // the refusal copy would be unreachable by anyone. Read-only and advisory —
   // the bound that actually holds is the reservation inside the meter.
   try {
-    await assertAiBudgetAvailable(user.id);
+    // With the estimate of the call it fronts, so the probe refuses exactly where
+    // the reservation would (S11 · B-R3-1). Without it there was a band —
+    // `budget − estimate < spent < budget` — where this admitted and the meter
+    // refused, and the whole re-analysis degraded silently.
+    await assertAiBudgetAvailable(user.id, reportParseEstimateUsd());
   } catch (e) {
     if (e instanceof AiSpendRefusal) {
       return NextResponse.json({ error: e.consumerMessage }, { status: 429 });
@@ -60,6 +64,9 @@ export async function POST(req: Request) {
   const skipped = Math.max(0, owned - reports.length);
 
   let created = 0;
+  let analyzed = 0;
+  let usedAiEverywhere = true;
+  let aiRefusedMessage: string | null = null;
   try {
     // Attribute every nested model call to this consumer. lib/aiParse.ts calls the
     // meter with userId: null, so without this scope the daily budget would not
@@ -67,12 +74,27 @@ export async function POST(req: Request) {
     await withAiPrincipal(user.id, async () => {
       for (const report of reports) {
         if (!report.rawText) continue;
+        // Re-check before EACH report, not just once up front. The ceiling can be
+        // crossed part-way through the fan-out, and this route's work is
+        // destructive: analyzeReportText deletes and recreates the report's
+        // tradelines, so starting a run whose AI step will be refused REPLACES
+        // good AI-derived rows with weaker regex ones (and orphans the letters
+        // keyed to them). Stop before that happens rather than after.
+        try {
+          await assertAiBudgetAvailable(user.id, reportParseEstimateUsd());
+        } catch (e) {
+          if (!(e instanceof AiSpendRefusal)) throw e;
+          aiRefusedMessage = e.consumerMessage;
+          break;
+        }
         const result = await analyzeReportText(prisma, {
           userId: user.id,
           reportId: report.id,
           rawText: decryptText(report.rawText),
           coveredBureaus: report.bureaus,
         });
+        analyzed += 1;
+        if (!result.usedAI) usedAiEverywhere = false;
         created += result.tradelines;
       }
     });
@@ -85,21 +107,40 @@ export async function POST(req: Request) {
     throw e;
   }
 
+  // Nothing was re-read at all: that is a refusal, not a success.
+  if (analyzed === 0 && aiRefusedMessage) {
+    return NextResponse.json({ error: aiRefusedMessage }, { status: 429 });
+  }
+
   await recordKaiEvent(user.id, "report.analyzed", {
-    payload: { reportsAnalyzed: reports.length, tradelines: created },
+    payload: { reportsAnalyzed: analyzed, tradelines: created },
   });
+
+  const stoppedEarly = Math.max(0, reports.length - analyzed);
+  const notices: string[] = [];
+  if (aiRefusedMessage) {
+    notices.push(
+      `${aiRefusedMessage} ${stoppedEarly === 1 ? "1 report was" : `${stoppedEarly} reports were`} left exactly as ${stoppedEarly === 1 ? "it is" : "they are"}.`
+    );
+  }
+  if (skipped > 0) {
+    notices.push(
+      `Re-analyzed your ${analyzed} most recent ${analyzed === 1 ? "report" : "reports"}. ${skipped} older ${skipped === 1 ? "report was" : "reports were"} left as they are — open one and re-analyze it on its own if you need it refreshed.`
+    );
+  }
 
   return NextResponse.json({
     ok: true,
-    reportsAnalyzed: reports.length,
+    // Truthful accounting on three axes (S11 · B-R3-1): how many were actually
+    // re-read, whether the AI reader was used for all of them, and whether a
+    // spend ceiling stopped us. `ok: true` on its own said none of this, and the
+    // client rendered "Re-read 5 reports" over a fully degraded result.
+    reportsAnalyzed: analyzed,
     tradelines: created,
-    // Truthful accounting: never report "all reports re-analyzed" when a cap
-    // stopped short of that.
     skipped,
-    ...(skipped > 0
-      ? {
-          notice: `Re-analyzed your ${reports.length} most recent reports. ${skipped} older ${skipped === 1 ? "report was" : "reports were"} left as they are — open one and re-analyze it on its own if you need it refreshed.`,
-        }
-      : {}),
+    usedAI: usedAiEverywhere && analyzed > 0,
+    degraded: aiRefusedMessage !== null || !(usedAiEverywhere && analyzed > 0),
+    aiRefused: aiRefusedMessage !== null,
+    ...(notices.length > 0 ? { notice: notices.join(" ") } : {}),
   });
 }

@@ -293,13 +293,39 @@ export class PrismaCampaignStore implements CampaignStore {
       return rows.map(rowToCampaign);
     });
   }
-  // NOT degraded: this feeds a CREATE. Returning 1 for an unreachable table would
-  // mint a duplicate sequence for a consumer who already has campaigns, so a
-  // failure here must reach the write path that asked for it.
+  // S11 · B-R3-5. This is the one read that still threw, and lib/missionControl.ts
+  // awaits it in the SAME Promise.all as the degraded reads — purely to feed
+  // compose() for a read-only render — so a Campaign-table fault still rejected
+  // the whole fan-out and blanked Mission Control: exactly the harm the rest of
+  // this change was written to remove.
+  //
+  // The original reasoning ("returning 1 for an unreachable table would mint a
+  // duplicate sequence") is right, but it only applies when rows might EXIST.
+  // So degrade on precisely the case where that cannot be true — the table is
+  // absent — and keep throwing on every other fault:
+  //
+  //   · relation missing (dropped, or a fresh database whose first request this
+  //     is — Campaign is created by runtime DDL, not by a migration): it holds no
+  //     campaigns, so 1 is the CORRECT answer, not a guess. And create() fails on
+  //     the same fault before it could ever use the value.
+  //   · anything else (an existing table we cannot read: privileges revoked, a
+  //     transient fault): rows may exist, 1 could collide, so it still throws.
+  //
+  // A DDL failure is not itself fatal here — the table may already exist — so the
+  // SELECT is allowed to be the thing that decides.
   async nextSequence(userId: string): Promise<number> {
-    await ensureTable();
-    const rows = await prisma.$queryRaw<{ max: number | null }[]>`
-      SELECT MAX("sequence") AS max FROM "Campaign" WHERE "userId" = ${userId}`;
-    return (rows[0]?.max ?? 0) + 1;
+    try {
+      await ensureTable().catch(() => {});
+      const rows = await prisma.$queryRaw<{ max: number | null }[]>`
+        SELECT MAX("sequence") AS max FROM "Campaign" WHERE "userId" = ${userId}`;
+      lastReadUnavailable = false;
+      return (rows[0]?.max ?? 0) + 1;
+    } catch (e) {
+      if (!isMissingRelation(e)) throw e;
+      lastReadUnavailable = true;
+      tableReady = null; // un-latch, so the next call re-creates the table
+      console.error("CampaignStore: nextSequence has no table (degrading to 1):", e);
+      return 1;
+    }
   }
 }

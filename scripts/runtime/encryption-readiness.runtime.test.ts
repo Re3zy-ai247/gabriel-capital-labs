@@ -83,6 +83,10 @@ mockModule("lib/aiMeter.ts", {
   // double reports budget available; the refusal path itself is proven in
   // scripts/runtime/ai-spend-control.runtime.test.ts against the real meter.
   assertAiBudgetAvailable: async () => {},
+  // The probe now takes the estimate of the call it fronts (S11 · B-R3-1), so the
+  // double has to supply one; the band behaviour itself is proven against the real
+  // meter in scripts/runtime/ai-spend-control.runtime.test.ts.
+  reportParseEstimateUsd: () => 0.21,
   AiSpendRefusal: class AiSpendRefusal extends Error {},
 });
 

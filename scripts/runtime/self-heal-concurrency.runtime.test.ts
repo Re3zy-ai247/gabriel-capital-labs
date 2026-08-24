@@ -164,6 +164,41 @@ run("self-heal-concurrency.runtime.test.ts", async () => {
   }
   check("create() propagates the failure to its caller", writeThrew);
 
+  section("B-R3-5: nextSequence must not blank the dashboard, and must not guess");
+  // lib/missionControl.ts awaits nextSequence in the SAME Promise.all as the
+  // degraded reads, purely to feed compose() for a read-only render — so this
+  // was the last read that could still reject the whole fan-out and blank
+  // Mission Control. It degrades where the answer is PROVABLE and throws where
+  // it would be a guess.
+  resetProbe();
+  await store.listByUser("user_1"); // warm the table
+  queryFault = "missing";
+  const seqNoTable = await store.nextSequence("user_1");
+  check("a missing table degrades to 1 instead of throwing into the render", seqNoTable === 1);
+  check("and 1 is CORRECT there, not a guess — an absent table holds no campaigns", seqNoTable === 1);
+  check("the degradation is recorded, not silent", campaignDataUnavailable());
+  const afterMissingSeq = ddlStatements.length;
+  queryFault = null;
+  const seqBack = await store.nextSequence("user_1");
+  check("the next call re-creates the table (no latch)", ddlStatements.length > afterMissingSeq);
+  check("and answers from the table again", typeof seqBack === "number");
+  check("the availability signal clears", !campaignDataUnavailable());
+
+  // The original reasoning still holds where rows may exist.
+  resetProbe();
+  await store.listByUser("user_1");
+  queryFault = "other";
+  let seqThrew = false;
+  try {
+    await store.nextSequence("user_1");
+  } catch {
+    seqThrew = true;
+  }
+  check(
+    "an EXISTING table we cannot read still throws — returning 1 could mint a duplicate sequence",
+    seqThrew
+  );
+
   section("lib/decisionRegistry.ts — same three properties");
   resetProbe();
   const decisions = await Promise.all(Array.from({ length: 10 }, () => registry.listDecisions("user_1")));
