@@ -25,50 +25,38 @@ You deploy ONCE as a website. Desktop and mobile are then installed from that UR
 3. Add a database: Vercel dashboard → **Storage → Create → Postgres** (or paste a Neon URL).
 4. In the project's **Settings → Environment Variables**, add:
    `DATABASE_URL`, `NEXTAUTH_SECRET`, `NEXTAUTH_URL` (your vercel URL), `ANTHROPIC_API_KEY`.
-5. Do not promote yet. Complete the controlled migration procedure below, then
-   deploy/promote the application. Build and startup never
-   create or reconcile database objects.
+5. Follow the authoritative Gate-D release procedure linked below. Build and
+   startup never create, reconcile, or migrate database objects.
 
 Demo data is local-development-only and must not be seeded as a production deploy
 step.
 
-## Before any promotion: apply pending migrations (required)
+## Canonical RC1 migration history — held post-DB5 state
 
-The build command (`prisma generate && next build`, in `vercel.json`) does **not**
-apply migrations, and two tables this release depends on —
-`20260728000000_terms_acceptance` then `20260823120000_consumer_assertion` — have no runtime
-self-heal fallback. Promoting the code before both are applied makes account
-registration unavailable.
+**HELD LANDING CONDITION:** this documentation/guard slice may land only after
+Control Tower retains successful DB-5 evidence for the exact candidate commit and
+tree. This held patch does not itself assert that DB-5 occurred and grants no
+production, database, migration, merge, or deployment authority.
 
-**This document grants no production or database authority.** DB-4, DB-5, the
-migration procedure, and every production database contact require their own
-current Founder/Control Tower authorization. Before DB-5, the operator must have
-evidence that all of the following are true:
-
-1. Production database credentials were rotated **before the next production
-   database contact**; the previously exposed credential is not reused.
-2. DB-4 was accepted against the exact candidate commit and tree being promoted.
-   The already accepted DB-1 backup is sufficient for that read-only gate.
-3. A fresh hardened backup was completed immediately before DB-5/migration
-   execution.
-4. DB-5 execution authority explicitly names the same candidate and the single
-   controlled migration action in the authoritative Gate-D runbook.
-
-The sole authoritative executable Production procedure is
-[Gate-D production migration](.ai/RUNBOOKS/gate-d-production-migration.md).
-This guide intentionally does not reproduce its command. When separately
-authorized, Gate-D uses the DIRECT Postgres target, never the Prisma Accelerate
-proxy, and performs exactly one controlled invocation applying the two pending
-RC1 migrations in their existing lexical order:
+Upon authorized landing after that evidence, these migrations are canonical
+applied history, in this exact order; they are not pending candidates:
 
 1. `20260728000000_terms_acceptance`
 2. `20260823120000_consumer_assertion`
 
-Do not attempt a staged `--to` deployment. Never add migration execution to a
+Do not replay either migration. Do not attempt a staged `--to` deployment. Build,
+install, release, and application-start paths remain database-mutation-free.
+
+The sole authoritative executable Production procedure is
+[Gate-D production migration](.ai/RUNBOOKS/gate-d-production-migration.md).
+This guide intentionally reproduces no executable Production command. Gate-D
+is the sole location for retained evidence of the one controlled lexical DB-5
+invocation after this slice's landing condition is satisfied, and for all future
+Production migration/history verification. Never add migration execution to a
 Vercel build/install command, Docker `CMD`/`ENTRYPOINT`, Compose override, package
 lifecycle script, or application startup path.
 
-Verify both tables are present, then promote, then confirm from outside with
+For an independently authorized promotion, confirm from outside with
 `scripts/release-verify.sh <BASE_URL>` — it fails unless `/api/health/ready`
 reports `"schema":"ok"`. The Gate-D runbook above owns the full ordered
 Production procedure.

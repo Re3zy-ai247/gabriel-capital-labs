@@ -1,8 +1,9 @@
 // Gate D production migration preflight.
 //
-// This command is intentionally read-only. It derives the applied expectation
-// from six committed migration.sql files and a separate exact-absence expectation
-// from both authored/unapplied RC1 migration.sql files. It verifies a separately
+// This command is intentionally read-only. In this held post-DB5 artifact it
+// derives the canonical applied expectation from all eight committed migration.sql
+// files; any future authored/unapplied files remain a separate exact-absence
+// expectation. It verifies a separately
 // owner-approved database fingerprint as consistency evidence only (not a
 // later-connection attestation), reads PostgreSQL catalogs inside a READ ONLY
 // transaction, and emits deterministic JSON. It never executes or prints

@@ -7,7 +7,7 @@
 2. **Confirm with the owner before pushing** — push to `main` = production deploy (~2 min auto).
 3. After deploy: prod probes (public 200, protected 401/403).
 
-## Schema: DB5 is a gated release step BEFORE promotion (RC1, required)
+## Schema: canonical RC1 history — held post-DB5 landing condition
 
 `vercel.json`'s build command is `prisma generate && next build` — it does **not**
 apply migrations. Two tables in this release are created only by a reviewed
@@ -16,34 +16,33 @@ migration and have **no runtime self-heal fallback** (migration-first law,
 with no try/catch: **no consumer can create an account**, and letter generation,
 `/tradelines` and the assertion routes fail too.
 
-The exact DB5 candidate list, in lexical execution order, is:
+This held canonicalization must not land merely because the files and tests are
+green. It is eligible only after Control Tower retains successful DB5 output and
+resulting history evidence for this exact historical execution identity, in
+lexical order:
 
 1. `20260728000000_terms_acceptance` — `d67e5b4b4761d6328fb0786ea976a1f889a49e308bbd5b354a768e7324e3e922` — creates `TermsAcceptance`
 2. `20260823120000_consumer_assertion` — `d5a7ea7ac31a12119ad413e8fc1290c923b1f9b9a3fd4fa4e046f44904d15ad0` — creates `ConsumerAssertion`
 
 This shortcut runbook does not authorize or reproduce a Production database
-command. The only authoritative procedure is
+command. The only authoritative historical execution and current verification
+procedure is
 [`gate-d-production-migration.md`](gate-d-production-migration.md). Its exact
 sequence is mandatory:
 
-1. Rotate the previously exposed Production database credential **before the next
-   Production DB contact, including read-only DB4**. Never reuse the old value.
-2. Control Tower accepts DB4's read-only Gate-D evidence. It must show all six
-   applied migrations matching, `preDb5AbsenceGate=PASS`, empty
-   `pendingDeployList`/`proposedResolveList`, the exact two names/checksums above
-   in `deployCandidateList`, `decision=READY_FOR_DB5_APPROVAL`, no stop reason,
-   and `mutationAuthorized=false`. That decision is evidence, not authorization.
-3. Immediately before DB5, create and retain a fresh hardened Production backup
-   with the runbook's identity, completion, integrity, retention, and proven
-   restore evidence. The accepted DB-1 backup is sufficient for read-only DB4;
-   it is not sufficient for DB5.
-4. The Founder explicitly authorizes exactly the two candidates above and one
-   controlled DB5 execution against the reviewed direct PostgreSQL target.
-5. Follow Gate-D §9 once. Prisma applies both pending migrations in lexical order
-   in that single `migrate deploy`; do not stage with `--to`, split the run, use an
-   ambient URL, or retry after interruption without the separate recovery path.
-6. Apply the separately reviewed post-DB5 canonical-chain update and complete
-   Gate-D §13 verification. Only then may the deployment be promoted.
+1. Retained pre-DB5 evidence must prove rotation of the exposed Production
+   credential before DB4, accepted DB4 exact absence, the exact two checksums,
+   the fresh hardened pre-DB5 backup, and separate Founder authority. This held
+   patch does not assert that evidence exists.
+2. The retained historical execution must be exactly one lexical deploy—Terms,
+   then Consumer—with no staged `--to`, split run, ambient URL, blind retry, or
+   second execution. Gate-D §9 is historical custody, not replay authority.
+3. Retain the unedited successful DB5 output and resulting exact history rows.
+   Without both, do not land this canonical-chain patch.
+4. After eligible landing, complete Gate-D §13. It must report all eight
+   migrations `ALL_PRESENT_AND_MATCHING`, `preDb5AbsenceGate=NOT_REQUIRED`, empty
+   authored/candidate/proposal lists, `decision=NO_PENDING_MIGRATIONS`, no stop
+   reason, and `mutationAuthorized=false`. Only then may promotion continue.
 
 After promotion, confirm from outside: `scripts/release-verify.sh <BASE_URL> <SHA>` must print
    `OK schema` and `OK encryption`. `/api/health/ready` returns **503** with
@@ -51,9 +50,9 @@ After promotion, confirm from outside: `scripts/release-verify.sh <BASE_URL> <SH
    absent, so a mis-ordered deploy is a refused promotion rather than a silent
    outage.
 
-`pendingDeployList` remains deliberately limited to the six-migration applied
-Gate-D chain. It is never the DB5 execution list; the only DB5 authority input is
-the exact checksummed `preDb5AbsenceGate.deployCandidateList` above.
+The canonical classifier now covers all eight migrations. A healthy target has
+empty `pendingDeployList`, `proposedResolveList`, and `deployCandidateList`.
+Anything else blocks promotion and does not authorize replay of historical DB5.
 
 **Rollback note:** these two migrations are additive (new tables only). Rolling
 the *code* back does not require rolling the schema back.

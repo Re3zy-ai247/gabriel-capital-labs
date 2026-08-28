@@ -200,7 +200,9 @@ try {
       .map((line) => line.trim())
       .filter((line) => /\bprisma\s+migrate\s+deploy\b/.test(line));
 
-  const rootProductionStart = deployDoc.indexOf("## Before any promotion:");
+  const rootProductionStart = deployDoc.indexOf(
+    "## Canonical RC1 migration history — held post-DB5 state",
+  );
   const rootProductionEnd = deployDoc.indexOf("## Spend and probe knobs", rootProductionStart);
   const rootLocalStart = deployDoc.indexOf("## Option B — Self-host with Docker/Compose");
   const rootLocalEnd = deployDoc.indexOf("## Install as a DESKTOP app", rootLocalStart);
@@ -229,11 +231,19 @@ try {
     );
     check(
       `${label} explicitly grants no migration authority`,
-      /does not authorize|grants no production or database authority|non-authorizing/i.test(doc),
+      /does not authorize|grants no[\s\S]{0,120}(?:database|migration)[\s\S]{0,120}authority|non-authorizing/i.test(
+        doc,
+      ),
     );
     check(
       `${label} reproduces no executable Production migrate-deploy command`,
       fencedMigrationCommandLines(doc).length === 0,
+    );
+    check(
+      `${label} blocks replay of historical DB5`,
+      /do not replay|does not authorize replay|not replay authority|never authorizes replay/i.test(
+        doc,
+      ),
     );
   }
   check(
@@ -257,11 +267,17 @@ try {
     /\bprisma\s+migrate\s+deploy\b/.test(block),
   );
   check(
-    "Gate-D owns exactly one executable DB5 migrate-deploy command on its validated direct target",
+    "Gate-D retains exactly one historical DB5 command on its validated direct target",
     gateDDeployBlocks.length === 1 &&
       (gateDDeployBlocks[0].match(/\bprisma\s+migrate\s+deploy\b/g) || []).length === 1 &&
       /DATABASE_URL="\$\{GATE_D_DATABASE_URL\}"/.test(gateDDeployBlocks[0]) &&
       /Use a direct PostgreSQL connection, never an Accelerate URL/.test(gateDRunbook),
+  );
+  check(
+    "Gate-D marks the retained DB5 command historical and forbids replay",
+    /Historical procedure only/.test(gateDDeploySection) &&
+      /must not be replayed/i.test(gateDDeploySection) &&
+      /Missing evidence blocks\s+canonicalization/i.test(gateDDeploySection),
   );
   check(
     "Gate-D pins one lexical DB5 deploy and forbids staged --to",
@@ -282,9 +298,18 @@ try {
       ),
   );
   check(
-    "Gate-D keeps READY_FOR_DB5_APPROVAL non-authorizing and requires separate Founder authority",
-    /READY_FOR_DB5_APPROVAL[\s\S]{0,500}non-authorizing/i.test(gateDRunbook) &&
-      /Founder explicitly authorizes exactly one controlled DB5 execution/.test(gateDDeploySection),
+    "Gate-D makes the post-DB5 patch held and preconditioned on retained evidence",
+    /HELD POST-DB5 CANONICALIZATION/.test(gateDRunbook) &&
+      /may land only after[\s\S]{0,180}retains successful DB5 output/i.test(gateDRunbook) &&
+      /source patch[\s\S]{0,120}not evidence/i.test(gateDRunbook),
+  );
+  check(
+    "Gate-D pins the healthy canonical eight postcondition without replay authority",
+    /all eight canonical migrations `ALL_PRESENT_AND_MATCHING`/.test(gateDRunbook) &&
+      /preDb5AbsenceGate=NOT_REQUIRED/.test(gateDRunbook) &&
+      /empty `deployCandidateList`/.test(gateDRunbook) &&
+      /`NO_PENDING_MIGRATIONS`/.test(gateDRunbook) &&
+      /Do not use the[\s\S]{0,80}historical §9 command to make it green/i.test(gateDRunbook),
   );
   check(
     "Gate-D pins both DB5 names/checksums in lexical order",

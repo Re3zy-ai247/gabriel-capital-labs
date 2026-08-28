@@ -5,8 +5,14 @@ import { join } from "node:path";
 // THE REVIEWED, APPLIED Gate D chain. This is the schema the preflight compares a
 // live database against, so a name may be added here ONLY once its migration has
 // been reviewed AND applied as part of a Gate D release. Everything downstream —
-// applied-manifest contents, coverage counts, and every fixture's applied set
-// are derived from exactly this list.
+// applied-manifest contents, coverage counts, and every fixture's applied set —
+// is derived from exactly this list.
+//
+// HELD POST-DB5 CANONICALIZATION: the last two entries are eligible to become
+// canonical here only after Control Tower retains successful DB5 execution
+// evidence for those exact SQL checksums in this exact lexical order. This patch
+// must not land before that evidence exists; its presence in a review branch is
+// not evidence that DB5 ran.
 export const GATE_D_MIGRATION_CHAIN = [
   "0_init",
   "20260720204355_operator_network_messages",
@@ -14,16 +20,19 @@ export const GATE_D_MIGRATION_CHAIN = [
   "20260720231803_event_bus_agency_index",
   "20260721120000_operator_identity",
   "20260721160000_operator_reputation",
+  "20260728000000_terms_acceptance",
+  "20260823120000_consumer_assertion",
 ] as const;
 
-// AUTHORED-BUT-UNAPPLIED migration directories (RC1, added 2026-08-23).
+// AUTHORED-BUT-UNAPPLIED migration directories awaiting a future owner-gated
+// release step. The held post-DB5 state has no such directories.
 //
 // `loadGateDManifest` pins the migration DIRECTORY SET as a drift tripwire: an
-// unreviewed folder appearing under prisma/migrations must fail loudly. RC1
-// authors migrations that are deliberately NOT applied until the owner-gated
-// release step, so the directory set and the applied chain are no longer the
-// same list, and the tripwire needs both halves stated explicitly rather than
-// relaxed.
+// unreviewed folder appearing under prisma/migrations must fail loudly. In this
+// held post-DB5 state, the directory set and applied chain are the same exact
+// eight names. If a later owner-gated release authors an unapplied migration,
+// this second exact list makes the intentional difference explicit without
+// relaxing the tripwire.
 //
 // An entry here is ACKNOWLEDGED ON DISK AND REQUIRED ABSENT FROM THE DATABASE.
 // It is deliberately NOT part of GATE_D_MIGRATION_CHAIN and contributes nothing
@@ -33,23 +42,9 @@ export const GATE_D_MIGRATION_CHAIN = [
 // is absent. When one is applied in a future reviewed release it MOVES to the
 // chain above; it is never in both.
 //
-//   · 20260728000000_terms_acceptance — RC1-S8 Terms acceptance capture
-//     (TermsAcceptance table, adopted byte-for-byte from the m2 lane).
-//     Authored, reviewed, NOT applied. Its timestamp predates the S4 entry
-//     because it was authored on that lane in July; it still sorts AFTER the
-//     whole applied chain (which ends at 20260721160000_operator_reputation),
-//     so it interleaves with nothing that has been applied.
-//   · 20260823120000_consumer_assertion — RC1-S4 Consumer Fact Confirmation
-//     (ConsumerAssertion table). Authored, reviewed, NOT applied.
-//
-// SERIAL ARTIFACT: this list is extended one slice at a time, in wave order.
-// S4 added the first entry; S8 added the second. A later slice appends its own
-// and updates the exact-set assertion in scripts/gate-d-preflight.test.ts —
-// it never relaxes the set into a prefix or a length check.
-export const AUTHORED_UNAPPLIED_MIGRATIONS = [
-  "20260728000000_terms_acceptance",
-  "20260823120000_consumer_assertion",
-] as const;
+// A later slice appends its exact reviewed name and updates the exact-set tests;
+// it never relaxes the set into a prefix or length check.
+export const AUTHORED_UNAPPLIED_MIGRATIONS = [] as const;
 
 // Every directory legitimately present under prisma/migrations: the applied
 // chain plus the authored-but-unapplied set. Anything else is drift.
@@ -831,10 +826,9 @@ export function loadGateDManifest(repoRoot: string): GateDManifest {
     .filter((entry) => entry.isDirectory())
     .map((entry) => entry.name)
     .sort();
-  // Directory set, not applied set: an authored-but-unapplied migration is a
-  // legitimate folder. The manifest built below still comes from the APPLIED
-  // chain alone, so nothing about what the preflight expects of a live database
-  // changes here.
+  // Directory set, not merely applied set: a future authored-but-unapplied
+  // migration is a legitimate folder, but any unreviewed ninth directory still
+  // fails. The held post-DB5 set is exactly the eight canonical chain entries.
   const expected = [...EXPECTED_MIGRATION_DIRECTORIES].sort();
   if (!same(discovered, expected)) {
     throw new UnsupportedMigrationSqlError(
@@ -860,13 +854,10 @@ export function loadGateDManifest(repoRoot: string): GateDManifest {
 }
 
 export function db5DeployCandidateList(manifest: GateDManifest): Db5DeployCandidate[] {
-  return AUTHORED_UNAPPLIED_MIGRATIONS.map((name) => {
-    const migration = manifest.authoredUnappliedMigrations.find((item) => item.name === name);
-    if (!migration) {
-      throw new UnsupportedMigrationSqlError(`DB5 deploy candidate missing from manifest: ${name}`);
-    }
-    return { name, checksum: migration.checksum };
-  });
+  // loadGateDManifest constructs this ordered list solely from the exact
+  // AUTHORED_UNAPPLIED_MIGRATIONS constant. Deriving from the parsed manifest
+  // keeps the empty post-DB5 state and any future reviewed authored set generic.
+  return manifest.authoredUnappliedMigrations.map(({ name, checksum }) => ({ name, checksum }));
 }
 
 export function manifestCoverage(manifest: GateDManifest) {

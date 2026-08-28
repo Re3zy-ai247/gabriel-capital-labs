@@ -1,15 +1,18 @@
 # Gate D — Production Migration Runbook (Operator Platform Schema)
 
-**Status:** HARDENED FOR REVIEW · NOT EXECUTED · GATE D NOT AUTHORIZED
+**Status:** HELD POST-DB5 CANONICALIZATION · NOT ELIGIBLE TO LAND WITHOUT RETAINED SUCCESSFUL DB5 EVIDENCE · NO DATABASE AUTHORITY
 **RC1 review base:** candidate `2c3919dca6bbe0fd5beab9280ded52206c365c55`, tree `70b46cd661d0711ce2d1dbb5a11060f328849968`
 **Execution release:** **UNSET** until Control Tower authorizes the remediated release commit; never execute from the review-base SHA merely because it is printed here
 **Control Tower recorded Production release (no Production contact in this lane):** `a72a47c0a9934522339a9adfa315a0636c853e0c`; reverify only in an authorized execution lane
-**Production database migration state:** **UNKNOWN** until the owner authorizes and reviews the read-only preflight below
+**Production database migration state:** **UNKNOWN** in this lane; this held source patch and its green fixtures are not evidence that DB5 ran
 
-This runbook is an evidence and execution package, not execution approval. It
-classifies the six-migration applied Gate D chain and separately identifies the
-two exact RC1 DB5 deploy candidates while all platform capabilities remain
-dormant. It does not activate Identity, Reputation, Arena, Network, or Event
+This held patch may land only after Control Tower retains successful DB5 output
+for the exact Terms-then-Consumer checksums in §2. If that evidence is absent,
+incomplete, or ambiguous, do not land it. Once eligible to land, the preflight
+classifies one exact eight-migration canonical chain; the authored/unapplied set
+and DB5 candidate list are empty. Sections 4–12 retain the historical DB4/DB5
+procedure and recovery contract for custody. They grant no replay authority. No
+part of this patch activates Identity, Reputation, Arena, Network, or Event
 Fabric.
 
 ## 1. Immutable boundaries
@@ -17,7 +20,7 @@ Fabric.
 - Use a clean checkout of the exact production release.
 - Use a direct PostgreSQL connection, never an Accelerate URL. Its grammar is exact: `postgres:`/`postgresql:`, authority `db.prisma.io:5432`, one database path, no fragment, and **only** one query parameter, `sslmode=require`. Reject every other parameter—including `host`, `hostaddr`, `port`, `service`, `servicefile`, `options`, `schema`, pooler controls, and duplicates—because Prisma can honor effective-target overrides after URI authority parsing.
 - All catalog inspection runs through `scripts/gate-d-preflight.ts` inside an explicitly `READ ONLY` transaction.
-- Applied schema is derived on every run from the six committed Gate D `migration.sql` files. The two acknowledged RC1 authored/unapplied SQL files are parsed separately into an exact-absence gate. A representative-object probe is prohibited.
+- Canonical schema is derived on every run from all eight committed Gate D `migration.sql` files. The current authored/unapplied set is exactly empty; any future reviewed authored set is parsed separately into the fail-closed exact-absence gate. A representative-object probe is prohibited.
 - The database fingerprint must be captured from a separately owner-approved production invariant and supplied back to the full preflight. Never infer or invent it.
 - Production/Preview database-value equality is **UNKNOWN**. Separate Vercel scope entries do not prove equal or unequal encrypted values.
 - `prisma migrate resolve` and `prisma migrate deploy` are separate, owner-approved mutations. The preflight never executes or prints either command.
@@ -39,18 +42,28 @@ Fabric.
 | 4 | `20260720231803_event_bus_agency_index` | 0 | 0 | 0 | 1 | 0 | 0 |
 | 5 | `20260721120000_operator_identity` | 5 | 3 | 22 | 9 | 3 | 4 |
 | 6 | `20260721160000_operator_reputation` | 0 | 2 | 16 | 4 | 2 | 2 |
-| **Total** |  | **11** | **34** | **304** | **62** | **34** | **21** |
+| 7 | `20260728000000_terms_acceptance` | 0 | 1 | 5 | 2 | 1 | 1 |
+| 8 | `20260823120000_consumer_assertion` | 0 | 1 | 12 | 2 | 1 | 2 |
+| **Total** |  | **11** | **36** | **321** | **66** | **36** | **24** |
 
 > **Review gate:** run `npx --no-install tsx scripts/gate-d-preflight.ts --manifest` and use its machine-derived totals as authority. If this table differs from the tool, STOP and correct this document before any database access. The current reviewed manifest also reports 48 enum values, 0 SQL unique constraints, 0 check constraints, and 0 extension requirements.
 
-The same manifest separately pins this exact checksummed DB5 deploy-candidate
-list, without adding either migration to applied coverage, `pendingDeployList`,
-or `proposedResolveList`:
+The canonical tail retains the exact DB5 SQL identities in lexical order:
 
 1. `20260728000000_terms_acceptance` — `d67e5b4b4761d6328fb0786ea976a1f889a49e308bbd5b354a768e7324e3e922`
 2. `20260823120000_consumer_assertion` — `d5a7ea7ac31a12119ad413e8fc1290c923b1f9b9a3fd4fa4e046f44904d15ad0`
 
-Before DB5, `preDb5AbsenceGate` must be `PASS`. For each name it requires
+In this held post-canonical manifest, both names are applied expectations,
+`AUTHORED_UNAPPLIED_MIGRATIONS` is empty, `preDb5AbsenceGate=NOT_REQUIRED`, and
+its `deployCandidateList` is empty. A healthy exact physical/history state has
+all eight migrations `ALL_PRESENT_AND_MATCHING`, empty `pendingDeployList` and
+`proposedResolveList`, `NO_PENDING_MIGRATIONS`, and
+`mutationAuthorized=false`. That is a verification postcondition after eligible
+landing, not proof that DB5 occurred and never authority to replay it. A ninth
+directory or history name aborts exact-set checking.
+
+Historical pre-DB5 evidence required by the landing precondition had to show
+`preDb5AbsenceGate=PASS`. For each name it required
 `state=ALL_ABSENT`, `physicalState=ALL_ABSENT`, `history=ABSENT`, and an empty
 `presentPhysicalObjects` list. The expected inventory is derived from SQL and
 includes every authored table, column, primary key and backing index, explicit
@@ -60,11 +73,12 @@ constraint evidence remains table-scoped. Any full or partial physical presence,
 namespace collision, same-name history row regardless of completion/rollback
 state, or unknown catalog/history evidence is an `ABORT`.
 
-The rendered `preDb5AbsenceGate.deployCandidateList` repeats the two names and
-checksums above in lexical order and carries `mutationAuthorized=false`. A clean
-pre-DB5 catalog produces `READY_FOR_DB5_APPROVAL`, not
-`NO_PENDING_MIGRATIONS`. That decision reports a reviewable database state only;
-it does not authorize DB5. Any candidate-list difference aborts.
+That historical rendered `preDb5AbsenceGate.deployCandidateList` repeated the two
+names and checksums above in lexical order and carried
+`mutationAuthorized=false`. Its clean pre-DB5 decision was
+`READY_FOR_DB5_APPROVAL`, not `NO_PENDING_MIGRATIONS`; it was evidence only and
+did not authorize DB5. Retained evidence with any candidate-list difference does
+not satisfy this held patch's landing precondition.
 
 The parser recognizes only the SQL forms present in this chain: enum creation, table/column/primary-key definitions, explicit indexes, foreign keys, and extension declarations. Any unsupported statement or type/default construct aborts manifest generation. It verifies:
 
@@ -78,7 +92,7 @@ The parser recognizes only the SQL forms present in this chain: enum creation, t
 - extension requirements;
 - migration-history checksum and completion state.
 
-The dependency order is fixed: `User` precedes Network and Identity; `EventEnvelope` precedes its agency index; `OperatorIdentity` precedes Reputation. Do not reorder or hand-apply files.
+The dependency order is fixed: `User` precedes Network, Identity, Terms, and Consumer Assertion; `EventEnvelope` precedes its agency index; `OperatorIdentity` precedes Reputation; Terms precedes Consumer Assertion in the ratified DB5 lexical order. Do not reorder or hand-apply files.
 
 ## 3. State taxonomy
 
@@ -100,7 +114,11 @@ The authored/unapplied absence state is deliberately separate from that taxonomy
 It has only one passing state: exact physical and historical `ALL_ABSENT`. It is
 not an applied migration state and cannot enter either mutation proposal list.
 
-## 4. Preconditions — every item must pass
+## 4. Historical DB4/DB5 preconditions — retained evidence, not current authority
+
+This section records the procedure that had to succeed before this held patch may
+land. Its presence does not claim any item passed. Do not rerun its DB5 mutation;
+missing retained evidence blocks the patch rather than authorizing reconstruction.
 
 | ID | Required evidence |
 |---|---|
@@ -354,17 +372,17 @@ Properties:
 - fingerprint mismatch stops before detailed catalog reads;
 - output is stable-key JSON with no timestamp or duration;
 - rerunning against unchanged catalog/history produces byte-identical output;
-- the rendered output includes the separate `preDb5AbsenceGate`, its exact expected/present object inventory, same-name history evidence, and exact checksummed `deployCandidateList`;
-- `proposedResolveList` and `pendingDeployList` remain applied-six-only; the two DB5 candidates can appear only in `preDb5AbsenceGate.deployCandidateList`;
+- the rendered output includes `preDb5AbsenceGate=NOT_REQUIRED`, no authored evidence rows, and an empty `deployCandidateList`; a later non-empty reviewed authored set would restore the separate exact-absence inventory;
+- `proposedResolveList` and `pendingDeployList` classify only the exact eight canonical migrations and are both empty for the healthy post-DB5 state;
 - `mutationAuthorized` is always `false`.
 
 Interpret the top-level decision:
 
 - `ABORT`: stop. Preserve output and investigate.
 - `OWNER_BASELINE_REVIEW_REQUIRED`: one or more migrations are `SCHEMA_ONLY`. Do not deploy or resolve yet.
-- `READY_FOR_OWNER_APPROVAL`: one or more applied-chain migrations are genuinely absent. This is still not deploy authorization, and in the current eight-directory tree it is specifically **not** permission to run `migrate deploy`, which would also see the DB5 candidates.
-- `READY_FOR_DB5_APPROVAL`: all six applied-chain migrations match, both applied-chain proposal lists are empty, the exact-absence gate passed, the exact two-item checksummed candidate list is non-empty, and required candidate privileges passed. This is a non-authorizing evidence state; DB4 acceptance, rotation, fresh backup, and separate Founder DB5 approval remain mandatory.
-- `NO_PENDING_MIGRATIONS`: no applied-chain work and no DB5 candidate remain. This is expected only after the separately reviewed post-DB5 canonical-chain update (or in a later manifest with no authored/unapplied entries), never from the current clean pre-DB5 state.
+- `READY_FOR_OWNER_APPROVAL`: one or more canonical migrations are genuinely absent. This is evidence only, never permission to replay DB5 or run a generic deploy shortcut.
+- `READY_FOR_DB5_APPROVAL`: reserved for a later manifest with a non-empty reviewed authored set whose exact-absence and privilege gates pass. It is not expected from this empty-authored held patch and remains non-authorizing.
+- `NO_PENDING_MIGRATIONS`: all eight canonical migrations match exact physical/history truth, both proposal lists and the candidate list are empty, and `preDb5AbsenceGate=NOT_REQUIRED`. This is the only healthy post-canonicalization decision, but it remains read-only evidence with `mutationAuthorized=false`.
 
 ## 7. Privilege proof
 
@@ -381,12 +399,14 @@ The preflight reads, but never exercises, privileges:
 
 Before reading migration rows or evaluating those privileges, the tool proves any existing `_prisma_migrations` relation is the pinned Prisma 5.22 ordinary permanent table: its exact eight columns/types/nullability/defaults, no identity/generated columns, sole `id` primary key, no partition attachment or inheritance parent/child, and no RLS/policies/rules/triggers. A same-named view, partitioned/unlogged/inherited table, malformed shape, or extra constraint is `UNKNOWN`; the tool does not select from an untrusted relation. This is intentionally pinned to the lockfile's Prisma 5.22.0 engine—upgrade review must re-derive the invariant rather than silently accepting a different shape.
 
-When the authored absence gate passes, privilege derivation includes the exact DB5
-candidate migrations without placing them in either applied-chain proposal list.
-It derives explicit capability results for type creation, table creation, index
-creation, constraint addition, FK addition, and migration-history writes. `FALSE`
-or `UNKNOWN` on any required check aborts. Do not grant privileges during this
-runbook; access changes require a separate reviewed procedure.
+When a future non-empty authored absence gate passes, privilege derivation
+includes its exact candidate migrations without placing them in either canonical
+proposal list. It derives explicit capability results for type creation, table
+creation, index creation, constraint addition, FK addition, and migration-history
+writes. The current empty-authored state requires none of those candidate
+capabilities. `FALSE` or `UNKNOWN` on any required check aborts. Do not grant
+privileges during this runbook; access changes require a separate reviewed
+procedure.
 
 ## 8. Schema-only reconciliation — owner approval point 3
 
@@ -416,11 +436,17 @@ Never resolve `0_init` merely because `User` exists. Never infer a whole migrati
 
 ## 9. DB5 deploy — Founder approval point 4
 
-Prisma examines every pending directory under `prisma/migrations`; it does not
-consume `pendingDeployList`, and this repository intentionally has two additional
-DB5 directories. Therefore `READY_FOR_OWNER_APPROVAL` is not executable approval
-in this RC1 tree. Any applied-six pending/baseline state requires a separate
-Control Tower plan and a new accepted DB4 package before DB5.
+**Historical procedure only.** This is retained to verify the successful DB5
+evidence that must predate this held patch. It is not a current instruction and
+must not be replayed after the two history rows exist. Missing evidence blocks
+canonicalization; it does not authorize running this command now.
+
+In the pre-DB5 repository state, Prisma examined every pending directory under
+`prisma/migrations`; it did not consume `pendingDeployList`, and that tree had two
+additional DB5 directories outside the applied-six classifier. Therefore its
+`READY_FOR_OWNER_APPROVAL` was not executable approval. Any applied-six
+pending/baseline state required a separate Control Tower plan and a new accepted
+DB4 package before DB5.
 
 One DB5 deploy may be authorized only after all of these are locked:
 
@@ -514,16 +540,18 @@ must not be mistaken for migration authorization or a Gate D validation path.
 
 ## 13. Post-deploy verification
 
-Preserve the unedited DB5 command output first. The pre-DB5 classifier
-intentionally treats either authored history row as an `ABORT`; do not weaken or
-pre-apply its constants merely to make a post-migration probe green. After DB5,
-use the separately reviewed post-DB5 canonical-chain update that moves both exact
-migrations from authored/unapplied into applied history, then rerun §6 against
-the same approved target. Require:
+This document accompanies that separately reviewed, **held** post-DB5
+canonical-chain update. Do not land it until the unedited successful DB5 output
+and exact resulting history evidence have been retained and accepted. The source
+patch, static manifest, and tests cannot supply that evidence. Once the landing
+precondition is satisfied and this exact patch lands, rerun §6 against the same
+separately approved target. Require:
 
 - all eight canonical migrations `ALL_PRESENT_AND_MATCHING` with exact checksums;
-- empty `proposedResolveList`, empty `pendingDeployList`, empty DB5
-  `deployCandidateList`, and `NO_PENDING_MIGRATIONS`;
+- `preDb5AbsenceGate=NOT_REQUIRED`, with empty authored evidence and empty
+  `deployCandidateList`;
+- empty `proposedResolveList`, empty `pendingDeployList`,
+  `NO_PENDING_MIGRATIONS`, and `mutationAuthorized=false`;
 - `TermsAcceptance` and `ConsumerAssertion` exist with exact
   columns/defaults/primary keys/indexes/FKs;
 - row counts on both new tables are zero unless separately explained by an
@@ -533,7 +561,10 @@ the same approved target. Require:
 - `/`, `/pricing`, `/login`, `/community` retain expected success; dormant surfaces retain their pre-recorded redirect/404/403 behavior;
 - no new migration/runtime errors during the owner-defined observation window.
 
-If any check fails, keep flags OFF, preserve additive schema/evidence, and use §10/§11. Do not improvise reversal.
+Any missing tail migration, non-empty candidate/proposal list, or result other
+than exact-eight `NO_PENDING_MIGRATIONS` blocks promotion. Do not use the
+historical §9 command to make it green; preserve evidence, keep flags OFF, and
+enter the separately reviewed §10/§11 recovery path. Do not improvise reversal.
 
 ## 14. Stop conditions
 
@@ -550,12 +581,12 @@ Stop immediately on:
 - unsupported migration SQL;
 - `0_init = ALL_ABSENT`;
 - `PARTIAL`, `DRIFTED`, `HISTORY_ONLY`, `UNKNOWN`, checksum mismatch, any rolled-back/unfinished history row, or chain inversion;
-- any `preDb5AbsenceGate` result other than `PASS`, including full/partial authored physical presence, either authored history name, or unknown absence evidence;
-- any pre-DB5 top-level decision other than `READY_FOR_DB5_APPROVAL`, any non-empty applied-chain proposal list, or any DB5 candidate name/order/checksum difference;
+- before held-patch landing: missing retained successful DB5 output/history evidence, or pre-DB5 evidence other than exact `preDb5AbsenceGate=PASS`, `READY_FOR_DB5_APPROVAL`, and the two ratified candidates;
+- after eligible landing: any `preDb5AbsenceGate` result other than `NOT_REQUIRED`, any authored/candidate entry, any non-empty proposal list, any ninth directory/history name, or any top-level decision other than `NO_PENDING_MIGRATIONS`;
 - insufficient/unknown required privilege;
 - evidence that Docker `db push` or another synchronizer touched the target;
 - any preflight output change without an explained catalog/history change;
-- any staged `--to`, split DB5 execution, blind retry, or second deploy process;
+- any staged `--to`, split DB5 execution, blind retry, replay, or second deploy process;
 - any command proposing reset or data loss;
 - any need for a grant, restore, history edit, hand-written DDL, or unreviewed recovery;
 - Founder authorization required for the next step.

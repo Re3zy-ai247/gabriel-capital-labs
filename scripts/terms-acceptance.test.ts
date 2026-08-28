@@ -118,12 +118,14 @@ check(
   "the record is tied to a real account (FK to User)",
   /ALTER TABLE "TermsAcceptance" ADD CONSTRAINT[^\n]*REFERENCES "User"/.test(migration)
 );
-// RC1's migration-first law: the file ships, the owner applies it.
+// HELD POST-DB5 truth: this patch may land only after retained successful DB5
+// evidence. Once eligible to land, the migration is canonical applied history;
+// the review branch itself is not evidence that the database changed.
 check(
-  "the migration is registered as AUTHORED-BUT-UNAPPLIED in the Gate D preflight",
+  "the migration is canonical in Gate D and absent from authored/unapplied",
   migrationsWithTable.length === 1 &&
-    (AUTHORED_UNAPPLIED_MIGRATIONS as readonly string[]).includes(migrationsWithTable[0]) &&
-    !(GATE_D_MIGRATION_CHAIN as readonly string[]).includes(migrationsWithTable[0]),
+    (GATE_D_MIGRATION_CHAIN as readonly string[]).includes(migrationsWithTable[0]) &&
+    !(AUTHORED_UNAPPLIED_MIGRATIONS as readonly string[]).includes(migrationsWithTable[0]),
 );
 
 console.log("\n2. nothing manufactures consent for people who never gave it");
@@ -263,8 +265,8 @@ check(
 );
 check(
   "it links to BOTH published documents, at the same routes lib/terms.ts names",
-  new RegExp(`DEFAULT_TERMS_URL = "${(lib.match(/TERMS_URL\s*=\s*"([^"]+)"/) || [, " "])[1]}"`).test(uiCode) &&
-    new RegExp(`DEFAULT_PRIVACY_URL = "${(lib.match(/PRIVACY_URL\s*=\s*"([^"]+)"/) || [, " "])[1]}"`).test(uiCode)
+  new RegExp(`DEFAULT_TERMS_URL = "${(lib.match(/TERMS_URL\s*=\s*"([^"]+)"/) || [, "__MISSING_TERMS_URL__"])[1]}"`).test(uiCode) &&
+    new RegExp(`DEFAULT_PRIVACY_URL = "${(lib.match(/PRIVACY_URL\s*=\s*"([^"]+)"/) || [, "__MISSING_PRIVACY_URL__"])[1]}"`).test(uiCode)
 );
 check(
   "the component states no terms of its own and makes no outcome claim",

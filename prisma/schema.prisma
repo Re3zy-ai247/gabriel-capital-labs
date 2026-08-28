@@ -815,6 +815,10 @@ model ReputationMilestone {
 }
 
 // ---- RC1-S4: Consumer Fact Confirmation (Founder decision D-7) ---------------
+// HELD POST-DB5 CANONICALIZATION: migration
+// prisma/migrations/20260823120000_consumer_assertion becomes canonical applied
+// history only if this patch lands after retained successful DB5 evidence. This
+// source comment and a held review branch are not evidence that DB5 ran.
 // The consumer is the FACTUAL AUTHORITY. Before CreditVector composes a single
 // first-person sentence in their name, they say — in typed, bounded terms —
 // WHICH fact on the item is wrong. One row = one confirmed statement of fact by
@@ -896,9 +900,9 @@ model ConsumerAssertion {
 // ADOPTED from the m2 lane (4ece50622b1e6b1a3f7c9cb40aef3dd411d5b80d) verbatim
 // in shape; the `context` example is RC1's. Migration
 // prisma/migrations/20260728000000_terms_acceptance is adopted BYTE-FOR-BYTE
-// from that lane and is AUTHORED, NOT APPLIED (RC1 migration-first law; the
-// directory is registered in scripts/gate-d-preflight-core.ts's
-// AUTHORED_UNAPPLIED_MIGRATIONS).
+// from that lane. In this HELD post-DB5 patch it becomes canonical applied
+// history only after retained successful DB5 evidence permits the patch to land;
+// its presence in a review branch is not execution evidence.
 //
 // onDelete: Restrict, never Cascade. This row IS the consent evidence; a FK
 // cascade would destroy it silently as a side effect of deleting something else.

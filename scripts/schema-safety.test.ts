@@ -381,22 +381,24 @@ check("Compose application healthcheck uses only the readiness endpoint",
   /interval: 10s/.test(webService) && /timeout: 5s/.test(webService) &&
   /retries: 12/.test(webService) && /start_period: 20s/.test(webService));
 
-// The active guide records prerequisites but confers no execution authority.
-check("deploy guide explicitly grants no production or database authority",
-  deployGuide.includes("This document grants no production or database authority."));
-check("deploy guide requires credential rotation before the next production DB contact",
-  /credentials were rotated \*\*before the next production\s+database contact\*\*/.test(deployGuide) &&
-  deployGuide.includes("previously exposed credential is not reused"));
-check("deploy guide requires accepted DB-4 for the exact candidate commit and tree",
-  deployGuide.includes("DB-4 was accepted against the exact candidate commit and tree being promoted"));
-check("deploy guide requires a fresh hardened backup immediately before DB-5",
-  /fresh hardened backup was completed immediately before DB-5\/migration\s+execution/.test(deployGuide));
+// This held documentation slice describes canonical state only after retained
+// successful DB5 evidence. It neither claims execution nor confers authority.
+check("held deploy guide requires retained successful DB5 evidence for the exact candidate",
+  /may land only after\s+Control Tower retains successful DB-5 evidence for the exact candidate commit and\s+tree/.test(
+    deployGuide,
+  ));
+check("held deploy guide explicitly makes no DB5-occurrence or execution-authority claim",
+  deployGuide.includes("This held patch does not itself assert that DB-5 occurred") &&
+  /grants no\s+production, database, migration, merge, or deployment authority/.test(deployGuide));
 const termsMigrationInGuide = deployGuide.indexOf("20260728000000_terms_acceptance");
 const assertionMigrationInGuide = deployGuide.indexOf("20260823120000_consumer_assertion");
-check("deploy guide pins the one-deploy lexical migration order",
-  deployGuide.includes("performs exactly one controlled invocation applying the two pending") &&
+check("held deploy guide makes Terms then Consumer canonical applied history",
+  /these migrations are canonical\s+applied history, in this exact order; they are not pending candidates/.test(
+    deployGuide,
+  ) &&
   termsMigrationInGuide >= 0 && assertionMigrationInGuide > termsMigrationInGuide);
-check("deploy guide explicitly forbids staged --to deployment",
+check("held deploy guide forbids DB5 replay and staged --to deployment",
+  deployGuide.includes("Do not replay either migration.") &&
   deployGuide.includes("Do not attempt a staged `--to` deployment."));
 const optionBHeading = deployGuide.indexOf("## Option B — Self-host with Docker/Compose");
 const productionDeployGuide = optionBHeading < 0 ? deployGuide : deployGuide.slice(0, optionBHeading);

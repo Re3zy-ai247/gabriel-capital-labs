@@ -15,13 +15,13 @@ table to the legacy list requires a new owner-approved ADR.
 
 ## Adding a table or column (migration-first)
 1. Add/modify the model in `prisma/schema.prisma`.
-2. Generate the migration SQL. This repository has a reviewed six-file applied
-   Gate D baseline plus two acknowledged RC1 authored/unapplied migrations. Before
-   DB5, the dedicated runbook requires both authored migrations to be physically
-   and historically absent and renders them, with exact checksums/order, only in
-   `preDb5AbsenceGate.deployCandidateList`. A
-   `READY_FOR_DB5_APPROVAL` result is explicitly non-authorizing. Do **not** use
-   this generic procedure to reconcile or apply either set; follow
+2. Generate the migration SQL. This held revision has an exact eight-file
+   canonical Gate D baseline and an empty authored/unapplied set. It must not land
+   before retained successful DB5 output/history evidence for the exact Terms-then-
+   Consumer tail exists; source state is not execution evidence. After eligible
+   landing, healthy Gate-D truth is `preDb5AbsenceGate=NOT_REQUIRED`, empty
+   candidate/proposal lists, and `NO_PENDING_MIGRATIONS`. Do **not** use this
+   generic procedure to replay or reconcile that tail; follow
    `RUNBOOKS/gate-d-production-migration.md`. For later
    additive work, append a reviewed migration after the committed chain. Generate forward SQL with
    `npx --no-install prisma migrate diff --from-schema-datasource prisma/schema.prisma --to-schema-datamodel prisma/schema.prisma --script` (or `migrate dev` only against an owner-proven disposable target) and review it.
@@ -38,15 +38,15 @@ rollback or compensating plan · data-risk assessment. A destructive or uncertai
 production migration STOPS for owner approval.
 
 ## Baseline (Gate D only)
-The applied source baseline is committed as six reviewed migrations. The two RC1
-authored/unapplied directories remain outside that applied chain until DB5 and
-must pass the dedicated exact-absence gate beforehand. Production adoption is not
-a generic schema-change operation: use the Gate D runbook's read-only catalog
-proof, owner-approved reconciliation, and deliberate deploy steps. DB5 additionally
-requires accepted DB4 evidence, rotation of the exposed Production credential
-before the next Production DB contact, a fresh hardened backup immediately before
-DB5, and explicit Founder approval of the exact two-item checksummed candidate
-list. Do not run
+The held applied-source baseline is committed as eight reviewed migrations, with
+Terms Acceptance then Consumer Assertion as the exact canonical tail and no
+authored/unapplied entry. Landing remains preconditioned on retained successful
+DB5 evidence; do not infer it from this branch. The historical DB5 evidence must
+also retain accepted DB4, credential rotation before contact, the fresh hardened
+pre-DB5 backup, exact checksums/order, and separate Founder authority. After
+eligible landing, any missing/drifted tail, ninth directory/history row, non-empty
+candidate/proposal list, or decision other than `NO_PENDING_MIGRATIONS` blocks
+promotion and never authorizes replay. Do not run
 `migrate dev`, `db push`, or any destructive schema command against a
 shared/production database or from a release/runtime startup surface.
 
