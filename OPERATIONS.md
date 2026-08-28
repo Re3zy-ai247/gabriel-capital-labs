@@ -118,23 +118,28 @@ so they need no separate step; verify the self-heal `ensureXTable` gates ran bef
 restore complete.
 
 **That is no longer sufficient on its own (RC1).** Since the migration-first law (`CLAUDE.md`
-gotcha 1) every NEW table ships as a reviewed migration and has **no** self-heal gate — so there is
-nothing for the check above to find, and a restore that follows only the paragraph above completes
-on a database where **registration and letter generation are 100% down**. `TermsAcceptance` and
-`ConsumerAssertion` are the first two tables in that class. A restore is therefore not complete
-until you have also run, against the **DIRECT** Postgres URL and never the Prisma Accelerate
-`prisma://` proxy (Accelerate is a query proxy and cannot run migrations):
+gotcha 1), every new table ships as a reviewed migration and has **no** self-heal gate. A restore
+that follows only the legacy paragraph can therefore finish while registration and letter
+generation remain down. `TermsAcceptance` and `ConsumerAssertion` are the first two tables in that
+class.
 
-```bash
-DATABASE_URL="<direct-postgres-url>" npx prisma migrate deploy
-```
+This operations manual intentionally contains no direct Production migration command. For RC1,
+use [`.ai/RUNBOOKS/gate-d-production-migration.md`](.ai/RUNBOOKS/gate-d-production-migration.md)
+and require its full locked sequence: rotate the exposed credential before the next Production DB
+contact (including read-only DB4); obtain accepted DB4 evidence with exact physical/history absence,
+empty applied-chain proposal lists, and the exact checksummed two-item DB5 candidate order; create a
+fresh hardened backup immediately before DB5; then obtain explicit Founder authorization for one
+controlled `migrate deploy`. The accepted DB-1 backup is sufficient for read-only DB4 but not DB5.
+`READY_FOR_DB5_APPROVAL` and `mutationAuthorized=false` are non-authorizing evidence, and staged
+`--to`, split execution, ambient credentials, and blind retries are prohibited.
 
-and confirmed both tables exist:
+For a disaster restore, do not treat `migrate deploy` as a generic catch-up shortcut. Bind the
+restore target to the exact release and canonical migration history, obtain incident-owner approval,
+and follow the release-matched Gate-D/recovery procedure. After the separately reviewed post-DB5
+canonical-chain update, require all eight migrations and both new tables to match before declaring
+schema recovery complete.
 
-```sql
-SELECT to_regclass('"TermsAcceptance"'), to_regclass('"ConsumerAssertion"');  -- both NON-NULL
-```
-
-`GET /api/health/ready` answers this for you: it returns **503** with `"schema":"incomplete"` and a
-`missingTables` list while either is absent, and `scripts/release-verify.sh` fails on it. Treat a
-green readiness probe — not a self-heal gate check — as the completion criterion for a restore.
+`GET /api/health/ready` remains an application postcondition: it returns **503** with
+`"schema":"incomplete"` and a `missingTables` list while either table is absent, and
+`scripts/release-verify.sh` fails on it. A green readiness probe complements, but never replaces,
+canonical migration-history verification.

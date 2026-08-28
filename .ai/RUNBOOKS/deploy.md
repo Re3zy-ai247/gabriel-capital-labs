@@ -7,7 +7,7 @@
 2. **Confirm with the owner before pushing** — push to `main` = production deploy (~2 min auto).
 3. After deploy: prod probes (public 200, protected 401/403).
 
-## Schema: apply the release migrations BEFORE promoting (RC1, required)
+## Schema: DB5 is a gated release step BEFORE promotion (RC1, required)
 
 `vercel.json`'s build command is `prisma generate && next build` — it does **not**
 apply migrations. Two tables in this release are created only by a reviewed
@@ -16,38 +16,44 @@ migration and have **no runtime self-heal fallback** (migration-first law,
 with no try/catch: **no consumer can create an account**, and letter generation,
 `/tradelines` and the assertion routes fail too.
 
-The two, in dependency order:
+The exact DB5 candidate list, in lexical execution order, is:
 
-1. `20260728000000_terms_acceptance` — creates `TermsAcceptance`
-2. `20260823120000_consumer_assertion` — creates `ConsumerAssertion`
+1. `20260728000000_terms_acceptance` — `d67e5b4b4761d6328fb0786ea976a1f889a49e308bbd5b354a768e7324e3e922` — creates `TermsAcceptance`
+2. `20260823120000_consumer_assertion` — `d5a7ea7ac31a12119ad413e8fc1290c923b1f9b9a3fd4fa4e046f44904d15ad0` — creates `ConsumerAssertion`
 
-Apply them in that order, **against the DIRECT Postgres connection string — never
-the Prisma Accelerate proxy URL**. Accelerate is a query proxy and cannot run
-migrations (same reason the repo's self-heal tables exist at all; see
-`OPERATIONS.md` "Accelerate" and `lib/rateLimit.ts`'s self-heal comment).
+This shortcut runbook does not authorize or reproduce a Production database
+command. The only authoritative procedure is
+[`gate-d-production-migration.md`](gate-d-production-migration.md). Its exact
+sequence is mandatory:
 
-```bash
-# 1. Use the DIRECT url for this step only. Do NOT use the prisma:// Accelerate URL.
-export DATABASE_URL="postgres://…direct-host…/db?sslmode=require"
+1. Rotate the previously exposed Production database credential **before the next
+   Production DB contact, including read-only DB4**. Never reuse the old value.
+2. Control Tower accepts DB4's read-only Gate-D evidence. It must show all six
+   applied migrations matching, `preDb5AbsenceGate=PASS`, empty
+   `pendingDeployList`/`proposedResolveList`, the exact two names/checksums above
+   in `deployCandidateList`, `decision=READY_FOR_DB5_APPROVAL`, no stop reason,
+   and `mutationAuthorized=false`. That decision is evidence, not authorization.
+3. Immediately before DB5, create and retain a fresh hardened Production backup
+   with the runbook's identity, completion, integrity, retention, and proven
+   restore evidence. The accepted DB-1 backup is sufficient for read-only DB4;
+   it is not sufficient for DB5.
+4. The Founder explicitly authorizes exactly the two candidates above and one
+   controlled DB5 execution against the reviewed direct PostgreSQL target.
+5. Follow Gate-D §9 once. Prisma applies both pending migrations in lexical order
+   in that single `migrate deploy`; do not stage with `--to`, split the run, use an
+   ambient URL, or retry after interruption without the separate recovery path.
+6. Apply the separately reviewed post-DB5 canonical-chain update and complete
+   Gate-D §13 verification. Only then may the deployment be promoted.
 
-# 2. Apply, in dependency order. `migrate deploy` applies pending migrations in
-#    filename order and is idempotent — re-running it is safe.
-npx prisma migrate deploy
-
-# 3. Verify BOTH tables exist before promoting anything.
-npx prisma db execute --stdin <<'SQL'
-SELECT to_regclass('"TermsAcceptance"') AS terms,
-       to_regclass('"ConsumerAssertion"') AS assertion;
-SQL
-# Both columns must be non-NULL. A NULL means that migration did not apply.
-```
-
-4. Only now promote the deployment.
-5. Confirm from outside: `scripts/release-verify.sh <BASE_URL> <SHA>` must print
+After promotion, confirm from outside: `scripts/release-verify.sh <BASE_URL> <SHA>` must print
    `OK schema` and `OK encryption`. `/api/health/ready` returns **503** with
    `"schema":"incomplete"` and a `missingTables` list while either table is
    absent, so a mis-ordered deploy is a refused promotion rather than a silent
    outage.
+
+`pendingDeployList` remains deliberately limited to the six-migration applied
+Gate-D chain. It is never the DB5 execution list; the only DB5 authority input is
+the exact checksummed `preDb5AbsenceGate.deployCandidateList` above.
 
 **Rollback note:** these two migrations are additive (new tables only). Rolling
 the *code* back does not require rolling the schema back.

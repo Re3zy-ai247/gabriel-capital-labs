@@ -25,31 +25,53 @@ You deploy ONCE as a website. Desktop and mobile are then installed from that UR
 3. Add a database: Vercel dashboard → **Storage → Create → Postgres** (or paste a Neon URL).
 4. In the project's **Settings → Environment Variables**, add:
    `DATABASE_URL`, `NEXTAUTH_SECRET`, `NEXTAUTH_URL` (your vercel URL), `ANTHROPIC_API_KEY`.
-5. Click **Deploy**. The build runs `prisma db push` automatically to create tables.
-6. Seed demo data once (locally, pointing at the prod DB):
-   ```bash
-   DATABASE_URL="<prod-url>" npm run db:seed
-   ```
+5. Do not promote yet. Complete the controlled migration procedure below, then
+   deploy/promote the application. Build and startup never
+   create or reconcile database objects.
+
+Demo data is local-development-only and must not be seeded as a production deploy
+step.
 
 ## Before any promotion: apply pending migrations (required)
 
 The build command (`prisma generate && next build`, in `vercel.json`) does **not**
 apply migrations, and two tables this release depends on —
 `20260728000000_terms_acceptance` then `20260823120000_consumer_assertion` — have no runtime
-self-heal fallback. Promote the code first and `POST /api/register` throws with no
-try/catch: nobody can create an account.
+self-heal fallback. Promoting the code before both are applied makes account
+registration unavailable.
 
-Run, **against the DIRECT Postgres URL, never the Prisma Accelerate `prisma://`
-proxy URL** (Accelerate is a query proxy and cannot run migrations):
+**This document grants no production or database authority.** DB-4, DB-5, the
+migration procedure, and every production database contact require their own
+current Founder/Control Tower authorization. Before DB-5, the operator must have
+evidence that all of the following are true:
 
-```bash
-DATABASE_URL="<direct-postgres-url>" npx prisma migrate deploy
-```
+1. Production database credentials were rotated **before the next production
+   database contact**; the previously exposed credential is not reused.
+2. DB-4 was accepted against the exact candidate commit and tree being promoted.
+   The already accepted DB-1 backup is sufficient for that read-only gate.
+3. A fresh hardened backup was completed immediately before DB-5/migration
+   execution.
+4. DB-5 execution authority explicitly names the same candidate and the single
+   controlled migration action in the authoritative Gate-D runbook.
+
+The sole authoritative executable Production procedure is
+[Gate-D production migration](.ai/RUNBOOKS/gate-d-production-migration.md).
+This guide intentionally does not reproduce its command. When separately
+authorized, Gate-D uses the DIRECT Postgres target, never the Prisma Accelerate
+proxy, and performs exactly one controlled invocation applying the two pending
+RC1 migrations in their existing lexical order:
+
+1. `20260728000000_terms_acceptance`
+2. `20260823120000_consumer_assertion`
+
+Do not attempt a staged `--to` deployment. Never add migration execution to a
+Vercel build/install command, Docker `CMD`/`ENTRYPOINT`, Compose override, package
+lifecycle script, or application startup path.
 
 Verify both tables are present, then promote, then confirm from outside with
 `scripts/release-verify.sh <BASE_URL>` — it fails unless `/api/health/ready`
-reports `"schema":"ok"`. Full ordered procedure:
-[.ai/RUNBOOKS/deploy.md](.ai/RUNBOOKS/deploy.md).
+reports `"schema":"ok"`. The Gate-D runbook above owns the full ordered
+Production procedure.
 
 ---
 
@@ -82,11 +104,35 @@ its environment, so a promotion leaves a record of what was in force.
 
 ---
 
-## Option B — Self-host with Docker (one command)
+## Option B — Self-host with Docker/Compose
+
+The bundled, loopback-bound Postgres service and its volume are for a disposable
+local environment only. Before using Compose, set these to newly generated,
+non-production local values in the shell or an uncommitted `.env` file:
+
+- `LOCAL_POSTGRES_PASSWORD` — URL-safe local-only password
+- `LOCAL_NEXTAUTH_SECRET` — local-only auth secret
+- `LOCAL_DOCUMENT_ENCRYPTION_KEY` — exactly 64 hexadecimal characters
+
+Provision the local schema explicitly, then start the application; the image
+itself never mutates schema:
+
 ```bash
-ANTHROPIC_API_KEY=sk-ant-... docker compose up --build
+docker compose build
+docker compose run --rm web npx --no-install prisma migrate deploy
+docker compose up
 # open http://localhost:3000
 ```
+
+Compose waits for PostgreSQL's `pg_isready` result before starting the web
+service. It marks the web container healthy only when `/api/health/ready` returns
+success, which also requires the RC1 tables and local encryption key. This exposes
+readiness to an orchestrator; it does **not** make an external load balancer or
+reverse proxy honor readiness. Any external router must be configured separately
+to withhold traffic from an unhealthy container.
+
+For a shared or production self-hosted database, do not use the disposable-local
+shortcut. Follow the same separately authorized migration runbook used for Vercel.
 
 ---
 

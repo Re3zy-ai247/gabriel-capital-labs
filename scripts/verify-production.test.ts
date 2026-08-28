@@ -1,8 +1,8 @@
 // Run: npx --no-install tsx scripts/verify-production.test.ts
 //
-// Executable regression proof for the bootstrap production probe. The PATH-leading
-// curl double never opens a socket: every apparent request is recorded locally and
-// answered from CV_VERIFY_TEST_BOOTSTRAP_CODE.
+// Executable regression proof for the production probes. The PATH-leading curl
+// double never opens a socket: every apparent request is recorded locally and
+// answered from the test-only status-code variables below.
 import { spawnSync } from "node:child_process";
 import {
   chmodSync,
@@ -43,6 +43,7 @@ writeFileSync(
     'printf "%s\\t%s\\n" "$url" "$*" >> "$CV_VERIFY_TEST_CURL_LOG"',
     'case "$url" in',
     '  */api/admin/bootstrap) printf "%s" "$CV_VERIFY_TEST_BOOTSTRAP_CODE" ;;',
+    '  */api/admin/migrate) printf "%s" "$CV_VERIFY_TEST_MIGRATE_CODE" ;;',
     "  */api/stripe/webhook) printf '400' ;;",
     "  *) printf '403' ;;",
     "esac",
@@ -56,7 +57,7 @@ type ProbeResult = {
   output: string;
 };
 
-function runProbe(bootstrapCode: string): ProbeResult {
+function runProbe(bootstrapCode: string, migrateCode = "404"): ProbeResult {
   writeFileSync(curlLog, "");
   const result = spawnSync("bash", [join(root, "scripts/verify-production.sh"), "--probe"], {
     cwd: root,
@@ -65,6 +66,7 @@ function runProbe(bootstrapCode: string): ProbeResult {
       ...process.env,
       CV_BASE_URL: "https://example.invalid",
       CV_VERIFY_TEST_BOOTSTRAP_CODE: bootstrapCode,
+      CV_VERIFY_TEST_MIGRATE_CODE: migrateCode,
       CV_VERIFY_TEST_CURL_LOG: curlLog,
       PATH: fixtureDir + ":" + (process.env.PATH || ""),
     },
@@ -118,6 +120,33 @@ try {
         call.includes("-X POST") &&
         call.includes("-d {}"),
     ),
+  );
+  const migrateCall = contained.calls.find((call) => call.includes("/api/admin/migrate"));
+  check(
+    "the removed migration route is probed with default GET and no request body",
+    typeof migrateCall === "string" &&
+      !migrateCall.includes("-X POST") &&
+      !migrateCall.includes("-d {}"),
+  );
+  check(
+    "404 passes only as proof that the retired migration route is absent",
+    contained.output.includes(
+      "PASS                         legacy admin migrate route absent — HTTP 404",
+    ),
+  );
+
+  const stalePostOnlyRoute = runProbe("404", "405");
+  check(
+    "405 fails as a stale POST-only migration route without invoking POST",
+    stalePostOnlyRoute.output.includes(
+      "FAIL                         legacy admin migrate route absent — HTTP 405 — stale or exposed route remains deployed",
+    ) &&
+      stalePostOnlyRoute.calls.some(
+        (call) =>
+          call.includes("/api/admin/migrate") &&
+          !call.includes("-X POST") &&
+          !call.includes("-d {}"),
+      ),
   );
 
   for (const code of ["403", "503"]) {

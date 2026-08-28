@@ -13,7 +13,7 @@ npx --no-install tsx scripts/<name>.test.ts   # lockfile-local guard scripts (be
 ## Guard scripts (`scripts/`) — run the ones touching your area
 | Guard | Covers | Last known |
 |---|---|---|
-| `gate-d-preflight.test.ts` | SQL-derived six-migration manifest, exhaustive catalog-state taxonomy, exact direct-target grammar, non-partitioned/non-inherited/no-RLS-policy-rule-user-trigger migration-table proof, Prisma 5.22 history-object provenance, rolled-back-history fail-closed behavior, fingerprint/privilege behavior, byte-identical retry | 105/105 |
+| `gate-d-preflight.test.ts` | SQL-derived six-migration applied manifest plus separately parsed two-migration pre-DB5 exact-absence gate; actual `--manifest` plus runtime exact checksummed DB5 candidate order and non-authorizing `READY_FOR_DB5_APPROVAL`; no applied-list leakage; candidate privilege proof; full/partial presence, candidate-table-name indexes, exact Terms/Consumer PK and future-unique schema-namespace collisions, either authored history row, and unknown-evidence fail-closed fixtures; exhaustive applied catalog-state taxonomy; exact direct-target grammar; Prisma 5.22 history provenance; byte-identical retry | 157/157 |
 | `release-verify.test.ts` | explicit-target/no-network-default plus exact/final-response-only/non-unique/malformed `x-cv-release` field rejection without network access | 11/11 |
 | `classify.test.ts` | creditor kind/type classification | 29/29 |
 | `kai-sanitize.test.ts` | Kai prompt-injection sanitizer | 8/8 |
@@ -61,7 +61,7 @@ backup/restore or target-preflight evidence are in `RUNBOOKS/gate-d-production-m
 Do not use a shared Preview/Production credential or the application Docker path as a test harness.
 
 ## Prod probes (auth gates, run after deploy)
-`curl` https://www.creditvector.app — expect: public pages **200**; protected APIs (`/api/letters` etc.) **401/403**; admin routes + `/api/admin/migrate` **403**; unsigned Stripe webhook **400**. Never expect a 200-with-effect from an unauthenticated call.
+`curl` https://www.creditvector.app — expect: public pages **200**; protected APIs (`/api/letters` etc.) and retained admin routes **401/403**; removed `/api/admin/migrate` **404**; unsigned Stripe webhook **400**. Never expect a 200-with-effect from an unauthenticated call.
 
 ## Stripe verification
 Stripe dashboard → webhook destination → Event deliveries → want `200`.

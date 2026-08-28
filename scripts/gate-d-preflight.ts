@@ -1,9 +1,12 @@
 // Gate D production migration preflight.
 //
-// This command is intentionally read-only. It derives the expected state from the
-// six committed migration.sql files, verifies a separately owner-approved database
-// fingerprint as consistency evidence only (not a later-connection attestation), reads PostgreSQL catalogs inside a READ ONLY transaction, and emits
-// deterministic JSON. It never executes or prints migration mutation commands.
+// This command is intentionally read-only. It derives the applied expectation
+// from six committed migration.sql files and a separate exact-absence expectation
+// from both authored/unapplied RC1 migration.sql files. It verifies a separately
+// owner-approved database fingerprint as consistency evidence only (not a
+// later-connection attestation), reads PostgreSQL catalogs inside a READ ONLY
+// transaction, and emits deterministic JSON. It never executes or prints
+// migration mutation commands.
 //
 // Static manifest only:
 //   npx tsx scripts/gate-d-preflight.ts --manifest
@@ -20,6 +23,7 @@ import { join } from "node:path";
 import {
   buildPreflightReport,
   buildUnknownPreflightReport,
+  db5DeployCandidateList,
   loadGateDManifest,
   manifestCoverage,
   renderPreflightReport,
@@ -70,6 +74,15 @@ async function main(): Promise<void> {
       coverage: manifestCoverage(manifest),
       formatVersion: 1,
       manifestHash: manifest.manifestHash,
+      preDb5AbsenceGate: {
+        authoredUnappliedMigrations: manifest.authoredUnappliedMigrations.map((migration) => ({
+          checksum: migration.checksum,
+          name: migration.name,
+        })),
+        deployCandidateList: db5DeployCandidateList(manifest),
+        mutationAuthorized: false,
+        requiredState: "ALL_ABSENT",
+      },
       migrations: manifest.migrations.map((migration) => ({
         checksum: migration.checksum,
         name: migration.name,
@@ -128,6 +141,7 @@ async function main(): Promise<void> {
     process.stdout.write(renderPreflightReport(report));
     process.exitCode =
       report.decision === "READY_FOR_OWNER_APPROVAL" ||
+      report.decision === "READY_FOR_DB5_APPROVAL" ||
       report.decision === "NO_PENDING_MIGRATIONS"
         ? 0
         : 2;

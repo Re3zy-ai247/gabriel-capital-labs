@@ -5,7 +5,7 @@ Actual services + env-var **names** only (never values). Server-side only unless
 | Service | Purpose | Env vars | Failure mode |
 |---|---|---|---|
 | Vercel | Hosting, project `gabriel-capital-labs` (team `rey-gabriel-s-projects`), crons | — (`CRON_SECRET` auto-injected as Bearer to cron routes; **cron routes 503 if unset**) | build fails → previous deploy stays live |
-| PostgreSQL via **Prisma Accelerate** | Data | `DATABASE_URL` | ⚠️ `prisma db push` silently no-ops through Accelerate (ADR-0001); runtime raw SQL works |
+| PostgreSQL via **Prisma Accelerate** | Data | `DATABASE_URL` | `prisma db push` is prohibited for release/runtime use; schema changes require explicit reviewed migrations through the separately authorized direct-database procedure |
 | Stripe (LIVE) | Checkout, portal, webhook (5 events → `/api/stripe/webhook`) | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | webhook events deduped on `event.id`; catalog provisions lazily (admin Billing → "Sync products to Stripe") |
 | Anthropic | Kai, parse, letters refine, strategist, Brief summarizer | `ANTHROPIC_API_KEY`, `LLM_MODEL` | letters fall back to deterministic draft (ADR-0004); Brief ingest skips |
 | Resend (HTTP API, no SDK — `lib/email.ts`) | Transactional + digest email; domain `creditvector.app` VERIFIED (DNS at Squarespace) | `RESEND_API_KEY`, `RESEND_FROM`, `RESEND_REPLY_TO`, `ADMIN_EMAIL` | `sendEmail` fails safe; deliverability still warming |

@@ -60,8 +60,8 @@ export function canAccessCommunity(account: {
 
 // Community tables are created lazily at runtime — CREATE TABLE IF NOT EXISTS via
 // raw SQL works through the Prisma Accelerate proxy even though build-time
-// `prisma db push` does not. This self-heals the Hub on first access, so no
-// manual migrate step is ever required. Statements mirror app/api/admin/migrate.
+// `prisma db push` does not. This grandfathered legacy path self-heals the Hub
+// on first access; no manual migration API is required.
 const COMMUNITY_DDL = [
   `CREATE TABLE IF NOT EXISTS "CommunityThread" (
      "id" TEXT NOT NULL PRIMARY KEY,

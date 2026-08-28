@@ -365,9 +365,21 @@ if [ "$PROBE" = 1 ]; then
       *)       record fail "bootstrap containment probe" "unexpected HTTP ${c}; expected 404" ;;
     esac
 
-    # 3.2 Every privileged route must fail closed to an anonymous caller. 404 is a FAILURE:
-    #     a deleted route must not be indistinguishable from a locked one.
-    for spec in "/api/admin/diagnostics:GET" "/api/admin/migrate:POST" "/api/admin/billing/provision:POST" "/api/agency/enable:POST" "/api/stripe/portal:POST"; do
+    # 3.2 The legacy human-triggerable DDL route was removed. Probe with a plain
+    #     GET only: the retired route is 404, while a stale POST-only route is 405.
+    #     NEVER POST here — a stale deployment must be detected without giving its
+    #     mutation handler any opportunity to authorize or execute.
+    c=$(code_of "${BASE}/api/admin/migrate")
+    case "$c" in
+      404)                 record pass "legacy admin migrate route absent" "HTTP 404 — retired mutation surface is not deployed" ;;
+      200|401|403|405|503) record fail "legacy admin migrate route absent" "HTTP ${c} — stale or exposed route remains deployed" ;;
+      000)                 record env "legacy admin migrate absence probe" "no response (network blocked or DNS unavailable)" ;;
+      *)                   record fail "legacy admin migrate absence probe" "unexpected HTTP ${c}; expected 404" ;;
+    esac
+
+    # 3.3 Every remaining privileged route must fail closed to an anonymous caller.
+    #     For these live controls, 404 is a failure rather than an acceptable gate.
+    for spec in "/api/admin/diagnostics:GET" "/api/admin/billing/provision:POST" "/api/agency/enable:POST" "/api/stripe/portal:POST"; do
       path="${spec%%:*}"; verb="${spec##*:}"
       if [ "$verb" = "POST" ]; then
         c=$(curl -s -o /dev/null -w "%{http_code}" --max-time 20 -X POST "${BASE}${path}" -H "Content-Type: application/json" -d '{}')
@@ -384,7 +396,7 @@ if [ "$PROBE" = 1 ]; then
       esac
     done
 
-    # 3.3 The Stripe webhook must still reject an unsigned payload — the durability work in
+    # 3.4 The Stripe webhook must still reject an unsigned payload — the durability work in
     #     lib/billing.ts is only meaningful behind an intact signature check.
     c=$(curl -s -o /dev/null -w "%{http_code}" --max-time 20 -X POST "${BASE}/api/stripe/webhook" \
           -H "Content-Type: application/json" -d '{"verify":"probe"}')

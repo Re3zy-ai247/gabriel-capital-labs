@@ -94,8 +94,10 @@ echo "▶ Readiness: $READY_BODY"
 # refused promotion must SAY which dependency is missing — otherwise an operator
 # reads "503" and redeploys the same broken thing. These three name the two
 # failures that take a core consumer flow to zero:
-#   schema      — a deployment that landed before `prisma migrate deploy`
-#                 (registration throws with no try/catch: nobody can sign up)
+#   schema      — a deployment whose required database state is absent
+#                 (registration throws with no try/catch: nobody can sign up).
+#                 This verifier detects the failure only; it never authorizes or
+#                 executes a database change.
 #   encryption  — DOCUMENT_ENCRYPTION_KEY absent (100% of report intake fails)
 # Both are dependencies of the RELEASE, not of the process, so they belong here
 # and not in the liveness probe.
@@ -115,7 +117,10 @@ fi
 echo "▶ Readiness dependencies"
 case "$READY_BODY" in
   *'"schema":"ok"'*)     echo "  OK   schema      required migrations are applied" ;;
-  *)                     echo "  FAIL schema      required tables missing — run 'prisma migrate deploy' against the DIRECT (non-Accelerate) URL before promoting"; fail=1 ;;
+  *)                     echo "  FAIL schema      required tables missing";
+                         echo "       NON-AUTHORIZING: this verifier grants no database or migration authority.";
+                         echo "       Do not run a migration from this verifier; follow .ai/RUNBOOKS/gate-d-production-migration.md under separate Founder authority.";
+                         fail=1 ;;
 esac
 case "$READY_BODY" in
   *'"encryption":"ok"'*) echo "  OK   encryption   DOCUMENT_ENCRYPTION_KEY usable" ;;

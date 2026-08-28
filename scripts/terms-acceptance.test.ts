@@ -42,6 +42,10 @@
 //   · Unmodified slice tree: **57 passed, 0 failed** (exit 0).
 import { readFileSync, existsSync, readdirSync } from "node:fs";
 import { join } from "node:path";
+import {
+  AUTHORED_UNAPPLIED_MIGRATIONS,
+  GATE_D_MIGRATION_CHAIN,
+} from "./gate-d-preflight-core";
 
 export {};
 
@@ -117,7 +121,9 @@ check(
 // RC1's migration-first law: the file ships, the owner applies it.
 check(
   "the migration is registered as AUTHORED-BUT-UNAPPLIED in the Gate D preflight",
-  /"20260728000000_terms_acceptance"/.test(readFileSync(join(root, "scripts/gate-d-preflight-core.ts"), "utf8"))
+  migrationsWithTable.length === 1 &&
+    (AUTHORED_UNAPPLIED_MIGRATIONS as readonly string[]).includes(migrationsWithTable[0]) &&
+    !(GATE_D_MIGRATION_CHAIN as readonly string[]).includes(migrationsWithTable[0]),
 );
 
 console.log("\n2. nothing manufactures consent for people who never gave it");

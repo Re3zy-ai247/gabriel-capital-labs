@@ -61,13 +61,12 @@ export async function logAudit(params: {
 
 // ── SETUP_SECRET (M-4) ───────────────────────────────────────────────────────
 // E-03 named `SETUP_SECRET` a god-key that was "unthrottled and non-timing-safe".
-// The lane closed the query-string leak and hard-404'd bootstrap, but
-// /api/admin/migrate (25 x $executeRawUnsafe) and /api/admin/billing/provision
-// (Stripe catalog writes) stayed anonymously reachable in production and still
-// compared with `===`, which short-circuits on length and on the first differing
-// byte, and still permitted unbounded online guessing.
+// The lane closed the query-string leak and hard-404'd bootstrap. The raw-DDL
+// migration surface has since been removed; the remaining setup-secret callers
+// still need a shared comparison that does not short-circuit on length or the
+// first differing byte and does not permit unbounded online guessing.
 //
-// Both call sites now come through here:
+// Remaining call sites come through here:
 //   · throttled per source IP BEFORE any comparison, so the route stops being an
 //     online oracle. Fails CLOSED — including when the limiter backend is down,
 //     which is the correct posture for a credential check (contrast

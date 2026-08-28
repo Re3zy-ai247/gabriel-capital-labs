@@ -9,7 +9,6 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
     "postinstall": "prisma generate"
   },

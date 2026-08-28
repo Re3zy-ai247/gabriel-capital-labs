@@ -1,20 +1,36 @@
+name: creditvector-local
+
 services:
   db:
-    image: postgres:16-alpine
+    image: postgres:16-alpine@sha256:cf78e76683b9ca8c5733cbbdce6c9262b45b6767934dd0a95e671f9a0fc20685
     environment:
-      POSTGRES_PASSWORD: gcl
-      POSTGRES_USER: gcl
-      POSTGRES_DB: gcl
-    ports: ["5432:5432"]
+      POSTGRES_PASSWORD: "${LOCAL_POSTGRES_PASSWORD:?set a disposable-local password}"
+      POSTGRES_USER: creditvector_local
+      POSTGRES_DB: creditvector_local
+    ports: ["127.0.0.1:5432:5432"]
     volumes: ["gcl_pg:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 5s
   web:
     build: .
-    depends_on: [db]
-    ports: ["3000:3000"]
+    depends_on:
+      db:
+        condition: service_healthy
+    ports: ["127.0.0.1:3000:3000"]
     environment:
-      DATABASE_URL: "postgresql://gcl:gcl@db:5432/gcl"
-      NEXTAUTH_SECRET: "change-me-in-production"
+      DATABASE_URL: "postgresql://creditvector_local:${LOCAL_POSTGRES_PASSWORD:?set a disposable-local password}@db:5432/creditvector_local"
+      NEXTAUTH_SECRET: "${LOCAL_NEXTAUTH_SECRET:?set a disposable-local auth secret}"
       NEXTAUTH_URL: "http://localhost:3000"
-      ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY}"
+      DOCUMENT_ENCRYPTION_KEY: "${LOCAL_DOCUMENT_ENCRYPTION_KEY:?set a disposable-local encryption key}"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
 volumes:
   gcl_pg:

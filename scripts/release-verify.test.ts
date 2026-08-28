@@ -69,7 +69,7 @@ function headers(releaseLines: string[], status = "HTTP/2 200"): string {
 
 const READY_OK = '{"status":"ready","db":"ok","encryption":"ok","schema":"ok"}';
 
-function run(headerBlock: string, readyCode = "200", readyBody = READY_OK): number | null {
+function runResult(headerBlock: string, readyCode = "200", readyBody = READY_OK) {
   const result = spawnSync(
     "bash",
     [join(root, "scripts", "release-verify.sh"), "https://example.invalid", expectedSha],
@@ -85,7 +85,11 @@ function run(headerBlock: string, readyCode = "200", readyBody = READY_OK): numb
       },
     },
   );
-  return result.status;
+  return { status: result.status, stdout: result.stdout };
+}
+
+function run(headerBlock: string, readyCode = "200", readyBody = READY_OK): number | null {
+  return runResult(headerBlock, readyCode, readyBody).status;
 }
 
 function runWithoutTarget(): { curlInvoked: boolean; status: number | null } {
@@ -118,14 +122,26 @@ try {
   // leaves POST /api/register throwing with no try/catch — nobody can create an
   // account — and until this release nothing outside the database could tell.
   // The gate must refuse the promotion and must NAME the dependency.
-  check(
-    "a deployment whose migrations were never applied fails the release gate",
-    run(
+  {
+    const result = runResult(
       headers(["x-cv-release: " + expectedRelease]),
       "503",
       '{"status":"degraded","db":"ok","encryption":"ok","schema":"incomplete","missingTables":["TermsAcceptance"]}',
-    ) !== 0,
-  );
+    );
+    check(
+      "a deployment whose migrations were never applied fails the release gate",
+      result.status !== 0,
+    );
+    check(
+      "schema failure output grants no authority and directs the operator to Gate-D",
+      /FAIL schema/.test(result.stdout) &&
+        /NON-AUTHORIZING/.test(result.stdout) &&
+        /grants no database or migration authority/i.test(result.stdout) &&
+        /do not run a migration from this verifier/i.test(result.stdout) &&
+        /\.ai\/RUNBOOKS\/gate-d-production-migration\.md/.test(result.stdout) &&
+        !/\bprisma\s+migrate\s+deploy\b/.test(result.stdout),
+    );
+  }
   check(
     "an unusable DOCUMENT_ENCRYPTION_KEY fails the release gate",
     run(
@@ -157,18 +173,128 @@ try {
   const deployRunbook = readFileSync(join(root, ".ai", "RUNBOOKS", "deploy.md"), "utf8");
   const deployDoc = readFileSync(join(root, "DEPLOY.md"), "utf8");
   const operations = readFileSync(join(root, "OPERATIONS.md"), "utf8");
+  const gateDRunbook = readFileSync(
+    join(root, ".ai", "RUNBOOKS", "gate-d-production-migration.md"),
+    "utf8",
+  );
   const releaseScript = readFileSync(join(root, "scripts", "release-verify.sh"), "utf8");
+
+  check(
+    "release verifier contains no Production migration shortcut",
+    !/\bprisma\s+migrate\s+deploy\b/.test(releaseScript),
+  );
+  check(
+    "release verifier is non-authorizing and sends schema failures to authoritative Gate-D",
+    /NON-AUTHORIZING/.test(releaseScript) &&
+      /grants no database or migration authority/i.test(releaseScript) &&
+      /do not run a migration from this verifier/i.test(releaseScript) &&
+      /\.ai\/RUNBOOKS\/gate-d-production-migration\.md/.test(releaseScript) &&
+      /separate Founder authority/i.test(releaseScript),
+  );
+
+  const fencedCodeBlocks = (doc: string): string[] =>
+    Array.from(doc.matchAll(/```[^\n]*\n([\s\S]*?)```/g), (match) => match[1]);
+  const fencedMigrationCommandLines = (doc: string): string[] =>
+    fencedCodeBlocks(doc)
+      .flatMap((block) => block.split("\n"))
+      .map((line) => line.trim())
+      .filter((line) => /\bprisma\s+migrate\s+deploy\b/.test(line));
+
+  const rootProductionStart = deployDoc.indexOf("## Before any promotion:");
+  const rootProductionEnd = deployDoc.indexOf("## Spend and probe knobs", rootProductionStart);
+  const rootLocalStart = deployDoc.indexOf("## Option B — Self-host with Docker/Compose");
+  const rootLocalEnd = deployDoc.indexOf("## Install as a DESKTOP app", rootLocalStart);
+  const rootSectionsLocated =
+    rootProductionStart >= 0 &&
+    rootProductionEnd > rootProductionStart &&
+    rootLocalStart > rootProductionEnd &&
+    rootLocalEnd > rootLocalStart;
+  check("DEPLOY.md production/local command scopes are located non-vacuously", rootSectionsLocated);
+  const rootProduction = rootSectionsLocated
+    ? deployDoc.slice(rootProductionStart, rootProductionEnd)
+    : "";
+  const rootLocal = rootSectionsLocated ? deployDoc.slice(rootLocalStart, rootLocalEnd) : "";
+  const rootOutsideLocal = rootSectionsLocated
+    ? deployDoc.slice(0, rootLocalStart) + deployDoc.slice(rootLocalEnd)
+    : deployDoc;
+
   for (const [label, doc] of [
-    ["the deploy runbook", deployRunbook],
-    ["DEPLOY.md", deployDoc],
-    ["OPERATIONS.md (restore)", operations],
+    ["the shortcut deploy runbook", deployRunbook],
+    ["DEPLOY.md Production section", rootProduction],
+    ["OPERATIONS.md", operations],
   ] as const) {
-    check(`${label} names \`prisma migrate deploy\``, /prisma migrate deploy/.test(doc));
     check(
-      `${label} warns that the apply must use the DIRECT url, not Accelerate`,
-      /DIRECT/i.test(doc) && /Accelerate/i.test(doc),
+      `${label} delegates Production execution to authoritative Gate-D`,
+      /gate-d-production-migration\.md/.test(doc),
+    );
+    check(
+      `${label} explicitly grants no migration authority`,
+      /does not authorize|grants no production or database authority|non-authorizing/i.test(doc),
+    );
+    check(
+      `${label} reproduces no executable Production migrate-deploy command`,
+      fencedMigrationCommandLines(doc).length === 0,
     );
   }
+  check(
+    "DEPLOY.md permits migrate-deploy only as the disposable-local Compose command",
+    fencedMigrationCommandLines(rootOutsideLocal).length === 0 &&
+      fencedMigrationCommandLines(rootLocal).every(
+        (line) =>
+          line === "docker compose run --rm web npx --no-install prisma migrate deploy",
+      ) &&
+      /disposable[\s\S]{0,100}local|non-production local/i.test(rootLocal),
+  );
+
+  const gateDDeployStart = gateDRunbook.indexOf("## 9. DB5 deploy — Founder approval point 4");
+  const gateDDeployEnd = gateDRunbook.indexOf("## 10. Interrupted migration recovery", gateDDeployStart);
+  const gateDDeploySection =
+    gateDDeployStart >= 0 && gateDDeployEnd > gateDDeployStart
+      ? gateDRunbook.slice(gateDDeployStart, gateDDeployEnd)
+      : "";
+  check("Gate-D DB5 execution section is located non-vacuously", gateDDeploySection.length > 0);
+  const gateDDeployBlocks = fencedCodeBlocks(gateDDeploySection).filter((block) =>
+    /\bprisma\s+migrate\s+deploy\b/.test(block),
+  );
+  check(
+    "Gate-D owns exactly one executable DB5 migrate-deploy command on its validated direct target",
+    gateDDeployBlocks.length === 1 &&
+      (gateDDeployBlocks[0].match(/\bprisma\s+migrate\s+deploy\b/g) || []).length === 1 &&
+      /DATABASE_URL="\$\{GATE_D_DATABASE_URL\}"/.test(gateDDeployBlocks[0]) &&
+      /Use a direct PostgreSQL connection, never an Accelerate URL/.test(gateDRunbook),
+  );
+  check(
+    "Gate-D pins one lexical DB5 deploy and forbids staged --to",
+    /one command applies both pending DB5 migrations in their existing lexical\s+order/i.test(
+      gateDDeploySection,
+    ) && /Do not attempt staged `--to` deployment/.test(gateDDeploySection),
+  );
+  check(
+    "Gate-D requires credential rotation before the next DB contact",
+    /Rotate it \*\*before the next production DB contact, including DB4\*\*/.test(gateDRunbook) &&
+      /previously exposed production credential/i.test(gateDRunbook),
+  );
+  check(
+    "Gate-D requires accepted DB4 plus a fresh hardened pre-DB5 backup",
+    /Control Tower accepted DB4's read-only output/.test(gateDDeploySection) &&
+      /new hardened production backup[\s\S]{0,300}immediately before\s+DB5/i.test(
+        gateDDeploySection,
+      ),
+  );
+  check(
+    "Gate-D keeps READY_FOR_DB5_APPROVAL non-authorizing and requires separate Founder authority",
+    /READY_FOR_DB5_APPROVAL[\s\S]{0,500}non-authorizing/i.test(gateDRunbook) &&
+      /Founder explicitly authorizes exactly one controlled DB5 execution/.test(gateDDeploySection),
+  );
+  check(
+    "Gate-D pins both DB5 names/checksums in lexical order",
+    gateDRunbook.indexOf(
+      "20260728000000_terms_acceptance` — `d67e5b4b4761d6328fb0786ea976a1f889a49e308bbd5b354a768e7324e3e922",
+    ) > -1 &&
+      gateDRunbook.indexOf(
+        "20260823120000_consumer_assertion` — `d5a7ea7ac31a12119ad413e8fc1290c923b1f9b9a3fd4fa4e046f44904d15ad0",
+      ) > gateDRunbook.indexOf("20260728000000_terms_acceptance"),
+  );
   check(
     "the deploy runbook names both required migrations, in order",
     deployRunbook.indexOf("20260728000000_terms_acceptance") > -1 &&

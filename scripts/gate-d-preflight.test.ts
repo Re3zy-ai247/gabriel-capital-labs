@@ -2,7 +2,8 @@
 //
 // DB-less deterministic fixtures for the Gate D catalog classifier. No fixture
 // opens a socket or touches Production/Preview.
-import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -20,6 +21,7 @@ import {
   buildPreflightReport,
   buildUnknownPreflightReport,
   databaseFingerprint,
+  db5DeployCandidateList,
   loadGateDManifest,
   manifestCoverage,
   parseMigrationSql,
@@ -39,6 +41,10 @@ function check(label: string, condition: boolean): void {
 
 const root = join(__dirname, "..");
 const manifest = loadGateDManifest(root);
+const catalogMigrations = [
+  ...manifest.migrations,
+  ...manifest.authoredUnappliedMigrations,
+];
 const identity = {
   systemIdentifier: "7429384756102938475",
   databaseOid: "16384",
@@ -83,13 +89,19 @@ function expectedMigration(name: string): MigrationExpectation {
   return migration;
 }
 
+function authoredMigration(name: string): MigrationExpectation {
+  const migration = manifest.authoredUnappliedMigrations.find((item) => item.name === name);
+  if (!migration) throw new Error(`authored fixture migration missing: ${name}`);
+  return migration;
+}
+
 function fixture(
   physicalNames: readonly string[] = GATE_D_MIGRATION_CHAIN,
   appliedNames: readonly string[] = GATE_D_MIGRATION_CHAIN,
 ): CatalogSnapshot {
   const physical = new Set(physicalNames);
   const applied = new Set(appliedNames);
-  const enums = manifest.migrations
+  const enums = catalogMigrations
     .filter((migration) => physical.has(migration.name))
     .flatMap((migration) =>
       migration.enums.map((item) => ({
@@ -99,7 +111,7 @@ function fixture(
         values: [...item.values],
       })),
     );
-  const tables = manifest.migrations
+  const tables = catalogMigrations
     .filter((migration) => physical.has(migration.name))
     .flatMap((migration) =>
       migration.tables.map((item) => ({
@@ -118,7 +130,7 @@ function fixture(
         ownerUsable: true,
       })),
     );
-  const columns = manifest.migrations
+  const columns = catalogMigrations
     .filter((migration) => physical.has(migration.name))
     .flatMap((migration) =>
       migration.tables.flatMap((table) =>
@@ -135,7 +147,7 @@ function fixture(
         })),
       ),
     );
-  const constraints: ActualConstraint[] = manifest.migrations
+  const constraints: ActualConstraint[] = catalogMigrations
     .filter((migration) => physical.has(migration.name))
     .flatMap((migration) =>
       migration.tables.flatMap((table) => [
@@ -178,7 +190,7 @@ function fixture(
         })),
       ]),
     );
-  const indexes = manifest.migrations
+  const indexes = catalogMigrations
     .filter((migration) => physical.has(migration.name))
     .flatMap((migration) => [
       ...migration.tables.flatMap((table) => [
@@ -242,7 +254,7 @@ function fixture(
         nullsNotDistinct: false,
       })),
     ]);
-  const foreignKeys = manifest.migrations
+  const foreignKeys = catalogMigrations
     .filter((migration) => physical.has(migration.name))
     .flatMap((migration) =>
       migration.foreignKeys.map((item) => ({
@@ -261,7 +273,7 @@ function fixture(
         validated: item.validated,
       })),
     );
-  const extensions = manifest.migrations
+  const extensions = catalogMigrations
     .filter((migration) => physical.has(migration.name))
     .flatMap((migration) =>
       migration.extensions.map((item) => ({
@@ -283,7 +295,7 @@ function fixture(
     identity: structuredClone(identity),
     fingerprint: expectedFingerprint,
     historyTable: prismaMigrationHistoryTable(),
-    historyRows: manifest.migrations
+    historyRows: catalogMigrations
       .filter((migration) => applied.has(migration.name))
       .map((migration) => ({
         id: `history-${migration.name}`,
@@ -321,12 +333,76 @@ function fixture(
   };
 }
 
+function addUnrelatedTable(
+  snapshot: CatalogSnapshot,
+  name: string,
+  columnNames: readonly string[],
+) {
+  const sourceTable = snapshot.tables.find(
+    (table) => table.schema === "public" && table.name === "User",
+  );
+  if (!sourceTable) throw new Error("fixture User table missing");
+  const table = { ...structuredClone(sourceTable), name };
+  snapshot.tables.push(table);
+  for (const columnName of columnNames) {
+    const sourceColumn = snapshot.columns.find(
+      (column) =>
+        column.schema === "public" && column.table === "User" && column.name === columnName,
+    );
+    if (!sourceColumn) throw new Error(`fixture User.${columnName} column missing`);
+    snapshot.columns.push({ ...structuredClone(sourceColumn), table: name });
+  }
+  snapshot.permissions.relations.push({
+    schema: table.schema,
+    table: name,
+    ownerUsable: true,
+    references: Object.fromEntries(columnNames.map((columnName) => [columnName, true])),
+  });
+  return table;
+}
+
+function addCatalogIndex(
+  snapshot: CatalogSnapshot,
+  input: {
+    schema: string;
+    table: string;
+    name: string;
+    keys: readonly string[];
+    unique: boolean;
+  },
+) {
+  snapshot.indexes.push({
+    ...structuredClone(snapshot.indexes[0]),
+    schema: input.schema,
+    table: input.table,
+    name: input.name,
+    unique: input.unique,
+    primary: false,
+    keys: [...input.keys],
+    keyOptions: input.keys.map(() => 0),
+    defaultOpclasses: input.keys.map(() => true),
+    defaultCollations: input.keys.map(() => true),
+  });
+  // gate-d-preflight-catalog emits the pg_class relation row as well as the
+  // pg_index metadata row for every index.
+  snapshot.tables.push({
+    ...structuredClone(snapshot.tables[0]),
+    schema: input.schema,
+    name: input.name,
+    relationKind: "index",
+  });
+}
+
 function reportFor(snapshot: CatalogSnapshot) {
   return buildPreflightReport(manifest, snapshot, expectedFingerprint);
 }
 
 function state(report: ReturnType<typeof reportFor>, name: string): MigrationState | undefined {
   return report.migrations.find((migration) => migration.name === name)?.state;
+}
+
+function authoredAbsence(report: ReturnType<typeof reportFor>, name: string) {
+  return report.preDb5AbsenceGate.migrations.find((migration) => migration.name === name);
 }
 
 function withoutMigration(
@@ -382,11 +458,14 @@ check(
 //
 // That splits one list into two, and BOTH stay pinned:
 //   · GATE_D_MIGRATION_CHAIN — the applied chain. The manifest, the coverage
-//     counts, the manifest hash and every fixture's physical/applied set come
-//     from this alone, so a Gate D database is still expected NOT to contain the
-//     consumer_assertion table. Unchanged: still exactly the reviewed six.
+//     counts and applied-set fixtures come from this alone. Unchanged: still
+//     exactly the reviewed six.
 //   · EXPECTED_MIGRATION_DIRECTORIES — what may exist under prisma/migrations.
-//     Extended by exactly one entry. An eighth folder still fails loudly.
+//     It contains the six applied plus both acknowledged authored directories;
+//     a ninth folder still fails loudly.
+//   · manifest.authoredUnappliedMigrations — both SQL files are parsed and
+//     hashed solely to drive the separate exact-absence gate. They never enter
+//     applied coverage or a pending-deploy list.
 //
 // The tripwire is extended, never weakened: the checks below pin the on-disk set
 // exactly (no "startsWith"/"length >=" slack) and pin the authored entry OUT of
@@ -426,11 +505,78 @@ check(
   ),
 );
 check(
-  "…so its tables are absent from the schema the preflight expects",
+  "authored migrations are parsed into the exact-absence manifest in exact order",
+  manifest.authoredUnappliedMigrations.map((item) => item.name).join(",") ===
+    AUTHORED_UNAPPLIED_MIGRATIONS.join(","),
+);
+check(
+  "authored tables stay absent from applied coverage",
   !manifest.migrations.some((migration) =>
     migration.tables.some((table) => table.name === "ConsumerAssertion" || table.name === "TermsAcceptance"),
   ),
 );
+check(
+  "the absence manifest covers both authored tables",
+  manifest.authoredUnappliedMigrations
+    .flatMap((migration) => migration.tables.map((table) => table.name))
+    .sort()
+    .join(",") === "ConsumerAssertion,TermsAcceptance",
+);
+check(
+  "authored migration SQL checksums are pinned byte-for-byte before DB5",
+  manifest.authoredUnappliedMigrations
+    .map((migration) => `${migration.name}:${migration.checksum}`)
+    .join(",") ===
+    "20260728000000_terms_acceptance:d67e5b4b4761d6328fb0786ea976a1f889a49e308bbd5b354a768e7324e3e922," +
+      "20260823120000_consumer_assertion:d5a7ea7ac31a12119ad413e8fc1290c923b1f9b9a3fd4fa4e046f44904d15ad0",
+);
+check(
+  "DB5 deploy candidates are derived in exact authored order with exact checksums",
+  db5DeployCandidateList(manifest)
+    .map((candidate) => `${candidate.name}:${candidate.checksum}`)
+    .join(",") ===
+    "20260728000000_terms_acceptance:d67e5b4b4761d6328fb0786ea976a1f889a49e308bbd5b354a768e7324e3e922," +
+      "20260823120000_consumer_assertion:d5a7ea7ac31a12119ad413e8fc1290c923b1f9b9a3fd4fa4e046f44904d15ad0",
+);
+check(
+  "DB5 deploy candidate names come only from AUTHORED_UNAPPLIED_MIGRATIONS",
+  db5DeployCandidateList(manifest).every(
+    (candidate, index) => candidate.name === AUTHORED_UNAPPLIED_MIGRATIONS[index],
+  ) && db5DeployCandidateList(manifest).length === AUTHORED_UNAPPLIED_MIGRATIONS.length,
+);
+{
+  const staticManifest = JSON.parse(
+    execFileSync(
+      process.execPath,
+      ["--import", "tsx", join(root, "scripts", "gate-d-preflight.ts"), "--manifest"],
+      { cwd: root, encoding: "utf8" },
+    ),
+  ) as {
+    migrations: Array<{ name: string; checksum: string }>;
+    mutationAuthorized: boolean;
+    preDb5AbsenceGate: {
+      deployCandidateList: Array<{ name: string; checksum: string }>;
+      mutationAuthorized: boolean;
+    };
+  };
+  check(
+    "the actual --manifest CLI renders the exact checksummed DB5 candidate list",
+    staticManifest.preDb5AbsenceGate.deployCandidateList
+      .map((candidate) => `${candidate.name}:${candidate.checksum}`)
+      .join(",") ===
+      db5DeployCandidateList(manifest)
+        .map((candidate) => `${candidate.name}:${candidate.checksum}`)
+        .join(","),
+  );
+  check(
+    "the static manifest is non-authorizing and keeps DB5 candidates out of applied migrations",
+    staticManifest.mutationAuthorized === false &&
+      staticManifest.preDb5AbsenceGate.mutationAuthorized === false &&
+      staticManifest.preDb5AbsenceGate.deployCandidateList.every(
+        (candidate) => !staticManifest.migrations.some((migration) => migration.name === candidate.name),
+      ),
+  );
+}
 {
   const tempRoot = mkdtempSync(join(tmpdir(), "gate-d-manifest-"));
   try {
@@ -445,12 +591,34 @@ check(
         join(target, "migration.sql"),
       );
     }
-    // Control: the exact expected set loads, and yields the applied six only.
+    // Control: the exact expected set loads, yielding six applied expectations
+    // plus the two separately parsed absence expectations.
     const fromTemp = loadGateDManifest(tempRoot);
     check(
       "manifest loads from a root holding the full expected directory set",
-      fromTemp.migrations.length === 6 && fromTemp.manifestHash === manifest.manifestHash,
+      fromTemp.migrations.length === 6 &&
+        fromTemp.authoredUnappliedMigrations.length === 2 &&
+        fromTemp.manifestHash === manifest.manifestHash,
     );
+
+    const authoredPath = join(
+      tempRoot,
+      "prisma",
+      "migrations",
+      AUTHORED_UNAPPLIED_MIGRATIONS[0],
+      "migration.sql",
+    );
+    const authoredSql = readFileSync(authoredPath, "utf8");
+    writeFileSync(authoredPath, `${authoredSql}\n-- absence-manifest hash negative control\n`);
+    const changedAuthoredManifest = loadGateDManifest(tempRoot);
+    check(
+      "manifest hash includes authored-unapplied SQL while applied coverage remains six",
+      changedAuthoredManifest.manifestHash !== manifest.manifestHash &&
+        changedAuthoredManifest.migrations.map((migration) => migration.checksum).join(",") ===
+          manifest.migrations.map((migration) => migration.checksum).join(",") &&
+        manifestCoverage(changedAuthoredManifest).migrations === 6,
+    );
+    writeFileSync(authoredPath, authoredSql);
 
     mkdirSync(join(tempRoot, "prisma", "migrations", "unexpected_empty_directory"));
     let rejected = false;
@@ -481,6 +649,297 @@ check("manifest covers all 34 primary keys", coverage.primaryKeys === 34);
 check("manifest covers all 62 explicit indexes", coverage.indexes === 62);
 check("manifest covers all 21 foreign keys", coverage.foreignKeys === 21);
 check("manifest records zero SQL unique constraints/checks/extensions", coverage.uniqueConstraints === 0 && coverage.checkConstraints === 0 && coverage.extensions === 0);
+
+// PRE-DB5 AUTHORED/UNAPPLIED EXACT-ABSENCE GATE. This is deliberately
+// independent of the six-migration applied-chain classifier above.
+{
+  const report = reportFor(fixture());
+  check("pre-DB5 absence gate passes when both authored migrations are physically and historically absent", report.preDb5AbsenceGate.decision === "PASS");
+  check(
+    "clean applied-six plus authored absence is explicitly READY_FOR_DB5_APPROVAL",
+    report.decision === "READY_FOR_DB5_APPROVAL" &&
+      report.preDb5AbsenceGate.mutationAuthorized === false &&
+      report.mutationAuthorized === false,
+  );
+  check(
+    "runtime pre-DB5 evidence renders the exact checksummed DB5 candidate order",
+    report.preDb5AbsenceGate.deployCandidateList
+      .map((candidate) => `${candidate.name}:${candidate.checksum}`)
+      .join(",") ===
+      db5DeployCandidateList(manifest)
+        .map((candidate) => `${candidate.name}:${candidate.checksum}`)
+        .join(","),
+  );
+  check(
+    "DB5 candidate privilege proof covers schema, history, indexes, constraints, and foreign keys",
+    [
+      "schema:public:create",
+      "migration_history:insert",
+      "migration_history:update",
+      "capability:create_tables",
+      "capability:create_indexes",
+      "capability:add_constraints",
+      "capability:add_foreign_keys",
+      "capability:write_migration_history",
+    ].every((name) =>
+      report.privilegeChecks.some((check) => check.name === name && check.status === "PASS"),
+    ),
+  );
+  check(
+    "pre-DB5 clean absence proves both authored migrations ALL_ABSENT",
+    report.preDb5AbsenceGate.migrations.length === 2 &&
+      report.preDb5AbsenceGate.migrations.every(
+        (migration) =>
+          migration.state === "ALL_ABSENT" &&
+          migration.physicalState === "ALL_ABSENT" &&
+          migration.history === "ABSENT" &&
+          migration.presentPhysicalObjects.length === 0,
+      ),
+  );
+  check(
+    "absence expectations explicitly cover tables, columns, PKs, PK indexes, explicit indexes and FKs",
+    report.preDb5AbsenceGate.migrations.every((migration) => {
+      const kinds = new Set(
+        migration.expectedPhysicalObjects.map((path) => path.slice(0, path.indexOf("."))),
+      );
+      return ["table", "column", "primary-key", "primary-key-index", "index", "foreign-key"]
+        .every((kind) => kinds.has(kind));
+    }),
+  );
+  check(
+    "absence inventories pin all 11 TermsAcceptance and 19 ConsumerAssertion physical objects",
+    authoredAbsence(report, AUTHORED_UNAPPLIED_MIGRATIONS[0])?.expectedPhysicalObjects.length === 11 &&
+      authoredAbsence(report, AUTHORED_UNAPPLIED_MIGRATIONS[1])?.expectedPhysicalObjects.length === 19,
+  );
+  const rendered = renderPreflightReport(report);
+  check(
+    "rendered JSON retains the distinct absence gate and its object inventory",
+    rendered.includes('"preDb5AbsenceGate"') &&
+      rendered.includes('"deployCandidateList"') &&
+      rendered.includes('"requiredState":"ALL_ABSENT"') &&
+      rendered.includes('"column.public.TermsAcceptance.acceptedAt"') &&
+      rendered.includes('"foreign-key.public.ConsumerAssertion.ConsumerAssertion_tradelineId_fkey"'),
+  );
+  check(
+    "authored/unapplied migrations never leak into mutation proposal output",
+    [...report.pendingDeployList, ...report.proposedResolveList].every(
+      (name) => !(AUTHORED_UNAPPLIED_MIGRATIONS as readonly string[]).includes(name),
+    ),
+  );
+}
+{
+  const snapshot = fixture();
+  snapshot.permissions.schemaCreate = false;
+  const report = reportFor(snapshot);
+  check(
+    "DB5 candidate schema-CREATE failure aborts with legacy proposal lists still empty",
+    report.decision === "ABORT" &&
+      report.pendingDeployList.length === 0 &&
+      report.proposedResolveList.length === 0 &&
+      report.stopReasons.includes("PRIVILEGE_FAIL:schema:public:create"),
+  );
+}
+{
+  const snapshot = fixture();
+  snapshot.permissions.relations.find(
+    (relation) => relation.schema === "public" && relation.table === "User",
+  )!.references.id = false;
+  const report = reportFor(snapshot);
+  check(
+    "DB5 candidate FK-reference failure aborts before approval",
+    report.decision === "ABORT" &&
+      report.stopReasons.includes("PRIVILEGE_FAIL:references:public.User.id"),
+  );
+}
+{
+  const snapshot = fixture(
+    [...GATE_D_MIGRATION_CHAIN, ...AUTHORED_UNAPPLIED_MIGRATIONS],
+    GATE_D_MIGRATION_CHAIN,
+  );
+  const report = reportFor(snapshot);
+  check("full db-push-shaped authored schema makes the pre-DB5 gate ABORT", report.preDb5AbsenceGate.decision === "ABORT" && report.decision === "ABORT");
+  check(
+    "full authored physical presence is exhaustively evidenced",
+    report.preDb5AbsenceGate.migrations.every(
+      (migration) =>
+        migration.state === "PRESENT" &&
+        migration.physicalState === "PRESENT" &&
+        migration.history === "ABSENT" &&
+        migration.presentPhysicalObjects.join(",") === migration.expectedPhysicalObjects.join(","),
+    ),
+  );
+  check(
+    "full authored physical presence emits one deterministic stop per migration",
+    AUTHORED_UNAPPLIED_MIGRATIONS.every((name) =>
+      report.stopReasons.includes(`PRE_DB5_AUTHORED_PHYSICAL_PRESENT:${name}`),
+    ),
+  );
+  check(
+    "present authored migrations still never become pending or baseline proposals",
+    [...report.pendingDeployList, ...report.proposedResolveList].every(
+      (name) => !(AUTHORED_UNAPPLIED_MIGRATIONS as readonly string[]).includes(name),
+    ),
+  );
+}
+{
+  const terms = AUTHORED_UNAPPLIED_MIGRATIONS[0];
+  const snapshot = fixture([...GATE_D_MIGRATION_CHAIN, terms], GATE_D_MIGRATION_CHAIN);
+  snapshot.indexes = snapshot.indexes.filter(
+    (index) => index.name !== "TermsAcceptance_userId_acceptedAt_idx",
+  );
+  const report = reportFor(snapshot);
+  const absence = authoredAbsence(report, terms)!;
+  check("partial authored physical presence makes the pre-DB5 gate ABORT", report.preDb5AbsenceGate.decision === "ABORT" && report.decision === "ABORT");
+  check(
+    "partial authored physical evidence is neither empty nor falsely complete",
+    absence.physicalState === "PRESENT" &&
+      absence.presentPhysicalObjects.length > 0 &&
+      absence.presentPhysicalObjects.length < absence.expectedPhysicalObjects.length,
+  );
+  check(
+    "partial authored physical presence emits the deterministic stop reason",
+    report.stopReasons.includes(`PRE_DB5_AUTHORED_PHYSICAL_PRESENT:${terms}`),
+  );
+}
+check(
+  "authored PK namespace-collision fixtures cover the exact two backing-index names",
+  AUTHORED_UNAPPLIED_MIGRATIONS.map(
+    (name) => authoredMigration(name).tables[0]?.primaryKey?.name,
+  ).join(",") === "TermsAcceptance_pkey,ConsumerAssertion_pkey",
+);
+for (const name of AUTHORED_UNAPPLIED_MIGRATIONS) {
+  const candidateTable = authoredMigration(name).tables[0];
+  const snapshot = fixture();
+  const unrelatedTable = addUnrelatedTable(
+    snapshot,
+    "UnrelatedCandidateTableNameCollisionOwner",
+    ["id"],
+  );
+  addCatalogIndex(snapshot, {
+    schema: candidateTable.schema,
+    table: unrelatedTable.name,
+    name: candidateTable.name,
+    keys: ["id"],
+    unique: false,
+  });
+  const report = reportFor(snapshot);
+  check(
+    `${candidateTable.name}: schema-global same-name index blocks candidate table creation`,
+    report.decision === "ABORT" &&
+      authoredAbsence(report, name)!.presentPhysicalObjects.includes(
+        `table.${candidateTable.schema}.${candidateTable.name}`,
+      ),
+  );
+}
+for (const name of AUTHORED_UNAPPLIED_MIGRATIONS) {
+  const migration = authoredMigration(name);
+  const primaryKey = migration.tables[0]?.primaryKey;
+  if (!primaryKey) throw new Error(`authored fixture primary key missing: ${name}`);
+  const snapshot = fixture();
+  const unrelatedTable = addUnrelatedTable(
+    snapshot,
+    "UnrelatedCollisionOwner",
+    primaryKey.columns,
+  );
+  addCatalogIndex(snapshot, {
+    schema: primaryKey.schema,
+    table: unrelatedTable.name,
+    name: primaryKey.name,
+    unique: true,
+    keys: [...primaryKey.columns],
+  });
+  const report = reportFor(snapshot);
+  const absence = authoredAbsence(report, name)!;
+  check(
+    `${primaryKey.name}: schema-global backing-index collision on another table aborts`,
+    report.preDb5AbsenceGate.decision === "ABORT" && report.decision === "ABORT",
+  );
+  check(
+    `${primaryKey.name}: wrong-table index is evidenced as primary-key-index presence`,
+    absence.presentPhysicalObjects.includes(
+      `primary-key-index.${primaryKey.schema}.${primaryKey.table}.${primaryKey.name}`,
+    ),
+  );
+  check(
+    `${primaryKey.name}: primary-key constraint evidence remains table-scoped`,
+    !absence.presentPhysicalObjects.includes(
+      `primary-key.${primaryKey.schema}.${primaryKey.table}.${primaryKey.name}`,
+    ),
+  );
+}
+{
+  const uniqueManifest = structuredClone(manifest);
+  const migration = uniqueManifest.authoredUnappliedMigrations[0];
+  const table = migration.tables[0];
+  const unique = {
+    schema: table.schema,
+    table: table.name,
+    name: "TermsAcceptance_future_unique_key",
+    columns: ["id"],
+  };
+  table.uniqueConstraints.push(unique);
+
+  const wrongTableSnapshot = fixture();
+  const unrelatedTable = addUnrelatedTable(
+    wrongTableSnapshot,
+    "UnrelatedUniqueCollisionOwner",
+    unique.columns,
+  );
+  addCatalogIndex(wrongTableSnapshot, {
+    schema: unique.schema,
+    table: unrelatedTable.name,
+    name: unique.name,
+    unique: true,
+    keys: [...unique.columns],
+  });
+  const wrongTableReport = buildPreflightReport(
+    uniqueManifest,
+    wrongTableSnapshot,
+    expectedFingerprint,
+  );
+  const wrongTableAbsence = authoredAbsence(
+    wrongTableReport,
+    migration.name,
+  )!;
+  check(
+    "future unique backing index colliding on another table is presence",
+    wrongTableAbsence.presentPhysicalObjects.includes(
+      `unique-index.${unique.schema}.${unique.table}.${unique.name}`,
+    ) &&
+      !wrongTableAbsence.presentPhysicalObjects.includes(
+        `unique.${unique.schema}.${unique.table}.${unique.name}`,
+      ) &&
+      wrongTableReport.decision === "ABORT",
+  );
+
+  const relationSnapshot = fixture();
+  addUnrelatedTable(relationSnapshot, unique.name, unique.columns);
+  const relationReport = buildPreflightReport(uniqueManifest, relationSnapshot, expectedFingerprint);
+  check(
+    "future unique backing index colliding with a schema relation is presence",
+    authoredAbsence(relationReport, migration.name)!.presentPhysicalObjects.includes(
+      `unique-index.${unique.schema}.${unique.table}.${unique.name}`,
+    ) && relationReport.decision === "ABORT",
+  );
+}
+for (const name of AUTHORED_UNAPPLIED_MIGRATIONS) {
+  const snapshot = fixture(GATE_D_MIGRATION_CHAIN, [...GATE_D_MIGRATION_CHAIN, name]);
+  const report = reportFor(snapshot);
+  const absence = authoredAbsence(report, name)!;
+  check(`${name}: any authored migration-history row makes the pre-DB5 gate ABORT`, report.preDb5AbsenceGate.decision === "ABORT" && report.decision === "ABORT");
+  check(
+    `${name}: history presence is explicit while physical state remains ALL_ABSENT`,
+    absence.state === "PRESENT" &&
+      absence.physicalState === "ALL_ABSENT" &&
+      absence.history === "PRESENT" &&
+      absence.historyEvidence.length === 1,
+  );
+  check(
+    `${name}: authored history retains both the dedicated and global exact-set stops`,
+    report.stopReasons.includes(`PRE_DB5_AUTHORED_HISTORY_PRESENT:${name}`) &&
+      report.stopReasons.includes(`UNEXPECTED_MIGRATION_HISTORY:${name}`),
+  );
+}
 {
   const directUrl = "postgresql://gate:password@db.prisma.io:5432/gate_d?sslmode=require";
   const rejects = (url: string) => {
@@ -540,7 +999,10 @@ check("manifest records zero SQL unique constraints/checks/extensions", coverage
 {
   const report = reportFor(fixture());
   check("3. complete migration with history -> ALL_PRESENT_AND_MATCHING", state(report, reputation) === "ALL_PRESENT_AND_MATCHING");
-  check("3. complete chain needs no migration action", report.decision === "NO_PENDING_MIGRATIONS");
+  check(
+    "3. complete applied chain with DB5 candidates is not misreported as no pending migrations",
+    report.decision === "READY_FOR_DB5_APPROVAL",
+  );
 }
 
 // 4. One expected table missing.
@@ -653,6 +1115,20 @@ check("manifest records zero SQL unique constraints/checks/extensions", coverage
   const report = buildUnknownPreflightReport(manifest, "CATALOG_PERMISSION_DENIED");
   check("15. insufficient catalog permission -> every state UNKNOWN", report.migrations.every((item) => item.state === "UNKNOWN"));
   check("15. insufficient catalog permission aborts", report.decision === "ABORT");
+  check(
+    "15. unknown catalog evidence makes the authored-absence gate UNKNOWN",
+    report.preDb5AbsenceGate.decision === "UNKNOWN" &&
+      report.preDb5AbsenceGate.deployCandidateList
+        .map((candidate) => candidate.name)
+        .join(",") === AUTHORED_UNAPPLIED_MIGRATIONS.join(",") &&
+      report.preDb5AbsenceGate.mutationAuthorized === false &&
+      report.preDb5AbsenceGate.migrations.every(
+        (migration) =>
+          migration.state === "UNKNOWN" &&
+          migration.physicalState === "UNKNOWN" &&
+          migration.history === "UNKNOWN",
+      ),
+  );
 }
 
 // 16. Wrong database fingerprint.
@@ -902,6 +1378,13 @@ check("manifest records zero SQL unique constraints/checks/extensions", coverage
   const report = reportFor(snapshot);
   check("migration-history view substitution -> UNKNOWN", report.migrations.every((item) => item.state === "UNKNOWN"));
   check("migration-history view substitution aborts", report.stopReasons.some((reason) => reason.includes("MIGRATION_HISTORY_INVALID:RELATION_KIND")));
+  check(
+    "untrusted history makes the pre-DB5 authored-absence gate UNKNOWN",
+    report.preDb5AbsenceGate.decision === "UNKNOWN" &&
+      AUTHORED_UNAPPLIED_MIGRATIONS.every((name) =>
+        report.stopReasons.includes(`PRE_DB5_AUTHORED_ABSENCE_UNKNOWN:${name}`),
+      ),
+  );
 }
 {
   const snapshot = fixture();
