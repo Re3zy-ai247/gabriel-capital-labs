@@ -246,6 +246,104 @@ try {
       ),
     );
   }
+  // POST-DB5 LANDING RECONCILIATION.
+  //
+  // The held canonicalization slice rewrote DEPLOY.md's Production section and in
+  // doing so dropped the governed prerequisites the completed DB-5 act ran behind.
+  // These assertions pin the reconciliation. Read the split precisely:
+  //
+  //   * SEVEN POSITIVE assertions catch DELETION. Verified: all seven fire against
+  //     the unreconciled document.
+  //   * ONE TRIPWIRE catches a NAMED, ENUMERATED set of negating phrases. It is NOT
+  //     a semantic guarantee and must never be described as one. Prose cannot be
+  //     verified by regex; this raises the cost of a silent inversion, nothing more.
+  //   * ONE LOCATOR proves the section exists before the rest are evaluated.
+  //
+  // Two design rules, both learned by getting them wrong:
+  //   1. NO SCRUBBING. An earlier version stripped quoted evidence identifiers to
+  //      end-of-line before scanning. That scrub WAS the bypass: negations placed on
+  //      the same line as the quoted token vanished before the guard ran, while
+  //      rendering normally. Tripwires are specific enough not to need a scrub.
+  //   2. Scan the WHOLE document, not just the canonical section. A section-scoped
+  //      guard is escaped by writing one line past the section heading.
+  const canonStart = deployDoc.indexOf(
+    "## Canonical RC1 migration history — held post-DB5 state",
+  );
+  const canonEnd = deployDoc.indexOf("## Spend and probe knobs", canonStart);
+  const canonSection = canonStart >= 0 && canonEnd > canonStart
+    ? deployDoc.slice(canonStart, canonEnd)
+    : "";
+  check(
+    "DEPLOY.md canonical section is located non-vacuously for the reconciliation checks",
+    canonSection.length > 0,
+  );
+  check(
+    "DEPLOY.md records the governed credential/TLS/fingerprint/backup gate behind DB-5",
+    /credential[\s\S]{0,40}TLS[\s\S]{0,40}fingerprint[\s\S]{0,40}backup/i.test(canonSection) &&
+      /fresh hardened backup was completed and accepted/i.test(canonSection),
+  );
+  check(
+    "DEPLOY.md scopes the TLS claim the way the DB-5 manifest scopes it",
+    /sslmode=require&sslaccept=strict/.test(canonSection) &&
+      /chain\*{0,2} half was measured directly/i.test(canonSection) &&
+      /client-to-endpoint hop/i.test(canonSection) &&
+      /not claimed/i.test(canonSection),
+  );
+  check(
+    "DEPLOY.md does not present the fingerprint gate as peer authentication",
+    /CONSISTENCY_EVIDENCE_ONLY/.test(canonSection) &&
+      /is not peer\s+authentication/i.test(canonSection),
+  );
+  check(
+    "DEPLOY.md cites the raw DB-5 verifier failure rather than only paraphrasing it",
+    /DB5_APPLIED_BUT_VERIFICATION_FAILED/.test(canonSection) &&
+      /D5V_VERDICT=FAIL/.test(canonSection) &&
+      /repo-archive\/2026-08-29-db5-migration/.test(canonSection),
+  );
+  check(
+    "DEPLOY.md defers future production DB acts to the authoritative runbook, not to its own past tense",
+    /remains controlling/i.test(canonSection) &&
+      /never\s+inferred from the past-tense prose/i.test(canonSection),
+  );
+  check(
+    "DEPLOY.md does not turn this release's rotation into a standing rule for every deploy",
+    /not a standing rule that\s+every future deploy requires a credential rotation/i.test(
+      canonSection,
+    ),
+  );
+  check(
+    "DEPLOY.md claims no independent provider-side proof of credential rotation",
+    /Control Tower attested/i.test(canonSection) &&
+      /no independent\s+provider-side artifact proving it/i.test(canonSection),
+  );
+  // The tripwire. Each entry is a phrase with NO legitimate use in this document,
+  // chosen so that adverbs, passive/active voice and re-ordering do not evade it
+  // ("waived" catches "was formally waived" and "Control Tower waived the gate"
+  // alike). It deliberately does NOT use broad grammar patterns: an earlier version
+  // fired on "Never proceed without a fresh hardened backup" -- a control-
+  // STRENGTHENING sentence -- and a guard that fires on honest text gets edited
+  // until it guards nothing.
+  const negationTripwires: ReadonlyArray<readonly [string, RegExp]> = [
+    ["control waived", /\bwaive[dr]\b/i],
+    ["control declared no longer required", /no longer (required|mandatory|necessary)/i],
+    [
+      "credential reuse",
+      /(reuse|re-use|keep using|continue using)[^.]{0,40}(old|previous|prior|exposed|same) credential/i,
+    ],
+    ["replay instruction", /(must|should|may|can|shall) be replayed|\breplay (both|the two) migrations\b/i],
+    ["backup skipped", /no fresh hardened backup|backup[^.]{0,24}\bskipped\b/i],
+    ["partial migration", /partially applied|partial migration|\bdid not land\b/i],
+    ["peer-authentication overstatement returning", /peer-authenticated/i],
+    ["verification overstatement", /fully verified clean|verified clean end to end/i],
+  ];
+  const trippedPhrases = negationTripwires
+    .filter(([, pattern]) => pattern.test(deployDoc))
+    .map(([label]) => label);
+  check(
+    `DEPLOY.md trips no enumerated negation/overstatement phrase${trippedPhrases.length ? ` (tripped: ${trippedPhrases.join(", ")})` : ""}`,
+    trippedPhrases.length === 0,
+  );
+
   check(
     "DEPLOY.md permits migrate-deploy only as the disposable-local Compose command",
     fencedMigrationCommandLines(rootOutsideLocal).length === 0 &&
