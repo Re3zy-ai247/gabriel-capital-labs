@@ -10,7 +10,7 @@ export const maxDuration = 60; // Opus call
 
 // Summon Kai into a thread: he reads the original post + recent replies and posts
 // an expert, compliance-scrubbed answer as a reply (isKai = true).
-export async function POST(_req: Request, { params }: { params: { id: string } }) {
+export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const account = await requireCommunityAccount();
   if (!account) return NextResponse.json({ error: COMMUNITY_UNAVAILABLE, communityUnavailable: true }, { status: 403 });
 
@@ -18,8 +18,9 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
   const limited = await enforceRateLimit(`kai:${account.id}`, 20, 3600);
   if (limited) return limited;
 
+  const { id } = await params;
   const thread = await prisma.communityThread.findUnique({
-    where: { id: params.id },
+    where: { id },
     include: { replies: { orderBy: { createdAt: "asc" } } },
   });
   if (!thread) return NextResponse.json({ error: "Not found" }, { status: 404 });

@@ -45,7 +45,8 @@ export async function currentUser() {
   // Admin impersonation takes precedence: a real ADMIN "viewing as" another user
   // sees that user's data everywhere currentUser() is used.
   if (account.role === "ADMIN") {
-    const impId = cookies().get(IMPERSONATE_COOKIE)?.value;
+    const cookieStore = await cookies();
+    const impId = cookieStore.get(IMPERSONATE_COOKIE)?.value;
     if (impId && impId !== account.id) {
       const target = await prisma.user.findUnique({ where: { id: impId } });
       if (target) return target;
@@ -53,7 +54,8 @@ export async function currentUser() {
   }
 
   if (account.isAgency) {
-    const clientId = cookies().get(WORKSPACE_COOKIE)?.value;
+    const cookieStore = await cookies();
+    const clientId = cookieStore.get(WORKSPACE_COOKIE)?.value;
     if (clientId) {
       const client = await prisma.user.findFirst({
         where: { id: clientId, managedByAgencyId: account.id },
@@ -78,7 +80,8 @@ export async function currentUserOrDemo() {
 export async function impersonationContext() {
   const account = await currentAccount();
   if (!account || account.role !== "ADMIN") return null;
-  const impId = cookies().get(IMPERSONATE_COOKIE)?.value;
+  const cookieStore = await cookies();
+  const impId = cookieStore.get(IMPERSONATE_COOKIE)?.value;
   if (!impId || impId === account.id) return null;
   const target = await prisma.user.findUnique({ where: { id: impId } });
   if (!target) return null;
@@ -153,7 +156,8 @@ export async function currentWorkspace() {
   const account = await currentAccount();
   if (!account) return { account: null, client: null };
   if (!account.isAgency) return { account, client: null };
-  const clientId = cookies().get(WORKSPACE_COOKIE)?.value;
+  const cookieStore = await cookies();
+  const clientId = cookieStore.get(WORKSPACE_COOKIE)?.value;
   if (!clientId) return { account, client: null };
   const client = await prisma.user.findFirst({
     where: { id: clientId, managedByAgencyId: account.id },

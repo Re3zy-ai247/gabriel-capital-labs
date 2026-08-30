@@ -153,6 +153,27 @@ check(
   handlerFor(`${ORIGIN}/api/documents/doc_1/raw.png`) === "NetworkOnly"
 );
 
+console.log("\nthe seven-day next/image rule cannot cache a protected source");
+const PRIVATE_IMAGE_SOURCES: Array<[string, string]> = [
+  ["a decrypted identity document", "/api/documents/doc_1/raw"],
+  ["a decrypted attachment disguised as a raster", "/api/attachments/att_1.png"],
+  ["a protected Next data payload disguised as a raster", "/_next/data/build/private.png"],
+  ["a protocol-relative external source", "//example.invalid/private.png"],
+  ["an absolute external source", "https://example.invalid/private.png"],
+  ["a public-directory dot-segment alias to a decrypted document", "/public/../api/documents/secret.png"],
+  ["an icons-directory dot-segment alias to a decrypted attachment", "/icons/../../api/attachments/secret.png"],
+  ["a percent-encoded parent alias to a decrypted document", "/%2e%2e/api/documents/secret.png"],
+];
+for (const [label, source] of PRIVATE_IMAGE_SOURCES) {
+  const href = `${ORIGIN}/_next/image?url=${encodeURIComponent(source)}&w=256&q=75`;
+  check(`${label} through /_next/image is NetworkOnly`, handlerFor(href) === "NetworkOnly");
+  check(`${label} through /_next/image is bound to no cache`, cacheNameFor(href) === undefined);
+}
+check(
+  "the same optimizer route still caches an allowlisted public raster",
+  handlerFor(`${ORIGIN}/_next/image?url=%2Flogo-mark.png&w=256&q=75`) === "StaleWhileRevalidate"
+);
+
 console.log("\nthe last rule is a default deny, so a NEW surface is uncacheable by default");
 const rules = capture.options?.runtimeCaching ?? [];
 const last = rules[rules.length - 1];

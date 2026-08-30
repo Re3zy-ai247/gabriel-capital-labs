@@ -71,8 +71,8 @@ function Entry({ t, lamp }: { t: SpecimenEntry; lamp?: boolean }) {
   );
 }
 
-export default async function GxlRoom({ params }: { params: { room: string } }) {
-  const room = roomBySlug(params.room);
+export default async function GxlRoom({ params }: { params: Promise<{ room: string }> }) {
+  const room = roomBySlug((await params).room);
   if (!room) notFound();
   // RC1 S7 (finding C-14, review L-8): the lobby's wall was replaced with
   // notFound() and this deep route carried the identical one — URL-reachable,

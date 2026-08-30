@@ -28,15 +28,31 @@ jobs:
           cache: npm
       - name: Install (lockfile-exact)
         run: npm ci
+      # Keep these DB-free release-security checks ahead of typecheck. If a
+      # framework migration breaks compilation, CI must still record whether
+      # dependency custody, agency authority, PWA caching, and verifier
+      # contracts passed on the exact installed graph.
+      - name: Release-security deterministic guards
+        run: |
+          set -euo pipefail
+          for guard in \
+            dependency-runtime \
+            agency-enable-security \
+            pwa-cache-policy \
+            verify-production
+          do
+            npx --no-install tsx "scripts/${guard}.test.ts"
+          done
       - name: Gate D deterministic verification
         run: |
           set -euo pipefail
-          npm run typecheck
           npx --no-install prisma --version
           npx --no-install tsx scripts/gate-d-preflight.test.ts
           npx --no-install tsx scripts/release-verify.test.ts
           npx --no-install tsx scripts/schema-safety.test.ts
           bash -n scripts/release-verify.sh
+      - name: Typecheck
+        run: npm run typecheck
 
   verify:
     runs-on: ubuntu-latest
@@ -53,11 +69,6 @@ jobs:
           cache: npm
       - name: Install
         run: npm ci
-      - name: Typecheck
-        run: npm run typecheck
-      - name: Lint (advisory — pre-existing issues; not a launch gate)
-        run: npm run lint
-        continue-on-error: true
       - name: Guards (DB-free suite)
         run: |
           set -e
@@ -66,7 +77,7 @@ jobs:
               *classify.test.ts) echo "skip $f (requires a database)"; continue;;
             esac
             echo "── $f"
-            npx tsx "$f"
+            npx --no-install tsx "$f"
           done
       # scripts/*.test.ts is a NON-RECURSIVE glob, so the runtime guards under
       # scripts/runtime/ were never executed by the step above — the strongest
@@ -76,6 +87,11 @@ jobs:
       # above; only this directory needs its own step.) run-all.ts globs its own
       # directory, enforces an explicit REQUIRED list, and fails the job on any failure.
       - name: Runtime guards (real handlers, mocked Stripe and Prisma)
-        run: npx tsx scripts/runtime/run-all.ts
+        run: npx --no-install tsx scripts/runtime/run-all.ts
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Lint (advisory — pre-existing issues; not a launch gate)
+        run: npm run lint
+        continue-on-error: true
       - name: Build
         run: npm run build

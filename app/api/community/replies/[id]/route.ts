@@ -23,11 +23,12 @@ export const runtime = "nodejs";
 // take your own words down". So this resolves the author with
 // requireCommunityAuthor() (identity only, no availability check), proves
 // ownership, and only THEN refuses — and only a non-author/non-admin.
-export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const account = await requireCommunityAuthor();
   if (!account) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const reply = await prisma.communityReply.findUnique({ where: { id: params.id } });
+  const { id } = await params;
+  const reply = await prisma.communityReply.findUnique({ where: { id } });
   if (!reply) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const isAdmin = account.role === "ADMIN";

@@ -33,15 +33,16 @@ export const runtime = "nodejs";
 //
 // Permanent FK remediation is Implementation Slice 7; the governed termination workflow
 // is required by Constitution §12.2 and §19.1. Do not restore a delete here.
-export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const agency = await currentAccount();
   if (!agency) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (!agency.isAgency) return NextResponse.json({ error: "Not an agency account." }, { status: 403 });
 
   // Existence + tenancy check only. The persistent id is still a personal identifier,
   // but no additional direct identity/profile fields are selected or returned.
+  const { id } = await params;
   const client = await prisma.user.findFirst({
-    where: { id: params.id, managedByAgencyId: agency.id },
+    where: { id, managedByAgencyId: agency.id },
     select: { id: true },
   });
   if (!client) return NextResponse.json({ error: "Client not found." }, { status: 404 });

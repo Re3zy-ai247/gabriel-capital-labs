@@ -5,12 +5,13 @@ import { withPasswordResetRevocation } from "@/lib/passwordReset";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(_req: Request, { params }: { params: { id: string } }) {
+export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: "Not authorized" }, { status: 403 });
 
+  const { id } = await params;
   const user = await prisma.user.findUnique({
-    where: { id: params.id },
+    where: { id },
     select: {
       id: true, email: true, username: true, name: true, role: true, plan: true,
       isAgency: true, agencyName: true, disabled: true, subscriptionStatus: true,
@@ -24,11 +25,12 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
 
 // PATCH: role | plan (comp/grant) | isAgency | disabled. Each provided field is
 // validated and audited. Guards prevent an admin from locking themselves out.
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: "Not authorized" }, { status: 403 });
 
-  const target = await prisma.user.findUnique({ where: { id: params.id } });
+  const { id } = await params;
+  const target = await prisma.user.findUnique({ where: { id } });
   if (!target) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const body = await req.json().catch(() => ({}));

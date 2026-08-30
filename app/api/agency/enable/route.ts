@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { currentAccount } from "@/lib/session";
+import { setupSecretAccepted } from "@/lib/admin";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -21,17 +22,20 @@ export async function POST(req: Request) {
   const account = await currentAccount();
   if (!account) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const body = await req.json().catch(() => ({}));
-  const secret = String(body?.secret || "");
-  const setupSecret = process.env.SETUP_SECRET;
-  const authorized = account.role === "ADMIN" || (!!setupSecret && secret === setupSecret);
-  if (!authorized) {
+  // Reuse the shared setup-credential boundary: x-setup-secret only,
+  // rate-limited before comparison, constant-time, and closed when unset.
+  // An authenticated ADMIN remains a separate, existing authority path.
+  const setupAuthorized = await setupSecretAccepted(req);
+  if (account.role !== "ADMIN" && !setupAuthorized) {
     return NextResponse.json(
       { error: "Incorrect setup secret — agency mode not enabled." },
       { status: 403 }
     );
   }
 
+  // Do not parse caller-controlled mutation data until authority is established.
+  // In particular, a JSON `secret` field is inert and is never an alternate gate.
+  const body = await req.json().catch(() => ({}));
   const agencyName = body?.agencyName ? String(body.agencyName).slice(0, 120) : account.agencyName;
   await prisma.user.update({
     where: { id: account.id },

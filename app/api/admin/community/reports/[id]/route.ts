@@ -12,7 +12,7 @@ export const runtime = "nodejs";
 //                           and auto-closes sibling open reports via the shared
 //                           helpers), then mark this report actioned.
 // Either way the report leaves the open queue.
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: "Not authorized" }, { status: 403 });
   await ensureCommunityTables();
@@ -21,7 +21,8 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   const action = raw.action === "remove" ? "remove" : raw.action === "dismiss" ? "dismiss" : null;
   if (!action) return NextResponse.json({ error: "Unknown action" }, { status: 400 });
 
-  const report = await prisma.communityReport.findUnique({ where: { id: params.id } });
+  const { id } = await params;
+  const report = await prisma.communityReport.findUnique({ where: { id } });
   if (!report) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   if (action === "remove") {

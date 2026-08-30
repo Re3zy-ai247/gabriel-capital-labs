@@ -14,12 +14,13 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 // Full thread + replies, plus what the viewer is allowed to do.
-export async function GET(_req: Request, { params }: { params: { id: string } }) {
+export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const account = await requireCommunityAccount();
   if (!account) return NextResponse.json({ error: COMMUNITY_UNAVAILABLE, communityUnavailable: true }, { status: 403 });
 
+  const { id } = await params;
   const thread = await prisma.communityThread.findUnique({
-    where: { id: params.id },
+    where: { id },
     include: { replies: { orderBy: { createdAt: "asc" } } },
   });
   if (!thread) return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -59,7 +60,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
 }
 
 // Moderation: pin/lock are ADMIN-only.
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: "Admins only" }, { status: 403 });
 
@@ -69,7 +70,8 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   if (typeof raw.locked === "boolean") data.locked = raw.locked;
   if (!Object.keys(data).length) return NextResponse.json({ error: "Nothing to update" }, { status: 400 });
 
-  const thread = await prisma.communityThread.update({ where: { id: params.id }, data });
+  const { id } = await params;
+  const thread = await prisma.communityThread.update({ where: { id }, data });
   await logAudit({
     actor: { id: admin.id, email: admin.email },
     action: "community.moderate",
@@ -88,11 +90,12 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 // where they can neither see it nor take it down, so this route resolves the
 // author with requireCommunityAuthor() (identity only, no availability check),
 // proves ownership, and only THEN refuses — and only a non-author/non-admin.
-export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const account = await requireCommunityAuthor();
   if (!account) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const thread = await prisma.communityThread.findUnique({ where: { id: params.id } });
+  const { id } = await params;
+  const thread = await prisma.communityThread.findUnique({ where: { id } });
   if (!thread) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const isAdmin = account.role === "ADMIN";

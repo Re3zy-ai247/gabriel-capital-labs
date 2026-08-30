@@ -45,13 +45,14 @@ async function ownTradeline(userId: string, tradelineId: string) {
   });
 }
 
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await currentUserOrDemo();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const limited = await enforceRateLimit(`assertion:${user.id}`, 120, 3600);
   if (limited) return limited;
 
-  const tradeline = await ownTradeline(user.id, params.id);
+  const { id } = await params;
+  const tradeline = await ownTradeline(user.id, id);
   if (!tradeline) return NextResponse.json({ error: "Account not found" }, { status: 404 });
 
   const body = await req.json().catch(() => ({} as Record<string, unknown>));
@@ -141,13 +142,14 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 // and must belong to BOTH this user and this tradeline — checking the pair is
 // what stops a valid id of the caller's own from being used against someone
 // else's tradeline, and vice versa.
-export async function DELETE(req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await currentUserOrDemo();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const limited = await enforceRateLimit(`assertion:${user.id}`, 120, 3600);
   if (limited) return limited;
 
-  const tradeline = await ownTradeline(user.id, params.id);
+  const { id } = await params;
+  const tradeline = await ownTradeline(user.id, id);
   if (!tradeline) return NextResponse.json({ error: "Account not found" }, { status: 404 });
 
   const url = new URL(req.url);

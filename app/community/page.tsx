@@ -129,7 +129,7 @@ async function searchThreads(q: string, channel: string): Promise<OperatorThread
 export default async function CommunityPage({
   searchParams,
 }: {
-  searchParams?: { channel?: string; q?: string };
+  searchParams?: Promise<{ channel?: string; q?: string }>;
 }) {
   // ---- Access gating: paying members, fail-closed (canAccessCommunity → isPremium) ----
   let account: Awaited<ReturnType<typeof currentAccount>> = null;
@@ -174,9 +174,10 @@ export default async function CommunityPage({
     );
   }
 
-  const raw = searchParams?.channel ?? "";
+  const resolvedSearchParams = await searchParams;
+  const raw = resolvedSearchParams?.channel ?? "";
   const channel = CATEGORY_KEYS.includes(raw) ? raw : "";
-  const query = (searchParams?.q ?? "").trim().slice(0, 120);
+  const query = (resolvedSearchParams?.q ?? "").trim().slice(0, 120);
   const { threads, degraded } = await loadThreads();
 
   // A search replaces the queue's set, and the command strip follows it — strip

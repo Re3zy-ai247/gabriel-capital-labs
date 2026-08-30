@@ -39,10 +39,10 @@ const PRINT_CSS = `
 // the browser print menu produces a mailable packet (letter + enclosures).
 // The letter must read like it came from a careful professional — on screen it
 // previews as a sheet of paper; in print the browser page IS the paper.
-export default async function LetterPrintPage({ params }: { params: { id: string } }) {
+export default async function LetterPrintPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await currentUserOrDemo();
   if (!user) return notFound();
-  const letter = await prisma.letter.findFirst({ where: { id: params.id, userId: user.id } });
+  const letter = await prisma.letter.findFirst({ where: { id: (await params).id, userId: user.id } });
   if (!letter) return notFound();
   // ── S11 AD-2 · a retracted confirmation blocks the printable packet ────────
   // Cross-slice edit by S4's writer, scoped to this guard. Blocking approval in

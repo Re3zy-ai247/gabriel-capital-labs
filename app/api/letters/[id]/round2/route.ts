@@ -18,7 +18,7 @@ export const maxDuration = 60;
 // Generates a Round 2 escalation letter that follows up on a prior dispute whose
 // response has been logged. Targets the inadequacy of the bureau's reinvestigation
 // and demands the method of verification under FCRA §611(a)(7).
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await currentUserOrDemo();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const limited = await enforceRateLimit(`letters-round2:${user.id}`, 20, 3600); // paid Opus escalation letter — cost guard
@@ -28,8 +28,9 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   // gets `{}` and therefore the conservative defaults.
   const payload = await req.json().catch(() => ({} as Record<string, unknown>));
 
+  const { id } = await params;
   const parent = await prisma.letter.findFirst({
-    where: { id: params.id, userId: user.id },
+    where: { id, userId: user.id },
     include: { tradeline: true },
   });
   if (!parent) return NextResponse.json({ error: "Not found" }, { status: 404 });

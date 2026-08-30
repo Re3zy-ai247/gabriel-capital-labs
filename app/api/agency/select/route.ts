@@ -17,7 +17,8 @@ export async function POST(req: Request) {
   const clientId = body?.clientId;
 
   if (!clientId) {
-    cookies().delete(WORKSPACE_COOKIE);
+    const cookieStore = await cookies();
+    cookieStore.delete(WORKSPACE_COOKIE);
     return NextResponse.json({ ok: true, client: null });
   }
 
@@ -27,7 +28,8 @@ export async function POST(req: Request) {
   });
   if (!client) return NextResponse.json({ error: "Client not found." }, { status: 404 });
 
-  cookies().set(WORKSPACE_COOKIE, client.id, {
+  const cookieStore = await cookies();
+  cookieStore.set(WORKSPACE_COOKIE, client.id, {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",

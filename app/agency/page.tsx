@@ -183,14 +183,18 @@ export default function AgencyPage() {
     try {
       const res = await fetch("/api/agency/enable", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ secret }),
+        headers: {
+          "Content-Type": "application/json",
+          ...(secret ? { "x-setup-secret": secret } : {}),
+        },
+        body: JSON.stringify({}),
       });
       const d = await res.json();
       if (!res.ok) {
         setError(d.error || "Could not enable agency mode.");
         return;
       }
+      setSecret("");
       setCtx((p) => (p ? { ...p, isAgency: true } : p));
       await loadClients();
     } finally {

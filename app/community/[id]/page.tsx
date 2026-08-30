@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
 import { KaiBadge } from "@/components/community/KaiAvatar";
 import { categoryLabel } from "@/lib/communityShared";
@@ -43,8 +43,9 @@ function initials(name: string): string {
   return name.split(/\s+/).map((w) => w[0]).slice(0, 2).join("").toUpperCase() || "?";
 }
 
-export default function ThreadPage({ params }: { params: { id: string } }) {
+export default function ThreadPage() {
   const router = useRouter();
+  const { id: threadId } = useParams<{ id: string }>();
   const [thread, setThread] = useState<ThreadData | null>(null);
   const [viewer, setViewer] = useState<Viewer | null>(null);
   const [loading, setLoading] = useState(true);
@@ -58,7 +59,7 @@ export default function ThreadPage({ params }: { params: { id: string } }) {
   const [reported, setReported] = useState<Set<string>>(new Set());
 
   const load = useCallback(() => {
-    fetch(`/api/community/threads/${params.id}`)
+    fetch(`/api/community/threads/${threadId}`)
       .then((r) => {
         if (r.status === 404) { setNotFound(true); return null; }
         return r.ok ? r.json() : null;
@@ -67,7 +68,7 @@ export default function ThreadPage({ params }: { params: { id: string } }) {
         if (d) { setThread(d.thread); setViewer(d.viewer); }
       })
       .finally(() => setLoading(false));
-  }, [params.id]);
+  }, [threadId]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -78,7 +79,7 @@ export default function ThreadPage({ params }: { params: { id: string } }) {
       const form = new FormData();
       form.set("body", reply);
       replyFiles.forEach((f) => form.append("files", f));
-      const res = await fetch(`/api/community/threads/${params.id}/replies`, { method: "POST", body: form });
+      const res = await fetch(`/api/community/threads/${threadId}/replies`, { method: "POST", body: form });
       const j = await res.json();
       if (!res.ok) { setError(j.error || "Could not post the response."); return; }
       setReply("");
@@ -90,7 +91,7 @@ export default function ThreadPage({ params }: { params: { id: string } }) {
   async function summonKai() {
     setKaiBusy(true); setError(null);
     try {
-      const res = await fetch(`/api/community/threads/${params.id}/ask-kai`, { method: "POST" });
+      const res = await fetch(`/api/community/threads/${threadId}/ask-kai`, { method: "POST" });
       const j = await res.json();
       if (!res.ok) { setError(j.error || "Kai is unavailable right now."); return; }
       load();
@@ -98,7 +99,7 @@ export default function ThreadPage({ params }: { params: { id: string } }) {
   }
 
   async function moderate(patch: { pinned?: boolean; locked?: boolean }) {
-    await fetch(`/api/community/threads/${params.id}`, {
+    await fetch(`/api/community/threads/${threadId}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(patch),
     });
     load();
@@ -106,7 +107,7 @@ export default function ThreadPage({ params }: { params: { id: string } }) {
 
   async function deleteThread() {
     if (!confirm("Delete this brief and all responses?")) return;
-    const res = await fetch(`/api/community/threads/${params.id}`, { method: "DELETE" });
+    const res = await fetch(`/api/community/threads/${threadId}`, { method: "DELETE" });
     if (res.ok) router.push("/community");
   }
 

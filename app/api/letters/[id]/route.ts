@@ -79,12 +79,13 @@ function isResolutionOutcome(v: unknown): v is ResolutionOutcome {
 }
 
 // Fetch a single letter (used by the print view).
-export async function GET(_req: Request, { params }: { params: { id: string } }) {
+export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await currentUserOrDemo();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  const { id } = await params;
   const letter = await prisma.letter.findFirst({
-    where: { id: params.id, userId: user.id },
+    where: { id, userId: user.id },
   });
   if (!letter) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json({ letter: decryptedLetter(letter) });
@@ -102,11 +103,12 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
 // now UPDATES that row in place instead of inserting a duplicate, so the
 // correction never burns a second credit and this DELETE path is no longer
 // the tool a user needs to "undo" a bad generate.
-export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await currentUserOrDemo();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const existing = await prisma.letter.findFirst({ where: { id: params.id, userId: user.id } });
+  const { id } = await params;
+  const existing = await prisma.letter.findFirst({ where: { id, userId: user.id } });
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   await prisma.letter.delete({ where: { id: existing.id } });
@@ -124,7 +126,7 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
 // Advancing to MAILED stamps mailedAt; closing a dispute out as RESOLVED now
 // requires the consumer to say WHICH outcome happened, and only "the item was
 // corrected or removed" writes anything to the tradeline.
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await currentUserOrDemo();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -135,7 +137,8 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     return NextResponse.json({ error: "Invalid status" }, { status: 400 });
   }
 
-  const existing = await prisma.letter.findFirst({ where: { id: params.id, userId: user.id } });
+  const { id } = await params;
+  const existing = await prisma.letter.findFirst({ where: { id, userId: user.id } });
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   // ── EDIT THE LETTER (A3 L-01 / P1-31) ──────────────────────────────────────

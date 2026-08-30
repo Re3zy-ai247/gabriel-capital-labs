@@ -11,8 +11,8 @@ export const dynamic = "force-dynamic";
 // redirect nowhere from here — they have real routes; this shell exists so
 // future modules compile, route, and register through the capability spine
 // before any real functionality is approved. It ships ZERO user-facing claims.
-export default async function ModuleShellPage({ params }: { params: { slug: string } }) {
-  const mod = moduleBySlug(params.slug);
+export default async function ModuleShellPage({ params }: { params: Promise<{ slug: string }> }) {
+  const mod = moduleBySlug((await params).slug);
   if (!mod || mod.status === "live") notFound();
   if (!moduleShellEnabled(mod)) notFound();
   const user = await currentUserOrDemo();

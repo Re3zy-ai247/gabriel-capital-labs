@@ -27,7 +27,7 @@ const TOO_LARGE = "File too large (max 15 MB).";
 // Logs the bureau/furnisher response to a letter (pasted text or PDF), runs AI
 // analysis to assess the outcome + escalation angles, and marks the letter
 // RESPONSE_RECEIVED.
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await currentUserOrDemo();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -43,7 +43,8 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   const limited = await enforceRateLimit(`letters-response:${user.id}`, 20, 3600);
   if (limited) return limited;
 
-  const letter = await prisma.letter.findFirst({ where: { id: params.id, userId: user.id } });
+  const { id } = await params;
+  const letter = await prisma.letter.findFirst({ where: { id, userId: user.id } });
   if (!letter) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   // ---- RC1-S5 REMEDIATION (review M-5): THE SAME LIFECYCLE, EVERY WRITER ----

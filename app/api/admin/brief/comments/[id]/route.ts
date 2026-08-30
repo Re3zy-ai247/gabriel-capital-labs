@@ -10,12 +10,13 @@ export const runtime = "nodejs";
 // Moderate a comment: remove (status 'removed', reversible) / restore ('visible'),
 // or just dismiss the flag (keep it visible). Any resolving action clears the flag
 // and the report ledger, so a fresh report can re-open it later.
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: "Not authorized" }, { status: 403 });
   await ensureBriefTables();
 
-  const existing = await prisma.briefComment.findUnique({ where: { id: params.id } });
+  const { id } = await params;
+  const existing = await prisma.briefComment.findUnique({ where: { id } });
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const raw = await req.json().catch(() => ({}));
@@ -27,8 +28,8 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
   if (Object.keys(data).length === 0) return NextResponse.json({ error: "Nothing to update" }, { status: 400 });
 
-  const comment = await prisma.briefComment.update({ where: { id: params.id }, data });
-  await prisma.briefCommentReport.deleteMany({ where: { commentId: params.id } });
+  const comment = await prisma.briefComment.update({ where: { id }, data });
+  await prisma.briefCommentReport.deleteMany({ where: { commentId: id } });
 
   const action = data.status === "removed" ? "brief.comment.remove" : data.status === "visible" ? "brief.comment.restore" : "brief.comment.dismiss";
   await logAudit({

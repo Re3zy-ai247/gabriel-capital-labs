@@ -48,8 +48,31 @@ const runtimeCaching = [
     },
   },
   {
-    // next/image output. The query names a source path in public/, never a user file.
-    urlPattern: ({ url }) => self.origin === url.origin && url.pathname === "/_next/image",
+    // next/image output is cacheable only when its decoded source is a local,
+    // public raster asset. Merely hitting /_next/image is not proof of safety:
+    // a source such as /api/documents/[id]/raw must fall through to NetworkOnly
+    // so authenticated bytes can never enter the seven-day service-worker cache.
+    urlPattern: ({ url }) => {
+      if (self.origin !== url.origin || url.pathname !== "/_next/image") return false;
+      const source = url.searchParams.get("url") || "";
+      let normalizedSource;
+      try {
+        // Resolve dot segments (including percent-encoded `..`) before applying
+        // the protected-path denylist. Checking the raw query value lets paths
+        // such as /public/../api/documents/secret.png masquerade as public.
+        normalizedSource = new URL(source, self.origin);
+      } catch {
+        return false;
+      }
+      return (
+        source.startsWith("/") &&
+        !source.startsWith("//") &&
+        normalizedSource.origin === self.origin &&
+        !normalizedSource.pathname.startsWith("/api/") &&
+        !normalizedSource.pathname.startsWith("/_next/data/") &&
+        /\.(?:png|jpg|jpeg|gif|webp|ico)$/i.test(normalizedSource.pathname)
+      );
+    },
     handler: "StaleWhileRevalidate",
     options: {
       cacheName: "next-image",

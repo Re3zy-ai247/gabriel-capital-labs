@@ -9,12 +9,13 @@ export const runtime = "nodejs";
 // Streams the DECRYPTED document bytes — only to the authenticated owner. There
 // is no public URL for these files; this route is the single access path and it
 // checks ownership, decrypts on the fly, and forbids caching.
-export async function GET(_req: Request, { params }: { params: { id: string } }) {
+export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await currentUserOrDemo();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (!docCryptoReady()) return NextResponse.json({ error: "Not configured" }, { status: 503 });
 
-  const doc = await prisma.document.findFirst({ where: { id: params.id, userId: user.id } });
+  const { id } = await params;
+  const doc = await prisma.document.findFirst({ where: { id, userId: user.id } });
   if (!doc) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   let plaintext: Buffer;
