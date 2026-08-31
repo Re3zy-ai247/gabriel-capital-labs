@@ -107,14 +107,45 @@ code_of() { http_code "$@"; }
 # order, and quote style. The parser fails closed on unresolved constants, partial
 # entries, duplicate keys, extra fields, or an unrecognised planForPrice shape.
 parse_catalog_model() {
-  node - "$1" "$ROOT" <<'NODE'
+  /usr/bin/env \
+    -u NODE_OPTIONS \
+    -u npm_config_node_options \
+    -u NPM_CONFIG_NODE_OPTIONS \
+    node - "$1" "$ROOT" <<'NODE'
 const fs = require("node:fs");
+const childProcess = require("node:child_process");
+const crypto = require("node:crypto");
+const pathModule = require("node:path");
 
 try {
 const path = process.argv[2];
 const projectRoot = process.argv[3];
+const initialMetadata = fs.lstatSync(path, { bigint: true });
+if (!initialMetadata.isFile() || initialMetadata.isSymbolicLink()) {
+  throw new Error("catalog source must be a regular non-symlink file");
+}
+const realProjectRoot = fs.realpathSync(projectRoot);
+const expectedRealPath = pathModule.resolve(realProjectRoot, "lib/stripe.ts");
+const initialRealPath = fs.realpathSync(path);
+if (initialRealPath !== expectedRealPath) {
+  throw new Error("catalog source resolves outside its exact repository path");
+}
 const original = fs.readFileSync(path, "utf8");
-const ts = require(require.resolve("typescript", { paths: [projectRoot] }));
+const originalBytes = Buffer.from(original, "utf8");
+const compilerPath = require.resolve("typescript", { paths: [projectRoot] });
+const compilerBytes = fs.readFileSync(compilerPath);
+const compilerSha256 = crypto.createHash("sha256").update(compilerBytes).digest("hex");
+const acceptedCompilerSha256 = "3ae902c92cc44dace175c0e69e13a4b0899f6983c6121d76b9ab8dd5795e7675";
+if (compilerSha256 !== acceptedCompilerSha256) {
+  throw new Error(
+    `installed TypeScript compiler bytes do not match accepted 5.9.3 ` +
+      `(sha256=${compilerSha256}; expected=${acceptedCompilerSha256})`,
+  );
+}
+const ts = require(compilerPath);
+if (ts.version !== "5.9.3") {
+  throw new Error(`installed TypeScript compiler version is ${ts.version}; expected 5.9.3`);
+}
 const ast = ts.createSourceFile(path, original, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
 const parseDiagnostics = (ts.transpileModule(original, {
   compilerOptions: {
@@ -132,6 +163,35 @@ if (parseDiagnostics.length !== 0) {
     `TypeScript parse diagnostics (${parseDiagnostics.length}); first at ${position.line + 1}:${position.character + 1}: ${message}`,
   );
 }
+
+// Bind the exact in-memory AST so security analysis can use
+// compiler symbol identity for lexical bindings. noLib/noResolve keeps this a
+// source-only operation: globals remain deliberately unresolved while imports,
+// parameters, locals, shadowing, and nested scopes receive distinct symbols.
+const bindingOptions = {
+  module: ts.ModuleKind.ESNext,
+  target: ts.ScriptTarget.Latest,
+  noEmit: true,
+  noLib: true,
+  noResolve: true,
+  skipLibCheck: true,
+  types: [],
+};
+const sourcePath = require("node:path").resolve(path);
+const bindingHost = ts.createCompilerHost(bindingOptions, true);
+bindingHost.fileExists = (fileName) => require("node:path").resolve(fileName) === sourcePath;
+bindingHost.readFile = (fileName) =>
+  require("node:path").resolve(fileName) === sourcePath ? original : undefined;
+bindingHost.getSourceFile = (fileName) =>
+  require("node:path").resolve(fileName) === sourcePath
+    ? ast
+    : undefined;
+const bindingProgram = ts.createProgram([sourcePath], bindingOptions, bindingHost);
+const bindingAst = bindingProgram.getSourceFile(sourcePath);
+if (bindingAst !== ast || bindingProgram.getSourceFiles().length !== 1) {
+  throw new Error("catalog binding program did not bind the exact in-memory source bytes");
+}
+const bindingChecker = bindingProgram.getTypeChecker();
 
 function stripComments(source) {
   let out = "";
@@ -345,7 +405,7 @@ function isAcceptedNonStaticElementAccess(node) {
     }
   }
   const topLevelFunctionName = functionAncestor && ts.isFunctionDeclaration(functionAncestor) &&
-    functionAncestor.parent === ast &&
+    ts.isSourceFile(functionAncestor.parent) &&
     functionAncestor.name
     ? functionAncestor.name.text
     : null;
@@ -398,14 +458,6 @@ let dynamicEvaluation = null;
 let computedRuntimeCapability = false;
 let dynamicModuleLoading = false;
 let unauthorizedStaticModuleLoading = false;
-const reflectionCapabilities = new Set([
-  "defineProperties",
-  "defineProperty",
-  "getOwnPropertyDescriptor",
-  "getOwnPropertyDescriptors",
-  "getPrototypeOf",
-  "setPrototypeOf",
-]);
 const moduleCapabilities = new Set([
   "_compile",
   "_linkedBinding",
@@ -419,15 +471,17 @@ const moduleCapabilities = new Set([
   "runInNewContext",
   "runInThisContext",
 ]);
-walkAst(ast, (node) => {
-  if (ts.isIdentifier(node) && (node.text === "eval" || node.text === "Function")) {
+function isUnshadowedRuntimeIdentifier(node, names) {
+  return ts.isIdentifier(node) && names.has(node.text) && !runtimeSymbol(node);
+}
+walkAst(bindingAst, (node) => {
+  if (isUnshadowedRuntimeIdentifier(node, new Set(["eval", "Function"]))) {
     dynamicEvaluation ||= node.text;
   }
   if (ts.isPropertyAccessExpression(node)) {
     if (node.name.text === "constructor") {
       dynamicEvaluation ||= "constructor-derived Function";
     }
-    if (reflectionCapabilities.has(node.name.text)) computedRuntimeCapability = true;
     if (moduleCapabilities.has(node.name.text)) dynamicModuleLoading = true;
   }
   if (ts.isElementAccessExpression(node) && node.argumentExpression) {
@@ -439,9 +493,6 @@ walkAst(ast, (node) => {
       dynamicEvaluation ||= capability === "constructor"
         ? "constructor-derived Function"
         : capability;
-    }
-    if (capability !== null && reflectionCapabilities.has(capability)) {
-      computedRuntimeCapability = true;
     }
     if (capability !== null && moduleCapabilities.has(capability)) {
       dynamicModuleLoading = true;
@@ -466,7 +517,7 @@ walkAst(ast, (node) => {
       capability === "eval" ||
       capability === "Function" ||
       capability === "constructor" ||
-      (capability !== null && reflectionCapabilities.has(capability))
+      capability === null
     ) {
       computedRuntimeCapability = true;
     }
@@ -474,7 +525,11 @@ walkAst(ast, (node) => {
       dynamicModuleLoading = true;
     }
   }
-  if (ts.isPropertyAssignment(node) || ts.isShorthandPropertyAssignment(node)) {
+  if (
+    ts.isPropertyAssignment(node) ||
+    ts.isShorthandPropertyAssignment(node) ||
+    ts.isMethodDeclaration(node)
+  ) {
     let capability = null;
     let unknownComputedCapability = false;
     if (ts.isShorthandPropertyAssignment(node)) {
@@ -490,7 +545,7 @@ walkAst(ast, (node) => {
       capability === "eval" ||
       capability === "Function" ||
       capability === "constructor" ||
-      (capability !== null && reflectionCapabilities.has(capability))
+      capability === null
     ) {
       computedRuntimeCapability = true;
     }
@@ -498,17 +553,8 @@ walkAst(ast, (node) => {
       dynamicModuleLoading = true;
     }
   }
-  if (ts.isIdentifier(node) && (node.text === "globalThis" || node.text === "Reflect")) {
-    computedRuntimeCapability = true;
-  }
   if (
-    ts.isIdentifier(node) &&
-    (
-      node.text === "require" ||
-      node.text === "createRequire" ||
-      node.text === "module" ||
-      node.text === "exports"
-    )
+    isUnshadowedRuntimeIdentifier(node, new Set(["require", "createRequire", "module", "exports"]))
   ) {
     dynamicModuleLoading = true;
   }
@@ -527,11 +573,14 @@ walkAst(ast, (node) => {
     else if (ts.isElementAccessExpression(callee) && callee.argumentExpression) {
       calleeName = staticString(callee.argumentExpression);
     }
-    if (calleeName === "require" || calleeName === "createRequire") dynamicModuleLoading = true;
+    if (
+      (calleeName === "require" || calleeName === "createRequire") &&
+      (!ts.isIdentifier(callee) || !runtimeSymbol(callee))
+    ) dynamicModuleLoading = true;
   }
   if (ts.isImportDeclaration(node) && node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier)) {
     const clause = node.importClause;
-    const acceptedStripeImport = node.parent === ast &&
+    const acceptedStripeImport = ts.isSourceFile(node.parent) &&
       node.moduleSpecifier.text === "stripe" &&
       !!clause &&
       !clause.isTypeOnly &&
@@ -547,10 +596,16 @@ walkAst(ast, (node) => {
   }
 });
 if (dynamicModuleLoading || unauthorizedStaticModuleLoading) {
-  throw new Error("dynamic module loading is not allowed in the catalog source");
+  throw new Error(
+    "catalog source contains binding-aware protected mutation-risk construct: " +
+      "dynamic module loading is not allowed in the catalog source",
+  );
 }
 if (computedRuntimeCapability) {
-  throw new Error("dynamic evaluation through a global or computed runtime capability is not allowed");
+  throw new Error(
+    "catalog source contains binding-aware protected mutation-risk construct: " +
+      "dynamic evaluation through a global or computed runtime capability is not allowed",
+  );
 }
 if (dynamicEvaluation) {
   throw new Error(`dynamic evaluation via ${dynamicEvaluation} is not allowed in the catalog source`);
@@ -1366,7 +1421,7 @@ if (
 for (const identifier of defIdentifiers) {
   if (identifier === defDeclaration.name) continue;
   if (nearestFunctionLikeAncestor(identifier) !== resolvePriceFunction) {
-    throw new Error("resolvePrice def binding may not escape into a nested function or closure");
+    throw new Error("catalog source contains binding-aware protected mutation or escape: resolvePrice def binding may not escape into a nested function or closure");
   }
   if (isErasedTypeContext(identifier)) {
     throw new Error("resolvePrice def property reads must be runtime value expressions, not erased type evidence");
@@ -1410,10 +1465,10 @@ for (const identifier of defIdentifiers) {
   }
 
   if (!access || !acceptedDefReadCounts.has(field)) {
-    throw new Error("resolvePrice def binding may not escape, alias, be passed, returned, or be used outside accepted property reads");
+    throw new Error("catalog source contains binding-aware protected mutation or escape: resolvePrice def binding may not escape, alias, be passed, returned, or be used outside accepted property reads");
   }
   if (isMutationTarget(access)) {
-    throw new Error("executable catalog mutation through the accepted PRICES read");
+    throw new Error("catalog source contains binding-aware protected mutation or escape: executable catalog mutation through the accepted PRICES read");
   }
   actualDefReadCounts.set(field, actualDefReadCounts.get(field) + 1);
   actualDefReadNodes.get(field).push(access);
@@ -1975,6 +2030,3451 @@ if (JSON.stringify(amountGroups) !== JSON.stringify(expectedAmountGroups)) {
   throw new Error("planForPrice amount rule set differs from the exact accepted contract");
 }
 
+// Top-level function declarations are part of the intentionally admitted catalog
+// grammar. Analyze every executable body with lexical Symbol identity and an
+// allocation-site heap model so aliases cannot launder a protected runtime object.
+// The analysis is deliberately source-only: it never imports or executes this module.
+const protectedGlobalNames = new Set([
+  "AggregateError", "Array", "ArrayBuffer", "Atomics", "BigInt", "BigInt64Array",
+  "BigUint64Array", "Boolean", "DataView", "Date", "Error", "EvalError",
+  "FinalizationRegistry", "Float32Array", "Float64Array", "Function", "Infinity",
+  "Int8Array", "Int16Array", "Int32Array", "Intl", "JSON", "Map", "Math", "NaN",
+  "Number", "Object", "Promise", "Proxy", "RangeError", "ReferenceError", "Reflect",
+  "RegExp", "Set", "SharedArrayBuffer", "String", "Symbol", "SyntaxError", "TypeError",
+  "URIError", "Uint8Array", "Uint8ClampedArray", "Uint16Array", "Uint32Array",
+  "WeakMap", "WeakRef", "WeakSet", "WebAssembly", "console", "eval", "global",
+  "globalThis", "process",
+]);
+const protectedCatalogNames = new Set([
+  "PRICES", "PRODUCTS", "LEGACY_PRODUCT_NAMES",
+]);
+const protectedExecutableBindings = new Set([
+  "planForPrice", "resolvePrice", "resolveProduct", "reconcileTaxCodes",
+]);
+const catalogScalarFields = new Set([
+  "amountCents", "description", "interval", "key", "lookup", "name", "product", "taxCode",
+]);
+const staticMutationMethods = new Map([
+  ["Object", new Set([
+    "assign", "defineProperties", "defineProperty", "freeze", "preventExtensions",
+    "seal", "setPrototypeOf",
+  ])],
+  ["Reflect", new Set([
+    "defineProperty", "deleteProperty", "set", "setPrototypeOf",
+  ])],
+]);
+const instanceMutationMethods = new Set([
+  "__defineGetter__", "__defineSetter__", "add", "clear", "copyWithin", "delete",
+  "fill", "pop", "push", "reverse", "set", "shift", "sort", "splice", "unshift",
+]);
+const callbackMethods = new Set([
+  "every", "filter", "find", "findIndex", "findLast", "findLastIndex", "flatMap",
+  "forEach", "map", "reduce", "reduceRight", "some", "sort",
+]);
+const arraySpeciesMethods = new Set(["concat", "filter", "flat", "flatMap", "map", "slice", "splice"]);
+const typedArraySpeciesMethods = new Set(["filter", "map", "slice", "subarray"]);
+const typedArrayConstructorNames = new Set([
+  "BigInt64Array", "BigUint64Array", "Float32Array", "Float64Array", "Int8Array",
+  "Int16Array", "Int32Array", "Uint8Array", "Uint8ClampedArray", "Uint16Array", "Uint32Array",
+]);
+const unsupportedBinaryMemoryConstructorNames = new Set([
+  ...typedArrayConstructorNames,
+  "ArrayBuffer", "DataView", "SharedArrayBuffer",
+]);
+const promiseStaticMethods = new Set([
+  "all", "allSettled", "any", "race", "reject", "resolve",
+]);
+const thenableMethods = new Set(["catch", "finally", "then"]);
+const wellKnownProtocolSymbols = new Set([
+  "asyncDispose", "asyncIterator", "dispose", "hasInstance", "isConcatSpreadable",
+  "iterator", "match", "matchAll", "replace", "search", "species", "split",
+  "toPrimitive", "unscopables",
+]);
+
+let unsupportedProtectedMutationRisk = null;
+walkAst(bindingAst, (node) => {
+  if (unsupportedProtectedMutationRisk) return;
+  if (
+    (ts.isPropertyAccessExpression(node) || ts.isElementAccessExpression(node)) &&
+    wellKnownProtocolSymbols.has(staticMemberKey(node)) &&
+    ts.isIdentifier(unwrapExpression(node.expression)) &&
+    unwrapExpression(node.expression).text === "Symbol" &&
+    !runtimeSymbol(unwrapExpression(node.expression))
+  ) {
+    unsupportedProtectedMutationRisk = "custom well-known Symbol protocol capability";
+  } else if (ts.isGetAccessorDeclaration(node) || ts.isSetAccessorDeclaration(node)) {
+    unsupportedProtectedMutationRisk = "accessor declaration";
+  } else if (ts.isClassLike(node)) {
+    unsupportedProtectedMutationRisk = "class declaration or expression";
+  } else if (
+    (ts.isFunctionLike(node) && !!node.asteriskToken) ||
+    ts.isYieldExpression(node)
+  ) {
+    unsupportedProtectedMutationRisk = "generator or yield expression";
+  } else if (ts.isTaggedTemplateExpression(node)) {
+    unsupportedProtectedMutationRisk = "tagged-template invocation";
+  } else if (ts.isForInStatement(node)) {
+    unsupportedProtectedMutationRisk = "for-in assignment target";
+  } else if (ts.isEnumDeclaration(node)) {
+    unsupportedProtectedMutationRisk = "runtime enum object";
+  } else if (
+    ts.isVariableDeclarationList(node) &&
+    !!ts.NodeFlags.Using &&
+    (node.flags & ts.NodeFlags.Using) !== 0
+  ) {
+    unsupportedProtectedMutationRisk = "using/disposal protocol";
+  } else if (ts.isNewExpression(node)) {
+    const constructor = unwrapExpression(node.expression);
+    if (
+      ts.isIdentifier(constructor) &&
+      (constructor.text === "Proxy") &&
+      !runtimeSymbol(constructor)
+    ) unsupportedProtectedMutationRisk = "Proxy construction";
+  } else if (ts.isCallExpression(node)) {
+    const callee = unwrapExpression(node.expression);
+    if (
+      (ts.isPropertyAccessExpression(callee) || ts.isElementAccessExpression(callee)) &&
+      staticMemberKey(callee) === "construct" &&
+      ts.isIdentifier(unwrapExpression(callee.expression)) &&
+      unwrapExpression(callee.expression).text === "Reflect" &&
+      !runtimeSymbol(unwrapExpression(callee.expression))
+    ) unsupportedProtectedMutationRisk = "Reflect.construct";
+  }
+});
+if (unsupportedProtectedMutationRisk) {
+  throw new Error(
+    "catalog source contains binding-aware protected mutation-risk construct: unsupported " +
+      unsupportedProtectedMutationRisk,
+  );
+}
+
+function isAmbientDeclaration(node) {
+  for (let current = node; current && !ts.isSourceFile(current); current = current.parent) {
+    if ((current.flags & ts.NodeFlags.Ambient) !== 0 || hasModifier(current, ts.SyntaxKind.DeclareKeyword)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function isRuntimeDeclaration(node) {
+  if (
+    ts.isInterfaceDeclaration(node) ||
+    ts.isTypeAliasDeclaration(node) ||
+    ts.isTypeParameterDeclaration(node) ||
+    ts.isImportTypeNode(node)
+  ) return false;
+  if (isAmbientDeclaration(node)) return false;
+  if (ts.isImportClause(node)) return !node.isTypeOnly;
+  if (ts.isImportSpecifier(node)) {
+    const clause = node.parent?.parent?.parent;
+    return !node.isTypeOnly && !!clause && ts.isImportClause(clause) && !clause.isTypeOnly;
+  }
+  if (ts.isNamespaceImport(node)) {
+    const clause = node.parent?.parent;
+    return !!clause && ts.isImportClause(clause) && !clause.isTypeOnly;
+  }
+  if (ts.isFunctionDeclaration(node) || ts.isMethodDeclaration(node)) return !!node.body;
+  return true;
+}
+
+function runtimeSymbol(node) {
+  let symbol = null;
+  if (ts.isIdentifier(node) && ts.isShorthandPropertyAssignment(node.parent)) {
+    symbol = bindingChecker.getShorthandAssignmentValueSymbol(node.parent) ||
+      bindingChecker.getSymbolAtLocation(node);
+  } else {
+    symbol = bindingChecker.getSymbolAtLocation(node);
+  }
+  if (!symbol) return null;
+  const declarations = symbol.declarations || [];
+  return declarations.some(isRuntimeDeclaration) ? symbol : null;
+}
+
+function emptyAbstract() {
+  return {
+    refs: new Set(),
+    functions: new Set(),
+    classes: new Set(),
+    mutators: new Set(),
+    builtins: new Set(),
+    adapters: new Set(),
+    objects: new Set(),
+    literals: new Set(),
+    primitiveKinds: new Set(),
+  };
+}
+
+const abstractFields = [
+  "refs", "functions", "classes", "mutators", "builtins", "adapters", "objects", "literals",
+  "primitiveKinds",
+];
+let analysisChanged = false;
+function mergeAbstract(target, source) {
+  let changed = false;
+  if (!source) return false;
+  for (const field of abstractFields) {
+    for (const item of source[field]) {
+      if (!target[field].has(item)) {
+        target[field].add(item);
+        changed = true;
+      }
+    }
+  }
+  return changed;
+}
+
+function combineAbstract(...values) {
+  const result = emptyAbstract();
+  for (const value of values) mergeAbstract(result, value);
+  return result;
+}
+
+function refAbstract(label) {
+  const result = emptyAbstract();
+  result.refs.add(label);
+  return result;
+}
+
+function literalAbstract(value, primitiveKind = null) {
+  const result = emptyAbstract();
+  result.literals.add(String(value));
+  if (primitiveKind) result.primitiveKinds.add(primitiveKind);
+  return result;
+}
+
+function primitiveAbstract(...kinds) {
+  const result = emptyAbstract();
+  for (const kind of kinds) result.primitiveKinds.add(kind);
+  return result;
+}
+
+function hasProtectedReference(value) {
+  return !!value && value.refs.size > 0;
+}
+
+const symbolValues = new Map();
+const protectedBindingSymbols = new Set();
+function valueForSymbol(symbol) {
+  let value = symbolValues.get(symbol);
+  if (!value) {
+    value = emptyAbstract();
+    symbolValues.set(symbol, value);
+  }
+  return value;
+}
+
+function mergeSymbol(symbol, value) {
+  if (symbol) mergeAbstract(valueForSymbol(symbol), value);
+}
+
+const allocationIds = new WeakMap();
+const objectStates = new Map();
+let nextAllocationId = 1;
+function objectStateFor(node, kind = "object") {
+  let allocations = allocationIds.get(node);
+  if (!allocations) {
+    allocations = new Map();
+    allocationIds.set(node, allocations);
+  }
+  let id = allocations.get(kind);
+  if (!id) {
+    id = nextAllocationId++;
+    allocations.set(kind, id);
+    objectStates.set(id, {
+      kind,
+      props: new Map(),
+      wildcard: emptyAbstract(),
+      elements: emptyAbstract(),
+      prototype: emptyAbstract(),
+      explicitPrototype: false,
+    });
+    if (kind === "array") {
+      objectStates.get(id).prototype.refs.add("intrinsic:Array.prototype");
+    } else if (kind === "map") {
+      objectStates.get(id).prototype.refs.add("intrinsic:Map.prototype");
+    } else if (kind === "set") {
+      objectStates.get(id).prototype.refs.add("intrinsic:Set.prototype");
+    } else if (kind === "weakmap") {
+      objectStates.get(id).prototype.refs.add("intrinsic:WeakMap.prototype");
+    } else if (kind === "weakset") {
+      objectStates.get(id).prototype.refs.add("intrinsic:WeakSet.prototype");
+    } else if (kind === "promise") {
+      objectStates.get(id).prototype.refs.add("intrinsic:Promise.prototype");
+    } else if (kind === "regexp") {
+      objectStates.get(id).prototype.refs.add("intrinsic:RegExp.prototype");
+    } else if (kind === "weakref") {
+      objectStates.get(id).prototype.refs.add("intrinsic:WeakRef.prototype");
+    } else if (kind === "function" || kind === "class" || kind === "promise-resolver") {
+      objectStates.get(id).prototype.refs.add("intrinsic:Function.prototype");
+    } else if (kind === "arguments" || kind === "function-prototype") {
+      objectStates.get(id).prototype.refs.add("intrinsic:Object.prototype");
+    }
+    analysisChanged = true;
+  }
+  return { id, state: objectStates.get(id) };
+}
+
+function objectAbstract(node, kind = "object") {
+  const result = emptyAbstract();
+  result.objects.add(objectStateFor(node, kind).id);
+  return result;
+}
+
+function ordinaryObjectAbstract(node) {
+  const result = objectAbstract(node, "object");
+  for (const id of result.objects) {
+    const state = objectStates.get(id);
+    if (state && state.prototype.refs.size === 0 && !state.explicitPrototype) {
+      mergeAbstract(state.prototype, refAbstract("intrinsic:Object.prototype"));
+    }
+  }
+  return result;
+}
+
+function propertySlot(state, key) {
+  let slot = state.props.get(key);
+  if (!slot) {
+    slot = emptyAbstract();
+    state.props.set(key, slot);
+  }
+  return slot;
+}
+
+function mergeObjectProperty(objectValue, key, value) {
+  for (const id of objectValue.objects) {
+    const state = objectStates.get(id);
+    if (!state) continue;
+    if (key === null) mergeAbstract(state.wildcard, value);
+    else mergeAbstract(propertySlot(state, key), value);
+    mergeAbstract(state.elements, value);
+  }
+}
+
+function setObjectPrototype(objectValue, prototype, explicit = true) {
+  for (const id of objectValue.objects) {
+    const state = objectStates.get(id);
+    if (!state) continue;
+    mergeAbstract(state.prototype, prototype);
+    if (explicit && !state.explicitPrototype) {
+      state.explicitPrototype = true;
+      analysisChanged = true;
+    }
+  }
+}
+
+function hasLocalPrototypeEdge(state) {
+  return state.explicitPrototype || state.prototype.objects.size > 0;
+}
+
+function staticMemberKey(node) {
+  const expression = unwrapExpression(node);
+  if (ts.isPropertyAccessExpression(expression)) return expression.name.text;
+  if (ts.isElementAccessExpression(expression) && expression.argumentExpression) {
+    const argument = unwrapExpression(expression.argumentExpression);
+    if (ts.isNumericLiteral(argument)) return argument.text;
+    return staticString(argument);
+  }
+  return null;
+}
+
+function propertyNameKey(name) {
+  if (ts.isComputedPropertyName(name)) return staticString(name.expression);
+  return staticPropertyName(name);
+}
+
+function isCallerControlledExternalOrigin(origin) {
+  return origin === "external:possibly-protected" ||
+    origin === "external:untrusted-member" ||
+    origin === "external:call-result" ||
+    origin === "external:unknown-new-target" ||
+    origin === "external:unknown-meta-property";
+}
+
+function hasCallerControlledExternalReference(value) {
+  return [...value.refs].some(isCallerControlledExternalOrigin);
+}
+
+function protectedMemberReference(origin, key) {
+  if (origin === "external:call-result") {
+    return refAbstract("external:call-result");
+  }
+  if (origin === "external:trusted-sdk-result") {
+    return refAbstract("external:trusted-sdk-result");
+  }
+  if (origin === "external:trusted-data") {
+    return refAbstract("external:trusted-data");
+  }
+  if (origin === "external:implicit-throw") {
+    return refAbstract("external:implicit-throw");
+  }
+  if (origin === "external:possibly-protected" || origin === "external:untrusted-member") {
+    return refAbstract("external:untrusted-member");
+  }
+  if (origin === "external:trusted-sdk" || origin === "external:trusted-sdk-member") {
+    return refAbstract("external:trusted-sdk-member");
+  }
+  if (origin === "global:global" || origin === "global:globalThis") {
+    return protectedGlobalNames.has(key) ? refAbstract("global:" + key) : refAbstract("derived:protected");
+  }
+  if (origin.startsWith("shared-root:")) {
+    const catalog = origin.slice("shared-root:".length);
+    if (catalog === "LEGACY_PRODUCT_NAMES") return emptyAbstract();
+    return refAbstract("shared-entry:" + catalog);
+  }
+  if (origin.startsWith("shared-entry:") && catalogScalarFields.has(key)) {
+    return emptyAbstract();
+  }
+  if (origin === "global:process" && key === "env") {
+    return refAbstract("global:process.env");
+  }
+  if (origin === "global:process.env") {
+    return primitiveAbstract("string", "undefined");
+  }
+  if (
+    origin.startsWith("global:") &&
+    key === "prototype" &&
+    protectedGlobalNames.has(origin.slice("global:".length))
+  ) {
+    return refAbstract("intrinsic:" + origin.slice("global:".length) + ".prototype");
+  }
+  if (origin.startsWith("import:") && key === "prototype") {
+    return refAbstract("import-prototype:" + origin.slice("import:".length));
+  }
+  return refAbstract("derived:protected");
+}
+
+function builtinForProtectedMember(origin, key) {
+  const result = emptyAbstract();
+  if (origin === "global:Math" && key === "round") {
+    result.builtins.add("Math.round");
+  }
+  if (origin === "global:console" && key === "error") {
+    result.builtins.add("Console.error");
+  }
+  if (origin === "global:Object") {
+    if (staticMutationMethods.get("Object").has(key)) result.mutators.add("Object." + key);
+    const readers = new Map([
+      ["create", "Object.create"],
+      ["entries", "Object.entries"],
+      ["fromEntries", "Object.fromEntries"],
+      ["getOwnPropertyDescriptor", "Object.getOwnPropertyDescriptor"],
+      ["getPrototypeOf", "Object.getPrototypeOf"],
+      ["keys", "Object.keys"],
+      ["values", "Object.values"],
+    ]);
+    if (readers.has(key)) result.builtins.add(readers.get(key));
+  }
+  if (origin === "global:Reflect") {
+    if (staticMutationMethods.get("Reflect").has(key)) result.mutators.add("Reflect." + key);
+    if (key === "apply") result.builtins.add("Reflect.apply");
+    if (key === "get") result.builtins.add("Reflect.get");
+    if (key === "getOwnPropertyDescriptor") result.builtins.add("Reflect.getOwnPropertyDescriptor");
+    if (key === "getPrototypeOf") result.builtins.add("Reflect.getPrototypeOf");
+  }
+  if (origin === "global:Array" && (key === "from" || key === "of")) {
+    result.builtins.add("Array." + key);
+  }
+  if (
+    origin.startsWith("global:") &&
+    typedArrayConstructorNames.has(origin.slice("global:".length)) &&
+    (key === "from" || key === "of")
+  ) {
+    result.builtins.add("TypedArrayStatic." + key);
+  }
+  if (origin === "global:Proxy" && key === "revocable") result.builtins.add("Proxy.revocable");
+  if (origin === "global:Promise" && promiseStaticMethods.has(key)) {
+    result.builtins.add("Promise." + key);
+  }
+  if (
+    (origin === "intrinsic:Promise.prototype" || origin === "derived:protected") &&
+    thenableMethods.has(key)
+  ) result.builtins.add("Thenable." + key);
+  if (
+    (origin === "intrinsic:Array.prototype" || origin === "derived:protected") &&
+    callbackMethods.has(key)
+  ) result.builtins.add("Array." + key);
+  if (
+    origin === "intrinsic:Array.prototype" &&
+    arraySpeciesMethods.has(key) &&
+    !callbackMethods.has(key) &&
+    !instanceMutationMethods.has(key)
+  ) result.builtins.add("ArraySpecies." + key);
+  if (origin === "intrinsic:WeakRef.prototype" && key === "deref") {
+    result.builtins.add("WeakRef.deref");
+  }
+  if (origin === "intrinsic:Array.prototype" && key === "at") {
+    result.builtins.add("Array.at");
+  }
+  if (origin === "intrinsic:Array.prototype" && key === "join") {
+    result.builtins.add("Array.join");
+  }
+  if (
+    /^intrinsic:(?:AggregateError|Error|EvalError|RangeError|ReferenceError|SyntaxError|TypeError|URIError)\.prototype$/.test(origin) &&
+    key === "toString"
+  ) {
+    result.builtins.add("Error.toString");
+  }
+  if (origin === "intrinsic:RegExp.prototype" && key === "toString") {
+    result.builtins.add("RegExp.toString");
+  }
+  const typedArrayMatch = origin.match(/^intrinsic:([A-Za-z0-9]+Array)\.prototype$/);
+  if (
+    typedArrayMatch &&
+    typedArrayConstructorNames.has(typedArrayMatch[1]) &&
+    typedArraySpeciesMethods.has(key)
+  ) {
+    result.builtins.add("TypedArray." + key);
+  }
+  if (
+    (origin === "intrinsic:ArrayBuffer.prototype" ||
+      origin === "intrinsic:SharedArrayBuffer.prototype") &&
+    key === "slice"
+  ) {
+    result.builtins.add("ArrayBuffer.slice");
+  }
+  if (instanceMutationMethods.has(key)) {
+    result.builtins.add(
+      origin === "intrinsic:Array.prototype"
+        ? "ArrayMutation." + key
+        : "instance." + key,
+    );
+  }
+  return result;
+}
+
+function readProperty(base, key, visited = new Set()) {
+  if (key === "stack") {
+    invokeIntrinsicFieldCoercion(
+      base,
+      ["name", "message"],
+      bindingAst,
+      "Error.stack",
+      new Set(),
+      "error",
+    );
+  }
+  const result = emptyAbstract();
+  if (base.adapters.size > 0 && key === "length") {
+    mergeAbstract(result, primitiveAbstract("number"));
+  }
+  if (base.adapters.size > 0 && key === "name") {
+    mergeAbstract(result, primitiveAbstract("string"));
+  }
+  if (
+    (key === "__proto__" || key === "constructor") &&
+    (
+      base.functions.size > 0 ||
+      base.classes.size > 0 ||
+      base.adapters.size > 0 ||
+      base.mutators.size > 0 ||
+      base.builtins.size > 0
+    )
+  ) {
+    mergeAbstract(
+      result,
+      key === "__proto__"
+        ? refAbstract("intrinsic:Function.prototype")
+        : refAbstract("global:Function"),
+    );
+  }
+  for (const primitiveKind of base.primitiveKinds) {
+    if (primitiveKind === "null" || primitiveKind === "undefined") {
+      continue;
+    }
+    if (key === "length" && primitiveKind === "string") {
+      mergeAbstract(result, primitiveAbstract("number"));
+    } else if (
+      primitiveKind === "string" &&
+      key !== null &&
+      /^(0|[1-9][0-9]*)$/.test(String(key))
+    ) {
+      mergeAbstract(result, primitiveAbstract("string"));
+    } else if (key !== "__proto__" && key !== "constructor") {
+      mergeAbstract(result, refAbstract("derived:protected"));
+      if (primitiveKind === "string" && key === null) {
+        mergeAbstract(result, primitiveAbstract("string"));
+      }
+    }
+  }
+  if (key === "__proto__" || key === "constructor") {
+    const primitiveConstructors = new Map([
+      ["string", "String"],
+      ["number", "Number"],
+      ["boolean", "Boolean"],
+      ["bigint", "BigInt"],
+      ["symbol", "Symbol"],
+    ]);
+    for (const primitiveKind of base.primitiveKinds) {
+      const constructorName = primitiveConstructors.get(primitiveKind);
+      if (!constructorName) continue;
+      mergeAbstract(
+        result,
+        key === "__proto__"
+          ? refAbstract("intrinsic:" + constructorName + ".prototype")
+          : refAbstract("global:" + constructorName),
+      );
+    }
+  }
+  for (const id of base.objects) {
+    const marker = id + ":" + String(key);
+    if (visited.has(marker)) continue;
+    visited.add(marker);
+    const state = objectStates.get(id);
+    if (!state) continue;
+    if (key === "__proto__") mergeAbstract(result, state.prototype);
+    if (key === null) {
+      mergeAbstract(result, state.wildcard);
+      mergeAbstract(result, state.elements);
+      for (const slot of state.props.values()) mergeAbstract(result, slot);
+    } else {
+      const slot = state.props.get(String(key));
+      if (slot) mergeAbstract(result, slot);
+      if (
+        state.kind !== "array" ||
+        /^(0|[1-9][0-9]*)$/.test(String(key))
+      ) {
+        mergeAbstract(result, state.wildcard);
+      }
+      if (!slot && (state.kind === "function" || state.kind === "class") && key === "constructor") {
+        mergeAbstract(result, refAbstract("global:Function"));
+      }
+      if (!slot && (state.kind === "function" || state.kind === "class") && key === "length") {
+        mergeAbstract(result, primitiveAbstract("number"));
+      }
+      if (!slot && state.prototype.refs.size + state.prototype.objects.size > 0) {
+        mergeAbstract(result, readProperty(state.prototype, String(key), visited));
+      }
+    }
+  }
+  for (const origin of base.refs) {
+    if (key === null) {
+      if (origin.startsWith("shared-root:")) {
+        const catalog = origin.slice("shared-root:".length);
+        if (catalog !== "LEGACY_PRODUCT_NAMES") {
+          mergeAbstract(result, refAbstract("shared-entry:" + catalog));
+        }
+      } else {
+        mergeAbstract(result, refAbstract("derived:protected"));
+      }
+      continue;
+    }
+    if (key === "constructor" && origin.startsWith("intrinsic:") && origin.endsWith(".prototype")) {
+      const constructorName = origin.slice("intrinsic:".length, -".prototype".length);
+      mergeAbstract(result, refAbstract("global:" + constructorName));
+    } else if (
+      key === "constructor" &&
+      origin.startsWith("global:") &&
+      origin !== "global:global" &&
+      origin !== "global:globalThis" &&
+      origin !== "global:process" &&
+      origin !== "global:process.env"
+    ) {
+      mergeAbstract(result, refAbstract("global:Function"));
+    } else {
+      mergeAbstract(result, builtinForProtectedMember(origin, String(key)));
+      mergeAbstract(result, protectedMemberReference(origin, String(key)));
+    }
+  }
+  return result;
+}
+
+function readOwnProperty(base, key) {
+  const result = emptyAbstract();
+  for (const id of base.objects) {
+    const state = objectStates.get(id);
+    if (!state) continue;
+    if (key === null) {
+      mergeAbstract(result, state.wildcard);
+      for (const slot of state.props.values()) mergeAbstract(result, slot);
+    } else {
+      const slot = state.props.get(String(key));
+      if (slot) mergeAbstract(result, slot);
+      mergeAbstract(result, state.wildcard);
+    }
+  }
+  return result;
+}
+
+function hasAbstractValue(value) {
+  return abstractFields.some((field) => value[field].size > 0);
+}
+
+function hasLocalPropertyInChain(base, key, seen = new Set()) {
+  for (const id of base.objects) {
+    if (seen.has(id)) continue;
+    seen.add(id);
+    const state = objectStates.get(id);
+    if (!state) continue;
+    if (state.props.has(String(key)) || hasAbstractValue(state.wildcard)) return true;
+    if (hasLocalPrototypeEdge(state) && hasLocalPropertyInChain(state.prototype, key, seen)) return true;
+  }
+  return false;
+}
+
+function hasDeclaredCallablePropertyInChain(base, key, seen = new Set()) {
+  for (const id of base.objects) {
+    if (seen.has(id)) continue;
+    seen.add(id);
+    const state = objectStates.get(id);
+    if (!state) continue;
+    if (state.props.has(String(key)) || containsCallableCapability(state.wildcard)) return true;
+    if (
+      hasLocalPrototypeEdge(state) &&
+      hasDeclaredCallablePropertyInChain(state.prototype, key, seen)
+    ) return true;
+  }
+  return false;
+}
+
+function aggregateObjectValues(value, includePrototype = false, seen = new Set()) {
+  const result = emptyAbstract();
+  mergeAbstract(result, value);
+  for (const id of value.objects) {
+    if (seen.has(id)) continue;
+    seen.add(id);
+    const state = objectStates.get(id);
+    if (!state) continue;
+    mergeAbstract(result, state.wildcard);
+    mergeAbstract(result, state.elements);
+    for (const slot of state.props.values()) mergeAbstract(result, slot);
+    if (includePrototype && hasLocalPrototypeEdge(state)) {
+      mergeAbstract(result, aggregateObjectValues(state.prototype, true, seen));
+    }
+  }
+  return result;
+}
+
+function aggregateOwnObjectContents(value) {
+  const result = emptyAbstract();
+  for (const id of value.objects) {
+    const state = objectStates.get(id);
+    if (!state) continue;
+    mergeAbstract(result, state.wildcard);
+    mergeAbstract(result, state.elements);
+    for (const slot of state.props.values()) mergeAbstract(result, slot);
+  }
+  for (const origin of value.refs) mergeAbstract(result, refAbstract(origin));
+  return result;
+}
+
+function deepAggregateObjectValues(value, seen = new Set()) {
+  const result = emptyAbstract();
+  mergeAbstract(result, value);
+  for (const id of value.objects) {
+    if (seen.has(id)) continue;
+    seen.add(id);
+    const state = objectStates.get(id);
+    if (!state) continue;
+    const slots = [state.wildcard, state.elements, ...state.props.values()];
+    for (const slot of slots) mergeAbstract(result, deepAggregateObjectValues(slot, seen));
+    if (state.explicitPrototype || state.prototype.objects.size > 0) {
+      mergeAbstract(result, deepAggregateObjectValues(state.prototype, seen));
+    }
+  }
+  return result;
+}
+
+function hasUnresolvedSymbolProtocol(value, seen = new Set()) {
+  for (const id of value.objects) {
+    if (seen.has(id)) continue;
+    seen.add(id);
+    const state = objectStates.get(id);
+    if (!state) continue;
+    if (containsCallableCapability(state.wildcard)) return true;
+    if (
+      (state.explicitPrototype || state.prototype.objects.size > 0) &&
+      hasUnresolvedSymbolProtocol(state.prototype, seen)
+    ) return true;
+  }
+  return false;
+}
+
+function iterableValues(value, node, context) {
+  if (hasCallerControlledExternalReference(value)) {
+    failProtected(node, context + " cannot execute a caller-controlled iterator protocol");
+  }
+  if (hasExternallyEffectfulPrototype(value)) {
+    failProtected(node, context + " cannot read an unresolved inherited iterator hook");
+  }
+  let hasAdmittedRuntimeSource = value.refs.size > 0 || value.primitiveKinds.has("string");
+  for (const id of value.objects) {
+    const state = objectStates.get(id);
+    if (!state) continue;
+    if (["array", "map", "set", "arguments"].includes(state.kind)) {
+      hasAdmittedRuntimeSource = true;
+      if (hasUnresolvedSymbolProtocol(value)) {
+        failProtected(node, context + " cannot execute an unresolved custom iterator override");
+      }
+      continue;
+    }
+    if (value.refs.size === 0) {
+      failProtected(node, context + " cannot execute a custom local iterator protocol");
+    }
+  }
+  if (!hasAdmittedRuntimeSource && hasAbstractValue(value)) {
+    failProtected(node, context + " cannot iterate an unmodeled runtime value");
+  }
+  return aggregateObjectValues(value);
+}
+
+function rejectUnresolvedCustomSymbolProtocol(value, node, context) {
+  if (hasUnresolvedSymbolProtocol(value)) {
+    failProtected(node, context + " cannot execute an unresolved custom Symbol protocol");
+  }
+}
+
+function invokeIntrinsicFieldCoercion(
+  value,
+  keys,
+  node,
+  context,
+  seenCoercions,
+  requiredKind = null,
+) {
+  const matchingIds = [];
+  for (const id of value.objects) {
+    const state = objectStates.get(id);
+    if (!state) continue;
+    const errorPrototype = [...state.prototype.refs].some((origin) =>
+      /^intrinsic:(?:AggregateError|Error|EvalError|RangeError|ReferenceError|SyntaxError|TypeError|URIError)\.prototype$/.test(origin)
+    );
+    const regexpPrototype =
+      state.kind === "regexp" || state.prototype.refs.has("intrinsic:RegExp.prototype");
+    if (
+      (requiredKind === "error" && !errorPrototype) ||
+      (requiredKind === "regexp" && !regexpPrototype)
+    ) continue;
+    matchingIds.push(id);
+  }
+  if (matchingIds.length === 0 && requiredKind !== null) return;
+  if (value.refs.size > 0) {
+    failProtected(node, context + " cannot read fields from an unresolved receiver");
+  }
+  if (hasExternallyEffectfulPrototype(value)) {
+    failProtected(node, context + " cannot read an unresolved inherited field accessor");
+  }
+  for (const id of matchingIds) {
+    if (seenCoercions.has(id)) continue;
+    seenCoercions.add(id);
+    const receiver = emptyAbstract();
+    receiver.objects.add(id);
+    for (const key of keys) {
+      invokePrimitiveCoercion(
+        readProperty(receiver, key),
+        node,
+        context + " " + key,
+        seenCoercions,
+      );
+    }
+  }
+}
+
+function invokePrimitiveCoercion(value, node, context, seenCoercions = new Set()) {
+  rejectUnresolvedCustomSymbolProtocol(value, node, context);
+  if (hasExternallyEffectfulPrototype(value)) {
+    failProtected(node, context + " cannot invoke an unresolved inherited coercion hook");
+  }
+  for (const method of ["valueOf", "toString"]) {
+    if (hasLocalPropertyInChain(value, method)) {
+      invokeCallable(readProperty(value, method), value, [], node, true);
+    }
+  }
+  for (const id of value.objects) {
+    if (seenCoercions.has(id)) continue;
+    const state = objectStates.get(id);
+    if (!state) continue;
+    if (state.kind === "array") {
+      seenCoercions.add(id);
+      const receiver = emptyAbstract();
+      receiver.objects.add(id);
+      if (hasLocalPropertyInChain(receiver, "toString")) {
+        continue;
+      }
+      if (hasLocalPropertyInChain(receiver, "join")) {
+        invokeCallable(readProperty(receiver, "join"), receiver, [], node, true);
+        continue;
+      }
+      invokePrimitiveCoercion(
+        state.wildcard,
+        node,
+        context + " nested Array element",
+        seenCoercions,
+      );
+      for (const [key, slot] of state.props) {
+        if (!/^(0|[1-9][0-9]*)$/.test(key)) continue;
+        invokePrimitiveCoercion(
+          slot,
+          node,
+          context + " nested Array element",
+          seenCoercions,
+        );
+      }
+      continue;
+    }
+  }
+  invokeIntrinsicFieldCoercion(
+    value,
+    ["name", "message"],
+    node,
+    context + " intrinsic Error",
+    seenCoercions,
+    "error",
+  );
+  invokeIntrinsicFieldCoercion(
+    value,
+    ["source", "flags"],
+    node,
+    context + " intrinsic RegExp",
+    seenCoercions,
+    "regexp",
+  );
+}
+
+function resolvedPropertyKey(value, node, context) {
+  invokePrimitiveCoercion(value, node, context);
+  const singletonLiteral = value.literals.size === 1 ? [...value.literals][0] : null;
+  const unresolvedCapability =
+    value.refs.size > 0 ||
+    value.objects.size > 0 ||
+    value.functions.size > 0 ||
+    value.classes.size > 0 ||
+    value.mutators.size > 0 ||
+    value.builtins.size > 0 ||
+    value.adapters.size > 0;
+  if (singletonLiteral === null || unresolvedCapability) {
+    failProtected(node, context + " is not a singleton primitive literal property key");
+    return null;
+  }
+  return singletonLiteral;
+}
+
+function deepContainsProtected(
+  value,
+  seen = new Set(),
+  seenFunctions = new Set(),
+  seenAdapters = new Set(),
+  seenClasses = new Set(),
+  referencePredicate = () => true,
+) {
+  if ([...value.refs].some(referencePredicate)) return true;
+  for (const id of value.objects) {
+    if (seen.has(id)) continue;
+    seen.add(id);
+    const state = objectStates.get(id);
+    if (!state) continue;
+    if (
+      deepContainsProtected(state.wildcard, seen, seenFunctions, seenAdapters, seenClasses, referencePredicate) ||
+      deepContainsProtected(state.elements, seen, seenFunctions, seenAdapters, seenClasses, referencePredicate)
+    ) return true;
+    for (const slot of state.props.values()) {
+      if (deepContainsProtected(slot, seen, seenFunctions, seenAdapters, seenClasses, referencePredicate)) return true;
+    }
+    if (
+      hasLocalPrototypeEdge(state) &&
+      deepContainsProtected(state.prototype, seen, seenFunctions, seenAdapters, seenClasses, referencePredicate)
+    ) return true;
+  }
+  for (const descriptor of value.functions) {
+    if (seenFunctions.has(descriptor)) continue;
+    seenFunctions.add(descriptor);
+    if (
+      deepContainsProtected(descriptor.returnValue, seen, seenFunctions, seenAdapters, seenClasses, referencePredicate) ||
+      deepContainsProtected(descriptor.throwValue, seen, seenFunctions, seenAdapters, seenClasses, referencePredicate)
+    ) return true;
+  }
+  for (const adapterNode of value.adapters) {
+    if (seenAdapters.has(adapterNode)) continue;
+    seenAdapters.add(adapterNode);
+    const adapter = adapterStates.get(adapterNode);
+    if (!adapter) continue;
+    if (
+      deepContainsProtected(adapter.callable, seen, seenFunctions, seenAdapters, seenClasses, referencePredicate) ||
+      deepContainsProtected(adapter.thisValue, seen, seenFunctions, seenAdapters, seenClasses, referencePredicate) ||
+      adapter.arguments.some((argument) =>
+        deepContainsProtected(argument, seen, seenFunctions, seenAdapters, seenClasses, referencePredicate)
+      )
+    ) return true;
+  }
+  for (const classDescriptor of value.classes) {
+    if (seenClasses.has(classDescriptor)) continue;
+    seenClasses.add(classDescriptor);
+    for (const descriptor of classDescriptor.constructors) {
+      if (
+        deepContainsProtected(descriptor.returnValue, seen, seenFunctions, seenAdapters, seenClasses, referencePredicate) ||
+        deepContainsProtected(descriptor.throwValue, seen, seenFunctions, seenAdapters, seenClasses, referencePredicate)
+      ) return true;
+    }
+    for (const descriptor of classDescriptor.methods.values()) {
+      if (
+        deepContainsProtected(descriptor.returnValue, seen, seenFunctions, seenAdapters, seenClasses, referencePredicate) ||
+        deepContainsProtected(descriptor.throwValue, seen, seenFunctions, seenAdapters, seenClasses, referencePredicate)
+      ) return true;
+    }
+  }
+  return false;
+}
+
+function deepContainsEscapeworthyProtected(value) {
+  return deepContainsProtected(
+    value,
+    new Set(),
+    new Set(),
+    new Set(),
+    new Set(),
+    (origin) => origin !== "external:trusted-sdk-result" && origin !== "external:trusted-data",
+  );
+}
+
+function hasExternallyEffectfulPrototype(value) {
+  if (hasCallerControlledExternalReference(value)) return true;
+  for (const descriptor of value.functions) {
+    if (externallyExposedFunctionDescriptors.has(descriptor)) return true;
+  }
+  for (const id of value.objects) {
+    const state = objectStates.get(id);
+    if (!state) continue;
+    if (hasLocalPrototypeEdge(state) && deepContainsProtected(state.prototype)) return true;
+  }
+  return false;
+}
+
+function hasObjectKind(value, kind) {
+  for (const id of value.objects) {
+    if (objectStates.get(id)?.kind === kind) return true;
+  }
+  return false;
+}
+
+function coerceExoticWrite(target, key, value, node, context) {
+  if (hasObjectKind(target, "array") && (key === null || key === "length")) {
+    invokePrimitiveCoercion(value, node, context + " Array length");
+  }
+}
+
+function coerceArrayLikeLength(value, node, context) {
+  if (value.refs.size > 0) {
+    failProtected(node, context + " cannot read an unresolved array-like length");
+  }
+  if (hasExternallyEffectfulPrototype(value)) {
+    failProtected(node, context + " cannot read an unresolved inherited length accessor");
+  }
+  invokePrimitiveCoercion(readProperty(value, "length"), node, context + " length");
+}
+
+function rejectUnresolvedArraySpecies(value, node, context) {
+  if (value.refs.size > 0) {
+    failProtected(node, context + " cannot validate Array species on an unresolved receiver");
+  }
+  if (hasExternallyEffectfulPrototype(value)) {
+    failProtected(node, context + " cannot read through an unresolved inherited accessor");
+  }
+  for (const id of value.objects) {
+    const state = objectStates.get(id);
+    if (!state || state.kind !== "array") continue;
+    const ownConstructor = state.props.get("constructor");
+    if (
+      (ownConstructor && hasAbstractValue(ownConstructor)) ||
+      containsCallableCapability(state.wildcard) ||
+      (hasLocalPrototypeEdge(state) && hasLocalPropertyInChain(state.prototype, "constructor")) ||
+      hasExternallyEffectfulPrototype(value)
+    ) {
+      failProtected(node, context + " cannot execute an unresolved custom Array species constructor");
+    }
+  }
+}
+
+function rejectNoncanonicalArrayFactoryReceiver(value, node, context) {
+  const exactArrayReceiver =
+    value.refs.size === 1 &&
+    value.refs.has("global:Array") &&
+    value.objects.size === 0 &&
+    value.functions.size === 0 &&
+    value.classes.size === 0 &&
+    value.adapters.size === 0;
+  const detachedNonconstructor = !hasAbstractValue(value);
+  if (!exactArrayReceiver && !detachedNonconstructor) {
+    failProtected(node, context + " cannot invoke a caller-selected result constructor");
+  }
+}
+
+function rejectNoncanonicalPromiseFactoryReceiver(value, node, context) {
+  const exactPromiseReceiver =
+    value.refs.size === 1 &&
+    value.refs.has("global:Promise") &&
+    value.objects.size === 0 &&
+    value.functions.size === 0 &&
+    value.classes.size === 0 &&
+    value.adapters.size === 0;
+  if (!exactPromiseReceiver) {
+    failProtected(node, context + " cannot invoke a caller-selected Promise constructor");
+  }
+}
+
+function rejectUnresolvedPromiseSpecies(value, node, context) {
+  if (value.refs.size > 0) {
+    failProtected(node, context + " cannot validate Promise species on an unresolved receiver");
+  }
+  for (const id of value.objects) {
+    const state = objectStates.get(id);
+    if (!state || state.kind !== "promise") continue;
+    const ownConstructor = state.props.get("constructor");
+    if (
+      (ownConstructor && hasAbstractValue(ownConstructor)) ||
+      containsCallableCapability(state.wildcard) ||
+      (hasLocalPrototypeEdge(state) && hasLocalPropertyInChain(state.prototype, "constructor")) ||
+      hasExternallyEffectfulPrototype(value)
+    ) {
+      failProtected(node, context + " cannot execute an unresolved custom Promise species constructor");
+    }
+  }
+}
+
+function containsCallableCapability(value, seenObjects = new Set(), seenAdapters = new Set()) {
+  if (value.functions.size > 0 || value.classes.size > 0) return true;
+  for (const adapterNode of value.adapters) {
+    if (seenAdapters.has(adapterNode)) continue;
+    seenAdapters.add(adapterNode);
+    const adapter = adapterStates.get(adapterNode);
+    if (!adapter) return true;
+    if (
+      containsCallableCapability(adapter.callable, seenObjects, seenAdapters) ||
+      containsCallableCapability(adapter.thisValue, seenObjects, seenAdapters) ||
+      adapter.arguments.some((argument) =>
+        containsCallableCapability(argument, seenObjects, seenAdapters)
+      )
+    ) return true;
+  }
+  for (const id of value.objects) {
+    if (seenObjects.has(id)) continue;
+    seenObjects.add(id);
+    const state = objectStates.get(id);
+    if (!state) continue;
+    const slots = [state.wildcard, state.elements, ...state.props.values()];
+    if (slots.some((slot) => containsCallableCapability(slot, seenObjects, seenAdapters))) {
+      return true;
+    }
+    if (
+      hasLocalPrototypeEdge(state) &&
+      containsCallableCapability(state.prototype, seenObjects, seenAdapters)
+    ) return true;
+  }
+  return false;
+}
+
+function exerciseExternalCallableGraph(
+  value,
+  seenObjects = new Set(),
+  seenFunctions = new Set(),
+  seenAdapters = new Set(),
+  seenClasses = new Set(),
+  trustCanonicalSdkParameters = false,
+) {
+  const externalInput = refAbstract("external:possibly-protected");
+  for (const descriptor of value.functions) {
+    if (seenFunctions.has(descriptor)) continue;
+    seenFunctions.add(descriptor);
+    const runtimeParameters = (descriptor.node.parameters || []).filter(
+      (parameter) => !(ts.isIdentifier(parameter.name) && parameter.name.text === "this"),
+    );
+    const args = runtimeParameters.map((parameter) => {
+      const parameterSpan = parameter.pos + ":" + parameter.end;
+      const trustedPrimitiveKind = trustedPrimitiveParameterKinds.get(parameterSpan);
+      if (trustedPrimitiveKind) return primitiveAbstract(trustedPrimitiveKind);
+      if (trustedExternalResultParameterSpans.has(parameter.pos + ":" + parameter.end)) {
+        return refAbstract("external:trusted-data");
+      }
+      if (
+        trustCanonicalSdkParameters &&
+        trustedSdkParameterSpans.has(parameter.pos + ":" + parameter.end)
+      ) {
+        return refAbstract("external:trusted-sdk");
+      }
+      return externalInput;
+    });
+    if (args.length === 0) args.push(externalInput);
+    bindFunctionArguments(descriptor, args, externalInput);
+    mergeObjectProperty(descriptor.argumentsValue, null, externalInput);
+    exerciseExternalCallableGraph(
+      descriptor.returnValue,
+      seenObjects,
+      seenFunctions,
+      seenAdapters,
+      seenClasses,
+    );
+    exerciseExternalCallableGraph(
+      descriptor.throwValue,
+      seenObjects,
+      seenFunctions,
+      seenAdapters,
+      seenClasses,
+    );
+  }
+  for (const adapterNode of value.adapters) {
+    if (seenAdapters.has(adapterNode)) continue;
+    seenAdapters.add(adapterNode);
+    const adapter = adapterStates.get(adapterNode);
+    if (!adapter) continue;
+    const invocationResult = invokeCallable(
+      adapter.callable,
+      adapter.thisValue,
+      [...adapter.arguments, externalInput],
+      adapterNode,
+      true,
+    );
+    exerciseExternalCallableGraph(
+      invocationResult,
+      seenObjects,
+      seenFunctions,
+      seenAdapters,
+      seenClasses,
+    );
+    exerciseExternalCallableGraph(
+      adapter.callable,
+      seenObjects,
+      seenFunctions,
+      seenAdapters,
+      seenClasses,
+    );
+  }
+  for (const classDescriptor of value.classes) {
+    if (seenClasses.has(classDescriptor)) continue;
+    seenClasses.add(classDescriptor);
+    for (const descriptor of classDescriptor.constructors) {
+      const argumentCount = Math.max(1, descriptor.node.parameters?.length || 0);
+      bindFunctionArguments(
+        descriptor,
+        Array.from({ length: argumentCount }, () => externalInput),
+        externalInput,
+      );
+      mergeObjectProperty(descriptor.argumentsValue, null, externalInput);
+    }
+    for (const descriptor of classDescriptor.methods.values()) {
+      const methodValue = emptyAbstract();
+      methodValue.functions.add(descriptor);
+      exerciseExternalCallableGraph(
+        methodValue,
+        seenObjects,
+        seenFunctions,
+        seenAdapters,
+        seenClasses,
+      );
+    }
+  }
+  for (const id of value.objects) {
+    if (seenObjects.has(id)) continue;
+    seenObjects.add(id);
+    const state = objectStates.get(id);
+    if (!state) continue;
+    for (const slot of [state.wildcard, state.elements, ...state.props.values()]) {
+      exerciseExternalCallableGraph(slot, seenObjects, seenFunctions, seenAdapters, seenClasses);
+    }
+    if (hasLocalPrototypeEdge(state)) {
+      exerciseExternalCallableGraph(
+        state.prototype,
+        seenObjects,
+        seenFunctions,
+        seenAdapters,
+        seenClasses,
+      );
+    }
+  }
+}
+
+function exerciseExportedCallableGraph(value) {
+  exerciseExternalCallableGraph(
+    value,
+    new Set(),
+    new Set(),
+    new Set(),
+    new Set(),
+    true,
+  );
+}
+
+function taintReachableLocalObjects(value, taint, seen = new Set()) {
+  for (const id of value.objects) {
+    if (seen.has(id)) continue;
+    seen.add(id);
+    const state = objectStates.get(id);
+    if (!state) continue;
+    const children = [state.wildcard, state.elements, state.prototype, ...state.props.values()];
+    mergeAbstract(state.wildcard, taint);
+    mergeAbstract(state.elements, taint);
+    mergeAbstract(state.prototype, taint);
+    for (const child of children) taintReachableLocalObjects(child, taint, seen);
+  }
+}
+
+function hasDirectIntrinsicOrSharedReference(value) {
+  for (const origin of value.refs) {
+    if (
+      origin.startsWith("intrinsic:") ||
+      origin.startsWith("shared-root:") ||
+      origin.startsWith("shared-entry:")
+    ) return true;
+  }
+  return false;
+}
+
+const functionDescriptors = new Map();
+function descriptorForFunction(node) {
+  let descriptor = functionDescriptors.get(node);
+  if (!descriptor) {
+    descriptor = {
+      node,
+      returnValue: emptyAbstract(),
+      throwValue: emptyAbstract(),
+      thisValue: emptyAbstract(),
+      argumentsValue: objectAbstract(node, "arguments"),
+    };
+    functionDescriptors.set(node, descriptor);
+  }
+  return descriptor;
+}
+
+const classDescriptors = new Map();
+function descriptorForClass(node) {
+  let descriptor = classDescriptors.get(node);
+  if (!descriptor) {
+    descriptor = { node, constructors: new Set(), methods: new Map() };
+    for (const member of node.members || []) {
+      if (ts.isConstructorDeclaration(member)) descriptor.constructors.add(descriptorForFunction(member));
+      else if (ts.isMethodDeclaration(member) && member.name) {
+        const key = propertyNameKey(member.name);
+        if (key !== null) descriptor.methods.set(key, descriptorForFunction(member));
+      }
+    }
+    classDescriptors.set(node, descriptor);
+  }
+  return descriptor;
+}
+
+function functionAbstract(node) {
+  const result = objectAbstract(node, "function");
+  result.functions.add(descriptorForFunction(node));
+  if (ts.isFunctionDeclaration(node) || ts.isFunctionExpression(node)) {
+    mergeObjectProperty(result, "prototype", objectAbstract(node, "function-prototype"));
+  }
+  return result;
+}
+
+function classAbstract(node) {
+  const result = objectAbstract(node, "class");
+  result.classes.add(descriptorForClass(node));
+  return result;
+}
+
+function nearestFunctionDescriptor(node, lexicalThis = false) {
+  for (let current = node.parent; current; current = current.parent) {
+    if (!ts.isFunctionLike(current)) continue;
+    if (lexicalThis && ts.isArrowFunction(current)) continue;
+    return descriptorForFunction(current);
+  }
+  return null;
+}
+
+function nearestRuntimeFunction(node, lexical = false) {
+  for (let current = node.parent; current; current = current.parent) {
+    if (!ts.isFunctionLike(current)) continue;
+    if (lexical && ts.isArrowFunction(current)) continue;
+    return current;
+  }
+  return null;
+}
+
+function isInsideExactAcceptedRuntimeContract(node) {
+  const owner = nearestRuntimeFunction(node);
+  return owner === resolveProductFunction ||
+    owner === reconcileTaxCodesFunctions[0] ||
+    owner === resolvePriceFunction ||
+    owner === planForPriceFunctions[0] ||
+    [...acceptedResolvePriceWrappers.values()].includes(owner);
+}
+
+let protectedAnalysisFailure = null;
+let bindingResolvedDynamicEvaluation = null;
+function sourceLocation(node) {
+  const position = bindingAst.getLineAndCharacterOfPosition(node.getStart(bindingAst));
+  return String(position.line + 1) + ":" + String(position.character + 1);
+}
+
+function failProtected(node, detail) {
+  if (!protectedAnalysisFailure) {
+    protectedAnalysisFailure = detail + " at " + sourceLocation(node);
+  }
+}
+
+function failDynamicEvaluation(node, detail) {
+  if (!bindingResolvedDynamicEvaluation) {
+    bindingResolvedDynamicEvaluation = detail + " at " + sourceLocation(node);
+  }
+}
+
+function seedProtectedBindings() {
+  for (const statement of bindingAst.statements) {
+    if (ts.isImportDeclaration(statement) && statement.importClause && !statement.importClause.isTypeOnly) {
+      const bindings = [];
+      if (statement.importClause.name) bindings.push(statement.importClause.name);
+      const named = statement.importClause.namedBindings;
+      if (named && ts.isNamespaceImport(named)) bindings.push(named.name);
+      if (named && ts.isNamedImports(named)) {
+        for (const element of named.elements) if (!element.isTypeOnly) bindings.push(element.name);
+      }
+      for (const name of bindings) {
+        const symbol = runtimeSymbol(name);
+        if (!symbol) continue;
+        protectedBindingSymbols.add(symbol);
+        mergeSymbol(symbol, refAbstract("import:" + name.text));
+      }
+    }
+    if (ts.isVariableStatement(statement)) {
+      for (const declaration of statement.declarationList.declarations) {
+        if (!ts.isIdentifier(declaration.name) || !protectedCatalogNames.has(declaration.name.text)) continue;
+        const symbol = runtimeSymbol(declaration.name);
+        if (!symbol) continue;
+        protectedBindingSymbols.add(symbol);
+        mergeSymbol(symbol, refAbstract("shared-root:" + declaration.name.text));
+      }
+    }
+    if (
+      ts.isFunctionDeclaration(statement) &&
+      statement.name &&
+      protectedExecutableBindings.has(statement.name.text)
+    ) {
+      const symbol = runtimeSymbol(statement.name);
+      if (symbol) protectedBindingSymbols.add(symbol);
+    }
+  }
+}
+
+const externallyExposedValues = [];
+const externallyExposedBindings = [];
+const externallyExposedFunctionDescriptors = new Set();
+const trustedExternalResultParameterSpans = new Set([
+  planForPriceFunctions[0]?.parameters[0],
+].filter(Boolean).map((parameter) => parameter.pos + ":" + parameter.end));
+const trustedPrimitiveParameterKinds = new Map([
+  [resolveProductFunction.parameters[1], "string"],
+  [resolvePriceFunction.parameters[1], "string"],
+  [acceptedResolvePriceWrappers.get("resolvePriceId")?.parameters[1], "string"],
+  [acceptedResolvePriceWrappers.get("resolvePriceId")?.parameters[2], "string"],
+].filter(([parameter]) => Boolean(parameter)).map(([parameter, kind]) => [
+  parameter.pos + ":" + parameter.end,
+  kind,
+]));
+const trustedSdkParameterSpans = new Set([
+  resolveProductFunction.parameters[0],
+  reconcileTaxCodesFunctions[0]?.parameters[0],
+  resolvePriceFunction.parameters[0],
+  ...[...acceptedResolvePriceWrappers.values()].map((wrapper) => wrapper.parameters[0]),
+].filter(Boolean).map((parameter) => parameter.pos + ":" + parameter.end));
+function collectExternallyExposedBinding(name, declaration) {
+  if (ts.isIdentifier(name)) {
+    const symbol = runtimeSymbol(name);
+    if (symbol) externallyExposedBindings.push({ symbol, name: name.text, declaration });
+    return;
+  }
+  for (const element of name.elements || []) {
+    if (ts.isBindingElement(element)) {
+      collectExternallyExposedBinding(element.name, declaration);
+    }
+  }
+}
+
+function collectCallableBindings() {
+  walkAst(bindingAst, (node) => {
+    if (ts.isFunctionDeclaration(node)) {
+      const callable = functionAbstract(node);
+      if (node.name) {
+        const symbol = runtimeSymbol(node.name);
+        if (symbol) mergeSymbol(symbol, callable);
+      }
+      if (hasModifier(node, ts.SyntaxKind.ExportKeyword)) {
+        externallyExposedValues.push(callable);
+        externallyExposedFunctionDescriptors.add(descriptorForFunction(node));
+      }
+    } else if (ts.isFunctionExpression(node) && node.name) {
+      const symbol = runtimeSymbol(node.name);
+      if (symbol) mergeSymbol(symbol, functionAbstract(node));
+    } else if (
+      ts.isVariableStatement(node) &&
+      ts.isSourceFile(node.parent) &&
+      hasModifier(node, ts.SyntaxKind.ExportKeyword)
+    ) {
+      for (const declaration of node.declarationList.declarations) {
+        collectExternallyExposedBinding(declaration.name, declaration);
+      }
+    } else if (ts.isClassDeclaration(node) && node.name) {
+      const symbol = runtimeSymbol(node.name);
+      if (symbol) mergeSymbol(symbol, classAbstract(node));
+    } else if (ts.isFunctionLike(node)) {
+      descriptorForFunction(node);
+    } else if (ts.isClassLike(node)) {
+      descriptorForClass(node);
+    }
+  });
+}
+
+function containsExportSensitiveReference(value) {
+  return deepContainsProtected(
+    value,
+    new Set(),
+    new Set(),
+    new Set(),
+    new Set(),
+    (origin) =>
+      origin !== "external:call-result" &&
+      origin !== "external:possibly-protected" &&
+      origin !== "external:trusted-sdk" &&
+      origin !== "external:trusted-sdk-member" &&
+      origin !== "external:trusted-sdk-result" &&
+      origin !== "external:trusted-data",
+  );
+}
+
+function validateExternalExports() {
+  for (const binding of externallyExposedBindings) {
+    if (binding.name === "PRICES" && protectedBindingSymbols.has(binding.symbol)) continue;
+    const bindingValue = valueForSymbol(binding.symbol);
+    if (containsExportSensitiveReference(bindingValue)) {
+      failProtected(binding.declaration, "exported binding exposes protected runtime provenance");
+    }
+    taintReachableLocalObjects(bindingValue, refAbstract("external:possibly-protected"));
+    exerciseExternalCallableGraph(bindingValue);
+  }
+  for (const value of externallyExposedValues) {
+    taintReachableLocalObjects(
+      readOwnProperty(value, "prototype"),
+      refAbstract("external:possibly-protected"),
+    );
+    for (const descriptor of value.functions) {
+      if (containsExportSensitiveReference(descriptor.throwValue)) {
+        failProtected(descriptor.node, "exported callable can throw protected runtime provenance");
+      }
+      taintReachableLocalObjects(
+        descriptor.returnValue,
+        refAbstract("external:possibly-protected"),
+      );
+      taintReachableLocalObjects(
+        descriptor.throwValue,
+        refAbstract("external:possibly-protected"),
+      );
+      exerciseExternalCallableGraph(descriptor.returnValue);
+      exerciseExternalCallableGraph(descriptor.throwValue);
+    }
+  }
+}
+
+function evalIdentifier(node) {
+  const symbol = runtimeSymbol(node);
+  if (symbol) return combineAbstract(valueForSymbol(symbol));
+  if (node.text === "arguments") {
+    const descriptor = nearestFunctionDescriptor(node, true);
+    return descriptor ? combineAbstract(descriptor.argumentsValue) : emptyAbstract();
+  }
+  if (node.text === "undefined") return literalAbstract("undefined", "undefined");
+  if (node.text === "NaN" || node.text === "Infinity") {
+    return literalAbstract(node.text, "number");
+  }
+  if (protectedGlobalNames.has(node.text)) return refAbstract("global:" + node.text);
+  return refAbstract("external:unknown-global:" + node.text);
+}
+
+function initializeObjectLiteral(node) {
+  const value = ordinaryObjectAbstract(node);
+  const state = objectStates.get([...value.objects][0]);
+  if (state && state.prototype.refs.size === 0 && !state.explicitPrototype) {
+    mergeAbstract(state.prototype, refAbstract("intrinsic:Object.prototype"));
+  }
+  for (const property of node.properties) {
+    if (property.name && ts.isComputedPropertyName(property.name)) {
+      invokePrimitiveCoercion(
+        evalExpression(property.name.expression),
+        property.name,
+        "computed object property key",
+      );
+      if (
+        propertyNameKey(property.name) === null &&
+        (
+          ts.isMethodDeclaration(property) ||
+          ts.isGetAccessorDeclaration(property) ||
+          ts.isSetAccessorDeclaration(property) ||
+          (ts.isPropertyAssignment(property) &&
+            (ts.isFunctionExpression(unwrapExpression(property.initializer)) ||
+              ts.isArrowFunction(unwrapExpression(property.initializer))))
+        )
+      ) {
+        failProtected(property, "unresolved computed callable property may install a runtime protocol");
+      }
+    }
+    if (ts.isSpreadAssignment(property)) {
+      const source = evalExpression(property.expression);
+      if (source.refs.size > 0) {
+        failProtected(property, "object spread cannot enumerate protected or unknown runtime provenance");
+      }
+      for (const sourceId of source.objects) {
+        const sourceState = objectStates.get(sourceId);
+        if (!sourceState) continue;
+        for (const [key, slot] of sourceState.props) mergeObjectProperty(value, key, slot);
+        mergeObjectProperty(value, null, sourceState.wildcard);
+      }
+      continue;
+    }
+    if (ts.isPropertyAssignment(property)) {
+      const key = propertyNameKey(property.name);
+      const propertyValue = evalExpression(property.initializer);
+      if (key === "__proto__") setObjectPrototype(value, propertyValue);
+      else mergeObjectProperty(value, key, propertyValue);
+      continue;
+    }
+    if (ts.isShorthandPropertyAssignment(property)) {
+      const symbol = bindingChecker.getShorthandAssignmentValueSymbol(property) ||
+        runtimeSymbol(property.name);
+      mergeObjectProperty(value, property.name.text, symbol ? valueForSymbol(symbol) : evalIdentifier(property.name));
+      if (property.objectAssignmentInitializer) {
+        mergeObjectProperty(value, property.name.text, evalExpression(property.objectAssignmentInitializer));
+      }
+      continue;
+    }
+    if (
+      ts.isMethodDeclaration(property) ||
+      ts.isGetAccessorDeclaration(property) ||
+      ts.isSetAccessorDeclaration(property)
+    ) {
+      mergeObjectProperty(value, propertyNameKey(property.name), functionAbstract(property));
+    }
+  }
+  return value;
+}
+
+function initializeArrayLiteral(node) {
+  const value = objectAbstract(node, "array");
+  const state = objectStates.get([...value.objects][0]);
+  if (state && state.prototype.refs.size === 0) {
+    mergeAbstract(state.prototype, refAbstract("intrinsic:Array.prototype"));
+  }
+  let index = 0;
+  for (const element of node.elements) {
+    if (ts.isOmittedExpression(element)) {
+      index++;
+      continue;
+    }
+    if (ts.isSpreadElement(element)) {
+      const spread = evalExpression(element.expression);
+      iterableValues(spread, element, "array spread");
+      const expanded = expandArrayArguments(spread, element, "array spread");
+      for (const item of expanded) mergeObjectProperty(value, String(index++), item);
+      if (expanded.length === 0) mergeObjectProperty(value, null, aggregateObjectValues(spread));
+      continue;
+    }
+    mergeObjectProperty(value, String(index++), evalExpression(element));
+  }
+  mergeObjectProperty(value, "length", literalAbstract(index, "number"));
+  return value;
+}
+
+function assignmentOperator(kind) {
+  return kind >= ts.SyntaxKind.FirstAssignment && kind <= ts.SyntaxKind.LastAssignment;
+}
+
+function assignPattern(targetNode, value, assignmentNode = targetNode) {
+  const target = unwrapExpression(targetNode);
+  if (ts.isIdentifier(target)) {
+    const symbol = runtimeSymbol(target);
+    const isOwnDeclarationInitializer =
+      ts.isVariableDeclaration(assignmentNode) && assignmentNode.name === target;
+    if (symbol && protectedBindingSymbols.has(symbol) && !isOwnDeclarationInitializer) {
+      failProtected(assignmentNode, "reassignment of a protected catalog, import, or executable binding");
+    } else if (!symbol && protectedGlobalNames.has(target.text)) {
+      failProtected(assignmentNode, "reassignment of an unshadowed protected global");
+    } else if (symbol) {
+      mergeSymbol(symbol, value);
+    }
+    return;
+  }
+  if (ts.isObjectBindingPattern(target) || ts.isArrayBindingPattern(target)) {
+    if (hasExternallyEffectfulPrototype(value)) {
+      failProtected(assignmentNode, "destructuring may invoke an unresolved caller-controlled getter");
+    }
+    if (ts.isArrayBindingPattern(target)) {
+      iterableValues(value, assignmentNode, "array destructuring");
+    }
+    let position = 0;
+    for (const element of target.elements) {
+      if (!ts.isBindingElement(element)) {
+        position++;
+        continue;
+      }
+      let key = String(position);
+      if (ts.isObjectBindingPattern(target)) {
+        if (element.propertyName) {
+          if (ts.isComputedPropertyName(element.propertyName)) {
+            invokePrimitiveCoercion(
+              evalExpression(element.propertyName.expression),
+              assignmentNode,
+              "computed destructuring property key",
+            );
+          }
+          key = ts.isComputedPropertyName(element.propertyName)
+            ? staticString(element.propertyName.expression)
+            : staticPropertyName(element.propertyName);
+        } else if (ts.isIdentifier(element.name)) {
+          key = element.name.text;
+        } else {
+          key = null;
+        }
+      }
+      let elementValue = element.dotDotDotToken
+        ? aggregateObjectValues(value)
+        : readProperty(value, key);
+      if (element.initializer) elementValue = combineAbstract(elementValue, evalExpression(element.initializer));
+      if (element.dotDotDotToken && ts.isArrayBindingPattern(target)) {
+        const rest = objectAbstract(element, "array");
+        mergeObjectProperty(rest, null, elementValue);
+        elementValue = rest;
+      }
+      assignPattern(element.name, elementValue, assignmentNode);
+      position++;
+    }
+    return;
+  }
+  if (ts.isObjectLiteralExpression(target) || ts.isArrayLiteralExpression(target)) {
+    if (hasExternallyEffectfulPrototype(value)) {
+      failProtected(assignmentNode, "assignment destructuring may invoke an unresolved caller-controlled getter or protocol");
+    }
+    if (ts.isArrayLiteralExpression(target)) {
+      iterableValues(value, assignmentNode, "array assignment destructuring");
+    }
+    let position = 0;
+    const elements = ts.isObjectLiteralExpression(target) ? target.properties : target.elements;
+    for (const element of elements) {
+      if (ts.isOmittedExpression(element)) {
+        position++;
+        continue;
+      }
+      if (ts.isSpreadElement(element)) {
+        assignPattern(element.expression, aggregateObjectValues(value), assignmentNode);
+        position++;
+        continue;
+      }
+      if (ts.isSpreadAssignment(element)) {
+        const rest = ordinaryObjectAbstract(element);
+        copyObjectContents(rest, value);
+        assignPattern(element.expression, rest, assignmentNode);
+        position++;
+        continue;
+      }
+      if (ts.isShorthandPropertyAssignment(element)) {
+        assignPattern(element.name, readProperty(value, element.name.text), assignmentNode);
+      } else if (ts.isPropertyAssignment(element)) {
+        const key = propertyNameKey(element.name);
+        assignPattern(element.initializer, readProperty(value, key), assignmentNode);
+      } else {
+        assignPattern(element, readProperty(value, String(position)), assignmentNode);
+      }
+      position++;
+    }
+    return;
+  }
+  if (ts.isPropertyAccessExpression(target) || ts.isElementAccessExpression(target)) {
+    const base = evalExpression(target.expression);
+    if (ts.isElementAccessExpression(target) && target.argumentExpression) {
+      invokePrimitiveCoercion(
+        evalExpression(target.argumentExpression),
+        assignmentNode,
+        "computed property assignment",
+      );
+    }
+    const key = staticMemberKey(target);
+    if (hasProtectedReference(base)) {
+      failProtected(assignmentNode, "write through a protected runtime-object reference");
+      return;
+    }
+    if (hasExternallyEffectfulPrototype(base)) {
+      failProtected(assignmentNode, "property write may invoke an unresolved inherited setter");
+      return;
+    }
+    if (key === null && containsCallableCapability(value)) {
+      failProtected(assignmentNode, "unresolved computed callable property may install a runtime protocol");
+      return;
+    }
+    coerceExoticWrite(base, key, value, assignmentNode, "property assignment");
+    if (key === "__proto__") setObjectPrototype(base, value);
+    else mergeObjectProperty(base, key, value);
+    return;
+  }
+}
+
+function expandArrayArguments(value, node = null, context = "array-like expansion") {
+  if (node) coerceArrayLikeLength(value, node, context);
+  if (hasExternallyEffectfulPrototype(value)) {
+    return [refAbstract("derived:protected")];
+  }
+  let maxIndex = -1;
+  for (const id of value.objects) {
+    const state = objectStates.get(id);
+    if (!state) continue;
+    for (const key of state.props.keys()) {
+      if (/^(0|[1-9][0-9]*)$/.test(key)) maxIndex = Math.max(maxIndex, Number(key));
+    }
+  }
+  const result = [];
+  for (let index = 0; index <= maxIndex; index++) result.push(readProperty(value, String(index)));
+  if (result.length === 0 && (value.objects.size > 0 || value.refs.size > 0)) {
+    const aggregate = aggregateObjectValues(value);
+    if (
+      aggregate.refs.size || aggregate.functions.size || aggregate.mutators.size ||
+      aggregate.adapters.size || aggregate.objects.size
+    ) result.push(aggregate);
+  }
+  return result;
+}
+
+const adapterStates = new Map();
+function bindCallable(node, callable, thisValue, boundArguments) {
+  let state = adapterStates.get(node);
+  if (!state) {
+    state = {
+      callable: emptyAbstract(),
+      thisValue: emptyAbstract(),
+      arguments: [],
+    };
+    adapterStates.set(node, state);
+    analysisChanged = true;
+  }
+  mergeAbstract(state.callable, callable);
+  mergeAbstract(state.thisValue, thisValue);
+  for (let index = 0; index < boundArguments.length; index++) {
+    if (!state.arguments[index]) state.arguments[index] = emptyAbstract();
+    mergeAbstract(state.arguments[index], boundArguments[index]);
+  }
+  const result = objectAbstract(node, "function");
+  result.adapters.add(node);
+  return result;
+}
+
+function bindFunctionArguments(descriptor, args, thisValue) {
+  if (!ts.isArrowFunction(descriptor.node)) mergeAbstract(descriptor.thisValue, thisValue);
+  const argumentObject = descriptor.argumentsValue;
+  for (let index = 0; index < args.length; index++) {
+    mergeObjectProperty(argumentObject, String(index), args[index]);
+  }
+  mergeObjectProperty(argumentObject, "length", literalAbstract(args.length, "number"));
+  let argumentIndex = 0;
+  for (const parameter of descriptor.node.parameters || []) {
+    if (ts.isIdentifier(parameter.name) && parameter.name.text === "this") {
+      continue;
+    }
+    let parameterValue;
+    if (parameter.dotDotDotToken) {
+      parameterValue = objectAbstract(parameter, "array");
+      let restIndex = 0;
+      for (; argumentIndex < args.length; argumentIndex++) {
+        mergeObjectProperty(parameterValue, String(restIndex++), args[argumentIndex]);
+      }
+      mergeObjectProperty(parameterValue, "length", literalAbstract(restIndex, "number"));
+    } else {
+      parameterValue = args[argumentIndex++] || emptyAbstract();
+    }
+    if (parameter.initializer) {
+      parameterValue = combineAbstract(parameterValue, evalExpression(parameter.initializer));
+    }
+    assignPattern(parameter.name, parameterValue, parameter);
+  }
+}
+
+function copyObjectContents(target, source, node = null, context = "object copy") {
+  for (const sourceId of source.objects) {
+    const sourceState = objectStates.get(sourceId);
+    if (!sourceState) continue;
+    for (const [key, slot] of sourceState.props) {
+      if (node) coerceExoticWrite(target, key, slot, node, context);
+      mergeObjectProperty(target, key, slot);
+    }
+    if (node) coerceExoticWrite(target, null, sourceState.wildcard, node, context);
+    mergeObjectProperty(target, null, sourceState.wildcard);
+  }
+  if (source.refs.size > 0) {
+    const unresolved = refAbstract("derived:protected");
+    if (node) coerceExoticWrite(target, null, unresolved, node, context);
+    mergeObjectProperty(target, null, unresolved);
+  }
+}
+
+function readDescriptorField(descriptor, key) {
+  const result = readOwnProperty(descriptor, key);
+  for (const id of descriptor.objects) {
+    const state = objectStates.get(id);
+    if (state && hasLocalPrototypeEdge(state)) mergeAbstract(result, readProperty(state.prototype, key));
+  }
+  if (descriptor.refs.size > 0) mergeAbstract(result, refAbstract("derived:protected"));
+  return result;
+}
+
+function applyPropertyDescriptor(target, key, descriptor, node) {
+  if (hasExternallyEffectfulPrototype(descriptor)) {
+    failProtected(node, "property descriptor fields may invoke an unresolved caller-controlled getter");
+  }
+  const getter = readDescriptorField(descriptor, "get");
+  const setter = readDescriptorField(descriptor, "set");
+  if (hasAbstractValue(getter) || hasAbstractValue(setter)) {
+    failProtected(node, "property-descriptor accessors are outside the admitted static provenance grammar");
+  }
+  const descriptorValue = readDescriptorField(descriptor, "value");
+  if (key === null) {
+    failProtected(node, "unresolved property descriptor key may install a runtime protocol");
+    return;
+  }
+  coerceExoticWrite(target, key, descriptorValue, node, "property descriptor");
+  mergeObjectProperty(target, key, descriptorValue);
+}
+
+function applyPropertyDescriptorMap(target, descriptors, node) {
+  if (hasExternallyEffectfulPrototype(descriptors)) {
+    failProtected(node, "property descriptor map may invoke caller-controlled enumeration or property traps");
+  }
+  let resolved = false;
+  for (const descriptorId of descriptors.objects) {
+    const descriptorState = objectStates.get(descriptorId);
+    if (!descriptorState) continue;
+    for (const [key, descriptor] of descriptorState.props) {
+      applyPropertyDescriptor(target, key, descriptor, node);
+      resolved = true;
+    }
+    if (hasAbstractValue(descriptorState.wildcard)) {
+      applyPropertyDescriptor(target, null, descriptorState.wildcard, node);
+      resolved = true;
+    }
+  }
+  if (!resolved && deepContainsProtected(descriptors)) {
+    failProtected(node, "unresolved property descriptors contain protected provenance");
+  }
+}
+
+function invokeMutator(kind, args, node) {
+  const target = args[0] || emptyAbstract();
+  if (hasProtectedReference(target)) {
+    failProtected(node, kind + " received a protected mutation target");
+    return target;
+  }
+  if (kind === "Object.assign") {
+    if (hasExternallyEffectfulPrototype(target)) {
+      failProtected(node, "Object.assign may invoke an unresolved inherited setter");
+      return target;
+    }
+    for (const source of args.slice(1)) {
+      if (source.refs.size > 0 || hasExternallyEffectfulPrototype(source)) {
+        failProtected(node, "Object.assign cannot enumerate an unresolved accessor-bearing source");
+        return target;
+      }
+      copyObjectContents(target, source, node, "Object.assign");
+    }
+  } else if (kind === "Object.setPrototypeOf" || kind === "Reflect.setPrototypeOf") {
+    setObjectPrototype(target, args[1] || emptyAbstract());
+  } else if (kind === "Object.defineProperty" || kind === "Reflect.defineProperty") {
+    const key = resolvedPropertyKey(args[1] || emptyAbstract(), node, kind + " property key");
+    applyPropertyDescriptor(target, key, args[2] || emptyAbstract(), node);
+  } else if (kind === "Object.defineProperties") {
+    applyPropertyDescriptorMap(target, args[1] || emptyAbstract(), node);
+  } else if (kind === "Reflect.set") {
+    if (hasExternallyEffectfulPrototype(target)) {
+      failProtected(node, "Reflect.set may invoke an unresolved inherited setter");
+      return target;
+    }
+    const key = resolvedPropertyKey(args[1] || emptyAbstract(), node, "Reflect.set property key");
+    const receiver = args[3] || target;
+    if (hasProtectedReference(receiver)) {
+      failProtected(node, "Reflect.set received a protected receiver");
+      return target;
+    }
+    if (hasExternallyEffectfulPrototype(receiver)) {
+      failProtected(node, "Reflect.set receiver may invoke an unresolved inherited setter");
+      return target;
+    }
+    coerceExoticWrite(target, key, args[2] || emptyAbstract(), node, "Reflect.set target");
+    coerceExoticWrite(receiver, key, args[2] || emptyAbstract(), node, "Reflect.set receiver");
+    mergeObjectProperty(receiver, key, args[2] || emptyAbstract());
+  } else if (kind === "Reflect.deleteProperty") {
+    resolvedPropertyKey(args[1] || emptyAbstract(), node, "Reflect.deleteProperty key");
+  }
+  return target;
+}
+
+function invokeInstanceMutation(kind, target, args, node) {
+  if (kind === "__defineGetter__" || kind === "__defineSetter__") {
+    failProtected(node, kind + " is outside the admitted static provenance grammar");
+    return target;
+  }
+  if (hasProtectedReference(target)) {
+    failProtected(node, "instance mutator " + kind + " received a protected receiver");
+    return target;
+  }
+  if (hasExternallyEffectfulPrototype(target)) {
+    failProtected(node, "instance mutator " + kind + " cannot access an unresolved inherited accessor");
+    return target;
+  }
+  if (kind === "splice") {
+    rejectUnresolvedArraySpecies(target, node, "Array.splice");
+  }
+  const priorElements = aggregateObjectValues(target);
+  if (kind === "copyWithin") {
+    for (const argument of args.slice(0, 3)) {
+      invokePrimitiveCoercion(argument, node, "Array.copyWithin index");
+    }
+  } else if (kind === "fill") {
+    for (const argument of args.slice(1, 3)) {
+      invokePrimitiveCoercion(argument, node, "Array.fill index");
+    }
+  } else if (kind === "splice") {
+    for (const argument of args.slice(0, 2)) {
+      invokePrimitiveCoercion(argument, node, "Array.splice index");
+    }
+  } else if (kind === "sort" && !args[0]) {
+    invokePrimitiveCoercion(priorElements, node, "Array.sort element comparison");
+  } else if (kind === "set") {
+    let typedArrayReceiver = false;
+    for (const id of target.objects) {
+      const state = objectStates.get(id);
+      if (
+        state &&
+        [...state.prototype.refs].some((origin) =>
+          /^intrinsic:(?:BigInt64|BigUint64|Float32|Float64|Int8|Int16|Int32|Uint8|Uint8Clamped|Uint16|Uint32)Array\.prototype$/.test(origin)
+        )
+      ) typedArrayReceiver = true;
+    }
+    if (typedArrayReceiver) {
+      invokePrimitiveCoercion(args[1] || emptyAbstract(), node, "TypedArray.set offset");
+    }
+  }
+  if (kind === "push" || kind === "unshift" || kind === "add" || kind === "fill") {
+    for (const argument of args) mergeObjectProperty(target, null, argument);
+  } else if (kind === "set") {
+    mergeObjectProperty(target, null, args[1] || args[0] || emptyAbstract());
+  } else if (kind === "splice") {
+    for (const argument of args.slice(2)) mergeObjectProperty(target, null, argument);
+  }
+  if (kind === "pop" || kind === "shift") return priorElements;
+  if (kind === "splice") {
+    const removed = objectAbstract(node, "array");
+    mergeObjectProperty(removed, null, priorElements);
+    return removed;
+  }
+  return target;
+}
+
+function invokeArrayCallback(method, callback, thisValue, args, node) {
+  if (hasExternallyEffectfulPrototype(thisValue)) {
+    failProtected(node, "Array." + method + " cannot read through an unresolved inherited accessor");
+  }
+  const elements = aggregateObjectValues(thisValue);
+  const index = literalAbstract(0, "number");
+  if (method === "reduce" || method === "reduceRight") {
+    const initialAccumulator = args[1] || elements;
+    const firstResult = invokeCallable(
+      callback,
+      emptyAbstract(),
+      [initialAccumulator, elements, index, thisValue],
+      node,
+    );
+    const loopAccumulator = combineAbstract(initialAccumulator, firstResult);
+    return combineAbstract(
+      firstResult,
+      invokeCallable(
+        callback,
+        emptyAbstract(),
+        [loopAccumulator, elements, index, thisValue],
+        node,
+      ),
+    );
+  }
+  if (method === "sort") {
+    return invokeCallable(callback, emptyAbstract(), [elements, elements], node);
+  }
+  return invokeCallable(
+    callback,
+    args[1] || emptyAbstract(),
+    [elements, index, thisValue],
+    node,
+  );
+}
+
+function invokeBuiltin(kind, thisValue, args, node) {
+  if (kind === "Console.error") {
+    if (args.some(hasCallerControlledExternalReference)) {
+      failProtected(node, "console.error cannot inspect a caller-controlled unresolved value");
+    }
+    for (const argument of args) {
+      exerciseExternalCallableGraph(argument);
+      invokePrimitiveCoercion(argument, node, "console.error formatting");
+    }
+    return primitiveAbstract("undefined");
+  }
+  if (kind === "Math.round") {
+    invokePrimitiveCoercion(args[0] || emptyAbstract(), node, "Math.round numeric coercion");
+    return primitiveAbstract("number");
+  }
+  if (kind.startsWith("Promise.captureResolve:")) {
+    const slot = protocolCaptureSlots.get(kind);
+    const captured = args[0] || emptyAbstract();
+    if (slot) mergeAbstract(slot, captured);
+    for (const id of captured.objects) {
+      const state = objectStates.get(id);
+      if (
+        state &&
+        state.kind !== "promise" &&
+        (hasLocalPropertyInChain(captured, "then") || containsCallableCapability(state.wildcard))
+      ) {
+        failProtected(node, "nested local thenable resolution is outside the admitted protocol grammar");
+      }
+    }
+    return emptyAbstract();
+  }
+  if (kind.startsWith("instance.")) {
+    return invokeInstanceMutation(kind.slice("instance.".length), thisValue, args, node);
+  }
+  if (kind.startsWith("ArrayMutation.")) {
+    const method = kind.slice("ArrayMutation.".length);
+    coerceArrayLikeLength(thisValue, node, "Array." + method);
+    return invokeInstanceMutation(method, thisValue, args, node);
+  }
+  if (kind.startsWith("Array.") && callbackMethods.has(kind.slice("Array.".length))) {
+    const method = kind.slice("Array.".length);
+    coerceArrayLikeLength(thisValue, node, "Array." + method);
+    if (arraySpeciesMethods.has(method)) {
+      rejectUnresolvedArraySpecies(thisValue, node, "Array." + method);
+    }
+    const elements = aggregateObjectValues(thisValue);
+    const callback = args[0] || emptyAbstract();
+    const callbackResult = invokeArrayCallback(method, callback, thisValue, args, node);
+    if (method === "sort") {
+      invokePrimitiveCoercion(callbackResult, node, "Array.sort comparator result");
+    }
+    if (method === "find" || method === "findLast") return elements;
+    if (method === "reduce" || method === "reduceRight") {
+      return combineAbstract(args[1] || elements, callbackResult);
+    }
+    if (method === "map" || method === "filter" || method === "flatMap") {
+      const result = objectAbstract(node, "array");
+      mergeObjectProperty(
+        result,
+        null,
+        method === "filter"
+          ? elements
+          : method === "flatMap"
+            ? aggregateObjectValues(callbackResult)
+            : callbackResult,
+      );
+      return result;
+    }
+    return thisValue;
+  }
+  if (kind.startsWith("TypedArray.")) {
+    const method = kind.slice("TypedArray.".length);
+    failProtected(
+      node,
+      "TypedArray." + method + " is outside the admitted source-only provenance grammar",
+    );
+    return refAbstract("derived:protected");
+  }
+  if (kind.startsWith("TypedArrayStatic.")) {
+    failProtected(
+      node,
+      kind + " is outside the admitted source-only provenance grammar",
+    );
+    return refAbstract("derived:protected");
+  }
+  if (kind.startsWith("ArraySpecies.")) {
+    const method = kind.slice("ArraySpecies.".length);
+    coerceArrayLikeLength(thisValue, node, "Array." + method);
+    rejectUnresolvedArraySpecies(thisValue, node, "Array." + method);
+    if (method === "slice") {
+      for (const argument of args.slice(0, 2)) {
+        invokePrimitiveCoercion(argument, node, "Array.slice index");
+      }
+    } else if (method === "flat") {
+      invokePrimitiveCoercion(args[0] || emptyAbstract(), node, "Array.flat depth");
+    } else if (method === "concat") {
+      for (const argument of args) {
+        if (argument.refs.size > 0 || hasExternallyEffectfulPrototype(argument)) {
+          failProtected(node, "Array.concat cannot inspect an unresolved spreadability or inherited accessor");
+        }
+      }
+    }
+    const result = objectAbstract(node, "array");
+    mergeObjectProperty(
+      result,
+      null,
+      method === "flat"
+        ? deepAggregateObjectValues(thisValue)
+        : aggregateOwnObjectContents(thisValue),
+    );
+    if (method === "concat") {
+      for (const argument of args) {
+        mergeObjectProperty(
+          result,
+          null,
+          combineAbstract(argument, aggregateOwnObjectContents(argument)),
+        );
+      }
+    }
+    mergeObjectProperty(result, "length", primitiveAbstract("number"));
+    return result;
+  }
+  if (kind === "ArrayBuffer.slice") {
+    failProtected(node, "ArrayBuffer.slice is outside the admitted source-only provenance grammar");
+    return refAbstract("derived:protected");
+  }
+  if (kind === "Array.at") {
+    if (hasExternallyEffectfulPrototype(thisValue)) {
+      failProtected(node, "Array.at cannot read through an unresolved inherited accessor");
+    }
+    coerceArrayLikeLength(thisValue, node, "Array.at");
+    invokePrimitiveCoercion(args[0] || emptyAbstract(), node, "Array.at index");
+    return aggregateObjectValues(thisValue);
+  }
+  if (kind === "Array.join") {
+    if (hasExternallyEffectfulPrototype(thisValue)) {
+      failProtected(node, "Array.join cannot read through an unresolved inherited accessor");
+    }
+    coerceArrayLikeLength(thisValue, node, "Array.join");
+    invokePrimitiveCoercion(args[0] || emptyAbstract(), node, "Array.join separator");
+    invokePrimitiveCoercion(aggregateObjectValues(thisValue), node, "Array.join element stringification");
+    return primitiveAbstract("string");
+  }
+  if (kind === "Error.toString" || kind === "RegExp.toString") {
+    invokeIntrinsicFieldCoercion(
+      thisValue,
+      kind === "Error.toString" ? ["name", "message"] : ["source", "flags"],
+      node,
+      kind,
+      new Set(),
+    );
+    return primitiveAbstract("string");
+  }
+  if (kind === "WeakRef.deref") return aggregateObjectValues(thisValue);
+  if (kind === "Object.create") {
+    const result = objectAbstract(node, "object");
+    setObjectPrototype(result, args[0] || emptyAbstract());
+    if (args[1]) applyPropertyDescriptorMap(result, args[1], node);
+    return result;
+  }
+  if (kind === "Object.keys") {
+    const source = args[0] || emptyAbstract();
+    if (
+      [...source.refs].some((origin) =>
+        !origin.startsWith("shared-root:") && !origin.startsWith("shared-entry:")
+      )
+    ) {
+      failProtected(node, "Object.keys cannot enumerate protected or unknown runtime capabilities");
+    }
+    return objectAbstract(node, "array");
+  }
+  if (kind === "Object.values" || kind === "Array.from") {
+    if (kind === "Array.from") rejectNoncanonicalArrayFactoryReceiver(thisValue, node, kind);
+    const result = objectAbstract(node, "array");
+    const source = args[0] || emptyAbstract();
+    if (
+      kind === "Object.values" &&
+      [...source.refs].some((origin) =>
+        !origin.startsWith("shared-root:") && !origin.startsWith("shared-entry:")
+      )
+    ) {
+      failProtected(node, "Object.values cannot enumerate protected or unknown runtime capabilities");
+      return result;
+    }
+    let elements = kind === "Array.from"
+      ? iterableValues(source, node, "Array.from")
+      : aggregateObjectValues(source);
+    if (source.refs.size > 0) {
+      elements = combineAbstract(elements, refAbstract("derived:protected"));
+    }
+    mergeObjectProperty(result, null, elements);
+    if (kind === "Array.from" && args[1]) {
+      mergeObjectProperty(
+        result,
+        null,
+        invokeCallable(
+          args[1],
+          args[2] || emptyAbstract(),
+          [elements, literalAbstract(0, "number")],
+          node,
+        ),
+      );
+    }
+    return result;
+  }
+  if (kind === "Array.of") {
+    rejectNoncanonicalArrayFactoryReceiver(thisValue, node, kind);
+    const result = objectAbstract(node, "array");
+    for (let index = 0; index < args.length; index++) {
+      mergeObjectProperty(result, String(index), args[index]);
+    }
+    return result;
+  }
+  if (kind === "Object.entries") {
+    const result = objectAbstract(node, "array");
+    const source = args[0] || emptyAbstract();
+    if (
+      [...source.refs].some((origin) =>
+        !origin.startsWith("shared-root:") && !origin.startsWith("shared-entry:")
+      )
+    ) {
+      failProtected(node, "Object.entries cannot enumerate protected or unknown runtime capabilities");
+      return result;
+    }
+    mergeObjectProperty(result, null, aggregateObjectValues(source));
+    return result;
+  }
+  if (kind === "Object.fromEntries") {
+    const result = ordinaryObjectAbstract(node);
+    const entries = args[0] || emptyAbstract();
+    iterableValues(entries, node, "Object.fromEntries");
+    const possibleEntries = aggregateOwnObjectContents(entries);
+    if (hasCallerControlledExternalReference(possibleEntries)) {
+      failProtected(node, "Object.fromEntries entry read may invoke a caller-controlled property trap");
+    }
+    let resolvedEntry = false;
+    for (const entryId of possibleEntries.objects) {
+      const entryState = objectStates.get(entryId);
+      if (!entryState) continue;
+      const entry = emptyAbstract();
+      entry.objects.add(entryId);
+      if (hasExternallyEffectfulPrototype(entry)) {
+        failProtected(node, "Object.fromEntries entry read may invoke an unresolved inherited getter");
+      }
+      const keyValue = readProperty(entry, "0");
+      const entryValue = readProperty(entry, "1");
+      const key = resolvedPropertyKey(keyValue, node, "Object.fromEntries property key");
+      mergeObjectProperty(result, key, entryValue);
+      resolvedEntry = true;
+    }
+    if (!resolvedEntry) mergeObjectProperty(result, null, deepAggregateObjectValues(entries));
+    return result;
+  }
+  if (kind === "Object.getPrototypeOf" || kind === "Reflect.getPrototypeOf") {
+    const result = emptyAbstract();
+    const target = args[0] || emptyAbstract();
+    if (hasExternallyEffectfulPrototype(target)) {
+      failProtected(node, kind + " cannot invoke a caller-controlled prototype trap");
+    }
+    if (!hasAbstractValue(target)) {
+      failProtected(node, kind + " cannot reflect an unresolved runtime value");
+      return result;
+    }
+    const primitiveConstructors = new Map([
+      ["string", "String"],
+      ["number", "Number"],
+      ["boolean", "Boolean"],
+      ["bigint", "BigInt"],
+      ["symbol", "Symbol"],
+    ]);
+    for (const primitiveKind of target.primitiveKinds) {
+      const constructorName = primitiveConstructors.get(primitiveKind);
+      if (constructorName) mergeAbstract(result, refAbstract("intrinsic:" + constructorName + ".prototype"));
+    }
+    for (const id of target.objects) {
+      const state = objectStates.get(id);
+      if (state) mergeAbstract(result, state.prototype);
+    }
+    if (
+      target.functions.size > 0 ||
+      target.classes.size > 0 ||
+      target.adapters.size > 0 ||
+      target.mutators.size > 0 ||
+      target.builtins.size > 0
+    ) {
+      mergeAbstract(result, refAbstract("intrinsic:Function.prototype"));
+    }
+    if (target.refs.size > 0) mergeAbstract(result, refAbstract("derived:protected"));
+    return result;
+  }
+  if (kind === "Object.getOwnPropertyDescriptor" || kind === "Reflect.getOwnPropertyDescriptor") {
+    const result = ordinaryObjectAbstract(node);
+    if (deepContainsProtected(args[0] || emptyAbstract())) {
+      failProtected(node, kind + " cannot expose a descriptor from protected provenance");
+      return result;
+    }
+    const key = resolvedPropertyKey(args[1] || emptyAbstract(), node, kind + " property key");
+    mergeObjectProperty(result, "value", readProperty(args[0] || emptyAbstract(), key));
+    return result;
+  }
+  if (kind === "Reflect.get") {
+    const key = resolvedPropertyKey(args[1] || emptyAbstract(), node, "Reflect.get property key");
+    const target = args[0] || emptyAbstract();
+    const exactFunctionPrototypeConstructorRead =
+      key === "constructor" &&
+      target.refs.size === 1 &&
+      target.refs.has("intrinsic:Function.prototype") &&
+      target.objects.size === 0;
+    if (
+      key === null ||
+      (!exactFunctionPrototypeConstructorRead &&
+        (target.objects.size === 0 || deepContainsProtected(target)))
+    ) {
+      failProtected(node, "Reflect.get is admitted only for a local-owned target and singleton literal key");
+      return emptyAbstract();
+    }
+    return readProperty(target, key);
+  }
+  if (kind === "Reflect.apply") {
+    return invokeCallable(
+      args[0] || emptyAbstract(),
+      args[1] || emptyAbstract(),
+      expandArrayArguments(args[2] || emptyAbstract(), node, "Reflect.apply arguments"),
+      node,
+      true,
+    );
+  }
+  if (kind === "Proxy.revocable") {
+    failProtected(node, "Proxy.revocable is outside the admitted static provenance grammar");
+    return emptyAbstract();
+  }
+  if (kind.startsWith("Promise.")) {
+    absorbedCallThrows.add(node);
+    rejectNoncanonicalPromiseFactoryReceiver(thisValue, node, kind);
+    const result = objectAbstract(node, "promise");
+    const method = kind.slice("Promise.".length);
+    const input = args[0] || emptyAbstract();
+    const settled = method === "reject"
+      ? input
+      : method === "resolve"
+        ? assimilateThenable(input, node, "Promise.resolve")
+        : assimilateThenable(
+            iterableValues(input, node, "Promise." + method),
+            node,
+            "Promise." + method,
+          );
+    mergeObjectProperty(result, null, settled);
+    const assimilatedThrow = callThrownValues.get(node);
+    if (assimilatedThrow) mergeObjectProperty(result, null, assimilatedThrow);
+    return result;
+  }
+  if (kind.startsWith("Thenable.")) {
+    absorbedCallThrows.add(node);
+    rejectUnresolvedPromiseSpecies(thisValue, node, kind);
+    const result = objectAbstract(node, "promise");
+    const method = kind.slice("Thenable.".length);
+    const settled = aggregateObjectValues(thisValue);
+    mergeObjectProperty(result, null, settled);
+    if (method === "then" || method === "catch") {
+      const callbacks = method === "then" ? args.slice(0, 2) : args.slice(0, 1);
+      for (const callback of callbacks) {
+        const callbackResult = invokeCallable(
+          callback || emptyAbstract(),
+          emptyAbstract(),
+          [settled],
+          node,
+        );
+        mergeObjectProperty(
+          result,
+          null,
+          assimilateThenable(callbackResult, node, "Thenable." + method),
+        );
+        mergeObjectProperty(result, null, thrownByCallable(callback || emptyAbstract()));
+      }
+    } else if (method === "finally") {
+      const callbackResult = invokeCallable(args[0] || emptyAbstract(), emptyAbstract(), [], node);
+      mergeObjectProperty(
+        result,
+        null,
+        assimilateThenable(callbackResult, node, "Thenable.finally"),
+      );
+      mergeObjectProperty(
+        result,
+        null,
+        thrownByCallable(args[0] || emptyAbstract()),
+      );
+    }
+    return result;
+  }
+  return emptyAbstract();
+}
+
+const callThrownValues = new WeakMap();
+const absorbedCallThrows = new WeakSet();
+function recordCallThrown(node, value) {
+  let slot = callThrownValues.get(node);
+  if (!slot) {
+    slot = emptyAbstract();
+    callThrownValues.set(node, slot);
+  }
+  mergeAbstract(slot, value);
+}
+
+function callThrowIsCaughtBeforeFunction(node) {
+  let child = node;
+  for (let parent = node.parent; parent; child = parent, parent = parent.parent) {
+    if (ts.isFunctionLike(parent)) return false;
+    if (ts.isTryStatement(parent) && parent.catchClause && parent.tryBlock === child) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function propagateCallThrownToFunction(node) {
+  const thrown = callThrownValues.get(node);
+  if (
+    absorbedCallThrows.has(node) ||
+    !thrown ||
+    !hasAbstractValue(thrown) ||
+    callThrowIsCaughtBeforeFunction(node)
+  ) return;
+  const descriptor = nearestFunctionDescriptor(node);
+  if (descriptor) mergeAbstract(descriptor.throwValue, thrown);
+}
+
+function invokeCallable(callable, thisValue, args, node, checkThisEscape = false) {
+  const companionProtectedMember =
+    (callable.mutators.size > 0 || callable.builtins.size > 0) &&
+    callable.refs.has("derived:protected");
+  const alternatives = [];
+  const exactIntrinsicCall =
+    (callable.mutators.size > 0 || callable.builtins.size > 0) &&
+    isInsideExactAcceptedRuntimeContract(node);
+  for (const origin of callable.refs) {
+    if (exactIntrinsicCall || (companionProtectedMember && origin === "derived:protected")) continue;
+    const alternative = emptyAbstract();
+    alternative.refs.add(origin);
+    alternatives.push(alternative);
+  }
+  for (const field of ["functions", "mutators", "builtins", "adapters"]) {
+    for (const capability of callable[field]) {
+      const alternative = emptyAbstract();
+      alternative[field].add(capability);
+      alternatives.push(alternative);
+    }
+  }
+  if (alternatives.length > 1) {
+    const unionResult = emptyAbstract();
+    for (const alternative of alternatives) {
+      for (const id of callable.objects) alternative.objects.add(id);
+      for (const literal of callable.literals) alternative.literals.add(literal);
+      for (const kind of callable.primitiveKinds) alternative.primitiveKinds.add(kind);
+      mergeAbstract(
+        unionResult,
+        invokeCallable(alternative, thisValue, args, node, checkThisEscape),
+      );
+    }
+    return unionResult;
+  }
+  const result = emptyAbstract();
+  if (callable.refs.has("global:eval") || callable.refs.has("global:Function")) {
+    failDynamicEvaluation(node, "binding-resolved eval or Function constructor invocation");
+    return result;
+  }
+  let handled = false;
+  const primitiveConversion = [
+    ["String", "string"],
+    ["Number", "number"],
+    ["BigInt", "bigint"],
+    ["Symbol", "symbol"],
+  ].find(([name]) => callable.refs.has("global:" + name));
+  if (primitiveConversion) {
+    handled = true;
+    invokePrimitiveCoercion(args[0] || emptyAbstract(), node, primitiveConversion[0] + " conversion");
+    mergeAbstract(result, primitiveAbstract(primitiveConversion[1]));
+  }
+  for (const adapterNode of callable.adapters) {
+    const adapter = adapterStates.get(adapterNode);
+    if (!adapter) continue;
+    handled = true;
+    mergeAbstract(
+      result,
+      invokeCallable(
+        adapter.callable,
+        adapter.thisValue,
+        [...adapter.arguments, ...args],
+        node,
+        true,
+      ),
+    );
+  }
+  for (const descriptor of callable.functions) {
+    handled = true;
+    bindFunctionArguments(descriptor, args, thisValue);
+    mergeAbstract(result, descriptor.returnValue);
+    recordCallThrown(node, descriptor.throwValue);
+  }
+  for (const kind of callable.mutators) {
+    handled = true;
+    mergeAbstract(result, invokeMutator(kind, args, node));
+  }
+  for (const kind of callable.builtins) {
+    handled = true;
+    mergeAbstract(result, invokeBuiltin(kind, thisValue, args, node));
+  }
+  if (!handled) {
+    for (const argument of args) exerciseExternalCallableGraph(argument);
+    if (checkThisEscape) exerciseExternalCallableGraph(thisValue);
+  }
+  if (
+    !handled &&
+    callable.refs.has("derived:protected") &&
+    containsCallableCapability(thisValue)
+  ) {
+    failProtected(node, "unresolved protected callable received a caller-selected constructor receiver");
+  }
+  if (
+    !handled &&
+    hasCallerControlledExternalReference(callable)
+  ) {
+    failProtected(node, "caller-controlled callable execution is outside the admitted mutation grammar");
+  } else if (
+    !handled &&
+    (
+      args.some((argument) => deepContainsEscapeworthyProtected(argument)) ||
+      (checkThisEscape && deepContainsEscapeworthyProtected(thisValue))
+    )
+  ) {
+    failProtected(
+      node,
+      "protected reference escaped to an unresolved callable " +
+      node.getText(bindingAst).slice(0, 96) +
+      " [callable=" + [...callable.refs].join(",") +
+      "; this=" + [...thisValue.refs].join(",") +
+      "; args=" + args.map((argument) => [...argument.refs].join(",")).join("|") + "]",
+    );
+  }
+  if (!handled && callable.refs.size > 0) {
+    const trustedSdkCall = [...callable.refs].every((origin) =>
+      origin === "external:trusted-sdk" ||
+      origin === "external:trusted-sdk-member" ||
+      origin === "external:trusted-sdk-result"
+    );
+    const externalResult = refAbstract(
+      trustedSdkCall ? "external:trusted-sdk-result" : "external:call-result",
+    );
+    mergeAbstract(result, externalResult);
+    recordCallThrown(node, externalResult);
+    for (const argument of args) taintReachableLocalObjects(argument, externalResult);
+    taintReachableLocalObjects(thisValue, externalResult);
+  }
+  return result;
+}
+
+function thrownByCallable(callable, seenFunctions = new Set(), seenAdapters = new Set()) {
+  const result = emptyAbstract();
+  for (const descriptor of callable.functions) {
+    if (seenFunctions.has(descriptor)) continue;
+    seenFunctions.add(descriptor);
+    mergeAbstract(result, descriptor.throwValue);
+  }
+  for (const classDescriptor of callable.classes) {
+    for (const descriptor of classDescriptor.constructors) {
+      if (seenFunctions.has(descriptor)) continue;
+      seenFunctions.add(descriptor);
+      mergeAbstract(result, descriptor.throwValue);
+    }
+  }
+  for (const adapterNode of callable.adapters) {
+    if (seenAdapters.has(adapterNode)) continue;
+    seenAdapters.add(adapterNode);
+    const adapter = adapterStates.get(adapterNode);
+    if (adapter) mergeAbstract(result, thrownByCallable(adapter.callable, seenFunctions, seenAdapters));
+  }
+  return result;
+}
+
+function collectPossibleThrows(node, result, root = true) {
+  if (!root && ts.isFunctionLike(node)) return;
+  if (ts.isThrowStatement(node) && node.expression) {
+    mergeAbstract(result, evalExpression(node.expression));
+  } else if (ts.isAwaitExpression(node)) {
+    mergeAbstract(result, aggregateObjectValues(evalExpression(node.expression)));
+  } else if (ts.isCallExpression(node)) {
+    evalExpression(node);
+    mergeAbstract(result, callThrownValues.get(node));
+  } else if (ts.isNewExpression(node)) {
+    evalExpression(node);
+    mergeAbstract(result, callThrownValues.get(node));
+  }
+  ts.forEachChild(node, (child) => collectPossibleThrows(child, result, false));
+}
+
+function evaluateCallArguments(argumentsArray) {
+  const result = [];
+  for (const argument of argumentsArray) {
+    if (ts.isSpreadElement(argument)) {
+      const spread = evalExpression(argument.expression);
+      iterableValues(spread, argument, "call argument spread");
+      const expanded = expandArrayArguments(spread, argument, "call argument spread");
+      if (expanded.length > 0) result.push(...expanded);
+      else result.push(aggregateObjectValues(spread));
+    } else {
+      result.push(evalExpression(argument));
+    }
+  }
+  return result;
+}
+
+function evalCallExpression(node) {
+  const calleeNode = unwrapExpression(node.expression);
+  if (ts.isElementAccessExpression(calleeNode) && calleeNode.argumentExpression) {
+    invokePrimitiveCoercion(
+      evalExpression(calleeNode.argumentExpression),
+      calleeNode,
+      "computed method key",
+    );
+  }
+  if (
+    (ts.isPropertyAccessExpression(calleeNode) || ts.isElementAccessExpression(calleeNode)) &&
+    (staticMemberKey(calleeNode) === "call" ||
+      staticMemberKey(calleeNode) === "apply" ||
+      staticMemberKey(calleeNode) === "bind")
+  ) {
+    const adapterKind = staticMemberKey(calleeNode);
+    const callable = evalExpression(calleeNode.expression);
+    if (hasExternallyEffectfulPrototype(callable)) {
+      failProtected(node, "call adapter read may invoke an unresolved inherited getter");
+    }
+    const directMember = readProperty(callable, adapterKind);
+    const ownMember = readOwnProperty(callable, adapterKind);
+    const outerArgs = evaluateCallArguments(node.arguments);
+    if (hasAbstractValue(ownMember) || hasLocalPropertyInChain(callable, adapterKind)) {
+      return invokeCallable(
+        hasAbstractValue(ownMember) ? ownMember : directMember,
+        callable,
+        outerArgs,
+        node,
+      );
+    }
+    if (directMember.builtins.has("Reflect.apply")) {
+      return invokeCallable(directMember, callable, outerArgs, node);
+    }
+    const callableBaseIsProven =
+      callable.functions.size > 0 ||
+      callable.mutators.size > 0 ||
+      callable.builtins.size > 0 ||
+      callable.adapters.size > 0 ||
+      callable.refs.size > 0;
+    if (!callableBaseIsProven) {
+      return invokeCallable(directMember, callable, outerArgs, node);
+    }
+    const thisValue = outerArgs[0] || emptyAbstract();
+    if (adapterKind === "bind") return bindCallable(node, callable, thisValue, outerArgs.slice(1));
+    const logicalArgs = adapterKind === "apply"
+      ? expandArrayArguments(outerArgs[1] || emptyAbstract(), node, "Function.apply arguments")
+      : outerArgs.slice(1);
+    return invokeCallable(callable, thisValue, logicalArgs, node, true);
+  }
+
+  if (ts.isPropertyAccessExpression(calleeNode) || ts.isElementAccessExpression(calleeNode)) {
+    const receiver = evalExpression(calleeNode.expression);
+    const method = staticMemberKey(calleeNode);
+    const args = evaluateCallArguments(node.arguments);
+    if (hasExternallyEffectfulPrototype(receiver)) {
+      failProtected(node, "method read may invoke an unresolved inherited getter");
+    }
+    if (method !== null && arraySpeciesMethods.has(method)) {
+      rejectUnresolvedArraySpecies(receiver, node, "Array." + method);
+    }
+    let directResult = emptyAbstract();
+    if (method === "at") mergeAbstract(directResult, aggregateObjectValues(receiver));
+    if (method === "get") {
+      for (const id of receiver.objects) {
+        const state = objectStates.get(id);
+        if (state?.kind === "map") mergeAbstract(directResult, aggregateObjectValues(receiver));
+      }
+    }
+    if (method !== null && instanceMutationMethods.has(method)) {
+      mergeAbstract(directResult, invokeInstanceMutation(method, receiver, args, node));
+    }
+    if (method !== null && callbackMethods.has(method)) {
+      invokeArrayCallback(method, args[0] || emptyAbstract(), receiver, args, node);
+    }
+    if (method !== null && callbackMethods.has(method) && !hasAbstractValue(receiver)) {
+      return directResult;
+    }
+    const trustedExternalArrayCallback =
+      method !== null &&
+      callbackMethods.has(method) &&
+      receiver.refs.size > 0 &&
+      [...receiver.refs].every((origin) => origin === "external:trusted-sdk-result") &&
+      receiver.objects.size === 0;
+    if (trustedExternalArrayCallback) {
+      const externalResult = refAbstract("external:trusted-sdk-result");
+      recordCallThrown(node, externalResult);
+      return combineAbstract(directResult, externalResult);
+    }
+    return combineAbstract(
+      directResult,
+      invokeCallable(
+        readProperty(receiver, method),
+        receiver,
+        args,
+        node,
+        (receiver.objects.size > 0 && deepContainsProtected(receiver)) ||
+          hasDirectIntrinsicOrSharedReference(receiver) ||
+          receiver.refs.has("external:possibly-protected") ||
+          receiver.refs.has("external:untrusted-member") ||
+          receiver.refs.has("global:process") ||
+          receiver.refs.has("global:global") ||
+          receiver.refs.has("global:globalThis"),
+      ),
+    );
+  }
+
+  return invokeCallable(
+    evalExpression(calleeNode),
+    emptyAbstract(),
+    evaluateCallArguments(node.arguments),
+    node,
+  );
+}
+
+function invokeConstructor(constructorValue, args, node) {
+  const alternativeFields = ["refs", "functions", "classes", "mutators", "builtins", "adapters"];
+  const alternatives = [];
+  for (const field of alternativeFields) {
+    for (const capability of constructorValue[field]) {
+      const alternative = emptyAbstract();
+      alternative[field].add(capability);
+      for (const id of constructorValue.objects) alternative.objects.add(id);
+      for (const literal of constructorValue.literals) alternative.literals.add(literal);
+      for (const kind of constructorValue.primitiveKinds) alternative.primitiveKinds.add(kind);
+      alternatives.push(alternative);
+    }
+  }
+  if (alternatives.length > 1) {
+    const unionResult = emptyAbstract();
+    for (const alternative of alternatives) {
+      mergeAbstract(unionResult, invokeConstructor(alternative, args, node));
+    }
+    return unionResult;
+  }
+  const adapterResult = emptyAbstract();
+  let hasAdapter = false;
+  for (const adapterNode of constructorValue.adapters) {
+    const adapter = adapterStates.get(adapterNode);
+    if (!adapter) continue;
+    hasAdapter = true;
+    mergeAbstract(
+      adapterResult,
+      invokeConstructor(adapter.callable, [...adapter.arguments, ...args], node),
+    );
+  }
+  if (hasAdapter) return adapterResult;
+  if (constructorValue.refs.has("global:Function")) {
+    failDynamicEvaluation(node, "binding-resolved Function constructor invocation");
+    return emptyAbstract();
+  }
+  if (constructorValue.refs.has("global:Promise")) {
+    failProtected(node, "Promise construction is outside the admitted static provenance grammar");
+    return objectAbstract(node, "promise");
+  }
+  if (constructorValue.refs.has("global:Proxy")) {
+    failProtected(node, "Proxy construction is outside the admitted static provenance grammar");
+    return emptyAbstract();
+  }
+  const binaryMemoryConstructor = [...constructorValue.refs]
+    .filter((origin) => origin.startsWith("global:"))
+    .map((origin) => origin.slice("global:".length))
+    .find((name) => unsupportedBinaryMemoryConstructorNames.has(name));
+  if (binaryMemoryConstructor) {
+    failProtected(
+      node,
+      binaryMemoryConstructor + " construction is outside the admitted source-only provenance grammar",
+    );
+    return refAbstract("derived:protected");
+  }
+  if (constructorValue.refs.has("global:WeakRef")) {
+    const result = objectAbstract(node, "weakref");
+    if (args[0]) mergeObjectProperty(result, null, args[0]);
+    return result;
+  }
+  if (constructorValue.refs.has("global:Object")) {
+    if (!args[0]) return ordinaryObjectAbstract(node);
+    const input = args[0];
+    const result = combineAbstract(input);
+    if (
+      input.primitiveKinds.has("null") ||
+      input.primitiveKinds.has("undefined")
+    ) {
+      mergeAbstract(result, ordinaryObjectAbstract(node));
+    }
+    const primitiveBoxes = new Map([
+      ["string", "String"],
+      ["number", "Number"],
+      ["boolean", "Boolean"],
+      ["bigint", "BigInt"],
+      ["symbol", "Symbol"],
+    ]);
+    for (const [primitiveKind, constructorName] of primitiveBoxes) {
+      if (!input.primitiveKinds.has(primitiveKind)) continue;
+      const boxed = objectAbstract(node, "boxed-" + primitiveKind);
+      setObjectPrototype(boxed, refAbstract("intrinsic:" + constructorName + ".prototype"), false);
+      mergeAbstract(result, boxed);
+    }
+    return result;
+  }
+  if (constructorValue.refs.has("global:Array")) {
+    const result = objectAbstract(node, "array");
+    if (!(args.length === 1 && args[0].primitiveKinds.has("number"))) {
+      for (let index = 0; index < args.length; index++) {
+        mergeObjectProperty(result, String(index), args[index]);
+      }
+    }
+    return result;
+  }
+  if (
+    constructorValue.refs.has("global:Map") ||
+    constructorValue.refs.has("global:Set") ||
+    constructorValue.refs.has("global:WeakMap") ||
+    constructorValue.refs.has("global:WeakSet")
+  ) {
+    const kind = constructorValue.refs.has("global:Map")
+      ? "map"
+      : constructorValue.refs.has("global:Set")
+        ? "set"
+        : constructorValue.refs.has("global:WeakMap")
+          ? "weakmap"
+          : "weakset";
+    const result = objectAbstract(node, kind);
+    if (args[0]) {
+      iterableValues(args[0], node, "new " + kind);
+      if (kind === "map" || kind === "weakmap") {
+        const possibleEntries = aggregateOwnObjectContents(args[0]);
+        if (hasCallerControlledExternalReference(possibleEntries)) {
+          failProtected(node, "new " + kind + " entry read may invoke a caller-controlled property trap");
+        }
+        for (const entryId of possibleEntries.objects) {
+          const entry = emptyAbstract();
+          entry.objects.add(entryId);
+          if (hasExternallyEffectfulPrototype(entry)) {
+            failProtected(node, "new " + kind + " entry read may invoke an unresolved inherited getter");
+          }
+        }
+      }
+      mergeObjectProperty(result, null, deepAggregateObjectValues(args[0]));
+    }
+    return result;
+  }
+  if (constructorValue.refs.has("import:Stripe")) {
+    const trustedSdk = refAbstract("external:trusted-sdk");
+    recordCallThrown(node, refAbstract("external:trusted-sdk-result"));
+    return trustedSdk;
+  }
+  const hasKnownLocalConstructor =
+    constructorValue.classes.size > 0 || constructorValue.functions.size > 0;
+  if (hasCallerControlledExternalReference(constructorValue)) {
+    failProtected(node, "caller-controlled constructor execution is outside the admitted mutation grammar");
+  }
+  if (
+    args.some((argument) => deepContainsEscapeworthyProtected(argument)) &&
+    !hasKnownLocalConstructor
+  ) {
+    failProtected(
+      node,
+      "protected reference escaped through an unresolved constructor [args=" +
+        args.map((argument) => [...argument.refs].join(",")).join("|") + "]",
+    );
+  }
+  if (!hasKnownLocalConstructor && constructorValue.refs.size > 0) {
+    for (const argument of args) {
+      exerciseExternalCallableGraph(argument);
+      taintReachableLocalObjects(argument, refAbstract("external:call-result"));
+    }
+  }
+  const instance = objectAbstract(node, "instance");
+  if (constructorValue.functions.size > 0) {
+    setObjectPrototype(
+      instance,
+      readProperty(constructorValue, "prototype"),
+      [...constructorValue.functions].some((descriptor) =>
+        externallyExposedFunctionDescriptors.has(descriptor)
+      ),
+    );
+  }
+  for (const origin of constructorValue.refs) {
+    if (origin.startsWith("import:")) {
+      setObjectPrototype(instance, refAbstract("import-prototype:" + origin.slice("import:".length)), false);
+    } else if (
+      origin.startsWith("global:") &&
+      origin !== "global:global" &&
+      origin !== "global:globalThis" &&
+      origin !== "global:process" &&
+      origin !== "global:process.env"
+    ) {
+      setObjectPrototype(instance, refAbstract("intrinsic:" + origin.slice("global:".length) + ".prototype"), false);
+    }
+  }
+  for (const argument of args) {
+    if (deepContainsProtected(argument)) {
+      mergeObjectProperty(instance, null, deepAggregateObjectValues(argument));
+    }
+  }
+  for (const classDescriptor of constructorValue.classes) {
+    for (const [key, method] of classDescriptor.methods) {
+      const methodValue = emptyAbstract();
+      methodValue.functions.add(method);
+      mergeObjectProperty(instance, key, methodValue);
+    }
+    for (const member of classDescriptor.node.members || []) {
+      if (ts.isPropertyDeclaration(member) && member.initializer && member.name) {
+        mergeObjectProperty(instance, propertyNameKey(member.name), evalExpression(member.initializer));
+      }
+    }
+    for (const constructorDescriptor of classDescriptor.constructors) {
+      bindFunctionArguments(constructorDescriptor, args, instance);
+      mergeAbstract(instance, constructorDescriptor.returnValue);
+      recordCallThrown(node, constructorDescriptor.throwValue);
+    }
+  }
+  for (const functionDescriptor of constructorValue.functions) {
+    bindFunctionArguments(functionDescriptor, args, instance);
+    mergeAbstract(instance, functionDescriptor.returnValue);
+    recordCallThrown(node, functionDescriptor.throwValue);
+  }
+  if (
+    [...constructorValue.refs].some((origin) =>
+      origin.startsWith("external:") ||
+      origin.startsWith("import:") ||
+      origin === "derived:protected"
+    )
+  ) {
+    const externalResult = refAbstract("external:call-result");
+    mergeAbstract(instance, externalResult);
+    recordCallThrown(node, externalResult);
+  }
+  return instance;
+}
+
+function evalNewExpression(node) {
+  return invokeConstructor(
+    evalExpression(node.expression),
+    evaluateCallArguments(node.arguments || []),
+    node,
+  );
+}
+
+const protocolCaptureStates = new WeakMap();
+const protocolCaptureSlots = new Map();
+let nextProtocolCaptureId = 1;
+function captureStateFor(node, label) {
+  let captures = protocolCaptureStates.get(node);
+  if (!captures) {
+    captures = new Map();
+    protocolCaptureStates.set(node, captures);
+  }
+  let capture = captures.get(label);
+  if (!capture) {
+    const id = nextProtocolCaptureId++;
+    capture = { kind: "Promise.captureResolve:" + id, slot: emptyAbstract() };
+    captures.set(label, capture);
+    protocolCaptureSlots.set(capture.kind, capture.slot);
+    analysisChanged = true;
+  }
+  return capture;
+}
+
+function assimilateThenable(source, node, label) {
+  const capture = captureStateFor(node, label);
+  if (hasCallerControlledExternalReference(source)) {
+    failProtected(node, label + " cannot assimilate a caller-controlled unresolved thenable");
+  }
+  if (hasExternallyEffectfulPrototype(source)) {
+    failProtected(node, label + " cannot read a caller-controlled then getter");
+  }
+  let hasLocalThen = false;
+  for (const id of source.objects) {
+    const state = objectStates.get(id);
+    if (!state || state.kind === "promise") continue;
+    if (hasDeclaredCallablePropertyInChain(source, "then")) {
+      hasLocalThen = true;
+      break;
+    }
+  }
+  if (hasLocalThen) {
+    const resolver = objectAbstract(node, "promise-resolver");
+    resolver.builtins.add(capture.kind);
+    const then = combineAbstract(readProperty(source, "then"));
+    for (const id of source.objects) {
+      const state = objectStates.get(id);
+      if (state) mergeAbstract(then, state.wildcard);
+    }
+    invokeCallable(then, source, [resolver, resolver], node, true);
+  }
+  return combineAbstract(aggregateObjectValues(source), capture.slot);
+}
+
+function evaluateAwaitExpression(node) {
+  return assimilateThenable(evalExpression(node.expression), node, "await");
+}
+
+function evalExpression(node) {
+  if (!node) return emptyAbstract();
+  const expression = unwrapExpression(node);
+  if (ts.isMetaProperty(expression)) {
+    if (expression.keywordToken === ts.SyntaxKind.NewKeyword) {
+      const owner = nearestRuntimeFunction(expression, true);
+      return owner ? functionAbstract(owner) : refAbstract("external:unknown-new-target");
+    }
+    return refAbstract("external:unknown-meta-property");
+  }
+  if (ts.isIdentifier(expression)) return evalIdentifier(expression);
+  if (expression.kind === ts.SyntaxKind.ThisKeyword) {
+    const descriptor = nearestFunctionDescriptor(expression, true);
+    return descriptor ? combineAbstract(descriptor.thisValue) : refAbstract("global:globalThis");
+  }
+  if (
+    ts.isStringLiteral(expression) ||
+    ts.isNoSubstitutionTemplateLiteral(expression)
+  ) return literalAbstract(expression.text, "string");
+  if (ts.isNumericLiteral(expression)) return literalAbstract(expression.text, "number");
+  if (ts.isBigIntLiteral(expression)) {
+    return literalAbstract(BigInt(expression.text.slice(0, -1)).toString(), "bigint");
+  }
+  if (ts.isRegularExpressionLiteral(expression)) return objectAbstract(expression, "regexp");
+  if (
+    expression.kind === ts.SyntaxKind.TrueKeyword ||
+    expression.kind === ts.SyntaxKind.FalseKeyword ||
+    expression.kind === ts.SyntaxKind.NullKeyword
+  ) {
+    const kind = expression.kind === ts.SyntaxKind.NullKeyword ? "null" : "boolean";
+    return literalAbstract(ts.tokenToString(expression.kind) || "null", kind);
+  }
+  if (ts.isObjectLiteralExpression(expression)) return initializeObjectLiteral(expression);
+  if (ts.isArrayLiteralExpression(expression)) return initializeArrayLiteral(expression);
+  if (ts.isFunctionExpression(expression) || ts.isArrowFunction(expression)) return functionAbstract(expression);
+  if (ts.isClassExpression(expression)) return classAbstract(expression);
+  if (ts.isPropertyAccessExpression(expression) || ts.isElementAccessExpression(expression)) {
+    const base = evalExpression(expression.expression);
+    if (ts.isElementAccessExpression(expression) && expression.argumentExpression) {
+      invokePrimitiveCoercion(
+        evalExpression(expression.argumentExpression),
+        expression,
+        "computed property access",
+      );
+    }
+    if (hasExternallyEffectfulPrototype(base)) {
+      failProtected(expression, "property read may invoke an unresolved inherited getter");
+    }
+    return readProperty(base, staticMemberKey(expression));
+  }
+  if (ts.isCallExpression(expression)) return evalCallExpression(expression);
+  if (ts.isNewExpression(expression)) return evalNewExpression(expression);
+  if (ts.isAwaitExpression(expression)) return evaluateAwaitExpression(expression);
+  if (ts.isYieldExpression(expression) || ts.isSpreadElement(expression)) {
+    return evalExpression(expression.expression);
+  }
+  if (ts.isConditionalExpression(expression)) {
+    evalExpression(expression.condition);
+    return combineAbstract(evalExpression(expression.whenTrue), evalExpression(expression.whenFalse));
+  }
+  if (ts.isBinaryExpression(expression)) {
+    if (assignmentOperator(expression.operatorToken.kind)) {
+      const operator = expression.operatorToken.kind;
+      const right = evalExpression(expression.right);
+      const left = operator === ts.SyntaxKind.EqualsToken
+        ? emptyAbstract()
+        : evalExpression(expression.left);
+      if (
+        operator !== ts.SyntaxKind.EqualsToken &&
+        operator !== ts.SyntaxKind.BarBarEqualsToken &&
+        operator !== ts.SyntaxKind.AmpersandAmpersandEqualsToken &&
+        operator !== ts.SyntaxKind.QuestionQuestionEqualsToken
+      ) {
+        invokePrimitiveCoercion(left, expression, "compound assignment");
+        invokePrimitiveCoercion(right, expression, "compound assignment");
+      }
+      const assigned = operator === ts.SyntaxKind.EqualsToken
+        ? right
+        : combineAbstract(left, right);
+      assignPattern(expression.left, assigned, expression);
+      return assigned;
+    }
+    const left = evalExpression(expression.left);
+    const right = evalExpression(expression.right);
+    const operator = expression.operatorToken.kind;
+    if (operator === ts.SyntaxKind.CommaToken) return right;
+    if (
+      operator === ts.SyntaxKind.BarBarToken ||
+      operator === ts.SyntaxKind.AmpersandAmpersandToken ||
+      operator === ts.SyntaxKind.QuestionQuestionToken
+    ) return combineAbstract(left, right);
+    if (
+      operator === ts.SyntaxKind.EqualsEqualsEqualsToken ||
+      operator === ts.SyntaxKind.ExclamationEqualsEqualsToken
+    ) return primitiveAbstract("boolean");
+    if (operator === ts.SyntaxKind.InstanceOfKeyword) {
+      if (hasExternallyEffectfulPrototype(right)) {
+        failProtected(expression, "instanceof cannot invoke a caller-controlled Symbol.hasInstance hook");
+      }
+      if (hasExternallyEffectfulPrototype(left)) {
+        failProtected(expression, "instanceof cannot walk a caller-controlled prototype chain");
+      }
+      rejectUnresolvedCustomSymbolProtocol(right, expression, "instanceof");
+      return primitiveAbstract("boolean");
+    }
+    if (operator === ts.SyntaxKind.InKeyword) {
+      invokePrimitiveCoercion(left, expression, "in property-key coercion");
+      if (hasExternallyEffectfulPrototype(right)) {
+        failProtected(expression, "in cannot invoke a caller-controlled property trap");
+      }
+      return primitiveAbstract("boolean");
+    }
+    if (
+      operator === ts.SyntaxKind.EqualsEqualsToken ||
+      operator === ts.SyntaxKind.ExclamationEqualsToken ||
+      operator === ts.SyntaxKind.LessThanToken ||
+      operator === ts.SyntaxKind.LessThanEqualsToken ||
+      operator === ts.SyntaxKind.GreaterThanToken ||
+      operator === ts.SyntaxKind.GreaterThanEqualsToken
+    ) {
+      invokePrimitiveCoercion(left, expression, "binary coercion");
+      invokePrimitiveCoercion(right, expression, "binary coercion");
+      return primitiveAbstract("boolean");
+    }
+    if (operator === ts.SyntaxKind.PlusToken) {
+      invokePrimitiveCoercion(left, expression, "addition coercion");
+      invokePrimitiveCoercion(right, expression, "addition coercion");
+      if (left.primitiveKinds.has("string") || right.primitiveKinds.has("string")) {
+        return primitiveAbstract("string");
+      }
+      return primitiveAbstract("string", "number", "bigint");
+    }
+    if (
+      operator === ts.SyntaxKind.MinusToken ||
+      operator === ts.SyntaxKind.AsteriskToken ||
+      operator === ts.SyntaxKind.AsteriskAsteriskToken ||
+      operator === ts.SyntaxKind.SlashToken ||
+      operator === ts.SyntaxKind.PercentToken ||
+      operator === ts.SyntaxKind.LessThanLessThanToken ||
+      operator === ts.SyntaxKind.GreaterThanGreaterThanToken ||
+      operator === ts.SyntaxKind.GreaterThanGreaterThanGreaterThanToken ||
+      operator === ts.SyntaxKind.AmpersandToken ||
+      operator === ts.SyntaxKind.BarToken ||
+      operator === ts.SyntaxKind.CaretToken
+    ) {
+      invokePrimitiveCoercion(left, expression, "numeric coercion");
+      invokePrimitiveCoercion(right, expression, "numeric coercion");
+      return primitiveAbstract("number", "bigint");
+    }
+    return emptyAbstract();
+  }
+  if (ts.isPrefixUnaryExpression(expression) || ts.isPostfixUnaryExpression(expression)) {
+    const operand = evalExpression(expression.operand);
+    if (
+      expression.operator === ts.SyntaxKind.PlusPlusToken ||
+      expression.operator === ts.SyntaxKind.MinusMinusToken
+    ) {
+      invokePrimitiveCoercion(operand, expression, "update coercion");
+      assignPattern(expression.operand, operand, expression);
+      return primitiveAbstract("number", "bigint");
+    }
+    if (ts.isPrefixUnaryExpression(expression)) {
+      if (expression.operator === ts.SyntaxKind.ExclamationToken) return primitiveAbstract("boolean");
+      if (
+        expression.operator === ts.SyntaxKind.PlusToken ||
+        expression.operator === ts.SyntaxKind.MinusToken ||
+        expression.operator === ts.SyntaxKind.TildeToken
+      ) {
+        invokePrimitiveCoercion(operand, expression, "unary coercion");
+        return primitiveAbstract("number", "bigint");
+      }
+    }
+    return operand;
+  }
+  if (ts.isDeleteExpression(expression)) {
+    const target = unwrapExpression(expression.expression);
+    if (ts.isPropertyAccessExpression(target) || ts.isElementAccessExpression(target)) {
+      const base = evalExpression(target.expression);
+      if (hasProtectedReference(base)) {
+        failProtected(expression, "delete through a protected runtime-object reference");
+      }
+    }
+    return primitiveAbstract("boolean");
+  }
+  if (
+    ts.isTemplateExpression(expression) ||
+    ts.isTaggedTemplateExpression(expression)
+  ) {
+    for (const child of expression.templateSpans || []) {
+      const value = evalExpression(child.expression);
+      invokePrimitiveCoercion(value, child.expression, "template coercion");
+    }
+    return primitiveAbstract("string");
+  }
+  if (ts.isTypeOfExpression(expression)) {
+    evalExpression(expression.expression);
+    return primitiveAbstract("string");
+  }
+  if (ts.isVoidExpression(expression)) {
+    evalExpression(expression.expression);
+    return primitiveAbstract("undefined");
+  }
+  if (ts.isPartiallyEmittedExpression(expression)) return evalExpression(expression.expression);
+  return emptyAbstract();
+}
+
+function functionReturnValue(descriptor, value, node) {
+  return hasModifier(descriptor.node, ts.SyntaxKind.AsyncKeyword)
+    ? assimilateThenable(value, node, "async function return")
+    : value;
+}
+
+function analyzeExecutableNode(node) {
+  if (ts.isVariableDeclaration(node) && node.initializer) {
+    assignPattern(node.name, evalExpression(node.initializer), node);
+  }
+  if (ts.isParameter(node) && node.initializer) {
+    assignPattern(node.name, evalExpression(node.initializer), node);
+  }
+  if (ts.isReturnStatement(node) && node.expression) {
+    const descriptor = nearestFunctionDescriptor(node);
+    if (descriptor) {
+      const returned = functionReturnValue(descriptor, evalExpression(node.expression), node);
+      mergeAbstract(descriptor.returnValue, returned);
+      if (
+        externallyExposedFunctionDescriptors.has(descriptor) &&
+        containsExportSensitiveReference(returned)
+      ) {
+        failProtected(
+          node,
+          "exported callable returns protected runtime provenance [refs=" +
+            [...returned.refs].join(",") +
+            "; objects=" + [...returned.objects].join(",") + "]",
+        );
+      }
+    }
+  }
+  if (ts.isThrowStatement(node) && node.expression) {
+    const descriptor = nearestFunctionDescriptor(node);
+    if (descriptor) {
+      const thrown = evalExpression(node.expression);
+      mergeAbstract(descriptor.throwValue, thrown);
+      if (
+        externallyExposedFunctionDescriptors.has(descriptor) &&
+        containsExportSensitiveReference(thrown)
+      ) {
+        failProtected(node, "exported callable throws protected runtime provenance");
+      }
+    }
+  }
+  if (ts.isCatchClause(node) && node.variableDeclaration) {
+    const thrown = refAbstract("external:implicit-throw");
+    const tryStatement = node.parent;
+    if (ts.isTryStatement(tryStatement)) collectPossibleThrows(tryStatement.tryBlock, thrown);
+    assignPattern(node.variableDeclaration.name, thrown, node.variableDeclaration);
+  }
+  if (ts.isArrowFunction(node) && !ts.isBlock(node.body)) {
+    const descriptor = descriptorForFunction(node);
+    mergeAbstract(
+      descriptor.returnValue,
+      functionReturnValue(descriptor, evalExpression(node.body), node),
+    );
+  }
+  if (ts.isForOfStatement(node)) {
+    const source = evalExpression(node.expression);
+    let value = iterableValues(
+      source,
+      node,
+      node.awaitModifier ? "for-await-of" : "for-of",
+    );
+    if (node.awaitModifier) {
+      value = assimilateThenable(value, node, "for-await element");
+    }
+    if (ts.isVariableDeclarationList(node.initializer)) {
+      for (const declaration of node.initializer.declarations) assignPattern(declaration.name, value, node);
+    } else {
+      assignPattern(node.initializer, value, node);
+    }
+  }
+  if (ts.isForInStatement(node)) {
+    const source = evalExpression(node.expression);
+    if (hasExternallyEffectfulPrototype(source)) {
+      failProtected(node, "for-in cannot enumerate a caller-controlled object");
+    }
+    const key = primitiveAbstract("string");
+    if (ts.isVariableDeclarationList(node.initializer)) {
+      for (const declaration of node.initializer.declarations) assignPattern(declaration.name, key, node);
+    } else {
+      assignPattern(node.initializer, key, node);
+    }
+  }
+  if (
+    ts.isExpressionStatement(node) ||
+    ts.isThrowStatement(node)
+  ) evalExpression(node.expression);
+  if (ts.isIfStatement(node) || ts.isWhileStatement(node) || ts.isDoStatement(node)) {
+    evalExpression(node.expression);
+  }
+  if (ts.isSwitchStatement(node)) evalExpression(node.expression);
+  if (ts.isCaseClause(node)) evalExpression(node.expression);
+  if (ts.isForStatement(node)) {
+    if (node.initializer && !ts.isVariableDeclarationList(node.initializer)) evalExpression(node.initializer);
+    if (node.condition) evalExpression(node.condition);
+    if (node.incrementor) evalExpression(node.incrementor);
+  }
+  if (ts.isCallExpression(node) || ts.isNewExpression(node)) {
+    evalExpression(node);
+    propagateCallThrownToFunction(node);
+  } else if (
+    ts.isBinaryExpression(node) ||
+    ts.isPrefixUnaryExpression(node) ||
+    ts.isPostfixUnaryExpression(node) ||
+    ts.isDeleteExpression(node)
+  ) evalExpression(node);
+}
+
+seedProtectedBindings();
+collectCallableBindings();
+for (const value of externallyExposedValues) exerciseExportedCallableGraph(value);
+validateExternalExports();
+function abstractSize(value) {
+  return abstractFields.reduce((size, field) => size + value[field].size, 0);
+}
+function persistentAnalysisSize() {
+  let size = 0;
+  for (const value of symbolValues.values()) size += abstractSize(value);
+  for (const state of objectStates.values()) {
+    size += state.props.size + abstractSize(state.wildcard) + abstractSize(state.elements) +
+      abstractSize(state.prototype) + (state.explicitPrototype ? 1 : 0);
+    for (const slot of state.props.values()) size += abstractSize(slot);
+  }
+  for (const descriptor of functionDescriptors.values()) {
+    size += abstractSize(descriptor.returnValue) + abstractSize(descriptor.throwValue) +
+      abstractSize(descriptor.thisValue);
+  }
+  for (const adapter of adapterStates.values()) {
+    size += abstractSize(adapter.callable) + abstractSize(adapter.thisValue);
+    for (const argument of adapter.arguments) size += abstractSize(argument);
+  }
+  return size;
+}
+let analysisConverged = false;
+let previousAnalysisSize = -1;
+for (let iteration = 0; iteration < 64; iteration++) {
+  analysisChanged = false;
+  walkAst(bindingAst, analyzeExecutableNode);
+  for (const value of externallyExposedValues) exerciseExportedCallableGraph(value);
+  validateExternalExports();
+  if (protectedAnalysisFailure || bindingResolvedDynamicEvaluation) break;
+  const currentAnalysisSize = persistentAnalysisSize();
+  if (currentAnalysisSize === previousAnalysisSize) {
+    analysisConverged = true;
+    break;
+  }
+  previousAnalysisSize = currentAnalysisSize;
+}
+if (bindingResolvedDynamicEvaluation) {
+  throw new Error(
+    "dynamic evaluation via binding-resolved capability is not allowed: " +
+      bindingResolvedDynamicEvaluation,
+  );
+}
+if (protectedAnalysisFailure) {
+  throw new Error(
+    "catalog source contains binding-aware protected mutation or escape: " +
+      protectedAnalysisFailure,
+  );
+}
+if (!analysisConverged) {
+  throw new Error("catalog binding-aware provenance analysis did not converge");
+}
+
 for (const statement of ast.statements) {
   if (
     !ts.isImportDeclaration(statement) &&
@@ -1995,6 +5495,29 @@ for (const statement of ast.statements) {
   }
 }
 
+const finalMetadata = fs.lstatSync(path, { bigint: true });
+const finalRealPath = fs.realpathSync(path);
+const finalBytes = fs.readFileSync(path);
+const stableMetadataFields = ["dev", "ino", "mode", "size", "mtimeNs", "ctimeNs"];
+if (
+  !finalMetadata.isFile() ||
+  finalMetadata.isSymbolicLink() ||
+  finalRealPath !== initialRealPath ||
+  stableMetadataFields.some((field) => finalMetadata[field] !== initialMetadata[field]) ||
+  !finalBytes.equals(originalBytes)
+) {
+  throw new Error("catalog source bytes or file identity changed during analysis");
+}
+const sourceBlob = childProcess.execFileSync(
+  "git",
+  ["hash-object", "--stdin"],
+  { cwd: projectRoot, input: originalBytes, encoding: "utf8" },
+).trim();
+if (!/^[0-9a-f]{40,64}$/.test(sourceBlob)) {
+  throw new Error("catalog source Git blob identity could not be computed");
+}
+
+console.log(["SOURCE_BLOB", sourceBlob].join("\t"));
 for (const entry of entries) {
   if ([entry.key, entry.lookup, entry.product, entry.interval].some((value) => /[\t\r\n]/.test(String(value)))) {
     throw new Error(`non-canonical control character in ${entry.key}`);
@@ -2197,6 +5720,18 @@ if [ ! -f "$STRIPE_SOURCE" ]; then
 elif ! have node; then
   record env "stripe catalog parser" "Node is unavailable — deterministic catalog parsing did not run"
 elif CATALOG_MODEL="$(parse_catalog_model "$STRIPE_SOURCE" 2>&1)"; then
+  PARSED_SOURCE_BLOB="$(awk -F '\t' '$1 == "SOURCE_BLOB" { print $2; exit }' <<<"$CATALOG_MODEL")"
+  COMMITTED_SOURCE_META="$(git -C "$ROOT" ls-tree "$ACTUAL_COMMIT" -- lib/stripe.ts 2>/dev/null)"
+  COMMITTED_SOURCE_MODE="$(awk '{ print $1 }' <<<"$COMMITTED_SOURCE_META")"
+  COMMITTED_SOURCE_BLOB="$(awk '{ print $3 }' <<<"$COMMITTED_SOURCE_META")"
+  if { [ "$COMMITTED_SOURCE_MODE" = "100644" ] || [ "$COMMITTED_SOURCE_MODE" = "100755" ]; } \
+    && [ -n "$PARSED_SOURCE_BLOB" ] \
+    && [ "$PARSED_SOURCE_BLOB" = "$COMMITTED_SOURCE_BLOB" ]; then
+    record pass "stripe catalog source bound to reviewed Git blob" "$COMMITTED_SOURCE_MODE $COMMITTED_SOURCE_BLOB"
+  else
+    record fail "stripe catalog source bound to reviewed Git blob" \
+      "parsed=${PARSED_SOURCE_BLOB:-missing}; reviewed mode=${COMMITTED_SOURCE_MODE:-missing}; reviewed blob=${COMMITTED_SOURCE_BLOB:-missing}"
+  fi
   ENTRY_COUNT="$(awk -F '\t' '$1 == "ENTRY" { n++ } END { print n + 0 }' <<<"$CATALOG_MODEL")"
   ENTRY_KEY_COUNT="$(awk -F '\t' '$1 == "ENTRY" { print $2 }' <<<"$CATALOG_MODEL" | LC_ALL=C sort -u | wc -l | tr -d ' ')"
   LOOKUP_COUNT="$(awk -F '\t' '$1 == "ENTRY" { print $3 }' <<<"$CATALOG_MODEL" | LC_ALL=C sort -u | wc -l | tr -d ' ')"

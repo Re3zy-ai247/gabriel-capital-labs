@@ -138,7 +138,7 @@ export default function ThreadPage() {
     return (
       <AppShell title="/ Operator Network">
         <div className="card mx-auto mt-6 max-w-md p-8 text-center text-sm text-slate-400">
-          I couldn&apos;t find this brief — it may have been removed, or it isn&apos;t available on your plan. Everything
+          I couldn&apos;t find this brief — it may have been removed, or the Operator Network may be unavailable right now. Everything
           current is on the Operator Network index.
           <div className="mt-4"><Link href="/community" className="btn-ghost text-sm"><ArrowLeft className="h-4 w-4" aria-hidden="true" /> Back to the Operator Network</Link></div>
         </div>
