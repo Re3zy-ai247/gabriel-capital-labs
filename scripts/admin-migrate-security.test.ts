@@ -188,8 +188,8 @@ const importedDdlInventory = apiRouteFiles.flatMap((route) =>
 // the set of HTTP requests that may trigger runtime schema work.
 const importedDdlDigest = createHash("sha256").update(importedDdlInventory.join("\n")).digest("hex");
 const EXPECTED_ROUTE_DDL_INVENTORY = {
-  count: 287,
-  sha256: "d8f17d1ccc4351c069e7a0981f90cfd0b6e56d6a11afb272e4680005307f5893",
+  count: 288,
+  sha256: "b34cb60d4cb1ad4594fb2fe1c6f17556720175ebb91779faa680af8119989f97",
 } as const;
 const routeDdlInventoryMatches =
   importedDdlInventory.length === EXPECTED_ROUTE_DDL_INVENTORY.count &&

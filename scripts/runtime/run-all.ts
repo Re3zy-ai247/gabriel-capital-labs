@@ -17,6 +17,7 @@ const guards = readdirSync(here)
 // explicit registration — every guard named here must still be on disk, so
 // removing or renaming one fails the CI step instead of quietly shrinking cover.
 const REQUIRED = [
+  "alert-delivery.runtime.test.ts",
   "ai-spend-control.runtime.test.ts",
   "encryption-readiness.runtime.test.ts",
   "invoice-shape.runtime.test.ts",
