@@ -20,9 +20,10 @@
 //   409 { error, portal }              -> surface an actual route to the billing portal
 //   400/500 { error }                  -> plain error
 //
-// app/letters/page.tsx is deliberately NOT in this list: it posts
-// { product: "letters_5" }, which takes the one-time `mode: "payment"` path and
-// still returns { url }.
+// RC1-S6b: app/letters/page.tsx used to be excluded from this list because it
+// posted { product: "letters_5" } down the one-time `mode: "payment"` path. It
+// posts nothing now — that control was removed with the rest of the consumer
+// purchase surface — so the exclusion note no longer describes anything.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -34,12 +35,18 @@ function check(label: string, cond: boolean) {
 
 const root = join(__dirname, "..");
 
-// Every client that can POST a subscription plan to checkout.
-const CLIENTS = [
-  "app/billing/page.tsx",
-  "app/agency/page.tsx",
-  "app/pricing/PricingTiers.tsx",
-];
+// RC1-S6b: consumer checkout is CLOSED. /api/stripe/checkout's PURCHASABLE_PLANS
+// is empty and every consumer purchase is refused with a 410 before Stripe is
+// touched. app/billing/page.tsx and app/pricing/PricingTiers.tsx no longer post
+// to it, so the upgrade-response contract has exactly one remaining client.
+// Shrinking this list is NOT enough on its own: what these rows gave consumers
+// was "a checkout flow must not lie to you", and the honest successor is "no
+// consumer surface starts a checkout at all" — asserted below, not assumed.
+const CLIENTS = ["app/agency/page.tsx"];
+
+// The PORTAL is a different contract and is deliberately still reachable:
+// historical payers keep receipts, card updates and self-cancellation.
+const PORTAL_CLIENTS = ["app/billing/page.tsx", "app/agency/page.tsx"];
 
 for (const rel of CLIENTS) {
   const src = readFileSync(join(root, rel), "utf8");
@@ -79,10 +86,31 @@ check("portal opener is client-safe (no prisma / next/headers import)",
   !/^\s*import[^\n]*from\s+["'](@\/lib\/prisma|next\/headers)["']/m.test(portalClient));
 check("portal opener targets the prorating portal route",
   /\/api\/stripe\/portal/.test(portalClient));
-for (const rel of CLIENTS) {
+for (const rel of PORTAL_CLIENTS) {
   const src = readFileSync(join(root, rel), "utf8");
   check(`${rel} reuses the shared portal opener`,
     /openBillingPortal/.test(src) && !/fetch\(\s*["']\/api\/stripe\/portal["']/.test(src));
+}
+
+// The new truth, executable. Comments are stripped first: these files narrate
+// the checkout call they removed (PricingTiers.tsx:9, billing/page.tsx:95-99,
+// letters/page.tsx:418, page.tsx:62), and a raw scan would fail on the
+// documentation instead of on the product — the trap commit 1fbe901 exposed.
+const stripComments = (s: string) =>
+  s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\{\/\*[\s\S]*?\*\/\}/g, "")
+   .split("\n").filter((l) => !l.trim().startsWith("//")).join("\n");
+const CONSUMER_SURFACES = [
+  "app/page.tsx", "app/pricing/page.tsx", "app/pricing/PricingTiers.tsx",
+  "app/billing/page.tsx", "app/letters/page.tsx", "app/identity/page.tsx",
+  "app/strategist/AiPlan.tsx", "app/onboarding/page.tsx", "app/help/page.tsx",
+  "app/community/page.tsx",
+];
+console.log("\nconsumer surfaces — no checkout initiation remains");
+for (const rel of CONSUMER_SURFACES) {
+  const src = stripComments(readFileSync(join(root, rel), "utf8"));
+  check(`${rel} posts to no checkout endpoint`, !/\/api\/stripe\/checkout/.test(src));
+  check(`${rel} names no purchasable product or plan`,
+    !/letters_5|["']plan["']\s*:\s*["'](premium|agency|agency_pro|scale)["']/.test(src));
 }
 
 console.log(`\ncheckout-client-contract.test.ts: ${pass} passed, ${fail} failed`);

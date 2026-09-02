@@ -33,14 +33,39 @@ function fromOpportunity(o: Opportunity, intel: CreditIntelligence): Mission {
 }
 
 export function assembleMissions(intel: CreditIntelligence, mc: MissionControlData): FinancialMission {
-  // No report → the one and only mission.
+  // Nothing readable on file → the one and only mission.
+  //
+  // S11 MEDIUM-1: `intel.hasReport` (lib/intelligence/snapshot.ts) is a
+  // misnomer — it is `tradelines.length > 0`, i.e. "did the read produce
+  // accounts", not "is a report on file". This branch stated the misnomer to
+  // the consumer as fact: a report that parsed to zero tradelines produced
+  // "No report on file." on Mission Control while Upload said "Your report is
+  // saved" and Kai said "Your report is on file, but I could not read any
+  // accounts from it" — three surfaces, two answers, one of them false about
+  // the consumer's own file, and it pointed them at a re-upload instead of
+  // telling them the read failed. That matters more than usual on this build:
+  // the fallback parser is precision-over-recall, so zero-tradeline parses are
+  // materially more likely whenever the AI reader is unavailable.
+  //
+  // The correct fact is already in the argument list — Mission Control derives
+  // it from REPORT rows (A1-04) and hands over `reportWithoutTradelines`. This
+  // branch just has to ask.
   if (!intel.hasReport) {
+    const unread = mc.reportWithoutTradelines;
     const upload: Mission = {
-      id: "m_upload", type: "upload_reports", title: "Upload your credit reports", reason: "Everything starts from your report — Kai reads it and lines up your options.",
+      id: "m_upload", type: "upload_reports",
+      title: unread ? "Add a report Kai can read" : "Upload your credit reports",
+      reason: unread
+        ? "Your report is saved — I just could not read any accounts out of it. Try that file again, or add another bureau's report."
+        : "Everything starts from your report — Kai reads it and lines up your options.",
       state: "available", priority: 100, band: "critical", href: "/upload", deadline: null, dependency: null,
-      effort: "low", impact: "high", unlocks: "your whole mission queue", evidence: "No report on file.", confidence: "insufficient", progress: null,
+      effort: "low", impact: "high", unlocks: "your whole mission queue",
+      // True under either reading: if no report exists, no accounts were read
+      // from one either.
+      evidence: unread ? "A report is on file; no accounts were read from it." : "No report on file.",
+      confidence: "insufficient", progress: null,
     };
-    return { today: upload, queue: [upload], waiting: [], automatic: [], timeline: [{ when: "Today", title: upload.title, state: "available" }], completed: [], rewards: [], progress: { completedCount: 0, openCount: 1, overallPct: 0, caseHealthNote: "Not started", estimatedCompletion: "Upload a report to begin" } };
+    return { today: upload, queue: [upload], waiting: [], automatic: [], timeline: [{ when: "Today", title: upload.title, state: "available" }], completed: [], rewards: [], progress: { completedCount: 0, openCount: 1, overallPct: 0, caseHealthNote: unread ? "No accounts read yet" : "Not started", estimatedCompletion: unread ? "Unknown until a report can be read" : "Upload a report to begin" } };
   }
 
   // Action + opportunity missions (the "deadline" opportunity is represented as a

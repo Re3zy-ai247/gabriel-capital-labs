@@ -3,9 +3,9 @@
 // DB-LESS proofs of the publisher's deterministic parts: fanout dedupe (a subscriber
 // fires at most once per event), pattern matching, and every fail-closed publish
 // REJECT path (flag off / unknown contract / invalid payload / missing dedupeKey /
-// unauthorized) returns BEFORE any persistence. The DB-backed idempotency + full-payload
-// replay + cross-tenant isolation are proven end-to-end against the preview Postgres by
-// scripts/eventbus-preview-integration.mjs (run with the preview DATABASE_URL).
+// unauthorized) returns BEFORE any persistence. Persistence-backed integration evidence
+// requires a separately authorized, freshly isolated disposable harness; no repository
+// script accepts an ambient DATABASE_URL and then deletes rows.
 import { subscribe, deliver, clearSubscriptions, subscriberIds } from "../lib/eventBus/registry";
 import { publish } from "../lib/eventBus/publish";
 import { deriveEventId, systemIdentity, type PlatformEvent } from "../lib/eventBus/envelope";

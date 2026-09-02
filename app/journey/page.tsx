@@ -2,7 +2,7 @@ import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { Disclaimer, EduBanner } from "@/components/Disclaimer";
 import { prisma } from "@/lib/prisma";
-import { currentUserOrDemo } from "@/lib/session";
+import { requireUser } from "@/lib/requireSession";
 import { listKaiEvents } from "@/lib/kaiEvents";
 import { getKaiHomeData } from "@/lib/kaiHome";
 import { WATCHING_CLOCK_LINE } from "@/lib/mailCenter";
@@ -70,8 +70,8 @@ const ICONS = {
 } as const;
 
 export default async function JourneyPage() {
-  const user = await currentUserOrDemo();
-  if (!user) return <AppShell title="/ Timeline"><p className="text-slate-400">Please sign in.</p></AppShell>;
+  // P0-5: was a linkless "Please sign in." inside the full app chrome.
+  const user = await requireUser("/journey");
 
   const [reports, tradelines, letters, events, kai] = await Promise.all([
     prisma.report.findMany({ where: { userId: user.id }, orderBy: { uploadedAt: "desc" } }),

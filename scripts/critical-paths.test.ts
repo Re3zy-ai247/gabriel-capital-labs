@@ -50,10 +50,10 @@ const read = (p: string) => readFileSync(p, "utf8");
   const seed = read("app/api/demo/seed/route.ts");
   const handler = seed.match(/async function handle\(req: Request\)[\s\S]*?\n\}/)?.[0] ?? "";
 
-  check("B-07a· the route has a production guard", /process\.env\.NODE_ENV === "production"/.test(seed));
-  check("B-07b· the guard returns 404 in production",
-    /process\.env\.NODE_ENV === "production"\)\s*\{[\s\S]{0,160}?status: 404/.test(seed));
-  check("B-07c· the guard is the FIRST thing the handler does (before the fail-open rate limiter)",
+  check("B-07a· the route is positively limited to development", /process\.env\.NODE_ENV !== "development"/.test(seed));
+  check("B-07b· the guard returns 404 outside development",
+    /process\.env\.NODE_ENV !== "development"\)\s*\{[\s\S]{0,160}?status: 404/.test(seed));
+  check("B-07c· the guard is the FIRST thing the handler does (before the rate limiter)",
     handler.length > 0
     && handler.indexOf("NODE_ENV") > -1
     && handler.indexOf("NODE_ENV") < handler.indexOf("enforceRateLimit"));
@@ -80,8 +80,24 @@ const read = (p: string) => readFileSync(p, "utf8");
   check("B-08c· letters are re-linked AFTER the delete/recreate", relink > -1 && relink > del);
   check("B-08d· the re-link writes a new tradelineId onto those letters",
     /letter\.updateMany\(\{ where: \{ id: \{ in: letterIds \} \}, data: \{ tradelineId: newId \} \}\)/.test(analyze));
+  // NEW-4 (S11): `newIdByKey` / `keyByPriorId` were replaced by the shared
+  // matchRebuiltTradelines() derivation, which still matches on the same stable
+  // natural key but falls back to the mask-free identity when a PARSER change
+  // altered the key's shape for rows already in the database. Same intent, so
+  // the pin follows the implementation rather than two removed variable names.
   check("B-08e· old→new identity is matched on a stable natural key, not the cuid",
-    /function tradelineKey\(/.test(analyze) && /newIdByKey/.test(analyze) && /keyByPriorId/.test(analyze));
+    /function tradelineKey\(/.test(analyze)
+    && /export function matchRebuiltTradelines\(/.test(analyze)
+    && /matchedByPriorId = matchRebuiltTradelines\(prior, rebuilt\)/.test(analyze));
+  check("B-08e2· the re-link survives a parser-driven change in the key's shape",
+    /function tradelineIdentity\(/.test(analyze)
+    && /stillUnmatched\.length !== 1 \|\| available\.length !== 1\) continue;/.test(analyze));
+  // B-R4-1 (S11): being the last pair left over is not evidence of identity —
+  // two DIFFERENT accounts at one creditor leave exactly one on each side too.
+  check("B-08e3· the mask-free fallback is corroborated before it links, not merely forced",
+    /function corroboratesSameAccount\(/.test(analyze)
+    && /!corroboratesSameAccount\(p, candidate\)\) continue;/.test(analyze)
+    && /if \(masks === "conflicts"\) return false;/.test(analyze));
   check("B-08f· the natural key excludes balance (it legitimately changes between pulls)",
     !/balance/i.test(analyze.match(/function tradelineKey\([\s\S]*?\n\}/)?.[0] ?? "balance"));
 

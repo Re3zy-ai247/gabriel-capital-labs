@@ -19,9 +19,21 @@ function configure(): boolean {
 }
 
 // Self-heal: the table creates itself at runtime (mirrors ensureRateLimitTable etc.).
-let tableReady = false;
+// Single-flight (S11 · MEDIUM-5): `CREATE ... IF NOT EXISTS` is not concurrency
+// safe in Postgres, and a flag set only AFTER the await lets a burst of first
+// requests all issue the DDL. Memoise the PROMISE; clear it on failure so the
+// next caller retries instead of inheriting a poisoned "ready".
+let tableReady: Promise<void> | null = null;
 export async function ensurePushTable(): Promise<void> {
-  if (tableReady) return;
+  if (!tableReady) {
+    tableReady = createPushTable().catch((e) => {
+      tableReady = null;
+      throw e;
+    });
+  }
+  return tableReady;
+}
+async function createPushTable(): Promise<void> {
   await prisma.$executeRawUnsafe(
     `CREATE TABLE IF NOT EXISTS "PushSubscription" (
        "id" TEXT NOT NULL PRIMARY KEY,
@@ -38,7 +50,6 @@ export async function ensurePushTable(): Promise<void> {
   await prisma.$executeRawUnsafe(
     `CREATE INDEX IF NOT EXISTS "PushSubscription_userId_idx" ON "PushSubscription"("userId")`
   );
-  tableReady = true;
 }
 
 export interface WebPushSub {
@@ -93,6 +104,12 @@ export interface PushPayload {
 export async function sendPushToUser(userId: string, payload: PushPayload): Promise<void> {
   if (!configure()) return;
   try {
+    // A stateless JWT or old subscription must not outlive an account disable.
+    const recipient = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { disabled: true },
+    });
+    if (!recipient || recipient.disabled) return;
     await ensurePushTable();
     const subs = await prisma.pushSubscription.findMany({ where: { userId } });
     await Promise.all(
@@ -121,7 +138,10 @@ export async function sendPushToUser(userId: string, payload: PushPayload): Prom
 export async function sendPushToAdmins(payload: PushPayload): Promise<void> {
   if (!configure()) return;
   try {
-    const admins = await prisma.user.findMany({ where: { role: "ADMIN" }, select: { id: true } });
+    const admins = await prisma.user.findMany({
+      where: { role: "ADMIN", disabled: false },
+      select: { id: true },
+    });
     await Promise.all(admins.map((a) => sendPushToUser(a.id, payload)));
   } catch (e) {
     console.error("sendPushToAdmins failed (non-fatal)", e);

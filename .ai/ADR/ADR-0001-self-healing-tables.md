@@ -21,7 +21,6 @@ The application reads through a Prisma Accelerate proxy, and this ADR was writte
 New tables/columns are created **at runtime** via idempotent raw SQL (`CREATE TABLE IF NOT EXISTS`, `ALTER TABLE … ADD COLUMN IF NOT EXISTS`) inside per-domain gate functions called before first use. The Prisma model is still added to `schema.prisma` + `npx prisma generate` for the typed client and build.
 
 ## Alternatives considered
-- Legacy migrate route `app/api/admin/migrate/route.ts` (still works; needs ADMIN session; manual) — kept as fallback.
 - Direct-connection migrations — rejected: no direct URL in the pipeline; breaks mobile-only workflows.
 
 ## Consequences

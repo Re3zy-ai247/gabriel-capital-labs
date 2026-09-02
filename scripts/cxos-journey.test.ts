@@ -135,8 +135,25 @@ check("the Director tier cycle cannot override a reduced-motion visitor",
   /baseTier\.current === "D" \? "D" :/.test(runtime));
 check("the shell does nothing at tier D (instant native navigation)",
   /if \(tier === "D"\) return;/.test(shell));
-check("the user-facing toggle exists and is honest state (aria-pressed)",
-  /aria-pressed/.test(toggle) && /CINEMATIC_PREF_KEY/.test(toggle));
+// S11 E-3 — RE-PINNED, DELIBERATELY. The property is "the user-facing control
+// exists and renders honest state". `aria-pressed` was the right way to express
+// that while the control was a two-state button, but the stored preference has
+// THREE meanings — "on", "off", and absent (the RC1 task-first default, the
+// only state in which the non-blocking tier ladder runs without an entrance).
+// A pressed/unpressed control cannot represent three states, and it showed
+// "absent" as "off", so pressing on→off moved a visitor from tier A/B
+// choreography all the way to tier D while claiming it had already been off —
+// and "absent" became unreachable once touched. `aria-pressed` was therefore
+// the DEFECT, not the guarantee. The control is a labelled three-option select
+// now, and the honest-state property is asserted more strictly than before:
+// the rendered value is READ from the stored preference (it cannot be
+// hardcoded), it is labelled, and all three stored states are offered.
+check("the user-facing control exists and renders honest state (all three stored states, read from the policy)",
+  /<select/.test(toggle) &&
+  /<label htmlFor=/.test(toggle) &&
+  /value=\{pref\}/.test(toggle) &&
+  /cinematicPreference\(\)/.test(toggle) &&
+  ['"default"', '"on"', '"off"'].every((v) => toggle.includes(`value: ${v}`)));
 check("every new cx- utility is reduced-motion covered (enumeration lives in cxos-grammar.test.ts)",
   ["cx-frag", "cx-align-a", "cx-chip", "cx-spine", "cx-nav-veil"].every((c) =>
     css.includes(c)));

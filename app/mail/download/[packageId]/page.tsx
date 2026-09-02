@@ -24,7 +24,7 @@ export const dynamic = "force-dynamic";
 // single-letter print/decrypt/enclosure machinery, zero risk of silently
 // upgrading past browser print-to-PDF, and it is what the DownloadApproval
 // checklist below opens once per letter.
-export default async function DownloadPackagePage({ params }: { params: { packageId: string } }) {
+export default async function DownloadPackagePage({ params }: { params: Promise<{ packageId: string }> }) {
   const user = await currentUserOrDemo();
   if (!user) return <AppShell title="/ Download package"><p className="text-slate-400">Please sign in.</p></AppShell>;
 
@@ -49,7 +49,7 @@ export default async function DownloadPackagePage({ params }: { params: { packag
     strategy: l.strategy,
   }));
 
-  const packageId = decodeURIComponent(params.packageId);
+  const packageId = decodeURIComponent((await params).packageId);
   // Phase 1A F1: `packages` now includes a package whose members are ALL
   // still un-mailed (lib/mailCenter.ts's groupIntoPackages renders it with
   // health READY_TO_PREPARE instead of dropping it) — so this lookup already

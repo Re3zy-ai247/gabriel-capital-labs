@@ -73,8 +73,39 @@ export async function analyzeResponse(
   }
 }
 
-// User prompt for drafting the Round 2 escalation, threading in the prior
-// response + analysis so the letter directly answers what the bureau did.
+// RC1-S4 (L-03) — REGULATORY-COMPLAINT INTENT IS THE CONSUMER'S TO DECLARE.
+//
+// This prompt used to instruct the model, unconditionally, to state "the
+// consumer's intent to file complaints with the CFPB and state Attorney
+// General". No consumer had ever said that. It was reached by a single click
+// ("Draft Round {n} targeting these weaknesses →"), persisted immediately, and —
+// with the letter body read-only — could not be removed before the consumer
+// signed and mailed it.
+//
+// It is now an explicit opt-in that only the consumer can set. The flag rides on
+// `LetterContext.complaintIntent`, which `buildContext` defaults to FALSE, so
+// every existing call site is safe by construction: a caller that passes nothing
+// gets a letter that asserts no intent.
+//
+// HANDOFF (precise — for whoever wires the UI, S5's letters page + the round-2
+// route, neither of which this slice owns):
+//   1. `app/letters/page.tsx` adds an unchecked-by-default checkbox on the
+//      Round-2 panel, worded as the consumer's own declaration (e.g. "I intend
+//      to file a complaint with the CFPB and my state Attorney General if this
+//      is not corrected"), and POSTs `{ complaintIntent: boolean }` to
+//      `/api/letters/[id]/round2`.
+//   2. `app/api/letters/[id]/round2/route.ts` reads it as
+//      `const complaintIntent = body?.complaintIntent === true;` (strict ===,
+//      never truthy-coercion) and passes it through as the 7th argument of
+//      buildContext: `buildContext("escalation", tradeline, consumer, bureau,
+//      round, undefined, { complaintIntent, assertions })`.
+//   3. That same options object is how the round-2 route restores the consumer's
+//      SUMMARY OF FACTUAL CONCERNS: pass the tradeline's ACTIVE ConsumerAssertion
+//      rows as `assertions`. Until it does, a Round-2 letter renders WITHOUT that
+//      section — honest (it asserts nothing the consumer did not confirm) but
+//      less specific than it should be.
+// Nothing else needs to change: this function and renderTemplateLetter both read
+// the flag off the context.
 export function buildRound2UserPrompt(
   t: LetterTradeline,
   ctx: LetterContext,
@@ -87,8 +118,13 @@ export function buildRound2UserPrompt(
     "  • References that a prior dispute was submitted and a response was received;",
     "  • Demands the METHOD OF VERIFICATION under FCRA §611(a)(7) (15 U.S.C. §1681i(a)(7)) — the name, address, and telephone number of any furnisher contacted, and a description of the procedure used to verify;",
     "  • Challenges the adequacy of the reinvestigation in plain language where the response was non-substantive (a reasonable reinvestigation may require more than re-confirming with the same furnisher — Cushman; may require account-level documentation — Hinkle);",
-    "  • States the consumer's intent to file complaints with the CFPB and state Attorney General if the item is not corrected or deleted.",
-    "Preserve every factual claim and statute quote exactly. Add NO new facts about the account. Keep the STATUTORY AUTHORITY quotes verbatim. No guarantees of outcome.",
+    ctx.complaintIntent
+      ? "  • States the consumer's intent to file complaints with the CFPB and state Attorney General if the item is not corrected or deleted — the consumer has expressly opted in to this statement."
+      : "  • Does NOT state, imply, or hint at any intention to file a complaint with the CFPB, a state Attorney General, or any other regulator. The consumer has NOT said they intend to do that, and you may not say it for them. Reserving a right the FCRA already gives the consumer is acceptable; declaring a plan of action is not.",
+    ctx.assertions.length
+      ? "Preserve every factual claim exactly: each one was confirmed by the consumer personally. Add NO new facts about the account and introduce NO new first-person statement about the consumer's records, recollection or intentions."
+      : "The consumer has confirmed NO factual claims about this account. Assert none: escalate on the inadequacy of the response itself, and introduce no first-person statement about the consumer's records, recollection or intentions.",
+    "Preserve every statute quote exactly. Keep the STATUTORY AUTHORITY quotes verbatim. No guarantees of outcome.",
     "",
     `Account: ${t.creditorName}${t.originalCreditor ? ` (original creditor: ${t.originalCreditor})` : ""}, balance ${formatCents(t.balance)}`,
     `Target recipient: ${ctx.recipientName}`,

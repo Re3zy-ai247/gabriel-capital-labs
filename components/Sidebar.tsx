@@ -1,17 +1,19 @@
 "use client";
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { cn } from "@/lib/utils";
 import { BRAND } from "@/lib/brand";
+import { loginPathFor } from "@/lib/callbackUrl";
 import { useAdminContext } from "./admin/useAdminContext";
 import { useCommunityAccess } from "./community/useCommunityAccess";
 import { useOnboardingStatus, clearOnboardingStatusCache } from "./onboarding/useOnboardingStatus";
 import { BrandLogo } from "./BrandLogo";
 import { clearKaiPresenceCache } from "./kai/KaiPresence";
+import { useSignedOut } from "./useSignedOut";
 import {
-  LayoutDashboard, Upload, ListTree, Mails, Target, CalendarRange, Settings, CreditCard, ScanSearch, LineChart, Building2, LogOut, Menu, X, ShieldCheck, MessagesSquare, LifeBuoy, Newspaper, Send, Layers, Sprout, GraduationCap, ListChecks,
+  LayoutDashboard, Upload, ListTree, Mails, Target, CalendarRange, Settings, CreditCard, ScanSearch, LineChart, Building2, LogOut, LogIn, Menu, X, ShieldCheck, MessagesSquare, LifeBuoy, HelpCircle, Newspaper, Send, Layers, Sprout, GraduationCap, ListChecks,
 } from "lucide-react";
 
 const NAV = [
@@ -30,15 +32,76 @@ const NAV = [
   { href: "/brief", label: "Brief", icon: Newspaper },
 ];
 
+// A1-09: /help was a public orphan — served, indexed, and linked from nowhere a
+// human navigates. The only two references in the whole codebase were inside the
+// Credit Builder engine. It belongs beside Support in the account section.
 const ACCOUNT_NAV = [
-  { href: "/agency", label: "Agency", icon: Building2 },
   { href: "/settings", label: "Settings", icon: Settings },
   { href: "/billing", label: "Billing", icon: CreditCard },
+  { href: "/help", label: "Help", icon: HelpCircle },
   { href: "/support", label: "Support", icon: LifeBuoy },
 ];
 
 // Admin link is prepended to the account section only for ADMIN users.
 const ADMIN_LINK = { href: "/admin", label: "Admin", icon: ShieldCheck };
+
+// RC1-S6b (A1-16). "Agency" sat in ACCOUNT_NAV for EVERY account with no gate —
+// the one unconditional entry in a nav whose Admin and Operator Network links
+// are both gated — and it led a consumer to a B2B page that pitched a $399/mo
+// plan. The destination is a legitimate business surface, so the link is not
+// deleted: it is gated to accounts that actually have an agency workspace, and
+// relabelled so it names a place rather than a plan to buy into.
+const AGENCY_LINK = { href: "/agency", label: "Agency Workspace", icon: Building2 };
+
+// Whether THIS account runs an agency workspace. There is no isAgency claim on
+// the session (types/next-auth.d.ts carries only uid + sessionVersion), so the
+// server has to be asked. Module-level cache + TTL, the same shape the admin and
+// community probes already use, so the shell makes one call per page load at
+// most and all three probes behave identically.
+const AGENCY_TTL_MS = 60_000;
+let agencyCached: boolean | null = null;
+let agencyFetchedAt = 0;
+let agencyInflight: Promise<boolean | null> | null = null;
+
+function loadAgency(): Promise<boolean | null> {
+  if (agencyCached !== null && Date.now() - agencyFetchedAt < AGENCY_TTL_MS) return Promise.resolve(agencyCached);
+  if (!agencyInflight) {
+    agencyInflight = fetch("/api/billing/status")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { isAgency?: boolean } | null) => {
+        if (!d) return null;
+        agencyCached = Boolean(d.isAgency);
+        agencyFetchedAt = Date.now();
+        return agencyCached;
+      })
+      .catch(() => null)
+      .finally(() => {
+        agencyInflight = null;
+      });
+  }
+  return agencyInflight;
+}
+
+// Fails CLOSED: null (unknown, unauthenticated, or the probe failed) hides the
+// link. A consumer must never be shown a business surface because a fetch went
+// wrong; an operator seeing it a beat late is the recoverable direction.
+function useIsAgencyAccount(): boolean {
+  const [isAgency, setIsAgency] = useState<boolean>(agencyCached ?? false);
+  useEffect(() => {
+    let cancelled = false;
+    loadAgency().then((d) => {
+      if (!cancelled && d !== null) setIsAgency(d);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  return isAgency;
+}
+
+function accountNavFor(isAdmin: boolean | undefined, isAgency: boolean) {
+  return [...(isAdmin ? [ADMIN_LINK] : []), ...(isAgency ? [AGENCY_LINK] : []), ...ACCOUNT_NAV];
+}
 
 // Operator Network link appears in the main nav for every paid member (+ owner);
 // visibility follows the server's /api/community/access probe (canAccessCommunity).
@@ -73,13 +136,33 @@ function BrandMark() {
   );
 }
 
+// P0-5 (correction G) / A1-08: both of these controls used to be a button
+// labelled "Log out" that called signOut({ callbackUrl: "/login" }). For a
+// signed-in consumer that is correct. For a consumer whose session had expired —
+// the exact person who needed it — it was the ONLY route back into the product,
+// wearing the label of the one thing they did not want to do. The control now
+// says what it does.
+//
+// The decision itself lives in components/useSignedOut.ts, shared with the app
+// header (HeaderLogout, NewDisputeCta) so the shell cannot say "Sign in" in the
+// sidebar and "Log out" three inches away in the header.
+//
+// Only the DECISION is shared. The two controls themselves stay written out at
+// both call sites below: scripts/kai-experience.test.ts:50-52 counts the
+// sign-out handlers in this file and asserts each one clears the Kai presence
+// cache first, because a different account may sign in on the same tab.
+// Collapsing them into one shared control would make that guard see one handler
+// where two exist — and a guard that can no longer see both sites is not a guard.
+
 export function Sidebar() {
   const path = usePathname();
+  const signedOut = useSignedOut();
   const ctx = useAdminContext();
   const community = useCommunityAccess();
   const onboarding = useOnboardingStatus();
+  const isAgencyAccount = useIsAgencyAccount();
   const mainNav = withOnboarding(community?.canAccess ? [...NAV, COMMUNITY_LINK] : NAV, onboarding?.incomplete);
-  const accountNav = ctx?.isAdmin ? [ADMIN_LINK, ...ACCOUNT_NAV] : ACCOUNT_NAV;
+  const accountNav = accountNavFor(ctx?.isAdmin, isAgencyAccount);
   return (
     <aside className="hidden w-60 shrink-0 flex-col border-r border-ink-700/70 bg-ink-900/60 p-4 md:flex">
       <div className="mb-6 px-2">
@@ -113,13 +196,20 @@ export function Sidebar() {
           })}
         </nav>
       </div>
-      <button
-        onClick={() => { clearKaiPresenceCache(); clearOnboardingStatusCache(); signOut({ callbackUrl: "/login" }); }}
-        className="nav-item mt-4 w-full text-left text-slate-400 hover:text-rose-300"
-      >
-        <LogOut className="h-4 w-4" aria-hidden />
-        Log out
-      </button>
+      {signedOut ? (
+        <Link href={loginPathFor(path ?? "/dashboard")} className="nav-item mt-4 w-full text-left text-slate-400 hover:text-brand-300">
+          <LogIn className="h-4 w-4" aria-hidden />
+          Sign in
+        </Link>
+      ) : (
+        <button
+          onClick={() => { clearKaiPresenceCache(); clearOnboardingStatusCache(); signOut({ callbackUrl: "/login" }); }}
+          className="nav-item mt-4 w-full text-left text-slate-400 hover:text-rose-300"
+        >
+          <LogOut className="h-4 w-4" aria-hidden />
+          Log out
+        </button>
+      )}
       <div className="mt-auto px-2 pt-6 text-[10px] text-slate-500">
         v1.0 · Educational tool · Not legal advice
       </div>
@@ -127,33 +217,108 @@ export function Sidebar() {
   );
 }
 
+// Everything inside the drawer that can hold focus. Used by the trap below.
+const FOCUSABLE_SELECTOR =
+  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
 export function MobileNav() {
   const path = usePathname();
+  const signedOut = useSignedOut();
   const [open, setOpen] = useState(false);
   const ctx = useAdminContext();
   const community = useCommunityAccess();
   const onboarding = useOnboardingStatus();
+  const isAgencyAccount = useIsAgencyAccount();
   const mainNav = withOnboarding(community?.canAccess ? [...NAV, COMMUNITY_LINK] : NAV, onboarding?.incomplete);
-  const accountNav = ctx?.isAdmin ? [ADMIN_LINK, ...ACCOUNT_NAV] : ACCOUNT_NAV;
+  const accountNav = accountNavFor(ctx?.isAdmin, isAgencyAccount);
   const primary = MOBILE_PRIMARY.map((href) => NAV.find((n) => n.href === href)!).filter(Boolean);
   const isActive = (href: string) => path === href || path?.startsWith(href + "/");
+
+  // A1-08. This drawer declared role="dialog" aria-modal="true" and then honoured
+  // none of the contract: no Escape, no focus trap, no focus restore, no scroll
+  // lock. A keyboard or screen-reader user tabbed straight out of a container
+  // that claims to have hidden everything behind it — and this is the drawer a
+  // signed-in consumer uses to reach Settings, Billing, Support and sign-out.
+  const openerRef = useRef<HTMLButtonElement>(null);
+  const drawerRef = useRef<HTMLDivElement>(null);
+  // Focus goes back to the "More" trigger when the drawer is DISMISSED, but not
+  // when it closes because the user picked a destination — there, focus belongs
+  // to the page they asked for, not to the control they left behind.
+  const restoreFocusRef = useRef(true);
+
+  const closeDrawer = useCallback((restoreFocus = true) => {
+    restoreFocusRef.current = restoreFocus;
+    setOpen(false);
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    const drawer = drawerRef.current;
+    // Captured here rather than read in the cleanup: by cleanup time React has
+    // already unmounted the dialog, and the linter is right that a ref read then
+    // is a different question from the one we mean. The "More" trigger is a
+    // stable node for the drawer's whole lifetime, so the captured value IS the
+    // element focus must return to.
+    const opener = openerRef.current;
+    // Land inside the dialog rather than leaving focus on the trigger behind it.
+    const initialFocus = drawer?.querySelector<HTMLElement>(FOCUSABLE_SELECTOR);
+    initialFocus?.focus({ preventScroll: true });
+
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+        closeDrawer(true);
+        return;
+      }
+      if (e.key !== "Tab" || !drawer) return;
+      const items = Array.from(drawer.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR));
+      if (items.length === 0) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      const active = document.activeElement as HTMLElement | null;
+      // Wrap at the ends, and pull focus back in if it ever escaped the dialog.
+      if (!active || !drawer.contains(active)) {
+        e.preventDefault();
+        (e.shiftKey ? last : first).focus({ preventScroll: true });
+      } else if (e.shiftKey && active === first) {
+        e.preventDefault();
+        last.focus({ preventScroll: true });
+      } else if (!e.shiftKey && active === last) {
+        e.preventDefault();
+        first.focus({ preventScroll: true });
+      }
+    }
+
+    // Capture phase: the handler must win before any inner control treats the
+    // same key as its own.
+    document.addEventListener("keydown", onKeyDown, true);
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKeyDown, true);
+      document.body.style.overflow = previousOverflow;
+      if (restoreFocusRef.current) opener?.focus({ preventScroll: true });
+      restoreFocusRef.current = true;
+    };
+  }, [open, closeDrawer]);
 
   return (
     <>
       {/* Slide-up drawer with the full navigation (incl. Agency/Settings/Billing). */}
       {open && (
-        <div className="fixed inset-0 z-40 md:hidden" role="dialog" aria-modal="true">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setOpen(false)} />
-          <div className="absolute inset-x-0 bottom-0 max-h-[85vh] overflow-y-auto rounded-t-2xl border-t border-ink-700 bg-ink-900 p-5 pb-8 shadow-2xl animate-rise">
+        <div className="fixed inset-0 z-40 md:hidden" role="dialog" aria-modal="true" aria-label="Navigation menu">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" aria-hidden onClick={() => closeDrawer(true)} />
+          <div ref={drawerRef} className="absolute inset-x-0 bottom-0 max-h-[85vh] overflow-y-auto rounded-t-2xl border-t border-ink-700 bg-ink-900 p-5 pb-8 shadow-2xl animate-rise">
             <div className="mb-4 flex items-center justify-between">
               <BrandMark />
-              <button onClick={() => setOpen(false)} className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg p-2 text-slate-400 hover:bg-ink-700 hover:text-white" aria-label="Close menu">
+              <button onClick={() => closeDrawer(true)} className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg p-2 text-slate-400 hover:bg-ink-700 hover:text-white" aria-label="Close menu">
                 <X className="h-5 w-5" aria-hidden />
               </button>
             </div>
             <nav className="grid grid-cols-2 gap-2">
               {mainNav.map((n) => (
-                <Link key={n.href} href={n.href} onClick={() => setOpen(false)}
+                <Link key={n.href} href={n.href} onClick={() => closeDrawer(false)}
                   aria-current={isActive(n.href) ? "page" : undefined}
                   className={cn("nav-item min-h-[44px]", isActive(n.href) && "nav-item-active")}>
                   <n.icon className="h-4 w-4" aria-hidden /> {n.label}
@@ -164,7 +329,7 @@ export function MobileNav() {
               <div className="mb-1 px-1 text-[10px] uppercase tracking-wide text-slate-500">Account</div>
               <nav className="grid grid-cols-2 gap-2">
                 {accountNav.map((n) => (
-                  <Link key={n.href} href={n.href} onClick={() => setOpen(false)}
+                  <Link key={n.href} href={n.href} onClick={() => closeDrawer(false)}
                     aria-current={isActive(n.href) ? "page" : undefined}
                     className={cn("nav-item min-h-[44px]", isActive(n.href) && "nav-item-active")}>
                     <n.icon className="h-4 w-4" aria-hidden /> {n.label}
@@ -175,18 +340,27 @@ export function MobileNav() {
                 ))}
               </nav>
             </div>
-            <button
-              onClick={() => { setOpen(false); clearKaiPresenceCache(); clearOnboardingStatusCache(); signOut({ callbackUrl: "/login" }); }}
-              className="nav-item mt-4 min-h-[44px] w-full text-left text-slate-400 hover:text-rose-300"
-            >
-              <LogOut className="h-4 w-4" aria-hidden /> Log out
-            </button>
+            {signedOut ? (
+              <Link href={loginPathFor(path ?? "/dashboard")} onClick={() => closeDrawer(false)} className="nav-item mt-4 min-h-[44px] w-full text-left text-slate-400 hover:text-brand-300">
+                <LogIn className="h-4 w-4" aria-hidden /> Sign in
+              </Link>
+            ) : (
+              <button
+                onClick={() => { closeDrawer(false); clearKaiPresenceCache(); clearOnboardingStatusCache(); signOut({ callbackUrl: "/login" }); }}
+                className="nav-item mt-4 min-h-[44px] w-full text-left text-slate-400 hover:text-rose-300"
+              >
+                <LogOut className="h-4 w-4" aria-hidden /> Log out
+              </button>
+            )}
           </div>
         </div>
       )}
 
-      {/* Bottom tab bar: primary destinations + a "More" button for everything else. */}
-      <nav className="fixed inset-x-0 bottom-0 z-30 flex justify-around border-t border-ink-700 bg-ink-900/95 py-2 backdrop-blur md:hidden">
+      {/* Bottom tab bar: primary destinations + a "More" button for everything else.
+          Hidden from assistive technology while the drawer claims aria-modal, so the
+          two navigations are never announced as one (the focus trap above enforces
+          the same boundary for keyboard users). */}
+      <nav aria-hidden={open || undefined} className="fixed inset-x-0 bottom-0 z-30 flex justify-around border-t border-ink-700 bg-ink-900/95 py-2 backdrop-blur md:hidden">
         {primary.map((n) => (
           <Link key={n.href} href={n.href}
             aria-current={isActive(n.href) ? "page" : undefined}
@@ -196,9 +370,14 @@ export function MobileNav() {
           </Link>
         ))}
         <button
-          onClick={() => setOpen(true)}
+          ref={openerRef}
+          // Blur before opening: the trigger lives inside the bar this drawer
+          // marks aria-hidden, and focus must never sit inside a hidden subtree.
+          // The effect above then places it on the first control in the dialog.
+          onClick={() => { openerRef.current?.blur(); setOpen(true); }}
           className={cn("flex min-h-[44px] min-w-[44px] flex-col items-center justify-center gap-0.5 rounded-lg px-2 text-[10px] font-medium transition-colors", open ? "text-brand-400" : "text-slate-400")}
           aria-label="More navigation"
+          aria-haspopup="dialog"
           aria-expanded={open}
         >
           <Menu className="h-5 w-5" aria-hidden />

@@ -29,9 +29,24 @@ const privateThreadA = { id: "T2", audienceAgencyId: "agencyA" };
 const privateThreadB = { id: "T3", audienceAgencyId: "agencyB" };
 const malformedPrivate = { id: "T4", audienceAgencyId: "   " };
 
-// ── Today's behavior is unchanged: members surface, any member may view ──────
-check("paying member views a members-thread attachment", canViewCommunityAttachment(paying, membersThread) === true);
-check("free/non-member cannot view a members-thread attachment", canViewCommunityAttachment(free, membersThread) === false);
+// ── RC1-S6a (Founder D-8): a members thread follows the COMMUNITY SWITCH ─────
+// The members surface used to open on payment. It now opens on COMMUNITY_ENABLED
+// and nothing else, so with the switch off (the shipped default) community
+// attachments are unreachable for everyone alike — fail-closed and consistent
+// with reads being off. Nothing is deleted: deleteThreadAndAttachments still
+// sweeps an attachment when its thread is removed.
+check("a members-thread attachment follows the community switch (absent = off)",
+  canViewCommunityAttachment(paying, membersThread) === false &&
+  canViewCommunityAttachment(free, membersThread) === false);
+check("…and paying buys no advantage over not paying",
+  canViewCommunityAttachment(paying, membersThread) === canViewCommunityAttachment(free, membersThread));
+check("with the switch ON, any signed-in account may view — no tier", (() => {
+  process.env.COMMUNITY_ENABLED = "true";
+  const both = canViewCommunityAttachment(free, membersThread) === true &&
+    canViewCommunityAttachment(paying, membersThread) === true;
+  delete process.env.COMMUNITY_ENABLED;
+  return both;
+})());
 check("anonymous cannot view", canViewCommunityAttachment(null, membersThread) === false);
 check("disabled member cannot view", canViewCommunityAttachment(disabled, membersThread) === false);
 
@@ -52,6 +67,18 @@ check("malformed private audience (blank owner) denies everyone", canViewCommuni
   const route = readFileSync(join(__dirname, "..", "app/api/attachments/[id]/route.ts"), "utf8");
   check("attachment route calls canViewCommunityAttachment for both community scopes",
     (route.match(/canViewCommunityAttachment\(/g) ?? []).length >= 2);
+  // RC1-S6a: the community switch must NOT reach evidence that has nothing to do
+  // with the community. Support-ticket attachments authorize on ticket ownership
+  // alone, and the route handles exactly three scopes — so no dispute/letter
+  // evidence is behind the switch.
+  check("support-ticket attachments are unaffected by the community switch",
+    /att\.scope === "support_message"/.test(route) &&
+    /msg\.ticket\?\.userId === account\.id/.test(route) &&
+    !/canViewCommunityAttachment/.test(
+      route.slice(route.indexOf('att.scope === "support_message"'), route.indexOf('att.scope === "community_thread"'))
+    ));
+  check("…and the route authorizes exactly three scopes, none of them letters/disputes",
+    (route.match(/att\.scope === "/g) ?? []).length === 3 && !/scope === "letter|scope === "dispute/.test(route));
   check("attachment route no longer authorizes community attachments on canAccessCommunity alone",
     !/canAccessCommunity/.test(route));
   check("a reply attachment resolves its parent thread's audience (no reply-scope bypass)",

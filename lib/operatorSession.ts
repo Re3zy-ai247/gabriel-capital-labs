@@ -30,6 +30,7 @@
 import type { User } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getKaiHomeData, REINVESTIGATION_DAYS, type KaiHomeData } from "@/lib/kaiHome";
+import { letterAuthorization } from "@/lib/letter";
 import { listKaiEvents } from "@/lib/kaiEvents";
 import { PrismaMailStore, isTerminal, type MailStatus } from "@/lib/mail";
 
@@ -89,7 +90,17 @@ export interface CappedList<T> {
 
 // ---- Interrupted work (resumable) ---------------------------------------------
 
-export type InterruptedKind = "mail_in_review" | "mail_approved" | "letter_unmailed";
+export type InterruptedKind =
+  | "mail_in_review"
+  | "mail_approved"
+  | "letter_draft"
+  | "letter_unmailed"
+  | "letter_approved"
+  // S11 NEW-3: a draft the SERVER will refuse (409) because no confirmation
+  // stands behind it any more. It is still unfinished work and still belongs in
+  // continuity — but describing it as "ready to mail" told the consumer the
+  // product would do something it had already decided to refuse.
+  | "letter_blocked";
 
 export interface InterruptedItem {
   kind: InterruptedKind;
@@ -157,6 +168,25 @@ interface LetterSlice {
   status: string;
   mailedAt: Date | string | null;
   createdAt: Date | string;
+  // S11 NEW-3 — the two facts lib/letter.ts's letterAuthorization() needs.
+  // REQUIRED, not optional: an optional `activeAssertionCount` would default to
+  // either "assume authorized" (fail-open on a refusal the server enforces) or
+  // "assume revoked" (mislabels every real letter). A caller that cannot answer
+  // must be made to answer, which is why the loader below carries a grouped
+  // count and the fixtures state it explicitly.
+  tradelineId: string | null;
+  /** ACTIVE ConsumerAssertion rows this user holds on that tradeline, counted NOW. */
+  activeAssertionCount: number;
+  /**
+   * The letter's stored strategy — letterAuthorization()'s discriminator
+   * (S11 AD-R3-1 / B-R3-2). REQUIRED here for the same reason the two fields
+   * above are: upstream it is optional and absence fails CLOSED, which is
+   * precisely how this engine read every Personal Information correction letter
+   * as an orphaned tradeline letter. A letter that has no tradelineId BY DESIGN
+   * is not a letter whose account was deleted. Requiring it also makes S5's
+   * coming flip to a required field a no-op here.
+   */
+  strategy: string | null;
 }
 
 export interface OperatorSessionInputs {
@@ -273,6 +303,54 @@ function completedWithin(events: KaiEventRow[], start: number, end: number): Acc
 // are progressing, not interrupted.
 const RESUMABLE_MANIFEST_STATUSES = new Set<MailStatus>(["IN_REVIEW", "APPROVED"]);
 
+// The unfinished-letter vocabulary, keyed on Prisma's LetterStatus. Each state
+// gets its OWN words: telling a consumer their draft is "generated and ready to
+// mail" would be a false statement about their own work.
+const UNFINISHED_LETTER: Record<
+  "DRAFT" | "GENERATED" | "PRINTED",
+  { kind: InterruptedKind; label: (recipient: string) => string; href: (id: string) => string }
+> = {
+  DRAFT: {
+    kind: "letter_draft",
+    label: (r) => `A dispute letter to ${r} is a draft you were still editing`,
+    href: (id) => `/letters?draft=${id}`,
+  },
+  GENERATED: {
+    kind: "letter_unmailed",
+    label: (r) => `A dispute letter to ${r} is generated and ready to mail`,
+    href: (id) => `/mail/send/${id}`,
+  },
+  PRINTED: {
+    kind: "letter_approved",
+    label: (r) => `A dispute letter to ${r} is approved and ready to print and mail`,
+    href: (id) => `/letters/print/${id}`,
+  },
+};
+
+// S11 NEW-3 — what a blocked draft says, and where its TRUE next step is.
+// The refusal message names three possible causes without claiming which, but
+// the continuity block knows the shape of this one, and the two shapes have
+// different remedies. Sending everyone to /tradelines was the secondary defect
+// in the finding: for a consumer whose report was deleted that page is EMPTY,
+// so the offered action did not exist.
+function blockedLetterItem(l: LetterSlice): InterruptedItem {
+  // Only reached for a letter letterAuthorization() has ALREADY ruled REVOKED,
+  // so a null tradelineId here is the re-analysis/deleted-report orphan and
+  // never a non-tradeline letter (those are authorized).
+  const orphaned = !l.tradelineId;
+  return {
+    kind: "letter_blocked",
+    label: orphaned
+      ? `A dispute letter to ${l.recipientName} is on hold — the account it was written about is no longer on your report`
+      : `A dispute letter to ${l.recipientName} is on hold until you confirm the facts it states in your name`,
+    // Orphaned: /tradelines has nothing to confirm, so the only move that can
+    // unblock it is putting that report back. Otherwise the account is right
+    // there and the confirmation panel is on it.
+    resumeHref: orphaned ? "/upload" : "/tradelines",
+    since: new Date(l.createdAt).toISOString(),
+  };
+}
+
 function interruptedWorkOf(manifests: ManifestSlice[], letters: LetterSlice[]): InterruptedItem[] {
   const items: InterruptedItem[] = [];
   // Any letter with a NON-TERMINAL manifest already has an active claim via the
@@ -297,13 +375,35 @@ function interruptedWorkOf(manifests: ManifestSlice[], letters: LetterSlice[]): 
       since: m.createdAt,
     });
   }
+  // RC1 S7 (S5 review addendum). This used to read `l.status !== "GENERATED"`,
+  // which was complete when GENERATED was the only pre-mail state. S5 added a
+  // DRAFT edit state and made PRINTED mean "approved", so under the old
+  // predicate a letter VANISHED from "Continue where you left off" the moment
+  // the consumer edited or approved it — the continuity block dropped work at
+  // exactly the two moments the consumer had just touched it. The set is now
+  // "unfinished", not "one particular status": everything before MAILED.
+  // MAILED / RESPONSE_RECEIVED / RESOLVED are progress or closure, and the
+  // §611 clock and the response surfaces own them from there.
   for (const l of letters) {
-    if (l.status !== "GENERATED" || l.mailedAt) continue;
+    const unfinished = UNFINISHED_LETTER[l.status as keyof typeof UNFINISHED_LETTER];
+    if (!unfinished || l.mailedAt) continue;
     if (inFlight.has(l.id)) continue; // already actioned via the Send wizard — never double-count the same letter
+    // S11 NEW-3: ask the SAME question the server asks before it 409s. The
+    // status vocabulary below describes how far the draft got; it says nothing
+    // about whether the consumer still stands behind what it claims in their
+    // name, and only the second question decides whether it can move.
+    if (letterAuthorization({ mailedAt: l.mailedAt, tradelineId: l.tradelineId, activeAssertionCount: l.activeAssertionCount, strategy: l.strategy }) === "REVOKED") {
+      items.push(blockedLetterItem(l));
+      continue;
+    }
     items.push({
-      kind: "letter_unmailed",
-      label: `A dispute letter to ${l.recipientName} is generated and ready to mail`,
-      resumeHref: `/mail/send/${l.id}`,
+      kind: unfinished.kind,
+      label: unfinished.label(l.recipientName),
+      // Per-letter hrefs, never a bare "/letters" shared by every draft:
+      // sessionCloseOf() de-duplicates priorities against interrupted work BY
+      // HREF, so two drafts sharing one href would silently collapse into a
+      // single "still open" count — the undercount F3 exists to prevent.
+      resumeHref: unfinished.href(l.id),
       since: new Date(l.createdAt).toISOString(),
     });
   }
@@ -320,7 +420,10 @@ const PRIORITY_CAP = 8;
 const RESUME_BASIS: Record<InterruptedKind, string> = {
   mail_in_review: "Ready for your review before it mails.",
   mail_approved: "Approved — ready to confirm and queue.",
+  letter_draft: "Draft — keep editing.",
   letter_unmailed: "Generated and ready to mail.",
+  letter_approved: "Approved — ready to print.",
+  letter_blocked: "On hold — no confirmation stands behind it right now.",
 };
 
 // Consumer (and "workspace" — an agency operator sees the CLIENT's own case,
@@ -451,9 +554,27 @@ export async function buildOperatorSession(
     new PrismaMailStore().listByUser(userId, 200).catch(() => []),
     prisma.letter.findMany({
       where: { userId },
-      select: { id: true, recipientName: true, status: true, mailedAt: true, createdAt: true },
+      select: { id: true, recipientName: true, status: true, mailedAt: true, createdAt: true, tradelineId: true, strategy: true },
     }),
   ]);
+
+  // S11 NEW-3: the authorization state the server enforces, read the same way
+  // app/api/letters/route.ts reads it — ONE grouped count for the whole page,
+  // never a query per letter. Mailed letters are deliberately excluded: a
+  // mailed letter is a RECORD, letterAuthorization returns HISTORICAL for it,
+  // and it must never be re-judged.
+  const unmailedTradelineIds = Array.from(
+    new Set(letters.filter((l) => !l.mailedAt && l.tradelineId).map((l) => l.tradelineId as string))
+  );
+  const activeCounts = new Map<string, number>();
+  if (unmailedTradelineIds.length) {
+    const grouped = await prisma.consumerAssertion.groupBy({
+      by: ["tradelineId"],
+      where: { userId, status: "ACTIVE", tradelineId: { in: unmailedTradelineIds } },
+      _count: { _all: true },
+    });
+    for (const g of grouped) if (g.tradelineId) activeCounts.set(g.tradelineId, g._count._all);
+  }
 
   return assembleOperatorSession({
     account,
@@ -461,7 +582,10 @@ export async function buildOperatorSession(
     kai,
     events,
     manifests: manifests.map((m) => ({ letterId: m.letterId, status: m.status, createdAt: m.createdAt })),
-    letters,
+    letters: letters.map((l) => ({
+      ...l,
+      activeAssertionCount: l.tradelineId ? activeCounts.get(l.tradelineId) ?? 0 : 0,
+    })),
     roster: opts.roster,
     now: opts.now,
   });

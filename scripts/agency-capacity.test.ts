@@ -108,13 +108,26 @@ ok("20· resolver touches no Stripe/billing", !/stripe|checkout|webhook|unit_amo
      !/await prisma\.user\.count\(\{ where: \{ managedByAgencyId/.test(routeSrc));
   ok("R6· refusal is a 402 quoting the enforced limit", /status: 402/.test(routeSrc) && /e\.limit/.test(routeSrc));
 
+  // RC1-S6b: the consumer cost page no longer carries agency tier cards or a
+  // capacity matrix, so there is nothing on a consumer surface left to compare
+  // against the resolver. D1-D5 are re-expressed against app/agency/page.tsx,
+  // which advertises capacity by DERIVING it from the enforced constants — the
+  // structural version of the guarantee these rows were written to give.
   const tiersSrc = read("app/pricing/PricingTiers.tsx");
-  ok("D1· matrix shows the enforced 15/30/50",
-     /"Active client workspaces", "-", "-", "-", "15", "30", "50", "Custom"/.test(tiersSrc));
-  ok("D2· no stale 40-client Agency Pro claim", !/Grow to 40 active clients/.test(tiersSrc));
-  ok("D3· no stale 100-client Scale claim", !/up to 100 active clients/.test(tiersSrc));
-  ok("D4· Agency Pro advertises 30", /Grow to 30 active clients/.test(tiersSrc));
-  ok("D5· Scale advertises 50", /up to 50 active clients/.test(tiersSrc));
+  const agencySrc = read("app/agency/page.tsx");
+  ok("D1· the consumer cost page advertises no client-workspace capacity at all",
+     !/Active client workspaces/.test(tiersSrc) && !/active clients/i.test(tiersSrc));
+  ok("D2· no stale 40-client Agency Pro claim on either surface",
+     !/Grow to 40 active clients/.test(tiersSrc) && !/\b40 active clients\b/.test(agencySrc));
+  ok("D3· no stale 100-client Scale claim on either surface",
+     !/up to 100 active clients/.test(tiersSrc) && !/\b100 active clients\b/.test(agencySrc));
+  ok("D4· the agency surface quotes capacity from the enforced resolver, never a literal",
+     /import \{ WORKSPACE_BASE_V3 \} from "@\/lib\/agencyCapacity"/.test(agencySrc) &&
+     /\{WORKSPACE_BASE_V3\.agency\}/.test(agencySrc) &&
+     /\$\{WORKSPACE_BASE_V3\.agency_pro\}/.test(agencySrc) &&
+     /\$\{WORKSPACE_BASE_V3\.scale\}/.test(agencySrc));
+  ok("D5· no hardcoded capacity integer survives on the agency surface",
+     !/\b\d+\s+active clients\b/.test(agencySrc) && !/\b\d+\s+workspaces\b/.test(agencySrc));
 }
 
 if (bad.length) console.error(bad.join("\n"));

@@ -5,17 +5,31 @@ import { meteredMessage } from "@/lib/aiMeter";
 import { recordKaiEvent } from "@/lib/kaiEvents";
 import { track, PRODUCT_EVENTS } from "@/lib/events";
 import { enforceRateLimit } from "@/lib/rateLimit";
-import { buildContext, renderTemplateLetter, buildSystemPrompt, buildUserPrompt, planLetterRegeneration } from "@/lib/letter";
+import {
+  assertionsForContext,
+  buildContext,
+  renderTemplateLetter,
+  buildSystemPrompt,
+  buildUserPrompt,
+  planLetterRegeneration,
+  type ConsumerAssertionInput,
+} from "@/lib/letter";
 import { applyCompliance } from "@/lib/compliance";
 import { encryptText } from "@/lib/docCrypto";
-import { getEntitlement, spendLetterCredits } from "@/lib/entitlements";
+import { getEntitlement } from "@/lib/entitlements";
 import { presentBureaus, getBureauData } from "@/lib/bureauData";
 import { getFurnisherContact, formatFurnisherAddress } from "@/lib/furnisher";
+import { BUREAU_LABEL } from "@/lib/bureaus";
+import { isNonTradelineStrategy } from "@/lib/strategies";
 import type { Bureau } from "@prisma/client";
 
 export const maxDuration = 60;
 
 const VALID: Bureau[] = ["EQUIFAX", "EXPERIAN", "TRANSUNION"];
+
+// One stable key per target, including the bureau-less furnisher/collector
+// target. Mirrors planLetterRegeneration's own "__none__" convention.
+const targetKey = (b: Bureau | undefined) => b ?? "__none__";
 
 type GenerateUser = {
   id: string;
@@ -37,7 +51,11 @@ async function composeLetter(
   targetBureau: Bureau | undefined,
   useAI: boolean,
   apiKey: string | undefined,
-  recipient?: { name?: string | null; address?: string | null }
+  recipient: { name?: string | null; address?: string | null } | undefined,
+  // RC1-S4: the consumer's OWN confirmed statements of fact about this item.
+  // Every factual concern in the letter derives from these and nothing else;
+  // buildContext narrows them again per target bureau.
+  assertions: ConsumerAssertionInput[]
 ) {
   const consumer = {
     fullName: user.fullName,
@@ -46,7 +64,13 @@ async function composeLetter(
     state: user.state,
     zip: user.zip,
   };
-  const ctx = buildContext(strategyId, tradeline, consumer, targetBureau, 1, recipient);
+  const ctx = buildContext(strategyId, tradeline, consumer, targetBureau, 1, recipient, {
+    assertions,
+    // Round 1 never carries a regulatory-complaint intent, and nothing in this
+    // route may set one: it is the consumer's declaration to make, on the
+    // round-2 path, through an explicit opt-in (see lib/round2.ts).
+    complaintIntent: false,
+  });
   let body = renderTemplateLetter(tradeline, ctx, consumer);
   let aiRefined = false;
 
@@ -69,7 +93,9 @@ async function composeLetter(
     }
   }
 
-  const { text, flags } = applyCompliance(body);
+  // The signed-letter bar — this body is printed, signed and mailed by the
+  // consumer, so it answers to the letter rules, not only the base ones.
+  const { text, flags } = applyCompliance(body, { bar: "signed-letter" });
   return { ctx, text, flags, aiRefined };
 }
 
@@ -81,9 +107,10 @@ async function generateOne(
   targetBureau: Bureau | undefined,
   useAI: boolean,
   apiKey: string | undefined,
-  recipient?: { name?: string | null; address?: string | null }
+  recipient: { name?: string | null; address?: string | null } | undefined,
+  assertions: ConsumerAssertionInput[]
 ) {
-  const { ctx, text, flags, aiRefined } = await composeLetter(user, tradeline, strategyId, targetBureau, useAI, apiKey, recipient);
+  const { ctx, text, flags, aiRefined } = await composeLetter(user, tradeline, strategyId, targetBureau, useAI, apiKey, recipient, assertions);
   const letter = await prisma.letter.create({
     data: {
       userId: user.id,
@@ -112,9 +139,8 @@ async function generateOne(
 // Only ever called for a target planLetterRegeneration matched to an unmailed
 // row (never a mailed one — see lib/letter.ts). No credit spend, no
 // dispute_created event here: the caller (POST below) only counts this
-// against `updated`, never `created`, so the monthly ledger and purchased
-// credits are untouched — the row was already counted once, at its original
-// creation.
+// against `updated`, never `created`, so the append-only ledger is untouched —
+// the row was already counted once, at its original creation.
 async function updateOne(
   user: GenerateUser,
   tradeline: any,
@@ -123,9 +149,10 @@ async function updateOne(
   useAI: boolean,
   apiKey: string | undefined,
   recipient: { name?: string | null; address?: string | null } | undefined,
-  existingId: string
+  existingId: string,
+  assertions: ConsumerAssertionInput[]
 ) {
-  const { ctx, text, flags, aiRefined } = await composeLetter(user, tradeline, strategyId, targetBureau, useAI, apiKey, recipient);
+  const { ctx, text, flags, aiRefined } = await composeLetter(user, tradeline, strategyId, targetBureau, useAI, apiKey, recipient, assertions);
   const letter = await prisma.letter.update({
     where: { id: existingId },
     data: {
@@ -149,7 +176,12 @@ async function updateOne(
 }
 
 // Generates one or more dispute letters — one per selected bureau for bureau-type
-// strategies. Free tier is capped at 3 letters/month; AI refinement is premium-only.
+// strategies.
+//
+// RC1-S6a: there is NO letter quota and no paid tier. What actually bounds this
+// route is capability-neutral and stays exactly as S4/S5 left it: the consumer
+// must have confirmed a fact that applies to each target (no confirmed fact, no
+// letter), and the S1 rate/spend limits cap volume for everyone equally.
 export async function POST(req: Request) {
   try {
     const user = await currentUserOrDemo();
@@ -159,10 +191,111 @@ export async function POST(req: Request) {
     const limited = await enforceRateLimit(`letters:${user.id}`, 40, 3600);
     if (limited) return limited;
 
-    const body = await req.json();
+    // A malformed body is a bad request, not a server error — and it must reach
+    // the explicit validation below rather than throwing into the catch-all 500.
+    const body = await req.json().catch(() => ({} as Record<string, unknown>));
     const { tradelineId, strategyId } = body;
+
+    // ---- S11 NEW-5: THE ACCOUNT MUST BE NAMED, EXPLICITLY -------------------
+    // `POST /api/letters/generate {}` used to return 200 with a real dispute
+    // letter about the consumer's FIRST tradeline. Prisma treats an `undefined`
+    // filter value as "no filter", so `where: { id: undefined, userId }` drops
+    // the `id` predicate and selects an arbitrary row instead of matching none.
+    //
+    // NOT AN IDOR, and the distinction matters: `userId: user.id` is a SEPARATE
+    // key in the same `where` and is never undefined — `user` is resolved at the
+    // top of this handler and a null user already returned 401. So the widened
+    // query could only ever reach the caller's OWN rows. Every other query in
+    // this route carries the same predicate (the assertion lookup and the
+    // regeneration-candidate lookup are both `userId: user.id`, and the letter
+    // update targets an id that came out of that scoped lookup). Verified by
+    // execution in scripts/runtime/consumer-assertion.runtime.test.ts, not by
+    // reading: a foreign tradeline id 404s, and an absent id now 400s.
+    //
+    // The harm is therefore misdirection, not disclosure: a malformed or legacy
+    // client drafts a letter about the wrong account of the consumer's own — and
+    // RB-6 matching can then update an existing unmailed draft for that bureau.
+    // Real, and worth refusing, but it is not a cross-account read.
+    if (typeof tradelineId !== "string" || !tradelineId.trim()) {
+      return NextResponse.json(
+        { error: "Tell us which account this letter is about.", needsTradeline: true },
+        { status: 400 }
+      );
+    }
+
+    // ---- S11: A TRADELINE LETTER CAN NEVER CARRY A NON-TRADELINE STRATEGY ----
+    // `personal_info` (lib/strategies.ts NON_TRADELINE_STRATEGIES) marks a
+    // letter that disputes the consumer's own identifying information and
+    // therefore legitimately has no tradelineId. `letterAuthorization` reads
+    // exactly that to tell an identity letter apart from a tradeline letter
+    // whose report was deleted — so if this route could stamp `personal_info`
+    // onto a tradeline letter, the discriminator would be worthless and a
+    // re-analysis orphan could be laundered into "authorized".
+    //
+    // Nothing offers it: the chooser is fed by STRATEGIES, which excludes it.
+    // This refuses the direct API call that the chooser cannot prevent.
+    if (isNonTradelineStrategy(strategyId)) {
+      return NextResponse.json(
+        {
+          error:
+            "That letter type doesn\u2019t dispute an account \u2014 it corrects the personal details on your file. Choose a dispute type for this account, or start a personal-information correction instead.",
+          invalidStrategyForTradeline: true,
+        },
+        { status: 400 }
+      );
+    }
+
     const tradeline = await prisma.tradeline.findFirst({ where: { id: tradelineId, userId: user.id } });
     if (!tradeline) return NextResponse.json({ error: "Tradeline not found" }, { status: 404 });
+
+    // ---- RC1-S4 (P0-3 / L-02): THE CONSUMER CONFIRMS FIRST -------------------
+    // Before this gate, the only inputs to a letter were a tradeline id and a
+    // strategy id. Everything the letter then said in the consumer's first
+    // person — including "I am unable to reconcile the reported status with my
+    // records" — was composed from parsed report data the consumer had never
+    // been asked about, and (the letter body being read-only) could not amend
+    // before signing and mailing it.
+    //
+    // Now: no confirmed fact, no letter. This runs BEFORE the entitlement gate,
+    // the credit spend and any AI call, so a refusal costs the consumer nothing
+    // — no quota, no credit, no charge, no row.
+    const assertions = await prisma.consumerAssertion.findMany({
+      where: { userId: user.id, tradelineId: tradeline.id, status: "ACTIVE" },
+      orderBy: { createdAt: "asc" },
+      select: { assertionType: true, consumerNote: true, bureauScope: true, status: true },
+    });
+    // S11 AD-1: a GOVERNMENT / set-aside row has no confirmation path, by
+    // design — it is excluded for a LEGAL reason (a reinvestigation generally
+    // cannot remove a government or statutory debt), not an evidentiary one, so
+    // the Tradelines page deliberately offers no "Review the facts" panel on
+    // it. Sending that consumer the confirm-first message would instruct them
+    // to use an affordance that does not exist on their row. They get the true
+    // reason instead, and no invented next step.
+    if (tradeline.accountType === "GOVERNMENT" || tradeline.probability === "NOT_RECOMMENDED") {
+      return NextResponse.json(
+        {
+          error:
+            "This is a government or statutory debt. We don\u2019t draft dispute letters for these \u2014 a reinvestigation generally can\u2019t remove them, so a round spent here doesn\u2019t get you anywhere. It stays marked \u201cset aside\u201d on your Tradelines page. Nothing was used up.",
+          setAside: true,
+          tradelineId: tradeline.id,
+        },
+        { status: 400 }
+      );
+    }
+
+    if (assertions.length === 0) {
+      return NextResponse.json(
+        {
+          error:
+            "Before we draft anything in your name, tell us which fact on this account is wrong. Open the account on your Tradelines page, choose \u201cReview the facts,\u201d and confirm what you know to be inaccurate \u2014 we only write what you confirm.",
+          // Machine-readable so the letters page can link straight to the item
+          // instead of leaving the consumer to find it (S5 wires the link).
+          needsAssertion: true,
+          tradelineId: tradeline.id,
+        },
+        { status: 400 }
+      );
+    }
 
     // Resolve the strategy's recipient to decide whether bureau targeting applies.
     const ctxProbe = buildContext(strategyId, tradeline as any, {}, undefined);
@@ -201,6 +334,61 @@ export async function POST(req: Request) {
       targets = list;
     }
 
+    // ---- RC1-S4 REMEDIATION H-1: THE GATE AND THE COMPOSER MUST AGREE --------
+    // The check above asks "has this consumer confirmed anything about this
+    // ACCOUNT". `buildContext` then narrows per RECIPIENT (assertionsForContext,
+    // lib/letter.ts): a bureau letter may only speak from assertions scoped to
+    // NULL or to that same bureau, because telling Equifax about a fact the
+    // consumer confirmed only about their Experian file is the cross-bureau
+    // violation this product exists to avoid.
+    //
+    // Those two questions are not the same one. A consumer who confirms "the
+    // balance is wrong — only my Experian file" and then generates for all three
+    // bureaus used to get three letters: one real, and two that asserted
+    // nothing, contradicted themselves ("each disputed item" with no items), and
+    // were charged for. Mailing a dispute that identifies nothing is exactly the
+    // §1681i(a)(3) frivolous-determination hazard this letter engine is built to
+    // avoid.
+    //
+    // So the narrowing happens HERE, per target, BEFORE anything is created,
+    // updated or spent. A target with no applicable confirmation is not written.
+    const assertionsByTarget = new Map<string, typeof assertions>();
+    const validTargets: (Bureau | undefined)[] = [];
+    const skippedBureaus: Bureau[] = [];
+    for (const b of targets) {
+      const applicable = assertionsForContext(assertions, { strategy: ctxProbe.strategy, targetBureau: b });
+      assertionsByTarget.set(targetKey(b), applicable as typeof assertions);
+      if (applicable.length > 0) validTargets.push(b);
+      else if (b) skippedBureaus.push(b);
+    }
+
+    // Every requested target is unsupported → refuse outright, before the
+    // entitlement gate and before any spend, exactly like the no-assertion case.
+    if (validTargets.length === 0) {
+      const scopes = Array.from(
+        new Set(assertions.map((a) => (a.bureauScope ? BUREAU_LABEL[a.bureauScope] : null)).filter(Boolean) as string[])
+      );
+      const askedFor = skippedBureaus.map((b) => BUREAU_LABEL[b]);
+      return NextResponse.json(
+        {
+          error:
+            askedFor.length && scopes.length
+              ? `You told us what\u2019s wrong on your ${scopes.join(" and ")} ${
+                  scopes.length > 1 ? "files" : "file"
+                }, but this letter is addressed to ${askedFor.join(" and ")}. Confirm what\u2019s wrong on ${
+                  askedFor.length > 1 ? "those files" : "that file"
+                } \u2014 or re-confirm it for every bureau reporting this account \u2014 and we\u2019ll draft it. Nothing was used up.`
+              : "We don\u2019t have a confirmed fact that applies to the bureau this letter is addressed to. Confirm what\u2019s wrong on that file before we draft it. Nothing was used up.",
+          needsAssertion: true,
+          tradelineId: tradeline.id,
+          // Machine-readable: which targets had no applicable confirmation.
+          skippedBureaus,
+        },
+        { status: 400 }
+      );
+    }
+    targets = validTargets;
+
     // Phase 1A-R RB-6: idempotent regenerate. Match each requested target
     // against any UNMAILED letter already on file for this exact tradeline +
     // strategy + round (round is always 1 here — round 2+ is the dedicated
@@ -209,39 +397,68 @@ export async function POST(req: Request) {
     // duplicate. planLetterRegeneration (lib/letter.ts, guard-tested) owns
     // the matching rule, including why a MAILED letter is never matched.
     const strategyKey = ctxProbe.strategy.id;
+    //
+    // RC1-S11 (review AD-3) — `status` ENGAGES S5's SERVER SEAM. S5 taught
+    // planLetterRegeneration to skip a candidate whose status is the approved
+    // one, so an approved letter is never update-matched and the plan CREATES a
+    // new draft beside it instead of overwriting it. That line was inert while
+    // this select omitted `status`: `c.status` arrived undefined, never equalled
+    // LETTER_APPROVED_STATUS, and the protection existed only as the two-press
+    // confirmation on app/letters/page.tsx — which a direct API call skips
+    // entirely, destroying a letter the consumer had read, edited and approved.
+    //
+    // Selecting it is the whole change. The rule — and the decision to create
+    // beside rather than refuse — are S5's and stay in lib/letter.ts; nothing
+    // here interprets `status`.
     const existingRoundOne = await prisma.letter.findMany({
       where: { userId: user.id, tradelineId: tradeline.id, strategy: strategyKey, round: 1 },
-      select: { id: true, targetBureau: true, mailedAt: true },
+      select: { id: true, targetBureau: true, mailedAt: true, status: true },
     });
-    const { toUpdate, toCreate } = planLetterRegeneration(targets, existingRoundOne);
-
-    // Entitlement gate. Free tier: cap to the remaining monthly allowance —
-    // but ONLY against toCreate (net-new rows). An update never consumes
-    // quota (RB-6: fixing a letter must not cost a letter), so it is never
-    // blocked by the quota gate either — a pure correction goes through even
-    // at 0 remaining, as long as there's nothing NEW it also needs to create.
-    // The common case (nothing on file yet) is byte-identical to the prior
-    // gate: toCreate === targets and toUpdate is empty, so `!hasQuota` alone
-    // decides, exactly as the old unconditional check did.
-    const entitlement = await getEntitlement(user);
-    const hasQuota = entitlement.lettersRemaining === null || entitlement.lettersRemaining > 0;
-    if (toUpdate.length === 0 && toCreate.length > 0 && !hasQuota) {
+    //
+    // RC1-S11 (journey NEW-2) — S5's granted call-site change. Skipping an
+    // approved letter stopped the overwrite but returned 200 and created a
+    // SECOND live round-1 letter for the same bureau: two mailable disputes on
+    // one item, and a response that said nothing about it. The plan now reports
+    // the approved blocker and the route refuses, unless the consumer has
+    // explicitly said to replace it — in which case the approved row is updated
+    // in place, so the outcome is one letter either way, never two.
+    const replaceApproved = body?.replaceApproved === true;
+    const { toUpdate, toCreate, blockedByApproval } = planLetterRegeneration(targets, existingRoundOne, {
+      replaceApproved,
+    });
+    if (blockedByApproval.length > 0) {
+      const named = blockedByApproval
+        .map((b) => (b.target ? BUREAU_LABEL[b.target] : "this recipient"))
+        .join(", ");
       return NextResponse.json(
         {
-          error: "You've used all 3 free dispute letters this month. Upgrade to Professional for unlimited letters and AI refinement.",
-          upgrade: true,
-          entitlement,
+          error:
+            `You already read and approved the letter for ${named}. Regenerating writes a new letter over it, and the wording you approved goes with it. ` +
+            `Nothing has changed and nothing was used up — confirm that you want the approved letter replaced, and I'll do it.`,
+          approvedLetterExists: true,
+          // Machine-readable so the letters page can name the right rows and
+          // re-send with the consumer's confirmation.
+          blockedBureaus: blockedByApproval.map((b) => b.target ?? null),
+          blockedLetterIds: blockedByApproval.map((b) => b.existingId),
         },
-        { status: 402 }
+        { status: 409 }
       );
     }
-    let allowedNew = toCreate.length;
-    let capped = false;
-    if (entitlement.lettersRemaining !== null && toCreate.length > entitlement.lettersRemaining) {
-      allowedNew = Math.max(0, entitlement.lettersRemaining);
-      capped = true;
-    }
-    const newTargets = toCreate.slice(0, allowedNew);
+
+    // RC1-S6a (S-01 / D-3): THE LETTER QUOTA IS GONE.
+    //
+    // This is where the 402 lived — "You've used all 3 free dispute letters this
+    // month. Upgrade to Professional…" — together with a silent partial-success
+    // cap that generated some of the requested letters, dropped the rest, and
+    // attached an upgrade nudge to a 200. Both are removed: every consumer gets
+    // every target they confirmed a fact for. Nothing here reads plan,
+    // subscription, credits or who is paying.
+    //
+    // The entitlement is still resolved, for two non-commercial reasons: the AI
+    // refinement switch (off for everyone, D-2) and the read-only snapshot the
+    // client renders.
+    const entitlement = await getEntitlement(user);
+    const newTargets = toCreate;
 
     const key = process.env.ANTHROPIC_API_KEY;
     const updated: any[] = [];
@@ -250,28 +467,27 @@ export async function POST(req: Request) {
     let consumerComplete = true;
     let recipientComplete = true;
     for (const { target: b, existingId } of toUpdate) {
-      const r = await updateOne(user, tradeline as any, strategyId, b, entitlement.aiRefinement, key, recipient, existingId);
+      const r = await updateOne(user, tradeline as any, strategyId, b, entitlement.aiRefinement, key, recipient, existingId, assertionsByTarget.get(targetKey(b)) ?? []);
       updated.push(r.letter);
       anyAI = anyAI || r.aiRefined;
       consumerComplete = consumerComplete && r.consumerComplete;
       recipientComplete = recipientComplete && r.recipientComplete;
     }
     for (const b of newTargets) {
-      const r = await generateOne(user, tradeline as any, strategyId, b, entitlement.aiRefinement, key, recipient);
+      const r = await generateOne(user, tradeline as any, strategyId, b, entitlement.aiRefinement, key, recipient, assertionsByTarget.get(targetKey(b)) ?? []);
       created.push(r.letter);
       anyAI = anyAI || r.aiRefined;
       consumerComplete = consumerComplete && r.consumerComplete;
       recipientComplete = recipientComplete && r.recipientComplete;
     }
 
-    // Spend purchased letter credits for anything beyond the free monthly allowance.
-    // Clamped + conditionally guarded in lib/entitlements so the balance can never go
-    // negative (a negative balance silently eats the next letter-pack purchase).
-    // Only NEW rows spend — an update is free (RB-6: the burn never happens; no
-    // refund logic needed because nothing was ever charged for it).
-    await spendLetterCredits(user.id, entitlement, created.length);
-
-    // Same reasoning: the append-only monthly ledger only grows for NEW
+    // RC1-S6a (D-3): NOTHING IS SPENT HERE. Purchased letter credits are a frozen
+    // historical balance — the credit-decrement path is not called from this route
+    // at all, and a generation cycle leaves that balance byte-unchanged. The append-only
+    // ledger below is history, not accounting: it records that letters were
+    // written, and nothing consumes it.
+    //
+    // The append-only ledger only grows for NEW
     // letters. Skipped entirely (not tracked-then-refunded) when a request is
     // a pure regenerate — RB-6's "the burn never happens", not a credit-back.
     if (created.length > 0) {
@@ -288,17 +504,27 @@ export async function POST(req: Request) {
       updatedCount: updated.length, // additive — how many were regenerated in place
       createdCount: created.length, // additive — how many were brand-new rows
       aiRefined: anyAI,
-      capped,
-      upgrade: capped,
       entitlement: after,
       consumerComplete,
       recipientComplete,
-      warning: !consumerComplete
+      // REMEDIATION H-1: which requested bureaus were NOT written, and why.
+      // Never silently dropped, and never charged for.
+      skippedBureaus,
+      skippedReason: skippedBureaus.length
+        ? `No confirmed fact of yours applies to ${skippedBureaus
+            .map((b) => BUREAU_LABEL[b])
+            .join(" or ")}, so ${skippedBureaus.length > 1 ? "those letters were" : "that letter was"} not drafted and nothing was used up for ${
+            skippedBureaus.length > 1 ? "them" : "it"
+          }.`
+        : null,
+      warning: skippedBureaus.length
+        ? `Drafted for ${all.length} of ${all.length + skippedBureaus.length} bureaus. No confirmed fact of yours applies to ${skippedBureaus
+            .map((b) => BUREAU_LABEL[b])
+            .join(" or ")} \u2014 confirm what\u2019s wrong on that file and we\u2019ll draft it. Nothing was used up for it.`
+        : !consumerComplete
         ? "Complete your Consumer Info (name + mailing address) before printing — the draft contains placeholders."
         : !recipientComplete
         ? "Add the furnisher/collector mailing address before printing — the draft still shows a [Furnisher mailing address] placeholder."
-        : capped
-        ? `Generated ${created.length} letter(s). You hit your free monthly limit — upgrade for unlimited letters.`
         : null,
     });
   } catch (e) {

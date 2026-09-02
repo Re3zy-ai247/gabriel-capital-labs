@@ -19,8 +19,8 @@ function plain(md: string, n: number): string {
 }
 
 // Per-article SEO + Open Graph so shared links render rich previews and rank.
-export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
-  const a = await getPublishedArticleBySlug(params.slug);
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const a = await getPublishedArticleBySlug((await params).slug);
   if (!a) return { title: "Article not found — CreditVector Brief" };
   const description = plain(a.summary, 160);
   const url = `/brief/${a.slug}`;
@@ -34,8 +34,8 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   };
 }
 
-export default async function BriefArticlePage({ params }: { params: { slug: string } }) {
-  const a = await getPublishedArticleBySlug(params.slug);
+export default async function BriefArticlePage({ params }: { params: Promise<{ slug: string }> }) {
+  const a = await getPublishedArticleBySlug((await params).slug);
   if (!a) notFound();
 
   // Fire-and-forget view counter — never blocks the render.

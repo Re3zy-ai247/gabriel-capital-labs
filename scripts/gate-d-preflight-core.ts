@@ -2,6 +2,17 @@ import { createHash } from "node:crypto";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
+// THE REVIEWED, APPLIED Gate D chain. This is the schema the preflight compares a
+// live database against, so a name may be added here ONLY once its migration has
+// been reviewed AND applied as part of a Gate D release. Everything downstream —
+// applied-manifest contents, coverage counts, and every fixture's applied set —
+// is derived from exactly this list.
+//
+// HELD POST-DB5 CANONICALIZATION: the last two entries are eligible to become
+// canonical here only after Control Tower retains successful DB5 execution
+// evidence for those exact SQL checksums in this exact lexical order. This patch
+// must not land before that evidence exists; its presence in a review branch is
+// not evidence that DB5 ran.
 export const GATE_D_MIGRATION_CHAIN = [
   "0_init",
   "20260720204355_operator_network_messages",
@@ -9,6 +20,37 @@ export const GATE_D_MIGRATION_CHAIN = [
   "20260720231803_event_bus_agency_index",
   "20260721120000_operator_identity",
   "20260721160000_operator_reputation",
+  "20260728000000_terms_acceptance",
+  "20260823120000_consumer_assertion",
+] as const;
+
+// AUTHORED-BUT-UNAPPLIED migration directories awaiting a future owner-gated
+// release step. The held post-DB5 state has no such directories.
+//
+// `loadGateDManifest` pins the migration DIRECTORY SET as a drift tripwire: an
+// unreviewed folder appearing under prisma/migrations must fail loudly. In this
+// held post-DB5 state, the directory set and applied chain are the same exact
+// eight names. If a later owner-gated release authors an unapplied migration,
+// this second exact list makes the intentional difference explicit without
+// relaxing the tripwire.
+//
+// An entry here is ACKNOWLEDGED ON DISK AND REQUIRED ABSENT FROM THE DATABASE.
+// It is deliberately NOT part of GATE_D_MIGRATION_CHAIN and contributes nothing
+// to applied coverage. `loadGateDManifest` still parses and hashes its SQL so the
+// separate pre-DB5 absence gate can prove every authored table, column, primary
+// key/index, explicit index and foreign key — plus every same-name history row —
+// is absent. When one is applied in a future reviewed release it MOVES to the
+// chain above; it is never in both.
+//
+// A later slice appends its exact reviewed name and updates the exact-set tests;
+// it never relaxes the set into a prefix or length check.
+export const AUTHORED_UNAPPLIED_MIGRATIONS = [] as const;
+
+// Every directory legitimately present under prisma/migrations: the applied
+// chain plus the authored-but-unapplied set. Anything else is drift.
+export const EXPECTED_MIGRATION_DIRECTORIES = [
+  ...GATE_D_MIGRATION_CHAIN,
+  ...AUTHORED_UNAPPLIED_MIGRATIONS,
 ] as const;
 
 export type MigrationState =
@@ -111,7 +153,13 @@ export interface GateDManifest {
   formatVersion: 1;
   defaultSchema: "public";
   migrations: MigrationExpectation[];
+  authoredUnappliedMigrations: MigrationExpectation[];
   manifestHash: string;
+}
+
+export interface Db5DeployCandidate {
+  name: string;
+  checksum: string;
 }
 
 export interface DatabaseIdentity {
@@ -335,10 +383,29 @@ export interface MigrationReport {
   differences: Difference[];
 }
 
+export interface AuthoredUnappliedAbsenceReport {
+  name: string;
+  state: "ALL_ABSENT" | "PRESENT" | "UNKNOWN";
+  physicalState: "ALL_ABSENT" | "PRESENT" | "UNKNOWN";
+  history: "ABSENT" | "PRESENT" | "UNKNOWN";
+  expectedPhysicalObjects: string[];
+  presentPhysicalObjects: string[];
+  historyEvidence: MigrationReport["historyEvidence"];
+}
+
+export interface PreDb5AbsenceGateReport {
+  decision: "PASS" | "ABORT" | "UNKNOWN" | "NOT_REQUIRED";
+  deployCandidateList: Db5DeployCandidate[];
+  mutationAuthorized: false;
+  requiredState: "ALL_ABSENT";
+  migrations: AuthoredUnappliedAbsenceReport[];
+}
+
 export interface PreflightReport {
   formatVersion: 1;
   decision:
     | "READY_FOR_OWNER_APPROVAL"
+    | "READY_FOR_DB5_APPROVAL"
     | "NO_PENDING_MIGRATIONS"
     | "OWNER_BASELINE_REVIEW_REQUIRED"
     | "ABORT";
@@ -352,6 +419,7 @@ export interface PreflightReport {
     fingerprintScope: "CONSISTENCY_EVIDENCE_ONLY";
   };
   migrations: MigrationReport[];
+  preDb5AbsenceGate: PreDb5AbsenceGateReport;
   privilegeChecks: PrivilegeCheck[];
   proposedResolveList: string[];
   pendingDeployList: string[];
@@ -758,25 +826,38 @@ export function loadGateDManifest(repoRoot: string): GateDManifest {
     .filter((entry) => entry.isDirectory())
     .map((entry) => entry.name)
     .sort();
-  const expected = [...GATE_D_MIGRATION_CHAIN].sort();
+  // Directory set, not merely applied set: a future authored-but-unapplied
+  // migration is a legitimate folder, but any unreviewed ninth directory still
+  // fails. The held post-DB5 set is exactly the eight canonical chain entries.
+  const expected = [...EXPECTED_MIGRATION_DIRECTORIES].sort();
   if (!same(discovered, expected)) {
     throw new UnsupportedMigrationSqlError(
       `migration directory set: expected=${expected.join(",")} actual=${discovered.join(",")}`,
     );
   }
-  const migrations = GATE_D_MIGRATION_CHAIN.map((name) => {
+  const readMigration = (name: string) => {
     const sql = readFileSync(join(migrationsRoot, name, "migration.sql"), "utf8");
     return parseMigrationSql(name, sql);
-  });
+  };
+  const migrations = GATE_D_MIGRATION_CHAIN.map(readMigration);
+  const authoredUnappliedMigrations = AUTHORED_UNAPPLIED_MIGRATIONS.map(readMigration);
   const withoutHash = {
     formatVersion: 1 as const,
     defaultSchema: "public" as const,
     migrations,
+    authoredUnappliedMigrations,
   };
   return {
     ...withoutHash,
     manifestHash: createHash("sha256").update(stableStringify(withoutHash)).digest("hex"),
   };
+}
+
+export function db5DeployCandidateList(manifest: GateDManifest): Db5DeployCandidate[] {
+  // loadGateDManifest constructs this ordered list solely from the exact
+  // AUTHORED_UNAPPLIED_MIGRATIONS constant. Deriving from the parsed manifest
+  // keeps the empty post-DB5 state and any future reviewed authored set generic.
+  return manifest.authoredUnappliedMigrations.map(({ name, checksum }) => ({ name, checksum }));
 }
 
 export function manifestCoverage(manifest: GateDManifest) {
@@ -1316,6 +1397,260 @@ function compareMigration(
   };
 }
 
+function historyEvidenceForMigration(
+  migration: MigrationExpectation,
+  snapshot: CatalogSnapshot,
+): MigrationReport["historyEvidence"] {
+  return snapshot.historyRows
+    .filter((row) => row.migrationName === migration.name)
+    .map((row) => ({
+      id: row.id,
+      checksumMatches: row.checksum === migration.checksum,
+      startedAt: row.startedAt,
+      finishedAt: row.finishedAt,
+      rolledBackAt: row.rolledBackAt,
+      unresolved: row.unresolved,
+      appliedStepsCount: row.appliedStepsCount,
+      logsPresent: row.logsPresent,
+    }))
+    .sort((left, right) => left.id.localeCompare(right.id));
+}
+
+function authoredPhysicalObjectEvidence(
+  migration: MigrationExpectation,
+  snapshot: CatalogSnapshot | null,
+): { expected: string[]; present: string[] } {
+  const expected = new Set<string>();
+  const present = new Set<string>();
+  const enums = snapshot?.enums ?? [];
+  const tables = snapshot?.tables ?? [];
+  const columns = snapshot?.columns ?? [];
+  const indexes = snapshot?.indexes ?? [];
+  const constraints = snapshot?.constraints ?? [];
+  const foreignKeys = snapshot?.foreignKeys ?? [];
+  const extensions = snapshot?.extensions ?? [];
+  const mark = (path: string, isPresent: boolean) => {
+    expected.add(path);
+    if (isPresent) present.add(path);
+  };
+  // PostgreSQL relation names, including index names, are schema-global. The
+  // constraint itself remains table-scoped, but its backing relation collides
+  // even when an index with that name belongs to a different table (or another
+  // relation already owns the name).
+  const relationNamePresent = (schema: string, name: string) =>
+    indexes.some((actual) => actual.schema === schema && actual.name === name) ||
+    tables.some((actual) => actual.schema === schema && actual.name === name);
+
+  for (const item of migration.enums) {
+    mark(
+      objectPath("enum", item.schema, item.name),
+      enums.some((actual) => actual.schema === item.schema && actual.name === item.name),
+    );
+  }
+
+  for (const table of migration.tables) {
+    const tablePath = objectPath("table", table.schema, table.name);
+    mark(
+      tablePath,
+      relationNamePresent(table.schema, table.name) ||
+        enums.some((actual) => actual.schema === table.schema && actual.name === table.name),
+    );
+    for (const column of table.columns) {
+      mark(
+        objectPath("column", table.schema, table.name, column.name),
+        columns.some(
+          (actual) =>
+            actual.schema === table.schema &&
+            actual.table === table.name &&
+            actual.name === column.name,
+        ),
+      );
+    }
+    if (table.primaryKey) {
+      const key = table.primaryKey;
+      mark(
+        objectPath("primary-key", key.schema, key.table, key.name),
+        constraints.some(
+          (actual) =>
+            actual.schema === key.schema && actual.table === key.table && actual.name === key.name,
+        ) ||
+          foreignKeys.some(
+            (actual) =>
+              actual.schema === key.schema && actual.table === key.table && actual.name === key.name,
+          ),
+      );
+      mark(
+        objectPath("primary-key-index", key.schema, key.table, key.name),
+        relationNamePresent(key.schema, key.name),
+      );
+    }
+    for (const key of table.uniqueConstraints) {
+      mark(
+        objectPath("unique", key.schema, key.table, key.name),
+        constraints.some(
+          (actual) =>
+            actual.schema === key.schema && actual.table === key.table && actual.name === key.name,
+        ) ||
+          foreignKeys.some(
+            (actual) =>
+              actual.schema === key.schema && actual.table === key.table && actual.name === key.name,
+          ),
+      );
+      mark(
+        objectPath("unique-index", key.schema, key.table, key.name),
+        relationNamePresent(key.schema, key.name),
+      );
+    }
+    for (const item of table.checkConstraints) {
+      mark(
+        objectPath("check", item.schema, item.table, item.name),
+        constraints.some(
+          (actual) =>
+            actual.schema === item.schema &&
+            actual.table === item.table &&
+            actual.name === item.name,
+        ) ||
+          foreignKeys.some(
+            (actual) =>
+              actual.schema === item.schema &&
+              actual.table === item.table &&
+              actual.name === item.name,
+          ),
+      );
+    }
+  }
+
+  for (const index of migration.indexes) {
+    mark(
+      objectPath("index", index.schema, index.table, index.name),
+      relationNamePresent(index.schema, index.name),
+    );
+  }
+
+  for (const foreignKey of migration.foreignKeys) {
+    mark(
+      objectPath("foreign-key", foreignKey.schema, foreignKey.table, foreignKey.name),
+      foreignKeys.some(
+        (actual) =>
+          actual.schema === foreignKey.schema &&
+          actual.table === foreignKey.table &&
+          actual.name === foreignKey.name,
+      ) ||
+        constraints.some(
+          (actual) =>
+            actual.schema === foreignKey.schema &&
+            actual.table === foreignKey.table &&
+            actual.name === foreignKey.name,
+        ),
+    );
+  }
+
+  for (const extension of migration.extensions) {
+    mark(
+      objectPath("extension", extension.name),
+      extensions.some((actual) => actual.name === extension.name),
+    );
+  }
+
+  return {
+    expected: Array.from(expected).sort(),
+    present: Array.from(present).sort(),
+  };
+}
+
+function unknownPreDb5AbsenceGate(
+  manifest: GateDManifest,
+): PreDb5AbsenceGateReport {
+  const deployCandidateList = db5DeployCandidateList(manifest);
+  if (manifest.authoredUnappliedMigrations.length === 0) {
+    return {
+      decision: "NOT_REQUIRED",
+      deployCandidateList,
+      mutationAuthorized: false,
+      requiredState: "ALL_ABSENT",
+      migrations: [],
+    };
+  }
+  return {
+    decision: "UNKNOWN",
+    deployCandidateList,
+    mutationAuthorized: false,
+    requiredState: "ALL_ABSENT",
+    migrations: manifest.authoredUnappliedMigrations.map((migration) => ({
+      name: migration.name,
+      state: "UNKNOWN",
+      physicalState: "UNKNOWN",
+      history: "UNKNOWN",
+      expectedPhysicalObjects: authoredPhysicalObjectEvidence(migration, null).expected,
+      presentPhysicalObjects: [],
+      historyEvidence: [],
+    })),
+  };
+}
+
+function buildPreDb5AbsenceGate(
+  manifest: GateDManifest,
+  snapshot: CatalogSnapshot,
+  historyIssues: readonly string[],
+): PreDb5AbsenceGateReport {
+  const deployCandidateList = db5DeployCandidateList(manifest);
+  if (manifest.authoredUnappliedMigrations.length === 0) {
+    return {
+      decision: "NOT_REQUIRED",
+      deployCandidateList,
+      mutationAuthorized: false,
+      requiredState: "ALL_ABSENT",
+      migrations: [],
+    };
+  }
+  const physicalKnown = snapshot.permissions.catalogReadable === true;
+  const historyKnown =
+    snapshot.permissions.historyReadable === true && historyIssues.length === 0;
+  const migrations = manifest.authoredUnappliedMigrations.map(
+    (migration): AuthoredUnappliedAbsenceReport => {
+      const physical = authoredPhysicalObjectEvidence(migration, snapshot);
+      const historyEvidence = historyEvidenceForMigration(migration, snapshot);
+      const physicalState = !physicalKnown
+        ? "UNKNOWN"
+        : physical.present.length === 0
+          ? "ALL_ABSENT"
+          : "PRESENT";
+      const history = !historyKnown
+        ? "UNKNOWN"
+        : historyEvidence.length === 0
+          ? "ABSENT"
+          : "PRESENT";
+      const state =
+        physicalState === "UNKNOWN" || history === "UNKNOWN"
+          ? "UNKNOWN"
+          : physicalState === "ALL_ABSENT" && history === "ABSENT"
+            ? "ALL_ABSENT"
+            : "PRESENT";
+      return {
+        name: migration.name,
+        state,
+        physicalState,
+        history,
+        expectedPhysicalObjects: physical.expected,
+        presentPhysicalObjects: physical.present,
+        historyEvidence,
+      };
+    },
+  );
+  const decision = migrations.some((migration) => migration.state === "UNKNOWN")
+    ? "UNKNOWN"
+    : migrations.every((migration) => migration.state === "ALL_ABSENT")
+      ? "PASS"
+      : "ABORT";
+  return {
+    decision,
+    deployCandidateList,
+    mutationAuthorized: false,
+    requiredState: "ALL_ABSENT",
+    migrations,
+  };
+}
+
 function historyForMigration(
   migration: MigrationExpectation,
   snapshot: CatalogSnapshot,
@@ -1398,6 +1733,7 @@ function privilegeChecks(
   manifest: GateDManifest,
   snapshot: CatalogSnapshot,
   migrationReports: MigrationReport[],
+  includeDb5Candidates: boolean,
 ): PrivilegeCheck[] {
   const historyTablePresent = snapshot.historyTable !== null;
   const historyIssues = migrationHistoryTrustIssues(snapshot.historyTable);
@@ -1417,10 +1753,13 @@ function privilegeChecks(
     { name: "schema:public:usage", status: statusFromBoolean(snapshot.permissions.schemaUsage, true) },
     { name: "transaction_read_only", status: statusFromBoolean(snapshot.permissions.transactionReadOnly, true) },
   ];
-  const pendingMigrations = manifest.migrations.filter((item) => pending.has(item.name));
+  const pendingMigrations = [
+    ...manifest.migrations.filter((item) => pending.has(item.name)),
+    ...(includeDb5Candidates ? manifest.authoredUnappliedMigrations : []),
+  ];
   const historyMutationRequired = migrationReports.some(
     (item) => item.state === "ALL_ABSENT" || item.state === "SCHEMA_ONLY",
-  );
+  ) || (includeDb5Candidates && manifest.authoredUnappliedMigrations.length > 0);
   const createsSchemaObjects = pendingMigrations.some(
     (item) => item.enums.length + item.tables.length + item.indexes.length > 0,
   );
@@ -1453,45 +1792,42 @@ function privilegeChecks(
   });
 
   const createdBeforeOrDuring = new Set<string>();
-  for (const migration of manifest.migrations) {
-    const isPending = pending.has(migration.name);
-    if (isPending) {
-      migration.tables.forEach((table) => createdBeforeOrDuring.add(`${table.schema}.${table.name}`));
-      for (const index of migration.indexes) {
-        const tableKey = `${index.schema}.${index.table}`;
-        if (!createdBeforeOrDuring.has(tableKey)) {
-          const relation = snapshot.permissions.relations.find(
-            (item) => item.schema === index.schema && item.table === index.table,
-          );
-          checks.push({
-            name: `owner:${tableKey}:create_index`,
-            status: statusFromBoolean(relation?.ownerUsable ?? null, true),
-          });
-        }
+  for (const migration of pendingMigrations) {
+    migration.tables.forEach((table) => createdBeforeOrDuring.add(`${table.schema}.${table.name}`));
+    for (const index of migration.indexes) {
+      const tableKey = `${index.schema}.${index.table}`;
+      if (!createdBeforeOrDuring.has(tableKey)) {
+        const relation = snapshot.permissions.relations.find(
+          (item) => item.schema === index.schema && item.table === index.table,
+        );
+        checks.push({
+          name: `owner:${tableKey}:create_index`,
+          status: statusFromBoolean(relation?.ownerUsable ?? null, true),
+        });
       }
-      for (const foreignKey of migration.foreignKeys) {
-        const sourceKey = `${foreignKey.schema}.${foreignKey.table}`;
-        if (!createdBeforeOrDuring.has(sourceKey)) {
-          const relation = snapshot.permissions.relations.find(
-            (item) => item.schema === foreignKey.schema && item.table === foreignKey.table,
-          );
+    }
+    for (const foreignKey of migration.foreignKeys) {
+      const sourceKey = `${foreignKey.schema}.${foreignKey.table}`;
+      if (!createdBeforeOrDuring.has(sourceKey)) {
+        const relation = snapshot.permissions.relations.find(
+          (item) => item.schema === foreignKey.schema && item.table === foreignKey.table,
+        );
+        checks.push({
+          name: `owner:${sourceKey}:add_constraint`,
+          status: statusFromBoolean(relation?.ownerUsable ?? null, true),
+        });
+      }
+      const targetKey = `${foreignKey.referencedSchema}.${foreignKey.referencedTable}`;
+      if (!createdBeforeOrDuring.has(targetKey)) {
+        const relation = snapshot.permissions.relations.find(
+          (item) =>
+            item.schema === foreignKey.referencedSchema && item.table === foreignKey.referencedTable,
+        );
+        for (const column of foreignKey.referencedColumns) {
           checks.push({
-            name: `owner:${sourceKey}:add_constraint`,
-            status: statusFromBoolean(relation?.ownerUsable ?? null, true),
+            name: `references:${targetKey}.${column}`,
+            status: statusFromBoolean(relation?.references[column] ?? null, true),
           });
-        }
-        const targetKey = `${foreignKey.referencedSchema}.${foreignKey.referencedTable}`;
-        if (!createdBeforeOrDuring.has(targetKey)) {
-          const relation = snapshot.permissions.relations.find(
-            (item) =>
-              item.schema === foreignKey.referencedSchema && item.table === foreignKey.referencedTable,
-          );
-          for (const column of foreignKey.referencedColumns) {
-            checks.push({
-              name: `references:${targetKey}.${column}`,
-              status: statusFromBoolean(relation?.references[column] ?? null, true),
-            });
-          }
         }
       }
     }
@@ -1589,6 +1925,7 @@ export function buildUnknownPreflightReport(
       fingerprintScope: "CONSISTENCY_EVIDENCE_ONLY",
     },
     migrations: unknownMigrations(manifest, reason),
+    preDb5AbsenceGate: unknownPreDb5AbsenceGate(manifest),
     privilegeChecks: [
       { name: "catalog_read", status: reason === "CATALOG_PERMISSION_DENIED" ? "FAIL" : "UNKNOWN" },
     ],
@@ -1615,6 +1952,18 @@ export function buildPreflightReport(
 
   const historyIssues = migrationHistoryTrustIssues(snapshot.historyTable);
   const stopReasons: string[] = [];
+  const preDb5AbsenceGate = buildPreDb5AbsenceGate(manifest, snapshot, historyIssues);
+  for (const migration of preDb5AbsenceGate.migrations) {
+    if (migration.physicalState === "PRESENT") {
+      stopReasons.push(`PRE_DB5_AUTHORED_PHYSICAL_PRESENT:${migration.name}`);
+    }
+    if (migration.history === "PRESENT") {
+      stopReasons.push(`PRE_DB5_AUTHORED_HISTORY_PRESENT:${migration.name}`);
+    }
+    if (migration.state === "UNKNOWN") {
+      stopReasons.push(`PRE_DB5_AUTHORED_ABSENCE_UNKNOWN:${migration.name}`);
+    }
+  }
   const unexpectedHistory = snapshot.historyRows
     .filter((row) => !manifest.migrations.some((migration) => migration.name === row.migrationName))
     .map((row) => row.migrationName)
@@ -1645,19 +1994,7 @@ export function buildPreflightReport(
       state,
       physicalState,
       history: history.status,
-      historyEvidence: snapshot.historyRows
-        .filter((row) => row.migrationName === migration.name)
-        .map((row) => ({
-          id: row.id,
-          checksumMatches: row.checksum === migration.checksum,
-          startedAt: row.startedAt,
-          finishedAt: row.finishedAt,
-          rolledBackAt: row.rolledBackAt,
-          unresolved: row.unresolved,
-          appliedStepsCount: row.appliedStepsCount,
-          logsPresent: row.logsPresent,
-        }))
-        .sort((left, right) => left.id.localeCompare(right.id)),
+      historyEvidence: historyEvidenceForMigration(migration, snapshot),
       expectedComponents: comparison.expectedComponents,
       matchedComponents: comparison.matchedComponents,
       expectedRoots: comparison.expectedRoots,
@@ -1686,7 +2023,12 @@ export function buildPreflightReport(
     }
   }
 
-  const checks = privilegeChecks(manifest, snapshot, migrations);
+  const checks = privilegeChecks(
+    manifest,
+    snapshot,
+    migrations,
+    preDb5AbsenceGate.decision === "PASS",
+  );
   for (const check of checks) {
     if (check.status === "FAIL" || check.status === "UNKNOWN") {
       stopReasons.push(`PRIVILEGE_${check.status}:${check.name}`);
@@ -1705,7 +2047,12 @@ export function buildPreflightReport(
   if (uniqueStopReasons.length > 0) decision = "ABORT";
   else if (proposedResolveList.length > 0) decision = "OWNER_BASELINE_REVIEW_REQUIRED";
   else if (pendingDeployList.length > 0) decision = "READY_FOR_OWNER_APPROVAL";
-  else decision = "NO_PENDING_MIGRATIONS";
+  else if (
+    preDb5AbsenceGate.decision === "PASS" &&
+    preDb5AbsenceGate.deployCandidateList.length > 0
+  ) {
+    decision = "READY_FOR_DB5_APPROVAL";
+  } else decision = "NO_PENDING_MIGRATIONS";
 
   return {
     formatVersion: 1,
@@ -1720,6 +2067,7 @@ export function buildPreflightReport(
       fingerprintScope: "CONSISTENCY_EVIDENCE_ONLY",
     },
     migrations,
+    preDb5AbsenceGate,
     privilegeChecks: checks,
     proposedResolveList,
     pendingDeployList,

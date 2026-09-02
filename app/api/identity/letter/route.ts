@@ -4,7 +4,6 @@ import { prisma } from "@/lib/prisma";
 import { currentUserOrDemo } from "@/lib/session";
 import { meteredMessage } from "@/lib/aiMeter";
 import { enforceRateLimit } from "@/lib/rateLimit";
-import { getEntitlement } from "@/lib/entitlements";
 import { applyCompliance } from "@/lib/compliance";
 import { encryptText } from "@/lib/docCrypto";
 import { BUREAU_ADDRESS, BUREAU_LABEL } from "@/lib/bureaus";
@@ -20,28 +19,107 @@ interface Discrepancy {
   severity: string;
   explanation: string;
   bureaus?: string[];
+  // RC1-S4 (L-09): the consumer's own per-item confirmation. Strictly `true` —
+  // never truthy-coerced — and set only by the consumer ticking that one item.
+  confirmed?: unknown;
 }
 
-// Premium: drafts a Personal Information correction letter to a bureau from the
-// detected discrepancies, runs the compliance filter, and saves it like any letter.
+// RC1-S4 (L-09) — PER-ITEM CONSUMER CONFIRMATION.
+//
+// THE DEFECT. `app/identity/page.tsx` posts the entire AI-produced
+// `discrepancies` array, and the prompt below then tells the model, for each
+// item, `report shows "X"; correct is "Y"`. "Correct is Y" is a factual
+// assertion about the consumer's own legal name, addresses and employers,
+// produced by DIFFING the report against a profile — the consumer never
+// affirmed any of it item by item, yet they sign and mail the result.
+//
+// THE RULE NOW. An item is disputed only if the consumer confirmed THAT item.
+// Unconfirmed items are dropped, not asserted; if nothing is confirmed the route
+// refuses and says so plainly. No AI call is made in the refusal path.
+//
+// HANDOFF (precise — `app/identity/page.tsx` is NOT owned by this slice, so the
+// checkbox does not exist yet and this route therefore refuses every current
+// request from that page):
+//   1. Each detected discrepancy renders an UNCHECKED checkbox worded as the
+//      consumer's own statement, e.g. "I confirm my correct {category} is
+//      \"{yourValue}\" and that the report is wrong."
+//   2. The POST body sends `confirmed: true` on exactly the ticked items (the
+//      whole array may still be sent; unticked items are simply dropped here).
+//   3. The submit button stays disabled while nothing is ticked, so the 400
+//      below is a backstop rather than the normal path.
+// Until step 1 ships, the correction letter cannot be generated. That is the
+// deliberate fail-closed direction: refusing to draft is recoverable, mailing an
+// unaffirmed statement of fact about the consumer's identity is not.
+function isConfirmed(d: Discrepancy): boolean {
+  return d.confirmed === true;
+}
+
+// S11 B-6 bounds. 50 items is far past any real personal-information section
+// (names, addresses and employers on one file), and 500 chars matches the
+// consumer-note cap this product already uses for free text destined for a
+// signed letter.
+const DISCREPANCY_MAX = 50;
+const DISCREPANCY_FIELD_MAX = 500;
+const DISCREPANCY_TEXT_FIELDS = ["category", "reportValue", "yourValue", "severity", "explanation"] as const;
+
+// Drafts a Personal Information correction letter to a bureau from the items the
+// consumer confirmed, runs the compliance filter, and saves it like any letter.
+//
+// RC1-S6a (S-05 / P0-6): this route used to open with
+// `if (!entitlement.premium) → 402 "Generating correction letters is a
+// Professional feature."` — the analysis was free but the finished letter was
+// sold. It is not sold any more, and no entitlement is read here at all. The
+// gate that remains is S4's, and it is about truth rather than money: an item is
+// disputed only if the consumer confirmed THAT item.
 export async function POST(req: Request) {
   const user = await currentUserOrDemo();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const limited = await enforceRateLimit(`identity-letter:${user.id}`, 20, 3600); // paid Opus letter — cost guard
+  const limited = await enforceRateLimit(`identity-letter:${user.id}`, 20, 3600); // Opus letter — cost guard, same for everyone
   if (limited) return limited;
 
-  const entitlement = await getEntitlement(user);
-  if (!entitlement.premium) {
+  // RC1-S11 (E-2). This 503 used to answer "AI is not configured." — a sentence
+  // about our deployment's configuration, in an operator's voice, rendered
+  // verbatim to a consumer who pressed "Draft correction letter" and now has no
+  // idea what to do. It is also the only 503 in the product that spoke that way.
+  // Reuses the house wording from lib/rateLimit.ts:121: it says the same thing a
+  // consumer can act on — not now, try again — without describing our internals.
+  const key = process.env.ANTHROPIC_API_KEY;
+  if (!key) {
     return NextResponse.json(
-      { error: "Generating correction letters is a Professional feature.", upgrade: true },
-      { status: 402 }
+      { error: "We can't process that right now — a service we depend on isn't responding. Please try again in a moment." },
+      { status: 503 },
     );
   }
-  const key = process.env.ANTHROPIC_API_KEY;
-  if (!key) return NextResponse.json({ error: "AI is not configured." }, { status: 503 });
 
   const body = await req.json().catch(() => ({}));
-  const discrepancies: Discrepancy[] = Array.isArray(body?.discrepancies) ? body.discrepancies : [];
+  const rawDiscrepancies: Discrepancy[] = Array.isArray(body?.discrepancies) ? body.discrepancies : [];
+  // ── S11 B-6 · BOUND THE CLIENT-SUPPLIED PROMPT ────────────────────────────
+  // Every confirmed item below becomes a line of an Opus prompt, and the array
+  // arrived straight from the request body with no element count and no
+  // per-field length. `reserveDailyBudget` admits an account's FIRST call of the
+  // day whatever the estimate (lib/aiMeter.ts), so one body-limit-sized array
+  // could exceed the whole daily ceiling in a single request.
+  //
+  // Refused, not silently trimmed: an over-long personal-information value is a
+  // statement about the consumer's own identity, and quietly cutting it in half
+  // would change what they are about to sign — the same rule the consumer note
+  // follows in app/api/tradelines/[id]/assertion/route.ts.
+  if (rawDiscrepancies.length > DISCREPANCY_MAX) {
+    return NextResponse.json(
+      { error: `Dispute up to ${DISCREPANCY_MAX} personal-information items in one letter, then generate another for the rest.` },
+      { status: 400 }
+    );
+  }
+  const overLong = rawDiscrepancies.find((d) =>
+    DISCREPANCY_TEXT_FIELDS.some((f) => typeof d?.[f] === "string" && (d[f] as string).length > DISCREPANCY_FIELD_MAX)
+  );
+  if (overLong) {
+    return NextResponse.json(
+      { error: `Each entry needs to be ${DISCREPANCY_FIELD_MAX} characters or fewer \u2014 the letter quotes them exactly as written.` },
+      { status: 400 }
+    );
+  }
+  const discrepancies: Discrepancy[] = rawDiscrepancies;
   const bureau: Bureau = (["EQUIFAX", "EXPERIAN", "TRANSUNION"] as Bureau[]).includes(body?.bureau)
     ? body.bureau
     : "EQUIFAX";
@@ -52,9 +130,34 @@ export async function POST(req: Request) {
   // Only dispute items the TARGET bureau actually reports — a letter to Equifax
   // must never contain Experian's or TransUnion's data. Items without bureau
   // attribution (legacy/unknown) are kept so nothing is silently dropped.
-  const relevant = discrepancies.filter(
+  const reportedByTarget = discrepancies.filter(
     (d) => !Array.isArray(d.bureaus) || d.bureaus.length === 0 || d.bureaus.includes(bureau)
   );
+  // RC1-S4 (L-09): and of those, ONLY the ones the consumer confirmed item by
+  // item. Checked before the AI call, so a refusal costs nothing.
+  const relevant = reportedByTarget.filter(isConfirmed);
+  if (reportedByTarget.length && !relevant.length) {
+    return NextResponse.json(
+      {
+        error:
+          "Confirm each correction before we draft it. This letter states, in your name, what your correct personal information is \u2014 so you tell us which items are wrong and what the right value is; we never assert that for you.",
+        needsConfirmation: true,
+        // REMEDIATION M-5: an actionable, TRUTHFUL next step. The per-item
+        // confirmation control does not exist on app/identity/page.tsx yet (that
+        // file is outside this slice's ownership), so this says exactly that
+        // rather than pointing at a control the consumer cannot find. It links
+        // nowhere, because there is nowhere honest to link yet.
+        nextStep:
+          "Tick each correction you want disputed, then generate the letter. If you don\u2019t see a confirmation control beside each item yet, this letter can\u2019t be drafted \u2014 nothing has been charged, nothing about your report has changed, and your dispute letters for accounts are unaffected.",
+        // Which items are still awaiting the consumer's confirmation, by their
+        // index in the submitted array, so the UI can point at them exactly.
+        unconfirmed: discrepancies
+          .map((d, i) => (reportedByTarget.includes(d) && !isConfirmed(d) ? i : -1))
+          .filter((i) => i >= 0),
+      },
+      { status: 400 }
+    );
+  }
   if (!relevant.length) {
     return NextResponse.json(
       {
@@ -75,6 +178,7 @@ export async function POST(req: Request) {
     "3. Professional, firm, non-threatening. No all-caps, no threats.",
     "4. Output ONLY the finished letter (sender block, date, recipient block, RE line, body listing each item, signature). No commentary.",
     "5. EVERY item listed below is reported by the SINGLE target bureau named in the prompt. Dispute only these items, address only that bureau, and do NOT mention, compare to, or include any other credit bureau or another bureau's data anywhere in the letter.",
+    "6. EVERY item listed below was confirmed by the consumer personally, item by item. State ONLY those items. Do not add an item, do not generalize one into a broader claim about the consumer's identity or history, and do not introduce any first-person statement the list does not support.",
   ].join("\n");
 
   const today = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
@@ -101,10 +205,27 @@ export async function POST(req: Request) {
     const draft = textBlock && "text" in textBlock ? textBlock.text.trim() : "";
     if (!draft) return NextResponse.json({ error: "Could not draft the letter." }, { status: 500 });
 
-    const { text, flags } = applyCompliance(draft);
+    // The signed-letter bar — this body is printed, signed and mailed.
+    const { text, flags } = applyCompliance(draft, { bar: "signed-letter" });
     const letter = await prisma.letter.create({
       data: {
         userId: user.id,
+        // RC1-S11: `personal_info`, a real registered strategy again
+        // (lib/strategies.ts NON_TRADELINE_STRATEGIES).
+        //
+        // The L-09 remediation moved this to "fcra_611" because `personal_info`
+        // was in no registry and resolved to nothing for every reader that
+        // looked it up. That fixed the dangling id and introduced two problems:
+        // it labelled a personal-information correction as a §611 TRADELINE
+        // reinvestigation, which it is not; and it erased the only thing
+        // separating this letter from a tradeline letter whose report was later
+        // deleted — both carry a null tradelineId, and `letterAuthorization`
+        // has to tell them apart to block the second without killing the first.
+        // A registered, distinct id fixes the label and restores the
+        // discriminator without a schema column.
+        //
+        // Production rows written before RC1 already carry this exact value, so
+        // they resolve identically now rather than needing a backfill.
         strategy: "personal_info",
         recipientType: "bureau",
         recipientName: addr.name,

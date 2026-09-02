@@ -7,14 +7,24 @@ import { AppShell } from '@/components/AppShell';
 import { openBillingPortal } from '@/lib/portalClient';
 import { resolveAgencyCapacity } from '@/lib/agencyCapacity';
 
+// RC1-S6b. This page now renders /api/billing/status's RC1-S6a semantics, where
+// the historical record and the live entitlement are explicitly different
+// things: `plan` / `subscriptionStatus` / `currentPeriodEnd` / `letterCredits`
+// are records of what an account bought while consumer plans were sold, and
+// `planIsHistorical` + `letterCreditsFrozen` + `consumerSalesClosed` say so on
+// the wire. Nothing here may present a historical field as a live benefit or as
+// a reason to buy — and nothing may erase it either.
 interface Status {
   plan: 'free' | 'premium' | 'agency' | 'agency_pro';
+  planIsHistorical?: boolean;
   isAgency: boolean;
   letterCredits?: number;
+  letterCreditsFrozen?: boolean;
   subscriptionStatus: string | null;
   currentPeriodEnd: string | null;
   memberSince: string | null;
   hasStripeCustomer: boolean;
+  consumerSalesClosed?: boolean;
   entitlement: {
     premium: boolean;
     lettersUsedThisMonth: number;
@@ -44,7 +54,6 @@ function BillingInner() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [portalOffer, setPortalOffer] = useState(false); // checkout refused: plan change belongs in the portal
 
   const justCheckedOut = params.get('checkout') === 'success';
 
@@ -83,39 +92,11 @@ function BillingInner() {
     };
   }, [authStatus, justCheckedOut]);
 
-  async function startCheckout() {
-    setBusy(true);
-    setError(null);
-    try {
-      const res = await fetch('/api/stripe/checkout', { method: 'POST' });
-      const data = await res.json();
-      if (res.ok && data.url) window.location.href = data.url;
-      // An in-place upgrade (route: subscriptions.update) returns no redirect URL.
-      // Without this branch a SUCCESSFUL, already-charged upgrade fell through to
-      // the error path and told the customer to try again.
-      else if (res.ok && data.upgraded) {
-        if (data.status === 'active' || data.status === 'trialing') {
-          // Plan state is written by the webhook, which may land a beat later —
-          // reuse the existing ?checkout=success polling rather than a second path.
-          window.location.href = '/billing?checkout=success';
-        } else {
-          // payment_behavior: "pending_if_incomplete" — the proration invoice needs
-          // authentication, so the plan has NOT changed yet. Never claim success.
-          setPortalOffer(true);
-          setError('Your plan change needs a payment confirmation before it takes effect. Open the billing portal to finish — you have not been charged twice.');
-          setBusy(false);
-        }
-      }
-      else {
-        if (data.portal) setPortalOffer(true);
-        setError(data.error || 'Could not start checkout.');
-        setBusy(false);
-      }
-    } catch {
-      setError('The connection dropped mid-request. Try again — nothing was lost.');
-      setBusy(false);
-    }
-  }
+  // RC1-S6b: `startCheckout()` lived here and POSTed to /api/stripe/checkout to
+  // sell a Professional subscription. S6a closed consumer sales — that route now
+  // refuses every consumer purchase with a 410 — so the function could only ever
+  // have produced a dead-end. Removed rather than disabled: a checkout call that
+  // exists is one config change away from firing again.
 
   async function openPortal() {
     setBusy(true);
@@ -133,9 +114,20 @@ function BillingInner() {
 
   const isAgencyPro = status?.plan === 'agency_pro';
   const isAgency = status?.plan === 'agency' || isAgencyPro;
-  const premium = status?.plan === 'premium' || isAgency;
-  const planLabel = isAgencyPro ? 'Agency Pro' : isAgency ? 'Agency' : premium ? 'Professional' : 'Free';
-  const monthlyCost = isAgencyPro ? '$699.00' : isAgency ? '$399.00' : premium ? '$99.00' : '$0.00';
+  // A consumer plan ON RECORD. Never a current tier: the route sets
+  // planIsHistorical for exactly this row shape, and the entitlement that
+  // actually governs the account is identical to everybody else's.
+  const hadConsumerPlan = status?.planIsHistorical === true || status?.plan === 'premium';
+  const historicalPlanLabel = 'Professional';
+  // RC1-S11 (C-4). A `plan: "premium"` row does not prove a payment: staff can
+  // provision one (app/api/admin/billing/provision), and a comped account has no
+  // Stripe customer at all. "Plan you previously paid for" would be a false
+  // statement about that person's money, so the claim is made only when a Stripe
+  // customer exists to back it.
+  const planRowLabel = status?.hasStripeCustomer ? 'Plan you previously paid for' : 'Plan on record';
+  const frozenCredits = Math.max(0, status?.letterCredits ?? 0);
+  const hasBillingRecord =
+    hadConsumerPlan || frozenCredits > 0 || Boolean(status?.hasStripeCustomer) || Boolean(status?.subscriptionStatus);
   // Workspace capacity is NEVER hardcoded here: it comes from the same canonical
   // resolver the server enforces with (lib/agencyCapacity, ADR-0031 §4), fed the same
   // server-owned inputs the billing status route returns. Hardcoded copy is how a buyer
@@ -155,130 +147,127 @@ function BillingInner() {
   return (
     <AppShell title="/ Billing">
       <div className="max-w-4xl">
-        <h1 className="text-xl font-semibold mb-2">Billing &amp; Subscription</h1>
-        <p className="text-slate-400 mb-8">Manage your plan and payment settings</p>
+        <h1 className="text-xl font-semibold mb-2">Billing &amp; Account</h1>
+        <p className="text-slate-400 mb-8">What CreditVector costs you, and the record of anything you paid before</p>
 
+        {/* RC1-S6b: this banner used to read "🎉 Welcome to Professional! Your
+            subscription is being activated". No consumer subscription can start
+            any more, so the only honest thing left to say is that the page is
+            re-reading itself. */}
         {justCheckedOut && (
-          <div className="mb-8 rounded-lg border border-success-500/40 bg-success-500/10 px-5 py-4 text-success-300">
-            🎉 Welcome{isAgency ? ' to Agency' : ' to Professional'}! Your subscription is being activated — this page will update momentarily.
+          <div className="mb-8 rounded-lg border border-ink-700 bg-ink-900/60 px-5 py-4 text-slate-300">
+            Re-checking your billing details — this page will update momentarily.
           </div>
         )}
 
         {loading ? (
-          <p className="text-slate-400">Pulling up your plan…</p>
+          <p className="text-slate-400">Pulling up your billing details…</p>
         ) : (
           <>
-            {/* Current Plan */}
+            {/* ---- What you pay today ---- */}
+            {/* Replaces the old "Your Current Plan" card, which showed a plan
+                type, a monthly cost, a letters-this-month meter against a limit
+                with "your allotment resets on the 1st of each month" (false even
+                under the old paid model — the meter was a rolling append-only
+                ledger, never a calendar reset), and an upgrade button carrying
+                the monthly price. */}
             <div className="card p-6 mb-8">
-              <h2 className="text-2xl font-bold mb-6">Your Current Plan</h2>
-              <div className="grid md:grid-cols-2 gap-8">
-                <div>
-                  <div className="text-slate-400 text-sm mb-2">PLAN TYPE</div>
-                  <div className="text-3xl font-bold mb-2">{planLabel}</div>
-                  {premium && status?.subscriptionStatus && (
-                    <div className="inline-block text-xs uppercase tracking-wide px-2 py-1 rounded bg-slate-800 text-slate-300 mb-4">
-                      {status.subscriptionStatus.replace('_', ' ')}
-                    </div>
-                  )}
-                  <p className="text-slate-400 mb-6">
-                    {isAgency
-                      ? `Manage each client in their own workspace with the full credit analysis and letter engine${workspaceCopy}.`
-                      : premium
-                      ? 'Unlimited refined dispute letters, the Kai Strategy Desk, and 90-day tracking.'
-                      : 'You have 3 dispute letters per month. Upgrade for unlimited letters + letter refinement.'}
-                  </p>
-                  {premium ? (
-                    <button
-                      onClick={openPortal}
-                      disabled={busy}
-                      className="bg-slate-700 hover:bg-slate-600 disabled:opacity-60 text-white px-6 py-2 rounded-lg font-semibold transition"
-                    >
-                      {busy ? 'Opening…' : 'Manage / Cancel Subscription'}
-                    </button>
-                  ) : (
-                    <button
-                      onClick={startCheckout}
-                      disabled={busy}
-                      className="btn-primary px-6"
-                    >
-                      {busy ? 'Redirecting…' : 'Upgrade to Professional — $99/mo'}
-                    </button>
-                  )}
-                  {error && <p className="mt-3 text-sm text-rose-400">{error}</p>}
-                  {portalOffer && (
-                    <button type="button" onClick={openPortal} disabled={busy} className="btn-primary mt-3">
-                      Open billing portal
-                    </button>
-                  )}
-                </div>
+              <h2 className="text-2xl font-bold mb-4">What you pay</h2>
+              <p className="text-3xl font-bold mb-3">Nothing</p>
+              <p className="text-slate-400 mb-2">
+                CreditVector&apos;s consumer product is free to use today. There is no plan to choose, no card on file
+                is required, and no part of the product is held back behind a paid tier.
+              </p>
+              {isAgency && (
+                <p className="text-slate-400">
+                  This account also runs an agency workspace{workspaceCopy}. That is a separate product from the free
+                  consumer one, and it is billed through the Stripe portal below.
+                </p>
+              )}
+            </div>
 
-                <div className="rounded-lg border border-ink-700 bg-ink-900/60 p-6">
-                  <div className="space-y-4">
-                    <div>
-                      <div className="text-slate-400 text-sm">Monthly Cost</div>
-                      <div className="text-2xl font-bold">{monthlyCost}</div>
-                    </div>
-                    {premium && (
-                      <div className="border-t border-slate-700 pt-4">
-                        <div className="text-slate-400 text-sm">
-                          {status?.subscriptionStatus === 'canceled' ? 'Access Until' : 'Next Billing Date'}
+            {/* ---- The historical record ---- */}
+            {hasBillingRecord && (
+              <div className="card p-6 mb-8">
+                <h2 className="text-2xl font-bold mb-2">Your billing history</h2>
+                <p className="text-slate-400 text-sm mb-6">
+                  Kept exactly as it happened. Nothing below has been removed, and nothing below is a plan you are on
+                  today.
+                </p>
+                <div className="grid md:grid-cols-2 gap-8">
+                  <div className="space-y-5">
+                    {hadConsumerPlan && (
+                      <div>
+                        <div className="text-slate-400 text-sm">{planRowLabel}</div>
+                        <div className="text-lg font-semibold">
+                          {historicalPlanLabel}
+                          <span className="ml-2 rounded bg-slate-800 px-2 py-0.5 align-middle text-[10px] font-bold uppercase tracking-wide text-slate-300">
+                            Past plan
+                          </span>
                         </div>
-                        <div className="text-lg font-semibold">{formatDate(status?.currentPeriodEnd ?? null)}</div>
+                        <p className="mt-1 text-xs text-slate-400">
+                          A record of what you bought, not a tier you are on. CreditVector no longer sells consumer
+                          plans, so this grants nothing — and takes nothing away either, because everything it used to
+                          unlock is now open to every account.
+                        </p>
                       </div>
                     )}
-                    <div className="border-t border-slate-700 pt-4">
-                      <div className="text-slate-400 text-sm">Letters This Month</div>
-                      <div className="text-lg font-semibold tnum">
-                        {status?.entitlement.lettersUsedThisMonth ?? 0}
-                        {status?.entitlement.letterLimit !== null
-                          ? ` / ${status?.entitlement.letterLimit}`
-                          : ' (unlimited)'}
+                    {status?.subscriptionStatus && (
+                      <div>
+                        <div className="text-slate-400 text-sm">Subscription status</div>
+                        <div className="text-lg font-semibold">{status.subscriptionStatus.replace('_', ' ')}</div>
                       </div>
-                      {status?.entitlement.letterLimit !== null && (
-                        <p className="mt-1 text-xs text-slate-400">
-                          <span className="mr-1.5 rounded bg-brand-500/15 px-1.5 py-0.5 text-[10px] font-bold tracking-widest text-brand-300">KAI</span>
-                          {status?.entitlement.lettersRemaining ?? 0} letter{(status?.entitlement.lettersRemaining ?? 0) === 1 ? '' : 's'} remaining — your allotment resets on the 1st of each month.
-                        </p>
+                    )}
+                    {status?.currentPeriodEnd && (
+                      <div>
+                        <div className="text-slate-400 text-sm">
+                          {status?.subscriptionStatus === 'canceled' ? 'Billed through' : 'Current period ends'}
+                        </div>
+                        <div className="text-lg font-semibold">{formatDate(status.currentPeriodEnd)}</div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="rounded-lg border border-ink-700 bg-ink-900/60 p-6">
+                    <div className="space-y-5">
+                      {frozenCredits > 0 && (
+                        <div>
+                          <div className="text-slate-400 text-sm">Letter credits</div>
+                          <div className="text-lg font-semibold tnum">{frozenCredits}</div>
+                          <p className="mt-1 text-xs text-slate-400">
+                            Letter credits from a past purchase are preserved on your account. They are not spent when
+                            you generate a letter — nothing decrements them — because letters are no longer charged
+                            for. The number you see here is the number you will still see afterwards.
+                          </p>
+                        </div>
                       )}
-                    </div>
-                    <div className="border-t border-slate-700 pt-4">
-                      <div className="text-slate-400 text-sm">Member Since</div>
-                      <div className="text-lg font-semibold">{formatDate(status?.memberSince ?? null)}</div>
+                      <div>
+                        <div className="text-slate-400 text-sm">Letters you have written this month</div>
+                        <div className="text-lg font-semibold tnum">{status?.entitlement.lettersUsedThisMonth ?? 0}</div>
+                        <p className="mt-1 text-xs text-slate-400">
+                          A count of your own activity, not an allowance. There is no monthly limit to run out of.
+                        </p>
+                      </div>
+                      <div className="border-t border-slate-700 pt-4">
+                        <div className="text-slate-400 text-sm">Account opened</div>
+                        <div className="text-lg font-semibold">{formatDate(status?.memberSince ?? null)}</div>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
+            )}
 
-            {/* What's Included */}
-            <div className="card p-6 mb-8">
-              <h2 className="text-2xl font-bold mb-6">{premium ? "What's Included" : 'Unlock Professional'}</h2>
-              <div className="grid md:grid-cols-2 gap-6">
-                {[
-                  ['Unlimited Dispute Letters', 'Generate as many professional dispute letters as you need.'],
-                  ['Letter Refinement', 'KAI grounds every letter in FCRA, FDCPA, and case law.'],
-                  ['90-Day Progress Tracking', 'Monitor disputes across all three bureaus.'],
-                  ['Priority Support', 'Faster help when you need it.'],
-                ].map(([title, desc]) => (
-                  <div key={title} className="flex items-start gap-3">
-                    <span className={`text-2xl flex-shrink-0 ${premium ? 'text-success-500' : 'text-slate-600'}`}>
-                      {premium ? '✓' : '○'}
-                    </span>
-                    <div>
-                      <div className="font-semibold">{title}</div>
-                      <p className="text-slate-400 text-sm">{desc}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Payment & invoices via Stripe portal */}
+            {/* ---- Payment settings via the Stripe portal ---- */}
+            {/* The portal and self-cancellation are deliberately untouched: a
+                consumer who is still on a live subscription must keep every
+                control they had over their own money. */}
             <div className="card p-6">
               <h2 className="text-2xl font-bold mb-4">Payment &amp; Invoices</h2>
               <p className="text-slate-400 text-sm mb-6">
-                Payments are processed securely by Stripe — your card details never touch our servers. Update your card,
-                view receipts, or cancel anytime in the billing portal.
+                Payments are processed by Stripe — your card details never touch our servers. The portal is where your
+                receipts, your saved card, and cancellation live, and it is the authoritative record of any amount you
+                were charged.
               </p>
               {status?.hasStripeCustomer ? (
                 <button
@@ -288,9 +277,26 @@ function BillingInner() {
                 >
                   {busy ? 'Opening…' : 'Open Billing Portal'}
                 </button>
+              ) : hasBillingRecord ? (
+                // RC1-S11 (C-4). This branch used to print "No billing history on
+                // this account — you have never been charged" purely on the
+                // absence of a Stripe customer, directly contradicting the
+                // "Your billing history" card above, which renders whenever a
+                // plan, credits or a subscription status exist. A comped or
+                // staff-provisioned account saw its subscription listed AND was
+                // told it had no billing history. The portal's absence is a fact
+                // about Stripe, not a claim about whether the person ever paid.
+                <p className="text-slate-500 text-sm">
+                  No Stripe customer is linked to this account, so there is no portal to open. Your record above is
+                  unaffected — if you believe something is missing from it, contact support and we will tell you
+                  honestly what we can see.
+                </p>
               ) : (
-                <p className="text-slate-500 text-sm">No billing history yet. Upgrade to Professional to get started.</p>
+                <p className="text-slate-500 text-sm">
+                  No billing history on this account — you have never been charged, and there is nothing to open.
+                </p>
               )}
+              {error && <p className="mt-3 text-sm text-rose-400">{error}</p>}
             </div>
           </>
         )}

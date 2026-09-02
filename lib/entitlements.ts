@@ -6,9 +6,34 @@ import { planTierFromUser, ACTIVE_SUBSCRIPTION_STATES } from "@/lib/os/host/bill
 import type { CapabilityKey } from "@/lib/os/kernel";
 import { resolveAgencyCapacity } from "@/lib/agencyCapacity";
 
-// Free tier: 3 dispute letters per calendar month, no AI refinement. Purchased
-// letter-pack credits are spent once the monthly free allowance is exhausted.
-// Premium / Agency / Agency Pro: unlimited letters + AI.
+// ── RC1-S6a · THE FREE-CONSUMER INVARIANT (Founder D-3 / D-4 / P0-6) ─────────
+//
+// NO PAYMENT STATUS, PAYER IDENTITY, CREDIT BALANCE, PLAN, SUBSCRIPTION OR
+// AGENCY RELATIONSHIP CHANGES THE ASSISTANCE A CONSUMER RECEIVES.
+//
+// getEntitlement() is the single resolver every consumer surface reads, and it
+// is now STRUCTURALLY incapable of violating that: its parameter type cannot
+// see `plan`, `subscriptionStatus`, `isAgency` or `managedByAgencyId`. A free
+// account, a legacy Professional, a credit-holding account, an agency-managed
+// consumer and an agency payer all receive the identical object.
+//
+// What survives, and why:
+//   · isPremium() / agencyClientLimit() — BILLING-RECORD and B2B-capacity
+//     predicates. They describe what an account row BOUGHT, never what a
+//     consumer may do. No consumer-assistance surface may consult them.
+//   · spendLetterCredits() — FROZEN (D-3). Purchased letter credits are a
+//     historical balance that is preserved and displayed, never consumed.
+//   · aiRefinement — always false (D-2). The flag survives as a dormant off
+//     switch; no plan, and nothing else, can turn it on here.
+//
+// The REAL bounds on letter generation are capability-neutral and live
+// elsewhere: the S4 consumer-assertion gate (no confirmed fact, no letter) and
+// the S1 spend/rate limits. Neither reads payment state.
+//
+// Historical constant. NOTHING enforces a monthly letter cap any more; it is
+// retained because the dormant capability matrix (config/capabilityMatrix.ts,
+// zero production consumers) declares the same number and its guard pins the
+// two together. Deleting it would silently drift that dormant declaration.
 export const FREE_LETTER_LIMIT = 3;
 
 // ── Platform Phase B, B3 (flag-gated adapter — DEFAULT OFF) ──────────────────
@@ -56,19 +81,37 @@ export function agencyClientLimitViaPlatform(user: {
   return limitForTier(planTierFromUser(user), CAPABILITY_MATRIX, "CLIENT_WORKSPACE_LIMIT");
 }
 
+// What a consumer may do. Every field below is the SAME for every consumer —
+// there is no tier to distinguish, so nothing here can encode one.
+//
+// `freeMonthlyRemaining` was removed deliberately. It meant "free letters left
+// this month", and under an unlimited model a numeric answer is either wrong or
+// meaningless — a stale 0 in this shape is exactly what would have silently
+// burned a historical payer's credits (see spendLetterCredits below). No
+// surface read it; `letterLimit` / `lettersRemaining` (both always null =
+// unbounded) are the fields that describe capability.
 export interface Entitlement {
-  premium: boolean;
-  plan: string;
-  aiRefinement: boolean;
-  letterLimit: number | null; // null = unlimited; otherwise the monthly free cap
-  lettersUsedThisMonth: number;
-  lettersRemaining: number | null; // null = unlimited; includes purchased credits
-  letterCredits: number; // one-time purchased credits remaining
-  freeMonthlyRemaining: number; // free letters left this month (0 for premium)
+  premium: boolean; // ALWAYS false. There is no paid advantage to hold.
+  plan: string; // ALWAYS "free". The plan OF RECORD lives on the User row.
+  aiRefinement: boolean; // ALWAYS false (D-2). Dormant off switch.
+  letterLimit: number | null; // ALWAYS null — no plan-imposed cap exists.
+  lettersUsedThisMonth: number; // History, from the append-only ledger. Not a cap.
+  lettersRemaining: number | null; // ALWAYS null — unbounded, for everyone.
+  letterCredits: number; // FROZEN historical balance (D-3). Displayed, never spent.
 }
 
 const ACTIVE_STATES = ACTIVE_SUBSCRIPTION_STATES; // single canonical definition (lib/os/host/billingTier.ts)
 
+/**
+ * BILLING-RECORD predicate: does this account row carry a paid plan of record?
+ *
+ * ⚠️ RC1-S6a: this is NOT a capability predicate and no consumer-assistance
+ * surface may call it. It answers a question about billing history and about
+ * B2B (Agency) account type — nothing about what a consumer is allowed to do.
+ * getEntitlement() no longer consults it, and neither does the community gate.
+ * Its remaining readers are the dormant capability-platform adapter and the
+ * golden guard that pins the two paths byte-identical.
+ */
 export function isPremium(user: {
   plan?: string | null;
   subscriptionStatus?: string | null;
@@ -145,20 +188,39 @@ async function lettersUsedFromLedger(userId: string, since: Date): Promise<numbe
   }
 }
 
+// FOUNDER D-3 — PURCHASED LETTER CREDITS ARE FROZEN.
+//
+// A consumer's `letterCredits` balance is a historical commercial record. It is
+// preserved exactly as it stands, shown to the consumer as history, and NEVER
+// consumed: assistance is free, so there is nothing to pay for. Re-authorising
+// fulfilment is a Founder decision that must arrive as a reviewed commit, which
+// is why this is a source constant and not an env flag an ops change could flip.
+//
+// Typed `boolean` on purpose: a literal `true` would make the clamp/guard logic
+// below statically unreachable, and that logic is the reviewed accounting the
+// product must still hold the day fulfilment is ever re-authorised.
+const LETTER_CREDITS_FROZEN: boolean = true;
+
 /**
- * Spend purchased letter-pack credits for letters generated beyond the free monthly
- * allowance. THE decrement path for every letter surface (generate + round 2) so the
- * accounting exists in exactly one place.
+ * THE single decrement path for purchased letter-pack credits.
  *
- * The decrement is clamped to the credits actually held AND conditional on the row
- * still holding them, so a concurrent spend can never drive the balance negative — a
- * negative balance would silently eat a future letter-pack purchase.
+ * RC1-S6a: FROZEN and UNCALLED. No letter surface invokes it any more (the
+ * quota it served no longer exists), and the freeze above makes it a no-op even
+ * if a future caller appears — belt and braces, because the natural "free for
+ * all" implementation is precisely what silently drains a historical payer's
+ * prepaid balance on letters they were given for free.
+ *
+ * Preserved below, unchanged: the decrement is clamped to the credits actually
+ * held AND conditional on the row still holding them, so a concurrent spend can
+ * never drive the balance negative — a negative balance would silently eat a
+ * future letter-pack purchase.
  */
 export async function spendLetterCredits(
   userId: string,
-  e: Pick<Entitlement, "premium" | "freeMonthlyRemaining" | "letterCredits">,
+  e: { premium: boolean; freeMonthlyRemaining: number; letterCredits: number },
   generated: number
 ): Promise<void> {
+  if (LETTER_CREDITS_FROZEN) return;
   if (e.premium || generated <= 0) return;
   const beyondFree = Math.max(0, generated - Math.max(0, e.freeMonthlyRemaining));
   const fromCredits = Math.min(beyondFree, Math.max(0, e.letterCredits));
@@ -178,69 +240,60 @@ export async function spendLetterCredits(
   }
 }
 
+/**
+ * THE consumer capability resolver. One answer, identical for every consumer.
+ *
+ * The parameter type is the enforcement, not a comment: `plan`,
+ * `subscriptionStatus`, `isAgency` and `managedByAgencyId` are not accepted, so
+ * no future edit inside this function can branch on payment status or on who is
+ * paying. Callers still pass whole user rows — the extra fields are simply
+ * invisible here.
+ *
+ * P1-26 — MANAGED-PAYER INHERITANCE REMOVED. A consumer worked inside an agency
+ * workspace used to inherit the AGENCY's paid entitlement, which made a third
+ * party's billing state decide what that consumer received. A managed consumer
+ * now gets exactly what every consumer gets, and the agency's plan is not read.
+ */
 export async function getEntitlement(user: {
   id: string;
-  plan?: string | null;
-  subscriptionStatus?: string | null;
-  isAgency?: boolean | null;
-  managedByAgencyId?: string | null;
   letterCredits?: number | null;
 }): Promise<Entitlement> {
-  let premium = isPremium(user);
-  // A managed client inherits its agency's entitlement (the agency is the payer).
-  if (!premium && user.managedByAgencyId) {
-    const agency = await prisma.user.findUnique({
-      where: { id: user.managedByAgencyId },
-      select: { plan: true, subscriptionStatus: true, isAgency: true },
-    });
-    if (agency && isPremium(agency)) premium = true;
-  }
-
   // Monthly usage = MAX(deletable Letter rows, append-only ProductEvent ledger).
-  // The ledger closes the delete-to-reset paywall bypass; the MAX means the meter can
-  // never read LOWER than it does today, so pre-ledger accounts are not retroactively
-  // granted free letters.
+  // Kept as HISTORY, not as a meter: nothing gates on it any more. The ledger is
+  // still the honest floor (a consumer may delete their own Letter rows), and the
+  // MAX means the count can never read lower than it did before.
   const monthStart = startOfMonthUTC();
   const [letterRowsThisMonth, ledgerUsedThisMonth] = await Promise.all([
     prisma.letter.count({ where: { userId: user.id, createdAt: { gte: monthStart } } }),
     lettersUsedFromLedger(user.id, monthStart),
   ]);
   const lettersUsedThisMonth = Math.max(letterRowsThisMonth, ledgerUsedThisMonth);
+  // Read back, never written back. The balance is reported so a historical payer
+  // can still see what they hold; nothing in the product spends it (D-3).
   const letterCredits = Math.max(0, user.letterCredits ?? 0);
 
-  if (premium) {
-    return {
-      premium: true,
-      plan: "premium",
-      aiRefinement: true,
-      letterLimit: null,
-      lettersUsedThisMonth,
-      lettersRemaining: null,
-      letterCredits,
-      freeMonthlyRemaining: 0,
-    };
-  }
-
-  const freeMonthlyRemaining = Math.max(0, FREE_LETTER_LIMIT - lettersUsedThisMonth);
+  // ONE return. There is no second branch to fall into and no tier to compute.
   return {
     premium: false,
     plan: "free",
     aiRefinement: false,
-    letterLimit: FREE_LETTER_LIMIT,
+    letterLimit: null,
     lettersUsedThisMonth,
-    lettersRemaining: freeMonthlyRemaining + letterCredits,
+    lettersRemaining: null,
     letterCredits,
-    freeMonthlyRemaining,
   };
 }
 
-export function canGenerateLetter(e: Entitlement): { allowed: boolean; reason?: string } {
-  if (e.lettersRemaining === null) return { allowed: true };
-  if (e.lettersRemaining <= 0) {
-    return {
-      allowed: false,
-      reason: `You've used your ${FREE_LETTER_LIMIT} free dispute letters this month. Upgrade to Professional for unlimited letters, or buy a letter pack.`,
-    };
-  }
+/**
+ * Retained so the letter surfaces keep a single named place to ask "may this
+ * consumer generate?" — and the answer is now always yes. Generation is bounded
+ * only by things that are not about money: the consumer-assertion gate (S4) and
+ * the AI spend / rate limits (S1).
+ *
+ * The refusal branch is gone, not softened. It used to return
+ * "Upgrade to Professional for unlimited letters, or buy a letter pack" — a
+ * commercial refusal shape that must not exist anywhere a consumer can reach.
+ */
+export function canGenerateLetter(_e: Entitlement): { allowed: boolean; reason?: string } {
   return { allowed: true };
 }

@@ -7,7 +7,7 @@ export const metadata = {
 
 export default function TermsPage() {
   return (
-    <LegalShell title="Terms of Service" updated="June 18, 2026">
+    <LegalShell title="Terms of Service" updated="August 23, 2026">
       <section>
         <h2>What CreditVector is</h2>
         <p>
@@ -15,6 +15,37 @@ export default function TermsPage() {
           your own disputes. It is not a credit-repair organization, a law firm, or a substitute for legal or financial
           advice. You review, sign, and mail your own letters and stay in control throughout.
         </p>
+      </section>
+
+      {/* RC1-S8 (D-02/D-03, interim factual text — Founder decision D-9). These
+          two sections state capabilities the product actually has today. They
+          make no legal characterization and carry no counsel sign-off: counsel
+          replaces this wording later, not the behaviour it describes. */}
+      <section>
+        <h2>How your letters are written</h2>
+        <p>
+          Your dispute letters are drafted by software, including an AI model, from a template and from the facts you
+          confirm about your own accounts. CreditVector does not know what is true about your credit — you do. Nothing is
+          asserted on your behalf that you have not confirmed, every letter is yours to read before it goes anywhere, and
+          you are the one who signs and mails it. Check every letter against your own copy of your report before you send
+          it, and only dispute information you have a good-faith basis to believe is inaccurate.
+        </p>
+      </section>
+
+      <section>
+        <h2>What the product cannot verify</h2>
+        <ul>
+          <li>
+            Report reading is automated and imperfect. It can miss an account, misread a value, or misclassify one, and
+            it only ever sees the report you gave it. Treat what you see here as a starting point, not a complete or
+            authoritative copy of your file.
+          </li>
+          <li>
+            Scores in the Score Tracker are the ones you type in yourself. CreditVector does not pull, verify, or
+            bureau-confirm any score, and a change between two entries you recorded is not evidence that CreditVector or
+            a dispute caused it.
+          </li>
+        </ul>
       </section>
 
       <section>
@@ -37,11 +68,34 @@ export default function TermsPage() {
       </section>
 
       <section>
-        <h2>Billing and cancellation</h2>
+        <h2>Third-party services we use</h2>
         <p>
-          Paid plans are billed through Stripe on the interval you select. You can cancel anytime from your billing
-          settings; access continues until the end of the current billing period. One-time letter-pack credits do not
-          expire and carry over month to month.
+          To read your report and draft your letters, CreditVector sends report text and the identity details you type to
+          Anthropic, our AI provider. Payments are handled by Stripe. Our <a href="/legal/privacy">Privacy Policy</a> sets
+          out exactly what is sent, what is not, and what we do to reduce it.
+        </p>
+      </section>
+
+      {/* RC1-S6b. The sentence "One-time letter-pack credits do not expire and
+          carry over month to month" described a credit that is spent against a
+          monthly allowance. Neither exists: there is no allowance, and nothing
+          in the product decrements a credit balance. Saying credits "carry over
+          month to month" would now imply a spending mechanism that was removed,
+          which is why this is restated rather than left standing. Only that
+          clause and the consumer-subscription framing around it changed; the
+          rest of these Terms is S8's text. */}
+      <section>
+        <h2>Billing</h2>
+        <p>
+          CreditVector does not charge consumers for the consumer product. There is no consumer plan to buy and no
+          consumer subscription to start.
+        </p>
+        <p>
+          If you paid for a consumer plan or a letter pack before, that record is preserved on your account. Any letter
+          credits you hold are frozen: they are not consumed when you generate a letter, because letters are not
+          charged for. Existing subscriptions are billed through Stripe, and you can view receipts, update your payment
+          method, or cancel from the Stripe billing portal linked on your billing page; access continues until the end
+          of the current billing period. Services for agencies and businesses are provided under separate terms.
         </p>
       </section>
 

@@ -2,10 +2,21 @@ import { NextResponse } from "next/server";
 import type { LetterStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { currentUserOrDemo } from "@/lib/session";
-import { decryptText } from "@/lib/docCrypto";
+import { decryptText, encryptText } from "@/lib/docCrypto";
 import { recordKaiEvent } from "@/lib/kaiEvents";
 import { track, PRODUCT_EVENTS } from "@/lib/events";
 import { validateMailedAtInput } from "@/lib/mailCenter";
+import { applyCompliance, blockingFindings } from "@/lib/compliance";
+import {
+  LETTER_APPROVED_STATUS,
+  LETTER_AUTHORIZATION_REVOKED_MESSAGE,
+  letterAuthorizationRevoked,
+  LETTER_BODY_MAX,
+  LETTER_BODY_MIN,
+  LETTER_EDITABLE_STATUSES,
+  LETTER_TRANSITIONS,
+  sanitizeLetterBody,
+} from "@/lib/letter";
 
 export const dynamic = "force-dynamic";
 
@@ -30,13 +41,51 @@ const VALID_STATUSES: LetterStatus[] = [
   "RESOLVED",
 ];
 
+// ── RC1-S5 · THE LETTER'S LIFECYCLE (P1-31, L-11) ────────────────────────────
+//
+// Before this slice, PATCH accepted any VALID_STATUS from any other status
+// (A3 L-11) and accepted no body at all (A3 L-01): the consumer could jump a
+// letter straight to RESOLVED, and could not change one word of the document
+// they were about to sign and mail.
+//
+// The map itself now lives in lib/letter.ts, because this is not the only route
+// that writes a letter's status — app/api/letters/[id]/response/route.ts writes
+// RESPONSE_RECEIVED and must answer to the same rule (review M-5). The shape,
+// the naming debt behind PRINTED-as-approved and the follow-up are documented
+// there.
+const APPROVED = LETTER_APPROVED_STATUS;
+const EDITABLE_STATUSES = LETTER_EDITABLE_STATUSES;
+const ALLOWED_TRANSITIONS = LETTER_TRANSITIONS;
+
+// What the consumer is saying when they close a dispute out. RESOLVED used to
+// flip `tradeline.resolved = true` with no evidence of any kind (A3 L-11) — a
+// claim that fed lib/missionControl.ts, the strategist and the admin product
+// dashboard. The consumer now says which of these actually happened, and only
+// the first one is a statement about the item itself.
+const RESOLUTION_OUTCOMES = {
+  corrected_or_deleted: {
+    label: "The item was corrected or removed",
+    setsTradelineResolved: true,
+  },
+  closed_no_change: {
+    label: "I'm closing this out — the item is still reported as it was",
+    setsTradelineResolved: false,
+  },
+} as const;
+type ResolutionOutcome = keyof typeof RESOLUTION_OUTCOMES;
+
+function isResolutionOutcome(v: unknown): v is ResolutionOutcome {
+  return typeof v === "string" && Object.prototype.hasOwnProperty.call(RESOLUTION_OUTCOMES, v);
+}
+
 // Fetch a single letter (used by the print view).
-export async function GET(_req: Request, { params }: { params: { id: string } }) {
+export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await currentUserOrDemo();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  const { id } = await params;
   const letter = await prisma.letter.findFirst({
-    where: { id: params.id, userId: user.id },
+    where: { id, userId: user.id },
   });
   if (!letter) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json({ letter: decryptedLetter(letter) });
@@ -54,32 +103,231 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
 // now UPDATES that row in place instead of inserting a duplicate, so the
 // correction never burns a second credit and this DELETE path is no longer
 // the tool a user needs to "undo" a bad generate.
-export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await currentUserOrDemo();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const existing = await prisma.letter.findFirst({ where: { id: params.id, userId: user.id } });
+  const { id } = await params;
+  const existing = await prisma.letter.findFirst({ where: { id, userId: user.id } });
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   await prisma.letter.delete({ where: { id: existing.id } });
   return NextResponse.json({ ok: true });
 }
 
-// Update a letter's status (e.g. mark MAILED / RESPONSE_RECEIVED / RESOLVED).
-// Advancing to MAILED stamps mailedAt and, if the dispute resolved, flips the
-// related tradeline to resolved so dashboards reconcile.
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+// Update a letter: edit its body while it is still a draft, approve it, or move
+// it along its lifecycle (mark MAILED / RESPONSE_RECEIVED / RESOLVED).
+//
+// Two request shapes, deliberately kept separate so neither can happen by
+// accident as a side effect of the other:
+//   · { body }   — save an edited letter body (draft states only).
+//   · { status } — a lifecycle transition, checked against ALLOWED_TRANSITIONS.
+//
+// Advancing to MAILED stamps mailedAt; closing a dispute out as RESOLVED now
+// requires the consumer to say WHICH outcome happened, and only "the item was
+// corrected or removed" writes anything to the tradeline.
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await currentUserOrDemo();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json().catch(() => ({}));
+  const hasBodyEdit = typeof body?.body === "string";
   const status = body?.status as LetterStatus | undefined;
-  if (!status || !VALID_STATUSES.includes(status)) {
+  if (!hasBodyEdit && (!status || !VALID_STATUSES.includes(status))) {
     return NextResponse.json({ error: "Invalid status" }, { status: 400 });
   }
 
-  const existing = await prisma.letter.findFirst({ where: { id: params.id, userId: user.id } });
+  const { id } = await params;
+  const existing = await prisma.letter.findFirst({ where: { id, userId: user.id } });
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  // ── EDIT THE LETTER (A3 L-01 / P1-31) ──────────────────────────────────────
+  // The consumer signs and mails this document, so the consumer gets to change
+  // it. Three rules make that safe rather than reckless:
+  //   1. Only before approval, and never once it has been mailed — an already-
+  //      mailed letter is a RECORD, not a draft.
+  //   2. What is saved is what will print: the stored body is the ONLY source
+  //      the print view reads (app/letters/print/[id]/page.tsx), so there is no
+  //      second copy that could disagree with it.
+  //   3. The compliance bar runs over the consumer's own words, and a REFUSED
+  //      sentence is REFUSED — never silently rewritten behind their back. A
+  //      rewritten sentence comes back in the response so they see the letter
+  //      as it will actually print, before they approve it.
+  if (hasBodyEdit) {
+    if (existing.mailedAt || !EDITABLE_STATUSES.includes(existing.status)) {
+      return NextResponse.json(
+        {
+          error:
+            existing.mailedAt || existing.status === "MAILED"
+              ? "This letter has already been mailed, so it can't be changed — it's the record of what you actually sent. Draft a new round instead."
+              : "Re-open this letter for editing first — approved letters are locked so the copy you approved is the copy that prints.",
+          notEditable: true,
+          status: existing.status,
+        },
+        { status: 409 }
+      );
+    }
+
+    // ---- RC1-S11 (review AD-7): COMPARE-AND-SWAP ON THE BODY ---------------
+    // Two tabs open on the same draft: tab A saves an edit, tab B saves the copy
+    // it loaded BEFORE that edit, and A's sentences are gone from a document the
+    // consumer signs. `Letter` has no `updatedAt` column (adding one is a
+    // migration, outside this slice), so the stored body IS the version token:
+    // an editor sends back the body it started from and a save is refused when
+    // that no longer matches. Optional, so any caller that does not send one
+    // behaves exactly as before.
+    if (typeof body?.baseBody === "string" && body.baseBody !== decryptText(existing.body)) {
+      return NextResponse.json(
+        {
+          error:
+            "This letter changed somewhere else since you opened it — probably another tab. Nothing was saved, so nothing you wrote is lost. Load the current letter and reapply your changes.",
+          staleEdit: true,
+        },
+        { status: 409 }
+      );
+    }
+
+    const cleaned = sanitizeLetterBody(body.body);
+    if (cleaned.length < LETTER_BODY_MIN) {
+      return NextResponse.json(
+        { error: `A dispute letter needs at least ${LETTER_BODY_MIN} characters. Nothing was saved.` },
+        { status: 400 }
+      );
+    }
+    if (cleaned.length > LETTER_BODY_MAX) {
+      return NextResponse.json(
+        {
+          error: `That's longer than a mailable dispute letter (${cleaned.length.toLocaleString()} characters; the limit is ${LETTER_BODY_MAX.toLocaleString()}). Nothing was saved.`,
+        },
+        { status: 400 }
+      );
+    }
+
+    // The signed-letter bar: this is the document the consumer prints, signs and
+    // mails, so it is held to the stricter rule set (lib/compliance.ts, "BAR").
+    const compliance = applyCompliance(cleaned, { bar: "signed-letter" });
+    // REVIEW H-1 — WHOSE WORDS ARE BEING REPLACED.
+    // A rule whose match IS the whole sentence loses nothing when the sentence
+    // is replaced, so that still saves (and is shown before approval). A rule
+    // that matched only PART of the sentence would delete the rest — the
+    // consumer's payment date, balance, or the fact they never applied — and
+    // store words they never wrote. Those are refused, with the suggested
+    // compliant wording handed back so the consumer adopts it in their own
+    // words. Nothing is rewritten out from under them.
+    const blocking = blockingFindings(compliance);
+    if (blocking.length > 0) {
+      return NextResponse.json(
+        {
+          error: "This letter can't be saved as written — see the sentences below.",
+          complianceRefusals: blocking.map((f) => ({
+            sentence: f.original,
+            why: f.explanation,
+            // Empty for a rule that simply removes the sentence.
+            suggestion: f.replacement,
+            partial: f.partial,
+            rule: f.ruleId,
+          })),
+        },
+        { status: 400 }
+      );
+    }
+
+    const edited = await prisma.letter.update({
+      where: { id: existing.id },
+      data: {
+        body: encryptText(compliance.text),
+        complianceFlags: compliance.flags,
+        // The consumer's own draft. Editing an approved letter is impossible
+        // (guarded above), so this only ever moves GENERATED → DRAFT.
+        status: "DRAFT",
+      },
+    });
+    return NextResponse.json({
+      ok: true,
+      letter: decryptedLetter(edited),
+      // What was adjusted, sentence by sentence, so the editor can show the
+      // consumer the difference instead of quietly swapping their words.
+      adjusted: compliance.findings.length > 0,
+      complianceFlags: compliance.flags,
+      complianceAdjustments: compliance.findings.map((f) => ({
+        sentence: f.original,
+        replacedWith: f.replacement,
+        why: f.explanation,
+        rule: f.ruleId,
+      })),
+    });
+  }
+
+  // ── S11 AD-2 · THE CONSUMER'S WITHDRAWAL REACHES THIS LETTER ───────────────
+  // Cross-slice edit by S4's writer (the ConsumerAssertion author), scoped to
+  // this one block: P0-3 was enforced only where a letter is COMPOSED, so a
+  // withdrawn confirmation left the already-drafted letter approvable,
+  // printable and mailable while still speaking in the consumer's first person.
+  // The rule and its wording live in lib/letter.ts (letterAuthorization).
+  //
+  // Only transitions that move a letter TOWARD the envelope are gated. Reading
+  // it, editing it and returning it to DRAFT stay open — a consumer who
+  // withdrew a confirmation is exactly who should still be able to open the
+  // draft. A MAILED letter is never re-judged (letterAuthorization returns
+  // HISTORICAL for it), so the record and its evidence are untouched.
+  if (!existing.mailedAt && (status === APPROVED || status === "MAILED")) {
+    const activeAssertionCount = existing.tradelineId
+      ? await prisma.consumerAssertion.count({
+          where: { userId: user.id, tradelineId: existing.tradelineId, status: "ACTIVE" },
+        })
+      : 0;
+    if (letterAuthorizationRevoked({
+        mailedAt: existing.mailedAt,
+        tradelineId: existing.tradelineId,
+        activeAssertionCount,
+        strategy: existing.strategy,
+      })) {
+      return NextResponse.json(
+        {
+          error: LETTER_AUTHORIZATION_REVOKED_MESSAGE,
+          authorizationRevoked: true,
+          // The deep link the Tradelines page needs to reopen the right row.
+          tradelineId: existing.tradelineId,
+        },
+        { status: 409 }
+      );
+    }
+  }
+
+  // ── LIFECYCLE TRANSITION ───────────────────────────────────────────────────
+  const allowed = ALLOWED_TRANSITIONS[existing.status] ?? [];
+  if (!allowed.includes(status!)) {
+    return NextResponse.json(
+      {
+        error:
+          existing.status === "MAILED" || existing.status === "RESPONSE_RECEIVED" || existing.status === "RESOLVED"
+            ? "That change isn't available for a letter you've already mailed."
+            : "Approve this letter before marking it mailed — the letter you mail should be one you've read and approved.",
+        invalidTransition: true,
+        from: existing.status,
+        to: status,
+      },
+      { status: 409 }
+    );
+  }
+
+  // Closing a dispute out is a claim about the outcome, so the consumer makes
+  // it explicitly (A3 L-11 — this used to be a bare status write that also
+  // flipped the tradeline).
+  let resolution: ResolutionOutcome | null = null;
+  if (status === "RESOLVED" && existing.status !== "RESOLVED") {
+    if (!isResolutionOutcome(body?.outcome)) {
+      return NextResponse.json(
+        {
+          error: "Tell me how this ended before I close it out — I won't record an outcome you didn't state.",
+          needsOutcome: true,
+          options: Object.entries(RESOLUTION_OUTCOMES).map(([value, o]) => ({ value, label: o.label })),
+        },
+        { status: 400 }
+      );
+    }
+    resolution = body.outcome;
+  }
 
   // Phase 1A honesty triple (part c): capture the ACTUAL mailing date instead
   // of silently stamping "now" — every §611 estimate (lib/forecast.ts,
@@ -110,23 +358,41 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     });
   }
 
-  // When a dispute is marked RESOLVED, reflect that on the tradeline.
-  if (status === "RESOLVED" && existing.tradelineId) {
-    await prisma.tradeline.update({
-      where: { id: existing.tradelineId },
-      data: { resolved: true },
+  // A3 L-11 — WHAT "RESOLVED" WRITES, AND WHAT IT NO LONGER WRITES.
+  // `tradeline.resolved` is read by lib/missionControl.ts, the strategist and
+  // the admin product dashboard as "this item is dealt with". It is written
+  // ONLY when the consumer states that the item was corrected or removed —
+  // closing a dispute out with the item still on the report closes the LETTER
+  // and says nothing about the tradeline. Both are recorded; neither is
+  // inferred. Only the real transition writes, so re-PATCHing changes nothing.
+  if (resolution && existing.status !== "RESOLVED") {
+    const claimsItemFixed = RESOLUTION_OUTCOMES[resolution].setsTradelineResolved;
+    if (claimsItemFixed && existing.tradelineId) {
+      await prisma.tradeline.update({
+        where: { id: existing.tradelineId },
+        data: { resolved: true },
+      });
+    }
+    if (existing.tradelineId) {
+      await recordKaiEvent(user.id, "dispute.resolved", {
+        refType: "tradeline",
+        refId: existing.tradelineId,
+        payload: {
+          recipient: existing.recipientName,
+          round: existing.round,
+          // Self-reported by the consumer, never observed by the product.
+          outcome: resolution,
+          selfReported: true,
+          tradelineMarkedResolved: claimsItemFixed,
+        },
+      });
+    }
+    // The dispute was completed either way — the funnel metric counts the
+    // consumer finishing a round, not the item being deleted.
+    await track(PRODUCT_EVENTS.disputeCompleted, {
+      userId: user.id,
+      meta: { round: existing.round, outcome: resolution },
     });
-    await recordKaiEvent(user.id, "dispute.resolved", {
-      refType: "tradeline",
-      refId: existing.tradelineId,
-      payload: { recipient: existing.recipientName, round: existing.round },
-    });
-  }
-
-  // Only on the actual transition into RESOLVED — re-PATCHing an already-resolved
-  // letter must not inflate the funnel metric.
-  if (status === "RESOLVED" && existing.status !== "RESOLVED") {
-    await track(PRODUCT_EVENTS.disputeCompleted, { userId: user.id, meta: { round: existing.round } });
   }
 
   return NextResponse.json({ ok: true, letter: decryptedLetter(letter) });

@@ -127,16 +127,45 @@ async function ensureLedger(): Promise<void> {
   await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "VerifiedOutcome_userId_idx" ON "VerifiedOutcome" ("userId")`);
   // One-time idempotent backfill from already-responded letters, so historical
   // outcomes appear in the ledger immediately (ON CONFLICT keeps it safe/rerunnable).
+  //
+  // S11 AD-R4-1 — WHY THIS FILTERS ON THE OUTCOME, NOT JUST ON responseAt.
+  //
+  // This backfill runs once per PROCESS, i.e. on every cold start, and the
+  // table is created by runtime DDL rather than a migration, so it is
+  // guaranteed to run. It used to select every letter with a `responseAt` and
+  // write `COALESCE(l."responseOutcome",'unknown')`. That COALESCE was dead
+  // while a logged letter always carried an outcome — and the response route's
+  // own remediation made it live: a reply that nothing could read now stores
+  // `responseAt` with `responseOutcome = null`, deliberately, and writes no
+  // ledger row.
+  //
+  // `'unknown'` is not an absence. It is a DETERMINATION in the model's own
+  // vocabulary — "the reply doesn't say" — and RESPONDED counts it, here and in
+  // outcomeStats. So on the next cold start the consumer's own track record
+  // silently gained a response nobody had read: "Across your 4 logged dispute
+  // responses…" where three were true, and their favorable rate fell from 0.33
+  // to 0.25. For a consenting user the same invented row also entered the
+  // cross-user corpus that ledgerCorpus feeds, which does not filter null
+  // outcomes. ON CONFLICT DO NOTHING gave no protection, because the row did
+  // not exist yet.
+  //
+  // Two changes, either of which alone would have prevented it: the row is not
+  // selected at all unless the reply was actually read, and the COALESCE is
+  // gone, so even a future relaxation of the WHERE cannot manufacture a
+  // determination. No historical row is lost — every pre-RC1 logged letter has
+  // a non-null outcome, because the old write path always set one — and a
+  // consumer who later retries the analysis gets a real row from
+  // recordVerifiedOutcome's upsert.
   await prisma.$executeRawUnsafe(
     `INSERT INTO "VerifiedOutcome" ("letterId","userId","tradelineId","strategy","recipientType","bureau","round","accountType","isDebtBuyer","outcome","latencyDays","verifiedAt","source")
      SELECT l."id", l."userId", l."tradelineId", l."strategy", l."recipientType", l."targetBureau"::text, l."round",
             COALESCE(t."accountType"::text,'OTHER'), COALESCE(t."isDebtBuyer",false),
-            COALESCE(l."responseOutcome",'unknown'),
+            l."responseOutcome",
             CASE WHEN l."responseAt" IS NOT NULL AND l."mailedAt" IS NOT NULL AND l."responseAt" >= l."mailedAt"
                  THEN ROUND(EXTRACT(EPOCH FROM (l."responseAt" - l."mailedAt"))/86400)::int ELSE NULL END,
             COALESCE(l."responseAt", CURRENT_TIMESTAMP), 'backfill'
      FROM "Letter" l LEFT JOIN "Tradeline" t ON t."id" = l."tradelineId"
-     WHERE l."responseAt" IS NOT NULL
+     WHERE l."responseAt" IS NOT NULL AND l."responseOutcome" IS NOT NULL
      ON CONFLICT ("letterId") DO NOTHING`
   );
   ready = true;

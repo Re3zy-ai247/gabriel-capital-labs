@@ -7,7 +7,7 @@ export const runtime = "nodejs";
 
 // PATCH: activate / deactivate a promotion code. (Stripe promotion codes can be
 // toggled active=false to stop accepting them; the underlying coupon is kept.)
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: "Not authorized" }, { status: 403 });
   const stripe = getStripe();
@@ -17,7 +17,8 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   const active = Boolean(body.active);
 
   try {
-    const pc = await stripe.promotionCodes.update(params.id, { active });
+    const { id } = await params;
+    const pc = await stripe.promotionCodes.update(id, { active });
     await logAudit({
       actor: { id: admin.id, email: admin.email },
       action: active ? "discount.activate" : "discount.deactivate",

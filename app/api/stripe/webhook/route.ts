@@ -12,6 +12,7 @@ import {
 import { prisma } from "@/lib/prisma";
 import { reportError } from "@/lib/observability";
 import { track, PRODUCT_EVENTS } from "@/lib/events";
+import { log } from "@/lib/log";
 
 export const dynamic = "force-dynamic";
 // Stripe needs the raw, unparsed body to verify the signature.
@@ -56,8 +57,9 @@ export async function POST(req: Request) {
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
   if (!stripe || !webhookSecret) {
     // A rotated/missing signing key breaks EVERY entitlement event indefinitely,
-    // and a silent 503 looks identical to "no traffic". Make it visible.
-    reportError(new Error("Stripe webhook not configured"), {
+    // and a silent 503 looks identical to "no traffic". Keep the failure visible
+    // locally, but do not let an unauthenticated request trigger an external alert.
+    log.error("Stripe webhook not configured", {
       scope: "stripe-webhook",
       phase: "config",
       stripeConfigured: Boolean(stripe),
@@ -74,7 +76,14 @@ export async function POST(req: Request) {
   try {
     event = stripe.webhooks.constructEvent(body, sig, webhookSecret);
   } catch (e) {
-    reportError(e, { scope: "stripe-webhook", phase: "signature" });
+    const errName = e instanceof Error ? e.name : "Error";
+    // This input has not been authenticated. Record only safe local metadata;
+    // forwarding it would make the public endpoint an external alert-spam relay.
+    log.warn("Stripe webhook signature rejected", {
+      scope: "stripe-webhook",
+      phase: "signature",
+      errName,
+    });
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
 

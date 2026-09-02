@@ -9,6 +9,7 @@
 // after CampaignService.owned() verifies ownership, and findCovering reads through
 // the userId-scoped listByUser(). By-id lookups here are therefore always
 // preceded by an ownership check; the store itself is intentionally id-keyed.
+import { AsyncLocalStorage } from "node:async_hooks";
 import { prisma } from "@/lib/prisma";
 import type { Campaign } from "./CampaignModel";
 
@@ -71,9 +72,68 @@ export class InMemoryCampaignStore implements CampaignStore {
 }
 
 // ---- production (self-heal table) -----------------------------------------
-let tableReady = false;
+// ── Self-heal readiness (S11 · NEW-4) ────────────────────────────────────────
+// Three defects, one mechanism, and they compound:
+//
+//  1. `CREATE ... IF NOT EXISTS` is NOT atomic in Postgres. Two sessions can both
+//     pass the existence check and one then fails on the `pg_type` unique index —
+//     `P2010 ... Key (typname, typnamespace)=(Campaign, 2200) already exists`.
+//     The live run recorded ten of these. But that error means the object EXISTS:
+//     the postcondition we wanted holds. Treating it as a failure was the bug.
+//  2. The old `let tableReady = false` was set only AFTER the await, so a burst of
+//     concurrent first requests all issued the DDL and raced each other.
+//  3. Worse, the memo latched SUCCESS for the life of the process, so a table that
+//     went missing afterwards was never re-healed — every later request on that
+//     lambda failed identically, which is how a dropped table turned into a
+//     permanently blank Mission Control rather than a transient one.
+//
+// So: memoise the in-flight PROMISE (concurrent callers await one statement),
+// treat "already exists" as success, clear the memo on any OTHER failure so the
+// next call genuinely retries, and clear it again if a later read finds the
+// relation gone.
+//
+// Deliberately NOT extracted into a shared module: this file and its sibling are
+// granted individually and a new shared file is out of scope for this round. The
+// copies are identical by intent — change one, change the other (and consider
+// extracting both, plus the four in lib/{aiMeter,rateLimit,passwordReset,push}.ts,
+// into lib/selfHeal.ts).
+function isAlreadyExists(e: unknown): boolean {
+  const text = e instanceof Error ? `${e.message} ${JSON.stringify((e as { meta?: unknown }).meta ?? "")}` : String(e);
+  // 23505 unique_violation (the pg_type race), 42P07 duplicate_table,
+  // 42710 duplicate_object. Prisma wraps raw failures as P2010 and carries the
+  // Postgres text through, so match the text as well as the codes.
+  return /already exists|duplicate key value|23505|42P07|42710/i.test(text);
+}
+
+// A relation that goes missing AFTER a successful ensure (a drop, a restore, a
+// fresh branch database) is the other half of the latch: clearing the memo on
+// this specific error makes the next call re-create the table.
+function isMissingRelation(e: unknown): boolean {
+  const text = e instanceof Error ? `${e.message} ${JSON.stringify((e as { meta?: unknown }).meta ?? "")}` : String(e);
+  return /does not exist|42P01|undefined_table/i.test(text);
+}
+
+let tableReady: Promise<void> | null = null;
 async function ensureTable(): Promise<void> {
-  if (tableReady) return;
+  if (!tableReady) {
+    tableReady = createTable().catch((e) => {
+      tableReady = null; // retryable: never latch a failure for the process lifetime
+      throw e;
+    });
+  }
+  return tableReady;
+}
+
+async function createTable(): Promise<void> {
+  try {
+    await createTableStatements();
+  } catch (e) {
+    if (isAlreadyExists(e)) return; // another session won the race; the table is there
+    throw e;
+  }
+}
+
+async function createTableStatements(): Promise<void> {
   await prisma.$executeRawUnsafe(
     `CREATE TABLE IF NOT EXISTS "Campaign" (
       "id" TEXT PRIMARY KEY,
@@ -98,7 +158,6 @@ async function ensureTable(): Promise<void> {
   await prisma.$executeRawUnsafe(
     `CREATE INDEX IF NOT EXISTS "Campaign_userId_idx" ON "Campaign" ("userId", "sequence")`
   );
-  tableReady = true;
 }
 
 type Row = Record<string, unknown>;
@@ -124,6 +183,109 @@ function rowToCampaign(r: Row): Campaign {
   };
 }
 
+// ── Legible unavailability (S11 · NEW-4c) ────────────────────────────────────
+// The observed consumer harm was not a wrong number, it was a BLANK SCREEN: the
+// first /dashboard load returned 46 KB of AppShell chrome with the entire Mission
+// Control body missing and no error text, because a store read threw out of a
+// server component. A surface that renders nothing tells the consumer less than
+// one that renders a labelled state.
+//
+// So READS degrade instead of throwing. WRITES still throw — silently dropping a
+// campaign the consumer believes was created is worse than an error, and every
+// write path already handles CampaignStoreError.
+//
+// Degrading is not the same as lying, so the degradation is recorded and is
+// queryable: campaignDataUnavailable() is true when the most recent read in this
+// process could not reach the table, which lets a surface say "we could not load
+// your campaigns" instead of the false "you have no campaigns".
+//
+// ── S11 B-R5-1 / CE-r5 · THE SIGNAL IS PER-REQUEST, NOT PER-PROCESS ─────────
+//
+// `lastReadUnavailable` below is a module-level `let`. That was adequate while
+// nothing rendered it, and it stopped being adequate the moment a consumer did:
+//
+//   · EVERY success clears it (here and in nextSequence). Mission Control runs
+//     three readers in one Promise.all and then asks — so a sibling read
+//     succeeding after the failing one clears the failure, and the dashboard
+//     falls back to "Nothing stalled.", the exact claim the signal exists to
+//     prevent.
+//   · It is process-global and last-writer-wins across CONCURRENT REQUESTS, so
+//     it can equally show "Unavailable" to a consumer whose read succeeded and
+//     hide it from the consumer whose read failed.
+//
+// A truth signal that a concurrent success can clear, or a stranger's failure
+// can forge, is not a truth signal. So the value a surface renders now comes
+// from a scope the CALLER opens around its own reads:
+//
+//   const { data, unavailable } = await withCampaignAvailability(() => …reads…);
+//
+// AsyncLocalStorage gives each request its own cell, so no other request can
+// see or touch it, and within a scope the cell is MONOTONIC — degradation only
+// ever sets it, never clears it. One failing read among ten successes is still
+// a failed read, and that is what the consumer is told.
+//
+// The process-global is kept, unchanged, for the operator-level "is this
+// process seeing faults" question and for scripts/runtime/self-heal-
+// concurrency.runtime.test.ts, which pins its clear-on-success behaviour. It is
+// NOT a consumer-facing signal: it cannot answer "was THIS render's data
+// complete", which is the only question a surface is entitled to ask.
+//
+// ⚠️ HAND-OFF (outside this round's grant): lib/campaignInput.ts:45 and
+// lib/knowledge/loader.ts:17 still .catch(() => []) and so cannot tell "none"
+// from "unknown". Routing them through a scope would extend the same guarantee.
+let lastReadUnavailable = false;
+
+/** Per-request degradation cell. Monotonic: set on failure, never cleared. */
+interface AvailabilityCell { unavailable: boolean }
+const campaignScope = new AsyncLocalStorage<AvailabilityCell>();
+
+/**
+ * Runs `read` in a fresh availability scope and reports whether ANY campaign
+ * read inside it degraded. This is the signal a consumer surface renders.
+ */
+export async function withCampaignAvailability<T>(read: () => Promise<T>): Promise<{ data: T; unavailable: boolean }> {
+  const cell: AvailabilityCell = { unavailable: false };
+  const data = await campaignScope.run(cell, read);
+  return { data, unavailable: cell.unavailable };
+}
+
+/** Records a degradation into the caller's scope, if one is open. Never clears. */
+function markCampaignUnavailable(): void {
+  const cell = campaignScope.getStore();
+  if (cell) cell.unavailable = true;
+}
+
+/**
+ * PROCESS-level: true when the most recent read in this process could not reach
+ * the table. Operator diagnostics only — a concurrent success clears it and a
+ * concurrent failure sets it, so it cannot answer "was this render complete".
+ * Consumer surfaces must use withCampaignAvailability().
+ */
+export function campaignDataUnavailable(): boolean {
+  return lastReadUnavailable;
+}
+
+/** Test seam: reset the recorded read state. */
+export function resetCampaignAvailability(): void {
+  lastReadUnavailable = false;
+}
+
+async function readOrDegrade<T>(what: string, fallback: T, run: () => Promise<T>): Promise<T> {
+  try {
+    const value = await run();
+    lastReadUnavailable = false;
+    return value;
+  } catch (e) {
+    lastReadUnavailable = true;
+    markCampaignUnavailable();
+    if (isMissingRelation(e)) tableReady = null; // un-latch a stale success memo
+    // Loud on the server, invisible to the consumer: an operator must be able to
+    // find this, and a consumer must never meet a stack trace.
+    console.error(`CampaignStore: ${what} unavailable (degrading, not throwing):`, e);
+    return fallback;
+  }
+}
+
 export class PrismaCampaignStore implements CampaignStore {
   async create(c: Campaign): Promise<void> {
     await ensureTable();
@@ -140,9 +302,11 @@ export class PrismaCampaignStore implements CampaignStore {
       )`;
   }
   async get(id: string): Promise<Campaign | null> {
-    await ensureTable();
-    const rows = await prisma.$queryRaw<Row[]>`SELECT * FROM "Campaign" WHERE "id" = ${id} LIMIT 1`;
-    return rows[0] ? rowToCampaign(rows[0]) : null;
+    return readOrDegrade(`get(${id})`, null, async () => {
+      await ensureTable();
+      const rows = await prisma.$queryRaw<Row[]>`SELECT * FROM "Campaign" WHERE "id" = ${id} LIMIT 1`;
+      return rows[0] ? rowToCampaign(rows[0]) : null;
+    });
   }
   async save(c: Campaign): Promise<void> {
     await ensureTable();
@@ -175,16 +339,48 @@ export class PrismaCampaignStore implements CampaignStore {
     if (n === 0) throw new CampaignStoreError(`concurrent update on campaign ${c.id} — retry from the current record`);
   }
   async listByUser(userId: string, limit = 50): Promise<Campaign[]> {
-    await ensureTable();
-    const take = Math.min(Math.max(limit, 1), 200);
-    const rows = await prisma.$queryRaw<Row[]>`
-      SELECT * FROM "Campaign" WHERE "userId" = ${userId} ORDER BY "sequence" DESC LIMIT ${take}`;
-    return rows.map(rowToCampaign);
+    return readOrDegrade("listByUser", [] as Campaign[], async () => {
+      await ensureTable();
+      const take = Math.min(Math.max(limit, 1), 200);
+      const rows = await prisma.$queryRaw<Row[]>`
+        SELECT * FROM "Campaign" WHERE "userId" = ${userId} ORDER BY "sequence" DESC LIMIT ${take}`;
+      return rows.map(rowToCampaign);
+    });
   }
+  // S11 · B-R3-5. This is the one read that still threw, and lib/missionControl.ts
+  // awaits it in the SAME Promise.all as the degraded reads — purely to feed
+  // compose() for a read-only render — so a Campaign-table fault still rejected
+  // the whole fan-out and blanked Mission Control: exactly the harm the rest of
+  // this change was written to remove.
+  //
+  // The original reasoning ("returning 1 for an unreachable table would mint a
+  // duplicate sequence") is right, but it only applies when rows might EXIST.
+  // So degrade on precisely the case where that cannot be true — the table is
+  // absent — and keep throwing on every other fault:
+  //
+  //   · relation missing (dropped, or a fresh database whose first request this
+  //     is — Campaign is created by runtime DDL, not by a migration): it holds no
+  //     campaigns, so 1 is the CORRECT answer, not a guess. And create() fails on
+  //     the same fault before it could ever use the value.
+  //   · anything else (an existing table we cannot read: privileges revoked, a
+  //     transient fault): rows may exist, 1 could collide, so it still throws.
+  //
+  // A DDL failure is not itself fatal here — the table may already exist — so the
+  // SELECT is allowed to be the thing that decides.
   async nextSequence(userId: string): Promise<number> {
-    await ensureTable();
-    const rows = await prisma.$queryRaw<{ max: number | null }[]>`
-      SELECT MAX("sequence") AS max FROM "Campaign" WHERE "userId" = ${userId}`;
-    return (rows[0]?.max ?? 0) + 1;
+    try {
+      await ensureTable().catch(() => {});
+      const rows = await prisma.$queryRaw<{ max: number | null }[]>`
+        SELECT MAX("sequence") AS max FROM "Campaign" WHERE "userId" = ${userId}`;
+      lastReadUnavailable = false;
+      return (rows[0]?.max ?? 0) + 1;
+    } catch (e) {
+      if (!isMissingRelation(e)) throw e;
+      lastReadUnavailable = true;
+      markCampaignUnavailable();
+      tableReady = null; // un-latch, so the next call re-creates the table
+      console.error("CampaignStore: nextSequence has no table (degrading to 1):", e);
+      return 1;
+    }
   }
 }

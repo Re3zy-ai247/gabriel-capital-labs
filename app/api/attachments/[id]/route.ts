@@ -11,12 +11,13 @@ export const runtime = "nodejs";
 // Streams a decrypted attachment back to an authorized viewer. Attachments are
 // never public: support files are visible to the ticket owner + staff; community
 // files to any Community member. Anything else gets a 404 (don't leak existence).
-export async function GET(_req: Request, { params }: { params: { id: string } }) {
+export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const account = await currentAccount();
   if (!account) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (!docCryptoReady()) return NextResponse.json({ error: "Attachment storage unavailable" }, { status: 503 });
 
-  const att = await loadAttachment(params.id);
+  const { id } = await params;
+  const att = await loadAttachment(id);
   if (!att) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   // Authorize by the owning record BEFORE decrypting (loadAttachment returns the

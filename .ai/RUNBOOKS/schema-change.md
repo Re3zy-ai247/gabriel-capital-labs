@@ -1,6 +1,9 @@
 # Runbook: Schema change — MIGRATION-FIRST (owner-ratified 2026-07-20)
 
-Editing `schema.prisma` alone does NOT reach prod. (⚠️ Corrected 2026-07-20: the old claim that `db push` "silently fails through Accelerate" was FALSE — build logs showed it SUCCEEDING against a direct endpoint and dropping self-heal-owned tables. The push has been removed from all build commands; see ADR-0001's correction note.)
+Editing `schema.prisma` alone does NOT reach production. `prisma db push` is not
+a release, build, container-startup, or runtime schema procedure: it can
+destructively reconcile migration-owned and runtime-owned objects without
+preserving reviewed migration history.
 
 ## POLICY (owner-ratified 2026-07-20): MIGRATION-FIRST for all new schema
 
@@ -12,11 +15,15 @@ table to the legacy list requires a new owner-approved ADR.
 
 ## Adding a table or column (migration-first)
 1. Add/modify the model in `prisma/schema.prisma`.
-2. Generate the migration SQL. This repository now has the reviewed six-file
-   `prisma/migrations/` baseline, but Production history remains owner-gated and
-   unknown until Gate D. Do **not** use this generic procedure to reconcile that
-   baseline; follow `RUNBOOKS/gate-d-production-migration.md`. For later additive
-   work, append a reviewed migration after the committed chain. Generate forward SQL with
+2. Generate the migration SQL. This held revision has an exact eight-file
+   canonical Gate D baseline and an empty authored/unapplied set. It must not land
+   before retained successful DB5 output/history evidence for the exact Terms-then-
+   Consumer tail exists; source state is not execution evidence. After eligible
+   landing, healthy Gate-D truth is `preDb5AbsenceGate=NOT_REQUIRED`, empty
+   candidate/proposal lists, and `NO_PENDING_MIGRATIONS`. Do **not** use this
+   generic procedure to replay or reconcile that tail; follow
+   `RUNBOOKS/gate-d-production-migration.md`. For later
+   additive work, append a reviewed migration after the committed chain. Generate forward SQL with
    `npx --no-install prisma migrate diff --from-schema-datasource prisma/schema.prisma --to-schema-datamodel prisma/schema.prisma --script` (or `migrate dev` only against an owner-proven disposable target) and review it.
 3. **Validate only against a disposable target whose isolation is freshly proved**
    (see below). Never presume a Vercel Preview target is isolated; never validate
@@ -31,21 +38,23 @@ rollback or compensating plan · data-risk assessment. A destructive or uncertai
 production migration STOPS for owner approval.
 
 ## Baseline (Gate D only)
-The source baseline is already committed as the six reviewed migrations. Production
-adoption is not a generic schema-change operation: use the dedicated Gate D runbook's
-read-only catalog proof, owner-approved reconciliation, and deliberate deploy steps.
-Do NOT run `migrate dev`, `db push --accept-data-loss`, or any destructive command
-against a shared/production database.
+The held applied-source baseline is committed as eight reviewed migrations, with
+Terms Acceptance then Consumer Assertion as the exact canonical tail and no
+authored/unapplied entry. Landing remains preconditioned on retained successful
+DB5 evidence; do not infer it from this branch. The historical DB5 evidence must
+also retain accepted DB4, credential rotation before contact, the fresh hardened
+pre-DB5 backup, exact checksums/order, and separate Founder authority. After
+eligible landing, any missing/drifted tail, ninth directory/history row, non-empty
+candidate/proposal list, or decision other than `NO_PENDING_MIGRATIONS` blocks
+promotion and never authorizes replay. Do not run
+`migrate dev`, `db push`, or any destructive schema command against a
+shared/production database or from a release/runtime startup surface.
 
 ## Legacy self-heal (existing tables only — do NOT extend)
 The 32 legacy tables in `LEGACY_SELF_HEAL_ALLOWLIST` still create themselves via
 `CREATE TABLE IF NOT EXISTS`/`ALTER TABLE … ADD COLUMN IF NOT EXISTS` gate functions
 (`ensureCommunityTables` in `lib/community.ts`, etc.). These retire incrementally
 through separately reviewed migrations. Do not add a new table here.
-
-## Legacy fallback
-`app/api/admin/migrate/route.ts` — needs ADMIN session; run from the owner's browser console:
-`fetch('/api/admin/migrate',{method:'POST'}).then(r=>r.json()).then(console.log)`
 
 ## Client/server rule
 A `"use client"` page must not import anything pulling in `prisma`/`next/headers` — shared constants go in a `*Shared.ts`.
@@ -57,12 +66,12 @@ emptiness, credential routing, and relationship to Production are **UNKNOWN unti
 owner proves them from current provider-side evidence**. Treat every nonlocal Preview or
 staging target as potentially shared until that proof is retained with the change.
 
-`db push` is a legacy synchronizer, not a Gate D procedure. It is prohibited for
-Production, shared Preview/staging, or any target whose migration history matters.
-It may be considered only for a newly-created, owner-approved disposable database after
-fresh provider evidence proves isolation; never use an ambient or broadly pulled
-credential, never run it in a build, and never pass `--accept-data-loss`.
+`db push` is not a Gate D or RC1 validation procedure. Validate reviewed migration
+SQL through the dedicated disposable-engine procedure; never substitute an ambient
+credential, a shared Preview target, application container startup, or a
+human-triggered DDL API.
 
 For the committed migration chain, use `prisma migrate deploy` only through the
-owner-gated Gate D runbook. Its documented local disposable engine proof deliberately
-does not use Vercel credentials or the application Docker path.
+Founder-gated Gate D runbook. Its documented local disposable engine proof
+deliberately does not use Vercel credentials or the application Docker path and
+supplies no Production authorization.

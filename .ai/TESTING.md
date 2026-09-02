@@ -13,8 +13,8 @@ npx --no-install tsx scripts/<name>.test.ts   # lockfile-local guard scripts (be
 ## Guard scripts (`scripts/`) — run the ones touching your area
 | Guard | Covers | Last known |
 |---|---|---|
-| `gate-d-preflight.test.ts` | SQL-derived six-migration manifest, exhaustive catalog-state taxonomy, exact direct-target grammar, non-partitioned/non-inherited/no-RLS-policy-rule-user-trigger migration-table proof, Prisma 5.22 history-object provenance, rolled-back-history fail-closed behavior, fingerprint/privilege behavior, byte-identical retry | 105/105 |
-| `release-verify.test.ts` | explicit-target/no-network-default plus exact/final-response-only/non-unique/malformed `x-cv-release` field rejection without network access | 11/11 |
+| `gate-d-preflight.test.ts` | SQL-derived exact eight-migration canonical manifest; exact names/order/checksums/hash and 36-table/321-column/36-PK/66-index/24-FK coverage; empty authored/candidate lists; healthy `NOT_REQUIRED` + `NO_PENDING_MIGRATIONS`; ninth directory/history rejection; canonical Terms/Consumer absent/partial/drift/history/checksum negatives; synthetic future-authored exact-absence and schema-global collision compatibility; exhaustive catalog/history taxonomy; exact direct-target grammar; Prisma 5.22 history provenance; byte-identical retry | 168/168 |
+| `release-verify.test.ts` | explicit-target/no-network-default; exact/final-response-only/non-unique/malformed `x-cv-release` rejection; verifier emits non-authorizing Gate-D handoff; shortcut docs contain no Production command, block DB5 replay, and delegate to the held/evidence-conditioned exact-eight Gate-D contract while preserving only the disposable-local Compose exception | 65/65 |
 | `classify.test.ts` | creditor kind/type classification | 29/29 |
 | `kai-sanitize.test.ts` | Kai prompt-injection sanitizer | 8/8 |
 | `brief-ingest.test.ts` | RSS parser, enrichment, PDF fallback | 26/26 |
@@ -61,7 +61,7 @@ backup/restore or target-preflight evidence are in `RUNBOOKS/gate-d-production-m
 Do not use a shared Preview/Production credential or the application Docker path as a test harness.
 
 ## Prod probes (auth gates, run after deploy)
-`curl` https://www.creditvector.app — expect: public pages **200**; protected APIs (`/api/letters` etc.) **401/403**; admin routes + `/api/admin/migrate` **403**; unsigned Stripe webhook **400**. Never expect a 200-with-effect from an unauthenticated call.
+`curl` https://www.creditvector.app — expect: public pages **200**; protected APIs (`/api/letters` etc.) and retained admin routes **401/403**; removed `/api/admin/migrate` **404**; unsigned Stripe webhook **400**. Never expect a 200-with-effect from an unauthenticated call.
 
 ## Stripe verification
 Stripe dashboard → webhook destination → Event deliveries → want `200`.

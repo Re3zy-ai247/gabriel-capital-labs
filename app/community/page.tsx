@@ -129,7 +129,7 @@ async function searchThreads(q: string, channel: string): Promise<OperatorThread
 export default async function CommunityPage({
   searchParams,
 }: {
-  searchParams?: { channel?: string; q?: string };
+  searchParams?: Promise<{ channel?: string; q?: string }>;
 }) {
   // ---- Access gating: paying members, fail-closed (canAccessCommunity → isPremium) ----
   let account: Awaited<ReturnType<typeof currentAccount>> = null;
@@ -138,26 +138,46 @@ export default async function CommunityPage({
   } catch (e) {
     console.error("operator network: account resolve failed", e);
   }
+  // RC1-S6b. This screen used to headline the network as members-only and tell
+  // the reader that access came with a paid subscription, with a button into
+  // /pricing to go and buy one. Every clause of that was false after S6a:
+  // canAccessCommunity() no longer asks about payment at all (it reads a feature
+  // switch), so no amount of paying opens this, and there is no plan to see.
+  // What a consumer needs here is the real reason and the reassurance that their
+  // own words are safe.
+  //
+  // NOTE (deliberate). The removed sentence is paraphrased above rather than
+  // quoted, because scripts/operator-shell.test.ts asserts that exact phrase is
+  // PRESENT in this file. Quoting it verbatim in a comment would have kept that
+  // assertion green over copy that no longer ships — a guard passing on
+  // narration. It now fails honestly and needs re-pinning by whoever owns that
+  // suite (see the S6b slice report).
   if (!canAccessCommunity(account)) {
     return (
       <AppShell title="/ Operator Network">
         <div className="card mx-auto mt-6 max-w-lg p-8 text-center">
           <Network className="mx-auto mb-3 h-9 w-9 text-brand-400" aria-hidden="true" />
-          <h2 className="mb-2 text-lg font-semibold">The Operator Network is for members</h2>
+          <h2 className="mb-2 text-lg font-semibold">The Operator Network is closed right now</h2>
           <p className="mb-5 text-sm text-slate-400">
-            Operator Network access comes with an active paid CreditVector membership — every paid plan includes it.
-            Compare notes with members working the same process, and bring <strong>Kai</strong> into any brief for
-            answers grounded in statutes and process — never promises.
+            It is switched off for everyone — this is not about your account, and there is
+            nothing to buy that would open it. If you posted here before, your posts are still yours and still under
+            your control: you can delete anything you wrote, whether or not the network is open.
           </p>
-          <Link href="/pricing" className="btn-primary inline-flex">See plans <ArrowRight className="h-4 w-4" aria-hidden="true" /></Link>
+          <p className="text-sm text-slate-400">
+            Everything else in CreditVector is unaffected and open to you.{" "}
+            <Link href="/dashboard" className="inline-flex items-center gap-1 font-semibold text-brand-300 underline underline-offset-2">
+              Back to Mission Control <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+            </Link>
+          </p>
         </div>
       </AppShell>
     );
   }
 
-  const raw = searchParams?.channel ?? "";
+  const resolvedSearchParams = await searchParams;
+  const raw = resolvedSearchParams?.channel ?? "";
   const channel = CATEGORY_KEYS.includes(raw) ? raw : "";
-  const query = (searchParams?.q ?? "").trim().slice(0, 120);
+  const query = (resolvedSearchParams?.q ?? "").trim().slice(0, 120);
   const { threads, degraded } = await loadThreads();
 
   // A search replaces the queue's set, and the command strip follows it — strip

@@ -19,7 +19,7 @@ AES-256-GCM via `lib/docCrypto.ts`, key `DOCUMENT_ENCRYPTION_KEY`. Applied to:
 - AI markdown renders through `components/Markdown.tsx` (dependency-free, XSS-safe).
 
 ## Auth & access control (VERIFIED)
-NextAuth JWT credentials; sessions resolve by user id. Admin APIs behind `requireAdmin` + audit logging; `SETUP_SECRET` deleted from prod 2026-06-16 (migrate route now ADMIN-session-only). Email change requires current-password confirmation. Stripe webhook signature-verified; events deduped on `event.id`. Password reset: sha256-hashed single-use 1h tokens, rate-limited, anti-enumeration.
+NextAuth JWT credentials; sessions resolve by user id. Admin authority is resolved from the current user id; the legacy human-triggerable schema migration API is removed and pinned absent by `scripts/admin-migrate-security.test.ts`. Email change requires current-password confirmation. Stripe webhook signature-verified; events deduped on `event.id`. Password reset: sha256-hashed single-use 1h tokens, rate-limited, anti-enumeration.
 
 ## Rate limiting (VERIFIED)
 DB-backed `RateHit` limiter (`lib/rateLimit.ts`, **fails open**) on: register, ask-kai, strategist, letters generate, support, community reports, brief comments (15/hr), brief reactions (200/hr), letters/[id]/response (20/hr), forgot-password.

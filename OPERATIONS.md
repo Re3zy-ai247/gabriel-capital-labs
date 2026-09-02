@@ -101,7 +101,45 @@ Postgres, RDS — each has native automated backups + PITR; record the retention
 (commonly ≤5 min for Neon/Supabase); RTO = the measured restore time in step 5. **Fill these in
 with measured numbers; leave blank until proven.**
 
-**Schema-drift caveat (already known, ADR-0001):** prod schema is applied by runtime self-heal DDL,
-not migrations — a restored DB self-heals its tables on first request, so a restore does not need a
-separate migration step, but verify the self-heal `ensureXTable` gates ran (check for the expected
-tables) before declaring the restore complete.
+**AI spend ceilings (RC1).** `AI_DAILY_BUDGET_USD_GLOBAL` (default **50.00**) is a platform-wide
+per-UTC-day ceiling across all consumers; `AI_DAILY_BUDGET_USD_PER_USER` (default 1.00) is the
+per-consumer one. Both fail CLOSED and neither has an "unlimited" setting. **Incident symptom:**
+consumers report that AI analysis is "paused until midnight UTC" while the app is otherwise healthy
+and `/api/health/ready` is green — that is the global ceiling, not an outage. At $1.00/consumer,
+~50 consumers at full allowance reach $50. Confirm with the AiUsage day-sum, then either wait for
+00:00 UTC or raise `AI_DAILY_BUDGET_USD_GLOBAL` and redeploy (env changes need a redeploy to bind).
+Setting the global value is a Founder decision and should be made before promotion, not during an
+incident. `HEALTH_READY_DB_TTL_MS` (default 5000, capped 60000, `0` disables) bounds how stale
+`/api/health/ready` may be — raise it only if that probe's query load is itself the problem.
+
+**Schema-drift caveat (ADR-0001, AMENDED — read the second paragraph):** the LEGACY tables are
+applied by runtime self-heal DDL, not migrations — a restored DB self-heals those on first request,
+so they need no separate step; verify the self-heal `ensureXTable` gates ran before declaring the
+restore complete.
+
+**That is no longer sufficient on its own (RC1).** Since the migration-first law (`CLAUDE.md`
+gotcha 1), every new table ships as a reviewed migration and has **no** self-heal gate. A restore
+that follows only the legacy paragraph can therefore finish while registration and letter
+generation remain down. `TermsAcceptance` and `ConsumerAssertion` are the first two tables in that
+class.
+
+This operations manual intentionally contains no direct Production migration command. The held
+post-DB5 canonicalization must not land until Control Tower retains successful DB5 output and exact
+resulting history evidence; this source tree does not claim those events occurred. Historical
+custody must include credential rotation before DB4, accepted DB4 exact-absence evidence, a fresh
+hardened backup immediately before DB5, separate Founder authority, and one lexical Terms-then-
+Consumer execution with no staged `--to`, split run, ambient credential, retry, or replay. Use
+[`.ai/RUNBOOKS/gate-d-production-migration.md`](.ai/RUNBOOKS/gate-d-production-migration.md) as the
+sole authority for that retained evidence and post-canonical verification.
+
+For a disaster restore, do not treat `migrate deploy` as a generic catch-up shortcut. Bind the
+restore target to the exact release and canonical migration history, obtain incident-owner approval,
+and follow the release-matched Gate-D/recovery procedure. After this held patch is eligible to land,
+require all eight migrations and both new tables to match, `preDb5AbsenceGate=NOT_REQUIRED`, empty
+candidate/proposal lists, and `NO_PENDING_MIGRATIONS` before declaring schema recovery complete.
+Any other result blocks recovery and does not authorize replay of the historical DB5 command.
+
+`GET /api/health/ready` remains an application postcondition: it returns **503** with
+`"schema":"incomplete"` and a `missingTables` list while either table is absent, and
+`scripts/release-verify.sh` fails on it. A green readiness probe complements, but never replaces,
+canonical migration-history verification.

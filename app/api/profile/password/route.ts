@@ -33,9 +33,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "New password must be different from the current one." }, { status: 400 });
   }
 
-  await prisma.user.update({
-    where: { id: account.id },
-    data: { passwordHash: await bcrypt.hash(newPassword, 10) },
+  const nextPasswordHash = await bcrypt.hash(newPassword, 10);
+  const changed = await prisma.user.updateMany({
+    where: { id: account.id, passwordHash: account.passwordHash, disabled: false },
+    data: { passwordHash: nextPasswordHash },
   });
+  // A reset/admin rotation or disable may commit after currentAccount() loaded
+  // this request's credential snapshot. Never let that already-authorized stale
+  // handler overwrite newer security state; reuse the existing generic refusal.
+  if (changed.count !== 1) {
+    return NextResponse.json({ error: "Current password is incorrect." }, { status: 403 });
+  }
   return NextResponse.json({ ok: true });
 }

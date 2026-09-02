@@ -38,7 +38,11 @@ import {
 const STEPS = [
   { icon: Upload, title: "Upload your reports", body: "Pull your free reports from AnnualCreditReport.com. Kai reads all three bureaus in seconds." },
   { icon: ScanSearch, title: "See what can be disputed", body: "Potential inaccuracies, inconsistencies, and unverifiable items are flagged and explained across Equifax, Experian, and TransUnion." },
-  { icon: FileText, title: "Generate dispute letters", body: "Professional, FCRA-grounded letters drafted for you. Review, refine with Kai, print, and mail them yourself." },
+  // RC1-S6b: "Professional, FCRA-grounded letters … refine with Kai" carried a
+  // retired tier name AND a capability no consumer has — AI letter refinement is
+  // off for every account (lib/entitlements.ts, aiRefinement: false), so letters
+  // are rendered from reviewed templates and the facts the consumer confirms.
+  { icon: FileText, title: "Draft dispute letters", body: "FCRA-grounded letters built from reviewed templates and the facts you confirm. Read them, edit them, print them, and mail them yourself." },
   { icon: Activity, title: "Track every dispute", body: "Follow each dispute through the bureaus' response windows and watch your progress in one dashboard." },
 ];
 
@@ -47,23 +51,24 @@ const FAQ: [string, string][] = [
   ["Is CreditVector a credit-repair company?", "No. CreditVector is software plus education. You review and mail your own letters and stay in control the whole way. We don't act on your behalf or charge for results."],
   ["How is my credit data protected?", "Uploaded reports and documents are encrypted at rest with AES-256 and are only ever served back to you over an authenticated, access-checked connection — never a public link."],
   ["Do I need all three bureau reports?", "No — you can start with one. CreditVector works with whatever you upload, and cross-bureau comparison gets stronger as you add Equifax, Experian, and TransUnion."],
-  ["Can I cancel anytime?", "Yes. There are no contracts. Cancel from your billing settings and access continues to the end of your billing period."],
-  ["What does it cost?", "The Free plan (Explorer) includes full report analysis and 3 dispute letters a month. Professional is $99/month for unlimited letters and Kai's full dispute intelligence. Agency plans start at $399/month. More plans are on the roadmap — see the pricing page."],
+  // RC1-S6b: the two commercial rows described a subscription with a
+  // cancellation policy and a $99/$399 price list, on the product's
+  // highest-traffic page. Neither is true of the consumer product.
+  ["What does it cost?", "Nothing. The consumer product is free to use today — there is no plan to choose, no card to enter, and no feature held back behind a paid tier."],
+  ["Is there a paid version with more in it?", "Not for consumers. Every consumer account gets the same product. A separate product for agencies and businesses exists, but it is a different product with different users, and new signups for it are paused."],
 ];
 
-const PRICING = [
-  {
-    name: "Free", price: "$0", cadence: "forever", href: "/register", cta: "Get started free", featured: false,
-    features: ["Full report analysis", "Cross-bureau inaccuracy review", "3 dispute letters / month"],
-  },
-  {
-    name: "Professional", price: "$99", cadence: "/mo", href: "/pricing", cta: "Get Professional", featured: true,
-    features: ["Unlimited dispute letters", "Letter refinement", "Dispute strategist", "90-day progress tracking"],
-  },
-  {
-    name: "Agency", price: "$399", cadence: "/mo", href: "/pricing", cta: "Explore Agency", featured: false,
-    features: ["Everything in Professional", "A workspace per client", "Roster KPIs + follow-up clock", "Up to 15 active client workspaces"],
-  },
+// RC1-S6b: this was three priced tier cards ($0 "forever" / $99 / $399) with
+// checkout CTAs. There are no consumer tiers to compare, so there is nothing to
+// lay out in three columns — the section below states the one fact and lists
+// what "everything" means, with the detail on /pricing.
+const INCLUDED = [
+  "Upload all three bureau reports — never a credit pull",
+  "Every account read and compared across bureaus, explained plainly",
+  "An identity check against the names, addresses, and employers on your file",
+  "Dispute letters drafted from reviewed templates and the facts you confirm",
+  "Follow-up rounds when a bureau responds",
+  "Mission Control, a full timeline, and a score tracker you keep yourself",
 ];
 
 const AGENCY_POINTS = [
@@ -75,13 +80,17 @@ const AGENCY_POINTS = [
 const KAI_POINTS = [
   "Strategy on demand for any client — collections, charge-offs, reinvestigations, escalations",
   "Grounded in the FCRA/FDCPA and reviewed for CROA compliance",
-  "Part of CreditVector — extended across your whole client roster on Agency plans, no add-ons",
+  "Part of CreditVector — extended across a whole client roster in the agency workspace",
 ];
 
+// RC1-S6b: these three lines sold the Operator Network as a live member benefit
+// ("compare notes with other members"). The network is switched off (S6a), so
+// the section below describes what it is and states that it is not open, rather
+// than inviting a consumer to join something they cannot.
 const COMMUNITY_POINTS = [
-  "Ask questions and compare notes with other members",
-  "Kai's answers are grounded in the FCRA and reviewed for compliance",
-  "A searchable knowledge base your team can build on",
+  "Built for comparing notes on dispute strategy and bureau timelines",
+  "Kai's answers there are grounded in the FCRA and reviewed for compliance",
+  "Not currently open — nothing to join, and nothing is being sold",
 ];
 
 export default function Home() {
@@ -89,20 +98,33 @@ export default function Home() {
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-ink-950 text-white [&_section]:scroll-mt-20">
-      {/* CXOS Phase 2 — the Threshold. First human visit ENTERS CreditVector;
-          crawlers, no-JS, reduced-motion and returning sessions land directly
-          on this fully server-rendered page beneath it. The inline script runs
-          BEFORE the hero is parsed: when (and only when) this visit will get
-          the walk, it drops the page into darkness at first paint, so the Hero
-          is never glimpsed before it is earned. The darkness itself carries a
-          CSS-only 12s safety fade (the reveal-safety pattern) so no failure
-          mode can strand a black screen. */}
+      {/* CXOS Phase 2 — the Threshold, RC1 posture (Founder Decision D-6).
+          TASK-FIRST IS THE DEFAULT: the entrance is OPT-IN. A visitor who has
+          not pressed "Cinematic entrance: on" (the control in the footer and
+          in the app header) never reaches this branch, so the pre-paint
+          blackout is IMPOSSIBLE for them — finding C-02's worst case (a black
+          screen over fully-painted LCP content, floored only by a 12 s CSS
+          fade) cannot occur on the default path at all.
+
+          When the visitor HAS opted in, this script still runs before the hero
+          is parsed and drops the page into darkness, so the Hero is never
+          glimpsed before it is earned — but only under the same conservative
+          signals lib/cxos/capability.ts's detectTier() calls tier A:
+          reduced-motion off, Data Saver off, ≥4 GB device memory, a viewport
+          wider than 768 px, and WebGL present. C-13: the "already entered"
+          memory is durable (localStorage), not per-tab. ThresholdGate arms a
+          1.5 s lift on top of this, and the CSS safety fade remains beneath
+          both, so no failure mode can strand a black screen. */}
       <script
         dangerouslySetInnerHTML={{
           __html:
             'try{var R=' +
             (reviewBuildAllowed() ? "1" : "0") +
-            '&&/[?&](director|cxos|review)(=|&|$)/.test(location.search);if(!matchMedia("(prefers-reduced-motion: reduce)").matches&&(R||!sessionStorage.getItem("cx-threshold"))){var c=document.createElement("canvas");if(c.getContext("webgl2")||c.getContext("webgl"))document.documentElement.setAttribute("data-cxenter","1")}}catch(e){}',
+            '&&/[?&](director|cxos|review)(=|&|$)/.test(location.search);' +
+            'var O=false,S=false;try{O=localStorage.getItem("cx-cinematic")==="on";S=localStorage.getItem("cx-threshold")==="1"||sessionStorage.getItem("cx-threshold")==="1"}catch(e){S=true}' +
+            'var n=navigator;' +
+            'var A=!(n.connection&&n.connection.saveData)&&!(typeof n.deviceMemory==="number"&&n.deviceMemory<4)&&!matchMedia("(max-width: 768px)").matches;' +
+            'if(!matchMedia("(prefers-reduced-motion: reduce)").matches&&(R||(O&&A))&&(R||!S)){var c=document.createElement("canvas");if(c.getContext("webgl2")||c.getContext("webgl"))document.documentElement.setAttribute("data-cxenter","1")}}catch(e){}',
         }}
       />
       <ThresholdGate />
@@ -150,8 +172,12 @@ export default function Home() {
               <p className="animate-rise cx-d4 mt-5 text-sm font-medium text-slate-300">
                 We promise the process, never the outcome.
               </p>
+              {/* RC1-S6b: was "Free plan includes full report analysis and 3
+                  dispute letters a month. Cancel anytime." — a quota that no
+                  longer exists and a cancellation promise for a subscription
+                  that does not exist. */}
               <p className="animate-rise cx-d4 mt-2 text-sm text-slate-500">
-                Free plan includes full report analysis and 3 dispute letters a month. Cancel anytime.
+                Free to use today — no card required, and nothing held back behind a paid tier.
               </p>
 
               {/* Kai's introduction */}
@@ -255,7 +281,7 @@ export default function Home() {
                 eyebrow="Dispute letter generation"
                 title="FCRA-grounded letters, drafted and compliance-checked"
                 body="Every letter cites your actual rights under the Fair Credit Reporting Act and is run through a compliance check before you ever see it — no deletion myths, no false promises."
-                points={["Cites the specific rights that apply", "Compliance-scrubbed automatically", "Edit, refine with Kai, print, and mail"]}
+                points={["Cites the specific rights that apply", "Compliance-scrubbed automatically", "Edit it yourself, print, and mail"]}
                 visual={<LetterVisual />}
               />
             </Reveal>
@@ -321,7 +347,14 @@ export default function Home() {
                       </div>
                     ))}
                   </div>
-                  <Link href="/pricing" className="btn-ghost btn-lg mt-9">Explore Agency plans <ArrowRight className="h-4 w-4" aria-hidden /></Link>
+                  {/* RC1-S6b: was "Explore Agency plans → /pricing". The agency
+                      product is separate from the consumer one and its new
+                      signups are paused, so there is no plan to explore and no
+                      price to quote. Stated rather than linked. */}
+                  <p className="mt-9 text-sm text-slate-400">
+                    This is a separate product from the free consumer one, used by existing operators. New signups for
+                    it are paused.
+                  </p>
                 </div>
               </Reveal>
               <Reveal delay={120}>
@@ -336,8 +369,8 @@ export default function Home() {
                   <span className="eyebrow"><Sparkles className="h-3.5 w-3.5" aria-hidden /> Kai for your team</span>
                   <h3 className="h-display mt-4 text-2xl text-white md:text-3xl text-balance">Your Credit Intelligence Officer, across every client</h3>
                   <p className="mt-4 text-slate-300 pretty">
-                    Kai works every CreditVector file. On Agency plans, Kai extends across your whole roster and joins your team in
-                    the Operator Network — ready with dispute strategy, FCRA rights, and the strongest next move on any client.
+                    Kai works every CreditVector file. In the agency workspace, Kai extends across a whole roster —
+                    ready with dispute strategy, FCRA rights, and the strongest supported next move on any client.
                     Grounded in the law and reviewed for compliance.
                   </p>
                   <ul className="mt-6 space-y-3">
@@ -367,10 +400,13 @@ export default function Home() {
               <div>
                 <span className="eyebrow"><MessagesSquare className="h-3.5 w-3.5" aria-hidden /> Operator Network</span>
                 <h2 className="h-display mt-4 text-3xl text-white md:text-4xl text-balance">Learn from people working on the same thing</h2>
+                {/* RC1-S6b: was "included with every paid plan … where members
+                    compare notes" — a paid-membership benefit for a feature
+                    that is switched off. */}
                 <p className="lede mt-4">
-                  The Operator Network — included with every paid plan — is where members compare notes on what&apos;s
-                  working: dispute strategy, bureau timelines, and hard-won lessons, with Kai, your Credit Intelligence Officer,
-                  in the room to keep answers grounded in the FCRA.
+                  The Operator Network is where people working the same process compare notes: dispute strategy, bureau
+                  timelines, and hard-won lessons, with Kai in the room to keep answers grounded in the FCRA. It is not
+                  open at the moment.
                 </p>
                 <ul className="mt-6 space-y-3">
                   {COMMUNITY_POINTS.map((p) => (
@@ -382,54 +418,56 @@ export default function Home() {
                     </li>
                   ))}
                 </ul>
-                <Link href="/pricing" className="btn-ghost btn-lg mt-9">See plans <ArrowRight className="h-4 w-4" aria-hidden /></Link>
-                <p className="mt-5 text-xs leading-relaxed text-slate-500">
-                  Operator Network posts are members&apos; own opinions — not CreditVector or legal advice, and no outcome is
-                  guaranteed. Only Kai&apos;s answers are reviewed for compliance.
+                {/* RC1-S6b: the "See plans → /pricing" CTA is gone — there is
+                    no plan that opens this, and it is not open to anyone. */}
+                <p className="mt-8 text-xs leading-relaxed text-slate-500">
+                  Operator Network posts are their authors&apos; own opinions — not CreditVector or legal advice, and no
+                  outcome is guaranteed. Only Kai&apos;s answers are reviewed for compliance.
                 </p>
               </div>
             </Reveal>
           </div>
         </section>
 
-        {/* ---------- Pricing ---------- */}
+        {/* ---------- What it costs ---------- */}
+        {/* RC1-S6b. The section id stays "pricing": it is an in-page anchor
+            target and S7's chapter wiring keys off section order, not off copy.
+            Everything inside it changed — the three priced cards, the
+            "Upgrade when you're ready" headline and the $19 pack CTA all
+            described a consumer product that is not sold any more. */}
         <section id="pricing" className="container-x section">
           <Reveal>
             <div className="mx-auto max-w-2xl text-center">
-              <span className="eyebrow">Pricing</span>
-              <h2 className="h-display mt-4 text-3xl text-white md:text-4xl text-balance">Start free. Upgrade when you&apos;re ready.</h2>
-              <p className="lede mt-4">From a single report to running your own practice — there&apos;s a plan for where you are.</p>
+              <span className="eyebrow">What it costs</span>
+              <h2 className="h-display mt-4 text-3xl text-white md:text-4xl text-balance">Free to use today.</h2>
+              <p className="lede mt-4">
+                No plan to choose, no card required, and nothing held back behind a paid tier. Every account gets the
+                same product.
+              </p>
             </div>
           </Reveal>
-          <div className="mx-auto mt-14 grid max-w-5xl items-stretch gap-6 md:grid-cols-3">
-            {PRICING.map((t, i) => (
-              <Reveal key={t.name} delay={i * 90}>
-                <div className={`relative flex h-full flex-col rounded-2xl border p-7 ${t.featured ? "border-brand-500/60 bg-gradient-to-b from-brand-500/10 to-ink-800/40 shadow-glow" : "border-ink-700/70 bg-ink-800/50"}`}>
-                  {t.featured && (
-                    <span className="absolute -top-3 left-7 rounded-full bg-brand-500 px-3 py-0.5 text-xs font-bold text-brand-ink">
-                      Recommended
-                    </span>
-                  )}
-                  <h3 className="text-lg font-semibold text-white">{t.name}</h3>
-                  <div className="mt-3 flex items-baseline gap-1">
-                    <span className="h-display text-4xl text-white tabular-nums">{t.price}</span>
-                    <span className="text-sm text-slate-400">{t.cadence}</span>
-                  </div>
-                  <ul className="mt-6 space-y-3 text-sm">
-                    {t.features.map((f) => (
-                      <li key={f} className="flex items-start gap-2.5 text-slate-300">
-                        <Check className="mt-0.5 h-4 w-4 shrink-0 text-brand-400" strokeWidth={2.5} aria-hidden /> {f}
-                      </li>
-                    ))}
-                  </ul>
-                  <Link href={t.href} className={`mt-8 ${t.featured ? "btn-primary shine" : "btn-ghost"} w-full`}>{t.cta}</Link>
-                </div>
-              </Reveal>
-            ))}
-          </div>
+          <Reveal>
+            <div className="mx-auto mt-12 max-w-4xl rounded-2xl border border-ink-700/70 bg-ink-800/50 p-8">
+              <h3 className="text-sm font-bold uppercase tracking-widest text-brand-300/90">What that includes</h3>
+              <ul className="mt-6 grid gap-3 text-sm sm:grid-cols-2">
+                {INCLUDED.map((f) => (
+                  <li key={f} className="flex items-start gap-2.5 text-slate-300">
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-brand-400" strokeWidth={2.5} aria-hidden /> {f}
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row">
+                <Link href="/register" className="btn-primary shine w-full sm:w-auto">
+                  Create a free account <ArrowRight className="h-4 w-4" aria-hidden />
+                </Link>
+                <Link href="/pricing" className="btn-ghost w-full sm:w-auto">See exactly what it costs</Link>
+              </div>
+            </div>
+          </Reveal>
           <Reveal>
             <p className="mt-8 text-center text-sm text-slate-500">
-              Need only a few more letters? <Link href="/pricing" className="font-medium text-brand-300 hover:text-brand-200">Buy a one-time 5-letter pack for $19</Link>.
+              You review, print, and mail your own letters — CreditVector never sends one for you, and postage is
+              yours.
             </p>
           </Reveal>
         </section>

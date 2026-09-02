@@ -1,4 +1,109 @@
 /** @type {import('next').NextConfig} */
+
+// P1-32 (G-M1) — SERVICE-WORKER CACHE POLICY.
+//
+// This config used to pass `next-pwa` no `runtimeCaching` key at all, which means
+// the package's bundled default list applied (`node_modules/next-pwa/cache.js`).
+// Two of those defaults are disqualifying for a product that holds credit files
+// and government-ID images:
+//   • `cache.js:128-149` — every same-origin `GET /api/*` (except `/api/auth/`)
+//     is cached NetworkFirst for 24 hours under cacheName `apis`. That includes
+//     `/api/documents/[id]/raw`, which streams DECRYPTED identity-document bytes.
+//   • `cache.js:151-167` — every other same-origin request, i.e. every rendered
+//     page and every React-Server-Component payload, cached for 24 hours under
+//     `others`.
+// Cache Storage ignores HTTP cache directives, so `Cache-Control: no-store` on
+// those routes did nothing about it. On a shared or resold phone the previous
+// signed-in consumer's file stayed on the device.
+//
+// The policy below is DEFAULT-DENY: only build output and public, non-personal
+// assets are cacheable; `/api/*`, `/_next/data/*`, HTML documents, RSC payloads
+// and everything cross-origin are NetworkOnly, so the service worker never
+// writes them to Cache Storage at all. Offline still works for the app shell's
+// static assets (they are precached by workbox), but an authenticated screen
+// requires the network — which is the honest behaviour: a stale credit file is
+// worse than no credit file.
+//
+// The `urlPattern` functions are STRINGIFIED into the generated service worker
+// by workbox-build, so they must not close over anything in this file. They use
+// `self.origin`, the same technique next-pwa's own defaults use.
+const runtimeCaching = [
+  {
+    // Explicit denylist, evaluated first: consumer data and server-rendered
+    // payloads. Named separately from the catch-all below so the intent survives
+    // any later reordering.
+    urlPattern: ({ url }) =>
+      self.origin === url.origin &&
+      (url.pathname.startsWith("/api/") || url.pathname.startsWith("/_next/data/")),
+    handler: "NetworkOnly",
+    options: {},
+  },
+  {
+    // Immutable, content-hashed build output. No consumer data by construction.
+    urlPattern: ({ url }) => self.origin === url.origin && url.pathname.startsWith("/_next/static/"),
+    handler: "CacheFirst",
+    options: {
+      cacheName: "static-build-assets",
+      expiration: { maxEntries: 128, maxAgeSeconds: 30 * 24 * 60 * 60 },
+    },
+  },
+  {
+    // next/image output is cacheable only when its decoded source is a local,
+    // public raster asset. Merely hitting /_next/image is not proof of safety:
+    // a source such as /api/documents/[id]/raw must fall through to NetworkOnly
+    // so authenticated bytes can never enter the seven-day service-worker cache.
+    urlPattern: ({ url }) => {
+      if (self.origin !== url.origin || url.pathname !== "/_next/image") return false;
+      const source = url.searchParams.get("url") || "";
+      let normalizedSource;
+      try {
+        // Resolve dot segments (including percent-encoded `..`) before applying
+        // the protected-path denylist. Checking the raw query value lets paths
+        // such as /public/../api/documents/secret.png masquerade as public.
+        normalizedSource = new URL(source, self.origin);
+      } catch {
+        return false;
+      }
+      return (
+        source.startsWith("/") &&
+        !source.startsWith("//") &&
+        normalizedSource.origin === self.origin &&
+        !normalizedSource.pathname.startsWith("/api/") &&
+        !normalizedSource.pathname.startsWith("/_next/data/") &&
+        /\.(?:png|jpg|jpeg|gif|webp|ico)$/i.test(normalizedSource.pathname)
+      );
+    },
+    handler: "StaleWhileRevalidate",
+    options: {
+      cacheName: "next-image",
+      expiration: { maxEntries: 64, maxAgeSeconds: 7 * 24 * 60 * 60 },
+    },
+  },
+  {
+    // Files shipped in public/: icons, the manifest, the brand mark, fonts.
+    // Everything under /api/ is excluded regardless of how the path ends.
+    urlPattern: ({ url }) =>
+      self.origin === url.origin &&
+      !url.pathname.startsWith("/api/") &&
+      /^\/(?:icons\/|favicon\.ico$|manifest\.json$|.*\.(?:png|jpg|jpeg|gif|svg|webp|ico|woff2?|ttf|otf)$)/.test(
+        url.pathname
+      ),
+    handler: "StaleWhileRevalidate",
+    options: {
+      cacheName: "static-public-assets",
+      expiration: { maxEntries: 64, maxAgeSeconds: 7 * 24 * 60 * 60 },
+    },
+  },
+  {
+    // DEFAULT DENY. HTML documents, RSC payloads, anything cross-origin, and
+    // anything a future route invents. A new surface is uncacheable until
+    // somebody adds it above deliberately.
+    urlPattern: () => true,
+    handler: "NetworkOnly",
+    options: {},
+  },
+];
+
 const withPWA = require("next-pwa")({
   dest: "public",
   register: true,
@@ -8,6 +113,20 @@ const withPWA = require("next-pwa")({
   // workbox's precache of it fails → the service worker never installs/activates →
   // Web Push can't subscribe. Exclude it from the precache manifest.
   buildExcludes: [/app-build-manifest\.json$/],
+  runtimeCaching,
+  // public/manifest.json sets "start_url": "/dashboard" — the page a consumer
+  // lands on when they open the installed app from their home screen. It is an
+  // AUTHENTICATED page, and next-pwa's start-url machinery would cache whatever
+  // that URL returns: `cacheStartUrl` adds it to the precache manifest, and
+  // `dynamicStartUrl` (default true) both prepends a NetworkFirst `start-url`
+  // route and makes next-pwa/register.js re-fetch and re-cache it on the client
+  // (register.js:16-25, :50-56) — following the middleware redirect, so a
+  // signed-in visitor's dashboard HTML lands in Cache Storage. Both are off. The
+  // manifest keeps its start_url: it decides where the installed app OPENS,
+  // which is a navigation the consumer's own session then authorizes, and that
+  // is unaffected by not caching it.
+  cacheStartUrl: false,
+  dynamicStartUrl: false,
 });
 
 // Release identifier baked into every response at build time. Incident triage:

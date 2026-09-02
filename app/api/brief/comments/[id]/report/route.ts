@@ -13,7 +13,7 @@ export const runtime = "nodejs";
 // A reader flags a comment for admin review. Idempotent per (comment, reporter)
 // via the unique index, so re-reporting is a harmless no-op. The first report
 // marks the comment flagged; the admin triages it at /admin/brief/comments.
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const account = await currentAccount();
   if (!account) return NextResponse.json({ error: "Sign in to report." }, { status: 401 });
 
@@ -21,8 +21,9 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   if (limited) return limited;
 
   await ensureBriefTables();
+  const { id } = await params;
   const comment = await prisma.briefComment.findUnique({
-    where: { id: params.id },
+    where: { id },
     select: { id: true, status: true },
   });
   if (!comment || comment.status !== "visible") return NextResponse.json({ error: "Not found" }, { status: 404 });

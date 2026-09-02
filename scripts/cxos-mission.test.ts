@@ -14,6 +14,7 @@
 //      fetch, no session import can reach it.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { stripComments } from "./_source";
 
 const root = join(__dirname, "..");
 const boot = readFileSync(join(root, "app/api/cxos/founder-bootstrap/route.ts"), "utf8");
@@ -90,9 +91,49 @@ function check(label: string, cond: boolean) {
 // `user` (see app/dashboard/page.tsx's resolveDashboardPrincipal()). `user`
 // itself (`client ?? account`) is always truthy once reached, so the
 // equivalent guard is expressed entirely via `!principal`.
-check("entry: rendered ONLY by the authenticated branch (signed-out renders no overlay) — phase-1a's guard variable is `principal`",
-  dash.indexOf("Please sign in.") < dash.indexOf("<MissionEntry") &&
-  /if \(!principal\) return <AppShell/.test(dash));
+// RC1 S2 (P0-5) replaced the linkless "Please sign in." shell with a redirect. The
+// property is unchanged: nothing renders for an unresolved principal, so the
+// cinematic entry can never be shown to a signed-out visitor.
+//
+// Three traps this guard must avoid, all of which the old spelling walked into:
+//   • ordering measured on the bare identifier `redirectToLogin` is vacuous — it
+//     also appears in the import, so the test passes with the guard call deleted.
+//     Measure the CALL.
+//   • indexOf(-1) comparisons go vacuous once the searched string is gone
+//     (-1 < N is always true). Require both indices to be found.
+//   • "Please sign in." now appears in an explanatory COMMENT in this file, so any
+//     absence check must read comment-stripped source.
+//
+// RC1 S7 / Founder Decision D-6 — RE-PINNED, DELIBERATELY AND UPWARD.
+// The original property was an ORDERING one: the auth guard must precede the
+// <MissionEntry> mount, so the cinematic entry can never be shown to a
+// signed-out visitor. D-6 unmounts MissionEntry at consumer altitude (the
+// 7.3 s veil showed nothing the room beneath does not already show, and
+// carried the over-claiming CLEARANCE/SYSTEMS register — C-03/C-05). ABSENCE
+// is strictly stronger than ordering for this property: there is no overlay
+// to show a signed-out visitor at all. Both halves are asserted, so neither
+// can be quietly undone:
+//   (a) the auth guard still precedes EVERY render on this page, and
+//   (b) no cinematic overlay is mounted here.
+// A future slice that restores the mount must restore the ordering check with
+// it — (b) fails the moment <MissionEntry> reappears.
+// S11 addendum 2: this used to be a line filter that dropped `//` lines only.
+// It could not dangle a JSDoc the way the sibling guard's stripper did, but it
+// was blind in the other direction — a JSX `{/* … */}` rationale note quoting
+// the removed markup would defeat every absence assertion below. Both guards
+// share one correct tokenizer pass now (scripts/_source.ts), whose own
+// self-test runs in scripts/dashboard-ranking.test.ts.
+const dashRendered = stripComments(dash);
+const guardAt = dashRendered.indexOf('if (!principal) redirectToLogin("/dashboard");');
+const firstReturnAt = dashRendered.indexOf("return (");
+check("entry: the auth guard still precedes EVERY render — an unresolved principal leaves for /login before any markup",
+  guardAt !== -1 && firstReturnAt !== -1 && guardAt < firstReturnAt);
+check("entry: D-6 — no full-screen cinematic entry overlay is mounted on the dashboard at all (absence, not ordering)",
+  !dashRendered.includes("<MissionEntry"));
+check("entry: the component is KEPT, not deleted — CXOS is unmounted for RC1, not abandoned",
+  entry.includes("export function MissionEntry"));
+check("entry: the dashboard no longer renders a linkless sign-in shell",
+  !dashRendered.includes("Please sign in."));
 check("entry: tier D mounts nothing (reduced motion / effects off)",
   /if \(tier === "D"\) return;/.test(entry));
 check("entry: skippable three ways — Escape, the button, click anywhere",
@@ -108,10 +149,21 @@ check("entry: an accessible dialog that names its escape hatch",
   /role="dialog"/.test(entry) && /Press Escape to skip/.test(entry));
 check("entry: focus lands on the room's heading after the dissolve",
   /querySelector<HTMLElement>\("main h1, h1"\)/.test(entry));
-check("entry: every displayed value is a prop from the server's REAL resolved state",
+// RC1 S7 — RE-PINNED. The second half of this check read the dashboard for
+// `data.nextAction ? data.nextAction.title : null`, i.e. the value being piped
+// into the now-removed <MissionEntry>. The PROPERTY it protected — the CXOS
+// presentation layer displays only server-resolved state, never an invented
+// value — is unchanged and is re-expressed against the surface that still
+// renders: the Command Header. MissionEntry's own prop contract is still
+// pinned so the component cannot rot into inventing values while unmounted.
+check("entry: every displayed value is declared as a prop (the component invents nothing)",
   ["firstName", "identity", "role", "plan", "health", "tasksCount", "waitingCount", "nextAction"]
-    .every((p) => new RegExp(`${p}[?]?:`).test(entry)) &&
-  /data\.nextAction \? data\.nextAction\.title : null/.test(dash));
+    .every((p) => new RegExp(`${p}[?]?:`).test(entry)));
+check("header: every displayed value the dashboard passes comes from the engine's resolved `data`",
+  /health=\{cxHealth\}/.test(dashRendered) &&
+  /const cxHealth = data\.health\.map/.test(dashRendered) &&
+  /standing=\{data\.standing\}/.test(dashRendered) &&
+  /capacity=\{data\.capacity\}/.test(dashRendered));
 check("entry: reduced-motion CSS backstop covers the veil",
   /\.cx-mc-veil, \.cx-mc-leave \{ animation: none !important; display: none !important; \}/.test(css));
 
@@ -120,9 +172,30 @@ check("header: consumes HealthSignal/CapacityInfo types from the real engine",
   /from "@\/lib\/missionControl"/.test(header));
 check("header: no fetch, no prisma, no invented numbers (presentation only)",
   !/fetch\(/.test(header) && !/prisma/.test(header) && !/Math\.random/.test(header));
-check("dashboard: every existing engine call is preserved",
+// RC1 S7 — RE-PINNED, and measured on COMMENT-STRIPPED source. Two changes:
+//   1. `assembleExecution` leaves the required list. D-6 unmounts the
+//      Executive Queue and the ambient GXL field at consumer altitude, and
+//      those were its only two consumers here; calling a per-request fold over
+//      every engine's output and discarding the result is how a second
+//      "what to do next" ranking (C-04) quietly grows back. lib/execution is
+//      untouched and scripts/execution.test.ts still guards it.
+//   2. The measurement moves from `dash` to `dashRendered`. On raw source this
+//      check was about to pass VACUOUSLY: the comment explaining why
+//      assembleExecution is no longer called contains the identifier, so
+//      `dash.includes("assembleExecution")` is true with the call deleted.
+//      Comment-stripped source is the only honest way to assert either
+//      presence or absence of a call.
+check("dashboard: every engine the room still renders from is called",
   ["getMissionControl", "loadSnapshot", "assembleIntelligence", "assembleMissions",
-   "buildRoadmap", "buildBuilder", "assembleExecution", "buildAcademy"].every((f) => dash.includes(f)));
+   "buildRoadmap", "buildBuilder", "buildAcademy"].every((f) => dashRendered.includes(f)));
+check("dashboard: the engine whose only consumers D-6 unmounted is not called-and-discarded",
+  !dashRendered.includes("assembleExecution"));
+// D-6 / C-04 — the duplicate rankings and the decorative rAF field stay
+// unmounted at consumer altitude. Absence assertions, one per surface, so a
+// regression names itself instead of silently restoring a second answer.
+for (const gone of ["<MissionEntry", "<GxlField", "<ExecutiveQueue", "<MissionQueue"]) {
+  check(`dashboard: ${gone}> is not mounted (D-6 task-first posture)`, !dashRendered.includes(gone));
+}
 
 // ── 4 · review-data isolation ────────────────────────────────────────────────
 check("stage: fixtures only — no prisma, no session, no fetch can reach it",

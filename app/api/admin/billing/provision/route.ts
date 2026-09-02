@@ -1,20 +1,19 @@
 import { NextResponse } from "next/server";
 import { getStripe, resolvePrice, reconcileTaxCodes, PRICES } from "@/lib/stripe";
-import { requireAdmin, logAudit } from "@/lib/admin";
+import { requireAdmin, logAudit, setupSecretAccepted } from "@/lib/admin";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 // Eagerly create every catalog product/price in Stripe (they're otherwise created
 // lazily on first checkout). Idempotent — existing prices are reused by lookup_key.
-// Gated by an ADMIN session OR the SETUP_SECRET (so it can be run headlessly, e.g.
-// to populate the LIVE catalog before launch).
+// Gated by an ADMIN session OR SETUP_SECRET in the x-setup-secret header (so it
+// can be run headlessly without placing the reusable credential in URL logs,
+// browser history, or analytics). This route intentionally exports POST only.
 async function authorize(req: Request): Promise<boolean> {
   if (await requireAdmin()) return true;
-  const setup = process.env.SETUP_SECRET;
-  if (!setup) return false;
-  const provided = req.headers.get("x-setup-secret") || new URL(req.url).searchParams.get("secret") || "";
-  return provided === setup;
+  // Constant-time and throttled per source IP — see lib/admin.ts setupSecretAccepted.
+  return setupSecretAccepted(req);
 }
 
 export async function POST(req: Request) {

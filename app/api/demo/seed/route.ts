@@ -12,13 +12,14 @@ export const runtime = "nodejs";
 // calls) and idempotent.
 //
 // It is unauthenticated and ?force=1 is destructive, so in production it must
-// not exist at all: the rate limiter is its only other containment and that
-// fails OPEN (lib/rateLimit.ts). The guard uses the same NODE_ENV predicate as
+// not exist at all. The environment guard is the containment that matters — the
+// rate limiter behind it is a throttle, not a boundary (and since P0-10 it fails
+// CLOSED anyway). The guard uses the same NODE_ENV predicate as
 // the demo-user fallback in lib/session.ts. It never returns the demo password
 // either — an endpoint must not hand out a working credential in any
 // environment.
 async function handle(req: Request) {
-  if (process.env.NODE_ENV === "production") {
+  if (process.env.NODE_ENV !== "development") {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
   const limited = await enforceRateLimit(`demo-seed:${clientIp(req)}`, 5, 3600); // unauth destructive re-seed — IP throttle

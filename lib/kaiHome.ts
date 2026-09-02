@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { listKaiEvents } from "@/lib/kaiEvents";
 import { recommendStrategy } from "@/lib/recommend";
 import { yearsSince } from "@/lib/utils";
+import { reportedDofd } from "@/lib/tradelineInsights";
 import { daysElapsedSinceEstimatedReceipt } from "@/lib/forecast";
 // Phase 1A-R M1 (CCO correction): the same RB-2 fact test every other
 // negative-count/negative-presentation surface already applies (this file's
@@ -122,10 +123,29 @@ export function pickRecommendation(
   // its starvation-guard return (from branches 1/2, below) render identical
   // copy — the only difference is an optional `secondary` receipt.
   function obsoleteRecommendation(secondary?: KaiRecommendation["secondary"]): KaiRecommendation {
-    const age = Math.floor(yearsSince(obsolete!.dateOfFirstDelinquency) ?? 0);
+    // S11 addendum 3 (adopting S3's rc1/s3-s11-fix @ b2551f4). This used to read
+    // the raw persisted column, which is null whenever the report printed a
+    // month-precision date like "03/2019" — the parser could not store it. The
+    // §605 clock, scoring and factualCondition all read `reportedDofd()` now, so
+    // reading the column here made THIS sentence disagree with the very engine
+    // that produced the recommendation: the strategy desk flagged the item as
+    // past its window while Kai said its first delinquency was "about 0 years
+    // old". One derivation, read everywhere.
+    //
+    // A month-precision date is anchored to the LAST instant of that month by
+    // reportedDofd, so the age below can never be rounded up past what the
+    // report actually attests.
+    const dofd = reportedDofd(obsolete!);
+    const age = dofd ? Math.floor(yearsSince(dofd.date) ?? 0) : null;
+    // If no date is readable at all, say so rather than asserting "0 years".
+    // The §605 flag still stands — it came from the strategy engine, which has
+    // its own basis — but the age claim is dropped, not invented.
+    const ageLine = age === null
+      ? "Its date of first delinquency is not readable from your report."
+      : `Its first delinquency is about ${age} year${age === 1 ? "" : "s"} old.`;
     return {
       title: `${obsolete!.creditorName} may be past its FCRA §605 reporting window.`,
-      body: `Its first delinquency is about ${age} years old. Under FCRA §605, most adverse items are reported for seven years from the date of first delinquency — ten years for a Chapter 7 or 11 bankruptcy public record, and collections and charge-offs add a 180-day offset. Because this item appears to sit beyond that window, disputing it asks the bureau to verify the reporting period and remove the item if it can't be substantiated.`,
+      body: `${ageLine} Under FCRA §605, most adverse items are reported for seven years from the date of first delinquency — ten years for a Chapter 7 or 11 bankruptcy public record, and collections and charge-offs add a 180-day offset. Because this item appears to sit beyond that window, disputing it asks the bureau to verify the reporting period and remove the item if it can't be substantiated.`,
       cta: "Review this item & dispute",
       href: `/letters?tradeline=${obsolete!.id}&strategy=fcra_605`,
       basis: "Rule: the strategy engine flags this item as past its §605 reporting window (bankruptcy and collection/charge-off offsets applied).",
@@ -212,6 +232,25 @@ export function pickRecommendation(
     };
   }
 
+  // 4b. RC1 S7 / A1-04 — a report IS on file, but analysis produced no
+  //     accounts. This state used to fall through branch 5 (which finds no
+  //     candidate) to `null`, and a null recommendation is how the room ended
+  //     up telling the consumer who most needs help that "nothing needs your
+  //     attention right now" while Mission Control simultaneously showed an
+  //     upload task. Naming the state here is what lets every consumer of this
+  //     engine - Mission Control, the Operator Session, Kai's presence - say
+  //     the same sentence. It states the fact and offers the one move that
+  //     helps; it promises nothing about what a re-run will find.
+  if (tradelines.length === 0) {
+    return {
+      title: "Your report is on file, but I could not read any accounts from it.",
+      body: "That usually means the file was an image, a partial export, or a format I could not parse. Upload that report again, or add another bureau's report, and I will re-run the analysis.",
+      cta: "Open Upload",
+      href: "/upload",
+      basis: "Rule: a report is on file with no accounts extracted from it.",
+    };
+  }
+
   // 5. Analyzed items exist but nothing has been disputed yet. Ranked by
   //    `score` (which already determines `probability`'s band — lib/scoring.ts
   //    BANDS — so sorting by score alone orders by probability too), so the
@@ -277,7 +316,13 @@ function overnightFrom(events: KaiHomeData["recentEvents"]): OvernightItem[] {
         items.push({ text: `Round ${String(p.round ?? "")} to ${String(p.recipient ?? "the bureau")} is in the mail — the §611 clock starts once the bureau receives it.`, href: "/journey" });
         break;
       case "letter.generated":
-        items.push({ text: "A dispute letter was generated and is ready to mail.", href: "/letters" });
+        // S11 NEW-3: this line is rendered from a HISTORICAL event, so it can
+        // only truthfully report what happened — "is ready to mail" was a
+        // present-tense claim about a letter this stream cannot re-check, and
+        // it was wrong for every draft whose authorizing confirmation has since
+        // been withdrawn (the server 409s those). /letters shows the real
+        // current state, including the on-hold banner.
+        items.push({ text: "A dispute letter was generated.", href: "/letters" });
         break;
       case "report.analyzed":
         items.push({ text: `Report analyzed — ${String(p.tradelines ?? "your")} accounts reviewed.`, href: "/tradelines" });

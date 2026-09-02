@@ -45,8 +45,24 @@ export async function POST(req: Request) {
   const spec: MailPieceSpec = {
     pages: estimatePages(body), color: false, doubleSided: true, mailClass: "first_class", certified: false,
   };
-  const plan = (user.plan as PlanTier) || "free";
-  const isAgency = Boolean(user.isAgency) || plan === "agency" || plan === "agency_pro";
+  // ---- RC1-S11 (C-1): THE QUOTE IS A PROPERTY OF THE PIECE, NOT THE ACCOUNT --
+  // This used to read the mailing account's own row —
+  //   plan = user.plan; isAgency = user.isAgency || plan === "agency" || "agency_pro"
+  // — and hand both to the pricing engine. An Agency owner mailing THEIR OWN
+  // letter (no client workspace open, so currentUserOrDemo returns their row)
+  // was quoted the 5% reseller markup instead of the consumer's 15%: 1149c
+  // against 1249c for an identical piece. That is a payer/relationship changing
+  // what a consumer receives, which is exactly the invariant this release is
+  // built on.
+  //
+  // Both inputs are now constants. The quote depends on the SPEC alone — pages,
+  // colour, sidedness, mail class, certified — so two people mailing the same
+  // piece are quoted the same price, whatever their plan, credits, payer or
+  // agency relationship. The engine still accepts both parameters (a future
+  // white-label channel supplies its own policy); this consumer surface simply
+  // does not feed it an account.
+  const plan: PlanTier = "free";
+  const isAgency = false;
 
   const svc = new MailService();
   const mailId = `mail_${letter.id}`;

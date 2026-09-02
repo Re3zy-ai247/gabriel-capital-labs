@@ -27,12 +27,13 @@ function tempPassword(): string {
 }
 
 // POST: reset a user's password to a fresh temporary one and return it once.
-export async function POST(_req: Request, { params }: { params: { id: string } }) {
+export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: "Not authorized" }, { status: 403 });
 
+  const { id } = await params;
   const target = await prisma.user.findUnique({
-    where: { id: params.id },
+    where: { id },
     select: { id: true, email: true },
   });
   if (!target) return NextResponse.json({ error: "User not found." }, { status: 404 });

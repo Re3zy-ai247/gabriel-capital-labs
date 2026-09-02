@@ -15,7 +15,7 @@ const CREDITOR_KINDS = ["original_creditor", "debt_buyer", "collection_agency", 
 
 const ALL_BUREAUS: Bureau[] = ["EQUIFAX", "EXPERIAN", "TRANSUNION"];
 
-interface AIAccount {
+export interface AIAccount {
   creditorName: string;
   originalCreditor: string;
   accountNumberMask: string;
@@ -126,6 +126,44 @@ function systemPrompt(covered: Bureau[]): string {
   ].join("\n");
 }
 
+// ── RC1-S8 / P1-22 (E-16): mask SSNs before the report text leaves the box ───
+//
+// A bureau report carries the consumer's Social Security number in plain text,
+// and every upload shipped the whole thing to the AI provider untouched. This is
+// a PRE-STEP, deliberately scoped as narrowly as it can usefully be:
+//
+//   · It is a pure string→string function with no knowledge of parsing, and it
+//     is called at exactly ONE place — the prompt built below. lib/parse.ts,
+//     lib/aiParse.ts's own toExtractedTradelines(), and every offline fixture in
+//     scripts/credit-truth.test.ts read the ORIGINAL text and are untouched by
+//     it. Redaction changes what we transmit, never what we parse.
+//   · It masks two shapes only: an SSN written with dashes, and a 9-digit run
+//     that is explicitly LABELLED as an SSN. It deliberately does NOT chase bare
+//     9-digit runs, because a bare 9-digit run in a credit report is at least as
+//     likely to be an account number the extractor needs, and mangling those
+//     would trade a privacy win for a correctness loss.
+//   · It is therefore a REDUCTION, not a guarantee, and the privacy policy says
+//     exactly that rather than claiming the report is scrubbed.
+//
+// KNOWN AND ACCEPTED (review L-1/L-2, kept deliberately). SSN_DASHED is not
+// context-bounded, so a non-SSN written in the 3-2-4 hyphenated shape is masked
+// too: "Reference 555-12-3456" → "[REDACTED]". Verified byte-identical and
+// therefore unaffected: card numbers (4147-2029-1234-5678), masked account
+// numbers (517805XXXXXX1234), 4-2-4 references (1234-56-7890) and ISO dates
+// (2019-04-12), plus the whole realistic tradeline fixture in
+// scripts/disclosure-truth.test.ts. Tightening it would mean requiring a label,
+// which loses the common case of a bare dashed SSN on its own line — the exact
+// shape a bureau report prints. Conversely an UNLABELLED spaced SSN
+// ("123 45 6789") is not caught; labelled is. Both residuals are why the policy
+// text says the masking is pattern-based and cannot catch every instance.
+const SSN_LABELLED =
+  /\b(SSN|SS#|SOC(?:IAL)?\.?\s*SEC(?:URITY)?(?:\s*(?:NO\.?|NUM(?:BER)?|#))?)\s*[:#-]?\s*(\d{3}[-\s]?\d{2}[-\s]?\d{4})\b/gi;
+const SSN_DASHED = /\b\d{3}-\d{2}-\d{4}\b/g;
+
+export function redactSensitivePatterns(text: string): string {
+  return text.replace(SSN_LABELLED, (_m, label: string) => `${label}: [REDACTED]`).replace(SSN_DASHED, "[REDACTED]");
+}
+
 export async function aiExtractTradelines(
   rawText: string,
   coveredBureaus: Bureau[]
@@ -146,7 +184,12 @@ export async function aiExtractTradelines(
           "Extract all accounts from this credit report text. Covered bureaus: " +
           coveredBureaus.join(", ") +
           ".\n\n----- REPORT TEXT -----\n" +
-          rawText.slice(0, 120_000),
+          // MASK THE WHOLE PLAINTEXT, THEN TRUNCATE (review micro-round). The
+          // reverse order let an SSN straddling the 120k cut arrive as a
+          // truncated run that matches neither pattern — up to 8 of 9 digits
+          // transmitted. Masking first cannot leave a partial number behind;
+          // the cut then falls on already-masked text.
+          redactSensitivePatterns(rawText).slice(0, 120_000),
       },
     ],
     output_config: { format: { type: "json_schema", schema: SCHEMA } },
@@ -161,8 +204,17 @@ export async function aiExtractTradelines(
   } catch {
     return null;
   }
-  const accounts = parsed.accounts ?? [];
+  return toExtractedTradelines(parsed.accounts ?? [], coveredBureaus);
+}
 
+// The pure mapping from the model's structured output to our extraction shape.
+// Split out of aiExtractTradelines so the bureau-attribution rules below are
+// directly testable offline (scripts/credit-truth.test.ts) — no key, no
+// network, no I/O.
+export function toExtractedTradelines(
+  accounts: AIAccount[],
+  coveredBureaus: Bureau[]
+): ExtractedTradeline[] {
   return accounts
     .filter((a) => a.creditorName && a.creditorName.trim().length >= 2)
     .map((a) => {
@@ -170,16 +222,45 @@ export async function aiExtractTradelines(
       const reported = (a.reportedByBureaus || []).filter((b): b is Bureau =>
         coveredBureaus.includes(b as Bureau)
       );
-      const bureausForAccount = reported.length ? reported : coveredBureaus;
 
+      // RC1-S3 (Credit Truth Core) — bureau attribution, three honest cases.
+      //
+      // The schema gives us ONE status/balance/DOFD per account, not one per
+      // bureau. So:
+      //   • the values belong to exactly ONE bureau -> attribute them. That is
+      //     true when the model named a single bureau, and equally true when
+      //     the consumer's report covers a single bureau (every account in a
+      //     one-bureau report is that bureau's, which is what the system prompt
+      //     tells the model in the first place — so a model that omits the list
+      //     must not cost the consumer their attribution). This is the SAME
+      //     rule the deterministic parser applies in lib/parse.ts; the two
+      //     paths answer one question and must answer it identically.
+      //   • two or three bureaus reported -> presence is attested per bureau,
+      //     but the VALUES are not attributed. Record presence only and keep
+      //     the values as an account-level observation. (Copying one value set
+      //     into all three used to fabricate each bureau's report AND make
+      //     crossBureauConflicts() compare identical copies, so a genuine
+      //     inconsistency could never surface — the product's headline claim.)
+      //   • no bureau list on a multi-bureau report -> we do not know which
+      //     bureau shows this account. It previously became "PRESENT at every
+      //     bureau the consumer selected", inventing presence outright. Now
+      //     every covered bureau stays UNKNOWN (toBureauData) and the values
+      //     are recorded unattributed.
+      const observed = {
+        status: a.status?.trim() || undefined,
+        balanceCents: a.balanceCents || 0,
+        dofd: a.dofd?.trim() || undefined,
+        dateReported: a.dateReported?.trim() || undefined,
+      };
+      // `reported` is already filtered to the covered set, so a length above 1
+      // implies more than one covered bureau — the two arms cannot conflict.
+      const soleBureau =
+        reported.length === 1 ? reported[0] : coveredBureaus.length === 1 ? coveredBureaus[0] : null;
       const perBureau: ExtractedTradeline["perBureau"] = {};
-      for (const b of bureausForAccount) {
-        perBureau[b] = {
-          status: a.status?.trim() || undefined,
-          balanceCents: a.balanceCents || 0,
-          dofd: a.dofd?.trim() || undefined,
-          dateReported: a.dateReported?.trim() || undefined,
-        };
+      if (soleBureau) {
+        perBureau[soleBureau] = observed;
+      } else {
+        for (const b of reported) perBureau[b] = {}; // presence attested, values not
       }
 
       // Assemble the furnisher mailing contact, keeping only non-empty parts.
@@ -208,6 +289,7 @@ export async function aiExtractTradelines(
           : undefined,
         furnisherAddress,
         perBureau,
+        unattributed: soleBureau ? undefined : observed,
       } satisfies ExtractedTradeline;
     });
 }

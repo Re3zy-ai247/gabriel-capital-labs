@@ -7,6 +7,13 @@ import { RotateCcw, LayoutDashboard } from "lucide-react";
 // root layout and shows a calm, on-brand fallback with a retry — instead of a white screen. Logs
 // the error digest (Vercel captures client console). Client-side alerting/error-tracking is RC2
 // (needs an owner-supplied SDK/DSN).
+//
+// A1-12 · copy ADOPTED from the free consumer lane, commit a130d2d ("fix: close bounded consumer
+// launch defects"), verbatim. This boundary fires on ANY unhandled render/data error — including
+// one thrown AFTER a successful write — so the old line diagnosed a cause it had not observed
+// ("the connection dropped") and asserted a fact it could not know ("nothing was lost"). The
+// adopted wording states only what is true from here and adds the sentence a credit product owes
+// a frightened reader: this is not a credit decision.
 export default function Error({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   useEffect(() => {
     // eslint-disable-next-line no-console
@@ -19,8 +26,8 @@ export default function Error({ error, reset }: { error: Error & { digest?: stri
         <div className="aurora left-1/2 top-0 h-72 w-72 -translate-x-1/2 bg-brand-500/20" />
         <h1 className="relative h-display text-2xl text-white md:text-3xl text-balance">Something went wrong on our end</h1>
         <p className="relative mx-auto mt-3 max-w-sm text-slate-400 pretty">
-          The connection dropped mid-request. Try again — nothing was lost. Nothing about your report
-          or your credit caused this.
+          We hit a technical error. If you were making a change, confirm its status before retrying.
+          This message is not a credit decision and does not itself change your credit report.
         </p>
         {error.digest ? <p className="relative mt-2 text-xs text-slate-600">Reference: {error.digest}</p> : null}
         <div className="relative mt-8 flex flex-col justify-center gap-3 sm:flex-row">

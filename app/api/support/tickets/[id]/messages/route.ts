@@ -9,12 +9,13 @@ export const runtime = "nodejs";
 // POST: add a message to a ticket. Owner replies (status -> open) or ADMIN replies
 // as staff (status -> responded). Closed tickets are read-only for the owner.
 // Accepts multipart/form-data so a reply can carry image/PDF attachments.
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const account = await requireSupportUser();
   if (!account) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const isAdmin = account.role === "ADMIN";
 
-  const ticket = await prisma.supportTicket.findUnique({ where: { id: params.id } });
+  const { id } = await params;
+  const ticket = await prisma.supportTicket.findUnique({ where: { id } });
   if (!ticket) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (!isAdmin && ticket.userId !== account.id) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (ticket.status === "closed" && !isAdmin) return NextResponse.json({ error: "This ticket is closed." }, { status: 400 });

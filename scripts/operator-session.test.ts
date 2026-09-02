@@ -43,7 +43,13 @@ function manifest(letterId: string, status: MailStatus, createdAt = "2026-07-10T
 
 type LetterFixture = OperatorSessionInputs["letters"][number];
 function letterRow(over: Partial<LetterFixture> & { id: string }): LetterFixture {
-  return { recipientName: "Equifax", status: "GENERATED", mailedAt: null, createdAt: new Date("2026-07-10T00:00:00.000Z"), ...over };
+  // S11 NEW-3: `tradelineId` + `activeAssertionCount` are REQUIRED on the slice
+  // so no caller can silently omit the question the server asks before it 409s.
+  // The default here is the ordinary authorized letter — a real tradeline with
+  // a confirmation standing behind it — so every existing case below keeps the
+  // exact behaviour it was written to assert. Blocked-letter cases state the
+  // revoked shape explicitly.
+  return { recipientName: "Equifax", status: "GENERATED", mailedAt: null, createdAt: new Date("2026-07-10T00:00:00.000Z"), tradelineId: "tl-default", activeAssertionCount: 1, strategy: "fcra_611", ...over };
 }
 
 function inputs(over: Partial<OperatorSessionInputs> = {}): OperatorSessionInputs {
@@ -326,8 +332,16 @@ const SRC = readFileSync(join(root, "lib", "operatorSession.ts"), "utf8");
   ok("no raw SQL / self-heal DDL introduced by this file", !/\$executeRaw|\$queryRaw|CREATE TABLE|ALTER TABLE/i.test(SRC));
   const prismaModelCalls = [...SRC.matchAll(/\bprisma\.(\w+)\./g)].map((m) => m[1]);
   ok("at least one direct prisma read exists (sanity — the allowlist check below isn't vacuous)", prismaModelCalls.length > 0);
-  const ALLOWED_MODELS = new Set(["letter"]);
-  ok("every direct prisma.<model> call is an existing, already-read model (letter only — every other read reuses an existing lib function)",
+  // S11 NEW-3 — RE-PINNED, deliberately and narrowly. `consumerAssertion` joins
+  // the allowlist because the authorization state the server enforces before it
+  // 409s cannot be derived without counting ACTIVE assertions, and describing a
+  // letter the server will refuse as "generated and ready to mail" was the
+  // defect. The read is the SAME one app/api/letters/route.ts already performs
+  // (one grouped count, never one query per letter) — this file reuses that
+  // shape rather than inventing a second predicate. The allowlist stays
+  // exhaustive, so any further model still fails this check.
+  const ALLOWED_MODELS = new Set(["letter", "consumerAssertion"]);
+  ok("every direct prisma.<model> call is an existing, already-read model (letter + consumerAssertion only — every other read reuses an existing lib function)",
     prismaModelCalls.every((m) => ALLOWED_MODELS.has(m)));
 }
 

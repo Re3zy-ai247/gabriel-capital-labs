@@ -12,11 +12,12 @@ export const dynamic = "force-dynamic";
 // QUEUED, then stops. Everything past QUEUED waits for live mail integration.
 // Kai's downstream surfaces (Timeline, Case Memory) update from the mail.status
 // events MailService emits on each transition; the Decision Registry records here.
-export async function POST(_req: Request, { params }: { params: { mailId: string } }) {
+export async function POST(_req: Request, { params }: { params: Promise<{ mailId: string }> }) {
   const user = await currentUserOrDemo();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const svc = new MailService();
-  const m = await svc.getManifest(params.mailId);
+  const { mailId } = await params;
+  const m = await svc.getManifest(mailId);
   if (!m || m.userId !== user.id) return NextResponse.json({ error: "Not found." }, { status: 404 });
   if (m.status === "QUEUED") return NextResponse.json({ manifest: m }); // idempotent
 
@@ -51,9 +52,9 @@ export async function POST(_req: Request, { params }: { params: { mailId: string
   try {
     // No real charge while MAIL_LIVE is off — the ref documents that explicitly.
     if (m.status === "APPROVED") {
-      await svc.markPaid(params.mailId, "authorized:no-charge (MAIL_LIVE=off — no card charged, no letter sent yet)");
+      await svc.markPaid(mailId, "authorized:no-charge (MAIL_LIVE=off — no card charged, no letter sent yet)");
     }
-    const queued = await svc.queueForProvider(params.mailId);
+    const queued = await svc.queueForProvider(mailId);
 
     // Decision Registry — the recommendation the customer acted on.
     const letter = m.letterId

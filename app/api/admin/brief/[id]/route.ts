@@ -19,12 +19,13 @@ function isHttpUrl(u: string): boolean {
 // Edit fields and/or transition status (draft|published|rejected) + feature/pin.
 // Summary/caption are re-scrubbed on write so an admin edit can't slip past the
 // CROA bar; publishing stamps publishedAt the first time.
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: "Not authorized" }, { status: 403 });
   await ensureBriefTables();
 
-  const existing = await prisma.briefArticle.findUnique({ where: { id: params.id } });
+  const { id } = await params;
+  const existing = await prisma.briefArticle.findUnique({ where: { id } });
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const raw = await req.json().catch(() => ({}));
@@ -63,7 +64,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
   if (Object.keys(data).length === 0) return NextResponse.json({ error: "Nothing to update" }, { status: 400 });
 
-  const article = await prisma.briefArticle.update({ where: { id: params.id }, data });
+  const article = await prisma.briefArticle.update({ where: { id }, data });
   const action = data.status === "published" ? "brief.publish" : data.status === "rejected" ? "brief.reject" : "brief.update";
   await logAudit({
     actor: { id: admin.id, email: admin.email },
@@ -75,15 +76,16 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   return NextResponse.json({ ok: true, article });
 }
 
-export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: "Not authorized" }, { status: 403 });
   await ensureBriefTables();
 
-  const existing = await prisma.briefArticle.findUnique({ where: { id: params.id } });
+  const { id } = await params;
+  const existing = await prisma.briefArticle.findUnique({ where: { id } });
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  await prisma.briefArticle.delete({ where: { id: params.id } });
+  await prisma.briefArticle.delete({ where: { id } });
   await logAudit({
     actor: { id: admin.id, email: admin.email },
     action: "brief.delete",

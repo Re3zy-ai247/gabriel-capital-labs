@@ -2,8 +2,9 @@
 
 import { useEffect, useState, type ComponentType } from "react";
 import { isDirectorActive } from "@/lib/cxos/reviewMode";
+import { cinematicEntranceOptIn, detectTier, thresholdAlreadySeen } from "@/lib/cxos/capability";
 
-// CXOS Threshold — the GATE (Phase 2).
+// CXOS Threshold — the GATE (Phase 2), RC1 posture (Founder Decision D-6).
 //
 // This component is the only Threshold code in the landing's synchronous
 // bundle, and it is deliberately tiny. Its entire job is to decide whether
@@ -16,8 +17,20 @@ import { isDirectorActive } from "@/lib/cxos/reviewMode";
 //   · prefers-reduced-motion ........ nothing (grammar §5.16: the same narrative
 //                                     with the motion removed — and zero bytes
 //                                     of WebGL are ever downloaded)
-//   · already entered this session .. nothing (the Threshold plays once; the
-//                                     settled landing is the return state)
+//   · D-6: not opted in ............. nothing. Task-first is the default for
+//                                     EVERYONE; the entrance is a choice the
+//                                     visitor makes in the footer/app control,
+//                                     not a toll the product charges them.
+//   · D-6/C-02: not tier A .......... nothing. The entrance now consults the
+//                                     SAME capability policy every other CXOS
+//                                     surface consults, so Data Saver, a
+//                                     sub-4 GB device and a ≤768 px viewport
+//                                     are honored here too — the bypass that
+//                                     let a Data-Saver phone download three.js
+//                                     and play the full entrance is closed.
+//   · already entered ............... nothing (the Threshold plays once; the
+//                                     settled landing is the return state).
+//                                     C-13: durable, not per-tab.
 //   · no WebGL ...................... nothing (progressive enhancement: Tier-1
 //                                     CSS arrival still plays beneath)
 //   · otherwise ..................... import() the experience AFTER the window
@@ -37,16 +50,28 @@ export function ThresholdGate() {
     const director = isDirectorActive();
     if (director) setReview(true);
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return lift();
+    // D-6: the entrance is opt-in, and the opt-in is still subject to the tier
+    // policy — an explicit "yes please" is a request for the entrance, never a
+    // waiver of the protections that decide a device can afford it.
+    if (!director && !cinematicEntranceOptIn()) return lift();
+    if (!director && detectTier() !== "A") return lift();
     try {
       if (!director && sessionStorage.getItem("cx-threshold") === "1") return lift();
     } catch {
       return lift(); // storage unavailable — never risk replaying forever
     }
+    if (!director && thresholdAlreadySeen()) return lift(); // C-13: durable memory
     const probe = document.createElement("canvas");
     const gl = probe.getContext("webgl2") ?? probe.getContext("webgl");
     if (!gl) return lift();
 
     let cancelled = false;
+    // C-02: the pre-paint darkness is bounded HERE, not only by the CSS safety
+    // fade 12 s away. If the lazy chunk has not mounted (which lifts it at
+    // Threshold.tsx's own mount) within 1.5 s, the landing wins — a visible
+    // hero that the entrance then covers is strictly better than a black
+    // screen over painted content.
+    const bound = window.setTimeout(lift, 1500);
     const load = () => {
       const idle: (cb: () => void) => void =
         "requestIdleCallback" in window
@@ -66,6 +91,7 @@ export function ThresholdGate() {
     else window.addEventListener("load", load, { once: true });
     return () => {
       cancelled = true;
+      window.clearTimeout(bound);
     };
   }, []);
 

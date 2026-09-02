@@ -29,20 +29,27 @@ AI-powered **credit dispute education platform** — one codebase that ships as 
 ## Local setup
 ```bash
 cp .env.example .env        # fill in DATABASE_URL, NEXTAUTH_SECRET, ANTHROPIC_API_KEY
-npm install
-npm run db:push             # create tables
+npm ci
+npx --no-install prisma migrate deploy  # committed migrations, local DB only
 npm run db:seed             # demo user + demo report (single-bureau Equifax)
 npm run dev                 # http://localhost:3000
 ```
 Demo login: `demo@gabrielcapitallabs.com` / `demo1234`
 (In development you can also browse without signing in — it falls back to the demo user.)
 
+Schema changes never run as an install, build, deploy, or application-start side
+effect. For any shared or production database, use the separately authorized
+migration procedure in [.ai/RUNBOOKS/gate-d-production-migration.md](.ai/RUNBOOKS/gate-d-production-migration.md);
+never use `prisma db push`.
+
 ## Deploy as a WEBSITE (Vercel — recommended)
 1. Push this folder to a Git repo.
 2. Import it in Vercel.
 3. Add a Postgres database (Vercel Postgres, Neon, or Supabase) and set `DATABASE_URL`.
 4. Set env vars: `NEXTAUTH_SECRET` (`openssl rand -base64 32`), `NEXTAUTH_URL` (your domain), `ANTHROPIC_API_KEY`.
-5. Deploy. After first deploy, run `npx prisma db push` and `npm run db:seed` against the production DB (or add them to the build).
+5. Complete the controlled migration and promotion procedure linked above. Vercel
+   builds and application startup must remain database-mutation-free. Demo seeding
+   is for local development only.
 
 ## Install as a DESKTOP APP
 Once deployed, open the site in Chrome/Edge → **Install** icon in the address bar (or ⋮ → "Install Gabriel Capital Labs"). It installs as a standalone desktop window via the PWA manifest. No separate build required.

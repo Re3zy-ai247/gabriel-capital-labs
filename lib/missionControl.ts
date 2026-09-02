@@ -15,12 +15,14 @@ import type { AccountType, Letter } from "@prisma/client";
 import { getKaiHomeData, REINVESTIGATION_DAYS, type KaiHomeData, type KaiRecommendation, type OvernightItem } from "@/lib/kaiHome";
 import { caseMemorySince, type CaseMemory } from "@/lib/kaiSeen";
 import { campaignService, buildComposerItems } from "@/lib/campaignInput";
+import { withCampaignAvailability } from "@/lib/campaign/CampaignStore";
 import { ownOutcomeTrack, ownHistorySummary, type OwnTrack } from "@/lib/outcomeLedger";
 // RB-2 (Founder Experience Gate): the same fact test lib/intelligence/snapshot.ts
 // uses for the "active negatives" count — reused here so the Deferred Queue can
 // never stage a factually clean account (never the disputability `probability`
 // band the campaign composer ranks by).
-import { isFactualNegative } from "@/lib/intelligence/snapshot";
+import { isFactualNegative, factualCondition } from "@/lib/intelligence/snapshot";
+import { letterAuthorization } from "@/lib/letter";
 import {
   resolveCampaignPolicy, includedItems, deferredItems, FAMILY_LABEL,
   type Campaign, type CampaignItem, type CampaignPolicy, type ComposedCampaign,
@@ -29,6 +31,17 @@ import {
 const DAY = 86_400_000;
 
 export type Health = "green" | "amber" | "red";
+
+// RC1 S7 (finding C-05). `Health` answers "how is the work going"; it has no
+// vocabulary for "no work has started", so an account that had done nothing
+// scored all-green on every signal and the room announced "ALL SYSTEMS GREEN"
+// next to "Upload your credit report to get started". On a credit product that
+// pill reads as a statement about the consumer's FILE, not about an empty
+// internal queue. `Standing` is the missing state, kept as its OWN type rather
+// than widened into `Health` so the existing tone maps (exhaustive
+// Record<Health, ...> lookups in components/mission/CommandCenter.tsx) stay
+// total and unchanged.
+export type Standing = Health | "unstarted";
 
 export interface MissionTask { text: string; href: string; kind: "review" | "mail" | "upload" | "escalate" | "start" }
 export interface WaitItem { recipient: string; daysLeft: number; text: string; href: string }
@@ -52,7 +65,23 @@ export interface MissionControlData {
   deferred: DeferredItem[];
   health: HealthSignal[];
   caseHealth: Health;
+  /** C-05: caseHealth, except an account that has not started reads "unstarted", never green. */
+  standing: Standing;
+  /** A report row exists. THE shared fact - see the derivation note in assembleMission. */
   hasReport: boolean;
+  /**
+   * Anything at all is on file — a report, a letter or a campaign (S11 AD-4).
+   * Deliberately broader than `hasReport`: letters survive a report delete, and
+   * the mail/response/campaign health signals derive from them, so this is the
+   * question "has this case begun" actually asks.
+   */
+  caseOnFile: boolean;
+  /**
+   * A report exists but analysis produced no tradelines (A1-04). Its own
+   * state, because "nothing to do" and "we could not read your report" are
+   * different sentences, and the consumer in the second one needs the most help.
+   */
+  reportWithoutTradelines: boolean;
   ownHistory: string | null; // gate-free own verified-outcome track record (Sprint XIV)
 }
 
@@ -63,11 +92,57 @@ export interface MissionInputs {
   caseMemory: CaseMemory;
   campaigns: Campaign[];
   composed: ComposedCampaign;
-  // accountType + dateOfFirstDelinquency: RB-2's isFactualNegative fact test,
-  // so the Deferred Queue below can tell a genuine negative from a factually
-  // clean account (e.g. "pays as agreed, never late").
-  tradelines: { id: string; resolved: boolean; accountType: AccountType; dateOfFirstDelinquency: Date | null }[];
-  letters: Pick<Letter, "id" | "tradelineId" | "recipientName" | "parentLetterId" | "responseAt" | "responseOutcome" | "mailedAt">[];
+  // accountType + dateOfFirstDelinquency + bureauData: RB-2's isFactualNegative
+  // fact test, so the Deferred Queue below can tell a genuine negative from a
+  // factually clean account (e.g. "pays as agreed, never late").
+  //
+  // RC1 S7 (S3 handoff): `bureauData` is load-bearing and used to be missing.
+  // lib/intelligence/snapshot.ts's factualCondition() reads the report's OWN
+  // per-bureau status text ("Charge-Off", "Collection", "120 days past due")
+  // as evidence - but this projection carried only type + DOFD, and
+  // ConditionInput makes bureauData optional so a narrowed caller still
+  // compiles. The result was silent: a REVOLVING row whose report text says
+  // "Charge-Off" is DEROGATORY to every S3 surface and NEEDS_REVIEW here, so
+  // the Deferred Queue dropped an account the rest of the product counts.
+  // Same rows, same fact test, same answer - pass the field.
+  tradelines: { id: string; resolved: boolean; accountType: AccountType; dateOfFirstDelinquency: Date | null; bureauData?: unknown }[];
+  /**
+   * How many report rows exist for this user (A1-04 / C-04, the split-brain).
+   * Mission Control derived `hasReport` from `tradelines.length > 0` while Kai
+   * Home's own branch 4 keys on `reports.length === 0`. The two disagree in a
+   * very reachable state - upload succeeded, extraction produced nothing - and
+   * that disagreement rendered as one screen saying "Upload your credit report
+   * to get started" and "Nothing needs your attention right now" at once. Both
+   * engines now key on the same fact.
+   */
+  reportCount: number;
+  /**
+   * S11 AD-R3-3: the campaign read DEGRADED rather than returned nothing.
+   * PrismaCampaignStore catches a table-level fault and hands back `[]`, which
+   * is indistinguishable from "this consumer has no campaigns" — so the room
+   * reported "Nothing stalled." over a queue it could not read. S1 built
+   * `campaignDataUnavailable()` for exactly this and left the hand-off note;
+   * this is the surface consuming it. Required, not optional: an absence of
+   * knowledge must never default to the good-news branch.
+   */
+  campaignDataUnavailable: boolean;
+  /**
+   * ACTIVE ConsumerAssertion counts by tradelineId (S11 NEW-3). Feeds
+   * lib/letter.ts's letterAuthorization() — the SAME predicate the approve,
+   * print and mail routes enforce — so this engine can never describe a letter
+   * as ready when the server has already decided to refuse it with a 409.
+   * Only unmailed letters are judged; a mailed letter is a record.
+   */
+  activeAssertionCounts: Record<string, number>;
+  // `strategy` (S11 AD-R3-1 / B-R3-2) is NOT optional here even though
+  // LetterAuthorizationInput still declares it optional. Optional-and-absent is
+  // exactly how this engine got the identity letter wrong: the field failed
+  // closed, so every Personal Information correction letter — which has no
+  // tradelineId BY DESIGN, because it disputes the consumer's own name, address
+  // and employers — read as an orphan whose account had been deleted. Requiring
+  // it here means no caller can omit it, and S5 making it required upstream is
+  // a no-op for this engine rather than a compile break.
+  letters: Pick<Letter, "id" | "tradelineId" | "recipientName" | "parentLetterId" | "responseAt" | "responseOutcome" | "mailedAt" | "strategy">[];
   scoreEntries: { bureau: string; score: number; recordedAt: Date }[];
   nextSeq: number;
   policy: CampaignPolicy;
@@ -115,7 +190,23 @@ export function assembleMission(x: MissionInputs): MissionControlData {
   const now = x.now ?? Date.now();
 
   const firstName = (user.fullName || user.name || "").trim().split(" ")[0] || "there";
-  const hasReport = tradelines.length > 0;
+  // THE shared fact (A1-04): "has this consumer given us a report" is a
+  // question about REPORTS, and it is answered here exactly the way
+  // lib/kaiHome.ts's pickRecommendation answers it. Extraction yield is a
+  // separate, second question - never a proxy for the first.
+  const hasReport = x.reportCount > 0;
+  const hasTradelines = tradelines.length > 0;
+  const reportWithoutTradelines = hasReport && !hasTradelines;
+  // S11 AD-4. "Has a report" is NOT the same question as "has anything begun",
+  // and conflating them put the opposite falsehood on the same band C-05 fixed.
+  // `hasReport` counts REPORT rows, which the consumer can zero out at will —
+  // /upload offers DELETE /api/reports/{id}, and letters deliberately survive
+  // that delete (SetNull). Letters and campaigns are what the mail, response
+  // and campaign health signals are derived from, and those are computed
+  // without reference to hasReport at all. So a consumer who mailed two
+  // disputes and then exercised the data-control the product advertises had a
+  // live, overdue case with nothing on file called a report.
+  const caseOnFile = hasReport || letters.length > 0 || campaigns.length > 0;
   const resolved = tradelines.filter((t) => t.resolved).length;
 
   const liveCampaigns = campaigns.filter((c) => LIVE_CAMPAIGN.has(c.status));
@@ -131,6 +222,34 @@ export function assembleMission(x: MissionInputs): MissionControlData {
   const closing = kai.deadlines.filter((d) => d.daysLeft > 0 && d.daysLeft <= 5);
   // Counts derived DIRECTLY from the letters, so they stay correct even when more
   // than Kai Home's 6-deadline display cap is open.
+  // S11 NEW-3 — the drafts the server will refuse. Asked of lib/letter.ts's own
+  // letterAuthorization(), never a second predicate of this engine's invention:
+  // a letter is REVOKED when it is unmailed and either its tradeline is gone
+  // (report deleted or replaced) or no ACTIVE confirmation stands behind it
+  // (withdrawn, or drafted before confirmations existed). Those letters cannot
+  // be approved, printed or mailed, so a room that called them ready — and then
+  // summarised the account as needing no action — was describing a product that
+  // had already decided otherwise.
+  const blockedLetters = letters.filter(
+    (l) =>
+      letterAuthorization({
+        mailedAt: l.mailedAt,
+        tradelineId: l.tradelineId,
+        activeAssertionCount: l.tradelineId ? x.activeAssertionCounts[l.tradelineId] ?? 0 : 0,
+        // The discriminator. Without it a null tradelineId reads as a deleted
+        // account; with it, a non-tradeline strategy reads as what it is.
+        strategy: l.strategy,
+      }) === "REVOKED"
+  );
+  // The two shapes have different remedies, and sending everyone to /tradelines
+  // was the secondary defect: for a consumer whose report was deleted that page
+  // is empty, so the offered action did not exist.
+  // Every letter in `blockedLetters` has already been ruled REVOKED, so a null
+  // tradelineId here can only be the re-analysis/deleted-report orphan — a
+  // non-tradeline letter never reaches this line.
+  const blockedOrphaned = blockedLetters.filter((l) => !l.tradelineId).length;
+  const blockedConfirmable = blockedLetters.length - blockedOrphaned;
+
   const openLetters = letters.filter((l) => l.mailedAt && !l.responseAt);
   const openWindows = openLetters.length;
   const overdueCount = openLetters.filter((l) => (now - new Date(l.mailedAt as Date).getTime()) / DAY >= REINVESTIGATION_DAYS).length;
@@ -138,22 +257,50 @@ export function assembleMission(x: MissionInputs): MissionControlData {
   // response-health signal so they can never disagree (a task without a matching
   // health flag was the bug the review caught).
   const followedUp = new Set(letters.map((l) => l.parentLetterId).filter(Boolean));
-  const escalatable = hasReport
+  // AD-4: gated on the case existing, not on a report row surviving. A logged
+  // response IS a letter fact; requiring a report to notice it is how a
+  // time-barred escalation went unmentioned. (With no letters the filter is
+  // empty anyway, so this only ever ADDS the state the old gate suppressed.)
+  const escalatable = caseOnFile
     ? letters.filter((l) => l.responseAt && l.responseOutcome && l.responseOutcome !== "deleted" && !followedUp.has(l.id))
     : [];
   const needsResponseAction = escalatable.length > 0;
 
   // ---- Today's Mission (the checklist) ----
   const tasks: MissionTask[] = [];
+  // AD-4: the letter-derived work comes FIRST and is emitted whatever the
+  // report state is. It used to sit inside the final `else`, so a consumer with
+  // no report row on file was shown "Upload your credit report to get started"
+  // as their entire mission while two of their disputes sat past the §611
+  // window. Time-barred facts outrank onboarding prompts, always.
+  for (const l of escalatable.slice(0, 2)) {
+    tasks.push({ text: l.responseOutcome === "verified" ? `Open Round 2 for ${l.recipientName} — method-of-verification available` : `Review the ${l.recipientName} response and decide the next round`, href: "/letters", kind: "escalate" });
+  }
+  for (const d of overdue.slice(0, 2)) {
+    tasks.push({ text: `Upload the ${d.recipient} response (its window has passed)`, href: "/letters", kind: "upload" });
+  }
+  // S11 NEW-3: the true next step for a blocked draft, split by what actually
+  // blocks it. Letter-derived, so it is emitted whatever the report state is.
+  if (blockedConfirmable > 0) {
+    tasks.push({
+      text: `Confirm the facts behind ${blockedConfirmable} dispute letter${blockedConfirmable === 1 ? "" : "s"} — ${blockedConfirmable === 1 ? "it can't" : "they can't"} be approved, printed or mailed until you do`,
+      href: "/tradelines", kind: "review",
+    });
+  }
+  if (blockedOrphaned > 0) {
+    tasks.push({
+      text: `${blockedOrphaned} dispute letter${blockedOrphaned === 1 ? " names an account that is" : "s name accounts that are"} no longer on your report — upload that report again to confirm the facts, or leave the draft as it is`,
+      href: "/upload", kind: "upload",
+    });
+  }
   if (!hasReport) {
     tasks.push({ text: "Upload your credit report to get started", href: "/upload", kind: "upload" });
+  } else if (reportWithoutTradelines) {
+    // A1-04: the consumer who most needs help used to be told there was
+    // nothing to do. State the fact and give them the one move that helps -
+    // no promise about what a re-run will find.
+    tasks.push({ text: "No accounts were read from your last report — open Upload to try that file again or add another report", href: "/upload", kind: "upload" });
   } else {
-    for (const l of escalatable.slice(0, 2)) {
-      tasks.push({ text: l.responseOutcome === "verified" ? `Open Round 2 for ${l.recipientName} — method-of-verification available` : `Review the ${l.recipientName} response and decide the next round`, href: "/letters", kind: "escalate" });
-    }
-    for (const d of overdue.slice(0, 2)) {
-      tasks.push({ text: `Upload the ${d.recipient} response (its window has passed)`, href: "/letters", kind: "upload" });
-    }
     for (const c of approvedUnmailed.slice(0, 2)) {
       const n = unmailedCount(c);
       tasks.push({ text: `Mail ${n} approved dispute${n === 1 ? "" : "s"} — Campaign ${c.sequence}`, href: "/campaigns", kind: "mail" });
@@ -181,8 +328,14 @@ export function assembleMission(x: MissionInputs): MissionControlData {
   const deferredComposed = deferredItems({ items: composed.items }).filter(
     (i) => negativeById.get(i.tradelineId) ?? true
   );
-  if (deferredComposed.length > 0) automatic.push({ text: `${deferredComposed.length} account${deferredComposed.length === 1 ? " is" : "s are"} staged for a later campaign — Kai unlocks them automatically.` });
-  if (kai.deadlines.length > 0) automatic.push({ text: `Your response windows are tracked automatically against the ~${REINVESTIGATION_DAYS}-day §611 clock.` });
+  // C-06 - every line here is a render-time derivation over rows the consumer
+  // already gave us. There is no scheduler behind any of it: vercel.json
+  // declares two crons and both belong to the news Brief, and no consumer
+  // notification is wired to a §611 window. So the copy says what is true -
+  // these are counted and shown when you open CreditVector - and never "we are
+  // watching it for you", which would tell a consumer they can stop looking.
+  if (deferredComposed.length > 0) automatic.push({ text: `${deferredComposed.length} account${deferredComposed.length === 1 ? " is" : "s are"} staged for a later campaign — they move into the next campaign as the current one progresses.` });
+  if (kai.deadlines.length > 0) automatic.push({ text: `Every response window is counted against the ~${REINVESTIGATION_DAYS}-day §611 clock from the date you logged, and shown here each time you open CreditVector.` });
   if (composed.nextUnlock.length > 0 && tasks.some((t) => t.kind === "mail")) automatic.push({ text: "Your next campaign is staged and unlocks as the current one progresses." });
 
   // ---- Next action (single, deterministic) ----
@@ -192,7 +345,12 @@ export function assembleMission(x: MissionInputs): MissionControlData {
   // "mail the next campaign" step (the priority inversion the review caught).
   let nextAction: KaiRecommendation | null = null;
   const urgent = overdueCount > 0 || escalatable.length > 0;
-  if (urgent && kai.recommendation) {
+  if (reportWithoutTradelines && kai.recommendation) {
+    // A1-04: kaiHome's own branch for this exact state. Taking it verbatim is
+    // what makes "Today's mission" and "Kai's next action" ONE answer rather
+    // than two - there is nothing to escalate or mail on a file with no rows.
+    nextAction = kai.recommendation;
+  } else if (urgent && kai.recommendation) {
     nextAction = kai.recommendation;
   } else if (approvedUnmailed[0]) {
     const c = approvedUnmailed[0]; const n = unmailedCount(c);
@@ -206,7 +364,7 @@ export function assembleMission(x: MissionInputs): MissionControlData {
     nextAction = { title: `Review your next campaign`, body: composed.rationale, cta: "Open campaigns", href: "/campaigns", basis: "Rule: disputable items on file with no campaign in review." };
   } else if (waiting[0]) {
     const min = Math.min(...waiting.map((w) => w.daysLeft));
-    nextAction = { title: `Wait ${min} day${min === 1 ? "" : "s"}`, body: `Your disputes are within their statutory windows — no action is needed right now. Kai is watching the clocks.`, cta: "See what's in flight", href: "/mail", basis: `Rule: ${waiting.length} open window${waiting.length === 1 ? "" : "s"}, none overdue.` };
+    nextAction = { title: `Wait ${min} day${min === 1 ? "" : "s"}`, body: `Your disputes are within their statutory windows — no action is needed right now. Each window's remaining time is shown here whenever you open CreditVector.`, cta: "See what's in flight", href: "/mail", basis: `Rule: ${waiting.length} open window${waiting.length === 1 ? "" : "s"}, none overdue.` };
   }
 
   // ---- Next unlock ----
@@ -242,7 +400,12 @@ export function assembleMission(x: MissionInputs): MissionControlData {
 
   // ---- Health Dashboard ----
   const health: HealthSignal[] = [];
-  if (approvedUnmailed.length > 0) health.push({ key: "campaign", label: "Campaign health", status: "amber", message: "A campaign is approved but not yet mailed — send it; the clock starts once the recipient receives it." });
+  // AD-R3-3 first, because an unreadable queue outranks every conclusion drawn
+  // from it: `campaigns` is `[]` in this state, so pendingReview and
+  // approvedUnmailed are empty for a reason that has nothing to do with the
+  // consumer's case, and every branch below would have read as all-clear.
+  if (x.campaignDataUnavailable) health.push({ key: "campaign", label: "Campaign health", status: "amber", message: "We couldn't load your campaigns just now, so this view may be incomplete — it isn't a statement that you have none. Try again in a moment." });
+  else if (approvedUnmailed.length > 0) health.push({ key: "campaign", label: "Campaign health", status: "amber", message: "A campaign is approved but not yet mailed — send it; the clock starts once the recipient receives it." });
   else if (pendingReview.length > 0) health.push({ key: "campaign", label: "Campaign health", status: "amber", message: "A campaign is waiting for your review." });
   else health.push({ key: "campaign", label: "Campaign health", status: "green", message: liveCampaigns.length > 0 ? "Your campaigns are progressing." : "Nothing stalled." });
 
@@ -254,21 +417,109 @@ export function assembleMission(x: MissionInputs): MissionControlData {
   else if (needsResponseAction) health.push({ key: "response", label: "Response health", status: "amber", message: "A logged response needs your next move." });
   else health.push({ key: "response", label: "Response health", status: "green", message: "No response action outstanding." });
 
+  // ---- Report health: the CONSUMER'S FILE, not our workflow (S11 HIGH-1) ----
+  // Every signal above measures workflow hygiene — is a campaign stalled, is
+  // mail moving, is a response outstanding, has anything happened lately — and
+  // every one of them has a green else-branch. So a consumer with four
+  // unresolved derogatory accounts, six unmailed letters and three bureau
+  // responses that ALL came back verified rolled up to "ALL SYSTEMS GREEN",
+  // three inches from "Your favorable-change rate so far: 0%". On a credit
+  // product that pill reads as a claim about the consumer's FILE, and nothing
+  // in the roll-up was reading the file at all.
+  //
+  // Truth source is S3's condition model, the same one the Strategy Desk and
+  // the Deferred Queue use — never the disputability band. Note the asymmetry
+  // S3 established and this honours: DEROGATORY is a positive finding, while
+  // "not derogatory" includes NEEDS_REVIEW ("we could not read it"), so the
+  // green branch reports what was READ and never asserts the file is clean.
+  const unresolvedDerogatory = tradelines.filter((t) => !t.resolved && factualCondition(t) === "DEROGATORY").length;
+  const loggedResponses = letters.filter((l) => l.responseAt && l.responseOutcome);
+  const favourableResponses = loggedResponses.filter((l) => l.responseOutcome === "deleted").length;
+  const nothingChanged = loggedResponses.length > 0 && favourableResponses === 0;
+  const verifiedNote = nothingChanged
+    ? ` None of the ${loggedResponses.length} logged response${loggedResponses.length === 1 ? "" : "s"} changed one.`
+    : "";
+  if (unresolvedDerogatory > 0) {
+    health.push({
+      key: "file", label: "Report health", status: "amber",
+      message: `${unresolvedDerogatory} account${unresolvedDerogatory === 1 ? "" : "s"} on your report still show${unresolvedDerogatory === 1 ? "s" : ""} a derogatory status.${verifiedNote}`,
+    });
+  } else if (nothingChanged) {
+    health.push({
+      key: "file", label: "Report health", status: "amber",
+      message: `${loggedResponses.length} response${loggedResponses.length === 1 ? " has" : "s have"} been logged and none of them changed what's reported.`,
+    });
+  } else {
+    health.push({
+      key: "file", label: "Report health", status: "green",
+      message: hasTradelines
+        ? "No unresolved derogatory account was read from your report."
+        : caseOnFile ? "No accounts have been read from your report yet." : "Nothing on file yet.",
+    });
+  }
+
+  // ---- Draft health: what the SERVER will refuse (S11 NEW-3) ----
+  // Same class as report health above: the roll-up must not summarise as
+  // "no action needed" an account whose only pending work the product itself
+  // has blocked.
+  if (blockedLetters.length > 0) {
+    const n = blockedLetters.length;
+    health.push({
+      key: "authorization", label: "Draft health", status: "amber",
+      message: `${n} dispute letter${n === 1 ? " is" : "s are"} on hold — ${n === 1 ? "it states facts" : "they state facts"} in your name with no confirmation standing behind ${n === 1 ? "it" : "them"} right now.`,
+    });
+  } else {
+    health.push({
+      key: "authorization", label: "Draft health", status: "green",
+      message: letters.some((l) => !l.mailedAt) ? "Every draft on file is confirmed and can move." : "No drafts waiting.",
+    });
+  }
+
   const lastEvent = kai.recentEvents[0]?.occurredAt;
   const stale = lastEvent ? (now - new Date(lastEvent).getTime()) / DAY > 30 : false;
   const openDisputes = letters.some((l) => l.mailedAt && !l.responseAt);
   if (stale && openDisputes) health.push({ key: "timeline", label: "Timeline health", status: "amber", message: "No activity in over 30 days while disputes are open — check your windows." });
-  else health.push({ key: "timeline", label: "Timeline health", status: "green", message: hasReport ? "Your case is moving." : "Upload a report to begin." });
+  else if (reportWithoutTradelines) health.push({ key: "timeline", label: "Timeline health", status: "amber", message: "A report is on file but no accounts were read from it — try that file again or add another report." });
+  // AD-4: "nothing has started" is a claim about the CASE, not about a report
+  // row — a consumer with letters in flight and no report on file is moving.
+  else health.push({ key: "timeline", label: "Timeline health", status: "green", message: caseOnFile ? "Your case is moving." : "Nothing has started yet." });
 
   const caseHealth: Health = health.some((h) => h.status === "red") ? "red" : health.some((h) => h.status === "amber") ? "amber" : "green";
-  health.push({ key: "case", label: "Case health", status: caseHealth, message: caseHealth === "green" ? "Everything's green — no action needed." : caseHealth === "amber" ? "A couple of things want your attention." : "Something's overdue — see the flags above." });
+  // C-05: zero rows is not health. An account with nothing on file has an
+  // empty queue, which is not the same claim as a clean, monitored file - and
+  // that was the claim the all-green roll-up was making.
+  // AD-4 — two independent conditions, either of which alone would have
+  // prevented the defect, because this band is the product's loudest single
+  // claim and it has now been wrong in BOTH directions:
+  //   1. "unstarted" requires that nothing is on file at all — not merely that
+  //      a report row is missing.
+  //   2. "unstarted" can never outrank a signal. If anything is amber or red
+  //      the band reports THAT, so a state nobody anticipated can still only
+  //      make the band louder, never quieter.
+  // (W3-S7-review L-9 flagged the mirror image — green surviving on an empty
+  // account. Condition 2 is what closes the class rather than one direction.)
+  const nothingOnFile = !caseOnFile;
+  const standing: Standing = nothingOnFile && caseHealth === "green" ? "unstarted" : caseHealth;
+  health.push({
+    key: "case",
+    label: "Case health",
+    status: caseHealth,
+    message: standing === "unstarted"
+      ? "Nothing has started yet — upload a report to begin."
+      : caseHealth === "green" ? "Everything's green — no action needed."
+        : caseHealth === "amber" ? "A couple of things want your attention."
+          : "Something's overdue — see the flags above.",
+  });
 
   // ---- Command Center (deep-linked sections) ----
   const nearest = kai.deadlines.filter((d) => d.daysLeft > 0).sort((a, b) => a.daysLeft - b.daysLeft)[0];
   const sp = scoreProgress(scoreEntries);
   const lastEventDate = lastEvent ? new Date(lastEvent).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "—";
   const command: CommandSection[] = [
-    { key: "campaigns", title: "Campaigns", stat: `${liveCampaigns.length} active`, sub: `${campaigns.length} total`, href: "/campaigns", tone: pendingReview.length || approvedUnmailed.length ? "amber" : "neutral" },
+    // AD-R3-3: never print a count we could not read as though it were the count.
+    x.campaignDataUnavailable
+      ? { key: "campaigns", title: "Campaigns", stat: "Unavailable", sub: "we couldn't load these just now", href: "/campaigns", tone: "amber" as const }
+      : { key: "campaigns", title: "Campaigns", stat: `${liveCampaigns.length} active`, sub: `${campaigns.length} total`, href: "/campaigns", tone: pendingReview.length || approvedUnmailed.length ? "amber" : "neutral" },
     { key: "mail", title: "Mail", stat: `${kai.lettersMailed} mailed`, sub: `${openWindows} awaiting response`, href: "/mail", tone: overdueCount ? "red" : "neutral" },
     { key: "responses", title: "Responses", stat: `${kai.responsesReceived} / ${kai.lettersMailed}`, sub: "responses logged", href: "/letters", tone: needsResponseAction ? "amber" : "neutral" },
     { key: "timeline", title: "Timeline", stat: `Last: ${lastEventDate}`, sub: `${resolved} item${resolved === 1 ? "" : "s"} resolved`, href: "/journey", tone: "neutral" },
@@ -279,26 +530,57 @@ export function assembleMission(x: MissionInputs): MissionControlData {
   ];
 
   const ownHistory = x.ownTrack ? ownHistorySummary(x.ownTrack) : null;
-  return { firstName, caseMemory, overnight: kai.overnight, tasks, waiting, automatic, nextAction, nextUnlock, command, capacity, deferred, health, caseHealth, hasReport, ownHistory };
+  return { firstName, caseMemory, overnight: kai.overnight, tasks, waiting, automatic, nextAction, nextUnlock, command, capacity, deferred, health, caseHealth, standing, hasReport, caseOnFile, reportWithoutTradelines, ownHistory };
 }
 
 // The loader — pulls the real rows and hands them to the pure assembler.
 export async function getMissionControl(userId: string, user: { fullName?: string | null; name?: string | null }): Promise<MissionControlData> {
   const svc = campaignService();
-  const [kai, caseMemory, campaigns, items, tradelines, letters, scoreEntries, ownTrack, nextSeq] = await Promise.all([
+  // S11 B-R5-1 — the availability answer must belong to THIS request. The
+  // process-global `campaignDataUnavailable()` this used to read is cleared by
+  // every success, and three readers run in the fan-out below: a sibling
+  // succeeding after the failing one wiped the failure, and the dashboard fell
+  // back to "Nothing stalled." — the one claim the signal exists to prevent.
+  // Being process-global it could also show "Unavailable" to a consumer whose
+  // read succeeded and hide it from the one whose read failed. The scope is
+  // per-request and monotonic, so one failed read among many successes is still
+  // a failed read, and no other request can see or clear it.
+  const { data: loaded, unavailable: campaignsUnavailable } = await withCampaignAvailability(async () => await Promise.all([
     getKaiHomeData(userId),
     caseMemorySince(userId),
     svc.list(userId, 50),
     buildComposerItems(userId),
-    prisma.tradeline.findMany({ where: { userId }, select: { id: true, resolved: true, accountType: true, dateOfFirstDelinquency: true } }),
-    prisma.letter.findMany({ where: { userId }, orderBy: { createdAt: "desc" }, select: { id: true, tradelineId: true, recipientName: true, parentLetterId: true, responseAt: true, responseOutcome: true, mailedAt: true } }),
+    prisma.tradeline.findMany({ where: { userId }, select: { id: true, resolved: true, accountType: true, dateOfFirstDelinquency: true, bureauData: true } }),
+    prisma.letter.findMany({ where: { userId }, orderBy: { createdAt: "desc" }, select: { id: true, tradelineId: true, recipientName: true, parentLetterId: true, responseAt: true, responseOutcome: true, mailedAt: true, strategy: true } }),
     prisma.scoreEntry.findMany({ where: { userId }, select: { bureau: true, score: true, recordedAt: true }, orderBy: { recordedAt: "asc" } }),
     ownOutcomeTrack(userId),
     svc.nextSequence(userId),
-  ]);
+    // The same row set lib/kaiHome.ts counts, counted the same way - the whole
+    // point of A1-04's unification is that neither engine gets its own idea of
+    // whether a report exists.
+    prisma.report.count({ where: { userId } }),
+  ]));
+  const [kai, caseMemory, campaigns, items, tradelines, letters, scoreEntries, ownTrack, nextSeq, reportCount] = loaded;
+
+  // S11 NEW-3 — one grouped count for the whole render, mirroring
+  // app/api/letters/route.ts. Mailed letters are excluded: HISTORICAL is
+  // terminal and a record is never re-judged.
+  const unmailedTradelineIds = Array.from(
+    new Set(letters.filter((l) => !l.mailedAt && l.tradelineId).map((l) => l.tradelineId as string))
+  );
+  const activeAssertionCounts: Record<string, number> = {};
+  if (unmailedTradelineIds.length) {
+    const grouped = await prisma.consumerAssertion.groupBy({
+      by: ["tradelineId"],
+      where: { userId, status: "ACTIVE", tradelineId: { in: unmailedTradelineIds } },
+      _count: { _all: true },
+    });
+    for (const g of grouped) if (g.tradelineId) activeAssertionCounts[g.tradelineId] = g._count._all;
+  }
   const composed = svc.compose(items, nextSeq);
   return assembleMission({
     user, kai, caseMemory, campaigns, composed, tradelines,
-    letters, scoreEntries, ownTrack, nextSeq, policy: resolveCampaignPolicy(),
+    letters, scoreEntries, ownTrack, nextSeq, reportCount, activeAssertionCounts,
+    campaignDataUnavailable: campaignsUnavailable, policy: resolveCampaignPolicy(),
   });
 }

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
 import { GxlField } from "@/components/gxl/GxlField";
 import { ROOMS } from "@/components/gxl/specimen";
@@ -19,16 +20,13 @@ export const runtime = "nodejs";
 export const metadata: Metadata = { robots: { index: false, follow: false }, title: "GXL Gallery" };
 
 export default async function GxlGalleryLobby() {
-  if (!(await gxlGalleryAllowed())) {
-    return (
-      <AppShell title="/ GXL Gallery">
-        <div className="card mx-auto mt-6 max-w-md p-8 text-center text-sm text-slate-400">
-          This is a founder-only validation gallery for an unratified design language.
-          <div className="mt-4"><Link href="/community" className="btn-ghost text-sm">Operator Network</Link></div>
-        </div>
-      </AppShell>
-    );
-  }
+  // RC1 S7 (finding C-14): a signed-in non-admin used to be shown a card
+  // reading "This is a founder-only validation gallery for an unratified
+  // design language" — an internal artifact, disclosed inside the product
+  // shell, to a consumer who has no business knowing this route exists. The
+  // route is already unlinked and noindex; it now takes the same posture the
+  // /review routes take and does not exist for anyone outside the gate.
+  if (!(await gxlGalleryAllowed())) notFound();
 
   const totals = ROOMS.reduce((a, r) => ({ total: a.total + r.field.total, awaiting: a.awaiting + r.field.awaiting, active: a.active + r.field.active }), { total: 0, awaiting: 0, active: 0 });
 
